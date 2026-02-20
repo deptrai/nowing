@@ -76,6 +76,9 @@ def create_create_google_drive_file_tool(
                 logger.error(f"Failed to fetch creation context: {context['error']}")
                 return {"status": "error", "message": context["error"]}
 
+            logger.info(
+                f"Requesting approval for creating Google Drive file: name='{name}', type='{file_type}'"
+            )
             approval = interrupt(
                 {
                     "type": "google_drive_file_creation",
@@ -97,6 +100,7 @@ def create_create_google_drive_file_tool(
             decisions = decisions_raw if isinstance(decisions_raw, list) else [decisions_raw]
             decisions = [d for d in decisions if isinstance(d, dict)]
             if not decisions:
+                logger.warning("No approval decision received")
                 return {"status": "error", "message": "No approval decision received"}
 
             decision = decisions[0]

@@ -70,6 +70,15 @@ def create_trash_google_drive_file_tool(
             file_id = file["file_id"]
             connector_id_from_context = context["account"]["id"]
 
+            if not file_id:
+                return {
+                    "status": "error",
+                    "message": "File ID is missing from the indexed document. Please re-index the file and try again.",
+                }
+
+            logger.info(
+                f"Requesting approval for trashing Google Drive file: '{file_name}' (file_id={file_id})"
+            )
             approval = interrupt(
                 {
                     "type": "google_drive_file_trash",
@@ -88,6 +97,7 @@ def create_trash_google_drive_file_tool(
             decisions = decisions_raw if isinstance(decisions_raw, list) else [decisions_raw]
             decisions = [d for d in decisions if isinstance(d, dict)]
             if not decisions:
+                logger.warning("No approval decision received")
                 return {"status": "error", "message": "No approval decision received"}
 
             decision = decisions[0]

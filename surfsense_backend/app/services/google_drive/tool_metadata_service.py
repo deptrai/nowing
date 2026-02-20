@@ -112,6 +112,8 @@ class GoogleDriveToolMetadataService:
                 and_(
                     SearchSourceConnector.id == document.connector_id,
                     SearchSourceConnector.user_id == user_id,
+                    SearchSourceConnector.connector_type
+                    == SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR,
                 )
             )
         )
