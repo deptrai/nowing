@@ -38,7 +38,10 @@ import type { ThinkingStep } from "@/components/tool-ui/deepagent-thinking";
 import { DisplayImageToolUI } from "@/components/tool-ui/display-image";
 import { GeneratePodcastToolUI } from "@/components/tool-ui/generate-podcast";
 import { GenerateReportToolUI } from "@/components/tool-ui/generate-report";
-import { CreateGoogleDriveFileToolUI } from "@/components/tool-ui/google-drive";
+import {
+	CreateGoogleDriveFileToolUI,
+	TrashGoogleDriveFileToolUI,
+} from "@/components/tool-ui/google-drive";
 import {
 	CreateLinearIssueToolUI,
 	DeleteLinearIssueToolUI,
@@ -1666,6 +1669,7 @@ export default function NewChatPage() {
 			<UpdateLinearIssueToolUI />
 			<DeleteLinearIssueToolUI />
 			<CreateGoogleDriveFileToolUI />
+			<TrashGoogleDriveFileToolUI />
 			{/* <WriteTodosToolUI /> Disabled for now */}
 			<div className="flex h-[calc(100dvh-64px)] overflow-hidden">
 				<div className="flex-1 flex flex-col min-w-0 overflow-hidden">

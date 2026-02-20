@@ -32,7 +32,7 @@ export {
 } from "./display-image";
 export { GeneratePodcastToolUI } from "./generate-podcast";
 export { GenerateReportToolUI } from "./generate-report";
-export { CreateGoogleDriveFileToolUI } from "./google-drive";
+export { CreateGoogleDriveFileToolUI, TrashGoogleDriveFileToolUI } from "./google-drive";
 export {
 	Image,
 	ImageErrorBoundary,
