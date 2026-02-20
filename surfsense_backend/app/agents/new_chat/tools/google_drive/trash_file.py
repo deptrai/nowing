@@ -1,0 +1,163 @@
+import logging
+from typing import Any
+
+from langchain_core.tools import tool
+from langgraph.types import interrupt
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.connectors.google_drive.client import GoogleDriveClient
+from app.services.google_drive import GoogleDriveToolMetadataService
+
+logger = logging.getLogger(__name__)
+
+
+def create_trash_google_drive_file_tool(
+    db_session: AsyncSession | None = None,
+    search_space_id: int | None = None,
+    user_id: str | None = None,
+):
+    @tool
+    async def trash_google_drive_file(
+        file_name: str,
+    ) -> dict[str, Any]:
+        """Move a Google Drive file to trash.
+
+        Use this tool when the user explicitly asks to delete, remove, or trash
+        a file in Google Drive.
+
+        Args:
+            file_name: The exact name of the file to trash (as it appears in Drive).
+
+        Returns:
+            Dictionary with:
+            - status: "success", "rejected", "not_found", or "error"
+            - file_id: Google Drive file ID (if success)
+            - message: Result message
+
+            IMPORTANT:
+            - If status is "rejected", the user explicitly declined. Respond with a brief
+              acknowledgment and do NOT retry or suggest alternatives.
+            - If status is "not_found", relay the exact message to the user and ask them
+              to verify the file name or check if it has been indexed.
+
+        Examples:
+            - "Delete the 'Meeting Notes' file from Google Drive"
+            - "Trash the 'Old Budget' spreadsheet"
+        """
+        logger.info(f"trash_google_drive_file called: file_name='{file_name}'")
+
+        if db_session is None or search_space_id is None or user_id is None:
+            return {
+                "status": "error",
+                "message": "Google Drive tool not properly configured. Please contact support.",
+            }
+
+        try:
+            metadata_service = GoogleDriveToolMetadataService(db_session)
+            context = await metadata_service.get_trash_context(
+                search_space_id, user_id, file_name
+            )
+
+            if "error" in context:
+                error_msg = context["error"]
+                if "not found" in error_msg.lower():
+                    logger.warning(f"File not found: {error_msg}")
+                    return {"status": "not_found", "message": error_msg}
+                logger.error(f"Failed to fetch trash context: {error_msg}")
+                return {"status": "error", "message": error_msg}
+
+            file = context["file"]
+            file_id = file["file_id"]
+            connector_id_from_context = context["account"]["id"]
+
+            approval = interrupt(
+                {
+                    "type": "google_drive_file_trash",
+                    "action": {
+                        "tool": "trash_google_drive_file",
+                        "params": {
+                            "file_id": file_id,
+                            "connector_id": connector_id_from_context,
+                        },
+                    },
+                    "context": context,
+                }
+            )
+
+            decisions_raw = approval.get("decisions", []) if isinstance(approval, dict) else []
+            decisions = decisions_raw if isinstance(decisions_raw, list) else [decisions_raw]
+            decisions = [d for d in decisions if isinstance(d, dict)]
+            if not decisions:
+                return {"status": "error", "message": "No approval decision received"}
+
+            decision = decisions[0]
+            decision_type = decision.get("type") or decision.get("decision_type")
+            logger.info(f"User decision: {decision_type}")
+
+            if decision_type == "reject":
+                return {
+                    "status": "rejected",
+                    "message": "User declined. The file was not trashed. Do not ask again or suggest alternatives.",
+                }
+
+            edited_action = decision.get("edited_action")
+            final_params: dict[str, Any] = {}
+            if isinstance(edited_action, dict):
+                edited_args = edited_action.get("args")
+                if isinstance(edited_args, dict):
+                    final_params = edited_args
+            elif isinstance(decision.get("args"), dict):
+                final_params = decision["args"]
+
+            final_file_id = final_params.get("file_id", file_id)
+            final_connector_id = final_params.get("connector_id", connector_id_from_context)
+
+            if not final_connector_id:
+                return {"status": "error", "message": "No connector found for this file."}
+
+            from sqlalchemy.future import select
+
+            from app.db import SearchSourceConnector, SearchSourceConnectorType
+
+            result = await db_session.execute(
+                select(SearchSourceConnector).filter(
+                    SearchSourceConnector.id == final_connector_id,
+                    SearchSourceConnector.search_space_id == search_space_id,
+                    SearchSourceConnector.user_id == user_id,
+                    SearchSourceConnector.connector_type
+                    == SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR,
+                )
+            )
+            connector = result.scalars().first()
+            if not connector:
+                return {
+                    "status": "error",
+                    "message": "Selected Google Drive connector is invalid or has been disconnected.",
+                }
+
+            logger.info(
+                f"Trashing Google Drive file: file_id='{final_file_id}', connector={final_connector_id}"
+            )
+            client = GoogleDriveClient(session=db_session, connector_id=connector.id)
+            await client.trash_file(file_id=final_file_id)
+
+            logger.info(f"Google Drive file trashed: file_id={final_file_id}")
+            return {
+                "status": "success",
+                "file_id": final_file_id,
+                "message": f"Successfully moved '{file['name']}' to trash.",
+            }
+
+        except Exception as e:
+            from langgraph.errors import GraphInterrupt
+
+            if isinstance(e, GraphInterrupt):
+                raise
+
+            logger.error(f"Error trashing Google Drive file: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "message": "Something went wrong while trashing the file. Please try again.",
+            }
+
+    return trash_google_drive_file
