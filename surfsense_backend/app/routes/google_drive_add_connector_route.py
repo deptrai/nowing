@@ -76,9 +76,9 @@ def get_token_encryption() -> TokenEncryption:
 
 # Google Drive OAuth scopes
 SCOPES = [
-    "https://www.googleapis.com/auth/drive.readonly",  # Read-only access to Drive
-    "https://www.googleapis.com/auth/userinfo.email",  # User email
-    "https://www.googleapis.com/auth/userinfo.profile",  # User profile
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
     "openid",
 ]
 
