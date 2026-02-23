@@ -7,8 +7,10 @@ import {
 	FileIcon,
 	Loader2Icon,
 	PencilIcon,
+	RefreshCwIcon,
 	XIcon,
 } from "lucide-react";
+import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +22,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { authenticatedFetch } from "@/lib/auth-utils";
 
 interface GoogleDriveAccount {
 	id: number;
@@ -57,7 +60,17 @@ interface ErrorResult {
 	message: string;
 }
 
-type CreateGoogleDriveFileResult = InterruptResult | SuccessResult | ErrorResult;
+interface InsufficientPermissionsResult {
+	status: "insufficient_permissions";
+	connector_id: number;
+	message: string;
+}
+
+type CreateGoogleDriveFileResult =
+	| InterruptResult
+	| SuccessResult
+	| ErrorResult
+	| InsufficientPermissionsResult;
 
 function isInterruptResult(result: unknown): result is InterruptResult {
 	return (
@@ -74,6 +87,15 @@ function isErrorResult(result: unknown): result is ErrorResult {
 		result !== null &&
 		"status" in result &&
 		(result as ErrorResult).status === "error"
+	);
+}
+
+function isInsufficientPermissionsResult(result: unknown): result is InsufficientPermissionsResult {
+	return (
+		typeof result === "object" &&
+		result !== null &&
+		"status" in result &&
+		(result as InsufficientPermissionsResult).status === "insufficient_permissions"
 	);
 }
 
@@ -390,6 +412,54 @@ function ApprovalCard({
 	);
 }
 
+function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const params = useParams();
+	const searchSpaceId = params.search_space_id as string;
+	const [loading, setLoading] = useState(false);
+
+	async function handleReauth() {
+		setLoading(true);
+		try {
+			const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
+			const response = await authenticatedFetch(
+				`${backendUrl}/api/v1/auth/google/drive/connector/reauth?connector_id=${result.connector_id}&space_id=${searchSpaceId}`
+			);
+			const data = await response.json();
+			if (data.auth_url) {
+				window.location.href = data.auth_url;
+			}
+		} finally {
+			setLoading(false);
+		}
+	}
+
+	return (
+		<div className="my-4 max-w-md overflow-hidden rounded-xl border border-amber-500/50 bg-card">
+			<div className="flex items-center gap-3 border-b border-amber-500/50 px-4 py-3">
+				<div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+					<AlertTriangleIcon className="size-4 text-amber-500" />
+				</div>
+				<div className="min-w-0 flex-1">
+					<p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+						Additional permissions required
+					</p>
+				</div>
+			</div>
+			<div className="space-y-3 px-4 py-3">
+				<p className="text-sm text-muted-foreground">{result.message}</p>
+				<Button size="sm" onClick={handleReauth} disabled={loading}>
+					{loading ? (
+						<Loader2Icon className="size-4 animate-spin" />
+					) : (
+						<RefreshCwIcon className="size-4" />
+					)}
+					Re-authenticate Google Drive
+				</Button>
+			</div>
+		</div>
+	);
+}
+
 function ErrorCard({ result }: { result: ErrorResult }) {
 	return (
 		<div className="my-4 max-w-md overflow-hidden rounded-xl border border-destructive/50 bg-card">
@@ -482,6 +552,9 @@ export const CreateGoogleDriveFileToolUI = makeAssistantToolUI<
 		) {
 			return null;
 		}
+
+		if (isInsufficientPermissionsResult(result))
+			return <InsufficientPermissionsCard result={result} />;
 
 		if (isErrorResult(result)) return <ErrorCard result={result} />;
 

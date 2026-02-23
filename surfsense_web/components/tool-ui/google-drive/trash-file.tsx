@@ -6,11 +6,14 @@ import {
 	CheckIcon,
 	InfoIcon,
 	Loader2Icon,
+	RefreshCwIcon,
 	Trash2Icon,
 	XIcon,
 } from "lucide-react";
+import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { authenticatedFetch } from "@/lib/auth-utils";
 
 interface GoogleDriveAccount {
 	id: number;
@@ -58,11 +61,18 @@ interface NotFoundResult {
 	message: string;
 }
 
+interface InsufficientPermissionsResult {
+	status: "insufficient_permissions";
+	connector_id: number;
+	message: string;
+}
+
 type TrashGoogleDriveFileResult =
 	| InterruptResult
 	| SuccessResult
 	| ErrorResult
-	| NotFoundResult;
+	| NotFoundResult
+	| InsufficientPermissionsResult;
 
 function isInterruptResult(result: unknown): result is InterruptResult {
 	return (
@@ -91,6 +101,15 @@ function isNotFoundResult(result: unknown): result is NotFoundResult {
 	);
 }
 
+function isInsufficientPermissionsResult(result: unknown): result is InsufficientPermissionsResult {
+	return (
+		typeof result === "object" &&
+		result !== null &&
+		"status" in result &&
+		(result as InsufficientPermissionsResult).status === "insufficient_permissions"
+	);
+}
+
 const MIME_TYPE_LABELS: Record<string, string> = {
 	"application/vnd.google-apps.document": "Google Doc",
 	"application/vnd.google-apps.spreadsheet": "Google Sheet",
@@ -114,9 +133,7 @@ function ApprovalCard({
 
 	const account = interruptData.context?.account;
 	const file = interruptData.context?.file;
-	const fileLabel = file?.mime_type
-		? (MIME_TYPE_LABELS[file.mime_type] ?? "File")
-		: "File";
+	const fileLabel = file?.mime_type ? (MIME_TYPE_LABELS[file.mime_type] ?? "File") : "File";
 
 	return (
 		<div
@@ -169,9 +186,7 @@ function ApprovalCard({
 
 							{file && (
 								<div className="space-y-1.5">
-									<div className="text-xs font-medium text-muted-foreground">
-										File to Trash
-									</div>
+									<div className="text-xs font-medium text-muted-foreground">File to Trash</div>
 									<div className="w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm space-y-0.5">
 										<div className="font-medium">{file.name}</div>
 										<div className="text-xs text-muted-foreground">{fileLabel}</div>
@@ -197,7 +212,8 @@ function ApprovalCard({
 			{!decided && (
 				<div className="px-4 py-3 border-b border-border bg-muted/20">
 					<p className="text-xs text-muted-foreground">
-						⚠️ The file will be moved to Google Drive trash. You can restore it from trash within 30 days.
+						⚠️ The file will be moved to Google Drive trash. You can restore it from trash within 30
+						days.
 					</p>
 				</div>
 			)}
@@ -257,6 +273,54 @@ function ApprovalCard({
 						</Button>
 					</>
 				)}
+			</div>
+		</div>
+	);
+}
+
+function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
+	const params = useParams();
+	const searchSpaceId = params.search_space_id as string;
+	const [loading, setLoading] = useState(false);
+
+	async function handleReauth() {
+		setLoading(true);
+		try {
+			const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
+			const response = await authenticatedFetch(
+				`${backendUrl}/api/v1/auth/google/drive/connector/reauth?connector_id=${result.connector_id}&space_id=${searchSpaceId}`
+			);
+			const data = await response.json();
+			if (data.auth_url) {
+				window.location.href = data.auth_url;
+			}
+		} finally {
+			setLoading(false);
+		}
+	}
+
+	return (
+		<div className="my-4 max-w-md overflow-hidden rounded-xl border border-amber-500/50 bg-card">
+			<div className="flex items-center gap-3 border-b border-amber-500/50 px-4 py-3">
+				<div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+					<AlertTriangleIcon className="size-4 text-amber-500" />
+				</div>
+				<div className="min-w-0 flex-1">
+					<p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+						Additional permissions required
+					</p>
+				</div>
+			</div>
+			<div className="space-y-3 px-4 py-3">
+				<p className="text-sm text-muted-foreground">{result.message}</p>
+				<Button size="sm" onClick={handleReauth} disabled={loading}>
+					{loading ? (
+						<Loader2Icon className="size-4 animate-spin" />
+					) : (
+						<RefreshCwIcon className="size-4" />
+					)}
+					Re-authenticate Google Drive
+				</Button>
 			</div>
 		</div>
 	);
@@ -350,6 +414,9 @@ export const TrashGoogleDriveFileToolUI = makeAssistantToolUI<
 		) {
 			return null;
 		}
+
+		if (isInsufficientPermissionsResult(result))
+			return <InsufficientPermissionsCard result={result} />;
 
 		if (isNotFoundResult(result)) return <NotFoundCard result={result} />;
 		if (isErrorResult(result)) return <ErrorCard result={result} />;
