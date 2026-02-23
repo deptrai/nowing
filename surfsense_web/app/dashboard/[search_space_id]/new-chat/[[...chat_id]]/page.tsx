@@ -155,6 +155,8 @@ const TOOLS_WITH_UI = new Set([
 	"create_linear_issue",
 	"update_linear_issue",
 	"delete_linear_issue",
+	"create_google_drive_file",
+	"trash_google_drive_file",
 	// "write_todos", // Disabled for now
 ]);
 
