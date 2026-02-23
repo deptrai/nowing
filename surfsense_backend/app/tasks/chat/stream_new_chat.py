@@ -802,6 +802,8 @@ async def _stream_agent_events(
                 "create_linear_issue",
                 "update_linear_issue",
                 "delete_linear_issue",
+                "create_google_drive_file",
+                "trash_google_drive_file",
             ):
                 yield streaming_service.format_tool_output_available(
                     tool_call_id,
