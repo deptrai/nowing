@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 function ExpandedGifOverlay({
 	src,
@@ -20,7 +21,7 @@ function ExpandedGifOverlay({
 		return () => document.removeEventListener("keydown", handleKey);
 	}, [onClose]);
 
-	return (
+	return createPortal(
 		<motion.div
 			initial={{ opacity: 0 }}
 			animate={{ opacity: 1 }}
@@ -38,7 +39,8 @@ function ExpandedGifOverlay({
 				alt={alt}
 				className="max-h-[90vh] max-w-[90vw] cursor-pointer rounded-2xl shadow-2xl"
 			/>
-		</motion.div>
+		</motion.div>,
+		document.body,
 	);
 }
 

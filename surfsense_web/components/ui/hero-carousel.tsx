@@ -260,7 +260,7 @@ function HeroCarousel() {
 				onTouchEnd={() => setIsPaused(false)}
 			>
 				<div
-					className="relative transition-[height] duration-700"
+					className="relative z-6 transition-[height] duration-700"
 					style={{ perspective: `${perspective}px`, height: cardHeight }}
 				>
 					{containerWidth > 0 &&
@@ -279,7 +279,7 @@ function HeroCarousel() {
 										transformOrigin: `${style.originX * 100}% 50%`,
 										cursor: i !== activeIndex ? "pointer" : undefined,
 									}}
-									onClick={i !== activeIndex ? () => goTo(i) : undefined}
+									onClick={i !== activeIndex && !isGifExpanded ? () => goTo(i) : undefined}
 									animate={{
 										x: style.x,
 										rotateY: style.rotateY,
@@ -310,12 +310,12 @@ function HeroCarousel() {
 				</div>
 			</div>
 
-			<div className="relative z-30 mt-6 flex justify-center gap-2">
+			<div className="relative z-5 mt-6 flex justify-center gap-2">
 				{carouselItems.map((_, i) => (
 					<button
 						key={`dot_${i}`}
 						type="button"
-						onClick={() => goTo(i)}
+						onClick={() => !isGifExpanded && goTo(i)}
 						className={`h-2 rounded-full transition-all duration-300 ${
 							i === activeIndex
 								? "w-6 bg-neutral-900 dark:bg-white"
