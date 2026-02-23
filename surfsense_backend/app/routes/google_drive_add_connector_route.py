@@ -151,6 +151,73 @@ async def connect_drive(space_id: int, user: User = Depends(current_active_user)
         ) from e
 
 
+@router.get("/auth/google/drive/connector/reauth")
+async def reauth_drive(
+    space_id: int,
+    connector_id: int,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Initiate Google Drive re-authentication to upgrade OAuth scopes.
+
+    Query params:
+        space_id: Search space ID the connector belongs to
+        connector_id: ID of the existing connector to re-authenticate
+
+    Returns:
+        JSON with auth_url to redirect user to Google authorization
+    """
+    try:
+        result = await session.execute(
+            select(SearchSourceConnector).filter(
+                SearchSourceConnector.id == connector_id,
+                SearchSourceConnector.user_id == user.id,
+                SearchSourceConnector.search_space_id == space_id,
+                SearchSourceConnector.connector_type
+                == SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR,
+            )
+        )
+        connector = result.scalars().first()
+        if not connector:
+            raise HTTPException(
+                status_code=404,
+                detail="Google Drive connector not found or access denied",
+            )
+
+        if not config.SECRET_KEY:
+            raise HTTPException(
+                status_code=500, detail="SECRET_KEY not configured for OAuth security."
+            )
+
+        flow = get_google_flow()
+
+        state_manager = get_state_manager()
+        state_encoded = state_manager.generate_secure_state(
+            space_id, user.id, connector_id=connector_id
+        )
+
+        auth_url, _ = flow.authorization_url(
+            access_type="offline",
+            prompt="consent",
+            include_granted_scopes="true",
+            state=state_encoded,
+        )
+
+        logger.info(
+            f"Initiating Google Drive re-auth for user {user.id}, connector {connector_id}"
+        )
+        return {"auth_url": auth_url}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to initiate Google Drive re-auth: {e!s}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to initiate Google re-auth: {e!s}"
+        ) from e
+
+
 @router.get("/auth/google/drive/connector/callback")
 async def drive_callback(
     request: Request,
@@ -214,31 +281,28 @@ async def drive_callback(
 
         user_id = UUID(data["user_id"])
         space_id = data["space_id"]
+        reauth_connector_id = data.get("connector_id")
 
         logger.info(
             f"Processing Google Drive callback for user {user_id}, space {space_id}"
+            + (f", re-auth connector {reauth_connector_id}" if reauth_connector_id else "")
         )
 
-        # Validate redirect URI (security: ensure it matches configured value)
         if not config.GOOGLE_DRIVE_REDIRECT_URI:
             raise HTTPException(
                 status_code=500, detail="GOOGLE_DRIVE_REDIRECT_URI not configured"
             )
 
-        # Exchange authorization code for tokens
         flow = get_google_flow()
         flow.fetch_token(code=code)
 
         creds = flow.credentials
         creds_dict = json.loads(creds.to_json())
 
-        # Fetch user email
         user_email = fetch_google_user_email(creds)
 
-        # Encrypt sensitive credentials before storing
         token_encryption = get_token_encryption()
 
-        # Encrypt sensitive fields: token, refresh_token, client_secret
         if creds_dict.get("token"):
             creds_dict["token"] = token_encryption.encrypt_token(creds_dict["token"])
         if creds_dict.get("refresh_token"):
@@ -250,10 +314,43 @@ async def drive_callback(
                 creds_dict["client_secret"]
             )
 
-        # Mark that credentials are encrypted for backward compatibility
         creds_dict["_token_encrypted"] = True
 
-        # Check for duplicate connector (same account already connected)
+        if reauth_connector_id:
+            result = await session.execute(
+                select(SearchSourceConnector).filter(
+                    SearchSourceConnector.id == reauth_connector_id,
+                    SearchSourceConnector.user_id == user_id,
+                    SearchSourceConnector.search_space_id == space_id,
+                    SearchSourceConnector.connector_type
+                    == SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR,
+                )
+            )
+            db_connector = result.scalars().first()
+            if not db_connector:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Connector not found or access denied during re-auth",
+                )
+
+            existing_start_page_token = db_connector.config.get("start_page_token")
+            db_connector.config = {
+                **creds_dict,
+                "start_page_token": existing_start_page_token,
+            }
+            from sqlalchemy.orm.attributes import flag_modified
+
+            flag_modified(db_connector, "config")
+            await session.commit()
+            await session.refresh(db_connector)
+
+            logger.info(
+                f"Re-authenticated Google Drive connector {db_connector.id} for user {user_id}"
+            )
+            return RedirectResponse(
+                url=f"{config.NEXT_FRONTEND_URL}/dashboard/{space_id}/new-chat?modal=connectors&tab=all&success=true&connector=google-drive-connector&connectorId={db_connector.id}"
+            )
+
         is_duplicate = await check_duplicate_connector(
             session,
             SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR,
@@ -269,7 +366,6 @@ async def drive_callback(
                 url=f"{config.NEXT_FRONTEND_URL}/dashboard/{space_id}/new-chat?modal=connectors&tab=all&error=duplicate_account&connector=google-drive-connector"
             )
 
-        # Generate a unique, user-friendly connector name
         connector_name = await generate_unique_connector_name(
             session,
             SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR,
@@ -283,7 +379,7 @@ async def drive_callback(
             connector_type=SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR,
             config={
                 **creds_dict,
-                "start_page_token": None,  # Will be set on first index
+                "start_page_token": None,
             },
             search_space_id=space_id,
             user_id=user_id,
@@ -294,7 +390,6 @@ async def drive_callback(
         await session.commit()
         await session.refresh(db_connector)
 
-        # Get initial start page token for delta sync
         try:
             drive_client = GoogleDriveClient(session, db_connector.id)
             start_token, token_error = await get_start_page_token(drive_client)
