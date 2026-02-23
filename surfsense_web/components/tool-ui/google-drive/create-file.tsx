@@ -415,15 +415,18 @@ function ApprovalCard({
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
 	const params = useParams();
 	const searchSpaceId = params.search_space_id as string;
+	const threadId = (params.chat_id as string[] | undefined)?.[0];
 	const [loading, setLoading] = useState(false);
 
 	async function handleReauth() {
 		setLoading(true);
 		try {
 			const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
-			const response = await authenticatedFetch(
-				`${backendUrl}/api/v1/auth/google/drive/connector/reauth?connector_id=${result.connector_id}&space_id=${searchSpaceId}`
-			);
+			const url = new URL(`${backendUrl}/api/v1/auth/google/drive/connector/reauth`);
+			url.searchParams.set("connector_id", String(result.connector_id));
+			url.searchParams.set("space_id", searchSpaceId);
+			if (threadId) url.searchParams.set("thread_id", threadId);
+			const response = await authenticatedFetch(url.toString());
 			const data = await response.json();
 			if (data.auth_url) {
 				window.location.href = data.auth_url;
