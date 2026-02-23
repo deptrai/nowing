@@ -8,43 +8,43 @@ const carouselItems = [
 	{
 		title: "Connect & Sync",
 		description:
-			"Connect data sources like Notion, Drive and Gmail. Enable periodic syncing to keep them updated.",
+			"Connect data sources like Notion, Drive and Gmail. Automatically sync to keep them updated.",
 		src: "/homepage/hero_tutorial/ConnectorFlowGif.gif",
 	},
 	{
 		title: "Upload Documents",
-		description: "Or upload your documents directly, including iamges and massive PDFs.",
+		description: "Upload documents directly, from images to massive PDFs.",
 		src: "/homepage/hero_tutorial/DocUploadGif.gif",
 	},
 	{
 		title: "Search & Citation",
 		description:
-			"Ask questions and get Perplexity-style cited responses from your knowledge base.",
+			"Ask questions and get cited responses from your knowledge base.",
 		src: "/homepage/hero_tutorial/BSNCGif.gif",
 	},
 	{
-		title: "Document Mention Q&A",
-		description: "Mention specific documents in your queries for targeted answers.",
+		title: "Targeted Document Q&A",
+		description: "Mention specific documents in chat for targeted answers.",
 		src: "/homepage/hero_tutorial/BQnaGif_compressed.gif",
 	},
 	{
-		title: "Report Generation",
-		description: "Generate and export reports in many formats.",
+		title: "Produce Reports Instantly",
+		description: "Generate reports from your sources in many formats.",
 		src: "/homepage/hero_tutorial/ReportGenGif_compressed.gif",
 	},
 	{
-		title: "Podcast Generation",
-		description: "Turn your knowledge into podcasts in under 20 seconds.",
+		title: "Create Podcasts",
+		description: "Turn anything into a podcast in under 20 seconds.",
 		src: "/homepage/hero_tutorial/PodcastGenGif.gif",
 	},
 	{
 		title: "Image Generation",
-		description: "Generate images directly from your conversations.",
+		description: "Generate high-quality images easily from your conversations.",
 		src: "/homepage/hero_tutorial/ImageGenGif.gif",
 	},
 	{
-		title: "Realtime Chat",
-		description: "Chat together in realtime with your team.",
+		title: "Collaborative AI Chat",
+		description: "Collaborate on AI-powered conversations in realtime with your team.",
 		src: "/homepage/hero_realtime/RealTimeChatGif.gif",
 	},
 	{
@@ -54,7 +54,7 @@ const carouselItems = [
 	},
 ];
 
-function WalkthroughCard({
+function HeroCarouselCard({
 	index,
 	title,
 	description,
@@ -114,14 +114,14 @@ function WalkthroughCard({
 		<>
 			<div className="rounded-2xl border border-neutral-200/60 bg-white shadow-xl sm:rounded-3xl dark:border-neutral-700/60 dark:bg-neutral-900">
 				<div className="flex items-center gap-3 border-b border-neutral-200/60 px-4 py-3 sm:px-6 sm:py-4 dark:border-neutral-700/60">
-					<span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-semibold text-white sm:h-8 sm:w-8 sm:text-sm dark:bg-white dark:text-neutral-900">
+					{/* <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-semibold text-white sm:h-8 sm:w-8 sm:text-sm dark:bg-white dark:text-neutral-900">
 						{index + 1}
-					</span>
+					</span> */}
 					<div className="min-w-0">
-						<h3 className="truncate text-sm font-semibold text-neutral-900 sm:text-base dark:text-white">
+						<h3 className="truncate text-base font-semibold text-neutral-900 sm:text-xl dark:text-white">
 							{title}
 						</h3>
-						<p className="truncate text-xs text-neutral-500 dark:text-neutral-400">
+						<p className="text-sm text-neutral-500 dark:text-neutral-400">
 							{description}
 						</p>
 					</div>
@@ -159,7 +159,7 @@ function WalkthroughCard({
 	);
 }
 
-function WalkthroughScroll() {
+function HeroCarousel() {
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [isPaused, setIsPaused] = useState(false);
 	const [isGifExpanded, setIsGifExpanded] = useState(false);
@@ -167,6 +167,15 @@ function WalkthroughScroll() {
 	const [cardHeight, setCardHeight] = useState(420);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const activeCardRef = useRef<HTMLDivElement>(null);
+	const directionRef = useRef<"forward" | "backward">("forward");
+
+	const goTo = useCallback(
+		(newIndex: number) => {
+			directionRef.current = newIndex >= activeIndex ? "forward" : "backward";
+			setActiveIndex(newIndex);
+		},
+		[activeIndex],
+	);
 
 	useEffect(() => {
 		const el = containerRef.current;
@@ -191,6 +200,7 @@ function WalkthroughScroll() {
 	useEffect(() => {
 		if (isPaused || isGifExpanded) return;
 		const timer = setTimeout(() => {
+			directionRef.current = "forward";
 			setActiveIndex((prev) => (prev >= carouselItems.length - 1 ? 0 : prev + 1));
 		}, 8000);
 		return () => clearTimeout(timer);
@@ -218,18 +228,22 @@ function WalkthroughScroll() {
 			const diff = index - activeIndex;
 
 			if (diff === 0) {
-				return { x: -cardWidth / 2, rotateY: 0, zIndex: 20, originX: 1 };
+				const originX = directionRef.current === "forward" ? 1 : 0;
+				return { x: -cardWidth / 2, rotateY: 0, zIndex: 20, originX, overlayOpacity: 0, blur: 0 };
 			}
 
 			const dist = Math.abs(diff);
 			const isLeft = diff < 0;
 			const offset = baseOffset + (dist - 1) * stackGap;
+			const t = Math.min(1, dist / 3);
 
 			return {
 				x: -cardWidth / 2 + (isLeft ? -offset : offset),
 				rotateY: isLeft ? 90 : -90,
 				zIndex: 20 - dist,
 				originX: isLeft ? 0 : 1,
+				overlayOpacity: t,
+				blur: t * 6,
 			};
 		},
 		[activeIndex, cardWidth, baseOffset, stackGap],
@@ -263,20 +277,32 @@ function WalkthroughScroll() {
 										transformStyle: "preserve-3d",
 										zIndex: style.zIndex,
 										transformOrigin: `${style.originX * 100}% 50%`,
+										cursor: i !== activeIndex ? "pointer" : undefined,
 									}}
+									onClick={i !== activeIndex ? () => goTo(i) : undefined}
 									animate={{
 										x: style.x,
 										rotateY: style.rotateY,
 									}}
 									transition={{ duration: 0.7, ease: [0.32, 0.72, 0, 1] }}
 								>
-									<WalkthroughCard
+									<motion.div
+									animate={{ filter: `blur(${style.blur}px)` }}
+									transition={{ duration: 0.7, ease: [0.32, 0.72, 0, 1] }}
+								>
+									<HeroCarouselCard
 										index={i}
 										title={item.title}
 										description={item.description}
 										src={item.src}
 										isActive={i === activeIndex}
 										onExpandedChange={setIsGifExpanded}
+									/>
+								</motion.div>
+									<motion.div
+										className="pointer-events-none absolute inset-0 rounded-2xl bg-black sm:rounded-3xl"
+										animate={{ opacity: style.overlayOpacity }}
+										transition={{ duration: 0.7, ease: [0.32, 0.72, 0, 1] }}
 									/>
 								</motion.div>
 							);
@@ -289,7 +315,7 @@ function WalkthroughScroll() {
 					<button
 						key={`dot_${i}`}
 						type="button"
-						onClick={() => setActiveIndex(i)}
+						onClick={() => goTo(i)}
 						className={`h-2 rounded-full transition-all duration-300 ${
 							i === activeIndex
 								? "w-6 bg-neutral-900 dark:bg-white"
@@ -303,4 +329,4 @@ function WalkthroughScroll() {
 	);
 }
 
-export { WalkthroughScroll, WalkthroughCard };
+export { HeroCarousel, HeroCarouselCard };

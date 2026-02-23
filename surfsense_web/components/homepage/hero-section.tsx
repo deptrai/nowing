@@ -5,7 +5,7 @@ import Link from "next/link";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import Balancer from "react-wrap-balancer";
-import { WalkthroughScroll } from "@/components/ui/walkthrough-scroll";
+import { HeroCarousel } from "@/components/ui/hero-carousel";
 import { AUTH_TYPE, BACKEND_URL } from "@/lib/env-config";
 import { trackLoginAttempt } from "@/lib/posthog/events";
 import { cn } from "@/lib/utils";
@@ -108,7 +108,7 @@ export function HeroSection() {
 				{/* <ContactSalesButton /> */}
 			</div>
 			<div ref={containerRef} className="relative w-full">
-				<WalkthroughScroll />
+				<HeroCarousel />
 			</div>
 		</div>
 	);
