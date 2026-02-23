@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 
+from googleapiclient.errors import HttpError
 from langchain_core.tools import tool
 from langgraph.types import interrupt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -149,7 +150,19 @@ def create_trash_google_drive_file_tool(
                 f"Trashing Google Drive file: file_id='{final_file_id}', connector={final_connector_id}"
             )
             client = GoogleDriveClient(session=db_session, connector_id=connector.id)
-            await client.trash_file(file_id=final_file_id)
+            try:
+                await client.trash_file(file_id=final_file_id)
+            except HttpError as http_err:
+                if http_err.resp.status == 403:
+                    logger.warning(
+                        f"Insufficient permissions for connector {connector.id}: {http_err}"
+                    )
+                    return {
+                        "status": "insufficient_permissions",
+                        "connector_id": connector.id,
+                        "message": "This Google Drive account needs additional permissions. Please re-authenticate.",
+                    }
+                raise
 
             logger.info(f"Google Drive file trashed: file_id={final_file_id}")
             return {

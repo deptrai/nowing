@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Literal
 
+from googleapiclient.errors import HttpError
 from langchain_core.tools import tool
 from langgraph.types import interrupt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -180,12 +181,24 @@ def create_create_google_drive_file_tool(
                 f"Creating Google Drive file: name='{final_name}', type='{final_file_type}', connector={actual_connector_id}"
             )
             client = GoogleDriveClient(session=db_session, connector_id=actual_connector_id)
-            created = await client.create_file(
-                name=final_name,
-                mime_type=mime_type,
-                parent_folder_id=final_parent_folder_id,
-                content=final_content,
-            )
+            try:
+                created = await client.create_file(
+                    name=final_name,
+                    mime_type=mime_type,
+                    parent_folder_id=final_parent_folder_id,
+                    content=final_content,
+                )
+            except HttpError as http_err:
+                if http_err.resp.status == 403:
+                    logger.warning(
+                        f"Insufficient permissions for connector {actual_connector_id}: {http_err}"
+                    )
+                    return {
+                        "status": "insufficient_permissions",
+                        "connector_id": actual_connector_id,
+                        "message": "This Google Drive account needs additional permissions. Please re-authenticate.",
+                    }
+                raise
 
             logger.info(f"Google Drive file created: id={created.get('id')}, name={created.get('name')}")
             return {
