@@ -36,8 +36,7 @@ function ExpandedGifOverlay({
 				transition={{ duration: 0.25, ease: "easeOut" }}
 				src={src}
 				alt={alt}
-				className="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl"
-				onClick={(e) => e.stopPropagation()}
+				className="max-h-[90vh] max-w-[90vw] cursor-pointer rounded-2xl shadow-2xl"
 			/>
 		</motion.div>
 	);
