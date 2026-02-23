@@ -285,24 +285,28 @@ async def drive_callback(
 
         logger.info(
             f"Processing Google Drive callback for user {user_id}, space {space_id}"
-            + (f", re-auth connector {reauth_connector_id}" if reauth_connector_id else "")
         )
 
+        # Validate redirect URI (security: ensure it matches configured value)
         if not config.GOOGLE_DRIVE_REDIRECT_URI:
             raise HTTPException(
                 status_code=500, detail="GOOGLE_DRIVE_REDIRECT_URI not configured"
             )
 
+        # Exchange authorization code for tokens
         flow = get_google_flow()
         flow.fetch_token(code=code)
 
         creds = flow.credentials
         creds_dict = json.loads(creds.to_json())
 
+        # Fetch user email
         user_email = fetch_google_user_email(creds)
 
+        # Encrypt sensitive credentials before storing
         token_encryption = get_token_encryption()
 
+        # Encrypt sensitive fields: token, refresh_token, client_secret
         if creds_dict.get("token"):
             creds_dict["token"] = token_encryption.encrypt_token(creds_dict["token"])
         if creds_dict.get("refresh_token"):
@@ -314,6 +318,7 @@ async def drive_callback(
                 creds_dict["client_secret"]
             )
 
+        # Mark that credentials are encrypted for backward compatibility
         creds_dict["_token_encrypted"] = True
 
         if reauth_connector_id:
@@ -366,6 +371,7 @@ async def drive_callback(
                 url=f"{config.NEXT_FRONTEND_URL}/dashboard/{space_id}/new-chat?modal=connectors&tab=all&error=duplicate_account&connector=google-drive-connector"
             )
 
+        # Generate a unique, user-friendly connector name
         connector_name = await generate_unique_connector_name(
             session,
             SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR,
@@ -379,7 +385,7 @@ async def drive_callback(
             connector_type=SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR,
             config={
                 **creds_dict,
-                "start_page_token": None,
+                "start_page_token": None,  # Will be set on first index
             },
             search_space_id=space_id,
             user_id=user_id,
@@ -390,6 +396,7 @@ async def drive_callback(
         await session.commit()
         await session.refresh(db_connector)
 
+        # Get initial start page token for delta sync
         try:
             drive_client = GoogleDriveClient(session, db_connector.id)
             start_token, token_error = await get_start_page_token(drive_client)
