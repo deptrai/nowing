@@ -49,6 +49,14 @@ interface SuccessResult {
 	status: "success";
 	file_id: string;
 	message?: string;
+	deleted_from_kb?: boolean;
+}
+
+interface WarningResult {
+	status: "success";
+	warning: string;
+	file_id?: string;
+	message?: string;
 }
 
 interface ErrorResult {
@@ -70,6 +78,7 @@ interface InsufficientPermissionsResult {
 type TrashGoogleDriveFileResult =
 	| InterruptResult
 	| SuccessResult
+	| WarningResult
 	| ErrorResult
 	| NotFoundResult
 	| InsufficientPermissionsResult;
@@ -98,6 +107,17 @@ function isNotFoundResult(result: unknown): result is NotFoundResult {
 		result !== null &&
 		"status" in result &&
 		(result as NotFoundResult).status === "not_found"
+	);
+}
+
+function isWarningResult(result: unknown): result is WarningResult {
+	return (
+		typeof result === "object" &&
+		result !== null &&
+		"status" in result &&
+		(result as WarningResult).status === "success" &&
+		"warning" in result &&
+		typeof (result as WarningResult).warning === "string"
 	);
 }
 
@@ -130,6 +150,7 @@ function ApprovalCard({
 	const [decided, setDecided] = useState<"approve" | "reject" | null>(
 		interruptData.__decided__ ?? null
 	);
+	const [deleteFromKb, setDeleteFromKb] = useState(false);
 
 	const account = interruptData.context?.account;
 	const file = interruptData.context?.file;
@@ -218,6 +239,26 @@ function ApprovalCard({
 				</div>
 			)}
 
+			{/* Checkbox for deleting from knowledge base */}
+			{!decided && (
+				<div className="px-4 py-3 border-b border-border bg-muted/20">
+					<label className="flex items-start gap-2 cursor-pointer">
+						<input
+							type="checkbox"
+							checked={deleteFromKb}
+							onChange={(e) => setDeleteFromKb(e.target.checked)}
+							className="mt-0.5"
+						/>
+						<div className="flex-1">
+							<span className="text-sm text-foreground">Also remove from knowledge base</span>
+							<p className="text-xs text-muted-foreground mt-1">
+								⚠️ This will permanently delete the file from your knowledge base (cannot be undone)
+							</p>
+						</div>
+					</label>
+				</div>
+			)}
+
 			{/* Action buttons */}
 			<div
 				className={`flex items-center gap-2 border-t ${
@@ -252,6 +293,7 @@ function ApprovalCard({
 										args: {
 											file_id: file?.file_id,
 											connector_id: account?.id,
+											delete_from_kb: deleteFromKb,
 										},
 									},
 								});
@@ -328,6 +370,24 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 	);
 }
 
+function WarningCard({ result }: { result: WarningResult }) {
+	return (
+		<div className="my-4 max-w-md overflow-hidden rounded-xl border border-amber-500/50 bg-card">
+			<div className="flex items-center gap-3 border-b border-amber-500/50 px-4 py-3">
+				<div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+					<AlertTriangleIcon className="size-4 text-amber-500" />
+				</div>
+				<div className="min-w-0 flex-1">
+					<p className="text-sm font-medium text-amber-600 dark:text-amber-500">Partial success</p>
+				</div>
+			</div>
+			<div className="space-y-2 px-4 py-3 text-xs">
+				<p className="text-sm text-muted-foreground">{result.warning}</p>
+			</div>
+		</div>
+	);
+}
+
 function ErrorCard({ result }: { result: ErrorResult }) {
 	return (
 		<div className="my-4 max-w-md overflow-hidden rounded-xl border border-destructive/50 bg-card">
@@ -364,7 +424,7 @@ function NotFoundCard({ result }: { result: NotFoundResult }) {
 function SuccessCard({ result }: { result: SuccessResult }) {
 	return (
 		<div className="my-4 max-w-md overflow-hidden rounded-xl border border-border bg-card">
-			<div className="flex items-center gap-3 px-4 py-3">
+			<div className="flex items-center gap-3 border-b border-border px-4 py-3">
 				<div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-green-500/10">
 					<CheckIcon className="size-4 text-green-500" />
 				</div>
@@ -374,12 +434,19 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 					</p>
 				</div>
 			</div>
+			{result.deleted_from_kb && (
+				<div className="px-4 py-3 text-xs">
+					<span className="text-green-600 dark:text-green-500">
+						✓ Also removed from knowledge base
+					</span>
+				</div>
+			)}
 		</div>
 	);
 }
 
 export const TrashGoogleDriveFileToolUI = makeAssistantToolUI<
-	{ file_name: string },
+	{ file_name: string; delete_from_kb?: boolean },
 	TrashGoogleDriveFileResult
 >({
 	toolName: "trash_google_drive_file",
@@ -421,6 +488,7 @@ export const TrashGoogleDriveFileToolUI = makeAssistantToolUI<
 			return <InsufficientPermissionsCard result={result} />;
 
 		if (isNotFoundResult(result)) return <NotFoundCard result={result} />;
+		if (isWarningResult(result)) return <WarningCard result={result} />;
 		if (isErrorResult(result)) return <ErrorCard result={result} />;
 
 		return <SuccessCard result={result as SuccessResult} />;

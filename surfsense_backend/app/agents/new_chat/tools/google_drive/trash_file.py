@@ -20,6 +20,7 @@ def create_trash_google_drive_file_tool(
     @tool
     async def trash_google_drive_file(
         file_name: str,
+        delete_from_kb: bool = False,
     ) -> dict[str, Any]:
         """Move a Google Drive file to trash.
 
@@ -28,11 +29,15 @@ def create_trash_google_drive_file_tool(
 
         Args:
             file_name: The exact name of the file to trash (as it appears in Drive).
+            delete_from_kb: Whether to also remove the file from the knowledge base.
+                          Default is False.
+                          Set to True to remove from both Google Drive and knowledge base.
 
         Returns:
             Dictionary with:
             - status: "success", "rejected", "not_found", or "error"
             - file_id: Google Drive file ID (if success)
+            - deleted_from_kb: whether the document was removed from the knowledge base
             - message: Result message
 
             IMPORTANT:
@@ -41,13 +46,13 @@ def create_trash_google_drive_file_tool(
             - If status is "not_found", relay the exact message to the user and ask them
               to verify the file name or check if it has been indexed.
             - If status is "insufficient_permissions", the connector lacks the required OAuth scope.
-              Inform the user they need to re-authenticate and do NOT retry the action.
+              Inform the user they need to re-authenticate and do NOT retry this tool.
 
         Examples:
             - "Delete the 'Meeting Notes' file from Google Drive"
             - "Trash the 'Old Budget' spreadsheet"
         """
-        logger.info(f"trash_google_drive_file called: file_name='{file_name}'")
+        logger.info(f"trash_google_drive_file called: file_name='{file_name}', delete_from_kb={delete_from_kb}")
 
         if db_session is None or search_space_id is None or user_id is None:
             return {
@@ -71,6 +76,7 @@ def create_trash_google_drive_file_tool(
 
             file = context["file"]
             file_id = file["file_id"]
+            document_id = file.get("document_id")
             connector_id_from_context = context["account"]["id"]
 
             if not file_id:
@@ -80,7 +86,7 @@ def create_trash_google_drive_file_tool(
                 }
 
             logger.info(
-                f"Requesting approval for trashing Google Drive file: '{file_name}' (file_id={file_id})"
+                f"Requesting approval for trashing Google Drive file: '{file_name}' (file_id={file_id}, delete_from_kb={delete_from_kb})"
             )
             approval = interrupt(
                 {
@@ -90,6 +96,7 @@ def create_trash_google_drive_file_tool(
                         "params": {
                             "file_id": file_id,
                             "connector_id": connector_id_from_context,
+                            "delete_from_kb": delete_from_kb,
                         },
                     },
                     "context": context,
@@ -124,6 +131,7 @@ def create_trash_google_drive_file_tool(
 
             final_file_id = final_params.get("file_id", file_id)
             final_connector_id = final_params.get("connector_id", connector_id_from_context)
+            final_delete_from_kb = final_params.get("delete_from_kb", delete_from_kb)
 
             if not final_connector_id:
                 return {"status": "error", "message": "No connector found for this file."}
@@ -167,11 +175,43 @@ def create_trash_google_drive_file_tool(
                 raise
 
             logger.info(f"Google Drive file trashed: file_id={final_file_id}")
-            return {
+
+            trash_result: dict[str, Any] = {
                 "status": "success",
                 "file_id": final_file_id,
                 "message": f"Successfully moved '{file['name']}' to trash.",
             }
+
+            deleted_from_kb = False
+            if final_delete_from_kb and document_id:
+                try:
+                    from app.db import Document
+
+                    doc_result = await db_session.execute(
+                        select(Document).filter(Document.id == document_id)
+                    )
+                    document = doc_result.scalars().first()
+                    if document:
+                        await db_session.delete(document)
+                        await db_session.commit()
+                        deleted_from_kb = True
+                        logger.info(f"Deleted document {document_id} from knowledge base")
+                    else:
+                        logger.warning(f"Document {document_id} not found in KB")
+                except Exception as e:
+                    logger.error(f"Failed to delete document from KB: {e}")
+                    await db_session.rollback()
+                    trash_result["warning"] = (
+                        f"File moved to trash, but failed to remove from knowledge base: {e!s}"
+                    )
+
+            trash_result["deleted_from_kb"] = deleted_from_kb
+            if deleted_from_kb:
+                trash_result["message"] = (
+                    f"{trash_result.get('message', '')} (also removed from knowledge base)"
+                )
+
+            return trash_result
 
         except Exception as e:
             from langgraph.errors import GraphInterrupt
