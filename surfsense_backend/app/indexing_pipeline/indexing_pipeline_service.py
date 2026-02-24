@@ -1,9 +1,24 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy.orm import object_session
+from sqlalchemy.orm.attributes import set_committed_value
+
+from app.config import config
 from app.db import Document, DocumentStatus
 from app.indexing_pipeline.connector_document import ConnectorDocument
 from app.indexing_pipeline.document_hashing import compute_content_hash, compute_unique_identifier_hash
+from app.utils.document_converters import create_document_chunks, generate_document_summary
+
+
+def _safe_set_chunks(document: Document, chunks: list) -> None:
+    set_committed_value(document, "chunks", chunks)
+    session = object_session(document)
+    if session is not None:
+        if document.id is not None:
+            for chunk in chunks:
+                chunk.document_id = document.id
+        session.add_all(chunks)
 
 
 class IndexingPipelineService:
@@ -54,3 +69,33 @@ class IndexingPipelineService:
 
         await self.session.commit()
         return documents
+
+    async def index(
+        self, document: Document, connector_doc: ConnectorDocument, llm
+    ) -> None:
+        try:
+            document.status = DocumentStatus.processing()
+            await self.session.commit()
+
+            if connector_doc.should_summarize:
+                content, embedding = await generate_document_summary(
+                    connector_doc.source_markdown, llm, connector_doc.metadata
+                )
+            else:
+                content = connector_doc.source_markdown
+                embedding = config.embedding_model_instance.embed(content)
+
+            chunks = await create_document_chunks(connector_doc.source_markdown)
+
+            document.source_markdown = connector_doc.source_markdown
+            document.content = content
+            document.embedding = embedding
+            _safe_set_chunks(document, chunks)
+            document.status = DocumentStatus.ready()
+            await self.session.commit()
+
+        except Exception as e:
+            await self.session.rollback()
+            await self.session.refresh(document)
+            document.status = DocumentStatus.failed(str(e))
+            await self.session.commit()

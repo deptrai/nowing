@@ -12,7 +12,7 @@ from sqlalchemy.pool import NullPool
 from app.db import Base, SearchSpace
 from app.db import User
 
-_EMBEDDING_DIM = 4  # keep vectors tiny; real model uses 768+
+_EMBEDDING_DIM = 1024  # must match the Vector() dimension used in DB column creation
 
 _DEFAULT_TEST_DB = "postgresql+asyncpg://postgres:postgres@localhost:5432/surfsense_test"
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", _DEFAULT_TEST_DB)
@@ -96,9 +96,33 @@ def mock_llm() -> AsyncMock:
 
 
 @pytest.fixture
-def mock_embedding_model() -> MagicMock:
-    model = MagicMock()
-    model.embed = MagicMock(
-        side_effect=lambda texts: [[0.1] * _EMBEDDING_DIM for _ in texts]
+def patched_generate_summary(monkeypatch) -> AsyncMock:
+    mock = AsyncMock(return_value=("Mocked summary.", [0.1] * _EMBEDDING_DIM))
+    monkeypatch.setattr(
+        "app.indexing_pipeline.indexing_pipeline_service.generate_document_summary",
+        mock,
     )
+    return mock
+
+
+@pytest.fixture
+def patched_create_chunks(monkeypatch) -> MagicMock:
+    from app.db import Chunk
+
+    chunk = Chunk(content="Test chunk content.", embedding=[0.1] * _EMBEDDING_DIM)
+    mock = AsyncMock(return_value=[chunk])
+    monkeypatch.setattr(
+        "app.indexing_pipeline.indexing_pipeline_service.create_document_chunks",
+        mock,
+    )
+    return mock
+
+
+@pytest.fixture
+def patched_embedding_model(monkeypatch) -> MagicMock:
+    from app.config import config
+
+    model = MagicMock()
+    model.embed = MagicMock(return_value=[0.1] * _EMBEDDING_DIM)
+    monkeypatch.setattr(config, "embedding_model_instance", model)
     return model
