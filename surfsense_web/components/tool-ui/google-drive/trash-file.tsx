@@ -281,7 +281,6 @@ function ApprovalCard({
 function InsufficientPermissionsCard({ result }: { result: InsufficientPermissionsResult }) {
 	const params = useParams();
 	const searchSpaceId = params.search_space_id as string;
-	const threadId = (params.chat_id as string[] | undefined)?.[0];
 	const [loading, setLoading] = useState(false);
 
 	async function handleReauth() {
@@ -291,7 +290,7 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 			const url = new URL(`${backendUrl}/api/v1/auth/google/drive/connector/reauth`);
 			url.searchParams.set("connector_id", String(result.connector_id));
 			url.searchParams.set("space_id", searchSpaceId);
-			if (threadId) url.searchParams.set("thread_id", threadId);
+			url.searchParams.set("return_url", window.location.pathname);
 			const response = await authenticatedFetch(url.toString());
 			const data = await response.json();
 			if (data.auth_url) {

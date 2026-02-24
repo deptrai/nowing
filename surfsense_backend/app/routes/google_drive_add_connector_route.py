@@ -155,7 +155,7 @@ async def connect_drive(space_id: int, user: User = Depends(current_active_user)
 async def reauth_drive(
     space_id: int,
     connector_id: int,
-    thread_id: str | None = None,
+    return_url: str | None = None,
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -195,8 +195,8 @@ async def reauth_drive(
 
         state_manager = get_state_manager()
         extra: dict = {"connector_id": connector_id}
-        if thread_id:
-            extra["thread_id"] = thread_id
+        if return_url and return_url.startswith("/"):
+            extra["return_url"] = return_url
         state_encoded = state_manager.generate_secure_state(space_id, user.id, **extra)
 
         auth_url, _ = flow.authorization_url(
@@ -284,7 +284,7 @@ async def drive_callback(
         user_id = UUID(data["user_id"])
         space_id = data["space_id"]
         reauth_connector_id = data.get("connector_id")
-        reauth_thread_id = data.get("thread_id")
+        reauth_return_url = data.get("return_url")
 
         logger.info(
             f"Processing Google Drive callback for user {user_id}, space {space_id}"
@@ -355,9 +355,9 @@ async def drive_callback(
             logger.info(
                 f"Re-authenticated Google Drive connector {db_connector.id} for user {user_id}"
             )
-            if reauth_thread_id:
+            if reauth_return_url and reauth_return_url.startswith("/"):
                 return RedirectResponse(
-                    url=f"{config.NEXT_FRONTEND_URL}/dashboard/{space_id}/new-chat/{reauth_thread_id}"
+                    url=f"{config.NEXT_FRONTEND_URL}{reauth_return_url}"
                 )
             return RedirectResponse(
                 url=f"{config.NEXT_FRONTEND_URL}/dashboard/{space_id}/new-chat?modal=connectors&tab=all&success=true&connector=google-drive-connector&connectorId={db_connector.id}"
