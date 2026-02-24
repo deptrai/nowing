@@ -48,8 +48,11 @@ def create_create_google_drive_file_tool(
             - web_view_link: URL to open the file (if success)
             - message: Result message
 
-            IMPORTANT: If status is "rejected", the user explicitly declined the action.
-            Respond with a brief acknowledgment and do NOT retry or suggest alternatives.
+            IMPORTANT:
+            - If status is "rejected", the user explicitly declined the action.
+              Respond with a brief acknowledgment and do NOT retry or suggest alternatives.
+            - If status is "insufficient_permissions", the connector lacks the required OAuth scope.
+              Inform the user they need to re-authenticate and do NOT retry the action.
 
         Examples:
             - "Create a Google Doc called 'Meeting Notes'"

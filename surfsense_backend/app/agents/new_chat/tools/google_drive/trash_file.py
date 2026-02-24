@@ -40,6 +40,8 @@ def create_trash_google_drive_file_tool(
               acknowledgment and do NOT retry or suggest alternatives.
             - If status is "not_found", relay the exact message to the user and ask them
               to verify the file name or check if it has been indexed.
+            - If status is "insufficient_permissions", the connector lacks the required OAuth scope.
+              Inform the user they need to re-authenticate and do NOT retry the action.
 
         Examples:
             - "Delete the 'Meeting Notes' file from Google Drive"
