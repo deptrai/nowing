@@ -86,7 +86,7 @@ def create_delete_google_drive_file_tool(
                 }
 
             logger.info(
-                f"Requesting approval for trashing Google Drive file: '{file_name}' (file_id={file_id}, delete_from_kb={delete_from_kb})"
+                f"Requesting approval for deleting Google Drive file: '{file_name}' (file_id={file_id}, delete_from_kb={delete_from_kb})"
             )
             approval = interrupt(
                 {
@@ -157,7 +157,7 @@ def create_delete_google_drive_file_tool(
                 }
 
             logger.info(
-                f"Trashing Google Drive file: file_id='{final_file_id}', connector={final_connector_id}"
+                f"Deleting Google Drive file: file_id='{final_file_id}', connector={final_connector_id}"
             )
             client = GoogleDriveClient(session=db_session, connector_id=connector.id)
             try:
@@ -174,7 +174,7 @@ def create_delete_google_drive_file_tool(
                     }
                 raise
 
-            logger.info(f"Google Drive file trashed: file_id={final_file_id}")
+            logger.info(f"Google Drive file deleted (moved to trash): file_id={final_file_id}")
 
             trash_result: dict[str, Any] = {
                 "status": "success",
@@ -219,7 +219,7 @@ def create_delete_google_drive_file_tool(
             if isinstance(e, GraphInterrupt):
                 raise
 
-            logger.error(f"Error trashing Google Drive file: {e}", exc_info=True)
+            logger.error(f"Error deleting Google Drive file: {e}", exc_info=True)
             return {
                 "status": "error",
                 "message": "Something went wrong while trashing the file. Please try again.",

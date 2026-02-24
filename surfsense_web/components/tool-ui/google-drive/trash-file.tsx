@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { authenticatedFetch } from "@/lib/auth-utils";
 
@@ -334,10 +335,17 @@ function InsufficientPermissionsCard({ result }: { result: InsufficientPermissio
 			url.searchParams.set("space_id", searchSpaceId);
 			url.searchParams.set("return_url", window.location.pathname);
 			const response = await authenticatedFetch(url.toString());
+			if (!response.ok) {
+				const data = await response.json().catch(() => ({}));
+				toast.error(data.detail ?? "Failed to initiate re-authentication. Please try again.");
+				return;
+			}
 			const data = await response.json();
 			if (data.auth_url) {
 				window.location.href = data.auth_url;
 			}
+		} catch {
+			toast.error("Failed to initiate re-authentication. Please try again.");
 		} finally {
 			setLoading(false);
 		}

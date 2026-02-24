@@ -297,7 +297,7 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
         requires=["db_session", "search_space_id", "user_id"],
     ),
     # =========================================================================
-    # GOOGLE DRIVE TOOLS - create files, trash files
+    # GOOGLE DRIVE TOOLS - create files, delete files
     # =========================================================================
     ToolDefinition(
         name="create_google_drive_file",
