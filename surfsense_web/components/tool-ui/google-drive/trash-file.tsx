@@ -180,7 +180,7 @@ function ApprovalCard({
 					/>
 				</div>
 				<div className="min-w-0 flex-1">
-					<p className="text-sm font-medium text-foreground">Trash Google Drive File</p>
+					<p className="text-sm font-medium text-foreground">Delete Google Drive File</p>
 					<p className="truncate text-xs text-muted-foreground">
 						Requires your approval to proceed
 					</p>
@@ -396,7 +396,7 @@ function ErrorCard({ result }: { result: ErrorResult }) {
 					<XIcon className="size-4 text-destructive" />
 				</div>
 				<div className="min-w-0 flex-1">
-					<p className="text-sm font-medium text-destructive">Failed to trash file</p>
+					<p className="text-sm font-medium text-destructive">Failed to delete file</p>
 				</div>
 			</div>
 			<div className="px-4 py-3">
