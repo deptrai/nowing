@@ -4,14 +4,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import object_session
 from sqlalchemy.orm.attributes import set_committed_value
 
-from app.config import config
-from app.db import Document, DocumentStatus
+from app.db import Chunk, Document, DocumentStatus
 from app.indexing_pipeline.connector_document import ConnectorDocument
+from app.indexing_pipeline.document_chunker import chunk_text
+from app.indexing_pipeline.document_embedder import embed_text
 from app.indexing_pipeline.document_hashing import compute_content_hash, compute_unique_identifier_hash
-from app.utils.document_converters import create_document_chunks, generate_document_summary
+from app.indexing_pipeline.document_summarizer import summarize_document
 
 
 def _safe_set_chunks(document: Document, chunks: list) -> None:
+    """Assign chunks to a document without triggering SQLAlchemy async lazy loading."""
     set_committed_value(document, "chunks", chunks)
     session = object_session(document)
     if session is not None:
@@ -22,12 +24,17 @@ def _safe_set_chunks(document: Document, chunks: list) -> None:
 
 
 class IndexingPipelineService:
+    """Single pipeline for indexing connector documents. All connectors use this service."""
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
     async def prepare_for_indexing(
         self, connector_docs: list[ConnectorDocument]
     ) -> list[Document]:
+        """
+        Persist new documents and detect changes, returning only those that need indexing.
+        """
         documents = []
 
         for connector_doc in connector_docs:
@@ -73,19 +80,26 @@ class IndexingPipelineService:
     async def index(
         self, document: Document, connector_doc: ConnectorDocument, llm
     ) -> None:
+        """
+        Run summarization, embedding, and chunking for a document and persist the results.
+        """
         try:
             document.status = DocumentStatus.processing()
             await self.session.commit()
 
             if connector_doc.should_summarize:
-                content, embedding = await generate_document_summary(
+                content = await summarize_document(
                     connector_doc.source_markdown, llm, connector_doc.metadata
                 )
             else:
                 content = connector_doc.source_markdown
-                embedding = config.embedding_model_instance.embed(content)
 
-            chunks = await create_document_chunks(connector_doc.source_markdown)
+            embedding = embed_text(content)
+
+            chunks = [
+                Chunk(content=text, embedding=embed_text(text))
+                for text in chunk_text(connector_doc.source_markdown)
+            ]
 
             document.source_markdown = connector_doc.source_markdown
             document.content = content

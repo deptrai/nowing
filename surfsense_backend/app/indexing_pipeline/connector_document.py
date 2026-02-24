@@ -4,6 +4,7 @@ from app.db import DocumentType
 
 
 class ConnectorDocument(BaseModel):
+    """Canonical data transfer object produced by connector adapters and consumed by the indexing pipeline."""
     title: str
     source_markdown: str
     unique_id: str

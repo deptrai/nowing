@@ -89,40 +89,42 @@ async def db_search_space(db_session: AsyncSession, db_user: User) -> SearchSpac
 
 
 @pytest.fixture
-def mock_llm() -> AsyncMock:
-    llm = AsyncMock()
-    llm.ainvoke = AsyncMock(return_value=MagicMock(content="Mocked summary."))
-    return llm
-
-
-@pytest.fixture
-def patched_generate_summary(monkeypatch) -> AsyncMock:
-    mock = AsyncMock(return_value=("Mocked summary.", [0.1] * _EMBEDDING_DIM))
+def patched_summarize(monkeypatch) -> AsyncMock:
+    mock = AsyncMock(return_value="Mocked summary.")
     monkeypatch.setattr(
-        "app.indexing_pipeline.indexing_pipeline_service.generate_document_summary",
+        "app.indexing_pipeline.indexing_pipeline_service.summarize_document",
         mock,
     )
     return mock
 
 
 @pytest.fixture
-def patched_create_chunks(monkeypatch) -> MagicMock:
-    from app.db import Chunk
-
-    chunk = Chunk(content="Test chunk content.", embedding=[0.1] * _EMBEDDING_DIM)
-    mock = AsyncMock(return_value=[chunk])
+def patched_summarize_raises(monkeypatch) -> AsyncMock:
+    mock = AsyncMock(side_effect=RuntimeError("LLM unavailable"))
     monkeypatch.setattr(
-        "app.indexing_pipeline.indexing_pipeline_service.create_document_chunks",
+        "app.indexing_pipeline.indexing_pipeline_service.summarize_document",
         mock,
     )
     return mock
 
 
 @pytest.fixture
-def patched_embedding_model(monkeypatch) -> MagicMock:
-    from app.config import config
+def patched_embed_text(monkeypatch) -> MagicMock:
+    mock = MagicMock(return_value=[0.1] * _EMBEDDING_DIM)
+    monkeypatch.setattr(
+        "app.indexing_pipeline.indexing_pipeline_service.embed_text",
+        mock,
+    )
+    return mock
 
-    model = MagicMock()
-    model.embed = MagicMock(return_value=[0.1] * _EMBEDDING_DIM)
-    monkeypatch.setattr(config, "embedding_model_instance", model)
-    return model
+
+@pytest.fixture
+def patched_chunk_text(monkeypatch) -> MagicMock:
+    mock = MagicMock(return_value=["Test chunk content."])
+    monkeypatch.setattr(
+        "app.indexing_pipeline.indexing_pipeline_service.chunk_text",
+        mock,
+    )
+    return mock
+
+
