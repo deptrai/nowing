@@ -389,8 +389,11 @@ function WarningCard({ result }: { result: WarningResult }) {
 					<p className="text-sm font-medium text-amber-600 dark:text-amber-500">Partial success</p>
 				</div>
 			</div>
-			<div className="space-y-2 px-4 py-3 text-xs">
-				<p className="text-sm text-muted-foreground">{result.warning}</p>
+			<div className="space-y-2 px-4 py-3">
+				{result.message && (
+					<p className="text-sm text-muted-foreground">{result.message}</p>
+				)}
+				<p className="text-xs text-amber-600 dark:text-amber-500">{result.warning}</p>
 			</div>
 		</div>
 	);
