@@ -124,6 +124,11 @@ function ApprovalCard({
 	const [isEditing, setIsEditing] = useState(false);
 	const [editedName, setEditedName] = useState(args.name ?? "");
 	const [editedContent, setEditedContent] = useState(args.content ?? "");
+	const [committedArgs, setCommittedArgs] = useState<{
+		name: string;
+		file_type: string;
+		content?: string | null;
+	} | null>(null);
 
 	const accounts = interruptData.context?.accounts ?? [];
 
@@ -248,29 +253,29 @@ function ApprovalCard({
 				</div>
 			)}
 
-			{/* Display mode */}
-			{!isEditing && (
-				<div className="space-y-2 px-4 py-3 bg-card">
+		{/* Display mode */}
+		{!isEditing && (
+			<div className="space-y-2 px-4 py-3 bg-card">
+				<div>
+					<p className="text-xs font-medium text-muted-foreground">Name</p>
+					<p className="text-sm text-foreground">{committedArgs?.name ?? args.name}</p>
+				</div>
+				<div>
+					<p className="text-xs font-medium text-muted-foreground">Type</p>
+					<p className="text-sm text-foreground">
+						{FILE_TYPE_LABELS[committedArgs?.file_type ?? args.file_type] ?? committedArgs?.file_type ?? args.file_type}
+					</p>
+				</div>
+				{(committedArgs?.content ?? args.content) && (
 					<div>
-						<p className="text-xs font-medium text-muted-foreground">Name</p>
-						<p className="text-sm text-foreground">{args.name}</p>
-					</div>
-					<div>
-						<p className="text-xs font-medium text-muted-foreground">Type</p>
-						<p className="text-sm text-foreground">
-							{FILE_TYPE_LABELS[args.file_type] ?? args.file_type}
+						<p className="text-xs font-medium text-muted-foreground">Content</p>
+						<p className="line-clamp-4 text-sm whitespace-pre-wrap text-foreground">
+							{committedArgs?.content ?? args.content}
 						</p>
 					</div>
-					{args.content && (
-						<div>
-							<p className="text-xs font-medium text-muted-foreground">Content</p>
-							<p className="line-clamp-4 text-sm whitespace-pre-wrap text-foreground">
-								{args.content}
-							</p>
-						</div>
-					)}
-				</div>
-			)}
+				)}
+			</div>
+		)}
 
 			{/* Edit mode */}
 			{isEditing && !decided && (
@@ -336,24 +341,26 @@ function ApprovalCard({
 					</p>
 				) : isEditing ? (
 					<>
-						<Button
-							size="sm"
-							onClick={() => {
-								setDecided("edit");
-								setIsEditing(false);
-								onDecision({
-									type: "edit",
-									edited_action: {
-										name: interruptData.action_requests[0].name,
-										args: buildFinalArgs(),
-									},
-								});
-							}}
-							disabled={!canApprove}
-						>
-							<CheckIcon />
-							Approve with Changes
-						</Button>
+					<Button
+						size="sm"
+						onClick={() => {
+							const finalArgs = buildFinalArgs();
+							setCommittedArgs(finalArgs);
+							setDecided("edit");
+							setIsEditing(false);
+							onDecision({
+								type: "edit",
+								edited_action: {
+									name: interruptData.action_requests[0].name,
+									args: finalArgs,
+								},
+							});
+						}}
+						disabled={!canApprove}
+					>
+						<CheckIcon />
+						Approve with Changes
+					</Button>
 						<Button
 							size="sm"
 							variant="outline"
@@ -369,23 +376,25 @@ function ApprovalCard({
 				) : (
 					<>
 						{allowedDecisions.includes("approve") && (
-							<Button
-								size="sm"
-								onClick={() => {
-									setDecided("approve");
-									onDecision({
-										type: "approve",
-										edited_action: {
-											name: interruptData.action_requests[0].name,
-											args: buildFinalArgs(),
-										},
-									});
-								}}
-								disabled={!canApprove}
-							>
-								<CheckIcon />
-								Approve
-							</Button>
+						<Button
+							size="sm"
+							onClick={() => {
+								const finalArgs = buildFinalArgs();
+								setCommittedArgs(finalArgs);
+								setDecided("approve");
+								onDecision({
+									type: "approve",
+									edited_action: {
+										name: interruptData.action_requests[0].name,
+										args: finalArgs,
+									},
+								});
+							}}
+							disabled={!canApprove}
+						>
+							<CheckIcon />
+							Approve
+						</Button>
 						)}
 						{canEdit && (
 							<Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
