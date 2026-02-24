@@ -75,7 +75,7 @@ interface InsufficientPermissionsResult {
 	message: string;
 }
 
-type TrashGoogleDriveFileResult =
+type DeleteGoogleDriveFileResult =
 	| InterruptResult
 	| SuccessResult
 	| WarningResult
@@ -445,12 +445,12 @@ function SuccessCard({ result }: { result: SuccessResult }) {
 	);
 }
 
-export const TrashGoogleDriveFileToolUI = makeAssistantToolUI<
+export const DeleteGoogleDriveFileToolUI = makeAssistantToolUI<
 	{ file_name: string; delete_from_kb?: boolean },
-	TrashGoogleDriveFileResult
+	DeleteGoogleDriveFileResult
 >({
-	toolName: "trash_google_drive_file",
-	render: function TrashGoogleDriveFileUI({ result, status }) {
+	toolName: "delete_google_drive_file",
+	render: function DeleteGoogleDriveFileUI({ result, status }) {
 		if (status.type === "running") {
 			return (
 				<div className="my-4 flex max-w-md items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">

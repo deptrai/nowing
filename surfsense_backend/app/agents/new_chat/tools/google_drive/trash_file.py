@@ -12,13 +12,13 @@ from app.services.google_drive import GoogleDriveToolMetadataService
 logger = logging.getLogger(__name__)
 
 
-def create_trash_google_drive_file_tool(
+def create_delete_google_drive_file_tool(
     db_session: AsyncSession | None = None,
     search_space_id: int | None = None,
     user_id: str | None = None,
 ):
     @tool
-    async def trash_google_drive_file(
+    async def delete_google_drive_file(
         file_name: str,
         delete_from_kb: bool = False,
     ) -> dict[str, Any]:
@@ -52,7 +52,7 @@ def create_trash_google_drive_file_tool(
             - "Delete the 'Meeting Notes' file from Google Drive"
             - "Trash the 'Old Budget' spreadsheet"
         """
-        logger.info(f"trash_google_drive_file called: file_name='{file_name}', delete_from_kb={delete_from_kb}")
+        logger.info(f"delete_google_drive_file called: file_name='{file_name}', delete_from_kb={delete_from_kb}")
 
         if db_session is None or search_space_id is None or user_id is None:
             return {
@@ -92,7 +92,7 @@ def create_trash_google_drive_file_tool(
                 {
                     "type": "google_drive_file_trash",
                     "action": {
-                        "tool": "trash_google_drive_file",
+                        "tool": "delete_google_drive_file",
                         "params": {
                             "file_id": file_id,
                             "connector_id": connector_id_from_context,
@@ -225,4 +225,4 @@ def create_trash_google_drive_file_tool(
                 "message": "Something went wrong while trashing the file. Please try again.",
             }
 
-    return trash_google_drive_file
+    return delete_google_drive_file

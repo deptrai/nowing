@@ -57,7 +57,7 @@ from .link_preview import create_link_preview_tool
 from .mcp_tool import load_mcp_tools
 from .google_drive import (
     create_create_google_drive_file_tool,
-    create_trash_google_drive_file_tool,
+    create_delete_google_drive_file_tool,
 )
 from .notion import (
     create_create_notion_page_tool,
@@ -310,9 +310,9 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
         requires=["db_session", "search_space_id", "user_id"],
     ),
     ToolDefinition(
-        name="trash_google_drive_file",
+        name="delete_google_drive_file",
         description="Move an indexed Google Drive file to trash",
-        factory=lambda deps: create_trash_google_drive_file_tool(
+        factory=lambda deps: create_delete_google_drive_file_tool(
             db_session=deps["db_session"],
             search_space_id=deps["search_space_id"],
             user_id=deps["user_id"],
