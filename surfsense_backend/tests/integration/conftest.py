@@ -1,12 +1,16 @@
 
 import os
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 import pytest_asyncio
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.db import Base
+
+_EMBEDDING_DIM = 4  # keep vectors tiny; real model uses 768+
 
 _DEFAULT_TEST_DB = "postgresql+asyncpg://postgres:postgres@localhost:5432/surfsense_test"
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", _DEFAULT_TEST_DB)
@@ -44,3 +48,19 @@ async def db_session(async_engine) -> AsyncSession:
         ) as session:
             yield session
         await transaction.rollback()
+
+
+@pytest.fixture
+def mock_llm() -> AsyncMock:
+    llm = AsyncMock()
+    llm.ainvoke = AsyncMock(return_value=MagicMock(content="Mocked summary."))
+    return llm
+
+
+@pytest.fixture
+def mock_embedding_model() -> MagicMock:
+    model = MagicMock()
+    model.embed = MagicMock(
+        side_effect=lambda texts: [[0.1] * _EMBEDDING_DIM for _ in texts]
+    )
+    return model
