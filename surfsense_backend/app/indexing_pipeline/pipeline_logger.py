@@ -79,16 +79,8 @@ def log_document_requeued(ctx: PipelineLogContext) -> None:
     _safe_log(logger.info, LogMessages.DOCUMENT_REQUEUED, ctx)
 
 
-def log_doc_skipped_db(ctx: PipelineLogContext, exc: Exception) -> None:
-    _safe_log(logger.warning, LogMessages.DOC_SKIPPED_DB, ctx, error=exc)
-
-
 def log_doc_skipped_unknown(ctx: PipelineLogContext, exc: Exception) -> None:
     _safe_log(logger.warning, LogMessages.DOC_SKIPPED_UNKNOWN, ctx, exc_info=exc, error=exc)
-
-
-def log_batch_aborted(ctx: PipelineLogContext, exc: Exception) -> None:
-    _safe_log(logger.critical, LogMessages.BATCH_ABORTED, ctx, exc_info=exc, error=exc)
 
 
 def log_race_condition(ctx: PipelineLogContext) -> None:
@@ -119,14 +111,6 @@ def log_embedding_error(ctx: PipelineLogContext, exc: Exception) -> None:
 
 def log_chunking_overflow(ctx: PipelineLogContext, exc: Exception) -> None:
     _safe_log(logger.error, LogMessages.CHUNKING_OVERFLOW, ctx, exc_info=exc, error=exc)
-
-
-def log_db_transient_error(ctx: PipelineLogContext, exc: Exception) -> None:
-    _safe_log(logger.warning, LogMessages.DB_TRANSIENT, ctx, error=exc)
-
-
-def log_db_fatal_error(ctx: PipelineLogContext, exc: Exception) -> None:
-    _safe_log(logger.critical, LogMessages.DB_FATAL, ctx, exc_info=exc, error=exc)
 
 
 def log_unexpected_error(ctx: PipelineLogContext, exc: Exception) -> None:

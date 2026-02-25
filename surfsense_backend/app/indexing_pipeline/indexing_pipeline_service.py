@@ -12,10 +12,8 @@ from app.indexing_pipeline.document_persistence import attach_chunks_to_document
 from app.indexing_pipeline.document_summarizer import summarize_document
 from app.indexing_pipeline.exceptions import (
     EMBEDDING_ERRORS,
-    FATAL_DB_ERRORS,
     PERMANENT_LLM_ERRORS,
     RETRYABLE_LLM_ERRORS,
-    TRANSIENT_DB_ERRORS,
     IntegrityError,
     PipelineMessages,
     embedding_message,
@@ -25,11 +23,7 @@ from app.indexing_pipeline.exceptions import (
 )
 from app.indexing_pipeline.pipeline_logger import (
     PipelineLogContext,
-    log_batch_aborted,
     log_chunking_overflow,
-    log_db_fatal_error,
-    log_db_transient_error,
-    log_doc_skipped_db,
     log_doc_skipped_unknown,
     log_document_queued,
     log_document_requeued,
@@ -129,15 +123,8 @@ class IndexingPipelineService:
                 documents.append(document)
                 log_document_queued(ctx)
 
-            except FATAL_DB_ERRORS as e:
-                log_batch_aborted(ctx, e)
-                await self.session.rollback()
-                return []
-            except TRANSIENT_DB_ERRORS as e:
-                log_doc_skipped_db(ctx, e)
             except Exception as e:
                 log_doc_skipped_unknown(ctx, e)
-                continue
 
         try:
             await self.session.commit()
@@ -213,14 +200,6 @@ class IndexingPipelineService:
         except EMBEDDING_ERRORS as e:
             log_embedding_error(ctx, e)
             await rollback_and_persist_failure(self.session, document, embedding_message(e))
-
-        except FATAL_DB_ERRORS as e:
-            log_db_fatal_error(ctx, e)
-            raise
-
-        except TRANSIENT_DB_ERRORS as e:
-            log_db_transient_error(ctx, e)
-            await rollback_and_persist_failure(self.session, document, PipelineMessages.DB_TRANSIENT)
 
         except Exception as e:
             log_unexpected_error(ctx, e)

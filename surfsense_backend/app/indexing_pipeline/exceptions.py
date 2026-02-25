@@ -12,8 +12,7 @@ from litellm.exceptions import (
     Timeout,
     UnprocessableEntityError,
 )
-from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
-from sqlalchemy.orm.exc import DetachedInstanceError
+from sqlalchemy.exc import IntegrityError
 
 # Tuples for use directly in except clauses.
 RETRYABLE_LLM_ERRORS = (
@@ -33,18 +32,6 @@ PERMANENT_LLM_ERRORS = (
     UnprocessableEntityError,
     APIResponseValidationError,
 )
-
-TRANSIENT_DB_ERRORS = (
-    OperationalError,
-    IntegrityError,
-)
-
-# Session is broken after these — re-raise instead of attempting further DB calls.
-FATAL_DB_ERRORS = (
-    InvalidRequestError,
-    DetachedInstanceError,
-)
-
 
 # (LiteLLMEmbeddings, CohereEmbeddings, GeminiEmbeddings all normalize to RuntimeError).
 EMBEDDING_ERRORS = (
