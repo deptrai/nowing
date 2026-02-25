@@ -148,7 +148,8 @@ function ExecuteResult({
 	parsed: ParsedOutput;
 }) {
 	const [open, setOpen] = useState(false);
-	const hasOutput = parsed.output.trim().length > 0;
+	const isLongCommand = command.length > 80 || command.includes("\n");
+	const hasContent = parsed.output.trim().length > 0 || isLongCommand;
 
 	const exitBadge = useMemo(() => {
 		if (parsed.exitCode === null) return null;
@@ -180,13 +181,13 @@ function ExecuteResult({
 						open && "rounded-b-none border-b-0",
 						parsed.isError && "border-destructive/20"
 					)}
-					disabled={!hasOutput}
+					disabled={!hasContent}
 				>
 					<ChevronRightIcon
 						className={cn(
 							"size-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
 							open && "rotate-90",
-							!hasOutput && "invisible"
+							!hasContent && "invisible"
 						)}
 					/>
 					<TerminalIcon className="size-3.5 shrink-0 text-muted-foreground" />
@@ -199,15 +200,34 @@ function ExecuteResult({
 				<CollapsibleContent>
 					<div
 						className={cn(
-							"rounded-b-xl border border-t-0 bg-zinc-950 dark:bg-zinc-900/60 px-4 py-3",
+							"rounded-b-xl border border-t-0 bg-zinc-950 dark:bg-zinc-900/60 px-4 py-3 space-y-3",
 							parsed.isError && "border-destructive/20"
 						)}
 					>
-						<pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs font-mono text-zinc-300 leading-relaxed">
-							{parsed.output}
-						</pre>
+						{isLongCommand && (
+							<div>
+								<p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+									Command
+								</p>
+								<pre className="max-h-60 overflow-auto whitespace-pre-wrap break-all rounded-md bg-zinc-900/80 dark:bg-zinc-800/40 px-3 py-2 text-xs font-mono text-emerald-400 leading-relaxed">
+									{command}
+								</pre>
+							</div>
+						)}
+						{parsed.output.trim().length > 0 && (
+							<div>
+								{isLongCommand && (
+									<p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+										Output
+									</p>
+								)}
+								<pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs font-mono text-zinc-300 leading-relaxed">
+									{parsed.output}
+								</pre>
+							</div>
+						)}
 						{parsed.truncated && (
-							<p className="mt-2 text-[10px] text-zinc-500 italic">
+							<p className="text-[10px] text-zinc-500 italic">
 								Output was truncated due to size limits
 							</p>
 						)}

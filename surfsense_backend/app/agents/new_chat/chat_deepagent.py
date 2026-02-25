@@ -169,7 +169,7 @@ async def create_surfsense_deep_agent(
                          These are always added regardless of enabled/disabled settings.
         firecrawl_api_key: Optional Firecrawl API key for premium web scraping.
                           Falls back to Chromium/Trafilatura if not provided.
-        sandbox_backend: Optional sandbox backend (e.g. MicrosandboxBackend) for
+        sandbox_backend: Optional sandbox backend (e.g. DaytonaSandbox) for
                         secure code execution. When provided, the agent gets an
                         isolated ``execute`` tool for running shell commands.
 

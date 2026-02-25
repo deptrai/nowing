@@ -43,17 +43,6 @@ if [ -z "$STT_SERVICE" ]; then
 fi
 
 # ================================================
-# Microsandbox (optional secure sandbox server)
-# ================================================
-if [ "${MICROSANDBOX_ENABLED:-FALSE}" = "TRUE" ]; then
-    export MICROSANDBOX_AUTOSTART=true
-    echo "✅ Microsandbox enabled (requires --device /dev/kvm)"
-else
-    export MICROSANDBOX_AUTOSTART=false
-    echo "ℹ️  Microsandbox disabled (set MICROSANDBOX_ENABLED=TRUE to enable)"
-fi
-
-# ================================================
 # Set Electric SQL configuration
 # ================================================
 export ELECTRIC_DB_USER="${ELECTRIC_DB_USER:-electric}"
@@ -243,7 +232,7 @@ echo "  Auth Type:       ${NEXT_PUBLIC_FASTAPI_BACKEND_AUTH_TYPE}"
 echo "  ETL Service:     ${NEXT_PUBLIC_ETL_SERVICE}"
 echo "  TTS Service:     ${TTS_SERVICE}"
 echo "  STT Service:     ${STT_SERVICE}"
-echo "  Microsandbox:    ${MICROSANDBOX_ENABLED:-FALSE}"
+echo "  Daytona Sandbox: ${DAYTONA_SANDBOX_ENABLED:-FALSE}"
 echo "==========================================="
 echo ""
 
