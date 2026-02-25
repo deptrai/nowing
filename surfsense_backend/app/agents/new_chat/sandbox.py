@@ -12,7 +12,12 @@ import asyncio
 import logging
 import os
 
-from daytona import CreateSandboxFromSnapshotParams, Daytona, DaytonaConfig, SandboxState
+from daytona import (
+    CreateSandboxFromSnapshotParams,
+    Daytona,
+    DaytonaConfig,
+    SandboxState,
+)
 from deepagents.backends.protocol import ExecuteResponse
 from langchain_daytona import DaytonaSandbox
 
@@ -38,8 +43,11 @@ class _TimeoutAwareSandbox(DaytonaSandbox):
             truncated=False,
         )
 
-    async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:  # type: ignore[override]
+    async def aexecute(
+        self, command: str, *, timeout: int | None = None
+    ) -> ExecuteResponse:  # type: ignore[override]
         return await asyncio.to_thread(self.execute, command, timeout=timeout)
+
 
 _daytona_client: Daytona | None = None
 THREAD_LABEL_KEY = "surfsense_thread"
@@ -72,9 +80,7 @@ def _find_or_create(thread_id: str) -> _TimeoutAwareSandbox:
 
     try:
         sandbox = client.find_one(labels=labels)
-        logger.info(
-            "Found existing sandbox %s (state=%s)", sandbox.id, sandbox.state
-        )
+        logger.info("Found existing sandbox %s (state=%s)", sandbox.id, sandbox.state)
 
         if sandbox.state in (
             SandboxState.STOPPED,
@@ -84,7 +90,11 @@ def _find_or_create(thread_id: str) -> _TimeoutAwareSandbox:
             logger.info("Starting stopped sandbox %s …", sandbox.id)
             sandbox.start(timeout=60)
             logger.info("Sandbox %s is now started", sandbox.id)
-        elif sandbox.state in (SandboxState.ERROR, SandboxState.BUILD_FAILED, SandboxState.DESTROYED):
+        elif sandbox.state in (
+            SandboxState.ERROR,
+            SandboxState.BUILD_FAILED,
+            SandboxState.DESTROYED,
+        ):
             logger.warning(
                 "Sandbox %s in unrecoverable state %s — creating a new one",
                 sandbox.id,

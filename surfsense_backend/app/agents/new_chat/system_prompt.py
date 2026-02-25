@@ -782,7 +782,12 @@ def build_surfsense_system_prompt(
     tools_instructions = _get_tools_instructions(visibility)
     citation_instructions = SURFSENSE_CITATION_INSTRUCTIONS
     sandbox_instructions = SANDBOX_EXECUTION_INSTRUCTIONS if sandbox_enabled else ""
-    return system_instructions + tools_instructions + citation_instructions + sandbox_instructions
+    return (
+        system_instructions
+        + tools_instructions
+        + citation_instructions
+        + sandbox_instructions
+    )
 
 
 def build_configurable_system_prompt(
@@ -842,7 +847,12 @@ def build_configurable_system_prompt(
 
     sandbox_instructions = SANDBOX_EXECUTION_INSTRUCTIONS if sandbox_enabled else ""
 
-    return system_instructions + tools_instructions + citation_instructions + sandbox_instructions
+    return (
+        system_instructions
+        + tools_instructions
+        + citation_instructions
+        + sandbox_instructions
+    )
 
 
 def get_default_system_instructions() -> str:

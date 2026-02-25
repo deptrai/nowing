@@ -10,13 +10,12 @@ Supports loading LLM configurations from:
 """
 
 import json
+import logging
 import re
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
-
-import logging
 
 from langchain_core.messages import HumanMessage
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +30,13 @@ from app.agents.new_chat.llm_config import (
     load_agent_config,
     load_llm_config_from_yaml,
 )
-from app.db import ChatVisibility, Document, Report, SurfsenseDocsDocument, async_session_maker
+from app.db import (
+    ChatVisibility,
+    Document,
+    Report,
+    SurfsenseDocsDocument,
+    async_session_maker,
+)
 from app.prompts import TITLE_GENERATION_PROMPT_TEMPLATE
 from app.services.chat_session_state_service import (
     clear_ai_responding,
@@ -645,9 +650,15 @@ async def _stream_agent_events(
                 m = re.match(r"^Exit code:\s*(\d+)", raw_text)
                 exit_code_val = int(m.group(1)) if m else None
                 if exit_code_val is not None and exit_code_val == 0:
-                    completed_items = [*last_active_step_items, "Completed successfully"]
+                    completed_items = [
+                        *last_active_step_items,
+                        "Completed successfully",
+                    ]
                 elif exit_code_val is not None:
-                    completed_items = [*last_active_step_items, f"Exit code: {exit_code_val}"]
+                    completed_items = [
+                        *last_active_step_items,
+                        f"Exit code: {exit_code_val}",
+                    ]
                 else:
                     completed_items = [*last_active_step_items, "Finished"]
                 yield streaming_service.format_thinking_step(
@@ -1037,13 +1048,18 @@ async def stream_new_chat(
 
         # Optionally provision a sandboxed code execution environment
         sandbox_backend = None
-        from app.agents.new_chat.sandbox import is_sandbox_enabled, get_or_create_sandbox
+        from app.agents.new_chat.sandbox import (
+            get_or_create_sandbox,
+            is_sandbox_enabled,
+        )
+
         if is_sandbox_enabled():
             try:
                 sandbox_backend = await get_or_create_sandbox(chat_id)
             except Exception as sandbox_err:
                 logging.getLogger(__name__).warning(
-                    "Sandbox creation failed, continuing without execute tool: %s", sandbox_err
+                    "Sandbox creation failed, continuing without execute tool: %s",
+                    sandbox_err,
                 )
 
         visibility = thread_visibility or ChatVisibility.PRIVATE
@@ -1426,13 +1442,18 @@ async def stream_resume_chat(
         checkpointer = await get_checkpointer()
 
         sandbox_backend = None
-        from app.agents.new_chat.sandbox import is_sandbox_enabled, get_or_create_sandbox
+        from app.agents.new_chat.sandbox import (
+            get_or_create_sandbox,
+            is_sandbox_enabled,
+        )
+
         if is_sandbox_enabled():
             try:
                 sandbox_backend = await get_or_create_sandbox(chat_id)
             except Exception as sandbox_err:
                 logging.getLogger(__name__).warning(
-                    "Sandbox creation failed, continuing without execute tool: %s", sandbox_err
+                    "Sandbox creation failed, continuing without execute tool: %s",
+                    sandbox_err,
                 )
 
         visibility = thread_visibility or ChatVisibility.PRIVATE

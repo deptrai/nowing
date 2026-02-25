@@ -15,14 +15,10 @@ import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getBearerToken } from "@/lib/auth-utils";
 import { BACKEND_URL } from "@/lib/env-config";
+import { cn } from "@/lib/utils";
 
 // ============================================================================
 // Zod Schemas
@@ -75,9 +71,7 @@ function extractSandboxFiles(text: string): SandboxFile[] {
 	while ((match = SANDBOX_FILE_RE.exec(text)) !== null) {
 		const filePath = match[1].trim();
 		if (filePath) {
-			const name = filePath.includes("/")
-				? filePath.split("/").pop() || filePath
-				: filePath;
+			const name = filePath.includes("/") ? filePath.split("/").pop() || filePath : filePath;
 			files.push({ path: filePath, name });
 		}
 	}
@@ -86,14 +80,24 @@ function extractSandboxFiles(text: string): SandboxFile[] {
 }
 
 function stripSandboxFileLines(text: string): string {
-	return text.replace(/^SANDBOX_FILE:\s*.+$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+	return text
+		.replace(/^SANDBOX_FILE:\s*.+$/gm, "")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
 }
 
 function parseExecuteResult(result: ExecuteResult): ParsedOutput {
 	const raw = result.result || result.output || "";
 
 	if (result.error) {
-		return { exitCode: null, output: result.error, displayOutput: result.error, truncated: false, isError: true, files: [] };
+		return {
+			exitCode: null,
+			output: result.error,
+			displayOutput: result.error,
+			truncated: false,
+			isError: true,
+			files: [],
+		};
 	}
 
 	if (result.exit_code !== undefined && result.exit_code !== null) {
@@ -127,7 +131,14 @@ function parseExecuteResult(result: ExecuteResult): ParsedOutput {
 	}
 
 	if (raw.startsWith("Error:")) {
-		return { exitCode: null, output: raw, displayOutput: raw, truncated: false, isError: true, files: [] };
+		return {
+			exitCode: null,
+			output: raw,
+			displayOutput: raw,
+			truncated: false,
+			isError: true,
+			files: [],
+		};
 	}
 
 	const files = extractSandboxFiles(raw);
@@ -240,9 +251,7 @@ function SandboxFileDownload({ file, threadId }: { file: SandboxFile; threadId: 
 			)}
 			<FileIcon className="size-3 text-zinc-400" />
 			<span className="truncate max-w-[200px]">{file.name}</span>
-			{error && (
-				<span className="text-destructive text-[10px] ml-1">{error}</span>
-			)}
+			{error && <span className="text-destructive text-[10px] ml-1">{error}</span>}
 		</Button>
 	);
 }
@@ -270,14 +279,11 @@ function ExecuteCompleted({
 				variant={success ? "secondary" : "destructive"}
 				className={cn(
 					"ml-auto gap-1 text-[10px] px-1.5 py-0",
-					success && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+					success &&
+						"bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
 				)}
 			>
-				{success ? (
-					<CheckCircle2Icon className="size-3" />
-				) : (
-					<XCircleIcon className="size-3" />
-				)}
+				{success ? <CheckCircle2Icon className="size-3" /> : <XCircleIcon className="size-3" />}
 				{parsed.exitCode}
 			</Badge>
 		);
@@ -306,7 +312,10 @@ function ExecuteCompleted({
 						{truncateCommand(command)}
 					</code>
 					{hasFiles && !open && (
-						<Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 border-blue-500/30 text-blue-500">
+						<Badge
+							variant="outline"
+							className="gap-1 text-[10px] px-1.5 py-0 border-blue-500/30 text-blue-500"
+						>
 							<FileIcon className="size-2.5" />
 							{parsed.files.length}
 						</Badge>
@@ -355,11 +364,7 @@ function ExecuteCompleted({
 								</p>
 								<div className="flex flex-wrap gap-2">
 									{parsed.files.map((file) => (
-										<SandboxFileDownload
-											key={file.path}
-											file={file}
-											threadId={threadId}
-										/>
+										<SandboxFileDownload key={file.path} file={file} threadId={threadId} />
 									))}
 								</div>
 							</div>
@@ -412,9 +417,4 @@ export const SandboxExecuteToolUI = makeAssistantToolUI<ExecuteArgs, ExecuteResu
 	},
 });
 
-export {
-	ExecuteArgsSchema,
-	ExecuteResultSchema,
-	type ExecuteArgs,
-	type ExecuteResult,
-};
+export { ExecuteArgsSchema, ExecuteResultSchema, type ExecuteArgs, type ExecuteResult };
