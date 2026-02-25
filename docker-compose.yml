@@ -140,30 +140,31 @@ services:
   # The first sandbox creation will pull the OCI image (e.g. microsandbox/python),
   # so the initial run takes a bit longer.
   #
-  # microsandbox:
-  #   image: ubuntu:22.04
-  #   ports:
-  #     - "${MICROSANDBOX_PORT:-5555}:5555"
-  #   volumes:
-  #     - microsandbox_data:/root/.microsandbox
-  #   privileged: true
-  #   devices:
-  #     - /dev/kvm:/dev/kvm
-  #   entrypoint: ["/bin/bash", "-c"]
-  #   command:
-  #     - |
-  #       set -e
-  #       if ! command -v msb &>/dev/null; then
-  #         apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-  #         curl -sSL https://get.microsandbox.dev | sh
-  #       fi
-  #       exec msb server start --dev
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:5555/health"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  microsandbox:
+    image: ubuntu:22.04
+    ports:
+      - "${MICROSANDBOX_PORT:-5555}:5555"
+    volumes:
+      - microsandbox_data:/root/.microsandbox
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        export PATH="$$HOME/.local/bin:$$PATH"
+        if ! command -v msb &>/dev/null; then
+          apt-get update && apt-get install -y --no-install-recommends curl ca-certificates libdigest-sha-perl
+          curl -sSL https://get.microsandbox.dev | sh
+        fi
+        exec msb server start --dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5555/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   electric:
     image: electricsql/electric:latest
@@ -206,4 +207,4 @@ volumes:
   pgadmin_data:
   redis_data:
   shared_temp:
-  # microsandbox_data:
+  microsandbox_data:
