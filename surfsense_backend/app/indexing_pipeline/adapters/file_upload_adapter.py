@@ -26,9 +26,8 @@ async def index_uploaded_file(
         should_use_code_chunker=False,
         fallback_summary=markdown_content[:4000],
         metadata={
-            "file_name": filename,
-            "etl_service": etl_service,
-            "document_type": "File Document",
+            "FILE_NAME": filename,
+            "ETL_SERVICE": etl_service,
         },
     )
 
@@ -42,3 +41,6 @@ async def index_uploaded_file(
 
     if not DocumentStatus.is_state(indexed.status, DocumentStatus.READY):
         raise RuntimeError(indexed.status.get("message", "Indexing failed"))
+
+    indexed.content_needs_reindexing = False
+    await session.commit()
