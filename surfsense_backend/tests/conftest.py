@@ -46,6 +46,7 @@ def make_connector_document():
     Generic factory for unit tests. Overridden in tests/integration/conftest.py
     with real DB-backed IDs for integration tests.
     """
+
     def _make(**overrides):
         defaults = {
             "title": "Test Document",
@@ -58,4 +59,5 @@ def make_connector_document():
         }
         defaults.update(overrides)
         return ConnectorDocument(**defaults)
+
     return _make

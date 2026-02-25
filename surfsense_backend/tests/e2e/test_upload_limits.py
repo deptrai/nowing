@@ -21,7 +21,7 @@ import io
 import httpx
 import pytest
 
-pytestmark = pytest.mark.upload_limit
+pytestmark = pytest.mark.e2e
 
 
 # ---------------------------------------------------------------------------

@@ -179,11 +179,7 @@ addopts = "-v --tb=short -x --strict-markers -ra --durations=5"
 markers = [
     "unit: pure logic tests, no DB or external services",
     "integration: tests that require a real PostgreSQL database",
-    "document: document upload and processing tests",
-    "connector: connector indexing tests",
-    "chat: chat and agent tests",
-    "page_limit: page limit enforcement tests",
-    "upload_limit: file upload limit validation tests",
+    "e2e: tests requiring a running backend and real HTTP calls"
 ]
 filterwarnings = [
     "ignore::UserWarning:chonkie",

@@ -31,7 +31,7 @@ from tests.utils.helpers import (
     upload_file,
 )
 
-pytestmark = pytest.mark.page_limit
+pytestmark = pytest.mark.e2e
 
 
 # ---------------------------------------------------------------------------

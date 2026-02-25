@@ -147,7 +147,9 @@ async def delete_sandbox(thread_id: int | str) -> None:
         try:
             sandbox = client.find_one(labels=labels)
         except DaytonaError:
-            logger.debug("No sandbox to delete for thread %s (already removed)", thread_id)
+            logger.debug(
+                "No sandbox to delete for thread %s (already removed)", thread_id
+            )
             return
         try:
             client.delete(sandbox)
@@ -165,6 +167,7 @@ async def delete_sandbox(thread_id: int | str) -> None:
 # ---------------------------------------------------------------------------
 # Local file persistence
 # ---------------------------------------------------------------------------
+
 
 def _get_sandbox_files_dir() -> Path:
     return Path(os.environ.get("SANDBOX_FILES_DIR", "sandbox_files"))

@@ -1,4 +1,3 @@
-
 import os
 import uuid
 from unittest.mock import AsyncMock, MagicMock
@@ -9,14 +8,21 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.db import Base, SearchSpace, SearchSourceConnector, SearchSourceConnectorType
-from app.db import User
-from app.db import DocumentType
+from app.db import (
+    Base,
+    DocumentType,
+    SearchSourceConnector,
+    SearchSourceConnectorType,
+    SearchSpace,
+    User,
+)
 from app.indexing_pipeline.connector_document import ConnectorDocument
 
 _EMBEDDING_DIM = 1024  # must match the Vector() dimension used in DB column creation
 
-_DEFAULT_TEST_DB = "postgresql+asyncpg://postgres:postgres@localhost:5432/surfsense_test"
+_DEFAULT_TEST_DB = (
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/surfsense_test"
+)
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", _DEFAULT_TEST_DB)
 
 
@@ -80,7 +86,9 @@ async def db_user(db_session: AsyncSession) -> User:
 
 
 @pytest_asyncio.fixture
-async def db_connector(db_session: AsyncSession, db_user: User, db_search_space: "SearchSpace") -> SearchSourceConnector:
+async def db_connector(
+    db_session: AsyncSession, db_user: User, db_search_space: "SearchSpace"
+) -> SearchSourceConnector:
     connector = SearchSourceConnector(
         name="Test Connector",
         connector_type=SearchSourceConnectorType.CLICKUP_CONNECTOR,
@@ -147,6 +155,7 @@ def patched_chunk_text(monkeypatch) -> MagicMock:
 @pytest.fixture
 def make_connector_document(db_connector, db_user):
     """Integration-scoped override: uses real DB connector and user IDs."""
+
     def _make(**overrides):
         defaults = {
             "title": "Test Document",
@@ -159,6 +168,5 @@ def make_connector_document(db_connector, db_user):
         }
         defaults.update(overrides)
         return ConnectorDocument(**defaults)
+
     return _make
-
-

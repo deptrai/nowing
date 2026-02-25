@@ -28,7 +28,7 @@ from tests.utils.helpers import (
     upload_multiple_files,
 )
 
-pytestmark = pytest.mark.document
+pytestmark = pytest.mark.e2e
 
 # ---------------------------------------------------------------------------
 # Helpers local to this module

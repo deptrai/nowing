@@ -1886,11 +1886,11 @@ async def process_file_in_background_with_document(
         await task_logger.log_task_success(
             log_entry,
             f"Successfully processed file: {filename}",
-        {
+            {
                 "document_id": doc_id,
                 "content_hash": content_hash,
                 "file_type": etl_service,
-        },
+            },
         )
 
         return document
