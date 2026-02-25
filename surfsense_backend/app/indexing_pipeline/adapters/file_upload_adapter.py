@@ -40,7 +40,7 @@ async def index_uploaded_file(
     indexed = await service.index(documents[0], connector_doc, llm)
 
     if not DocumentStatus.is_state(indexed.status, DocumentStatus.READY):
-        raise RuntimeError(indexed.status.get("message", "Indexing failed"))
+        raise RuntimeError(indexed.status.get("reason", "Indexing failed"))
 
     indexed.content_needs_reindexing = False
     await session.commit()
