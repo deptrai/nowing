@@ -58,18 +58,14 @@ def backend_url() -> str:
 @pytest.fixture(scope="session")
 async def auth_token(backend_url: str) -> str:
     """Authenticate once per session, registering the user if needed."""
-    async with httpx.AsyncClient(
-        base_url=backend_url, timeout=30.0
-    ) as client:
+    async with httpx.AsyncClient(base_url=backend_url, timeout=30.0) as client:
         return await get_auth_token(client)
 
 
 @pytest.fixture(scope="session")
 async def search_space_id(backend_url: str, auth_token: str) -> int:
     """Discover the first search space belonging to the test user."""
-    async with httpx.AsyncClient(
-        base_url=backend_url, timeout=30.0
-    ) as client:
+    async with httpx.AsyncClient(base_url=backend_url, timeout=30.0) as client:
         return await get_search_space_id(client, auth_token)
 
 
@@ -86,7 +82,9 @@ async def _purge_test_search_space(
     """
     deleted = await _force_delete_documents_db(search_space_id)
     if deleted:
-        print(f"\n[purge] Deleted {deleted} stale document(s) from search space {search_space_id}")
+        print(
+            f"\n[purge] Deleted {deleted} stale document(s) from search space {search_space_id}"
+        )
 
     yield
 
@@ -100,9 +98,7 @@ def headers(auth_token: str) -> dict[str, str]:
 @pytest.fixture
 async def client(backend_url: str) -> AsyncGenerator[httpx.AsyncClient]:
     """Per-test async HTTP client pointing at the running backend."""
-    async with httpx.AsyncClient(
-        base_url=backend_url, timeout=180.0
-    ) as c:
+    async with httpx.AsyncClient(base_url=backend_url, timeout=180.0) as c:
         yield c
 
 

@@ -10,12 +10,11 @@ Supports loading LLM configurations from:
 """
 
 import json
+import logging
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
-
-import logging
 
 from langchain_core.messages import HumanMessage
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +29,13 @@ from app.agents.new_chat.llm_config import (
     load_agent_config,
     load_llm_config_from_yaml,
 )
-from app.db import ChatVisibility, Document, Report, SurfsenseDocsDocument, async_session_maker
+from app.db import (
+    ChatVisibility,
+    Document,
+    Report,
+    SurfsenseDocsDocument,
+    async_session_maker,
+)
 from app.prompts import TITLE_GENERATION_PROMPT_TEMPLATE
 from app.services.chat_session_state_service import (
     clear_ai_responding,
