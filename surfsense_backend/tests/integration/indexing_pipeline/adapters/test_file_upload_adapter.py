@@ -9,6 +9,7 @@ pytestmark = pytest.mark.integration
 
 @pytest.mark.usefixtures("patched_summarize", "patched_embed_text", "patched_chunk_text")
 async def test_sets_status_ready(db_session, db_search_space, db_user, mocker):
+    """Document status is READY after successful indexing."""
     await index_uploaded_file(
         markdown_content="## Hello\n\nSome content.",
         filename="test.pdf",
@@ -29,6 +30,7 @@ async def test_sets_status_ready(db_session, db_search_space, db_user, mocker):
 
 @pytest.mark.usefixtures("patched_summarize", "patched_embed_text", "patched_chunk_text")
 async def test_content_is_summary(db_session, db_search_space, db_user, mocker):
+    """Document content is set to the LLM-generated summary."""
     await index_uploaded_file(
         markdown_content="## Hello\n\nSome content.",
         filename="test.pdf",
@@ -49,6 +51,7 @@ async def test_content_is_summary(db_session, db_search_space, db_user, mocker):
 
 @pytest.mark.usefixtures("patched_summarize", "patched_embed_text", "patched_chunk_text")
 async def test_chunks_written_to_db(db_session, db_search_space, db_user, mocker):
+    """Chunks derived from the source markdown are persisted in the DB."""
     await index_uploaded_file(
         markdown_content="## Hello\n\nSome content.",
         filename="test.pdf",
@@ -75,6 +78,7 @@ async def test_chunks_written_to_db(db_session, db_search_space, db_user, mocker
 
 @pytest.mark.usefixtures("patched_summarize_raises", "patched_embed_text", "patched_chunk_text")
 async def test_raises_on_indexing_failure(db_session, db_search_space, db_user, mocker):
+    """RuntimeError is raised when the indexing step fails so the caller can fire a failure notification."""
     with pytest.raises(RuntimeError):
         await index_uploaded_file(
             markdown_content="## Hello\n\nSome content.",

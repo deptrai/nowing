@@ -11,6 +11,7 @@ pytestmark = pytest.mark.integration
 async def test_new_document_is_persisted_with_pending_status(
     db_session, db_search_space, make_connector_document
 ):
+    """A new document is created in the DB with PENDING status and correct markdown."""
     doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
@@ -31,6 +32,7 @@ async def test_new_document_is_persisted_with_pending_status(
 async def test_unchanged_ready_document_is_skipped(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """A READY document with unchanged content is not returned for re-indexing."""
     doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
@@ -48,6 +50,7 @@ async def test_unchanged_ready_document_is_skipped(
 async def test_title_only_change_updates_title_in_db(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """A title-only change updates the DB title without re-queuing the document."""
     original = make_connector_document(search_space_id=db_search_space.id, title="Original Title")
     service = IndexingPipelineService(session=db_session)
 
@@ -69,6 +72,7 @@ async def test_title_only_change_updates_title_in_db(
 async def test_changed_content_is_returned_for_reprocessing(
     db_session, db_search_space, make_connector_document
 ):
+    """A document with changed content is returned for re-indexing with updated markdown."""
     original = make_connector_document(search_space_id=db_search_space.id, source_markdown="## v1")
     service = IndexingPipelineService(session=db_session)
 
@@ -91,6 +95,7 @@ async def test_changed_content_is_returned_for_reprocessing(
 async def test_all_documents_in_batch_are_persisted(
     db_session, db_search_space, make_connector_document
 ):
+    """All documents in a batch are persisted and returned."""
     docs = [
         make_connector_document(search_space_id=db_search_space.id, unique_id="id-1", title="Doc 1", source_markdown="## Content 1"),
         make_connector_document(search_space_id=db_search_space.id, unique_id="id-2", title="Doc 2", source_markdown="## Content 2"),
@@ -111,6 +116,7 @@ async def test_all_documents_in_batch_are_persisted(
 async def test_duplicate_in_batch_is_persisted_once(
     db_session, db_search_space, make_connector_document
 ):
+    """The same document passed twice in a batch is only persisted once."""
     doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
@@ -127,6 +133,7 @@ async def test_duplicate_in_batch_is_persisted_once(
 async def test_created_by_id_is_persisted(
     db_session, db_user, db_search_space, make_connector_document
 ):
+    """created_by_id from the connector document is persisted on the DB row."""
     doc = make_connector_document(
         search_space_id=db_search_space.id,
         created_by_id=str(db_user.id),
@@ -145,6 +152,7 @@ async def test_created_by_id_is_persisted(
 async def test_metadata_is_updated_when_content_changes(
     db_session, db_search_space, make_connector_document
 ):
+    """document_metadata is overwritten with the latest metadata when content changes."""
     original = make_connector_document(
         search_space_id=db_search_space.id,
         source_markdown="## v1",
@@ -171,6 +179,7 @@ async def test_metadata_is_updated_when_content_changes(
 async def test_updated_at_advances_when_title_only_changes(
     db_session, db_search_space, make_connector_document
 ):
+    """updated_at advances even when only the title changes."""
     original = make_connector_document(search_space_id=db_search_space.id, title="Old Title")
     service = IndexingPipelineService(session=db_session)
 
@@ -192,6 +201,7 @@ async def test_updated_at_advances_when_title_only_changes(
 async def test_updated_at_advances_when_content_changes(
     db_session, db_search_space, make_connector_document
 ):
+    """updated_at advances when document content changes."""
     original = make_connector_document(search_space_id=db_search_space.id, source_markdown="## v1")
     service = IndexingPipelineService(session=db_session)
 
@@ -213,6 +223,7 @@ async def test_updated_at_advances_when_content_changes(
 async def test_same_content_from_different_source_skipped_in_single_batch(
     db_session, db_search_space, make_connector_document
 ):
+    """Two documents with identical content in the same batch result in only one being persisted."""
     first = make_connector_document(
         search_space_id=db_search_space.id,
         unique_id="source-a",
@@ -238,6 +249,7 @@ async def test_same_content_from_different_source_skipped_in_single_batch(
 async def test_same_content_from_different_source_is_skipped(
     db_session, db_search_space, make_connector_document
 ):
+    """A document with content identical to an already-indexed document is skipped."""
     first = make_connector_document(
         search_space_id=db_search_space.id,
         unique_id="source-a",
@@ -265,6 +277,7 @@ async def test_same_content_from_different_source_is_skipped(
 async def test_failed_document_with_unchanged_content_is_requeued(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """A FAILED document with unchanged content is re-queued as PENDING on the next run."""
     doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
@@ -289,6 +302,7 @@ async def test_failed_document_with_unchanged_content_is_requeued(
 async def test_title_and_content_change_updates_both_and_returns_document(
     db_session, db_search_space, make_connector_document
 ):
+    """When both title and content change, both are updated and the document is returned for re-indexing."""
     original = make_connector_document(
         search_space_id=db_search_space.id,
         title="Original Title",

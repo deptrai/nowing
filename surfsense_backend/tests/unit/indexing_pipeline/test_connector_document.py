@@ -6,6 +6,7 @@ from app.indexing_pipeline.connector_document import ConnectorDocument
 
 
 def test_valid_document_created_with_required_fields():
+    """All optional fields default correctly when only required fields are supplied."""
     doc = ConnectorDocument(
         title="Task",
         source_markdown="## Task\n\nSome content.",
@@ -23,6 +24,7 @@ def test_valid_document_created_with_required_fields():
 
 
 def test_omitting_created_by_id_raises():
+    """Omitting created_by_id raises a validation error."""
     with pytest.raises(ValidationError):
         ConnectorDocument(
             title="Task",
@@ -35,6 +37,7 @@ def test_omitting_created_by_id_raises():
 
 
 def test_empty_source_markdown_raises():
+    """Empty source_markdown raises a validation error."""
     with pytest.raises(ValidationError):
         ConnectorDocument(
             title="Task",
@@ -46,6 +49,7 @@ def test_empty_source_markdown_raises():
 
 
 def test_whitespace_only_source_markdown_raises():
+    """Whitespace-only source_markdown raises a validation error."""
     with pytest.raises(ValidationError):
         ConnectorDocument(
             title="Task",
@@ -57,6 +61,7 @@ def test_whitespace_only_source_markdown_raises():
 
 
 def test_empty_title_raises():
+    """Empty title raises a validation error."""
     with pytest.raises(ValidationError):
         ConnectorDocument(
             title="",
@@ -68,6 +73,7 @@ def test_empty_title_raises():
 
 
 def test_empty_created_by_id_raises():
+    """Empty created_by_id raises a validation error."""
     with pytest.raises(ValidationError):
         ConnectorDocument(
             title="Task",
@@ -81,6 +87,7 @@ def test_empty_created_by_id_raises():
 
 
 def test_zero_search_space_id_raises():
+    """search_space_id of zero raises a validation error."""
     with pytest.raises(ValidationError):
         ConnectorDocument(
             title="Task",
@@ -94,6 +101,7 @@ def test_zero_search_space_id_raises():
 
 
 def test_empty_unique_id_raises():
+    """Empty unique_id raises a validation error."""
     with pytest.raises(ValidationError):
         ConnectorDocument(
             title="Task",

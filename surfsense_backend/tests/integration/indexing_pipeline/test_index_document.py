@@ -11,6 +11,7 @@ pytestmark = pytest.mark.integration
 async def test_sets_status_ready(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """Document status is READY after successful indexing."""
     connector_doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
@@ -30,6 +31,7 @@ async def test_sets_status_ready(
 async def test_content_is_summary_when_should_summarize_true(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """Document content is set to the LLM-generated summary when should_summarize=True."""
     connector_doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
@@ -49,6 +51,7 @@ async def test_content_is_summary_when_should_summarize_true(
 async def test_content_is_source_markdown_when_should_summarize_false(
     db_session, db_search_space, make_connector_document,
 ):
+    """Document content is set to source_markdown verbatim when should_summarize=False."""
     connector_doc = make_connector_document(
         search_space_id=db_search_space.id,
         should_summarize=False,
@@ -72,6 +75,7 @@ async def test_content_is_source_markdown_when_should_summarize_false(
 async def test_chunks_written_to_db(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """Chunks derived from source_markdown are persisted in the DB."""
     connector_doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
@@ -94,6 +98,7 @@ async def test_chunks_written_to_db(
 async def test_embedding_written_to_db(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """Document embedding vector is persisted in the DB after indexing."""
     connector_doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
@@ -114,6 +119,7 @@ async def test_embedding_written_to_db(
 async def test_updated_at_advances_after_indexing(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """updated_at timestamp is later after indexing than it was at prepare time."""
     connector_doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
@@ -136,6 +142,7 @@ async def test_updated_at_advances_after_indexing(
 async def test_no_llm_falls_back_to_source_markdown(
     db_session, db_search_space, make_connector_document,
 ):
+    """When llm=None and no fallback_summary, content falls back to source_markdown."""
     connector_doc = make_connector_document(
         search_space_id=db_search_space.id,
         should_summarize=True,
@@ -160,6 +167,7 @@ async def test_no_llm_falls_back_to_source_markdown(
 async def test_fallback_summary_used_when_llm_unavailable(
     db_session, db_search_space, make_connector_document,
 ):
+    """fallback_summary is used as content when llm=None and should_summarize=True."""
     connector_doc = make_connector_document(
         search_space_id=db_search_space.id,
         should_summarize=True,
@@ -184,6 +192,7 @@ async def test_fallback_summary_used_when_llm_unavailable(
 async def test_reindex_replaces_old_chunks(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """Re-indexing a document replaces its old chunks rather than appending."""
     connector_doc = make_connector_document(
         search_space_id=db_search_space.id,
         source_markdown="## v1",
@@ -215,6 +224,7 @@ async def test_reindex_replaces_old_chunks(
 async def test_llm_error_sets_status_failed(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """Document status is FAILED when the LLM raises during indexing."""
     connector_doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
@@ -234,6 +244,7 @@ async def test_llm_error_sets_status_failed(
 async def test_llm_error_leaves_no_partial_data(
     db_session, db_search_space, make_connector_document, mocker,
 ):
+    """A failed indexing attempt leaves no partial embedding or chunks in the DB."""
     connector_doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
