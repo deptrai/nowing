@@ -124,20 +124,31 @@ async def poll_document_status(
     terminal state (``ready`` or ``failed``) or *timeout* seconds elapse.
 
     Returns a mapping of ``{document_id: status_item_dict}``.
+
+    Retries on transient transport errors until timeout.
     """
     ids_param = ",".join(str(d) for d in document_ids)
     terminal_states = {"ready", "failed"}
     elapsed = 0.0
+    items: dict[int, dict] = {}
+    last_transport_error: Exception | None = None
 
     while elapsed < timeout:
-        resp = await client.get(
-            "/api/v1/documents/status",
-            headers=headers,
-            params={
-                "search_space_id": search_space_id,
-                "document_ids": ids_param,
-            },
-        )
+        try:
+            resp = await client.get(
+                "/api/v1/documents/status",
+                headers=headers,
+                params={
+                    "search_space_id": search_space_id,
+                    "document_ids": ids_param,
+                },
+            )
+        except (httpx.ReadError, httpx.ConnectError, httpx.TimeoutException) as exc:
+            last_transport_error = exc
+            await asyncio.sleep(interval)
+            elapsed += interval
+            continue
+
         assert resp.status_code == 200, (
             f"Status poll failed ({resp.status_code}): {resp.text}"
         )
@@ -154,7 +165,8 @@ async def poll_document_status(
 
     raise TimeoutError(
         f"Documents {document_ids} did not reach terminal state within {timeout}s. "
-        f"Last status: {items}"
+        f"Last status: {items}. "
+        f"Last transport error: {last_transport_error!r}"
     )
 
 

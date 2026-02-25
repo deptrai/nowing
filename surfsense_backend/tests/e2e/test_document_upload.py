@@ -353,16 +353,16 @@ class TestDuplicateContentDetection:
         assert resp2.status_code == 200
         second_ids = resp2.json()["document_ids"]
         cleanup_doc_ids.extend(second_ids)
+        assert second_ids, (
+            "Expected at least one document id for renamed duplicate content upload"
+        )
 
-        if second_ids:
-            statuses = await poll_document_status(
-                client, headers, second_ids, search_space_id=search_space_id
-            )
-            for did in second_ids:
-                assert statuses[did]["status"]["state"] == "failed"
-                assert "duplicate" in (
-                    statuses[did]["status"].get("reason", "").lower()
-                )
+        statuses = await poll_document_status(
+            client, headers, second_ids, search_space_id=search_space_id
+        )
+        for did in second_ids:
+            assert statuses[did]["status"]["state"] == "failed"
+            assert "duplicate" in statuses[did]["status"].get("reason", "").lower()
 
 
 # ---------------------------------------------------------------------------
@@ -387,16 +387,16 @@ class TestEmptyFileUpload:
 
         doc_ids = resp.json()["document_ids"]
         cleanup_doc_ids.extend(doc_ids)
+        assert doc_ids, "Expected at least one document id for empty PDF upload"
 
-        if doc_ids:
-            statuses = await poll_document_status(
-                client, headers, doc_ids, search_space_id=search_space_id, timeout=120.0
+        statuses = await poll_document_status(
+            client, headers, doc_ids, search_space_id=search_space_id, timeout=120.0
+        )
+        for did in doc_ids:
+            assert statuses[did]["status"]["state"] == "failed"
+            assert statuses[did]["status"].get("reason"), (
+                "Failed document should include a reason"
             )
-            for did in doc_ids:
-                assert statuses[did]["status"]["state"] == "failed"
-                assert statuses[did]["status"].get("reason"), (
-                    "Failed document should include a reason"
-                )
 
 
 # ---------------------------------------------------------------------------
