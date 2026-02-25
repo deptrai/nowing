@@ -37,11 +37,11 @@ class IndexingPipelineService:
         """
         Persist new documents and detect changes, returning only those that need indexing.
         """
-        try:
-            documents = []
-            seen_hashes: set[str] = set()
+        documents = []
+        seen_hashes: set[str] = set()
 
-            for connector_doc in connector_docs:
+        for connector_doc in connector_docs:
+            try:
                 unique_identifier_hash = compute_unique_identifier_hash(connector_doc)
                 content_hash = compute_content_hash(connector_doc)
 
@@ -97,13 +97,16 @@ class IndexingPipelineService:
                 self.session.add(document)
                 documents.append(document)
 
+            except Exception:
+                continue
+
+        try:
             await self.session.commit()
             return documents
-
         except IntegrityError:
-            # Most likely a concurrent worker committed a document with the same
-            # content_hash or unique_identifier_hash. Roll back and let the next
-            # sync run handle it.
+            # A concurrent worker committed a document with the same content_hash
+            # or unique_identifier_hash between our check and our INSERT.
+            # The document already exists — roll back and let the next sync run handle it.
             await self.session.rollback()
             return []
 

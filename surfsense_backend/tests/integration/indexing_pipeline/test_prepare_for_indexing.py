@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import select
 
 from app.db import Document, DocumentStatus
+from app.indexing_pipeline.document_hashing import compute_content_hash as real_compute_content_hash
 from app.indexing_pipeline.indexing_pipeline_service import IndexingPipelineService
 
 pytestmark = pytest.mark.integration
@@ -314,4 +315,49 @@ async def test_title_and_content_change_updates_both_and_returns_document(
     assert reloaded.title == "Updated Title"
     assert reloaded.source_markdown == "## v2"
 
-# explain how this No no_autoflush guard for duplicate check is a regression in new pipeline , explain this Notion chunks wrong string	Behavioral diff	Chunks page content	Would chunk full wrapper , let us discuss about this : GitHub can't split embedding vs chunk content	Behavioral diff	Two strings	One source_markdown 
+
+
+async def test_one_bad_document_in_batch_does_not_prevent_others_from_being_persisted(
+    db_session, db_search_space, make_connector_document, monkeypatch,
+):
+    """
+    A per-document error during prepare_for_indexing must be isolated.
+    The two valid documents around the failing one must still be persisted.
+    """
+    docs = [
+        make_connector_document(
+            search_space_id=db_search_space.id,
+            unique_id="good-1",
+            source_markdown="## Good doc 1",
+        ),
+        make_connector_document(
+            search_space_id=db_search_space.id,
+            unique_id="will-fail",
+            source_markdown="## Bad doc",
+        ),
+        make_connector_document(
+            search_space_id=db_search_space.id,
+            unique_id="good-2",
+            source_markdown="## Good doc 2",
+        ),
+    ]
+
+    def compute_content_hash_with_error(doc):
+        if doc.unique_id == "will-fail":
+            raise RuntimeError("Simulated per-document failure")
+        return real_compute_content_hash(doc)
+
+    monkeypatch.setattr(
+        "app.indexing_pipeline.indexing_pipeline_service.compute_content_hash",
+        compute_content_hash_with_error,
+    )
+
+    service = IndexingPipelineService(session=db_session)
+    results = await service.prepare_for_indexing(docs)
+
+    assert len(results) == 2
+
+    result = await db_session.execute(
+        select(Document).filter(Document.search_space_id == db_search_space.id)
+    )
+    assert len(result.scalars().all()) == 2
