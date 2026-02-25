@@ -1632,6 +1632,8 @@ async def process_file_in_background_with_document(
     from app.config import config as app_config
     from app.services.llm_service import get_user_long_context_llm
 
+    doc_id = document.id
+
     try:
         markdown_content = None
         etl_service = None
@@ -1855,7 +1857,7 @@ async def process_file_in_background_with_document(
         content_hash = generate_content_hash(markdown_content, search_space_id)
 
         existing_by_content = await check_duplicate_document(session, content_hash)
-        if existing_by_content and existing_by_content.id != document.id:
+        if existing_by_content and existing_by_content.id != doc_id:
             # Duplicate content found - mark this document as failed
             logging.info(
                 f"Duplicate content detected for {filename}, "
@@ -1918,7 +1920,7 @@ async def process_file_in_background_with_document(
             log_entry,
             f"Successfully processed file: {filename}",
             {
-                "document_id": document.id,
+                "document_id": doc_id,
                 "content_hash": content_hash,
                 "file_type": etl_service,
                 "chunks_count": len(chunks),
@@ -1946,7 +1948,7 @@ async def process_file_in_background_with_document(
             {
                 "error_type": type(e).__name__,
                 "filename": filename,
-                "document_id": document.id,
+                "document_id": doc_id,
             },
         )
         logging.error(f"Error processing file with document: {error_message}")

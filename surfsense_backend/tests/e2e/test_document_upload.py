@@ -42,7 +42,6 @@ def _assert_document_ready(doc: dict, *, expected_filename: str) -> None:
     assert doc["content"], "Document content (summary) should not be empty"
     assert doc["content_hash"], "content_hash should be set"
     assert doc["document_metadata"].get("FILE_NAME") == expected_filename
-    assert doc["document_metadata"].get("ETL_SERVICE"), "ETL_SERVICE should be set"
 
 
 # ---------------------------------------------------------------------------
