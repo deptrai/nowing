@@ -67,6 +67,7 @@ dependencies = [
     "typst>=0.14.0",
     "deepagents>=0.4.3",
     "deepagents-microsandbox>=1.0.1",
+    "microsandbox>=0.1.8",
 ]
 
 [dependency-groups]
