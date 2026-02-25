@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import object_session
 from sqlalchemy.orm.attributes import set_committed_value
 
+from sqlalchemy import delete
+
 from app.db import Chunk, Document, DocumentStatus
 from app.indexing_pipeline.connector_document import ConnectorDocument
 from app.indexing_pipeline.document_chunker import chunk_text
@@ -52,6 +54,7 @@ class IndexingPipelineService:
                 if existing.content_hash == content_hash:
                     if existing.title != connector_doc.title:
                         existing.title = connector_doc.title
+                        existing.updated_at = datetime.now(UTC)
                     continue
 
                 existing.title = connector_doc.title
@@ -99,7 +102,7 @@ class IndexingPipelineService:
             document.status = DocumentStatus.processing()
             await self.session.commit()
 
-            if connector_doc.should_summarize:
+            if connector_doc.should_summarize and llm is not None:
                 content = await summarize_document(
                     connector_doc.source_markdown, llm, connector_doc.metadata
                 )
@@ -107,6 +110,10 @@ class IndexingPipelineService:
                 content = connector_doc.source_markdown
 
             embedding = embed_text(content)
+
+            await self.session.execute(
+                delete(Chunk).where(Chunk.document_id == document.id)
+            )
 
             chunks = [
                 Chunk(content=text, embedding=embed_text(text))

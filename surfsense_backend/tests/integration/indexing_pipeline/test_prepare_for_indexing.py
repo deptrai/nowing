@@ -159,6 +159,27 @@ async def test_metadata_is_updated_when_content_changes(
     assert reloaded.document_metadata == {"status": "done"}
 
 
+async def test_updated_at_advances_when_title_only_changes(
+    db_session, db_search_space, make_connector_document
+):
+    original = make_connector_document(search_space_id=db_search_space.id, title="Old Title")
+    service = IndexingPipelineService(session=db_session)
+
+    first = await service.prepare_for_indexing([original])
+    document_id = first[0].id
+
+    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    updated_at_v1 = result.scalars().first().updated_at
+
+    renamed = make_connector_document(search_space_id=db_search_space.id, title="New Title")
+    await service.prepare_for_indexing([renamed])
+
+    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    updated_at_v2 = result.scalars().first().updated_at
+
+    assert updated_at_v2 > updated_at_v1
+
+
 async def test_updated_at_advances_when_content_changes(
     db_session, db_search_space, make_connector_document
 ):
