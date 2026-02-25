@@ -177,6 +177,8 @@ markers = [
     "document: document upload and processing tests",
     "connector: connector indexing tests",
     "chat: chat and agent tests",
+    "page_limit: page limit enforcement tests",
+    "upload_limit: file upload limit validation tests",
 ]
 
 [tool.setuptools.packages.find]

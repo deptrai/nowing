@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 
 from tests.utils.helpers import (
     BACKEND_URL,
+    TEST_EMAIL,
     auth_headers,
     delete_document,
     get_auth_token,
@@ -139,3 +140,67 @@ async def _cleanup_documents(
             )
         finally:
             await conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Page-limit helpers (direct DB access)
+# ---------------------------------------------------------------------------
+
+
+async def _get_user_page_usage(email: str) -> tuple[int, int]:
+    """Return ``(pages_used, pages_limit)`` for the given user."""
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        row = await conn.fetchrow(
+            'SELECT pages_used, pages_limit FROM "user" WHERE email = $1',
+            email,
+        )
+        assert row is not None, f"User {email!r} not found in database"
+        return row["pages_used"], row["pages_limit"]
+    finally:
+        await conn.close()
+
+
+async def _set_user_page_limits(
+    email: str, *, pages_used: int, pages_limit: int
+) -> None:
+    """Overwrite ``pages_used`` and ``pages_limit`` for the given user."""
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        await conn.execute(
+            'UPDATE "user" SET pages_used = $1, pages_limit = $2 WHERE email = $3',
+            pages_used,
+            pages_limit,
+            email,
+        )
+    finally:
+        await conn.close()
+
+
+@pytest.fixture
+async def page_limits():
+    """
+    Fixture that exposes helpers for manipulating the test user's page limits.
+
+    Automatically restores the original values after each test.
+
+    Usage inside a test::
+
+        await page_limits.set(pages_used=0, pages_limit=100)
+        used, limit = await page_limits.get()
+    """
+
+    class _PageLimits:
+        async def set(self, *, pages_used: int, pages_limit: int) -> None:
+            await _set_user_page_limits(
+                TEST_EMAIL, pages_used=pages_used, pages_limit=pages_limit
+            )
+
+        async def get(self) -> tuple[int, int]:
+            return await _get_user_page_usage(TEST_EMAIL)
+
+    original = await _get_user_page_usage(TEST_EMAIL)
+    yield _PageLimits()
+    await _set_user_page_limits(
+        TEST_EMAIL, pages_used=original[0], pages_limit=original[1]
+    )

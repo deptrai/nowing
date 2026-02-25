@@ -184,3 +184,29 @@ async def delete_document(
         f"/api/v1/documents/{document_id}",
         headers=headers,
     )
+
+
+async def get_notifications(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    *,
+    type_filter: str | None = None,
+    search_space_id: int | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    """Fetch notifications for the authenticated user, optionally filtered by type."""
+    params: dict[str, str | int] = {"limit": limit}
+    if type_filter:
+        params["type"] = type_filter
+    if search_space_id is not None:
+        params["search_space_id"] = search_space_id
+
+    resp = await client.get(
+        "/api/v1/notifications",
+        headers=headers,
+        params=params,
+    )
+    assert resp.status_code == 200, (
+        f"GET notifications failed ({resp.status_code}): {resp.text}"
+    )
+    return resp.json()["items"]
