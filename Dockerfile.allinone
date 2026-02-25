@@ -216,6 +216,10 @@ RUN pip install --no-cache-dir playwright \
     && playwright install chromium \
     && rm -rf /root/.cache/ms-playwright/ffmpeg* 
 
+# Install Microsandbox (optional secure code execution for deep agent).
+# Requires --device /dev/kvm at runtime. Enable via MICROSANDBOX_ENABLED=TRUE.
+RUN curl -sSL https://get.microsandbox.dev | sh || true
+
 # Copy backend source
 COPY surfsense_backend/ ./
 
@@ -260,6 +264,11 @@ ENV NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8000
 ENV NEXT_PUBLIC_FASTAPI_BACKEND_AUTH_TYPE=LOCAL
 ENV NEXT_PUBLIC_ETL_SERVICE=DOCLING
 
+# Microsandbox (optional - requires --device /dev/kvm and --privileged at runtime)
+ENV MICROSANDBOX_ENABLED=FALSE
+ENV MICROSANDBOX_SERVER_URL=http://localhost:5555
+# MICROSANDBOX_API_KEY is intentionally unset; set at runtime for production.
+
 # Electric SQL configuration (ELECTRIC_DATABASE_URL is built dynamically by entrypoint from these values)
 ENV ELECTRIC_DB_USER=electric
 ENV ELECTRIC_DB_PASSWORD=electric_password
@@ -274,8 +283,8 @@ ENV NEXT_PUBLIC_ELECTRIC_AUTH_MODE=insecure
 # Data volume
 VOLUME ["/data"]
 
-# Expose ports (Frontend: 3000, Backend: 8000, Electric: 5133)
-EXPOSE 3000 8000 5133
+# Expose ports (Frontend: 3000, Backend: 8000, Electric: 5133, Microsandbox: 5555)
+EXPOSE 3000 8000 5133 5555
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \

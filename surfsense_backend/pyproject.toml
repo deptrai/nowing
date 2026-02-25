@@ -65,6 +65,7 @@ dependencies = [
     "pypandoc_binary>=1.16.2",
     "typst>=0.14.0",
     "deepagents>=0.4.3",
+    "deepagents-microsandbox>=1.0.1",
 ]
 
 [dependency-groups]

@@ -97,4 +97,11 @@ export {
 	SaveMemoryResultSchema,
 	SaveMemoryToolUI,
 } from "./user-memory";
+export {
+	type ExecuteArgs,
+	ExecuteArgsSchema,
+	type ExecuteResult,
+	ExecuteResultSchema,
+	SandboxExecuteToolUI,
+} from "./sandbox-execute";
 export { type WriteTodosData, WriteTodosSchema, WriteTodosToolUI } from "./write-todos";

@@ -65,9 +65,14 @@ services:
       - ELECTRIC_DB_PASSWORD=${ELECTRIC_DB_PASSWORD:-electric_password}
       - AUTH_TYPE=${AUTH_TYPE:-LOCAL}
       - NEXT_FRONTEND_URL=${NEXT_FRONTEND_URL:-http://localhost:3000}
+      # Microsandbox – uncomment when microsandbox service is enabled
+      # - MICROSANDBOX_ENABLED=TRUE
+      # - MICROSANDBOX_SERVER_URL=http://microsandbox:5555
+      # - MICROSANDBOX_API_KEY=${MICROSANDBOX_API_KEY:-}
     depends_on:
       - db
       - redis
+      # - microsandbox
 
   # Run these services separately in production
   # celery_worker:
@@ -124,6 +129,42 @@ services:
   #     - redis
   #     - celery_worker
 
+  # ============================================================
+  # Microsandbox (optional - secure code execution for deep agent)
+  # ============================================================
+  # Requires a Linux host with KVM support (/dev/kvm).
+  # To enable:
+  #   1. Uncomment this service
+  #   2. Set MICROSANDBOX_ENABLED=TRUE in surfsense_backend/.env
+  #   3. Run with: docker compose up -d
+  # The first sandbox creation will pull the OCI image (e.g. microsandbox/python),
+  # so the initial run takes a bit longer.
+  #
+  # microsandbox:
+  #   image: ubuntu:22.04
+  #   ports:
+  #     - "${MICROSANDBOX_PORT:-5555}:5555"
+  #   volumes:
+  #     - microsandbox_data:/root/.microsandbox
+  #   privileged: true
+  #   devices:
+  #     - /dev/kvm:/dev/kvm
+  #   entrypoint: ["/bin/bash", "-c"]
+  #   command:
+  #     - |
+  #       set -e
+  #       if ! command -v msb &>/dev/null; then
+  #         apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+  #         curl -sSL https://get.microsandbox.dev | sh
+  #       fi
+  #       exec msb server start --dev
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:5555/health"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
   electric:
     image: electricsql/electric:latest
     ports:
@@ -165,3 +206,4 @@ volumes:
   pgadmin_data:
   redis_data:
   shared_temp:
+  # microsandbox_data:

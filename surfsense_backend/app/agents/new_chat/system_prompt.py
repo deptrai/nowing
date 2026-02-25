@@ -645,6 +645,63 @@ However, from your video learning, it's important to note that asyncio is not su
 </citation_instructions>
 """
 
+# Sandbox / code execution instructions — appended when sandbox backend is enabled.
+# Inspired by Claude's computer-use prompt, scoped to code execution & data analytics.
+SANDBOX_EXECUTION_INSTRUCTIONS = """
+<code_execution>
+You have access to a secure, isolated Linux sandbox environment for running code and shell commands.
+This gives you the `execute` tool alongside the standard filesystem tools (`ls`, `read_file`, `write_file`, `edit_file`, `glob`, `grep`).
+
+## When to Use Code Execution
+
+Use the sandbox when the task benefits from actually running code rather than just describing it:
+- **Data analysis**: Load CSVs/JSON, compute statistics, filter/aggregate data, pivot tables
+- **Visualization**: Generate charts and plots (matplotlib, plotly, seaborn)
+- **Calculations**: Math, financial modeling, unit conversions, simulations
+- **Code validation**: Run and test code snippets the user provides or asks about
+- **File processing**: Parse, transform, or convert data files
+- **Quick prototyping**: Demonstrate working code for the user's problem
+- **Package exploration**: Install and test libraries the user is evaluating
+
+## When NOT to Use Code Execution
+
+Do not use the sandbox for:
+- Answering factual questions from your own knowledge
+- Summarizing or explaining concepts
+- Simple formatting or text generation tasks
+- Tasks that don't require running code to answer
+
+## Package Management
+
+- Use `pip install <package>` to install Python packages as needed
+- Common data/analytics packages (pandas, numpy, matplotlib, scipy, scikit-learn) may need to be installed on first use
+- Always verify a package installed successfully before using it
+
+## Working Guidelines
+
+- **Working directory**: Use `/home` or `/tmp` for all work
+- **Iterative approach**: For complex tasks, break work into steps — write code, run it, check output, refine
+- **Error handling**: If code fails, read the error, fix the issue, and retry. Don't just report the error without attempting a fix.
+- **Show results**: When generating plots or outputs, present the key findings directly in your response. For plots, save to a file and describe the results.
+- **Be efficient**: Install packages once per session. Combine related commands when possible.
+- **Large outputs**: If command output is very large, use `head`, `tail`, or save to a file and read selectively.
+
+## Data Analytics Best Practices
+
+When the user asks you to analyze data:
+1. First, inspect the data structure (`head`, `shape`, `dtypes`, `describe()`)
+2. Clean and validate before computing (handle nulls, check types)
+3. Perform the analysis and present results clearly
+4. Offer follow-up insights or visualizations when appropriate
+
+## Security Notes
+
+- The sandbox is fully isolated — you cannot access the host system, the user's local files, or any secrets
+- Each conversation thread has its own sandbox environment
+- Installed packages and created files can persist for the thread while its sandbox is active; cleanup depends on sandbox lifecycle/deletion policy
+</code_execution>
+"""
+
 # Anti-citation prompt - used when citations are disabled
 # This explicitly tells the model NOT to include citations
 SURFSENSE_NO_CITATION_INSTRUCTIONS = """
@@ -670,6 +727,7 @@ Your goal is to provide helpful, informative answers in a clean, readable format
 def build_surfsense_system_prompt(
     today: datetime | None = None,
     thread_visibility: ChatVisibility | None = None,
+    sandbox_enabled: bool = False,
 ) -> str:
     """
     Build the SurfSense system prompt with default settings.
@@ -678,10 +736,12 @@ def build_surfsense_system_prompt(
     - Default system instructions
     - Tools instructions (always included)
     - Citation instructions enabled
+    - Sandbox execution instructions (when sandbox_enabled=True)
 
     Args:
         today: Optional datetime for today's date (defaults to current UTC date)
         thread_visibility: Optional; when provided, used for conditional prompt (e.g. private vs shared memory wording). Defaults to private behavior when None.
+        sandbox_enabled: Whether the sandbox backend is active (adds code execution instructions).
 
     Returns:
         Complete system prompt string
@@ -691,7 +751,8 @@ def build_surfsense_system_prompt(
     system_instructions = _get_system_instructions(visibility, today)
     tools_instructions = _get_tools_instructions(visibility)
     citation_instructions = SURFSENSE_CITATION_INSTRUCTIONS
-    return system_instructions + tools_instructions + citation_instructions
+    sandbox_instructions = SANDBOX_EXECUTION_INSTRUCTIONS if sandbox_enabled else ""
+    return system_instructions + tools_instructions + citation_instructions + sandbox_instructions
 
 
 def build_configurable_system_prompt(
@@ -700,14 +761,16 @@ def build_configurable_system_prompt(
     citations_enabled: bool = True,
     today: datetime | None = None,
     thread_visibility: ChatVisibility | None = None,
+    sandbox_enabled: bool = False,
 ) -> str:
     """
     Build a configurable SurfSense system prompt based on NewLLMConfig settings.
 
-    The prompt is composed of three parts:
+    The prompt is composed of up to four parts:
     1. System Instructions - either custom or default SURFSENSE_SYSTEM_INSTRUCTIONS
     2. Tools Instructions - always included (SURFSENSE_TOOLS_INSTRUCTIONS)
     3. Citation Instructions - either SURFSENSE_CITATION_INSTRUCTIONS or SURFSENSE_NO_CITATION_INSTRUCTIONS
+    4. Sandbox Execution Instructions - when sandbox_enabled=True
 
     Args:
         custom_system_instructions: Custom system instructions to use. If empty/None and
@@ -719,6 +782,7 @@ def build_configurable_system_prompt(
                           anti-citation instructions (False).
         today: Optional datetime for today's date (defaults to current UTC date)
         thread_visibility: Optional; when provided, used for conditional prompt (e.g. private vs shared memory wording). Defaults to private behavior when None.
+        sandbox_enabled: Whether the sandbox backend is active (adds code execution instructions).
 
     Returns:
         Complete system prompt string
@@ -727,7 +791,6 @@ def build_configurable_system_prompt(
 
     # Determine system instructions
     if custom_system_instructions and custom_system_instructions.strip():
-        # Use custom instructions, injecting the date placeholder if present
         system_instructions = custom_system_instructions.format(
             resolved_today=resolved_today
         )
@@ -735,7 +798,6 @@ def build_configurable_system_prompt(
         visibility = thread_visibility or ChatVisibility.PRIVATE
         system_instructions = _get_system_instructions(visibility, today)
     else:
-        # No system instructions (edge case)
         system_instructions = ""
 
     # Tools instructions: conditional on thread_visibility (private vs shared memory wording)
@@ -748,7 +810,9 @@ def build_configurable_system_prompt(
         else SURFSENSE_NO_CITATION_INSTRUCTIONS
     )
 
-    return system_instructions + tools_instructions + citation_instructions
+    sandbox_instructions = SANDBOX_EXECUTION_INSTRUCTIONS if sandbox_enabled else ""
+
+    return system_instructions + tools_instructions + citation_instructions + sandbox_instructions
 
 
 def get_default_system_instructions() -> str:

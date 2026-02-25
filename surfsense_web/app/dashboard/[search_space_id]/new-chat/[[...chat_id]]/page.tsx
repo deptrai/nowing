@@ -49,6 +49,7 @@ import {
 	DeleteNotionPageToolUI,
 	UpdateNotionPageToolUI,
 } from "@/components/tool-ui/notion";
+import { SandboxExecuteToolUI } from "@/components/tool-ui/sandbox-execute";
 import { ScrapeWebpageToolUI } from "@/components/tool-ui/scrape-webpage";
 import { RecallMemoryToolUI, SaveMemoryToolUI } from "@/components/tool-ui/user-memory";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -151,6 +152,7 @@ const TOOLS_WITH_UI = new Set([
 	"create_linear_issue",
 	"update_linear_issue",
 	"delete_linear_issue",
+	"execute",
 	// "write_todos", // Disabled for now
 ]);
 
@@ -1664,6 +1666,7 @@ export default function NewChatPage() {
 			<CreateLinearIssueToolUI />
 			<UpdateLinearIssueToolUI />
 			<DeleteLinearIssueToolUI />
+			<SandboxExecuteToolUI />
 			{/* <WriteTodosToolUI /> Disabled for now */}
 			<div className="flex h-[calc(100dvh-64px)] overflow-hidden">
 				<div className="flex-1 flex flex-col min-w-0 overflow-hidden">
