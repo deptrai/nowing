@@ -39,6 +39,10 @@ import { DisplayImageToolUI } from "@/components/tool-ui/display-image";
 import { GeneratePodcastToolUI } from "@/components/tool-ui/generate-podcast";
 import { GenerateReportToolUI } from "@/components/tool-ui/generate-report";
 import {
+	CreateGoogleDriveFileToolUI,
+	DeleteGoogleDriveFileToolUI,
+} from "@/components/tool-ui/google-drive";
+import {
 	CreateLinearIssueToolUI,
 	DeleteLinearIssueToolUI,
 	UpdateLinearIssueToolUI,
@@ -152,6 +156,8 @@ const TOOLS_WITH_UI = new Set([
 	"create_linear_issue",
 	"update_linear_issue",
 	"delete_linear_issue",
+	"create_google_drive_file",
+	"delete_google_drive_file",
 	"execute",
 	// "write_todos", // Disabled for now
 ]);
@@ -1666,6 +1672,8 @@ export default function NewChatPage() {
 			<CreateLinearIssueToolUI />
 			<UpdateLinearIssueToolUI />
 			<DeleteLinearIssueToolUI />
+			<CreateGoogleDriveFileToolUI />
+			<DeleteGoogleDriveFileToolUI />
 			<SandboxExecuteToolUI />
 			{/* <WriteTodosToolUI /> Disabled for now */}
 			<div className="flex h-[calc(100dvh-64px)] overflow-hidden">
