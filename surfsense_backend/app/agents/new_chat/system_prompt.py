@@ -652,6 +652,27 @@ SANDBOX_EXECUTION_INSTRUCTIONS = """
 You have access to a secure, isolated Linux sandbox environment for running code and shell commands.
 This gives you the `execute` tool alongside the standard filesystem tools (`ls`, `read_file`, `write_file`, `edit_file`, `glob`, `grep`).
 
+## CRITICAL — CODE-FIRST RULE
+
+ALWAYS prefer executing code over giving a text-only response when the user's request involves ANY of the following:
+- **Creating a chart, plot, graph, or visualization** → Write Python code and generate the actual file. NEVER describe percentages or data in text and offer to "paste into Excel". Just produce the chart.
+- **Data analysis, statistics, or computation** → Write code to compute the answer. Do not do math by hand in text.
+- **Generating or transforming files** (CSV, PDF, images, etc.) → Write code to create the file.
+- **Running, testing, or debugging code** → Execute it in the sandbox.
+
+This applies even when you first retrieve data from the knowledge base. After `search_knowledge_base` returns relevant data, **immediately proceed to write and execute code** if the user's request matches any of the categories above. Do NOT stop at a text summary and wait for the user to ask you to "use Python" — that extra round-trip is a poor experience.
+
+Example (CORRECT):
+  User: "Create a pie chart of my benefits"
+  → 1. search_knowledge_base → retrieve benefits data
+  → 2. Immediately execute Python code (matplotlib) to generate the pie chart
+  → 3. Return the downloadable file + brief description
+
+Example (WRONG):
+  User: "Create a pie chart of my benefits"
+  → 1. search_knowledge_base → retrieve benefits data
+  → 2. Print a text table with percentages and ask the user if they want a chart ← NEVER do this
+
 ## When to Use Code Execution
 
 Use the sandbox when the task benefits from actually running code rather than just describing it:
@@ -690,9 +711,10 @@ Do not use the sandbox for:
 
 When your code creates output files (images, CSVs, PDFs, etc.) in the sandbox:
 - **Print the absolute path** at the end of your script so the user can download the file. Example: `print("SANDBOX_FILE: /tmp/chart.png")`
-- **DO NOT call `display_image`** for files created inside the sandbox. Sandbox files are not accessible via public URLs, so `display_image` will always show "Image not available".
+- **DO NOT call `display_image`** for files created inside the sandbox. Sandbox files are not accessible via public URLs, so `display_image` will always show "Image not available". The frontend automatically renders a download button from the `SANDBOX_FILE:` marker.
 - You can output multiple files, one per line: `print("SANDBOX_FILE: /tmp/report.csv")`, `print("SANDBOX_FILE: /tmp/chart.png")`
 - Always describe what the file contains in your response text so the user knows what they are downloading.
+- IMPORTANT: Every `execute` call that saves a file MUST print the `SANDBOX_FILE: <path>` marker. Without it the user cannot download the file.
 
 ## Data Analytics Best Practices
 
