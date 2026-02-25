@@ -10,12 +10,22 @@ from app.db import Document, DocumentStatus
 async def rollback_and_persist_failure(
     session: AsyncSession, document: Document, message: str
 ) -> None:
-    """Roll back the current transaction, refresh the document, and persist a failed status."""
-    await session.rollback()
-    await session.refresh(document)
-    document.updated_at = datetime.now(UTC)
-    document.status = DocumentStatus.failed(message)
-    await session.commit()
+    """Roll back the current transaction and best-effort persist a failed status.
+
+    Called exclusively from except blocks — must never raise, or the new exception
+    would chain with the original and mask it entirely.
+    """
+    try:
+        await session.rollback()
+    except Exception:
+        return  # Session is completely dead; nothing further we can do.
+    try:
+        await session.refresh(document)
+        document.updated_at = datetime.now(UTC)
+        document.status = DocumentStatus.failed(message)
+        await session.commit()
+    except Exception:
+        pass  # Best-effort; document will be retried on the next sync.
 
 
 def attach_chunks_to_document(document: Document, chunks: list) -> None:

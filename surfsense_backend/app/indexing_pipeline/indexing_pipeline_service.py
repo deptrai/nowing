@@ -135,7 +135,6 @@ class IndexingPipelineService:
                 return []
             except TRANSIENT_DB_ERRORS as e:
                 log_doc_skipped_db(ctx, e)
-                await self.session.rollback()
             except Exception as e:
                 log_doc_skipped_unknown(ctx, e)
                 continue
@@ -207,13 +206,13 @@ class IndexingPipelineService:
             log_permanent_llm_error(ctx, e)
             await rollback_and_persist_failure(self.session, document, llm_permanent_message(e))
 
-        except EMBEDDING_ERRORS as e:
-            log_embedding_error(ctx, e)
-            await rollback_and_persist_failure(self.session, document, embedding_message(e))
-
         except RecursionError as e:
             log_chunking_overflow(ctx, e)
             await rollback_and_persist_failure(self.session, document, PipelineMessages.CHUNKING_OVERFLOW)
+
+        except EMBEDDING_ERRORS as e:
+            log_embedding_error(ctx, e)
+            await rollback_and_persist_failure(self.session, document, embedding_message(e))
 
         except FATAL_DB_ERRORS as e:
             log_db_fatal_error(ctx, e)
