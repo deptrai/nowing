@@ -862,11 +862,13 @@ async def _stream_agent_events(
                     exit_code = int(m.group(1))
                     om = re.search(r"\nOutput:\n([\s\S]*)", raw_text)
                     output_text = om.group(1) if om else ""
+                thread_id_str = config.get("configurable", {}).get("thread_id", "")
                 yield streaming_service.format_tool_output_available(
                     tool_call_id,
                     {
                         "exit_code": exit_code,
                         "output": output_text,
+                        "thread_id": thread_id_str,
                     },
                 )
             else:

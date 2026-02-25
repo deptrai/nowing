@@ -679,12 +679,20 @@ Do not use the sandbox for:
 
 ## Working Guidelines
 
-- **Working directory**: Use `/home` or `/tmp` for all work
+- **Working directory**: The shell starts in the sandbox user's home directory (e.g. `/home/daytona`). Use **relative paths** or `/tmp/` for all files you create. NEVER write directly to `/home/` — that is the parent directory and is not writable. Use `pwd` if you need to discover the current working directory.
 - **Iterative approach**: For complex tasks, break work into steps — write code, run it, check output, refine
 - **Error handling**: If code fails, read the error, fix the issue, and retry. Don't just report the error without attempting a fix.
 - **Show results**: When generating plots or outputs, present the key findings directly in your response. For plots, save to a file and describe the results.
 - **Be efficient**: Install packages once per session. Combine related commands when possible.
 - **Large outputs**: If command output is very large, use `head`, `tail`, or save to a file and read selectively.
+
+## Sharing Generated Files
+
+When your code creates output files (images, CSVs, PDFs, etc.) in the sandbox:
+- **Print the absolute path** at the end of your script so the user can download the file. Example: `print("SANDBOX_FILE: /tmp/chart.png")`
+- **DO NOT call `display_image`** for files created inside the sandbox. Sandbox files are not accessible via public URLs, so `display_image` will always show "Image not available".
+- You can output multiple files, one per line: `print("SANDBOX_FILE: /tmp/report.csv")`, `print("SANDBOX_FILE: /tmp/chart.png")`
+- Always describe what the file contains in your response text so the user knows what they are downloading.
 
 ## Data Analytics Best Practices
 

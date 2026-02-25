@@ -5,19 +5,24 @@ import {
 	AlertCircleIcon,
 	CheckCircle2Icon,
 	ChevronRightIcon,
+	DownloadIcon,
+	FileIcon,
 	Loader2Icon,
 	TerminalIcon,
 	XCircleIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { getBearerToken } from "@/lib/auth-utils";
+import { BACKEND_URL } from "@/lib/env-config";
 
 // ============================================================================
 // Zod Schemas
@@ -34,6 +39,7 @@ const ExecuteResultSchema = z.object({
 	output: z.string().nullish(),
 	error: z.string().nullish(),
 	status: z.string().nullish(),
+	thread_id: z.string().nullish(),
 });
 
 // ============================================================================
@@ -43,30 +49,63 @@ const ExecuteResultSchema = z.object({
 type ExecuteArgs = z.infer<typeof ExecuteArgsSchema>;
 type ExecuteResult = z.infer<typeof ExecuteResultSchema>;
 
+interface SandboxFile {
+	path: string;
+	name: string;
+}
+
 interface ParsedOutput {
 	exitCode: number | null;
 	output: string;
+	displayOutput: string;
 	truncated: boolean;
 	isError: boolean;
+	files: SandboxFile[];
 }
 
 // ============================================================================
 // Helpers
 // ============================================================================
 
+const SANDBOX_FILE_RE = /^SANDBOX_FILE:\s*(.+)$/gm;
+
+function extractSandboxFiles(text: string): SandboxFile[] {
+	const files: SandboxFile[] = [];
+	let match: RegExpExecArray | null;
+	while ((match = SANDBOX_FILE_RE.exec(text)) !== null) {
+		const filePath = match[1].trim();
+		if (filePath) {
+			const name = filePath.includes("/")
+				? filePath.split("/").pop() || filePath
+				: filePath;
+			files.push({ path: filePath, name });
+		}
+	}
+	SANDBOX_FILE_RE.lastIndex = 0;
+	return files;
+}
+
+function stripSandboxFileLines(text: string): string {
+	return text.replace(/^SANDBOX_FILE:\s*.+$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 function parseExecuteResult(result: ExecuteResult): ParsedOutput {
 	const raw = result.result || result.output || "";
 
 	if (result.error) {
-		return { exitCode: null, output: result.error, truncated: false, isError: true };
+		return { exitCode: null, output: result.error, displayOutput: result.error, truncated: false, isError: true, files: [] };
 	}
 
 	if (result.exit_code !== undefined && result.exit_code !== null) {
+		const files = extractSandboxFiles(raw);
+		const displayOutput = stripSandboxFileLines(raw);
 		return {
 			exitCode: result.exit_code,
 			output: raw,
+			displayOutput,
 			truncated: raw.includes("[Output was truncated"),
 			isError: result.exit_code !== 0,
+			files,
 		};
 	}
 
@@ -75,24 +114,54 @@ function parseExecuteResult(result: ExecuteResult): ParsedOutput {
 		const exitCode = parseInt(exitMatch[1], 10);
 		const outputMatch = raw.match(/\nOutput:\n([\s\S]*)/);
 		const output = outputMatch ? outputMatch[1] : "";
+		const files = extractSandboxFiles(output);
+		const displayOutput = stripSandboxFileLines(output);
 		return {
 			exitCode,
 			output,
+			displayOutput,
 			truncated: raw.includes("[Output was truncated"),
 			isError: exitCode !== 0,
+			files,
 		};
 	}
 
 	if (raw.startsWith("Error:")) {
-		return { exitCode: null, output: raw, truncated: false, isError: true };
+		return { exitCode: null, output: raw, displayOutput: raw, truncated: false, isError: true, files: [] };
 	}
 
-	return { exitCode: null, output: raw, truncated: false, isError: false };
+	const files = extractSandboxFiles(raw);
+	const displayOutput = stripSandboxFileLines(raw);
+	return { exitCode: null, output: raw, displayOutput, truncated: false, isError: false, files };
 }
 
 function truncateCommand(command: string, maxLen = 80): string {
 	if (command.length <= maxLen) return command;
 	return command.slice(0, maxLen) + "…";
+}
+
+// ============================================================================
+// Download helper
+// ============================================================================
+
+async function downloadSandboxFile(threadId: string, filePath: string, fileName: string) {
+	const token = getBearerToken();
+	const url = `${BACKEND_URL}/api/v1/threads/${threadId}/sandbox/download?path=${encodeURIComponent(filePath)}`;
+	const res = await fetch(url, {
+		headers: { Authorization: `Bearer ${token || ""}` },
+	});
+	if (!res.ok) {
+		throw new Error(`Download failed: ${res.statusText}`);
+	}
+	const blob = await res.blob();
+	const blobUrl = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = blobUrl;
+	a.download = fileName;
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	URL.revokeObjectURL(blobUrl);
 }
 
 // ============================================================================
@@ -140,16 +209,58 @@ function ExecuteCancelledState({ command }: { command: string }) {
 	);
 }
 
-function ExecuteResult({
+function SandboxFileDownload({ file, threadId }: { file: SandboxFile; threadId: string }) {
+	const [downloading, setDownloading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const handleDownload = useCallback(async () => {
+		setDownloading(true);
+		setError(null);
+		try {
+			await downloadSandboxFile(threadId, file.path, file.name);
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "Download failed");
+		} finally {
+			setDownloading(false);
+		}
+	}, [threadId, file.path, file.name]);
+
+	return (
+		<Button
+			variant="ghost"
+			size="sm"
+			className="h-8 gap-2 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 text-zinc-200 text-xs font-mono px-3"
+			onClick={handleDownload}
+			disabled={downloading}
+		>
+			{downloading ? (
+				<Loader2Icon className="size-3.5 animate-spin" />
+			) : (
+				<DownloadIcon className="size-3.5" />
+			)}
+			<FileIcon className="size-3 text-zinc-400" />
+			<span className="truncate max-w-[200px]">{file.name}</span>
+			{error && (
+				<span className="text-destructive text-[10px] ml-1">{error}</span>
+			)}
+		</Button>
+	);
+}
+
+function ExecuteCompleted({
 	command,
 	parsed,
+	threadId,
 }: {
 	command: string;
 	parsed: ParsedOutput;
+	threadId: string | null;
 }) {
 	const [open, setOpen] = useState(false);
 	const isLongCommand = command.length > 80 || command.includes("\n");
-	const hasContent = parsed.output.trim().length > 0 || isLongCommand;
+	const hasTextContent = parsed.displayOutput.trim().length > 0 || isLongCommand;
+	const hasFiles = parsed.files.length > 0 && !!threadId;
+	const hasContent = hasTextContent || hasFiles;
 
 	const exitBadge = useMemo(() => {
 		if (parsed.exitCode === null) return null;
@@ -194,6 +305,12 @@ function ExecuteResult({
 					<code className="min-w-0 flex-1 truncate text-sm font-mono">
 						{truncateCommand(command)}
 					</code>
+					{hasFiles && !open && (
+						<Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 border-blue-500/30 text-blue-500">
+							<FileIcon className="size-2.5" />
+							{parsed.files.length}
+						</Badge>
+					)}
 					{exitBadge}
 				</CollapsibleTrigger>
 
@@ -214,15 +331,15 @@ function ExecuteResult({
 								</pre>
 							</div>
 						)}
-						{parsed.output.trim().length > 0 && (
+						{parsed.displayOutput.trim().length > 0 && (
 							<div>
-								{isLongCommand && (
+								{(isLongCommand || hasFiles) && (
 									<p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
 										Output
 									</p>
 								)}
 								<pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs font-mono text-zinc-300 leading-relaxed">
-									{parsed.output}
+									{parsed.displayOutput}
 								</pre>
 							</div>
 						)}
@@ -230,6 +347,22 @@ function ExecuteResult({
 							<p className="text-[10px] text-zinc-500 italic">
 								Output was truncated due to size limits
 							</p>
+						)}
+						{hasFiles && threadId && (
+							<div>
+								<p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+									Files
+								</p>
+								<div className="flex flex-wrap gap-2">
+									{parsed.files.map((file) => (
+										<SandboxFileDownload
+											key={file.path}
+											file={file}
+											threadId={threadId}
+										/>
+									))}
+								</div>
+							</div>
 						)}
 					</div>
 				</CollapsibleContent>
@@ -274,7 +407,8 @@ export const SandboxExecuteToolUI = makeAssistantToolUI<ExecuteArgs, ExecuteResu
 		}
 
 		const parsed = parseExecuteResult(result);
-		return <ExecuteResult command={command} parsed={parsed} />;
+		const threadId = result.thread_id || null;
+		return <ExecuteCompleted command={command} parsed={parsed} threadId={threadId} />;
 	},
 });
 
