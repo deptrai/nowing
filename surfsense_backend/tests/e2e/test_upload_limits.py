@@ -130,7 +130,10 @@ class TestTotalSizeLimit:
     ):
         chunk_size = 45 * 1024 * 1024  # 45 MB each
         files = [
-            ("files", (f"chunk_{i}.txt", io.BytesIO(b"\x00" * chunk_size), "text/plain"))
+            (
+                "files",
+                (f"chunk_{i}.txt", io.BytesIO(b"\x00" * chunk_size), "text/plain"),
+            )
             for i in range(5)  # 5 x 45 MB = 225 MB > 200 MB
         ]
         resp = await client.post(

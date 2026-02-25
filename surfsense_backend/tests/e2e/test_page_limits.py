@@ -175,7 +175,10 @@ class TestPageLimitNotification:
         )
 
         latest = notifications[0]
-        assert "page limit" in latest["title"].lower() or "page limit" in latest["message"].lower(), (
+        assert (
+            "page limit" in latest["title"].lower()
+            or "page limit" in latest["message"].lower()
+        ), (
             f"Notification should mention page limit: title={latest['title']!r}, "
             f"message={latest['message']!r}"
         )
@@ -217,7 +220,11 @@ class TestDocumentProcessingNotification:
             type_filter="document_processing",
             search_space_id=search_space_id,
         )
-        completed = [n for n in notifications if n.get("metadata", {}).get("processing_stage") == "completed"]
+        completed = [
+            n
+            for n in notifications
+            if n.get("metadata", {}).get("processing_stage") == "completed"
+        ]
         assert len(completed) >= 1, (
             "Expected at least one document_processing notification with 'completed' stage"
         )
@@ -257,9 +264,7 @@ class TestPagesUnchangedOnProcessingFailure:
                 assert statuses[did]["status"]["state"] == "failed"
 
         used, _ = await page_limits.get()
-        assert used == 10, (
-            f"pages_used should remain 10 after ETL failure, got {used}"
-        )
+        assert used == 10, f"pages_used should remain 10 after ETL failure, got {used}"
 
 
 # ---------------------------------------------------------------------------
