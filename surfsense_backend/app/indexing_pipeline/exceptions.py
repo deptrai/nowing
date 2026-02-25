@@ -12,7 +12,7 @@ from litellm.exceptions import (
     Timeout,
     UnprocessableEntityError,
 )
-from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
 from sqlalchemy.orm.exc import DetachedInstanceError
 
 # Tuples for use directly in except clauses.
@@ -48,10 +48,10 @@ FATAL_DB_ERRORS = (
 
 # (LiteLLMEmbeddings, CohereEmbeddings, GeminiEmbeddings all normalize to RuntimeError).
 EMBEDDING_ERRORS = (
-    RuntimeError,  
-    OSError,       
-    MemoryError,   
-    ValueError,    
+    RuntimeError,  # local device failure or API backend normalization
+    OSError,       # model files missing or corrupted (local backends)
+    MemoryError,   # document too large for available RAM
+    ValueError,    # invalid input to encode()
 )
 
 
@@ -81,45 +81,61 @@ class PipelineMessages:
     CHUNKING_OVERFLOW = "Document structure is too deeply nested to chunk."
 
 
+def safe_exception_message(exc: Exception) -> str:
+    try:
+        return str(exc)
+    except Exception:
+        return "Something went wrong during indexing. Error details could not be retrieved."
+
+
 def llm_retryable_message(exc: Exception) -> str:
-    if isinstance(exc, RateLimitError):
-        return PipelineMessages.RATE_LIMIT
-    if isinstance(exc, Timeout):
-        return PipelineMessages.LLM_TIMEOUT
-    if isinstance(exc, ServiceUnavailableError):
-        return PipelineMessages.LLM_UNAVAILABLE
-    if isinstance(exc, BadGatewayError):
-        return PipelineMessages.LLM_BAD_GATEWAY
-    if isinstance(exc, InternalServerError):
-        return PipelineMessages.LLM_SERVER_ERROR
-    if isinstance(exc, APIConnectionError):
-        return PipelineMessages.LLM_CONNECTION
-    return str(exc)
+    try:
+        if isinstance(exc, RateLimitError):
+            return PipelineMessages.RATE_LIMIT
+        if isinstance(exc, Timeout):
+            return PipelineMessages.LLM_TIMEOUT
+        if isinstance(exc, ServiceUnavailableError):
+            return PipelineMessages.LLM_UNAVAILABLE
+        if isinstance(exc, BadGatewayError):
+            return PipelineMessages.LLM_BAD_GATEWAY
+        if isinstance(exc, InternalServerError):
+            return PipelineMessages.LLM_SERVER_ERROR
+        if isinstance(exc, APIConnectionError):
+            return PipelineMessages.LLM_CONNECTION
+        return safe_exception_message(exc)
+    except Exception:
+        return "Something went wrong when calling the LLM."
 
 
 def llm_permanent_message(exc: Exception) -> str:
-    if isinstance(exc, AuthenticationError):
-        return PipelineMessages.LLM_AUTH
-    if isinstance(exc, PermissionDeniedError):
-        return PipelineMessages.LLM_PERMISSION
-    if isinstance(exc, NotFoundError):
-        return PipelineMessages.LLM_NOT_FOUND
-    if isinstance(exc, BadRequestError):
-        return PipelineMessages.LLM_BAD_REQUEST
-    if isinstance(exc, UnprocessableEntityError):
-        return PipelineMessages.LLM_UNPROCESSABLE
-    if isinstance(exc, APIResponseValidationError):
-        return PipelineMessages.LLM_RESPONSE
-    return str(exc)
+    try:
+        if isinstance(exc, AuthenticationError):
+            return PipelineMessages.LLM_AUTH
+        if isinstance(exc, PermissionDeniedError):
+            return PipelineMessages.LLM_PERMISSION
+        if isinstance(exc, NotFoundError):
+            return PipelineMessages.LLM_NOT_FOUND
+        if isinstance(exc, BadRequestError):
+            return PipelineMessages.LLM_BAD_REQUEST
+        if isinstance(exc, UnprocessableEntityError):
+            return PipelineMessages.LLM_UNPROCESSABLE
+        if isinstance(exc, APIResponseValidationError):
+            return PipelineMessages.LLM_RESPONSE
+        return safe_exception_message(exc)
+    except Exception:
+        return "Something went wrong when calling the LLM."
 
 
 def embedding_message(exc: Exception) -> str:
-    if isinstance(exc, RuntimeError):
-        return PipelineMessages.EMBEDDING_FAILED
-    if isinstance(exc, OSError):
-        return PipelineMessages.EMBEDDING_MODEL
-    if isinstance(exc, MemoryError):
-        return PipelineMessages.EMBEDDING_MEMORY
-    if isinstance(exc, ValueError):
-        return PipelineMessages.EMBEDDING_INPUT
-    return str(exc)
+    try:
+        if isinstance(exc, RuntimeError):
+            return PipelineMessages.EMBEDDING_FAILED
+        if isinstance(exc, OSError):
+            return PipelineMessages.EMBEDDING_MODEL
+        if isinstance(exc, MemoryError):
+            return PipelineMessages.EMBEDDING_MEMORY
+        if isinstance(exc, ValueError):
+            return PipelineMessages.EMBEDDING_INPUT
+        return safe_exception_message(exc)
+    except Exception:
+        return "Something went wrong when generating the embedding."

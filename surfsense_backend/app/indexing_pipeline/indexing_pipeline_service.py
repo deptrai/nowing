@@ -21,6 +21,26 @@ from app.indexing_pipeline.exceptions import (
     embedding_message,
     llm_permanent_message,
     llm_retryable_message,
+    safe_exception_message,
+)
+from app.indexing_pipeline.pipeline_logger import (
+    PipelineLogContext,
+    log_batch_aborted,
+    log_chunking_overflow,
+    log_db_fatal_error,
+    log_db_transient_error,
+    log_doc_skipped_db,
+    log_doc_skipped_unknown,
+    log_document_queued,
+    log_document_requeued,
+    log_document_updated,
+    log_embedding_error,
+    log_index_started,
+    log_index_success,
+    log_permanent_llm_error,
+    log_race_condition,
+    log_retryable_llm_error,
+    log_unexpected_error,
 )
 
 
@@ -38,8 +58,18 @@ class IndexingPipelineService:
         """
         documents = []
         seen_hashes: set[str] = set()
+        batch_ctx = PipelineLogContext(
+            connector_id=connector_docs[0].connector_id if connector_docs else 0,
+            search_space_id=connector_docs[0].search_space_id if connector_docs else 0,
+            unique_id="batch",
+        )
 
         for connector_doc in connector_docs:
+            ctx = PipelineLogContext(
+                connector_id=connector_doc.connector_id,
+                search_space_id=connector_doc.search_space_id,
+                unique_id=connector_doc.unique_id,
+            )
             try:
                 unique_identifier_hash = compute_unique_identifier_hash(connector_doc)
                 content_hash = compute_content_hash(connector_doc)
@@ -62,6 +92,7 @@ class IndexingPipelineService:
                             existing.status = DocumentStatus.pending()
                             existing.updated_at = datetime.now(UTC)
                             documents.append(existing)
+                            log_document_requeued(ctx)
                         continue
 
                     existing.title = connector_doc.title
@@ -71,6 +102,7 @@ class IndexingPipelineService:
                     existing.updated_at = datetime.now(UTC)
                     existing.status = DocumentStatus.pending()
                     documents.append(existing)
+                    log_document_updated(ctx)
                     continue
 
                 duplicate = await self.session.execute(
@@ -95,23 +127,27 @@ class IndexingPipelineService:
                 )
                 self.session.add(document)
                 documents.append(document)
+                log_document_queued(ctx)
 
-            except FATAL_DB_ERRORS:
-                # Session is broken — abort the entire batch, nothing else is safe to do.
+            except FATAL_DB_ERRORS as e:
+                log_batch_aborted(ctx, e)
                 await self.session.rollback()
                 return []
-            except TRANSIENT_DB_ERRORS:
+            except TRANSIENT_DB_ERRORS as e:
+                log_doc_skipped_db(ctx, e)
                 await self.session.rollback()
-            except Exception:
+            except Exception as e:
+                log_doc_skipped_unknown(ctx, e)
                 continue
 
         try:
             await self.session.commit()
             return documents
-        except IntegrityError:
+        except IntegrityError as e:
             # A concurrent worker committed a document with the same content_hash
             # or unique_identifier_hash between our check and our INSERT.
             # The document already exists — roll back and let the next sync run handle it.
+            log_race_condition(batch_ctx)
             await self.session.rollback()
             return []
 
@@ -121,7 +157,14 @@ class IndexingPipelineService:
         """
         Run summarization, embedding, and chunking for a document and persist the results.
         """
+        ctx = PipelineLogContext(
+            connector_id=connector_doc.connector_id,
+            search_space_id=connector_doc.search_space_id,
+            unique_id=connector_doc.unique_id,
+            doc_id=document.id,
+        )
         try:
+            log_index_started(ctx)
             document.status = DocumentStatus.processing()
             await self.session.commit()
 
@@ -154,24 +197,32 @@ class IndexingPipelineService:
             document.updated_at = datetime.now(UTC)
             document.status = DocumentStatus.ready()
             await self.session.commit()
+            log_index_success(ctx, chunk_count=len(chunks))
 
         except RETRYABLE_LLM_ERRORS as e:
+            log_retryable_llm_error(ctx, e)
             await rollback_and_persist_failure(self.session, document, llm_retryable_message(e))
 
         except PERMANENT_LLM_ERRORS as e:
+            log_permanent_llm_error(ctx, e)
             await rollback_and_persist_failure(self.session, document, llm_permanent_message(e))
 
         except EMBEDDING_ERRORS as e:
+            log_embedding_error(ctx, e)
             await rollback_and_persist_failure(self.session, document, embedding_message(e))
 
-        except RecursionError:
+        except RecursionError as e:
+            log_chunking_overflow(ctx, e)
             await rollback_and_persist_failure(self.session, document, PipelineMessages.CHUNKING_OVERFLOW)
 
-        except FATAL_DB_ERRORS:
+        except FATAL_DB_ERRORS as e:
+            log_db_fatal_error(ctx, e)
             raise
 
-        except TRANSIENT_DB_ERRORS:
+        except TRANSIENT_DB_ERRORS as e:
+            log_db_transient_error(ctx, e)
             await rollback_and_persist_failure(self.session, document, PipelineMessages.DB_TRANSIENT)
 
         except Exception as e:
-            await rollback_and_persist_failure(self.session, document, str(e))
+            log_unexpected_error(ctx, e)
+            await rollback_and_persist_failure(self.session, document, safe_exception_message(e))
