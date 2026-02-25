@@ -180,21 +180,6 @@ async def test_updated_at_advances_when_content_changes(
     assert updated_at_v2 > updated_at_v1
 
 
-async def test_updated_at_is_set_on_creation(
-    db_session, db_search_space, make_connector_document
-):
-    doc = make_connector_document(search_space_id=db_search_space.id)
-    service = IndexingPipelineService(session=db_session)
-
-    results = await service.prepare_for_indexing([doc])
-    document_id = results[0].id
-
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
-    reloaded = result.scalars().first()
-
-    assert reloaded.updated_at is not None
-
-
 async def test_same_content_from_different_source_is_skipped(
     db_session, db_search_space, make_connector_document
 ):

@@ -9,8 +9,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.db import Base, SearchSpace
+from app.db import Base, SearchSpace, SearchSourceConnector, SearchSourceConnectorType
 from app.db import User
+from app.db import DocumentType
+from app.indexing_pipeline.connector_document import ConnectorDocument
 
 _EMBEDDING_DIM = 1024  # must match the Vector() dimension used in DB column creation
 
@@ -78,6 +80,20 @@ async def db_user(db_session: AsyncSession) -> User:
 
 
 @pytest_asyncio.fixture
+async def db_connector(db_session: AsyncSession, db_user: User, db_search_space: "SearchSpace") -> SearchSourceConnector:
+    connector = SearchSourceConnector(
+        name="Test Connector",
+        connector_type=SearchSourceConnectorType.CLICKUP_CONNECTOR,
+        config={},
+        search_space_id=db_search_space.id,
+        user_id=db_user.id,
+    )
+    db_session.add(connector)
+    await db_session.flush()
+    return connector
+
+
+@pytest_asyncio.fixture
 async def db_search_space(db_session: AsyncSession, db_user: User) -> SearchSpace:
     space = SearchSpace(
         name="Test Space",
@@ -126,5 +142,23 @@ def patched_chunk_text(monkeypatch) -> MagicMock:
         mock,
     )
     return mock
+
+
+@pytest.fixture
+def make_connector_document(db_connector, db_user):
+    """Integration-scoped override: uses real DB connector and user IDs."""
+    def _make(**overrides):
+        defaults = {
+            "title": "Test Document",
+            "source_markdown": "## Heading\n\nSome content.",
+            "unique_id": "test-id-001",
+            "document_type": DocumentType.CLICKUP_CONNECTOR,
+            "search_space_id": db_connector.search_space_id,
+            "connector_id": db_connector.id,
+            "created_by_id": str(db_user.id),
+        }
+        defaults.update(overrides)
+        return ConnectorDocument(**defaults)
+    return _make
 
 

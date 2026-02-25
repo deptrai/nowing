@@ -116,7 +116,6 @@ class IndexingPipelineService:
                 )
             ]
 
-            document.source_markdown = connector_doc.source_markdown
             document.content = content
             document.embedding = embedding
             _safe_set_chunks(document, chunks)

@@ -28,6 +28,8 @@ def make_connector_document():
             "unique_id": "test-id-001",
             "document_type": DocumentType.CLICKUP_CONNECTOR,
             "search_space_id": 1,
+            "connector_id": 1,
+            "created_by_id": "00000000-0000-0000-0000-000000000001",
         }
         defaults.update(overrides)
         return ConnectorDocument(**defaults)
