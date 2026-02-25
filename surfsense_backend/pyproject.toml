@@ -66,14 +66,14 @@ dependencies = [
     "pypandoc_binary>=1.16.2",
     "typst>=0.14.0",
     "deepagents>=0.4.3",
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
-    "httpx>=0.28.1",
 ]
 
 [dependency-groups]
 dev = [
     "ruff>=0.12.5",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "httpx>=0.28.1",
 ]
 
 [tool.ruff]
@@ -161,9 +161,16 @@ line-ending = "auto"
 
 [tool.ruff.lint.isort]
 # Group imports by type
-known-first-party = ["app"]
+known-first-party = ["app", "tests"]
 force-single-line = false
 combine-as-imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
 
 [tool.setuptools.packages.find]
 where = ["."]
