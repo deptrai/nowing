@@ -513,6 +513,40 @@ class TestDeleteWhileProcessing:
 # ---------------------------------------------------------------------------
 
 
+class TestDocumentSearchability:
+    """After upload reaches ready, the document must appear in the title search."""
+
+    async def test_uploaded_document_appears_in_search(
+        self,
+        client: httpx.AsyncClient,
+        headers: dict[str, str],
+        search_space_id: int,
+        cleanup_doc_ids: list[int],
+    ):
+        resp = await upload_file(
+            client, headers, "sample.txt", search_space_id=search_space_id
+        )
+        assert resp.status_code == 200
+        doc_ids = resp.json()["document_ids"]
+        cleanup_doc_ids.extend(doc_ids)
+
+        await poll_document_status(
+            client, headers, doc_ids, search_space_id=search_space_id
+        )
+
+        search_resp = await client.get(
+            "/api/v1/documents/search",
+            headers=headers,
+            params={"title": "sample", "search_space_id": search_space_id},
+        )
+        assert search_resp.status_code == 200
+
+        result_ids = [d["id"] for d in search_resp.json()["items"]]
+        assert doc_ids[0] in result_ids, (
+            f"Uploaded document {doc_ids[0]} not found in search results: {result_ids}"
+        )
+
+
 class TestStatusPolling:
     """Verify the status endpoint returns well-formed responses."""
 
