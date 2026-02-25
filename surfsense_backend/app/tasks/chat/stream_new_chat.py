@@ -10,12 +10,12 @@ Supports loading LLM configurations from:
 """
 
 import json
+import logging
+import re
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
-
-import logging
 
 from langchain_core.messages import HumanMessage
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +30,13 @@ from app.agents.new_chat.llm_config import (
     load_agent_config,
     load_llm_config_from_yaml,
 )
-from app.db import ChatVisibility, Document, Report, SurfsenseDocsDocument, async_session_maker
+from app.db import (
+    ChatVisibility,
+    Document,
+    Report,
+    SurfsenseDocsDocument,
+    async_session_maker,
+)
 from app.prompts import TITLE_GENERATION_PROMPT_TEMPLATE
 from app.services.chat_session_state_service import (
     clear_ai_responding,
@@ -404,6 +410,21 @@ async def _stream_agent_events(
                     status="in_progress",
                     items=last_active_step_items,
                 )
+            elif tool_name == "execute":
+                cmd = (
+                    tool_input.get("command", "")
+                    if isinstance(tool_input, dict)
+                    else str(tool_input)
+                )
+                display_cmd = cmd[:80] + ("…" if len(cmd) > 80 else "")
+                last_active_step_title = "Running command"
+                last_active_step_items = [f"$ {display_cmd}"]
+                yield streaming_service.format_thinking_step(
+                    step_id=tool_step_id,
+                    title="Running command",
+                    status="in_progress",
+                    items=last_active_step_items,
+                )
             else:
                 last_active_step_title = f"Using {tool_name.replace('_', ' ')}"
                 last_active_step_items = []
@@ -620,6 +641,32 @@ async def _stream_agent_events(
                     status="completed",
                     items=completed_items,
                 )
+            elif tool_name == "execute":
+                raw_text = (
+                    tool_output.get("result", "")
+                    if isinstance(tool_output, dict)
+                    else str(tool_output)
+                )
+                m = re.match(r"^Exit code:\s*(\d+)", raw_text)
+                exit_code_val = int(m.group(1)) if m else None
+                if exit_code_val is not None and exit_code_val == 0:
+                    completed_items = [
+                        *last_active_step_items,
+                        "Completed successfully",
+                    ]
+                elif exit_code_val is not None:
+                    completed_items = [
+                        *last_active_step_items,
+                        f"Exit code: {exit_code_val}",
+                    ]
+                else:
+                    completed_items = [*last_active_step_items, "Finished"]
+                yield streaming_service.format_thinking_step(
+                    step_id=original_step_id,
+                    title="Running command",
+                    status="completed",
+                    items=completed_items,
+                )
             elif tool_name == "ls":
                 if isinstance(tool_output, dict):
                     ls_output = tool_output.get("result", "")
@@ -813,6 +860,28 @@ async def _stream_agent_events(
                     if isinstance(tool_output, dict)
                     else {"result": tool_output},
                 )
+            elif tool_name == "execute":
+                raw_text = (
+                    tool_output.get("result", "")
+                    if isinstance(tool_output, dict)
+                    else str(tool_output)
+                )
+                exit_code: int | None = None
+                output_text = raw_text
+                m = re.match(r"^Exit code:\s*(\d+)", raw_text)
+                if m:
+                    exit_code = int(m.group(1))
+                    om = re.search(r"\nOutput:\n([\s\S]*)", raw_text)
+                    output_text = om.group(1) if om else ""
+                thread_id_str = config.get("configurable", {}).get("thread_id", "")
+                yield streaming_service.format_tool_output_available(
+                    tool_call_id,
+                    {
+                        "exit_code": exit_code,
+                        "output": output_text,
+                        "thread_id": thread_id_str,
+                    },
+                )
             else:
                 yield streaming_service.format_tool_output_available(
                     tool_call_id,
@@ -977,6 +1046,22 @@ async def stream_new_chat(
         # Get the PostgreSQL checkpointer for persistent conversation memory
         checkpointer = await get_checkpointer()
 
+        # Optionally provision a sandboxed code execution environment
+        sandbox_backend = None
+        from app.agents.new_chat.sandbox import (
+            get_or_create_sandbox,
+            is_sandbox_enabled,
+        )
+
+        if is_sandbox_enabled():
+            try:
+                sandbox_backend = await get_or_create_sandbox(chat_id)
+            except Exception as sandbox_err:
+                logging.getLogger(__name__).warning(
+                    "Sandbox creation failed, continuing without execute tool: %s",
+                    sandbox_err,
+                )
+
         visibility = thread_visibility or ChatVisibility.PRIVATE
         agent = await create_surfsense_deep_agent(
             llm=llm,
@@ -989,6 +1074,7 @@ async def stream_new_chat(
             agent_config=agent_config,
             firecrawl_api_key=firecrawl_api_key,
             thread_visibility=visibility,
+            sandbox_backend=sandbox_backend,
         )
 
         # Build input with message history
@@ -1354,6 +1440,22 @@ async def stream_resume_chat(
             firecrawl_api_key = webcrawler_connector.config.get("FIRECRAWL_API_KEY")
 
         checkpointer = await get_checkpointer()
+
+        sandbox_backend = None
+        from app.agents.new_chat.sandbox import (
+            get_or_create_sandbox,
+            is_sandbox_enabled,
+        )
+
+        if is_sandbox_enabled():
+            try:
+                sandbox_backend = await get_or_create_sandbox(chat_id)
+            except Exception as sandbox_err:
+                logging.getLogger(__name__).warning(
+                    "Sandbox creation failed, continuing without execute tool: %s",
+                    sandbox_err,
+                )
+
         visibility = thread_visibility or ChatVisibility.PRIVATE
 
         agent = await create_surfsense_deep_agent(
@@ -1367,6 +1469,7 @@ async def stream_resume_chat(
             agent_config=agent_config,
             firecrawl_api_key=firecrawl_api_key,
             thread_visibility=visibility,
+            sandbox_backend=sandbox_backend,
         )
 
         # Release the transaction before streaming (same rationale as stream_new_chat).
