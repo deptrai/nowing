@@ -71,9 +71,23 @@ async def download_sandbox_file(
         "You don't have permission to access files in this thread",
     )
 
+    from app.agents.new_chat.sandbox import get_local_sandbox_file
+
+    # Prefer locally-persisted copy (sandbox may already be deleted)
+    local_content = get_local_sandbox_file(thread_id, path)
+    if local_content is not None:
+        filename = path.rsplit("/", 1)[-1] if "/" in path else path
+        media_type = _guess_media_type(filename)
+        return Response(
+            content=local_content,
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    # Fall back to live sandbox download
     try:
         sandbox = await get_or_create_sandbox(thread_id)
-        raw_sandbox = sandbox._sandbox
+        raw_sandbox = sandbox._sandbox  # noqa: SLF001
         content: bytes = await asyncio.to_thread(raw_sandbox.fs.download_file, path)
     except Exception as exc:
         logger.warning("Sandbox file download failed for %s: %s", path, exc)

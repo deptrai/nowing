@@ -9,11 +9,12 @@ Supports loading LLM configurations from:
 - NewLLMConfig database table (positive IDs for user-created configs with prompt settings)
 """
 
+import asyncio
 import json
 import logging
 import re
 from collections.abc import AsyncGenerator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
@@ -193,6 +194,7 @@ class StreamResult:
     accumulated_text: str = ""
     is_interrupted: bool = False
     interrupt_value: dict[str, Any] | None = None
+    sandbox_files: list[str] = field(default_factory=list)
 
 
 async def _stream_agent_events(
@@ -874,6 +876,12 @@ async def _stream_agent_events(
                     om = re.search(r"\nOutput:\n([\s\S]*)", raw_text)
                     output_text = om.group(1) if om else ""
                 thread_id_str = config.get("configurable", {}).get("thread_id", "")
+
+                for sf_match in re.finditer(r"^SANDBOX_FILE:\s*(.+)$", output_text, re.MULTILINE):
+                    fpath = sf_match.group(1).strip()
+                    if fpath and fpath not in result.sandbox_files:
+                        result.sandbox_files.append(fpath)
+
                 yield streaming_service.format_tool_output_available(
                     tool_call_id,
                     {
@@ -950,6 +958,33 @@ async def _stream_agent_events(
         yield streaming_service.format_interrupt_request(result.interrupt_value)
 
 
+def _try_persist_and_delete_sandbox(
+    thread_id: int,
+    sandbox_files: list[str],
+) -> None:
+    """Fire-and-forget: persist sandbox files locally then delete the sandbox."""
+    from app.agents.new_chat.sandbox import is_sandbox_enabled, persist_and_delete_sandbox
+
+    if not is_sandbox_enabled():
+        return
+
+    async def _run() -> None:
+        try:
+            await persist_and_delete_sandbox(thread_id, sandbox_files)
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "persist_and_delete_sandbox failed for thread %s",
+                thread_id,
+                exc_info=True,
+            )
+
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_run())
+    except RuntimeError:
+        pass
+
+
 async def stream_new_chat(
     user_query: str,
     search_space_id: int,
@@ -986,6 +1021,7 @@ async def stream_new_chat(
         str: SSE formatted response strings
     """
     streaming_service = VercelStreamingService()
+    stream_result = StreamResult()
 
     try:
         # Mark AI as responding to this user for live collaboration
@@ -1268,7 +1304,6 @@ async def stream_new_chat(
             items=initial_items,
         )
 
-        stream_result = StreamResult()
         async for sse in _stream_agent_events(
             agent=agent,
             config=config,
@@ -1382,6 +1417,8 @@ async def stream_new_chat(
                     "Failed to clear AI responding state for thread %s", chat_id
                 )
 
+        _try_persist_and_delete_sandbox(chat_id, stream_result.sandbox_files)
+
 
 async def stream_resume_chat(
     chat_id: int,
@@ -1393,6 +1430,7 @@ async def stream_resume_chat(
     thread_visibility: ChatVisibility | None = None,
 ) -> AsyncGenerator[str, None]:
     streaming_service = VercelStreamingService()
+    stream_result = StreamResult()
 
     try:
         if user_id:
@@ -1485,7 +1523,6 @@ async def stream_resume_chat(
         yield streaming_service.format_message_start()
         yield streaming_service.format_start_step()
 
-        stream_result = StreamResult()
         async for sse in _stream_agent_events(
             agent=agent,
             config=config,
@@ -1528,3 +1565,5 @@ async def stream_resume_chat(
                 logging.getLogger(__name__).warning(
                     "Failed to clear AI responding state for thread %s", chat_id
                 )
+
+        _try_persist_and_delete_sandbox(chat_id, stream_result.sandbox_files)
