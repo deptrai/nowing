@@ -11,6 +11,8 @@ import httpx
 import pytest
 from dotenv import load_dotenv
 
+from app.db import DocumentType
+from app.indexing_pipeline.connector_document import ConnectorDocument
 from tests.utils.helpers import (
     BACKEND_URL,
     TEST_EMAIL,
@@ -26,6 +28,11 @@ DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
     os.environ.get("DATABASE_URL", ""),
 ).replace("postgresql+asyncpg://", "postgresql://")
+
+
+# ---------------------------------------------------------------------------
+# E2E / integration helpers (direct DB access)
+# ---------------------------------------------------------------------------
 
 
 async def _force_delete_documents_db(
@@ -204,3 +211,44 @@ async def page_limits():
     await _set_user_page_limits(
         TEST_EMAIL, pages_used=original[0], pages_limit=original[1]
     )
+
+
+# ---------------------------------------------------------------------------
+# Unit test fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def sample_user_id() -> str:
+    return "00000000-0000-0000-0000-000000000001"
+
+
+@pytest.fixture
+def sample_search_space_id() -> int:
+    return 1
+
+
+@pytest.fixture
+def sample_connector_id() -> int:
+    return 42
+
+
+@pytest.fixture
+def make_connector_document():
+    """
+    Generic factory for unit tests. Overridden in tests/integration/conftest.py
+    with real DB-backed IDs for integration tests.
+    """
+    def _make(**overrides):
+        defaults = {
+            "title": "Test Document",
+            "source_markdown": "## Heading\n\nSome content.",
+            "unique_id": "test-id-001",
+            "document_type": DocumentType.CLICKUP_CONNECTOR,
+            "search_space_id": 1,
+            "connector_id": 1,
+            "created_by_id": "00000000-0000-0000-0000-000000000001",
+        }
+        defaults.update(overrides)
+        return ConnectorDocument(**defaults)
+    return _make
