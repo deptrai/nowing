@@ -38,7 +38,6 @@ EMBEDDING_ERRORS = (
     RuntimeError,  # local device failure or API backend normalization
     OSError,       # model files missing or corrupted (local backends)
     MemoryError,   # document too large for available RAM
-    ValueError,    # invalid input to encode()
 )
 
 
@@ -57,13 +56,9 @@ class PipelineMessages:
     LLM_UNPROCESSABLE = "Document exceeds the LLM context window even after optimization."
     LLM_RESPONSE      = "LLM returned an invalid response."
 
-    DB_TRANSIENT      = "Database error during indexing. Will retry on next sync."
-    DB_SESSION_DEAD   = "Database session is in an unrecoverable state."
-
     EMBEDDING_FAILED  = "Embedding failed. Check your embedding model configuration or service."
     EMBEDDING_MODEL   = "Embedding model files are missing or corrupted."
     EMBEDDING_MEMORY  = "Not enough memory to embed this document."
-    EMBEDDING_INPUT   = "Document content is invalid for the embedding model."
 
     CHUNKING_OVERFLOW = "Document structure is too deeply nested to chunk."
 
@@ -121,8 +116,6 @@ def embedding_message(exc: Exception) -> str:
             return PipelineMessages.EMBEDDING_MODEL
         if isinstance(exc, MemoryError):
             return PipelineMessages.EMBEDDING_MEMORY
-        if isinstance(exc, ValueError):
-            return PipelineMessages.EMBEDDING_INPUT
         return safe_exception_message(exc)
     except Exception:
         return "Something went wrong when generating the embedding."

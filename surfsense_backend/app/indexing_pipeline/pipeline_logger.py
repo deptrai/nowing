@@ -17,7 +17,6 @@ class LogMessages:
     DOCUMENT_QUEUED     = "New document queued for indexing."
     DOCUMENT_UPDATED    = "Document content changed, re-queued for indexing."
     DOCUMENT_REQUEUED   = "Stuck document re-queued for indexing."
-    DOC_SKIPPED_DB      = "Transient DB error — document skipped, will retry on next sync."
     DOC_SKIPPED_UNKNOWN = "Unexpected error — document skipped."
     BATCH_ABORTED       = "Fatal DB error — aborting prepare batch."
     RACE_CONDITION      = "Concurrent worker beat us to the commit — rolling back batch."
@@ -29,8 +28,6 @@ class LogMessages:
     LLM_PERMANENT       = "Permanent LLM error — document marked failed."
     EMBEDDING_FAILED    = "Embedding error — document marked failed."
     CHUNKING_OVERFLOW   = "Chunking overflow — document marked failed."
-    DB_TRANSIENT        = "Transient DB error — document marked failed."
-    DB_FATAL            = "Fatal DB error — session is dead, re-raising."
     UNEXPECTED          = "Unexpected error — document marked failed."
 
 
@@ -87,6 +84,10 @@ def log_race_condition(ctx: PipelineLogContext) -> None:
     _safe_log(logger.warning, LogMessages.RACE_CONDITION, ctx)
 
 
+def log_batch_aborted(ctx: PipelineLogContext, exc: Exception) -> None:
+    _safe_log(logger.error, LogMessages.BATCH_ABORTED, ctx, exc_info=exc, error=exc)
+
+
 # ── index ─────────────────────────────────────────────────────────────────────
 
 def log_index_started(ctx: PipelineLogContext) -> None:
@@ -98,7 +99,7 @@ def log_index_success(ctx: PipelineLogContext, chunk_count: int) -> None:
 
 
 def log_retryable_llm_error(ctx: PipelineLogContext, exc: Exception) -> None:
-    _safe_log(logger.warning, LogMessages.LLM_RETRYABLE, ctx, error=exc)
+    _safe_log(logger.warning, LogMessages.LLM_RETRYABLE, ctx, exc_info=exc, error=exc)
 
 
 def log_permanent_llm_error(ctx: PipelineLogContext, exc: Exception) -> None:

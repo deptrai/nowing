@@ -23,6 +23,7 @@ from app.indexing_pipeline.exceptions import (
 )
 from app.indexing_pipeline.pipeline_logger import (
     PipelineLogContext,
+    log_batch_aborted,
     log_chunking_overflow,
     log_doc_skipped_unknown,
     log_document_queued,
@@ -129,11 +130,15 @@ class IndexingPipelineService:
         try:
             await self.session.commit()
             return documents
-        except IntegrityError as e:
+        except IntegrityError:
             # A concurrent worker committed a document with the same content_hash
             # or unique_identifier_hash between our check and our INSERT.
             # The document already exists — roll back and let the next sync run handle it.
             log_race_condition(batch_ctx)
+            await self.session.rollback()
+            return []
+        except Exception as e:
+            log_batch_aborted(batch_ctx, e)
             await self.session.rollback()
             return []
 
