@@ -1,12 +1,10 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from sqlalchemy.orm import object_session
 from sqlalchemy.orm.attributes import set_committed_value
-
-from sqlalchemy import delete
 
 from app.db import Chunk, Document, DocumentStatus
 from app.indexing_pipeline.connector_document import ConnectorDocument
@@ -39,67 +37,75 @@ class IndexingPipelineService:
         """
         Persist new documents and detect changes, returning only those that need indexing.
         """
-        documents = []
-        seen_hashes: set[str] = set()
+        try:
+            documents = []
+            seen_hashes: set[str] = set()
 
-        for connector_doc in connector_docs:
-            unique_identifier_hash = compute_unique_identifier_hash(connector_doc)
-            content_hash = compute_content_hash(connector_doc)
+            for connector_doc in connector_docs:
+                unique_identifier_hash = compute_unique_identifier_hash(connector_doc)
+                content_hash = compute_content_hash(connector_doc)
 
-            if unique_identifier_hash in seen_hashes:
-                continue
-            seen_hashes.add(unique_identifier_hash)
+                if unique_identifier_hash in seen_hashes:
+                    continue
+                seen_hashes.add(unique_identifier_hash)
 
-            result = await self.session.execute(
-                select(Document).filter(Document.unique_identifier_hash == unique_identifier_hash)
-            )
-            existing = result.scalars().first()
+                result = await self.session.execute(
+                    select(Document).filter(Document.unique_identifier_hash == unique_identifier_hash)
+                )
+                existing = result.scalars().first()
 
-            if existing is not None:
-                if existing.content_hash == content_hash:
-                    if existing.title != connector_doc.title:
-                        existing.title = connector_doc.title
-                        existing.updated_at = datetime.now(UTC)
-                    if not DocumentStatus.is_state(existing.status, DocumentStatus.READY):
-                        existing.status = DocumentStatus.pending()
-                        existing.updated_at = datetime.now(UTC)
-                        documents.append(existing)
+                if existing is not None:
+                    if existing.content_hash == content_hash:
+                        if existing.title != connector_doc.title:
+                            existing.title = connector_doc.title
+                            existing.updated_at = datetime.now(UTC)
+                        if not DocumentStatus.is_state(existing.status, DocumentStatus.READY):
+                            existing.status = DocumentStatus.pending()
+                            existing.updated_at = datetime.now(UTC)
+                            documents.append(existing)
+                        continue
+
+                    existing.title = connector_doc.title
+                    existing.content_hash = content_hash
+                    existing.source_markdown = connector_doc.source_markdown
+                    existing.document_metadata = connector_doc.metadata
+                    existing.updated_at = datetime.now(UTC)
+                    existing.status = DocumentStatus.pending()
+                    documents.append(existing)
                     continue
 
-                existing.title = connector_doc.title
-                existing.content_hash = content_hash
-                existing.source_markdown = connector_doc.source_markdown
-                existing.document_metadata = connector_doc.metadata
-                existing.updated_at = datetime.now(UTC)
-                existing.status = DocumentStatus.pending()
-                documents.append(existing)
-                continue
+                duplicate = await self.session.execute(
+                    select(Document).filter(Document.content_hash == content_hash)
+                )
+                if duplicate.scalars().first() is not None:
+                    continue
 
-            duplicate = await self.session.execute(
-                select(Document).filter(Document.content_hash == content_hash)
-            )
-            if duplicate.scalars().first() is not None:
-                continue
+                document = Document(
+                    title=connector_doc.title,
+                    document_type=connector_doc.document_type,
+                    content="Pending...",
+                    content_hash=content_hash,
+                    unique_identifier_hash=unique_identifier_hash,
+                    source_markdown=connector_doc.source_markdown,
+                    document_metadata=connector_doc.metadata,
+                    search_space_id=connector_doc.search_space_id,
+                    connector_id=connector_doc.connector_id,
+                    created_by_id=connector_doc.created_by_id,
+                    updated_at=datetime.now(UTC),
+                    status=DocumentStatus.pending(),
+                )
+                self.session.add(document)
+                documents.append(document)
 
-            document = Document(
-                title=connector_doc.title,
-                document_type=connector_doc.document_type,
-                content="Pending...",
-                content_hash=content_hash,
-                unique_identifier_hash=unique_identifier_hash,
-                source_markdown=connector_doc.source_markdown,
-                document_metadata=connector_doc.metadata,
-                search_space_id=connector_doc.search_space_id,
-                connector_id=connector_doc.connector_id,
-                created_by_id=connector_doc.created_by_id,
-                updated_at=datetime.now(UTC),
-                status=DocumentStatus.pending(),
-            )
-            self.session.add(document)
-            documents.append(document)
+            await self.session.commit()
+            return documents
 
-        await self.session.commit()
-        return documents
+        except IntegrityError:
+            # Most likely a concurrent worker committed a document with the same
+            # content_hash or unique_identifier_hash. Roll back and let the next
+            # sync run handle it.
+            await self.session.rollback()
+            return []
 
     async def index(
         self, document: Document, connector_doc: ConnectorDocument, llm

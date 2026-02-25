@@ -209,6 +209,31 @@ async def test_updated_at_advances_when_content_changes(
     assert updated_at_v2 > updated_at_v1
 
 
+async def test_same_content_from_different_source_skipped_in_single_batch(
+    db_session, db_search_space, make_connector_document
+):
+    first = make_connector_document(
+        search_space_id=db_search_space.id,
+        unique_id="source-a",
+        source_markdown="## Shared content",
+    )
+    second = make_connector_document(
+        search_space_id=db_search_space.id,
+        unique_id="source-b",
+        source_markdown="## Shared content",
+    )
+    service = IndexingPipelineService(session=db_session)
+
+    results = await service.prepare_for_indexing([first, second])
+
+    assert len(results) == 1
+
+    result = await db_session.execute(
+        select(Document).filter(Document.search_space_id == db_search_space.id)
+    )
+    assert len(result.scalars().all()) == 1
+
+
 async def test_same_content_from_different_source_is_skipped(
     db_session, db_search_space, make_connector_document
 ):
@@ -288,3 +313,5 @@ async def test_title_and_content_change_updates_both_and_returns_document(
 
     assert reloaded.title == "Updated Title"
     assert reloaded.source_markdown == "## v2"
+
+# explain how this No no_autoflush guard for duplicate check is a regression in new pipeline , explain this Notion chunks wrong string	Behavioral diff	Chunks page content	Would chunk full wrapper , let us discuss about this : GitHub can't split embedding vs chunk content	Behavioral diff	Two strings	One source_markdown 
