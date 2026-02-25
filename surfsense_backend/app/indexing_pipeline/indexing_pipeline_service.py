@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 
 from sqlalchemy import delete, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import object_session
 from sqlalchemy.orm.attributes import set_committed_value
@@ -12,6 +11,27 @@ from app.indexing_pipeline.document_chunker import chunk_text
 from app.indexing_pipeline.document_embedder import embed_text
 from app.indexing_pipeline.document_hashing import compute_content_hash, compute_unique_identifier_hash
 from app.indexing_pipeline.document_summarizer import summarize_document
+from app.indexing_pipeline.exceptions import (
+    EMBEDDING_ERRORS,
+    FATAL_DB_ERRORS,
+    PERMANENT_LLM_ERRORS,
+    RETRYABLE_LLM_ERRORS,
+    TRANSIENT_DB_ERRORS,
+    IntegrityError,
+    PipelineMessages,
+    embedding_message,
+    llm_permanent_message,
+    llm_retryable_message,
+)
+
+
+async def _mark_failed(session: AsyncSession, document: Document, message: str) -> None:
+    """Roll back the current transaction, refresh the document, and persist a failed status."""
+    await session.rollback()
+    await session.refresh(document)
+    document.updated_at = datetime.now(UTC)
+    document.status = DocumentStatus.failed(message)
+    await session.commit()
 
 
 def _safe_set_chunks(document: Document, chunks: list) -> None:
@@ -97,6 +117,12 @@ class IndexingPipelineService:
                 self.session.add(document)
                 documents.append(document)
 
+            except FATAL_DB_ERRORS:
+                # Session is broken — abort the entire batch, nothing else is safe to do.
+                await self.session.rollback()
+                return []
+            except TRANSIENT_DB_ERRORS:
+                await self.session.rollback()
             except Exception:
                 continue
 
@@ -150,9 +176,23 @@ class IndexingPipelineService:
             document.status = DocumentStatus.ready()
             await self.session.commit()
 
+        except RETRYABLE_LLM_ERRORS as e:
+            await _mark_failed(self.session, document, llm_retryable_message(e))
+
+        except PERMANENT_LLM_ERRORS as e:
+            await _mark_failed(self.session, document, llm_permanent_message(e))
+
+        except EMBEDDING_ERRORS as e:
+            await _mark_failed(self.session, document, embedding_message(e))
+
+        except RecursionError:
+            await _mark_failed(self.session, document, PipelineMessages.CHUNKING_OVERFLOW)
+
+        except FATAL_DB_ERRORS:
+            raise
+
+        except TRANSIENT_DB_ERRORS:
+            await _mark_failed(self.session, document, PipelineMessages.DB_TRANSIENT)
+
         except Exception as e:
-            await self.session.rollback()
-            await self.session.refresh(document)
-            document.updated_at = datetime.now(UTC)
-            document.status = DocumentStatus.failed(str(e))
-            await self.session.commit()
+            await _mark_failed(self.session, document, str(e))
