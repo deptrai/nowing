@@ -1,3 +1,4 @@
+import contextlib
 from datetime import UTC, datetime
 
 from sqlalchemy import delete, select
@@ -7,8 +8,14 @@ from app.db import Chunk, Document, DocumentStatus
 from app.indexing_pipeline.connector_document import ConnectorDocument
 from app.indexing_pipeline.document_chunker import chunk_text
 from app.indexing_pipeline.document_embedder import embed_text
-from app.indexing_pipeline.document_hashing import compute_content_hash, compute_unique_identifier_hash
-from app.indexing_pipeline.document_persistence import attach_chunks_to_document, rollback_and_persist_failure
+from app.indexing_pipeline.document_hashing import (
+    compute_content_hash,
+    compute_unique_identifier_hash,
+)
+from app.indexing_pipeline.document_persistence import (
+    attach_chunks_to_document,
+    rollback_and_persist_failure,
+)
 from app.indexing_pipeline.document_summarizer import summarize_document
 from app.indexing_pipeline.exceptions import (
     EMBEDDING_ERRORS,
@@ -74,7 +81,9 @@ class IndexingPipelineService:
                 seen_hashes.add(unique_identifier_hash)
 
                 result = await self.session.execute(
-                    select(Document).filter(Document.unique_identifier_hash == unique_identifier_hash)
+                    select(Document).filter(
+                        Document.unique_identifier_hash == unique_identifier_hash
+                    )
                 )
                 existing = result.scalars().first()
 
@@ -83,7 +92,9 @@ class IndexingPipelineService:
                         if existing.title != connector_doc.title:
                             existing.title = connector_doc.title
                             existing.updated_at = datetime.now(UTC)
-                        if not DocumentStatus.is_state(existing.status, DocumentStatus.READY):
+                        if not DocumentStatus.is_state(
+                            existing.status, DocumentStatus.READY
+                        ):
                             existing.status = DocumentStatus.pending()
                             existing.updated_at = datetime.now(UTC)
                             documents.append(existing)
@@ -144,7 +155,7 @@ class IndexingPipelineService:
 
     async def index(
         self, document: Document, connector_doc: ConnectorDocument, llm
-    ) -> None:
+    ) -> Document:
         """
         Run summarization, embedding, and chunking for a document and persist the results.
         """
@@ -192,20 +203,35 @@ class IndexingPipelineService:
 
         except RETRYABLE_LLM_ERRORS as e:
             log_retryable_llm_error(ctx, e)
-            await rollback_and_persist_failure(self.session, document, llm_retryable_message(e))
+            await rollback_and_persist_failure(
+                self.session, document, llm_retryable_message(e)
+            )
 
         except PERMANENT_LLM_ERRORS as e:
             log_permanent_llm_error(ctx, e)
-            await rollback_and_persist_failure(self.session, document, llm_permanent_message(e))
+            await rollback_and_persist_failure(
+                self.session, document, llm_permanent_message(e)
+            )
 
         except RecursionError as e:
             log_chunking_overflow(ctx, e)
-            await rollback_and_persist_failure(self.session, document, PipelineMessages.CHUNKING_OVERFLOW)
+            await rollback_and_persist_failure(
+                self.session, document, PipelineMessages.CHUNKING_OVERFLOW
+            )
 
         except EMBEDDING_ERRORS as e:
             log_embedding_error(ctx, e)
-            await rollback_and_persist_failure(self.session, document, embedding_message(e))
+            await rollback_and_persist_failure(
+                self.session, document, embedding_message(e)
+            )
 
         except Exception as e:
             log_unexpected_error(ctx, e)
-            await rollback_and_persist_failure(self.session, document, safe_exception_message(e))
+            await rollback_and_persist_failure(
+                self.session, document, safe_exception_message(e)
+            )
+
+        with contextlib.suppress(Exception):
+            await self.session.refresh(document)
+
+        return document

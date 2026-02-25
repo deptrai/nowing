@@ -22,18 +22,6 @@ def test_valid_document_created_with_required_fields():
     assert doc.created_by_id == "00000000-0000-0000-0000-000000000001"
 
 
-def test_omitting_connector_id_raises():
-    with pytest.raises(ValidationError):
-        ConnectorDocument(
-            title="Task",
-            source_markdown="## Content",
-            unique_id="task-1",
-            document_type=DocumentType.CLICKUP_CONNECTOR,
-            search_space_id=1,
-            created_by_id="00000000-0000-0000-0000-000000000001",
-        )
-
-
 def test_omitting_created_by_id_raises():
     with pytest.raises(ValidationError):
         ConnectorDocument(
@@ -89,19 +77,6 @@ def test_empty_created_by_id_raises():
             search_space_id=1,
             connector_id=42,
             created_by_id="",
-        )
-
-
-def test_zero_connector_id_raises():
-    with pytest.raises(ValidationError):
-        ConnectorDocument(
-            title="Task",
-            source_markdown="## Content",
-            unique_id="task-1",
-            document_type=DocumentType.CLICKUP_CONNECTOR,
-            search_space_id=1,
-            connector_id=0,
-            created_by_id="00000000-0000-0000-0000-000000000001",
         )
 
 

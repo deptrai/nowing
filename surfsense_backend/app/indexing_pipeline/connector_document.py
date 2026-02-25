@@ -14,7 +14,7 @@ class ConnectorDocument(BaseModel):
     should_use_code_chunker: bool = False
     fallback_summary: str | None = None
     metadata: dict = {}
-    connector_id: int = Field(gt=0)
+    connector_id: int | None = None
     created_by_id: str
 
     @field_validator("title", "source_markdown", "unique_id", "created_by_id")

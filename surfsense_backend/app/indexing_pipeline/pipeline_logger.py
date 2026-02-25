@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PipelineLogContext:
-    connector_id: int
+    connector_id: int | None
     search_space_id: int
     unique_id: str            # always available from ConnectorDocument
     doc_id: int | None = None # set once the DB row exists (index phase only)
