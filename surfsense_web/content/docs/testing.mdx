@@ -72,8 +72,11 @@ All test configuration has sensible defaults. Override via environment variables
 | Variable | Default | Description |
 |---|---|---|
 | `TEST_BACKEND_URL` | `http://localhost:8000` | Backend URL to test against |
+| `TEST_DATABASE_URL` | Falls back to `DATABASE_URL` | Direct DB connection for test cleanup |
 | `TEST_USER_EMAIL` | `testuser@surfsense.com` | Test user email |
 | `TEST_USER_PASSWORD` | `testpassword123` | Test user password |
+
+These can be configured in `surfsense_backend/.env` (see the Testing section at the bottom of `.env.example`).
 
 ## How It Works
 
@@ -81,7 +84,8 @@ Tests are fully self-bootstrapping:
 
 1. **User creation** — on first run, tests try to log in. If the user doesn't exist, they register via `POST /auth/register`, then log in.
 2. **Search space discovery** — after authentication, tests call `GET /api/v1/searchspaces` and use the first available search space (auto-created during registration).
-3. **Cleanup** — every test that creates documents adds their IDs to a `cleanup_doc_ids` list. An autouse fixture deletes them after each test.
+3. **Session purge** — before any tests run, a session-scoped fixture deletes all documents in the test search space directly via the database. This handles stuck documents from previous crashed runs that the API refuses to delete (409 Conflict).
+4. **Per-test cleanup** — every test that creates documents adds their IDs to a `cleanup_doc_ids` list. An autouse fixture deletes them after each test via the API, falling back to direct DB access for any stuck documents.
 
 This means tests work on both fresh databases and existing ones without any manual setup.
 
