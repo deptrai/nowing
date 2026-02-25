@@ -2,7 +2,9 @@ from app.prompts import SUMMARY_PROMPT_TEMPLATE
 from app.utils.document_converters import optimize_content_for_context_window
 
 
-async def summarize_document(source_markdown: str, llm, metadata: dict | None = None) -> str:
+async def summarize_document(
+    source_markdown: str, llm, metadata: dict | None = None
+) -> str:
     """Generate a text summary of a document using an LLM, prefixed with metadata when provided."""
     model_name = getattr(llm, "model", "gpt-3.5-turbo")
     optimized_content = optimize_content_for_context_window(

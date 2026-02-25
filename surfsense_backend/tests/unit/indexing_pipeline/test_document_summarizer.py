@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from app.indexing_pipeline.document_summarizer import summarize_document
 
@@ -38,5 +39,3 @@ async def test_with_metadata_omits_empty_fields_from_output():
 
     assert "Alice" in result
     assert "description" not in result.lower()
-
-

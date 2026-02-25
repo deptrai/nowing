@@ -2,7 +2,9 @@ import pytest
 from sqlalchemy import select
 
 from app.db import Document, DocumentStatus
-from app.indexing_pipeline.document_hashing import compute_content_hash as real_compute_content_hash
+from app.indexing_pipeline.document_hashing import (
+    compute_content_hash as real_compute_content_hash,
+)
 from app.indexing_pipeline.indexing_pipeline_service import IndexingPipelineService
 
 pytestmark = pytest.mark.integration
@@ -20,7 +22,9 @@ async def test_new_document_is_persisted_with_pending_status(
     assert len(results) == 1
     document_id = results[0].id
 
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    result = await db_session.execute(
+        select(Document).filter(Document.id == document_id)
+    )
     reloaded = result.scalars().first()
 
     assert reloaded is not None
@@ -28,9 +32,14 @@ async def test_new_document_is_persisted_with_pending_status(
     assert reloaded.source_markdown == doc.source_markdown
 
 
-@pytest.mark.usefixtures("patched_summarize", "patched_embed_text", "patched_chunk_text")
+@pytest.mark.usefixtures(
+    "patched_summarize", "patched_embed_text", "patched_chunk_text"
+)
 async def test_unchanged_ready_document_is_skipped(
-    db_session, db_search_space, make_connector_document, mocker,
+    db_session,
+    db_search_space,
+    make_connector_document,
+    mocker,
 ):
     """A READY document with unchanged content is not returned for re-indexing."""
     doc = make_connector_document(search_space_id=db_search_space.id)
@@ -46,24 +55,35 @@ async def test_unchanged_ready_document_is_skipped(
     assert results == []
 
 
-@pytest.mark.usefixtures("patched_summarize", "patched_embed_text", "patched_chunk_text")
+@pytest.mark.usefixtures(
+    "patched_summarize", "patched_embed_text", "patched_chunk_text"
+)
 async def test_title_only_change_updates_title_in_db(
-    db_session, db_search_space, make_connector_document, mocker,
+    db_session,
+    db_search_space,
+    make_connector_document,
+    mocker,
 ):
     """A title-only change updates the DB title without re-queuing the document."""
-    original = make_connector_document(search_space_id=db_search_space.id, title="Original Title")
+    original = make_connector_document(
+        search_space_id=db_search_space.id, title="Original Title"
+    )
     service = IndexingPipelineService(session=db_session)
 
     prepared = await service.prepare_for_indexing([original])
     document_id = prepared[0].id
     await service.index(prepared[0], original, llm=mocker.Mock())
 
-    renamed = make_connector_document(search_space_id=db_search_space.id, title="Updated Title")
+    renamed = make_connector_document(
+        search_space_id=db_search_space.id, title="Updated Title"
+    )
     results = await service.prepare_for_indexing([renamed])
 
     assert results == []
 
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    result = await db_session.execute(
+        select(Document).filter(Document.id == document_id)
+    )
     reloaded = result.scalars().first()
 
     assert reloaded.title == "Updated Title"
@@ -73,19 +93,25 @@ async def test_changed_content_is_returned_for_reprocessing(
     db_session, db_search_space, make_connector_document
 ):
     """A document with changed content is returned for re-indexing with updated markdown."""
-    original = make_connector_document(search_space_id=db_search_space.id, source_markdown="## v1")
+    original = make_connector_document(
+        search_space_id=db_search_space.id, source_markdown="## v1"
+    )
     service = IndexingPipelineService(session=db_session)
 
     first = await service.prepare_for_indexing([original])
     original_id = first[0].id
 
-    updated = make_connector_document(search_space_id=db_search_space.id, source_markdown="## v2")
+    updated = make_connector_document(
+        search_space_id=db_search_space.id, source_markdown="## v2"
+    )
     results = await service.prepare_for_indexing([updated])
 
     assert len(results) == 1
     assert results[0].id == original_id
 
-    result = await db_session.execute(select(Document).filter(Document.id == original_id))
+    result = await db_session.execute(
+        select(Document).filter(Document.id == original_id)
+    )
     reloaded = result.scalars().first()
 
     assert reloaded.source_markdown == "## v2"
@@ -97,9 +123,24 @@ async def test_all_documents_in_batch_are_persisted(
 ):
     """All documents in a batch are persisted and returned."""
     docs = [
-        make_connector_document(search_space_id=db_search_space.id, unique_id="id-1", title="Doc 1", source_markdown="## Content 1"),
-        make_connector_document(search_space_id=db_search_space.id, unique_id="id-2", title="Doc 2", source_markdown="## Content 2"),
-        make_connector_document(search_space_id=db_search_space.id, unique_id="id-3", title="Doc 3", source_markdown="## Content 3"),
+        make_connector_document(
+            search_space_id=db_search_space.id,
+            unique_id="id-1",
+            title="Doc 1",
+            source_markdown="## Content 1",
+        ),
+        make_connector_document(
+            search_space_id=db_search_space.id,
+            unique_id="id-2",
+            title="Doc 2",
+            source_markdown="## Content 2",
+        ),
+        make_connector_document(
+            search_space_id=db_search_space.id,
+            unique_id="id-3",
+            title="Doc 3",
+            source_markdown="## Content 3",
+        ),
     ]
     service = IndexingPipelineService(session=db_session)
 
@@ -107,7 +148,9 @@ async def test_all_documents_in_batch_are_persisted(
 
     assert len(results) == 3
 
-    result = await db_session.execute(select(Document).filter(Document.search_space_id == db_search_space.id))
+    result = await db_session.execute(
+        select(Document).filter(Document.search_space_id == db_search_space.id)
+    )
     rows = result.scalars().all()
 
     assert len(rows) == 3
@@ -124,7 +167,9 @@ async def test_duplicate_in_batch_is_persisted_once(
 
     assert len(results) == 1
 
-    result = await db_session.execute(select(Document).filter(Document.search_space_id == db_search_space.id))
+    result = await db_session.execute(
+        select(Document).filter(Document.search_space_id == db_search_space.id)
+    )
     rows = result.scalars().all()
 
     assert len(rows) == 1
@@ -143,7 +188,9 @@ async def test_created_by_id_is_persisted(
     results = await service.prepare_for_indexing([doc])
     document_id = results[0].id
 
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    result = await db_session.execute(
+        select(Document).filter(Document.id == document_id)
+    )
     reloaded = result.scalars().first()
 
     assert str(reloaded.created_by_id) == str(db_user.id)
@@ -170,7 +217,9 @@ async def test_metadata_is_updated_when_content_changes(
     )
     await service.prepare_for_indexing([updated])
 
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    result = await db_session.execute(
+        select(Document).filter(Document.id == document_id)
+    )
     reloaded = result.scalars().first()
 
     assert reloaded.document_metadata == {"status": "done"}
@@ -180,19 +229,27 @@ async def test_updated_at_advances_when_title_only_changes(
     db_session, db_search_space, make_connector_document
 ):
     """updated_at advances even when only the title changes."""
-    original = make_connector_document(search_space_id=db_search_space.id, title="Old Title")
+    original = make_connector_document(
+        search_space_id=db_search_space.id, title="Old Title"
+    )
     service = IndexingPipelineService(session=db_session)
 
     first = await service.prepare_for_indexing([original])
     document_id = first[0].id
 
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    result = await db_session.execute(
+        select(Document).filter(Document.id == document_id)
+    )
     updated_at_v1 = result.scalars().first().updated_at
 
-    renamed = make_connector_document(search_space_id=db_search_space.id, title="New Title")
+    renamed = make_connector_document(
+        search_space_id=db_search_space.id, title="New Title"
+    )
     await service.prepare_for_indexing([renamed])
 
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    result = await db_session.execute(
+        select(Document).filter(Document.id == document_id)
+    )
     updated_at_v2 = result.scalars().first().updated_at
 
     assert updated_at_v2 > updated_at_v1
@@ -202,19 +259,27 @@ async def test_updated_at_advances_when_content_changes(
     db_session, db_search_space, make_connector_document
 ):
     """updated_at advances when document content changes."""
-    original = make_connector_document(search_space_id=db_search_space.id, source_markdown="## v1")
+    original = make_connector_document(
+        search_space_id=db_search_space.id, source_markdown="## v1"
+    )
     service = IndexingPipelineService(session=db_session)
 
     first = await service.prepare_for_indexing([original])
     document_id = first[0].id
 
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    result = await db_session.execute(
+        select(Document).filter(Document.id == document_id)
+    )
     updated_at_v1 = result.scalars().first().updated_at
 
-    updated = make_connector_document(search_space_id=db_search_space.id, source_markdown="## v2")
+    updated = make_connector_document(
+        search_space_id=db_search_space.id, source_markdown="## v2"
+    )
     await service.prepare_for_indexing([updated])
 
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    result = await db_session.execute(
+        select(Document).filter(Document.id == document_id)
+    )
     updated_at_v2 = result.scalars().first().updated_at
 
     assert updated_at_v2 > updated_at_v1
@@ -273,9 +338,14 @@ async def test_same_content_from_different_source_is_skipped(
     assert len(result.scalars().all()) == 1
 
 
-@pytest.mark.usefixtures("patched_summarize_raises", "patched_embed_text", "patched_chunk_text")
+@pytest.mark.usefixtures(
+    "patched_summarize_raises", "patched_embed_text", "patched_chunk_text"
+)
 async def test_failed_document_with_unchanged_content_is_requeued(
-    db_session, db_search_space, make_connector_document, mocker,
+    db_session,
+    db_search_space,
+    make_connector_document,
+    mocker,
 ):
     """A FAILED document with unchanged content is re-queued as PENDING on the next run."""
     doc = make_connector_document(search_space_id=db_search_space.id)
@@ -286,8 +356,12 @@ async def test_failed_document_with_unchanged_content_is_requeued(
     document_id = prepared[0].id
     await service.index(prepared[0], doc, llm=mocker.Mock())
 
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
-    assert DocumentStatus.is_state(result.scalars().first().status, DocumentStatus.FAILED)
+    result = await db_session.execute(
+        select(Document).filter(Document.id == document_id)
+    )
+    assert DocumentStatus.is_state(
+        result.scalars().first().status, DocumentStatus.FAILED
+    )
 
     # Next run: same content, pipeline must re-queue the failed document
     results = await service.prepare_for_indexing([doc])
@@ -295,8 +369,12 @@ async def test_failed_document_with_unchanged_content_is_requeued(
     assert len(results) == 1
     assert results[0].id == document_id
 
-    result = await db_session.execute(select(Document).filter(Document.id == document_id))
-    assert DocumentStatus.is_state(result.scalars().first().status, DocumentStatus.PENDING)
+    result = await db_session.execute(
+        select(Document).filter(Document.id == document_id)
+    )
+    assert DocumentStatus.is_state(
+        result.scalars().first().status, DocumentStatus.PENDING
+    )
 
 
 async def test_title_and_content_change_updates_both_and_returns_document(
@@ -323,16 +401,20 @@ async def test_title_and_content_change_updates_both_and_returns_document(
     assert len(results) == 1
     assert results[0].id == original_id
 
-    result = await db_session.execute(select(Document).filter(Document.id == original_id))
+    result = await db_session.execute(
+        select(Document).filter(Document.id == original_id)
+    )
     reloaded = result.scalars().first()
 
     assert reloaded.title == "Updated Title"
     assert reloaded.source_markdown == "## v2"
 
 
-
 async def test_one_bad_document_in_batch_does_not_prevent_others_from_being_persisted(
-    db_session, db_search_space, make_connector_document, monkeypatch,
+    db_session,
+    db_search_space,
+    make_connector_document,
+    monkeypatch,
 ):
     """
     A per-document error during prepare_for_indexing must be isolated.

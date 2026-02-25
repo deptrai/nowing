@@ -877,7 +877,9 @@ async def _stream_agent_events(
                     output_text = om.group(1) if om else ""
                 thread_id_str = config.get("configurable", {}).get("thread_id", "")
 
-                for sf_match in re.finditer(r"^SANDBOX_FILE:\s*(.+)$", output_text, re.MULTILINE):
+                for sf_match in re.finditer(
+                    r"^SANDBOX_FILE:\s*(.+)$", output_text, re.MULTILINE
+                ):
                     fpath = sf_match.group(1).strip()
                     if fpath and fpath not in result.sandbox_files:
                         result.sandbox_files.append(fpath)
@@ -963,7 +965,10 @@ def _try_persist_and_delete_sandbox(
     sandbox_files: list[str],
 ) -> None:
     """Fire-and-forget: persist sandbox files locally then delete the sandbox."""
-    from app.agents.new_chat.sandbox import is_sandbox_enabled, persist_and_delete_sandbox
+    from app.agents.new_chat.sandbox import (
+        is_sandbox_enabled,
+        persist_and_delete_sandbox,
+    )
 
     if not is_sandbox_enabled():
         return
