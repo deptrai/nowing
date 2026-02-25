@@ -110,6 +110,28 @@ async def test_embedding_written_to_db(
     assert len(reloaded.embedding) == 1024
 
 
+@pytest.mark.usefixtures("patched_summarize", "patched_embed_text", "patched_chunk_text")
+async def test_updated_at_advances_after_indexing(
+    db_session, db_search_space, make_connector_document,
+):
+    connector_doc = make_connector_document(search_space_id=db_search_space.id)
+    service = IndexingPipelineService(session=db_session)
+
+    prepared = await service.prepare_for_indexing([connector_doc])
+    document = prepared[0]
+    document_id = document.id
+
+    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    updated_at_pending = result.scalars().first().updated_at
+
+    await service.index(document, connector_doc, llm=None)
+
+    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    updated_at_ready = result.scalars().first().updated_at
+
+    assert updated_at_ready > updated_at_pending
+
+
 @pytest.mark.usefixtures("patched_summarize_raises", "patched_chunk_text")
 async def test_llm_error_sets_status_failed(
     db_session, db_search_space, make_connector_document,

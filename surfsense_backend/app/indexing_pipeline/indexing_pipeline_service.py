@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,8 +57,16 @@ class IndexingPipelineService:
                 existing.title = connector_doc.title
                 existing.content_hash = content_hash
                 existing.source_markdown = connector_doc.source_markdown
+                existing.document_metadata = connector_doc.metadata
+                existing.updated_at = datetime.now(UTC)
                 existing.status = DocumentStatus.pending()
                 documents.append(existing)
+                continue
+
+            duplicate = await self.session.execute(
+                select(Document).filter(Document.content_hash == content_hash)
+            )
+            if duplicate.scalars().first() is not None:
                 continue
 
             document = Document(
@@ -69,6 +79,8 @@ class IndexingPipelineService:
                 document_metadata=connector_doc.metadata,
                 search_space_id=connector_doc.search_space_id,
                 connector_id=connector_doc.connector_id,
+                created_by_id=connector_doc.created_by_id,
+                updated_at=datetime.now(UTC),
                 status=DocumentStatus.pending(),
             )
             self.session.add(document)
@@ -98,18 +110,23 @@ class IndexingPipelineService:
 
             chunks = [
                 Chunk(content=text, embedding=embed_text(text))
-                for text in chunk_text(connector_doc.source_markdown)
+                for text in chunk_text(
+                    connector_doc.source_markdown,
+                    use_code_chunker=connector_doc.should_use_code_chunker,
+                )
             ]
 
             document.source_markdown = connector_doc.source_markdown
             document.content = content
             document.embedding = embedding
             _safe_set_chunks(document, chunks)
+            document.updated_at = datetime.now(UTC)
             document.status = DocumentStatus.ready()
             await self.session.commit()
 
         except Exception as e:
             await self.session.rollback()
             await self.session.refresh(document)
+            document.updated_at = datetime.now(UTC)
             document.status = DocumentStatus.failed(str(e))
             await self.session.commit()
