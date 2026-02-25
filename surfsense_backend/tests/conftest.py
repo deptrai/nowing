@@ -10,10 +10,10 @@ import pytest
 
 from tests.utils.helpers import (
     BACKEND_URL,
-    TEST_SEARCH_SPACE_ID,
     auth_headers,
     delete_document,
     get_auth_token,
+    get_search_space_id,
 )
 
 
@@ -23,17 +23,21 @@ def backend_url() -> str:
 
 
 @pytest.fixture(scope="session")
-def search_space_id() -> int:
-    return TEST_SEARCH_SPACE_ID
-
-
-@pytest.fixture(scope="session")
 async def auth_token(backend_url: str) -> str:
-    """Authenticate once per session and return the JWT token."""
+    """Authenticate once per session, registering the user if needed."""
     async with httpx.AsyncClient(
         base_url=backend_url, timeout=30.0
     ) as client:
         return await get_auth_token(client)
+
+
+@pytest.fixture(scope="session")
+async def search_space_id(backend_url: str, auth_token: str) -> int:
+    """Discover the first search space belonging to the test user."""
+    async with httpx.AsyncClient(
+        base_url=backend_url, timeout=30.0
+    ) as client:
+        return await get_search_space_id(client, auth_token)
 
 
 @pytest.fixture(scope="session")
