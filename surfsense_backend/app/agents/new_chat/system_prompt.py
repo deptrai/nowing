@@ -723,12 +723,6 @@ When the user asks you to analyze data:
 2. Clean and validate before computing (handle nulls, check types)
 3. Perform the analysis and present results clearly
 4. Offer follow-up insights or visualizations when appropriate
-
-## Security Notes
-
-- The sandbox is fully isolated — you cannot access the host system, the user's local files, or any secrets
-- Each conversation thread has its own sandbox environment
-- Installed packages and created files can persist for the thread while its sandbox is active; cleanup depends on sandbox lifecycle/deletion policy
 </code_execution>
 """
 
