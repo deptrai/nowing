@@ -17,6 +17,7 @@ import shutil
 from pathlib import Path
 
 import httpx
+import pytest
 
 from tests.utils.helpers import (
     FIXTURES_DIR,
@@ -26,6 +27,8 @@ from tests.utils.helpers import (
     upload_file,
     upload_multiple_files,
 )
+
+pytestmark = pytest.mark.document
 
 # ---------------------------------------------------------------------------
 # Helpers local to this module
