@@ -157,6 +157,30 @@ async def test_no_llm_falls_back_to_source_markdown(
 
 
 @pytest.mark.usefixtures("patched_summarize", "patched_embed_text", "patched_chunk_text")
+async def test_fallback_summary_used_when_llm_unavailable(
+    db_session, db_search_space, make_connector_document,
+):
+    connector_doc = make_connector_document(
+        search_space_id=db_search_space.id,
+        should_summarize=True,
+        source_markdown="## Full raw content",
+        fallback_summary="Short pre-built summary.",
+    )
+    service = IndexingPipelineService(session=db_session)
+
+    prepared = await service.prepare_for_indexing([connector_doc])
+    document_id = prepared[0].id
+
+    await service.index(prepared[0], connector_doc, llm=None)
+
+    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    reloaded = result.scalars().first()
+
+    assert DocumentStatus.is_state(reloaded.status, DocumentStatus.READY)
+    assert reloaded.content == "Short pre-built summary."
+
+
+@pytest.mark.usefixtures("patched_summarize", "patched_embed_text", "patched_chunk_text")
 async def test_reindex_replaces_old_chunks(
     db_session, db_search_space, make_connector_document, mocker,
 ):

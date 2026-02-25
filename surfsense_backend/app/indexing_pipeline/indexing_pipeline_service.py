@@ -124,6 +124,8 @@ class IndexingPipelineService:
                 content = await summarize_document(
                     connector_doc.source_markdown, llm, connector_doc.metadata
                 )
+            elif connector_doc.should_summarize and connector_doc.fallback_summary:
+                content = connector_doc.fallback_summary
             else:
                 content = connector_doc.source_markdown
 

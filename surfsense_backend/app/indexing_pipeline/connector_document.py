@@ -12,6 +12,7 @@ class ConnectorDocument(BaseModel):
     search_space_id: int = Field(gt=0)
     should_summarize: bool = True
     should_use_code_chunker: bool = False
+    fallback_summary: str | None = None
     metadata: dict = {}
     connector_id: int = Field(gt=0)
     created_by_id: str
