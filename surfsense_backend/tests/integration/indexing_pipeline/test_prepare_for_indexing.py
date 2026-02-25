@@ -23,28 +23,36 @@ async def test_new_document_is_persisted_with_pending_status(
 
     assert reloaded is not None
     assert DocumentStatus.is_state(reloaded.status, DocumentStatus.PENDING)
+    assert reloaded.source_markdown == doc.source_markdown
 
 
-async def test_unchanged_document_is_skipped(
-    db_session, db_search_space, make_connector_document
+@pytest.mark.usefixtures("patched_summarize", "patched_embed_text", "patched_chunk_text")
+async def test_unchanged_ready_document_is_skipped(
+    db_session, db_search_space, make_connector_document, mocker,
 ):
     doc = make_connector_document(search_space_id=db_search_space.id)
     service = IndexingPipelineService(session=db_session)
 
-    await service.prepare_for_indexing([doc])
+    # Index fully so the document reaches ready state
+    prepared = await service.prepare_for_indexing([doc])
+    await service.index(prepared[0], doc, llm=mocker.Mock())
+
+    # Same content on the next run — a ready document must be skipped
     results = await service.prepare_for_indexing([doc])
 
     assert results == []
 
 
+@pytest.mark.usefixtures("patched_summarize", "patched_embed_text", "patched_chunk_text")
 async def test_title_only_change_updates_title_in_db(
-    db_session, db_search_space, make_connector_document
+    db_session, db_search_space, make_connector_document, mocker,
 ):
     original = make_connector_document(search_space_id=db_search_space.id, title="Original Title")
     service = IndexingPipelineService(session=db_session)
 
-    first = await service.prepare_for_indexing([original])
-    document_id = first[0].id
+    prepared = await service.prepare_for_indexing([original])
+    document_id = prepared[0].id
+    await service.index(prepared[0], original, llm=mocker.Mock())
 
     renamed = make_connector_document(search_space_id=db_search_space.id, title="Updated Title")
     results = await service.prepare_for_indexing([renamed])
@@ -225,6 +233,31 @@ async def test_same_content_from_different_source_is_skipped(
         select(Document).filter(Document.search_space_id == db_search_space.id)
     )
     assert len(result.scalars().all()) == 1
+
+
+@pytest.mark.usefixtures("patched_summarize_raises", "patched_embed_text", "patched_chunk_text")
+async def test_failed_document_with_unchanged_content_is_requeued(
+    db_session, db_search_space, make_connector_document, mocker,
+):
+    doc = make_connector_document(search_space_id=db_search_space.id)
+    service = IndexingPipelineService(session=db_session)
+
+    # First run: document is created and indexing crashes → status = failed
+    prepared = await service.prepare_for_indexing([doc])
+    document_id = prepared[0].id
+    await service.index(prepared[0], doc, llm=mocker.Mock())
+
+    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    assert DocumentStatus.is_state(result.scalars().first().status, DocumentStatus.FAILED)
+
+    # Next run: same content, pipeline must re-queue the failed document
+    results = await service.prepare_for_indexing([doc])
+
+    assert len(results) == 1
+    assert results[0].id == document_id
+
+    result = await db_session.execute(select(Document).filter(Document.id == document_id))
+    assert DocumentStatus.is_state(result.scalars().first().status, DocumentStatus.PENDING)
 
 
 async def test_title_and_content_change_updates_both_and_returns_document(

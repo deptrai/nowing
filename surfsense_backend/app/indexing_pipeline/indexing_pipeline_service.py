@@ -40,10 +40,15 @@ class IndexingPipelineService:
         Persist new documents and detect changes, returning only those that need indexing.
         """
         documents = []
+        seen_hashes: set[str] = set()
 
         for connector_doc in connector_docs:
             unique_identifier_hash = compute_unique_identifier_hash(connector_doc)
             content_hash = compute_content_hash(connector_doc)
+
+            if unique_identifier_hash in seen_hashes:
+                continue
+            seen_hashes.add(unique_identifier_hash)
 
             result = await self.session.execute(
                 select(Document).filter(Document.unique_identifier_hash == unique_identifier_hash)
@@ -55,6 +60,10 @@ class IndexingPipelineService:
                     if existing.title != connector_doc.title:
                         existing.title = connector_doc.title
                         existing.updated_at = datetime.now(UTC)
+                    if not DocumentStatus.is_state(existing.status, DocumentStatus.READY):
+                        existing.status = DocumentStatus.pending()
+                        existing.updated_at = datetime.now(UTC)
+                        documents.append(existing)
                     continue
 
                 existing.title = connector_doc.title
