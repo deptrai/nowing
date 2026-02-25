@@ -9,14 +9,10 @@ SurfSense uses [pytest](https://docs.pytest.org/) for end-to-end testing. Tests 
 
 Before running tests, make sure the full backend stack is running:
 
-- **FastAPI backend** (`uv run main.py`)
+- **FastAPI backend**
 - **PostgreSQL + pgvector**
 - **Redis**
-- **Celery worker** — start with explicit queue names:
-
-```bash
-uv run celery -A celery_worker.celery_app worker --loglevel=info --concurrency=1 --pool=solo --queues="surfsense,surfsense.connectors"
-```
+- **Celery worker**
 
 Your backend must have **`REGISTRATION_ENABLED=TRUE`** in its `.env` (this is the default). The tests register their own user on first run.
 
