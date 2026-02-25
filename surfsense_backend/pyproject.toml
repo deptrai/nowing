@@ -171,6 +171,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+addopts = "-v --tb=short -x --durations=10"
 
 [tool.setuptools.packages.find]
 where = ["."]
