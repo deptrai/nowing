@@ -1,16 +1,10 @@
 """
-Integration tests for manual document upload - HTTP API layer.
+Integration tests for the document upload HTTP API.
 
-Each test verifies a distinct user-facing behavior through the public HTTP
-endpoints.  Pipeline internals (indexing, chunking, embedding) are covered by
-the ``indexing_pipeline`` test suite; this module focuses on the API contract,
-error handling, auth, and cross-cutting concerns like duplicate detection.
+Covers the API contract, auth, duplicate detection, and error handling.
+Pipeline internals are tested in the ``indexing_pipeline`` suite.
 
-External boundaries mocked: LLM summarization, text embedding, text chunking,
-Redis heartbeat. Task dispatch is swapped via DI (InlineTaskDispatcher).
-
-Prerequisites:
-  - PostgreSQL + pgvector
+Requires PostgreSQL + pgvector.
 """
 
 from __future__ import annotations
