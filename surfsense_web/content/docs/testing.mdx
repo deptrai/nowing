@@ -1,6 +1,7 @@
 ---
 title: Testing
 description: Running and writing tests for SurfSense
+icon: FlaskConical
 ---
 
 SurfSense uses [pytest](https://docs.pytest.org/) with two test layers: **unit** tests (no database) and **integration** tests (require PostgreSQL + pgvector). Tests are self-bootstrapping — they configure the test database, register a user, and clean up automatically.
