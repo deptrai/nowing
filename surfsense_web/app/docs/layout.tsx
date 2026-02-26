@@ -2,6 +2,7 @@ import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import type { ReactNode } from "react";
 import { baseOptions } from "@/app/layout.config";
 import { source } from "@/lib/source";
+import { SidebarSeparator } from "./sidebar-separator";
 
 const gridTemplate = `"sidebar header toc"
 "sidebar toc-popover toc"
@@ -13,6 +14,11 @@ export default function Layout({ children }: { children: ReactNode }) {
 			tree={source.pageTree}
 			{...baseOptions}
 			containerProps={{ style: { gridTemplate }, className: "bg-fd-card" }}
+			sidebar={{
+				components: {
+					Separator: SidebarSeparator,
+				},
+			}}
 		>
 			{children}
 		</DocsLayout>
