@@ -2,6 +2,7 @@ import contextlib
 from datetime import UTC, datetime
 
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import Chunk, Document, DocumentStatus
@@ -21,7 +22,6 @@ from app.indexing_pipeline.exceptions import (
     EMBEDDING_ERRORS,
     PERMANENT_LLM_ERRORS,
     RETRYABLE_LLM_ERRORS,
-    IntegrityError,
     PipelineMessages,
     embedding_message,
     llm_permanent_message,
