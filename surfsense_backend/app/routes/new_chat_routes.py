@@ -10,6 +10,8 @@ These endpoints support the ThreadHistoryAdapter pattern from assistant-ui:
 - POST /threads/{thread_id}/messages - Append message
 """
 
+import asyncio
+import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -52,10 +54,8 @@ from app.tasks.chat.stream_new_chat import stream_new_chat, stream_resume_chat
 from app.users import current_active_user
 from app.utils.rbac import check_permission
 
-import asyncio
-import logging
-
 _logger = logging.getLogger(__name__)
+_background_tasks: set[asyncio.Task] = set()
 
 router = APIRouter()
 
@@ -75,15 +75,25 @@ def _try_delete_sandbox(thread_id: int) -> None:
         try:
             await delete_sandbox(thread_id)
         except Exception:
-            _logger.warning("Background sandbox delete failed for thread %s", thread_id, exc_info=True)
+            _logger.warning(
+                "Background sandbox delete failed for thread %s",
+                thread_id,
+                exc_info=True,
+            )
         try:
             delete_local_sandbox_files(thread_id)
         except Exception:
-            _logger.warning("Local sandbox file cleanup failed for thread %s", thread_id, exc_info=True)
+            _logger.warning(
+                "Local sandbox file cleanup failed for thread %s",
+                thread_id,
+                exc_info=True,
+            )
 
     try:
         loop = asyncio.get_running_loop()
-        loop.create_task(_bg())
+        task = loop.create_task(_bg())
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
     except RuntimeError:
         pass
 

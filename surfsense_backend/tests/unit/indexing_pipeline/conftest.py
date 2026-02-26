@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 
 @pytest.fixture
@@ -21,7 +22,9 @@ def patched_summarizer_chain(monkeypatch):
 def patched_chunker_instance(monkeypatch):
     mock = MagicMock()
     mock.chunk.return_value = [MagicMock(text="prose chunk")]
-    monkeypatch.setattr("app.indexing_pipeline.document_chunker.config.chunker_instance", mock)
+    monkeypatch.setattr(
+        "app.indexing_pipeline.document_chunker.config.chunker_instance", mock
+    )
     return mock
 
 
@@ -29,5 +32,7 @@ def patched_chunker_instance(monkeypatch):
 def patched_code_chunker_instance(monkeypatch):
     mock = MagicMock()
     mock.chunk.return_value = [MagicMock(text="code chunk")]
-    monkeypatch.setattr("app.indexing_pipeline.document_chunker.config.code_chunker_instance", mock)
+    monkeypatch.setattr(
+        "app.indexing_pipeline.document_chunker.config.code_chunker_instance", mock
+    )
     return mock

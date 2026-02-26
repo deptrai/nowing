@@ -33,4 +33,5 @@ def make_connector_document():
         }
         defaults.update(overrides)
         return ConnectorDocument(**defaults)
+
     return _make

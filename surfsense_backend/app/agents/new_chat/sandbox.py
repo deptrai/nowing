@@ -12,6 +12,7 @@ the sandbox is deleted so they remain downloadable after cleanup.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import shutil
@@ -56,6 +57,7 @@ class _TimeoutAwareSandbox(DaytonaSandbox):
 
 
 _daytona_client: Daytona | None = None
+_sandbox_cache: dict[str, _TimeoutAwareSandbox] = {}
 THREAD_LABEL_KEY = "surfsense_thread"
 
 
@@ -126,8 +128,8 @@ def _find_or_create(thread_id: str) -> _TimeoutAwareSandbox:
 async def get_or_create_sandbox(thread_id: int | str) -> _TimeoutAwareSandbox:
     """Get or create a sandbox for a conversation thread.
 
-    Uses the thread_id as a label so the same sandbox persists
-    across multiple messages within the same conversation.
+    Uses an in-process cache keyed by thread_id so subsequent messages
+    in the same conversation reuse the sandbox object without an API call.
 
     Args:
         thread_id: The conversation thread identifier.
@@ -135,11 +137,19 @@ async def get_or_create_sandbox(thread_id: int | str) -> _TimeoutAwareSandbox:
     Returns:
         DaytonaSandbox connected to the sandbox.
     """
-    return await asyncio.to_thread(_find_or_create, str(thread_id))
+    key = str(thread_id)
+    cached = _sandbox_cache.get(key)
+    if cached is not None:
+        logger.info("Reusing cached sandbox for thread %s", key)
+        return cached
+    sandbox = await asyncio.to_thread(_find_or_create, key)
+    _sandbox_cache[key] = sandbox
+    return sandbox
 
 
 async def delete_sandbox(thread_id: int | str) -> None:
     """Delete the sandbox for a conversation thread."""
+    _sandbox_cache.pop(str(thread_id), None)
 
     def _delete() -> None:
         client = _get_client()
@@ -147,7 +157,9 @@ async def delete_sandbox(thread_id: int | str) -> None:
         try:
             sandbox = client.find_one(labels=labels)
         except DaytonaError:
-            logger.debug("No sandbox to delete for thread %s (already removed)", thread_id)
+            logger.debug(
+                "No sandbox to delete for thread %s (already removed)", thread_id
+            )
             return
         try:
             client.delete(sandbox)
@@ -165,6 +177,7 @@ async def delete_sandbox(thread_id: int | str) -> None:
 # ---------------------------------------------------------------------------
 # Local file persistence
 # ---------------------------------------------------------------------------
+
 
 def _get_sandbox_files_dir() -> Path:
     return Path(os.environ.get("SANDBOX_FILES_DIR", "sandbox_files"))
@@ -206,6 +219,7 @@ async def persist_and_delete_sandbox(
     Per-file errors are logged but do **not** prevent the sandbox from
     being deleted — freeing Daytona storage is the priority.
     """
+    _sandbox_cache.pop(str(thread_id), None)
 
     def _persist_and_delete() -> None:
         client = _get_client()
@@ -229,10 +243,8 @@ async def persist_and_delete_sandbox(
                     sandbox.id,
                     exc_info=True,
                 )
-                try:
+                with contextlib.suppress(Exception):
                     client.delete(sandbox)
-                except Exception:
-                    pass
                 return
 
         for path in sandbox_file_paths:
