@@ -3,22 +3,16 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
+
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/surfsense_test",
+)
 
 import pytest
-from dotenv import load_dotenv
 
 from app.db import DocumentType
 from app.indexing_pipeline.connector_document import ConnectorDocument
-
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
-
-# Shared DB URL referenced by both e2e and integration helper functions.
-DATABASE_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    os.environ.get("DATABASE_URL", ""),
-).replace("postgresql+asyncpg://", "postgresql://")
-
 
 # ---------------------------------------------------------------------------
 # Unit test fixtures

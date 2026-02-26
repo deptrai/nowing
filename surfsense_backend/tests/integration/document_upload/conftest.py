@@ -24,9 +24,9 @@ from sqlalchemy.pool import NullPool
 
 from app.app import app
 from app.config import config as app_config
-from app.db import DATABASE_URL as APP_DB_URL, Base
+from app.db import Base
 from app.services.task_dispatcher import get_task_dispatcher
-from tests.conftest import DATABASE_URL
+from tests.integration.conftest import TEST_DATABASE_URL
 from tests.utils.helpers import (
     TEST_EMAIL,
     auth_headers,
@@ -36,6 +36,7 @@ from tests.utils.helpers import (
 )
 
 _EMBEDDING_DIM = app_config.embedding_model_instance.dimension
+_ASYNCPG_URL = TEST_DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
 
 pytestmark = pytest.mark.integration
 
@@ -85,7 +86,7 @@ app.dependency_overrides[get_task_dispatcher] = lambda: InlineTaskDispatcher()
 @pytest.fixture(scope="session")
 async def _ensure_tables():
     """Create DB tables and extensions once per session."""
-    engine = create_async_engine(APP_DB_URL, poolclass=NullPool)
+    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
@@ -144,7 +145,7 @@ def cleanup_doc_ids() -> list[int]:
 @pytest.fixture(scope="session", autouse=True)
 async def _purge_test_search_space(search_space_id: int):
     """Delete stale documents from previous runs before the session starts."""
-    conn = await asyncpg.connect(DATABASE_URL)
+    conn = await asyncpg.connect(_ASYNCPG_URL)
     try:
         result = await conn.execute(
             "DELETE FROM documents WHERE search_space_id = $1",
@@ -180,7 +181,7 @@ async def _cleanup_documents(
             remaining_ids.append(doc_id)
 
     if remaining_ids:
-        conn = await asyncpg.connect(DATABASE_URL)
+        conn = await asyncpg.connect(_ASYNCPG_URL)
         try:
             await conn.execute(
                 "DELETE FROM documents WHERE id = ANY($1::int[])",
@@ -196,7 +197,7 @@ async def _cleanup_documents(
 
 
 async def _get_user_page_usage(email: str) -> tuple[int, int]:
-    conn = await asyncpg.connect(DATABASE_URL)
+    conn = await asyncpg.connect(_ASYNCPG_URL)
     try:
         row = await conn.fetchrow(
             'SELECT pages_used, pages_limit FROM "user" WHERE email = $1',
@@ -211,7 +212,7 @@ async def _get_user_page_usage(email: str) -> tuple[int, int]:
 async def _set_user_page_limits(
     email: str, *, pages_used: int, pages_limit: int
 ) -> None:
-    conn = await asyncpg.connect(DATABASE_URL)
+    conn = await asyncpg.connect(_ASYNCPG_URL)
     try:
         await conn.execute(
             'UPDATE "user" SET pages_used = $1, pages_limit = $2 WHERE email = $3',
