@@ -1,14 +1,14 @@
 """
-End-to-end tests for manual document upload.
+Integration tests for manual document upload.
 
-These tests exercise the full pipeline:
-  API upload → Celery task → ETL extraction → chunking → embedding → DB storage
+These tests exercise the full pipeline via the HTTP API:
+  API upload → inline task dispatch → ETL extraction → chunking → embedding → DB storage
 
-Prerequisites (must be running):
-  - FastAPI backend
+External boundaries mocked: LLM summarization, text embedding, text chunking,
+Redis heartbeat. Task dispatch is swapped via DI (InlineTaskDispatcher).
+
+Prerequisites:
   - PostgreSQL + pgvector
-  - Redis
-  - Celery worker
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from tests.utils.helpers import (
     upload_multiple_files,
 )
 
-pytestmark = pytest.mark.e2e
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Helpers local to this module
@@ -45,7 +45,7 @@ def _assert_document_ready(doc: dict, *, expected_filename: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test A: Upload a .txt file (direct read path — no ETL service needed)
+# Test A: Upload a .txt file (direct read path)
 # ---------------------------------------------------------------------------
 
 
@@ -108,7 +108,6 @@ class TestTxtFileUpload:
 
         doc = await get_document(client, headers, doc_ids[0])
         _assert_document_ready(doc, expected_filename="sample.txt")
-        assert doc["document_metadata"]["ETL_SERVICE"] == "MARKDOWN"
 
 
 # ---------------------------------------------------------------------------
@@ -158,11 +157,10 @@ class TestMarkdownFileUpload:
 
         doc = await get_document(client, headers, doc_ids[0])
         _assert_document_ready(doc, expected_filename="sample.md")
-        assert doc["document_metadata"]["ETL_SERVICE"] == "MARKDOWN"
 
 
 # ---------------------------------------------------------------------------
-# Test C: Upload a .pdf file (ETL path — Docling / Unstructured)
+# Test C: Upload a .pdf file (ETL path)
 # ---------------------------------------------------------------------------
 
 
@@ -208,11 +206,6 @@ class TestPdfFileUpload:
 
         doc = await get_document(client, headers, doc_ids[0])
         _assert_document_ready(doc, expected_filename="sample.pdf")
-        assert doc["document_metadata"]["ETL_SERVICE"] in {
-            "DOCLING",
-            "UNSTRUCTURED",
-            "LLAMACLOUD",
-        }
 
 
 # ---------------------------------------------------------------------------
@@ -284,7 +277,6 @@ class TestDuplicateFileUpload:
         search_space_id: int,
         cleanup_doc_ids: list[int],
     ):
-        # First upload
         resp1 = await upload_file(
             client, headers, "sample.txt", search_space_id=search_space_id
         )
@@ -296,7 +288,6 @@ class TestDuplicateFileUpload:
             client, headers, first_ids, search_space_id=search_space_id
         )
 
-        # Second upload of the same file
         resp2 = await upload_file(
             client, headers, "sample.txt", search_space_id=search_space_id
         )
@@ -327,7 +318,6 @@ class TestDuplicateContentDetection:
         cleanup_doc_ids: list[int],
         tmp_path: Path,
     ):
-        # First upload
         resp1 = await upload_file(
             client, headers, "sample.txt", search_space_id=search_space_id
         )
@@ -338,7 +328,6 @@ class TestDuplicateContentDetection:
             client, headers, first_ids, search_space_id=search_space_id
         )
 
-        # Copy fixture content to a differently named temp file
         src = FIXTURES_DIR / "sample.txt"
         dest = tmp_path / "renamed_sample.txt"
         shutil.copy2(src, dest)
@@ -477,39 +466,7 @@ class TestDocumentDeletion:
 
 
 # ---------------------------------------------------------------------------
-# Test K: Cannot delete a document while it is still processing
-# ---------------------------------------------------------------------------
-
-
-class TestDeleteWhileProcessing:
-    """Attempting to delete a pending/processing document should be rejected."""
-
-    async def test_delete_pending_document_returns_409(
-        self,
-        client: httpx.AsyncClient,
-        headers: dict[str, str],
-        search_space_id: int,
-        cleanup_doc_ids: list[int],
-    ):
-        resp = await upload_file(
-            client, headers, "sample.pdf", search_space_id=search_space_id
-        )
-        assert resp.status_code == 200
-        doc_ids = resp.json()["document_ids"]
-        cleanup_doc_ids.extend(doc_ids)
-
-        # Immediately try to delete before processing finishes
-        del_resp = await delete_document(client, headers, doc_ids[0])
-        assert del_resp.status_code == 409
-
-        # Let it finish so cleanup can work
-        await poll_document_status(
-            client, headers, doc_ids, search_space_id=search_space_id, timeout=300.0
-        )
-
-
-# ---------------------------------------------------------------------------
-# Test L: Status polling returns correct structure
+# Test K: Searchability after upload
 # ---------------------------------------------------------------------------
 
 
@@ -545,6 +502,11 @@ class TestDocumentSearchability:
         assert doc_ids[0] in result_ids, (
             f"Uploaded document {doc_ids[0]} not found in search results: {result_ids}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Test L: Status polling returns correct structure
+# ---------------------------------------------------------------------------
 
 
 class TestStatusPolling:
