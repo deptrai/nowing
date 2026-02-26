@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from app.config import config as app_config
 from app.db import (
     Base,
     DocumentType,
@@ -18,7 +19,7 @@ from app.db import (
 )
 from app.indexing_pipeline.connector_document import ConnectorDocument
 
-_EMBEDDING_DIM = 1024  # must match the Vector() dimension used in DB column creation
+_EMBEDDING_DIM = app_config.embedding_model_instance.dimension
 
 _DEFAULT_TEST_DB = (
     "postgresql+asyncpg://postgres:postgres@localhost:5432/surfsense_test"
