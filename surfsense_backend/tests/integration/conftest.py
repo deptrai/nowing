@@ -1,4 +1,3 @@
-import os
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
@@ -18,13 +17,9 @@ from app.db import (
     User,
 )
 from app.indexing_pipeline.connector_document import ConnectorDocument
+from tests.conftest import TEST_DATABASE_URL
 
 _EMBEDDING_DIM = app_config.embedding_model_instance.dimension
-
-_DEFAULT_TEST_DB = (
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/surfsense_test"
-)
-TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", _DEFAULT_TEST_DB)
 
 
 @pytest_asyncio.fixture(scope="session")

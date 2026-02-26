@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import os
 
-os.environ.setdefault(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/surfsense_test",
+_DEFAULT_TEST_DB = (
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/surfsense_test"
 )
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", _DEFAULT_TEST_DB)
+
+# Force the app to use the test database regardless of any pre-existing
+# DATABASE_URL in the environment (e.g. from .env or shell profile).
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 import pytest
 
