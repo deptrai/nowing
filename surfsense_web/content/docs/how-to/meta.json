@@ -1,5 +1,6 @@
 {
 	"title": "How to",
+	"icon": "BookOpen",
 	"pages": ["electric-sql", "realtime-collaboration"],
 	"defaultOpen": false
 }

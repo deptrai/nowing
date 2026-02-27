@@ -28,6 +28,7 @@ from app.schemas import (
     DocumentWithChunksRead,
     PaginatedResponse,
 )
+from app.services.task_dispatcher import TaskDispatcher, get_task_dispatcher
 from app.users import current_active_user
 from app.utils.rbac import check_permission
 
@@ -121,6 +122,7 @@ async def create_documents_file_upload(
     should_summarize: bool = Form(False),
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user),
+    dispatcher: TaskDispatcher = Depends(get_task_dispatcher),
 ):
     """
     Upload files as documents with real-time status tracking.
@@ -291,14 +293,10 @@ async def create_documents_file_upload(
             for doc in created_documents:
                 await session.refresh(doc)
 
-        # ===== PHASE 2: Dispatch Celery tasks for each file =====
+        # ===== PHASE 2: Dispatch tasks for each file =====
         # Each task will update document status: pending → processing → ready/failed
-        from app.tasks.celery_tasks.document_tasks import (
-            process_file_upload_with_document_task,
-        )
-
         for document, temp_path, filename in files_to_process:
-            process_file_upload_with_document_task.delay(
+            await dispatcher.dispatch_file_processing(
                 document_id=document.id,
                 temp_path=temp_path,
                 filename=filename,
