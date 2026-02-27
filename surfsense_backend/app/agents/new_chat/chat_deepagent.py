@@ -241,6 +241,15 @@ async def create_surfsense_deep_agent(
 
     # Build dependencies dict for the tools registry
     visibility = thread_visibility or ChatVisibility.PRIVATE
+
+    # Extract the model's context window so tools can size their output.
+    _model_profile = getattr(llm, "profile", None)
+    _max_input_tokens: int | None = (
+        _model_profile.get("max_input_tokens")
+        if isinstance(_model_profile, dict)
+        else None
+    )
+
     dependencies = {
         "search_space_id": search_space_id,
         "db_session": db_session,
@@ -251,6 +260,7 @@ async def create_surfsense_deep_agent(
         "thread_visibility": visibility,
         "available_connectors": available_connectors,
         "available_document_types": available_document_types,
+        "max_input_tokens": _max_input_tokens,
     }
 
     # Disable Notion action tools if no Notion connector is configured
