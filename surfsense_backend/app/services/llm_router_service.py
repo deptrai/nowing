@@ -15,10 +15,12 @@ import logging
 from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
+from langchain_core.exceptions import ContextOverflowError
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from litellm import Router
+from litellm.exceptions import ContextWindowExceededError
 
 logger = logging.getLogger(__name__)
 
@@ -359,13 +361,15 @@ class ChatLiteLLMRouter(BaseChatModel):
         if self._tool_choice is not None:
             call_kwargs["tool_choice"] = self._tool_choice
 
-        # Call router completion
-        response = self._router.completion(
-            model=self.model,
-            messages=formatted_messages,
-            stop=stop,
-            **call_kwargs,
-        )
+        try:
+            response = self._router.completion(
+                model=self.model,
+                messages=formatted_messages,
+                stop=stop,
+                **call_kwargs,
+            )
+        except ContextWindowExceededError as e:
+            raise ContextOverflowError(str(e)) from e
 
         # Convert response to ChatResult with potential tool calls
         message = self._convert_response_to_message(response.choices[0].message)
@@ -396,13 +400,15 @@ class ChatLiteLLMRouter(BaseChatModel):
         if self._tool_choice is not None:
             call_kwargs["tool_choice"] = self._tool_choice
 
-        # Call router async completion
-        response = await self._router.acompletion(
-            model=self.model,
-            messages=formatted_messages,
-            stop=stop,
-            **call_kwargs,
-        )
+        try:
+            response = await self._router.acompletion(
+                model=self.model,
+                messages=formatted_messages,
+                stop=stop,
+                **call_kwargs,
+            )
+        except ContextWindowExceededError as e:
+            raise ContextOverflowError(str(e)) from e
 
         # Convert response to ChatResult with potential tool calls
         message = self._convert_response_to_message(response.choices[0].message)
@@ -432,14 +438,16 @@ class ChatLiteLLMRouter(BaseChatModel):
         if self._tool_choice is not None:
             call_kwargs["tool_choice"] = self._tool_choice
 
-        # Call router completion with streaming
-        response = self._router.completion(
-            model=self.model,
-            messages=formatted_messages,
-            stop=stop,
-            stream=True,
-            **call_kwargs,
-        )
+        try:
+            response = self._router.completion(
+                model=self.model,
+                messages=formatted_messages,
+                stop=stop,
+                stream=True,
+                **call_kwargs,
+            )
+        except ContextWindowExceededError as e:
+            raise ContextOverflowError(str(e)) from e
 
         # Yield chunks
         for chunk in response:
@@ -471,14 +479,16 @@ class ChatLiteLLMRouter(BaseChatModel):
         if self._tool_choice is not None:
             call_kwargs["tool_choice"] = self._tool_choice
 
-        # Call router async completion with streaming
-        response = await self._router.acompletion(
-            model=self.model,
-            messages=formatted_messages,
-            stop=stop,
-            stream=True,
-            **call_kwargs,
-        )
+        try:
+            response = await self._router.acompletion(
+                model=self.model,
+                messages=formatted_messages,
+                stop=stop,
+                stream=True,
+                **call_kwargs,
+            )
+        except ContextWindowExceededError as e:
+            raise ContextOverflowError(str(e)) from e
 
         # Yield chunks asynchronously
         async for chunk in response:

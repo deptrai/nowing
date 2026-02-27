@@ -25,6 +25,7 @@ from app.services.task_logging_service import TaskLoggingService
 from app.utils.document_converters import (
     convert_document_to_markdown,
     create_document_chunks,
+    embed_text,
     generate_content_hash,
     generate_document_summary,
     generate_unique_identifier_hash,
@@ -760,11 +761,7 @@ async def add_received_file_document_using_docling(
             f"{metadata_section}\n\n# DOCUMENT SUMMARY\n\n{summary_content}"
         )
 
-        from app.config import config
-
-        summary_embedding = config.embedding_model_instance.embed(
-            enhanced_summary_content
-        )
+        summary_embedding = embed_text(enhanced_summary_content)
 
         # Process chunks
         chunks = await create_document_chunks(file_in_markdown)
@@ -1599,6 +1596,7 @@ async def process_file_in_background_with_document(
     log_entry: Log,
     connector: dict | None = None,
     notification: Notification | None = None,
+    should_summarize: bool = False,
 ) -> Document | None:
     """
     Process file and update existing pending document (2-phase pattern).
@@ -1881,6 +1879,7 @@ async def process_file_in_background_with_document(
             user_id=user_id,
             session=session,
             llm=user_llm,
+            should_summarize=should_summarize,
         )
 
         await task_logger.log_task_success(

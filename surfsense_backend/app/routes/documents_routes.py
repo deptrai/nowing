@@ -118,6 +118,7 @@ async def create_documents(
 async def create_documents_file_upload(
     files: list[UploadFile],
     search_space_id: int = Form(...),
+    should_summarize: bool = Form(False),
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user),
 ):
@@ -303,6 +304,7 @@ async def create_documents_file_upload(
                 filename=filename,
                 search_space_id=search_space_id,
                 user_id=str(user.id),
+                should_summarize=should_summarize,
             )
 
         return {

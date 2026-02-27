@@ -13,6 +13,7 @@ async def index_uploaded_file(
     user_id: str,
     session: AsyncSession,
     llm,
+    should_summarize: bool = False,
 ) -> None:
     connector_doc = ConnectorDocument(
         title=filename,
@@ -22,7 +23,7 @@ async def index_uploaded_file(
         search_space_id=search_space_id,
         created_by_id=user_id,
         connector_id=None,
-        should_summarize=True,
+        should_summarize=should_summarize,
         should_use_code_chunker=False,
         fallback_summary=markdown_content[:4000],
         metadata={

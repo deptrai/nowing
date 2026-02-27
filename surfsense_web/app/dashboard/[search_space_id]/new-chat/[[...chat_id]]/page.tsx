@@ -26,7 +26,6 @@ import {
 import {
 	clearPlanOwnerRegistry,
 	// extractWriteTodosFromContent,
-	hydratePlanStateAtom,
 } from "@/atoms/chat/plan-state.atom";
 import { closeReportPanelAtom } from "@/atoms/chat/report-panel.atom";
 import { membersAtom } from "@/atoms/members/members-query.atoms";
@@ -73,7 +72,6 @@ import {
 	appendText,
 	buildContentForPersistence,
 	buildContentForUI,
-	type ContentPart,
 	type ContentPartsState,
 	readSSEStream,
 	type ThinkingStepData,
@@ -188,7 +186,6 @@ export default function NewChatPage() {
 	const setMentionedDocumentIds = useSetAtom(mentionedDocumentIdsAtom);
 	const setMentionedDocuments = useSetAtom(mentionedDocumentsAtom);
 	const setMessageDocumentsMap = useSetAtom(messageDocumentsMapAtom);
-	const hydratePlanState = useSetAtom(hydratePlanStateAtom);
 	const setCurrentThreadState = useSetAtom(currentThreadAtom);
 	const setTargetCommentId = useSetAtom(setTargetCommentIdAtom);
 	const clearTargetCommentId = useSetAtom(clearTargetCommentIdAtom);
@@ -350,7 +347,6 @@ export default function NewChatPage() {
 		setMessageDocumentsMap,
 		setMentionedDocumentIds,
 		setMentionedDocuments,
-		hydratePlanState,
 		closeReportPanel,
 	]);
 

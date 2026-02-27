@@ -97,6 +97,7 @@ export const ConnectorIndicator: FC<{ hideTrigger?: boolean }> = ({ hideTrigger 
 		isDisconnecting,
 		periodicEnabled,
 		frequencyMinutes,
+		enableSummary,
 		allConnectors,
 		viewingAccountsType,
 		viewingMCPList,
@@ -105,6 +106,7 @@ export const ConnectorIndicator: FC<{ hideTrigger?: boolean }> = ({ hideTrigger 
 		setEndDate,
 		setPeriodicEnabled,
 		setFrequencyMinutes,
+		setEnableSummary,
 		handleOpenChange,
 		handleTabChange,
 		handleScroll,
@@ -282,6 +284,7 @@ export const ConnectorIndicator: FC<{ hideTrigger?: boolean }> = ({ hideTrigger 
 						endDate={endDate}
 						periodicEnabled={periodicEnabled}
 						frequencyMinutes={frequencyMinutes}
+						enableSummary={enableSummary}
 						isSaving={isSaving}
 						isDisconnecting={isDisconnecting}
 						isIndexing={indexingConnectorIds.has(editingConnector.id)}
@@ -290,6 +293,7 @@ export const ConnectorIndicator: FC<{ hideTrigger?: boolean }> = ({ hideTrigger 
 						onEndDateChange={setEndDate}
 						onPeriodicEnabledChange={setPeriodicEnabled}
 						onFrequencyChange={setFrequencyMinutes}
+						onEnableSummaryChange={setEnableSummary}
 						onSave={() => {
 							startIndexing(editingConnector.id);
 							handleSaveConnector(() => refreshConnectors());
@@ -328,11 +332,13 @@ export const ConnectorIndicator: FC<{ hideTrigger?: boolean }> = ({ hideTrigger 
 						endDate={endDate}
 						periodicEnabled={periodicEnabled}
 						frequencyMinutes={frequencyMinutes}
+						enableSummary={enableSummary}
 						isStartingIndexing={isStartingIndexing}
 						onStartDateChange={setStartDate}
 						onEndDateChange={setEndDate}
 						onPeriodicEnabledChange={setPeriodicEnabled}
 						onFrequencyChange={setFrequencyMinutes}
+						onEnableSummaryChange={setEnableSummary}
 						onConfigChange={setIndexingConnectorConfig}
 						onStartIndexing={() => {
 							if (indexingConfig.connectorId) {
