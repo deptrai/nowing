@@ -18,7 +18,7 @@ const demoPlans = [
 		],
 		description: "",
 		buttonText: "Get Started",
-		href: "/",
+		href: "/login",
 		isPopular: false,
 	},
 	{
@@ -35,7 +35,7 @@ const demoPlans = [
 		],
 		description: "",
 		buttonText: "Get Started",
-		href: "/",
+		href: "/login",
 		isPopular: true,
 	},
 	{
