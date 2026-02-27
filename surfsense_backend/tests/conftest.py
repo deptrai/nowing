@@ -13,10 +13,10 @@ TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", _DEFAULT_TEST_DB)
 # DATABASE_URL in the environment (e.g. from .env or shell profile).
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
-import pytest
+import pytest  # noqa: E402
 
-from app.db import DocumentType
-from app.indexing_pipeline.connector_document import ConnectorDocument
+from app.db import DocumentType  # noqa: E402
+from app.indexing_pipeline.connector_document import ConnectorDocument  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Unit test fixtures

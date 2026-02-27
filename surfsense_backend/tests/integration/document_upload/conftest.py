@@ -64,6 +64,7 @@ class InlineTaskDispatcher:
         filename: str,
         search_space_id: int,
         user_id: str,
+        should_summarize: bool = False,
     ) -> None:
         from app.tasks.celery_tasks.document_tasks import (
             _process_file_with_document,
@@ -71,7 +72,12 @@ class InlineTaskDispatcher:
 
         with contextlib.suppress(Exception):
             await _process_file_with_document(
-                document_id, temp_path, filename, search_space_id, user_id
+                document_id,
+                temp_path,
+                filename,
+                search_space_id,
+                user_id,
+                should_summarize=should_summarize,
             )
 
 
