@@ -232,6 +232,7 @@ echo "  Auth Type:       ${NEXT_PUBLIC_FASTAPI_BACKEND_AUTH_TYPE}"
 echo "  ETL Service:     ${NEXT_PUBLIC_ETL_SERVICE}"
 echo "  TTS Service:     ${TTS_SERVICE}"
 echo "  STT Service:     ${STT_SERVICE}"
+echo "  Daytona Sandbox: ${DAYTONA_SANDBOX_ENABLED:-FALSE}"
 echo "==========================================="
 echo ""
 

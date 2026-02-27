@@ -1,6 +1,6 @@
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 
 from fastapi import Depends
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
@@ -31,7 +31,7 @@ if config.AUTH_TYPE == "GOOGLE":
 DATABASE_URL = config.DATABASE_URL
 
 
-class DocumentType(str, Enum):
+class DocumentType(StrEnum):
     EXTENSION = "EXTENSION"
     CRAWLED_URL = "CRAWLED_URL"
     FILE = "FILE"
@@ -60,7 +60,7 @@ class DocumentType(str, Enum):
     COMPOSIO_GOOGLE_CALENDAR_CONNECTOR = "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR"
 
 
-class SearchSourceConnectorType(str, Enum):
+class SearchSourceConnectorType(StrEnum):
     SERPER_API = "SERPER_API"  # NOT IMPLEMENTED YET : DON'T REMEMBER WHY : MOST PROBABLY BECAUSE WE NEED TO CRAWL THE RESULTS RETURNED BY IT
     TAVILY_API = "TAVILY_API"
     SEARXNG_API = "SEARXNG_API"
@@ -93,7 +93,7 @@ class SearchSourceConnectorType(str, Enum):
     COMPOSIO_GOOGLE_CALENDAR_CONNECTOR = "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR"
 
 
-class PodcastStatus(str, Enum):
+class PodcastStatus(StrEnum):
     PENDING = "pending"
     GENERATING = "generating"
     READY = "ready"
@@ -177,7 +177,7 @@ class DocumentStatus:
         return None
 
 
-class LiteLLMProvider(str, Enum):
+class LiteLLMProvider(StrEnum):
     """
     Enum for LLM providers supported by LiteLLM.
     """
@@ -215,7 +215,7 @@ class LiteLLMProvider(str, Enum):
     CUSTOM = "CUSTOM"
 
 
-class ImageGenProvider(str, Enum):
+class ImageGenProvider(StrEnum):
     """
     Enum for image generation providers supported by LiteLLM.
     This is a subset of LLM providers — only those that support image generation.
@@ -233,7 +233,7 @@ class ImageGenProvider(str, Enum):
     NSCALE = "NSCALE"
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
@@ -241,13 +241,13 @@ class LogLevel(str, Enum):
     CRITICAL = "CRITICAL"
 
 
-class LogStatus(str, Enum):
+class LogStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
 
 
-class IncentiveTaskType(str, Enum):
+class IncentiveTaskType(StrEnum):
     """
     Enum for incentive task types that users can complete to earn free pages.
     Each task can only be completed once per user.
@@ -298,7 +298,7 @@ INCENTIVE_TASKS_CONFIG = {
 }
 
 
-class Permission(str, Enum):
+class Permission(StrEnum):
     """
     Granular permissions for search space resources.
     Use '*' (FULL_ACCESS) to grant all permissions.
@@ -471,7 +471,7 @@ class BaseModel(Base):
     id = Column(Integer, primary_key=True, index=True)
 
 
-class NewChatMessageRole(str, Enum):
+class NewChatMessageRole(StrEnum):
     """Role enum for new chat messages."""
 
     USER = "user"
@@ -479,7 +479,7 @@ class NewChatMessageRole(str, Enum):
     SYSTEM = "system"
 
 
-class ChatVisibility(str, Enum):
+class ChatVisibility(StrEnum):
     """
     Visibility/sharing level for chat threads.
 
@@ -788,7 +788,7 @@ class ChatSessionState(BaseModel):
     ai_responding_to_user = relationship("User")
 
 
-class MemoryCategory(str, Enum):
+class MemoryCategory(StrEnum):
     """Categories for user memories."""
 
     # Using lowercase keys to match PostgreSQL enum values
@@ -1316,6 +1316,12 @@ class SearchSourceConnector(BaseModel, TimestampMixin):
     is_indexable = Column(Boolean, nullable=False, default=False)
     last_indexed_at = Column(TIMESTAMP(timezone=True), nullable=True)
     config = Column(JSON, nullable=False)
+
+    # Summary generation (LLM-based) - disabled by default to save resources.
+    # When enabled, improves hybrid search quality at the cost of LLM calls.
+    enable_summary = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
 
     # Periodic indexing fields
     periodic_indexing_enabled = Column(Boolean, nullable=False, default=False)

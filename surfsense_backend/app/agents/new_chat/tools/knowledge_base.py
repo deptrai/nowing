@@ -172,12 +172,52 @@ def _normalize_connectors(
 # =============================================================================
 
 
-def format_documents_for_context(documents: list[dict[str, Any]]) -> str:
+# Fraction of the model's context window (in characters) that a single tool
+# result is allowed to occupy.  The remainder is reserved for system prompt,
+# conversation history, and model output.  With ~4 chars/token this gives a
+# tool result ≈ 25 % of the context budget in tokens.
+_TOOL_OUTPUT_CONTEXT_FRACTION = 0.25
+_CHARS_PER_TOKEN = 4
+
+# Hard-floor / ceiling so the budget is always sensible regardless of what
+# the model reports.
+_MIN_TOOL_OUTPUT_CHARS = 20_000  # ~5K tokens
+_MAX_TOOL_OUTPUT_CHARS = 400_000  # ~100K tokens
+_MAX_CHUNK_CHARS = 8_000
+
+
+def _compute_tool_output_budget(max_input_tokens: int | None) -> int:
+    """Derive a character budget from the model's context window.
+
+    Uses ``litellm.get_model_info`` via the value already resolved by
+    ``ChatLiteLLMRouter`` / ``ChatLiteLLM`` and passed through the dependency
+    chain as ``max_input_tokens``.  Falls back to a conservative default when
+    the value is unavailable.
+    """
+    if max_input_tokens is None or max_input_tokens <= 0:
+        return _MIN_TOOL_OUTPUT_CHARS  # conservative fallback
+
+    budget = int(max_input_tokens * _CHARS_PER_TOKEN * _TOOL_OUTPUT_CONTEXT_FRACTION)
+    return max(_MIN_TOOL_OUTPUT_CHARS, min(budget, _MAX_TOOL_OUTPUT_CHARS))
+
+
+def format_documents_for_context(
+    documents: list[dict[str, Any]],
+    *,
+    max_chars: int = _MAX_TOOL_OUTPUT_CHARS,
+    max_chunk_chars: int = _MAX_CHUNK_CHARS,
+) -> str:
     """
     Format retrieved documents into a readable context string for the LLM.
 
+    Documents are added in order (highest relevance first) until the character
+    budget is reached.  Individual chunks are capped at ``max_chunk_chars`` so
+    a single oversized chunk cannot monopolize the output.
+
     Args:
         documents: List of document dictionaries from connector search
+        max_chars: Approximate character budget for the entire output.
+        max_chunk_chars: Per-chunk character cap (content is tail-truncated).
 
     Returns:
         Formatted string with document contents and metadata
@@ -278,37 +318,57 @@ def format_documents_for_context(documents: list[dict[str, Any]]) -> str:
         "BAIDU_SEARCH_API",
     }
 
-    # Render XML expected by citation instructions
+    # Render XML expected by citation instructions, respecting the char budget.
     parts: list[str] = []
-    for g in grouped.values():
+    total_chars = 0
+    total_docs = len(grouped)
+
+    for doc_idx, g in enumerate(grouped.values()):
         metadata_json = json.dumps(g["metadata"], ensure_ascii=False)
         is_live_search = g["document_type"] in live_search_connectors
 
-        parts.append("<document>")
-        parts.append("<document_metadata>")
-        parts.append(f"  <document_id>{g['document_id']}</document_id>")
-        parts.append(f"  <document_type>{g['document_type']}</document_type>")
-        parts.append(f"  <title><![CDATA[{g['title']}]]></title>")
-        parts.append(f"  <url><![CDATA[{g['url']}]]></url>")
-        parts.append(f"  <metadata_json><![CDATA[{metadata_json}]]></metadata_json>")
-        parts.append("</document_metadata>")
-        parts.append("")
-        parts.append("<document_content>")
+        doc_lines: list[str] = [
+            "<document>",
+            "<document_metadata>",
+            f"  <document_id>{g['document_id']}</document_id>",
+            f"  <document_type>{g['document_type']}</document_type>",
+            f"  <title><![CDATA[{g['title']}]]></title>",
+            f"  <url><![CDATA[{g['url']}]]></url>",
+            f"  <metadata_json><![CDATA[{metadata_json}]]></metadata_json>",
+            "</document_metadata>",
+            "",
+            "<document_content>",
+        ]
 
         for ch in g["chunks"]:
             ch_content = ch["content"]
-            # For live search connectors, use the document URL as the chunk id
-            # so the LLM outputs [citation:https://...] which the frontend
-            # renders as a clickable link.
+            if max_chunk_chars and len(ch_content) > max_chunk_chars:
+                ch_content = ch_content[:max_chunk_chars] + "\n...(truncated)"
             ch_id = g["url"] if (is_live_search and g["url"]) else ch["chunk_id"]
             if ch_id is None:
-                parts.append(f"  <chunk><![CDATA[{ch_content}]]></chunk>")
+                doc_lines.append(f"  <chunk><![CDATA[{ch_content}]]></chunk>")
             else:
-                parts.append(f"  <chunk id='{ch_id}'><![CDATA[{ch_content}]]></chunk>")
+                doc_lines.append(
+                    f"  <chunk id='{ch_id}'><![CDATA[{ch_content}]]></chunk>"
+                )
 
-        parts.append("</document_content>")
-        parts.append("</document>")
-        parts.append("")
+        doc_lines.extend(["</document_content>", "</document>", ""])
+
+        doc_xml = "\n".join(doc_lines)
+        doc_len = len(doc_xml)
+
+        # Always include at least the first document; afterwards enforce budget.
+        if doc_idx > 0 and total_chars + doc_len > max_chars:
+            remaining = total_docs - doc_idx
+            parts.append(
+                f"<!-- Output truncated: {remaining} more document(s) omitted "
+                f"(budget {max_chars} chars). Refine your query or reduce top_k "
+                f"to retrieve different results. -->"
+            )
+            break
+
+        parts.append(doc_xml)
+        total_chars += doc_len
 
     return "\n".join(parts).strip()
 
@@ -328,6 +388,7 @@ async def search_knowledge_base_async(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     available_connectors: list[str] | None = None,
+    max_input_tokens: int | None = None,
 ) -> str:
     """
     Search the user's knowledge base for relevant documents.
@@ -345,6 +406,8 @@ async def search_knowledge_base_async(
         end_date: Optional end datetime (UTC) for filtering documents
         available_connectors: Optional list of connectors actually available in the search space.
                             If provided, only these connectors will be searched.
+        max_input_tokens: Model context window size (tokens).  Used to dynamically
+                         size the output so it fits within the model's limits.
 
     Returns:
         Formatted string with search results
@@ -488,7 +551,8 @@ async def search_knowledge_base_async(
 
         deduplicated.append(doc)
 
-    return format_documents_for_context(deduplicated)
+    output_budget = _compute_tool_output_budget(max_input_tokens)
+    return format_documents_for_context(deduplicated, max_chars=output_budget)
 
 
 def _build_connector_docstring(available_connectors: list[str] | None) -> str:
@@ -552,6 +616,7 @@ def create_search_knowledge_base_tool(
     connector_service: ConnectorService,
     available_connectors: list[str] | None = None,
     available_document_types: list[str] | None = None,
+    max_input_tokens: int | None = None,
 ) -> StructuredTool:
     """
     Factory function to create the search_knowledge_base tool with injected dependencies.
@@ -564,6 +629,8 @@ def create_search_knowledge_base_tool(
                             Used to dynamically generate the tool docstring.
         available_document_types: Optional list of document types that have data in the search space.
                                 Used to inform the LLM about what data exists.
+        max_input_tokens: Model context window (tokens) from litellm model info.
+                         Used to dynamically size tool output.
 
     Returns:
         A configured StructuredTool instance
@@ -634,6 +701,7 @@ NOTE: `WEBCRAWLER_CONNECTOR` is mapped internally to the canonical document type
             start_date=parsed_start,
             end_date=parsed_end,
             available_connectors=_available_connectors,
+            max_input_tokens=max_input_tokens,
         )
 
     # Create StructuredTool with dynamic description

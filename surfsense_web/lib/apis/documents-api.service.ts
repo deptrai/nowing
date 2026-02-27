@@ -127,6 +127,7 @@ class DocumentsApiService {
 			formData.append("files", file);
 		});
 		formData.append("search_space_id", String(parsedRequest.data.search_space_id));
+		formData.append("should_summarize", String(parsedRequest.data.should_summarize));
 
 		return baseApiService.postFormData(`/api/v1/documents/fileupload`, uploadDocumentResponse, {
 			body: formData,

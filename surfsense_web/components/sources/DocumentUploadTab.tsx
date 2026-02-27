@@ -1,13 +1,14 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { CheckCircle2, FileType, Info, Tag, Upload, X } from "lucide-react";
+import { CheckCircle2, FileType, Info, Upload, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { uploadDocumentMutationAtom } from "@/atoms/documents/document-mutation.atoms";
+import { SummaryConfig } from "@/components/assistant-ui/connector-popup/components/summary-config";
 import {
 	Accordion,
 	AccordionContent,
@@ -124,6 +125,7 @@ export function DocumentUploadTab({
 	const [files, setFiles] = useState<File[]>([]);
 	const [uploadProgress, setUploadProgress] = useState(0);
 	const [accordionValue, setAccordionValue] = useState<string>("");
+	const [shouldSummarize, setShouldSummarize] = useState(false);
 	const [uploadDocumentMutation] = useAtom(uploadDocumentMutationAtom);
 	const { mutate: uploadDocuments, isPending: isUploading } = uploadDocumentMutation;
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -216,7 +218,7 @@ export function DocumentUploadTab({
 		}, 200);
 
 		uploadDocuments(
-			{ files, search_space_id: Number(searchSpaceId) },
+			{ files, search_space_id: Number(searchSpaceId), should_summarize: shouldSummarize },
 			{
 				onSuccess: () => {
 					clearInterval(progressInterval);
@@ -413,6 +415,10 @@ export function DocumentUploadTab({
 									</motion.div>
 								)}
 
+								<div className="mt-3 sm:mt-6">
+									<SummaryConfig enabled={shouldSummarize} onEnabledChange={setShouldSummarize} />
+								</div>
+
 								<motion.div
 									className="mt-3 sm:mt-6"
 									initial={{ opacity: 0, y: 10 }}
@@ -452,7 +458,6 @@ export function DocumentUploadTab({
 				<AccordionItem value="supported-file-types" className="border-0">
 					<AccordionTrigger className="px-3 sm:px-6 py-3 sm:py-4 hover:no-underline !items-center [&>svg]:!translate-y-0">
 						<div className="flex items-center gap-2 flex-1">
-							<Tag className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
 							<div className="text-left min-w-0">
 								<div className="font-semibold text-sm sm:text-base">
 									{t("supported_file_types")}

@@ -47,6 +47,10 @@ from app.db import ChatVisibility
 
 from .display_image import create_display_image_tool
 from .generate_image import create_generate_image_tool
+from .google_drive import (
+    create_create_google_drive_file_tool,
+    create_delete_google_drive_file_tool,
+)
 from .knowledge_base import create_search_knowledge_base_tool
 from .linear import (
     create_create_linear_issue_tool,
@@ -114,6 +118,7 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
             # Optional: dynamically discovered connectors/document types
             available_connectors=deps.get("available_connectors"),
             available_document_types=deps.get("available_document_types"),
+            max_input_tokens=deps.get("max_input_tokens"),
         ),
         requires=["search_space_id", "db_session", "connector_service"],
         # Note: available_connectors and available_document_types are optional
@@ -292,6 +297,29 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
         ),
         requires=["db_session", "search_space_id", "user_id"],
     ),
+    # =========================================================================
+    # GOOGLE DRIVE TOOLS - create files, delete files
+    # =========================================================================
+    ToolDefinition(
+        name="create_google_drive_file",
+        description="Create a new Google Doc or Google Sheet in Google Drive",
+        factory=lambda deps: create_create_google_drive_file_tool(
+            db_session=deps["db_session"],
+            search_space_id=deps["search_space_id"],
+            user_id=deps["user_id"],
+        ),
+        requires=["db_session", "search_space_id", "user_id"],
+    ),
+    ToolDefinition(
+        name="delete_google_drive_file",
+        description="Move an indexed Google Drive file to trash",
+        factory=lambda deps: create_delete_google_drive_file_tool(
+            db_session=deps["db_session"],
+            search_space_id=deps["search_space_id"],
+            user_id=deps["user_id"],
+        ),
+        requires=["db_session", "search_space_id", "user_id"],
+    ),
 ]
 
 
@@ -417,8 +445,18 @@ async def build_tools_async(
         List of configured tool instances ready for the agent, including MCP tools.
 
     """
-    # Build standard tools
+    import time
+
+    _perf_log = logging.getLogger("surfsense.perf")
+    _perf_log.setLevel(logging.DEBUG)
+
+    _t0 = time.perf_counter()
     tools = build_tools(dependencies, enabled_tools, disabled_tools, additional_tools)
+    _perf_log.info(
+        "[build_tools_async] Built-in tools in %.3fs (%d tools)",
+        time.perf_counter() - _t0,
+        len(tools),
+    )
 
     # Load MCP tools if requested and dependencies are available
     if (
@@ -427,9 +465,15 @@ async def build_tools_async(
         and "search_space_id" in dependencies
     ):
         try:
+            _t0 = time.perf_counter()
             mcp_tools = await load_mcp_tools(
                 dependencies["db_session"],
                 dependencies["search_space_id"],
+            )
+            _perf_log.info(
+                "[build_tools_async] MCP tools loaded in %.3fs (%d tools)",
+                time.perf_counter() - _t0,
+                len(mcp_tools),
             )
             tools.extend(mcp_tools)
             logging.info(

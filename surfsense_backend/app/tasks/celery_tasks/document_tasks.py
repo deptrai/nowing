@@ -626,6 +626,7 @@ def process_file_upload_with_document_task(
     filename: str,
     search_space_id: int,
     user_id: str,
+    should_summarize: bool = False,
 ):
     """
     Celery task to process uploaded file with existing pending document.
@@ -640,6 +641,7 @@ def process_file_upload_with_document_task(
         filename: Original filename
         search_space_id: ID of the search space
         user_id: ID of the user
+        should_summarize: Whether to generate an LLM summary
     """
     import traceback
 
@@ -674,7 +676,12 @@ def process_file_upload_with_document_task(
     try:
         loop.run_until_complete(
             _process_file_with_document(
-                document_id, temp_path, filename, search_space_id, user_id
+                document_id,
+                temp_path,
+                filename,
+                search_space_id,
+                user_id,
+                should_summarize=should_summarize,
             )
         )
         logger.info(
@@ -710,6 +717,7 @@ async def _process_file_with_document(
     filename: str,
     search_space_id: int,
     user_id: str,
+    should_summarize: bool = False,
 ):
     """
     Process file and update existing pending document status.
@@ -811,6 +819,7 @@ async def _process_file_with_document(
                 task_logger=task_logger,
                 log_entry=log_entry,
                 notification=notification,
+                should_summarize=should_summarize,
             )
 
             # Update notification on success

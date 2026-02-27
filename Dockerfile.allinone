@@ -260,6 +260,10 @@ ENV NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8000
 ENV NEXT_PUBLIC_FASTAPI_BACKEND_AUTH_TYPE=LOCAL
 ENV NEXT_PUBLIC_ETL_SERVICE=DOCLING
 
+# Daytona Sandbox (cloud code execution — no local server needed)
+ENV DAYTONA_SANDBOX_ENABLED=FALSE
+# DAYTONA_API_KEY, DAYTONA_API_URL, DAYTONA_TARGET: set at runtime for production.
+
 # Electric SQL configuration (ELECTRIC_DATABASE_URL is built dynamically by entrypoint from these values)
 ENV ELECTRIC_DB_USER=electric
 ENV ELECTRIC_DB_PASSWORD=electric_password

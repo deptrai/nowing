@@ -44,6 +44,7 @@ export const document = z.object({
 	search_space_id: z.number(),
 	created_by_id: z.string().nullable().optional(),
 	created_by_name: z.string().nullable().optional(),
+	created_by_email: z.string().nullable().optional(),
 });
 
 export const extensionDocumentContent = z.object({
@@ -134,6 +135,7 @@ export const createDocumentResponse = z.object({
 export const uploadDocumentRequest = z.object({
 	files: z.array(z.instanceof(File)),
 	search_space_id: z.number(),
+	should_summarize: z.boolean().default(false),
 });
 
 export const uploadDocumentResponse = z.object({
