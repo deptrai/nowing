@@ -56,14 +56,9 @@ from app.services.chat_session_state_service import (
 from app.services.connector_service import ConnectorService
 from app.services.new_streaming_service import VercelStreamingService
 from app.utils.content_utils import bootstrap_history_from_db
+from app.utils.perf import get_perf_logger, log_system_snapshot
 
-_perf_log = logging.getLogger("surfsense.perf")
-_perf_log.setLevel(logging.DEBUG)
-if not _perf_log.handlers:
-    _h = logging.StreamHandler()
-    _h.setFormatter(logging.Formatter("%(asctime)s [PERF] %(message)s"))
-    _perf_log.addHandler(_h)
-    _perf_log.propagate = False
+_perf_log = get_perf_logger()
 
 _background_tasks: set[asyncio.Task] = set()
 
@@ -1050,6 +1045,7 @@ async def stream_new_chat(
     streaming_service = VercelStreamingService()
     stream_result = StreamResult()
     _t_total = time.perf_counter()
+    log_system_snapshot("stream_new_chat_START")
 
     try:
         # Mark AI as responding to this user for live collaboration
@@ -1382,6 +1378,7 @@ async def stream_new_chat(
             time.perf_counter() - _t_stream_start,
             chat_id,
         )
+        log_system_snapshot("stream_new_chat_END")
 
         if stream_result.is_interrupted:
             yield streaming_service.format_finish_step()

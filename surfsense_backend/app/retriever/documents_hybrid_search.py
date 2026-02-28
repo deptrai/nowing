@@ -1,4 +1,7 @@
+import time
 from datetime import datetime
+
+from app.utils.perf import get_perf_logger
 
 
 class DocumentHybridSearchRetriever:
@@ -38,6 +41,9 @@ class DocumentHybridSearchRetriever:
         from app.config import config
         from app.db import Document
 
+        perf = get_perf_logger()
+        t0 = time.perf_counter()
+
         # Get embedding for the query
         embedding_model = config.embedding_model_instance
         query_embedding = embedding_model.embed(query_text)
@@ -63,6 +69,10 @@ class DocumentHybridSearchRetriever:
         # Execute the query
         result = await self.db_session.execute(query)
         documents = result.scalars().all()
+        perf.info(
+            "[doc_search] vector_search in %.3fs results=%d space=%d",
+            time.perf_counter() - t0, len(documents), search_space_id,
+        )
 
         return documents
 
@@ -92,6 +102,9 @@ class DocumentHybridSearchRetriever:
 
         from app.db import Document
 
+        perf = get_perf_logger()
+        t0 = time.perf_counter()
+
         # Create tsvector and tsquery for PostgreSQL full-text search
         tsvector = func.to_tsvector("english", Document.content)
         tsquery = func.plainto_tsquery("english", query_text)
@@ -118,6 +131,10 @@ class DocumentHybridSearchRetriever:
         # Execute the query
         result = await self.db_session.execute(query)
         documents = result.scalars().all()
+        perf.info(
+            "[doc_search] full_text_search in %.3fs results=%d space=%d",
+            time.perf_counter() - t0, len(documents), search_space_id,
+        )
 
         return documents
 
@@ -150,6 +167,9 @@ class DocumentHybridSearchRetriever:
 
         from app.config import config
         from app.db import Chunk, Document, DocumentType
+
+        perf = get_perf_logger()
+        t0 = time.perf_counter()
 
         # Get embedding for the query
         embedding_model = config.embedding_model_instance
@@ -303,4 +323,8 @@ class DocumentHybridSearchRetriever:
             )
             final_docs.append(entry)
 
+        perf.info(
+            "[doc_search] hybrid_search TOTAL in %.3fs docs=%d space=%d type=%s",
+            time.perf_counter() - t0, len(final_docs), search_space_id, document_type,
+        )
         return final_docs

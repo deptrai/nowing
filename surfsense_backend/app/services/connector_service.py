@@ -1,4 +1,5 @@
 import asyncio
+import time
 from datetime import datetime
 from typing import Any
 from urllib.parse import urljoin
@@ -18,6 +19,7 @@ from app.db import (
 )
 from app.retriever.chunks_hybrid_search import ChucksHybridSearchRetriever
 from app.retriever.documents_hybrid_search import DocumentHybridSearchRetriever
+from app.utils.perf import get_perf_logger
 
 
 class ConnectorService:
@@ -246,6 +248,9 @@ class ConnectorService:
         Returns:
             List of combined and deduplicated document results
         """
+        perf = get_perf_logger()
+        t0 = time.perf_counter()
+
         # RRF constant
         k = 60
 
@@ -259,6 +264,7 @@ class ConnectorService:
         # "This session is provisioning a new connection; concurrent operations are not permitted"
         #
         # So we run them sequentially.
+        t_chunk = time.perf_counter()
         chunk_results = await self.chunk_retriever.hybrid_search(
             query_text=query_text,
             top_k=retriever_top_k,
@@ -267,6 +273,12 @@ class ConnectorService:
             start_date=start_date,
             end_date=end_date,
         )
+        perf.info(
+            "[connector_svc] _combined_rrf chunk_retriever in %.3fs results=%d type=%s",
+            time.perf_counter() - t_chunk, len(chunk_results), document_type,
+        )
+
+        t_doc = time.perf_counter()
         doc_results = await self.document_retriever.hybrid_search(
             query_text=query_text,
             top_k=retriever_top_k,
@@ -274,6 +286,10 @@ class ConnectorService:
             document_type=document_type,
             start_date=start_date,
             end_date=end_date,
+        )
+        perf.info(
+            "[connector_svc] _combined_rrf doc_retriever in %.3fs results=%d type=%s",
+            time.perf_counter() - t_doc, len(doc_results), document_type,
         )
 
         # Helper to extract document_id from our doc-grouped result
@@ -335,6 +351,10 @@ class ConnectorService:
                     result["chunks"] = doc_data[did]["chunks"]
                 combined_results.append(result)
 
+        perf.info(
+            "[connector_svc] _combined_rrf_search TOTAL in %.3fs results=%d type=%s space=%d",
+            time.perf_counter() - t0, len(combined_results), document_type, search_space_id,
+        )
         return combined_results
 
     def _get_doc_url(self, metadata: dict[str, Any]) -> str:

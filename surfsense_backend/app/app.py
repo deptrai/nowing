@@ -15,6 +15,9 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response as StarletteResponse
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.agents.new_chat.checkpointer import (
@@ -28,6 +31,7 @@ from app.routes.auth_routes import router as auth_router
 from app.schemas import UserCreate, UserRead, UserUpdate
 from app.tasks.surfsense_docs_indexer import seed_surfsense_docs
 from app.users import SECRET, auth_backend, current_active_user, fastapi_users
+from app.utils.perf import get_perf_logger, log_system_snapshot
 
 rate_limit_logger = logging.getLogger("surfsense.rate_limit")
 
@@ -243,6 +247,63 @@ app = FastAPI(lifespan=lifespan)
 # Register rate limiter and custom 429 handler
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# ---------------------------------------------------------------------------
+# Request-level performance middleware
+# ---------------------------------------------------------------------------
+# Logs wall-clock time, method, path, and status for every request so we can
+# spot slow endpoints in production logs.
+
+_PERF_SLOW_REQUEST_THRESHOLD = float(
+    __import__("os").environ.get("PERF_SLOW_REQUEST_MS", "2000")
+)
+
+
+class RequestPerfMiddleware(BaseHTTPMiddleware):
+    """Middleware that logs per-request wall-clock time.
+
+    - ALL requests are logged at DEBUG level.
+    - Requests exceeding PERF_SLOW_REQUEST_MS (default 2000ms) are logged at
+      WARNING level with a system snapshot so we can correlate slow responses
+      with CPU/memory usage at that moment.
+    """
+
+    async def dispatch(
+        self, request: StarletteRequest, call_next: RequestResponseEndpoint
+    ) -> StarletteResponse:
+        perf = get_perf_logger()
+        t0 = time.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        path = request.url.path
+        method = request.method
+        status = response.status_code
+
+        perf.debug(
+            "[request] %s %s -> %d in %.1fms",
+            method,
+            path,
+            status,
+            elapsed_ms,
+        )
+
+        if elapsed_ms > _PERF_SLOW_REQUEST_THRESHOLD:
+            perf.warning(
+                "[SLOW_REQUEST] %s %s -> %d in %.1fms (threshold=%.0fms)",
+                method,
+                path,
+                status,
+                elapsed_ms,
+                _PERF_SLOW_REQUEST_THRESHOLD,
+            )
+            log_system_snapshot("slow_request")
+
+        return response
+
+
+app.add_middleware(RequestPerfMiddleware)
 
 # Add SlowAPI middleware for automatic rate limiting
 # Uses Starlette BaseHTTPMiddleware (not the raw ASGI variant) to avoid

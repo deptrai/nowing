@@ -13,6 +13,7 @@ synchronous ChatLiteLLM-like interface and async methods.
 
 import logging
 import re
+import time
 from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
@@ -25,6 +26,8 @@ from litellm.exceptions import (
     BadRequestError as LiteLLMBadRequestError,
     ContextWindowExceededError,
 )
+
+from app.utils.perf import get_perf_logger
 
 logger = logging.getLogger(__name__)
 
@@ -410,6 +413,10 @@ class ChatLiteLLMRouter(BaseChatModel):
         if not self._router:
             raise ValueError("Router not initialized")
 
+        perf = get_perf_logger()
+        t0 = time.perf_counter()
+        msg_count = len(messages)
+
         # Convert LangChain messages to OpenAI format
         formatted_messages = self._convert_messages(messages)
 
@@ -428,11 +435,27 @@ class ChatLiteLLMRouter(BaseChatModel):
                 **call_kwargs,
             )
         except ContextWindowExceededError as e:
+            perf.warning(
+                "[llm_router] _generate CONTEXT_OVERFLOW msgs=%d in %.3fs",
+                msg_count, time.perf_counter() - t0,
+            )
             raise ContextOverflowError(str(e)) from e
         except LiteLLMBadRequestError as e:
             if _is_context_overflow_error(e):
+                perf.warning(
+                    "[llm_router] _generate CONTEXT_OVERFLOW msgs=%d in %.3fs",
+                    msg_count, time.perf_counter() - t0,
+                )
                 raise ContextOverflowError(str(e)) from e
             raise
+
+        elapsed = time.perf_counter() - t0
+        perf.info(
+            "[llm_router] _generate completed msgs=%d tools=%d in %.3fs",
+            msg_count,
+            len(self._bound_tools) if self._bound_tools else 0,
+            elapsed,
+        )
 
         # Convert response to ChatResult with potential tool calls
         message = self._convert_response_to_message(response.choices[0].message)
@@ -453,6 +476,10 @@ class ChatLiteLLMRouter(BaseChatModel):
         if not self._router:
             raise ValueError("Router not initialized")
 
+        perf = get_perf_logger()
+        t0 = time.perf_counter()
+        msg_count = len(messages)
+
         # Convert LangChain messages to OpenAI format
         formatted_messages = self._convert_messages(messages)
 
@@ -471,11 +498,27 @@ class ChatLiteLLMRouter(BaseChatModel):
                 **call_kwargs,
             )
         except ContextWindowExceededError as e:
+            perf.warning(
+                "[llm_router] _agenerate CONTEXT_OVERFLOW msgs=%d in %.3fs",
+                msg_count, time.perf_counter() - t0,
+            )
             raise ContextOverflowError(str(e)) from e
         except LiteLLMBadRequestError as e:
             if _is_context_overflow_error(e):
+                perf.warning(
+                    "[llm_router] _agenerate CONTEXT_OVERFLOW msgs=%d in %.3fs",
+                    msg_count, time.perf_counter() - t0,
+                )
                 raise ContextOverflowError(str(e)) from e
             raise
+
+        elapsed = time.perf_counter() - t0
+        perf.info(
+            "[llm_router] _agenerate completed msgs=%d tools=%d in %.3fs",
+            msg_count,
+            len(self._bound_tools) if self._bound_tools else 0,
+            elapsed,
+        )
 
         # Convert response to ChatResult with potential tool calls
         message = self._convert_response_to_message(response.choices[0].message)
@@ -541,6 +584,10 @@ class ChatLiteLLMRouter(BaseChatModel):
         if not self._router:
             raise ValueError("Router not initialized")
 
+        perf = get_perf_logger()
+        t0 = time.perf_counter()
+        msg_count = len(messages)
+
         formatted_messages = self._convert_messages(messages)
 
         # Add tools if bound
@@ -559,19 +606,47 @@ class ChatLiteLLMRouter(BaseChatModel):
                 **call_kwargs,
             )
         except ContextWindowExceededError as e:
+            perf.warning(
+                "[llm_router] _astream CONTEXT_OVERFLOW msgs=%d in %.3fs",
+                msg_count, time.perf_counter() - t0,
+            )
             raise ContextOverflowError(str(e)) from e
         except LiteLLMBadRequestError as e:
             if _is_context_overflow_error(e):
+                perf.warning(
+                    "[llm_router] _astream CONTEXT_OVERFLOW msgs=%d in %.3fs",
+                    msg_count, time.perf_counter() - t0,
+                )
                 raise ContextOverflowError(str(e)) from e
             raise
 
-        # Yield chunks asynchronously
+        t_first_chunk = time.perf_counter()
+        perf.info(
+            "[llm_router] _astream connection established msgs=%d in %.3fs",
+            msg_count, t_first_chunk - t0,
+        )
+
+        chunk_count = 0
+        first_chunk_logged = False
         async for chunk in response:
             if hasattr(chunk, "choices") and chunk.choices:
                 delta = chunk.choices[0].delta
                 chunk_msg = self._convert_delta_to_chunk(delta)
                 if chunk_msg:
+                    chunk_count += 1
+                    if not first_chunk_logged:
+                        perf.info(
+                            "[llm_router] _astream first chunk in %.3fs (total %.3fs from start)",
+                            time.perf_counter() - t_first_chunk,
+                            time.perf_counter() - t0,
+                        )
+                        first_chunk_logged = True
                     yield ChatGenerationChunk(message=chunk_msg)
+
+        perf.info(
+            "[llm_router] _astream completed chunks=%d total=%.3fs",
+            chunk_count, time.perf_counter() - t0,
+        )
 
     def _convert_messages(self, messages: list[BaseMessage]) -> list[dict]:
         """Convert LangChain messages to OpenAI format."""
