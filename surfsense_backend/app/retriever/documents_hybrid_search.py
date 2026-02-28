@@ -71,7 +71,9 @@ class DocumentHybridSearchRetriever:
         documents = result.scalars().all()
         perf.info(
             "[doc_search] vector_search in %.3fs results=%d space=%d",
-            time.perf_counter() - t0, len(documents), search_space_id,
+            time.perf_counter() - t0,
+            len(documents),
+            search_space_id,
         )
 
         return documents
@@ -133,7 +135,9 @@ class DocumentHybridSearchRetriever:
         documents = result.scalars().all()
         perf.info(
             "[doc_search] full_text_search in %.3fs results=%d space=%d",
-            time.perf_counter() - t0, len(documents), search_space_id,
+            time.perf_counter() - t0,
+            len(documents),
+            search_space_id,
         )
 
         return documents
@@ -146,6 +150,7 @@ class DocumentHybridSearchRetriever:
         document_type: str | None = None,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
+        query_embedding: list | None = None,
     ) -> list:
         """
         Hybrid search that returns **documents** (not individual chunks).
@@ -160,7 +165,7 @@ class DocumentHybridSearchRetriever:
             document_type: Optional document type to filter results (e.g., "FILE", "CRAWLED_URL")
             start_date: Optional start date for filtering documents by updated_at
             end_date: Optional end date for filtering documents by updated_at
-
+            query_embedding: Pre-computed embedding vector. If None, will be computed here.
         """
         from sqlalchemy import func, select, text
         from sqlalchemy.orm import joinedload
@@ -171,9 +176,9 @@ class DocumentHybridSearchRetriever:
         perf = get_perf_logger()
         t0 = time.perf_counter()
 
-        # Get embedding for the query
-        embedding_model = config.embedding_model_instance
-        query_embedding = embedding_model.embed(query_text)
+        if query_embedding is None:
+            embedding_model = config.embedding_model_instance
+            query_embedding = embedding_model.embed(query_text)
 
         # RRF constants
         k = 60
@@ -325,6 +330,9 @@ class DocumentHybridSearchRetriever:
 
         perf.info(
             "[doc_search] hybrid_search TOTAL in %.3fs docs=%d space=%d type=%s",
-            time.perf_counter() - t0, len(final_docs), search_space_id, document_type,
+            time.perf_counter() - t0,
+            len(final_docs),
+            search_space_id,
+            document_type,
         )
         return final_docs

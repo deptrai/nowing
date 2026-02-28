@@ -16,6 +16,7 @@ from app.db import (
     Document,
     SearchSourceConnector,
     SearchSourceConnectorType,
+    async_session_maker,
 )
 from app.retriever.chunks_hybrid_search import ChucksHybridSearchRetriever
 from app.retriever.documents_hybrid_search import DocumentHybridSearchRetriever
@@ -248,6 +249,8 @@ class ConnectorService:
         Returns:
             List of combined and deduplicated document results
         """
+        from app.config import config
+
         perf = get_perf_logger()
         t0 = time.perf_counter()
 
@@ -257,39 +260,48 @@ class ConnectorService:
         # Get more results from each retriever for better fusion
         retriever_top_k = top_k * 2
 
-        # IMPORTANT:
-        # These retrievers share the same AsyncSession. AsyncSession does not permit
-        # concurrent awaits that require DB IO on the same session/connection.
-        # Running these in parallel can raise:
-        # "This session is provisioning a new connection; concurrent operations are not permitted"
-        #
-        # So we run them sequentially.
-        t_chunk = time.perf_counter()
-        chunk_results = await self.chunk_retriever.hybrid_search(
-            query_text=query_text,
-            top_k=retriever_top_k,
-            search_space_id=search_space_id,
-            document_type=document_type,
-            start_date=start_date,
-            end_date=end_date,
-        )
+        # Pre-compute the embedding once so both retrievers reuse it.
+        t_embed = time.perf_counter()
+        query_embedding = config.embedding_model_instance.embed(query_text)
         perf.info(
-            "[connector_svc] _combined_rrf chunk_retriever in %.3fs results=%d type=%s",
-            time.perf_counter() - t_chunk, len(chunk_results), document_type,
+            "[connector_svc] _combined_rrf embedding in %.3fs type=%s",
+            time.perf_counter() - t_embed,
+            document_type,
         )
 
-        t_doc = time.perf_counter()
-        doc_results = await self.document_retriever.hybrid_search(
-            query_text=query_text,
-            top_k=retriever_top_k,
-            search_space_id=search_space_id,
-            document_type=document_type,
-            start_date=start_date,
-            end_date=end_date,
+        search_kwargs = {
+            "query_text": query_text,
+            "top_k": retriever_top_k,
+            "search_space_id": search_space_id,
+            "document_type": document_type,
+            "start_date": start_date,
+            "end_date": end_date,
+            "query_embedding": query_embedding,
+        }
+
+        # Run chunk and document retrievers in parallel using separate DB sessions
+        # so they don't contend on a shared AsyncSession connection.
+        async def _run_chunk_search() -> list[dict[str, Any]]:
+            async with async_session_maker() as session:
+                retriever = ChucksHybridSearchRetriever(session)
+                return await retriever.hybrid_search(**search_kwargs)
+
+        async def _run_doc_search() -> list[dict[str, Any]]:
+            async with async_session_maker() as session:
+                retriever = DocumentHybridSearchRetriever(session)
+                return await retriever.hybrid_search(**search_kwargs)
+
+        t_parallel = time.perf_counter()
+        chunk_results, doc_results = await asyncio.gather(
+            _run_chunk_search(), _run_doc_search()
         )
         perf.info(
-            "[connector_svc] _combined_rrf doc_retriever in %.3fs results=%d type=%s",
-            time.perf_counter() - t_doc, len(doc_results), document_type,
+            "[connector_svc] _combined_rrf parallel retrievers in %.3fs "
+            "chunk_results=%d doc_results=%d type=%s",
+            time.perf_counter() - t_parallel,
+            len(chunk_results),
+            len(doc_results),
+            document_type,
         )
 
         # Helper to extract document_id from our doc-grouped result
@@ -353,7 +365,10 @@ class ConnectorService:
 
         perf.info(
             "[connector_svc] _combined_rrf_search TOTAL in %.3fs results=%d type=%s space=%d",
-            time.perf_counter() - t0, len(combined_results), document_type, search_space_id,
+            time.perf_counter() - t0,
+            len(combined_results),
+            document_type,
+            search_space_id,
         )
         return combined_results
 
