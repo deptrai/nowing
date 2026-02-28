@@ -11,9 +11,26 @@ interface UseCommentsOptions {
 // ---------------------------------------------------------------------------
 // Module-level coordination: when a batch request is in-flight, individual
 // useComments queryFns piggy-back on it instead of making their own requests.
+//
+// _batchReady is a promise that resolves once the batch useEffect has had a
+// chance to set _batchInflight. Individual queryFns await this gate before
+// deciding whether to piggy-back or fetch on their own, eliminating the
+// previous race where setTimeout(0) was not enough.
 // ---------------------------------------------------------------------------
 let _batchInflight: Promise<void> | null = null;
 let _batchTargetIds = new Set<number>();
+let _batchReady: Promise<void> | null = null;
+let _resolveBatchReady: (() => void) | null = null;
+
+function resetBatchGate() {
+	_batchReady = new Promise<void>((r) => {
+		_resolveBatchReady = r;
+	});
+}
+
+// Open the initial gate immediately (no batch pending yet)
+resetBatchGate();
+_resolveBatchReady?.();
 
 export function useComments({ messageId, enabled = true }: UseCommentsOptions) {
 	const queryClient = useQueryClient();
@@ -21,9 +38,11 @@ export function useComments({ messageId, enabled = true }: UseCommentsOptions) {
 	return useQuery({
 		queryKey: cacheKeys.comments.byMessage(messageId),
 		queryFn: async () => {
-			// Yield one macro-task so the batch prefetch useEffect (which sets
-			// _batchInflight) has a chance to fire before we decide to fetch.
-			await new Promise<void>((r) => setTimeout(r, 0));
+			// Wait for the batch gate so the useEffect in useBatchCommentsPreload
+			// has a chance to set _batchInflight before we decide.
+			if (_batchReady) {
+				await _batchReady;
+			}
 
 			if (_batchInflight && _batchTargetIds.has(messageId)) {
 				await _batchInflight;
@@ -57,6 +76,9 @@ export function useBatchCommentsPreload(messageIds: number[]) {
 		if (key === prevKeyRef.current) return;
 		prevKeyRef.current = key;
 
+		// Open a new gate so individual queryFns wait for us
+		resetBatchGate();
+
 		_batchTargetIds = new Set(messageIds);
 		let cancelled = false;
 
@@ -79,6 +101,9 @@ export function useBatchCommentsPreload(messageIds: number[]) {
 			});
 
 		_batchInflight = promise;
+
+		// Release the gate — individual queryFns can now check _batchInflight
+		_resolveBatchReady?.();
 
 		return () => {
 			cancelled = true;
