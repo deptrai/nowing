@@ -10,6 +10,7 @@ Supports loading LLM configurations from:
 """
 
 import asyncio
+import gc
 import json
 import logging
 import re
@@ -1476,6 +1477,16 @@ async def stream_new_chat(
 
         _try_persist_and_delete_sandbox(chat_id, stream_result.sandbox_files)
 
+        # Trigger a GC pass so LangGraph agent graphs, tool closures, and
+        # LLM wrappers with potential circular refs are reclaimed promptly.
+        collected = gc.collect()
+        if collected:
+            _perf_log.info(
+                "[stream_new_chat] gc.collect() reclaimed %d objects (chat_id=%s)",
+                collected,
+                chat_id,
+            )
+
 
 async def stream_resume_chat(
     chat_id: int,
@@ -1662,3 +1673,10 @@ async def stream_resume_chat(
                 )
 
         _try_persist_and_delete_sandbox(chat_id, stream_result.sandbox_files)
+        collected = gc.collect()
+        if collected:
+            _perf_log.info(
+                "[stream_resume] gc.collect() reclaimed %d objects (chat_id=%s)",
+                collected,
+                chat_id,
+            )

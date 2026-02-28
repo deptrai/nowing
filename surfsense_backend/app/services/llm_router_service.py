@@ -250,6 +250,48 @@ class LLMRouterService:
         return len(instance._model_list)
 
 
+_cached_context_profile: dict | None = None
+_cached_context_profile_computed: bool = False
+
+# Cached singleton instances keyed by (streaming,) to avoid re-creating on every call
+_router_instance_cache: dict[bool, "ChatLiteLLMRouter"] = {}
+
+
+def _get_cached_context_profile(router: Router) -> dict | None:
+    """Compute and cache the min context profile across all router deployments.
+
+    Called once on first ChatLiteLLMRouter creation; subsequent calls return
+    the cached value. This avoids calling litellm.get_model_info() for every
+    deployment on every request.
+    """
+    global _cached_context_profile, _cached_context_profile_computed
+    if _cached_context_profile_computed:
+        return _cached_context_profile
+
+    from litellm import get_model_info
+
+    min_ctx: int | None = None
+    for deployment in router.model_list:
+        params = deployment.get("litellm_params", {})
+        base_model = params.get("base_model") or params.get("model", "")
+        try:
+            info = get_model_info(base_model)
+            ctx = info.get("max_input_tokens")
+            if isinstance(ctx, int) and ctx > 0 and (min_ctx is None or ctx < min_ctx):
+                min_ctx = ctx
+        except Exception:
+            continue
+
+    if min_ctx is not None:
+        logger.info("ChatLiteLLMRouter profile: max_input_tokens=%d", min_ctx)
+        _cached_context_profile = {"max_input_tokens": min_ctx}
+    else:
+        _cached_context_profile = None
+
+    _cached_context_profile_computed = True
+    return _cached_context_profile
+
+
 class ChatLiteLLMRouter(BaseChatModel):
     """
     A LangChain-compatible chat model that uses LiteLLM Router for load balancing.
@@ -260,6 +302,10 @@ class ChatLiteLLMRouter(BaseChatModel):
     Exposes a ``profile`` with ``max_input_tokens`` set to the smallest context
     window across all router deployments so that deepagents
     SummarizationMiddleware can use fraction-based triggers.
+
+    **Singleton-ish**: Use ``get_auto_mode_llm()`` or call ``ChatLiteLLMRouter()``
+    directly — instances without bound tools are cached per streaming flag to
+    avoid per-request re-initialization overhead and memory growth.
     """
 
     # Use model_config for Pydantic v2 compatibility
@@ -281,14 +327,6 @@ class ChatLiteLLMRouter(BaseChatModel):
         tool_choice: str | dict | None = None,
         **kwargs,
     ):
-        """
-        Initialize the ChatLiteLLMRouter.
-
-        Args:
-            router: LiteLLM Router instance. If None, uses the global singleton.
-            bound_tools: Pre-bound tools for tool calling
-            tool_choice: Tool choice configuration
-        """
         try:
             super().__init__(**kwargs)
             resolved_router = router or LLMRouterService.get_router()
@@ -300,50 +338,19 @@ class ChatLiteLLMRouter(BaseChatModel):
                     "LLM Router not initialized. Call LLMRouterService.initialize() first."
                 )
 
-            # Set profile so deepagents SummarizationMiddleware gets fraction-based triggers
-            computed_profile = self._compute_min_context_profile()
+            computed_profile = _get_cached_context_profile(self._router)
             if computed_profile is not None:
                 object.__setattr__(self, "profile", computed_profile)
 
-            logger.info(
-                f"ChatLiteLLMRouter initialized with {LLMRouterService.get_model_count()} models"
+            logger.debug(
+                "ChatLiteLLMRouter ready (models=%d, streaming=%s, has_tools=%s)",
+                LLMRouterService.get_model_count(),
+                self.streaming,
+                bound_tools is not None,
             )
         except Exception as e:
             logger.error(f"Failed to initialize ChatLiteLLMRouter: {e}")
             raise
-
-    def _compute_min_context_profile(self) -> dict | None:
-        """Derive a profile dict with max_input_tokens from router deployments.
-
-        Uses litellm.get_model_info to look up each deployment's context window
-        and picks the *minimum* so that summarization triggers before ANY model
-        in the pool overflows.
-        """
-        from litellm import get_model_info
-
-        if not self._router:
-            return None
-
-        min_ctx: int | None = None
-        for deployment in self._router.model_list:
-            params = deployment.get("litellm_params", {})
-            base_model = params.get("base_model") or params.get("model", "")
-            try:
-                info = get_model_info(base_model)
-                ctx = info.get("max_input_tokens")
-                if (
-                    isinstance(ctx, int)
-                    and ctx > 0
-                    and (min_ctx is None or ctx < min_ctx)
-                ):
-                    min_ctx = ctx
-            except Exception:
-                continue
-
-        if min_ctx is not None:
-            logger.info(f"ChatLiteLLMRouter profile: max_input_tokens={min_ctx}")
-            return {"max_input_tokens": min_ctx}
-        return None
 
     @property
     def _llm_type(self) -> str:
@@ -770,19 +777,28 @@ class ChatLiteLLMRouter(BaseChatModel):
         return None
 
 
-def get_auto_mode_llm() -> ChatLiteLLMRouter | None:
-    """
-    Get a ChatLiteLLMRouter instance for auto mode.
+def get_auto_mode_llm(
+    *,
+    streaming: bool = True,
+) -> ChatLiteLLMRouter | None:
+    """Return a cached ChatLiteLLMRouter for auto mode.
 
-    Returns:
-        ChatLiteLLMRouter instance or None if router not initialized
+    Base (no tools) instances are cached per ``streaming`` flag so we
+    avoid re-constructing them on every request.  ``bind_tools()`` still
+    returns a fresh instance because bound tools differ per agent.
     """
     if not LLMRouterService.is_initialized():
         logger.warning("LLM Router not initialized for auto mode")
         return None
 
+    cached = _router_instance_cache.get(streaming)
+    if cached is not None:
+        return cached
+
     try:
-        return ChatLiteLLMRouter()
+        instance = ChatLiteLLMRouter(streaming=streaming)
+        _router_instance_cache[streaming] = instance
+        return instance
     except Exception as e:
         logger.error(f"Failed to create ChatLiteLLMRouter: {e}")
         return None

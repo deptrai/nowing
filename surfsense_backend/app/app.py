@@ -103,22 +103,24 @@ def _check_rate_limit_memory(
     now = time.monotonic()
 
     with _memory_lock:
-        # Evict timestamps outside the current window
-        _memory_rate_limits[key] = [
-            t for t in _memory_rate_limits[key] if now - t < window_seconds
-        ]
+        timestamps = [t for t in _memory_rate_limits[key] if now - t < window_seconds]
 
-        if len(_memory_rate_limits[key]) >= max_requests:
+        if not timestamps:
+            _memory_rate_limits.pop(key, None)
+        else:
+            _memory_rate_limits[key] = timestamps
+
+        if len(timestamps) >= max_requests:
             rate_limit_logger.warning(
                 f"Rate limit exceeded (in-memory fallback) on {scope} for IP {client_ip} "
-                f"({len(_memory_rate_limits[key])}/{max_requests} in {window_seconds}s)"
+                f"({len(timestamps)}/{max_requests} in {window_seconds}s)"
             )
             raise HTTPException(
                 status_code=429,
                 detail="RATE_LIMIT_EXCEEDED",
             )
 
-        _memory_rate_limits[key].append(now)
+        _memory_rate_limits[key] = [*timestamps, now]
 
 
 def _check_rate_limit(
