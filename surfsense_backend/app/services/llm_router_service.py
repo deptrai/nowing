@@ -437,14 +437,16 @@ class ChatLiteLLMRouter(BaseChatModel):
         except ContextWindowExceededError as e:
             perf.warning(
                 "[llm_router] _generate CONTEXT_OVERFLOW msgs=%d in %.3fs",
-                msg_count, time.perf_counter() - t0,
+                msg_count,
+                time.perf_counter() - t0,
             )
             raise ContextOverflowError(str(e)) from e
         except LiteLLMBadRequestError as e:
             if _is_context_overflow_error(e):
                 perf.warning(
                     "[llm_router] _generate CONTEXT_OVERFLOW msgs=%d in %.3fs",
-                    msg_count, time.perf_counter() - t0,
+                    msg_count,
+                    time.perf_counter() - t0,
                 )
                 raise ContextOverflowError(str(e)) from e
             raise
@@ -500,14 +502,16 @@ class ChatLiteLLMRouter(BaseChatModel):
         except ContextWindowExceededError as e:
             perf.warning(
                 "[llm_router] _agenerate CONTEXT_OVERFLOW msgs=%d in %.3fs",
-                msg_count, time.perf_counter() - t0,
+                msg_count,
+                time.perf_counter() - t0,
             )
             raise ContextOverflowError(str(e)) from e
         except LiteLLMBadRequestError as e:
             if _is_context_overflow_error(e):
                 perf.warning(
                     "[llm_router] _agenerate CONTEXT_OVERFLOW msgs=%d in %.3fs",
-                    msg_count, time.perf_counter() - t0,
+                    msg_count,
+                    time.perf_counter() - t0,
                 )
                 raise ContextOverflowError(str(e)) from e
             raise
@@ -608,14 +612,16 @@ class ChatLiteLLMRouter(BaseChatModel):
         except ContextWindowExceededError as e:
             perf.warning(
                 "[llm_router] _astream CONTEXT_OVERFLOW msgs=%d in %.3fs",
-                msg_count, time.perf_counter() - t0,
+                msg_count,
+                time.perf_counter() - t0,
             )
             raise ContextOverflowError(str(e)) from e
         except LiteLLMBadRequestError as e:
             if _is_context_overflow_error(e):
                 perf.warning(
                     "[llm_router] _astream CONTEXT_OVERFLOW msgs=%d in %.3fs",
-                    msg_count, time.perf_counter() - t0,
+                    msg_count,
+                    time.perf_counter() - t0,
                 )
                 raise ContextOverflowError(str(e)) from e
             raise
@@ -623,7 +629,8 @@ class ChatLiteLLMRouter(BaseChatModel):
         t_first_chunk = time.perf_counter()
         perf.info(
             "[llm_router] _astream connection established msgs=%d in %.3fs",
-            msg_count, t_first_chunk - t0,
+            msg_count,
+            t_first_chunk - t0,
         )
 
         chunk_count = 0
@@ -645,7 +652,8 @@ class ChatLiteLLMRouter(BaseChatModel):
 
         perf.info(
             "[llm_router] _astream completed chunks=%d total=%.3fs",
-            chunk_count, time.perf_counter() - t0,
+            chunk_count,
+            time.perf_counter() - t0,
         )
 
     def _convert_messages(self, messages: list[BaseMessage]) -> list[dict]:

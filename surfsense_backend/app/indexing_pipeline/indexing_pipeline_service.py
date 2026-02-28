@@ -147,7 +147,9 @@ class IndexingPipelineService:
             await self.session.commit()
             perf.info(
                 "[indexing] prepare_for_indexing in %.3fs input=%d output=%d",
-                time.perf_counter() - t0, len(connector_docs), len(documents),
+                time.perf_counter() - t0,
+                len(connector_docs),
+                len(documents),
             )
             return documents
         except IntegrityError:
@@ -185,7 +187,8 @@ class IndexingPipelineService:
                 )
                 perf.info(
                     "[indexing] summarize_document doc=%d in %.3fs",
-                    document.id, time.perf_counter() - t_step,
+                    document.id,
+                    time.perf_counter() - t_step,
                 )
             elif connector_doc.should_summarize and connector_doc.fallback_summary:
                 content = connector_doc.fallback_summary
@@ -196,7 +199,8 @@ class IndexingPipelineService:
             embedding = embed_text(content)
             perf.debug(
                 "[indexing] embed_text (summary) doc=%d in %.3fs",
-                document.id, time.perf_counter() - t_step,
+                document.id,
+                time.perf_counter() - t_step,
             )
 
             await self.session.execute(
@@ -213,7 +217,9 @@ class IndexingPipelineService:
             ]
             perf.info(
                 "[indexing] chunk+embed doc=%d chunks=%d in %.3fs",
-                document.id, len(chunks), time.perf_counter() - t_step,
+                document.id,
+                len(chunks),
+                time.perf_counter() - t_step,
             )
 
             document.content = content
@@ -224,7 +230,9 @@ class IndexingPipelineService:
             await self.session.commit()
             perf.info(
                 "[indexing] index TOTAL doc=%d chunks=%d in %.3fs",
-                document.id, len(chunks), time.perf_counter() - t_index,
+                document.id,
+                len(chunks),
+                time.perf_counter() - t_index,
             )
             log_index_success(ctx, chunk_count=len(chunks))
 

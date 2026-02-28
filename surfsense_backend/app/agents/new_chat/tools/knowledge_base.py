@@ -430,7 +430,10 @@ async def search_knowledge_base_async(
     connectors = _normalize_connectors(connectors_to_search, available_connectors)
     perf.info(
         "[kb_search] searching %d connectors: %s (space=%d, top_k=%d)",
-        len(connectors), connectors[:5], search_space_id, top_k,
+        len(connectors),
+        connectors[:5],
+        search_space_id,
+        top_k,
     )
 
     connector_specs: dict[str, tuple[str, bool, bool, dict[str, Any]]] = {
@@ -510,13 +513,17 @@ async def search_knowledge_base_async(
                 _, chunks = await connector_method(**kwargs)
                 perf.info(
                     "[kb_search] connector=%s results=%d in %.3fs",
-                    connector, len(chunks), time.perf_counter() - t_conn,
+                    connector,
+                    len(chunks),
+                    time.perf_counter() - t_conn,
                 )
                 return chunks
         except Exception as e:
             perf.warning(
                 "[kb_search] connector=%s FAILED in %.3fs: %s",
-                connector, time.perf_counter() - t_conn, e,
+                connector,
+                time.perf_counter() - t_conn,
+                e,
             )
             return []
 
@@ -525,7 +532,8 @@ async def search_knowledge_base_async(
         *[_search_one_connector(connector) for connector in connectors]
     )
     perf.info(
-        "[kb_search] all connectors gathered in %.3fs", time.perf_counter() - t_gather,
+        "[kb_search] all connectors gathered in %.3fs",
+        time.perf_counter() - t_gather,
     )
     for chunks in connector_results:
         all_documents.extend(chunks)
@@ -576,7 +584,11 @@ async def search_knowledge_base_async(
     result = format_documents_for_context(deduplicated, max_chars=output_budget)
     perf.info(
         "[kb_search] TOTAL in %.3fs total_docs=%d deduped=%d output_chars=%d space=%d",
-        time.perf_counter() - t0, len(all_documents), len(deduplicated), len(result), search_space_id,
+        time.perf_counter() - t0,
+        len(all_documents),
+        len(deduplicated),
+        len(result),
+        search_space_id,
     )
     return result
 

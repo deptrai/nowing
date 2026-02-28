@@ -76,7 +76,10 @@ class ChucksHybridSearchRetriever:
         chunks = result.scalars().all()
         perf.info(
             "[chunk_search] vector_search DB query in %.3fs results=%d (total %.3fs) space=%d",
-            time.perf_counter() - t_db, len(chunks), time.perf_counter() - t0, search_space_id,
+            time.perf_counter() - t_db,
+            len(chunks),
+            time.perf_counter() - t0,
+            search_space_id,
         )
 
         return chunks
@@ -139,7 +142,9 @@ class ChucksHybridSearchRetriever:
         chunks = result.scalars().all()
         perf.info(
             "[chunk_search] full_text_search in %.3fs results=%d space=%d",
-            time.perf_counter() - t0, len(chunks), search_space_id,
+            time.perf_counter() - t0,
+            len(chunks),
+            search_space_id,
         )
 
         return chunks
@@ -152,6 +157,7 @@ class ChucksHybridSearchRetriever:
         document_type: str | None = None,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
+        query_embedding: list | None = None,
     ) -> list:
         """
         Hybrid search that returns **documents** (not individual chunks).
@@ -166,6 +172,7 @@ class ChucksHybridSearchRetriever:
             document_type: Optional document type to filter results (e.g., "FILE", "CRAWLED_URL")
             start_date: Optional start date for filtering documents by updated_at
             end_date: Optional end date for filtering documents by updated_at
+            query_embedding: Pre-computed embedding vector. If None, will be computed here.
 
         Returns:
             List of dictionaries containing document data and relevance scores. Each dict contains:
@@ -183,14 +190,14 @@ class ChucksHybridSearchRetriever:
         perf = get_perf_logger()
         t0 = time.perf_counter()
 
-        # Get embedding for the query
-        embedding_model = config.embedding_model_instance
-        t_embed = time.perf_counter()
-        query_embedding = embedding_model.embed(query_text)
-        perf.debug(
-            "[chunk_search] hybrid_search embedding in %.3fs",
-            time.perf_counter() - t_embed,
-        )
+        if query_embedding is None:
+            embedding_model = config.embedding_model_instance
+            t_embed = time.perf_counter()
+            query_embedding = embedding_model.embed(query_text)
+            perf.debug(
+                "[chunk_search] hybrid_search embedding in %.3fs",
+                time.perf_counter() - t_embed,
+            )
 
         # RRF constants
         k = 60
@@ -291,7 +298,10 @@ class ChucksHybridSearchRetriever:
         chunks_with_scores = result.all()
         perf.info(
             "[chunk_search] hybrid_search RRF query in %.3fs results=%d space=%d type=%s",
-            time.perf_counter() - t_rrf, len(chunks_with_scores), search_space_id, document_type,
+            time.perf_counter() - t_rrf,
+            len(chunks_with_scores),
+            search_space_id,
+            document_type,
         )
 
         # If no results were found, return an empty list
@@ -392,6 +402,9 @@ class ChucksHybridSearchRetriever:
 
         perf.info(
             "[chunk_search] hybrid_search TOTAL in %.3fs docs=%d space=%d type=%s",
-            time.perf_counter() - t0, len(final_docs), search_space_id, document_type,
+            time.perf_counter() - t0,
+            len(final_docs),
+            search_space_id,
+            document_type,
         )
         return final_docs
