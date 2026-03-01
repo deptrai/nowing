@@ -1477,15 +1477,21 @@ async def stream_new_chat(
 
         _try_persist_and_delete_sandbox(chat_id, stream_result.sandbox_files)
 
-        # Trigger a GC pass so LangGraph agent graphs, tool closures, and
-        # LLM wrappers with potential circular refs are reclaimed promptly.
-        collected = gc.collect()
+        # Break circular refs held by the agent graph, tools, and LLM
+        # wrappers so the GC can reclaim them in a single pass.
+        agent = llm = connector_service = sandbox_backend = None
+        mentioned_documents = mentioned_surfsense_docs = None
+        recent_reports = langchain_messages = input_state = None
+        stream_result = None
+
+        collected = gc.collect(0) + gc.collect(1) + gc.collect(2)
         if collected:
             _perf_log.info(
                 "[stream_new_chat] gc.collect() reclaimed %d objects (chat_id=%s)",
                 collected,
                 chat_id,
             )
+        log_system_snapshot("stream_new_chat_END")
 
 
 async def stream_resume_chat(
@@ -1673,10 +1679,15 @@ async def stream_resume_chat(
                 )
 
         _try_persist_and_delete_sandbox(chat_id, stream_result.sandbox_files)
-        collected = gc.collect()
+
+        agent = llm = connector_service = sandbox_backend = None
+        stream_result = None
+
+        collected = gc.collect(0) + gc.collect(1) + gc.collect(2)
         if collected:
             _perf_log.info(
                 "[stream_resume] gc.collect() reclaimed %d objects (chat_id=%s)",
                 collected,
                 chat_id,
             )
+        log_system_snapshot("stream_resume_chat_END")

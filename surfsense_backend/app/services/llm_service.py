@@ -19,6 +19,13 @@ from app.services.llm_router_service import (
 # Configure litellm to automatically drop unsupported parameters
 litellm.drop_params = True
 
+# Memory controls: prevent unbounded internal accumulation
+litellm.telemetry = False
+litellm.cache = None
+litellm.success_callback = []
+litellm.failure_callback = []
+litellm.input_callback = []
+
 logger = logging.getLogger(__name__)
 
 

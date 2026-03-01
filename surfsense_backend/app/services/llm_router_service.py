@@ -16,6 +16,7 @@ import re
 import time
 from typing import Any
 
+import litellm
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.exceptions import ContextOverflowError
 from langchain_core.language_models import BaseChatModel
@@ -28,6 +29,9 @@ from litellm.exceptions import (
 )
 
 from app.utils.perf import get_perf_logger
+
+litellm.json_logs = False
+litellm.store_audit_logs = False
 
 logger = logging.getLogger(__name__)
 
