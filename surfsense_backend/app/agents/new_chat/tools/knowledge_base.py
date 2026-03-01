@@ -19,7 +19,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import async_session_maker
+from app.db import shielded_async_session
 from app.services.connector_service import ConnectorService
 from app.utils.perf import get_perf_logger
 
@@ -98,7 +98,7 @@ async def _browse_recent_documents(
     if end_date is not None:
         base_conditions.append(Document.updated_at <= end_date)
 
-    async with async_session_maker() as session:
+    async with shielded_async_session() as session:
         doc_query = (
             select(Document)
             .options(joinedload(Document.search_space))
@@ -739,7 +739,7 @@ async def search_knowledge_base_async(
 
             try:
                 t_conn = time.perf_counter()
-                async with semaphore, async_session_maker() as isolated_session:
+                async with semaphore, shielded_async_session() as isolated_session:
                     svc = ConnectorService(isolated_session, search_space_id)
                     _, chunks = await getattr(svc, method_name)(**kwargs)
                     perf.info(
@@ -756,7 +756,7 @@ async def search_knowledge_base_async(
         # --- Optimization 3: call _combined_rrf_search directly with shared embedding ---
         try:
             t_conn = time.perf_counter()
-            async with semaphore, async_session_maker() as isolated_session:
+            async with semaphore, shielded_async_session() as isolated_session:
                 svc = ConnectorService(isolated_session, search_space_id)
                 chunks = await svc._combined_rrf_search(
                     query_text=query,

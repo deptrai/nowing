@@ -33,7 +33,7 @@ from langchain_core.callbacks import dispatch_custom_event
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
-from app.db import Report, async_session_maker
+from app.db import Report, shielded_async_session
 from app.services.connector_service import ConnectorService
 from app.services.llm_service import get_document_summary_llm
 
@@ -717,7 +717,7 @@ def create_generate_report_tool(
         async def _save_failed_report(error_msg: str) -> int | None:
             """Persist a failed report row using a short-lived session."""
             try:
-                async with async_session_maker() as session:
+                async with shielded_async_session() as session:
                     failed_report = Report(
                         title=topic,
                         content=None,
@@ -751,7 +751,7 @@ def create_generate_report_tool(
             # ── Phase 1: READ (short-lived session) ──────────────────────
             # Fetch parent report and LLM config, then close the session
             # so no DB connection is held during the long LLM call.
-            async with async_session_maker() as read_session:
+            async with shielded_async_session() as read_session:
                 if parent_report_id:
                     parent_report = await read_session.get(Report, parent_report_id)
                     if parent_report:
@@ -828,7 +828,7 @@ def create_generate_report_tool(
 
                     # Run all queries in parallel, each with its own session
                     async def _run_single_query(q: str) -> str:
-                        async with async_session_maker() as kb_session:
+                        async with shielded_async_session() as kb_session:
                             kb_connector_svc = ConnectorService(
                                 kb_session, search_space_id
                             )
@@ -1028,7 +1028,7 @@ def create_generate_report_tool(
 
             # ── Phase 3: WRITE (short-lived session) ─────────────────────
             # Save the report to the database, then close the session.
-            async with async_session_maker() as write_session:
+            async with shielded_async_session() as write_session:
                 report = Report(
                     title=topic,
                     content=report_content,

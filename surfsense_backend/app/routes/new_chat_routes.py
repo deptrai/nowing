@@ -31,8 +31,8 @@ from app.db import (
     Permission,
     SearchSpace,
     User,
-    async_session_maker,
     get_async_session,
+    shielded_async_session,
 )
 from app.schemas.new_chat import (
     NewChatMessageAppend,
@@ -1356,7 +1356,7 @@ async def regenerate_response(
                 # Uses a fresh session since stream_new_chat manages its own.
                 if streaming_completed and message_ids_to_delete:
                     try:
-                        async with async_session_maker() as cleanup_session:
+                        async with shielded_async_session() as cleanup_session:
                             for msg_id in message_ids_to_delete:
                                 _res = await cleanup_session.execute(
                                     select(NewChatMessage).filter(
