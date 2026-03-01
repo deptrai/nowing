@@ -1,7 +1,9 @@
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from enum import StrEnum
 
+import anyio
 from fastapi import Depends
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
 from pgvector.sqlalchemy import Vector
@@ -1865,6 +1867,26 @@ engine = create_async_engine(
     pool_timeout=30,
 )
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+
+@asynccontextmanager
+async def shielded_async_session():
+    """Cancellation-safe async session context manager.
+
+    Starlette's BaseHTTPMiddleware cancels the task via an anyio cancel
+    scope when a client disconnects.  A plain ``async with async_session_maker()``
+    has its ``__aexit__`` (which awaits ``session.close()``) cancelled by the
+    scope, orphaning the underlying database connection.
+
+    This wrapper ensures ``session.close()`` always completes by running it
+    inside ``anyio.CancelScope(shield=True)``.
+    """
+    session = async_session_maker()
+    try:
+        yield session
+    finally:
+        with anyio.CancelScope(shield=True):
+            await session.close()
 
 
 async def setup_indexes():

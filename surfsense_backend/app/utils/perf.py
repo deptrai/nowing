@@ -149,3 +149,26 @@ def log_system_snapshot(label: str = "system_snapshot") -> None:
             snap["rss_delta_mb"],
             snap["rss_mb"],
         )
+
+
+def trim_native_heap() -> bool:
+    """Ask glibc to return free heap pages to the OS via ``malloc_trim(0)``.
+
+    On Linux (glibc), ``free()`` does not release memory back to the OS if
+    it sits below the brk watermark.  ``malloc_trim`` forces the allocator
+    to give back as many freed pages as possible.
+
+    Returns True if trimming was performed, False otherwise (non-Linux or
+    libc unavailable).
+    """
+    import ctypes
+    import sys
+
+    if sys.platform != "linux":
+        return False
+    try:
+        libc = ctypes.CDLL("libc.so.6")
+        libc.malloc_trim(0)
+        return True
+    except (OSError, AttributeError):
+        return False

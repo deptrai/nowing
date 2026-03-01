@@ -49,6 +49,7 @@ from app.db import (
     SearchSourceConnectorType,
     SurfsenseDocsDocument,
     async_session_maker,
+    shielded_async_session,
 )
 from app.prompts import TITLE_GENERATION_PROMPT_TEMPLATE
 from app.services.chat_session_state_service import (
@@ -58,7 +59,7 @@ from app.services.chat_session_state_service import (
 from app.services.connector_service import ConnectorService
 from app.services.new_streaming_service import VercelStreamingService
 from app.utils.content_utils import bootstrap_history_from_db
-from app.utils.perf import get_perf_logger, log_system_snapshot
+from app.utils.perf import get_perf_logger, log_system_snapshot, trim_native_heap
 
 _perf_log = get_perf_logger()
 
@@ -1359,6 +1360,12 @@ async def stream_new_chat(
             items=initial_items,
         )
 
+        # These ORM objects (with eagerly-loaded chunks) can be very large.
+        # They're only needed to build context strings already copied into
+        # final_query / langchain_messages — release them before streaming.
+        del mentioned_documents, mentioned_surfsense_docs, recent_reports
+        del langchain_messages, final_query
+
         _t_stream_start = time.perf_counter()
         _first_event_logged = False
         async for sse in _stream_agent_events(
@@ -1483,7 +1490,7 @@ async def stream_new_chat(
                 await clear_ai_responding(session, chat_id)
             except Exception:
                 try:
-                    async with async_session_maker() as fresh_session:
+                    async with shielded_async_session() as fresh_session:
                         await clear_ai_responding(fresh_session, chat_id)
                 except Exception:
                     logging.getLogger(__name__).warning(
@@ -1501,9 +1508,7 @@ async def stream_new_chat(
         # Break circular refs held by the agent graph, tools, and LLM
         # wrappers so the GC can reclaim them in a single pass.
         agent = llm = connector_service = sandbox_backend = None
-        mentioned_documents = mentioned_surfsense_docs = None
-        recent_reports = langchain_messages = input_state = None
-        stream_result = None
+        input_state = stream_result = None
         session = None
 
         collected = gc.collect(0) + gc.collect(1) + gc.collect(2)
@@ -1513,6 +1518,7 @@ async def stream_new_chat(
                 collected,
                 chat_id,
             )
+        trim_native_heap()
         log_system_snapshot("stream_new_chat_END")
 
 
@@ -1695,7 +1701,7 @@ async def stream_resume_chat(
                 await clear_ai_responding(session, chat_id)
             except Exception:
                 try:
-                    async with async_session_maker() as fresh_session:
+                    async with shielded_async_session() as fresh_session:
                         await clear_ai_responding(fresh_session, chat_id)
                 except Exception:
                     logging.getLogger(__name__).warning(
@@ -1721,4 +1727,5 @@ async def stream_resume_chat(
                 collected,
                 chat_id,
             )
+        trim_native_heap()
         log_system_snapshot("stream_resume_chat_END")
