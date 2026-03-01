@@ -3,6 +3,8 @@ from datetime import datetime
 
 from app.utils.perf import get_perf_logger
 
+_MAX_FETCH_CHUNKS_PER_DOC = 30
+
 
 class DocumentHybridSearchRetriever:
     def __init__(self, db_session):
@@ -279,7 +281,8 @@ class DocumentHybridSearchRetriever:
         # Collect document IDs for chunk fetching
         doc_ids: list[int] = [doc.id for doc, _score in documents_with_scores]
 
-        # Fetch ALL chunks for these documents in a single query
+        # Fetch chunks for these documents, capped per document to avoid
+        # loading hundreds of chunks for a single large file.
         chunks_query = (
             select(Chunk)
             .options(joinedload(Chunk.document))
@@ -287,7 +290,16 @@ class DocumentHybridSearchRetriever:
             .order_by(Chunk.document_id, Chunk.id)
         )
         chunks_result = await self.db_session.execute(chunks_query)
-        chunks = chunks_result.scalars().all()
+        raw_chunks = chunks_result.scalars().all()
+
+        doc_chunk_counts: dict[int, int] = {}
+        chunks: list = []
+        for chunk in raw_chunks:
+            did = chunk.document_id
+            count = doc_chunk_counts.get(did, 0)
+            if count < _MAX_FETCH_CHUNKS_PER_DOC:
+                chunks.append(chunk)
+                doc_chunk_counts[did] = count + 1
 
         # Assemble doc-grouped results
         doc_map: dict[int, dict] = {

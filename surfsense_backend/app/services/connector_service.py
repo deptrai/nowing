@@ -224,6 +224,7 @@ class ConnectorService:
         top_k: int = 20,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
+        query_embedding: list[float] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Perform combined search using both chunk-based and document-based hybrid search,
@@ -260,14 +261,15 @@ class ConnectorService:
         # Get more results from each retriever for better fusion
         retriever_top_k = top_k * 2
 
-        # Pre-compute the embedding once so both retrievers reuse it.
-        t_embed = time.perf_counter()
-        query_embedding = config.embedding_model_instance.embed(query_text)
-        perf.info(
-            "[connector_svc] _combined_rrf embedding in %.3fs type=%s",
-            time.perf_counter() - t_embed,
-            document_type,
-        )
+        # Reuse caller-provided embedding or compute once for both retrievers.
+        if query_embedding is None:
+            t_embed = time.perf_counter()
+            query_embedding = config.embedding_model_instance.embed(query_text)
+            perf.info(
+                "[connector_svc] _combined_rrf embedding in %.3fs type=%s",
+                time.perf_counter() - t_embed,
+                document_type,
+            )
 
         search_kwargs = {
             "query_text": query_text,
