@@ -3,6 +3,8 @@ from datetime import datetime
 
 from app.utils.perf import get_perf_logger
 
+_MAX_FETCH_CHUNKS_PER_DOC = 30
+
 
 class ChucksHybridSearchRetriever:
     def __init__(self, db_session):
@@ -346,8 +348,9 @@ class ChucksHybridSearchRetriever:
         if not doc_ids:
             return []
 
-        # Fetch ALL chunks for selected documents in a single query so the final prompt can cite
-        # any chunk from those documents.
+        # Fetch chunks for selected documents.  We cap per document to avoid
+        # loading hundreds of chunks for a single large file while still
+        # ensuring the chunks that matched the RRF query are always included.
         chunk_query = (
             select(Chunk)
             .options(joinedload(Chunk.document))
@@ -357,7 +360,20 @@ class ChucksHybridSearchRetriever:
             .order_by(Chunk.document_id, Chunk.id)
         )
         chunks_result = await self.db_session.execute(chunk_query)
-        all_chunks = chunks_result.scalars().all()
+        raw_chunks = chunks_result.scalars().all()
+
+        matched_chunk_ids: set[int] = {
+            item["chunk_id"] for item in serialized_chunk_results
+        }
+
+        doc_chunk_counts: dict[int, int] = {}
+        all_chunks: list = []
+        for chunk in raw_chunks:
+            did = chunk.document_id
+            count = doc_chunk_counts.get(did, 0)
+            if chunk.id in matched_chunk_ids or count < _MAX_FETCH_CHUNKS_PER_DOC:
+                all_chunks.append(chunk)
+                doc_chunk_counts[did] = count + 1
 
         # Assemble final doc-grouped results in the same order as doc_ids
         doc_map: dict[int, dict] = {

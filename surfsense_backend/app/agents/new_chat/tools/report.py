@@ -559,6 +559,7 @@ def create_generate_report_tool(
     thread_id: int | None = None,
     connector_service: ConnectorService | None = None,
     available_connectors: list[str] | None = None,
+    available_document_types: list[str] | None = None,
 ):
     """
     Factory function to create the generate_report tool with injected dependencies.
@@ -838,6 +839,7 @@ def create_generate_report_tool(
                                 connector_service=kb_connector_svc,
                                 top_k=10,
                                 available_connectors=available_connectors,
+                                available_document_types=available_document_types,
                             )
 
                     kb_results = await asyncio.gather(
