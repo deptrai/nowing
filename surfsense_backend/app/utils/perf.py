@@ -9,6 +9,7 @@ Provides:
 - RequestPerfMiddleware for per-request timing
 """
 
+import gc
 import logging
 import os
 import time
@@ -16,6 +17,7 @@ from contextlib import asynccontextmanager, contextmanager
 from typing import Any
 
 _perf_log: logging.Logger | None = None
+_last_rss_mb: float = 0.0
 
 
 def get_perf_logger() -> logging.Logger:
@@ -73,12 +75,16 @@ def system_snapshot() -> dict[str, Any]:
 
     Returns a dict with:
       - rss_mb: Resident Set Size in MB
+      - rss_delta_mb: Change in RSS since the last snapshot
       - cpu_percent: CPU usage % since last call (per-process)
       - threads: number of active threads
       - open_fds: number of open file descriptors (Linux only)
       - asyncio_tasks: number of asyncio tasks currently alive
+      - gc_counts: tuple of object counts per gc generation
     """
     import asyncio
+
+    global _last_rss_mb
 
     snapshot: dict[str, Any] = {}
     try:
@@ -86,7 +92,12 @@ def system_snapshot() -> dict[str, Any]:
 
         proc = psutil.Process(os.getpid())
         mem = proc.memory_info()
-        snapshot["rss_mb"] = round(mem.rss / 1024 / 1024, 1)
+        rss_mb = round(mem.rss / 1024 / 1024, 1)
+        snapshot["rss_mb"] = rss_mb
+        snapshot["rss_delta_mb"] = (
+            round(rss_mb - _last_rss_mb, 1) if _last_rss_mb else 0.0
+        )
+        _last_rss_mb = rss_mb
         snapshot["cpu_percent"] = proc.cpu_percent(interval=None)
         snapshot["threads"] = proc.num_threads()
         try:
@@ -95,6 +106,7 @@ def system_snapshot() -> dict[str, Any]:
             snapshot["open_fds"] = -1
     except ImportError:
         snapshot["rss_mb"] = -1
+        snapshot["rss_delta_mb"] = 0.0
         snapshot["cpu_percent"] = -1
         snapshot["threads"] = -1
         snapshot["open_fds"] = -1
@@ -105,18 +117,35 @@ def system_snapshot() -> dict[str, Any]:
     except RuntimeError:
         snapshot["asyncio_tasks"] = -1
 
+    snapshot["gc_counts"] = gc.get_count()
+
     return snapshot
 
 
 def log_system_snapshot(label: str = "system_snapshot") -> None:
-    """Capture and log a system snapshot."""
+    """Capture and log a system snapshot with memory delta tracking."""
     snap = system_snapshot()
+    delta_str = ""
+    if snap["rss_delta_mb"]:
+        sign = "+" if snap["rss_delta_mb"] > 0 else ""
+        delta_str = f" delta={sign}{snap['rss_delta_mb']}MB"
     get_perf_logger().info(
-        "[%s] rss=%.1fMB cpu=%.1f%% threads=%d fds=%d asyncio_tasks=%d",
+        "[%s] rss=%.1fMB%s cpu=%.1f%% threads=%d fds=%d asyncio_tasks=%d gc=%s",
         label,
         snap["rss_mb"],
+        delta_str,
         snap["cpu_percent"],
         snap["threads"],
         snap["open_fds"],
         snap["asyncio_tasks"],
+        snap["gc_counts"],
     )
+
+    if snap["rss_mb"] > 0 and snap["rss_delta_mb"] > 500:
+        get_perf_logger().warning(
+            "[MEMORY_SPIKE] %s: RSS jumped by %.1fMB (now %.1fMB). "
+            "Possible leak — check recent operations.",
+            label,
+            snap["rss_delta_mb"],
+            snap["rss_mb"],
+        )

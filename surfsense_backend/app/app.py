@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import logging
 import time
 from collections import defaultdict
@@ -212,18 +213,16 @@ def _enable_slow_callback_logging(threshold_sec: float = 0.5) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Enable slow-callback detection (set PERF_DEBUG=1 env var to activate)
+    # Tune GC: lower gen-2 threshold so long-lived garbage is collected
+    # sooner (default 700/10/10 → 700/10/5). This reduces peak RSS
+    # with minimal CPU overhead.
+    gc.set_threshold(700, 10, 5)
+
     _enable_slow_callback_logging(threshold_sec=0.5)
-    # Not needed if you setup a migration system like Alembic
     await create_db_and_tables()
-    # Setup LangGraph checkpointer tables for conversation persistence
     await setup_checkpointer_tables()
-    # Initialize LLM Router for Auto mode load balancing
     initialize_llm_router()
-    # Initialize Image Generation Router for Auto mode load balancing
     initialize_image_gen_router()
-    # Seed Surfsense documentation (with timeout so a slow embedding API
-    # doesn't block startup indefinitely and make the container unresponsive)
     try:
         await asyncio.wait_for(seed_surfsense_docs(), timeout=120)
     except TimeoutError:
@@ -231,8 +230,11 @@ async def lifespan(app: FastAPI):
             "Surfsense docs seeding timed out after 120s — skipping. "
             "Docs will be indexed on the next restart."
         )
+
+    log_system_snapshot("startup_complete")
+
     yield
-    # Cleanup: close checkpointer connection on shutdown
+
     await close_checkpointer()
 
 

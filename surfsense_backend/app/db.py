@@ -1856,7 +1856,14 @@ class RefreshToken(Base, TimestampMixin):
         return not self.is_expired and not self.is_revoked
 
 
-engine = create_async_engine(DATABASE_URL)
+engine = create_async_engine(
+    DATABASE_URL,
+    pool_size=30,
+    max_overflow=150,
+    pool_recycle=1800,
+    pool_pre_ping=True,
+    pool_timeout=30,
+)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 
