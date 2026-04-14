@@ -63,7 +63,7 @@ export function ChatHeader({ searchSpaceId, className }: ChatHeaderProps) {
 		(config: NewLLMConfigPublic | GlobalNewLLMConfig, global: boolean) => {
 			setSelectedConfig(config);
 			setIsGlobal(global);
-			setDialogMode(global ? "view" : "edit");
+			setDialogMode("edit");
 			setDialogOpen(true);
 		},
 		[]
@@ -93,7 +93,7 @@ export function ChatHeader({ searchSpaceId, className }: ChatHeaderProps) {
 		(config: ImageGenerationConfig | GlobalImageGenConfig, global: boolean) => {
 			setSelectedImageConfig(config);
 			setIsImageGlobal(global);
-			setImageDialogMode(global ? "view" : "edit");
+			setImageDialogMode("edit");
 			setImageDialogOpen(true);
 		},
 		[]
@@ -116,7 +116,7 @@ export function ChatHeader({ searchSpaceId, className }: ChatHeaderProps) {
 		(config: VisionLLMConfig | GlobalVisionLLMConfig, global: boolean) => {
 			setSelectedVisionConfig(config);
 			setIsVisionGlobal(global);
-			setVisionDialogMode(global ? "view" : "edit");
+			setVisionDialogMode("edit");
 			setVisionDialogOpen(true);
 		},
 		[]

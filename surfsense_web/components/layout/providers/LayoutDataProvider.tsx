@@ -8,6 +8,7 @@ import {
 	Inbox,
 	LogOut,
 	Megaphone,
+	ShieldCheck,
 	SquareLibrary,
 	Trash2,
 } from "lucide-react";
@@ -387,6 +388,14 @@ export function LayoutDataProvider({ searchSpaceId, children }: LayoutDataProvid
 						icon: Coins,
 						isActive: pathname?.includes("/crypto"),
 					},
+					user?.is_superuser
+						? {
+								title: "Admin",
+								url: "/admin/subscription-requests",
+								icon: ShieldCheck,
+								isActive: pathname?.startsWith("/admin"),
+							}
+						: null,
 				] as (NavItem | null)[]
 			).filter((item): item is NavItem => item !== null),
 		[
@@ -398,6 +407,7 @@ export function LayoutDataProvider({ searchSpaceId, children }: LayoutDataProvid
 			announcementUnreadCount,
 			searchSpaceId,
 			pathname,
+			user,
 		]
 	);
 

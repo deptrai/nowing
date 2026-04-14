@@ -6,7 +6,7 @@ Create Date: 2026-04-15
 
 Seeds one admin user on fresh installs (no-op if any user already exists).
 Credentials are overridable via env vars:
-  ADMIN_EMAIL    (default: admin@surfsense.local)
+  ADMIN_EMAIL    (default: admin@surfsense.app)
   ADMIN_PASSWORD (default: Admin@SurfSense1)
 
 Admin is created with:
@@ -48,7 +48,7 @@ def upgrade() -> None:
     if result.fetchone() is not None:
         return  # Users already exist — skip seed
 
-    admin_email = os.environ.get("ADMIN_EMAIL", "admin@surfsense.local")
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@surfsense.app")
     admin_password = os.environ.get("ADMIN_PASSWORD", "Admin@SurfSense1")
     if not os.environ.get("ADMIN_PASSWORD"):
         print(

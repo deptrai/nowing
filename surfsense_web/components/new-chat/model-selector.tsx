@@ -548,7 +548,7 @@ export function ModelSelector({
 															<Button
 																variant="ghost"
 																size="icon"
-																className="size-7 shrink-0 rounded-md hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
+																className="size-7 shrink-0 rounded-md hover:bg-muted transition-opacity"
 																onClick={(e) => handleEditLLMConfig(e, config, true)}
 															>
 																<Edit3 className="size-3.5 text-muted-foreground" />
@@ -613,7 +613,7 @@ export function ModelSelector({
 															<Button
 																variant="ghost"
 																size="icon"
-																className="size-7 shrink-0 rounded-md hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
+																className="size-7 shrink-0 rounded-md hover:bg-muted transition-opacity"
 																onClick={(e) => handleEditLLMConfig(e, config, false)}
 															>
 																<Edit3 className="size-3.5 text-muted-foreground" />
@@ -724,7 +724,7 @@ export function ModelSelector({
 															<Button
 																variant="ghost"
 																size="icon"
-																className="size-7 shrink-0 rounded-md hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
+																className="size-7 shrink-0 rounded-md hover:bg-muted transition-opacity"
 																onClick={(e) => {
 																	e.stopPropagation();
 																	setOpen(false);
@@ -780,7 +780,7 @@ export function ModelSelector({
 																<Button
 																	variant="ghost"
 																	size="icon"
-																	className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+																	className="h-7 w-7 shrink-0 transition-opacity"
 																	onClick={(e) => {
 																		e.stopPropagation();
 																		setOpen(false);
@@ -894,7 +894,7 @@ export function ModelSelector({
 															<Button
 																variant="ghost"
 																size="icon"
-																className="size-7 shrink-0 rounded-md hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
+																className="size-7 shrink-0 rounded-md hover:bg-muted transition-opacity"
 																onClick={(e) => {
 																	e.stopPropagation();
 																	setOpen(false);
@@ -949,7 +949,7 @@ export function ModelSelector({
 																<Button
 																	variant="ghost"
 																	size="icon"
-																	className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+																	className="h-7 w-7 shrink-0 transition-opacity"
 																	onClick={(e) => {
 																		e.stopPropagation();
 																		setOpen(false);
