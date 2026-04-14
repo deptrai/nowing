@@ -155,12 +155,81 @@ class BookStackConnector:
         except requests.exceptions.RequestException as e:
             raise Exception(f"BookStack API request failed: {e!s}") from e
 
-    def get_all_pages(self, count: int = 500) -> list[dict[str, Any]]:
+    def get_all_shelves(self, count: int = 500) -> list[dict[str, Any]]:
+        """
+        Fetch all shelves from BookStack with pagination.
+
+        Args:
+            count: Number of records per request (max 500)
+
+        Returns:
+            List of shelf objects
+        """
+        all_shelves = []
+        offset = 0
+
+        while True:
+            params = {
+                "count": min(count, 500),
+                "offset": offset,
+            }
+
+            result = self.make_api_request("shelves", params)
+
+            if not isinstance(result, dict) or "data" not in result:
+                raise Exception("Invalid response from BookStack API")
+
+            shelves = result["data"]
+            all_shelves.extend(shelves)
+
+            logger.info(f"Fetched {len(shelves)} shelves (offset: {offset})")
+
+            total = result.get("total", 0)
+            if offset + len(shelves) >= total:
+                break
+
+            offset += len(shelves)
+
+        logger.info(f"Total shelves fetched: {len(all_shelves)}")
+        return all_shelves
+
+    def build_book_to_shelf_map(self) -> dict[int, set[int]]:
+        """
+        Build a mapping from book_id to a set of shelf_ids.
+
+        Fetches all shelves and their book listings to create
+        a lookup table used for filtering pages by shelf.
+        A book can belong to multiple shelves, so we use a set.
+
+        Returns:
+            Dict mapping book_id -> set of shelf_ids
+        """
+        book_to_shelves: dict[int, set[int]] = {}
+        shelves = self.get_all_shelves()
+
+        for shelf in shelves:
+            shelf_id = shelf["id"]
+            shelf_detail = self.make_api_request(f"shelves/{shelf_id}")
+            if isinstance(shelf_detail, dict):
+                for book in shelf_detail.get("books", []):
+                    book_id = book["id"]
+                    if book_id not in book_to_shelves:
+                        book_to_shelves[book_id] = set()
+                    book_to_shelves[book_id].add(shelf_id)
+
+        return book_to_shelves
+
+    def get_all_pages(
+        self,
+        count: int = 500,
+        excluded_shelf_ids: list[int] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Fetch all pages from BookStack with pagination.
 
         Args:
             count: Number of records per request (max 500)
+            excluded_shelf_ids: Optional list of shelf IDs whose pages should be excluded
 
         Returns:
             List of page objects
@@ -194,6 +263,18 @@ class BookStackConnector:
                 break
 
             offset += len(pages)
+
+        # Filter by excluded shelves if specified — build map once, outside the loop
+        if excluded_shelf_ids:
+            book_to_shelves = self.build_book_to_shelf_map()
+            excluded = set(excluded_shelf_ids)
+            all_pages = [
+                p
+                for p in all_pages
+                if not any(
+                    s in excluded for s in book_to_shelves.get(p.get("book_id"), set())
+                )
+            ]
 
         logger.info(f"Total pages fetched: {len(all_pages)}")
         return all_pages
@@ -268,6 +349,7 @@ class BookStackConnector:
         start_date: str,
         end_date: str,
         count: int = 500,
+        excluded_shelf_ids: list[int] | None = None,
     ) -> tuple[list[dict[str, Any]], str | None]:
         """
         Fetch pages updated within a specific date range.
@@ -278,6 +360,7 @@ class BookStackConnector:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format (currently unused, for future use)
             count: Number of records per request (max 500)
+            excluded_shelf_ids: Optional list of shelf IDs whose pages should be excluded
 
         Returns:
             Tuple of (list of page objects, error message or None)
@@ -315,6 +398,19 @@ class BookStackConnector:
                     break
 
                 offset += len(pages)
+
+            # Filter by excluded shelves if specified — build map once, outside the loop
+            if excluded_shelf_ids and all_pages:
+                book_to_shelves = self.build_book_to_shelf_map()
+                excluded = set(excluded_shelf_ids)
+                all_pages = [
+                    p
+                    for p in all_pages
+                    if not any(
+                        s in excluded
+                        for s in book_to_shelves.get(p.get("book_id"), set())
+                    )
+                ]
 
             if not all_pages:
                 return [], f"No pages found updated after {start_date}"
