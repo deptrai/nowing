@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rtk ls:*)",
+      "Bash(rtk find:*)",
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")",
+      "Bash(rtk wc:*)",
+      "Bash(rtk read:*)",
+      "Bash(rtk grep:*)",
+      "mcp__claude-mem__get_observations",
+      "Bash(pnpm biome:*)"
+    ]
+  }
+}
