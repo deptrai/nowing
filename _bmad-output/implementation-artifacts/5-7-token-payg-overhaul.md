@@ -11,12 +11,13 @@ so that tôi không cần nâng plan vẫn dùng được, hoặc khi cần dùn
 ## Acceptance Criteria
 
 1. PAYG "Buy Pages" cũ bị xóa hoàn toàn — không còn endpoint/UI mua trang ETL.
-2. User có thể mua token packs (100K/$1, 500K/$4, 1M/$7) qua Stripe one-time checkout.
+2. User có thể mua token top-up với **custom amount** (bất kỳ số tiền USD > 0). Rate: **$1 USD = 100,000 tokens** (`_TOKENS_PER_USD = 100_000`). Dùng Stripe `price_data` — **không cần pre-created Stripe Price IDs**.
 3. Token đã mua (`purchased_tokens`) được cộng vào quota hiện tại: `monthly_token_limit + purchased_tokens`.
 4. `purchased_tokens` bị reset về 0 khi billing cycle renews (hết token hoặc hết period — tùy điều kiện nào đến trước).
-5. Sidebar hiển thị: plan badge (FREE/PRO), token meter bao gồm purchased, "Buy More Tokens" CTA, "Upgrade to Pro" (free users) / "Manage Billing" (pro users).
+5. Sidebar hiển thị: plan badge (FREE/PRO/PRO YEARLY/PRO MONTHLY), token meter bao gồm purchased, "Buy More Tokens" CTA, "Upgrade to Pro" (free users) / "Manage Billing" (pro users).
 6. Settings có tab "Subscription" hiển thị plan info, usage meters, billing portal link.
 7. Stripe Customer Portal endpoint cho user tự quản lý subscription (cancel, update card).
+8. **Admin-approval fallback**: Khi Stripe không configured (không có `STRIPE_SECRET_KEY`) hoặc Stripe API call fails (placeholder/invalid credentials), cả subscription checkout lẫn token topup đều fallback sang admin-approval mode — trả `admin_approval_mode=true`, frontend hiện toast hướng dẫn liên hệ admin.
 
 ## Changes Made
 
@@ -26,22 +27,26 @@ so that tôi không cần nâng plan vẫn dùng được, hoặc khi cần dùn
 |---|---|
 | `surfsense_backend/app/db.py` | Thêm `purchased_tokens` column vào cả 2 User model variants |
 | `surfsense_backend/alembic/versions/130_add_purchased_tokens.py` | **NEW** migration — `purchased_tokens` INTEGER NOT NULL DEFAULT 0 |
-| `surfsense_backend/app/config/__init__.py` | Thêm `TOKEN_PACKS` dict (3 packs với price_id env vars), `STRIPE_BILLING_PORTAL_RETURN_URL`; xóa `STRIPE_PAGE_BUYING_ENABLED`, `STRIPE_PAGES_PER_UNIT` |
-| `surfsense_backend/app/schemas/stripe.py` | Xóa PAYG page schemas (`CreateCheckoutSessionRequest/Response`, `PagePurchaseRead`, `PagePurchaseHistoryResponse`); thêm `TokenPackId`, `CreateTokenTopupRequest/Response`, `BillingPortalResponse`; đổi `StripeStatusResponse.page_buying_enabled` → `stripe_enabled` |
-| `surfsense_backend/app/routes/stripe_routes.py` | Xóa `create-checkout-session`, `purchases` endpoints + helper functions (`_ensure_page_buying_enabled`, `_get_required_stripe_price_id`, `_get_or_create_purchase_from_checkout_session`, `_mark_purchase_failed`, `_fulfill_completed_purchase`); thêm `create-token-topup-checkout`, `billing-portal` endpoints + `_fulfill_token_topup`; webhook `checkout.session.completed (payment mode)` gọi `_fulfill_token_topup`; `_handle_invoice_payment_succeeded` reset `purchased_tokens = 0` |
+| `surfsense_backend/app/config/__init__.py` | Thêm `STRIPE_BILLING_PORTAL_RETURN_URL`; xóa `STRIPE_PAGE_BUYING_ENABLED`, `STRIPE_PAGES_PER_UNIT`, `TOKEN_PACKS` dict (không cần nữa — dùng `price_data` thay vì pre-created Price IDs) |
+| `surfsense_backend/app/schemas/stripe.py` | Xóa PAYG page schemas; thêm `CreateTokenTopupRequest(amount_usd: float, search_space_id: int)`, `CreateTokenTopupResponse(checkout_url, admin_approval_mode)`, `BillingPortalResponse`; đổi `StripeStatusResponse.page_buying_enabled` → `stripe_enabled` |
+| `surfsense_backend/app/routes/stripe_routes.py` | Xóa `create-checkout-session`, `purchases` endpoints; thêm `create-token-topup-checkout` (custom USD amount, `price_data`), `billing-portal`, `_fulfill_token_topup`, `_resolve_plan_price_id()`, `_queue_subscription_approval_request()`; `_TOKENS_PER_USD = 100_000` constant; admin-approval fallback cho cả token topup và subscription checkout khi Stripe fails; webhook `checkout.session.completed (payment mode)` gọi `_fulfill_token_topup`; `_handle_invoice_payment_succeeded` reset `purchased_tokens = 0` |
 | `surfsense_backend/app/services/token_quota_service.py` | `token_limit = monthly_token_limit + purchased_tokens` |
 
 ### Frontend
 
 | File | Thay đổi |
 |---|---|
-| `surfsense_web/contracts/types/stripe.types.ts` | Xóa PAYG page types; thêm `TokenPackId`, `CreateTokenTopupRequest/Response`, `BillingPortalResponse`; `stripe_enabled` thay `page_buying_enabled` |
+| `surfsense_web/contracts/types/stripe.types.ts` | Xóa PAYG page types; thêm `createTokenTopupRequest(amount_usd, search_space_id)`, `createTokenTopupResponse(checkout_url, admin_approval_mode)`, `BillingPortalResponse`; `stripe_enabled` thay `page_buying_enabled` |
 | `surfsense_web/contracts/types/user.types.ts` | Thêm `purchased_tokens`, `subscription_current_period_end` |
 | `surfsense_web/lib/apis/stripe-api.service.ts` | Xóa `createCheckoutSession`, `getPurchases`; thêm `createTokenTopupCheckout`, `getBillingPortal` |
-| `surfsense_web/app/dashboard/[search_space_id]/buy-tokens/page.tsx` | **NEW** — Token pack selector UI (3 cards, balance display) |
+| `surfsense_web/app/dashboard/[search_space_id]/buy-tokens/page.tsx` | **NEW** — Custom amount token topup UI: quick amount buttons ($1/$5/$10/$25/$50/$100), custom amount input with +/- controls, token preview badge, admin-approval toast handling |
 | `surfsense_web/app/dashboard/[search_space_id]/purchase-success/page.tsx` | Repurpose: "Tokens added!" thay "Purchase complete" |
-| `surfsense_web/components/layout/ui/sidebar/PageUsageDisplay.tsx` | Plan badge, token meter = monthly + purchased, CTAs: Buy Tokens / Upgrade / Manage Billing |
+| `surfsense_web/components/layout/ui/sidebar/PageUsageDisplay.tsx` | Plan badge (FREE/PRO MONTHLY/PRO YEARLY), token meter = monthly + purchased, CTAs: Buy Tokens / Upgrade / Manage Billing; nhận `purchasedTokens`, `planId`, `subscriptionStatus` props |
+| `surfsense_web/components/layout/ui/sidebar/Sidebar.tsx` | Forward `purchasedTokens`, `planId`, `subscriptionStatus` từ `pageUsage` vào `PageUsageDisplay` |
+| `surfsense_web/components/layout/types/layout.types.ts` | `PageUsage` interface thêm `purchasedTokens?`, `planId?`, `subscriptionStatus?` |
 | `surfsense_web/components/layout/providers/LayoutDataProvider.tsx` | Pass `purchasedTokens`, `planId`, `subscriptionStatus` xuống sidebar |
+| `surfsense_web/atoms/user/user-query.atoms.ts` | `staleTime: 0` (từ 5 phút) — refetch on window focus |
+| `surfsense_backend/app/schemas/users.py` | `UserRead` thêm `purchased_tokens: int`, `subscription_current_period_end: datetime | None` |
 | `surfsense_web/components/settings/subscription-content.tsx` | **NEW** — Settings tab: plan info, usage, billing portal |
 | `surfsense_web/components/settings/user-settings-dialog.tsx` | Tab "Purchase History" → "Subscription" |
 | `surfsense_web/components/settings/more-pages-content.tsx` | "Buy page packs" → "Upgrade to Pro" + "Buy Token Top-up" |
@@ -85,17 +90,22 @@ Reset khi billing cycle: `tokens_used_this_month = 0`, `purchased_tokens = 0`.
 
 | Biến | Mô tả |
 |---|---|
-| `STRIPE_TOKEN_PACK_100K_PRICE_ID` | Stripe Price ID cho 100K token pack |
-| `STRIPE_TOKEN_PACK_500K_PRICE_ID` | Stripe Price ID cho 500K token pack |
-| `STRIPE_TOKEN_PACK_1M_PRICE_ID` | Stripe Price ID cho 1M token pack |
 | `STRIPE_BILLING_PORTAL_RETURN_URL` | URL trả về sau khi user rời billing portal |
+
+> **Note**: Không cần `STRIPE_TOKEN_PACK_*_PRICE_ID` env vars nữa — token topup dùng Stripe `price_data` (inline price tạo lúc checkout). Rate cố định `$1 = 100K tokens`.
 
 ## Dev Notes
 
 - `PagePurchase` model/table giữ nguyên trong DB cho data cũ — không drop table, chỉ không tạo row mới
-- Webhook handler dùng `metadata.token_pack` + `metadata.purchase_type = "token_packs"` để phân biệt token topup vs subscription
-- `_fulfill_token_topup` dùng `SELECT ... FOR UPDATE` trên User row để tránh race condition khi Stripe retry webhook
+- Webhook handler dùng `metadata.purchase_type` = `"token_topup"` hoặc `"token_packs"` (cả 2 được accept) để phân biệt token topup vs subscription
+- `_fulfill_token_topup` dùng `SELECT ... FOR UPDATE` trên User row để tránh race condition khi Stripe retry webhook; đọc `metadata.tokens_granted` để biết số token cần cộng
 - Token purchased expires ở end of billing period (whichever comes first: hết token hoặc hết period)
+- `_TOKENS_PER_USD = 100_000` — constant định nghĩa rate quy đổi USD → tokens
+- **Admin-approval fallback**: `create_token_topup_checkout` và `create_subscription_checkout` đều catch `(StripeError, HTTPException)` và fallback sang admin-approval mode khi Stripe API fails (kể cả placeholder/invalid credentials). `_queue_subscription_approval_request()` là extracted helper tạo `SubscriptionRequest` row
+- `_resolve_plan_price_id(plan_id) -> str | None` — helper lookup price ID, trả `None` nếu thiếu env var (triggers admin-approval)
+- `UserRead` schema đã thêm `purchased_tokens` và `subscription_current_period_end` để frontend nhận đủ data
+- `PageUsage` type và `Sidebar.tsx` đã thêm `purchasedTokens`, `planId`, `subscriptionStatus` props
+- `currentUserAtom` `staleTime` giảm từ 5 phút xuống 0 — user data refetch mỗi khi window focus, đảm bảo sidebar cập nhật ngay sau admin approval hoặc topup
 
 ---
 
