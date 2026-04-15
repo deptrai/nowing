@@ -10,8 +10,10 @@ export const user = z.object({
 	pages_used: z.number(),
 	monthly_token_limit: z.number(),
 	tokens_used_this_month: z.number(),
+	purchased_tokens: z.number().default(0),
 	plan_id: z.string(),
 	subscription_status: z.string(),
+	subscription_current_period_end: z.string().nullish(),
 	display_name: z.string().nullish(),
 	avatar_url: z.string().nullish(),
 });

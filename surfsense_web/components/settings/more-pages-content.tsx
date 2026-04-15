@@ -34,6 +34,7 @@ export function MorePagesContent() {
 	const queryClient = useQueryClient();
 	const searchSpaceId = params?.search_space_id ?? "";
 	const [claimOpen, setClaimOpen] = useState(false);
+	const [claimTokenOpen, setClaimTokenOpen] = useState(false);
 
 	useEffect(() => {
 		trackIncentivePageViewed();
@@ -47,7 +48,7 @@ export function MorePagesContent() {
 		queryKey: ["stripe-status"],
 		queryFn: () => stripeApiService.getStatus(),
 	});
-	const pageBuyingEnabled = stripeStatus?.page_buying_enabled ?? true;
+	const stripeEnabled = stripeStatus?.stripe_enabled ?? false;
 
 	const completeMutation = useMutation({
 		mutationFn: incentiveTasksApiService.completeTask,
@@ -77,13 +78,35 @@ export function MorePagesContent() {
 	return (
 		<div className="w-full space-y-5">
 			<div className="text-center">
-				<h2 className="text-xl font-bold tracking-tight">Get Free Pages</h2>
+				<h2 className="text-xl font-bold tracking-tight">Get Free Tokens &amp; Pages</h2>
 				<p className="mt-1 text-sm text-muted-foreground">
-					Claim your free page offer and earn bonus pages
+					Claim your free offer and earn bonus tokens &amp; pages
 				</p>
 			</div>
 
-			{/* 3k free offer */}
+			{/* 100K free tokens offer */}
+			<Card className="border-blue-500/30 bg-blue-500/5">
+				<CardContent className="flex items-center gap-3 p-4">
+					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold">
+						100k
+					</div>
+					<div className="min-w-0 flex-1">
+						<p className="text-sm font-semibold">Claim 100K Free Tokens</p>
+						<p className="text-xs text-muted-foreground">
+							Limited offer. Email us to claim your free LLM token boost.
+						</p>
+					</div>
+					<Button
+						size="sm"
+						className="bg-blue-600 text-white hover:bg-blue-700"
+						onClick={() => setClaimTokenOpen(true)}
+					>
+						Claim
+					</Button>
+				</CardContent>
+			</Card>
+
+			{/* 3k free pages offer */}
 			<Card className="border-emerald-500/30 bg-emerald-500/5">
 				<CardContent className="flex items-center gap-3 p-4">
 					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold">
@@ -109,7 +132,7 @@ export function MorePagesContent() {
 
 			{/* Free tasks */}
 			<div className="space-y-2">
-				<h3 className="text-sm font-semibold">Earn Bonus Pages</h3>
+				<h3 className="text-sm font-semibold">Earn Bonus Pages &amp; Tokens</h3>
 				{isLoading ? (
 					<Card>
 						<CardContent className="flex items-center gap-3 p-3">
@@ -182,23 +205,39 @@ export function MorePagesContent() {
 
 			<Separator />
 
-			{/* Link to buy pages */}
-			<div className="text-center">
-				<p className="text-sm text-muted-foreground">Need more?</p>
-				{pageBuyingEnabled ? (
-					<Button asChild variant="link" className="text-emerald-600 dark:text-emerald-400">
-						<Link href={`/dashboard/${searchSpaceId}/buy-pages`}>
-							Buy page packs at $1 per 1,000
-						</Link>
+			{/* Upgrade CTAs */}
+			<div className="space-y-2">
+				<p className="text-sm text-muted-foreground text-center">Need more?</p>
+				<Button asChild className="w-full" size="sm">
+					<Link href="/pricing">Upgrade to Pro — 5,000 pages &amp; 1M tokens/mo</Link>
+				</Button>
+				{stripeEnabled && (
+					<Button asChild variant="outline" className="w-full" size="sm">
+						<Link href={`/dashboard/${searchSpaceId}/buy-tokens`}>Buy Token Top-up — from $1</Link>
 					</Button>
-				) : (
-					<p className="text-xs text-muted-foreground">
-						Page purchases are temporarily unavailable.
-					</p>
 				)}
 			</div>
 
-			{/* Claim 3k dialog */}
+			{/* Claim 100K tokens dialog */}
+			<Dialog open={claimTokenOpen} onOpenChange={setClaimTokenOpen}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Claim 100K Free Tokens</DialogTitle>
+						<DialogDescription>
+							Send us an email to claim your free 100,000 LLM tokens. Include your account email and
+							primary use case.
+						</DialogDescription>
+					</DialogHeader>
+					<Button asChild className="w-full gap-2">
+						<a href="mailto:rohan@surfsense.com?subject=Claim%20100K%20Free%20Tokens&body=Hi%2C%20I'd%20like%20to%20claim%20the%20100K%20free%20token%20offer.%0A%0AMy%20account%20email%3A%20">
+							<Mail className="h-4 w-4" />
+							rohan@surfsense.com
+						</a>
+					</Button>
+				</DialogContent>
+			</Dialog>
+
+			{/* Claim 3k pages dialog */}
 			<Dialog open={claimOpen} onOpenChange={setClaimOpen}>
 				<DialogContent className="sm:max-w-md">
 					<DialogHeader>

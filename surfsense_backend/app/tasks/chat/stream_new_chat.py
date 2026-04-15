@@ -1599,8 +1599,18 @@ async def stream_new_chat(
                     from app.services.token_quota_service import TokenQuotaService
 
                     quota_service = TokenQuotaService(quota_session)
-                    await quota_service.update_token_usage(
+                    new_total = await quota_service.update_token_usage(
                         user_id, stream_result.total_tokens_used, allow_exceed=True
+                    )
+                    _, effective_limit = await quota_service.get_token_usage(user_id)
+                    yield streaming_service.format_data(
+                        "token-usage",
+                        {
+                            "tokens_this_request": stream_result.total_tokens_used,
+                            "tokens_used_total": new_total,
+                            "monthly_limit": effective_limit,
+                            "tokens_remaining": max(0, effective_limit - new_total),
+                        },
                     )
             except Exception as quota_err:
                 # Non-fatal — log and continue; usage was already streamed
@@ -1814,9 +1824,6 @@ async def stream_resume_chat(
             return
 
         yield streaming_service.format_finish_step()
-        yield streaming_service.format_finish()
-        yield streaming_service.format_done()
-
         # Cloud mode: deduct consumed tokens from the user's monthly quota
         if app_config.is_cloud() and user_id and stream_result.total_tokens_used > 0:
             try:
@@ -1824,14 +1831,27 @@ async def stream_resume_chat(
                     from app.services.token_quota_service import TokenQuotaService
 
                     quota_service = TokenQuotaService(quota_session)
-                    await quota_service.update_token_usage(
+                    new_total = await quota_service.update_token_usage(
                         user_id, stream_result.total_tokens_used, allow_exceed=True
+                    )
+                    _, effective_limit = await quota_service.get_token_usage(user_id)
+                    yield streaming_service.format_data(
+                        "token-usage",
+                        {
+                            "tokens_this_request": stream_result.total_tokens_used,
+                            "tokens_used_total": new_total,
+                            "monthly_limit": effective_limit,
+                            "tokens_remaining": max(0, effective_limit - new_total),
+                        },
                     )
             except Exception as quota_err:
                 # Non-fatal — log and continue; usage was already streamed
                 logging.getLogger(__name__).warning(
                     "[stream_resume_chat] Failed to record token usage: %s", quota_err
                 )
+
+        yield streaming_service.format_finish()
+        yield streaming_service.format_done()
 
     except Exception as e:
         import traceback

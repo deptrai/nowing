@@ -715,6 +715,9 @@ export function LayoutDataProvider({ searchSpaceId, children }: LayoutDataProvid
 				pagesLimit: user.pages_limit,
 				tokensUsed: user.tokens_used_this_month,
 				tokensLimit: user.monthly_token_limit,
+				purchasedTokens: user.purchased_tokens ?? 0,
+				planId: user.plan_id,
+				subscriptionStatus: user.subscription_status,
 			}
 		: undefined;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { Brain, CircleUser, Globe, KeyRound, Monitor, ReceiptText, Sparkles } from "lucide-react";
+import { Brain, CircleUser, CreditCard, Globe, KeyRound, Monitor, Sparkles } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
@@ -37,11 +37,11 @@ const CommunityPromptsContent = dynamic(
 		).then((m) => ({ default: m.CommunityPromptsContent })),
 	{ ssr: false }
 );
-const PurchaseHistoryContent = dynamic(
+const SubscriptionContent = dynamic(
 	() =>
-		import(
-			"@/app/dashboard/[search_space_id]/user-settings/components/PurchaseHistoryContent"
-		).then((m) => ({ default: m.PurchaseHistoryContent })),
+		import("@/components/settings/subscription-content").then((m) => ({
+			default: m.SubscriptionContent,
+		})),
 	{ ssr: false }
 );
 const DesktopContent = dynamic(
@@ -88,9 +88,9 @@ export function UserSettingsDialog() {
 				icon: <Brain className="h-4 w-4" />,
 			},
 			{
-				value: "purchases",
-				label: "Purchase History",
-				icon: <ReceiptText className="h-4 w-4" />,
+				value: "subscription",
+				label: "Subscription",
+				icon: <CreditCard className="h-4 w-4" />,
 			},
 			...(isDesktop
 				? [{ value: "desktop", label: "Desktop", icon: <Monitor className="h-4 w-4" /> }]
@@ -114,7 +114,7 @@ export function UserSettingsDialog() {
 				{state.initialTab === "prompts" && <PromptsContent />}
 				{state.initialTab === "community-prompts" && <CommunityPromptsContent />}
 				{state.initialTab === "memory" && <MemoryContent />}
-				{state.initialTab === "purchases" && <PurchaseHistoryContent />}
+				{state.initialTab === "subscription" && <SubscriptionContent />}
 				{state.initialTab === "desktop" && <DesktopContent />}
 			</div>
 		</SettingsDialog>

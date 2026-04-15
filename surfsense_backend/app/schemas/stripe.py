@@ -1,12 +1,7 @@
-"""Schemas for Stripe-backed page purchases and subscriptions."""
+"""Schemas for Stripe-backed subscriptions and token top-ups."""
 
-import uuid
-from datetime import datetime
 from enum import Enum
-
-from pydantic import BaseModel, ConfigDict, Field
-
-from app.db import PagePurchaseStatus
+from pydantic import BaseModel, Field
 
 
 class PlanId(str, Enum):
@@ -14,13 +9,22 @@ class PlanId(str, Enum):
 
     pro_monthly = "pro_monthly"
     pro_yearly = "pro_yearly"
+    max_monthly = "max_monthly"
+    max_yearly = "max_yearly"
 
 
-class CreateCheckoutSessionRequest(BaseModel):
-    """Request body for creating a page-purchase checkout session."""
+class CreateTokenTopupRequest(BaseModel):
+    """Request body for buying an LLM token top-up with a custom USD amount."""
 
-    quantity: int = Field(ge=1, le=100)
+    amount_usd: float = Field(gt=0, description="Amount in USD to spend on tokens (min $1).")
     search_space_id: int = Field(ge=1)
+
+
+class CreateTokenTopupResponse(BaseModel):
+    """Response containing the Stripe-hosted token top-up checkout URL."""
+
+    checkout_url: str
+    admin_approval_mode: bool = False
 
 
 class CreateSubscriptionCheckoutRequest(BaseModel):
@@ -36,39 +40,16 @@ class CreateSubscriptionCheckoutResponse(BaseModel):
     admin_approval_mode: bool = False
 
 
-class CreateCheckoutSessionResponse(BaseModel):
-    """Response containing the Stripe-hosted checkout URL."""
+class BillingPortalResponse(BaseModel):
+    """Response containing the Stripe Customer Portal session URL."""
 
-    checkout_url: str
+    url: str
 
 
 class StripeStatusResponse(BaseModel):
-    """Response describing Stripe page-buying availability."""
+    """Response describing Stripe availability."""
 
-    page_buying_enabled: bool
-
-
-class PagePurchaseRead(BaseModel):
-    """Serialized page-purchase record for purchase history."""
-
-    id: uuid.UUID
-    stripe_checkout_session_id: str
-    stripe_payment_intent_id: str | None = None
-    quantity: int
-    pages_granted: int
-    amount_total: int | None = None
-    currency: str | None = None
-    status: PagePurchaseStatus
-    completed_at: datetime | None = None
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class PagePurchaseHistoryResponse(BaseModel):
-    """Response containing the authenticated user's page purchases."""
-
-    purchases: list[PagePurchaseRead]
+    stripe_enabled: bool
 
 
 class StripeWebhookResponse(BaseModel):

@@ -94,7 +94,9 @@ export function Pricing({
 					htmlFor="billing-toggle"
 					className="relative inline-flex items-center cursor-pointer gap-3"
 				>
-					<span className={`font-semibold ${isMonthly ? "text-foreground" : "text-muted-foreground"}`}>
+					<span
+						className={`font-semibold ${isMonthly ? "text-foreground" : "text-muted-foreground"}`}
+					>
 						Monthly
 					</span>
 					<Label>
@@ -105,7 +107,9 @@ export function Pricing({
 							className="relative"
 						/>
 					</Label>
-					<span className={`font-semibold ${isYearly ? "text-foreground" : "text-muted-foreground"}`}>
+					<span
+						className={`font-semibold ${isYearly ? "text-foreground" : "text-muted-foreground"}`}
+					>
 						Annual <span className="text-primary">(Save 25%)</span>
 					</span>
 				</label>
@@ -114,7 +118,11 @@ export function Pricing({
 			<div
 				className={cn(
 					"grid grid-cols-1 gap-4",
-					plans.length === 2 ? "md:grid-cols-2 max-w-5xl mx-auto" : "md:grid-cols-3"
+					plans.length === 2
+						? "md:grid-cols-2 max-w-5xl mx-auto"
+						: plans.length === 4
+							? "md:grid-cols-2 lg:grid-cols-4"
+							: "md:grid-cols-3"
 				)}
 			>
 				{plans.map((plan, index) => (
@@ -233,7 +241,8 @@ export function Pricing({
 										plan.isPopular
 											? "bg-primary text-primary-foreground"
 											: "bg-background text-foreground",
-										plan.disabled && "opacity-50 cursor-not-allowed hover:ring-0 hover:bg-inherit hover:text-inherit"
+										plan.disabled &&
+											"opacity-50 cursor-not-allowed hover:ring-0 hover:bg-inherit hover:text-inherit"
 									)}
 								>
 									{plan.buttonText}

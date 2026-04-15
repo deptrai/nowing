@@ -299,22 +299,44 @@ class Config:
     # Stripe subscription price IDs
     STRIPE_PRO_MONTHLY_PRICE_ID = os.getenv("STRIPE_PRO_MONTHLY_PRICE_ID")
     STRIPE_PRO_YEARLY_PRICE_ID = os.getenv("STRIPE_PRO_YEARLY_PRICE_ID")
-    STRIPE_PAGES_PER_UNIT = int(os.getenv("STRIPE_PAGES_PER_UNIT", "1000"))
-    STRIPE_PAGE_BUYING_ENABLED = (
-        os.getenv("STRIPE_PAGE_BUYING_ENABLED", "TRUE").upper() == "TRUE"
-    )
+    STRIPE_MAX_MONTHLY_PRICE_ID = os.getenv("STRIPE_MAX_MONTHLY_PRICE_ID")
+    STRIPE_MAX_YEARLY_PRICE_ID = os.getenv("STRIPE_MAX_YEARLY_PRICE_ID")
     STRIPE_RECONCILIATION_LOOKBACK_MINUTES = int(
         os.getenv("STRIPE_RECONCILIATION_LOOKBACK_MINUTES", "10")
     )
     STRIPE_RECONCILIATION_BATCH_SIZE = int(
         os.getenv("STRIPE_RECONCILIATION_BATCH_SIZE", "100")
     )
+    STRIPE_BILLING_PORTAL_RETURN_URL = os.getenv(
+        "STRIPE_BILLING_PORTAL_RETURN_URL", ""
+    )
 
     # Subscription plan limits
     PLAN_LIMITS: dict[str, dict[str, int]] = {
         "free": {"monthly_token_limit": 50_000, "pages_limit": 500},
-        "pro_monthly": {"monthly_token_limit": 1_000_000, "pages_limit": 5000},
-        "pro_yearly": {"monthly_token_limit": 1_000_000, "pages_limit": 5000},
+        "pro_monthly": {"monthly_token_limit": 1_000_000, "pages_limit": 5_000},
+        "pro_yearly": {"monthly_token_limit": 1_000_000, "pages_limit": 5_000},
+        "max_monthly": {"monthly_token_limit": 20_000_000, "pages_limit": 20_000},
+        "max_yearly": {"monthly_token_limit": 20_000_000, "pages_limit": 20_000},
+    }
+
+    # Token top-up packs (PAYG)
+    TOKEN_PACKS: dict[str, dict] = {
+        "100k": {
+            "tokens": 100_000,
+            "price_id": os.getenv("STRIPE_TOKEN_PACK_100K_PRICE_ID", ""),
+            "display_price": "$1",
+        },
+        "500k": {
+            "tokens": 500_000,
+            "price_id": os.getenv("STRIPE_TOKEN_PACK_500K_PRICE_ID", ""),
+            "display_price": "$4",
+        },
+        "1m": {
+            "tokens": 1_000_000,
+            "price_id": os.getenv("STRIPE_TOKEN_PACK_1M_PRICE_ID", ""),
+            "display_price": "$7",
+        },
     }
 
     # Auth

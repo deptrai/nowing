@@ -2023,6 +2023,8 @@ if config.AUTH_TYPE == "GOOGLE":
         # Subscription and token quota (cloud mode)
         monthly_token_limit = Column(Integer, nullable=False, default=100000, server_default="100000")
         tokens_used_this_month = Column(Integer, nullable=False, default=0, server_default="0")
+        purchased_tokens = Column(Integer, nullable=False, default=0, server_default="0")
+        fulfilled_topup_sessions = Column(String, nullable=True, default=None)
         token_reset_date = Column(Date, nullable=True)
         subscription_status = Column(
             SQLAlchemyEnum(SubscriptionStatus, name="subscriptionstatus", create_type=True, values_callable=lambda x: [e.value for e in x]),
@@ -2158,6 +2160,8 @@ else:
         # Subscription and token quota (cloud mode)
         monthly_token_limit = Column(Integer, nullable=False, default=100000, server_default="100000")
         tokens_used_this_month = Column(Integer, nullable=False, default=0, server_default="0")
+        purchased_tokens = Column(Integer, nullable=False, default=0, server_default="0")
+        fulfilled_topup_sessions = Column(String, nullable=True, default=None)
         token_reset_date = Column(Date, nullable=True)
         subscription_status = Column(
             SQLAlchemyEnum(SubscriptionStatus, name="subscriptionstatus", create_type=True, values_callable=lambda x: [e.value for e in x]),
