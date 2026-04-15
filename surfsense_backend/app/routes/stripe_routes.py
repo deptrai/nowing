@@ -628,14 +628,13 @@ async def create_token_topup_checkout(
                 },
             }
         )
-    except StripeError as exc:
-        logger.exception(
-            "Failed to create Stripe token topup checkout for user %s", user.id
+    except (StripeError, HTTPException) as exc:
+        logger.warning(
+            "Stripe token topup failed for user %s, falling back to admin-approval: %s",
+            user.id,
+            exc,
         )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to create Stripe checkout session.",
-        ) from exc
+        return CreateTokenTopupResponse(checkout_url="", admin_approval_mode=True)
 
     checkout_url = getattr(checkout_session, "url", None)
     if not checkout_url:

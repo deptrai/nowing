@@ -8,7 +8,7 @@ const userQueryFn = () => userApiService.getMe();
 export const currentUserAtom = atomWithQuery(() => {
 	return {
 		queryKey: USER_QUERY_KEY,
-		staleTime: 5 * 60 * 1000,
+		staleTime: 0,
 		enabled: !!getBearerToken(),
 		queryFn: userQueryFn,
 	};
