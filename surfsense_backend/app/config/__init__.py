@@ -339,6 +339,14 @@ class Config:
         },
     }
 
+    # Gift subscription pricing (cents): plan_id -> duration_months -> amount_cents
+    GIFT_PRICING: dict[str, dict[int, int]] = {
+        "pro_monthly": {1: 2000, 3: 5400, 6: 9600, 12: 16800},
+        "pro_yearly": {1: 2000, 3: 5400, 6: 9600, 12: 16800},
+        "max_monthly": {1: 4000, 3: 10800, 6: 19200, 12: 33600},
+        "max_yearly": {1: 4000, 3: 10800, 6: 19200, 12: 33600},
+    }
+
     # Auth
     AUTH_TYPE = os.getenv("AUTH_TYPE")
     REGISTRATION_ENABLED = os.getenv("REGISTRATION_ENABLED", "TRUE").upper() == "TRUE"

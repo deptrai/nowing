@@ -27,6 +27,20 @@ class CreateTokenTopupResponse(BaseModel):
     admin_approval_mode: bool = False
 
 
+class CreateGiftCheckoutRequest(BaseModel):
+    """Request body for creating a Stripe gift subscription checkout session."""
+
+    plan_id: str = Field(description="Subscription plan to gift (e.g. 'pro_monthly').")
+    duration_months: int = Field(ge=1, le=12, description="Gift duration in months.")
+
+
+class CreateGiftCheckoutResponse(BaseModel):
+    """Response containing the Stripe-hosted gift checkout URL."""
+
+    checkout_url: str
+    admin_approval_mode: bool = False
+
+
 class CreateSubscriptionCheckoutRequest(BaseModel):
     """Request body for creating a subscription checkout session."""
 

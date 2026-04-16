@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-04-17T00:35:00+07:00
+last_updated: 2026-04-17T01:10:00+07:00
 project: SurfSense
 project_key: NOKEY
 tracking_system: file-system
@@ -76,7 +76,7 @@ development_status:
   epic-5-retrospective: optional
   epic-6: in-progress
   6-1-database-migration-gift-codes-gift-requests: done
-  6-2-backend-api-create-gift-checkout: ready-for-dev
+  6-2-backend-api-create-gift-checkout: done
   6-3-backend-webhook-gift-code-fulfillment: ready-for-dev
   6-4-backend-api-redeem-gift-code: ready-for-dev
   6-5-backend-api-gift-history-admin-fallback: ready-for-dev

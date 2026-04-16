@@ -23,6 +23,8 @@ from app.db import (
 )
 from app.schemas.stripe import (
     BillingPortalResponse,
+    CreateGiftCheckoutRequest,
+    CreateGiftCheckoutResponse,
     CreateSubscriptionCheckoutRequest,
     CreateSubscriptionCheckoutResponse,
     CreateTokenTopupRequest,
@@ -71,6 +73,19 @@ def get_stripe_client() -> StripeClient:
 
 
 def _get_token_topup_urls(search_space_id: int) -> tuple[str, str]:
+    if not config.NEXT_FRONTEND_URL:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="NEXT_FRONTEND_URL is not configured.",
+        )
+    base_url = config.NEXT_FRONTEND_URL.rstrip("/")
+    success_url = f"{base_url}/dashboard/{search_space_id}/purchase-success?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{base_url}/dashboard/{search_space_id}/purchase-cancel"
+    return success_url, cancel_url
+
+
+def _get_gift_urls(search_space_id: int) -> tuple[str, str]:
+    """Return (success_url, cancel_url) for gift checkout."""
     if not config.NEXT_FRONTEND_URL:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -644,6 +659,111 @@ async def create_token_topup_checkout(
         )
 
     return CreateTokenTopupResponse(checkout_url=checkout_url)
+
+
+@router.post("/create-gift-checkout", response_model=CreateGiftCheckoutResponse)
+async def create_gift_checkout(
+    body: CreateGiftCheckoutRequest,
+    user: User = Depends(current_active_user),
+) -> CreateGiftCheckoutResponse:
+    """Create a Stripe Checkout Session for purchasing a gift subscription.
+
+    Uses Stripe price_data so no pre-created price IDs are required.
+    Returns admin_approval_mode=True when Stripe is not configured (no
+    STRIPE_SECRET_KEY) or when Stripe raises an error during session creation.
+    """
+    # Validate plan_id and duration_months against GIFT_PRICING config
+    plan_pricing = config.GIFT_PRICING.get(body.plan_id)
+    if not plan_pricing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Invalid plan_id '{body.plan_id}'. "
+                f"Valid plans: {list(config.GIFT_PRICING)}"
+            ),
+        )
+    amount_cents = plan_pricing.get(body.duration_months)
+    if amount_cents is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Invalid duration_months {body.duration_months} for plan "
+                f"'{body.plan_id}'. Valid durations: {sorted(plan_pricing)}"
+            ),
+        )
+
+    # Admin-approval fallback: Stripe not configured
+    if not config.STRIPE_SECRET_KEY:
+        logger.info(
+            "Gift checkout admin-approval mode: no Stripe key, user %s requested %s x%d months",
+            user.id,
+            body.plan_id,
+            body.duration_months,
+        )
+        return CreateGiftCheckoutResponse(checkout_url="", admin_approval_mode=True)
+
+    stripe_client = get_stripe_client()
+
+    # Gift purchases are not tied to a specific search space — use 0 placeholder
+    # in success/cancel URLs. Frontend (Story 6.6) handles redirect.
+    success_url, cancel_url = _get_gift_urls(0)
+
+    plan_label = body.plan_id.replace("_", " ").title()
+
+    try:
+        checkout_session = stripe_client.v1.checkout.sessions.create(
+            params={
+                "mode": "payment",
+                "success_url": success_url,
+                "cancel_url": cancel_url,
+                "line_items": [
+                    {
+                        "price_data": {
+                            "currency": "usd",
+                            "unit_amount": amount_cents,
+                            "product_data": {
+                                "name": (
+                                    f"SurfSense Gift — {plan_label} × "
+                                    f"{body.duration_months} month(s)"
+                                ),
+                                "description": (
+                                    f"Gift subscription: {plan_label} for "
+                                    f"{body.duration_months} month(s). "
+                                    "The recipient can redeem this gift code "
+                                    "in their account settings."
+                                ),
+                            },
+                        },
+                        "quantity": 1,
+                    }
+                ],
+                "client_reference_id": str(user.id),
+                "customer_email": user.email,
+                "metadata": {
+                    "purchase_type": "gift",
+                    "purchaser_id": str(user.id),
+                    "plan_id": body.plan_id,
+                    "duration_months": str(body.duration_months),
+                    "amount_cents": str(amount_cents),
+                },
+            }
+        )
+    except StripeError as exc:
+        logger.warning(
+            "Stripe gift checkout failed for user %s, falling back to admin-approval: %s",
+            user.id,
+            exc,
+        )
+        return CreateGiftCheckoutResponse(checkout_url="", admin_approval_mode=True)
+
+    checkout_url = getattr(checkout_session, "url", None)
+    if not checkout_url:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Stripe checkout session did not return a URL.",
+        )
+
+    return CreateGiftCheckoutResponse(checkout_url=checkout_url)
 
 
 async def _queue_subscription_approval_request(
