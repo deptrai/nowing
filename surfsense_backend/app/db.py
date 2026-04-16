@@ -1752,7 +1752,7 @@ class GiftCode(Base, TimestampMixin):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    code = Column(String(16), unique=True, nullable=False)
+    code = Column(String(32), unique=True, nullable=False)
     plan_id = Column(String(50), nullable=False)
     duration_months = Column(Integer, nullable=False)
     amount_paid = Column(Integer, nullable=False)  # in cents

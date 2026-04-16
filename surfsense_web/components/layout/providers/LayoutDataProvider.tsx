@@ -393,7 +393,16 @@ export function LayoutDataProvider({ searchSpaceId, children }: LayoutDataProvid
 								title: "Admin",
 								url: "/admin/subscription-requests",
 								icon: ShieldCheck,
-								isActive: pathname?.startsWith("/admin"),
+								isActive:
+									pathname?.startsWith("/admin") && !pathname?.startsWith("/admin/gift-requests"),
+							}
+						: null,
+					user?.is_superuser
+						? {
+								title: "Gift Requests",
+								url: "/admin/gift-requests",
+								icon: ShieldCheck,
+								isActive: pathname?.startsWith("/admin/gift-requests"),
 							}
 						: null,
 				] as (NavItem | null)[]

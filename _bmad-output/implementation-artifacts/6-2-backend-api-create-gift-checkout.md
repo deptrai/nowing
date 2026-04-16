@@ -12,7 +12,9 @@ So that tôi được redirect sang trang thanh toán Stripe an toàn để hoà
 
 1. `POST /api/v1/stripe/create-gift-checkout` với body `{"plan_id": "pro_monthly", "duration_months": 3}` (JWT required) trả về `{"checkout_url": "https://checkout.stripe.com/...", "admin_approval_mode": false}`.
 2. Backend tạo Stripe Checkout Session với `mode="payment"`, `price_data` động (không cần pre-created price ID), `metadata.purchase_type="gift"`, `metadata.purchaser_id`, `metadata.plan_id`, `metadata.duration_months`.
-3. Giá được tính đúng theo `GIFT_PRICING` config: `{"pro_monthly": {1: 2000, 3: 5400, 6: 9600, 12: 16800}}` (cents). `1 tháng=$20, 3 tháng=$54, 6 tháng=$96, 12 tháng=$168`.
+3. Giá được tính đúng theo `GIFT_PRICING` config (khớp với subscription pricing):
+   - `pro_monthly`: `{1: 1200, 3: 3600, 6: 7200, 12: 9600}` → $12 / $36 / $72 / $96 (gói 12 tháng = annual rate, tiết kiệm $48).
+   - `max_monthly`: `{1: 10000, 3: 30000, 6: 60000, 12: 96000}` → $100 / $300 / $600 / $960 (gói 12 tháng = annual rate, tiết kiệm $240).
 4. `plan_id` không có trong `GIFT_PRICING` → `400 Bad Request` với detail rõ ràng.
 5. `duration_months` không có trong config cho plan đó → `400 Bad Request`.
 6. Khi Stripe chưa cấu hình (`STRIPE_SECRET_KEY` trống) → `admin_approval_mode=True`, `checkout_url=""` — không throw exception.
@@ -22,7 +24,7 @@ So that tôi được redirect sang trang thanh toán Stripe an toàn để hoà
 ## Tasks / Subtasks
 
 - [x] Thêm `GIFT_PRICING` config vào `surfsense_backend/app/config/__init__.py` (AC: 3)
-  - [x] Thêm vào class `Settings` (cùng nơi với `TOKEN_PACKS` ~line 324): `GIFT_PRICING: dict[str, dict[int, int]] = {"pro_monthly": {1: 2000, 3: 5400, 6: 9600, 12: 16800}, "pro_yearly": {1: 2000, 3: 5400, 6: 9600, 12: 16800}, "max_monthly": {1: 4000, 3: 10800, 6: 19200, 12: 33600}, "max_yearly": {1: 4000, 3: 10800, 6: 19200, 12: 33600}}`
+  - [x] Thêm vào class `Settings` (cùng nơi với `TOKEN_PACKS` ~line 324): `GIFT_PRICING: dict[str, dict[int, int]] = {"pro_monthly": {1: 1200, 3: 3600, 6: 7200, 12: 9600}, "max_monthly": {1: 10000, 3: 30000, 6: 60000, 12: 96000}}` — giá khớp subscription (Pro $12/mo, $96/yr; Max $100/mo, $960/yr).
   - [x] Không cần env var — pricing là hardcoded business logic
 
 - [x] Thêm Pydantic schemas vào `surfsense_backend/app/schemas/stripe.py` (AC: 1, 6)
@@ -74,10 +76,11 @@ Cùng block với `TOKEN_PACKS` (line ~324 trong class `Settings`):
 ```python
 # Gift subscription pricing (cents): plan_id → duration_months → amount_cents
 GIFT_PRICING: dict[str, dict[int, int]] = {
-    "pro_monthly": {1: 2000, 3: 5400, 6: 9600, 12: 16800},
-    "pro_yearly": {1: 2000, 3: 5400, 6: 9600, 12: 16800},
-    "max_monthly": {1: 4000, 3: 10800, 6: 19200, 12: 33600},
-    "max_yearly": {1: 4000, 3: 10800, 6: 19200, 12: 33600},
+    # Aligned with subscription pricing (pricing-section.tsx):
+    # Pro: $12/mo, $96/yr (annual rate) — save $48
+    # Max: $100/mo, $960/yr (annual rate) — save $240
+    "pro_monthly": {1: 1200, 3: 3600, 6: 7200, 12: 9600},
+    "max_monthly": {1: 10000, 3: 30000, 6: 60000, 12: 96000},
 }
 ```
 

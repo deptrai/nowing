@@ -2,6 +2,7 @@
 stepsCompleted:
   - step-01-validate-prerequisites.md
   - step-02-design-epics.md
+  - step-03-create-stories.md
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -32,6 +33,15 @@ FR11: Người dùng có thể nhận biết được trạng thái đồng bộ
 FR12: Hệ thống có khả năng tự động bóc tách văn bản và tạo Vector Embeddings một cách bất đồng bộ ngầm khi tài liệu mới được tải lên.
 FR13: Hệ thống có khả năng chặn yêu cầu (Rate Limit) nếu người dùng sử dụng vượt mức Token cho phép hoặc tải file quá quy định.
 FR14: Người dùng có thể xác thực (Authentication) để đăng nhập và bảo vệ dữ liệu thuộc private workspace của họ.
+FR15: Người dùng có thể xem bảng giá và các gói cước (Free, Pro) với quyền lợi tương ứng.
+FR16: Người dùng có thể thanh toán an toàn qua Stripe Checkout để nâng cấp lên gói trả phí.
+FR17: Hệ thống tự động cập nhật trạng thái Subscription khi Stripe gửi Webhook (thanh toán thành công/hủy/gia hạn).
+FR18: Người dùng có thể mua một gift code tặng gói PRO cho người khác thông qua Stripe one-time payment.
+FR19: Hệ thống tự động tạo gift code định dạng GIFT-XXXX-XXXX-XXXX sau khi payment thành công.
+FR20: Người nhận quà có thể nhập gift code trên trang /redeem để kích hoạt subscription.
+FR21: Hệ thống gia hạn subscription của người nhận theo công thức: max(current_period_end, now) + duration_months.
+FR22: Hệ thống hỗ trợ luồng admin-approval fallback khi Stripe checkout thất bại: user tạo GiftRequest chờ duyệt, admin (superuser) có UI `/admin/gift-requests` để approve/reject — khi approve hệ thống tự động mint gift code và link vào request.
+FR23: Người mua quà có thể xem lịch sử các gift codes đã mua của mình.
 
 ### NonFunctional Requirements
 
@@ -79,6 +89,15 @@ FR11: Epic 4 - Nhận biết trạng thái đồng bộ Zero-sync (Online/Offlin
 FR12: Epic 2 - Tiến trình nhúng Vector bất đồng bộ ngầm
 FR13: Epic 2 - Chặn yêu cầu nếu vượt mức cho phép (Rate Limit)
 FR14: Epic 1 - Xác thực và bảo vệ dữ liệu (Workspace)
+FR15: Epic 5 - Xem bảng giá và lựa chọn gói cước
+FR16: Epic 5 - Thanh toán qua Stripe Checkout
+FR17: Epic 5 - Cập nhật trạng thái Subscription qua Webhook
+FR18: Epic 6 - Gift purchase flow (Stripe one-time checkout)
+FR19: Epic 6 - Gift code generation (GIFT-XXXX-XXXX-XXXX format)
+FR20: Epic 6 - Gift code redemption endpoint
+FR21: Epic 6 - Subscription extension formula
+FR22: Epic 6 - Admin-approval fallback (GiftRequest)
+FR23: Epic 6 - Gift purchase history endpoint
 
 ## Epic List
 
@@ -312,3 +331,181 @@ So that mô hình kinh doanh không bị lỗ do chi phí LLM và Storage, áp d
 **When** họ cố gắng upload file thứ 6
 **Then** API `/api/v1/documents` từ chối xử lý và trả về lỗi `403/429` (Quota Exceeded)
 **And** UI nhận phản hồi từ API và hiển thị một thông báo / Modal nhỏ để up-sell giới thiệu họ lên gói Pro để tải file tiếp.
+
+### Epic 6: Tặng Gói Cước & Mua Quà (Gift Subscription)
+Người dùng có thể mua gói PRO tặng cho người khác thông qua gift code sinh tự động sau Stripe payment. Người nhận quà vào trang /redeem để kích hoạt — tạo kênh acquisition organic không cần marketing, đồng thời hỗ trợ admin-approval fallback khi Stripe gặp sự cố.
+**FRs covered:** FR18, FR19, FR20, FR21, FR22, FR23
+
+#### Story 6.1: Database Migration — Bảng Gift Codes & Gift Requests
+As a Kỹ sư Hệ thống,
+I want tạo migration Alembic số 128 để thêm bảng `gift_codes` và `gift_requests` vào Postgres,
+So that hệ thống có đủ cấu trúc dữ liệu để lưu trữ gift code và luồng admin-approval fallback mà không ảnh hưởng các bảng hiện có.
+
+**Acceptance Criteria:**
+
+**Given** môi trường backend đang chạy
+**When** chạy `alembic upgrade head`
+**Then** bảng `gift_codes` được tạo với các cột: `id UUID`, `code VARCHAR(16) UNIQUE`, `plan_id`, `duration_months`, `amount_paid`, `purchaser_id FK users`, `stripe_payment_intent_id`, `redeemer_id FK users`, `status VARCHAR(20) DEFAULT 'active'`, `expires_at`, `created_at`, `redeemed_at`
+**And** bảng `gift_requests` được tạo với các cột: `id UUID`, `user_id FK users`, `plan_id`, `duration_months`, `status VARCHAR(20) DEFAULT 'pending'`, `gift_code_id FK gift_codes`, `created_at`, `updated_at`
+**And** downgrade migration hoạt động sạch (drop cả 2 bảng)
+**And** không có thay đổi nào đến các bảng hiện có (`users`, `subscription_requests`, v.v.)
+
+#### Story 6.2: Backend API — Endpoint Tạo Gift Checkout
+As a Người dùng đã đăng nhập,
+I want gọi API để tạo Stripe Checkout session cho việc mua gift,
+So that tôi được redirect sang trang thanh toán Stripe an toàn để hoàn tất việc mua quà.
+
+**Acceptance Criteria:**
+
+**Given** người dùng đã xác thực (JWT hợp lệ)
+**When** gửi `POST /api/v1/stripe/create-gift-checkout` với body `{"plan_id": "pro_monthly", "duration_months": 3}`
+**Then** backend tạo Stripe Checkout Session với `mode="payment"`, `price_data` động từ `GIFT_PRICING` config, `metadata.purchase_type="gift"`, `metadata.duration_months`, `metadata.purchaser_id`
+**And** response trả về `{"data": {"checkout_url": "https://checkout.stripe.com/..."}, "error": null}` theo wrapper chuẩn
+**And** nếu `plan_id` hoặc `duration_months` không hợp lệ, API trả về `400 Bad Request` với error message rõ ràng
+**And** giá được tính đúng theo `GIFT_PRICING` (khớp với subscription pricing):
+  - Pro: 1 tháng=$12, 3 tháng=$36, 6 tháng=$72, 12 tháng=$96 (annual rate, tiết kiệm $48)
+  - Max: 1 tháng=$100, 3 tháng=$300, 6 tháng=$600, 12 tháng=$960 (annual rate, tiết kiệm $240)
+
+#### Story 6.3: Backend Webhook — Fulfillment Gift Code sau Payment
+As a Kỹ sư Hệ thống,
+I want webhook handler tự động tạo gift code sau khi Stripe xác nhận thanh toán gift thành công,
+So that purchaser nhận được code ngay lập tức mà không cần can thiệp thủ công từ admin.
+
+**Acceptance Criteria:**
+
+**Given** Stripe gửi event `checkout.session.completed` tới `/api/v1/stripe/webhook`
+**When** `session.metadata.purchase_type == "gift"`
+**Then** hàm `_fulfill_gift_purchase()` được gọi: generate code format `GIFT-XXXX-XXXX-XXXX` bằng `secrets.choice(ascii_uppercase + digits)`, tạo record trong bảng `gift_codes` với `status='active'`, `expires_at = now() + 1 year`
+**And** code được đính kèm vào response email hoặc trả về trong session success URL
+**And** nếu tạo code bị lỗi DB, hệ thống log error và KHÔNG mark Stripe payment là failed (idempotency)
+**And** các webhook branch khác (`"subscription"`, `"token_topup"`) vẫn hoạt động bình thường — không bị ảnh hưởng
+
+#### Story 6.4: Backend API — Endpoint Redeem Gift Code
+As a Người dùng nhận quà,
+I want gọi API để redeem gift code và gia hạn subscription của mình,
+So that gói PRO được kích hoạt ngay lập tức theo công thức extension mà không cần liên hệ support.
+
+**Acceptance Criteria:**
+
+**Given** người dùng đã đăng nhập và có gift code hợp lệ
+**When** gửi `POST /api/v1/stripe/redeem-gift` với body `{"code": "GIFT-ABCD-EFGH-IJKL"}`
+**Then** backend verify: code tồn tại trong `gift_codes`, `status == 'active'`, `expires_at` chưa qua, `redeemer_id IS NULL`
+**And** nếu hợp lệ: tính `new_expiry = max(current_period_end, now()) + timedelta(days=30 * duration_months)`, update `users.subscription_current_period_end = new_expiry`, update `users.plan_id = gift.plan_id`, đánh dấu `gift_codes.status = 'redeemed'`, ghi `redeemed_at = now()`
+**And** response trả về `{"data": {"new_expiry": "2026-07-16T...", "plan_id": "pro_monthly"}, "error": null}`
+**And** nếu code không tồn tại hoặc đã redeemed: trả về `400` với message "Gift code không hợp lệ hoặc đã được sử dụng"
+**And** nếu code hết hạn (`expires_at` đã qua): trả về `400` với message "Gift code đã hết hạn"
+
+#### Story 6.5: Backend API — Gift History & Admin Fallback
+As a Người dùng & Admin,
+I want API lấy danh sách gift codes đã mua và cơ chế tạo GiftRequest khi Stripe thất bại,
+So that purchaser có thể tra cứu lịch sử quà đã mua, và admin có thể duyệt thủ công khi cần.
+
+**Acceptance Criteria:**
+
+**Given** người dùng đã đăng nhập
+**When** gửi `GET /api/v1/stripe/gift-codes`
+**Then** trả về danh sách tất cả gift codes mà `purchaser_id = current_user.id`, bao gồm các trường: `code`, `plan_id`, `duration_months`, `status`, `created_at`, `redeemed_at`, sắp xếp theo `created_at DESC`
+**And** response tuân theo wrapper chuẩn `{"data": [...], "error": null, "meta": {"count": N}}`
+
+**Given** người dùng gặp lỗi khi Stripe Checkout không khả dụng
+**When** frontend gọi `POST /api/v1/stripe/request-gift` với body `{"plan_id": "pro_monthly", "duration_months": 3}`
+**Then** hệ thống tạo record `gift_requests` với `status='pending'`, trả về `{"data": {"request_id": "...", "message": "Yêu cầu của bạn đang chờ admin xử lý."}, "error": null}`
+**And** khi admin approve: tạo `gift_codes` record và gán `gift_requests.gift_code_id`, cập nhật `status='approved'`
+
+#### Story 6.6: Frontend — Trang Mua Gift `/dashboard/[id]/gift`
+As a Người dùng,
+I want truy cập trang mua gift trong dashboard để chọn plan và thời hạn tặng,
+So that tôi có thể mua gift cho bạn bè/đồng nghiệp một cách dễ dàng và được redirect sang Stripe để thanh toán.
+
+**Acceptance Criteria:**
+
+**Given** người dùng đã đăng nhập và truy cập `/dashboard/[search_space_id]/gift`
+**When** trang load
+**Then** hiển thị UI chọn plan (PRO Monthly) và duration (1 tháng / 3 tháng / 6 tháng / 12 tháng) với giá hiển thị rõ ($20 / $54 / $96 / $168)
+**And** có nút "Mua Gift" khi click gọi `createGiftCheckout(plan_id, duration_months)` từ stripe API service
+**And** sau khi nhận `checkout_url` từ API, tự động redirect sang Stripe Checkout
+**And** nếu API lỗi, hiển thị toast error không làm crash trang
+**And** UI áp dụng chuẩn design system (Zinc/Slate dark mode, Accent Indigo, font Inter) theo UX-DR1
+
+**Given** người dùng quay lại sau khi thanh toán thành công (Stripe redirect về `/purchase-success`)
+**When** trang success load
+**Then** hiển thị thông báo thành công và hướng dẫn chia sẻ gift code (hoặc link đến `/dashboard/[id]/user-settings` để xem code)
+
+#### Story 6.7: Frontend — Trang Redeem Gift `/redeem`
+As a Người nhận quà,
+I want truy cập trang public `/redeem`, nhập gift code và kích hoạt subscription,
+So that tôi có thể nhận gói PRO được tặng mà không cần hiểu về Stripe hay billing.
+
+**Acceptance Criteria:**
+
+**Given** người nhận quà (có thể chưa đăng nhập) truy cập `/redeem`
+**When** trang load
+**Then** hiển thị form nhập gift code với placeholder "GIFT-XXXX-XXXX-XXXX" và nút "Kích hoạt"
+**And** nếu chưa đăng nhập: hiển thị prompt "Đăng nhập để sử dụng gift code" với link đến trang login, sau khi đăng nhập redirect về `/redeem`
+
+**Given** người dùng đã đăng nhập và nhập gift code hợp lệ
+**When** click "Kích hoạt"
+**Then** frontend gọi `POST /api/v1/stripe/redeem-gift`, hiển thị loading state
+**And** khi thành công: hiển thị confirmation card với "🎉 Subscription đã được gia hạn đến [ngày]" và nút "Vào Dashboard"
+**And** khi thất bại (code sai/hết hạn): hiển thị error message inline dưới input, không redirect
+
+**Given** người dùng đã redeem thành công
+**When** họ quay lại trang dashboard
+**Then** sidebar hiển thị plan và ngày hết hạn subscription mới (cập nhật từ API user profile)
+
+#### Story 6.8: Backend API — Admin Approve/Reject Gift Request
+As a Superuser (admin),
+I want có endpoint backend để liệt kê, duyệt (approve) và từ chối (reject) các `gift_requests` pending,
+So that khi Stripe checkout gặp sự cố (admin-approval fallback), tôi có thể xử lý thủ công và cấp phát gift code cho người mua qua cơ chế admin-gated, đồng thời audit được ai đã approve/reject.
+
+**Acceptance Criteria:**
+
+**Given** admin (superuser) đã đăng nhập
+**When** gọi `GET /api/v1/admin/gift-requests?status=pending` (JWT required, `is_superuser=True`)
+**Then** trả về list `GiftRequestItem` gồm `id`, `user_id`, `user_email`, `plan_id`, `duration_months`, `status`, `gift_code_id`, `created_at`, `updated_at` sắp xếp theo `created_at DESC`
+**And** query param `status` hợp lệ: `pending | approved | rejected | all` (default `pending`)
+**And** user không phải superuser nhận `403 Forbidden`
+
+**Given** admin duyệt một gift request
+**When** gọi `POST /api/v1/admin/gift-requests/{request_id}/approve` (JWT required, `is_superuser=True`)
+**Then** backend lock row `gift_requests` với `SELECT ... FOR UPDATE`, kiểm tra `status=pending`
+**And** tạo `gift_codes` record mới (code unique, `status=active`, `plan_id`, `duration_months`, `amount_paid=GIFT_PRICING[plan_id][duration_months]`, `purchaser_id=gift_request.user_id`, `stripe_payment_intent_id=NULL`, `expires_at=now + 1 năm`)
+**And** cập nhật `gift_request.status=approved`, `gift_request.gift_code_id=<new_gift_code_id>`, `gift_request.updated_at=now`
+**And** response trả về `{"request_id": "...", "gift_code": "GIFT-XXXX-XXXX-XXXX", "plan_id": "...", "duration_months": N}`
+**And** nếu `status != pending` → trả về `409 Conflict` với detail `"Request is already <status>."`
+**And** nếu không tìm thấy request → `404 Not Found`
+
+**Given** admin từ chối một gift request
+**When** gọi `POST /api/v1/admin/gift-requests/{request_id}/reject` với body `{"reason": "..."}` (optional)
+**Then** backend cập nhật `gift_request.status=rejected`, `gift_request.updated_at=now`
+**And** không tạo gift code
+**And** response trả về `GiftRequestItem` cập nhật (để UI refresh)
+**And** nếu `status != pending` → `409 Conflict`
+
+#### Story 6.9: Frontend — Admin Gift Requests UI `/admin/gift-requests`
+As a Superuser (admin),
+I want trang admin `/admin/gift-requests` để xem danh sách gift request chờ duyệt và approve/reject từng request,
+So that khi user bấm "Yêu cầu gift" ở fallback mode, tôi có dashboard để xử lý nhanh và lấy được gift code để gửi cho người mua.
+
+**Acceptance Criteria:**
+
+**Given** admin (superuser) truy cập `/admin/gift-requests`
+**When** trang load
+**Then** hiển thị table gift requests gồm cột: Email user, Plan, Duration, Status, Created At, Actions (Approve/Reject)
+**And** filter theo `status` (tabs: Pending / Approved / Rejected / All), default Pending
+**And** sort mặc định theo `created_at DESC`
+
+**Given** admin click nút **Approve** trên một row
+**When** confirm dialog hiện ra và admin xác nhận
+**Then** gọi `POST /api/v1/admin/gift-requests/{id}/approve`, disable nút trong lúc loading
+**And** khi thành công: hiển thị toast success với gift code, copy gift code vào clipboard tự động, refresh table
+**And** UI hiển thị cột `gift_code_id` và cho phép xem gift code qua modal chi tiết sau khi approved
+
+**Given** admin click nút **Reject** trên một row
+**When** confirm dialog hỏi "Reason (optional)" và admin submit
+**Then** gọi `POST /api/v1/admin/gift-requests/{id}/reject` với body `{reason}`
+**And** khi thành công: refresh table, hiển thị toast info
+
+**Given** user thường (không phải superuser) truy cập `/admin/gift-requests`
+**When** page load
+**Then** middleware/layout redirect về `/dashboard` hoặc hiển thị 403 page (theo pattern `/admin/subscription-requests`)

@@ -340,11 +340,12 @@ class Config:
     }
 
     # Gift subscription pricing (cents): plan_id -> duration_months -> amount_cents
+    # Aligned with Pro/Max subscription pricing — 12-month gift matches annual rate.
+    # Pro: $12/mo, $96/yr (pricing-section.tsx: price="12", yearlyPrice="8")
+    # Max: $100/mo, $960/yr (pricing-section.tsx: price="100", yearlyPrice="80")
     GIFT_PRICING: dict[str, dict[int, int]] = {
-        "pro_monthly": {1: 2000, 3: 5400, 6: 9600, 12: 16800},
-        "pro_yearly": {1: 2000, 3: 5400, 6: 9600, 12: 16800},
-        "max_monthly": {1: 4000, 3: 10800, 6: 19200, 12: 33600},
-        "max_yearly": {1: 4000, 3: 10800, 6: 19200, 12: 33600},
+        "pro_monthly": {1: 1200, 3: 3600, 6: 7200, 12: 9600},
+        "max_monthly": {1: 10000, 3: 30000, 6: 60000, 12: 96000},
     }
 
     # Auth

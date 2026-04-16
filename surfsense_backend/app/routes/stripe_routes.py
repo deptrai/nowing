@@ -3,18 +3,25 @@
 from __future__ import annotations
 
 import logging
+import secrets
+import string
 import uuid
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from stripe import SignatureVerificationError, StripeClient, StripeError
 
 from app.config import config
 from app.db import (
+    GiftCode,
+    GiftCodeStatus,
+    GiftRequest,
+    GiftRequestStatus,
     SubscriptionRequest,
     SubscriptionRequestStatus,
     SubscriptionStatus,
@@ -29,7 +36,13 @@ from app.schemas.stripe import (
     CreateSubscriptionCheckoutResponse,
     CreateTokenTopupRequest,
     CreateTokenTopupResponse,
+    GiftCodeItem,
+    GiftCodesResponse,
     PlanId,
+    RedeemGiftRequest,
+    RedeemGiftResponse,
+    RequestGiftRequest,
+    RequestGiftResponse,
     StripeStatusResponse,
     StripeWebhookResponse,
 )
@@ -276,6 +289,225 @@ async def _fulfill_token_topup(
         checkout_session.id,
     )
     await db_session.commit()
+    return StripeWebhookResponse()
+
+
+# ---------------------------------------------------------------------------
+# Gift code fulfillment
+# ---------------------------------------------------------------------------
+
+_GIFT_CODE_CHARS = string.ascii_uppercase + string.digits
+
+
+def _generate_gift_code() -> str:
+    """Generate a random gift code in format GIFT-XXXX-XXXX-XXXX."""
+    groups = [
+        "".join(secrets.choice(_GIFT_CODE_CHARS) for _ in range(4)) for _ in range(3)
+    ]
+    return "GIFT-" + "-".join(groups)
+
+
+def _mask_gift_code(code: str) -> str:
+    """Return a log-safe representation of a gift code (prefix + last 4)."""
+    if not code or len(code) < 4:
+        return "GIFT-****"
+    return f"GIFT-****-****-{code[-4:]}"
+
+
+async def _mint_gift_code(
+    db_session: AsyncSession,
+    *,
+    plan_id: str,
+    duration_months: int,
+    amount_paid: int,
+    purchaser_id: uuid.UUID,
+    stripe_payment_intent_id: str | None = None,
+    expires_at: datetime | None = None,
+) -> GiftCode:
+    """Mint a new GiftCode with unique code, flushing to DB but NOT committing.
+
+    Retries up to 3 times on code collision. Caller must commit the session.
+    Raises IntegrityError after max_attempts if collisions persist, or on
+    other constraint violations (FK, payment_intent unique).
+    """
+    if expires_at is None:
+        expires_at = datetime.now(UTC) + timedelta(days=365)
+
+    max_attempts = 3
+    last_exc: IntegrityError | None = None
+    for attempt in range(1, max_attempts + 1):
+        code = _generate_gift_code()
+        gift = GiftCode(
+            code=code,
+            plan_id=plan_id,
+            duration_months=duration_months,
+            amount_paid=amount_paid,
+            purchaser_id=purchaser_id,
+            stripe_payment_intent_id=stripe_payment_intent_id,
+            status=GiftCodeStatus.ACTIVE,
+            expires_at=expires_at,
+        )
+        try:
+            async with db_session.begin_nested():
+                db_session.add(gift)
+                await db_session.flush()
+            return gift
+        except IntegrityError as exc:
+            last_exc = exc
+            constraint = getattr(getattr(exc, "orig", None), "diag", None)
+            constraint_name = getattr(constraint, "constraint_name", "") or ""
+            is_code_collision = constraint_name == "uq_gift_codes_code"
+            if not is_code_collision:
+                # FK violation / payment_intent unique — retry won't help.
+                raise
+            if attempt < max_attempts:
+                logger.warning(
+                    "Gift code collision on attempt %d for purchaser %s, retrying",
+                    attempt,
+                    purchaser_id,
+                )
+    assert last_exc is not None
+    raise last_exc
+
+
+async def _fulfill_gift_purchase(
+    db_session: AsyncSession, checkout_session: Any
+) -> StripeWebhookResponse:
+    """Create a gift code record after a confirmed Stripe gift payment.
+
+    Idempotency: always returns 200 to Stripe so redeliveries are not retried
+    indefinitely. If a gift code for this payment_intent_id already exists,
+    skip insert and return success. On unrecoverable errors (invalid metadata,
+    FK violation, collision retries exhausted) we log and return 200 — Stripe
+    has already captured the payment, so an admin must reconcile manually.
+    """
+    metadata = _get_metadata(checkout_session)
+    purchaser_id_str = metadata.get("purchaser_id")
+    plan_id = metadata.get("plan_id")
+    duration_months_str = metadata.get("duration_months")
+    amount_cents_str = metadata.get("amount_cents")
+
+    if not all([purchaser_id_str, plan_id, duration_months_str, amount_cents_str]):
+        logger.error(
+            "Gift webhook missing metadata for session %s: %s — payment captured, manual reconciliation required",
+            checkout_session.id,
+            metadata,
+        )
+        return StripeWebhookResponse()
+
+    try:
+        purchaser_id = uuid.UUID(purchaser_id_str)
+        duration_months = int(duration_months_str)
+        amount_paid = int(amount_cents_str)
+    except (ValueError, TypeError) as exc:
+        logger.error(
+            "Gift webhook invalid metadata for session %s: %s — payment captured, manual reconciliation required",
+            checkout_session.id,
+            exc,
+        )
+        return StripeWebhookResponse()
+
+    # Cross-verify amount against server-side pricing to detect tampering
+    plan_pricing = config.GIFT_PRICING.get(plan_id)
+    expected_amount = plan_pricing.get(duration_months) if plan_pricing else None
+    if expected_amount is None or expected_amount != amount_paid:
+        logger.error(
+            "Gift webhook pricing mismatch for session %s: plan=%s duration=%s metadata_amount=%s expected=%s — manual reconciliation required",
+            checkout_session.id,
+            plan_id,
+            duration_months,
+            amount_paid,
+            expected_amount,
+        )
+        return StripeWebhookResponse()
+
+    if duration_months <= 0 or amount_paid <= 0:
+        logger.error(
+            "Gift webhook non-positive values for session %s: duration=%s amount=%s",
+            checkout_session.id,
+            duration_months,
+            amount_paid,
+        )
+        return StripeWebhookResponse()
+
+    payment_intent = getattr(checkout_session, "payment_intent", None)
+    if hasattr(payment_intent, "id"):
+        payment_intent_id = str(payment_intent.id)
+    elif payment_intent:
+        payment_intent_id = str(payment_intent)
+    else:
+        payment_intent_id = ""
+
+    # Idempotency pre-check: Stripe redeliveries reuse payment_intent_id,
+    # so bail out early instead of hitting the partial unique index
+    # (uq_gift_codes_stripe_payment_intent_id) and burning retry attempts.
+    if payment_intent_id:
+        existing_stmt = select(GiftCode.id).where(
+            GiftCode.stripe_payment_intent_id == payment_intent_id
+        )
+        existing = (await db_session.execute(existing_stmt)).scalar_one_or_none()
+        if existing is not None:
+            logger.info(
+                "Gift webhook already fulfilled for payment_intent %s (session %s) — skipping",
+                payment_intent_id,
+                checkout_session.id,
+            )
+            return StripeWebhookResponse()
+
+    expires_at = datetime.now(UTC) + timedelta(days=365)
+
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        code = _generate_gift_code()
+        gift = GiftCode(
+            code=code,
+            plan_id=plan_id,
+            duration_months=duration_months,
+            amount_paid=amount_paid,
+            purchaser_id=purchaser_id,
+            stripe_payment_intent_id=payment_intent_id or None,
+            status=GiftCodeStatus.ACTIVE,
+            expires_at=expires_at,
+        )
+        db_session.add(gift)
+        try:
+            await db_session.commit()
+            logger.info(
+                "Gift code %s created for user %s (session %s)",
+                _mask_gift_code(code),
+                purchaser_id,
+                checkout_session.id,
+            )
+            return StripeWebhookResponse()
+        except IntegrityError as exc:
+            await db_session.rollback()
+            constraint = getattr(getattr(exc, "orig", None), "diag", None)
+            constraint_name = getattr(constraint, "constraint_name", "") or ""
+            # Only retry on gift code collision; other integrity errors
+            # (FK violation, payment_intent unique) won't be fixed by retry.
+            is_code_collision = "code" in constraint_name and "pkey" not in constraint_name
+            if not is_code_collision:
+                logger.error(
+                    "Gift webhook integrity error for session %s (constraint=%s): %s — manual reconciliation required",
+                    checkout_session.id,
+                    constraint_name or "unknown",
+                    exc,
+                )
+                return StripeWebhookResponse()
+            if attempt < max_attempts:
+                logger.warning(
+                    "Gift code collision on attempt %d for session %s, retrying",
+                    attempt,
+                    checkout_session.id,
+                )
+            else:
+                logger.error(
+                    "Failed to create gift code after %d attempts for session %s — manual reconciliation required",
+                    max_attempts,
+                    checkout_session.id,
+                )
+                return StripeWebhookResponse()
+
     return StripeWebhookResponse()
 
 
@@ -766,6 +998,230 @@ async def create_gift_checkout(
     return CreateGiftCheckoutResponse(checkout_url=checkout_url)
 
 
+@router.post("/redeem-gift", response_model=RedeemGiftResponse)
+async def redeem_gift(
+    body: RedeemGiftRequest,
+    user: User = Depends(current_active_user),
+    db_session: AsyncSession = Depends(get_async_session),
+) -> RedeemGiftResponse:
+    """Redeem a gift code and extend the user's subscription.
+
+    The gift code must be active, not expired, and not already redeemed.
+    Extension formula: new_expiry = max(current_period_end, now()) + 30 * duration_months days.
+
+    If the user has an active Stripe-managed subscription, only the period end
+    is extended — plan/limits stay under Stripe's control to avoid state drift.
+    Otherwise the gift's plan/limits are applied to the user.
+    """
+    normalized_code = body.code.strip().upper()
+    if not normalized_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gift code không hợp lệ hoặc đã được sử dụng",
+        )
+
+    gift = (
+        await db_session.execute(
+            select(GiftCode)
+            .where(GiftCode.code == normalized_code)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+
+    if (
+        gift is None
+        or gift.status != GiftCodeStatus.ACTIVE
+        or gift.redeemer_id is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gift code không hợp lệ hoặc đã được sử dụng",
+        )
+
+    now = datetime.now(UTC)
+
+    if gift.expires_at <= now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gift code đã hết hạn",
+        )
+
+    if gift.duration_months <= 0:
+        logger.error(
+            "Gift code %s has invalid duration_months=%s — refusing redeem",
+            _mask_gift_code(gift.code),
+            gift.duration_months,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gift code không hợp lệ hoặc đã được sử dụng",
+        )
+
+    if gift.plan_id not in config.PLAN_LIMITS:
+        logger.error(
+            "Gift code %s targets unknown plan_id=%s (not in PLAN_LIMITS) — refusing redeem",
+            _mask_gift_code(gift.code),
+            gift.plan_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gói của gift code không còn được hỗ trợ, vui lòng liên hệ support.",
+        )
+
+    # Re-lock user row to serialize concurrent redemptions from the same user
+    locked_user = (
+        await db_session.execute(
+            select(User).where(User.id == user.id).with_for_update()
+        )
+    ).scalar_one()
+
+    base_expiry = (
+        locked_user.subscription_current_period_end
+        if locked_user.subscription_current_period_end
+        and locked_user.subscription_current_period_end > now
+        else now
+    )
+    new_expiry = base_expiry + timedelta(days=30 * gift.duration_months)
+
+    # Preserve plan for any user on an active paid plan (Stripe-backed OR
+    # admin-seeded). Gift is a time extension, not a tier change — never
+    # downgrade a paying/seeded PRO/MAX user to the gift's plan_id.
+    has_active_paid_plan = (
+        locked_user.subscription_status
+        in {SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE}
+        and locked_user.plan_id in config.PLAN_LIMITS
+        and locked_user.plan_id != "free"
+    )
+
+    locked_user.subscription_current_period_end = new_expiry
+
+    if has_active_paid_plan:
+        logger.info(
+            "Gift %s redeemed by active-paid user %s (plan=%s) — period extended to %s, plan unchanged",
+            _mask_gift_code(gift.code),
+            locked_user.id,
+            locked_user.plan_id,
+            new_expiry,
+        )
+    else:
+        limits = config.PLAN_LIMITS[gift.plan_id]
+        locked_user.plan_id = gift.plan_id
+        locked_user.subscription_status = SubscriptionStatus.ACTIVE
+        locked_user.monthly_token_limit = limits["monthly_token_limit"]
+        locked_user.pages_limit = max(locked_user.pages_used, limits["pages_limit"])
+        locked_user.tokens_used_this_month = 0
+        locked_user.purchased_tokens = 0
+        locked_user.token_reset_date = now.date()
+
+    gift.status = GiftCodeStatus.REDEEMED
+    gift.redeemed_at = now
+    gift.redeemer_id = locked_user.id
+
+    await db_session.commit()
+
+    logger.info(
+        "Gift code %s redeemed by user %s, new expiry: %s",
+        _mask_gift_code(gift.code),
+        locked_user.id,
+        new_expiry,
+    )
+
+    return RedeemGiftResponse(new_expiry=new_expiry, plan_id=gift.plan_id)
+
+
+@router.get("/gift-codes", response_model=GiftCodesResponse)
+async def get_gift_codes(
+    user: User = Depends(current_active_user),
+    db_session: AsyncSession = Depends(get_async_session),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> GiftCodesResponse:
+    """List all gift codes purchased by the current user."""
+    result = await db_session.execute(
+        select(GiftCode)
+        .where(GiftCode.purchaser_id == user.id)
+        .order_by(GiftCode.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    gifts = result.scalars().all()
+    items = [
+        GiftCodeItem(
+            id=g.id,
+            code=g.code,
+            plan_id=g.plan_id,
+            duration_months=g.duration_months,
+            status=g.status.value,
+            created_at=g.created_at,
+            expires_at=g.expires_at,
+            redeemed_at=g.redeemed_at,
+        )
+        for g in gifts
+    ]
+    return GiftCodesResponse(items=items, count=len(items))
+
+
+@router.post("/request-gift", response_model=RequestGiftResponse)
+async def request_gift(
+    body: RequestGiftRequest,
+    user: User = Depends(current_active_user),
+    db_session: AsyncSession = Depends(get_async_session),
+) -> RequestGiftResponse:
+    """Create an admin-approval gift request when Stripe is unavailable.
+
+    Used as fallback when create-gift-checkout returns admin_approval_mode=True
+    (either because STRIPE_SECRET_KEY is unset or because Stripe raised an
+    error during session creation).
+    """
+    plan_id_str = body.plan_id.value
+    plan_pricing = config.GIFT_PRICING.get(plan_id_str)
+    if not plan_pricing or body.duration_months not in plan_pricing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid plan_id or duration_months.",
+        )
+
+    # Serialize concurrent request_gift calls for the same user to prevent
+    # duplicate PENDING rows from racing double-submits.
+    await db_session.execute(
+        select(User.id).where(User.id == user.id).with_for_update()
+    )
+
+    existing = await db_session.execute(
+        select(GiftRequest)
+        .where(GiftRequest.user_id == user.id)
+        .where(GiftRequest.plan_id == plan_id_str)
+        .where(GiftRequest.duration_months == body.duration_months)
+        .where(GiftRequest.status == GiftRequestStatus.PENDING)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Bạn đã có yêu cầu đang chờ xử lý cho gói này.",
+        )
+
+    req = GiftRequest(
+        user_id=user.id,
+        plan_id=plan_id_str,
+        duration_months=body.duration_months,
+    )
+    db_session.add(req)
+    await db_session.commit()
+    await db_session.refresh(req)
+
+    logger.info(
+        "Gift request created for user %s (plan=%s, months=%d)",
+        user.id,
+        plan_id_str,
+        body.duration_months,
+    )
+
+    return RequestGiftResponse(
+        request_id=req.id,
+        message="Yêu cầu của bạn đang chờ admin xử lý.",
+    )
+
+
 async def _queue_subscription_approval_request(
     user: User,
     plan_id: str,
@@ -987,6 +1443,8 @@ async def stripe_webhook(
             )
 
         metadata = _get_metadata(checkout_session)
+        if metadata.get("purchase_type") == "gift":
+            return await _fulfill_gift_purchase(db_session, checkout_session)
         if metadata.get("purchase_type") in {"token_packs", "token_topup"}:
             return await _fulfill_token_topup(db_session, checkout_session)
 

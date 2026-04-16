@@ -3,8 +3,13 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-04-13T01:02:23+07:00'
+lastUpdated: '2026-04-16'
+editHistory:
+  - date: '2026-04-16'
+    changes: 'Thêm Gift Subscription Architecture: Data Architecture (gift_codes/gift_requests tables), API Patterns (3 endpoints mới), Project Structure (new files), Integration Points (gift flow)'
 inputDocuments: [
   "/Users/luisphan/Documents/GitHub/SurfSense/_bmad-output/planning-artifacts/prd.md",
+  "/Users/luisphan/Documents/GitHub/SurfSense/_bmad-output/planning-artifacts/research/technical-gift-subscription-research-2026-04-16.md",
   "/Users/luisphan/Documents/GitHub/SurfSense/docs/index.md",
   "/Users/luisphan/Documents/GitHub/SurfSense/docs/architecture-backend.md",
   "/Users/luisphan/Documents/GitHub/SurfSense/docs/architecture-web.md",
@@ -142,6 +147,48 @@ uv pip install fastapi uvicorn celery pydantic-settings sqlmodel psycopg2-binary
 - **ORM / Query Builder:** `SQLModel` trên Backend và auto-generated Schema của Prisma cung cấp DDL cho Zero-sync.
 - **Caching & Local-First Strategy:** Dùng `@rocicorp/zero` (Version đã verify: `1.1.1`) đổ dữ liệu xuống IndexedDB, Next.js sẽ subscribe trực tiếp qua Zero cache thay vì gọi FETCH thông thường.
 
+**Gift Subscription Tables (thêm vào migration 127+):**
+
+```sql
+-- gift_codes: lưu gift code được tạo sau khi payment thành công
+gift_codes (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code          VARCHAR(16) UNIQUE NOT NULL,  -- format: GIFT-XXXX-XXXX-XXXX
+  plan_id       VARCHAR(50) NOT NULL,          -- e.g. "pro_monthly"
+  duration_months INTEGER NOT NULL,            -- 1, 3, 6, 12
+  amount_paid   INTEGER NOT NULL,              -- cents (e.g. 1200 = $12.00)
+  purchaser_id  INTEGER NOT NULL REFERENCES users(id),
+  stripe_payment_intent_id VARCHAR(255),
+  redeemer_id   INTEGER REFERENCES users(id), -- NULL cho đến khi redeem
+  status        VARCHAR(20) DEFAULT 'active',  -- active|redeemed|expired|revoked
+  expires_at    TIMESTAMP NOT NULL,            -- 1 năm từ ngày tạo
+  created_at    TIMESTAMP DEFAULT now(),
+  redeemed_at   TIMESTAMP                      -- NULL cho đến khi redeem
+)
+
+-- gift_requests: admin-approval fallback khi Stripe checkout không hoạt động
+gift_requests (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         INTEGER NOT NULL REFERENCES users(id),
+  plan_id         VARCHAR(50) NOT NULL,
+  duration_months INTEGER NOT NULL,
+  status          VARCHAR(20) DEFAULT 'pending', -- pending|approved|rejected
+  gift_code_id    UUID REFERENCES gift_codes(id), -- gán khi approved
+  created_at      TIMESTAMP DEFAULT now(),
+  updated_at      TIMESTAMP DEFAULT now()
+)
+```
+
+**Gift Code Generation:**
+- Format: `GIFT-XXXX-XXXX-XXXX` (12 chars từ `string.ascii_uppercase + string.digits`)
+- Entropy: 36^12 ≈ 4.7 × 10^18 combinations (brute-force không khả thi)
+- Implementation: `secrets.choice(alphabet)` — cryptographically secure
+
+**Extension Formula khi redeem:**
+```python
+new_expiry = max(current_period_end, now()) + timedelta(days=30 * duration_months)
+```
+
 ### Authentication & Security
 
 - **Authentication Method:** JWT Token Auth do Backend FastAPI kiểm soát. Frontend nhận JWT và trao nó cho bộ khởi tạo `ZeroClient`.
@@ -155,6 +202,45 @@ uv pip install fastapi uvicorn celery pydantic-settings sqlmodel psycopg2-binary
   - **Server-Sent Events (SSE) / WebSockets:** Quyết định dùng SSE cho luồng Streaming Response của Agentic RAG vì nó mượt hơn, một chiều từ Server gửi câu trả lời về UI.
   - Zero-sync protocol quản lý kết nối WebSocket cho dữ liệu đồng bộ tĩnh.
 - **Job Orchestration:** Kết nối FastAPI và Celery Workers qua Redis Message Broker (`redis:7.4+`).
+
+**Gift Subscription Endpoints (thêm vào `surfsense_backend/app/routes/gift_routes.py`):**
+
+| Method | Endpoint | Auth | Mô tả |
+|--------|----------|------|-------|
+| `POST` | `/api/v1/stripe/create-gift-checkout` | JWT | Tạo Stripe one-time payment checkout cho gift. Body: `{plan_id, duration_months, recipient_email?}`. Clone pattern từ `create_token_topup_checkout` với `mode="payment"` và `price_data` động. |
+| `POST` | `/api/v1/stripe/redeem-gift` | JWT | Redeem gift code. Body: `{code}`. Verify code valid, extend subscription dùng extension formula, đánh dấu code `redeemed`. |
+| `GET`  | `/api/v1/stripe/gift-codes` | JWT | Lấy danh sách gift codes đã mua bởi current user (lịch sử mua quà). |
+
+**Gift Pricing Config (`surfsense_backend/app/config/__init__.py`):**
+```python
+GIFT_PRICING = {
+    # Aligned with Pro/Max subscription pricing (pricing-section.tsx):
+    # Pro: $12/mo monthly, $96/yr annual (save $48)
+    # Max: $100/mo monthly, $960/yr annual (save $240)
+    "pro_monthly": {
+        1:  1200,    # $12.00
+        3:  3600,    # $36.00
+        6:  7200,    # $72.00
+        12: 9600,    # $96.00  (annual rate)
+    },
+    "max_monthly": {
+        1:  10000,   # $100.00
+        3:  30000,   # $300.00
+        6:  60000,   # $600.00
+        12: 96000,   # $960.00 (annual rate)
+    },
+}
+```
+
+**Webhook Extension (trong `stripe_webhook()` handler):**
+```python
+# Thêm branch mới trong checkout.session.completed handler
+if session.metadata.get("purchase_type") == "gift":
+    await _fulfill_gift_purchase(session)
+# Existing branches: "subscription", "token_topup" vẫn giữ nguyên
+```
+
+**Admin-Approval Fallback:** Tương tự `SubscriptionRequest` — khi Stripe checkout thất bại, tạo `GiftRequest(status="pending")`, admin approve thủ công qua existing admin panel.
 
 ### Frontend Architecture
 
@@ -279,7 +365,13 @@ surfsense/
 │   ├── tailwind.config.ts
 │   ├── tsconfig.json
 │   ├── app/                  # App Router
+│   │   ├── dashboard/[search_space_id]/
+│   │   │   └── gift/page.tsx          # [NEW] Gift purchase page (chọn plan, duration)
+│   │   └── redeem/page.tsx            # [NEW] Public gift redemption page
 │   ├── components/           # UI and Feature Components
+│   │   └── gift/             # [NEW] Gift-specific components
+│   │       ├── GiftPurchaseForm.tsx   # Plan/duration selector + Stripe checkout
+│   │       └── GiftRedeemForm.tsx     # Code input + redeem action
 │   ├── lib/                  # Generic utilities
 │   ├── hooks/                # Custom hooks (Zero-sync wrappers)
 │   └── store/                # UI State
@@ -290,6 +382,11 @@ surfsense/
 ├── docs/                         # Documentation files
 └── README.md
 ```
+
+**Backend Gift Files (mới):**
+- `surfsense_backend/app/routes/gift_routes.py` — 3 endpoints: create-gift-checkout, redeem-gift, gift-codes
+- `surfsense_backend/alembic/versions/128_add_gift_tables.py` — migration tạo `gift_codes` + `gift_requests`
+- Webhook branch thêm vào `surfsense_backend/app/routes/stripe_routes.py` (không tạo file mới)
 
 ### Architectural Boundaries
 
@@ -329,6 +426,25 @@ Luồng Upload tài liệu & RAG:
 3. `EtlPipelineService` trích xuất text (Plaintext/Docling/Vision_LLM). Chunks được hash và deduplicate.
 4. Pgvector lưu Vectors thành công và đổi status => `ready`. Zero Server bắt được thay đổi qua Replication từ Postgres và push qua Web Socket về giao diện, UI tự động cập nhật mà không cần tải lại trang.
 
+**Gift Subscription Data Flow:**
+
+*Luồng Mua Gift (Purchaser):*
+1. User vào `/dashboard/[id]/gift` → chọn plan + duration → click "Buy Gift".
+2. Frontend gọi `POST /api/v1/stripe/create-gift-checkout` với `{plan_id, duration_months}`.
+3. Backend tạo Stripe Checkout Session (`mode="payment"`, `price_data` động từ `GIFT_PRICING`), lưu `metadata.purchase_type="gift"`.
+4. Redirect sang Stripe hosted checkout. User thanh toán.
+5. Stripe gửi webhook `checkout.session.completed` → Backend handler phát hiện `purchase_type="gift"`.
+6. `_fulfill_gift_purchase()`: generate `GIFT-XXXX-XXXX-XXXX` code, tạo `gift_codes` record (`status=active`), email code cho purchaser.
+7. Purchaser chia sẻ code cho recipient qua bất kỳ kênh nào.
+
+*Luồng Redeem Gift (Recipient):*
+1. Recipient vào `/redeem` → nhập `GIFT-XXXX-XXXX-XXXX` → click "Redeem".
+2. Frontend gọi `POST /api/v1/stripe/redeem-gift` với `{code}`.
+3. Backend verify: code tồn tại, `status=active`, `expires_at` chưa qua.
+4. Áp dụng extension formula: `new_expiry = max(current_period_end, now()) + duration`.
+5. Update `users.subscription_current_period_end`, đổi `gift_codes.status=redeemed`, ghi `redeemed_at`.
+6. Return success → Frontend hiển thị confirmation với ngày hết hạn mới.
+
 ## Architecture Validation Results
 
 ### Coherence Validation ✅
@@ -336,9 +452,11 @@ Luồng Upload tài liệu & RAG:
 **Decision Compatibility:**
 - Tuyệt đối tương thích: Việc chia tách trách nhiệm rõ ràng (Web Client quản lý state bằng Zero Sync; FastAPI chỉ xử lý các tác vụ nặng & Streaming RAG) giúp tránh conflict về source of truth. Zero-Sync tương thích hoàn hảo với Postgres Logical Replication.
 - Celery + Redis là combo battle-tested cho Async task, không có rủi ro về stack.
+- **Gift Subscription:** Dùng Stripe `mode="payment"` (không phải `mode="subscription"`) tránh hoàn toàn proration edge cases. Gift codes được lưu trong separate tables (`gift_codes`, `gift_requests`) — không ảnh hưởng existing `SubscriptionRequest` model.
 
 **Pattern Consistency:**
 - Quy ước Naming Conventions (TypeScript: `camelCase`, DB & Python: `snake_case`) cùng nguyên tắc tự chuyển đổi (Alias `by_alias=True` trong Pydantic) giải quyết triệt để rủi ro lệch chuẩn dữ liệu khi các AI Agents Gen code tự động.
+- Gift endpoints follow cùng pattern với `create_token_topup_checkout` (dynamic `price_data`, no pre-created Stripe Price IDs).
 
 **Structure Alignment:**
 - Cấu trúc "Monorepo ảo tĩnh" chia đôi `web/` và `backend/` tách biệt hoàn toàn Development Environment (uv cho Python, pnpm cho Node) nên không lấn cấn cấu hình.
@@ -348,6 +466,13 @@ Luồng Upload tài liệu & RAG:
 **Epic/Feature Coverage:**
 - **Local-first (FR9):** Covered 100% nhờ `@rocicorp/zero` và cấu hình IndexedDB cached.
 - **DeepRAG & Streaming (FR4):** Covered 100% nhờ sự kết hợp giữa FastAPI Server-Sent Events (SSE) và Postgres `pgvector`.
+- **Gift Subscription (FR18–FR23):**
+  - FR18 (Gift purchase flow): `POST /create-gift-checkout` → Stripe → webhook → `gift_codes` record.
+  - FR19 (Gift code generation): `secrets.choice()` 12-char, format `GIFT-XXXX-XXXX-XXXX`.
+  - FR20 (Gift code redemption): `POST /redeem-gift` với extension formula.
+  - FR21 (Subscription extension): `max(current_period_end, now()) + duration`.
+  - FR22 (Admin fallback): `GiftRequest(status=pending)` → admin approves → generate code.
+  - FR23 (Gift history): `GET /gift-codes` trả về danh sách codes của purchaser.
 
 **Non-Functional Requirements Coverage:**
 - **Latency (TTFT < 1.5s):** Fast API async router và Streaming trực tiếp nén TTFT cực tốt.
@@ -358,16 +483,19 @@ Luồng Upload tài liệu & RAG:
 **Decision Completeness:**
 - Stack rõ ràng, version cụ thể (`Next.js 14+`, `FastAPI 0.100+`, `pgvector 0.8+, Postgres 16`, `@rocicorp/zero 1.1.1`).
 - Đã quy định rõ AI Error Boundaries.
+- **Gift Subscription:** 6 architectural decisions đã chốt. Migration số, file paths, pricing config đều rõ ràng.
 
 ### Architecture Completeness Checklist
 
 **✅ Requirements Analysis**
 - [x] Đã phân tích toàn diện 14 FRs và 7 NFRs.
 - [x] Đã xác định được "Local-first" và "Fast AI Streaming" là yêu cầu cốt lõi.
+- [x] Đã phân tích 6 FRs bổ sung (FR18–FR23) cho Gift Subscription.
 
 **✅ Architectural Decisions**
 - [x] Quyết định 4 trụ cột công nghệ (Next.js, FastAPI, Postgres+Zero, Redis+Celery).
 - [x] Các Quyết định bảo mật RLS và JWT tích hợp Zero.
+- [x] Gift Subscription: Stripe `mode=payment`, separate tables, extension formula, admin fallback.
 
 **✅ Implementation Patterns**
 - [x] Thiết lập Rule đặt tên rõ ràng chéo ngôn ngữ (TS & Python).
@@ -375,6 +503,7 @@ Luồng Upload tài liệu & RAG:
 
 **✅ Project Structure**
 - [x] Lên cây thư mục (Directory Tree) độc lập Backend - Web - Zero Config.
+- [x] Gift files: `gift_routes.py`, migration 128, `app/dashboard/[id]/gift/`, `app/redeem/`, `components/gift/`.
 
 ### Architecture Readiness Assessment
 
@@ -382,7 +511,7 @@ Luồng Upload tài liệu & RAG:
 
 **Confidence Level:** HIGH (Cao)
 - Kiến trúc giải quyết được bài toán khó nhất là: "Làm sao vừa chạy Local-first nhanh chóng lại vừa chạy Tác vụ AI siêu nặng".
+- Gift Subscription được thiết kế isolate hoàn toàn: không ảnh hưởng existing billing code, dùng separate tables, clone proven patterns.
 
-**Implementation Handoff**
 **Implementation Handoff**
 - **First Implementation Priority:** Dùng hệ thống sẵn có (đã khởi tạo Next.js `surfsense_web` và FastAPI `surfsense_backend`). Môi trường local chạy qua `docker compose -f docker/docker-compose.dev.yml up -d` với đầy đủ Postgres (pgvector), Redis, Zero-Cache và SearXNG.
