@@ -4,6 +4,10 @@
 node_modules/
 .ruff_cache/
 .venv
+.venv_new/
+.venv_py312/
+nowing_backend/backend.log
+.symdex/
 .pnpm-store
 .DS_Store
 deepagents/
