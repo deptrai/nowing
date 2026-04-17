@@ -1,39 +1,39 @@
 #!/usr/bin/env bash
 # =============================================================================
-# SurfSense — Database Migration Script
+# Nowing — Database Migration Script
 #
-# Extracts data from the legacy all-in-one surfsense-data volume (PostgreSQL 14)
+# Extracts data from the legacy all-in-one nowing-data volume (PostgreSQL 14)
 # and saves it as a SQL dump + SECRET_KEY file ready for install.sh to restore.
 #
 # Usage:
 #   bash migrate-database.sh [options]
 #
 # Options:
-#   --db-user USER        Old PostgreSQL username   (default: surfsense)
-#   --db-password PASS    Old PostgreSQL password   (default: surfsense)
-#   --db-name NAME        Old PostgreSQL database   (default: surfsense)
+#   --db-user USER        Old PostgreSQL username   (default: nowing)
+#   --db-password PASS    Old PostgreSQL password   (default: nowing)
+#   --db-name NAME        Old PostgreSQL database   (default: nowing)
 #   --yes / -y            Skip all confirmation prompts
 #   --help / -h           Show this help
 #
 # Prerequisites:
 #   - Docker installed and running
-#   - The legacy surfsense-data volume must exist
+#   - The legacy nowing-data volume must exist
 #   - ~500 MB free disk space for the dump file
 #
 # What this script does:
-#   1. Stops any container using surfsense-data (to prevent corruption)
+#   1. Stops any container using nowing-data (to prevent corruption)
 #   2. Starts a temporary PG14 container against the old volume
-#   3. Dumps the database to ./surfsense_migration_backup.sql
-#   4. Recovers the SECRET_KEY to ./surfsense_migration_secret.key
+#   3. Dumps the database to ./nowing_migration_backup.sql
+#   4. Recovers the SECRET_KEY to ./nowing_migration_secret.key
 #   5. Exits — leaving installation to install.sh
 #
 # What this script does NOT do:
-#   - Delete the original surfsense-data volume (do this manually after verifying)
-#   - Install the new SurfSense stack (install.sh handles that automatically)
+#   - Delete the original nowing-data volume (do this manually after verifying)
+#   - Install the new Nowing stack (install.sh handles that automatically)
 #
 # Note:
 #   install.sh downloads and runs this script automatically when it detects the
-#   legacy surfsense-data volume. You only need to run this script manually if
+#   legacy nowing-data volume. You only need to run this script manually if
 #   you have custom database credentials (--db-user / --db-password / --db-name)
 #   or if the automatic migration inside install.sh fails at the extraction step.
 # =============================================================================
@@ -49,27 +49,27 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # ── Logging — tee everything to a log file ───────────────────────────────────
-LOG_FILE="./surfsense-migration.log"
+LOG_FILE="./nowing-migration.log"
 exec > >(tee -a "${LOG_FILE}") 2>&1
 
 # ── Output helpers ────────────────────────────────────────────────────────────
-info()    { printf "${CYAN}[SurfSense]${NC} %s\n"        "$1"; }
-success() { printf "${GREEN}[SurfSense]${NC} %s\n"       "$1"; }
-warn()    { printf "${YELLOW}[SurfSense]${NC} %s\n"      "$1"; }
-error()   { printf "${RED}[SurfSense]${NC} ERROR: %s\n"  "$1" >&2; exit 1; }
+info()    { printf "${CYAN}[Nowing]${NC} %s\n"        "$1"; }
+success() { printf "${GREEN}[Nowing]${NC} %s\n"       "$1"; }
+warn()    { printf "${YELLOW}[Nowing]${NC} %s\n"      "$1"; }
+error()   { printf "${RED}[Nowing]${NC} ERROR: %s\n"  "$1" >&2; exit 1; }
 step()    { printf "\n${BOLD}${CYAN}── Step %s: %s${NC}\n" "$1" "$2"; }
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-OLD_VOLUME="surfsense-data"
-TEMP_CONTAINER="surfsense-pg14-migration"
-DUMP_FILE="./surfsense_migration_backup.sql"
-KEY_FILE="./surfsense_migration_secret.key"
+OLD_VOLUME="nowing-data"
+TEMP_CONTAINER="nowing-pg14-migration"
+DUMP_FILE="./nowing_migration_backup.sql"
+KEY_FILE="./nowing_migration_secret.key"
 PG14_IMAGE="pgvector/pgvector:pg14"
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
-OLD_DB_USER="surfsense"
-OLD_DB_PASSWORD="surfsense"
-OLD_DB_NAME="surfsense"
+OLD_DB_USER="nowing"
+OLD_DB_PASSWORD="nowing"
+OLD_DB_NAME="nowing"
 AUTO_YES=false
 
 # ── Argument parsing ──────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ done
 # ── Confirmation helper ───────────────────────────────────────────────────────
 confirm() {
     if $AUTO_YES; then return 0; fi
-    printf "${YELLOW}[SurfSense]${NC} %s [y/N] " "$1"
+    printf "${YELLOW}[Nowing]${NC} %s [y/N] " "$1"
     read -r reply
     [[ "$reply" =~ ^[Yy]$ ]] || { warn "Aborted."; exit 0; }
 }
@@ -104,9 +104,9 @@ cleanup() {
         docker rm   "${TEMP_CONTAINER}" >/dev/null 2>&1 < /dev/null || true
     fi
     if [[ $exit_code -ne 0 ]]; then
-        printf "\n${RED}[SurfSense]${NC} Migration data extraction failed (exit code %s).\n" "${exit_code}" >&2
-        printf "${RED}[SurfSense]${NC} Full log: %s\n" "${LOG_FILE}" >&2
-        printf "${YELLOW}[SurfSense]${NC} Your original data in '${OLD_VOLUME}' is untouched.\n" >&2
+        printf "\n${RED}[Nowing]${NC} Migration data extraction failed (exit code %s).\n" "${exit_code}" >&2
+        printf "${RED}[Nowing]${NC} Full log: %s\n" "${LOG_FILE}" >&2
+        printf "${YELLOW}[Nowing]${NC} Your original data in '${OLD_VOLUME}' is untouched.\n" >&2
     fi
 }
 trap cleanup EXIT
@@ -147,7 +147,7 @@ docker info >/dev/null 2>&1 < /dev/null \
 
 # Old volume must exist
 docker volume ls --format '{{.Name}}' < /dev/null | grep -q "^${OLD_VOLUME}$" \
-    || error "Legacy volume '${OLD_VOLUME}' not found.\n       Are you sure you ran the old all-in-one SurfSense container?"
+    || error "Legacy volume '${OLD_VOLUME}' not found.\n       Are you sure you ran the old all-in-one Nowing container?"
 success "Found legacy volume: ${OLD_VOLUME}"
 
 # Detect and stop any container currently using the old volume
@@ -245,8 +245,8 @@ if ! docker exec \
         -e PGPASSWORD="${OLD_DB_PASSWORD}" \
         "${TEMP_CONTAINER}" \
         pg_dump -U "${OLD_DB_USER}" --no-password "${OLD_DB_NAME}" \
-        > "${DUMP_FILE}" 2>/tmp/surfsense_pgdump_err < /dev/null; then
-    cat /tmp/surfsense_pgdump_err >&2
+        > "${DUMP_FILE}" 2>/tmp/nowing_pgdump_err < /dev/null; then
+    cat /tmp/nowing_pgdump_err >&2
     error "pg_dump failed. See above for details."
 fi
 
@@ -294,10 +294,10 @@ else
             || head -c 32 /dev/urandom | base64 | tr -d '\n')
         warn "Non-interactive mode: generated a new SECRET_KEY automatically."
         warn "All active browser sessions will be logged out after migration."
-        warn "To restore your original key, update SECRET_KEY in ./surfsense/.env afterwards."
+        warn "To restore your original key, update SECRET_KEY in ./nowing/.env afterwards."
     else
-        printf "${YELLOW}[SurfSense]${NC} Enter the SECRET_KEY from your old container's environment\n"
-        printf "${YELLOW}[SurfSense]${NC} (press Enter to generate a new one — existing sessions will be invalidated): "
+        printf "${YELLOW}[Nowing]${NC} Enter the SECRET_KEY from your old container's environment\n"
+        printf "${YELLOW}[Nowing]${NC} (press Enter to generate a new one — existing sessions will be invalidated): "
         read -r RECOVERED_KEY
         if [[ -z "${RECOVERED_KEY}" ]]; then
             RECOVERED_KEY=$(openssl rand -base64 32 2>/dev/null \
@@ -323,10 +323,10 @@ success "Secret key: ${KEY_FILE}"
 printf "\n"
 info "Next step — run install.sh from this same directory:"
 printf "\n"
-printf "${CYAN}  curl -fsSL https://raw.githubusercontent.com/MODSetter/SurfSense/main/docker/scripts/install.sh | bash${NC}\n"
+printf "${CYAN}  curl -fsSL https://raw.githubusercontent.com/MODSetter/Nowing/main/docker/scripts/install.sh | bash${NC}\n"
 printf "\n"
 info "install.sh will detect the dump, restore your data into PostgreSQL 17,"
-info "and start the full SurfSense stack automatically."
+info "and start the full Nowing stack automatically."
 printf "\n"
 warn "Keep both files until you have verified the migration:"
 warn "  ${DUMP_FILE}"

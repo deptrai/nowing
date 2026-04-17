@@ -30,7 +30,7 @@ def load_sprint_status():
 
 def find_related_files(keywords):
     related = []
-    search_dirs = [PROJECT_ROOT / "surfsense_backend" / "app", PROJECT_ROOT / "surfsense_web" / "src", PROJECT_ROOT / "surfsense_web" / "components", PROJECT_ROOT / "surfsense_web" / "app"]
+    search_dirs = [PROJECT_ROOT / "nowing_backend" / "app", PROJECT_ROOT / "nowing_web" / "src", PROJECT_ROOT / "nowing_web" / "components", PROJECT_ROOT / "nowing_web" / "app"]
     for sdir in search_dirs:
         if not sdir.exists():
             continue

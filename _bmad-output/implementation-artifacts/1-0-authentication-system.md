@@ -4,8 +4,8 @@ Status: ready-for-dev
 
 ## Story
 
-**Là một** SurfSense user,
-**Tôi muốn** đăng nhập vào extension với tài khoản SurfSense của tôi,
+**Là một** Nowing user,
+**Tôi muốn** đăng nhập vào extension với tài khoản Nowing của tôi,
 **Để** extension có thể đồng bộ settings, lịch sử chat, và truy cập backend APIs.
 
 ## Acceptance Criteria
@@ -113,7 +113,7 @@ GET  /verify-token            - Verify JWT validity
 GET  /users/me                - Get current user info
 ```
 
-**JWT Configuration (từ `surfsense_backend/app/users.py`):**
+**JWT Configuration (từ `nowing_backend/app/users.py`):**
 - Secret: `config.SECRET_KEY`
 - Lifetime: 24 giờ (`3600 * 24` seconds)
 - Transport: Bearer token
@@ -154,7 +154,7 @@ chrome.identity.launchWebAuthFlow({
 **3. CORS Configuration:**
 Backend đã có CORS cho localhost, cần thêm extension origin:
 ```python
-# surfsense_backend/app/app.py - line 74-81
+# nowing_backend/app/app.py - line 74-81
 allowed_origins.extend([
     "chrome-extension://*",  # Cần thêm
 ])
@@ -164,7 +164,7 @@ allowed_origins.extend([
 
 **Files cần tạo mới:**
 ```
-surfsense_browser_extension/
+nowing_browser_extension/
 ├── lib/
 │   └── auth/
 │       ├── chrome-identity.ts    # Chrome Identity API wrapper
@@ -204,8 +204,8 @@ surfsense_browser_extension/
 
 ### References
 
-- [Source: surfsense_backend/app/users.py] - JWT strategy, OAuth config
-- [Source: surfsense_backend/app/app.py#L91-160] - Auth routes registration
+- [Source: nowing_backend/app/users.py] - JWT strategy, OAuth config
+- [Source: nowing_backend/app/app.py#L91-160] - Auth routes registration
 - [Source: _bmad-epics/epic-1-ai-powered-crypto-assistant.md#Story-1.0] - Full requirements
 - [Source: _bmad-output/architecture-extension.md] - Extension architecture
 - [Source: _bmad-output/architecture-backend.md] - Backend auth flow

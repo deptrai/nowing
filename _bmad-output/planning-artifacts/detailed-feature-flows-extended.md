@@ -1,11 +1,11 @@
-# SurfSense: Sơ đồ chi tiết các Luồng Ẩn (Triển khai Sâu)
+# Nowing: Sơ đồ chi tiết các Luồng Ẩn (Triển khai Sâu)
 
-Dựa trên việc kiểm tra sâu cấu trúc database (`db.py`) và kiến trúc API, đây là các Luồng Vi mô (Micro Flows) diễn ra bên dưới bề nổi bổ sung thêm cho 4 luồng cơ bản ban đầu. Đây là các Flow cấu thành sức mạnh hệ sinh thái nền tảng của SurfSense.
+Dựa trên việc kiểm tra sâu cấu trúc database (`db.py`) và kiến trúc API, đây là các Luồng Vi mô (Micro Flows) diễn ra bên dưới bề nổi bổ sung thêm cho 4 luồng cơ bản ban đầu. Đây là các Flow cấu thành sức mạnh hệ sinh thái nền tảng của Nowing.
 
 ---
 
 ## 5. Luồng Đồng bộ Thời gian thực & Local-first (RociCorp Zero)
-Giao diện của SurfSense đạt được tốc độ phản hồi tính bằng mili-giây (Instant UI) nhờ vào công nghệ Local-first từ Zero.
+Giao diện của Nowing đạt được tốc độ phản hồi tính bằng mili-giây (Instant UI) nhờ vào công nghệ Local-first từ Zero.
 
 ```mermaid
 sequenceDiagram
@@ -77,7 +77,7 @@ sequenceDiagram
 ---
 
 ## 7. Luồng Giao tiếp Cộng tác & Bình luận (Collaboration / Chat Comments)
-Mỗi Search Space trong SurfSense là một "Phòng làm việc chung". Các đoạn Chat AI có thể được bình luận, chia sẻ.
+Mỗi Search Space trong Nowing là một "Phòng làm việc chung". Các đoạn Chat AI có thể được bình luận, chia sẻ.
 
 ```mermaid
 sequenceDiagram
@@ -105,7 +105,7 @@ sequenceDiagram
 ---
 
 ## 8. Luồng Phát sinh Nội dung Đa phương tiện từ RAG (Podcast / Video)
-Trình độ tổng hợp kiến thức của SurfSense không dừng ở đoạn text, mà còn mở rộng ra Audio, Podcasts, Video Presentation dựa trên DB Models.
+Trình độ tổng hợp kiến thức của Nowing không dừng ở đoạn text, mà còn mở rộng ra Audio, Podcasts, Video Presentation dựa trên DB Models.
 
 ```mermaid
 sequenceDiagram

@@ -4,15 +4,15 @@
 
 **Story ID**: 1.1  
 **Story Title**: DexScreener Connector Integration  
-**Epic**: SurfSense Connectors Enhancement  
+**Epic**: Nowing Connectors Enhancement  
 **Priority**: High  
 **Status**: ✅ Implementation Complete (2026-02-01)  
 **Created**: 2026-01-31  
 
 ## 🎯 User Story
 
-**As a** SurfSense user tracking cryptocurrency markets  
-**I want** to connect my DexScreener data to SurfSense  
+**As a** Nowing user tracking cryptocurrency markets  
+**I want** to connect my DexScreener data to Nowing  
 **So that** I can search and chat with AI about my tracked trading pairs and token data
 
 ## 📝 Description
@@ -23,7 +23,7 @@ Implement a custom connector for DexScreener API that allows users to:
 3. Search and retrieve indexed crypto market data
 4. Use AI chat with context from DexScreener trading pairs
 
-This connector will integrate with SurfSense's existing connector architecture, following the established patterns from Luma, Slack, and other connectors.
+This connector will integrate with Nowing's existing connector architecture, following the established patterns from Luma, Slack, and other connectors.
 
 ## ✅ Acceptance Criteria
 
@@ -385,8 +385,8 @@ If critical issues occur:
 
 - [DexScreener API Documentation](https://docs.dexscreener.com/api/reference)
 - [Implementation Plan](./dexscreener-connector-implementation-plan.md)
-- [SurfSense Connector Architecture](../../../Documents/GitHub/SurfSense/_bmad-output/connectors-explained.md)
-- [Custom Connector Guide](../../../Documents/GitHub/SurfSense/_bmad-output/custom-connector-guide.md)
+- [Nowing Connector Architecture](../../../Documents/GitHub/Nowing/_bmad-output/connectors-explained.md)
+- [Custom Connector Guide](../../../Documents/GitHub/Nowing/_bmad-output/custom-connector-guide.md)
 
 ## 💬 Notes
 

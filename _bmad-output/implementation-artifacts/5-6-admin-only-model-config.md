@@ -72,7 +72,7 @@ Existing configs của các user trước kia vẫn hoạt động bình thườ
 - Model selector popup: "No models found" — NO Add/Add Image Model/Add Vision Model buttons ✅
 - `POST /api/v1/new-llm-configs` with regular user token → HTTP 403 Forbidden ✅
 
-**Admin (admin@surfsense.local):**
+**Admin (admin@nowing.local):**
 - `POST /api/v1/new-llm-configs` → HTTP 422 (schema validation error, NOT 403) → superuser check passed ✅
 
 **DB:**
@@ -81,17 +81,17 @@ Existing configs của các user trước kia vẫn hoạt động bình thườ
 - `vision_llm_configs.user_id`: `is_nullable=YES` ✅
 
 ### File List
-- `surfsense_backend/alembic/versions/128_make_model_config_user_id_nullable.py` — NEW migration
-- `surfsense_backend/app/users.py` — added `current_superuser` export
-- `surfsense_backend/app/routes/admin_routes.py` — import `current_superuser` from `users.py` instead of defining locally
-- `surfsense_backend/app/routes/new_llm_config_routes.py` — superuser gate on POST/PUT/DELETE, `user_id=None`
-- `surfsense_backend/app/routes/image_generation_routes.py` — superuser gate on config POST/PUT/DELETE
-- `surfsense_backend/app/routes/vision_llm_routes.py` — superuser gate on POST/PUT/DELETE
-- `surfsense_web/components/settings/model-config-manager.tsx` — `is_superuser` replaces RBAC flags
-- `surfsense_web/components/settings/image-model-manager.tsx` — same
-- `surfsense_web/components/settings/vision-model-manager.tsx` — same
-- `surfsense_web/components/new-chat/model-selector.tsx` — `onAddNewLLM` made optional, LLM Add button gated
-- `surfsense_web/components/new-chat/chat-header.tsx` — `isAdmin` check gates all 3 `onAddNew*` props
+- `nowing_backend/alembic/versions/128_make_model_config_user_id_nullable.py` — NEW migration
+- `nowing_backend/app/users.py` — added `current_superuser` export
+- `nowing_backend/app/routes/admin_routes.py` — import `current_superuser` from `users.py` instead of defining locally
+- `nowing_backend/app/routes/new_llm_config_routes.py` — superuser gate on POST/PUT/DELETE, `user_id=None`
+- `nowing_backend/app/routes/image_generation_routes.py` — superuser gate on config POST/PUT/DELETE
+- `nowing_backend/app/routes/vision_llm_routes.py` — superuser gate on POST/PUT/DELETE
+- `nowing_web/components/settings/model-config-manager.tsx` — `is_superuser` replaces RBAC flags
+- `nowing_web/components/settings/image-model-manager.tsx` — same
+- `nowing_web/components/settings/vision-model-manager.tsx` — same
+- `nowing_web/components/new-chat/model-selector.tsx` — `onAddNewLLM` made optional, LLM Add button gated
+- `nowing_web/components/new-chat/chat-header.tsx` — `isAdmin` check gates all 3 `onAddNew*` props
 
 ### Change Log
 - 2026-04-15: Implement admin-only model configuration — superuser gate on backend CUD, hide Add/Edit/Delete UI for regular users in both chat selector and settings dialog.
@@ -148,12 +148,12 @@ Existing configs của các user trước kia vẫn hoạt động bình thườ
 **Fix:** `onEditLLM` prop in `ModelSelectorProps` changed from required → optional. In `chat-header.tsx`, all 3 `onEdit*` props now gated with `isAdmin ? handler : undefined` — consistent với `onAdd*` pattern đã có. Regular users thấy model list read-only, không có edit button trên hover.
 
 ### Additional Files Changed
-- `surfsense_backend/alembic/versions/129_make_model_config_search_space_id_nullable.py`
-- `surfsense_backend/app/db.py`
-- `surfsense_backend/app/schemas/new_llm_config.py`, `image_generation.py`, `vision_llm.py`
-- `surfsense_backend/app/routes/new_llm_config_routes.py`, `image_generation_routes.py`, `vision_llm_routes.py`
-- `surfsense_web/components/new-chat/model-selector.tsx`
-- `surfsense_web/components/new-chat/chat-header.tsx`
+- `nowing_backend/alembic/versions/129_make_model_config_search_space_id_nullable.py`
+- `nowing_backend/app/db.py`
+- `nowing_backend/app/schemas/new_llm_config.py`, `image_generation.py`, `vision_llm.py`
+- `nowing_backend/app/routes/new_llm_config_routes.py`, `image_generation_routes.py`, `vision_llm_routes.py`
+- `nowing_web/components/new-chat/model-selector.tsx`
+- `nowing_web/components/new-chat/chat-header.tsx`
 
 ## Review Findings (2026-04-15)
 

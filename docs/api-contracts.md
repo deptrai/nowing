@@ -1,7 +1,7 @@
-# SurfSense API Contracts
+# Nowing API Contracts
 
 ## Tổng quan
-SurfSense Backend cấu trúc hệ thống APIs thành các Routers chuẩn RESTful (thư mục `api/routes`). Toàn bộ API đều trả về type hints giúp FastAPI tự động serialize Pydantic ra Swagger UI và các Frontend Generator có thể tiêu thụ.
+Nowing Backend cấu trúc hệ thống APIs thành các Routers chuẩn RESTful (thư mục `api/routes`). Toàn bộ API đều trả về type hints giúp FastAPI tự động serialize Pydantic ra Swagger UI và các Frontend Generator có thể tiêu thụ.
 
 ## 1. Nhóm API Quản Trị Hệ Thống / Tài Khoản
 - **`auth_routes.py`**: Quản lý OAuth/Login, Tokens, Session Refresh.
@@ -32,5 +32,5 @@ Mở rộng LLM capabilities beyond text:
 - **`reports_routes.py`**, **`export_routes.py`**: Chuyển đổi Chat Output thành format Markdown, PDF.
 
 ## Quy Chuẩn Tương Tác
-- Backend sử dụng chuẩn Pydantic Models (nằm ở `surfsense_backend/app/schemas/`) rải đều qua response `response_model=...`.
-- Client gọi thông qua tanstack-query được define trong `surfsense_web/api/`. Riêng đối với dữ liệu Realtime, Client hoàn toàn bypass API POST/GET truyền thống mà dùng `@rocicorp/zero` để mutate trực tiếp vào Schema.
+- Backend sử dụng chuẩn Pydantic Models (nằm ở `nowing_backend/app/schemas/`) rải đều qua response `response_model=...`.
+- Client gọi thông qua tanstack-query được define trong `nowing_web/api/`. Riêng đối với dữ liệu Realtime, Client hoàn toàn bypass API POST/GET truyền thống mà dùng `@rocicorp/zero` để mutate trực tiếp vào Schema.

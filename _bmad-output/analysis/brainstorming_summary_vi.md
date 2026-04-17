@@ -1,4 +1,4 @@
-# SurfSense Crypto Co-Pilot - Tóm Tắt Phiên Brainstorming
+# Nowing Crypto Co-Pilot - Tóm Tắt Phiên Brainstorming
 
 **Ngày:** 1 tháng 2, 2026  
 **Phương pháp:** Progressive Technique Flow  
@@ -9,7 +9,7 @@
 
 ## Tổng Quan Phiên
 
-**Chủ đề:** SurfSense 2.0 - AI Co-Pilot cho Crypto Trading & Content Creation
+**Chủ đề:** Nowing 2.0 - AI Co-Pilot cho Crypto Trading & Content Creation
 
 **Mục tiêu:**
 - Tạo ra bộ tính năng toàn diện
@@ -159,7 +159,7 @@
 - 6 tuần, $20K
 
 **3. Phương pháp phát triển:** Đội ngũ hiện tại ✅
-- Tận dụng SurfSense developers
+- Tận dụng Nowing developers
 - Part-time, tổng 12 tuần
 
 **4. Chiến lược ra mắt:** Private Beta ✅
@@ -235,7 +235,7 @@
 
 **Timeline:** 12 tuần  
 **Ngân sách:** $18K  
-**Đội ngũ:** SurfSense developers hiện tại (part-time)
+**Đội ngũ:** Nowing developers hiện tại (part-time)
 
 **Tại sao:**
 1. **Khả thi:** Trong giới hạn thời gian/ngân sách
@@ -276,7 +276,7 @@
 ### Yếu tố thành công quan trọng
 
 1. **Giá trị đề xuất rõ ràng:** "AI giám sát thị trường crypto 24/7"
-2. **Nền tảng kỹ thuật:** Kiến trúc SurfSense đã tồn tại
+2. **Nền tảng kỹ thuật:** Kiến trúc Nowing đã tồn tại
 3. **Xác thực thị trường:** Đối thủ chứng minh thị trường tồn tại
 4. **Phạm vi có thể quản lý:** MVP khả thi
 5. **Phản hồi nhanh:** Private beta cho phép iteration
@@ -310,6 +310,6 @@ Phiên brainstorming này đã thành công chuyển đổi một khái niệm r
 - Phân tích sâu các khái niệm cốt lõi
 - Tạo lộ trình 12 tuần thực tế
 
-**Kết quả:** Một kế hoạch đã được xác thực, sẵn sàng triển khai cho SurfSense Crypto Co-Pilot MVP cân bằng giữa tham vọng với thực dụng, đổi mới với khả thi, và tầm nhìn với thực thi.
+**Kết quả:** Một kế hoạch đã được xác thực, sẵn sàng triển khai cho Nowing Crypto Co-Pilot MVP cân bằng giữa tham vọng với thực dụng, đổi mới với khả thi, và tầm nhìn với thực thi.
 
 **Trạng thái:** Sẵn sàng cho user approval và thực thi ngay lập tức. ✅ (Đã được phê duyệt)

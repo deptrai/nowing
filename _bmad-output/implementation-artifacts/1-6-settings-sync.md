@@ -4,7 +4,7 @@ Status: ready-for-dev
 
 ## Story
 
-**Là một** SurfSense user,
+**Là một** Nowing user,
 **Tôi muốn** extension sử dụng cùng model và search space như web dashboard,
 **Để** tôi không phải cấu hình lại.
 
@@ -200,7 +200,7 @@ interface LLMConfig {
 
 **Files cần tạo mới:**
 ```
-surfsense_browser_extension/
+nowing_browser_extension/
 ├── lib/
 │   └── settings/
 │       ├── settings-service.ts    # API calls
@@ -302,9 +302,9 @@ useEffect(() => {
 
 ### References
 
-- [Source: surfsense_backend/app/routes/search_spaces_routes.py] - Search space APIs
-- [Source: surfsense_backend/app/routes/new_llm_config_routes.py] - LLM config APIs
-- [Source: surfsense_browser_extension/sidepanel/chat/ChatHeader.tsx] - Existing UI
+- [Source: nowing_backend/app/routes/search_spaces_routes.py] - Search space APIs
+- [Source: nowing_backend/app/routes/new_llm_config_routes.py] - LLM config APIs
+- [Source: nowing_browser_extension/sidepanel/chat/ChatHeader.tsx] - Existing UI
 - [Source: _bmad-epics/epic-1-ai-powered-crypto-assistant.md#Story-1.6] - Full requirements
 - [Source: _bmad-output/implementation-artifacts/1-0-authentication-system.md] - Auth dependency
 

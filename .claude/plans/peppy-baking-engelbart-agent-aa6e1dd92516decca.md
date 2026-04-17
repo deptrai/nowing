@@ -9,7 +9,7 @@
 ## Phase 1: Backend — Document Upload Quota Pre-Check
 
 ### Task 1.1: Add Page Quota Check to Document Upload Route
-**File**: `/surfsense_backend/app/routes/documents_routes.py`  
+**File**: `/nowing_backend/app/routes/documents_routes.py`  
 **Target Function**: `create_documents_file_upload()` (line 121)
 
 **Changes**:
@@ -21,10 +21,10 @@
 4. If `PageLimitExceededError` is raised, catch and return `HTTPException(status_code=402, detail=error.message)`
 5. Otherwise, proceed with document creation
 
-**Pattern Reference**: Use 402 response pattern from `/surfsense_backend/app/routes/new_chat_routes.py` (lines 1149, 1427, 1591)
+**Pattern Reference**: Use 402 response pattern from `/nowing_backend/app/routes/new_chat_routes.py` (lines 1149, 1427, 1591)
 
 ### Task 1.2: Update Document Task to Track Actual Usage
-**File**: `/surfsense_backend/app/tasks/celery_tasks/document_tasks.py`  
+**File**: `/nowing_backend/app/tasks/celery_tasks/document_tasks.py`  
 **Target Function**: `process_file_upload_task()` or `process_file_upload_with_document_task()`
 
 **Changes**:
@@ -34,7 +34,7 @@
 3. Log the difference between estimated and actual pages
 
 ### Task 1.3: Verify Token Quota Check in Chat/Message Route
-**File**: `/surfsense_backend/app/routes/new_chat_routes.py`  
+**File**: `/nowing_backend/app/routes/new_chat_routes.py`  
 **Target**: `chat()` or `create_message()` endpoint
 
 **Changes**:
@@ -47,7 +47,7 @@
 ## Phase 2: Frontend — Quota Data & Indicator Component
 
 ### Task 2.1: Expose Quota Data from User API
-**File**: `/surfsense_backend/app/routes/users_routes.py` or `/surfsense_backend/app/routes/__init__.py`  
+**File**: `/nowing_backend/app/routes/users_routes.py` or `/nowing_backend/app/routes/__init__.py`  
 **Endpoint**: `GET /api/v1/users/me` (extend existing) or `GET /api/v1/users/quota` (new)
 
 **Option A: Extend `/api/v1/users/me`**
@@ -60,7 +60,7 @@
 **Recommended**: Option A (simpler, reuses existing endpoint)
 
 ### Task 2.2: Update User Query Atom
-**File**: `/surfsense_web/atoms/user/user-query.atoms.ts`  
+**File**: `/nowing_web/atoms/user/user-query.atoms.ts`  
 **Target**: `currentUserAtom`
 
 **Changes**:
@@ -69,7 +69,7 @@
 3. Atom already calls `/api/v1/users/me`, no API call changes needed
 
 ### Task 2.3: Create QuotaIndicator Component
-**File**: `/surfsense_web/components/ui/quota-indicator.tsx` (new file)
+**File**: `/nowing_web/components/ui/quota-indicator.tsx` (new file)
 
 **Component Structure**:
 ```tsx
@@ -95,10 +95,10 @@ export function QuotaIndicator({ ... }) {
 }
 ```
 
-**Reuse**: Existing `Progress` component from `/surfsense_web/components/ui/progress.tsx`
+**Reuse**: Existing `Progress` component from `/nowing_web/components/ui/progress.tsx`
 
 ### Task 2.4: Integrate QuotaIndicator into Sidebar/Header
-**File**: `/surfsense_web/components/ui/sidebar.tsx` or `/surfsense_web/components/new-chat/chat-header.tsx`
+**File**: `/nowing_web/components/ui/sidebar.tsx` or `/nowing_web/components/new-chat/chat-header.tsx`
 
 **Changes**:
 1. Import `QuotaIndicator` component
@@ -106,18 +106,18 @@ export function QuotaIndicator({ ... }) {
 3. Connect to `currentUserAtom` via Jotai hook
 4. Pass quota values from atom to component
 
-**Alternative Location**: `/surfsense_web/components/assistant-ui/document-upload-popup.tsx`
+**Alternative Location**: `/nowing_web/components/assistant-ui/document-upload-popup.tsx`
 - Show quota indicator before upload dialog opens
 - Warn user if close to limit
 
 ### Task 2.5: Ensure Document Upload 402 Handling
-**File**: `/surfsense_web/components/sources/DocumentUploadTab.tsx`
+**File**: `/nowing_web/components/sources/DocumentUploadTab.tsx`
 
 **Changes**:
 1. Verify error handling for 402 responses
 2. Pattern: Check `response.status === 402`
 3. Show toast with quota warning
-4. Can reuse SSE error pattern from `/surfsense_web/app/dashboard/.../new-chat/page.tsx`
+4. Can reuse SSE error pattern from `/nowing_web/app/dashboard/.../new-chat/page.tsx`
 
 ---
 
@@ -163,18 +163,18 @@ export function QuotaIndicator({ ... }) {
 ## Files to Modify
 
 ### Backend (5 files)
-- `/surfsense_backend/app/routes/documents_routes.py` — Add pre-check
-- `/surfsense_backend/app/tasks/celery_tasks/document_tasks.py` — Update actual usage
-- `/surfsense_backend/app/routes/new_chat_routes.py` — Verify (likely no change)
-- `/surfsense_backend/app/routes/users_routes.py` — Extend user API (if needed)
-- `/surfsense_backend/app/schemas/users.py` — Extend user response schema
+- `/nowing_backend/app/routes/documents_routes.py` — Add pre-check
+- `/nowing_backend/app/tasks/celery_tasks/document_tasks.py` — Update actual usage
+- `/nowing_backend/app/routes/new_chat_routes.py` — Verify (likely no change)
+- `/nowing_backend/app/routes/users_routes.py` — Extend user API (if needed)
+- `/nowing_backend/app/schemas/users.py` — Extend user response schema
 
 ### Frontend (5 files)
-- `/surfsense_web/atoms/user/user-query.atoms.ts` — Extend atom
-- `/surfsense_web/components/ui/quota-indicator.tsx` — **New component**
-- `/surfsense_web/components/ui/sidebar.tsx` — Or chat-header
-- `/surfsense_web/components/sources/DocumentUploadTab.tsx` — Verify error handling
-- `/surfsense_web/app/dashboard/.../new-chat/page.tsx` — Verify SSE error handling
+- `/nowing_web/atoms/user/user-query.atoms.ts` — Extend atom
+- `/nowing_web/components/ui/quota-indicator.tsx` — **New component**
+- `/nowing_web/components/ui/sidebar.tsx` — Or chat-header
+- `/nowing_web/components/sources/DocumentUploadTab.tsx` — Verify error handling
+- `/nowing_web/app/dashboard/.../new-chat/page.tsx` — Verify SSE error handling
 
 ---
 

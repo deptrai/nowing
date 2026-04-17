@@ -27,14 +27,14 @@ So that tôi không phải mòn mỏi nhìn biểu tượng Loading như các we
 ### Code Organization
 This story is currently marked as `done`. Implementation should target the following components/files:
 
-- `surfsense_web/components/public-chat-snapshots/public-chat-snapshot-row.tsx`
-- `surfsense_web/components/chat-comments/comment-panel-container/comment-panel-container.tsx`
-- `surfsense_backend/app/agents/new_chat/checkpointer.py`
-- `surfsense_web/components/chat-comments/comment-item/types.ts`
-- `surfsense_backend/app/agents/new_chat/tools/google_calendar/create_event.py`
-- `surfsense_backend/app/routes/public_chat_routes.py`
-- `surfsense_web/components/chat-comments/comment-composer/comment-composer.tsx`
-- `surfsense_web/components/public-chat/public-chat-not-found.tsx`
+- `nowing_web/components/public-chat-snapshots/public-chat-snapshot-row.tsx`
+- `nowing_web/components/chat-comments/comment-panel-container/comment-panel-container.tsx`
+- `nowing_backend/app/agents/new_chat/checkpointer.py`
+- `nowing_web/components/chat-comments/comment-item/types.ts`
+- `nowing_backend/app/agents/new_chat/tools/google_calendar/create_event.py`
+- `nowing_backend/app/routes/public_chat_routes.py`
+- `nowing_web/components/chat-comments/comment-composer/comment-composer.tsx`
+- `nowing_web/components/public-chat/public-chat-not-found.tsx`
 
 ### Developer Agent Constraints
 1. **No Destructive Refactors**: Extend existing modules when possible.

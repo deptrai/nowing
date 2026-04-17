@@ -1,7 +1,7 @@
-# Kiến Trúc Hệ Thống: Backend (`surfsense_backend`)
+# Kiến Trúc Hệ Thống: Backend (`nowing_backend`)
 
 ## 1. Tổng Quan
-Backend của SurfSense (viết bằng Python 3.12) chịu trách nhiệm chính trong việc xử lý Data Ingestion, Indexing, LLM Orchestration và cung cấp REST APIs cho các Client.
+Backend của Nowing (viết bằng Python 3.12) chịu trách nhiệm chính trong việc xử lý Data Ingestion, Indexing, LLM Orchestration và cung cấp REST APIs cho các Client.
 
 ## 2. Công Nghệ Cốt Lõi
 - **Môi trường Server**: FastAPI, Uvicorn
@@ -12,7 +12,7 @@ Backend của SurfSense (viết bằng Python 3.12) chịu trách nhiệm chính
 
 ## 3. Cấu Trúc Mã Nguồn (Directory Structure)
 ```text
-surfsense_backend/app/
+nowing_backend/app/
 ├── agents/              # Định nghĩa LangGraph agents / chains để xử lý luồng AI
 ├── api/routes/          # Chứa các endpoint API (users, chat, documents...)
 ├── connectors/          # Logic kết nối bên thứ 3 (Google Drive, Slack, Composio)

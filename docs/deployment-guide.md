@@ -1,24 +1,24 @@
-# SurfSense Deployment Guide
+# Nowing Deployment Guide
 
 ## Overview
-SurfSense uses Docker and Docker Compose as its primary mechanism for deployment, scaling, and infrastructure orchestration. CI/CD is fully managed via GitHub Actions mapping to GitHub Container Registry (GHCR).
+Nowing uses Docker and Docker Compose as its primary mechanism for deployment, scaling, and infrastructure orchestration. CI/CD is fully managed via GitHub Actions mapping to GitHub Container Registry (GHCR).
 
 ## Docker Compose Production Stack
 Located at `docker/docker-compose.yml`, the production stack orchestrates:
 1.  **db**: `pgvector/pgvector:pg17` (Postgres 17 with vector search).
 2.  **redis**: `redis:8-alpine` (Task queuing and caching).
 3.  **searxng**: Private metasearch instance (`searxng/searxng`).
-4.  **backend**: The FastAPI application serving REST endpoints (`ghcr.io/modsetter/surfsense-backend:latest`).
+4.  **backend**: The FastAPI application serving REST endpoints (`ghcr.io/modsetter/nowing-backend:latest`).
 5.  **celery_worker**: Background processing worker.
 6.  **celery_beat**: Background cron/recurring tasks scheduler.
 7.  **zero-cache**: `rocicorp/zero:0.26.2` (Sync engine connecting Postgres and Next.js).
-8.  **frontend**: Next.js App Router Web Interface (`ghcr.io/modsetter/surfsense-web:latest`).
+8.  **frontend**: Next.js App Router Web Interface (`ghcr.io/modsetter/nowing-web:latest`).
 
 ## CI/CD Pipeline (GitHub Actions)
 The workflow is defined at `.github/workflows/docker-build.yml`.
 
 ### Triggers
-- Automatic on pushes to `main` and `dev` branches for paths inside `surfsense_backend/**` and `surfsense_web/**`.
+- Automatic on pushes to `main` and `dev` branches for paths inside `nowing_backend/**` and `nowing_web/**`.
 - Manual via `workflow_dispatch`.
 
 ### Stages
@@ -32,7 +32,7 @@ The workflow is defined at `.github/workflows/docker-build.yml`.
    - Exports the docker image digest into temporary artifacts.
 3. **Manifest Creation (`create_manifest`)**:
    - Takes the isolated `amd64` and `arm64` images and merges them into a single manifest list.
-   - Pushes to `ghcr.io/modsetter/surfsense-backend` and `ghcr.io/modsetter/surfsense-web`.
+   - Pushes to `ghcr.io/modsetter/nowing-backend` and `ghcr.io/modsetter/nowing-web`.
 
 ## Environment Handling
 - **Frontend Build args**: Next.js requires environment constants baked at build time (e.g. `NEXT_PUBLIC_FASTAPI_BACKEND_URL`). The GH Action pipes dummy values `__NEXT_PUBLIC_FASTAPI_BACKEND_URL__` which are presumably swapped via `docker-entrypoint.sh` at runtime execution.

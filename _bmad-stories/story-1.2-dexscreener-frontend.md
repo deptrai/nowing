@@ -4,7 +4,7 @@
 
 **Story ID**: 1.2  
 **Story Title**: DexScreener Connector Frontend UI  
-**Epic**: SurfSense Connectors Enhancement  
+**Epic**: Nowing Connectors Enhancement  
 **Priority**: High  
 **Status**: ✅ Implementation Complete (2026-02-01)  
 **Created**: 2026-01-31  
@@ -12,7 +12,7 @@
 
 ## 🎯 User Story
 
-**As a** SurfSense user tracking cryptocurrency markets  
+**As a** Nowing user tracking cryptocurrency markets  
 **I want** an intuitive UI to configure my DexScreener connector  
 **So that** I can easily add/manage tracked tokens and view connector status
 
@@ -25,7 +25,7 @@ Implement frontend UI components for the DexScreener connector that allows users
 4. Configure periodic sync settings
 5. Access connector documentation
 
-This story implements the user-facing components following SurfSense's established connector UI patterns.
+This story implements the user-facing components following Nowing's established connector UI patterns.
 
 ## ✅ Acceptance Criteria
 
@@ -92,7 +92,7 @@ This story implements the user-facing components following SurfSense's establish
 ## 🏗️ Technical Implementation
 
 ### 1. Connect Form Component
-**File**: `surfsense_web/components/assistant-ui/connector-popup/connect-forms/components/dexscreener-connect-form.tsx`
+**File**: `nowing_web/components/assistant-ui/connector-popup/connect-forms/components/dexscreener-connect-form.tsx`
 
 **Component Structure**:
 ```typescript
@@ -158,7 +158,7 @@ const tokenSchema = z.object({
 6. **Benefits Section**: Display connector benefits
 
 ### 2. Connector Config Component
-**File**: `surfsense_web/components/assistant-ui/connector-popup/connector-configs/components/dexscreener-config.tsx`
+**File**: `nowing_web/components/assistant-ui/connector-popup/connector-configs/components/dexscreener-config.tsx`
 
 **Component Structure**:
 ```typescript
@@ -193,7 +193,7 @@ export const DexScreenerConfig: FC<ConnectorConfigProps> = ({
    - Edit token details
 
 ### 3. Connector Benefits
-**File**: `surfsense_web/components/assistant-ui/connector-popup/connect-forms/connector-benefits.ts`
+**File**: `nowing_web/components/assistant-ui/connector-popup/connect-forms/connector-benefits.ts`
 
 **Add to benefits object**:
 ```typescript
@@ -208,8 +208,8 @@ DEXSCREENER_CONNECTOR: [
 
 ### 4. Connector Registry
 **Files to Update**:
-- `surfsense_web/components/assistant-ui/connector-popup/connect-forms/index.tsx`
-- `surfsense_web/components/assistant-ui/connector-popup/connector-configs/index.tsx`
+- `nowing_web/components/assistant-ui/connector-popup/connect-forms/index.tsx`
+- `nowing_web/components/assistant-ui/connector-popup/connector-configs/index.tsx`
 
 **Register Components**:
 ```typescript
@@ -229,13 +229,13 @@ case EnumConnectorName.DEXSCREENER_CONNECTOR:
 ```
 
 ### 5. Documentation
-**File**: `surfsense_web/content/docs/connectors/dexscreener.mdx`
+**File**: `nowing_web/content/docs/connectors/dexscreener.mdx`
 
 **Structure**:
 ```markdown
 ---
 title: DexScreener
-description: Connect DexScreener trading pair data to SurfSense
+description: Connect DexScreener trading pair data to Nowing
 ---
 
 # DexScreener Integration Setup Guide
@@ -248,7 +248,7 @@ description: Connect DexScreener trading pair data to SurfSense
 ## Authorization
 No authentication needed - DexScreener API is public.
 
-## Connecting to SurfSense
+## Connecting to Nowing
 1. Navigate to Connector Dashboard
 2. Select DexScreener Connector
 3. Configure tracked tokens:
@@ -268,16 +268,16 @@ No authentication needed - DexScreener API is public.
 
 ### 6. Assets
 **Files to Add**:
-- `surfsense_web/public/connectors/dexscreener.svg` - Connector icon
+- `nowing_web/public/connectors/dexscreener.svg` - Connector icon
 
 **Icon Requirements**:
 - SVG format
 - 24x24px viewBox
 - Monochrome design
-- Matches SurfSense design system
+- Matches Nowing design system
 
 ### 7. Enum Registration
-**File**: `surfsense_web/contracts/enums/connector.ts`
+**File**: `nowing_web/contracts/enums/connector.ts`
 
 **Add to EnumConnectorName**:
 ```typescript
@@ -442,8 +442,8 @@ interface DexScreenerConnectorSubmission {
 ## 📎 Related Files
 
 - Backend Story: [Story 1.1](./story-1.1-dexscreener-connector.md)
-- Luma Reference: `surfsense_web/components/assistant-ui/connector-popup/connect-forms/components/luma-connect-form.tsx`
-- Connector Docs: `surfsense_web/content/docs/connectors/`
+- Luma Reference: `nowing_web/components/assistant-ui/connector-popup/connect-forms/components/luma-connect-form.tsx`
+- Connector Docs: `nowing_web/content/docs/connectors/`
 
 ## 💡 Implementation Notes
 

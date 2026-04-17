@@ -1,7 +1,7 @@
 # Kiến Trúc Web Frontend
 
 ## Tổng Quan
-Ứng dụng Web SurfSense được xây dựng trên **Next.js 16**, tận dụng các tính năng mới nhất như **React Server Components (RSC)** và **Server Actions**. Nó mang lại trải nghiệm người dùng (UX) hiện đại, nhanh chóng và tương tác cao, đóng vai trò là giao diện chính để người dùng quản lý kiến thức và tương tác với AI Agents.
+Ứng dụng Web Nowing được xây dựng trên **Next.js 16**, tận dụng các tính năng mới nhất như **React Server Components (RSC)** và **Server Actions**. Nó mang lại trải nghiệm người dùng (UX) hiện đại, nhanh chóng và tương tác cao, đóng vai trò là giao diện chính để người dùng quản lý kiến thức và tương tác với AI Agents.
 
 ## Stack Công Nghệ (Tech Stack)
 
@@ -23,7 +23,7 @@
 - **Data Fetching**: Fetch dữ liệu trực tiếp trong Server Components (không cần useEffect cho initial data).
 
 ### 2. Server Actions cho Mutations
-- Thay vì tạo API routes riêng biệt cho mọi hành động (submit form, like bài viết), SurfSense sử dụng **Server Actions**.
+- Thay vì tạo API routes riêng biệt cho mọi hành động (submit form, like bài viết), Nowing sử dụng **Server Actions**.
 - Gọi hàm backend trực tiếp từ frontend code.
 - Xử lý xác thực và validation ngay trong action.
 
@@ -37,7 +37,7 @@
 - **Generative UI**: Render các components React ngay trong luồng chat (ví dụ: hiển thị một bảng dữ liệu hoặc biểu đồ thay vì chỉ text).
 - **Tool Call Handling**: Client hiển thị trạng thái "đang xử lý" khi Agent gọi tool kiểm tra thời tiết hoặc tìm kiếm document.
 
-## Cấu Trúc Thư Mục Chính (`surfsense_web/app`)
+## Cấu Trúc Thư Mục Chính (`nowing_web/app`)
 
 - `(home)/`: Landing page, Marketing sites (Public).
 - `dashboard/`: Không gian làm việc chính của user (Protected).

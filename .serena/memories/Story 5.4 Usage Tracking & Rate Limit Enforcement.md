@@ -8,26 +8,26 @@ Pre-implementation. Plan mode active. Background agents completed discovery:
 ## Key Findings
 
 ### Backend Infrastructure (Already Exists)
-- **User model columns** (`/surfsense_backend/app/db.py`):
+- **User model columns** (`/nowing_backend/app/db.py`):
   - `plan_id`, `pages_limit`, `monthly_token_limit`, `tokens_used_this_month`, `subscription_status`
   - `stripe_customer_id`, `stripe_subscription_id`
 
-- **PLAN_LIMITS config** (`/surfsense_backend/app/config/__init__.py:314`):
+- **PLAN_LIMITS config** (`/nowing_backend/app/config/__init__.py:314`):
   ```
   free: {monthly_token_limit: 50K, pages_limit: 500}
   pro_monthly: {monthly_token_limit: 1M, pages_limit: 5K}
   pro_yearly: {monthly_token_limit: 1M, pages_limit: 5K}
   ```
 
-- **Stripe webhook handler** (`/surfsense_backend/app/routes/stripe_routes.py`):
+- **Stripe webhook handler** (`/nowing_backend/app/routes/stripe_routes.py`):
   - `checkout.session.completed`: Sets limits immediately
   - `customer.subscription.created/updated`: Parses price ID → plan_id, applies limits
   - Sets `user.monthly_token_limit`, `user.pages_limit`, resets `tokens_used_this_month`
 
-- **Admin approval** (`/surfsense_backend/app/routes/admin_routes.py:115`):
+- **Admin approval** (`/nowing_backend/app/routes/admin_routes.py:115`):
   - `approve_subscription_request()`: Sets plan, limits, and subscription status
 
-- **Token tracking** (`/surfsense_backend/app/services/token_quota_service.py`):
+- **Token tracking** (`/nowing_backend/app/services/token_quota_service.py`):
   - `update_token_usage()`: Increments `tokens_used_this_month`
   - `_maybe_reset_monthly_tokens()`: Auto-resets on date boundary
   - `check_token_quota()`: Raises `TokenQuotaExceededError` on limit breach
@@ -35,24 +35,24 @@ Pre-implementation. Plan mode active. Background agents completed discovery:
 
 ### Frontend Infrastructure (Already Exists)
 - **Upload components**:
-  - `/surfsense_web/components/sources/DocumentUploadTab.tsx` — Uses `Progress` component
-  - `/surfsense_web/components/assistant-ui/document-upload-popup.tsx` — Dialog with error alerts
+  - `/nowing_web/components/sources/DocumentUploadTab.tsx` — Uses `Progress` component
+  - `/nowing_web/components/assistant-ui/document-upload-popup.tsx` — Dialog with error alerts
 
 - **Quota error handling**:
-  - `/surfsense_web/app/dashboard/.../new-chat/page.tsx`:
+  - `/nowing_web/app/dashboard/.../new-chat/page.tsx`:
     - `QuotaExceededError` class for 402 status codes
     - Detects `response.status === 402` in SSE stream
     - Fallback: `parsed.errorText?.includes("quota")` or `"token_quota_exceeded"`
     - Shows toast: "Monthly token quota exceeded. Upgrade your plan to continue."
 
-- **Progress bar**: `/surfsense_web/components/ui/progress.tsx` (Shadcn component)
+- **Progress bar**: `/nowing_web/components/ui/progress.tsx` (Shadcn component)
 
-- **User atom**: `/surfsense_web/atoms/user/user-query.atoms.ts` → `currentUserAtom` fetches `/api/v1/users/me`
+- **User atom**: `/nowing_web/atoms/user/user-query.atoms.ts` → `currentUserAtom` fetches `/api/v1/users/me`
 
 ## Scope of 5.4
 
 ### Backend Checklist
-1. Add page quota pre-check to document upload route (`/surfsense_backend/app/routes/documents_routes.py`)
+1. Add page quota pre-check to document upload route (`/nowing_backend/app/routes/documents_routes.py`)
    - Before accepting files, call `PageLimitService.check_page_limit()`
    - Estimate pages using `estimate_pages_from_metadata()` for cloud uploads
    - Return 402 if limit exceeded
@@ -72,13 +72,13 @@ Pre-implementation. Plan mode active. Background agents completed discovery:
    - Displays pages and tokens side-by-side or stacked
 
 3. Integrate quota indicator into sidebar or chat-header
-   - `/surfsense_web/components/ui/sidebar.tsx` or `/surfsense_web/components/new-chat/chat-header.tsx`
+   - `/nowing_web/components/ui/sidebar.tsx` or `/nowing_web/components/new-chat/chat-header.tsx`
 
 4. Ensure document upload handles 402 errors gracefully
    - Reuse 402/toast pattern from SSE stream
 
 ## HTTP 402 Response Pattern (Already in Use)
-From `/surfsense_backend/app/routes/new_chat_routes.py` (lines 1149, 1427, 1591):
+From `/nowing_backend/app/routes/new_chat_routes.py` (lines 1149, 1427, 1591):
 ```python
 raise HTTPException(status_code=402, detail="Monthly token quota exceeded")
 ```

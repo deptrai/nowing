@@ -9,7 +9,7 @@ import sys
 import os
 
 # Add backend to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'surfsense_backend'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'nowing_backend'))
 
 from app.agents.new_chat.tools.knowledge_base import search_knowledge_base_async
 from app.db import get_async_session

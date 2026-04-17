@@ -1,10 +1,10 @@
 ---
 name: SaaS Transition Decision
-description: SurfSense is transitioning from self-hosted to SaaS-only — no more self-hosted mode support
+description: Nowing is transitioning from self-hosted to SaaS-only — no more self-hosted mode support
 type: project
 ---
 
-SurfSense đang chuyển đổi hoàn toàn sang SaaS, không còn hỗ trợ self-hosted nữa.
+Nowing đang chuyển đổi hoàn toàn sang SaaS, không còn hỗ trợ self-hosted nữa.
 
 **Why:** Quyết định kinh doanh — chuyển sang mô hình subscription SaaS.
 

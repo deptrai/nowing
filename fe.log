@@ -1,5 +1,5 @@
 
-> surfsense_web@0.0.15 dev
+> nowing_web@0.0.15 dev
 > next dev --turbopack
 
 ▲ Next.js 16.1.6 (Turbopack)
@@ -12,7 +12,7 @@
 ✓ Starting...
 [MDX] generated files in 7.297166999999945ms
 [MDX] started dev server
-⨯ Unable to acquire lock at /Users/luisphan/Documents/GitHub/SurfSense/surfsense_web/.next/de
+⨯ Unable to acquire lock at /Users/luisphan/Documents/GitHub/Nowing/nowing_web/.next/de
 thread 'tokio-runtime-worker' (11801668) panicked at /Users/geist/dev/actions-runner/_work/next.js/next.js/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
 Failed to restore task data (corrupted database or bug): Meta for determine_module_type_for_directory (TaskId 563198))
 

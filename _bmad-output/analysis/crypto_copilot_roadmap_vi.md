@@ -1,4 +1,4 @@
-# SurfSense Crypto Co-Pilot - Lộ Trình Triển Khai
+# Nowing Crypto Co-Pilot - Lộ Trình Triển Khai
 
 **Ngày:** 1 tháng 2, 2026  
 **Trạng thái:** Đã được phê duyệt  
@@ -52,7 +52,7 @@
 ### Phương pháp phát triển
 **QUYẾT ĐỊNH:** Đội ngũ hiện tại ✅
 
-**Đội ngũ:** Developers SurfSense (part-time)  
+**Đội ngũ:** Developers Nowing (part-time)  
 **Thời gian:** 12 tuần  
 **Chi phí:** $18K (chủ yếu là opportunity cost)
 

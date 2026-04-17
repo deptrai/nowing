@@ -67,16 +67,16 @@ jobs:
           node-version: 22
           cache: 'pnpm'
           cache-dependency-path: |
-            surfsense_web/pnpm-lock.yaml
-            surfsense_desktop/pnpm-lock.yaml
+            nowing_web/pnpm-lock.yaml
+            nowing_desktop/pnpm-lock.yaml
 
       - name: Install web dependencies
         run: pnpm install
-        working-directory: surfsense_web
+        working-directory: nowing_web
 
       - name: Build Next.js standalone
         run: pnpm build
-        working-directory: surfsense_web
+        working-directory: nowing_web
         env:
           NEXT_PUBLIC_FASTAPI_BACKEND_URL: ${{ vars.NEXT_PUBLIC_FASTAPI_BACKEND_URL }}
           NEXT_PUBLIC_ZERO_CACHE_URL: ${{ vars.NEXT_PUBLIC_ZERO_CACHE_URL }}
@@ -86,11 +86,11 @@ jobs:
 
       - name: Install desktop dependencies
         run: pnpm install
-        working-directory: surfsense_desktop
+        working-directory: nowing_desktop
 
       - name: Build Electron
         run: pnpm build
-        working-directory: surfsense_desktop
+        working-directory: nowing_desktop
         env:
           HOSTED_FRONTEND_URL: ${{ vars.HOSTED_FRONTEND_URL }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
@@ -99,6 +99,6 @@ jobs:
       - name: Package & Publish
         shell: bash
         run: pnpm exec electron-builder ${{ matrix.platform }} --config electron-builder.yml --publish ${{ inputs.publish || 'always' }} -c.extraMetadata.version=${{ steps.version.outputs.VERSION }}
-        working-directory: surfsense_desktop
+        working-directory: nowing_desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,14 +1,14 @@
-# SurfSense Data Models
+# Nowing Data Models
 
 ## Tổng quan
-SurfSense xử lý hệ thống dữ liệu vô cùng phức tạp với nhiều nguồn Integration (Slack, Discord, Confluence...) kết nối với LLM RAG System. Hệ thống Models dưới đây được định nghĩa bằng SQLAlchemy tại `surfsense_backend/app/db.py` và có ánh xạ Typescript bên `surfsense_web/db/`.
+Nowing xử lý hệ thống dữ liệu vô cùng phức tạp với nhiều nguồn Integration (Slack, Discord, Confluence...) kết nối với LLM RAG System. Hệ thống Models dưới đây được định nghĩa bằng SQLAlchemy tại `nowing_backend/app/db.py` và có ánh xạ Typescript bên `nowing_web/db/`.
 
 ## 1. Phân Hệ Core Documents & RAG (Retrieval-Augmented Generation)
 
 Đây là trung tâm lưu trữ khối lượng dữ liệu chính của AI.
 - **`Document` / `DocumentVersion`**: Lưu trữ Metadata của các tập tin tải lên nội bộ hoặc import từ Internet.
 - **`Chunk`**: Phân mảnh văn bản (Splitted text) sinh ra từ `Document` đi kèm với Vector Embeddings (`pgvector`). Dùng cho Vector Search khi RAG.
-- **`SurfsenseDocsDocument` / `SurfsenseDocsChunk`**: Bộ models riêng quản lý tài liệu nội bộ / hệ thống hướng dẫn của SurfSense.
+- **`NowingDocsDocument` / `NowingDocsChunk`**: Bộ models riêng quản lý tài liệu nội bộ / hệ thống hướng dẫn của Nowing.
 
 ## 2. Phân Hệ Search Spaces & Connectors
 

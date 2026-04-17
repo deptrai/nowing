@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # =============================================================================
-# SurfSense — One-line Install Script
+# Nowing — One-line Install Script
 #
 #
-# Usage: curl -fsSL https://raw.githubusercontent.com/MODSetter/SurfSense/main/docker/scripts/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/MODSetter/Nowing/main/docker/scripts/install.sh | bash
 #
 # Flags:
 #   --no-watchtower              Skip automatic Watchtower setup
 #   --watchtower-interval=SECS   Check interval in seconds (default: 86400 = 24h)
 #
 # Handles two cases automatically:
-#   1. Fresh install        — no prior SurfSense data detected
-#   2. Migration from the legacy all-in-one container (surfsense-data volume)
+#   1. Fresh install        — no prior Nowing data detected
+#   2. Migration from the legacy all-in-one container (nowing-data volume)
 #      Downloads and runs migrate-database.sh --yes, then restores the dump
 #      into the new PostgreSQL 17 stack. The user runs one command for both.
 #
@@ -25,11 +25,11 @@ set -euo pipefail
 
 main() {
 
-REPO_RAW="https://raw.githubusercontent.com/MODSetter/SurfSense/main"
-INSTALL_DIR="./surfsense"
-OLD_VOLUME="surfsense-data"
-DUMP_FILE="./surfsense_migration_backup.sql"
-KEY_FILE="./surfsense_migration_secret.key"
+REPO_RAW="https://raw.githubusercontent.com/MODSetter/Nowing/main"
+INSTALL_DIR="./nowing"
+OLD_VOLUME="nowing-data"
+DUMP_FILE="./nowing_migration_backup.sql"
+KEY_FILE="./nowing_migration_secret.key"
 MIGRATION_DONE_FILE="${INSTALL_DIR}/.migration_done"
 MIGRATION_MODE=false
 SETUP_WATCHTOWER=true
@@ -51,10 +51,10 @@ RED='\033[0;31m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-info()    { printf "${CYAN}[SurfSense]${NC} %s\n"        "$1"; }
-success() { printf "${GREEN}[SurfSense]${NC} %s\n"       "$1"; }
-warn()    { printf "${YELLOW}[SurfSense]${NC} %s\n"      "$1"; }
-error()   { printf "${RED}[SurfSense]${NC} ERROR: %s\n"  "$1" >&2; exit 1; }
+info()    { printf "${CYAN}[Nowing]${NC} %s\n"        "$1"; }
+success() { printf "${GREEN}[Nowing]${NC} %s\n"       "$1"; }
+warn()    { printf "${YELLOW}[Nowing]${NC} %s\n"      "$1"; }
+error()   { printf "${RED}[Nowing]${NC} ERROR: %s\n"  "$1" >&2; exit 1; }
 step()    { printf "\n${BOLD}${CYAN}── %s${NC}\n"        "$1"; }
 
 # ── Pre-flight checks ────────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ wait_for_pg() {
 
 # ── Download files ───────────────────────────────────────────────────────────
 
-step "Downloading SurfSense files"
+step "Downloading Nowing files"
 info "Installation directory: ${INSTALL_DIR}"
 mkdir -p "${INSTALL_DIR}/scripts"
 mkdir -p "${INSTALL_DIR}/searxng"
@@ -125,7 +125,7 @@ chmod +x "${INSTALL_DIR}/scripts/migrate-database.sh"
 success "All files downloaded to ${INSTALL_DIR}/"
 
 # ── Legacy all-in-one detection ──────────────────────────────────────────────
-# Detect surfsense-data volume → migration mode.
+# Detect nowing-data volume → migration mode.
 # If a dump already exists (from a previous partial run) skip extraction and
 # go straight to restore — this makes re-runs safe and idempotent.
 
@@ -145,13 +145,13 @@ if docker volume ls --format '{{.Name}}' 2>/dev/null < /dev/null | grep -q "^${O
         warn "Your original data will NOT be deleted."
         printf "\n"
         info "Running data extraction (migrate-database.sh --yes)..."
-        info "Full extraction log: ./surfsense-migration.log"
+        info "Full extraction log: ./nowing-migration.log"
         printf "\n"
 
         # Run extraction non-interactively. On failure the error from
         # migrate-database.sh is printed and install.sh exits here.
         bash "${INSTALL_DIR}/scripts/migrate-database.sh" --yes < /dev/null \
-            || error "Data extraction failed. See ./surfsense-migration.log for details.\nYou can also run migrate-database.sh manually with custom flags:\n  bash ${INSTALL_DIR}/scripts/migrate-database.sh --db-user X --db-password Y"
+            || error "Data extraction failed. See ./nowing-migration.log for details.\nYou can also run migrate-database.sh manually with custom flags:\n  bash ${INSTALL_DIR}/scripts/migrate-database.sh --db-user X --db-password Y"
 
         printf "\n"
         success "Data extraction complete. Proceeding with installation and restore."
@@ -191,9 +191,9 @@ if $MIGRATION_MODE; then
     DB_USER=$(grep '^DB_USER=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
     DB_PASS=$(grep '^DB_PASSWORD=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
     DB_NAME=$(grep '^DB_NAME=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
-    DB_USER="${DB_USER:-surfsense}"
-    DB_PASS="${DB_PASS:-surfsense}"
-    DB_NAME="${DB_NAME:-surfsense}"
+    DB_USER="${DB_USER:-nowing}"
+    DB_PASS="${DB_PASS:-nowing}"
+    DB_NAME="${DB_NAME:-nowing}"
 
     step "Starting PostgreSQL 17"
     (cd "${INSTALL_DIR}" && ${DC} up -d db) < /dev/null
@@ -201,10 +201,10 @@ if $MIGRATION_MODE; then
 
     step "Restoring database"
     [[ -f "${DUMP_FILE}" ]] \
-        || error "Dump file '${DUMP_FILE}' not found. The migration script may have failed.\n  Check: ./surfsense-migration.log\n  Or run manually: bash ${INSTALL_DIR}/scripts/migrate-database.sh --yes"
+        || error "Dump file '${DUMP_FILE}' not found. The migration script may have failed.\n  Check: ./nowing-migration.log\n  Or run manually: bash ${INSTALL_DIR}/scripts/migrate-database.sh --yes"
     info "Restoring dump into PostgreSQL 17 — this may take a while for large databases..."
 
-    RESTORE_ERR="/tmp/surfsense_restore_err.log"
+    RESTORE_ERR="/tmp/nowing_restore_err.log"
     (cd "${INSTALL_DIR}" && ${DC} exec -T \
         -e PGPASSWORD="${DB_PASS}" \
         db psql -U "${DB_USER}" -d "${DB_NAME}" \
@@ -219,7 +219,7 @@ if $MIGRATION_MODE; then
     if [[ -n "${FATAL_ERRORS}" ]]; then
         warn "Restore completed with errors (may be harmless pg_dump header noise):"
         printf "%s\n" "${FATAL_ERRORS}"
-        warn "If SurfSense behaves incorrectly, inspect manually:"
+        warn "If Nowing behaves incorrectly, inspect manually:"
         warn "  cd ${INSTALL_DIR} && ${DC} exec db psql -U ${DB_USER} -d ${DB_NAME} < ${DUMP_FILE}"
     else
         success "Database restored with no fatal errors."
@@ -241,7 +241,7 @@ if $MIGRATION_MODE; then
         touch "${MIGRATION_DONE_FILE}"
     fi
 
-    step "Starting all SurfSense services"
+    step "Starting all Nowing services"
     (cd "${INSTALL_DIR}" && ${DC} up -d) < /dev/null
     success "All services started."
 
@@ -249,7 +249,7 @@ if $MIGRATION_MODE; then
     rm -f "${KEY_FILE}"
 
 else
-    step "Starting SurfSense"
+    step "Starting Nowing"
     (cd "${INSTALL_DIR}" && ${DC} up -d) < /dev/null
     success "All services started."
 fi
@@ -275,7 +275,7 @@ if $SETUP_WATCHTOWER; then
             nickfedor/watchtower \
             --label-enable \
             --interval "${WATCHTOWER_INTERVAL}" >/dev/null 2>&1 < /dev/null \
-            && success "Watchtower started — labeled SurfSense containers will auto-update." \
+            && success "Watchtower started — labeled Nowing containers will auto-update." \
             || warn "Could not start Watchtower. You can set it up manually or use: docker compose pull && docker compose up -d"
     fi
 else
@@ -300,7 +300,7 @@ Y88b  d88P Y88b 888 888     888   Y88b  d88P Y8b.     888  888      X88 Y8b.
 
 
 EOF
-_version_display=$(grep '^SURFSENSE_VERSION=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
+_version_display=$(grep '^NOWING_VERSION=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
 _version_display="${_version_display:-latest}"
 printf "         OSS Alternative to NotebookLM for Teams  ${YELLOW}[%s]${NC}\n" "${_version_display}"
 printf "${CYAN}══════════════════════════════════════════════════════════════${NC}\n\n"

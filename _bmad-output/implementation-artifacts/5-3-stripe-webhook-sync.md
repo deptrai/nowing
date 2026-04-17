@@ -67,8 +67,8 @@ Webhook endpoint **PHẢI** parse raw body bằng `await request.body()` TRƯỚ
 `checkout.session.completed` và `customer.subscription.created` có thể fire gần như đồng thời. Dùng `stripe_subscription_id` unique constraint hoặc `updatedAt` timestamp check để tránh data đè lên nhau.
 
 ### References
-- `surfsense_backend/app/routes/stripe_routes.py` — webhook handler hiện tại
-- `surfsense_backend/app/db.py` — User model
+- `nowing_backend/app/routes/stripe_routes.py` — webhook handler hiện tại
+- `nowing_backend/app/db.py` — User model
 - Stripe Subscription Events: https://stripe.com/docs/billing/subscriptions/webhooks
 
 ## Dev Agent Record
@@ -91,10 +91,10 @@ Webhook endpoint **PHẢI** parse raw body bằng `await request.body()` TRƯỚ
 ✅ AC 4: Reset `tokens_used_this_month = 0` qua `_handle_invoice_payment_succeeded()` khi `billing_reason=subscription_cycle`.
 
 ### File List
-- `surfsense_backend/app/db.py` — added `subscription_current_period_end` column to both User model variants
-- `surfsense_backend/alembic/versions/125_add_subscription_current_period_end.py` — new migration
-- `surfsense_backend/app/config/__init__.py` — added `PLAN_LIMITS` dict
-- `surfsense_backend/app/routes/stripe_routes.py` — added `_get_user_by_stripe_customer_id`, `_period_end_from_subscription`, `_handle_subscription_event`, `_handle_invoice_payment_succeeded`, `_handle_invoice_payment_failed`, `_activate_subscription_from_checkout`; updated webhook router
+- `nowing_backend/app/db.py` — added `subscription_current_period_end` column to both User model variants
+- `nowing_backend/alembic/versions/125_add_subscription_current_period_end.py` — new migration
+- `nowing_backend/app/config/__init__.py` — added `PLAN_LIMITS` dict
+- `nowing_backend/app/routes/stripe_routes.py` — added `_get_user_by_stripe_customer_id`, `_period_end_from_subscription`, `_handle_subscription_event`, `_handle_invoice_payment_succeeded`, `_handle_invoice_payment_failed`, `_activate_subscription_from_checkout`; updated webhook router
 
 ### Review Findings
 

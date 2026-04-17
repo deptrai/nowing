@@ -2,8 +2,8 @@
 
 ## Deferred from: code review of story 3-5-model-selection-via-quota (2026-04-14)
 
-- **stripe_subscription_id has no unique constraint** [surfsense_backend/app/db.py] — Column added without UNIQUE constraint. Should be enforced once Stripe integration (Epic 5) is implemented to prevent duplicate subscription mappings.
-- **load_llm_config_from_yaml reads API keys directly from YAML file, not env vars** [surfsense_backend/app/config.py] — Pre-existing: YAML config stores API keys inline. Spec Task 1.2 says "đọc API keys từ env vars" but this is the existing pattern used throughout the project. To be refactored when security hardening is prioritized.
+- **stripe_subscription_id has no unique constraint** [nowing_backend/app/db.py] — Column added without UNIQUE constraint. Should be enforced once Stripe integration (Epic 5) is implemented to prevent duplicate subscription mappings.
+- **load_llm_config_from_yaml reads API keys directly from YAML file, not env vars** [nowing_backend/app/config.py] — Pre-existing: YAML config stores API keys inline. Spec Task 1.2 says "đọc API keys từ env vars" but this is the existing pattern used throughout the project. To be refactored when security hardening is prioritized.
 
 ## Deferred from: code review of story 5-1 (2026-04-14)
 
@@ -17,7 +17,7 @@
 
 ## Deferred from: Story 5.6 post-story bug fixes (2026-04-15)
 
-- **`api_key` exposed in LLM preferences response** [`surfsense_backend/app/routes/search_space_routes.py`] — `GET/PUT /search-spaces/{id}/llm-preferences` returns full config objects including `api_key` (nested `agent_llm`, `document_summary_llm`, etc. fields). Should return sanitized Public versions (no api_key). Low risk since endpoint requires authentication, but still a credentials leak.
+- **`api_key` exposed in LLM preferences response** [`nowing_backend/app/routes/search_space_routes.py`] — `GET/PUT /search-spaces/{id}/llm-preferences` returns full config objects including `api_key` (nested `agent_llm`, `document_summary_llm`, etc. fields). Should return sanitized Public versions (no api_key). Low risk since endpoint requires authentication, but still a credentials leak.
 
 ## Deferred from: code review of story-5.3 (2026-04-15)
 

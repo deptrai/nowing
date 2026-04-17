@@ -1,4 +1,4 @@
-# Hướng Dẫn Developer SurfSense
+# Hướng Dẫn Developer Nowing
 
 **Dành cho Nhà Phát Triển**
 
@@ -6,17 +6,17 @@
 
 ## 📖 Giới Thiệu
 
-Tài liệu này hướng dẫn developers cách setup, develop, và extend hệ thống SurfSense.
+Tài liệu này hướng dẫn developers cách setup, develop, và extend hệ thống Nowing.
 
 ---
 
 ## 🏗️ Kiến Trúc Tổng Quan
 
-SurfSense bao gồm 3 components chính:
+Nowing bao gồm 3 components chính:
 
-1. **Backend** (`surfsense_backend`) - Python/FastAPI
-2. **Web** (`surfsense_web`) - Next.js 16
-3. **Extension** (`surfsense_browser_extension`) - Plasmo/React
+1. **Backend** (`nowing_backend`) - Python/FastAPI
+2. **Web** (`nowing_web`) - Next.js 16
+3. **Extension** (`nowing_browser_extension`) - Plasmo/React
 
 Xem chi tiết:
 - [Kiến Trúc Backend](./architecture-backend.md)
@@ -39,14 +39,14 @@ Xem chi tiết:
 ### Clone Repository
 
 ```bash
-git clone https://github.com/your-org/surfsense.git
-cd surfsense
+git clone https://github.com/your-org/nowing.git
+cd nowing
 ```
 
 ### Backend Setup
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 
 # Create virtual environment
 python -m venv venv
@@ -71,7 +71,7 @@ uvicorn app.main:app --reload
 ### Web Setup
 
 ```bash
-cd surfsense_web
+cd nowing_web
 
 # Install dependencies
 npm install
@@ -89,7 +89,7 @@ npm run dev
 ### Extension Setup
 
 ```bash
-cd surfsense_browser_extension
+cd nowing_browser_extension
 
 # Install dependencies
 npm install
@@ -111,7 +111,7 @@ npm run dev
 ### Backend Structure
 
 ```
-surfsense_backend/
+nowing_backend/
 ├── app/
 │   ├── api/          # API routes
 │   ├── core/         # Core logic (auth, config)
@@ -126,7 +126,7 @@ surfsense_backend/
 ### Web Structure
 
 ```
-surfsense_web/
+nowing_web/
 ├── app/              # Next.js App Router
 │   ├── (auth)/       # Auth pages
 │   ├── (dashboard)/  # Dashboard pages
@@ -139,7 +139,7 @@ surfsense_web/
 ### Extension Structure
 
 ```
-surfsense_browser_extension/
+nowing_browser_extension/
 ├── src/
 │   ├── background/   # Background service
 │   ├── popup/        # Popup UI
@@ -254,7 +254,7 @@ Xem chi tiết: [Data Models](./data-models-backend.md)
 ### Backend Tests
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 
 # Run all tests
 pytest
@@ -269,7 +269,7 @@ pytest --cov=app tests/
 ### Web Tests
 
 ```bash
-cd surfsense_web
+cd nowing_web
 
 # Run unit tests
 npm test
@@ -281,7 +281,7 @@ npm run test:e2e
 ### Extension Tests
 
 ```bash
-cd surfsense_browser_extension
+cd nowing_browser_extension
 
 # Run tests
 npm test
@@ -317,7 +317,7 @@ api_router.include_router(example.router, prefix="/example", tags=["example"])
 ### Tạo Database Migration
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 
 # Auto-generate migration
 alembic revision --autogenerate -m "Add new_column to users"
@@ -357,7 +357,7 @@ export default function Page() {
 **Backend:**
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
@@ -365,7 +365,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 **Web:**
 
 ```bash
-cd surfsense_web
+cd nowing_web
 npm run build
 npm start
 ```
@@ -373,7 +373,7 @@ npm start
 **Extension:**
 
 ```bash
-cd surfsense_browser_extension
+cd nowing_browser_extension
 npm run build
 # Upload build/chrome-mv3-prod to Chrome Web Store
 ```

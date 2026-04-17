@@ -6,16 +6,16 @@
     },
     "mode": "initial_scan",
     "scan_level": "exhaustive",
-    "project_root": "/Users/mac_1/Documents/GitHub/SurfSense",
-    "output_folder": "/Users/mac_1/Documents/GitHub/SurfSense/_bmad-output",
+    "project_root": "/Users/mac_1/Documents/GitHub/Nowing",
+    "output_folder": "/Users/mac_1/Documents/GitHub/Nowing/_bmad-output",
     "repository_type": "multi-part",
     "parts_count": 3,
     "project_parts": [
         {
             "part_id": "backend",
-            "root_path": "surfsense_backend",
+            "root_path": "nowing_backend",
             "project_type_id": "backend",
-            "display_name": "SurfSense Backend",
+            "display_name": "Nowing Backend",
             "tech_stack": {
                 "framework": "FastAPI",
                 "language": "Python 3.12",
@@ -26,9 +26,9 @@
         },
         {
             "part_id": "web",
-            "root_path": "surfsense_web",
+            "root_path": "nowing_web",
             "project_type_id": "web_app",
-            "display_name": "SurfSense Web",
+            "display_name": "Nowing Web",
             "tech_stack": {
                 "framework": "Next.js 16",
                 "language": "TypeScript",
@@ -39,9 +39,9 @@
         },
         {
             "part_id": "extension",
-            "root_path": "surfsense_browser_extension",
+            "root_path": "nowing_browser_extension",
             "project_type_id": "browser_extension",
-            "display_name": "SurfSense Extension",
+            "display_name": "Nowing Extension",
             "tech_stack": {
                 "framework": "Plasmo",
                 "language": "TypeScript",

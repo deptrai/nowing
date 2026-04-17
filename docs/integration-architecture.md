@@ -1,7 +1,7 @@
-# SurfSense Integration Architecture
+# Nowing Integration Architecture
 
 ## System Topography
-SurfSense operates via a multi-part integration model separating state syncing, background processing, and web presentation.
+Nowing operates via a multi-part integration model separating state syncing, background processing, and web presentation.
 
 ### 1. Data Sync Layer (Zero + Next.js + PostgreSQL)
 - **Zero Cache (`zero-cache`)**: Acts as the real-time CVR (Client View Record) layer synchronizing mutations.

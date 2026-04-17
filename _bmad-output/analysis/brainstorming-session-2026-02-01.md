@@ -1,12 +1,12 @@
 ---
 stepsCompleted: [1, 2]
 inputDocuments: []
-session_topic: 'SurfSense 2.0 - AI Co-Pilot for Crypto Trading & Content Creation'
+session_topic: 'Nowing 2.0 - AI Co-Pilot for Crypto Trading & Content Creation'
 session_goals: 'Generate comprehensive feature set, explore technical architecture, validate business model, identify competitive advantages, assess risks'
 selected_approach: 'Progressive Technique Flow'
 techniques_used: ['SCAMPER Method', 'What If Scenarios', 'Mind Mapping', 'Morphological Analysis', 'First Principles Thinking', 'Six Thinking Hats', 'Decision Tree Mapping', 'Resource Constraints']
 ideas_generated: []
-context_file: '/Users/mac_1/Documents/GitHub/SurfSense/_bmad/bmm/data/project-context-template.md'
+context_file: '/Users/mac_1/Documents/GitHub/Nowing/_bmad/bmm/data/project-context-template.md'
 ---
 
 # Brainstorming Session Results
@@ -16,9 +16,9 @@ context_file: '/Users/mac_1/Documents/GitHub/SurfSense/_bmad/bmm/data/project-co
 
 ## Session Overview
 
-**Topic:** SurfSense 2.0 - AI Co-Pilot for Crypto Trading & Content Creation
+**Topic:** Nowing 2.0 - AI Co-Pilot for Crypto Trading & Content Creation
 
-Nâng cấp SurfSense hiện tại với crypto intelligence capabilities thông qua integration với multiple data sources: DexScreener, DefiLlama, và QuickNode RPC. Transform SurfSense thành một comprehensive crypto analysis brain.
+Nâng cấp Nowing hiện tại với crypto intelligence capabilities thông qua integration với multiple data sources: DexScreener, DefiLlama, và QuickNode RPC. Transform Nowing thành một comprehensive crypto analysis brain.
 
 **Target Users:**
 1. **Investors** - Cần data-driven insights để make trading decisions
@@ -45,5 +45,5 @@ Nâng cấp SurfSense hiện tại với crypto intelligence capabilities thông
 
 ### Session Setup
 
-Session được thiết lập để explore toàn diện SurfSense crypto intelligence upgrade, từ MVP features đến business model validation. Focus vào việc leverage existing SurfSense architecture và RAG capabilities để create một powerful AI co-pilot cho crypto ecosystem.
+Session được thiết lập để explore toàn diện Nowing crypto intelligence upgrade, từ MVP features đến business model validation. Focus vào việc leverage existing Nowing architecture và RAG capabilities để create một powerful AI co-pilot cho crypto ecosystem.
 

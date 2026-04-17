@@ -276,9 +276,9 @@ Support các chains:
 ## 📚 Reference Components
 
 ### Existing Patterns
-- [luma-connect-form.tsx](file:///Users/mac_1/Documents/GitHub/SurfSense/surfsense_web/components/assistant-ui/connector-popup/connect-forms/components/luma-connect-form.tsx) - Form structure
-- [luma-config.tsx](file:///Users/mac_1/Documents/GitHub/SurfSense/surfsense_web/components/assistant-ui/connector-popup/connector-configs/components/luma-config.tsx) - Config pattern
-- [connector-benefits.ts](file:///Users/mac_1/Documents/GitHub/SurfSense/surfsense_web/components/assistant-ui/connector-popup/connect-forms/connector-benefits.ts) - Benefits system
+- [luma-connect-form.tsx](file:///Users/mac_1/Documents/GitHub/Nowing/nowing_web/components/assistant-ui/connector-popup/connect-forms/components/luma-connect-form.tsx) - Form structure
+- [luma-config.tsx](file:///Users/mac_1/Documents/GitHub/Nowing/nowing_web/components/assistant-ui/connector-popup/connector-configs/components/luma-config.tsx) - Config pattern
+- [connector-benefits.ts](file:///Users/mac_1/Documents/GitHub/Nowing/nowing_web/components/assistant-ui/connector-popup/connect-forms/connector-benefits.ts) - Benefits system
 
 ### Design System
 - ShadCN UI components

@@ -1,45 +1,45 @@
 # =============================================================================
-# SurfSense — Database Migration Script (Windows / PowerShell)
+# Nowing — Database Migration Script (Windows / PowerShell)
 #
-# Extracts data from the legacy all-in-one surfsense-data volume (PostgreSQL 14)
+# Extracts data from the legacy all-in-one nowing-data volume (PostgreSQL 14)
 # and saves it as a SQL dump + SECRET_KEY file ready for install.ps1 to restore.
 #
 # Usage:
 #   .\migrate-database.ps1 [options]
 #
 # Options:
-#   -DbUser USER          Old PostgreSQL username   (default: surfsense)
-#   -DbPassword PASS      Old PostgreSQL password   (default: surfsense)
-#   -DbName NAME          Old PostgreSQL database   (default: surfsense)
+#   -DbUser USER          Old PostgreSQL username   (default: nowing)
+#   -DbPassword PASS      Old PostgreSQL password   (default: nowing)
+#   -DbName NAME          Old PostgreSQL database   (default: nowing)
 #   -Yes                  Skip all confirmation prompts
 #
 # Prerequisites:
 #   - Docker Desktop installed and running
-#   - The legacy surfsense-data volume must exist
+#   - The legacy nowing-data volume must exist
 #   - ~500 MB free disk space for the dump file
 #
 # What this script does:
-#   1. Stops any container using surfsense-data (to prevent corruption)
+#   1. Stops any container using nowing-data (to prevent corruption)
 #   2. Starts a temporary PG14 container against the old volume
-#   3. Dumps the database to .\surfsense_migration_backup.sql
-#   4. Recovers the SECRET_KEY to .\surfsense_migration_secret.key
+#   3. Dumps the database to .\nowing_migration_backup.sql
+#   4. Recovers the SECRET_KEY to .\nowing_migration_secret.key
 #   5. Exits — leaving installation to install.ps1
 #
 # What this script does NOT do:
-#   - Delete the original surfsense-data volume (do this manually after verifying)
-#   - Install the new SurfSense stack (install.ps1 handles that automatically)
+#   - Delete the original nowing-data volume (do this manually after verifying)
+#   - Install the new Nowing stack (install.ps1 handles that automatically)
 #
 # Note:
 #   install.ps1 downloads and runs this script automatically when it detects the
-#   legacy surfsense-data volume. You only need to run this script manually if
+#   legacy nowing-data volume. You only need to run this script manually if
 #   you have custom database credentials (-DbUser / -DbPassword / -DbName)
 #   or if the automatic migration inside install.ps1 fails at the extraction step.
 # =============================================================================
 
 param(
-    [string]$DbUser     = "surfsense",
-    [string]$DbPassword = "surfsense",
-    [string]$DbName     = "surfsense",
+    [string]$DbUser     = "nowing",
+    [string]$DbPassword = "nowing",
+    [string]$DbName     = "nowing",
     [switch]$Yes
 )
 
@@ -47,20 +47,20 @@ $ErrorActionPreference = 'Stop'
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-$OldVolume      = "surfsense-data"
-$TempContainer  = "surfsense-pg14-migration"
-$DumpFile       = ".\surfsense_migration_backup.sql"
-$KeyFile        = ".\surfsense_migration_secret.key"
+$OldVolume      = "nowing-data"
+$TempContainer  = "nowing-pg14-migration"
+$DumpFile       = ".\nowing_migration_backup.sql"
+$KeyFile        = ".\nowing_migration_secret.key"
 $PG14Image      = "pgvector/pgvector:pg14"
-$LogFile        = ".\surfsense-migration.log"
+$LogFile        = ".\nowing-migration.log"
 
 # ── Output helpers ───────────────────────────────────────────────────────────
 
-function Write-Info    { param([string]$Msg) Write-Host "[SurfSense] " -ForegroundColor Cyan -NoNewline; Write-Host $Msg }
-function Write-Ok      { param([string]$Msg) Write-Host "[SurfSense] " -ForegroundColor Green -NoNewline; Write-Host $Msg }
-function Write-Warn    { param([string]$Msg) Write-Host "[SurfSense] " -ForegroundColor Yellow -NoNewline; Write-Host $Msg }
+function Write-Info    { param([string]$Msg) Write-Host "[Nowing] " -ForegroundColor Cyan -NoNewline; Write-Host $Msg }
+function Write-Ok      { param([string]$Msg) Write-Host "[Nowing] " -ForegroundColor Green -NoNewline; Write-Host $Msg }
+function Write-Warn    { param([string]$Msg) Write-Host "[Nowing] " -ForegroundColor Yellow -NoNewline; Write-Host $Msg }
 function Write-Step    { param([string]$Step, [string]$Msg) Write-Host "`n-- Step ${Step}: $Msg" -ForegroundColor Cyan }
-function Write-Err     { param([string]$Msg) Write-Host "[SurfSense] ERROR: $Msg" -ForegroundColor Red; exit 1 }
+function Write-Err     { param([string]$Msg) Write-Host "[Nowing] ERROR: $Msg" -ForegroundColor Red; exit 1 }
 
 function Log { param([string]$Msg) Add-Content -Path $LogFile -Value $Msg }
 
@@ -78,7 +78,7 @@ function Invoke-NativeSafe {
 function Confirm-Action {
     param([string]$Prompt)
     if ($Yes) { return }
-    $reply = Read-Host "[SurfSense] $Prompt [y/N]"
+    $reply = Read-Host "[Nowing] $Prompt [y/N]"
     if ($reply -notmatch '^[Yy]$') {
         Write-Warn "Aborted."
         exit 0
@@ -99,9 +99,9 @@ function Remove-TempContainer {
 # Register cleanup on script exit
 Register-EngineEvent PowerShell.Exiting -Action {
     $containers = Invoke-NativeSafe { docker ps -a --format '{{.Names}}' 2>$null }
-    if ($containers -and ($containers -split "`n") -contains "surfsense-pg14-migration") {
-        Invoke-NativeSafe { docker stop "surfsense-pg14-migration" *>$null } | Out-Null
-        Invoke-NativeSafe { docker rm "surfsense-pg14-migration" *>$null } | Out-Null
+    if ($containers -and ($containers -split "`n") -contains "nowing-pg14-migration") {
+        Invoke-NativeSafe { docker stop "nowing-pg14-migration" *>$null } | Out-Null
+        Invoke-NativeSafe { docker rm "nowing-pg14-migration" *>$null } | Out-Null
     }
 } | Out-Null
 
@@ -147,7 +147,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $volumeList = Invoke-NativeSafe { docker volume ls --format '{{.Name}}' 2>$null }
 if (-not (($volumeList -split "`n") -contains $OldVolume)) {
-    Write-Err "Legacy volume '$OldVolume' not found. Are you sure you ran the old all-in-one SurfSense container?"
+    Write-Err "Legacy volume '$OldVolume' not found. Are you sure you ran the old all-in-one Nowing container?"
 }
 Write-Ok "Found legacy volume: $OldVolume"
 
@@ -243,7 +243,7 @@ Write-Step "2" "Dumping PostgreSQL 14 database"
 
 Write-Info "Running pg_dump - this may take a while for large databases..."
 
-$pgDumpErrFile = Join-Path $env:TEMP "surfsense_pgdump_err.log"
+$pgDumpErrFile = Join-Path $env:TEMP "nowing_pgdump_err.log"
 Invoke-NativeSafe { docker exec -e "PGPASSWORD=$DbPassword" $TempContainer pg_dump -U $DbUser --no-password $DbName > $DumpFile 2>$pgDumpErrFile } | Out-Null
 if ($LASTEXITCODE -ne 0) {
     if (Test-Path $pgDumpErrFile) { Get-Content $pgDumpErrFile | Write-Host -ForegroundColor Red }
@@ -298,10 +298,10 @@ if ($LASTEXITCODE -eq 0 -and $keyCheck) {
         $recoveredKey = [Convert]::ToBase64String($bytes)
         Write-Warn "Non-interactive mode: generated a new SECRET_KEY automatically."
         Write-Warn "All active browser sessions will be logged out after migration."
-        Write-Warn "To restore your original key, update SECRET_KEY in .\surfsense\.env afterwards."
+        Write-Warn "To restore your original key, update SECRET_KEY in .\nowing\.env afterwards."
     } else {
         Write-Warn "Enter the SECRET_KEY from your old container's environment"
-        $recoveredKey = Read-Host "[SurfSense] (press Enter to generate a new one - existing sessions will be invalidated)"
+        $recoveredKey = Read-Host "[Nowing] (press Enter to generate a new one - existing sessions will be invalidated)"
         if (-not $recoveredKey) {
             $bytes = New-Object byte[] 32
             $rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::new()
@@ -329,10 +329,10 @@ Write-Ok "Secret key: $KeyFile"
 Write-Host ""
 Write-Info "Next step - run install.ps1 from this same directory:"
 Write-Host ""
-Write-Host "  irm https://raw.githubusercontent.com/MODSetter/SurfSense/main/docker/scripts/install.ps1 | iex" -ForegroundColor Cyan
+Write-Host "  irm https://raw.githubusercontent.com/MODSetter/Nowing/main/docker/scripts/install.ps1 | iex" -ForegroundColor Cyan
 Write-Host ""
 Write-Info "install.ps1 will detect the dump, restore your data into PostgreSQL 17,"
-Write-Info "and start the full SurfSense stack automatically."
+Write-Info "and start the full Nowing stack automatically."
 Write-Host ""
 Write-Warn "Keep both files until you have verified the migration:"
 Write-Warn "  $DumpFile"

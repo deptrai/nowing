@@ -1,6 +1,6 @@
-# SurfSense 2.0 - Epics & Stories
+# Nowing 2.0 - Epics & Stories
 
-**Project:** SurfSense Crypto Co-Pilot
+**Project:** Nowing Crypto Co-Pilot
 **Created:** 2026-02-01
 **Updated:** 2026-02-04
 **Status:** 🚧 IN DEVELOPMENT
@@ -18,7 +18,7 @@
 
 ## Overview
 
-Tài liệu này tổ chức tất cả epics và user stories cho SurfSense 2.0, được chia thành 4 phases dựa trên PRD.
+Tài liệu này tổ chức tất cả epics và user stories cho Nowing 2.0, được chia thành 4 phases dựa trên PRD.
 
 ---
 

@@ -6,8 +6,8 @@ on:
       - main
       - dev
     paths:
-      - 'surfsense_backend/**'
-      - 'surfsense_web/**'
+      - 'nowing_backend/**'
+      - 'nowing_web/**'
   workflow_dispatch:
     inputs:
       branch:
@@ -105,13 +105,13 @@ jobs:
             suffix: arm64
             os: ubuntu-24.04-arm
           - image: backend
-            name: surfsense-backend
-            context: ./surfsense_backend
-            file: ./surfsense_backend/Dockerfile
+            name: nowing-backend
+            context: ./nowing_backend
+            file: ./nowing_backend/Dockerfile
           - image: web
-            name: surfsense-web
-            context: ./surfsense_web
-            file: ./surfsense_web/Dockerfile
+            name: nowing-web
+            context: ./nowing_web
+            file: ./nowing_web/Dockerfile
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
 
@@ -192,9 +192,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: surfsense-backend
+          - name: nowing-backend
             image: backend
-          - name: surfsense-web
+          - name: nowing-web
             image: web
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
