@@ -8,19 +8,19 @@ editHistory:
   - date: '2026-04-16'
     changes: 'Thêm Gift Subscription Architecture: Data Architecture (gift_codes/gift_requests tables), API Patterns (3 endpoints mới), Project Structure (new files), Integration Points (gift flow)'
 inputDocuments: [
-  "/Users/luisphan/Documents/GitHub/SurfSense/_bmad-output/planning-artifacts/prd.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/_bmad-output/planning-artifacts/research/technical-gift-subscription-research-2026-04-16.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/index.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/architecture-backend.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/architecture-web.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/integration-architecture.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/deployment-guide.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/development-guide.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/api-contracts.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/data-models.md"
+  "/Users/luisphan/Documents/GitHub/Nowing/_bmad-output/planning-artifacts/prd.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/_bmad-output/planning-artifacts/research/technical-gift-subscription-research-2026-04-16.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/index.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/architecture-backend.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/architecture-web.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/integration-architecture.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/deployment-guide.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/development-guide.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/api-contracts.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/data-models.md"
 ]
 workflowType: 'architecture'
-project_name: 'SurfSense'
+project_name: 'Nowing'
 user_name: 'Luisphan'
 date: '2026-04-13'
 ---
@@ -75,7 +75,7 @@ Full-stack Web3/AI Application (Next.js + FastAPI) based on project requirements
 Dựa trên yêu cầu của PRD và hệ sinh thái công nghệ, tôi đã khảo sát các giải pháp Boilerplate/Starter template chuẩn công nghiệp:
 
 **1. Dành cho Next.js (Front-end Web Client):**
-Công cụ chính chủ `create-next-app` vẫn là bộ khung đáng tin cậy nhất. Nó linh hoạt cấu hình App Router, TailwindCSS và TypeScript. Vì SurfSense chạy mô hình Local-first đòi hỏi thiết lập bộ đệm Zero-sync (IndexedDB) cực kỳ đặc thù, việc dùng một boilerplate cồng kềnh chứa sẵn logic DB/Auth khác (như T3 Stack) sẽ dẫn tới rủi ro xung đột cao.
+Công cụ chính chủ `create-next-app` vẫn là bộ khung đáng tin cậy nhất. Nó linh hoạt cấu hình App Router, TailwindCSS và TypeScript. Vì Nowing chạy mô hình Local-first đòi hỏi thiết lập bộ đệm Zero-sync (IndexedDB) cực kỳ đặc thù, việc dùng một boilerplate cồng kềnh chứa sẵn logic DB/Auth khác (như T3 Stack) sẽ dẫn tới rủi ro xung đột cao.
 
 **2. Dành cho FastAPI (Backend API & Async Workers):**
 - **Full Stack FastAPI Template (Official):** Chứa đủ SQLModel, Docker, rất tốt nhưng bị nhồi nhét sẵn React admin thừa kềnh càng.
@@ -90,7 +90,7 @@ Hệ thống Agentic RAG và Zero-sync quá đặc thù, yêu cầu một khung 
 
 ```bash
 # Frontend
-npx create-next-app@latest surfsense-web
+npx create-next-app@latest nowing-web
 
 # Backend (Khởi tạo bằng uv)
 uv venv
@@ -203,7 +203,7 @@ new_expiry = max(current_period_end, now()) + timedelta(days=30 * duration_month
   - Zero-sync protocol quản lý kết nối WebSocket cho dữ liệu đồng bộ tĩnh.
 - **Job Orchestration:** Kết nối FastAPI và Celery Workers qua Redis Message Broker (`redis:7.4+`).
 
-**Gift Subscription Endpoints (thêm vào `surfsense_backend/app/routes/gift_routes.py`):**
+**Gift Subscription Endpoints (thêm vào `nowing_backend/app/routes/gift_routes.py`):**
 
 | Method | Endpoint | Auth | Mô tả |
 |--------|----------|------|-------|
@@ -211,7 +211,7 @@ new_expiry = max(current_period_end, now()) + timedelta(days=30 * duration_month
 | `POST` | `/api/v1/stripe/redeem-gift` | JWT | Redeem gift code. Body: `{code}`. Verify code valid, extend subscription dùng extension formula, đánh dấu code `redeemed`. |
 | `GET`  | `/api/v1/stripe/gift-codes` | JWT | Lấy danh sách gift codes đã mua bởi current user (lịch sử mua quà). |
 
-**Gift Pricing Config (`surfsense_backend/app/config/__init__.py`):**
+**Gift Pricing Config (`nowing_backend/app/config/__init__.py`):**
 ```python
 GIFT_PRICING = {
     # Aligned with Pro/Max subscription pricing (pricing-section.tsx):
@@ -347,9 +347,9 @@ Dùng `Fetch()` gọi API ngoài luồng Zero-sync cho các đối tượng đã
 ### Complete Project Directory Structure
 
 ```text
-surfsense/
+nowing/
 ├── .github/                  # CI/CD workflows & PR templates
-├── surfsense_backend/        # FastAPI Backend (Python)
+├── nowing_backend/        # FastAPI Backend (Python)
 │   ├── pyproject.toml        
 │   └── app/
 │       ├── main.py           # Application entry point
@@ -360,7 +360,7 @@ surfsense/
 │       ├── retriever/        # Hybrid Search (Full-text + PgVector RRF)
 │       ├── schemas/          # Pydantic validation
 │       └── tasks/            # Celery workers & beat (Redis)
-├── surfsense_web/            # Next.js Frontend (TypeScript)
+├── nowing_web/            # Next.js Frontend (TypeScript)
 │   ├── package.json
 │   ├── tailwind.config.ts
 │   ├── tsconfig.json
@@ -375,8 +375,8 @@ surfsense/
 │   ├── lib/                  # Generic utilities
 │   ├── hooks/                # Custom hooks (Zero-sync wrappers)
 │   └── store/                # UI State
-├── surfsense_browser_extension/  # Trình duyệt mở rộng
-├── surfsense_desktop/            # App Desktop (TBD)
+├── nowing_browser_extension/  # Trình duyệt mở rộng
+├── nowing_desktop/            # App Desktop (TBD)
 ├── docker/                       # Cấu hình Docker & Infrastructure
 │   └── docker-compose.yml        # Orchestration (DB, Redis, Zero Cache, Backend, SearXNG)
 ├── docs/                         # Documentation files
@@ -384,15 +384,15 @@ surfsense/
 ```
 
 **Backend Gift Files (mới):**
-- `surfsense_backend/app/routes/gift_routes.py` — 3 endpoints: create-gift-checkout, redeem-gift, gift-codes
-- `surfsense_backend/alembic/versions/128_add_gift_tables.py` — migration tạo `gift_codes` + `gift_requests`
-- Webhook branch thêm vào `surfsense_backend/app/routes/stripe_routes.py` (không tạo file mới)
+- `nowing_backend/app/routes/gift_routes.py` — 3 endpoints: create-gift-checkout, redeem-gift, gift-codes
+- `nowing_backend/alembic/versions/128_add_gift_tables.py` — migration tạo `gift_codes` + `gift_requests`
+- Webhook branch thêm vào `nowing_backend/app/routes/stripe_routes.py` (không tạo file mới)
 
 ### Architectural Boundaries
 
 **API Boundaries:**
 - **FastAPI Endpoint Boundaries:** Chỉ phục vụ các tác vụ backend, AI Streaming RAG (Server-Sent Events), ETL, và Celery queueing.
-- **Next.js Route Handlers (`surfsense_web/app/api/`):** Chỉ đóng vai trò Proxy an toàn hoặc xử lý Zero-Sync mutators (`/api/zero/mutate`) & query.
+- **Next.js Route Handlers (`nowing_web/app/api/`):** Chỉ đóng vai trò Proxy an toàn hoặc xử lý Zero-Sync mutators (`/api/zero/mutate`) & query.
 
 **Component Boundaries:**
 - **UI vs Feature Components:** Component được định hình rõ ràng giữa các khối giao diện UI thông thường và smart components kết nối trực tiếp với Zero queries.
@@ -404,8 +404,8 @@ surfsense/
 
 **Epic/Feature Mapping (Agentic RAG & Streaming):**
 - *Tính năng:* AI Search Streaming & Semantic Retreival
-- **Backend Components:** `surfsense_backend/app/retriever/chunks_hybrid_search.py` (chứa Postgres RRF queries kết hợp vector).
-- **Frontend Components:** `surfsense_web/app/...` và các hook chat streaming.
+- **Backend Components:** `nowing_backend/app/retriever/chunks_hybrid_search.py` (chứa Postgres RRF queries kết hợp vector).
+- **Frontend Components:** `nowing_web/app/...` và các hook chat streaming.
 
 **Cross-Cutting Concerns (Local-First Experience):**
 - *Tính năng:* Đồng bộ siêu trễ, UI luôn mượt dù mạng chậm.
@@ -514,4 +514,4 @@ Luồng Upload tài liệu & RAG:
 - Gift Subscription được thiết kế isolate hoàn toàn: không ảnh hưởng existing billing code, dùng separate tables, clone proven patterns.
 
 **Implementation Handoff**
-- **First Implementation Priority:** Dùng hệ thống sẵn có (đã khởi tạo Next.js `surfsense_web` và FastAPI `surfsense_backend`). Môi trường local chạy qua `docker compose -f docker/docker-compose.dev.yml up -d` với đầy đủ Postgres (pgvector), Redis, Zero-Cache và SearXNG.
+- **First Implementation Priority:** Dùng hệ thống sẵn có (đã khởi tạo Next.js `nowing_web` và FastAPI `nowing_backend`). Môi trường local chạy qua `docker compose -f docker/docker-compose.dev.yml up -d` với đầy đủ Postgres (pgvector), Redis, Zero-Cache và SearXNG.

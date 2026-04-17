@@ -1,4 +1,4 @@
-# SurfSense 2.0 Chrome Extension - UX Design Document
+# Nowing 2.0 Chrome Extension - UX Design Document
 
 **Version:** 3.0 (Conversational UX Update)
 **Date:** 2026-02-02
@@ -11,7 +11,7 @@
 
 > **This document has been updated to reflect the new Conversational AI approach.**
 >
-> **Key Change:** SurfSense is now a **conversational AI crypto advisor** where chat is the PRIMARY interface. All crypto features (watchlist, alerts, portfolio, analysis) are accessible through natural language commands and embedded as widgets within the chat experience.
+> **Key Change:** Nowing is now a **conversational AI crypto advisor** where chat is the PRIMARY interface. All crypto features (watchlist, alerts, portfolio, analysis) are accessible through natural language commands and embedded as widgets within the chat experience.
 >
 > **See:** `_bmad-output/ux-design/conversational-ux-specification.md` for the complete Conversational UX Specification.
 
@@ -19,7 +19,7 @@
 
 ## Document Purpose
 
-This UX Design Document provides comprehensive design guidance for the SurfSense 2.0 Chrome Extension - AI Co-Pilot for Crypto. It covers:
+This UX Design Document provides comprehensive design guidance for the Nowing 2.0 Chrome Extension - AI Co-Pilot for Crypto. It covers:
 - **Conversational Interface** - Chat as the primary interaction method
 - **Embedded Widgets** - Token analysis, watchlist, alerts displayed inline in chat
 - **AI Tool Calling** - Natural language commands that trigger backend tools
@@ -338,7 +338,7 @@ flowchart TD
 
 ```
 ┌─────────────────────────────────────────┐
-│ 🌊 SurfSense        [Crypto ▼] [⚙️] [👤]│
+│ 🌊 Nowing        [Crypto ▼] [⚙️] [👤]│
 ├─────────────────────────────────────────┤
 │ 📍 BULLA/SOL on DexScreener             │
 │    $0.00001234 (+156%)  [Analyze][Watch]│
@@ -383,7 +383,7 @@ flowchart TD
 
 ```
 ┌─────────────────────────────────────────┐
-│ 🌊 SurfSense        [Crypto ▼] [⚙️] [👤]│
+│ 🌊 Nowing        [Crypto ▼] [⚙️] [👤]│
 ├─────────────────────────────────────────┤
 │ 📍 BULLA/SOL on DexScreener             │
 ├─────────────────────────────────────────┤
@@ -493,7 +493,7 @@ flowchart TD
 
 ```
 ┌─────────────────────────────────────────┐
-│ 🌊 SurfSense   [📋 Watchlist] [⚙️] [👤] │
+│ 🌊 Nowing   [📋 Watchlist] [⚙️] [👤] │
 ├─────────────────────────────────────────┤
 │ My Watchlist                    [+ Add] │
 ├─────────────────────────────────────────┤
@@ -577,7 +577,7 @@ flowchart TD
 ```
 ┌─────────────────────────────────────────┐
 │                                         │
-│         🌊 SurfSense                    │
+│         🌊 Nowing                    │
 │    AI Co-Pilot for Crypto               │
 │                                         │
 │  Chat with AI about any token           │

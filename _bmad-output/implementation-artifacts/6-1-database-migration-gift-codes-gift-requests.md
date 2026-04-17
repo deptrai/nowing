@@ -14,7 +14,7 @@ so that hệ thống có đủ cấu trúc dữ liệu để lưu trữ gift cod
 2. `alembic upgrade head` tạo thành công bảng `gift_requests` với các cột: `id UUID PK`, `user_id UUID FK user.id CASCADE NOT NULL`, `plan_id VARCHAR(50) NOT NULL`, `duration_months INTEGER NOT NULL`, `status VARCHAR(20) DEFAULT 'pending' NOT NULL`, `gift_code_id UUID FK gift_codes.id SET NULL nullable`, `created_at TIMESTAMP WITH TIME ZONE server_default=now()`, `updated_at TIMESTAMP WITH TIME ZONE nullable`.
 3. Downgrade migration hoạt động sạch — drop `gift_requests` trước (FK dependency), sau đó drop `gift_codes`.
 4. Không có thay đổi nào đến bảng `user`, `subscription_requests`, hay bảng nào khác hiện có.
-5. Model Python `GiftCode` và `GiftCodeStatus` enum, `GiftRequest` và `GiftRequestStatus` enum được thêm vào `surfsense_backend/app/db.py`, tuân thủ đúng pattern hiện tại.
+5. Model Python `GiftCode` và `GiftCodeStatus` enum, `GiftRequest` và `GiftRequestStatus` enum được thêm vào `nowing_backend/app/db.py`, tuân thủ đúng pattern hiện tại.
 
 ## Tasks / Subtasks
 
@@ -25,13 +25,13 @@ so that hệ thống có đủ cấu trúc dữ liệu để lưu trữ gift cod
   - [x] Thêm `GiftRequest(Base)` class — `__tablename__ = "gift_requests"`, `__allow_unmapped__ = True`
   - [x] Đặt classes SAU `SubscriptionRequest` (line ~1730) và TRƯỚC `User` class (line ~1917)
 - [x] Tạo Alembic migration file (AC: 1, 2, 3, 4)
-  - [x] File: `surfsense_backend/alembic/versions/132_add_gift_codes_tables.py`
+  - [x] File: `nowing_backend/alembic/versions/132_add_gift_codes_tables.py`
   - [x] `revision = "132"`, `down_revision = "131"` (current head)
   - [x] `upgrade()`: create `gift_codes` table, then `gift_requests` table (FK order)
   - [x] `downgrade()`: drop `gift_requests` first, then `gift_codes`
   - [x] Dùng `gen_random_uuid()` cho PKs, `now()` cho timestamps
 - [x] Verify migration chạy sạch
-  - [x] `cd surfsense_backend && uv run alembic upgrade head` — không lỗi
+  - [x] `cd nowing_backend && uv run alembic upgrade head` — không lỗi
   - [x] `uv run alembic downgrade -1` — drop sạch
   - [x] `uv run alembic upgrade head` lại — idempotent
 
@@ -197,7 +197,7 @@ Các import cần thiết (`UUID`, `Column`, `String`, `Integer`, `ForeignKey`, 
 
 ### Verification command
 ```bash
-cd surfsense_backend
+cd nowing_backend
 uv run alembic upgrade head
 uv run alembic downgrade -1
 uv run alembic upgrade head
@@ -208,16 +208,16 @@ uv run pytest tests/unit/ -q \
 
 ### Project Structure Notes
 
-- Migration file: `surfsense_backend/alembic/versions/132_add_gift_codes_tables.py`
-- Model additions: `surfsense_backend/app/db.py` (sau line ~1730, trước line ~1917)
+- Migration file: `nowing_backend/alembic/versions/132_add_gift_codes_tables.py`
+- Model additions: `nowing_backend/app/db.py` (sau line ~1730, trước line ~1917)
 - Không tạo file mới nào khác trong story này
 
 ### References
 
-- [Source: surfsense_backend/alembic/versions/130_add_purchased_tokens.py] — migration pattern
-- [Source: surfsense_backend/alembic/versions/127_add_subscription_requests_table.py] — create_table pattern với UUID, enums, FKs
-- [Source: surfsense_backend/app/db.py#1687-1740] — SubscriptionRequest pattern (Base + manual timestamps)
-- [Source: surfsense_backend/app/db.py#539-548] — TimestampMixin definition
+- [Source: nowing_backend/alembic/versions/130_add_purchased_tokens.py] — migration pattern
+- [Source: nowing_backend/alembic/versions/127_add_subscription_requests_table.py] — create_table pattern với UUID, enums, FKs
+- [Source: nowing_backend/app/db.py#1687-1740] — SubscriptionRequest pattern (Base + manual timestamps)
+- [Source: nowing_backend/app/db.py#539-548] — TimestampMixin definition
 - [Source: _bmad-output/planning-artifacts/epics.md#Story-6.1] — AC gốc từ Epic
 
 ## Dev Agent Record
@@ -232,7 +232,7 @@ Claude Opus 4.6 (claude-opus-4-7) — bmad-dev-story workflow, 2026-04-17.
 
 ### Completion Notes List
 
-- Thêm `GiftCodeStatus`, `GiftCode`, `GiftRequestStatus`, `GiftRequest` vào `surfsense_backend/app/db.py` đúng vị trí (sau `SubscriptionRequest`, trước `SearchSpaceRole`). `GiftCode` kế thừa `TimestampMixin` (có `created_at`), `GiftRequest` kế thừa `Base` với `created_at`/`updated_at` khai báo thủ công theo pattern của `SubscriptionRequest`. Không khai báo relationship `back_populates` trên `User` để bảo toàn AC4 (không đụng tới `User` model).
+- Thêm `GiftCodeStatus`, `GiftCode`, `GiftRequestStatus`, `GiftRequest` vào `nowing_backend/app/db.py` đúng vị trí (sau `SubscriptionRequest`, trước `SearchSpaceRole`). `GiftCode` kế thừa `TimestampMixin` (có `created_at`), `GiftRequest` kế thừa `Base` với `created_at`/`updated_at` khai báo thủ công theo pattern của `SubscriptionRequest`. Không khai báo relationship `back_populates` trên `User` để bảo toàn AC4 (không đụng tới `User` model).
 - Migration `132_add_gift_codes_tables.py` idempotent, có `CREATE INDEX IF NOT EXISTS` cho cả `ix_gift_codes_code`, `ix_gift_codes_purchaser_id`, `ix_gift_requests_user_id`. FK: `purchaser_id → user.id ON DELETE CASCADE`, `redeemer_id → user.id ON DELETE SET NULL`, `user_id → user.id ON DELETE CASCADE`, `gift_code_id → gift_codes.id ON DELETE SET NULL`. Unique constraint trên `gift_codes.code` tên `uq_gift_codes_code`.
 - Verify schema qua `information_schema.columns` và `pg_constraint`: tất cả cột, kiểu, default (`gen_random_uuid()`, `now()`, `'active'::giftcodestatus`, `'pending'::giftrequeststatus`), nullability, và FK đều khớp AC1/AC2.
 - `ruff check app/db.py alembic/versions/132_add_gift_codes_tables.py` → clean.
@@ -240,17 +240,17 @@ Claude Opus 4.6 (claude-opus-4-7) — bmad-dev-story workflow, 2026-04-17.
 
 ### File List
 
-- `surfsense_backend/app/db.py` (modified — thêm `GiftCodeStatus`, `GiftCode`, `GiftRequestStatus`, `GiftRequest` vào giữa `SubscriptionRequest` và `SearchSpaceRole`; post-review: `unique=True` trên `stripe_payment_intent_id`, bỏ redundant `index=True` trên `code`)
-- `surfsense_backend/alembic/versions/132_add_gift_codes_tables.py` (new; post-review: bỏ redundant `ix_gift_codes_code`, thêm `ix_gift_codes_created_at`, partial unique index `uq_gift_codes_stripe_payment_intent_id WHERE NOT NULL`, downgrade `DROP TYPE ... CASCADE`)
+- `nowing_backend/app/db.py` (modified — thêm `GiftCodeStatus`, `GiftCode`, `GiftRequestStatus`, `GiftRequest` vào giữa `SubscriptionRequest` và `SearchSpaceRole`; post-review: `unique=True` trên `stripe_payment_intent_id`, bỏ redundant `index=True` trên `code`)
+- `nowing_backend/alembic/versions/132_add_gift_codes_tables.py` (new; post-review: bỏ redundant `ix_gift_codes_code`, thêm `ix_gift_codes_created_at`, partial unique index `uq_gift_codes_stripe_payment_intent_id WHERE NOT NULL`, downgrade `DROP TYPE ... CASCADE`)
 
 ### Review Findings
 
 #### Patch (fix now)
 
-- [x] [Review][Patch] Missing UNIQUE on `gift_codes.stripe_payment_intent_id` — webhook idempotency gap; retried Stripe webhook can create duplicate gift codes for one payment (mismatch với pattern `PagePurchase.stripe_checkout_session_id` có `unique=True`) [surfsense_backend/app/db.py:~1755 · surfsense_backend/alembic/versions/132_add_gift_codes_tables.py:71]
-- [x] [Review][Patch] Downgrade `DROP TYPE` không dùng `CASCADE` — sẽ fail với "cannot drop type because other objects depend on it" nếu migration sau tham chiếu enum [surfsense_backend/alembic/versions/132_add_gift_codes_tables.py:174-175]
-- [x] [Review][Patch] Redundant `ix_gift_codes_code` — `UniqueConstraint("code")` đã tạo implicit btree index; `CREATE INDEX ix_gift_codes_code` tạo index trùng, lãng phí disk + ghi chậm hơn [surfsense_backend/alembic/versions/132_add_gift_codes_tables.py:109-111 · surfsense_backend/app/db.py:1753 (index=True)]
-- [x] [Review][Patch] Thiếu `ix_gift_codes_created_at` — `TimestampMixin.created_at` khai báo `index=True`; migration 115 (pattern template) có `CREATE INDEX IF NOT EXISTS ix_page_purchases_created_at` tương ứng; migration 132 không có → ORM `create_all()` và Alembic-upgraded DB sẽ lệch nhau [surfsense_backend/alembic/versions/132_add_gift_codes_tables.py:112-115]
+- [x] [Review][Patch] Missing UNIQUE on `gift_codes.stripe_payment_intent_id` — webhook idempotency gap; retried Stripe webhook can create duplicate gift codes for one payment (mismatch với pattern `PagePurchase.stripe_checkout_session_id` có `unique=True`) [nowing_backend/app/db.py:~1755 · nowing_backend/alembic/versions/132_add_gift_codes_tables.py:71]
+- [x] [Review][Patch] Downgrade `DROP TYPE` không dùng `CASCADE` — sẽ fail với "cannot drop type because other objects depend on it" nếu migration sau tham chiếu enum [nowing_backend/alembic/versions/132_add_gift_codes_tables.py:174-175]
+- [x] [Review][Patch] Redundant `ix_gift_codes_code` — `UniqueConstraint("code")` đã tạo implicit btree index; `CREATE INDEX ix_gift_codes_code` tạo index trùng, lãng phí disk + ghi chậm hơn [nowing_backend/alembic/versions/132_add_gift_codes_tables.py:109-111 · nowing_backend/app/db.py:1753 (index=True)]
+- [x] [Review][Patch] Thiếu `ix_gift_codes_created_at` — `TimestampMixin.created_at` khai báo `index=True`; migration 115 (pattern template) có `CREATE INDEX IF NOT EXISTS ix_page_purchases_created_at` tương ứng; migration 132 không có → ORM `create_all()` và Alembic-upgraded DB sẽ lệch nhau [nowing_backend/alembic/versions/132_add_gift_codes_tables.py:112-115]
 
 #### Defer (pre-existing pattern / out of scope)
 

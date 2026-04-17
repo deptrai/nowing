@@ -1,4 +1,4 @@
-# Innovation Strategy Analysis Walkthrough - SurfSense Crypto Co-Pilot
+# Innovation Strategy Analysis Walkthrough - Nowing Crypto Co-Pilot
 
 **Date:** February 1, 2026  
 **Workflow:** Innovation Strategy (BMAD CIS)  
@@ -11,7 +11,7 @@
 
 ### What We Did
 
-Conducted comprehensive **Innovation Strategy analysis** cho SurfSense Crypto Co-Pilot project, evaluating:
+Conducted comprehensive **Innovation Strategy analysis** cho Nowing Crypto Co-Pilot project, evaluating:
 1. **Strategic Context** - Ambition, constraints, success definition
 2. **Market Landscape** - TAM/SAM/SOM, competitive analysis, Five Forces
 3. **Business Model** - Revenue model, unit economics, defensibility
@@ -37,8 +37,8 @@ Conducted comprehensive **Innovation Strategy analysis** cho SurfSense Crypto Co
 
 ### The Situation
 
-**Company:** SurfSense Crypto Co-Pilot (future standalone brand)
-- Starting as SurfSense extension
+**Company:** Nowing Crypto Co-Pilot (future standalone brand)
+- Starting as Nowing extension
 - Will rebrand as independent product
 - Open-source foundation, entering monetization
 
@@ -464,33 +464,33 @@ Data |  DEX Screener
 
 ### Analysis Artifacts
 
-All artifacts saved to `/Users/mac_1/Documents/GitHub/SurfSense/_bmad-output/analysis/`:
+All artifacts saved to `/Users/mac_1/Documents/GitHub/Nowing/_bmad-output/analysis/`:
 
-1. **[strategic_context_synthesis.md](file:///Users/mac_1/Documents/GitHub/SurfSense/_bmad-output/analysis/strategic_context_synthesis.md)**
+1. **[strategic_context_synthesis.md](file:///Users/mac_1/Documents/GitHub/Nowing/_bmad-output/analysis/strategic_context_synthesis.md)**
    - Bet-the-company ambition
    - Solo founder constraints
    - Success definition
 
-2. **[market_landscape_analysis.md](file:///Users/mac_1/Documents/GitHub/SurfSense/_bmad-output/analysis/market_landscape_analysis.md)**
+2. **[market_landscape_analysis.md](file:///Users/mac_1/Documents/GitHub/Nowing/_bmad-output/analysis/market_landscape_analysis.md)**
    - TAM/SAM/SOM sizing
    - Competitive analysis (DexTools, DEX Screener, etc.)
    - Five Forces assessment
    - Market timing evaluation
    - Score: 7.75/10 (STRONG)
 
-3. **[business_model_analysis.md](file:///Users/mac_1/Documents/GitHub/SurfSense/_bmad-output/analysis/business_model_analysis.md)**
+3. **[business_model_analysis.md](file:///Users/mac_1/Documents/GitHub/Nowing/_bmad-output/analysis/business_model_analysis.md)**
    - Freemium SaaS model
    - Unit economics (LTV:CAC 40:1-150:1)
    - Defensibility assessment
    - Score: 8.4/10 (STRONG)
 
-4. **[disruption_opportunities_analysis.md](file:///Users/mac_1/Documents/GitHub/SurfSense/_bmad-output/analysis/disruption_opportunities_analysis.md)**
+4. **[disruption_opportunities_analysis.md](file:///Users/mac_1/Documents/GitHub/Nowing/_bmad-output/analysis/disruption_opportunities_analysis.md)**
    - Jobs-to-be-Done framework
    - Blue Ocean Strategy
    - Platform potential assessment
    - Top opportunities identified
 
-5. **[strategic_recommendation.md](file:///Users/mac_1/Documents/GitHub/SurfSense/_bmad-output/analysis/strategic_recommendation.md)**
+5. **[strategic_recommendation.md](file:///Users/mac_1/Documents/GitHub/Nowing/_bmad-output/analysis/strategic_recommendation.md)**
    - CONDITIONAL GO decision
    - AI-First MVP strategy
    - 12-month execution roadmap

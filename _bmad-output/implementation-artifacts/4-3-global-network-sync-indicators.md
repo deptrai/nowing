@@ -29,14 +29,14 @@ Hệ thống biến từ một ứng dụng tĩnh thành một nền tảng SaaS
 ### Code Organization
 This story is currently marked as `done`. Implementation should target the following components/files:
 
-- `surfsense_backend/app/utils/refresh_tokens.py`
-- `surfsense_web/app/public/[token]/page.tsx`
-- `surfsense_backend/app/routes/circleback_webhook_route.py`
-- `surfsense_web/components/TokenHandler.tsx`
-- `surfsense_backend/app/schemas/stripe.py`
-- `surfsense_backend/app/services/page_limit_service.py`
-- `surfsense_web/components/assistant-ui/connector-popup/components/periodic-sync-config.tsx`
-- `surfsense_backend/app/services/dropbox/kb_sync_service.py`
+- `nowing_backend/app/utils/refresh_tokens.py`
+- `nowing_web/app/public/[token]/page.tsx`
+- `nowing_backend/app/routes/circleback_webhook_route.py`
+- `nowing_web/components/TokenHandler.tsx`
+- `nowing_backend/app/schemas/stripe.py`
+- `nowing_backend/app/services/page_limit_service.py`
+- `nowing_web/components/assistant-ui/connector-popup/components/periodic-sync-config.tsx`
+- `nowing_backend/app/services/dropbox/kb_sync_service.py`
 
 ### Developer Agent Constraints
 1. **No Destructive Refactors**: Extend existing modules when possible.

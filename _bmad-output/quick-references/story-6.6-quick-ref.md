@@ -21,7 +21,7 @@ Create `/dashboard/[search_space_id]/gift/page.tsx` that:
 
 ## Files to Modify
 
-### 1. `surfsense_web/contracts/types/stripe.types.ts`
+### 1. `nowing_web/contracts/types/stripe.types.ts`
 **Add:**
 ```typescript
 export const createGiftCheckoutRequest = z.object({
@@ -38,7 +38,7 @@ export type CreateGiftCheckoutRequest = z.infer<typeof createGiftCheckoutRequest
 export type CreateGiftCheckoutResponse = z.infer<typeof createGiftCheckoutResponse>;
 ```
 
-### 2. `surfsense_web/lib/apis/stripe-api.service.ts`
+### 2. `nowing_web/lib/apis/stripe-api.service.ts`
 **Add method:**
 ```typescript
 createGiftCheckout = async (
@@ -52,7 +52,7 @@ createGiftCheckout = async (
 };
 ```
 
-### 3. **NEW FILE:** `surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx`
+### 3. **NEW FILE:** `nowing_web/app/dashboard/[search_space_id]/gift/page.tsx`
 See full implementation in main guide.
 
 ---

@@ -27,10 +27,10 @@ So that hệ thống API chính không bị nghẽn khi người dùng upload fi
 ### Code Organization
 This story is currently marked as `done`. Implementation should target the following components/files:
 
-- `surfsense_backend/app/services/task_dispatcher.py`
-- `surfsense_backend/app/tasks/celery_tasks/document_tasks.py`
-- `surfsense_backend/app/services/docling_service.py`
-- `surfsense_backend/app/routes/documents_routes.py`
+- `nowing_backend/app/services/task_dispatcher.py`
+- `nowing_backend/app/tasks/celery_tasks/document_tasks.py`
+- `nowing_backend/app/services/docling_service.py`
+- `nowing_backend/app/routes/documents_routes.py`
 
 ### Developer Agent Constraints
 1. **No Destructive Refactors**: Extend existing modules when possible.

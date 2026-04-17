@@ -1,4 +1,4 @@
-# Business Model Analysis - SurfSense Crypto Co-Pilot
+# Business Model Analysis - Nowing Crypto Co-Pilot
 
 **Date:** February 1, 2026  
 **Analysis Type:** Innovation Strategy - Step 3  

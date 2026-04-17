@@ -10,7 +10,7 @@ so that development và testing không bị chặn bởi việc thiếu Stripe c
 
 ## Acceptance Criteria
 
-1. Khi chạy `alembic upgrade head` trên database trống, hệ thống tự seed một user admin với thông tin mặc định (`admin@surfsense.local` / `Admin@SurfSense1`), overridable qua env vars `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+1. Khi chạy `alembic upgrade head` trên database trống, hệ thống tự seed một user admin với thông tin mặc định (`admin@nowing.local` / `Admin@Nowing1`), overridable qua env vars `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 2. Admin được seed với `is_superuser=TRUE`, `subscription_status='active'`, `plan_id='pro_yearly'`, `monthly_token_limit=1_000_000`, `pages_limit=5000` và có đủ search space, roles, membership, và default prompts.
 3. Migration seed là idempotent: nếu đã có bất kỳ user nào trong DB thì bỏ qua, không insert lại.
 4. Superuser có thể xem danh sách pending subscription requests tại `GET /api/v1/admin/subscription-requests`.
@@ -54,15 +54,15 @@ so that development và testing không bị chặn bởi việc thiếu Stripe c
   - [x] Subtask 3.4: Thêm relationship `subscription_requests` vào cả hai nhánh User model (LOCAL và Google OAuth).
 
 - [x] Task 4: Admin Routes Backend
-  - [x] Subtask 4.1: Tạo `surfsense_backend/app/routes/admin_routes.py` với `APIRouter(prefix="/admin")`.
+  - [x] Subtask 4.1: Tạo `nowing_backend/app/routes/admin_routes.py` với `APIRouter(prefix="/admin")`.
   - [x] Subtask 4.2: Dùng `fastapi_users.current_user(active=True, superuser=True)` làm dependency — tự động trả 403 cho non-superuser.
   - [x] Subtask 4.3: `GET /admin/subscription-requests` — query tất cả PENDING requests, JOIN lấy user email, trả về `List[SubscriptionRequestItem]`.
   - [x] Subtask 4.4: `POST /admin/subscription-requests/{id}/approve` — set `status=APPROVED`, `approved_at=now()`, `approved_by=current_user.id`; activate user subscription dùng cùng logic với `_activate_subscription_from_checkout` (Story 5.3): set `subscription_status=ACTIVE`, `plan_id`, `monthly_token_limit`, `pages_limit=max(pages_used, plan_limit)`, `tokens_used_this_month=0`, `token_reset_date=today`.
   - [x] Subtask 4.5: `POST /admin/subscription-requests/{id}/reject` — set `status=REJECTED`.
-  - [x] Subtask 4.6: Đăng ký router trong `surfsense_backend/app/routes/__init__.py` và `app.py`.
+  - [x] Subtask 4.6: Đăng ký router trong `nowing_backend/app/routes/__init__.py` và `app.py`.
 
 - [x] Task 5: Admin Frontend Page
-  - [x] Subtask 5.1: Tạo `surfsense_web/app/admin/subscription-requests/page.tsx` — client component.
+  - [x] Subtask 5.1: Tạo `nowing_web/app/admin/subscription-requests/page.tsx` — client component.
   - [x] Subtask 5.2: Auth guard: gọi `isAuthenticated()` — nếu false redirect `/login`; nếu API trả 403 hiển thị "Access denied. Superuser privileges required."
   - [x] Subtask 5.3: Hiển thị bảng: User email | Plan | Requested At | Actions (Approve / Reject).
   - [x] Subtask 5.4: Approve/Reject gọi endpoint tương ứng; sau khi thành công xóa row khỏi danh sách local.
@@ -83,7 +83,7 @@ Reuse `PLAN_LIMITS` config từ `config/__init__.py`. `pages_limit = max(user.pa
 
 ### Luồng test E2E (không có Stripe)
 1. Register user → Login → `/pricing` → "Upgrade to Pro" → toast "Subscription request submitted"
-2. Login admin (`admin@surfsense.local` / `Admin@SurfSense1`) → `/admin/subscription-requests` → Approve
+2. Login admin (`admin@nowing.local` / `Admin@Nowing1`) → `/admin/subscription-requests` → Approve
 3. Login lại user → DB: `subscription_status=active`, `plan_id=pro_monthly`, `monthly_token_limit=1_000_000`
 
 ## Dev Agent Record
@@ -105,17 +105,17 @@ Reuse `PLAN_LIMITS` config từ `config/__init__.py`. `pages_limit = max(user.pa
 ### E2E Test Results (2026-04-15)
 - Backend restarted với `STRIPE_SECRET_KEY=""` → admin-approval mode active.
 - User `epic5user@example.com` click "Upgrade to Pro" → toast hiển thị đúng.
-- Login `admin@surfsense.local` → `/admin/subscription-requests` → thấy pending request của epic5user.
+- Login `admin@nowing.local` → `/admin/subscription-requests` → thấy pending request của epic5user.
 - Click Approve → request biến mất khỏi danh sách.
 - Query DB xác nhận: `subscription_status=active`, `plan_id=pro_monthly`, `monthly_token_limit=1000000`, `pages_limit=5000`.
 
 ### File List
-- `surfsense_backend/alembic/versions/126_seed_admin_user.py` — NEW: admin seed migration (no-op if users exist)
-- `surfsense_backend/alembic/versions/127_add_subscription_requests_table.py` — NEW: subscription_requests table (raw SQL)
-- `surfsense_backend/app/db.py` — MODIFIED: `SubscriptionRequestStatus` enum, `SubscriptionRequest` model, `subscription_requests` relationship trên User, `values_callable` fix trên tất cả `SubscriptionStatus` enum columns
-- `surfsense_backend/app/routes/admin_routes.py` — NEW: GET/approve/reject subscription requests, superuser-only
-- `surfsense_backend/app/routes/__init__.py` — MODIFIED: import và include `admin_router`
-- `surfsense_web/app/admin/subscription-requests/page.tsx` — NEW: admin UI page
+- `nowing_backend/alembic/versions/126_seed_admin_user.py` — NEW: admin seed migration (no-op if users exist)
+- `nowing_backend/alembic/versions/127_add_subscription_requests_table.py` — NEW: subscription_requests table (raw SQL)
+- `nowing_backend/app/db.py` — MODIFIED: `SubscriptionRequestStatus` enum, `SubscriptionRequest` model, `subscription_requests` relationship trên User, `values_callable` fix trên tất cả `SubscriptionStatus` enum columns
+- `nowing_backend/app/routes/admin_routes.py` — NEW: GET/approve/reject subscription requests, superuser-only
+- `nowing_backend/app/routes/__init__.py` — MODIFIED: import và include `admin_router`
+- `nowing_web/app/admin/subscription-requests/page.tsx` — NEW: admin UI page
 
 ### Change Log
 - 2026-04-15: Implement admin seed migration + admin-approval subscription flow.

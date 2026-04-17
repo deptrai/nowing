@@ -37,13 +37,13 @@ So that tôi có thể nhận gói PRO được tặng mà không cần hiểu v
 
 | Component | Hiện trạng | File |
 |---|---|---|
-| Redeem page | **KHÔNG TỒN TẠI** — cần tạo mới | `surfsense_web/app/redeem/page.tsx` |
-| Stripe types | Có sẵn — cần thêm 2 schema mới | `surfsense_web/contracts/types/stripe.types.ts` |
-| Stripe service | Có sẵn — cần thêm 1 method mới | `surfsense_web/lib/apis/stripe-api.service.ts` |
-| Auth detection | `getBearerToken()` — dùng để check đăng nhập | `surfsense_web/lib/auth-utils.ts` |
-| Invite page | Pattern tốt cho public page + auth check | `surfsense_web/app/invite/[invite_code]/page.tsx` |
+| Redeem page | **KHÔNG TỒN TẠI** — cần tạo mới | `nowing_web/app/redeem/page.tsx` |
+| Stripe types | Có sẵn — cần thêm 2 schema mới | `nowing_web/contracts/types/stripe.types.ts` |
+| Stripe service | Có sẵn — cần thêm 1 method mới | `nowing_web/lib/apis/stripe-api.service.ts` |
+| Auth detection | `getBearerToken()` — dùng để check đăng nhập | `nowing_web/lib/auth-utils.ts` |
+| Invite page | Pattern tốt cho public page + auth check | `nowing_web/app/invite/[invite_code]/page.tsx` |
 
-**Gap:** Cần thêm: 2 Zod schema, 1 service method, và route mới `surfsense_web/app/redeem/page.tsx`.
+**Gap:** Cần thêm: 2 Zod schema, 1 service method, và route mới `nowing_web/app/redeem/page.tsx`.
 
 ## Tasks / Subtasks
 
@@ -57,7 +57,7 @@ So that tôi có thể nhận gói PRO được tặng mà không cần hiểu v
   - [x] Subtask 2.2: Gọi `POST /api/v1/stripe/redeem-gift` với body `{ code }`
   - [x] Subtask 2.3: Parse response với `RedeemGiftResponse` schema — giống `createTokenTopupCheckout` pattern
 
-- [x] Task 3: Tạo Redeem Page `surfsense_web/app/redeem/page.tsx`
+- [x] Task 3: Tạo Redeem Page `nowing_web/app/redeem/page.tsx`
   - [x] Subtask 3.1: `"use client"` component — top-level PUBLIC route (không cần search_space_id)
   - [x] Subtask 3.2: Auth check on mount: `getBearerToken()` → nếu null, hiển thị "unauthenticated" UI với link đến `/auth` (với `?redirect=/redeem` query param)
   - [x] Subtask 3.3: Authenticated UI: input field cho gift code, nút "Kích hoạt", error message zone
@@ -73,8 +73,8 @@ So that tôi có thể nhận gói PRO được tặng mà không cần hiểu v
 ### Route Location — PUBLIC top-level (QUAN TRỌNG)
 
 ```
-✅ ĐÚNG: surfsense_web/app/redeem/page.tsx     → URL: /redeem
-❌ SAI:  surfsense_web/app/dashboard/[search_space_id]/redeem/page.tsx  → yêu cầu auth
+✅ ĐÚNG: nowing_web/app/redeem/page.tsx     → URL: /redeem
+❌ SAI:  nowing_web/app/dashboard/[search_space_id]/redeem/page.tsx  → yêu cầu auth
 ```
 
 Trang `/redeem` là PUBLIC — người chưa đăng nhập phải có thể access để xem form (dù cần login để submit). Phải nằm ở `app/redeem/`, không trong `dashboard/`.
@@ -203,9 +203,9 @@ queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
 
 ### File Locations
 
-- **Tạo mới:** `surfsense_web/app/redeem/page.tsx`
-- **Sửa:** `surfsense_web/contracts/types/stripe.types.ts` — thêm 2 schema
-- **Sửa:** `surfsense_web/lib/apis/stripe-api.service.ts` — thêm 1 method
+- **Tạo mới:** `nowing_web/app/redeem/page.tsx`
+- **Sửa:** `nowing_web/contracts/types/stripe.types.ts` — thêm 2 schema
+- **Sửa:** `nowing_web/lib/apis/stripe-api.service.ts` — thêm 1 method
 - **Không sửa:** Dashboard layout, sidebar, user atoms — chỉ invalidate cache
 
 ### Import Paths
@@ -294,13 +294,13 @@ Story 6.7 complete. All ACs satisfied:
 
 ### File List
 _(fill in after implementation)_
-- `surfsense_web/contracts/types/stripe.types.ts` (modified — schemas added in Story 6.6 session)
-- `surfsense_web/lib/apis/stripe-api.service.ts` (modified — method added in Story 6.6 session)
-- `surfsense_web/app/redeem/page.tsx` (new)
+- `nowing_web/contracts/types/stripe.types.ts` (modified — schemas added in Story 6.6 session)
+- `nowing_web/lib/apis/stripe-api.service.ts` (modified — method added in Story 6.6 session)
+- `nowing_web/app/redeem/page.tsx` (new)
 
 ### Review Findings
-- [x] [Review][Patch] `queryClient.invalidateQueries` không được `await` — race condition giữa invalidate cache và navigation "Vào Dashboard" [surfsense_web/app/redeem/page.tsx:94-95]
-- [x] [Review][Patch] Error response shape brittle — `err?.response?.data?.detail` giả định axios shape nhưng `baseApiService` dùng fetch wrapper; cần dùng shape thực tế của `ApiError` [surfsense_web/app/redeem/page.tsx:82]
-- [x] [Review][Patch] Date parsing không validate — `new Date(successData.new_expiry)` có thể render "Invalid Date" nếu backend trả format bất thường [surfsense_web/app/redeem/page.tsx:110]
-- [x] [Review][Defer] Token expiry mid-redeem → AuthenticationError redirect không giữ context [surfsense_web/app/redeem/page.tsx:77] — deferred, auth infrastructure pre-existing
-- [x] [Review][Defer] `currentUserAtom` query không check loading state [surfsense_web/app/redeem/page.tsx] — deferred, áp dụng pattern hiện có từ buy-tokens page
+- [x] [Review][Patch] `queryClient.invalidateQueries` không được `await` — race condition giữa invalidate cache và navigation "Vào Dashboard" [nowing_web/app/redeem/page.tsx:94-95]
+- [x] [Review][Patch] Error response shape brittle — `err?.response?.data?.detail` giả định axios shape nhưng `baseApiService` dùng fetch wrapper; cần dùng shape thực tế của `ApiError` [nowing_web/app/redeem/page.tsx:82]
+- [x] [Review][Patch] Date parsing không validate — `new Date(successData.new_expiry)` có thể render "Invalid Date" nếu backend trả format bất thường [nowing_web/app/redeem/page.tsx:110]
+- [x] [Review][Defer] Token expiry mid-redeem → AuthenticationError redirect không giữ context [nowing_web/app/redeem/page.tsx:77] — deferred, auth infrastructure pre-existing
+- [x] [Review][Defer] `currentUserAtom` query không check loading state [nowing_web/app/redeem/page.tsx] — deferred, áp dụng pattern hiện có từ buy-tokens page

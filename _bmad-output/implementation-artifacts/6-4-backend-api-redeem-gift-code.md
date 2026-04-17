@@ -17,11 +17,11 @@ So that gói PRO được kích hoạt ngay lập tức theo công thức extens
 5. Nếu code hết hạn (`expires_at <= now()`) → `400 Bad Request` với detail `"Gift code đã hết hạn"`.
 6. Toàn bộ update (gift_codes + user) là atomic — dùng `db_session` transaction (không cần explicit `begin()`, SQLAlchemy async session tự manage).
 7. `GiftCode`, `GiftCodeStatus` phải được import từ `app.db` (đã thêm ở story 6.3).
-8. Schema `RedeemGiftRequest` và `RedeemGiftResponse` được thêm vào `surfsense_backend/app/schemas/stripe.py`.
+8. Schema `RedeemGiftRequest` và `RedeemGiftResponse` được thêm vào `nowing_backend/app/schemas/stripe.py`.
 
 ## Tasks / Subtasks
 
-- [x] Thêm Pydantic schemas vào `surfsense_backend/app/schemas/stripe.py` (AC: 1, 8)
+- [x] Thêm Pydantic schemas vào `nowing_backend/app/schemas/stripe.py` (AC: 1, 8)
   - [x] `RedeemGiftRequest(BaseModel)`: `code: str = Field(min_length=1, description="Gift code to redeem")`
   - [x] `RedeemGiftResponse(BaseModel)`: `new_expiry: datetime`, `plan_id: str`
 
@@ -48,7 +48,7 @@ So that gói PRO được kích hoạt ngay lập tức theo công thức extens
 
 ### Pattern cho schemas — PHẢI tuân thủ
 
-Thêm vào `surfsense_backend/app/schemas/stripe.py`:
+Thêm vào `nowing_backend/app/schemas/stripe.py`:
 
 ```python
 from datetime import datetime
@@ -198,7 +198,7 @@ Giống pattern trong `_update_subscription_from_event()` (line ~403): chỉ set
 ### Verification command
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 uv run pytest tests/unit/ -q \
   --ignore=tests/unit/connectors/test_dexscreener_connector.py \
   --ignore=tests/unit/indexing_pipeline/
@@ -207,15 +207,15 @@ uv run pytest tests/unit/ -q \
 ### Project Structure Notes
 
 - Sửa 2 files:
-  - `surfsense_backend/app/schemas/stripe.py` — thêm `RedeemGiftRequest`, `RedeemGiftResponse` (và `from datetime import datetime` nếu thiếu)
-  - `surfsense_backend/app/routes/stripe_routes.py` — thêm import + endpoint
+  - `nowing_backend/app/schemas/stripe.py` — thêm `RedeemGiftRequest`, `RedeemGiftResponse` (và `from datetime import datetime` nếu thiếu)
+  - `nowing_backend/app/routes/stripe_routes.py` — thêm import + endpoint
 
 ### References
 
-- [Source: surfsense_backend/app/routes/stripe_routes.py#385-415] — `_update_subscription_from_event` pattern (update user subscription fields)
-- [Source: surfsense_backend/app/routes/stripe_routes.py#184-267] — `_fulfill_token_topup` pattern (FOR UPDATE lock)
-- [Source: surfsense_backend/app/schemas/stripe.py] — schema file pattern
-- [Source: surfsense_backend/app/config/__init__.py#316-326] — `PLAN_LIMITS` config
+- [Source: nowing_backend/app/routes/stripe_routes.py#385-415] — `_update_subscription_from_event` pattern (update user subscription fields)
+- [Source: nowing_backend/app/routes/stripe_routes.py#184-267] — `_fulfill_token_topup` pattern (FOR UPDATE lock)
+- [Source: nowing_backend/app/schemas/stripe.py] — schema file pattern
+- [Source: nowing_backend/app/config/__init__.py#316-326] — `PLAN_LIMITS` config
 - [Source: _bmad-output/planning-artifacts/epics.md#Story-6.4] — AC gốc từ Epic
 
 ## Dev Agent Record
@@ -242,8 +242,8 @@ claude-sonnet-4-6
 
 ### File List
 
-- `surfsense_backend/app/schemas/stripe.py` (modified — thêm `RedeemGiftRequest`, `RedeemGiftResponse`)
-- `surfsense_backend/app/routes/stripe_routes.py` (modified — thêm import + `redeem_gift` endpoint)
+- `nowing_backend/app/schemas/stripe.py` (modified — thêm `RedeemGiftRequest`, `RedeemGiftResponse`)
+- `nowing_backend/app/routes/stripe_routes.py` (modified — thêm import + `redeem_gift` endpoint)
 
 ## Review Findings (2026-04-17)
 
@@ -251,7 +251,7 @@ Multi-layer adversarial review (Blind Hunter + Edge Case Hunter + Acceptance Aud
 
 ### Patched in this story
 
-- [x] **P1 [Review][Patch] — Stripe subscription state clobber (Critical)** — Redeem unconditionally set `plan_id`, `subscription_status=ACTIVE`, `subscription_current_period_end`. An ACTIVE Stripe subscriber (paying monthly) had `current_period_end` pushed forward and plan overwritten, leaving Stripe and SurfSense state desynchronized; a PAST_DUE user was silently "cured". Fix: detect `user.stripe_subscription_id is not None` with live status → extend `current_period_end` only; keep existing `plan_id`/limits untouched so Stripe webhook remains authoritative.
+- [x] **P1 [Review][Patch] — Stripe subscription state clobber (Critical)** — Redeem unconditionally set `plan_id`, `subscription_status=ACTIVE`, `subscription_current_period_end`. An ACTIVE Stripe subscriber (paying monthly) had `current_period_end` pushed forward and plan overwritten, leaving Stripe and Nowing state desynchronized; a PAST_DUE user was silently "cured". Fix: detect `user.stripe_subscription_id is not None` with live status → extend `current_period_end` only; keep existing `plan_id`/limits untouched so Stripe webhook remains authoritative.
 - [x] **P2 [Review][Patch] — User row concurrency race (Critical)** — Two concurrent redemptions of different gift codes by the same user each read the same `subscription_current_period_end`; last-write wins silently voids one gift's extension. Fix: `SELECT ... FOR UPDATE` on the User row before reading `subscription_current_period_end`.
 - [x] **P3 [Review][Patch] — `duration_months` not validated (High)** — No floor/ceiling guard; a negative/zero from DB corruption would shrink or no-op the user's expiry. Fix: reject redeem if `gift.duration_months <= 0`.
 - [x] **P4 [Review][Patch] — Token counters not reset on redeem (High)** — Existing user with exhausted tokens redeems a gift → `monthly_token_limit` is updated but `tokens_used_this_month` still at cap, so effective tokens = 0. Fix: mirror `_activate_subscription_from_checkout` — reset `tokens_used_this_month=0`, clear `purchased_tokens=0`, advance `token_reset_date` to today.

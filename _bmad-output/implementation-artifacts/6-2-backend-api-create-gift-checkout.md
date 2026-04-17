@@ -18,16 +18,16 @@ So that tôi được redirect sang trang thanh toán Stripe an toàn để hoà
 4. `plan_id` không có trong `GIFT_PRICING` → `400 Bad Request` với detail rõ ràng.
 5. `duration_months` không có trong config cho plan đó → `400 Bad Request`.
 6. Khi Stripe chưa cấu hình (`STRIPE_SECRET_KEY` trống) → `admin_approval_mode=True`, `checkout_url=""` — không throw exception.
-7. Endpoint được thêm vào `surfsense_backend/app/routes/stripe_routes.py`, schema thêm vào `surfsense_backend/app/schemas/stripe.py`.
+7. Endpoint được thêm vào `nowing_backend/app/routes/stripe_routes.py`, schema thêm vào `nowing_backend/app/schemas/stripe.py`.
 8. Không thay đổi bất kỳ endpoint nào hiện có (`create-token-topup-checkout`, `create-subscription-checkout`, webhook, v.v.).
 
 ## Tasks / Subtasks
 
-- [x] Thêm `GIFT_PRICING` config vào `surfsense_backend/app/config/__init__.py` (AC: 3)
+- [x] Thêm `GIFT_PRICING` config vào `nowing_backend/app/config/__init__.py` (AC: 3)
   - [x] Thêm vào class `Settings` (cùng nơi với `TOKEN_PACKS` ~line 324): `GIFT_PRICING: dict[str, dict[int, int]] = {"pro_monthly": {1: 1200, 3: 3600, 6: 7200, 12: 9600}, "max_monthly": {1: 10000, 3: 30000, 6: 60000, 12: 96000}}` — giá khớp subscription (Pro $12/mo, $96/yr; Max $100/mo, $960/yr).
   - [x] Không cần env var — pricing là hardcoded business logic
 
-- [x] Thêm Pydantic schemas vào `surfsense_backend/app/schemas/stripe.py` (AC: 1, 6)
+- [x] Thêm Pydantic schemas vào `nowing_backend/app/schemas/stripe.py` (AC: 1, 6)
   - [x] `CreateGiftCheckoutRequest(BaseModel)`: `plan_id: str`, `duration_months: int = Field(ge=1, le=12)`
   - [x] `CreateGiftCheckoutResponse(BaseModel)`: `checkout_url: str`, `admin_approval_mode: bool = False`
 
@@ -52,7 +52,7 @@ So that tôi được redirect sang trang thanh toán Stripe an toàn để hoà
 - [x] [Review][Patch] `except (StripeError, HTTPException)` âm thầm nuốt 503 từ `_get_gift_urls` — **Fixed**: đổi thành `except StripeError` only [stripe_routes.py:750]
 - [x] [Review][Patch] Docstring `create_gift_checkout` chỉ nói fallback khi `STRIPE_SECRET_KEY` trống — **Fixed**: docstring đã cập nhật để reflect cả hai fallback paths [stripe_routes.py:665]
 - [x] [Review][Defer] `/dashboard/0/purchase-success` trigger onboarding redirect loop — frontend 6.6 cần handle `search_space_id=0` hoặc gift có flow riêng [stripe_routes.py:707] — deferred, cần fix ở frontend Story 6.6
-- [x] [Review][Defer] `purchase-success/page.tsx` hard-coded "Tokens added!" copy — gift purchaser thấy message sai [surfsense_web/app/dashboard/[search_space_id]/purchase-success/page.tsx:31-47] — deferred, cần fix ở frontend Story 6.6
+- [x] [Review][Defer] `purchase-success/page.tsx` hard-coded "Tokens added!" copy — gift purchaser thấy message sai [nowing_web/app/dashboard/[search_space_id]/purchase-success/page.tsx:31-47] — deferred, cần fix ở frontend Story 6.6
 - [x] [Review][Defer] Webhook chưa handle `purchase_type="gift"` — nếu 6.2 deploy trước 6.3, payment đã thu nhưng không tạo gift_code [stripe_routes.py:~989] — deferred, sẽ được Story 6.3 implement; cần deploy cùng nhau
 - [x] [Review][Defer] `duration_months: int = Field(ge=1, le=12)` wider hơn dict keys (1/3/6/12) — 2/4/5/7-11 pass Pydantic rồi fail 400 ở lookup [schemas/stripe.py:33] — deferred, có thể tighten thành `Literal[1,3,6,12]`
 - [x] [Review][Defer] `customer_email=user.email` tạo duplicate Stripe customer khi user đã có Stripe customer linked — cross-cutting với token-topup/subscription [stripe_routes.py:740] — deferred, cross-cutting concern
@@ -65,9 +65,9 @@ So that tôi được redirect sang trang thanh toán Stripe an toàn để hoà
 
 ### Files cần thay đổi
 
-1. `surfsense_backend/app/config/__init__.py` — thêm `GIFT_PRICING`
-2. `surfsense_backend/app/schemas/stripe.py` — thêm `CreateGiftCheckoutRequest`, `CreateGiftCheckoutResponse`
-3. `surfsense_backend/app/routes/stripe_routes.py` — thêm helper + endpoint
+1. `nowing_backend/app/config/__init__.py` — thêm `GIFT_PRICING`
+2. `nowing_backend/app/schemas/stripe.py` — thêm `CreateGiftCheckoutRequest`, `CreateGiftCheckoutResponse`
+3. `nowing_backend/app/routes/stripe_routes.py` — thêm helper + endpoint
 
 ### Pattern cho config — PHẢI tuân thủ
 
@@ -86,7 +86,7 @@ GIFT_PRICING: dict[str, dict[int, int]] = {
 
 ### Pattern cho Pydantic schemas — PHẢI tuân thủ
 
-Thêm vào `surfsense_backend/app/schemas/stripe.py` (sau `CreateTokenTopupResponse`):
+Thêm vào `nowing_backend/app/schemas/stripe.py` (sau `CreateTokenTopupResponse`):
 
 ```python
 class CreateGiftCheckoutRequest(BaseModel):
@@ -179,7 +179,7 @@ async def create_gift_checkout(
                             "currency": "usd",
                             "unit_amount": amount_cents,
                             "product_data": {
-                                "name": f"SurfSense Gift — {plan_label} × {body.duration_months} month(s)",
+                                "name": f"Nowing Gift — {plan_label} × {body.duration_months} month(s)",
                                 "description": (
                                     f"Gift subscription: {plan_label} for {body.duration_months} month(s). "
                                     "The recipient can redeem this gift code in their account settings."
@@ -256,7 +256,7 @@ Story này KHÔNG cần bảng `gift_codes` — chỉ tạo Stripe checkout sess
 ### Verification command
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 uv run pytest tests/unit/ -q \
   --ignore=tests/unit/connectors/test_dexscreener_connector.py \
   --ignore=tests/unit/indexing_pipeline/
@@ -264,17 +264,17 @@ uv run pytest tests/unit/ -q \
 
 ### Project Structure Notes
 
-- Thêm config: `surfsense_backend/app/config/__init__.py` (line ~330, sau `TOKEN_PACKS`)
-- Thêm schemas: `surfsense_backend/app/schemas/stripe.py`
-- Thêm endpoint: `surfsense_backend/app/routes/stripe_routes.py` (sau `create-token-topup-checkout`, ~line 645)
+- Thêm config: `nowing_backend/app/config/__init__.py` (line ~330, sau `TOKEN_PACKS`)
+- Thêm schemas: `nowing_backend/app/schemas/stripe.py`
+- Thêm endpoint: `nowing_backend/app/routes/stripe_routes.py` (sau `create-token-topup-checkout`, ~line 645)
 - Không tạo file mới
 
 ### References
 
-- [Source: surfsense_backend/app/routes/stripe_routes.py#572-641] — `create_token_topup_checkout` pattern
-- [Source: surfsense_backend/app/routes/stripe_routes.py#73-91] — `_get_token_topup_urls` + `_get_subscription_urls` patterns
-- [Source: surfsense_backend/app/schemas/stripe.py] — schema patterns
-- [Source: surfsense_backend/app/config/__init__.py#324-340] — `TOKEN_PACKS` config pattern
+- [Source: nowing_backend/app/routes/stripe_routes.py#572-641] — `create_token_topup_checkout` pattern
+- [Source: nowing_backend/app/routes/stripe_routes.py#73-91] — `_get_token_topup_urls` + `_get_subscription_urls` patterns
+- [Source: nowing_backend/app/schemas/stripe.py] — schema patterns
+- [Source: nowing_backend/app/config/__init__.py#324-340] — `TOKEN_PACKS` config pattern
 - [Source: _bmad-output/planning-artifacts/epics.md#Story-6.2] — AC gốc từ Epic
 
 ## Dev Agent Record
@@ -299,6 +299,6 @@ claude-opus-4-7
 
 ### File List
 
-- `surfsense_backend/app/config/__init__.py` (modified — thêm `GIFT_PRICING`)
-- `surfsense_backend/app/schemas/stripe.py` (modified — thêm `CreateGiftCheckoutRequest`, `CreateGiftCheckoutResponse`)
-- `surfsense_backend/app/routes/stripe_routes.py` (modified — thêm `_get_gift_urls`, `create_gift_checkout`)
+- `nowing_backend/app/config/__init__.py` (modified — thêm `GIFT_PRICING`)
+- `nowing_backend/app/schemas/stripe.py` (modified — thêm `CreateGiftCheckoutRequest`, `CreateGiftCheckoutResponse`)
+- `nowing_backend/app/routes/stripe_routes.py` (modified — thêm `_get_gift_urls`, `create_gift_checkout`)

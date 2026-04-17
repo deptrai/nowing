@@ -15,7 +15,7 @@ filesAssessed:
 # Implementation Readiness Assessment Report
 
 **Date:** 2026-04-13
-**Project:** SurfSense
+**Project:** Nowing
 
 ## Document Discovery Files Found
 
@@ -73,7 +73,7 @@ Total NFRs: 7
 - Kiến trúc Server: Cần được REST/SSE tối ưu; chuẩn Open-API contracts; cách ly nghiêm ngặt giữa luồng Embedding Worker process cùng Data sync.
 - Quyền bảo mật dữ liệu: Bảo vệ quyền riêng tư tuyệt đối cho tài liệu độc quyền của người dùng nhờ Local-first.
 - Kiểm soát tính chính xác (Accuracy): LLM phải tuân thủ chặt Context Grounding, chống Hallucinations.
-- Integration Requirements: Lựa chọn mô hình ngôn ngữ (OpenAI, Anthropic) do SurfSense cung cấp, chi phí token trừ tự động vào gói subscription. Tuyệt đối không hỗ trợ chức năng User tự nhập LLM API Key riêng.
+- Integration Requirements: Lựa chọn mô hình ngôn ngữ (OpenAI, Anthropic) do Nowing cung cấp, chi phí token trừ tự động vào gói subscription. Tuyệt đối không hỗ trợ chức năng User tự nhập LLM API Key riêng.
 - Risk Mitigations: Cơ chế fallback với file không trích xuất được text. Giám sát kích cỡ IndexedDB/Local DB.
 - Validation Approach: Đo lường TTFT, kiểm thử Offline-to-Online.
 - Web App & API Backend: Next.js + FastAPI + `@rocicorp/zero` + Postgres/pgvector.

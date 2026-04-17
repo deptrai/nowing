@@ -1,0 +1,84 @@
+appId: com.nowing.desktop
+productName: Nowing
+publish:
+  provider: github
+  owner: MODSetter
+  repo: Nowing
+directories:
+  output: release
+files:
+  - dist/**/*
+  - "!node_modules"
+  - node_modules/node-gyp-build/**/*
+  - node_modules/bindings/**/*
+  - node_modules/file-uri-to-path/**/*
+  - node_modules/node-mac-permissions/**/*
+  - "!node_modules/node-mac-permissions/src"
+  - "!node_modules/node-mac-permissions/binding.gyp"
+  - "!src"
+  - "!scripts"
+  - "!release"
+extraResources:
+  - from: assets/
+    to: assets/
+    filter: ["*.ico", "*.png", "*.icns"]
+  - from: ../nowing_web/.next/standalone/nowing_web/
+    to: standalone/
+    filter:
+      - "**/*"
+      - "!**/node_modules"
+  - from: ../nowing_web/.next/standalone/nowing_web/node_modules/
+    to: standalone/node_modules/
+    filter: ["**/*"]
+  - from: ../nowing_web/.next/static/
+    to: standalone/.next/static/
+    filter: ["**/*"]
+  - from: ../nowing_web/public/
+    to: standalone/public/
+    filter: ["**/*"]
+asarUnpack:
+  - "**/*.node"
+  - "node_modules/node-gyp-build/**/*"
+  - "node_modules/bindings/**/*"
+  - "node_modules/file-uri-to-path/**/*"
+  - "node_modules/node-mac-permissions/**/*"
+mac:
+  icon: assets/icon.icns
+  category: public.app-category.productivity
+  artifactName: "${productName}-${version}-${arch}.${ext}"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    NSAccessibilityUsageDescription: "Nowing uses accessibility features to insert suggestions into the active application."
+    NSScreenCaptureUsageDescription: "Nowing uses screen capture to analyze your screen and provide context-aware writing suggestions."
+    NSAppleEventsUsageDescription: "Nowing uses Apple Events to interact with the active application."
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+win:
+  icon: assets/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+linux:
+  icon: assets/icon.png
+  category: Utility
+  artifactName: "${productName}-${version}-${arch}.${ext}"
+  mimeTypes:
+    - x-scheme-handler/nowing
+  desktop:
+    entry:
+      Name: Nowing
+      Comment: AI-powered research assistant
+      Categories: Utility;Office;
+  target:
+    - deb
+    - AppImage

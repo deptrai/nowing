@@ -1,4 +1,4 @@
-# Strategic Context - SurfSense Crypto Co-Pilot
+# Strategic Context - Nowing Crypto Co-Pilot
  
  **Date:** February 2, 2026  
  **Analysis Type:** Innovation Strategy  
@@ -9,12 +9,12 @@
  ## 🎯 STRATEGIC FRAMING
  
  ### Company Context
- **Name:** SurfSense Crypto Co-Pilot  
+ **Name:** Nowing Crypto Co-Pilot  
  **Current Status:** **Ready for Beta Implementation (Epics 1 & 2 Fully Specified)**  
  **Future Vision:** The comprehensive "Operating System" for crypto traders, starting as a high-utility browser extension.
  
  **Critical Insight:** 
- - **Pivot Complete:** Shifted from generic "SurfSense" to focused "Crypto Co-Pilot".
+ - **Pivot Complete:** Shifted from generic "Nowing" to focused "Crypto Co-Pilot".
  - **Execution Mode:** We are no longer just exploring; we are executing a specific, validated roadmap.
  - **Technical Readiness:** Core architecture (RAG, Connectors) and critical features (AI Assistant, Smart Alerts) are designed and ready to build.
  
@@ -37,7 +37,7 @@
  
  ## 🏢 CURRENT BUSINESS MODEL STATUS
  
- **SurfSense Status:**
+ **Nowing Status:**
  - **Development Phase:** Pre-Revenue, Implementation Started.
  - **Monetization Strategy:** Freemium (Free access to core data/charts, Premium subscription for AI Insights & Advanced Alerts).
  - **Validation:** Technical feasibility confirmed (Google Gemini 2.0 / OpenAI o3-mini integration verified).
@@ -52,7 +52,7 @@
  
  **Status:** ✅ **HIGH**
  
- 1.  **Architecture:** Modular "SurfSense 2.0" architecture defined, separating Content Script, Side Panel, and Background Service.
+ 1.  **Architecture:** Modular "Nowing 2.0" architecture defined, separating Content Script, Side Panel, and Background Service.
  2.  **Epics Ready:**
      *   **Epic 1 (AI Assistant):** Chat interface, RAG context, LLM Router—fully specified (BDD Ready).
      *   **Epic 2 (Smart Monitoring):** Price alerts, Whale tracking, Risk analysis—fully specified (BDD Ready).
@@ -99,7 +99,7 @@
  **Refined Focus:**
  We are not building a "better DexScreener". We are building the **layer above it**.
  - **Legacy:** User looks at charts, calculates, decides.
- - **SurfSense:** User asks SurfSense, SurfSense analyzes charts, SurfSense suggests/alerts.
+ - **Nowing:** User asks Nowing, Nowing analyzes charts, Nowing suggests/alerts.
  
  ---
  

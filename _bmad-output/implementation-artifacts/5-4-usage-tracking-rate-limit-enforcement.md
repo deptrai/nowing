@@ -20,7 +20,7 @@ so that mô hình kinh doanh không bị lỗ do chi phí LLM và Storage, áp d
 
 | Component | Hiện trạng | File |
 |-----------|-----------|------|
-| Page Quota Service | **Đã implement đầy đủ** — `check_page_limit()`, `update_page_usage()`, `get_page_usage()`, `estimate_pages_*()` | `surfsense_backend/app/services/page_limit_service.py` |
+| Page Quota Service | **Đã implement đầy đủ** — `check_page_limit()`, `update_page_usage()`, `get_page_usage()`, `estimate_pages_*()` | `nowing_backend/app/services/page_limit_service.py` |
 | Enforcement trong Celery | **Đã có** — check quota trước khi process document | `document_tasks.py` |
 | Enforcement trong Connectors | **Đã có** — Google Drive, OneDrive, Dropbox indexers check `remaining_quota` | `connector_indexers/*.py` |
 | Enforcement tại HTTP API | **Chưa có** — document upload route không check quota trước khi enqueue task | routes/ |
@@ -36,7 +36,7 @@ so that mô hình kinh doanh không bị lỗ do chi phí LLM và Storage, áp d
 ## Tasks / Subtasks
 
 - [x] Task 1: Thêm Page Quota Pre-check vào Document Upload Route (Backend)
-  - [x] Subtask 1.1: Tìm document upload route — `surfsense_backend/app/routes/documents_routes.py`
+  - [x] Subtask 1.1: Tìm document upload route — `nowing_backend/app/routes/documents_routes.py`
   - [x] Subtask 1.2: Inject `PageLimitService`, gọi `estimate_pages_from_metadata(filename, file_size)` rồi `check_page_limit(user_id, estimated_pages)`.
   - [x] Subtask 1.3: `PageLimitExceededError` → `HTTPException(402)` với message mô tả quota.
   - [x] Subtask 1.4: Giữ nguyên enforcement trong Celery tasks (double-check layer).
@@ -77,10 +77,10 @@ PageLimitService.update_page_usage() [COMMIT — tăng pages_used]
 ```
 
 ### References
-- `surfsense_backend/app/services/page_limit_service.py` — page quota (đọc, ít sửa)
-- `surfsense_backend/app/tasks/celery_tasks/document_tasks.py` — enforcement pattern hiện tại
-- `surfsense_backend/app/routes/documents_routes.py` — document upload route
-- `surfsense_web/components/sources/DocumentUploadTab.tsx` — frontend upload component
+- `nowing_backend/app/services/page_limit_service.py` — page quota (đọc, ít sửa)
+- `nowing_backend/app/tasks/celery_tasks/document_tasks.py` — enforcement pattern hiện tại
+- `nowing_backend/app/routes/documents_routes.py` — document upload route
+- `nowing_web/components/sources/DocumentUploadTab.tsx` — frontend upload component
 
 ## Dev Agent Record
 
@@ -98,14 +98,14 @@ PageLimitService.update_page_usage() [COMMIT — tăng pages_used]
 - `LayoutDataProvider.tsx`: Passes token data to sidebar.
 
 ### File List
-- `surfsense_backend/app/routes/documents_routes.py` — page quota pre-check in upload endpoints
-- `surfsense_backend/app/schemas/users.py` — extended UserRead
-- `surfsense_web/components/sources/DocumentUploadTab.tsx` — 402 error handling
-- `surfsense_web/contracts/types/user.types.ts` — quota fields in Zod schema
-- `surfsense_web/components/layout/ui/sidebar/PageUsageDisplay.tsx` — token usage bar + color states
-- `surfsense_web/components/layout/types/layout.types.ts` — extended PageUsage interface
-- `surfsense_web/components/layout/providers/LayoutDataProvider.tsx` — pass token data
-- `surfsense_web/components/layout/ui/sidebar/Sidebar.tsx` — pass token props to PageUsageDisplay
+- `nowing_backend/app/routes/documents_routes.py` — page quota pre-check in upload endpoints
+- `nowing_backend/app/schemas/users.py` — extended UserRead
+- `nowing_web/components/sources/DocumentUploadTab.tsx` — 402 error handling
+- `nowing_web/contracts/types/user.types.ts` — quota fields in Zod schema
+- `nowing_web/components/layout/ui/sidebar/PageUsageDisplay.tsx` — token usage bar + color states
+- `nowing_web/components/layout/types/layout.types.ts` — extended PageUsage interface
+- `nowing_web/components/layout/providers/LayoutDataProvider.tsx` — pass token data
+- `nowing_web/components/layout/ui/sidebar/Sidebar.tsx` — pass token props to PageUsageDisplay
 
 ## Review Findings (2026-04-15)
 

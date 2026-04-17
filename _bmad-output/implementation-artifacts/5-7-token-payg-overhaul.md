@@ -25,39 +25,39 @@ so that tôi không cần nâng plan vẫn dùng được, hoặc khi cần dùn
 
 | File | Thay đổi |
 |---|---|
-| `surfsense_backend/app/db.py` | Thêm `purchased_tokens` column vào cả 2 User model variants |
-| `surfsense_backend/alembic/versions/130_add_purchased_tokens.py` | **NEW** migration — `purchased_tokens` INTEGER NOT NULL DEFAULT 0 |
-| `surfsense_backend/app/config/__init__.py` | Thêm `STRIPE_BILLING_PORTAL_RETURN_URL`; xóa `STRIPE_PAGE_BUYING_ENABLED`, `STRIPE_PAGES_PER_UNIT`, `TOKEN_PACKS` dict (không cần nữa — dùng `price_data` thay vì pre-created Price IDs) |
-| `surfsense_backend/app/schemas/stripe.py` | Xóa PAYG page schemas; thêm `CreateTokenTopupRequest(amount_usd: float, search_space_id: int)`, `CreateTokenTopupResponse(checkout_url, admin_approval_mode)`, `BillingPortalResponse`; đổi `StripeStatusResponse.page_buying_enabled` → `stripe_enabled` |
-| `surfsense_backend/app/routes/stripe_routes.py` | Xóa `create-checkout-session`, `purchases` endpoints; thêm `create-token-topup-checkout` (custom USD amount, `price_data`), `billing-portal`, `_fulfill_token_topup`, `_resolve_plan_price_id()`, `_queue_subscription_approval_request()`; `_TOKENS_PER_USD = 100_000` constant; admin-approval fallback cho cả token topup và subscription checkout khi Stripe fails; webhook `checkout.session.completed (payment mode)` gọi `_fulfill_token_topup`; `_handle_invoice_payment_succeeded` reset `purchased_tokens = 0` |
-| `surfsense_backend/app/services/token_quota_service.py` | `token_limit = monthly_token_limit + purchased_tokens` |
+| `nowing_backend/app/db.py` | Thêm `purchased_tokens` column vào cả 2 User model variants |
+| `nowing_backend/alembic/versions/130_add_purchased_tokens.py` | **NEW** migration — `purchased_tokens` INTEGER NOT NULL DEFAULT 0 |
+| `nowing_backend/app/config/__init__.py` | Thêm `STRIPE_BILLING_PORTAL_RETURN_URL`; xóa `STRIPE_PAGE_BUYING_ENABLED`, `STRIPE_PAGES_PER_UNIT`, `TOKEN_PACKS` dict (không cần nữa — dùng `price_data` thay vì pre-created Price IDs) |
+| `nowing_backend/app/schemas/stripe.py` | Xóa PAYG page schemas; thêm `CreateTokenTopupRequest(amount_usd: float, search_space_id: int)`, `CreateTokenTopupResponse(checkout_url, admin_approval_mode)`, `BillingPortalResponse`; đổi `StripeStatusResponse.page_buying_enabled` → `stripe_enabled` |
+| `nowing_backend/app/routes/stripe_routes.py` | Xóa `create-checkout-session`, `purchases` endpoints; thêm `create-token-topup-checkout` (custom USD amount, `price_data`), `billing-portal`, `_fulfill_token_topup`, `_resolve_plan_price_id()`, `_queue_subscription_approval_request()`; `_TOKENS_PER_USD = 100_000` constant; admin-approval fallback cho cả token topup và subscription checkout khi Stripe fails; webhook `checkout.session.completed (payment mode)` gọi `_fulfill_token_topup`; `_handle_invoice_payment_succeeded` reset `purchased_tokens = 0` |
+| `nowing_backend/app/services/token_quota_service.py` | `token_limit = monthly_token_limit + purchased_tokens` |
 
 ### Frontend
 
 | File | Thay đổi |
 |---|---|
-| `surfsense_web/contracts/types/stripe.types.ts` | Xóa PAYG page types; thêm `createTokenTopupRequest(amount_usd, search_space_id)`, `createTokenTopupResponse(checkout_url, admin_approval_mode)`, `BillingPortalResponse`; `stripe_enabled` thay `page_buying_enabled` |
-| `surfsense_web/contracts/types/user.types.ts` | Thêm `purchased_tokens`, `subscription_current_period_end` |
-| `surfsense_web/lib/apis/stripe-api.service.ts` | Xóa `createCheckoutSession`, `getPurchases`; thêm `createTokenTopupCheckout`, `getBillingPortal` |
-| `surfsense_web/app/dashboard/[search_space_id]/buy-tokens/page.tsx` | **NEW** — Custom amount token topup UI: quick amount buttons ($1/$5/$10/$25/$50/$100), custom amount input with +/- controls, token preview badge, admin-approval toast handling |
-| `surfsense_web/app/dashboard/[search_space_id]/purchase-success/page.tsx` | Repurpose: "Tokens added!" thay "Purchase complete" |
-| `surfsense_web/components/layout/ui/sidebar/PageUsageDisplay.tsx` | Plan badge (FREE/PRO MONTHLY/PRO YEARLY), token meter = monthly + purchased, CTAs: Buy Tokens / Upgrade / Manage Billing; nhận `purchasedTokens`, `planId`, `subscriptionStatus` props |
-| `surfsense_web/components/layout/ui/sidebar/Sidebar.tsx` | Forward `purchasedTokens`, `planId`, `subscriptionStatus` từ `pageUsage` vào `PageUsageDisplay` |
-| `surfsense_web/components/layout/types/layout.types.ts` | `PageUsage` interface thêm `purchasedTokens?`, `planId?`, `subscriptionStatus?` |
-| `surfsense_web/components/layout/providers/LayoutDataProvider.tsx` | Pass `purchasedTokens`, `planId`, `subscriptionStatus` xuống sidebar |
-| `surfsense_web/atoms/user/user-query.atoms.ts` | `staleTime: 0` (từ 5 phút) — refetch on window focus |
-| `surfsense_backend/app/schemas/users.py` | `UserRead` thêm `purchased_tokens: int`, `subscription_current_period_end: datetime | None` |
-| `surfsense_web/components/settings/subscription-content.tsx` | **NEW** — Settings tab: plan info, usage, billing portal |
-| `surfsense_web/components/settings/user-settings-dialog.tsx` | Tab "Purchase History" → "Subscription" |
-| `surfsense_web/components/settings/more-pages-content.tsx` | "Buy page packs" → "Upgrade to Pro" + "Buy Token Top-up" |
+| `nowing_web/contracts/types/stripe.types.ts` | Xóa PAYG page types; thêm `createTokenTopupRequest(amount_usd, search_space_id)`, `createTokenTopupResponse(checkout_url, admin_approval_mode)`, `BillingPortalResponse`; `stripe_enabled` thay `page_buying_enabled` |
+| `nowing_web/contracts/types/user.types.ts` | Thêm `purchased_tokens`, `subscription_current_period_end` |
+| `nowing_web/lib/apis/stripe-api.service.ts` | Xóa `createCheckoutSession`, `getPurchases`; thêm `createTokenTopupCheckout`, `getBillingPortal` |
+| `nowing_web/app/dashboard/[search_space_id]/buy-tokens/page.tsx` | **NEW** — Custom amount token topup UI: quick amount buttons ($1/$5/$10/$25/$50/$100), custom amount input with +/- controls, token preview badge, admin-approval toast handling |
+| `nowing_web/app/dashboard/[search_space_id]/purchase-success/page.tsx` | Repurpose: "Tokens added!" thay "Purchase complete" |
+| `nowing_web/components/layout/ui/sidebar/PageUsageDisplay.tsx` | Plan badge (FREE/PRO MONTHLY/PRO YEARLY), token meter = monthly + purchased, CTAs: Buy Tokens / Upgrade / Manage Billing; nhận `purchasedTokens`, `planId`, `subscriptionStatus` props |
+| `nowing_web/components/layout/ui/sidebar/Sidebar.tsx` | Forward `purchasedTokens`, `planId`, `subscriptionStatus` từ `pageUsage` vào `PageUsageDisplay` |
+| `nowing_web/components/layout/types/layout.types.ts` | `PageUsage` interface thêm `purchasedTokens?`, `planId?`, `subscriptionStatus?` |
+| `nowing_web/components/layout/providers/LayoutDataProvider.tsx` | Pass `purchasedTokens`, `planId`, `subscriptionStatus` xuống sidebar |
+| `nowing_web/atoms/user/user-query.atoms.ts` | `staleTime: 0` (từ 5 phút) — refetch on window focus |
+| `nowing_backend/app/schemas/users.py` | `UserRead` thêm `purchased_tokens: int`, `subscription_current_period_end: datetime | None` |
+| `nowing_web/components/settings/subscription-content.tsx` | **NEW** — Settings tab: plan info, usage, billing portal |
+| `nowing_web/components/settings/user-settings-dialog.tsx` | Tab "Purchase History" → "Subscription" |
+| `nowing_web/components/settings/more-pages-content.tsx` | "Buy page packs" → "Upgrade to Pro" + "Buy Token Top-up" |
 
 ### Files Deleted
 
 | File | Lý do |
 |---|---|
-| `surfsense_web/app/dashboard/[search_space_id]/buy-pages/page.tsx` | PAYG pages route thay bằng buy-tokens |
-| `surfsense_web/components/settings/buy-pages-content.tsx` | PAYG pages UI |
-| `surfsense_web/app/dashboard/[search_space_id]/user-settings/components/PurchaseHistoryContent.tsx` | PAYG history thay bằng SubscriptionContent |
+| `nowing_web/app/dashboard/[search_space_id]/buy-pages/page.tsx` | PAYG pages route thay bằng buy-tokens |
+| `nowing_web/components/settings/buy-pages-content.tsx` | PAYG pages UI |
+| `nowing_web/app/dashboard/[search_space_id]/user-settings/components/PurchaseHistoryContent.tsx` | PAYG history thay bằng SubscriptionContent |
 
 ## Token Quota Model
 
@@ -130,18 +130,18 @@ Token economics: MAX = $5/M tokens (58% cheaper per token vs PRO $12/M).
 
 | File | Thay đổi |
 |---|---|
-| `surfsense_backend/app/schemas/stripe.py` | Thêm `max_monthly`, `max_yearly` vào `PlanId` enum |
-| `surfsense_backend/app/config/__init__.py` | Thêm `STRIPE_MAX_MONTHLY_PRICE_ID`, `STRIPE_MAX_YEARLY_PRICE_ID` env vars; PLAN_LIMITS: `max_monthly/max_yearly` = 20M tokens, 20K pages |
-| `surfsense_backend/app/routes/stripe_routes.py` | `_get_price_id_for_plan()` xử lý max plans; webhook validation chấp nhận `max_monthly`/`max_yearly`; `_activate_subscription_from_checkout()` map max plans → PLAN_LIMITS |
-| `surfsense_backend/alembic/versions/131_add_dexscreener_connector.py` | **NEW** — Resolve Alembic multiple-head conflict (down_revision=130) |
+| `nowing_backend/app/schemas/stripe.py` | Thêm `max_monthly`, `max_yearly` vào `PlanId` enum |
+| `nowing_backend/app/config/__init__.py` | Thêm `STRIPE_MAX_MONTHLY_PRICE_ID`, `STRIPE_MAX_YEARLY_PRICE_ID` env vars; PLAN_LIMITS: `max_monthly/max_yearly` = 20M tokens, 20K pages |
+| `nowing_backend/app/routes/stripe_routes.py` | `_get_price_id_for_plan()` xử lý max plans; webhook validation chấp nhận `max_monthly`/`max_yearly`; `_activate_subscription_from_checkout()` map max plans → PLAN_LIMITS |
+| `nowing_backend/alembic/versions/131_add_dexscreener_connector.py` | **NEW** — Resolve Alembic multiple-head conflict (down_revision=130) |
 
 ### Frontend Changes (MAX Plan)
 
 | File | Thay đổi |
 |---|---|
-| `surfsense_web/components/pricing/pricing-section.tsx` | Thêm MAX plan card ($100/mo, $80/mo annual, 20M tokens); `handleUpgradeMax()` function; `PLAN_IDS.max_monthly/max_yearly` |
-| `surfsense_web/components/pricing.tsx` | Fix grid layout 4 plans: `lg:grid-cols-4` khi `plans.length === 4` |
-| `surfsense_web/components/settings/more-pages-content.tsx` | Title → "Get Free Tokens & Pages"; thêm "Claim 100K Free Tokens" card; token claim dialog via mailto |
+| `nowing_web/components/pricing/pricing-section.tsx` | Thêm MAX plan card ($100/mo, $80/mo annual, 20M tokens); `handleUpgradeMax()` function; `PLAN_IDS.max_monthly/max_yearly` |
+| `nowing_web/components/pricing.tsx` | Fix grid layout 4 plans: `lg:grid-cols-4` khi `plans.length === 4` |
+| `nowing_web/components/settings/more-pages-content.tsx` | Title → "Get Free Tokens & Pages"; thêm "Claim 100K Free Tokens" card; token claim dialog via mailto |
 
 ---
 
@@ -153,14 +153,14 @@ Hiển thị token tiêu thụ sau mỗi AI response và quota còn lại trong 
 
 | File | Thay đổi |
 |---|---|
-| `surfsense_backend/app/tasks/chat/stream_new_chat.py` | Sau `update_token_usage()`, emit SSE event `data-token-usage` với `tokens_this_request`, `tokens_used_total`, `monthly_limit`, `tokens_remaining`; cả 2 paths (new message + resume); resume path: di chuyển token deduction trước `format_done()` để SSE còn mở |
+| `nowing_backend/app/tasks/chat/stream_new_chat.py` | Sau `update_token_usage()`, emit SSE event `data-token-usage` với `tokens_this_request`, `tokens_used_total`, `monthly_limit`, `tokens_remaining`; cả 2 paths (new message + resume); resume path: di chuyển token deduction trước `format_done()` để SSE còn mở |
 
 ### Frontend Changes
 
 | File | Thay đổi |
 |---|---|
-| `surfsense_web/lib/chat/streaming-state.ts` | Thêm `data-token-usage` vào `SSEEvent` union type |
-| `surfsense_web/app/dashboard/[search_space_id]/new-chat/[[...chat_id]]/page.tsx` | `lastTokenUsage` state; reset khi send message mới; `case "data-token-usage"` trong cả 3 switch blocks; overlay UI phía trên composer hiển thị stats sau khi stream hoàn tất |
+| `nowing_web/lib/chat/streaming-state.ts` | Thêm `data-token-usage` vào `SSEEvent` union type |
+| `nowing_web/app/dashboard/[search_space_id]/new-chat/[[...chat_id]]/page.tsx` | `lastTokenUsage` state; reset khi send message mới; `case "data-token-usage"` trong cả 3 switch blocks; overlay UI phía trên composer hiển thị stats sau khi stream hoàn tất |
 
 ### Token Usage Overlay UI
 

@@ -13,12 +13,12 @@ So that purchaser có thể tra cứu lịch sử quà đã mua, và admin có t
 1. `GET /api/v1/stripe/gift-codes` (JWT required) trả về danh sách gift codes mà `purchaser_id = current_user.id`, sắp xếp `created_at DESC`, với fields: `id`, `code`, `plan_id`, `duration_months`, `status`, `created_at`, `redeemed_at`.
 2. `POST /api/v1/stripe/request-gift` (JWT required) với body `{"plan_id": "pro_monthly", "duration_months": 3}` tạo record `gift_requests` với `status='pending'`, trả về `{"request_id": "<uuid>", "message": "Yêu cầu của bạn đang chờ admin xử lý."}`.
 3. `POST /api/v1/stripe/request-gift` trả về `409 Conflict` nếu user đã có pending gift request cho cùng `plan_id` + `duration_months`.
-4. Schemas `GiftCodeItem`, `GiftCodesResponse`, `RequestGiftRequest`, `RequestGiftResponse` được thêm vào `surfsense_backend/app/schemas/stripe.py`.
+4. Schemas `GiftCodeItem`, `GiftCodesResponse`, `RequestGiftRequest`, `RequestGiftResponse` được thêm vào `nowing_backend/app/schemas/stripe.py`.
 5. `GiftRequest`, `GiftRequestStatus` được import từ `app.db` vào `stripe_routes.py`.
 
 ## Tasks / Subtasks
 
-- [x] Thêm Pydantic schemas vào `surfsense_backend/app/schemas/stripe.py` (AC: 4)
+- [x] Thêm Pydantic schemas vào `nowing_backend/app/schemas/stripe.py` (AC: 4)
   - [x] `GiftCodeItem(BaseModel)`: `id: uuid.UUID`, `code: str`, `plan_id: str`, `duration_months: int`, `status: str`, `created_at: datetime`, `redeemed_at: datetime | None`
   - [x] `GiftCodesResponse(BaseModel)`: `items: list[GiftCodeItem]`, `count: int`
   - [x] `RequestGiftRequest(BaseModel)`: `plan_id: str`, `duration_months: int = Field(ge=1, le=12)`
@@ -46,7 +46,7 @@ Story 6.1 (migration 132 — bảng `gift_codes` + `gift_requests`), Story 6.2 (
 
 ### Schemas cần thêm — PHẢI tuân thủ
 
-Thêm vào `surfsense_backend/app/schemas/stripe.py`:
+Thêm vào `nowing_backend/app/schemas/stripe.py`:
 
 ```python
 import uuid
@@ -223,7 +223,7 @@ Admin approval là enhancement sau (không có trong Epic 6 scope).
 ### Verification command
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 uv run pytest tests/unit/ -q \
   --ignore=tests/unit/connectors/test_dexscreener_connector.py \
   --ignore=tests/unit/indexing_pipeline/
@@ -232,15 +232,15 @@ uv run pytest tests/unit/ -q \
 ### Project Structure Notes
 
 - Sửa 2 files:
-  - `surfsense_backend/app/schemas/stripe.py` — thêm 4 schemas mới
-  - `surfsense_backend/app/routes/stripe_routes.py` — thêm imports + 2 endpoints
+  - `nowing_backend/app/schemas/stripe.py` — thêm 4 schemas mới
+  - `nowing_backend/app/routes/stripe_routes.py` — thêm imports + 2 endpoints
 
 ### References
 
-- [Source: surfsense_backend/app/routes/stripe_routes.py#649-705] — `_queue_subscription_approval_request` pattern (duplicate check, GiftRequest creation)
-- [Source: surfsense_backend/app/db.py#1687-1740] — `SubscriptionRequest` pattern (tương tự `GiftRequest`)
-- [Source: surfsense_backend/app/schemas/stripe.py] — schema file hiện tại
-- [Source: surfsense_backend/app/config/__init__.py#324-340] — `GIFT_PRICING` config (từ story 6.2)
+- [Source: nowing_backend/app/routes/stripe_routes.py#649-705] — `_queue_subscription_approval_request` pattern (duplicate check, GiftRequest creation)
+- [Source: nowing_backend/app/db.py#1687-1740] — `SubscriptionRequest` pattern (tương tự `GiftRequest`)
+- [Source: nowing_backend/app/schemas/stripe.py] — schema file hiện tại
+- [Source: nowing_backend/app/config/__init__.py#324-340] — `GIFT_PRICING` config (từ story 6.2)
 - [Source: _bmad-output/planning-artifacts/epics.md#Story-6.5] — AC gốc từ Epic
 
 ## Dev Agent Record
@@ -268,25 +268,25 @@ claude-opus-4-7
 
 ### File List
 
-- `surfsense_backend/app/schemas/stripe.py` (modified — thêm `GiftCodeItem`, `GiftCodesResponse`, `RequestGiftRequest`, `RequestGiftResponse`)
-- `surfsense_backend/app/routes/stripe_routes.py` (modified — thêm imports + `get_gift_codes`, `request_gift` endpoints)
+- `nowing_backend/app/schemas/stripe.py` (modified — thêm `GiftCodeItem`, `GiftCodesResponse`, `RequestGiftRequest`, `RequestGiftResponse`)
+- `nowing_backend/app/routes/stripe_routes.py` (modified — thêm imports + `get_gift_codes`, `request_gift` endpoints)
 
 ### Review Findings
 
 _Three-layer adversarial review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on 2026-04-17. All 5 ACs Pass per auditor. 0 decision-needed (best-practice auto-resolved), 7 patches queued, 4 deferred, 6 dismissed._
 
-- [x] [Review][Patch] Simplify dead-branch enum coercion in `get_gift_codes` → use `status=g.status.value` directly [`surfsense_backend/app/routes/stripe_routes.py:1091`]
-- [x] [Review][Patch] Replace `plan_id: str` with `PlanId` enum in `RequestGiftRequest` (Epic 5 convention) [`surfsense_backend/app/schemas/stripe.py:87`]
-- [x] [Review][Patch] Pin `duration_months` to `Literal[1, 3, 6, 12]` matching `GIFT_PRICING` keys; eliminate ambiguous 400 [`surfsense_backend/app/schemas/stripe.py:88`]
-- [x] [Review][Patch] Add Stripe-unavailable guard to `request_gift` (enforce docstring promise of "fallback when Stripe unavailable") [`surfsense_backend/app/routes/stripe_routes.py:1101-1112`]
-- [x] [Review][Patch] Serialize concurrent `request_gift` via `SELECT ... FOR UPDATE` on User row (mirror `redeem_gift` pattern) to prevent double-submit race [`surfsense_backend/app/routes/stripe_routes.py:1117`]
-- [x] [Review][Patch] Add `limit`/`offset` pagination to `get_gift_codes` (default 50, max 200); prevents unbounded query [`surfsense_backend/app/routes/stripe_routes.py:1074-1084`]
-- [x] [Review][Patch] Add `expires_at: datetime` to `GiftCodeItem` (enables Story 6.6 near-expiry UX; column already exists) [`surfsense_backend/app/schemas/stripe.py:65-75`]
+- [x] [Review][Patch] Simplify dead-branch enum coercion in `get_gift_codes` → use `status=g.status.value` directly [`nowing_backend/app/routes/stripe_routes.py:1091`]
+- [x] [Review][Patch] Replace `plan_id: str` with `PlanId` enum in `RequestGiftRequest` (Epic 5 convention) [`nowing_backend/app/schemas/stripe.py:87`]
+- [x] [Review][Patch] Pin `duration_months` to `Literal[1, 3, 6, 12]` matching `GIFT_PRICING` keys; eliminate ambiguous 400 [`nowing_backend/app/schemas/stripe.py:88`]
+- [x] [Review][Patch] Add Stripe-unavailable guard to `request_gift` (enforce docstring promise of "fallback when Stripe unavailable") [`nowing_backend/app/routes/stripe_routes.py:1101-1112`]
+- [x] [Review][Patch] Serialize concurrent `request_gift` via `SELECT ... FOR UPDATE` on User row (mirror `redeem_gift` pattern) to prevent double-submit race [`nowing_backend/app/routes/stripe_routes.py:1117`]
+- [x] [Review][Patch] Add `limit`/`offset` pagination to `get_gift_codes` (default 50, max 200); prevents unbounded query [`nowing_backend/app/routes/stripe_routes.py:1074-1084`]
+- [x] [Review][Patch] Add `expires_at: datetime` to `GiftCodeItem` (enables Story 6.6 near-expiry UX; column already exists) [`nowing_backend/app/schemas/stripe.py:65-75`]
 
-- [x] [Review][Defer] `GiftRequest.updated_at` has no autoupdate trigger — needs DB migration + admin workflow (out of Story 6.5 scope) [`surfsense_backend/app/db.py:1832`] — deferred, pre-existing
-- [x] [Review][Defer] No REJECTED resubmission cooldown (mirror `_queue_subscription_approval_request` 24h pattern) — admin reject flow not yet implemented [`surfsense_backend/app/routes/stripe_routes.py:1117`] — deferred, out of scope
-- [x] [Review][Defer] No rate limiting on `request_gift` — infra concern (no cross-cutting limiter in codebase yet) [`surfsense_backend/app/routes/stripe_routes.py:1100`] — deferred, infra
-- [x] [Review][Defer] No structured audit row/table for admin-approval workflow — requires new audit table [`surfsense_backend/app/routes/stripe_routes.py:1138`] — deferred, infra
+- [x] [Review][Defer] `GiftRequest.updated_at` has no autoupdate trigger — needs DB migration + admin workflow (out of Story 6.5 scope) [`nowing_backend/app/db.py:1832`] — deferred, pre-existing
+- [x] [Review][Defer] No REJECTED resubmission cooldown (mirror `_queue_subscription_approval_request` 24h pattern) — admin reject flow not yet implemented [`nowing_backend/app/routes/stripe_routes.py:1117`] — deferred, out of scope
+- [x] [Review][Defer] No rate limiting on `request_gift` — infra concern (no cross-cutting limiter in codebase yet) [`nowing_backend/app/routes/stripe_routes.py:1100`] — deferred, infra
+- [x] [Review][Defer] No structured audit row/table for admin-approval workflow — requires new audit table [`nowing_backend/app/routes/stripe_routes.py:1138`] — deferred, infra
 
 **Dismissed (for transparency):**
 - Gift code plaintext in `get_gift_codes` listing — **intended** behavior: purchaser owns the codes they bought and needs them visible to gift to recipients.

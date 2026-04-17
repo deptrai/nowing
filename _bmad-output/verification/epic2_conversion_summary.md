@@ -38,5 +38,5 @@ Successfully converted all Epic 2 acceptance criteria from checklist format to B
 
 ## Files Modified
 
-1. `/Users/mac_1/Documents/GitHub/SurfSense/_bmad-epics/epic-2-smart-monitoring-alerts.md`
+1. `/Users/mac_1/Documents/GitHub/Nowing/_bmad-epics/epic-2-smart-monitoring-alerts.md`
 2. `/Users/mac_1/.gemini/antigravity/brain/02a071c7-57fc-4f43-a2e8-516ac511579a/implementation_readiness_report.md`

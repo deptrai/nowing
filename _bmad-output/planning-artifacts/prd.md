@@ -48,18 +48,18 @@ documentCounts:
 workflowType: 'prd'
 ---
 
-# Product Requirements Document - SurfSense
+# Product Requirements Document - Nowing
 
 **Author:** luisphan
 **Date:** 2026-04-13
 
 ## Executive Summary
 
-SurfSense là nền tảng tìm kiếm và trích xuất ngữ cảnh (Context Extraction & Agentic RAG) AI-native, được thiết kế để giải quyết triệt để bài toán độ trễ và phân mảnh thông tin. Hệ thống cho phép người dùng và hạ tầng doanh nghiệp truy vấn dữ liệu theo thời gian thực một cách liền mạch, biến kho dữ liệu phức tạp thành các câu trả lời chính xác, an toàn và có thể hành động ngay lập tức. Thông qua kiến trúc Web App & Backend linh hoạt (Next.js & FastAPI), SurfSense đảm bảo trải nghiệm người dùng tối ưu với cơ chế xử lý dữ liệu song song và quy trình lập luận AI chuyên sâu.
+Nowing là nền tảng tìm kiếm và trích xuất ngữ cảnh (Context Extraction & Agentic RAG) AI-native, được thiết kế để giải quyết triệt để bài toán độ trễ và phân mảnh thông tin. Hệ thống cho phép người dùng và hạ tầng doanh nghiệp truy vấn dữ liệu theo thời gian thực một cách liền mạch, biến kho dữ liệu phức tạp thành các câu trả lời chính xác, an toàn và có thể hành động ngay lập tức. Thông qua kiến trúc Web App & Backend linh hoạt (Next.js & FastAPI), Nowing đảm bảo trải nghiệm người dùng tối ưu với cơ chế xử lý dữ liệu song song và quy trình lập luận AI chuyên sâu.
 
 ### What Makes This Special
 
-Điểm khác biệt cốt lõi của SurfSense nằm ở kiến trúc **Local-first** kết hợp cùng mô hình **Multi-agent Graph**. Bằng việc tích hợp công nghệ đồng bộ `@rocicorp/zero` (Zero-cache), nền tảng hỗ trợ đồng bộ dữ liệu tức thì và hoạt động hoàn hảo ngay cả khi offline (mất kết nối internet). Điều này khắc phục được điểm yếu cố hữu của các hệ thống RAG truyền thống: sự phụ thuộc vào kết nối mạng và độ trễ truy vấn cao. Đặc biệt, việc triển khai FastAPI & LangGraph cho phép hệ thống triển khai các luồng tác vụ Agentic linh hoạt đa bước, streaming kết quả về phía người dùng với tốc độ cao đồng thời bảo vệ nghiêm ngặt tính riêng tư của dữ liệu.
+Điểm khác biệt cốt lõi của Nowing nằm ở kiến trúc **Local-first** kết hợp cùng mô hình **Multi-agent Graph**. Bằng việc tích hợp công nghệ đồng bộ `@rocicorp/zero` (Zero-cache), nền tảng hỗ trợ đồng bộ dữ liệu tức thì và hoạt động hoàn hảo ngay cả khi offline (mất kết nối internet). Điều này khắc phục được điểm yếu cố hữu của các hệ thống RAG truyền thống: sự phụ thuộc vào kết nối mạng và độ trễ truy vấn cao. Đặc biệt, việc triển khai FastAPI & LangGraph cho phép hệ thống triển khai các luồng tác vụ Agentic linh hoạt đa bước, streaming kết quả về phía người dùng với tốc độ cao đồng thời bảo vệ nghiêm ngặt tính riêng tư của dữ liệu.
 
 ## Project Classification
 
@@ -112,7 +112,7 @@ Cơ chế Local-first (Zero-cache) đồng bộ hàng nghìn vector và bản gh
 ### 1. Primary User - Success Path
 - **Người dùng:** Alex - Chuyên viên Nghiên cứu Dữ liệu.
 - **Tình huống:** Có hàng chục tài liệu phân mảnh và cần tổng hợp nhanh.
-- **Hành trình:** Cài đặt và mở SurfSense Web App -> Nạp hàng loạt tài liệu -> Hệ thống tự động phân tích và nhúng dữ liệu qua Celery workers/LangGraph API đồng bộ bằng Zero-cache trong nền -> Gõ truy vấn -> SurfSense streaming câu trả lời tức thì kèm trích dẫn.
+- **Hành trình:** Cài đặt và mở Nowing Web App -> Nạp hàng loạt tài liệu -> Hệ thống tự động phân tích và nhúng dữ liệu qua Celery workers/LangGraph API đồng bộ bằng Zero-cache trong nền -> Gõ truy vấn -> Nowing streaming câu trả lời tức thì kèm trích dẫn.
 
 ### 2. Primary User - Edge Case (Offline Mode)
 - **Người dùng:** Alex (Trường hợp mất kết nối mạng).
@@ -126,7 +126,7 @@ Cơ chế Local-first (Zero-cache) đồng bộ hàng nghìn vector và bản gh
 
 ### 4. API Consumer / Developer
 - **Người dùng:** Sam - Kỹ sư phần mềm.
-- **Tình huống:** Xây dựng ứng dụng bên thứ ba tích hợp AI Agent của SurfSense.
+- **Tình huống:** Xây dựng ứng dụng bên thứ ba tích hợp AI Agent của Nowing.
 - **Hành trình:** Tham khảo API -> Gửi cấu trúc truy vấn vào endpoint FastAPI `/api/rag/stream` -> Nhận lại chuỗi sự kiện Server-Sent Events (SSE) theo thời gian thực -> Tích hợp dễ dàng nội dung streaming vào ứng dụng của mình.
 
 ### 5. Gift Purchaser
@@ -155,7 +155,7 @@ Cơ chế Local-first (Zero-cache) đồng bộ hàng nghìn vector và bản gh
 - **Phân bổ tài nguyên (Computational Resources):** Duy trì sự cô lập hoàn toàn giữa Celery workers (dành cho embed) và FastAPI server (dành cho API endpoints) để loại bỏ rủi ro nghẽn cổ chai.
 
 ### Integration Requirements
-- Kiến trúc mở cho phép người dùng tự do lựa chọn các mô hình ngôn ngữ (OpenAI, Anthropic) do SurfSense quản lý. Chi phí sử dụng Token sẽ được tự động trừ vào gói cước Subscription của người dùng (Tuyệt đối không hỗ trợ chức năng User tự nhập LLM API Key riêng nhằm kiểm soát chất lượng và doanh thu).
+- Kiến trúc mở cho phép người dùng tự do lựa chọn các mô hình ngôn ngữ (OpenAI, Anthropic) do Nowing quản lý. Chi phí sử dụng Token sẽ được tự động trừ vào gói cước Subscription của người dùng (Tuyệt đối không hỗ trợ chức năng User tự nhập LLM API Key riêng nhằm kiểm soát chất lượng và doanh thu).
 
 ### Risk Mitigations
 - **Phòng ngừa lỗi đọc file:** Cơ chế fallback thông minh phát hiện, báo lỗi cụ thể và tiếp tục với các file không trích xuất được text.
@@ -164,10 +164,10 @@ Cơ chế Local-first (Zero-cache) đồng bộ hàng nghìn vector và bản gh
 ## Innovation & Novel Patterns
 
 ### Detected Innovation Areas
-**Local-First Agentic RAG:** Sự kết hợp mới mẻ giữa RAG nhiều tác tử điều phối (Multi-Agent) cùng kiến trúc Local-first (thông qua `@rocicorp/zero`). Các hệ thống RAG truyền thống dựa hoàn toàn vào Cloud Database nên thường gặp độ trễ lớn và giới hạn về bộ nhớ cục bộ. SurfSense đảo ngược mô hình này, đồng bộ ngữ cảnh (Context) trực tiếp về IndexedDB/SQLite ở biên (Client). Điều này mang lại cảm giác phản hồi tức thì (Instant) mà vẫn sở hữu khả năng suy luận đa tầng ở phía Backend (thông qua LangGraph).
+**Local-First Agentic RAG:** Sự kết hợp mới mẻ giữa RAG nhiều tác tử điều phối (Multi-Agent) cùng kiến trúc Local-first (thông qua `@rocicorp/zero`). Các hệ thống RAG truyền thống dựa hoàn toàn vào Cloud Database nên thường gặp độ trễ lớn và giới hạn về bộ nhớ cục bộ. Nowing đảo ngược mô hình này, đồng bộ ngữ cảnh (Context) trực tiếp về IndexedDB/SQLite ở biên (Client). Điều này mang lại cảm giác phản hồi tức thì (Instant) mà vẫn sở hữu khả năng suy luận đa tầng ở phía Backend (thông qua LangGraph).
 
 ### Market Context & Competitive Landscape
-Đa số các công cụ RAG SaaS hiện tại phụ thuộc hoàn toàn vào Cloud (gây lo ngại về bảo mật tài liệu và phụ thuộc internet). Ngược lại, các công cụ Local (chạy LLM trên máy cá nhân) lại thiếu tính liên thông giữa nhiều thiết bị và giới hạn bởi phần cứng nội bộ. SurfSense đánh vào khoảng trống ở giữa (Sweet Spot): Nắm giữ độ bảo mật và tốc độ của "Local", đồng thời khai thác sức mạnh khổng lồ của "Cloud LLM/Agents".
+Đa số các công cụ RAG SaaS hiện tại phụ thuộc hoàn toàn vào Cloud (gây lo ngại về bảo mật tài liệu và phụ thuộc internet). Ngược lại, các công cụ Local (chạy LLM trên máy cá nhân) lại thiếu tính liên thông giữa nhiều thiết bị và giới hạn bởi phần cứng nội bộ. Nowing đánh vào khoảng trống ở giữa (Sweet Spot): Nắm giữ độ bảo mật và tốc độ của "Local", đồng thời khai thác sức mạnh khổng lồ của "Cloud LLM/Agents".
 
 ### Validation Approach
 - **Đo lường TTFT:** Đo đạc "Time-to-First-Token", đặt mục tiêu luôn phản hồi dưới 1 giây nhờ việc bớt đi một bước gọi Database trung gian.
@@ -180,7 +180,7 @@ Cơ chế Local-first (Zero-cache) đồng bộ hàng nghìn vector và bản gh
 ## Web App & API Backend Specific Requirements
 
 ### Project-Type Overview
-SurfSense kết hợp giữa kiến trúc Single Page Application (SPA) cực kỳ mượt mà trên Next.js và một Backend API vững chắc chuyên trị các tác vụ AI (FastAPI). Hai lớp này giao tiếp qua chuẩn REST/SSE và đặc biệt là hệ thống đồng bộ Local-first từ `@rocicorp/zero`.
+Nowing kết hợp giữa kiến trúc Single Page Application (SPA) cực kỳ mượt mà trên Next.js và một Backend API vững chắc chuyên trị các tác vụ AI (FastAPI). Hai lớp này giao tiếp qua chuẩn REST/SSE và đặc biệt là hệ thống đồng bộ Local-first từ `@rocicorp/zero`.
 
 ### Technical Architecture Considerations
 - **Kiến trúc SPA & Real-time:** Next.js sẽ đóng vai trò SPA cung cấp trải nghiệm liền mạch. Trạng thái ứng dụng được đồng bộ real-time mà không cần tải lại trang.

@@ -1,5 +1,5 @@
 ---
-project_name: 'SurfSense'
+project_name: 'Nowing'
 user_name: 'Luisphan'
 date: '2026-04-12'
 sections_completed: ['technology_stack']

@@ -6,7 +6,7 @@ Status: done
 
 As a Người dùng,
 I want bấm "Nâng cấp" và được chuyển tới trang thanh toán an toàn,
-so that tôi có thể điền thông tin thẻ tín dụng mà không sợ bị lộ dữ liệu trên máy chủ của SurfSense.
+so that tôi có thể điền thông tin thẻ tín dụng mà không sợ bị lộ dữ liệu trên máy chủ của Nowing.
 
 ## Acceptance Criteria
 
@@ -20,7 +20,7 @@ so that tôi có thể điền thông tin thẻ tín dụng mà không sợ bị
 
 | Component | Hiện trạng | File |
 |-----------|-----------|------|
-| Checkout Endpoint | **Đã tồn tại** nhưng chỉ hỗ trợ `mode='payment'` (one-time page packs) | `surfsense_backend/app/routes/stripe_routes.py` line ~205 |
+| Checkout Endpoint | **Đã tồn tại** nhưng chỉ hỗ trợ `mode='payment'` (one-time page packs) | `nowing_backend/app/routes/stripe_routes.py` line ~205 |
 | Checkout Request Schema | `CreateCheckoutSessionRequest(search_space_id, quantity)` — cho page packs | `stripe_routes.py` |
 | Stripe Client | **Đã tồn tại** — `get_stripe_client()`, config từ env vars | `stripe_routes.py` |
 | Success/Cancel URLs | **Đã tồn tại** — `_get_checkout_urls()` | `stripe_routes.py` |
@@ -72,7 +72,7 @@ Khi tạo subscription checkout, **bắt buộc** phải có `customer` paramete
 Sau checkout, Stripe sẽ gửi `checkout.session.completed` → webhook handler cần detect `mode='subscription'` và activate subscription trên DB.
 
 ### References
-- `surfsense_backend/app/routes/stripe_routes.py` — endpoint PAYG hiện tại (tham khảo pattern)
+- `nowing_backend/app/routes/stripe_routes.py` — endpoint PAYG hiện tại (tham khảo pattern)
 - Stripe Subscription Checkout docs: https://stripe.com/docs/billing/subscriptions/build-subscriptions
 
 ## Dev Agent Record
@@ -89,11 +89,11 @@ Sau checkout, Stripe sẽ gửi `checkout.session.completed` → webhook handler
 ✅ Tất cả tasks/subtasks hoàn thành. AC 1-3 đều được đáp ứng.
 
 ### File List
-- `surfsense_backend/app/config/__init__.py` — added `STRIPE_PRO_MONTHLY_PRICE_ID`, `STRIPE_PRO_YEARLY_PRICE_ID`
-- `surfsense_backend/app/schemas/stripe.py` — added `PlanId` enum, `CreateSubscriptionCheckoutRequest`, `CreateSubscriptionCheckoutResponse` (including `admin_approval_mode: bool = False`)
-- `surfsense_backend/app/routes/stripe_routes.py` — added `_get_subscription_success_url`, `_get_price_id_for_plan`, `get_or_create_stripe_customer`, `POST /create-subscription-checkout` + admin-approval fallback branch
-- `surfsense_web/app/subscription-success/page.tsx` — new success page with toast + user query invalidation
-- `surfsense_web/components/pricing/pricing-section.tsx` — added `admin_approval_mode` toast handling in `handleUpgradePro()`
+- `nowing_backend/app/config/__init__.py` — added `STRIPE_PRO_MONTHLY_PRICE_ID`, `STRIPE_PRO_YEARLY_PRICE_ID`
+- `nowing_backend/app/schemas/stripe.py` — added `PlanId` enum, `CreateSubscriptionCheckoutRequest`, `CreateSubscriptionCheckoutResponse` (including `admin_approval_mode: bool = False`)
+- `nowing_backend/app/routes/stripe_routes.py` — added `_get_subscription_success_url`, `_get_price_id_for_plan`, `get_or_create_stripe_customer`, `POST /create-subscription-checkout` + admin-approval fallback branch
+- `nowing_web/app/subscription-success/page.tsx` — new success page with toast + user query invalidation
+- `nowing_web/components/pricing/pricing-section.tsx` — added `admin_approval_mode` toast handling in `handleUpgradePro()`
 - *(See Story 5.5 for admin-approval infrastructure: migrations 126/127, `SubscriptionRequest` model, admin routes, admin UI page)*
 
 ### Review Findings

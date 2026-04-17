@@ -8,7 +8,7 @@
 
 ## 🎯 Mission Accomplished
 
-Successfully implemented a **Hybrid Token Detection System** that makes the SurfSense browser extension truly universal - working on any webpage, not just DexScreener.
+Successfully implemented a **Hybrid Token Detection System** that makes the Nowing browser extension truly universal - working on any webpage, not just DexScreener.
 
 ---
 

@@ -206,7 +206,7 @@ from app.db import (
 
 ### Không cần notification email trong story này
 
-AC gốc đề cập "code được đính kèm vào response email" — nhưng SurfSense chưa có email service. Story này chỉ lưu code vào DB. Frontend (Story 6.6) sẽ fetch và hiển thị code cho purchaser. Email có thể là enhancement sau.
+AC gốc đề cập "code được đính kèm vào response email" — nhưng Nowing chưa có email service. Story này chỉ lưu code vào DB. Frontend (Story 6.6) sẽ fetch và hiển thị code cho purchaser. Email có thể là enhancement sau.
 
 ### success_url không embed code
 
@@ -215,7 +215,7 @@ Gift code được lưu DB, không embed vào redirect URL (security risk). Fron
 ### Verification command
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 uv run pytest tests/unit/ -q \
   --ignore=tests/unit/connectors/test_dexscreener_connector.py \
   --ignore=tests/unit/indexing_pipeline/
@@ -223,7 +223,7 @@ uv run pytest tests/unit/ -q \
 
 ### Project Structure Notes
 
-- Chỉ sửa một file: `surfsense_backend/app/routes/stripe_routes.py`
+- Chỉ sửa một file: `nowing_backend/app/routes/stripe_routes.py`
   - Thêm `import secrets, string` (top)
   - Thêm `GiftCode, GiftCodeStatus` vào `from app.db import`
   - Thêm `_GIFT_CODE_CHARS` constant
@@ -233,10 +233,10 @@ uv run pytest tests/unit/ -q \
 
 ### References
 
-- [Source: surfsense_backend/app/routes/stripe_routes.py#184-267] — `_fulfill_token_topup` pattern (idempotency, SELECT FOR UPDATE, logging)
-- [Source: surfsense_backend/app/routes/stripe_routes.py#840-885] — webhook dispatch block (cần sửa)
-- [Source: surfsense_backend/app/routes/stripe_routes.py#17-22] — `from app.db import` block
-- [Source: surfsense_backend/app/db.py#GiftCode] — model schema (từ story 6.1)
+- [Source: nowing_backend/app/routes/stripe_routes.py#184-267] — `_fulfill_token_topup` pattern (idempotency, SELECT FOR UPDATE, logging)
+- [Source: nowing_backend/app/routes/stripe_routes.py#840-885] — webhook dispatch block (cần sửa)
+- [Source: nowing_backend/app/routes/stripe_routes.py#17-22] — `from app.db import` block
+- [Source: nowing_backend/app/db.py#GiftCode] — model schema (từ story 6.1)
 - [Source: _bmad-output/planning-artifacts/epics.md#Story-6.3] — AC gốc từ Epic
 
 ## Dev Agent Record
@@ -269,9 +269,9 @@ Story 6.1 migration 132 set `code = Column(String(16))`, nhưng Story 6.3 spec f
 
 ### File List
 
-- `surfsense_backend/app/routes/stripe_routes.py` (modified — thêm imports `secrets`/`string`/`IntegrityError`/`GiftCode`/`GiftCodeStatus`, `_GIFT_CODE_CHARS` constant, `_generate_gift_code` helper, `_fulfill_gift_purchase` function, update webhook dispatch)
-- `surfsense_backend/app/db.py` (modified — `GiftCode.code` `String(16)` → `String(32)` để fit format `GIFT-XXXX-XXXX-XXXX`)
-- `surfsense_backend/alembic/versions/133_widen_gift_codes_code_column.py` (new — ALTER COLUMN `gift_codes.code` từ VARCHAR(16) → VARCHAR(32))
+- `nowing_backend/app/routes/stripe_routes.py` (modified — thêm imports `secrets`/`string`/`IntegrityError`/`GiftCode`/`GiftCodeStatus`, `_GIFT_CODE_CHARS` constant, `_generate_gift_code` helper, `_fulfill_gift_purchase` function, update webhook dispatch)
+- `nowing_backend/app/db.py` (modified — `GiftCode.code` `String(16)` → `String(32)` để fit format `GIFT-XXXX-XXXX-XXXX`)
+- `nowing_backend/alembic/versions/133_widen_gift_codes_code_column.py` (new — ALTER COLUMN `gift_codes.code` từ VARCHAR(16) → VARCHAR(32))
 
 ## Review Findings (2026-04-17)
 

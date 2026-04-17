@@ -1,4 +1,4 @@
-# SurfSense 2.0 - UX/UI Analysis Report
+# Nowing 2.0 - UX/UI Analysis Report
 
 **Date:** 2026-02-02  
 **Analyst:** UX Designer (Augment Agent)  
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This report analyzes the current UX/UI implementation of SurfSense 2.0 against the design specifications. The analysis reveals significant gaps between the documented designs and actual implementation, particularly in the browser extension.
+This report analyzes the current UX/UI implementation of Nowing 2.0 against the design specifications. The analysis reveals significant gaps between the documented designs and actual implementation, particularly in the browser extension.
 
 ### Overall Assessment
 
@@ -224,14 +224,14 @@ setTimeout(() => {
 **Current:**
 ```
 ┌─────────────────────────────────────┐
-│ [Logo] SurfSense           [⚙️]    │
+│ [Logo] Nowing           [⚙️]    │
 └─────────────────────────────────────┘
 ```
 
 **Recommended:**
 ```
 ┌─────────────────────────────────────┐
-│ 🌊 SurfSense  [Crypto ▼] [⚙️] [👤] │
+│ 🌊 Nowing  [Crypto ▼] [⚙️] [👤] │
 └─────────────────────────────────────┘
 ```
 
@@ -311,13 +311,13 @@ setTimeout(() => {
 
 | Component | File Path | Lines |
 |-----------|-----------|-------|
-| ChatInterface | `surfsense_browser_extension/sidepanel/chat/ChatInterface.tsx` | 79 |
-| ChatHeader | `surfsense_browser_extension/sidepanel/chat/ChatHeader.tsx` | 25 |
-| ChatMessages | `surfsense_browser_extension/sidepanel/chat/ChatMessages.tsx` | 34 |
-| ChatInput | `surfsense_browser_extension/sidepanel/chat/ChatInput.tsx` | 42 |
-| TokenInfoCard | `surfsense_browser_extension/sidepanel/dexscreener/TokenInfoCard.tsx` | 83 |
-| QuickCapture | `surfsense_browser_extension/sidepanel/chat/QuickCapture.tsx` | 50 |
-| Thread (Web) | `surfsense_web/components/assistant-ui/thread.tsx` | 708 |
+| ChatInterface | `nowing_browser_extension/sidepanel/chat/ChatInterface.tsx` | 79 |
+| ChatHeader | `nowing_browser_extension/sidepanel/chat/ChatHeader.tsx` | 25 |
+| ChatMessages | `nowing_browser_extension/sidepanel/chat/ChatMessages.tsx` | 34 |
+| ChatInput | `nowing_browser_extension/sidepanel/chat/ChatInput.tsx` | 42 |
+| TokenInfoCard | `nowing_browser_extension/sidepanel/dexscreener/TokenInfoCard.tsx` | 83 |
+| QuickCapture | `nowing_browser_extension/sidepanel/chat/QuickCapture.tsx` | 50 |
+| Thread (Web) | `nowing_web/components/assistant-ui/thread.tsx` | 708 |
 | UX Spec | `_bmad-output/planning-artifacts/ux-design-specification.md` | 813 |
 | Extension UX | `_bmad-output/ux-design/extension-ux-design.md` | 933 |
 

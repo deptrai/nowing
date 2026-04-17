@@ -1,16 +1,16 @@
 # =============================================================================
-# SurfSense — One-line Install Script (Windows / PowerShell)
+# Nowing — One-line Install Script (Windows / PowerShell)
 #
 #
-# Usage: irm https://raw.githubusercontent.com/MODSetter/SurfSense/main/docker/scripts/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/MODSetter/Nowing/main/docker/scripts/install.ps1 | iex
 #
 # To pass flags, save and run locally:
 #   .\install.ps1 -NoWatchtower
 #   .\install.ps1 -WatchtowerInterval 3600
 #
 # Handles two cases automatically:
-#   1. Fresh install        — no prior SurfSense data detected
-#   2. Migration from the legacy all-in-one container (surfsense-data volume)
+#   1. Fresh install        — no prior Nowing data detected
+#   2. Migration from the legacy all-in-one container (nowing-data volume)
 #      Downloads and runs migrate-database.sh --yes, then restores the dump
 #      into the new PostgreSQL 17 stack. The user runs one command for both.
 # =============================================================================
@@ -24,11 +24,11 @@ $ErrorActionPreference = 'Stop'
 
 # ── Configuration ───────────────────────────────────────────────────────────
 
-$RepoRaw            = "https://raw.githubusercontent.com/MODSetter/SurfSense/main"
-$InstallDir         = ".\surfsense"
-$OldVolume          = "surfsense-data"
-$DumpFile           = ".\surfsense_migration_backup.sql"
-$KeyFile            = ".\surfsense_migration_secret.key"
+$RepoRaw            = "https://raw.githubusercontent.com/MODSetter/Nowing/main"
+$InstallDir         = ".\nowing"
+$OldVolume          = "nowing-data"
+$DumpFile           = ".\nowing_migration_backup.sql"
+$KeyFile            = ".\nowing_migration_secret.key"
 $MigrationDoneFile  = "$InstallDir\.migration_done"
 $MigrationMode      = $false
 $SetupWatchtower    = -not $NoWatchtower
@@ -36,11 +36,11 @@ $WatchtowerContainer = "watchtower"
 
 # ── Output helpers ──────────────────────────────────────────────────────────
 
-function Write-Info    { param([string]$Msg) Write-Host "[SurfSense] " -ForegroundColor Cyan -NoNewline; Write-Host $Msg }
-function Write-Ok      { param([string]$Msg) Write-Host "[SurfSense] " -ForegroundColor Green -NoNewline; Write-Host $Msg }
-function Write-Warn    { param([string]$Msg) Write-Host "[SurfSense] " -ForegroundColor Yellow -NoNewline; Write-Host $Msg }
+function Write-Info    { param([string]$Msg) Write-Host "[Nowing] " -ForegroundColor Cyan -NoNewline; Write-Host $Msg }
+function Write-Ok      { param([string]$Msg) Write-Host "[Nowing] " -ForegroundColor Green -NoNewline; Write-Host $Msg }
+function Write-Warn    { param([string]$Msg) Write-Host "[Nowing] " -ForegroundColor Yellow -NoNewline; Write-Host $Msg }
 function Write-Step    { param([string]$Msg) Write-Host "`n-- $Msg" -ForegroundColor Cyan }
-function Write-Err     { param([string]$Msg) Write-Host "[SurfSense] ERROR: $Msg" -ForegroundColor Red; exit 1 }
+function Write-Err     { param([string]$Msg) Write-Host "[Nowing] ERROR: $Msg" -ForegroundColor Red; exit 1 }
 
 function Invoke-NativeSafe {
     param([scriptblock]$Command)
@@ -99,7 +99,7 @@ function Wait-ForPostgres {
 
 # ── Download files ──────────────────────────────────────────────────────────
 
-Write-Step "Downloading SurfSense files"
+Write-Step "Downloading Nowing files"
 Write-Info "Installation directory: $InstallDir"
 
 New-Item -ItemType Directory -Path "$InstallDir\scripts" -Force | Out-Null
@@ -144,13 +144,13 @@ if (($volumeList -split "`n") -contains $OldVolume -and -not (Test-Path $Migrati
         Write-Warn "Your original data will NOT be deleted."
         Write-Host ""
         Write-Info "Running data extraction (migrate-database.ps1 -Yes)..."
-        Write-Info "Full extraction log: ./surfsense-migration.log"
+        Write-Info "Full extraction log: ./nowing-migration.log"
         Write-Host ""
 
         $migrateScript = Join-Path $InstallDir "scripts/migrate-database.ps1"
         & $migrateScript -Yes
         if ($LASTEXITCODE -ne 0) {
-            Write-Err "Data extraction failed. See ./surfsense-migration.log for details.`nYou can also run migrate-database.ps1 manually with custom flags."
+            Write-Err "Data extraction failed. See ./nowing-migration.log for details.`nYou can also run migrate-database.ps1 manually with custom flags."
         }
 
         Write-Host ""
@@ -196,9 +196,9 @@ if ($MigrationMode) {
     $DbUser = ($envContent | Select-String '^DB_USER=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
     $DbPass = ($envContent | Select-String '^DB_PASSWORD=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
     $DbName = ($envContent | Select-String '^DB_NAME=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
-    if (-not $DbUser) { $DbUser = "surfsense" }
-    if (-not $DbPass) { $DbPass = "surfsense" }
-    if (-not $DbName) { $DbName = "surfsense" }
+    if (-not $DbUser) { $DbUser = "nowing" }
+    if (-not $DbPass) { $DbPass = "nowing" }
+    if (-not $DbName) { $DbName = "nowing" }
 
     Write-Step "Starting PostgreSQL 17"
     Push-Location $InstallDir
@@ -213,7 +213,7 @@ if ($MigrationMode) {
     $DumpFilePath = (Resolve-Path $DumpFile).Path
     Write-Info "Restoring dump into PostgreSQL 17 - this may take a while for large databases..."
 
-    $restoreErrFile = Join-Path $env:TEMP "surfsense_restore_err.log"
+    $restoreErrFile = Join-Path $env:TEMP "nowing_restore_err.log"
     Push-Location $InstallDir
     Invoke-NativeSafe { Get-Content -LiteralPath $DumpFilePath | docker compose exec -T -e "PGPASSWORD=$DbPass" db psql -U $DbUser -d $DbName 2>$restoreErrFile | Out-Null } | Out-Null
     Pop-Location
@@ -229,7 +229,7 @@ if ($MigrationMode) {
     if ($fatalErrors.Count -gt 0) {
         Write-Warn "Restore completed with errors (may be harmless pg_dump header noise):"
         $fatalErrors | ForEach-Object { Write-Host $_ }
-        Write-Warn "If SurfSense behaves incorrectly, inspect manually."
+        Write-Warn "If Nowing behaves incorrectly, inspect manually."
     } else {
         Write-Ok "Database restored with no fatal errors."
     }
@@ -247,7 +247,7 @@ if ($MigrationMode) {
         New-Item -Path $MigrationDoneFile -ItemType File -Force | Out-Null
     }
 
-    Write-Step "Starting all SurfSense services"
+    Write-Step "Starting all Nowing services"
     Push-Location $InstallDir
     Invoke-NativeSafe { docker compose up -d }
     Pop-Location
@@ -256,7 +256,7 @@ if ($MigrationMode) {
     Remove-Item $KeyFile -ErrorAction SilentlyContinue
 
 } else {
-    Write-Step "Starting SurfSense"
+    Write-Step "Starting Nowing"
     Push-Location $InstallDir
     Invoke-NativeSafe { docker compose up -d }
     Pop-Location
@@ -290,7 +290,7 @@ if ($SetupWatchtower) {
         } | Out-Null
 
         if ($LASTEXITCODE -eq 0) {
-            Write-Ok "Watchtower started - labeled SurfSense containers will auto-update."
+            Write-Ok "Watchtower started - labeled Nowing containers will auto-update."
         } else {
             Write-Warn "Could not start Watchtower. You can set it up manually or use: docker compose pull; docker compose up -d"
         }
@@ -317,7 +317,7 @@ Y88b  d88P Y88b 888 888     888   Y88b  d88P Y8b.     888  888      X88 Y8b.
 
 "@ -ForegroundColor White
 
-$versionDisplay = (Get-Content $envPath | Select-String '^SURFSENSE_VERSION=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
+$versionDisplay = (Get-Content $envPath | Select-String '^NOWING_VERSION=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
 if (-not $versionDisplay) { $versionDisplay = "latest" }
 Write-Host "         OSS Alternative to NotebookLM for Teams  [$versionDisplay]" -ForegroundColor Yellow
 Write-Host ("=" * 62) -ForegroundColor Cyan

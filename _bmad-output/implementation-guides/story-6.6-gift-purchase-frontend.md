@@ -36,7 +36,7 @@
 - Integrates with existing Stripe API service for gift checkout creation
 - Redirects to Stripe Checkout for payment
 - Handles success/error flows gracefully
-- Follows existing SurfSense design patterns (Zinc/Slate, Indigo accent, Inter font)
+- Follows existing Nowing design patterns (Zinc/Slate, Indigo accent, Inter font)
 
 **Predecessor:** Story 6.2 (Backend API for gift checkout) must be complete before this story.
 
@@ -152,7 +152,7 @@ gift/page.tsx (client component)
 ## Frontend Directory Structure
 
 ```
-surfsense_web/
+nowing_web/
 ├── app/
 │   └── dashboard/
 │       └── [search_space_id]/
@@ -187,7 +187,7 @@ surfsense_web/
 
 ### Step 1: Update Stripe Types (`stripe.types.ts`)
 
-**File:** `/Users/luisphan/Documents/GitHub/SurfSense/surfsense_web/contracts/types/stripe.types.ts`
+**File:** `/Users/luisphan/Documents/GitHub/Nowing/nowing_web/contracts/types/stripe.types.ts`
 
 **Add to existing exports:**
 
@@ -217,7 +217,7 @@ export type CreateGiftCheckoutResponse = z.infer<typeof createGiftCheckoutRespon
 
 ### Step 2: Update Stripe API Service (`stripe-api.service.ts`)
 
-**File:** `/Users/luisphan/Documents/GitHub/SurfSense/surfsense_web/lib/apis/stripe-api.service.ts`
+**File:** `/Users/luisphan/Documents/GitHub/Nowing/nowing_web/lib/apis/stripe-api.service.ts`
 
 **Add new method after `createTokenTopupCheckout`:**
 
@@ -258,7 +258,7 @@ class StripeApiService {
 
 ### Step 3: Create Gift Purchase Page (`gift/page.tsx`)
 
-**File:** `/Users/luisphan/Documents/GitHub/SurfSense/surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx`
+**File:** `/Users/luisphan/Documents/GitHub/Nowing/nowing_web/app/dashboard/[search_space_id]/gift/page.tsx`
 
 **Full implementation:**
 
@@ -367,7 +367,7 @@ export default function GiftPage() {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Gift a Subscription</h1>
           <p className="text-sm text-muted-foreground">
-            Give your friends or colleagues a PRO subscription for SurfSense.
+            Give your friends or colleagues a PRO subscription for Nowing.
             They'll receive a gift code to activate their account.
           </p>
         </div>
@@ -481,7 +481,7 @@ export default function GiftPage() {
 
 ### Step 4: Verify Success Page Compatibility (`purchase-success/page.tsx`)
 
-**File:** `/Users/luisphan/Documents/GitHub/SurfSense/surfsense_web/app/dashboard/[search_space_id]/purchase-success/page.tsx`
+**File:** `/Users/luisphan/Documents/GitHub/Nowing/nowing_web/app/dashboard/[search_space_id]/purchase-success/page.tsx`
 
 **Status:** ✅ Already exists and works for all checkout types (tokens, subscriptions, gifts)
 
@@ -541,7 +541,7 @@ The webhook processes `checkout.session.completed` with `metadata.purchase_type=
 
 ### Stripe Types File
 
-**Location:** `surfsense_web/contracts/types/stripe.types.ts`
+**Location:** `nowing_web/contracts/types/stripe.types.ts`
 
 **Current Types:**
 ```typescript

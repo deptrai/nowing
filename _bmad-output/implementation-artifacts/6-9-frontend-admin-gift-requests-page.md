@@ -17,17 +17,17 @@ So that khi Stripe fallback, tôi có dashboard để xử lý nhanh, copy gift 
 5. Nút **Reject** trên mỗi row: prompt reason → POST → toast → refetch.
 6. Row approved hiển thị cột `gift_code` với nút **Copy**.
 7. Sidebar admin menu thêm link "Gift Requests" trong `LayoutDataProvider.tsx`.
-8. Contracts: thêm Zod schema `giftRequestItem`, `giftRequestListResponse`, `giftRequestApproveResponse` vào `surfsense_web/contracts/types/stripe.types.ts`.
+8. Contracts: thêm Zod schema `giftRequestItem`, `giftRequestListResponse`, `giftRequestApproveResponse` vào `nowing_web/contracts/types/stripe.types.ts`.
 
 ## Tasks / Subtasks
 
 - [x] Contracts (AC: 8)
-  - [x] Thêm schemas vào `surfsense_web/contracts/types/stripe.types.ts`:
+  - [x] Thêm schemas vào `nowing_web/contracts/types/stripe.types.ts`:
     - `giftRequestItem`, `giftRequestListResponse`, `giftRequestApproveResponse`
   - [x] Export types `GiftRequestItem`, `GiftRequestListResponse`, `GiftRequestApproveResponse`.
 
 - [x] Page component (AC: 1, 2, 3, 4, 5, 6)
-  - [x] Tạo `surfsense_web/app/admin/gift-requests/page.tsx`.
+  - [x] Tạo `nowing_web/app/admin/gift-requests/page.tsx`.
   - [x] Thêm state `activeStatus: "pending" | "approved" | "rejected" | "all"`, tabs UI.
   - [x] `handleApprove`: POST → clipboard → toast → refetch.
   - [x] `handleReject`: prompt reason → POST → toast + refetch.
@@ -47,8 +47,8 @@ So that khi Stripe fallback, tôi có dashboard để xử lý nhanh, copy gift 
 ### Dependency
 
 - Story 6.8 (backend endpoints).
-- `surfsense_web/lib/auth-utils.ts` — `authenticatedFetch`, `isAuthenticated`, `redirectToLogin`.
-- Pattern reference: `surfsense_web/app/admin/subscription-requests/page.tsx`.
+- `nowing_web/lib/auth-utils.ts` — `authenticatedFetch`, `isAuthenticated`, `redirectToLogin`.
+- Pattern reference: `nowing_web/app/admin/subscription-requests/page.tsx`.
 
 ### Bug fix: Query alias
 
@@ -81,10 +81,10 @@ claude-sonnet-4-6
 
 ### File List
 
-- `surfsense_web/contracts/types/stripe.types.ts` (modified — thêm `giftRequestItem`, `giftRequestListResponse`, `giftRequestApproveResponse`)
-- `surfsense_web/app/admin/gift-requests/page.tsx` (new — admin gift requests UI page)
-- `surfsense_web/components/layout/providers/LayoutDataProvider.tsx` (modified — Gift Requests sidebar entry)
-- `surfsense_backend/app/routes/admin_routes.py` (modified — `Query(alias="status")` fix, Query validators)
+- `nowing_web/contracts/types/stripe.types.ts` (modified — thêm `giftRequestItem`, `giftRequestListResponse`, `giftRequestApproveResponse`)
+- `nowing_web/app/admin/gift-requests/page.tsx` (new — admin gift requests UI page)
+- `nowing_web/components/layout/providers/LayoutDataProvider.tsx` (modified — Gift Requests sidebar entry)
+- `nowing_backend/app/routes/admin_routes.py` (modified — `Query(alias="status")` fix, Query validators)
 
 ### Change Log
 
@@ -95,7 +95,7 @@ claude-sonnet-4-6
 
 ### Applied (7 patches)
 
-- [x] **F1 High — AbortController on fetchRequests**: tab-switch race overwrote newer list with stale data. Added `AbortController` scoped to `activeStatus` effect; `signal.aborted` guards on state updates; passes `signal` to `authenticatedFetch`. [surfsense_web/app/admin/gift-requests/page.tsx](surfsense_web/app/admin/gift-requests/page.tsx)
+- [x] **F1 High — AbortController on fetchRequests**: tab-switch race overwrote newer list with stale data. Added `AbortController` scoped to `activeStatus` effect; `signal.aborted` guards on state updates; passes `signal` to `authenticatedFetch`. [nowing_web/app/admin/gift-requests/page.tsx](nowing_web/app/admin/gift-requests/page.tsx)
 - [x] **F2 High — Disable all row action buttons while any in flight**: `actionInProgress === req.id` allowed clicking Approve on row A then row B before A resolved → double-approve. Changed to `actionInProgress !== null`.
 - [x] **F4 Medium — Persistent toast on clipboard failure**: clipboard rejection (insecure HTTP/iframe/permissions) fell back to default ~4s sonner toast, admin could miss the code. Added `{ duration: Infinity }` + "copy manually" hint on fallback branch.
 - [x] **F6 Medium — Replace Vietnamese "tháng" in English admin UI**: hardcoded Vietnamese string leaked into English page. Replaced with `month` / `months` pluralization.

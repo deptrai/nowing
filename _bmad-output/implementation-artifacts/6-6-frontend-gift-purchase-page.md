@@ -37,11 +37,11 @@ So that tôi có thể mua gift cho bạn bè/đồng nghiệp một cách dễ 
 
 | Component | Hiện trạng | File |
 |---|---|---|
-| Gift page | **KHÔNG TỒN TẠI** — cần tạo mới | `surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx` |
-| Stripe types | Có sẵn `CreateTokenTopupCheckoutRequest` làm pattern | `surfsense_web/contracts/types/stripe.types.ts` |
-| Stripe service | Có sẵn `createTokenTopupCheckout()` làm pattern | `surfsense_web/lib/apis/stripe-api.service.ts` |
-| Success page | **Đã có** — `/purchase-success` dùng chung, không cần sửa | `surfsense_web/app/dashboard/[search_space_id]/purchase-success/page.tsx` |
-| SubscriptionContent | Actions section chưa có link đến gift page | `surfsense_web/components/settings/subscription-content.tsx` |
+| Gift page | **KHÔNG TỒN TẠI** — cần tạo mới | `nowing_web/app/dashboard/[search_space_id]/gift/page.tsx` |
+| Stripe types | Có sẵn `CreateTokenTopupCheckoutRequest` làm pattern | `nowing_web/contracts/types/stripe.types.ts` |
+| Stripe service | Có sẵn `createTokenTopupCheckout()` làm pattern | `nowing_web/lib/apis/stripe-api.service.ts` |
+| Success page | **Đã có** — `/purchase-success` dùng chung, không cần sửa | `nowing_web/app/dashboard/[search_space_id]/purchase-success/page.tsx` |
+| SubscriptionContent | Actions section chưa có link đến gift page | `nowing_web/components/settings/subscription-content.tsx` |
 
 **Gap:** Cần thêm: Zod schema mới, service method mới, và route mới `gift/page.tsx`.
 
@@ -57,7 +57,7 @@ So that tôi có thể mua gift cho bạn bè/đồng nghiệp một cách dễ 
   - [x] Subtask 2.2: Gọi `POST /api/v1/stripe/create-gift-checkout` với body `{ plan_id: planId, duration_months: durationMonths }`
   - [x] Subtask 2.3: Parse response với `GiftCheckoutResponse` schema — giống `createTokenTopupCheckout` pattern
 
-- [x] Task 3: Tạo Gift Purchase Page `surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx`
+- [x] Task 3: Tạo Gift Purchase Page `nowing_web/app/dashboard/[search_space_id]/gift/page.tsx`
   - [x] Subtask 3.1: `"use client"` component — giống buy-tokens/page.tsx pattern
   - [x] Subtask 3.2: Hiển thị header và mô tả ngắn về gift subscription
   - [x] Subtask 3.3: Duration selector: 4 options (1/3/6/12 tháng) dạng grid 2 cột với giá hiển thị và savings badge cho multi-month
@@ -113,7 +113,7 @@ const GIFT_PRICING_MAX: Record<number, { price: number; label: string; savings?:
 }
 ```
 
-⚠️ **Gotcha**: Giá này PHẢI đồng bộ với `GIFT_PRICING` trong `surfsense_backend/app/config/__init__.py`. Nếu backend thay đổi giá, frontend phải cập nhật cùng lúc.
+⚠️ **Gotcha**: Giá này PHẢI đồng bộ với `GIFT_PRICING` trong `nowing_backend/app/config/__init__.py`. Nếu backend thay đổi giá, frontend phải cập nhật cùng lúc.
 
 ### API Contract (Story 6.2 backend)
 ```
@@ -124,9 +124,9 @@ Response admin mode: { "checkout_url": "", "admin_approval_mode": true }
 ```
 
 ### File Locations
-- **Tạo mới:** `surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx`
-- **Sửa:** `surfsense_web/contracts/types/stripe.types.ts` — thêm 2 schema
-- **Sửa:** `surfsense_web/lib/apis/stripe-api.service.ts` — thêm 1 method
+- **Tạo mới:** `nowing_web/app/dashboard/[search_space_id]/gift/page.tsx`
+- **Sửa:** `nowing_web/contracts/types/stripe.types.ts` — thêm 2 schema
+- **Sửa:** `nowing_web/lib/apis/stripe-api.service.ts` — thêm 1 method
 - **Không sửa:** `purchase-success/page.tsx` — works out of the box cho mọi checkout type
 
 ### Mock Testing (trước khi Story 6.2 backend sẵn sàng)
@@ -168,7 +168,7 @@ Từ Story 6.5 (previous story):
 - `GiftRequest` model đã có trong DB (migration 132)
 - `GIFT_PRICING` config đã được thêm vào backend config — đồng bộ giá với frontend
 - Schema pattern cho gift: `GiftCodeItem`, `GiftCodesResponse`, `RequestGiftRequest`, `RequestGiftResponse` đã có trong `stripe.py`
-- Verification command backend: `cd surfsense_backend && uv run pytest tests/unit/ -q --ignore=tests/unit/connectors/test_dexscreener_connector.py --ignore=tests/unit/indexing_pipeline/`
+- Verification command backend: `cd nowing_backend && uv run pytest tests/unit/ -q --ignore=tests/unit/connectors/test_dexscreener_connector.py --ignore=tests/unit/indexing_pipeline/`
 
 Từ Story 5.2 (Stripe payment pattern):
 - Admin-approval fallback pattern đã battle-tested — dùng chính xác pattern đó
@@ -201,7 +201,7 @@ Từ Story 5.2 (Stripe payment pattern):
 ## Next Story
 
 **Story 6.7: Frontend — Trang Redeem Gift `/redeem`**
-- Route: `surfsense_web/app/redeem/page.tsx` (TOP-LEVEL app route, public — không cần auth)
+- Route: `nowing_web/app/redeem/page.tsx` (TOP-LEVEL app route, public — không cần auth)
 - Khác Story 6.6: public page, form nhập code, gọi `POST /api/v1/stripe/redeem-gift`
 
 ## Dev Agent Record
@@ -225,12 +225,12 @@ Story 6.6 complete. All ACs satisfied:
 
 ### File List
 _(fill in after implementation)_
-- `surfsense_web/contracts/types/stripe.types.ts` (modified)
-- `surfsense_web/lib/apis/stripe-api.service.ts` (modified)
-- `surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx` (new)
+- `nowing_web/contracts/types/stripe.types.ts` (modified)
+- `nowing_web/lib/apis/stripe-api.service.ts` (modified)
+- `nowing_web/app/dashboard/[search_space_id]/gift/page.tsx` (new)
 
 ### Review Findings
-- [x] [Review][Patch] Thiếu guard `checkout_url` rỗng — silent no-op nếu backend trả empty string với `admin_approval_mode: false` [surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx:28-41]
-- [x] [Review][Patch] Schema `duration_months` cho phép 1-12 nhưng UI chỉ expose {1,3,6,12} — nên dùng `z.union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)])` để khớp business rule [surfsense_web/contracts/types/stripe.types.ts]
-- [x] [Review][Defer] Double-click protection ngoài `disabled` button [surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx] — deferred, pre-existing pattern
-- [x] [Review][Defer] Admin approval flow thiếu persistent state indicator [surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx] — deferred, UX enhancement
+- [x] [Review][Patch] Thiếu guard `checkout_url` rỗng — silent no-op nếu backend trả empty string với `admin_approval_mode: false` [nowing_web/app/dashboard/[search_space_id]/gift/page.tsx:28-41]
+- [x] [Review][Patch] Schema `duration_months` cho phép 1-12 nhưng UI chỉ expose {1,3,6,12} — nên dùng `z.union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)])` để khớp business rule [nowing_web/contracts/types/stripe.types.ts]
+- [x] [Review][Defer] Double-click protection ngoài `disabled` button [nowing_web/app/dashboard/[search_space_id]/gift/page.tsx] — deferred, pre-existing pattern
+- [x] [Review][Defer] Admin approval flow thiếu persistent state indicator [nowing_web/app/dashboard/[search_space_id]/gift/page.tsx] — deferred, UX enhancement

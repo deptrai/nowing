@@ -1,4 +1,4 @@
-<a href="https://www.surfsense.com/"><img width="1584" height="396" alt="readme_banner" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
+<a href="https://www.nowing.com/"><img width="1584" height="396" alt="readme_banner" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
 
 
 
@@ -6,8 +6,8 @@
 <a href="https://discord.gg/ejRNvftDp9">
 <img src="https://img.shields.io/discord/1359368468260192417" alt="Discord">
 </a>
-<a href="https://www.reddit.com/r/SurfSense/">
-<img src="https://img.shields.io/reddit/subreddit-subscribers/SurfSense?style=social" alt="Reddit">
+<a href="https://www.reddit.com/r/Nowing/">
+<img src="https://img.shields.io/reddit/subreddit-subscribers/Nowing?style=social" alt="Reddit">
 </a>
 </div>
 
@@ -17,10 +17,10 @@
 
 </div>
 <div align="center">
-<a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FSurfSense | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FNowing | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-# SurfSense
+# Nowing
 
 NotebookLM es una de las mejores y más útiles plataformas de IA que existen, pero una vez que comienzas a usarla regularmente también sientes sus limitaciones dejando algo que desear.
 
@@ -34,7 +34,7 @@ NotebookLM es una de las mejores y más útiles plataformas de IA que existen, p
 
 ...y más.
 
-**SurfSense está específicamente hecho para resolver estos problemas.** SurfSense te permite:
+**Nowing está específicamente hecho para resolver estos problemas.** Nowing te permite:
 
 - **Controla Tu Flujo de Datos** - Mantén tus datos privados y seguros.
 - **Sin Límites de Datos** - Agrega una cantidad ilimitada de fuentes y notebooks.
@@ -58,100 +58,100 @@ https://github.com/user-attachments/assets/012a7ffa-6f76-4f06-9dda-7632b470057a
 https://github.com/user-attachments/assets/a0a16566-6967-4374-ac51-9b3e07fbecd7
 
 
-## Cómo usar SurfSense
+## Cómo usar Nowing
 
 ### Cloud
 
-1. Ve a [surfsense.com](https://www.surfsense.com) e inicia sesión.
+1. Ve a [nowing.com](https://www.nowing.com) e inicia sesión.
 
-<p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/LoginFlowGif.gif" alt="Login" /></p>
+<p align="center"><img src="nowing_web/public/homepage/hero_tutorial/LoginFlowGif.gif" alt="Login" /></p>
 
 2. Conecta tus conectores y sincroniza. Activa la sincronización periódica para mantenerlos actualizados.
 
-<p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/ConnectorFlowGif.gif" alt="Conectores" /></p>
+<p align="center"><img src="nowing_web/public/homepage/hero_tutorial/ConnectorFlowGif.gif" alt="Conectores" /></p>
 
 3. Mientras se indexan los datos de los conectores, sube documentos.
 
-<p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/DocUploadGif.gif" alt="Subir Documentos" /></p>
+<p align="center"><img src="nowing_web/public/homepage/hero_tutorial/DocUploadGif.gif" alt="Subir Documentos" /></p>
 
 4. Una vez que todo esté indexado, pregunta lo que quieras (Casos de uso):
 
    - Aplicación de Escritorio — General Assist
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/general_assist.gif" alt="General Assist" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/general_assist.gif" alt="General Assist" /></p>
 
    - Aplicación de Escritorio — Quick Assist
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/quick_assist.gif" alt="Quick Assist" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/quick_assist.gif" alt="Quick Assist" /></p>
 
    - Aplicación de Escritorio — Extreme Assist
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/extreme_assist.gif" alt="Extreme Assist" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/extreme_assist.gif" alt="Extreme Assist" /></p>
 
    - Aplicación de Escritorio — Watch Local Folder
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/folder_watch.gif" alt="Watch Local Folder" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/folder_watch.gif" alt="Watch Local Folder" /></p>
 
    - Generación de videos
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/video_gen_gif.gif" alt="Generación de Videos" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/video_gen_gif.gif" alt="Generación de Videos" /></p>
 
    - Búsqueda básica y citaciones
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/BSNCGif.gif" alt="Búsqueda y Citación" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/BSNCGif.gif" alt="Búsqueda y Citación" /></p>
 
    - QNA con mención de documentos
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="QNA con Mención de Documentos" /></p>
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="QNA con Mención de Documentos" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="QNA con Mención de Documentos" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="QNA con Mención de Documentos" /></p>
 
    - Generación de informes y exportaciones (PDF, DOCX, HTML, LaTeX, EPUB, ODT, texto plano)
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/ReportGenGif_compressed.gif" alt="Generación de Informes" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/ReportGenGif_compressed.gif" alt="Generación de Informes" /></p>
 
    - Generación de podcasts
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/PodcastGenGif.gif" alt="Generación de Podcasts" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/PodcastGenGif.gif" alt="Generación de Podcasts" /></p>
 
    - Generación de imágenes
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/ImageGenGif.gif" alt="Generación de Imágenes" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/ImageGenGif.gif" alt="Generación de Imágenes" /></p>
 
    - Y más próximamente.
 
 
 ### Auto-Hospedado
 
-Ejecuta SurfSense en tu propia infraestructura para control total de datos y privacidad.
+Ejecuta Nowing en tu propia infraestructura para control total de datos y privacidad.
 
 **Requisitos previos:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) debe estar instalado y en ejecución.
 
 #### Para usuarios de Linux/MacOS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/MODSetter/SurfSense/main/docker/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/MODSetter/Nowing/main/docker/scripts/install.sh | bash
 ```
 
 #### Para usuarios de Windows:
 
 ```powershell
-irm https://raw.githubusercontent.com/MODSetter/SurfSense/main/docker/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/MODSetter/Nowing/main/docker/scripts/install.ps1 | iex
 ```
 
 El script de instalación configura [Watchtower](https://github.com/nicholas-fedor/watchtower) automáticamente para actualizaciones diarias. Para omitirlo, agrega la bandera `--no-watchtower`.
 
-Para Docker Compose, instalación manual y otras opciones de despliegue, consulta la [documentación](https://www.surfsense.com/docs/).
+Para Docker Compose, instalación manual y otras opciones de despliegue, consulta la [documentación](https://www.nowing.com/docs/).
 
 ### Aplicación de Escritorio
 
-SurfSense también ofrece una aplicación de escritorio que lleva la asistencia de IA a cada aplicación en tu computadora. Descárgala desde la [última versión](https://github.com/MODSetter/SurfSense/releases/latest).
+Nowing también ofrece una aplicación de escritorio que lleva la asistencia de IA a cada aplicación en tu computadora. Descárgala desde la [última versión](https://github.com/MODSetter/Nowing/releases/latest).
 
 La aplicación de escritorio incluye estas potentes funciones:
 
-- **General Assist** — Lanza SurfSense al instante desde cualquier aplicación con un atajo global.
+- **General Assist** — Lanza Nowing al instante desde cualquier aplicación con un atajo global.
 - **Quick Assist** — Selecciona texto en cualquier lugar, luego pide a la IA que lo explique, reescriba o actúe sobre él.
 - **Extreme Assist** — Obtén sugerencias de escritura en línea impulsadas por tu base de conocimiento mientras escribes en cualquier aplicación.
-- **Watch Local Folder** — Vigila una carpeta local y sincroniza automáticamente los cambios de archivos con tu base de conocimiento. **Pro tip:** Apúntalo a tu bóveda de Obsidian para mantener tus notas buscables en SurfSense.
+- **Watch Local Folder** — Vigila una carpeta local y sincroniza automáticamente los cambios de archivos con tu base de conocimiento. **Pro tip:** Apúntalo a tu bóveda de Obsidian para mantener tus notas buscables en Nowing.
 
 Todas las funciones operan contra tu espacio de búsqueda elegido, por lo que tus respuestas siempre están basadas en tus propios datos.
 
@@ -171,15 +171,15 @@ Todas las funciones operan contra tu espacio de búsqueda elegido, por lo que tu
 
 4. Tu equipo ahora puede chatear en tiempo real.
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_realtime/RealTimeChatGif.gif" alt="Chat en Tiempo Real" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_realtime/RealTimeChatGif.gif" alt="Chat en Tiempo Real" /></p>
 
 5. Agrega comentarios para etiquetar a compañeros de equipo.
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_realtime/RealTimeCommentsFlow.gif" alt="Comentarios en Tiempo Real" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_realtime/RealTimeCommentsFlow.gif" alt="Comentarios en Tiempo Real" /></p>
 
-## SurfSense vs Google NotebookLM
+## Nowing vs Google NotebookLM
 
-| Característica | Google NotebookLM | SurfSense |
+| Característica | Google NotebookLM | Nowing |
 |---------|-------------------|-----------|
 | **Fuentes por Notebook** | 50 (Gratis) a 600 (Ultra, $249.99/mes) | Ilimitadas |
 | **Número de Notebooks** | 100 (Gratis) a 500 (planes de pago) | Ilimitados |
@@ -214,18 +214,18 @@ Motores de Búsqueda (Tavily, LinkUp) · SearxNG · Google Drive · OneDrive · 
 ## SOLICITUDES DE FUNCIONES Y FUTURO
 
 
-**SurfSense está en desarrollo activo.** Aunque aún no está listo para producción, puedes ayudarnos a acelerar el proceso.
+**Nowing está en desarrollo activo.** Aunque aún no está listo para producción, puedes ayudarnos a acelerar el proceso.
 
-¡Únete al [Discord de SurfSense](https://discord.gg/ejRNvftDp9) y ayuda a dar forma al futuro de SurfSense!
+¡Únete al [Discord de Nowing](https://discord.gg/ejRNvftDp9) y ayuda a dar forma al futuro de Nowing!
 
 ## Hoja de Ruta
 
 ¡Mantente al día con nuestro progreso de desarrollo y próximas funcionalidades!  
 Consulta nuestra hoja de ruta pública y contribuye con tus ideas o comentarios:
 
-**Discusión de la Hoja de Ruta:** [SurfSense 2026 Roadmap](https://github.com/MODSetter/SurfSense/discussions/565)
+**Discusión de la Hoja de Ruta:** [Nowing 2026 Roadmap](https://github.com/MODSetter/Nowing/discussions/565)
 
-**Tablero Kanban:** [SurfSense Project Board](https://github.com/users/MODSetter/projects/3)
+**Tablero Kanban:** [Nowing Project Board](https://github.com/users/MODSetter/projects/3)
 
 
 ## Contribuir
@@ -234,17 +234,17 @@ Todas las contribuciones son bienvenidas, desde estrellas y reportes de bugs has
 
 Gracias a todos nuestros Surfers:
 
-<a href="https://github.com/MODSetter/SurfSense/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=MODSetter/SurfSense" />
+<a href="https://github.com/MODSetter/Nowing/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=MODSetter/Nowing" />
 </a>
 
 ## Historial de Stars
 
-<a href="https://www.star-history.com/#MODSetter/SurfSense&Date">
+<a href="https://www.star-history.com/#MODSetter/Nowing&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=MODSetter/SurfSense&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=MODSetter/SurfSense&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=MODSetter/SurfSense&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=MODSetter/Nowing&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=MODSetter/Nowing&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=MODSetter/Nowing&type=Date" />
  </picture>
 </a>
 

@@ -29,11 +29,11 @@ So that tôi nhận được Token và ngay lập tức kết nối tới hệ t
 ### Code Organization
 This story is currently marked as `done`. Implementation should target the following components/files:
 
-- `surfsense_web/app/(home)/login/LocalLoginForm.tsx`
-- `surfsense_web/components/UserDropdown.tsx`
-- `surfsense_web/components/layout/ui/sidebar/SidebarUserProfile.tsx`
-- `surfsense_web/lib/auth-utils.ts`
-- `surfsense_web/components/providers/ZeroProvider.tsx`
+- `nowing_web/app/(home)/login/LocalLoginForm.tsx`
+- `nowing_web/components/UserDropdown.tsx`
+- `nowing_web/components/layout/ui/sidebar/SidebarUserProfile.tsx`
+- `nowing_web/lib/auth-utils.ts`
+- `nowing_web/components/providers/ZeroProvider.tsx`
 
 ### Developer Agent Constraints
 1. **No Destructive Refactors**: Extend existing modules when possible.

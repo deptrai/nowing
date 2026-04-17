@@ -1,12 +1,12 @@
-# Contributing to SurfSense
+# Contributing to Nowing
 
-Hey! 👋 Thanks for checking out **SurfSense**. We're stoked that you're interested in helping improve the project. Whether it's fixing bugs, suggesting features, improving docs, or just joining the conversation — every bit helps.
+Hey! 👋 Thanks for checking out **Nowing**. We're stoked that you're interested in helping improve the project. Whether it's fixing bugs, suggesting features, improving docs, or just joining the conversation — every bit helps.
 
 ## 🧠 Before You Start
 
 **Join Our Discord**  
 Want to stay in the loop, ask questions, or get feedback before starting something?  
-Hop into the official SurfSense community:  
+Hop into the official Nowing community:  
 👉 [https://discord.gg/ejRNvftDp9](https://discord.gg/ejRNvftDp9)
 
 That's where the *latest updates*, *internal discussions*, and *collaborations* happen.
@@ -17,7 +17,7 @@ There are 3 main ways to contribute:
 
 ### ✅ 1. Pick From the Roadmap
 We maintain a public roadmap with well-scoped issues and features you can work on:  
-🔗 [SurfSense GitHub Project Roadmap](https://github.com/users/MODSetter/projects/2)
+🔗 [Nowing GitHub Project Roadmap](https://github.com/users/MODSetter/projects/2)
 
 > 💡 **Tip**: Look for tasks in `Backlog` or `Ready` status.
 
@@ -67,8 +67,8 @@ We follow a **branch protection model** to keep `main` stable:
 ### Quick Start
 1. **Fork and clone the repository**
    ```bash
-   git clone https://github.com/<your-username>/SurfSense.git
-   cd SurfSense
+   git clone https://github.com/<your-username>/Nowing.git
+   cd Nowing
    ```
 
 2. **Create your branch from `dev`**
@@ -80,22 +80,22 @@ We follow a **branch protection model** to keep `main` stable:
 
 3. **Choose your setup method**:
    - **Docker Setup**: Follow the [Docker Setup Guide](./DOCKER_SETUP.md)
-   - **Manual Setup**: Follow the [Installation Guide](https://www.surfsense.com/docs/)
+   - **Manual Setup**: Follow the [Installation Guide](https://www.nowing.com/docs/)
 
 4. **Configure services**:
    - Set up PGVector & PostgreSQL
    - Configure a file ETL service: `Unstructured.io` or `LlamaIndex`
    - Add API keys for external services
 
-For detailed setup instructions, refer to our [Installation Guide](https://www.surfsense.com/docs/).
+For detailed setup instructions, refer to our [Installation Guide](https://www.nowing.com/docs/).
 
 ## 🏗️ Project Structure
 
-SurfSense consists of three main components:
+Nowing consists of three main components:
 
-- **`surfsense_backend/`** - Python/FastAPI backend service
-- **`surfsense_web/`** - Next.js web application
-- **`surfsense_browser_extension/`** - Browser extension for data collection
+- **`nowing_backend/`** - Python/FastAPI backend service
+- **`nowing_web/`** - Next.js web application
+- **`nowing_browser_extension/`** - Browser extension for data collection
 
 ## 🧪 Development Guidelines
 
@@ -173,7 +173,7 @@ When contributing, please:
 Stuck? Need clarification? Here's how to get help:
 
 1. **Check existing issues** - your question might already be answered
-2. **Search the docs** - [https://www.surfsense.com/docs/](https://www.surfsense.com/docs/)
+2. **Search the docs** - [https://www.nowing.com/docs/](https://www.nowing.com/docs/)
 3. **Ask in Discord** - [https://discord.gg/ejRNvftDp9](https://discord.gg/ejRNvftDp9)
 4. **Create an issue** - if it's a bug or feature request
 
@@ -182,11 +182,11 @@ Stuck? Need clarification? Here's how to get help:
 Not ready to code? You can still help!
 
 - **Give us a star** ⭐ on GitHub
-- **Share SurfSense** with your community
+- **Share Nowing** with your community
 - **Provide feedback** on Discord
 - **Help triage issues** and validate bug reports
 - **Improve documentation** and examples
-- **Write tutorials** or blog posts about SurfSense
+- **Write tutorials** or blog posts about Nowing
 
 ## 🎯 Recognition
 
@@ -198,11 +198,11 @@ We appreciate all contributions! Contributors will be:
 
 ## 📄 License
 
-By contributing to SurfSense, you agree that your contributions will be licensed under the same license as the project.
+By contributing to Nowing, you agree that your contributions will be licensed under the same license as the project.
 
 ---
 
-**Thank you for contributing to SurfSense!** 🚀  
+**Thank you for contributing to Nowing!** 🚀  
 Together, we're building something awesome.
 
 
