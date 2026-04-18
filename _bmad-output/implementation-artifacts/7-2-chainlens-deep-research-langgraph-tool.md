@@ -1,6 +1,6 @@
 # Story 7.2: LangGraph Tool — `chainlens_deep_research` + Fallback Logic
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -73,41 +73,41 @@ So that LangGraph Agent có thể thực thi deep research một cách minh bạ
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Tạo file `chainlens_research.py` (AC: #1, #2, #3, #4)
-  - [ ] 1.1 Tạo `nowing_backend/app/agents/new_chat/tools/chainlens_research.py`
-  - [ ] 1.2 Import `from langchain_core.tools import tool`, `from langchain_core.callbacks import dispatch_custom_event`
-  - [ ] 1.3 Verify symbols từ Story 7.1 đã exist: `python -c "from app.services.chainlens_research_service import ChainlensResearchService, ChainlensUnavailableError"` (nếu fail → 7.1 chưa done, dừng)
-  - [ ] 1.4 Import `from app.services.chainlens_research_service import ChainlensResearchService, ChainlensUnavailableError`
-  - [ ] 1.5 Import `logging` và setup `logger = logging.getLogger(__name__)`
-  - [ ] 1.6 Implement `create_chainlens_research_tool()` factory trả về `@tool`-decorated async function
-  - [ ] 1.7 Trong tool body: dispatch event "researching" (**SYNC** call, KHÔNG await) → check `is_available()` → branch success/fallback
-  - [ ] 1.8 Wrap `research()` call trong try/except `ChainlensUnavailableError` → return fallback dict
-  - [ ] 1.9 Đảm bảo docstring tool mô tả đầy đủ (English) cho LLM tool description
+- [x] Task 1: Tạo file `chainlens_research.py` (AC: #1, #2, #3, #4)
+  - [x] 1.1 Tạo `nowing_backend/app/agents/new_chat/tools/chainlens_research.py`
+  - [x] 1.2 Import `from langchain_core.tools import tool`, `from langchain_core.callbacks import dispatch_custom_event`
+  - [x] 1.3 Verify symbols từ Story 7.1 đã exist: `python -c "from app.services.chainlens_research_service import ChainlensResearchService, ChainlensUnavailableError"` (nếu fail → 7.1 chưa done, dừng)
+  - [x] 1.4 Import `from app.services.chainlens_research_service import ChainlensResearchService, ChainlensUnavailableError`
+  - [x] 1.5 Import `logging` và setup `logger = logging.getLogger(__name__)`
+  - [x] 1.6 Implement `create_chainlens_research_tool()` factory trả về `@tool`-decorated async function
+  - [x] 1.7 Trong tool body: dispatch event "researching" (**SYNC** call, KHÔNG await) → check `is_available()` → branch success/fallback
+  - [x] 1.8 Wrap `research()` call trong try/except `ChainlensUnavailableError` → return fallback dict
+  - [x] 1.9 Đảm bảo docstring tool mô tả đầy đủ (English) cho LLM tool description
 
-- [ ] Task 2: Đăng ký tool vào registry (AC: #5)
-  - [ ] 2.1 Mở `nowing_backend/app/agents/new_chat/tools/registry.py`
-  - [ ] 2.2 Thêm import: `from .chainlens_research import create_chainlens_research_tool` (theo alphabetical order trong import block)
-  - [ ] 2.3 Thêm `ToolDefinition` mới vào `BUILTIN_TOOLS` list **ngay sau** `web_search` entry (~dòng 200)
-  - [ ] 2.4 Verify tool được register: `python -c "from app.agents.new_chat.tools.registry import BUILTIN_TOOLS; print([t.name for t in BUILTIN_TOOLS if 'chainlens' in t.name])"`
+- [x] Task 2: Đăng ký tool vào registry (AC: #5)
+  - [x] 2.1 Mở `nowing_backend/app/agents/new_chat/tools/registry.py`
+  - [x] 2.2 Thêm import: `from .chainlens_research import create_chainlens_research_tool` (theo alphabetical order trong import block)
+  - [x] 2.3 Thêm `ToolDefinition` mới vào `BUILTIN_TOOLS` list **ngay sau** `web_search` entry (~dòng 200)
+  - [x] 2.4 Verify tool được register: `python -c "from app.agents.new_chat.tools.registry import BUILTIN_TOOLS; print([t.name for t in BUILTIN_TOOLS if 'chainlens' in t.name])"`
 
-- [ ] Task 3: Update system prompt (AC: #6, #7)
-  - [ ] 3.1 Mở `nowing_backend/app/agents/new_chat/system_prompt.py`
-  - [ ] 3.2 Thêm `_TOOL_INSTRUCTIONS["chainlens_deep_research"]` (sau `_TOOL_INSTRUCTIONS["web_search"]`, ~dòng 264)
-  - [ ] 3.3 Thêm `_TOOL_EXAMPLES["chainlens_deep_research"]` (sau `_TOOL_EXAMPLES["web_search"]`, ~dòng 446)
-  - [ ] 3.4 Update `_ALL_TOOL_NAMES_ORDERED` (~dòng 447) — insert `"chainlens_deep_research"` sau `"web_search"`
+- [x] Task 3: Update system prompt (AC: #6, #7)
+  - [x] 3.1 Mở `nowing_backend/app/agents/new_chat/system_prompt.py`
+  - [x] 3.2 Thêm `_TOOL_INSTRUCTIONS["chainlens_deep_research"]` (sau `_TOOL_INSTRUCTIONS["web_search"]`, ~dòng 264)
+  - [x] 3.3 Thêm `_TOOL_EXAMPLES["chainlens_deep_research"]` (sau `_TOOL_EXAMPLES["web_search"]`, ~dòng 446)
+  - [x] 3.4 Update `_ALL_TOOL_NAMES_ORDERED` (~dòng 447) — insert `"chainlens_deep_research"` sau `"web_search"`
 
-- [ ] Task 4: Unit tests (AC: #1, #2, #3, #4)
-  - [ ] 4.1 Tạo `nowing_backend/tests/unit/agents/new_chat/tools/test_chainlens_research_tool.py` (folder đã tồn tại — xem `test_update_memory_scope.py` làm pattern reference)
-  - [ ] 4.2 Test success path: mock `ChainlensResearchService.is_available()` → True, `research()` → return dict; verify tool return `{"status": "success", "provider": "chainlens", ...}`
-  - [ ] 4.3 Test feature flag off path: mock `is_available()` → False; verify tool return `{"status": "fallback", "provider": "nowing", ...}` (KHÔNG raise)
-  - [ ] 4.4 Test exception path: mock `research()` raise `ChainlensUnavailableError`; verify tool return `{"status": "fallback", ...}` + verify warning log
-  - [ ] 4.5 Test event dispatch: dùng `patch("app.agents.new_chat.tools.chainlens_research.dispatch_custom_event")` để mock function trực tiếp; verify nó được gọi với neutral message (không chứa "Chainlens"). KHÔNG cần thiết lập callback handler thật vì test chỉ verify call signature.
-  - [ ] 4.6 Test sources param: pass `sources=["web", "academic"]` → verify `research()` được gọi với đúng list
+- [x] Task 4: Unit tests (AC: #1, #2, #3, #4)
+  - [x] 4.1 Tạo `nowing_backend/tests/unit/agents/new_chat/tools/test_chainlens_research_tool.py` (folder đã tồn tại — xem `test_update_memory_scope.py` làm pattern reference)
+  - [x] 4.2 Test success path: mock `ChainlensResearchService.is_available()` → True, `research()` → return dict; verify tool return `{"status": "success", "provider": "chainlens", ...}`
+  - [x] 4.3 Test feature flag off path: mock `is_available()` → False; verify tool return `{"status": "fallback", "provider": "nowing", ...}` (KHÔNG raise)
+  - [x] 4.4 Test exception path: mock `research()` raise `ChainlensUnavailableError`; verify tool return `{"status": "fallback", ...}` + verify warning log
+  - [x] 4.5 Test event dispatch: dùng `patch("app.agents.new_chat.tools.chainlens_research.dispatch_custom_event")` để mock function trực tiếp; verify nó được gọi với neutral message (không chứa "Chainlens"). KHÔNG cần thiết lập callback handler thật vì test chỉ verify call signature.
+  - [x] 4.6 Test sources param: pass `sources=["web", "academic"]` → verify `research()` được gọi với đúng list
 
-- [ ] Task 5: Integration smoke test (AC: #5, #6, #7)
-  - [ ] 5.1 Verify `from app.agents.new_chat.tools.registry import BUILTIN_TOOLS` không raise import error
-  - [ ] 5.2 Verify `chainlens_deep_research` xuất hiện trong `_ALL_TOOL_NAMES_ORDERED`
-  - [ ] 5.3 Verify system prompt build không lỗi: gọi `_get_tools_instructions()` với `enabled_tool_names={"chainlens_deep_research"}` → string output có chứa tool name
+- [x] Task 5: Integration smoke test (AC: #5, #6, #7)
+  - [x] 5.1 Verify `from app.agents.new_chat.tools.registry import BUILTIN_TOOLS` không raise import error
+  - [x] 5.2 Verify `chainlens_deep_research` xuất hiện trong `_ALL_TOOL_NAMES_ORDERED`
+  - [x] 5.3 Verify system prompt build không lỗi: gọi `_get_tools_instructions()` với `enabled_tool_names={"chainlens_deep_research"}` → string output có chứa tool name
 
 ## Dev Notes
 
@@ -446,15 +446,26 @@ Story 7.2 chỉ consume API public của Story 7.1 — KHÔNG cần biết inter
 
 ### Agent Model Used
 
-_pending_
+claude-sonnet-4-5
 
 ### Debug Log References
 
+- Pre-existing failures confirmed unrelated: `test_dexscreener_connector` (base_url mismatch), `test_document_hashing` (env issue)
+- `dispatch_custom_event` is SYNC — must NOT await (verified from report.py:394)
+- FR25 enforcement: 4 layers — tool docstring, tool return message, event messages, system prompt instructions
+
 ### Completion Notes List
+
+- All 5 tasks completed
+- 7 unit tests added, all passing (394 total unit tests, 0 new regressions)
+- `create_chainlens_research_tool()` factory pattern follows web_search.py convention
+- `_FALLBACK_MESSAGE` does NOT mention "Chainlens" — FR25 compliant
+- Tool registered in BUILTIN_TOOLS at position 6 (after web_search at 5)
+- system_prompt.py updated: _TOOL_INSTRUCTIONS, _TOOL_EXAMPLES, _ALL_TOOL_NAMES_ORDERED
 
 ### File List
 
-- `nowing_backend/app/agents/new_chat/tools/chainlens_research.py` (new, ~60 LOC)
-- `nowing_backend/app/agents/new_chat/tools/registry.py` (edited)
-- `nowing_backend/app/agents/new_chat/system_prompt.py` (edited)
-- `nowing_backend/tests/agents/new_chat/tools/test_chainlens_research_tool.py` (new)
+- `nowing_backend/app/agents/new_chat/tools/chainlens_research.py` (new, ~112 LOC)
+- `nowing_backend/app/agents/new_chat/tools/registry.py` (edited — added import + ToolDefinition)
+- `nowing_backend/app/agents/new_chat/system_prompt.py` (edited — instructions, examples, ordered list)
+- `nowing_backend/tests/unit/agents/new_chat/tools/test_chainlens_research_tool.py` (new, 7 tests)

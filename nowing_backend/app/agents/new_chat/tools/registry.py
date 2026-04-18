@@ -100,6 +100,7 @@ from .scrape_webpage import create_scrape_webpage_tool
 from .search_nowing_docs import create_search_nowing_docs_tool
 from .update_memory import create_update_memory_tool, create_update_team_memory_tool
 from .video_presentation import create_generate_video_presentation_tool
+from .chainlens_research import create_chainlens_research_tool
 from .web_search import create_web_search_tool
 
 # =============================================================================
@@ -203,6 +204,15 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
             available_connectors=deps.get("available_connectors"),
         ),
         requires=[],
+    ),
+    # Chainlens deep research tool — auto-fallback to generate_report when unavailable
+    # Feature flag CHAINLENS_RESEARCH_ENABLED is controlled inside the service layer
+    ToolDefinition(
+        name="chainlens_deep_research",
+        description="Perform deep web research using Chainlens engine with auto-fallback to built-in research",
+        factory=lambda deps: create_chainlens_research_tool(),
+        requires=[],  # No DB/connector deps — uses external API + Config
+        enabled_by_default=True,
     ),
     # Nowing documentation search tool
     ToolDefinition(

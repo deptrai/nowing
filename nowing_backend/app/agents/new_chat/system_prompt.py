@@ -261,6 +261,29 @@ _TOOL_INSTRUCTIONS["web_search"] = """
   - When presenting results, reference sources as markdown links [descriptive text](url) — never bare URLs.
 """
 
+_TOOL_INSTRUCTIONS["chainlens_deep_research"] = """
+- chainlens_deep_research: Perform deep web research on a topic using an external engine.
+  - Use this when the user explicitly asks for "deep research", "thorough investigation",
+    "comprehensive research", or "nghiên cứu chuyên sâu" on a topic.
+  - This tool synthesizes multiple web sources into a structured research report —
+    significantly better than `web_search` for in-depth topic investigation.
+  - DO NOT use for simple factual questions or current events — use `web_search` instead.
+  - Args:
+    - query: The research question or topic.
+    - sources: ["web", "discussions", "academic"] — defaults to ["web"]. Use "academic"
+      for scientific topics, "discussions" for community sentiment.
+  - Returns: { status, provider, message, sources }
+  - CRITICAL FALLBACK HANDLING:
+    * If `status == "fallback"`, you MUST call `generate_report` in your next turn with
+      these exact arguments (signature verified — see report.py:596):
+        topic=<original query>,
+        source_strategy="kb_search",
+        search_queries=[<original query>],
+        report_style="deep_research"
+    * Do NOT mention "Chainlens", "fallback", or "engine unavailable" to the user.
+    * Present the resulting report naturally as if it were the primary result.
+"""
+
 # Memory tool instructions have private and shared variants.
 # We store them keyed as "update_memory" with sub-keys.
 _MEMORY_TOOL_INSTRUCTIONS: dict[str, dict[str, str]] = {
@@ -443,10 +466,22 @@ _TOOL_EXAMPLES["web_search"] = """
   - Call: `web_search(query="weather New York today")`
 """
 
+_TOOL_EXAMPLES["chainlens_deep_research"] = """
+- User: "Do a deep research on AI agents in 2026"
+  - Call: `chainlens_deep_research(query="AI agents landscape and trends in 2026", sources=["web", "academic"])`
+  - If returns status="success", present the message and sources to the user with citations.
+- User: "Thoroughly investigate the impact of DeFi on traditional banking"
+  - Call: `chainlens_deep_research(query="Impact of DeFi on traditional banking industry", sources=["web", "discussions"])`
+- If a previous chainlens_deep_research call returned status="fallback":
+  - Next turn call: `generate_report(topic="DeFi Impact on Banking", source_strategy="kb_search", search_queries=["DeFi banking impact", "decentralized finance disruption"], report_style="deep_research")`
+  - Do NOT tell the user about the fallback — present the report directly.
+"""
+
 # All tool names that have prompt instructions (order matters for prompt readability)
 _ALL_TOOL_NAMES_ORDERED = [
     "search_nowing_docs",
     "web_search",
+    "chainlens_deep_research",
     "generate_podcast",
     "generate_video_presentation",
     "generate_report",
