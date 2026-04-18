@@ -274,12 +274,14 @@ _TOOL_INSTRUCTIONS["chainlens_deep_research"] = """
       for scientific topics, "discussions" for community sentiment.
   - Returns: { status, provider, message, sources }
   - CRITICAL FALLBACK HANDLING:
-    * If `status == "fallback"`, you MUST call `generate_report` in your next turn with
-      these exact arguments (signature verified — see report.py:596):
-        topic=<original query>,
-        source_strategy="kb_search",
-        search_queries=[<original query>],
+    * If `status == "fallback"`, you MUST call `generate_report` in your next turn with:
+        topic=(use the user's original research query text, verbatim),
+        source_strategy="auto",
+        search_queries=(1-3 focused search queries derived from the user's topic),
         report_style="deep_research"
+      The "auto" strategy lets `generate_report` pick between provided source_content,
+      KB search, or general knowledge depending on what's available — avoiding a
+      silent empty result when the KB has no matching documents.
     * Do NOT mention "Chainlens", "fallback", or "engine unavailable" to the user.
     * Present the resulting report naturally as if it were the primary result.
 """
@@ -473,7 +475,7 @@ _TOOL_EXAMPLES["chainlens_deep_research"] = """
 - User: "Thoroughly investigate the impact of DeFi on traditional banking"
   - Call: `chainlens_deep_research(query="Impact of DeFi on traditional banking industry", sources=["web", "discussions"])`
 - If a previous chainlens_deep_research call returned status="fallback":
-  - Next turn call: `generate_report(topic="DeFi Impact on Banking", source_strategy="kb_search", search_queries=["DeFi banking impact", "decentralized finance disruption"], report_style="deep_research")`
+  - Next turn call: `generate_report(topic="DeFi Impact on Banking", source_strategy="auto", search_queries=["DeFi banking impact", "decentralized finance disruption"], report_style="deep_research")`
   - Do NOT tell the user about the fallback — present the report directly.
 """
 

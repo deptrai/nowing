@@ -108,3 +108,8 @@
 - **resp.text[:200] có thể leak sensitive data**: Nếu upstream error body chứa echo-back của Authorization header hoặc token, `f"HTTP {code}: {resp.text[:200]}"` sẽ log ra. Mitigate: redact patterns `Bearer\s+\S+` trước khi include vào error message. [chainlens_research_service.py:81]
 - **httpx.AsyncClient tạo mới mỗi call — no connection pooling**: TLS handshake + pool setup overhead per request. Nên dùng module-level `AsyncClient` singleton với lifespan tied to FastAPI app. [chainlens_research_service.py:41, 72]
 - **Tests mutate `_health_cache` class-level trực tiếp**: `_reset_cache()` function mutate class state thay vì dùng `monkeypatch.setattr` fixture. pytest-asyncio mặc định serial nên OK hiện tại, nhưng nếu bật `pytest-xdist` hoặc fixture scope thay đổi sẽ flaky. [test_chainlens_research_service.py:162, 191]
+
+## Deferred from: code review of story 7-2-chainlens-deep-research-langgraph-tool (2026-04-19)
+
+- **Bare `except Exception` quanh `dispatch_custom_event`**: Swallow mọi exception (TypeError/AttributeError từ signature change trong LangGraph future) → regression silent. Nên log ở DEBUG level thay vì `pass`. [chainlens_research.py:67-72, 83-89]
+- **Provider name `"nowing"` hardcode**: Coupling tên brand với tool output. Branch hiện tại đang rename từ surfsense → nowing; nếu rename lần nữa sẽ break consumer. Đổi thành `"builtin"` / `"local"` để decouple. [chainlens_research.py:26]

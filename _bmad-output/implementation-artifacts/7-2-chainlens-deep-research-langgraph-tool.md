@@ -1,6 +1,6 @@
 # Story 7.2: LangGraph Tool — `chainlens_deep_research` + Fallback Logic
 
-Status: review
+Status: done
 
 ## Story
 
@@ -469,3 +469,19 @@ claude-sonnet-4-5
 - `nowing_backend/app/agents/new_chat/tools/registry.py` (edited — added import + ToolDefinition)
 - `nowing_backend/app/agents/new_chat/system_prompt.py` (edited — instructions, examples, ordered list)
 - `nowing_backend/tests/unit/agents/new_chat/tools/test_chainlens_research_tool.py` (new, 7 tests)
+
+### Review Findings (2026-04-19)
+
+- [x] [Review][Decision] Double-fallback khi KB trống — `_FALLBACK_MESSAGE` yêu cầu LLM gọi `generate_report(source_strategy="kb_search")`, nhưng KB có thể rỗng → cascade silent failure. Spec chưa quy định. Options: (a) chấp nhận known limitation, (b) đổi `source_strategy="auto"`, (c) để Story 7.3 xử tại agent level.
+- [x] [Review][Patch] Thiếu outer timeout → tool block tối đa ~250s (service retry 2×125s) — add `asyncio.wait_for(..., timeout=130)` [chainlens_research.py:94]
+- [x] [Review][Patch] Tool register & expose cho LLM kể cả khi `CHAINLENS_RESEARCH_ENABLED=FALSE` — lãng phí ~600 tokens prompt + is_available call mỗi turn [registry.py:208-216]
+- [x] [Review][Patch] `ValueError` từ service (empty query / invalid sources) bị nuốt bởi `except Exception` → log "unexpected error" che lấp client bug [chainlens_research.py:105]
+- [x] [Review][Patch] Fallback message `"engine is currently unavailable"` misleading khi flag OFF — dùng wording trung tính [chainlens_research.py:14-19]
+- [x] [Review][Patch] `result.get("message", "")` trả `None` nếu value là `None` — dùng `result.get("message") or ""` [chainlens_research.py:98]
+- [x] [Review][Patch] Chainlens 200 với `message` rỗng/whitespace → LLM render empty, không trigger fallback [chainlens_research.py:94-100]
+- [x] [Review][Patch] System prompt literal `<original query>` placeholder — Haiku có thể pass string `"<original query>"` [system_prompt.py:281]
+- [x] [Review][Patch] AC#3 PARTIAL — thiếu dispatch "switching" event ở 2 `except` blocks trước `_fallback_response()` [chainlens_research.py:101-109]
+- [x] [Review][Patch] Test gaps — thêm 3 tests: (a) ValueError từ service → fallback, (b) "switching" event dispatched trên unavailability path, (c) empty-message success → fallback [test_chainlens_research_tool.py]
+- [x] [Review][Patch] Dead code `hasattr(mock_svc, "research")` — dùng `mock_svc.research.assert_not_called()` [test_chainlens_research_tool.py:77]
+- [x] [Review][Defer] Bare `except Exception` quanh `dispatch_custom_event` nuốt real bugs [chainlens_research.py:67-72, 83-89] — deferred, low risk
+- [x] [Review][Defer] Provider name `"nowing"` hardcode — coupling với brand, dùng `"builtin"` để decouple [chainlens_research.py:26] — deferred, cosmetic

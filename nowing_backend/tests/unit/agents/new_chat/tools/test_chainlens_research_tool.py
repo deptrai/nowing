@@ -73,8 +73,7 @@ async def test_unavailable_returns_fallback_not_raise(tool):
         assert "generate_report" in result["message"]
         # FR25: must NOT leak vendor name in fallback message
         assert "chainlens" not in result["message"].lower()
-        # research() should NOT be called
-        assert not hasattr(mock_svc, "research") or not mock_svc.research.called
+        mock_svc.research.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -159,3 +158,79 @@ async def test_research_exception_logs_warning(tool, caplog):
         assert any("chainlens research failed" in r.message for r in caplog.records)
         # Must NOT log at ERROR level
         assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_value_error_from_service_returns_fallback(tool):
+    """ValueError from service (empty query / invalid sources) → fallback, no raise."""
+    with patch(
+        "app.agents.new_chat.tools.chainlens_research.ChainlensResearchService"
+    ) as mock_svc, patch(
+        "app.agents.new_chat.tools.chainlens_research.dispatch_custom_event"
+    ):
+        mock_svc.is_available = AsyncMock(return_value=True)
+        mock_svc.research = AsyncMock(
+            side_effect=ValueError("Invalid sources: ['videos']")
+        )
+
+        result = await tool.ainvoke({"query": "q", "sources": ["videos"]})
+
+        assert result["status"] == "fallback"
+        assert result["provider"] == "nowing"
+
+
+@pytest.mark.asyncio
+async def test_switching_event_dispatched_on_unavailable(tool):
+    """When is_available()=False, a 'switching' event is dispatched before fallback."""
+    with patch(
+        "app.agents.new_chat.tools.chainlens_research.ChainlensResearchService"
+    ) as mock_svc, patch(
+        "app.agents.new_chat.tools.chainlens_research.dispatch_custom_event"
+    ) as mock_dispatch:
+        mock_svc.is_available = AsyncMock(return_value=False)
+
+        result = await tool.ainvoke({"query": "test"})
+
+        assert result["status"] == "fallback"
+        phases = [call[0][1].get("phase") for call in mock_dispatch.call_args_list]
+        assert "switching" in phases
+
+
+@pytest.mark.asyncio
+async def test_empty_message_success_triggers_fallback(tool):
+    """Chainlens returns 200 with empty message → treat as fallback, not silent empty."""
+    with patch(
+        "app.agents.new_chat.tools.chainlens_research.ChainlensResearchService"
+    ) as mock_svc, patch(
+        "app.agents.new_chat.tools.chainlens_research.dispatch_custom_event"
+    ):
+        mock_svc.is_available = AsyncMock(return_value=True)
+        mock_svc.research = AsyncMock(
+            return_value={"message": "   ", "sources": []}
+        )
+
+        result = await tool.ainvoke({"query": "test"})
+
+        assert result["status"] == "fallback"
+        assert result["provider"] == "nowing"
+
+
+@pytest.mark.asyncio
+async def test_outer_timeout_returns_fallback(tool):
+    """asyncio.TimeoutError from outer wait_for → fallback, no raise."""
+    import asyncio as _asyncio
+
+    with patch(
+        "app.agents.new_chat.tools.chainlens_research.ChainlensResearchService"
+    ) as mock_svc, patch(
+        "app.agents.new_chat.tools.chainlens_research.dispatch_custom_event"
+    ), patch(
+        "app.agents.new_chat.tools.chainlens_research.asyncio.wait_for",
+        side_effect=_asyncio.TimeoutError(),
+    ):
+        mock_svc.is_available = AsyncMock(return_value=True)
+
+        result = await tool.ainvoke({"query": "test"})
+
+        assert result["status"] == "fallback"
+        assert result["provider"] == "nowing"

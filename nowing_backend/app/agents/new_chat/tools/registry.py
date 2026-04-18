@@ -43,6 +43,7 @@ from typing import Any
 
 from langchain_core.tools import BaseTool
 
+from app.config import config
 from app.db import ChatVisibility
 
 from .confluence import (
@@ -205,14 +206,17 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
         ),
         requires=[],
     ),
-    # Chainlens deep research tool — auto-fallback to generate_report when unavailable
-    # Feature flag CHAINLENS_RESEARCH_ENABLED is controlled inside the service layer
+    # Chainlens deep research tool — auto-fallback to generate_report when unavailable.
+    # `enabled_by_default` is gated on feature flag + URL so the tool (and its ~600 tokens of
+    # prompt instructions) is excluded from the default system prompt when not configured.
     ToolDefinition(
         name="chainlens_deep_research",
         description="Perform deep web research using Chainlens engine with auto-fallback to built-in research",
         factory=lambda deps: create_chainlens_research_tool(),
         requires=[],  # No DB/connector deps — uses external API + Config
-        enabled_by_default=True,
+        enabled_by_default=bool(
+            config.CHAINLENS_RESEARCH_ENABLED and config.CHAINLENS_RESEARCH_API_URL
+        ),
     ),
     # Nowing documentation search tool
     ToolDefinition(
