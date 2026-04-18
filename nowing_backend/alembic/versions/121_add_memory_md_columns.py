@@ -23,13 +23,11 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "user",
-        sa.Column("memory_md", sa.Text(), nullable=True, server_default=""),
+    op.execute(
+        "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS memory_md TEXT DEFAULT ''"
     )
-    op.add_column(
-        "searchspaces",
-        sa.Column("shared_memory_md", sa.Text(), nullable=True, server_default=""),
+    op.execute(
+        "ALTER TABLE searchspaces ADD COLUMN IF NOT EXISTS shared_memory_md TEXT DEFAULT ''"
     )
 
 
