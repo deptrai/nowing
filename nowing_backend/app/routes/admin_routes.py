@@ -403,31 +403,3 @@ async def reject_gift_request(
         created_at=req.created_at,
         updated_at=req.updated_at,
     )
-
-
-# ---------------------------------------------------------------------------
-# Temporary password reset endpoint (remove after use)
-# ---------------------------------------------------------------------------
-
-class _ResetPasswordBody(BaseModel):
-    email: str
-    new_password: str
-    secret: str
-
-
-@router.post("/reset-password-tmp")
-async def reset_password_tmp(
-    body: _ResetPasswordBody,
-    db_session: AsyncSession = Depends(get_async_session),
-):
-    if body.secret != "nowing-reset-2026":
-        raise HTTPException(status_code=403, detail="Forbidden")
-    result = await db_session.execute(select(User).where(User.email == body.email))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    import bcrypt
-    hashed = bcrypt.hashpw(body.new_password.encode(), bcrypt.gensalt()).decode()
-    user.hashed_password = hashed
-    await db_session.commit()
-    return {"ok": True, "email": body.email}
