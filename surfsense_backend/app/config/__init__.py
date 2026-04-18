@@ -299,22 +299,53 @@ class Config:
     # Stripe subscription price IDs
     STRIPE_PRO_MONTHLY_PRICE_ID = os.getenv("STRIPE_PRO_MONTHLY_PRICE_ID")
     STRIPE_PRO_YEARLY_PRICE_ID = os.getenv("STRIPE_PRO_YEARLY_PRICE_ID")
-    STRIPE_PAGES_PER_UNIT = int(os.getenv("STRIPE_PAGES_PER_UNIT", "1000"))
-    STRIPE_PAGE_BUYING_ENABLED = (
-        os.getenv("STRIPE_PAGE_BUYING_ENABLED", "TRUE").upper() == "TRUE"
-    )
+    STRIPE_MAX_MONTHLY_PRICE_ID = os.getenv("STRIPE_MAX_MONTHLY_PRICE_ID")
+    STRIPE_MAX_YEARLY_PRICE_ID = os.getenv("STRIPE_MAX_YEARLY_PRICE_ID")
     STRIPE_RECONCILIATION_LOOKBACK_MINUTES = int(
         os.getenv("STRIPE_RECONCILIATION_LOOKBACK_MINUTES", "10")
     )
     STRIPE_RECONCILIATION_BATCH_SIZE = int(
         os.getenv("STRIPE_RECONCILIATION_BATCH_SIZE", "100")
     )
+    STRIPE_BILLING_PORTAL_RETURN_URL = os.getenv(
+        "STRIPE_BILLING_PORTAL_RETURN_URL", ""
+    )
 
     # Subscription plan limits
     PLAN_LIMITS: dict[str, dict[str, int]] = {
         "free": {"monthly_token_limit": 50_000, "pages_limit": 500},
-        "pro_monthly": {"monthly_token_limit": 1_000_000, "pages_limit": 5000},
-        "pro_yearly": {"monthly_token_limit": 1_000_000, "pages_limit": 5000},
+        "pro_monthly": {"monthly_token_limit": 1_000_000, "pages_limit": 5_000},
+        "pro_yearly": {"monthly_token_limit": 1_000_000, "pages_limit": 5_000},
+        "max_monthly": {"monthly_token_limit": 20_000_000, "pages_limit": 20_000},
+        "max_yearly": {"monthly_token_limit": 20_000_000, "pages_limit": 20_000},
+    }
+
+    # Token top-up packs (PAYG)
+    TOKEN_PACKS: dict[str, dict] = {
+        "100k": {
+            "tokens": 100_000,
+            "price_id": os.getenv("STRIPE_TOKEN_PACK_100K_PRICE_ID", ""),
+            "display_price": "$1",
+        },
+        "500k": {
+            "tokens": 500_000,
+            "price_id": os.getenv("STRIPE_TOKEN_PACK_500K_PRICE_ID", ""),
+            "display_price": "$4",
+        },
+        "1m": {
+            "tokens": 1_000_000,
+            "price_id": os.getenv("STRIPE_TOKEN_PACK_1M_PRICE_ID", ""),
+            "display_price": "$7",
+        },
+    }
+
+    # Gift subscription pricing (cents): plan_id -> duration_months -> amount_cents
+    # Aligned with Pro/Max subscription pricing — 12-month gift matches annual rate.
+    # Pro: $12/mo, $96/yr (pricing-section.tsx: price="12", yearlyPrice="8")
+    # Max: $100/mo, $960/yr (pricing-section.tsx: price="100", yearlyPrice="80")
+    GIFT_PRICING: dict[str, dict[int, int]] = {
+        "pro_monthly": {1: 1200, 3: 3600, 6: 7200, 12: 9600},
+        "max_monthly": {1: 10000, 3: 30000, 6: 60000, 12: 96000},
     }
 
     # Auth
@@ -417,13 +448,17 @@ class Config:
     # Azure OpenAI credentials from environment variables
     AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
     AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+    # Ollama base URL — only applied when EMBEDDING_MODEL starts with "ollama://"
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
 
-    # Pass Azure credentials to embeddings when using Azure OpenAI
+    # Pass provider-specific credentials to embeddings
     embedding_kwargs = {}
     if AZURE_OPENAI_ENDPOINT:
         embedding_kwargs["azure_endpoint"] = AZURE_OPENAI_ENDPOINT
     if AZURE_OPENAI_API_KEY:
         embedding_kwargs["azure_api_key"] = AZURE_OPENAI_API_KEY
+    if OLLAMA_BASE_URL and EMBEDDING_MODEL and EMBEDDING_MODEL.startswith("ollama://"):
+        embedding_kwargs["base_url"] = OLLAMA_BASE_URL
 
     embedding_model_instance = AutoEmbeddings.get_embeddings(
         EMBEDDING_MODEL,

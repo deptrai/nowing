@@ -393,7 +393,16 @@ export function LayoutDataProvider({ searchSpaceId, children }: LayoutDataProvid
 								title: "Admin",
 								url: "/admin/subscription-requests",
 								icon: ShieldCheck,
-								isActive: pathname?.startsWith("/admin"),
+								isActive:
+									pathname?.startsWith("/admin") && !pathname?.startsWith("/admin/gift-requests"),
+							}
+						: null,
+					user?.is_superuser
+						? {
+								title: "Gift Requests",
+								url: "/admin/gift-requests",
+								icon: ShieldCheck,
+								isActive: pathname?.startsWith("/admin/gift-requests"),
 							}
 						: null,
 				] as (NavItem | null)[]
@@ -715,6 +724,9 @@ export function LayoutDataProvider({ searchSpaceId, children }: LayoutDataProvid
 				pagesLimit: user.pages_limit,
 				tokensUsed: user.tokens_used_this_month,
 				tokensLimit: user.monthly_token_limit,
+				purchasedTokens: user.purchased_tokens ?? 0,
+				planId: user.plan_id,
+				subscriptionStatus: user.subscription_status,
 			}
 		: undefined;
 

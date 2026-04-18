@@ -95,7 +95,7 @@ class TokenQuotaService:
         await self.session.flush()  # Persist any reset changes within the transaction
 
         tokens_used = user.tokens_used_this_month or 0
-        token_limit = user.monthly_token_limit or 0
+        token_limit = (user.monthly_token_limit or 0) + (user.purchased_tokens or 0)
 
         # PAST_DUE: enforce free-tier token limit to prevent usage without payment
         if str(getattr(user, "subscription_status", "")).lower() == "past_due":
@@ -195,4 +195,5 @@ class TokenQuotaService:
         await self._maybe_reset_monthly_tokens(user)
         await self.session.flush()
 
-        return (user.tokens_used_this_month or 0, user.monthly_token_limit or 0)
+        effective_limit = (user.monthly_token_limit or 0) + (user.purchased_tokens or 0)
+        return (user.tokens_used_this_month or 0, effective_limit)

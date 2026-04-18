@@ -116,6 +116,7 @@ Webhook endpoint **PHẢI** parse raw body bằng `await request.body()` TRƯỚ
 ### Change Log
 - 2026-04-15: Implement Stripe webhook subscription event handlers — subscription lifecycle, invoice payment reset, checkout activation.
 - 2026-04-15: Code review patches applied — 12 fixes: pages_limit upgrade/downgrade, period_end guards, token reset billing reasons, idempotency plan_id check, UTC date fix, unrecognized price ID warning.
+- 2026-04-16: Webhook `checkout.session.completed` with `mode=payment` now routes to `_fulfill_token_topup()` (Story 5.7) — dispatches on `metadata.purchase_type` in `{"token_packs", "token_topup"}`. `_fulfill_token_topup` reads `metadata.tokens_granted` (set by `create_token_topup_checkout` using `_TOKENS_PER_USD * amount_usd`) and adds to `user.purchased_tokens`. `_handle_invoice_payment_succeeded` now also resets `purchased_tokens = 0` at billing cycle renewal.
 
 ## Review Findings (2026-04-15)
 

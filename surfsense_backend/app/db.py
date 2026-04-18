@@ -1734,6 +1734,104 @@ class SubscriptionRequest(Base):
     user = relationship("User", foreign_keys=[user_id], back_populates="subscription_requests")
 
 
+class GiftCodeStatus(StrEnum):
+    ACTIVE = "active"
+    REDEEMED = "redeemed"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
+class GiftCode(Base, TimestampMixin):
+    """Stores gift codes purchased via Stripe one-time payment (Epic 6)."""
+
+    __tablename__ = "gift_codes"
+    __allow_unmapped__ = True
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    code = Column(String(32), unique=True, nullable=False)
+    plan_id = Column(String(50), nullable=False)
+    duration_months = Column(Integer, nullable=False)
+    amount_paid = Column(Integer, nullable=False)  # in cents
+    purchaser_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    stripe_payment_intent_id = Column(String(255), nullable=True, unique=True)
+    redeemer_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    status = Column(
+        SQLAlchemyEnum(
+            GiftCodeStatus,
+            name="giftcodestatus",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=GiftCodeStatus.ACTIVE,
+        server_default="active",
+    )
+    expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
+    redeemed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+
+class GiftRequestStatus(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class GiftRequest(Base):
+    """Tracks gift requests when Stripe is not configured (admin-approval fallback)."""
+
+    __tablename__ = "gift_requests"
+    __allow_unmapped__ = True
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    plan_id = Column(String(50), nullable=False)
+    duration_months = Column(Integer, nullable=False)
+    status = Column(
+        SQLAlchemyEnum(
+            GiftRequestStatus,
+            name="giftrequeststatus",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=GiftRequestStatus.PENDING,
+        server_default="pending",
+    )
+    gift_code_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("gift_codes.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+
 class SearchSpaceRole(BaseModel, TimestampMixin):
     """
     Custom roles that can be defined per search space.
@@ -2023,6 +2121,8 @@ if config.AUTH_TYPE == "GOOGLE":
         # Subscription and token quota (cloud mode)
         monthly_token_limit = Column(Integer, nullable=False, default=100000, server_default="100000")
         tokens_used_this_month = Column(Integer, nullable=False, default=0, server_default="0")
+        purchased_tokens = Column(Integer, nullable=False, default=0, server_default="0")
+        fulfilled_topup_sessions = Column(String, nullable=True, default=None)
         token_reset_date = Column(Date, nullable=True)
         subscription_status = Column(
             SQLAlchemyEnum(SubscriptionStatus, name="subscriptionstatus", create_type=True, values_callable=lambda x: [e.value for e in x]),
@@ -2158,6 +2258,8 @@ else:
         # Subscription and token quota (cloud mode)
         monthly_token_limit = Column(Integer, nullable=False, default=100000, server_default="100000")
         tokens_used_this_month = Column(Integer, nullable=False, default=0, server_default="0")
+        purchased_tokens = Column(Integer, nullable=False, default=0, server_default="0")
+        fulfilled_topup_sessions = Column(String, nullable=True, default=None)
         token_reset_date = Column(Date, nullable=True)
         subscription_status = Column(
             SQLAlchemyEnum(SubscriptionStatus, name="subscriptionstatus", create_type=True, values_callable=lambda x: [e.value for e in x]),

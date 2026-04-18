@@ -40,6 +40,9 @@ export interface PageUsage {
 	pagesLimit: number;
 	tokensUsed: number;
 	tokensLimit: number;
+	purchasedTokens?: number;
+	planId?: string;
+	subscriptionStatus?: string;
 }
 
 export interface IconRailProps {

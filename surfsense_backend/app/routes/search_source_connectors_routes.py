@@ -133,6 +133,60 @@ async def list_github_repositories(
         ) from e
 
 
+class BookStackCredentialsRequest(BaseModel):
+    """Request model for BookStack API credentials."""
+
+    base_url: str = Field(..., description="BookStack instance base URL")
+    token_id: str = Field(..., description="BookStack API Token ID")
+    token_secret: str = Field(..., description="BookStack API Token Secret")
+
+
+@router.post("/bookstack/shelves", response_model=list[dict[str, Any]])
+async def list_bookstack_shelves(
+    creds: BookStackCredentialsRequest,
+    user: User = Depends(current_active_user),
+):
+    """
+    Fetches all shelves from a BookStack instance.
+    Used by the frontend to let users select which shelves to exclude from indexing.
+    """
+    try:
+        from app.connectors.bookstack_connector import BookStackConnector
+
+        client = BookStackConnector(
+            base_url=creds.base_url,
+            token_id=creds.token_id,
+            token_secret=creds.token_secret,
+        )
+        shelves = client.get_all_shelves()
+
+        result = []
+        for shelf in shelves:
+            detail = client.make_api_request(f"shelves/{shelf['id']}")
+            books = detail.get("books", []) if isinstance(detail, dict) else []
+            result.append(
+                {
+                    "id": shelf["id"],
+                    "name": shelf["name"],
+                    "book_count": len(books),
+                    "books": [{"id": b["id"], "name": b["name"]} for b in books],
+                }
+            )
+        return result
+    except ValueError as e:
+        logger.error(
+            f"BookStack credential validation failed for user {user.id}: {e!s}"
+        )
+        raise HTTPException(
+            status_code=400, detail=f"Invalid BookStack credentials: {e!s}"
+        ) from e
+    except Exception as e:
+        logger.error(f"Failed to fetch BookStack shelves for user {user.id}: {e!s}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch BookStack shelves: {e!s}"
+        ) from e
+
+
 @router.post("/search-source-connectors", response_model=SearchSourceConnectorRead)
 async def create_search_source_connector(
     connector: SearchSourceConnectorCreate,
@@ -1106,8 +1160,12 @@ async def index_connector_content(
             )
             response_message = "Luma indexing started in the background."
 
-        elif connector.connector_type == SearchSourceConnectorType.DEXSCREENER_CONNECTOR:
-            from app.tasks.celery_tasks.connector_tasks import index_dexscreener_pairs_task
+        elif (
+            connector.connector_type == SearchSourceConnectorType.DEXSCREENER_CONNECTOR
+        ):
+            from app.tasks.celery_tasks.connector_tasks import (
+                index_dexscreener_pairs_task,
+            )
 
             logger.info(
                 f"Triggering DexScreener indexing for connector {connector_id} into search space {search_space_id} from {indexing_from} to {indexing_to}"

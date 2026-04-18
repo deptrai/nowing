@@ -31,3 +31,74 @@
 - ~~**`verify-checkout-session` endpoint lacks rate limiting**~~ — **Fixed**: Added in-memory per-user rate limit (20 calls/60s) via `_check_verify_session_rate_limit()` in `stripe_routes.py`.
 - ~~**Rejected user can re-submit approval request immediately**~~ — **Fixed**: Added 24h cooldown check using `created_at >= now() - 24h` on REJECTED requests before creating a new SubscriptionRequest.
 - ~~**`token_reset_date` not set in `_handle_subscription_event`**~~ — **Fixed**: When `new_status == ACTIVE` and `token_reset_date is None`, now sets `user.token_reset_date = datetime.now(UTC).date()`.
+
+## Deferred from: code review of story-6.6 (2026-04-17)
+
+- Double-click protection ngoài trạng thái `disabled` của button — rủi ro race nhỏ nếu user spam click trước khi state update; pre-existing pattern phổ biến trong codebase.
+- Admin approval flow thiếu persistent state indicator — toast biến mất, user không có history UI khi `admin_approval_mode=true`; UX enhancement, không block chức năng.
+
+## Deferred from: code review of story-6.7 (2026-04-17)
+
+- Token expiry giữa chừng redeem flow → `AuthenticationError` redirect về login mà không giữ context (code đã nhập) — liên quan auth infrastructure chung, pre-existing ngoài scope story.
+- `currentUserAtom` query không check loading/error state ở redeem page — áp dụng pattern hiện có từ buy-tokens page; có thể xử lý thống nhất sau.
+
+## Deferred from: code review of story 6-1-database-migration-gift-codes-gift-requests (2026-04-17)
+
+- CHECK constraint `expires_at > created_at` trên `gift_codes` — defensive DB-level guard; pre-existing pattern (`SubscriptionRequest`, `PagePurchase` không có similar check).
+- CHECK constraint `amount_paid >= 0` và `duration_months > 0` trên `gift_codes` — defensive; `PagePurchase.amount_total` cũng không có check.
+- `gift_requests.updated_at` không có `onupdate` trigger / app-level auto-populate — app-level concern; fit project pattern (TimestampMixin chỉ track `created_at`).
+- Thiếu `currency` column trên `gift_codes` (so với `PagePurchase`) — không thuộc AC Story 6.1; USD-only launch. Revisit khi mở rộng sang i18n/đa tiền tệ.
+- Thiếu `relationship()` back-ref trên `GiftCode`/`GiftRequest` → `User` — không thuộc AC; query code có thể explicit join. Add nếu admin screens gặp N+1.
+- Thiếu composite index `ix_gift_requests_status_created_at` cho admin hot path ("pending requests" ordered by created_at) — revisit trong Story 6-5 khi admin query pattern rõ.
+
+## Deferred from: code review of story 6-2-backend-api-create-gift-checkout (2026-04-17)
+
+- `/dashboard/0/purchase-success` trigger dashboard onboarding loop — `_get_gift_urls(0)` sinh URL tới search_space không tồn tại; frontend Story 6.6 cần handle `search_space_id=0` hoặc chuyển gift sang route riêng (`/gift/success`).
+- `purchase-success/page.tsx` hard-coded "Tokens added!" copy — gift purchaser thấy message sai; frontend Story 6.6 cần branch theo `session.metadata.purchase_type`.
+- Webhook chưa handle `purchase_type="gift"` — nếu Story 6.2 deploy mà 6.3 chưa ship, payment sẽ được Stripe charge nhưng không tạo gift_code (customer trả tiền không nhận hàng). Cần enforce deploy ordering: 6.3 trước/cùng với 6.2.
+- `duration_months: int = Field(ge=1, le=12)` rộng hơn `GIFT_PRICING` keys (1/3/6/12) — 2/4/5/7-11 pass Pydantic rồi 400 ở lookup; tighten thành `Literal[1,3,6,12]` cho cleaner contract.
+- `customer_email=user.email` tạo duplicate Stripe customer nếu user đã có Stripe customer linked — cross-cutting với token-topup/subscription; cần refactor `ensure_stripe_customer()` helper dùng chung.
+- `checkout_url: str` (required) nhưng admin_approval_mode trả `""` — contract nên `Optional[str] = None`; cross-cutting với sibling `CreateTokenTopupResponse` và `CreateSubscriptionCheckoutResponse`.
+- Gift checkout không có authorization/eligibility check — any active user có thể buy, không chống abuse/chargeback; cần policy story riêng cho gift-specific rules (rate limit, email verified, min account age).
+- `_get_gift_urls` và `_get_token_topup_urls` trùng pattern (`rstrip("/")` + f-string template) — drift risk; refactor thành `_get_checkout_urls(search_space_id, flow_type)` hoặc helper.
+- Không idempotency cho rapid double-clicks — tạo nhiều Stripe sessions với distinct `payment_intent_id`; nếu cả 2 paid → 2 gift_codes tạo (unique constraint trên `stripe_payment_intent_id` chỉ block fulfillment trùng PI). Cross-cutting với token-topup; cần `idempotency_key` ở Stripe API call.
+
+## Deferred from: code review of story 6-3 (Webhook Gift Code Fulfillment) — 2026-04-17
+
+- Admin alerting when `_fulfill_gift_purchase` returns 200 with an error-level log (missing/invalid metadata, pricing mismatch, non-recoverable IntegrityError, collision retries exhausted). Today the only signal is a log line; payment is captured but no gift code exists. Need out-of-band alert (email/Slack/Sentry) + an admin "stuck gift payments" reconciliation view.
+- Unit + integration tests for `_fulfill_gift_purchase`: happy path, idempotency (duplicate payment_intent), collision retry, FK violation on deleted user, invalid metadata, pricing tampering. No tests exist for this module yet.
+- Extract shared Stripe webhook idempotency helper — `_fulfill_token_topup` uses `User.fulfilled_topup_sessions` (CSV field), while `_fulfill_gift_purchase` now uses `SELECT ... WHERE stripe_payment_intent_id = :pi`. Two different idempotency strategies for semantically identical problem — pick one and unify (likely the second).
+- Gift code storage — codes are stored in plaintext in `gift_codes.code`. If DB is leaked, all unredeemed gifts are compromised. Consider storing `code_hash` (bcrypt/argon2) and returning plaintext to purchaser only via the webhook-bound API response once. Cross-cutting with redeem flow (Story 6.4).
+- `expires_at = now() + 365 days` anchored to webhook-receipt time, not payment-intent creation time. For audit parity with Stripe timestamps, compute from `checkout_session.created` or `payment_intent.created`.
+- Missing `metadata.plan_id` / `metadata.duration_months` sanity caps (e.g., plan_id length ≤ 32, no unexpected characters). Pydantic validates request side but webhook metadata is unstructured.
+
+## Deferred from: code review of story 6-4 (Backend API Redeem Gift Code) — 2026-04-17
+
+- HTTP idempotency cho `POST /redeem-gift`: client retry sau khi commit thành công (network hiccup) hiện thấy 400 "đã được sử dụng" thay vì success. Cần project-wide `Idempotency-Key` header pattern (cross-cutting với `create-gift-checkout`, `create-token-topup-checkout`).
+- Calendar-month extension math: `timedelta(days=30 * duration_months)` cho 12-month gift = 360 days (mất ~5 days so với 1 năm thực). Chuyển sang `dateutil.relativedelta(months=n)` để accuracy theo lịch; dateutil đã có trong deps transitively.
+- i18n strategy: API error details bằng tiếng Việt, logger/docstring bằng English. Project-wide strategy decision cần thiết (error codes + i18n layer ở frontend? hay hardcoded Vietnamese?).
+- `RedeemGiftResponse` enrichment: thêm `duration_months` / `extended_by_days` để frontend toast hiển thị "Gia hạn thêm X tháng" mà không cần recompute từ before/after expiry.
+- `gift_codes.redeemer_id` FK `ON DELETE SET NULL` zombie state: nếu user bị xoá, gift row thành `status=REDEEMED, redeemer_id=NULL` — future cleanup job dựa vào `redeemer_id IS NULL` sẽ resurrect redeemed gift. Cần add check `status = ACTIVE` mọi nơi, hoặc đổi FK thành `RESTRICT`.
+
+## Deferred from: code review of story 6-5 (Gift History & Admin Fallback) — 2026-04-17
+
+- `GiftRequest.updated_at` không có autoupdate trigger/onupdate — khi admin approve/reject, `updated_at` không đổi → audit trail mất; REJECTED cooldown không implement được. Cần DB migration thêm trigger hoặc `onupdate=lambda: datetime.now(UTC)` trong model.
+- REJECTED resubmission cooldown cho `POST /request-gift` (mirror `_queue_subscription_approval_request` 24h pattern): hiện user bị reject có thể spam PENDING mới ngay lập tức. Defer đến khi admin reject workflow được implement.
+- Rate limiting cho `POST /request-gift` — authenticated user có thể enumerate `plan_id × duration_months` combos flood admin queue. Cross-cutting infra concern (chưa có global rate limiter trong codebase; `verify-checkout-session` có in-memory limiter riêng).
+- Structured audit row/table cho admin-approval workflow — hiện chỉ `logger.info`, nếu logging backend drop message thì không còn trace ngoài DB row. Cần audit table dedicated cho gift/subscription admin actions.
+
+## Deferred from: code review of story 6-8 (Admin Approve/Reject Gift Request) — 2026-04-17
+
+- Coupling `admin_routes` → private helper `_mint_gift_code` trong `stripe_routes`: không phải circular hiện tại nhưng design smell. Refactor helper sang `app/services/gift_codes.py` (module dùng chung) để admin/webhook/future-callers import từ layer service thay vì route file.
+- Orphan `gift_code_id` → silent `gift_code=None` trong `list_gift_requests`: nếu `GiftCode` bị xoá trực tiếp (chưa có cascade path, nhưng tương lai có thể có), response trả `gift_code_id` có giá trị nhưng `gift_code=null`. Admin UI không phân biệt được "chưa approve" vs "code bị mất" — cần sentinel hoặc warning log.
+- `expires_at` cố định `now + 365 days` khi admin approve: không override được. Nếu admin phê duyệt trễ (e.g., 3 tháng sau khi user submit), vẫn 365d từ approve time. Thêm optional `expires_at` param vào endpoint để override khi cần.
+- Không check `locked_user.is_active` khi approve: có thể mint gift code cho user đã bị deactivate → họ không thể redeem vì không login được. Minor UX, cần warning hoặc block.
+- `GiftRequestItem.status: str` + `GiftCodeItem.status: str` thiếu type safety — đổi sang `Literal["pending", "approved", "rejected"]` / `Literal["active", "redeemed", "expired"]` để client có contract rõ.
+
+## Deferred from: code review of story 6-9 (Frontend Admin Gift Requests UI) — 2026-04-17
+
+- **F3 — Error UX after approve network drop**: Nếu Stripe/DB commit success nhưng network drop trước khi response về, admin thấy "Failed to approve" trong khi code đã mint. Recoverable qua Approved tab (code vẫn hiện), nhưng error message misleading. Cần refetch + auto-switch tab hoặc hint "check Approved tab".
+- **F5 — Zod schemas unused at runtime**: `giftRequestItem` / `giftRequestListResponse` / `giftRequestApproveResponse` exported nhưng component hand-rolls duplicate TS interfaces và không `safeParse` response. Contract drift sẽ không phát hiện tại runtime. Refactor: replace local interfaces với Zod-inferred types + `schema.safeParse(await response.json())` trong `fetchRequests`.
+- **F8 — `count` field misleading**: `list_gift_requests` returns `count=len(items)` (page size), không phải total count. Field name misleading cho future pagination. Cần separate `SELECT COUNT(*)` query hoặc rename field thành `returned`.
+- **F9 — Sidebar `isActive` prefix-match brittleness**: `LayoutDataProvider.tsx:397` dùng `startsWith("/admin")` + explicit exclusion cho `/admin/gift-requests`. Thêm route `/admin/*` mới cần manual exclusion. Refactor dùng exact match per-item: `pathname === href || pathname.startsWith(href + "/")`.
+- **F11 — Unknown `plan_id` fallback**: UI render `req.plan_id.replace(/_/g, " ")` trực tiếp. Backend thêm plan mới (e.g., `"enterprise"`) sẽ render raw string. Fit once F5 lands (Zod-validated union type).

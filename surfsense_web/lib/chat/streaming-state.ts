@@ -227,6 +227,15 @@ export type SSEEvent =
 	| { type: "data-thread-title-update"; data: { threadId: number; title: string } }
 	| { type: "data-interrupt-request"; data: Record<string, unknown> }
 	| { type: "data-documents-updated"; data: Record<string, unknown> }
+	| {
+			type: "data-token-usage";
+			data: {
+				tokens_this_request: number;
+				tokens_used_total: number;
+				monthly_limit: number;
+				tokens_remaining: number;
+			};
+	  }
 	| { type: "error"; errorText: string };
 
 /**

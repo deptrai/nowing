@@ -273,6 +273,9 @@ export function Sidebar({
 						pagesLimit={pageUsage.pagesLimit}
 						tokensUsed={pageUsage.tokensUsed}
 						tokensLimit={pageUsage.tokensLimit}
+						purchasedTokens={pageUsage.purchasedTokens}
+						planId={pageUsage.planId}
+						subscriptionStatus={pageUsage.subscriptionStatus}
 					/>
 				)}
 

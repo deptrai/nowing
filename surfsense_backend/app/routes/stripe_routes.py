@@ -1,22 +1,27 @@
-"""Stripe routes for pay-as-you-go page purchases and subscriptions."""
+"""Stripe routes for subscriptions and token top-up purchases."""
 
 from __future__ import annotations
 
 import logging
+import secrets
+import string
 import uuid
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from stripe import SignatureVerificationError, StripeClient, StripeError
 
 from app.config import config
 from app.db import (
-    PagePurchase,
-    PagePurchaseStatus,
+    GiftCode,
+    GiftCodeStatus,
+    GiftRequest,
+    GiftRequestStatus,
     SubscriptionRequest,
     SubscriptionRequestStatus,
     SubscriptionStatus,
@@ -24,12 +29,20 @@ from app.db import (
     get_async_session,
 )
 from app.schemas.stripe import (
-    CreateCheckoutSessionRequest,
-    CreateCheckoutSessionResponse,
+    BillingPortalResponse,
+    CreateGiftCheckoutRequest,
+    CreateGiftCheckoutResponse,
     CreateSubscriptionCheckoutRequest,
     CreateSubscriptionCheckoutResponse,
-    PagePurchaseHistoryResponse,
+    CreateTokenTopupRequest,
+    CreateTokenTopupResponse,
+    GiftCodeItem,
+    GiftCodesResponse,
     PlanId,
+    RedeemGiftRequest,
+    RedeemGiftResponse,
+    RequestGiftRequest,
+    RequestGiftResponse,
     StripeStatusResponse,
     StripeWebhookResponse,
 )
@@ -72,34 +85,29 @@ def get_stripe_client() -> StripeClient:
     return StripeClient(config.STRIPE_SECRET_KEY)
 
 
-def _ensure_page_buying_enabled() -> None:
-    if not config.STRIPE_PAGE_BUYING_ENABLED:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Page purchases are temporarily unavailable.",
-        )
-
-
-def _get_checkout_urls(search_space_id: int) -> tuple[str, str]:
+def _get_token_topup_urls(search_space_id: int) -> tuple[str, str]:
     if not config.NEXT_FRONTEND_URL:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="NEXT_FRONTEND_URL is not configured.",
         )
-
     base_url = config.NEXT_FRONTEND_URL.rstrip("/")
-    success_url = f"{base_url}/dashboard/{search_space_id}/purchase-success"
+    success_url = f"{base_url}/dashboard/{search_space_id}/purchase-success?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{base_url}/dashboard/{search_space_id}/purchase-cancel"
     return success_url, cancel_url
 
 
-def _get_required_stripe_price_id() -> str:
-    if not config.STRIPE_PRICE_ID:
+def _get_gift_urls(search_space_id: int) -> tuple[str, str]:
+    """Return (success_url, cancel_url) for gift checkout."""
+    if not config.NEXT_FRONTEND_URL:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="STRIPE_PRICE_ID is not configured.",
+            detail="NEXT_FRONTEND_URL is not configured.",
         )
-    return config.STRIPE_PRICE_ID
+    base_url = config.NEXT_FRONTEND_URL.rstrip("/")
+    success_url = f"{base_url}/dashboard/{search_space_id}/purchase-success?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{base_url}/dashboard/{search_space_id}/purchase-cancel"
+    return success_url, cancel_url
 
 
 def _normalize_optional_string(value: Any) -> str | None:
@@ -123,28 +131,29 @@ def _get_subscription_urls() -> tuple[str, str]:
     return success_url, cancel_url
 
 
+def _resolve_plan_price_id(plan_id: PlanId) -> str | None:
+    """Return the Stripe Price ID for a plan, or None if not configured."""
+    mapping = {
+        PlanId.pro_monthly: config.STRIPE_PRO_MONTHLY_PRICE_ID,
+        PlanId.pro_yearly: config.STRIPE_PRO_YEARLY_PRICE_ID,
+        PlanId.max_monthly: config.STRIPE_MAX_MONTHLY_PRICE_ID,
+        PlanId.max_yearly: config.STRIPE_MAX_YEARLY_PRICE_ID,
+    }
+    return mapping.get(plan_id) or None
+
+
 def _get_price_id_for_plan(plan_id: PlanId) -> str:
-    """Map a plan_id enum to the corresponding Stripe Price ID from env vars."""
-    if plan_id == PlanId.pro_monthly:
-        price_id = config.STRIPE_PRO_MONTHLY_PRICE_ID
-        if not price_id:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="STRIPE_PRO_MONTHLY_PRICE_ID is not configured.",
-            )
-        return price_id
-    if plan_id == PlanId.pro_yearly:
-        price_id = config.STRIPE_PRO_YEARLY_PRICE_ID
-        if not price_id:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="STRIPE_PRO_YEARLY_PRICE_ID is not configured.",
-            )
-        return price_id
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"Unknown plan_id: {plan_id}",
-    )
+    """Map a plan_id enum to the corresponding Stripe Price ID from env vars.
+
+    Raises HTTP 503 if the price ID is not configured.
+    """
+    price_id = _resolve_plan_price_id(plan_id)
+    if not price_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Stripe price ID for plan '{plan_id.value}' is not configured.",
+        )
+    return price_id
 
 
 async def _get_or_create_stripe_customer(
@@ -200,95 +209,48 @@ def _get_metadata(checkout_session: Any) -> dict[str, str]:
     return dict(metadata)
 
 
-async def _get_or_create_purchase_from_checkout_session(
-    db_session: AsyncSession,
-    checkout_session: Any,
-) -> PagePurchase | None:
-    """Look up a PagePurchase by checkout session ID (with FOR UPDATE lock).
-
-    If the row doesn't exist yet (e.g. the webhook arrived before the API
-    response committed), create one from the Stripe session metadata.
-    """
-    checkout_session_id = str(checkout_session.id)
-    purchase = (
-        await db_session.execute(
-            select(PagePurchase)
-            .where(PagePurchase.stripe_checkout_session_id == checkout_session_id)
-            .with_for_update()
-        )
-    ).scalar_one_or_none()
-    if purchase is not None:
-        return purchase
-
-    metadata = _get_metadata(checkout_session)
-    user_id = metadata.get("user_id")
-    quantity = int(metadata.get("quantity", "0"))
-    pages_per_unit = int(metadata.get("pages_per_unit", "0"))
-
-    if not user_id or quantity <= 0 or pages_per_unit <= 0:
-        logger.error(
-            "Skipping Stripe fulfillment for session %s due to incomplete metadata: %s",
-            checkout_session_id,
-            metadata,
-        )
-        return None
-
-    purchase = PagePurchase(
-        user_id=uuid.UUID(user_id),
-        stripe_checkout_session_id=checkout_session_id,
-        stripe_payment_intent_id=_normalize_optional_string(
-            getattr(checkout_session, "payment_intent", None)
-        ),
-        quantity=quantity,
-        pages_granted=quantity * pages_per_unit,
-        amount_total=getattr(checkout_session, "amount_total", None),
-        currency=getattr(checkout_session, "currency", None),
-        status=PagePurchaseStatus.PENDING,
-    )
-    db_session.add(purchase)
-    await db_session.flush()
-    return purchase
-
-
-async def _mark_purchase_failed(
-    db_session: AsyncSession, checkout_session_id: str
-) -> StripeWebhookResponse:
-    purchase = (
-        await db_session.execute(
-            select(PagePurchase)
-            .where(PagePurchase.stripe_checkout_session_id == checkout_session_id)
-            .with_for_update()
-        )
-    ).scalar_one_or_none()
-
-    if purchase is not None and purchase.status == PagePurchaseStatus.PENDING:
-        purchase.status = PagePurchaseStatus.FAILED
-        await db_session.commit()
-
-    return StripeWebhookResponse()
-
-
-async def _fulfill_completed_purchase(
+async def _fulfill_token_topup(
     db_session: AsyncSession, checkout_session: Any
 ) -> StripeWebhookResponse:
-    """Grant pages to the user after a confirmed Stripe payment.
+    """Add purchased tokens to the user after a confirmed Stripe payment.
 
-    Uses SELECT ... FOR UPDATE on both the PagePurchase and User rows to
-    prevent double-granting when Stripe retries the webhook concurrently.
+    Uses SELECT ... FOR UPDATE on the User row to prevent double-granting
+    when Stripe retries the webhook concurrently.
     """
-    purchase = await _get_or_create_purchase_from_checkout_session(
-        db_session, checkout_session
-    )
-    if purchase is None:
+    metadata = _get_metadata(checkout_session)
+    user_id_str = metadata.get("user_id")
+    tokens_granted_str = metadata.get("tokens_granted")
+
+    if not user_id_str or not tokens_granted_str:
+        logger.warning(
+            "Token topup webhook missing metadata for session %s", checkout_session.id
+        )
         return StripeWebhookResponse()
 
-    if purchase.status == PagePurchaseStatus.COMPLETED:
+    try:
+        tokens_to_add = int(tokens_granted_str)
+    except ValueError:
+        logger.error(
+            "Invalid tokens_granted '%s' in webhook for session %s",
+            tokens_granted_str,
+            checkout_session.id,
+        )
+        return StripeWebhookResponse()
+
+    try:
+        user_id = uuid.UUID(user_id_str)
+    except ValueError:
+        logger.error(
+            "Invalid user_id '%s' in token topup metadata for session %s",
+            user_id_str,
+            checkout_session.id,
+        )
         return StripeWebhookResponse()
 
     user = (
         (
             await db_session.execute(
-                select(User).where(User.id == purchase.user_id).with_for_update(of=User)
+                select(User).where(User.id == user_id).with_for_update(of=User)
             )
         )
         .unique()
@@ -296,25 +258,256 @@ async def _fulfill_completed_purchase(
     )
     if user is None:
         logger.error(
-            "Skipping Stripe fulfillment for session %s because user %s was not found.",
-            purchase.stripe_checkout_session_id,
-            purchase.user_id,
+            "User %s not found for token topup session %s", user_id, checkout_session.id
         )
         return StripeWebhookResponse()
 
-    purchase.status = PagePurchaseStatus.COMPLETED
-    purchase.completed_at = datetime.now(UTC)
-    purchase.amount_total = getattr(checkout_session, "amount_total", None)
-    purchase.currency = getattr(checkout_session, "currency", None)
-    purchase.stripe_payment_intent_id = _normalize_optional_string(
-        getattr(checkout_session, "payment_intent", None)
+    # Idempotency: check if this checkout session was already fulfilled.
+    # Stripe metadata is immutable, so we store a marker on the user's row
+    # by checking against the checkout session ID stored in a simple log.
+    checkout_id = str(checkout_session.id)
+    fulfilled_sessions = set(
+        (user.fulfilled_topup_sessions or "").split(",")
     )
-    # pages_used can exceed pages_limit when a document's final page count is
-    # determined after processing. Base the new limit on the higher of the two
-    # so the purchased pages are fully usable above the current high-water mark.
-    user.pages_limit = max(user.pages_used, user.pages_limit) + purchase.pages_granted
+    if checkout_id in fulfilled_sessions:
+        logger.info(
+            "Token topup already fulfilled for session %s, skipping", checkout_id
+        )
+        return StripeWebhookResponse()
 
+    user.purchased_tokens = (user.purchased_tokens or 0) + tokens_to_add
+
+    # Track fulfilled session for idempotency
+    fulfilled_sessions.discard("")
+    fulfilled_sessions.add(checkout_id)
+    user.fulfilled_topup_sessions = ",".join(fulfilled_sessions)
+
+    logger.info(
+        "Granted %d tokens to user %s via topup (session %s)",
+        tokens_to_add,
+        user.id,
+        checkout_session.id,
+    )
     await db_session.commit()
+    return StripeWebhookResponse()
+
+
+# ---------------------------------------------------------------------------
+# Gift code fulfillment
+# ---------------------------------------------------------------------------
+
+_GIFT_CODE_CHARS = string.ascii_uppercase + string.digits
+
+
+def _generate_gift_code() -> str:
+    """Generate a random gift code in format GIFT-XXXX-XXXX-XXXX."""
+    groups = [
+        "".join(secrets.choice(_GIFT_CODE_CHARS) for _ in range(4)) for _ in range(3)
+    ]
+    return "GIFT-" + "-".join(groups)
+
+
+def _mask_gift_code(code: str) -> str:
+    """Return a log-safe representation of a gift code (prefix + last 4)."""
+    if not code or len(code) < 4:
+        return "GIFT-****"
+    return f"GIFT-****-****-{code[-4:]}"
+
+
+async def _mint_gift_code(
+    db_session: AsyncSession,
+    *,
+    plan_id: str,
+    duration_months: int,
+    amount_paid: int,
+    purchaser_id: uuid.UUID,
+    stripe_payment_intent_id: str | None = None,
+    expires_at: datetime | None = None,
+) -> GiftCode:
+    """Mint a new GiftCode with unique code, flushing to DB but NOT committing.
+
+    Retries up to 3 times on code collision. Caller must commit the session.
+    Raises IntegrityError after max_attempts if collisions persist, or on
+    other constraint violations (FK, payment_intent unique).
+    """
+    if expires_at is None:
+        expires_at = datetime.now(UTC) + timedelta(days=365)
+
+    max_attempts = 3
+    last_exc: IntegrityError | None = None
+    for attempt in range(1, max_attempts + 1):
+        code = _generate_gift_code()
+        gift = GiftCode(
+            code=code,
+            plan_id=plan_id,
+            duration_months=duration_months,
+            amount_paid=amount_paid,
+            purchaser_id=purchaser_id,
+            stripe_payment_intent_id=stripe_payment_intent_id,
+            status=GiftCodeStatus.ACTIVE,
+            expires_at=expires_at,
+        )
+        try:
+            async with db_session.begin_nested():
+                db_session.add(gift)
+                await db_session.flush()
+            return gift
+        except IntegrityError as exc:
+            last_exc = exc
+            constraint = getattr(getattr(exc, "orig", None), "diag", None)
+            constraint_name = getattr(constraint, "constraint_name", "") or ""
+            is_code_collision = constraint_name == "uq_gift_codes_code"
+            if not is_code_collision:
+                # FK violation / payment_intent unique — retry won't help.
+                raise
+            if attempt < max_attempts:
+                logger.warning(
+                    "Gift code collision on attempt %d for purchaser %s, retrying",
+                    attempt,
+                    purchaser_id,
+                )
+    assert last_exc is not None
+    raise last_exc
+
+
+async def _fulfill_gift_purchase(
+    db_session: AsyncSession, checkout_session: Any
+) -> StripeWebhookResponse:
+    """Create a gift code record after a confirmed Stripe gift payment.
+
+    Idempotency: always returns 200 to Stripe so redeliveries are not retried
+    indefinitely. If a gift code for this payment_intent_id already exists,
+    skip insert and return success. On unrecoverable errors (invalid metadata,
+    FK violation, collision retries exhausted) we log and return 200 — Stripe
+    has already captured the payment, so an admin must reconcile manually.
+    """
+    metadata = _get_metadata(checkout_session)
+    purchaser_id_str = metadata.get("purchaser_id")
+    plan_id = metadata.get("plan_id")
+    duration_months_str = metadata.get("duration_months")
+    amount_cents_str = metadata.get("amount_cents")
+
+    if not all([purchaser_id_str, plan_id, duration_months_str, amount_cents_str]):
+        logger.error(
+            "Gift webhook missing metadata for session %s: %s — payment captured, manual reconciliation required",
+            checkout_session.id,
+            metadata,
+        )
+        return StripeWebhookResponse()
+
+    try:
+        purchaser_id = uuid.UUID(purchaser_id_str)
+        duration_months = int(duration_months_str)
+        amount_paid = int(amount_cents_str)
+    except (ValueError, TypeError) as exc:
+        logger.error(
+            "Gift webhook invalid metadata for session %s: %s — payment captured, manual reconciliation required",
+            checkout_session.id,
+            exc,
+        )
+        return StripeWebhookResponse()
+
+    # Cross-verify amount against server-side pricing to detect tampering
+    plan_pricing = config.GIFT_PRICING.get(plan_id)
+    expected_amount = plan_pricing.get(duration_months) if plan_pricing else None
+    if expected_amount is None or expected_amount != amount_paid:
+        logger.error(
+            "Gift webhook pricing mismatch for session %s: plan=%s duration=%s metadata_amount=%s expected=%s — manual reconciliation required",
+            checkout_session.id,
+            plan_id,
+            duration_months,
+            amount_paid,
+            expected_amount,
+        )
+        return StripeWebhookResponse()
+
+    if duration_months <= 0 or amount_paid <= 0:
+        logger.error(
+            "Gift webhook non-positive values for session %s: duration=%s amount=%s",
+            checkout_session.id,
+            duration_months,
+            amount_paid,
+        )
+        return StripeWebhookResponse()
+
+    payment_intent = getattr(checkout_session, "payment_intent", None)
+    if hasattr(payment_intent, "id"):
+        payment_intent_id = str(payment_intent.id)
+    elif payment_intent:
+        payment_intent_id = str(payment_intent)
+    else:
+        payment_intent_id = ""
+
+    # Idempotency pre-check: Stripe redeliveries reuse payment_intent_id,
+    # so bail out early instead of hitting the partial unique index
+    # (uq_gift_codes_stripe_payment_intent_id) and burning retry attempts.
+    if payment_intent_id:
+        existing_stmt = select(GiftCode.id).where(
+            GiftCode.stripe_payment_intent_id == payment_intent_id
+        )
+        existing = (await db_session.execute(existing_stmt)).scalar_one_or_none()
+        if existing is not None:
+            logger.info(
+                "Gift webhook already fulfilled for payment_intent %s (session %s) — skipping",
+                payment_intent_id,
+                checkout_session.id,
+            )
+            return StripeWebhookResponse()
+
+    expires_at = datetime.now(UTC) + timedelta(days=365)
+
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        code = _generate_gift_code()
+        gift = GiftCode(
+            code=code,
+            plan_id=plan_id,
+            duration_months=duration_months,
+            amount_paid=amount_paid,
+            purchaser_id=purchaser_id,
+            stripe_payment_intent_id=payment_intent_id or None,
+            status=GiftCodeStatus.ACTIVE,
+            expires_at=expires_at,
+        )
+        db_session.add(gift)
+        try:
+            await db_session.commit()
+            logger.info(
+                "Gift code %s created for user %s (session %s)",
+                _mask_gift_code(code),
+                purchaser_id,
+                checkout_session.id,
+            )
+            return StripeWebhookResponse()
+        except IntegrityError as exc:
+            await db_session.rollback()
+            constraint = getattr(getattr(exc, "orig", None), "diag", None)
+            constraint_name = getattr(constraint, "constraint_name", "") or ""
+            # Only retry on gift code collision; other integrity errors
+            # (FK violation, payment_intent unique) won't be fixed by retry.
+            is_code_collision = "code" in constraint_name and "pkey" not in constraint_name
+            if not is_code_collision:
+                logger.error(
+                    "Gift webhook integrity error for session %s (constraint=%s): %s — manual reconciliation required",
+                    checkout_session.id,
+                    constraint_name or "unknown",
+                    exc,
+                )
+                return StripeWebhookResponse()
+            if attempt < max_attempts:
+                logger.warning(
+                    "Gift code collision on attempt %d for session %s, retrying",
+                    attempt,
+                    checkout_session.id,
+                )
+            else:
+                logger.error(
+                    "Failed to create gift code after %d attempts for session %s — manual reconciliation required",
+                    max_attempts,
+                    checkout_session.id,
+                )
+                return StripeWebhookResponse()
+
     return StripeWebhookResponse()
 
 
@@ -499,10 +692,11 @@ async def _handle_invoice_payment_succeeded(
         return StripeWebhookResponse()
 
     user.tokens_used_this_month = 0
+    user.purchased_tokens = 0
     user.token_reset_date = datetime.now(UTC).date()
 
     logger.info(
-        "Reset tokens_used_this_month for user %s on subscription renewal", user.id
+        "Reset tokens_used_this_month and purchased_tokens for user %s on subscription renewal", user.id
     )
     await db_session.commit()
     return StripeWebhookResponse()
@@ -581,7 +775,9 @@ async def _activate_subscription_from_checkout(
         return StripeWebhookResponse()
 
     plan_id = (
-        plan_id_str if plan_id_str in {"pro_monthly", "pro_yearly"} else "pro_monthly"
+        plan_id_str
+        if plan_id_str in {"pro_monthly", "pro_yearly", "max_monthly", "max_yearly"}
+        else "pro_monthly"
     )
     limits = config.PLAN_LIMITS.get(plan_id, config.PLAN_LIMITS["pro_monthly"])
 
@@ -616,18 +812,37 @@ async def _activate_subscription_from_checkout(
     return StripeWebhookResponse()
 
 
-@router.post("/create-checkout-session", response_model=CreateCheckoutSessionResponse)
-async def create_checkout_session(
-    body: CreateCheckoutSessionRequest,
+# Token rate: $1 USD = 100,000 tokens
+_TOKENS_PER_USD = 100_000
+
+
+@router.post("/create-token-topup-checkout", response_model=CreateTokenTopupResponse)
+async def create_token_topup_checkout(
+    body: CreateTokenTopupRequest,
     user: User = Depends(current_active_user),
-    db_session: AsyncSession = Depends(get_async_session),
-) -> CreateCheckoutSessionResponse:
-    """Create a Stripe Checkout Session for buying page packs."""
-    _ensure_page_buying_enabled()
+) -> CreateTokenTopupResponse:
+    """Create a Stripe Checkout Session for buying additional LLM tokens.
+
+    Uses Stripe price_data so no pre-created price IDs are required.
+    Rate: $1 USD = 100,000 tokens.
+    When Stripe is not configured (no STRIPE_SECRET_KEY), returns admin_approval_mode=True
+    so the user knows to contact an admin to have tokens added manually.
+    """
+    # Admin-approval mode: Stripe not configured — inform user to contact admin
+    if not config.STRIPE_SECRET_KEY:
+        logger.info(
+            "Token topup admin-approval mode: no Stripe key, user %s requested %.2f USD",
+            user.id,
+            body.amount_usd,
+        )
+        return CreateTokenTopupResponse(checkout_url="", admin_approval_mode=True)
+
     stripe_client = get_stripe_client()
-    price_id = _get_required_stripe_price_id()
-    success_url, cancel_url = _get_checkout_urls(body.search_space_id)
-    pages_granted = body.quantity * config.STRIPE_PAGES_PER_UNIT
+
+    amount_cents = max(100, round(body.amount_usd * 100))  # minimum $1
+    tokens_granted = round(body.amount_usd * _TOKENS_PER_USD)
+
+    success_url, cancel_url = _get_token_topup_urls(body.search_space_id)
 
     try:
         checkout_session = stripe_client.v1.checkout.sessions.create(
@@ -637,28 +852,36 @@ async def create_checkout_session(
                 "cancel_url": cancel_url,
                 "line_items": [
                     {
-                        "price": price_id,
-                        "quantity": body.quantity,
+                        "price_data": {
+                            "currency": "usd",
+                            "unit_amount": amount_cents,
+                            "product_data": {
+                                "name": f"Token Top-up — {tokens_granted:,} tokens",
+                                "description": (
+                                    f"Add {tokens_granted:,} LLM tokens to your SurfSense account."
+                                    " Tokens expire at the end of your current billing period."
+                                ),
+                            },
+                        },
+                        "quantity": 1,
                     }
                 ],
                 "client_reference_id": str(user.id),
                 "customer_email": user.email,
                 "metadata": {
                     "user_id": str(user.id),
-                    "quantity": str(body.quantity),
-                    "pages_per_unit": str(config.STRIPE_PAGES_PER_UNIT),
-                    "purchase_type": "page_packs",
+                    "tokens_granted": str(tokens_granted),
+                    "purchase_type": "token_topup",
                 },
             }
         )
-    except StripeError as exc:
-        logger.exception(
-            "Failed to create Stripe checkout session for user %s", user.id
+    except (StripeError, HTTPException) as exc:
+        logger.warning(
+            "Stripe token topup failed for user %s, falling back to admin-approval: %s",
+            user.id,
+            exc,
         )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to create Stripe checkout session.",
-        ) from exc
+        return CreateTokenTopupResponse(checkout_url="", admin_approval_mode=True)
 
     checkout_url = getattr(checkout_session, "url", None)
     if not checkout_url:
@@ -667,23 +890,384 @@ async def create_checkout_session(
             detail="Stripe checkout session did not return a URL.",
         )
 
-    db_session.add(
-        PagePurchase(
-            user_id=user.id,
-            stripe_checkout_session_id=str(checkout_session.id),
-            stripe_payment_intent_id=_normalize_optional_string(
-                getattr(checkout_session, "payment_intent", None)
+    return CreateTokenTopupResponse(checkout_url=checkout_url)
+
+
+@router.post("/create-gift-checkout", response_model=CreateGiftCheckoutResponse)
+async def create_gift_checkout(
+    body: CreateGiftCheckoutRequest,
+    user: User = Depends(current_active_user),
+) -> CreateGiftCheckoutResponse:
+    """Create a Stripe Checkout Session for purchasing a gift subscription.
+
+    Uses Stripe price_data so no pre-created price IDs are required.
+    Returns admin_approval_mode=True when Stripe is not configured (no
+    STRIPE_SECRET_KEY) or when Stripe raises an error during session creation.
+    """
+    # Validate plan_id and duration_months against GIFT_PRICING config
+    plan_pricing = config.GIFT_PRICING.get(body.plan_id)
+    if not plan_pricing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Invalid plan_id '{body.plan_id}'. "
+                f"Valid plans: {list(config.GIFT_PRICING)}"
             ),
-            quantity=body.quantity,
-            pages_granted=pages_granted,
-            amount_total=getattr(checkout_session, "amount_total", None),
-            currency=getattr(checkout_session, "currency", None),
-            status=PagePurchaseStatus.PENDING,
         )
+    amount_cents = plan_pricing.get(body.duration_months)
+    if amount_cents is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Invalid duration_months {body.duration_months} for plan "
+                f"'{body.plan_id}'. Valid durations: {sorted(plan_pricing)}"
+            ),
+        )
+
+    # Admin-approval fallback: Stripe not configured
+    if not config.STRIPE_SECRET_KEY:
+        logger.info(
+            "Gift checkout admin-approval mode: no Stripe key, user %s requested %s x%d months",
+            user.id,
+            body.plan_id,
+            body.duration_months,
+        )
+        return CreateGiftCheckoutResponse(checkout_url="", admin_approval_mode=True)
+
+    stripe_client = get_stripe_client()
+
+    # Gift purchases are not tied to a specific search space — use 0 placeholder
+    # in success/cancel URLs. Frontend (Story 6.6) handles redirect.
+    success_url, cancel_url = _get_gift_urls(0)
+
+    plan_label = body.plan_id.replace("_", " ").title()
+
+    try:
+        checkout_session = stripe_client.v1.checkout.sessions.create(
+            params={
+                "mode": "payment",
+                "success_url": success_url,
+                "cancel_url": cancel_url,
+                "line_items": [
+                    {
+                        "price_data": {
+                            "currency": "usd",
+                            "unit_amount": amount_cents,
+                            "product_data": {
+                                "name": (
+                                    f"SurfSense Gift — {plan_label} × "
+                                    f"{body.duration_months} month(s)"
+                                ),
+                                "description": (
+                                    f"Gift subscription: {plan_label} for "
+                                    f"{body.duration_months} month(s). "
+                                    "The recipient can redeem this gift code "
+                                    "in their account settings."
+                                ),
+                            },
+                        },
+                        "quantity": 1,
+                    }
+                ],
+                "client_reference_id": str(user.id),
+                "customer_email": user.email,
+                "metadata": {
+                    "purchase_type": "gift",
+                    "purchaser_id": str(user.id),
+                    "plan_id": body.plan_id,
+                    "duration_months": str(body.duration_months),
+                    "amount_cents": str(amount_cents),
+                },
+            }
+        )
+    except StripeError as exc:
+        logger.warning(
+            "Stripe gift checkout failed for user %s, falling back to admin-approval: %s",
+            user.id,
+            exc,
+        )
+        return CreateGiftCheckoutResponse(checkout_url="", admin_approval_mode=True)
+
+    checkout_url = getattr(checkout_session, "url", None)
+    if not checkout_url:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Stripe checkout session did not return a URL.",
+        )
+
+    return CreateGiftCheckoutResponse(checkout_url=checkout_url)
+
+
+@router.post("/redeem-gift", response_model=RedeemGiftResponse)
+async def redeem_gift(
+    body: RedeemGiftRequest,
+    user: User = Depends(current_active_user),
+    db_session: AsyncSession = Depends(get_async_session),
+) -> RedeemGiftResponse:
+    """Redeem a gift code and extend the user's subscription.
+
+    The gift code must be active, not expired, and not already redeemed.
+    Extension formula: new_expiry = max(current_period_end, now()) + 30 * duration_months days.
+
+    If the user has an active Stripe-managed subscription, only the period end
+    is extended — plan/limits stay under Stripe's control to avoid state drift.
+    Otherwise the gift's plan/limits are applied to the user.
+    """
+    normalized_code = body.code.strip().upper()
+    if not normalized_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gift code không hợp lệ hoặc đã được sử dụng",
+        )
+
+    gift = (
+        await db_session.execute(
+            select(GiftCode)
+            .where(GiftCode.code == normalized_code)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+
+    if (
+        gift is None
+        or gift.status != GiftCodeStatus.ACTIVE
+        or gift.redeemer_id is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gift code không hợp lệ hoặc đã được sử dụng",
+        )
+
+    now = datetime.now(UTC)
+
+    if gift.expires_at <= now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gift code đã hết hạn",
+        )
+
+    if gift.duration_months <= 0:
+        logger.error(
+            "Gift code %s has invalid duration_months=%s — refusing redeem",
+            _mask_gift_code(gift.code),
+            gift.duration_months,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gift code không hợp lệ hoặc đã được sử dụng",
+        )
+
+    if gift.plan_id not in config.PLAN_LIMITS:
+        logger.error(
+            "Gift code %s targets unknown plan_id=%s (not in PLAN_LIMITS) — refusing redeem",
+            _mask_gift_code(gift.code),
+            gift.plan_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gói của gift code không còn được hỗ trợ, vui lòng liên hệ support.",
+        )
+
+    # Re-lock user row to serialize concurrent redemptions from the same user
+    locked_user = (
+        await db_session.execute(
+            select(User).where(User.id == user.id).with_for_update()
+        )
+    ).scalar_one()
+
+    base_expiry = (
+        locked_user.subscription_current_period_end
+        if locked_user.subscription_current_period_end
+        and locked_user.subscription_current_period_end > now
+        else now
     )
+    new_expiry = base_expiry + timedelta(days=30 * gift.duration_months)
+
+    # Preserve plan for any user on an active paid plan (Stripe-backed OR
+    # admin-seeded). Gift is a time extension, not a tier change — never
+    # downgrade a paying/seeded PRO/MAX user to the gift's plan_id.
+    has_active_paid_plan = (
+        locked_user.subscription_status
+        in {SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE}
+        and locked_user.plan_id in config.PLAN_LIMITS
+        and locked_user.plan_id != "free"
+    )
+
+    locked_user.subscription_current_period_end = new_expiry
+
+    if has_active_paid_plan:
+        logger.info(
+            "Gift %s redeemed by active-paid user %s (plan=%s) — period extended to %s, plan unchanged",
+            _mask_gift_code(gift.code),
+            locked_user.id,
+            locked_user.plan_id,
+            new_expiry,
+        )
+    else:
+        limits = config.PLAN_LIMITS[gift.plan_id]
+        locked_user.plan_id = gift.plan_id
+        locked_user.subscription_status = SubscriptionStatus.ACTIVE
+        locked_user.monthly_token_limit = limits["monthly_token_limit"]
+        locked_user.pages_limit = max(locked_user.pages_used, limits["pages_limit"])
+        locked_user.tokens_used_this_month = 0
+        locked_user.purchased_tokens = 0
+        locked_user.token_reset_date = now.date()
+
+    gift.status = GiftCodeStatus.REDEEMED
+    gift.redeemed_at = now
+    gift.redeemer_id = locked_user.id
+
     await db_session.commit()
 
-    return CreateCheckoutSessionResponse(checkout_url=checkout_url)
+    logger.info(
+        "Gift code %s redeemed by user %s, new expiry: %s",
+        _mask_gift_code(gift.code),
+        locked_user.id,
+        new_expiry,
+    )
+
+    return RedeemGiftResponse(new_expiry=new_expiry, plan_id=gift.plan_id)
+
+
+@router.get("/gift-codes", response_model=GiftCodesResponse)
+async def get_gift_codes(
+    user: User = Depends(current_active_user),
+    db_session: AsyncSession = Depends(get_async_session),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> GiftCodesResponse:
+    """List all gift codes purchased by the current user."""
+    result = await db_session.execute(
+        select(GiftCode)
+        .where(GiftCode.purchaser_id == user.id)
+        .order_by(GiftCode.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    gifts = result.scalars().all()
+    items = [
+        GiftCodeItem(
+            id=g.id,
+            code=g.code,
+            plan_id=g.plan_id,
+            duration_months=g.duration_months,
+            status=g.status.value,
+            created_at=g.created_at,
+            expires_at=g.expires_at,
+            redeemed_at=g.redeemed_at,
+        )
+        for g in gifts
+    ]
+    return GiftCodesResponse(items=items, count=len(items))
+
+
+@router.post("/request-gift", response_model=RequestGiftResponse)
+async def request_gift(
+    body: RequestGiftRequest,
+    user: User = Depends(current_active_user),
+    db_session: AsyncSession = Depends(get_async_session),
+) -> RequestGiftResponse:
+    """Create an admin-approval gift request when Stripe is unavailable.
+
+    Used as fallback when create-gift-checkout returns admin_approval_mode=True
+    (either because STRIPE_SECRET_KEY is unset or because Stripe raised an
+    error during session creation).
+    """
+    plan_id_str = body.plan_id.value
+    plan_pricing = config.GIFT_PRICING.get(plan_id_str)
+    if not plan_pricing or body.duration_months not in plan_pricing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid plan_id or duration_months.",
+        )
+
+    # Serialize concurrent request_gift calls for the same user to prevent
+    # duplicate PENDING rows from racing double-submits.
+    await db_session.execute(
+        select(User.id).where(User.id == user.id).with_for_update()
+    )
+
+    existing = await db_session.execute(
+        select(GiftRequest)
+        .where(GiftRequest.user_id == user.id)
+        .where(GiftRequest.plan_id == plan_id_str)
+        .where(GiftRequest.duration_months == body.duration_months)
+        .where(GiftRequest.status == GiftRequestStatus.PENDING)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Bạn đã có yêu cầu đang chờ xử lý cho gói này.",
+        )
+
+    req = GiftRequest(
+        user_id=user.id,
+        plan_id=plan_id_str,
+        duration_months=body.duration_months,
+    )
+    db_session.add(req)
+    await db_session.commit()
+    await db_session.refresh(req)
+
+    logger.info(
+        "Gift request created for user %s (plan=%s, months=%d)",
+        user.id,
+        plan_id_str,
+        body.duration_months,
+    )
+
+    return RequestGiftResponse(
+        request_id=req.id,
+        message="Yêu cầu của bạn đang chờ admin xử lý.",
+    )
+
+
+async def _queue_subscription_approval_request(
+    user: User,
+    plan_id: str,
+    db_session: AsyncSession,
+) -> CreateSubscriptionCheckoutResponse:
+    """Queue a subscription upgrade request for admin approval.
+
+    Raises HTTP 409 if user already has active subscription or pending request,
+    HTTP 429 if recently rejected within 24-hour cooldown.
+    """
+    if user.subscription_status == SubscriptionStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You already have an active subscription.",
+        )
+    existing = await db_session.execute(
+        select(SubscriptionRequest)
+        .where(SubscriptionRequest.user_id == user.id)
+        .where(SubscriptionRequest.status == SubscriptionRequestStatus.PENDING)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You already have a pending subscription request.",
+        )
+    cooldown_cutoff = datetime.now(UTC) - timedelta(hours=24)
+    recently_rejected = await db_session.execute(
+        select(SubscriptionRequest)
+        .where(SubscriptionRequest.user_id == user.id)
+        .where(SubscriptionRequest.status == SubscriptionRequestStatus.REJECTED)
+        .where(SubscriptionRequest.created_at >= cooldown_cutoff)
+    )
+    if recently_rejected.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Your previous request was rejected. Please wait 24 hours before resubmitting.",
+        )
+    req = SubscriptionRequest(user_id=user.id, plan_id=plan_id)
+    db_session.add(req)
+    await db_session.commit()
+    logger.info(
+        "Admin-approval subscription request created for user %s (plan=%s)",
+        user.id,
+        plan_id,
+    )
+    return CreateSubscriptionCheckoutResponse(checkout_url="", admin_approval_mode=True)
 
 
 @router.post(
@@ -695,62 +1279,33 @@ async def create_subscription_checkout(
     user: User = Depends(current_active_user),
     db_session: AsyncSession = Depends(get_async_session),
 ) -> CreateSubscriptionCheckoutResponse:
-    """Create a Stripe Checkout Session for a recurring subscription."""
-    # Admin-approval mode: when Stripe is not configured, queue a manual request
-    if not config.STRIPE_SECRET_KEY:
-        if user.subscription_status == SubscriptionStatus.ACTIVE:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="You already have an active subscription.",
-            )
-        existing = await db_session.execute(
-            select(SubscriptionRequest)
-            .where(SubscriptionRequest.user_id == user.id)
-            .where(SubscriptionRequest.status == SubscriptionRequestStatus.PENDING)
-        )
-        if existing.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="You already have a pending subscription request.",
-            )
-        cooldown_cutoff = datetime.now(UTC) - timedelta(hours=24)
-        recently_rejected = await db_session.execute(
-            select(SubscriptionRequest)
-            .where(SubscriptionRequest.user_id == user.id)
-            .where(SubscriptionRequest.status == SubscriptionRequestStatus.REJECTED)
-            .where(SubscriptionRequest.created_at >= cooldown_cutoff)
-        )
-        if recently_rejected.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Your previous request was rejected. Please wait 24 hours before resubmitting.",
-            )
-        req = SubscriptionRequest(user_id=user.id, plan_id=body.plan_id.value)
-        db_session.add(req)
-        await db_session.commit()
-        logger.info(
-            "Admin-approval subscription request created for user %s (plan=%s)",
-            user.id,
-            body.plan_id.value,
-        )
-        return CreateSubscriptionCheckoutResponse(
-            checkout_url="", admin_approval_mode=True
+    """Create a Stripe Checkout Session for a recurring subscription.
+
+    Falls back to admin-approval mode when:
+    - STRIPE_SECRET_KEY is not configured, or
+    - The plan's price ID is not configured, or
+    - The Stripe API call fails (invalid/test credentials).
+    """
+    price_id = _resolve_plan_price_id(body.plan_id)
+
+    # Fast path: Stripe clearly not configured → queue approval request
+    if not config.STRIPE_SECRET_KEY or not price_id:
+        return await _queue_subscription_approval_request(
+            user, body.plan_id.value, db_session
         )
 
-    stripe_client = get_stripe_client()
-    price_id = _get_price_id_for_plan(body.plan_id)
-    success_url, cancel_url = _get_subscription_urls()
-
-    # Prevent duplicate subscriptions
+    # Prevent duplicate subscriptions before hitting Stripe
     if user.subscription_status == SubscriptionStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="You already have an active subscription.",
         )
 
-    customer_id = await _get_or_create_stripe_customer(stripe_client, user, db_session)
+    stripe_client = get_stripe_client()
+    success_url, cancel_url = _get_subscription_urls()
 
     try:
+        customer_id = await _get_or_create_stripe_customer(stripe_client, user, db_session)
         checkout_session = stripe_client.v1.checkout.sessions.create(
             params={
                 "mode": "subscription",
@@ -764,14 +1319,17 @@ async def create_subscription_checkout(
                 },
             }
         )
-    except StripeError as exc:
-        logger.exception(
-            "Failed to create Stripe subscription checkout for user %s", user.id
+    except (StripeError, HTTPException) as exc:
+        # Stripe credentials invalid or API unreachable → fall back to admin-approval
+        logger.warning(
+            "Stripe checkout failed for user %s (plan=%s), falling back to admin-approval: %s",
+            user.id,
+            body.plan_id.value,
+            exc,
         )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to create Stripe subscription checkout session.",
-        ) from exc
+        return await _queue_subscription_approval_request(
+            user, body.plan_id.value, db_session
+        )
 
     checkout_url = getattr(checkout_session, "url", None)
     if not checkout_url:
@@ -815,8 +1373,8 @@ async def verify_checkout_session(
 
 @router.get("/status", response_model=StripeStatusResponse)
 async def get_stripe_status() -> StripeStatusResponse:
-    """Return page-buying availability for frontend feature gating."""
-    return StripeStatusResponse(page_buying_enabled=config.STRIPE_PAGE_BUYING_ENABLED)
+    """Return Stripe availability for frontend feature gating."""
+    return StripeStatusResponse(stripe_enabled=bool(config.STRIPE_SECRET_KEY))
 
 
 @router.post("/webhook", response_model=StripeWebhookResponse)
@@ -884,16 +1442,24 @@ async def stripe_webhook(
                 db_session, checkout_session
             )
 
-        return await _fulfill_completed_purchase(db_session, checkout_session)
+        metadata = _get_metadata(checkout_session)
+        if metadata.get("purchase_type") == "gift":
+            return await _fulfill_gift_purchase(db_session, checkout_session)
+        if metadata.get("purchase_type") in {"token_packs", "token_topup"}:
+            return await _fulfill_token_topup(db_session, checkout_session)
+
+        logger.warning(
+            "Unrecognized payment-mode checkout session %s with purchase_type=%s",
+            checkout_session.id,
+            metadata.get("purchase_type"),
+        )
+        return StripeWebhookResponse()
 
     if event.type in {
         "checkout.session.async_payment_failed",
         "checkout.session.expired",
     }:
-        checkout_session = event.data.object
-        # Only PAYG purchases have a PagePurchase row; subscription sessions are ignored here.
-        if str(getattr(checkout_session, "mode", "payment")).lower() != "subscription":
-            return await _mark_purchase_failed(db_session, str(checkout_session.id))
+        logger.info("Payment session failed/expired: %s", event.type)
         return StripeWebhookResponse()
 
     # --- Subscription lifecycle events ---
@@ -918,27 +1484,40 @@ async def stripe_webhook(
     return StripeWebhookResponse()
 
 
-@router.get("/purchases", response_model=PagePurchaseHistoryResponse)
-async def get_page_purchases(
+@router.get("/billing-portal", response_model=BillingPortalResponse)
+async def get_billing_portal(
     user: User = Depends(current_active_user),
-    db_session: AsyncSession = Depends(get_async_session),
-    offset: int = 0,
-    limit: int = 50,
-) -> PagePurchaseHistoryResponse:
-    """Return the authenticated user's page-purchase history."""
-    limit = min(limit, 100)
-    purchases = (
-        (
-            await db_session.execute(
-                select(PagePurchase)
-                .where(PagePurchase.user_id == user.id)
-                .order_by(PagePurchase.created_at.desc())
-                .offset(offset)
-                .limit(limit)
-            )
+) -> BillingPortalResponse:
+    """Create a Stripe Customer Portal session for subscription management."""
+    stripe_client = get_stripe_client()
+    if not user.stripe_customer_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No Stripe customer found for your account.",
         )
-        .scalars()
-        .all()
-    )
 
-    return PagePurchaseHistoryResponse(purchases=purchases)
+    return_url = config.STRIPE_BILLING_PORTAL_RETURN_URL or (
+        (config.NEXT_FRONTEND_URL.rstrip("/") + "/dashboard")
+        if config.NEXT_FRONTEND_URL
+        else ""
+    )
+    if not return_url:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Billing portal return URL is not configured.",
+        )
+
+    try:
+        portal_session = stripe_client.v1.billing_portal.sessions.create(
+            params={"customer": user.stripe_customer_id, "return_url": return_url}
+        )
+    except StripeError as exc:
+        logger.exception(
+            "Failed to create Stripe billing portal session for user %s", user.id
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to create billing portal session.",
+        ) from exc
+
+    return BillingPortalResponse(url=portal_session.url)

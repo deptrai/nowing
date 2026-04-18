@@ -30,14 +30,13 @@ export default function PurchaseSuccessPage() {
 			<Card className="w-full max-w-lg">
 				<CardHeader className="text-center">
 					<CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
-					<CardTitle className="text-2xl">Purchase complete</CardTitle>
-					<CardDescription>
-						Your additional pages are being applied to your account now.
-					</CardDescription>
+					<CardTitle className="text-2xl">Tokens added!</CardTitle>
+					<CardDescription>Your token top-up is being applied to your account now.</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-3 text-center">
 					<p className="text-sm text-muted-foreground">
-						Your sidebar usage meter should refresh automatically in a moment.
+						Your sidebar token balance will refresh in a moment. Tokens expire at the end of your
+						current billing period.
 					</p>
 				</CardContent>
 				<CardFooter className="flex flex-col gap-2">
@@ -45,7 +44,7 @@ export default function PurchaseSuccessPage() {
 						<Link href={`/dashboard/${searchSpaceId}/new-chat`}>Back to Dashboard</Link>
 					</Button>
 					<Button asChild variant="outline" className="w-full">
-						<Link href={`/dashboard/${searchSpaceId}/more-pages`}>Buy More Pages</Link>
+						<Link href={`/dashboard/${searchSpaceId}/buy-tokens`}>Buy More Tokens</Link>
 					</Button>
 				</CardFooter>
 			</Card>

@@ -232,6 +232,12 @@ export default function NewChatPage() {
 	const [currentThread, setCurrentThread] = useState<ThreadRecord | null>(null);
 	const [messages, setMessages] = useState<ThreadMessageLike[]>([]);
 	const [isRunning, setIsRunning] = useState(false);
+	const [lastTokenUsage, setLastTokenUsage] = useState<{
+		tokens_this_request: number;
+		tokens_used_total: number;
+		monthly_limit: number;
+		tokens_remaining: number;
+	} | null>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const [pendingInterrupt, setPendingInterrupt] = useState<{
 		threadId: number;
@@ -648,6 +654,7 @@ export default function NewChatPage() {
 				.catch((err) => console.error("Failed to persist user message:", err));
 
 			// Start streaming response
+			setLastTokenUsage(null);
 			setIsRunning(true);
 			const controller = new AbortController();
 			abortControllerRef.current = controller;
@@ -863,8 +870,22 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-token-usage": {
+							const usageData = parsed.data as {
+								tokens_this_request: number;
+								tokens_used_total: number;
+								monthly_limit: number;
+								tokens_remaining: number;
+							};
+							setLastTokenUsage(usageData);
+							break;
+						}
+
 						case "error":
-							if (parsed.errorText?.includes("quota") || parsed.errorText?.includes("token_quota_exceeded")) {
+							if (
+								parsed.errorText?.includes("quota") ||
+								parsed.errorText?.includes("token_quota_exceeded")
+							) {
 								throw new QuotaExceededError();
 							}
 							throw new Error(parsed.errorText || "Server error");
@@ -1206,8 +1227,22 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-token-usage": {
+							const usageData = parsed.data as {
+								tokens_this_request: number;
+								tokens_used_total: number;
+								monthly_limit: number;
+								tokens_remaining: number;
+							};
+							setLastTokenUsage(usageData);
+							break;
+						}
+
 						case "error":
-							if (parsed.errorText?.includes("quota") || parsed.errorText?.includes("token_quota_exceeded")) {
+							if (
+								parsed.errorText?.includes("quota") ||
+								parsed.errorText?.includes("token_quota_exceeded")
+							) {
 								throw new QuotaExceededError();
 							}
 							throw new Error(parsed.errorText || "Server error");
@@ -1499,8 +1534,22 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-token-usage": {
+							const usageData = parsed.data as {
+								tokens_this_request: number;
+								tokens_used_total: number;
+								monthly_limit: number;
+								tokens_remaining: number;
+							};
+							setLastTokenUsage(usageData);
+							break;
+						}
+
 						case "error":
-							if (parsed.errorText?.includes("quota") || parsed.errorText?.includes("token_quota_exceeded")) {
+							if (
+								parsed.errorText?.includes("quota") ||
+								parsed.errorText?.includes("token_quota_exceeded")
+							) {
 								throw new QuotaExceededError();
 							}
 							throw new Error(parsed.errorText || "Server error");
@@ -1676,8 +1725,44 @@ export default function NewChatPage() {
 			<LiveTokenDataToolUI />
 			{/* <WriteTodosToolUI /> Disabled for now */}
 			<div key={searchSpaceId} className="flex h-full overflow-hidden">
-				<div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+				<div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
 					<Thread />
+					{lastTokenUsage && !isRunning && (
+						<div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none px-4 z-10">
+							<div className="bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-1.5 text-xs text-muted-foreground flex items-center gap-2 shadow-sm pointer-events-auto">
+								<span>
+									Request:{" "}
+									<span className="text-foreground font-medium">
+										{lastTokenUsage.tokens_this_request.toLocaleString()}
+									</span>{" "}
+									tokens
+								</span>
+								<span className="text-border">|</span>
+								<span>
+									Used:{" "}
+									<span className="text-foreground font-medium">
+										{lastTokenUsage.tokens_used_total.toLocaleString()}
+									</span>
+									{" / "}
+									{lastTokenUsage.monthly_limit.toLocaleString()}
+								</span>
+								<span className="text-border">|</span>
+								<span>
+									Remaining:{" "}
+									<span
+										className={
+											lastTokenUsage.tokens_remaining <
+											lastTokenUsage.monthly_limit * 0.1
+												? "text-destructive font-medium"
+												: "text-foreground font-medium"
+										}
+									>
+										{lastTokenUsage.tokens_remaining.toLocaleString()}
+									</span>
+								</span>
+							</div>
+						</div>
+					)}
 				</div>
 				<MobileReportPanel />
 				<MobileEditorPanel />

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-04-15T03:00:00+07:00
+last_updated: 2026-04-17T02:46:00+07:00
 project: SurfSense
 project_key: NOKEY
 tracking_system: file-system
@@ -53,7 +53,7 @@ development_status:
   2-3-knowledge-base-ui-micro-sync-indicators: done
   2-4-delete-document-flow: done
   epic-2-retrospective: optional
-  epic-3: in-progress
+  epic-3: done
   3-1-chat-session-api: done
   3-2-rag-engine-sse-endpoint: done
   3-3-chat-ui-sse-client: done
@@ -65,11 +65,23 @@ development_status:
   4-2-graceful-degradation-offline-ui: done
   4-3-global-network-sync-indicators: done
   epic-4-retrospective: optional
-  epic-5: in-progress
+  epic-5: done
   5-1-pricing-plan-selection-ui: done
   5-2-stripe-payment-integration: done
   5-3-stripe-webhook-sync: done
   5-4-usage-tracking-rate-limit-enforcement: done
   5-5-admin-seed-and-approval-flow: done
   5-6-admin-only-model-config: done
+  5-7-token-payg-overhaul: done
   epic-5-retrospective: optional
+  epic-6: done
+  6-1-database-migration-gift-codes-gift-requests: done
+  6-2-backend-api-create-gift-checkout: done
+  6-3-backend-webhook-gift-code-fulfillment: done
+  6-4-backend-api-redeem-gift-code: done
+  6-5-backend-api-gift-history-admin-fallback: done
+  6-6-frontend-gift-purchase-page: done
+  6-7-frontend-redeem-gift-page: done
+  6-8-backend-api-admin-approve-gift-request: done
+  6-9-frontend-admin-gift-requests-page: done
+  epic-6-retrospective: optional

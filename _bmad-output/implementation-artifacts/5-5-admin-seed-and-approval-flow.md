@@ -18,6 +18,8 @@ so that development và testing không bị chặn bởi việc thiếu Stripe c
 6. Superuser có thể reject request: `POST /api/v1/admin/subscription-requests/{id}/reject` → request bị đánh dấu rejected.
 7. Non-superuser bị từ chối với HTTP 403 khi truy cập các endpoint admin.
 8. Frontend tại `/admin/subscription-requests` hiển thị bảng pending requests với nút Approve / Reject; chuyển hướng về `/login` nếu chưa đăng nhập, hiển thị "Access denied" nếu không có quyền superuser.
+9. **[Token topup admin-approval]** Khi token topup endpoint không thể gọi Stripe (không có key hoặc API fails), trả `admin_approval_mode=true` — frontend hiện toast hướng dẫn liên hệ admin để được thêm token thủ công. (Implemented trong Story 5.7, sử dụng cùng admin-approval pattern.)
+10. **[Stripe API failure fallback]** Cả subscription checkout lẫn token topup đều catch `(StripeError, HTTPException)` và fallback sang admin-approval khi Stripe API call fails — bao gồm cả khi sử dụng placeholder/test credentials không hợp lệ.
 
 ## As-Is (Code trước Story này)
 
@@ -117,6 +119,7 @@ Reuse `PLAN_LIMITS` config từ `config/__init__.py`. `pages_limit = max(user.pa
 
 ### Change Log
 - 2026-04-15: Implement admin seed migration + admin-approval subscription flow.
+- 2026-04-16: Admin-approval pattern extended to token topup (Story 5.7) — `create_token_topup_checkout` catches `(StripeError, HTTPException)` and returns `admin_approval_mode=True`. Subscription checkout broadened to also fallback on Stripe API failures, not just missing key. Extracted `_queue_subscription_approval_request()` helper and `_resolve_plan_price_id()` helper in `stripe_routes.py`.
 
 ## Review Findings (2026-04-15)
 

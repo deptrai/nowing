@@ -111,10 +111,9 @@ from .search_space import (
     SearchSpaceWithStats,
 )
 from .stripe import (
-    CreateCheckoutSessionRequest,
-    CreateCheckoutSessionResponse,
-    PagePurchaseHistoryResponse,
-    PagePurchaseRead,
+    BillingPortalResponse,
+    CreateTokenTopupRequest,
+    CreateTokenTopupResponse,
     StripeStatusResponse,
     StripeWebhookResponse,
 )
@@ -143,8 +142,8 @@ __all__ = [
     "ChunkCreate",
     "ChunkRead",
     "ChunkUpdate",
-    "CreateCheckoutSessionRequest",
-    "CreateCheckoutSessionResponse",
+    "CreateTokenTopupRequest",
+    "CreateTokenTopupResponse",
     "DefaultSystemInstructionsResponse",
     # Document schemas
     "DocumentBase",
@@ -226,8 +225,7 @@ __all__ = [
     "NewLLMConfigPublic",
     "NewLLMConfigRead",
     "NewLLMConfigUpdate",
-    "PagePurchaseHistoryResponse",
-    "PagePurchaseRead",
+    "BillingPortalResponse",
     "PaginatedResponse",
     "PermissionInfo",
     "PermissionsListResponse",
