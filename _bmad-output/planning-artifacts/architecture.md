@@ -3,8 +3,10 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-04-13T01:02:23+07:00'
-lastUpdated: '2026-04-16'
+lastUpdated: '2026-04-18'
 editHistory:
+  - date: '2026-04-18'
+    changes: 'Fix Chainlens Integration Architecture: (1) Health check đổi sang /api/v1/b2b/health (public, không cần auth) — /api/config yêu cầu Supabase session nên không dùng được. (2) B2B route ĐÃ CÓ AUTH qua middleware (Bearer token + rate limit 120req/min + daily quota) — sửa lại nhận định trước đó. (3) Tool registration đổi sang ToolDefinition + BUILTIN_TOOLS registry (đúng pattern thực tế). (4) CHAINLENS_RESEARCH_API_KEY bắt buộc vì B2B yêu cầu Bearer auth.'
   - date: '2026-04-16'
     changes: 'Thêm Gift Subscription Architecture: Data Architecture (gift_codes/gift_requests tables), API Patterns (3 endpoints mới), Project Structure (new files), Integration Points (gift flow)'
 inputDocuments: [
@@ -444,6 +446,357 @@ Luồng Upload tài liệu & RAG:
 4. Áp dụng extension formula: `new_expiry = max(current_period_end, now()) + duration`.
 5. Update `users.subscription_current_period_end`, đổi `gift_codes.status=redeemed`, ghi `redeemed_at`.
 6. Return success → Frontend hiển thị confirmation với ngày hết hạn mới.
+
+## Deep Research — Chainlens Integration Architecture
+
+### Bối cảnh & Động lực
+
+Tính năng Deep Research hiện tại của Nowing chỉ là một `report_style="deep_research"` parameter trong tool `generate_report()` — chạy qua LLM nội bộ, dùng KB search hoặc conversation context. Không có web research chuyên sâu thực sự.
+
+Giải pháp: Tích hợp **Chainlens Research** (`/api/v1/b2b/research`) làm engine research chuyên sâu bên ngoài, với cơ chế fallback tự động về Nowing khi Chainlens không khả dụng.
+
+### Nguyên tắc thiết kế
+
+1. **Zero-downtime cho user:** Nếu Chainlens API không live → fallback về Nowing ngay lập tức, user không chờ.
+2. **Health check trước khi gọi:** Cached health check (TTL 30s) qua `GET /api/v1/b2b/health` (public, không cần auth) tránh gọi API chết gây delay.
+3. **Sửa ít nhất có thể:** Tận dụng 100% kiến trúc hiện tại (tool system, SSE streaming, system prompt).
+4. **Feature flag:** Bật/tắt qua env var `CHAINLENS_RESEARCH_ENABLED`.
+
+### B2B Authentication (Đã có sẵn)
+
+Chainlens Research B2B API **đã được bảo vệ** qua Next.js middleware (`src/middleware.ts`):
+
+- **Bearer Token Auth:** Mọi request tới `/api/v1/b2b/*` (trừ `/health`) bắt buộc header `Authorization: Bearer <api_key>`.
+- **API Key Storage:** SHA-256 hashed, lưu trong bảng `api_keys` (Drizzle ORM + Supabase Postgres).
+- **Rate Limiting:** 120 requests/phút per API key (in-memory, auto-cleanup).
+- **Daily Quota:** Configurable per key (`quotaLimit = -1` = unlimited), tự động reset hàng ngày.
+- **Key Management:** Generate, revoke qua `src/lib/b2b/auth.ts`.
+
+**Nowing backend cần:** Một API key hợp lệ trong env var `CHAINLENS_RESEARCH_API_KEY` để gọi B2B endpoints.
+
+**Ngoại lệ:** `GET /api/v1/b2b/health` — public endpoint, middleware skip auth, dùng cho health check.
+
+### Chainlens B2B API Contract
+
+```
+POST /api/v1/b2b/research
+Content-Type: application/json
+
+Request Body:
+{
+  "query": string,           // Required, min 1 char
+  "sources": ["web", "discussions", "academic"],  // Optional, default ["web"]
+  "stream": boolean           // Optional, default false
+}
+
+Response (non-stream, HTTP 200):
+{
+  "message": string,          // Full research result (markdown)
+  "sources": [...]            // Array of source references
+}
+
+Response (stream, SSE):
+  { "type": "init", "data": "Stream connected" }
+  { "type": "response", "data": "<chunk>" }   // Repeated
+  { "type": "sources", "data": [...] }
+  { "type": "done" }
+
+Timeout: 120 seconds (internal)
+Error responses: 400 (validation), 500 (internal), 504 (timeout)
+```
+
+### Luồng Fallback (Flowchart)
+
+```
+User gửi query cần Deep Research
+       │
+       ▼
+┌──────────────────────────┐
+│ CHAINLENS_RESEARCH_      │
+│ ENABLED == TRUE?         │
+│                          │
+│  NO ──────────────────────────────────────────┐
+│  YES                     │                    │
+│   │                      │                    │
+│   ▼                      │                    │
+│ Health Check             │                    │
+│ GET /api/v1/b2b/health   │                    │
+│ (cached 30s, timeout 3s) │                    │
+│                          │                    │
+│  NOT LIVE ────────────────────────────────────┤
+│  LIVE ✅                  │                    │
+│   │                      │                    │
+│   ▼                      │                    │
+│ POST /b2b/research       │                    │
+│ (stream=false,           │                    │
+│  timeout=120s)           │                    │
+│                          │                    │
+│  ERROR/TIMEOUT ──────────────────────────────┤
+│  SUCCESS ✅               │                    │
+│   │                      │                    │
+│   ▼                      │                    ▼
+│ Return Chainlens result  │    FALLBACK: generate_report()
+│ {message, sources}       │    report_style="deep_research"
+│                          │    source_strategy="kb_search"
+└──────────────────────────┘    + web_search tool
+```
+
+### Configuration (Thêm vào `.env` + `Config` class)
+
+```python
+# .env — Thêm 4 biến mới
+CHAINLENS_RESEARCH_API_URL=http://localhost:3001  # hoặc production URL
+CHAINLENS_RESEARCH_API_KEY=                        # REQUIRED — B2B API key (Bearer token auth)
+CHAINLENS_RESEARCH_ENABLED=TRUE                    # feature flag bật/tắt
+CHAINLENS_HEALTH_CACHE_TTL=30                      # seconds, cache health check
+```
+
+```python
+# config/__init__.py — Thêm vào class Config:
+CHAINLENS_RESEARCH_API_URL = os.getenv("CHAINLENS_RESEARCH_API_URL", "")
+CHAINLENS_RESEARCH_API_KEY = os.getenv("CHAINLENS_RESEARCH_API_KEY", "")
+CHAINLENS_RESEARCH_ENABLED = os.getenv("CHAINLENS_RESEARCH_ENABLED", "FALSE").upper() == "TRUE"
+CHAINLENS_HEALTH_CACHE_TTL = int(os.getenv("CHAINLENS_HEALTH_CACHE_TTL", "30"))
+```
+
+### Service Layer — `ChainlensResearchService`
+
+File mới: `nowing_backend/app/services/chainlens_research_service.py` (~100 LOC)
+
+```python
+import time
+import httpx
+from app.config import Config
+
+class ChainlensUnavailableError(Exception):
+    """Raised when Chainlens API is unreachable or returns error."""
+    pass
+
+class ChainlensResearchService:
+    """Proxy service gọi Chainlens Research B2B API với health check cached."""
+
+    _health_cache: tuple[bool, float] = (False, 0.0)  # (is_live, timestamp)
+
+    @classmethod
+    async def is_available(cls) -> bool:
+        """Health check với cache TTL. Dùng HEAD request nhẹ."""
+        now = time.monotonic()
+        is_live, cached_at = cls._health_cache
+        if now - cached_at < Config.CHAINLENS_HEALTH_CACHE_TTL:
+            return is_live
+
+        if not Config.CHAINLENS_RESEARCH_ENABLED or not Config.CHAINLENS_RESEARCH_API_URL:
+            cls._health_cache = (False, now)
+            return False
+
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(f"{Config.CHAINLENS_RESEARCH_API_URL}/api/v1/b2b/health")
+                live = resp.status_code == 200
+                cls._health_cache = (live, now)
+                return live
+        except Exception:
+            cls._health_cache = (False, now)
+            return False
+
+    @classmethod
+    async def research(cls, query: str, sources: list[str] | None = None) -> dict:
+        """Gọi Chainlens B2B API (non-stream). Raise nếu fail."""
+        if not await cls.is_available():
+            raise ChainlensUnavailableError("Chainlens API not available")
+
+        headers = {"Content-Type": "application/json"}
+        if Config.CHAINLENS_RESEARCH_API_KEY:
+            headers["Authorization"] = f"Bearer {Config.CHAINLENS_RESEARCH_API_KEY}"
+        else:
+            raise ChainlensUnavailableError("CHAINLENS_RESEARCH_API_KEY not configured")
+
+        payload = {
+            "query": query,
+            "sources": sources or ["web"],
+            "stream": False,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=125.0) as client:
+                resp = await client.post(
+                    f"{Config.CHAINLENS_RESEARCH_API_URL}/api/v1/b2b/research",
+                    json=payload,
+                    headers=headers,
+                )
+                if resp.status_code != 200:
+                    raise ChainlensUnavailableError(f"HTTP {resp.status_code}")
+                return resp.json()
+        except httpx.TimeoutException:
+            # Invalidate health cache khi timeout
+            cls._health_cache = (False, time.monotonic())
+            raise ChainlensUnavailableError("Chainlens API timeout")
+        except Exception as e:
+            cls._health_cache = (False, time.monotonic())
+            raise ChainlensUnavailableError(str(e))
+```
+
+### Tool Layer — `chainlens_deep_research`
+
+File mới: `nowing_backend/app/agents/new_chat/tools/chainlens_research.py` (~60 LOC)
+
+```python
+from langchain_core.tools import tool
+from langchain_core.callbacks import dispatch_custom_event
+from app.services.chainlens_research_service import (
+    ChainlensResearchService,
+    ChainlensUnavailableError,
+)
+
+def create_chainlens_research_tool():
+    @tool
+    async def chainlens_deep_research(
+        query: str,
+        sources: list[str] | None = None,
+    ) -> dict:
+        """Perform deep web research using Chainlens Research engine.
+
+        Use this when the user asks for deep research, thorough investigation,
+        or comprehensive web research on a topic. This tool provides
+        significantly better research quality than built-in search.
+
+        Falls back automatically to Nowing's built-in research if Chainlens
+        is unavailable.
+
+        Args:
+            query: The research question or topic.
+            sources: Research sources to use. Options: "web", "discussions",
+                     "academic". Default: ["web"].
+        """
+        try:
+            dispatch_custom_event(
+                "research_status",
+                {"phase": "chainlens", "message": "Starting deep research via Chainlens..."},
+            )
+            result = await ChainlensResearchService.research(query, sources)
+            return {
+                "status": "success",
+                "provider": "chainlens",
+                "message": result.get("message", ""),
+                "sources": result.get("sources", []),
+            }
+        except ChainlensUnavailableError:
+            dispatch_custom_event(
+                "research_status",
+                {"phase": "fallback", "message": "Chainlens unavailable, using Nowing research..."},
+            )
+            return {
+                "status": "fallback",
+                "provider": "nowing",
+                "message": "Chainlens Research is currently unavailable. "
+                           "Please use generate_report with report_style='deep_research' "
+                           "and source_strategy='kb_search' to produce a research report "
+                           "using Nowing's built-in capabilities.",
+            }
+
+    return chainlens_deep_research
+```
+
+### System Prompt Integration
+
+Thêm vào `system_prompt.py` — `_TOOL_INSTRUCTIONS` và `_TOOL_EXAMPLES`:
+
+```python
+_TOOL_INSTRUCTIONS["chainlens_deep_research"] = """
+- chainlens_deep_research: Perform deep web research using Chainlens Research engine.
+  - Use this when the user explicitly asks for "deep research", "thorough research",
+    "comprehensive investigation", or needs high-quality web research results.
+  - This tool provides significantly better research than web_search — it synthesizes
+    multiple sources into a structured research report.
+  - Falls back automatically to Nowing's built-in research if Chainlens is unavailable.
+  - Args:
+    - query: The research question or topic
+    - sources: ["web", "discussions", "academic"] — types of sources to search
+  - Returns: { status, provider, message, sources }
+  - FALLBACK HANDLING: If status is "fallback", use generate_report with
+    report_style="deep_research" and source_strategy="kb_search" instead.
+  - Do NOT use this for simple factual questions — use web_search for those.
+"""
+
+_TOOL_EXAMPLES["chainlens_deep_research"] = """
+- User: "Do a deep research on AI agents in 2026"
+  - Call: `chainlens_deep_research(query="AI agents landscape and trends in 2026", sources=["web", "academic"])`
+- User: "Thoroughly investigate the impact of DeFi on traditional banking"
+  - Call: `chainlens_deep_research(query="Impact of DeFi on traditional banking industry", sources=["web", "discussions"])`
+- If result has status="fallback":
+  - Call: `generate_report(topic="DeFi Impact on Banking", source_strategy="kb_search", search_queries=["DeFi banking impact", "decentralized finance disruption"], report_style="deep_research")`
+"""
+
+# Thêm vào _ALL_TOOL_NAMES_ORDERED:
+_ALL_TOOL_NAMES_ORDERED = [
+    "search_nowing_docs",
+    "web_search",
+    "chainlens_deep_research",   # ← NEW
+    "generate_podcast",
+    "generate_video_presentation",
+    "generate_report",
+    "generate_image",
+    "scrape_webpage",
+    "update_memory",
+]
+```
+
+### Tool Binding Integration
+
+Đăng ký trong `tools/registry.py` — thêm vào `BUILTIN_TOOLS` list (đúng pattern hiện tại):
+
+```python
+# Trong BUILTIN_TOOLS list (tools/registry.py):
+from app.agents.new_chat.tools.chainlens_research import create_chainlens_research_tool
+
+ToolDefinition(
+    name="chainlens_deep_research",
+    description="Perform deep web research using Chainlens Research engine with auto-fallback",
+    factory=create_chainlens_research_tool,
+    requires=[],  # No DB/connector dependencies — uses external API
+    enabled_by_default=True,  # Controlled by CHAINLENS_RESEARCH_ENABLED env var inside tool
+),
+```
+
+**Lưu ý:** Feature flag `CHAINLENS_RESEARCH_ENABLED` được kiểm tra **bên trong tool** (qua `ChainlensResearchService.is_available()`), không phải ở registry level. Tool luôn được register nhưng sẽ fallback ngay nếu flag tắt.
+
+### Project Structure (Files thay đổi)
+
+```text
+nowing_backend/
+├── app/
+│   ├── config/__init__.py                          # [EDIT] +4 env vars
+│   ├── services/
+│   │   └── chainlens_research_service.py           # [NEW] ~100 LOC
+│   ├── agents/new_chat/
+│   │   ├── system_prompt.py                        # [EDIT] +30 dòng tool instructions
+│   │   └── tools/
+│   │       ├── registry.py                         # [EDIT] +1 ToolDefinition entry
+│   │       └── chainlens_research.py               # [NEW] ~60 LOC
+├── .env                                            # [EDIT] +4 biến
+```
+
+**Tổng impact: 2 file mới, 4 file sửa nhỏ (dưới 40 dòng mỗi file). Frontend: 0 thay đổi.**
+
+### Data Flow — Deep Research Integration
+
+*Luồng thành công (Chainlens live):*
+1. User gửi "deep research about X" trong chat.
+2. Nowing Agent detect intent → gọi tool `chainlens_deep_research(query="X")`.
+3. Tool gọi `ChainlensResearchService.is_available()` → check cached health → LIVE ✅.
+4. Tool gọi `ChainlensResearchService.research(query, sources)` → POST tới Chainlens B2B API.
+5. Chainlens trả về `{message, sources}` trong ≤120s.
+6. Tool return `{status: "success", provider: "chainlens", message, sources}`.
+7. Agent trình bày kết quả research cho user trên chat (SSE streaming).
+
+*Luồng fallback (Chainlens down):*
+1. User gửi "deep research about X" trong chat.
+2. Nowing Agent detect intent → gọi tool `chainlens_deep_research(query="X")`.
+3. Tool gọi `ChainlensResearchService.is_available()` → NOT LIVE ❌ (hoặc timeout).
+4. Tool return `{status: "fallback", provider: "nowing", message: "use generate_report..."}`.
+5. Agent tự động gọi `generate_report(report_style="deep_research", source_strategy="kb_search")`.
+6. Nowing's built-in research chạy, kết quả trả về user qua report card.
+7. User không bị gián đoạn, chỉ nhận thông báo nhẹ "Using Nowing's built-in research".
 
 ## Architecture Validation Results
 
