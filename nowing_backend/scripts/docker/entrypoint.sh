@@ -44,13 +44,26 @@ trap cleanup SIGTERM SIGINT
 # ── Database migrations (only for api / all) ─────────────────
 run_migrations() {
     echo "Running database migrations..."
+    # Use lightweight TCP check instead of importing the full app (avoids OOM from loading ML models)
     for i in {1..30}; do
-        if python -c "from app.db import engine; import asyncio; asyncio.run(engine.dispose())" 2>/dev/null; then
+        if python3 -c "
+import os, socket, sys, urllib.parse
+url = os.environ.get('DATABASE_URL', '').replace('+asyncpg', '')
+try:
+    p = urllib.parse.urlparse(url)
+    host = p.hostname or 'localhost'
+    port = p.port or 5432
+    s = socket.create_connection((host, port), timeout=3)
+    s.close()
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+" 2>/dev/null; then
             echo "Database is ready."
             break
         fi
         echo "Waiting for database... ($i/30)"
-        sleep 1
+        sleep 2
     done
 
     if timeout 300 alembic upgrade head 2>&1; then
