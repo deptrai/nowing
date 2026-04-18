@@ -86,3 +86,26 @@ if (fs.existsSync(serverJs)) {
 }
 
 console.log(`[entrypoint] Done. Scanned ${filesProcessed} files, modified ${filesModified}.`);
+
+// Also rewrite .env so Next.js standalone server reads correct runtime values.
+// The baked-in .env may have build-time placeholders or incorrect URLs.
+const envPath = path.join(__dirname, ".env");
+if (fs.existsSync(envPath)) {
+	const envKeys = [
+		"NEXT_PUBLIC_FASTAPI_BACKEND_URL",
+		"NEXT_PUBLIC_FASTAPI_BACKEND_AUTH_TYPE",
+		"NEXT_PUBLIC_ETL_SERVICE",
+		"NEXT_PUBLIC_ZERO_CACHE_URL",
+		"NEXT_PUBLIC_DEPLOYMENT_MODE",
+		"NEXT_PUBLIC_POSTHOG_KEY",
+	];
+	let envContent = fs.readFileSync(envPath, "utf8");
+	for (const key of envKeys) {
+		const value = process.env[key];
+		if (value !== undefined) {
+			envContent = envContent.replace(new RegExp(`^${key}=.*`, "m"), `${key}=${value}`);
+		}
+	}
+	fs.writeFileSync(envPath, envContent);
+	console.log("[entrypoint] Rewrote .env with runtime environment values.");
+}
