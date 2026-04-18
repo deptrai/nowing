@@ -1,6 +1,6 @@
 # Story 7.1: Backend Service Layer — ChainlensResearchService & Health Check
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -284,3 +284,20 @@ _pending_
 - `nowing_backend/app/config/__init__.py` (edited)
 - `nowing_backend/app/services/chainlens_research_service.py` (new)
 - `nowing_backend/tests/services/test_chainlens_research_service.py` (new)
+
+### Review Findings (2026-04-19)
+
+- [x] [Review][Decision] Cache poisoning từ research() errors — mỗi lỗi request lẻ invalidate `_health_cache` → chặn tất cả user 30s dù `/health` vẫn OK. Spec AC#4 yêu cầu invalidate nhưng không bàn đến amplification. Cần quyết: giữ nguyên / dùng penalty TTL ngắn (5s) / tách failed-call cache khỏi health cache.
+- [x] [Review][Decision] Không retry trên transient 5xx / network glitch — khác biệt với `web_search_service.py:206-227` (retry 1 lần). Một blip = full failure (125s timeout). Cần quyết: thêm retry 1 lần / giữ nguyên vì caller (Story 7.2) tự fallback.
+- [x] [Review][Patch] Thundering herd — concurrent coroutines cùng miss cache gọi nhiều health GET song song; thiếu `asyncio.Lock` [chainlens_research_service.py:34-47]
+- [x] [Review][Patch] `resp.json()` trên body 200 malformed → `JSONDecodeError` rơi vào `except Exception` → cache poisoning vì parse-bug [chainlens_research_service.py:83]
+- [x] [Review][Patch] Bare `except Exception` ở `is_available()` nuốt config bug (AttributeError/TypeError) & lost stack trace — dùng `logger.exception(..., exc_info=True)` + narrow tới `httpx.HTTPError` [chainlens_research_service.py:48-50, 90-95]
+- [x] [Review][Patch] Thiếu validation `sources` ({web, discussions, academic}) → upstream 400 opaque + cache poison [chainlens_research_service.py:53, 67]
+- [x] [Review][Patch] Thiếu validation `query` (empty/whitespace) → upstream 400 + cache poison [chainlens_research_service.py:53]
+- [x] [Review][Patch] Module-level warning chỉ trigger khi URL rỗng — miss case flag OFF nhưng URL set, và stale khi config thay đổi runtime [chainlens_research_service.py:9-12]
+- [x] [Review][Patch] Timeout message ">120s" không khớp client timeout 125s [chainlens_research_service.py:86-87]
+- [x] [Review][Patch] Non-200 HTTP raise nhưng không `logger.warning` — thiếu nhất quán với AC#4 "log warning server-side" [chainlens_research_service.py:76-82]
+- [x] [Review][Patch] Test `test_import_without_url_does_not_raise` không reload module → branch warning ở line 9-12 thực tế không được cover (module đã import với real config trước khi patch) [test_chainlens_research_service.py:215-229]
+- [x] [Review][Defer] `resp.text[:200]` có thể echo response body chứa token/header nhạy cảm khi upstream lỗi [chainlens_research_service.py:81] — deferred, low risk
+- [x] [Review][Defer] `httpx.AsyncClient` tạo mới mỗi call — không reuse connection pool, TLS handshake overhead [chainlens_research_service.py:41, 72] — deferred, performance optimization
+- [x] [Review][Defer] Tests mutate `_health_cache` class-level trực tiếp thay vì dùng monkeypatch fixture [test_chainlens_research_service.py:162, 191] — deferred, pytest-asyncio default serial
