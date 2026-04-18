@@ -145,6 +145,27 @@ def test_enabled_whitespace_only_key_treated_as_missing():
     assert any("CHAINLENS_RESEARCH_API_KEY" in r.getMessage() for r in records)
 
 
+def test_enabled_missing_both_key_and_url_single_consolidated_warning():
+    """D2: Both KEY+URL missing → exactly ONE consolidated WARNING line
+    listing both vars (not N separate warnings).
+
+    Operator gets a single alert per restart, easier to grep + page on.
+    """
+    cfg = _make_config(enabled=True, url="", key="")
+    records = _run_with_config(cfg)
+
+    warnings = [r for r in records if r.levelname == "WARNING"]
+    assert len(warnings) == 1, \
+        f"Expected exactly 1 consolidated warning, got {len(warnings)}: " \
+        f"{[w.getMessage() for w in warnings]}"
+
+    msg = warnings[0].getMessage()
+    assert "CHAINLENS_RESEARCH_API_URL" in msg
+    assert "CHAINLENS_RESEARCH_API_KEY" in msg
+    # Plural form when both missing
+    assert "are missing" in msg
+
+
 def test_validator_never_raises_on_exception():
     """AC #8: validator wraps exceptions — lifespan must never crash.
 

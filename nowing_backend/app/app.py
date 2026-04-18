@@ -47,12 +47,14 @@ def _validate_chainlens_config() -> None:
             missing.append("CHAINLENS_RESEARCH_API_KEY")
 
         if missing:
-            for var in missing:
-                logger.warning(
-                    "[Chainlens] CHAINLENS_RESEARCH_ENABLED=true but %s is missing"
-                    " — feature will fallback to built-in research",
-                    var,
-                )
+            # Single consolidated WARNING — operator gets all missing vars in
+            # one log line per restart (easier to alert on, easier to grep).
+            logger.warning(
+                "[Chainlens] CHAINLENS_RESEARCH_ENABLED=true but %s %s missing"
+                " — feature will fallback to built-in research",
+                ", ".join(missing),
+                "is" if len(missing) == 1 else "are",
+            )
             return
 
         logger.info(

@@ -14,18 +14,11 @@ MAX_RETRIES = 1
 RETRY_BACKOFF_SECONDS = 1.0
 
 
-def _log_startup_warning() -> None:
-    if not config.CHAINLENS_RESEARCH_API_URL:
-        logger.warning(
-            "[Chainlens] CHAINLENS_RESEARCH_API_URL not set — feature will be unavailable"
-        )
-    elif not config.CHAINLENS_RESEARCH_ENABLED:
-        logger.warning(
-            "[Chainlens] CHAINLENS_RESEARCH_ENABLED=FALSE — feature disabled at runtime"
-        )
-
-
-_log_startup_warning()
+# NOTE: Startup config validation lives in `app/app.py::_validate_chainlens_config()`
+# (called from FastAPI lifespan). Don't re-emit warnings at import time here —
+# (1) logging may not be configured yet at import time → unreliable output,
+# (2) duplicate warnings confuse operators, (3) module-import side effects are
+# an antipattern. Single source of truth: the lifespan validator.
 
 
 class ChainlensUnavailableError(Exception):
