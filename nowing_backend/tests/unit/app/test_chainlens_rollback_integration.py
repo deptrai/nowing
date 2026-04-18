@@ -34,6 +34,20 @@ def _reset_health_cache():
     ChainlensResearchService._error_cooldown_until = 0.0
 
 
+@pytest.fixture(autouse=True)
+def _isolate_chainlens_service_state():
+    """Reset shared class state before/after EVERY test in this module.
+
+    ChainlensResearchService caches `_health_cache` and `_error_cooldown_until`
+    at class level — leaks between tests can cause false positives (e.g., a
+    cooldown set by an earlier test makes is_available() return False not
+    because of ENABLED=false but because of cooldown).
+    """
+    _reset_health_cache()
+    yield
+    _reset_health_cache()
+
+
 def _make_mock_http_200():
     """Return an AsyncMock httpx client that responds 200 to .get()."""
     mock_response = MagicMock()
@@ -54,7 +68,6 @@ async def test_rollback_disabled_is_available_false_no_network():
     No HTTP request should be made — purely config-based short-circuit.
     """
     from app.services.chainlens_research_service import ChainlensResearchService
-    _reset_health_cache()
     mock_cfg = _make_config(enabled=False)
 
     with patch("app.services.chainlens_research_service.config", mock_cfg):
@@ -73,7 +86,6 @@ async def test_enabled_full_config_is_available_true():
     when health endpoint responds 200.
     """
     from app.services.chainlens_research_service import ChainlensResearchService
-    _reset_health_cache()
     mock_cfg = _make_config(
         enabled=True,
         url="https://api.chainlens.example.com",
@@ -81,7 +93,6 @@ async def test_enabled_full_config_is_available_true():
     )
 
     with patch("app.services.chainlens_research_service.config", mock_cfg):
-        _reset_health_cache()
         with patch("httpx.AsyncClient", return_value=_make_mock_http_200()):
             result = await ChainlensResearchService.is_available()
 
@@ -107,17 +118,19 @@ async def test_rollback_flow_enabled_then_disabled():
     )
 
     with patch("app.services.chainlens_research_service.config", enabled_cfg):
-        _reset_health_cache()
         with patch("httpx.AsyncClient", return_value=_make_mock_http_200()):
             is_avail_phase1 = await ChainlensResearchService.is_available()
 
     assert is_avail_phase1 is True, "Phase 1: should be available"
 
+    # Reset cache between phases (phase 1 cached True; without reset phase 2
+    # would hit the cache and return True even though ENABLED=false).
+    _reset_health_cache()
+
     # ── Phase 2: Rollback (ENABLED=false) ───────────────────────────────────
     disabled_cfg = _make_config(enabled=False)
 
     with patch("app.services.chainlens_research_service.config", disabled_cfg):
-        _reset_health_cache()
         with patch("httpx.AsyncClient") as mock_client_cls:
             is_avail_phase2 = await ChainlensResearchService.is_available()
 
@@ -139,7 +152,6 @@ async def test_research_raises_unavailable_when_disabled():
         ChainlensResearchService,
         ChainlensUnavailableError,
     )
-    _reset_health_cache()
     disabled_cfg = _make_config(enabled=False)
 
     with patch("app.services.chainlens_research_service.config", disabled_cfg):

@@ -37,11 +37,13 @@ def _capture_logs(validator_fn) -> list[logging.LogRecord]:
 
     handler = _Capture()
     _app_mod.logger.addHandler(handler)
+    _prev_level = _app_mod.logger.level
     _app_mod.logger.setLevel(logging.DEBUG)
     try:
         validator_fn()
     finally:
         _app_mod.logger.removeHandler(handler)
+        _app_mod.logger.setLevel(_prev_level)
 
     return records
 
@@ -120,6 +122,29 @@ def test_disabled_with_missing_key_url_no_warning():
     assert not any(r.levelname == "WARNING" for r in records)
 
 
+def test_enabled_whitespace_only_url_treated_as_missing():
+    """Edge case: whitespace-only URL must be treated as missing (not 'ENABLED').
+
+    Without `.strip()` guard, a value like '   ' is truthy → validator logs
+    'ENABLED — URL=   , TTL=30s' and runtime crashes with httpx.InvalidURL.
+    """
+    cfg = _make_config(enabled=True, url="   \n\t  ", key="real-key")
+    records = _run_with_config(cfg)
+
+    assert any(r.levelname == "WARNING" for r in records), \
+        "Whitespace-only URL must trigger missing-var warning"
+    assert any("CHAINLENS_RESEARCH_API_URL" in r.getMessage() for r in records)
+
+
+def test_enabled_whitespace_only_key_treated_as_missing():
+    """Edge case: whitespace-only API key treated as missing."""
+    cfg = _make_config(enabled=True, url="https://api.example.com", key="   ")
+    records = _run_with_config(cfg)
+
+    assert any(r.levelname == "WARNING" for r in records)
+    assert any("CHAINLENS_RESEARCH_API_KEY" in r.getMessage() for r in records)
+
+
 def test_validator_never_raises_on_exception():
     """AC #8: validator wraps exceptions — lifespan must never crash.
 
@@ -138,3 +163,21 @@ def test_validator_never_raises_on_exception():
             _app_mod._validate_chainlens_config()
         except Exception as exc:  # noqa: BLE001
             pytest.fail(f"Validator raised unexpectedly — must be graceful: {exc}")
+
+
+def test_lifespan_calls_validate_chainlens_config():
+    """AC #8: ensure `_validate_chainlens_config()` is wired into `lifespan()`.
+
+    Source-level guard: scans the lifespan function body to ensure the
+    validator call is present. Catches the regression where someone removes
+    the call and all other tests still pass (since they invoke the helper
+    directly, not through lifespan).
+    """
+    import inspect  # noqa: PLC0415
+    import app.app as _app_mod  # noqa: PLC0415
+
+    src = inspect.getsource(_app_mod.lifespan)
+    assert "_validate_chainlens_config()" in src, (
+        "lifespan() must call _validate_chainlens_config() — "
+        "removing this call silently disables AC #2/#3/#4/#5 startup logging"
+    )

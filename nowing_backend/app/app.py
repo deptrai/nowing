@@ -39,10 +39,11 @@ def _validate_chainlens_config() -> None:
             return
 
         # Feature is enabled — verify required vars
+        # Treat whitespace-only as missing (.strip() — operator typos like " " or "\n")
         missing: list[str] = []
-        if not config.CHAINLENS_RESEARCH_API_URL:
+        if not (config.CHAINLENS_RESEARCH_API_URL or "").strip():
             missing.append("CHAINLENS_RESEARCH_API_URL")
-        if not config.CHAINLENS_RESEARCH_API_KEY:
+        if not (config.CHAINLENS_RESEARCH_API_KEY or "").strip():
             missing.append("CHAINLENS_RESEARCH_API_KEY")
 
         if missing:
@@ -62,7 +63,8 @@ def _validate_chainlens_config() -> None:
     except Exception as exc:  # noqa: BLE001 — never crash lifespan
         logger.warning(
             "[Chainlens] Config validation failed: %s — feature disabled",
-            type(exc).__name__,
+            exc,
+            exc_info=True,
         )
 
 

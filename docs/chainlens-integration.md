@@ -69,10 +69,10 @@ Nếu 200 OK → safe to enable. Nếu khác → contact Chainlens team trước
 
 | Triệu chứng | Nguyên nhân | Cách fix |
 |---|---|---|
-| Startup log "WARNING ... missing" | Thiếu `CHAINLENS_RESEARCH_API_URL` hoặc `CHAINLENS_RESEARCH_API_KEY` | Set đầy đủ env, restart |
-| `ValueError` khi boot | `CHAINLENS_HEALTH_CACHE_TTL` không phải số nguyên | Set giá trị int hợp lệ (vd: `30`), restart |
+| Startup log "WARNING ... missing" | Thiếu `CHAINLENS_RESEARCH_API_URL` hoặc `CHAINLENS_RESEARCH_API_KEY` (hoặc whitespace-only) | Set đầy đủ env, restart |
+| `ValueError` khi boot service | `CHAINLENS_HEALTH_CACHE_TTL` không phải số nguyên — raised ở **`Config` class load time** (`int(...)` trong `app/config/__init__.py`), KHÔNG phải từ `_validate_chainlens_config()` (validator wrap try/except, never raises) | Set giá trị int hợp lệ (vd: `30`), restart |
 | User không thấy Chainlens result dù đã bật | Health check fail (Chainlens API down) | `curl .../api/v1/b2b/health`, kiểm tra API key |
-| Startup log "DISABLED" dù đã set `ENABLED=true` | Giá trị không phải `true`/`TRUE` | Chỉ chấp nhận `true` hoặc `TRUE` — không chấp nhận `1`, `yes`, `on` |
+| Startup log "DISABLED" dù đã set `ENABLED=true` | Giá trị không phải `true`/`TRUE` (case-insensitive). KHÔNG accept `1`, `yes`, `on`, `t`, `y` | Set chính xác `true` hoặc `TRUE` (mọi case-variant như `True`, `tRuE` đều OK), restart |
 
 ## Related
 
