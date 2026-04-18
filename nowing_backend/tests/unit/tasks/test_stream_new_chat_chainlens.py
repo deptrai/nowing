@@ -1,0 +1,423 @@
+"""Unit tests for Story 7.3 — chainlens_deep_research event handling in _stream_agent_events."""
+import json
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from app.tasks.chat.stream_new_chat import _stream_agent_events, StreamResult
+from app.services.new_streaming_service import VercelStreamingService
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_agent(events: list[dict]):
+    """Return a mock agent whose astream_events yields the given events."""
+    agent = MagicMock()
+
+    async def _astream_events(input_data, version, config=None):
+        for ev in events:
+            yield ev
+
+    agent.astream_events = _astream_events
+
+    # aget_state is awaited after the event loop — return a stub with no interrupts
+    mock_state = MagicMock()
+    mock_state.tasks = []
+    agent.aget_state = AsyncMock(return_value=mock_state)
+
+    return agent
+
+
+async def _collect(gen) -> list[str]:
+    """Drain an async generator into a list."""
+    chunks = []
+    async for chunk in gen:
+        chunks.append(chunk)
+    return chunks
+
+
+def _thinking_step_data(chunks: list[str]) -> list[dict]:
+    """Extract parsed data-thinking-step payloads from SSE chunks."""
+    import json as _json
+    steps = []
+    for chunk in chunks:
+        if "data-thinking-step" not in chunk:
+            continue
+        try:
+            raw = chunk.strip()
+            if raw.startswith("data: "):
+                raw = raw[6:]
+            payload = _json.loads(raw)
+            steps.append(payload.get("data", {}))
+        except Exception:
+            pass
+    return steps
+
+
+def _assert_no_vendor_in_thinking(chunks: list[str]) -> None:
+    """Assert 'chainlens' not visible in any thinking step title or items."""
+    for step in _thinking_step_data(chunks):
+        title = step.get("title", "")
+        assert "chainlens" not in title.lower(), f"Vendor name in title: {title!r}"
+        for item in step.get("items", []):
+            assert "chainlens" not in item.lower(), f"Vendor name in item: {item!r}"
+
+
+def _make_streaming_service() -> VercelStreamingService:
+    return VercelStreamingService()
+
+
+# ---------------------------------------------------------------------------
+# on_tool_start — chainlens_deep_research
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_tool_start_chainlens_emits_deep_researching_step():
+    """AC#2: on_tool_start for chainlens_deep_research emits a 'Deep researching' thinking step."""
+    events = [
+        {
+            "event": "on_tool_start",
+            "name": "chainlens_deep_research",
+            "run_id": "run-1",
+            "data": {"input": {"query": "AI agents 2026", "sources": ["web"]}},
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(
+        _stream_agent_events(agent, {}, {}, ss, result)
+    )
+
+    # Parse thinking step chunks only (data-thinking-step events)
+    import json as _json
+    thinking_titles = []
+    thinking_items_all = []
+    for chunk in chunks:
+        if "data-thinking-step" not in chunk:
+            continue
+        try:
+            payload = _json.loads(chunk.replace("data: ", "", 1))
+            step_data = payload.get("data", {})
+            thinking_titles.append(step_data.get("title", ""))
+            thinking_items_all.extend(step_data.get("items", []))
+        except Exception:
+            pass
+
+    # Must mention the neutral title in thinking step
+    assert any("Deep researching" in t for t in thinking_titles)
+    # Must show query preview in items
+    assert any("AI agents 2026" in item for item in thinking_items_all)
+    # FR25: thinking step title/items must NOT contain vendor name
+    for t in thinking_titles:
+        assert "chainlens" not in t.lower()
+    for item in thinking_items_all:
+        assert "chainlens" not in item.lower()
+
+
+@pytest.mark.asyncio
+async def test_tool_start_chainlens_long_query_is_truncated():
+    """Query longer than 80 chars is truncated with ellipsis in thinking step."""
+    long_query = "A" * 90
+    events = [
+        {
+            "event": "on_tool_start",
+            "name": "chainlens_deep_research",
+            "run_id": "run-1",
+            "data": {"input": {"query": long_query}},
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+    steps = _thinking_step_data(chunks)
+    all_items = [item for step in steps for item in step.get("items", [])]
+
+    # Truncated at 80 chars + ellipsis (…)
+    assert any("A" * 80 in item for item in all_items)
+    assert any("…" in item for item in all_items)
+    # 81st A not in any item
+    assert not any("A" * 81 in item for item in all_items)
+
+
+@pytest.mark.asyncio
+async def test_tool_start_chainlens_empty_query_no_query_item():
+    """Empty query → no 'Query:' item in the thinking step (graceful)."""
+    events = [
+        {
+            "event": "on_tool_start",
+            "name": "chainlens_deep_research",
+            "run_id": "run-1",
+            "data": {"input": {"query": ""}},
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+    combined = "".join(chunks)
+
+    # Title still present
+    assert "Deep researching" in combined
+    # But no "Query:" item
+    assert "Query:" not in combined
+
+
+# ---------------------------------------------------------------------------
+# on_tool_end — success path (sources > 0)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_tool_end_chainlens_success_shows_sources_count():
+    """AC#4: on_tool_end success → thinking step completed with 'Sources found: N'."""
+    tool_output = {
+        "status": "success",
+        "provider": "chainlens",
+        "message": "Research done",
+        "sources": [{"url": "https://a.com"}, {"url": "https://b.com"}],
+    }
+    events = [
+        {
+            "event": "on_tool_start",
+            "name": "chainlens_deep_research",
+            "run_id": "run-1",
+            "data": {"input": {"query": "DeFi"}},
+            "metadata": {},
+        },
+        {
+            "event": "on_tool_end",
+            "name": "chainlens_deep_research",
+            "run_id": "run-1",
+            "data": {"output": MagicMock(content=json.dumps(tool_output))},
+            "metadata": {},
+        },
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+    combined = "".join(chunks)
+
+    assert "Sources found: 2" in combined
+    assert "Deep researching" in combined
+
+
+# ---------------------------------------------------------------------------
+# on_tool_end — fallback path (no sources / empty message)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_tool_end_chainlens_fallback_shows_research_completed():
+    """AC#5 + FR25: fallback → title stays 'Deep researching', item 'Research completed'."""
+    tool_output = {
+        "status": "fallback",
+        "provider": "nowing",
+        "message": "Use generate_report...",
+    }
+    events = [
+        {
+            "event": "on_tool_start",
+            "name": "chainlens_deep_research",
+            "run_id": "run-1",
+            "data": {"input": {"query": "test"}},
+            "metadata": {},
+        },
+        {
+            "event": "on_tool_end",
+            "name": "chainlens_deep_research",
+            "run_id": "run-1",
+            "data": {"output": MagicMock(content=json.dumps(tool_output))},
+            "metadata": {},
+        },
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+    combined = "".join(chunks)
+
+    # Title stays neutral — never "fallback" as title
+    assert "Deep researching" in combined
+    assert "Research completed" in combined
+    # FR25: thinking step title/items must not contain vendor name or expose "fallback"
+    _assert_no_vendor_in_thinking(chunks)
+    for step in _thinking_step_data(chunks):
+        assert "fallback" not in step.get("title", "").lower()
+        for item in step.get("items", []):
+            assert "fallback" not in item.lower()
+
+
+@pytest.mark.asyncio
+async def test_tool_end_chainlens_zero_sources_shows_research_completed():
+    """Success with 0 sources → 'Research completed', not 'Sources found: 0'."""
+    tool_output = {
+        "status": "success",
+        "provider": "chainlens",
+        "message": "Done",
+        "sources": [],
+    }
+    events = [
+        {
+            "event": "on_tool_start",
+            "name": "chainlens_deep_research",
+            "run_id": "run-1",
+            "data": {"input": {"query": "test"}},
+            "metadata": {},
+        },
+        {
+            "event": "on_tool_end",
+            "name": "chainlens_deep_research",
+            "run_id": "run-1",
+            "data": {"output": MagicMock(content=json.dumps(tool_output))},
+            "metadata": {},
+        },
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+    combined = "".join(chunks)
+
+    assert "Research completed" in combined
+    assert "Sources found: 0" not in combined
+
+
+# ---------------------------------------------------------------------------
+# on_custom_event — research_status forwarding
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_custom_event_research_status_forwarded():
+    """AC#3: on_custom_event 'research_status' → format_data('research-status', payload) called."""
+    status_payload = {"phase": "researching", "message": "Researching..."}
+    events = [
+        {
+            "event": "on_custom_event",
+            "name": "research_status",
+            "run_id": "run-1",
+            "data": status_payload,
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    with patch.object(ss, "format_data", wraps=ss.format_data) as spy:
+        chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+        spy.assert_called_once_with("research-status", status_payload)
+
+
+@pytest.mark.asyncio
+async def test_custom_event_research_status_no_vendor_name_in_output():
+    """AC#3 + FR25: forwarded event must not contain 'chainlens' in the SSE output."""
+    status_payload = {"phase": "researching", "message": "Researching..."}
+    events = [
+        {
+            "event": "on_custom_event",
+            "name": "research_status",
+            "run_id": "run-1",
+            "data": status_payload,
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+
+    # FR25: thinking step title/items from this event must not expose vendor name
+    _assert_no_vendor_in_thinking(chunks)
+
+
+@pytest.mark.asyncio
+async def test_custom_event_switching_phase_forwarded():
+    """Switching event (fallback branch) is forwarded with phase='switching'."""
+    status_payload = {"phase": "switching", "message": "Researching..."}
+    events = [
+        {
+            "event": "on_custom_event",
+            "name": "research_status",
+            "run_id": "run-1",
+            "data": status_payload,
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+    combined = "".join(chunks)
+
+    # Phase value forwarded verbatim
+    assert "switching" in combined
+
+
+# ---------------------------------------------------------------------------
+# Regression: non-chainlens tools are not affected (AC#8)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_non_chainlens_tool_not_affected():
+    """Regression AC#8: generate_report tool_start still works, not mistaken as chainlens."""
+    events = [
+        {
+            "event": "on_tool_start",
+            "name": "generate_report",
+            "run_id": "run-1",
+            "data": {
+                "input": {
+                    "topic": "DeFi summary",
+                    "report_style": "summary",
+                    "source_strategy": "auto",
+                }
+            },
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+    combined = "".join(chunks)
+
+    # generate_report titles, not Deep researching
+    assert "Generating report" in combined or "Revising report" in combined
+    assert "Deep researching" not in combined
+
+
+@pytest.mark.asyncio
+async def test_other_custom_event_not_forwarded_as_research_status():
+    """Other on_custom_event names are NOT forwarded as research-status."""
+    events = [
+        {
+            "event": "on_custom_event",
+            "name": "document_created",
+            "run_id": "run-1",
+            "data": {"some": "data"},
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    with patch.object(ss, "format_data", wraps=ss.format_data) as spy:
+        await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+        # Should not be called with "research-status"
+        for call in spy.call_args_list:
+            assert call[0][0] != "research-status"

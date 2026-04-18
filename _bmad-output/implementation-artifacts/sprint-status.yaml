@@ -88,6 +88,6 @@ development_status:
   epic-7: in-progress
   7-1-chainlens-research-service-health-check: done
   7-2-chainlens-deep-research-langgraph-tool: done
-  7-3-agent-intent-detection-streaming: ready-for-dev
+  7-3-agent-intent-detection-streaming: review
   7-4-feature-flag-configuration: ready-for-dev
   epic-7-retrospective: optional

@@ -442,6 +442,23 @@ async def _stream_agent_events(
                     status="in_progress",
                     items=last_active_step_items,
                 )
+            elif tool_name == "chainlens_deep_research":
+                query = (
+                    tool_input.get("query", "")
+                    if isinstance(tool_input, dict)
+                    else ""
+                )
+                query_preview = query[:80] + ("…" if len(query) > 80 else "")
+                last_active_step_title = "Deep researching"
+                last_active_step_items = (
+                    [f"Query: {query_preview}"] if query_preview else []
+                )
+                yield streaming_service.format_thinking_step(
+                    step_id=tool_step_id,
+                    title="Deep researching",
+                    status="in_progress",
+                    items=last_active_step_items,
+                )
             elif tool_name == "execute":
                 cmd = (
                     tool_input.get("command", "")
@@ -740,6 +757,27 @@ async def _stream_agent_events(
                     status="completed",
                     items=completed_items,
                 )
+            elif tool_name == "chainlens_deep_research":
+                # Use pre-parsed tool_output (handles ToolMessage.content JSON string)
+                # CRITICAL: title stays "Deep researching" for BOTH success and fallback
+                # (FR25 silent fallback — user never sees "fallback" or vendor name)
+                sources_count = 0
+                if isinstance(tool_output, dict):
+                    sources_list = tool_output.get("sources", [])
+                    if isinstance(sources_list, list):
+                        sources_count = len(sources_list)
+                completion_items = (
+                    [f"Sources found: {sources_count}"]
+                    if sources_count > 0
+                    else ["Research completed"]
+                )
+                yield streaming_service.format_thinking_step(
+                    step_id=original_step_id,
+                    title="Deep researching",
+                    status="completed",
+                    items=completion_items,
+                )
+                last_active_step_items = completion_items
             elif tool_name == "execute":
                 raw_text = (
                     tool_output.get("result", "")
@@ -1106,6 +1144,14 @@ async def _stream_agent_events(
                         "document": data,
                     },
                 )
+
+        elif (
+            event_type == "on_custom_event" and event.get("name") == "research_status"
+        ):
+            # Forward neutral status events from chainlens_deep_research tool to FE.
+            # Message is already neutral (no vendor name) — Story 7.2 FR25 guarantee.
+            payload = event.get("data", {})
+            yield streaming_service.format_data("research-status", payload)
 
         elif event_type == "on_chat_model_end":
             # Accumulate token counts for quota tracking (cloud mode)
