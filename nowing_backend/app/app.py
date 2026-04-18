@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -16,6 +17,54 @@ from app.schemas import UserCreate, UserRead, UserUpdate
 from app.tasks.nowing_docs_indexer import seed_nowing_docs
 from app.users import SECRET, auth_backend, current_active_user, fastapi_users
 
+logger = logging.getLogger(__name__)
+
+
+def _validate_chainlens_config() -> None:
+    """Validate Chainlens integration config at startup.
+
+    Logs INFO when feature is disabled (default safe) or enabled with valid
+    config. Logs WARNING when enabled but misconfigured. Never raises —
+    service must boot regardless so the fallback path (built-in research)
+    remains available.
+    """
+    try:
+        from app.config import config  # noqa: PLC0415 — re-import for testability
+
+        if not config.CHAINLENS_RESEARCH_ENABLED:
+            logger.info(
+                "[Chainlens] Integration DISABLED "
+                "(CHAINLENS_RESEARCH_ENABLED=false) — using built-in research only"
+            )
+            return
+
+        # Feature is enabled — verify required vars
+        missing: list[str] = []
+        if not config.CHAINLENS_RESEARCH_API_URL:
+            missing.append("CHAINLENS_RESEARCH_API_URL")
+        if not config.CHAINLENS_RESEARCH_API_KEY:
+            missing.append("CHAINLENS_RESEARCH_API_KEY")
+
+        if missing:
+            for var in missing:
+                logger.warning(
+                    "[Chainlens] CHAINLENS_RESEARCH_ENABLED=true but %s is missing"
+                    " — feature will fallback to built-in research",
+                    var,
+                )
+            return
+
+        logger.info(
+            "[Chainlens] Integration ENABLED — URL=%s, health cache TTL=%ss",
+            config.CHAINLENS_RESEARCH_API_URL,
+            config.CHAINLENS_HEALTH_CACHE_TTL,
+        )
+    except Exception as exc:  # noqa: BLE001 — never crash lifespan
+        logger.warning(
+            "[Chainlens] Config validation failed: %s — feature disabled",
+            type(exc).__name__,
+        )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,6 +76,8 @@ async def lifespan(app: FastAPI):
     initialize_llm_router()
     # Seed Nowing documentation
     await seed_nowing_docs()
+    # Validate Chainlens integration config and emit startup log
+    _validate_chainlens_config()
     yield
     # Cleanup: close checkpointer connection on shutdown
     await close_checkpointer()

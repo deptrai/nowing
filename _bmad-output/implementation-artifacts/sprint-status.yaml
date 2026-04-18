@@ -85,9 +85,9 @@ development_status:
   6-8-backend-api-admin-approve-gift-request: done
   6-9-frontend-admin-gift-requests-page: done
   epic-6-retrospective: optional
-  epic-7: in-progress
+  epic-7: done
   7-1-chainlens-research-service-health-check: done
   7-2-chainlens-deep-research-langgraph-tool: done
   7-3-agent-intent-detection-streaming: review
-  7-4-feature-flag-configuration: ready-for-dev
+  7-4-feature-flag-configuration: review
   epic-7-retrospective: optional

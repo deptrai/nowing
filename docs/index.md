@@ -40,6 +40,7 @@ Dự án đã được phân tích bằng công cụ Code Review Graph, trích x
 - [API Contracts](./api-contracts.md)
 - [Data Models](./data-models.md)
 - [Integration Architecture](./integration-architecture.md)
+- [Chainlens Deep Research Integration](./chainlens-integration.md)
 
 ## 📁 Existing Documentation
 - [Code Review Graph Wiki](../.code-review-graph/wiki/_index.md) - Chi tiết từng community và file dependency.
