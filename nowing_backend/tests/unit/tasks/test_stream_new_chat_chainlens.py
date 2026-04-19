@@ -421,3 +421,144 @@ async def test_other_custom_event_not_forwarded_as_research_status():
         # Should not be called with "research-status"
         for call in spy.call_args_list:
             assert call[0][0] != "research-status"
+
+# ---------------------------------------------------------------------------
+# Defensive / boundary tests added by code review (2026-04-19)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_tool_start_chainlens_query_exactly_80_chars_no_ellipsis():
+    """Boundary AC#2: query of exactly 80 chars must NOT be truncated/ellipsized."""
+    q = "B" * 80
+    events = [
+        {
+            "event": "on_tool_start",
+            "name": "chainlens_deep_research",
+            "run_id": "run-80",
+            "data": {"input": {"query": q}},
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+    combined = "".join(chunks)
+
+    assert q in combined, "Exact-80-char query should appear unmodified"
+    assert "…" not in combined, "Should NOT add ellipsis at exactly 80 chars"
+
+
+@pytest.mark.asyncio
+async def test_tool_start_chainlens_query_none_does_not_crash():
+    """Defensive: tool_input.query=None must not raise TypeError on slicing."""
+    events = [
+        {
+            "event": "on_tool_start",
+            "name": "chainlens_deep_research",
+            "run_id": "run-none",
+            "data": {"input": {"query": None}},
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    # Must not raise
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+    combined = "".join(chunks)
+
+    assert "Deep researching" in combined
+    # No "Query:" item rendered (empty preview)
+    assert "Query:" not in combined
+
+
+@pytest.mark.asyncio
+async def test_tool_end_chainlens_malformed_outputs_default_to_research_completed():
+    """Defensive: tool_output as None/list/missing-sources/non-list-sources → safe fallback item."""
+    for bad_output in [None, [], "not a dict", {"sources": None}, {"sources": "not a list"}, {}]:
+        events = [
+            {
+                "event": "on_tool_start",
+                "name": "chainlens_deep_research",
+                "run_id": "run-bad",
+                "data": {"input": {"query": "x"}},
+                "metadata": {},
+            },
+            {
+                "event": "on_tool_end",
+                "name": "chainlens_deep_research",
+                "run_id": "run-bad",
+                "data": {"output": bad_output},
+                "metadata": {},
+            },
+        ]
+        agent = _make_agent(events)
+        ss = _make_streaming_service()
+        result = StreamResult()
+
+        chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+        combined = "".join(chunks)
+
+        assert "Research completed" in combined, (
+            f"Malformed output {bad_output!r} should render 'Research completed' fallback"
+        )
+
+
+@pytest.mark.asyncio
+async def test_research_status_payload_none_does_not_crash():
+    """Defensive: on_custom_event with data=None must not propagate null to format_data."""
+    events = [
+        {
+            "event": "on_custom_event",
+            "name": "research_status",
+            "run_id": "run-x",
+            "data": None,
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    with patch.object(ss, "format_data", wraps=ss.format_data) as spy:
+        await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+        # Must have been called with research-status and a dict (not None)
+        called_with_dict = any(
+            call[0][0] == "research-status" and isinstance(call[0][1], dict)
+            for call in spy.call_args_list
+        )
+        assert called_with_dict, "research-status must be forwarded with a dict payload"
+
+
+@pytest.mark.asyncio
+async def test_research_status_strips_vendor_and_fallback_strings():
+    """FR25 defense-in-depth: any field containing 'chainlens' or 'fallback' is dropped before forward."""
+    events = [
+        {
+            "event": "on_custom_event",
+            "name": "research_status",
+            "run_id": "run-y",
+            "data": {
+                "phase": "searching",
+                "message": "Calling Chainlens upstream",
+                "provider": "chainlens",
+                "note": "fallback path",
+                "safe_field": "ok",
+            },
+            "metadata": {},
+        }
+    ]
+    agent = _make_agent(events)
+    ss = _make_streaming_service()
+    result = StreamResult()
+
+    chunks = await _collect(_stream_agent_events(agent, {}, {}, ss, result))
+    combined = "".join(chunks)
+
+    assert "chainlens" not in combined.lower(), "Vendor name leaked to research-status SSE"
+    assert "fallback" not in combined.lower(), "Fallback hint leaked to research-status SSE"
+    assert "safe_field" in combined, "Non-banned field should be preserved"
+    assert "ok" in combined

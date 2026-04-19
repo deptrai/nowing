@@ -1,6 +1,6 @@
 # Story 7.3: Agent Integration — Intent Detection & Streaming Deep Research Response
 
-Status: review
+Status: done
 
 ## Story
 
@@ -350,3 +350,36 @@ claude-sonnet-4-5
 - `nowing_backend/app/tasks/chat/stream_new_chat.py` (edited — +~30 lines in on_tool_start, on_tool_end, on_custom_event blocks)
 - `nowing_backend/tests/unit/tasks/test_stream_new_chat_chainlens.py` (new — 11 unit tests)
 - `nowing_backend/tests/tasks/chat/test_stream_new_chat_chainlens.py` (new)
+
+### Review Findings
+
+_Code review on 2026-04-19 (commit fd9f3e5e). 3 layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor._
+
+**Summary:** 0 decision-needed · 8 patch · 5 defer · 5 dismissed
+
+#### Patch findings
+
+- [x] [Review][Patch] `query` field có thể là None → `None[:80]` raise TypeError, kill stream [stream_new_chat.py:446-451]
+- [x] [Review][Patch] `event.get("data", {})` không default khi value là None → `format_data("research-status", None)` propagate null payload tới FE [stream_new_chat.py:1153]
+- [x] [Review][Patch] `last_active_step_title` không được refresh ở on_tool_end branch của chainlens → cross-tool title bleed khi `report_progress` event đến sau [stream_new_chat.py:760-780]
+- [x] [Review][Patch] `research_status` payload forward verbatim không sanitize → nếu tool dispatch payload chứa "chainlens" hoặc "fallback", FR25 silent fallback bị vi phạm [stream_new_chat.py:1145-1152]
+- [x] [Review][Patch] Thiếu test exact 80-char boundary (off-by-one window cho điều kiện `len(query) > 80`) [test_stream_new_chat_chainlens.py: query truncation tests]
+- [x] [Review][Patch] Thiếu test malformed/edge tool_output (None, list root, missing sources, sources=None, sources có non-dict items) [test_stream_new_chat_chainlens.py]
+- [x] [Review][Patch] Thiếu test payload=None cho on_custom_event research_status [test_stream_new_chat_chainlens.py]
+- [x] [Review][Patch] Thiếu test FR25 vendor-leak cho `research-status` SSE channel — `_assert_no_vendor_in_thinking` chỉ check thinking step, không check data-research-status chunk [test_stream_new_chat_chainlens.py:135-141]
+
+#### Deferred findings
+
+- [x] [Review][Defer] Test file path lệch spec: `tests/unit/tasks/` thay vì `tests/tasks/chat/` — deferred, cosmetic, file đã tồn tại và được chạy bởi pytest config
+- [x] [Review][Defer] AC#1 không có positive LLM-routing test (mock LLM trả tool_calls=[chainlens_deep_research]) — deferred, intent detection chính sự thuộc Story 7.2 `_TOOL_INSTRUCTIONS`; test ở 7.3 mock event stream là valid layer
+- [x] [Review][Defer] AC#8 regression coverage shallow — chỉ test generate_report, thiếu web_search & KB search regression — deferred, full chat suite (522 tests) đã pass per dev notes
+- [x] [Review][Defer] AC#6 timeout test & AC#9 cancellation test thiếu — deferred, behavior delegate cho Story 7.1 (httpx 125s timeout) + LangGraph default cancellation; spec exempt explicit code
+- [x] [Review][Defer] Unicode/grapheme cluster split tại codepoint 80 (Vietnamese combining marks/emoji ZWJ) — deferred, cosmetic preview chỉ; 80 chars is generous
+
+#### Dismissed (noise)
+
+- Bare `except Exception: pass` trong test helper `_thinking_step_data` — intentional defensive parsing
+- "Silent dependency on un-shown JSON pre-parse" — verified at lines 517-532, contract is sound
+- `tool_step_id`/`original_step_id` mismatch on orphan event — verified `tool_step_ids.get()` has safe fallback at line 536
+- `assert_called_once_with` brittleness — current code emits exactly 1 format_data per research_status event, assertion is correct
+- `payload` aliasing race — synchronous JSON serialize, no real race

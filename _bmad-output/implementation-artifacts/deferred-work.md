@@ -113,3 +113,11 @@
 
 - **Bare `except Exception` quanh `dispatch_custom_event`**: Swallow mọi exception (TypeError/AttributeError từ signature change trong LangGraph future) → regression silent. Nên log ở DEBUG level thay vì `pass`. [chainlens_research.py:67-72, 83-89]
 - **Provider name `"nowing"` hardcode**: Coupling tên brand với tool output. Branch hiện tại đang rename từ surfsense → nowing; nếu rename lần nữa sẽ break consumer. Đổi thành `"builtin"` / `"local"` để decouple. [chainlens_research.py:26]
+
+## Deferred from: code review of story-7.3 (2026-04-19)
+
+- Test file path lệch spec: `tests/unit/tasks/` thay vì `tests/tasks/chat/` — cosmetic, file đã chạy được
+- AC#1 thiếu positive LLM-routing test (mock LLM trả tool_calls=[chainlens_deep_research]) — intent detection logic chính thuộc Story 7.2 `_TOOL_INSTRUCTIONS`
+- AC#8 regression coverage shallow — chỉ test generate_report, thiếu web_search & KB-search regression. Full chat suite (522 tests) đã pass per dev notes
+- AC#6 timeout test & AC#9 cancellation test thiếu — behavior delegate cho Story 7.1 (httpx 125s timeout) + LangGraph default cancellation
+- Unicode/grapheme cluster split tại codepoint 80 (Vietnamese combining marks/emoji ZWJ) — cosmetic preview only

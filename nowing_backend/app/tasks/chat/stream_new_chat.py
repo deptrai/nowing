@@ -443,11 +443,12 @@ async def _stream_agent_events(
                     items=last_active_step_items,
                 )
             elif tool_name == "chainlens_deep_research":
-                query = (
-                    tool_input.get("query", "")
+                raw_query = (
+                    tool_input.get("query")
                     if isinstance(tool_input, dict)
-                    else ""
+                    else None
                 )
+                query = raw_query if isinstance(raw_query, str) else ""
                 query_preview = query[:80] + ("…" if len(query) > 80 else "")
                 last_active_step_title = "Deep researching"
                 last_active_step_items = (
@@ -777,6 +778,7 @@ async def _stream_agent_events(
                     status="completed",
                     items=completion_items,
                 )
+                last_active_step_title = "Deep researching"
                 last_active_step_items = completion_items
             elif tool_name == "execute":
                 raw_text = (
@@ -1149,9 +1151,21 @@ async def _stream_agent_events(
             event_type == "on_custom_event" and event.get("name") == "research_status"
         ):
             # Forward neutral status events from chainlens_deep_research tool to FE.
-            # Message is already neutral (no vendor name) — Story 7.2 FR25 guarantee.
-            payload = event.get("data", {})
-            yield streaming_service.format_data("research-status", payload)
+            # Defensive: payload may be None or non-dict if tool misbehaves.
+            # FR25 defense-in-depth: scrub any vendor/fallback hints before forwarding
+            # so user never sees "Chainlens" / "fallback" even if tool leaks upstream.
+            raw_payload = event.get("data")
+            payload: dict[str, Any] = raw_payload if isinstance(raw_payload, dict) else {}
+            _BANNED_TOKENS = ("chainlens", "fallback")
+            sanitized: dict[str, Any] = {}
+            for _k, _v in payload.items():
+                if isinstance(_v, str) and any(
+                    _b in _v.lower() for _b in _BANNED_TOKENS
+                ):
+                    # Drop fields that leak vendor name or fallback intent.
+                    continue
+                sanitized[_k] = _v
+            yield streaming_service.format_data("research-status", sanitized)
 
         elif event_type == "on_chat_model_end":
             # Accumulate token counts for quota tracking (cloud mode)
