@@ -129,3 +129,43 @@
 - `_validate_chainlens_config()` logs the API URL at INFO with no sanitizer — if operator embeds basic-auth or token in URL, it leaks to log aggregation. Low-probability operator mistake, deferred.
 - `ChainlensResearchService._health_lock = asyncio.Lock()` bound to module-import event loop — cross-loop hazard in pytest-asyncio under parallel runners. Pre-existing Story 7.1 design.
 - No `inspect`-based regression guard preventing future "cleanup" that hoists `from app.config import config` out of `_validate_chainlens_config()` body. Hoisting would silently break all patch-based unit tests. Acceptable safety net today via existing `test_lifespan_calls_validate_chainlens_config`.
+
+## Deferred from: test-review (2026-04-20)
+
+Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D (61/100), 35 violations.
+
+### Maintainability (full dimension — requires structural refactor)
+
+- Split 8 test files exceeding 500 LOC (top: `test_local_folder_pipeline.py` 1308 LOC)
+- `test_dropbox_parallel.py` has 120 mock refs in chained fixture — extract to factories
+- Migrate 24+ copy-paste test variants to `@pytest.mark.parametrize`
+- Flesh out `tests/utils/helpers.py` (currently 223 LOC / 7 helpers for a 16k-LOC suite)
+- Central `tests/constants.py` for `TEST_EMAIL`/`TEST_PASSWORD`/route URLs
+
+### Isolation (MEDIUM)
+
+- Duplicate session-scoped `auth_token` fixture in `test_stripe_page_purchases.py:90` shadowing conftest
+- Session-scoped autouse `_purge_test_search_space` only fires at session start — mid-session failures leave stale rows
+- `page_limits` fixture in `tests/integration/conftest.py:239` mutates user row via raw asyncpg conn, bypassing savepoint
+- Session-scoped `async_engine` shares schema — non-savepoint asyncpg writes can leak
+- `caplog` without `.clear()` between assertions in `test_chainlens_research_tool.py:158`
+
+### Determinism (MEDIUM — defer pending freezegun adoption)
+
+- 9 `uuid.uuid4()` occurrences in `tests/integration/google_unification/conftest.py` and `tests/integration/retriever/conftest.py` — acceptable for opaque DB PKs, flag for future snapshot tests
+- `datetime.now(UTC)` in `tests/integration/retriever/conftest.py:117` and `test_knowledge_search_date_filters.py:39,53` — 30-day/730-day buffer makes flakes near-impossible, but wall-clock dependency remains
+- `datetime.now(UTC)` comparisons in `test_composio_credentials.py:31,55`
+
+### Performance (HIGH — dependency addition)
+
+- Add `pytest-xdist>=3.5` to `pyproject.toml` dev dependencies for parallel execution
+- Wire CI config to use `-n auto` for 542-test suite
+- Per-test `httpx.AsyncClient` fixture could be session-scoped (minor)
+
+### Pre-existing test failures to triage (unrelated to review)
+
+18 errors/failures existed before this review pass:
+- `tests/unit/tasks/test_dexscreener_indexer.py` — `sqlite3.OperationalError: unrecognized token: ":"` (fixture setup)
+- `tests/unit/indexing_pipeline/test_index_batch_parallel.py` + `test_migrate_legacy_docs.py` — DB fixture errors
+- `tests/unit/connectors/test_dexscreener_connector.py::test_init_creates_connector` + `::test_get_token_pairs_success` — `base_url` assertion drift vs current code
+

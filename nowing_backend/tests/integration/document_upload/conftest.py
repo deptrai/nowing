@@ -37,7 +37,7 @@ from tests.utils.helpers import (
     get_search_space_id,
 )
 
-limiter.enabled = False
+limiter  # noqa: F401 — kept for `_disable_limiter_for_session` fixture below
 
 _EMBEDDING_DIM = app_config.embedding_model_instance.dimension
 _ASYNCPG_URL = TEST_DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
@@ -87,7 +87,39 @@ class InlineTaskDispatcher:
             )
 
 
-app.dependency_overrides[get_task_dispatcher] = lambda: InlineTaskDispatcher()
+@pytest.fixture(scope="session", autouse=True)
+def _install_inline_task_dispatcher():
+    """Session-scoped DI override with explicit teardown.
+
+    Previously this override was installed at module-import time and never
+    popped — leaking to every test that imports this conftest chain. Now
+    the override is scoped to the session and removed after.
+    """
+    previous = app.dependency_overrides.get(get_task_dispatcher)
+    app.dependency_overrides[get_task_dispatcher] = lambda: InlineTaskDispatcher()
+    try:
+        yield
+    finally:
+        if previous is None:
+            app.dependency_overrides.pop(get_task_dispatcher, None)
+        else:
+            app.dependency_overrides[get_task_dispatcher] = previous
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _disable_limiter_for_session():
+    """Disable FastAPI slowapi limiter for integration tests.
+
+    Previously mutated at module import (`limiter.enabled = False`) with no
+    restore — leaked to other test modules sharing the same FastAPI app.
+    Now scoped to the session and restored on teardown.
+    """
+    previous = limiter.enabled
+    limiter.enabled = False
+    try:
+        yield
+    finally:
+        limiter.enabled = previous
 
 
 # ---------------------------------------------------------------------------

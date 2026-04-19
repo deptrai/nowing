@@ -681,16 +681,21 @@ async def test_client_download_file_runs_in_thread_parallel():
     """Calling download_file concurrently via asyncio.gather should overlap
     blocking work on separate threads, proving to_thread is effective.
 
-    Strategy: patch _sync_download_file with a blocking time.sleep(0.2).
-    Launch 3 concurrent calls. Serial would take >=0.6s; parallel < 0.4s.
+    Strategy: use a `threading.Barrier(3, timeout=2)` — if the 3 concurrent
+    calls don't all run in separate threads at the same time, the barrier
+    times out and raises `threading.BrokenBarrierError`. This is a
+    **deterministic** proof of parallelism (no wall-clock tolerance).
     """
+    import threading
     from app.connectors.google_drive.client import GoogleDriveClient
 
-    block_seconds = 0.2
     num_calls = 3
+    barrier = threading.Barrier(num_calls, timeout=2.0)
 
     def _blocking_download(service, file_id, credentials):
-        time.sleep(block_seconds)
+        # If thread pool is single-threaded (no parallelism), barrier will
+        # time out and raise BrokenBarrierError — failing the test.
+        barrier.wait()
         return b"fake-content", None
 
     client = GoogleDriveClient.__new__(GoogleDriveClient)
@@ -703,32 +708,28 @@ async def test_client_download_file_runs_in_thread_parallel():
         "_sync_download_file",
         staticmethod(_blocking_download),
     ):
-        start = time.monotonic()
         results = await asyncio.gather(
             *(client.download_file(f"file-{i}") for i in range(num_calls))
         )
-        elapsed = time.monotonic() - start
 
     for content, error in results:
         assert content == b"fake-content"
         assert error is None
 
-    serial_minimum = block_seconds * num_calls
-    assert elapsed < serial_minimum, (
-        f"Elapsed {elapsed:.2f}s >= serial minimum {serial_minimum:.2f}s — "
-        f"downloads are not running in parallel"
-    )
-
 
 async def test_client_export_google_file_runs_in_thread_parallel():
-    """Same strategy for export_google_file — verify to_thread parallelism."""
+    """Same strategy for export_google_file — verify to_thread parallelism.
+
+    Uses `threading.Barrier` for deterministic proof (no timing tolerance).
+    """
+    import threading
     from app.connectors.google_drive.client import GoogleDriveClient
 
-    block_seconds = 0.2
     num_calls = 3
+    barrier = threading.Barrier(num_calls, timeout=2.0)
 
     def _blocking_export(service, file_id, mime_type, credentials):
-        time.sleep(block_seconds)
+        barrier.wait()
         return b"exported", None
 
     client = GoogleDriveClient.__new__(GoogleDriveClient)
@@ -741,21 +742,13 @@ async def test_client_export_google_file_runs_in_thread_parallel():
         "_sync_export_google_file",
         staticmethod(_blocking_export),
     ):
-        start = time.monotonic()
         results = await asyncio.gather(
             *(
                 client.export_google_file(f"file-{i}", "application/pdf")
                 for i in range(num_calls)
             )
         )
-        elapsed = time.monotonic() - start
 
     for content, error in results:
         assert content == b"exported"
         assert error is None
-
-    serial_minimum = block_seconds * num_calls
-    assert elapsed < serial_minimum, (
-        f"Elapsed {elapsed:.2f}s >= serial minimum {serial_minimum:.2f}s — "
-        f"exports are not running in parallel"
-    )

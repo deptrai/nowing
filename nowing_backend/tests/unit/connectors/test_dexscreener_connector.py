@@ -149,10 +149,11 @@ class TestDexScreenerConnector:
         """Test rate limiting delay calculation."""
         connector = DexScreenerConnector()
 
-        # Simulate rapid requests
-        import time
-
-        connector.last_request_time = time.time()
+        # Use a fixed frozen timestamp for determinism (no wall-clock dependency).
+        # The actual `_rate_limit_delay()` only sleeps `rate_limit_delay` seconds
+        # — it does not read `last_request_time` — so the value is purely
+        # representative of "a recent request happened".
+        connector.last_request_time = 1_700_000_000.0
 
         with patch("asyncio.sleep") as mock_sleep:
             await connector._rate_limit_delay()
