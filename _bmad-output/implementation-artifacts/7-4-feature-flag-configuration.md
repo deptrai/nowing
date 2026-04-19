@@ -1,6 +1,6 @@
 # Story 7.4: Feature Flag & Configuration — Admin Control không cần Redeploy
 
-Status: review
+Status: done
 
 ## Story
 
@@ -558,3 +558,14 @@ claude-sonnet-4-5
 - `docs/index.md` (edited — add Chainlens integration link)
 - `nowing_backend/tests/unit/app/test_chainlens_config_validation.py` (new — 6 unit tests)
 - `nowing_backend/tests/unit/app/test_chainlens_rollback_integration.py` (new — 5 integration tests)
+
+### Review Findings
+
+- [x] [Review][Patch] Whitespace-only API_KEY/URL bypasses validator intent [nowing_backend/app/services/chainlens_research_service.py:42,87] — validator `.strip()`s but `is_available()`/`research()` don't, so whitespace KEY/URL lets the service attempt real HTTP with `Bearer    ` header → 401 + cooldown noise, contradicting FR25 silent fallback
+- [x] [Review][Patch] Grammar: two-item missing list reads "X, Y are missing" [nowing_backend/app/app.py:53-58] — should use "and" (affects log regex / operator alerts)
+- [x] [Review][Patch] Doc claim that only `true`/`TRUE` accepted is misleading [docs/chainlens-integration.md:Troubleshooting] — Story 7.1's `.upper() == "TRUE"` means `True`/`tRuE`/etc. all work; doc should say "case-insensitive `true`"
+- [x] [Review][Defer] `CHAINLENS_HEALTH_CACHE_TTL ≤ 0` → DoS amplifier (every `is_available()` call hits network) — deferred, pre-existing Story 7.1 behavior, no clamp
+- [x] [Review][Defer] Validator runs late in lifespan — if `seed_nowing_docs()` raises, the audit log never emits — deferred, lifespan ordering is pre-existing architecture
+- [x] [Review][Defer] API URL logged at INFO with no sanitizer — credential leak risk if operator embeds basic-auth/token in URL — deferred, speculative low-probability
+- [x] [Review][Defer] `asyncio.Lock` created at class-definition time — cross-event-loop hazard in pytest-asyncio — deferred, pre-existing Story 7.1
+- [x] [Review][Defer] No regression guard for local `from app.config import config` inside validator — if future refactor hoists it, all 9 unit tests silently pass but `patch("app.config.config", ...)` stops affecting the validator — deferred, acceptable safety net via existing `test_lifespan_calls_validate_chainlens_config`

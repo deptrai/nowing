@@ -295,15 +295,14 @@ async def test_is_available_with_empty_url_does_not_raise():
 
 
 def test_startup_warning_logs_when_url_empty(caplog):
-    """AC#5: Module reload with empty URL triggers startup warning log (once)."""
-    import logging
-    import app.services.chainlens_research_service as mod
+    """DEPRECATED: Obsolete since Story 7.4 (D1+D2) — module-import-time
+    `_log_startup_warning()` was removed in favor of the single-source-of-truth
+    lifespan validator `_validate_chainlens_config()` in `app/app.py`.
 
-    with patch.object(mod.config, "CHAINLENS_RESEARCH_API_URL", ""), \
-         patch.object(mod.config, "CHAINLENS_RESEARCH_ENABLED", False):
-        with caplog.at_level(
-            logging.WARNING, logger="app.services.chainlens_research_service"
-        ):
-            importlib.reload(mod)
-
-    assert any("not set" in r.message for r in caplog.records)
+    Equivalent coverage now lives in
+    `tests/unit/app/test_chainlens_config_validation.py::test_enabled_missing_api_url_logs_warning`.
+    """
+    pytest.skip(
+        "obsolete — replaced by test_enabled_missing_api_url_logs_warning in "
+        "tests/unit/app/test_chainlens_config_validation.py (Story 7.4 D1+D2)"
+    )

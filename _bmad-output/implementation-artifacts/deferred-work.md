@@ -121,3 +121,11 @@
 - AC#8 regression coverage shallow — chỉ test generate_report, thiếu web_search & KB-search regression. Full chat suite (522 tests) đã pass per dev notes
 - AC#6 timeout test & AC#9 cancellation test thiếu — behavior delegate cho Story 7.1 (httpx 125s timeout) + LangGraph default cancellation
 - Unicode/grapheme cluster split tại codepoint 80 (Vietnamese combining marks/emoji ZWJ) — cosmetic preview only
+
+## Deferred from: code review of story-7.4 (2026-04-19)
+
+- `CHAINLENS_HEALTH_CACHE_TTL ≤ 0` → DoS amplifier: every `is_available()` call hits the network. Pre-existing in Story 7.1; no clamp.
+- Validator runs late in lifespan after `seed_nowing_docs()` — if the latter raises, the Chainlens startup audit log never emits. Lifespan ordering is a pre-existing architecture decision.
+- `_validate_chainlens_config()` logs the API URL at INFO with no sanitizer — if operator embeds basic-auth or token in URL, it leaks to log aggregation. Low-probability operator mistake, deferred.
+- `ChainlensResearchService._health_lock = asyncio.Lock()` bound to module-import event loop — cross-loop hazard in pytest-asyncio under parallel runners. Pre-existing Story 7.1 design.
+- No `inspect`-based regression guard preventing future "cleanup" that hoists `from app.config import config` out of `_validate_chainlens_config()` body. Hoisting would silently break all patch-based unit tests. Acceptable safety net today via existing `test_lifespan_calls_validate_chainlens_config`.

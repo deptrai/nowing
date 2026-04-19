@@ -49,11 +49,22 @@ def _validate_chainlens_config() -> None:
         if missing:
             # Single consolidated WARNING — operator gets all missing vars in
             # one log line per restart (easier to alert on, easier to grep).
+            if len(missing) == 1:
+                missing_str = missing[0]
+                verb = "is"
+            else:
+                # Oxford-comma-free "A and B" / "A, B, and C"
+                missing_str = (
+                    " and ".join(missing)
+                    if len(missing) == 2
+                    else ", ".join(missing[:-1]) + ", and " + missing[-1]
+                )
+                verb = "are"
             logger.warning(
                 "[Chainlens] CHAINLENS_RESEARCH_ENABLED=true but %s %s missing"
                 " — feature will fallback to built-in research",
-                ", ".join(missing),
-                "is" if len(missing) == 1 else "are",
+                missing_str,
+                verb,
             )
             return
 

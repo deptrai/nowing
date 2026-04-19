@@ -39,7 +39,9 @@ class ChainlensResearchService:
     @classmethod
     async def is_available(cls) -> bool:
         """Health check with in-process TTL cache. Timeout 3s to avoid blocking."""
-        if not config.CHAINLENS_RESEARCH_ENABLED or not config.CHAINLENS_RESEARCH_API_URL:
+        # Mirror validator: treat whitespace-only URL as missing (operator typos)
+        url = (config.CHAINLENS_RESEARCH_API_URL or "").strip()
+        if not config.CHAINLENS_RESEARCH_ENABLED or not url:
             return False
 
         now = time.monotonic()
@@ -60,7 +62,7 @@ class ChainlensResearchService:
             try:
                 async with httpx.AsyncClient(timeout=3.0) as client:
                     resp = await client.get(
-                        f"{config.CHAINLENS_RESEARCH_API_URL}/api/v1/b2b/health"
+                        f"{url}/api/v1/b2b/health"
                     )
                     live = resp.status_code == 200
                     cls._health_cache = (live, time.monotonic())
@@ -84,13 +86,15 @@ class ChainlensResearchService:
 
         if not await cls.is_available():
             raise ChainlensUnavailableError("Chainlens API not available or disabled")
-        if not config.CHAINLENS_RESEARCH_API_KEY:
+        # Mirror validator: treat whitespace-only KEY as missing
+        api_key = (config.CHAINLENS_RESEARCH_API_KEY or "").strip()
+        if not api_key:
             raise ChainlensUnavailableError("CHAINLENS_RESEARCH_API_KEY not configured")
 
-        url = f"{config.CHAINLENS_RESEARCH_API_URL}/api/v1/b2b/research"
+        url = f"{(config.CHAINLENS_RESEARCH_API_URL or '').strip()}/api/v1/b2b/research"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {config.CHAINLENS_RESEARCH_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
         }
         payload = {"query": query, "sources": sources or ["web"], "stream": False}
 
