@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -26,6 +27,22 @@ from app.db import (
 EMBEDDING_DIM = app_config.embedding_model_instance.dimension
 DUMMY_EMBEDDING = [0.1] * EMBEDDING_DIM
 
+# Deterministic ID factory — replaces uuid.uuid4() for in-test entity IDs.
+# Within one pytest session, each call returns a unique-but-predictable UUID
+# (UUID(int=1), UUID(int=2), ...). Cross-session isolation is provided by the
+# savepoint pattern in `db_session`, so global counter resets are safe.
+_id_counter = itertools.count(1)
+
+
+def _seq_uuid() -> uuid.UUID:
+    """Return next sequential deterministic UUID."""
+    return uuid.UUID(int=next(_id_counter))
+
+
+def _seq_hex(length: int = 12) -> str:
+    """Return next sequential deterministic hex string of given length."""
+    return _seq_uuid().hex[:length]
+
 
 def make_document(
     *,
@@ -36,7 +53,7 @@ def make_document(
     created_by_id: str,
 ) -> Document:
     """Build a Document instance with unique hashes and a dummy embedding."""
-    uid = uuid.uuid4().hex[:12]
+    uid = _seq_hex(12)
     return Document(
         title=title,
         document_type=document_type,
@@ -146,8 +163,8 @@ async def committed_google_data(async_engine):
         session = AsyncSession(bind=conn, expire_on_commit=False)
 
         user = User(
-            id=uuid.uuid4(),
-            email=f"google-test-{uuid.uuid4().hex[:6]}@nowing.net",
+            id=_seq_uuid(),
+            email=f"google-test-{_seq_hex(6)}@nowing.net",
             hashed_password="hashed",
             is_active=True,
             is_superuser=False,
@@ -156,7 +173,7 @@ async def committed_google_data(async_engine):
         session.add(user)
         await session.flush()
 
-        space = SearchSpace(name=f"Google Test {uuid.uuid4().hex[:6]}", user_id=user.id)
+        space = SearchSpace(name=f"Google Test {_seq_hex(6)}", user_id=user.id)
         session.add(space)
         await session.flush()
         space_id = space.id
@@ -283,8 +300,8 @@ async def seed_connector(
         session = AsyncSession(bind=conn, expire_on_commit=False)
 
         user = User(
-            id=uuid.uuid4(),
-            email=f"{name_prefix}-{uuid.uuid4().hex[:6]}@nowing.net",
+            id=_seq_uuid(),
+            email=f"{name_prefix}-{_seq_hex(6)}@nowing.net",
             hashed_password="hashed",
             is_active=True,
             is_superuser=False,
@@ -294,7 +311,7 @@ async def seed_connector(
         await session.flush()
 
         space = SearchSpace(
-            name=f"{name_prefix} {uuid.uuid4().hex[:6]}", user_id=user.id
+            name=f"{name_prefix} {_seq_hex(6)}", user_id=user.id
         )
         session.add(space)
         await session.flush()

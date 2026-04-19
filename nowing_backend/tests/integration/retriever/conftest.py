@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -14,6 +15,13 @@ from app.db import Chunk, Document, DocumentType, SearchSpace, User
 EMBEDDING_DIM = app_config.embedding_model_instance.dimension
 DUMMY_EMBEDDING = [0.1] * EMBEDDING_DIM
 
+# Deterministic ID factory — replaces uuid.uuid4() for in-test entity IDs.
+_id_counter = itertools.count(1)
+
+
+def _seq_uuid() -> uuid.UUID:
+    return uuid.UUID(int=next(_id_counter))
+
 
 def _make_document(
     *,
@@ -24,7 +32,7 @@ def _make_document(
     created_by_id: str,
     updated_at: datetime | None = None,
 ) -> Document:
-    uid = uuid.uuid4().hex[:12]
+    uid = _seq_uuid().hex[:12]
     return Document(
         title=title,
         document_type=document_type,

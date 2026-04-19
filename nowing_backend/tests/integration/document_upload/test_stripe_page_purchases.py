@@ -49,6 +49,13 @@ async def _get_pages_limit(email: str) -> int:
 
 
 def _extract_access_token(response: httpx.Response) -> str | None:
+    """Extract JWT from 200 (JSON body) OR 302 (Location header query param).
+
+    Stripe auth flow may return a 302 redirect carrying the token as a
+    ``?token=...`` query parameter — distinct from the plain login flow
+    used by ``tests.utils.helpers.get_auth_token`` (200-only). This helper
+    is intentionally broader than the shared helper.
+    """
     if response.status_code == 200:
         return response.json()["access_token"]
 
@@ -60,6 +67,9 @@ def _extract_access_token(response: httpx.Response) -> str | None:
 
 
 async def _authenticate_test_user(client: httpx.AsyncClient) -> str:
+    """Stripe-flow authentication: like ``get_auth_token`` helper but accepts
+    302 redirect tokens as well as 200 JSON — needed by Stripe webhook flows
+    that redirect post-login."""
     response = await client.post(
         "/auth/jwt/login",
         data={"username": TEST_EMAIL, "password": TEST_PASSWORD},
@@ -89,6 +99,13 @@ async def _authenticate_test_user(client: httpx.AsyncClient) -> str:
 
 @pytest_asyncio.fixture(scope="session")
 async def auth_token(_ensure_tables) -> str:
+    """Override conftest ``auth_token`` fixture with Stripe-aware authentication.
+
+    Conftest's session-scoped version uses ``get_auth_token()`` (200-only).
+    Stripe flows may 302-redirect with the token in the Location query, so
+    this fixture uses ``_authenticate_test_user()`` which handles both cases.
+    Both fixtures authenticate the same TEST_EMAIL user — no conflict.
+    """
     async with httpx.AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test", timeout=30.0
     ) as client:

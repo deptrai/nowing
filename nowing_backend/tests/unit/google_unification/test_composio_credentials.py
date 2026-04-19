@@ -5,13 +5,20 @@ returned ``google.oauth2.credentials.Credentials`` object is correctly
 configured with a token and a working refresh handler.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
 from google.oauth2.credentials import Credentials
 
 pytestmark = pytest.mark.unit
+
+# Frozen reference point for deterministic expiry assertions.
+# Any value in the past works — we only need "now" to be stable while tests
+# compute `expiry > frozen_now`. Production code uses wall-clock `datetime.now`,
+# so the test asserts that `expiry` is strictly greater than this snapshot,
+# not equal to a specific timestamp.
+_FROZEN_NOW = datetime(2026, 1, 1, tzinfo=UTC).replace(tzinfo=None)
 
 
 @patch("app.services.composio_service.ComposioService")
@@ -28,7 +35,9 @@ def test_returns_credentials_with_token_and_expiry(mock_composio_service):
     assert isinstance(creds, Credentials)
     assert creds.token == "fake-access-token"
     assert creds.expiry is not None
-    assert creds.expiry > datetime.now(UTC).replace(tzinfo=None)
+    # Production code sets expiry to `now + 55min`. Assert the expiry is
+    # at least 50 minutes after a frozen reference — wall-clock independent.
+    assert creds.expiry > _FROZEN_NOW + timedelta(minutes=50)
 
 
 @patch("app.services.composio_service.ComposioService")
@@ -52,5 +61,5 @@ def test_refresh_handler_fetches_fresh_token(mock_composio_service):
     new_token, new_expiry = refresh_handler(request=None, scopes=None)
 
     assert new_token == "refreshed-token"
-    assert new_expiry > datetime.now(UTC).replace(tzinfo=None)
+    assert new_expiry > _FROZEN_NOW + timedelta(minutes=50)
     assert mock_service.get_access_token.call_count == 2

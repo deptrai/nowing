@@ -188,22 +188,33 @@ def cleanup_doc_ids() -> list[int]:
 
 @pytest.fixture(scope="session", autouse=True)
 async def _purge_test_search_space(search_space_id: int):
-    """Delete stale documents from previous runs before the session starts."""
-    conn = await asyncpg.connect(_ASYNCPG_URL)
-    try:
-        result = await conn.execute(
-            "DELETE FROM documents WHERE search_space_id = $1",
-            search_space_id,
-        )
-        deleted = int(result.split()[-1])
-        if deleted:
-            print(
-                f"\n[purge] Deleted {deleted} stale document(s) "
-                f"from search space {search_space_id}"
+    """Delete stale documents before AND after the session.
+
+    Pre-purge handles leftovers from prior interrupted runs (e.g., the
+    suite was killed mid-test and per-test cleanup didn't fire).
+    Post-purge handles leftovers from THIS session (e.g., a test
+    aborted before its `_cleanup_documents` ran). Together they keep
+    the shared DB clean for the next run.
+    """
+    async def _purge(label: str) -> None:
+        conn = await asyncpg.connect(_ASYNCPG_URL)
+        try:
+            result = await conn.execute(
+                "DELETE FROM documents WHERE search_space_id = $1",
+                search_space_id,
             )
-    finally:
-        await conn.close()
+            deleted = int(result.split()[-1])
+            if deleted:
+                print(
+                    f"\n[purge:{label}] Deleted {deleted} stale document(s) "
+                    f"from search space {search_space_id}"
+                )
+        finally:
+            await conn.close()
+
+    await _purge("pre")
     yield
+    await _purge("post")
 
 
 @pytest.fixture(autouse=True)
@@ -272,7 +283,8 @@ async def _set_user_page_limits(
 async def page_limits():
     """Manipulate the test user's page limits (direct DB for setup only).
 
-    Automatically restores original values after each test.
+    Restores original values even if the test raises / is cancelled
+    (explicit try/finally wraps the yield).
     """
 
     class _PageLimits:
@@ -282,10 +294,12 @@ async def page_limits():
             )
 
     original = await _get_user_page_usage(TEST_EMAIL)
-    yield _PageLimits()
-    await _set_user_page_limits(
-        TEST_EMAIL, pages_used=original[0], pages_limit=original[1]
-    )
+    try:
+        yield _PageLimits()
+    finally:
+        await _set_user_page_limits(
+            TEST_EMAIL, pages_used=original[0], pages_limit=original[1]
+        )
 
 
 # ---------------------------------------------------------------------------
