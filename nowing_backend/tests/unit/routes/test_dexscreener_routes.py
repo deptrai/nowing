@@ -132,33 +132,20 @@ class TestDexScreenerRoutes:
         assert data["tokens_count"] == 2
         assert data["connector_id"] == 1
 
-    def test_add_connector_invalid_tokens_missing_address(self, client_with_overrides):
-        """Test connector addition with missing address field."""
-        request_data = {
-            "tokens": [{"chain": "ethereum"}],  # Missing address
-            "space_id": 1,
-        }
-
+    @pytest.mark.parametrize(
+        "request_data",
+        [
+            {"tokens": [{"chain": "ethereum"}], "space_id": 1},
+            {"tokens": [{"address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"}], "space_id": 1},
+        ],
+        ids=["missing_address", "missing_chain"],
+    )
+    def test_add_connector_invalid_token_fields(self, client_with_overrides, request_data):
+        """Test connector addition with missing required token fields."""
         response = client_with_overrides.post(
             "/api/v1/connectors/dexscreener/add", json=request_data
         )
-
-        assert response.status_code == 422  # Validation error
-
-    def test_add_connector_invalid_tokens_missing_chain(self, client_with_overrides):
-        """Test connector addition with missing chain field."""
-        request_data = {
-            "tokens": [
-                {"address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"}
-            ],  # Missing chain
-            "space_id": 1,
-        }
-
-        response = client_with_overrides.post(
-            "/api/v1/connectors/dexscreener/add", json=request_data
-        )
-
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
     def test_add_connector_empty_tokens_list(self, client_with_overrides):
         """Test connector addition with empty tokens list."""

@@ -148,44 +148,29 @@ def test_build_book_to_shelf_map_empty_shelves(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_get_all_pages_no_exclusion_returns_all(monkeypatch):
-    """get_all_pages with excluded_shelf_ids=[] (or None) returns every page."""
+@pytest.mark.parametrize(
+    "excluded_shelf_ids,pages",
+    [
+        ([], [{"id": 1, "book_id": 10}, {"id": 2, "book_id": 20}, {"id": 3, "book_id": 30}]),
+        (None, [{"id": 1, "book_id": 10}]),
+    ],
+    ids=["empty_list", "none_default"],
+)
+def test_get_all_pages_no_exclusion_returns_all(monkeypatch, excluded_shelf_ids, pages):
+    """get_all_pages with excluded_shelf_ids=[] or None returns every page without calling build_map."""
     conn = _make_connector()
-
-    pages = [
-        {"id": 1, "book_id": 10},
-        {"id": 2, "book_id": 20},
-        {"id": 3, "book_id": 30},
-    ]
     monkeypatch.setattr(
         conn,
         "make_api_request",
-        MagicMock(return_value={"data": pages, "total": 3}),
+        MagicMock(return_value={"data": pages, "total": len(pages)}),
     )
     build_map_mock = MagicMock()
     monkeypatch.setattr(conn, "build_book_to_shelf_map", build_map_mock)
 
-    result = conn.get_all_pages(excluded_shelf_ids=[])
-
-    assert result == pages
-    # build_book_to_shelf_map must NOT be called when exclusion list is empty
-    build_map_mock.assert_not_called()
-
-
-def test_get_all_pages_none_exclusion_returns_all(monkeypatch):
-    """get_all_pages with excluded_shelf_ids=None returns every page (default)."""
-    conn = _make_connector()
-
-    pages = [{"id": 1, "book_id": 10}]
-    monkeypatch.setattr(
-        conn,
-        "make_api_request",
-        MagicMock(return_value={"data": pages, "total": 1}),
-    )
-    build_map_mock = MagicMock()
-    monkeypatch.setattr(conn, "build_book_to_shelf_map", build_map_mock)
-
-    result = conn.get_all_pages()
+    if excluded_shelf_ids is None:
+        result = conn.get_all_pages()
+    else:
+        result = conn.get_all_pages(excluded_shelf_ids=excluded_shelf_ids)
 
     assert result == pages
     build_map_mock.assert_not_called()

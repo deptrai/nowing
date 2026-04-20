@@ -10,58 +10,56 @@ from app.indexing_pipeline.document_hashing import (
 pytestmark = pytest.mark.unit
 
 
-def test_different_unique_id_produces_different_hash(make_connector_document):
-    """Two documents with different unique_ids produce different identifier hashes."""
-    doc_a = make_connector_document(unique_id="id-001")
-    doc_b = make_connector_document(unique_id="id-002")
-    assert compute_unique_identifier_hash(doc_a) != compute_unique_identifier_hash(
-        doc_b
-    )
-
-
-def test_different_search_space_produces_different_identifier_hash(
-    make_connector_document,
+@pytest.mark.parametrize(
+    "kwargs_a,kwargs_b",
+    [
+        ({"unique_id": "id-001"}, {"unique_id": "id-002"}),
+        ({"search_space_id": 1}, {"search_space_id": 2}),
+        (
+            {"document_type": DocumentType.CLICKUP_CONNECTOR},
+            {"document_type": DocumentType.NOTION_CONNECTOR},
+        ),
+    ],
+    ids=["unique_id", "search_space_id", "document_type"],
+)
+def test_different_inputs_produce_different_identifier_hash(
+    make_connector_document, kwargs_a, kwargs_b
 ):
-    """Same document in different search spaces produces different identifier hashes."""
-    doc_a = make_connector_document(search_space_id=1)
-    doc_b = make_connector_document(search_space_id=2)
-    assert compute_unique_identifier_hash(doc_a) != compute_unique_identifier_hash(
-        doc_b
-    )
+    """Changing unique_id, search_space_id, or document_type produces different identifier hashes."""
+    doc_a = make_connector_document(**kwargs_a)
+    doc_b = make_connector_document(**kwargs_b)
+    assert compute_unique_identifier_hash(doc_a) != compute_unique_identifier_hash(doc_b)
 
 
-def test_different_document_type_produces_different_identifier_hash(
-    make_connector_document,
-):
-    """Same unique_id with different document types produces different identifier hashes."""
-    doc_a = make_connector_document(document_type=DocumentType.CLICKUP_CONNECTOR)
-    doc_b = make_connector_document(document_type=DocumentType.NOTION_CONNECTOR)
-    assert compute_unique_identifier_hash(doc_a) != compute_unique_identifier_hash(
-        doc_b
-    )
-
-
-def test_same_content_same_space_produces_same_content_hash(make_connector_document):
-    """Identical content in the same search space always produces the same content hash."""
-    doc_a = make_connector_document(source_markdown="Hello world", search_space_id=1)
-    doc_b = make_connector_document(source_markdown="Hello world", search_space_id=1)
-    assert compute_content_hash(doc_a) == compute_content_hash(doc_b)
-
-
-def test_same_content_different_space_produces_different_content_hash(
-    make_connector_document,
-):
-    """Identical content in different search spaces produces different content hashes."""
-    doc_a = make_connector_document(source_markdown="Hello world", search_space_id=1)
-    doc_b = make_connector_document(source_markdown="Hello world", search_space_id=2)
-    assert compute_content_hash(doc_a) != compute_content_hash(doc_b)
-
-
-def test_different_content_produces_different_content_hash(make_connector_document):
-    """Different source markdown produces different content hashes."""
-    doc_a = make_connector_document(source_markdown="Original content")
-    doc_b = make_connector_document(source_markdown="Updated content")
-    assert compute_content_hash(doc_a) != compute_content_hash(doc_b)
+@pytest.mark.parametrize(
+    "kwargs_a,kwargs_b,equal",
+    [
+        (
+            {"source_markdown": "Hello world", "search_space_id": 1},
+            {"source_markdown": "Hello world", "search_space_id": 1},
+            True,
+        ),
+        (
+            {"source_markdown": "Hello world", "search_space_id": 1},
+            {"source_markdown": "Hello world", "search_space_id": 2},
+            False,
+        ),
+        (
+            {"source_markdown": "Original content"},
+            {"source_markdown": "Updated content"},
+            False,
+        ),
+    ],
+    ids=["same_content_same_space", "same_content_different_space", "different_content"],
+)
+def test_content_hash_equality(make_connector_document, kwargs_a, kwargs_b, equal):
+    """Content hash equality depends on both source_markdown and search_space_id."""
+    doc_a = make_connector_document(**kwargs_a)
+    doc_b = make_connector_document(**kwargs_b)
+    if equal:
+        assert compute_content_hash(doc_a) == compute_content_hash(doc_b)
+    else:
+        assert compute_content_hash(doc_a) != compute_content_hash(doc_b)
 
 
 def test_compute_identifier_hash_matches_connector_doc_hash(make_connector_document):

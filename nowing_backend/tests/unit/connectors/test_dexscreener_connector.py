@@ -13,7 +13,7 @@ class TestDexScreenerConnector:
     def test_init_creates_connector(self):
         """Test that connector initializes correctly."""
         connector = DexScreenerConnector()
-        assert connector.base_url == "https://api.dexscreener.com/latest/dex"
+        assert connector.base_url == "https://api.dexscreener.com"
         assert connector.rate_limit_delay == 0.2
 
     @pytest.mark.asyncio
@@ -90,7 +90,7 @@ class TestDexScreenerConnector:
 
             assert pairs == mock_pair_data["pairs"]
             assert error is None
-            mock_request.assert_called_once_with("tokens/ethereum/0x123")
+            mock_request.assert_called_once_with("token-pairs/v1/ethereum/0x123")
 
     @pytest.mark.asyncio
     async def test_get_token_pairs_no_data(self):

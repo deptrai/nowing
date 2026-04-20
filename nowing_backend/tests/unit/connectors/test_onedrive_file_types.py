@@ -12,29 +12,17 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 
 
-def test_folder_is_skipped():
-    item = {"folder": {}, "name": "My Folder"}
-    skip, ext = should_skip_file(item)
-    assert skip is True
-    assert ext is None
-
-
-def test_remote_item_is_skipped():
-    item = {"remoteItem": {}, "name": "shared.docx"}
-    skip, ext = should_skip_file(item)
-    assert skip is True
-    assert ext is None
-
-
-def test_package_is_skipped():
-    item = {"package": {}, "name": "notebook"}
-    skip, ext = should_skip_file(item)
-    assert skip is True
-    assert ext is None
-
-
-def test_onenote_is_skipped():
-    item = {"name": "notes", "file": {"mimeType": "application/msonenote"}}
+@pytest.mark.parametrize(
+    "item",
+    [
+        {"folder": {}, "name": "My Folder"},
+        {"remoteItem": {}, "name": "shared.docx"},
+        {"package": {}, "name": "notebook"},
+        {"name": "notes", "file": {"mimeType": "application/msonenote"}},
+    ],
+    ids=["folder", "remote_item", "package", "onenote"],
+)
+def test_item_is_skipped(item):
     skip, ext = should_skip_file(item)
     assert skip is True
     assert ext is None
@@ -54,6 +42,7 @@ def test_onenote_is_skipped():
         "font.woff2",
         "model.blend",
     ],
+    ids=["exe", "zip", "mov", "woff2", "blend"],
 )
 def test_unsupported_extensions_are_skipped(filename, mocker):
     mocker.patch("app.config.config.ETL_SERVICE", "DOCLING")
@@ -75,6 +64,7 @@ def test_unsupported_extensions_are_skipped(filename, mocker):
         "photo.png",
         "notes.md",
     ],
+    ids=["pdf", "docx", "xlsx", "pptx", "txt", "csv", "png", "md"],
 )
 def test_universal_files_are_not_skipped(filename, mocker):
     for service in ("DOCLING", "LLAMACLOUD", "UNSTRUCTURED"):
@@ -94,6 +84,11 @@ def test_universal_files_are_not_skipped(filename, mocker):
         ("mail.eml", "UNSTRUCTURED", False),
         ("photo.heic", "UNSTRUCTURED", False),
         ("photo.heic", "DOCLING", True),
+    ],
+    ids=[
+        "docm_docling", "docm_llamacloud",
+        "eml_docling", "eml_unstructured",
+        "heic_unstructured", "heic_docling",
     ],
 )
 def test_parser_specific_extensions(filename, service, expected_skip, mocker):

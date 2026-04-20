@@ -14,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from freezegun import freeze_time
 from google.oauth2.credentials import Credentials
 
 pytestmark = pytest.mark.unit
@@ -46,6 +47,7 @@ def _composio_credentials(*, expired: bool = False) -> Credentials:
 # ---------------------------------------------------------------------------
 
 
+@freeze_time("2025-01-15T12:00:00Z")
 @patch("app.connectors.google_gmail_connector.build")
 async def test_gmail_accepts_valid_composio_credentials(mock_build):
     """GoogleGmailConnector.get_user_profile succeeds with Composio credentials
@@ -76,6 +78,7 @@ async def test_gmail_accepts_valid_composio_credentials(mock_build):
     mock_build.assert_called_once_with("gmail", "v1", credentials=creds)
 
 
+@freeze_time("2025-01-15T12:00:00Z")
 @patch("app.connectors.google_gmail_connector.Request")
 @patch("app.connectors.google_gmail_connector.build")
 async def test_gmail_refreshes_expired_composio_credentials(
@@ -119,6 +122,7 @@ async def test_gmail_refreshes_expired_composio_credentials(
 # ---------------------------------------------------------------------------
 
 
+@freeze_time("2025-01-15T12:00:00Z")
 @patch("app.connectors.google_calendar_connector.build")
 async def test_calendar_accepts_valid_composio_credentials(mock_build):
     """GoogleCalendarConnector.get_calendars succeeds with Composio credentials
@@ -147,6 +151,7 @@ async def test_calendar_accepts_valid_composio_credentials(mock_build):
     mock_build.assert_called_once_with("calendar", "v3", credentials=creds)
 
 
+@freeze_time("2025-01-15T12:00:00Z")
 @patch("app.connectors.google_calendar_connector.Request")
 @patch("app.connectors.google_calendar_connector.build")
 async def test_calendar_refreshes_expired_composio_credentials(
@@ -187,6 +192,7 @@ async def test_calendar_refreshes_expired_composio_credentials(
 # ---------------------------------------------------------------------------
 
 
+@freeze_time("2025-01-15T12:00:00Z")
 @patch("app.connectors.google_drive.client.build")
 async def test_drive_client_uses_prebuilt_composio_credentials(mock_build):
     """GoogleDriveClient with pre-built Composio credentials uses them directly,
@@ -215,6 +221,7 @@ async def test_drive_client_uses_prebuilt_composio_credentials(mock_build):
     mock_build.assert_called_once_with("drive", "v3", credentials=creds)
 
 
+@freeze_time("2025-01-15T12:00:00Z")
 @patch("app.connectors.google_drive.client.get_valid_credentials")
 @patch("app.connectors.google_drive.client.build")
 async def test_drive_client_prebuilt_creds_skip_db_loading(mock_build, mock_get_valid):

@@ -7,10 +7,9 @@ from pathlib import Path
 
 import httpx
 
-FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
+from tests.constants import TEST_EMAIL, TEST_PASSWORD  # noqa: F401 — re-exported for back-compat
 
-TEST_EMAIL = "testuser@nowing.com"
-TEST_PASSWORD = "testpassword123"
+FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 
 
 async def get_auth_token(client: httpx.AsyncClient) -> str:

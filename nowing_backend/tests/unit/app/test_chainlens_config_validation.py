@@ -88,26 +88,23 @@ def test_enabled_full_config_logs_enabled():
     assert not any(r.levelname == "WARNING" for r in records)
 
 
-def test_enabled_missing_api_key_logs_warning():
-    """AC #3: ENABLED=true + missing KEY → WARNING mentioning CHAINLENS_RESEARCH_API_KEY."""
-    cfg = _make_config(enabled=True, url="https://api.example.com", key="")
+@pytest.mark.parametrize(
+    "cfg_kwargs,expected_var",
+    [
+        ({"url": "https://api.example.com", "key": ""}, "CHAINLENS_RESEARCH_API_KEY"),
+        ({"url": "", "key": "test-key-abc"}, "CHAINLENS_RESEARCH_API_URL"),
+    ],
+    ids=["missing_key", "missing_url"],
+)
+def test_enabled_single_missing_var_logs_warning(cfg_kwargs, expected_var):
+    """AC #3/#4: ENABLED=true + one missing var → WARNING mentioning that var's name."""
+    cfg = _make_config(enabled=True, **cfg_kwargs)
     records = _run_with_config(cfg)
 
     assert any(r.levelname == "WARNING" for r in records), \
         f"Expected WARNING — got levels: {[r.levelname for r in records]}"
-    assert any("CHAINLENS_RESEARCH_API_KEY" in r.getMessage() for r in records), \
-        f"Expected API_KEY mention in warning — got: {[r.getMessage() for r in records]}"
-
-
-def test_enabled_missing_api_url_logs_warning():
-    """AC #4: ENABLED=true + missing URL → WARNING mentioning CHAINLENS_RESEARCH_API_URL."""
-    cfg = _make_config(enabled=True, url="", key="test-key-abc")
-    records = _run_with_config(cfg)
-
-    assert any(r.levelname == "WARNING" for r in records), \
-        f"Expected WARNING — got levels: {[r.levelname for r in records]}"
-    assert any("CHAINLENS_RESEARCH_API_URL" in r.getMessage() for r in records), \
-        f"Expected API_URL mention in warning — got: {[r.getMessage() for r in records]}"
+    assert any(expected_var in r.getMessage() for r in records), \
+        f"Expected {expected_var} mention in warning — got: {[r.getMessage() for r in records]}"
 
 
 def test_disabled_with_missing_key_url_no_warning():
@@ -122,27 +119,22 @@ def test_disabled_with_missing_key_url_no_warning():
     assert not any(r.levelname == "WARNING" for r in records)
 
 
-def test_enabled_whitespace_only_url_treated_as_missing():
-    """Edge case: whitespace-only URL must be treated as missing (not 'ENABLED').
-
-    Without `.strip()` guard, a value like '   ' is truthy → validator logs
-    'ENABLED — URL=   , TTL=30s' and runtime crashes with httpx.InvalidURL.
-    """
-    cfg = _make_config(enabled=True, url="   \n\t  ", key="real-key")
+@pytest.mark.parametrize(
+    "cfg_kwargs,expected_var",
+    [
+        ({"url": "   \n\t  ", "key": "real-key"}, "CHAINLENS_RESEARCH_API_URL"),
+        ({"url": "https://api.example.com", "key": "   "}, "CHAINLENS_RESEARCH_API_KEY"),
+    ],
+    ids=["whitespace_url", "whitespace_key"],
+)
+def test_enabled_whitespace_only_var_treated_as_missing(cfg_kwargs, expected_var):
+    """Edge case: whitespace-only URL or KEY must be treated as missing (not 'ENABLED')."""
+    cfg = _make_config(enabled=True, **cfg_kwargs)
     records = _run_with_config(cfg)
 
     assert any(r.levelname == "WARNING" for r in records), \
-        "Whitespace-only URL must trigger missing-var warning"
-    assert any("CHAINLENS_RESEARCH_API_URL" in r.getMessage() for r in records)
-
-
-def test_enabled_whitespace_only_key_treated_as_missing():
-    """Edge case: whitespace-only API key treated as missing."""
-    cfg = _make_config(enabled=True, url="https://api.example.com", key="   ")
-    records = _run_with_config(cfg)
-
-    assert any(r.levelname == "WARNING" for r in records)
-    assert any("CHAINLENS_RESEARCH_API_KEY" in r.getMessage() for r in records)
+        f"Whitespace-only {expected_var} must trigger missing-var warning"
+    assert any(expected_var in r.getMessage() for r in records)
 
 
 def test_enabled_missing_both_key_and_url_single_consolidated_warning():

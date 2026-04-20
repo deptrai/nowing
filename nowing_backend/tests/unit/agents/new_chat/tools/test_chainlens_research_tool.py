@@ -142,6 +142,7 @@ async def test_research_exception_logs_warning(tool, caplog):
     """AC#2: ChainlensUnavailableError → logs warning (not error)."""
     import logging
 
+    caplog.clear()
     with patch(
         "app.agents.new_chat.tools.chainlens_research.ChainlensResearchService"
     ) as mock_svc, patch(

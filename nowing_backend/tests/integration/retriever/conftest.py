@@ -7,6 +7,10 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest_asyncio
+
+# Deterministic time anchor — replaces datetime.now(UTC) so date-filter tests
+# are reproducible regardless of when they run.
+_ANCHOR_NOW = datetime(2026, 1, 1, tzinfo=UTC)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config as app_config
@@ -43,7 +47,7 @@ def _make_document(
         search_space_id=search_space_id,
         created_by_id=created_by_id,
         embedding=DUMMY_EMBEDDING,
-        updated_at=updated_at or datetime.now(UTC),
+        updated_at=updated_at or _ANCHOR_NOW,
         status={"state": "ready"},
     )
 
@@ -122,7 +126,7 @@ async def seed_date_filtered_docs(
     """Insert matching docs with different timestamps for date-filter tests."""
     user_id = str(db_user.id)
     space_id = db_search_space.id
-    now = datetime.now(UTC)
+    now = _ANCHOR_NOW
 
     recent_doc = _make_document(
         title="Recent OCV Notes",

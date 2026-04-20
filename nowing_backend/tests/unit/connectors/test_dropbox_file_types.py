@@ -12,8 +12,15 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 
 
-def test_folder_item_is_skipped():
-    item = {".tag": "folder", "name": "My Folder"}
+@pytest.mark.parametrize(
+    "item",
+    [
+        {".tag": "folder", "name": "My Folder"},
+        {".tag": "file", "name": "locked.gdoc", "is_downloadable": False},
+    ],
+    ids=["folder", "non_downloadable"],
+)
+def test_item_is_skipped(item):
     skip, ext = should_skip_file(item)
     assert skip is True
     assert ext is None
@@ -23,13 +30,6 @@ def test_paper_file_is_not_skipped():
     item = {".tag": "file", "name": "notes.paper", "is_downloadable": False}
     skip, ext = should_skip_file(item)
     assert skip is False
-    assert ext is None
-
-
-def test_non_downloadable_item_is_skipped():
-    item = {".tag": "file", "name": "locked.gdoc", "is_downloadable": False}
-    skip, ext = should_skip_file(item)
-    assert skip is True
     assert ext is None
 
 
@@ -76,6 +76,16 @@ def test_non_downloadable_item_is_skipped():
         "data.sqlite",
         "access.mdb",
     ],
+    ids=[
+        "zip", "tar", "gz", "rar", "7z",
+        "exe", "dll", "so", "dmg", "iso",
+        "mov", "avi", "mkv", "wmv", "flv",
+        "ico", "cr2", "nef", "arw", "dng",
+        "psd", "ai", "sketch", "fig",
+        "ttf", "otf", "woff", "woff2",
+        "stl", "fbx", "blend",
+        "db", "sqlite", "mdb",
+    ],
 )
 def test_non_parseable_extensions_are_skipped(filename, mocker):
     mocker.patch("app.config.config.ETL_SERVICE", "DOCLING")
@@ -99,6 +109,7 @@ def test_non_parseable_extensions_are_skipped(filename, mocker):
         "config.json",
         "feed.xml",
     ],
+    ids=["pdf", "docx", "xlsx", "pptx", "txt", "csv", "html", "md", "json", "xml"],
 )
 def test_parseable_documents_are_not_skipped(filename, mocker):
     """Files in plaintext/direct_convert/universal document sets are never skipped."""
@@ -113,6 +124,7 @@ def test_parseable_documents_are_not_skipped(filename, mocker):
 @pytest.mark.parametrize(
     "filename",
     ["photo.jpg", "image.jpeg", "screenshot.png", "scan.bmp", "page.tiff", "doc.tif"],
+    ids=["jpg", "jpeg", "png", "bmp", "tiff", "tif"],
 )
 def test_universal_images_are_not_skipped(filename, mocker):
     """Images supported by all parsers are never skipped."""
@@ -149,6 +161,17 @@ def test_universal_images_are_not_skipped(filename, mocker):
         ("macro.docm", "LLAMACLOUD", False),
         ("mail.eml", "DOCLING", True),
         ("mail.eml", "UNSTRUCTURED", False),
+    ],
+    ids=[
+        "doc_docling", "doc_llamacloud", "doc_unstructured",
+        "xls_docling", "xls_llamacloud", "xls_unstructured",
+        "ppt_docling", "ppt_llamacloud", "ppt_unstructured",
+        "svg_docling", "svg_llamacloud",
+        "gif_docling", "gif_llamacloud",
+        "webp_docling", "webp_llamacloud", "webp_unstructured",
+        "heic_docling", "heic_unstructured",
+        "docm_docling", "docm_llamacloud",
+        "eml_docling", "eml_unstructured",
     ],
 )
 def test_parser_specific_extensions(filename, service, expected_skip, mocker):

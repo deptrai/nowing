@@ -32,20 +32,19 @@ class _Recorder:
 # ---------------------------------------------------------------------------
 
 
-def test_validate_memory_scope_rejects_pref_marker_in_team_scope() -> None:
-    content = "- (2026-04-10) [pref] Prefers dark mode\n"
+@pytest.mark.parametrize(
+    "content,expected_marker",
+    [
+        ("- (2026-04-10) [pref] Prefers dark mode\n", "[pref]"),
+        ("- (2026-04-10) [instr] Always respond in Spanish\n", "[instr]"),
+    ],
+    ids=["pref_marker", "instr_marker"],
+)
+def test_validate_memory_scope_rejects_personal_marker_in_team_scope(content: str, expected_marker: str) -> None:
     result = _validate_memory_scope(content, "team")
     assert result is not None
     assert result["status"] == "error"
-    assert "[pref]" in result["message"]
-
-
-def test_validate_memory_scope_rejects_instr_marker_in_team_scope() -> None:
-    content = "- (2026-04-10) [instr] Always respond in Spanish\n"
-    result = _validate_memory_scope(content, "team")
-    assert result is not None
-    assert result["status"] == "error"
-    assert "[instr]" in result["message"]
+    assert expected_marker in result["message"]
 
 
 def test_validate_memory_scope_rejects_both_personal_markers_in_team() -> None:
@@ -76,15 +75,16 @@ def test_validate_memory_scope_allows_all_markers_in_user_scope() -> None:
     assert result is None
 
 
-def test_validate_memory_scope_allows_any_heading_in_team() -> None:
-    content = "## Architecture\n- (2026-04-10) [fact] Uses PostgreSQL for persistence\n"
-    result = _validate_memory_scope(content, "team")
-    assert result is None
-
-
-def test_validate_memory_scope_allows_any_heading_in_user() -> None:
-    content = "## My Projects\n- (2026-04-10) [fact] Working on Nowing\n"
-    result = _validate_memory_scope(content, "user")
+@pytest.mark.parametrize(
+    "content,scope",
+    [
+        ("## Architecture\n- (2026-04-10) [fact] Uses PostgreSQL for persistence\n", "team"),
+        ("## My Projects\n- (2026-04-10) [fact] Working on Nowing\n", "user"),
+    ],
+    ids=["team_scope", "user_scope"],
+)
+def test_validate_memory_scope_allows_any_heading(content: str, scope: str) -> None:
+    result = _validate_memory_scope(content, scope)
     assert result is None
 
 
@@ -104,22 +104,16 @@ def test_validate_bullet_format_passes_valid_bullets() -> None:
     assert warnings == []
 
 
-def test_validate_bullet_format_warns_on_missing_marker() -> None:
-    content = "- (2026-04-10) Senior Python developer\n"
-    warnings = _validate_bullet_format(content)
-    assert len(warnings) == 1
-    assert "Malformed bullet" in warnings[0]
-
-
-def test_validate_bullet_format_warns_on_missing_date() -> None:
-    content = "- [fact] Senior Python developer\n"
-    warnings = _validate_bullet_format(content)
-    assert len(warnings) == 1
-    assert "Malformed bullet" in warnings[0]
-
-
-def test_validate_bullet_format_warns_on_unknown_marker() -> None:
-    content = "- (2026-04-10) [context] Working on project X\n"
+@pytest.mark.parametrize(
+    "content",
+    [
+        "- (2026-04-10) Senior Python developer\n",
+        "- [fact] Senior Python developer\n",
+        "- (2026-04-10) [context] Working on project X\n",
+    ],
+    ids=["missing_marker", "missing_date", "unknown_marker"],
+)
+def test_validate_bullet_format_warns_on_malformed_bullet(content: str) -> None:
     warnings = _validate_bullet_format(content)
     assert len(warnings) == 1
     assert "Malformed bullet" in warnings[0]

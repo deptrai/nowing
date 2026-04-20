@@ -1,17 +1,16 @@
-"""Tests for page limit enforcement in connector indexers.
+"""Tests for page-limit quota gating in connector indexers.
 
-Covers:
-  A) PageLimitService.estimate_pages_from_metadata — pure function (no mocks)
-  B) Page-limit quota gating in _index_selected_files tested through the
-     real PageLimitService with a mock DB session (system boundary).
-     Google Drive is the primary, with OneDrive/Dropbox smoke tests.
+Pure-function tests for PageLimitService.estimate_pages_from_metadata
+are in test_page_limit_estimation.py.
+
+Covers quota gating via _index_selected_files through the real
+PageLimitService with a mock DB session. Google Drive is primary;
+OneDrive/Dropbox are smoke tests.
 """
 
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-from app.services.page_limit_service import PageLimitService
 
 pytestmark = pytest.mark.unit
 
@@ -21,70 +20,7 @@ _SEARCH_SPACE_ID = 1
 
 
 # ===================================================================
-# A) PageLimitService.estimate_pages_from_metadata — pure function
-#    No mocks: it's a staticmethod with no I/O.
-# ===================================================================
-
-
-class TestEstimatePagesFromMetadata:
-    """Vertical slices for the page estimation staticmethod."""
-
-    def test_pdf_100kb_returns_1(self):
-        assert PageLimitService.estimate_pages_from_metadata(".pdf", 100 * 1024) == 1
-
-    def test_pdf_500kb_returns_5(self):
-        assert PageLimitService.estimate_pages_from_metadata(".pdf", 500 * 1024) == 5
-
-    def test_pdf_1mb(self):
-        assert PageLimitService.estimate_pages_from_metadata(".pdf", 1024 * 1024) == 10
-
-    def test_docx_50kb_returns_1(self):
-        assert PageLimitService.estimate_pages_from_metadata(".docx", 50 * 1024) == 1
-
-    def test_docx_200kb(self):
-        assert PageLimitService.estimate_pages_from_metadata(".docx", 200 * 1024) == 4
-
-    def test_pptx_uses_200kb_per_page(self):
-        assert PageLimitService.estimate_pages_from_metadata(".pptx", 600 * 1024) == 3
-
-    def test_xlsx_uses_100kb_per_page(self):
-        assert PageLimitService.estimate_pages_from_metadata(".xlsx", 300 * 1024) == 3
-
-    def test_txt_uses_3000_bytes_per_page(self):
-        assert PageLimitService.estimate_pages_from_metadata(".txt", 9000) == 3
-
-    def test_image_always_returns_1(self):
-        for ext in (".jpg", ".png", ".gif", ".webp"):
-            assert PageLimitService.estimate_pages_from_metadata(ext, 5_000_000) == 1
-
-    def test_audio_uses_1mb_per_page(self):
-        assert (
-            PageLimitService.estimate_pages_from_metadata(".mp3", 3 * 1024 * 1024) == 3
-        )
-
-    def test_video_uses_5mb_per_page(self):
-        assert (
-            PageLimitService.estimate_pages_from_metadata(".mp4", 15 * 1024 * 1024) == 3
-        )
-
-    def test_unknown_ext_uses_80kb_per_page(self):
-        assert PageLimitService.estimate_pages_from_metadata(".xyz", 160 * 1024) == 2
-
-    def test_zero_size_returns_1(self):
-        assert PageLimitService.estimate_pages_from_metadata(".pdf", 0) == 1
-
-    def test_negative_size_returns_1(self):
-        assert PageLimitService.estimate_pages_from_metadata(".pdf", -500) == 1
-
-    def test_minimum_is_always_1(self):
-        assert PageLimitService.estimate_pages_from_metadata(".pdf", 50) == 1
-
-    def test_epub_uses_50kb_per_page(self):
-        assert PageLimitService.estimate_pages_from_metadata(".epub", 250 * 1024) == 5
-
-
-# ===================================================================
-# B) Page-limit enforcement in connector indexers
+# Page-limit enforcement in connector indexers
 #    System boundary mocked: DB session (for PageLimitService)
 #    System boundary mocked: external API clients, download/ETL
 #    NOT mocked: PageLimitService itself (our own code)

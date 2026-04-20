@@ -38,24 +38,17 @@ def test_omitting_created_by_id_raises():
         )
 
 
-def test_empty_source_markdown_raises():
-    """Empty source_markdown raises a validation error."""
+@pytest.mark.parametrize(
+    "source_markdown",
+    ["", "   \n\t  "],
+    ids=["empty", "whitespace_only"],
+)
+def test_blank_source_markdown_raises(source_markdown):
+    """Empty or whitespace-only source_markdown raises a validation error."""
     with pytest.raises(ValidationError):
         ConnectorDocument(
             title="Task",
-            source_markdown="",
-            unique_id="task-1",
-            document_type=DocumentType.CLICKUP_CONNECTOR,
-            search_space_id=1,
-        )
-
-
-def test_whitespace_only_source_markdown_raises():
-    """Whitespace-only source_markdown raises a validation error."""
-    with pytest.raises(ValidationError):
-        ConnectorDocument(
-            title="Task",
-            source_markdown="   \n\t  ",
+            source_markdown=source_markdown,
             unique_id="task-1",
             document_type=DocumentType.CLICKUP_CONNECTOR,
             search_space_id=1,

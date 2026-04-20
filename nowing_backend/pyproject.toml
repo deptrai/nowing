@@ -76,6 +76,7 @@ dependencies = [
     "azure-ai-documentintelligence>=1.0.2",
     "litellm>=1.83.0",
     "langchain-litellm>=0.6.4",
+    "freezegun>=1.5.5",
 ]
 
 [dependency-groups]
@@ -185,7 +186,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --strict-markers -ra --durations=20"
+addopts = "-v --tb=short --strict-markers -ra --durations=20 -n auto"
 markers = [
     "unit: pure logic tests, no DB or external services",
     "integration: tests that require a real PostgreSQL database",

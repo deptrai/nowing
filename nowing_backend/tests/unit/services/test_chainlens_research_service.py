@@ -55,22 +55,17 @@ def _patch_config(**kwargs):
 
 
 @pytest.mark.asyncio
-async def test_is_available_returns_false_when_flag_disabled():
-    """AC#1: CHAINLENS_RESEARCH_ENABLED=False → return False, no network call."""
-    patcher, _ = _patch_config(CHAINLENS_RESEARCH_ENABLED=False)
-    try:
-        with patch("httpx.AsyncClient") as mock_client:
-            result = await ChainlensResearchService.is_available()
-        assert result is False
-        mock_client.assert_not_called()
-    finally:
-        patcher.stop()
-
-
-@pytest.mark.asyncio
-async def test_is_available_returns_false_when_url_empty():
-    """AC#1: URL empty → return False, no network call."""
-    patcher, _ = _patch_config(CHAINLENS_RESEARCH_API_URL="")
+@pytest.mark.parametrize(
+    "config_override",
+    [
+        {"CHAINLENS_RESEARCH_ENABLED": False},
+        {"CHAINLENS_RESEARCH_API_URL": ""},
+    ],
+    ids=["flag_disabled", "url_empty"],
+)
+async def test_is_available_returns_false_without_network(config_override):
+    """AC#1: disabled flag or empty URL → return False without making any network call."""
+    patcher, _ = _patch_config(**config_override)
     try:
         with patch("httpx.AsyncClient") as mock_client:
             result = await ChainlensResearchService.is_available()

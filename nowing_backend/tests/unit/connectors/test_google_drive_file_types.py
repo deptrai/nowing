@@ -16,6 +16,7 @@ pytestmark = pytest.mark.unit
         "font.woff2",
         "model.blend",
     ],
+    ids=["exe", "zip", "mov", "woff2", "blend"],
 )
 def test_unsupported_extensions_are_skipped_regardless_of_service(filename, mocker):
     """Truly unsupported files are skipped no matter which ETL service is configured."""
@@ -37,6 +38,7 @@ def test_unsupported_extensions_are_skipped_regardless_of_service(filename, mock
         "photo.png",
         "notes.md",
     ],
+    ids=["pdf", "docx", "xlsx", "pptx", "txt", "csv", "png", "md"],
 )
 def test_universal_extensions_are_not_skipped(filename, mocker):
     """Files supported by all parsers (or handled by plaintext/direct_convert) are never skipped."""
@@ -58,6 +60,12 @@ def test_universal_extensions_are_not_skipped(filename, mocker):
         ("photo.gif", "LLAMACLOUD", False),
         ("photo.heic", "UNSTRUCTURED", False),
         ("photo.heic", "DOCLING", True),
+    ],
+    ids=[
+        "docm_docling", "docm_llamacloud",
+        "eml_docling", "eml_unstructured",
+        "gif_docling", "gif_llamacloud",
+        "heic_unstructured", "heic_docling",
     ],
 )
 def test_parser_specific_extensions(filename, service, expected_skip, mocker):

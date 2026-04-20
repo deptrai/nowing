@@ -65,7 +65,7 @@ jobs:
       - name: Run unit tests
         if: steps.backend-changes.outputs.backend == 'true'
         working-directory: nowing_backend
-        run: uv run pytest -m unit
+        run: uv run pytest -m unit -n auto
 
   integration-tests:
     name: Integration Tests

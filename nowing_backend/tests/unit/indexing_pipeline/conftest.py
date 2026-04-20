@@ -2,6 +2,36 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.db import DocumentType
+from app.indexing_pipeline.connector_document import ConnectorDocument
+
+
+@pytest.fixture
+def make_connector_document():
+    """Factory fixture: returns a callable that builds a ConnectorDocument with sensible defaults."""
+
+    def _factory(
+        *,
+        title: str = "Test Document",
+        source_markdown: str = "# Test content",
+        unique_id: str = "test-unique-id",
+        document_type: DocumentType = DocumentType.FILE,
+        search_space_id: int = 1,
+        created_by_id: str = "user-001",
+        **kwargs,
+    ) -> ConnectorDocument:
+        return ConnectorDocument(
+            title=title,
+            source_markdown=source_markdown,
+            unique_id=unique_id,
+            document_type=document_type,
+            search_space_id=search_space_id,
+            created_by_id=created_by_id,
+            **kwargs,
+        )
+
+    return _factory
+
 
 @pytest.fixture
 def patched_summarizer_chain(monkeypatch):

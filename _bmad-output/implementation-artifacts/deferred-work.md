@@ -140,7 +140,8 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - `test_dropbox_parallel.py` has 120 mock refs in chained fixture — extract to factories
 - Migrate 24+ copy-paste test variants to `@pytest.mark.parametrize`
 - Flesh out `tests/utils/helpers.py` (currently 223 LOC / 7 helpers for a 16k-LOC suite)
-- Central `tests/constants.py` for `TEST_EMAIL`/`TEST_PASSWORD`/route URLs
+- ~~Central `tests/constants.py` for `TEST_EMAIL`/`TEST_PASSWORD`/route URLs~~ — **Closed as false positive**: `TEST_EMAIL`/`TEST_PASSWORD` already centralized in `tests/utils/helpers.py`; all callers import from there.
+- ~~Extract `ss`/`result` inline setup into `@pytest.fixture` in `test_stream_new_chat_chainlens.py`; remove `_make_streaming_service()` helper~~ — **Fixed 2026-04-20**: 16 test functions now receive `ss` and `result` via fixtures; dead helper removed.
 
 ### Isolation (MEDIUM)
 
@@ -148,24 +149,52 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - Session-scoped autouse `_purge_test_search_space` only fires at session start — mid-session failures leave stale rows
 - `page_limits` fixture in `tests/integration/conftest.py:239` mutates user row via raw asyncpg conn, bypassing savepoint
 - Session-scoped `async_engine` shares schema — non-savepoint asyncpg writes can leak
-- `caplog` without `.clear()` between assertions in `test_chainlens_research_tool.py:158`
 
 ### Determinism (MEDIUM — defer pending freezegun adoption)
 
 - 9 `uuid.uuid4()` occurrences in `tests/integration/google_unification/conftest.py` and `tests/integration/retriever/conftest.py` — acceptable for opaque DB PKs, flag for future snapshot tests
-- `datetime.now(UTC)` in `tests/integration/retriever/conftest.py:117` and `test_knowledge_search_date_filters.py:39,53` — 30-day/730-day buffer makes flakes near-impossible, but wall-clock dependency remains
-- `datetime.now(UTC)` comparisons in `test_composio_credentials.py:31,55`
+- ~~`datetime.now(UTC)` in `tests/integration/retriever/conftest.py:117` and `test_knowledge_search_date_filters.py:39,53`~~ — **Fixed 2026-04-20**: Replaced with `_ANCHOR_NOW = datetime(2026, 1, 1, tzinfo=UTC)` fixed constant.
+- ~~`datetime.now(UTC)` comparisons in `test_composio_credentials.py:31,55`~~ — **Closed as already fixed**: File uses `_FROZEN_NOW = datetime(2026, 1, 1, tzinfo=UTC)` static constant; wall-clock never called.
 
 ### Performance (HIGH — dependency addition)
 
-- Add `pytest-xdist>=3.5` to `pyproject.toml` dev dependencies for parallel execution
-- Wire CI config to use `-n auto` for 542-test suite
+- ~~Add `pytest-xdist>=3.5` to `pyproject.toml` dev dependencies for parallel execution~~ — Already present in dev deps.
+- ~~Wire CI config to use `-n auto` for 542-test suite~~ — **Fixed 2026-04-20**: `.github/workflows/backend-tests.yml` unit test step now uses `uv run pytest -m unit -n auto`.
 - Per-test `httpx.AsyncClient` fixture could be session-scoped (minor)
 
 ### Pre-existing test failures to triage (unrelated to review)
 
-18 errors/failures existed before this review pass:
-- `tests/unit/tasks/test_dexscreener_indexer.py` — `sqlite3.OperationalError: unrecognized token: ":"` (fixture setup)
-- `tests/unit/indexing_pipeline/test_index_batch_parallel.py` + `test_migrate_legacy_docs.py` — DB fixture errors
-- `tests/unit/connectors/test_dexscreener_connector.py::test_init_creates_connector` + `::test_get_token_pairs_success` — `base_url` assertion drift vs current code
+~~18 errors/failures existed before this review pass:~~
+- ~~`tests/unit/tasks/test_dexscreener_indexer.py` — `sqlite3.OperationalError: unrecognized token: ":"` (fixture setup)~~ — **Fixed 2026-04-20**: Added `tests/unit/tasks/conftest.py` overriding `async_session` with `AsyncMock` (avoids SQLite + PG-specific DDL incompatibility). 10/10 passed.
+- ~~`tests/unit/indexing_pipeline/test_index_batch_parallel.py` + `test_migrate_legacy_docs.py` — DB fixture errors~~ — **Fixed 2026-04-20**: Added `make_connector_document` factory fixture to `tests/unit/indexing_pipeline/conftest.py`. 38/38 passed.
+- ~~`tests/unit/connectors/test_dexscreener_connector.py::test_init_creates_connector` + `::test_get_token_pairs_success` — `base_url` assertion drift vs current code~~ — **Fixed 2026-04-20**: Updated assertions to match current production values. 10/10 passed.
 
+
+## Applied fixes from test-review follow-up (2026-04-21)
+
+### MAINT — Parametrize copy-paste test variants
+
+- **`test_etl_pipeline_service.py`** — Merged `test_extract_docm_with_docling_raises_unsupported` + `test_extract_eml_with_docling_raises_unsupported` → `test_extract_docling_raises_unsupported_for_parser_incompatible[docm/eml]`
+- **`test_chainlens_config_validation.py`** — Merged `test_enabled_missing_api_key_logs_warning` + `test_enabled_missing_api_url_logs_warning` → `test_enabled_single_missing_var_logs_warning[missing_key/missing_url]`
+- **`test_chainlens_config_validation.py`** — Merged `test_enabled_whitespace_only_url_treated_as_missing` + `test_enabled_whitespace_only_key_treated_as_missing` → `test_enabled_whitespace_only_var_treated_as_missing[whitespace_url/whitespace_key]`
+- **`test_etl_pipeline_service.py`** + **`test_chainlens_config_validation.py`**: 514 unit tests pass, no regressions.
+
+### MAINT — Earlier session (2026-04-20)
+
+- `test_dexscreener_routes.py`: merged 2 validation variants → parametrize `[missing_address/missing_chain]`
+- `test_stream_new_chat_chainlens.py`: merged empty/None query tests → parametrize `[empty_string/none]`
+- `test_bookstack_connector.py`: merged no-exclusion variants → parametrize `[empty_list/none_default]`
+- `test_update_memory_scope.py`: 3 separate merges (pref/instr marker, heading scope, malformed bullet format)
+- `test_file_extensions.py`: deleted 2 redundant single-item tests covered by existing parametrized suite
+- `test_dropbox_file_types.py`: merged folder + non-downloadable → parametrize `[folder/non_downloadable]`
+
+### ISO-LOW1 — `caplog` investigation
+
+- `test_chainlens_research_tool.py:158` — only 1 test uses `caplog`, single assertion block, no `.clear()` needed. **Closed as false positive.**
+
+### ISO remaining (not fixed — architectural complexity)
+
+- ISO-M1: `auth_token` override in `test_stripe_page_purchases.py` — confirmed intentional design for 302-redirect Stripe auth flow
+- ISO-M2: `_purge_test_search_space` session-scoped — per-test cleanup handled by `_cleanup_documents` autouse; session purge is belt-and-suspenders. Risk: mid-session crashes leave stale rows until session end. Acceptable for integration suite.
+- ISO-M3: `page_limits` raw asyncpg bypass — necessary for integration test that mutates actual DB state
+- ISO-M4: session-scoped `async_engine` — architectural, pre-existing

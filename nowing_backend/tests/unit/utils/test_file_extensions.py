@@ -5,18 +5,6 @@ import pytest
 pytestmark = pytest.mark.unit
 
 
-def test_pdf_is_supported_document():
-    from app.utils.file_extensions import is_supported_document_extension
-
-    assert is_supported_document_extension("report.pdf") is True
-
-
-def test_exe_is_not_supported_document():
-    from app.utils.file_extensions import is_supported_document_extension
-
-    assert is_supported_document_extension("malware.exe") is False
-
-
 @pytest.mark.parametrize(
     "filename",
     [

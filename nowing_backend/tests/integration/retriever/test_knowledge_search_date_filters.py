@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import numpy as np
 import pytest
 
 from app.agents.new_chat.middleware.knowledge_search import search_knowledge_base
 
-from .conftest import DUMMY_EMBEDDING
+from .conftest import DUMMY_EMBEDDING, _ANCHOR_NOW
 
 pytestmark = pytest.mark.integration
 
@@ -36,7 +36,7 @@ async def test_search_knowledge_base_applies_date_filters(
     )
 
     space_id = seed_date_filtered_docs["search_space"].id
-    recent_cutoff = datetime.now(UTC) - timedelta(days=30)
+    recent_cutoff = _ANCHOR_NOW - timedelta(days=30)
 
     unfiltered_results = await search_knowledge_base(
         query="ocv meeting decisions",
@@ -50,7 +50,7 @@ async def test_search_knowledge_base_applies_date_filters(
         available_document_types=["FILE"],
         top_k=10,
         start_date=recent_cutoff,
-        end_date=datetime.now(UTC),
+        end_date=_ANCHOR_NOW,
     )
 
     unfiltered_ids = {result["document"]["id"] for result in unfiltered_results}

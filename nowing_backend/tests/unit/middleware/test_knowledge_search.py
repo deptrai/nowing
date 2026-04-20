@@ -27,20 +27,21 @@ class TestResolveSearchTypes:
     def test_returns_none_when_both_empty(self):
         assert _resolve_search_types([], []) is None
 
-    def test_includes_legacy_type_for_google_gmail(self):
-        result = _resolve_search_types(["GOOGLE_GMAIL_CONNECTOR"], None)
-        assert "GOOGLE_GMAIL_CONNECTOR" in result
-        assert "COMPOSIO_GMAIL_CONNECTOR" in result
-
-    def test_includes_legacy_type_for_google_drive(self):
-        result = _resolve_search_types(None, ["GOOGLE_DRIVE_FILE"])
-        assert "GOOGLE_DRIVE_FILE" in result
-        assert "COMPOSIO_GOOGLE_DRIVE_CONNECTOR" in result
-
-    def test_includes_legacy_type_for_google_calendar(self):
-        result = _resolve_search_types(["GOOGLE_CALENDAR_CONNECTOR"], None)
-        assert "GOOGLE_CALENDAR_CONNECTOR" in result
-        assert "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR" in result
+    @pytest.mark.parametrize(
+        "connector_types,document_types,expected_original,expected_legacy",
+        [
+            (["GOOGLE_GMAIL_CONNECTOR"], None, "GOOGLE_GMAIL_CONNECTOR", "COMPOSIO_GMAIL_CONNECTOR"),
+            (None, ["GOOGLE_DRIVE_FILE"], "GOOGLE_DRIVE_FILE", "COMPOSIO_GOOGLE_DRIVE_CONNECTOR"),
+            (["GOOGLE_CALENDAR_CONNECTOR"], None, "GOOGLE_CALENDAR_CONNECTOR", "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR"),
+        ],
+        ids=["gmail_connector", "google_drive_file", "google_calendar_connector"],
+    )
+    def test_includes_legacy_type_for_google_connectors(
+        self, connector_types, document_types, expected_original, expected_legacy
+    ):
+        result = _resolve_search_types(connector_types, document_types)
+        assert expected_original in result
+        assert expected_legacy in result
 
     def test_no_legacy_expansion_for_unrelated_types(self):
         result = _resolve_search_types(["FILE", "NOTE"], None)
