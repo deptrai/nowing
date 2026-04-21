@@ -45,6 +45,15 @@ pytestmark = pytest.mark.unit
         "vector.svg",
         "signature.p7s",
     ],
+    ids=[
+        "pdf", "docx", "doc", "xlsx", "xls", "pptx", "ppt",
+        "docm", "xlsm", "pptm",
+        "png", "jpg", "jpeg", "bmp", "tiff", "tif", "webp", "gif", "heic",
+        "rtf", "epub", "odt", "ods", "odp",
+        "eml", "msg", "hwpx", "hwp",
+        "dot", "dotm", "pot", "potx", "xlsb", "xlw",
+        "svg", "p7s",
+    ],
 )
 def test_document_extensions_are_supported(filename):
     from app.utils.file_extensions import is_supported_document_extension
@@ -66,6 +75,7 @@ def test_document_extensions_are_supported(filename):
         "data.parquet",
         "package.deb",
     ],
+    ids=["exe", "zip", "mov", "woff2", "blend", "xyz", "parquet", "deb"],
 )
 def test_non_document_extensions_are_not_supported(filename):
     from app.utils.file_extensions import is_supported_document_extension
@@ -164,6 +174,7 @@ def test_get_extensions_for_none_returns_union():
         ".heic",
         ".heif",
     ],
+    ids=["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "webp", "svg", "heic", "heif"],
 )
 def test_image_extensions_contains_expected(ext):
     from app.utils.file_extensions import IMAGE_EXTENSIONS

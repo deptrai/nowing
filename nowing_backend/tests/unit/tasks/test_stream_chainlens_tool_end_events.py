@@ -115,16 +115,27 @@ async def test_tool_end_chainlens_success_shows_sources_count(ss, result):
 
 
 # ---------------------------------------------------------------------------
-# on_tool_end — fallback path (no sources / empty message)
+# on_tool_end — fallback path (service unavailable OR timeout)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_tool_end_chainlens_fallback_shows_research_completed(ss, result):
-    """AC#5 + FR25: fallback → title stays 'Deep researching', item 'Research completed'."""
+@pytest.mark.parametrize(
+    "fallback_origin,message",
+    [
+        ("unavailable", "Use generate_report..."),
+        ("timeout", "Use generate_report..."),
+    ],
+    ids=["unavailable", "timeout"],
+)
+async def test_tool_end_chainlens_fallback_shows_research_completed(
+    ss, result, fallback_origin, message
+):
+    """AC#5 + AC#6 + FR25: fallback (unavailable or timeout) → title stays 'Deep researching',
+    item 'Research completed', no vendor/fallback strings emitted to SSE stream."""
     tool_output = {
         "status": "fallback",
         "provider": "nowing",
-        "message": "Use generate_report...",
+        "message": message,
     }
     events = [
         {

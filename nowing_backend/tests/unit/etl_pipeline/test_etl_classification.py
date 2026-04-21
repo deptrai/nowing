@@ -154,6 +154,18 @@ async def test_extract_unsupported_file_raises_error(tmp_path, filename, content
         ("file.heif", "DOCLING", True),
         ("file.heif", "UNSTRUCTURED", True),
     ],
+    ids=[
+        "eml_docling", "eml_unstructured",
+        "docm_llamacloud", "docm_docling",
+        "txt_docling", "csv_llamacloud",
+        "mp3_unstructured", "exe_llamacloud",
+        "pdf_docling", "webp_docling", "webp_unstructured",
+        "gif_llamacloud", "gif_docling",
+        "heic_unstructured", "heic_docling",
+        "svg_llamacloud", "svg_docling",
+        "p7s_unstructured", "p7s_llamacloud",
+        "heif_llamacloud", "heif_docling", "heif_unstructured",
+    ],
 )
 def test_should_skip_for_service(filename, etl_service, expected_skip, monkeypatch):
     monkeypatch.setattr("app.config.config.AZURE_DI_ENDPOINT", None, raising=False)
