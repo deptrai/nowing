@@ -1,7 +1,7 @@
 ---
-stepsCompleted: ['step-01-preflight', 'step-02-generate-pipeline', 'step-03-configure-quality-gates', 'step-04-validate-and-summary']
-lastStep: 'step-04-validate-and-summary'
-lastSaved: '2026-04-21'
+stepsCompleted: ['step-01-preflight', 'step-02-generate-pipeline', 'step-03-configure-quality-gates', 'step-04-validate-and-summary', 'step-01-preflight-e2e', 'step-02-generate-pipeline-e2e', 'step-03-configure-quality-gates-e2e', 'step-04-validate-and-summary-e2e']
+lastStep: 'step-04-validate-and-summary-e2e'
+lastSaved: '2026-04-22'
 ---
 
 # CI/CD Pipeline Progress
@@ -100,10 +100,32 @@ lastSaved: '2026-04-21'
 | Paths filter on `nowing_web/**` | ✅ avoids false triggers |
 | Concurrency cancel-in-progress | ✅ |
 
-### Next Steps for User
+---
 
-1. **Commit & push** `.github/workflows/frontend-tests.yml`
-2. **Open a PR** → triggers lint + test + burn-in
-3. **Monitor** the Actions tab — first run should show 295 pass, ~14s
-4. No secrets required for this workflow (Vitest + pnpm, no external services)
-5. Optional: add coverage badge to `nowing_web/README.md` once first run completes
+## Round 2 — E2E + API CI (2026-04-22)
+
+### Step 1: Preflight ✅
+- Stack: `fullstack` (Playwright + pytest)
+- Gaps: no `e2e-tests.yml`, `backend-tests.yml` missing API layer
+
+### Step 2: Generate Pipeline ✅
+- **Created:** `.github/workflows/e2e-tests.yml`
+  - install → burn-in (PR only, 5 iters) → e2e (2 shards, fail-fast:false) → report
+  - Services: Postgres + backend Docker image
+- **Updated:** `.github/workflows/backend-tests.yml`
+  - Added `api-tests` job: `pytest tests/api/` + Postgres service
+  - `test-gate` now requires unit + integration + api-tests
+
+### Step 3: Quality Gates ✅
+- Burn-in: 5 iterations on changed E2E specs (PR only)
+- Slack notification on failure (`SLACK_WEBHOOK_URL` secret, optional)
+- Required secrets: `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`, `SLACK_WEBHOOK_URL` (opt)
+
+### Step 4: Validate & Summary ✅
+- All validation checks passed (see checklist)
+- Manual start confirmed: `nohup uvicorn` + `nohup pnpm start` (không dùng Docker)
+- Postgres services container retained (infrastructure only)
+- Security: script injection mitigated via `env:` intermediaries
+- Artifacts: 7-day (burn-in) + 14-day (e2e shards)
+- `backend-tests.yml` updated: api-tests job + test-gate updated
+

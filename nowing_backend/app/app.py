@@ -13,6 +13,7 @@ from app.agents.new_chat.checkpointer import (
 from app.config import config, initialize_llm_router
 from app.db import User, create_db_and_tables, get_async_session
 from app.routes import router as crud_router
+from app.routes.auth_routes import router as auth_router
 from app.schemas import UserCreate, UserRead, UserUpdate
 from app.tasks.nowing_docs_indexer import seed_nowing_docs
 from app.users import SECRET, auth_backend, current_active_user, fastapi_users
@@ -157,6 +158,7 @@ app.add_middleware(
 app.include_router(
     fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
 )
+app.include_router(auth_router)
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
