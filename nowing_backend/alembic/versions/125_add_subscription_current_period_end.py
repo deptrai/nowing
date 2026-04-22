@@ -25,10 +25,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "user",
-        sa.Column("subscription_current_period_end", sa.TIMESTAMP(timezone=True), nullable=True),
-    )
+    conn = op.get_bind()
+    conn.execute(sa.text(
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS subscription_current_period_end TIMESTAMP WITH TIME ZONE'
+    ))
 
 
 def downgrade() -> None:

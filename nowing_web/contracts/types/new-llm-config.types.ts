@@ -69,8 +69,24 @@ export const newLLMConfig = z.object({
 
 /**
  * Public version without api_key (for list views)
+ * Matches backend NewLLMConfigPublic: no api_key, search_space_id/user_id nullable
  */
-export const newLLMConfigPublic = newLLMConfig.omit({ api_key: true });
+export const newLLMConfigPublic = z.object({
+	id: z.number(),
+	name: z.string().max(100),
+	description: z.string().max(500).nullable().optional(),
+	provider: liteLLMProviderEnum,
+	custom_provider: z.string().max(100).nullable().optional(),
+	model_name: z.string().max(100),
+	api_base: z.string().max(500).nullable().optional(),
+	litellm_params: z.record(z.string(), z.any()).nullable().optional(),
+	system_instructions: z.string().default(""),
+	use_default_system_instructions: z.boolean().default(true),
+	citations_enabled: z.boolean().default(true),
+	created_at: z.string(),
+	search_space_id: z.number().nullable().optional(),
+	user_id: z.string().nullable().optional(),
+});
 
 /**
  * Create NewLLMConfig
@@ -92,7 +108,7 @@ export const getNewLLMConfigsRequest = z.object({
 	limit: z.number().optional(),
 });
 
-export const getNewLLMConfigsResponse = z.array(newLLMConfig);
+export const getNewLLMConfigsResponse = z.array(newLLMConfigPublic);
 
 /**
  * Get single NewLLMConfig
@@ -237,7 +253,26 @@ export const createImageGenConfigRequest = imageGenerationConfig.omit({
 
 export const createImageGenConfigResponse = imageGenerationConfig;
 
-export const getImageGenConfigsResponse = z.array(imageGenerationConfig);
+/**
+ * Public version without api_key (for list views)
+ * Matches backend ImageGenerationConfigPublic: no api_key, search_space_id/user_id nullable
+ */
+export const imageGenerationConfigPublic = z.object({
+	id: z.number(),
+	name: z.string().max(100),
+	description: z.string().max(500).nullable().optional(),
+	provider: imageGenProviderEnum,
+	custom_provider: z.string().max(100).nullable().optional(),
+	model_name: z.string().max(100),
+	api_base: z.string().max(500).nullable().optional(),
+	api_version: z.string().max(50).nullable().optional(),
+	litellm_params: z.record(z.string(), z.any()).nullable().optional(),
+	created_at: z.string(),
+	search_space_id: z.number().nullable().optional(),
+	user_id: z.string().nullable().optional(),
+});
+
+export const getImageGenConfigsResponse = z.array(imageGenerationConfigPublic);
 
 export const updateImageGenConfigRequest = z.object({
 	id: z.number(),
@@ -321,7 +356,26 @@ export const createVisionLLMConfigRequest = visionLLMConfig.omit({
 
 export const createVisionLLMConfigResponse = visionLLMConfig;
 
-export const getVisionLLMConfigsResponse = z.array(visionLLMConfig);
+/**
+ * Public version without api_key (for list views)
+ * Matches backend VisionLLMConfigPublic: no api_key, search_space_id/user_id nullable
+ */
+export const visionLLMConfigPublic = z.object({
+	id: z.number(),
+	name: z.string().max(100),
+	description: z.string().max(500).nullable().optional(),
+	provider: visionProviderEnum,
+	custom_provider: z.string().max(100).nullable().optional(),
+	model_name: z.string().max(100),
+	api_base: z.string().max(500).nullable().optional(),
+	api_version: z.string().max(50).nullable().optional(),
+	litellm_params: z.record(z.string(), z.any()).nullable().optional(),
+	created_at: z.string(),
+	search_space_id: z.number().nullable().optional(),
+	user_id: z.string().nullable().optional(),
+});
+
+export const getVisionLLMConfigsResponse = z.array(visionLLMConfigPublic);
 
 export const updateVisionLLMConfigRequest = z.object({
 	id: z.number(),
@@ -430,6 +484,7 @@ export type GetDefaultSystemInstructionsResponse = z.infer<
 export type GlobalNewLLMConfig = z.infer<typeof globalNewLLMConfig>;
 export type GetGlobalNewLLMConfigsResponse = z.infer<typeof getGlobalNewLLMConfigsResponse>;
 export type ImageGenerationConfig = z.infer<typeof imageGenerationConfig>;
+export type ImageGenerationConfigPublic = z.infer<typeof imageGenerationConfigPublic>;
 export type CreateImageGenConfigRequest = z.infer<typeof createImageGenConfigRequest>;
 export type CreateImageGenConfigResponse = z.infer<typeof createImageGenConfigResponse>;
 export type GetImageGenConfigsResponse = z.infer<typeof getImageGenConfigsResponse>;
@@ -439,6 +494,7 @@ export type DeleteImageGenConfigResponse = z.infer<typeof deleteImageGenConfigRe
 export type GlobalImageGenConfig = z.infer<typeof globalImageGenConfig>;
 export type GetGlobalImageGenConfigsResponse = z.infer<typeof getGlobalImageGenConfigsResponse>;
 export type VisionLLMConfig = z.infer<typeof visionLLMConfig>;
+export type VisionLLMConfigPublic = z.infer<typeof visionLLMConfigPublic>;
 export type CreateVisionLLMConfigRequest = z.infer<typeof createVisionLLMConfigRequest>;
 export type CreateVisionLLMConfigResponse = z.infer<typeof createVisionLLMConfigResponse>;
 export type GetVisionLLMConfigsResponse = z.infer<typeof getVisionLLMConfigsResponse>;

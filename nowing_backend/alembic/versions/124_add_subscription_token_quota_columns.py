@@ -43,53 +43,54 @@ subscriptionstatus_enum = sa.Enum(
 
 
 def upgrade() -> None:
-    # Drop any pre-existing subscriptionstatus enum (e.g. uppercase version created by
-    # SQLAlchemy's create_all() during early development) so we can create it with
-    # the correct lowercase values. Safe to drop here because no column uses it yet.
     conn = op.get_bind()
+
+    # Drop any pre-existing subscriptionstatus enum created by SQLAlchemy create_all()
     conn.execute(sa.text("DROP TYPE IF EXISTS subscriptionstatus CASCADE"))
-    # Create the PostgreSQL enum type with lowercase values
     subscriptionstatus_enum.create(conn, checkfirst=False)
 
-    op.add_column(
-        "user",
-        sa.Column(
-            "monthly_token_limit", sa.Integer(), nullable=False, server_default="100000"
-        ),
-    )
-    op.add_column(
-        "user",
-        sa.Column(
-            "tokens_used_this_month", sa.Integer(), nullable=False, server_default="0"
-        ),
-    )
-    op.add_column("user", sa.Column("token_reset_date", sa.Date(), nullable=True))
-    op.add_column(
-        "user",
-        sa.Column(
-            "subscription_status",
-            subscriptionstatus_enum,
-            nullable=False,
-            server_default="free",
-        ),
-    )
-    op.add_column(
-        "user",
-        sa.Column("plan_id", sa.String(50), nullable=False, server_default="free"),
-    )
-    op.add_column(
-        "user", sa.Column("stripe_customer_id", sa.String(255), nullable=True)
-    )
-    op.add_column(
-        "user", sa.Column("stripe_subscription_id", sa.String(255), nullable=True)
-    )
+    # Add columns only if they don't already exist (idempotent — handles schema drift)
+    conn.execute(sa.text(
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS monthly_token_limit INTEGER NOT NULL DEFAULT 100000'
+    ))
+    conn.execute(sa.text(
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS tokens_used_this_month INTEGER NOT NULL DEFAULT 0'
+    ))
+    conn.execute(sa.text(
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS token_reset_date DATE'
+    ))
+    conn.execute(sa.text(
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS subscription_status subscriptionstatus NOT NULL DEFAULT \'free\''
+    ))
+    conn.execute(sa.text(
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS plan_id VARCHAR(50) NOT NULL DEFAULT \'free\''
+    ))
+    conn.execute(sa.text(
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255)'
+    ))
+    conn.execute(sa.text(
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255)'
+    ))
 
-    op.create_unique_constraint(
-        "uq_user_stripe_customer_id", "user", ["stripe_customer_id"]
-    )
-    op.create_unique_constraint(
-        "uq_user_stripe_subscription_id", "user", ["stripe_subscription_id"]
-    )
+    # Create unique constraints only if they don't exist
+    conn.execute(sa.text("""
+        DO $$ BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'uq_user_stripe_customer_id'
+            ) THEN
+                ALTER TABLE "user" ADD CONSTRAINT uq_user_stripe_customer_id UNIQUE (stripe_customer_id);
+            END IF;
+        END $$;
+    """))
+    conn.execute(sa.text("""
+        DO $$ BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'uq_user_stripe_subscription_id'
+            ) THEN
+                ALTER TABLE "user" ADD CONSTRAINT uq_user_stripe_subscription_id UNIQUE (stripe_subscription_id);
+            END IF;
+        END $$;
+    """))
 
 
 def downgrade() -> None:

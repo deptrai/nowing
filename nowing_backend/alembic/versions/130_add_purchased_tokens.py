@@ -22,14 +22,13 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "user",
-        sa.Column("purchased_tokens", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "user",
-        sa.Column("fulfilled_topup_sessions", sa.String(), nullable=True),
-    )
+    conn = op.get_bind()
+    conn.execute(sa.text(
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS purchased_tokens INTEGER NOT NULL DEFAULT 0'
+    ))
+    conn.execute(sa.text(
+        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS fulfilled_topup_sessions TEXT'
+    ))
 
 
 def downgrade() -> None:
