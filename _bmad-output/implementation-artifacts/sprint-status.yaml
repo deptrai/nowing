@@ -100,7 +100,7 @@ development_status:
   # ─── EPIC 0: Crypto Foundation (Retroactive — close drift) ───
   epic-0: backlog
   0-1-crypto-tool-infrastructure: in-progress
-  0-2-base-sub-agents: in-progress
+  0-2-base-sub-agents: review
   0-3-main-agent-prompt: ready-for-dev
   0-4-api-integration-tests: ready-for-dev
   0-5-parallel-execution-validation: ready-for-dev
