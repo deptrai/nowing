@@ -36,9 +36,9 @@ author: Mary (Strategic Business Analyst)
 > 1. ✅ Epic 0 Story 0.1 DONE (4 tool files + registry)
 > 2. ✅ Epic 0 Story 0.2 DONE (4 base sub-agent specs + SubAgentMiddleware wiring)
 > 3. ✅ Epic 0 Story 0.3 DONE (main agent orchestration prompt)
-> 4. ✅ Epic 8 (integration testing) DONE (validate foundation works)
+> 4. ✅ Epic 0 testing (0.4-0.6) DONE (validate foundation works)
 >
-> **Timeline estimate**: Epic 0 (~2-3 weeks) → Epic 8 (~1 week) → Story 9.1 start
+> **Timeline estimate**: Epic 0 (~2-3 weeks) → Epic 0 testing 0.4-0.6 (~1 week) → Story 9.1 start
 
 ### Pre-flight Checklist
 
@@ -48,7 +48,7 @@ Trước khi bắt đầu Story 9.1, Dev phải verify:
 - [ ] Epic 0.2 DONE — 4 base specs (`defillama_spec`, `sentiment_spec`, `news_spec`, `smart_contract_spec`) trong `subagents/crypto/`
 - [ ] Epic 0.2 DONE — `chat_deepagent.py` wire 5 sub-agents (general + 4 crypto) trong `SubAgentMiddleware`
 - [ ] Epic 0.3 DONE — main agent system prompt có crypto orchestration section
-- [ ] Epic 8 DONE — 3 testing stories pass (API integration, parallel execution, error handling)
+- [ ] Epic 0 testing (Stories 0.4-0.6) DONE — API integration, parallel execution, error handling
 
 **Nếu BẤT KỲ item nào FAIL** → STOP, không start Story 9.1. Escalate lên Dev Lead để finalize prerequisite chain.
 

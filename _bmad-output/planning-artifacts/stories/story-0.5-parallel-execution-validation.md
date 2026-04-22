@@ -1,8 +1,8 @@
 ---
-storyId: 8.2
+storyId: 0.5
 storyTitle: Parallel Execution Validation
-epicParent: epic-08-crypto-integration-testing
-dependsOn: [Epic 0 DONE, Story 8.1 DONE]
+epicParent: epic-00-crypto-foundation
+dependsOn: [Story 0.1, 0.2, 0.3, 0.4 DONE]
 blocks: [Story 8.3, Epic 9 Phase 1]
 relatedFRs: [FR-T2, FR33 Parallel Orchestration]
 relatedNFRs: [NFR-CS2 Parallel Execution, NFR-Q2 Parallelism Ratio, NFR-Q4 Speed]
@@ -373,7 +373,7 @@ asyncio.run(main())
 
 | Requirement | Source | Fulfilled By |
 |-------------|--------|--------------|
-| FR-T2 Test parallel execution | `epics.md` Epic 8 | AC1, AC2, AC3 |
+| FR-T2 Test parallel execution | `epics.md` Epic 0 | AC1, AC2, AC3 |
 | FR33 Parallel orchestration | `prd.md` | AC1, AC2 |
 | NFR-CS2 Parallel execution (single graph step) | `prd.md` + `epics.md` | AC2, AC3 |
 | NFR-Q2 Parallelism ratio < 1.3x | `prd.md` Quality Gates | AC3, AC4 |

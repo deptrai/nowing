@@ -14,8 +14,8 @@ createdAt: 2026-04-23
 status: draft-ready-for-dev
 predecessorGates:
   - "🆕 Epic 0 (Crypto Foundation) phải hoàn thành TRƯỚC (audit 2026-04-23 phát hiện chưa implement)"
-  - Epic 8 (Integration Testing) phải hoàn thành trước week 1 Phase 1
-estimatedTotalDuration: "Epic 0 (~2-3 weeks) → Epic 8 (~1 week) → Phase 1 (4 weeks) = ~7-8 weeks from kick-off"
+  - Epic 0 Stories 0.4-0.6 (Testing) phải hoàn thành trước week 1 Phase 1
+estimatedTotalDuration: "Epic 0 (~3-4 weeks incl. testing 0.4-0.6) → Phase 1 (4 weeks) = ~7-8 weeks from kick-off"
 qualityGatesPhase1:
   - NFR-Q1 Accuracy < 3%
   - NFR-Q2 Parallelism ratio < 1.3x
@@ -31,7 +31,7 @@ Code audit phát hiện **Epic 0 (Crypto Foundation) chưa thực sự implement
 
 ```
 ┌─────────────────────┐     ┌──────────────────┐     ┌───────────────────┐
-│ Epic 0: Foundation  │ ──> │ Epic 8: Testing  │ ──> │ Phase 1 Epic 9    │
+│ Epic 0: Foundation  │ ──> │ Epic 0 Testing   │ ──> │ Phase 1 Epic 9    │
 │ (~2-3 weeks)        │     │ (~1 week)        │     │ (4 weeks)         │
 │                     │     │                  │     │                   │
 │ • 4 tool files      │     │ • API integration│     │ • Story 9.1       │
@@ -40,7 +40,7 @@ Code audit phát hiện **Epic 0 (Crypto Foundation) chưa thực sự implement
 └─────────────────────┘     └──────────────────┘     └───────────────────┘
 ```
 
-**KHÔNG thể start Phase 1 Week 1 nếu Epic 0 + Epic 8 chưa DONE.** Xem epics.md "Epic 0: Crypto Foundation" cho spec đầy đủ (3 stories: 0.1 Tools, 0.2 Base Sub-Agents, 0.3 Main Prompt).
+**KHÔNG thể start Phase 1 Week 1 nếu Epic 0 (6 stories: 0.1-0.6) chưa DONE. Xem epics.md "Epic 0: Crypto Foundation" cho spec đầy đủ.
 
 ---
 
@@ -61,7 +61,7 @@ Triển khai 2 crypto sub-agents đầu tiên của Crypto Orchestra (Tokenomics
 
 | Day | Task | Owner | Deliverable |
 |-----|------|-------|-------------|
-| Mon | Epic 8 gate check — verify all 3 stories passed | Dev Lead | ✅/❌ go signal |
+| Mon | Epic 0 gate check — verify stories 0.4, 0.5, 0.6 passed | Dev Lead | ✅/❌ go signal |
 | Mon | Kick-off: align team on Phase 1 goals + Quality Gates | All | Sprint board ready |
 | Tue-Wed | **Story 9.1 dev**: `tokenomics_spec.py` + system prompt < 500 tokens | Dev 1 | Spec file + prompt draft |
 | Thu | Wire `tokenomics_analyst` vào `SubAgentMiddleware` trong `chat_deepagent.py` | Dev 1 | Registration code |
@@ -212,7 +212,7 @@ Output format: 🏆 Top picks (3) | 📈 APY | 🛡️ Security | ⚠️ IL Risk
 
 | Risk | Probability | Mitigation |
 |------|-------------|------------|
-| Epic 8 tests chưa pass → Phase 1 delayed | Medium | Epic 8 priority #1 trong week 0. Nếu slip, delay Phase 1 start 1 week |
+| Epic 0 testing (0.4-0.6) chưa pass → Phase 1 delayed | Medium | Stories 0.4-0.6 priority #1 trong week 0. Nếu slip, delay Phase 1 start 1 week |
 | CoinGecko rate limit hit khi QA 50 queries | Medium | Throttle QA script 1 req/2s hoặc dùng cached test fixtures |
 | System prompt > 500 tokens (NFR-CS1 fail) | Low | Buffer room — aim < 450 tokens trong design, iterate |
 | Accuracy < 95% (NFR-Q1 fail) | Medium | 1 week remediation sprint — tighten prompt, add "always cite" instruction |

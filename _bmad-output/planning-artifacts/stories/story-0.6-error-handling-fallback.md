@@ -1,12 +1,12 @@
 ---
-storyId: 8.3
+storyId: 0.6
 storyTitle: Error Handling & Fallback Validation
-epicParent: epic-08-crypto-integration-testing
-dependsOn: [Epic 0 DONE, Story 8.1 DONE, Story 8.2 DONE]
+epicParent: epic-00-crypto-foundation
+dependsOn: [Story 0.1, 0.2, 0.3, 0.4, 0.5 DONE]
 blocks: [Epic 9 Phase 1]
 relatedFRs: [FR-T3, FR35 Graceful Degradation]
 relatedNFRs: [NFR-CS3 API Rate Awareness, NFR-Q3 Graceful Degradation > 98%]
-priority: P0 (BLOCKING Phase 1 — final Epic 8 story)
+priority: P0 (BLOCKING Phase 1 — final Epic 0 story)
 estimatedEffort: 2-3 days
 status: ready-for-dev (blocked on Story 8.2)
 createdAt: 2026-04-23
@@ -489,7 +489,7 @@ Content sections:
 
 | Requirement | Source | Fulfilled By |
 |-------------|--------|--------------|
-| FR-T3 Test error handling & fallback | `epics.md` Epic 8 | AC1-AC11 |
+| FR-T3 Test error handling & fallback | `epics.md` Epic 0 | AC1-AC11 |
 | FR35 Graceful degradation | `prd.md` | AC7, AC8, AC9 |
 | NFR-CS3 API rate awareness | `prd.md` | AC1, AC4 |
 | NFR-Q3 Graceful degradation > 98% | `prd.md` Quality Gates | AC10, AC11 |
@@ -503,4 +503,4 @@ Test code = zero production risk. Nếu telemetry enhancement có bug → featur
 ---
 
 **Status**: ready-for-dev ✅ (blocked on Story 8.2)
-**Next**: Epic 8 DONE → trigger Phase 1 Epic 9 Story 9.1 + Story 9.4.
+**Next**: Epic 0 DONE (all 6 stories) → trigger Phase 1 Epic 9 Story 9.1 + Story 9.4.

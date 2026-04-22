@@ -203,7 +203,7 @@ All 4 gates pass + spikes successful
 | Phase | Duration | Team Capacity Needed |
 |-------|----------|---------------------|
 | Epic 0 Foundation | 2-3 weeks | 2 devs full-time |
-| Epic 8 Testing | 1 week | 1 dev + QA |
+| Epic 0 Testing (0.4-0.6) | ~1 week | 1 dev + QA |
 | Phase 1 (9.1 + 9.4) | 4 weeks | 2 devs + QA + Dev Lead |
 | Phase 2 (9.2 + 9.5) | 4 weeks | 2 devs + QA + Dev Lead |
 | **Phase 3 (9.3 + 9.6)** | **6 weeks** | **2 devs + QA + Dev Lead + Legal + Marketing** |

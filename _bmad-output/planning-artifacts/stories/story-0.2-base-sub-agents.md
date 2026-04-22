@@ -3,7 +3,7 @@ storyId: 0.2
 storyTitle: Base Sub-Agents Implementation & Wiring
 epicParent: epic-00-crypto-foundation
 dependsOn: [Story 0.1]
-blocks: [Story 0.3, Epic 8, Epic 9 Phase 1]
+blocks: [Story 0.3, Story 0.4, Epic 9 Phase 1]
 relatedFRs: [crypto-subagents-epics FR6-FR9]
 relatedNFRs: [NFR-CS1, NFR-CS2, NFR-CS4]
 priority: P0 (BLOCKING)

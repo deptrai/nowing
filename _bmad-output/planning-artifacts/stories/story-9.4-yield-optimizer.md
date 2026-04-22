@@ -8,7 +8,7 @@ relatedFRs: [FR30, FR33, FR34, FR35]
 relatedNFRs: [NFR-CS1, NFR-CS4, NFR-Q1, NFR-Q2, NFR-Q3, NFR-Q4]
 priority: P0 (Phase 1 pair với 9.1)
 estimatedEffort: 3 days (Mon-Wed Week 2)
-status: ready-for-dev (blocked on Epic 0 + Epic 8)
+status: ready-for-dev (blocked on Epic 0)
 createdAt: 2026-04-23
 author: Mary (Strategic Business Analyst)
 ---
@@ -39,17 +39,17 @@ Story 9.4 là **Phase 1 pair** với Story 9.1 Tokenomics. Cùng đặc điểm:
 
 > **Story 9.4 KHÔNG thể start cho đến khi:**
 > 1. ✅ **Epic 0** DONE (Story 0.1 tools, 0.2 base specs, 0.3 main prompt)
-> 2. ✅ **Epic 8** DONE (Story 8.1 API tests, 8.2 parallel validation, 8.3 error handling)
+> 2. ✅ **Epic 0 testing (0.4-0.6)** DONE (Story 0.4 API tests, 0.5 parallel validation, 0.6 error handling)
 > 3. ✅ **Story 9.1 Tokenomics** DONE (proves spec pattern works)
 >
-> **Timeline estimate**: Epic 0 (~2-3 weeks) → Epic 8 (~1 week) → Story 9.1 (~3 days) → Story 9.4 (~3 days)
+> **Timeline estimate**: Epic 0 (~2-3 weeks) → Epic 0 testing 0.4-0.6 (~1 week) → Story 9.1 (~3 days) → Story 9.4 (~3 days)
 
 ### Pre-flight Checklist
 
 - [ ] Epic 0.1 DONE — `defillama.py` (5 tools), `contract_analysis.py` (`check_token_security`)
 - [ ] Epic 0.2 DONE — `SubAgentMiddleware` register 4 base agents
 - [ ] Epic 0.3 DONE — main agent system prompt orchestration section
-- [ ] Epic 8 quality gates pass
+- [ ] Epic 0 testing (0.4-0.6) quality gates pass
 - [ ] Story 9.1 DONE và spawned successfully trong production
 - [ ] DeFiLlama yields endpoint trả data hợp lệ (verified Story 8.1 AC3)
 - [ ] GoPlus security check trả risk_level (verified Story 8.1 AC7)
@@ -304,7 +304,7 @@ def test_yield_optimizer_tool_scoping():
 
 ## Definition of Done (9 checkpoints)
 
-- [ ] **DoD-1** Pre-flight: Epic 0, Epic 8, Story 9.1 verified DONE
+- [ ] **DoD-1** Pre-flight: Epic 0, Epic 0 stories 0.4-0.6, Story 9.1 verified DONE
 - [ ] **DoD-2** `yield_optimizer_spec.py` created với 3 constants exported
 - [ ] **DoD-3** `chat_deepagent.py` import + wire `yield_optimizer_spec` (7 sub-agents total)
 - [ ] **DoD-4** System prompt < 500 tokens (unit test pass)
@@ -415,5 +415,5 @@ Identical to Story 9.1:
 
 ---
 
-**Status**: ready-for-dev ✅ (blocked on Epic 0, Epic 8, Story 9.1)
+**Status**: ready-for-dev ✅ (blocked on Epic 0, Epic 0 stories 0.4-0.6, Story 9.1)
 **Next**: Phase 1 COMPLETE sau Story 9.4 → Quality Gate Review → Phase 2 (9.2 + 9.5).

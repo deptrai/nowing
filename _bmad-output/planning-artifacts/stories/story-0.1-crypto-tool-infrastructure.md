@@ -2,7 +2,7 @@
 storyId: 0.1
 storyTitle: Core Crypto Tool Infrastructure
 epicParent: epic-00-crypto-foundation
-blocks: [Story 0.2, Epic 8, Epic 9 Phase 1]
+blocks: [Story 0.2, Story 0.4, Epic 9 Phase 1]
 relatedFRs: [FR-C1..FR-C11 internal refs from crypto-subagents-epics.md FR1-FR5]
 relatedNFRs: [NFR-CS3, NFR-CS4]
 priority: P0 (BLOCKING)

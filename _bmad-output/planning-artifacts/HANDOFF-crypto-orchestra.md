@@ -36,9 +36,9 @@ _bmad-output/planning-artifacts/
     ├── story-0.1-crypto-tool-infrastructure.md       ✅ Epic 0 (BLOCKING)
     ├── story-0.2-base-sub-agents.md                  ✅ Epic 0 (BLOCKING)
     ├── story-0.3-main-agent-prompt.md                ✅ Epic 0 (BLOCKING)
-    ├── story-8.1-api-integration-tests.md            ✅ Epic 8 (gatekeeper)
-    ├── story-8.2-parallel-execution-validation.md    ✅ Epic 8 (gatekeeper)
-    ├── story-8.3-error-handling-fallback.md          ✅ Epic 8 (gatekeeper)
+    ├── story-0.4-api-integration-tests.md            ✅ Epic 0 (testing)
+    ├── story-0.5-parallel-execution-validation.md    ✅ Epic 0 (testing)
+    ├── story-0.6-error-handling-fallback.md          ✅ Epic 0 (testing)
     ├── story-9.1-tokenomics-analyst.md               ✅ Phase 1
     ├── story-9.4-yield-optimizer.md                  ✅ Phase 1
     ├── story-9.2-whale-tracker.md                    ✅ Phase 2
@@ -62,8 +62,8 @@ nowing_backend/docs/
 | Dev Lead | `sprint-plan-phase1-crypto-orchestra.md` + `sprint-status.yaml` |
 | Dev 1 (implementer) | `story-0.1-crypto-tool-infrastructure.md` (first to pick up) |
 | Dev 2 | `story-0.2-base-sub-agents.md` (after 0.1 DONE) |
-| QA | `story-8.1`, `8.2`, `8.3` — gatekeepers you'll enforce |
-| DevOps | `story-8.2` (telemetry middleware) + `story-8.3` (feature flags) |
+| QA | `story-0.4`, `0.5`, `0.6` — testing stories you'll enforce |
+| DevOps | `story-0.5` (telemetry middleware) + `story-0.6` (feature flags) |
 | Product Lead | `briefs/product-brief-epic9-crypto-orchestra.md` + `prd.md` User Journey #8 |
 | Legal | `story-9.6-technical-analyst.md` AC12 (TA disclaimer review) |
 | Marketing | Sprint Plan Phase 3 Week 6 (launch prep) |
@@ -81,8 +81,8 @@ nowing_backend/docs/
 │                                                              │
 │                            ↓                                 │
 │                                                              │
-│  Epic 8: Testing (3 stories, ~1 week)                        │
-│  └─ Story 8.1 → Story 8.2 → Story 8.3                       │
+│  Epic 0 Stories 0.4-0.6: Testing (~1 week)                        │
+│  └─ Story 0.4 → Story 0.5 → Story 0.6                       │
 │                                                              │
 │                            ↓                                 │
 │                                                              │
@@ -103,10 +103,10 @@ nowing_backend/docs/
 
 | Gate | Threshold | Validation Source |
 |------|-----------|-------------------|
-| **NFR-Q1** Accuracy | < 3% factual error rate | Story 8.1 + per-phase QA 50-query samples |
-| **NFR-Q2** Parallelism Ratio | < 1.3x (total/max_individual) | Story 8.2 ParallelismTelemetryMiddleware |
-| **NFR-Q3** Graceful Degradation | > 98% partial-fail success | Story 8.3 fault injection (respx) |
-| **NFR-Q4** Speed | P95 < 90s full-suite | Story 8.2 100-query benchmark |
+| **NFR-Q1** Accuracy | < 3% factual error rate | Story 0.4 + per-phase QA 50-query samples |
+| **NFR-Q2** Parallelism Ratio | < 1.3x (total/max_individual) | Story 0.5 ParallelismTelemetryMiddleware |
+| **NFR-Q3** Graceful Degradation | > 98% partial-fail success | Story 0.6 fault injection (respx) |
+| **NFR-Q4** Speed | P95 < 90s full-suite | Story 0.5 100-query benchmark |
 
 All gates cumulative — must maintain qua từng phase.
 
@@ -159,7 +159,7 @@ All gates cumulative — must maintain qua từng phase.
 
 4. **Week 2**: Dev 1 + Dev 2 parallel on 0.1 (finish) + 0.2 (start)
 
-5. **Week 3**: Dev Lead + QA kick off Epic 8 prep while 0.2 + 0.3 finishing
+5. **5. **Week 3**: Dev Lead + QA kick off Epic 0 testing (0.4-0.6) prep while 0.2 + 0.3 finishing
 
 ### Escalation Path
 

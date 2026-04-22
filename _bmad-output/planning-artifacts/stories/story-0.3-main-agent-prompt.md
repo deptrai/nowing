@@ -3,7 +3,7 @@ storyId: 0.3
 storyTitle: Main Agent Crypto Orchestration Prompt
 epicParent: epic-00-crypto-foundation
 dependsOn: [Story 0.2]
-blocks: [Epic 8, Epic 9 Phase 1]
+blocks: [Story 0.4, Epic 9 Phase 1]
 relatedFRs: [FR33 Parallel Orchestration, FR34 Smart Agent Selection]
 relatedNFRs: [NFR-CS2, NFR-Q4]
 priority: P0 (BLOCKING)
@@ -246,4 +246,4 @@ Main agent prompt là 47KB hiện tại — thêm crypto section ~2-3KB (~1500-2
 ---
 
 **Status**: ready-for-dev ✅ (blocked on Story 0.2)
-**Next**: Epic 0 DONE → trigger Epic 8 testing → trigger Phase 1 Story 9.1.
+**Next**: Stories 0.4-0.6 (testing) → Phase 1 Story 9.1.

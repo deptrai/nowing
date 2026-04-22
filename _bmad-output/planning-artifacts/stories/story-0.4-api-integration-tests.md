@@ -1,8 +1,8 @@
 ---
-storyId: 8.1
+storyId: 0.4
 storyTitle: API Integration Tests (Crypto Tools Live Validation)
-epicParent: epic-08-crypto-integration-testing
-dependsOn: [Epic 0 DONE — Story 0.1, 0.2, 0.3]
+epicParent: epic-00-crypto-foundation
+dependsOn: [Story 0.1, 0.2, 0.3 DONE]
 blocks: [Story 8.2, Story 8.3, Epic 9 Phase 1]
 relatedFRs: [FR-T1]
 relatedNFRs: [NFR-CS3 API rate awareness, NFR-Q3 graceful degradation]
@@ -25,7 +25,7 @@ author: Mary (Strategic Business Analyst)
 
 ## Context
 
-Epic 8 là **gatekeeper** giữa Epic 0 (foundation implementation) và Epic 9 (advanced agents). Story 8.1 specifically validate **tool-level integration** — không test agent behavior (đó là Story 8.2), không test error handling (Story 8.3).
+Story 0.4 là bước validate đầu tiên sau khi implement Foundation (Stories 0.1-0.3). Story 0.4 specifically validate **tool-level integration** — không test agent behavior (đó là Story 0.5), không test error handling (Story 0.6).
 
 Mục tiêu: **100% of 11 crypto tools** (implemented in Story 0.1) phải trả đúng data structure khi gọi real APIs, hoặc graceful error khi API fail.
 
@@ -358,7 +358,7 @@ uv run pytest -m integration -v -x tests/integration/tools/test_crypto_tools_liv
 
 | Requirement | Source | Fulfilled By |
 |-------------|--------|--------------|
-| FR-T1 Test API integration | `epics.md` Epic 8 | AC1-AC12 |
+| FR-T1 Test API integration | `epics.md` Epic 0 | AC1-AC12 |
 | NFR-CS3 API rate awareness | `prd.md` | Rate limit handling + AC6/AC7 error paths |
 | NFR-Q3 Graceful degradation | `prd.md` | AC6, AC7, AC11 error dict returns |
 

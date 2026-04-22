@@ -40,7 +40,7 @@ Story 9.5 là **Phase 2 pair** với Story 9.2 Whale Tracker. Chia sẻ đặc �
 ## 🚨 CRITICAL PREREQUISITE
 
 > Identical với Story 9.2:
-> 1. ✅ Epic 0 + Epic 8 DONE
+> 1. ✅ Epic 0 (all 6 stories 0.1-0.6) DONE
 > 2. ✅ Phase 1 (Story 9.1 + 9.4) PASS 4 Quality Gates
 > 3. ✅ Chainlens success rate Phase 1 production > 95%
 > 4. ✅ Chainlens has access cho governance data sources (Snapshot, Tally) — verified

@@ -103,14 +103,10 @@ development_status:
   0-1-crypto-tool-infrastructure: ready-for-dev
   0-2-base-sub-agents: ready-for-dev
   0-3-main-agent-prompt: ready-for-dev
+  0-4-api-integration-tests: ready-for-dev
+  0-5-parallel-execution-validation: ready-for-dev
+  0-6-error-handling-fallback: ready-for-dev
   epic-0-retrospective: optional
-
-  # ─── EPIC 8: Integration Testing (Quality Gatekeepers) ───
-  epic-8: backlog
-  8-1-api-integration-tests: ready-for-dev
-  8-2-parallel-execution-validation: ready-for-dev
-  8-3-error-handling-fallback: ready-for-dev
-  epic-8-retrospective: optional
 
   # ─── EPIC 9: Crypto Orchestra (Phased rollout 1→2→3) ───
   epic-9: backlog

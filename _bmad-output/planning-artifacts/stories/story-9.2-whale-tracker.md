@@ -43,7 +43,7 @@ Story 9.2 là **Phase 2 lead** (cùng với Story 9.5 Governance). Phase 2 đặ
 
 > **Story 9.2 KHÔNG thể start cho đến khi:**
 > 1. ✅ **Epic 0** DONE (foundation)
-> 2. ✅ **Epic 8** DONE (testing)
+> 2. ✅ **Epic 0 testing (0.4-0.6)** DONE
 > 3. ✅ **Story 9.1 + 9.4** DONE và **PASS 4 Quality Gates** trong Phase 1 review
 > 4. ✅ Chainlens success rate trong Phase 1 production > 95% (proves Chainlens reliable enough for Phase 2 reliance)
 
