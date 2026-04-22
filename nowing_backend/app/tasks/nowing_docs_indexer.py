@@ -38,12 +38,14 @@ async def _safe_set_docs_chunks(
     session.add_all(chunks)
 
 
-# Path to docs relative to project root
-DOCS_DIR = (
-    Path(__file__).resolve().parent.parent.parent.parent
-    / "nowing_web"
-    / "content"
-    / "docs"
+# Path to docs (vendored into backend at <backend_root>/docs)
+# Override via DOCS_DIR env var if needed.
+import os as _os
+DOCS_DIR = Path(
+    _os.getenv(
+        "DOCS_DIR",
+        str(Path(__file__).resolve().parent.parent.parent / "docs"),
+    )
 )
 
 
