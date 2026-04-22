@@ -39,7 +39,7 @@ last_updated: 2026-04-23T01:35:00+07:00
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
-story_location: "{project-root}/_bmad-output/implementation-artifacts"
+story_location: "{project-root}/_bmad-output/planning-artifacts/stories"
 
 development_status:
   epic-1: done
@@ -95,7 +95,6 @@ development_status:
   # ═══════════════════════════════════════════════════════════════
   # CRYPTO ORCHESTRA INITIATIVE (added 2026-04-23 by Mary)
   # Story files: _bmad-output/planning-artifacts/stories/
-  # Note: Story files NOT in implementation-artifacts/ (planning phase)
   # ═══════════════════════════════════════════════════════════════
 
   # ─── EPIC 0: Crypto Foundation (Retroactive — close drift) ───
