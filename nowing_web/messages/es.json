@@ -819,5 +819,28 @@
 		"not_found_title": "Este chat ha sido eliminado.",
 		"click_here": "Haz clic aquí",
 		"sign_in_prompt": "para iniciar sesión en Nowing y comenzar el tuyo."
+	},
+	"orchestra": {
+		"strip_title": "Analizando fuentes",
+		"strip_title_done": "Fuentes analizadas",
+		"strip_title_single": "Obteniendo fuente",
+		"agent_status_queued": "En cola",
+		"agent_status_running": "Obteniendo",
+		"agent_status_done": "Listo",
+		"agent_status_failed": "Fallido",
+		"agent_status_cancelled": "Cancelado",
+		"summary": "{success}/{total} listo · {ms}ms ({bucket})",
+		"bucket_fast": "rápido",
+		"bucket_normal": "normal",
+		"bucket_slow": "lento",
+		"milestone_30s": "Analizando en profundidad…",
+		"degradation_inline": "{success}/{total} fuentes completadas · {failed} degradadas",
+		"degradation_retry": "Reintentar fuentes fallidas",
+		"fail_reason_rate_limit": "Límite de velocidad",
+		"fail_reason_timeout": "Tiempo de espera agotado",
+		"fail_reason_unavailable": "Servicio no disponible",
+		"fail_reason_circuit_open": "Cortacircuitos abierto",
+		"fail_reason_cancelled_by_user": "Cancelado",
+		"cancelled_cost_footnote": "Resultados parciales. Algunas fuentes no se obtuvieron."
 	}
 }

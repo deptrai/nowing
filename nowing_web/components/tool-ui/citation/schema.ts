@@ -12,7 +12,7 @@ export const CitationTypeSchema = z.enum([
 
 export type CitationType = z.infer<typeof CitationTypeSchema>;
 
-export const CitationVariantSchema = z.enum(["default", "inline", "stacked"]);
+export const CitationVariantSchema = z.enum(["default", "inline", "stacked", "cluster", "conflict"]);
 
 export type CitationVariant = z.infer<typeof CitationVariantSchema>;
 

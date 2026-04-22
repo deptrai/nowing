@@ -8,6 +8,13 @@ NEWS_ANALYST_DESCRIPTION = (
     "what's happening in crypto, or token fundamental data."
 )
 
+# NFR-CS4: tool scoping (single source of truth — imported by chat_deepagent + tests)
+NEWS_ALLOWED_TOOLS: tuple[str, ...] = (
+    "get_crypto_news",
+    "get_coingecko_token_info",
+    "chainlens_deep_research",
+)
+
 # NFR-CS1: prompt < 500 tokens (verified with tiktoken)
 NEWS_ANALYST_PROMPT = """You are news_analyst — a crypto news and fundamentals specialist.
 

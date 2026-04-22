@@ -101,7 +101,13 @@ import {
 	trackChatError,
 	trackChatMessageSent,
 	trackChatResponseReceived,
+	trackOrchestraAgentDone,
+	trackOrchestraAgentFail,
+	trackOrchestraCompleted,
+	trackOrchestraCancelled,
+	trackOrchestraSpawn,
 } from "@/lib/posthog/events";
+import { applyOrchestraEvent, orchestraStateAtom } from "@/atoms/chat/orchestra.atom";
 import Loading from "../loading";
 
 const MobileEditorPanel = dynamic(
@@ -266,6 +272,7 @@ export default function NewChatPage() {
 	const updateChatTabTitle = useSetAtom(updateChatTabTitleAtom);
 	const removeChatTab = useSetAtom(removeChatTabAtom);
 	const setAgentCreatedDocuments = useSetAtom(agentCreatedDocumentsAtom);
+	const setOrchestraState = useSetAtom(orchestraStateAtom);
 
 	// Get current user for author info in shared chats
 	const { data: currentUser } = useAtomValue(currentUserAtom);
@@ -881,6 +888,53 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "orchestra-spawn": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraSpawn({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+								agentName: parsed.data.agentName,
+							});
+							break;
+						}
+						case "orchestra-update": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							break;
+						}
+						case "orchestra-done": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraAgentDone({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+							});
+							break;
+						}
+						case "orchestra-fail": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraAgentFail({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+								errorCode: parsed.data.errorCode,
+							});
+							break;
+						}
+						case "orchestra-cancel": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraCancelled({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+							});
+							break;
+						}
+						case "orchestra-complete": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraCompleted({
+								sessionId: parsed.data.sessionId,
+								agentIds: parsed.data.agentIds,
+								citationCount: parsed.data.citationCount,
+							});
+							break;
+						}
 						case "error":
 							if (
 								parsed.errorText?.includes("quota") ||
@@ -1238,6 +1292,53 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "orchestra-spawn": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraSpawn({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+								agentName: parsed.data.agentName,
+							});
+							break;
+						}
+						case "orchestra-update": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							break;
+						}
+						case "orchestra-done": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraAgentDone({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+							});
+							break;
+						}
+						case "orchestra-fail": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraAgentFail({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+								errorCode: parsed.data.errorCode,
+							});
+							break;
+						}
+						case "orchestra-cancel": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraCancelled({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+							});
+							break;
+						}
+						case "orchestra-complete": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraCompleted({
+								sessionId: parsed.data.sessionId,
+								agentIds: parsed.data.agentIds,
+								citationCount: parsed.data.citationCount,
+							});
+							break;
+						}
 						case "error":
 							if (
 								parsed.errorText?.includes("quota") ||
@@ -1545,6 +1646,53 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "orchestra-spawn": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraSpawn({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+								agentName: parsed.data.agentName,
+							});
+							break;
+						}
+						case "orchestra-update": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							break;
+						}
+						case "orchestra-done": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraAgentDone({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+							});
+							break;
+						}
+						case "orchestra-fail": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraAgentFail({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+								errorCode: parsed.data.errorCode,
+							});
+							break;
+						}
+						case "orchestra-cancel": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraCancelled({
+								sessionId: parsed.data.sessionId,
+								agentId: parsed.data.agentId,
+							});
+							break;
+						}
+						case "orchestra-complete": {
+							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+							trackOrchestraCompleted({
+								sessionId: parsed.data.sessionId,
+								agentIds: parsed.data.agentIds,
+								citationCount: parsed.data.citationCount,
+							});
+							break;
+						}
 						case "error":
 							if (
 								parsed.errorText?.includes("quota") ||
@@ -1751,8 +1899,7 @@ export default function NewChatPage() {
 									Remaining:{" "}
 									<span
 										className={
-											lastTokenUsage.tokens_remaining <
-											lastTokenUsage.monthly_limit * 0.1
+											lastTokenUsage.tokens_remaining < lastTokenUsage.monthly_limit * 0.1
 												? "text-destructive font-medium"
 												: "text-foreground font-medium"
 										}

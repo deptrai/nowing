@@ -46,21 +46,25 @@ from app.agents.new_chat.system_prompt import (
     build_nowing_system_prompt,
 )
 from app.agents.new_chat.subagents.crypto.defillama_spec import (
+    DEFILLAMA_ALLOWED_TOOLS,
     DEFILLAMA_ANALYST_DESCRIPTION,
     DEFILLAMA_ANALYST_NAME,
     DEFILLAMA_ANALYST_PROMPT,
 )
 from app.agents.new_chat.subagents.crypto.news_spec import (
+    NEWS_ALLOWED_TOOLS,
     NEWS_ANALYST_DESCRIPTION,
     NEWS_ANALYST_NAME,
     NEWS_ANALYST_PROMPT,
 )
 from app.agents.new_chat.subagents.crypto.sentiment_spec import (
+    SENTIMENT_ALLOWED_TOOLS,
     SENTIMENT_ANALYST_DESCRIPTION,
     SENTIMENT_ANALYST_NAME,
     SENTIMENT_ANALYST_PROMPT,
 )
 from app.agents.new_chat.subagents.crypto.smart_contract_spec import (
+    SMART_CONTRACT_ALLOWED_TOOLS,
     SMART_CONTRACT_ANALYST_DESCRIPTION,
     SMART_CONTRACT_ANALYST_NAME,
     SMART_CONTRACT_ANALYST_PROMPT,
@@ -454,41 +458,50 @@ async def create_nowing_deep_agent(
         thread_visibility=visibility,
     )
 
-    # General-purpose subagent middleware
-    gp_middleware = [
-        TodoListMiddleware(),
-        _memory_middleware,
-        NowingFilesystemMiddleware(
-            search_space_id=search_space_id,
-            created_by_id=user_id,
-        ),
-        create_summarization_middleware(llm, StateBackend),
-        PatchToolCallsMiddleware(),
-        AnthropicPromptCachingMiddleware(unsupported_model_behavior="ignore"),
-    ]
+    # NFR-CS4: each sub-agent gets a *fresh* middleware list with *fresh* instances
+    # so that any per-invocation state (todos buffer, summarization cache,
+    # filesystem handles) cannot cross-contaminate when sub-agents run in parallel.
+    # _memory_middleware is the only intentionally shared instance — it is read-only
+    # context injection, no per-call mutation.
+    def _build_gp_middleware() -> list[Any]:
+        return [
+            TodoListMiddleware(),
+            _memory_middleware,
+            NowingFilesystemMiddleware(
+                search_space_id=search_space_id,
+                created_by_id=user_id,
+            ),
+            create_summarization_middleware(llm, StateBackend),
+            PatchToolCallsMiddleware(),
+            AnthropicPromptCachingMiddleware(unsupported_model_behavior="ignore"),
+        ]
 
     general_purpose_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         **GENERAL_PURPOSE_SUBAGENT,
         "model": llm,
         "tools": tools,
-        "middleware": gp_middleware,
+        "middleware": _build_gp_middleware(),
     }
 
-    # Crypto sub-agent tool scoping
-    defillama_tools = [t for t in tools if t.name in (
-        "get_defillama_protocol", "get_defillama_tvl_overview", "get_defillama_yields",
-        "get_defillama_stablecoins", "get_defillama_bridges",
-        "get_live_token_data", "chainlens_deep_research",
-    )]
-    sentiment_tools = [t for t in tools if t.name in (
-        "get_cmc_sentiment", "get_reddit_crypto_sentiment", "chainlens_deep_research",
-    )]
-    news_tools = [t for t in tools if t.name in (
-        "get_crypto_news", "get_coingecko_token_info", "chainlens_deep_research",
-    )]
-    smart_contract_tools = [t for t in tools if t.name in (
-        "get_contract_info", "check_token_security", "chainlens_deep_research",
-    )]
+    # Crypto sub-agent tool scoping (allowed sets imported from spec files —
+    # single source of truth shared with tests).
+    def _scope_tools(allowed: tuple[str, ...], agent_label: str) -> list[BaseTool]:
+        scoped = [t for t in tools if t.name in allowed]
+        scoped_names = {t.name for t in scoped}
+        missing = set(allowed) - scoped_names
+        if missing:
+            # NFR-CS4: surface silent registry drift (e.g. a tool gated off by env flag).
+            _perf_log.warning(
+                "[create_agent] sub-agent %s missing tools from registry: %s",
+                agent_label,
+                sorted(missing),
+            )
+        return scoped
+
+    defillama_tools = _scope_tools(DEFILLAMA_ALLOWED_TOOLS, DEFILLAMA_ANALYST_NAME)
+    sentiment_tools = _scope_tools(SENTIMENT_ALLOWED_TOOLS, SENTIMENT_ANALYST_NAME)
+    news_tools = _scope_tools(NEWS_ALLOWED_TOOLS, NEWS_ANALYST_NAME)
+    smart_contract_tools = _scope_tools(SMART_CONTRACT_ALLOWED_TOOLS, SMART_CONTRACT_ANALYST_NAME)
 
     defillama_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": DEFILLAMA_ANALYST_NAME,
@@ -496,7 +509,7 @@ async def create_nowing_deep_agent(
         "prompt": DEFILLAMA_ANALYST_PROMPT,
         "model": llm,
         "tools": defillama_tools,
-        "middleware": gp_middleware,
+        "middleware": _build_gp_middleware(),
     }
     sentiment_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": SENTIMENT_ANALYST_NAME,
@@ -504,7 +517,7 @@ async def create_nowing_deep_agent(
         "prompt": SENTIMENT_ANALYST_PROMPT,
         "model": llm,
         "tools": sentiment_tools,
-        "middleware": gp_middleware,
+        "middleware": _build_gp_middleware(),
     }
     news_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": NEWS_ANALYST_NAME,
@@ -512,7 +525,7 @@ async def create_nowing_deep_agent(
         "prompt": NEWS_ANALYST_PROMPT,
         "model": llm,
         "tools": news_tools,
-        "middleware": gp_middleware,
+        "middleware": _build_gp_middleware(),
     }
     smart_contract_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": SMART_CONTRACT_ANALYST_NAME,
@@ -520,7 +533,7 @@ async def create_nowing_deep_agent(
         "prompt": SMART_CONTRACT_ANALYST_PROMPT,
         "model": llm,
         "tools": smart_contract_tools,
-        "middleware": gp_middleware,
+        "middleware": _build_gp_middleware(),
     }
 
     # Main agent middleware

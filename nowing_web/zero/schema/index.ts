@@ -3,6 +3,7 @@ import { chatCommentTable, chatSessionStateTable, newChatMessageTable } from "./
 import { documentTable, searchSourceConnectorTable } from "./documents";
 import { folderTable } from "./folders";
 import { notificationTable } from "./inbox";
+import { orchestraSessionsTable } from "./orchestra-sessions";
 
 const chatCommentRelationships = relationships(chatCommentTable, ({ one }) => ({
 	message: one({
@@ -34,6 +35,7 @@ export const schema = createSchema({
 		newChatMessageTable,
 		chatCommentTable,
 		chatSessionStateTable,
+		orchestraSessionsTable,
 	],
 	relationships: [chatCommentRelationships, newChatMessageRelationships],
 });

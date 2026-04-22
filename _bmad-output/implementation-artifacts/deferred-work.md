@@ -198,3 +198,37 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - ISO-M2: `_purge_test_search_space` session-scoped — per-test cleanup handled by `_cleanup_documents` autouse; session purge is belt-and-suspenders. Risk: mid-session crashes leave stale rows until session end. Acceptable for integration suite.
 - ISO-M3: `page_limits` raw asyncpg bypass — necessary for integration test that mutates actual DB state
 - ISO-M4: session-scoped `async_engine` — architectural, pre-existing
+
+## Deferred from: code review of story-0-1-crypto-tool-infrastructure (2026-04-23)
+
+- No retry/backoff/`asyncio.wait_for` outer timeout — lệch pattern `chainlens_research.py`. Cân nhắc thêm exponential backoff với jitter cho tất cả 11 tool files.
+- 429 không honor `Retry-After` header — surface header value trong error message để LLM defer correctly.
+- Etherscan multi-file source `{{...}}` wrapper không strip → `source_code_preview` có thể chứa JSON wrapper [contract_analysis.py:117].
+- Bare `except Exception` quá rộng — narrow to `(httpx.HTTPError, ValueError, KeyError)` để không nuốt `KeyError`/programming bugs.
+- New `httpx.AsyncClient` mỗi call — không connection pooling/HTTP-2 reuse. Cân nhắc module-level singleton.
+- Etherscan v1 endpoints sắp deprecate Q4-2025 → migrate sang unified v2 multichain endpoint với single API key.
+
+## Deferred from: code review of story-9-FE-1 (2026-04-23)
+
+- **P1#5** — Out-of-order SSE events silently dropped (reducers `if (!session) return state`); revisit if backend 9-1/9-4 re-orders agents. [atoms/chat/orchestra.atom.ts]
+- **P1#6** — Duplicate `orchestra-spawn` resets agents to queued (overwrites unconditionally). Need backend replay semantics decision before fixing. [atoms/chat/orchestra.atom.ts:97-104]
+- **P1#7** — `activeQueryHash` clobbered on every spawn → concurrent sessions hijack each other. Single-tab MVP per arch §9.7 Q5. [atoms/chat/orchestra.atom.ts:115]
+- **P1#9** — i18n keys (26 in 5 locales) hardcoded VN/EN strings in components (`agent-row`, `degradation-notice`, `orchestra-strip` cancelled footnote). Wire keys in follow-up i18n pass.
+- **P1#10** — AC11 Rocicorp Zero persistence not implemented (no subscription, no mutator, no hydration). Defer to Story 9-FE-2 — D1 decision: accept Jotai for v1.
+- **P1#11** — `trackCitationClick` (AC10 event #6) exported but never invoked. Wire when AC7/AC8 conflict detection lands.
+- **P2#12** — `failedCount` semantics inconsistent: streaming `failed` only vs. complete `failed+cancelled`. Fix when AC14 telemetry wiring happens.
+- **P2#13** — `elapsedMs` derived from session-level `spawnedAt` (not per-agent start). Display says "session age" instead of "agent runtime". Revisit if UX surfaces.
+- **P2#14** — AC4 `summary.fact_count` + `sources[]` chips never populated; `OrchestraDoneEvent.data` only has `citationIds?`. Coupled with backend payload extension.
+- **P2#15** — AC9 milestone copy `"Đang tổng hợp từ {success_count} nguồn"` not interpolated; current renders `"Analysing in depth…"`. Part of i18n pass.
+- **P2#16** — A11y: `aria-hidden="true"` + `aria-label` conflict on agent-row icons; no `role="status"`/`aria-live="polite"` wrapper for live updates.
+- **P2#17** — `orchestra_sessions` schema deviates from AC11 (`agents: json`, `spawned_at: string`, `total_ms: string` vs spec `string[]`/`timestamp`/`number`). Migrate when Zero integration lands.
+- **P2#18** — Three identical SSE switch blocks in `page.tsx` (handleSend / handleResume / handleRegenerate). Refactor to shared helper coupled with `streaming-state.ts`.
+- **P2#19** — `orchestraStateAtom.sessions` Map never pruned across chats; `activeQueryHash` may point to deleted session. Revisit if memory growth observed.
+- **P3#20** — Polish bundle: `errorCode as FailReason` unsafe cast → falls through to raw string; `p95Bucket` no `Number.isFinite` guard; `STATUS_LABELS` Vietnamese hardcode in `agent-row.tsx`; `detectConflict` mixed-type array cast.
+
+## Deferred from: code review of story-0-2-base-sub-agents (2026-04-23)
+
+- **#6 (AC5–AC8 functional spawn tests)** — Unit tests cover spec constants, token budget, and tool scoping only. Actual sub-agent spawn + tool-call routing (AC5 DeFiLlama spawn, AC6 sentiment spawn, AC7 news spawn, AC8 smart_contract spawn) require live LangGraph runtime + API keys (DeFiLlama/CMC/Reddit/GoPlus/Etherscan). Defer to DoD-8 integration suite once env keys are provisioned in CI. File: `tests/integration/agents/new_chat/test_crypto_subagent_spawn.py` (TBD).
+- **#7 (AC9 / NFR-CS2 parallel execution ratio)** — Parallel ratio assertion (`parallel_ms / sum(sequential_ms) < 0.7`) needs LangGraph trace capture + synthetic multi-agent query. Coupled with OpenTelemetry span export (DoD-7). Defer until trace export pipeline lands. Reference: `_bmad-output/planning-artifacts/stories/0-2-base-sub-agents.md` AC9.
+- **#8 (Chainlens fallback prompt update)** — Chainlens tool returns `{"status": "fallback", ...}` when upstream unavailable; current 4 prompts don't instruct sub-agents how to surface this degraded state to end-users (should flag "Chainlens unavailable, using primary-tool-only view"). Update needed in all 4 `*_ANALYST_PROMPT` strings once Chainlens fallback schema stabilizes. Watch: `app/agents/new_chat/tools/chainlens_research.py` response envelope.
+- **Review note** — Finding #1 (shared `gp_middleware` list) resolved via factory `_build_gp_middleware()` creating fresh middleware instances per sub-agent (chosen over stateless-assumption path for NFR-CS4 safety). `_memory_middleware` intentionally shared (read-only context injection). See `app/agents/new_chat/chat_deepagent.py` ~lines 450–525.

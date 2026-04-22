@@ -7,6 +7,7 @@ import {
 	useAuiState,
 } from "@assistant-ui/react";
 import { useAtomValue } from "jotai";
+import { OrchestraStrip } from "@/components/new-chat/orchestra/orchestra-strip";
 import {
 	CheckIcon,
 	ClipboardPaste,
@@ -371,6 +372,7 @@ const AssistantMessageInner: FC = () => {
 
 	return (
 		<CitationMetadataProvider>
+			<OrchestraStrip />
 			<div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
 				<MessagePrimitive.Parts
 					components={{

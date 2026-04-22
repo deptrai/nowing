@@ -9,21 +9,25 @@ import pytest
 import tiktoken
 
 from app.agents.new_chat.subagents.crypto.defillama_spec import (
+    DEFILLAMA_ALLOWED_TOOLS,
     DEFILLAMA_ANALYST_DESCRIPTION,
     DEFILLAMA_ANALYST_NAME,
     DEFILLAMA_ANALYST_PROMPT,
 )
 from app.agents.new_chat.subagents.crypto.news_spec import (
+    NEWS_ALLOWED_TOOLS,
     NEWS_ANALYST_DESCRIPTION,
     NEWS_ANALYST_NAME,
     NEWS_ANALYST_PROMPT,
 )
 from app.agents.new_chat.subagents.crypto.sentiment_spec import (
+    SENTIMENT_ALLOWED_TOOLS,
     SENTIMENT_ANALYST_DESCRIPTION,
     SENTIMENT_ANALYST_NAME,
     SENTIMENT_ANALYST_PROMPT,
 )
 from app.agents.new_chat.subagents.crypto.smart_contract_spec import (
+    SMART_CONTRACT_ALLOWED_TOOLS,
     SMART_CONTRACT_ANALYST_DESCRIPTION,
     SMART_CONTRACT_ANALYST_NAME,
     SMART_CONTRACT_ANALYST_PROMPT,
@@ -129,21 +133,12 @@ def _scope(allowed: tuple[str, ...]) -> list[_MockTool]:
     return [t for t in _ALL_TOOLS if t.name in allowed]
 
 
-# Expected scopes per spec (mirrors chat_deepagent.py)
-_DEFILLAMA_ALLOWED = (
-    "get_defillama_protocol", "get_defillama_tvl_overview", "get_defillama_yields",
-    "get_defillama_stablecoins", "get_defillama_bridges",
-    "get_live_token_data", "chainlens_deep_research",
-)
-_SENTIMENT_ALLOWED = (
-    "get_cmc_sentiment", "get_reddit_crypto_sentiment", "chainlens_deep_research",
-)
-_NEWS_ALLOWED = (
-    "get_crypto_news", "get_coingecko_token_info", "chainlens_deep_research",
-)
-_SMART_CONTRACT_ALLOWED = (
-    "get_contract_info", "check_token_security", "chainlens_deep_research",
-)
+# Expected scopes per spec (imported from spec files — single source of truth
+# shared with chat_deepagent.py).
+_DEFILLAMA_ALLOWED = DEFILLAMA_ALLOWED_TOOLS
+_SENTIMENT_ALLOWED = SENTIMENT_ALLOWED_TOOLS
+_NEWS_ALLOWED = NEWS_ALLOWED_TOOLS
+_SMART_CONTRACT_ALLOWED = SMART_CONTRACT_ALLOWED_TOOLS
 
 
 @pytest.mark.parametrize(
@@ -214,3 +209,86 @@ def test_unrelated_tools_excluded_from_all_crypto_agents() -> None:
         scoped_names = {t.name for t in _scope(allowed)}
         leaked = scoped_names & unrelated
         assert not leaked, f"{label} has unrelated tools: {leaked}"
+
+
+# ---------------------------------------------------------------------------
+# Patch #2: validate allowed tools against REAL registry (catches typos)
+# ---------------------------------------------------------------------------
+
+def test_allowed_tools_exist_in_real_registry() -> None:
+    """Every tool name in *_ALLOWED_TOOLS must exist in the real tool registry.
+
+    This catches typos like ``get_defilllama_protocol`` that mock-based tests
+    (using _ALL_TOOL_NAMES) would silently pass. Imports the real registry to
+    ensure our whitelists are always in sync with BUILTIN_TOOLS.
+    """
+    from app.agents.new_chat.tools.registry import get_all_tool_names
+
+    registered = set(get_all_tool_names())
+    assert registered, "Registry returned empty tool list — registry import broken"
+
+    for label, allowed in [
+        ("defillama_analyst", DEFILLAMA_ALLOWED_TOOLS),
+        ("sentiment_analyst", SENTIMENT_ALLOWED_TOOLS),
+        ("news_analyst", NEWS_ALLOWED_TOOLS),
+        ("smart_contract_analyst", SMART_CONTRACT_ALLOWED_TOOLS),
+    ]:
+        missing = set(allowed) - registered
+        assert not missing, (
+            f"{label}: allowed-tool name(s) not registered in BUILTIN_TOOLS: "
+            f"{sorted(missing)}. Either fix the typo in the spec or register "
+            f"the tool in app/agents/new_chat/tools/registry.py."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Patch #5: assert SubAgentMiddleware registers exactly 5 sub-agents
+# ---------------------------------------------------------------------------
+
+def test_subagent_middleware_registers_five_agents() -> None:
+    """chat_deepagent.py must wire exactly 5 sub-agents (general_purpose + 4 crypto).
+
+    Greps the source for the SubAgentMiddleware(...) block to verify the
+    subagents= list contains exactly the expected 5 spec references. This
+    guards against accidental additions/removals without test coverage.
+    """
+    import re
+    from pathlib import Path
+
+    source_path = (
+        Path(__file__).resolve().parents[4]
+        / "app" / "agents" / "new_chat" / "chat_deepagent.py"
+    )
+    assert source_path.exists(), f"chat_deepagent.py not found at {source_path}"
+
+    source = source_path.read_text(encoding="utf-8")
+
+    # Match SubAgentMiddleware(...) call and extract the subagents=[...] list.
+    match = re.search(
+        r"SubAgentMiddleware\s*\(\s*.*?subagents\s*=\s*\[(.*?)\]\s*,?\s*\)",
+        source,
+        re.DOTALL,
+    )
+    assert match, "Could not locate SubAgentMiddleware(subagents=[...]) in chat_deepagent.py"
+
+    subagents_block = match.group(1)
+
+    expected_specs = {
+        "general_purpose_spec",
+        "defillama_analyst_spec",
+        "sentiment_analyst_spec",
+        "news_analyst_spec",
+        "smart_contract_analyst_spec",
+    }
+    found_specs = {
+        token.strip() for token in subagents_block.split(",") if token.strip()
+    }
+
+    assert found_specs == expected_specs, (
+        f"SubAgentMiddleware subagent registration drift.\n"
+        f"  Expected: {sorted(expected_specs)}\n"
+        f"  Found:    {sorted(found_specs)}"
+    )
+    assert len(found_specs) == 5, (
+        f"Expected exactly 5 sub-agents, got {len(found_specs)}: {sorted(found_specs)}"
+    )

@@ -236,7 +236,59 @@ export type SSEEvent =
 				tokens_remaining: number;
 			};
 	  }
-	| { type: "error"; errorText: string };
+	| { type: "error"; errorText: string }
+	// ─── Orchestra events (Phase 9) ──────────────────────────────────────────
+	| {
+			type: "orchestra-spawn";
+			data: {
+				sessionId: string;
+				agentId: string;
+				agentName: string;
+				agentType: string;
+			};
+	  }
+	| {
+			type: "orchestra-update";
+			data: {
+				sessionId: string;
+				agentId: string;
+				status: "running" | "waiting" | "degraded";
+				progress?: number;
+				milestone?: string;
+			};
+	  }
+	| {
+			type: "orchestra-done";
+			data: {
+				sessionId: string;
+				agentId: string;
+				citationIds?: string[];
+			};
+	  }
+	| {
+			type: "orchestra-fail";
+			data: {
+				sessionId: string;
+				agentId: string;
+				errorCode: string;
+				errorMessage: string;
+			};
+	  }
+	| {
+			type: "orchestra-cancel";
+			data: {
+				sessionId: string;
+				agentId: string;
+			};
+	  }
+	| {
+			type: "orchestra-complete";
+			data: {
+				sessionId: string;
+				agentIds: string[];
+				citationCount: number;
+			};
+	  };
 
 /**
  * Async generator that reads an SSE stream and yields parsed JSON objects.

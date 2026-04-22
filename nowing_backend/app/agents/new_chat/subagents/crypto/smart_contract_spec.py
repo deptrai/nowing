@@ -8,6 +8,13 @@ SMART_CONTRACT_ANALYST_DESCRIPTION = (
     "user asks if a token is safe, a scam, or wants to audit a contract address."
 )
 
+# NFR-CS4: tool scoping (single source of truth — imported by chat_deepagent + tests)
+SMART_CONTRACT_ALLOWED_TOOLS: tuple[str, ...] = (
+    "get_contract_info",
+    "check_token_security",
+    "chainlens_deep_research",
+)
+
 # NFR-CS1: prompt < 500 tokens (verified with tiktoken)
 SMART_CONTRACT_ANALYST_PROMPT = """You are smart_contract_analyst — a smart contract security specialist.
 

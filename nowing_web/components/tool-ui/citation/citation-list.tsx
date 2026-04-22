@@ -102,6 +102,32 @@ export function CitationList(props: CitationListProps) {
 		);
 	}
 
+	// Cluster variant: compact "[N+◆]" expand affordance when >3 sources
+	if (variant === "cluster") {
+		return (
+			<StackedCitations
+				id={id}
+				citations={citations}
+				className={className}
+				onNavigate={onNavigate}
+				clusterMode={true}
+			/>
+		);
+	}
+
+	// Conflict variant: stacked favicons with amber border indicating data discrepancy
+	if (variant === "conflict") {
+		return (
+			<StackedCitations
+				id={id}
+				citations={citations}
+				className={className}
+				onNavigate={onNavigate}
+				conflictMode={true}
+			/>
+		);
+	}
+
 	if (variant === "default") {
 		return (
 			<div
@@ -282,9 +308,20 @@ interface StackedCitationsProps {
 	citations: SerializableCitation[];
 	className?: string;
 	onNavigate?: (href: string, citation: SerializableCitation) => void;
+	/** Cluster mode: shows "[N+◆]" compact expand affordance for >3 sources */
+	clusterMode?: boolean;
+	/** Conflict mode: amber border ring indicating data discrepancy between sources */
+	conflictMode?: boolean;
 }
 
-function StackedCitations({ id, citations, className, onNavigate }: StackedCitationsProps) {
+function StackedCitations({
+	id,
+	citations,
+	className,
+	onNavigate,
+	clusterMode = false,
+	conflictMode = false,
+}: StackedCitationsProps) {
 	const { open, setOpen, containerRef, handleMouseEnter, handleMouseLeave, handleBlur } =
 		useHoverPopover();
 	const maxIcons = 4;
@@ -310,6 +347,8 @@ function StackedCitations({ id, citations, className, onNavigate }: StackedCitat
 						type="button"
 						data-tool-ui-id={id}
 						data-slot="citation-list"
+						data-cluster={clusterMode || undefined}
+						data-conflict={conflictMode || undefined}
 						onMouseEnter={handleMouseEnter}
 						onMouseLeave={handleMouseLeave}
 						onKeyDown={(e) => {
@@ -320,13 +359,26 @@ function StackedCitations({ id, citations, className, onNavigate }: StackedCitat
 						}}
 						className={cn(
 							"isolate inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2",
-							"bg-muted/40 outline-none",
+							"outline-none",
 							"transition-colors duration-150",
-							"hover:bg-muted/70",
-							"focus-visible:ring-ring focus-visible:ring-2",
+							"focus-visible:ring-2",
+							conflictMode
+								? [
+										"border border-amber-500/50 bg-amber-50/60 dark:bg-amber-950/20",
+										"hover:border-amber-500/80 hover:bg-amber-50 dark:hover:bg-amber-950/30",
+										"focus-visible:ring-amber-500",
+									]
+								: [
+										"bg-muted/40",
+										"hover:bg-muted/70",
+										"focus-visible:ring-ring",
+									],
 							className
 						)}
 					>
+						{conflictMode && (
+							<span className="text-amber-600 dark:text-amber-400 font-medium text-sm">≠</span>
+						)}
 						<div className="flex items-center">
 							{visibleCitations.map((citation, index) => {
 								const TypeIcon = TYPE_ICONS[citation.type ?? "webpage"] ?? Globe;
@@ -361,13 +413,22 @@ function StackedCitations({ id, citations, className, onNavigate }: StackedCitat
 									style={{ zIndex: 0 }}
 								>
 									<span className="text-muted-foreground text-[10px] font-medium tracking-tight">
-										•••
+										{clusterMode ? "◆" : "•••"}
 									</span>
 								</div>
 							)}
 						</div>
-						<span className="text-muted-foreground text-sm tabular-nums">
-							{citations.length} source{citations.length !== 1 && "s"}
+						<span
+							className={cn(
+								"text-sm tabular-nums",
+								conflictMode
+									? "text-amber-700 dark:text-amber-300"
+									: "text-muted-foreground"
+							)}
+						>
+							{clusterMode
+								? `${citations.length}+◆`
+								: `${citations.length} source${citations.length !== 1 ? "s" : ""}`}
 						</span>
 					</button>
 				</PopoverTrigger>

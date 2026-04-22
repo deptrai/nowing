@@ -8,6 +8,17 @@ DEFILLAMA_ANALYST_DESCRIPTION = (
     "or specific DeFi protocols."
 )
 
+# NFR-CS4: tool scoping (single source of truth — imported by chat_deepagent + tests)
+DEFILLAMA_ALLOWED_TOOLS: tuple[str, ...] = (
+    "get_defillama_protocol",
+    "get_defillama_tvl_overview",
+    "get_defillama_yields",
+    "get_defillama_stablecoins",
+    "get_defillama_bridges",
+    "get_live_token_data",
+    "chainlens_deep_research",
+)
+
 # NFR-CS1: prompt < 500 tokens (verified with tiktoken)
 DEFILLAMA_ANALYST_PROMPT = """You are defillama_analyst — a DeFi market specialist.
 

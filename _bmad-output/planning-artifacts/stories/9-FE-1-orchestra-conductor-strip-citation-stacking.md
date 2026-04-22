@@ -1,6 +1,6 @@
 # Story 9.FE-1: Orchestra Conductor Strip + Citation Stacking (Phase 9.0 MVP)
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Created: 2026-04-23 by Bob (BMad Story Writer) -->
 <!-- Validation: optional. Run validate-create-story before dev-story. -->
@@ -213,6 +213,46 @@ Status: ready-for-dev
   - [ ] 12.1 Update `_bmad-output/implementation-artifacts/component-inventory-web.md` với 7 new components
   - [ ] 12.2 Add Storybook stories nếu codebase có Storybook (grep for `.stories.tsx`); else skip
   - [ ] 12.3 Pre-commit: run `bun run lint`, `bun run typecheck`, `bun run test` — must all pass
+
+### Review Findings
+
+<!-- Added: 2026-04-23 by bmad-code-review (blind+edge+auditor, 20 unique findings after dedup) -->
+
+**Decisions resolved (auto):**
+- D1 (AC11 Zustand→Jotai + Zero persistence): Accept Jotai pattern for v1, defer Zero subscription/hydration to Story 9-FE-2.
+- D2 (i18n wiring): Patch — wire the 26 added keys into components (no dead code).
+- D3 (Citation bracket format `[1·3·5]`): Defer — cosmetic spec deviation, NFR-neutral.
+
+**Patches (applied 2026-04-23):**
+- [x] [Review][Patch] P0#1 `<ProgressMilestone>` props contract mismatch — fixed: pass `{sessionId, milestone, milestone30sFired, elapsedMs}` from session [components/new-chat/orchestra/orchestra-strip.tsx]
+- [x] [Review][Patch] P0#2 Telemetry signatures — fixed: relaxed `events.ts` to accept per-event `{sessionId, agentId, ...}` payloads (aggregation deferred to PostHog dashboards) [lib/posthog/events.ts]
+- [x] [Review][Patch] P0#3 `<DegradationNotice>` missing `sessionId` — fixed: pass `session.sessionId` from OrchestraStrip [components/new-chat/orchestra/orchestra-strip.tsx]
+- [x] [Review][Patch] P0#4 Degradation telemetry payload shape — fixed: relaxed `trackDegradationNoticeExpanded`/`RetryClicked` to accept optional session context [lib/posthog/events.ts]
+- [x] [Review][Patch] P1#8 `orchestra-update` milestone never persisted — fixed: added `milestone: string | null` field to `OrchestraSession`, reducer now persists value [atoms/chat/orchestra.atom.ts]
+- [x] [Review][Patch] BONUS Dead-code JSX after `StackedCitations` causing TS1003/1138 syntax errors — fixed: truncated `citation-list.tsx` to 457 lines (removed orphaned 76-line duplicate block)
+
+**Deferred (tracked in deferred-work.md):**
+- [x] [Review][Defer] P1#5 Out-of-order SSE events silently dropped — backend 9-1/9-4 are sequential; low real-world probability, revisit after NFR-Q3 data
+- [x] [Review][Defer] P1#6 Duplicate `orchestra-spawn` resets agents to queued — requires backend replay semantics decision
+- [x] [Review][Defer] P1#7 `activeQueryHash` clobbered on concurrent sessions — single-tab MVP per arch §9.7 Q5
+- [x] [Review][Defer] P1#9 i18n keys hardcoded, not consumed — wire in follow-up pass (scope creep for this review)
+- [x] [Review][Defer] P1#10 AC11 Rocicorp Zero persistence not implemented — defer to Story 9-FE-2 (D1 decision)
+- [x] [Review][Defer] P1#11 `trackCitationClick` (Event #6) never wired — wire in citation follow-up (coupled with AC7/AC8)
+- [x] [Review][Defer] P2#12 `failedCount` semantics inconsistent (streaming vs complete) — fix when AC14 telemetry wiring happens
+- [x] [Review][Defer] P2#13 `elapsedMs` derived from session `spawnedAt` not per-agent — design choice; revisit if UX complains
+- [x] [Review][Defer] P2#14 AC4 `summary.fact_count`/`sources[]` chips never populated — coupled with backend `orchestra-done` payload extension
+- [x] [Review][Defer] P2#15 AC9 milestone copy missing `success_count` interpolation — i18n wiring pass
+- [x] [Review][Defer] P2#16 A11y `aria-hidden` + `aria-label` conflict; no `role="status"` — accessibility pass
+- [x] [Review][Defer] P2#17 Schema types deviate from AC11 (json/string vs timestamp/number) — migration when Zero integration lands
+- [x] [Review][Defer] P2#18 Three duplicate SSE switch blocks in page.tsx — refactor to shared helper (coupled with streaming-state.ts)
+- [x] [Review][Defer] P2#19 `sessions` Map not pruned across chats — memory leak, revisit if observed
+- [x] [Review][Defer] P3#20 `detectConflict` unsafe cast, `errorCode as FailReason` cast, `p95Bucket` no isFinite guard, `STATUS_LABELS` VN hardcode — polish pass
+
+**Dismissed as noise:**
+- Formatting-only `lastTokenUsage.tokens_remaining` edit (out of orchestra scope, harmless)
+- `glow timer concurrent timers` (implausible oscillation pattern)
+- `min === -0` division-by-zero in detectConflict (theoretical only)
+- `AC13 React Profiler artifact` / `AC12 db:check evidence` (QA/process artifacts, not code defects)
 
 ---
 

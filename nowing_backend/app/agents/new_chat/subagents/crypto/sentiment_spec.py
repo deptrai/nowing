@@ -8,6 +8,13 @@ SENTIMENT_ANALYST_DESCRIPTION = (
     "market mood, fear/greed, or community sentiment around a token."
 )
 
+# NFR-CS4: tool scoping (single source of truth — imported by chat_deepagent + tests)
+SENTIMENT_ALLOWED_TOOLS: tuple[str, ...] = (
+    "get_cmc_sentiment",
+    "get_reddit_crypto_sentiment",
+    "chainlens_deep_research",
+)
+
 # NFR-CS1: prompt < 500 tokens (verified with tiktoken)
 SENTIMENT_ANALYST_PROMPT = """You are sentiment_analyst — a crypto market sentiment specialist.
 
