@@ -122,7 +122,7 @@ def main():
     print("Chat RAG Verification (DexScreener)")
     print("=" * 60)
     
-    token = login("admin@nowing.ai", "password123")
+    token = login("admin@nowing.ai", "Admin@Nowing1")
     
     # Step 2: Create Thread
     # Note: Using search_space_id=1 for verifying if default space works or 7 if specific

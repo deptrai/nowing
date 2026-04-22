@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
@@ -108,6 +109,22 @@ def registration_allowed():
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+try:
+    from kombu.exceptions import OperationalError as KombuOperationalError
+
+    @app.exception_handler(KombuOperationalError)
+    async def kombu_operational_error_handler(request: Request, exc: KombuOperationalError):
+        logger.error("Celery/Redis unavailable: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Task queue unavailable. Please ensure Redis is running."},
+        )
+
+except ImportError:
+    pass
+
 
 # Add ProxyHeaders middleware FIRST to trust proxy headers (e.g., from Cloudflare)
 # This ensures FastAPI uses HTTPS in redirects when behind a proxy

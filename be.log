@@ -1,29 +1,1006 @@
-2026-04-13 11:08:51,512 | WARNING  | chonkie.chunker.code:__init__:75 - The language is set to `auto`. This would adversely affect the performance of the chunker. Consider setting the `language` parameter to a specific language to improve performance.
-INFO:     Will watch for changes in these directories: ['/Users/luisphWARNING:  WatchFiles detected changes in 'app/db.py', 'app/tasks/connector_indexers/dexscreener_indexer.py', 'app/routes/airtable_add_connector_route.py', 'app/connectors/discord_connector.py', 'app/agents/new_chat/tools/crypto_realtime.py', 'app/services/connector_service.py', 'tests/unit/tasks/test_dexscreener_indexer.py', 'app/connectors/clickup_history.py', 'app/tasks/celery_tasks/connector_tasks.py', 'app/routes/search_source_connectors_routes.py', 'app/routes/dexscreener_add_connector_route.py', 'app/connectors/teams_connector.py', 'app/agents/new_chat/tools/__init__.py', 'app/agents/new_chat/tools/knowledge_base.py', 'app/utils/airtable_token_utils.py', 'tests/unit/connectors/test_dexscreener_connector.py', 'app/routes/__init__.py', 'app/connectors/notion_history.py', 'app/agents/new_chat/chat_deepagent.py', 'app/connectors/slack_history.py', 'app/agents/new_chat/tools/registry.py', 'tests/conftest.py', 'app/connectors/airtable_history.py', 'tests/unit/routes/__init__.py', 'test_dexscreener_integration.py', 'tests/unit/routes/test_dexscreener_routes.py', 'app/utils/validators.py', 'app/connectors/dexscreener_connector.py', 'alembic/versions/85_add_dexscreener_connector.py', 'test_chat_rag.py', 'app/tasks/celery_tasks/schedule_checker_task.py', 'app/connectors/jira_history.py', 'app/app.py', 'app/connectors/confluence_history.py', 'app/tasks/connector_indexers/__init__.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/connectors/confluence_history.py', 'tests/conftest.py', 'app/routes/airtable_add_connector_route.py', 'app/app.py', 'app/connectors/jira_history.py', 'app/connectors/notion_history.py', 'app/tasks/connector_indexers/__init__.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/routes/__init__.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/db.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/chat_deepagent.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/knowledge_base.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/knowledge_base.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/knowledge_base.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/__init__.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/__init__.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/registry.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/registry.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/registry.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/registry.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/chonkie/chunker/code.py:82: UserWarning: The language is set to `auto`. This would adversely affect the performance of the chunker. Consider setting the `language` parameter to a specific language to improve performance.
+  warnings.warn("The language is set to `auto`. This would adversely affect the performance of the chunker. " +
+INFO:     Started server process [30418]
+INFO:     Waiting for application startup.
+2026-04-22 18:39:54 - app.agents.new_chat.checkpointer - INFO - [Checkpointer] Created AsyncPostgresSaver with connection pool
+2026-04-22 18:39:54 - app.agents.new_chat.checkpointer - INFO - [Checkpointer] PostgreSQL checkpoint tables ready
+2026-04-22 18:39:54 - app.tasks.nowing_docs_indexer - INFO - Starting Nowing docs indexing...
+2026-04-22 18:39:54 - app.tasks.nowing_docs_indexer - INFO - Found 39 MDX files to index
+2026-04-22 18:39:54 - app.tasks.nowing_docs_indexer - INFO - Indexing complete: 0 created, 0 updated, 39 skipped, 0 deleted
+2026-04-22 18:39:54 - app.tasks.nowing_docs_indexer - INFO - Nowing docs indexing complete: created=0, updated=0, skipped=39, deleted=0
+2026-04-22 18:39:54 - app.app - INFO - [Chainlens] Integration DISABLED (CHAINLENS_RESEARCH_ENABLED=false) — using built-in research only
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+Info: No global LLM configs found, Auto mode will not be available
+INFO:     127.0.0.1:50926 - "OPTIONS /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:50926 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  return self._jws.encode(
+INFO:     127.0.0.1:50975 - "POST /auth/jwt/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51009 - "GET /api/v1/searchspaces HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51164 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:51192 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51192 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51192 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51194 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51196 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51192 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51194 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51201 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51196 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51203 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51192 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51196 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51194 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51192 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51204 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51203 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51204 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51203 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51194 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51196 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51204 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51192 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51203 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51201 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51201 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51201 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51203 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "OPTIONS /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51334 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51619 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51928 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51928 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51928 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51932 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51930 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51928 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51928 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51938 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51938 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51930 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51939 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51937 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51932 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51928 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51939 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51938 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51930 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51930 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51938 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51938 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51939 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51930 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51932 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51928 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51928 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51928 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51932 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51932 - "OPTIONS /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51932 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52164 - "OPTIONS /api/v1/admin/subscription-requests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52164 - "GET /api/v1/admin/subscription-requests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52164 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52177 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52177 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52164 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52180 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52184 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52181 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52185 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52177 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52164 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52180 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52180 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52180 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52202 - "OPTIONS /api/v1/stripe/billing-portal HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52202 - "GET /api/v1/stripe/billing-portal HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52441 - "OPTIONS /api/v1/searchspaces/34/roles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52442 - "OPTIONS /api/v1/searchspaces/34/invites HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52442 - "GET /api/v1/searchspaces/34/roles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52440 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52441 - "GET /api/v1/searchspaces/34/invites HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52667 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52667 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52667 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52671 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52669 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52667 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52676 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52675 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52669 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52667 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52671 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52671 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52667 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53133 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53166 - "OPTIONS /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53167 - "OPTIONS /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53168 - "OPTIONS /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53170 - "OPTIONS /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "OPTIONS /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53172 - "OPTIONS /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53166 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53167 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53168 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53172 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53170 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53170 - "OPTIONS /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53168 - "OPTIONS /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53168 - "OPTIONS /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53167 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53171 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53167 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53172 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53170 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53168 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53168 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53168 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53168 - "OPTIONS /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53170 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53168 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53170 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53384 - "OPTIONS /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53384 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53812 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54151 - "OPTIONS /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54151 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55017 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55394 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55394 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56137 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56254 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "OPTIONS /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57464 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58051 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58120 - "OPTIONS /api/v1/image-generation-configs HTTP/1.1" 200 OK
+2026-04-22 19:04:54 - app.routes.image_generation_routes - ERROR - Failed to create ImageGenerationConfig
+Traceback (most recent call last):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 545, in _prepare_and_execute
+    self._rows = deque(await prepared_stmt.fetch(*parameters))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py", line 176, in fetch
+    data = await self.__bind_execute(args, 0, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py", line 267, in __bind_execute
+    data, status, _ = await self.__do_execute(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py", line 256, in __do_execute
+    return await executor(protocol)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 206, in bind_execute
+asyncpg.exceptions.NotNullViolationError: null value in column "user_id" of relation "image_generation_configs" violates not-null constraint
+DETAIL:  Failing row contains (V98, null, OPENAI, null, gemini-3.1-flash-image-preview, sk-RnuZ301cRuheBEG1XpOIBGZrvSsN3kHGVgGk05lx1UwEcrFM, https://v98store.com, null, null, 34, null, 1, 2026-04-22 12:04:54.753544+00).
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1963, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 943, in do_execute
+    cursor.execute(statement, parameters)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 580, in execute
+    self._adapt_connection.await_(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 558, in _prepare_and_execute
+    self._handle_exception(error)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 508, in _handle_exception
+    self._adapt_connection._handle_exception(error)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 792, in _handle_exception
+    raise translated_error from error
+sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.IntegrityError: <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "user_id" of relation "image_generation_configs" violates not-null constraint
+DETAIL:  Failing row contains (V98, null, OPENAI, null, gemini-3.1-flash-image-preview, sk-RnuZ301cRuheBEG1XpOIBGZrvSsN3kHGVgGk05lx1UwEcrFM, https://v98store.com, null, null, 34, null, 1, 2026-04-22 12:04:54.753544+00).
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/routes/image_generation_routes.py", line 271, in create_image_gen_config
+    await session.commit()
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py", line 1014, in commit
+    await greenlet_spawn(self.sync_session.commit)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 203, in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1313, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1288, in _prepare_impl
+    self.session.flush()
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4345, in flush
+    self._flush(objects)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4480, in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 224, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4441, in _flush
+    flush_context.execute()
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1415, in execute
+    return meth(
+           ^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 523, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1637, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1842, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1982, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2351, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1963, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 943, in do_execute
+    cursor.execute(statement, parameters)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 580, in execute
+    self._adapt_connection.await_(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 558, in _prepare_and_execute
+    self._handle_exception(error)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 508, in _handle_exception
+    self._adapt_connection._handle_exception(error)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 792, in _handle_exception
+    raise translated_error from error
+sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "user_id" of relation "image_generation_configs" violates not-null constraint
+DETAIL:  Failing row contains (V98, null, OPENAI, null, gemini-3.1-flash-image-preview, sk-RnuZ301cRuheBEG1XpOIBGZrvSsN3kHGVgGk05lx1UwEcrFM, https://v98store.com, null, null, 34, null, 1, 2026-04-22 12:04:54.753544+00).
+[SQL: INSERT INTO image_generation_configs (name, description, provider, custom_provider, model_name, api_key, api_base, api_version, litellm_params, search_space_id, user_id, created_at) VALUES ($1::VARCHAR, $2::VARCHAR, $3::imagegenprovider, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::VARCHAR, $9::JSON, $10::INTEGER, $11::UUID, $12::TIMESTAMP WITH TIME ZONE) RETURNING image_generation_configs.id]
+[parameters: ('V98', None, 'OPENAI', None, 'gemini-3.1-flash-image-preview', 'sk-RnuZ301cRuheBEG1XpOIBGZrvSsN3kHGVgGk05lx1UwEcrFM', 'https://v98store.com', None, 'null', 34, None, datetime.datetime(2026, 4, 22, 12, 4, 54, 753544, tzinfo=datetime.timezone.utc))]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+INFO:     127.0.0.1:58120 - "POST /api/v1/image-generation-configs HTTP/1.1" 500 Internal Server Error
+2026-04-22 19:05:02 - app.routes.image_generation_routes - ERROR - Failed to create ImageGenerationConfig
+Traceback (most recent call last):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 545, in _prepare_and_execute
+    self._rows = deque(await prepared_stmt.fetch(*parameters))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py", line 176, in fetch
+    data = await self.__bind_execute(args, 0, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py", line 267, in __bind_execute
+    data, status, _ = await self.__do_execute(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py", line 256, in __do_execute
+    return await executor(protocol)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 206, in bind_execute
+asyncpg.exceptions.NotNullViolationError: null value in column "user_id" of relation "image_generation_configs" violates not-null constraint
+DETAIL:  Failing row contains (V98, null, OPENAI, null, gemini-3.1-flash-image-preview, sk-RnuZ301cRuheBEG1XpOIBGZrvSsN3kHGVgGk05lx1UwEcrFM, https://v98store.com/v1, null, null, 34, null, 2, 2026-04-22 12:05:02.624548+00).
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1963, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 943, in do_execute
+    cursor.execute(statement, parameters)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 580, in execute
+    self._adapt_connection.await_(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 558, in _prepare_and_execute
+    self._handle_exception(error)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 508, in _handle_exception
+    self._adapt_connection._handle_exception(error)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 792, in _handle_exception
+    raise translated_error from error
+sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.IntegrityError: <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "user_id" of relation "image_generation_configs" violates not-null constraint
+DETAIL:  Failing row contains (V98, null, OPENAI, null, gemini-3.1-flash-image-preview, sk-RnuZ301cRuheBEG1XpOIBGZrvSsN3kHGVgGk05lx1UwEcrFM, https://v98store.com/v1, null, null, 34, null, 2, 2026-04-22 12:05:02.624548+00).
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/routes/image_generation_routes.py", line 271, in create_image_gen_config
+    await session.commit()
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py", line 1014, in commit
+    await greenlet_spawn(self.sync_session.commit)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 203, in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1313, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1288, in _prepare_impl
+    self.session.flush()
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4345, in flush
+    self._flush(objects)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4480, in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 224, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4441, in _flush
+    flush_context.execute()
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1415, in execute
+    return meth(
+           ^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 523, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1637, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1842, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1982, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2351, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1963, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 943, in do_execute
+    cursor.execute(statement, parameters)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 580, in execute
+    self._adapt_connection.await_(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 558, in _prepare_and_execute
+    self._handle_exception(error)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 508, in _handle_exception
+    self._adapt_connection._handle_exception(error)
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 792, in _handle_exception
+    raise translated_error from error
+sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "user_id" of relation "image_generation_configs" violates not-null constraint
+DETAIL:  Failing row contains (V98, null, OPENAI, null, gemini-3.1-flash-image-preview, sk-RnuZ301cRuheBEG1XpOIBGZrvSsN3kHGVgGk05lx1UwEcrFM, https://v98store.com/v1, null, null, 34, null, 2, 2026-04-22 12:05:02.624548+00).
+[SQL: INSERT INTO image_generation_configs (name, description, provider, custom_provider, model_name, api_key, api_base, api_version, litellm_params, search_space_id, user_id, created_at) VALUES ($1::VARCHAR, $2::VARCHAR, $3::imagegenprovider, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::VARCHAR, $9::JSON, $10::INTEGER, $11::UUID, $12::TIMESTAMP WITH TIME ZONE) RETURNING image_generation_configs.id]
+[parameters: ('V98', None, 'OPENAI', None, 'gemini-3.1-flash-image-preview', 'sk-RnuZ301cRuheBEG1XpOIBGZrvSsN3kHGVgGk05lx1UwEcrFM', 'https://v98store.com/v1', None, 'null', 34, None, datetime.datetime(2026, 4, 22, 12, 5, 2, 624548, tzinfo=datetime.timezone.utc))]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+INFO:     127.0.0.1:58143 - "POST /api/v1/image-generation-configs HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:58522 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "OPTIONS /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58791 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "OPTIONS /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58791 - "OPTIONS /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "OPTIONS /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58793 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58791 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58791 - "OPTIONS /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "OPTIONS /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58793 - "OPTIONS /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58793 - "OPTIONS /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "OPTIONS /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "OPTIONS /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "OPTIONS /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58793 - "OPTIONS /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "OPTIONS /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "OPTIONS /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "OPTIONS /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "OPTIONS /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58793 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58791 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58791 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58793 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58793 - "OPTIONS /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "OPTIONS /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58793 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "OPTIONS /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58791 - "OPTIONS /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "OPTIONS /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58799 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58793 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58791 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "OPTIONS /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58783 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58831 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "OPTIONS /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58914 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59169 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59445 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59445 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59445 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59454 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59448 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59445 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59445 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59467 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59454 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59464 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59448 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59467 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59445 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59454 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59454 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59454 - "OPTIONS /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59454 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59467 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59445 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59448 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59465 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59448 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59448 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "OPTIONS /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "OPTIONS /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "OPTIONS /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59662 - "OPTIONS /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59662 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "OPTIONS /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59662 - "OPTIONS /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "OPTIONS /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "OPTIONS /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59662 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59672 - "OPTIONS /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59673 - "OPTIONS /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "OPTIONS /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59662 - "OPTIONS /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59672 - "OPTIONS /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "OPTIONS /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "OPTIONS /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59662 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59673 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59672 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59662 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59620 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59669 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59673 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59672 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59673 - "OPTIONS /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "OPTIONS /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59673 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59673 - "OPTIONS /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "OPTIONS /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59672 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59669 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59673 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59672 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59622 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59669 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60146 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60146 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60146 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60146 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60218 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60221 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60146 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60225 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60228 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60218 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60226 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60228 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60221 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60225 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60146 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60218 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60228 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60226 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60226 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60228 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60228 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60226 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60146 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60225 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60218 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60218 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60218 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60225 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60225 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60473 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60773 - "POST /api/v1/documents/fileupload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61040 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61142 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61142 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61142 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61148 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61144 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61142 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61154 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61142 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61153 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61154 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61142 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61144 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61148 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61156 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61142 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61154 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61153 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61154 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61153 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61153 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61142 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61156 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61148 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61154 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61154 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61154 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61148 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61148 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61148 - "OPTIONS /api/v1/notifications/84/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61148 - "PATCH /api/v1/notifications/84/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61730 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62480 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62559 - "OPTIONS /api/v1/threads/2/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62561 - "OPTIONS /api/v1/new_chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62559 - "POST /api/v1/new_chat HTTP/1.1" 200 OK
+2026-04-22 19:17:55,539 [PERF] [stream_new_chat_START] rss=192.8MB cpu=0.0% threads=28 fds=38 asyncio_tasks=9 gc=(123, 1, 40)
+INFO:     127.0.0.1:62561 - "POST /api/v1/threads/2/messages HTTP/1.1" 200 OK
+2026-04-22 19:17:55,689 [PERF] [stream_new_chat] LLM config loaded in 0.118s (config_id=2)
+2026-04-22 19:17:55,695 [PERF] [stream_new_chat] Connector service + firecrawl key in 0.006s
+2026-04-22 19:17:55,714 [PERF] [stream_new_chat] Checkpointer ready in 0.001s
+2026-04-22 19:17:55,730 [PERF] [create_agent] Connector/doc-type discovery in 0.015s
+2026-04-22 19:17:55,867 [PERF] [build_tools_async] Built-in tools in 0.067s (10 tools)
+2026-04-22 19:17:55 - app.agents.new_chat.tools.mcp_tool - INFO - Loaded 0 MCP tools for search space 34
+2026-04-22 19:17:55,872 [PERF] [build_tools_async] MCP tools loaded in 0.005s (0 tools)
+2026-04-22 19:17:55 - root - INFO - Registered 0 MCP tools: []
+2026-04-22 19:17:55 - root - INFO - Total tools for agent: 10 - ['generate_podcast', 'generate_video_presentation', 'generate_report', 'generate_image', 'scrape_webpage', 'web_search', 'search_nowing_docs', 'update_memory', 'get_live_token_price', 'get_live_token_data']
+2026-04-22 19:17:55,872 [PERF] [create_agent] build_tools_async in 0.142s (10 tools)
+2026-04-22 19:17:55,875 [PERF] [create_agent] System prompt built in 0.003s
+2026-04-22 19:17:55,983 [PERF] [create_agent] Graph compiled (create_agent) in 0.010s
+2026-04-22 19:17:55,983 [PERF] [create_agent] Total agent creation in 0.267s
+2026-04-22 19:17:55,983 [PERF] [stream_new_chat] Agent created in 0.269s
+2026-04-22 19:17:55,990 [PERF] [stream_new_chat] History bootstrap + doc/report queries in 0.008s
+2026-04-22 19:17:55,991 [PERF] [stream_new_chat] Total pre-stream setup in 0.464s (chat_id=2)
+[92m19:17:56 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:17:56 - LiteLLM - INFO - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:17:58 - langsmith.client - WARNING - Failed to multipart ingest runs: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-04-22 19:18:00,813 [PERF] [kb_fs_middleware] planner in 4.577s query='cho tôi biết về dự án reso' optimized='dự án RESO' start=None end=None
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]2026-04-22 19:18:01 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+Batches: 100%|██████████| 1/1 [00:01<00:00,  1.28s/it]Batches: 100%|██████████| 1/1 [00:01<00:00,  1.28s/it]
+2026-04-22 19:18:02,202 [PERF] [chunk_search] hybrid_search RRF query in 0.086s results=30 space=34 type=['LOCAL_FOLDER_FILE', 'FILE']
+2026-04-22 19:18:02,217 [PERF] [chunk_search] chunk fetch in 0.008s rows=217
+2026-04-22 19:18:02,218 [PERF] [chunk_search] hybrid_search TOTAL in 0.116s docs=11 space=34 type=['LOCAL_FOLDER_FILE', 'FILE']
+2026-04-22 19:18:02,234 [PERF] [kb_fs_middleware] completed in 5.998s query='cho tôi biết về dự án reso' optimized='dự án RESO' mentioned=0 new_files=10 total=10
+[92m19:18:02 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:18:02 - LiteLLM - INFO - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:18:03 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-04-22 19:18:06,486 [PERF] [stream_new_chat] First agent event in 10.489s (time since stream start), 10.958s (total since request start) (chat_id=2)
+[92m19:18:06 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:18:06 - LiteLLM - INFO - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:18:07 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m19:18:11 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:18:11 - LiteLLM - INFO - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:18:12 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-04-22 19:18:24,967 [PERF] [stream_new_chat] gc.collect() reclaimed 657 objects (chat_id=2)
+2026-04-22 19:18:24,968 [PERF] [stream_new_chat_END] rss=865.2MB delta=+672.4MB cpu=0.0% threads=53 fds=44 asyncio_tasks=8 gc=(26, 0, 0)
+2026-04-22 19:18:24,968 [PERF] [MEMORY_SPIKE] stream_new_chat_END: RSS jumped by 672.4MB (now 865.2MB). Possible leak — check recent operations.
+INFO:     127.0.0.1:62765 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62767 - "OPTIONS /users/me HTTP/1.1" 200 OK
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:62767 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "GET /users/me HTTP/1.1" 200 OK
+2026-04-22 19:18:25 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+INFO:     127.0.0.1:62765 - "OPTIONS /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62767 - "OPTIONS /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62774 - "OPTIONS /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62767 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62774 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62774 - "OPTIONS /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62767 - "OPTIONS /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "OPTIONS /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62774 - "OPTIONS /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62777 - "OPTIONS /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62774 - "OPTIONS /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62780 - "OPTIONS /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "OPTIONS /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62777 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62780 - "OPTIONS /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62777 - "OPTIONS /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62780 - "OPTIONS /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62777 - "OPTIONS /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62767 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62767 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62780 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62777 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62774 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62780 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62780 - "OPTIONS /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "OPTIONS /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62780 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "OPTIONS /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "OPTIONS /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62774 - "OPTIONS /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62777 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62774 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62777 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62780 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "OPTIONS /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62781 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62830 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "OPTIONS /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62961 - "OPTIONS /api/v1/search-spaces/34/export HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62961 - "GET /api/v1/search-spaces/34/export HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63272 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63274 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63273 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63270 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63270 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63306 - "POST /api/v1/new_chat HTTP/1.1" 200 OK
+2026-04-22 19:19:29,903 [PERF] [stream_new_chat_START] rss=260.7MB delta=-604.5MB cpu=0.0% threads=54 fds=45 asyncio_tasks=9 gc=(43, 5, 1)
+INFO:     127.0.0.1:63305 - "POST /api/v1/threads/2/messages HTTP/1.1" 200 OK
+2026-04-22 19:19:29,927 [PERF] [stream_new_chat] LLM config loaded in 0.004s (config_id=2)
+2026-04-22 19:19:29,937 [PERF] [stream_new_chat] Connector service + firecrawl key in 0.010s
+2026-04-22 19:19:29,937 [PERF] [stream_new_chat] Checkpointer ready in 0.000s
+2026-04-22 19:19:29,946 [PERF] [create_agent] Connector/doc-type discovery in 0.009s
+2026-04-22 19:19:29,971 [PERF] [build_tools_async] Built-in tools in 0.015s (10 tools)
+2026-04-22 19:19:29 - app.agents.new_chat.tools.mcp_tool - INFO - Using cached MCP tools for search space 34 (0 tools, age=94s)
+2026-04-22 19:19:29,971 [PERF] [build_tools_async] MCP tools loaded in 0.000s (0 tools)
+2026-04-22 19:19:29 - root - INFO - Registered 0 MCP tools: []
+2026-04-22 19:19:29 - root - INFO - Total tools for agent: 10 - ['generate_podcast', 'generate_video_presentation', 'generate_report', 'generate_image', 'scrape_webpage', 'web_search', 'search_nowing_docs', 'update_memory', 'get_live_token_price', 'get_live_token_data']
+2026-04-22 19:19:29,971 [PERF] [create_agent] build_tools_async in 0.025s (10 tools)
+2026-04-22 19:19:29,971 [PERF] [create_agent] System prompt built in 0.000s
+2026-04-22 19:19:30,046 [PERF] [create_agent] Graph compiled (create_agent) in 0.011s
+2026-04-22 19:19:30,046 [PERF] [create_agent] Total agent creation in 0.109s
+2026-04-22 19:19:30,046 [PERF] [stream_new_chat] Agent created in 0.109s
+2026-04-22 19:19:30,050 [PERF] [stream_new_chat] History bootstrap + doc/report queries in 0.004s
+2026-04-22 19:19:30,052 [PERF] [stream_new_chat] Total pre-stream setup in 0.150s (chat_id=2)
+[92m19:19:30 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:19:30 - LiteLLM - INFO - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:19:30 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-04-22 19:19:32,770 [PERF] [kb_fs_middleware] planner in 2.684s query='?' optimized='dự án RESO' start=None end=None
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.64it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.64it/s]
+2026-04-22 19:19:33,198 [PERF] [chunk_search] hybrid_search RRF query in 0.037s results=30 space=34 type=['LOCAL_FOLDER_FILE', 'FILE']
+2026-04-22 19:19:33,203 [PERF] [chunk_search] chunk fetch in 0.004s rows=217
+2026-04-22 19:19:33,204 [PERF] [chunk_search] hybrid_search TOTAL in 0.052s docs=11 space=34 type=['LOCAL_FOLDER_FILE', 'FILE']
+2026-04-22 19:19:33,212 [PERF] [kb_fs_middleware] completed in 3.126s query='?' optimized='dự án RESO' mentioned=0 new_files=10 total=20
+[92m19:19:33 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:19:33 - LiteLLM - INFO - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:19:34 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-04-22 19:19:38,495 [PERF] [stream_new_chat] First agent event in 8.436s (time since stream start), 8.593s (total since request start) (chat_id=2)
+2026-04-22 19:19:54,927 [PERF] [stream_new_chat] Agent stream completed in 24.868s (chat_id=2)
+2026-04-22 19:19:54,927 [PERF] [stream_new_chat_END] rss=363.3MB delta=+102.6MB cpu=0.0% threads=55 fds=45 asyncio_tasks=8 gc=(6, 0, 6)
+[92m19:19:54 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:19:54 - LiteLLM - INFO - 
+LiteLLM completion() model= claude-sonnet-4.6; provider = openai
+2026-04-22 19:19:55,329 [PERF] [stream_new_chat] gc.collect() reclaimed 678 objects (chat_id=2)
+2026-04-22 19:19:55,329 [PERF] [stream_new_chat_END] rss=835.6MB delta=+472.3MB cpu=0.0% threads=55 fds=45 asyncio_tasks=10 gc=(24, 0, 0)
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:63306 - "POST /api/v1/threads/2/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63306 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+2026-04-22 19:19:55 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-04-22 19:19:58 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+INFO:     127.0.0.1:63504 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "OPTIONS /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "POST /api/v1/documents/folder-upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63604 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63609 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63614 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63616 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63613 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63609 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63614 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63604 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63616 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63609 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63613 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63613 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63609 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63614 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63609 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63604 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63616 - "GET /api/v1/threads/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63613 - "GET /api/v1/threads/2/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63613 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63613 - "GET /api/v1/threads/2/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63616 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63616 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64018 - "OPTIONS /api/v1/auth/notion/connector/add/?space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64018 - "GET /api/v1/auth/notion/connector/add/?space_id=34 HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:64018 - "OPTIONS /api/v1/auth/notion/connector/add?space_id=34 HTTP/1.1" 200 OK
+2026-04-22 19:21:18 - app.routes.notion_add_connector_route - INFO - Generated Notion OAuth URL for user f47ac10b-58cc-4372-a567-0e02b2c3d479, space 34
+INFO:     127.0.0.1:64018 - "GET /api/v1/auth/notion/connector/add?space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64591 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64595 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64593 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64593 - "OPTIONS /api/v1/new-llm-configs/default-system-instructions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64595 - "OPTIONS /api/v1/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64595 - "GET /api/v1/new-llm-configs/default-system-instructions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64600 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64603 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64591 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64595 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64602 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64593 - "GET /api/v1/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64603 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64595 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64595 - "OPTIONS /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64600 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64602 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64593 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64603 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64591 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64602 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64600 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64595 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64593 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64591 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64602 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49503 - "OPTIONS /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49503 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49729 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50155 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50155 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50157 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50155 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50155 - "OPTIONS /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50157 - "OPTIONS /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50165 - "OPTIONS /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50155 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50165 - "GET /api/v1/searchspaces/34/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50157 - "GET /api/v1/search-spaces/34/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50157 - "OPTIONS /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50165 - "OPTIONS /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50165 - "OPTIONS /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50165 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50168 - "OPTIONS /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50165 - "OPTIONS /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "OPTIONS /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50172 - "OPTIONS /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50172 - "OPTIONS /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50172 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "OPTIONS /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "OPTIONS /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "OPTIONS /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "OPTIONS /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50168 - "GET /api/v1/new-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50172 - "GET /api/v1/vision-llm-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50157 - "GET /api/v1/threads?search_space_id=34&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50155 - "GET /api/v1/search-source-connectors?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50168 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50165 - "GET /api/v1/image-generation-configs?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50172 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "GET /api/v1/searchspaces/34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "OPTIONS /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50172 - "OPTIONS /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "GET /api/v1/notifications?search_space_id=34&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50172 - "GET /api/v1/notifications?search_space_id=34&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "OPTIONS /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50172 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50165 - "GET /api/v1/documents/search/titles?search_space_id=34&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50374 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50374 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50584 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50622 - "GET /api/v1/notifications/source-types?search_space_id=34 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50622 - "OPTIONS /api/v1/notifications/86/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50622 - "PATCH /api/v1/notifications/86/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50622 - "OPTIONS /api/v1/notifications/85/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50622 - "PATCH /api/v1/notifications/85/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50767 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51030 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51503 - "OPTIONS /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51503 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52169 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52387 - "OPTIONS /api/v1/documents?page=0&page_size=200&search_space_id=34&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52387 - "GET /api/v1/documents?page=0&page_size=200&search_space_id=34&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52438 - "GET /api/v1/searchspaces/34/members HTTP/1.1" 200 OK

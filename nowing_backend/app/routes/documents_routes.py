@@ -1419,8 +1419,16 @@ async def restore_document_version(
     await session.commit()
 
     from app.tasks.celery_tasks.document_reindex_tasks import reindex_document_task
+    from kombu.exceptions import OperationalError as KombuOperationalError
 
-    reindex_document_task.delay(document_id, str(user.id))
+    try:
+        reindex_document_task.delay(document_id, str(user.id))
+    except KombuOperationalError as e:
+        logger.error("Celery task dispatch failed (Redis unavailable): %s", e)
+        raise HTTPException(
+            status_code=503,
+            detail="Reindex queue unavailable. Version was restored but re-indexing is pending.",
+        )
 
     return {
         "message": f"Restored version {version_number}",
@@ -1655,15 +1663,28 @@ async def folder_upload(
         index_uploaded_folder_files_task,
     )
 
-    index_uploaded_folder_files_task.delay(
-        search_space_id=search_space_id,
-        user_id=str(user.id),
-        folder_name=folder_name,
-        root_folder_id=root_folder_id,
-        enable_summary=enable_summary,
-        use_vision_llm=use_vision_llm,
-        file_mappings=list(file_mappings),
-    )
+    try:
+        index_uploaded_folder_files_task.delay(
+            search_space_id=search_space_id,
+            user_id=str(user.id),
+            folder_name=folder_name,
+            root_folder_id=root_folder_id,
+            enable_summary=enable_summary,
+            use_vision_llm=use_vision_llm,
+            file_mappings=list(file_mappings),
+        )
+    except Exception as dispatch_err:
+        from kombu.exceptions import OperationalError as KombuOperationalError
+
+        if isinstance(dispatch_err, KombuOperationalError):
+            raise HTTPException(
+                status_code=503,
+                detail="Task queue unavailable. Please ensure Redis is running.",
+            ) from dispatch_err
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to dispatch folder indexing task: {dispatch_err!s}",
+        ) from dispatch_err
 
     return {
         "message": f"Folder upload started for {len(files)} file(s)",

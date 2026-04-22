@@ -481,8 +481,25 @@ export function InboxSidebarContent({
 		const metadata = item.metadata as Record<string, unknown>;
 		const status = typeof metadata?.status === "string" ? metadata.status : undefined;
 
+		const STALE_THRESHOLD_MS = 15 * 60 * 1000;
+		const HARD_TIMEOUT_MS = 8 * 60 * 60 * 1000;
+		const isStale =
+			item.updated_at != null &&
+			Date.now() - new Date(item.updated_at).getTime() > STALE_THRESHOLD_MS;
+		const startedAt = typeof metadata?.started_at === "string" ? metadata.started_at : null;
+		const isTimedOut =
+			startedAt != null && Date.now() - new Date(startedAt).getTime() > HARD_TIMEOUT_MS;
+		const isInProgressStuck = status === "in_progress" && (isStale || isTimedOut);
+
 		switch (status) {
 			case "in_progress":
+				if (isInProgressStuck) {
+					return (
+						<div className="h-8 w-8 flex items-center justify-center rounded-full bg-muted">
+							<History className="h-4 w-4 text-muted-foreground" />
+						</div>
+					);
+				}
 				return (
 					<div className="h-8 w-8 flex items-center justify-center rounded-full bg-muted">
 						<Spinner size="sm" className="text-foreground" />

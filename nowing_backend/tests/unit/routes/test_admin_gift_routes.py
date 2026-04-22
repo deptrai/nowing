@@ -35,7 +35,7 @@ pytestmark = pytest.mark.unit
 def mock_admin() -> User:
     user = MagicMock(spec=User)
     user.id = uuid.uuid4()
-    user.email = "admin@example.com"
+    user.email = "admin@nowing.ai"
     user.is_active = True
     user.is_superuser = True
     user.is_verified = True

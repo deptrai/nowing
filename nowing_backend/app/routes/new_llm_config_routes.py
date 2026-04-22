@@ -141,8 +141,7 @@ async def create_new_llm_config(
                 detail=f"Invalid LLM configuration: {error_message}",
             )
 
-        # Create the config as admin-owned (user_id=None means shared with all space members)
-        db_config = NewLLMConfig(**config_data.model_dump(), user_id=None)
+        db_config = NewLLMConfig(**config_data.model_dump(), user_id=user.id)
         session.add(db_config)
         await session.commit()
         await session.refresh(db_config)
