@@ -8,7 +8,7 @@ relatedFRs: [FR32, FR33, FR34, FR35]
 relatedNFRs: [NFR-CS1, NFR-CS4, NFR-Q1, NFR-Q2, NFR-Q3, NFR-Q4]
 priority: P2 (Phase 3 pair với 9.3 — HIGHEST risk story)
 estimatedEffort: 5-7 days (3-5 days spike + 3 days story)
-status: blocked-on-spike (cần Story 0.0b Spike trước)
+status: backlog (blocked on Phase 2 quality gate + inline spike DONE)
 createdAt: 2026-04-23
 author: Mary (Strategic Business Analyst)
 ---
@@ -49,24 +49,106 @@ Story 9.6 là **Phase 3 pair story** với 9.3 — và là **HIGHEST RISK story 
 >    - Ambitious: visual patterns (H&S, flags) — high hallucination risk
 >    - Conservative: only support/resistance + MA crosses + RSI thresholds — deterministic
 
-### Spike Story Spec (Story 0.0b — Pre-Phase 3)
+**Effort**: 3-5 days | **Owner**: Senior dev + Mary | **Deliverable**: `_bmad-output/research/spike-0.0b-ta-findings.md`
 
-**Effort**: 3-5 days (separate từ Story 0.0 Spike cho 9.3)
-**Owner**: Senior dev + Mary
+### Day 1: Evaluate OHLCV Sources
 
-**Spike steps**:
-1. **Day 1**: Evaluate OHLCV sources
-   - CoinGecko `/coins/{id}/ohlc` (free, limited to ~days/hour granularity)
-   - Binance public API (kline endpoints — rate-limited but free)
-   - DexScreener (DEX tokens primarily)
-2. **Day 2-3**: Prototype Option A (backend TA tool):
-   - Build `get_crypto_ta_indicators(symbol, timeframe)` tool
-   - Use `pandas-ta` hoặc `ta-lib` library — compute RSI, MACD, MA cross
-   - Return structured dict: `{rsi: 72.5, macd_signal: "bullish_cross", ma_50_200: "golden_cross"}`
-3. **Day 4-5**: Recommendation memo
-   - Option A feasible? → proceed với scope conservative (no visual pattern recognition, only indicators)
-   - Option B only? → defer 9.6 hoặc narrow scope drastically
-   - Cost estimate (library dep, API rate limits, accuracy test results)
+Test sources cho BTC, ETH, UNI daily + hourly data 90 days:
+
+| Source | Endpoint | Notes |
+|--------|----------|-------|
+| **CoinGecko** | `/coins/{id}/ohlc?vs_currency=usd&days=30` | Already integrated; 30 req/min free; daily only, hourly restricted |
+| **Binance** | `/api/v3/klines?symbol={pair}&interval={1h,1d}&limit=500` | 1200/min; free; high granularity; only Binance-listed tokens |
+| **DexScreener** | Already in `crypto_realtime.py` | DEX tokens only; snapshot, limited historical |
+| **TradingView** | — | Legal risk (ToS); fragile — **Skip** |
+
+**Scoring per source** (0-2 each):
+- **Coverage** (top 50 tokens): 0=limited, 1=partial, 2=comprehensive
+- **Granularity**: 0=daily only, 1=hourly, 2=1m/5m
+- **Free tier viable**: 0=paid needed, 1=strict limits, 2=generous
+- **Integration effort**: 0=new auth+library, 1=some work, 2=plug-and-play
+
+**Threshold**: Source total ≥ 6/8 → viable primary.
+
+### Day 2-3: Prototype Option A — Backend TA Tool
+
+**Build**: `nowing_backend/app/agents/new_chat/tools/crypto_ta.py`
+
+```python
+async def get_crypto_ta_indicators(
+    symbol: str,
+    timeframe: str = "1d",  # "1h", "4h", "1d"
+    lookback_days: int = 90,
+) -> dict[str, Any]:
+    """Compute TA indicators server-side."""
+    # 1. Fetch OHLCV from selected source
+    # 2. Compute: RSI_14, MACD (line+signal+histogram), MA_50, MA_200
+    # 3. Detect: golden_cross / death_cross, bullish/bearish MACD cross
+    # 4. Key levels: support (recent lows), resistance (recent highs)
+    # 5. Return structured dict
+```
+
+**Dependencies**: `pandas-ta` or `ta` library (verify OSS license) + `httpx` (existing)
+
+**Test tokens**: BTC, ETH (high liquidity), UNI, AAVE (mid-cap DeFi), SOL (L1)
+
+**Accuracy verification**: RSI ±0.5 vs TradingView; MACD cross detection vs chart visual; support/resistance vs obvious price levels.
+
+### Day 4: Decide Pattern Recognition Scope
+
+**Expected finding**: LLM **không reliable** cho pattern recognition without vision — sẽ fabricate, không verifiable, legal exposure.
+
+**Recommended scope — Conservative**:
+- ✅ Indicators (RSI, MACD, MA)
+- ✅ Key levels (support/resistance từ OHLCV data, algorithmic)
+- ✅ Trend classification (bullish/bearish/neutral từ MA + momentum)
+- ❌ Chart patterns (H&S, cup & handle, flags) — **EXCLUDE**
+
+### Day 5: Write Recommendation Memo
+
+**Deliverable**: `_bmad-output/research/spike-0.0b-ta-findings.md`
+
+```markdown
+# Spike 0.0b — TA Tooling Findings
+
+## TL;DR Recommendation
+[Option A backend tool / Option B LLM-only / Option defer]
+
+## OHLCV Source Decision
+Selected: [CoinGecko / Binance / hybrid] — Rationale: [...]
+
+## Prototype Tool Results
+- RSI accuracy: ±X vs TradingView
+- MACD cross detection: X/Y correct
+- Library choice: pandas-ta (rationale)
+
+## Pattern Recognition Scope Decision
+Recommended: Conservative — indicators only, NO visual patterns
+Rationale: LLM hallucination risk + legal exposure
+
+## Impact on Story 9.6 Scope + Impact on Story 0.1 (if crypto_ta.py added)
+
+## Cost Estimate (library dep, API rate limits, dev effort)
+```
+
+### Outcome Decision Matrix
+
+| Outcome | Action |
+|---------|--------|
+| 🟢 Option A viable + conservative scope | Proceed Story 9.6 |
+| 🟡 Option A works nhưng OHLCV limited | Narrow scope (fewer tokens supported) |
+| 🔴 No viable OHLCV source | **Defer Story 9.6 indefinitely** |
+| ⛔ Pattern recognition fundamentally unreliable | Confirm conservative scope (already recommended) |
+
+### Spike DoD
+
+- [ ] **DoD-1** 3+ OHLCV sources evaluated với scoring
+- [ ] **DoD-2** Prototype `crypto_ta.py` built (Option A) hoặc rationale cho skip
+- [ ] **DoD-3** Memo written và shared
+- [ ] **DoD-4** Decision meeting: proceed / defer / scope narrow
+- [ ] **DoD-5** Story 9.6 spec updated
+- [ ] **DoD-6** Story 0.1 updated nếu thêm crypto_ta tool
+- [ ] **DoD-7** Legal notified về TA disclaimer requirements (AC12)
 
 ### Pre-flight Checklist (after spike)
 

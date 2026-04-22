@@ -3,12 +3,12 @@ storyId: 0.5
 storyTitle: Parallel Execution Validation
 epicParent: epic-00-crypto-foundation
 dependsOn: [Story 0.1, 0.2, 0.3, 0.4 DONE]
-blocks: [Story 8.3, Epic 9 Phase 1]
+blocks: [Story 0.6, Epic 9 Phase 1]
 relatedFRs: [FR-T2, FR33 Parallel Orchestration]
 relatedNFRs: [NFR-CS2 Parallel Execution, NFR-Q2 Parallelism Ratio, NFR-Q4 Speed]
 priority: P0 (BLOCKING Phase 1)
 estimatedEffort: 2-3 days
-status: ready-for-dev (blocked on Story 8.1)
+status: ready-for-dev (blocked on Story 0.4)
 createdAt: 2026-04-23
 author: Mary (Strategic Business Analyst)
 ---

@@ -8,7 +8,7 @@ relatedFRs: [FR29, FR33, FR34, FR35]
 relatedNFRs: [NFR-CS1, NFR-CS4, NFR-Q1, NFR-Q2, NFR-Q3, NFR-Q4]
 priority: P2 (Phase 3 — blocked on spike + Phase 2 GO decision)
 estimatedEffort: 5 days (3-5 days spike + 3 days story)
-status: blocked-on-spike (cần Story 0.0 Spike trước)
+status: backlog (blocked on Phase 2 quality gate + inline spike DONE)
 createdAt: 2026-04-23
 author: Mary (Strategic Business Analyst)
 ---
@@ -46,26 +46,92 @@ Story 9.3 là **Phase 3 lead story** với risk profile cao nhất trong toàn C
 > 2. Nếu KHÔNG → có alternative data source viable không (TokenUnlocks API trial, scrape, etc.)?
 > 3. Nếu fundamentally không có data → defer Story 9.3 indefinitely và pivot Phase 3 sang khác?
 
-### Spike Story Spec (Story 0.0 — Pre-Phase 3)
+**Effort**: 3-5 days | **Owner**: Senior dev + Mary | **Deliverable**: `_bmad-output/research/spike-0.0-token-unlock-findings.md`
 
-**Effort**: 3-5 days
-**Owner**: Senior dev + Mary (BA collaborate cho data source evaluation)
-**Deliverable**: `_bmad-output/research/spike-token-unlock-data-sources.md`
+### Day 1-2: Test Chainlens Primary Hypothesis
 
-**Spike steps**:
-1. **Day 1-2**: Test Chainlens với 10 sample queries:
-   - "Aave AAVE token unlock schedule 90 days"
-   - "Optimism OP vesting cliff dates"
-   - (8 more across various tokens)
-   - Score response: data availability / accuracy / format consistency
-2. **Day 2-3**: Evaluate alternative sources (only if Chainlens fail rate > 30%):
-   - TokenUnlocks.app — public scraping ToS check + data availability
-   - Messari API — pricing tier needed?
-   - CryptoRank — API access?
-3. **Day 4-5**: Write recommendation memo:
-   - Option A: Proceed Story 9.3 với Chainlens (if reliable)
-   - Option B: Defer Story 9.3, pivot to alternative Phase 3 story (if data fundamentally unavailable)
-   - Option C: Procure paid API + cost-benefit analysis
+Score Chainlens response quality cho 10 sample unlock queries:
+
+| # | Token | Query |
+|---|-------|-------|
+| 1 | OP (Optimism) | "Optimism OP token unlock schedule next 90 days" |
+| 2 | ARB (Arbitrum) | "Arbitrum ARB vesting cliff upcoming dates" |
+| 3 | APT (Aptos) | "Aptos APT unlock amount and date next 60 days" |
+| 4 | SUI (Sui) | "Sui SUI vesting schedule team investors" |
+| 5 | JTO (Jito) | "Jito JTO token unlock next unlock event" |
+| 6 | AAVE | "Aave AAVE vesting status (expected mostly complete)" |
+| 7 | UNI (Uniswap) | "Uniswap UNI treasury unlock schedule" |
+| 8 | STRK (Starknet) | "Starknet STRK unlock cliff dates" |
+| 9 | W (Wormhole) | "Wormhole W token vesting schedule investors" |
+| 10 | AEVO | "AEVO token unlock next major event" |
+
+**Scoring criteria per query** (0-2 each):
+- **Data present**: 0 = no data, 1 = partial, 2 = complete dates + amounts
+- **Accuracy**: 0 = wrong, 1 = close, 2 = verified vs TokenUnlocks.app manual check
+- **Format consistency**: 0 = unstructured, 1 = parseable, 2 = directly usable by agent
+
+**Thresholds**: Total ≥ 40/60 (67%) → **Option A viable** | 25-39 → Option B | < 25 → Option C
+
+### Day 2-3: Evaluate Alternatives (Only if Day 1-2 inconclusive)
+
+#### Alt 1: TokenUnlocks.app
+- Check public API availability (unlock.json endpoint?)
+- Check ToS for commercial scraping — legal risk?
+- Check data freshness + coverage (top 50 tokens?)
+
+#### Alt 2: Messari API
+- Pricing tier needed cho unlock data; rate limits; coverage; integration complexity
+
+#### Alt 3: CryptoRank
+- API availability; pricing; data quality
+
+#### Alt 4: Self-scraping
+- Risk: fragile, ToS violations, maintenance burden — only consider nếu tất cả API options fail
+
+### Day 4-5: Write Recommendation Memo
+
+**Deliverable**: `_bmad-output/research/spike-0.0-token-unlock-findings.md`
+
+```markdown
+# Spike 0.0 — Token Unlock Data Source Findings
+
+## TL;DR Recommendation
+[Option A / B / C với 1-paragraph justification]
+
+## Chainlens Results
+| Query | Data Score | Accuracy | Format | Total |
+| ... | | | | |
+Overall: X/60
+
+## Alternative Sources (if tested)
+[Same scoring cho each]
+
+## Cost-Benefit Analysis
+- Option A cost: $0 (Chainlens existing)
+- Option B cost: [estimated]
+- Option C cost: $X/month paid API
+
+## Recommended Decision + Impact on Story 9.3 Scope
+## Impact on Sprint Plan Phase 3
+```
+
+### Outcome Decision Matrix
+
+| Outcome | Action |
+|---------|--------|
+| 🟢 Chainlens score ≥ 40/60 | Proceed Story 9.3 |
+| 🟡 Alternative source workable | Update Story 9.3 scope + tooling |
+| 🔴 Only paid API viable | Budget approval + procurement |
+| ⛔ No viable option | **Defer Story 9.3**, pivot Phase 3 scope (9.6 only) |
+
+### Spike DoD
+
+- [ ] **DoD-1** 10 sample queries run trên Chainlens với scoring
+- [ ] **DoD-2** Alternatives evaluated nếu Chainlens score < 40/60
+- [ ] **DoD-3** Memo written và shared với stakeholders
+- [ ] **DoD-4** Decision meeting: Option A / B / C approved
+- [ ] **DoD-5** Story 9.3 spec updated nếu scope changes
+- [ ] **DoD-6** Sprint Plan Phase 3 updated với impact
 
 ### Pre-flight Checklist (after spike)
 

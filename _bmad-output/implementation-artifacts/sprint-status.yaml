@@ -121,8 +121,7 @@ development_status:
   phase-2-quality-gate-review: backlog
 
   # Phase 3 — Spike-Required Tier (highest risk) — blocked on Phase 2 GO + spikes
-  spike-0.0-token-unlock-data-sources: ready-for-dev
-  spike-0.0b-ta-data-and-tooling: ready-for-dev
+  # Note: spike research merged into story files (9.3 and 9.6 each have PRE-STORY SPIKE section)
   9-3-token-unlock-scheduler: backlog
   9-6-technical-analyst: backlog
   phase-3-final-quality-gate-review: backlog

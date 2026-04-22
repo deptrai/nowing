@@ -3,7 +3,7 @@ storyId: 0.4
 storyTitle: API Integration Tests (Crypto Tools Live Validation)
 epicParent: epic-00-crypto-foundation
 dependsOn: [Story 0.1, 0.2, 0.3 DONE]
-blocks: [Story 8.2, Story 8.3, Epic 9 Phase 1]
+blocks: [Story 0.5, Story 0.6, Epic 9 Phase 1]
 relatedFRs: [FR-T1]
 relatedNFRs: [NFR-CS3 API rate awareness, NFR-Q3 graceful degradation]
 priority: P0 (BLOCKING Phase 1)

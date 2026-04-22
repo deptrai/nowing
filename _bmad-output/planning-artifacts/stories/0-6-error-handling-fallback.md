@@ -8,7 +8,7 @@ relatedFRs: [FR-T3, FR35 Graceful Degradation]
 relatedNFRs: [NFR-CS3 API Rate Awareness, NFR-Q3 Graceful Degradation > 98%]
 priority: P0 (BLOCKING Phase 1 — final Epic 0 story)
 estimatedEffort: 2-3 days
-status: ready-for-dev (blocked on Story 8.2)
+status: ready-for-dev (blocked on Story 0.5)
 createdAt: 2026-04-23
 author: Mary (Strategic Business Analyst)
 ---
