@@ -198,22 +198,76 @@ jobs:
           restore-keys: |
             python-deps-
 
+      - name: Cache HuggingFace models
+        if: steps.backend-changes.outputs.backend == 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-${{ env.EMBEDDING_MODEL }}
+
       - name: Install dependencies
         if: steps.backend-changes.outputs.backend == 'true'
         working-directory: nowing_backend
         run: uv sync
 
-      - name: Run API tests (httpx + ASGITransport)
+      - name: Run database migrations
+        if: steps.backend-changes.outputs.backend == 'true'
+        working-directory: nowing_backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_test
+          SECRET_KEY: ci-test-secret-key-not-for-production
+        run: uv run alembic upgrade head
+
+      - name: Seed test user
+        if: steps.backend-changes.outputs.backend == 'true'
+        working-directory: nowing_backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_test
+          SECRET_KEY: ci-test-secret-key-not-for-production
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+        run: |
+          uv run python - <<'PYEOF'
+          import asyncio, os, uuid
+          from fastapi_users.password import PasswordHelper
+          from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+          from sqlalchemy import text
+
+          DATABASE_URL = os.environ["DATABASE_URL"]
+          email = os.environ.get("TEST_USER_EMAIL", "test@nowing.test")
+          password = os.environ.get("TEST_USER_PASSWORD", "test-password")
+
+          async def seed():
+              helper = PasswordHelper()
+              hashed = helper.hash(password)
+              engine = create_async_engine(DATABASE_URL)
+              Session = async_sessionmaker(engine, expire_on_commit=False)
+              async with Session() as session:
+                  await session.execute(
+                      text("""
+                          INSERT INTO "user" (id, email, hashed_password, is_active, is_verified, is_superuser)
+                          VALUES (:id, :email, :pw, true, true, false)
+                          ON CONFLICT (email) DO UPDATE SET hashed_password = :pw
+                      """),
+                      {"id": str(uuid.uuid4()), "email": email, "pw": hashed},
+                  )
+                  await session.commit()
+              await engine.dispose()
+              print(f"Test user seeded: {email}")
+
+          asyncio.run(seed())
+          PYEOF
+
+      - name: Run API tests
         if: steps.backend-changes.outputs.backend == 'true'
         working-directory: nowing_backend
         env:
           TEST_ENV: "true"
-          API_URL: http://localhost:8000
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_test
           SECRET_KEY: ci-test-secret-key-not-for-production
-        run: uv run pytest tests/api/ -v --tb=short
+        run: uv run pytest -m api -v --tb=short --no-header -p no:warnings
 
   test-gate:
     name: Test Gate
@@ -223,10 +277,14 @@ jobs:
 
     steps:
       - name: Check all test jobs
+        env:
+          UNIT_RESULT: ${{ needs.unit-tests.result }}
+          INTEGRATION_RESULT: ${{ needs.integration-tests.result }}
+          API_RESULT: ${{ needs.api-tests.result }}
         run: |
-          if [[ "${{ needs.unit-tests.result }}" == "failure" ||
-                "${{ needs.integration-tests.result }}" == "failure" ||
-                "${{ needs.api-tests.result }}" == "failure" ]]; then
+          if [[ "$UNIT_RESULT" == "failure" ||
+                "$INTEGRATION_RESULT" == "failure" ||
+                "$API_RESULT" == "failure" ]]; then
             echo "Backend tests failed"
             exit 1
           else

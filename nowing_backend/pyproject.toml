@@ -190,7 +190,9 @@ addopts = "-v --tb=short --strict-markers -ra --durations=20 -n auto"
 markers = [
     "unit: pure logic tests, no DB or external services",
     "integration: tests that require a real PostgreSQL database",
-    "slow: long-running tests (>5s) — skip in fast dev loop with -m 'not slow'"
+    "api: API endpoint tests using httpx + ASGITransport (may require test DB)",
+    "slow: long-running tests (>5s) — skip in fast dev loop with -m 'not slow'",
+    "rbac: two-user RBAC isolation tests — requires TEST_USER2_EMAIL + TEST_USER2_PASSWORD"
 ]
 filterwarnings = [
     "ignore::UserWarning:chonkie",
