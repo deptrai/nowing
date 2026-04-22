@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-04-20T00:05:00+07:00
+last_updated: 2026-04-23T01:35:00+07:00
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
@@ -91,3 +91,46 @@ development_status:
   7-3-agent-intent-detection-streaming: done
   7-4-feature-flag-configuration: done
   epic-7-retrospective: optional
+
+  # ═══════════════════════════════════════════════════════════════
+  # CRYPTO ORCHESTRA INITIATIVE (added 2026-04-23 by Mary)
+  # Story files: _bmad-output/planning-artifacts/stories/
+  # Note: Story files NOT in implementation-artifacts/ (planning phase)
+  # ═══════════════════════════════════════════════════════════════
+
+  # ─── EPIC 0: Crypto Foundation (Retroactive — close drift) ───
+  epic-0: backlog
+  0-1-crypto-tool-infrastructure: ready-for-dev
+  0-2-base-sub-agents: ready-for-dev
+  0-3-main-agent-prompt: ready-for-dev
+  epic-0-retrospective: optional
+
+  # ─── EPIC 8: Integration Testing (Quality Gatekeepers) ───
+  epic-8: backlog
+  8-1-api-integration-tests: ready-for-dev
+  8-2-parallel-execution-validation: ready-for-dev
+  8-3-error-handling-fallback: ready-for-dev
+  epic-8-retrospective: optional
+
+  # ─── EPIC 9: Crypto Orchestra (Phased rollout 1→2→3) ───
+  epic-9: backlog
+
+  # Phase 1 — Easy Wins Tier (deterministic APIs)
+  9-1-tokenomics-analyst: ready-for-dev
+  9-4-yield-optimizer: ready-for-dev
+  phase-1-quality-gate-review: backlog
+
+  # Phase 2 — Web Research Tier (Chainlens-heavy) — blocked on Phase 1 GO
+  9-2-whale-tracker: ready-for-dev
+  9-5-governance-analyst: ready-for-dev
+  phase-2-quality-gate-review: backlog
+
+  # Phase 3 — Spike-Required Tier (highest risk) — blocked on Phase 2 GO + spikes
+  spike-0.0-token-unlock-data-sources: ready-for-dev
+  spike-0.0b-ta-data-and-tooling: ready-for-dev
+  9-3-token-unlock-scheduler: backlog
+  9-6-technical-analyst: backlog
+  phase-3-final-quality-gate-review: backlog
+  crypto-orchestra-launch: backlog
+
+  epic-9-retrospective: optional

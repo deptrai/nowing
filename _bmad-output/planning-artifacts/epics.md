@@ -685,6 +685,7 @@ So that có thể phản ứng nhanh khi Chainlens API có vấn đề hoặc c�
 **NFRs:** NFR-CS1, NFR-CS2, NFR-CS3, NFR-CS4
 
 #### Story 0.1: Core Crypto Tool Infrastructure
+📄 **Story file**: [`stories/story-0.1-crypto-tool-infrastructure.md`](./stories/story-0.1-crypto-tool-infrastructure.md)
 As a backend developer,
 I want 4 new crypto tool files registered in the tool registry,
 So that sub-agents có thể query DeFiLlama, sentiment sources, news APIs, và contract analysis services.
@@ -717,6 +718,7 @@ So that sub-agents có thể query DeFiLlama, sentiment sources, news APIs, và 
 ---
 
 #### Story 0.2: Base Sub-Agents Implementation & Wiring
+📄 **Story file**: [`stories/story-0.2-base-sub-agents.md`](./stories/story-0.2-base-sub-agents.md)
 As a main agent,
 I want 4 base crypto sub-agents registered (defillama_analyst, sentiment_analyst, news_analyst, smart_contract_analyst),
 So that I can spawn specialists in parallel qua `task()` tool.
@@ -760,6 +762,7 @@ Mỗi spec file export 3 constants: `{NAME}_NAME`, `{NAME}_DESCRIPTION`, `{NAME}
 ---
 
 #### Story 0.3: Main Agent Orchestration Prompt Update
+📄 **Story file**: [`stories/story-0.3-main-agent-prompt.md`](./stories/story-0.3-main-agent-prompt.md)
 As a main agent,
 I want clear instructions on when and how to spawn crypto sub-agents in parallel,
 So that I can coordinate multiple specialists efficiently.
@@ -792,6 +795,7 @@ Xác minh toàn bộ hệ thống crypto sub-agents hoạt động đúng end-to
 **Depends on:** Epic 0 (Crypto Foundation)
 
 #### Story 8.1: API Integration Tests
+📄 **Story file**: [`stories/story-8.1-api-integration-tests.md`](./stories/story-8.1-api-integration-tests.md)
 As a developer,
 I want to verify each crypto tool connects to its API correctly,
 So that I know the integration works before production deployment.
@@ -819,6 +823,7 @@ So that I know the integration works before production deployment.
 ---
 
 #### Story 8.2: Parallel Execution Validation
+📄 **Story file**: [`stories/story-8.2-parallel-execution-validation.md`](./stories/story-8.2-parallel-execution-validation.md)
 As a developer,
 I want to verify multiple sub-agents run truly in parallel,
 So that full analysis doesn't take N times longer than a single agent.
@@ -840,6 +845,7 @@ So that full analysis doesn't take N times longer than a single agent.
 ---
 
 #### Story 8.3: Error Handling & Fallback Validation
+📄 **Story file**: [`stories/story-8.3-error-handling-fallback.md`](./stories/story-8.3-error-handling-fallback.md)
 As a developer,
 I want to verify graceful degradation when APIs fail,
 So that partial failures don't break the entire analysis.
@@ -895,6 +901,7 @@ If any gate fails → rollback Phase 1, improve prompt/tool, không có hard dea
 **And** agent luôn cite source từ tool output (không dựa trên parametric knowledge)
 
 #### Story 9.1: Tokenomics Analyst Sub-Agent
+📄 **Story file**: [`stories/story-9.1-tokenomics-analyst.md`](./stories/story-9.1-tokenomics-analyst.md) | **Phase 1**
 As a crypto investor,
 I want a specialist agent that analyzes token economics deeply,
 So that I can evaluate long-term value accrual and inflation risks.
@@ -911,6 +918,7 @@ So that I can evaluate long-term value accrual and inflation risks.
 ---
 
 #### Story 9.2: Whale Tracker Sub-Agent
+📄 **Story file**: [`stories/story-9.2-whale-tracker.md`](./stories/story-9.2-whale-tracker.md) | **Phase 2**
 As a crypto trader,
 I want to track large wallet movements and smart money flows,
 So that I can identify accumulation/distribution phases early.
@@ -927,6 +935,7 @@ So that I can identify accumulation/distribution phases early.
 ---
 
 #### Story 9.3: Token Unlock Scheduler Sub-Agent
+📄 **Story file**: [`stories/story-9.3-token-unlock-scheduler.md`](./stories/story-9.3-token-unlock-scheduler.md) | **Phase 3 (needs spike)**
 As a crypto investor,
 I want to know upcoming token unlock events,
 So that I can anticipate selling pressure before it happens.
@@ -943,6 +952,7 @@ So that I can anticipate selling pressure before it happens.
 ---
 
 #### Story 9.4: Yield Optimizer Sub-Agent
+📄 **Story file**: [`stories/story-9.4-yield-optimizer.md`](./stories/story-9.4-yield-optimizer.md) | **Phase 1**
 As a DeFi investor,
 I want personalized yield recommendations based on my risk tolerance,
 So that I can maximize returns on idle capital safely.
@@ -959,6 +969,7 @@ So that I can maximize returns on idle capital safely.
 ---
 
 #### Story 9.5: Governance Analyst Sub-Agent
+📄 **Story file**: [`stories/story-9.5-governance-analyst.md`](./stories/story-9.5-governance-analyst.md) | **Phase 2**
 As a DAO participant,
 I want to track active governance proposals and voting outcomes,
 So that I can participate in protocol decisions and assess governance health.
@@ -975,6 +986,7 @@ So that I can participate in protocol decisions and assess governance health.
 ---
 
 #### Story 9.6: Technical Analysis Sub-Agent
+📄 **Story file**: [`stories/story-9.6-technical-analyst.md`](./stories/story-9.6-technical-analyst.md) | **Phase 3 (needs spike)**
 As a crypto trader,
 I want chart pattern analysis and technical indicator signals,
 So that I can time my entries and exits more effectively.
