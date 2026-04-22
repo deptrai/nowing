@@ -20,6 +20,8 @@ stepsCompleted:
 lastEdited: '2026-04-23'
 editHistory:
   - date: '2026-04-23'
+    changes: 'Readiness fix M2: Split NFR-Q1 (Accuracy < 3% — factual error rate) and NFR-Q5 (Smart Selection Accuracy ≥ 90% — orchestrator routing). Architecture §6 reconciled. Resolves implementation-readiness-report-2026-04-23 issue M2.'
+  - date: '2026-04-23'
     changes: '🚨 Reality sync: Code audit phát hiện Crypto Foundation (4 base sub-agents + 11 tools) CHƯA implement (subagents/crypto/ rỗng, các tool files chưa tồn tại). Add note vào Growth Features về Epic 0 prerequisite. Sequence: Epic 0 (Foundation, ~2-3 weeks) → Epic 8 (Testing, ~1 week) → Epic 9 Phase 1 (Tokenomics + Yield, 4 weeks). Total realistic timeline: ~7-8 weeks từ kick-off thay vì 4 weeks Phase 1 standalone.'
   - date: '2026-04-23'
     changes: 'Thêm Epic 9 Crypto Orchestra (Advanced Crypto Sub-Agents): User Journey #8 (Crypto Power User), FR27-FR35 (9 FRs cho 6 sub-agents: Tokenomics, Whale Tracker, Token Unlock, Yield Optimizer, Governance, Technical Analyst + parallel execution + Chainlens integration), NFR-CS1-CS4 (token budget, parallel execution, API rate awareness, stateless tools), update Growth Features section. Source: product-brief-epic9-crypto-orchestra.md v2 stakeholder-resolved. Strategy: Phased rollout (Phase 1 Tokenomics+Yield → Phase 2 Whale+Governance → Phase 3 Unlock+TA), Quality-first (accuracy <3%, parallelism <1.3x, reliability >98%, hallucination <1%), reuse chainlens_deep_research cho web research.'
@@ -341,4 +343,5 @@ Cấu trúc API (FastAPI) bao gồm:
 - **NFR-Q2 (Hallucination Rate):** % responses chứa số liệu không xuất phát từ tool output (fabricated numbers) phải < 1%. Đo bằng pattern check + sample QA.
 - **NFR-Q3 (Graceful Degradation):** % requests có ≥ 1 sub-agent error nhưng main agent vẫn trả response đúng cấu trúc và mention nguồn unavailable phải > 98%.
 - **NFR-Q4 (Speed):** P95 response time cho full-suite analysis (6+ agents spawned) phải < 90s — relaxed so với NFR-P1 vì cho phép Chainlens 125s timeout, tận dụng parallelism.
+- **NFR-Q5 (Smart Selection Accuracy):** ≥ 90% queries route đúng Rule A/B/C/D (FR34 main-agent decision tree). Đo bằng manual classification 20 sample queries (Story 0.3 AC) + production sampling 100 queries/day. Khác NFR-Q1 (Q1 = factual accuracy của response, Q5 = routing accuracy của orchestrator).
 

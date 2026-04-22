@@ -3,8 +3,10 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-04-13T01:02:23+07:00'
-lastUpdated: '2026-04-18'
+lastUpdated: '2026-04-23'
 editHistory:
+  - date: '2026-04-23'
+    changes: 'Thêm Crypto Orchestra Architecture: (1) Per-agent SSE event contract (6 event types, resolve 4 open questions từ UX handoff §3). (2) ParallelismTelemetryMiddleware design (Story 0.5). (3) Circuit breaker + graceful degradation (Story 0.6). (4) Tool registry pattern cho 11 crypto tools (Story 0.1). (5) Multi-agent orchestration prompt architecture (Story 0.3). (6) NFR-Q1..Q4 measurement architecture. (7) Resolved 5 open design questions từ UX handoff §7. (8) C4-inspired component diagram cho 11-agent orchestration.'
   - date: '2026-04-18'
     changes: 'Fix Chainlens Integration Architecture: (1) Health check đổi sang /api/v1/b2b/health (public, không cần auth) — /api/config yêu cầu Supabase session nên không dùng được. (2) B2B route ĐÃ CÓ AUTH qua middleware (Bearer token + rate limit 120req/min + daily quota) — sửa lại nhận định trước đó. (3) Tool registration đổi sang ToolDefinition + BUILTIN_TOOLS registry (đúng pattern thực tế). (4) CHAINLENS_RESEARCH_API_KEY bắt buộc vì B2B yêu cầu Bearer auth.'
   - date: '2026-04-16'
@@ -868,3 +870,653 @@ nowing_backend/
 
 **Implementation Handoff**
 - **First Implementation Priority:** Dùng hệ thống sẵn có (đã khởi tạo Next.js `nowing_web` và FastAPI `nowing_backend`). Môi trường local chạy qua `docker compose -f docker/docker-compose.dev.yml up -d` với đầy đủ Postgres (pgvector), Redis, Zero-Cache và SearXNG.
+
+## Crypto Orchestra Architecture
+
+### Bối cảnh & Phạm vi
+
+**Mục tiêu**: Hỗ trợ Journey #8 (Crypto Power User "Khoa") — query "phân tích toàn diện $UNI" → main agent spawn 4-11 sub-agents song song → trả về aggregated insights trong P95 < 90s với graceful degradation > 98%.
+
+**Scope mới (delta so với Epic 1-7 baseline):**
+- **Epic 0** (foundation): 6 stories (0.1–0.6) — tool infrastructure, sub-agents, orchestration prompt, parallel telemetry, circuit breaker.
+- **Epic 9** (advanced): 6 sub-agents bổ sung (tokenomics, whale tracker, token unlock, yield optimizer, governance, technical analysis).
+- **UX layer**: 7 frontend components mới + 8 telemetry events (chi tiết ở `ux-crypto-orchestra-handoff.md`).
+
+**Baseline KHÔNG đổi**: SSE pipe `/api/v1/chat` (Epic 7), LangGraph DeepAgent framework, system prompt structure, Zero-sync layer.
+
+---
+
+### Architecture Overview (C4-Inspired Component Diagram)
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                         BROWSER (Next.js Web Client)                   │
+│  ┌─────────────────────────────────────────────────────────────────┐  │
+│  │  ChatBubble                                                      │  │
+│  │  ├─ <OrchestraStrip />          ◀──── SSE: orchestra.* events    │  │
+│  │  │   ├─ <AgentRow /> × N        ◀──── orchestra.update           │  │
+│  │  │   └─ <DegradationNotice />   ◀──── orchestra.fail             │  │
+│  │  ├─ <MessageContent />          ◀──── existing SSE: chunk        │  │
+│  │  │   └─ <MultiCitationBadge />                                   │  │
+│  │  └─ <SourceTabsPanel />                                          │  │
+│  │                                                                   │  │
+│  │  useOrchestraStore (Zustand) ── PGLite snapshot via Zero mutator │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────┬─────────────────────────────────────────┘
+                               │ SSE  /api/v1/chat
+                               ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                       FastAPI Backend (nowing_backend)                  │
+│                                                                         │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  ChatRouter (api/routes/chat.py)                                  │ │
+│  │      └─ stream_event_publisher (SSE wrapper)                       │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                              │                                          │
+│                              ▼                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  chat_deepagent.create_deepagent()                                 │ │
+│  │  ├── Middleware Stack (gp_middleware):                            │ │
+│  │  │   ├─ TodoListMiddleware                                         │ │
+│  │  │   ├─ MemoryMiddleware                                           │ │
+│  │  │   ├─ NowingFilesystemMiddleware                                │ │
+│  │  │   ├─ SummarizationMiddleware                                    │ │
+│  │  │   ├─ PatchToolCalls                                             │ │
+│  │  │   ├─ AnthropicPromptCaching                                     │ │
+│  │  │   ├─ ParallelismTelemetryMiddleware  ★ Story 0.5                │ │
+│  │  │   └─ CircuitBreakerMiddleware        ★ Story 0.6                │ │
+│  │  │                                                                  │ │
+│  │  ├── SubAgentMiddleware (registry of 11 specialists):              │ │
+│  │  │   ├─ general_purpose                                            │ │
+│  │  │   ├─ defillama_analyst       ─┐                                 │ │
+│  │  │   ├─ sentiment_analyst        │                                 │ │
+│  │  │   ├─ news_analyst             ├─ Epic 0 base (4 agents)         │ │
+│  │  │   ├─ smart_contract_analyst  ─┘                                 │ │
+│  │  │   ├─ tokenomics_analyst      ─┐                                 │ │
+│  │  │   ├─ whale_tracker            │                                 │ │
+│  │  │   ├─ token_unlock_scheduler   ├─ Epic 9 advanced (6 agents)     │ │
+│  │  │   ├─ yield_optimizer          │                                 │ │
+│  │  │   ├─ governance_analyst       │                                 │ │
+│  │  │   └─ technical_analyst       ─┘                                 │ │
+│  │  │                                                                  │ │
+│  │  └── ToolNode (LangGraph) — parallel batch executor                 │ │
+│  │      └─ task() tool — spawns sub-agent in same graph step           │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                              │                                          │
+│                              ▼                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  Tool Registry (BUILTIN_TOOLS, requires=[])                       │ │
+│  │   • defillama.py          (5 tools)                                │ │
+│  │   • crypto_sentiment.py   (2 tools: F&G, Reddit)                   │ │
+│  │   • crypto_news.py        (2 tools: CryptoPanic, CoinGecko)        │ │
+│  │   • contract_analysis.py  (2 tools: Etherscan, GoPlus)             │ │
+│  │   • chainlens_research.py (1 tool — fallback engine)               │ │
+│  │   • crypto_realtime.py    (DexScreener live price)                 │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                              │                                          │
+│                              ▼                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  ObservabilityClient (app/observability/metrics.py)                │ │
+│  │   • crypto_orchestra_parallelism_ratio (histogram)                 │ │
+│  │   • crypto_orchestra_full_suite_duration_seconds (histogram)       │ │
+│  │   • crypto_orchestra_agent_errors_total (counter)                  │ │
+│  │   • crypto_orchestra_graceful_degradation_total (counter)          │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│   External APIs (stateless, requires=[])                                │
+│   DeFiLlama │ CoinGecko │ GoPlus │ CryptoPanic │ Etherscan │ Reddit    │
+│   alternative.me F&G │ Chainlens B2B (fallback)                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 1. Per-Agent SSE Event Contract
+
+**Decision**: Mở rộng existing SSE pipe `/api/v1/chat` với 6 event types mới namespaced `orchestra.*`. KHÔNG tạo channel WebSocket mới — reuse pipeline đã production-grade từ Epic 7.
+
+**Schema (Pydantic models trong `app/schemas/sse_events.py`):**
+
+```python
+# app/schemas/sse_events.py — NEW FILE
+
+from typing import Literal
+from pydantic import BaseModel, Field
+
+# ─── Shared types ─────────────────────────────────────────────────────
+class AgentManifest(BaseModel):
+    name: str                              # snake_case e.g. "defillama_analyst"
+    display_name: str                      # human label e.g. "DeFi"
+    estimated_p50_ms: int                  # ETA heuristic from telemetry P50
+    tools_count: int                       # for UI density hint
+
+class AgentSummary(BaseModel):
+    fact_count: int
+    sources: list[str]                     # canonical names: "DeFiLlama", "Reddit", ...
+
+FailReason = Literal[
+    "rate_limit", "timeout", "unavailable",
+    "cancelled_by_user", "circuit_open"
+]
+
+# ─── 6 Orchestra Events ───────────────────────────────────────────────
+class OrchestraSpawnEvent(BaseModel):
+    event: Literal["orchestra.spawn"] = "orchestra.spawn"
+    query_hash: str                        # sha256(query + user_id)[:16]
+    agents: list[AgentManifest]
+    spawn_count: int
+
+class OrchestraUpdateEvent(BaseModel):
+    event: Literal["orchestra.update"] = "orchestra.update"
+    agent_name: str
+    status: Literal["running"]
+    elapsed_ms: int
+    # Backpressure: server-side throttle to 1 update / agent / 500ms
+
+class OrchestraDoneEvent(BaseModel):
+    event: Literal["orchestra.done"] = "orchestra.done"
+    agent_name: str
+    duration_ms: int
+    summary: AgentSummary
+
+class OrchestraFailEvent(BaseModel):
+    event: Literal["orchestra.fail"] = "orchestra.fail"
+    agent_name: str
+    reason: FailReason
+    fallback_used: bool = False           # True if agent fell back to chainlens/web_search
+
+class OrchestraCancelEvent(BaseModel):
+    event: Literal["orchestra.cancel"] = "orchestra.cancel"
+    at_ms: int
+    partial_results: bool
+
+class OrchestraCompleteEvent(BaseModel):
+    event: Literal["orchestra.complete"] = "orchestra.complete"
+    total_ms: int
+    success: int
+    failed: int
+    p95_bucket: Literal["fast", "normal", "slow"]  # < 30s | 30-60s | > 60s
+```
+
+**SSE wire format** (consistent với Epic 7 pattern):
+```
+event: orchestra.spawn
+data: {"query_hash":"a3f9...","agents":[{...}],"spawn_count":4}
+
+event: orchestra.update
+data: {"agent_name":"defillama_analyst","status":"running","elapsed_ms":1240}
+```
+
+#### Resolution — 4 Open Questions từ UX Handoff §3
+
+| # | Question | Decision |
+|---|----------|----------|
+| 1 | Event naming convention consistent với Epic 7? | ✅ **Namespace `orchestra.*`** — phân biệt với existing `chunk`, `tool_call`, `done`. Reuse SSE wire format `event: <name>\ndata: <json>\n\n`. |
+| 2 | Backpressure: rate-limit `orchestra.update` server-side hay client-side? | ✅ **Server-side throttle**: `ParallelismTelemetryMiddleware` debounce update events đến **1 update / agent / 500ms** (configurable via `ORCHESTRA_UPDATE_THROTTLE_MS`). Client KHÔNG cần debounce — tránh complexity. |
+| 3 | Multi-session shared hay duplicated? | ✅ **MVP: duplicated per session** (mỗi tab = 1 SSE stream, 1 agent run). v2 sẽ implement shared via Redis pub/sub keyed `(query_hash, user_id)` — hiện tại không justify complexity. |
+| 4 | Conflict detection: backend emit `orchestra.conflict` event hay FE tự detect? | ✅ **FE tự detect từ citation metadata** (numeric delta > 5% → render `[2≠4]`). Backend KHÔNG emit conflict event — agent independence + LLM judgment handle disagreements. Conflict UI là pure rendering layer. |
+
+---
+
+### 2. ParallelismTelemetryMiddleware Design (Story 0.5)
+
+**File**: `nowing_backend/app/agents/new_chat/middleware/parallelism_telemetry.py` (NEW)
+
+**Mục tiêu**:
+1. Capture per-agent timing (start, end, duration) qua LangGraph callbacks.
+2. Compute `parallelism_ratio = step_duration / max(agent_duration)` real-time per request.
+3. Emit metrics `parallelism_ratio` + `full_suite_duration` ra Prometheus/Datadog.
+4. Throttle `orchestra.update` SSE events (xem §1, decision #2).
+5. Detect sequential anti-pattern (2+ `task()` calls trong khác step) → log warning.
+
+**Skeleton**:
+
+```python
+# app/agents/new_chat/middleware/parallelism_telemetry.py
+
+from collections import defaultdict
+from typing import Any
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain_core.messages import ToolMessage
+from app.observability.metrics import (
+    parallelism_ratio_histogram,
+    full_suite_duration_histogram,
+    sequential_antipattern_counter,
+)
+import time
+
+class ParallelismTelemetryMiddleware(BaseCallbackHandler):
+    """Track parallel sub-agent execution metrics + emit SSE update events."""
+
+    def __init__(self, sse_publisher, throttle_ms: int = 500):
+        self.sse = sse_publisher
+        self.throttle_ms = throttle_ms
+        self._step_starts: dict[str, float] = {}            # step_id -> start_time
+        self._agent_starts: dict[str, dict] = {}            # call_id -> {agent_name, step_id, start}
+        self._last_update_emit: dict[str, float] = {}       # agent_name -> last_emit_ms
+        self._task_calls_per_step: dict[str, list] = defaultdict(list)
+
+    async def on_tool_start(self, serialized, input_str, *, run_id, parent_run_id, tags=None, metadata=None, **kwargs):
+        if serialized.get("name") != "task":
+            return
+        agent_name = self._parse_agent_name(input_str)
+        step_id = (metadata or {}).get("langgraph_step", "unknown")
+        now = time.perf_counter()
+
+        self._agent_starts[str(run_id)] = {
+            "agent_name": agent_name, "step_id": step_id, "start": now,
+        }
+        self._task_calls_per_step[step_id].append(agent_name)
+        self._step_starts.setdefault(step_id, now)
+
+    async def on_tool_end(self, output, *, run_id, parent_run_id=None, **kwargs):
+        ctx = self._agent_starts.pop(str(run_id), None)
+        if not ctx:
+            return
+        duration = time.perf_counter() - ctx["start"]
+        await self.sse.emit("orchestra.done", {
+            "agent_name": ctx["agent_name"],
+            "duration_ms": int(duration * 1000),
+            "summary": self._extract_summary(output),
+        })
+
+    async def on_chain_end(self, outputs, **kwargs):
+        """When LangGraph step ends — compute parallelism_ratio if multi-spawn."""
+        for step_id, agents in self._task_calls_per_step.items():
+            if len(agents) < 2:
+                continue
+            step_duration = time.perf_counter() - self._step_starts[step_id]
+            # Find max individual agent duration in this step
+            max_individual = max(
+                (time.perf_counter() - ctx["start"])
+                for ctx in self._agent_starts.values()
+                if ctx["step_id"] == step_id
+            ) or step_duration
+            ratio = step_duration / max_individual
+            parallelism_ratio_histogram.observe(ratio, labels={"agents_count": len(agents)})
+
+            # Sequential anti-pattern detection: if same query has 2+ steps with task() calls
+            if self._has_sequential_pattern():
+                sequential_antipattern_counter.inc()
+
+    async def heartbeat_update(self, agent_name: str, elapsed_ms: int):
+        """Throttled emit of orchestra.update — call from agent ainvoke loop."""
+        last = self._last_update_emit.get(agent_name, 0)
+        now_ms = time.monotonic() * 1000
+        if now_ms - last < self.throttle_ms:
+            return
+        self._last_update_emit[agent_name] = now_ms
+        await self.sse.emit("orchestra.update", {
+            "agent_name": agent_name,
+            "status": "running",
+            "elapsed_ms": elapsed_ms,
+        })
+```
+
+**Wiring vào `chat_deepagent.py`**:
+```python
+# Add to gp_middleware stack (cần inject sse_publisher từ chat route)
+gp_middleware = [
+    TodoListMiddleware(),
+    MemoryMiddleware(),
+    # ... existing
+    ParallelismTelemetryMiddleware(sse_publisher=sse_pub),  # NEW
+    CircuitBreakerMiddleware(),                              # NEW (§3)
+]
+```
+
+**Feature flag**: `PARALLELISM_TELEMETRY_ENABLED=true` (default true). Disable nếu phát hiện perf regression.
+
+---
+
+### 3. Circuit Breaker + Graceful Degradation Pattern (Story 0.6)
+
+**Mục tiêu**: Đáp ứng NFR-Q3 (≥ 98% requests có ≥1 agent error vẫn trả response đúng cấu trúc) qua 3 lớp bảo vệ:
+
+#### Layer 1 — Tool-level Error Contract
+
+**Convention bắt buộc**: Mọi tool **return `{"error": "<msg>"}` dict**, KHÔNG raise exception.
+
+```python
+# Pattern chuẩn cho tools (tools/defillama.py, crypto_news.py, ...)
+@tool
+async def get_defillama_protocol(protocol_slug: str) -> dict:
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(f"https://api.llama.fi/protocol/{protocol_slug}")
+            if resp.status_code == 429:
+                return {"error": "DeFiLlama rate limit reached, try again in 1 minute"}
+            if resp.status_code >= 500:
+                return {"error": f"DeFiLlama API unavailable (HTTP {resp.status_code})"}
+            return resp.json()
+    except httpx.TimeoutException:
+        return {"error": "DeFiLlama timeout"}
+    except Exception as exc:
+        logger.warning("get_defillama_protocol failed", exc_info=True)
+        return {"error": f"Unexpected: {type(exc).__name__}"}
+```
+
+#### Layer 2 — CircuitBreakerMiddleware (per-API circuit)
+
+**File**: `nowing_backend/app/agents/new_chat/middleware/circuit_breaker.py` (NEW)
+
+**Algorithm** (simplified Hystrix pattern):
+
+```python
+class CircuitBreaker:
+    """Per-source circuit breaker: open after 5 consecutive failures, half-open after 30s."""
+
+    STATE_CLOSED = "closed"      # normal operation
+    STATE_OPEN = "open"          # blocking — fail-fast
+    STATE_HALF_OPEN = "half_open"  # probe with 1 request
+
+    def __init__(self, source: str, failure_threshold: int = 5, reset_timeout_s: int = 30):
+        self.source = source
+        self.failure_threshold = failure_threshold
+        self.reset_timeout_s = reset_timeout_s
+        self.failure_count = 0
+        self.state = self.STATE_CLOSED
+        self.opened_at: float | None = None
+
+    def record_success(self):
+        self.failure_count = 0
+        self.state = self.STATE_CLOSED
+        self.opened_at = None
+
+    def record_failure(self):
+        self.failure_count += 1
+        if self.failure_count >= self.failure_threshold:
+            self.state = self.STATE_OPEN
+            self.opened_at = time.monotonic()
+
+    def is_open(self) -> bool:
+        if self.state == self.STATE_CLOSED:
+            return False
+        if self.state == self.STATE_OPEN:
+            if time.monotonic() - self.opened_at > self.reset_timeout_s:
+                self.state = self.STATE_HALF_OPEN
+                return False  # allow 1 probe
+            return True
+        return False  # half_open allows 1 request
+
+# Registry (singleton per source)
+_BREAKERS: dict[str, CircuitBreaker] = {
+    src: CircuitBreaker(src) for src in
+    ["defillama", "coingecko", "goplus", "cryptopanic", "etherscan", "reddit"]
+}
+```
+
+**Integration**: Tools call `_BREAKERS[source].is_open()` trước khi gọi HTTP — nếu open thì trả về `{"error": "circuit_open", "fallback_hint": "use chainlens_deep_research"}` ngay (fail-fast, không waste time).
+
+#### Layer 3 — Agent-level Fallback (sub-agent system prompts)
+
+Mỗi sub-agent có system prompt instruct: "If primary tool returns `{error: ...}`, fall back to (1) alternative tool listed below, OR (2) `chainlens_deep_research`, OR (3) honest 'data unavailable' note. NEVER hallucinate."
+
+**Fallback matrix:**
+
+| Sub-agent | Primary tool | Fallback chain |
+|-----------|-------------|----------------|
+| `defillama_analyst` | `get_defillama_*` | → `chainlens_deep_research` → "limited DeFi data" note |
+| `sentiment_analyst` | `get_cmc_sentiment` | → `get_reddit_crypto_sentiment` → `web_search` → note |
+| `news_analyst` | `get_crypto_news` (CryptoPanic) | → `chainlens_deep_research` → `web_search` → note |
+| `smart_contract_analyst` | `check_token_security` (GoPlus) | → `get_contract_info` (Etherscan only) → note "security score unavailable" |
+
+#### Layer 4 — Orchestration-level Synthesis (main agent prompt)
+
+Main agent system prompt instruct (xem §5 Rule C):
+- Nếu 1-2 sub-agents fail → synthesize từ remaining agents, **explicitly mention** unavailable source.
+- Nếu 4/4 fail → trả "service issues, please retry in a few minutes" — **KHÔNG hallucinate**.
+
+#### Telemetry — Degradation Outcome Classification
+
+Per request, `ParallelismTelemetryMiddleware` (extended trong Story 0.6) classifies outcome:
+
+| Outcome | Definition | Counter label |
+|---------|-----------|---------------|
+| `success` | All spawned agents return non-error result | `outcome="success"` |
+| `partial` | 1+ agent error nhưng response > 100 chars | `outcome="partial"` |
+| `failed` | All agents error AND response < 100 chars | `outcome="failed"` |
+
+**Quality Gate NFR-Q3**: `(success + partial) / total >= 0.98` over 1h rolling window.
+
+---
+
+### 4. Tool Registry Pattern cho 11 Crypto Tools (Story 0.1)
+
+**File**: `nowing_backend/app/agents/new_chat/tools/registry.py` (EDIT — append entries)
+
+**Constraint chuẩn**:
+- ✅ Mọi crypto tool có `requires=[]` (NFR-CS4 — stateless, no DB).
+- ✅ Factory pattern `factory=lambda deps: create_<name>_tool()` — instance per spawn.
+- ✅ Tool function async (httpx.AsyncClient — non-blocking).
+- ✅ Error contract Layer 1 (xem §3).
+
+**11 ToolDefinition entries**:
+
+```python
+# tools/registry.py — extension
+
+from app.agents.new_chat.tools.defillama import (
+    create_defillama_protocol_tool,
+    create_defillama_tvl_overview_tool,
+    create_defillama_yields_tool,
+    create_defillama_stablecoins_tool,
+    create_defillama_bridges_tool,
+)
+from app.agents.new_chat.tools.crypto_sentiment import (
+    create_cmc_sentiment_tool,
+    create_reddit_sentiment_tool,
+)
+from app.agents.new_chat.tools.crypto_news import (
+    create_crypto_news_tool,
+    create_coingecko_token_info_tool,
+)
+from app.agents.new_chat.tools.contract_analysis import (
+    create_contract_info_tool,
+    create_check_token_security_tool,
+)
+
+CRYPTO_TOOLS = [
+    ToolDefinition(name="get_defillama_protocol",       factory=lambda d: create_defillama_protocol_tool(),       requires=[]),
+    ToolDefinition(name="get_defillama_tvl_overview",   factory=lambda d: create_defillama_tvl_overview_tool(),   requires=[]),
+    ToolDefinition(name="get_defillama_yields",         factory=lambda d: create_defillama_yields_tool(),         requires=[]),
+    ToolDefinition(name="get_defillama_stablecoins",    factory=lambda d: create_defillama_stablecoins_tool(),    requires=[]),
+    ToolDefinition(name="get_defillama_bridges",        factory=lambda d: create_defillama_bridges_tool(),        requires=[]),
+    ToolDefinition(name="get_cmc_sentiment",            factory=lambda d: create_cmc_sentiment_tool(),            requires=[]),
+    ToolDefinition(name="get_reddit_crypto_sentiment",  factory=lambda d: create_reddit_sentiment_tool(),         requires=[]),
+    ToolDefinition(name="get_crypto_news",              factory=lambda d: create_crypto_news_tool(),              requires=[]),
+    ToolDefinition(name="get_coingecko_token_info",     factory=lambda d: create_coingecko_token_info_tool(),     requires=[]),
+    ToolDefinition(name="get_contract_info",            factory=lambda d: create_contract_info_tool(),            requires=[]),
+    ToolDefinition(name="check_token_security",         factory=lambda d: create_check_token_security_tool(),     requires=[]),
+]
+BUILTIN_TOOLS.extend(CRYPTO_TOOLS)
+```
+
+**Sub-agent scoped tool list** (NFR-CS1 — avoid context confusion): SubAgentMiddleware passes scoped subset, KHÔNG full registry. Mapping:
+
+| Sub-agent | Scoped tools |
+|-----------|-------------|
+| `defillama_analyst` | `get_defillama_*` (5) + `get_live_token_data` + `web_search` |
+| `sentiment_analyst` | `get_cmc_sentiment`, `get_reddit_crypto_sentiment`, `web_search`, `scrape_webpage` |
+| `news_analyst` | `get_crypto_news`, `get_coingecko_token_info`, `web_search`, `scrape_webpage`, `chainlens_deep_research` |
+| `smart_contract_analyst` | `get_contract_info`, `check_token_security`, `web_search`, `scrape_webpage` |
+| `tokenomics_analyst` (Epic 9) | `get_coingecko_token_info`, `web_search`, `scrape_webpage`, `chainlens_deep_research` |
+| `whale_tracker` (Epic 9) | `web_search`, `scrape_webpage`, `chainlens_deep_research` |
+| `token_unlock_scheduler` (Epic 9) | `web_search`, `scrape_webpage` |
+| `yield_optimizer` (Epic 9) | `get_defillama_yields`, `get_defillama_protocol`, `check_token_security` |
+| `governance_analyst` (Epic 9) | `web_search`, `scrape_webpage`, `chainlens_deep_research` |
+| `technical_analyst` (Epic 9) | `get_live_token_data`, `web_search`, `scrape_webpage` |
+
+---
+
+### 5. Multi-Agent Orchestration Prompt Architecture (Story 0.3)
+
+**File**: `nowing_backend/app/agents/new_chat/system_prompt.py` (EDIT — add section)
+
+**Architecture intent**: Convert "smart agent selection" (FR-34) thành deterministic LLM behavior qua structured prompt với 4-rule decision tree.
+
+**Decision Tree**:
+
+```text
+                    ┌──────────────────────┐
+                    │  User query received │
+                    └──────────┬───────────┘
+                               ▼
+                    ┌──────────────────────┐
+                    │  Intent classification │
+                    │  (LLM judgment)       │
+                    └──────────┬───────────┘
+                               │
+        ┌──────────────────────┼──────────────────────┬─────────────────────┐
+        ▼                      ▼                      ▼                     ▼
+  Rule A: Direct tool   Rule B: Single        Rule C: Parallel       Rule D: Selective
+  "Giá BTC?"            "Audit 0xabc"         "Phân tích toàn diện"  "Token có scam?"
+        │                      │                      │                     │
+        ▼                      ▼                      ▼                     ▼
+  call get_*()          task(1 agent)         task(4-11 agents) ★    task(2-3 agents)
+                                              ★ ALL in 1 LLM turn
+                                              → LangGraph batch
+```
+
+**Critical insight cho NFR-Q2 (parallelism ratio < 1.3x)**: LangGraph chỉ batch parallel khi LLM emit MULTIPLE `task()` calls trong **CÙNG 1 response**. Prompt phải chứa explicit example block để LLM internalize pattern.
+
+**Token budget**: ~2000 tokens added vào main prompt (acceptable trong 47KB total budget).
+
+**Anti-pattern detection** (capture bởi `ParallelismTelemetryMiddleware` §2):
+- Multiple `task()` calls across different `langgraph_step` IDs → log `sequential_antipattern_counter`.
+- Operations team alert khi rate > 5% trong 1h.
+
+---
+
+### 6. NFR-Q1..Q5 Measurement Architecture
+
+**Mapping**: 5 quality gates → telemetry → dashboard tiles. (NFR-Q1-Q4 = product gates per PRD; NFR-Q5 = orchestrator routing gate added 2026-04-23 to disambiguate from accuracy.)
+
+| NFR | Definition | Metric source | Dashboard tile | Alert threshold |
+|-----|-----------|---------------|----------------|----------------|
+| **NFR-Q1** Accuracy | Factual error rate < 3% (sample QA vs raw API ground truth) | Manual QA 100 queries / 2 weeks + automated cross-check sampling | Gauge "% factual errors" | > 3% trong 2-week window |
+| **NFR-Q2** Parallelism ratio | P95 `total_elapsed / max(individual)` < 1.3x | `parallelism_ratio_histogram` (Story 0.5) | Histogram with P50/P95/P99 lines | P95 > 1.3x trong 1h |
+| **NFR-Q3** Graceful degradation | ≥ 98% requests `success+partial` outcome | `crypto_orchestra_graceful_degradation_total{outcome}` | Gauge "% graceful" | < 98% trong 1h |
+| **NFR-Q4** Speed | P95 full-suite duration < 90s | `full_suite_duration_seconds` histogram | Histogram with P50/P95 + 90s threshold line | P95 > 90s trong 1h |
+| **NFR-Q5** Smart selection accuracy | ≥ 90% queries route đúng Rule A/B/C/D | Manual classification 20 sample queries (Story 0.3 AC6) + production sampling | `orchestra.spawn` event distribution by agent_count buckets {1, 2, 3, 4+} | < 85% trong tuần |
+
+**Telemetry stack:**
+- **Backend metrics**: Prometheus client (`prometheus_client` lib) — 4 metrics defined trong `app/observability/metrics.py`.
+- **Frontend events**: 8 telemetry events (xem `ux-crypto-orchestra-handoff.md` §4) → existing analytics pipe.
+- **Dashboard**: Grafana panel "Crypto Orchestra Health" với 4 tiles + sequential anti-pattern counter.
+
+**Sample sizing**:
+- NFR-Q1: Manual QA 100 queries / 2 weeks (production sampling vs raw API ground truth).
+- NFR-Q5: 20 manual queries cho Story 0.3 AC, then production sampling 100 queries/day.
+- NFR-Q2/Q4: Statistical benchmark 100 queries (Story 0.5 AC4-AC5) + production rolling P95.
+- NFR-Q3: 100 queries với fault injection (Story 0.6 AC10) + production rolling.
+
+---
+
+### 7. Resolution — 5 Open Design Questions từ UX Handoff §7
+
+| # | Question | Decision | Rationale |
+|---|----------|----------|-----------|
+| 1 | Agent display names i18n? | ✅ **Technical EN-only cho v1** (`whale_tracker` → `display_name: "whale-track"`) | i18n sẽ thêm complexity ở `AgentManifest`; v2 evaluate sau khi có user feedback. |
+| 2 | Retry agent-level vs query-level? | ✅ **Query-level only cho v1** | Single-agent re-spawn đòi hỏi state preservation phức tạp (graph step replay). v1 retry button → re-run full query. v2 implement single-agent retry với cached results from successful agents. |
+| 3 | Cancel semantics — terminate ongoing LLM streams? | ✅ **Best-effort terminate** — issue `agent.cancel()` trên `asyncio.Task` của mỗi sub-agent. Cost vẫn count cho tokens đã consumed (industry standard). Frontend hiển thị "cancelled, partial cost incurred". | Hard-stop LLM streams unsafe (provider abstraction). Best-effort matches OpenAI/Anthropic patterns. |
+| 4 | Conflict threshold cho `[2≠4]` citation? | ✅ **Numeric field với delta > 5%** (UX recommendation accepted). Implement trong `<MultiCitationBadge />` rendering layer — backend KHÔNG emit conflict event (xem §1 decision #4). | Pure FE detection avoids backend coupling; threshold tunable via constants. |
+| 5 | Background mode cross-tab sync? | ✅ **Single-tab MVP**, v2 cross-tab via BroadcastChannel | MVP scope; cross-tab adds complexity to Zustand persistence layer + race conditions. |
+
+---
+
+### 8. Files Touched / Created (Backend Summary)
+
+**New files (Epic 0)**:
+- `app/agents/new_chat/tools/defillama.py` (5 tools)
+- `app/agents/new_chat/tools/crypto_sentiment.py` (2 tools)
+- `app/agents/new_chat/tools/crypto_news.py` (2 tools)
+- `app/agents/new_chat/tools/contract_analysis.py` (2 tools)
+- `app/agents/new_chat/middleware/parallelism_telemetry.py`
+- `app/agents/new_chat/middleware/circuit_breaker.py`
+- `app/agents/new_chat/subagents/crypto/` (4 base + 6 advanced specs)
+- `app/schemas/sse_events.py` (6 Orchestra event types)
+- `app/observability/metrics.py` (4 Prometheus metrics)
+
+**Modified files**:
+- `app/agents/new_chat/tools/registry.py` (+11 ToolDefinition entries)
+- `app/agents/new_chat/chat_deepagent.py` (+ParallelismTelemetryMiddleware + CircuitBreakerMiddleware in `gp_middleware`; wire 10 crypto sub-agents into SubAgentMiddleware)
+- `app/agents/new_chat/system_prompt.py` (+"Crypto Analysis Orchestration" section ~2000 tokens)
+- `app/api/routes/chat.py` (inject sse_publisher into telemetry middleware)
+
+**Frontend** (xem `ux-crypto-orchestra-handoff.md` §8 cho danh sách đầy đủ): 8 components mới + 1 Zustand store + 1 telemetry helper.
+
+---
+
+### 9. Cross-cutting Concerns & Constraints
+
+**Performance**:
+- HTTP timeout: 30s mặc định (override per-tool nếu cần). Total per-agent budget ~45s.
+- ToolNode parallel: LangGraph dùng `asyncio.gather` — concurrency unbounded; rely on per-API rate limiter (CoinGecko 30/min, GoPlus 2000/day).
+- `httpx.AsyncClient` reused per-tool-call (connection pooling) — NOT shared across tools (avoid coupling).
+
+**Security**:
+- All crypto tools `requires=[]` → no DB session, no user PII access. Safe to run in Celery worker pool standalone.
+- API keys (Etherscan, BscScan) qua `pydantic-settings` env vars; NOT logged.
+- Tool errors logged với `exc_info=True` nhưng KHÔNG include user query content (PII safety).
+
+**Observability**:
+- All 4 NFR-Q metrics exported qua `/metrics` endpoint (Prometheus scraping).
+- Structured logs (JSON): `{request_id, query_hash, agents_spawned, parallelism_ratio, outcome}`.
+- LangSmith tracing optional (env `LANGSMITH_TRACING=true`) cho deep debugging.
+
+**Rollback / Feature Flags**:
+- `PARALLELISM_TELEMETRY_ENABLED` (default true) — disable middleware nếu perf regression.
+- `CIRCUIT_BREAKER_ENABLED` (default true) — disable nếu false-positive opens.
+- `DEGRADATION_TELEMETRY_ENABLED` (default true).
+- Per-agent kill switch: `CRYPTO_AGENT_<NAME>_ENABLED` env vars (e.g., `CRYPTO_AGENT_WHALE_TRACKER_ENABLED=false`) — agent KHÔNG được spawn nếu false.
+
+---
+
+### 10. Implementation Sequence (Crypto Orchestra Delta)
+
+**Phase 0 (Foundation, blocking Phase 1)** — Stories 0.1 → 0.6 sequential:
+1. **Story 0.1** Tool infrastructure (4 files, 11 tools, registry).
+2. **Story 0.2** 4 base sub-agent specs + SubAgentMiddleware wiring.
+3. **Story 0.3** Main agent orchestration prompt (system_prompt.py).
+4. **Story 0.4** API integration tests (real API calls).
+5. **Story 0.5** Parallel execution validation + `ParallelismTelemetryMiddleware`.
+6. **Story 0.6** Error handling + `CircuitBreakerMiddleware` + degradation tests.
+
+**Gate**: Quality Gates NFR-Q2/Q3/Q4 PASS trên 100-query benchmark → Phase 1.
+
+**Phase 1 (Epic 9 base + UX MVP)** — Parallel:
+- Backend: Stories 9.1 (Tokenomics) + 9.4 (Yield Optimizer) — leverages existing tools.
+- Frontend: UX phase 9.0 (`OrchestraStrip` + `AgentRow` + `DegradationNotice` + extended `CitationBadge`).
+
+**Phase 2 (Epic 9 advanced + Trust polish)**:
+- Backend: Stories 9.2 (Whale) + 9.5 (Governance).
+- Frontend: UX phase 9.1 (`ConflictCompare` + `SourceTabsPanel` + 8 telemetry events).
+
+**Phase 3 (Final batch)**:
+- Backend: Stories 9.3 (Token Unlock) + 9.6 (Technical Analysis).
+- Frontend: UX phase 9.2 (background mode + 5-min cache + soft-attention milestone).
+
+---
+
+### 11. Coherence with Existing Architecture
+
+**Decision Compatibility ✅**:
+- Reuses Epic 7 SSE pipeline (`/api/v1/chat`) — zero net-new transport layer.
+- LangGraph DeepAgent + SubAgentMiddleware pattern đã production cho `general_purpose` agent — extension chỉ là registry entries.
+- Tool factory + `requires=[]` pattern đã established bởi `chainlens_research.py` — clone proven approach.
+- Pydantic schemas alias `by_alias=True` (existing rule) áp dụng cho `OrchestraEvent` types → camelCase JSON cho frontend.
+
+**Non-conflicting với baseline**:
+- KHÔNG đổi DB schema (no new tables backend-side; FE Rocicorp Zero `orchestra_sessions` table optional, separate concern).
+- KHÔNG đổi authentication/RLS — sub-agents chạy trong cùng request context của main agent.
+- KHÔNG đổi Celery worker pool — crypto tools chạy in-request (FastAPI async), không enqueue.
+
+**Naming compliance**:
+- Sub-agent names: `snake_case` ✅ (Python convention).
+- SSE event names: `orchestra.<verb>` lower dot-notation ✅.
+- Pydantic event classes: `PascalCase` ✅.
+- Tool function names: `snake_case` ✅ (Python convention + LangChain tool naming).

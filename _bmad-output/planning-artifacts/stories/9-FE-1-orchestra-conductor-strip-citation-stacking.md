@@ -1,0 +1,372 @@
+# Story 9.FE-1: Orchestra Conductor Strip + Citation Stacking (Phase 9.0 MVP)
+
+Status: ready-for-dev
+
+<!-- Created: 2026-04-23 by Bob (BMad Story Writer) -->
+<!-- Validation: optional. Run validate-create-story before dev-story. -->
+
+---
+
+## Story
+
+**As a** Crypto Power User (persona "Khoa") sitting in front of a long-running multi-agent crypto analysis,
+**I want** to see an inline horizontal "Orchestra Conductor Strip" that shows each spawned sub-agent's status, ETA, and partial results — plus stacked multi-source citations on the synthesized answer,
+**so that** I never face a blocking spinner, I can read partial findings as they stream in, I trust the response more because I see exactly which sources were consulted, and degraded outcomes are explained calmly (amber, not red panic) instead of feeling like a crash.
+
+**Why now**: Backend Stories 9-1 (`tokenomics_analyst`) và 9-4 (`yield_optimizer`) đang implement song song trong Phase 1. Without this FE story, a Khoa-style query "phân tích toàn diện $UNI" sẽ stream 60-90s với chỉ một spinner — perceived latency catastrophe → high abandon rate, NFR-Q3 / NFR-Q4 không observable từ user POV. Story này hiện thực Journey #8 UX và unlock NFR-Q3 telemetry collection (2 tuần data) — chính là gating criteria để mở Phase 9.1.
+
+---
+
+## Scope (Phase 9.0 MVP — 5 days)
+
+**Tạo mới (8 files):**
+- `nowing_web/components/chat/orchestra-strip.tsx` — variants: `default`, `collapsed`, `single-agent`, `pinned`
+- `nowing_web/components/chat/agent-row.tsx` — status: `idle`, `queued`, `running`, `done`, `failed`
+- `nowing_web/components/chat/degradation-notice.tsx` — variants: `inline`, `expanded`
+- `nowing_web/components/chat/progress-milestone.tsx` — T+30s soft attention break copy
+- `nowing_web/stores/use-orchestra-store.ts` — Zustand store (NEW directory — codebase chưa có `stores/`; phối hợp pattern với existing `atoms/` Jotai stores)
+- `nowing_web/lib/telemetry/orchestra-events.ts` — 8 telemetry events emitter
+- `nowing_web/components/chat/multi-citation-badge.tsx` — stacked/cluster/conflict variants (extend existing `components/tool-ui/citation/citation.tsx` API surface; KHÔNG modify it directly — wrapper pattern)
+- `nowing_web/zero/schema/orchestra-sessions.ts` — Rocicorp Zero table schema
+
+**Modify (3 files):**
+- `nowing_web/components/assistant-ui/assistant-message.tsx` (hoặc tương đương ChatBubble entry) — slot cho `<OrchestraStrip />` ABOVE response area
+- `nowing_web/lib/chat/streaming-state.ts` — extend `SSEEvent` discriminated union with 6 `orchestra.*` event types
+- `nowing_web/zero/schema/index.ts` — register `orchestra_sessions` table
+
+**Out of scope Phase 1 (defer 9.1):**
+- ❌ `<ConflictCompare />` 2-col compare grid
+- ❌ `<SourceTabsPanel />` vertical tabs trong Split-Pane
+- ❌ Background mode pinning (status bar)
+- ❌ 5-min `(query_hash, agent_name)` cache layer
+- ❌ Cross-tab BroadcastChannel sync (single-tab MVP only — arch §9.7 Q5)
+- ❌ Per-agent retry button (query-level retry only — arch §9.7 Q2)
+
+---
+
+## Acceptance Criteria
+
+### Functional (FR mapping)
+
+1. **AC1 [FR33, FR35]** — Khi browser nhận event `orchestra.spawn` (xem `architecture.md` §9.1), `<OrchestraStrip />` render INLINE inside chat bubble, **không** hiển thị blocking spinner toàn cục. Strip render N `<AgentRow />` items theo `agents[]` payload (mỗi row = 1 `AgentManifest` với `name`, `display_name`, `estimated_p50_ms`).
+2. **AC2 [FR33, NFR-Q2]** — Mỗi `<AgentRow />` cập nhật `elapsed_ms` realtime từ event `orchestra.update`. Frontend KHÔNG cần debounce (backend đã throttle 500ms server-side per `architecture.md` §9.1 decision #2 — `ORCHESTRA_UPDATE_THROTTLE_MS`).
+3. **AC3 [FR35, NFR-Q3]** — Khi `orchestra.fail` arrive cho 1 agent: row chuyển status `failed` (muted gray + amber dot, **KHÔNG red**); `<DegradationNotice />` render INLINE bên dưới strip với amber Alert variant (shadcn `Alert variant="default"` + amber tokens, KHÔNG `variant="destructive"`). Notice text reflect `reason` field (`rate_limit | timeout | unavailable | cancelled_by_user | circuit_open`) thành user-friendly copy. `fallback_used: true` → notice mention "fallback source used".
+4. **AC4 [FR33]** — Khi `orchestra.done`: row hiển thị green checkmark + emerald glow 600ms one-shot, sau đó settle về done state với `summary.fact_count` + `summary.sources[]` chips.
+5. **AC5 [FR33]** — Khi `orchestra.cancel`: strip collapse về compact "partial, cancelled" state, hiển thị cost footnote: "In-flight tokens vẫn được tính (best-effort cancel)" — per arch §9.7 Q3.
+6. **AC6 [NFR-Q4]** — Khi `orchestra.complete`: strip không block render synthesized response stream tiếp theo; final summary hiển thị `total_ms`, `success/failed` counts, và P95 bucket label (`fast`/`normal`/`slow`).
+7. **AC7 [Multi-source citations]** — `<MultiCitationBadge />` render variants:
+   - `single` — `[1]` (existing behavior, parity với `components/tool-ui/citation/citation.tsx`)
+   - `stacked` — `[1·3·5]` khi 1 claim có 2-3 sources
+   - `cluster` — `[5+◆]` khi >3 sources (◆ = expand affordance)
+   - `conflict` — `[2≠4]` khi numeric delta > 5% giữa 2 sources, OR categorical mismatch (xem AC8)
+8. **AC8 [Conflict detection — FE-side]** — Conflict detection chạy CLIENT-SIDE (backend KHÔNG emit `orchestra.conflict` per arch §9.1 decision #4). Logic:
+   - Numeric fields: delta > 5% giữa max và min → conflict
+   - Categorical fields: exact mismatch → conflict
+   - Threshold tunable qua `lib/telemetry/orchestra-events.ts` constant `CONFLICT_NUMERIC_DELTA = 0.05`
+9. **AC9 [Long-wait UX]** — Tại T+30s elapsed (kể từ `orchestra.spawn`), `<ProgressMilestone />` render inline text "soft attention break" — copy: "Đang tổng hợp từ {success_count} nguồn — bạn có thể tiếp tục công việc khác, kết quả sẽ ping khi xong." (EN-only v1 per arch §9.7 Q1, but Vietnamese fallback acceptable nếu locale = vi vì codebase đã có `messages/`).
+
+### Telemetry (8 events — feeds NFR-Q3 dashboard)
+
+10. **AC10** — Frontend emit đúng 8 telemetry events qua existing analytics pipe (xem `ux-crypto-orchestra-handoff.md` §4):
+
+    | # | Event | Payload | Trigger |
+    |---|-------|---------|---------|
+    | 1 | `orchestra.spawn` | `{query_hash, agents: string[], spawn_count}` | On `orchestra.spawn` SSE event |
+    | 2 | `orchestra.agent_done` | `{agent_name, duration_ms, source_count}` | On `orchestra.done` SSE event |
+    | 3 | `orchestra.agent_fail` | `{agent_name, reason}` | On `orchestra.fail` SSE event |
+    | 4 | `orchestra.completed` | `{total_duration_ms, success_count, fail_count, p95_bucket}` | On `orchestra.complete` |
+    | 5 | `orchestra.cancelled` | `{at_ms, partial_results: bool}` | On user cancel |
+    | 6 | `citation.click` | `{badge_type, source_count, conflict: bool}` | User clicks `<MultiCitationBadge />` |
+    | 7 | `degradation.notice_expanded` | `{}` | User clicks expand on `<DegradationNotice />` |
+    | 8 | `degradation.retry_clicked` | `{agent_name?}` | User clicks query-level retry CTA in notice |
+
+    Each event payload validated qua `ParallelismTelemetryMiddleware` interface mock (Story 0-5 — soft dep, interface spec sufficient; full backend impl không required cho FE story complete).
+
+### Persistence
+
+11. **AC11 [Zustand + Rocicorp Zero]** — `useOrchestraStore` (Zustand) persists qua page refresh via Rocicorp Zero mutator → `orchestra_sessions` table. Snapshot cadence ≤ 2s (NFR-P2 sync latency budget). Schema:
+    ```typescript
+    orchestra_sessions: {
+      query_hash: string (PK, sha256(query+user_id)[:16] — FE recompute từ user input + auth context),
+      agents: string[] (snake_case names),
+      spawned_at: timestamp,
+      completed_at: timestamp | null,
+      outcome: 'running' | 'success' | 'partial' | 'failed' | 'cancelled',
+      total_ms: number | null
+    }
+    ```
+12. **AC12** — `orchestra_sessions` table migration registered trong `nowing_web/zero/schema/index.ts`. Migration must NOT break existing chat/documents/folders/inbox tables (run `bun run db:check` or equivalent — kiểm tra với `nowing_web/drizzle.config.ts`).
+
+### NFR Quality Gates (observed via FE)
+
+13. **AC13 [NFR-Q4]** — Sau `orchestra.complete`, response text stream tiếp theo render trong < 200ms — strip KHÔNG block paint của message content (test bằng React Profiler hoặc Lighthouse trace). P95 < 90s cho full-suite measured end-to-end qua telemetry event #4.
+14. **AC14 [NFR-Q3]** — Khi ≥ 1 agent fail (simulate qua dev tool injecting `orchestra.fail`), partial results vẫn hiển thị, response synthesis vẫn render. Outcome telemetry đúng = `partial`.
+
+### Animation & Performance constraints
+
+15. **AC15** — Animations tuân thủ Design System Foundation (< 150ms rule):
+    - Strip expand/collapse: `duration-150 ease-out` (Tailwind `transition-all duration-150 ease-out`)
+    - Status running→done: emerald glow `transition-shadow duration-[600ms]` one-shot (use `useEffect` cleanup, KHÔNG infinite loop)
+    - Spinner: `animate-spin` 1s linear, MAX 1 instance per row (no nested spinners)
+    - **FORBIDDEN**: Lottie, framer-motion spring/keyframes, parallax, any animation > 150ms cho non-status-glow transitions
+
+---
+
+## Tasks / Subtasks
+
+- [ ] **Task 1 — SSE event contract integration (AC1, AC2, AC3, AC4, AC5, AC6)**
+  - [ ] 1.1 Extend `SSEEvent` discriminated union in `nowing_web/lib/chat/streaming-state.ts` with 6 new types matching `app/schemas/sse_events.py` Pydantic models (sources: `architecture.md` §9.1):
+    - `OrchestraSpawnEvent`, `OrchestraUpdateEvent`, `OrchestraDoneEvent`, `OrchestraFailEvent`, `OrchestraCancelEvent`, `OrchestraCompleteEvent`
+  - [ ] 1.2 Map type names: backend `event: orchestra.spawn\ndata: {...}` → FE discriminator `type: "orchestra-spawn"` (kebab-case to match existing pattern `data-thinking-step`, `data-token-usage`)
+  - [ ] 1.3 Update `readSSEStream()` parsing — verify wire format `event: orchestra.*\ndata: <json>\n\n` được handled (current impl chỉ đọc `data:` lines — confirm sufficient OR add event-name parsing)
+  - [ ] 1.4 Vitest unit test cho parser với fixtures cho 6 event types
+
+- [ ] **Task 2 — Zustand orchestra store (AC11)**
+  - [ ] 2.1 Create `nowing_web/stores/use-orchestra-store.ts` với Zustand v5 (already installed). State shape:
+    ```typescript
+    interface OrchestraState {
+      sessions: Map<string /*query_hash*/, OrchestraSession>;
+      activeQueryHash: string | null;
+      // actions
+      spawn(payload: OrchestraSpawnPayload): void;
+      update(agent_name: string, elapsed_ms: number): void;
+      done(agent_name: string, summary: AgentSummary): void;
+      fail(agent_name: string, reason: FailReason): void;
+      cancel(at_ms: number, partial: boolean): void;
+      complete(total_ms: number, success: number, failed: number): void;
+      reset(query_hash: string): void;
+    }
+    ```
+  - [ ] 2.2 Thêm Rocicorp Zero subscription middleware: on every state mutation → call Zero mutator để persist `orchestra_sessions` row (debounced 2s — chuẩn NFR-P2)
+  - [ ] 2.3 On store hydration (page refresh), read latest `orchestra_sessions` row matching current `activeQueryHash` từ Zero query, restore state
+  - [ ] 2.4 Coordinate naming với existing `atoms/` Jotai stores — confirm với tech lead có nên dùng Zustand mới hay extend Jotai pattern (UX handoff §2 chỉ định Zustand — accept that for v1)
+
+- [ ] **Task 3 — Rocicorp Zero schema migration (AC11, AC12)**
+  - [ ] 3.1 Create `nowing_web/zero/schema/orchestra-sessions.ts` defining table per AC11 schema
+  - [ ] 3.2 Register trong `nowing_web/zero/schema/index.ts`
+  - [ ] 3.3 Run `bun run db:generate` (drizzle-kit) để emit migration SQL — verify chỉ ADD bảng, KHÔNG alter existing tables
+  - [ ] 3.4 Verify Zero permissions: `orchestra_sessions` rows scoped per `user_id` (RLS — NFR-S1)
+
+- [ ] **Task 4 — `<OrchestraStrip />` component (AC1, AC6, AC15)**
+  - [ ] 4.1 Create `components/chat/orchestra-strip.tsx`. Subscribe `useOrchestraStore` cho activeQueryHash → render rows
+  - [ ] 4.2 Variants: `default` (full strip), `collapsed` (compact 1-line "3/4 agents done"), `single-agent` (no strip, just inline status), `pinned` (Phase 9.2 — placeholder prop, default false)
+  - [ ] 4.3 Layout: horizontal flex, gap-2, max-w-prose, sticky bên trong chat bubble container
+  - [ ] 4.4 Expand/collapse animation: `transition-all duration-150 ease-out` (AC15)
+  - [ ] 4.5 Total summary footer: "{success}/{total} done · {total_ms}ms" sau `orchestra.complete`
+
+- [ ] **Task 5 — `<AgentRow />` component (AC2, AC3, AC4, AC15)**
+  - [ ] 5.1 Create `components/chat/agent-row.tsx`. Props: `{name, display_name, status, elapsed_ms?, summary?, reason?}`
+  - [ ] 5.2 5 status visual states (idle/queued/running/done/failed) per UX handoff §2
+  - [ ] 5.3 shadcn `Tooltip` on hover → show `estimated_p50_ms` ETA + tools_count
+  - [ ] 5.4 Status transition `running → done`: emerald glow `box-shadow` 600ms one-shot (AC15)
+  - [ ] 5.5 1 spinner max per row (`animate-spin` lucide `Loader2`)
+  - [ ] 5.6 `failed` state: muted gray text + amber dot icon (Tailwind `text-muted-foreground` + `bg-amber-500`), KHÔNG red
+
+- [ ] **Task 6 — `<DegradationNotice />` component (AC3)**
+  - [ ] 6.1 Create `components/chat/degradation-notice.tsx`. Wrap shadcn `Alert` với amber tokens (`border-amber-500/50 bg-amber-50 dark:bg-amber-950/20`)
+  - [ ] 6.2 `inline` variant: 1-line summary "DeFi data unavailable — analysis based on 3/4 sources"
+  - [ ] 6.3 `expanded` variant: full failure list per agent + reason translation map:
+    ```
+    rate_limit → "Tạm hết quota source X (1 phút)"
+    timeout → "Source X chậm bất thường, đã dừng chờ"
+    unavailable → "Source X tạm offline"
+    circuit_open → "Source X đang lỗi liên tục, đã tạm bypass"
+    cancelled_by_user → "Bạn đã huỷ"
+    ```
+  - [ ] 6.4 Click expand → emit telemetry event #7 `degradation.notice_expanded`
+  - [ ] 6.5 Query-level retry CTA button (per arch §9.7 Q2 — KHÔNG per-agent retry) → emit telemetry event #8 `degradation.retry_clicked` (omit `agent_name` for query-level)
+
+- [ ] **Task 7 — `<ProgressMilestone />` component (AC9)**
+  - [ ] 7.1 Create `components/chat/progress-milestone.tsx`. Subscribe to elapsed time từ store
+  - [ ] 7.2 Render text inline khi T+30s (only fire 1x per session — track `milestone_30s_fired` flag in store)
+  - [ ] 7.3 Copy EN-only v1 (arch §9.7 Q1); reuse existing i18n key naming convention nếu codebase đã có (`messages/en.json`)
+
+- [ ] **Task 8 — `<MultiCitationBadge />` component (AC7, AC8)**
+  - [ ] 8.1 Create `components/chat/multi-citation-badge.tsx` — wrapper around existing `components/tool-ui/citation/citation.tsx` (do NOT modify the existing one — preserve Epic 3 contract)
+  - [ ] 8.2 Detect variant từ `sources: SerializableCitation[]` prop:
+    - `length === 1` → `single` → delegate render to existing `<Citation />`
+    - `length 2-3` → `stacked` → render `[1·3·5]` Popover trigger; click → list all sources
+    - `length > 3` → `cluster` → render `[5+◆]`; click → expand to full list
+    - Conflict detected (AC8 logic) → `conflict` → render `[2≠4]` với amber border
+  - [ ] 8.3 Conflict detection helper: pure function `detectConflict(sources, claimValue, claimType): boolean` exported from `lib/telemetry/orchestra-events.ts`
+  - [ ] 8.4 Click → telemetry event #6 `citation.click` với badge_type + conflict flag
+
+- [ ] **Task 9 — Telemetry events (AC10)**
+  - [ ] 9.1 Create `lib/telemetry/orchestra-events.ts` — 8 event emitters typed strictly per AC10 table
+  - [ ] 9.2 Wire to existing analytics pipe (find: grep `analytics.track\|posthog\|sentry` in codebase to identify pipe)
+  - [ ] 9.3 Add `query_hash` computation helper: `sha256(query + user_id).slice(0, 16)` using Web Crypto API (`crypto.subtle.digest`)
+  - [ ] 9.4 Mock `ParallelismTelemetryMiddleware` payload contract (Story 0-5 interface) — Vitest test verify each event fires with correct shape
+
+- [ ] **Task 10 — ChatBubble integration (AC1, AC6, AC13)**
+  - [ ] 10.1 Locate ChatBubble entry — likely `components/assistant-ui/assistant-message.tsx` (verify với grep `assistant-message\|chat-bubble`)
+  - [ ] 10.2 Insert `<OrchestraStrip />` slot ABOVE message content area
+  - [ ] 10.3 Hook into SSE stream consumer (`hooks/use-messages-sync.ts` likely) — route `orchestra.*` events tới `useOrchestraStore` actions
+  - [ ] 10.4 Verify response text streaming KHÔNG bị block bởi strip render (React Profiler — AC13)
+
+- [ ] **Task 11 — Tests (Vitest unit + Playwright integration)**
+  - [ ] 11.1 Vitest: unit tests cho mỗi component (5+ test files) — render contract, status transitions, telemetry firing
+  - [ ] 11.2 Vitest: parser tests cho 6 SSE event types (Task 1.4)
+  - [ ] 11.3 Playwright: 1 happy-path scenario "comprehensive query" — mock SSE stream với 4 agents, verify strip renders, all status transitions complete, citations stack correctly, completed telemetry fires
+  - [ ] 11.4 Playwright: 1 degradation scenario — inject `orchestra.fail` cho 1 agent, verify amber notice + partial results render
+
+- [ ] **Task 12 — Documentation & handoff**
+  - [ ] 12.1 Update `_bmad-output/implementation-artifacts/component-inventory-web.md` với 7 new components
+  - [ ] 12.2 Add Storybook stories nếu codebase có Storybook (grep for `.stories.tsx`); else skip
+  - [ ] 12.3 Pre-commit: run `bun run lint`, `bun run typecheck`, `bun run test` — must all pass
+
+---
+
+## Dev Notes
+
+### Architecture compliance
+
+- **SSE pipe**: Reuse Epic 7 `/api/v1/chat` SSE endpoint — KHÔNG tạo WebSocket mới (arch §9.1)
+- **Backpressure**: Backend đã throttle `orchestra.update` 500ms server-side — FE KHÔNG debounce (arch §9.1 decision #2)
+- **Conflict detection**: Pure FE rendering layer, KHÔNG backend coupling (arch §9.1 decision #4, §9.7 Q4)
+- **Persistence**: Zustand state → Rocicorp Zero mutator → PGLite snapshot (NFR-P2 < 3s sync)
+- **Animation budget**: <150ms cho transitions; 600ms one-shot glow allowed for status feedback only
+- **State scope**: Single-tab MVP (arch §9.7 Q5) — KHÔNG implement BroadcastChannel
+- **Retry semantics**: Query-level only (arch §9.7 Q2) — re-run full query, KHÔNG per-agent re-spawn
+- **Cancel semantics**: Best-effort terminate, in-flight tokens billed (arch §9.7 Q3) — UI must show cost footnote
+
+### Existing code touchpoints (verified via Serena/Grep 2026-04-23)
+
+- **SSE parser**: `nowing_web/lib/chat/streaming-state.ts:212-282` — `SSEEvent` discriminated union + `readSSEStream()` async generator. EXTEND, không rewrite.
+- **Existing citation**: `nowing_web/components/tool-ui/citation/citation.tsx` (+ `citation-list.tsx`, `schema.ts`) — Epic 3 production code. Story TẠO wrapper `<MultiCitationBadge />`, KHÔNG modify these.
+- **ChatBubble entry**: `nowing_web/components/assistant-ui/assistant-message.tsx` — primary insertion point cho OrchestraStrip slot.
+- **State management**: Codebase hiện tại dùng Jotai atoms (`nowing_web/atoms/chat/`). UX handoff §2 chỉ định Zustand cho orchestra store. Tạo NEW directory `nowing_web/stores/` — coordinate với tech lead nếu nên reuse Jotai pattern thay vì add Zustand boundary.
+- **Zero schemas**: `nowing_web/zero/schema/{chat,documents,folders,inbox}.ts` — pattern reference cho `orchestra-sessions.ts`.
+- **i18n**: `nowing_web/messages/` (next-intl). EN-only v1 cho orchestra strings — VN locale có thể fallback to EN.
+
+### Library versions (from package.json — verify before code)
+
+- `zustand@^5.0.x` — already installed (multiple variants in lock — pin newest stable)
+- `@rocicorp/zero` — Zero v0.x (check package.json for exact)
+- `tailwindcss@4` (or 3.4+ — check biome.json + components.json)
+- `next@15` + `react@19` (from existing structure)
+- `lucide-react` cho icons (already used)
+- shadcn/ui — `Alert`, `Popover`, `Tooltip`, `Button` (already in `components/ui/`)
+
+### Telemetry pipe discovery (Task 9.2)
+
+Run `grep -rn "analytics\.\|posthog\|track(" nowing_web/lib nowing_web/hooks` BEFORE implementing — codebase có thể dùng custom `analytics-client.ts` hoặc PostHog SDK. Match existing pattern.
+
+### Soft dependency on Story 0-5
+
+Story 9-FE-1 cần INTERFACE SPEC của `ParallelismTelemetryMiddleware` (validated event payload shapes), KHÔNG cần backend impl complete. Reference: `_bmad-output/planning-artifacts/stories/0-5-parallel-execution-validation.md` lines 50-150 (test fixtures show payload shapes). FE dev có thể mock payloads cho Vitest tests — backend integration verified trong E2E sau khi 0-5 done.
+
+### Phase gating reminder
+
+- **NFR-Q3 graceful degradation > 95%** measured qua telemetry event #3 + #4 over 2-week window post-launch → unlock Phase 9.1 (Story 9-FE-2: ConflictCompare + SourceTabsPanel).
+- **NFR-Q4 P95 < 90s** measured qua telemetry event #4 `total_duration_ms` → unlock Phase 9.2 (background pinning + cache).
+
+### Project Structure Notes
+
+- New `nowing_web/stores/` directory introduces NEW boundary parallel với existing `atoms/` (Jotai). Justification: UX handoff explicitly chỉ định Zustand cho orchestra; mixing Jotai + Zustand acceptable nếu tech lead OK. Alternative: nest under `atoms/orchestra/` với Jotai — cần discussion before Task 2.
+- `lib/telemetry/` directory mới — codebase có `lib/chat/`, `lib/auth/` etc. patterns. OK pattern.
+- `components/chat/` directory mới — codebase hiện có `components/new-chat/`, `components/assistant-ui/`, `components/tool-ui/`. Verify với UX team xem nên đặt vào `components/new-chat/orchestra/` thay vì tạo bare `components/chat/` (avoid naming collision với upstream assistant-ui).
+- **Detected variance**: UX handoff §8 đề xuất paths `components/chat/*` và `stores/*` — codebase reality = `components/new-chat/`, `components/assistant-ui/`, `atoms/`. Story tuân theo UX handoff naming nhưng FLAG cho dev review trước khi commit.
+
+### References
+
+- [Source: `_bmad-output/planning-artifacts/ux-crypto-orchestra-handoff.md`#Section 2] — 7 components spec
+- [Source: `_bmad-output/planning-artifacts/ux-crypto-orchestra-handoff.md`#Section 3] — SSE event contract draft
+- [Source: `_bmad-output/planning-artifacts/ux-crypto-orchestra-handoff.md`#Section 4] — 8 telemetry events
+- [Source: `_bmad-output/planning-artifacts/ux-crypto-orchestra-handoff.md`#Section 5] — Phase 9.0 MVP scope
+- [Source: `_bmad-output/planning-artifacts/ux-crypto-orchestra-handoff.md`#Section 7] — 5 resolved design questions
+- [Source: `_bmad-output/planning-artifacts/architecture.md`#Section 9.1 lines 977-1062] — Per-Agent SSE Event Contract (Pydantic schemas + 4 resolved questions)
+- [Source: `_bmad-output/planning-artifacts/architecture.md`#Section 9.2 lines 1064-1172] — ParallelismTelemetryMiddleware design (FE consumes throttled events)
+- [Source: `_bmad-output/planning-artifacts/architecture.md`#Section 9.7 lines 1419-1428] — 5 design questions resolved
+- [Source: `_bmad-output/planning-artifacts/architecture.md`#Section 9.9 lines 1454-1473] — Cross-cutting: NFR-P2 < 3s sync, NFR-S1 RLS, animation < 150ms
+- [Source: `_bmad-output/planning-artifacts/prd.md`#FR27-FR35 lines 306-315] — Functional requirements Crypto Orchestra
+- [Source: `_bmad-output/planning-artifacts/prd.md`#NFR-Q1..Q5 lines 342-346] — Quality gates definitions
+- [Source: `_bmad-output/planning-artifacts/prd.md`#User Journey 8 lines 157-160] — Khoa persona walkthrough
+- [Source: `_bmad-output/planning-artifacts/stories/0-5-parallel-execution-validation.md`#Lines 50-150] — `ParallelismTelemetryMiddleware` interface spec (FE soft dep)
+- [Source: `nowing_web/lib/chat/streaming-state.ts:212-282`] — Existing `SSEEvent` union + parser to extend
+- [Source: `nowing_web/components/tool-ui/citation/citation.tsx`] — Existing single-citation component (DO NOT modify; wrap)
+- [Source: `nowing_web/zero/schema/index.ts`] — Zero schema registry pattern
+
+---
+
+## Dev Agent Record
+
+### Agent Model Used
+
+_(populated by dev agent on start — recommend Sonnet 4.6+ for FE work)_
+
+### Debug Log References
+
+_(populated during dev)_
+
+### Completion Notes List
+
+_(populated during dev — note any deviations from spec, especially around stores/ vs atoms/ decision)_
+
+### File List
+
+_(populated during dev — list all files created and modified)_
+
+---
+
+## Open Questions — RESOLVED (2026-04-23, codebase grep)
+
+> Tất cả 5 câu hỏi đã được resolve bằng cách khám phá codebase thực tế. Dev có thể bắt đầu Task 2 ngay.
+
+1. **Zustand vs Jotai** → **Dùng Jotai, nest dưới `atoms/chat/orchestra.atom.ts`**
+   - Codebase có 44 Jotai atom files trong `atoms/`; Zustand chưa dùng ở đâu (lock file có dependency nhưng không có usage thực tế)
+   - Tạo `nowing_web/atoms/chat/orchestra.atom.ts` thay vì `stores/use-orchestra-store.ts`
+   - Follow pattern của `atoms/chat/chat-session-state.atom.ts` (closest analog — session lifecycle)
+   - UX handoff §2 chỉ định Zustand nhưng là recommendation, không phải constraint cứng — Jotai tương đương về functionality
+
+2. **Component path** → **`components/new-chat/orchestra/`**
+   - `components/chat/` KHÔNG tồn tại trong codebase; thư mục chat components thực = `components/new-chat/`
+   - Tạo subdirectory: `nowing_web/components/new-chat/orchestra/`
+   - Files: `orchestra-strip.tsx`, `agent-row.tsx`, `degradation-notice.tsx`, `progress-milestone.tsx`
+   - `MultiCitationBadge` → `nowing_web/components/tool-ui/citation/multi-citation-badge.tsx` (cùng thư mục với `citation.tsx` để reuse imports và `_adapter.tsx`)
+
+3. **Telemetry pipe** → **PostHog qua `lib/posthog/events.ts`**
+   - File: `nowing_web/lib/posthog/events.ts` — tất cả tracking events đều gọi internal `safeCapture(event, properties)` wrapper
+   - Pattern: export function `trackXxx(payload)` → call `safeCapture("category_action", properties)`
+   - 8 orchestra events → thêm vào `events.ts` (KHÔNG tạo file riêng `lib/telemetry/orchestra-events.ts` — consolidate vào pipe hiện có)
+   - Naming convention codebase: `category_action` (snake_case) → dùng `orchestra_spawn`, `orchestra_agent_done`, etc.
+   - `safeCapture` đã có try-catch, ad-blocker safe — không cần thêm error handling
+
+4. **i18n scope** → **Thêm vào `messages/en.json` (và các locale khác)**
+   - `messages/` có 5 files: `en.json`, `vi.json`(không thấy nhưng likely), `zh.json`, `pt.json`, `hi.json`, `es.json`
+   - Codebase đã có next-intl — inline strings sẽ không được lint pass (`no-hardcoded-strings` rule likely active)
+   - Thêm key namespace `orchestra.*` vào tất cả locale files, EN strings trước, các locale khác dùng EN fallback
+   - Key example: `orchestra.milestone_30s = "Synthesizing from {count} sources — you can continue working, we'll notify you when done."`
+
+5. **`<MultiCitationBadge />` integration** → **Không cần wrapper — extend `CitationList` + `schema.ts`**
+   - `citation-list.tsx` đã có `StackedCitations` component (line 287) và `OverflowIndicator` — đây chính là stacked/cluster pattern
+   - `schema.ts` đã có `CitationVariantSchema = z.enum(["default", "inline", "stacked"])` — chỉ cần thêm `"cluster"` và `"conflict"`
+   - Render path trong `assistant-message.tsx`: `CitationMetadataProvider` → `useAllCitationMetadata()` hook → `MobileCitationDrawer` dùng `citations` array trực tiếp (line 247-370)
+   - **Thay đổi approach Task 8**: KHÔNG tạo `multi-citation-badge.tsx` wrapper mới. Thay vào đó:
+     - Extend `CitationVariantSchema` trong `schema.ts` với `"cluster"` + `"conflict"` variants
+     - Extend `CitationList` props với `conflictSources?: {a: number, b: number}` cho `[2≠4]` render
+     - Add `conflict` visual variant to `citation.tsx` (amber border, `≠` symbol)
+   - Điều này preserve Epic 3 API surface tốt hơn wrapper approach và không tạo duplicate abstraction
+
+### Updated file paths (sau khi resolve)
+
+**Tạo mới:**
+- `nowing_web/atoms/chat/orchestra.atom.ts` ← thay `stores/use-orchestra-store.ts`
+- `nowing_web/components/new-chat/orchestra/orchestra-strip.tsx` ← thay `components/chat/orchestra-strip.tsx`
+- `nowing_web/components/new-chat/orchestra/agent-row.tsx`
+- `nowing_web/components/new-chat/orchestra/degradation-notice.tsx`
+- `nowing_web/components/new-chat/orchestra/progress-milestone.tsx`
+- `nowing_web/zero/schema/orchestra-sessions.ts` (unchanged)
+
+**Modify (updated list):**
+- `nowing_web/components/tool-ui/citation/schema.ts` — thêm `"cluster"` + `"conflict"` vào `CitationVariantSchema`
+- `nowing_web/components/tool-ui/citation/citation.tsx` — thêm conflict visual variant (amber border + `≠` symbol)
+- `nowing_web/components/tool-ui/citation/citation-list.tsx` — thêm conflict props, wire conflict detection
+- `nowing_web/lib/posthog/events.ts` — thêm 8 orchestra tracking functions ← thay tạo file mới
+- `nowing_web/messages/en.json` (+ zh, pt, hi, es) — thêm `orchestra.*` key namespace
+- `nowing_web/lib/chat/streaming-state.ts` — extend SSEEvent union (unchanged)
+- `nowing_web/components/assistant-ui/assistant-message.tsx` — slot OrchestraStrip (unchanged)
+- `nowing_web/zero/schema/index.ts` — register orchestra_sessions (unchanged)
+
+**Không tạo:**
+- ~~`lib/telemetry/orchestra-events.ts`~~ — merged vào `lib/posthog/events.ts`
+- ~~`components/chat/multi-citation-badge.tsx`~~ — extend citation.tsx trực tiếp
