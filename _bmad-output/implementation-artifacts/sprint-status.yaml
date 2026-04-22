@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-04-23T14:30:00+07:00
+last_updated: 2026-04-23T18:00:00+07:00
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
@@ -99,8 +99,8 @@ development_status:
 
   # ─── EPIC 0: Crypto Foundation (Retroactive — close drift) ───
   epic-0: backlog
-  0-1-crypto-tool-infrastructure: ready-for-dev
-  0-2-base-sub-agents: ready-for-dev
+  0-1-crypto-tool-infrastructure: in-progress
+  0-2-base-sub-agents: in-progress
   0-3-main-agent-prompt: ready-for-dev
   0-4-api-integration-tests: ready-for-dev
   0-5-parallel-execution-validation: ready-for-dev
@@ -113,7 +113,7 @@ development_status:
   # Phase 1 — Easy Wins Tier (deterministic APIs)
   9-1-tokenomics-analyst: ready-for-dev
   9-4-yield-optimizer: ready-for-dev
-  9-FE-1-orchestra-conductor-strip-citation-stacking: ready-for-dev
+  9-FE-1-orchestra-conductor-strip-citation-stacking: in-progress
   phase-1-quality-gate-review: backlog
 
   # Phase 2 — Web Research Tier (Chainlens-heavy) — blocked on Phase 1 GO
