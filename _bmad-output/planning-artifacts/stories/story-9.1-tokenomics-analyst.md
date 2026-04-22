@@ -187,7 +187,7 @@ SubAgentMiddleware(
     backend=StateBackend,
     subagents=[
         general_purpose_spec,
-        # ... 4 Epic 1-2 specs (defillama, sentiment, news, smart_contract) phải có sẵn ...
+        # ... 4 Epic 0.2 specs (defillama, sentiment, news, smart_contract) phải có sẵn ...
         tokenomics_analyst_spec,  # Story 9.1
     ],
 ),
@@ -268,7 +268,7 @@ def test_tokenomics_tool_scoping():
 
 ### AC6: Parallel execution (NFR-Q2)
 
-**Given** 5 agents được spawn đồng thời (4 Epic 1-2 agents + tokenomics_analyst)
+**Given** 5 agents được spawn đồng thời (4 Epic 0.2 base agents + tokenomics_analyst)
 **When** main agent gọi parallel `task()` tools trong 1 LangGraph ToolNode step
 **Then** all 5 agents start trong cùng 1 graph step (verify qua trace logs)
 **And** `total_time / max(individual_time)` < 1.3x
@@ -292,7 +292,7 @@ def test_tokenomics_tool_scoping():
 
 ## Definition of Done (8 checkpoints)
 
-- [ ] **DoD-1** Pre-flight: Epic 1-2 artifacts verified exist trong repo
+- [ ] **DoD-1** Pre-flight: Epic 0 artifacts verified exist trong repo
 - [ ] **DoD-2** `tokenomics_spec.py` created, 3 constants exported
 - [ ] **DoD-3** `chat_deepagent.py` imports + wires `tokenomics_analyst_spec`
 - [ ] **DoD-4** System prompt < 500 tokens (unit test pass)
@@ -338,7 +338,7 @@ assert count < 500, f'Prompt exceeds 500 tokens: {count}'
 
 - `nowing_backend/app/agents/new_chat/chat_deepagent.py` — wiring location
 - `nowing_backend/app/agents/new_chat/tools/chainlens_research.py` — tool usage pattern
-- `nowing_backend/docs/crypto-subagents-guide.md` — Epic 1-2 implementation guide (spec blueprints)
+- `nowing_backend/docs/crypto-subagents-guide.md` — Epic 0 implementation guide (spec blueprints)
 - `nowing_backend/tests/unit/agents/new_chat/tools/test_chainlens_research_tool.py` — test pattern reference
 
 ---
@@ -370,4 +370,4 @@ Nếu Story 9.1 cause production issues:
 ---
 
 **Status**: ready-for-dev ✅ (blocked on Pre-flight Checklist)
-**Next**: Dev verify Epic 1-2 state → if OK, start Week 1 Tuesday → if NOT OK, escalate to Dev Lead
+**Next**: Dev verify Epic 0 state → if OK, start Week 1 Tuesday → if NOT OK, escalate to Dev Lead
