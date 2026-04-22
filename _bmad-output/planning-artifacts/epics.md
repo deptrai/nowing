@@ -4,9 +4,17 @@ stepsCompleted:
   - step-02-design-epics.md
   - step-03-create-stories.md
   - epic-07-chainlens-deep-research
+  - epic-08-crypto-subagents-testing
+  - epic-09-advanced-crypto-agents
   - step-04-final-validation.md
-lastEdited: '2026-04-19'
+lastEdited: '2026-04-23'
 editHistory:
+  - date: '2026-04-23'
+    changes: '🚨 REALITY SYNC: Code audit phát hiện Epic 0 (Crypto Tool Infrastructure + 4 Base Sub-Agents) CHƯA được implement — `subagents/crypto/` directory rỗng, các tools `defillama.py`/`crypto_sentiment.py`/`crypto_news.py`/`contract_analysis.py` chưa tồn tại, `chat_deepagent.py:472` chỉ có `general_purpose_spec`. Update Epic 8 description (bỏ claim "document hóa implementation đã hoàn thành"). Thêm Epic 0 làm prerequisite chính thức cho Epic 8 + Epic 9. Update sprint plan Phase 1 dependency: Epic 0 phải xong TRƯỚC Epic 8 và Phase 1.'
+  - date: '2026-04-23'
+    changes: 'ALIGN với PRD v2026-04-23: (1) Renumber FR mapping cho Epic 9 sub-agents để khớp PRD (FR27-FR32 cho 6 sub-agents, FR33-FR35 cho orchestration meta). (2) Đổi Epic 8 testing FRs sang FR-T1/T2/T3 (testing prefix — không thuộc product FR sequence). (3) Thêm NFR-Q1-Q4 (Quality Gates: accuracy <3%, hallucination <1%, graceful degradation >98%, speed <90s P95). (4) Update Epic 8 + Epic 9 headers với NFRs covered. (5) Thêm Quality Gate ACs vào Story 8.2 (parallelism ratio < 1.3x), 8.3 (degradation rate > 98%), và Epic 9 stories (system prompt token check, hallucination check). Source: prd.md v2026-04-23 + product-brief-epic9-crypto-orchestra.md v2.'
+  - date: '2026-04-23'
+    changes: 'Thêm Epic 8 (Crypto Sub-Agents Integration Testing) và Epic 9 (Advanced Crypto Agents Batch 2): FR27-FR35, NFR-CS1-NFR-CS4, 9 stories (8.1-8.3, 9.1-9.6). Document hóa lại implementation đã hoàn thành từ crypto-subagents-guide.md.'
   - date: '2026-04-19'
     changes: 'Sync Epic 7 ACs với architecture.md để fix drift: (1) File path chuẩn (chainlens_research_service.py, app/agents/new_chat/tools/chainlens_research.py), (2) Story 7.1 bỏ "expose endpoint health" — Nowing chỉ consume Chainlens GET /api/v1/b2b/health, (3) Cache là in-process class variable (bỏ Redis option), (4) Timeout client 125s (buffer 5s cho NFR-P4 120s), (5) research() return dict (không phải string), (6) Story 7.2 fallback qua return tag {"status": "fallback"} cho LLM tự pick generate_report (không gọi trực tiếp), (7) Story 7.3 clarify intent detection qua LLM tool-calling (không phải explicit router).'
   - date: '2026-04-19'
@@ -110,6 +118,32 @@ FR23: Epic 6 - Gift purchase history endpoint
 FR24: Epic 7 - Deep research trigger từ chat (keyword intent detection → chainlens_deep_research tool)
 FR25: Epic 7 - Chainlens B2B API primary engine + auto-fallback generate_report(report_style="deep_research")
 FR26: Epic 7 - Feature flag CHAINLENS_RESEARCH_ENABLED (admin enable/disable, no redeploy)
+FR27: Epic 9 - tokenomics_analyst sub-agent: supply schedule, vesting, distribution, inflation/deflation
+FR28: Epic 9 - whale_tracker sub-agent: large wallet movements, accumulation/distribution phases
+FR29: Epic 9 - token_unlock_scheduler sub-agent: upcoming vesting events, selling pressure assessment
+FR30: Epic 9 - yield_optimizer sub-agent: yield filter by risk, IL analysis, protocol security check
+FR31: Epic 9 - governance_analyst sub-agent: DAO proposals, voting outcomes, governance health
+FR32: Epic 9 - technical_analyst sub-agent: chart patterns, MA/RSI/MACD, support/resistance levels
+FR33: Epic 9 - Parallel orchestration: main agent spawn multiple crypto sub-agents trong cùng 1 LangGraph ToolNode
+FR34: Epic 9 - Smart agent selection: main agent chọn subset agents phù hợp (không spawn cả 10 khi không cần)
+FR35: Epic 9 - Graceful degradation: 1+ agents fail nhưng main agent vẫn tổng hợp response từ agents thành công
+FR-T1: Epic 8 - Test API integration: DeFiLlama, CoinGecko, GoPlus, CryptoPanic trả về data hợp lệ
+FR-T2: Epic 8 - Test parallel execution: 4 sub-agents đồng thời, total time ≈ max(individual)
+FR-T3: Epic 8 - Test error handling & fallback: rate limit / timeout → graceful degradation
+
+### Crypto Sub-Agents NonFunctional Requirements
+
+NFR-CS1 (Sub-agent token budget): System prompts cho mỗi sub-agent phải < 500 tokens để tiết kiệm cost khi spawn song song.
+NFR-CS2 (Parallel execution): LangGraph ToolNode thực thi tất cả `task()` calls đồng thời trong 1 graph step — không tuần tự.
+NFR-CS3 (API rate awareness): Tools phải handle CoinGecko 30 req/min, GoPlus 2000 req/day, CryptoPanic public tier gracefully.
+NFR-CS4 (Stateless tools): Tất cả crypto tools có `requires=[]` — không phụ thuộc DB, không cần session state.
+
+### Quality Gates (Epic 9 — North Star Metrics)
+
+NFR-Q1 (Accuracy): Factual error rate cho crypto research responses (sample QA vs raw API ground truth) phải < 3%. Đo bằng manual QA + automated cross-check trên random sample 100 full-analysis queries mỗi 2 tuần production.
+NFR-Q2 (Hallucination Rate): % responses chứa số liệu không xuất phát từ tool output (fabricated numbers) phải < 1%. Đo bằng pattern check + sample QA.
+NFR-Q3 (Graceful Degradation): % requests có ≥ 1 sub-agent error nhưng main agent vẫn trả response đúng cấu trúc và mention nguồn unavailable phải > 98%.
+NFR-Q4 (Speed): P95 response time cho full-suite analysis (6+ agents spawned) phải < 90s — relaxed so với NFR-P1 vì cho phép Chainlens 125s timeout, tận dụng parallelism.
 
 ## Epic List
 
@@ -320,7 +354,7 @@ So that tôi có thể điền thông tin thẻ tín dụng mà không sợ bị
 **Given** tôi chọn một gói cước trả phí ở Story 5.1
 **When** tôi click nút "Nâng cấp qua Stripe"
 **Then** hệ thống gọi API backend lấy `sessionId` của Stripe Checkout
-**And** tôi được điều hướng (redirect) an toàn sang trang thanh toán chính thức do Stripe cung cấp (FR16, NFR-S3).
+**And** tôi được điều hướng (redirect) an toàn sang trang thanh toán chính thức do Stripe cung cấp (FR16, NFR-S1).
 
 #### Story 5.3: Webhook & Cập nhật Trạng thái Gói cước (Stripe Webhook Sync)
 As a Kỹ sư Hệ thống,
@@ -639,3 +673,317 @@ So that có thể phản ứng nhanh khi Chainlens API có vấn đề hoặc c�
 **When** service khởi động
 **Then** log warning rõ ràng: "CHAINLENS_RESEARCH_ENABLED=true nhưng CHAINLENS_RESEARCH_API_KEY chưa được cấu hình — feature sẽ fallback"
 **And** `is_available()` trả về `False`, hệ thống hoạt động bình thường với fallback
+
+---
+
+### Epic 0: Crypto Foundation (Tool Infrastructure + Base Sub-Agents)
+**Prerequisite cho Epic 8 + Epic 9.** Triển khai 4 tool files + 4 base sub-agents đã được document trong `nowing_backend/docs/crypto-subagents-guide.md` nhưng chưa thực sự implement vào code (audit 2026-04-23).
+
+> 🆕 **Added 2026-04-23 sau code audit** — không phải Epic mới product-wise, mà là "retroactive implementation" để close drift giữa documentation và code reality. Phải xong trước khi Epic 8 testing chạy và Phase 1 Epic 9 (Story 9.1 + 9.4) bắt đầu.
+
+**Blocks:** Epic 8, Epic 9 Phase 1
+**NFRs:** NFR-CS1, NFR-CS2, NFR-CS3, NFR-CS4
+
+#### Story 0.1: Core Crypto Tool Infrastructure
+As a backend developer,
+I want 4 new crypto tool files registered in the tool registry,
+So that sub-agents có thể query DeFiLlama, sentiment sources, news APIs, và contract analysis services.
+
+**Files to create:**
+- `nowing_backend/app/agents/new_chat/tools/defillama.py` — 5 tools: `get_defillama_protocol`, `get_defillama_tvl_overview`, `get_defillama_yields`, `get_defillama_stablecoins`, `get_defillama_bridges`
+- `nowing_backend/app/agents/new_chat/tools/crypto_sentiment.py` — 2 tools: `get_cmc_sentiment` (Fear & Greed), `get_reddit_crypto_sentiment`
+- `nowing_backend/app/agents/new_chat/tools/crypto_news.py` — 2 tools: `get_crypto_news` (CryptoPanic), `get_coingecko_token_info`
+- `nowing_backend/app/agents/new_chat/tools/contract_analysis.py` — 2 tools: `get_contract_info`, `check_token_security` (GoPlus)
+
+**Files to modify:**
+- `nowing_backend/app/agents/new_chat/tools/registry.py` — register all 11 new tools dưới dạng `ToolDefinition` với `requires=[]`
+
+**Reference:** `nowing_backend/docs/crypto-subagents-guide.md` có full code blueprint.
+
+**Acceptance Criteria:**
+
+**Given** 4 tool files được tạo
+**When** inspect `BUILTIN_TOOLS` trong `registry.py`
+**Then** có 11 new `ToolDefinition` entries (5 DeFiLlama + 2 sentiment + 2 news + 2 contract)
+**And** mỗi entry có `requires=[]` (NFR-CS4)
+**And** mỗi entry dùng `factory=lambda deps: create_xyz_tool()` pattern
+
+**Given** tools được instantiate
+**When** gọi từng tool với valid input (`get_defillama_protocol(protocol_slug="uniswap")`, `get_coingecko_token_info(coin_id="bitcoin")`, `check_token_security(token_address="0x1f9840a85d5af5bf1d1762f925bdaddc4201f984", chain="ethereum")`, `get_crypto_news(currencies="BTC", limit=10)`)
+**Then** trả về expected data structure theo guide
+**And** handle rate limit / timeout / API unavailable gracefully (trả về `{"error": "..."}`)
+**And** response time < 10s cho DeFiLlama `/protocols`, < 5s cho các endpoints khác
+
+---
+
+#### Story 0.2: Base Sub-Agents Implementation & Wiring
+As a main agent,
+I want 4 base crypto sub-agents registered (defillama_analyst, sentiment_analyst, news_analyst, smart_contract_analyst),
+So that I can spawn specialists in parallel qua `task()` tool.
+
+**Files to create:**
+- `nowing_backend/app/agents/new_chat/subagents/crypto/__init__.py`
+- `nowing_backend/app/agents/new_chat/subagents/crypto/defillama_spec.py`
+- `nowing_backend/app/agents/new_chat/subagents/crypto/sentiment_spec.py`
+- `nowing_backend/app/agents/new_chat/subagents/crypto/news_spec.py`
+- `nowing_backend/app/agents/new_chat/subagents/crypto/smart_contract_spec.py`
+
+Mỗi spec file export 3 constants: `{NAME}_NAME`, `{NAME}_DESCRIPTION`, `{NAME}_PROMPT` (theo pattern Story 9.1).
+
+**Files to modify:**
+- `chat_deepagent.py` (~line 450-472) — import 4 specs, build scoped tool lists, register vào `SubAgentMiddleware`
+
+**Acceptance Criteria:**
+
+**Given** 4 spec files được tạo
+**When** inspect module exports
+**Then** mỗi spec export đủ 3 constants (NAME/DESCRIPTION/PROMPT)
+**And** mỗi PROMPT < 500 tokens — unit test verify bằng `tiktoken` (NFR-CS1)
+
+**Given** `chat_deepagent.py` build sub-agent list
+**When** server khởi động
+**Then** `SubAgentMiddleware` register đúng 5 sub-agents: `general_purpose` + 4 crypto specialists
+**And** mỗi crypto agent có scoped tool list (không phải toàn bộ tools)
+**And** mỗi agent dùng shared `gp_middleware` stack
+
+**Given** main agent nhận câu "Phân tích DeFi TVL của Uniswap"
+**When** main agent gọi `task(agent="defillama_analyst", ...)`
+**Then** sub-agent spawn successfully
+**And** sub-agent chỉ có access DeFiLlama tools + supplementary (không có contract/news/sentiment tools)
+**And** response trả về đúng structure theo system prompt
+
+**Given** main agent nhận câu "Phân tích toàn diện $UNI"
+**When** main agent orchestrate
+**Then** main agent gọi parallel `task()` cho ít nhất 3 agents trong cùng 1 LangGraph ToolNode step (verify qua trace logs)
+**And** total_time ≈ max(individual_times) — NFR-CS2 parallelism ratio < 1.3x
+
+---
+
+#### Story 0.3: Main Agent Orchestration Prompt Update
+As a main agent,
+I want clear instructions on when and how to spawn crypto sub-agents in parallel,
+So that I can coordinate multiple specialists efficiently.
+
+**Files to modify:**
+- `nowing_backend/app/agents/new_chat/system_prompt.py` — thêm crypto section với lookup table + orchestration examples
+
+**Acceptance Criteria:**
+
+**Given** user yêu cầu "Phân tích toàn diện token $X"
+**When** main agent xử lý request
+**Then** system prompt có instruction gọi đồng thời 3-4 agents phù hợp (defillama + sentiment + news + smart_contract)
+**And** có lookup table format: `agent_name | chuyên môn | trigger keywords`
+**And** có ví dụ cụ thể về parallel task() calls
+
+**Given** user hỏi câu đơn giản "Giá $BTC hôm nay?"
+**When** main agent xử lý
+**Then** main agent KHÔNG spawn multi-agent (chỉ gọi `get_live_token_data` trực tiếp)
+**And** response nhanh, không overhead parallel spawn
+
+---
+
+### Epic 8: Crypto Sub-Agents Integration Testing & Validation
+Xác minh toàn bộ hệ thống crypto sub-agents hoạt động đúng end-to-end với real API calls và parallel execution.
+
+> ⚠️ **BLOCKED BY Epic 0** (2026-04-23 audit): Epic 8 testing không thể run nếu Epic 0 (Crypto Tool Infrastructure + 4 Base Sub-Agents) chưa implement. Xem Epic 0 spec bên dưới. **Sequence bắt buộc: Epic 0 → Epic 8 → Phase 1 Epic 9.**
+
+**FRs covered:** FR-T1, FR-T2, FR-T3
+**NFRs:** NFR-CS2, NFR-CS3, NFR-Q3 (graceful degradation gate), NFR-Q4 (speed gate)
+**Depends on:** Epic 0 (Crypto Foundation)
+
+#### Story 8.1: API Integration Tests
+As a developer,
+I want to verify each crypto tool connects to its API correctly,
+So that I know the integration works before production deployment.
+
+**Acceptance Criteria:**
+
+**Given** DeFiLlama API available
+**When** gọi `get_defillama_tvl_overview(limit=5)`
+**Then** trả về ít nhất 5 protocols (`top_protocols`) với `tvl_usd > 0`
+**And** response time < 10 giây (endpoint `/protocols` payload lớn)
+
+**Given** CoinGecko API available (không bị rate limit)
+**When** gọi `get_coingecko_token_info(coin_id="bitcoin")`
+**Then** trả về `name="Bitcoin"`, `symbol="BTC"`, `price_usd > 0`
+
+**Given** GoPlus API available
+**When** gọi `analyze_token_security(token_address="0x1f9840a85d5af5bf1d1762f925bdaddc4201f984", chain="ethereum")`
+**Then** trả về `risk_level IN ["SAFE", "LOW", "MEDIUM", "HIGH"]`, `chain_id="1"` (mapped internal)
+**And** response có các fields: `is_open_source`, `buy_tax_pct`, `sell_tax_pct`, `holder_count`
+
+**Given** CryptoPanic public API available
+**When** gọi `get_crypto_news(currencies="BTC", limit=10)`
+**Then** trả về ít nhất 1 article trong `articles` với `title`, `published_at`, `source`, `votes`
+
+---
+
+#### Story 8.2: Parallel Execution Validation
+As a developer,
+I want to verify multiple sub-agents run truly in parallel,
+So that full analysis doesn't take N times longer than a single agent.
+
+**Acceptance Criteria:**
+
+**Given** main agent nhận yêu cầu full analysis
+**When** spawn 4 agents đồng thời: defillama_analyst, sentiment_analyst, news_analyst, smart_contract_analyst
+**Then** tất cả 4 agents start trong cùng 1 LangGraph ToolNode (parallel batch)
+**And** total execution time ≈ max(individual times), không phải sum của tất cả
+**And** kết quả của tất cả 4 agents được tổng hợp trước khi trả lời user
+
+**Given** trace logs từ 100 full-suite production queries
+**When** tính tỷ số `total_time / max(individual_time)` cho mỗi query
+**Then** tỷ số trung bình **< 1.3x** (NFR-Q2 parallelism gate, tương đương NFR-CS2)
+**And** P95 response time của full-suite analysis (6+ agents) **< 90 giây** (NFR-Q4 speed gate)
+**And** dashboard telemetry hiển thị 2 metrics này realtime cho ops team monitor
+
+---
+
+#### Story 8.3: Error Handling & Fallback Validation
+As a developer,
+I want to verify graceful degradation when APIs fail,
+So that partial failures don't break the entire analysis.
+
+**Acceptance Criteria:**
+
+**Given** CoinGecko trả về 429 rate limit
+**When** `get_coingecko_info` được gọi
+**Then** trả về `{"error": "CoinGecko rate limit reached, try again in 1 minute"}`
+**And** news_analyst fallback sang `web_search` để tìm thông tin thay thế
+
+**Given** GoPlus API unavailable (timeout)
+**When** `check_token_security` được gọi
+**Then** trả về `{"error": "GoPlus API unavailable"}`
+**And** smart_contract_analyst tiếp tục với `get_contract_info` + `web_search` — không crash
+
+**Given** tất cả crypto sub-agents trả về kết quả (bao gồm partial errors)
+**When** main agent tổng hợp
+**Then** main agent vẫn trả về comprehensive analysis dựa trên dữ liệu available
+**And** mention rõ nguồn nào unavailable trong response
+
+**Given** sample 100 full-suite production queries trong 2 tuần
+**When** tính % requests có ≥ 1 sub-agent error nhưng main agent vẫn trả response đúng cấu trúc
+**Then** tỷ lệ **> 98%** (NFR-Q3 graceful degradation gate)
+**And** dashboard có cột "degradation_rate" theo dõi metric này weekly
+
+---
+
+### Epic 9: Advanced Crypto Agents — Batch 2 (Crypto Orchestra)
+Triển khai 6 sub-agents chuyên biệt bổ sung để hoàn thiện crypto analysis coverage: tokenomics, whale tracking, token unlocks, yield optimization, governance, và technical analysis. **Phased rollout** (Phase 1 Tokenomics+Yield → Phase 2 Whale+Governance → Phase 3 Unlock+TA), **Quality-first** (4 gates).
+**FRs covered:** FR27, FR28, FR29, FR30, FR31, FR32, FR33, FR34, FR35
+**NFRs:** NFR-CS1, NFR-CS4, NFR-Q1 (accuracy <3%), NFR-Q2 (hallucination <1%), NFR-Q3 (graceful degradation >98%), NFR-Q4 (speed <90s P95)
+
+**Phase 1 Launch Criteria (Mary's decision — required before Phase 2):**
+- 🎯 NFR-Q1 Accuracy < 3% (sample 100 queries, 2 weeks production)
+- 🎵 NFR-Q2 Parallelism `total_time / max(individual_time)` < 1.3x
+- 🔥 NFR-Q3 Graceful degradation > 98%
+- 🧠 NFR-Q4 Hallucination rate < 1%
+
+If any gate fails → rollback Phase 1, improve prompt/tool, không có hard deadline (quality-first).
+
+**Common AC for ALL Stories 9.1-9.6:**
+
+**Given** sub-agent được spawn
+**When** đo system prompt token count
+**Then** prompt < 500 tokens (NFR-CS1)
+**And** tool registry entry có `requires=[]` (NFR-CS4)
+
+**Given** 100 production responses của agent này
+**When** QA sample factual claims vs raw tool output
+**Then** factual error rate < 3% (NFR-Q1)
+**And** số liệu fabricated (không có trong tool output) < 1% (NFR-Q2)
+**And** agent luôn cite source từ tool output (không dựa trên parametric knowledge)
+
+#### Story 9.1: Tokenomics Analyst Sub-Agent
+As a crypto investor,
+I want a specialist agent that analyzes token economics deeply,
+So that I can evaluate long-term value accrual and inflation risks.
+
+**Acceptance Criteria:**
+
+**Given** user hỏi về tokenomics của token X
+**When** main agent spawn `tokenomics_analyst`
+**Then** agent phân tích: circulating supply vs total vs max supply, vesting schedule, token distribution (team/investors/community/treasury)
+**And** đánh giá: inflation/deflation mechanics, token utility và demand drivers, buy pressure vs sell pressure
+**And** tools được scope: `get_coingecko_info`, `web_search` (CryptoRank, Messari, official docs)
+**And** system prompt < 500 tokens (NFR-CS1)
+
+---
+
+#### Story 9.2: Whale Tracker Sub-Agent
+As a crypto trader,
+I want to track large wallet movements and smart money flows,
+So that I can identify accumulation/distribution phases early.
+
+**Acceptance Criteria:**
+
+**Given** user hỏi về whale activity cho token X
+**When** main agent spawn `whale_tracker`
+**Then** agent identify: known whale wallets (exchanges, funds, insiders), inflow/outflow patterns
+**And** phân biệt: accumulation phase vs distribution phase dựa trên on-chain flow data
+**And** tools: `web_search` (Arkham Intelligence, Nansen, Etherscan token holders)
+**And** response bao gồm: net_flow_7d, large_transfers_24h, smart_money_signal
+
+---
+
+#### Story 9.3: Token Unlock Scheduler Sub-Agent
+As a crypto investor,
+I want to know upcoming token unlock events,
+So that I can anticipate selling pressure before it happens.
+
+**Acceptance Criteria:**
+
+**Given** user hỏi về vesting/unlock schedule của token X
+**When** main agent spawn `token_unlock_scheduler`
+**Then** agent trả về: upcoming unlock dates trong 30/90 ngày tới, % supply được unlock, cliff vs linear vesting
+**And** historical price action sau các unlock events lớn trong quá khứ
+**And** risk_assessment cho short-term holds dựa trên unlock magnitude (% of circulating supply)
+**And** tools: `web_search` (TokenUnlocks.app, Vesting.is, CryptoRank)
+
+---
+
+#### Story 9.4: Yield Optimizer Sub-Agent
+As a DeFi investor,
+I want personalized yield recommendations based on my risk tolerance,
+So that I can maximize returns on idle capital safely.
+
+**Acceptance Criteria:**
+
+**Given** user có capital nhàn rỗi và risk preference (conservative/moderate/aggressive)
+**When** main agent spawn `yield_optimizer`
+**Then** agent filter DeFiLlama yields phù hợp risk level (stablecoins only cho conservative, LP farms cho aggressive)
+**And** tính impermanent loss risk cho mỗi LP position recommendation
+**And** so sánh protocol security score trước khi recommend (dùng GoPlus nếu available)
+**And** tools: `get_defillama_yields`, `get_defillama_protocol`, `check_token_security`, `web_search`
+
+---
+
+#### Story 9.5: Governance Analyst Sub-Agent
+As a DAO participant,
+I want to track active governance proposals and voting outcomes,
+So that I can participate in protocol decisions and assess governance health.
+
+**Acceptance Criteria:**
+
+**Given** user hỏi về governance của protocol X
+**When** main agent spawn `governance_analyst`
+**Then** agent trả về: active proposals với deadline, vote outcomes (for/against/abstain), quorum status
+**And** governance participation rate trend (increasing/decreasing), treasury size và management quality
+**And** flag: controversial decisions, failed proposals, governance attacks, centralization risks
+**And** tools: `web_search` (Snapshot.org, Tally, Commonwealth, protocol forum, governance forum)
+
+---
+
+#### Story 9.6: Technical Analysis Sub-Agent
+As a crypto trader,
+I want chart pattern analysis and technical indicator signals,
+So that I can time my entries and exits more effectively.
+
+**Acceptance Criteria:**
+
+**Given** user yêu cầu technical analysis cho token X
+**When** main agent spawn `technical_analyst`
+**Then** agent phân tích: key support/resistance levels, 50MA/200MA relationship, RSI (overbought >70/oversold <30), MACD signal line cross
+**And** identify chart patterns nếu có: head & shoulders, cup & handle, double bottom/top, bull/bear flag
+**And** đưa ra short-term outlook (bullish/bearish/neutral) với key levels cần watch
+**And** tools: `get_live_token_data` (DexScreener price feed), `web_search` (TradingView analysis, CoinGecko charts)
