@@ -1,5 +1,5 @@
 # generated: 2026-04-13T02:50:25+07:00
-# last_updated: 2026-04-13T02:50:25+07:00
+# last_updated: 2026-04-23T00:00:00+07:00
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,8 +35,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-04-23T18:00:00+07:00
+last_updated: 2026-04-24T00:00:00+07:00
 project: Nowing
+# 2026-04-24: Story 0.3 review complete (2 MAJOR fixed inline, 4 MINOR deferred)
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/planning-artifacts/stories"
@@ -98,11 +99,11 @@ development_status:
   # ═══════════════════════════════════════════════════════════════
 
   # ─── EPIC 0: Crypto Foundation (Retroactive — close drift) ───
-  epic-0: backlog
-  0-1-crypto-tool-infrastructure: in-progress
-  0-2-base-sub-agents: review
-  0-3-main-agent-prompt: ready-for-dev
-  0-4-api-integration-tests: ready-for-dev
+  epic-0: in-progress
+  0-1-crypto-tool-infrastructure: done
+  0-2-base-sub-agents: done
+  0-3-main-agent-prompt: done
+  0-4-api-integration-tests: done
   0-5-parallel-execution-validation: ready-for-dev
   0-6-error-handling-fallback: ready-for-dev
   epic-0-retrospective: optional

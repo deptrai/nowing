@@ -189,7 +189,7 @@ python_functions = ["test_*"]
 addopts = "-v --tb=short --strict-markers -ra --durations=20 -n auto"
 markers = [
     "unit: pure logic tests, no DB or external services",
-    "integration: tests that require a real PostgreSQL database",
+    "integration: tests that require a real PostgreSQL database or live external APIs",
     "api: API endpoint tests using httpx + ASGITransport (may require test DB)",
     "slow: long-running tests (>5s) — skip in fast dev loop with -m 'not slow'",
     "rbac: two-user RBAC isolation tests — requires TEST_USER2_EMAIL + TEST_USER2_PASSWORD"

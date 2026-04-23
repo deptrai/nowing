@@ -232,3 +232,18 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **#7 (AC9 / NFR-CS2 parallel execution ratio)** — Parallel ratio assertion (`parallel_ms / sum(sequential_ms) < 0.7`) needs LangGraph trace capture + synthetic multi-agent query. Coupled with OpenTelemetry span export (DoD-7). Defer until trace export pipeline lands. Reference: `_bmad-output/planning-artifacts/stories/0-2-base-sub-agents.md` AC9.
 - **#8 (Chainlens fallback prompt update)** — Chainlens tool returns `{"status": "fallback", ...}` when upstream unavailable; current 4 prompts don't instruct sub-agents how to surface this degraded state to end-users (should flag "Chainlens unavailable, using primary-tool-only view"). Update needed in all 4 `*_ANALYST_PROMPT` strings once Chainlens fallback schema stabilizes. Watch: `app/agents/new_chat/tools/chainlens_research.py` response envelope.
 - **Review note** — Finding #1 (shared `gp_middleware` list) resolved via factory `_build_gp_middleware()` creating fresh middleware instances per sub-agent (chosen over stateless-assumption path for NFR-CS4 safety). `_memory_middleware` intentionally shared (read-only context injection). See `app/agents/new_chat/chat_deepagent.py` ~lines 450–525.
+
+## Deferred from: code review of 0-2-base-sub-agents (2026-04-23)
+
+- `news_analyst` prompt reference `sentiment_signal`/`positive_ratio` field — cần confirm output shape của `get_crypto_news` có thực sự trả field này.
+- tiktoken dùng `gpt-4` encoding cho budget test nhưng runtime model có thể là Claude/Gemini — conservative approximation, không phải bug runtime.
+- Agent name hyphen vs underscore (`general-purpose` vs `defillama_analyst`) — consistency nhỏ, không block functionality.
+- `description` length/uniqueness không có test validate — nice-to-have cho planner routing quality.
+- Tool scope filter dùng `t.name` attribute access — nếu registry trả dicts sẽ fail ở chỗ khác trước đó.
+
+## Deferred from: code review of story 0-3-main-agent-prompt (2026-04-24)
+
+- **Weak assertion scoping (pre-fix)** [tests/unit/agents/new_chat/test_system_prompt.py] — original tests grep agent names on whole `NOWING_SYSTEM_INSTRUCTIONS`; fixed inline by scoping to `<crypto_orchestration>` body via regex.
+- **`get_live_token_data` not registered in `_TOOL_INSTRUCTIONS`** [app/agents/new_chat/system_prompt.py] — prompt example references the tool but registry entry missing. Covered by Story 0.4 (API integration tests) or raise follow-up.
+- **Shared team-thread prompt missing crypto orchestration** [`_SYSTEM_INSTRUCTIONS_SHARED`] — team threads cannot spawn crypto sub-agents. Requires product decision (intentional vs gap); raise with PM.
+- **Working-tree leak — Story 0.2 artifacts** — uncommitted files from prior story add noise; housekeeping.

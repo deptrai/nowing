@@ -326,5 +326,30 @@ def assert_under_budget(text: str, budget: int = 500, label: str = "prompt"):
 
 ---
 
-**Status**: ready-for-dev ✅ (blocked on Story 0.1)
+**Status**: done (code review 2026-04-23 — P1 critical fix applied, P2/P3/D1/D2 all addressed; 32 unit tests pass)
 **Next**: Story 0.3 (Main Agent Prompt) starts after this DONE.
+
+---
+
+## Review Findings (2026-04-23)
+
+Review target: commit `1d050f72c` (+409/-1, 8 files). Reviewed by 3 adversarial layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor).
+
+### decision-needed
+
+- [x] [Review][Decision→Patch] Integration test gap — ĐÃ ADDRESS: thêm `tests/unit/agents/new_chat/test_crypto_subagent_wiring.py` với 15 tests mới cover AC3/AC4/AC10/P1/P3/prompt fidelity (structural). AC5–AC9 functional spawn + parallel ratio tracked in Story 0-4/0-5.
+- [x] [Review][Decision→Patch] Shared `gp_middleware` — ĐÃ ADDRESS: thêm `test_each_crypto_spec_uses_fresh_middleware_factory` verify mỗi spec gọi `_build_gp_middleware()` fresh, không share mutable instance.
+
+### patch
+
+- [x] [Review][Patch] **CRITICAL** — `SubAgent` dict dùng key `"prompt"` thay vì `"system_prompt"` [nowing_backend/app/agents/new_chat/chat_deepagent.py:509,517,525,533]. ĐÃ FIX: đổi 4 key thành `"system_prompt"`. Deepagents `SubAgent` TypedDict yêu cầu `system_prompt`; `SubAgentMiddleware.wrap_agent` đọc `spec["system_prompt"]` — nếu không fix sẽ `KeyError` ngay lần gọi đầu.
+- [x] [Review][Patch] ~~Tool scoping test là tautology~~ — ĐÃ verify: test hiện tại import `DEFILLAMA_ALLOWED_TOOLS` từ spec files (`test_crypto_subagent_specs.py:12,18,24,30`), không còn duplicate tuple. Constants là single source of truth shared giữa production và test. Đã address trước review.
+- [x] [Review][Patch] `chainlens_deep_research` feature-flag guard — ĐÃ ADDRESS: thêm `_perf_log.error(...)` trong `create_nowing_deep_agent` khi `chainlens_deep_research` không có trong registry nhưng 4 crypto agents đang reference nó [chat_deepagent.py:501-512]. Test `test_chainlens_missing_guard_is_present` verify guard tồn tại.
+
+### defer
+
+- [x] [Review][Defer] `news_analyst` prompt reference `sentiment_signal`/`positive_ratio` field [news_spec.py:28] — deferred, cần confirm output shape của `get_crypto_news`.
+- [x] [Review][Defer] tiktoken dùng `gpt-4` encoding cho budget test nhưng runtime model có thể là Claude/Gemini [test_crypto_subagent_specs.py:51] — deferred, conservative approximation không phải bug.
+- [x] [Review][Defer] Agent name hyphen vs underscore (`general-purpose` vs `defillama_analyst`) — deferred, minor consistency, không block functionality.
+- [x] [Review][Defer] `description` length/uniqueness không có test validate [test_crypto_subagent_specs.py:57] — deferred, nice-to-have.
+- [x] [Review][Defer] Tool scope filter dùng `t.name` attribute access — deferred, sẽ fail rõ ở chỗ khác nếu registry trả dicts.

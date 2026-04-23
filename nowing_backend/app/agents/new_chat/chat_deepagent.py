@@ -503,10 +503,22 @@ async def create_nowing_deep_agent(
     news_tools = _scope_tools(NEWS_ALLOWED_TOOLS, NEWS_ANALYST_NAME)
     smart_contract_tools = _scope_tools(SMART_CONTRACT_ALLOWED_TOOLS, SMART_CONTRACT_ANALYST_NAME)
 
+    # Guard: all 4 crypto prompts reference chainlens_deep_research unconditionally.
+    # If the feature flag (CHAINLENS_RESEARCH_ENABLED) is off, the tool is silently
+    # absent from the registry → LLM will hallucinate tool calls. Escalate to ERROR
+    # so this is noticeable in logs instead of buried in per-agent warnings.
+    _tool_names = {t.name for t in tools}
+    if "chainlens_deep_research" not in _tool_names:
+        _perf_log.error(
+            "[create_agent] chainlens_deep_research is NOT in the tool registry but all "
+            "4 crypto sub-agent prompts reference it. Either enable CHAINLENS_RESEARCH_ENABLED "
+            "or update crypto sub-agent prompts to remove chainlens references."
+        )
+
     defillama_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": DEFILLAMA_ANALYST_NAME,
         "description": DEFILLAMA_ANALYST_DESCRIPTION,
-        "prompt": DEFILLAMA_ANALYST_PROMPT,
+        "system_prompt": DEFILLAMA_ANALYST_PROMPT,
         "model": llm,
         "tools": defillama_tools,
         "middleware": _build_gp_middleware(),
@@ -514,7 +526,7 @@ async def create_nowing_deep_agent(
     sentiment_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": SENTIMENT_ANALYST_NAME,
         "description": SENTIMENT_ANALYST_DESCRIPTION,
-        "prompt": SENTIMENT_ANALYST_PROMPT,
+        "system_prompt": SENTIMENT_ANALYST_PROMPT,
         "model": llm,
         "tools": sentiment_tools,
         "middleware": _build_gp_middleware(),
@@ -522,7 +534,7 @@ async def create_nowing_deep_agent(
     news_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": NEWS_ANALYST_NAME,
         "description": NEWS_ANALYST_DESCRIPTION,
-        "prompt": NEWS_ANALYST_PROMPT,
+        "system_prompt": NEWS_ANALYST_PROMPT,
         "model": llm,
         "tools": news_tools,
         "middleware": _build_gp_middleware(),
@@ -530,7 +542,7 @@ async def create_nowing_deep_agent(
     smart_contract_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": SMART_CONTRACT_ANALYST_NAME,
         "description": SMART_CONTRACT_ANALYST_DESCRIPTION,
-        "prompt": SMART_CONTRACT_ANALYST_PROMPT,
+        "system_prompt": SMART_CONTRACT_ANALYST_PROMPT,
         "model": llm,
         "tools": smart_contract_tools,
         "middleware": _build_gp_middleware(),

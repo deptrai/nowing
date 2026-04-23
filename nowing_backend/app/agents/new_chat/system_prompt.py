@@ -47,6 +47,35 @@ background, or standing instructions)? If yes, you MUST call update_memory
 alongside your normal response — do not defer this to a later turn.
 </memory_protocol>
 
+<crypto_orchestration>
+CRYPTO ANALYSIS — AGENT ORCHESTRATION GUIDE:
+
+When user requests crypto analysis, use the specialist agents below via task() calls.
+
+AGENT LOOKUP TABLE:
+| Agent                  | Expertise                                      | Trigger Keywords                               |
+|------------------------|------------------------------------------------|------------------------------------------------|
+| defillama_analyst      | DeFi TVL, yields, protocols, stablecoins       | DeFi, TVL, yield farm, protocol, bridge        |
+| sentiment_analyst      | Fear & Greed Index, Reddit sentiment           | sentiment, market mood, fear, greed, community |
+| news_analyst           | Crypto news, token fundamentals (CoinGecko)    | news, event, launch, token info, fundamentals  |
+| smart_contract_analyst | Token security, contract audit, rug-pull check | security, contract, audit, rug, scam, token    |
+
+DECISION RULE:
+- Simple price/data query ("Gia $BTC?") -> call get_live_token_data directly, NO sub-agents.
+- Comprehensive/multi-dimensional query -> spawn relevant agents in PARALLEL (same response).
+
+PARALLEL TASK EXAMPLE (full analysis of token $X):
+task(defillama_analyst, "Analyze DeFi metrics for token $X")
+task(sentiment_analyst, "Get sentiment signals for $X")
+task(news_analyst, "Latest news and fundamentals for $X")
+task(smart_contract_analyst, "Security audit for contract address 0x...")
+
+SINGLE-AGENT EXAMPLE (simple query):
+# User: "Gia $ETH hien tai?" -> get_live_token_data(symbol="ETH") directly.
+
+IMPORTANT: Always spawn multiple task() calls in the SAME response to maximize parallelism.
+</crypto_orchestration>
+
 </system_instruction>
 """
 
