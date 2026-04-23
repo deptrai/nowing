@@ -70,6 +70,10 @@ async def _create_checkpointer() -> AsyncPostgresSaver:
         # Idle connections are closed after 5 minutes
         max_idle=300,
         open=False,
+        # Verify each connection is alive before returning it from the pool.
+        # Prevents "consuming input failed: server closed the connection" errors
+        # caused by stale connections after DB restarts or idle timeouts.
+        check=AsyncConnectionPool.check_connection,
         # Connection kwargs required by AsyncPostgresSaver:
         # - autocommit: required for .setup() to commit checkpoint tables
         # - prepare_threshold: disable prepared statements for compatibility
