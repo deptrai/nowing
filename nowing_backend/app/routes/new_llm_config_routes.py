@@ -139,23 +139,23 @@ async def create_new_llm_config(
                 Permission.LLM_CONFIGS_CREATE.value,
                 "You don't have permission to create LLM configurations in this search space",
             )
-        # Validate the LLM configuration by making a test API call
-        is_valid, error_message = await validate_llm_config(
-            provider=config_data.provider.value,
-            model_name=config_data.model_name,
-            api_key=config_data.api_key,
-            api_base=config_data.api_base,
-            custom_provider=config_data.custom_provider,
-            litellm_params=config_data.litellm_params,
-        )
-
-        if not is_valid:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid LLM configuration: {error_message}",
+        if not config_data.skip_validation:
+            is_valid, error_message = await validate_llm_config(
+                provider=config_data.provider.value,
+                model_name=config_data.model_name,
+                api_key=config_data.api_key,
+                api_base=config_data.api_base,
+                custom_provider=config_data.custom_provider,
+                litellm_params=config_data.litellm_params,
             )
 
-        db_config = NewLLMConfig(**config_data.model_dump(), user_id=user.id)
+            if not is_valid:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid LLM configuration: {error_message}",
+                )
+
+        db_config = NewLLMConfig(**config_data.model_dump(exclude={"skip_validation"}), user_id=user.id)
         session.add(db_config)
         await session.commit()
         await session.refresh(db_config)
