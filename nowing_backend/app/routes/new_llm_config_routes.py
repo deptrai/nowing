@@ -118,13 +118,27 @@ async def get_global_new_llm_configs(
 async def create_new_llm_config(
     config_data: NewLLMConfigCreate,
     session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_superuser),
+    user: User = Depends(current_active_user),
 ):
     """
     Create a new NewLLMConfig for a search space.
-    Superuser only — configs are shared with all search space members.
+    Search-space configs require LLM_CONFIGS_CREATE permission; global configs (no search_space_id) require superuser.
     """
     try:
+        if config_data.search_space_id is None:
+            if not user.is_superuser:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Only superusers can create global LLM configurations",
+                )
+        else:
+            await check_permission(
+                session,
+                user,
+                config_data.search_space_id,
+                Permission.LLM_CONFIGS_CREATE.value,
+                "You don't have permission to create LLM configurations in this search space",
+            )
         # Validate the LLM configuration by making a test API call
         is_valid, error_message = await validate_llm_config(
             provider=config_data.provider.value,
