@@ -415,5 +415,24 @@ Identical to Story 9.1:
 
 ---
 
-**Status**: review
+**Status**: done
+
+---
+
+## Review Findings (2026-04-24, bmad-code-review 3-layer)
+
+All 7 patches applied in commit `80ed7888e`.
+
+- [x] [Review][Patch] Undefined ranking variables `audit_score` / `IL_risk_factor` [yield_optimizer_spec.py:33] — rewrote to use only observable tool fields
+- [x] [Review][Patch] Chainlens fallback missing workflow trigger [yield_optimizer_spec.py:40] — added step 6 (DeFiLlama error → chainlens_deep_research)
+- [x] [Review][Patch] APY unit ambiguity (fractional vs percentage) [yield_optimizer_spec.py:38] — clarified DeFiLlama already returns percentage
+- [x] [Review][Patch] Prompt-fidelity test regex silently bypassed yield_optimizer [test_crypto_subagent_wiring.py:281] — broadened regex to match Use/Call/call
+- [x] [Review][Patch] Security gate string comparison brittleness [yield_optimizer_spec.py:33] — case-insensitive + truthy
+- [x] [Review][Patch] Stale "registers 5 agents" docstring [test_crypto_subagent_wiring.py:4]
+- [x] [Review][Patch] Stale "5 task() calls" docstring [test_parallel_execution.py:361]
+
+**Acceptance Auditor verdict**: PASS-WITH-MINOR — AC1-AC4 + AC8 structurally satisfied; AC5-AC7, AC9-AC11 are runtime/QA deferrals (DoD-7, DoD-8).
+
+Token budget after fixes: 484/500 ✅  
+Tests: 49 unit tests pass.
 **Next**: Phase 1 COMPLETE sau Story 9.4 → Quality Gate Review → Phase 2 (9.2 + 9.5).
