@@ -1,6 +1,6 @@
 # Story 9.FE-1: Orchestra Conductor Strip + Citation Stacking (Phase 9.0 MVP)
 
-Status: review
+Status: done
 
 <!-- Created: 2026-04-23 by Bob (BMad Story Writer) -->
 <!-- Validation: optional. Run validate-create-story before dev-story. -->
@@ -216,7 +216,23 @@ Status: review
 
 ### Review Findings
 
-<!-- Added: 2026-04-23 by bmad-code-review (blind+edge+auditor, 20 unique findings after dedup) -->
+<!-- Added: 2026-04-24 by bmad-code-review 2nd pass (blind+edge+auditor, 15 unique findings after dedup of already-deferred items) -->
+
+**Round 2 patches (applied 2026-04-24 in commit `f2cce7a3c`):**
+- [x] [Review][Patch] D1/D2/D3 OrchestraStrip bleeds across historical assistant bubbles + stale ProgressMilestone effects — gated on `message.isLast` in `assistant-message.tsx`
+- [x] [Review][Patch] P1 `sessions: Map<queryHash, …>` type label drift — clarified comment says `sessionId`, matching reducer reality
+- [x] [Review][Patch] P2 `orchestra-update` reducer ignored `waiting`/`degraded` statuses — now propagates `event.data.status`
+- [x] [Review][Patch] P3 `cancelled` outcome unreachable — complete reducer checks cancelledCount explicitly
+- [x] [Review][Patch] P5 Stale `running`/`queued` agents after complete event — complete reducer now force-transitions lingering agents to `failed`
+- [x] [Review][Patch] P6 Playwright E2E mock matched `**/api/chat/**` but backend is `/api/v1/chat` — regex now matches both
+- [x] [Review][Patch] P7 AC8 `detectConflict()` pure function + `CONFLICT_NUMERIC_DELTA` constant were missing — added to `citation/schema.ts`
+- [x] [Review][Patch] P8 `trackCitationClick` badgeType union drift (`"single"` not a `CitationVariant`) — aligned with `CitationVariantSchema`
+- [x] [Review][Patch] P9 Retry CTA hidden behind `expanded` gate — now shown whenever session complete + handler provided
+- [x] [Review][Patch] P4 Failed-outcome branch kept ProgressMilestone mounted — gated on `outcome === "running"`
+
+**Round 2 dismissed (already in Round 1 deferred list):** B6 (spawn overwrites), B7 (activeQueryHash leak), B8 (cancel failedCount), B9 (totalMs string), E7 (EN/VN label hardcode).
+
+**Round 1 Review (2026-04-23, 20 unique findings after dedup):**
 
 **Decisions resolved (auto):**
 - D1 (AC11 Zustand→Jotai + Zero persistence): Accept Jotai pattern for v1, defer Zero subscription/hydration to Story 9-FE-2.
