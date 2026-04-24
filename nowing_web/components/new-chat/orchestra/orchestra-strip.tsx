@@ -57,6 +57,9 @@ export function OrchestraStrip({ className }: OrchestraStripProps) {
 
 	const isCollapsed = session.outcome === "success" || session.outcome === "partial";
 	const isComplete = session.outcome !== "running";
+	// P4: only show progress milestone while the session is still running. A "failed"
+	// outcome (non-collapsed) would otherwise keep the 30s timer ticking post-completion.
+	const isRunning = session.outcome === "running";
 
 	return (
 		<div
@@ -95,13 +98,15 @@ export function OrchestraStrip({ className }: OrchestraStripProps) {
 						))}
 					</div>
 
-					{/* Progress milestone at T+30s */}
-					<ProgressMilestone
-						sessionId={session.sessionId}
-						milestone={session.milestone ?? undefined}
-						milestone30sFired={session.milestone30sFired}
-						elapsedMs={Date.now() - session.spawnedAt}
-					/>
+					{/* Progress milestone at T+30s — only while running (P4) */}
+					{isRunning && (
+						<ProgressMilestone
+							sessionId={session.sessionId}
+							milestone={session.milestone ?? undefined}
+							milestone30sFired={session.milestone30sFired}
+							elapsedMs={Date.now() - session.spawnedAt}
+						/>
+					)}
 				</>
 			)}
 

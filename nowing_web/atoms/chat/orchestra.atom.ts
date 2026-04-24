@@ -51,7 +51,10 @@ export interface OrchestraSession {
 }
 
 export interface OrchestraState {
-	sessions: Map<string /* queryHash */, OrchestraSession>;
+	// NOTE: Map key is `sessionId` (not `queryHash`). Each session object still carries
+	// `queryHash` for hashing/persistence, but lookups happen by sessionId (the discriminator
+	// the SSE stream uses). See reducer calls: sessions.get(event.data.sessionId).
+	sessions: Map<string /* sessionId */, OrchestraSession>;
 	activeQueryHash: string | null;
 }
 
@@ -143,15 +146,21 @@ export function applyOrchestraEvent(
 	}
 
 	if (event.type === "orchestra-update") {
-		const { sessionId, agentId, milestone } = event.data;
+		const { sessionId, agentId, status: eventStatus, milestone } = event.data;
 		const session = sessions.get(sessionId);
 		if (!session) return state;
 		const agents = new Map(session.agents);
 		const agent = agents.get(agentId);
 		if (agent) {
+			// P2: propagate event.data.status ("running" | "waiting" | "degraded")
+			// instead of always overwriting with "running". Map non-AgentStatus values
+			// conservatively: "waiting" → "queued", "degraded" → "running" (still
+			// progressing, just slower), "running" → "running".
+			const mapped: AgentStatus =
+				eventStatus === "waiting" ? "queued" : eventStatus === "degraded" ? "running" : "running";
 			agents.set(agentId, {
 				...agent,
-				status: "running",
+				status: mapped,
 				elapsedMs: Date.now() - session.spawnedAt,
 			});
 		}
@@ -226,16 +235,41 @@ export function applyOrchestraEvent(
 		if (!session) return state;
 		const completedAt = Date.now();
 		const totalMs = completedAt - session.spawnedAt;
-		const successCount = Array.from(session.agents.values()).filter(
-			(a) => a.status === "done"
-		).length;
-		const failedCount = Array.from(session.agents.values()).filter(
-			(a) => a.status === "failed" || a.status === "cancelled"
-		).length;
+		// P5: force-transition any lingering running/queued/idle agents to "failed".
+		// If the backend emits orchestra-complete without a matching done/fail for an
+		// agent (out-of-order SSE or dropped event), the row would spin forever while
+		// the session is marked done. Terminate them here.
+		const agents = new Map(session.agents);
+		for (const [id, a] of agents) {
+			if (a.status === "running" || a.status === "queued" || a.status === "idle") {
+				agents.set(id, {
+					...a,
+					status: "failed",
+					failReason: "unavailable",
+					failMessage: "Agent did not complete before orchestra-complete event",
+					elapsedMs: Date.now() - session.spawnedAt,
+				});
+			}
+		}
+		const values = Array.from(agents.values());
+		const successCount = values.filter((a) => a.status === "done").length;
+		const cancelledCount = values.filter((a) => a.status === "cancelled").length;
+		const trueFailedCount = values.filter((a) => a.status === "failed").length;
+		const failedCount = trueFailedCount + cancelledCount;
+		// P3: surface "cancelled" outcome when the user cancelled everything. Ordering:
+		// all success → success; all cancelled and nothing succeeded → cancelled;
+		// any real failure mixed with zero success → failed; otherwise partial.
 		const outcome: OrchestraOutcome =
-			failedCount === 0 ? "success" : successCount === 0 ? "failed" : "partial";
+			failedCount === 0
+				? "success"
+				: successCount === 0 && trueFailedCount === 0 && cancelledCount > 0
+					? "cancelled"
+					: successCount === 0
+						? "failed"
+						: "partial";
 		sessions.set(sessionId, {
 			...session,
+			agents,
 			completedAt,
 			totalMs,
 			successCount,

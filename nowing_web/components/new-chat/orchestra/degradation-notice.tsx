@@ -84,8 +84,10 @@ export function DegradationNotice({
 						</ul>
 					)}
 
-					{/* Retry CTA — only when complete and handler provided */}
-					{isComplete && onRetry && expanded && (
+					{/* P9: Retry CTA — shown whenever session is complete and a handler is
+					    provided. Previously hidden behind `expanded` gate which silently
+					    required user to expand the notice first. */}
+					{isComplete && onRetry && (
 						<Button
 							variant="ghost"
 							size="sm"

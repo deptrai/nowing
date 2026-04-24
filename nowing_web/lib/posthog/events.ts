@@ -599,7 +599,10 @@ export function trackOrchestraCancelled(payload: {
  * AC10 event #6.
  */
 export function trackCitationClick(payload: {
-	badgeType: "single" | "stacked" | "cluster" | "conflict";
+	// P8: align with CitationVariantSchema in components/tool-ui/citation/schema.ts
+	// ("default" | "inline" | "stacked" | "cluster" | "conflict"). "single" was a
+	// drift — no caller could produce it since it isn't a valid CitationVariant.
+	badgeType: "default" | "inline" | "stacked" | "cluster" | "conflict";
 	sourceCount: number;
 	conflict: boolean;
 }) {

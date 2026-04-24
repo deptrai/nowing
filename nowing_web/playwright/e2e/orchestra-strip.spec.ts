@@ -195,7 +195,10 @@ function singleAgentSSE(): string {
 // ---------------------------------------------------------------------------
 
 async function mockChatSSE(page: import("@playwright/test").Page, sseBody: string) {
-	await page.route("**/api/chat/**", async (route) => {
+	// P6: backend SSE endpoint is /api/v1/chat (Epic 7). The previous glob
+	// "**/api/chat/**" never matched because "/api/v1/chat" has "v1" between
+	// "/api/" and "/chat". Match both v1 path and any future unversioned form.
+	await page.route(/\/api\/(v\d+\/)?chat(\/.*)?$/, async (route) => {
 		const headers = {
 			"Content-Type": "text/event-stream",
 			"Cache-Control": "no-cache",
@@ -204,7 +207,7 @@ async function mockChatSSE(page: import("@playwright/test").Page, sseBody: strin
 		await route.fulfill({ status: 200, headers, body: sseBody });
 	});
 	// Also intercept the thread creation / resume endpoints
-	await page.route("**/api/threads/**", async (route) => {
+	await page.route(/\/api\/(v\d+\/)?threads(\/.*)?$/, async (route) => {
 		await route.fulfill({
 			status: 200,
 			contentType: "application/json",

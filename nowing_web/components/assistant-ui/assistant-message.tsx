@@ -369,10 +369,15 @@ export const MessageError: FC = () => {
 
 const AssistantMessageInner: FC = () => {
 	const isMobile = !useMediaQuery("(min-width: 768px)");
+	// D1/D2/D3: render the orchestra strip only on the latest assistant message.
+	// The strip subscribes to the global activeOrchestraSessionAtom, so mounting it
+	// on every historical bubble would show the CURRENT session in all of them and
+	// cause ProgressMilestone to re-fire per remount during scroll.
+	const isLatestAssistantMessage = useAuiState(({ message }) => message?.isLast ?? false);
 
 	return (
 		<CitationMetadataProvider>
-			<OrchestraStrip />
+			{isLatestAssistantMessage && <OrchestraStrip />}
 			<div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
 				<MessagePrimitive.Parts
 					components={{
