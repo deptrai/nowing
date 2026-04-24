@@ -247,3 +247,9 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **`get_live_token_data` not registered in `_TOOL_INSTRUCTIONS`** [app/agents/new_chat/system_prompt.py] — prompt example references the tool but registry entry missing. Covered by Story 0.4 (API integration tests) or raise follow-up.
 - **Shared team-thread prompt missing crypto orchestration** [`_SYSTEM_INSTRUCTIONS_SHARED`] — team threads cannot spawn crypto sub-agents. Requires product decision (intentional vs gap); raise with PM.
 - **Working-tree leak — Story 0.2 artifacts** — uncommitted files from prior story add noise; housekeeping.
+
+## Deferred from: code review of story 0-5-parallel-execution-validation (2026-04-24)
+
+- **DoD-6 P95 benchmark not yet executed** — `TestParallelismRatioBenchmark` + `TestSpeedGate` require ~50 min + real API budget for 100 queries × 4 agents. Blocked on decision about how to gate slow-LLM tests (env flag / VCR / mocked LLM).
+- **DoD-7 Grafana/Datadog dashboard + alerts** — 2 histogram metrics (`crypto_orchestra_parallelism_ratio`, `crypto_orchestra_full_suite_duration_seconds`) are defined but no dashboard panel or P95-ratio-alert config exists. Out-of-code infra artifact; deferred until Phase 1 goes live.
+- **DoD-8 Parallelism ratio interpretation doc** — Ops runbook explaining what P50/P75/P95 values mean, common causes of elevated ratio, and fallback when gate fails. Doc task, deferred.

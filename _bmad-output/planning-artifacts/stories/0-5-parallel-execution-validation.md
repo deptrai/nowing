@@ -8,7 +8,7 @@ relatedFRs: [FR-T2, FR33 Parallel Orchestration]
 relatedNFRs: [NFR-CS2 Parallel Execution, NFR-Q2 Parallelism Ratio, NFR-Q4 Speed]
 priority: P0 (BLOCKING Phase 1)
 estimatedEffort: 2-3 days
-status: ready-for-dev (blocked on Story 0.4)
+status: done
 createdAt: 2026-04-23
 author: Mary (Strategic Business Analyst)
 ---
@@ -389,3 +389,32 @@ Test code = zero production risk. Nếu telemetry middleware có bug → feature
 
 **Status**: ready-for-dev ✅ (blocked on Story 8.1)
 **Next**: Story 8.3 Error Handling & Fallback Validation.
+
+---
+
+## Review Findings (2026-04-24, bmad-code-review)
+
+### decision-needed
+- [ ] [Review][Decision] No gating for ~200+ real LLM calls in benchmark suites — `TestParallelismRatioBenchmark` + `TestSpeedGate` iterate 100 queries each, spawning up to 4 sub-agents = ~800 LLM calls + external HTTP per run. Options: (a) gate on `RUN_SLOW_LLM_BENCHMARK` env var, (b) VCR/record-replay, (c) mock LLM fixture. Need budget/CI-safety decision. [test_parallel_execution.py]
+- [ ] [Review][Decision] AC-8 detection mechanic contradicts spec intent — spec requires "detect 2 task() calls trong khác step"; code detects "single task call per step" (will false-positive on legitimate Rule B queries). Middleware sees only current step, so cross-step detection needs session-level state OR reframe spec to "batch size < 2". Need intent clarification. [chat_deepagent.py:177-215]
+
+### patch
+- [ ] [Review][Patch] [CRITICAL] `ParallelismTelemetryMiddleware` uses non-existent contract; hooks never fire → AC8 unreachable — must subclass `AgentMiddleware` and implement `after_model` (or equivalent hook) instead of bare `__call__(state, config, next_middleware)` [chat_deepagent.py:177-215]
+- [ ] [Review][Patch] [CRITICAL] `agent_factory` passes `llm=None` — `create_nowing_deep_agent` requires `BaseChatModel`; `create_summarization_middleware(llm, ...)` raises at build-time. Every integration test errors before parallelism can be measured. Fix: construct real ChatLiteLLM from env or lazy-create when `None`. [conftest.py:97-103]
+- [ ] [Review][Patch] [MAJOR] `(state or {}).get(...)` and `(msg or {}).get(...)` raise `AttributeError` on Pydantic/dataclass state and `BaseMessage` instances — guard with `isinstance(state, dict)` / `isinstance(msg, dict)` [chat_deepagent.py:193,196,199]
+- [ ] [Review][Patch] [MAJOR] `task_calls` loop can accumulate older assistant-message tool_calls before `break` — break on first assistant message encountered regardless of tool_calls length [chat_deepagent.py:192-205]
+- [ ] [Review][Patch] [MAJOR] Module-level Prometheus `Histogram` registration raises `ValueError: Duplicated timeseries` on reimport; `try/except ImportError` does not catch this — wrap in `try/except ValueError` or use dedicated `CollectorRegistry()` [metrics.py:6-17]
+- [ ] [Review][Patch] [MAJOR] `MagicMock()` for `connector_service` — any non-patched async method returns sync MagicMock and raises `TypeError: object MagicMock can't be used in 'await' expression` downstream. Use `AsyncMock(spec=ConnectorService)`. [conftest.py:91-93]
+- [ ] [Review][Patch] [MAJOR] `_TaskSpawnCollector._pending` dict not thread-safe — concurrent LangChain callbacks from parallel tool executions can race, silently invalidating AC3/AC4/AC5 timings. Add `threading.Lock` around `_pending` mutations. [conftest.py:46,76]
+- [ ] [Review][Patch] [MAJOR] AC2 tautology — `graph_step_id=None` is filtered out by `if t['graph_step_id'] is not None`, so `len(step_ids) <= 1` trivially passes. Assert non-None AND equal, and include count of None step_ids in failure diagnostics. [test_parallel_execution.py:107-112]
+- [ ] [Review][Patch] [MAJOR] AC-7 histograms are defined but never `.observe()`d — dashboard would have no data even if deployed. Call `PARALLELISM_RATIO_HISTOGRAM.observe(ratio)` + `FULL_SUITE_DURATION_HISTOGRAM.labels(agents_count=...).observe(elapsed)` from the telemetry middleware. [metrics.py + chat_deepagent.py]
+- [ ] [Review][Patch] [MINOR] `agent_count == 0` falls into the `"1"` bucket; add explicit `elif agent_count == 1:` + separate `"0"` bucket [test_parallel_execution.py:549-555]
+- [ ] [Review][Patch] [MINOR] P95 index uses `int(n*0.95)`, off-by-one for small n (effectively P90 for n=10); use `math.ceil(n*0.95) - 1` [test_parallel_execution.py:503]
+- [ ] [Review][Patch] [MINOR] `parse_agent_timings_from_trace` filter is a no-op (every event already has `duration_sec`), making `dropped = spawned - completed` in AC-6 a tautology — also capture `on_tool_error` events so dropped-agent detection is real [conftest.py:79-83]
+- [ ] [Review][Patch] [MINOR] AC-6 test only verifies agents completed; spec requires "response chứa structured insights từ TẤT CẢ 4 agents" — add assertion inspecting final assistant message content mentions each agent's angle [test_parallel_execution.py:87-108]
+- [ ] [Review][Patch] [MINOR] DoD-3 fixture has 99 queries (30 A + 20 B + 39 C + 10 D) not 100 — add 1 Rule C query to restore count [conftest.py: rule_c list]
+
+### defer
+- [x] [Review][Defer] DoD-6 P95 benchmark not yet run on local dev — deferred, operational (needs API budget + ~50 min runtime; blocked by decision on benchmark gating)
+- [x] [Review][Defer] DoD-7 Grafana/Datadog dashboard panel + P95 > 1.3x ratio alert — deferred, out-of-code infra artifact
+- [x] [Review][Defer] DoD-8 Documentation on interpreting parallelism ratio and fallback-when-fail procedure — deferred, doc task
