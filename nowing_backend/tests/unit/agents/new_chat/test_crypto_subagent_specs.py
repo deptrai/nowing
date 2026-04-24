@@ -38,6 +38,12 @@ from app.agents.new_chat.subagents.crypto.tokenomics_spec import (
     TOKENOMICS_ANALYST_NAME,
     TOKENOMICS_ANALYST_PROMPT,
 )
+from app.agents.new_chat.subagents.crypto.yield_optimizer_spec import (
+    YIELD_OPTIMIZER_ALLOWED_TOOLS,
+    YIELD_OPTIMIZER_DESCRIPTION,
+    YIELD_OPTIMIZER_NAME,
+    YIELD_OPTIMIZER_PROMPT,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -52,6 +58,7 @@ from app.agents.new_chat.subagents.crypto.tokenomics_spec import (
         ("news_analyst", NEWS_ANALYST_PROMPT),
         ("smart_contract_analyst", SMART_CONTRACT_ANALYST_PROMPT),
         ("tokenomics_analyst", TOKENOMICS_ANALYST_PROMPT),
+        ("yield_optimizer", YIELD_OPTIMIZER_PROMPT),
     ],
 )
 def test_prompts_under_token_budget(label: str, prompt: str) -> None:
@@ -75,6 +82,7 @@ def test_prompts_under_token_budget(label: str, prompt: str) -> None:
         (NEWS_ANALYST_NAME, NEWS_ANALYST_DESCRIPTION, NEWS_ANALYST_PROMPT),
         (SMART_CONTRACT_ANALYST_NAME, SMART_CONTRACT_ANALYST_DESCRIPTION, SMART_CONTRACT_ANALYST_PROMPT),
         (TOKENOMICS_ANALYST_NAME, TOKENOMICS_ANALYST_DESCRIPTION, TOKENOMICS_ANALYST_PROMPT),
+        (YIELD_OPTIMIZER_NAME, YIELD_OPTIMIZER_DESCRIPTION, YIELD_OPTIMIZER_PROMPT),
     ],
 )
 def test_spec_constants_are_non_empty_strings(name: str, description: str, prompt: str) -> None:
@@ -85,13 +93,14 @@ def test_spec_constants_are_non_empty_strings(name: str, description: str, promp
 
 
 def test_agent_names_are_unique() -> None:
-    """All 5 agent names must be distinct."""
+    """All 6 agent names must be distinct."""
     names = [
         DEFILLAMA_ANALYST_NAME,
         SENTIMENT_ANALYST_NAME,
         NEWS_ANALYST_NAME,
         SMART_CONTRACT_ANALYST_NAME,
         TOKENOMICS_ANALYST_NAME,
+        YIELD_OPTIMIZER_NAME,
     ]
     assert len(names) == len(set(names)), f"Duplicate agent names: {names}"
 
@@ -134,6 +143,8 @@ _ALL_TOOL_NAMES = [
     "create_document",
 ]
 
+_YIELD_OPTIMIZER_ALLOWED = YIELD_OPTIMIZER_ALLOWED_TOOLS
+
 _ALL_TOOLS = [_MockTool(n) for n in _ALL_TOOL_NAMES]
 
 
@@ -159,6 +170,7 @@ _TOKENOMICS_ALLOWED = TOKENOMICS_ALLOWED_TOOLS
         ("news_analyst", _NEWS_ALLOWED),
         ("smart_contract_analyst", _SMART_CONTRACT_ALLOWED),
         ("tokenomics_analyst", _TOKENOMICS_ALLOWED),
+        ("yield_optimizer", _YIELD_OPTIMIZER_ALLOWED),
     ],
 )
 def test_tool_scoping_only_includes_allowed_tools(label: str, allowed: tuple[str, ...]) -> None:
@@ -182,6 +194,18 @@ def test_defillama_does_not_have_sentiment_tools() -> None:
     assert not leaked, f"defillama_analyst has unexpected tools: {leaked}"
 
 
+def test_yield_optimizer_does_not_have_sentiment_or_coingecko_tools() -> None:
+    """yield_optimizer must not see sentiment, news, or coingecko tools (scope isolation)."""
+    yo_scoped = {t.name for t in _scope(_YIELD_OPTIMIZER_ALLOWED)}
+    forbidden = {
+        "get_cmc_sentiment", "get_reddit_crypto_sentiment",
+        "get_crypto_news", "get_coingecko_token_info", "get_contract_info",
+        "get_defillama_stablecoins", "get_defillama_bridges", "get_defillama_tvl_overview",
+    }
+    leaked = yo_scoped & forbidden
+    assert not leaked, f"yield_optimizer has unexpected tools: {leaked}"
+
+
 def test_smart_contract_does_not_have_defillama_tools() -> None:
     """smart_contract_analyst must not get DeFiLlama tools."""
     sc_scoped = {t.name for t in _scope(_SMART_CONTRACT_ALLOWED)}
@@ -195,13 +219,14 @@ def test_smart_contract_does_not_have_defillama_tools() -> None:
 
 
 def test_chainlens_available_to_all_crypto_agents() -> None:
-    """chainlens_deep_research must be available to all 5 crypto agents."""
+    """chainlens_deep_research must be available to all 6 crypto agents."""
     for label, allowed in [
         ("defillama_analyst", _DEFILLAMA_ALLOWED),
         ("sentiment_analyst", _SENTIMENT_ALLOWED),
         ("news_analyst", _NEWS_ALLOWED),
         ("smart_contract_analyst", _SMART_CONTRACT_ALLOWED),
         ("tokenomics_analyst", _TOKENOMICS_ALLOWED),
+        ("yield_optimizer", _YIELD_OPTIMIZER_ALLOWED),
     ]:
         scoped_names = {t.name for t in _scope(allowed)}
         assert "chainlens_deep_research" in scoped_names, (
@@ -218,6 +243,7 @@ def test_unrelated_tools_excluded_from_all_crypto_agents() -> None:
         ("news_analyst", _NEWS_ALLOWED),
         ("smart_contract_analyst", _SMART_CONTRACT_ALLOWED),
         ("tokenomics_analyst", _TOKENOMICS_ALLOWED),
+        ("yield_optimizer", _YIELD_OPTIMIZER_ALLOWED),
     ]:
         scoped_names = {t.name for t in _scope(allowed)}
         leaked = scoped_names & unrelated
@@ -291,6 +317,7 @@ def test_allowed_tools_exist_in_real_registry() -> None:
         ("news_analyst", NEWS_ALLOWED_TOOLS),
         ("smart_contract_analyst", SMART_CONTRACT_ALLOWED_TOOLS),
         ("tokenomics_analyst", TOKENOMICS_ALLOWED_TOOLS),
+        ("yield_optimizer", YIELD_OPTIMIZER_ALLOWED_TOOLS),
     ]:
         missing = set(allowed) - registered
         assert not missing, (
@@ -301,15 +328,15 @@ def test_allowed_tools_exist_in_real_registry() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Story 9.1: assert SubAgentMiddleware registers exactly 6 sub-agents
-# (general_purpose + 4 Epic 0.2 base crypto agents + tokenomics_analyst)
+# Story 9.4: assert SubAgentMiddleware registers exactly 7 sub-agents
+# (general_purpose + 4 Epic 0.2 base crypto agents + tokenomics_analyst + yield_optimizer)
 # ---------------------------------------------------------------------------
 
-def test_subagent_middleware_registers_six_agents() -> None:
-    """chat_deepagent.py must wire exactly 6 sub-agents after Story 9.1.
+def test_subagent_middleware_registers_seven_agents() -> None:
+    """chat_deepagent.py must wire exactly 7 sub-agents after Story 9.4.
 
     Greps the source for the SubAgentMiddleware(...) block to verify the
-    subagents= list contains exactly the expected 6 spec references. This
+    subagents= list contains exactly the expected 7 spec references. This
     guards against accidental additions/removals without test coverage.
     """
     import re
@@ -324,7 +351,7 @@ def test_subagent_middleware_registers_six_agents() -> None:
     source = source_path.read_text(encoding="utf-8")
 
     # Match SubAgentMiddleware(...) call and extract the subagents=[...] list.
-    # Strip inline comments so `tokenomics_analyst_spec,  # Story 9.1` parses.
+    # Strip inline comments before splitting by comma.
     match = re.search(
         r"SubAgentMiddleware\s*\(\s*.*?subagents\s*=\s*\[(.*?)\]\s*,?\s*\)",
         source,
@@ -333,7 +360,6 @@ def test_subagent_middleware_registers_six_agents() -> None:
     assert match, "Could not locate SubAgentMiddleware(subagents=[...]) in chat_deepagent.py"
 
     subagents_block = match.group(1)
-    # Remove inline comments before splitting by comma.
     cleaned = re.sub(r"#[^\n]*", "", subagents_block)
 
     expected_specs = {
@@ -343,6 +369,7 @@ def test_subagent_middleware_registers_six_agents() -> None:
         "news_analyst_spec",
         "smart_contract_analyst_spec",
         "tokenomics_analyst_spec",
+        "yield_optimizer_spec",
     }
     found_specs = {
         token.strip() for token in cleaned.split(",") if token.strip()
@@ -353,6 +380,52 @@ def test_subagent_middleware_registers_six_agents() -> None:
         f"  Expected: {sorted(expected_specs)}\n"
         f"  Found:    {sorted(found_specs)}"
     )
-    assert len(found_specs) == 6, (
-        f"Expected exactly 6 sub-agents, got {len(found_specs)}: {sorted(found_specs)}"
+    assert len(found_specs) == 7, (
+        f"Expected exactly 7 sub-agents, got {len(found_specs)}: {sorted(found_specs)}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Story 9.4 AC3 — explicit: yield_optimizer has exactly the expected 4 tools
+# ---------------------------------------------------------------------------
+
+def test_yield_optimizer_has_exactly_four_tools() -> None:
+    """Story 9.4 AC3: yield_optimizer must have ONLY the 4 specified tools."""
+    assert set(YIELD_OPTIMIZER_ALLOWED_TOOLS) == {
+        "get_defillama_yields",
+        "get_defillama_protocol",
+        "check_token_security",
+        "chainlens_deep_research",
+    }
+
+
+def test_yield_optimizer_does_not_have_coingecko_or_news_tools() -> None:
+    """Story 9.4 AC3: yield_optimizer must not see CoinGecko, news, or sentiment tools."""
+    yo_tools = set(YIELD_OPTIMIZER_ALLOWED_TOOLS)
+    forbidden = {
+        "get_coingecko_token_info",
+        "get_crypto_news",
+        "get_cmc_sentiment",
+        "get_reddit_crypto_sentiment",
+        "get_contract_info",
+        "get_defillama_stablecoins",
+        "get_defillama_bridges",
+    }
+    leaked = yo_tools & forbidden
+    assert not leaked, f"yield_optimizer has unexpected tools: {leaked}"
+
+
+def test_yield_optimizer_tools_are_stateless() -> None:
+    """Story 9.4 AC4 (NFR-CS4): all yield_optimizer tools must declare requires=[]."""
+    from app.agents.new_chat.tools.registry import BUILTIN_TOOLS
+
+    by_name = {td.name: td for td in BUILTIN_TOOLS}
+    for tool_name in YIELD_OPTIMIZER_ALLOWED_TOOLS:
+        assert tool_name in by_name, (
+            f"yield_optimizer tool {tool_name!r} missing from BUILTIN_TOOLS registry"
+        )
+        td = by_name[tool_name]
+        assert td.requires == [], (
+            f"yield_optimizer tool {tool_name!r} must be stateless (requires=[]), "
+            f"got requires={td.requires!r}. NFR-CS4 violated."
+        )

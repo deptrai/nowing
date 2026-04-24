@@ -83,6 +83,12 @@ from app.agents.new_chat.subagents.crypto.tokenomics_spec import (
     TOKENOMICS_ANALYST_NAME,
     TOKENOMICS_ANALYST_PROMPT,
 )
+from app.agents.new_chat.subagents.crypto.yield_optimizer_spec import (
+    YIELD_OPTIMIZER_ALLOWED_TOOLS,
+    YIELD_OPTIMIZER_DESCRIPTION,
+    YIELD_OPTIMIZER_NAME,
+    YIELD_OPTIMIZER_PROMPT,
+)
 from app.agents.new_chat.tools.registry import build_tools_async
 from app.db import ChatVisibility
 from app.services.connector_service import ConnectorService
@@ -206,27 +212,29 @@ class ParallelSpawnDirectiveMiddleware(AgentMiddleware):
     _DIRECTIVE = """\
 ## Task Tool: Mandatory Parallel Execution
 
-IMMEDIATELY call task() for ALL 5 sub-agents in a SINGLE response — do NOT write any text first:
+IMMEDIATELY call task() for ALL 6 sub-agents in a SINGLE response — do NOT write any text first:
 1. defillama_analyst — on-chain TVL / DeFi metrics
 2. sentiment_analyst — market sentiment and fear/greed data
 3. news_analyst — latest news and market developments
 4. smart_contract_analyst — contract security analysis
 5. tokenomics_analyst — token supply, vesting, distribution, inflation/deflation
+6. yield_optimizer — DeFi yield recommendations by risk tier with security gate
 
 CRITICAL RULES:
 - Your ENTIRE response MUST consist of tool calls only — zero text before the first tool call.
-- ALL 5 task() calls MUST appear in the SAME response to enable parallel execution.
+- ALL 6 task() calls MUST appear in the SAME response to enable parallel execution.
 - Do NOT describe your plan. Do NOT acknowledge the request. Call task() immediately."""
 
     _INLINE_MANDATE = (
         "\n\n[SYSTEM OVERRIDE — PARALLEL EXECUTION REQUIRED]\n"
-        "You MUST respond with EXACTLY 5 simultaneous task() tool calls and NOTHING ELSE:\n"
+        "You MUST respond with EXACTLY 6 simultaneous task() tool calls and NOTHING ELSE:\n"
         "  task(subagent_type='defillama_analyst', description='...')\n"
         "  task(subagent_type='sentiment_analyst', description='...')\n"
         "  task(subagent_type='news_analyst', description='...')\n"
         "  task(subagent_type='smart_contract_analyst', description='...')\n"
         "  task(subagent_type='tokenomics_analyst', description='...')\n"
-        "ALL 5 calls in ONE response. Zero text. Zero preamble. Start with the first task() call NOW."
+        "  task(subagent_type='yield_optimizer', description='...')\n"
+        "ALL 6 calls in ONE response. Zero text. Zero preamble. Start with the first task() call NOW."
     )
 
     _KEYWORDS = (
@@ -265,8 +273,8 @@ CRITICAL RULES:
                 break
 
         if is_comprehensive and ModelResponse is not None:
-            # Synthetic bypass: return 5 parallel task() calls WITHOUT invoking the LLM
-            # (4 Epic 0.2 base crypto agents + tokenomics_analyst from Story 9.1).
+            # Synthetic bypass: return 6 parallel task() calls WITHOUT invoking the LLM
+            # (4 Epic 0.2 base crypto agents + tokenomics_analyst Story 9.1 + yield_optimizer Story 9.4).
             # This guarantees all spawns happen in a single LangGraph step (AC1/AC2).
             short_q = query_content[:300]
             synthetic_ai = AIMessage(
@@ -313,6 +321,15 @@ CRITICAL RULES:
                         "args": {
                             "subagent_type": "tokenomics_analyst",
                             "description": f"Analyze token supply, vesting, distribution, and inflation mechanics for: {short_q}",
+                        },
+                        "id": uuid.uuid4().hex[:8],
+                        "type": "tool_call",
+                    },
+                    {
+                        "name": "task",
+                        "args": {
+                            "subagent_type": "yield_optimizer",
+                            "description": f"Find best yield opportunities with risk tiers for: {short_q}",
                         },
                         "id": uuid.uuid4().hex[:8],
                         "type": "tool_call",
@@ -905,9 +922,10 @@ async def create_nowing_deep_agent(
     news_tools = _scope_tools(NEWS_ALLOWED_TOOLS, NEWS_ANALYST_NAME)
     smart_contract_tools = _scope_tools(SMART_CONTRACT_ALLOWED_TOOLS, SMART_CONTRACT_ANALYST_NAME)
     tokenomics_tools = _scope_tools(TOKENOMICS_ALLOWED_TOOLS, TOKENOMICS_ANALYST_NAME)
+    yield_optimizer_tools = _scope_tools(YIELD_OPTIMIZER_ALLOWED_TOOLS, YIELD_OPTIMIZER_NAME)
 
-    # Guard: all 5 crypto prompts (defillama, sentiment, news, smart_contract, tokenomics)
-    # reference chainlens_deep_research unconditionally. If the feature flag
+    # Guard: all 6 crypto prompts (defillama, sentiment, news, smart_contract, tokenomics,
+    # yield_optimizer) reference chainlens_deep_research unconditionally. If the feature flag
     # (CHAINLENS_RESEARCH_ENABLED) is off, the tool is silently absent from the registry
     # → LLM will hallucinate tool calls. Escalate to ERROR so this is noticeable in logs
     # instead of buried in per-agent warnings.
@@ -915,7 +933,7 @@ async def create_nowing_deep_agent(
     if "chainlens_deep_research" not in _tool_names:
         _perf_log.error(
             "[create_agent] chainlens_deep_research is NOT in the tool registry but all "
-            "5 crypto sub-agent prompts reference it. Either enable CHAINLENS_RESEARCH_ENABLED "
+            "6 crypto sub-agent prompts reference it. Either enable CHAINLENS_RESEARCH_ENABLED "
             "or update crypto sub-agent prompts to remove chainlens references."
         )
 
@@ -959,6 +977,14 @@ async def create_nowing_deep_agent(
         "tools": tokenomics_tools,
         "middleware": _build_gp_middleware(),
     }
+    yield_optimizer_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
+        "name": YIELD_OPTIMIZER_NAME,
+        "description": YIELD_OPTIMIZER_DESCRIPTION,
+        "system_prompt": YIELD_OPTIMIZER_PROMPT,
+        "model": llm,
+        "tools": yield_optimizer_tools,
+        "middleware": _build_gp_middleware(),
+    }
 
     # Main agent middleware
     deepagent_middleware = [
@@ -984,6 +1010,7 @@ async def create_nowing_deep_agent(
                 news_analyst_spec,
                 smart_contract_analyst_spec,
                 tokenomics_analyst_spec,  # Story 9.1
+                yield_optimizer_spec,      # Story 9.4
             ],
         ),
         ParallelSpawnDirectiveMiddleware(),

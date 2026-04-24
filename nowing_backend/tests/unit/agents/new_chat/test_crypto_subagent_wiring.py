@@ -41,6 +41,16 @@ from app.agents.new_chat.subagents.crypto.smart_contract_spec import (
     SMART_CONTRACT_ANALYST_NAME,
     SMART_CONTRACT_ANALYST_PROMPT,
 )
+from app.agents.new_chat.subagents.crypto.tokenomics_spec import (
+    TOKENOMICS_ALLOWED_TOOLS,
+    TOKENOMICS_ANALYST_NAME,
+    TOKENOMICS_ANALYST_PROMPT,
+)
+from app.agents.new_chat.subagents.crypto.yield_optimizer_spec import (
+    YIELD_OPTIMIZER_ALLOWED_TOOLS,
+    YIELD_OPTIMIZER_NAME,
+    YIELD_OPTIMIZER_PROMPT,
+)
 
 _CHAT_DEEPAGENT_PATH = (
     Path(__file__).resolve().parents[4]
@@ -84,11 +94,11 @@ def _collect_dict_keys(node: ast.AST) -> list[list[str]]:
 
 
 # ---------------------------------------------------------------------------
-# Story 9.1: SubAgentMiddleware registers exactly 6 agents
+# Story 9.4: SubAgentMiddleware registers exactly 7 agents
 # ---------------------------------------------------------------------------
 
-def test_subagent_middleware_registers_six_specs(chat_deepagent_source: str) -> None:
-    """Story 9.1: SubAgentMiddleware(subagents=[...]) must include all 6 specs."""
+def test_subagent_middleware_registers_seven_specs(chat_deepagent_source: str) -> None:
+    """Story 9.4: SubAgentMiddleware(subagents=[...]) must include all 7 specs."""
     m = re.search(
         r"SubAgentMiddleware\(\s*[^)]*?subagents\s*=\s*\[([^\]]+)\]",
         chat_deepagent_source,
@@ -103,6 +113,7 @@ def test_subagent_middleware_registers_six_specs(chat_deepagent_source: str) -> 
         "news_analyst_spec",
         "smart_contract_analyst_spec",
         "tokenomics_analyst_spec",
+        "yield_optimizer_spec",
     ]
     for name in expected:
         assert name in block, f"Spec '{name}' not registered in SubAgentMiddleware"
@@ -131,13 +142,14 @@ def test_no_spec_uses_prompt_key_instead_of_system_prompt(
 
 
 def test_every_crypto_spec_uses_system_prompt_key(chat_deepagent_source: str) -> None:
-    """Each of the 5 crypto analyst specs must use the ``system_prompt`` key."""
+    """Each of the 6 crypto agent specs must use the ``system_prompt`` key."""
     for const in (
         "DEFILLAMA_ANALYST_PROMPT",
         "SENTIMENT_ANALYST_PROMPT",
         "NEWS_ANALYST_PROMPT",
         "SMART_CONTRACT_ANALYST_PROMPT",
         "TOKENOMICS_ANALYST_PROMPT",
+        "YIELD_OPTIMIZER_PROMPT",
     ):
         pattern = rf'"system_prompt"\s*:\s*{const}\b'
         assert re.search(pattern, chat_deepagent_source), (
@@ -156,13 +168,13 @@ def test_each_crypto_spec_uses_fresh_middleware_factory(
     specs. Every crypto spec's ``middleware`` value must be a *call* to the
     factory ``_build_gp_middleware()``, not a bare variable reference.
     """
-    # Build a regex that locates `"middleware": _build_gp_middleware()` inside each
-    # of the 4 crypto spec dict literals (identified by their NAME constant).
     spec_name_constants = [
         "DEFILLAMA_ANALYST_NAME",
         "SENTIMENT_ANALYST_NAME",
         "NEWS_ANALYST_NAME",
         "SMART_CONTRACT_ANALYST_NAME",
+        "TOKENOMICS_ANALYST_NAME",
+        "YIELD_OPTIMIZER_NAME",
     ]
     for name_const in spec_name_constants:
         # Find the dict literal that starts with "name": <name_const>
@@ -191,6 +203,8 @@ def test_each_crypto_spec_uses_fresh_middleware_factory(
         ("sentiment_tools", "SENTIMENT_ALLOWED_TOOLS", "SENTIMENT_ANALYST_NAME"),
         ("news_tools", "NEWS_ALLOWED_TOOLS", "NEWS_ANALYST_NAME"),
         ("smart_contract_tools", "SMART_CONTRACT_ALLOWED_TOOLS", "SMART_CONTRACT_ANALYST_NAME"),
+        ("tokenomics_tools", "TOKENOMICS_ALLOWED_TOOLS", "TOKENOMICS_ANALYST_NAME"),
+        ("yield_optimizer_tools", "YIELD_OPTIMIZER_ALLOWED_TOOLS", "YIELD_OPTIMIZER_NAME"),
     ],
 )
 def test_scope_tools_uses_correct_allowed_const(
@@ -243,6 +257,18 @@ _CRYPTO_AGENTS = [
         SMART_CONTRACT_ANALYST_PROMPT,
         SMART_CONTRACT_ALLOWED_TOOLS,
         id="smart_contract",
+    ),
+    pytest.param(
+        TOKENOMICS_ANALYST_NAME,
+        TOKENOMICS_ANALYST_PROMPT,
+        TOKENOMICS_ALLOWED_TOOLS,
+        id="tokenomics",
+    ),
+    pytest.param(
+        YIELD_OPTIMIZER_NAME,
+        YIELD_OPTIMIZER_PROMPT,
+        YIELD_OPTIMIZER_ALLOWED_TOOLS,
+        id="yield_optimizer",
     ),
 ]
 

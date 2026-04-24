@@ -29,6 +29,7 @@ _EXPECTED_AGENTS = {
     "news_analyst",
     "smart_contract_analyst",
     "tokenomics_analyst",  # Story 9.1
+    "yield_optimizer",     # Story 9.4
 }
 
 
@@ -48,8 +49,8 @@ class TestParallelOrchestration:
 
     @pytest.mark.integration
     async def test_comprehensive_query_triggers_parallel_spawn(self, agent_factory):
-        """AC1: Comprehensive analysis triggers parallel spawn of 5 crypto agents
-        (4 Epic 0.2 base agents + tokenomics_analyst from Story 9.1)."""
+        """AC1: Comprehensive analysis triggers parallel spawn of 6 crypto agents
+        (4 Epic 0.2 base agents + tokenomics_analyst Story 9.1 + yield_optimizer Story 9.4)."""
         agent = await agent_factory(user_id="00000000-0000-0000-0000-000000000001", search_space_id=1)
 
         trace_events: list[dict[str, Any]] = []
@@ -367,7 +368,7 @@ class TestParallelismTelemetryMiddlewareUnit:
             content="",
             tool_calls=[
                 {"name": "task", "args": {"agent": f"agent_{i}"}, "id": f"tc{i}", "type": "tool_call"}
-                for i in range(5)
+                for i in range(6)
             ],
         )
         result_state = {"messages": [ai_msg]}
@@ -408,12 +409,12 @@ class TestParallelismTelemetryMiddlewareUnit:
 
         mw = ParallelismTelemetryMiddleware()
 
-        # Input has no messages; result carries 5 parallel task calls (no warning expected)
+        # Input has no messages; result carries 6 parallel task calls (no warning expected)
         ai_msg = AIMessage(
             content="",
             tool_calls=[
                 {"name": "task", "args": {"agent": f"a_{i}"}, "id": f"tc{i}", "type": "tool_call"}
-                for i in range(5)
+                for i in range(6)
             ],
         )
         result_state = {"messages": [ai_msg]}

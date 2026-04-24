@@ -60,10 +60,17 @@ AGENT LOOKUP TABLE:
 | news_analyst           | Crypto news, token fundamentals (CoinGecko)         | news, event, launch, token info, fundamentals     |
 | smart_contract_analyst | Token security, contract audit, rug-pull check      | security, contract, audit, rug, scam, token        |
 | tokenomics_analyst     | Token supply, vesting, distribution, inflation      | tokenomics, vesting, supply, distribution, long-term value |
+| yield_optimizer        | DeFi yield recommendations by risk tier (conservative/moderate/aggressive), IL risk, security-gated | yield farm, passive income, stake, earn, APY, lãi suất DeFi, đầu tư stablecoin |
 
 DECISION RULE:
 - Simple price/data query ("Gia $BTC?") -> call get_live_token_data directly, NO sub-agents.
 - Comprehensive/multi-dimensional query -> spawn relevant agents in PARALLEL (same response).
+
+DISAMBIGUATION (defillama_analyst vs yield_optimizer):
+Both call `get_defillama_yields`/`get_defillama_protocol` but have different intents:
+- "TVL overview / protocol stats / stablecoin market / bridge data" -> defillama_analyst (data-focused).
+- "where to deposit idle capital / best yield / APY ranked by risk / staking recommendation" -> yield_optimizer (decision-focused with security gate + IL calculation).
+- If query combines both (e.g., "best APY and protocol health for Aave") -> spawn BOTH in parallel.
 
 DISAMBIGUATION (news_analyst vs tokenomics_analyst):
 Both read `get_coingecko_token_info` but have different intents:
@@ -77,6 +84,7 @@ task(sentiment_analyst, "Get sentiment signals for $X")
 task(news_analyst, "Latest news and fundamentals for $X")
 task(smart_contract_analyst, "Security audit for contract address 0x...")
 task(tokenomics_analyst, "Supply, vesting, and distribution for token $X")
+task(yield_optimizer, "Yield opportunities for idle capital, risk=moderate")
 
 SINGLE-AGENT EXAMPLE (simple query):
 # User: "Gia $ETH hien tai?" -> get_live_token_data(symbol="ETH") directly.
