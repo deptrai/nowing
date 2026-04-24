@@ -151,7 +151,7 @@ Epic 9 **không thêm infrastructure mới** — toàn bộ tận dụng:
 |--------|--------|--------|---------|
 | 🎯 **Accuracy** (P0) | Factual error rate (random sample QA vs ground truth raw APIs) | **< 3%** (stricter vì quality-first) | QA manual + automated cross-check với raw API responses |
 | 🎵 **Smoothness** (Parallelism) (P0) | `total_time / max(individual_time)` ratio | **< 1.3x** — near-perfect parallelism | LangGraph trace logs (Story 8.2) |
-| 🔥 **Reliability** (P0) | % requests có ≥ 1 agent error nhưng main agent vẫn trả response đúng | **> 98%** graceful degradation | Story 8.3 fallback metrics + Chainlens `status: fallback` telemetry |
+| 🔥 **Reliability** (P0) | % requests có ≥ 1 agent error nhưng main agent vẫn trả response đúng | **> 98%** graceful degradation — 3-tier rate-limit ladder (parallel → natural sequential → paced sequential) guarantees completion dù provider RPM strict | Story 8.3 / 0.6b fallback metrics + Chainlens `status: fallback` telemetry + `GRACEFUL_DEGRADATION_COUNTER{outcome="rate_limit_degraded\|rate_limit_paced"}` |
 | ⚡ **Speed** (P1) | P95 response time cho full-suite (6+ agents spawned) | **< 90s** (relaxed vì quality-first — cho phép Chainlens 125s timeout) | Production telemetry |
 | 🧠 **Hallucination rate** (P0) | % responses chứa số liệu không có trong tool output (fabricated) | **< 1%** | Sample QA + regex pattern check |
 
@@ -171,6 +171,7 @@ Epic 9 **không thêm infrastructure mới** — toàn bộ tận dụng:
 |------|----------|------------|
 | ~~**Token cost blowup**~~ — stakeholder đã deprioritize | 🟢 Accepted | Quality-first, track cost metric nhưng không gate |
 | **API rate limit cascade** — CoinGecko 30 req/min vỡ khi 10 agents spawn | 🟡 Medium | Upgrade CoinGecko Pro (quality-first justifies) / NFR-CS3 degradation |
+| **LLM provider RPM strict** (e.g., TrollLLM 10 RPM) — 6-parallel spawn triggers 429 → stream aborts | 🟡 Medium | **3-tier degradation ladder** (Story 0.6 + 0.6b): parallel → natural sequential → paced sequential với `asyncio.sleep(7)` sau 3 consecutive 429. Guarantees completion ~42-50s cho 6 agents |
 | ~~**Web scraping fragility**~~ (Snapshot, TokenUnlocks, Arkham) | ✅ **RESOLVED** | Dùng `chainlens_deep_research` — không scrape trực tiếp, Chainlens là B2B service đã authenticated |
 | ~~**Compliance Arkham/Nansen ToS**~~ | ✅ **RESOLVED** | Chainlens handle source aggregation — compliance offloaded to Chainlens B2B contract |
 | **TA agent thiếu data source historical OHLCV** chuẩn cho RSI/MACD | 🟡 Medium | Story 9.6 spike riêng — evaluate DexScreener depth + Chainlens coverage cho TradingView data |

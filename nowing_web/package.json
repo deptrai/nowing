@@ -4,7 +4,7 @@
 	"private": true,
 	"description": "Nowing Frontend",
 	"scripts": {
-		"dev": "next dev --turbopack -p 3999",
+		"dev": "next dev --turbopack -p 4998",
 		"dev:turbo": "next dev --turbopack",
 		"build": "next build",
 		"start": "next start",

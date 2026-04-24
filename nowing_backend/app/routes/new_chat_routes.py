@@ -1256,12 +1256,12 @@ async def regenerate_response(
         # Get the checkpointer and state history
         checkpointer = await get_checkpointer()
 
-        config = {"configurable": {"thread_id": str(thread_id)}}
+        checkpoint_config = {"configurable": {"thread_id": str(thread_id)}}
 
         # Collect checkpoint tuples from the async iterator
         # CheckpointTuple has: config, checkpoint (dict with channel_values), metadata, parent_config
         checkpoint_tuples = []
-        async for cp_tuple in checkpointer.alist(config):
+        async for cp_tuple in checkpointer.alist(checkpoint_config):
             checkpoint_tuples.append(cp_tuple)
 
         if not checkpoint_tuples:

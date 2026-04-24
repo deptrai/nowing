@@ -307,6 +307,14 @@ class ParallelismTelemetryMiddleware(...):
 
 ## Dev Notes
 
+### Rate-limit degradation interaction (added 2026-04-24)
+
+Parallel behavior (AC1/AC2) is preserved **only when `_rate_limit_state.escalation_level() == 0`** (no recent 429). Under pressure the middleware switches to sequential modes — see:
+- **Story 0.6** — Tier 2 natural sequential (1 task/turn) when `escalation_level == 1`
+- **Story 0.6b** — Tier 3 paced sequential (+ 7s sleep per agent) when `escalation_level == 2`
+
+When writing tests that assert 6-parallel spawn, ensure `_rate_limit_state._consecutive_events == 0` in setup (e.g., patch `_rate_limit_state` or wait past cooldown).
+
 ### Testing Commands
 
 ```bash

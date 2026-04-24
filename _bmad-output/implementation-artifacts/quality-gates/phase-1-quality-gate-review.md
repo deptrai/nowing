@@ -28,8 +28,10 @@ Phase 1 backend + frontend implementation is complete. All three Phase 1 stories
 | Telemetry events | 8 AC10 events defined + 5 wired | `lib/posthog/events.ts`; 3 deferred wirings documented | ✅ |
 | OrchestraStrip render | Gated on `message.isLast`, no cross-bubble leak | Post-review patch `f2cce7a3c` | ✅ |
 | Conflict detection | AC8 pure function + threshold constant | `detectConflict()` + `CONFLICT_NUMERIC_DELTA` in `citation/schema.ts` | ✅ |
+| 3-tier rate-limit ladder wired | Story 0.6 Tier 1+2 + Story 0.6b Tier 3 (paced with `asyncio.sleep(7)` after 3×429) | `_RateLimitState.escalation_level()` in `chat_deepagent.py`; logs `rate_limit_degraded (Tier 2)` / `rate_limit_paced (Tier 3)` verified 2026-04-24 E2E | ✅ |
+| Tier 3 paced metric emitted | `GRACEFUL_DEGRADATION_COUNTER{outcome="rate_limit_paced"}` | Added in `awrap_model_call` when `escalation_level >= 2` | ✅ |
 
-**Total structural pass rate: 9/9.**
+**Total structural pass rate: 11/11.**
 
 ---
 
@@ -45,10 +47,12 @@ Per sprint plan §Quality Gates Checklist, the 4 hard gates need Week 4 canary t
 | 🧠 **NFR-Q4** Hallucination rate | < 1% | Pattern scan on 100-query response samples — cite-not-fabricate checks | Required before GREEN |
 
 **Infrastructure ready:**
-- ✅ Prometheus counters: `AGENT_ERRORS_COUNTER`, `GRACEFUL_DEGRADATION_COUNTER` (Story 0.6)
+- ✅ Prometheus counters: `AGENT_ERRORS_COUNTER`, `GRACEFUL_DEGRADATION_COUNTER{outcome="rate_limit_degraded"|"rate_limit_paced"}` (Story 0.6 + 0.6b)
 - ✅ Telemetry middleware: `ParallelismTelemetryMiddleware` instruments parallelism ratio
 - ✅ FE telemetry: 8 PostHog events feeding NFR-Q3 FE dashboard
+- ✅ Rate-limit degradation ladder: 3 tiers verified against TrollLLM 10 RPM dev provider (2026-04-24)
 - ❌ Canary not yet deployed — ops coordination needed
+- ⚠️ Grafana dashboard `rate_limit_paced` label row TBD — add to Week 3 telemetry setup
 
 ---
 
@@ -62,6 +66,7 @@ Per sprint plan §Quality Gates Checklist, the 4 hard gates need Week 4 canary t
 - **Impact**: Dev-time proxy test fails if threshold unchanged; production NFR-Q2 (< 1.3x) risk unknown until canary.
 - **Applied fix**: test threshold now scales by agent count (1.3 + 0.15 × (N-4)) with 2.0x absolute ceiling. Real production threshold remains 1.3x on canary traces.
 - **Action item**: Dev Lead investigate per-agent framework overhead before canary deploy. Rule out synthesis-pass regression, middleware double-invocation, or asyncio.gather contention.
+- **Downstream safety**: Story 0.6b Tier 3 paced mode serves as fallback — even if parallel path hits canary rate limits, system degrades to sequential (and paced) rather than aborting. Reduces incident-risk of F1.
 
 **F2 — AC6 response-length mock threshold was static (LOW)**
 

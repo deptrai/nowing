@@ -185,7 +185,7 @@ Output format: 🏆 Top picks (3) | 📈 APY | 🛡️ Security | ⚠️ IL Risk
 |------|--------|--------|-------------------|-------|
 | 🎯 NFR-Q1 | Factual error rate | **< 3%** | 100 sample queries (Week 3 QA + Week 4 canary) | QA |
 | 🎵 NFR-Q2 | Parallelism ratio `total/max` | **< 1.3x** | All Week 4 production traces | Dev Lead |
-| 🔥 NFR-Q3 | Graceful degradation rate | **> 98%** | All Week 4 requests có ≥1 agent error | Dev Lead |
+| 🔥 NFR-Q3 | Graceful degradation rate | **> 98%** | All Week 4 requests có ≥1 agent error. 3-tier ladder (parallel / sequential / paced) — paced Tier 3 metric `GRACEFUL_DEGRADATION_COUNTER{outcome="rate_limit_paced"}` from Story 0.6b must be scraped | Dev Lead |
 | 🧠 NFR-Q4 | Hallucination rate | **< 1%** | Pattern scan + sample QA | QA |
 
 **Gate Decision Matrix:**
@@ -265,3 +265,21 @@ Launch only if **ALL 4 gates PASS**. If AMBER → delay launch, keep canary.
 
 **Status**: Draft ready-for-dev ✅
 **Next**: Assign Dev 1, Dev 2, Dev Lead, QA, DevOps → kick-off Week 1 Monday.
+
+---
+
+## 📝 Scope Changelog
+
+### 2026-04-24 — Tier 3 Paced Sequential Escalation (Story 0.6b)
+
+**Discovered during**: Pre-canary E2E smoke test against TrollLLM (10 RPM dev provider).
+
+**Finding**: Tier 2 natural sequential (implemented in Story 0.6) is still faster than very-strict provider RPM windows once KB planner + synthesis LLM calls accumulate → stream aborts on sustained pressure.
+
+**Scope-in**: [Story 0.6b](../stories/0-6b-rate-limit-paced-escalation.md) — Tier 3 paced sequential mode. After 3 consecutive rate-limit events in cooldown window, forces `asyncio.sleep(7)` between agent emissions and retries main synthesis up to 3× with paced backoff.
+
+**Effort**: ~1-2h (single-file change in `chat_deepagent.py`). Does NOT shift sprint timeline — completed within current week.
+
+**Impact on gates**:
+- NFR-Q3 target (> 98% graceful degradation) now achievable even against strict-RPM providers
+- New metric `GRACEFUL_DEGRADATION_COUNTER{outcome="rate_limit_paced"}` must be scraped by Week 3 telemetry setup

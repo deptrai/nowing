@@ -67,6 +67,69 @@ Look for changes to:
 - `app/agents/new_chat/subagents/` — sub-agent specs
 - `app/agents/new_chat/chat_deepagent.py` — orchestration logic
 
+### Step D — Check rate-limit degradation tier (added Story 0.6b)
+
+```bash
+# Look for tier-transition log markers (last 10 min):
+tail -n 5000 /var/log/nowing/backend.log | grep -E "rate_limit_degraded|rate_limit_paced|synthesis_paced_retry" | tail -20
+```
+
+**Interpretation:**
+
+| Log pattern | Tier | Expected behavior |
+|-------------|------|-------------------|
+| `parallel_spawn: 6 agents dispatched` | Tier 1 | Normal. Full-analysis in <30s. |
+| `rate_limit_degraded (Tier 2): spawning sequentially (next=X, N/6 remaining)` | Tier 2 | 1 agent per LangGraph turn. Expect ~15-25s total. |
+| `rate_limit_paced (Tier 3): sleeping 7.0s before spawning X` | Tier 3 | Each agent emission blocked 7s. Total ~45-50s is **EXPECTED**, not an incident. |
+| `rate_limit_reduced_scope (Tier 3): capping analysis to 2/6 agents` | Tier 3 | Analysis scope reduced to top-2 deterministic-API agents under sustained pressure. User receives partial answer (~30s) instead of error. **EXPECTED** on strict-RPM providers. |
+| `synthesis_paced_retry (Tier 3): attempt N/3 hit 429, sleeping 7.0s` | Tier 3 | Main synthesis retry. Up to 3 attempts — if all fail, stream errors out. |
+| `provider_rate_gate: spacing X.Ys before next call (min_interval=Y.Ys, elapsed=Z.Zs)` | Gate | Min-interval pacer enforcing serialization between LLM calls. Normal operation — prevents any possibility of burst to provider. |
+
+**Latency spike caveat**: If monitoring flags a P95 latency spike for crypto queries but log shows Tier 3 active, this is the **degradation ladder working as designed** — system chose slow-completion over fail-fast. Confirm with `GRACEFUL_DEGRADATION_COUNTER{outcome="rate_limit_paced"}` rate. Only escalate as an incident if:
+- Tier 3 is active for > 15 minutes (likely provider quota truly exhausted, not transient)
+- Synthesis retries hit 3/3 failure → users see error despite ladder
+
+### Step E — Check sub-agent resilience + partial salvage
+
+```bash
+tail -n 5000 /var/log/nowing/backend.log | grep -E "subagent_retry|subagent_exhausted|yielding partial" | tail -20
+```
+
+**Interpretation:**
+
+| Log pattern | Layer | Meaning |
+|-------------|-------|---------|
+| `subagent_retry: <name> attempt N/3 hit rate_limit, sleeping Xs` | 4a | Sub-agent auto-retrying on 429. Paced backoffs 5s → 15s → 45s. **EXPECTED** under pressure — not an incident. |
+| `subagent_exhausted: <name> gave up after 3 retries — returning error ToolMessage` | 4a | Sub-agent terminal failure. Stream continues; main agent synthesizes with remaining agents. **Not** a stream crash. |
+| `[stream_new_chat] yielding partial analysis: N completed, M errored` | 4b | Synthesis step itself exhausted — last-resort salvage fired. User sees partial results message instead of generic error. |
+
+**Latency caveat**: a single sub-agent retry chain can consume ≤65s (5+15+45). With 6 agents retrying concurrently, worst-case query latency ~4-5 minutes. Monitoring should tag crypto queries separately to avoid polluting global P95.
+
+**Incident ONLY if**:
+- `subagent_exhausted` rate > 10% over 15 minutes (provider quota truly over budget — need upgrade)
+- `yielding partial analysis: 0 completed, 6 errored` appears frequently (gate mis-tuned or provider throttled our entire IP)
+- Users report never seeing "⚠️ Phân tích bị giới hạn…" → partial salvage broken (check `_extract_partial_analysis` import + checkpointer availability)
+
+---
+
+**Tunables** (set via env + restart, don't hot-patch):
+```
+# Reactive 3-tier ladder
+CRYPTO_ORCHESTRA_RATE_LIMIT_COOLDOWN=60      # cooldown window (seconds)
+CRYPTO_ORCHESTRA_ESCALATION_THRESHOLD=3      # consecutive 429s → Tier 3
+CRYPTO_ORCHESTRA_PACED_DELAY_SECONDS=7       # sleep between agents in Tier 3
+
+# Proactive global rate gate (optional — set per provider tier)
+PROVIDER_RPM_LIMIT=0                         # 0 = disabled. Set to 10 (TrollLLM) / 50 (Anthropic Tier 1) / 1000 (Tier 2). Derives min_interval = WINDOW/LIMIT
+PROVIDER_RATE_WINDOW_SECONDS=60              # rolling window
+PROVIDER_RATE_MAX_WAIT_SECONDS=90            # max wait per call (safety ceiling)
+
+# Unbounded sub-agent retry (safety net for gate drift)
+SUBAGENT_RETRY_MAX_WALL_SECONDS=900          # 15 min absolute cap per sub-agent
+SUBAGENT_RETRY_BASE_BACKOFF=5                # first retry delay (doubles each attempt)
+SUBAGENT_RETRY_MAX_BACKOFF=120               # cap for exponential backoff
+```
+
 ---
 
 ## 3. Mitigate

@@ -142,7 +142,7 @@ NFR-CS4 (Stateless tools): Tất cả crypto tools có `requires=[]` — không 
 
 NFR-Q1 (Accuracy): Factual error rate cho crypto research responses (sample QA vs raw API ground truth) phải < 3%. Đo bằng manual QA + automated cross-check trên random sample 100 full-analysis queries mỗi 2 tuần production.
 NFR-Q2 (Hallucination Rate): % responses chứa số liệu không xuất phát từ tool output (fabricated numbers) phải < 1%. Đo bằng pattern check + sample QA.
-NFR-Q3 (Graceful Degradation): % requests có ≥ 1 sub-agent error nhưng main agent vẫn trả response đúng cấu trúc và mention nguồn unavailable phải > 98%.
+NFR-Q3 (Graceful Degradation): % requests có ≥ 1 sub-agent error nhưng main agent vẫn trả response đúng cấu trúc và mention nguồn unavailable phải > 98%. Degradation ladder gồm **3 tiers** (xem Story 0.6 / 0.6b): Tier 1 parallel (6 agents), Tier 2 natural sequential (1 agent/turn, khi có 429 trong cooldown), Tier 3 paced sequential (sleep 7s giữa agents + retry synthesis khi 3+ lần 429 liên tiếp). Tier 3 đảm bảo hoàn thành cho provider có RPM strict (ví dụ 10 RPM) — tradeoff latency ~42-50s cho 6 agents.
 NFR-Q4 (Speed): P95 response time cho full-suite analysis (6+ agents spawned) phải < 90s — relaxed so với NFR-P1 vì cho phép Chainlens 125s timeout, tận dụng parallelism.
 
 ## Epic List

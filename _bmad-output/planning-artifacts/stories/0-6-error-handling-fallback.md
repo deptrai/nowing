@@ -631,3 +631,11 @@ Test code = zero production risk. Nếu telemetry enhancement có bug → featur
 - Auditor claim "fault_injection.py not in diff" — diff rendering artifact, file exists (83 lines)
 
 **Next**: Epic 0 DONE (all 6 stories) → trigger Phase 1 Epic 9 Story 9.1 + Story 9.4.
+
+---
+
+## Scope expansion 2026-04-24 — see [Story 0.6b](0-6b-rate-limit-paced-escalation.md)
+
+E2E verification against TrollLLM 10 RPM (2026-04-24) surfaced that Tier 2 natural sequential pacing is still faster than very-strict provider RPM windows once KB planner + main synthesis LLM calls accumulate. Follow-up story **0.6b** adds a **Tier 3 paced sequential** mode: after 3 consecutive rate-limit events in the cooldown window, forces `asyncio.sleep(7)` between agent emissions and retries main synthesis up to 3× with paced backoff. Guarantees completion at the cost of latency (~42-50s for 6 agents).
+
+Tier 1 (parallel) and Tier 2 (natural sequential) behavior in this story remain unchanged — Tier 3 only activates at `escalation_level() == 2`.

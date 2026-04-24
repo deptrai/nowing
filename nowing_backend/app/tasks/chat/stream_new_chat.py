@@ -15,6 +15,7 @@ import contextlib
 import gc
 import json
 import logging
+import os
 import re
 import time
 from collections.abc import AsyncGenerator
@@ -28,7 +29,12 @@ from sqlalchemy import func
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
-from app.agents.new_chat.chat_deepagent import create_nowing_deep_agent
+from app.agents.new_chat.chat_deepagent import _rate_limit_state, create_nowing_deep_agent
+
+# LangGraph step budget for the main agent. Under rate-limit pacing each step
+# can take 10-60s (gate spacing + sub-agent retries), so 80 was insufficient for
+# 6-agent comprehensive queries. Bump default to 200 and allow env override.
+_AGENT_RECURSION_LIMIT = int(os.getenv("AGENT_RECURSION_LIMIT", "200"))
 from app.agents.new_chat.checkpointer import get_checkpointer
 from app.agents.new_chat.llm_config import (
     AgentConfig,
@@ -136,6 +142,88 @@ def extract_todos_from_deepagents(command_output) -> dict:
             todos_data = command_output["update"].get("todos", [])
 
     return {"todos": todos_data}
+
+
+async def _extract_partial_analysis(agent: Any, config: dict[str, Any]) -> dict | None:
+    """Read checkpointer state and format any completed sub-agent outputs as
+    a graceful partial response.
+
+    Used by the stream error handler when a rate-limit error kills synthesis
+    but partial ToolMessages from completed sub-agents exist in state. Returns
+    None if no completed work can be salvaged; caller falls back to a normal
+    error yield.
+
+    Returns:
+        dict with keys `message` (markdown), `completed_count`, `errored_count`.
+    """
+    from langchain_core.messages import ToolMessage
+
+    try:
+        state = await agent.aget_state(config)
+    except Exception:
+        return None
+    if not state or not getattr(state, "values", None):
+        return None
+    messages = state.values.get("messages", [])
+    if not messages:
+        return None
+
+    # Map tool_call_id → args for prior task() tool_calls (AIMessage history)
+    tool_calls_by_id: dict[str, dict] = {}
+    for m in messages:
+        tcs = getattr(m, "tool_calls", None)
+        if tcs is None and isinstance(m, dict):
+            tcs = m.get("tool_calls")
+        if not tcs:
+            continue
+        for tc in tcs:
+            tc_id = tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", None)
+            tc_name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None)
+            tc_args = tc.get("args") if isinstance(tc, dict) else getattr(tc, "args", {})
+            if tc_id and tc_name == "task":
+                tool_calls_by_id[tc_id] = tc_args or {}
+
+    completed: list[tuple[str, str]] = []
+    errored: list[str] = []
+    for m in messages:
+        if not isinstance(m, ToolMessage):
+            continue
+        args = tool_calls_by_id.get(m.tool_call_id)
+        if not args:
+            continue
+        agent_name = args.get("subagent_type", "unknown")
+        content = m.content if isinstance(m.content, str) else str(m.content)
+        if getattr(m, "status", None) == "error":
+            errored.append(agent_name)
+        else:
+            completed.append((agent_name, content))
+
+    if not completed and not errored:
+        return None
+
+    parts = [
+        "⚠️ **Phân tích bị giới hạn bởi rate limit của LLM provider** — "
+        "dưới đây là kết quả từng phần đã thu được:\n",
+    ]
+    for name, content in completed:
+        snippet = content.strip()
+        if len(snippet) > 2000:
+            snippet = snippet[:2000] + "\n\n*(trimmed)*"
+        parts.append(f"\n### ✅ {name}\n{snippet}\n")
+    if errored:
+        parts.append(
+            f"\n### ❌ Không hoàn thành\n"
+            f"{', '.join(errored)} — provider rate limit exhausted.\n"
+        )
+    parts.append(
+        "\n---\n*Gửi lại câu hỏi sau 1-2 phút để có phân tích đầy đủ.*"
+    )
+
+    return {
+        "message": "".join(parts),
+        "completed_count": len(completed),
+        "errored_count": len(errored),
+    }
 
 
 @dataclass
@@ -1480,7 +1568,7 @@ async def stream_new_chat(
 
         config = {
             "configurable": configurable,
-            "recursion_limit": 80,  # Increase from default 25 to allow more tool iterations
+            "recursion_limit": _AGENT_RECURSION_LIMIT,  # env AGENT_RECURSION_LIMIT (default 200) — bumped from 80 to accommodate pacing
         }
 
         # Start the message stream
@@ -1687,6 +1775,41 @@ async def stream_new_chat(
         # Handle any errors
         import traceback
 
+        error_str = str(e)
+        is_rate_limit = (
+            "rate limit" in error_str.lower()
+            or "429" in error_str
+            or type(e).__name__ == "RateLimitError"
+        )
+        if is_rate_limit:
+            _rate_limit_state.mark_rate_limited()
+            logging.getLogger(__name__).warning(
+                "[stream_new_chat] rate_limit caught — future comprehensive queries will spawn sequentially"
+            )
+            # Try to salvage partial sub-agent work from checkpointer so user
+            # never sees "Sorry, there was an error" when real results exist.
+            try:
+                partial = await _extract_partial_analysis(agent, config)
+            except Exception as extract_err:
+                logging.getLogger(__name__).warning(
+                    "[stream_new_chat] partial extraction failed: %s", extract_err
+                )
+                partial = None
+            if partial:
+                logging.getLogger(__name__).warning(
+                    "[stream_new_chat] yielding partial analysis: %d completed, %d errored",
+                    partial["completed_count"], partial["errored_count"],
+                )
+                import uuid as _uuid
+                _tid = _uuid.uuid4().hex[:12]
+                yield streaming_service.format_text_start(_tid)
+                yield streaming_service.format_text_delta(_tid, partial["message"])
+                yield streaming_service.format_text_end(_tid)
+                yield streaming_service.format_finish_step()
+                yield streaming_service.format_finish()
+                yield streaming_service.format_done()
+                return
+
         error_message = f"Error during chat: {e!s}"
         print(f"[stream_new_chat] {error_message}")
         print(f"[stream_new_chat] Exception type: {type(e).__name__}")
@@ -1847,7 +1970,7 @@ async def stream_resume_chat(
 
         config = {
             "configurable": {"thread_id": str(chat_id)},
-            "recursion_limit": 80,
+            "recursion_limit": _AGENT_RECURSION_LIMIT,
         }
 
         yield streaming_service.format_message_start()
@@ -1915,6 +2038,39 @@ async def stream_resume_chat(
 
     except Exception as e:
         import traceback
+
+        error_str = str(e)
+        is_rate_limit = (
+            "rate limit" in error_str.lower()
+            or "429" in error_str
+            or type(e).__name__ == "RateLimitError"
+        )
+        if is_rate_limit:
+            _rate_limit_state.mark_rate_limited()
+            logging.getLogger(__name__).warning(
+                "[stream_resume_chat] rate_limit caught — future comprehensive queries will spawn sequentially"
+            )
+            try:
+                partial = await _extract_partial_analysis(agent, config)
+            except Exception as extract_err:
+                logging.getLogger(__name__).warning(
+                    "[stream_resume_chat] partial extraction failed: %s", extract_err
+                )
+                partial = None
+            if partial:
+                logging.getLogger(__name__).warning(
+                    "[stream_resume_chat] yielding partial analysis: %d completed, %d errored",
+                    partial["completed_count"], partial["errored_count"],
+                )
+                import uuid as _uuid
+                _tid = _uuid.uuid4().hex[:12]
+                yield streaming_service.format_text_start(_tid)
+                yield streaming_service.format_text_delta(_tid, partial["message"])
+                yield streaming_service.format_text_end(_tid)
+                yield streaming_service.format_finish_step()
+                yield streaming_service.format_finish()
+                yield streaming_service.format_done()
+                return
 
         error_message = f"Error during resume: {e!s}"
         print(f"[stream_resume_chat] {error_message}")

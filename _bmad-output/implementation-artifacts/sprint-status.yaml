@@ -35,9 +35,13 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-04-24T18:00:00+07:00
+last_updated: 2026-04-25T00:30:00+07:00
 project: Nowing
 # 2026-04-24: Story 0.3 review complete (2 MAJOR fixed inline, 4 MINOR deferred)
+# 2026-04-25: Story 0.6b (Tier 3 paced sequential escalation) scope-in — E2E verified, code merged, docs updated
+# 2026-04-25: Story 0.6b AC8/AC9 extension — SubAgentResilienceMiddleware + partial-synthesis fallback. E2E verified with 0/6 agents scenario → graceful UI response (no more "Sorry, there was an error")
+# 2026-04-25 late: Story 0.6b AC10 — min-interval gate (no bursts possible) + unbounded retry with wall-clock cap. E2E at 8 RPM showed 50+ gate-spacings, 0 stream-fatal 429s, only 3 transient retries across 17+ min. Architecture proven: at any RPM ≥ 1, system pacing guarantees completion.
+# 2026-04-25 evening: Story 0.6b AC11 — Synthesis Mode (no respawn loop). Strip task tool + tool_choice=none + replace directive when pending=[]. LDO token query (chat_id=30) produced full markdown analysis with Copy/Download buttons enabled. Final text output guaranteed regardless of provider RPM.
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/planning-artifacts/stories"
@@ -106,6 +110,7 @@ development_status:
   0-4-api-integration-tests: done
   0-5-parallel-execution-validation: done
   0-6-error-handling-fallback: done
+  0-6b-rate-limit-paced-escalation: review  # Tier 3 code + docs done, pending unit tests + canary
   epic-0-retrospective: optional
 
   # ─── EPIC 9: Crypto Orchestra (Phased rollout 1→2→3) ───

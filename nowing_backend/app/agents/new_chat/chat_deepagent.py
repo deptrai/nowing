@@ -17,7 +17,10 @@ import asyncio
 import contextvars
 import json
 import logging
+import os
+import threading
 import time
+from collections import deque
 from collections.abc import Sequence
 from typing import Any
 
@@ -201,6 +204,368 @@ _prl_step_start: contextvars.ContextVar[float | None] = contextvars.ContextVar(
 )
 
 
+class _RateLimitState:
+    """Thread-safe tracker for recent LLM 429 rate-limit events.
+
+    Escalation levels (feeds ParallelSpawnDirectiveMiddleware spawn strategy):
+      0 = clean             → Tier 1 (parallel 6-at-once)
+      1 = under pressure    → Tier 2 (natural sequential, 1 per LangGraph turn)
+      2 = sustained pressure → Tier 3 (paced sequential with forced asyncio.sleep
+                               between agent emissions + protected synthesis retry)
+    """
+
+    def __init__(
+        self, cooldown_seconds: float = 60.0, escalation_threshold: int = 3
+    ) -> None:
+        self._last_ts: float = 0.0
+        self._cooldown = cooldown_seconds
+        self._lock = threading.Lock()
+        self._consecutive_events: int = 0
+        self._escalation_threshold = escalation_threshold
+
+    def mark_rate_limited(self) -> None:
+        with self._lock:
+            now = time.time()
+            if (now - self._last_ts) < self._cooldown:
+                self._consecutive_events += 1
+            else:
+                self._consecutive_events = 1
+            self._last_ts = now
+
+    def refresh_pressure(self) -> None:
+        """Push cooldown timer forward without incrementing the 429 counter.
+
+        Used during Tier 3 paced runs so the multi-minute sequential spawn
+        doesn't let the cooldown expire mid-run — which would revert the
+        next turn to Tier 1 parallel spawn and re-trigger the cascade.
+        """
+        with self._lock:
+            if self._consecutive_events > 0:
+                self._last_ts = time.time()
+
+    def is_under_pressure(self) -> bool:
+        with self._lock:
+            if (time.time() - self._last_ts) >= self._cooldown:
+                self._consecutive_events = 0
+                return False
+            return self._consecutive_events >= 1
+
+    def escalation_level(self) -> int:
+        """0 = clean, 1 = natural sequential, 2 = paced sequential."""
+        with self._lock:
+            if (time.time() - self._last_ts) >= self._cooldown:
+                self._consecutive_events = 0
+                return 0
+            if self._consecutive_events >= self._escalation_threshold:
+                return 2
+            return 1 if self._consecutive_events >= 1 else 0
+
+    @property
+    def cooldown_seconds(self) -> float:
+        return self._cooldown
+
+
+_rate_limit_state = _RateLimitState(
+    cooldown_seconds=float(os.getenv("CRYPTO_ORCHESTRA_RATE_LIMIT_COOLDOWN", "60")),
+    escalation_threshold=int(os.getenv("CRYPTO_ORCHESTRA_ESCALATION_THRESHOLD", "3")),
+)
+
+_PACED_DELAY_SECONDS = float(os.getenv("CRYPTO_ORCHESTRA_PACED_DELAY_SECONDS", "7"))
+
+
+def _already_spawned_agents(messages: list[Any]) -> set[str]:
+    """Scan message history for prior `task(subagent_type=...)` tool calls.
+
+    Used to resume a comprehensive-query orchestration after sequential
+    degradation, so we don't re-spawn agents that already ran.
+    """
+    spawned: set[str] = set()
+    for msg in messages:
+        tool_calls = getattr(msg, "tool_calls", None)
+        if tool_calls is None and isinstance(msg, dict):
+            tool_calls = msg.get("tool_calls")
+        if not tool_calls:
+            continue
+        for tc in tool_calls:
+            if isinstance(tc, dict):
+                tc_name = tc.get("name")
+                tc_args = tc.get("args") or {}
+            else:
+                tc_name = getattr(tc, "name", None)
+                tc_args = getattr(tc, "args", {}) or {}
+            if tc_name != "task":
+                continue
+            subtype = tc_args.get("subagent_type") if isinstance(tc_args, dict) else None
+            if subtype:
+                spawned.add(subtype)
+    return spawned
+
+
+_PROVIDER_RPM_LIMIT = int(os.getenv("PROVIDER_RPM_LIMIT", "0"))  # 0 = disabled
+_PROVIDER_RATE_WINDOW_SECONDS = float(os.getenv("PROVIDER_RATE_WINDOW_SECONDS", "60"))
+_PROVIDER_RATE_MAX_WAIT_SECONDS = float(os.getenv("PROVIDER_RATE_MAX_WAIT_SECONDS", "90"))
+
+
+class _GlobalRateBucket:
+    """Module-level minimum-interval pacer shared across ALL agent instances.
+
+    Instantiated once, referenced by every ProviderRateLimitMiddleware + the
+    monkey-patched ChatLiteLLM entrypoints so sub-agents, KB planner, and main
+    orchestrator ALL share a single serialization queue.
+
+    Design note (2026-04-25): previously used count-per-window token bucket
+    which allowed bursts (8 calls in <10ms could all pass when slots were
+    empty). Provider saw burst → 429 cascade. Now uses **strict minimum
+    inter-call interval** = `window_seconds / max_rpm`. At 10 RPM →
+    6s between any two provider calls. At 1 RPM → 60s. Bursts mathematically
+    impossible.
+
+    Serialization is enforced by `asyncio.Lock` held across both the spacing
+    wait AND the timestamp update, so parallel callers queue behind each
+    other rather than racing past the check.
+    """
+
+    def __init__(self, max_rpm: int, window_seconds: float, max_wait_seconds: float) -> None:
+        self.max_rpm = max_rpm
+        self.window = window_seconds
+        self.max_wait = max_wait_seconds
+        self.min_interval = (window_seconds / max_rpm) if max_rpm > 0 else 0.0
+        self._last_call_ts: float = 0.0
+        self._lock: asyncio.Lock | None = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
+
+    async def acquire(self) -> None:
+        if self.max_rpm <= 0:
+            return
+        async with self._get_lock():
+            now = time.time()
+            if self._last_call_ts > 0:
+                elapsed = now - self._last_call_ts
+                if elapsed < self.min_interval:
+                    wait_for = min(self.min_interval - elapsed, self.max_wait)
+                    _agent_log.info(
+                        "provider_rate_gate: spacing %.1fs before next call "
+                        "(min_interval=%.1fs, elapsed=%.1fs)",
+                        wait_for, self.min_interval, elapsed,
+                    )
+                    await asyncio.sleep(wait_for)
+            # Record AFTER the sleep so the next caller sees the actual
+            # dispatch moment, not the arrival moment.
+            self._last_call_ts = time.time()
+
+
+_global_rate_bucket = _GlobalRateBucket(
+    max_rpm=_PROVIDER_RPM_LIMIT,
+    window_seconds=_PROVIDER_RATE_WINDOW_SECONDS,
+    max_wait_seconds=_PROVIDER_RATE_MAX_WAIT_SECONDS,
+)
+
+
+def _install_global_chat_litellm_rate_gate() -> None:
+    """Monkey-patch ChatLiteLLM's async entrypoints so EVERY LLM call (agent
+    middleware chain, KB planner, sub-agents, ad-hoc `llm.ainvoke`) passes
+    through `_global_rate_bucket.acquire()` before hitting the provider.
+
+    Idempotent — guards against double-wrapping on module reload.
+    No-op when PROVIDER_RPM_LIMIT == 0 (bucket.acquire returns immediately).
+    """
+    if getattr(_install_global_chat_litellm_rate_gate, "_installed", False):
+        return
+    try:
+        from langchain_litellm import ChatLiteLLM as _CLL
+    except ImportError:
+        return
+
+    _orig_agenerate = _CLL._agenerate
+    _orig_astream = _CLL._astream
+
+    async def _gated_agenerate(self: Any, *args: Any, **kwargs: Any) -> Any:
+        await _global_rate_bucket.acquire()
+        return await _orig_agenerate(self, *args, **kwargs)
+
+    async def _gated_astream(self: Any, *args: Any, **kwargs: Any) -> Any:
+        await _global_rate_bucket.acquire()
+        async for chunk in _orig_astream(self, *args, **kwargs):
+            yield chunk
+
+    _CLL._agenerate = _gated_agenerate  # type: ignore[method-assign]
+    _CLL._astream = _gated_astream  # type: ignore[method-assign]
+    _install_global_chat_litellm_rate_gate._installed = True  # type: ignore[attr-defined]
+    if _PROVIDER_RPM_LIMIT > 0:
+        _agent_log.info(
+            "provider_rate_gate: installed ChatLiteLLM gate (%d RPM / %.0fs window "
+            "→ min_interval=%.1fs between calls)",
+            _PROVIDER_RPM_LIMIT, _PROVIDER_RATE_WINDOW_SECONDS,
+            _global_rate_bucket.min_interval,
+        )
+
+
+def _disable_litellm_internal_retry_when_gated() -> None:
+    """When the global rate gate is active, disable LiteLLM's internal 429 retry.
+
+    Rationale: LiteLLM's default retry (3×, exponential backoff) amplifies 1
+    logical call → up to 3 physical calls. That would let us exceed the
+    `PROVIDER_RPM_LIMIT` budget by 3× and still hit provider 429. Our gate
+    already paces requests intelligently; LiteLLM retry is redundant AND
+    counter-productive when the gate is configured. No-op if gate disabled.
+    """
+    if _PROVIDER_RPM_LIMIT <= 0:
+        return
+    try:
+        import litellm
+        litellm.num_retries = 0
+        _agent_log.info(
+            "provider_rate_gate: disabled litellm.num_retries (gate handles pacing)"
+        )
+    except ImportError:
+        pass
+
+
+_install_global_chat_litellm_rate_gate()
+_disable_litellm_internal_retry_when_gated()
+
+
+class ProviderRateLimitMiddleware(AgentMiddleware):
+    """Global token-bucket rate limiter for LLM calls.
+
+    Enforces ≤ PROVIDER_RPM_LIMIT calls per rolling PROVIDER_RATE_WINDOW_SECONDS
+    across EVERY LLM invocation in the agent stack (main orchestrator, sub-agents,
+    KB planner, synthesis). When the bucket is full, `awrap_model_call` sleeps
+    until the oldest slot ages out — guaranteeing we never trigger provider 429.
+
+    Every instance (main + sub-agent) shares the module-level `_global_rate_bucket`
+    singleton so sub-agents spawned via SubAgentMiddleware can't bypass the cap.
+
+    Zero-cost when `PROVIDER_RPM_LIMIT == 0` (disabled).
+    """
+
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        await _global_rate_bucket.acquire()
+        return await handler(request)
+
+
+_SUBAGENT_RETRY_MAX_WALL_SECONDS = float(
+    os.getenv("SUBAGENT_RETRY_MAX_WALL_SECONDS", "900")  # 15 minutes absolute cap
+)
+_SUBAGENT_RETRY_BASE_BACKOFF = float(
+    os.getenv("SUBAGENT_RETRY_BASE_BACKOFF", "5")
+)
+_SUBAGENT_RETRY_MAX_BACKOFF = float(
+    os.getenv("SUBAGENT_RETRY_MAX_BACKOFF", "120")
+)
+
+
+class SubAgentResilienceMiddleware(AgentMiddleware):
+    """Intercept `task()` tool calls to retry indefinitely on rate-limit.
+
+    When a sub-agent raises `RateLimitError`, deepagents' `atask()` propagates
+    it raw which would kill the LangGraph stream. This middleware retries the
+    sub-agent with **exponential backoff capped by wall-clock time** (default
+    15 minutes). Rate-limit errors are transient by definition — given enough
+    spacing, they always resolve. We don't artificially cap attempts.
+
+    Retry schedule (configurable via env):
+      - Base: 5s, doubling each attempt → 5, 10, 20, 40, 80, 120, 120, 120, ...
+      - Capped at `SUBAGENT_RETRY_MAX_BACKOFF` (default 120s)
+      - Absolute wall-clock cap: `SUBAGENT_RETRY_MAX_WALL_SECONDS` (default 900s)
+
+    Only after wall-clock exhaustion do we convert to an error ToolMessage so
+    the main agent can still synthesize with remaining agents. Non-rate-limit
+    exceptions bubble up immediately (no retry — likely real bugs).
+
+    Combined with the min-interval `_GlobalRateBucket` gate, rate-limit errors
+    should be extremely rare — this middleware is a safety net for edge cases
+    (clock skew, provider drift, shared-key contention from other processes).
+    """
+
+    async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
+        from langchain_core.messages import ToolMessage
+        from litellm.exceptions import RateLimitError as _LiteLLMRateLimit
+
+        tool_call = request.tool_call if hasattr(request, "tool_call") else {}
+        tool_name = (
+            tool_call.get("name") if isinstance(tool_call, dict)
+            else getattr(tool_call, "name", None)
+        )
+        if tool_name != "task":
+            return await handler(request)
+
+        args = (
+            tool_call.get("args") if isinstance(tool_call, dict)
+            else getattr(tool_call, "args", {})
+        ) or {}
+        subagent_type = args.get("subagent_type", "unknown")
+        tool_call_id = (
+            tool_call.get("id") if isinstance(tool_call, dict)
+            else getattr(tool_call, "id", None)
+        )
+
+        started_at = time.time()
+        attempt = 0
+        last_exc: Exception | None = None
+
+        while True:
+            try:
+                return await handler(request)
+            except Exception as exc:
+                err = str(exc).lower()
+                is_rl = (
+                    isinstance(exc, _LiteLLMRateLimit)
+                    or "rate limit" in err
+                    or "ratelimiterror" in err
+                    or "429" in err
+                )
+                if not is_rl:
+                    raise
+                last_exc = exc
+                attempt += 1
+                elapsed = time.time() - started_at
+
+                if elapsed >= _SUBAGENT_RETRY_MAX_WALL_SECONDS:
+                    _agent_log.error(
+                        "subagent_exhausted: %s gave up after %d attempts / %.0fs — "
+                        "returning error ToolMessage",
+                        subagent_type, attempt, elapsed,
+                    )
+                    try:
+                        GRACEFUL_DEGRADATION_COUNTER.labels(
+                            outcome="subagent_exhausted"
+                        ).inc()
+                    except Exception:
+                        pass
+                    return ToolMessage(
+                        content=(
+                            f"⚠️ Sub-agent **{subagent_type}** could not complete after "
+                            f"{attempt} retries across {elapsed:.0f}s. Main agent should "
+                            f"synthesize using the remaining sub-agents' outputs. "
+                            f"Error: {last_exc!s}"
+                        ),
+                        tool_call_id=tool_call_id or "",
+                        status="error",
+                        name="task",
+                    )
+
+                delay = min(
+                    _SUBAGENT_RETRY_BASE_BACKOFF * (2 ** (attempt - 1)),
+                    _SUBAGENT_RETRY_MAX_BACKOFF,
+                )
+                _agent_log.warning(
+                    "subagent_retry: %s attempt %d (elapsed %.0fs) hit rate_limit, "
+                    "sleeping %.0fs",
+                    subagent_type, attempt, elapsed, delay,
+                )
+                try:
+                    GRACEFUL_DEGRADATION_COUNTER.labels(outcome="subagent_retry").inc()
+                except Exception:
+                    pass
+                _rate_limit_state.mark_rate_limited()
+                await asyncio.sleep(delay)
+
+
 class ParallelSpawnDirectiveMiddleware(AgentMiddleware):
     """Injects a parallel-spawn mandate into both system message and last human message.
 
@@ -244,6 +609,25 @@ CRITICAL RULES:
         "investment-grade analysis", "comprehensive review",
     )
 
+    # Priority-ordered list (name, description-template) for synthetic bypass.
+    # Under rate-limit pressure, agents are spawned one-at-a-time in this order.
+    # Easy-Wins Tier (tokenomics + defillama + yield) first — deterministic APIs,
+    # less likely to hit external provider limits; Chainlens-heavy agents last.
+    _COMPREHENSIVE_AGENTS: list[tuple[str, str]] = [
+        ("tokenomics_analyst",
+         "Analyze token supply, vesting, distribution, and inflation mechanics for: {q}"),
+        ("defillama_analyst",
+         "Analyze on-chain TVL and DeFi metrics for: {q}"),
+        ("yield_optimizer",
+         "Find best yield opportunities with risk tiers for: {q}"),
+        ("smart_contract_analyst",
+         "Analyze smart contract security for: {q}"),
+        ("news_analyst",
+         "Find latest news and market developments for: {q}"),
+        ("sentiment_analyst",
+         "Analyze market sentiment and fear/greed data for: {q}"),
+    ]
+
     async def awrap_model_call(self, request: Any, handler: Any) -> Any:
         import uuid
         from langchain_core.messages import AIMessage, HumanMessage
@@ -273,76 +657,273 @@ CRITICAL RULES:
                 break
 
         if is_comprehensive and ModelResponse is not None:
-            # Synthetic bypass: return 6 parallel task() calls WITHOUT invoking the LLM
-            # (4 Epic 0.2 base crypto agents + tokenomics_analyst Story 9.1 + yield_optimizer Story 9.4).
-            # This guarantees all spawns happen in a single LangGraph step (AC1/AC2).
+            # Synthetic bypass: build task() calls WITHOUT invoking the LLM.
+            # Normal path: emit ALL remaining agents in one turn → LangGraph spawns them in
+            # parallel (AC1/AC2 from Phase 1 Quality Gate).
+            # Under rate-limit pressure: emit ONLY the next single agent → LangGraph loops
+            # back into this middleware after it completes, we re-scan history, and emit the
+            # next one. Natural sequential pacing without asyncio.gather.
             short_q = query_content[:300]
+            already_spawned = _already_spawned_agents(messages)
+            pending = [
+                (name, desc) for name, desc in self._COMPREHENSIVE_AGENTS
+                if name not in already_spawned
+            ]
+
+            # Tier 3 Option C: under sustained pressure, cap the analysis to
+            # the top-2 deterministic-API agents (tokenomics + defillama).
+            # Guarantees a useful partial answer in ~30-45s instead of failing
+            # on the full 6-agent orchestra under strict RPM providers.
+            if pending and not already_spawned and _rate_limit_state.escalation_level() >= 2:
+                _agent_log.warning(
+                    "rate_limit_reduced_scope (Tier 3): capping analysis to %d/%d "
+                    "agents (%s) to guarantee completion under rate-limit pressure",
+                    2, len(self._COMPREHENSIVE_AGENTS),
+                    [p[0] for p in pending[:2]],
+                )
+                try:
+                    GRACEFUL_DEGRADATION_COUNTER.labels(outcome="rate_limit_reduced_scope").inc()
+                except Exception:
+                    pass
+                pending = pending[:2]
+
+            if not pending:
+                # All 6 already spawned → FORCE synthesis. Without stripping the `task`
+                # tool, the LLM sees (possibly errored) sub-agent outputs and decides
+                # "let me retry them" → emits 6 fresh task() calls → infinite respawn
+                # loop until recursion_limit kills stream with no text output.
+                #
+                # Fix (2026-04-25): strip `task` tool from request.tools + add strong
+                # synthesis directive to system message. LLM has NO mechanism to
+                # re-spawn — must emit text answer from existing ToolMessages.
+                from deepagents.middleware._utils import append_to_system_message
+                _SYNTHESIS_DIRECTIVE = """
+
+# ====================================================================
+# SYNTHESIS MODE — OVERRIDES ALL PREVIOUS INSTRUCTIONS
+# ====================================================================
+
+IMPORTANT: Any previous instructions telling you to "call task() for all 6
+sub-agents" are now OBSOLETE. That phase is COMPLETE. The sub-agents have
+ALREADY been spawned and their results are in the ToolMessages above.
+
+## Your ONLY task now:
+
+1. **DO NOT CALL task()**. The task tool has been REMOVED from your available
+   tools. It is NOT in the tool list. Attempting to call it will fail. Do not
+   emit any `task()` tool_call in your response.
+
+2. **DO NOT CALL any tool**. This is the FINAL synthesis step. Zero tool calls.
+
+3. **Read the existing ToolMessages above** — each one is a result from a
+   sub-agent (tokenomics_analyst, defillama_analyst, yield_optimizer,
+   smart_contract_analyst, news_analyst, sentiment_analyst). Some may contain
+   error messages like "rate limit exhausted" — that is EXPECTED, it's the
+   graceful-degradation signal.
+
+4. **Write the final markdown analysis NOW** — comprehensive, citing each
+   sub-agent's findings by name. For errored sub-agents, note transparently:
+   "smart_contract_analyst could not complete due to rate limit — security
+   analysis not available in this response."
+
+5. **Respond with TEXT ONLY**. Your response must contain analysis text, NOT
+   tool_calls. The response structure must have non-empty `content` and NO
+   `tool_calls` field.
+
+Start writing the final markdown analysis on the next line. Begin immediately
+with a heading like "# Phân tích toàn diện [token]" — no preamble."""
+
+                # NOTE: do NOT append self._DIRECTIVE here — it says "call 6 task()"
+                # which CONTRADICTS the synthesis directive and causes the LLM to
+                # hallucinate task() tool_calls even after we stripped the task tool.
+                # Only the synthesis directive should be appended in this mode.
+                new_sys = append_to_system_message(
+                    request.system_message,
+                    _SYNTHESIS_DIRECTIVE,
+                )
+                # Strip `task` tool so the LLM cannot emit task() — synthesis mode.
+                def _tool_name(t: Any) -> str | None:
+                    if isinstance(t, dict):
+                        return t.get("name")
+                    return getattr(t, "name", None)
+                tools_without_task = [
+                    t for t in request.tools if _tool_name(t) != "task"
+                ]
+                if len(tools_without_task) < len(request.tools):
+                    _agent_log.info(
+                        "synthesis_mode: stripped task tool (tools %d→%d), forcing final text",
+                        len(request.tools), len(tools_without_task),
+                    )
+                synth_request = request.override(
+                    system_message=new_sys,
+                    messages=messages,
+                    tools=tools_without_task,
+                    tool_choice="none",  # Providers that respect this will skip any tool_call
+                )
+
+                # Synthesis retry: unbounded exponential backoff until success or
+                # wall-clock cap. Same philosophy as SubAgentResilienceMiddleware.
+                from litellm.exceptions import RateLimitError as _LiteLLMRateLimit
+                synth_started = time.time()
+                synth_attempt = 0
+                while True:
+                    try:
+                        return await handler(synth_request)
+                    except Exception as exc:
+                        err = str(exc).lower()
+                        is_rl = (
+                            isinstance(exc, _LiteLLMRateLimit)
+                            or "rate limit" in err
+                            or "429" in err
+                        )
+                        if not is_rl:
+                            raise
+                        synth_attempt += 1
+                        elapsed = time.time() - synth_started
+                        if elapsed >= _SUBAGENT_RETRY_MAX_WALL_SECONDS:
+                            raise  # let stream-level partial extraction handle it
+                        delay = min(
+                            _SUBAGENT_RETRY_BASE_BACKOFF * (2 ** (synth_attempt - 1)),
+                            _SUBAGENT_RETRY_MAX_BACKOFF,
+                        )
+                        _agent_log.warning(
+                            "synthesis_retry: attempt %d (elapsed %.0fs) hit 429, "
+                            "sleeping %.0fs",
+                            synth_attempt, elapsed, delay,
+                        )
+                        _rate_limit_state.mark_rate_limited()
+                        await asyncio.sleep(delay)
+
+            escalation = _rate_limit_state.escalation_level()
+            under_pressure = escalation >= 1
+            batch = pending[:1] if under_pressure else pending
+
+            # Fix 3c — respawn-loop detection. If we're about to emit the exact same
+            # agent-batch signature as the previous synthetic bypass, that means the
+            # main agent has somehow looped back without progress (pending recomputation
+            # missed an agent, or deepagents surfaced a stale state). Force synthesis
+            # path to break the cycle.
+            current_sig = tuple(sorted(name for name, _ in batch))
+            prev_sig = getattr(self, "_last_batch_sig", None)
+            self._last_batch_sig = current_sig  # type: ignore[attr-defined]
+            if prev_sig == current_sig and len(already_spawned) >= 1:
+                _agent_log.warning(
+                    "respawn_loop_detected: batch=%s (already_spawned=%s) — forcing "
+                    "synthesis path to break cycle",
+                    current_sig, sorted(already_spawned),
+                )
+                try:
+                    GRACEFUL_DEGRADATION_COUNTER.labels(outcome="respawn_loop_break").inc()
+                except Exception:
+                    pass
+                # Jump to synthesis path by clearing the pending signature state so
+                # subsequent turns don't re-trigger this branch.
+                self._last_batch_sig = None  # type: ignore[attr-defined]
+                # Use Fix 3a synthesis path directly (tool stripped + directive).
+                from deepagents.middleware._utils import append_to_system_message
+                _LOOP_BREAK_DIRECTIVE = """
+
+## SYNTHESIS MODE (respawn loop detected) — CRITICAL
+
+You appear to be repeating the same sub-agent spawn. That is not useful — the
+previous spawn's results are already in the ToolMessage history above. Stop.
+DO NOT call task() or any tool. Write the final markdown analysis NOW using
+the existing ToolMessages. If some sub-agents errored, acknowledge and
+synthesize with what's available."""
+                # Same rule as Fix 3a: skip _DIRECTIVE to avoid contradictory
+                # "call 6 task()" instruction bleeding into synthesis mode.
+                new_sys = append_to_system_message(
+                    request.system_message,
+                    _LOOP_BREAK_DIRECTIVE,
+                )
+                def _tool_name_lb(t: Any) -> str | None:
+                    return t.get("name") if isinstance(t, dict) else getattr(t, "name", None)
+                tools_no_task = [t for t in request.tools if _tool_name_lb(t) != "task"]
+                return await handler(request.override(
+                    system_message=new_sys,
+                    messages=messages,
+                    tools=tools_no_task,
+                    tool_choice="none",
+                ))
+
+            if escalation >= 2:
+                # Tier 3: forced pacing — wait for rate-limit window to recover before
+                # emitting the next agent. Guarantees completion at the cost of latency.
+                _agent_log.warning(
+                    "rate_limit_paced (Tier 3): sleeping %.1fs before spawning %s "
+                    "(%d/%d remaining)",
+                    _PACED_DELAY_SECONDS, batch[0][0], len(pending),
+                    len(self._COMPREHENSIVE_AGENTS),
+                )
+                try:
+                    GRACEFUL_DEGRADATION_COUNTER.labels(outcome="rate_limit_paced").inc()
+                except Exception:
+                    pass
+                await asyncio.sleep(_PACED_DELAY_SECONDS)
+                # Keep pressure state hot: without this, cooldown (60s) would expire
+                # mid-paced-run and the next turn would revert to Tier 1 parallel spawn,
+                # re-triggering the rate-limit cascade we just degraded from.
+                _rate_limit_state.refresh_pressure()
+            elif under_pressure:
+                _agent_log.warning(
+                    "rate_limit_degraded (Tier 2): spawning sequentially "
+                    "(next=%s, %d/%d remaining)",
+                    batch[0][0], len(pending), len(self._COMPREHENSIVE_AGENTS),
+                )
+                try:
+                    GRACEFUL_DEGRADATION_COUNTER.labels(outcome="rate_limit_degraded").inc()
+                except Exception:  # metric registry may reject unknown label values
+                    pass
+
             synthetic_ai = AIMessage(
                 content="",
                 tool_calls=[
                     {
                         "name": "task",
                         "args": {
-                            "subagent_type": "defillama_analyst",
-                            "description": f"Analyze on-chain TVL and DeFi metrics for: {short_q}",
+                            "subagent_type": name,
+                            "description": desc.format(q=short_q),
                         },
                         "id": uuid.uuid4().hex[:8],
                         "type": "tool_call",
-                    },
-                    {
-                        "name": "task",
-                        "args": {
-                            "subagent_type": "sentiment_analyst",
-                            "description": f"Analyze market sentiment and fear/greed data for: {short_q}",
-                        },
-                        "id": uuid.uuid4().hex[:8],
-                        "type": "tool_call",
-                    },
-                    {
-                        "name": "task",
-                        "args": {
-                            "subagent_type": "news_analyst",
-                            "description": f"Find latest news and market developments for: {short_q}",
-                        },
-                        "id": uuid.uuid4().hex[:8],
-                        "type": "tool_call",
-                    },
-                    {
-                        "name": "task",
-                        "args": {
-                            "subagent_type": "smart_contract_analyst",
-                            "description": f"Analyze smart contract security for: {short_q}",
-                        },
-                        "id": uuid.uuid4().hex[:8],
-                        "type": "tool_call",
-                    },
-                    {
-                        "name": "task",
-                        "args": {
-                            "subagent_type": "tokenomics_analyst",
-                            "description": f"Analyze token supply, vesting, distribution, and inflation mechanics for: {short_q}",
-                        },
-                        "id": uuid.uuid4().hex[:8],
-                        "type": "tool_call",
-                    },
-                    {
-                        "name": "task",
-                        "args": {
-                            "subagent_type": "yield_optimizer",
-                            "description": f"Find best yield opportunities with risk tiers for: {short_q}",
-                        },
-                        "id": uuid.uuid4().hex[:8],
-                        "type": "tool_call",
-                    },
+                    }
+                    for name, desc in batch
                 ],
             )
             return ModelResponse(result=[synthetic_ai])
 
-        # Non-comprehensive query: inject directive into system message and delegate to LLM
+        # Non-comprehensive query: inject directive into system message and delegate to LLM.
+        # Wrap with RateLimitError catch so a 429 on the main orchestrator doesn't abort
+        # the entire stream — instead emit a gentle status message and let LangGraph retry.
         from deepagents.middleware._utils import append_to_system_message
 
         new_sys = append_to_system_message(request.system_message, self._DIRECTIVE)
-        return await handler(request.override(system_message=new_sys, messages=messages))
+        try:
+            return await handler(request.override(system_message=new_sys, messages=messages))
+        except Exception as exc:
+            err_str = str(exc).lower()
+            is_rate_limit = (
+                "rate limit" in err_str
+                or "ratelimiterror" in err_str
+                or "429" in err_str
+            )
+            if not is_rate_limit:
+                raise
+            _rate_limit_state.mark_rate_limited()
+            _agent_log.warning(
+                "Main orchestrator rate-limited (%s) — emitting placeholder AI message "
+                "to keep stream alive; comprehensive queries will degrade to sequential.",
+                type(exc).__name__,
+            )
+            try:
+                GRACEFUL_DEGRADATION_COUNTER.labels(outcome="rate_limit_degraded").inc()
+            except Exception:
+                pass
+            if ModelResponse is not None:
+                return ModelResponse(result=[AIMessage(
+                    content="⏳ Hệ thống đang quá tải nhẹ, tôi sẽ xử lý yêu cầu theo tuần tự để bảo đảm chất lượng…",
+                )])
+            raise
 
     def wrap_model_call(self, request: Any, handler: Any) -> Any:
         return handler(request)
@@ -553,11 +1134,22 @@ class ParallelismTelemetryMiddleware(AgentMiddleware):
                 continue
             new_tool_messages += 1
             if error_str is not None:
+                error_type = self._classify_error_type(error_str)
                 AGENT_ERRORS_COUNTER.labels(
                     agent_name=str(name),
-                    error_type=self._classify_error_type(error_str),
+                    error_type=error_type,
                 ).inc()
                 new_errors += 1
+                # Feed rate-limit signal back to the module-level state so
+                # ParallelSpawnDirectiveMiddleware degrades the next comprehensive
+                # query from parallel-6 to sequential-1 spawn.
+                if error_type == "rate_limit":
+                    _rate_limit_state.mark_rate_limited()
+                    _agent_log.warning(
+                        "rate_limit_detected agent=%s — future comprehensive queries "
+                        "will spawn sequentially for %.0fs",
+                        name, _rate_limit_state.cooldown_seconds,
+                    )
             if tcid:
                 if len(self._counted_tool_call_ids) >= self._MAX_COUNTED_TOOL_CALLS:
                     self._counted_tool_call_ids.clear()
@@ -884,6 +1476,9 @@ async def create_nowing_deep_agent(
     # context injection, no per-call mutation.
     def _build_gp_middleware() -> list[Any]:
         return [
+            # Shared global rate gate — every sub-agent LLM call passes through
+            # the same token bucket as the main orchestrator (see _global_rate_bucket).
+            ProviderRateLimitMiddleware(),
             TodoListMiddleware(),
             _memory_middleware,
             NowingFilesystemMiddleware(
@@ -988,6 +1583,12 @@ async def create_nowing_deep_agent(
 
     # Main agent middleware
     deepagent_middleware = [
+        # Global token-bucket — runs FIRST so every downstream LLM call passes through.
+        # No-op when PROVIDER_RPM_LIMIT == 0 (default).
+        ProviderRateLimitMiddleware(),
+        # Sub-agent resilience: retry task() on rate-limit, convert terminal failures
+        # to error ToolMessage so main agent synthesizes with whatever succeeded.
+        SubAgentResilienceMiddleware(),
         TodoListMiddleware(),
         _memory_middleware,
         KnowledgeBaseSearchMiddleware(

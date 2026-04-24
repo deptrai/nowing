@@ -1,5 +1,19 @@
 # Deferred Work
 
+## Resolved 2026-04-25 — Lost partial work on rate-limit (Story 0.6b AC8/AC9)
+
+- **Sub-agent 429 killed entire stream + discarded all completed sub-agents' outputs** — deepagents `atask()` had no try/except → exception killed LangGraph stream → user saw "Sorry, there was an error" despite N/6 agents succeeding. **Resolved** by Story 0.6b Layer 4: `SubAgentResilienceMiddleware` (AC8) retries + converts to error ToolMessage; `_extract_partial_analysis` (AC9) salvages from checkpointer when synthesis itself fails. User **always** sees graceful partial result.
+
+## Resolved 2026-04-24 — Rate-limit sustained-pressure gap (Story 0.6b)
+
+- **`chat_deepagent.py` Tier 2 still fails on strict-RPM providers** — E2E smoke against TrollLLM 10 RPM showed Tier 2 natural sequential is still faster than rolling RPM window once KB planner + synthesis calls accumulate. **Resolved** by Story 0.6b (Tier 3 paced sequential with `asyncio.sleep(7)` + retry on synthesis). See [0-6b-rate-limit-paced-escalation.md](../planning-artifacts/stories/0-6b-rate-limit-paced-escalation.md).
+
+## Still deferred from Story 0.6b (scope-limited follow-up)
+
+- **Unit tests for escalation + resilience logic** [tests/integration/agents/test_rate_limit_escalation.py] — Story 0.6b T5 marked optional. E2E smoke verified (2026-04-25, scenario: 0/6 agents completed → partial analysis rendered, no crash), but unit coverage not yet written: `test_consecutive_events_promote_level`, `test_paced_emission_sleeps`, `test_synthesis_retries_on_rate_limit`, `test_subagent_resilience_retry_then_error_toolmessage`, `test_extract_partial_analysis_from_checkpoint`.
+- **Grafana dashboard rows** — new metric labels emitted (`rate_limit_paced`, `rate_limit_reduced_scope`, `subagent_retry`, `subagent_exhausted`) but dashboard panels not yet updated. Owner: DevOps (Week 3 telemetry setup per sprint plan).
+- **Resumable partial analysis FE button** — BE endpoint `stream_resume_chat` already loads checkpoint state, but no FE UI yet to trigger resume after partial. User currently re-sends full query. Defer to Phase 2 UX polish.
+
 ## Deferred from: code review of story 3-5-model-selection-via-quota (2026-04-14)
 
 - **stripe_subscription_id has no unique constraint** [nowing_backend/app/db.py] — Column added without UNIQUE constraint. Should be enforced once Stripe integration (Epic 5) is implemented to prevent duplicate subscription mappings.
