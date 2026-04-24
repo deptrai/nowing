@@ -415,5 +415,5 @@ Identical to Story 9.1:
 
 ---
 
-**Status**: ready-for-dev ✅ (blocked on Epic 0, Epic 0 stories 0.4-0.6, Story 9.1)
+**Status**: review
 **Next**: Phase 1 COMPLETE sau Story 9.4 → Quality Gate Review → Phase 2 (9.2 + 9.5).

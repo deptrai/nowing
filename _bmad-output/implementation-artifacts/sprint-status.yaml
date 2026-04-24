@@ -113,7 +113,7 @@ development_status:
 
   # Phase 1 — Easy Wins Tier (deterministic APIs)
   9-1-tokenomics-analyst: done
-  9-4-yield-optimizer: in-progress
+  9-4-yield-optimizer: review
   9-FE-1-orchestra-conductor-strip-citation-stacking: in-progress
   phase-1-quality-gate-review: backlog
 
