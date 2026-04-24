@@ -1,7 +1,7 @@
 """Wiring + structural tests for Story 0.2: Base Sub-Agents.
 
 Covers:
-- AC4: SubAgentMiddleware registers 5 agents (structural source check)
+- AC4: SubAgentMiddleware registers 7 agents (structural source check)
 - AC10 / NFR-CS4: each sub-agent spec uses a fresh middleware factory call
   (not a shared mutable instance) — structural source check
 - P1 regression: no spec dict uses ``"prompt"`` key (must be ``"system_prompt"``)
@@ -277,8 +277,13 @@ _CRYPTO_AGENTS = [
 def test_prompt_only_references_scoped_tools(
     agent_name: str, prompt: str, allowed: tuple[str, ...]
 ) -> None:
-    """Every tool named in a prompt's 'Use <tool>' lines must be in the agent's scope."""
-    mentioned = set(re.findall(r"\bUse\s+(get_[a-z_]+|check_[a-z_]+|chainlens_deep_research)\b", prompt))
+    """Every tool named in a prompt's 'Use/Call <tool>' lines must be in the agent's scope."""
+    # Matches both "Use get_foo" (defillama/sentiment/news/smart_contract/tokenomics pattern)
+    # and "Call get_foo" / "call get_foo" (yield_optimizer pattern).
+    mentioned = set(re.findall(
+        r"\b(?:Use|Call|call)\s+(get_[a-z_]+|check_[a-z_]+|chainlens_deep_research)\b",
+        prompt,
+    ))
     allowed_set = set(allowed)
     unscoped = mentioned - allowed_set
     assert not unscoped, (

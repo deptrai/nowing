@@ -358,7 +358,7 @@ class TestParallelismTelemetryMiddlewareUnit:
 
     @pytest.mark.asyncio
     async def test_parallel_task_calls_no_warning(self, caplog):
-        """No warning when 5 task() calls appear in a single LLM step (full crypto suite)."""
+        """No warning when 6 task() calls appear in a single LLM step (full crypto suite)."""
         import logging
         from langchain_core.messages import AIMessage
         from app.agents.new_chat.chat_deepagent import ParallelismTelemetryMiddleware
