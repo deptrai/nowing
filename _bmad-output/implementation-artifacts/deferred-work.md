@@ -253,3 +253,14 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **DoD-6 P95 benchmark not yet executed** — `TestParallelismRatioBenchmark` + `TestSpeedGate` require ~50 min + real API budget for 100 queries × 4 agents. Blocked on decision about how to gate slow-LLM tests (env flag / VCR / mocked LLM).
 - **DoD-7 Grafana/Datadog dashboard + alerts** — 2 histogram metrics (`crypto_orchestra_parallelism_ratio`, `crypto_orchestra_full_suite_duration_seconds`) are defined but no dashboard panel or P95-ratio-alert config exists. Out-of-code infra artifact; deferred until Phase 1 goes live.
 - **DoD-8 Parallelism ratio interpretation doc** — Ops runbook explaining what P50/P75/P95 values mean, common causes of elevated ratio, and fallback when gate fails. Doc task, deferred.
+
+## Deferred from: code review of story 0-6-error-handling-fallback (2026-04-24)
+
+- **respx catch-all `.pass_through()` with real HTTP in tests** — testing infra concern; structural orchestration tests pass-through unmocked URLs which could hit real services. Not story scope. [test_graceful_degradation.py]
+- **Counter label cardinality risk with free-form `agent_name="unknown"`** — speculative TSDB bloat risk if agent names vary per request; monitor in production. [chat_deepagent.py:_track_degradation]
+- **Pure-LLM failures (no ToolMessages) invisible to `GRACEFUL_DEGRADATION_COUNTER`** — design decision: current scope tracks tool-layer degradation only. Revisit if LLM-level failures become common. [chat_deepagent.py:_track_degradation]
+- **`respx>=0.23.1` added only to `dev` dep group** — tests are dev-only, prod `ImportError` at collection not a real path. [pyproject.toml]
+- **Dashboard panel "Degradation Rate" gauge (DoD-8)** — Grafana artifact not in diff; ops needs panel showing `sum(rate(crypto_orchestra_graceful_degradation_total{outcome=~"success|partial"})) / sum(rate(crypto_orchestra_graceful_degradation_total))` ≥ 98%. Out-of-code infra task. [spec:DoD-8]
+- **AC9 anti-hallucination assertion missing** — spec requires "KHÔNG hallucinate fake data"; automatic verification hard without a golden-response dataset. [test_graceful_degradation.py:test_catastrophic_failure_returns_honest_message]
+- **AC2 `<35s` timing assertion missing** — respx raises immediately so timing is naturally bounded; adding `time.perf_counter()` wrap would be belt-and-suspenders. [test_graceful_degradation.py:test_goplus_timeout_returns_error_dict]
+- **AC4/AC5/AC6 content-verification tests** — LLM-guarded tests exist but aren't enforced. Defer to nightly pipeline with `ANTHROPIC_API_KEY`; structural tests fill the "no crash" gap. (Decision D1 from code review) [test_graceful_degradation.py:TestAgentLevelFallback]

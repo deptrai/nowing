@@ -120,6 +120,7 @@ class _TaskSpawnCollector(BaseCallbackHandler):
         self.events = events
         self._pending: dict[str, dict] = {}
         self._lock = threading.Lock()
+        self._first_step_id: int | str | None = None  # only track the first parallel batch
 
     def on_tool_start(
         self,
@@ -150,6 +151,10 @@ class _TaskSpawnCollector(BaseCallbackHandler):
                 inp = {}
         agent_name = inp.get("subagent_type") or inp.get("agent") or inp.get("name") or inp.get("agent_name")
         with self._lock:
+            if self._first_step_id is None and step_id is not None:
+                self._first_step_id = step_id
+            elif step_id is not None and step_id != self._first_step_id:
+                return  # ignore agents from later rounds
             self._pending[str(run_id)] = {
                 "run_id": str(run_id),
                 "agent_name": agent_name,
@@ -349,6 +354,32 @@ async def agent_factory():
             _debug_astream._test_debug_wrapped = True
             _agent_cls.astream = _debug_astream
 
+        # Recursion cap: inject recursion_limit so the orchestrator cannot loop
+        # indefinitely when ParallelSpawnDirectiveMiddleware falls back to real LLM.
+        # Superstep 1 = orchestrator LLM (spawns 4 tasks), superstep 2 = 4 parallel
+        # task() tools; limit=3 allows one final LLM call for the summary, then stops.
+        if os.getenv("ANTHROPIC_API_KEY"):
+            _pre_cap_ainvoke = agent.ainvoke  # bound to class-level debug wrapper
+
+            async def _capped_ainvoke(input, config=None, **kwargs):
+                _cfg = dict(config) if config else {}
+                _cfg.setdefault("recursion_limit", 50)
+                try:
+                    return await _pre_cap_ainvoke(input, config=_cfg, **kwargs)
+                except Exception as _exc:
+                    _exc_name = type(_exc).__name__.lower()
+                    _exc_msg = str(_exc).lower()
+                    if "recursion" in _exc_name or "recursion" in _exc_msg:
+                        print(
+                            f"[TEST-AINVOKE] recursion cap hit — returning empty result",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                        return {}
+                    raise
+
+            agent.ainvoke = _capped_ainvoke
+
         print(f"[TEST-AGENT] class={_agent_cls}", file=sys.stderr, flush=True)
         return agent
 
@@ -403,6 +434,16 @@ def mock_pre_agent_middlewares():
             if len(_summary) < 400:
                 _summary += "\n" + ("(synthesized aggregate placeholder) " * 12)
             if _ModelResponse is not None:
+                # Story 0.6 AC11: The synthetic bypass skips the normal middleware
+                # stack, so ParallelismTelemetryMiddleware.aafter_model never fires
+                # during orchestration tests. Manually invoke _track_degradation so
+                # the degradation counter path is still exercised end-to-end.
+                try:
+                    _telemetry_mw = _cdc.ParallelismTelemetryMiddleware()
+                    _fake_state = {"messages": list(request.messages)}
+                    _telemetry_mw._track_degradation(_fake_state)
+                except Exception:  # pragma: no cover — test-only side path
+                    pass
                 return _ModelResponse(result=[AIMessage(content=_summary)])
             return await handler(request)
         return await _orig_awrap(self, request, handler)

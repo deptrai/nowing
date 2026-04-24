@@ -1,7 +1,7 @@
 """Prometheus metrics for crypto orchestra parallelism monitoring."""
 
 try:
-    from prometheus_client import Histogram
+    from prometheus_client import Counter, Histogram
 
     PARALLELISM_RATIO_HISTOGRAM = Histogram(
         "crypto_orchestra_parallelism_ratio",
@@ -16,6 +16,18 @@ try:
         buckets=[5, 10, 20, 30, 45, 60, 75, 90, 120, float("inf")],
     )
 
+    AGENT_ERRORS_COUNTER = Counter(
+        "crypto_orchestra_agent_errors_total",
+        "Number of sub-agent errors by agent name and error type",
+        labelnames=["agent_name", "error_type"],
+    )
+
+    GRACEFUL_DEGRADATION_COUNTER = Counter(
+        "crypto_orchestra_graceful_degradation_total",
+        "Number of requests by degradation outcome: success, partial, or failed",
+        labelnames=["outcome"],
+    )
+
 except (ImportError, ValueError):
     # prometheus_client not installed — provide no-op stubs so tests skip gracefully
     class _NoOpHistogram:
@@ -25,5 +37,14 @@ except (ImportError, ValueError):
         def labels(self, *args, **kwargs) -> "_NoOpHistogram":
             return self
 
+    class _NoOpCounter:
+        def inc(self, *args, **kwargs) -> None:
+            pass
+
+        def labels(self, *args, **kwargs) -> "_NoOpCounter":
+            return self
+
     PARALLELISM_RATIO_HISTOGRAM = _NoOpHistogram()  # type: ignore[assignment]
     FULL_SUITE_DURATION_HISTOGRAM = _NoOpHistogram()  # type: ignore[assignment]
+    AGENT_ERRORS_COUNTER = _NoOpCounter()  # type: ignore[assignment]
+    GRACEFUL_DEGRADATION_COUNTER = _NoOpCounter()  # type: ignore[assignment]

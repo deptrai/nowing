@@ -87,6 +87,7 @@ dev = [
     "pytest-mock>=3.14",
     "pytest-xdist>=3.5",
     "httpx>=0.28.1",
+    "respx>=0.23.1",
 ]
 
 [tool.ruff]

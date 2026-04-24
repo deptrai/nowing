@@ -15,6 +15,7 @@ summarisation, prompt-caching, etc.).
 
 import asyncio
 import contextvars
+import json
 import logging
 import time
 from collections.abc import Sequence
@@ -47,7 +48,11 @@ from app.agents.new_chat.system_prompt import (
     build_configurable_system_prompt,
     build_nowing_system_prompt,
 )
-from app.observability.metrics import FULL_SUITE_DURATION_HISTOGRAM
+from app.observability.metrics import (
+    AGENT_ERRORS_COUNTER,
+    FULL_SUITE_DURATION_HISTOGRAM,
+    GRACEFUL_DEGRADATION_COUNTER,
+)
 from app.agents.new_chat.subagents.crypto.defillama_spec import (
     DEFILLAMA_ALLOWED_TOOLS,
     DEFILLAMA_ANALYST_DESCRIPTION,
@@ -178,8 +183,9 @@ _agent_log = logging.getLogger("app.agents")
 
 # ContextVar to pass model-call start time from abefore_model to aafter_model.
 # Each async task/step gets its own copy, so concurrent agent calls don't interfere.
-_prl_step_start: contextvars.ContextVar[float] = contextvars.ContextVar(
-    "_prl_step_start", default=0.0
+# Default is None (sentinel) so callers can detect "never set" and avoid inflated elapsed.
+_prl_step_start: contextvars.ContextVar[float | None] = contextvars.ContextVar(
+    "_prl_step_start", default=None
 )
 
 
@@ -219,7 +225,7 @@ CRITICAL RULES:
         "phân tích toàn diện", "full analysis", "comprehensive", "đánh giá toàn diện",
         "investment analysis", "phân tích tổng thể", "full crypto analysis", "full review",
         "đánh giá chi tiết", "đánh giá investment", "phân tích chi tiết", "đánh giá đầy đủ",
-        "phân tích tổng thể", "investment-grade analysis", "comprehensive review",
+        "investment-grade analysis", "comprehensive review",
     )
 
     async def awrap_model_call(self, request: Any, handler: Any) -> Any:
@@ -229,6 +235,11 @@ CRITICAL RULES:
         try:
             from langchain.agents.middleware.types import ModelResponse
         except ImportError:
+            _agent_log.warning(
+                "ParallelSpawnDirectiveMiddleware: langchain.agents.middleware.types.ModelResponse "
+                "not found — comprehensive queries will fall back to LLM-delegated spawning "
+                "instead of guaranteed parallel bypass. AC1/AC2 may be unreliable."
+            )
             ModelResponse = None
 
         # Detect comprehensive query in the last HumanMessage
@@ -314,6 +325,14 @@ class ParallelismTelemetryMiddleware(AgentMiddleware):
     - Callable middleware:   await mw(state, config, next_fn)  (used in tests)
     """
 
+    # Bounded dedupe of tool_call_ids already counted. Prevents double-counting when
+    # the middleware fires across multiple model steps re-scanning accumulated state.
+    _MAX_COUNTED_TOOL_CALLS = 10000
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._counted_tool_call_ids: set[str] = set()
+
     async def __call__(self, state: Any, config: Any, next_middleware: Any) -> Any:
         """Callable middleware interface for testing and pipeline composition.
 
@@ -321,8 +340,10 @@ class ParallelismTelemetryMiddleware(AgentMiddleware):
         """
         _prl_step_start.set(time.perf_counter())
         result_state = await next_middleware(state, config)
-        _elapsed = time.perf_counter() - _prl_step_start.get(time.perf_counter())
+        _start = _prl_step_start.get()
+        _elapsed = time.perf_counter() - _start if _start is not None else 0.0
         self._check_spawn_pattern(result_state, _elapsed)
+        self._track_degradation(result_state)
         return result_state
 
     async def abefore_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
@@ -330,8 +351,10 @@ class ParallelismTelemetryMiddleware(AgentMiddleware):
         return None
 
     async def aafter_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
-        _elapsed = time.perf_counter() - _prl_step_start.get(time.perf_counter())
+        _start = _prl_step_start.get()
+        _elapsed = time.perf_counter() - _start if _start is not None else 0.0
         self._check_spawn_pattern(state, _elapsed)
+        self._track_degradation(state)
         return None
 
     def _check_spawn_pattern(self, state: Any, elapsed: float) -> None:
@@ -399,6 +422,133 @@ class ParallelismTelemetryMiddleware(AgentMiddleware):
                 _query_snippet,
             )
             FULL_SUITE_DURATION_HISTOGRAM.labels(agents_count="1").observe(elapsed)
+
+    @staticmethod
+    def _extract_error_from_content(content: Any) -> str | None:
+        """Return error-string if ToolMessage content carries `{"error": <truthy>}`.
+
+        Handles three content shapes:
+          - JSON-encoded string (most common tool output)
+          - dict passed directly
+          - list of content blocks (multimodal); scan each block
+        """
+        candidates: list[Any] = []
+        if isinstance(content, str):
+            try:
+                candidates.append(json.loads(content))
+            except (ValueError, TypeError):
+                return None
+        elif isinstance(content, dict):
+            candidates.append(content)
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict):
+                    candidates.append(block)
+                elif isinstance(block, str):
+                    try:
+                        candidates.append(json.loads(block))
+                    except (ValueError, TypeError):
+                        continue
+        for c in candidates:
+            if isinstance(c, dict):
+                err = c.get("error")
+                if err:  # truthy check — reject {"error": null}
+                    return str(err)
+        return None
+
+    @staticmethod
+    def _classify_error_type(error_msg: str) -> str:
+        """Map an error string to a bounded error_type label.
+
+        Uses precise markers (word-boundary regex for HTTP status codes) instead of
+        substring matches to avoid misclassifying messages like "5000ms".
+        """
+        import re
+
+        msg = error_msg.lower()
+        # Rate-limit wins when the phrase appears verbatim OR the HTTP 429 code
+        if "rate limit" in msg or re.search(r"\b429\b", msg):
+            return "rate_limit"
+        if "timeout" in msg:
+            return "timeout"
+        if re.search(r"\b5\d{2}\b", msg) or "server error" in msg or "httpstatuserror" in msg:
+            return "server_error"
+        if "network" in msg or "networkerror" in msg:
+            return "network_error"
+        return "unknown"
+
+    def _track_degradation(self, state: Any) -> None:
+        """Inspect ToolMessages for agent errors and track degradation metrics.
+
+        Dedupes by `tool_call_id` so each error is counted at most once across the
+        repeated middleware invocations that occur throughout a multi-step
+        orchestration. Emits `GRACEFUL_DEGRADATION_COUNTER` only when new tool
+        messages have arrived this invocation (otherwise the outcome counter
+        would inflate by the number of model steps).
+        """
+        if isinstance(state, dict):
+            messages = state.get("messages") or []
+        else:
+            messages = getattr(state, "messages", None) or []
+
+        # Count newly-arrived ToolMessages (dedupe by tool_call_id).
+        new_tool_messages = 0
+        new_errors = 0
+        total_tool_messages = 0  # across entire state
+        total_errors = 0
+        for msg in messages:
+            if isinstance(msg, dict):
+                msg_type = msg.get("type") or msg.get("role") or ""
+                tcid = msg.get("tool_call_id") or msg.get("id") or ""
+                name = msg.get("name") or "unknown"
+                content = msg.get("content", "")
+            else:
+                msg_type = getattr(msg, "type", None) or getattr(msg, "role", None) or ""
+                tcid = getattr(msg, "tool_call_id", None) or getattr(msg, "id", None) or ""
+                name = getattr(msg, "name", None) or "unknown"
+                content = getattr(msg, "content", "")
+            if msg_type != "tool":
+                continue
+            total_tool_messages += 1
+            error_str = self._extract_error_from_content(content)
+            if error_str is not None:
+                total_errors += 1
+            already_counted = bool(tcid) and tcid in self._counted_tool_call_ids
+            if already_counted:
+                continue
+            new_tool_messages += 1
+            if error_str is not None:
+                AGENT_ERRORS_COUNTER.labels(
+                    agent_name=str(name),
+                    error_type=self._classify_error_type(error_str),
+                ).inc()
+                new_errors += 1
+            if tcid:
+                if len(self._counted_tool_call_ids) >= self._MAX_COUNTED_TOOL_CALLS:
+                    self._counted_tool_call_ids.clear()
+                self._counted_tool_call_ids.add(tcid)
+
+        # Only emit the outcome counter when something actually changed this step.
+        # Without this guard, every model step after orchestration completes would
+        # re-emit the same outcome, inflating the rate metric.
+        if new_tool_messages == 0:
+            return
+
+        if total_errors == 0:
+            outcome = "success"
+        elif total_errors < total_tool_messages:
+            outcome = "partial"
+        else:
+            outcome = "failed"
+
+        GRACEFUL_DEGRADATION_COUNTER.labels(outcome=outcome).inc()
+        _agent_log.debug(
+            "degradation_tracking: tool_messages=%d errors=%d new=%d outcome=%s",
+            total_tool_messages,
+            total_errors,
+            new_tool_messages,
+            outcome,
+        )
 
 
 # =============================================================================
