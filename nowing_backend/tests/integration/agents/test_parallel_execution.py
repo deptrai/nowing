@@ -28,6 +28,7 @@ _EXPECTED_AGENTS = {
     "sentiment_analyst",
     "news_analyst",
     "smart_contract_analyst",
+    "tokenomics_analyst",  # Story 9.1
 }
 
 
@@ -47,7 +48,8 @@ class TestParallelOrchestration:
 
     @pytest.mark.integration
     async def test_comprehensive_query_triggers_parallel_spawn(self, agent_factory):
-        """AC1: Comprehensive analysis triggers parallel spawn of 4 base crypto agents."""
+        """AC1: Comprehensive analysis triggers parallel spawn of 5 crypto agents
+        (4 Epic 0.2 base agents + tokenomics_analyst from Story 9.1)."""
         agent = await agent_factory(user_id="00000000-0000-0000-0000-000000000001", search_space_id=1)
 
         trace_events: list[dict[str, Any]] = []
@@ -355,7 +357,7 @@ class TestParallelismTelemetryMiddlewareUnit:
 
     @pytest.mark.asyncio
     async def test_parallel_task_calls_no_warning(self, caplog):
-        """No warning when 4 task() calls appear in a single LLM step."""
+        """No warning when 5 task() calls appear in a single LLM step (full crypto suite)."""
         import logging
         from langchain_core.messages import AIMessage
         from app.agents.new_chat.chat_deepagent import ParallelismTelemetryMiddleware
@@ -365,7 +367,7 @@ class TestParallelismTelemetryMiddlewareUnit:
             content="",
             tool_calls=[
                 {"name": "task", "args": {"agent": f"agent_{i}"}, "id": f"tc{i}", "type": "tool_call"}
-                for i in range(4)
+                for i in range(5)
             ],
         )
         result_state = {"messages": [ai_msg]}
@@ -406,12 +408,12 @@ class TestParallelismTelemetryMiddlewareUnit:
 
         mw = ParallelismTelemetryMiddleware()
 
-        # Input has no messages; result carries 4 parallel task calls (no warning expected)
+        # Input has no messages; result carries 5 parallel task calls (no warning expected)
         ai_msg = AIMessage(
             content="",
             tool_calls=[
                 {"name": "task", "args": {"agent": f"a_{i}"}, "id": f"tc{i}", "type": "tool_call"}
-                for i in range(4)
+                for i in range(5)
             ],
         )
         result_state = {"messages": [ai_msg]}

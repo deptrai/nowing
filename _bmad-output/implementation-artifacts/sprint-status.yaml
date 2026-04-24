@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-04-24T14:00:00+07:00
+last_updated: 2026-04-24T17:30:00+07:00
 project: Nowing
 # 2026-04-24: Story 0.3 review complete (2 MAJOR fixed inline, 4 MINOR deferred)
 project_key: NOKEY
@@ -112,7 +112,7 @@ development_status:
   epic-9: backlog
 
   # Phase 1 — Easy Wins Tier (deterministic APIs)
-  9-1-tokenomics-analyst: ready-for-dev
+  9-1-tokenomics-analyst: done
   9-4-yield-optimizer: ready-for-dev
   9-FE-1-orchestra-conductor-strip-citation-stacking: in-progress
   phase-1-quality-gate-review: backlog

@@ -84,12 +84,11 @@ def _collect_dict_keys(node: ast.AST) -> list[list[str]]:
 
 
 # ---------------------------------------------------------------------------
-# AC4: SubAgentMiddleware registers exactly 5 agents
+# Story 9.1: SubAgentMiddleware registers exactly 6 agents
 # ---------------------------------------------------------------------------
 
-def test_subagent_middleware_registers_five_specs(chat_deepagent_source: str) -> None:
-    """AC4: SubAgentMiddleware(subagents=[...]) must include all 5 specs."""
-    # Pattern: subagents=[ ... ] — find the list literal after the keyword arg.
+def test_subagent_middleware_registers_six_specs(chat_deepagent_source: str) -> None:
+    """Story 9.1: SubAgentMiddleware(subagents=[...]) must include all 6 specs."""
     m = re.search(
         r"SubAgentMiddleware\(\s*[^)]*?subagents\s*=\s*\[([^\]]+)\]",
         chat_deepagent_source,
@@ -103,6 +102,7 @@ def test_subagent_middleware_registers_five_specs(chat_deepagent_source: str) ->
         "sentiment_analyst_spec",
         "news_analyst_spec",
         "smart_contract_analyst_spec",
+        "tokenomics_analyst_spec",
     ]
     for name in expected:
         assert name in block, f"Spec '{name}' not registered in SubAgentMiddleware"
@@ -131,12 +131,13 @@ def test_no_spec_uses_prompt_key_instead_of_system_prompt(
 
 
 def test_every_crypto_spec_uses_system_prompt_key(chat_deepagent_source: str) -> None:
-    """Each of the 4 crypto analyst specs must use the ``system_prompt`` key."""
+    """Each of the 5 crypto analyst specs must use the ``system_prompt`` key."""
     for const in (
         "DEFILLAMA_ANALYST_PROMPT",
         "SENTIMENT_ANALYST_PROMPT",
         "NEWS_ANALYST_PROMPT",
         "SMART_CONTRACT_ANALYST_PROMPT",
+        "TOKENOMICS_ANALYST_PROMPT",
     ):
         pattern = rf'"system_prompt"\s*:\s*{const}\b'
         assert re.search(pattern, chat_deepagent_source), (

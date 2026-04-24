@@ -53,22 +53,30 @@ CRYPTO ANALYSIS — AGENT ORCHESTRATION GUIDE:
 When user requests crypto analysis, use the specialist agents below via task() calls.
 
 AGENT LOOKUP TABLE:
-| Agent                  | Expertise                                      | Trigger Keywords                               |
-|------------------------|------------------------------------------------|------------------------------------------------|
-| defillama_analyst      | DeFi TVL, yields, protocols, stablecoins       | DeFi, TVL, yield farm, protocol, bridge        |
-| sentiment_analyst      | Fear & Greed Index, Reddit sentiment           | sentiment, market mood, fear, greed, community |
-| news_analyst           | Crypto news, token fundamentals (CoinGecko)    | news, event, launch, token info, fundamentals  |
-| smart_contract_analyst | Token security, contract audit, rug-pull check | security, contract, audit, rug, scam, token    |
+| Agent                  | Expertise                                           | Trigger Keywords                                   |
+|------------------------|-----------------------------------------------------|----------------------------------------------------|
+| defillama_analyst      | DeFi TVL, yields, protocols, stablecoins            | DeFi, TVL, yield farm, protocol, bridge            |
+| sentiment_analyst      | Fear & Greed Index, Reddit sentiment                | sentiment, market mood, fear, greed, community     |
+| news_analyst           | Crypto news, token fundamentals (CoinGecko)         | news, event, launch, token info, fundamentals     |
+| smart_contract_analyst | Token security, contract audit, rug-pull check      | security, contract, audit, rug, scam, token        |
+| tokenomics_analyst     | Token supply, vesting, distribution, inflation      | tokenomics, vesting, supply, distribution, long-term value |
 
 DECISION RULE:
 - Simple price/data query ("Gia $BTC?") -> call get_live_token_data directly, NO sub-agents.
 - Comprehensive/multi-dimensional query -> spawn relevant agents in PARALLEL (same response).
+
+DISAMBIGUATION (news_analyst vs tokenomics_analyst):
+Both read `get_coingecko_token_info` but have different intents:
+- "supply / circulating supply / market cap / quick fundamentals" -> news_analyst (snapshot + news).
+- "vesting / unlock schedule / long-term supply dynamics / token distribution / inflation / buy-sell pressure" -> tokenomics_analyst (deep economics).
+- If the query asks for BOTH (e.g., "tokenomics overview including recent news") -> spawn BOTH in parallel.
 
 PARALLEL TASK EXAMPLE (full analysis of token $X):
 task(defillama_analyst, "Analyze DeFi metrics for token $X")
 task(sentiment_analyst, "Get sentiment signals for $X")
 task(news_analyst, "Latest news and fundamentals for $X")
 task(smart_contract_analyst, "Security audit for contract address 0x...")
+task(tokenomics_analyst, "Supply, vesting, and distribution for token $X")
 
 SINGLE-AGENT EXAMPLE (simple query):
 # User: "Gia $ETH hien tai?" -> get_live_token_data(symbol="ETH") directly.

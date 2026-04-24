@@ -32,6 +32,12 @@ from app.agents.new_chat.subagents.crypto.smart_contract_spec import (
     SMART_CONTRACT_ANALYST_NAME,
     SMART_CONTRACT_ANALYST_PROMPT,
 )
+from app.agents.new_chat.subagents.crypto.tokenomics_spec import (
+    TOKENOMICS_ALLOWED_TOOLS,
+    TOKENOMICS_ANALYST_DESCRIPTION,
+    TOKENOMICS_ANALYST_NAME,
+    TOKENOMICS_ANALYST_PROMPT,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -45,6 +51,7 @@ from app.agents.new_chat.subagents.crypto.smart_contract_spec import (
         ("sentiment_analyst", SENTIMENT_ANALYST_PROMPT),
         ("news_analyst", NEWS_ANALYST_PROMPT),
         ("smart_contract_analyst", SMART_CONTRACT_ANALYST_PROMPT),
+        ("tokenomics_analyst", TOKENOMICS_ANALYST_PROMPT),
     ],
 )
 def test_prompts_under_token_budget(label: str, prompt: str) -> None:
@@ -67,6 +74,7 @@ def test_prompts_under_token_budget(label: str, prompt: str) -> None:
         (SENTIMENT_ANALYST_NAME, SENTIMENT_ANALYST_DESCRIPTION, SENTIMENT_ANALYST_PROMPT),
         (NEWS_ANALYST_NAME, NEWS_ANALYST_DESCRIPTION, NEWS_ANALYST_PROMPT),
         (SMART_CONTRACT_ANALYST_NAME, SMART_CONTRACT_ANALYST_DESCRIPTION, SMART_CONTRACT_ANALYST_PROMPT),
+        (TOKENOMICS_ANALYST_NAME, TOKENOMICS_ANALYST_DESCRIPTION, TOKENOMICS_ANALYST_PROMPT),
     ],
 )
 def test_spec_constants_are_non_empty_strings(name: str, description: str, prompt: str) -> None:
@@ -77,12 +85,13 @@ def test_spec_constants_are_non_empty_strings(name: str, description: str, promp
 
 
 def test_agent_names_are_unique() -> None:
-    """All 4 agent names must be distinct."""
+    """All 5 agent names must be distinct."""
     names = [
         DEFILLAMA_ANALYST_NAME,
         SENTIMENT_ANALYST_NAME,
         NEWS_ANALYST_NAME,
         SMART_CONTRACT_ANALYST_NAME,
+        TOKENOMICS_ANALYST_NAME,
     ]
     assert len(names) == len(set(names)), f"Duplicate agent names: {names}"
 
@@ -139,6 +148,7 @@ _DEFILLAMA_ALLOWED = DEFILLAMA_ALLOWED_TOOLS
 _SENTIMENT_ALLOWED = SENTIMENT_ALLOWED_TOOLS
 _NEWS_ALLOWED = NEWS_ALLOWED_TOOLS
 _SMART_CONTRACT_ALLOWED = SMART_CONTRACT_ALLOWED_TOOLS
+_TOKENOMICS_ALLOWED = TOKENOMICS_ALLOWED_TOOLS
 
 
 @pytest.mark.parametrize(
@@ -148,6 +158,7 @@ _SMART_CONTRACT_ALLOWED = SMART_CONTRACT_ALLOWED_TOOLS
         ("sentiment_analyst", _SENTIMENT_ALLOWED),
         ("news_analyst", _NEWS_ALLOWED),
         ("smart_contract_analyst", _SMART_CONTRACT_ALLOWED),
+        ("tokenomics_analyst", _TOKENOMICS_ALLOWED),
     ],
 )
 def test_tool_scoping_only_includes_allowed_tools(label: str, allowed: tuple[str, ...]) -> None:
@@ -184,12 +195,13 @@ def test_smart_contract_does_not_have_defillama_tools() -> None:
 
 
 def test_chainlens_available_to_all_crypto_agents() -> None:
-    """chainlens_deep_research must be available to all 4 crypto agents."""
+    """chainlens_deep_research must be available to all 5 crypto agents."""
     for label, allowed in [
         ("defillama_analyst", _DEFILLAMA_ALLOWED),
         ("sentiment_analyst", _SENTIMENT_ALLOWED),
         ("news_analyst", _NEWS_ALLOWED),
         ("smart_contract_analyst", _SMART_CONTRACT_ALLOWED),
+        ("tokenomics_analyst", _TOKENOMICS_ALLOWED),
     ]:
         scoped_names = {t.name for t in _scope(allowed)}
         assert "chainlens_deep_research" in scoped_names, (
@@ -205,10 +217,56 @@ def test_unrelated_tools_excluded_from_all_crypto_agents() -> None:
         ("sentiment_analyst", _SENTIMENT_ALLOWED),
         ("news_analyst", _NEWS_ALLOWED),
         ("smart_contract_analyst", _SMART_CONTRACT_ALLOWED),
+        ("tokenomics_analyst", _TOKENOMICS_ALLOWED),
     ]:
         scoped_names = {t.name for t in _scope(allowed)}
         leaked = scoped_names & unrelated
         assert not leaked, f"{label} has unrelated tools: {leaked}"
+
+
+# ---------------------------------------------------------------------------
+# Story 9.1 AC3 — explicit: tokenomics has exactly the expected 2 tools
+# ---------------------------------------------------------------------------
+
+def test_tokenomics_has_exactly_coingecko_and_chainlens() -> None:
+    """Story 9.1 AC3: tokenomics_analyst must have ONLY get_coingecko_token_info
+    and chainlens_deep_research — nothing else."""
+    assert set(TOKENOMICS_ALLOWED_TOOLS) == {
+        "get_coingecko_token_info",
+        "chainlens_deep_research",
+    }
+
+
+def test_tokenomics_does_not_have_defi_or_security_tools() -> None:
+    """Story 9.1 AC3: tokenomics must not accidentally see DeFiLlama, GoPlus,
+    or CryptoPanic tools (scope isolation)."""
+    tokenomics = set(TOKENOMICS_ALLOWED_TOOLS)
+    forbidden = {
+        "get_defillama_protocol", "get_defillama_tvl_overview",
+        "get_defillama_yields", "get_defillama_stablecoins", "get_defillama_bridges",
+        "check_token_security", "get_contract_info",
+        "get_crypto_news", "get_cmc_sentiment", "get_reddit_crypto_sentiment",
+    }
+    leaked = tokenomics & forbidden
+    assert not leaked, f"tokenomics_analyst has unexpected tools: {leaked}"
+
+
+def test_tokenomics_tools_are_stateless() -> None:
+    """Story 9.1 AC4 (NFR-CS4): both tokenomics tools must declare requires=[]
+    in ToolDefinition so the agent can spawn fresh per request without DB/session
+    context."""
+    from app.agents.new_chat.tools.registry import BUILTIN_TOOLS
+
+    by_name = {td.name: td for td in BUILTIN_TOOLS}
+    for tool_name in TOKENOMICS_ALLOWED_TOOLS:
+        assert tool_name in by_name, (
+            f"tokenomics tool {tool_name!r} missing from BUILTIN_TOOLS registry"
+        )
+        td = by_name[tool_name]
+        assert td.requires == [], (
+            f"tokenomics tool {tool_name!r} must be stateless (requires=[]), "
+            f"got requires={td.requires!r}. NFR-CS4 violated."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +290,7 @@ def test_allowed_tools_exist_in_real_registry() -> None:
         ("sentiment_analyst", SENTIMENT_ALLOWED_TOOLS),
         ("news_analyst", NEWS_ALLOWED_TOOLS),
         ("smart_contract_analyst", SMART_CONTRACT_ALLOWED_TOOLS),
+        ("tokenomics_analyst", TOKENOMICS_ALLOWED_TOOLS),
     ]:
         missing = set(allowed) - registered
         assert not missing, (
@@ -242,14 +301,15 @@ def test_allowed_tools_exist_in_real_registry() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Patch #5: assert SubAgentMiddleware registers exactly 5 sub-agents
+# Story 9.1: assert SubAgentMiddleware registers exactly 6 sub-agents
+# (general_purpose + 4 Epic 0.2 base crypto agents + tokenomics_analyst)
 # ---------------------------------------------------------------------------
 
-def test_subagent_middleware_registers_five_agents() -> None:
-    """chat_deepagent.py must wire exactly 5 sub-agents (general_purpose + 4 crypto).
+def test_subagent_middleware_registers_six_agents() -> None:
+    """chat_deepagent.py must wire exactly 6 sub-agents after Story 9.1.
 
     Greps the source for the SubAgentMiddleware(...) block to verify the
-    subagents= list contains exactly the expected 5 spec references. This
+    subagents= list contains exactly the expected 6 spec references. This
     guards against accidental additions/removals without test coverage.
     """
     import re
@@ -264,6 +324,7 @@ def test_subagent_middleware_registers_five_agents() -> None:
     source = source_path.read_text(encoding="utf-8")
 
     # Match SubAgentMiddleware(...) call and extract the subagents=[...] list.
+    # Strip inline comments so `tokenomics_analyst_spec,  # Story 9.1` parses.
     match = re.search(
         r"SubAgentMiddleware\s*\(\s*.*?subagents\s*=\s*\[(.*?)\]\s*,?\s*\)",
         source,
@@ -272,6 +333,8 @@ def test_subagent_middleware_registers_five_agents() -> None:
     assert match, "Could not locate SubAgentMiddleware(subagents=[...]) in chat_deepagent.py"
 
     subagents_block = match.group(1)
+    # Remove inline comments before splitting by comma.
+    cleaned = re.sub(r"#[^\n]*", "", subagents_block)
 
     expected_specs = {
         "general_purpose_spec",
@@ -279,9 +342,10 @@ def test_subagent_middleware_registers_five_agents() -> None:
         "sentiment_analyst_spec",
         "news_analyst_spec",
         "smart_contract_analyst_spec",
+        "tokenomics_analyst_spec",
     }
     found_specs = {
-        token.strip() for token in subagents_block.split(",") if token.strip()
+        token.strip() for token in cleaned.split(",") if token.strip()
     }
 
     assert found_specs == expected_specs, (
@@ -289,6 +353,6 @@ def test_subagent_middleware_registers_five_agents() -> None:
         f"  Expected: {sorted(expected_specs)}\n"
         f"  Found:    {sorted(found_specs)}"
     )
-    assert len(found_specs) == 5, (
-        f"Expected exactly 5 sub-agents, got {len(found_specs)}: {sorted(found_specs)}"
+    assert len(found_specs) == 6, (
+        f"Expected exactly 6 sub-agents, got {len(found_specs)}: {sorted(found_specs)}"
     )

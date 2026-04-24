@@ -264,3 +264,12 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **AC9 anti-hallucination assertion missing** — spec requires "KHÔNG hallucinate fake data"; automatic verification hard without a golden-response dataset. [test_graceful_degradation.py:test_catastrophic_failure_returns_honest_message]
 - **AC2 `<35s` timing assertion missing** — respx raises immediately so timing is naturally bounded; adding `time.perf_counter()` wrap would be belt-and-suspenders. [test_graceful_degradation.py:test_goplus_timeout_returns_error_dict]
 - **AC4/AC5/AC6 content-verification tests** — LLM-guarded tests exist but aren't enforced. Defer to nightly pipeline with `ANTHROPIC_API_KEY`; structural tests fill the "no crash" gap. (Decision D1 from code review) [test_graceful_degradation.py:TestAgentLevelFallback]
+
+## Deferred from: code review of story 0-1-tokenomics-analyst (2026-04-24)
+
+- **Test regex fragility in registration check** — `test_subagent_middleware_registers_six_agents` uses non-greedy `.*?` + split-by-comma; would break on nested brackets or multi-line spec bodies. Consolidate with the sibling `test_crypto_subagent_wiring.py::test_subagent_middleware_registers_six_specs` via a single AST-walk helper. [tests/unit/agents/new_chat/]
+- **8-char uuid4 hex in synthetic task_call IDs** — 32-bit collision-prone at ~65k IDs. Pre-existing from Story 0.5, not introduced in 9.1. Consider full `uuid4().hex` or a monotonic counter. [chat_deepagent.py:ParallelSpawnDirectiveMiddleware]
+- **`SubAgent` TypedDict `# type: ignore[typeddict-unknown-key]`** — pattern inherited from Epic 0.2. Narrow the ignore to the specific offending key or file upstream issue against deepagents. [chat_deepagent.py]
+- **Synthetic `short_q` f-string** — user-controlled content interpolated into tool_call description. Low practical risk today (sub-agent description is just hint text) but should be `json.dumps`-escaped for defense-in-depth. [chat_deepagent.py:ParallelSpawnDirectiveMiddleware]
+- **`FULL_SUITE_DURATION_HISTOGRAM` bucket `"4+"` semantics** — now mixes 4-agent and 5-agent durations. Rename to `"full_suite"` or split into explicit buckets when Phase 2-3 add stories 9.2, 9.3, 9.5, 9.6. [metrics.py + chat_deepagent.py]
+- **AC4-AC8 LLM-budget-dependent content verification** — functional spawn, parallelism ratio for 5 agents, 50-query QA, graceful degradation content assertions. Deferred to nightly LLM pipeline. [story 9.1 scope]
