@@ -115,7 +115,7 @@ development_status:
   9-1-tokenomics-analyst: done
   9-4-yield-optimizer: done
   9-FE-1-orchestra-conductor-strip-citation-stacking: done
-  phase-1-quality-gate-review: backlog
+  phase-1-quality-gate-review: in-progress  # 🟡 AMBER — structural gates PASS, canary data pending. See quality-gates/phase-1-quality-gate-review.md
 
   # Phase 2 — Web Research Tier (Chainlens-heavy) — blocked on Phase 1 GO
   9-2-whale-tracker: ready-for-dev

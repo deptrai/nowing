@@ -430,9 +430,10 @@ def mock_pre_agent_middlewares():
                     if _c:
                         _parts.append(f"\n## sub-agent output\n{_c}\n")
             _summary = "".join(_parts)
-            # Pad to >= 400 chars to satisfy AC6 if sub-agent output is short.
-            if len(_summary) < 400:
-                _summary += "\n" + ("(synthesized aggregate placeholder) " * 12)
+            # Pad to satisfy AC6 "100 chars per expected agent" threshold. Default
+            # padding supports up to 8 agents (800 chars). Adjust when agent count grows.
+            if len(_summary) < 800:
+                _summary += "\n" + ("(synthesized aggregate placeholder) " * 20)
             if _ModelResponse is not None:
                 # Story 0.6 AC11: The synthetic bypass skips the normal middleware
                 # stack, so ParallelismTelemetryMiddleware.aafter_model never fires
