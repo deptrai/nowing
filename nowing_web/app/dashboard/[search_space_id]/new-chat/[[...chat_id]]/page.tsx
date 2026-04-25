@@ -108,6 +108,13 @@ import {
 	trackOrchestraSpawn,
 } from "@/lib/posthog/events";
 import { applyOrchestraEvent, orchestraStateAtom } from "@/atoms/chat/orchestra.atom";
+import { activeRunsAtom, upsertRun, removeRun } from "@/atoms/chat/active-runs.atom";
+import {
+	getActiveRuns,
+	streamRun,
+	resumeRun,
+	type ChatRun,
+} from "@/lib/apis/chat-runs-api.service";
 import Loading from "../loading";
 
 /**
@@ -350,6 +357,8 @@ export default function NewChatPage() {
 	const removeChatTab = useSetAtom(removeChatTabAtom);
 	const setAgentCreatedDocuments = useSetAtom(agentCreatedDocumentsAtom);
 	const setOrchestraState = useSetAtom(orchestraStateAtom);
+	const setActiveRuns = useSetAtom(activeRunsAtom);
+	const [abandonedRuns, setAbandonedRuns] = useState<ChatRun[]>([]);
 
 	// Get current user for author info in shared chats
 	const { data: currentUser } = useAtomValue(currentUserAtom);
@@ -585,6 +594,101 @@ export default function NewChatPage() {
 			}
 		};
 	}, []);
+
+	// On thread load: fetch active runs and re-attach SSE for any running ones (9-UX-1b)
+	useEffect(() => {
+		if (!threadId) return;
+		const abortControllers: AbortController[] = [];
+		const readers: Array<ReadableStreamDefaultReader<Uint8Array>> = [];
+		// M7: track per-run lastSeq so reconnects don't replay from 0
+		const lastSeqByRun = new Map<string, number>();
+
+		const attachToRun = async (run: ChatRun) => {
+			const ac = new AbortController();
+			abortControllers.push(ac);
+			try {
+				const resumeFrom = lastSeqByRun.get(run.id) ?? -1;
+				const resp = await streamRun(threadId, run.id, resumeFrom, ac.signal);
+				if (!resp.ok) return;
+				const reader = resp.body?.getReader();
+				if (!reader) return;
+				readers.push(reader);
+				const decoder = new TextDecoder();
+				let buf = "";
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					buf += decoder.decode(value, { stream: true });
+					const parts = buf.split(/\r?\n\r?\n/);
+					buf = parts.pop() ?? "";
+					for (const part of parts) {
+						// M25: skip SSE comment / heartbeat lines (`: text`)
+						if (part.startsWith(":")) continue;
+						const eventLine = part.match(/^event:\s*(.+)$/m)?.[1];
+						const dataLine = part.match(/^data:\s*(.+)$/m)?.[1];
+						if (eventLine === "run-replay-end") {
+							let info: { status?: string; seq?: number } = {};
+							try {
+								info = dataLine ? JSON.parse(dataLine) : {};
+							} catch {
+								/* malformed sentinel — treat as terminal */
+							}
+							if (info.status !== "running") {
+								setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+								setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
+							}
+							return;
+						}
+						if (!dataLine) continue;
+						// M24: any malformed event must NOT abort the stream — try/catch continue
+						try {
+							const parsed = JSON.parse(dataLine);
+							if (parsed && parsed.type) {
+								setOrchestraState((prev: unknown) =>
+									applyOrchestraEvent(prev as never, parsed as never)
+								);
+							}
+							if (parsed && typeof parsed.seq === "number") {
+								lastSeqByRun.set(run.id, parsed.seq);
+							}
+						} catch {
+							// malformed JSON — skip this event, keep stream alive
+						}
+					}
+				}
+			} catch (err: unknown) {
+				if (err instanceof Error && err.name !== "AbortError") {
+					console.warn("run stream error", run.id, err);
+				}
+			}
+		};
+
+		getActiveRuns(threadId)
+			.then((runs) => {
+				const running = runs.filter((r) => r.status === "running");
+				const abandoned = runs.filter((r) => r.status === "abandoned");
+				setActiveRuns((prev) => {
+					let next = prev;
+					for (const r of runs) next = upsertRun(next, r);
+					return next;
+				});
+				setAbandonedRuns(abandoned);
+				for (const run of running) {
+					attachToRun(run);
+				}
+			})
+			.catch(() => {
+				// Silently ignore — feature degrades gracefully
+			});
+
+		return () => {
+			// M6: cancel readers in addition to abort, so pending reader.read() resolves immediately
+			for (const reader of readers) {
+				reader.cancel().catch(() => undefined);
+			}
+			for (const ac of abortControllers) ac.abort();
+		};
+	}, [threadId, setActiveRuns, setOrchestraState]);
 
 	// Cancel ongoing request
 	const cancelRun = useCallback(async () => {
@@ -1864,6 +1968,39 @@ export default function NewChatPage() {
 			{/* <WriteTodosToolUI /> Disabled for now */}
 			<div key={searchSpaceId} className="flex h-full overflow-hidden">
 				<div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+					{abandonedRuns.length > 0 && (
+						<div className="flex flex-col gap-1 px-4 pt-2">
+							{abandonedRuns.map((run) => (
+								<div
+									key={run.id}
+									className="flex items-center justify-between rounded-md border border-amber-400/40 bg-amber-50/10 px-3 py-1.5 text-xs text-muted-foreground"
+								>
+									<span>
+										Previous analysis interrupted —{" "}
+										<span className="font-medium text-foreground">
+											{run.user_query?.slice(0, 60) ?? "query"}
+										</span>
+									</span>
+									<button
+										type="button"
+										className="ml-3 rounded px-2 py-0.5 text-xs font-medium text-amber-600 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/20"
+										onClick={async () => {
+											if (!threadId) return;
+											try {
+												const resumed = await resumeRun(threadId, run.id);
+												setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
+												setActiveRuns((prev) => upsertRun(prev, resumed));
+											} catch {
+												toast.error("Failed to resume run");
+											}
+										}}
+									>
+										Resume
+									</button>
+								</div>
+							))}
+						</div>
+					)}
 					<Thread />
 					{lastTokenUsage && !isRunning && (
 						<div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none px-4 z-10">

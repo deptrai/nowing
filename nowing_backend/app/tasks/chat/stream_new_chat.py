@@ -12,6 +12,7 @@ Supports loading LLM configurations from:
 import ast
 import asyncio
 import contextlib
+import re
 import gc
 import json
 import logging
@@ -1473,6 +1474,7 @@ async def stream_new_chat(
     thread_visibility: ChatVisibility | None = None,
     current_user_display_name: str | None = None,
     disabled_tools: list[str] | None = None,
+    langgraph_thread_id_override: str | None = None,  # C1: detached runs use run-{uuid} for checkpoint isolation
 ) -> AsyncGenerator[str, None]:
     """
     Stream chat responses from the new Nowing deep agent.
@@ -1721,8 +1723,9 @@ async def stream_new_chat(
             chat_id,
         )
 
-        # If checkpoint_id is provided, fork from that checkpoint (for edit/reload)
-        configurable = {"thread_id": str(chat_id)}
+        # Configure LangGraph with thread_id for memory
+        # C1: detached runs use langgraph_thread_id_override ("run-{uuid}") for checkpoint isolation
+        configurable = {"thread_id": langgraph_thread_id_override or str(chat_id)}
         if checkpoint_id:
             configurable["checkpoint_id"] = checkpoint_id
 
@@ -2273,3 +2276,102 @@ async def stream_resume_chat(
             )
         trim_native_heap()
         log_system_snapshot("stream_resume_chat_END")
+
+
+_VERCEL_PREFIX_RE = re.compile(r'^[0-9a-z]:"')
+
+
+def _extract_sse_event_type(sse_chunk: str) -> str:
+    """Extract event_type from SSE string for RunEventWriter classification.
+
+    Handles:
+    - `data: {"type": "orchestra-spawn", "data": {...}}\n\n` → "orchestra-spawn"
+    - `data: 0:"text"\n` (Vercel text-delta) → "text-delta"
+    - `data: [DONE]\n\n` → "done"
+    - Other/parse failures → "sse-raw"
+    """
+    stripped = sse_chunk.strip()
+    if not stripped.startswith("data:"):
+        return "sse-raw"
+    payload_str = stripped[5:].strip()  # drop "data: "
+    if payload_str.startswith("[DONE]"):
+        return "done"
+    # Try JSON first (most events are structured)
+    try:
+        import json as _json
+        parsed = _json.loads(payload_str)
+        if isinstance(parsed, dict) and "type" in parsed:
+            return parsed["type"]
+    except Exception:
+        pass
+    # Vercel text delta strict: `0:"text"`, `g:"text"`, etc. — single hex/letter + ':"' prefix
+    if _VERCEL_PREFIX_RE.match(payload_str):
+        return "text-delta"
+    return "sse-raw"
+
+
+async def stream_new_chat_detached(
+    run_id,
+    langgraph_thread_id: str,
+    user_query: str,
+    search_space_id: int,
+    thread_id: int,
+    user_id: str | None = None,
+    llm_config_id: int = -1,
+    model_id: int | None = None,
+    mentioned_document_ids: list[int] | None = None,
+    disabled_tools: list[str] | None = None,
+    needs_history_bootstrap: bool = False,
+    thread_visibility=None,
+    current_user_display_name: str | None = None,
+    checkpoint_id: str | None = None,
+    cancel_event=None,
+    writer=None,
+) -> None:
+    """Detached agent execution: drains stream_new_chat → writes events to RunEventWriter.
+
+    Does NOT yield SSE strings. All events go to writer (DB + Redis pubsub).
+    Uses langgraph_thread_id (not thread_id) for LangGraph checkpoint isolation (C1).
+    Cooperative cancel via cancel_event.is_set() between generator chunks.
+    """
+    if writer is None:
+        raise ValueError("writer must be provided for detached execution")
+
+    # Wrap the existing generator — run it with langgraph_thread_id for isolation (C1).
+    # We monkey-patch the chat_id arg to use langgraph_thread_id for LangGraph config.
+    # The actual chat thread_id is used for DB lookups inside the generator (messages, etc.).
+    # To achieve thread isolation, we need stream_new_chat to use langgraph_thread_id
+    # as the LangGraph configurable.thread_id. We pass it as chat_id here.
+    # Note: this means chat_id in generator = langgraph_thread_id (a string UUID).
+    # This is intentional — isolates checkpoint state from other runs on same thread.
+
+    # Cancel-check wrapper: check cancel_event between every yielded chunk
+    async def _consume_with_cancel():
+        gen = stream_new_chat(
+            user_query=user_query,
+            search_space_id=search_space_id,
+            chat_id=thread_id,  # integer DB thread id for all DB lookups
+            user_id=user_id,
+            llm_config_id=llm_config_id,
+            mentioned_document_ids=mentioned_document_ids,
+            checkpoint_id=checkpoint_id,
+            needs_history_bootstrap=needs_history_bootstrap,
+            thread_visibility=thread_visibility,
+            current_user_display_name=current_user_display_name,
+            disabled_tools=disabled_tools,
+            langgraph_thread_id_override=langgraph_thread_id,  # C1: isolated checkpoint
+        )
+        async for chunk in gen:
+            if cancel_event is not None and cancel_event.is_set():
+                # Cooperative cancel — emit cancel event then break (M17: bounded aclose)
+                with contextlib.suppress(Exception):
+                    await asyncio.wait_for(gen.aclose(), timeout=2.0)
+                event_type = "orchestra-cancel"
+                writer.write(event_type, {"sessionId": langgraph_thread_id, "reason": "user_cancel"})
+                raise asyncio.CancelledError("run cancelled by user")
+            event_type = _extract_sse_event_type(chunk)
+            writer.write(event_type, {"_raw": chunk})
+            # M18: yield to event loop so flush_task can drain queue and avoid back-pressure
+            await asyncio.sleep(0)
+
+    await _consume_with_cancel()

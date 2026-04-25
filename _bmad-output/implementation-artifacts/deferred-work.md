@@ -297,3 +297,16 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 
 - **Orchestra-spawn BE pipeline missing** — root cause of "Research Lab works in Playwright mock but invisible in prod". When the BE never emits `orchestra-spawn`, FE reducers' `if (!session) return state;` early-return for ALL 5 new orchestra events. Documented in [chat_deepagent.py SourceAttributionMiddleware docstring](nowing_backend/app/agents/new_chat/chat_deepagent.py). Needs follow-up story to wire spawn emission for sub-agent dispatch.
 - **Sub-agent task ContextVar isolation** — `_stream_writer_var.set()` in parent task may not propagate to child Tasks if LangGraph dispatches sub-agents via raw `asyncio.create_task`. Needs integration test exercising real `astream_events` flow with parallel sub-agents to confirm rate-gate event delivery. AC13 marked done with caveat.
+
+## Deferred from: code review of 9-UX-1b-background-agent-resume (2026-04-25)
+
+- **C7 `/regenerate` byte-equivalence parity not implemented** — `/regenerate` endpoint left untouched; spec required calling `start_run` + emitting `run-meta` first event for Vercel-format byte-equivalence with `/runs/{id}/stream`. Recommend tracking as 9-UX-1c follow-up. Existing `/regenerate` still works as backward-compat path.
+- **AC8/AC9 multi-strip rendering + `activeRunSessionsAtom` migration** — `orchestra.atom.ts` not modified to add `activeRunSessionsAtom` (Map keyed by run_id) or rename `activeQueryHash → lastSpawnedSessionId`; orchestra-strip not modified to render N strips. Required for genuine multi-run UI when 2 queries fire concurrently (current single-strip handles single-run only).
+- **AC11/T19 Resume button in orchestra strip header** — Current `page.tsx` shows abandoned-runs banner above `<Thread />` as functional substitute; spec wanted Resume button inside strip header.
+- **T5 `_stream_session_id_var: ContextVar[str]` refactor** — 10+ session_id derivation sites in chat_deepagent unchanged; not blocking because `langgraph_thread_id_override` covers the primary detached path.
+- **T10/T11/T12 integration tests missing** — cancel-mid-stream + final orchestra-cancel; FE disconnect with task survival; 2 runs same thread with distinct langgraph_thread_id. Require Postgres+Redis fixtures (currently 21 unit tests pass, integration suite gated by `SKIP_INTEGRATION_TESTS` env).
+- **T13 `/regenerate` byte-equivalence regression test** — blocked by C7 deferral.
+- **T20 FE component unit tests** for multi-strip rendering + resume button — blocked by AC8/AC9/T19 deferrals.
+- **T21/T22 Playwright E2E** — refresh-mid-stream replay test and 2 concurrent queries multi-strip test missing; current `resume-agent.spec.ts` covers only "running run replays on mount" + "abandoned run shows Resume banner".
+- **Migration downgrade dangling FK** — alembic 134 downgrade drops `chat_runs` but `NewChatThread.chat_runs = relationship(...)` ORM mapping still references it; manual fixup needed if rollback is exercised.
+- **AC7 startup hook order + count log at call site** — `await mark_abandoned_runs_on_startup()` runs before `initialize_llm_router()` and discards return count at caller; function logs internally. Cosmetic.

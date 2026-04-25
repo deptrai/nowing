@@ -8,7 +8,7 @@ relatedFRs: [FR35 Graceful Degradation, FR27 Comprehensive Analysis]
 relatedNFRs: [NFR-Q1 Resilience, NFR-Q3 Graceful Degradation, NFR-UX Live Research Visibility]
 priority: P0 (Phase 2 UX overhaul — fixes "research lost on refresh" UX failure surfaced during 9-UX-1 live test)
 estimatedEffort: 2 weeks (1 BE + 0.5 FE) — bumped from 1.5w after v2 review found 7 critical design fixes
-status: ready-for-dev
+status: in-progress  # 2026-04-25 review: 18 patches applied; 5 critical + 7 major still open (architectural — see Review Findings)
 revision: v2 (2026-04-25)  # v1 had design holes flagged in adversarial review; v2 addresses C1-C7 + H1-H8
 createdAt: 2026-04-25
 author: Luisphan + Claude (carved out from 9-UX-1 production findings)
@@ -717,4 +717,101 @@ npx vitest run __tests__/components/new-chat/orchestra-lab.test.tsx
 
 ## Review Findings
 
-(To be filled by Dev → Reviewer cycle)
+### Adversarial Code Review (2026-04-25) — 3 layer parallel sweep
+
+**Layers**: Blind Hunter (diff-only) · Edge Case Hunter (path tracing + project read) · Acceptance Auditor (spec compliance)
+
+**Triage**: 0 decision-needed · 37 patch · 9 defer · 7 dismissed (noise)
+
+#### ✅ Confirmed correctly implemented (Acceptance Auditor verified)
+
+- AC1 chat_runs + chat_run_events tables, all required columns, idempotent migration
+- C1 LangGraph thread isolation via `langgraph_thread_id = "run-{uuid}"` [run_manager.py:1086, stream_new_chat.py:1476]
+- C2 cancel pattern via `_active_runs: dict` + `add_done_callback` (not anyio CancelScope) [run_manager.py:994, 1188]
+- C5 sync `write()` + async `run_flush_loop()` split [run_event_writer.py:753, 760]
+- C6 INSERT-before-PUBLISH ordering verified by `test_flush_batch_inserts_before_publish` [run_event_writer.py:917-943]
+- C4 resume dedup via `_seen_spawn_agents` / `_seen_source_keys` / `_seen_attribution_agents` sets
+- H2 `_next_seq` seeded from `COALESCE(MAX(seq),-1)+1` on flush-loop startup
+- H6 thread-level auth (`check_thread_access`) on every `/runs/*` endpoint (⚠ run-level ownership still missing — see C7 below)
+- H7 checkpoint selection rule (latest non-HumanMessage; 409 if none) [run_manager.py:1308-1328, 1255]
+- M2 graceful try/except + M5 UVICORN_RELOAD skip in mark_abandoned_runs_on_startup
+- M8 error_message truncation to 8000 chars
+- T9 unit test idempotency / seq-restore-on-error coverage
+- AC10 FE auto-resume on mount via getActiveRuns + streamRun
+- T26 single-worker constraint documented in `.env.example`
+
+#### Patches Applied (2026-04-25 batch-apply)
+
+**Critical fixes applied:**
+- [x] [Review][Patch] `start_new_run` removed manual `await session.close()` — let dependency teardown handle [new_chat_routes.py]
+- [x] [Review][Patch] `cancel_run` dropped `asyncio.shield`; on timeout `task.cancel()` + suppress `CancelledError`. `_execute` finally now prefers `cancelled` status when `cancel_event.is_set()` [run_manager.py]
+- [x] [Review][Patch] `_flush_batch` snapshots seen-sets before mutation; restores atomically with `_next_seq` on commit error [run_event_writer.py]
+- [x] [Review][Patch] `RunEventWriter.stop()` bounded by 5s deadline so producer-during-shutdown can't deadlock the loop [run_event_writer.py]
+- [x] [Review][Patch] Run-level ownership check (`run.created_by_id != user.id → 403`) added on `/cancel`, `/resume`, `/stream`; `/runs/active` filtered to caller's runs only [new_chat_routes.py]
+
+**Critical — STILL OPEN (architectural, deferred to next iteration):**
+- [ ] [Review][Patch] C7 SSE wire format violates Vercel envelope contract (BE emits `event:`+`data:` lines instead of bare `data:`; FE parses both — breaks byte-equivalence with `/regenerate`) [new_chat_routes.py; page.tsx]
+- [ ] [Review][Patch] Detached writer stores `{"_raw": chunk}` instead of structured Vercel JSONB → breaks `_seed_seen_events` dedup + creates duplicate persistence path with `_stream_writer_var` middleware [stream_new_chat.py; run_event_writer.py]
+- [ ] [Review][Patch] C3 SSE replay→subscribe ORDERING wrong (SELECT-first instead of SUBSCRIBE-first/buffer/SELECT/drain) — events INSERTed between phase-1 SELECT and phase-2 SUBSCRIBE may be lost [new_chat_routes.py]
+- [ ] [Review][Patch] `RunEventWriter._coalesce_or_drop` mutates `asyncio.Queue._queue` (private deque) → race with flush coro mid-`get()` [run_event_writer.py]
+- [ ] [Review][Patch] Dropped events on overflow silently lost without DB fallback — non-text events (orchestra-spawn etc.) coalesce-or-drop on queue full, breaking C6 invariant [run_event_writer.py]
+
+#### 🟡 Major Patches Applied
+
+- [x] [Review][Patch] `_extract_sse_event_type` rewritten: tries JSON parse first, then strict regex `^[0-9a-z]:"` for Vercel text-delta — non-Vercel `a:b` strings no longer misclassified [stream_new_chat.py]
+- [x] [Review][Patch] `_mark_run_failed` now redacts: full error → server log only; DB stores generic "see server logs" sentinel [run_manager.py]
+- [x] [Review][Patch] `_find_resumable_checkpoint` distinguishes infra failure (raises `CheckpointerUnavailableError` → 503) from clean miss (returns None → 409) [run_manager.py]
+- [x] [Review][Patch] FE `useEffect` cleanup now calls `reader.cancel()` for each reader before `ac.abort()` [page.tsx]
+- [x] [Review][Patch] FE tracks `lastSeqByRun` map; reconnects pass tracked `seq` not -1 [page.tsx]
+- [x] [Review][Patch] `chat_run_events.payload` capped at 256KB in `RunEventWriter.write()` — oversized events dropped with warning [run_event_writer.py]
+- [x] [Review][Patch] DB-only fallback `cancel_run` path now PUBLISHes `orchestra-cancel` to Redis after UPDATE — live SSE tail sees terminal [run_manager.py]
+- [x] [Review][Patch] `pubsub.get_message` timeout caught with try/except → falls through to heartbeat instead of breaking inner while [new_chat_routes.py]
+- [x] [Review][Patch] Client-disconnect detection via `await request.is_disconnected()` at top of pubsub loop [new_chat_routes.py]
+- [x] [Review][Patch] `payload.get("_raw")` already guarded with `isinstance(payload, dict)` — confirmed at lines 1815, 1851, 1884; same guard added to `_seed_seen_events` / `_should_dedup` [run_event_writer.py, new_chat_routes.py]
+- [x] [Review][Patch] SSE `run-replay-end` payload now built via `json.dumps({...})` — quote/newline injection impossible [new_chat_routes.py]
+- [x] [Review][Patch] `gen.aclose()` wrapped in `asyncio.wait_for(timeout=2.0)` + `contextlib.suppress(Exception)` [stream_new_chat.py]
+- [x] [Review][Patch] Per-chunk `await asyncio.sleep(0)` in detached consumer yields to flush_task [stream_new_chat.py]
+- [x] [Review][Patch] `_active_runs[run_id] = task` registration uses `asyncio.ensure_future` and runs immediately after future creation; `_cleanup` callback stays as `add_done_callback` [run_manager.py]
+- [x] [Review][Patch] FE `JSON.parse(dataLine)` wrapped in try/catch — malformed event no longer aborts stream [page.tsx]
+- [x] [Review][Patch] FE skips SSE comment / heartbeat lines (`: text`) before regex-matching event/data [page.tsx]
+- [x] [Review][Patch] V10 M1: `app.py` lifespan now logs WARN if `UVICORN_WORKERS != 1` and `RESUMABLE_RUNS_ENABLED=true` [app.py]
+- [x] [Review][Patch] V11 M3: `/runs/active` returns `[]` when `RESUMABLE_RUNS_ENABLED=false` [new_chat_routes.py]
+
+#### 🟡 Major — STILL OPEN (require dedicated follow-up)
+
+- [ ] [Review][Patch] `mark_abandoned_runs_on_startup` blanket UPDATE has no worker fence — multi-replica deploy needs heartbeat timestamp before this is safe to enable [run_manager.py]
+- [ ] [Review][Patch] `_seed_next_seq` + dedup not transactional with INSERT — two writers per run race; ON CONFLICT DO NOTHING swallows second's events silently. Needs per-run advisory lock or RETURNING-style sequence [run_event_writer.py]
+- [ ] [Review][Patch] `langgraph_thread_id = "run-{uuid}"` UUID coercion compatibility — needs PostgresSaver verification test before production rollout [run_manager.py]
+- [ ] [Review][Patch] Redis publish per-message failure has no retry — live-tail desyncs from DB silently. DB poll fallback documented but not implemented [run_event_writer.py]
+- [ ] [Review][Patch] `stream_new_chat_detached` returns `None` but assigned to `final_message_id` → FK never set. Needs message-id capture from final SSE event [run_manager.py]
+- [ ] [Review][Patch] V8 cooperative cancel inside `SubAgentResilienceMiddleware` retry sleep loops — Tier 3 paced retries (30s+) ignore cancel_event. Need to instrument middleware sites [chat_deepagent middleware]
+- [ ] [Review][Patch] V9 Replay events lack `_replay: true` envelope marker — coupled with C7 Vercel envelope refactor; defer to same iteration [new_chat_routes.py + page.tsx]
+
+#### 🚮 Re-classified during patch application
+
+- ~~`streamRun` API timeout default~~ — DISMISSED: legitimate runs are 5-15+ min; hard timeout would break feature. BE-side `is_disconnected()` provides the leak protection.
+- ~~Concurrent migration race (SELECT-then-CREATE)~~ — DISMISSED: alembic_version row-lock prevents concurrent upgrades; defensive pre-check is fine.
+
+#### Deferred (large scope or low priority — track as follow-up)
+
+- [x] [Review][Defer] V3 C7 `/regenerate` parity not implemented (large scope refactor; existing /regenerate works as backward-compat path; recommend 9-UX-1c follow-up)
+- [x] [Review][Defer] V5 AC8/AC9/T16/T17 multi-strip rendering + `activeRunSessionsAtom` migration missing (large FE refactor; current single-strip works for single-run)
+- [x] [Review][Defer] V6 AC11/T19 Resume button UI in orchestra strip header missing (current banner above Thread is functional substitute)
+- [x] [Review][Defer] V7 T5 `_stream_session_id_var: ContextVar[str]` refactor (10+ derivation sites unchanged) — not blocking; current `langgraph_thread_id_override` route works for primary path
+- [x] [Review][Defer] V12a T10/T11/T12 integration tests missing (cancel-mid-stream, detached-survives-disconnect, multi-run-isolation) — require Postgres+Redis fixtures
+- [x] [Review][Defer] V12b T13 `/regenerate` byte-equivalence regression test missing (blocked by V3 deferral)
+- [x] [Review][Defer] V12c T20 FE component unit tests for multi-strip + resume button missing (blocked by V5/V6 deferral)
+- [x] [Review][Defer] V12d T21/T22 Playwright E2E for refresh-mid-stream and 2 concurrent queries missing (broader test scope)
+- [x] [Review][Defer] Migration downgrade leaves dangling NewChatThread.chat_runs ORM relationship (downgrade rare; manual fixup acceptable)
+- [x] [Review][Defer] AC7 startup hook ordering + count not logged at call site (function logs internally — cosmetic)
+
+#### Dismissed (noise / handled / non-issue)
+
+- `_run_to_response` ISO string vs datetime — Pydantic coerces correctly
+- `_RESUMABLE_RUNS_ENABLED` module-level — intentional; only test concern
+- Test asserts `>= 2` events — low-priority polish
+- Magic constants `_FLUSH_BATCH_SIZE=50, _FLUSH_INTERVAL_MS=25` — internal tuning
+- `result.rowcount` reliability — works correctly on asyncpg
+- Test patches `app.tasks.chat.run_manager.asyncio.wait_for` — works via module attribute reference
+- Migration revision number 134 vs spec's 120 — disk state advanced between drafting and dev
+

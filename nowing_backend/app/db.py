@@ -10,6 +10,7 @@ from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
+    BigInteger,
     JSON,
     TIMESTAMP,
     Boolean,
@@ -657,6 +658,12 @@ class NewChatThread(BaseModel, TimestampMixin):
         cascade="all, delete-orphan",
         foreign_keys="[PublicChatSnapshot.thread_id]",
     )
+    chat_runs = relationship(
+        "ChatRun",
+        back_populates="thread",
+        cascade="all, delete-orphan",
+        order_by="ChatRun.started_at",
+    )
 
 
 class NewChatMessage(BaseModel, TimestampMixin):
@@ -695,6 +702,127 @@ class NewChatMessage(BaseModel, TimestampMixin):
         back_populates="message",
         cascade="all, delete-orphan",
     )
+
+
+class ChatRunStatus(StrEnum):
+    """State machine for background agent run lifecycle."""
+
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    ABANDONED = "abandoned"
+
+
+class ChatRun(Base, TimestampMixin):
+    """
+    Background agent run — decoupled from HTTP request lifetime.
+
+    One run = one astream_events() call dispatched as detached asyncio task.
+    Multiple runs can exist per thread (multi-query parallel support).
+    LangGraph checkpoint key: langgraph_thread_id (NOT thread_id).
+    Status state machine: running → completed/failed/cancelled/abandoned.
+    """
+
+    __tablename__ = "chat_runs"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+        index=True,
+    )
+    thread_id = Column(
+        Integer,
+        ForeignKey("new_chat_threads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    session_id = Column(String(64), nullable=False)
+    langgraph_thread_id = Column(String(96), nullable=False)
+    user_query = Column(Text, nullable=True)
+    llm_config_id = Column(
+        Integer,
+        ForeignKey("new_llm_configs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    model_id = Column(Integer, nullable=True)
+    mentioned_document_ids = Column(JSONB, nullable=True)
+    disabled_tools = Column(JSONB, nullable=True)
+    status = Column(
+        String(16),
+        nullable=False,
+        default=ChatRunStatus.RUNNING,
+        server_default="running",
+        index=True,
+    )
+    last_event_seq = Column(Integer, nullable=False, default=0, server_default="0")
+    started_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+        index=True,
+    )
+    completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    final_message_id = Column(
+        Integer,
+        ForeignKey("new_chat_messages.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    error_message = Column(String(8000), nullable=True)
+
+    # Relationships
+    thread = relationship("NewChatThread", back_populates="chat_runs")
+    events = relationship(
+        "ChatRunEvent",
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="ChatRunEvent.seq",
+    )
+
+
+class ChatRunEvent(Base):
+    """
+    Persisted SSE event for a background agent run.
+
+    Replay-on-reconnect: SSE endpoint SELECTs all events ordered by seq,
+    streams them with _replay:true, then tails Redis pubsub for live events.
+    (run_id, seq) UNIQUE enforces ordering and idempotency on INSERT.
+    payload stores already-formatted SSE data (Vercel protocol envelope).
+    """
+
+    __tablename__ = "chat_run_events"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    run_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("chat_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    seq = Column(Integer, nullable=False)
+    event_type = Column(String(64), nullable=False)
+    payload = Column(JSONB, nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "seq", name="uq_chat_run_events_run_seq"),
+    )
+
+    # Relationships
+    run = relationship("ChatRun", back_populates="events")
 
 
 class PublicChatSnapshot(BaseModel, TimestampMixin):

@@ -182,3 +182,31 @@ Các components này render kết quả từ real-time tools trong chat interfac
 - Link đến DexScreener chart
 
 ---
+
+## Background Agent Execution (Story 9-UX-1b)
+
+Agent execution sống độc lập với HTTP request lifetime, cho phép FE disconnect / browser refresh / tab close mà không mất progress.
+
+### Tables
+- `chat_runs` — mỗi agent execution có 1 row (UUID PK, status: running/completed/failed/cancelled/abandoned)
+- `chat_run_events` — toàn bộ SSE events được persist (seq monotonic per run, ON CONFLICT DO NOTHING cho idempotency)
+
+### Key Components
+| Component | File | Responsibility |
+|---|---|---|
+| `RunEventWriter` | `app/services/run_event_writer.py` | Sync write() + async flush: INSERT → PUBLISH (C6) |
+| `run_manager` | `app/tasks/chat/run_manager.py` | start_run / cancel_run / resume_run / mark_abandoned_on_startup |
+| `stream_new_chat_detached` | `app/tasks/chat/stream_new_chat.py` | Async function consuming agent SSE, writing to RunEventWriter |
+| REST endpoints | `app/routes/new_chat_routes.py` | POST /runs, GET /runs/active, GET /runs/{id}/stream, POST /runs/{id}/cancel, POST /runs/{id}/resume |
+
+### Constraints
+- **M1 Single-worker**: `_active_runs` dict là module-level → `UVICORN_WORKERS=1` bắt buộc
+- **M2 Migration race**: `mark_abandoned_runs_on_startup` wrapped in try/except
+- **M5 Reload protection**: skip orphan cleanup khi `UVICORN_RELOAD=true`
+- **C1 LangGraph isolation**: detached run dùng `langgraph_thread_id = "run-{uuid}"` (không phải `thread_id`) để tránh checkpoint collision
+- **C6 INSERT before PUBLISH**: DB luôn là source of truth; Redis pubsub chỉ là live-tail
+
+### Feature Flag
+`RESUMABLE_RUNS_ENABLED=true` (default) — khi false, POST /runs trả 503, FE fallback về /regenerate.
+
+---

@@ -1,5 +1,5 @@
 # generated: 2026-04-13T02:50:25+07:00
-# last_updated: 2026-04-25T13:30:00+07:00
+# last_updated: 2026-04-25T15:30:00+07:00
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -138,6 +138,8 @@ development_status:
   # ─── PHASE 2 UX OVERHAUL (added 2026-04-25 by Sally + Mary) ───
   # Goal: lift experience to Messari Pro × Perplexity × Nansen bar
   9-UX-1-live-research-lab: done                 # 2026-04-25 v2 — 22+15 patches applied · 58 tests pass · BE spawn pipeline wired
+  9-UX-1b-background-agent-resume: in-progress  # 2026-04-25 review: 18 patches applied (security/correctness); 5 critical + 7 major architectural patches still open
+  9-UX-1c-background-agent-architectural-fixes: ready-for-dev  # 2026-04-25 — closes 12 architectural patches + 4 spec deferrals from 9-UX-1b review (SSE Vercel envelope, structured JSONB writer, multi-strip, advisory lock)
   9-UX-2-crypto-report-layout: ready-for-dev     # 3 weeks · FE+BE (blocked on 9-UX-1)
   9-UX-3-interactive-analysis: ready-for-dev     # 2 weeks · FE+BE (blocked on 9-UX-2)
   9-UX-4-additional-data-sources: ready-for-dev  # 2 weeks · BE+FE (blocked on 9-UX-1+2)
