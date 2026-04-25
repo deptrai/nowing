@@ -6,6 +6,41 @@ import { atom } from "jotai";
 
 export type AgentStatus = "idle" | "queued" | "running" | "done" | "failed" | "cancelled";
 
+export interface NarrationEvent {
+	text: string;
+	tone: "fetching" | "analyzing" | "synthesizing";
+	ts: number;
+}
+
+export interface Source {
+	domain: string;
+	favicon: string;
+	url: string;
+	dataType: string;
+}
+
+export interface RateGateEvent {
+	waitSeconds: number;
+	reason: string;
+	ts: number;
+}
+
+/**
+ * AC11: derive degradation level from observed rate-gate activity.
+ * - 0: nominal (no gates / 1 short gate)
+ * - 1: paced (≥2 gate waits OR cumulative ≥10s in last 30s window)
+ * - 2: heavily degraded (≥4 waits OR cumulative ≥30s in last 30s)
+ */
+export function deriveEscalationLevel(waits: RateGateEvent[]): 0 | 1 | 2 {
+	if (waits.length === 0) return 0;
+	const now = Date.now();
+	const recent = waits.filter((w) => now - w.ts <= 30_000);
+	const cumulative = recent.reduce((a, w) => a + w.waitSeconds, 0);
+	if (recent.length >= 4 || cumulative >= 30) return 2;
+	if (recent.length >= 2 || cumulative >= 10) return 1;
+	return 0;
+}
+
 export type FailReason =
 	| "rate_limit"
 	| "timeout"
@@ -33,6 +68,12 @@ export interface OrchestraAgent {
 	failReason?: FailReason;
 	failMessage?: string;
 	citationIds?: string[];
+	// 9-UX-1: live research lab fields
+	narrationHistory: NarrationEvent[];
+	currentNarration: string | null;
+	sourcesFetched: Source[];
+	factsCapturedCount: number;
+	modelAttribution: { model: string; provider: string; tier?: string } | null;
 }
 
 export interface OrchestraSession {
@@ -48,6 +89,11 @@ export interface OrchestraSession {
 	p95Bucket: "fast" | "normal" | "slow" | null;
 	milestone30sFired: boolean;
 	milestone: string | null;
+	// 9-UX-1: session-level rate gate history
+	rateGateWaits: RateGateEvent[];
+	// 9-UX-1 AC10: per-LLM-call timestamps for ActivityTimeline ticks.
+	// Each entry: { ts: Date.now(), agentId: <string> }. Capped at 200.
+	llmCallEvents: Array<{ ts: number; agentId: string }>;
 }
 
 export interface OrchestraState {
@@ -100,6 +146,42 @@ type OrchestraSSEEvent =
 	| {
 			type: "orchestra-complete";
 			data: { sessionId: string; agentIds: string[]; citationCount: number };
+	  }
+	// 9-UX-1: Phase 2 UX events
+	| {
+			type: "data-orchestra-narration";
+			data: {
+				sessionId: string;
+				agentId: string;
+				text: string;
+				tone: "fetching" | "analyzing" | "synthesizing";
+			};
+	  }
+	| {
+			type: "data-orchestra-source-fetched";
+			data: { sessionId: string; agentId: string; source: Source };
+	  }
+	| {
+			type: "data-orchestra-fact-captured";
+			data: {
+				sessionId: string;
+				agentId: string;
+				factSummary: string;
+				value?: number;
+				unit?: string;
+			};
+	  }
+	| {
+			type: "data-orchestra-model-attribution";
+			data: { sessionId: string; agentId: string; model: string; provider: string; tier?: string };
+	  }
+	| {
+			type: "data-orchestra-rate-gate-wait";
+			data: { sessionId: string; waitSeconds: number; reason: string };
+	  }
+	| {
+			type: "data-orchestra-llm-call";
+			data: { sessionId: string; agentId: string };
 	  };
 
 function p95Bucket(ms: number): "fast" | "normal" | "slow" {
@@ -124,6 +206,11 @@ export function applyOrchestraEvent(
 			agentType,
 			status: "queued",
 			elapsedMs: 0,
+			narrationHistory: [],
+			currentNarration: null,
+			sourcesFetched: [],
+			factsCapturedCount: 0,
+			modelAttribution: null,
 		});
 		const session: OrchestraSession = existing
 			? { ...existing, agents }
@@ -140,6 +227,8 @@ export function applyOrchestraEvent(
 					p95Bucket: null,
 					milestone30sFired: false,
 					milestone: null,
+					rateGateWaits: [],
+					llmCallEvents: [],
 				};
 		sessions.set(sessionId, session);
 		return { sessions, activeQueryHash: sessionId };
@@ -277,6 +366,95 @@ export function applyOrchestraEvent(
 			outcome,
 			p95Bucket: p95Bucket(totalMs),
 		});
+
+		// P13: cap retained completed sessions at MAX_RETAINED to bound memory.
+		// Evict the oldest completed sessions while keeping any still-running ones
+		// and the just-completed one.
+		const MAX_RETAINED = 5;
+		const completedEntries = Array.from(sessions.entries())
+			.filter(([, s]) => s.completedAt !== null)
+			.sort(([, a], [, b]) => (a.completedAt ?? 0) - (b.completedAt ?? 0));
+		while (completedEntries.length > MAX_RETAINED) {
+			const [staleId] = completedEntries.shift()!;
+			sessions.delete(staleId);
+		}
+
+		return { ...state, sessions };
+	}
+
+	if (event.type === "data-orchestra-narration") {
+		const { sessionId, agentId, text, tone } = event.data;
+		const session = sessions.get(sessionId);
+		if (!session) return state;
+		const agents = new Map(session.agents);
+		const agent = agents.get(agentId);
+		if (agent) {
+			const narrationEvent: NarrationEvent = { text, tone, ts: Date.now() };
+			const history = [...agent.narrationHistory, narrationEvent].slice(-10);
+			agents.set(agentId, { ...agent, narrationHistory: history, currentNarration: text });
+		}
+		sessions.set(sessionId, { ...session, agents });
+		return { ...state, sessions };
+	}
+
+	if (event.type === "data-orchestra-source-fetched") {
+		const { sessionId, agentId, source } = event.data;
+		const session = sessions.get(sessionId);
+		if (!session) return state;
+		const agents = new Map(session.agents);
+		const agent = agents.get(agentId);
+		if (agent) {
+			const already = agent.sourcesFetched.some((s) => s.domain === source.domain);
+			if (!already) {
+				agents.set(agentId, { ...agent, sourcesFetched: [...agent.sourcesFetched, source] });
+			}
+		}
+		sessions.set(sessionId, { ...session, agents });
+		return { ...state, sessions };
+	}
+
+	if (event.type === "data-orchestra-fact-captured") {
+		const { sessionId, agentId } = event.data;
+		const session = sessions.get(sessionId);
+		if (!session) return state;
+		const agents = new Map(session.agents);
+		const agent = agents.get(agentId);
+		if (agent) {
+			agents.set(agentId, { ...agent, factsCapturedCount: agent.factsCapturedCount + 1 });
+		}
+		sessions.set(sessionId, { ...session, agents });
+		return { ...state, sessions };
+	}
+
+	if (event.type === "data-orchestra-model-attribution") {
+		const { sessionId, agentId, model, provider, tier } = event.data;
+		const session = sessions.get(sessionId);
+		if (!session) return state;
+		const agents = new Map(session.agents);
+		const agent = agents.get(agentId);
+		if (agent) {
+			agents.set(agentId, { ...agent, modelAttribution: { model, provider, tier } });
+		}
+		sessions.set(sessionId, { ...session, agents });
+		return { ...state, sessions };
+	}
+
+	if (event.type === "data-orchestra-rate-gate-wait") {
+		const { sessionId, waitSeconds, reason } = event.data;
+		const session = sessions.get(sessionId);
+		if (!session) return state;
+		const rateGateWaits = [...session.rateGateWaits, { waitSeconds, reason, ts: Date.now() }];
+		sessions.set(sessionId, { ...session, rateGateWaits });
+		return { ...state, sessions };
+	}
+
+	if (event.type === "data-orchestra-llm-call") {
+		const { sessionId, agentId } = event.data;
+		const session = sessions.get(sessionId);
+		if (!session) return state;
+		// AC10: cap at 200 entries to bound memory in long sessions.
+		const llmCallEvents = [...session.llmCallEvents, { ts: Date.now(), agentId }].slice(-200);
+		sessions.set(sessionId, { ...session, llmCallEvents });
 		return { ...state, sessions };
 	}
 

@@ -257,7 +257,7 @@ test.describe("Orchestra Conductor Strip", () => {
 		await expect(strip).toBeVisible({ timeout: 15_000 });
 
 		// Initially in default variant with agent rows
-		await expect(strip).toHaveAttribute("data-variant", "default");
+		await expect(strip).toHaveAttribute("data-variant", "research-lab");
 
 		// All 4 agent names visible
 		for (const agent of FOUR_AGENTS) {
@@ -380,7 +380,7 @@ test.describe("Orchestra Conductor Strip", () => {
 
 		// No bordered card wrapper (no "rounded-lg border" class at strip level)
 		await expect(
-			page.locator('[data-slot="orchestra-strip"][data-variant="default"]')
+			page.locator('[data-slot="orchestra-strip"][data-variant="research-lab"]')
 		).not.toBeVisible();
 	});
 });

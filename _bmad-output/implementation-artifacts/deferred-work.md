@@ -287,3 +287,13 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **Synthetic `short_q` f-string** — user-controlled content interpolated into tool_call description. Low practical risk today (sub-agent description is just hint text) but should be `json.dumps`-escaped for defense-in-depth. [chat_deepagent.py:ParallelSpawnDirectiveMiddleware]
 - **`FULL_SUITE_DURATION_HISTOGRAM` bucket `"4+"` semantics** — now mixes 4-agent and 5-agent durations. Rename to `"full_suite"` or split into explicit buckets when Phase 2-3 add stories 9.2, 9.3, 9.5, 9.6. [metrics.py + chat_deepagent.py]
 - **AC4-AC8 LLM-budget-dependent content verification** — functional spawn, parallelism ratio for 5 agents, 50-query QA, graceful degradation content assertions. Deferred to nightly LLM pipeline. [story 9.1 scope]
+
+## Deferred from: code review of 9-UX-1-live-research-lab (2026-04-25)
+
+- **Storybook infrastructure missing** — `@storybook/react` package not installed in `nowing_web/`. Story files for orchestra lab components were created in-place ([orchestra-lab.stories.tsx](nowing_web/components/new-chat/orchestra/orchestra-lab.stories.tsx)) ready for when Storybook is added. Pre-existing project setup gap, not caused by this story.
+- **Playwright `route` implicit-any TS errors** — [research-lab.spec.ts](nowing_web/playwright/e2e/research-lab.spec.ts) inherits the same 11 pre-existing TS errors as [orchestra-strip.spec.ts](nowing_web/playwright/e2e/orchestra-strip.spec.ts). Root cause: project tsconfig doesn't include `@playwright/test` types; needs separate `tsconfig.playwright.json`. Affects all Playwright specs in the project.
+
+## Deferred from: code review v2 of 9-UX-1-live-research-lab (2026-04-25)
+
+- **Orchestra-spawn BE pipeline missing** — root cause of "Research Lab works in Playwright mock but invisible in prod". When the BE never emits `orchestra-spawn`, FE reducers' `if (!session) return state;` early-return for ALL 5 new orchestra events. Documented in [chat_deepagent.py SourceAttributionMiddleware docstring](nowing_backend/app/agents/new_chat/chat_deepagent.py). Needs follow-up story to wire spawn emission for sub-agent dispatch.
+- **Sub-agent task ContextVar isolation** — `_stream_writer_var.set()` in parent task may not propagate to child Tasks if LangGraph dispatches sub-agents via raw `asyncio.create_task`. Needs integration test exercising real `astream_events` flow with parallel sub-agents to confirm rate-gate event delivery. AC13 marked done with caveat.

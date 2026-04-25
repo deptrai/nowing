@@ -352,6 +352,19 @@ class _GlobalRateBucket:
                         "(min_interval=%.1fs, elapsed=%.1fs)",
                         wait_for, self.min_interval, elapsed,
                     )
+                    # AC4/AC13: emit rate-gate-wait event when wait ≥ 3s so FE
+                    # can show educational "Pacing calls..." banner to user.
+                    # V2-P9: classify reason by wait duration so the FE can
+                    # render different copy for the three escalation tiers
+                    # (matches AC1 union: 'min_interval' | 'paced' | 'retry').
+                    if wait_for >= 3.0:
+                        if wait_for >= 30.0:
+                            _reason = "retry"  # very long waits indicate provider duress
+                        elif wait_for >= 10.0:
+                            _reason = "paced"  # sustained pacing during heavy load
+                        else:
+                            _reason = "min_interval"  # nominal RPM-limit pacing
+                        _emit_rate_gate_event(wait_for, reason=_reason)
                     await asyncio.sleep(wait_for)
             # Record AFTER the sleep so the next caller sees the actual
             # dispatch moment, not the arrival moment.
@@ -427,6 +440,290 @@ def _disable_litellm_internal_retry_when_gated() -> None:
 
 _install_global_chat_litellm_rate_gate()
 _disable_litellm_internal_retry_when_gated()
+
+# ContextVar for rate-gate SSE emission (AC13).
+# Set by stream_new_chat.py before agent.astream_events() so the rate bucket
+# (which lives in a sibling async context outside the LangChain runnable tree)
+# can emit orchestra-rate-gate-wait events directly into the SSE stream.
+# Type: callable taking (event_type: str, data: dict) -> None.
+# Fallback: dispatch_custom_event when var is None (e.g. during tests).
+_StreamWriter = "typing.Callable[[str, dict[str, Any]], None]"
+_stream_writer_var: contextvars.ContextVar[Any | None] = contextvars.ContextVar(
+    "_stream_writer_var", default=None
+)
+
+
+def _emit_rate_gate_event(wait_seconds: float, reason: str = "min_interval") -> None:
+    """Emit orchestra-rate-gate-wait event via ContextVar writer if set, else dispatch_custom_event.
+
+    AC13 path: ContextVar set by stream_new_chat.py covers cases where the rate
+    bucket is invoked outside any LangChain runnable context (Celery, direct
+    sub-agent calls, monkey-patched LiteLLM gates). Falls back to
+    `dispatch_custom_event` for tests and code paths that haven't set the writer.
+    """
+    payload = {"waitSeconds": round(wait_seconds, 1), "reason": reason}
+    writer = _stream_writer_var.get()
+    if writer is not None:
+        try:
+            writer("orchestra-rate-gate-wait", payload)
+            return
+        except Exception:
+            pass
+    try:
+        from langchain_core.callbacks import dispatch_custom_event
+        dispatch_custom_event("orchestra_rate_gate_wait", payload)
+    except (RuntimeError, LookupError):
+        # No active runnable context — silently drop (educational banner is best-effort).
+        pass
+
+
+def _emit_orchestra_event(event_type: str, payload: dict[str, Any], custom_event_name: str | None = None) -> None:
+    """Emit any orchestra-* event via ContextVar writer or dispatch_custom_event fallback.
+
+    Used by SourceAttributionMiddleware for narration / source / fact / model events.
+    """
+    writer = _stream_writer_var.get()
+    if writer is not None:
+        try:
+            writer(event_type, payload)
+            return
+        except Exception as exc:
+            # Diagnostic visibility (v2-D2 patch P_DIAG): log writer failures so
+            # we don't end up with silently broken UX. Continue to fallback.
+            _agent_log.debug("orchestra writer failed for %s: %s", event_type, exc)
+    try:
+        from langchain_core.callbacks import dispatch_custom_event
+        dispatch_custom_event(custom_event_name or event_type.replace("-", "_"), payload)
+    except (RuntimeError, LookupError):
+        pass
+
+# Map tool name → (source_domain, favicon_url) for source attribution events
+# (canonical source: narration_templates.py)
+from app.agents.new_chat.subagents.crypto.narration_templates import (
+    PRE_CALL as _TOOL_PRE_NARRATION,
+    TOOL_SOURCE_MAP as _TOOL_SOURCE_MAP,
+    TOOL_TONE as _TOOL_TONE,
+    extract_facts as _extract_facts,
+    post_call_narration as _post_call_narration,
+)
+
+
+def _extract_model_metadata(request: Any) -> tuple[str, str, str | None]:
+    """Best-effort extraction of (model, provider, tier) from a model_call request.
+
+    Returns ("", "", None) when the model object is not introspectable. Used by
+    SourceAttributionMiddleware to emit AC9 model_attribution events.
+    """
+    model: Any = None
+    for attr in ("model", "llm", "_model", "_llm"):
+        candidate = getattr(request, attr, None)
+        if candidate is not None:
+            model = candidate
+            break
+
+    if model is None:
+        return ("", "", None)
+
+    # V2-P11: unwrap LangChain RunnableBinding / RunnableSequence wrappers
+    # (`.bind(stop=...)`, `.with_structured_output(...)` etc.) which expose
+    # the underlying model via `.bound` rather than `model_name`.
+    for _ in range(3):  # cap recursion in case of pathological wrap chain
+        if hasattr(model, "model_name") or hasattr(model, "model"):
+            break
+        bound = getattr(model, "bound", None)
+        if bound is None:
+            break
+        model = bound
+
+    model_name = (
+        getattr(model, "model_name", None)
+        or getattr(model, "model", None)
+        or getattr(model, "name", None)
+        or ""
+    )
+    if isinstance(model_name, str):
+        # Strip litellm prefix routing (e.g. "openai/gpt-4o" → "gpt-4o").
+        model_name = model_name.split("/", 1)[-1] if "/" in model_name else model_name
+
+    provider = getattr(model, "provider", None) or getattr(model, "_llm_type", None) or ""
+    if isinstance(provider, str) and provider.lower().startswith("chat-"):
+        provider = provider[5:]
+    if not provider and hasattr(model, "openai_api_base"):
+        base = getattr(model, "openai_api_base", "") or ""
+        if "trollllm" in base.lower():
+            provider = "trollllm"
+        elif "openai" in base.lower():
+            provider = "openai"
+
+    tier = getattr(model, "tier", None) or None
+    return (str(model_name or ""), str(provider or ""), tier if isinstance(tier, str) else None)
+
+
+class SourceAttributionMiddleware(AgentMiddleware):
+    """Emits SSE events for narration (pre-call) and source attribution (post-call).
+
+    AGENT IDENTITY CONTRACT (P8):
+        Every event payload uses ``self._agent_name`` for both ``agentId`` and
+        ``agentName`` fields. The FE orchestra-atom keys agents by ``agentId``,
+        so the contract is: whatever string is passed to ``__init__(agent_name=...)``
+        MUST equal the ``agentId`` used by the eventual ``orchestra-spawn`` emitter
+        (currently TODO — pre-existing gap, not in 9-UX-1 scope).
+
+        Today the constants ``DEFILLAMA_ANALYST_NAME``, ``TOKENOMICS_ANALYST_NAME``,
+        etc. (see ``subagents/crypto/*/__init__.py``) are passed BOTH to
+        ``_build_gp_middleware(agent_name=...)`` AND to the deepagents sub-agent
+        spec's ``"name"`` field. When the orchestra-spawn pipeline is wired up
+        (Story 9-FE-1 follow-up), it must use these same constants as ``agentId``.
+
+    Registered in BOTH main deepagent_middleware AND _build_gp_middleware() per AC3.
+    Uses dispatch_custom_event (LangChain) so events propagate through astream_events.
+    Agent name is injected at construction so stream handler can attribute per-agent.
+    """
+
+    def __init__(self, agent_name: str = "orchestrator") -> None:
+        self._agent_name = agent_name
+        # Emit model_attribution exactly once per agent lifecycle
+        self._model_attribution_emitted: bool = False
+
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        # AC9: emit one orchestra-model-attribution event the first time this
+        # agent's model is invoked, so the FE can render a "🤖 Sonnet · trollllm"
+        # badge next to the agent's lane.
+        if not self._model_attribution_emitted:
+            self._model_attribution_emitted = True
+            model_name, provider, tier = _extract_model_metadata(request)
+            if model_name:
+                payload: dict[str, Any] = {
+                    "agentId": self._agent_name,
+                    "agentName": self._agent_name,
+                    "model": model_name,
+                    "provider": provider or "unknown",
+                }
+                if tier:
+                    payload["tier"] = tier
+                _emit_orchestra_event(
+                    "orchestra-model-attribution",
+                    payload,
+                    custom_event_name="orchestra_model_attribution",
+                )
+
+        # AC10: per-LLM-call telemetry tick — emitted AFTER successful handler
+        # so retries (ModelRetryMiddleware re-entering this hook) don't over-count.
+        # If handler raises, no tick emitted; resilience layer above retries.
+        _result = await handler(request)
+        _emit_orchestra_event(
+            "orchestra-llm-call",
+            {"agentId": self._agent_name, "agentName": self._agent_name},
+            custom_event_name="orchestra_llm_call",
+        )
+        return _result
+
+    async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
+        tool_name: str = getattr(request, "name", "") or ""
+
+        # AC2: mandatory pre-call narration BEFORE handler(request) executes
+        pre_text = _TOOL_PRE_NARRATION.get(tool_name)
+        if pre_text:
+            tone = _TOOL_TONE.get(tool_name, "fetching")
+            _emit_orchestra_event(
+                "orchestra-narration",
+                {
+                    "agentId": self._agent_name,
+                    "agentName": self._agent_name,
+                    "text": pre_text,
+                    "tone": tone,
+                },
+                custom_event_name="orchestra_narration",
+            )
+
+        try:
+            result = await handler(request)
+        except Exception:
+            # AC2 symmetric narration on tool failure — let the user know the
+            # call failed instead of leaving them with the dangling pre-narration.
+            _emit_orchestra_event(
+                "orchestra-narration",
+                {
+                    "agentId": self._agent_name,
+                    "agentName": self._agent_name,
+                    "text": f"Tool {tool_name} thất bại — đang chuyển sang fallback...",
+                    "tone": "analyzing",
+                },
+                custom_event_name="orchestra_narration",
+            )
+            raise
+
+        # P19: skip source attribution when the tool returned an error payload.
+        if isinstance(result, dict) and (result.get("error") or result.get("_error")):
+            return result
+
+        # AC3: post-call source attribution
+        source_entry = _TOOL_SOURCE_MAP.get(tool_name)
+        domain: str | None = None
+        favicon: str = ""
+        url: str = ""
+        if source_entry:
+            domain, favicon, url = source_entry
+        elif isinstance(result, dict):
+            domain = result.get("source_domain")
+            if domain:
+                favicon = f"https://icons.duckduckgo.com/ip3/{domain}.ico"
+                url = f"https://{domain}/"
+
+        if domain:
+            _emit_orchestra_event(
+                "orchestra-source-fetched",
+                {
+                    "agentId": self._agent_name,
+                    "agentName": self._agent_name,
+                    "source": {
+                        "domain": domain,
+                        "favicon": favicon,
+                        "url": url,
+                        "dataType": tool_name,
+                    },
+                },
+                custom_event_name="orchestra_source_fetched",
+            )
+
+        # AC2 second-half: post-call narration summarising findings.
+        # V2-P8: post-call tone defaults to "synthesizing" only for tools whose
+        # purpose IS synthesis (chainlens_deep_research, etc.). For other tools
+        # post-call narration reports findings → "analyzing" matches the
+        # spec's intent better than blanket "synthesizing".
+        post_text = _post_call_narration(tool_name, result)
+        if post_text:
+            pre_tone = _TOOL_TONE.get(tool_name, "fetching")
+            post_tone = "synthesizing" if pre_tone == "synthesizing" else "analyzing"
+            _emit_orchestra_event(
+                "orchestra-narration",
+                {
+                    "agentId": self._agent_name,
+                    "agentName": self._agent_name,
+                    "text": post_text,
+                    "tone": post_tone,
+                },
+                custom_event_name="orchestra_narration",
+            )
+
+        # AC4: emit one orchestra-fact-captured event per extracted numeric fact.
+        for fact in _extract_facts(tool_name, result):
+            payload: dict[str, Any] = {
+                "agentId": self._agent_name,
+                "agentName": self._agent_name,
+                "factSummary": fact["factSummary"],
+            }
+            if "value" in fact:
+                payload["value"] = fact["value"]
+            if "unit" in fact:
+                payload["unit"] = fact["unit"]
+            _emit_orchestra_event(
+                "orchestra-fact-captured",
+                payload,
+                custom_event_name="orchestra_fact_captured",
+            )
+
+        return result
 
 
 class ProviderRateLimitMiddleware(AgentMiddleware):
@@ -504,13 +801,35 @@ class SubAgentResilienceMiddleware(AgentMiddleware):
             else getattr(tool_call, "id", None)
         )
 
+        # V2-D1: emit orchestra-spawn so the FE creates an agent slot before
+        # any narration/source/fact event for this sub-agent arrives.
+        # agentId == subagent_type matches the SourceAttributionMiddleware
+        # `agent_name` constant convention (P8 contract).
+        _emit_orchestra_event(
+            "orchestra-spawn",
+            {
+                "agentId": subagent_type,
+                "agentName": subagent_type,
+                "agentType": subagent_type,
+            },
+            custom_event_name="orchestra_spawn",
+        )
+
         started_at = time.time()
         attempt = 0
         last_exc: Exception | None = None
 
         while True:
             try:
-                return await handler(request)
+                _result = await handler(request)
+                # Emit orchestra-done on the first successful attempt — even retries
+                # converge to a single "done" event per task() invocation.
+                _emit_orchestra_event(
+                    "orchestra-done",
+                    {"agentId": subagent_type, "citationIds": []},
+                    custom_event_name="orchestra_done",
+                )
+                return _result
             except Exception as exc:
                 err = str(exc).lower()
                 is_rl = (
@@ -525,28 +844,13 @@ class SubAgentResilienceMiddleware(AgentMiddleware):
                 attempt += 1
                 elapsed = time.time() - started_at
 
-                if elapsed >= _SUBAGENT_RETRY_MAX_WALL_SECONDS:
-                    _agent_log.error(
-                        "subagent_exhausted: %s gave up after %d attempts / %.0fs — "
-                        "returning error ToolMessage",
+                # No wall-clock cap — rate-limit errors are transient by definition.
+                # Retry indefinitely until the provider lets us through. Logging
+                # every 10 attempts so the operator can see progress without spam.
+                if attempt % 10 == 0:
+                    _agent_log.warning(
+                        "subagent_persistent_retry: %s still retrying after %d attempts / %.0fs",
                         subagent_type, attempt, elapsed,
-                    )
-                    try:
-                        GRACEFUL_DEGRADATION_COUNTER.labels(
-                            outcome="subagent_exhausted"
-                        ).inc()
-                    except Exception:
-                        pass
-                    return ToolMessage(
-                        content=(
-                            f"⚠️ Sub-agent **{subagent_type}** could not complete after "
-                            f"{attempt} retries across {elapsed:.0f}s. Main agent should "
-                            f"synthesize using the remaining sub-agents' outputs. "
-                            f"Error: {last_exc!s}"
-                        ),
-                        tool_call_id=tool_call_id or "",
-                        status="error",
-                        name="task",
                     )
 
                 delay = min(
@@ -780,17 +1084,24 @@ with a heading like "# Phân tích toàn diện [token]" — no preamble."""
                             raise
                         synth_attempt += 1
                         elapsed = time.time() - synth_started
-                        if elapsed >= _SUBAGENT_RETRY_MAX_WALL_SECONDS:
-                            raise  # let stream-level partial extraction handle it
+                        # No wall-clock cap — synthesis MUST eventually complete.
+                        # Provider 429 is transient; retry indefinitely with exponential
+                        # backoff capped at MAX_BACKOFF. Operator sees progress every 10 attempts.
                         delay = min(
                             _SUBAGENT_RETRY_BASE_BACKOFF * (2 ** (synth_attempt - 1)),
                             _SUBAGENT_RETRY_MAX_BACKOFF,
                         )
-                        _agent_log.warning(
-                            "synthesis_retry: attempt %d (elapsed %.0fs) hit 429, "
-                            "sleeping %.0fs",
-                            synth_attempt, elapsed, delay,
-                        )
+                        if synth_attempt % 10 == 0:
+                            _agent_log.warning(
+                                "synthesis_persistent_retry: attempt %d / %.0fs elapsed",
+                                synth_attempt, elapsed,
+                            )
+                        else:
+                            _agent_log.warning(
+                                "synthesis_retry: attempt %d (elapsed %.0fs) hit 429, "
+                                "sleeping %.0fs",
+                                synth_attempt, elapsed, delay,
+                            )
                         _rate_limit_state.mark_rate_limited()
                         await asyncio.sleep(delay)
 
@@ -893,37 +1204,50 @@ synthesize with what's available."""
             return ModelResponse(result=[synthetic_ai])
 
         # Non-comprehensive query: inject directive into system message and delegate to LLM.
-        # Wrap with RateLimitError catch so a 429 on the main orchestrator doesn't abort
-        # the entire stream — instead emit a gentle status message and let LangGraph retry.
+        # Wrap with RateLimitError catch + indefinite retry — provider 429 is transient,
+        # we MUST eventually complete the response. Exponential backoff capped at MAX_BACKOFF
+        # so the operator sees the system pacing instead of giving up.
         from deepagents.middleware._utils import append_to_system_message
 
         new_sys = append_to_system_message(request.system_message, self._DIRECTIVE)
-        try:
-            return await handler(request.override(system_message=new_sys, messages=messages))
-        except Exception as exc:
-            err_str = str(exc).lower()
-            is_rate_limit = (
-                "rate limit" in err_str
-                or "ratelimiterror" in err_str
-                or "429" in err_str
-            )
-            if not is_rate_limit:
-                raise
-            _rate_limit_state.mark_rate_limited()
-            _agent_log.warning(
-                "Main orchestrator rate-limited (%s) — emitting placeholder AI message "
-                "to keep stream alive; comprehensive queries will degrade to sequential.",
-                type(exc).__name__,
-            )
+        main_attempt = 0
+        main_started = time.time()
+        while True:
             try:
-                GRACEFUL_DEGRADATION_COUNTER.labels(outcome="rate_limit_degraded").inc()
-            except Exception:
-                pass
-            if ModelResponse is not None:
-                return ModelResponse(result=[AIMessage(
-                    content="⏳ Hệ thống đang quá tải nhẹ, tôi sẽ xử lý yêu cầu theo tuần tự để bảo đảm chất lượng…",
-                )])
-            raise
+                return await handler(request.override(system_message=new_sys, messages=messages))
+            except Exception as exc:
+                err_str = str(exc).lower()
+                is_rate_limit = (
+                    "rate limit" in err_str
+                    or "ratelimiterror" in err_str
+                    or "429" in err_str
+                )
+                if not is_rate_limit:
+                    raise
+                _rate_limit_state.mark_rate_limited()
+                main_attempt += 1
+                main_elapsed = time.time() - main_started
+                main_delay = min(
+                    _SUBAGENT_RETRY_BASE_BACKOFF * (2 ** (main_attempt - 1)),
+                    _SUBAGENT_RETRY_MAX_BACKOFF,
+                )
+                if main_attempt % 10 == 0:
+                    _agent_log.warning(
+                        "main_orchestrator_persistent_retry: attempt %d / %.0fs elapsed",
+                        main_attempt, main_elapsed,
+                    )
+                else:
+                    _agent_log.warning(
+                        "main_orchestrator_retry: attempt %d (elapsed %.0fs) hit 429, "
+                        "sleeping %.0fs",
+                        main_attempt, main_elapsed, main_delay,
+                    )
+                try:
+                    GRACEFUL_DEGRADATION_COUNTER.labels(outcome="main_retry").inc()
+                except Exception:
+                    pass
+                await asyncio.sleep(main_delay)
+                # Loop and retry — never return placeholder, never give up.
 
     def wrap_model_call(self, request: Any, handler: Any) -> Any:
         return handler(request)
@@ -1474,11 +1798,13 @@ async def create_nowing_deep_agent(
     # filesystem handles) cannot cross-contaminate when sub-agents run in parallel.
     # _memory_middleware is the only intentionally shared instance — it is read-only
     # context injection, no per-call mutation.
-    def _build_gp_middleware() -> list[Any]:
+    def _build_gp_middleware(agent_name: str = "subagent") -> list[Any]:
         return [
             # Shared global rate gate — every sub-agent LLM call passes through
             # the same token bucket as the main orchestrator (see _global_rate_bucket).
             ProviderRateLimitMiddleware(),
+            # Story 9-UX-1 AC3: source attribution + narration events (observational).
+            SourceAttributionMiddleware(agent_name=agent_name),
             TodoListMiddleware(),
             _memory_middleware,
             NowingFilesystemMiddleware(
@@ -1494,7 +1820,7 @@ async def create_nowing_deep_agent(
         **GENERAL_PURPOSE_SUBAGENT,
         "model": llm,
         "tools": tools,
-        "middleware": _build_gp_middleware(),
+        "middleware": _build_gp_middleware(agent_name="general"),
     }
 
     # Crypto sub-agent tool scoping (allowed sets imported from spec files —
@@ -1538,7 +1864,7 @@ async def create_nowing_deep_agent(
         "system_prompt": DEFILLAMA_ANALYST_PROMPT,
         "model": llm,
         "tools": defillama_tools,
-        "middleware": _build_gp_middleware(),
+        "middleware": _build_gp_middleware(agent_name=DEFILLAMA_ANALYST_NAME),
     }
     sentiment_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": SENTIMENT_ANALYST_NAME,
@@ -1546,7 +1872,7 @@ async def create_nowing_deep_agent(
         "system_prompt": SENTIMENT_ANALYST_PROMPT,
         "model": llm,
         "tools": sentiment_tools,
-        "middleware": _build_gp_middleware(),
+        "middleware": _build_gp_middleware(agent_name=SENTIMENT_ANALYST_NAME),
     }
     news_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": NEWS_ANALYST_NAME,
@@ -1554,7 +1880,7 @@ async def create_nowing_deep_agent(
         "system_prompt": NEWS_ANALYST_PROMPT,
         "model": llm,
         "tools": news_tools,
-        "middleware": _build_gp_middleware(),
+        "middleware": _build_gp_middleware(agent_name=NEWS_ANALYST_NAME),
     }
     smart_contract_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": SMART_CONTRACT_ANALYST_NAME,
@@ -1562,7 +1888,7 @@ async def create_nowing_deep_agent(
         "system_prompt": SMART_CONTRACT_ANALYST_PROMPT,
         "model": llm,
         "tools": smart_contract_tools,
-        "middleware": _build_gp_middleware(),
+        "middleware": _build_gp_middleware(agent_name=SMART_CONTRACT_ANALYST_NAME),
     }
     tokenomics_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": TOKENOMICS_ANALYST_NAME,
@@ -1570,7 +1896,7 @@ async def create_nowing_deep_agent(
         "system_prompt": TOKENOMICS_ANALYST_PROMPT,
         "model": llm,
         "tools": tokenomics_tools,
-        "middleware": _build_gp_middleware(),
+        "middleware": _build_gp_middleware(agent_name=TOKENOMICS_ANALYST_NAME),
     }
     yield_optimizer_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
         "name": YIELD_OPTIMIZER_NAME,
@@ -1578,7 +1904,7 @@ async def create_nowing_deep_agent(
         "system_prompt": YIELD_OPTIMIZER_PROMPT,
         "model": llm,
         "tools": yield_optimizer_tools,
-        "middleware": _build_gp_middleware(),
+        "middleware": _build_gp_middleware(agent_name=YIELD_OPTIMIZER_NAME),
     }
 
     # Main agent middleware
@@ -1586,6 +1912,9 @@ async def create_nowing_deep_agent(
         # Global token-bucket — runs FIRST so every downstream LLM call passes through.
         # No-op when PROVIDER_RPM_LIMIT == 0 (default).
         ProviderRateLimitMiddleware(),
+        # Story 9-UX-1 AC3: source attribution — observational, wraps main agent tool calls.
+        # Sub-agent tool calls are covered by their own SourceAttributionMiddleware instance.
+        SourceAttributionMiddleware(agent_name="orchestrator"),
         # Sub-agent resilience: retry task() on rate-limit, convert terminal failures
         # to error ToolMessage so main agent synthesizes with whatever succeeded.
         SubAgentResilienceMiddleware(),

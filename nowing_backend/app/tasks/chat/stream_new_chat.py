@@ -29,7 +29,11 @@ from sqlalchemy import func
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
-from app.agents.new_chat.chat_deepagent import _rate_limit_state, create_nowing_deep_agent
+from app.agents.new_chat.chat_deepagent import (
+    _rate_limit_state,
+    _stream_writer_var,
+    create_nowing_deep_agent,
+)
 
 # LangGraph step budget for the main agent. Under rate-limit pacing each step
 # can take 10-60s (gate spacing + sub-agent retries), so 80 was insufficient for
@@ -278,6 +282,46 @@ async def _stream_agent_events(
     active_tool_depth: int = 0  # Track nesting: >0 means we're inside a tool
     called_update_memory: bool = False
 
+    # AC13: writer queue for orchestra events emitted from contexts that can't
+    # call dispatch_custom_event (rate bucket, monkey-patched LiteLLM gates).
+    # Drained on every event yield + at the end of the stream.
+    _orchestra_writer_queue: list[str] = []
+    _session_id = str(config.get("configurable", {}).get("thread_id", ""))
+
+    # AC1: bare-type events (orchestra-spawn/done/fail/cancel/complete/update) emit
+    # at root level; data-* events (orchestra-narration/source-fetched/etc.) emit
+    # under format_data. Writer routes by event_type prefix.
+    _BARE_TYPE_EVENTS = frozenset(
+        ("orchestra-spawn", "orchestra-update", "orchestra-done", "orchestra-fail",
+         "orchestra-cancel", "orchestra-complete")
+    )
+
+    def _orchestra_writer(event_type: str, data: dict[str, Any]) -> None:
+        # Stamp sessionId server-side if BE didn't provide one.
+        if "sessionId" not in data:
+            data = {**data, "sessionId": _session_id}
+        if event_type in _BARE_TYPE_EVENTS:
+            _orchestra_writer_queue.append(
+                streaming_service._format_sse({"type": event_type, "data": data})
+            )
+        else:
+            _orchestra_writer_queue.append(streaming_service.format_data(event_type, data))
+
+    _writer_token = _stream_writer_var.set(_orchestra_writer)
+
+    async def _drain_writer_queue() -> AsyncGenerator[str, None]:
+        """Drain queued orchestra events one-by-one as SSE chunks."""
+        while _orchestra_writer_queue:
+            yield _orchestra_writer_queue.pop(0)
+
+    def _release_writer() -> None:
+        """V2-P1: idempotent reset, called from both happy + exception paths."""
+        try:
+            _stream_writer_var.reset(_writer_token)
+        except (ValueError, LookupError):
+            # Already reset, or token from different context — best effort.
+            pass
+
     def next_thinking_step_id() -> str:
         nonlocal thinking_step_counter
         thinking_step_counter += 1
@@ -297,7 +341,16 @@ async def _stream_agent_events(
             return event
         return None
 
-    async for event in agent.astream_events(input_data, config=config, version="v2"):
+    # V2-P1: try/finally guarantees writer ContextVar is reset even when
+    # astream_events raises (rate-limit, cancellation, OOM). Without this,
+    # the next stream in the same asyncio task inherits a stale closure.
+    _stream_failed = False
+    try:
+      async for event in agent.astream_events(input_data, config=config, version="v2"):
+        # Drain any writer-queued orchestra events first (rate-gate-wait, etc).
+        while _orchestra_writer_queue:
+            yield _orchestra_writer_queue.pop(0)
+
         event_type = event.get("event", "")
 
         if event_type == "on_chat_model_stream":
@@ -1255,6 +1308,101 @@ async def _stream_agent_events(
                 sanitized[_k] = _v
             yield streaming_service.format_data("research-status", sanitized)
 
+        elif event_type == "on_custom_event" and event.get("name") == "orchestra_spawn":
+            data = event.get("data", {})
+            session_id = str(config.get("configurable", {}).get("thread_id", ""))
+            yield streaming_service.format_orchestra_spawn(
+                session_id=session_id,
+                agent_id=data.get("agentId", ""),
+                agent_name=data.get("agentName", ""),
+                agent_type=data.get("agentType", ""),
+            )
+
+        elif event_type == "on_custom_event" and event.get("name") == "orchestra_done":
+            data = event.get("data", {})
+            session_id = str(config.get("configurable", {}).get("thread_id", ""))
+            yield streaming_service.format_orchestra_done(
+                session_id=session_id,
+                agent_id=data.get("agentId", ""),
+                citation_ids=data.get("citationIds") or [],
+            )
+
+        elif event_type == "on_custom_event" and event.get("name") == "orchestra_fail":
+            data = event.get("data", {})
+            session_id = str(config.get("configurable", {}).get("thread_id", ""))
+            yield streaming_service.format_orchestra_fail(
+                session_id=session_id,
+                agent_id=data.get("agentId", ""),
+                error_code=data.get("errorCode", "unknown"),
+                error_message=data.get("errorMessage", ""),
+            )
+
+        elif event_type == "on_custom_event" and event.get("name") == "orchestra_narration":
+            data = event.get("data", {})
+            session_id = str(config.get("configurable", {}).get("thread_id", ""))
+            agent_name = data.get("agentName", "")
+            yield streaming_service.format_orchestra_narration(
+                session_id=session_id,
+                agent_id=agent_name,
+                text=data.get("text", ""),
+                tone=data.get("tone", "fetching"),
+            )
+
+        elif event_type == "on_custom_event" and event.get("name") == "orchestra_source_fetched":
+            data = event.get("data", {})
+            session_id = str(config.get("configurable", {}).get("thread_id", ""))
+            agent_name = data.get("agentName", "")
+            source = data.get("source", {})
+            yield streaming_service.format_orchestra_source_fetched(
+                session_id=session_id,
+                agent_id=agent_name,
+                domain=source.get("domain", ""),
+                favicon=source.get("favicon", ""),
+                url=source.get("url", ""),
+                data_type=source.get("dataType", ""),
+            )
+
+        elif event_type == "on_custom_event" and event.get("name") == "orchestra_rate_gate_wait":
+            data = event.get("data", {})
+            session_id = str(config.get("configurable", {}).get("thread_id", ""))
+            wait_secs = data.get("waitSeconds", 0.0)
+            reason = data.get("reason", "min_interval")
+            yield streaming_service.format_orchestra_rate_gate_wait(
+                session_id=session_id,
+                wait_seconds=wait_secs,
+                reason=reason,
+            )
+
+        elif event_type == "on_custom_event" and event.get("name") == "orchestra_fact_captured":
+            data = event.get("data", {})
+            session_id = str(config.get("configurable", {}).get("thread_id", ""))
+            yield streaming_service.format_orchestra_fact_captured(
+                session_id=session_id,
+                agent_id=data.get("agentId") or data.get("agentName", ""),
+                fact_summary=data.get("factSummary", ""),
+                value=data.get("value"),
+                unit=data.get("unit"),
+            )
+
+        elif event_type == "on_custom_event" and event.get("name") == "orchestra_llm_call":
+            data = event.get("data", {})
+            session_id = str(config.get("configurable", {}).get("thread_id", ""))
+            yield streaming_service.format_orchestra_llm_call(
+                session_id=session_id,
+                agent_id=data.get("agentId") or data.get("agentName", ""),
+            )
+
+        elif event_type == "on_custom_event" and event.get("name") == "orchestra_model_attribution":
+            data = event.get("data", {})
+            session_id = str(config.get("configurable", {}).get("thread_id", ""))
+            yield streaming_service.format_orchestra_model_attribution(
+                session_id=session_id,
+                agent_id=data.get("agentId") or data.get("agentName", ""),
+                model=data.get("model", ""),
+                provider=data.get("provider", ""),
+                tier=data.get("tier"),
+            )
+
         elif event_type == "on_chat_model_end":
             # Accumulate token counts for quota tracking (cloud mode)
             output = event.get("data", {}).get("output")
@@ -1280,6 +1428,19 @@ async def _stream_agent_events(
             if current_text_id is not None:
                 yield streaming_service.format_text_end(current_text_id)
                 current_text_id = None
+
+    except BaseException:
+        # Mark for finally + re-raise. Any queued events are still drained
+        # below in the finally clause so partial state is visible to the user.
+        _stream_failed = True
+        raise
+    finally:
+        # V2-P1: drain remaining queue + release ContextVar regardless of
+        # whether astream_events completed normally or raised.
+        while _orchestra_writer_queue:
+            yield _orchestra_writer_queue.pop(0)
+        _release_writer()
+    # End of writer-protected region.
 
     if current_text_id is not None:
         yield streaming_service.format_text_end(current_text_id)
@@ -1560,7 +1721,6 @@ async def stream_new_chat(
             chat_id,
         )
 
-        # Configure LangGraph with thread_id for memory
         # If checkpoint_id is provided, fork from that checkpoint (for edit/reload)
         configurable = {"thread_id": str(chat_id)}
         if checkpoint_id:

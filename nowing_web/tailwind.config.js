@@ -73,11 +73,21 @@ module.exports = {
 					"50%": { width: "50%" },
 					"100%": { left: "100%", width: "33%" },
 				},
+				"fade-in": {
+					from: { opacity: "0", transform: "translateY(4px)" },
+					to: { opacity: "1", transform: "translateY(0)" },
+				},
+				"fade-out": {
+					from: { opacity: "1", transform: "translateY(0)" },
+					to: { opacity: "0", transform: "translateY(-4px)" },
+				},
 			},
 			animation: {
 				"accordion-down": "accordion-down 0.2s ease-out",
 				"accordion-up": "accordion-up 0.2s ease-out",
 				"progress-indeterminate": "progress-indeterminate 1.5s ease-in-out infinite",
+				"fade-in": "fade-in 0.2s ease-out",
+				"fade-out": "fade-out 0.2s ease-out forwards",
 			},
 		},
 	},

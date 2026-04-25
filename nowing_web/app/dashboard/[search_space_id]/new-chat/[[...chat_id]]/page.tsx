@@ -110,6 +110,83 @@ import {
 import { applyOrchestraEvent, orchestraStateAtom } from "@/atoms/chat/orchestra.atom";
 import Loading from "../loading";
 
+/**
+ * Handle every orchestra-* and data-orchestra-* SSE event in one place.
+ * Returns true when the event was an orchestra event (so the caller can
+ * `break` from its outer switch). Returns false otherwise — the caller
+ * falls through to other event types.
+ *
+ * Adding a new orchestra event type? Add it here and its case will be
+ * picked up by all 3 SSE-loop call sites automatically.
+ */
+function handleOrchestraEvent(
+	parsed: { type: string; data?: Record<string, unknown> },
+	setOrchestraState: (fn: (prev: unknown) => unknown) => void
+): boolean {
+	const t = parsed.type;
+	if (
+		t !== "orchestra-spawn" &&
+		t !== "orchestra-update" &&
+		t !== "orchestra-done" &&
+		t !== "orchestra-fail" &&
+		t !== "orchestra-cancel" &&
+		t !== "orchestra-complete" &&
+		t !== "data-orchestra-narration" &&
+		t !== "data-orchestra-source-fetched" &&
+		t !== "data-orchestra-fact-captured" &&
+		t !== "data-orchestra-model-attribution" &&
+		t !== "data-orchestra-rate-gate-wait" &&
+		t !== "data-orchestra-llm-call"
+	) {
+		return false;
+	}
+	// V2-P12: guard the reducer so a malformed event from a future BE version
+	// doesn't kill the SSE loop for the entire chat session.
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		setOrchestraState((prev: any) => applyOrchestraEvent(prev, parsed as any));
+	} catch (err) {
+		console.warn("orchestra reducer failed for event", t, err);
+	}
+	const data = (parsed.data ?? {}) as Record<string, unknown>;
+	switch (t) {
+		case "orchestra-spawn":
+			trackOrchestraSpawn({
+				sessionId: String(data.sessionId ?? ""),
+				agentId: String(data.agentId ?? ""),
+				agentName: String(data.agentName ?? ""),
+			});
+			break;
+		case "orchestra-done":
+			trackOrchestraAgentDone({
+				sessionId: String(data.sessionId ?? ""),
+				agentId: String(data.agentId ?? ""),
+			});
+			break;
+		case "orchestra-fail":
+			trackOrchestraAgentFail({
+				sessionId: String(data.sessionId ?? ""),
+				agentId: String(data.agentId ?? ""),
+				errorCode: String(data.errorCode ?? ""),
+			});
+			break;
+		case "orchestra-cancel":
+			trackOrchestraCancelled({
+				sessionId: String(data.sessionId ?? ""),
+				agentId: String(data.agentId ?? ""),
+			});
+			break;
+		case "orchestra-complete":
+			trackOrchestraCompleted({
+				sessionId: String(data.sessionId ?? ""),
+				agentIds: (data.agentIds as string[]) ?? [],
+				citationCount: Number(data.citationCount ?? 0),
+			});
+			break;
+	}
+	return true;
+}
+
 const MobileEditorPanel = dynamic(
 	() =>
 		import("@/components/editor-panel/editor-panel").then((m) => ({
@@ -888,51 +965,22 @@ export default function NewChatPage() {
 							break;
 						}
 
-						case "orchestra-spawn": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraSpawn({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-								agentName: parsed.data.agentName,
-							});
-							break;
-						}
-						case "orchestra-update": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							break;
-						}
-						case "orchestra-done": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraAgentDone({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-							});
-							break;
-						}
-						case "orchestra-fail": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraAgentFail({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-								errorCode: parsed.data.errorCode,
-							});
-							break;
-						}
-						case "orchestra-cancel": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraCancelled({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-							});
-							break;
-						}
-						case "orchestra-complete": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraCompleted({
-								sessionId: parsed.data.sessionId,
-								agentIds: parsed.data.agentIds,
-								citationCount: parsed.data.citationCount,
-							});
+						case "orchestra-spawn":
+						case "orchestra-update":
+						case "orchestra-done":
+						case "orchestra-fail":
+						case "orchestra-cancel":
+						case "orchestra-complete":
+						case "data-orchestra-narration":
+						case "data-orchestra-source-fetched":
+						case "data-orchestra-fact-captured":
+						case "data-orchestra-model-attribution":
+						case "data-orchestra-rate-gate-wait":
+						case "data-orchestra-llm-call": {
+							handleOrchestraEvent(
+								parsed as { type: string; data?: Record<string, unknown> },
+								setOrchestraState as (fn: (prev: unknown) => unknown) => void
+							);
 							break;
 						}
 						case "error":
@@ -1292,51 +1340,22 @@ export default function NewChatPage() {
 							break;
 						}
 
-						case "orchestra-spawn": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraSpawn({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-								agentName: parsed.data.agentName,
-							});
-							break;
-						}
-						case "orchestra-update": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							break;
-						}
-						case "orchestra-done": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraAgentDone({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-							});
-							break;
-						}
-						case "orchestra-fail": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraAgentFail({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-								errorCode: parsed.data.errorCode,
-							});
-							break;
-						}
-						case "orchestra-cancel": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraCancelled({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-							});
-							break;
-						}
-						case "orchestra-complete": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraCompleted({
-								sessionId: parsed.data.sessionId,
-								agentIds: parsed.data.agentIds,
-								citationCount: parsed.data.citationCount,
-							});
+						case "orchestra-spawn":
+						case "orchestra-update":
+						case "orchestra-done":
+						case "orchestra-fail":
+						case "orchestra-cancel":
+						case "orchestra-complete":
+						case "data-orchestra-narration":
+						case "data-orchestra-source-fetched":
+						case "data-orchestra-fact-captured":
+						case "data-orchestra-model-attribution":
+						case "data-orchestra-rate-gate-wait":
+						case "data-orchestra-llm-call": {
+							handleOrchestraEvent(
+								parsed as { type: string; data?: Record<string, unknown> },
+								setOrchestraState as (fn: (prev: unknown) => unknown) => void
+							);
 							break;
 						}
 						case "error":
@@ -1646,51 +1665,22 @@ export default function NewChatPage() {
 							break;
 						}
 
-						case "orchestra-spawn": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraSpawn({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-								agentName: parsed.data.agentName,
-							});
-							break;
-						}
-						case "orchestra-update": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							break;
-						}
-						case "orchestra-done": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraAgentDone({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-							});
-							break;
-						}
-						case "orchestra-fail": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraAgentFail({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-								errorCode: parsed.data.errorCode,
-							});
-							break;
-						}
-						case "orchestra-cancel": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraCancelled({
-								sessionId: parsed.data.sessionId,
-								agentId: parsed.data.agentId,
-							});
-							break;
-						}
-						case "orchestra-complete": {
-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
-							trackOrchestraCompleted({
-								sessionId: parsed.data.sessionId,
-								agentIds: parsed.data.agentIds,
-								citationCount: parsed.data.citationCount,
-							});
+						case "orchestra-spawn":
+						case "orchestra-update":
+						case "orchestra-done":
+						case "orchestra-fail":
+						case "orchestra-cancel":
+						case "orchestra-complete":
+						case "data-orchestra-narration":
+						case "data-orchestra-source-fetched":
+						case "data-orchestra-fact-captured":
+						case "data-orchestra-model-attribution":
+						case "data-orchestra-rate-gate-wait":
+						case "data-orchestra-llm-call": {
+							handleOrchestraEvent(
+								parsed as { type: string; data?: Record<string, unknown> },
+								setOrchestraState as (fn: (prev: unknown) => unknown) => void
+							);
 							break;
 						}
 						case "error":

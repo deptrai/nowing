@@ -425,6 +425,150 @@ class VercelStreamingService:
         """
         return self._format_sse({"type": f"data-{data_type}", "data": data})
 
+    # =========================================================================
+    # Orchestra Events (Crypto Research Lab — Story 9-UX-1)
+    # =========================================================================
+
+    def format_orchestra_spawn(
+        self,
+        session_id: str,
+        agent_id: str,
+        agent_name: str,
+        agent_type: str,
+    ) -> str:
+        """Bare-type emission (no `data-` prefix) — matches existing FE union."""
+        return self._format_sse({
+            "type": "orchestra-spawn",
+            "data": {
+                "sessionId": session_id,
+                "agentId": agent_id,
+                "agentName": agent_name,
+                "agentType": agent_type,
+            },
+        })
+
+    def format_orchestra_done(
+        self,
+        session_id: str,
+        agent_id: str,
+        citation_ids: list[str] | None = None,
+    ) -> str:
+        return self._format_sse({
+            "type": "orchestra-done",
+            "data": {
+                "sessionId": session_id,
+                "agentId": agent_id,
+                "citationIds": citation_ids or [],
+            },
+        })
+
+    def format_orchestra_fail(
+        self,
+        session_id: str,
+        agent_id: str,
+        error_code: str,
+        error_message: str,
+    ) -> str:
+        return self._format_sse({
+            "type": "orchestra-fail",
+            "data": {
+                "sessionId": session_id,
+                "agentId": agent_id,
+                "errorCode": error_code,
+                "errorMessage": error_message,
+            },
+        })
+
+    def format_orchestra_narration(
+        self,
+        session_id: str,
+        agent_id: str,
+        text: str,
+        tone: str = "fetching",
+    ) -> str:
+        return self.format_data(
+            "orchestra-narration",
+            {"sessionId": session_id, "agentId": agent_id, "text": text, "tone": tone},
+        )
+
+    def format_orchestra_source_fetched(
+        self,
+        session_id: str,
+        agent_id: str,
+        domain: str,
+        favicon: str,
+        url: str = "",
+        data_type: str = "",
+    ) -> str:
+        return self.format_data(
+            "orchestra-source-fetched",
+            {
+                "sessionId": session_id,
+                "agentId": agent_id,
+                "source": {
+                    "favicon": favicon,
+                    "domain": domain,
+                    "url": url,
+                    "dataType": data_type,
+                },
+            },
+        )
+
+    def format_orchestra_fact_captured(
+        self,
+        session_id: str,
+        agent_id: str,
+        fact_summary: str,
+        value: float | None = None,
+        unit: str | None = None,
+    ) -> str:
+        data: dict[str, Any] = {
+            "sessionId": session_id,
+            "agentId": agent_id,
+            "factSummary": fact_summary,
+        }
+        if value is not None:
+            data["value"] = value
+        if unit is not None:
+            data["unit"] = unit
+        return self.format_data("orchestra-fact-captured", data)
+
+    def format_orchestra_model_attribution(
+        self,
+        session_id: str,
+        agent_id: str,
+        model: str,
+        provider: str,
+        tier: str | None = None,
+    ) -> str:
+        data: dict[str, Any] = {
+            "sessionId": session_id,
+            "agentId": agent_id,
+            "model": model,
+            "provider": provider,
+        }
+        if tier is not None:
+            data["tier"] = tier
+        return self.format_data("orchestra-model-attribution", data)
+
+    def format_orchestra_rate_gate_wait(
+        self,
+        session_id: str,
+        wait_seconds: float,
+        reason: str = "min_interval",
+    ) -> str:
+        return self.format_data(
+            "orchestra-rate-gate-wait",
+            {"sessionId": session_id, "waitSeconds": wait_seconds, "reason": reason},
+        )
+
+    def format_orchestra_llm_call(self, session_id: str, agent_id: str) -> str:
+        """AC10: per-LLM-call tick for ActivityTimeline."""
+        return self.format_data(
+            "orchestra-llm-call",
+            {"sessionId": session_id, "agentId": agent_id},
+        )
+
     def format_terminal_info(self, text: str, message_type: str = "info") -> str:
         """
         Format terminal info as custom data (Nowing specific).

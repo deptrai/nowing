@@ -288,6 +288,64 @@ export type SSEEvent =
 				agentIds: string[];
 				citationCount: number;
 			};
+	  }
+	// ─── Orchestra Phase 2 UX events (Story 9-UX-1) ─────────────────────────
+	| {
+			type: "data-orchestra-narration";
+			data: {
+				sessionId: string;
+				agentId: string;
+				text: string;
+				tone: "fetching" | "analyzing" | "synthesizing";
+			};
+	  }
+	| {
+			type: "data-orchestra-source-fetched";
+			data: {
+				sessionId: string;
+				agentId: string;
+				source: {
+					favicon: string;
+					domain: string;
+					url: string;
+					dataType: string;
+				};
+			};
+	  }
+	| {
+			type: "data-orchestra-fact-captured";
+			data: {
+				sessionId: string;
+				agentId: string;
+				factSummary: string;
+				value?: number;
+				unit?: string;
+			};
+	  }
+	| {
+			type: "data-orchestra-model-attribution";
+			data: {
+				sessionId: string;
+				agentId: string;
+				model: string;
+				provider: string;
+				tier?: string;
+			};
+	  }
+	| {
+			type: "data-orchestra-rate-gate-wait";
+			data: {
+				sessionId: string;
+				waitSeconds: number;
+				reason: "min_interval" | "paced" | "retry";
+			};
+	  }
+	| {
+			type: "data-orchestra-llm-call";
+			data: {
+				sessionId: string;
+				agentId: string;
+			};
 	  };
 
 /**

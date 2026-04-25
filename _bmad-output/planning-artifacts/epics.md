@@ -1003,12 +1003,22 @@ So that I can time my entries and exits more effectively.
 ---
 
 ### Story 9-UX-1: Live Research Lab
-📄 **Story file**: [`stories/9-UX-1-live-research-lab.md`](./stories/9-UX-1-live-research-lab.md) | **Phase 2 UX · Ready-for-dev**
+📄 **Story file**: [`stories/9-UX-1-live-research-lab.md`](./stories/9-UX-1-live-research-lab.md) | **Phase 2 UX · Done**
 As a crypto researcher using Nowing,
 I want to watch the AI agents work in real-time — with first-person narration, source favicons streaming in, and educational pacing explanations —
 So that I feel confidence, engagement, and trust in the 2-14 minute research process.
 
 **Effort:** 2 weeks (1 FE + 1 BE) · **Blocks:** 9-UX-2, 9-UX-4
+
+---
+
+### Story 9-UX-1b: Background Agent Resume
+📄 **Story file**: [`stories/9-UX-1b-background-agent-resume.md`](./stories/9-UX-1b-background-agent-resume.md) | **Phase 2 UX · Ready-for-dev**
+As a crypto researcher kicking off long-running comprehensive analysis,
+I want agent execution to survive browser refresh, navigation, tab close, and even backend restart —
+So that I never lose 5+ minutes of LLM work to a misclick or flaky network, and I can confidently fire parallel queries.
+
+**Effort:** 1.5 weeks (1 BE + 0.5 FE) · **Depends:** 9-UX-1 · Carved out from 9-UX-1 production findings 2026-04-25 (SSE cancel + worker restart kill). Adds `chat_runs` + `chat_run_events` tables, detached asyncio task, replay-on-resume SSE, multi-run/thread support.
 
 ---
 

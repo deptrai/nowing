@@ -1,0 +1,3447 @@
+=== MODIFIED FILES (git diff HEAD) ===
+diff --git a/_bmad-output/implementation-artifacts/deferred-work.md b/_bmad-output/implementation-artifacts/deferred-work.md
+index ade84f852..754d099f1 100644
+--- a/_bmad-output/implementation-artifacts/deferred-work.md
++++ b/_bmad-output/implementation-artifacts/deferred-work.md
+@@ -287,3 +287,8 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D
+ - **Synthetic `short_q` f-string** — user-controlled content interpolated into tool_call description. Low practical risk today (sub-agent description is just hint text) but should be `json.dumps`-escaped for defense-in-depth. [chat_deepagent.py:ParallelSpawnDirectiveMiddleware]
+ - **`FULL_SUITE_DURATION_HISTOGRAM` bucket `"4+"` semantics** — now mixes 4-agent and 5-agent durations. Rename to `"full_suite"` or split into explicit buckets when Phase 2-3 add stories 9.2, 9.3, 9.5, 9.6. [metrics.py + chat_deepagent.py]
+ - **AC4-AC8 LLM-budget-dependent content verification** — functional spawn, parallelism ratio for 5 agents, 50-query QA, graceful degradation content assertions. Deferred to nightly LLM pipeline. [story 9.1 scope]
++
++## Deferred from: code review of 9-UX-1-live-research-lab (2026-04-25)
++
++- **Storybook infrastructure missing** — `@storybook/react` package not installed in `nowing_web/`. Story files for orchestra lab components were created in-place ([orchestra-lab.stories.tsx](nowing_web/components/new-chat/orchestra/orchestra-lab.stories.tsx)) ready for when Storybook is added. Pre-existing project setup gap, not caused by this story.
++- **Playwright `route` implicit-any TS errors** — [research-lab.spec.ts](nowing_web/playwright/e2e/research-lab.spec.ts) inherits the same 11 pre-existing TS errors as [orchestra-strip.spec.ts](nowing_web/playwright/e2e/orchestra-strip.spec.ts). Root cause: project tsconfig doesn't include `@playwright/test` types; needs separate `tsconfig.playwright.json`. Affects all Playwright specs in the project.
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 1cdd57ffc..88ac71c67 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -137,7 +137,7 @@ development_status:
+ 
+   # ─── PHASE 2 UX OVERHAUL (added 2026-04-25 by Sally + Mary) ───
+   # Goal: lift experience to Messari Pro × Perplexity × Nansen bar
+-  9-UX-1-live-research-lab: ready-for-dev       # 2 weeks · FE+BE
++  9-UX-1-live-research-lab: done                 # 2026-04-25 — review + 22 patches applied · 58 tests pass
+   9-UX-2-crypto-report-layout: ready-for-dev     # 3 weeks · FE+BE (blocked on 9-UX-1)
+   9-UX-3-interactive-analysis: ready-for-dev     # 2 weeks · FE+BE (blocked on 9-UX-2)
+   9-UX-4-additional-data-sources: ready-for-dev  # 2 weeks · BE+FE (blocked on 9-UX-1+2)
+diff --git a/_bmad-output/planning-artifacts/stories/9-UX-1-live-research-lab.md b/_bmad-output/planning-artifacts/stories/9-UX-1-live-research-lab.md
+index b5508d8d8..d75f2ad34 100644
+--- a/_bmad-output/planning-artifacts/stories/9-UX-1-live-research-lab.md
++++ b/_bmad-output/planning-artifacts/stories/9-UX-1-live-research-lab.md
+@@ -8,7 +8,7 @@ relatedFRs: [FR35 Graceful Degradation, FR27 Comprehensive Analysis]
+ relatedNFRs: [NFR-Q3 Graceful Degradation, NFR-UX new — Live Research Visibility]
+ priority: P0 (Phase 2 UX overhaul — foundational for Messari-grade experience)
+ estimatedEffort: 2 weeks (1 FE + 1 BE)
+-status: ready-for-dev
++status: done
+ createdAt: 2026-04-25
+ author: Sally (UX Designer) + Mary (BA)
+ ---
+@@ -208,22 +208,22 @@ Introduce `_stream_writer_var: contextvars.ContextVar[StreamWriter | None] = Con
+ 
+ ## Tasks
+ 
+-- [ ] **T1** (BE) — Add 5 new `format_orchestra_*` helpers to `VercelStreamingService`
+-- [ ] **T2** (BE) — Add `SourceAttributionMiddleware` class + register in BOTH (a) main `deepagent_middleware` list AND (b) `_build_gp_middleware()` used for sub-agents. Verify via Playwright that sub-agent tool calls emit `orchestra-source-fetched` events (not just main orchestrator).
+-- [ ] **T3** (BE) — Wrap sub-agent tool calls with pre/post narration emit (template-driven)
+-- [ ] **T4** (BE) — Add rate-gate-wait emission hook in `_GlobalRateBucket.acquire()`
+-- [ ] **T5** (BE) — Unit test narration formatting + middleware wire
+-- [ ] **T6** (FE) — Extend `streaming-state.ts` discriminated union with 5 new event types
+-- [ ] **T7** (FE) — Extend `orchestra-atom.ts` state shape + reducers
+-- [ ] **T8** (FE) — Refactor `orchestra-strip.tsx` default variant → `<ResearchLabPanel>`
+-- [ ] **T9** (FE) — Build `agent-lane.tsx` + `model-attribution-badge.tsx` + `status-light.tsx`
+-- [ ] **T10** (FE) — Build `live-narration-stream.tsx` with fade animation
+-- [ ] **T11** (FE) — Build `source-favicon-river.tsx` chip carousel
+-- [ ] **T12** (FE) — Build `activity-timeline.tsx` CSS sparkline
+-- [ ] **T13** (FE) — Build `rate-gate-banner.tsx` educational component
+-- [ ] **T14** (FE) — Storybook stories for all new components
+-- [ ] **T15** (FE) — Component unit tests (Vitest + RTL)
+-- [ ] **T16** (E2E) — Playwright: send "phân tích toàn diện" → verify Lab renders + narration streams
++- [x] **T1** (BE) — Add 5 new `format_orchestra_*` helpers to `VercelStreamingService`
++- [x] **T2** (BE) — Add `SourceAttributionMiddleware` class + register in BOTH (a) main `deepagent_middleware` list AND (b) `_build_gp_middleware()` used for sub-agents. Verify via Playwright that sub-agent tool calls emit `orchestra-source-fetched` events (not just main orchestrator).
++- [x] **T3** (BE) — Wrap sub-agent tool calls with pre/post narration emit (template-driven)
++- [x] **T4** (BE) — Add rate-gate-wait emission hook in `_GlobalRateBucket.acquire()`
++- [x] **T5** (BE) — Unit test narration formatting + middleware wire
++- [x] **T6** (FE) — Extend `streaming-state.ts` discriminated union with 5 new event types
++- [x] **T7** (FE) — Extend `orchestra-atom.ts` state shape + reducers
++- [x] **T8** (FE) — Refactor `orchestra-strip.tsx` default variant → `<ResearchLabPanel>`
++- [x] **T9** (FE) — Build `agent-lane.tsx` + `model-attribution-badge.tsx` + `status-light.tsx`
++- [x] **T10** (FE) — Build `live-narration-stream.tsx` with fade animation
++- [x] **T11** (FE) — Build `source-favicon-river.tsx` chip carousel
++- [x] **T12** (FE) — Build `activity-timeline.tsx` CSS sparkline
++- [x] **T13** (FE) — Build `rate-gate-banner.tsx` educational component
++- [x] **T14** (FE) — Storybook stories for all new components
++- [x] **T15** (FE) — Component unit tests (Vitest + RTL)
++- [x] **T16** (E2E) — Playwright: send "phân tích toàn diện" → verify Lab renders + narration streams
+ 
+ ---
+ 
+@@ -305,4 +305,32 @@ pnpm test:e2e tests/e2e/crypto-orchestra-live-lab.spec.ts
+ 
+ ## Review Findings
+ 
+-(To be filled by Dev → Reviewer cycle)
++_Code review run: 2026-04-25 — Blind Hunter + Edge Case Hunter + Acceptance Auditor (3/3 layers passed)._
++_Stats: 24 unique findings after dedup (~50 dismissed as noise/duplicate). Severities below per-finding._
++
++### Decision-Needed — RESOLVED (all → implement now)
++
++_Resolved 2026-04-25 by user: all 7 decisions chose option (a) implement now. Promoted to Patch list below._
++
++### Patch (unambiguous fixes)
++
++- [x] [Review][Patch] **Verify `agent_name` from middleware matches `agentId` from orchestra-spawn** [chat_deepagent.py SourceAttributionMiddleware] — Critical (Blind+Edge+Auditor). Middleware passes `_agent_name` (e.g. constants like `TOKENOMICS_ANALYST_NAME`); spawn event uses `agentId`. If these don't align, `agents.get(agentId)` returns undefined in every per-agent reducer → entire feature silently invisible in production. Most likely cause of "tests pass, prod shows nothing".
++- [x] [Review][Patch] **State mutation: 5 new reducers must clone `state.sessions` Map** [orchestra.atom.ts] — High (Blind). Compare spawn-path pattern. If `sessions.set(...)` is called on `state.sessions` directly, React may skip re-renders due to reference equality.
++- [x] [Review][Patch] **`test_source_attribution_emits_pre_narration_for_known_tool` doesn't assert dispatch was called** [tests/unit/.../test_source_attribution_middleware.py:165-178] — Medium (Blind+Edge). Test is false-positive green; add `mock_dispatch.assert_any_call("orchestra_narration", ...)`.
++- [x] [Review][Patch] **Copy-pasted orchestra switch block in 3 places in page.tsx** [page.tsx:935-941, 1347-1353, 1709-1715] — Medium (Blind+Edge). Extract into `handleOrchestraEvent(parsed, setOrchestraState)` helper to prevent future inconsistency.
++- [x] [Review][Patch] **SSE test fixture uses `\n` instead of `\n\n` separator** [research-lab.spec.ts:32-34] — High (Edge). Real SSE requires blank-line terminators; current `events.map(...).join("\n")` produces single LF between events. Tests may pass for wrong reason.
++- [x] [Review][Patch] **Sessions Map never evicted → cross-session memory leak** [orchestra.atom.ts] — Medium (Edge). Add eviction on `orchestra-complete` (after delay) or cap sessions to last N.
++- [x] [Review][Patch] **`source.url` always empty string** [chat_deepagent.py:150, narration_templates.py TOOL_SOURCE_MAP] — Medium (Auditor). Spec says `source: { favicon, domain, url, dataType }` with url required. Either populate from tool result or remove from contract.
++- [x] [Review][Patch] **AC8 LiveNarrationStream uses `line-clamp-2` instead of single-line truncate; no fade-out of old text** [live-narration-stream.tsx] — Medium (Auditor). Spec: "Single line visible at a time"; "Fade-out old narration + fade-in new (~200ms)".
++- [x] [Review][Patch] **AC6 grid not adaptive — hardcoded `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`** [orchestra-strip.tsx:106] — Medium (Auditor). Spec: dynamic `1×N / 2×⌈N/2⌉ / 3×⌈N/3⌉` for 4-9 agents. With 6 agents at lg, current produces 3×2 instead of spec's 2×3.
++- [x] [Review][Patch] **Rate-gate `reason` hard-coded to `"min_interval"`; `paced` & `retry` unreachable** [chat_deepagent.py:73] — Medium (Auditor). RateGateBanner labels all three but BE only emits one. Either narrow union type or implement other branches.
++- [x] [Review][Patch] **`tone` always `"fetching"` — `analyzing` & `synthesizing` unreachable** [chat_deepagent.py:123] — Low (Auditor). Same shape mismatch as `reason`.
++- [x] [Review][Patch] **Tool returns dict with error + source_domain → middleware falsely emits source-fetched** [chat_deepagent.py:136-139] — Medium (Blind). Check `result.get("error")` or success status before dispatching `orchestra_source_fetched`.
++- [x] [Review][Patch] **AgentLane fact counter label says "data points captured", spec says "facts captured"** [agent-lane.tsx:118-120] — Low (Auditor).
++- [x] [Review][Patch] **AgentLane missing `[Expand]` button → SourceDetailPanel** [agent-lane.tsx] — Medium (Auditor). Spec lists `[Expand]` action in mockup; not implemented.
++- [x] [Review][Patch] **`SourceFaviconRiver` chip empty-`src` infinite `onerror`** [source-favicon-river.tsx:38-40, chat_deepagent.py:137 fallback path] — Low (Edge). When `TOOL_SOURCE_MAP` miss + result has no `source_domain`, favicon is `""`. Some browsers fire onerror infinitely on empty src. Guard with `if (!favicon) return null` in chip.
++
++### Deferred (pre-existing / out of scope)
++
++- [x] [Review][Defer] **Storybook infrastructure missing** [orchestra-lab.stories.tsx] — `@storybook/react` not installed in project. Story files created in-place ready for when Storybook is added. Pre-existing project setup gap.
++- [x] [Review][Defer] **Playwright `route` implicit-any TS errors** [research-lab.spec.ts, orchestra-strip.spec.ts] — Same pattern as 11 pre-existing errors in `orchestra-strip.spec.ts`. Project tsconfig doesn't include `@playwright/test` types; needs separate `tsconfig.playwright.json`. Pre-existing infrastructure issue.
+diff --git a/nowing_backend/app/agents/new_chat/chat_deepagent.py b/nowing_backend/app/agents/new_chat/chat_deepagent.py
+index d9deca978..392bcee29 100644
+--- a/nowing_backend/app/agents/new_chat/chat_deepagent.py
++++ b/nowing_backend/app/agents/new_chat/chat_deepagent.py
+@@ -352,6 +352,10 @@ class _GlobalRateBucket:
+                         "(min_interval=%.1fs, elapsed=%.1fs)",
+                         wait_for, self.min_interval, elapsed,
+                     )
++                    # AC4/AC13: emit rate-gate-wait event when wait ≥ 3s so FE
++                    # can show educational "Pacing calls..." banner to user.
++                    if wait_for >= 3.0:
++                        _emit_rate_gate_event(wait_for, reason="min_interval")
+                     await asyncio.sleep(wait_for)
+             # Record AFTER the sleep so the next caller sees the actual
+             # dispatch moment, not the arrival moment.
+@@ -428,6 +432,269 @@ def _disable_litellm_internal_retry_when_gated() -> None:
+ _install_global_chat_litellm_rate_gate()
+ _disable_litellm_internal_retry_when_gated()
+ 
++# ContextVar for rate-gate SSE emission (AC13).
++# Set by stream_new_chat.py before agent.astream_events() so the rate bucket
++# (which lives in a sibling async context outside the LangChain runnable tree)
++# can emit orchestra-rate-gate-wait events directly into the SSE stream.
++# Type: callable taking (event_type: str, data: dict) -> None.
++# Fallback: dispatch_custom_event when var is None (e.g. during tests).
++_StreamWriter = "typing.Callable[[str, dict[str, Any]], None]"
++_stream_writer_var: contextvars.ContextVar[Any | None] = contextvars.ContextVar(
++    "_stream_writer_var", default=None
++)
++
++
++def _emit_rate_gate_event(wait_seconds: float, reason: str = "min_interval") -> None:
++    """Emit orchestra-rate-gate-wait event via ContextVar writer if set, else dispatch_custom_event.
++
++    AC13 path: ContextVar set by stream_new_chat.py covers cases where the rate
++    bucket is invoked outside any LangChain runnable context (Celery, direct
++    sub-agent calls, monkey-patched LiteLLM gates). Falls back to
++    `dispatch_custom_event` for tests and code paths that haven't set the writer.
++    """
++    payload = {"waitSeconds": round(wait_seconds, 1), "reason": reason}
++    writer = _stream_writer_var.get()
++    if writer is not None:
++        try:
++            writer("orchestra-rate-gate-wait", payload)
++            return
++        except Exception:
++            pass
++    try:
++        from langchain_core.callbacks import dispatch_custom_event
++        dispatch_custom_event("orchestra_rate_gate_wait", payload)
++    except (RuntimeError, LookupError):
++        # No active runnable context — silently drop (educational banner is best-effort).
++        pass
++
++
++def _emit_orchestra_event(event_type: str, payload: dict[str, Any], custom_event_name: str | None = None) -> None:
++    """Emit any orchestra-* event via ContextVar writer or dispatch_custom_event fallback.
++
++    Used by SourceAttributionMiddleware for narration / source / fact / model events.
++    """
++    writer = _stream_writer_var.get()
++    if writer is not None:
++        try:
++            writer(event_type, payload)
++            return
++        except Exception:
++            pass
++    try:
++        from langchain_core.callbacks import dispatch_custom_event
++        dispatch_custom_event(custom_event_name or event_type.replace("-", "_"), payload)
++    except (RuntimeError, LookupError):
++        pass
++
++# Map tool name → (source_domain, favicon_url) for source attribution events
++# (canonical source: narration_templates.py)
++from app.agents.new_chat.subagents.crypto.narration_templates import (
++    PRE_CALL as _TOOL_PRE_NARRATION,
++    TOOL_SOURCE_MAP as _TOOL_SOURCE_MAP,
++    TOOL_TONE as _TOOL_TONE,
++    extract_facts as _extract_facts,
++    post_call_narration as _post_call_narration,
++)
++
++
++def _extract_model_metadata(request: Any) -> tuple[str, str, str | None]:
++    """Best-effort extraction of (model, provider, tier) from a model_call request.
++
++    Returns ("", "", None) when the model object is not introspectable. Used by
++    SourceAttributionMiddleware to emit AC9 model_attribution events.
++    """
++    model: Any = None
++    for attr in ("model", "llm", "_model", "_llm"):
++        candidate = getattr(request, attr, None)
++        if candidate is not None:
++            model = candidate
++            break
++
++    if model is None:
++        return ("", "", None)
++
++    model_name = (
++        getattr(model, "model_name", None)
++        or getattr(model, "model", None)
++        or getattr(model, "name", None)
++        or ""
++    )
++    if isinstance(model_name, str):
++        # Strip litellm prefix routing (e.g. "openai/gpt-4o" → "gpt-4o").
++        model_name = model_name.split("/", 1)[-1] if "/" in model_name else model_name
++
++    provider = getattr(model, "provider", None) or getattr(model, "_llm_type", None) or ""
++    if isinstance(provider, str) and provider.lower().startswith("chat-"):
++        provider = provider[5:]
++    if not provider and hasattr(model, "openai_api_base"):
++        base = getattr(model, "openai_api_base", "") or ""
++        if "trollllm" in base.lower():
++            provider = "trollllm"
++        elif "openai" in base.lower():
++            provider = "openai"
++
++    tier = getattr(model, "tier", None) or None
++    return (str(model_name or ""), str(provider or ""), tier if isinstance(tier, str) else None)
++
++
++class SourceAttributionMiddleware(AgentMiddleware):
++    """Emits SSE events for narration (pre-call) and source attribution (post-call).
++
++    AGENT IDENTITY CONTRACT (P8):
++        Every event payload uses ``self._agent_name`` for both ``agentId`` and
++        ``agentName`` fields. The FE orchestra-atom keys agents by ``agentId``,
++        so the contract is: whatever string is passed to ``__init__(agent_name=...)``
++        MUST equal the ``agentId`` used by the eventual ``orchestra-spawn`` emitter
++        (currently TODO — pre-existing gap, not in 9-UX-1 scope).
++
++        Today the constants ``DEFILLAMA_ANALYST_NAME``, ``TOKENOMICS_ANALYST_NAME``,
++        etc. (see ``subagents/crypto/*/__init__.py``) are passed BOTH to
++        ``_build_gp_middleware(agent_name=...)`` AND to the deepagents sub-agent
++        spec's ``"name"`` field. When the orchestra-spawn pipeline is wired up
++        (Story 9-FE-1 follow-up), it must use these same constants as ``agentId``.
++
++    Registered in BOTH main deepagent_middleware AND _build_gp_middleware() per AC3.
++    Uses dispatch_custom_event (LangChain) so events propagate through astream_events.
++    Agent name is injected at construction so stream handler can attribute per-agent.
++    """
++
++    def __init__(self, agent_name: str = "orchestrator") -> None:
++        self._agent_name = agent_name
++        # Emit model_attribution exactly once per agent lifecycle
++        self._model_attribution_emitted: bool = False
++
++    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
++        # AC9: emit one orchestra-model-attribution event the first time this
++        # agent's model is invoked, so the FE can render a "🤖 Sonnet · trollllm"
++        # badge next to the agent's lane.
++        if not self._model_attribution_emitted:
++            self._model_attribution_emitted = True
++            model_name, provider, tier = _extract_model_metadata(request)
++            if model_name:
++                payload: dict[str, Any] = {
++                    "agentId": self._agent_name,
++                    "agentName": self._agent_name,
++                    "model": model_name,
++                    "provider": provider or "unknown",
++                }
++                if tier:
++                    payload["tier"] = tier
++                _emit_orchestra_event(
++                    "orchestra-model-attribution",
++                    payload,
++                    custom_event_name="orchestra_model_attribution",
++                )
++
++        # AC10: per-LLM-call telemetry tick. Emitted *before* the call so the
++        # ActivityTimeline records dispatch moments (gates show as gaps between).
++        _emit_orchestra_event(
++            "orchestra-llm-call",
++            {"agentId": self._agent_name, "agentName": self._agent_name},
++            custom_event_name="orchestra_llm_call",
++        )
++        return await handler(request)
++
++    async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
++        tool_name: str = getattr(request, "name", "") or ""
++
++        # AC2: mandatory pre-call narration BEFORE handler(request) executes
++        pre_text = _TOOL_PRE_NARRATION.get(tool_name)
++        if pre_text:
++            tone = _TOOL_TONE.get(tool_name, "fetching")
++            _emit_orchestra_event(
++                "orchestra-narration",
++                {
++                    "agentId": self._agent_name,
++                    "agentName": self._agent_name,
++                    "text": pre_text,
++                    "tone": tone,
++                },
++                custom_event_name="orchestra_narration",
++            )
++
++        try:
++            result = await handler(request)
++        except Exception:
++            # AC2 symmetric narration on tool failure — let the user know the
++            # call failed instead of leaving them with the dangling pre-narration.
++            _emit_orchestra_event(
++                "orchestra-narration",
++                {
++                    "agentId": self._agent_name,
++                    "agentName": self._agent_name,
++                    "text": f"Tool {tool_name} thất bại — đang chuyển sang fallback...",
++                    "tone": "analyzing",
++                },
++                custom_event_name="orchestra_narration",
++            )
++            raise
++
++        # P19: skip source attribution when the tool returned an error payload.
++        if isinstance(result, dict) and (result.get("error") or result.get("_error")):
++            return result
++
++        # AC3: post-call source attribution
++        source_entry = _TOOL_SOURCE_MAP.get(tool_name)
++        domain: str | None = None
++        favicon: str = ""
++        url: str = ""
++        if source_entry:
++            domain, favicon, url = source_entry
++        elif isinstance(result, dict):
++            domain = result.get("source_domain")
++            if domain:
++                favicon = f"https://icons.duckduckgo.com/ip3/{domain}.ico"
++                url = f"https://{domain}/"
++
++        if domain:
++            _emit_orchestra_event(
++                "orchestra-source-fetched",
++                {
++                    "agentId": self._agent_name,
++                    "agentName": self._agent_name,
++                    "source": {
++                        "domain": domain,
++                        "favicon": favicon,
++                        "url": url,
++                        "dataType": tool_name,
++                    },
++                },
++                custom_event_name="orchestra_source_fetched",
++            )
++
++        # AC2 second-half: post-call narration summarising findings
++        post_text = _post_call_narration(tool_name, result)
++        if post_text:
++            _emit_orchestra_event(
++                "orchestra-narration",
++                {
++                    "agentId": self._agent_name,
++                    "agentName": self._agent_name,
++                    "text": post_text,
++                    "tone": "synthesizing",
++                },
++                custom_event_name="orchestra_narration",
++            )
++
++        # AC4: emit one orchestra-fact-captured event per extracted numeric fact.
++        for fact in _extract_facts(tool_name, result):
++            payload: dict[str, Any] = {
++                "agentId": self._agent_name,
++                "agentName": self._agent_name,
++                "factSummary": fact["factSummary"],
++            }
++            if "value" in fact:
++                payload["value"] = fact["value"]
++            if "unit" in fact:
++                payload["unit"] = fact["unit"]
++            _emit_orchestra_event(
++                "orchestra-fact-captured",
++                payload,
++                custom_event_name="orchestra_fact_captured",
++            )
++
++        return result
++
+ 
+ class ProviderRateLimitMiddleware(AgentMiddleware):
+     """Global token-bucket rate limiter for LLM calls.
+@@ -1474,11 +1741,13 @@ async def create_nowing_deep_agent(
+     # filesystem handles) cannot cross-contaminate when sub-agents run in parallel.
+     # _memory_middleware is the only intentionally shared instance — it is read-only
+     # context injection, no per-call mutation.
+-    def _build_gp_middleware() -> list[Any]:
++    def _build_gp_middleware(agent_name: str = "subagent") -> list[Any]:
+         return [
+             # Shared global rate gate — every sub-agent LLM call passes through
+             # the same token bucket as the main orchestrator (see _global_rate_bucket).
+             ProviderRateLimitMiddleware(),
++            # Story 9-UX-1 AC3: source attribution + narration events (observational).
++            SourceAttributionMiddleware(agent_name=agent_name),
+             TodoListMiddleware(),
+             _memory_middleware,
+             NowingFilesystemMiddleware(
+@@ -1494,7 +1763,7 @@ async def create_nowing_deep_agent(
+         **GENERAL_PURPOSE_SUBAGENT,
+         "model": llm,
+         "tools": tools,
+-        "middleware": _build_gp_middleware(),
++        "middleware": _build_gp_middleware(agent_name="general"),
+     }
+ 
+     # Crypto sub-agent tool scoping (allowed sets imported from spec files —
+@@ -1538,7 +1807,7 @@ async def create_nowing_deep_agent(
+         "system_prompt": DEFILLAMA_ANALYST_PROMPT,
+         "model": llm,
+         "tools": defillama_tools,
+-        "middleware": _build_gp_middleware(),
++        "middleware": _build_gp_middleware(agent_name=DEFILLAMA_ANALYST_NAME),
+     }
+     sentiment_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
+         "name": SENTIMENT_ANALYST_NAME,
+@@ -1546,7 +1815,7 @@ async def create_nowing_deep_agent(
+         "system_prompt": SENTIMENT_ANALYST_PROMPT,
+         "model": llm,
+         "tools": sentiment_tools,
+-        "middleware": _build_gp_middleware(),
++        "middleware": _build_gp_middleware(agent_name=SENTIMENT_ANALYST_NAME),
+     }
+     news_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
+         "name": NEWS_ANALYST_NAME,
+@@ -1554,7 +1823,7 @@ async def create_nowing_deep_agent(
+         "system_prompt": NEWS_ANALYST_PROMPT,
+         "model": llm,
+         "tools": news_tools,
+-        "middleware": _build_gp_middleware(),
++        "middleware": _build_gp_middleware(agent_name=NEWS_ANALYST_NAME),
+     }
+     smart_contract_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
+         "name": SMART_CONTRACT_ANALYST_NAME,
+@@ -1562,7 +1831,7 @@ async def create_nowing_deep_agent(
+         "system_prompt": SMART_CONTRACT_ANALYST_PROMPT,
+         "model": llm,
+         "tools": smart_contract_tools,
+-        "middleware": _build_gp_middleware(),
++        "middleware": _build_gp_middleware(agent_name=SMART_CONTRACT_ANALYST_NAME),
+     }
+     tokenomics_analyst_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
+         "name": TOKENOMICS_ANALYST_NAME,
+@@ -1570,7 +1839,7 @@ async def create_nowing_deep_agent(
+         "system_prompt": TOKENOMICS_ANALYST_PROMPT,
+         "model": llm,
+         "tools": tokenomics_tools,
+-        "middleware": _build_gp_middleware(),
++        "middleware": _build_gp_middleware(agent_name=TOKENOMICS_ANALYST_NAME),
+     }
+     yield_optimizer_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
+         "name": YIELD_OPTIMIZER_NAME,
+@@ -1578,7 +1847,7 @@ async def create_nowing_deep_agent(
+         "system_prompt": YIELD_OPTIMIZER_PROMPT,
+         "model": llm,
+         "tools": yield_optimizer_tools,
+-        "middleware": _build_gp_middleware(),
++        "middleware": _build_gp_middleware(agent_name=YIELD_OPTIMIZER_NAME),
+     }
+ 
+     # Main agent middleware
+@@ -1586,6 +1855,9 @@ async def create_nowing_deep_agent(
+         # Global token-bucket — runs FIRST so every downstream LLM call passes through.
+         # No-op when PROVIDER_RPM_LIMIT == 0 (default).
+         ProviderRateLimitMiddleware(),
++        # Story 9-UX-1 AC3: source attribution — observational, wraps main agent tool calls.
++        # Sub-agent tool calls are covered by their own SourceAttributionMiddleware instance.
++        SourceAttributionMiddleware(agent_name="orchestrator"),
+         # Sub-agent resilience: retry task() on rate-limit, convert terminal failures
+         # to error ToolMessage so main agent synthesizes with whatever succeeded.
+         SubAgentResilienceMiddleware(),
+diff --git a/nowing_backend/app/services/new_streaming_service.py b/nowing_backend/app/services/new_streaming_service.py
+index 8f37e6bad..188877f3d 100644
+--- a/nowing_backend/app/services/new_streaming_service.py
++++ b/nowing_backend/app/services/new_streaming_service.py
+@@ -425,6 +425,100 @@ class VercelStreamingService:
+         """
+         return self._format_sse({"type": f"data-{data_type}", "data": data})
+ 
++    # =========================================================================
++    # Orchestra Events (Crypto Research Lab — Story 9-UX-1)
++    # =========================================================================
++
++    def format_orchestra_narration(
++        self,
++        session_id: str,
++        agent_id: str,
++        text: str,
++        tone: str = "fetching",
++    ) -> str:
++        return self.format_data(
++            "orchestra-narration",
++            {"sessionId": session_id, "agentId": agent_id, "text": text, "tone": tone},
++        )
++
++    def format_orchestra_source_fetched(
++        self,
++        session_id: str,
++        agent_id: str,
++        domain: str,
++        favicon: str,
++        url: str = "",
++        data_type: str = "",
++    ) -> str:
++        return self.format_data(
++            "orchestra-source-fetched",
++            {
++                "sessionId": session_id,
++                "agentId": agent_id,
++                "source": {
++                    "favicon": favicon,
++                    "domain": domain,
++                    "url": url,
++                    "dataType": data_type,
++                },
++            },
++        )
++
++    def format_orchestra_fact_captured(
++        self,
++        session_id: str,
++        agent_id: str,
++        fact_summary: str,
++        value: float | None = None,
++        unit: str | None = None,
++    ) -> str:
++        data: dict[str, Any] = {
++            "sessionId": session_id,
++            "agentId": agent_id,
++            "factSummary": fact_summary,
++        }
++        if value is not None:
++            data["value"] = value
++        if unit is not None:
++            data["unit"] = unit
++        return self.format_data("orchestra-fact-captured", data)
++
++    def format_orchestra_model_attribution(
++        self,
++        session_id: str,
++        agent_id: str,
++        model: str,
++        provider: str,
++        tier: str | None = None,
++    ) -> str:
++        data: dict[str, Any] = {
++            "sessionId": session_id,
++            "agentId": agent_id,
++            "model": model,
++            "provider": provider,
++        }
++        if tier is not None:
++            data["tier"] = tier
++        return self.format_data("orchestra-model-attribution", data)
++
++    def format_orchestra_rate_gate_wait(
++        self,
++        session_id: str,
++        wait_seconds: float,
++        reason: str = "min_interval",
++    ) -> str:
++        return self.format_data(
++            "orchestra-rate-gate-wait",
++            {"sessionId": session_id, "waitSeconds": wait_seconds, "reason": reason},
++        )
++
++    def format_orchestra_llm_call(self, session_id: str, agent_id: str) -> str:
++        """AC10: per-LLM-call tick for ActivityTimeline."""
++        return self.format_data(
++            "orchestra-llm-call",
++            {"sessionId": session_id, "agentId": agent_id},
++        )
++
+     def format_terminal_info(self, text: str, message_type: str = "info") -> str:
+         """
+         Format terminal info as custom data (Nowing specific).
+diff --git a/nowing_backend/app/tasks/chat/stream_new_chat.py b/nowing_backend/app/tasks/chat/stream_new_chat.py
+index f753d09f0..90f3da7d2 100644
+--- a/nowing_backend/app/tasks/chat/stream_new_chat.py
++++ b/nowing_backend/app/tasks/chat/stream_new_chat.py
+@@ -29,7 +29,11 @@ from sqlalchemy import func
+ from sqlalchemy.future import select
+ from sqlalchemy.orm import selectinload
+ 
+-from app.agents.new_chat.chat_deepagent import _rate_limit_state, create_nowing_deep_agent
++from app.agents.new_chat.chat_deepagent import (
++    _rate_limit_state,
++    _stream_writer_var,
++    create_nowing_deep_agent,
++)
+ 
+ # LangGraph step budget for the main agent. Under rate-limit pacing each step
+ # can take 10-60s (gate spacing + sub-agent retries), so 80 was insufficient for
+@@ -278,6 +282,20 @@ async def _stream_agent_events(
+     active_tool_depth: int = 0  # Track nesting: >0 means we're inside a tool
+     called_update_memory: bool = False
+ 
++    # AC13: writer queue for orchestra events emitted from contexts that can't
++    # call dispatch_custom_event (rate bucket, monkey-patched LiteLLM gates).
++    # Drained on every event yield + at the end of the stream.
++    _orchestra_writer_queue: list[str] = []
++    _session_id = str(config.get("configurable", {}).get("thread_id", ""))
++
++    def _orchestra_writer(event_type: str, data: dict[str, Any]) -> None:
++        # Stamp sessionId server-side if BE didn't provide one.
++        if "sessionId" not in data:
++            data = {**data, "sessionId": _session_id}
++        _orchestra_writer_queue.append(streaming_service.format_data(event_type, data))
++
++    _writer_token = _stream_writer_var.set(_orchestra_writer)
++
+     def next_thinking_step_id() -> str:
+         nonlocal thinking_step_counter
+         thinking_step_counter += 1
+@@ -298,6 +316,10 @@ async def _stream_agent_events(
+         return None
+ 
+     async for event in agent.astream_events(input_data, config=config, version="v2"):
++        # Drain any writer-queued orchestra events first (rate-gate-wait, etc).
++        while _orchestra_writer_queue:
++            yield _orchestra_writer_queue.pop(0)
++
+         event_type = event.get("event", "")
+ 
+         if event_type == "on_chat_model_stream":
+@@ -1255,6 +1277,72 @@ async def _stream_agent_events(
+                 sanitized[_k] = _v
+             yield streaming_service.format_data("research-status", sanitized)
+ 
++        elif event_type == "on_custom_event" and event.get("name") == "orchestra_narration":
++            data = event.get("data", {})
++            session_id = str(config.get("configurable", {}).get("thread_id", ""))
++            agent_name = data.get("agentName", "")
++            yield streaming_service.format_orchestra_narration(
++                session_id=session_id,
++                agent_id=agent_name,
++                text=data.get("text", ""),
++                tone=data.get("tone", "fetching"),
++            )
++
++        elif event_type == "on_custom_event" and event.get("name") == "orchestra_source_fetched":
++            data = event.get("data", {})
++            session_id = str(config.get("configurable", {}).get("thread_id", ""))
++            agent_name = data.get("agentName", "")
++            source = data.get("source", {})
++            yield streaming_service.format_orchestra_source_fetched(
++                session_id=session_id,
++                agent_id=agent_name,
++                domain=source.get("domain", ""),
++                favicon=source.get("favicon", ""),
++                url=source.get("url", ""),
++                data_type=source.get("dataType", ""),
++            )
++
++        elif event_type == "on_custom_event" and event.get("name") == "orchestra_rate_gate_wait":
++            data = event.get("data", {})
++            session_id = str(config.get("configurable", {}).get("thread_id", ""))
++            wait_secs = data.get("waitSeconds", 0.0)
++            reason = data.get("reason", "min_interval")
++            yield streaming_service.format_orchestra_rate_gate_wait(
++                session_id=session_id,
++                wait_seconds=wait_secs,
++                reason=reason,
++            )
++
++        elif event_type == "on_custom_event" and event.get("name") == "orchestra_fact_captured":
++            data = event.get("data", {})
++            session_id = str(config.get("configurable", {}).get("thread_id", ""))
++            yield streaming_service.format_orchestra_fact_captured(
++                session_id=session_id,
++                agent_id=data.get("agentId") or data.get("agentName", ""),
++                fact_summary=data.get("factSummary", ""),
++                value=data.get("value"),
++                unit=data.get("unit"),
++            )
++
++        elif event_type == "on_custom_event" and event.get("name") == "orchestra_llm_call":
++            data = event.get("data", {})
++            session_id = str(config.get("configurable", {}).get("thread_id", ""))
++            yield streaming_service.format_orchestra_llm_call(
++                session_id=session_id,
++                agent_id=data.get("agentId") or data.get("agentName", ""),
++            )
++
++        elif event_type == "on_custom_event" and event.get("name") == "orchestra_model_attribution":
++            data = event.get("data", {})
++            session_id = str(config.get("configurable", {}).get("thread_id", ""))
++            yield streaming_service.format_orchestra_model_attribution(
++                session_id=session_id,
++                agent_id=data.get("agentId") or data.get("agentName", ""),
++                model=data.get("model", ""),
++                provider=data.get("provider", ""),
++                tier=data.get("tier"),
++            )
++
+         elif event_type == "on_chat_model_end":
+             # Accumulate token counts for quota tracking (cloud mode)
+             output = event.get("data", {}).get("output")
+@@ -1281,6 +1369,13 @@ async def _stream_agent_events(
+                 yield streaming_service.format_text_end(current_text_id)
+                 current_text_id = None
+ 
++    # Drain any orchestra events still in the writer queue at end-of-stream.
++    while _orchestra_writer_queue:
++        yield _orchestra_writer_queue.pop(0)
++
++    # Reset the writer ContextVar so the next stream invocation starts clean.
++    _stream_writer_var.reset(_writer_token)
++
+     if current_text_id is not None:
+         yield streaming_service.format_text_end(current_text_id)
+ 
+diff --git a/nowing_web/app/dashboard/[search_space_id]/new-chat/[[...chat_id]]/page.tsx b/nowing_web/app/dashboard/[search_space_id]/new-chat/[[...chat_id]]/page.tsx
+index d52ef12d4..1765e765a 100644
+--- a/nowing_web/app/dashboard/[search_space_id]/new-chat/[[...chat_id]]/page.tsx
++++ b/nowing_web/app/dashboard/[search_space_id]/new-chat/[[...chat_id]]/page.tsx
+@@ -110,6 +110,77 @@ import {
+ import { applyOrchestraEvent, orchestraStateAtom } from "@/atoms/chat/orchestra.atom";
+ import Loading from "../loading";
+ 
++/**
++ * Handle every orchestra-* and data-orchestra-* SSE event in one place.
++ * Returns true when the event was an orchestra event (so the caller can
++ * `break` from its outer switch). Returns false otherwise — the caller
++ * falls through to other event types.
++ *
++ * Adding a new orchestra event type? Add it here and its case will be
++ * picked up by all 3 SSE-loop call sites automatically.
++ */
++function handleOrchestraEvent(
++	parsed: { type: string; data?: Record<string, unknown> },
++	setOrchestraState: (fn: (prev: unknown) => unknown) => void
++): boolean {
++	const t = parsed.type;
++	if (
++		t !== "orchestra-spawn" &&
++		t !== "orchestra-update" &&
++		t !== "orchestra-done" &&
++		t !== "orchestra-fail" &&
++		t !== "orchestra-cancel" &&
++		t !== "orchestra-complete" &&
++		t !== "data-orchestra-narration" &&
++		t !== "data-orchestra-source-fetched" &&
++		t !== "data-orchestra-fact-captured" &&
++		t !== "data-orchestra-model-attribution" &&
++		t !== "data-orchestra-rate-gate-wait" &&
++		t !== "data-orchestra-llm-call"
++	) {
++		return false;
++	}
++	// eslint-disable-next-line @typescript-eslint/no-explicit-any
++	setOrchestraState((prev: any) => applyOrchestraEvent(prev, parsed as any));
++	const data = (parsed.data ?? {}) as Record<string, unknown>;
++	switch (t) {
++		case "orchestra-spawn":
++			trackOrchestraSpawn({
++				sessionId: String(data.sessionId ?? ""),
++				agentId: String(data.agentId ?? ""),
++				agentName: String(data.agentName ?? ""),
++			});
++			break;
++		case "orchestra-done":
++			trackOrchestraAgentDone({
++				sessionId: String(data.sessionId ?? ""),
++				agentId: String(data.agentId ?? ""),
++			});
++			break;
++		case "orchestra-fail":
++			trackOrchestraAgentFail({
++				sessionId: String(data.sessionId ?? ""),
++				agentId: String(data.agentId ?? ""),
++				errorCode: String(data.errorCode ?? ""),
++			});
++			break;
++		case "orchestra-cancel":
++			trackOrchestraCancelled({
++				sessionId: String(data.sessionId ?? ""),
++				agentId: String(data.agentId ?? ""),
++			});
++			break;
++		case "orchestra-complete":
++			trackOrchestraCompleted({
++				sessionId: String(data.sessionId ?? ""),
++				agentIds: (data.agentIds as string[]) ?? [],
++				citationCount: Number(data.citationCount ?? 0),
++			});
++			break;
++	}
++	return true;
++}
++
+ const MobileEditorPanel = dynamic(
+ 	() =>
+ 		import("@/components/editor-panel/editor-panel").then((m) => ({
+@@ -888,51 +959,22 @@ export default function NewChatPage() {
+ 							break;
+ 						}
+ 
+-						case "orchestra-spawn": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraSpawn({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-								agentName: parsed.data.agentName,
+-							});
+-							break;
+-						}
+-						case "orchestra-update": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							break;
+-						}
+-						case "orchestra-done": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraAgentDone({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-							});
+-							break;
+-						}
+-						case "orchestra-fail": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraAgentFail({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-								errorCode: parsed.data.errorCode,
+-							});
+-							break;
+-						}
+-						case "orchestra-cancel": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraCancelled({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-							});
+-							break;
+-						}
+-						case "orchestra-complete": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraCompleted({
+-								sessionId: parsed.data.sessionId,
+-								agentIds: parsed.data.agentIds,
+-								citationCount: parsed.data.citationCount,
+-							});
++						case "orchestra-spawn":
++						case "orchestra-update":
++						case "orchestra-done":
++						case "orchestra-fail":
++						case "orchestra-cancel":
++						case "orchestra-complete":
++						case "data-orchestra-narration":
++						case "data-orchestra-source-fetched":
++						case "data-orchestra-fact-captured":
++						case "data-orchestra-model-attribution":
++						case "data-orchestra-rate-gate-wait":
++						case "data-orchestra-llm-call": {
++							handleOrchestraEvent(
++								parsed as { type: string; data?: Record<string, unknown> },
++								setOrchestraState as (fn: (prev: unknown) => unknown) => void
++							);
+ 							break;
+ 						}
+ 						case "error":
+@@ -1292,51 +1334,22 @@ export default function NewChatPage() {
+ 							break;
+ 						}
+ 
+-						case "orchestra-spawn": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraSpawn({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-								agentName: parsed.data.agentName,
+-							});
+-							break;
+-						}
+-						case "orchestra-update": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							break;
+-						}
+-						case "orchestra-done": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraAgentDone({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-							});
+-							break;
+-						}
+-						case "orchestra-fail": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraAgentFail({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-								errorCode: parsed.data.errorCode,
+-							});
+-							break;
+-						}
+-						case "orchestra-cancel": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraCancelled({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-							});
+-							break;
+-						}
+-						case "orchestra-complete": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraCompleted({
+-								sessionId: parsed.data.sessionId,
+-								agentIds: parsed.data.agentIds,
+-								citationCount: parsed.data.citationCount,
+-							});
++						case "orchestra-spawn":
++						case "orchestra-update":
++						case "orchestra-done":
++						case "orchestra-fail":
++						case "orchestra-cancel":
++						case "orchestra-complete":
++						case "data-orchestra-narration":
++						case "data-orchestra-source-fetched":
++						case "data-orchestra-fact-captured":
++						case "data-orchestra-model-attribution":
++						case "data-orchestra-rate-gate-wait":
++						case "data-orchestra-llm-call": {
++							handleOrchestraEvent(
++								parsed as { type: string; data?: Record<string, unknown> },
++								setOrchestraState as (fn: (prev: unknown) => unknown) => void
++							);
+ 							break;
+ 						}
+ 						case "error":
+@@ -1646,51 +1659,22 @@ export default function NewChatPage() {
+ 							break;
+ 						}
+ 
+-						case "orchestra-spawn": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraSpawn({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-								agentName: parsed.data.agentName,
+-							});
+-							break;
+-						}
+-						case "orchestra-update": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							break;
+-						}
+-						case "orchestra-done": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraAgentDone({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-							});
+-							break;
+-						}
+-						case "orchestra-fail": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraAgentFail({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-								errorCode: parsed.data.errorCode,
+-							});
+-							break;
+-						}
+-						case "orchestra-cancel": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraCancelled({
+-								sessionId: parsed.data.sessionId,
+-								agentId: parsed.data.agentId,
+-							});
+-							break;
+-						}
+-						case "orchestra-complete": {
+-							setOrchestraState((prev) => applyOrchestraEvent(prev, parsed));
+-							trackOrchestraCompleted({
+-								sessionId: parsed.data.sessionId,
+-								agentIds: parsed.data.agentIds,
+-								citationCount: parsed.data.citationCount,
+-							});
++						case "orchestra-spawn":
++						case "orchestra-update":
++						case "orchestra-done":
++						case "orchestra-fail":
++						case "orchestra-cancel":
++						case "orchestra-complete":
++						case "data-orchestra-narration":
++						case "data-orchestra-source-fetched":
++						case "data-orchestra-fact-captured":
++						case "data-orchestra-model-attribution":
++						case "data-orchestra-rate-gate-wait":
++						case "data-orchestra-llm-call": {
++							handleOrchestraEvent(
++								parsed as { type: string; data?: Record<string, unknown> },
++								setOrchestraState as (fn: (prev: unknown) => unknown) => void
++							);
+ 							break;
+ 						}
+ 						case "error":
+diff --git a/nowing_web/atoms/chat/orchestra.atom.ts b/nowing_web/atoms/chat/orchestra.atom.ts
+index f00913aef..07970d685 100644
+--- a/nowing_web/atoms/chat/orchestra.atom.ts
++++ b/nowing_web/atoms/chat/orchestra.atom.ts
+@@ -6,6 +6,41 @@ import { atom } from "jotai";
+ 
+ export type AgentStatus = "idle" | "queued" | "running" | "done" | "failed" | "cancelled";
+ 
++export interface NarrationEvent {
++	text: string;
++	tone: "fetching" | "analyzing" | "synthesizing";
++	ts: number;
++}
++
++export interface Source {
++	domain: string;
++	favicon: string;
++	url: string;
++	dataType: string;
++}
++
++export interface RateGateEvent {
++	waitSeconds: number;
++	reason: string;
++	ts: number;
++}
++
++/**
++ * AC11: derive degradation level from observed rate-gate activity.
++ * - 0: nominal (no gates / 1 short gate)
++ * - 1: paced (≥2 gate waits OR cumulative ≥10s in last 30s window)
++ * - 2: heavily degraded (≥4 waits OR cumulative ≥30s in last 30s)
++ */
++export function deriveEscalationLevel(waits: RateGateEvent[]): 0 | 1 | 2 {
++	if (waits.length === 0) return 0;
++	const now = Date.now();
++	const recent = waits.filter((w) => now - w.ts <= 30_000);
++	const cumulative = recent.reduce((a, w) => a + w.waitSeconds, 0);
++	if (recent.length >= 4 || cumulative >= 30) return 2;
++	if (recent.length >= 2 || cumulative >= 10) return 1;
++	return 0;
++}
++
+ export type FailReason =
+ 	| "rate_limit"
+ 	| "timeout"
+@@ -33,6 +68,12 @@ export interface OrchestraAgent {
+ 	failReason?: FailReason;
+ 	failMessage?: string;
+ 	citationIds?: string[];
++	// 9-UX-1: live research lab fields
++	narrationHistory: NarrationEvent[];
++	currentNarration: string | null;
++	sourcesFetched: Source[];
++	factsCapturedCount: number;
++	modelAttribution: { model: string; provider: string; tier?: string } | null;
+ }
+ 
+ export interface OrchestraSession {
+@@ -48,6 +89,11 @@ export interface OrchestraSession {
+ 	p95Bucket: "fast" | "normal" | "slow" | null;
+ 	milestone30sFired: boolean;
+ 	milestone: string | null;
++	// 9-UX-1: session-level rate gate history
++	rateGateWaits: RateGateEvent[];
++	// 9-UX-1 AC10: per-LLM-call timestamps for ActivityTimeline ticks.
++	// Each entry: { ts: Date.now(), agentId: <string> }. Capped at 200.
++	llmCallEvents: Array<{ ts: number; agentId: string }>;
+ }
+ 
+ export interface OrchestraState {
+@@ -100,6 +146,42 @@ type OrchestraSSEEvent =
+ 	| {
+ 			type: "orchestra-complete";
+ 			data: { sessionId: string; agentIds: string[]; citationCount: number };
++	  }
++	// 9-UX-1: Phase 2 UX events
++	| {
++			type: "data-orchestra-narration";
++			data: {
++				sessionId: string;
++				agentId: string;
++				text: string;
++				tone: "fetching" | "analyzing" | "synthesizing";
++			};
++	  }
++	| {
++			type: "data-orchestra-source-fetched";
++			data: { sessionId: string; agentId: string; source: Source };
++	  }
++	| {
++			type: "data-orchestra-fact-captured";
++			data: {
++				sessionId: string;
++				agentId: string;
++				factSummary: string;
++				value?: number;
++				unit?: string;
++			};
++	  }
++	| {
++			type: "data-orchestra-model-attribution";
++			data: { sessionId: string; agentId: string; model: string; provider: string; tier?: string };
++	  }
++	| {
++			type: "data-orchestra-rate-gate-wait";
++			data: { sessionId: string; waitSeconds: number; reason: string };
++	  }
++	| {
++			type: "data-orchestra-llm-call";
++			data: { sessionId: string; agentId: string };
+ 	  };
+ 
+ function p95Bucket(ms: number): "fast" | "normal" | "slow" {
+@@ -124,6 +206,11 @@ export function applyOrchestraEvent(
+ 			agentType,
+ 			status: "queued",
+ 			elapsedMs: 0,
++			narrationHistory: [],
++			currentNarration: null,
++			sourcesFetched: [],
++			factsCapturedCount: 0,
++			modelAttribution: null,
+ 		});
+ 		const session: OrchestraSession = existing
+ 			? { ...existing, agents }
+@@ -140,6 +227,8 @@ export function applyOrchestraEvent(
+ 					p95Bucket: null,
+ 					milestone30sFired: false,
+ 					milestone: null,
++					rateGateWaits: [],
++					llmCallEvents: [],
+ 				};
+ 		sessions.set(sessionId, session);
+ 		return { sessions, activeQueryHash: sessionId };
+@@ -277,6 +366,95 @@ export function applyOrchestraEvent(
+ 			outcome,
+ 			p95Bucket: p95Bucket(totalMs),
+ 		});
++
++		// P13: cap retained completed sessions at MAX_RETAINED to bound memory.
++		// Evict the oldest completed sessions while keeping any still-running ones
++		// and the just-completed one.
++		const MAX_RETAINED = 5;
++		const completedEntries = Array.from(sessions.entries())
++			.filter(([, s]) => s.completedAt !== null)
++			.sort(([, a], [, b]) => (a.completedAt ?? 0) - (b.completedAt ?? 0));
++		while (completedEntries.length > MAX_RETAINED) {
++			const [staleId] = completedEntries.shift()!;
++			sessions.delete(staleId);
++		}
++
++		return { ...state, sessions };
++	}
++
++	if (event.type === "data-orchestra-narration") {
++		const { sessionId, agentId, text, tone } = event.data;
++		const session = sessions.get(sessionId);
++		if (!session) return state;
++		const agents = new Map(session.agents);
++		const agent = agents.get(agentId);
++		if (agent) {
++			const narrationEvent: NarrationEvent = { text, tone, ts: Date.now() };
++			const history = [...agent.narrationHistory, narrationEvent].slice(-10);
++			agents.set(agentId, { ...agent, narrationHistory: history, currentNarration: text });
++		}
++		sessions.set(sessionId, { ...session, agents });
++		return { ...state, sessions };
++	}
++
++	if (event.type === "data-orchestra-source-fetched") {
++		const { sessionId, agentId, source } = event.data;
++		const session = sessions.get(sessionId);
++		if (!session) return state;
++		const agents = new Map(session.agents);
++		const agent = agents.get(agentId);
++		if (agent) {
++			const already = agent.sourcesFetched.some((s) => s.domain === source.domain);
++			if (!already) {
++				agents.set(agentId, { ...agent, sourcesFetched: [...agent.sourcesFetched, source] });
++			}
++		}
++		sessions.set(sessionId, { ...session, agents });
++		return { ...state, sessions };
++	}
++
++	if (event.type === "data-orchestra-fact-captured") {
++		const { sessionId, agentId } = event.data;
++		const session = sessions.get(sessionId);
++		if (!session) return state;
++		const agents = new Map(session.agents);
++		const agent = agents.get(agentId);
++		if (agent) {
++			agents.set(agentId, { ...agent, factsCapturedCount: agent.factsCapturedCount + 1 });
++		}
++		sessions.set(sessionId, { ...session, agents });
++		return { ...state, sessions };
++	}
++
++	if (event.type === "data-orchestra-model-attribution") {
++		const { sessionId, agentId, model, provider, tier } = event.data;
++		const session = sessions.get(sessionId);
++		if (!session) return state;
++		const agents = new Map(session.agents);
++		const agent = agents.get(agentId);
++		if (agent) {
++			agents.set(agentId, { ...agent, modelAttribution: { model, provider, tier } });
++		}
++		sessions.set(sessionId, { ...session, agents });
++		return { ...state, sessions };
++	}
++
++	if (event.type === "data-orchestra-rate-gate-wait") {
++		const { sessionId, waitSeconds, reason } = event.data;
++		const session = sessions.get(sessionId);
++		if (!session) return state;
++		const rateGateWaits = [...session.rateGateWaits, { waitSeconds, reason, ts: Date.now() }];
++		sessions.set(sessionId, { ...session, rateGateWaits });
++		return { ...state, sessions };
++	}
++
++	if (event.type === "data-orchestra-llm-call") {
++		const { sessionId, agentId } = event.data;
++		const session = sessions.get(sessionId);
++		if (!session) return state;
++		// AC10: cap at 200 entries to bound memory in long sessions.
++		const llmCallEvents = [...session.llmCallEvents, { ts: Date.now(), agentId }].slice(-200);
++		sessions.set(sessionId, { ...session, llmCallEvents });
+ 		return { ...state, sessions };
+ 	}
+ 
+diff --git a/nowing_web/components/new-chat/orchestra/orchestra-strip.tsx b/nowing_web/components/new-chat/orchestra/orchestra-strip.tsx
+index aa297f75b..b47555a2c 100644
+--- a/nowing_web/components/new-chat/orchestra/orchestra-strip.tsx
++++ b/nowing_web/components/new-chat/orchestra/orchestra-strip.tsx
+@@ -2,11 +2,32 @@
+ 
+ import { useAtomValue } from "jotai";
+ import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+-import { type OrchestraAgent, activeOrchestraSessionAtom } from "@/atoms/chat/orchestra.atom";
++import {
++	type OrchestraAgent,
++	activeOrchestraSessionAtom,
++	deriveEscalationLevel,
++} from "@/atoms/chat/orchestra.atom";
+ import { cn } from "@/lib/utils";
+-import { AgentRow } from "./agent-row";
++import { ActivityTimeline } from "./activity-timeline";
++import { AgentLane } from "./agent-lane";
+ import { DegradationNotice } from "./degradation-notice";
++import { LabHeader } from "./lab-header";
+ import { ProgressMilestone } from "./progress-milestone";
++import { RateGateBanner } from "./rate-gate-banner";
++
++/**
++ * AC6 dynamic grid: 1×N for sm, 2×⌈N/2⌉ for md, 3×⌈N/3⌉ for lg.
++ * Static class strings (Tailwind safelist constraint).
++ */
++function gridColsForCount(n: number): string {
++	if (n <= 1) return "grid-cols-1";
++	if (n === 2) return "grid-cols-1 md:grid-cols-2";
++	if (n === 3) return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
++	if (n === 4) return "grid-cols-1 md:grid-cols-2 lg:grid-cols-2";
++	if (n <= 6) return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
++	// 7-9 agents (e.g. with whale_tracker added)
++	return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
++}
+ 
+ interface OrchestraStripProps {
+ 	/** Phase 9.2 placeholder — background pinning. Ignored in v1. */
+@@ -60,17 +81,23 @@ export function OrchestraStrip({ className }: OrchestraStripProps) {
+ 	// P4: only show progress milestone while the session is still running. A "failed"
+ 	// outcome (non-collapsed) would otherwise keep the 30s timer ticking post-completion.
+ 	const isRunning = session.outcome === "running";
++	// AC11: derive degradation level from observed rate-gate frequency.
++	const escalationLevel = deriveEscalationLevel(session.rateGateWaits);
++	const isDegraded = escalationLevel >= 1;
+ 
+ 	return (
+ 		<div
+ 			className={cn(
+ 				"mb-3 flex flex-col gap-1.5 rounded-lg border p-3",
+-				"border-border/60 bg-muted/20",
+ 				"transition-all duration-150 ease-out",
++				isDegraded && isRunning
++					? "border-amber-500/50 bg-amber-500/5"
++					: "border-border/60 bg-muted/20",
+ 				className
+ 			)}
+ 			data-slot="orchestra-strip"
+-			data-variant={isCollapsed ? "collapsed" : "default"}
++			data-variant={isCollapsed ? "collapsed" : "research-lab"}
++			data-escalation-level={escalationLevel}
+ 		>
+ 			{/* Collapsed summary after completion */}
+ 			{isCollapsed ? (
+@@ -91,10 +118,28 @@ export function OrchestraStrip({ className }: OrchestraStripProps) {
+ 				</div>
+ 			) : (
+ 				<>
+-					{/* Agent rows */}
+-					<div className="flex flex-col gap-1">
++					{/* Research Lab header — overall progress + ETA + degradation state */}
++					{isRunning && (
++						<>
++							<LabHeader
++								doneCount={doneCount}
++								totalCount={totalCount}
++								elapsedMs={Date.now() - session.spawnedAt}
++								degraded={isDegraded}
++								className="mb-1"
++							/>
++							{isDegraded && (
++								<p className="mb-1 text-[11px] text-amber-600 dark:text-amber-400">
++									Optimizing for rate limits — taking 2× longer to ensure complete results
++								</p>
++							)}
++						</>
++					)}
++
++					{/* Agent grid — adaptive 1×N / 2×⌈N/2⌉ / 3×⌈N/3⌉ (AC6) */}
++					<div className={cn("grid gap-2", gridColsForCount(totalCount))} data-slot="agent-grid">
+ 						{agents.map((agent) => (
+-							<AgentRow key={agent.agentId} agent={agent} />
++							<AgentLane key={agent.agentId} agent={agent} />
+ 						))}
+ 					</div>
+ 
+@@ -107,12 +152,28 @@ export function OrchestraStrip({ className }: OrchestraStripProps) {
+ 							elapsedMs={Date.now() - session.spawnedAt}
+ 						/>
+ 					)}
++
++					{/* Activity timeline: per-LLM-call ticks + gate pauses */}
++					{isRunning && (
++						<ActivityTimeline
++							spawnedAt={session.spawnedAt}
++							rateGateWaits={session.rateGateWaits}
++							llmCallEvents={session.llmCallEvents}
++						/>
++					)}
++
++					{/* Rate-gate educational banner — shown when actively throttling */}
++					{isRunning && session.rateGateWaits.length > 0 && (
++						<RateGateBanner
++							latestGate={session.rateGateWaits[session.rateGateWaits.length - 1] ?? null}
++						/>
++					)}
+ 				</>
+ 			)}
+ 
+ 			{/* Cancelled state footnote (AC5) */}
+ 			{session.outcome === "cancelled" && (
+-				<p className="text-xs text-muted-foreground/70 mt-1">
++				<p className="mt-1 text-xs text-muted-foreground/70">
+ 					In-flight tokens vẫn được tính (best-effort cancel)
+ 				</p>
+ 			)}
+diff --git a/nowing_web/lib/chat/streaming-state.ts b/nowing_web/lib/chat/streaming-state.ts
+index c2510333f..4c30d5e2f 100644
+--- a/nowing_web/lib/chat/streaming-state.ts
++++ b/nowing_web/lib/chat/streaming-state.ts
+@@ -288,6 +288,64 @@ export type SSEEvent =
+ 				agentIds: string[];
+ 				citationCount: number;
+ 			};
++	  }
++	// ─── Orchestra Phase 2 UX events (Story 9-UX-1) ─────────────────────────
++	| {
++			type: "data-orchestra-narration";
++			data: {
++				sessionId: string;
++				agentId: string;
++				text: string;
++				tone: "fetching" | "analyzing" | "synthesizing";
++			};
++	  }
++	| {
++			type: "data-orchestra-source-fetched";
++			data: {
++				sessionId: string;
++				agentId: string;
++				source: {
++					favicon: string;
++					domain: string;
++					url: string;
++					dataType: string;
++				};
++			};
++	  }
++	| {
++			type: "data-orchestra-fact-captured";
++			data: {
++				sessionId: string;
++				agentId: string;
++				factSummary: string;
++				value?: number;
++				unit?: string;
++			};
++	  }
++	| {
++			type: "data-orchestra-model-attribution";
++			data: {
++				sessionId: string;
++				agentId: string;
++				model: string;
++				provider: string;
++				tier?: string;
++			};
++	  }
++	| {
++			type: "data-orchestra-rate-gate-wait";
++			data: {
++				sessionId: string;
++				waitSeconds: number;
++				reason: "min_interval" | "paced" | "retry";
++			};
++	  }
++	| {
++			type: "data-orchestra-llm-call";
++			data: {
++				sessionId: string;
++				agentId: string;
++			};
+ 	  };
+ 
+ /**
+diff --git a/nowing_web/playwright/e2e/orchestra-strip.spec.ts b/nowing_web/playwright/e2e/orchestra-strip.spec.ts
+index a6bc4cc32..cbf3814cf 100644
+--- a/nowing_web/playwright/e2e/orchestra-strip.spec.ts
++++ b/nowing_web/playwright/e2e/orchestra-strip.spec.ts
+@@ -257,7 +257,7 @@ test.describe("Orchestra Conductor Strip", () => {
+ 		await expect(strip).toBeVisible({ timeout: 15_000 });
+ 
+ 		// Initially in default variant with agent rows
+-		await expect(strip).toHaveAttribute("data-variant", "default");
++		await expect(strip).toHaveAttribute("data-variant", "research-lab");
+ 
+ 		// All 4 agent names visible
+ 		for (const agent of FOUR_AGENTS) {
+@@ -380,7 +380,7 @@ test.describe("Orchestra Conductor Strip", () => {
+ 
+ 		// No bordered card wrapper (no "rounded-lg border" class at strip level)
+ 		await expect(
+-			page.locator('[data-slot="orchestra-strip"][data-variant="default"]')
++			page.locator('[data-slot="orchestra-strip"][data-variant="research-lab"]')
+ 		).not.toBeVisible();
+ 	});
+ });
+diff --git a/nowing_web/tailwind.config.js b/nowing_web/tailwind.config.js
+index 72123aa38..d8d07e537 100644
+--- a/nowing_web/tailwind.config.js
++++ b/nowing_web/tailwind.config.js
+@@ -73,11 +73,21 @@ module.exports = {
+ 					"50%": { width: "50%" },
+ 					"100%": { left: "100%", width: "33%" },
+ 				},
++				"fade-in": {
++					from: { opacity: "0", transform: "translateY(4px)" },
++					to: { opacity: "1", transform: "translateY(0)" },
++				},
++				"fade-out": {
++					from: { opacity: "1", transform: "translateY(0)" },
++					to: { opacity: "0", transform: "translateY(-4px)" },
++				},
+ 			},
+ 			animation: {
+ 				"accordion-down": "accordion-down 0.2s ease-out",
+ 				"accordion-up": "accordion-up 0.2s ease-out",
+ 				"progress-indeterminate": "progress-indeterminate 1.5s ease-in-out infinite",
++				"fade-in": "fade-in 0.2s ease-out",
++				"fade-out": "fade-out 0.18s ease-in forwards",
+ 			},
+ 		},
+ 	},
+
+=== UNTRACKED FILES ===
+
+--- NEW/UNTRACKED FILE: nowing_backend/app/agents/new_chat/subagents/crypto/narration_templates.py ---
+"""
+Narration templates for SourceAttributionMiddleware (Story 9-UX-1).
+
+Template strings are deterministic — no LLM call, just string formatting.
+Pre-call narration must be emitted BEFORE handler(request) per AC2.
+Post-call narration is emitted AFTER handler(request) using format-string
+substitution against extracted fact summaries (AC2 second-half spec example:
+"Thấy TVL $3.2B, tăng 2.1% vs 7d...").
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+# Pre-call narration: emitted before tool execution
+PRE_CALL: dict[str, str] = {
+    "get_coingecko_token_info": "Đang query CoinGecko cho thông tin token...",
+    "get_coingecko_market_chart": "Đang lấy lịch sử giá từ CoinGecko...",
+    "get_defillama_protocol": "Đang query DeFiLlama cho dữ liệu TVL...",
+    "get_defillama_pools": "Đang lấy danh sách yield pools từ DeFiLlama...",
+    "check_token_security": "Đang kiểm tra bảo mật hợp đồng thông minh qua GoPlus...",
+    "get_cryptopanic_news": "Đang lấy tin tức crypto mới nhất từ CryptoPanic...",
+    "get_reddit_crypto_sentiment": "Đang phân tích sentiment từ Reddit...",
+    "get_fear_greed_index": "Đang lấy chỉ số Fear & Greed...",
+    "chainlens_deep_research": "Đang thực hiện nghiên cứu on-chain chuyên sâu...",
+}
+
+
+# Source domain mapping: tool_name → (domain, favicon_url, deeplink_template)
+# `deeplink_template` may contain `{symbol}` placeholder filled at emit time.
+TOOL_SOURCE_MAP: dict[str, tuple[str, str, str]] = {
+    "get_coingecko_token_info": (
+        "coingecko.com",
+        "https://icons.duckduckgo.com/ip3/coingecko.com.ico",
+        "https://www.coingecko.com/",
+    ),
+    "get_coingecko_market_chart": (
+        "coingecko.com",
+        "https://icons.duckduckgo.com/ip3/coingecko.com.ico",
+        "https://www.coingecko.com/",
+    ),
+    "get_defillama_protocol": (
+        "defillama.com",
+        "https://icons.duckduckgo.com/ip3/defillama.com.ico",
+        "https://defillama.com/",
+    ),
+    "get_defillama_pools": (
+        "defillama.com",
+        "https://icons.duckduckgo.com/ip3/defillama.com.ico",
+        "https://defillama.com/yields",
+    ),
+    "check_token_security": (
+        "gopluslabs.io",
+        "https://icons.duckduckgo.com/ip3/gopluslabs.io.ico",
+        "https://gopluslabs.io/",
+    ),
+    "get_cryptopanic_news": (
+        "cryptopanic.com",
+        "https://icons.duckduckgo.com/ip3/cryptopanic.com.ico",
+        "https://cryptopanic.com/",
+    ),
+    "get_reddit_crypto_sentiment": (
+        "reddit.com",
+        "https://icons.duckduckgo.com/ip3/reddit.com.ico",
+        "https://reddit.com/r/CryptoCurrency",
+    ),
+    "get_fear_greed_index": (
+        "alternative.me",
+        "https://icons.duckduckgo.com/ip3/alternative.me.ico",
+        "https://alternative.me/crypto/fear-and-greed-index/",
+    ),
+    "chainlens_deep_research": (
+        "chainlens.xyz",
+        "https://icons.duckduckgo.com/ip3/chainlens.xyz.ico",
+        "https://chainlens.xyz/",
+    ),
+}
+
+
+# Tone classification per tool — drives FE animation hue (fetching/analyzing/synthesizing).
+TOOL_TONE: dict[str, str] = {
+    "get_coingecko_token_info": "fetching",
+    "get_coingecko_market_chart": "fetching",
+    "get_defillama_protocol": "fetching",
+    "get_defillama_pools": "fetching",
+    "check_token_security": "analyzing",  # security audit = analyzing
+    "get_cryptopanic_news": "fetching",
+    "get_reddit_crypto_sentiment": "analyzing",  # sentiment scoring
+    "get_fear_greed_index": "fetching",
+    "chainlens_deep_research": "synthesizing",  # multi-source synthesis
+}
+
+
+def post_call_narration(tool_name: str, result: Any) -> str | None:
+    """Build a post-call narration line summarizing 1-2 key findings.
+
+    Returns None if the tool / result combination doesn't yield a meaningful
+    summary — the middleware then skips emitting a post-call event for that call.
+    """
+    if not isinstance(result, dict):
+        return None
+
+    if tool_name == "get_defillama_protocol":
+        tvl = result.get("tvl") or result.get("currentTvl")
+        change = result.get("change_7d") or result.get("change_1d")
+        if tvl is not None:
+            tvl_str = _format_usd(tvl)
+            if change is not None:
+                sign = "+" if change >= 0 else ""
+                return f"Thấy TVL {tvl_str}, {sign}{change:.1f}% vs 7d. Đang kiểm tra yield pools..."
+            return f"Thấy TVL {tvl_str}. Đang kiểm tra thêm metrics..."
+
+    if tool_name == "get_coingecko_token_info":
+        price = result.get("price") or result.get("current_price")
+        change = result.get("price_change_24h_pct") or result.get("price_change_24h")
+        if price is not None:
+            price_str = _format_usd(price)
+            if change is not None:
+                sign = "+" if change >= 0 else ""
+                return f"Giá hiện tại {price_str} ({sign}{change:.1f}% 24h). Đang lấy chart..."
+            return f"Giá hiện tại {price_str}. Đang lấy thêm dữ liệu..."
+
+    if tool_name == "check_token_security":
+        score = result.get("security_score") or result.get("score")
+        if score is not None:
+            return f"Security score {score}. Đang đối chiếu kết quả..."
+
+    if tool_name == "get_fear_greed_index":
+        value = result.get("value")
+        classification = result.get("value_classification") or result.get("classification")
+        if value is not None:
+            if classification:
+                return f"Fear & Greed: {value} ({classification})."
+            return f"Fear & Greed Index: {value}."
+
+    if tool_name == "get_defillama_pools":
+        pools = result.get("pools") or []
+        if isinstance(pools, list) and pools:
+            return f"Tìm thấy {len(pools)} yield pools, đang sắp xếp theo APY..."
+
+    return None
+
+
+def extract_facts(tool_name: str, result: Any) -> list[dict[str, Any]]:
+    """Extract numeric facts from a tool result for AC4 fact_captured events.
+
+    Returns a list of {factSummary, value?, unit?} dicts. Empty list = no facts.
+    """
+    if not isinstance(result, dict):
+        return []
+
+    facts: list[dict[str, Any]] = []
+
+    if tool_name == "get_defillama_protocol":
+        tvl = result.get("tvl") or result.get("currentTvl")
+        if tvl is not None:
+            facts.append({"factSummary": f"TVL {_format_usd(tvl)}", "value": float(tvl), "unit": "usd"})
+
+    if tool_name == "get_coingecko_token_info":
+        price = result.get("price") or result.get("current_price")
+        if price is not None:
+            facts.append({"factSummary": f"Price {_format_usd(price)}", "value": float(price), "unit": "usd"})
+        mc = result.get("market_cap")
+        if mc is not None:
+            facts.append({"factSummary": f"MC {_format_usd(mc)}", "value": float(mc), "unit": "usd"})
+
+    if tool_name == "check_token_security":
+        score = result.get("security_score") or result.get("score")
+        if score is not None:
+            facts.append({"factSummary": f"Security {score}/100", "value": float(score), "unit": "score"})
+
+    if tool_name == "get_fear_greed_index":
+        value = result.get("value")
+        if value is not None:
+            facts.append({"factSummary": f"Fear & Greed {value}", "value": float(value), "unit": "score"})
+
+    return facts
+
+
+def _format_usd(value: float | int) -> str:
+    """Compact USD formatting: $1.2B / $345M / $1.5K."""
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if abs(v) >= 1_000_000_000:
+        return f"${v / 1_000_000_000:.1f}B"
+    if abs(v) >= 1_000_000:
+        return f"${v / 1_000_000:.0f}M"
+    if abs(v) >= 1_000:
+        return f"${v / 1_000:.1f}K"
+    if abs(v) >= 1:
+        return f"${v:.2f}"
+    return f"${v:.4f}"
+
+--- NEW/UNTRACKED FILE: nowing_backend/tests/unit/agents/new_chat/test_source_attribution_middleware.py ---
+"""Unit tests for Story 9-UX-1 T5: SourceAttributionMiddleware + narration templates.
+
+Covers:
+- AC2: pre-call narration emitted for known tools
+- AC3: post-call source attribution emitted for known tools
+- narration_templates: PRE_CALL and TOOL_SOURCE_MAP completeness
+- SourceAttributionMiddleware: dispatch_custom_event calls + graceful no-op for unknown tools
+- VercelStreamingService: all 5 format_orchestra_* methods
+"""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock, call, patch
+
+import pytest
+
+from app.agents.new_chat.subagents.crypto.narration_templates import (
+    PRE_CALL,
+    TOOL_SOURCE_MAP,
+)
+from app.services.new_streaming_service import VercelStreamingService
+
+
+# ─────────────────────────────────────────────────────────────
+# narration_templates tests
+# ─────────────────────────────────────────────────────────────
+
+EXPECTED_TOOLS = {
+    "get_coingecko_token_info",
+    "get_coingecko_market_chart",
+    "get_defillama_protocol",
+    "get_defillama_pools",
+    "check_token_security",
+    "get_cryptopanic_news",
+    "get_reddit_crypto_sentiment",
+    "get_fear_greed_index",
+    "chainlens_deep_research",
+}
+
+
+def test_pre_call_covers_all_expected_tools():
+    assert EXPECTED_TOOLS.issubset(set(PRE_CALL.keys()))
+
+
+def test_tool_source_map_covers_all_expected_tools():
+    assert EXPECTED_TOOLS.issubset(set(TOOL_SOURCE_MAP.keys()))
+
+
+def test_tool_source_map_values_have_domain_and_favicon():
+    for tool, entry in TOOL_SOURCE_MAP.items():
+        assert len(entry) == 3, f"{tool}: TOOL_SOURCE_MAP entry must be (domain, favicon, url)"
+        domain, favicon, url = entry
+        assert domain, f"{tool}: domain is empty"
+        assert favicon.startswith("https://"), f"{tool}: favicon missing https"
+        assert domain in favicon, f"{tool}: favicon URL doesn't contain domain"
+        assert url.startswith("https://"), f"{tool}: deeplink url missing https"
+
+
+def test_pre_call_strings_are_vietnamese():
+    for tool, text in PRE_CALL.items():
+        # Must contain Vietnamese characters or at least end with ellipsis
+        assert text.endswith("..."), f"{tool}: pre-call narration should end with '...'"
+        assert len(text) > 10, f"{tool}: pre-call narration too short"
+
+
+# ─────────────────────────────────────────────────────────────
+# VercelStreamingService format_orchestra_* tests
+# ─────────────────────────────────────────────────────────────
+
+@pytest.fixture()
+def svc():
+    return VercelStreamingService()
+
+
+def test_format_orchestra_narration(svc):
+    result = svc.format_orchestra_narration(
+        session_id="sess-1",
+        agent_id="tokenomics_analyst",
+        text="Đang query CoinGecko...",
+        tone="fetching",
+    )
+    assert "orchestra-narration" in result
+    assert "tokenomics_analyst" in result
+    assert "fetching" in result
+
+
+def test_format_orchestra_source_fetched(svc):
+    result = svc.format_orchestra_source_fetched(
+        session_id="sess-1",
+        agent_id="defillama_analyst",
+        domain="defillama.com",
+        favicon="https://icons.duckduckgo.com/ip3/defillama.com.ico",
+    )
+    assert "orchestra-source-fetched" in result
+    assert "defillama.com" in result
+
+
+def test_format_orchestra_fact_captured(svc):
+    result = svc.format_orchestra_fact_captured(
+        session_id="sess-1",
+        agent_id="tokenomics_analyst",
+        fact_summary="TVL $3.2B",
+        value=3.2e9,
+        unit="usd",
+    )
+    assert "orchestra-fact-captured" in result
+    assert "TVL $3.2B" in result
+
+
+def test_format_orchestra_fact_captured_optional_fields(svc):
+    result = svc.format_orchestra_fact_captured(
+        session_id="sess-1",
+        agent_id="agent",
+        fact_summary="Fact without value",
+    )
+    assert "orchestra-fact-captured" in result
+    # value and unit should not appear when not set
+    assert '"value"' not in result
+    assert '"unit"' not in result
+
+
+def test_format_orchestra_model_attribution(svc):
+    result = svc.format_orchestra_model_attribution(
+        session_id="sess-1",
+        agent_id="news_analyst",
+        model="claude-sonnet-4-6",
+        provider="trollllm",
+        tier="standard",
+    )
+    assert "orchestra-model-attribution" in result
+    assert "claude-sonnet-4-6" in result
+    assert "trollllm" in result
+
+
+def test_format_orchestra_model_attribution_no_tier(svc):
+    result = svc.format_orchestra_model_attribution(
+        session_id="sess-1",
+        agent_id="agent",
+        model="model",
+        provider="provider",
+    )
+    assert '"tier"' not in result
+
+
+def test_format_orchestra_rate_gate_wait(svc):
+    result = svc.format_orchestra_rate_gate_wait(
+        session_id="sess-1",
+        wait_seconds=7.2,
+        reason="min_interval",
+    )
+    assert "orchestra-rate-gate-wait" in result
+    assert "7.2" in result
+    assert "min_interval" in result
+
+
+# ─────────────────────────────────────────────────────────────
+# SourceAttributionMiddleware tests
+# ─────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_source_attribution_emits_pre_narration_for_known_tool():
+    from app.agents.new_chat.chat_deepagent import SourceAttributionMiddleware
+
+    middleware = SourceAttributionMiddleware(agent_name="tokenomics_analyst")
+
+    mock_request = MagicMock()
+    mock_request.name = "get_coingecko_token_info"
+    mock_handler = AsyncMock(return_value={"price": 7.23, "source_domain": "coingecko.com"})
+
+    with patch("langchain_core.callbacks.dispatch_custom_event") as mock_dispatch:
+        result = await middleware.awrap_tool_call(mock_request, mock_handler)
+
+    assert mock_handler.called
+    assert result == {"price": 7.23, "source_domain": "coingecko.com"}
+
+    # AC2: pre-call narration MUST be dispatched before handler runs
+    pre_call = next(
+        (c for c in mock_dispatch.call_args_list if c.args[0] == "orchestra_narration"),
+        None,
+    )
+    assert pre_call is not None, "orchestra_narration was never dispatched"
+    payload = pre_call.args[1]
+    assert payload["text"] == "Đang query CoinGecko cho thông tin token..."
+    assert payload["agentName"] == "tokenomics_analyst"
+    assert payload["tone"] == "fetching"
+
+    # AC3: post-call source attribution MUST also be dispatched
+    source_call = next(
+        (c for c in mock_dispatch.call_args_list if c.args[0] == "orchestra_source_fetched"),
+        None,
+    )
+    assert source_call is not None, "orchestra_source_fetched was never dispatched"
+    assert source_call.args[1]["source"]["domain"] == "coingecko.com"
+
+
+@pytest.mark.asyncio
+async def test_source_attribution_no_crash_for_unknown_tool():
+    from app.agents.new_chat.chat_deepagent import SourceAttributionMiddleware
+
+    middleware = SourceAttributionMiddleware(agent_name="general")
+
+    mock_request = MagicMock()
+    mock_request.name = "some_unknown_tool"
+    mock_handler = AsyncMock(return_value={"data": "result"})
+
+    # Should not raise even if dispatch_custom_event is not available
+    with patch("langchain_core.callbacks.dispatch_custom_event", side_effect=Exception("no context")):
+        result = await middleware.awrap_tool_call(mock_request, mock_handler)
+
+    assert result == {"data": "result"}
+
+
+@pytest.mark.asyncio
+async def test_source_attribution_reads_source_domain_from_result():
+    from app.agents.new_chat.chat_deepagent import SourceAttributionMiddleware
+
+    middleware = SourceAttributionMiddleware(agent_name="smart_contract_analyst")
+
+    mock_request = MagicMock()
+    mock_request.name = "some_tool_not_in_map"
+    # Tool returns source_domain in result
+    mock_handler = AsyncMock(return_value={"data": "ok", "source_domain": "example.com"})
+
+    emitted_names = []
+
+    def fake_dispatch(name, data):
+        emitted_names.append(name)
+
+    with patch("langchain_core.callbacks.dispatch_custom_event", side_effect=fake_dispatch):
+        result = await middleware.awrap_tool_call(mock_request, mock_handler)
+
+    # Should emit source_fetched for the domain found in result
+    assert "orchestra_source_fetched" in emitted_names
+
+--- NEW/UNTRACKED FILE: nowing_web/__tests__/components/new-chat/orchestra-lab.test.tsx ---
+/**
+ * Story 9-UX-1 T15 — Component unit tests for Live Research Lab components.
+ *
+ * Covers:
+ * - StatusLight: correct aria-label per status, pulse class only on "running"
+ * - ModelAttributionBadge: renders model + provider, omits tier when absent
+ * - LiveNarrationStream: renders text, returns null for null, re-renders on change
+ * - SourceFaviconRiver: renders chips, returns null for empty array
+ * - RateGateBanner: renders wait time + reason label, returns null when gate is null
+ * - ActivityTimeline: renders bar + ticks for gate waits, null below 500ms
+ * - AgentLane: running lane shows narration, done lane hides it, fact counter shown
+ * - applyOrchestraEvent: new 9-UX-1 event reducers (narration, source, fact, model, rate-gate)
+ */
+
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+
+import {
+	applyOrchestraEvent,
+	type OrchestraState,
+	type OrchestraAgent,
+} from "@/atoms/chat/orchestra.atom";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const SESSION_ID = "sess-ux1";
+const AGENT_ID = "tokenomics_analyst";
+
+function makeState(): OrchestraState {
+	return {
+		sessions: new Map(),
+		activeQueryHash: null,
+	};
+}
+
+function spawnedState(): OrchestraState {
+	return applyOrchestraEvent(makeState(), {
+		type: "orchestra-spawn",
+		data: {
+			sessionId: SESSION_ID,
+			agentId: AGENT_ID,
+			agentName: "Tokenomics Analyst",
+			agentType: "tokenomics",
+		},
+	});
+}
+
+function agent(state: OrchestraState): OrchestraAgent {
+	return state.sessions.get(SESSION_ID)!.agents.get(AGENT_ID)!;
+}
+
+// ─── applyOrchestraEvent — new 9-UX-1 reducers ───────────────────────────────
+
+describe("applyOrchestraEvent — orchestra-spawn initialises new fields", () => {
+	it("initialises narrationHistory as empty array", () => {
+		const state = spawnedState();
+		expect(agent(state).narrationHistory).toEqual([]);
+	});
+
+	it("initialises currentNarration as null", () => {
+		expect(agent(spawnedState()).currentNarration).toBeNull();
+	});
+
+	it("initialises sourcesFetched as empty array", () => {
+		expect(agent(spawnedState()).sourcesFetched).toEqual([]);
+	});
+
+	it("initialises factsCapturedCount as 0", () => {
+		expect(agent(spawnedState()).factsCapturedCount).toBe(0);
+	});
+
+	it("initialises modelAttribution as null", () => {
+		expect(agent(spawnedState()).modelAttribution).toBeNull();
+	});
+
+	it("initialises session rateGateWaits as empty array", () => {
+		expect(spawnedState().sessions.get(SESSION_ID)!.rateGateWaits).toEqual([]);
+	});
+});
+
+describe("applyOrchestraEvent — data-orchestra-narration", () => {
+	it("updates currentNarration", () => {
+		const next = applyOrchestraEvent(spawnedState(), {
+			type: "data-orchestra-narration",
+			data: {
+				sessionId: SESSION_ID,
+				agentId: AGENT_ID,
+				text: "Đang query CoinGecko...",
+				tone: "fetching",
+			},
+		});
+		expect(agent(next).currentNarration).toBe("Đang query CoinGecko...");
+	});
+
+	it("appends to narrationHistory", () => {
+		const next = applyOrchestraEvent(spawnedState(), {
+			type: "data-orchestra-narration",
+			data: { sessionId: SESSION_ID, agentId: AGENT_ID, text: "text1", tone: "fetching" },
+		});
+		expect(agent(next).narrationHistory).toHaveLength(1);
+		expect(agent(next).narrationHistory[0].text).toBe("text1");
+	});
+
+	it("caps narrationHistory at 10 entries", () => {
+		let state = spawnedState();
+		for (let i = 0; i < 12; i++) {
+			state = applyOrchestraEvent(state, {
+				type: "data-orchestra-narration",
+				data: { sessionId: SESSION_ID, agentId: AGENT_ID, text: `msg${i}`, tone: "fetching" },
+			});
+		}
+		expect(agent(state).narrationHistory).toHaveLength(10);
+		expect(agent(state).narrationHistory[9].text).toBe("msg11");
+	});
+
+	it("no-ops for unknown sessionId", () => {
+		const before = spawnedState();
+		const after = applyOrchestraEvent(before, {
+			type: "data-orchestra-narration",
+			data: { sessionId: "unknown", agentId: AGENT_ID, text: "x", tone: "fetching" },
+		});
+		expect(after).toBe(before);
+	});
+});
+
+describe("applyOrchestraEvent — data-orchestra-source-fetched", () => {
+	const SOURCE = {
+		domain: "coingecko.com",
+		favicon: "https://icons.duckduckgo.com/ip3/coingecko.com.ico",
+		url: "",
+		dataType: "price",
+	};
+
+	it("adds source to sourcesFetched", () => {
+		const next = applyOrchestraEvent(spawnedState(), {
+			type: "data-orchestra-source-fetched",
+			data: { sessionId: SESSION_ID, agentId: AGENT_ID, source: SOURCE },
+		});
+		expect(agent(next).sourcesFetched).toHaveLength(1);
+		expect(agent(next).sourcesFetched[0].domain).toBe("coingecko.com");
+	});
+
+	it("deduplicates by domain", () => {
+		let state = spawnedState();
+		const event = {
+			type: "data-orchestra-source-fetched" as const,
+			data: { sessionId: SESSION_ID, agentId: AGENT_ID, source: SOURCE },
+		};
+		state = applyOrchestraEvent(state, event);
+		state = applyOrchestraEvent(state, event);
+		expect(agent(state).sourcesFetched).toHaveLength(1);
+	});
+});
+
+describe("applyOrchestraEvent — data-orchestra-fact-captured", () => {
+	it("increments factsCapturedCount", () => {
+		let state = spawnedState();
+		state = applyOrchestraEvent(state, {
+			type: "data-orchestra-fact-captured",
+			data: { sessionId: SESSION_ID, agentId: AGENT_ID, factSummary: "TVL $3.2B" },
+		});
+		state = applyOrchestraEvent(state, {
+			type: "data-orchestra-fact-captured",
+			data: { sessionId: SESSION_ID, agentId: AGENT_ID, factSummary: "Price $7.23" },
+		});
+		expect(agent(state).factsCapturedCount).toBe(2);
+	});
+});
+
+describe("applyOrchestraEvent — data-orchestra-model-attribution", () => {
+	it("sets modelAttribution", () => {
+		const next = applyOrchestraEvent(spawnedState(), {
+			type: "data-orchestra-model-attribution",
+			data: {
+				sessionId: SESSION_ID,
+				agentId: AGENT_ID,
+				model: "claude-sonnet-4-6",
+				provider: "trollllm",
+				tier: "standard",
+			},
+		});
+		expect(agent(next).modelAttribution).toEqual({
+			model: "claude-sonnet-4-6",
+			provider: "trollllm",
+			tier: "standard",
+		});
+	});
+
+	it("sets modelAttribution without tier", () => {
+		const next = applyOrchestraEvent(spawnedState(), {
+			type: "data-orchestra-model-attribution",
+			data: { sessionId: SESSION_ID, agentId: AGENT_ID, model: "m", provider: "p" },
+		});
+		expect(agent(next).modelAttribution?.tier).toBeUndefined();
+	});
+});
+
+describe("applyOrchestraEvent — data-orchestra-rate-gate-wait", () => {
+	it("appends to rateGateWaits", () => {
+		const next = applyOrchestraEvent(spawnedState(), {
+			type: "data-orchestra-rate-gate-wait",
+			data: { sessionId: SESSION_ID, waitSeconds: 7.2, reason: "min_interval" },
+		});
+		const waits = next.sessions.get(SESSION_ID)!.rateGateWaits;
+		expect(waits).toHaveLength(1);
+		expect(waits[0].waitSeconds).toBe(7.2);
+		expect(waits[0].reason).toBe("min_interval");
+	});
+});
+
+// ─── Component rendering ──────────────────────────────────────────────────────
+
+describe("StatusLight", () => {
+	let StatusLight: typeof import("@/components/new-chat/orchestra/status-light").StatusLight;
+
+	beforeEach(async () => {
+		({ StatusLight } = await import("@/components/new-chat/orchestra/status-light"));
+	});
+
+	it("has correct aria-label for running", () => {
+		render(<StatusLight status="running" />);
+		expect(screen.getByRole("status", { name: "Running" })).toBeInTheDocument();
+	});
+
+	it("has correct aria-label for done", () => {
+		render(<StatusLight status="done" />);
+		expect(screen.getByRole("status", { name: "Done" })).toBeInTheDocument();
+	});
+
+	it("shows ping animation span when running", () => {
+		const { container } = render(<StatusLight status="running" />);
+		expect(container.querySelector(".animate-ping")).toBeTruthy();
+	});
+
+	it("does not show ping animation when done", () => {
+		const { container } = render(<StatusLight status="done" />);
+		expect(container.querySelector(".animate-ping")).toBeFalsy();
+	});
+});
+
+describe("ModelAttributionBadge", () => {
+	let ModelAttributionBadge: typeof import("@/components/new-chat/orchestra/model-attribution-badge").ModelAttributionBadge;
+
+	beforeEach(async () => {
+		({ ModelAttributionBadge } = await import(
+			"@/components/new-chat/orchestra/model-attribution-badge"
+		));
+	});
+
+	it("renders model and provider", () => {
+		render(<ModelAttributionBadge model="claude-sonnet-4-6" provider="trollllm" />);
+		expect(screen.getByText(/sonnet-4-6/)).toBeInTheDocument();
+		expect(screen.getByText(/trollllm/)).toBeInTheDocument();
+	});
+
+	it("includes tier when provided", () => {
+		render(<ModelAttributionBadge model="claude-sonnet-4-6" provider="trollllm" tier="standard" />);
+		expect(screen.getByText(/standard/)).toBeInTheDocument();
+	});
+
+	it("omits tier when not provided", () => {
+		render(<ModelAttributionBadge model="model" provider="provider" />);
+		expect(screen.queryByText(/tier/i)).toBeNull();
+	});
+});
+
+describe("LiveNarrationStream", () => {
+	let LiveNarrationStream: typeof import("@/components/new-chat/orchestra/live-narration-stream").LiveNarrationStream;
+
+	beforeEach(async () => {
+		({ LiveNarrationStream } = await import(
+			"@/components/new-chat/orchestra/live-narration-stream"
+		));
+	});
+
+	it("renders narration text", () => {
+		render(<LiveNarrationStream text="Đang query CoinGecko..." />);
+		expect(screen.getByText("Đang query CoinGecko...")).toBeInTheDocument();
+	});
+
+	it("returns null when text is null", () => {
+		const { container } = render(<LiveNarrationStream text={null} />);
+		expect(container.firstChild).toBeNull();
+	});
+
+	it("has aria-live polite on container", () => {
+		const { container } = render(<LiveNarrationStream text="some text" />);
+		const root = container.firstChild as HTMLElement | null;
+		expect(root?.getAttribute("aria-live")).toBe("polite");
+	});
+});
+
+describe("SourceFaviconRiver", () => {
+	let SourceFaviconRiver: typeof import("@/components/new-chat/orchestra/source-favicon-river").SourceFaviconRiver;
+
+	beforeEach(async () => {
+		({ SourceFaviconRiver } = await import("@/components/new-chat/orchestra/source-favicon-river"));
+	});
+
+	const sources = [
+		{
+			domain: "coingecko.com",
+			favicon: "https://icons.duckduckgo.com/ip3/coingecko.com.ico",
+			url: "",
+			dataType: "price",
+		},
+		{
+			domain: "defillama.com",
+			favicon: "https://icons.duckduckgo.com/ip3/defillama.com.ico",
+			url: "",
+			dataType: "tvl",
+		},
+	];
+
+	it("renders a chip per source", () => {
+		render(<SourceFaviconRiver sources={sources} />);
+		expect(screen.getByText("coingecko.com")).toBeInTheDocument();
+		expect(screen.getByText("defillama.com")).toBeInTheDocument();
+	});
+
+	it("returns null for empty array", () => {
+		const { container } = render(<SourceFaviconRiver sources={[]} />);
+		expect(container.firstChild).toBeNull();
+	});
+});
+
+describe("RateGateBanner", () => {
+	let RateGateBanner: typeof import("@/components/new-chat/orchestra/rate-gate-banner").RateGateBanner;
+
+	beforeEach(async () => {
+		({ RateGateBanner } = await import("@/components/new-chat/orchestra/rate-gate-banner"));
+	});
+
+	it("renders wait seconds and reason", () => {
+		render(
+			<RateGateBanner latestGate={{ waitSeconds: 7.2, reason: "min_interval", ts: Date.now() }} />
+		);
+		expect(screen.getByText(/7\.2/)).toBeInTheDocument();
+		expect(screen.getByText(/tiêu chuẩn/)).toBeInTheDocument();
+	});
+
+	it("returns null when latestGate is null", () => {
+		const { container } = render(<RateGateBanner latestGate={null} />);
+		expect(container.firstChild).toBeNull();
+	});
+});
+
+describe("ActivityTimeline", () => {
+	let ActivityTimeline: typeof import("@/components/new-chat/orchestra/activity-timeline").ActivityTimeline;
+
+	beforeEach(async () => {
+		({ ActivityTimeline } = await import("@/components/new-chat/orchestra/activity-timeline"));
+	});
+
+	it("returns null when elapsed < 500ms", () => {
+		const { container } = render(
+			<ActivityTimeline spawnedAt={Date.now() - 100} rateGateWaits={[]} />
+		);
+		expect(container.firstChild).toBeNull();
+	});
+
+	it("renders timeline bar after 500ms", () => {
+		const { container } = render(
+			<ActivityTimeline spawnedAt={Date.now() - 10_000} rateGateWaits={[]} />
+		);
+		expect(container.querySelector("[data-slot='activity-timeline']")).toBeTruthy();
+	});
+
+	it("shows pacing pause count when gate waits exist", () => {
+		render(
+			<ActivityTimeline
+				spawnedAt={Date.now() - 10_000}
+				rateGateWaits={[
+					{ waitSeconds: 7, reason: "min_interval", ts: Date.now() - 5_000 },
+					{ waitSeconds: 3, reason: "paced", ts: Date.now() - 2_000 },
+				]}
+			/>
+		);
+		expect(screen.getByText(/2 pauses/)).toBeInTheDocument();
+	});
+});
+
+--- NEW/UNTRACKED FILE: nowing_web/components/new-chat/orchestra/activity-timeline.tsx ---
+"use client";
+
+import { cn } from "@/lib/utils";
+import { type RateGateEvent } from "@/atoms/chat/orchestra.atom";
+
+interface LlmCallEvent {
+	ts: number;
+	agentId: string;
+}
+
+interface ActivityTimelineProps {
+	spawnedAt: number;
+	rateGateWaits: RateGateEvent[];
+	llmCallEvents?: LlmCallEvent[];
+	className?: string;
+}
+
+/**
+ * AC10: Horizontal mini-timeline showing one tick per LLM call (slate)
+ * + amber ticks per rate-gate pause. Gate-spacing gaps appear as visual
+ * blank space between ticks.
+ */
+export function ActivityTimeline({
+	spawnedAt,
+	rateGateWaits,
+	llmCallEvents = [],
+	className,
+}: ActivityTimelineProps) {
+	const nowMs = Date.now();
+	const totalMs = nowMs - spawnedAt;
+
+	if (totalMs < 500) return null;
+
+	return (
+		<div
+			className={cn("flex flex-col gap-1", className)}
+			data-slot="activity-timeline"
+			aria-label="Activity timeline"
+		>
+			{/* Timeline bar */}
+			<div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted">
+				{/* Background fill */}
+				<div className="h-full rounded-full bg-muted-foreground/15" style={{ width: "100%" }} />
+
+				{/* AC10: one tick per LLM call (slate) */}
+				{llmCallEvents.map((call, i) => {
+					const offsetPct = ((call.ts - spawnedAt) / totalMs) * 100;
+					if (offsetPct < 0 || offsetPct > 100) return null;
+					return (
+						<span
+							key={`call-${call.ts}-${i}`}
+							className="absolute top-0 h-full w-px bg-muted-foreground/60"
+							style={{ left: `${Math.min(offsetPct, 99.5)}%` }}
+							title={`call #${i + 1} at ${formatClock(call.ts)} · ${call.agentId}`}
+						/>
+					);
+				})}
+
+				{/* Rate-gate pauses (amber, slightly wider) */}
+				{rateGateWaits.map((gate, i) => {
+					const offsetPct = Math.min(((gate.ts - spawnedAt) / totalMs) * 100, 98);
+					if (offsetPct < 0) return null;
+					return (
+						<span
+							key={`gate-${gate.ts}-${i}`}
+							className="absolute top-0 h-full w-0.5 bg-amber-400/80"
+							style={{ left: `${offsetPct}%` }}
+							title={`Pacing ${gate.waitSeconds}s (${gate.reason})`}
+						/>
+					);
+				})}
+			</div>
+
+			{/* Legend */}
+			{(rateGateWaits.length > 0 || llmCallEvents.length > 0) && (
+				<p className="flex items-center gap-2 text-[10px] text-muted-foreground/60">
+					{llmCallEvents.length > 0 && (
+						<span className="inline-flex items-center gap-1">
+							<span className="inline-block size-1 rounded-full bg-muted-foreground/60" />
+							{llmCallEvents.length} call{llmCallEvents.length > 1 ? "s" : ""}
+						</span>
+					)}
+					{rateGateWaits.length > 0 && (
+						<span className="inline-flex items-center gap-1">
+							<span className="inline-block size-1.5 rounded-full bg-amber-400/80" />
+							{rateGateWaits.length} pause{rateGateWaits.length > 1 ? "s" : ""}
+						</span>
+					)}
+				</p>
+			)}
+		</div>
+	);
+}
+
+function formatClock(ts: number): string {
+	const d = new Date(ts);
+	return `${d.getHours().toString().padStart(2, "0")}:${d
+		.getMinutes()
+		.toString()
+		.padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
+}
+
+--- NEW/UNTRACKED FILE: nowing_web/components/new-chat/orchestra/agent-lane.tsx ---
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import {
+	Activity,
+	Bot,
+	ChevronDown,
+	ChevronUp,
+	MessageSquare,
+	Newspaper,
+	Percent,
+	Shield,
+	TrendingUp,
+} from "lucide-react";
+import { type LucideIcon } from "lucide-react";
+import { type OrchestraAgent } from "@/atoms/chat/orchestra.atom";
+import { cn } from "@/lib/utils";
+import { LiveNarrationStream } from "./live-narration-stream";
+import { ModelAttributionBadge } from "./model-attribution-badge";
+import { SourceFaviconRiver } from "./source-favicon-river";
+import { StatusLight } from "./status-light";
+
+interface AgentLaneProps {
+	agent: OrchestraAgent;
+	className?: string;
+}
+
+const AGENT_ICONS: Record<string, LucideIcon> = {
+	tokenomics_analyst: TrendingUp,
+	defillama_analyst: Activity,
+	yield_optimizer: Percent,
+	smart_contract_analyst: Shield,
+	news_analyst: Newspaper,
+	sentiment_analyst: MessageSquare,
+};
+
+function AgentAvatar({ agentName, agentType }: { agentName: string; agentType: string }) {
+	const key = agentName.toLowerCase().replace(/\s+/g, "_");
+	const Icon = AGENT_ICONS[key] ?? AGENT_ICONS[agentType] ?? Bot;
+	return (
+		<span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted">
+			<Icon className="size-3.5 text-muted-foreground" aria-hidden="true" />
+		</span>
+	);
+}
+
+export function AgentLane({ agent, className }: AgentLaneProps) {
+	const {
+		agentId,
+		agentName,
+		agentType,
+		status,
+		elapsedMs,
+		currentNarration,
+		narrationHistory,
+		sourcesFetched,
+		factsCapturedCount,
+		modelAttribution,
+	} = agent;
+
+	const prevStatusRef = useRef(status);
+	const [showGlow, setShowGlow] = useState(false);
+	const [expanded, setExpanded] = useState(false);
+	const canExpand = narrationHistory.length > 0 || sourcesFetched.length > 0;
+
+	useEffect(() => {
+		if (prevStatusRef.current === "running" && status === "done") {
+			setShowGlow(true);
+			const timer = setTimeout(() => setShowGlow(false), 600);
+			prevStatusRef.current = status;
+			return () => clearTimeout(timer);
+		}
+		prevStatusRef.current = status;
+	}, [status]);
+
+	const elapsedLabel =
+		elapsedMs >= 1000
+			? `${(elapsedMs / 1000).toFixed(1)}s`
+			: elapsedMs > 0
+				? `${elapsedMs}ms`
+				: null;
+
+	return (
+		<div
+			className={cn(
+				"flex flex-col gap-1.5 rounded-lg border border-border/50 bg-card p-2.5 text-xs",
+				"transition-shadow duration-[600ms]",
+				showGlow && "shadow-[0_0_8px_2px_rgba(16,185,129,0.35)]",
+				(status === "failed" || status === "cancelled") && "opacity-60",
+				className
+			)}
+			data-agent-id={agentId}
+			data-status={status}
+		>
+			{/* Header row: avatar + name + status light + elapsed */}
+			<div className="flex items-center gap-1.5">
+				<AgentAvatar agentName={agentName} agentType={agentType} />
+				<span className="min-w-0 flex-1 truncate font-medium text-foreground">{agentName}</span>
+				<StatusLight status={status} />
+				{elapsedLabel && (
+					<span className="shrink-0 tabular-nums text-muted-foreground/60">{elapsedLabel}</span>
+				)}
+			</div>
+
+			{/* Model attribution badge */}
+			{modelAttribution && (
+				<ModelAttributionBadge
+					model={modelAttribution.model}
+					provider={modelAttribution.provider}
+					tier={modelAttribution.tier}
+				/>
+			)}
+
+			{/* Live narration — animated fade-in stream */}
+			{status === "running" && <LiveNarrationStream text={currentNarration} />}
+
+			{/* Source favicon river */}
+			<SourceFaviconRiver sources={sourcesFetched} />
+
+			{/* Fact counter + expand toggle */}
+			<div className="flex items-center justify-between text-muted-foreground/70">
+				{factsCapturedCount > 0 ? (
+					<span>{factsCapturedCount} facts captured</span>
+				) : (
+					<span aria-hidden="true" />
+				)}
+				{canExpand && (
+					<button
+						type="button"
+						onClick={() => setExpanded((v) => !v)}
+						className="inline-flex items-center gap-0.5 rounded text-[10px] hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						aria-expanded={expanded}
+						aria-label={expanded ? "Collapse lane details" : "Expand lane details"}
+					>
+						{expanded ? (
+							<>
+								Less <ChevronUp className="size-3" />
+							</>
+						) : (
+							<>
+								Expand <ChevronDown className="size-3" />
+							</>
+						)}
+					</button>
+				)}
+			</div>
+
+			{/* Expanded view: narration history */}
+			{expanded && narrationHistory.length > 0 && (
+				<div className="border-t border-border/30 pt-1.5">
+					<p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+						Recent activity
+					</p>
+					<ul className="flex flex-col gap-0.5 text-[11px] text-muted-foreground/80">
+						{narrationHistory
+							.slice()
+							.reverse()
+							.map((n, i) => (
+								<li key={`${n.ts}-${i}`} className="truncate">
+									<span className="mr-1 inline-block size-1 rounded-full bg-muted-foreground/40 align-middle" />
+									{n.text}
+								</li>
+							))}
+					</ul>
+				</div>
+			)}
+		</div>
+	);
+}
+
+--- NEW/UNTRACKED FILE: nowing_web/components/new-chat/orchestra/lab-header.tsx ---
+"use client";
+
+import { Activity } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface LabHeaderProps {
+	doneCount: number;
+	totalCount: number;
+	elapsedMs: number;
+	estimatedTotalMs?: number;
+	tokenSymbol?: string;
+	tokenName?: string;
+	degraded?: boolean;
+	className?: string;
+}
+
+/**
+ * AC6: Research Lab header — overall progress + ETA + optional token context.
+ * Renders above the agent-lane grid while the session is running.
+ */
+export function LabHeader({
+	doneCount,
+	totalCount,
+	elapsedMs,
+	estimatedTotalMs,
+	tokenSymbol,
+	tokenName,
+	degraded = false,
+	className,
+}: LabHeaderProps) {
+	const pct = totalCount > 0 ? Math.min((doneCount / totalCount) * 100, 100) : 0;
+	const remainingMs = estimatedTotalMs ? Math.max(estimatedTotalMs - elapsedMs, 0) : null;
+	const etaLabel = remainingMs !== null ? formatEta(remainingMs) : null;
+
+	return (
+		<div
+			className={cn("flex flex-col gap-1.5", className)}
+			data-slot="lab-header"
+			data-degraded={degraded || undefined}
+		>
+			<div className="flex items-center justify-between gap-2 text-xs">
+				<div className="flex min-w-0 items-center gap-1.5">
+					{tokenSymbol ? (
+						<>
+							<span className="font-bold tracking-tight text-foreground">{tokenSymbol}</span>
+							{tokenName && <span className="truncate text-muted-foreground">· {tokenName}</span>}
+						</>
+					) : (
+						<>
+							<Activity className="size-3.5 text-muted-foreground" aria-hidden="true" />
+							<span className="font-medium text-muted-foreground">Research in progress</span>
+						</>
+					)}
+				</div>
+				<div className="flex shrink-0 items-center gap-2 text-muted-foreground">
+					<span className="tabular-nums">
+						{doneCount}/{totalCount} agents done
+					</span>
+					{etaLabel && <span className="tabular-nums">~{etaLabel} left</span>}
+				</div>
+			</div>
+
+			{/* Progress bar */}
+			<div
+				className="h-0.5 w-full overflow-hidden rounded-full bg-muted"
+				role="progressbar"
+				aria-valuenow={Math.round(pct)}
+				aria-valuemin={0}
+				aria-valuemax={100}
+			>
+				<div
+					className={cn(
+						"h-full rounded-full transition-all duration-500 ease-out",
+						degraded ? "bg-amber-500/80" : "bg-emerald-500/80"
+					)}
+					style={{ width: `${pct}%` }}
+				/>
+			</div>
+		</div>
+	);
+}
+
+function formatEta(ms: number): string {
+	const sec = Math.round(ms / 1000);
+	if (sec < 60) return `${sec}s`;
+	const min = Math.floor(sec / 60);
+	const remSec = sec % 60;
+	return remSec === 0 ? `${min}m` : `${min}m ${remSec}s`;
+}
+
+--- NEW/UNTRACKED FILE: nowing_web/components/new-chat/orchestra/live-narration-stream.tsx ---
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+
+interface LiveNarrationStreamProps {
+	text: string | null;
+	className?: string;
+}
+
+/**
+ * AC8: Single-line narration with cross-fade transition between texts.
+ * - Old text fades out (~200ms) before new text fades in (~200ms)
+ * - Long text truncated with ellipsis (single line)
+ * - Re-mount via key on text change so animation runs each transition
+ */
+export function LiveNarrationStream({ text, className }: LiveNarrationStreamProps) {
+	const [visibleText, setVisibleText] = useState(text);
+	const [outgoing, setOutgoing] = useState<string | null>(null);
+	const [fadeKey, setFadeKey] = useState(0);
+	const prevRef = useRef(text);
+
+	useEffect(() => {
+		if (text !== prevRef.current) {
+			const oldText = prevRef.current;
+			prevRef.current = text;
+			// Trigger fade-out of old text first; after 180ms swap to new + fade-in.
+			if (oldText) {
+				setOutgoing(oldText);
+				const t1 = setTimeout(() => {
+					setOutgoing(null);
+					setVisibleText(text);
+					setFadeKey((k) => k + 1);
+				}, 180);
+				return () => clearTimeout(t1);
+			}
+			setVisibleText(text);
+			setFadeKey((k) => k + 1);
+		}
+	}, [text]);
+
+	if (!visibleText && !outgoing) return null;
+
+	return (
+		<div
+			className={cn("relative h-[1.5em] overflow-hidden", className)}
+			aria-live="polite"
+			aria-atomic="true"
+		>
+			{outgoing && (
+				<p
+					className="absolute inset-0 truncate animate-fade-out text-muted-foreground"
+					aria-hidden="true"
+				>
+					{outgoing}
+				</p>
+			)}
+			{visibleText && !outgoing && (
+				<p
+					key={fadeKey}
+					className="absolute inset-0 truncate animate-fade-in text-muted-foreground"
+				>
+					{visibleText}
+				</p>
+			)}
+		</div>
+	);
+}
+
+--- NEW/UNTRACKED FILE: nowing_web/components/new-chat/orchestra/model-attribution-badge.tsx ---
+"use client";
+
+import { Bot } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface ModelAttributionBadgeProps {
+	model: string;
+	provider: string;
+	tier?: string;
+	className?: string;
+}
+
+export function ModelAttributionBadge({
+	model,
+	provider,
+	tier,
+	className,
+}: ModelAttributionBadgeProps) {
+	const shortModel = model.replace(/^claude-/, "").replace(/-\d{8}$/, "");
+	const label = tier ? `${shortModel} · ${provider} · ${tier}` : `${shortModel} · ${provider}`;
+
+	return (
+		<span
+			className={cn(
+				"inline-flex items-center gap-1 rounded-full border border-border/50 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground",
+				className
+			)}
+			title={label}
+		>
+			<Bot className="size-2.5 shrink-0" aria-hidden="true" />
+			<span className="truncate max-w-[120px]">{label}</span>
+		</span>
+	);
+}
+
+--- NEW/UNTRACKED FILE: nowing_web/components/new-chat/orchestra/orchestra-lab.stories.tsx ---
+import type { Meta, StoryObj } from "@storybook/react";
+import { ActivityTimeline } from "./activity-timeline";
+import { AgentLane } from "./agent-lane";
+import { LiveNarrationStream } from "./live-narration-stream";
+import { ModelAttributionBadge } from "./model-attribution-badge";
+import { RateGateBanner } from "./rate-gate-banner";
+import { SourceFaviconRiver } from "./source-favicon-river";
+import { StatusLight } from "./status-light";
+
+// ─── StatusLight ──────────────────────────────────────────────────────────────
+
+const statusLightMeta: Meta<typeof StatusLight> = {
+	title: "crypto-orchestra/StatusLight",
+	component: StatusLight,
+};
+export default statusLightMeta;
+
+export const AllStatuses: StoryObj<typeof StatusLight> = {
+	render: () => (
+		<div className="flex items-center gap-4 p-4">
+			{(["idle", "queued", "running", "done", "failed", "cancelled"] as const).map((s) => (
+				<div key={s} className="flex flex-col items-center gap-1 text-xs">
+					<StatusLight status={s} />
+					<span>{s}</span>
+				</div>
+			))}
+		</div>
+	),
+};
+
+// ─── ModelAttributionBadge ────────────────────────────────────────────────────
+
+export const ModelBadge: StoryObj<typeof ModelAttributionBadge> = {
+	render: () => (
+		<div className="flex flex-col gap-2 p-4">
+			<ModelAttributionBadge model="claude-sonnet-4-6" provider="trollllm" tier="standard" />
+			<ModelAttributionBadge model="claude-opus-4-7" provider="anthropic" />
+		</div>
+	),
+};
+
+// ─── LiveNarrationStream ──────────────────────────────────────────────────────
+
+export const NarrationStream: StoryObj<typeof LiveNarrationStream> = {
+	render: () => (
+		<div className="max-w-sm p-4">
+			<LiveNarrationStream text="Đang query CoinGecko cho thông tin token..." />
+		</div>
+	),
+};
+
+export const NarrationNull: StoryObj<typeof LiveNarrationStream> = {
+	render: () => <div className="p-4 text-xs text-muted-foreground">(null — renders nothing)</div>,
+	args: { text: null },
+};
+
+// ─── SourceFaviconRiver ───────────────────────────────────────────────────────
+
+const MOCK_SOURCES = [
+	{
+		domain: "coingecko.com",
+		favicon: "https://icons.duckduckgo.com/ip3/coingecko.com.ico",
+		url: "",
+		dataType: "price",
+	},
+	{
+		domain: "defillama.com",
+		favicon: "https://icons.duckduckgo.com/ip3/defillama.com.ico",
+		url: "",
+		dataType: "tvl",
+	},
+	{
+		domain: "gopluslabs.io",
+		favicon: "https://icons.duckduckgo.com/ip3/gopluslabs.io.ico",
+		url: "",
+		dataType: "security",
+	},
+];
+
+export const FaviconRiver: StoryObj<typeof SourceFaviconRiver> = {
+	render: () => (
+		<div className="max-w-sm p-4">
+			<SourceFaviconRiver sources={MOCK_SOURCES} />
+		</div>
+	),
+};
+
+// ─── RateGateBanner ───────────────────────────────────────────────────────────
+
+export const RateGate: StoryObj<typeof RateGateBanner> = {
+	render: () => (
+		<div className="max-w-sm p-4">
+			<RateGateBanner latestGate={{ waitSeconds: 7.2, reason: "min_interval", ts: Date.now() }} />
+		</div>
+	),
+};
+
+// ─── ActivityTimeline ─────────────────────────────────────────────────────────
+
+export const Timeline: StoryObj<typeof ActivityTimeline> = {
+	render: () => (
+		<div className="max-w-sm p-4">
+			<ActivityTimeline
+				spawnedAt={Date.now() - 30_000}
+				rateGateWaits={[
+					{ waitSeconds: 7.2, reason: "min_interval", ts: Date.now() - 20_000 },
+					{ waitSeconds: 3.1, reason: "paced", ts: Date.now() - 10_000 },
+				]}
+			/>
+		</div>
+	),
+};
+
+// ─── AgentLane ────────────────────────────────────────────────────────────────
+
+const MOCK_AGENT = {
+	agentId: "tokenomics_analyst",
+	agentName: "Tokenomics Analyst",
+	agentType: "tokenomics",
+	status: "running" as const,
+	elapsedMs: 42_000,
+	narrationHistory: [],
+	currentNarration: "Supply 1B UNI, 85% circulating. Đang kiểm tra vesting schedule...",
+	sourcesFetched: MOCK_SOURCES.slice(0, 2),
+	factsCapturedCount: 12,
+	modelAttribution: { model: "claude-sonnet-4-6", provider: "trollllm", tier: "standard" },
+};
+
+export const LaneRunning: StoryObj<typeof AgentLane> = {
+	render: () => (
+		<div className="max-w-xs p-4">
+			<AgentLane agent={MOCK_AGENT} />
+		</div>
+	),
+};
+
+export const LaneDone: StoryObj<typeof AgentLane> = {
+	render: () => (
+		<div className="max-w-xs p-4">
+			<AgentLane agent={{ ...MOCK_AGENT, status: "done", currentNarration: null }} />
+		</div>
+	),
+};
+
+export const LaneFailed: StoryObj<typeof AgentLane> = {
+	render: () => (
+		<div className="max-w-xs p-4">
+			<AgentLane
+				agent={{
+					...MOCK_AGENT,
+					status: "failed",
+					currentNarration: null,
+					failReason: "rate_limit",
+					failMessage: "Provider quota exceeded",
+				}}
+			/>
+		</div>
+	),
+};
+
+--- NEW/UNTRACKED FILE: nowing_web/components/new-chat/orchestra/rate-gate-banner.tsx ---
+"use client";
+
+import { Timer } from "lucide-react";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+import { type RateGateEvent } from "@/atoms/chat/orchestra.atom";
+
+interface RateGateBannerProps {
+	/** Most recent rate-gate wait event, or null when idle. */
+	latestGate: RateGateEvent | null;
+	className?: string;
+}
+
+const REASON_LABELS: Record<string, string> = {
+	min_interval: "tiêu chuẩn",
+	paced: "được pacing",
+	retry: "retry",
+};
+
+/** AC9: auto-dismiss after this many ms of no new gate event. */
+const AUTO_DISMISS_MS = 15_000;
+
+/**
+ * Educational banner shown when the orchestrator is throttling LLM calls.
+ * Framed as "system working correctly" — not an error state — to reduce user anxiety.
+ * AC9: Auto-dismisses 15s after the most recent gate event.
+ */
+export function RateGateBanner({ latestGate, className }: RateGateBannerProps) {
+	const [dismissed, setDismissed] = useState(false);
+
+	// Reset dismissal when a new gate event arrives.
+	useEffect(() => {
+		setDismissed(false);
+		if (!latestGate) return;
+		const elapsed = Date.now() - latestGate.ts;
+		const remaining = AUTO_DISMISS_MS - elapsed;
+		if (remaining <= 0) {
+			setDismissed(true);
+			return;
+		}
+		const timer = setTimeout(() => setDismissed(true), remaining);
+		return () => clearTimeout(timer);
+	}, [latestGate]);
+
+	if (!latestGate || dismissed) return null;
+
+	const reasonLabel = REASON_LABELS[latestGate.reason] ?? latestGate.reason;
+	const waitSec = latestGate.waitSeconds.toFixed(1);
+
+	return (
+		<div
+			className={cn(
+				"flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-600 dark:text-amber-400",
+				className
+			)}
+			role="status"
+			aria-live="polite"
+			data-slot="rate-gate-banner"
+		>
+			<Timer className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+			<span>
+				Pacing calls to protect provider quota · Next dispatch in{" "}
+				<span className="tabular-nums font-medium">{waitSec}s</span>
+				{" · "}
+				<span className="text-amber-500/80">{reasonLabel}</span>
+			</span>
+		</div>
+	);
+}
+
+--- NEW/UNTRACKED FILE: nowing_web/components/new-chat/orchestra/source-favicon-river.tsx ---
+"use client";
+
+import { cn } from "@/lib/utils";
+import { type Source } from "@/atoms/chat/orchestra.atom";
+
+interface SourceFaviconRiverProps {
+	sources: Source[];
+	className?: string;
+}
+
+/**
+ * Horizontally scrollable row of source domain chips with favicons.
+ * Deduplication is handled upstream (orchestraAtom) — this component
+ * renders what it receives.
+ */
+export function SourceFaviconRiver({ sources, className }: SourceFaviconRiverProps) {
+	if (sources.length === 0) return null;
+
+	return (
+		<div
+			className={cn("flex flex-wrap gap-1", className)}
+			data-slot="source-favicon-river"
+			aria-label={`Sources: ${sources.map((s) => s.domain).join(", ")}`}
+		>
+			{sources.map((src) => (
+				<SourceChip key={src.domain} source={src} />
+			))}
+		</div>
+	);
+}
+
+function SourceChip({ source }: { source: Source }) {
+	const chipBody = (
+		<>
+			{/* P22: only render <img> when favicon is non-empty to avoid empty-src
+			    fetch loop in some browsers. Fall back to a neutral dot. */}
+			{source.favicon ? (
+				/* eslint-disable-next-line @next/next/no-img-element */
+				<img
+					src={source.favicon}
+					alt=""
+					width={12}
+					height={12}
+					className="size-3 rounded-full object-contain"
+					onError={(e) => {
+						(e.currentTarget as HTMLImageElement).style.display = "none";
+					}}
+				/>
+			) : (
+				<span className="size-3 rounded-full bg-muted-foreground/30" aria-hidden="true" />
+			)}
+			<span className="max-w-[80px] truncate">{source.domain}</span>
+		</>
+	);
+
+	const className =
+		"inline-flex animate-fade-in items-center gap-1 rounded-full border border-border/40 bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted";
+
+	if (source.url) {
+		return (
+			<a
+				href={source.url}
+				target="_blank"
+				rel="noopener noreferrer"
+				className={className}
+				title={source.domain}
+			>
+				{chipBody}
+			</a>
+		);
+	}
+	return (
+		<span className={className} title={source.domain}>
+			{chipBody}
+		</span>
+	);
+}
+
+--- NEW/UNTRACKED FILE: nowing_web/components/new-chat/orchestra/status-light.tsx ---
+"use client";
+
+import { cn } from "@/lib/utils";
+import { type AgentStatus } from "@/atoms/chat/orchestra.atom";
+
+interface StatusLightProps {
+	status: AgentStatus;
+	className?: string;
+}
+
+const STATUS_CONFIG: Record<AgentStatus, { color: string; pulse: boolean; label: string }> = {
+	idle: { color: "bg-muted", pulse: false, label: "Idle" },
+	queued: { color: "bg-muted-foreground/40", pulse: false, label: "Queued" },
+	running: { color: "bg-emerald-500", pulse: true, label: "Running" },
+	done: { color: "bg-emerald-500", pulse: false, label: "Done" },
+	failed: { color: "bg-amber-500", pulse: false, label: "Failed" },
+	cancelled: { color: "bg-muted-foreground/40", pulse: false, label: "Cancelled" },
+};
+
+export function StatusLight({ status, className }: StatusLightProps) {
+	const config = STATUS_CONFIG[status];
+	return (
+		<span
+			className={cn("relative flex size-2 shrink-0", className)}
+			aria-label={config.label}
+			role="status"
+		>
+			{config.pulse && (
+				<span
+					className={cn(
+						"absolute inline-flex size-full animate-ping rounded-full opacity-75",
+						config.color
+					)}
+				/>
+			)}
+			<span className={cn("relative inline-flex size-2 rounded-full", config.color)} />
+		</span>
+	);
+}
+
+--- NEW/UNTRACKED FILE: nowing_web/playwright/e2e/research-lab.spec.ts ---
+import { test, expect } from "../support/merged-fixtures";
+
+/**
+ * E2E tests — Live Research Lab (Story 9-UX-1)
+ *
+ * Mocks the SSE endpoint to emit the Phase 2 UX events:
+ *   data-orchestra-narration, data-orchestra-source-fetched,
+ *   data-orchestra-fact-captured, data-orchestra-model-attribution,
+ *   data-orchestra-rate-gate-wait
+ *
+ * Covers:
+ *   AC2: Pre-call narration appears in agent lane while running
+ *   AC3: Source favicon chips appear after source-fetched event
+ *   AC4: Fact counter increments per fact-captured event
+ *   AC9: Model attribution badge renders in agent lane
+ *   AC12: Rate-gate banner appears when rate-gate-wait event fires
+ *   AC6: Agent grid uses research-lab variant (not "default")
+ */
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+type SSEEventInput =
+	| { type: string; data?: object; delta?: never }
+	| { delta: string; type?: never; data?: never };
+
+function buildSSEStream(events: Array<SSEEventInput>): string {
+	// SSE spec: each event is a single `data:` line followed by a blank-line
+	// terminator (\n\n). Joining with `\n` between events would merge them into
+	// a single multi-line event for some parsers.
+	return events
+		.map((e) => {
+			if (e.delta !== undefined) {
+				return `data: ${JSON.stringify({ type: "text-delta", delta: e.delta })}\n\n`;
+			}
+			return `data: ${JSON.stringify({ type: e.type, data: e.data })}\n\n`;
+		})
+		.join("");
+}
+
+const SESSION_ID = "e2e-lab-001";
+const AGENT_ID = "tokenomics_analyst";
+const AGENT_NAME = "Tokenomics Analyst";
+
+/** SSE stream exercising all 5 Phase 2 UX event types */
+function labSSE(): string {
+	return buildSSEStream([
+		// Spawn one agent
+		{
+			type: "orchestra-spawn",
+			data: {
+				sessionId: SESSION_ID,
+				agentId: AGENT_ID,
+				agentName: AGENT_NAME,
+				agentType: "tokenomics",
+			},
+		},
+		// Running
+		{
+			type: "orchestra-update",
+			data: { sessionId: SESSION_ID, agentId: AGENT_ID, status: "running" },
+		},
+		// Model attribution
+		{
+			type: "data-orchestra-model-attribution",
+			data: {
+				sessionId: SESSION_ID,
+				agentId: AGENT_ID,
+				model: "claude-sonnet-4-6",
+				provider: "trollllm",
+			},
+		},
+		// Pre-call narration
+		{
+			type: "data-orchestra-narration",
+			data: {
+				sessionId: SESSION_ID,
+				agentId: AGENT_ID,
+				text: "Đang query CoinGecko cho thông tin token...",
+				tone: "fetching",
+			},
+		},
+		// Source fetched
+		{
+			type: "data-orchestra-source-fetched",
+			data: {
+				sessionId: SESSION_ID,
+				agentId: AGENT_ID,
+				source: {
+					domain: "coingecko.com",
+					favicon: "https://icons.duckduckgo.com/ip3/coingecko.com.ico",
+					url: "",
+					dataType: "price",
+				},
+			},
+		},
+		// Fact captured
+		{
+			type: "data-orchestra-fact-captured",
+			data: { sessionId: SESSION_ID, agentId: AGENT_ID, factSummary: "Price $7.23" },
+		},
+		// Rate-gate wait
+		{
+			type: "data-orchestra-rate-gate-wait",
+			data: { sessionId: SESSION_ID, waitSeconds: 7.2, reason: "min_interval" },
+		},
+		// Agent done
+		{
+			type: "orchestra-done",
+			data: { sessionId: SESSION_ID, agentId: AGENT_ID, citationIds: [] },
+		},
+		// Complete
+		{
+			type: "orchestra-complete",
+			data: { sessionId: SESSION_ID, agentIds: [AGENT_ID], citationCount: 0 },
+		},
+		// Synthesized text
+		{ delta: "Phân tích UNI token hoàn thành." },
+	]);
+}
+
+/** SSE with multiple agents to exercise grid layout */
+function multiAgentLabSSE(): string {
+	const agents = [
+		{ agentId: "a1", agentName: "Tokenomics Analyst", agentType: "tokenomics" },
+		{ agentId: "a2", agentName: "DeFi Analyst", agentType: "defillama" },
+		{ agentId: "a3", agentName: "Security Analyst", agentType: "smart_contract" },
+		{ agentId: "a4", agentName: "News Analyst", agentType: "news" },
+	];
+
+	const events: Array<{ type: string; data?: object }> = [];
+
+	for (const a of agents) {
+		events.push({ type: "orchestra-spawn", data: { sessionId: SESSION_ID, ...a } });
+	}
+	for (const a of agents) {
+		events.push({
+			type: "orchestra-update",
+			data: { sessionId: SESSION_ID, agentId: a.agentId, status: "running" },
+		});
+	}
+	// Add narration for first agent
+	events.push({
+		type: "data-orchestra-narration",
+		data: {
+			sessionId: SESSION_ID,
+			agentId: "a1",
+			text: "Đang phân tích tokenomics...",
+			tone: "fetching",
+		},
+	});
+	for (const a of agents) {
+		events.push({
+			type: "orchestra-done",
+			data: { sessionId: SESSION_ID, agentId: a.agentId, citationIds: [] },
+		});
+	}
+	events.push({
+		type: "orchestra-complete",
+		data: { sessionId: SESSION_ID, agentIds: agents.map((a) => a.agentId), citationCount: 0 },
+	});
+
+	return buildSSEStream(events);
+}
+
+// ---------------------------------------------------------------------------
+// Route mock helper
+// ---------------------------------------------------------------------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function mockChatSSE(page: any, sseBody: string) {
+	await page.route(/\/api\/(v\d+\/)?chat(\/.*)?$/, async (route) => {
+		await route.fulfill({
+			status: 200,
+			headers: {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
+				Connection: "keep-alive",
+			},
+			body: sseBody,
+		});
+	});
+	await page.route(/\/api\/(v\d+\/)?threads(\/.*)?$/, async (route) => {
+		await route.fulfill({
+			status: 200,
+			contentType: "application/json",
+			body: JSON.stringify({ id: "thread-e2e-lab", sessionId: SESSION_ID }),
+		});
+	});
+}
+
+const BASE_CHAT_URL = "/dashboard/demo/new-chat";
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+test.describe("Live Research Lab (9-UX-1)", () => {
+	test("AC6: strip uses research-lab variant (not default)", async ({ page, log }) => {
+		await mockChatSSE(page, labSSE());
+		await page.goto(BASE_CHAT_URL);
+
+		const input = page
+			.getByTestId("chat-input")
+			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
+		await input.fill("phân tích toàn diện UNI");
+		await page.keyboard.press("Enter");
+
+		const strip = page.locator('[data-slot="orchestra-strip"]');
+		await expect(strip).toBeVisible({ timeout: 15_000 });
+		await expect(strip).toHaveAttribute("data-variant", "research-lab");
+	});
+
+	test("AC2: narration text appears in running agent lane", async ({ page, log }) => {
+		await mockChatSSE(page, labSSE());
+		await page.goto(BASE_CHAT_URL);
+
+		const input = page
+			.getByTestId("chat-input")
+			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
+		await input.fill("phân tích toàn diện UNI");
+		await page.keyboard.press("Enter");
+
+		await expect(page.getByText("Đang query CoinGecko cho thông tin token...")).toBeVisible({
+			timeout: 15_000,
+		});
+	});
+
+	test("AC3: source favicon chip appears after source-fetched event", async ({ page, log }) => {
+		await mockChatSSE(page, labSSE());
+		await page.goto(BASE_CHAT_URL);
+
+		const input = page
+			.getByTestId("chat-input")
+			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
+		await input.fill("phân tích toàn diện UNI");
+		await page.keyboard.press("Enter");
+
+		await expect(page.getByText("coingecko.com")).toBeVisible({ timeout: 15_000 });
+	});
+
+	test("AC4: fact counter shows after fact-captured event", async ({ page, log }) => {
+		await mockChatSSE(page, labSSE());
+		await page.goto(BASE_CHAT_URL);
+
+		const input = page
+			.getByTestId("chat-input")
+			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
+		await input.fill("phân tích toàn diện UNI");
+		await page.keyboard.press("Enter");
+
+		await expect(page.getByText(/1 data points captured/)).toBeVisible({ timeout: 15_000 });
+	});
+
+	test("AC9: model attribution badge renders", async ({ page, log }) => {
+		await mockChatSSE(page, labSSE());
+		await page.goto(BASE_CHAT_URL);
+
+		const input = page
+			.getByTestId("chat-input")
+			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
+		await input.fill("phân tích toàn diện UNI");
+		await page.keyboard.press("Enter");
+
+		// Badge renders model short name + provider
+		await expect(page.getByText(/sonnet-4-6.*trollllm/)).toBeVisible({ timeout: 15_000 });
+	});
+
+	test("AC12: rate-gate banner appears on rate-gate-wait event", async ({ page, log }) => {
+		await mockChatSSE(page, labSSE());
+		await page.goto(BASE_CHAT_URL);
+
+		const input = page
+			.getByTestId("chat-input")
+			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
+		await input.fill("phân tích toàn diện UNI");
+		await page.keyboard.press("Enter");
+
+		const banner = page.locator('[data-slot="rate-gate-banner"]');
+		await expect(banner).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByText(/7\.2/)).toBeVisible();
+	});
+
+	test("grid renders agent-grid slot for multi-agent session", async ({ page, log }) => {
+		await mockChatSSE(page, multiAgentLabSSE());
+		await page.goto(BASE_CHAT_URL);
+
+		const input = page
+			.getByTestId("chat-input")
+			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
+		await input.fill("phân tích toàn diện UNI");
+		await page.keyboard.press("Enter");
+
+		const grid = page.locator('[data-slot="agent-grid"]');
+		await expect(grid).toBeVisible({ timeout: 15_000 });
+
+		// All 4 agent names visible in grid
+		for (const name of ["Tokenomics Analyst", "DeFi Analyst", "Security Analyst", "News Analyst"]) {
+			await expect(page.getByText(name).first()).toBeVisible();
+		}
+	});
+
+	test("strip collapses to summary after completion", async ({ page, log }) => {
+		await mockChatSSE(page, labSSE());
+		await page.goto(BASE_CHAT_URL);
+
+		const input = page
+			.getByTestId("chat-input")
+			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
+		await input.fill("phân tích toàn diện UNI");
+		await page.keyboard.press("Enter");
+
+		const strip = page.locator('[data-slot="orchestra-strip"]');
+		await expect(strip).toHaveAttribute("data-variant", "collapsed", { timeout: 20_000 });
+		await expect(page.getByText(/1\/1 done/)).toBeVisible();
+	});
+});

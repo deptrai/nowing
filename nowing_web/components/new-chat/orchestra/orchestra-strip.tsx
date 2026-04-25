@@ -2,11 +2,33 @@
 
 import { useAtomValue } from "jotai";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { type OrchestraAgent, activeOrchestraSessionAtom } from "@/atoms/chat/orchestra.atom";
+import {
+	type OrchestraAgent,
+	activeOrchestraSessionAtom,
+	deriveEscalationLevel,
+} from "@/atoms/chat/orchestra.atom";
 import { cn } from "@/lib/utils";
-import { AgentRow } from "./agent-row";
+import { ActivityTimeline } from "./activity-timeline";
+import { AgentLane } from "./agent-lane";
 import { DegradationNotice } from "./degradation-notice";
+import { LabHeader } from "./lab-header";
 import { ProgressMilestone } from "./progress-milestone";
+import { RateGateBanner } from "./rate-gate-banner";
+
+/**
+ * AC6 dynamic grid: 1×N for sm, 2×⌈N/2⌉ for md, 3×⌈N/3⌉ for lg.
+ * Static class strings (Tailwind safelist constraint).
+ */
+function gridColsForCount(n: number): string {
+	// AC6 formula: 1×N for sm, 2×⌈N/2⌉ for md, 3×⌈N/3⌉ for lg.
+	// V2-P10: n=4 now yields lg:grid-cols-3 (3×2 with 1 row of 1) per spec,
+	// instead of 2×2.
+	if (n <= 1) return "grid-cols-1";
+	if (n === 2) return "grid-cols-1 md:grid-cols-2";
+	if (n === 3) return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+	// n >= 4: spec is 2 cols at md, 3 cols at lg
+	return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+}
 
 interface OrchestraStripProps {
 	/** Phase 9.2 placeholder — background pinning. Ignored in v1. */
@@ -60,17 +82,23 @@ export function OrchestraStrip({ className }: OrchestraStripProps) {
 	// P4: only show progress milestone while the session is still running. A "failed"
 	// outcome (non-collapsed) would otherwise keep the 30s timer ticking post-completion.
 	const isRunning = session.outcome === "running";
+	// AC11: derive degradation level from observed rate-gate frequency.
+	const escalationLevel = deriveEscalationLevel(session.rateGateWaits);
+	const isDegraded = escalationLevel >= 1;
 
 	return (
 		<div
 			className={cn(
 				"mb-3 flex flex-col gap-1.5 rounded-lg border p-3",
-				"border-border/60 bg-muted/20",
 				"transition-all duration-150 ease-out",
+				isDegraded && isRunning
+					? "border-amber-500/50 bg-amber-500/5"
+					: "border-border/60 bg-muted/20",
 				className
 			)}
 			data-slot="orchestra-strip"
-			data-variant={isCollapsed ? "collapsed" : "default"}
+			data-variant={isCollapsed ? "collapsed" : "research-lab"}
+			data-escalation-level={escalationLevel}
 		>
 			{/* Collapsed summary after completion */}
 			{isCollapsed ? (
@@ -91,10 +119,28 @@ export function OrchestraStrip({ className }: OrchestraStripProps) {
 				</div>
 			) : (
 				<>
-					{/* Agent rows */}
-					<div className="flex flex-col gap-1">
+					{/* Research Lab header — overall progress + ETA + degradation state */}
+					{isRunning && (
+						<>
+							<LabHeader
+								doneCount={doneCount}
+								totalCount={totalCount}
+								elapsedMs={Date.now() - session.spawnedAt}
+								degraded={isDegraded}
+								className="mb-1"
+							/>
+							{isDegraded && (
+								<p className="mb-1 text-[11px] text-amber-600 dark:text-amber-400">
+									Optimizing for rate limits — taking 2× longer to ensure complete results
+								</p>
+							)}
+						</>
+					)}
+
+					{/* Agent grid — adaptive 1×N / 2×⌈N/2⌉ / 3×⌈N/3⌉ (AC6) */}
+					<div className={cn("grid gap-2", gridColsForCount(totalCount))} data-slot="agent-grid">
 						{agents.map((agent) => (
-							<AgentRow key={agent.agentId} agent={agent} />
+							<AgentLane key={agent.agentId} agent={agent} />
 						))}
 					</div>
 
@@ -107,12 +153,28 @@ export function OrchestraStrip({ className }: OrchestraStripProps) {
 							elapsedMs={Date.now() - session.spawnedAt}
 						/>
 					)}
+
+					{/* Activity timeline: per-LLM-call ticks + gate pauses */}
+					{isRunning && (
+						<ActivityTimeline
+							spawnedAt={session.spawnedAt}
+							rateGateWaits={session.rateGateWaits}
+							llmCallEvents={session.llmCallEvents}
+						/>
+					)}
+
+					{/* Rate-gate educational banner — shown when actively throttling */}
+					{isRunning && session.rateGateWaits.length > 0 && (
+						<RateGateBanner
+							latestGate={session.rateGateWaits[session.rateGateWaits.length - 1] ?? null}
+						/>
+					)}
 				</>
 			)}
 
 			{/* Cancelled state footnote (AC5) */}
 			{session.outcome === "cancelled" && (
-				<p className="text-xs text-muted-foreground/70 mt-1">
+				<p className="mt-1 text-xs text-muted-foreground/70">
 					In-flight tokens vẫn được tính (best-effort cancel)
 				</p>
 			)}
