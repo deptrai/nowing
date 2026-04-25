@@ -990,3 +990,52 @@ So that I can time my entries and exits more effectively.
 **And** identify chart patterns nếu có: head & shoulders, cup & handle, double bottom/top, bull/bear flag
 **And** đưa ra short-term outlook (bullish/bearish/neutral) với key levels cần watch
 **And** tools: `get_live_token_data` (DexScreener price feed), `chainlens_deep_research` (TradingView analysis, CoinGecko charts) — *blocked on inline spike for OHLCV/TA tooling*
+
+---
+
+## Phase 2 UX Overhaul — Sub-Epics 9-UX-1 through 9-UX-4
+
+**Added:** 2026-04-25 by Sally (UX) + Mary (BA)
+**Goal:** Lift experience to Messari Pro × Perplexity × Nansen bar
+**Design spec:** `.claude/plans/harmonic-cuddling-glacier.md`
+**Timeline:** 6-8 weeks · rollout: 9-UX-1 → (9-UX-2 ∥ 9-UX-4) → 9-UX-3
+
+---
+
+### Story 9-UX-1: Live Research Lab
+📄 **Story file**: [`stories/9-UX-1-live-research-lab.md`](./stories/9-UX-1-live-research-lab.md) | **Phase 2 UX · Ready-for-dev**
+As a crypto researcher using Nowing,
+I want to watch the AI agents work in real-time — with first-person narration, source favicons streaming in, and educational pacing explanations —
+So that I feel confidence, engagement, and trust in the 2-14 minute research process.
+
+**Effort:** 2 weeks (1 FE + 1 BE) · **Blocks:** 9-UX-2, 9-UX-4
+
+---
+
+### Story 9-UX-2: Crypto-Native Report Layout
+📄 **Story file**: [`stories/9-UX-2-crypto-report-layout.md`](./stories/9-UX-2-crypto-report-layout.md) | **Phase 2 UX · Ready-for-dev**
+As a crypto investor/researcher reading a Nowing analysis,
+I want the report presented like a Messari research doc — Token Hero card, sticky TOC, source-cited numbers, embedded charts, slide-in source detail —
+So that I trust the analysis and navigate efficiently.
+
+**Effort:** 3 weeks (1 FE + 0.5 BE) · **Depends:** 9-UX-1 · **Blocks:** 9-UX-3
+
+---
+
+### Story 9-UX-3: Interactive Analysis
+📄 **Story file**: [`stories/9-UX-3-interactive-analysis.md`](./stories/9-UX-3-interactive-analysis.md) | **Phase 2 UX · Ready-for-dev**
+As a crypto investor who just read a Nowing report,
+I want to simulate bull/bear/stress scenarios, compare tokens side-by-side, and take immediate next actions (watchlist, alert, share, deep-dive),
+So that I convert insights into decisions and explore further without re-typing queries.
+
+**Effort:** 2 weeks (1 FE + 1 BE) · **Depends:** 9-UX-2
+
+---
+
+### Story 9-UX-4: Additional Data Sources
+📄 **Story file**: [`stories/9-UX-4-additional-data-sources.md`](./stories/9-UX-4-additional-data-sources.md) | **Phase 2 UX · Ready-for-dev**
+As a crypto professional needing institutional-grade analysis,
+I want Nowing reports to incorporate Nansen smart-money flows, CertiK audits, Dune custom queries, and TokenInsight ratings — each properly cited —
+So that my analysis matches what Messari/Nansen terminal users get.
+
+**Effort:** 2 weeks (1 BE + 0.5 FE) · **Depends:** 9-UX-1 + 9-UX-2 (parallel with 9-UX-3)

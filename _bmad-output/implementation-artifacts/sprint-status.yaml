@@ -42,6 +42,7 @@ project: Nowing
 # 2026-04-25: Story 0.6b AC8/AC9 extension — SubAgentResilienceMiddleware + partial-synthesis fallback. E2E verified with 0/6 agents scenario → graceful UI response (no more "Sorry, there was an error")
 # 2026-04-25 late: Story 0.6b AC10 — min-interval gate (no bursts possible) + unbounded retry with wall-clock cap. E2E at 8 RPM showed 50+ gate-spacings, 0 stream-fatal 429s, only 3 transient retries across 17+ min. Architecture proven: at any RPM ≥ 1, system pacing guarantees completion.
 # 2026-04-25 evening: Story 0.6b AC11 — Synthesis Mode (no respawn loop). Strip task tool + tool_choice=none + replace directive when pending=[]. LDO token query (chat_id=30) produced full markdown analysis with Copy/Download buttons enabled. Final text output guaranteed regardless of provider RPM.
+# 2026-04-25 late night: Phase 2 UX overhaul planned by Sally (UX) + Mary (BA). 4 sub-epic stories created: 9-UX-1 (Live Research Lab), 9-UX-2 (Crypto Report Layout), 9-UX-3 (Interactive Analysis), 9-UX-4 (Additional Data Sources). 6-8 week rollout. Spec at .claude/plans/harmonic-cuddling-glacier.md.
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/planning-artifacts/stories"
@@ -133,5 +134,12 @@ development_status:
   9-6-technical-analyst: backlog
   phase-3-final-quality-gate-review: backlog
   crypto-orchestra-launch: backlog
+
+  # ─── PHASE 2 UX OVERHAUL (added 2026-04-25 by Sally + Mary) ───
+  # Goal: lift experience to Messari Pro × Perplexity × Nansen bar
+  9-UX-1-live-research-lab: ready-for-dev       # 2 weeks · FE+BE
+  9-UX-2-crypto-report-layout: ready-for-dev     # 3 weeks · FE+BE (blocked on 9-UX-1)
+  9-UX-3-interactive-analysis: ready-for-dev     # 2 weeks · FE+BE (blocked on 9-UX-2)
+  9-UX-4-additional-data-sources: ready-for-dev  # 2 weeks · BE+FE (blocked on 9-UX-1+2)
 
   epic-9-retrospective: optional
