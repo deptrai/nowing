@@ -180,6 +180,7 @@ export function OrchestraStrip({
 								doneCount={doneCount}
 								totalCount={totalCount}
 								elapsedMs={Date.now() - session.spawnedAt}
+								completedAgentMs={session.completedAgentMs}
 								degraded={isDegraded}
 								className="mb-1"
 							/>

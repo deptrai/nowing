@@ -7,6 +7,7 @@ interface LabHeaderProps {
 	doneCount: number;
 	totalCount: number;
 	elapsedMs: number;
+	completedAgentMs?: number[];
 	tokenSymbol?: string;
 	tokenName?: string;
 	degraded?: boolean;
@@ -25,6 +26,7 @@ export function LabHeader({
 	doneCount,
 	totalCount,
 	elapsedMs,
+	completedAgentMs,
 	tokenSymbol,
 	tokenName,
 	degraded = false,
@@ -32,8 +34,14 @@ export function LabHeader({
 }: LabHeaderProps) {
 	const pct = totalCount > 0 ? Math.min((doneCount / totalCount) * 100, 100) : 0;
 	const remaining = totalCount - doneCount;
-	const etaLabel =
-		doneCount > 0 && remaining > 0 ? formatEta((elapsedMs / doneCount) * remaining) : null;
+	const etaLabel = (() => {
+		if (remaining <= 0) return null;
+		if (completedAgentMs && completedAgentMs.length > 0) {
+			return formatEta(median(completedAgentMs) * remaining);
+		}
+		// Fallback to wall-clock when no completed agents yet
+		return null;
+	})();
 
 	return (
 		<div
@@ -81,6 +89,12 @@ export function LabHeader({
 			</div>
 		</div>
 	);
+}
+
+function median(arr: number[]): number {
+	const sorted = [...arr].sort((a, b) => a - b);
+	const mid = Math.floor(sorted.length / 2);
+	return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
 function formatEta(ms: number): string {

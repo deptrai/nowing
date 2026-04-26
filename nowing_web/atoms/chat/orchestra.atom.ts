@@ -94,6 +94,9 @@ export interface OrchestraSession {
 	// 9-UX-1 AC10: per-LLM-call timestamps for ActivityTimeline ticks.
 	// Each entry: { ts: Date.now(), agentId: <string> }. Capped at 200.
 	llmCallEvents: Array<{ ts: number; agentId: string }>;
+	// ETA fix: actual wall-clock ms each completed agent took (from spawnedAt to done).
+	// Used instead of total-elapsed/doneCount which is inflated by shared rate-gate waits.
+	completedAgentMs: number[];
 }
 
 export interface OrchestraState {
@@ -199,11 +202,29 @@ function p95Bucket(ms: number): "fast" | "normal" | "slow" {
 	return "slow";
 }
 
+/**
+ * Override `spawnedAt` for a session using the server-side run start time.
+ * Call this before replaying DB events so per-agent elapsedMs is accurate.
+ */
+export function setSessionSpawnedAt(
+	state: OrchestraState,
+	sessionId: string,
+	spawnedAt: number
+): OrchestraState {
+	const session = state.sessions.get(sessionId);
+	if (!session) return state;
+	const sessions = new Map(state.sessions);
+	sessions.set(sessionId, { ...session, spawnedAt });
+	return { ...state, sessions };
+}
+
 export function applyOrchestraEvent(
 	state: OrchestraState,
-	event: OrchestraSSEEvent
+	event: OrchestraSSEEvent & { _ts?: number }
 ): OrchestraState {
 	const sessions = new Map(state.sessions);
+	// Use server-side event timestamp when available (replay from DB) for accurate elapsed calc.
+	const eventTs = typeof event._ts === "number" ? event._ts : Date.now();
 
 	if (event.type === "orchestra-spawn") {
 		const { sessionId, agentId, agentName, agentType } = event.data;
@@ -227,7 +248,7 @@ export function applyOrchestraEvent(
 					queryHash: sessionId,
 					sessionId,
 					agents,
-					spawnedAt: Date.now(),
+					spawnedAt: eventTs,
 					completedAt: null,
 					outcome: "running",
 					totalMs: null,
@@ -238,6 +259,7 @@ export function applyOrchestraEvent(
 					milestone: null,
 					rateGateWaits: [],
 					llmCallEvents: [],
+					completedAgentMs: [],
 				};
 		sessions.set(sessionId, session);
 		return { sessions, lastSpawnedSessionId: sessionId };
@@ -259,7 +281,7 @@ export function applyOrchestraEvent(
 			agents.set(agentId, {
 				...agent,
 				status: mapped,
-				elapsedMs: Date.now() - session.spawnedAt,
+				elapsedMs: eventTs - session.spawnedAt,
 			});
 		}
 		sessions.set(sessionId, { ...session, agents });
@@ -276,16 +298,18 @@ export function applyOrchestraEvent(
 		if (!session) return state;
 		const agents = new Map(session.agents);
 		const agent = agents.get(agentId);
+		const agentElapsedMs = eventTs - session.spawnedAt;
 		if (agent) {
 			agents.set(agentId, {
 				...agent,
 				status: "done",
 				citationIds,
-				elapsedMs: Date.now() - session.spawnedAt,
+				elapsedMs: agentElapsedMs,
 			});
 		}
 		const successCount = Array.from(agents.values()).filter((a) => a.status === "done").length;
-		sessions.set(sessionId, { ...session, agents, successCount });
+		const completedAgentMs = [...session.completedAgentMs, agentElapsedMs];
+		sessions.set(sessionId, { ...session, agents, successCount, completedAgentMs });
 		return { ...state, sessions };
 	}
 
@@ -301,7 +325,7 @@ export function applyOrchestraEvent(
 				status: "failed",
 				failReason: errorCode as FailReason,
 				failMessage: errorMessage,
-				elapsedMs: Date.now() - session.spawnedAt,
+				elapsedMs: eventTs - session.spawnedAt,
 			});
 		}
 		const failedCount = Array.from(agents.values()).filter((a) => a.status === "failed").length;
@@ -320,7 +344,7 @@ export function applyOrchestraEvent(
 				...agent,
 				status: "cancelled",
 				failReason: "cancelled_by_user",
-				elapsedMs: Date.now() - session.spawnedAt,
+				elapsedMs: eventTs - session.spawnedAt,
 			});
 		}
 		sessions.set(sessionId, { ...session, agents });
@@ -331,7 +355,7 @@ export function applyOrchestraEvent(
 		const { sessionId } = event.data;
 		const session = sessions.get(sessionId);
 		if (!session) return state;
-		const completedAt = Date.now();
+		const completedAt = eventTs;
 		const totalMs = completedAt - session.spawnedAt;
 		// P5: force-transition any lingering running/queued/idle agents to "failed".
 		// If the backend emits orchestra-complete without a matching done/fail for an
@@ -345,7 +369,7 @@ export function applyOrchestraEvent(
 					status: "failed",
 					failReason: "unavailable",
 					failMessage: "Agent did not complete before orchestra-complete event",
-					elapsedMs: Date.now() - session.spawnedAt,
+					elapsedMs: eventTs - session.spawnedAt,
 				});
 			}
 		}

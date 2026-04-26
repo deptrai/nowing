@@ -19,6 +19,7 @@ export interface StartRunRequest {
 	search_space_id: number;
 	user_query: string;
 	mentioned_document_ids?: number[] | null;
+	mentioned_nowing_doc_ids?: number[] | null;
 	disabled_tools?: string[] | null;
 	model_id?: number | null;
 }

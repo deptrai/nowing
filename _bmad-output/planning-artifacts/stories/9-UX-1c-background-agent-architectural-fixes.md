@@ -17,6 +17,9 @@ author: Luisphan + Claude (carved out from 9-UX-1b code review findings)
 ## Revision History
 
 - **v1 (2026-04-25)** — Initial story carved out from 9-UX-1b adversarial code review. Gathers 12 architectural patches still open after 18 mechanical fixes were batch-applied, plus 4 spec deferrals (V3 /regenerate parity, V5 multi-strip, V6 Resume button, V9 _replay marker).
+- **v1.1 (2026-04-26)** — Post-live verification patches:
+  - **ETA formula bug fixed**: `lab-header.tsx` now uses `median(completedAgentMs) × remaining` instead of `(elapsedMs / doneCount) × remaining`. The old formula inflated ETA to 49–72m because it divided total wall-clock time (including rate-gate waits) by completed agent count. Added `completedAgentMs: number[]` to `OrchestraSession`; `orchestra-done` handler pushes `agentElapsedMs`; `orchestra-strip.tsx` passes array to `LabHeader`.
+  - **Replay ETA bug fixed**: On page reload all replayed events arrived at `Date.now()` → `agentElapsedMs` ≈ 2ms → ETA showed "~0s left". Fix: BE `stream_run` injects `_ts` (Unix ms from `chat_run_events.created_at`) into each replayed event; `replay-start` includes `runStartedAtMs` from `run.started_at`; FE `applyOrchestraEvent` uses `eventTs = event._ts ?? Date.now()` for all elapsed/spawnedAt calculations.
 
 # Story 9-UX-1c: Background Agent Architectural Fixes
 

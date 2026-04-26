@@ -1649,6 +1649,7 @@ class StartRunRequest(BaseModel):
     search_space_id: int
     user_query: str
     mentioned_document_ids: list[int] | None = None
+    mentioned_nowing_doc_ids: list[int] | None = None
     disabled_tools: list[str] | None = None
     model_id: int | None = None
 
@@ -1734,6 +1735,7 @@ async def start_new_run(
         llm_config_id=llm_config_id,
         model_id=request.model_id,
         mentioned_document_ids=request.mentioned_document_ids,
+        mentioned_nowing_doc_ids=request.mentioned_nowing_doc_ids,
         disabled_tools=request.disabled_tools,
         needs_history_bootstrap=thread.needs_history_bootstrap,
         thread_visibility=thread.visibility,
@@ -1840,7 +1842,9 @@ async def stream_run(
             async with shielded_async_session() as db:
                 rows = await db.execute(
                     text(
-                        "SELECT seq, event_type, payload FROM chat_run_events "
+                        "SELECT seq, event_type, payload, "
+                        "EXTRACT(EPOCH FROM created_at)::bigint * 1000 AS ts_ms "
+                        "FROM chat_run_events "
                         "WHERE run_id = :rid AND seq > :after ORDER BY seq"
                     ),
                     {"rid": str(run_id), "after": after_seq},
@@ -1850,11 +1854,23 @@ async def stream_run(
             if persisted:
                 last_seq = persisted[-1][0]
 
-            # T3: replay-start sentinel (FE suppresses animation during replay)
-            yield f"data: {json.dumps({'_marker': 'replay-start', 'seq': last_seq})}\n\n"
+            # T3: replay-start sentinel — include run.started_at so FE can seed spawnedAt
+            run_started_ms = int(run.started_at.timestamp() * 1000)
+            yield f"data: {json.dumps({'_marker': 'replay-start', 'seq': last_seq, 'runStartedAtMs': run_started_ms})}\n\n"
 
-            for seq, event_type, payload in persisted:
-                yield _rebuild_vercel_wire(event_type, payload)
+            for seq, event_type, payload, ts_ms in persisted:
+                wire = _rebuild_vercel_wire(event_type, payload)
+                # Inject _ts into structured events so FE can use server timestamp
+                # instead of Date.now() for per-agent elapsed calculations.
+                if ts_ms and wire.startswith("data: {"):
+                    try:
+                        obj = json.loads(wire[6:].rstrip())
+                        if isinstance(obj, dict) and "_ts" not in obj:
+                            obj["_ts"] = int(ts_ms)
+                            wire = f"data: {json.dumps(obj)}\n\n"
+                    except Exception:
+                        pass
+                yield wire
 
             # Check if run is terminal — if so, close after replay
             async with shielded_async_session() as db:
