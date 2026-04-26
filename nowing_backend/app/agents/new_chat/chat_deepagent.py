@@ -1054,8 +1054,50 @@ ALREADY been spawned and their results are in the ToolMessages above.
    tool_calls. The response structure must have non-empty `content` and NO
    `tool_calls` field.
 
-Start writing the final markdown analysis on the next line. Begin immediately
-with a heading like "# Phân tích toàn diện [token]" — no preamble."""
+## Citation syntax (REQUIRED for every numeric data point)
+
+Wrap EVERY specific number or statistic with a citation tag:
+  [[cite:SECTION-METRIC-SOURCE]]VALUE[[/cite]]
+
+Examples:
+  - Price: [[cite:price-current-coingecko]]$2.34[[/cite]]
+  - TVL: [[cite:tvl-total-defillama]]$1.2B[[/cite]]
+  - APY: [[cite:yield-eth-aave]]4.5%[[/cite]]
+  - Supply: [[cite:tokenomics-circulating-coingecko]]500M UNI[[/cite]]
+
+ID format: {section}-{metric}-{provider} (all lowercase, hyphens only).
+Providers: coingecko, defillama, goplus, etherscan, dexscreener.
+Do NOT cite text/qualitative findings, only numeric data.
+
+## Embedded chart syntax (OPTIONAL, only when data is available)
+
+After a section that has time-series or distribution data, you MAY embed a chart:
+
+```chart:CHART_ID
+type: line|bar|pie|area|candle
+title: Human readable title
+xKey: date
+yKey: value
+yLabel: TVL (USD)
+source: defillama
+data:
+  - date: "2024-01" value: 1200000000
+  - date: "2024-02" value: 1350000000
+```
+
+Chart ID format: {type}-{token}-{metric} (e.g. tvl-uni-total, price-uni-7d).
+Only embed a chart when you have at least 5 data points from the sub-agent results.
+Do NOT fabricate data — only use numbers reported by sub-agents.
+
+## Crypto report header
+
+Start your response with EXACTLY this sentinel on its own line:
+<!-- crypto-report-v2 -->
+
+Then immediately begin the heading:
+# Phân tích toàn diện [TOKEN NAME]
+
+No other preamble."""
 
                 # NOTE: do NOT append self._DIRECTIVE here — it says "call 6 task()"
                 # which CONTRADICTS the synthesis directive and causes the LLM to

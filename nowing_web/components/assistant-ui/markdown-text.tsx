@@ -17,6 +17,8 @@ import remarkMath from "remark-math";
 import { ImagePreview, ImageRoot, ImageZoom } from "@/components/assistant-ui/image";
 import "katex/dist/katex.min.css";
 import { InlineCitation, UrlCitation } from "@/components/assistant-ui/inline-citation";
+import { CryptoCitationInline } from "@/components/new-chat/report/crypto-citation-inline";
+import { EmbeddedChartWrapper as LazyEmbeddedChart } from "@/components/new-chat/report/embedded-charts/embedded-chart-wrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
@@ -103,14 +105,21 @@ function preprocessMarkdown(content: string): string {
 	// Ensure markdown headings (## ...) always start on their own line.
 	content = content.replace(/([^\n])(#{1,6}\s)/g, "$1\n\n$2");
 
+	// [[cite:id]]value[[/cite]] → [cryptocite:id:value] for downstream rendering
+	content = content.replace(/\[\[cite:([^\]]+)\]\]([^\[]*)\[\[\/cite\]\]/g, (_, id, value) => {
+		const safe = value.trim().replace(/\s+/g, " ");
+		return `[cryptocite:${id}:${safe}]`;
+	});
+
 	return content;
 }
 
 // Matches [citation:...] with numeric IDs (incl. doc- prefix, comma-separated),
 // URL-based IDs from live web search, or urlciteN placeholders from preprocess.
 // Also matches Chinese brackets 【】 and handles zero-width spaces that LLM sometimes inserts.
+// [cryptocite:id:value] (crypto-native) OR [citation:...] classic
 const CITATION_REGEX =
-	/[[【]\u200B?citation:\s*(https?:\/\/[^\]】\u200B]+|urlcite\d+|(?:doc-)?\d+(?:\s*,\s*(?:doc-)?\d+)*)\s*\u200B?[\]】]/g;
+	/\[cryptocite:([^:\]]+):([^\]]*)\]|[[【]\u200B?citation:\s*(https?:\/\/[^\]】\u200B]+|urlcite\d+|(?:doc-)?\d+(?:\s*,\s*(?:doc-)?\d+)*)\s*\u200B?[\]】]/g;
 
 /**
  * Parses text and replaces [citation:XXX] patterns with citation components.
@@ -134,30 +143,43 @@ function parseTextWithCitations(text: string): ReactNode[] {
 			parts.push(text.substring(lastIndex, match.index));
 		}
 
-		const captured = match[1];
-
-		if (captured.startsWith("http://") || captured.startsWith("https://")) {
-			parts.push(<UrlCitation key={`citation-url-${instanceIndex}`} url={captured.trim()} />);
-			instanceIndex++;
-		} else if (captured.startsWith("urlcite")) {
-			const url = _pendingUrlCitations.get(captured);
-			if (url) {
-				parts.push(<UrlCitation key={`citation-url-${instanceIndex}`} url={url} />);
-			}
+		// Group 1+2: [cryptocite:id:value]
+		if (match[1] !== undefined) {
+			parts.push(
+				<CryptoCitationInline
+					key={`cryptocite-${match[1]}-${instanceIndex}`}
+					citationId={match[1]}
+					displayValue={match[2] ?? ""}
+				/>
+			);
 			instanceIndex++;
 		} else {
-			const rawIds = captured.split(",").map((s) => s.trim());
-			for (const rawId of rawIds) {
-				const isDocsChunk = rawId.startsWith("doc-");
-				const chunkId = Number.parseInt(isDocsChunk ? rawId.slice(4) : rawId, 10);
-				parts.push(
-					<InlineCitation
-						key={`citation-${isDocsChunk ? "doc-" : ""}${chunkId}-${instanceIndex}`}
-						chunkId={chunkId}
-						isDocsChunk={isDocsChunk}
-					/>
-				);
+			// Group 3: classic [citation:...]
+			const captured = match[3];
+
+			if (captured.startsWith("http://") || captured.startsWith("https://")) {
+				parts.push(<UrlCitation key={`citation-url-${instanceIndex}`} url={captured.trim()} />);
 				instanceIndex++;
+			} else if (captured.startsWith("urlcite")) {
+				const url = _pendingUrlCitations.get(captured);
+				if (url) {
+					parts.push(<UrlCitation key={`citation-url-${instanceIndex}`} url={url} />);
+				}
+				instanceIndex++;
+			} else {
+				const rawIds = captured.split(",").map((s) => s.trim());
+				for (const rawId of rawIds) {
+					const isDocsChunk = rawId.startsWith("doc-");
+					const chunkId = Number.parseInt(isDocsChunk ? rawId.slice(4) : rawId, 10);
+					parts.push(
+						<InlineCitation
+							key={`citation-${isDocsChunk ? "doc-" : ""}${chunkId}-${instanceIndex}`}
+							chunkId={chunkId}
+							isDocsChunk={isDocsChunk}
+						/>
+					);
+					instanceIndex++;
+				}
 			}
 		}
 
@@ -407,6 +429,12 @@ const defaultComponents = memoizeMarkdownComponents({
 		}
 		const language = /language-(\w+)/.exec(className || "")?.[1] ?? "text";
 		const codeString = String(children).replace(/\n$/, "");
+
+		// chart: code blocks → EmbeddedChart
+		if (language.startsWith("chart:")) {
+			return <LazyEmbeddedChart chartId={language.slice(6)} spec={codeString} />;
+		}
+
 		return (
 			<LazyMarkdownCodeBlock
 				className={className}

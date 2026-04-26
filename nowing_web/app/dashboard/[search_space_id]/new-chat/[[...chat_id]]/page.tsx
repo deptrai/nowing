@@ -116,6 +116,7 @@ import {
 	resumeRunBySessionAtom,
 } from "@/atoms/chat/active-runs.atom";
 import {
+	startRun,
 	getActiveRuns,
 	streamRun,
 	resumeRun,
@@ -621,6 +622,20 @@ export default function NewChatPage() {
 				const resumeFrom = lastSeqByRun.get(run.id) ?? -1;
 				const resp = await streamRun(threadId, run.id, resumeFrom, ac.signal);
 				if (!resp.ok) return;
+				// Add placeholder assistant message so OrchestraStrip has a mounting point
+				const placeholderMsgId = `msg-assistant-resume-${run.id}`;
+				setMessages((prev) => {
+					if (prev.some((m) => m.id === placeholderMsgId)) return prev;
+					return [
+						...prev,
+						{
+							id: placeholderMsgId,
+							role: "assistant" as const,
+							content: [{ type: "text" as const, text: "" }],
+							createdAt: new Date(),
+						},
+					];
+				});
 				const reader = resp.body?.getReader();
 				if (!reader) return;
 				readers.push(reader);
@@ -670,6 +685,9 @@ export default function NewChatPage() {
 										s.delete(run.langgraph_thread_id);
 										return s;
 									});
+									setMessages((prev) =>
+										prev.filter((m) => m.id !== `msg-assistant-resume-${run.id}`)
+									);
 									return;
 								}
 								continue; // marker events don't reach the orchestra reducer
@@ -782,12 +800,6 @@ export default function NewChatPage() {
 			// Check if podcast is already generating
 			if (isPodcastGenerating() && looksLikePodcastRequest(userQuery)) {
 				toast.warning("A podcast is already being generated.");
-				return;
-			}
-
-			const token = getBearerToken();
-			if (!token) {
-				toast.error("Not authenticated. Please log in again.");
 				return;
 			}
 
@@ -919,6 +931,7 @@ export default function NewChatPage() {
 			};
 			const { contentParts, toolCallIndices } = contentPartsState;
 			let wasInterrupted = false;
+			let activeRun: ChatRun | null = null;
 
 			// Add placeholder assistant message
 			setMessages((prev) => [
@@ -932,22 +945,6 @@ export default function NewChatPage() {
 			]);
 
 			try {
-				const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
-
-				// Build message history for context
-				const messageHistory = messages
-					.filter((m) => m.role === "user" || m.role === "assistant")
-					.map((m) => {
-						let text = "";
-						for (const part of m.content) {
-							if (typeof part === "object" && part.type === "text" && "text" in part) {
-								text += part.text;
-							}
-						}
-						return { role: m.role, content: text };
-					})
-					.filter((m) => m.content.length > 0);
-
 				// Get mentioned document IDs for context (separate fields for backend)
 				const hasDocumentIds = mentionedDocumentIds.document_ids.length > 0;
 				const hasNowingDocIds = mentionedDocumentIds.nowing_doc_ids.length > 0;
@@ -958,26 +955,20 @@ export default function NewChatPage() {
 					setSidebarDocuments([]);
 				}
 
-				const response = await fetch(`${backendUrl}/api/v1/new_chat`, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${token}`,
-					},
-					body: JSON.stringify({
-						chat_id: currentThreadId,
-						user_query: userQuery.trim(),
-						search_space_id: searchSpaceId,
-						messages: messageHistory,
-						mentioned_document_ids: hasDocumentIds ? mentionedDocumentIds.document_ids : undefined,
-						mentioned_nowing_doc_ids: hasNowingDocIds
-							? mentionedDocumentIds.nowing_doc_ids
-							: undefined,
-						disabled_tools: disabledTools.length > 0 ? disabledTools : undefined,
-						...(isCloud() && selectedSystemModelId != null && { model_id: selectedSystemModelId }),
-					}),
-					signal: controller.signal,
+				const run = await startRun(currentThreadId, {
+					search_space_id: searchSpaceId,
+					user_query: userQuery.trim(),
+					mentioned_document_ids: hasDocumentIds ? mentionedDocumentIds.document_ids : undefined,
+					mentioned_nowing_doc_ids: hasNowingDocIds
+						? mentionedDocumentIds.nowing_doc_ids
+						: undefined,
+					disabled_tools: disabledTools.length > 0 ? disabledTools : undefined,
+					...(isCloud() && selectedSystemModelId != null && { model_id: selectedSystemModelId }),
 				});
+				activeRun = run;
+				setActiveRuns((prev) => upsertRun(prev, run));
+
+				const response = await streamRun(currentThreadId, run.id, -1, controller.signal);
 
 				if (!response.ok) {
 					if (response.status === 402) throw new QuotaExceededError();
@@ -1129,6 +1120,29 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-citation-map": {
+							const citationData = parsed.data as { citation_map: Record<string, unknown> };
+							if (citationData?.citation_map) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((m.metadata as { custom?: Record<string, unknown> })?.custom ?? {}),
+															citation_map: citationData.citation_map,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
 						case "orchestra-spawn":
 						case "orchestra-update":
 						case "orchestra-done":
@@ -1254,6 +1268,9 @@ export default function NewChatPage() {
 			} finally {
 				setIsRunning(false);
 				abortControllerRef.current = null;
+				if (activeRun && currentThreadId) {
+					setActiveRuns((prev) => removeRun(prev, activeRun!.id, currentThreadId));
+				}
 			}
 		},
 		[
@@ -1272,6 +1289,7 @@ export default function NewChatPage() {
 			disabledTools,
 			updateChatTabTitle,
 			selectedSystemModelId,
+			setActiveRuns,
 		]
 	);
 

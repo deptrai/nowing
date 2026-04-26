@@ -30,6 +30,7 @@ import {
 	useAllCitationMetadata,
 } from "@/components/assistant-ui/citation-metadata-context";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import { CryptoReportLayout } from "@/components/new-chat/report/crypto-report-layout";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { CommentPanelContainer } from "@/components/chat-comments/comment-panel-container/comment-panel-container";
@@ -421,7 +422,7 @@ const AssistantMessageInner: FC = () => {
 			<div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
 				<MessagePrimitive.Parts
 					components={{
-						Text: MarkdownText,
+						Text: CryptoReportLayout,
 						tools: {
 							by_name: {
 								generate_report: GenerateReportToolUI,

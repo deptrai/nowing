@@ -69,6 +69,7 @@ from app.services.chat_session_state_service import (
     set_ai_responding,
 )
 from app.services.connector_service import ConnectorService
+from app.services.citation_harvester import harvest_citations
 from app.services.new_streaming_service import VercelStreamingService
 from app.utils.content_utils import bootstrap_history_from_db
 from app.utils.perf import get_perf_logger, log_system_snapshot, trim_native_heap
@@ -1453,6 +1454,12 @@ async def _stream_agent_events(
     result.accumulated_text = accumulated_text
     result.agent_called_update_memory = called_update_memory
 
+    # Emit citation_map metadata event for crypto reports
+    if "[[cite:" in accumulated_text:
+        citation_map = harvest_citations(accumulated_text)
+        if citation_map:
+            yield streaming_service.format_data("citation-map", {"citation_map": citation_map})
+
     state = await agent.aget_state(config)
     is_interrupted = state.tasks and any(task.interrupts for task in state.tasks)
     if is_interrupted:
@@ -2346,6 +2353,7 @@ async def stream_new_chat_detached(
     llm_config_id: int = -1,
     model_id: int | None = None,
     mentioned_document_ids: list[int] | None = None,
+    mentioned_nowing_doc_ids: list[int] | None = None,
     disabled_tools: list[str] | None = None,
     needs_history_bootstrap: bool = False,
     thread_visibility=None,
@@ -2374,6 +2382,7 @@ async def stream_new_chat_detached(
             user_id=user_id,
             llm_config_id=llm_config_id,
             mentioned_document_ids=mentioned_document_ids,
+            mentioned_nowing_doc_ids=mentioned_nowing_doc_ids,
             checkpoint_id=checkpoint_id,
             needs_history_bootstrap=needs_history_bootstrap,
             thread_visibility=thread_visibility,

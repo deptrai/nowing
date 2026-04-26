@@ -53,6 +53,28 @@ export const CONFLICT_NUMERIC_DELTA = 0.05;
  *
  * Pure function — safe for render-time use.
  */
+// ─── CryptoDataCitation (9-UX-2) ─────────────────────────────────────────────
+
+export interface CryptoDataSource {
+	provider: string;
+	favicon?: string;
+	fetchedAt: string;
+	rawValue?: string | number;
+	rawUrl?: string;
+}
+
+export interface CryptoDataCitation {
+	id: string;
+	value: string;
+	sources: CryptoDataSource[];
+	conflict?: boolean;
+	agentAttribution?: string;
+	confidence?: number;
+	stalenessMs?: number;
+}
+
+export type CryptoDataCitationMap = ReadonlyMap<string, CryptoDataCitation>;
+
 export function detectConflict(values: readonly (number | string | boolean)[]): boolean {
 	if (values.length < 2) return false;
 	const first = values[0];
