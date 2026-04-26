@@ -97,27 +97,36 @@ export interface OrchestraSession {
 }
 
 export interface OrchestraState {
-	// NOTE: Map key is `sessionId` (not `queryHash`). Each session object still carries
-	// `queryHash` for hashing/persistence, but lookups happen by sessionId (the discriminator
-	// the SSE stream uses). See reducer calls: sessions.get(event.data.sessionId).
-	sessions: Map<string /* sessionId */, OrchestraSession>;
-	activeQueryHash: string | null;
+	// NOTE: Map key is `sessionId` === `langgraph_thread_id` === `"run-{uuid}"` (unique per run).
+	// This is NOT the integer chat thread_id. The BE stamps sessionId server-side in
+	// stream_new_chat.py from configurable.thread_id which is set to langgraph_thread_id_override
+	// ("run-{uuid}") for detached runs. Each session object also carries `queryHash` for
+	// hashing/persistence, but lookups happen by sessionId.
+	sessions: Map<string /* sessionId = "run-{uuid}" */, OrchestraSession>;
+	/** sessionId of the most recently spawned session (T19). */
+	lastSpawnedSessionId: string | null;
 }
 
 // ─── Atoms ────────────────────────────────────────────────────────────────────
 
 export const orchestraStateAtom = atom<OrchestraState>({
 	sessions: new Map(),
-	activeQueryHash: null,
+	lastSpawnedSessionId: null,
 });
 
 // ─── Derived atoms ────────────────────────────────────────────────────────────
 
-/** Active session derived from orchestraStateAtom */
+/** Most recently spawned session (latest run). */
 export const activeOrchestraSessionAtom = atom<OrchestraSession | null>((get) => {
 	const state = get(orchestraStateAtom);
-	if (!state.activeQueryHash) return null;
-	return state.sessions.get(state.activeQueryHash) ?? null;
+	if (!state.lastSpawnedSessionId) return null;
+	return state.sessions.get(state.lastSpawnedSessionId) ?? null;
+});
+
+/** All sessions currently in "running" outcome — for multi-strip rendering (T20). */
+export const activeRunSessionsAtom = atom<OrchestraSession[]>((get) => {
+	const state = get(orchestraStateAtom);
+	return Array.from(state.sessions.values()).filter((s) => s.outcome === "running");
 });
 
 // ─── SSE event reducers ───────────────────────────────────────────────────────
@@ -231,7 +240,7 @@ export function applyOrchestraEvent(
 					llmCallEvents: [],
 				};
 		sessions.set(sessionId, session);
-		return { sessions, activeQueryHash: sessionId };
+		return { sessions, lastSpawnedSessionId: sessionId };
 	}
 
 	if (event.type === "orchestra-update") {

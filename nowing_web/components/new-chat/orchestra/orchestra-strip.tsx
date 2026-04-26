@@ -4,7 +4,9 @@ import { useAtomValue } from "jotai";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import {
 	type OrchestraAgent,
+	type OrchestraSession,
 	activeOrchestraSessionAtom,
+	orchestraStateAtom,
 	deriveEscalationLevel,
 } from "@/atoms/chat/orchestra.atom";
 import { cn } from "@/lib/utils";
@@ -34,6 +36,12 @@ interface OrchestraStripProps {
 	/** Phase 9.2 placeholder — background pinning. Ignored in v1. */
 	pinned?: boolean;
 	className?: string;
+	/** T20: render a specific session by id instead of activeOrchestraSessionAtom. */
+	sessionId?: string;
+	/** T21: show Resume button + amber border when true. */
+	isAbandoned?: boolean;
+	/** T21: callback when user clicks Resume. */
+	onResume?: () => void;
 }
 
 /**
@@ -46,10 +54,42 @@ interface OrchestraStripProps {
  * - `collapsed`     — compact 1-line "N/M agents done"
  * - `pinned`        — Phase 9.2 placeholder
  */
-export function OrchestraStrip({ className }: OrchestraStripProps) {
-	const session = useAtomValue(activeOrchestraSessionAtom);
+export function OrchestraStrip({
+	className,
+	sessionId,
+	isAbandoned,
+	onResume,
+}: OrchestraStripProps) {
+	const defaultSession = useAtomValue(activeOrchestraSessionAtom);
+	const allSessions = useAtomValue(orchestraStateAtom);
+	const session: OrchestraSession | null = sessionId
+		? (allSessions.sessions.get(sessionId) ?? null)
+		: defaultSession;
 
-	if (!session) return null;
+	if (!session) {
+		// T21: abandoned run with no orchestra session yet (e.g. after page reload)
+		if (!isAbandoned || !onResume) return null;
+		return (
+			<div
+				className={cn(
+					"mb-3 flex items-center justify-between rounded-lg border px-3 py-2",
+					"border-amber-400/50 bg-amber-50/10 text-xs text-muted-foreground",
+					className
+				)}
+				data-slot="orchestra-strip"
+				data-variant="abandoned-stub"
+			>
+				<span>Research paused — agent was interrupted</span>
+				<button
+					type="button"
+					className="ml-3 rounded px-2 py-0.5 font-medium text-amber-600 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/20"
+					onClick={onResume}
+				>
+					Resume
+				</button>
+			</div>
+		);
+	}
 
 	const agents = Array.from(session.agents.values());
 	const failedAgents = agents.filter((a) => a.status === "failed");
@@ -91,9 +131,11 @@ export function OrchestraStrip({ className }: OrchestraStripProps) {
 			className={cn(
 				"mb-3 flex flex-col gap-1.5 rounded-lg border p-3",
 				"transition-all duration-150 ease-out",
-				isDegraded && isRunning
-					? "border-amber-500/50 bg-amber-500/5"
-					: "border-border/60 bg-muted/20",
+				isAbandoned
+					? "border-amber-400/50 bg-amber-50/10"
+					: isDegraded && isRunning
+						? "border-amber-500/50 bg-amber-500/5"
+						: "border-border/60 bg-muted/20",
 				className
 			)}
 			data-slot="orchestra-strip"
@@ -102,20 +144,32 @@ export function OrchestraStrip({ className }: OrchestraStripProps) {
 		>
 			{/* Collapsed summary after completion */}
 			{isCollapsed ? (
-				<div className="flex items-center gap-2 text-xs text-muted-foreground">
-					<CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
-					<span>
-						{doneCount}/{totalCount} done
-						{session.totalMs !== null && (
-							<>
-								{" · "}
-								<span className="tabular-nums">{session.totalMs}ms</span>
-								{session.p95Bucket && (
-									<span className="ml-1 opacity-60">({session.p95Bucket})</span>
-								)}
-							</>
-						)}
-					</span>
+				<div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+					<div className="flex items-center gap-2">
+						<CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
+						<span>
+							{doneCount}/{totalCount} done
+							{session.totalMs !== null && (
+								<>
+									{" · "}
+									<span className="tabular-nums">{session.totalMs}ms</span>
+									{session.p95Bucket && (
+										<span className="ml-1 opacity-60">({session.p95Bucket})</span>
+									)}
+								</>
+							)}
+						</span>
+					</div>
+					{/* T21: Resume button in strip header for abandoned runs */}
+					{isAbandoned && onResume && (
+						<button
+							type="button"
+							className="ml-3 rounded px-2 py-0.5 text-xs font-medium text-amber-600 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/20"
+							onClick={onResume}
+						>
+							Resume
+						</button>
+					)}
 				</div>
 			) : (
 				<>

@@ -1669,6 +1669,7 @@ def _run_to_response(run) -> dict:
         "id": str(run.id),
         "thread_id": run.thread_id,
         "session_id": run.session_id,
+        "langgraph_thread_id": run.langgraph_thread_id,
         "status": run.status,
         "user_query": run.user_query,
         "started_at": run.started_at.isoformat() if run.started_at else None,
@@ -1772,6 +1773,25 @@ async def get_active_runs(
     return [_run_to_response(r) for r in runs]
 
 
+def _rebuild_vercel_wire(event_type: str, payload: object) -> str:
+    """Reconstruct Vercel UI Stream wire format from stored JSONB payload.
+
+    Handles three payload generations:
+    - Legacy (9-UX-1b): {"_raw": "data: ...\\n\\n"} — pass through verbatim
+    - text-delta (T4):   {"type": "text-delta", "_vercel": "0:\\"text\\""} — bare data line
+    - structured (T4):   {"type": ..., "data": {...}} — bare data:{json}\\n\\n
+    """
+    if not isinstance(payload, dict):
+        return f"data: {json.dumps(payload)}\n\n"
+    raw = payload.get("_raw")
+    if isinstance(raw, str) and raw:
+        return raw
+    vercel = payload.get("_vercel")
+    if isinstance(vercel, str) and vercel:
+        return f"data: {vercel}\n\n"
+    return f"data: {json.dumps(payload)}\n\n"
+
+
 @router.get("/threads/{thread_id}/runs/{run_id}/stream")
 async def stream_run(
     thread_id: int,
@@ -1806,107 +1826,131 @@ async def stream_run(
         import redis.asyncio as aioredis
         from app.celery_app import CELERY_BROKER_URL
 
-        # Phase 1: replay persisted events from DB
-        async with shielded_async_session() as db:
-            rows = await db.execute(
-                text(
-                    "SELECT seq, event_type, payload FROM chat_run_events "
-                    "WHERE run_id = :rid AND seq > :after ORDER BY seq"
-                ),
-                {"rid": str(run_id), "after": after_seq},
-            )
-            persisted = rows.fetchall()
+        last_seq = after_seq
 
-        for seq, event_type, payload in persisted:
-            raw = payload.get("_raw") if isinstance(payload, dict) else None
-            if raw:
-                yield raw
-            else:
-                yield f"event: {event_type}\ndata: {json.dumps(payload)}\n\n"
-
-        # Check if run is already terminal — no need to subscribe
-        async with shielded_async_session() as db:
-            status_row = await db.execute(
-                text("SELECT status, last_event_seq FROM chat_runs WHERE id = :rid"),
-                {"rid": str(run_id)},
-            )
-            status_info = status_row.fetchone()
-
-        if status_info and status_info[0] not in (ChatRunStatus.RUNNING,):
-            # Emit replay-end sentinel and close (use json.dumps to escape any quotes/newlines in status)
-            yield f"event: run-replay-end\ndata: {json.dumps({'seq': status_info[1], 'status': str(status_info[0])})}\n\n"
-            return
-
-        # Phase 2: subscribe Redis pubsub for live tail
         redis_client = aioredis.from_url(CELERY_BROKER_URL, decode_responses=True)
         channel = f"nowing:run:{run_id}"
         pubsub = redis_client.pubsub()
+
+        # T1/C3: SUBSCRIBE before DB SELECT — no gap between replay and live tail
         await pubsub.subscribe(channel)
 
-        last_seq = persisted[-1][0] if persisted else after_seq
-
         try:
-            # Buffer: drain any events published between DB read and subscribe
+            # Phase 1: replay persisted events from DB
             async with shielded_async_session() as db:
-                gap_rows = await db.execute(
+                rows = await db.execute(
                     text(
                         "SELECT seq, event_type, payload FROM chat_run_events "
                         "WHERE run_id = :rid AND seq > :after ORDER BY seq"
                     ),
-                    {"rid": str(run_id), "after": last_seq},
+                    {"rid": str(run_id), "after": after_seq},
                 )
-                gap = gap_rows.fetchall()
+                persisted = rows.fetchall()
 
-            for seq, event_type, payload in gap:
-                raw = payload.get("_raw") if isinstance(payload, dict) else None
-                if raw:
-                    yield raw
-                else:
-                    yield f"event: {event_type}\ndata: {json.dumps(payload)}\n\n"
-                last_seq = seq
+            if persisted:
+                last_seq = persisted[-1][0]
 
+            # T3: replay-start sentinel (FE suppresses animation during replay)
+            yield f"data: {json.dumps({'_marker': 'replay-start', 'seq': last_seq})}\n\n"
+
+            for seq, event_type, payload in persisted:
+                yield _rebuild_vercel_wire(event_type, payload)
+
+            # Check if run is terminal — if so, close after replay
+            async with shielded_async_session() as db:
+                status_row = await db.execute(
+                    text("SELECT status, last_event_seq FROM chat_runs WHERE id = :rid"),
+                    {"rid": str(run_id)},
+                )
+                status_info = status_row.fetchone()
+
+            if status_info and status_info[0] not in (ChatRunStatus.RUNNING,):
+                yield f"data: {json.dumps({'_marker': 'replay-end', 'seq': status_info[1] or last_seq, 'status': str(status_info[0])})}\n\n"
+                return
+
+            # T3: replay-end + live start sentinel
+            yield f"data: {json.dumps({'_marker': 'replay-end', 'seq': last_seq, 'status': 'live'})}\n\n"
+
+            # T1: drain buffered messages that arrived between subscribe() and SELECT
             while True:
-                # M14 client disconnect detection
+                try:
+                    buf_msg = await asyncio.wait_for(
+                        pubsub.get_message(ignore_subscribe_messages=True), timeout=0.05
+                    )
+                except asyncio.TimeoutError:
+                    break
+                if buf_msg is None:
+                    break
+                try:
+                    row_data = json.loads(buf_msg["data"])
+                    seq = row_data.get("seq", 0)
+                    if seq <= last_seq:
+                        continue
+                    wire = _rebuild_vercel_wire(
+                        row_data.get("event_type", "message"), row_data.get("payload", {})
+                    )
+                    last_seq = seq
+                    yield wire
+                except Exception:
+                    log.warning("stream_run buffer-drain: failed to process pubsub message for run %s", run_id, exc_info=True)
+                    continue
+
+            # Phase 2: live tail loop
+            while True:
                 if await request.is_disconnected():
                     break
                 try:
                     message = await asyncio.wait_for(
                         pubsub.get_message(ignore_subscribe_messages=True),
-                        timeout=30.0,
+                        timeout=1.0,  # T11: 1s poll for DB gap-scan
                     )
                 except asyncio.TimeoutError:
-                    # M13 timeout is normal — fall through to heartbeat
                     message = None
-                if message is None:
-                    # Heartbeat — check if run ended
-                    async with shielded_async_session() as db:
-                        chk = await db.execute(
-                            text("SELECT status FROM chat_runs WHERE id = :rid"),
-                            {"rid": str(run_id)},
+
+                if message is not None:
+                    try:
+                        row_data = json.loads(message["data"])
+                        seq = row_data.get("seq", 0)
+                        if seq <= last_seq:
+                            continue
+                        wire = _rebuild_vercel_wire(
+                            row_data.get("event_type", "message"), row_data.get("payload", {})
                         )
-                        row = chk.fetchone()
-                    if row and row[0] not in (ChatRunStatus.RUNNING,):
-                        break
-                    yield ": heartbeat\n\n"
+                        last_seq = seq
+                        yield wire
+                    except Exception:
+                        log.warning("stream_run live-tail: failed to process pubsub message for run %s", run_id, exc_info=True)
                     continue
 
-                try:
-                    row_data = json.loads(message["data"])
-                except (json.JSONDecodeError, TypeError):
-                    continue
+                # Pubsub timeout: T11 DB poll + gap-scan for missed events
+                async with shielded_async_session() as db:
+                    chk = await db.execute(
+                        text("SELECT status, last_event_seq FROM chat_runs WHERE id = :rid"),
+                        {"rid": str(run_id)},
+                    )
+                    row = chk.fetchone()
 
-                seq = row_data.get("seq", 0)
-                if seq <= last_seq:
-                    continue
-                last_seq = seq
+                if row is None:
+                    break
 
-                payload = row_data.get("payload", {})
-                raw = payload.get("_raw") if isinstance(payload, dict) else None
-                if raw:
-                    yield raw
-                else:
-                    event_type = row_data.get("event_type", "message")
-                    yield f"event: {event_type}\ndata: {json.dumps(payload)}\n\n"
+                db_last_seq = row[1] if row[1] is not None else last_seq
+                if db_last_seq > last_seq:
+                    async with shielded_async_session() as db:
+                        gap_rows = await db.execute(
+                            text(
+                                "SELECT seq, event_type, payload FROM chat_run_events "
+                                "WHERE run_id = :rid AND seq > :after ORDER BY seq"
+                            ),
+                            {"rid": str(run_id), "after": last_seq},
+                        )
+                        for seq, event_type, payload in gap_rows.fetchall():
+                            last_seq = seq
+                            yield _rebuild_vercel_wire(event_type, payload)
+
+                if row[0] not in (ChatRunStatus.RUNNING,):
+                    break
+
+                yield ": heartbeat\n\n"
 
         except Exception as exc:
             _logger.warning("stream_run pubsub error for run %s: %s", run_id, exc)
@@ -1914,7 +1958,7 @@ async def stream_run(
             await pubsub.unsubscribe(channel)
             await redis_client.aclose()
 
-        # Final status
+        # T3: final run-end sentinel
         async with shielded_async_session() as db:
             final = await db.execute(
                 text("SELECT status, last_event_seq FROM chat_runs WHERE id = :rid"),
@@ -1923,7 +1967,7 @@ async def stream_run(
             final_info = final.fetchone()
         final_status = str(final_info[0]) if final_info else "unknown"
         final_seq = final_info[1] if final_info else last_seq
-        yield f"event: run-replay-end\ndata: {json.dumps({'seq': final_seq, 'status': final_status})}\n\n"
+        yield f"data: {json.dumps({'_marker': 'run-end', 'seq': final_seq, 'status': final_status})}\n\n"
 
     return StreamingResponse(
         _event_generator(),

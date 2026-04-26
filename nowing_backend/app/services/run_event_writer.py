@@ -3,14 +3,28 @@
 Sync write() enqueues events from middleware hooks (sync call sites).
 Async run_flush_loop() drains the queue: INSERT INTO chat_run_events, then
 PUBLISH to Redis. DB is always written first (C6: never publish unpersisted).
+
+AC7 (T5): replaced asyncio.Queue + private _queue._queue mutation with
+  collections.deque(maxlen=10000) + asyncio.Event signal. Per-agentId
+  _pending_delta dict coalesces text-delta upstream before deque insertion.
+
+AC8 (T6): pg_advisory_xact_lock per run_id in _flush_batch guards seq
+  allocation so two concurrent writers cannot collide on same seq.
+
+AC9 (T8): heartbeat task in run_flush_loop updates last_heartbeat_at every
+  30s. mark_abandoned_runs_on_startup filters by heartbeat age so healthy
+  runs on sibling workers are not incorrectly marked abandoned.
+
+AC11 (T11): Redis publish retries 3x with 100ms backoff per message on
+  transient failure. DB is canonical — pubsub is fast-path only.
 """
 
 from __future__ import annotations
 
 import asyncio
+import collections
 import json
 import logging
-from collections import deque
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -25,7 +39,10 @@ log = logging.getLogger(__name__)
 
 _FLUSH_BATCH_SIZE = 50
 _FLUSH_INTERVAL_MS = 25
-_MAX_PAYLOAD_BYTES = 256 * 1024  # M8: cap individual event size to prevent TOAST/replay blowups
+_MAX_PAYLOAD_BYTES = 256 * 1024  # cap individual event size to prevent TOAST/replay blowups
+_HEARTBEAT_INTERVAL_S = 30  # T8: update last_heartbeat_at every 30s
+_PUBLISH_RETRY_TIMES = 3
+_PUBLISH_RETRY_DELAY_S = 0.1
 
 
 class RunEventWriter:
@@ -44,9 +61,14 @@ class RunEventWriter:
         self._run_id = run_id
         self._redis = redis_client
         self._session_factory = session_factory
-        self._queue: asyncio.Queue[tuple[str, dict]] = asyncio.Queue(maxsize=10000)
+        # T5: deque + event instead of asyncio.Queue (eliminates private _queue._queue access)
+        self._deque: collections.deque[tuple[str, dict]] = collections.deque(maxlen=10000)
+        self._signal = asyncio.Event()
+        # Per-agentId text-delta coalescing (upstream of deque, never blocks)
+        self._pending_delta: dict[str, tuple[str, dict]] = {}
         self._next_seq: int | None = None
         self._stop = asyncio.Event()
+        self._overflow_count = 0
         # For resume dedup (C4): populated by _seed_seen_events()
         self._seen_spawn_agents: set[str] = set()
         self._seen_source_keys: set[str] = set()
@@ -69,57 +91,89 @@ class RunEventWriter:
         except (TypeError, ValueError):
             log.warning("RunEventWriter payload not JSON-serializable — dropping %s", event_type)
             return
-        try:
-            self._queue.put_nowait((event_type, payload))
-        except asyncio.QueueFull:
-            self._coalesce_or_drop(event_type, payload)
+
+        # T5: text-delta coalesced into per-agentId pending dict (never blocks deque)
+        if event_type == "text-delta":
+            agent_id = payload.get("agentId", "") or (payload.get("data") or {}).get("agentId", "")
+            self._pending_delta[agent_id] = (event_type, payload)
+            self._signal.set()
+            return
+
+        # T5: deque.append is atomic in CPython (GIL). On maxlen overflow the OLDEST
+        # item is silently rotated out. For non-text events this is a data-loss risk —
+        # we track it for ops visibility (overflow_count metric) but accept it since
+        # 10000 queued items = severe backpressure indicating a different problem.
+        was_full = len(self._deque) >= (self._deque.maxlen or 10001)
+        self._deque.append((event_type, payload))
+        if was_full:
+            self._overflow_count += 1
+            log.warning(
+                "RunEventWriter deque overflow (count=%d) — oldest event dropped to enqueue %s",
+                self._overflow_count, event_type,
+            )
+        self._signal.set()
 
     async def run_flush_loop(self) -> None:
         """Drain queue → INSERT → PUBLISH. Call as asyncio.Task alongside agent task."""
         await self._seed_next_seq()
         await self._seed_seen_events()
 
-        while not self._stop.is_set() or not self._queue.empty():
-            batch = await self._drain_batch()
-            if not batch:
-                if self._stop.is_set():
-                    break
-                await asyncio.sleep(_FLUSH_INTERVAL_MS / 1000)
-                continue
-            await self._flush_batch(batch)
+        heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+
+        try:
+            while not self._stop.is_set() or self._deque or self._pending_delta:
+                batch = await self._drain_batch()
+                if not batch:
+                    if self._stop.is_set():
+                        break
+                    await asyncio.sleep(_FLUSH_INTERVAL_MS / 1000)
+                    continue
+                await self._flush_batch(batch)
+        finally:
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except (asyncio.CancelledError, Exception):
+                pass
 
     async def stop(self) -> None:
         """Signal flush loop to stop; flush loop drains remaining queue before exit.
         Caller MUST `await flush_task` after stop() to ensure batch in-flight commits.
         """
-        # Bound the wait so producers writing during shutdown can't deadlock us.
-        deadline = asyncio.get_event_loop().time() + 5.0
-        while not self._queue.empty() and asyncio.get_event_loop().time() < deadline:
+        self._signal.set()
+        deadline = asyncio.get_running_loop().time() + 5.0
+        while (self._deque or self._pending_delta) and asyncio.get_running_loop().time() < deadline:
+            self._signal.set()
             await asyncio.sleep(0.01)
         self._stop.set()
+        self._signal.set()
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _coalesce_or_drop(self, event_type: str, payload: dict) -> None:
-        """On queue overflow: coalesce text-delta for same agentId, drop others."""
-        if event_type != "text-delta":
-            log.warning("RunEventWriter queue full — dropping %s event", event_type)
-            return
-        agent_id = payload.get("agentId", "")
-        # Scan from end to find existing text-delta for same agent and replace
-        queue_list = list(self._queue._queue)  # type: ignore[attr-defined]
-        for i in range(len(queue_list) - 1, -1, -1):
-            et, pl = queue_list[i]
-            if et == "text-delta" and pl.get("agentId") == agent_id:
-                queue_list[i] = (event_type, payload)
-                # Rebuild deque
-                new_dq: deque = deque(queue_list, maxlen=self._queue.maxsize)
-                self._queue._queue = new_dq  # type: ignore[attr-defined]
+    async def _heartbeat_loop(self) -> None:
+        """T8/AC9: Update last_heartbeat_at every 30s so startup fence is accurate."""
+        while not self._stop.is_set():
+            try:
+                await asyncio.sleep(_HEARTBEAT_INTERVAL_S)
+                if self._stop.is_set():
+                    break
+                async with self._session_factory() as session:
+                    await session.execute(
+                        text(
+                            "UPDATE chat_runs SET last_heartbeat_at = NOW() WHERE id = :rid"
+                        ),
+                        {"rid": str(self._run_id)},
+                    )
+                    await session.commit()
+            except asyncio.CancelledError:
                 return
-        # No prior text-delta for this agent — drop (queue is full)
-        log.warning("RunEventWriter queue full — dropping text-delta for agent %s", agent_id)
+            except Exception as exc:
+                log.warning(
+                    "RunEventWriter heartbeat update failed for run %s: %s",
+                    self._run_id, exc,
+                )
 
     async def _seed_next_seq(self) -> None:
         """Seed _next_seq from DB so resume continues the sequence (H2)."""
@@ -181,17 +235,31 @@ class RunEventWriter:
     async def _drain_batch(self) -> list[tuple[str, dict]]:
         """Collect up to _FLUSH_BATCH_SIZE events, waiting up to _FLUSH_INTERVAL_MS."""
         batch: list[tuple[str, dict]] = []
-        deadline = asyncio.get_event_loop().time() + (_FLUSH_INTERVAL_MS / 1000)
+        deadline = asyncio.get_running_loop().time() + (_FLUSH_INTERVAL_MS / 1000)
 
-        while len(batch) < _FLUSH_BATCH_SIZE:
-            remaining = deadline - asyncio.get_event_loop().time()
-            if remaining <= 0:
-                break
+        # Wait for signal that deque or pending_delta has data
+        remaining = deadline - asyncio.get_running_loop().time()
+        if remaining > 0 and not self._deque and not self._pending_delta:
             try:
-                item = await asyncio.wait_for(self._queue.get(), timeout=remaining)
-                batch.append(item)
+                self._signal.clear()
+                await asyncio.wait_for(self._signal.wait(), timeout=remaining)
             except asyncio.TimeoutError:
-                break
+                pass
+
+        # Drain pending_delta first (coalesced text-deltas)
+        if self._pending_delta:
+            keys = list(self._pending_delta.keys())
+            for key in keys:
+                batch.append(self._pending_delta.pop(key))
+                if len(batch) >= _FLUSH_BATCH_SIZE:
+                    return batch
+
+        # Drain deque
+        while batch and len(batch) < _FLUSH_BATCH_SIZE and self._deque:
+            batch.append(self._deque.popleft())
+        # If batch empty so far, drain from deque up to limit
+        while len(batch) < _FLUSH_BATCH_SIZE and self._deque:
+            batch.append(self._deque.popleft())
 
         return batch
 
@@ -244,12 +312,35 @@ class RunEventWriter:
 
         try:
             async with self._session_factory() as session:
+                # T6/AC8: per-run advisory lock — guards seq allocation so two concurrent
+                # writers on the same run_id cannot allocate duplicate seqs.
+                # pg_advisory_xact_lock is scoped to transaction → auto-released on commit.
+                await session.execute(
+                    text("SELECT pg_advisory_xact_lock(hashtextextended(cast(:rid as text), 0))"),
+                    {"rid": str(self._run_id)},
+                )
+                # Re-seed _next_seq under the lock to pick up any seqs written by other writers
+                row_seq = await session.execute(
+                    text(
+                        "SELECT COALESCE(MAX(seq), -1) + 1 FROM chat_run_events WHERE run_id = :rid"
+                    ),
+                    {"rid": str(self._run_id)},
+                )
+                db_next_seq = row_seq.scalar()
+                if db_next_seq > rows_to_insert[0]["seq"]:
+                    # Another writer advanced seq — reassign all rows
+                    offset = db_next_seq - rows_to_insert[0]["seq"]
+                    for r in rows_to_insert:
+                        r["seq"] += offset
+                    max_seq_in_batch = max(r["seq"] for r in rows_to_insert)
+                    self._next_seq = max_seq_in_batch + 1
+
                 # C6: INSERT first, then PUBLISH — never publish unpersisted events
                 for row in rows_to_insert:
                     await session.execute(
                         text(
                             "INSERT INTO chat_run_events (run_id, seq, event_type, payload) "
-                            "VALUES (:run_id, :seq, :event_type, :payload::jsonb) "
+                            "VALUES (:run_id, :seq, :event_type, cast(:payload as jsonb)) "
                             "ON CONFLICT (run_id, seq) DO NOTHING"
                         ),
                         {
@@ -267,13 +358,21 @@ class RunEventWriter:
                 )
                 await session.commit()
 
-            # PUBLISH only after successful commit (C6)
+            # T11/AC11: PUBLISH after commit with per-message retry
             channel = f"nowing:run:{self._run_id}"
             for row in rows_to_publish:
-                try:
-                    await self._redis.publish(channel, json.dumps(row))
-                except Exception as exc:
-                    log.warning("Redis publish failed for run %s: %s", self._run_id, exc)
+                for attempt in range(_PUBLISH_RETRY_TIMES):
+                    try:
+                        await self._redis.publish(channel, json.dumps(row))
+                        break
+                    except Exception as exc:
+                        if attempt < _PUBLISH_RETRY_TIMES - 1:
+                            await asyncio.sleep(_PUBLISH_RETRY_DELAY_S)
+                        else:
+                            log.warning(
+                                "Redis publish failed after %d retries for run %s: %s",
+                                _PUBLISH_RETRY_TIMES, self._run_id, exc,
+                            )
 
         except Exception as exc:
             log.error(
@@ -284,8 +383,12 @@ class RunEventWriter:
                 exc,
                 exc_info=True,
             )
-            # Atomic restore: seq + seen-sets rolled back together so retry isn't dedup-skipped
+            # Atomic restore: seq + seen-sets + events rolled back together so retry succeeds
             self._next_seq = rows_to_insert[0]["seq"]
             self._seen_spawn_agents = snap_spawn
             self._seen_source_keys = snap_source
             self._seen_attribution_agents = snap_attr
+            # Re-enqueue events at front of deque so they're retried in next flush cycle
+            for event_type, payload in reversed(batch):
+                self._deque.appendleft((event_type, payload))
+            self._signal.set()

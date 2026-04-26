@@ -2,7 +2,7 @@
 storyId: 9-UX-2
 storyTitle: Crypto-Native Report Layout — Messari-grade presentation
 epicParent: epic-9-crypto-orchestra
-dependsOn: [Story 9-UX-1 DONE]
+dependsOn: [Story 9-UX-1 DONE, Story 9-UX-1b DONE, Story 9-UX-1c DONE]
 blocks: [Story 9-UX-3]
 relatedFRs: [FR27 Comprehensive Analysis, FR35 Graceful Degradation]
 relatedNFRs: [NFR-Q1 Accuracy (citations improve verifiability), NFR-UX-2 Professional Presentation]

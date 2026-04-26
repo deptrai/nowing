@@ -71,6 +71,10 @@ async def _mark_run_completed(run_id: UUID, final_message_id: int | None = None)
     log.info("run %s completed", run_id)
 
 
+# Public alias for tests and external callers
+complete_run = _mark_run_completed
+
+
 async def _mark_run_failed(run_id: UUID, error: str) -> None:
     """Persist a generic failure marker. Full error goes to server log only — never DB.
 
@@ -140,6 +144,7 @@ async def start_run(
         disabled_tools=disabled_tools,
         status=ChatRunStatus.RUNNING,
         started_at=datetime.now(UTC),
+        last_heartbeat_at=datetime.now(UTC),
     )
     async with shielded_async_session() as session:
         session.add(run)
@@ -177,7 +182,7 @@ async def _spawn_execution_task(
     checkpoint_id: str | None,
 ) -> None:
     """Internal: create and track the detached asyncio task (C2: codebase pattern)."""
-    from app.agents.new_chat.chat_deepagent import _stream_writer_var
+    from app.agents.new_chat.chat_deepagent import _stream_cancel_event_var, _stream_writer_var
     from app.services.run_event_writer import RunEventWriter
     from app.tasks.chat.stream_new_chat import stream_new_chat_detached
 
@@ -189,6 +194,7 @@ async def _spawn_execution_task(
         redis = await _get_redis()
         writer = RunEventWriter(run_id, redis, shielded_async_session)
         writer_token = _stream_writer_var.set(writer.write)
+        cancel_token = _stream_cancel_event_var.set(cancel_event)  # T13
         flush_task = asyncio.create_task(writer.run_flush_loop())
         final_message_id: int | None = None
 
@@ -224,8 +230,8 @@ async def _spawn_execution_task(
             await _mark_run_failed(run_id, err)
         finally:
             _stream_writer_var.reset(writer_token)
+            _stream_cancel_event_var.reset(cancel_token)  # T13
             await writer.stop()
-            flush_task.cancel()
             try:
                 await flush_task
             except (asyncio.CancelledError, Exception):
@@ -291,7 +297,6 @@ async def cancel_run(run_id: UUID) -> bool:
             await redis.publish(
                 channel,
                 json.dumps({
-                    "seq": -1,
                     "event_type": "orchestra-cancel",
                     "payload": {"sessionId": str(run_id), "reason": "user_cancel"},
                 }),
@@ -337,7 +342,7 @@ async def resume_run(
         await session.execute(
             text(
                 "UPDATE chat_runs SET status='running', started_at=NOW(), "
-                "error_message=NULL WHERE id=:rid"
+                "last_heartbeat_at=NOW(), error_message=NULL WHERE id=:rid"
             ),
             {"rid": str(run_id)},
         )
@@ -362,6 +367,7 @@ async def resume_run(
         disabled_tools=updated_row["disabled_tools"],
         status=ChatRunStatus.RUNNING,
         started_at=datetime.now(UTC),
+        last_heartbeat_at=datetime.now(UTC),
     )
     run.id = run_id
 
@@ -431,16 +437,22 @@ async def mark_abandoned_runs_on_startup() -> int:
 
     try:
         async with shielded_async_session() as session:
+            # T9/AC9: heartbeat fence — only abandon runs with stale/missing heartbeat.
+            # Healthy runs on sibling workers update last_heartbeat_at every 30s.
+            # Runs with a heartbeat < 90s ago are still alive; leave them running.
             result = await session.execute(
                 text(
                     "UPDATE chat_runs SET status='abandoned' "
-                    "WHERE status='running' RETURNING id"
+                    "WHERE status='running' "
+                    "AND (last_heartbeat_at IS NULL "
+                    "     OR last_heartbeat_at < NOW() - interval '90 seconds') "
+                    "RETURNING id"
                 )
             )
             await session.commit()
             count = result.rowcount
             if count:
-                log.info("startup: marked %d orphaned runs as abandoned", count)
+                log.info("startup: marked %d orphaned runs as abandoned (heartbeat fence)", count)
             return count
     except Exception as exc:
         # M2: migration may not have applied yet on fresh deploy

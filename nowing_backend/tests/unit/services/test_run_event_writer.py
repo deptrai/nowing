@@ -53,16 +53,16 @@ def _mock_session_factory(max_seq=-1):
 @pytest.mark.asyncio
 async def test_write_enqueues_event():
     writer = _make_writer()
-    writer.write("text-delta", {"agentId": "a1", "text": "hello"})
-    assert writer._queue.qsize() == 1
+    writer.write("orchestra-spawn", {"agentId": "a1"})
+    assert len(writer._deque) == 1
 
 
 @pytest.mark.asyncio
 async def test_write_multiple_events():
     writer = _make_writer()
     for i in range(5):
-        writer.write("text-delta", {"agentId": "a1", "text": f"chunk-{i}"})
-    assert writer._queue.qsize() == 5
+        writer.write("orchestra-spawn", {"agentId": f"a{i}"})
+    assert len(writer._deque) == 5
 
 
 # ---------------------------------------------------------------------------
@@ -149,27 +149,21 @@ def test_should_dedup_other_event_not_deduped():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_coalesce_text_delta_on_overflow():
-    """When queue is full, newer text-delta for same agent replaces older one."""
+async def test_text_delta_coalescing_upstream():
+    """T5: text-delta for same agentId is coalesced in _pending_delta before deque insertion."""
     run_id = uuid4()
-    # Create writer with tiny queue
     writer = RunEventWriter(run_id, AsyncMock(), _mock_session_factory())
-    writer._queue = asyncio.Queue(maxsize=2)
 
-    writer._queue.put_nowait(("text-delta", {"agentId": "a1", "text": "chunk1"}))
-    writer._queue.put_nowait(("text-delta", {"agentId": "a2", "text": "other"}))
+    # Write 3 text-delta for same agent — only last should survive in _pending_delta
+    writer.write("text-delta", {"agentId": "a1", "text": "chunk1"})
+    writer.write("text-delta", {"agentId": "a1", "text": "chunk2"})
+    writer.write("text-delta", {"agentId": "a1", "text": "chunk3"})
 
-    # Queue full — coalesce should replace a1's entry
-    writer._coalesce_or_drop("text-delta", {"agentId": "a1", "text": "chunk2"})
-
-    # a1 entry should have been replaced
-    items = []
-    while not writer._queue.empty():
-        items.append(writer._queue.get_nowait())
-
-    a1_items = [i for i in items if i[1].get("agentId") == "a1"]
-    assert len(a1_items) == 1
-    assert a1_items[0][1]["text"] == "chunk2"
+    # _pending_delta holds (event_type, payload) tuple for latest unconsumed text-delta per agentId
+    assert "a1" in writer._pending_delta
+    _evt_type, _payload = writer._pending_delta["a1"]
+    assert _evt_type == "text-delta"
+    assert _payload["text"] == "chunk3"
 
 
 # ---------------------------------------------------------------------------
@@ -268,12 +262,100 @@ async def test_flush_batch_updates_seen_sets():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_stop_waits_for_queue_drain():
+async def test_stop_signals_event():
+    """stop() sets the _stop event so run_flush_loop can exit."""
     writer = _make_writer()
-    writer.write("text-delta", {"text": "pending"})
-    assert not writer._queue.empty()
+    writer.write("orchestra-spawn", {"agentId": "a1"})
+    assert len(writer._deque) == 1
 
-    # Drain manually to simulate flush
-    writer._queue.get_nowait()
+    # Drain manually to simulate flush having consumed the event
+    writer._deque.clear()
     await writer.stop()
     assert writer._stop.is_set()
+
+
+# ---------------------------------------------------------------------------
+# T16: Advisory lock re-seeding prevents seq collision when two writers race
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_advisory_lock_reseeds_seq_on_conflict():
+    """T16: When DB reports a higher seq (another writer advanced it),
+    _flush_batch reassigns seq offsets to avoid collisions.
+    """
+    run_id = uuid4()
+    call_count = 0
+
+    session = AsyncMock()
+
+    def _make_result(scalar_val):
+        r = MagicMock()
+        r.scalar.return_value = scalar_val
+        return r
+
+    # First call: advisory lock (returns nothing useful)
+    # Second call: COALESCE(MAX(seq),-1)+1 → returns 5 (another writer got to seq 4)
+    # Subsequent calls: INSERT / UPDATE
+    async def _execute(stmt, params=None):
+        nonlocal call_count
+        call_count += 1
+        stmt_str = str(stmt) if not isinstance(stmt, str) else stmt
+        if "COALESCE" in stmt_str or "coalesce" in stmt_str.lower():
+            return _make_result(5)  # DB says next seq is 5
+        return _make_result(0)
+
+    session.execute = AsyncMock(side_effect=_execute)
+    session.commit = AsyncMock()
+
+    class _FakeCtx:
+        async def __aenter__(self):
+            return session
+        async def __aexit__(self, *_):
+            pass
+
+    writer = RunEventWriter(run_id, AsyncMock(), lambda: _FakeCtx())
+    # Writer thinks it owns seq 0, but DB has advanced to 5
+    writer._next_seq = 0
+
+    await writer._flush_batch([
+        ("text-delta", {"text": "a"}),
+        ("text-delta", {"text": "b"}),
+    ])
+
+    # After flush, _next_seq should be 7 (5 + 2 events)
+    assert writer._next_seq == 7, (
+        f"Expected _next_seq=7 after advisory lock reseed from seq=5, got {writer._next_seq}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_advisory_lock_no_conflict_uses_writer_seq():
+    """T16: When DB seq matches writer seq, no offset is applied."""
+    run_id = uuid4()
+
+    session = AsyncMock()
+
+    async def _execute(stmt, params=None):
+        stmt_str = str(stmt) if not isinstance(stmt, str) else stmt
+        if "COALESCE" in stmt_str or "coalesce" in stmt_str.lower():
+            r = MagicMock()
+            r.scalar.return_value = 3  # DB says next seq is 3, matches writer
+            return r
+        return MagicMock()
+
+    session.execute = AsyncMock(side_effect=_execute)
+    session.commit = AsyncMock()
+
+    class _FakeCtx:
+        async def __aenter__(self):
+            return session
+        async def __aexit__(self, *_):
+            pass
+
+    writer = RunEventWriter(run_id, AsyncMock(), lambda: _FakeCtx())
+    writer._next_seq = 3  # writer already at seq 3 (consistent)
+
+    await writer._flush_batch([("orchestra-spawn", {"agentId": "a1"})])
+
+    # seq was 3 before, 1 event → next is 4
+    assert writer._next_seq == 4

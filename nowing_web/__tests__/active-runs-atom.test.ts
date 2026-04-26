@@ -7,6 +7,7 @@ function makeRun(overrides: Partial<ChatRun> = {}): ChatRun {
 		id: "run-1",
 		thread_id: 42,
 		session_id: "42-abcd1234",
+		langgraph_thread_id: "run-00000000-0000-0000-0000-000000000001",
 		status: "running",
 		user_query: "what is BTC?",
 		started_at: new Date().toISOString(),

@@ -108,7 +108,13 @@ import {
 	trackOrchestraSpawn,
 } from "@/lib/posthog/events";
 import { applyOrchestraEvent, orchestraStateAtom } from "@/atoms/chat/orchestra.atom";
-import { activeRunsAtom, upsertRun, removeRun } from "@/atoms/chat/active-runs.atom";
+import {
+	activeRunsAtom,
+	abandonedSessionIdsAtom,
+	upsertRun,
+	removeRun,
+	resumeRunBySessionAtom,
+} from "@/atoms/chat/active-runs.atom";
 import {
 	getActiveRuns,
 	streamRun,
@@ -358,7 +364,12 @@ export default function NewChatPage() {
 	const setAgentCreatedDocuments = useSetAtom(agentCreatedDocumentsAtom);
 	const setOrchestraState = useSetAtom(orchestraStateAtom);
 	const setActiveRuns = useSetAtom(activeRunsAtom);
+	const setResumeRunBySession = useSetAtom(resumeRunBySessionAtom);
+	const setAbandonedSessionIds = useSetAtom(abandonedSessionIdsAtom);
 	const [abandonedRuns, setAbandonedRuns] = useState<ChatRun[]>([]);
+	const attachToRunRef = useRef<((run: ChatRun) => Promise<void>) | null>(null);
+	const abandonedRunsRef = useRef(abandonedRuns);
+	abandonedRunsRef.current = abandonedRuns;
 
 	// Get current user for author info in shared chats
 	const { data: currentUser } = useAtomValue(currentUserAtom);
@@ -624,25 +635,45 @@ export default function NewChatPage() {
 					for (const part of parts) {
 						// M25: skip SSE comment / heartbeat lines (`: text`)
 						if (part.startsWith(":")) continue;
-						const eventLine = part.match(/^event:\s*(.+)$/m)?.[1];
 						const dataLine = part.match(/^data:\s*(.+)$/m)?.[1];
-						if (eventLine === "run-replay-end") {
-							let info: { status?: string; seq?: number } = {};
-							try {
-								info = dataLine ? JSON.parse(dataLine) : {};
-							} catch {
-								/* malformed sentinel — treat as terminal */
-							}
-							if (info.status !== "running") {
-								setActiveRuns((prev) => removeRun(prev, run.id, threadId));
-								setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
-							}
-							return;
-						}
 						if (!dataLine) continue;
 						// M24: any malformed event must NOT abort the stream — try/catch continue
 						try {
 							const parsed = JSON.parse(dataLine);
+							// T22: handle _marker sentinels (replace old event: run-replay-end)
+							if (parsed && parsed._marker) {
+								if (parsed._marker === "replay-start") {
+									// entering replay — future: suppress animation
+								} else if (parsed._marker === "replay-end") {
+									if (parsed.status !== "live") {
+										setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+										if (parsed.status === "abandoned") {
+											// keep in abandonedRuns / abandonedSessionIds for Resume UI
+											setAbandonedSessionIds((prev) => new Set([...prev, run.langgraph_thread_id]));
+										} else {
+											// completed / failed / cancelled — fully done
+											setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
+											setAbandonedSessionIds((prev) => {
+												const s = new Set(prev);
+												s.delete(run.langgraph_thread_id);
+												return s;
+											});
+										}
+										return;
+									}
+									// status === "live": transitioning to live tail
+								} else if (parsed._marker === "run-end") {
+									setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+									setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
+									setAbandonedSessionIds((prev) => {
+										const s = new Set(prev);
+										s.delete(run.langgraph_thread_id);
+										return s;
+									});
+									return;
+								}
+								continue; // marker events don't reach the orchestra reducer
+							}
 							if (parsed && parsed.type) {
 								setOrchestraState((prev: unknown) =>
 									applyOrchestraEvent(prev as never, parsed as never)
@@ -663,6 +694,8 @@ export default function NewChatPage() {
 			}
 		};
 
+		attachToRunRef.current = attachToRun;
+
 		getActiveRuns(threadId)
 			.then((runs) => {
 				const running = runs.filter((r) => r.status === "running");
@@ -673,6 +706,7 @@ export default function NewChatPage() {
 					return next;
 				});
 				setAbandonedRuns(abandoned);
+				setAbandonedSessionIds(new Set(abandoned.map((r) => r.langgraph_thread_id)));
 				for (const run of running) {
 					attachToRun(run);
 				}
@@ -688,7 +722,33 @@ export default function NewChatPage() {
 			}
 			for (const ac of abortControllers) ac.abort();
 		};
-	}, [threadId, setActiveRuns, setOrchestraState]);
+	}, [threadId, setActiveRuns, setOrchestraState, setAbandonedSessionIds]);
+
+	// T21: register resume handler so OrchestraStrip can resume by sessionId
+	useEffect(() => {
+		if (!threadId) return;
+		setResumeRunBySession(() => async (langgraphThreadId: string) => {
+			const run = abandonedRunsRef.current.find((r) => r.langgraph_thread_id === langgraphThreadId);
+			if (!run) {
+				toast.error("Run no longer available. Please refresh the page.");
+				return;
+			}
+			try {
+				const resumed = await resumeRun(threadId, run.id);
+				setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
+				setAbandonedSessionIds((prev) => {
+					const s = new Set(prev);
+					s.delete(run.langgraph_thread_id);
+					return s;
+				});
+				setActiveRuns((prev) => upsertRun(prev, resumed));
+				attachToRunRef.current?.(resumed);
+			} catch {
+				toast.error("Failed to resume run");
+			}
+		});
+		return () => setResumeRunBySession(null);
+	}, [threadId, setResumeRunBySession, setAbandonedRuns, setAbandonedSessionIds, setActiveRuns]);
 
 	// Cancel ongoing request
 	const cancelRun = useCallback(async () => {
@@ -1968,39 +2028,7 @@ export default function NewChatPage() {
 			{/* <WriteTodosToolUI /> Disabled for now */}
 			<div key={searchSpaceId} className="flex h-full overflow-hidden">
 				<div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-					{abandonedRuns.length > 0 && (
-						<div className="flex flex-col gap-1 px-4 pt-2">
-							{abandonedRuns.map((run) => (
-								<div
-									key={run.id}
-									className="flex items-center justify-between rounded-md border border-amber-400/40 bg-amber-50/10 px-3 py-1.5 text-xs text-muted-foreground"
-								>
-									<span>
-										Previous analysis interrupted —{" "}
-										<span className="font-medium text-foreground">
-											{run.user_query?.slice(0, 60) ?? "query"}
-										</span>
-									</span>
-									<button
-										type="button"
-										className="ml-3 rounded px-2 py-0.5 text-xs font-medium text-amber-600 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/20"
-										onClick={async () => {
-											if (!threadId) return;
-											try {
-												const resumed = await resumeRun(threadId, run.id);
-												setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
-												setActiveRuns((prev) => upsertRun(prev, resumed));
-											} catch {
-												toast.error("Failed to resume run");
-											}
-										}}
-									>
-										Resume
-									</button>
-								</div>
-							))}
-						</div>
-					)}
+					{/* T21: Resume banner removed — Resume button is now in OrchestraStrip header */}
 					<Thread />
 					{lastTokenUsage && !isRunning && (
 						<div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none px-4 z-10">

@@ -777,6 +777,7 @@ class ChatRun(Base, TimestampMixin):
         nullable=True,
     )
     error_message = Column(String(8000), nullable=True)
+    last_heartbeat_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
     # Relationships
     thread = relationship("NewChatThread", back_populates="chat_runs")

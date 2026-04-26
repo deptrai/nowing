@@ -4,6 +4,21 @@ import { atom } from "jotai";
 import type { ChatRun } from "@/lib/apis/chat-runs-api.service";
 
 /**
+ * T21: Resume handler injected by page.tsx.
+ * Called by OrchestraStrip when user clicks Resume on an abandoned session.
+ * Keyed by langgraph_thread_id (== OrchestraSession.sessionId).
+ */
+export const resumeRunBySessionAtom = atom<((langgraphThreadId: string) => Promise<void>) | null>(
+	null
+);
+
+/**
+ * T21: Set of langgraph_thread_id values for runs with status="abandoned".
+ * Written by page.tsx; read by AssistantMessageInner to show Resume UI.
+ */
+export const abandonedSessionIdsAtom = atom<Set<string>>(new Set<string>());
+
+/**
  * Map of threadId → list of active (running or abandoned) ChatRun objects.
  * Populated on page mount by getActiveRuns() and updated as runs complete.
  */

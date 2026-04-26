@@ -2310,6 +2310,32 @@ def _extract_sse_event_type(sse_chunk: str) -> str:
     return "sse-raw"
 
 
+def _parse_vercel_envelope(sse_chunk: str) -> dict | None:
+    """Parse SSE chunk into structured payload dict for JSONB storage.
+
+    Returns structured dict suitable for RunEventWriter.write(), or None to skip.
+    Format contract:
+      - JSON events: returns full envelope {"type": ..., "data": ...}
+      - text-delta:  returns {"type": "text-delta", "_vercel": raw_payload_str}
+      - [DONE] / unparseable: returns None (skipped, not persisted)
+    """
+    stripped = sse_chunk.strip()
+    if not stripped.startswith("data:"):
+        return None
+    payload_str = stripped[5:].strip()
+    if payload_str.startswith("[DONE]"):
+        return None
+    try:
+        parsed = json.loads(payload_str)
+        if isinstance(parsed, dict) and "type" in parsed:
+            return parsed
+    except Exception:
+        pass
+    if _VERCEL_PREFIX_RE.match(payload_str):
+        return {"type": "text-delta", "_vercel": payload_str}
+    return None
+
+
 async def stream_new_chat_detached(
     run_id,
     langgraph_thread_id: str,
@@ -2327,26 +2353,20 @@ async def stream_new_chat_detached(
     checkpoint_id: str | None = None,
     cancel_event=None,
     writer=None,
-) -> None:
+) -> int | None:
     """Detached agent execution: drains stream_new_chat → writes events to RunEventWriter.
 
     Does NOT yield SSE strings. All events go to writer (DB + Redis pubsub).
     Uses langgraph_thread_id (not thread_id) for LangGraph checkpoint isolation (C1).
     Cooperative cancel via cancel_event.is_set() between generator chunks.
+    Returns final_message_id (int) captured from data-message-id event, or None.
     """
     if writer is None:
         raise ValueError("writer must be provided for detached execution")
 
-    # Wrap the existing generator — run it with langgraph_thread_id for isolation (C1).
-    # We monkey-patch the chat_id arg to use langgraph_thread_id for LangGraph config.
-    # The actual chat thread_id is used for DB lookups inside the generator (messages, etc.).
-    # To achieve thread isolation, we need stream_new_chat to use langgraph_thread_id
-    # as the LangGraph configurable.thread_id. We pass it as chat_id here.
-    # Note: this means chat_id in generator = langgraph_thread_id (a string UUID).
-    # This is intentional — isolates checkpoint state from other runs on same thread.
-
     # Cancel-check wrapper: check cancel_event between every yielded chunk
-    async def _consume_with_cancel():
+    async def _consume_with_cancel() -> int | None:
+        final_message_id: int | None = None
         gen = stream_new_chat(
             user_query=user_query,
             search_space_id=search_space_id,
@@ -2366,12 +2386,21 @@ async def stream_new_chat_detached(
                 # Cooperative cancel — emit cancel event then break (M17: bounded aclose)
                 with contextlib.suppress(Exception):
                     await asyncio.wait_for(gen.aclose(), timeout=2.0)
-                event_type = "orchestra-cancel"
-                writer.write(event_type, {"sessionId": langgraph_thread_id, "reason": "user_cancel"})
+                writer.write("orchestra-cancel", {"sessionId": langgraph_thread_id, "reason": "user_cancel"})
                 raise asyncio.CancelledError("run cancelled by user")
-            event_type = _extract_sse_event_type(chunk)
-            writer.write(event_type, {"_raw": chunk})
+            parsed = _parse_vercel_envelope(chunk)
+            if parsed is None:
+                await asyncio.sleep(0)
+                continue
+            event_type = parsed.get("type", "sse-raw")
+            # T12: capture final_message_id from data-message-id event
+            if event_type == "data-message-id":
+                msg_id_val = (parsed.get("data") or {}).get("id")
+                if isinstance(msg_id_val, int):
+                    final_message_id = msg_id_val
+            writer.write(event_type, parsed)
             # M18: yield to event loop so flush_task can drain queue and avoid back-pressure
             await asyncio.sleep(0)
+        return final_message_id
 
-    await _consume_with_cancel()
+    return await _consume_with_cancel()

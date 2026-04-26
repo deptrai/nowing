@@ -452,6 +452,26 @@ _stream_writer_var: contextvars.ContextVar[Any | None] = contextvars.ContextVar(
     "_stream_writer_var", default=None
 )
 
+# T13: cancel signal propagated from run_manager into deep retry loops.
+# Set by _execute() before calling stream_new_chat_detached so that
+# _cancellable_sleep can interrupt long backoff waits on user cancel.
+_stream_cancel_event_var: contextvars.ContextVar[asyncio.Event | None] = contextvars.ContextVar(
+    "_stream_cancel_event_var", default=None
+)
+
+
+async def _cancellable_sleep(delay: float) -> None:
+    """asyncio.sleep that wakes early and raises CancelledError when run is cancelled."""
+    cancel_event = _stream_cancel_event_var.get()
+    if cancel_event is None:
+        await asyncio.sleep(delay)
+        return
+    try:
+        await asyncio.wait_for(cancel_event.wait(), timeout=delay)
+        raise asyncio.CancelledError("run cancelled by user")
+    except asyncio.TimeoutError:
+        pass
+
 
 def _emit_rate_gate_event(wait_seconds: float, reason: str = "min_interval") -> None:
     """Emit orchestra-rate-gate-wait event via ContextVar writer if set, else dispatch_custom_event.
@@ -867,7 +887,7 @@ class SubAgentResilienceMiddleware(AgentMiddleware):
                 except Exception:
                     pass
                 _rate_limit_state.mark_rate_limited()
-                await asyncio.sleep(delay)
+                await _cancellable_sleep(delay)
 
 
 class ParallelSpawnDirectiveMiddleware(AgentMiddleware):
@@ -1103,7 +1123,7 @@ with a heading like "# Phân tích toàn diện [token]" — no preamble."""
                                 synth_attempt, elapsed, delay,
                             )
                         _rate_limit_state.mark_rate_limited()
-                        await asyncio.sleep(delay)
+                        await _cancellable_sleep(delay)
 
             escalation = _rate_limit_state.escalation_level()
             under_pressure = escalation >= 1
@@ -1170,7 +1190,7 @@ synthesize with what's available."""
                     GRACEFUL_DEGRADATION_COUNTER.labels(outcome="rate_limit_paced").inc()
                 except Exception:
                     pass
-                await asyncio.sleep(_PACED_DELAY_SECONDS)
+                await _cancellable_sleep(_PACED_DELAY_SECONDS)
                 # Keep pressure state hot: without this, cooldown (60s) would expire
                 # mid-paced-run and the next turn would revert to Tier 1 parallel spawn,
                 # re-triggering the rate-limit cascade we just degraded from.
@@ -1246,7 +1266,7 @@ synthesize with what's available."""
                     GRACEFUL_DEGRADATION_COUNTER.labels(outcome="main_retry").inc()
                 except Exception:
                     pass
-                await asyncio.sleep(main_delay)
+                await _cancellable_sleep(main_delay)
                 # Loop and retry — never return placeholder, never give up.
 
     def wrap_model_call(self, request: Any, handler: Any) -> Any:

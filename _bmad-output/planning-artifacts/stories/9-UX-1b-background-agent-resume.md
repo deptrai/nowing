@@ -8,7 +8,7 @@ relatedFRs: [FR35 Graceful Degradation, FR27 Comprehensive Analysis]
 relatedNFRs: [NFR-Q1 Resilience, NFR-Q3 Graceful Degradation, NFR-UX Live Research Visibility]
 priority: P0 (Phase 2 UX overhaul — fixes "research lost on refresh" UX failure surfaced during 9-UX-1 live test)
 estimatedEffort: 2 weeks (1 BE + 0.5 FE) — bumped from 1.5w after v2 review found 7 critical design fixes
-status: in-progress  # 2026-04-25 review: 18 patches applied; 5 critical + 7 major still open (architectural — see Review Findings)
+status: done  # 2026-04-26: all patches applied via 9-UX-1c; 47 BE + 20 FE tests pass; integration tests pass
 revision: v2 (2026-04-25)  # v1 had design holes flagged in adversarial review; v2 addresses C1-C7 + H1-H8
 createdAt: 2026-04-25
 author: Luisphan + Claude (carved out from 9-UX-1 production findings)
@@ -83,7 +83,7 @@ Plan source: [/Users/luisphan/.claude/plans/harmonic-cuddling-glacier.md](/Users
 
 ### AC1 — DB schema: `chat_runs` + `chat_run_events`
 
-Two new tables via Alembic migration **120_add_chat_runs.py** (latest disk revision is 119). **Idempotent** (follow project pattern in `alembic/versions/115_add_page_purchases_table.py`):
+Two new tables via Alembic migration **134_add_chat_runs.py** + **135_add_chat_run_heartbeat.py** (applied 2026-04-26). **Idempotent** (follow project pattern in `alembic/versions/115_add_page_purchases_table.py`):
 
 ```sql
 chat_runs (
@@ -463,7 +463,7 @@ The `(run_id, seq)` UNIQUE constraint enforces ordering. `RunEventWriter` uses a
 
 ### Backend
 
-- [ ] **T1** (BE) — Alembic migration `120_add_chat_runs.py` (down_revision="119"): tables + indexes + downgrade. Idempotent pattern from migration 115. **Includes** `langgraph_thread_id`, `llm_config_id`, `model_id`, `mentioned_document_ids`, `disabled_tools`, `error_message VARCHAR(8000)`. **No UNIQUE on `session_id`**. (AC1, M12)
+- [x] **T1** (BE) — Alembic migration `134_add_chat_runs.py` + `135_add_chat_run_heartbeat.py` (applied 2026-04-26): tables + indexes + downgrade. Idempotent pattern from migration 115. **Includes** `langgraph_thread_id`, `llm_config_id`, `model_id`, `mentioned_document_ids`, `disabled_tools`, `error_message VARCHAR(8000)`. **No UNIQUE on `session_id`**. (AC1, M12)
 - [ ] **T2** (BE) — ORM models `ChatRun` + `ChatRunEvent` in `app/db.py`. UUID PK override. FK to `user.id` (singular). Relationships back-populated to `NewChatThread`. (H1)
 - [ ] **T3** (BE) — `RunEventWriter` class in `app/services/run_event_writer.py`:
   - **Sync `write()`** → enqueue to bounded `asyncio.Queue(maxsize=10000)` (C5, M6)

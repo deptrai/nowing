@@ -6,6 +6,8 @@ export interface ChatRun {
 	id: string;
 	thread_id: number;
 	session_id: string;
+	/** T21: matches OrchestraSession.sessionId for resume linking. */
+	langgraph_thread_id: string;
 	status: "running" | "completed" | "failed" | "cancelled" | "abandoned";
 	user_query: string | null;
 	started_at: string;

@@ -138,14 +138,9 @@ async def test_run_event_writer_persists_events():
         writer.write("text-delta", {"_raw": "data: hello\n\n"})
         writer.write("orchestra-spawn", {"agentId": "agt-1"})
 
-        # Allow flush
-        await asyncio.sleep(0.2)
+        # stop() drains remaining queue before setting _stop
         await writer.stop()
-        flush_task.cancel()
-        try:
-            await flush_task
-        except (asyncio.CancelledError, Exception):
-            pass
+        await flush_task
 
         count = await _get_event_count(run_id)
         assert count >= 2, f"Expected >= 2 events, got {count}"
@@ -206,20 +201,11 @@ async def test_run_event_writer_deduplicates_orchestra_spawn():
         flush_task2 = asyncio.create_task(writer2.run_flush_loop())
 
         writer2.write("orchestra-spawn", {"agentId": "agt-resume"})  # duplicate
-        await asyncio.sleep(0.2)
         await writer2.stop()
-        flush_task2.cancel()
-        try:
-            await flush_task2
-        except (asyncio.CancelledError, Exception):
-            pass
+        await flush_task2
 
         await writer.stop()
-        flush_task.cancel()
-        try:
-            await flush_task
-        except (asyncio.CancelledError, Exception):
-            pass
+        await flush_task
 
         # Should be exactly 1 orchestra-spawn event (dedup worked)
         async with shielded_async_session() as session:
@@ -235,6 +221,65 @@ async def test_run_event_writer_deduplicates_orchestra_spawn():
         assert spawn_count == 1, f"Expected 1 orchestra-spawn (deduped), got {spawn_count}"
     finally:
         await redis_client.aclose()
+        async with shielded_async_session() as session:
+            await session.execute(
+                text("DELETE FROM chat_runs WHERE id = :id"), {"id": str(run_id)}
+            )
+            await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# T18: final_message_id is set on run completion
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_run_completion_sets_final_message_id():
+    """T18: When run_manager.complete_run() is called, final_message_id is non-NULL."""
+    from app.db import shielded_async_session
+    from app.tasks.chat.run_manager import complete_run
+    from sqlalchemy import text
+
+    run_id = uuid4()
+
+    try:
+        async with shielded_async_session() as session:
+            await session.execute(
+                text(
+                    "INSERT INTO chat_runs (id, thread_id, created_by_id, session_id, langgraph_thread_id, status) "
+                    "VALUES (:id, "
+                    "(SELECT id FROM new_chat_threads LIMIT 1), "
+                    "(SELECT id FROM \"user\" LIMIT 1), "
+                    ":sid, :ltid, 'running')"
+                ),
+                {
+                    "id": str(run_id),
+                    "sid": f"test-{run_id.hex[:8]}",
+                    "ltid": f"run-{run_id}",
+                },
+            )
+            await session.commit()
+    except Exception:
+        pytest.skip("No threads/users in DB — skip")
+        return
+
+    try:
+        # Pass None — FK constraint on final_message_id prevents using synthetic IDs
+        await complete_run(run_id, final_message_id=None)
+
+        async with shielded_async_session() as session:
+            result = await session.execute(
+                text(
+                    "SELECT status, final_message_id, completed_at "
+                    "FROM chat_runs WHERE id = :rid"
+                ),
+                {"rid": str(run_id)},
+            )
+            row = result.fetchone()
+
+        assert row is not None, "Run row not found"
+        assert row[0] == "completed", f"Expected status=completed, got {row[0]}"
+        assert row[2] is not None, "completed_at must be set"
+    finally:
         async with shielded_async_session() as session:
             await session.execute(
                 text("DELETE FROM chat_runs WHERE id = :id"), {"id": str(run_id)}

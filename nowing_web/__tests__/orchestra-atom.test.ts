@@ -3,7 +3,7 @@ import { applyOrchestraEvent, type OrchestraState } from "@/atoms/chat/orchestra
 
 const EMPTY_STATE: OrchestraState = {
 	sessions: new Map(),
-	activeQueryHash: null,
+	lastSpawnedSessionId: null,
 };
 
 const SESSION_ID = "sess-abc123";
@@ -23,7 +23,7 @@ describe("applyOrchestraEvent", () => {
 				},
 			});
 
-			expect(next.activeQueryHash).toBe(SESSION_ID);
+			expect(next.lastSpawnedSessionId).toBe(SESSION_ID);
 			const session = next.sessions.get(SESSION_ID)!;
 			expect(session).toBeDefined();
 			expect(session.outcome).toBe("running");

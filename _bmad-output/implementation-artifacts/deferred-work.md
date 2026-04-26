@@ -310,3 +310,17 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **T21/T22 Playwright E2E** — refresh-mid-stream replay test and 2 concurrent queries multi-strip test missing; current `resume-agent.spec.ts` covers only "running run replays on mount" + "abandoned run shows Resume banner".
 - **Migration downgrade dangling FK** — alembic 134 downgrade drops `chat_runs` but `NewChatThread.chat_runs = relationship(...)` ORM mapping still references it; manual fixup needed if rollback is exercised.
 - **AC7 startup hook order + count log at call site** — `await mark_abandoned_runs_on_startup()` runs before `initialize_llm_router()` and discards return count at caller; function logs internally. Cosmetic.
+
+## Deferred from: code review of story 9-UX-1c (2026-04-25)
+
+- **Redis connection leak if SSE generator not `aclose()`d** — `new_chat_routes.py:1831` creates Redis client before `try` block; cleanup depends on Starlette StreamingResponse behavior on client disconnect. Pre-existing pattern.
+- **`hashtextextended` is internal PG function** — `run_event_writer.py:317`; portability concern for PG <11. Acceptable for current deployment (PG 15+).
+- **`orchestraStateAtom` abandoned sessions never evicted** — `orchestra.atom.ts:380`; sessions with `completedAt: null` (abandoned, never completed) grow unbounded in Map. Eviction only runs on `orchestra-complete`.
+- **`asyncio.get_event_loop()` deprecated** — `run_event_writer.py:143,235`; should be `get_running_loop()`. Cosmetic until Python 3.14.
+- **T15 resume dedup integration test** — Spec-required `test_resume_dedup.py` not implemented. Requires live Postgres + Redis.
+- **T23 FE component unit tests** — `multi-strip.test.tsx`, `resume-button.test.tsx`, `orchestra-multi-run.test.ts` not created.
+- **T24 concurrent-queries E2E scenario** — `resume-agent.spec.ts` covers wire format + resume button but not multi-run strip rendering.
+- **AC1/T3 `/regenerate` share generator refactor** — byte-equivalent SSE across `/regenerate` and `/runs/*/stream` via shared Python generator. Scope: extract `_stream_run_events()`, wire `/regenerate` to call it.
+- **AC5 `activeRunSessionsAtom` include abandoned sessions** — spec says `outcome === 'running' || 'abandoned'`; current filter is `running` only. Merge logic in `assistant-message.tsx` works as workaround.
+- **AC7 sync-INSERT fallback on deque overflow** — direct DB INSERT for non-text events when deque full. Currently all types drop oldest on overflow.
+- **T14 byte-equivalence regression test** — linked to AC1/T3; test `/regenerate` vs `/runs/*/stream` byte-level output equivalence.

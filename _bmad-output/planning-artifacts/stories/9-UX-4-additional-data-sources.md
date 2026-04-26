@@ -2,7 +2,7 @@
 storyId: 9-UX-4
 storyTitle: Additional Data Sources — Nansen / CertiK / Dune / TokenInsight + Whale Tracker
 epicParent: epic-9-crypto-orchestra
-dependsOn: [Story 9-UX-1 DONE (SourceAttributionMiddleware), Story 9-UX-2 DONE (citation chips)]
+dependsOn: [Story 9-UX-1 DONE (SourceAttributionMiddleware), Story 9-UX-1b DONE, Story 9-UX-1c DONE, Story 9-UX-2 DONE (citation chips)]
 blocks: []
 relatedFRs: [FR27 Comprehensive Analysis, FR-new Whale Tracking, FR-new Premium Data Sources]
 relatedNFRs: [NFR-Q1 Accuracy (cross-source verification), NFR-CS3 API Rate Awareness]
