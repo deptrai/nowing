@@ -15,12 +15,16 @@ Run commands:
   uv run pytest -m "integration and slow" tests/integration/agents/test_graceful_degradation.py::TestDegradationRateBenchmark -v
 """
 
+import json
 import os
 
 import httpx
 import pytest
 import respx
+from langchain_core.messages import AIMessage, ToolMessage
 
+from app.agents.new_chat.chat_deepagent import ParallelismTelemetryMiddleware
+from app.observability.metrics import AGENT_ERRORS_COUNTER, GRACEFUL_DEGRADATION_COUNTER
 from tests.integration.agents.fault_injection import inject_all_failures
 
 pytestmark = pytest.mark.integration
@@ -322,31 +326,17 @@ class TestTelemetryErrorTracking:
 
     def test_agent_errors_counter_importable(self):
         """AC11: AGENT_ERRORS_COUNTER is available and callable."""
-        from app.observability.metrics import AGENT_ERRORS_COUNTER
-
         # Should not raise — both no-op stub and real Counter support labels().inc()
         AGENT_ERRORS_COUNTER.labels(agent_name="defillama_analyst", error_type="rate_limit").inc()
 
     def test_graceful_degradation_counter_importable(self):
         """AC11: GRACEFUL_DEGRADATION_COUNTER is available and callable."""
-        from app.observability.metrics import GRACEFUL_DEGRADATION_COUNTER
-
         GRACEFUL_DEGRADATION_COUNTER.labels(outcome="partial").inc()
         GRACEFUL_DEGRADATION_COUNTER.labels(outcome="success").inc()
         GRACEFUL_DEGRADATION_COUNTER.labels(outcome="failed").inc()
 
     def test_track_degradation_increments_agent_errors_and_partial_outcome(self):
         """AC11: rate-limit error on one of two tools → errors+1, outcome=partial."""
-        import json
-
-        from langchain_core.messages import AIMessage, ToolMessage
-
-        from app.agents.new_chat.chat_deepagent import ParallelismTelemetryMiddleware
-        from app.observability.metrics import (
-            AGENT_ERRORS_COUNTER,
-            GRACEFUL_DEGRADATION_COUNTER,
-        )
-
         mw = ParallelismTelemetryMiddleware()
 
         err_labels = {"agent_name": "defillama_analyst", "error_type": "rate_limit"}
@@ -388,13 +378,6 @@ class TestTelemetryErrorTracking:
         Regression guard for the double-count bug where `_track_degradation` was
         invoked on every model step and re-counted historical ToolMessages.
         """
-        import json
-
-        from langchain_core.messages import AIMessage, ToolMessage
-
-        from app.agents.new_chat.chat_deepagent import ParallelismTelemetryMiddleware
-        from app.observability.metrics import AGENT_ERRORS_COUNTER
-
         mw = ParallelismTelemetryMiddleware()
         labels = {"agent_name": "goplus_analyst", "error_type": "server_error"}
 
@@ -419,13 +402,6 @@ class TestTelemetryErrorTracking:
 
     def test_track_degradation_success_on_clean_tool_messages(self):
         """AC11: outcome='success' when no ToolMessage carries an error."""
-        import json
-
-        from langchain_core.messages import AIMessage, ToolMessage
-
-        from app.agents.new_chat.chat_deepagent import ParallelismTelemetryMiddleware
-        from app.observability.metrics import GRACEFUL_DEGRADATION_COUNTER
-
         mw = ParallelismTelemetryMiddleware()
         labels = {"outcome": "success"}
         before = self._counter_value(GRACEFUL_DEGRADATION_COUNTER, labels)
@@ -444,13 +420,6 @@ class TestTelemetryErrorTracking:
 
     def test_track_degradation_classifies_network_error_precisely(self):
         """AC11 + P8 regression: 'network' error doesn't get misclassified as timeout."""
-        import json
-
-        from langchain_core.messages import AIMessage, ToolMessage
-
-        from app.agents.new_chat.chat_deepagent import ParallelismTelemetryMiddleware
-        from app.observability.metrics import AGENT_ERRORS_COUNTER
-
         mw = ParallelismTelemetryMiddleware()
         labels = {"agent_name": "news_analyst", "error_type": "network_error"}
         before = self._counter_value(AGENT_ERRORS_COUNTER, labels)
@@ -471,11 +440,6 @@ class TestTelemetryErrorTracking:
 
     def test_track_degradation_handles_list_content(self):
         """P9 regression: multimodal list content with error dict is still detected."""
-        from langchain_core.messages import AIMessage, ToolMessage
-
-        from app.agents.new_chat.chat_deepagent import ParallelismTelemetryMiddleware
-        from app.observability.metrics import AGENT_ERRORS_COUNTER
-
         mw = ParallelismTelemetryMiddleware()
         labels = {"agent_name": "smart_contract_analyst", "error_type": "rate_limit"}
         before = self._counter_value(AGENT_ERRORS_COUNTER, labels)
@@ -494,13 +458,6 @@ class TestTelemetryErrorTracking:
 
     def test_track_degradation_ignores_falsy_error_field(self):
         """P14 regression: {'error': null} must not be counted as failure."""
-        import json
-
-        from langchain_core.messages import AIMessage, ToolMessage
-
-        from app.agents.new_chat.chat_deepagent import ParallelismTelemetryMiddleware
-        from app.observability.metrics import GRACEFUL_DEGRADATION_COUNTER
-
         mw = ParallelismTelemetryMiddleware()
         labels = {"outcome": "success"}
         before = self._counter_value(GRACEFUL_DEGRADATION_COUNTER, labels)

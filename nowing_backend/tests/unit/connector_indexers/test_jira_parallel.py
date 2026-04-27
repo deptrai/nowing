@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from tests.unit.connector_indexers.conftest import CONNECTOR_USER_ID, CONNECTOR_ID, CONNECTOR_SEARCH_SPACE_ID
 
 import app.tasks.connector_indexers.jira_indexer as _mod
 from app.db import DocumentType
@@ -13,9 +14,6 @@ from app.tasks.connector_indexers.jira_indexer import (
 
 pytestmark = pytest.mark.unit
 
-_USER_ID = "00000000-0000-0000-0000-000000000001"
-_CONNECTOR_ID = 42
-_SEARCH_SPACE_ID = 1
 
 
 def _make_issue(
@@ -65,9 +63,9 @@ async def test_build_connector_doc_produces_correct_fields():
         issue,
         formatted,
         markdown,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 
@@ -75,9 +73,9 @@ async def test_build_connector_doc_produces_correct_fields():
     assert doc.unique_id == "ENG-42"
     assert doc.document_type == DocumentType.JIRA_CONNECTOR
     assert doc.source_markdown == markdown
-    assert doc.search_space_id == _SEARCH_SPACE_ID
-    assert doc.connector_id == _CONNECTOR_ID
-    assert doc.created_by_id == _USER_ID
+    assert doc.search_space_id == CONNECTOR_SEARCH_SPACE_ID
+    assert doc.connector_id == CONNECTOR_ID
+    assert doc.created_by_id == CONNECTOR_USER_ID
     assert doc.should_summarize is True
     assert doc.metadata["issue_id"] == "ENG-42"
     assert doc.metadata["issue_identifier"] == "ENG-42"
@@ -85,7 +83,7 @@ async def test_build_connector_doc_produces_correct_fields():
     assert doc.metadata["state"] == "Done"
     assert doc.metadata["priority"] == "Urgent"
     assert doc.metadata["comment_count"] == 1
-    assert doc.metadata["connector_id"] == _CONNECTOR_ID
+    assert doc.metadata["connector_id"] == CONNECTOR_ID
     assert doc.metadata["document_type"] == "Jira Issue"
     assert doc.metadata["connector_type"] == "Jira"
     assert doc.fallback_summary is not None
@@ -98,9 +96,9 @@ async def test_build_connector_doc_summary_disabled():
         _make_issue(),
         _make_formatted_issue(),
         "# content",
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=False,
     )
     assert doc.should_summarize is False
@@ -208,9 +206,9 @@ def jira_mocks(monkeypatch):
 async def _run_index(mocks, **overrides):
     return await index_jira_issues(
         session=mocks["session"],
-        connector_id=overrides.get("connector_id", _CONNECTOR_ID),
-        search_space_id=overrides.get("search_space_id", _SEARCH_SPACE_ID),
-        user_id=overrides.get("user_id", _USER_ID),
+        connector_id=overrides.get("connector_id", CONNECTOR_ID),
+        search_space_id=overrides.get("search_space_id", CONNECTOR_SEARCH_SPACE_ID),
+        user_id=overrides.get("user_id", CONNECTOR_USER_ID),
         start_date=overrides.get("start_date", "2025-01-01"),
         end_date=overrides.get("end_date", "2025-12-31"),
         update_last_indexed=overrides.get("update_last_indexed", True),

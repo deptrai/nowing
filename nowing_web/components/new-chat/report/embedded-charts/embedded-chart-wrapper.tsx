@@ -53,14 +53,16 @@ function EmbeddedChartWrapperImpl({ chartId, spec: specStr }: EmbeddedChartWrapp
 			data-chart-id={chartId}
 			data-chart-type={effectiveType}
 		>
-			{effectiveType === "candle" || source === "coingecko" || chartId.startsWith("price-") ? (
+			{effectiveType === "candle" ? (
 				<PriceChart spec={spec} />
-			) : effectiveType === "pie" || chartId.startsWith("holder-") ? (
+			) : effectiveType === "pie" ? (
 				<HolderPie spec={spec} />
-			) : effectiveType === "bar" || chartId.startsWith("yield-") ? (
+			) : effectiveType === "bar" ? (
 				<YieldBars spec={spec} />
-			) : effectiveType === "area" || chartId.startsWith("vesting-") ? (
+			) : effectiveType === "area" ? (
 				<VestingChart spec={spec} />
+			) : effectiveType === "line" && (source === "coingecko" || chartId.startsWith("price-")) ? (
+				<PriceChart spec={spec} />
 			) : (
 				<TvlChart spec={spec} />
 			)}

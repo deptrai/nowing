@@ -24,7 +24,6 @@ export function parseChartSpec(spec: string): ChartSpec | null {
 			if (kv) {
 				const [, key, value] = kv;
 				if (key === "data") {
-					// data: [...] on same line or multiline
 					const rest = value.trim();
 					if (rest.startsWith("[")) {
 						obj.data = JSON.parse(rest);
@@ -34,16 +33,20 @@ export function parseChartSpec(spec: string): ChartSpec | null {
 				} else {
 					obj[key] = value.trim();
 				}
-			} else if (dataStartIdx >= 0 && i === dataStartIdx) {
-				// Collect remaining lines as JSON array
+			} else if (dataStartIdx >= 0 && i >= dataStartIdx) {
+				// Skip blank lines, then collect remaining as JSON array
+				if (line.trim() === "") continue;
 				const remaining = lines.slice(i).join("\n").trim();
 				obj.data = JSON.parse(remaining);
 				break;
 			}
 		}
 
-		if (!obj.type || !Array.isArray(obj.data)) return null;
-		return obj as unknown as ChartSpec;
+		if (!obj.type || !Array.isArray(obj.data) || obj.data.length === 0) return null;
+		const result = obj as ChartSpec;
+		// Validate required string fields
+		if (typeof result.type !== "string") return null;
+		return result;
 	} catch {
 		return null;
 	}

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import itertools
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -27,16 +26,9 @@ from app.db import (
 EMBEDDING_DIM = app_config.embedding_model_instance.dimension
 DUMMY_EMBEDDING = [0.1] * EMBEDDING_DIM
 
-# Deterministic ID factory — replaces uuid.uuid4() for in-test entity IDs.
-# Within one pytest session, each call returns a unique-but-predictable UUID
-# (UUID(int=1), UUID(int=2), ...). Cross-session isolation is provided by the
-# savepoint pattern in `db_session`, so global counter resets are safe.
-_id_counter = itertools.count(1)
-
-
 def _seq_uuid() -> uuid.UUID:
-    """Return next sequential deterministic UUID."""
-    return uuid.UUID(int=next(_id_counter))
+    """Return a unique UUID per call."""
+    return uuid.uuid4()
 
 
 def _seq_hex(length: int = 12) -> str:

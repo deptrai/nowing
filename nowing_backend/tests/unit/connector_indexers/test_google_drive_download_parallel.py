@@ -4,6 +4,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from tests.unit.connector_indexers.conftest import CONNECTOR_USER_ID, CONNECTOR_ID, CONNECTOR_SEARCH_SPACE_ID
 
 from app.tasks.connector_indexers.google_drive_indexer import (
     _download_files_parallel,
@@ -11,9 +12,6 @@ from app.tasks.connector_indexers.google_drive_indexer import (
 
 pytestmark = pytest.mark.unit
 
-_USER_ID = "00000000-0000-0000-0000-000000000001"
-_CONNECTOR_ID = 42
-_SEARCH_SPACE_ID = 1
 
 
 def _make_file_dict(file_id: str, name: str, mime: str = "text/plain") -> dict:
@@ -59,9 +57,9 @@ async def test_single_file_returns_one_connector_document(
     docs, failed = await _download_files_parallel(
         mock_drive_client,
         [_make_file_dict("f1", "test.txt")],
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 
@@ -84,9 +82,9 @@ async def test_multiple_files_all_produce_documents(
     docs, failed = await _download_files_parallel(
         mock_drive_client,
         files,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 
@@ -112,9 +110,9 @@ async def test_one_download_exception_does_not_block_others(
     docs, failed = await _download_files_parallel(
         mock_drive_client,
         files,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 
@@ -139,9 +137,9 @@ async def test_etl_error_counts_as_download_failure(
     docs, failed = await _download_files_parallel(
         mock_drive_client,
         files,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 
@@ -163,7 +161,7 @@ async def test_concurrency_bounded_by_semaphore(
         async with lock:
             active += 1
             peak = max(peak, active)
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.005)
         async with lock:
             active -= 1
         fid = file["id"]
@@ -179,9 +177,9 @@ async def test_concurrency_bounded_by_semaphore(
     docs, failed = await _download_files_parallel(
         mock_drive_client,
         files,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
         max_concurrency=2,
     )
@@ -201,7 +199,7 @@ async def test_heartbeat_fires_during_parallel_downloads(
     monkeypatch.setattr(_mod, "HEARTBEAT_INTERVAL_SECONDS", 0)
 
     async def _slow_extract(client, file, **kwargs):
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.005)
         return _mock_extract_ok(file["id"], file["name"])
 
     monkeypatch.setattr(
@@ -219,9 +217,9 @@ async def test_heartbeat_fires_during_parallel_downloads(
     docs, failed = await _download_files_parallel(
         mock_drive_client,
         files,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
         on_heartbeat=_on_heartbeat,
     )

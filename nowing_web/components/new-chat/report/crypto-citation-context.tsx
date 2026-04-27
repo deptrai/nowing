@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, type FC, type ReactNode, useCallback, useContext } from "react";
+import { createContext, type FC, type ReactNode, useCallback, useContext, useMemo } from "react";
 import type {
 	CryptoDataCitation,
 	CryptoDataCitationMap,
@@ -27,7 +27,10 @@ export const CryptoCitationProvider: FC<CryptoCitationProviderProps> = ({
 	citationMap,
 	onOpenCitation,
 }) => {
-	const map: CryptoDataCitationMap = citationMap ? new Map(Object.entries(citationMap)) : new Map();
+	const map: CryptoDataCitationMap = useMemo(
+		() => (citationMap ? new Map(Object.entries(citationMap)) : new Map()),
+		[citationMap]
+	);
 
 	const openCitation = useCallback(
 		(citation: CryptoDataCitation) => onOpenCitation?.(citation),

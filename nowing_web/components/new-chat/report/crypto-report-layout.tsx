@@ -2,7 +2,7 @@
 
 import { useAuiState } from "@assistant-ui/react";
 import dynamic from "next/dynamic";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { CryptoCitationProvider } from "./crypto-citation-context";
 import type { CryptoDataCitation } from "@/components/tool-ui/citation/schema";
@@ -32,23 +32,25 @@ function isCryptoReport(text: string, meta: CryptoReportMeta | null): boolean {
 }
 
 const CryptoReportLayoutImpl = () => {
-	const { text, meta } = useAuiState(({ message }) => {
+	const text = useAuiState(({ message }) => {
 		const parts = (message as { content?: { type: string; text?: string }[] })?.content ?? [];
-		const textPart = parts.find((p) => p.type === "text");
-		const rawCustom = (message as { metadata?: { custom?: unknown } })?.metadata
-			?.custom as CryptoReportMeta | null;
-		return { text: textPart?.text ?? "", meta: rawCustom ?? null };
+		return parts.find((p) => p.type === "text")?.text ?? "";
 	});
+	const meta = useAuiState(
+		({ message }) =>
+			((message as { metadata?: { custom?: unknown } })?.metadata
+				?.custom as CryptoReportMeta | null) ?? null
+	);
 
 	const [selectedCitation, setSelectedCitation] = useState<CryptoDataCitation | null>(null);
 	const [panelOpen, setPanelOpen] = useState(false);
 
 	const isCrypto = useMemo(() => isCryptoReport(text, meta), [text, meta]);
 
-	const openCitation = (citation: CryptoDataCitation) => {
+	const openCitation = useCallback((citation: CryptoDataCitation) => {
 		setSelectedCitation(citation);
 		setPanelOpen(true);
-	};
+	}, []);
 
 	if (!isCrypto) return <MarkdownText />;
 

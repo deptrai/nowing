@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from tests.unit.connector_indexers.conftest import CONNECTOR_USER_ID, CONNECTOR_ID, CONNECTOR_SEARCH_SPACE_ID
 
 import app.tasks.connector_indexers.notion_indexer as _mod
 from app.db import DocumentType
@@ -13,9 +14,6 @@ from app.tasks.connector_indexers.notion_indexer import (
 
 pytestmark = pytest.mark.unit
 
-_USER_ID = "00000000-0000-0000-0000-000000000001"
-_CONNECTOR_ID = 42
-_SEARCH_SPACE_ID = 1
 
 
 def _make_page(page_id: str = "page-1", title: str = "Test Page", content=None):
@@ -38,9 +36,9 @@ async def test_build_connector_doc_produces_correct_fields():
     doc = _build_connector_doc(
         page,
         markdown,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 
@@ -48,13 +46,13 @@ async def test_build_connector_doc_produces_correct_fields():
     assert doc.unique_id == "abc-123"
     assert doc.document_type == DocumentType.NOTION_CONNECTOR
     assert doc.source_markdown == markdown
-    assert doc.search_space_id == _SEARCH_SPACE_ID
-    assert doc.connector_id == _CONNECTOR_ID
-    assert doc.created_by_id == _USER_ID
+    assert doc.search_space_id == CONNECTOR_SEARCH_SPACE_ID
+    assert doc.connector_id == CONNECTOR_ID
+    assert doc.created_by_id == CONNECTOR_USER_ID
     assert doc.should_summarize is True
     assert doc.metadata["page_title"] == "My Notion Page"
     assert doc.metadata["page_id"] == "abc-123"
-    assert doc.metadata["connector_id"] == _CONNECTOR_ID
+    assert doc.metadata["connector_id"] == CONNECTOR_ID
     assert doc.metadata["document_type"] == "Notion Page"
     assert doc.metadata["connector_type"] == "Notion"
     assert doc.fallback_summary is not None
@@ -67,9 +65,9 @@ async def test_build_connector_doc_summary_disabled():
     doc = _build_connector_doc(
         _make_page(),
         "# content",
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=False,
     )
 
@@ -178,9 +176,9 @@ def notion_mocks(monkeypatch):
 async def _run_index(mocks, **overrides):
     return await index_notion_pages(
         session=mocks["session"],
-        connector_id=overrides.get("connector_id", _CONNECTOR_ID),
-        search_space_id=overrides.get("search_space_id", _SEARCH_SPACE_ID),
-        user_id=overrides.get("user_id", _USER_ID),
+        connector_id=overrides.get("connector_id", CONNECTOR_ID),
+        search_space_id=overrides.get("search_space_id", CONNECTOR_SEARCH_SPACE_ID),
+        user_id=overrides.get("user_id", CONNECTOR_USER_ID),
         start_date=overrides.get("start_date", "2025-01-01"),
         end_date=overrides.get("end_date", "2025-12-31"),
         update_last_indexed=overrides.get("update_last_indexed", True),

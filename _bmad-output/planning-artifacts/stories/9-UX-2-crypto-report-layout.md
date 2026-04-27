@@ -8,7 +8,7 @@ relatedFRs: [FR27 Comprehensive Analysis, FR35 Graceful Degradation]
 relatedNFRs: [NFR-Q1 Accuracy (citations improve verifiability), NFR-UX-2 Professional Presentation]
 priority: P0 (Phase 2 UX — core deliverable)
 estimatedEffort: 3 weeks (1 FE + 0.5 BE) — 2 weeks layout + 1 week charts
-status: ready-for-dev
+status: in-progress
 createdAt: 2026-04-25
 author: Sally (UX) + Mary (BA)
 ---
@@ -297,4 +297,40 @@ Extend existing `detectConflict()` in citation/schema.ts:
 
 ## Review Findings
 
-(To be filled post-dev)
+### Decision Needed
+
+- [x] [Review][Decision] **F3** — TokenHeroCard dead code → **Deferred to 9-UX-3** (cần BE emit metadata, scope lớn). F6/F16/F18/F19 defer theo.
+- [x] [Review][Decision] **F9** — SectionAttributionBadge → **Deferred** (cần design decision placement + data source)
+- [x] [Review][Decision] **F10** — AC14 CitationHarvesterMiddleware → **Accept current approach** (post-hoc parser đủ cho MVP, middleware pipeline defer)
+- [x] [Review][Decision] **F30** — Mobile TOC → **Accept hidden** (`hidden lg:block` OK cho v1, dropdown defer 9-UX-3)
+- [x] [Review][Decision] **F31/F33** — Sub-agent prompts + PriceSparkline → **Deferred** (linked to F3/F10)
+
+### Patches
+
+- [x] [Review][Patch] **F1** — CSS vars chỉ trong `.dark`, light mode broken [globals.css:94-105]
+- [x] [Review][Patch] **F2** — TOC broken: headings thiếu `id` (cần rehype-slug) [report-toc.tsx:82, markdown-text.tsx:287]
+- [x] [Review][Patch] **F4** — parseChartSpec/LLM prompt format mismatch (YAML vs JSON) [chart-spec.ts:37-43, chat_deepagent.py:1084]
+- [x] [Review][Patch] **F5** — CryptoCitationProvider `new Map()` mỗi render → cascade re-renders [crypto-citation-context.tsx:30]
+- [x] [Review][Patch] **F7** — Partially streamed `[[cite:]]` tags hiện raw markup [markdown-text.tsx:109]
+- [x] [Review][Patch] **F8** — SVG gradient ID collision multi VestingChart [vesting-chart.tsx:38]
+- [x] [Review][Patch] **F12** — XSS vector: citation ID không sanitize brackets [markdown-text.tsx:109]
+- [x] [Review][Patch] **F13** — FE/BE regex mismatch: FE stop at `[`, BE allow all [markdown-text.tsx:109, citation_harvester.py:9]
+- [x] [Review][Patch] **F14** — `openCitation` callback không stable (cần useCallback) [crypto-report-layout.tsx:48-51]
+- [x] [Review][Patch] **F15** — EmbeddedChartWrapper routing: `source` override `type` [embedded-chart-wrapper.tsx:56-64]
+- [x] [Review][Patch] **F17** — citation_map emitted AFTER text-end → flash of unstyled citations [stream_new_chat.py:1457]
+- [x] [Review][Defer] **F18** — deriveRisk regex match order [token-hero-card.tsx:48-52] — deferred, phụ thuộc F3 TokenHeroCard
+- [x] [Review][Patch] **F20** — lightweight-charts nhận CSS var() → canvas không resolve [price-chart.tsx:34-55]
+- [x] [Review][Patch] **F23** — isStale compute against render time, not generation time [citation-chip-v2.tsx:29]
+- [x] [Review][Patch] **F24** — HolderPie tooltip assumes percentage [holder-pie.tsx:37]
+- [x] [Review][Patch] **F25** — parseChartSpec unsafe type assertion [chart-spec.ts:46]
+- [x] [Review][Defer] **F6** — TokenLogo TrustWallet URL [token-hero-card.tsx:83] — deferred, phụ thuộc F3 TokenHeroCard
+
+### Deferred
+
+- [x] [Review][Defer] **F11** — CryptoReportLayout thay MarkdownText cho ALL messages [assistant-message.tsx:425] — deferred, pre-existing pattern choice
+- [x] [Review][Defer] **F16** — CoinGecko API polled from client without key [token-hero-card.tsx:32] — deferred, phụ thuộc F3
+- [x] [Review][Defer] **F19** — CoinGecko polling vô hạn cho historical messages [token-hero-card.tsx:40] — deferred, phụ thuộc F3
+- [x] [Review][Defer] **F27** — IntersectionObserver stale closures [report-toc.tsx:88] — deferred, phụ thuộc F2 fix
+- [x] [Review][Defer] **F28** — Two heavy charting libraries overlap [package.json] — deferred, bundle optimization
+- [x] [Review][Defer] **F29** — Module-level mutable state `_pendingUrlCitations` race [markdown-text.tsx:62] — deferred, pre-existing
+- [x] [Review][Defer] **F32** — No E2E Playwright tests (T16) — deferred, post-implementation

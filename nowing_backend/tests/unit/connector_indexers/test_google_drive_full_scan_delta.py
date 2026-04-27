@@ -4,6 +4,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from tests.unit.connector_indexers.conftest import CONNECTOR_USER_ID, CONNECTOR_ID, CONNECTOR_SEARCH_SPACE_ID
 
 from app.tasks.connector_indexers.google_drive_indexer import (
     _index_full_scan,
@@ -12,9 +13,6 @@ from app.tasks.connector_indexers.google_drive_indexer import (
 
 pytestmark = pytest.mark.unit
 
-_USER_ID = "00000000-0000-0000-0000-000000000001"
-_CONNECTOR_ID = 42
-_SEARCH_SPACE_ID = 1
 
 
 def _make_file_dict(file_id: str, name: str, mime: str = "text/plain") -> dict:
@@ -110,9 +108,9 @@ async def _run_full_scan(mocks, *, max_files=500, include_subfolders=False):
         mocks["drive_client"],
         mocks["session"],
         mocks["connector"],
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         "folder-root",
         "My Folder",
         mocks["task_logger"],
@@ -282,9 +280,9 @@ async def test_delta_sync_removals_serial_rest_parallel(monkeypatch):
         MagicMock(),
         mock_session,
         MagicMock(),
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         "folder-root",
         "start-token-abc",
         mock_task_logger,

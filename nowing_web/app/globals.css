@@ -51,6 +51,19 @@
 	--syntax-bg: #f5f5f5;
 	--brand: oklch(0.623 0.214 259.815);
 	--highlight: oklch(0.852 0.199 91.936);
+
+	/* ── Crypto design tokens (9-UX-2) ── */
+	--crypto-gain: oklch(0.5 0.2 142);
+	--crypto-loss: oklch(0.5 0.22 27);
+	--crypto-neutral: oklch(0.45 0 0);
+	--risk-low: oklch(0.5 0.2 142);
+	--risk-medium: oklch(0.6 0.18 78);
+	--risk-high: oklch(0.5 0.22 27);
+	--source-defillama: oklch(0.45 0.2 260);
+	--source-coingecko: oklch(0.45 0.18 142);
+	--source-goplus: oklch(0.45 0.2 220);
+	--source-etherscan: oklch(0.45 0.16 240);
+	--source-dexscreener: oklch(0.45 0.2 300);
 }
 
 .dark {

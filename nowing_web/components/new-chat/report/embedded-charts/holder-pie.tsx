@@ -34,7 +34,7 @@ export function HolderPie({ spec }: { spec: ChartSpec }) {
 					))}
 				</Pie>
 				<Tooltip
-					formatter={(v: number) => [`${v}%`, ""]}
+					formatter={(v: number) => [v <= 100 ? `${v}%` : v.toLocaleString(), ""]}
 					contentStyle={{
 						background: "var(--card)",
 						border: "1px solid var(--border)",

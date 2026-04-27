@@ -20,7 +20,7 @@ function providerIcon(provider: string): string {
 	return PROVIDER_ICONS[provider.toLowerCase()] ?? "🌐";
 }
 
-const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 min
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24h — data was fresh at generation time
 
 function isStale(citation: CryptoDataCitation): boolean {
 	if (citation.stalenessMs !== undefined) return citation.stalenessMs > STALE_THRESHOLD_MS;

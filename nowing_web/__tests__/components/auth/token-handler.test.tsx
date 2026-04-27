@@ -3,7 +3,7 @@
  * Tests for TokenHandler component.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render } from "@testing-library/react";
+import { render, act } from "@testing-library/react";
 
 // --- Module-level mocks ---
 
@@ -174,10 +174,9 @@ describe("TokenHandler", () => {
 			value: { href: "", search: "" },
 		});
 
-		render(<TokenHandler />);
-
-		// Give effects a chance to run
-		await new Promise((r) => setTimeout(r, 50));
+		await act(async () => {
+			render(<TokenHandler />);
+		});
 
 		expect(localStorageMock.getItem("nowing_bearer_token")).toBeNull();
 		expect(setBearerToken).not.toHaveBeenCalled();

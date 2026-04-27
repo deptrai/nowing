@@ -324,3 +324,13 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **AC5 `activeRunSessionsAtom` include abandoned sessions** — spec says `outcome === 'running' || 'abandoned'`; current filter is `running` only. Merge logic in `assistant-message.tsx` works as workaround.
 - **AC7 sync-INSERT fallback on deque overflow** — direct DB INSERT for non-text events when deque full. Currently all types drop oldest on overflow.
 - **T14 byte-equivalence regression test** — linked to AC1/T3; test `/regenerate` vs `/runs/*/stream` byte-level output equivalence.
+
+## Deferred from: code review of 9-UX-2-crypto-report-layout (2026-04-27)
+
+- **F11** — `CryptoReportLayout` wraps ALL messages (non-crypto pay `useAuiState` overhead). Pre-existing pattern, perf impact negligible.
+- **F16** — CoinGecko API called from client without API key. Rate limiting risk. Needs BE proxy. Phụ thuộc TokenHeroCard viability (F3).
+- **F19** — CoinGecko polling indefinitely for all historical messages. 5 reports = 5×30s polls. Phụ thuộc F3.
+- **F27** — `IntersectionObserver` stale closures in ReportTOC. Blocked by F2 (TOC id fix).
+- **F28** — Two charting libraries (recharts 200KB + lightweight-charts 45KB) with overlapping capabilities. Bundle optimization.
+- **F29** — Module-level mutable state `_pendingUrlCitations` / `_urlCiteIdx` race in concurrent rendering. Pre-existing, not caused by 9-UX-2.
+- **F32** — No E2E Playwright tests for crypto report layout. Post-implementation task.

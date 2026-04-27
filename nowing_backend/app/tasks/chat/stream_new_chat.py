@@ -1444,6 +1444,12 @@ async def _stream_agent_events(
         _release_writer()
     # End of writer-protected region.
 
+    # Emit citation_map BEFORE text-end so FE has it when rendering final text
+    if "[[cite:" in accumulated_text:
+        citation_map = harvest_citations(accumulated_text)
+        if citation_map:
+            yield streaming_service.format_data("citation-map", {"citation_map": citation_map})
+
     if current_text_id is not None:
         yield streaming_service.format_text_end(current_text_id)
 
@@ -1453,12 +1459,6 @@ async def _stream_agent_events(
 
     result.accumulated_text = accumulated_text
     result.agent_called_update_memory = called_update_memory
-
-    # Emit citation_map metadata event for crypto reports
-    if "[[cite:" in accumulated_text:
-        citation_map = harvest_citations(accumulated_text)
-        if citation_map:
-            yield streaming_service.format_data("citation-map", {"citation_map": citation_map})
 
     state = await agent.aget_state(config)
     is_interrupted = state.tasks and any(task.interrupts for task in state.tasks)

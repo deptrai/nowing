@@ -1080,9 +1080,7 @@ xKey: date
 yKey: value
 yLabel: TVL (USD)
 source: defillama
-data:
-  - date: "2024-01" value: 1200000000
-  - date: "2024-02" value: 1350000000
+data: [{"date":"2024-01","value":1200000000},{"date":"2024-02","value":1350000000}]
 ```
 
 Chart ID format: {type}-{token}-{metric} (e.g. tvl-uni-total, price-uni-7d).

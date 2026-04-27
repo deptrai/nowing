@@ -15,26 +15,38 @@ interface PricePoint {
 	value?: number;
 }
 
+function resolveCssVar(el: Element, varName: string): string {
+	return getComputedStyle(el).getPropertyValue(varName).trim() || "#888";
+}
+
 export function PriceChart({ spec }: { spec: ChartSpec }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		if (!containerRef.current) return;
 		let chart: { remove: () => void } | null = null;
+		const el = containerRef.current;
 
 		import("lightweight-charts").then(({ createChart, ColorType, LineStyle }) => {
-			if (!containerRef.current) return;
+			if (!el) return;
 
-			chart = createChart(containerRef.current, {
-				width: containerRef.current.clientWidth,
+			// Canvas API cannot resolve CSS var() — must read computed values from DOM
+			const textColor = resolveCssVar(el, "--muted-foreground");
+			const borderColor = resolveCssVar(el, "--border");
+			const gainColor = resolveCssVar(el, "--crypto-gain");
+			const lossColor = resolveCssVar(el, "--crypto-loss");
+			const lineColor = resolveCssVar(el, "--source-coingecko");
+
+			chart = createChart(el, {
+				width: el.clientWidth,
 				height: 200,
 				layout: {
 					background: { type: ColorType.Solid, color: "transparent" },
-					textColor: "var(--muted-foreground)",
+					textColor,
 				},
 				grid: {
-					vertLines: { color: "var(--border)", style: LineStyle.Dotted },
-					horzLines: { color: "var(--border)", style: LineStyle.Dotted },
+					vertLines: { color: borderColor, style: LineStyle.Dotted },
+					horzLines: { color: borderColor, style: LineStyle.Dotted },
 				},
 				rightPriceScale: { borderVisible: false },
 				timeScale: { borderVisible: false },
@@ -46,12 +58,12 @@ export function PriceChart({ spec }: { spec: ChartSpec }) {
 
 			if (hasOHLC) {
 				const series = chart.addCandlestickSeries({
-					upColor: "var(--crypto-gain)",
-					downColor: "var(--crypto-loss)",
-					borderUpColor: "var(--crypto-gain)",
-					borderDownColor: "var(--crypto-loss)",
-					wickUpColor: "var(--crypto-gain)",
-					wickDownColor: "var(--crypto-loss)",
+					upColor: gainColor,
+					downColor: lossColor,
+					borderUpColor: gainColor,
+					borderDownColor: lossColor,
+					wickUpColor: gainColor,
+					wickDownColor: lossColor,
 				});
 				series.setData(
 					data.map((d) => ({
@@ -64,7 +76,7 @@ export function PriceChart({ spec }: { spec: ChartSpec }) {
 				);
 			} else {
 				const series = chart.addLineSeries({
-					color: "var(--source-coingecko)",
+					color: lineColor,
 					lineWidth: 2,
 				});
 				series.setData(

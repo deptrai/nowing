@@ -187,7 +187,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --strict-markers -ra --durations=20 -n auto"
+addopts = "-v --tb=short --strict-markers -ra --durations=20 -n auto --dist=loadfile"
 markers = [
     "unit: pure logic tests, no DB or external services",
     "integration: tests that require a real PostgreSQL database or live external APIs",

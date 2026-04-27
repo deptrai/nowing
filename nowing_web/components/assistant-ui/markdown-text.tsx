@@ -106,9 +106,18 @@ function preprocessMarkdown(content: string): string {
 	content = content.replace(/([^\n])(#{1,6}\s)/g, "$1\n\n$2");
 
 	// [[cite:id]]value[[/cite]] → [cryptocite:id:value] for downstream rendering
-	content = content.replace(/\[\[cite:([^\]]+)\]\]([^\[]*)\[\[\/cite\]\]/g, (_, id, value) => {
+	// F13: use [\s\S]*? to allow values containing '[' (matches BE regex behaviour)
+	content = content.replace(/\[\[cite:([^\]]+)\]\]([\s\S]*?)\[\[\/cite\]\]/g, (_, id, value) => {
+		// F12: sanitize id — strip chars that break [cryptocite:id:value] parsing
+		const safeId = id.trim().replace(/[\[\]:]/g, "_");
 		const safe = value.trim().replace(/\s+/g, " ");
-		return `[cryptocite:${id}:${safe}]`;
+		return `[cryptocite:${safeId}:${safe}]`;
+	});
+	// F7: strip incomplete opening tags left by streaming (no matching [[/cite]])
+	content = content.replace(/\[\[cite:[^\]]+\]\][\s\S]*?(?=\[\[cite:|$)/g, (match) => {
+		// Only remove if there's no closing tag in this segment
+		if (!match.includes("[[/cite]]")) return "";
+		return match;
 	});
 
 	return content;
@@ -283,9 +292,25 @@ function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
 	);
 }
 
+function slugifyHeading(children: ReactNode): string {
+	const text =
+		typeof children === "string"
+			? children
+			: Array.isArray(children)
+				? children.map((c) => (typeof c === "string" ? c : "")).join("")
+				: "";
+	// Match report-toc.tsx slugify() exactly so TOC getElementById lookups work
+	return text
+		.toLowerCase()
+		.replace(/[^\w\s-]/g, "")
+		.trim()
+		.replace(/\s+/g, "-");
+}
+
 const defaultComponents = memoizeMarkdownComponents({
 	h1: ({ className, children, ...props }) => (
 		<h1
+			id={slugifyHeading(children)}
 			className={cn(
 				"aui-md-h1 mb-8 scroll-m-20 font-extrabold text-4xl tracking-tight last:mb-0",
 				className
@@ -297,6 +322,7 @@ const defaultComponents = memoizeMarkdownComponents({
 	),
 	h2: ({ className, children, ...props }) => (
 		<h2
+			id={slugifyHeading(children)}
 			className={cn(
 				"aui-md-h2 mt-8 mb-4 scroll-m-20 font-semibold text-3xl tracking-tight first:mt-0 last:mb-0",
 				className

@@ -20,68 +20,82 @@ from langchain.agents.middleware import AgentMiddleware, AgentState
 # patches, but a module-level monkeypatch on litellm.acompletion is always hit.
 # Applied only when ANTHROPIC_API_KEY is set (real API mode).
 # ---------------------------------------------------------------------------
+import logging as _logging
+
 _rpm_lock_holder: list = [None]  # lazy asyncio.Lock (can't create at import time)
 _rpm_last_call: list[float] = [0.0]
 _RATE_LIMIT_INTERVAL = 60 / 200  # 200 RPM — keep parallel sub-agent fan-out fast (AC3)
+_logger = _logging.getLogger("test-llm")
 
-if os.getenv("ANTHROPIC_API_KEY"):
-    import litellm as _litellm
 
-    # Disable litellm's internal retries so all retries go through our throttler.
-    # Without this, litellm retries on 429 bypass the module-level patch entirely.
-    _litellm.num_retries = 0
+def _build_throttled_acompletion(original_fn):
+    """Build a rate-limited wrapper around litellm.acompletion."""
 
-    if not getattr(_litellm.acompletion, "_rate_limited", False):
-        _orig_litellm_acompletion = _litellm.acompletion
+    async def _throttled_acompletion(*args, **kwargs):
+        _MAX_ATTEMPTS = 5
+        _retry_delay = 10.0
+        for _attempt in range(_MAX_ATTEMPTS):
+            if _rpm_lock_holder[0] is None:
+                _rpm_lock_holder[0] = _asyncio.Lock()
+            async with _rpm_lock_holder[0]:
+                now = _time_mod.monotonic()
+                gap = _RATE_LIMIT_INTERVAL - (now - _rpm_last_call[0])
+                if gap > 0:
+                    await _asyncio.sleep(gap)
+                _rpm_last_call[0] = _time_mod.monotonic()
+            try:
+                _logger.debug(
+                    "attempt=%d/%d model=%s",
+                    _attempt + 1, _MAX_ATTEMPTS,
+                    kwargs.get("model") or (args[0] if args else None),
+                )
+                kwargs["num_retries"] = 0
+                _response = await original_fn(*args, **kwargs)
+                _logger.debug("success")
+                return _response
+            except Exception as _exc:
+                _exc_str = str(_exc).lower()
+                _logger.debug("error=%s: %s", type(_exc).__name__, _exc)
+                is_rate_limit = "429" in _exc_str or "rate_limit" in _exc_str or "rate limit" in _exc_str
+                is_transient = ("502" in _exc_str or "bad gateway" in _exc_str or "503" in _exc_str
+                                or "server disconnected" in _exc_str or "internalservererror" in _exc_str
+                                or "disconnected" in _exc_str)
+                if _attempt < _MAX_ATTEMPTS - 1:
+                    if is_rate_limit:
+                        _logger.debug("rate-limited, backing off %.1fs (caller-local)", _retry_delay)
+                        await _asyncio.sleep(_retry_delay)
+                        _retry_delay = min(_retry_delay * 2, 60.0)
+                        continue
+                    elif is_transient:
+                        _logger.debug("transient error, retry in 5s")
+                        await _asyncio.sleep(5.0)
+                        continue
+                raise
 
-        async def _throttled_acompletion(*args, **kwargs):
-            _MAX_ATTEMPTS = 5  # tolerate up to 4 x 429/transient before giving up
-            _retry_delay = 10.0  # initial backoff on 429 (seconds, outside lock)
-            for _attempt in range(_MAX_ATTEMPTS):
-                if _rpm_lock_holder[0] is None:
-                    _rpm_lock_holder[0] = _asyncio.Lock()
-                async with _rpm_lock_holder[0]:
-                    now = _time_mod.monotonic()
-                    gap = _RATE_LIMIT_INTERVAL - (now - _rpm_last_call[0])
-                    if gap > 0:
-                        await _asyncio.sleep(gap)
-                    _rpm_last_call[0] = _time_mod.monotonic()
-                try:
-                    print(
-                        f"[TEST-LLM] attempt={_attempt + 1}/{_MAX_ATTEMPTS} model={kwargs.get('model') or (args[0] if args else None)}"
-                    )
-                    # Force num_retries=0 — litellm must NOT retry internally.
-                    kwargs["num_retries"] = 0
-                    _response = await _orig_litellm_acompletion(*args, **kwargs)
-                    print("[TEST-LLM] success")
-                    return _response
-                except Exception as _exc:
-                    _exc_str = str(_exc).lower()
-                    print(f"[TEST-LLM] error={type(_exc).__name__}: {_exc}")
-                    is_rate_limit = "429" in _exc_str or "rate_limit" in _exc_str or "rate limit" in _exc_str
-                    is_transient = ("502" in _exc_str or "bad gateway" in _exc_str or "503" in _exc_str
-                                    or "server disconnected" in _exc_str or "internalservererror" in _exc_str
-                                    or "disconnected" in _exc_str)
-                    if _attempt < _MAX_ATTEMPTS - 1:
-                        if is_rate_limit:
-                            # Sleep OUTSIDE the lock — only delays THIS caller.
-                            # Never mutate _rpm_last_call here: that would cascade
-                            # the penalty to ALL concurrent callers causing a
-                            # 65-second chain reaction across parallel agents.
-                            print(f"[TEST-LLM] rate-limited, backing off {_retry_delay:.1f}s (caller-local)")
-                            await _asyncio.sleep(_retry_delay)
-                            _retry_delay = min(_retry_delay * 2, 60.0)  # exp backoff, cap 60s
-                            continue
-                        elif is_transient:
-                            print("[TEST-LLM] transient error, retry in 5s")
-                            await _asyncio.sleep(5.0)
-                            continue
-                    raise
+    _throttled_acompletion._rate_limited = True  # type: ignore[attr-defined]
+    return _throttled_acompletion
 
-        _throttled_acompletion._rate_limited = True  # type: ignore[attr-defined]
-        _litellm.acompletion = _throttled_acompletion
 
 import pytest
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _patch_litellm_rate_limiter():
+    """Install rate-limited litellm.acompletion wrapper with proper teardown."""
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        yield
+        return
+
+    import litellm as _litellm
+
+    _orig_acompletion = _litellm.acompletion
+    _orig_num_retries = getattr(_litellm, "num_retries", 2)
+
+    _litellm.num_retries = 0
+    _litellm.acompletion = _build_throttled_acompletion(_orig_acompletion)
+    yield
+    _litellm.acompletion = _orig_acompletion
+    _litellm.num_retries = _orig_num_retries
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.memory import MemorySaver
@@ -314,46 +328,6 @@ async def agent_factory():
             user_id=user_id,
         )
 
-        _agent_cls = type(agent)
-        _orig_ainvoke = _agent_cls.ainvoke
-        _orig_astream = _agent_cls.astream
-
-        if not getattr(_agent_cls.ainvoke, "_test_debug_wrapped", False):
-            async def _debug_ainvoke(self, *args, **kwargs):
-                print("[TEST-AINVOKE] start", file=sys.stderr, flush=True)
-                try:
-                    result = await _orig_ainvoke(self, *args, **kwargs)
-                    print("[TEST-AINVOKE] success", file=sys.stderr, flush=True)
-                    return result
-                except Exception as exc:
-                    print(
-                        f"[TEST-AINVOKE] error={type(exc).__name__}: {exc}",
-                        file=sys.stderr,
-                        flush=True,
-                    )
-                    raise
-
-            _debug_ainvoke._test_debug_wrapped = True
-            _agent_cls.ainvoke = _debug_ainvoke
-
-        if not getattr(_agent_cls.astream, "_test_debug_wrapped", False):
-            async def _debug_astream(self, *args, **kwargs):
-                print("[TEST-ASTREAM] start", file=sys.stderr, flush=True)
-                try:
-                    async for chunk in _orig_astream(self, *args, **kwargs):
-                        yield chunk
-                    print("[TEST-ASTREAM] done", file=sys.stderr, flush=True)
-                except Exception as exc:
-                    print(
-                        f"[TEST-ASTREAM] error={type(exc).__name__}: {exc}",
-                        file=sys.stderr,
-                        flush=True,
-                    )
-                    raise
-
-            _debug_astream._test_debug_wrapped = True
-            _agent_cls.astream = _debug_astream
-
         # Recursion cap: inject recursion_limit so the orchestrator cannot loop
         # indefinitely when ParallelSpawnDirectiveMiddleware falls back to real LLM.
         # Superstep 1 = orchestrator LLM (spawns 4 tasks), superstep 2 = 4 parallel
@@ -370,17 +344,13 @@ async def agent_factory():
                     _exc_name = type(_exc).__name__.lower()
                     _exc_msg = str(_exc).lower()
                     if "recursion" in _exc_name or "recursion" in _exc_msg:
-                        print(
-                            f"[TEST-AINVOKE] recursion cap hit — returning empty result",
-                            file=sys.stderr,
-                            flush=True,
-                        )
+                        _logger.debug("recursion cap hit — returning empty result")
                         return {}
                     raise
 
             agent.ainvoke = _capped_ainvoke
 
-        print(f"[TEST-AGENT] class={_agent_cls}", file=sys.stderr, flush=True)
+        _logger.debug("agent class=%s", type(agent))
         return agent
 
     return _create
@@ -467,7 +437,7 @@ def mock_pre_agent_middlewares():
         yield
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def query_sample_100() -> list[str]:
     """100 representative queries for P95 benchmark.
 
