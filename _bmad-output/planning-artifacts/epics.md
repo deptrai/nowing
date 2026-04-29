@@ -378,6 +378,39 @@ So that mô hình kinh doanh không bị lỗ do chi phí LLM và Storage, áp d
 **Then** API `/api/v1/documents` từ chối xử lý và trả về lỗi `403/429` (Quota Exceeded)
 **And** UI nhận phản hồi từ API và hiển thị một thông báo / Modal nhỏ để up-sell giới thiệu họ lên gói Pro để tải file tiếp.
 
+#### Story 5.5: Admin Seed Account & Admin-Approval Subscription Flow
+As a Kỹ sư / Admin,
+I want hệ thống tự seed tài khoản admin và hỗ trợ manual approval flow khi Stripe không khả dụng,
+So that development/testing không bị chặn khi thiếu Stripe credentials.
+
+📄 **Story file**: [`stories/5-5-admin-seed-and-approval-flow.md`](./stories/5-5-admin-seed-and-approval-flow.md) | **Done**
+
+**Key ACs:** Admin seeded via Alembic migration (idempotent), admin-approval fallback cho subscription khi Stripe fails, superuser-gated endpoints, `/admin/subscription-requests` UI.
+
+---
+
+#### Story 5.6: Admin-only Model Configuration (LLM / Image / Vision)
+As a Quản trị viên,
+I want chỉ mình có quyền thêm/sửa/xóa LLM/Image/Vision model configs,
+So that regular users không thể thêm BYOK credentials hay thay đổi cấu hình model.
+
+📄 **Story file**: [`stories/5-6-admin-only-model-config.md`](./stories/5-6-admin-only-model-config.md) | **Done**
+
+**Key ACs:** Superuser-only CUD, `user_id=NULL` cho admin-created configs, DB migration nullable `user_id`, Add/Edit/Delete buttons ẩn với regular user.
+
+---
+
+#### Story 5.7: Token PAYG Overhaul — Chuyển từ mua trang ETL sang mua token LLM
+As a User,
+I want mua thêm LLM token khi hết quota (pay-as-you-go),
+So that tôi không cần nâng plan vẫn dùng được thêm.
+
+📄 **Story file**: [`stories/5-7-token-payg-overhaul.md`](./stories/5-7-token-payg-overhaul.md) | **Done**
+
+**Key ACs:** PAYG "Buy Pages" cũ xóa hoàn toàn, custom-amount token topup ($1=100k tokens), `purchased_tokens` column, admin-approval fallback khi Stripe fails, Stripe Customer Portal, sidebar token meter.
+
+---
+
 ### Epic 6: Tặng Gói Cước & Mua Quà (Gift Subscription)
 Người dùng có thể mua gói PRO tặng cho người khác thông qua gift code sinh tự động sau Stripe payment. Người nhận quà vào trang /redeem để kích hoạt — tạo kênh acquisition organic không cần marketing, đồng thời hỗ trợ admin-approval fallback khi Stripe gặp sự cố.
 **FRs covered:** FR18, FR19, FR20, FR21, FR22, FR23

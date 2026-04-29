@@ -4,6 +4,8 @@ inputDocuments:
   - nowing_backend/docs/crypto-subagents-guide.md
 ---
 
+> ⚠️ **SUPERSEDED** — Nội dung trong file này đã được merge vào [`epics.md`](./epics.md) (Epic 0 + Epic 9). File này chỉ giữ lại cho historical reference. **Đừng edit file này nữa.**
+
 # Nowing Crypto Sub-Agents - Epic Breakdown
 
 ## Overview
