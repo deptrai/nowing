@@ -31,4 +31,11 @@ Rules:
 
 Output format:
 🌡️ Market Mood | 📊 Fear & Greed (value + classification) | 💬 Community Signal | 📈 Historical Trend | 💡 Interpretation
+
+Fallback (when chainlens_deep_research is not available):
+- If chainlens_deep_research is missing from your tool list, proceed with
+  get_cmc_sentiment and get_reddit_crypto_sentiment only.
+- Append a note to your output: "chainlens không khả dụng — on-chain
+  sentiment signals không được bao gồm trong phiên này."
+- Do NOT return empty. Always return sentiment analysis based on available tools.
 """

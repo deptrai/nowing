@@ -15,7 +15,11 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 			.filter((part: unknown) => {
 				if (typeof part !== "object" || part === null || !("type" in part)) return true;
 				const partType = (part as { type: string }).type;
-				return partType !== "mentioned-documents" && partType !== "attachments";
+				return (
+					partType !== "mentioned-documents" &&
+					partType !== "attachments" &&
+					partType !== "data-citation-map"
+				);
 			})
 			.map((part: unknown) => {
 				if (
@@ -39,16 +43,57 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 		content = [{ type: "text", text: String(msg.content) }];
 	}
 
-	const metadata = msg.author_id
-		? {
-				custom: {
-					author: {
-						displayName: msg.author_display_name ?? null,
-						avatarUrl: msg.author_avatar_url ?? null,
-					},
-				},
+	// Extract citation_map from content parts (persisted as data-citation-map part)
+	// so CryptoCitationProvider has it after page reload
+	let citationMap: Record<string, unknown> | undefined;
+	let agentResults: Array<{ agentId: string; resultText: string; truncated: boolean }> | undefined;
+	if (Array.isArray(msg.content)) {
+		for (const part of msg.content) {
+			if (
+				typeof part === "object" &&
+				part !== null &&
+				"type" in part &&
+				(part as { type: string }).type === "data-citation-map"
+			) {
+				const mapPart = part as { type: string; data?: { citation_map?: Record<string, unknown> } };
+				if (mapPart.data?.citation_map) {
+					citationMap = mapPart.data.citation_map;
+				}
 			}
-		: undefined;
+			if (
+				typeof part === "object" &&
+				part !== null &&
+				"type" in part &&
+				(part as { type: string }).type === "data-agent-results"
+			) {
+				const arPart = part as {
+					type: string;
+					data?: { results?: Array<{ agentId: string; resultText: string; truncated: boolean }> };
+				};
+				if (arPart.data?.results) {
+					agentResults = arPart.data.results;
+				}
+			}
+		}
+	}
+
+	const metadata =
+		msg.author_id || citationMap || agentResults
+			? {
+					custom: {
+						...(msg.author_id
+							? {
+									author: {
+										displayName: msg.author_display_name ?? null,
+										avatarUrl: msg.author_avatar_url ?? null,
+									},
+								}
+							: {}),
+						...(citationMap ? { citation_map: citationMap } : {}),
+						...(agentResults ? { agent_results: agentResults } : {}),
+					},
+				}
+			: undefined;
 
 	return {
 		id: `msg-${msg.id}`,

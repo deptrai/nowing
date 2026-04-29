@@ -19,7 +19,7 @@ export default defineConfig({
 	expect: { timeout: 10_000 },
 
 	use: {
-		baseURL: process.env.BASE_URL || "http://localhost:3999",
+		baseURL: process.env.BASE_URL || "http://localhost:4998",
 		actionTimeout: 15_000,
 		navigationTimeout: 30_000,
 

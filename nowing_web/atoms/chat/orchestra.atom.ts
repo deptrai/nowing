@@ -43,6 +43,7 @@ export function deriveEscalationLevel(waits: RateGateEvent[]): 0 | 1 | 2 {
 
 export type FailReason =
 	| "rate_limit"
+	| "rate_limit_exhausted"
 	| "timeout"
 	| "unavailable"
 	| "circuit_open"
@@ -74,6 +75,10 @@ export interface OrchestraAgent {
 	sourcesFetched: Source[];
 	factsCapturedCount: number;
 	modelAttribution: { model: string; provider: string; tier?: string } | null;
+	// Agent result text (streamed after orchestra-done)
+	resultText?: string;
+	resultLength?: number;
+	resultTruncated?: boolean;
 }
 
 export interface OrchestraSession {
@@ -108,6 +113,13 @@ export interface OrchestraState {
 	sessions: Map<string /* sessionId = "run-{uuid}" */, OrchestraSession>;
 	/** sessionId of the most recently spawned session (T19). */
 	lastSpawnedSessionId: string | null;
+	/** Pending data-agent-result events keyed by `${sessionId}:${agentId}` —
+	 *  buffered when arriving before orchestra-spawn or after orchestra-complete.
+	 *  Drained on matching orchestra-spawn. */
+	pendingAgentResults: Map<
+		string,
+		{ resultText: string; resultLength: number; truncated: boolean }
+	>;
 }
 
 // ─── Atoms ────────────────────────────────────────────────────────────────────
@@ -115,6 +127,7 @@ export interface OrchestraState {
 export const orchestraStateAtom = atom<OrchestraState>({
 	sessions: new Map(),
 	lastSpawnedSessionId: null,
+	pendingAgentResults: new Map(),
 });
 
 // ─── Derived atoms ────────────────────────────────────────────────────────────
@@ -194,6 +207,16 @@ type OrchestraSSEEvent =
 	| {
 			type: "data-orchestra-llm-call";
 			data: { sessionId: string; agentId: string };
+	  }
+	| {
+			type: "data-agent-result";
+			data: {
+				sessionId?: string;
+				agentId: string;
+				resultText: string;
+				resultLength: number;
+				truncated: boolean;
+			};
 	  };
 
 function p95Bucket(ms: number): "fast" | "normal" | "slow" {
@@ -230,6 +253,13 @@ export function applyOrchestraEvent(
 		const { sessionId, agentId, agentName, agentType } = event.data;
 		const existing = sessions.get(sessionId);
 		const agents: Map<string, OrchestraAgent> = existing ? new Map(existing.agents) : new Map();
+		// Drain any pending agent-result that arrived before this spawn.
+		const pendingKey = `${sessionId}:${agentId}`;
+		const pending = state.pendingAgentResults.get(pendingKey);
+		const pendingAgentResults = pending
+			? new Map(state.pendingAgentResults)
+			: state.pendingAgentResults;
+		if (pending) pendingAgentResults.delete(pendingKey);
 		agents.set(agentId, {
 			agentId,
 			agentName,
@@ -241,6 +271,13 @@ export function applyOrchestraEvent(
 			sourcesFetched: [],
 			factsCapturedCount: 0,
 			modelAttribution: null,
+			...(pending
+				? {
+						resultText: pending.resultText,
+						resultLength: pending.resultLength,
+						resultTruncated: pending.truncated,
+					}
+				: {}),
 		});
 		const session: OrchestraSession = existing
 			? { ...existing, agents }
@@ -262,7 +299,7 @@ export function applyOrchestraEvent(
 					completedAgentMs: [],
 				};
 		sessions.set(sessionId, session);
-		return { sessions, lastSpawnedSessionId: sessionId };
+		return { ...state, sessions, lastSpawnedSessionId: sessionId, pendingAgentResults };
 	}
 
 	if (event.type === "orchestra-update") {
@@ -402,17 +439,44 @@ export function applyOrchestraEvent(
 
 		// P13: cap retained completed sessions at MAX_RETAINED to bound memory.
 		// Evict the oldest completed sessions while keeping any still-running ones
-		// and the just-completed one.
+		// and the just-completed one. Also evict their pending agent-result entries
+		// (otherwise pendingAgentResults grows unbounded across long sessions).
 		const MAX_RETAINED = 5;
 		const completedEntries = Array.from(sessions.entries())
 			.filter(([, s]) => s.completedAt !== null)
 			.sort(([, a], [, b]) => (a.completedAt ?? 0) - (b.completedAt ?? 0));
+		const evictedSessionIds: string[] = [];
 		while (completedEntries.length > MAX_RETAINED) {
 			const [staleId] = completedEntries.shift()!;
 			sessions.delete(staleId);
+			evictedSessionIds.push(staleId);
+		}
+		// Drop pending entries for evicted sessions.
+		let pendingAgentResults = state.pendingAgentResults;
+		if (evictedSessionIds.length > 0) {
+			pendingAgentResults = new Map(state.pendingAgentResults);
+			for (const sid of evictedSessionIds) {
+				for (const key of pendingAgentResults.keys()) {
+					if (key.startsWith(`${sid}:`)) pendingAgentResults.delete(key);
+				}
+			}
+		}
+		// Hard cap: never let pendingAgentResults exceed MAX_PENDING.
+		const MAX_PENDING = 50;
+		if (pendingAgentResults.size > MAX_PENDING) {
+			pendingAgentResults =
+				pendingAgentResults === state.pendingAgentResults
+					? new Map(state.pendingAgentResults)
+					: pendingAgentResults;
+			const overflow = pendingAgentResults.size - MAX_PENDING;
+			const iter = pendingAgentResults.keys();
+			for (let i = 0; i < overflow; i++) {
+				const k = iter.next().value;
+				if (k) pendingAgentResults.delete(k);
+			}
 		}
 
-		return { ...state, sessions };
+		return { ...state, sessions, pendingAgentResults };
 	}
 
 	if (event.type === "data-orchestra-narration") {
@@ -489,6 +553,50 @@ export function applyOrchestraEvent(
 		const llmCallEvents = [...session.llmCallEvents, { ts: Date.now(), agentId }].slice(-200);
 		sessions.set(sessionId, { ...session, llmCallEvents });
 		return { ...state, sessions };
+	}
+
+	if (event.type === "data-agent-result") {
+		const { sessionId, agentId, resultText, resultLength, truncated } = event.data;
+		// Resolve session: prefer explicit sessionId (BE _orchestra_writer stamps it);
+		// fall back to lastSpawnedSessionId for safety.
+		const resolvedSessionId = sessionId ?? state.lastSpawnedSessionId ?? null;
+		const session = resolvedSessionId ? sessions.get(resolvedSessionId) : undefined;
+		const agent = session?.agents.get(agentId);
+
+		if (session && agent) {
+			// Happy path: session and agent slot both exist → patch.
+			const agents = new Map(session.agents);
+			agents.set(agentId, {
+				...agent,
+				resultText,
+				resultLength,
+				resultTruncated: truncated,
+			});
+			sessions.set(session.sessionId, { ...session, agents });
+			return { ...state, sessions };
+		}
+
+		// Buffer when session/agent slot doesn't exist yet (event arrived before
+		// orchestra-spawn) or session is already complete (event arrived after
+		// orchestra-complete). Drained on next matching orchestra-spawn or evicted
+		// when its session is evicted from the sessions Map (orchestra-complete).
+		if (resolvedSessionId) {
+			const pendingAgentResults = new Map(state.pendingAgentResults);
+			pendingAgentResults.set(`${resolvedSessionId}:${agentId}`, {
+				resultText,
+				resultLength,
+				truncated,
+			});
+			// Hard cap: prevent unbounded growth (FIFO eviction of oldest entries).
+			const MAX_PENDING = 50;
+			while (pendingAgentResults.size > MAX_PENDING) {
+				const oldest = pendingAgentResults.keys().next().value;
+				if (oldest) pendingAgentResults.delete(oldest);
+				else break;
+			}
+			return { ...state, pendingAgentResults };
+		}
+		return state;
 	}
 
 	return state;

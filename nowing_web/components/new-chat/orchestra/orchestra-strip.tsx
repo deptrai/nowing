@@ -33,8 +33,6 @@ function gridColsForCount(n: number): string {
 }
 
 interface OrchestraStripProps {
-	/** Phase 9.2 placeholder — background pinning. Ignored in v1. */
-	pinned?: boolean;
 	className?: string;
 	/** T20: render a specific session by id instead of activeOrchestraSessionAtom. */
 	sessionId?: string;
@@ -52,7 +50,6 @@ interface OrchestraStripProps {
  * - `default`       — full strip with all agent rows
  * - `single-agent`  — no strip wrapper, just inline status
  * - `collapsed`     — compact 1-line "N/M agents done"
- * - `pinned`        — Phase 9.2 placeholder
  */
 export function OrchestraStrip({
 	className,
@@ -230,7 +227,7 @@ export function OrchestraStrip({
 			{/* Cancelled state footnote (AC5) */}
 			{session.outcome === "cancelled" && (
 				<p className="mt-1 text-xs text-muted-foreground/70">
-					In-flight tokens vẫn được tính (best-effort cancel)
+					In-flight tokens are still counted (best-effort cancel)
 				</p>
 			)}
 
@@ -242,6 +239,7 @@ export function OrchestraStrip({
 					totalCount={totalCount}
 					isComplete={isComplete}
 					sessionId={session.sessionId}
+					onRetry={onResume}
 				/>
 			)}
 		</div>

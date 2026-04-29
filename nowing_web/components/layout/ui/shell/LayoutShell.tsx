@@ -1,7 +1,6 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useState } from "react";
 import { activeTabAtom, type Tab } from "@/atoms/tabs/tabs.atom";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -277,73 +276,37 @@ export function LayoutShell({
 							onOpenChange={closeSlideout}
 							ariaLabel={panelAriaLabel}
 						>
-							<AnimatePresence mode="popLayout" initial={false}>
+							<div className="h-full flex flex-col">
 								{activeSlideoutPanel === "inbox" && inbox && (
-									<motion.div
-										key="inbox"
-										className="h-full flex flex-col"
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										exit={{ opacity: 0 }}
-										transition={{ duration: 0.15 }}
-									>
-										<InboxSidebarContent
-											onOpenChange={(open) => closeSlideout(open)}
-											comments={inbox.comments}
-											status={inbox.status}
-											totalUnreadCount={inbox.totalUnreadCount}
-											onCloseMobileSidebar={() => setMobileMenuOpen(false)}
-										/>
-									</motion.div>
+									<InboxSidebarContent
+										onOpenChange={(open) => closeSlideout(open)}
+										comments={inbox.comments}
+										status={inbox.status}
+										totalUnreadCount={inbox.totalUnreadCount}
+										onCloseMobileSidebar={() => setMobileMenuOpen(false)}
+									/>
 								)}
 								{activeSlideoutPanel === "announcements" && (
-									<motion.div
-										key="announcements"
-										className="h-full flex flex-col"
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										exit={{ opacity: 0 }}
-										transition={{ duration: 0.15 }}
-									>
-										<AnnouncementsSidebarContent
-											onOpenChange={(open) => closeSlideout(open)}
-											onCloseMobileSidebar={() => setMobileMenuOpen(false)}
-										/>
-									</motion.div>
+									<AnnouncementsSidebarContent
+										onOpenChange={(open) => closeSlideout(open)}
+										onCloseMobileSidebar={() => setMobileMenuOpen(false)}
+									/>
 								)}
 								{activeSlideoutPanel === "shared" && allSharedChatsPanel && (
-									<motion.div
-										key="shared"
-										className="h-full flex flex-col"
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										exit={{ opacity: 0 }}
-										transition={{ duration: 0.15 }}
-									>
-										<AllSharedChatsSidebarContent
-											onOpenChange={(open) => closeSlideout(open)}
-											searchSpaceId={allSharedChatsPanel.searchSpaceId}
-											onCloseMobileSidebar={() => setMobileMenuOpen(false)}
-										/>
-									</motion.div>
+									<AllSharedChatsSidebarContent
+										onOpenChange={(open) => closeSlideout(open)}
+										searchSpaceId={allSharedChatsPanel.searchSpaceId}
+										onCloseMobileSidebar={() => setMobileMenuOpen(false)}
+									/>
 								)}
 								{activeSlideoutPanel === "private" && allPrivateChatsPanel && (
-									<motion.div
-										key="private"
-										className="h-full flex flex-col"
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										exit={{ opacity: 0 }}
-										transition={{ duration: 0.15 }}
-									>
-										<AllPrivateChatsSidebarContent
-											onOpenChange={(open) => closeSlideout(open)}
-											searchSpaceId={allPrivateChatsPanel.searchSpaceId}
-											onCloseMobileSidebar={() => setMobileMenuOpen(false)}
-										/>
-									</motion.div>
+									<AllPrivateChatsSidebarContent
+										onOpenChange={(open) => closeSlideout(open)}
+										searchSpaceId={allPrivateChatsPanel.searchSpaceId}
+										onCloseMobileSidebar={() => setMobileMenuOpen(false)}
+									/>
 								)}
-							</AnimatePresence>
+							</div>
 						</SidebarSlideOutPanel>
 
 						{/* Mobile Documents Sidebar - separate (not part of slide-out group) */}
@@ -425,67 +388,31 @@ export function LayoutShell({
 							onOpenChange={closeSlideout}
 							ariaLabel={panelAriaLabel}
 						>
-							<AnimatePresence mode="popLayout" initial={false}>
+							<div className="h-full flex flex-col">
 								{activeSlideoutPanel === "inbox" && inbox && (
-									<motion.div
-										key="inbox"
-										className="h-full flex flex-col"
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										exit={{ opacity: 0 }}
-										transition={{ duration: 0.15 }}
-									>
-										<InboxSidebarContent
-											onOpenChange={(open) => closeSlideout(open)}
-											comments={inbox.comments}
-											status={inbox.status}
-											totalUnreadCount={inbox.totalUnreadCount}
-										/>
-									</motion.div>
+									<InboxSidebarContent
+										onOpenChange={(open) => closeSlideout(open)}
+										comments={inbox.comments}
+										status={inbox.status}
+										totalUnreadCount={inbox.totalUnreadCount}
+									/>
 								)}
 								{activeSlideoutPanel === "announcements" && (
-									<motion.div
-										key="announcements"
-										className="h-full flex flex-col"
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										exit={{ opacity: 0 }}
-										transition={{ duration: 0.15 }}
-									>
-										<AnnouncementsSidebarContent onOpenChange={(open) => closeSlideout(open)} />
-									</motion.div>
+									<AnnouncementsSidebarContent onOpenChange={(open) => closeSlideout(open)} />
 								)}
 								{activeSlideoutPanel === "shared" && allSharedChatsPanel && (
-									<motion.div
-										key="shared"
-										className="h-full flex flex-col"
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										exit={{ opacity: 0 }}
-										transition={{ duration: 0.15 }}
-									>
-										<AllSharedChatsSidebarContent
-											onOpenChange={(open) => closeSlideout(open)}
-											searchSpaceId={allSharedChatsPanel.searchSpaceId}
-										/>
-									</motion.div>
+									<AllSharedChatsSidebarContent
+										onOpenChange={(open) => closeSlideout(open)}
+										searchSpaceId={allSharedChatsPanel.searchSpaceId}
+									/>
 								)}
 								{activeSlideoutPanel === "private" && allPrivateChatsPanel && (
-									<motion.div
-										key="private"
-										className="h-full flex flex-col"
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										exit={{ opacity: 0 }}
-										transition={{ duration: 0.15 }}
-									>
-										<AllPrivateChatsSidebarContent
-											onOpenChange={(open) => closeSlideout(open)}
-											searchSpaceId={allPrivateChatsPanel.searchSpaceId}
-										/>
-									</motion.div>
+									<AllPrivateChatsSidebarContent
+										onOpenChange={(open) => closeSlideout(open)}
+										searchSpaceId={allPrivateChatsPanel.searchSpaceId}
+									/>
 								)}
-							</AnimatePresence>
+							</div>
 						</SidebarSlideOutPanel>
 					</div>
 

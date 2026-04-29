@@ -1297,6 +1297,58 @@ class Report(BaseModel, TimestampMixin):
     thread = relationship("NewChatThread")
 
 
+class ScenarioResult(Base):
+    """Cached scenario re-synthesis results keyed by (thread_id, scenario, assumptions_hash)."""
+
+    __tablename__ = "scenario_results"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    thread_id = Column(
+        Integer,
+        ForeignKey("new_chat_threads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    scenario = Column(String(20), nullable=False)
+    assumptions_hash = Column(String(64), nullable=False)
+    assumptions = Column(JSONB, nullable=False, default=dict)
+    content = Column(Text, nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    __table_args__ = (
+        Index("ix_scenario_results_lookup", "thread_id", "scenario", "assumptions_hash"),
+    )
+
+
+class CompareResult(Base):
+    """Cached token comparison results keyed by (primary_token, secondary_token)."""
+
+    __tablename__ = "compare_results"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    primary_token = Column(String(50), nullable=False)
+    secondary_token = Column(String(50), nullable=False)
+    primary_data = Column(JSONB, nullable=False, default=dict)
+    secondary_data = Column(JSONB, nullable=False, default=dict)
+    verdict = Column(Text, nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    __table_args__ = (
+        Index("ix_compare_results_lookup", "primary_token", "secondary_token"),
+        UniqueConstraint(
+            "primary_token", "secondary_token", name="uq_compare_results_pair"
+        ),
+    )
+
+
 class ImageGenerationConfig(BaseModel, TimestampMixin):
     """
     Dedicated configuration table for image generation models.

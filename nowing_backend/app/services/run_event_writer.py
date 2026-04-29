@@ -92,12 +92,18 @@ class RunEventWriter:
             log.warning("RunEventWriter payload not JSON-serializable — dropping %s", event_type)
             return
 
-        # T5: text-delta coalesced into per-agentId pending dict (never blocks deque)
+        # T5: text-delta coalescing — per-agentId for orchestra progress updates.
+        # Main synthesis text-delta (no agentId) goes to deque directly to:
+        #   1. Preserve all tokens (replace would drop ~80% at 25ms flush intervals)
+        #   2. Maintain text-start → text-delta ordering (pending_delta drains before deque)
         if event_type == "text-delta":
             agent_id = payload.get("agentId", "") or (payload.get("data") or {}).get("agentId", "")
-            self._pending_delta[agent_id] = (event_type, payload)
-            self._signal.set()
-            return
+            if agent_id:
+                # Orchestra agent progress update — keep latest only (coalesce)
+                self._pending_delta[agent_id] = (event_type, payload)
+                self._signal.set()
+                return
+            # Main synthesis text — fall through to deque (preserves all tokens + order)
 
         # T5: deque.append is atomic in CPython (GIL). On maxlen overflow the OLDEST
         # item is silently rotated out. For non-text events this is a data-loss risk —

@@ -8,7 +8,7 @@ relatedFRs: [FR27 Comprehensive Analysis, FR35 Graceful Degradation]
 relatedNFRs: [NFR-Q1 Accuracy (citations improve verifiability), NFR-UX-2 Professional Presentation]
 priority: P0 (Phase 2 UX — core deliverable)
 estimatedEffort: 3 weeks (1 FE + 0.5 BE) — 2 weeks layout + 1 week charts
-status: in-progress
+status: done
 createdAt: 2026-04-25
 author: Sally (UX) + Mary (BA)
 ---
@@ -328,8 +328,8 @@ Extend existing `detectConflict()` in citation/schema.ts:
 ### Deferred
 
 - [x] [Review][Defer] **F11** — CryptoReportLayout thay MarkdownText cho ALL messages [assistant-message.tsx:425] — deferred, pre-existing pattern choice
-- [x] [Review][Defer] **F16** — CoinGecko API polled from client without key [token-hero-card.tsx:32] — deferred, phụ thuộc F3
-- [x] [Review][Defer] **F19** — CoinGecko polling vô hạn cho historical messages [token-hero-card.tsx:40] — deferred, phụ thuộc F3
+- [x] [Review][Defer] **F16** — ~~CoinGecko API polled from client without key~~ **FIXED 2026-04-29**: Added `GET /compare/coingecko-price/{coin_id}` BE proxy; `token-hero-card.tsx` now proxies through BE.
+- [x] [Review][Defer] **F19** — ~~CoinGecko polling vô hạn cho historical messages~~ **FIXED 2026-04-29**: Polling now goes through BE proxy (same fix as F16); TanStack Query staleTime/refetchInterval unchanged (30s) but rate limit risk eliminated.
 - [x] [Review][Defer] **F27** — IntersectionObserver stale closures [report-toc.tsx:88] — deferred, phụ thuộc F2 fix
 - [x] [Review][Defer] **F28** — Two heavy charting libraries overlap [package.json] — deferred, bundle optimization
 - [x] [Review][Defer] **F29** — Module-level mutable state `_pendingUrlCitations` race [markdown-text.tsx:62] — deferred, pre-existing

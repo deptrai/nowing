@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, X } from "lucide-react";
+import { BarChart2, ExternalLink, X } from "lucide-react";
 import { memo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -44,10 +44,35 @@ function JsonBlock({ data }: { data: unknown }) {
 	);
 }
 
+/** Prominent CTA shown when the citation includes a Dune Analytics source (Story 9-UX-4 AC9) */
+function DuneDeeplinkButton({ url }: { url: string }) {
+	return (
+		<a
+			href={url}
+			target="_blank"
+			rel="noopener noreferrer"
+			className={cn(
+				"mb-4 flex w-full items-center justify-center gap-2 rounded-lg border-2 px-4 py-2.5 text-sm font-semibold no-underline transition-colors",
+				"border-[var(--source-dune)]/50 bg-[var(--source-dune)]/10 text-[var(--source-dune)]",
+				"hover:border-[var(--source-dune)] hover:bg-[var(--source-dune)]/20"
+			)}
+			data-slot="dune-deeplink-button"
+		>
+			<BarChart2 className="size-4 shrink-0" aria-hidden="true" />
+			View on Dune Analytics →
+		</a>
+	);
+}
+
 const SourceDetailPanelImpl = ({ citation, open, onClose }: SourceDetailPanelProps) => {
 	if (!citation) return null;
 
 	const isConflict = citation.conflict;
+
+	// Dune deeplink: first Dune source that has a rawUrl (Story 9-UX-4 AC9)
+	const duneUrl = citation.sources.find(
+		(s) => s.provider.toLowerCase() === "dune" && s.rawUrl
+	)?.rawUrl;
 
 	return (
 		<Sheet open={open} onOpenChange={(v) => !v && onClose()}>
@@ -79,6 +104,9 @@ const SourceDetailPanelImpl = ({ citation, open, onClose }: SourceDetailPanelPro
 						</p>
 					)}
 				</div>
+
+				{/* Dune Analytics deeplink (Story 9-UX-4 AC9) */}
+				{duneUrl && <DuneDeeplinkButton url={duneUrl} />}
 
 				{/* Conflict resolver: all source values */}
 				{isConflict && citation.sources.length >= 2 && (

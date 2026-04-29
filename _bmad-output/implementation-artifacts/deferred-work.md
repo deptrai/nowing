@@ -325,6 +325,19 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **AC7 sync-INSERT fallback on deque overflow** — direct DB INSERT for non-text events when deque full. Currently all types drop oldest on overflow.
 - **T14 byte-equivalence regression test** — linked to AC1/T3; test `/regenerate` vs `/runs/*/stream` byte-level output equivalence.
 
+## Resolved 2026-04-29 — Story 9 audit sync (spec-vs-code gap closure)
+
+- ~~**MAJ-8 — Persist `data-agent-result` to DB via ContentPart lifecycle**~~ — **Fixed**: Added `data-agent-results` ContentPart type to `streaming-state.ts` union + `buildContentForPersistence`. Wired `collectedAgentResults` accumulator (including missing `.push()` bug) in all three SSE handlers (`handleSend`, `handleResume`, `handleRegenerate`) in `page.tsx`. Added extraction in `message-utils.ts` → exposed via `metadata.custom.agent_results` for consumers. Page-reload persistence complete.
+- ~~**F16/F19 — CoinGecko API called client-side without API key**~~ — **Fixed**: Added `GET /compare/coingecko-price/{coin_id}` proxy endpoint in `comparison_routes.py` (authenticated, validates coin_id regex). `token-hero-card.tsx` now calls BE proxy instead of CoinGecko directly. Rate limit risk eliminated.
+- ~~**Missing `eth_shock` slider**~~ — **Fixed**: Added ETH Price Shock slider between BTC and Competitor Growth in `scenario-simulator-panel.tsx`. Updated `DEFAULT_ASSUMPTIONS` for bull (+0.4), bear (-0.35), stress (-0.5).
+- ~~**P1#9 — i18n keys hardcoded VN/EN strings in components**~~ — **Fixed** (English-only commitment, not i18n framework): All Vietnamese strings in production code converted to English across 8 files: `agent-lane.tsx` (4), `orchestra-strip.tsx` (1), `rate-gate-banner.tsx` (2), `coin-comparison-overlay.tsx` (2), `next-action-bar.tsx` (3), `follow-up-chips.tsx` (1), `stream_new_chat.py` (3). Stories files and bilingual regex patterns in `report-toc.tsx` left untouched (intentional).
+
+## Deferred from: Story 9 audit (2026-04-29)
+
+- **Dune real query IDs needed** — `queries/dune/*.json` contain placeholder IDs 12345-12348 (now guarded: IDs < 100k are skipped at load time with `logger.warning`). To activate `run_dune_query` tool, replace JSON `query_id` values with real Dune Analytics query IDs (≥ 100k range). Requires Dune Basic plan account ($99/mo) and publishing 4 queries (Uniswap DEX volume, Lido staking flows, whale concentration, NFT floor). Owner: Data team.
+
+
+
 ## Deferred from: code review of 9-UX-2-crypto-report-layout (2026-04-27)
 
 - **F11** — `CryptoReportLayout` wraps ALL messages (non-crypto pay `useAuiState` overhead). Pre-existing pattern, perf impact negligible.
@@ -334,3 +347,17 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **F28** — Two charting libraries (recharts 200KB + lightweight-charts 45KB) with overlapping capabilities. Bundle optimization.
 - **F29** — Module-level mutable state `_pendingUrlCitations` / `_urlCiteIdx` race in concurrent rendering. Pre-existing, not caused by 9-UX-2.
 - **F32** — No E2E Playwright tests for crypto report layout. Post-implementation task.
+
+## Deferred from: code review of story-9-UX-3 (2026-04-28)
+
+- **DeFiLlama `/protocols` full-list scan (~5MB)** — `comparison_routes.py:517-535`. Cold compare downloads entire protocols list per request. Needs cached snapshot or paginated source. Performance debt.
+- **`format_data` event-name BE/FE coupling brittle** — `VercelStreamingService.format_data` prepends `data-`; FE consumers depend on this implicit prefix. No immediate breakage but a refactor target risk. Document the contract.
+- **NFR-P1 cold compare `<90s` benchmark** — Spec target unverified. Needs production benchmark, not pre-merge gate.
+- **`useAui` import path smoke-test** — `follow-up-chips.tsx`, `next-action-bar.tsx` import `useAui` from `@assistant-ui/react`; project elsewhere uses `useAuiState`. Likely works but unverified pre-merge.
+- **Missing `eth_shock` slider** — Spec `ScenarioAssumptions` includes `eth_shock` but UI only renders `btc_shock`. Minor schema-vs-UI gap.
+- **Compare prompt-injection on token name** — `comparison_routes.py` builds verdict prompt with raw `primary_token`/`secondary_token`. After P2 patch (regex `^[A-Za-z0-9-]+$`), surface area is minimal. Defense-in-depth follow-up.
+- **Cross-tab race (same user, 2 windows)** — Watchlist/alert atoms across tabs. Uncommon and converges via localStorage events.
+- **DD2 — Compare endpoint sub-agent architecture (AC11)** — `comparison_routes.py` uses direct `httpx` instead of spec's "lightweight 2-agent" pattern. Current code is functionally equivalent; defer architectural rewrite. Update spec to reflect direct-call simplification.
+- **DD3 — ComparisonTable additional rows (AC12)** — APY, Holders, Security Score, Sentiment, Unlock Schedule, Catalysts. Deferred to 9-UX-4 (Additional Data Sources) which adds whale_tracker + governance_analyst agents.
+- **DD4 — `<OverlayChart>` Recharts dual-line price chart (AC12)** — `comparison-table.tsx`. Current table conveys quantitative compare. Implement post-launch if user feedback warrants.
+- **DD5 (diff-marker portion) — Numeric diff highlighting in scenario UI (AC9)** — Spec example: "$7.23 → $12-15 ⬆". Requires LLM-side numeric extractor or markdown diff post-processor. Out-of-scope for current story; revisit as separate enhancement.

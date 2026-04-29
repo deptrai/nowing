@@ -122,6 +122,20 @@ from .contract_analysis import (
     create_contract_info_tool,
     create_check_token_security_tool,
 )
+from .nansen_smart_money import (  # Story 9-UX-4 AC1
+    create_nansen_smart_money_tool,
+    create_nansen_wallet_label_tool,
+    create_nansen_token_god_mode_tool,
+)
+from .certik_skynet import (  # Story 9-UX-4 AC2
+    create_certik_audit_score_tool,
+    create_certik_incident_history_tool,
+)
+from .dune_query import create_run_dune_query_tool  # Story 9-UX-4 AC3
+from .tokeninsight_rating import (  # Story 9-UX-4 AC4
+    create_tokeninsight_rating_tool,
+    create_tokeninsight_research_snippet_tool,
+)
 
 # =============================================================================
 # Tool Definition
@@ -659,6 +673,70 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
         name="check_token_security",
         description="Run a security audit on a token contract using GoPlus Labs — detects honeypots, high taxes, and rug risks",
         factory=lambda deps: create_check_token_security_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # NANSEN TOOLS — Smart-money wallet flows (Story 9-UX-4 AC1)
+    # Requires NANSEN_API_KEY (paid tier). Gracefully returns 401 error if missing.
+    # =========================================================================
+    ToolDefinition(
+        name="get_nansen_smart_money",
+        description="Get Nansen smart-money wallet flows and accumulation signals for a token — top wallets, 24h net flow, accumulating/distributing signal",
+        factory=lambda deps: create_nansen_smart_money_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_nansen_wallet_label",
+        description="Get the Nansen label for a wallet address — identifies exchanges, funds, VCs, protocols (~200K known wallets)",
+        factory=lambda deps: create_nansen_wallet_label_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_nansen_token_god_mode",
+        description="Get holder distribution by cohort (smart money %, exchanges %, retail %, VCs %) and top-10 concentration for a token",
+        factory=lambda deps: create_nansen_token_god_mode_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # CERTIK SKYNET TOOLS — Formal security audits (Story 9-UX-4 AC2)
+    # Free public API tier (60 req/min). CERTIK_API_KEY optional for paid.
+    # =========================================================================
+    ToolDefinition(
+        name="get_certik_audit_score",
+        description="Get CertiK Skynet security score (0-100) and category breakdown for a token contract — cross-reference with GoPlus",
+        factory=lambda deps: create_certik_audit_score_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_certik_incident_history",
+        description="Get CertiK incident and hack history for a crypto project — exploits, rug pulls, flash loan attacks with financial impact",
+        factory=lambda deps: create_certik_incident_history_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # DUNE ANALYTICS TOOL — Custom on-chain queries (Story 9-UX-4 AC3)
+    # Requires DUNE_API_KEY (Basic plan $99/mo). Gracefully returns 401 if missing.
+    # =========================================================================
+    ToolDefinition(
+        name="run_dune_query",
+        description="Execute a pre-registered Dune Analytics query for on-chain data — DEX volume, staking flows, whale concentration, NFT floors",
+        factory=lambda deps: create_run_dune_query_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # TOKENINSIGHT TOOLS — Third-party ratings (Story 9-UX-4 AC4)
+    # Free tier for ratings; TOKENINSIGHT_API_KEY required for research snippets.
+    # =========================================================================
+    ToolDefinition(
+        name="get_tokeninsight_rating",
+        description="Get TokenInsight letter grade rating (A+/A/B/C/D/F) and score breakdown for a cryptocurrency — technology, team, ecosystem, tokenomics",
+        factory=lambda deps: create_tokeninsight_rating_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_tokeninsight_research_snippet",
+        description="Get the latest TokenInsight analyst research note excerpt for a token — investment thesis and analyst opinion",
+        factory=lambda deps: create_tokeninsight_research_snippet_tool(),
         requires=[],
     ),
 ]

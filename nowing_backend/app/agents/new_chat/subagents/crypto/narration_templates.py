@@ -23,6 +23,14 @@ PRE_CALL: dict[str, str] = {
     "get_reddit_crypto_sentiment": "Đang phân tích sentiment từ Reddit...",
     "get_fear_greed_index": "Đang lấy chỉ số Fear & Greed...",
     "chainlens_deep_research": "Đang thực hiện nghiên cứu on-chain chuyên sâu...",
+    "get_certik_audit_score": "Đang lấy điểm bảo mật CertiK Skynet...",
+    "get_certik_incident_history": "Đang kiểm tra lịch sử sự cố từ CertiK...",
+    "get_nansen_smart_money": "Đang phân tích dòng tiền smart money từ Nansen...",
+    "get_nansen_wallet_label": "Đang tra cứu nhãn ví từ Nansen...",
+    "get_nansen_token_god_mode": "Đang lấy phân bố holder từ Nansen Token God Mode...",
+    "run_dune_query": "Đang thực thi truy vấn on-chain từ Dune Analytics...",
+    "get_tokeninsight_rating": "Đang lấy xếp hạng từ TokenInsight...",
+    "get_tokeninsight_research_snippet": "Đang lấy phân tích chuyên sâu từ TokenInsight...",
 }
 
 
@@ -74,6 +82,46 @@ TOOL_SOURCE_MAP: dict[str, tuple[str, str, str]] = {
         "https://icons.duckduckgo.com/ip3/chainlens.xyz.ico",
         "https://chainlens.xyz/",
     ),
+    "get_certik_audit_score": (
+        "certik.com",
+        "https://icons.duckduckgo.com/ip3/certik.com.ico",
+        "https://www.certik.com/",
+    ),
+    "get_certik_incident_history": (
+        "certik.com",
+        "https://icons.duckduckgo.com/ip3/certik.com.ico",
+        "https://www.certik.com/",
+    ),
+    "get_nansen_smart_money": (
+        "nansen.ai",
+        "https://icons.duckduckgo.com/ip3/nansen.ai.ico",
+        "https://app.nansen.ai/",
+    ),
+    "get_nansen_wallet_label": (
+        "nansen.ai",
+        "https://icons.duckduckgo.com/ip3/nansen.ai.ico",
+        "https://app.nansen.ai/",
+    ),
+    "get_nansen_token_god_mode": (
+        "nansen.ai",
+        "https://icons.duckduckgo.com/ip3/nansen.ai.ico",
+        "https://app.nansen.ai/",
+    ),
+    "run_dune_query": (
+        "dune.com",
+        "https://icons.duckduckgo.com/ip3/dune.com.ico",
+        "https://dune.com/",
+    ),
+    "get_tokeninsight_rating": (
+        "tokeninsight.com",
+        "https://icons.duckduckgo.com/ip3/tokeninsight.com.ico",
+        "https://tokeninsight.com/",
+    ),
+    "get_tokeninsight_research_snippet": (
+        "tokeninsight.com",
+        "https://icons.duckduckgo.com/ip3/tokeninsight.com.ico",
+        "https://tokeninsight.com/",
+    ),
 }
 
 
@@ -88,6 +136,14 @@ TOOL_TONE: dict[str, str] = {
     "get_reddit_crypto_sentiment": "analyzing",  # sentiment scoring
     "get_fear_greed_index": "fetching",
     "chainlens_deep_research": "synthesizing",  # multi-source synthesis
+    "get_certik_audit_score": "analyzing",
+    "get_certik_incident_history": "fetching",
+    "get_nansen_smart_money": "analyzing",
+    "get_nansen_wallet_label": "fetching",
+    "get_nansen_token_god_mode": "analyzing",
+    "run_dune_query": "fetching",
+    "get_tokeninsight_rating": "fetching",
+    "get_tokeninsight_research_snippet": "analyzing",
 }
 
 
@@ -155,6 +211,23 @@ def post_call_narration(tool_name: str, result: Any) -> str | None:
         if isinstance(pools, list) and pools:
             return f"Tìm thấy {len(pools)} yield pools, đang sắp xếp theo APY..."
 
+    if tool_name == "get_certik_audit_score":
+        score = _safe_float(result.get("overall_score") or result.get("security_score"))
+        if score is not None:
+            return f"CertiK Skynet score: {score:.0f}/100. Đang đối chiếu với GoPlus..."
+
+    if tool_name == "get_tokeninsight_rating":
+        rating = result.get("overall_rating")
+        score = _safe_float(result.get("overall_score"))
+        if rating:
+            suffix = f" ({score:.0f}/100)" if score is not None else ""
+            return f"TokenInsight rating: {rating}{suffix}."
+
+    if tool_name == "get_nansen_smart_money":
+        signal = result.get("signal")
+        if signal:
+            return f"Smart money signal: {signal}. Đang phân tích chi tiết..."
+
     return None
 
 
@@ -194,6 +267,17 @@ def extract_facts(tool_name: str, result: Any) -> list[dict[str, Any]]:
         value = _safe_float(result.get("fear_greed_value") or result.get("value"))
         if value is not None:
             facts.append({"factSummary": f"Fear & Greed {value:.0f}", "value": value, "unit": "score"})
+
+    if tool_name == "get_certik_audit_score":
+        score = _safe_float(result.get("overall_score") or result.get("security_score"))
+        if score is not None:
+            facts.append({"factSummary": f"CertiK score {score:.0f}/100", "value": score, "unit": "score"})
+
+    if tool_name == "get_tokeninsight_rating":
+        rating = result.get("overall_rating")
+        score = _safe_float(result.get("overall_score"))
+        if rating:
+            facts.append({"factSummary": f"TokenInsight {rating}", "value": score, "unit": "rating"})
 
     return facts
 

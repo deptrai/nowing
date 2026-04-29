@@ -12,8 +12,8 @@ interface RateGateBannerProps {
 }
 
 const REASON_LABELS: Record<string, string> = {
-	min_interval: "tiêu chuẩn",
-	paced: "được pacing",
+	min_interval: "standard",
+	paced: "paced",
 	retry: "retry",
 };
 

@@ -92,6 +92,12 @@ from app.agents.new_chat.subagents.crypto.yield_optimizer_spec import (
     YIELD_OPTIMIZER_NAME,
     YIELD_OPTIMIZER_PROMPT,
 )
+from app.agents.new_chat.subagents.crypto.whale_tracker_spec import (
+    WHALE_TRACKER_ALLOWED_TOOLS,
+    WHALE_TRACKER_DESCRIPTION,
+    WHALE_TRACKER_NAME,
+    WHALE_TRACKER_PROMPT,
+)
 from app.agents.new_chat.tools.registry import build_tools_async
 from app.db import ChatVisibility
 from app.services.connector_service import ConnectorService
@@ -305,6 +311,22 @@ _PROVIDER_RPM_LIMIT = int(os.getenv("PROVIDER_RPM_LIMIT", "0"))  # 0 = disabled
 _PROVIDER_RATE_WINDOW_SECONDS = float(os.getenv("PROVIDER_RATE_WINDOW_SECONDS", "60"))
 _PROVIDER_RATE_MAX_WAIT_SECONDS = float(os.getenv("PROVIDER_RATE_MAX_WAIT_SECONDS", "90"))
 
+# ── Provider failover (Story 9-UX-4 / Option C) ──────────────────────────────
+# When primary provider returns 429, immediately retry with failover provider.
+# PROVIDER_FAILOVER_API_BASE / PROVIDER_FAILOVER_API_KEY: credentials for the
+# backup provider (e.g. v98store). Leave blank to disable failover.
+# PROVIDER_FAILOVER_MODEL: override model string for failover (empty = same as primary).
+# PROVIDER_FAILOVER_COOLDOWN: seconds before trying primary again after a failover (default 120).
+_FAILOVER_API_BASE: str = os.getenv("PROVIDER_FAILOVER_API_BASE", "").strip()
+_FAILOVER_API_KEY: str = os.getenv("PROVIDER_FAILOVER_API_KEY", "").strip()
+_FAILOVER_MODEL: str = os.getenv("PROVIDER_FAILOVER_MODEL", "").strip()
+_FAILOVER_COOLDOWN: float = float(os.getenv("PROVIDER_FAILOVER_COOLDOWN", "120"))
+
+# Cache: primary model string → failover ChatLiteLLM instance (built lazily)
+_failover_llm_cache: dict[str, Any] = {}
+# Per-model: timestamp until which we prefer the failover over the primary
+_failover_active_until: dict[str, float] = {}
+
 
 class _GlobalRateBucket:
     """Module-level minimum-interval pacer shared across ALL agent instances.
@@ -383,6 +405,12 @@ def _install_global_chat_litellm_rate_gate() -> None:
     middleware chain, KB planner, sub-agents, ad-hoc `llm.ainvoke`) passes
     through `_global_rate_bucket.acquire()` before hitting the provider.
 
+    When PROVIDER_FAILOVER_API_BASE + PROVIDER_FAILOVER_API_KEY are configured,
+    a 429 on the primary triggers an immediate retry on the failover provider
+    (same model, different api_base/api_key) instead of backing off and waiting.
+    The primary is parked for PROVIDER_FAILOVER_COOLDOWN seconds before being
+    tried again.
+
     Idempotent — guards against double-wrapping on module reload.
     No-op when PROVIDER_RPM_LIMIT == 0 (bucket.acquire returns immediately).
     """
@@ -398,12 +426,65 @@ def _install_global_chat_litellm_rate_gate() -> None:
 
     async def _gated_agenerate(self: Any, *args: Any, **kwargs: Any) -> Any:
         await _global_rate_bucket.acquire()
-        return await _orig_agenerate(self, *args, **kwargs)
+        primary_model: str = getattr(self, "model", "") or ""
+
+        # If primary is in failover cooldown, go directly to failover
+        if _is_failover_active(primary_model):
+            failover = _get_or_build_failover(self)
+            if failover is not None:
+                return await _orig_agenerate(failover, *args, **kwargs)
+
+        try:
+            return await _orig_agenerate(self, *args, **kwargs)
+        except Exception as exc:
+            if not _is_rate_limit_exc(exc):
+                raise
+            failover = _get_or_build_failover(self)
+            if failover is None:
+                raise
+            _agent_log.warning(
+                "provider_failover: primary %s hit 429, switching to failover %s",
+                primary_model, _FAILOVER_API_BASE,
+            )
+            _rate_limit_state.mark_rate_limited()
+            _mark_failover_active(primary_model)
+            _emit_failover_event(primary_model, _FAILOVER_API_BASE)
+            return await _orig_agenerate(failover, *args, **kwargs)
 
     async def _gated_astream(self: Any, *args: Any, **kwargs: Any) -> Any:
         await _global_rate_bucket.acquire()
-        async for chunk in _orig_astream(self, *args, **kwargs):
-            yield chunk
+        primary_model: str = getattr(self, "model", "") or ""
+
+        # If primary is in failover cooldown, go directly to failover
+        if _is_failover_active(primary_model):
+            failover = _get_or_build_failover(self)
+            if failover is not None:
+                async for chunk in _orig_astream(failover, *args, **kwargs):
+                    yield chunk
+                return
+
+        chunks_yielded = 0
+        try:
+            async for chunk in _orig_astream(self, *args, **kwargs):
+                chunks_yielded += 1
+                yield chunk
+        except Exception as exc:
+            # Only failover if 429 fires before any tokens — mid-stream 429 cannot
+            # be recovered cleanly (partial output already yielded).
+            if chunks_yielded > 0 or not _is_rate_limit_exc(exc):
+                raise
+            failover = _get_or_build_failover(self)
+            if failover is None:
+                raise
+            _agent_log.warning(
+                "provider_failover: primary %s hit 429 (stream), switching to failover %s",
+                primary_model, _FAILOVER_API_BASE,
+            )
+            _rate_limit_state.mark_rate_limited()
+            _mark_failover_active(primary_model)
+            _emit_failover_event(primary_model, _FAILOVER_API_BASE)
+            async for chunk in _orig_astream(failover, *args, **kwargs):
+                yield chunk
 
     _CLL._agenerate = _gated_agenerate  # type: ignore[method-assign]
     _CLL._astream = _gated_astream  # type: ignore[method-assign]
@@ -414,6 +495,11 @@ def _install_global_chat_litellm_rate_gate() -> None:
             "→ min_interval=%.1fs between calls)",
             _PROVIDER_RPM_LIMIT, _PROVIDER_RATE_WINDOW_SECONDS,
             _global_rate_bucket.min_interval,
+        )
+    if _FAILOVER_API_BASE and _FAILOVER_API_KEY:
+        _agent_log.info(
+            "provider_failover: configured — failover_base=%s failover_model=%s cooldown=%.0fs",
+            _FAILOVER_API_BASE, _FAILOVER_MODEL or "(same as primary)", _FAILOVER_COOLDOWN,
         )
 
 
@@ -473,6 +559,76 @@ async def _cancellable_sleep(delay: float) -> None:
         pass
 
 
+def _is_rate_limit_exc(exc: BaseException) -> bool:
+    """Return True if *exc* is a 429 / RateLimitError from any LiteLLM provider."""
+    try:
+        from litellm.exceptions import RateLimitError as _LiteLLMRateLimit
+        if isinstance(exc, _LiteLLMRateLimit):
+            return True
+    except ImportError:
+        pass
+    err = str(exc).lower()
+    return "rate limit" in err or "ratelimiterror" in err or "429" in err
+
+
+def _get_or_build_failover(primary: Any) -> Any | None:
+    """Return a ChatLiteLLM failover instance for *primary*, building it lazily.
+
+    Uses the same model string as the primary unless PROVIDER_FAILOVER_MODEL is set.
+    Returns None when failover is not configured (env vars blank).
+    """
+    if not (_FAILOVER_API_BASE and _FAILOVER_API_KEY):
+        return None
+    primary_model: str = getattr(primary, "model", "") or ""
+    failover_model = _FAILOVER_MODEL or primary_model
+    cache_key = failover_model
+    if cache_key not in _failover_llm_cache:
+        try:
+            from langchain_litellm import ChatLiteLLM as _CLL
+            _failover_llm_cache[cache_key] = _CLL(
+                model=failover_model,
+                api_key=_FAILOVER_API_KEY,
+                api_base=_FAILOVER_API_BASE,
+                streaming=True,
+            )
+            _agent_log.info(
+                "provider_failover: built failover LLM model=%s api_base=%s",
+                failover_model, _FAILOVER_API_BASE,
+            )
+        except Exception as exc:
+            _agent_log.warning("provider_failover: failed to build failover LLM: %s", exc)
+            return None
+    return _failover_llm_cache.get(cache_key)
+
+
+def _mark_failover_active(model: str) -> None:
+    """Record that failover is active for *model* — primary stays parked for cooldown."""
+    _failover_active_until[model] = time.time() + _FAILOVER_COOLDOWN
+
+
+def _is_failover_active(model: str) -> bool:
+    """True if we should prefer failover over primary (still in cooldown window)."""
+    until = _failover_active_until.get(model, 0.0)
+    return time.time() < until
+
+
+def _emit_failover_event(primary_model: str, failover_base: str) -> None:
+    """Emit data-orchestra-provider-failover SSE event so FE can show a banner."""
+    payload = {"reason": "rate_limit", "primaryModel": primary_model, "failoverBase": failover_base}
+    writer = _stream_writer_var.get()
+    if writer is not None:
+        try:
+            writer("data-orchestra-provider-failover", payload)
+            return
+        except Exception:
+            pass
+    try:
+        from langchain_core.callbacks import dispatch_custom_event
+        dispatch_custom_event("orchestra_provider_failover", payload)
+    except (RuntimeError, LookupError):
+        pass
+
+
 def _emit_rate_gate_event(wait_seconds: float, reason: str = "min_interval") -> None:
     """Emit orchestra-rate-gate-wait event via ContextVar writer if set, else dispatch_custom_event.
 
@@ -495,6 +651,75 @@ def _emit_rate_gate_event(wait_seconds: float, reason: str = "min_interval") -> 
     except (RuntimeError, LookupError):
         # No active runnable context — silently drop (educational banner is best-effort).
         pass
+
+
+def _extract_result_text(result: Any) -> str:
+    """Extract text content from a LangGraph sub-agent result object.
+
+    Handles three shapes:
+    1. ``Command(update={"messages": [...]})`` — what deepagents' atask returns.
+    2. Plain object with ``.messages`` attribute.
+    3. dict with ``content`` key, or object with ``.content``.
+
+    Defensive against future shape drift: only iterates list/tuple ``messages``,
+    only joins explicit text blocks, swallows nothing — caller wraps in try/except.
+    """
+    if result is None:
+        return ""
+    # Shape 1: Command(update={"messages": [...]}) from deepagents.atask
+    update = getattr(result, "update", None)
+    if isinstance(update, dict):
+        messages = update.get("messages")
+        if isinstance(messages, (list, tuple)) and messages:
+            text = _extract_text_from_messages(messages)
+            if text:
+                return text
+    # Shape 2: object with .messages attribute (LangGraph response, etc.)
+    messages = getattr(result, "messages", None)
+    if isinstance(messages, (list, tuple)) and messages:
+        text = _extract_text_from_messages(messages)
+        if text:
+            return text
+    # Shape 3: ToolMessage / dict fallback
+    if isinstance(result, dict):
+        return str(result.get("content", ""))
+    content = getattr(result, "content", None)
+    if content:
+        return str(content)
+    return ""
+
+
+def _extract_text_from_messages(messages: Any) -> str:
+    """Walk messages from end → start, returning first non-empty text content.
+
+    Only joins explicit text blocks for list-of-blocks content; skips tool_use,
+    thinking, image, and any non-text blocks to avoid stringifying garbage.
+    Handles dict-style blocks (`{"type": "text", "text": "..."}`) and
+    object-style blocks (BaseModel-derived with `.type` and `.text` attrs).
+    """
+    for msg in reversed(messages):
+        content = getattr(msg, "content", None)
+        if not content:
+            continue
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts: list[str] = []
+            for block in content:
+                if isinstance(block, dict):
+                    if block.get("type") == "text":
+                        parts.append(block.get("text", ""))
+                else:
+                    # Object-style block (e.g. langchain content-block models):
+                    # only accept when it has type="text" and a string .text.
+                    btype = getattr(block, "type", None)
+                    btext = getattr(block, "text", None)
+                    if btype == "text" and isinstance(btext, str):
+                        parts.append(btext)
+            joined = "".join(parts).strip()
+            if joined:
+                return joined
+    return ""
 
 
 def _emit_orchestra_event(event_type: str, payload: dict[str, Any], custom_event_name: str | None = None) -> None:
@@ -774,26 +999,26 @@ _SUBAGENT_RETRY_BASE_BACKOFF = float(
 _SUBAGENT_RETRY_MAX_BACKOFF = float(
     os.getenv("SUBAGENT_RETRY_MAX_BACKOFF", "120")
 )
+_SUBAGENT_RETRY_MAX_ATTEMPTS = int(
+    os.getenv("SUBAGENT_RETRY_MAX_ATTEMPTS", "5")
+)
 
 
 class SubAgentResilienceMiddleware(AgentMiddleware):
-    """Intercept `task()` tool calls to retry indefinitely on rate-limit.
+    """Intercept `task()` tool calls to retry on rate-limit with attempt cap.
 
     When a sub-agent raises `RateLimitError`, deepagents' `atask()` propagates
     it raw which would kill the LangGraph stream. This middleware retries the
-    sub-agent with **exponential backoff capped by wall-clock time** (default
-    15 minutes). Rate-limit errors are transient by definition — given enough
-    spacing, they always resolve. We don't artificially cap attempts.
+    sub-agent with exponential backoff up to `SUBAGENT_RETRY_MAX_ATTEMPTS`
+    (default 5). After exhaustion, a graceful ToolMessage error is returned so
+    the coordinator can still synthesize with remaining agents.
 
     Retry schedule (configurable via env):
-      - Base: 5s, doubling each attempt → 5, 10, 20, 40, 80, 120, 120, 120, ...
-      - Capped at `SUBAGENT_RETRY_MAX_BACKOFF` (default 120s)
-      - Absolute wall-clock cap: `SUBAGENT_RETRY_MAX_WALL_SECONDS` (default 900s)
+      - Base: 5s, doubling each attempt → 5, 10, 20, 40, 80 (then graceful error)
+      - Per-attempt sleep capped at `SUBAGENT_RETRY_MAX_BACKOFF` (default 120s)
+      - Attempt cap: `SUBAGENT_RETRY_MAX_ATTEMPTS` (default 5; total sleep ~155s)
 
-    Only after wall-clock exhaustion do we convert to an error ToolMessage so
-    the main agent can still synthesize with remaining agents. Non-rate-limit
-    exceptions bubble up immediately (no retry — likely real bugs).
-
+    Non-rate-limit exceptions bubble up immediately (no retry — likely real bugs).
     Combined with the min-interval `_GlobalRateBucket` gate, rate-limit errors
     should be extremely rare — this middleware is a safety net for edge cases
     (clock skew, provider drift, shared-key contention from other processes).
@@ -801,6 +1026,7 @@ class SubAgentResilienceMiddleware(AgentMiddleware):
 
     async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
         from langchain_core.messages import ToolMessage
+        from langgraph.types import Command
         from litellm.exceptions import RateLimitError as _LiteLLMRateLimit
 
         tool_call = request.tool_call if hasattr(request, "tool_call") else {}
@@ -842,6 +1068,34 @@ class SubAgentResilienceMiddleware(AgentMiddleware):
         while True:
             try:
                 _result = await handler(request)
+                # Emit agent result text BEFORE orchestra-done so the FE applies
+                # it while the session is still active (avoids race where
+                # orchestra-complete arrives before data-agent-result and the
+                # event is silently buffered).
+                try:
+                    _result_text = _extract_result_text(_result)
+                except Exception:
+                    _agent_log.exception(
+                        "agent_result_extract_failed: %s", subagent_type
+                    )
+                    _result_text = ""
+                _result_length = len(_result_text)
+                _truncated = _result_length > 3000
+                # Note: pass event_type="agent-result" (NOT "data-agent-result") because
+                # _orchestra_writer routes non-bare-type events through format_data,
+                # which automatically prepends "data-" to produce the wire type
+                # "data-agent-result". Passing "data-agent-result" here would emit
+                # "data-data-agent-result" which the FE would silently drop.
+                _emit_orchestra_event(
+                    "agent-result",
+                    {
+                        "agentId": subagent_type,
+                        "resultText": _result_text[:3000] if _truncated else _result_text,
+                        "resultLength": _result_length,
+                        "truncated": _truncated,
+                    },
+                    custom_event_name="data_agent_result",
+                )
                 # Emit orchestra-done on the first successful attempt — even retries
                 # converge to a single "done" event per task() invocation.
                 _emit_orchestra_event(
@@ -864,13 +1118,68 @@ class SubAgentResilienceMiddleware(AgentMiddleware):
                 attempt += 1
                 elapsed = time.time() - started_at
 
-                # No wall-clock cap — rate-limit errors are transient by definition.
-                # Retry indefinitely until the provider lets us through. Logging
-                # every 10 attempts so the operator can see progress without spam.
-                if attempt % 10 == 0:
+                # Attempt cap — return graceful error after max retries so the
+                # coordinator can still synthesize with the remaining agents.
+                if attempt > _SUBAGENT_RETRY_MAX_ATTEMPTS:
+                    # Validate tool_call envelope BEFORE emitting any "graceful"
+                    # signals. If tool_call_id is missing, the only correct action
+                    # is to re-raise — emitting orchestra-fail + incrementing the
+                    # graceful-degradation counter would be misleading because the
+                    # actual outcome is a hard crash, not graceful degradation.
+                    if not tool_call_id:
+                        raise
+                    reason = f"rate limit retries exhausted ({attempt} attempts, {elapsed:.0f}s)"
                     _agent_log.warning(
-                        "subagent_persistent_retry: %s still retrying after %d attempts / %.0fs",
+                        "subagent_max_attempts: %s exhausted %d attempts (%.0fs), "
+                        "returning graceful error for coordinator",
                         subagent_type, attempt, elapsed,
+                    )
+                    # Emit orchestra-fail (not orchestra-done) — graceful degradation
+                    # is a real failure so the FE outcome detection (success/partial/failed)
+                    # reflects reality and the agent lane shows a fail badge, not a check.
+                    _emit_orchestra_event(
+                        "orchestra-fail",
+                        {
+                            "agentId": subagent_type,
+                            "errorCode": "rate_limit_exhausted",
+                            "errorMessage": reason,
+                        },
+                        custom_event_name="orchestra_fail",
+                    )
+                    try:
+                        GRACEFUL_DEGRADATION_COUNTER.labels(outcome="subagent_exhausted").inc()
+                    except Exception:
+                        pass
+                    graceful_msg = (
+                        f"⚠️ {subagent_type} không thể hoàn thành: {reason}.\n"
+                        f"Dữ liệu từ agent này không có trong báo cáo này — "
+                        f"coordinator sẽ bổ sung từ kiến thức chung."
+                    )
+                    # Also expose the graceful error text to the FE Result tab so the
+                    # user can see WHY the agent failed (not just the fail badge).
+                    _emit_orchestra_event(
+                        "agent-result",
+                        {
+                            "agentId": subagent_type,
+                            "resultText": graceful_msg,
+                            "resultLength": len(graceful_msg),
+                            "truncated": False,
+                        },
+                        custom_event_name="data_agent_result",
+                    )
+                    # Return the same shape as deepagents' atask() — Command(update=...)
+                    # — so LangGraph merges the ToolMessage into graph state and the
+                    # coordinator's next LLM call sees the graceful error text.
+                    return Command(
+                        update={
+                            "messages": [
+                                ToolMessage(
+                                    content=graceful_msg,
+                                    tool_call_id=tool_call_id,
+                                    name=subagent_type,
+                                )
+                            ]
+                        }
                     )
 
                 delay = min(
@@ -878,9 +1187,9 @@ class SubAgentResilienceMiddleware(AgentMiddleware):
                     _SUBAGENT_RETRY_MAX_BACKOFF,
                 )
                 _agent_log.warning(
-                    "subagent_retry: %s attempt %d (elapsed %.0fs) hit rate_limit, "
+                    "subagent_retry: %s attempt %d/%d (elapsed %.0fs) hit rate_limit, "
                     "sleeping %.0fs",
-                    subagent_type, attempt, elapsed, delay,
+                    subagent_type, attempt, _SUBAGENT_RETRY_MAX_ATTEMPTS, elapsed, delay,
                 )
                 try:
                     GRACEFUL_DEGRADATION_COUNTER.labels(outcome="subagent_retry").inc()
@@ -898,32 +1207,50 @@ class ParallelSpawnDirectiveMiddleware(AgentMiddleware):
     2. Last HumanMessage — inline mandate for comprehensive-analysis queries
     """
 
-    _DIRECTIVE = """\
-## Task Tool: Mandatory Parallel Execution
+    # Feature flag: CRYPTO_ORCHESTRA_ENABLE_WHALE_TRACKER=true adds the 7th sub-agent
+    # (Story 9-UX-4 AC5). Evaluated once at class definition time (module load).
+    _WHALE_TRACKER_ENABLED: bool = (
+        os.getenv("CRYPTO_ORCHESTRA_ENABLE_WHALE_TRACKER", "false").strip().lower()
+        in ("1", "true", "yes")
+    )
 
-IMMEDIATELY call task() for ALL 6 sub-agents in a SINGLE response — do NOT write any text first:
-1. defillama_analyst — on-chain TVL / DeFi metrics
-2. sentiment_analyst — market sentiment and fear/greed data
-3. news_analyst — latest news and market developments
-4. smart_contract_analyst — contract security analysis
-5. tokenomics_analyst — token supply, vesting, distribution, inflation/deflation
-6. yield_optimizer — DeFi yield recommendations by risk tier with security gate
+    _AGENT_COUNT: int = 7 if _WHALE_TRACKER_ENABLED else 6
 
-CRITICAL RULES:
-- Your ENTIRE response MUST consist of tool calls only — zero text before the first tool call.
-- ALL 6 task() calls MUST appear in the SAME response to enable parallel execution.
-- Do NOT describe your plan. Do NOT acknowledge the request. Call task() immediately."""
+    _DIRECTIVE: str = (
+        "## Task Tool: Mandatory Parallel Execution\n\n"
+        f"IMMEDIATELY call task() for ALL {7 if _WHALE_TRACKER_ENABLED else 6} sub-agents in a SINGLE response — do NOT write any text first:\n"
+        "1. defillama_analyst — on-chain TVL / DeFi metrics\n"
+        "2. sentiment_analyst — market sentiment and fear/greed data\n"
+        "3. news_analyst — latest news and market developments\n"
+        "4. smart_contract_analyst — contract security analysis\n"
+        "5. tokenomics_analyst — token supply, vesting, distribution, inflation/deflation\n"
+        "6. yield_optimizer — DeFi yield recommendations by risk tier with security gate"
+        + (
+            "\n7. whale_tracker — smart-money wallet flows and whale accumulation signals"
+            if _WHALE_TRACKER_ENABLED
+            else ""
+        )
+        + "\n\nCRITICAL RULES:\n"
+        "- Your ENTIRE response MUST consist of tool calls only — zero text before the first tool call.\n"
+        f"- ALL {7 if _WHALE_TRACKER_ENABLED else 6} task() calls MUST appear in the SAME response to enable parallel execution.\n"
+        "- Do NOT describe your plan. Do NOT acknowledge the request. Call task() immediately."
+    )
 
-    _INLINE_MANDATE = (
+    _INLINE_MANDATE: str = (
         "\n\n[SYSTEM OVERRIDE — PARALLEL EXECUTION REQUIRED]\n"
-        "You MUST respond with EXACTLY 6 simultaneous task() tool calls and NOTHING ELSE:\n"
+        f"You MUST respond with EXACTLY {7 if _WHALE_TRACKER_ENABLED else 6} simultaneous task() tool calls and NOTHING ELSE:\n"
         "  task(subagent_type='defillama_analyst', description='...')\n"
         "  task(subagent_type='sentiment_analyst', description='...')\n"
         "  task(subagent_type='news_analyst', description='...')\n"
         "  task(subagent_type='smart_contract_analyst', description='...')\n"
         "  task(subagent_type='tokenomics_analyst', description='...')\n"
-        "  task(subagent_type='yield_optimizer', description='...')\n"
-        "ALL 6 calls in ONE response. Zero text. Zero preamble. Start with the first task() call NOW."
+        "  task(subagent_type='yield_optimizer', description='...')"
+        + (
+            "\n  task(subagent_type='whale_tracker', description='...')"
+            if _WHALE_TRACKER_ENABLED
+            else ""
+        )
+        + f"\nALL {7 if _WHALE_TRACKER_ENABLED else 6} calls in ONE response. Zero text. Zero preamble. Start with the first task() call NOW."
     )
 
     _KEYWORDS = (
@@ -937,6 +1264,7 @@ CRITICAL RULES:
     # Under rate-limit pressure, agents are spawned one-at-a-time in this order.
     # Easy-Wins Tier (tokenomics + defillama + yield) first — deterministic APIs,
     # less likely to hit external provider limits; Chainlens-heavy agents last.
+    # whale_tracker appended last (Nansen-heavy) when feature flag is on (AC5).
     _COMPREHENSIVE_AGENTS: list[tuple[str, str]] = [
         ("tokenomics_analyst",
          "Analyze token supply, vesting, distribution, and inflation mechanics for: {q}"),
@@ -950,6 +1278,9 @@ CRITICAL RULES:
          "Find latest news and market developments for: {q}"),
         ("sentiment_analyst",
          "Analyze market sentiment and fear/greed data for: {q}"),
+        *( [("whale_tracker",
+              "Identify top-10 holders, smart money flows, accumulation vs distribution signals for: {q}")]
+           if _WHALE_TRACKER_ENABLED else [] ),
     ]
 
     async def awrap_model_call(self, request: Any, handler: Any) -> Any:
@@ -1031,6 +1362,15 @@ IMPORTANT: Any previous instructions telling you to "call task() for all 6
 sub-agents" are now OBSOLETE. That phase is COMPLETE. The sub-agents have
 ALREADY been spawned and their results are in the ToolMessages above.
 
+## ⚠️ MANDATORY OUTPUT FORMAT — THIS OVERRIDES EVERYTHING
+
+You MUST start your response with exactly: <!-- crypto-report-v2 -->
+Writing a generic "Mình không nhận được dữ liệu" or "Mình chưa nhận được dữ liệu live"
+response is STRICTLY FORBIDDEN.
+Even if ALL agents returned errors or empty results, you MUST still produce the
+structured crypto report using coordinator-fill (see below).
+There is NO scenario in which a plain-text "no data" response is acceptable.
+
 ## Your ONLY task now:
 
 1. **DO NOT CALL task()**. The task tool has been REMOVED from your available
@@ -1054,6 +1394,30 @@ ALREADY been spawned and their results are in the ToolMessages above.
    tool_calls. The response structure must have non-empty `content` and NO
    `tool_calls` field.
 
+## Coordinator-fill for missing data (REQUIRED when agent returned empty)
+
+When a sub-agent returned no data, a very short result (< 300 chars), or an error
+message, you MUST fill in that section using your own training knowledge.
+Label ALL coordinator-filled content with this exact callout:
+
+> ⚠️ **Filled by Coordinator** — `[agent_name]` trả về không có dữ liệu live.
+> Nội dung dưới đây dựa trên kiến thức chung của coordinator và chưa được xác minh
+> bởi agent chuyên môn trong phiên này.
+
+Cite coordinator-filled numeric data with the `-coordinator` suffix:
+  [[cite:SECTION-METRIC-coordinator]]VALUE[[/cite]]
+
+Example — khi tokenomics_analyst trả về trống:
+  Tổng cung AAVE là [[cite:tokenomics-total-supply-coordinator]]~16 triệu AAVE[[/cite]]
+  *(ước tính của coordinator — tokenomics_analyst không có dữ liệu live trong phiên này)*
+
+Rules for coordinator-fill:
+- ALWAYS provide coordinator-fill for every section, even if the agent returned nothing.
+- NEVER leave a section blank or write "section not available".
+- Clearly distinguish coordinator estimates (⚠️ callout) from verified agent data.
+- For uncertain data, use ranges: "khoảng X–Y" with coordinator citation.
+- Coordinator-fill is BETTER than no data — always choose to fill over refusing.
+
 ## Citation syntax (REQUIRED for every numeric data point)
 
 Wrap EVERY specific number or statistic with a citation tag:
@@ -1066,8 +1430,27 @@ Examples:
   - Supply: [[cite:tokenomics-circulating-coingecko]]500M UNI[[/cite]]
 
 ID format: {section}-{metric}-{provider} (all lowercase, hyphens only).
-Providers: coingecko, defillama, goplus, etherscan, dexscreener.
+Providers: coingecko, defillama, goplus, certik, nansen, dune, tokeninsight, etherscan, dexscreener.
 Do NOT cite text/qualitative findings, only numeric data.
+
+## Cross-source conflict detection (REQUIRED when sources diverge — AC7, Story 9-UX-4)
+
+When 2 or more sources report the SAME metric and their values differ by MORE than 10% (absolute delta), you MUST emit a conflict citation:
+
+  [[cite:SECTION-METRIC-conflict-PROVIDER1-PROVIDER2]]VALUE1 vs VALUE2[[/cite]]
+
+Examples:
+  - GoPlus score 20/100 vs CertiK score 45/100 (delta = 25 > 10):
+    [[cite:security-score-conflict-goplus-certik]]20/100 vs 45/100[[/cite]]
+    → note: "Security scores diverge significantly — independently verify using both links."
+  - Two TVL sources: DeFiLlama $1.2B vs Nansen on-chain $0.9B (delta = 25%):
+    [[cite:tvl-total-conflict-defillama-nansen]]$1.2B vs $0.9B[[/cite]]
+
+Rules:
+- Only flag conflicts for NUMERIC metrics (not text/qualitative).
+- Always explain WHY scores might differ (methodology differences, data lag, etc.).
+- Do NOT flag conflicts when delta ≤ 10% — minor rounding differences are expected.
+- If one source returned an error, note the gap but do NOT emit a conflict citation.
 
 ## Embedded chart syntax (OPTIONAL, only when data is available)
 
@@ -1087,6 +1470,20 @@ Chart ID format: {type}-{token}-{metric} (e.g. tvl-uni-total, price-uni-7d).
 Only embed a chart when you have at least 5 data points from the sub-agent results.
 Do NOT fabricate data — only use numbers reported by sub-agents.
 
+## ⚠️ FINAL CHECK before writing your response
+
+Scan your draft. If you see ANY of these patterns, DELETE them and replace with
+coordinator-filled crypto report content:
+- "Mình không nhận được dữ liệu"
+- "Mình chưa nhận được"
+- "Không có đủ dữ liệu để"
+- "Unable to provide"
+- "data not available"
+- Any response that does NOT start with `<!-- crypto-report-v2 -->`
+
+The user already knows some data may be missing — they want the best analysis
+possible, not a refusal. Show them what you know.
+
 ## Crypto report header
 
 Start your response with EXACTLY this sentinel on its own line:
@@ -1095,7 +1492,17 @@ Start your response with EXACTLY this sentinel on its own line:
 Then immediately begin the heading:
 # Phân tích toàn diện [TOKEN NAME]
 
-No other preamble."""
+No other preamble.
+
+## Follow-up questions (REQUIRED at end)
+
+After your complete analysis, append EXACTLY this line as the VERY LAST line of your response:
+<!--follow-ups:["<question 1>?","<question 2>?","<question 3>?","<question 4>?","<question 5>?","<question 6>?"]-->
+
+Replace the placeholders with 4-6 context-aware follow-up questions in the same language as the report.
+Questions should be specific to the token analyzed (include the token symbol/name).
+Examples: "Tại sao TVL của [TOKEN] giảm trong Q4 2024?", "[TOKEN] vs [COMPETITOR]: ai có tokenomics tốt hơn?", "Fee switch proposal của [TOKEN] có khả thi không?"
+Output the entire JSON array on ONE line. Do NOT add any text after this comment."""
 
                 # NOTE: do NOT append self._DIRECTIVE here — it says "call 6 task()"
                 # which CONTRADICTS the synthesis directive and causes the LLM to
@@ -1905,6 +2312,17 @@ async def create_nowing_deep_agent(
     tokenomics_tools = _scope_tools(TOKENOMICS_ALLOWED_TOOLS, TOKENOMICS_ANALYST_NAME)
     yield_optimizer_tools = _scope_tools(YIELD_OPTIMIZER_ALLOWED_TOOLS, YIELD_OPTIMIZER_NAME)
 
+    # whale_tracker is optional — only built when feature flag is on (Story 9-UX-4 AC5).
+    _whale_tracker_enabled = (
+        os.getenv("CRYPTO_ORCHESTRA_ENABLE_WHALE_TRACKER", "false").strip().lower()
+        in ("1", "true", "yes")
+    )
+    whale_tracker_tools = (
+        _scope_tools(WHALE_TRACKER_ALLOWED_TOOLS, WHALE_TRACKER_NAME)
+        if _whale_tracker_enabled
+        else []
+    )
+
     # Guard: all 6 crypto prompts (defillama, sentiment, news, smart_contract, tokenomics,
     # yield_optimizer) reference chainlens_deep_research unconditionally. If the feature flag
     # (CHAINLENS_RESEARCH_ENABLED) is off, the tool is silently absent from the registry
@@ -1967,6 +2385,20 @@ async def create_nowing_deep_agent(
         "middleware": _build_gp_middleware(agent_name=YIELD_OPTIMIZER_NAME),
     }
 
+    # whale_tracker spec — only built when CRYPTO_ORCHESTRA_ENABLE_WHALE_TRACKER=true (AC5)
+    whale_tracker_spec: SubAgent | None = (
+        {  # type: ignore[typeddict-unknown-key]
+            "name": WHALE_TRACKER_NAME,
+            "description": WHALE_TRACKER_DESCRIPTION,
+            "system_prompt": WHALE_TRACKER_PROMPT,
+            "model": llm,
+            "tools": whale_tracker_tools,
+            "middleware": _build_gp_middleware(agent_name=WHALE_TRACKER_NAME),
+        }
+        if _whale_tracker_enabled
+        else None
+    )
+
     # Main agent middleware
     deepagent_middleware = [
         # Global token-bucket — runs FIRST so every downstream LLM call passes through.
@@ -1999,8 +2431,9 @@ async def create_nowing_deep_agent(
                 sentiment_analyst_spec,
                 news_analyst_spec,
                 smart_contract_analyst_spec,
-                tokenomics_analyst_spec,  # Story 9.1
-                yield_optimizer_spec,      # Story 9.4
+                tokenomics_analyst_spec,    # Story 9.1
+                yield_optimizer_spec,       # Story 9.4
+                *([whale_tracker_spec] if whale_tracker_spec is not None else []),  # Story 9-UX-4 AC5
             ],
         ),
         ParallelSpawnDirectiveMiddleware(),

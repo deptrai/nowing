@@ -17,6 +17,13 @@ _PROVIDER_ALIASES: dict[str, str] = {
     "dexscreener": "DexScreener",
     "messari": "Messari",
     "coinmarketcap": "CoinMarketCap",
+    "certik": "CertiK",
+    "nansen": "Nansen",
+    "dune": "Dune",
+    "tokeninsight": "TokenInsight",
+    # Coordinator-fill: estimates from coordinator's training knowledge when a
+    # sub-agent returned no data. Suffix `-coordinator` on cite IDs.
+    "coordinator": "Coordinator (estimated)",
 }
 
 

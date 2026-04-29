@@ -4,6 +4,7 @@ import { applyOrchestraEvent, type OrchestraState } from "@/atoms/chat/orchestra
 const EMPTY_STATE: OrchestraState = {
 	sessions: new Map(),
 	lastSpawnedSessionId: null,
+	pendingAgentResults: new Map(),
 };
 
 const SESSION_ID = "sess-abc123";

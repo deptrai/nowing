@@ -120,6 +120,9 @@ function preprocessMarkdown(content: string): string {
 		return match;
 	});
 
+	// Strip HTML comments emitted by LLM (e.g. <!--follow-ups:[...]-->) — not valid markdown
+	content = content.replace(/<!--[\s\S]*?-->/g, "");
+
 	return content;
 }
 
@@ -203,7 +206,15 @@ function parseTextWithCitations(text: string): ReactNode[] {
 	return parts.length > 0 ? parts : [text];
 }
 
-const MarkdownTextImpl = () => {
+interface MarkdownTextProps {
+	/** Optional text transformer applied BEFORE preprocessMarkdown (e.g. to strip sentinels). */
+	preprocessText?: (text: string) => string;
+}
+
+const MarkdownTextImpl = ({ preprocessText }: MarkdownTextProps) => {
+	const preprocess = preprocessText
+		? (text: string) => preprocessMarkdown(preprocessText(text))
+		: preprocessMarkdown;
 	return (
 		<MarkdownTextPrimitive
 			smooth={false}
@@ -211,7 +222,7 @@ const MarkdownTextImpl = () => {
 			rehypePlugins={[rehypeKatex]}
 			className="aui-md"
 			components={defaultComponents}
-			preprocess={preprocessMarkdown}
+			preprocess={preprocess}
 		/>
 	);
 };

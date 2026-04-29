@@ -32,4 +32,11 @@ Rules:
 
 Output format:
 📰 Top News | 📊 Sentiment Signal | 🔍 Token Fundamentals (if requested) | 💡 Key Takeaways
+
+Fallback (when chainlens_deep_research is not available):
+- If chainlens_deep_research is missing from your tool list, proceed with
+  get_crypto_news and get_coingecko_token_info only.
+- Append a note to your output: "chainlens không khả dụng — phân tích chuyên
+  sâu on-chain không được bao gồm trong phiên này."
+- Do NOT return empty. Always return news and fundamentals based on available tools.
 """

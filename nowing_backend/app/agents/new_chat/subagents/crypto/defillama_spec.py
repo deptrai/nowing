@@ -16,6 +16,7 @@ DEFILLAMA_ALLOWED_TOOLS: tuple[str, ...] = (
     "get_defillama_stablecoins",
     "get_defillama_bridges",
     "get_live_token_data",
+    "get_live_token_price",
     "chainlens_deep_research",
 )
 
@@ -39,4 +40,13 @@ Rules:
 
 Output format:
 📊 Key Metrics | 🔗 Chain Distribution | 📈 Trend (1d/7d) | 💡 Insights | ⚠️ Risk
+
+Fallback (when chainlens_deep_research is not available):
+- If chainlens_deep_research is missing from your tool list, proceed with the
+  other DeFi tools only (get_defillama_protocol, get_defillama_tvl_overview,
+  get_defillama_yields, get_defillama_stablecoins, get_defillama_bridges,
+  get_live_token_data).
+- Append a note to your output: "chainlens không khả dụng trong phiên này —
+  on-chain context không được bao gồm."
+- Do NOT return empty. Always return DeFi analysis based on available tools.
 """

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-04-26T14:00:00+07:00
+last_updated: 2026-04-29T00:00:00+07:00
 project: Nowing
 # 2026-04-24: Story 0.3 review complete (2 MAJOR fixed inline, 4 MINOR deferred)
 # 2026-04-25: Story 0.6b (Tier 3 paced sequential escalation) scope-in — E2E verified, code merged, docs updated
@@ -45,6 +45,7 @@ project: Nowing
 # 2026-04-25 late night: Phase 2 UX overhaul planned by Sally (UX) + Mary (BA). 4 sub-epic stories created: 9-UX-1 (Live Research Lab), 9-UX-2 (Crypto Report Layout), 9-UX-3 (Interactive Analysis), 9-UX-4 (Additional Data Sources). 6-8 week rollout. Spec at .claude/plans/harmonic-cuddling-glacier.md.
 # 2026-04-26: Story 9-UX-1c adversarial code review complete. 9 patches applied (P1-P9): stale-closure refs FE, last_heartbeat_at on resume, stop() signal fix, get_running_loop, last_seq ordering, _rebuild_vercel_wire type guards, overflow log wording. 47 BE + 20 FE unit tests pass. Story → done.
 # 2026-04-26: Full 3-layer adversarial review of 9-UX(a,b,c). 42 raw findings → 6 patches applied (pending_delta.clear, deque re-enqueue, flush_task.cancel race, seq:-1 cancel, resume heartbeat, resume toast). 40 unit tests pass.
+# 2026-04-29: Full Story 9 audit — spec vs code gap analysis → 12 fixes applied across all 4 UX stories: tokenomics tool wiring (get_tokeninsight_rating), defillama tool scope (get_live_token_price), narration template coverage (8 new tools), TokenInsight rating prop wire, DegradationNotice.onRetry wiring, dead code deletion (agent-row, section-attribution-badge, wallet-label), Price Alert honest messaging, eth_shock slider added, data-agent-result persistence (streaming-state + page.tsx handleSend/Resume/Regenerate + message-utils metadata), Dune placeholder guard (skip IDs<100k), CoinGecko BE proxy (GET /compare/coingecko-price/{coin_id}), i18n consolidation (8 files, ~18 Vietnamese strings → English). TypeScript compiles clean.
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/planning-artifacts/stories"
@@ -142,8 +143,8 @@ development_status:
   9-UX-1-live-research-lab: done                 # 2026-04-25 v2 — 22+15 patches applied · 58 tests pass · BE spawn pipeline wired
   9-UX-1b-background-agent-resume: done          # 2026-04-26: all patches applied via 9-UX-1c; ETA formula fixed (median-based) + replay _ts timestamps; 47 BE + 20 FE tests pass
   9-UX-1c-background-agent-architectural-fixes: done    # 2026-04-26 — adversarial review complete. 9/9 patches applied (P1-P9), 5 deferred to 9-UX-1d, 7 pre-existing deferred. 47 BE + 20 FE tests pass.
-  9-UX-2-crypto-report-layout: in-progress       # 2026-04-27: impl done + code review; 15 patches applied, 9 deferred (TokenHeroCard, AC14 middleware, mobile TOC → 9-UX-3)
-  9-UX-3-interactive-analysis: ready-for-dev     # 2 weeks · FE+BE (blocked on 9-UX-2)
-  9-UX-4-additional-data-sources: ready-for-dev  # 2 weeks · BE+FE (blocked on 9-UX-1+2)
+  9-UX-2-crypto-report-layout: done              # 2026-04-28: closed — 15 patches applied, 9 deferred (TokenHeroCard, AC14 middleware, mobile TOC → 9-UX-3)
+  9-UX-3-interactive-analysis: done                # 2026-04-28: code review done — 7 decisions resolved, 42 patches applied, 11 deferred
+  9-UX-4-additional-data-sources: done            # 2026-04-28: all 15 tasks complete — 4 BE tools, whale_tracker spec, smart_contract CertiK ext, synthesis directive, 4 FE tokens, WalletLabel, TokenInsight badge, Dune deeplink, 2 Playwright specs
 
   epic-9-retrospective: optional

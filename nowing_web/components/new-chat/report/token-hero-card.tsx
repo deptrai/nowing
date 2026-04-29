@@ -3,15 +3,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
 import { memo, useMemo } from "react";
+import { getBearerToken } from "@/lib/auth-utils";
 import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+/** Minimal subset of get_tokeninsight_rating tool result surfaced via message metadata */
+export interface TokenInsightRating {
+	/** Letter grade: A+, A, B+, B, C, D */
+	overall_rating: string;
+	/** Numeric score 0–100 */
+	overall_score: number;
+}
 
 interface TokenHeroCardProps {
 	symbol?: string;
 	name?: string;
 	coingeckoId?: string;
 	reportText?: string;
+	/** When present, shows a TokenInsight rating badge (Story 9-UX-4 AC5) */
+	tokenInsightRating?: TokenInsightRating;
 	className?: string;
 }
 
@@ -22,15 +33,19 @@ interface CoinGeckoPrice {
 
 type RiskLevel = "LOW" | "MED" | "HIGH";
 
-// ─── CoinGecko live price ─────────────────────────────────────────────────────
+// ─── CoinGecko live price (proxied through BE to avoid client-side rate limit) ─
+
+const _backendUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
 
 function useLivePrice(coingeckoId: string | undefined) {
 	return useQuery<CoinGeckoPrice | null>({
 		queryKey: ["coingecko-price", coingeckoId],
 		queryFn: async () => {
 			if (!coingeckoId) return null;
+			const token = getBearerToken();
 			const res = await fetch(
-				`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd&include_24hr_change=true`
+				`${_backendUrl}/compare/coingecko-price/${encodeURIComponent(coingeckoId)}`,
+				token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
 			);
 			if (!res.ok) return null;
 			const data = await res.json();
@@ -41,6 +56,44 @@ function useLivePrice(coingeckoId: string | undefined) {
 		refetchInterval: 30_000,
 		retry: 1,
 	});
+}
+
+// ─── TokenInsight rating badge (Story 9-UX-4 AC5) ────────────────────────────
+
+const RATING_GRADE_MAP: Record<string, { label: string; emoji: string }> = {
+	"A+": { label: "A+", emoji: "🏆" },
+	A: { label: "A", emoji: "🅰️" },
+	"B+": { label: "B+", emoji: "🔵" },
+	B: { label: "B", emoji: "🔵" },
+	C: { label: "C", emoji: "🟡" },
+	D: { label: "D", emoji: "🔴" },
+};
+
+function TokenInsightRatingBadge({ rating }: { rating: TokenInsightRating }) {
+	const grade = RATING_GRADE_MAP[rating.overall_rating] ?? {
+		label: rating.overall_rating,
+		emoji: "📊",
+	};
+	const isStrong = rating.overall_rating === "A+" || rating.overall_rating === "A";
+
+	return (
+		<a
+			href={`https://tokeninsight.com`}
+			target="_blank"
+			rel="noopener noreferrer"
+			className={cn(
+				"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold no-underline transition-opacity hover:opacity-80",
+				isStrong
+					? "bg-[var(--source-tokeninsight)]/15 text-[var(--source-tokeninsight)]"
+					: "bg-muted/60 text-muted-foreground"
+			)}
+			title={`TokenInsight Rating: ${rating.overall_rating} (${rating.overall_score}/100)`}
+			data-slot="tokeninsight-rating-badge"
+		>
+			<span aria-hidden="true">{grade.emoji}</span>
+			{grade.label} Rating
+		</a>
+	);
 }
 
 // ─── Risk badge ───────────────────────────────────────────────────────────────
@@ -154,6 +207,7 @@ const TokenHeroCardImpl = ({
 	name,
 	coingeckoId,
 	reportText = "",
+	tokenInsightRating,
 	className,
 }: TokenHeroCardProps) => {
 	const { data: priceData, isLoading } = useLivePrice(coingeckoId);
@@ -184,8 +238,9 @@ const TokenHeroCardImpl = ({
 				</div>
 			</div>
 
-			{/* Right: risk badge */}
-			<div className="flex items-center gap-2">
+			{/* Right: risk badge + TokenInsight rating */}
+			<div className="flex flex-wrap items-center gap-2">
+				{tokenInsightRating && <TokenInsightRatingBadge rating={tokenInsightRating} />}
 				{risk && <RiskBadge level={risk} />}
 				{!risk && (
 					<span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">

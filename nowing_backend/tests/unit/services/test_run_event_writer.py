@@ -166,6 +166,35 @@ async def test_text_delta_coalescing_upstream():
     assert _payload["text"] == "chunk3"
 
 
+@pytest.mark.asyncio
+async def test_synthesis_text_delta_no_coalescing():
+    """T5-fix: main synthesis text-delta (no agentId) must go to deque to preserve all tokens.
+
+    Root cause of text storage bug: synthesis deltas had agentId="" → coalesced in
+    _pending_delta[""] → ~80% of tokens dropped in 25ms flush windows.
+    Fix: no-agentId text-delta falls through to deque so all tokens are preserved
+    and text-start precedes text-delta in FIFO order.
+    """
+    run_id = uuid4()
+    writer = RunEventWriter(run_id, AsyncMock(), _mock_session_factory())
+
+    # Write 3 synthesis text-delta (no agentId) — ALL must survive in deque
+    writer.write("text-delta", {"type": "text-delta", "id": "text_abc", "delta": "<!-- crypto"})
+    writer.write("text-delta", {"type": "text-delta", "id": "text_abc", "delta": "-report-v2"})
+    writer.write("text-delta", {"type": "text-delta", "id": "text_abc", "delta": " -->\n"})
+
+    # All 3 deltas must be in deque (no coalescing)
+    assert len(writer._deque) == 3
+    # _pending_delta should NOT have the "" key
+    assert "" not in writer._pending_delta
+
+    # Order preserved (FIFO)
+    events = list(writer._deque)
+    assert events[0][1]["delta"] == "<!-- crypto"
+    assert events[1][1]["delta"] == "-report-v2"
+    assert events[2][1]["delta"] == " -->\n"
+
+
 # ---------------------------------------------------------------------------
 # Tests: _flush_batch — C6: INSERT before PUBLISH
 # ---------------------------------------------------------------------------

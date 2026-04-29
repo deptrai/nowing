@@ -208,8 +208,8 @@ async def _extract_partial_analysis(agent: Any, config: dict[str, Any]) -> dict 
         return None
 
     parts = [
-        "⚠️ **Phân tích bị giới hạn bởi rate limit của LLM provider** — "
-        "dưới đây là kết quả từng phần đã thu được:\n",
+        "⚠️ **Analysis limited by LLM provider rate limits** — "
+        "below are the partial results collected so far:\n",
     ]
     for name, content in completed:
         snippet = content.strip()
@@ -218,11 +218,11 @@ async def _extract_partial_analysis(agent: Any, config: dict[str, Any]) -> dict 
         parts.append(f"\n### ✅ {name}\n{snippet}\n")
     if errored:
         parts.append(
-            f"\n### ❌ Không hoàn thành\n"
+            f"\n### ❌ Incomplete\n"
             f"{', '.join(errored)} — provider rate limit exhausted.\n"
         )
     parts.append(
-        "\n---\n*Gửi lại câu hỏi sau 1-2 phút để có phân tích đầy đủ.*"
+        "\n---\n*Retry your question in 1-2 minutes for a complete analysis.*"
     )
 
     return {
@@ -252,6 +252,7 @@ async def _stream_agent_events(
     initial_step_id: str | None = None,
     initial_step_title: str = "",
     initial_step_items: list[str] | None = None,
+    user_query: str = "",
 ) -> AsyncGenerator[str, None]:
     """Shared async generator that streams and formats astream_events from the agent.
 
@@ -283,6 +284,8 @@ async def _stream_agent_events(
     just_finished_tool: bool = False
     active_tool_depth: int = 0  # Track nesting: >0 means we're inside a tool
     called_update_memory: bool = False
+    _tool_inputs_by_run_id: dict[str, Any] = {}
+    _token_meta_emitted: bool = False
 
     # AC13: writer queue for orchestra events emitted from contexts that can't
     # call dispatch_custom_event (rate bucket, monkey-patched LiteLLM gates).
@@ -397,6 +400,10 @@ async def _stream_agent_events(
             tool_step_id = next_thinking_step_id()
             tool_step_ids[run_id] = tool_step_id
             last_active_step_id = tool_step_id
+
+            # Capture input for tools we need to correlate at on_tool_end
+            if tool_name == "get_coingecko_token_info" and isinstance(tool_input, dict):
+                _tool_inputs_by_run_id[run_id] = tool_input
 
             if tool_name == "ls":
                 ls_path = (
@@ -949,6 +956,40 @@ async def _stream_agent_events(
                     status="completed",
                     items=completed_items,
                 )
+            elif tool_name == "get_coingecko_token_info":
+                token_symbol = (
+                    tool_output.get("symbol", "").upper()
+                    if isinstance(tool_output, dict)
+                    else ""
+                )
+                token_name = (
+                    tool_output.get("name", "")
+                    if isinstance(tool_output, dict)
+                    else ""
+                )
+                saved_input = _tool_inputs_by_run_id.pop(run_id, {})
+                coingecko_id = (
+                    saved_input.get("coin_id", "")
+                    if isinstance(saved_input, dict)
+                    else ""
+                )
+                completed_items = [token_name or token_symbol or "Token info fetched"]
+                yield streaming_service.format_thinking_step(
+                    step_id=original_step_id,
+                    title="Fetching token info",
+                    status="completed",
+                    items=completed_items,
+                )
+                if token_symbol and not _token_meta_emitted:
+                    _token_meta_emitted = True
+                    yield streaming_service.format_data(
+                        "token-meta",
+                        {
+                            "token_symbol": token_symbol,
+                            "token_name": token_name,
+                            "coingecko_id": coingecko_id,
+                        },
+                    )
             elif tool_name == "ls":
                 if isinstance(tool_output, dict):
                     ls_output = tool_output.get("result", "")
@@ -1405,6 +1446,28 @@ async def _stream_agent_events(
                 tier=data.get("tier"),
             )
 
+        elif event_type == "on_custom_event" and event.get("name") == "data_agent_result":
+            # Fallback path when _orchestra_writer ContextVar isn't set (nested LangGraph
+            # invocation boundaries). Mirror the writer's routing: bare-type events go
+            # via _format_sse, data-* via format_data which auto-prefixes "data-".
+            # Prefer payload-supplied sessionId (when set by caller for nested runs)
+            # over outer config.thread_id, so events route to the correct session.
+            data = event.get("data", {})
+            session_id = str(
+                data.get("sessionId")
+                or config.get("configurable", {}).get("thread_id", "")
+            )
+            yield streaming_service.format_data(
+                "agent-result",
+                {
+                    "sessionId": session_id,
+                    "agentId": data.get("agentId", ""),
+                    "resultText": data.get("resultText", ""),
+                    "resultLength": data.get("resultLength", 0),
+                    "truncated": data.get("truncated", False),
+                },
+            )
+
         elif event_type == "on_chat_model_end":
             # Accumulate token counts for quota tracking (cloud mode)
             output = event.get("data", {}).get("output")
@@ -1449,6 +1512,65 @@ async def _stream_agent_events(
         citation_map = harvest_citations(accumulated_text)
         if citation_map:
             yield streaming_service.format_data("citation-map", {"citation_map": citation_map})
+
+    # Parse and emit follow-up questions emitted by LLM in synthesis directive
+    # Format: <!--follow-ups-start-->[...]<!--follow-ups-end-->
+    # (HTML comment — invisible in renderer; sentinel-delimited so questions
+    # may safely contain `]`, `<`, or `>` without truncating the JSON capture.)
+    # Legacy format `<!--follow-ups:[...]-->` is also supported for back-compat
+    # but uses a greedy capture between the colon and the final `]-->`.
+    _follow_ups_match = re.search(
+        r"<!--follow-ups-start-->\s*(\[.*\])\s*<!--follow-ups-end-->",
+        accumulated_text,
+        re.DOTALL,
+    )
+    if not _follow_ups_match:
+        _follow_ups_match = re.search(
+            r"<!--follow-ups:(\[.*\])-->", accumulated_text, re.DOTALL
+        )
+    if _follow_ups_match:
+        try:
+            follow_ups = json.loads(_follow_ups_match.group(1))
+            if isinstance(follow_ups, list) and follow_ups:
+                yield streaming_service.format_data("follow-ups", {"follow_ups": follow_ups})
+        except (json.JSONDecodeError, ValueError):
+            pass
+        # Strip comment(s) from stored text
+        accumulated_text = (
+            accumulated_text[: _follow_ups_match.start()]
+            + accumulated_text[_follow_ups_match.end() :]
+        ).rstrip()
+
+    # Detect crypto report sentinel and emit report-type event
+    if "<!-- crypto-report-v2 -->" in accumulated_text:
+        yield streaming_service.format_data(
+            "report-type", {"report_type": "comprehensive_crypto"}
+        )
+        # Emit token-meta if not already emitted by tool handler
+        if not _token_meta_emitted:
+            _sym_match = re.search(
+                r"—\s*([A-Z]{2,12})\s+Token[^(]*\(([^)]+)\)", accumulated_text
+            )
+            if _sym_match:
+                yield streaming_service.format_data(
+                    "token-meta",
+                    {
+                        "token_symbol": _sym_match.group(1),
+                        "token_name": _sym_match.group(2),
+                        "coingecko_id": "",
+                    },
+                )
+            elif user_query:
+                _q_match = re.search(r"\b([A-Z]{2,12})\b", user_query)
+                if _q_match:
+                    yield streaming_service.format_data(
+                        "token-meta",
+                        {
+                            "token_symbol": _q_match.group(1),
+                            "token_name": "",
+                            "coingecko_id": "",
+                        },
+                    )
 
     if current_text_id is not None:
         yield streaming_service.format_text_end(current_text_id)
@@ -1829,6 +1951,7 @@ async def stream_new_chat(
             initial_step_id=initial_step_id,
             initial_step_title=initial_title,
             initial_step_items=initial_items,
+            user_query=user_query,
         ):
             if not _first_event_logged:
                 _perf_log.info(
@@ -2155,6 +2278,7 @@ async def stream_resume_chat(
             streaming_service=streaming_service,
             result=stream_result,
             step_prefix="thinking-resume",
+            user_query=user_query,
         ):
             if not _first_event_logged:
                 _perf_log.info(

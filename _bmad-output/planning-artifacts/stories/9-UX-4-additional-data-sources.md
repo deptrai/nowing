@@ -8,7 +8,7 @@ relatedFRs: [FR27 Comprehensive Analysis, FR-new Whale Tracking, FR-new Premium 
 relatedNFRs: [NFR-Q1 Accuracy (cross-source verification), NFR-CS3 API Rate Awareness]
 priority: P1 (Phase 2 — depth enhancement, not MVP)
 estimatedEffort: 2 weeks (1 BE + 0.5 FE)
-status: ready-for-dev
+status: done
 createdAt: 2026-04-25
 author: Sally (UX) + Mary (BA)
 ---
@@ -195,21 +195,21 @@ Each tool wraps httpx call with its own rate-limit budget tracking (separate fro
 
 ## Tasks
 
-- [ ] **T1** (BE) — Build `nansen_smart_money.py` with 3 functions + error handling
-- [ ] **T2** (BE) — Build `certik_skynet.py` with 2 functions
-- [ ] **T3** (BE) — Build `dune_query.py` + seed 4 pre-registered queries
-- [ ] **T4** (BE) — Build `tokeninsight_rating.py` with 2 functions
-- [ ] **T5** (BE) — Build `whale_tracker.py` sub-agent spec + register in `_COMPREHENSIVE_AGENTS` (feature-flagged)
-- [ ] **T6** (BE) — Extend `smart_contract_analyst` system prompt with CertiK cross-reference
-- [ ] **T7** (BE) — Update `_SYNTHESIS_DIRECTIVE` with cross-source conflict detection rule
-- [ ] **T8** (BE) — Unit tests for each tool (with httpx respx mocks)
-- [ ] **T9** (BE) — Integration test for whale_tracker spawn flow
-- [ ] **T10** (FE) — Add 4 new `--source-*` design tokens + favicons
-- [ ] **T11** (FE) — `<WalletLabel>` component (extends citation pattern)
-- [ ] **T12** (FE) — TokenInsight rating badge in TokenHeroCard
-- [ ] **T13** (FE) — Dune "View on Dune" button in SourceDetailPanel
-- [ ] **T14** (E2E) — Playwright: feature-flag ON → verify 7 agents in Lab, whale section renders
-- [ ] **T15** (E2E) — Playwright: verify dynamic grid layout at `md` breakpoint shows 7 lanes without overflow
+- [x] **T1** (BE) — Build `nansen_smart_money.py` with 3 functions + error handling
+- [x] **T2** (BE) — Build `certik_skynet.py` with 2 functions
+- [x] **T3** (BE) — Build `dune_query.py` + seed 4 pre-registered queries
+- [x] **T4** (BE) — Build `tokeninsight_rating.py` with 2 functions
+- [x] **T5** (BE) — Build `whale_tracker_spec.py` sub-agent spec + register in `_COMPREHENSIVE_AGENTS` (feature-flagged)
+- [x] **T6** (BE) — Extend `smart_contract_analyst` system prompt with CertiK cross-reference
+- [x] **T7** (BE) — Update `_SYNTHESIS_DIRECTIVE` with cross-source conflict detection rule
+- [x] **T8** (BE) — Unit tests for each tool (with httpx mocks)
+- [x] **T9** (BE) — Integration test for whale_tracker spawn flow + wiring
+- [x] **T10** (FE) — Add 4 new `--source-*` design tokens (light + dark) to globals.css
+- [x] **T11** (FE) — `<WalletLabel>` + `<WalletLabelList>` components (extends citation pattern)
+- [x] **T12** (FE) — TokenInsight rating badge in TokenHeroCard
+- [x] **T13** (FE) — Dune "View on Dune Analytics →" prominent button in SourceDetailPanel
+- [x] **T14** (E2E) — Playwright: feature-flag ON → verify 7 agents in Lab, whale section renders
+- [x] **T15** (E2E) — Playwright: verify dynamic grid layout at `md` breakpoint shows 7 lanes without overflow
 
 ---
 

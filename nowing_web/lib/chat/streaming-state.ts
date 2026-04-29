@@ -19,6 +19,14 @@ export type ContentPart =
 	| {
 			type: "data-thinking-steps";
 			data: { steps: ThinkingStepData[] };
+	  }
+	| {
+			type: "data-citation-map";
+			data: { citation_map: Record<string, unknown> };
+	  }
+	| {
+			type: "data-agent-results";
+			data: { results: Array<{ agentId: string; resultText: string; truncated: boolean }> };
 	  };
 
 export interface ContentPartsState {
@@ -203,6 +211,10 @@ export function buildContentForPersistence(
 			parts.push(part);
 		} else if (part.type === "data-thinking-steps") {
 			parts.push(part);
+		} else if (part.type === "data-citation-map") {
+			parts.push(part);
+		} else if (part.type === "data-agent-results") {
+			parts.push(part);
 		}
 	}
 
@@ -345,6 +357,37 @@ export type SSEEvent =
 			data: {
 				sessionId: string;
 				agentId: string;
+			};
+	  }
+	// ─── Crypto report events ──────────────────────────────────────────────────
+	| {
+			type: "data-token-meta";
+			data: {
+				token_symbol: string;
+				token_name: string;
+				coingecko_id: string;
+			};
+	  }
+	| {
+			type: "data-report-type";
+			data: { report_type: string };
+	  }
+	| {
+			type: "data-citation-map";
+			data: { citation_map: Record<string, unknown> };
+	  }
+	| {
+			type: "data-follow-ups";
+			data: { follow_ups: string[] };
+	  }
+	| {
+			type: "data-agent-result";
+			data: {
+				sessionId?: string;
+				agentId: string;
+				resultText: string;
+				resultLength: number;
+				truncated: boolean;
 			};
 	  };
 

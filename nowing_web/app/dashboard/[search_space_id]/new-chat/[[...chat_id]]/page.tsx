@@ -150,7 +150,8 @@ function handleOrchestraEvent(
 		t !== "data-orchestra-fact-captured" &&
 		t !== "data-orchestra-model-attribution" &&
 		t !== "data-orchestra-rate-gate-wait" &&
-		t !== "data-orchestra-llm-call"
+		t !== "data-orchestra-llm-call" &&
+		t !== "data-agent-result"
 	) {
 		return false;
 	}
@@ -932,6 +933,11 @@ export default function NewChatPage() {
 			const { contentParts, toolCallIndices } = contentPartsState;
 			let wasInterrupted = false;
 			let activeRun: ChatRun | null = null;
+			const collectedAgentResults: Array<{
+				agentId: string;
+				resultText: string;
+				truncated: boolean;
+			}> = [];
 
 			// Add placeholder assistant message
 			setMessages((prev) => [
@@ -1123,6 +1129,12 @@ export default function NewChatPage() {
 						case "data-citation-map": {
 							const citationData = parsed.data as { citation_map: Record<string, unknown> };
 							if (citationData?.citation_map) {
+								// Persist citation_map in contentPartsState so buildContentForPersistence
+								// saves it to DB — enables citation chips to render after page reload
+								contentPartsState.contentParts.push({
+									type: "data-citation-map",
+									data: { citation_map: citationData.citation_map },
+								});
 								setMessages((prev) =>
 									prev.map((m) =>
 										m.id === assistantMsgId
@@ -1131,8 +1143,97 @@ export default function NewChatPage() {
 													metadata: {
 														...(m.metadata as Record<string, unknown> | undefined),
 														custom: {
-															...((m.metadata as { custom?: Record<string, unknown> })?.custom ?? {}),
+															...((m.metadata as { custom?: Record<string, unknown> })?.custom ??
+																{}),
 															citation_map: citationData.citation_map,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "data-follow-ups": {
+							const followUpsData = parsed.data as { follow_ups: string[] };
+							if (followUpsData?.follow_ups?.length) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															follow_ups: followUpsData.follow_ups,
+															thread_id: currentThreadId,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "data-token-meta": {
+							const tokenMetaData = parsed.data as {
+								token_symbol: string;
+								token_name: string;
+								coingecko_id: string;
+							};
+							if (tokenMetaData?.token_symbol) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															token_symbol: tokenMetaData.token_symbol,
+															token_name: tokenMetaData.token_name,
+															coingecko_id: tokenMetaData.coingecko_id,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "data-report-type": {
+							const reportTypeData = parsed.data as { report_type: string };
+							if (reportTypeData?.report_type) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															report_type: reportTypeData.report_type,
 														},
 													},
 												}
@@ -1154,11 +1255,20 @@ export default function NewChatPage() {
 						case "data-orchestra-fact-captured":
 						case "data-orchestra-model-attribution":
 						case "data-orchestra-rate-gate-wait":
-						case "data-orchestra-llm-call": {
+						case "data-orchestra-llm-call":
+						case "data-agent-result": {
 							handleOrchestraEvent(
 								parsed as { type: string; data?: Record<string, unknown> },
 								setOrchestraState as (fn: (prev: unknown) => unknown) => void
 							);
+							const arData = (parsed as { data?: Record<string, unknown> }).data;
+							if (arData?.agentId && arData?.resultText) {
+								collectedAgentResults.push({
+									agentId: String(arData.agentId),
+									resultText: String(arData.resultText),
+									truncated: Boolean(arData.truncated),
+								});
+							}
 							break;
 						}
 						case "error":
@@ -1173,6 +1283,13 @@ export default function NewChatPage() {
 				}
 
 				batcher.flush();
+
+				if (collectedAgentResults.length > 0) {
+					contentPartsState.contentParts.push({
+						type: "data-agent-results",
+						data: { results: collectedAgentResults },
+					});
+				}
 
 				// Skip persistence for interrupted messages -- handleResume will persist the final version
 				const finalContent = buildContentForPersistence(contentPartsState, TOOLS_WITH_UI);
@@ -1325,6 +1442,11 @@ export default function NewChatPage() {
 				toolCallIndices: new Map(),
 			};
 			const { contentParts, toolCallIndices } = contentPartsState;
+			const collectedAgentResults: Array<{
+				agentId: string;
+				resultText: string;
+				truncated: boolean;
+			}> = [];
 
 			const existingMsg = messages.find((m) => m.id === assistantMsgId);
 			if (existingMsg && Array.isArray(existingMsg.content)) {
@@ -1522,6 +1644,66 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-token-meta": {
+							const tokenMetaData = parsed.data as {
+								token_symbol: string;
+								token_name: string;
+								coingecko_id: string;
+							};
+							if (tokenMetaData?.token_symbol) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															token_symbol: tokenMetaData.token_symbol,
+															token_name: tokenMetaData.token_name,
+															coingecko_id: tokenMetaData.coingecko_id,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "data-report-type": {
+							const reportTypeData = parsed.data as { report_type: string };
+							if (reportTypeData?.report_type) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															report_type: reportTypeData.report_type,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
 						case "orchestra-spawn":
 						case "orchestra-update":
 						case "orchestra-done":
@@ -1533,11 +1715,20 @@ export default function NewChatPage() {
 						case "data-orchestra-fact-captured":
 						case "data-orchestra-model-attribution":
 						case "data-orchestra-rate-gate-wait":
-						case "data-orchestra-llm-call": {
+						case "data-orchestra-llm-call":
+						case "data-agent-result": {
 							handleOrchestraEvent(
 								parsed as { type: string; data?: Record<string, unknown> },
 								setOrchestraState as (fn: (prev: unknown) => unknown) => void
 							);
+							const arData = (parsed as { data?: Record<string, unknown> }).data;
+							if (arData?.agentId && arData?.resultText) {
+								collectedAgentResults.push({
+									agentId: String(arData.agentId),
+									resultText: String(arData.resultText),
+									truncated: Boolean(arData.truncated),
+								});
+							}
 							break;
 						}
 						case "error":
@@ -1552,6 +1743,13 @@ export default function NewChatPage() {
 				}
 
 				batcher.flush();
+
+				if (collectedAgentResults.length > 0) {
+					contentPartsState.contentParts.push({
+						type: "data-agent-results",
+						data: { results: collectedAgentResults },
+					});
+				}
 
 				const finalContent = buildContentForPersistence(contentPartsState, TOOLS_WITH_UI);
 				if (contentParts.length > 0) {
@@ -1725,6 +1923,11 @@ export default function NewChatPage() {
 			};
 			const { contentParts, toolCallIndices } = contentPartsState;
 			const batcher = new FrameBatchedUpdater();
+			const collectedAgentResults: Array<{
+				agentId: string;
+				resultText: string;
+				truncated: boolean;
+			}> = [];
 
 			// Add placeholder messages to UI
 			// Always add back the user message (with new query for edit, or original content for reload)
@@ -1847,6 +2050,66 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-token-meta": {
+							const tokenMetaData = parsed.data as {
+								token_symbol: string;
+								token_name: string;
+								coingecko_id: string;
+							};
+							if (tokenMetaData?.token_symbol) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															token_symbol: tokenMetaData.token_symbol,
+															token_name: tokenMetaData.token_name,
+															coingecko_id: tokenMetaData.coingecko_id,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "data-report-type": {
+							const reportTypeData = parsed.data as { report_type: string };
+							if (reportTypeData?.report_type) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															report_type: reportTypeData.report_type,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
 						case "orchestra-spawn":
 						case "orchestra-update":
 						case "orchestra-done":
@@ -1858,11 +2121,20 @@ export default function NewChatPage() {
 						case "data-orchestra-fact-captured":
 						case "data-orchestra-model-attribution":
 						case "data-orchestra-rate-gate-wait":
-						case "data-orchestra-llm-call": {
+						case "data-orchestra-llm-call":
+						case "data-agent-result": {
 							handleOrchestraEvent(
 								parsed as { type: string; data?: Record<string, unknown> },
 								setOrchestraState as (fn: (prev: unknown) => unknown) => void
 							);
+							const arData = (parsed as { data?: Record<string, unknown> }).data;
+							if (arData?.agentId && arData?.resultText) {
+								collectedAgentResults.push({
+									agentId: String(arData.agentId),
+									resultText: String(arData.resultText),
+									truncated: Boolean(arData.truncated),
+								});
+							}
 							break;
 						}
 						case "error":
@@ -1877,6 +2149,13 @@ export default function NewChatPage() {
 				}
 
 				batcher.flush();
+
+				if (collectedAgentResults.length > 0) {
+					contentPartsState.contentParts.push({
+						type: "data-agent-results",
+						data: { results: collectedAgentResults },
+					});
+				}
 
 				// Persist messages after streaming completes
 				const finalContent = buildContentForPersistence(contentPartsState, TOOLS_WITH_UI);

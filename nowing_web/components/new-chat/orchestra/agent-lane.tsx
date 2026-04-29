@@ -89,12 +89,16 @@ export function AgentLane({ agent, className }: AgentLaneProps) {
 		sourcesFetched,
 		factsCapturedCount,
 		modelAttribution,
+		resultText,
+		resultLength,
+		resultTruncated,
 	} = agent;
 
 	const prevStatusRef = useRef(status);
 	const [showGlow, setShowGlow] = useState(false);
 	const [expanded, setExpanded] = useState(false);
-	const canExpand = narrationHistory.length > 0 || sourcesFetched.length > 0;
+	const [activeTab, setActiveTab] = useState<"activity" | "result">("activity");
+	const canExpand = narrationHistory.length > 0 || sourcesFetched.length > 0 || !!resultText;
 
 	useEffect(() => {
 		if (prevStatusRef.current === "running" && status === "done") {
@@ -105,6 +109,20 @@ export function AgentLane({ agent, className }: AgentLaneProps) {
 		}
 		prevStatusRef.current = status;
 	}, [status]);
+
+	// Auto-switch to "result" tab when result arrives — works whether the user
+	// is currently expanded OR expands later (we only mark "seen" once we've
+	// auto-switched, so a delayed expand still triggers the switch on first render).
+	const prevResultRef = useRef<string | undefined>(undefined);
+	useEffect(() => {
+		if (resultText && !prevResultRef.current && expanded) {
+			setActiveTab("result");
+			prevResultRef.current = resultText;
+		} else if (!resultText) {
+			// Reset when result clears (new session) so the next arrival auto-switches.
+			prevResultRef.current = undefined;
+		}
+	}, [resultText, expanded]);
 
 	const elapsedLabel =
 		elapsedMs >= 1000
@@ -122,6 +140,7 @@ export function AgentLane({ agent, className }: AgentLaneProps) {
 				(status === "failed" || status === "cancelled") && "opacity-60",
 				className
 			)}
+			data-slot="agent-lane"
 			data-agent-id={agentId}
 			data-status={status}
 		>
@@ -178,23 +197,73 @@ export function AgentLane({ agent, className }: AgentLaneProps) {
 				)}
 			</div>
 
-			{/* Expanded view: narration history */}
-			{expanded && narrationHistory.length > 0 && (
+			{/* Expanded view: tabbed (Activity | Result) */}
+			{expanded && (
 				<div className="border-t border-border/30 pt-1.5">
-					<p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-						Recent activity
-					</p>
-					<ul className="flex flex-col gap-0.5 text-[11px] text-muted-foreground/80">
-						{narrationHistory
-							.slice()
-							.reverse()
-							.map((n, i) => (
-								<li key={`${n.ts}-${i}`} className="truncate">
-									<span className="mr-1 inline-block size-1 rounded-full bg-muted-foreground/40 align-middle" />
-									{n.text}
-								</li>
-							))}
-					</ul>
+					{/* Tab bar */}
+					<div className="mb-1.5 flex gap-2 text-[10px]">
+						<button
+							type="button"
+							onClick={() => setActiveTab("activity")}
+							className={cn(
+								"rounded px-1.5 py-0.5 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+								activeTab === "activity"
+									? "bg-muted text-foreground"
+									: "text-muted-foreground hover:text-foreground"
+							)}
+						>
+							Activity
+						</button>
+						{resultText && (
+							<button
+								type="button"
+								onClick={() => setActiveTab("result")}
+								className={cn(
+									"rounded px-1.5 py-0.5 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+									activeTab === "result"
+										? "bg-muted text-foreground"
+										: "text-muted-foreground hover:text-foreground"
+								)}
+							>
+								Result
+							</button>
+						)}
+					</div>
+
+					{/* Activity tab */}
+					{activeTab === "activity" && narrationHistory.length > 0 && (
+						<>
+							<p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+								Recent activity
+							</p>
+							<ul className="flex flex-col gap-0.5 text-[11px] text-muted-foreground/80">
+								{narrationHistory
+									.slice()
+									.reverse()
+									.map((n, i) => (
+										<li key={`${n.ts}-${i}`} className="truncate">
+											<span className="mr-1 inline-block size-1 rounded-full bg-muted-foreground/40 align-middle" />
+											{n.text}
+										</li>
+									))}
+							</ul>
+						</>
+					)}
+
+					{/* Result tab — note: result text is session-only (not persisted to DB).
+					    After page reload, the tab auto-hides via the resultText guard. */}
+					{activeTab === "result" && resultText && (
+						<div className="rounded bg-muted/40 p-2">
+							<p className="mb-1 text-[10px] text-muted-foreground/70">
+								{(resultLength ?? 0).toLocaleString()} chars
+								{resultTruncated && " · showing first 3000 chars"}
+								<span className="ml-1 italic">· session-only</span>
+							</p>
+							<pre className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-foreground/80">
+								{resultText}
+							</pre>
+						</div>
+					)}
 				</div>
 			)}
 		</div>
