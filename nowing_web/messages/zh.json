@@ -803,5 +803,28 @@
 		"not_found_title": "此对话已被删除。",
 		"click_here": "点击这里",
 		"sign_in_prompt": "登录 Nowing 开始您自己的对话。"
+	},
+	"orchestra": {
+		"strip_title": "正在分析来源",
+		"strip_title_done": "来源已分析",
+		"strip_title_single": "正在获取来源",
+		"agent_status_queued": "排队中",
+		"agent_status_running": "获取中",
+		"agent_status_done": "完成",
+		"agent_status_failed": "失败",
+		"agent_status_cancelled": "已取消",
+		"summary": "{success}/{total} 完成 · {ms}ms ({bucket})",
+		"bucket_fast": "快速",
+		"bucket_normal": "正常",
+		"bucket_slow": "慢速",
+		"milestone_30s": "正在深度分析…",
+		"degradation_inline": "{success}/{total} 来源已完成 · {failed} 降级",
+		"degradation_retry": "重试失败来源",
+		"fail_reason_rate_limit": "速率限制",
+		"fail_reason_timeout": "超时",
+		"fail_reason_unavailable": "服务不可用",
+		"fail_reason_circuit_open": "断路器开启",
+		"fail_reason_cancelled_by_user": "已取消",
+		"cancelled_cost_footnote": "显示部分结果。部分来源未能获取。"
 	}
 }

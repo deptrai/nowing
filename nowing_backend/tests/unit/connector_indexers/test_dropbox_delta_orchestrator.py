@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from tests.unit.connector_indexers.conftest import CONNECTOR_USER_ID, CONNECTOR_ID, CONNECTOR_SEARCH_SPACE_ID
 
 from app.tasks.connector_indexers.dropbox_indexer import (
     _index_with_delta_sync,
@@ -11,9 +12,6 @@ from app.tasks.connector_indexers.dropbox_indexer import (
 
 pytestmark = pytest.mark.unit
 
-_USER_ID = "00000000-0000-0000-0000-000000000001"
-_CONNECTOR_ID = 42
-_SEARCH_SPACE_ID = 1
 
 
 def _make_file_dict(file_id: str, name: str) -> dict:
@@ -68,9 +66,9 @@ async def test_delta_sync_deletions_call_remove_document(monkeypatch):
     _indexed, _skipped, _unsupported, cursor = await _index_with_delta_sync(
         mock_client,
         AsyncMock(),
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         "old-cursor",
         mock_task_logger,
         MagicMock(),
@@ -107,9 +105,9 @@ async def test_delta_sync_upserts_filtered_and_downloaded(monkeypatch):
     indexed, skipped, _unsupported, cursor = await _index_with_delta_sync(
         mock_client,
         AsyncMock(),
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         "cursor-v1",
         mock_task_logger,
         MagicMock(),
@@ -169,9 +167,9 @@ async def test_delta_sync_mix_deletions_and_upserts(monkeypatch):
     indexed, skipped, _unsupported, cursor = await _index_with_delta_sync(
         mock_client,
         AsyncMock(),
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         "old-cursor",
         mock_task_logger,
         MagicMock(),
@@ -203,9 +201,9 @@ async def test_delta_sync_returns_new_cursor(monkeypatch):
     indexed, skipped, _unsupported, cursor = await _index_with_delta_sync(
         mock_client,
         AsyncMock(),
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         "old-cursor",
         mock_task_logger,
         MagicMock(),
@@ -286,9 +284,9 @@ async def test_orchestrator_uses_delta_sync_when_cursor_and_last_indexed(
 
     _indexed, _skipped, error, _unsupported = await index_dropbox_files(
         mock_session,
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         {
             "folders": [{"path": "/docs", "name": "Docs"}],
             "files": [],
@@ -314,9 +312,9 @@ async def test_orchestrator_falls_back_to_full_scan_without_cursor(
 
     _indexed, _skipped, error, _unsupported = await index_dropbox_files(
         mock_session,
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         {
             "folders": [{"path": "/docs", "name": "Docs"}],
             "files": [],
@@ -340,9 +338,9 @@ async def test_orchestrator_persists_cursor_after_sync(orchestrator_mocks):
 
     await index_dropbox_files(
         mock_session,
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         {
             "folders": [{"path": "/docs", "name": "Docs"}],
             "files": [],

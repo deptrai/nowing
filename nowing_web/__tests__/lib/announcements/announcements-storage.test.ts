@@ -4,7 +4,7 @@
  *         markAnnouncementToasted, isAnnouncementRead, isAnnouncementToasted
  * Priority: P1
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 import {
 	getAnnouncementState,
 	markAnnouncementRead,
@@ -36,14 +36,25 @@ const localStorageMock = (() => {
 	};
 })();
 
-Object.defineProperty(globalThis, "localStorage", {
-	value: localStorageMock,
-	writable: true,
+let originalDescriptor: PropertyDescriptor | undefined;
+
+beforeAll(() => {
+	originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+	Object.defineProperty(globalThis, "localStorage", {
+		value: localStorageMock,
+		writable: true,
+		configurable: true,
+	});
+});
+
+afterAll(() => {
+	if (originalDescriptor) {
+		Object.defineProperty(globalThis, "localStorage", originalDescriptor);
+	}
 });
 
 beforeEach(() => {
 	localStorageMock.clear();
-	// Reset call history but keep implementations
 	localStorageMock.getItem.mockClear();
 	localStorageMock.setItem.mockClear();
 	localStorageMock.removeItem.mockClear();

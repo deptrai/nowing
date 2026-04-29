@@ -8,9 +8,6 @@ from tests.unit.connector_indexers.conftest import FakeUser, make_page_limit_ses
 
 pytestmark = pytest.mark.unit
 
-_USER_ID = "00000000-0000-0000-0000-000000000001"
-_CONNECTOR_ID = 42
-_SEARCH_SPACE_ID = 1
 
 # Local aliases for backward compatibility within this module
 _FakeUser = FakeUser
@@ -72,9 +69,9 @@ async def _run_onedrive_selected(mocks, file_ids):
         MagicMock(),
         mocks["session"],
         file_ids,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 
@@ -174,9 +171,9 @@ async def _run_dropbox_selected(mocks, file_paths):
         MagicMock(),
         mocks["session"],
         file_paths,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 

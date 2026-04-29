@@ -1,8 +1,8 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { cn } from "@/lib/utils";
 
 export const SLIDEOUT_PANEL_OPENED_EVENT = "slideout-panel-opened";
 
@@ -52,63 +52,51 @@ export function SidebarSlideOutPanel({
 
 	if (isMobile) {
 		return (
-			<AnimatePresence>
-				{open && (
-					<div className="absolute left-0 inset-y-0 z-30 w-full overflow-hidden pointer-events-none">
-						<motion.div
-							initial={{ x: "-100%" }}
-							animate={{ x: 0 }}
-							exit={{ x: "-100%" }}
-							transition={{ type: "tween", duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-							className="h-full w-full bg-sidebar text-sidebar-foreground flex flex-col pointer-events-auto select-none"
-							role="dialog"
-							aria-modal="true"
-							aria-label={ariaLabel}
-						>
-							{children}
-						</motion.div>
-					</div>
-				)}
-			</AnimatePresence>
+			<div className="absolute left-0 inset-y-0 z-30 w-full overflow-hidden pointer-events-none">
+				<div
+					className={cn(
+						"h-full w-full bg-sidebar text-sidebar-foreground flex flex-col select-none",
+						"transition-transform duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
+						open ? "translate-x-0 pointer-events-auto" : "-translate-x-full"
+					)}
+					role="dialog"
+					aria-modal="true"
+					aria-label={ariaLabel}
+				>
+					{children}
+				</div>
+			</div>
 		);
 	}
 
 	return (
-		<AnimatePresence initial={false}>
-			{open && (
-				<>
-					{/* Blur backdrop covering the main content area (right of sidebar) */}
-					<motion.div
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
-						transition={{ duration: 0.15 }}
-						className="absolute z-10 bg-black/30 backdrop-blur-sm rounded-xl"
-						style={{ top: -9, bottom: -9, left: "calc(100% + 1px)", width: "200vw" }}
-						onClick={() => onOpenChange(false)}
-						aria-hidden="true"
-					/>
+		<>
+			{/* Blur backdrop covering the main content area (right of sidebar) */}
+			<div
+				className={cn(
+					"absolute z-10 bg-black/30 backdrop-blur-sm rounded-xl",
+					"transition-opacity duration-150",
+					open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+				)}
+				style={{ top: -9, bottom: -9, left: "calc(100% + 1px)", width: "200vw" }}
+				onClick={() => onOpenChange(false)}
+				aria-hidden="true"
+			/>
 
-					{/* Panel extending from sidebar's right edge, flush with the wrapper border */}
-					<motion.div
-						initial={{ width: 0 }}
-						animate={{ width }}
-						exit={{ width: 0 }}
-						transition={{ type: "tween", duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-						className="absolute z-20 overflow-hidden"
-						style={{ left: "100%", top: -1, bottom: -1 }}
-					>
-						<div
-							style={{ width }}
-							className="h-full bg-sidebar text-sidebar-foreground flex flex-col select-none border rounded-r-xl shadow-xl"
-							role="dialog"
-							aria-label={ariaLabel}
-						>
-							{children}
-						</div>
-					</motion.div>
-				</>
-			)}
-		</AnimatePresence>
+			{/* Panel extending from sidebar's right edge, flush with the wrapper border */}
+			<div
+				className="absolute z-20 overflow-hidden transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+				style={{ left: "100%", top: -1, bottom: -1, width: open ? width : 0 }}
+			>
+				<div
+					style={{ width }}
+					className="h-full bg-sidebar text-sidebar-foreground flex flex-col select-none border rounded-r-xl shadow-xl"
+					role="dialog"
+					aria-label={ariaLabel}
+				>
+					{children}
+				</div>
+			</div>
+		</>
 	);
 }

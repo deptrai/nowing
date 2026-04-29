@@ -265,7 +265,11 @@ export function useDocuments(
 				return existing;
 			});
 
-			updated = updated.filter((doc) => liveIds.has(doc.id));
+			// Only remove API-loaded docs if Zero actually returned data for this space.
+			// When Zero is disconnected or not yet synced, liveIds is empty — don't wipe the API docs.
+			if (liveIds.size > 0) {
+				updated = updated.filter((doc) => liveIds.has(doc.id));
+			}
 
 			if (newItems.length > 0) {
 				return [...newItems, ...updated];

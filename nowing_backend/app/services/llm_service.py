@@ -179,6 +179,10 @@ async def validate_llm_config(
             "billing",
             "payment required",
             "402",
+            # Proxy/firewall blocks the validation test call but key is valid
+            "your request was blocked",
+            "request was blocked",
+            "blocked by",
         ]
         if any(kw in error_text for kw in BILLING_KEYWORDS):
             logger.warning(

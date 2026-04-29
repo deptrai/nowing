@@ -118,31 +118,44 @@ async def get_global_new_llm_configs(
 async def create_new_llm_config(
     config_data: NewLLMConfigCreate,
     session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_superuser),
+    user: User = Depends(current_active_user),
 ):
     """
     Create a new NewLLMConfig for a search space.
-    Superuser only — configs are shared with all search space members.
+    Search-space configs require LLM_CONFIGS_CREATE permission; global configs (no search_space_id) require superuser.
     """
     try:
-        # Validate the LLM configuration by making a test API call
-        is_valid, error_message = await validate_llm_config(
-            provider=config_data.provider.value,
-            model_name=config_data.model_name,
-            api_key=config_data.api_key,
-            api_base=config_data.api_base,
-            custom_provider=config_data.custom_provider,
-            litellm_params=config_data.litellm_params,
-        )
-
-        if not is_valid:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid LLM configuration: {error_message}",
+        if config_data.search_space_id is None:
+            if not user.is_superuser:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Only superusers can create global LLM configurations",
+                )
+        else:
+            await check_permission(
+                session,
+                user,
+                config_data.search_space_id,
+                Permission.LLM_CONFIGS_CREATE.value,
+                "You don't have permission to create LLM configurations in this search space",
+            )
+        if not config_data.skip_validation:
+            is_valid, error_message = await validate_llm_config(
+                provider=config_data.provider.value,
+                model_name=config_data.model_name,
+                api_key=config_data.api_key,
+                api_base=config_data.api_base,
+                custom_provider=config_data.custom_provider,
+                litellm_params=config_data.litellm_params,
             )
 
-        # Create the config as admin-owned (user_id=None means shared with all space members)
-        db_config = NewLLMConfig(**config_data.model_dump(), user_id=None)
+            if not is_valid:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid LLM configuration: {error_message}",
+                )
+
+        db_config = NewLLMConfig(**config_data.model_dump(exclude={"skip_validation"}), user_id=user.id)
         session.add(db_config)
         await session.commit()
         await session.refresh(db_config)

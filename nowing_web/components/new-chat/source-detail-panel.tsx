@@ -13,7 +13,6 @@ import {
 	Sparkles,
 	X,
 } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import type React from "react";
 import { forwardRef, memo, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
@@ -133,7 +132,11 @@ export function SourceDetailPanel({
 	const [activeChunkIndex, setActiveChunkIndex] = useState<number | null>(null);
 	const [mounted, setMounted] = useState(false);
 	const [_hasScrolledToCited, setHasScrolledToCited] = useState(false);
-	const shouldReduceMotion = useReducedMotion();
+	// Inline reduced-motion check (no framer-motion dependency)
+	const shouldReduceMotion =
+		typeof window !== "undefined"
+			? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+			: false;
 
 	useEffect(() => {
 		setMounted(true);
@@ -378,40 +381,19 @@ export function SourceDetailPanel({
 	);
 
 	const panelContent = (
-		<AnimatePresence mode="wait">
+		<>
 			{open && (
 				<>
 					{/* Backdrop */}
-					<motion.div
-						key="backdrop"
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
-						transition={{ duration: 0.2 }}
-						className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+					<div
+						className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
 						onClick={() => onOpenChange(false)}
 					/>
 
 					{/* Panel */}
-					<motion.div
-						key="panel"
-						initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 }}
-						animate={{ opacity: 1, scale: 1, y: 0 }}
-						exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 }}
-						transition={{
-							type: "spring",
-							damping: 30,
-							stiffness: 300,
-						}}
-						className="fixed inset-3 sm:inset-6 md:inset-10 lg:inset-16 z-50 flex flex-col bg-background rounded-3xl shadow-2xl border overflow-hidden"
-					>
+					<div className="fixed inset-3 sm:inset-6 md:inset-10 lg:inset-16 z-50 flex flex-col bg-background rounded-3xl shadow-2xl border overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-200">
 						{/* Header */}
-						<motion.div
-							initial={{ opacity: 0, y: -10 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.1 }}
-							className="flex items-center justify-between px-6 py-5 border-b bg-linear-to-r from-muted/50 to-muted/30"
-						>
+						<div className="flex items-center justify-between px-6 py-5 border-b bg-linear-to-r from-muted/50 to-muted/30">
 							<div className="min-w-0 flex-1">
 								<h2 className="text-xl font-semibold truncate">
 									{documentData?.title || title || "Source Document"}
@@ -450,32 +432,24 @@ export function SourceDetailPanel({
 									<span className="sr-only">Close</span>
 								</Button>
 							</div>
-						</motion.div>
+						</div>
 
 						{/* Loading State */}
 						{!isDirectRenderSource && isDocumentByChunkFetching && (
 							<div className="flex-1 flex items-center justify-center">
-								<motion.div
-									initial={{ opacity: 0, scale: 0.9 }}
-									animate={{ opacity: 1, scale: 1 }}
-									className="flex flex-col items-center gap-4"
-								>
+								<div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in-95 duration-200">
 									<Spinner size="lg" />
 									<p className="text-sm text-muted-foreground font-medium">
 										{t("loading_document")}
 									</p>
-								</motion.div>
+								</div>
 							</div>
 						)}
 
 						{/* Error State */}
 						{!isDirectRenderSource && documentByChunkFetchingError && (
 							<div className="flex-1 flex items-center justify-center">
-								<motion.div
-									initial={{ opacity: 0, scale: 0.9 }}
-									animate={{ opacity: 1, scale: 1 }}
-									className="flex flex-col items-center gap-4 text-center px-6"
-								>
+								<div className="flex flex-col items-center gap-4 text-center px-6 animate-in fade-in zoom-in-95 duration-200">
 									<div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center">
 										<FileQuestionMark className="h-10 w-10 text-muted-foreground" />
 									</div>
@@ -489,7 +463,7 @@ export function SourceDetailPanel({
 									<Button variant="outline" onClick={() => onOpenChange(false)} className="mt-2">
 										Close Panel
 									</Button>
-								</motion.div>
+								</div>
 							</div>
 						)}
 
@@ -508,11 +482,7 @@ export function SourceDetailPanel({
 											Open in Browser
 										</Button>
 									)}
-									<motion.div
-										initial={{ opacity: 0, y: 10 }}
-										animate={{ opacity: 1, y: 0 }}
-										className="p-6 bg-muted/50 rounded-2xl border"
-									>
+									<div className="p-6 bg-muted/50 rounded-2xl border animate-in fade-in slide-in-from-bottom-2 duration-200">
 										<h3 className="text-base font-semibold mb-4 flex items-center gap-2">
 											<BookOpen className="h-4 w-4" />
 											Source Information
@@ -523,7 +493,7 @@ export function SourceDetailPanel({
 										<div className="text-sm text-foreground leading-relaxed">
 											{description || "No content available"}
 										</div>
-									</motion.div>
+									</div>
 								</div>
 							</ScrollArea>
 						)}
@@ -533,12 +503,7 @@ export function SourceDetailPanel({
 							<div className="flex-1 flex overflow-hidden">
 								{/* Chunk Navigation Sidebar */}
 								{allChunks.length > 1 && (
-									<motion.div
-										initial={{ opacity: 0, x: -20 }}
-										animate={{ opacity: 1, x: 0 }}
-										transition={{ delay: 0.2 }}
-										className="hidden lg:flex flex-col w-16 border-r bg-muted/10 overflow-hidden"
-									>
+									<div className="hidden lg:flex flex-col w-16 border-r bg-muted/10 overflow-hidden">
 										<ScrollArea className="flex-1 h-full">
 											<div className="p-2 pt-3 flex flex-col gap-1.5">
 												{allChunks.map((chunk, idx) => {
@@ -546,13 +511,10 @@ export function SourceDetailPanel({
 													const isCited = chunk.id === chunkId;
 													const isActive = activeChunkIndex === idx;
 													return (
-														<motion.button
+														<button
 															key={chunk.id}
 															type="button"
 															onClick={() => scrollToChunk(idx)}
-															initial={{ opacity: 0, scale: 0.8 }}
-															animate={{ opacity: 1, scale: 1 }}
-															transition={{ delay: Math.min(idx * 0.02, 0.2) }}
 															className={cn(
 																"relative w-11 h-9 mx-auto rounded-lg text-xs font-semibold transition-all duration-200 flex items-center justify-center",
 																isCited
@@ -569,12 +531,12 @@ export function SourceDetailPanel({
 																	<Sparkles className="h-2.5 w-2.5 text-primary-foreground" />
 																</span>
 															)}
-														</motion.button>
+														</button>
 													);
 												})}
 											</div>
 										</ScrollArea>
-									</motion.div>
+									</div>
 								)}
 
 								{/* Main Content */}
@@ -584,12 +546,7 @@ export function SourceDetailPanel({
 										{"document_metadata" in documentData &&
 											documentData.document_metadata &&
 											Object.keys(documentData.document_metadata).length > 0 && (
-												<motion.div
-													initial={{ opacity: 0, y: 10 }}
-													animate={{ opacity: 1, y: 0 }}
-													transition={{ delay: 0.1 }}
-													className="p-5 bg-muted/30 rounded-2xl border"
-												>
+												<div className="p-5 bg-muted/30 rounded-2xl border animate-in fade-in duration-200">
 													<h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider flex items-center gap-2">
 														<FileText className="h-4 w-4" />
 														Document Information
@@ -604,7 +561,7 @@ export function SourceDetailPanel({
 															</div>
 														))}
 													</dl>
-												</motion.div>
+												</div>
 											)}
 
 										{/* Chunks Header */}
@@ -694,10 +651,10 @@ export function SourceDetailPanel({
 								</ScrollArea>
 							</div>
 						)}
-					</motion.div>
+					</div>
 				</>
 			)}
-		</AnimatePresence>
+		</>
 	);
 
 	if (!mounted) return <>{children}</>;

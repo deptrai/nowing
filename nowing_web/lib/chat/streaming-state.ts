@@ -19,6 +19,14 @@ export type ContentPart =
 	| {
 			type: "data-thinking-steps";
 			data: { steps: ThinkingStepData[] };
+	  }
+	| {
+			type: "data-citation-map";
+			data: { citation_map: Record<string, unknown> };
+	  }
+	| {
+			type: "data-agent-results";
+			data: { results: Array<{ agentId: string; resultText: string; truncated: boolean }> };
 	  };
 
 export interface ContentPartsState {
@@ -203,6 +211,10 @@ export function buildContentForPersistence(
 			parts.push(part);
 		} else if (part.type === "data-thinking-steps") {
 			parts.push(part);
+		} else if (part.type === "data-citation-map") {
+			parts.push(part);
+		} else if (part.type === "data-agent-results") {
+			parts.push(part);
 		}
 	}
 
@@ -236,7 +248,148 @@ export type SSEEvent =
 				tokens_remaining: number;
 			};
 	  }
-	| { type: "error"; errorText: string };
+	| { type: "error"; errorText: string }
+	// ─── Orchestra events (Phase 9) ──────────────────────────────────────────
+	| {
+			type: "orchestra-spawn";
+			data: {
+				sessionId: string;
+				agentId: string;
+				agentName: string;
+				agentType: string;
+			};
+	  }
+	| {
+			type: "orchestra-update";
+			data: {
+				sessionId: string;
+				agentId: string;
+				status: "running" | "waiting" | "degraded";
+				progress?: number;
+				milestone?: string;
+			};
+	  }
+	| {
+			type: "orchestra-done";
+			data: {
+				sessionId: string;
+				agentId: string;
+				citationIds?: string[];
+			};
+	  }
+	| {
+			type: "orchestra-fail";
+			data: {
+				sessionId: string;
+				agentId: string;
+				errorCode: string;
+				errorMessage: string;
+			};
+	  }
+	| {
+			type: "orchestra-cancel";
+			data: {
+				sessionId: string;
+				agentId: string;
+			};
+	  }
+	| {
+			type: "orchestra-complete";
+			data: {
+				sessionId: string;
+				agentIds: string[];
+				citationCount: number;
+			};
+	  }
+	// ─── Orchestra Phase 2 UX events (Story 9-UX-1) ─────────────────────────
+	| {
+			type: "data-orchestra-narration";
+			data: {
+				sessionId: string;
+				agentId: string;
+				text: string;
+				tone: "fetching" | "analyzing" | "synthesizing";
+			};
+	  }
+	| {
+			type: "data-orchestra-source-fetched";
+			data: {
+				sessionId: string;
+				agentId: string;
+				source: {
+					favicon: string;
+					domain: string;
+					url: string;
+					dataType: string;
+				};
+			};
+	  }
+	| {
+			type: "data-orchestra-fact-captured";
+			data: {
+				sessionId: string;
+				agentId: string;
+				factSummary: string;
+				value?: number;
+				unit?: string;
+			};
+	  }
+	| {
+			type: "data-orchestra-model-attribution";
+			data: {
+				sessionId: string;
+				agentId: string;
+				model: string;
+				provider: string;
+				tier?: string;
+			};
+	  }
+	| {
+			type: "data-orchestra-rate-gate-wait";
+			data: {
+				sessionId: string;
+				waitSeconds: number;
+				reason: "min_interval" | "paced" | "retry";
+			};
+	  }
+	| {
+			type: "data-orchestra-llm-call";
+			data: {
+				sessionId: string;
+				agentId: string;
+			};
+	  }
+	// ─── Crypto report events ──────────────────────────────────────────────────
+	| {
+			type: "data-token-meta";
+			data: {
+				token_symbol: string;
+				token_name: string;
+				coingecko_id: string;
+			};
+	  }
+	| {
+			type: "data-report-type";
+			data: { report_type: string };
+	  }
+	| {
+			type: "data-citation-map";
+			data: { citation_map: Record<string, unknown> };
+	  }
+	| {
+			type: "data-follow-ups";
+			data: { follow_ups: string[] };
+	  }
+	| {
+			type: "data-agent-result";
+			data: {
+				sessionId?: string;
+				agentId: string;
+				resultText: string;
+				resultLength: number;
+				truncated: boolean;
+			};
+	  };
 
 /**
  * Async generator that reads an SSE stream and yields parsed JSON objects.

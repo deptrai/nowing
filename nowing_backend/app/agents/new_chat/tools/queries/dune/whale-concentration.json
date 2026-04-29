@@ -1,0 +1,18 @@
+{
+  "query_id": 12347,
+  "name": "Whale Concentration — Top 10 Holders %",
+  "description": "Percentage of total supply held by the top 10, 20, and 50 token holders. Excludes known exchange and contract addresses. Useful for concentration risk analysis.",
+  "params_schema": {
+    "token_address": {
+      "type": "text",
+      "description": "EVM token contract address (0x...)",
+      "required": true
+    },
+    "exclude_exchanges": {
+      "type": "boolean",
+      "description": "Whether to exclude exchange hot wallets from concentration calc (default true)",
+      "required": false
+    }
+  },
+  "dune_url": "https://dune.com/queries/12347"
+}

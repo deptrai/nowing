@@ -64,6 +64,10 @@ class NewLLMConfigCreate(NewLLMConfigBase):
         None,
         description="Search space ID. None = global admin config visible to all spaces",
     )
+    skip_validation: bool = Field(
+        False,
+        description="Skip LLM API validation test call. Use when backend IP is blocked by the provider.",
+    )
 
 
 class NewLLMConfigUpdate(BaseModel):

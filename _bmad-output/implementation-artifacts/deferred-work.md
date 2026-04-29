@@ -1,5 +1,19 @@
 # Deferred Work
 
+## Resolved 2026-04-25 — Lost partial work on rate-limit (Story 0.6b AC8/AC9)
+
+- **Sub-agent 429 killed entire stream + discarded all completed sub-agents' outputs** — deepagents `atask()` had no try/except → exception killed LangGraph stream → user saw "Sorry, there was an error" despite N/6 agents succeeding. **Resolved** by Story 0.6b Layer 4: `SubAgentResilienceMiddleware` (AC8) retries + converts to error ToolMessage; `_extract_partial_analysis` (AC9) salvages from checkpointer when synthesis itself fails. User **always** sees graceful partial result.
+
+## Resolved 2026-04-24 — Rate-limit sustained-pressure gap (Story 0.6b)
+
+- **`chat_deepagent.py` Tier 2 still fails on strict-RPM providers** — E2E smoke against TrollLLM 10 RPM showed Tier 2 natural sequential is still faster than rolling RPM window once KB planner + synthesis calls accumulate. **Resolved** by Story 0.6b (Tier 3 paced sequential with `asyncio.sleep(7)` + retry on synthesis). See [0-6b-rate-limit-paced-escalation.md](../planning-artifacts/stories/0-6b-rate-limit-paced-escalation.md).
+
+## Still deferred from Story 0.6b (scope-limited follow-up)
+
+- **Unit tests for escalation + resilience logic** [tests/integration/agents/test_rate_limit_escalation.py] — Story 0.6b T5 marked optional. E2E smoke verified (2026-04-25, scenario: 0/6 agents completed → partial analysis rendered, no crash), but unit coverage not yet written: `test_consecutive_events_promote_level`, `test_paced_emission_sleeps`, `test_synthesis_retries_on_rate_limit`, `test_subagent_resilience_retry_then_error_toolmessage`, `test_extract_partial_analysis_from_checkpoint`.
+- **Grafana dashboard rows** — new metric labels emitted (`rate_limit_paced`, `rate_limit_reduced_scope`, `subagent_retry`, `subagent_exhausted`) but dashboard panels not yet updated. Owner: DevOps (Week 3 telemetry setup per sprint plan).
+- **Resumable partial analysis FE button** — BE endpoint `stream_resume_chat` already loads checkpoint state, but no FE UI yet to trigger resume after partial. User currently re-sends full query. Defer to Phase 2 UX polish.
+
 ## Deferred from: code review of story 3-5-model-selection-via-quota (2026-04-14)
 
 - **stripe_subscription_id has no unique constraint** [nowing_backend/app/db.py] — Column added without UNIQUE constraint. Should be enforced once Stripe integration (Epic 5) is implemented to prevent duplicate subscription mappings.
@@ -198,3 +212,152 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - ISO-M2: `_purge_test_search_space` session-scoped — per-test cleanup handled by `_cleanup_documents` autouse; session purge is belt-and-suspenders. Risk: mid-session crashes leave stale rows until session end. Acceptable for integration suite.
 - ISO-M3: `page_limits` raw asyncpg bypass — necessary for integration test that mutates actual DB state
 - ISO-M4: session-scoped `async_engine` — architectural, pre-existing
+
+## Deferred from: code review of story-0-1-crypto-tool-infrastructure (2026-04-23)
+
+- No retry/backoff/`asyncio.wait_for` outer timeout — lệch pattern `chainlens_research.py`. Cân nhắc thêm exponential backoff với jitter cho tất cả 11 tool files.
+- 429 không honor `Retry-After` header — surface header value trong error message để LLM defer correctly.
+- Etherscan multi-file source `{{...}}` wrapper không strip → `source_code_preview` có thể chứa JSON wrapper [contract_analysis.py:117].
+- Bare `except Exception` quá rộng — narrow to `(httpx.HTTPError, ValueError, KeyError)` để không nuốt `KeyError`/programming bugs.
+- New `httpx.AsyncClient` mỗi call — không connection pooling/HTTP-2 reuse. Cân nhắc module-level singleton.
+- Etherscan v1 endpoints sắp deprecate Q4-2025 → migrate sang unified v2 multichain endpoint với single API key.
+
+## Deferred from: code review of story-9-FE-1 (2026-04-23)
+
+- **P1#5** — Out-of-order SSE events silently dropped (reducers `if (!session) return state`); revisit if backend 9-1/9-4 re-orders agents. [atoms/chat/orchestra.atom.ts]
+- **P1#6** — Duplicate `orchestra-spawn` resets agents to queued (overwrites unconditionally). Need backend replay semantics decision before fixing. [atoms/chat/orchestra.atom.ts:97-104]
+- **P1#7** — `activeQueryHash` clobbered on every spawn → concurrent sessions hijack each other. Single-tab MVP per arch §9.7 Q5. [atoms/chat/orchestra.atom.ts:115]
+- **P1#9** — i18n keys (26 in 5 locales) hardcoded VN/EN strings in components (`agent-row`, `degradation-notice`, `orchestra-strip` cancelled footnote). Wire keys in follow-up i18n pass.
+- **P1#10** — AC11 Rocicorp Zero persistence not implemented (no subscription, no mutator, no hydration). Defer to Story 9-FE-2 — D1 decision: accept Jotai for v1.
+- **P1#11** — `trackCitationClick` (AC10 event #6) exported but never invoked. Wire when AC7/AC8 conflict detection lands.
+- **P2#12** — `failedCount` semantics inconsistent: streaming `failed` only vs. complete `failed+cancelled`. Fix when AC14 telemetry wiring happens.
+- **P2#13** — `elapsedMs` derived from session-level `spawnedAt` (not per-agent start). Display says "session age" instead of "agent runtime". Revisit if UX surfaces.
+- **P2#14** — AC4 `summary.fact_count` + `sources[]` chips never populated; `OrchestraDoneEvent.data` only has `citationIds?`. Coupled with backend payload extension.
+- **P2#15** — AC9 milestone copy `"Đang tổng hợp từ {success_count} nguồn"` not interpolated; current renders `"Analysing in depth…"`. Part of i18n pass.
+- **P2#16** — A11y: `aria-hidden="true"` + `aria-label` conflict on agent-row icons; no `role="status"`/`aria-live="polite"` wrapper for live updates.
+- **P2#17** — `orchestra_sessions` schema deviates from AC11 (`agents: json`, `spawned_at: string`, `total_ms: string` vs spec `string[]`/`timestamp`/`number`). Migrate when Zero integration lands.
+- **P2#18** — Three identical SSE switch blocks in `page.tsx` (handleSend / handleResume / handleRegenerate). Refactor to shared helper coupled with `streaming-state.ts`.
+- **P2#19** — `orchestraStateAtom.sessions` Map never pruned across chats; `activeQueryHash` may point to deleted session. Revisit if memory growth observed.
+- **P3#20** — Polish bundle: `errorCode as FailReason` unsafe cast → falls through to raw string; `p95Bucket` no `Number.isFinite` guard; `STATUS_LABELS` Vietnamese hardcode in `agent-row.tsx`; `detectConflict` mixed-type array cast.
+
+## Deferred from: code review of story-0-2-base-sub-agents (2026-04-23)
+
+- **#6 (AC5–AC8 functional spawn tests)** — Unit tests cover spec constants, token budget, and tool scoping only. Actual sub-agent spawn + tool-call routing (AC5 DeFiLlama spawn, AC6 sentiment spawn, AC7 news spawn, AC8 smart_contract spawn) require live LangGraph runtime + API keys (DeFiLlama/CMC/Reddit/GoPlus/Etherscan). Defer to DoD-8 integration suite once env keys are provisioned in CI. File: `tests/integration/agents/new_chat/test_crypto_subagent_spawn.py` (TBD).
+- **#7 (AC9 / NFR-CS2 parallel execution ratio)** — Parallel ratio assertion (`parallel_ms / sum(sequential_ms) < 0.7`) needs LangGraph trace capture + synthetic multi-agent query. Coupled with OpenTelemetry span export (DoD-7). Defer until trace export pipeline lands. Reference: `_bmad-output/planning-artifacts/stories/0-2-base-sub-agents.md` AC9.
+- **#8 (Chainlens fallback prompt update)** — Chainlens tool returns `{"status": "fallback", ...}` when upstream unavailable; current 4 prompts don't instruct sub-agents how to surface this degraded state to end-users (should flag "Chainlens unavailable, using primary-tool-only view"). Update needed in all 4 `*_ANALYST_PROMPT` strings once Chainlens fallback schema stabilizes. Watch: `app/agents/new_chat/tools/chainlens_research.py` response envelope.
+- **Review note** — Finding #1 (shared `gp_middleware` list) resolved via factory `_build_gp_middleware()` creating fresh middleware instances per sub-agent (chosen over stateless-assumption path for NFR-CS4 safety). `_memory_middleware` intentionally shared (read-only context injection). See `app/agents/new_chat/chat_deepagent.py` ~lines 450–525.
+
+## Deferred from: code review of 0-2-base-sub-agents (2026-04-23)
+
+- `news_analyst` prompt reference `sentiment_signal`/`positive_ratio` field — cần confirm output shape của `get_crypto_news` có thực sự trả field này.
+- tiktoken dùng `gpt-4` encoding cho budget test nhưng runtime model có thể là Claude/Gemini — conservative approximation, không phải bug runtime.
+- Agent name hyphen vs underscore (`general-purpose` vs `defillama_analyst`) — consistency nhỏ, không block functionality.
+- `description` length/uniqueness không có test validate — nice-to-have cho planner routing quality.
+- Tool scope filter dùng `t.name` attribute access — nếu registry trả dicts sẽ fail ở chỗ khác trước đó.
+
+## Deferred from: code review of story 0-3-main-agent-prompt (2026-04-24)
+
+- **Weak assertion scoping (pre-fix)** [tests/unit/agents/new_chat/test_system_prompt.py] — original tests grep agent names on whole `NOWING_SYSTEM_INSTRUCTIONS`; fixed inline by scoping to `<crypto_orchestration>` body via regex.
+- **`get_live_token_data` not registered in `_TOOL_INSTRUCTIONS`** [app/agents/new_chat/system_prompt.py] — prompt example references the tool but registry entry missing. Covered by Story 0.4 (API integration tests) or raise follow-up.
+- **Shared team-thread prompt missing crypto orchestration** [`_SYSTEM_INSTRUCTIONS_SHARED`] — team threads cannot spawn crypto sub-agents. Requires product decision (intentional vs gap); raise with PM.
+- **Working-tree leak — Story 0.2 artifacts** — uncommitted files from prior story add noise; housekeeping.
+
+## Deferred from: code review of story 0-5-parallel-execution-validation (2026-04-24)
+
+- **DoD-6 P95 benchmark not yet executed** — `TestParallelismRatioBenchmark` + `TestSpeedGate` require ~50 min + real API budget for 100 queries × 4 agents. Blocked on decision about how to gate slow-LLM tests (env flag / VCR / mocked LLM).
+- **DoD-7 Grafana/Datadog dashboard + alerts** — 2 histogram metrics (`crypto_orchestra_parallelism_ratio`, `crypto_orchestra_full_suite_duration_seconds`) are defined but no dashboard panel or P95-ratio-alert config exists. Out-of-code infra artifact; deferred until Phase 1 goes live.
+- **DoD-8 Parallelism ratio interpretation doc** — Ops runbook explaining what P50/P75/P95 values mean, common causes of elevated ratio, and fallback when gate fails. Doc task, deferred.
+
+## Deferred from: code review of story 0-6-error-handling-fallback (2026-04-24)
+
+- **respx catch-all `.pass_through()` with real HTTP in tests** — testing infra concern; structural orchestration tests pass-through unmocked URLs which could hit real services. Not story scope. [test_graceful_degradation.py]
+- **Counter label cardinality risk with free-form `agent_name="unknown"`** — speculative TSDB bloat risk if agent names vary per request; monitor in production. [chat_deepagent.py:_track_degradation]
+- **Pure-LLM failures (no ToolMessages) invisible to `GRACEFUL_DEGRADATION_COUNTER`** — design decision: current scope tracks tool-layer degradation only. Revisit if LLM-level failures become common. [chat_deepagent.py:_track_degradation]
+- **`respx>=0.23.1` added only to `dev` dep group** — tests are dev-only, prod `ImportError` at collection not a real path. [pyproject.toml]
+- **Dashboard panel "Degradation Rate" gauge (DoD-8)** — Grafana artifact not in diff; ops needs panel showing `sum(rate(crypto_orchestra_graceful_degradation_total{outcome=~"success|partial"})) / sum(rate(crypto_orchestra_graceful_degradation_total))` ≥ 98%. Out-of-code infra task. [spec:DoD-8]
+- **AC9 anti-hallucination assertion missing** — spec requires "KHÔNG hallucinate fake data"; automatic verification hard without a golden-response dataset. [test_graceful_degradation.py:test_catastrophic_failure_returns_honest_message]
+- **AC2 `<35s` timing assertion missing** — respx raises immediately so timing is naturally bounded; adding `time.perf_counter()` wrap would be belt-and-suspenders. [test_graceful_degradation.py:test_goplus_timeout_returns_error_dict]
+- **AC4/AC5/AC6 content-verification tests** — LLM-guarded tests exist but aren't enforced. Defer to nightly pipeline with `ANTHROPIC_API_KEY`; structural tests fill the "no crash" gap. (Decision D1 from code review) [test_graceful_degradation.py:TestAgentLevelFallback]
+
+## Deferred from: code review of story 0-1-tokenomics-analyst (2026-04-24)
+
+- **Test regex fragility in registration check** — `test_subagent_middleware_registers_six_agents` uses non-greedy `.*?` + split-by-comma; would break on nested brackets or multi-line spec bodies. Consolidate with the sibling `test_crypto_subagent_wiring.py::test_subagent_middleware_registers_six_specs` via a single AST-walk helper. [tests/unit/agents/new_chat/]
+- **8-char uuid4 hex in synthetic task_call IDs** — 32-bit collision-prone at ~65k IDs. Pre-existing from Story 0.5, not introduced in 9.1. Consider full `uuid4().hex` or a monotonic counter. [chat_deepagent.py:ParallelSpawnDirectiveMiddleware]
+- **`SubAgent` TypedDict `# type: ignore[typeddict-unknown-key]`** — pattern inherited from Epic 0.2. Narrow the ignore to the specific offending key or file upstream issue against deepagents. [chat_deepagent.py]
+- **Synthetic `short_q` f-string** — user-controlled content interpolated into tool_call description. Low practical risk today (sub-agent description is just hint text) but should be `json.dumps`-escaped for defense-in-depth. [chat_deepagent.py:ParallelSpawnDirectiveMiddleware]
+- **`FULL_SUITE_DURATION_HISTOGRAM` bucket `"4+"` semantics** — now mixes 4-agent and 5-agent durations. Rename to `"full_suite"` or split into explicit buckets when Phase 2-3 add stories 9.2, 9.3, 9.5, 9.6. [metrics.py + chat_deepagent.py]
+- **AC4-AC8 LLM-budget-dependent content verification** — functional spawn, parallelism ratio for 5 agents, 50-query QA, graceful degradation content assertions. Deferred to nightly LLM pipeline. [story 9.1 scope]
+
+## Deferred from: code review of 9-UX-1-live-research-lab (2026-04-25)
+
+- **Storybook infrastructure missing** — `@storybook/react` package not installed in `nowing_web/`. Story files for orchestra lab components were created in-place ([orchestra-lab.stories.tsx](nowing_web/components/new-chat/orchestra/orchestra-lab.stories.tsx)) ready for when Storybook is added. Pre-existing project setup gap, not caused by this story.
+- **Playwright `route` implicit-any TS errors** — [research-lab.spec.ts](nowing_web/playwright/e2e/research-lab.spec.ts) inherits the same 11 pre-existing TS errors as [orchestra-strip.spec.ts](nowing_web/playwright/e2e/orchestra-strip.spec.ts). Root cause: project tsconfig doesn't include `@playwright/test` types; needs separate `tsconfig.playwright.json`. Affects all Playwright specs in the project.
+
+## Deferred from: code review v2 of 9-UX-1-live-research-lab (2026-04-25)
+
+- **Orchestra-spawn BE pipeline missing** — root cause of "Research Lab works in Playwright mock but invisible in prod". When the BE never emits `orchestra-spawn`, FE reducers' `if (!session) return state;` early-return for ALL 5 new orchestra events. Documented in [chat_deepagent.py SourceAttributionMiddleware docstring](nowing_backend/app/agents/new_chat/chat_deepagent.py). Needs follow-up story to wire spawn emission for sub-agent dispatch.
+- **Sub-agent task ContextVar isolation** — `_stream_writer_var.set()` in parent task may not propagate to child Tasks if LangGraph dispatches sub-agents via raw `asyncio.create_task`. Needs integration test exercising real `astream_events` flow with parallel sub-agents to confirm rate-gate event delivery. AC13 marked done with caveat.
+
+## Deferred from: code review of 9-UX-1b-background-agent-resume (2026-04-25)
+
+- **C7 `/regenerate` byte-equivalence parity not implemented** — `/regenerate` endpoint left untouched; spec required calling `start_run` + emitting `run-meta` first event for Vercel-format byte-equivalence with `/runs/{id}/stream`. Recommend tracking as 9-UX-1c follow-up. Existing `/regenerate` still works as backward-compat path.
+- **AC8/AC9 multi-strip rendering + `activeRunSessionsAtom` migration** — `orchestra.atom.ts` not modified to add `activeRunSessionsAtom` (Map keyed by run_id) or rename `activeQueryHash → lastSpawnedSessionId`; orchestra-strip not modified to render N strips. Required for genuine multi-run UI when 2 queries fire concurrently (current single-strip handles single-run only).
+- **AC11/T19 Resume button in orchestra strip header** — Current `page.tsx` shows abandoned-runs banner above `<Thread />` as functional substitute; spec wanted Resume button inside strip header.
+- **T5 `_stream_session_id_var: ContextVar[str]` refactor** — 10+ session_id derivation sites in chat_deepagent unchanged; not blocking because `langgraph_thread_id_override` covers the primary detached path.
+- **T10/T11/T12 integration tests missing** — cancel-mid-stream + final orchestra-cancel; FE disconnect with task survival; 2 runs same thread with distinct langgraph_thread_id. Require Postgres+Redis fixtures (currently 21 unit tests pass, integration suite gated by `SKIP_INTEGRATION_TESTS` env).
+- **T13 `/regenerate` byte-equivalence regression test** — blocked by C7 deferral.
+- **T20 FE component unit tests** for multi-strip rendering + resume button — blocked by AC8/AC9/T19 deferrals.
+- **T21/T22 Playwright E2E** — refresh-mid-stream replay test and 2 concurrent queries multi-strip test missing; current `resume-agent.spec.ts` covers only "running run replays on mount" + "abandoned run shows Resume banner".
+- **Migration downgrade dangling FK** — alembic 134 downgrade drops `chat_runs` but `NewChatThread.chat_runs = relationship(...)` ORM mapping still references it; manual fixup needed if rollback is exercised.
+- **AC7 startup hook order + count log at call site** — `await mark_abandoned_runs_on_startup()` runs before `initialize_llm_router()` and discards return count at caller; function logs internally. Cosmetic.
+
+## Deferred from: code review of story 9-UX-1c (2026-04-25)
+
+- **Redis connection leak if SSE generator not `aclose()`d** — `new_chat_routes.py:1831` creates Redis client before `try` block; cleanup depends on Starlette StreamingResponse behavior on client disconnect. Pre-existing pattern.
+- **`hashtextextended` is internal PG function** — `run_event_writer.py:317`; portability concern for PG <11. Acceptable for current deployment (PG 15+).
+- **`orchestraStateAtom` abandoned sessions never evicted** — `orchestra.atom.ts:380`; sessions with `completedAt: null` (abandoned, never completed) grow unbounded in Map. Eviction only runs on `orchestra-complete`.
+- **`asyncio.get_event_loop()` deprecated** — `run_event_writer.py:143,235`; should be `get_running_loop()`. Cosmetic until Python 3.14.
+- **T15 resume dedup integration test** — Spec-required `test_resume_dedup.py` not implemented. Requires live Postgres + Redis.
+- **T23 FE component unit tests** — `multi-strip.test.tsx`, `resume-button.test.tsx`, `orchestra-multi-run.test.ts` not created.
+- **T24 concurrent-queries E2E scenario** — `resume-agent.spec.ts` covers wire format + resume button but not multi-run strip rendering.
+- **AC1/T3 `/regenerate` share generator refactor** — byte-equivalent SSE across `/regenerate` and `/runs/*/stream` via shared Python generator. Scope: extract `_stream_run_events()`, wire `/regenerate` to call it.
+- **AC5 `activeRunSessionsAtom` include abandoned sessions** — spec says `outcome === 'running' || 'abandoned'`; current filter is `running` only. Merge logic in `assistant-message.tsx` works as workaround.
+- **AC7 sync-INSERT fallback on deque overflow** — direct DB INSERT for non-text events when deque full. Currently all types drop oldest on overflow.
+- **T14 byte-equivalence regression test** — linked to AC1/T3; test `/regenerate` vs `/runs/*/stream` byte-level output equivalence.
+
+## Resolved 2026-04-29 — Story 9 audit sync (spec-vs-code gap closure)
+
+- ~~**MAJ-8 — Persist `data-agent-result` to DB via ContentPart lifecycle**~~ — **Fixed**: Added `data-agent-results` ContentPart type to `streaming-state.ts` union + `buildContentForPersistence`. Wired `collectedAgentResults` accumulator (including missing `.push()` bug) in all three SSE handlers (`handleSend`, `handleResume`, `handleRegenerate`) in `page.tsx`. Added extraction in `message-utils.ts` → exposed via `metadata.custom.agent_results` for consumers. Page-reload persistence complete.
+- ~~**F16/F19 — CoinGecko API called client-side without API key**~~ — **Fixed**: Added `GET /compare/coingecko-price/{coin_id}` proxy endpoint in `comparison_routes.py` (authenticated, validates coin_id regex). `token-hero-card.tsx` now calls BE proxy instead of CoinGecko directly. Rate limit risk eliminated.
+- ~~**Missing `eth_shock` slider**~~ — **Fixed**: Added ETH Price Shock slider between BTC and Competitor Growth in `scenario-simulator-panel.tsx`. Updated `DEFAULT_ASSUMPTIONS` for bull (+0.4), bear (-0.35), stress (-0.5).
+- ~~**P1#9 — i18n keys hardcoded VN/EN strings in components**~~ — **Fixed** (English-only commitment, not i18n framework): All Vietnamese strings in production code converted to English across 8 files: `agent-lane.tsx` (4), `orchestra-strip.tsx` (1), `rate-gate-banner.tsx` (2), `coin-comparison-overlay.tsx` (2), `next-action-bar.tsx` (3), `follow-up-chips.tsx` (1), `stream_new_chat.py` (3). Stories files and bilingual regex patterns in `report-toc.tsx` left untouched (intentional).
+
+## Deferred from: Story 9 audit (2026-04-29)
+
+- **Dune real query IDs needed** — `queries/dune/*.json` contain placeholder IDs 12345-12348 (now guarded: IDs < 100k are skipped at load time with `logger.warning`). To activate `run_dune_query` tool, replace JSON `query_id` values with real Dune Analytics query IDs (≥ 100k range). Requires Dune Basic plan account ($99/mo) and publishing 4 queries (Uniswap DEX volume, Lido staking flows, whale concentration, NFT floor). Owner: Data team.
+
+
+
+## Deferred from: code review of 9-UX-2-crypto-report-layout (2026-04-27)
+
+- **F11** — `CryptoReportLayout` wraps ALL messages (non-crypto pay `useAuiState` overhead). Pre-existing pattern, perf impact negligible.
+- **F16** — CoinGecko API called from client without API key. Rate limiting risk. Needs BE proxy. Phụ thuộc TokenHeroCard viability (F3).
+- **F19** — CoinGecko polling indefinitely for all historical messages. 5 reports = 5×30s polls. Phụ thuộc F3.
+- **F27** — `IntersectionObserver` stale closures in ReportTOC. Blocked by F2 (TOC id fix).
+- **F28** — Two charting libraries (recharts 200KB + lightweight-charts 45KB) with overlapping capabilities. Bundle optimization.
+- **F29** — Module-level mutable state `_pendingUrlCitations` / `_urlCiteIdx` race in concurrent rendering. Pre-existing, not caused by 9-UX-2.
+- **F32** — No E2E Playwright tests for crypto report layout. Post-implementation task.
+
+## Deferred from: code review of story-9-UX-3 (2026-04-28)
+
+- **DeFiLlama `/protocols` full-list scan (~5MB)** — `comparison_routes.py:517-535`. Cold compare downloads entire protocols list per request. Needs cached snapshot or paginated source. Performance debt.
+- **`format_data` event-name BE/FE coupling brittle** — `VercelStreamingService.format_data` prepends `data-`; FE consumers depend on this implicit prefix. No immediate breakage but a refactor target risk. Document the contract.
+- **NFR-P1 cold compare `<90s` benchmark** — Spec target unverified. Needs production benchmark, not pre-merge gate.
+- **`useAui` import path smoke-test** — `follow-up-chips.tsx`, `next-action-bar.tsx` import `useAui` from `@assistant-ui/react`; project elsewhere uses `useAuiState`. Likely works but unverified pre-merge.
+- **Missing `eth_shock` slider** — Spec `ScenarioAssumptions` includes `eth_shock` but UI only renders `btc_shock`. Minor schema-vs-UI gap.
+- **Compare prompt-injection on token name** — `comparison_routes.py` builds verdict prompt with raw `primary_token`/`secondary_token`. After P2 patch (regex `^[A-Za-z0-9-]+$`), surface area is minimal. Defense-in-depth follow-up.
+- **Cross-tab race (same user, 2 windows)** — Watchlist/alert atoms across tabs. Uncommon and converges via localStorage events.
+- **DD2 — Compare endpoint sub-agent architecture (AC11)** — `comparison_routes.py` uses direct `httpx` instead of spec's "lightweight 2-agent" pattern. Current code is functionally equivalent; defer architectural rewrite. Update spec to reflect direct-call simplification.
+- **DD3 — ComparisonTable additional rows (AC12)** — APY, Holders, Security Score, Sentiment, Unlock Schedule, Catalysts. Deferred to 9-UX-4 (Additional Data Sources) which adds whale_tracker + governance_analyst agents.
+- **DD4 — `<OverlayChart>` Recharts dual-line price chart (AC12)** — `comparison-table.tsx`. Current table conveys quantitative compare. Implement post-launch if user feedback warrants.
+- **DD5 (diff-marker portion) — Numeric diff highlighting in scenario UI (AC9)** — Spec example: "$7.23 → $12-15 ⬆". Requires LLM-side numeric extractor or markdown diff post-processor. Out-of-scope for current story; revisit as separate enhancement.

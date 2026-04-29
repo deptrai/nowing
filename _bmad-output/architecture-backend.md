@@ -182,3 +182,100 @@ Các components này render kết quả từ real-time tools trong chat interfac
 - Link đến DexScreener chart
 
 ---
+
+## Background Agent Execution (Story 9-UX-1b)
+
+Agent execution sống độc lập với HTTP request lifetime, cho phép FE disconnect / browser refresh / tab close mà không mất progress.
+
+### Tables
+- `chat_runs` — mỗi agent execution có 1 row (UUID PK, status: running/completed/failed/cancelled/abandoned)
+- `chat_run_events` — toàn bộ SSE events được persist (seq monotonic per run, ON CONFLICT DO NOTHING cho idempotency)
+
+### Key Components
+| Component | File | Responsibility |
+|---|---|---|
+| `RunEventWriter` | `app/services/run_event_writer.py` | Sync write() + async flush: INSERT → PUBLISH (C6) |
+| `run_manager` | `app/tasks/chat/run_manager.py` | start_run / cancel_run / resume_run / mark_abandoned_on_startup |
+| `stream_new_chat_detached` | `app/tasks/chat/stream_new_chat.py` | Async function consuming agent SSE, writing to RunEventWriter |
+| REST endpoints | `app/routes/new_chat_routes.py` | POST /runs, GET /runs/active, GET /runs/{id}/stream, POST /runs/{id}/cancel, POST /runs/{id}/resume |
+
+### Constraints
+- **M1 Single-worker**: `_active_runs` dict là module-level → `UVICORN_WORKERS=1` bắt buộc
+- **M2 Migration race**: `mark_abandoned_runs_on_startup` wrapped in try/except
+- **M5 Reload protection**: skip orphan cleanup khi `UVICORN_RELOAD=true`
+- **C1 LangGraph isolation**: detached run dùng `langgraph_thread_id = "run-{uuid}"` (không phải `thread_id`) để tránh checkpoint collision
+- **C6 INSERT before PUBLISH**: DB luôn là source of truth; Redis pubsub chỉ là live-tail
+
+### Feature Flag
+`RESUMABLE_RUNS_ENABLED=true` (default) — khi false, POST /runs trả 503, FE fallback về /regenerate.
+
+---
+
+## Architectural Contracts (Story 9-UX-1c)
+
+### T1 — SSE Wire Format (Vercel UI Stream)
+Tất cả SSE events từ `/runs/{id}/stream` dùng bare `data:` format — không có `event:` header.
+
+```
+data: {"type":"orchestra-spawn","data":{...}}\n\n
+data: {"_marker":"replay-end","status":"completed"}\n\n
+```
+
+- **`_parse_vercel_envelope(line)`** (`stream_new_chat.py`) — parse raw SSE line về `(event_type, payload)` tuple. Hỗ trợ text-delta prefix (`0:"text"\n`, `a:...\n`) + full JSON envelope.
+- **`_rebuild_vercel_wire(event_type, payload)`** (`new_chat_routes.py`) — tái tạo `data: {json}\n\n` line để emit. Nếu payload có `_vercel` key → emit raw. Legacy `_raw` passthrough còn hỗ trợ.
+- **Round-trip contract**: `_parse_vercel_envelope(_rebuild_vercel_wire(t, p))` → `(t, p)` (không mất thông tin).
+
+### T2 — Sentinels / Replay Markers
+| Sentinel | Khi nào emit |
+|---|---|
+| `{"_marker":"replay-start"}` | Trước khi yield event đầu tiên từ DB |
+| `{"_marker":"replay-end","status":"<running_status>"}` | Sau SELECT drain xong; status = `"live"` \| `"completed"` \| `"abandoned"` \| ... |
+| `{"_marker":"run-end"}` | Sau khi pubsub tail kết thúc (run terminal) |
+
+FE dùng `replay-end.status` để quyết định chế độ UI:
+- `"live"` → tiếp tục tail stream
+- `"completed"` / `"failed"` / `"cancelled"` → đóng stream, show kết quả
+- `"abandoned"` → show Resume button trong strip header
+
+### T3 — SUBSCRIBE-First Replay Protocol
+Để tránh event loss khi event publish trong khoảng SELECT đang chạy:
+
+```
+1. SUBSCRIBE pubsub channel trước
+2. Emit _marker: replay-start
+3. SELECT * FROM chat_run_events ORDER BY seq → yield tất cả
+4. Emit _marker: replay-end (status = run.status)
+5. Drain buffer từ pubsub (dedup by seq vs max_replayed_seq)
+6. Tail pubsub live cho đến khi run terminal
+7. Emit _marker: run-end
+```
+
+Gap scan: mỗi 1s poll DB cho seq > last_seen để catch missed pubsub messages.
+
+### T5 — RunEventWriter: deque + coalescing
+- `_deque: collections.deque(maxlen=10_000)` — thay thế `asyncio.Queue` (không blocking, overflow drop oldest)
+- `_pending_delta: dict[str, tuple[str, dict]]` — per-agentId coalescing cho `text-delta`: chỉ giữ latest chunk trước khi flush. Tuple là `(event_type, payload)`.
+- Flush loop: drain `_pending_delta` vào batch trước khi process `_deque`.
+
+### T6 — Advisory Lock + Seq Re-seeding (T16)
+Khi hai writers race (không xảy ra trong production single-worker, nhưng cần idempotent):
+
+```sql
+SELECT pg_advisory_xact_lock(hashtext(:run_id));
+SELECT COALESCE(MAX(seq), -1) + 1 FROM chat_run_events WHERE run_id = :run_id;
+```
+
+Nếu DB seq > writer._next_seq → writer tự offset để dùng DB seq. Sau flush `_next_seq = db_seq + batch_size`.
+
+### T8 — Heartbeat Fence
+`RunEventWriter.run_flush_loop()` emit `{"type":"heartbeat"}` mỗi 30s nếu không có event nào. Serving endpoint timeout > 30s → client không bị disconnect do silence.
+
+`chat_runs.last_heartbeat_at` (TIMESTAMPTZ) được update sau mỗi heartbeat. `mark_abandoned_runs_on_startup()` dùng `last_heartbeat_at` thay vì `started_at` để phân biệt truly-stalled runs (> 90 giây không heartbeat).
+
+### C4 — Dedup trên Resume
+Khi runner restart và resume từ checkpoint:
+- `_seed_seen_events()` đọc `chat_run_events` để populate `_seen_spawn_agents`, `_seen_source_keys`, `_seen_attribution_agents`
+- `_should_dedup(event_type, payload)` → True nếu event đã persist (skip INSERT + PUBLISH)
+- Dedup chỉ áp dụng cho: `orchestra-spawn` (by agentId), `data-orchestra-source-fetched` (by agentId:domain), `data-orchestra-model-attribution` (by agentId)
+
+---

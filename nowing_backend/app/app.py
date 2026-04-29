@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
@@ -88,6 +89,20 @@ async def lifespan(app: FastAPI):
     await create_db_and_tables()
     # Setup LangGraph checkpointer tables for conversation persistence
     await setup_checkpointer_tables()
+    # M1: enforce single-worker constraint loudly — _active_runs is module-level dict
+    import os as _os, logging as _logging
+    if _os.getenv("RESUMABLE_RUNS_ENABLED", "true").lower() == "true":
+        workers = int(_os.getenv("UVICORN_WORKERS", "1"))
+        if workers != 1:
+            _logging.getLogger("nowing").warning(
+                "UVICORN_WORKERS=%d but RESUMABLE_RUNS_ENABLED=true — "
+                "_active_runs is per-worker; cancel/resume will be unreliable. "
+                "Set UVICORN_WORKERS=1 or RESUMABLE_RUNS_ENABLED=false.",
+                workers,
+            )
+    # Mark any DB-running runs as abandoned (survived worker restart)
+    from app.tasks.chat.run_manager import mark_abandoned_runs_on_startup
+    await mark_abandoned_runs_on_startup()
     # Initialize LLM Router for Auto mode load balancing
     initialize_llm_router()
     # Seed Nowing documentation
@@ -108,6 +123,22 @@ def registration_allowed():
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+try:
+    from kombu.exceptions import OperationalError as KombuOperationalError
+
+    @app.exception_handler(KombuOperationalError)
+    async def kombu_operational_error_handler(request: Request, exc: KombuOperationalError):
+        logger.error("Celery/Redis unavailable: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Task queue unavailable. Please ensure Redis is running."},
+        )
+
+except ImportError:
+    pass
+
 
 # Add ProxyHeaders middleware FIRST to trust proxy headers (e.g., from Cloudflare)
 # This ensures FastAPI uses HTTPS in redirects when behind a proxy

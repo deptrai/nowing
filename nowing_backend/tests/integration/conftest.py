@@ -17,7 +17,8 @@ from app.db import (
     User,
 )
 from app.indexing_pipeline.connector_document import ConnectorDocument
-from tests.conftest import TEST_DATABASE_URL
+
+TEST_DATABASE_URL = app_config.DATABASE_URL
 
 _EMBEDDING_DIM = app_config.embedding_model_instance.dimension
 

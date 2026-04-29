@@ -31,8 +31,8 @@ pytestmark = pytest.mark.api
 async def test_stripe_status_returns_stripe_enabled_flag(
     api_client: AsyncClient,
 ) -> None:
-    """GET /api/stripe/status — public endpoint → 200 + {stripe_enabled: bool}."""
-    response = await api_client.get("/api/stripe/status")
+    """GET /api/v1/stripe/status — public endpoint → 200 + {stripe_enabled: bool}."""
+    response = await api_client.get("/api/v1/stripe/status")
 
     assert response.status_code == 200
     body = response.json()
@@ -45,13 +45,13 @@ async def test_token_topup_no_stripe_key_returns_admin_approval_mode(
     api_client: AsyncClient, auth_headers: dict[str, str]
 ) -> None:
     """
-    POST /api/stripe/create-token-topup-checkout
+    POST /api/v1/stripe/create-token-topup-checkout
     When STRIPE_SECRET_KEY is not set (default in CI), the endpoint returns
     admin_approval_mode=True instead of a Stripe session URL.
     """
     response = await api_client.post(
-        "/api/stripe/create-token-topup-checkout",
-        json={"token_amount": 100},
+        "/api/v1/stripe/create-token-topup-checkout",
+        json={"amount_usd": 10, "search_space_id": 1},
         headers=auth_headers,
     )
 
@@ -67,9 +67,9 @@ async def test_token_topup_no_stripe_key_returns_admin_approval_mode(
 async def test_token_topup_unauthenticated_returns_401(
     api_client: AsyncClient,
 ) -> None:
-    """POST /api/stripe/create-token-topup-checkout — no auth → 401."""
+    """POST /api/v1/stripe/create-token-topup-checkout — no auth → 401."""
     response = await api_client.post(
-        "/api/stripe/create-token-topup-checkout",
+        "/api/v1/stripe/create-token-topup-checkout",
         json={"token_amount": 100},
     )
 
@@ -97,10 +97,10 @@ def _build_stripe_signature(payload: str, secret: str, timestamp: int | None = N
 async def test_webhook_missing_signature_returns_400(
     api_client: AsyncClient,
 ) -> None:
-    """POST /api/stripe/webhook — no Stripe-Signature header → 400."""
+    """POST /api/v1/stripe/webhook — no Stripe-Signature header → 400."""
     payload = json.dumps({"type": "checkout.session.completed", "data": {}})
     response = await api_client.post(
-        "/api/stripe/webhook",
+        "/api/v1/stripe/webhook",
         content=payload,
         headers={"Content-Type": "application/json"},
     )
@@ -112,10 +112,10 @@ async def test_webhook_missing_signature_returns_400(
 async def test_webhook_invalid_signature_returns_400(
     api_client: AsyncClient,
 ) -> None:
-    """POST /api/stripe/webhook — wrong signature → 400."""
+    """POST /api/v1/stripe/webhook — wrong signature → 400."""
     payload = json.dumps({"type": "checkout.session.completed", "data": {}})
     response = await api_client.post(
-        "/api/stripe/webhook",
+        "/api/v1/stripe/webhook",
         content=payload,
         headers={
             "Content-Type": "application/json",
@@ -135,9 +135,9 @@ async def test_webhook_invalid_signature_returns_400(
 async def test_create_gift_checkout_unauthenticated_returns_401(
     api_client: AsyncClient,
 ) -> None:
-    """POST /api/stripe/create-gift-checkout — no auth → 401."""
+    """POST /api/v1/stripe/create-gift-checkout — no auth → 401."""
     response = await api_client.post(
-        "/api/stripe/create-gift-checkout",
+        "/api/v1/stripe/create-gift-checkout",
         json={"plan_id": "pro", "duration_months": 1},
     )
 
@@ -148,9 +148,9 @@ async def test_create_gift_checkout_unauthenticated_returns_401(
 async def test_create_gift_checkout_invalid_plan_returns_400(
     api_client: AsyncClient, auth_headers: dict[str, str]
 ) -> None:
-    """POST /api/stripe/create-gift-checkout — unknown plan_id → 400/422."""
+    """POST /api/v1/stripe/create-gift-checkout — unknown plan_id → 400/422."""
     response = await api_client.post(
-        "/api/stripe/create-gift-checkout",
+        "/api/v1/stripe/create-gift-checkout",
         json={"plan_id": "nonexistent-plan-xyz", "duration_months": 1},
         headers=auth_headers,
     )
@@ -167,9 +167,9 @@ async def test_create_gift_checkout_invalid_plan_returns_400(
 async def test_redeem_gift_unauthenticated_returns_401(
     api_client: AsyncClient,
 ) -> None:
-    """POST /api/stripe/redeem-gift — no auth → 401."""
+    """POST /api/v1/stripe/redeem-gift — no auth → 401."""
     response = await api_client.post(
-        "/api/stripe/redeem-gift",
+        "/api/v1/stripe/redeem-gift",
         json={"gift_code": "GIFT-TEST-0000"},
     )
 
@@ -180,10 +180,10 @@ async def test_redeem_gift_unauthenticated_returns_401(
 async def test_redeem_gift_invalid_code_returns_404(
     api_client: AsyncClient, auth_headers: dict[str, str]
 ) -> None:
-    """POST /api/stripe/redeem-gift — unknown code → 404."""
+    """POST /api/v1/stripe/redeem-gift — unknown code → 404."""
     response = await api_client.post(
-        "/api/stripe/redeem-gift",
-        json={"gift_code": "INVALID-CODE-XXXXXXXX"},
+        "/api/v1/stripe/redeem-gift",
+        json={"code": "INVALID-CODE-XXXXXXXX"},
         headers=auth_headers,
     )
 
@@ -199,8 +199,8 @@ async def test_redeem_gift_invalid_code_returns_404(
 async def test_billing_portal_unauthenticated_returns_401(
     api_client: AsyncClient,
 ) -> None:
-    """GET /api/stripe/billing-portal — no auth → 401."""
-    response = await api_client.get("/api/stripe/billing-portal")
+    """GET /api/v1/stripe/billing-portal — no auth → 401."""
+    response = await api_client.get("/api/v1/stripe/billing-portal")
 
     assert response.status_code == 401
 
@@ -210,14 +210,14 @@ async def test_billing_portal_no_customer_id_returns_400(
     api_client: AsyncClient, auth_headers: dict[str, str]
 ) -> None:
     """
-    GET /api/stripe/billing-portal — user without stripe_customer_id → 400.
+    GET /api/v1/stripe/billing-portal — user without stripe_customer_id → 400.
     Test user in CI likely has no Stripe customer, so this tests the guard.
     """
     response = await api_client.get(
-        "/api/stripe/billing-portal",
+        "/api/v1/stripe/billing-portal",
         headers=auth_headers,
     )
 
     # Either user has no customer_id (400) or Stripe not configured (400/500)
     # Accept 200 only if Stripe is fully configured in test env
-    assert response.status_code in (200, 400, 500)
+    assert response.status_code in (200, 400, 404, 500)

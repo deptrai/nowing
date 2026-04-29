@@ -190,6 +190,49 @@ export function DocumentsSidebar({
 	const [zeroAllDocs] = useQuery(queries.documents.bySpace({ searchSpaceId }));
 	const [agentCreatedDocs, setAgentCreatedDocs] = useAtom(agentCreatedDocumentsAtom);
 
+	// REST fallback when Zero cache is empty (e.g. cache server down or not yet synced)
+	const [restFallbackDocs, setRestFallbackDocs] = useState<DocumentNodeDoc[]>([]);
+
+	useEffect(() => {
+		if (!searchSpaceId) return;
+		if (zeroAllDocs && zeroAllDocs.length > 0) {
+			setRestFallbackDocs([]);
+			return;
+		}
+		let cancelled = false;
+		documentsApiService
+			.getDocuments({
+				queryParams: {
+					search_space_id: searchSpaceId,
+					page: 0,
+					page_size: 200,
+					sort_by: "created_at",
+					sort_order: "desc",
+				},
+			})
+			.then((response) => {
+				if (cancelled) return;
+				setRestFallbackDocs(
+					response.items
+						.filter((item) => {
+							if (!item.title || item.title.trim() === "") return false;
+							return true;
+						})
+						.map((item) => ({
+							id: item.id,
+							title: item.title,
+							document_type: item.document_type,
+							folderId: null,
+							status: { state: "ready" } as { state: string; reason?: string | null },
+						}))
+				);
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	}, [searchSpaceId, zeroAllDocs]);
+
 	const treeFolders: FolderDisplay[] = useMemo(
 		() =>
 			(zeroFolders ?? []).map((f) => ({
@@ -231,8 +274,13 @@ export function DocumentsSidebar({
 				status: { state: "ready" } as { state: string; reason?: string | null },
 			}));
 
+		// Use REST fallback when Zero has no data
+		if (zeroDocs.length === 0 && pendingAgentDocs.length === 0 && restFallbackDocs.length > 0) {
+			return restFallbackDocs;
+		}
+
 		return [...pendingAgentDocs, ...zeroDocs];
-	}, [zeroAllDocs, agentCreatedDocs, searchSpaceId]);
+	}, [zeroAllDocs, agentCreatedDocs, searchSpaceId, restFallbackDocs]);
 
 	// Prune agent-created docs once Zero has caught up
 	useEffect(() => {

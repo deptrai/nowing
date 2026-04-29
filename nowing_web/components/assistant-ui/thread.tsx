@@ -25,7 +25,6 @@ import {
 	Wrench,
 	X,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { type FC, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -91,6 +90,7 @@ import { useBatchCommentsPreload } from "@/hooks/use-comments";
 import { useCommentsSync } from "@/hooks/use-comments-sync";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useElectronAPI } from "@/hooks/use-platform";
+import { pendingDeepDiveAtom } from "@/lib/crypto/deep-dive-atom";
 import { cn } from "@/lib/utils";
 
 const COMPOSER_PLACEHOLDER = "Ask anything, type / for prompts, type @ to mention docs";
@@ -449,6 +449,16 @@ const Composer: FC = () => {
 			return () => clearTimeout(timeoutId);
 		}
 	}, [isThreadEmpty]);
+
+	// Consume deep-dive prompt written by NextActionBar (message-level context can't access thread composer)
+	const [pendingDeepDive, setPendingDeepDive] = useAtom(pendingDeepDiveAtom);
+	useEffect(() => {
+		if (!pendingDeepDive) return;
+		editorRef.current?.setText(pendingDeepDive);
+		aui.composer().setText(pendingDeepDive);
+		editorRef.current?.focus();
+		setPendingDeepDive(null);
+	}, [pendingDeepDive, aui, setPendingDeepDive]);
 
 	// Close document picker when a slide-out panel (inbox, shared/private chats) opens
 	useEffect(() => {
@@ -1210,33 +1220,22 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 								: "bg-transparent border-transparent text-muted-foreground hover:text-foreground"
 						)}
 					>
-						<motion.div
-							animate={{
-								rotate: isWebSearchEnabled ? 360 : 0,
-								scale: isWebSearchEnabled ? 1.1 : 1,
-							}}
-							whileHover={{
-								rotate: isWebSearchEnabled ? 360 : 15,
-								scale: 1.1,
-								transition: { type: "spring", stiffness: 300, damping: 10 },
-							}}
-							transition={{ type: "spring", stiffness: 260, damping: 25 }}
+						<div
+							className={cn(
+								"transition-transform duration-300",
+								isWebSearchEnabled ? "scale-110" : "scale-100"
+							)}
 						>
 							<Globe className="size-4" />
-						</motion.div>
-						<AnimatePresence>
-							{isWebSearchEnabled && (
-								<motion.span
-									initial={{ width: 0, opacity: 0 }}
-									animate={{ width: "auto", opacity: 1 }}
-									exit={{ width: 0, opacity: 0 }}
-									transition={{ duration: 0.2 }}
-									className="text-xs overflow-hidden whitespace-nowrap"
-								>
-									Search
-								</motion.span>
+						</div>
+						<span
+							className={cn(
+								"text-xs whitespace-nowrap overflow-hidden transition-all duration-200 ease-in-out",
+								isWebSearchEnabled ? "max-w-[4rem] opacity-100" : "max-w-0 opacity-0"
 							)}
-						</AnimatePresence>
+						>
+							Search
+						</span>
 					</button>
 				)}
 				{sidebarDocs.length > 0 && (

@@ -839,5 +839,28 @@
 		"not_found_title": "This chat has been deleted.",
 		"click_here": "Click here",
 		"sign_in_prompt": "to log in to Nowing and start your own."
+	},
+	"orchestra": {
+		"strip_title": "Analysing sources",
+		"strip_title_done": "Sources analysed",
+		"strip_title_single": "Fetching source",
+		"agent_status_queued": "Queued",
+		"agent_status_running": "Fetching",
+		"agent_status_done": "Done",
+		"agent_status_failed": "Failed",
+		"agent_status_cancelled": "Cancelled",
+		"summary": "{success}/{total} done · {ms}ms ({bucket})",
+		"bucket_fast": "fast",
+		"bucket_normal": "normal",
+		"bucket_slow": "slow",
+		"milestone_30s": "Analysing in depth…",
+		"degradation_inline": "{success}/{total} sources completed · {failed} degraded",
+		"degradation_retry": "Retry failed sources",
+		"fail_reason_rate_limit": "Rate limited",
+		"fail_reason_timeout": "Timed out",
+		"fail_reason_unavailable": "Service unavailable",
+		"fail_reason_circuit_open": "Circuit breaker open",
+		"fail_reason_cancelled_by_user": "Cancelled",
+		"cancelled_cost_footnote": "Partial results shown. Some sources were not fetched."
 	}
 }

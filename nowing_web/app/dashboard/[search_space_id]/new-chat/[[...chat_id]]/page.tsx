@@ -101,8 +101,106 @@ import {
 	trackChatError,
 	trackChatMessageSent,
 	trackChatResponseReceived,
+	trackOrchestraAgentDone,
+	trackOrchestraAgentFail,
+	trackOrchestraCompleted,
+	trackOrchestraCancelled,
+	trackOrchestraSpawn,
 } from "@/lib/posthog/events";
+import { applyOrchestraEvent, orchestraStateAtom } from "@/atoms/chat/orchestra.atom";
+import {
+	activeRunsAtom,
+	abandonedSessionIdsAtom,
+	upsertRun,
+	removeRun,
+	resumeRunBySessionAtom,
+} from "@/atoms/chat/active-runs.atom";
+import {
+	startRun,
+	getActiveRuns,
+	streamRun,
+	resumeRun,
+	type ChatRun,
+} from "@/lib/apis/chat-runs-api.service";
 import Loading from "../loading";
+
+/**
+ * Handle every orchestra-* and data-orchestra-* SSE event in one place.
+ * Returns true when the event was an orchestra event (so the caller can
+ * `break` from its outer switch). Returns false otherwise — the caller
+ * falls through to other event types.
+ *
+ * Adding a new orchestra event type? Add it here and its case will be
+ * picked up by all 3 SSE-loop call sites automatically.
+ */
+function handleOrchestraEvent(
+	parsed: { type: string; data?: Record<string, unknown> },
+	setOrchestraState: (fn: (prev: unknown) => unknown) => void
+): boolean {
+	const t = parsed.type;
+	if (
+		t !== "orchestra-spawn" &&
+		t !== "orchestra-update" &&
+		t !== "orchestra-done" &&
+		t !== "orchestra-fail" &&
+		t !== "orchestra-cancel" &&
+		t !== "orchestra-complete" &&
+		t !== "data-orchestra-narration" &&
+		t !== "data-orchestra-source-fetched" &&
+		t !== "data-orchestra-fact-captured" &&
+		t !== "data-orchestra-model-attribution" &&
+		t !== "data-orchestra-rate-gate-wait" &&
+		t !== "data-orchestra-llm-call" &&
+		t !== "data-agent-result"
+	) {
+		return false;
+	}
+	// V2-P12: guard the reducer so a malformed event from a future BE version
+	// doesn't kill the SSE loop for the entire chat session.
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		setOrchestraState((prev: any) => applyOrchestraEvent(prev, parsed as any));
+	} catch (err) {
+		console.warn("orchestra reducer failed for event", t, err);
+	}
+	const data = (parsed.data ?? {}) as Record<string, unknown>;
+	switch (t) {
+		case "orchestra-spawn":
+			trackOrchestraSpawn({
+				sessionId: String(data.sessionId ?? ""),
+				agentId: String(data.agentId ?? ""),
+				agentName: String(data.agentName ?? ""),
+			});
+			break;
+		case "orchestra-done":
+			trackOrchestraAgentDone({
+				sessionId: String(data.sessionId ?? ""),
+				agentId: String(data.agentId ?? ""),
+			});
+			break;
+		case "orchestra-fail":
+			trackOrchestraAgentFail({
+				sessionId: String(data.sessionId ?? ""),
+				agentId: String(data.agentId ?? ""),
+				errorCode: String(data.errorCode ?? ""),
+			});
+			break;
+		case "orchestra-cancel":
+			trackOrchestraCancelled({
+				sessionId: String(data.sessionId ?? ""),
+				agentId: String(data.agentId ?? ""),
+			});
+			break;
+		case "orchestra-complete":
+			trackOrchestraCompleted({
+				sessionId: String(data.sessionId ?? ""),
+				agentIds: (data.agentIds as string[]) ?? [],
+				citationCount: Number(data.citationCount ?? 0),
+			});
+			break;
+	}
+	return true;
+}
 
 const MobileEditorPanel = dynamic(
 	() =>
@@ -266,6 +364,14 @@ export default function NewChatPage() {
 	const updateChatTabTitle = useSetAtom(updateChatTabTitleAtom);
 	const removeChatTab = useSetAtom(removeChatTabAtom);
 	const setAgentCreatedDocuments = useSetAtom(agentCreatedDocumentsAtom);
+	const setOrchestraState = useSetAtom(orchestraStateAtom);
+	const setActiveRuns = useSetAtom(activeRunsAtom);
+	const setResumeRunBySession = useSetAtom(resumeRunBySessionAtom);
+	const setAbandonedSessionIds = useSetAtom(abandonedSessionIdsAtom);
+	const [abandonedRuns, setAbandonedRuns] = useState<ChatRun[]>([]);
+	const attachToRunRef = useRef<((run: ChatRun) => Promise<void>) | null>(null);
+	const abandonedRunsRef = useRef(abandonedRuns);
+	abandonedRunsRef.current = abandonedRuns;
 
 	// Get current user for author info in shared chats
 	const { data: currentUser } = useAtomValue(currentUserAtom);
@@ -502,6 +608,167 @@ export default function NewChatPage() {
 		};
 	}, []);
 
+	// On thread load: fetch active runs and re-attach SSE for any running ones (9-UX-1b)
+	useEffect(() => {
+		if (!threadId) return;
+		const abortControllers: AbortController[] = [];
+		const readers: Array<ReadableStreamDefaultReader<Uint8Array>> = [];
+		// M7: track per-run lastSeq so reconnects don't replay from 0
+		const lastSeqByRun = new Map<string, number>();
+
+		const attachToRun = async (run: ChatRun) => {
+			const ac = new AbortController();
+			abortControllers.push(ac);
+			try {
+				const resumeFrom = lastSeqByRun.get(run.id) ?? -1;
+				const resp = await streamRun(threadId, run.id, resumeFrom, ac.signal);
+				if (!resp.ok) return;
+				// Add placeholder assistant message so OrchestraStrip has a mounting point
+				const placeholderMsgId = `msg-assistant-resume-${run.id}`;
+				setMessages((prev) => {
+					if (prev.some((m) => m.id === placeholderMsgId)) return prev;
+					return [
+						...prev,
+						{
+							id: placeholderMsgId,
+							role: "assistant" as const,
+							content: [{ type: "text" as const, text: "" }],
+							createdAt: new Date(),
+						},
+					];
+				});
+				const reader = resp.body?.getReader();
+				if (!reader) return;
+				readers.push(reader);
+				const decoder = new TextDecoder();
+				let buf = "";
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					buf += decoder.decode(value, { stream: true });
+					const parts = buf.split(/\r?\n\r?\n/);
+					buf = parts.pop() ?? "";
+					for (const part of parts) {
+						// M25: skip SSE comment / heartbeat lines (`: text`)
+						if (part.startsWith(":")) continue;
+						const dataLine = part.match(/^data:\s*(.+)$/m)?.[1];
+						if (!dataLine) continue;
+						// M24: any malformed event must NOT abort the stream — try/catch continue
+						try {
+							const parsed = JSON.parse(dataLine);
+							// T22: handle _marker sentinels (replace old event: run-replay-end)
+							if (parsed && parsed._marker) {
+								if (parsed._marker === "replay-start") {
+									// entering replay — future: suppress animation
+								} else if (parsed._marker === "replay-end") {
+									if (parsed.status !== "live") {
+										setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+										if (parsed.status === "abandoned") {
+											// keep in abandonedRuns / abandonedSessionIds for Resume UI
+											setAbandonedSessionIds((prev) => new Set([...prev, run.langgraph_thread_id]));
+										} else {
+											// completed / failed / cancelled — fully done
+											setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
+											setAbandonedSessionIds((prev) => {
+												const s = new Set(prev);
+												s.delete(run.langgraph_thread_id);
+												return s;
+											});
+										}
+										return;
+									}
+									// status === "live": transitioning to live tail
+								} else if (parsed._marker === "run-end") {
+									setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+									setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
+									setAbandonedSessionIds((prev) => {
+										const s = new Set(prev);
+										s.delete(run.langgraph_thread_id);
+										return s;
+									});
+									setMessages((prev) =>
+										prev.filter((m) => m.id !== `msg-assistant-resume-${run.id}`)
+									);
+									return;
+								}
+								continue; // marker events don't reach the orchestra reducer
+							}
+							if (parsed && parsed.type) {
+								setOrchestraState((prev: unknown) =>
+									applyOrchestraEvent(prev as never, parsed as never)
+								);
+							}
+							if (parsed && typeof parsed.seq === "number") {
+								lastSeqByRun.set(run.id, parsed.seq);
+							}
+						} catch {
+							// malformed JSON — skip this event, keep stream alive
+						}
+					}
+				}
+			} catch (err: unknown) {
+				if (err instanceof Error && err.name !== "AbortError") {
+					console.warn("run stream error", run.id, err);
+				}
+			}
+		};
+
+		attachToRunRef.current = attachToRun;
+
+		getActiveRuns(threadId)
+			.then((runs) => {
+				const running = runs.filter((r) => r.status === "running");
+				const abandoned = runs.filter((r) => r.status === "abandoned");
+				setActiveRuns((prev) => {
+					let next = prev;
+					for (const r of runs) next = upsertRun(next, r);
+					return next;
+				});
+				setAbandonedRuns(abandoned);
+				setAbandonedSessionIds(new Set(abandoned.map((r) => r.langgraph_thread_id)));
+				for (const run of running) {
+					attachToRun(run);
+				}
+			})
+			.catch(() => {
+				// Silently ignore — feature degrades gracefully
+			});
+
+		return () => {
+			// M6: cancel readers in addition to abort, so pending reader.read() resolves immediately
+			for (const reader of readers) {
+				reader.cancel().catch(() => undefined);
+			}
+			for (const ac of abortControllers) ac.abort();
+		};
+	}, [threadId, setActiveRuns, setOrchestraState, setAbandonedSessionIds]);
+
+	// T21: register resume handler so OrchestraStrip can resume by sessionId
+	useEffect(() => {
+		if (!threadId) return;
+		setResumeRunBySession(() => async (langgraphThreadId: string) => {
+			const run = abandonedRunsRef.current.find((r) => r.langgraph_thread_id === langgraphThreadId);
+			if (!run) {
+				toast.error("Run no longer available. Please refresh the page.");
+				return;
+			}
+			try {
+				const resumed = await resumeRun(threadId, run.id);
+				setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
+				setAbandonedSessionIds((prev) => {
+					const s = new Set(prev);
+					s.delete(run.langgraph_thread_id);
+					return s;
+				});
+				setActiveRuns((prev) => upsertRun(prev, resumed));
+				attachToRunRef.current?.(resumed);
+			} catch {
+				toast.error("Failed to resume run");
+			}
+		});
+		return () => setResumeRunBySession(null);
+	}, [threadId, setResumeRunBySession, setAbandonedRuns, setAbandonedSessionIds, setActiveRuns]);
+
 	// Cancel ongoing request
 	const cancelRun = useCallback(async () => {
 		if (abortControllerRef.current) {
@@ -534,12 +801,6 @@ export default function NewChatPage() {
 			// Check if podcast is already generating
 			if (isPodcastGenerating() && looksLikePodcastRequest(userQuery)) {
 				toast.warning("A podcast is already being generated.");
-				return;
-			}
-
-			const token = getBearerToken();
-			if (!token) {
-				toast.error("Not authenticated. Please log in again.");
 				return;
 			}
 
@@ -671,6 +932,12 @@ export default function NewChatPage() {
 			};
 			const { contentParts, toolCallIndices } = contentPartsState;
 			let wasInterrupted = false;
+			let activeRun: ChatRun | null = null;
+			const collectedAgentResults: Array<{
+				agentId: string;
+				resultText: string;
+				truncated: boolean;
+			}> = [];
 
 			// Add placeholder assistant message
 			setMessages((prev) => [
@@ -684,22 +951,6 @@ export default function NewChatPage() {
 			]);
 
 			try {
-				const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
-
-				// Build message history for context
-				const messageHistory = messages
-					.filter((m) => m.role === "user" || m.role === "assistant")
-					.map((m) => {
-						let text = "";
-						for (const part of m.content) {
-							if (typeof part === "object" && part.type === "text" && "text" in part) {
-								text += part.text;
-							}
-						}
-						return { role: m.role, content: text };
-					})
-					.filter((m) => m.content.length > 0);
-
 				// Get mentioned document IDs for context (separate fields for backend)
 				const hasDocumentIds = mentionedDocumentIds.document_ids.length > 0;
 				const hasNowingDocIds = mentionedDocumentIds.nowing_doc_ids.length > 0;
@@ -710,26 +961,20 @@ export default function NewChatPage() {
 					setSidebarDocuments([]);
 				}
 
-				const response = await fetch(`${backendUrl}/api/v1/new_chat`, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${token}`,
-					},
-					body: JSON.stringify({
-						chat_id: currentThreadId,
-						user_query: userQuery.trim(),
-						search_space_id: searchSpaceId,
-						messages: messageHistory,
-						mentioned_document_ids: hasDocumentIds ? mentionedDocumentIds.document_ids : undefined,
-						mentioned_nowing_doc_ids: hasNowingDocIds
-							? mentionedDocumentIds.nowing_doc_ids
-							: undefined,
-						disabled_tools: disabledTools.length > 0 ? disabledTools : undefined,
-						...(isCloud() && selectedSystemModelId != null && { model_id: selectedSystemModelId }),
-					}),
-					signal: controller.signal,
+				const run = await startRun(currentThreadId, {
+					search_space_id: searchSpaceId,
+					user_query: userQuery.trim(),
+					mentioned_document_ids: hasDocumentIds ? mentionedDocumentIds.document_ids : undefined,
+					mentioned_nowing_doc_ids: hasNowingDocIds
+						? mentionedDocumentIds.nowing_doc_ids
+						: undefined,
+					disabled_tools: disabledTools.length > 0 ? disabledTools : undefined,
+					...(isCloud() && selectedSystemModelId != null && { model_id: selectedSystemModelId }),
 				});
+				activeRun = run;
+				setActiveRuns((prev) => upsertRun(prev, run));
+
+				const response = await streamRun(currentThreadId, run.id, -1, controller.signal);
 
 				if (!response.ok) {
 					if (response.status === 402) throw new QuotaExceededError();
@@ -881,6 +1126,151 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-citation-map": {
+							const citationData = parsed.data as { citation_map: Record<string, unknown> };
+							if (citationData?.citation_map) {
+								// Persist citation_map in contentPartsState so buildContentForPersistence
+								// saves it to DB — enables citation chips to render after page reload
+								contentPartsState.contentParts.push({
+									type: "data-citation-map",
+									data: { citation_map: citationData.citation_map },
+								});
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((m.metadata as { custom?: Record<string, unknown> })?.custom ??
+																{}),
+															citation_map: citationData.citation_map,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "data-follow-ups": {
+							const followUpsData = parsed.data as { follow_ups: string[] };
+							if (followUpsData?.follow_ups?.length) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															follow_ups: followUpsData.follow_ups,
+															thread_id: currentThreadId,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "data-token-meta": {
+							const tokenMetaData = parsed.data as {
+								token_symbol: string;
+								token_name: string;
+								coingecko_id: string;
+							};
+							if (tokenMetaData?.token_symbol) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															token_symbol: tokenMetaData.token_symbol,
+															token_name: tokenMetaData.token_name,
+															coingecko_id: tokenMetaData.coingecko_id,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "data-report-type": {
+							const reportTypeData = parsed.data as { report_type: string };
+							if (reportTypeData?.report_type) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															report_type: reportTypeData.report_type,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "orchestra-spawn":
+						case "orchestra-update":
+						case "orchestra-done":
+						case "orchestra-fail":
+						case "orchestra-cancel":
+						case "orchestra-complete":
+						case "data-orchestra-narration":
+						case "data-orchestra-source-fetched":
+						case "data-orchestra-fact-captured":
+						case "data-orchestra-model-attribution":
+						case "data-orchestra-rate-gate-wait":
+						case "data-orchestra-llm-call":
+						case "data-agent-result": {
+							handleOrchestraEvent(
+								parsed as { type: string; data?: Record<string, unknown> },
+								setOrchestraState as (fn: (prev: unknown) => unknown) => void
+							);
+							const arData = (parsed as { data?: Record<string, unknown> }).data;
+							if (arData?.agentId && arData?.resultText) {
+								collectedAgentResults.push({
+									agentId: String(arData.agentId),
+									resultText: String(arData.resultText),
+									truncated: Boolean(arData.truncated),
+								});
+							}
+							break;
+						}
 						case "error":
 							if (
 								parsed.errorText?.includes("quota") ||
@@ -893,6 +1283,13 @@ export default function NewChatPage() {
 				}
 
 				batcher.flush();
+
+				if (collectedAgentResults.length > 0) {
+					contentPartsState.contentParts.push({
+						type: "data-agent-results",
+						data: { results: collectedAgentResults },
+					});
+				}
 
 				// Skip persistence for interrupted messages -- handleResume will persist the final version
 				const finalContent = buildContentForPersistence(contentPartsState, TOOLS_WITH_UI);
@@ -988,6 +1385,9 @@ export default function NewChatPage() {
 			} finally {
 				setIsRunning(false);
 				abortControllerRef.current = null;
+				if (activeRun && currentThreadId) {
+					setActiveRuns((prev) => removeRun(prev, activeRun!.id, currentThreadId));
+				}
 			}
 		},
 		[
@@ -1006,6 +1406,7 @@ export default function NewChatPage() {
 			disabledTools,
 			updateChatTabTitle,
 			selectedSystemModelId,
+			setActiveRuns,
 		]
 	);
 
@@ -1041,6 +1442,11 @@ export default function NewChatPage() {
 				toolCallIndices: new Map(),
 			};
 			const { contentParts, toolCallIndices } = contentPartsState;
+			const collectedAgentResults: Array<{
+				agentId: string;
+				resultText: string;
+				truncated: boolean;
+			}> = [];
 
 			const existingMsg = messages.find((m) => m.id === assistantMsgId);
 			if (existingMsg && Array.isArray(existingMsg.content)) {
@@ -1238,6 +1644,93 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-token-meta": {
+							const tokenMetaData = parsed.data as {
+								token_symbol: string;
+								token_name: string;
+								coingecko_id: string;
+							};
+							if (tokenMetaData?.token_symbol) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															token_symbol: tokenMetaData.token_symbol,
+															token_name: tokenMetaData.token_name,
+															coingecko_id: tokenMetaData.coingecko_id,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "data-report-type": {
+							const reportTypeData = parsed.data as { report_type: string };
+							if (reportTypeData?.report_type) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															report_type: reportTypeData.report_type,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "orchestra-spawn":
+						case "orchestra-update":
+						case "orchestra-done":
+						case "orchestra-fail":
+						case "orchestra-cancel":
+						case "orchestra-complete":
+						case "data-orchestra-narration":
+						case "data-orchestra-source-fetched":
+						case "data-orchestra-fact-captured":
+						case "data-orchestra-model-attribution":
+						case "data-orchestra-rate-gate-wait":
+						case "data-orchestra-llm-call":
+						case "data-agent-result": {
+							handleOrchestraEvent(
+								parsed as { type: string; data?: Record<string, unknown> },
+								setOrchestraState as (fn: (prev: unknown) => unknown) => void
+							);
+							const arData = (parsed as { data?: Record<string, unknown> }).data;
+							if (arData?.agentId && arData?.resultText) {
+								collectedAgentResults.push({
+									agentId: String(arData.agentId),
+									resultText: String(arData.resultText),
+									truncated: Boolean(arData.truncated),
+								});
+							}
+							break;
+						}
 						case "error":
 							if (
 								parsed.errorText?.includes("quota") ||
@@ -1250,6 +1743,13 @@ export default function NewChatPage() {
 				}
 
 				batcher.flush();
+
+				if (collectedAgentResults.length > 0) {
+					contentPartsState.contentParts.push({
+						type: "data-agent-results",
+						data: { results: collectedAgentResults },
+					});
+				}
 
 				const finalContent = buildContentForPersistence(contentPartsState, TOOLS_WITH_UI);
 				if (contentParts.length > 0) {
@@ -1423,6 +1923,11 @@ export default function NewChatPage() {
 			};
 			const { contentParts, toolCallIndices } = contentPartsState;
 			const batcher = new FrameBatchedUpdater();
+			const collectedAgentResults: Array<{
+				agentId: string;
+				resultText: string;
+				truncated: boolean;
+			}> = [];
 
 			// Add placeholder messages to UI
 			// Always add back the user message (with new query for edit, or original content for reload)
@@ -1545,6 +2050,93 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-token-meta": {
+							const tokenMetaData = parsed.data as {
+								token_symbol: string;
+								token_name: string;
+								coingecko_id: string;
+							};
+							if (tokenMetaData?.token_symbol) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															token_symbol: tokenMetaData.token_symbol,
+															token_name: tokenMetaData.token_name,
+															coingecko_id: tokenMetaData.coingecko_id,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "data-report-type": {
+							const reportTypeData = parsed.data as { report_type: string };
+							if (reportTypeData?.report_type) {
+								setMessages((prev) =>
+									prev.map((m) =>
+										m.id === assistantMsgId
+											? {
+													...m,
+													metadata: {
+														...(m.metadata as Record<string, unknown> | undefined),
+														custom: {
+															...((
+																m.metadata as {
+																	custom?: Record<string, unknown>;
+																}
+															)?.custom ?? {}),
+															report_type: reportTypeData.report_type,
+														},
+													},
+												}
+											: m
+									)
+								);
+							}
+							break;
+						}
+
+						case "orchestra-spawn":
+						case "orchestra-update":
+						case "orchestra-done":
+						case "orchestra-fail":
+						case "orchestra-cancel":
+						case "orchestra-complete":
+						case "data-orchestra-narration":
+						case "data-orchestra-source-fetched":
+						case "data-orchestra-fact-captured":
+						case "data-orchestra-model-attribution":
+						case "data-orchestra-rate-gate-wait":
+						case "data-orchestra-llm-call":
+						case "data-agent-result": {
+							handleOrchestraEvent(
+								parsed as { type: string; data?: Record<string, unknown> },
+								setOrchestraState as (fn: (prev: unknown) => unknown) => void
+							);
+							const arData = (parsed as { data?: Record<string, unknown> }).data;
+							if (arData?.agentId && arData?.resultText) {
+								collectedAgentResults.push({
+									agentId: String(arData.agentId),
+									resultText: String(arData.resultText),
+									truncated: Boolean(arData.truncated),
+								});
+							}
+							break;
+						}
 						case "error":
 							if (
 								parsed.errorText?.includes("quota") ||
@@ -1557,6 +2149,13 @@ export default function NewChatPage() {
 				}
 
 				batcher.flush();
+
+				if (collectedAgentResults.length > 0) {
+					contentPartsState.contentParts.push({
+						type: "data-agent-results",
+						data: { results: collectedAgentResults },
+					});
+				}
 
 				// Persist messages after streaming completes
 				const finalContent = buildContentForPersistence(contentPartsState, TOOLS_WITH_UI);
@@ -1726,6 +2325,7 @@ export default function NewChatPage() {
 			{/* <WriteTodosToolUI /> Disabled for now */}
 			<div key={searchSpaceId} className="flex h-full overflow-hidden">
 				<div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+					{/* T21: Resume banner removed — Resume button is now in OrchestraStrip header */}
 					<Thread />
 					{lastTokenUsage && !isRunning && (
 						<div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none px-4 z-10">
@@ -1751,8 +2351,7 @@ export default function NewChatPage() {
 									Remaining:{" "}
 									<span
 										className={
-											lastTokenUsage.tokens_remaining <
-											lastTokenUsage.monthly_limit * 0.1
+											lastTokenUsage.tokens_remaining < lastTokenUsage.monthly_limit * 0.1
 												? "text-destructive font-medium"
 												: "text-foreground font-medium"
 										}

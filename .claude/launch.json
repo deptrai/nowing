@@ -6,15 +6,15 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
       "cwd": "nowing_web",
-      "port": 3999,
+      "port": 4998,
       "autoPort": false
     },
     {
       "name": "Nowing Backend",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+      "runtimeArgs": ["run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "4999", "--reload"],
       "cwd": "nowing_backend",
-      "port": 8000,
+      "port": 4999,
       "autoPort": false
     },
     {

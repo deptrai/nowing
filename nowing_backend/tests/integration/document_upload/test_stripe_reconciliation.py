@@ -14,7 +14,7 @@ from httpx import ASGITransport
 from app.app import app
 from app.routes import stripe_routes
 from app.tasks.celery_tasks import stripe_reconciliation_task
-from tests.conftest import TEST_DATABASE_URL
+from tests.integration.conftest import TEST_DATABASE_URL
 from tests.utils.helpers import TEST_EMAIL, TEST_PASSWORD, auth_headers
 
 pytestmark = pytest.mark.integration

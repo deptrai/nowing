@@ -11,3 +11,21 @@ nowing_backend/backend.log
 .pnpm-store
 .DS_Store
 deepagents/
+
+# Python build / cache artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Serena local cache / project state
+.serena/cache/
+.serena/project.local.yml
+
+# Runtime logs and ad-hoc audio artifacts
+nohup.out
+nowing_backend/nohup.out
+nowing_backend/temp_audio/
+nowing_backend/video_presentation_audio/

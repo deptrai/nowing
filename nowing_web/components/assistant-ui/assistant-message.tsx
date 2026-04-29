@@ -7,6 +7,9 @@ import {
 	useAuiState,
 } from "@assistant-ui/react";
 import { useAtomValue } from "jotai";
+import { OrchestraStrip } from "@/components/new-chat/orchestra/orchestra-strip";
+import { activeRunSessionsAtom } from "@/atoms/chat/orchestra.atom";
+import { abandonedSessionIdsAtom, resumeRunBySessionAtom } from "@/atoms/chat/active-runs.atom";
 import {
 	CheckIcon,
 	ClipboardPaste,
@@ -27,6 +30,7 @@ import {
 	useAllCitationMetadata,
 } from "@/components/assistant-ui/citation-metadata-context";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import { CryptoReportLayout } from "@/components/new-chat/report/crypto-report-layout";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { CommentPanelContainer } from "@/components/chat-comments/comment-panel-container/comment-panel-container";
@@ -368,13 +372,57 @@ export const MessageError: FC = () => {
 
 const AssistantMessageInner: FC = () => {
 	const isMobile = !useMediaQuery("(min-width: 768px)");
+	// D1/D2/D3: render the orchestra strip only on the latest assistant message.
+	// The strip subscribes to the global activeOrchestraSessionAtom, so mounting it
+	// on every historical bubble would show the CURRENT session in all of them and
+	// cause ProgressMilestone to re-fire per remount during scroll.
+	const isLatestAssistantMessage = useAuiState(({ message }) => message?.isLast ?? false);
+	// T20+T21: active + abandoned sessions for multi-strip rendering (cap at 3).
+	const activeRunSessions = useAtomValue(activeRunSessionsAtom);
+	const abandonedSessionIds = useAtomValue(abandonedSessionIdsAtom);
+	const resumeHandler = useAtomValue(resumeRunBySessionAtom);
+
+	// Merge: active sessions first, then abandoned sessions not already in active list
+	const activeSessionIds = new Set(activeRunSessions.map((s) => s.sessionId));
+	const allSessionEntries = [
+		...activeRunSessions.map((s) => ({
+			sessionId: s.sessionId,
+			isAbandoned: abandonedSessionIds.has(s.sessionId),
+		})),
+		...[...abandonedSessionIds]
+			.filter((id) => !activeSessionIds.has(id))
+			.map((id) => ({ sessionId: id, isAbandoned: true })),
+	];
+	const visibleEntries = allSessionEntries.slice(0, 3);
+	const hiddenCount = allSessionEntries.length - visibleEntries.length;
 
 	return (
 		<CitationMetadataProvider>
+			{isLatestAssistantMessage && (
+				<>
+					{visibleEntries.length > 0 ? (
+						visibleEntries.map(({ sessionId, isAbandoned }) => (
+							<OrchestraStrip
+								key={sessionId}
+								sessionId={sessionId}
+								isAbandoned={isAbandoned}
+								onResume={isAbandoned && resumeHandler ? () => resumeHandler(sessionId) : undefined}
+							/>
+						))
+					) : (
+						<OrchestraStrip />
+					)}
+					{hiddenCount > 0 && (
+						<p className="mb-1 text-xs text-muted-foreground">
+							+{hiddenCount} more run{hiddenCount > 1 ? "s" : ""} in progress
+						</p>
+					)}
+				</>
+			)}
 			<div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
 				<MessagePrimitive.Parts
 					components={{
-						Text: MarkdownText,
+						Text: CryptoReportLayout,
 						tools: {
 							by_name: {
 								generate_report: GenerateReportToolUI,

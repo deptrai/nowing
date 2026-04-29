@@ -11,12 +11,16 @@ These endpoints support the ThreadHistoryAdapter pattern from assistant-ui:
 """
 
 import asyncio
+import json
+import os
 import logging
 from datetime import UTC, datetime
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -24,6 +28,8 @@ from sqlalchemy.orm import selectinload
 
 from app.db import (
     ChatComment,
+    ChatRun,
+    ChatRunStatus,
     ChatVisibility,
     NewChatMessage,
     NewChatMessageRole,
@@ -1256,12 +1262,12 @@ async def regenerate_response(
         # Get the checkpointer and state history
         checkpointer = await get_checkpointer()
 
-        config = {"configurable": {"thread_id": str(thread_id)}}
+        checkpoint_config = {"configurable": {"thread_id": str(thread_id)}}
 
         # Collect checkpoint tuples from the async iterator
         # CheckpointTuple has: config, checkpoint (dict with channel_values), metadata, parent_config
         checkpoint_tuples = []
-        async for cp_tuple in checkpointer.alist(config):
+        async for cp_tuple in checkpointer.alist(checkpoint_config):
             checkpoint_tuples.append(cp_tuple)
 
         if not checkpoint_tuples:
@@ -1632,3 +1638,425 @@ async def resume_chat(
             status_code=500,
             detail=f"An unexpected error occurred during resume: {e!s}",
         ) from None
+
+
+# =============================================================================
+# Persistent Background Run Endpoints (9-UX-1b)
+# =============================================================================
+
+
+class StartRunRequest(BaseModel):
+    search_space_id: int
+    user_query: str
+    mentioned_document_ids: list[int] | None = None
+    mentioned_nowing_doc_ids: list[int] | None = None
+    disabled_tools: list[str] | None = None
+    model_id: int | None = None
+
+
+class RunResponse(BaseModel):
+    id: str
+    thread_id: int
+    session_id: str
+    status: str
+    user_query: str | None
+    started_at: datetime
+    completed_at: datetime | None = None
+    final_message_id: int | None = None
+
+
+def _run_to_response(run) -> dict:
+    return {
+        "id": str(run.id),
+        "thread_id": run.thread_id,
+        "session_id": run.session_id,
+        "langgraph_thread_id": run.langgraph_thread_id,
+        "status": run.status,
+        "user_query": run.user_query,
+        "started_at": run.started_at.isoformat() if run.started_at else None,
+        "completed_at": run.completed_at.isoformat() if run.completed_at else None,
+        "final_message_id": run.final_message_id,
+    }
+
+
+@router.post("/threads/{thread_id}/runs")
+async def start_new_run(
+    thread_id: int,
+    request: StartRunRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """Dispatch a detached agent execution task. Returns run_id + session_id immediately."""
+    from app.tasks.chat.run_manager import start_run
+
+    result = await session.execute(
+        select(NewChatThread).filter(NewChatThread.id == thread_id)
+    )
+    thread = result.scalars().first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    await check_permission(
+        session, user, thread.search_space_id, Permission.CHATS_UPDATE.value,
+        "You don't have permission to update chats in this search space",
+    )
+    await check_thread_access(session, thread, user)
+
+    search_space_result = await session.execute(
+        select(SearchSpace).filter(SearchSpace.id == request.search_space_id)
+    )
+    search_space = search_space_result.scalars().first()
+    if not search_space:
+        raise HTTPException(status_code=404, detail="Search space not found")
+
+    llm_config_id = search_space.agent_llm_id if search_space.agent_llm_id is not None else -1
+    if config.is_cloud() and request.model_id is not None:
+        if request.model_id > 0:
+            raise HTTPException(status_code=403, detail="Custom LLM configurations are not allowed in cloud mode.")
+        llm_config_id = request.model_id
+
+    if config.is_cloud():
+        try:
+            token_quota_service = TokenQuotaService(session)
+            await token_quota_service.check_token_quota(str(user.id))
+        except TokenQuotaExceededError as exc:
+            raise HTTPException(
+                status_code=402,
+                detail={"error": "token_quota_exceeded", "message": str(exc)},
+            ) from exc
+
+    await session.commit()
+
+    run = await start_run(
+        thread_id=thread_id,
+        user_query=request.user_query,
+        user_id=user.id,
+        search_space_id=request.search_space_id,
+        llm_config_id=llm_config_id,
+        model_id=request.model_id,
+        mentioned_document_ids=request.mentioned_document_ids,
+        mentioned_nowing_doc_ids=request.mentioned_nowing_doc_ids,
+        disabled_tools=request.disabled_tools,
+        needs_history_bootstrap=thread.needs_history_bootstrap,
+        thread_visibility=thread.visibility,
+        current_user_display_name=user.display_name or "A team member",
+    )
+    return _run_to_response(run)
+
+
+@router.get("/threads/{thread_id}/runs/active")
+async def get_active_runs(
+    thread_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """Return all running or abandoned runs for this thread."""
+    # M3: feature flag gate — when disabled, return empty list (FE falls back to /regenerate)
+    if os.getenv("RESUMABLE_RUNS_ENABLED", "true").lower() != "true":
+        return []
+
+    result = await session.execute(
+        select(NewChatThread).filter(NewChatThread.id == thread_id)
+    )
+    thread = result.scalars().first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    await check_thread_access(session, thread, user)
+
+    # Run-level ownership: only return runs created by this user
+    runs_result = await session.execute(
+        select(ChatRun).where(
+            ChatRun.thread_id == thread_id,
+            ChatRun.created_by_id == user.id,
+            ChatRun.status.in_([ChatRunStatus.RUNNING, ChatRunStatus.ABANDONED]),
+        )
+    )
+    runs = runs_result.scalars().all()
+    return [_run_to_response(r) for r in runs]
+
+
+def _rebuild_vercel_wire(event_type: str, payload: object) -> str:
+    """Reconstruct Vercel UI Stream wire format from stored JSONB payload.
+
+    Handles three payload generations:
+    - Legacy (9-UX-1b): {"_raw": "data: ...\\n\\n"} — pass through verbatim
+    - text-delta (T4):   {"type": "text-delta", "_vercel": "0:\\"text\\""} — bare data line
+    - structured (T4):   {"type": ..., "data": {...}} — bare data:{json}\\n\\n
+    """
+    if not isinstance(payload, dict):
+        return f"data: {json.dumps(payload)}\n\n"
+    raw = payload.get("_raw")
+    if isinstance(raw, str) and raw:
+        return raw
+    vercel = payload.get("_vercel")
+    if isinstance(vercel, str) and vercel:
+        return f"data: {vercel}\n\n"
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+@router.get("/threads/{thread_id}/runs/{run_id}/stream")
+async def stream_run(
+    thread_id: int,
+    run_id: UUID,
+    request: Request,
+    after_seq: int = -1,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """SSE: replay persisted events then tail live via Redis pubsub."""
+    result = await session.execute(
+        select(NewChatThread).filter(NewChatThread.id == thread_id)
+    )
+    thread = result.scalars().first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    await check_thread_access(session, thread, user)
+
+    run_result = await session.execute(
+        select(ChatRun).where(ChatRun.id == run_id, ChatRun.thread_id == thread_id)
+    )
+    run = run_result.scalars().first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    # Run-level ownership check (separate from thread access)
+    if run.created_by_id != user.id:
+        raise HTTPException(status_code=403, detail="You do not own this run")
+    captured_user_id = user.id  # capture before session closes
+
+    async def _event_generator():
+        import redis.asyncio as aioredis
+        from app.celery_app import CELERY_BROKER_URL
+
+        last_seq = after_seq
+
+        redis_client = aioredis.from_url(CELERY_BROKER_URL, decode_responses=True)
+        channel = f"nowing:run:{run_id}"
+        pubsub = redis_client.pubsub()
+
+        # T1/C3: SUBSCRIBE before DB SELECT — no gap between replay and live tail
+        await pubsub.subscribe(channel)
+
+        try:
+            # Phase 1: replay persisted events from DB
+            async with shielded_async_session() as db:
+                rows = await db.execute(
+                    text(
+                        "SELECT seq, event_type, payload, "
+                        "EXTRACT(EPOCH FROM created_at)::bigint * 1000 AS ts_ms "
+                        "FROM chat_run_events "
+                        "WHERE run_id = :rid AND seq > :after ORDER BY seq"
+                    ),
+                    {"rid": str(run_id), "after": after_seq},
+                )
+                persisted = rows.fetchall()
+
+            if persisted:
+                last_seq = persisted[-1][0]
+
+            # T3: replay-start sentinel — include run.started_at so FE can seed spawnedAt
+            run_started_ms = int(run.started_at.timestamp() * 1000)
+            yield f"data: {json.dumps({'_marker': 'replay-start', 'seq': last_seq, 'runStartedAtMs': run_started_ms})}\n\n"
+
+            for seq, event_type, payload, ts_ms in persisted:
+                wire = _rebuild_vercel_wire(event_type, payload)
+                # Inject _ts into structured events so FE can use server timestamp
+                # instead of Date.now() for per-agent elapsed calculations.
+                if ts_ms and wire.startswith("data: {"):
+                    try:
+                        obj = json.loads(wire[6:].rstrip())
+                        if isinstance(obj, dict) and "_ts" not in obj:
+                            obj["_ts"] = int(ts_ms)
+                            wire = f"data: {json.dumps(obj)}\n\n"
+                    except Exception:
+                        pass
+                yield wire
+
+            # Check if run is terminal — if so, close after replay
+            async with shielded_async_session() as db:
+                status_row = await db.execute(
+                    text("SELECT status, last_event_seq FROM chat_runs WHERE id = :rid"),
+                    {"rid": str(run_id)},
+                )
+                status_info = status_row.fetchone()
+
+            if status_info and status_info[0] not in (ChatRunStatus.RUNNING,):
+                yield f"data: {json.dumps({'_marker': 'replay-end', 'seq': status_info[1] or last_seq, 'status': str(status_info[0])})}\n\n"
+                return
+
+            # T3: replay-end + live start sentinel
+            yield f"data: {json.dumps({'_marker': 'replay-end', 'seq': last_seq, 'status': 'live'})}\n\n"
+
+            # T1: drain buffered messages that arrived between subscribe() and SELECT
+            while True:
+                try:
+                    buf_msg = await asyncio.wait_for(
+                        pubsub.get_message(ignore_subscribe_messages=True), timeout=0.05
+                    )
+                except asyncio.TimeoutError:
+                    break
+                if buf_msg is None:
+                    break
+                try:
+                    row_data = json.loads(buf_msg["data"])
+                    seq = row_data.get("seq", 0)
+                    if seq <= last_seq:
+                        continue
+                    wire = _rebuild_vercel_wire(
+                        row_data.get("event_type", "message"), row_data.get("payload", {})
+                    )
+                    last_seq = seq
+                    yield wire
+                except Exception:
+                    log.warning("stream_run buffer-drain: failed to process pubsub message for run %s", run_id, exc_info=True)
+                    continue
+
+            # Phase 2: live tail loop
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    message = await asyncio.wait_for(
+                        pubsub.get_message(ignore_subscribe_messages=True),
+                        timeout=1.0,  # T11: 1s poll for DB gap-scan
+                    )
+                except asyncio.TimeoutError:
+                    message = None
+
+                if message is not None:
+                    try:
+                        row_data = json.loads(message["data"])
+                        seq = row_data.get("seq", 0)
+                        if seq <= last_seq:
+                            continue
+                        wire = _rebuild_vercel_wire(
+                            row_data.get("event_type", "message"), row_data.get("payload", {})
+                        )
+                        last_seq = seq
+                        yield wire
+                    except Exception:
+                        log.warning("stream_run live-tail: failed to process pubsub message for run %s", run_id, exc_info=True)
+                    continue
+
+                # Pubsub timeout: T11 DB poll + gap-scan for missed events
+                async with shielded_async_session() as db:
+                    chk = await db.execute(
+                        text("SELECT status, last_event_seq FROM chat_runs WHERE id = :rid"),
+                        {"rid": str(run_id)},
+                    )
+                    row = chk.fetchone()
+
+                if row is None:
+                    break
+
+                db_last_seq = row[1] if row[1] is not None else last_seq
+                if db_last_seq > last_seq:
+                    async with shielded_async_session() as db:
+                        gap_rows = await db.execute(
+                            text(
+                                "SELECT seq, event_type, payload FROM chat_run_events "
+                                "WHERE run_id = :rid AND seq > :after ORDER BY seq"
+                            ),
+                            {"rid": str(run_id), "after": last_seq},
+                        )
+                        for seq, event_type, payload in gap_rows.fetchall():
+                            last_seq = seq
+                            yield _rebuild_vercel_wire(event_type, payload)
+
+                if row[0] not in (ChatRunStatus.RUNNING,):
+                    break
+
+                yield ": heartbeat\n\n"
+
+        except Exception as exc:
+            _logger.warning("stream_run pubsub error for run %s: %s", run_id, exc)
+        finally:
+            await pubsub.unsubscribe(channel)
+            await redis_client.aclose()
+
+        # T3: final run-end sentinel
+        async with shielded_async_session() as db:
+            final = await db.execute(
+                text("SELECT status, last_event_seq FROM chat_runs WHERE id = :rid"),
+                {"rid": str(run_id)},
+            )
+            final_info = final.fetchone()
+        final_status = str(final_info[0]) if final_info else "unknown"
+        final_seq = final_info[1] if final_info else last_seq
+        yield f"data: {json.dumps({'_marker': 'run-end', 'seq': final_seq, 'status': final_status})}\n\n"
+
+    return StreamingResponse(
+        _event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/threads/{thread_id}/runs/{run_id}/cancel")
+async def cancel_run_endpoint(
+    thread_id: int,
+    run_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    from app.tasks.chat.run_manager import cancel_run
+
+    result = await session.execute(
+        select(NewChatThread).filter(NewChatThread.id == thread_id)
+    )
+    thread = result.scalars().first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    await check_thread_access(session, thread, user)
+
+    run_result = await session.execute(
+        select(ChatRun).where(ChatRun.id == run_id, ChatRun.thread_id == thread_id)
+    )
+    run = run_result.scalars().first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.created_by_id != user.id:
+        raise HTTPException(status_code=403, detail="You do not own this run")
+
+    cancelled = await cancel_run(run_id)
+    return {"cancelled": cancelled}
+
+
+@router.post("/threads/{thread_id}/runs/{run_id}/resume")
+async def resume_run_endpoint(
+    thread_id: int,
+    run_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    from app.tasks.chat.run_manager import resume_run
+
+    result = await session.execute(
+        select(NewChatThread).filter(NewChatThread.id == thread_id)
+    )
+    thread = result.scalars().first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    await check_thread_access(session, thread, user)
+
+    run_result = await session.execute(
+        select(ChatRun).where(ChatRun.id == run_id, ChatRun.thread_id == thread_id)
+    )
+    run = run_result.scalars().first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.created_by_id != user.id:
+        raise HTTPException(status_code=403, detail="You do not own this run")
+
+    search_space_result = await session.execute(
+        select(SearchSpace).filter(SearchSpace.id == thread.search_space_id)
+    )
+    search_space = search_space_result.scalars().first()
+
+    resumed = await resume_run(
+        run_id=run_id,
+        search_space_id=thread.search_space_id,
+        thread_visibility=thread.visibility,
+        current_user_display_name=user.display_name or "A team member",
+    )
+    return _run_to_response(resumed)

@@ -4,6 +4,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from tests.unit.connector_indexers.conftest import CONNECTOR_USER_ID, CONNECTOR_ID, CONNECTOR_SEARCH_SPACE_ID
 
 from app.tasks.connector_indexers.google_drive_indexer import (
     _index_selected_files,
@@ -11,9 +12,6 @@ from app.tasks.connector_indexers.google_drive_indexer import (
 
 pytestmark = pytest.mark.unit
 
-_USER_ID = "00000000-0000-0000-0000-000000000001"
-_CONNECTOR_ID = 42
-_SEARCH_SPACE_ID = 1
 
 
 def _make_file_dict(file_id: str, name: str, mime: str = "text/plain") -> dict:
@@ -98,9 +96,9 @@ async def _run_selected(mocks, file_ids):
         mocks["drive_client"],
         mocks["session"],
         file_ids,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 

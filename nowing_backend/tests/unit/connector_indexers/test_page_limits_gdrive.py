@@ -8,9 +8,6 @@ from tests.unit.connector_indexers.conftest import FakeUser, make_page_limit_ses
 
 pytestmark = pytest.mark.unit
 
-_USER_ID = "00000000-0000-0000-0000-000000000001"
-_CONNECTOR_ID = 42
-_SEARCH_SPACE_ID = 1
 
 # Local aliases for backward compatibility within this module
 _FakeUser = FakeUser
@@ -75,9 +72,9 @@ async def _run_gdrive_selected(mocks, file_ids):
         MagicMock(),
         mocks["session"],
         file_ids,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 
@@ -255,9 +252,9 @@ async def _run_gdrive_full_scan(mocks, max_files=500):
         MagicMock(),
         mocks["session"],
         MagicMock(),
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         "folder-root",
         "My Folder",
         mocks["task_logger"],
@@ -363,9 +360,9 @@ async def test_gdrive_delta_sync_skips_over_quota(monkeypatch):
         MagicMock(),
         session,
         MagicMock(),
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         "folder-root",
         "start-token",
         mock_task_logger,

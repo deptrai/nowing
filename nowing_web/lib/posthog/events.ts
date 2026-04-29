@@ -488,3 +488,187 @@ export function resetUser() {
 		// Silently ignore – ad-blockers may break posthog
 	}
 }
+
+// ============================================
+// ORCHESTRA EVENTS (Phase 9 — Crypto Orchestra)
+// ============================================
+
+/** Constant for client-side conflict detection threshold (AC8) */
+export const CONFLICT_NUMERIC_DELTA = 0.05;
+
+/**
+ * Fired when browser receives `orchestra-spawn` SSE event (per spawned agent).
+ * AC10 event #1.
+ *
+ * Note: spec describes aggregate `{query_hash, agents[], spawn_count}` payload, but the
+ * SSE stream emits one event per agent. We capture per-agent; downstream aggregation
+ * is done in PostHog dashboards by grouping on `session_id`.
+ */
+export function trackOrchestraSpawn(payload: {
+	sessionId: string;
+	agentId: string;
+	agentName: string;
+}) {
+	safeCapture("orchestra_spawn", {
+		session_id: payload.sessionId,
+		agent_id: payload.agentId,
+		agent_name: payload.agentName,
+	});
+}
+
+/**
+ * Fired when an agent completes successfully (`orchestra-done` SSE event).
+ * AC10 event #2.
+ */
+export function trackOrchestraAgentDone(payload: {
+	sessionId: string;
+	agentId: string;
+	durationMs?: number;
+	sourceCount?: number;
+}) {
+	safeCapture("orchestra_agent_done", {
+		session_id: payload.sessionId,
+		agent_id: payload.agentId,
+		duration_ms: payload.durationMs,
+		source_count: payload.sourceCount,
+	});
+}
+
+/**
+ * Fired when an agent fails (`orchestra-fail` SSE event).
+ * AC10 event #3.
+ */
+export function trackOrchestraAgentFail(payload: {
+	sessionId: string;
+	agentId: string;
+	errorCode: string;
+	errorMessage?: string;
+}) {
+	safeCapture("orchestra_agent_fail", {
+		session_id: payload.sessionId,
+		agent_id: payload.agentId,
+		error_code: payload.errorCode,
+		error_message: payload.errorMessage,
+	});
+}
+
+/**
+ * Fired on `orchestra-complete` SSE event — full session summary.
+ * AC10 event #4.
+ */
+export function trackOrchestraCompleted(payload: {
+	sessionId: string;
+	agentIds?: string[];
+	citationCount?: number;
+	totalDurationMs?: number;
+	successCount?: number;
+	failCount?: number;
+	p95Bucket?: "fast" | "normal" | "slow" | null;
+}) {
+	safeCapture("orchestra_completed", {
+		session_id: payload.sessionId,
+		agent_ids: payload.agentIds,
+		citation_count: payload.citationCount,
+		total_duration_ms: payload.totalDurationMs,
+		success_count: payload.successCount,
+		fail_count: payload.failCount,
+		p95_bucket: payload.p95Bucket,
+	});
+}
+
+/**
+ * Fired when user cancels the orchestra session.
+ * AC10 event #5.
+ */
+export function trackOrchestraCancelled(payload: {
+	sessionId: string;
+	agentId?: string;
+	atMs?: number;
+	partialResults?: boolean;
+}) {
+	safeCapture("orchestra_cancelled", {
+		session_id: payload.sessionId,
+		agent_id: payload.agentId,
+		at_ms: payload.atMs,
+		partial_results: payload.partialResults,
+	});
+}
+
+/**
+ * Fired when user clicks a `<CitationList />` badge (stacked/cluster/conflict).
+ * AC10 event #6.
+ */
+export function trackCitationClick(payload: {
+	// P8: align with CitationVariantSchema in components/tool-ui/citation/schema.ts
+	// ("default" | "inline" | "stacked" | "cluster" | "conflict"). "single" was a
+	// drift — no caller could produce it since it isn't a valid CitationVariant.
+	badgeType: "default" | "inline" | "stacked" | "cluster" | "conflict";
+	sourceCount: number;
+	conflict: boolean;
+}) {
+	safeCapture("citation_click", {
+		badge_type: payload.badgeType,
+		source_count: payload.sourceCount,
+		conflict: payload.conflict,
+	});
+}
+
+/**
+ * Fired when user expands the `<DegradationNotice />`.
+ * AC10 event #7.
+ */
+export function trackDegradationNoticeExpanded(payload?: {
+	sessionId?: string;
+	failCount?: number;
+	successCount?: number;
+	totalCount?: number;
+}) {
+	safeCapture("degradation_notice_expanded", {
+		session_id: payload?.sessionId,
+		fail_count: payload?.failCount,
+		success_count: payload?.successCount,
+		total_count: payload?.totalCount,
+	});
+}
+
+/**
+ * Fired when user clicks the retry CTA in `<DegradationNotice />`.
+ * AC10 event #8.
+ */
+export function trackDegradationRetryClicked(payload?: {
+	sessionId?: string;
+	failCount?: number;
+	agentName?: string;
+}) {
+	safeCapture("degradation_retry_clicked", {
+		session_id: payload?.sessionId,
+		fail_count: payload?.failCount,
+		agent_name: payload?.agentName,
+	});
+}
+
+/**
+ * Pure helper: detect numeric or categorical conflict between sources.
+ * Used by CitationList conflict variant (AC8).
+ * Exported here to keep `CONFLICT_NUMERIC_DELTA` co-located.
+ */
+export function detectConflict(
+	values: Array<number | string | null | undefined>,
+	claimType: "numeric" | "categorical"
+): boolean {
+	const defined = values.filter((v) => v !== null && v !== undefined);
+	if (defined.length < 2) return false;
+
+	if (claimType === "numeric") {
+		const nums = defined.filter((v) => typeof v === "number") as number[];
+		if (nums.length < 2) return false;
+		const max = Math.max(...nums);
+		const min = Math.min(...nums);
+		if (min === 0) return false; // avoid division by zero
+		return (max - min) / Math.abs(min) > CONFLICT_NUMERIC_DELTA;
+	}
+
+	// Categorical: exact mismatch between any two values
+	const strings = defined as string[];
+	return new Set(strings).size > 1;
+}

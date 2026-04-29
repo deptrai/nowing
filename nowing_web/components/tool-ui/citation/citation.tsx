@@ -183,6 +183,66 @@ export function Citation(props: CitationProps) {
 		);
 	}
 
+	// Conflict variant: amber-bordered inline chip indicating data discrepancy
+	if (variant === "conflict") {
+		return (
+			<Popover open={open}>
+				<PopoverTrigger asChild>
+					<button
+						type="button"
+						aria-label={`${title} (conflict)`}
+						data-tool-ui-id={id}
+						data-slot="citation"
+						data-conflict="true"
+						onClick={handleClick}
+						onMouseEnter={handleMouseEnter}
+						onMouseLeave={handleMouseLeave}
+						className={cn(
+							"inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1",
+							"border border-amber-500/50 bg-amber-50/60 text-sm outline-none",
+							"dark:bg-amber-950/20",
+							"transition-colors duration-150",
+							"hover:border-amber-500/80 hover:bg-amber-50",
+							"dark:hover:bg-amber-950/30",
+							"focus-visible:ring-amber-500 focus-visible:ring-2",
+							className
+						)}
+					>
+						<span className="text-amber-600 dark:text-amber-400 font-medium">≠</span>
+						{iconElement}
+						<span className="text-amber-700 dark:text-amber-300">{domain}</span>
+					</button>
+				</PopoverTrigger>
+				<PopoverContent
+					side="top"
+					align="start"
+					className="w-72 cursor-pointer p-0"
+					onMouseEnter={handleMouseEnter}
+					onMouseLeave={handleMouseLeave}
+					onOpenAutoFocus={(e) => e.preventDefault()}
+					onCloseAutoFocus={(e) => e.preventDefault()}
+					onClick={handleClick}
+				>
+					<div className="hover:bg-muted/50 flex flex-col gap-2 p-3 transition-colors">
+						<div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+							<span className="text-xs font-medium">Data conflict detected</span>
+						</div>
+						<div className="flex items-start gap-2">
+							{iconElement}
+							<span className="text-muted-foreground text-xs">{domain}</span>
+						</div>
+						<p className="text-sm leading-snug font-medium">{title}</p>
+						{snippet && (
+							<p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
+								{snippet}
+							</p>
+						)}
+					</div>
+				</PopoverContent>
+			</Popover>
+		);
+	}
+
 	// Default variant: full card
 	return (
 		<article

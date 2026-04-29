@@ -17,8 +17,14 @@ stepsCompleted:
   - step-e-01-discovery
   - step-e-02-review
   - step-e-03-edit
-lastEdited: '2026-04-19'
+lastEdited: '2026-04-23'
 editHistory:
+  - date: '2026-04-23'
+    changes: 'Readiness fix M2: Split NFR-Q1 (Accuracy < 3% — factual error rate) and NFR-Q5 (Smart Selection Accuracy ≥ 90% — orchestrator routing). Architecture §6 reconciled. Resolves implementation-readiness-report-2026-04-23 issue M2.'
+  - date: '2026-04-23'
+    changes: '🚨 Reality sync: Code audit phát hiện Crypto Foundation (4 base sub-agents + 11 tools) CHƯA implement (subagents/crypto/ rỗng, các tool files chưa tồn tại). Add note vào Growth Features về Epic 0 prerequisite. Sequence: Epic 0 (Foundation, ~2-3 weeks) → Epic 8 (Testing, ~1 week) → Epic 9 Phase 1 (Tokenomics + Yield, 4 weeks). Total realistic timeline: ~7-8 weeks từ kick-off thay vì 4 weeks Phase 1 standalone.'
+  - date: '2026-04-23'
+    changes: 'Thêm Epic 9 Crypto Orchestra (Advanced Crypto Sub-Agents): User Journey #8 (Crypto Power User), FR27-FR35 (9 FRs cho 6 sub-agents: Tokenomics, Whale Tracker, Token Unlock, Yield Optimizer, Governance, Technical Analyst + parallel execution + Chainlens integration), NFR-CS1-CS4 (token budget, parallel execution, API rate awareness, stateless tools), update Growth Features section. Source: product-brief-epic9-crypto-orchestra.md v2 stakeholder-resolved. Strategy: Phased rollout (Phase 1 Tokenomics+Yield → Phase 2 Whale+Governance → Phase 3 Unlock+TA), Quality-first (accuracy <3%, parallelism <1.3x, reliability >98%, hallucination <1%), reuse chainlens_deep_research cho web research.'
   - date: '2026-04-19'
     changes: 'Thêm Chainlens Deep Research Integration (sync từ architecture.md 2026-04-18): User Journey #7, FR24-FR26, NFR-P4, update Integration Requirements & Growth Features'
   - date: '2026-04-16'
@@ -105,6 +111,7 @@ Cơ chế Local-first (Zero-cache) đồng bộ hàng nghìn vector và bản gh
 - Filter thông minh và tagging đa dạng để quản lý vector.
 - Gift Subscription: Cho phép bất kỳ tài khoản nào mua gói subscription làm quà tặng (chọn plan + thời hạn), nhận gift code duy nhất, và người nhận redeem code để kích hoạt subscription từ ngày sử dụng.
 - Deep Research via Chainlens: Tích hợp B2B API từ Chainlens làm engine chính cho tính năng "deep research" — người dùng gõ từ khóa trigger ("deep research", "thorough investigation") để kích hoạt nghiên cứu web chuyên sâu; auto-fallback về `generate_report(report_style="deep_research")` khi Chainlens không khả dụng.
+- **Crypto Orchestra (Epic 9 — Advanced Crypto Sub-Agents)**: Mở rộng đội ngũ crypto sub-agents từ 4 (DeFiLlama, Sentiment, News, Smart Contract — Epic 1-2) lên 10 với 6 specialist agents mới chạy song song qua LangGraph SubAgentMiddleware: Tokenomics Analyst (vesting, supply, distribution), Whale Tracker (smart money flows), Token Unlock Scheduler (vesting events, sell pressure), Yield Optimizer (risk-adjusted DeFi yields), Governance Analyst (DAO proposals, voting outcomes), Technical Analyst (chart patterns, MA/RSI/MACD). Triển khai phased: Phase 1 Tokenomics+Yield → Phase 2 Whale+Governance → Phase 3 Unlock+TA. Quality-first (accuracy <3%, parallelism ratio <1.3x, hallucination <1%). Reuse `chainlens_deep_research` cho 5/6 agents — không scrape trực tiếp. **🚨 Prerequisite (audit 2026-04-23)**: Epic 0 (Crypto Foundation) phải implement trước — bao gồm Story 0.1 (4 tool files: defillama, crypto_sentiment, crypto_news, contract_analysis), Story 0.2 (4 base sub-agent specs + SubAgentMiddleware wiring), Story 0.3 (main agent orchestration prompt). Realistic total timeline: Epic 0 (~3-4 weeks incl. testing 0.4-0.6) + Phase 1 (~4 weeks) = **~7-8 weeks**.
 
 ### Vision (Future)
 
@@ -147,12 +154,18 @@ Cơ chế Local-first (Zero-cache) đồng bộ hàng nghìn vector và bản gh
 - **Tình huống:** Cần báo cáo chuyên sâu về một topic mà context đã upload chưa đủ, cần khai thác thêm nguồn từ internet.
 - **Hành trình:** Gõ câu hỏi trong chat kèm từ khóa trigger ("deep research về X" hoặc "thorough investigation of Y") -> LangGraph Agent nhận diện intent và gọi tool `chainlens_deep_research` -> Tool gọi Chainlens B2B API (`POST /api/v1/b2b/research`) với Bearer token auth -> Kết quả trả về và được stream dần tới người dùng trong vòng tối đa 120 giây. Nếu Chainlens API không khả dụng (feature flag tắt hoặc API down), hệ thống tự động fallback sang `generate_report(report_style="deep_research")` mà không báo lỗi.
 
+### 8. Crypto Power User - Multi-Agent Crypto Orchestra
+- **Người dùng:** Khoa — Crypto investor (long-term holder + active trader) cần phân tích toàn diện token trước khi mở position.
+- **Tình huống:** Muốn đánh giá $UNI cho long position 6 tháng — cần biết tokenomics, vesting unlocks sắp tới, hoạt động whale gần đây, governance health, technical entry levels và DeFi yield opportunities — tất cả trong một câu hỏi.
+- **Hành trình:** Gõ câu hỏi "Phân tích toàn diện $UNI cho quyết định long position 6 tháng" trong chat -> Main agent (orchestrator) nhận diện intent và spawn song song 6+ specialist sub-agents trong cùng 1 LangGraph ToolNode: `tokenomics_analyst` (vesting/supply), `whale_tracker` (smart money flows), `token_unlock_scheduler` (upcoming unlocks), `governance_analyst` (DAO proposals), `technical_analyst` (chart patterns), `yield_optimizer` (DeFi pools), cộng với các agents Epic 1-2 đã có (`defillama_analyst`, `news_analyst`, `sentiment_analyst`, `smart_contract_analyst`) -> Mỗi sub-agent có scoped tool list riêng và chạy đồng thời (total time ≈ max(individual)) -> Main agent tổng hợp kết quả thành response đa chiều có thể hành động ngay -> Stream về user trong vòng < 90s P95. Khi 1-2 agents fail (rate limit, timeout), main agent vẫn trả response hoàn chỉnh dựa trên data available và mention nguồn nào unavailable (graceful degradation > 98%).
+
 ### Journey Requirements Summary
 
 - **Giao diện Client (Journey 1 & 2):** Đòi hỏi kiến trúc Frontend (Next.js) kết hợp chặt chẽ việc quản trị State và Local Offline Syncing `@rocicorp/zero`. Phải cung cấp tín hiệu (Indicator) về tiến trình đồng bộ dữ liệu tới file bộ nhớ cục bộ mà không gây khóa luồng chính (Main Thread).
 - **Kiến trúc Server & DevOps (Journey 3 & 4):** Backend APIs cần được REST/SSE tối ưu; chuẩn Open-API contracts; và cách ly nghiêm ngặt giữa luồng Embedding Worker process cùng Data sync để không gây tắc nghẽn khả năng trả lời query.
 - **Gift Purchase & Redemption (Journey 5 & 6):** Yêu cầu endpoint thanh toán one-time (Stripe `mode: "payment"` với `price_data` động), hệ thống sinh gift code cryptographically secure (`secrets.choice()`, format `GIFT-XXXX-XXXX-XXXX`), bảng `gift_codes` riêng biệt, trang redeem xác thực và kích hoạt subscription. Hỗ trợ admin-approval fallback khi Stripe env không khả dụng (cùng pattern với token topup và subscription upgrade).
 - **Deep Research (Journey 7):** Yêu cầu `ChainlensResearchService` (~100 LOC) với method `is_available()` kiểm tra feature flag `CHAINLENS_RESEARCH_ENABLED` và API health; tool `chainlens_deep_research` đăng ký trong `BUILTIN_TOOLS`; timeout 120 giây; graceful fallback không gây lỗi user-facing.
+- **Crypto Orchestra (Journey 8):** Yêu cầu 6 sub-agent spec files mới trong `app/agents/new_chat/subagents/crypto/` (tokenomics, whale, unlock, yield, governance, TA), mỗi spec ~50 LOC chỉ định nghĩa `name` + `system_prompt` (< 500 tokens). Wire qua `SubAgentMiddleware` trong `chat_deepagent.py`. Reuse `chainlens_deep_research` tool đã có cho 5/6 agents (whale, unlock, governance, TA, tokenomics — supplementary). Yield optimizer dùng deterministic tools (DeFiLlama, GoPlus). Parallel execution qua LangGraph ToolNode native batch. Telemetry logging cho 4 quality gates: accuracy < 3%, parallelism ratio < 1.3x, graceful degradation > 98%, hallucination rate < 1%.
 
 ## Domain-Specific Requirements
 
@@ -290,6 +303,17 @@ Cấu trúc API (FastAPI) bao gồm:
 - **FR25:** Hệ thống sử dụng Chainlens B2B API (`POST /api/v1/b2b/research`) làm primary engine cho deep research. Khi Chainlens không khả dụng (feature flag tắt, API down, hoặc health check thất bại), hệ thống tự động fallback sang `generate_report(report_style="deep_research")` mà không hiển thị lỗi cho người dùng.
 - **FR26:** Admin/DevOps có thể bật hoặc tắt tích hợp Chainlens bằng cách set/unset biến môi trường `CHAINLENS_RESEARCH_ENABLED` mà không cần deploy lại code.
 
+### Crypto Orchestra — Advanced Crypto Sub-Agents (Epic 9)
+- **FR27 (Tokenomics Analyst):** Hệ thống cung cấp sub-agent `tokenomics_analyst` chuyên phân tích token economics: circulating vs total vs max supply, vesting schedule, distribution (team/investors/community/treasury), inflation/deflation mechanics, demand drivers. Tools scoped: `get_coingecko_token_info`, `chainlens_deep_research` (Messari, CryptoRank, official docs). System prompt < 500 tokens.
+- **FR28 (Whale Tracker):** Hệ thống cung cấp sub-agent `whale_tracker` theo dõi large wallet movements và smart money flows: known whale wallets (exchanges, funds, insiders), inflow/outflow patterns, accumulation vs distribution phases. Tools scoped: `chainlens_deep_research` (Arkham, Nansen, Etherscan token holders).
+- **FR29 (Token Unlock Scheduler):** Hệ thống cung cấp sub-agent `token_unlock_scheduler` track upcoming vesting events: unlock dates, % supply unlocked, historical price action sau unlock events, sell pressure assessment cho short-term holds. Tools scoped: `chainlens_deep_research` (TokenUnlocks.app, Vesting.is, CryptoRank).
+- **FR30 (Yield Optimizer):** Hệ thống cung cấp sub-agent `yield_optimizer` đề xuất DeFi yields theo risk preference (conservative/moderate/aggressive): filter theo risk level, tính impermanent loss cho LP positions, so sánh protocol security score. Tools scoped: `get_defillama_yields`, `get_defillama_protocol`, `check_token_security`.
+- **FR31 (Governance Analyst):** Hệ thống cung cấp sub-agent `governance_analyst` theo dõi DAO governance: active proposals, voting outcomes, governance participation rate, treasury size/management, flag controversial decisions. Tools scoped: `chainlens_deep_research` (Snapshot.org, Tally, Commonwealth, protocol forums).
+- **FR32 (Technical Analyst):** Hệ thống cung cấp sub-agent `technical_analyst` phân tích chart patterns và technical indicators: support/resistance levels, 50MA/200MA cross, RSI overbought/oversold, MACD signals, chart patterns (head & shoulders, cup & handle, double bottom/top). Tools scoped: `get_live_token_data` (DexScreener), `chainlens_deep_research` (TradingView, CoinGecko charts).
+- **FR33 (Parallel Orchestration):** Main agent có khả năng spawn multiple crypto sub-agents song song qua `task()` tool trong cùng 1 LangGraph ToolNode khi user yêu cầu phân tích toàn diện ("phân tích toàn diện $X", "comprehensive analysis"). Total execution time ≈ max(individual times), không phải sum.
+- **FR34 (Smart Agent Selection):** Main agent system prompt có instruction để chọn subset agents phù hợp với câu hỏi cụ thể (không spawn cả 10 agents khi user chỉ hỏi về 1 khía cạnh). Lookup table: agent name → chuyên môn → trigger keywords.
+- **FR35 (Graceful Degradation):** Khi 1 hoặc nhiều sub-agents fail (rate limit 429, timeout, API unavailable), main agent vẫn tổng hợp response từ các agents thành công và mention rõ nguồn nào unavailable trong response — không crash toàn bộ analysis.
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -307,4 +331,17 @@ Cấu trúc API (FastAPI) bao gồm:
 
 ### Reliability
 - **NFR-R1 (Offline Tolerance - Chống chịu rớt mạng):** Website phải chịu đựng được việc mất mạng vô thời hạn. Giao diện không được "Trắng màn hình" (White Screen of Death), mà phải cho phép User đọc dữ liệu đã cache mượt mà như đang online.
+
+### Crypto Orchestra (Epic 9)
+- **NFR-CS1 (Sub-agent Token Budget):** System prompts cho mỗi crypto sub-agent phải < 500 tokens để tiết kiệm cost khi spawn nhiều agents song song. Áp dụng cho cả 6 agents Epic 9 (Tokenomics, Whale, Unlock, Yield, Governance, TA) và đảm bảo tổng token overhead khi spawn full suite < 5000 tokens.
+- **NFR-CS2 (Parallel Execution):** LangGraph ToolNode bắt buộc thực thi tất cả `task()` calls đồng thời trong 1 graph step — không tuần tự. Đo bằng tỷ số `total_time / max(individual_time)` phải < 1.3x (near-perfect parallelism).
+- **NFR-CS3 (API Rate Awareness):** Crypto tools phải handle rate limits gracefully — CoinGecko 30 req/min (hoặc Pro tier nếu upgrade), GoPlus 2000 req/day, CryptoPanic public tier, DeFiLlama unlimited. Khi rate limit hit, agent fallback sang `chainlens_deep_research` hoặc trả error message để main agent xử lý (NFR-Q3 graceful degradation).
+- **NFR-CS4 (Stateless Tools):** Tất cả crypto tools đăng ký với `requires=[]` trong tool registry — không phụ thuộc DB, không cần session state, không cần workspace context. Đảm bảo các agents có thể scale horizontal mà không cần shared state.
+
+### Quality Gates (Epic 9 — North Star Metrics)
+- **NFR-Q1 (Accuracy):** Factual error rate cho crypto research responses (sample QA vs raw API ground truth) phải < 3%. Đo bằng manual QA + automated cross-check trên random sample 100 full-analysis queries mỗi 2 tuần production.
+- **NFR-Q2 (Hallucination Rate):** % responses chứa số liệu không xuất phát từ tool output (fabricated numbers) phải < 1%. Đo bằng pattern check + sample QA.
+- **NFR-Q3 (Graceful Degradation):** % requests có ≥ 1 sub-agent error nhưng main agent vẫn trả response đúng cấu trúc và mention nguồn unavailable phải > 98%.
+- **NFR-Q4 (Speed):** P95 response time cho full-suite analysis (6+ agents spawned) phải < 90s — relaxed so với NFR-P1 vì cho phép Chainlens 125s timeout, tận dụng parallelism.
+- **NFR-Q5 (Smart Selection Accuracy):** ≥ 90% queries route đúng Rule A/B/C/D (FR34 main-agent decision tree). Đo bằng manual classification 20 sample queries (Story 0.3 AC) + production sampling 100 queries/day. Khác NFR-Q1 (Q1 = factual accuracy của response, Q5 = routing accuracy của orchestrator).
 

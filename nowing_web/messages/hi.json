@@ -819,5 +819,28 @@
 		"not_found_title": "यह चैट हटा दिया गया है।",
 		"click_here": "यहां क्लिक करें",
 		"sign_in_prompt": "Nowing में लॉगिन करने और अपना शुरू करने के लिए।"
+	},
+	"orchestra": {
+		"strip_title": "स्रोत विश्लेषण हो रहा है",
+		"strip_title_done": "स्रोत विश्लेषित",
+		"strip_title_single": "स्रोत प्राप्त हो रहा है",
+		"agent_status_queued": "कतार में",
+		"agent_status_running": "प्राप्त हो रहा है",
+		"agent_status_done": "पूर्ण",
+		"agent_status_failed": "विफल",
+		"agent_status_cancelled": "रद्द",
+		"summary": "{success}/{total} पूर्ण · {ms}ms ({bucket})",
+		"bucket_fast": "तेज",
+		"bucket_normal": "सामान्य",
+		"bucket_slow": "धीमा",
+		"milestone_30s": "गहराई से विश्लेषण हो रहा है…",
+		"degradation_inline": "{success}/{total} स्रोत पूर्ण · {failed} निम्नीकृत",
+		"degradation_retry": "विफल स्रोतों को पुनः प्रयास करें",
+		"fail_reason_rate_limit": "दर सीमा पार",
+		"fail_reason_timeout": "समय समाप्त",
+		"fail_reason_unavailable": "सेवा अनुपलब्ध",
+		"fail_reason_circuit_open": "सर्किट ब्रेकर खुला",
+		"fail_reason_cancelled_by_user": "रद्द",
+		"cancelled_cost_footnote": "आंशिक परिणाम। कुछ स्रोत प्राप्त नहीं हुए।"
 	}
 }

@@ -25,7 +25,14 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     conn = op.get_bind()
     # Drop any pre-existing enum (e.g. uppercase version from old create_all())
-    conn.execute(sa.text("DROP TYPE IF EXISTS subscriptionrequeststatus"))
+    # If table already exists (schema drift), skip enum/table creation entirely
+    table_exists = conn.execute(sa.text(
+        "SELECT 1 FROM information_schema.tables WHERE table_name = 'subscription_requests'"
+    )).fetchone()
+    if table_exists:
+        return
+
+    conn.execute(sa.text("DROP TYPE IF EXISTS subscriptionrequeststatus CASCADE"))
     conn.execute(
         sa.text(
             "CREATE TYPE subscriptionrequeststatus AS ENUM ('pending', 'approved', 'rejected')"
@@ -34,7 +41,7 @@ def upgrade() -> None:
     conn.execute(
         sa.text(
             """
-            CREATE TABLE subscription_requests (
+            CREATE TABLE IF NOT EXISTS subscription_requests (
                 id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id     UUID         NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
                 plan_id     VARCHAR(50)  NOT NULL,

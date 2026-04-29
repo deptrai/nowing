@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from tests.unit.connector_indexers.conftest import CONNECTOR_USER_ID, CONNECTOR_ID, CONNECTOR_SEARCH_SPACE_ID
 
 from app.tasks.connector_indexers.dropbox_indexer import (
     _index_full_scan,
@@ -11,9 +12,6 @@ from app.tasks.connector_indexers.dropbox_indexer import (
 
 pytestmark = pytest.mark.unit
 
-_USER_ID = "00000000-0000-0000-0000-000000000001"
-_CONNECTOR_ID = 42
-_SEARCH_SPACE_ID = 1
 
 
 def _make_file_dict(file_id: str, name: str) -> dict:
@@ -103,9 +101,9 @@ async def _run_full_scan(mocks, monkeypatch, page_files, *, max_files=500):
     return await _index_full_scan(
         mocks["dropbox_client"],
         mocks["session"],
-        _CONNECTOR_ID,
-        _SEARCH_SPACE_ID,
-        _USER_ID,
+        CONNECTOR_ID,
+        CONNECTOR_SEARCH_SPACE_ID,
+        CONNECTOR_USER_ID,
         "",
         "Root",
         mocks["task_logger"],
@@ -213,9 +211,9 @@ async def _run_selected(mocks, file_tuples):
         mocks["dropbox_client"],
         mocks["session"],
         file_tuples,
-        connector_id=_CONNECTOR_ID,
-        search_space_id=_SEARCH_SPACE_ID,
-        user_id=_USER_ID,
+        connector_id=CONNECTOR_ID,
+        search_space_id=CONNECTOR_SEARCH_SPACE_ID,
+        user_id=CONNECTOR_USER_ID,
         enable_summary=True,
     )
 

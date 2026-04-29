@@ -103,6 +103,39 @@ from .update_memory import create_update_memory_tool, create_update_team_memory_
 from .video_presentation import create_generate_video_presentation_tool
 from .chainlens_research import create_chainlens_research_tool
 from .web_search import create_web_search_tool
+from .defillama import (
+    create_defillama_protocol_tool,
+    create_defillama_tvl_overview_tool,
+    create_defillama_yields_tool,
+    create_defillama_stablecoins_tool,
+    create_defillama_bridges_tool,
+)
+from .crypto_sentiment import (
+    create_cmc_sentiment_tool,
+    create_reddit_crypto_sentiment_tool,
+)
+from .crypto_news import (
+    create_crypto_news_tool,
+    create_coingecko_token_info_tool,
+)
+from .contract_analysis import (
+    create_contract_info_tool,
+    create_check_token_security_tool,
+)
+from .nansen_smart_money import (  # Story 9-UX-4 AC1
+    create_nansen_smart_money_tool,
+    create_nansen_wallet_label_tool,
+    create_nansen_token_god_mode_tool,
+)
+from .certik_skynet import (  # Story 9-UX-4 AC2
+    create_certik_audit_score_tool,
+    create_certik_incident_history_tool,
+)
+from .dune_query import create_run_dune_query_tool  # Story 9-UX-4 AC3
+from .tokeninsight_rating import (  # Story 9-UX-4 AC4
+    create_tokeninsight_rating_tool,
+    create_tokeninsight_research_snippet_tool,
+)
 
 # =============================================================================
 # Tool Definition
@@ -558,6 +591,152 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
         name="get_live_token_data",
         description="Get comprehensive LIVE market data (price, volume, liquidity, transactions) from DexScreener API.",
         factory=lambda deps: create_get_live_token_data_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # DEFILLAMA TOOLS — DeFi protocol data (TVL, yields, stablecoins, bridges)
+    # Stateless / no auth required (NFR-CS4)
+    # =========================================================================
+    ToolDefinition(
+        name="get_defillama_protocol",
+        description="Get TVL, chain breakdown, market cap, and audit links for a DeFi protocol from DeFiLlama",
+        factory=lambda deps: create_defillama_protocol_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_defillama_tvl_overview",
+        description="Get top DeFi protocols ranked by Total Value Locked (TVL) from DeFiLlama",
+        factory=lambda deps: create_defillama_tvl_overview_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_defillama_yields",
+        description="Get DeFi yield pools sorted by APY from DeFiLlama Yields",
+        factory=lambda deps: create_defillama_yields_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_defillama_stablecoins",
+        description="Get top stablecoins ranked by market cap from DeFiLlama",
+        factory=lambda deps: create_defillama_stablecoins_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_defillama_bridges",
+        description="Get top cross-chain bridges ranked by 24h volume from DeFiLlama",
+        factory=lambda deps: create_defillama_bridges_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # CRYPTO SENTIMENT TOOLS — Fear & Greed + Reddit sentiment
+    # Stateless / no auth required (NFR-CS4)
+    # =========================================================================
+    ToolDefinition(
+        name="get_cmc_sentiment",
+        description="Get the Crypto Fear & Greed Index for overall market sentiment from alternative.me",
+        factory=lambda deps: create_cmc_sentiment_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_reddit_crypto_sentiment",
+        description="Get Reddit community sentiment and post activity for a crypto symbol",
+        factory=lambda deps: create_reddit_crypto_sentiment_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # CRYPTO NEWS TOOLS — CryptoPanic news + CoinGecko token info
+    # Stateless / no auth required for free tier (NFR-CS4)
+    # =========================================================================
+    ToolDefinition(
+        name="get_crypto_news",
+        description="Get latest cryptocurrency news and articles from CryptoPanic with sentiment signals",
+        factory=lambda deps: create_crypto_news_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_coingecko_token_info",
+        description="Get detailed token info, market data, supply, and social links from CoinGecko free tier",
+        factory=lambda deps: create_coingecko_token_info_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # CONTRACT ANALYSIS TOOLS — Block explorer + GoPlus security
+    # Stateless; ETHERSCAN_API_KEY/BSCSCAN_API_KEY/POLYGONSCAN_API_KEY required (NFR-CS4)
+    # =========================================================================
+    ToolDefinition(
+        name="get_contract_info",
+        description="Get smart contract source code, ABI, and metadata from block explorers (Etherscan/BscScan/Polygonscan)",
+        factory=lambda deps: create_contract_info_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="check_token_security",
+        description="Run a security audit on a token contract using GoPlus Labs — detects honeypots, high taxes, and rug risks",
+        factory=lambda deps: create_check_token_security_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # NANSEN TOOLS — Smart-money wallet flows (Story 9-UX-4 AC1)
+    # Requires NANSEN_API_KEY (paid tier). Gracefully returns 401 error if missing.
+    # =========================================================================
+    ToolDefinition(
+        name="get_nansen_smart_money",
+        description="Get Nansen smart-money wallet flows and accumulation signals for a token — top wallets, 24h net flow, accumulating/distributing signal",
+        factory=lambda deps: create_nansen_smart_money_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_nansen_wallet_label",
+        description="Get the Nansen label for a wallet address — identifies exchanges, funds, VCs, protocols (~200K known wallets)",
+        factory=lambda deps: create_nansen_wallet_label_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_nansen_token_god_mode",
+        description="Get holder distribution by cohort (smart money %, exchanges %, retail %, VCs %) and top-10 concentration for a token",
+        factory=lambda deps: create_nansen_token_god_mode_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # CERTIK SKYNET TOOLS — Formal security audits (Story 9-UX-4 AC2)
+    # Free public API tier (60 req/min). CERTIK_API_KEY optional for paid.
+    # =========================================================================
+    ToolDefinition(
+        name="get_certik_audit_score",
+        description="Get CertiK Skynet security score (0-100) and category breakdown for a token contract — cross-reference with GoPlus",
+        factory=lambda deps: create_certik_audit_score_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_certik_incident_history",
+        description="Get CertiK incident and hack history for a crypto project — exploits, rug pulls, flash loan attacks with financial impact",
+        factory=lambda deps: create_certik_incident_history_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # DUNE ANALYTICS TOOL — Custom on-chain queries (Story 9-UX-4 AC3)
+    # Requires DUNE_API_KEY (Basic plan $99/mo). Gracefully returns 401 if missing.
+    # =========================================================================
+    ToolDefinition(
+        name="run_dune_query",
+        description="Execute a pre-registered Dune Analytics query for on-chain data — DEX volume, staking flows, whale concentration, NFT floors",
+        factory=lambda deps: create_run_dune_query_tool(),
+        requires=[],
+    ),
+    # =========================================================================
+    # TOKENINSIGHT TOOLS — Third-party ratings (Story 9-UX-4 AC4)
+    # Free tier for ratings; TOKENINSIGHT_API_KEY required for research snippets.
+    # =========================================================================
+    ToolDefinition(
+        name="get_tokeninsight_rating",
+        description="Get TokenInsight letter grade rating (A+/A/B/C/D/F) and score breakdown for a cryptocurrency — technology, team, ecosystem, tokenomics",
+        factory=lambda deps: create_tokeninsight_rating_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_tokeninsight_research_snippet",
+        description="Get the latest TokenInsight analyst research note excerpt for a token — investment thesis and analyst opinion",
+        factory=lambda deps: create_tokeninsight_research_snippet_tool(),
         requires=[],
     ),
 ]
