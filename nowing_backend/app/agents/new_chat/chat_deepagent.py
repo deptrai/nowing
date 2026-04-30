@@ -98,6 +98,7 @@ from app.agents.new_chat.subagents.crypto.whale_tracker_spec import (
     WHALE_TRACKER_NAME,
     WHALE_TRACKER_PROMPT,
 )
+from app.agents.new_chat.middleware.crypto_data_cache import CryptoDataCacheMiddleware
 from app.agents.new_chat.tools.registry import build_tools_async
 from app.db import ChatVisibility
 from app.services.connector_service import ConnectorService
@@ -2272,6 +2273,7 @@ async def create_nowing_deep_agent(
             ProviderRateLimitMiddleware(),
             # Story 9-UX-1 AC3: source attribution + narration events (observational).
             SourceAttributionMiddleware(agent_name=agent_name),
+            CryptoDataCacheMiddleware(),
             TodoListMiddleware(),
             _memory_middleware,
             NowingFilesystemMiddleware(

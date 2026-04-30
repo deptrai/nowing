@@ -8,7 +8,7 @@ relatedFRs: [FR37]
 relatedNFRs: [NFR-CS5, NFR-CS6]
 priority: P0
 estimatedEffort: 3-4 days
-status: ready-for-dev
+status: done
 createdAt: 2026-04-29
 author: Winston (Architect)
 ---
@@ -234,3 +234,16 @@ from .crypto_data_cache import CryptoDataCacheMiddleware
 - **Middleware placement**: Add to `_build_gp_middleware()` (line ~2268) ONLY — this is called once per sub-agent spec. Do NOT add to `deepagent_middleware` (lines ~2403-2445) — main agent spawns sub-agents via `task()`, not direct tool calls.
 - **Error handling**: Write errors short TTL (300s) with `is_error=True`; `get_fresh_snapshot()` filters them out. This prevents stale errors from blocking retries.
 - Thundering herd (Story 10.3) not in this story — implement basic cache check first, distributed lock comes next
+
+---
+
+### Review Findings
+
+- [x] [Review][Decision] F5: `get_fear_greed_index` treated as per-project but is global market indicator — resolved: synthetic `global:fear_greed` project_id
+- [x] [Review][Patch] F1: CRITICAL — `args_hash` unused in `get_fresh_snapshot()` WHERE clause; no `args_hash` column in `CryptoDataSnapshot` model — fixed: added column + index + WHERE filter
+- [x] [Review][Patch] F2: Read session never commits → `CryptoProjectResolver.resolve()` INSERT rolled back — fixed: added `await db.commit()` in read session
+- [x] [Review][Patch] F3: `updated_at` column in migration 138 but missing from `CryptoProject` ORM model — fixed: added `updated_at` with `onupdate`
+- [x] [Review][Patch] F4: `tool_call_id` can be None → `ToolMessage(tool_call_id=None)` may fail — fixed: `or ""` fallback
+- [x] [Review][Patch] F6: Double `resolver.resolve()` on cache miss — fixed: pass `project_id` from read to write path
+- [x] [Review][Patch] F8: Tests don't verify `args_hash` discrimination — fixed: added `test_f8_different_args_yield_cache_miss`
+- [x] [Review][Defer] F7: `dune_onchain` category in spec but intentionally excluded from implementation (comment explains) — deferred, spec/impl drift documentation
