@@ -1,8 +1,10 @@
 """
 Nowing documentation indexer.
-Indexes MDX documentation files at startup.
+Indexes MDX documentation files at startup (in background thread to avoid
+blocking the event loop with CPU-heavy embedding work).
 """
 
+import asyncio
 import hashlib
 import logging
 import re
@@ -117,6 +119,13 @@ def create_nowing_docs_chunks(content: str) -> list[NowingDocsChunk]:
     ]
 
 
+def _prepare_doc_artifacts(content: str) -> tuple[list[NowingDocsChunk], list[float]]:
+    """Chunk + embed a document (CPU-bound, meant for to_thread)."""
+    chunks = create_nowing_docs_chunks(content)
+    doc_embedding = embed_text(content)
+    return chunks, doc_embedding
+
+
 async def index_nowing_docs(session: AsyncSession) -> tuple[int, int, int, int]:
     """
     Index all Nowing documentation files.
@@ -169,14 +178,16 @@ async def index_nowing_docs(session: AsyncSession) -> tuple[int, int, int, int]:
                 # Content changed - update document
                 logger.info(f"Updating changed document: {source}")
 
-                # Create new chunks
-                chunks = create_nowing_docs_chunks(content)
+                # Offload CPU-heavy chunking + embedding to thread pool
+                chunks, doc_embedding = await asyncio.to_thread(
+                    _prepare_doc_artifacts, content
+                )
 
                 # Update document fields
                 existing_doc.title = title
                 existing_doc.content = content
                 existing_doc.content_hash = content_hash
-                existing_doc.embedding = embed_text(content)
+                existing_doc.embedding = doc_embedding
                 await _safe_set_docs_chunks(session, existing_doc, chunks)
                 existing_doc.updated_at = datetime.now(UTC)
 
@@ -185,14 +196,17 @@ async def index_nowing_docs(session: AsyncSession) -> tuple[int, int, int, int]:
                 # New document - create it
                 logger.info(f"Creating new document: {source}")
 
-                chunks = create_nowing_docs_chunks(content)
+                # Offload CPU-heavy chunking + embedding to thread pool
+                chunks, doc_embedding = await asyncio.to_thread(
+                    _prepare_doc_artifacts, content
+                )
 
                 document = NowingDocsDocument(
                     source=source,
                     title=title,
                     content=content,
                     content_hash=content_hash,
-                    embedding=embed_text(content),
+                    embedding=doc_embedding,
                     chunks=chunks,
                     updated_at=datetime.now(UTC),
                 )

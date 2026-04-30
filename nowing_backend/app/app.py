@@ -105,11 +105,16 @@ async def lifespan(app: FastAPI):
     await mark_abandoned_runs_on_startup()
     # Initialize LLM Router for Auto mode load balancing
     initialize_llm_router()
-    # Seed Nowing documentation
-    await seed_nowing_docs()
+    # Seed Nowing documentation in background (CPU-heavy embedding blocks event loop)
+    import asyncio
+    _docs_task = asyncio.create_task(seed_nowing_docs())
     # Validate Chainlens integration config and emit startup log
     _validate_chainlens_config()
     yield
+    # Wait for background docs indexing before shutdown (avoid orphaned DB writes)
+    if not _docs_task.done():
+        logger.info("Waiting for Nowing docs indexing to finish before shutdown...")
+        await _docs_task
     # Cleanup: close checkpointer connection on shutdown
     await close_checkpointer()
 

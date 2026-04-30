@@ -7,8 +7,10 @@ stepsCompleted:
   - epic-00-crypto-foundation
   - epic-09-advanced-crypto-agents
   - step-04-final-validation.md
-lastEdited: '2026-04-23'
+lastEdited: '2026-04-29'
 editHistory:
+  - date: '2026-04-29'
+    changes: 'Thêm Epic 10 Persistent Shared Crypto Data Layer: 5 stories (10-1 → 10-5) cover schema migration, CryptoDataCacheMiddleware, Redis distributed lock, Celery background refresh, workspace watchlist API. FR36-FR40 coverage. ADR-001 reference. Source: architecture plan /plans/partitioned-crafting-phoenix.md.'
   - date: '2026-04-23'
     changes: '🚨 REALITY SYNC: Code audit phát hiện Epic 0 (Crypto Tool Infrastructure + 4 Base Sub-Agents) CHƯA được implement — `subagents/crypto/` directory rỗng, các tools `defillama.py`/`crypto_sentiment.py`/`crypto_news.py`/`contract_analysis.py` chưa tồn tại, `chat_deepagent.py:472` chỉ có `general_purpose_spec`. Update Epic 8 description (bỏ claim "document hóa implementation đã hoàn thành"). Thêm Epic 0 làm prerequisite chính thức cho Epic 8 + Epic 9. Update sprint plan Phase 1 dependency: Epic 0 phải xong TRƯỚC Epic 8 và Phase 1.'
   - date: '2026-04-23'
@@ -1082,3 +1084,159 @@ I want Nowing reports to incorporate Nansen smart-money flows, CertiK audits, Du
 So that my analysis matches what Messari/Nansen terminal users get.
 
 **Effort:** 2 weeks (1 BE + 0.5 FE) · **Depends:** 9-UX-1 + 9-UX-2 (parallel with 9-UX-3)
+
+---
+
+## Epic 10: Persistent Shared Crypto Data Layer
+
+**Added:** 2026-04-29 by Winston (Architect) + Mary (BA)
+**Goal:** Eliminate redundant external API calls across concurrent users by persisting crypto tool results in a shared PostgreSQL pool with append-only timeline and hybrid TTL strategy.
+**ADR:** [`adrs/ADR-001-crypto-data-layer.md`](./adrs/ADR-001-crypto-data-layer.md)
+**FRs Covered:** FR36 (Schema), FR37 (Middleware), FR38 (Thundering Herd), FR39 (Background Refresh), FR40 (Watchlist API)
+**NFRs Covered:** NFR-CS5 (Cache Hit Rate ≥ 70%), NFR-CS6 (Cache Failure Isolation)
+
+**Context:** Crypto Orchestra spawn 7 sub-agents × 2-5 external API calls = ~15-35 API calls per analysis. 100 concurrent users querying ETH → ~3500 API calls/hr for identical data. Epic 10 reduces này xuống ~1 API call set per TTL window per token.
+
+**Estimated Effort:** 2-3 weeks (1 BE)
+**Prerequisite:** Epic 0 (crypto tool infrastructure), Epic 9 (sub-agents must exist)
+**Enables:** Epic 10 watchlist data powers future "token tracker" dashboard features
+
+---
+
+### Story 10.1: Crypto Data Schema & Services
+📄 **Story file**: [`stories/10-1-crypto-data-schema.md`](./stories/10-1-crypto-data-schema.md) | **Phase 1 · Ready-for-dev**
+As a backend developer,
+I want the 3 new DB tables (crypto_projects, crypto_data_snapshots, search_space_crypto_watchlist) + CryptoProjectResolver + CryptoDataStore services,
+So that subsequent stories have a stable foundation to build cache middleware and background tasks on.
+
+**Acceptance Criteria:**
+
+**Given** developer runs `alembic upgrade head`
+**When** migration `XXX_add_crypto_data_tables` runs
+**Then** 3 tables created with correct columns, indexes, and foreign keys
+**And** `crypto_projects.project_id` has UNIQUE constraint
+**And** `crypto_data_snapshots` has composite index on `(project_id, data_category, fetched_at DESC)`
+**And** `crypto_data_snapshots` has index on `expires_at` for TTL queries
+
+**Given** tool call for ETH with different arg formats
+**When** `CryptoProjectResolver.resolve("ETH")`, `resolve("ethereum")`, `resolve("0xeeee...ethereum")`
+**Then** all return same `crypto_projects.id` after first auto-create
+**And** first call creates row in `crypto_projects`, subsequent calls return existing id
+
+**Given** fresh snapshot written via `CryptoDataStore.write_snapshot()`
+**When** `get_fresh_snapshot(project_id, category, tool_name, args_hash)` called within TTL
+**Then** returns data dict
+**When** called after `expires_at`
+**Then** returns None (cache miss)
+
+**Effort:** 3-4 days · **Blocks:** Story 10.2
+
+---
+
+### Story 10.2: CryptoDataCacheMiddleware
+📄 **Story file**: [`stories/10-2-crypto-cache-middleware.md`](./stories/10-2-crypto-cache-middleware.md) | **Phase 2 · Depends: 10.1**
+As a sub-agent making tool calls,
+I want tool results transparently served from DB cache when fresh,
+So that external API calls are skipped for data already fetched within TTL window.
+
+**Acceptance Criteria:**
+
+**Given** `CRYPTO_DATA_CACHE_ENABLED=true` and fresh snapshot exists in DB
+**When** sub-agent calls `get_defillama_protocol("uniswap")`
+**Then** middleware returns cached data without calling DeFiLlama API
+**And** `SourceAttributionMiddleware` events fire identically (narration, source domain, timestamp)
+**And** `crypto_cache_hits_total` Prometheus counter incremented
+
+**Given** `CRYPTO_DATA_CACHE_ENABLED=true` and no fresh snapshot (cache miss)
+**When** sub-agent calls `get_defillama_protocol("uniswap")`
+**Then** middleware calls DeFiLlama API, writes snapshot to DB, returns result
+**And** snapshot `expires_at = NOW() + ttl_seconds` for `defi_tvl` category (3600s)
+
+**Given** DB connection error during cache lookup
+**When** sub-agent calls any crypto tool
+**Then** middleware catches exception, calls tool directly (graceful degradation)
+**And** agent execution continues normally, no exception propagated
+
+**Given** `CRYPTO_DATA_CACHE_ENABLED=false`
+**When** any crypto tool called
+**Then** middleware is complete pass-through, zero overhead
+
+**Effort:** 3-4 days · **Depends:** 10.1 · **Blocks:** Story 10.3
+
+---
+
+### Story 10.3: Thundering Herd Protection
+📄 **Story file**: [`stories/10-3-thundering-herd-protection.md`](./stories/10-3-thundering-herd-protection.md) | **Phase 3 · Depends: 10.2**
+As a system handling concurrent users,
+I want distributed locking to prevent N concurrent cache misses from all calling the same API simultaneously,
+So that 50 users querying ETH at the same moment trigger ≤ 1 API call instead of 50.
+
+**Acceptance Criteria:**
+
+**Given** 10 concurrent requests for same token/category with cache miss
+**When** all hit `CryptoDataCacheMiddleware` simultaneously
+**Then** only 1 acquires Redis lock and calls external API
+**And** remaining 9 wait, then get data from DB after lock release (double-check pattern)
+**And** external API called exactly 1 time (verify via mock counter)
+
+**Given** Redis unavailable
+**When** concurrent requests hit middleware
+**Then** fallback to `asyncio.Lock` per-process (single-instance protection)
+**And** lock key format: `crypto_lock:{tool_name}:{args_hash}`
+
+**Given** lock holder crashes mid-execution (TTL expires)
+**When** another request acquires lock after 60s TTL
+**Then** second request calls API and writes snapshot normally (no deadlock)
+
+**Effort:** 2-3 days · **Depends:** 10.2
+
+---
+
+### Story 10.4: Background Data Refresh
+📄 **Story file**: [`stories/10-4-background-refresh.md`](./stories/10-4-background-refresh.md) | **Phase 4 · Depends: 10.1**
+As a system operator,
+I want Celery background tasks to pre-warm popular token data before TTL expiry,
+So that active users rarely experience cache misses for frequently queried tokens.
+
+**Acceptance Criteria:**
+
+**Given** Celery beat schedule configured
+**When** `refresh_popular_crypto_data` fires every 30 minutes
+**Then** task queries `crypto_data_snapshots` for tokens queried in last 24h
+**And** for each snapshot expiring within 5 minutes, triggers re-fetch for that category
+**And** new snapshots written before old expire (no gap)
+
+**Given** daily at 3 AM UTC
+**When** `cleanup_expired_crypto_snapshots` runs
+**Then** deletes snapshots older than 30 days
+**And** deletes error snapshots (`is_error=true`) older than 24h
+**And** if any project/category has > 1000 snapshots, prunes oldest down to 1000
+
+**Given** refresh task encounters rate limit for a category
+**When** API returns 429
+**Then** task logs warning, skips that category, continues with others (no crash)
+
+**Effort:** 2-3 days · **Depends:** 10.1 (schema)
+
+---
+
+### Story 10.5: Workspace Watchlist API
+📄 **Story file**: [`stories/10-5-workspace-watchlist-api.md`](./stories/10-5-workspace-watchlist-api.md) | **Phase 5 · Depends: 10.1**
+As a workspace member,
+I want REST endpoints to access my workspace's tracked crypto projects and their historical data timeline,
+So that future dashboard features (token tracker, price history chart) can consume this data.
+
+**Acceptance Criteria:**
+
+**Given** workspace has analyzed ETH 3 times in past week
+**When** `GET /api/crypto/workspaces/{search_space_id}/watchlist`
+**Then** returns list of crypto_projects with symbol, name, coingecko_id, added_at, pin_order
+**And** requires caller to be member of that search_space (403 otherwise)
+
+**Given** ETH has 50 snapshots across 5 categories
+**When** `GET /api/crypto/projects/{project_id}/timeline?category=price_realtime&since=2026-04-01`
+**Then** returns paginated list of snapshots with fetched_at, data (JSONB), api_source
+**And** response is read-only (no write endpoints in this story)
+**And** max 100 results per page (cursor-based pagination)
+
+**Effort:** 2-3 days · **Depends:** 10.1

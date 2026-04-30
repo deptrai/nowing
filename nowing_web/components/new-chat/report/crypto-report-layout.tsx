@@ -11,6 +11,10 @@ import type { CryptoDataCitation } from "@/components/tool-ui/citation/schema";
 import type { TokenInsightRating } from "./token-hero-card";
 import { getBearerToken } from "@/lib/auth-utils";
 import { useScenarioResynthesize } from "@/lib/chat/use-scenario-resynthesize";
+import type {
+	ScenarioType,
+	ScenarioAssumptions,
+} from "@/components/new-chat/simulator/scenario-simulator-panel";
 
 const TokenHeroCard = dynamic(() => import("./token-hero-card").then((m) => m.TokenHeroCard), {
 	ssr: false,
@@ -82,6 +86,44 @@ const CryptoReportLayoutImpl = () => {
 	const [panelOpen, setPanelOpen] = useState(false);
 	const [compareOpen, setCompareOpen] = useState(false);
 
+	// Simulator state lifted here so both mobile + desktop instances stay in sync
+	const [simSelectedScenario, setSimSelectedScenario] = useState<ScenarioType>("base");
+	const [simAssumptions, setSimAssumptions] = useState<ScenarioAssumptions>({});
+	const [simAssumptionsChanged, setSimAssumptionsChanged] = useState(false);
+
+	const DEFAULT_ASSUMPTIONS_MAP: Record<ScenarioType, ScenarioAssumptions> = useMemo(
+		() => ({
+			base: {},
+			bull: { btc_shock: 0.5, eth_shock: 0.4, competitor_growth: -0.2 },
+			bear: { btc_shock: -0.4, eth_shock: -0.35, regulatory_adverse: true },
+			stress: {
+				btc_shock: -0.5,
+				eth_shock: -0.5,
+				tvl_shock: -0.5,
+				regulatory_adverse: true,
+				competitor_growth: 0.5,
+			},
+		}),
+		[]
+	);
+
+	const handleSimScenarioSelect = useCallback(
+		(s: ScenarioType) => {
+			setSimSelectedScenario(s);
+			setSimAssumptions(DEFAULT_ASSUMPTIONS_MAP[s]);
+			setSimAssumptionsChanged(false);
+		},
+		[DEFAULT_ASSUMPTIONS_MAP]
+	);
+
+	const handleSimAssumptionChange = useCallback(
+		(key: keyof ScenarioAssumptions, value: number | boolean) => {
+			setSimAssumptions((prev) => ({ ...prev, [key]: value }));
+			setSimAssumptionsChanged(true);
+		},
+		[]
+	);
+
 	const isCrypto = useMemo(() => isCryptoReport(text, meta), [text, meta]);
 
 	// Parse token info from text when metadata not available (e.g. after page reload)
@@ -128,6 +170,14 @@ const CryptoReportLayoutImpl = () => {
 
 	const { activeScenario, scenarioResult, isResynthesizing, resynthesize, resetToBase } =
 		useScenarioResynthesize({ threadId, token });
+
+	const handleResynthesize = useCallback(
+		(scenario: ScenarioType, assumptions: ScenarioAssumptions) => {
+			resynthesize(scenario, assumptions);
+			setSimAssumptionsChanged(false);
+		},
+		[resynthesize]
+	);
 
 	if (!isCrypto) return <MarkdownText />;
 
@@ -208,8 +258,13 @@ const CryptoReportLayoutImpl = () => {
 								activeScenario={activeScenario}
 								scenarioResult={scenarioResult}
 								isResynthesizing={isResynthesizing}
-								onResynthesize={resynthesize}
+								onResynthesize={handleResynthesize}
 								onResetToBase={resetToBase}
+								selectedScenario={simSelectedScenario}
+								assumptions={simAssumptions}
+								assumptionsChanged={simAssumptionsChanged}
+								onScenarioSelect={handleSimScenarioSelect}
+								onAssumptionChange={handleSimAssumptionChange}
 							/>
 						</div>
 					)}
@@ -225,8 +280,13 @@ const CryptoReportLayoutImpl = () => {
 								activeScenario={activeScenario}
 								scenarioResult={scenarioResult}
 								isResynthesizing={isResynthesizing}
-								onResynthesize={resynthesize}
+								onResynthesize={handleResynthesize}
 								onResetToBase={resetToBase}
+								selectedScenario={simSelectedScenario}
+								assumptions={simAssumptions}
+								assumptionsChanged={simAssumptionsChanged}
+								onScenarioSelect={handleSimScenarioSelect}
+								onAssumptionChange={handleSimAssumptionChange}
 							/>
 						</div>
 					</div>

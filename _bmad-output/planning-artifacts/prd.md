@@ -17,8 +17,10 @@ stepsCompleted:
   - step-e-01-discovery
   - step-e-02-review
   - step-e-03-edit
-lastEdited: '2026-04-23'
+lastEdited: '2026-04-29'
 editHistory:
+  - date: '2026-04-29'
+    changes: 'Thêm Epic 10 Persistent Shared Crypto Data Layer: FR36-FR40 (5 FRs cho 3 DB tables + CryptoDataCacheMiddleware + thundering herd protection + background refresh + workspace watchlist API), NFR-CS5 (Cache Hit Rate ≥ 70% sau warmup), NFR-CS6 (Graceful Degradation 100% khi cache fail). ADR: ADR-001-crypto-data-layer.md. Source: architecture plan /plans/partitioned-crafting-phoenix.md.'
   - date: '2026-04-23'
     changes: 'Readiness fix M2: Split NFR-Q1 (Accuracy < 3% — factual error rate) and NFR-Q5 (Smart Selection Accuracy ≥ 90% — orchestrator routing). Architecture §6 reconciled. Resolves implementation-readiness-report-2026-04-23 issue M2.'
   - date: '2026-04-23'
@@ -314,6 +316,13 @@ Cấu trúc API (FastAPI) bao gồm:
 - **FR34 (Smart Agent Selection):** Main agent system prompt có instruction để chọn subset agents phù hợp với câu hỏi cụ thể (không spawn cả 10 agents khi user chỉ hỏi về 1 khía cạnh). Lookup table: agent name → chuyên môn → trigger keywords.
 - **FR35 (Graceful Degradation):** Khi 1 hoặc nhiều sub-agents fail (rate limit 429, timeout, API unavailable), main agent vẫn tổng hợp response từ các agents thành công và mention rõ nguồn nào unavailable trong response — không crash toàn bộ analysis.
 
+### Persistent Shared Crypto Data Layer (Epic 10)
+- **FR36 (Crypto Data Schema):** Hệ thống tạo 3 bảng PostgreSQL mới: `crypto_projects` (entity registry với project_id, symbol, coingecko_id, defillama_slug), `crypto_data_snapshots` (append-only timeline với data_category, tool_name, tool_args JSONB, data JSONB, ttl_seconds, expires_at, is_error), và `search_space_crypto_watchlist` (workspace → project link với pin_order). Tất cả crypto tool results được persist với full metadata.
+- **FR37 (Cache Middleware Interception):** `CryptoDataCacheMiddleware` intercept `awrap_tool_call` trước khi gọi external API — check DB cho fresh snapshot (expires_at > NOW()), return cached data nếu có. Nếu miss → gọi API → write snapshot. Middleware đặt sau `SourceAttributionMiddleware` trong stack. Feature flag `CRYPTO_DATA_CACHE_ENABLED` cho phép bật/tắt không cần redeploy. Graceful degradation: nếu DB/Redis fail → pass-through to direct API call, không throw exception.
+- **FR38 (Thundering Herd Protection):** Khi nhiều concurrent requests cùng query token X và cache miss, hệ thống dùng Redis distributed lock (SET NX EX 60s) để đảm bảo chỉ 1 request gọi external API, các requests còn lại double-check DB sau khi acquire lock. Fallback sang `asyncio.Lock` per-process nếu Redis unavailable.
+- **FR39 (Background Data Refresh):** Celery beat task `refresh_popular_crypto_data` chạy mỗi 30 phút: tìm tokens được query trong 24h qua, pre-fetch categories sắp expire (trong vòng 5 phút), write vào DB. Task `cleanup_expired_crypto_snapshots` chạy daily 3 AM: xóa snapshots > 30 ngày, error snapshots > 24h, giữ max 1000 snapshots per project per category.
+- **FR40 (Workspace Watchlist API):** REST API endpoint `GET /api/crypto/projects/{project_id}/timeline` trả về lịch sử snapshots theo data_category + time range. `GET /api/crypto/workspaces/{search_space_id}/watchlist` trả về danh sách crypto projects được pin bởi workspace. Data exposed là historical snapshots (không phải real-time) — không cần auth scope phức tạp, chỉ cần search_space ownership check.
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -337,6 +346,10 @@ Cấu trúc API (FastAPI) bao gồm:
 - **NFR-CS2 (Parallel Execution):** LangGraph ToolNode bắt buộc thực thi tất cả `task()` calls đồng thời trong 1 graph step — không tuần tự. Đo bằng tỷ số `total_time / max(individual_time)` phải < 1.3x (near-perfect parallelism).
 - **NFR-CS3 (API Rate Awareness):** Crypto tools phải handle rate limits gracefully — CoinGecko 30 req/min (hoặc Pro tier nếu upgrade), GoPlus 2000 req/day, CryptoPanic public tier, DeFiLlama unlimited. Khi rate limit hit, agent fallback sang `chainlens_deep_research` hoặc trả error message để main agent xử lý (NFR-Q3 graceful degradation).
 - **NFR-CS4 (Stateless Tools):** Tất cả crypto tools đăng ký với `requires=[]` trong tool registry — không phụ thuộc DB, không cần session state, không cần workspace context. Đảm bảo các agents có thể scale horizontal mà không cần shared state.
+
+### Crypto Data Cache (Epic 10)
+- **NFR-CS5 (Cache Hit Rate):** Sau warmup period (24h từ khi enable `CRYPTO_DATA_CACHE_ENABLED`), cache hit rate cho top-10 tokens (ETH, BTC, SOL, BNB, etc.) phải ≥ 70% khi có ≥ 10 requests/hour. Đo bằng Prometheus counter `crypto_cache_hits_total / (crypto_cache_hits_total + crypto_cache_misses_total)`.
+- **NFR-CS6 (Cache Failure Isolation):** Khi DB hoặc Redis không khả dụng, `CryptoDataCacheMiddleware` phải tự động bypass và gọi trực tiếp external API — không raise exception, không thay đổi response format, không ảnh hưởng agent execution. P99 overhead của cache layer (khi cache miss) phải < 5ms.
 
 ### Quality Gates (Epic 9 — North Star Metrics)
 - **NFR-Q1 (Accuracy):** Factual error rate cho crypto research responses (sample QA vs raw API ground truth) phải < 3%. Đo bằng manual QA + automated cross-check trên random sample 100 full-analysis queries mỗi 2 tuần production.

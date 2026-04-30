@@ -32,6 +32,12 @@ interface ScenarioSimulatorPanelProps {
 	isResynthesizing: boolean;
 	onResynthesize: (scenario: ScenarioType, assumptions: ScenarioAssumptions) => void;
 	onResetToBase: () => void;
+	// Controlled state — lifted to parent so dual-DOM instances stay in sync
+	selectedScenario: ScenarioType;
+	assumptions: ScenarioAssumptions;
+	assumptionsChanged: boolean;
+	onScenarioSelect: (s: ScenarioType) => void;
+	onAssumptionChange: (key: keyof ScenarioAssumptions, value: number | boolean) => void;
 	className?: string;
 }
 
@@ -67,32 +73,17 @@ export function ScenarioSimulatorPanel({
 	isResynthesizing,
 	onResynthesize,
 	onResetToBase,
+	selectedScenario,
+	assumptions,
+	assumptionsChanged,
+	onScenarioSelect,
+	onAssumptionChange,
 	className,
 }: ScenarioSimulatorPanelProps) {
 	const [collapsed, setCollapsed] = useState(false);
-	const [selectedScenario, setSelectedScenario] = useState<ScenarioType>("base");
-	const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(
-		DEFAULT_ASSUMPTIONS[selectedScenario]
-	);
-	const [assumptionsChanged, setAssumptionsChanged] = useState(false);
-
-	const handleScenarioSelect = useCallback((s: ScenarioType) => {
-		setSelectedScenario(s);
-		setAssumptions(DEFAULT_ASSUMPTIONS[s]);
-		setAssumptionsChanged(false);
-	}, []);
-
-	const handleAssumptionChange = useCallback(
-		(key: keyof ScenarioAssumptions, value: number | boolean) => {
-			setAssumptions((prev) => ({ ...prev, [key]: value }));
-			setAssumptionsChanged(true);
-		},
-		[]
-	);
 
 	const handleResynthesize = useCallback(() => {
 		onResynthesize(selectedScenario, assumptions);
-		setAssumptionsChanged(false);
 	}, [selectedScenario, assumptions, onResynthesize]);
 
 	const isBaseCurrent = activeScenario === "base" && !scenarioResult;
@@ -132,7 +123,7 @@ export function ScenarioSimulatorPanel({
 						{SCENARIOS.map((s) => (
 							<button
 								key={s.id}
-								onClick={() => handleScenarioSelect(s.id)}
+								onClick={() => onScenarioSelect(s.id)}
 								className={cn(
 									"flex flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-center transition-colors",
 									selectedScenario === s.id ? "bg-background shadow-sm" : "hover:bg-background/50"
@@ -154,7 +145,7 @@ export function ScenarioSimulatorPanel({
 								max={1.0}
 								step={0.05}
 								format={pct}
-								onChange={(v) => handleAssumptionChange("btc_shock", v)}
+								onChange={(v) => onAssumptionChange("btc_shock", v)}
 							/>
 							<AssumptionSlider
 								label="ETH Price Shock"
@@ -163,7 +154,7 @@ export function ScenarioSimulatorPanel({
 								max={1.0}
 								step={0.05}
 								format={pct}
-								onChange={(v) => handleAssumptionChange("eth_shock", v)}
+								onChange={(v) => onAssumptionChange("eth_shock", v)}
 							/>
 							<AssumptionSlider
 								label="Competitor Growth"
@@ -172,7 +163,7 @@ export function ScenarioSimulatorPanel({
 								max={1.0}
 								step={0.05}
 								format={pct}
-								onChange={(v) => handleAssumptionChange("competitor_growth", v)}
+								onChange={(v) => onAssumptionChange("competitor_growth", v)}
 							/>
 							<AssumptionSlider
 								label="TVL Shock"
@@ -181,17 +172,17 @@ export function ScenarioSimulatorPanel({
 								max={1.0}
 								step={0.05}
 								format={pct}
-								onChange={(v) => handleAssumptionChange("tvl_shock", v)}
+								onChange={(v) => onAssumptionChange("tvl_shock", v)}
 							/>
 							<AssumptionToggle
 								label="Fee Switch Passes"
 								value={assumptions.fee_switch_passes ?? false}
-								onChange={(v) => handleAssumptionChange("fee_switch_passes", v)}
+								onChange={(v) => onAssumptionChange("fee_switch_passes", v)}
 							/>
 							<AssumptionToggle
 								label="Regulatory Adverse"
 								value={assumptions.regulatory_adverse ?? false}
-								onChange={(v) => handleAssumptionChange("regulatory_adverse", v)}
+								onChange={(v) => onAssumptionChange("regulatory_adverse", v)}
 							/>
 						</div>
 					)}
