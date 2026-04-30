@@ -7,6 +7,7 @@ from langchain_core.messages import ToolMessage
 
 from app.agents.new_chat.tools.crypto_data_categories import TOOL_CATEGORY_MAP, TTL_SECONDS
 from app.db import shielded_async_session
+from app.services.crypto_cache_lock import crypto_cache_lock
 from app.services.crypto_data_store import CryptoDataStore
 from app.services.crypto_project_resolver import CryptoProjectResolver
 
@@ -23,7 +24,13 @@ class CryptoDataCacheMiddleware(AgentMiddleware):
 
     Uses shielded_async_session() per DB op — independent short-lived sessions,
     NOT the HTTP-request-scoped session from create_nowing_deep_agent().
+
+    Thundering herd protection via distributed Redis lock (Story 10.3).
+    If Redis unavailable, falls back to per-process asyncio.Lock.
     """
+
+    def __init__(self, redis_client=None):
+        self._redis = redis_client
 
     async def awrap_tool_call(self, request, handler):
         if not _CACHE_ENABLED:
@@ -79,27 +86,45 @@ class CryptoDataCacheMiddleware(AgentMiddleware):
                 )
             await db.commit()
 
-        logger.debug("CryptoDataCache MISS: %s/%s", tool_name, category)
-        result = await handler(request)
-        data = self._extract_data(result)
-
-        try:
+        # MISS → acquire distributed lock → double-check → call API
+        lock_key = f"crypto_lock:{tool_name}:{project_id}:{args_hash}"
+        async with crypto_cache_lock(lock_key, self._redis):
+            # Double-check: another process may have filled cache while we waited for the lock
             async with shielded_async_session() as db:
                 store = CryptoDataStore(db)
-                is_error = isinstance(data, dict) and bool(data.get("error"))
-                await store.write_snapshot(
-                    project_id=project_id,
-                    category=category,
-                    tool_name=tool_name,
-                    tool_args=tool_args,
-                    data=data if isinstance(data, dict) else {"content": str(data)},
-                    ttl_seconds=300 if is_error else ttl,
-                    api_source=api_source,
-                    is_error=is_error,
-                )
-                await db.commit()
-        except Exception as write_exc:
-            logger.warning("CryptoDataCache write failed (non-fatal): %s", write_exc)
+                cached = await store.get_fresh_snapshot(project_id, category, tool_name, args_hash)
+                if cached is not None:
+                    logger.debug(
+                        "CryptoDataCache DOUBLE-CHECK HIT: %s/%s project_id=%s",
+                        tool_name, category, project_id,
+                    )
+                    return ToolMessage(
+                        content=json.dumps(cached),
+                        tool_call_id=tool_call_id,
+                        name=tool_name,
+                    )
+
+            logger.debug("CryptoDataCache MISS: %s/%s", tool_name, category)
+            result = await handler(request)
+            data = self._extract_data(result)
+
+            try:
+                async with shielded_async_session() as db:
+                    store = CryptoDataStore(db)
+                    is_error = isinstance(data, dict) and bool(data.get("error"))
+                    await store.write_snapshot(
+                        project_id=project_id,
+                        category=category,
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        data=data if isinstance(data, dict) else {"content": str(data)},
+                        ttl_seconds=300 if is_error else ttl,
+                        api_source=api_source,
+                        is_error=is_error,
+                    )
+                    await db.commit()
+            except Exception as write_exc:
+                logger.warning("CryptoDataCache write failed (non-fatal): %s", write_exc)
 
         return result
 

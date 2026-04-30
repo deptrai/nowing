@@ -361,3 +361,11 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **DD3 — ComparisonTable additional rows (AC12)** — APY, Holders, Security Score, Sentiment, Unlock Schedule, Catalysts. Deferred to 9-UX-4 (Additional Data Sources) which adds whale_tracker + governance_analyst agents.
 - **DD4 — `<OverlayChart>` Recharts dual-line price chart (AC12)** — `comparison-table.tsx`. Current table conveys quantitative compare. Implement post-launch if user feedback warrants.
 - **DD5 (diff-marker portion) — Numeric diff highlighting in scenario UI (AC9)** — Spec example: "$7.23 → $12-15 ⬆". Requires LLM-side numeric extractor or markdown diff post-processor. Out-of-scope for current story; revisit as separate enhancement.
+
+## Deferred from: code review of story 10-3-thundering-herd-protection (2026-04-30)
+
+- **F3: `_local_locks` dict grows unboundedly** — `crypto_cache_lock.py:8`. One `asyncio.Lock` per unique key, never evicted. Bounded by unique tool+args combos (~1000 max). Add LRU eviction if process uptime or query diversity becomes concern.
+- **F7: Lock retry backoff totals ~8.8s** — `crypto_cache_lock.py:37`. By design per story spec. Consider reducing max wait or adding user-facing timeout notification if chat latency complaints arise.
+- **F9: Graceful degradation bypasses herd protection** — `crypto_cache_lock.py:42`. When lock not acquired after retries, proceeds unlocked — disables thundering herd protection. DB double-check still runs, reducing but not eliminating duplicates. Acceptable for launch.
+- **F11: No integration-level thundering herd test** — Lock tested in isolation, middleware tested in isolation. Full concurrent middleware test (10 `awrap_tool_call` in parallel) belongs in integration suite.
+- **F12: AC4 TTL expiry recovery not directly tested** — Unit test only covers fail-to-acquire path (mock `set` returns False). Real TTL expiry recovery relies on Redis server behavior; requires integration env to test.

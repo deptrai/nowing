@@ -311,8 +311,10 @@ async def test_f8_different_args_yield_cache_miss():
         request_b = _FakeRequest("get_defillama_protocol", {"protocol_slug": "aave"}, "c2")
         await mw.awrap_tool_call(request_b, handler_b)
 
-    assert len(args_hashes_seen) == 2
-    assert args_hashes_seen[0] != args_hashes_seen[1], (
+    assert len(args_hashes_seen) >= 2, f"Expected at least 2 get_fresh_snapshot calls, got {len(args_hashes_seen)}"
+    # Collect unique hashes — each tool call produces a distinct args_hash
+    unique_hashes = set(args_hashes_seen)
+    assert len(unique_hashes) == 2, (
         "Different tool args must produce different args_hash values"
     )
     handler_a.assert_called_once()

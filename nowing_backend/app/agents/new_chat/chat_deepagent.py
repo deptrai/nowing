@@ -2261,6 +2261,11 @@ async def create_nowing_deep_agent(
         thread_visibility=visibility,
     )
 
+    # Async Redis client for crypto cache distributed locking (Story 10.3).
+    # Reuses the module-level singleton — no per-invocation connection pool leak.
+    from app.services.crypto_cache_lock import get_redis_client as _get_crypto_redis
+    _crypto_redis_client = _get_crypto_redis()
+
     # NFR-CS4: each sub-agent gets a *fresh* middleware list with *fresh* instances
     # so that any per-invocation state (todos buffer, summarization cache,
     # filesystem handles) cannot cross-contaminate when sub-agents run in parallel.
@@ -2273,7 +2278,7 @@ async def create_nowing_deep_agent(
             ProviderRateLimitMiddleware(),
             # Story 9-UX-1 AC3: source attribution + narration events (observational).
             SourceAttributionMiddleware(agent_name=agent_name),
-            CryptoDataCacheMiddleware(),
+            CryptoDataCacheMiddleware(redis_client=_crypto_redis_client),
             TodoListMiddleware(),
             _memory_middleware,
             NowingFilesystemMiddleware(

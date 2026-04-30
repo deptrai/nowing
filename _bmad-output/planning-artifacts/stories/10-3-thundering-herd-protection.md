@@ -7,7 +7,7 @@ relatedFRs: [FR38]
 relatedNFRs: [NFR-CS6]
 priority: P1
 estimatedEffort: 2-3 days
-status: ready-for-dev
+status: done
 createdAt: 2026-04-29
 author: Winston (Architect)
 ---
@@ -180,3 +180,18 @@ async def _cached_tool_call(self, request, handler, tool_name: str):
 - The poll loop in `_redis_lock` uses exponential-ish backoff: max wait ~9s before giving up. If lock not acquired after all retries, proceed without lock (degrade gracefully)
 - Don't use `asyncio.sleep` blocking the event loop — use `await asyncio.sleep()`
 - Local lock dict cleanup: `_local_locks` will slowly grow if many unique keys are used. For now, accept memory growth (bounded by unique tool+args combinations — typically < 1000)
+
+### Review Findings (2026-04-30)
+
+- [x] [Review][Decision] F1: Non-atomic Redis lock release — RESOLVED: UUID + Lua CAS script implemented
+- [x] [Review][Decision] F4: Lock key missing `project_id` — RESOLVED: added `project_id` to lock key format
+- [x] [Review][Patch] F2: Redis client leaked — RESOLVED: singleton `get_redis_client()` in crypto_cache_lock.py
+- [x] [Review][Patch] F5: Uses `CELERY_BROKER_URL` instead of `config.REDIS_APP_URL` — RESOLVED: uses `config.REDIS_APP_URL`
+- [x] [Review][Patch] F6: Silent swallow of Redis connection failure — RESOLVED: logs warning
+- [x] [Review][Patch] F10: AC1 test misleading — RESOLVED: renamed to `test_ac1_lock_serializes_concurrent_access`
+- [x] [Review][Patch] F13: Tautological assertion in F8 test — RESOLVED: removed redundant assert
+- [x] [Review][Defer] F3: `_local_locks` dict grows unboundedly [crypto_cache_lock.py:8] — deferred, bounded by unique tool+args combos (~1000 max). LRU eviction can be added later.
+- [x] [Review][Defer] F7: Lock retry backoff totals ~8.8s [crypto_cache_lock.py:37] — deferred, by design per spec Dev Notes. Tradeoff accepted.
+- [x] [Review][Defer] F9: Graceful degradation bypasses herd protection [crypto_cache_lock.py:42] — deferred, by design. Double-check DB still runs, reduces duplicates.
+- [x] [Review][Defer] F11: No integration-level thundering herd test at middleware layer — deferred, integration test scope. Unit coverage sufficient for story acceptance.
+- [x] [Review][Defer] F12: AC4 TTL expiry recovery not directly tested — deferred, relies on Redis server behavior. Unit test mocks only fail-to-acquire path.
