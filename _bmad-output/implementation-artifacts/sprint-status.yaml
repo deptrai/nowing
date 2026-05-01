@@ -46,6 +46,7 @@ project: Nowing
 # 2026-04-26: Story 9-UX-1c adversarial code review complete. 9 patches applied (P1-P9): stale-closure refs FE, last_heartbeat_at on resume, stop() signal fix, get_running_loop, last_seq ordering, _rebuild_vercel_wire type guards, overflow log wording. 47 BE + 20 FE unit tests pass. Story → done.
 # 2026-04-26: Full 3-layer adversarial review of 9-UX(a,b,c). 42 raw findings → 6 patches applied (pending_delta.clear, deque re-enqueue, flush_task.cancel race, seq:-1 cancel, resume heartbeat, resume toast). 40 unit tests pass.
 # 2026-04-29: Full Story 9 audit — spec vs code gap analysis → 12 fixes applied across all 4 UX stories: tokenomics tool wiring (get_tokeninsight_rating), defillama tool scope (get_live_token_price), narration template coverage (8 new tools), TokenInsight rating prop wire, DegradationNotice.onRetry wiring, dead code deletion (agent-row, section-attribution-badge, wallet-label), Price Alert honest messaging, eth_shock slider added, data-agent-result persistence (streaming-state + page.tsx handleSend/Resume/Regenerate + message-utils metadata), Dune placeholder guard (skip IDs<100k), CoinGecko BE proxy (GET /compare/coingecko-price/{coin_id}), i18n consolidation (8 files, ~18 Vietnamese strings → English). TypeScript compiles clean.
+# 2026-05-01: Adversarial Review Resolution — Resilience & Security overhaul: (1) Redis-based Global Circuit Breaker. (2) Outbound Pacing (Semaphore). (3) Global Tool Error Decorator. (4) Optimistic Fallback (500ms). (5) Crypto Cache Workspace Isolation (search_space_id). 17/17 tests pass. Traceability Matrix updated (100% P0/P1 coverage).
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/planning-artifacts/stories"
@@ -150,7 +151,7 @@ development_status:
   epic-9-retrospective: optional
 
   # ─── EPIC 10: Crypto Data Layer (Persistent shared cache) ───
-  epic-10: in-progress
+  epic-10: done
 
   10-1-crypto-data-schema: done
   10-2-crypto-cache-middleware: done

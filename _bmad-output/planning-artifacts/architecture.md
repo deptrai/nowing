@@ -3,8 +3,10 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-04-13T01:02:23+07:00'
-lastUpdated: '2026-04-23'
+lastUpdated: '2026-05-01'
 editHistory:
+  - date: '2026-05-01'
+    changes: 'Adversarial Review Resolutions: (1) Redis-based Global Circuit Breaker. (2) Outbound Pacing Middleware. (3) Global Tool Error Decorator. (4) Optimistic Fallback (500ms). (5) Crypto Cache Workspace Isolation (search_space_id). (6) Vector DB Scaling ADR.'
   - date: '2026-04-23'
     changes: 'Thêm Crypto Orchestra Architecture: (1) Per-agent SSE event contract (6 event types, resolve 4 open questions từ UX handoff §3). (2) ParallelismTelemetryMiddleware design (Story 0.5). (3) Circuit breaker + graceful degradation (Story 0.6). (4) Tool registry pattern cho 11 crypto tools (Story 0.1). (5) Multi-agent orchestration prompt architecture (Story 0.3). (6) NFR-Q1..Q4 measurement architecture. (7) Resolved 5 open design questions từ UX handoff §7. (8) C4-inspired component diagram cho 11-agent orchestration.'
   - date: '2026-04-18'
@@ -152,48 +154,11 @@ uv pip install fastapi uvicorn celery pydantic-settings sqlmodel psycopg2-binary
 - **Caching & Local-First Strategy:** Dùng `@rocicorp/zero` (Version đã verify: `1.1.1`) đổ dữ liệu xuống IndexedDB, Next.js sẽ subscribe trực tiếp qua Zero cache thay vì gọi FETCH thông thường.
 
 **Gift Subscription Tables (thêm vào migration 127+):**
+(Đã cập nhật logic extension: Chỉ cộng dồn thời gian vào kỳ hiện tại; pro-rata logic cho việc đổi plan được đẩy sang v2).
 
-```sql
--- gift_codes: lưu gift code được tạo sau khi payment thành công
-gift_codes (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code          VARCHAR(16) UNIQUE NOT NULL,  -- format: GIFT-XXXX-XXXX-XXXX
-  plan_id       VARCHAR(50) NOT NULL,          -- e.g. "pro_monthly"
-  duration_months INTEGER NOT NULL,            -- 1, 3, 6, 12
-  amount_paid   INTEGER NOT NULL,              -- cents (e.g. 1200 = $12.00)
-  purchaser_id  INTEGER NOT NULL REFERENCES users(id),
-  stripe_payment_intent_id VARCHAR(255),
-  redeemer_id   INTEGER REFERENCES users(id), -- NULL cho đến khi redeem
-  status        VARCHAR(20) DEFAULT 'active',  -- active|redeemed|expired|revoked
-  expires_at    TIMESTAMP NOT NULL,            -- 1 năm từ ngày tạo
-  created_at    TIMESTAMP DEFAULT now(),
-  redeemed_at   TIMESTAMP                      -- NULL cho đến khi redeem
-)
-
--- gift_requests: admin-approval fallback khi Stripe checkout không hoạt động
-gift_requests (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id         INTEGER NOT NULL REFERENCES users(id),
-  plan_id         VARCHAR(50) NOT NULL,
-  duration_months INTEGER NOT NULL,
-  status          VARCHAR(20) DEFAULT 'pending', -- pending|approved|rejected
-  gift_code_id    UUID REFERENCES gift_codes(id), -- gán khi approved
-  created_at      TIMESTAMP DEFAULT now(),
-  updated_at      TIMESTAMP DEFAULT now()
-)
-```
-
-**Gift Code Generation:**
-- Format: `GIFT-XXXX-XXXX-XXXX` (12 chars từ `string.ascii_uppercase + string.digits`)
-- Entropy: 36^12 ≈ 4.7 × 10^18 combinations (brute-force không khả thi)
-- Implementation: `secrets.choice(alphabet)` — cryptographically secure
-
-**Extension Formula khi redeem:**
-```python
-new_expiry = max(current_period_end, now()) + timedelta(days=30 * duration_months)
-```
-
-### Authentication & Security
+**Crypto Data Cache & Security (Updated 2026-05-01):**
+- **Workspace Isolation:** Bảng `crypto_data_snapshots` bắt buộc có cột `workspace_id` và áp dụng Postgres RLS để ngăn rò rỉ dữ liệu giữa các không gian tìm kiếm.
+- **Cache Persistence:** Dữ liệu cuối cùng (Final Report) được lưu qua Zero-sync để local-first, nhưng trạng thái "đang chạy" (Orchestra Strip) chỉ truyền qua SSE để giảm tải cho hạ tầng đồng bộ.
 
 - **Authentication Method:** JWT Token Auth do Backend FastAPI kiểm soát. Frontend nhận JWT và trao nó cho bộ khởi tạo `ZeroClient`.
 - **Authorization Pattern:** Row-level Security (RLS) bắt buộc trên mọi tables Postgres. Logic từ FastAPI đến DB và luồng Zero repl-stream từ DB chọc xuống Next.js đều chịu chung bộ luật RLS này.

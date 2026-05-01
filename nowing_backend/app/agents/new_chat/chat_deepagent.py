@@ -2278,7 +2278,9 @@ async def create_nowing_deep_agent(
             ProviderRateLimitMiddleware(),
             # Story 9-UX-1 AC3: source attribution + narration events (observational).
             SourceAttributionMiddleware(agent_name=agent_name),
-            CryptoDataCacheMiddleware(redis_client=_crypto_redis_client),
+            CryptoDataCacheMiddleware(
+                search_space_id=search_space_id, redis_client=_crypto_redis_client
+            ),
             TodoListMiddleware(),
             _memory_middleware,
             NowingFilesystemMiddleware(

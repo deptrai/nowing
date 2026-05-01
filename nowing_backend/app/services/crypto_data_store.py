@@ -18,6 +18,7 @@ class CryptoDataStore:
 
     async def get_fresh_snapshot(
         self,
+        search_space_id: int,
         project_id: int,
         category: DataCategory,
         tool_name: str,
@@ -28,6 +29,7 @@ class CryptoDataStore:
         result = await self._db.execute(
             select(CryptoDataSnapshot.data)
             .where(
+                CryptoDataSnapshot.search_space_id == search_space_id,
                 CryptoDataSnapshot.project_id == project_id,
                 CryptoDataSnapshot.data_category == category,
                 CryptoDataSnapshot.tool_name == tool_name,
@@ -43,6 +45,7 @@ class CryptoDataStore:
 
     async def write_snapshot(
         self,
+        search_space_id: int,
         project_id: int,
         category: DataCategory,
         tool_name: str,
@@ -59,6 +62,7 @@ class CryptoDataStore:
         expires_at = now + timedelta(seconds=ttl_seconds)
 
         snapshot = CryptoDataSnapshot(
+            search_space_id=search_space_id,
             project_id=project_id,
             data_category=category,
             tool_name=tool_name,

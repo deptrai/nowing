@@ -1387,6 +1387,9 @@ class CryptoDataSnapshot(Base):
     __tablename__ = "crypto_data_snapshots"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
+    search_space_id = Column(
+        Integer, ForeignKey("searchspaces.id", ondelete="CASCADE"), nullable=True
+    )
     project_id = Column(
         Integer, ForeignKey("crypto_projects.id", ondelete="CASCADE"), nullable=False
     )
@@ -1414,6 +1417,7 @@ class CryptoDataSnapshot(Base):
     )
 
     project = relationship("CryptoProject", back_populates="snapshots")
+    search_space = relationship("SearchSpace", back_populates="crypto_snapshots")
 
     __table_args__ = (
         Index(
@@ -1425,6 +1429,7 @@ class CryptoDataSnapshot(Base):
         Index("ix_crypto_snapshots_expires_at", "expires_at"),
         Index(
             "ix_crypto_snapshots_cache_lookup",
+            "search_space_id",
             "project_id",
             "data_category",
             "tool_name",
@@ -1692,6 +1697,11 @@ class SearchSpace(BaseModel, TimestampMixin):
         "NewLLMConfig",
         back_populates="search_space",
         order_by="NewLLMConfig.id",
+        cascade="all, delete-orphan",
+    )
+    crypto_snapshots = relationship(
+        "CryptoDataSnapshot",
+        back_populates="search_space",
         cascade="all, delete-orphan",
     )
     image_generation_configs = relationship(

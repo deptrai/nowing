@@ -82,7 +82,7 @@ async def test_ac1_cache_hit_returns_cached_data_and_skips_handler():
         MockResolver.return_value.resolve = AsyncMock(return_value=42)
         MockStore.return_value.get_fresh_snapshot = AsyncMock(return_value=_CACHED_DATA)
 
-        mw = CryptoDataCacheMiddleware()
+        mw = CryptoDataCacheMiddleware(search_space_id=1)
         result = await mw.awrap_tool_call(request, handler)
 
     assert isinstance(result, ToolMessage)
@@ -126,7 +126,7 @@ async def test_ac2_cache_miss_calls_handler_and_writes_snapshot():
         MockStore.return_value.get_fresh_snapshot = AsyncMock(return_value=None)
         MockStore.return_value.write_snapshot = AsyncMock()
 
-        mw = CryptoDataCacheMiddleware()
+        mw = CryptoDataCacheMiddleware(search_space_id=1)
         result = await mw.awrap_tool_call(request, handler)
 
     handler.assert_called_once()
@@ -157,7 +157,7 @@ async def test_ac3_cache_disabled_passes_through(monkeypatch):
     with patch(
         "app.agents.new_chat.middleware.crypto_data_cache.shielded_async_session"
     ) as mock_session:
-        mw = CryptoDataCacheMiddleware()
+        mw = CryptoDataCacheMiddleware(search_space_id=1)
         result = await mw.awrap_tool_call(request, handler)
 
     mock_session.assert_not_called()
@@ -190,7 +190,7 @@ async def test_ac4_db_error_falls_back_to_handler():
         "app.agents.new_chat.middleware.crypto_data_cache.shielded_async_session",
         return_value=_FailingSession(),
     ):
-        mw = CryptoDataCacheMiddleware()
+        mw = CryptoDataCacheMiddleware(search_space_id=1)
         result = await mw.awrap_tool_call(request, handler)
 
     handler.assert_called_once()
@@ -214,7 +214,7 @@ async def test_ac5_non_crypto_tool_passes_through():
     with patch(
         "app.agents.new_chat.middleware.crypto_data_cache.shielded_async_session"
     ) as mock_session:
-        mw = CryptoDataCacheMiddleware()
+        mw = CryptoDataCacheMiddleware(search_space_id=1)
         result = await mw.awrap_tool_call(request, handler)
 
     mock_session.assert_not_called()
@@ -259,7 +259,7 @@ async def test_ac6_error_result_written_with_short_ttl():
         MockStore.return_value.get_fresh_snapshot = AsyncMock(return_value=None)
         MockStore.return_value.write_snapshot = AsyncMock()
 
-        mw = CryptoDataCacheMiddleware()
+        mw = CryptoDataCacheMiddleware(search_space_id=1)
         await mw.awrap_tool_call(request, handler)
 
     write_kwargs = MockStore.return_value.write_snapshot.call_args[1]
@@ -280,7 +280,7 @@ async def test_f8_different_args_yield_cache_miss():
 
     args_hashes_seen: list[str] = []
 
-    async def _tracking_get_fresh(project_id, category, tool_name, args_hash):
+    async def _tracking_get_fresh(search_space_id, project_id, category, tool_name, args_hash):
         args_hashes_seen.append(args_hash)
         return None  # always miss
 
@@ -299,7 +299,7 @@ async def test_f8_different_args_yield_cache_miss():
         MockStore.return_value.write_snapshot = AsyncMock()
         MockStore.compute_args_hash = CryptoDataStore.compute_args_hash
 
-        mw = CryptoDataCacheMiddleware()
+        mw = CryptoDataCacheMiddleware(search_space_id=1)
 
         result_a = ToolMessage(content="{}", tool_call_id="c1", name="get_defillama_protocol")
         handler_a = AsyncMock(return_value=result_a)

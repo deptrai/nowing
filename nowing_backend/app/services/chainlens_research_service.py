@@ -60,7 +60,9 @@ class ChainlensResearchService:
                 return is_live
 
             try:
-                async with httpx.AsyncClient(timeout=3.0) as client:
+                # Adversarial Review Fix: Reduced timeout to 0.5s for optimistic fallback.
+                # Meets TTFT < 1.5s NFR by not blocking on slow health checks.
+                async with httpx.AsyncClient(timeout=0.5) as client:
                     resp = await client.get(
                         f"{url}/api/v1/b2b/health"
                     )

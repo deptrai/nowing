@@ -29,7 +29,8 @@ class CryptoDataCacheMiddleware(AgentMiddleware):
     If Redis unavailable, falls back to per-process asyncio.Lock.
     """
 
-    def __init__(self, redis_client=None):
+    def __init__(self, search_space_id: int, redis_client=None):
+        self.search_space_id = search_space_id
         self._redis = redis_client
 
     async def awrap_tool_call(self, request, handler):
@@ -73,10 +74,13 @@ class CryptoDataCacheMiddleware(AgentMiddleware):
             if project_id is None:
                 return await handler(request)
 
-            cached = await store.get_fresh_snapshot(project_id, category, tool_name, args_hash)
+            cached = await store.get_fresh_snapshot(
+                self.search_space_id, project_id, category, tool_name, args_hash
+            )
             if cached is not None:
                 logger.debug(
-                    "CryptoDataCache HIT: %s/%s project_id=%s", tool_name, category, project_id
+                    "CryptoDataCache HIT: %s/%s project_id=%s workspace=%s",
+                    tool_name, category, project_id, self.search_space_id
                 )
                 await db.commit()
                 return ToolMessage(
@@ -92,11 +96,13 @@ class CryptoDataCacheMiddleware(AgentMiddleware):
             # Double-check: another process may have filled cache while we waited for the lock
             async with shielded_async_session() as db:
                 store = CryptoDataStore(db)
-                cached = await store.get_fresh_snapshot(project_id, category, tool_name, args_hash)
+                cached = await store.get_fresh_snapshot(
+                    self.search_space_id, project_id, category, tool_name, args_hash
+                )
                 if cached is not None:
                     logger.debug(
-                        "CryptoDataCache DOUBLE-CHECK HIT: %s/%s project_id=%s",
-                        tool_name, category, project_id,
+                        "CryptoDataCache DOUBLE-CHECK HIT: %s/%s project_id=%s workspace=%s",
+                        tool_name, category, project_id, self.search_space_id
                     )
                     return ToolMessage(
                         content=json.dumps(cached),
@@ -113,6 +119,7 @@ class CryptoDataCacheMiddleware(AgentMiddleware):
                     store = CryptoDataStore(db)
                     is_error = isinstance(data, dict) and bool(data.get("error"))
                     await store.write_snapshot(
+                        search_space_id=self.search_space_id,
                         project_id=project_id,
                         category=category,
                         tool_name=tool_name,
