@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-05-01T00:00:00+07:00
+last_updated: 2026-05-01T12:00:00+07:00
 project: Nowing
 # 2026-04-24: Story 0.3 review complete (2 MAJOR fixed inline, 4 MINOR deferred)
 # 2026-04-25: Story 0.6b (Tier 3 paced sequential escalation) scope-in — E2E verified, code merged, docs updated
@@ -47,6 +47,7 @@ project: Nowing
 # 2026-04-26: Full 3-layer adversarial review of 9-UX(a,b,c). 42 raw findings → 6 patches applied (pending_delta.clear, deque re-enqueue, flush_task.cancel race, seq:-1 cancel, resume heartbeat, resume toast). 40 unit tests pass.
 # 2026-04-29: Full Story 9 audit — spec vs code gap analysis → 12 fixes applied across all 4 UX stories: tokenomics tool wiring (get_tokeninsight_rating), defillama tool scope (get_live_token_price), narration template coverage (8 new tools), TokenInsight rating prop wire, DegradationNotice.onRetry wiring, dead code deletion (agent-row, section-attribution-badge, wallet-label), Price Alert honest messaging, eth_shock slider added, data-agent-result persistence (streaming-state + page.tsx handleSend/Resume/Regenerate + message-utils metadata), Dune placeholder guard (skip IDs<100k), CoinGecko BE proxy (GET /compare/coingecko-price/{coin_id}), i18n consolidation (8 files, ~18 Vietnamese strings → English). TypeScript compiles clean.
 # 2026-05-01: Adversarial Review Resolution — Resilience & Security overhaul: (1) Redis-based Global Circuit Breaker. (2) Outbound Pacing (Semaphore). (3) Global Tool Error Decorator. (4) Optimistic Fallback (500ms). (5) Crypto Cache Workspace Isolation (search_space_id). 17/17 tests pass. Traceability Matrix updated (100% P0/P1 coverage).
+# 2026-05-01: Senior Architect Critical Review → Epic 11 created (5 stories). P0: SSE heartbeat+reconnect, Redis-first circuit breaker. P1: orphaned cache purge, per-API token buckets, client-side quota enforcement.
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/planning-artifacts/stories"
@@ -159,3 +160,19 @@ development_status:
   10-4-background-refresh: done
   10-5-workspace-watchlist-api: done
   epic-10-retrospective: optional
+
+  # ─── EPIC 11: Architecture Resilience & Stability (from Senior Architect Review 2026-05-01) ───
+  # Source: _bmad-output/architecture-improvement-proposals-2026-05-01.md (v2)
+  # Scope: P0+P1 items — SSE resilience, shared circuit breaker, cache hygiene, rate limiting, quota enforcement
+  epic-11: in-progress
+
+  # P0 — Critical
+  11-1-sse-heartbeat-auto-reconnect: ready-for-dev
+  11-2-redis-circuit-breaker: ready-for-dev
+
+  # P1 — Important
+  11-3-orphaned-cache-purge: ready-for-dev
+  11-4-per-api-token-buckets: ready-for-dev
+  11-5-client-quota-enforcement: ready-for-dev
+
+  epic-11-retrospective: optional
