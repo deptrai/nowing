@@ -54,7 +54,7 @@ test.describe("Document Upload", () => {
 		});
 
 		// When — trigger file upload
-		await log.step("Upload a text file");
+		await log({ level: "step", message: "Upload a text file" });
 		const fileInput = page.locator('input[type="file"]');
 
 		// Use a small fixture file if available, otherwise create a buffer
@@ -80,7 +80,7 @@ test.describe("Document Upload", () => {
 		expect(responseJson).toHaveProperty("document_ids");
 
 		// And — document appears in list (poll for processing)
-		await log.step("Wait for document to appear");
+		await log({ level: "step", message: "Wait for document to appear" });
 		await recurse(
 			async () => {
 				const listResp = await page.request.get(
@@ -90,7 +90,8 @@ test.describe("Document Upload", () => {
 				const docs = await listResp.json();
 				return Array.isArray(docs) && docs.length > 0;
 			},
-			{ intervals: [2000, 3000, 5000, 5000], timeout: 30_000 }
+			(ready) => ready,
+			{ interval: 3000, timeout: 30_000 }
 		);
 
 		// Verify the document is visible in the UI
@@ -180,7 +181,7 @@ test.describe("Document Upload", () => {
 		expect(firstUpload.status()).toBe(200);
 
 		// Second upload — same file
-		await log.step("Upload duplicate file");
+		await log({ level: "step", message: "Upload duplicate file" });
 		const secondUpload = await page.request.post(`${apiUrl}/api/documents/fileupload`, {
 			multipart: {
 				files: {
@@ -224,7 +225,7 @@ test.describe("Document Upload", () => {
 		// Note: actual 500MB upload would be slow in CI — check the route guard
 		// by sending Content-Length header if possible, or use a mock
 
-		await log.step("Check size limit enforcement");
+		await log({ level: "step", message: "Check size limit enforcement" });
 
 		// The route enforces 500MB — verify the endpoint exists and responds
 		const pingResp = await page.request.get(`${apiUrl}/api/documents?search_space_id=${spaceId}`, {

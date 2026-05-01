@@ -127,8 +127,8 @@ development_status:
   phase-1-quality-gate-review: in-progress  # 🟡 AMBER — structural gates PASS, canary data pending. See quality-gates/phase-1-quality-gate-review.md
 
   # Phase 2 — Web Research Tier (Chainlens-heavy) — blocked on Phase 1 GO
-  9-2-whale-tracker: ready-for-dev
-  9-5-governance-analyst: ready-for-dev
+  9-2-whale-tracker: done
+  9-5-governance-analyst: done
   phase-2-quality-gate-review: backlog
 
   # Phase 3 — Spike-Required Tier (highest risk) — blocked on Phase 2 GO + spikes
@@ -156,5 +156,5 @@ development_status:
   10-2-crypto-cache-middleware: done
   10-3-thundering-herd-protection: done
   10-4-background-refresh: done
-  10-5-workspace-watchlist-api: ready-for-dev
+  10-5-workspace-watchlist-api: done
   epic-10-retrospective: optional

@@ -1,69 +1,63 @@
-import { type AuthProvider } from "@seontechnologies/playwright-utils/auth-session";
+import type { AuthProvider } from "@seontechnologies/playwright-utils/auth-session";
 
 /**
- * Nowing Auth Provider
- * Adapts the auth-session utility to Nowing's JWT-based auth.
+ * Nowing Auth Provider — adapts auth-session v4 to Nowing's JWT auth.
  *
- * Environment variables required:
- *   TEST_USER_EMAIL    — test user email
- *   TEST_USER_PASSWORD — test user password
- *   API_URL            — backend base URL (default: http://localhost:8000)
+ * Environment variables:
+ *   TEST_USER_EMAIL    — test user email    (default: test@nowing.test)
+ *   TEST_USER_PASSWORD — test user password (default: Admin@Nowing1)
+ *   API_URL            — backend base URL   (default: http://localhost:8000)
+ *   BASE_URL           — frontend base URL  (default: http://localhost:4998)
  */
 const nowingAuthProvider: AuthProvider = {
-	getEnvironment: (options) => options.environment || "local",
+	getEnvironment: (options) => options?.environment ?? "local",
 
-	getUserIdentifier: (options) => options.userIdentifier || "default",
+	getUserIdentifier: (options) => options?.userIdentifier ?? "default",
 
-	extractToken: (storageState) => {
-		const tokenEntry = storageState.origins?.[0]?.localStorage?.find(
-			(item) => item.name === "nowing_access_token"
-		);
-		return tokenEntry?.value;
+	// Token data is stored as { access_token, expires_at } in the record
+	extractToken: (tokenData) => {
+		return (tokenData["access_token"] as string) ?? null;
 	},
 
-	isTokenExpired: (storageState) => {
-		const expiryEntry = storageState.origins?.[0]?.localStorage?.find(
-			(item) => item.name === "nowing_token_expiry"
-		);
-		if (!expiryEntry) return true;
-		return Date.now() > parseInt(expiryEntry.value, 10);
+	extractCookies: (_tokenData) => {
+		// Nowing uses Bearer header auth, not cookies — return empty array
+		return [];
 	},
 
-	manageAuthToken: async (request, options) => {
-		const email = process.env.TEST_USER_EMAIL;
-		const password = process.env.TEST_USER_PASSWORD;
-		const apiUrl = process.env.API_URL || "http://localhost:8000";
+	isTokenExpired: (_rawToken) => {
+		// Let the framework re-authenticate on each session start.
+		// Implement JWT expiry parsing here if disk persistence is required.
+		return true;
+	},
 
-		if (!email || !password) {
-			throw new Error("TEST_USER_EMAIL and TEST_USER_PASSWORD must be set in .env.test");
-		}
+	clearToken: (_options) => {
+		// No-op — token lifecycle managed by auth-session storage
+	},
 
-		const response = await request.post(`${apiUrl}/api/auth/login`, {
-			data: { email, password },
+	manageAuthToken: async (request, _options) => {
+		const email = process.env.TEST_USER_EMAIL ?? "test@nowing.test";
+		const password = process.env.TEST_USER_PASSWORD ?? "Admin@Nowing1";
+		const apiUrl = process.env.API_URL ?? "http://localhost:8000";
+
+		// FastAPI-Users login: form-encoded, field name is 'username'
+		const response = await request.post(`${apiUrl}/auth/jwt/login`, {
+			form: { username: email, password },
 		});
 
 		if (!response.ok()) {
-			throw new Error(
-				`Auth failed for user "${options.userIdentifier}": HTTP ${response.status()}`
-			);
+			throw new Error(`Nowing auth failed (HTTP ${response.status()}): ${await response.text()}`);
 		}
 
 		const { access_token, expires_in } = await response.json();
-		const expiryTime = Date.now() + (expires_in ?? 3600) * 1000;
+		const expiresAt = Date.now() + (expires_in ?? 3600) * 1000;
 
 		return {
-			cookies: [],
-			origins: [
-				{
-					origin: process.env.BASE_URL || "http://localhost:3999",
-					localStorage: [
-						{ name: "nowing_access_token", value: access_token },
-						{ name: "nowing_token_expiry", value: String(expiryTime) },
-					],
-				},
-			],
+			access_token,
+			expires_at: expiresAt,
 		};
 	},
+
+	getBaseUrl: (_options) => process.env.BASE_URL ?? "http://localhost:4998",
 };
 
 export default nowingAuthProvider;

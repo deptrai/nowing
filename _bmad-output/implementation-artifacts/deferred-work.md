@@ -375,3 +375,9 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **asyncio loop lifecycle** — `crypto_refresh_tasks.py:29-33,126-130`. `set_event_loop(None)` and `shutdown_asyncgens()` not called before `loop.close()`. Pre-existing pattern from `stale_notification_cleanup_task.py`. Address as codebase-wide cleanup if event loop issues arise.
 - **No rate limiting on prefetch calls** — `crypto_refresh_tasks.py:68-79`. Sequential API calls without throttle or semaphore. Acceptable for current scale (~10-20 expiring snapshots per cycle). Add concurrency limiter (e.g. `asyncio.Semaphore(3)`) if upstream APIs start rate-limiting refresh cycles.
 - **`NOT IN (SELECT ... LIMIT)` prune SQL** — `crypto_refresh_tasks.py:173-203`. Potentially slow on large tables. Consider window function (`ROW_NUMBER()`) + CTE-based delete when data grows beyond 10k rows per pair.
+
+## Deferred from: code review of 10-5-workspace-watchlist-api (2026-05-01)
+
+- F4: `data: dict` trong SnapshotResponse expose raw JSONB blob trực tiếp — sensitive fields không được filter trước khi trả về client. Pre-existing design decision, output schema chưa defined.
+- F5: `category` query param không validate giá trị hợp lệ — typo silently trả 0 results thay vì 422. Low priority, no enum constraint on DB column.
+- F6: Watchlist endpoint không có upper-bound limit — workspace với nhiều projects trả toàn bộ trong 1 response. Không phải concern hiện tại với workspace size thực tế.

@@ -240,11 +240,11 @@ test.describe("Orchestra Conductor Strip", () => {
 	}) => {
 		await mockChatSSE(page, happyPathSSE());
 
-		await log.step("Navigate to chat page");
+		await log({ level: "step", message: "Navigate to chat page" });
 		await page.goto(BASE_CHAT_URL);
 
 		// Submit a query to trigger the SSE stream
-		await log.step("Submit a query");
+		await log({ level: "step", message: "Submit a query" });
 		const input = page
 			.getByTestId("chat-input")
 			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
@@ -252,7 +252,7 @@ test.describe("Orchestra Conductor Strip", () => {
 		await page.keyboard.press("Enter");
 
 		// After spawn: strip should be visible with 4 agent rows
-		await log.step("Verify orchestra strip appears");
+		await log({ level: "step", message: "Verify orchestra strip appears" });
 		const strip = page.locator('[data-slot="orchestra-strip"]');
 		await expect(strip).toBeVisible({ timeout: 15_000 });
 
@@ -265,7 +265,7 @@ test.describe("Orchestra Conductor Strip", () => {
 		}
 
 		// After complete: strip collapses
-		await log.step("Verify strip collapses after completion");
+		await log({ level: "step", message: "Verify strip collapses after completion" });
 		await expect(strip).toHaveAttribute("data-variant", "collapsed", { timeout: 20_000 });
 
 		// Summary line: "4/4 done"
@@ -286,10 +286,10 @@ test.describe("Orchestra Conductor Strip", () => {
 	}) => {
 		await mockChatSSE(page, degradationSSE());
 
-		await log.step("Navigate to chat page");
+		await log({ level: "step", message: "Navigate to chat page" });
 		await page.goto(BASE_CHAT_URL);
 
-		await log.step("Submit query");
+		await log({ level: "step", message: "Submit query" });
 		const input = page
 			.getByTestId("chat-input")
 			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
@@ -304,7 +304,7 @@ test.describe("Orchestra Conductor Strip", () => {
 		await expect(strip).toHaveAttribute("data-variant", "collapsed", { timeout: 20_000 });
 
 		// DegradationNotice should appear with amber styling
-		await log.step("Verify degradation notice appears");
+		await log({ level: "step", message: "Verify degradation notice appears" });
 		const notice = page.locator('[role="alert"]');
 		await expect(notice).toBeVisible();
 
@@ -313,7 +313,7 @@ test.describe("Orchestra Conductor Strip", () => {
 		await expect(notice.getByText(/1 degraded/)).toBeVisible();
 
 		// Expand to see failed agent detail
-		await log.step("Expand degradation notice");
+		await log({ level: "step", message: "Expand degradation notice" });
 		const expandBtn = notice.getByRole("button", { name: /expand degradation/i });
 		await expandBtn.click();
 

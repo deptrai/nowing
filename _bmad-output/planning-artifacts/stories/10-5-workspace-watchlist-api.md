@@ -7,7 +7,7 @@ relatedFRs: [FR40]
 relatedNFRs: []
 priority: P2
 estimatedEffort: 2-3 days
-status: ready-for-dev
+status: done
 createdAt: 2026-04-29
 author: Winston (Architect)
 ---
@@ -229,3 +229,42 @@ app.include_router(crypto_data_router)
 - cursor-based pagination over offset-based: prevents duplicate results if new snapshots added between pages
 - `data` field in SnapshotResponse is JSONB — FastAPI will serialize it as-is to JSON (no extra work needed)
 - Don't expose snapshots across workspaces — project_id lookup must be scoped by user's accessible workspaces (via watchlist join)
+
+---
+
+## Dev Agent Record
+
+**Implemented by:** Claude (claude-sonnet-4-6)
+**Implementation date:** 2026-05-01
+
+### Files Created
+- `nowing_backend/app/routes/crypto_data_routes.py` — 2 endpoints: GET watchlist + GET timeline
+
+### Files Modified
+- `nowing_backend/app/routes/__init__.py` — import + include crypto_data_router
+- `nowing_backend/tests/unit/routes/test_crypto_data_routes.py` — 7 unit tests (AC1-AC7)
+
+### Implementation Notes
+- Router uses no prefix on `APIRouter()` — full paths in decorators, `/api/v1` prefix added in `app.py`
+- Used `current_active_user` + `get_async_session` + `check_search_space_access` (RBAC util)
+- Timeline uses `id < cursor` cursor pagination, `limit+1` fetch to detect has_more
+- `is_error.is_(False)` not `== False` to generate correct SQLAlchemy IS FALSE
+- Test pattern: plain `TestClient(app)` (no `with`) to avoid event loop conflicts from lifespan
+
+### Change Log
+- AC1-AC7: all acceptance criteria implemented and verified via unit tests (7/7 pass)
+
+### Status: review
+
+---
+
+### Review Findings (2026-05-01)
+
+- [x] [Review][Patch] F1: Timeline endpoint thiếu authorization check — verify project_id thuộc workspace của user qua watchlist join [crypto_data_routes.py:90] — fixed: _verify_project_access via watchlist+membership join
+- [x] [Review][Patch] F2: `total` count bỏ qua active filters `category` và `since` — trả sai total khi filter [crypto_data_routes.py:124] — fixed: count_q dùng chung base_filters
+- [x] [Review][Patch] F3: Cursor pagination không có tie-break trên `fetched_at` — duplicate/skip rows khi 2 snapshots có cùng timestamp [crypto_data_routes.py:115] — fixed: order_by(fetched_at.desc(), id.desc())
+- [x] [Review][Patch] F7: `since` param không enforce timezone-aware — có thể silent misbehave vs TIMESTAMP WITH TIME ZONE column [crypto_data_routes.py:94] — fixed: normalize naive datetime to UTC
+- [x] [Review][Patch] F8: `datetime` import đặt sau local imports, vi phạm PEP8/isort order [crypto_data_routes.py:18] — fixed: moved to top with stdlib imports
+- [x] [Review][Defer] F4: `data: dict` expose raw unvalidated DB blob — sensitive fields không filtered — deferred, pre-existing design decision
+- [x] [Review][Defer] F5: `category` filter không validate giá trị hợp lệ — typo silently trả 0 results — deferred, low priority
+- [x] [Review][Defer] F6: Watchlist không có upper-bound limit — deferred, workspace size constraint không phải concern hiện tại
