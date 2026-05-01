@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-04-29T00:00:00+07:00
+last_updated: 2026-05-01T00:00:00+07:00
 project: Nowing
 # 2026-04-24: Story 0.3 review complete (2 MAJOR fixed inline, 4 MINOR deferred)
 # 2026-04-25: Story 0.6b (Tier 3 paced sequential escalation) scope-in — E2E verified, code merged, docs updated
@@ -114,7 +114,7 @@ development_status:
   0-4-api-integration-tests: done
   0-5-parallel-execution-validation: done
   0-6-error-handling-fallback: done
-  0-6b-rate-limit-paced-escalation: review  # Tier 3 code + docs done, pending unit tests + canary
+  0-6b-rate-limit-paced-escalation: done  # Tier 3 code + docs done, pending unit tests + canary
   epic-0-retrospective: optional
 
   # ─── EPIC 9: Crypto Orchestra (Phased rollout 1→2→3) ───
@@ -148,3 +148,13 @@ development_status:
   9-UX-4-additional-data-sources: done            # 2026-04-28: all 15 tasks complete — 4 BE tools, whale_tracker spec, smart_contract CertiK ext, synthesis directive, 4 FE tokens, WalletLabel, TokenInsight badge, Dune deeplink, 2 Playwright specs
 
   epic-9-retrospective: optional
+
+  # ─── EPIC 10: Crypto Data Layer (Persistent shared cache) ───
+  epic-10: in-progress
+
+  10-1-crypto-data-schema: done
+  10-2-crypto-cache-middleware: done
+  10-3-thundering-herd-protection: done
+  10-4-background-refresh: done
+  10-5-workspace-watchlist-api: ready-for-dev
+  epic-10-retrospective: optional

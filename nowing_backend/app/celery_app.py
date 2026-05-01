@@ -92,6 +92,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.document_reindex_tasks",
         "app.tasks.celery_tasks.stale_notification_cleanup_task",
         "app.tasks.celery_tasks.stripe_reconciliation_task",
+        "app.tasks.celery_tasks.crypto_refresh_tasks",
     ],
 )
 
@@ -185,6 +186,22 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(**stripe_reconciliation_schedule_params),
         "options": {
             "expires": 60,
+        },
+    },
+    # Crypto data cache: pre-warm expiring snapshots every 30 min
+    "crypto-refresh-popular-data": {
+        "task": "crypto.refresh_popular_data",
+        "schedule": crontab(minute="*/30"),
+        "options": {
+            "expires": 300,
+        },
+    },
+    # Crypto data cache: nightly cleanup at 3 AM UTC
+    "crypto-cleanup-expired-snapshots": {
+        "task": "crypto.cleanup_expired_snapshots",
+        "schedule": crontab(hour=3, minute=0),
+        "options": {
+            "expires": 3600,
         },
     },
 }

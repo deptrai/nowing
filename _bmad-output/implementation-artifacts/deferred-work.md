@@ -369,3 +369,9 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **F9: Graceful degradation bypasses herd protection** — `crypto_cache_lock.py:42`. When lock not acquired after retries, proceeds unlocked — disables thundering herd protection. DB double-check still runs, reducing but not eliminating duplicates. Acceptable for launch.
 - **F11: No integration-level thundering herd test** — Lock tested in isolation, middleware tested in isolation. Full concurrent middleware test (10 `awrap_tool_call` in parallel) belongs in integration suite.
 - **F12: AC4 TTL expiry recovery not directly tested** — Unit test only covers fail-to-acquire path (mock `set` returns False). Real TTL expiry recovery relies on Redis server behavior; requires integration env to test.
+
+## Deferred from: code review of story 10-4 (2026-05-01)
+
+- **asyncio loop lifecycle** — `crypto_refresh_tasks.py:29-33,126-130`. `set_event_loop(None)` and `shutdown_asyncgens()` not called before `loop.close()`. Pre-existing pattern from `stale_notification_cleanup_task.py`. Address as codebase-wide cleanup if event loop issues arise.
+- **No rate limiting on prefetch calls** — `crypto_refresh_tasks.py:68-79`. Sequential API calls without throttle or semaphore. Acceptable for current scale (~10-20 expiring snapshots per cycle). Add concurrency limiter (e.g. `asyncio.Semaphore(3)`) if upstream APIs start rate-limiting refresh cycles.
+- **`NOT IN (SELECT ... LIMIT)` prune SQL** — `crypto_refresh_tasks.py:173-203`. Potentially slow on large tables. Consider window function (`ROW_NUMBER()`) + CTE-based delete when data grows beyond 10k rows per pair.

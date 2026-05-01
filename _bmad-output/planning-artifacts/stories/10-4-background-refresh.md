@@ -7,7 +7,7 @@ relatedFRs: [FR39]
 relatedNFRs: [NFR-CS5]
 priority: P2
 estimatedEffort: 2-3 days
-status: ready-for-dev
+status: done
 createdAt: 2026-04-29
 author: Winston (Architect)
 ---
@@ -236,3 +236,54 @@ app.conf.beat_schedule.update({
 - `_prune_per_category` — can use DELETE with subquery: `DELETE WHERE id NOT IN (SELECT id FROM snapshots WHERE project_id=X AND data_category=Y ORDER BY fetched_at DESC LIMIT 1000)`
 - Don't run cleanup in same transaction as regular writes — separate `async with shielded_async_session()`
 - Refresh task should respect `CRYPTO_DATA_CACHE_ENABLED` flag: if `false`, skip (no point refreshing if cache is disabled)
+
+---
+
+## Dev Agent Record
+
+### Implementation Notes (2026-04-30)
+
+**Files Created:**
+- `nowing_backend/app/tasks/celery_tasks/crypto_refresh_tasks.py` — 2 Celery tasks + async helpers
+
+**Files Modified:**
+- `nowing_backend/app/celery_app.py` — added `crypto_refresh_tasks` to `include[]` + 2 beat schedule entries
+
+**Tests Created:**
+- `nowing_backend/tests/unit/tasks/test_crypto_refresh_tasks.py` — 6 unit tests (AC1–AC5 + cache-disabled guard)
+
+### Completion Notes
+
+- AC1 ✅ `_async_refresh_popular`: queries snapshots expiring within 5 min last 24h, calls `_prefetch_category` per row
+- AC2 ✅ Per-row exception caught, logs warning, continues to next row — task never crashes
+- AC3 ✅ `_async_cleanup` issues `DELETE WHERE created_at < 30 days ago`
+- AC4 ✅ `_async_cleanup` issues separate `DELETE WHERE is_error=True AND created_at < 24h`
+- AC5 ✅ Both tasks registered in `celery_app.conf.beat_schedule` (verified by unit test)
+- Dev Note deviation: used `get_celery_session_maker()` instead of `shielded_async_session()` per existing Celery task pattern in codebase (stale_notification_cleanup_task.py). `shielded_async_session` is FastAPI request-scope only.
+- Dev Note deviation: `td.factory({})` to instantiate tools (pass empty deps dict) instead of `td.factory()` — matches `ToolDefinition.factory: Callable[[dict], BaseTool]` signature.
+
+### File List
+
+| File | Action |
+|------|--------|
+| `nowing_backend/app/tasks/celery_tasks/crypto_refresh_tasks.py` | CREATE |
+| `nowing_backend/app/celery_app.py` | MODIFY |
+| `nowing_backend/tests/unit/tasks/test_crypto_refresh_tasks.py` | CREATE |
+
+### Change Log
+
+- 2026-04-30: Story 10.4 implemented — 2 Celery tasks (refresh + cleanup), beat schedule registered, 6 unit tests pass
+- 2026-05-01: Code review complete — 1 decision-needed, 4 patches, 3 deferred, 9 dismissed
+
+### Review Findings
+
+- [x] [Review][Decision] **Cleanup DELETEs share single session** — resolved: split to 2 separate sessions (spec-compliant). [`crypto_refresh_tasks.py:150-172`]
+
+- [x] [Review][Patch] **`_prefetch_category` rebuilds tool_fn_map on every row** — move `tool_fn_map` construction to `_async_refresh_popular` and pass as arg [`crypto_refresh_tasks.py:88`]
+- [x] [Review][Patch] **`test_refresh_skips_when_cache_disabled` never invokes the task** — test asserts `mock_loop.assert_not_called()` without calling `refresh_popular_crypto_data()`. Test proves nothing. [`test_crypto_refresh_tasks.py:238-253`]
+- [x] [Review][Patch] **AC5 test doesn't validate schedule intervals** — should assert `crontab(minute="*/30")` and `crontab(hour=3, minute=0)` [`test_crypto_refresh_tasks.py:214-230`]
+- [x] [Review][Patch] **DISTINCT over JSONB `tool_args` may cause duplicate API calls** — use `args_hash` column instead for dedup in refresh query [`crypto_refresh_tasks.py:49-63`]
+
+- [x] [Review][Defer] **`asyncio.set_event_loop(None)` / `shutdown_asyncgens()` not called** — pre-existing pattern from `stale_notification_cleanup_task.py`. Not a regression. [`crypto_refresh_tasks.py:29-33,126-130`]
+- [x] [Review][Defer] **No rate limiting on prefetch calls** — valid but out of scope for AC2 (which only requires "skip, don't crash"). [`crypto_refresh_tasks.py:68-79`]
+- [x] [Review][Defer] **`NOT IN (SELECT ... LIMIT)` prune SQL potentially slow** — acceptable at current scale (<1000 rows/pair). Revisit when data grows. [`crypto_refresh_tasks.py:173-203`]
