@@ -1,6 +1,8 @@
 import { getBearerToken } from "../auth-utils";
 import { readSSEStream, type SSEEvent } from "../chat/streaming-state";
-import { QuotaExceededError } from "../error";
+import { QuotaExceededError, StreamMaxRetriesError } from "../error";
+
+export const STREAM_MAX_RETRIES = 5;
 
 const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
 
@@ -83,13 +85,16 @@ export async function* streamWithRetry(
 	urlFactory: (seq: number) => string,
 	options: RequestInit,
 	initialSeq = -1,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	maxRetries = STREAM_MAX_RETRIES
 ): AsyncGenerator<SSEEvent> {
 	let currentSeq = initialSeq;
 	let attempt = 0;
 
 	while (true) {
 		if (signal?.aborted) return;
+
+		let receivedAny = false;
 
 		try {
 			const response = await fetch(urlFactory(currentSeq), {
@@ -111,13 +116,24 @@ export async function* streamWithRetry(
 				throw new Error(`Retriable stream error: ${response.status}`);
 			}
 
-			attempt = 0; // Reset attempts on success
-
 			for await (const event of readSSEStream(response)) {
 				// biome-ignore lint/suspicious/noExplicitAny: SSEEvent might have seq
 				const anyEvent = event as any;
+				// 11-1 AC#4: Track seq from structured payloads OR from _seq markers
+				// (the latter is emitted by the backend for legacy `_raw` and `_vercel`
+				// payloads where seq cannot be injected directly).
+				if (anyEvent._seq != null && typeof anyEvent._seq === "number") {
+					currentSeq = anyEvent._seq;
+					// _seq markers are bookkeeping only — do not yield to consumer.
+					continue;
+				}
 				if (anyEvent.seq != null && typeof anyEvent.seq === "number") {
 					currentSeq = anyEvent.seq;
+				}
+
+				if (!receivedAny) {
+					attempt = 0; // Only reset when we actually got a event
+					receivedAny = true;
 				}
 
 				yield event;
@@ -127,8 +143,12 @@ export async function* streamWithRetry(
 				}
 			}
 
-			// If stream closed normally but we expect more (no run-end marker), retry
-			console.warn("[streamWithRetry] Stream closed unexpectedly, retrying...");
+			// Stream closed without run-end. Treat as retriable failure (with backoff).
+			console.warn("[streamWithRetry] Stream closed without run-end marker, retrying...");
+			if (attempt >= maxRetries) {
+				throw new StreamMaxRetriesError();
+			}
+			await exponentialBackoff(attempt++);
 		} catch (err) {
 			if (signal?.aborted) return;
 
@@ -137,6 +157,14 @@ export async function* streamWithRetry(
 			}
 			if (err instanceof QuotaExceededError) {
 				throw err;
+			}
+			if (err instanceof StreamMaxRetriesError) {
+				throw err;
+			}
+
+			if (attempt >= maxRetries) {
+				console.error(`[streamWithRetry] Max retries (${maxRetries}) exceeded`, err);
+				throw new StreamMaxRetriesError();
 			}
 
 			console.warn(`[streamWithRetry] Connection lost (attempt ${attempt}), retrying...`, err);

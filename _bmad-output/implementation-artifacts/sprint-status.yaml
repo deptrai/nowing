@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-05-01T12:00:00+07:00
+last_updated: 2026-05-02T00:00:00+07:00
 project: Nowing
 # 2026-04-24: Story 0.3 review complete (2 MAJOR fixed inline, 4 MINOR deferred)
 # 2026-04-25: Story 0.6b (Tier 3 paced sequential escalation) scope-in — E2E verified, code merged, docs updated
@@ -167,8 +167,8 @@ development_status:
   epic-11: in-progress
 
   # P0 — Critical
-  11-1-sse-heartbeat-auto-reconnect: review
-  11-2-redis-circuit-breaker: review
+  11-1-sse-heartbeat-auto-reconnect: done
+  11-2-redis-circuit-breaker: done
 
   # P1 — Important
   11-3-orphaned-cache-purge: ready-for-dev

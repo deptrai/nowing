@@ -94,7 +94,7 @@ import {
 	getThreadMessages,
 	type ThreadRecord,
 } from "@/lib/chat/thread-persistence";
-import { NotFoundError, QuotaExceededError } from "@/lib/error";
+import { NotFoundError, QuotaExceededError, StreamMaxRetriesError } from "@/lib/error";
 import {
 	trackChatCreated,
 	trackChatError,
@@ -355,12 +355,17 @@ export default function NewChatPage() {
 	const setAgentCreatedDocuments = useSetAtom(agentCreatedDocumentsAtom);
 	const setOrchestraState = useSetAtom(orchestraStateAtom);
 	const setActiveRuns = useSetAtom(activeRunsAtom);
+	const activeRunsValue = useAtomValue(activeRunsAtom);
+	const activeRunsRef = useRef(activeRunsValue);
+	activeRunsRef.current = activeRunsValue;
 	const setResumeRunBySession = useSetAtom(resumeRunBySessionAtom);
 	const setAbandonedSessionIds = useSetAtom(abandonedSessionIdsAtom);
 	const [abandonedRuns, setAbandonedRuns] = useState<ChatRun[]>([]);
 	const attachToRunRef = useRef<((run: ChatRun) => Promise<void>) | null>(null);
 	const abandonedRunsRef = useRef(abandonedRuns);
 	abandonedRunsRef.current = abandonedRuns;
+	// 11-1 AC#6: Connection-lost banner — surfaces stream max-retries / unrecoverable disconnect
+	const [streamConnectionLost, setStreamConnectionLost] = useState<{ runId: string } | null>(null);
 
 	// Get current user for author info in shared chats
 	const { data: currentUser } = useAtomValue(currentUserAtom);
@@ -676,6 +681,14 @@ export default function NewChatPage() {
 				}
 			} catch (err) {
 				if (ac.signal.aborted) return;
+				if (err instanceof QuotaExceededError) {
+					toast.error("Token quota exceeded. Please upgrade your plan.");
+					return;
+				}
+				if (err instanceof StreamMaxRetriesError) {
+					setStreamConnectionLost({ runId: run.id });
+					return;
+				}
 				console.warn(`[attachToRun] Run ${run.id} failed:`, err);
 			}
 		};
@@ -1314,6 +1327,10 @@ export default function NewChatPage() {
 							onClick: () => window.open("/pricing", "_blank"),
 						},
 					});
+					return;
+				}
+				if (error instanceof StreamMaxRetriesError) {
+					setStreamConnectionLost({ runId: activeRun?.id ?? "current" });
 					return;
 				}
 				console.error("[NewChatPage] Chat error:", error);
@@ -2286,6 +2303,40 @@ export default function NewChatPage() {
 			<div key={searchSpaceId} className="flex h-full overflow-hidden">
 				<div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
 					{/* T21: Resume banner removed — Resume button is now in OrchestraStrip header */}
+					{/* 11-1 AC#6: Connection-lost banner — surfaces stream max-retries exhaustion */}
+					{streamConnectionLost && (
+						<div className="absolute top-2 left-0 right-0 flex justify-center pointer-events-none px-4 z-20">
+							<div className="bg-destructive/10 border border-destructive/40 text-destructive rounded-lg px-4 py-2 text-sm flex items-center gap-3 shadow-sm pointer-events-auto">
+								<span>Connection lost — stream stopped after multiple retry attempts.</span>
+								<button
+									type="button"
+									onClick={() => {
+										const lostRunId = streamConnectionLost.runId;
+										setStreamConnectionLost(null);
+										let run: ChatRun | undefined;
+										for (const runs of activeRunsRef.current.values()) {
+											run = runs.find((r) => r.id === lostRunId);
+											if (run) break;
+										}
+										if (run && attachToRunRef.current) {
+											attachToRunRef.current(run);
+										}
+									}}
+									className="font-medium underline hover:no-underline"
+								>
+									Click to retry
+								</button>
+								<button
+									type="button"
+									onClick={() => setStreamConnectionLost(null)}
+									aria-label="Dismiss"
+									className="ml-2 text-destructive/60 hover:text-destructive"
+								>
+									✕
+								</button>
+							</div>
+						</div>
+					)}
 					<Thread />
 					{lastTokenUsage && !isRunning && (
 						<div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none px-4 z-10">

@@ -1,6 +1,6 @@
 # Story 11.1: SSE Heartbeat & Auto-Reconnect
 
-Status: review
+Status: done
 
 ## Story
 
@@ -64,3 +64,19 @@ Gemini 2.0 Flash
 - `nowing_web/app/dashboard/[search_space_id]/new-chat/[[...chat_id]]/page.tsx`
 - `nowing_web/__tests__/lib/apis/chat-runs-api.test.ts`
 - `nowing_backend/tests/unit/services/test_streaming_service.py`
+
+### Review Findings
+
+- [x] [Review][Decision→Patch] Structured JSON logging trên state-change — đã chuyển sang `logger.info(json.dumps({...}))` trực tiếp trong `circuit_breaker.py:_emit_state_change_log`, đảm bảo log line là JSON kể cả khi không có formatter. Test `test_state_change_log_is_json` verify format.
+- [x] [Review][Patch] Test `chat-runs-api.test.ts` có duplicate/orphaned `it()` block ngoài `describe` — `nowing_web/__tests__/lib/apis/chat-runs-api.test.ts:~174-194` (gọi old Promise API)
+- [x] [Review][Patch] `streamWithRetry` thiếu max-retry cap (AC#6) — `nowing_web/lib/apis/chat-runs-api.service.ts:868-922` `while(true)` không bound, cần cap 5 retries
+- [x] [Review][Patch] Banner UI "Connection lost — click to retry" chưa tồn tại (AC#6) — `nowing_web/app/dashboard/[search_space_id]/new-chat/[[...chat_id]]/page.tsx`
+- [x] [Review][Patch] Route `stream_run` không wrap `_event_generator` với `_with_heartbeat` — FE consume route này nhưng heartbeat không được phát (AC#1 unmet) — `nowing_backend/app/routes/new_chat_routes.py:~1993-1995`
+- [x] [Review][Patch] `QuotaExceededError` bị nuốt trong `page.tsx` catch (chỉ `console.warn`) — banner 402 cũ đã mất sau refactor — `nowing_web/app/dashboard/.../page.tsx:~788`
+- [x] [Review][Patch] `streamWithRetry` không backoff khi stream đóng bình thường mà thiếu `run-end` marker → tight reconnect loop — `chat-runs-api.service.ts:~907-923`
+- [x] [Review][Patch] `_rebuild_vercel_wire` không inject `seq` cho `_vercel`/`_raw` payloads → resume duplicate text-delta (AC#4) — `nowing_backend/app/routes/new_chat_routes.py:236-244`
+- [x] [Review][Patch] `attempt` reset = 0 ngay sau fetch 200 (chưa nhận event) → server response 200 + close ngay không bao giờ backoff — `chat-runs-api.service.ts:~891`
+- [x] [Review][Defer] `_with_heartbeat` cancel `next_task` mid-await có thể leak DB session/LangGraph state — cần redesign cancellation, không trivial fix. Pre-existing-style cleanup hazard. — `stream_new_chat.py:318-355` — deferred
+- [x] [Review][Defer] AC#5 (HTTP/2 multi-tab) skipped do môi trường dev — verify lại khi deploy production — deferred per dev note
+- [x] [Review][Defer] `Cache-Control: no-transform` có thể không hiệu quả với một số CDN (Cloudflare) — verify deployment-specific — `new_streaming_service.py` — deferred
+- [x] [Review][Defer] `streamWithRetry` không handle quota error qua SSE event payload (chỉ HTTP 402) — BE hiện không emit quota event giữa stream — `chat-runs-api.service.ts:877-880` — deferred

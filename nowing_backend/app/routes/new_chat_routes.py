@@ -60,7 +60,7 @@ from app.schemas.new_chat import (
 from app.config import config
 from app.routes.model_list_routes import get_tier_for_model_id
 from app.services.token_quota_service import TokenQuotaExceededError, TokenQuotaService
-from app.tasks.chat.stream_new_chat import stream_new_chat, stream_resume_chat
+from app.tasks.chat.stream_new_chat import _with_heartbeat, stream_new_chat, stream_resume_chat
 from app.users import current_active_user
 from app.utils.rbac import check_permission
 
@@ -1772,13 +1772,17 @@ def _rebuild_vercel_wire(event_type: str, payload: object, seq: int | None = Non
     - structured (T4):   {"type": ..., "data": {...}} — bare data:{json}\\n\\n
 
     M7: Injects `seq` into structured payloads to enable client-side resume tracking.
+    For non-dict / `_raw` / `_vercel` payloads where seq cannot be embedded into
+    the original payload format, prepend a separate `data: {"_seq": N}` event so
+    the client can advance `lastSeq` even for legacy/text-delta events. This
+    prevents duplicate text-delta replay on reconnect (story 11-1 AC#4).
     """
+    seq_prefix = ""
+    if seq is not None:
+        seq_prefix = f"data: {json.dumps({'_seq': seq})}\n\n"
+
     if not isinstance(payload, dict):
-        if seq is not None:
-            # If payload is a string or list, we can't easily inject seq into it
-            # without changing the protocol. For now, only inject into dicts.
-            return f"data: {json.dumps(payload)}\n\n"
-        return f"data: {json.dumps(payload)}\n\n"
+        return f"{seq_prefix}data: {json.dumps(payload)}\n\n"
 
     # Inject seq if provided and payload is a dict
     if seq is not None and "seq" not in payload:
@@ -1786,14 +1790,14 @@ def _rebuild_vercel_wire(event_type: str, payload: object, seq: int | None = Non
 
     raw = payload.get("_raw")
     if isinstance(raw, str) and raw:
-        # For legacy raw payloads, we can't easily inject seq without parsing it.
-        # But 9-UX-1b+ should be using structured payloads.
-        return raw
+        # Legacy raw payloads — prepend _seq marker for resume tracking.
+        return f"{seq_prefix}{raw}"
 
     vercel = payload.get("_vercel")
     if isinstance(vercel, str) and vercel:
-        return f"data: {vercel}\n\n"
+        return f"{seq_prefix}data: {vercel}\n\n"
 
+    # Structured dict — seq already merged into payload above; no prefix needed.
     return f"data: {json.dumps(payload)}\n\n"
 
 
@@ -1971,7 +1975,7 @@ async def stream_run(
                 if row[0] not in (ChatRunStatus.RUNNING,):
                     break
 
-                yield ": heartbeat\n\n"
+                # Heartbeat is now injected by _with_heartbeat wrapper (15s idle).
 
         except Exception as exc:
             _logger.warning("stream_run pubsub error for run %s: %s", run_id, exc)
@@ -1991,7 +1995,7 @@ async def stream_run(
         yield f"data: {json.dumps({'_marker': 'run-end', 'seq': final_seq, 'status': final_status})}\n\n"
 
     return StreamingResponse(
-        _event_generator(),
+        _with_heartbeat(_event_generator()),
         media_type="text/event-stream",
         headers=VercelStreamingService.get_response_headers(),
     )

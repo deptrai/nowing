@@ -381,3 +381,10 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - F4: `data: dict` trong SnapshotResponse expose raw JSONB blob trực tiếp — sensitive fields không được filter trước khi trả về client. Pre-existing design decision, output schema chưa defined.
 - F5: `category` query param không validate giá trị hợp lệ — typo silently trả 0 results thay vì 422. Low priority, no enum constraint on DB column.
 - F6: Watchlist endpoint không có upper-bound limit — workspace với nhiều projects trả toàn bộ trong 1 response. Không phải concern hiện tại với workspace size thực tế.
+
+## Deferred from: code review of story 11-1-sse-heartbeat-auto-reconnect & 11-2-redis-circuit-breaker (2026-05-02)
+
+- **`_with_heartbeat` cancel `next_task` mid-await có thể leak DB session/LangGraph state** [nowing_backend/app/tasks/chat/stream_new_chat.py:318-355] — Khi consumer disconnect, `task.cancel()` propagates `CancelledError` vào inner generator tại điểm `await` bất kỳ trong `_stream_new_chat_inner` (DB/LLM work). Cần redesign cancellation strategy (e.g. structured concurrency / sentinel) — không phải trivial fix, deferred cho hardening pass riêng.
+- **AC#5 (Story 11-1) HTTP/2 multiplexing 3+ tabs** — Skipped trong môi trường dev per Task 3.1 dev note. Cần verify Traefik/reverse proxy config khi deploy production.
+- **`Cache-Control: no-transform` có thể không hiệu quả với một số CDN** [nowing_backend/app/services/new_streaming_service.py] — Cloudflare free tier ignore `no-transform` cho SSE và có thể recompress làm hỏng framing. Verify deployment-specific khi go-live.
+- **`streamWithRetry` không handle quota error qua SSE event payload** [nowing_web/lib/apis/chat-runs-api.service.ts:877-880] — Hiện chỉ check 402 ở HTTP response. Nếu BE emit quota event giữa stream, FE sẽ retry vô ích. Defer vì BE hiện không emit quota event giữa stream.

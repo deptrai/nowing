@@ -1,6 +1,6 @@
 # Story 11.2: Circuit Breaker Hardening (Structured Logging + HALF_OPEN Probe)
 
-Status: review
+Status: done
 
 ## Story
 
@@ -58,3 +58,11 @@ Gemini 2.0 Flash
 - `nowing_backend/app/agents/new_chat/middleware/circuit_breaker.py`
 - `nowing_backend/tests/unit/middleware/test_circuit_breaker.py`
 - `nowing_backend/tests/unit/middleware/test_circuit_breaker_hardened.py`
+
+### Review Findings
+
+- [x] [Review][Decision→Patch] Structured JSON logging — đã đổi sang `logger.info(json.dumps({...}))` trực tiếp (xem `_emit_state_change_log` trong `circuit_breaker.py`). Test `test_state_change_log_is_json` verify format.
+- [x] [Review][Patch] HALF_OPEN probe race — dùng `set` thay vì `SETNX` cho `cb:probe_allowed` → multi-worker có thể slip nhiều probe (AC#1 vi phạm khi có nhiều worker) — `nowing_backend/app/agents/new_chat/middleware/circuit_breaker.py:96-105`
+- [x] [Review][Patch] `record_failure` race với `record_success` — đọc `state` non-atomic, có thể spurious reopen ngay sau khi probe vừa close circuit — `circuit_breaker.py:120-140`
+- [x] [Review][Patch] `cb:probe_allowed` không có TTL → key leak ở giá trị âm nếu `record_success`/`record_failure` không fire (request timeout không complete) — `circuit_breaker.py:97`
+- [x] [Review][Patch] Test `test_cb_half_open_after_timeout` không thực sự exercise cooldown→half_open path: `mock_redis.get.return_value = str(past_time).encode()` làm state read trả past_time string thay vì "open", path fall qua final `return False` mà không kiểm tra logic — `nowing_backend/tests/unit/middleware/test_circuit_breaker.py:562-569`

@@ -124,12 +124,24 @@ describe("getActiveRuns", () => {
 // ---------------------------------------------------------------------------
 
 describe("streamRun", () => {
-	it("sends GET with Accept text/event-stream and default afterSeq", async () => {
-		const mockResponse = { ok: true, body: null };
-		globalThis.fetch = vi.fn().mockResolvedValue(mockResponse);
+	// Helper: drive the generator far enough to trigger one fetch, then abort
+	// to cleanly terminate the retry loop. We intercept fetch so abort happens
+	// AFTER the first fetch call is recorded.
+	function makeFetchAndAbort(controller: AbortController, response: unknown) {
+		return vi.fn().mockImplementation(async () => {
+			// Schedule abort on the next microtask so the caller has already
+			// captured the fetch invocation but hasn't yet processed the body.
+			queueMicrotask(() => controller.abort());
+			return response;
+		});
+	}
 
-		const gen = streamRun(42, "run-uuid-1");
-		await gen.next(); // Trigger first fetch
+	it("sends GET with Accept text/event-stream and default afterSeq", async () => {
+		const controller = new AbortController();
+		globalThis.fetch = makeFetchAndAbort(controller, { ok: true, body: null });
+
+		const gen = streamRun(42, "run-uuid-1", -1, controller.signal);
+		await gen.next();
 
 		expect(fetch).toHaveBeenCalledWith(
 			expect.stringContaining("/api/v1/threads/42/runs/run-uuid-1/stream?after_seq=-1"),
@@ -143,16 +155,18 @@ describe("streamRun", () => {
 	});
 
 	it("uses custom afterSeq parameter", async () => {
-		globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
-		const gen = streamRun(42, "run-uuid-1", 15);
+		const controller = new AbortController();
+		globalThis.fetch = makeFetchAndAbort(controller, { ok: true, body: null });
+
+		const gen = streamRun(42, "run-uuid-1", 15, controller.signal);
 		await gen.next();
 
 		expect(fetch).toHaveBeenCalledWith(expect.stringContaining("after_seq=15"), expect.anything());
 	});
 
 	it("passes AbortSignal when provided", async () => {
-		globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
 		const controller = new AbortController();
+		globalThis.fetch = makeFetchAndAbort(controller, { ok: true, body: null });
 		const gen = streamRun(42, "run-uuid-1", -1, controller.signal);
 		await gen.next();
 
@@ -164,37 +178,10 @@ describe("streamRun", () => {
 
 	it("omits Authorization header when no token", async () => {
 		vi.mocked(getBearerToken).mockReturnValue(null);
-		globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
-		const gen = streamRun(42, "run-uuid-1");
-		await gen.next();
-
-		const headers = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].headers;
-		expect(headers).not.toHaveProperty("Authorization");
-	});
-});
-
-	it("uses custom afterSeq parameter", async () => {
-		globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
-		await streamRun(42, "run-uuid-1", 15);
-
-		expect(fetch).toHaveBeenCalledWith(expect.stringContaining("after_seq=15"), expect.anything());
-	});
-
-	it("passes AbortSignal when provided", async () => {
-		globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
 		const controller = new AbortController();
-		await streamRun(42, "run-uuid-1", -1, controller.signal);
-
-		expect(fetch).toHaveBeenCalledWith(
-			expect.anything(),
-			expect.objectContaining({ signal: controller.signal })
-		);
-	});
-
-	it("omits Authorization header when no token", async () => {
-		vi.mocked(getBearerToken).mockReturnValue(null);
-		globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
-		await streamRun(42, "run-uuid-1");
+		globalThis.fetch = makeFetchAndAbort(controller, { ok: true, body: null });
+		const gen = streamRun(42, "run-uuid-1", -1, controller.signal);
+		await gen.next();
 
 		const headers = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].headers;
 		expect(headers).not.toHaveProperty("Authorization");

@@ -44,3 +44,9 @@ export class QuotaExceededError extends AppError {
 		super(message, 402, "Payment Required");
 	}
 }
+
+export class StreamMaxRetriesError extends AppError {
+	constructor(message = "Stream connection lost — max retries exceeded") {
+		super(message);
+	}
+}
