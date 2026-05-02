@@ -82,7 +82,6 @@ import {
 	buildContentForUI,
 	type ContentPartsState,
 	FrameBatchedUpdater,
-	readSSEStream,
 	type ThinkingStepData,
 	updateThinkingSteps,
 	updateToolCall,
@@ -95,7 +94,7 @@ import {
 	getThreadMessages,
 	type ThreadRecord,
 } from "@/lib/chat/thread-persistence";
-import { NotFoundError } from "@/lib/error";
+import { NotFoundError, QuotaExceededError, StreamMaxRetriesError } from "@/lib/error";
 import {
 	trackChatCreated,
 	trackChatError,
@@ -274,16 +273,6 @@ function extractMentionedDocuments(content: unknown): MentionedDocumentInfo[] {
 }
 
 /**
- * Throw this when the backend returns 402 Payment Required (quota exceeded).
- */
-class QuotaExceededError extends Error {
-	constructor() {
-		super("Token quota exceeded");
-		this.name = "QuotaExceededError";
-	}
-}
-
-/**
  * Tools that should render custom UI in the chat.
  */
 const TOOLS_WITH_UI = new Set([
@@ -366,12 +355,17 @@ export default function NewChatPage() {
 	const setAgentCreatedDocuments = useSetAtom(agentCreatedDocumentsAtom);
 	const setOrchestraState = useSetAtom(orchestraStateAtom);
 	const setActiveRuns = useSetAtom(activeRunsAtom);
+	const activeRunsValue = useAtomValue(activeRunsAtom);
+	const activeRunsRef = useRef(activeRunsValue);
+	activeRunsRef.current = activeRunsValue;
 	const setResumeRunBySession = useSetAtom(resumeRunBySessionAtom);
 	const setAbandonedSessionIds = useSetAtom(abandonedSessionIdsAtom);
 	const [abandonedRuns, setAbandonedRuns] = useState<ChatRun[]>([]);
 	const attachToRunRef = useRef<((run: ChatRun) => Promise<void>) | null>(null);
 	const abandonedRunsRef = useRef(abandonedRuns);
 	abandonedRunsRef.current = abandonedRuns;
+	// 11-1 AC#6: Connection-lost banner — surfaces stream max-retries / unrecoverable disconnect
+	const [streamConnectionLost, setStreamConnectionLost] = useState<{ runId: string } | null>(null);
 
 	// Get current user for author info in shared chats
 	const { data: currentUser } = useAtomValue(currentUserAtom);
@@ -621,8 +615,6 @@ export default function NewChatPage() {
 			abortControllers.push(ac);
 			try {
 				const resumeFrom = lastSeqByRun.get(run.id) ?? -1;
-				const resp = await streamRun(threadId, run.id, resumeFrom, ac.signal);
-				if (!resp.ok) return;
 				// Add placeholder assistant message so OrchestraStrip has a mounting point
 				const placeholderMsgId = `msg-assistant-resume-${run.id}`;
 				setMessages((prev) => {
@@ -637,79 +629,67 @@ export default function NewChatPage() {
 						},
 					];
 				});
-				const reader = resp.body?.getReader();
-				if (!reader) return;
-				readers.push(reader);
-				const decoder = new TextDecoder();
-				let buf = "";
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					buf += decoder.decode(value, { stream: true });
-					const parts = buf.split(/\r?\n\r?\n/);
-					buf = parts.pop() ?? "";
-					for (const part of parts) {
-						// M25: skip SSE comment / heartbeat lines (`: text`)
-						if (part.startsWith(":")) continue;
-						const dataLine = part.match(/^data:\s*(.+)$/m)?.[1];
-						if (!dataLine) continue;
-						// M24: any malformed event must NOT abort the stream — try/catch continue
-						try {
-							const parsed = JSON.parse(dataLine);
-							// T22: handle _marker sentinels (replace old event: run-replay-end)
-							if (parsed && parsed._marker) {
-								if (parsed._marker === "replay-start") {
-									// entering replay — future: suppress animation
-								} else if (parsed._marker === "replay-end") {
-									if (parsed.status !== "live") {
-										setActiveRuns((prev) => removeRun(prev, run.id, threadId));
-										if (parsed.status === "abandoned") {
-											// keep in abandonedRuns / abandonedSessionIds for Resume UI
-											setAbandonedSessionIds((prev) => new Set([...prev, run.langgraph_thread_id]));
-										} else {
-											// completed / failed / cancelled — fully done
-											setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
-											setAbandonedSessionIds((prev) => {
-												const s = new Set(prev);
-												s.delete(run.langgraph_thread_id);
-												return s;
-											});
-										}
-										return;
-									}
-									// status === "live": transitioning to live tail
-								} else if (parsed._marker === "run-end") {
-									setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+
+				for await (const parsed of streamRun(threadId, run.id, resumeFrom, ac.signal)) {
+					// M7: update lastSeq for next reconnect attempt
+					// biome-ignore lint/suspicious/noExplicitAny: SSEEvent might have seq
+					const anyParsed = parsed as any;
+					if (anyParsed.seq != null && typeof anyParsed.seq === "number") {
+						lastSeqByRun.set(run.id, anyParsed.seq);
+					}
+
+					// T22: handle _marker sentinels (replace old event: run-replay-end)
+					if (anyParsed && anyParsed._marker) {
+						if (anyParsed._marker === "replay-start") {
+							// entering replay — future: suppress animation
+						} else if (anyParsed._marker === "replay-end") {
+							if (anyParsed.status !== "live") {
+								setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+								if (anyParsed.status === "abandoned") {
+									// keep in abandonedRuns / abandonedSessionIds for Resume UI
+									setAbandonedSessionIds((prev) => new Set([...prev, run.langgraph_thread_id]));
+								} else {
+									// completed / failed / cancelled — fully done
 									setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
 									setAbandonedSessionIds((prev) => {
 										const s = new Set(prev);
 										s.delete(run.langgraph_thread_id);
 										return s;
 									});
-									setMessages((prev) =>
-										prev.filter((m) => m.id !== `msg-assistant-resume-${run.id}`)
-									);
-									return;
 								}
-								continue; // marker events don't reach the orchestra reducer
+								return;
 							}
-							if (parsed && parsed.type) {
-								setOrchestraState((prev: unknown) =>
-									applyOrchestraEvent(prev as never, parsed as never)
-								);
-							}
-							if (parsed && typeof parsed.seq === "number") {
-								lastSeqByRun.set(run.id, parsed.seq);
-							}
-						} catch {
-							// malformed JSON — skip this event, keep stream alive
+							// status === "live": transitioning to live tail
+						} else if (anyParsed._marker === "run-end") {
+							setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+							setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
+							setAbandonedSessionIds((prev) => {
+								const s = new Set(prev);
+								s.delete(run.langgraph_thread_id);
+								return s;
+							});
+							setMessages((prev) => prev.filter((m) => m.id !== `msg-assistant-resume-${run.id}`));
+							return;
 						}
+						continue; // marker events don't reach the orchestra reducer
+					}
+					if (anyParsed && anyParsed.type) {
+						setOrchestraState((prev: unknown) =>
+							applyOrchestraEvent(prev as never, anyParsed as never)
+						);
 					}
 				}
-			} catch (err: unknown) {
-				if (err instanceof Error && err.name !== "AbortError") {
-					console.warn("run stream error", run.id, err);
+			} catch (err) {
+				if (ac.signal.aborted) return;
+				if (err instanceof QuotaExceededError) {
+					toast.error("Token quota exceeded. Please upgrade your plan.");
+					return;
 				}
+				if (err instanceof StreamMaxRetriesError) {
+					setStreamConnectionLost({ runId: run.id });
+					return;
+				}
+				console.warn(`[attachToRun] Run ${run.id} failed:`, err);
 			}
 		};
 
@@ -974,13 +954,6 @@ export default function NewChatPage() {
 				activeRun = run;
 				setActiveRuns((prev) => upsertRun(prev, run));
 
-				const response = await streamRun(currentThreadId, run.id, -1, controller.signal);
-
-				if (!response.ok) {
-					if (response.status === 402) throw new QuotaExceededError();
-					throw new Error(`Backend error: ${response.status}`);
-				}
-
 				const flushMessages = () => {
 					setMessages((prev) =>
 						prev.map((m) =>
@@ -992,7 +965,7 @@ export default function NewChatPage() {
 				};
 				const scheduleFlush = () => batcher.schedule(flushMessages);
 
-				for await (const parsed of readSSEStream(response)) {
+				for await (const parsed of streamRun(currentThreadId, run.id, -1, controller.signal)) {
 					switch (parsed.type) {
 						case "text-delta":
 							appendText(contentPartsState, parsed.delta);
@@ -1354,6 +1327,10 @@ export default function NewChatPage() {
 							onClick: () => window.open("/pricing", "_blank"),
 						},
 					});
+					return;
+				}
+				if (error instanceof StreamMaxRetriesError) {
+					setStreamConnectionLost({ runId: activeRun?.id ?? "current" });
 					return;
 				}
 				console.error("[NewChatPage] Chat error:", error);
@@ -2326,6 +2303,40 @@ export default function NewChatPage() {
 			<div key={searchSpaceId} className="flex h-full overflow-hidden">
 				<div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
 					{/* T21: Resume banner removed — Resume button is now in OrchestraStrip header */}
+					{/* 11-1 AC#6: Connection-lost banner — surfaces stream max-retries exhaustion */}
+					{streamConnectionLost && (
+						<div className="absolute top-2 left-0 right-0 flex justify-center pointer-events-none px-4 z-20">
+							<div className="bg-destructive/10 border border-destructive/40 text-destructive rounded-lg px-4 py-2 text-sm flex items-center gap-3 shadow-sm pointer-events-auto">
+								<span>Connection lost — stream stopped after multiple retry attempts.</span>
+								<button
+									type="button"
+									onClick={() => {
+										const lostRunId = streamConnectionLost.runId;
+										setStreamConnectionLost(null);
+										let run: ChatRun | undefined;
+										for (const runs of activeRunsRef.current.values()) {
+											run = runs.find((r) => r.id === lostRunId);
+											if (run) break;
+										}
+										if (run && attachToRunRef.current) {
+											attachToRunRef.current(run);
+										}
+									}}
+									className="font-medium underline hover:no-underline"
+								>
+									Click to retry
+								</button>
+								<button
+									type="button"
+									onClick={() => setStreamConnectionLost(null)}
+									aria-label="Dismiss"
+									className="ml-2 text-destructive/60 hover:text-destructive"
+								>
+									✕
+								</button>
+							</div>
+						</div>
+					)}
 					<Thread />
 					{lastTokenUsage && !isRunning && (
 						<div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none px-4 z-10">

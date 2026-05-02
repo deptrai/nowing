@@ -105,7 +105,7 @@ function makeOrchestrationSSE(agents: typeof BASE_AGENTS): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function mockChatSSE(page: any, sseBody: string) {
-	await page.route(/\/api\/(v\d+\/)?chat(\/.*)?$/, async (route) => {
+	await page.route(/\/api\/(v\d+\/)?chat(\/.*)?$/, async (route: import("@playwright/test").Route) => {
 		await route.fulfill({
 			status: 200,
 			headers: {
@@ -116,7 +116,7 @@ async function mockChatSSE(page: any, sseBody: string) {
 			body: sseBody,
 		});
 	});
-	await page.route(/\/api\/(v\d+\/)?threads(\/.*)?$/, async (route) => {
+	await page.route(/\/api\/(v\d+\/)?threads(\/.*)?$/, async (route: import("@playwright/test").Route) => {
 		await route.fulfill({
 			status: 200,
 			contentType: "application/json",

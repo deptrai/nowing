@@ -1349,6 +1349,154 @@ class CompareResult(Base):
     )
 
 
+class CryptoProject(BaseModel, TimestampMixin):
+    """Entity registry for cryptocurrency projects and DeFi protocols."""
+
+    __tablename__ = "crypto_projects"
+
+    project_id = Column(String(128), unique=True, nullable=False)
+    symbol = Column(String(32))
+    name = Column(String(256))
+    chain = Column(String(64))
+    contract_address = Column(String(128))
+    coingecko_id = Column(String(128))
+    defillama_slug = Column(String(128))
+    metadata_ = Column("metadata", JSONB)
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default="NOW()",
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+    snapshots = relationship("CryptoDataSnapshot", back_populates="project", passive_deletes=True)
+    watchlist_entries = relationship(
+        "SearchSpaceCryptoWatchlist", back_populates="project", passive_deletes=True
+    )
+
+    __table_args__ = (
+        Index("ix_crypto_projects_symbol", "symbol"),
+        Index("ix_crypto_projects_contract_address", "contract_address"),
+    )
+
+
+class CryptoDataSnapshot(Base):
+    """Append-only cache of external crypto API tool results with TTL.
+
+    **Bi-modal scoping (ADR-013, Story 11.7 T4)**
+
+    `search_space_id` is intentionally nullable. Snapshots come in two flavors:
+
+    1. **Global cache rows** (`search_space_id IS NULL`):
+       Written by the proactive refresh task (`_prefetch_category` in
+       `crypto_refresh_tasks.py`) to pre-warm popular tokens. Reused across
+       all workspaces. Cleanup is purely TTL-based via `expires_at`.
+
+    2. **Per-workspace rows** (`search_space_id IS NOT NULL`):
+       Written by user-triggered tool calls inside a chat that's bound to a
+       specific search space. Workspace-scoped for billing/quota and RLS.
+       Cleanup includes both TTL expiry AND orphan-purge (when the workspace
+       is deleted, the FK cascade handles the live case; the weekly
+       `cleanup_orphaned_crypto_snapshots` Celery task handles legacy /
+       FK-bypass orphans).
+
+    The `cleanup_orphaned_crypto_snapshots` task scopes to flavor #2 only
+    (`WHERE search_space_id IS NOT NULL`), leaving global rows alone.
+
+    See `_bmad-output/planning-artifacts/adrs/ADR-013-snapshot-scoping-bimodal.md`
+    for the design rationale.
+    """
+
+    __tablename__ = "crypto_data_snapshots"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    search_space_id = Column(
+        Integer, ForeignKey("searchspaces.id", ondelete="CASCADE"), nullable=True
+    )
+    project_id = Column(
+        Integer, ForeignKey("crypto_projects.id", ondelete="CASCADE"), nullable=False
+    )
+    data_category = Column(String(64), nullable=False)
+    tool_name = Column(String(128), nullable=False)
+    tool_args = Column(JSONB)
+    data = Column(JSONB, nullable=False)
+    data_hash = Column(String(64), nullable=False)
+    args_hash = Column(String(64), nullable=True)
+    fetched_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default="NOW()",
+    )
+    ttl_seconds = Column(Integer, nullable=False)
+    expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
+    is_error = Column(Boolean, nullable=False, default=False)
+    api_source = Column(String(64), nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default="NOW()",
+    )
+
+    project = relationship("CryptoProject", back_populates="snapshots")
+    search_space = relationship("SearchSpace", back_populates="crypto_snapshots")
+
+    __table_args__ = (
+        Index(
+            "ix_crypto_snapshots_project_category_fetched",
+            "project_id",
+            "data_category",
+            "fetched_at",
+        ),
+        Index("ix_crypto_snapshots_expires_at", "expires_at"),
+        Index(
+            "ix_crypto_snapshots_cache_lookup",
+            "search_space_id",
+            "project_id",
+            "data_category",
+            "tool_name",
+            "args_hash",
+        ),
+        # Story 11.7 T3: partial index for the weekly orphan-purge query.
+        # Optimised for `WHERE search_space_id IS NOT NULL ORDER BY id ASC
+        # LIMIT 1000` — produced by `cleanup_orphaned_crypto_snapshots`.
+        # Created CONCURRENTLY in migration 141.
+        Index(
+            "ix_crypto_snapshots_orphan_purge",
+            "id",
+            postgresql_where=text("search_space_id IS NOT NULL"),
+        ),
+    )
+
+
+class SearchSpaceCryptoWatchlist(Base):
+    """Association between a workspace (SearchSpace) and a tracked crypto project."""
+
+    __tablename__ = "search_space_crypto_watchlist"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    search_space_id = Column(
+        Integer, ForeignKey("searchspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    project_id = Column(
+        Integer, ForeignKey("crypto_projects.id", ondelete="CASCADE"), nullable=False
+    )
+    added_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default="NOW()",
+    )
+    added_by_id = Column(UUID, ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
+    pin_order = Column(Integer)
+
+    project = relationship("CryptoProject", back_populates="watchlist_entries")
+
+    __table_args__ = (UniqueConstraint("search_space_id", "project_id"),)
+
+
 class ImageGenerationConfig(BaseModel, TimestampMixin):
     """
     Dedicated configuration table for image generation models.
@@ -1582,6 +1730,11 @@ class SearchSpace(BaseModel, TimestampMixin):
         "NewLLMConfig",
         back_populates="search_space",
         order_by="NewLLMConfig.id",
+        cascade="all, delete-orphan",
+    )
+    crypto_snapshots = relationship(
+        "CryptoDataSnapshot",
+        back_populates="search_space",
         cascade="all, delete-orphan",
     )
     image_generation_configs = relationship(

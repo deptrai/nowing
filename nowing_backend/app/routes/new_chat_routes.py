@@ -60,8 +60,9 @@ from app.schemas.new_chat import (
 from app.config import config
 from app.routes.model_list_routes import get_tier_for_model_id
 from app.services.token_quota_service import TokenQuotaExceededError, TokenQuotaService
-from app.tasks.chat.stream_new_chat import stream_new_chat, stream_resume_chat
+from app.tasks.chat.stream_new_chat import _with_heartbeat, stream_new_chat, stream_resume_chat
 from app.users import current_active_user
+from app.services.new_streaming_service import VercelStreamingService
 from app.utils.rbac import check_permission
 
 _logger = logging.getLogger(__name__)
@@ -1188,11 +1189,7 @@ async def handle_new_chat(
                 disabled_tools=request.disabled_tools,
             ),
             media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
+            headers=VercelStreamingService.get_response_headers(),
         )
 
     except HTTPException:
@@ -1501,11 +1498,7 @@ async def regenerate_response(
         return StreamingResponse(
             stream_with_cleanup(),
             media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
+            headers=VercelStreamingService.get_response_headers(),
         )
 
     except HTTPException:
@@ -1621,11 +1614,7 @@ async def resume_chat(
                 thread_visibility=thread.visibility,
             ),
             media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
+            headers=VercelStreamingService.get_response_headers(),
         )
 
     except HTTPException:
@@ -1775,22 +1764,41 @@ async def get_active_runs(
     return [_run_to_response(r) for r in runs]
 
 
-def _rebuild_vercel_wire(event_type: str, payload: object) -> str:
+def _rebuild_vercel_wire(event_type: str, payload: object, seq: int | None = None) -> str:
     """Reconstruct Vercel UI Stream wire format from stored JSONB payload.
 
     Handles three payload generations:
     - Legacy (9-UX-1b): {"_raw": "data: ...\\n\\n"} — pass through verbatim
     - text-delta (T4):   {"type": "text-delta", "_vercel": "0:\\"text\\""} — bare data line
     - structured (T4):   {"type": ..., "data": {...}} — bare data:{json}\\n\\n
+
+    M7: Injects `seq` into structured payloads to enable client-side resume tracking.
+    For non-dict / `_raw` / `_vercel` payloads where seq cannot be embedded into
+    the original payload format, prepend a separate `data: {"_seq": N}` event so
+    the client can advance `lastSeq` even for legacy/text-delta events. This
+    prevents duplicate text-delta replay on reconnect (story 11-1 AC#4).
     """
+    seq_prefix = ""
+    if seq is not None:
+        seq_prefix = f"data: {json.dumps({'_seq': seq})}\n\n"
+
     if not isinstance(payload, dict):
-        return f"data: {json.dumps(payload)}\n\n"
+        return f"{seq_prefix}data: {json.dumps(payload)}\n\n"
+
+    # Inject seq if provided and payload is a dict
+    if seq is not None and "seq" not in payload:
+        payload = {**payload, "seq": seq}
+
     raw = payload.get("_raw")
     if isinstance(raw, str) and raw:
-        return raw
+        # Legacy raw payloads — prepend _seq marker for resume tracking.
+        return f"{seq_prefix}{raw}"
+
     vercel = payload.get("_vercel")
     if isinstance(vercel, str) and vercel:
-        return f"data: {vercel}\n\n"
+        return f"{seq_prefix}data: {vercel}\n\n"
+
+    # Structured dict — seq already merged into payload above; no prefix needed.
     return f"data: {json.dumps(payload)}\n\n"
 
 
@@ -1859,7 +1867,7 @@ async def stream_run(
             yield f"data: {json.dumps({'_marker': 'replay-start', 'seq': last_seq, 'runStartedAtMs': run_started_ms})}\n\n"
 
             for seq, event_type, payload, ts_ms in persisted:
-                wire = _rebuild_vercel_wire(event_type, payload)
+                wire = _rebuild_vercel_wire(event_type, payload, seq=seq)
                 # Inject _ts into structured events so FE can use server timestamp
                 # instead of Date.now() for per-agent elapsed calculations.
                 if ts_ms and wire.startswith("data: {"):
@@ -1903,7 +1911,9 @@ async def stream_run(
                     if seq <= last_seq:
                         continue
                     wire = _rebuild_vercel_wire(
-                        row_data.get("event_type", "message"), row_data.get("payload", {})
+                        row_data.get("event_type", "message"),
+                        row_data.get("payload", {}),
+                        seq=seq,
                     )
                     last_seq = seq
                     yield wire
@@ -1966,7 +1976,7 @@ async def stream_run(
                 if row[0] not in (ChatRunStatus.RUNNING,):
                     break
 
-                yield ": heartbeat\n\n"
+                # Heartbeat is now injected by _with_heartbeat wrapper (15s idle).
 
         except Exception as exc:
             _logger.warning("stream_run pubsub error for run %s: %s", run_id, exc)
@@ -1986,9 +1996,9 @@ async def stream_run(
         yield f"data: {json.dumps({'_marker': 'run-end', 'seq': final_seq, 'status': final_status})}\n\n"
 
     return StreamingResponse(
-        _event_generator(),
+        _with_heartbeat(_event_generator()),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+        headers=VercelStreamingService.get_response_headers(),
     )
 
 

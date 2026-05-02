@@ -5,7 +5,7 @@ Provides 2 tools:
 - get_coingecko_token_info: Token info, market data, and links from CoinGecko free tier
 
 All tools are stateless (NFR-CS4) and use httpx.AsyncClient for non-blocking I/O.
-All tools return {"error": "..."} on failure — never raise exceptions to callers.
+Leverages @crypto_tool_decorator for global resilience (Circuit Breaker, Pacing, Error Handling).
 """
 
 import logging
@@ -14,6 +14,8 @@ from typing import Any
 
 import httpx
 from langchain_core.tools import tool
+
+from .utils import crypto_tool_decorator
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ def create_crypto_news_tool():
     """Factory: get_crypto_news — latest news from CryptoPanic."""
 
     @tool
+    @crypto_tool_decorator("cryptopanic")
     async def get_crypto_news(
         currencies: str = "BTC",
         kind: str = "news",
@@ -51,75 +54,71 @@ def create_crypto_news_tool():
             "limit": limit,
         }
         url = "https://cryptopanic.com/api/v1/posts/"
-        try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                resp = await client.get(url, params=params)
-            if resp.status_code == 429:
-                return {"error": "CryptoPanic rate limit reached, try again later"}
-            resp.raise_for_status()
-            data = resp.json()
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            resp = await client.get(url, params=params)
+        if resp.status_code == 429:
+            return {"error": "CryptoPanic rate limit reached, try again later"}
+        resp.raise_for_status()
+        data = resp.json()
 
-            raw_results: list[dict] = data.get("results", [])
+        raw_results: list[dict] = data.get("results", [])
 
-            if not raw_results:
-                return {
-                    "currencies": currencies,
-                    "articles_found": 0,
-                    "articles": [],
-                    "sentiment_signal": {"positive": 0, "negative": 0, "important": 0},
-                }
-
-            articles = []
-            positive_count = 0
-            negative_count = 0
-            important_count = 0
-
-            for item in raw_results:
-                votes: dict = item.get("votes") or {}
-                positive = int(votes.get("positive") or 0)
-                negative = int(votes.get("negative") or 0)
-                important = int(votes.get("important") or 0)
-                positive_count += positive
-                negative_count += negative
-                important_count += important
-
-                source: dict = item.get("source") or {}
-                articles.append(
-                    {
-                        "title": item.get("title"),
-                        "published_at": item.get("published_at"),
-                        "url": item.get("url"),
-                        "source": source.get("title"),
-                        "source_domain": source.get("domain"),
-                        "votes": {
-                            "positive": positive,
-                            "negative": negative,
-                            "important": important,
-                            "saved": int(votes.get("saved") or 0),
-                        },
-                        "currencies": [
-                            c.get("code") for c in (item.get("currencies") or [])
-                        ],
-                    }
-                )
-
-            total_votes = positive_count + negative_count
-            positive_ratio = positive_count / total_votes if total_votes > 0 else 0.5
-
+        if not raw_results:
             return {
                 "currencies": currencies,
-                "articles_found": len(articles),
-                "articles": articles,
-                "sentiment_signal": {
-                    "positive": positive_count,
-                    "negative": negative_count,
-                    "important": important_count,
-                    "positive_ratio": round(positive_ratio, 3),
-                },
+                "articles_found": 0,
+                "articles": [],
+                "sentiment_signal": {"positive": 0, "negative": 0, "important": 0},
             }
-        except Exception as exc:
-            logger.warning("CryptoPanic news error for %s: %s", currencies, type(exc).__name__, exc_info=True)
-            return {"error": f"Failed to fetch crypto news: {type(exc).__name__}"}
+
+        articles = []
+        positive_count = 0
+        negative_count = 0
+        important_count = 0
+
+        for item in raw_results:
+            votes: dict = item.get("votes") or {}
+            positive = int(votes.get("positive") or 0)
+            negative = int(votes.get("negative") or 0)
+            important = int(votes.get("important") or 0)
+            positive_count += positive
+            negative_count += negative
+            important_count += important
+
+            source: dict = item.get("source") or {}
+            articles.append(
+                {
+                    "title": item.get("title"),
+                    "published_at": item.get("published_at"),
+                    "url": item.get("url"),
+                    "source": source.get("title"),
+                    "source_domain": source.get("domain"),
+                    "votes": {
+                        "positive": positive,
+                        "negative": negative,
+                        "important": important,
+                        "saved": int(votes.get("saved") or 0),
+                    },
+                    "currencies": [
+                        c.get("code") for c in (item.get("currencies") or [])
+                    ],
+                }
+            )
+
+        total_votes = positive_count + negative_count
+        positive_ratio = positive_count / total_votes if total_votes > 0 else 0.5
+
+        return {
+            "currencies": currencies,
+            "articles_found": len(articles),
+            "articles": articles,
+            "sentiment_signal": {
+                "positive": positive_count,
+                "negative": negative_count,
+                "important": important_count,
+                "positive_ratio": round(positive_ratio, 3),
+            },
+        }
 
     return get_crypto_news
 
@@ -128,6 +127,7 @@ def create_coingecko_token_info_tool():
     """Factory: get_coingecko_token_info — detailed token info from CoinGecko free tier."""
 
     @tool
+    @crypto_tool_decorator("coingecko")
     async def get_coingecko_token_info(coin_id: str) -> dict[str, Any]:
         """Get detailed token information, market data, and links from CoinGecko.
 
@@ -154,61 +154,55 @@ def create_coingecko_token_info_tool():
             "developer_data": "false",
             "sparkline": "false",
         }
-        try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                resp = await client.get(url, params=params)
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            resp = await client.get(url, params=params)
 
-            if resp.status_code == 429:
-                return {"error": "CoinGecko rate limit reached, try again in 1 minute"}
-            if resp.status_code == 404:
-                return {"error": f"CoinGecko coin ID '{coin_id}' not found"}
-            resp.raise_for_status()
-            data = resp.json()
+        if resp.status_code == 429:
+            return {"error": "CoinGecko rate limit reached, try again in 1 minute"}
+        if resp.status_code == 404:
+            return {"error": f"CoinGecko coin ID '{coin_id}' not found"}
+        resp.raise_for_status()
+        data = resp.json()
 
-            market_data: dict = data.get("market_data") or {}
-            current_price: dict = market_data.get("current_price") or {}
-            community_data: dict = data.get("community_data") or {}
-            links: dict = data.get("links") or {}
+        market_data: dict = data.get("market_data") or {}
+        current_price: dict = market_data.get("current_price") or {}
+        community_data: dict = data.get("community_data") or {}
+        links: dict = data.get("links") or {}
 
-            return {
-                "id": data.get("id"),
-                "symbol": (data.get("symbol") or "").upper(),
-                "name": data.get("name"),
-                "description": (data.get("description") or {}).get("en", "")[:500],
-                "categories": data.get("categories", []),
-                # Market data
-                "current_price_usd": current_price.get("usd", 0),
-                "market_cap": (market_data.get("market_cap") or {}).get("usd", 0),
-                "fully_diluted_valuation": (market_data.get("fully_diluted_valuation") or {}).get("usd", 0),
-                "total_volume": (market_data.get("total_volume") or {}).get("usd", 0),
-                "price_change_24h_pct": market_data.get("price_change_percentage_24h"),
-                "price_change_7d_pct": market_data.get("price_change_percentage_7d"),
-                "circulating_supply": market_data.get("circulating_supply"),
-                "total_supply": market_data.get("total_supply"),
-                "max_supply": market_data.get("max_supply"),
-                "ath": (market_data.get("ath") or {}).get("usd"),
-                "atl": (market_data.get("atl") or {}).get("usd"),
-                # Links
-                "links": {
-                    "homepage": (links.get("homepage") or [""])[0],
-                    "twitter": links.get("twitter_screen_name"),
-                    "github": (links.get("repos_url") or {}).get("github", []),
-                    "reddit": links.get("subreddit_url"),
-                    "coingecko_url": f"https://www.coingecko.com/en/coins/{coin_id}",
-                },
-                # Community
-                "community_data": {
-                    "twitter_followers": community_data.get("twitter_followers"),
-                    "reddit_subscribers": community_data.get("reddit_subscribers"),
-                    "reddit_active_accounts_48h": community_data.get("reddit_accounts_active_48h"),
-                    "telegram_channel_user_count": community_data.get("telegram_channel_user_count"),
-                },
-                "last_updated": data.get("last_updated"),
-            }
-        except Exception as exc:
-            logger.warning(
-                "CoinGecko token info error for %s: %s", coin_id, type(exc).__name__, exc_info=True
-            )
-            return {"error": f"Failed to fetch CoinGecko token info: {type(exc).__name__}"}
+        return {
+            "id": data.get("id"),
+            "symbol": (data.get("symbol") or "").upper(),
+            "name": data.get("name"),
+            "description": (data.get("description") or {}).get("en", "")[:500],
+            "categories": data.get("categories", []),
+            # Market data
+            "current_price_usd": current_price.get("usd", 0),
+            "market_cap": (market_data.get("market_cap") or {}).get("usd", 0),
+            "fully_diluted_valuation": (market_data.get("fully_diluted_valuation") or {}).get("usd", 0),
+            "total_volume": (market_data.get("total_volume") or {}).get("usd", 0),
+            "price_change_24h_pct": market_data.get("price_change_percentage_24h"),
+            "price_change_7d_pct": market_data.get("price_change_percentage_7d"),
+            "circulating_supply": market_data.get("circulating_supply"),
+            "total_supply": market_data.get("total_supply"),
+            "max_supply": market_data.get("max_supply"),
+            "ath": (market_data.get("ath") or {}).get("usd"),
+            "atl": (market_data.get("atl") or {}).get("usd"),
+            # Links
+            "links": {
+                "homepage": (links.get("homepage") or [""])[0],
+                "twitter": links.get("twitter_screen_name"),
+                "github": (links.get("repos_url") or {}).get("github", []),
+                "reddit": links.get("subreddit_url"),
+                "coingecko_url": f"https://www.coingecko.com/en/coins/{coin_id}",
+            },
+            # Community
+            "community_data": {
+                "twitter_followers": community_data.get("twitter_followers"),
+                "reddit_subscribers": community_data.get("reddit_subscribers"),
+                "reddit_active_accounts_48h": community_data.get("reddit_accounts_active_48h"),
+                "telegram_channel_user_count": community_data.get("telegram_channel_user_count"),
+            },
+            "last_updated": data.get("last_updated"),
+        }
 
     return get_coingecko_token_info

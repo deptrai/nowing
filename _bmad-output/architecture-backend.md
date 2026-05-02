@@ -6,17 +6,19 @@ Backend của Nowing là một ứng dụng **Python FastAPI** mạnh mẽ, đư
 ## Các Thành Phần Cốt Lõi
 
 ### 1. Framework AI Agent (DeepAgents & LangGraph)
-- **DeepAgents**: Framework tùy chỉnh để xây dựng các AI agents tự chủ (autonomous agents).
+- **DeepAgents**: Framework tùy chỉnh để xây dựng các AI agents tự chủ (autonomous agents), cung cấp `SubAgent`, `SubAgentMiddleware`, và middleware primitives.
 - **LangGraph**: Quản lý StateGraph (đồ thị trạng thái) và quy trình điều phối cho các suy luận phức tạp, nhiều bước.
-- **Workflow**: Người dùng gửi truy vấn -> LangGraph xác định ý định (Routing) -> Kích hoạt các Agents cụ thể (Search Agent, Coding Agent, v.v.).
+- **Workflow**: Người dùng gửi truy vấn → LangGraph chạy main agent → main agent spawn crypto sub-agents song song qua `task()` tool → tổng hợp kết quả → stream về client.
+- **Crypto Orchestra**: 7 sub-agents chuyên biệt (defillama, sentiment, news, smart_contract, tokenomics, yield_optimizer, whale_tracker) chạy parallel với scoped tool lists. Chi tiết xem [architecture-crypto-orchestra.md](./architecture-crypto-orchestra.md).
 
 ### 2. Dịch Vụ Dữ Liệu (Data Services)
 - **Primary Database**: **Postgres** (với extension `pgvector`) lưu trữ:
     - Dữ liệu người dùng & ứng dụng.
     - Vector Embeddings cho tìm kiếm ngữ nghĩa (semantic search).
     - Lịch sử chat và phiên làm việc.
-- **ORM**: **SQLAlchemy (Async)** dùng cho các tương tác cơ sở dữ liệu quan hệ.
-- **Caching/Queue**: **Redis** dùng cho hàng đợi tác vụ (Celery broker) và caching phản hồi ngắn hạn.
+- **ORM**: **SQLAlchemy (Async)** dùng cho các tương tác cơ sở dữ liệu quan hệ. Models định nghĩa tại `app/db.py` (42 models, 2710 lines).
+- **Caching/Queue**: **Redis** dùng cho hàng đợi tác vụ (Celery broker), pubsub cho live SSE stream, và caching phản hồi ngắn hạn.
+- **Authentication**: fastapi-users với JWT (primary) + OAuth2 (Google). Gift code subscription flow có models (`GiftCode`, `GiftRequest`) nhưng routes chưa implement.
 
 ### 3. Hệ Thống Tìm Kiếm & RAG
 - **Vector Store**: Sử dụng `pgvector` để lưu trữ embeddings của tài liệu.
@@ -279,3 +281,304 @@ Khi runner restart và resume từ checkpoint:
 - Dedup chỉ áp dụng cho: `orchestra-spawn` (by agentId), `data-orchestra-source-fetched` (by agentId:domain), `data-orchestra-model-attribution` (by agentId)
 
 ---
+
+## Middleware Pipeline (chat_deepagent.py)
+
+Main agent và sub-agents đều đi qua middleware stack. Ordering quan trọng — middleware chạy tuần tự, mỗi layer wrap layer tiếp theo.
+
+### Pipeline cho Main Agent
+
+```
+Request → AnthropicPromptCachingMiddleware
+        → PatchToolCallsMiddleware
+        → TodoListMiddleware
+        → create_summarization_middleware()
+        → KnowledgeBaseSearchMiddleware    ← custom (middleware/)
+        → MemoryInjectionMiddleware        ← custom (middleware/)
+        → DedupHITLToolCallsMiddleware     ← custom (middleware/)
+        → NowingFilesystemMiddleware       ← custom (middleware/)
+        → SourceAttributionMiddleware      ← custom (chat_deepagent.py)
+        → ProviderRateLimitMiddleware      ← custom (chat_deepagent.py)
+        → ParallelSpawnDirectiveMiddleware ← custom (chat_deepagent.py)
+        → ParallelismTelemetryMiddleware   ← custom (chat_deepagent.py)
+        → LangGraph StateGraph execution
+```
+
+### Pipeline cho Sub-Agents (via `_build_gp_middleware()`)
+
+Mỗi sub-agent nhận **fresh middleware instances** (NFR-CS4) để tránh state leaking:
+
+```
+Sub-agent request → AnthropicPromptCachingMiddleware
+                  → PatchToolCallsMiddleware
+                  → TodoListMiddleware
+                  → create_summarization_middleware()
+                  → KnowledgeBaseSearchMiddleware
+                  → MemoryInjectionMiddleware
+                  → NowingFilesystemMiddleware
+                  → SourceAttributionMiddleware
+                  → SubAgentResilienceMiddleware    ← retry + exponential backoff
+                  → LangGraph execution
+```
+
+### Middleware Descriptions
+
+| Middleware | File | Chức năng |
+|-----------|------|-----------|
+| `AnthropicPromptCachingMiddleware` | langchain_anthropic | Cache prompt prefixes (system + few-shot) để giảm latency + cost |
+| `PatchToolCallsMiddleware` | deepagents | Fix malformed tool_call JSON từ LLM (incomplete args, missing fields) |
+| `TodoListMiddleware` | langchain | Manage agent's internal task list (plan, execute, track progress) |
+| `create_summarization_middleware()` | deepagents | Auto-summarize conversation khi vượt context window |
+| `KnowledgeBaseSearchMiddleware` | middleware/knowledge_search.py | Pre-search KB trước mỗi LLM call, inject relevant chunks vào context |
+| `MemoryInjectionMiddleware` | middleware/memory_injection.py | Inject team memory document vào system prompt |
+| `DedupHITLToolCallsMiddleware` | middleware/dedup_tool_calls.py | Dedup human-in-the-loop tool calls (prevent double-execution) |
+| `NowingFilesystemMiddleware` | middleware/filesystem.py | Virtual filesystem cho agent (read/write/list files trong search space) |
+| `SourceAttributionMiddleware` | chat_deepagent.py | Track data sources (CoinGecko, DeFiLlama, etc.) cho citation pipeline |
+| `ProviderRateLimitMiddleware` | chat_deepagent.py | Global rate bucket — min interval giữa LLM calls, prevent burst |
+| `SubAgentResilienceMiddleware` | chat_deepagent.py | Retry with exponential backoff cho sub-agent failures (rate limit, timeout). Max 5 attempts, max backoff 120s |
+| `ParallelSpawnDirectiveMiddleware` | chat_deepagent.py | Orchestrate crypto sub-agents: inject parallel task() directives vào system prompt, quản lý spawn order, handle synthesis phase |
+| `ParallelismTelemetryMiddleware` | chat_deepagent.py | Track task() calls per model step — log warning nếu agents spawned sequentially thay vì parallel |
+
+### Ordering Constraints
+
+1. **PromptCaching PHẢI đứng đầu** — nó cần thấy raw messages trước khi các middleware khác modify
+2. **PatchToolCalls PHẢI trước TodoList** — fix JSON trước khi TodoList parse tool results
+3. **KnowledgeSearch PHẢI trước SourceAttribution** — search results cần được attribute
+4. **ParallelSpawnDirective PHẢI sau SourceAttribution** — cần source data để build synthesis directive
+5. **Resilience CHỈ cho sub-agents** — main agent không retry (user đang chờ stream)
+
+---
+
+## Tool Registry (`app/agents/new_chat/tools/registry.py`)
+
+56 tools registered, sử dụng factory pattern với dependency injection:
+
+```python
+@dataclass
+class ToolDefinition:
+    name: str
+    description: str
+    factory: Callable[[dict[str, Any]], BaseTool]
+    requires: list[str] = field(default_factory=list)  # DB deps needed
+```
+
+### Tool Categories
+
+| Category | Count | Tools | Requires |
+|----------|-------|-------|----------|
+| **Content Generation** | 4 | podcast, video_presentation, report, generate_image | db_session, search_space_id, user_id |
+| **Web** | 2 | web_search, scrape_webpage | (none) |
+| **Knowledge Base** | 2 | chainlens_research, search_nowing_docs | search_space_id |
+| **Crypto — Real-time** | 2 | get_live_token_price, get_live_token_data | (none) |
+| **Crypto — DeFiLlama** | 5 | protocol, tvl_overview, yields, stablecoins, bridges | (none) |
+| **Crypto — Sentiment/News** | 4 | cmc_sentiment, reddit_sentiment, crypto_news, coingecko_info | (none) |
+| **Crypto — Security** | 4 | contract_info, token_security, certik_audit_score, certik_incident_history | (none) |
+| **Crypto — On-chain** | 4 | nansen_smart_money, nansen_wallet_label, nansen_token_god_mode, run_dune_query | (none) |
+| **Crypto — Research** | 2 | tokeninsight_rating, tokeninsight_research_snippet | (none) |
+| **Connector CRUD** | ~30 | Linear (3), Notion (3), Google Drive (2), Dropbox (2), OneDrive (2), Calendar (3), Gmail (2), Confluence (3), Jira (3), Slack (3), Teams (2) | db_session, connector_id |
+| **Agent Internal** | 3 | update_memory, update_team_memory, scenario_resynthesis | db_session, search_space_id |
+
+### Tool Scoping cho Sub-Agents
+
+Mỗi sub-agent chỉ nhận subset tools liên quan (NFR-CS4), định nghĩa tại `subagents/crypto/*_spec.py`:
+
+```python
+# Ví dụ: defillama_spec.py
+DEFILLAMA_ALLOWED_TOOLS: tuple[str, ...] = (
+    "get_defillama_protocol",
+    "get_defillama_tvl_overview",
+    "get_defillama_yields",
+    "get_defillama_stablecoins",
+    "get_defillama_bridges",
+    "get_live_token_data",
+    "get_live_token_price",
+    "chainlens_deep_research",
+)
+```
+
+---
+
+## Cấu Trúc Thư Mục Chính
+
+```
+nowing_backend/app/
+├── agents/new_chat/
+│   ├── chat_deepagent.py      — Main agent factory + inline middleware (2478 LOC)
+│   ├── middleware/
+│   │   ├── knowledge_search.py — KB pre-search middleware
+│   │   ├── memory_injection.py — Team memory injection
+│   │   ├── dedup_tool_calls.py — HITL dedup
+│   │   └── filesystem.py       — Virtual filesystem
+│   ├── subagents/crypto/
+│   │   ├── defillama_spec.py   — DeFiLlama analyst spec
+│   │   ├── sentiment_spec.py   — Sentiment analyst spec
+│   │   ├── news_spec.py        — News analyst spec
+│   │   ├── smart_contract_spec.py
+│   │   ├── tokenomics_spec.py
+│   │   ├── whale_tracker_spec.py
+│   │   ├── yield_optimizer_spec.py
+│   │   └── narration_templates.py — Post-call narration for orchestra events
+│   └── tools/
+│       ├── registry.py         — 56 ToolDefinitions
+│       ├── defillama.py        — 5 DeFiLlama tools
+│       ├── crypto_sentiment.py — CMC + Reddit sentiment
+│       ├── crypto_news.py      — CryptoPanic news
+│       ├── crypto_realtime.py  — DexScreener live price/data
+│       ├── contract_analysis.py — Etherscan + GoPlus security
+│       ├── certik_skynet.py    — CertiK audit score + incidents
+│       ├── nansen_smart_money.py — Nansen whale tracking
+│       ├── dune_query.py       — Dune Analytics queries
+│       ├── tokeninsight_rating.py — TokenInsight ratings
+│       ├── _rate_limiter.py    — Shared rate limiting utilities
+│       └── ... (web_search, scrape, generate_image, etc.)
+├── routes/                     — 50 route files (REST endpoints)
+├── services/                   — Business logic layer
+│   ├── connector_service.py    — ConnectorService class (2942 LOC)
+│   ├── llm_router_service.py   — LLM model routing (1173 LOC)
+│   ├── new_streaming_service.py
+│   ├── notification_service.py
+│   └── ... (30+ services)
+├── tasks/
+│   ├── chat/                   — Agent execution (stream_new_chat, run_manager)
+│   ├── celery_tasks/           — Background jobs
+│   └── connector_indexers/     — Periodic connector data indexing
+├── retriever/                  — RAG retrieval logic
+│   ├── chunks_hybrid_search.py
+│   └── documents_hybrid_search.py
+├── connectors/                 — Connector adapters (google_drive, dropbox, onedrive)
+└── db.py                       — SQLAlchemy models (42 models, 2710 LOC)
+```
+
+---
+
+## Crypto Data Persistence Layer (Epic 10)
+
+**Added:** 2026-04-29 | **ADR:** [ADR-001-crypto-data-layer.md](./planning-artifacts/adrs/ADR-001-crypto-data-layer.md)
+
+### Vấn Đề
+
+Mỗi crypto analysis spawn 7 sub-agents × 2-5 external API calls = ~15-35 API calls. 100 concurrent users query ETH → ~3500 API calls/hr cho identical data. Epic 10 giảm xuống còn ~1 API call set per TTL window per token.
+
+### Kiến Trúc
+
+```
+Sub-agent tool call
+       │
+       ▼
+SourceAttributionMiddleware    ← fires narration/events always
+       │
+       ▼
+CryptoDataCacheMiddleware      ← NEW (Epic 10)
+  ├── TOOL_CATEGORY_MAP check  → not crypto tool? pass through
+  ├── CryptoProjectResolver    → resolve args to canonical project_id
+  ├── DB fresh snapshot check  → HIT? return cached data
+  ├── Redis lock acquire       → thundering herd protection
+  ├── Double-check DB          → someone else filled cache?
+  ├── Call handler()           → actual API call
+  ├── CryptoDataStore.write()  → persist snapshot
+  └── Error? → graceful degradation → call handler() directly
+       │
+       ▼
+External API (DeFiLlama, CoinGecko, GoPlus, etc.)
+```
+
+### DB Schema (3 tables mới)
+
+```python
+# app/models/crypto.py
+
+class CryptoProject(Base):
+    id               SERIAL PK
+    project_id       VARCHAR(128) UNIQUE   # "uniswap", "ethereum"
+    symbol           VARCHAR(32)           # "UNI", "ETH"
+    name             VARCHAR(256)
+    chain            VARCHAR(64)
+    contract_address VARCHAR(128)
+    coingecko_id     VARCHAR(128)
+    defillama_slug   VARCHAR(128)
+    metadata         JSONB
+    created_at, updated_at
+
+class CryptoDataSnapshot(Base):
+    id           BIGSERIAL PK
+    project_id   FK → crypto_projects
+    data_category VARCHAR(64)     # "defi_tvl", "price_realtime", etc.
+    tool_name    VARCHAR(128)
+    tool_args    JSONB
+    data         JSONB NOT NULL   # full tool return dict
+    data_hash    VARCHAR(64)      # SHA-256 for dedup
+    fetched_at   TIMESTAMPTZ
+    ttl_seconds  INTEGER
+    expires_at   TIMESTAMPTZ      # fetched_at + interval ttl_seconds
+    is_error     BOOLEAN DEFAULT FALSE
+    api_source   VARCHAR(64)
+    # Indexes: (project_id, data_category, fetched_at DESC), (expires_at)
+
+class SearchSpaceCryptoWatchlist(Base):
+    search_space_id FK → searchspaces
+    project_id      FK → crypto_projects
+    added_at, added_by_id, pin_order
+    UNIQUE(search_space_id, project_id)
+```
+
+### Data Categories & TTL
+
+| Category | TTL | Tools |
+|----------|-----|-------|
+| `price_realtime` | 5 min | get_live_token_price, get_live_token_data |
+| `sentiment_index` | 15 min | get_cmc_sentiment, get_reddit_crypto_sentiment |
+| `defi_tvl` | 1 hour | get_defillama_protocol |
+| `defi_yields` | 2 hours | get_defillama_yields |
+| `defi_overview` | 2 hours | get_defillama_tvl_overview, get_defillama_stablecoins |
+| `news` | 1 hour | get_crypto_news |
+| `token_fundamentals` | 1 hour | get_coingecko_token_info |
+| `smart_money` | 2 hours | get_nansen_smart_money, get_nansen_wallet_label |
+| `dune_onchain` | 2 hours | run_dune_query |
+| `security_audit` | 24 hours | check_token_security, get_certik_audit_score |
+| `contract_info` | 24 hours | get_contract_info |
+| `tokeninsight` | 24 hours | get_tokeninsight_rating, get_tokeninsight_research_snippet |
+| `certik_incidents` | 24 hours | get_certik_incident_history |
+
+### New Files (Epic 10)
+
+```
+nowing_backend/app/
+├── models/
+│   └── crypto.py                          — 3 SQLAlchemy models
+├── agents/new_chat/
+│   ├── tools/
+│   │   └── crypto_data_categories.py      — Enum, TTL config, TOOL_CATEGORY_MAP
+│   └── middleware/
+│       └── crypto_data_cache.py           — CryptoDataCacheMiddleware
+├── services/
+│   ├── crypto_project_resolver.py         — Multi-field project resolution
+│   ├── crypto_data_store.py               — Snapshot CRUD (read/write)
+│   └── crypto_cache_lock.py               — Redis distributed lock
+├── tasks/celery_tasks/
+│   └── crypto_refresh_tasks.py            — Background refresh + cleanup
+└── routes/
+    └── crypto_data_routes.py              — Watchlist + timeline REST API
+```
+
+### Feature Flag
+
+`CRYPTO_DATA_CACHE_ENABLED` (default: `false`) — safe rollout toggle. `false` = zero behavior change (pass-through middleware).
+
+### Middleware Stack Integration
+
+```python
+# chat_deepagent.py — _build_gp_middleware() after Epic 10
+def _build_gp_middleware(agent_name: str):
+    return [
+        AnthropicPromptCachingMiddleware(...),
+        PatchToolCallsMiddleware(...),
+        KnowledgeSearchMiddleware(...),
+        MemoryInjectionMiddleware(...),
+        DedupToolCallsMiddleware(...),
+        NowingFilesystemMiddleware(...),
+        SourceAttributionMiddleware(agent_name),   # narration always
+        CryptoDataCacheMiddleware(db, redis),       # ← NEW: cache interception
+        SubAgentResilienceMiddleware(...),
+        ...
+    ]
+```

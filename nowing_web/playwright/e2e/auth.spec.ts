@@ -25,7 +25,7 @@ test.describe("Authentication", () => {
 		const meCall = interceptNetworkCall({ url: "**/api/users/me" });
 
 		// When — navigate as authenticated user
-		await log.step("Navigate to dashboard");
+		await log({ level: "step", message: "Navigate to dashboard" });
 		await page.goto("/");
 
 		// Then — verify API response and UI loaded
@@ -66,14 +66,14 @@ test.describe("Authentication", () => {
 		await expect(page).toHaveURL(/\/(login|auth)/);
 
 		// When — fill and submit the login form
-		await log.step("Fill credentials");
+		await log({ level: "step", message: "Fill credentials" });
 		await page.getByTestId("login-email-input").or(page.getByLabel(/email/i)).fill(email);
 		await page
 			.getByTestId("login-password-input")
 			.or(page.getByLabel(/password/i))
 			.fill(password);
 
-		await log.step("Submit login");
+		await log({ level: "step", message: "Submit login" });
 		await page
 			.getByTestId("login-submit-button")
 			.or(page.getByRole("button", { name: /sign in|log in|login/i }))
@@ -98,7 +98,7 @@ test.describe("Authentication", () => {
 		await page.waitForURL(/^(?!.*\/(login|auth))/, { timeout: 15_000 });
 
 		// When — trigger logout action
-		await log.step("Trigger logout");
+		await log({ level: "step", message: "Trigger logout" });
 
 		// Try common logout patterns
 		const logoutButton = page
@@ -133,7 +133,7 @@ test.describe("Authentication", () => {
 		await page.goto("/login");
 
 		// When — submit wrong password
-		await log.step("Submit invalid credentials");
+		await log({ level: "step", message: "Submit invalid credentials" });
 		await page
 			.getByTestId("login-email-input")
 			.or(page.getByLabel(/email/i))

@@ -38,3 +38,15 @@ export class NotFoundError extends AppError {
 		super(message, status, statusText);
 	}
 }
+
+export class QuotaExceededError extends AppError {
+	constructor(message = "Token quota exceeded") {
+		super(message, 402, "Payment Required");
+	}
+}
+
+export class StreamMaxRetriesError extends AppError {
+	constructor(message = "Stream connection lost — max retries exceeded") {
+		super(message);
+	}
+}

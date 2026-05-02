@@ -29,14 +29,14 @@ test.describe("Search Space Management", () => {
 		await page.goto("/");
 
 		// When — open create space dialog/form
-		await log.step("Open create space form");
+		await log({ level: "step", message: "Open create space form" });
 		const createButton = page
 			.getByTestId("create-search-space-button")
 			.or(page.getByRole("button", { name: /new space|create space|add space/i }));
 		await createButton.click();
 
 		// Fill in the form
-		await log.step("Fill space name");
+		await log({ level: "step", message: "Fill space name" });
 		await page
 			.getByTestId("search-space-name-input")
 			.or(page.getByLabel(/name/i).first())
@@ -49,7 +49,7 @@ test.describe("Search Space Management", () => {
 		});
 
 		// Submit
-		await log.step("Submit form");
+		await log({ level: "step", message: "Submit form" });
 		await page
 			.getByTestId("create-search-space-submit")
 			.or(page.getByRole("button", { name: /create|save|confirm/i }))
@@ -77,7 +77,7 @@ test.describe("Search Space Management", () => {
 		const listCall = interceptNetworkCall({ url: "**/api/searchspaces" });
 
 		// When — navigate to dashboard
-		await log.step("Navigate to dashboard");
+		await log({ level: "step", message: "Navigate to dashboard" });
 		await page.goto("/");
 
 		// Then — spaces API called
@@ -117,7 +117,7 @@ test.describe("Search Space Management", () => {
 		await expect(page.getByText(spaceName)).toBeVisible({ timeout: 15_000 });
 
 		// When — delete the space
-		await log.step("Delete search space");
+		await log({ level: "step", message: "Delete search space" });
 
 		// Intercept DELETE request
 		const deleteCall = interceptNetworkCall({
@@ -177,7 +177,7 @@ test.describe("Search Space Management", () => {
 		await page.goto("/");
 		await expect(page.getByText(spaceName)).toBeVisible({ timeout: 15_000 });
 
-		await log.step("Click into search space");
+		await log({ level: "step", message: "Click into search space" });
 		await page.getByText(spaceName).first().click();
 
 		// Then — URL contains the space ID or space name

@@ -17,8 +17,12 @@ stepsCompleted:
   - step-e-01-discovery
   - step-e-02-review
   - step-e-03-edit
-lastEdited: '2026-04-23'
+lastEdited: '2026-05-01'
 editHistory:
+  - date: '2026-05-01'
+    changes: 'Thêm Epic 11 Architecture Resilience & Stability: FR41-FR45 (SSE heartbeat+reconnect, circuit breaker hardening, orphaned cache purge, per-API token buckets, client-side quota enforcement). NFR-R2 (SSE reliability), NFR-R3 (breaker consistency), NFR-P5 (rate limit prevention). Source: architecture-improvement-proposals-2026-05-01.md v2 (Senior Architect Critical Review).'
+  - date: '2026-04-29'
+    changes: 'Thêm Epic 10 Persistent Shared Crypto Data Layer: FR36-FR40 (5 FRs cho 3 DB tables + CryptoDataCacheMiddleware + thundering herd protection + background refresh + workspace watchlist API), NFR-CS5 (Cache Hit Rate ≥ 70% sau warmup), NFR-CS6 (Graceful Degradation 100% khi cache fail). ADR: ADR-001-crypto-data-layer.md. Source: architecture plan /plans/partitioned-crafting-phoenix.md.'
   - date: '2026-04-23'
     changes: 'Readiness fix M2: Split NFR-Q1 (Accuracy < 3% — factual error rate) and NFR-Q5 (Smart Selection Accuracy ≥ 90% — orchestrator routing). Architecture §6 reconciled. Resolves implementation-readiness-report-2026-04-23 issue M2.'
   - date: '2026-04-23'
@@ -314,6 +318,23 @@ Cấu trúc API (FastAPI) bao gồm:
 - **FR34 (Smart Agent Selection):** Main agent system prompt có instruction để chọn subset agents phù hợp với câu hỏi cụ thể (không spawn cả 10 agents khi user chỉ hỏi về 1 khía cạnh). Lookup table: agent name → chuyên môn → trigger keywords.
 - **FR35 (Graceful Degradation):** Khi 1 hoặc nhiều sub-agents fail (rate limit 429, timeout, API unavailable), main agent vẫn tổng hợp response từ các agents thành công và mention rõ nguồn nào unavailable trong response — không crash toàn bộ analysis.
 
+### Persistent Shared Crypto Data Layer (Epic 10)
+- **FR36 (Crypto Data Schema):** Hệ thống tạo 3 bảng PostgreSQL mới: `crypto_projects` (entity registry với project_id, symbol, coingecko_id, defillama_slug), `crypto_data_snapshots` (append-only timeline với data_category, tool_name, tool_args JSONB, data JSONB, ttl_seconds, expires_at, is_error), và `search_space_crypto_watchlist` (workspace → project link với pin_order). Tất cả crypto tool results được persist với full metadata.
+- **FR37 (Cache Middleware Interception):** `CryptoDataCacheMiddleware` intercept `awrap_tool_call` trước khi gọi external API — check DB cho fresh snapshot (expires_at > NOW()), return cached data nếu có. Nếu miss → gọi API → write snapshot. Middleware đặt sau `SourceAttributionMiddleware` trong stack. Feature flag `CRYPTO_DATA_CACHE_ENABLED` cho phép bật/tắt không cần redeploy. Graceful degradation: nếu DB/Redis fail → pass-through to direct API call, không throw exception.
+- **FR38 (Thundering Herd Protection):** Khi nhiều concurrent requests cùng query token X và cache miss, hệ thống dùng Redis distributed lock (SET NX EX 60s) để đảm bảo chỉ 1 request gọi external API, các requests còn lại double-check DB sau khi acquire lock. Fallback sang `asyncio.Lock` per-process nếu Redis unavailable.
+- **FR39 (Background Data Refresh):** Celery beat task `refresh_popular_crypto_data` chạy mỗi 30 phút: tìm tokens được query trong 24h qua, pre-fetch categories sắp expire (trong vòng 5 phút), write vào DB. Task `cleanup_expired_crypto_snapshots` chạy daily 3 AM: xóa snapshots > 30 ngày, error snapshots > 24h, giữ max 1000 snapshots per project per category.
+- **FR40 (Workspace Watchlist API):** REST API endpoint `GET /api/crypto/projects/{project_id}/timeline` trả về lịch sử snapshots theo data_category + time range. `GET /api/crypto/workspaces/{search_space_id}/watchlist` trả về danh sách crypto projects được pin bởi workspace. Data exposed là historical snapshots (không phải real-time) — không cần auth scope phức tạp, chỉ cần search_space ownership check.
+
+### Architecture Resilience & Stability (Epic 11)
+- **FR41 (SSE Heartbeat & Auto-Reconnect):** Backend SSE stream inject `: heartbeat` comment mỗi 15s khi không có data event — giữ connection alive qua proxy/gateway. Frontend tự reconnect với exponential backoff (1s→2s→4s→max 30s) khi stream đứt, resume từ `after_seq` parameter để không mất event. Sau 5 lần retry fail, UI hiển thị banner "Connection lost — click to retry". HTTP/2 multiplexing enforced ở reverse proxy để bypass browser 6-connection limit.
+  - **FR41.1 (Production CDN compatibility — Story 11.6):** SSE traffic verified compatible với Cloudflare CDN — không bị recompression hay buffering. Required Cloudflare config (page rule hoặc worker bypass) documented in `docs/deployment/sse-cdn.md`.
+  - **FR41.2 (HTTP/2 multiplexing verification — Story 11.6):** Reverse proxy (Traefik) HTTP/2 config verified in staging với 3+ concurrent SSE tabs maintaining connections. Required Traefik flags documented in `docs/deployment/http2.md`.
+  - **FR41.3 (Heartbeat cancel safety — Story 11.7):** SSE consumer disconnect mid-stream không corrupt LangGraph state hoặc leak DB sessions. Structured concurrency / sentinel pattern thay vì raw `task.cancel()`.
+- **FR42 (Circuit Breaker Hardening):** Circuit breaker (đã Redis-backed) bổ sung explicit HALF_OPEN state cho probe logic — chỉ cho 1 request thử khi cooldown hết, các request khác fail-fast. In-memory cache retain last-known state khi Redis unavailable (thay vì default closed). Structured logging cho mọi state transition (closed→open, open→half_open, half_open→closed/open).
+- **FR43 (Orphaned Cache Purge):** Celery weekly task (Sunday 4 AM UTC) tự động xóa `crypto_data_snapshots` có `search_space_id` trỏ tới workspace đã bị xóa (orphaned records). Batch delete 1000 rows/lần tránh long transaction lock. Independent of `CRYPTO_DATA_CACHE_ENABLED` flag.
+- **FR44 (Per-API Token Bucket Rate Limiters):** Per-provider Redis-backed token bucket rate limiter thay vì rely chỉ vào circuit breaker sau 429. Mỗi provider có capacity/refill_rate riêng (CoinGecko 30/min, GoPlus ~33/30min, Etherscan 5/sec, DeFiLlama generous 120/min). Tool chờ tối đa 5s cho bucket refill trước khi return error. In-memory fallback khi Redis unavailable.
+- **FR45 (Client-Side Quota Enforcement):** `useSubscriptionGate()` hook đọc `subscription_current_period_end` từ Zero local cache — redact deep research content (blur + upgrade CTA) khi subscription expired. Hoạt động offline (pure client-side timestamp check). Auto-unlock khi Zero-sync push renewal. Bổ sung cho server-side enforcement — không thay thế.
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -338,10 +359,19 @@ Cấu trúc API (FastAPI) bao gồm:
 - **NFR-CS3 (API Rate Awareness):** Crypto tools phải handle rate limits gracefully — CoinGecko 30 req/min (hoặc Pro tier nếu upgrade), GoPlus 2000 req/day, CryptoPanic public tier, DeFiLlama unlimited. Khi rate limit hit, agent fallback sang `chainlens_deep_research` hoặc trả error message để main agent xử lý (NFR-Q3 graceful degradation).
 - **NFR-CS4 (Stateless Tools):** Tất cả crypto tools đăng ký với `requires=[]` trong tool registry — không phụ thuộc DB, không cần session state, không cần workspace context. Đảm bảo các agents có thể scale horizontal mà không cần shared state.
 
+### Crypto Data Cache (Epic 10)
+- **NFR-CS5 (Cache Hit Rate):** Sau warmup period (24h từ khi enable `CRYPTO_DATA_CACHE_ENABLED`), cache hit rate cho top-10 tokens (ETH, BTC, SOL, BNB, etc.) phải ≥ 70% khi có ≥ 10 requests/hour. Đo bằng Prometheus counter `crypto_cache_hits_total / (crypto_cache_hits_total + crypto_cache_misses_total)`.
+- **NFR-CS6 (Cache Failure Isolation):** Khi DB hoặc Redis không khả dụng, `CryptoDataCacheMiddleware` phải tự động bypass và gọi trực tiếp external API — không raise exception, không thay đổi response format, không ảnh hưởng agent execution. P99 overhead của cache layer (khi cache miss) phải < 5ms.
+
 ### Quality Gates (Epic 9 — North Star Metrics)
 - **NFR-Q1 (Accuracy):** Factual error rate cho crypto research responses (sample QA vs raw API ground truth) phải < 3%. Đo bằng manual QA + automated cross-check trên random sample 100 full-analysis queries mỗi 2 tuần production.
 - **NFR-Q2 (Hallucination Rate):** % responses chứa số liệu không xuất phát từ tool output (fabricated numbers) phải < 1%. Đo bằng pattern check + sample QA.
 - **NFR-Q3 (Graceful Degradation):** % requests có ≥ 1 sub-agent error nhưng main agent vẫn trả response đúng cấu trúc và mention nguồn unavailable phải > 98%.
 - **NFR-Q4 (Speed):** P95 response time cho full-suite analysis (6+ agents spawned) phải < 90s — relaxed so với NFR-P1 vì cho phép Chainlens 125s timeout, tận dụng parallelism.
 - **NFR-Q5 (Smart Selection Accuracy):** ≥ 90% queries route đúng Rule A/B/C/D (FR34 main-agent decision tree). Đo bằng manual classification 20 sample queries (Story 0.3 AC) + production sampling 100 queries/day. Khác NFR-Q1 (Q1 = factual accuracy của response, Q5 = routing accuracy của orchestrator).
+
+### Architecture Resilience (Epic 11)
+- **NFR-R2 (SSE Connection Reliability):** SSE stream phải survive proxy timeout (Nginx default 60s, Cloudflare 100s) qua heartbeat mechanism. Auto-reconnect phải recover trong < 5s (P95) sau network interruption. Multi-tab scenario (3+ tabs) phải hoạt động nhờ HTTP/2 multiplexing.
+- **NFR-R3 (Circuit Breaker Consistency):** Circuit breaker state phải consistent across tất cả Uvicorn workers (< 1s propagation delay qua Redis). Khi Redis unavailable, last-known state phải retained (không default closed/open).
+- **NFR-P5 (Rate Limit Prevention):** Per-API token bucket phải prevent > 95% of 429 responses từ external providers (so với baseline không có rate limiter). Đo bằng `http_429_total` counter before/after deployment.
 

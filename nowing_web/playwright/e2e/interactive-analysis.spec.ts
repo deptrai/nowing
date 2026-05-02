@@ -255,20 +255,20 @@ test.describe("Interactive Analysis (9-UX-3)", () => {
 		await mockChatSSE(page);
 		await mockScenarioSSE(page);
 
-		await log.step("Navigate and submit query");
+		await log({ level: "step", message: "Navigate and submit query" });
 		await navigateAndSubmitQuery(page);
 
-		await log.step("Wait for crypto report to render");
+		await log({ level: "step", message: "Wait for crypto report to render" });
 		await waitForReport(page);
 
-		await log.step("Click Watchlist action card");
+		await log({ level: "step", message: "Click Watchlist action card" });
 		const watchlistBtn = page
 			.locator('[data-slot="next-action-bar"]')
 			.getByRole("button", { name: /watchlist/i });
 		await expect(watchlistBtn).toBeVisible({ timeout: 10_000 });
 		await watchlistBtn.click();
 
-		await log.step("Verify toast appears");
+		await log({ level: "step", message: "Verify toast appears" });
 		const toast = page.locator("[data-sonner-toast]").or(page.locator('[role="status"]'));
 		await expect(toast.filter({ hasText: /LDO/i })).toBeVisible({ timeout: 5_000 });
 	});
@@ -280,23 +280,23 @@ test.describe("Interactive Analysis (9-UX-3)", () => {
 	test("price alert: clicking Alert opens modal, save emits toast", async ({ page, log }) => {
 		await mockChatSSE(page);
 
-		await log.step("Navigate and submit query");
+		await log({ level: "step", message: "Navigate and submit query" });
 		await navigateAndSubmitQuery(page);
 		await waitForReport(page);
 
-		await log.step("Click Price Alert action card");
+		await log({ level: "step", message: "Click Price Alert action card" });
 		const alertBtn = page
 			.locator('[data-slot="next-action-bar"]')
 			.getByRole("button", { name: /alert/i });
 		await expect(alertBtn).toBeVisible({ timeout: 10_000 });
 		await alertBtn.click();
 
-		await log.step("Verify alert dialog opens");
+		await log({ level: "step", message: "Verify alert dialog opens" });
 		const dialog = page.getByRole("dialog");
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 		await expect(dialog.getByText(/LDO/i)).toBeVisible();
 
-		await log.step("Fill threshold and save");
+		await log({ level: "step", message: "Fill threshold and save" });
 		const thresholdInput = dialog
 			.getByRole("spinbutton")
 			.or(dialog.locator('input[type="number"]'));
@@ -306,7 +306,7 @@ test.describe("Interactive Analysis (9-UX-3)", () => {
 		const saveBtn = dialog.getByRole("button", { name: /save|create|confirm/i });
 		await saveBtn.click();
 
-		await log.step("Verify toast appears");
+		await log({ level: "step", message: "Verify toast appears" });
 		const toast = page.locator("[data-sonner-toast]").or(page.locator('[role="status"]'));
 		await expect(toast.filter({ hasText: /alert/i })).toBeVisible({ timeout: 5_000 });
 	});
@@ -322,33 +322,33 @@ test.describe("Interactive Analysis (9-UX-3)", () => {
 		await mockChatSSE(page);
 		await mockScenarioSSE(page, "bull");
 
-		await log.step("Navigate and submit query");
+		await log({ level: "step", message: "Navigate and submit query" });
 		await navigateAndSubmitQuery(page);
 		await waitForReport(page);
 
-		await log.step("Scenario simulator panel should be visible");
+		await log({ level: "step", message: "Scenario simulator panel should be visible" });
 		const panel = page.locator('[data-slot="scenario-simulator-panel"]');
 		await expect(panel).toBeVisible({ timeout: 10_000 });
 
-		await log.step("Switch to Bull tab");
+		await log({ level: "step", message: "Switch to Bull tab" });
 		const bullTab = panel.getByRole("tab", { name: /bull/i });
 		await expect(bullTab).toBeVisible({ timeout: 5_000 });
 		await bullTab.click();
 
-		await log.step("Click Re-synthesize button");
+		await log({ level: "step", message: "Click Re-synthesize button" });
 		const resynthBtn = panel.getByRole("button", { name: /re-synthesize|resynthesize/i });
 		await expect(resynthBtn).toBeVisible({ timeout: 5_000 });
 		await resynthBtn.click();
 
-		await log.step("Verify active scenario badge appears");
+		await log({ level: "step", message: "Verify active scenario badge appears" });
 		const badge = page.locator('[data-slot="crypto-report-layout"]').getByText(/Bull Case/i);
 		await expect(badge).toBeVisible({ timeout: 15_000 });
 
-		await log.step("Verify report content updated (scenario text)");
+		await log({ level: "step", message: "Verify report content updated (scenario text)" });
 		const scenarioContent = page.getByText(/Bull Case/i).first();
 		await expect(scenarioContent).toBeVisible();
 
-		await log.step("Verify 'View Base Case' toggle is visible");
+		await log({ level: "step", message: "Verify 'View Base Case' toggle is visible" });
 		const baseToggle = page.getByRole("button", { name: /view base case/i });
 		await expect(baseToggle).toBeVisible({ timeout: 5_000 });
 	});
@@ -365,41 +365,41 @@ test.describe("Interactive Analysis (9-UX-3)", () => {
 		await mockCompareSSE(page);
 		await mockCoinGeckoSearch(page);
 
-		await log.step("Navigate and submit query");
+		await log({ level: "step", message: "Navigate and submit query" });
 		await navigateAndSubmitQuery(page);
 		await waitForReport(page);
 
-		await log.step("Click Compare action card");
+		await log({ level: "step", message: "Click Compare action card" });
 		const compareBtn = page
 			.locator('[data-slot="next-action-bar"]')
 			.getByRole("button", { name: /compare/i });
 		await expect(compareBtn).toBeVisible({ timeout: 10_000 });
 		await compareBtn.click();
 
-		await log.step("Verify comparison overlay opens");
+		await log({ level: "step", message: "Verify comparison overlay opens" });
 		const overlay = page
 			.locator('[data-slot="coin-comparison-overlay"]')
 			.or(page.getByRole("dialog", { name: /compare/i }));
 		await expect(overlay).toBeVisible({ timeout: 5_000 });
 
-		await log.step("Search for RPL in token picker");
+		await log({ level: "step", message: "Search for RPL in token picker" });
 		const searchInput = overlay.getByRole("textbox");
 		await searchInput.fill("RPL");
 
-		await log.step("Select RPL from results");
+		await log({ level: "step", message: "Select RPL from results" });
 		const rplResult = overlay.getByText("RPL").first();
 		await expect(rplResult).toBeVisible({ timeout: 5_000 });
 		await rplResult.click();
 
-		await log.step("Verify comparison table renders");
+		await log({ level: "step", message: "Verify comparison table renders" });
 		const compTable = page.locator('[data-slot="comparison-table"]');
 		await expect(compTable).toBeVisible({ timeout: 15_000 });
 
-		await log.step("Verify both token symbols appear in table header");
+		await log({ level: "step", message: "Verify both token symbols appear in table header" });
 		await expect(compTable.getByText("LDO")).toBeVisible();
 		await expect(compTable.getByText("RPL")).toBeVisible();
 
-		await log.step("Verify verdict box appears after streaming");
+		await log({ level: "step", message: "Verify verdict box appears after streaming" });
 		const verdictBox = compTable.locator('[data-slot="verdict-box"]');
 		await expect(verdictBox).toBeVisible({ timeout: 10_000 });
 	});
@@ -414,11 +414,11 @@ test.describe("Interactive Analysis (9-UX-3)", () => {
 	}) => {
 		await mockChatSSE(page);
 
-		await log.step("Navigate and submit query");
+		await log({ level: "step", message: "Navigate and submit query" });
 		await navigateAndSubmitQuery(page);
 		await waitForReport(page);
 
-		await log.step("Verify follow-up chips rendered");
+		await log({ level: "step", message: "Verify follow-up chips rendered" });
 		const chipsContainer = page.locator('[data-slot="follow-up-chips"]');
 		await expect(chipsContainer).toBeVisible({ timeout: 10_000 });
 
@@ -426,11 +426,11 @@ test.describe("Interactive Analysis (9-UX-3)", () => {
 		const firstChip = chipsContainer.getByRole("button").first();
 		await expect(firstChip).toBeVisible();
 
-		await log.step("Click first follow-up chip");
+		await log({ level: "step", message: "Click first follow-up chip" });
 		const chipText = await firstChip.textContent();
 		await firstChip.click();
 
-		await log.step("Verify chat input was autofilled");
+		await log({ level: "step", message: "Verify chat input was autofilled" });
 		const input = page
 			.getByTestId("chat-input")
 			.or(page.getByRole("textbox", { name: /message|query|ask/i }));
@@ -452,11 +452,11 @@ test.describe("Interactive Analysis (9-UX-3)", () => {
 		await mockChatSSE(page);
 		await mockScenarioSSE(page, "bear");
 
-		await log.step("Navigate and submit query");
+		await log({ level: "step", message: "Navigate and submit query" });
 		await navigateAndSubmitQuery(page);
 		await waitForReport(page);
 
-		await log.step("Switch to Bear scenario");
+		await log({ level: "step", message: "Switch to Bear scenario" });
 		const panel = page.locator('[data-slot="scenario-simulator-panel"]');
 		await expect(panel).toBeVisible({ timeout: 10_000 });
 		const bearTab = panel.getByRole("tab", { name: /bear/i });
@@ -464,17 +464,17 @@ test.describe("Interactive Analysis (9-UX-3)", () => {
 		const resynthBtn = panel.getByRole("button", { name: /re-synthesize|resynthesize/i });
 		await resynthBtn.click();
 
-		await log.step("Wait for scenario to load");
+		await log({ level: "step", message: "Wait for scenario to load" });
 		const baseToggle = page.getByRole("button", { name: /view base case/i });
 		await expect(baseToggle).toBeVisible({ timeout: 15_000 });
 
-		await log.step("Click View Base Case");
+		await log({ level: "step", message: "Click View Base Case" });
 		await baseToggle.click();
 
-		await log.step("Verify scenario badge disappears");
+		await log({ level: "step", message: "Verify scenario badge disappears" });
 		await expect(baseToggle).not.toBeVisible({ timeout: 5_000 });
 
-		await log.step("Verify original report is shown (no scenario badge)");
+		await log({ level: "step", message: "Verify original report is shown (no scenario badge)" });
 		const scenarioBadge = page
 			.locator('[data-slot="crypto-report-layout"]')
 			.getByText(/Bear Case/i);
@@ -488,18 +488,18 @@ test.describe("Interactive Analysis (9-UX-3)", () => {
 	test("deep dive: clicking Deep Dive autofills chat input", async ({ page, log }) => {
 		await mockChatSSE(page);
 
-		await log.step("Navigate and submit query");
+		await log({ level: "step", message: "Navigate and submit query" });
 		await navigateAndSubmitQuery(page);
 		await waitForReport(page);
 
-		await log.step("Click Deep Dive action card");
+		await log({ level: "step", message: "Click Deep Dive action card" });
 		const deepDiveBtn = page
 			.locator('[data-slot="next-action-bar"]')
 			.getByRole("button", { name: /deep dive/i });
 		await expect(deepDiveBtn).toBeVisible({ timeout: 10_000 });
 		await deepDiveBtn.click();
 
-		await log.step("Verify chat input is autofilled with LDO deep-dive prompt");
+		await log({ level: "step", message: "Verify chat input is autofilled with LDO deep-dive prompt" });
 		const input = page
 			.getByTestId("chat-input")
 			.or(page.getByRole("textbox", { name: /message|query|ask/i }));

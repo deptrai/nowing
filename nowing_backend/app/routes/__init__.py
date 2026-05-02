@@ -57,6 +57,7 @@ from .teams_add_connector_route import router as teams_add_connector_router
 from .video_presentations_routes import router as video_presentations_router
 from .vision_llm_routes import router as vision_llm_router
 from .youtube_routes import router as youtube_router
+from .crypto_data_routes import router as crypto_data_router
 
 router = APIRouter()
 
@@ -111,3 +112,4 @@ router.include_router(memory_router)  # User personal memory (memory.md style)
 router.include_router(autocomplete_router)  # Lightweight autocomplete with KB context
 router.include_router(scenario_router)  # Scenario re-synthesis for crypto analysis
 router.include_router(comparison_router)  # Token comparison with verdict synthesis
+router.include_router(crypto_data_router)  # Crypto watchlist and timeline data API

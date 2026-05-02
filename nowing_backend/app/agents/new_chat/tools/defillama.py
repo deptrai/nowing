@@ -8,7 +8,7 @@ Provides 5 tools for fetching DeFi data from DeFiLlama APIs:
 - get_defillama_bridges: Bridges by volume
 
 All tools are stateless (NFR-CS4) and use httpx.AsyncClient for non-blocking I/O.
-All tools return {"error": "..."} on failure — never raise exceptions to callers.
+Leverages @crypto_tool_decorator for global resilience (Circuit Breaker, Pacing, Error Handling).
 """
 
 import logging
@@ -17,6 +17,8 @@ from typing import Any
 
 import httpx
 from langchain_core.tools import tool
+
+from .utils import crypto_tool_decorator
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,7 @@ def create_defillama_protocol_tool():
     """Factory: get_defillama_protocol — TVL + chain breakdown for one protocol."""
 
     @tool
+    @crypto_tool_decorator("defillama")
     async def get_defillama_protocol(protocol_slug: str) -> dict[str, Any]:
         """Get TVL, chain breakdown, and market metrics for a DeFi protocol.
 
@@ -47,44 +50,37 @@ def create_defillama_protocol_tool():
         if not _SLUG_RE.match(protocol_slug or ""):
             return {"error": f"Invalid protocol slug: {protocol_slug!r}"}
         url = f"https://api.llama.fi/protocol/{protocol_slug}"
-        try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                resp = await client.get(url)
-            if resp.status_code == 404:
-                return {"error": f"Protocol '{protocol_slug}' not found", "status": 404}
-            resp.raise_for_status()
-            data = resp.json()
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            resp = await client.get(url)
+        if resp.status_code == 404:
+            return {"error": f"Protocol '{protocol_slug}' not found", "status": 404}
+        resp.raise_for_status()
+        data = resp.json()
 
-            # Extract chain TVL breakdown
-            chain_tvls = data.get("chainTvls", {})
-            chains = [
-                {"chain": chain, "tvl": vals.get("tvl", 0) if isinstance(vals, dict) else 0}
-                for chain, vals in chain_tvls.items()
-                if chain not in ("staking", "borrowed", "pool2")
-            ]
+        # Extract chain TVL breakdown
+        chain_tvls = data.get("chainTvls", {})
+        chains = [
+            {"chain": chain, "tvl": vals.get("tvl", 0) if isinstance(vals, dict) else 0}
+            for chain, vals in chain_tvls.items()
+            if chain not in ("staking", "borrowed", "pool2")
+        ]
 
-            return {
-                "name": data.get("name"),
-                "slug": protocol_slug,
-                "symbol": data.get("symbol"),
-                "category": data.get("category"),
-                "tvl": data.get("tvl", 0),
-                "chains": chains,
-                "mcap": data.get("mcap"),
-                "fdv": data.get("fdv"),
-                "change_1d": data.get("change_1d"),
-                "change_7d": data.get("change_7d"),
-                "audit_links": data.get("audit_links", []),
-                "description": data.get("description", ""),
-                "url": data.get("url", ""),
-                "twitter": data.get("twitter", ""),
-            }
-        except httpx.HTTPStatusError as exc:
-            logger.warning("DeFiLlama protocol %s HTTP error: %s", protocol_slug, exc, exc_info=True)
-            return {"error": f"HTTP {exc.response.status_code} fetching protocol '{protocol_slug}'"}
-        except Exception as exc:
-            logger.warning("DeFiLlama protocol %s error: %s", protocol_slug, type(exc).__name__, exc_info=True)
-            return {"error": f"Failed to fetch protocol '{protocol_slug}': {type(exc).__name__}"}
+        return {
+            "name": data.get("name"),
+            "slug": protocol_slug,
+            "symbol": data.get("symbol"),
+            "category": data.get("category"),
+            "tvl": data.get("tvl", 0),
+            "chains": chains,
+            "mcap": data.get("mcap"),
+            "fdv": data.get("fdv"),
+            "change_1d": data.get("change_1d"),
+            "change_7d": data.get("change_7d"),
+            "audit_links": data.get("audit_links", []),
+            "description": data.get("description", ""),
+            "url": data.get("url", ""),
+            "twitter": data.get("twitter", ""),
+        }
 
     return get_defillama_protocol
 
@@ -93,6 +89,7 @@ def create_defillama_tvl_overview_tool():
     """Factory: get_defillama_tvl_overview — top protocols by TVL."""
 
     @tool
+    @crypto_tool_decorator("defillama")
     async def get_defillama_tvl_overview(
         chain: str | None = None,
         limit: int = 20,
@@ -111,49 +108,45 @@ def create_defillama_tvl_overview_tool():
         """
         limit = _clamp_limit(limit)
         url = "https://api.llama.fi/protocols"
-        try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                resp = await client.get(url)
-            resp.raise_for_status()
-            all_protocols: list[dict] = resp.json()
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            resp = await client.get(url)
+        resp.raise_for_status()
+        all_protocols: list[dict] = resp.json()
 
-            # Optional chain filter
-            if chain:
-                chain_lower = chain.lower()
-                all_protocols = [
-                    p for p in all_protocols
-                    if any(c.lower() == chain_lower for c in (p.get("chains") or []))
-                ]
-
-            # Sort by TVL descending, take limit
-            sorted_protos = sorted(
-                all_protocols,
-                key=lambda p: float(p.get("tvl") or 0),
-                reverse=True,
-            )[:limit]
-
-            protocols = [
-                {
-                    "name": p.get("name"),
-                    "slug": p.get("slug"),
-                    "category": p.get("category"),
-                    "chains": p.get("chains", []),
-                    "tvl": p.get("tvl", 0),
-                    "change_1d": p.get("change_1d"),
-                    "change_7d": p.get("change_7d"),
-                    "mcap": p.get("mcap"),
-                }
-                for p in sorted_protos
+        # Optional chain filter
+        if chain:
+            chain_lower = chain.lower()
+            all_protocols = [
+                p for p in all_protocols
+                if any(c.lower() == chain_lower for c in (p.get("chains") or []))
             ]
 
-            return {
-                "total_protocols": len(protocols),
-                "chain_filter": chain,
-                "protocols": protocols,
+        # Sort by TVL descending, take limit
+        sorted_protos = sorted(
+            all_protocols,
+            key=lambda p: float(p.get("tvl") or 0),
+            reverse=True,
+        )[:limit]
+
+        protocols = [
+            {
+                "name": p.get("name"),
+                "slug": p.get("slug"),
+                "category": p.get("category"),
+                "chains": p.get("chains", []),
+                "tvl": p.get("tvl", 0),
+                "change_1d": p.get("change_1d"),
+                "change_7d": p.get("change_7d"),
+                "mcap": p.get("mcap"),
             }
-        except Exception as exc:
-            logger.warning("DeFiLlama TVL overview error: %s", type(exc).__name__, exc_info=True)
-            return {"error": f"Failed to fetch TVL overview: {type(exc).__name__}"}
+            for p in sorted_protos
+        ]
+
+        return {
+            "total_protocols": len(protocols),
+            "chain_filter": chain,
+            "protocols": protocols,
+        }
 
     return get_defillama_tvl_overview
 
@@ -162,6 +155,7 @@ def create_defillama_yields_tool():
     """Factory: get_defillama_yields — yield pools sorted by APY."""
 
     @tool
+    @crypto_tool_decorator("defillama")
     async def get_defillama_yields(
         symbol: str | None = None,
         min_tvl: float = 0,
@@ -183,52 +177,48 @@ def create_defillama_yields_tool():
         limit = _clamp_limit(limit)
         min_tvl = max(0.0, float(min_tvl))
         url = "https://yields.llama.fi/pools"
-        try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                resp = await client.get(url)
-            resp.raise_for_status()
-            data = resp.json()
-            all_pools: list[dict] = data.get("data", [])
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            resp = await client.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        all_pools: list[dict] = data.get("data", [])
 
-            # Apply filters
-            if symbol:
-                sym_upper = symbol.upper()
-                all_pools = [p for p in all_pools if sym_upper in (p.get("symbol") or "").upper()]
-            if min_tvl > 0:
-                all_pools = [p for p in all_pools if float(p.get("tvlUsd") or 0) >= min_tvl]
+        # Apply filters
+        if symbol:
+            sym_upper = symbol.upper()
+            all_pools = [p for p in all_pools if sym_upper in (p.get("symbol") or "").upper()]
+        if min_tvl > 0:
+            all_pools = [p for p in all_pools if float(p.get("tvlUsd") or 0) >= min_tvl]
 
-            # Sort by APY descending
-            sorted_pools = sorted(
-                all_pools,
-                key=lambda p: float(p.get("apy") or 0),
-                reverse=True,
-            )[:limit]
+        # Sort by APY descending
+        sorted_pools = sorted(
+            all_pools,
+            key=lambda p: float(p.get("apy") or 0),
+            reverse=True,
+        )[:limit]
 
-            pools = [
-                {
-                    "pool_id": p.get("pool"),
-                    "project": p.get("project"),
-                    "chain": p.get("chain"),
-                    "symbol": p.get("symbol"),
-                    "tvl_usd": p.get("tvlUsd", 0),
-                    "apy": p.get("apy", 0),
-                    "apy_base": p.get("apyBase", 0),
-                    "apy_reward": p.get("apyReward", 0),
-                    "il_risk": p.get("ilRisk"),
-                    "stablecoin": p.get("stablecoin", False),
-                }
-                for p in sorted_pools
-            ]
-
-            return {
-                "total_pools": len(pools),
-                "symbol_filter": symbol,
-                "min_tvl_filter": min_tvl,
-                "pools": pools,
+        pools = [
+            {
+                "pool_id": p.get("pool"),
+                "project": p.get("project"),
+                "chain": p.get("chain"),
+                "symbol": p.get("symbol"),
+                "tvl_usd": p.get("tvlUsd", 0),
+                "apy": p.get("apy", 0),
+                "apy_base": p.get("apyBase", 0),
+                "apy_reward": p.get("apyReward", 0),
+                "il_risk": p.get("ilRisk"),
+                "stablecoin": p.get("stablecoin", False),
             }
-        except Exception as exc:
-            logger.warning("DeFiLlama yields error: %s", type(exc).__name__, exc_info=True)
-            return {"error": f"Failed to fetch yields: {type(exc).__name__}"}
+            for p in sorted_pools
+        ]
+
+        return {
+            "total_pools": len(pools),
+            "symbol_filter": symbol,
+            "min_tvl_filter": min_tvl,
+            "pools": pools,
+        }
 
     return get_defillama_yields
 
@@ -237,6 +227,7 @@ def create_defillama_stablecoins_tool():
     """Factory: get_defillama_stablecoins — stablecoins by market cap."""
 
     @tool
+    @crypto_tool_decorator("defillama")
     async def get_defillama_stablecoins(limit: int = 20) -> dict[str, Any]:
         """Get top stablecoins ranked by market cap from DeFiLlama.
 
@@ -251,40 +242,36 @@ def create_defillama_stablecoins_tool():
         """
         limit = _clamp_limit(limit)
         url = "https://stablecoins.llama.fi/stablecoins?includePrices=true"
-        try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                resp = await client.get(url)
-            resp.raise_for_status()
-            data = resp.json()
-            all_stables: list[dict] = data.get("peggedAssets", [])
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            resp = await client.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        all_stables: list[dict] = data.get("peggedAssets", [])
 
-            # Sort by circulating supply (market cap proxy)
-            sorted_stables = sorted(
-                all_stables,
-                key=lambda s: float((s.get("circulating") or {}).get("peggedUSD", 0)),
-                reverse=True,
-            )[:limit]
+        # Sort by circulating supply (market cap proxy)
+        sorted_stables = sorted(
+            all_stables,
+            key=lambda s: float((s.get("circulating") or {}).get("peggedUSD", 0)),
+            reverse=True,
+        )[:limit]
 
-            stablecoins = [
-                {
-                    "name": s.get("name"),
-                    "symbol": s.get("symbol"),
-                    "peg_type": s.get("pegType"),
-                    "peg_mechanism": s.get("pegMechanism"),
-                    "circulating_usd": (s.get("circulating") or {}).get("peggedUSD", 0),
-                    "price": s.get("price"),
-                    "chains": list((s.get("chainCirculating") or {}).keys()),
-                }
-                for s in sorted_stables
-            ]
-
-            return {
-                "total_stablecoins": len(stablecoins),
-                "stablecoins": stablecoins,
+        stablecoins = [
+            {
+                "name": s.get("name"),
+                "symbol": s.get("symbol"),
+                "peg_type": s.get("pegType"),
+                "peg_mechanism": s.get("pegMechanism"),
+                "circulating_usd": (s.get("circulating") or {}).get("peggedUSD", 0),
+                "price": s.get("price"),
+                "chains": list((s.get("chainCirculating") or {}).keys()),
             }
-        except Exception as exc:
-            logger.warning("DeFiLlama stablecoins error: %s", type(exc).__name__, exc_info=True)
-            return {"error": f"Failed to fetch stablecoins: {type(exc).__name__}"}
+            for s in sorted_stables
+        ]
+
+        return {
+            "total_stablecoins": len(stablecoins),
+            "stablecoins": stablecoins,
+        }
 
     return get_defillama_stablecoins
 
@@ -293,6 +280,7 @@ def create_defillama_bridges_tool():
     """Factory: get_defillama_bridges — bridges by volume."""
 
     @tool
+    @crypto_tool_decorator("defillama")
     async def get_defillama_bridges(limit: int = 20) -> dict[str, Any]:
         """Get top cross-chain bridges ranked by 24h volume from DeFiLlama.
 
@@ -307,39 +295,35 @@ def create_defillama_bridges_tool():
         """
         limit = _clamp_limit(limit)
         url = "https://bridges.llama.fi/bridges?includeChains=true"
-        try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                resp = await client.get(url)
-            resp.raise_for_status()
-            data = resp.json()
-            all_bridges: list[dict] = data.get("bridges", [])
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            resp = await client.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        all_bridges: list[dict] = data.get("bridges", [])
 
-            # Sort by 24h volume
-            sorted_bridges = sorted(
-                all_bridges,
-                key=lambda b: float(b.get("lastDailyVolume") or 0),
-                reverse=True,
-            )[:limit]
+        # Sort by 24h volume
+        sorted_bridges = sorted(
+            all_bridges,
+            key=lambda b: float(b.get("lastDailyVolume") or 0),
+            reverse=True,
+        )[:limit]
 
-            bridges = [
-                {
-                    "id": b.get("id"),
-                    "name": b.get("displayName") or b.get("name"),
-                    "chains": b.get("chains", []),
-                    "volume_24h": b.get("lastDailyVolume", 0),
-                    "volume_7d": b.get("weeklyVolume", 0),
-                    "volume_1m": b.get("monthlyVolume", 0),
-                    "current_day_volume": b.get("currentDayVolume", 0),
-                }
-                for b in sorted_bridges
-            ]
-
-            return {
-                "total_bridges": len(bridges),
-                "bridges": bridges,
+        bridges = [
+            {
+                "id": b.get("id"),
+                "name": b.get("displayName") or b.get("name"),
+                "chains": b.get("chains", []),
+                "volume_24h": b.get("lastDailyVolume", 0),
+                "volume_7d": b.get("weeklyVolume", 0),
+                "volume_1m": b.get("monthlyVolume", 0),
+                "current_day_volume": b.get("currentDayVolume", 0),
             }
-        except Exception as exc:
-            logger.warning("DeFiLlama bridges error: %s", type(exc).__name__, exc_info=True)
-            return {"error": f"Failed to fetch bridges: {type(exc).__name__}"}
+            for b in sorted_bridges
+        ]
+
+        return {
+            "total_bridges": len(bridges),
+            "bridges": bridges,
+        }
 
     return get_defillama_bridges

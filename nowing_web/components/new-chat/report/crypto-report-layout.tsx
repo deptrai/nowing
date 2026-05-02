@@ -11,6 +11,12 @@ import type { CryptoDataCitation } from "@/components/tool-ui/citation/schema";
 import type { TokenInsightRating } from "./token-hero-card";
 import { getBearerToken } from "@/lib/auth-utils";
 import { useScenarioResynthesize } from "@/lib/chat/use-scenario-resynthesize";
+import { ProContentGate } from "@/components/crypto/ProContentGate";
+import { useSubscriptionGate } from "@/hooks/use-subscription-gate";
+import type {
+	ScenarioType,
+	ScenarioAssumptions,
+} from "@/components/new-chat/simulator/scenario-simulator-panel";
 
 const TokenHeroCard = dynamic(() => import("./token-hero-card").then((m) => m.TokenHeroCard), {
 	ssr: false,
@@ -82,6 +88,44 @@ const CryptoReportLayoutImpl = () => {
 	const [panelOpen, setPanelOpen] = useState(false);
 	const [compareOpen, setCompareOpen] = useState(false);
 
+	// Simulator state lifted here so both mobile + desktop instances stay in sync
+	const [simSelectedScenario, setSimSelectedScenario] = useState<ScenarioType>("base");
+	const [simAssumptions, setSimAssumptions] = useState<ScenarioAssumptions>({});
+	const [simAssumptionsChanged, setSimAssumptionsChanged] = useState(false);
+
+	const DEFAULT_ASSUMPTIONS_MAP: Record<ScenarioType, ScenarioAssumptions> = useMemo(
+		() => ({
+			base: {},
+			bull: { btc_shock: 0.5, eth_shock: 0.4, competitor_growth: -0.2 },
+			bear: { btc_shock: -0.4, eth_shock: -0.35, regulatory_adverse: true },
+			stress: {
+				btc_shock: -0.5,
+				eth_shock: -0.5,
+				tvl_shock: -0.5,
+				regulatory_adverse: true,
+				competitor_growth: 0.5,
+			},
+		}),
+		[]
+	);
+
+	const handleSimScenarioSelect = useCallback(
+		(s: ScenarioType) => {
+			setSimSelectedScenario(s);
+			setSimAssumptions(DEFAULT_ASSUMPTIONS_MAP[s]);
+			setSimAssumptionsChanged(false);
+		},
+		[DEFAULT_ASSUMPTIONS_MAP]
+	);
+
+	const handleSimAssumptionChange = useCallback(
+		(key: keyof ScenarioAssumptions, value: number | boolean) => {
+			setSimAssumptions((prev) => ({ ...prev, [key]: value }));
+			setSimAssumptionsChanged(true);
+		},
+		[]
+	);
+
 	const isCrypto = useMemo(() => isCryptoReport(text, meta), [text, meta]);
 
 	// Parse token info from text when metadata not available (e.g. after page reload)
@@ -126,8 +170,23 @@ const CryptoReportLayoutImpl = () => {
 	const threadId = meta?.thread_id ?? urlThreadId;
 	const token = getBearerToken();
 
+	const { isPro: isProUser } = useSubscriptionGate();
+
 	const { activeScenario, scenarioResult, isResynthesizing, resynthesize, resetToBase } =
 		useScenarioResynthesize({ threadId, token });
+
+	const handleResynthesize = useCallback(
+		(scenario: ScenarioType, assumptions: ScenarioAssumptions) => {
+			// Round-2 review: don't fire the LLM re-synthesize call for users
+			// behind the paywall. The visual gate already blocks Tab focus, but
+			// programmatic callers (or future bypasses) shouldn't burn backend
+			// cost either.
+			if (!isProUser) return;
+			resynthesize(scenario, assumptions);
+			setSimAssumptionsChanged(false);
+		},
+		[resynthesize, isProUser]
+	);
 
 	if (!isCrypto) return <MarkdownText />;
 
@@ -139,7 +198,12 @@ const CryptoReportLayoutImpl = () => {
 			onOpenCitation={openCitation}
 		>
 			<div className="relative flex gap-0 lg:gap-6" data-slot="crypto-report-layout">
-				<ReportTOC content={cleanText} className="hidden lg:block" />
+				{/* Round-2 review: TOC also gated. The TOC enumerates every Pro-only
+				    section heading and links straight into the (still-DOM) blurred
+				    body, leaking the report's outline to free users. */}
+				{isProUser ? (
+					<ReportTOC content={cleanText} className="hidden lg:block" />
+				) : null}
 
 				<div className="min-w-0 flex-1">
 					<TokenHeroCard
@@ -177,14 +241,19 @@ const CryptoReportLayoutImpl = () => {
 						className="mt-4 transition-opacity duration-200"
 						data-scenario={activeScenario !== "base" ? activeScenario : undefined}
 					>
-						{activeScenario !== "base" && scenarioResult ? (
-							<StaticMarkdown
-								key={`scenario-${activeScenario}-${scenarioResult.loadedAt}`}
-								content={scenarioResult.content}
-							/>
-						) : (
-							<MarkdownText preprocessText={(t) => t.replace(SENTINEL, "").trimStart()} />
-						)}
+						<ProContentGate
+							title="Deep Research Analysis"
+							description="Upgrade to Pro to access our AI-powered deep research and comprehensive token analysis."
+						>
+							{activeScenario !== "base" && scenarioResult ? (
+								<StaticMarkdown
+									key={`scenario-${activeScenario}-${scenarioResult.loadedAt}`}
+									content={scenarioResult.content}
+								/>
+							) : (
+								<MarkdownText preprocessText={(t) => t.replace(SENTINEL, "").trimStart()} />
+							)}
+						</ProContentGate>
 					</div>
 
 					<NextActionBar
@@ -202,15 +271,25 @@ const CryptoReportLayoutImpl = () => {
 					{/* Scenario simulator stacks below report on screens < 2xl (mobile/tablet/laptop) */}
 					{threadId && (
 						<div className="mt-6 2xl:hidden">
-							<ScenarioSimulatorPanel
-								threadId={threadId}
-								tokenName={tokenName}
-								activeScenario={activeScenario}
-								scenarioResult={scenarioResult}
-								isResynthesizing={isResynthesizing}
-								onResynthesize={resynthesize}
-								onResetToBase={resetToBase}
-							/>
+							<ProContentGate
+								title="Scenario Simulator"
+								description="Upgrade to Pro to simulate Bull, Bear, and Stress scenarios for this token."
+							>
+								<ScenarioSimulatorPanel
+									threadId={threadId}
+									tokenName={tokenName}
+									activeScenario={activeScenario}
+									scenarioResult={scenarioResult}
+									isResynthesizing={isResynthesizing}
+									onResynthesize={handleResynthesize}
+									onResetToBase={resetToBase}
+									selectedScenario={simSelectedScenario}
+									assumptions={simAssumptions}
+									assumptionsChanged={simAssumptionsChanged}
+									onScenarioSelect={handleSimScenarioSelect}
+									onAssumptionChange={handleSimAssumptionChange}
+								/>
+							</ProContentGate>
 						</div>
 					)}
 				</div>
@@ -219,15 +298,25 @@ const CryptoReportLayoutImpl = () => {
 				{threadId && (
 					<div className="hidden 2xl:block">
 						<div className="sticky top-6 w-[300px]">
-							<ScenarioSimulatorPanel
-								threadId={threadId}
-								tokenName={tokenName}
-								activeScenario={activeScenario}
-								scenarioResult={scenarioResult}
-								isResynthesizing={isResynthesizing}
-								onResynthesize={resynthesize}
-								onResetToBase={resetToBase}
-							/>
+							<ProContentGate
+								title="Scenario Simulator"
+								description="Simulate Bull, Bear, and Stress scenarios with Pro."
+							>
+								<ScenarioSimulatorPanel
+									threadId={threadId}
+									tokenName={tokenName}
+									activeScenario={activeScenario}
+									scenarioResult={scenarioResult}
+									isResynthesizing={isResynthesizing}
+									onResynthesize={handleResynthesize}
+									onResetToBase={resetToBase}
+									selectedScenario={simSelectedScenario}
+									assumptions={simAssumptions}
+									assumptionsChanged={simAssumptionsChanged}
+									onScenarioSelect={handleSimScenarioSelect}
+									onAssumptionChange={handleSimAssumptionChange}
+								/>
+							</ProContentGate>
 						</div>
 					</div>
 				)}

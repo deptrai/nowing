@@ -17,7 +17,7 @@ cp .env.test.example .env.test
 ```
 
 Required vars:
-- `BASE_URL` — app URL (default: `http://localhost:3999`)
+- `BASE_URL` — app URL (default: `http://localhost:4998`)
 - `API_URL` — backend URL (default: `http://localhost:8000`)
 - `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` — test account credentials
 
@@ -59,9 +59,10 @@ playwright/
 ├── reports/                # HTML + JUnit reports (gitignored)
 ├── support/
 │   ├── auth/
-│   │   └── auth-provider.ts    # JWT token reader from localStorage
+│   │   └── auth-provider.ts    # FastAPI-Users JWT auth (form POST /auth/jwt/login)
 │   ├── factories/
-│   │   └── user-factory.ts     # Data factory with auto-cleanup
+│   │   ├── user-factory.ts     # Ephemeral user factory with auto-cleanup
+│   │   └── thread-factory.ts   # Chat thread factory
 │   ├── custom-fixtures.ts      # Project-specific fixtures (testUser, etc.)
 │   └── merged-fixtures.ts      # Combined fixture set (use this as `test` import)
 ├── global-setup.ts         # Auth session initializer
@@ -82,14 +83,17 @@ import { expect, test } from '../support/merged-fixtures';
 
 | Fixture | Source | Description |
 |---|---|---|
-| `page` | Playwright built-in | Browser page |
-| `apiRequest` | playwright-utils | Authenticated API client |
-| `auth` | playwright-utils | Auth session management |
-| `intercept` | playwright-utils | Network interception helpers |
-| `recurse` | playwright-utils | Retry/poll helpers |
-| `log` | playwright-utils | Test logging |
-| `networkErrorMonitor` | playwright-utils | Catch unexpected network errors |
-| `testUser` | custom-fixtures | Creates a user + auto-cleanup after test |
+| `page` | Playwright built-in | Browser page with auth cookies applied |
+| `context` | auth-session v4 | Browser context with auth session |
+| `authToken` | auth-session v4 | JWT Bearer token string |
+| `authOptions` | auth-session v4 | Override environment/userIdentifier per test |
+| `authSessionEnabled` | auth-session v4 | Toggle auth off for specific tests |
+| `apiRequest` | playwright-utils | Typed HTTP client with retry + schema validation |
+| `interceptNetworkCall` | playwright-utils | Spy/stub network requests |
+| `recurse` | playwright-utils | Poll until predicate returns true |
+| `log` | playwright-utils | Report-integrated structured logging |
+| `networkErrorMonitor` | playwright-utils | Auto-detect unexpected 4xx/5xx responses |
+| `testUser` | custom-fixtures | Creates an ephemeral user, deleted after test |
 
 ---
 

@@ -73,8 +73,9 @@ class VercelStreamingService:
         """
         return {
             "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-transform",
             "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
             "x-vercel-ai-ui-message-stream": "v1",
         }
 
@@ -92,6 +93,16 @@ class VercelStreamingService:
         if isinstance(data, str):
             return f"data: {data}\n\n"
         return f"data: {json.dumps(data)}\n\n"
+
+    @staticmethod
+    def format_heartbeat() -> str:
+        """
+        Format an SSE heartbeat comment.
+
+        Returns:
+            str: SSE formatted heartbeat comment
+        """
+        return ": heartbeat\n\n"
 
     @staticmethod
     def generate_text_id() -> str:

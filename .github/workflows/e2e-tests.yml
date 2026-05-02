@@ -176,10 +176,10 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:8000
         run: |
           pnpm build
-          nohup pnpm start --port 3999 > /tmp/frontend.log 2>&1 &
+          nohup pnpm start -p 4998 > /tmp/frontend.log 2>&1 &
           echo "Waiting for frontend..."
           for i in {1..30}; do
-            curl -sf http://localhost:3999 && echo "✅ Frontend ready" && break
+            curl -sf http://localhost:4998 && echo "✅ Frontend ready" && break
             sleep 2
           done
 
@@ -195,7 +195,7 @@ jobs:
         if: steps.changed-specs.outputs.changed_specs != ''
         working-directory: nowing_web
         env:
-          BASE_URL: http://localhost:3999
+          BASE_URL: http://localhost:4998
           API_URL: http://localhost:8000
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
@@ -320,17 +320,17 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:8000
         run: |
           pnpm build
-          nohup pnpm start --port 3999 > /tmp/frontend.log 2>&1 &
+          nohup pnpm start -p 4998 > /tmp/frontend.log 2>&1 &
           echo "Waiting for frontend..."
           for i in {1..30}; do
-            curl -sf http://localhost:3999 && echo "✅ Frontend ready" && break
+            curl -sf http://localhost:4998 && echo "✅ Frontend ready" && break
             sleep 2
           done
 
       - name: Run E2E tests (shard ${{ matrix.shard }}/2)
         working-directory: nowing_web
         env:
-          BASE_URL: http://localhost:3999
+          BASE_URL: http://localhost:4998
           API_URL: http://localhost:8000
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}

@@ -5,7 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
  * See: https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-	testDir: "./playwright/e2e",
+	testDir: "./playwright",
 	outputDir: "./playwright/test-results",
 
 	// Fail fast in CI, allow retries locally
@@ -40,11 +40,23 @@ export default defineConfig({
 
 	// Browser projects
 	projects: [
+		// API Tests (No browser needed)
+		{
+			name: "api",
+			testMatch: "api/**/*.spec.ts",
+			use: {
+				baseURL: process.env.API_URL || "http://localhost:8000",
+				storageState: "playwright/auth-sessions/local/default/storage-state.json",
+			},
+			dependencies: ["setup"],
+		},
+
 		// Setup project (global auth)
 		{ name: "setup", testMatch: "**/global-setup.ts" },
 
 		{
 			name: "chromium",
+			testMatch: "e2e/**/*.spec.ts",
 			use: {
 				...devices["Desktop Chrome"],
 				storageState: "playwright/auth-sessions/local/default/storage-state.json",
