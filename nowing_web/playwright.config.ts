@@ -46,7 +46,9 @@ export default defineConfig({
 			testMatch: "api/**/*.spec.ts",
 			use: {
 				baseURL: process.env.API_URL || "http://localhost:8000",
+				storageState: "playwright/auth-sessions/local/default/storage-state.json",
 			},
+			dependencies: ["setup"],
 		},
 
 		// Setup project (global auth)
@@ -61,7 +63,6 @@ export default defineConfig({
 			},
 			dependencies: ["setup"],
 		},
-	],
 
 		// Add more browsers as needed:
 		// { name: 'firefox', use: { ...devices['Desktop Firefox'] }, dependencies: ['setup'] },

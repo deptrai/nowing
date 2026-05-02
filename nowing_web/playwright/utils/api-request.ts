@@ -6,6 +6,7 @@ export interface ApiRequestOptions {
   data?: any;
   headers?: { [key: string]: string };
   multipart?: { [key: string]: any };
+  token?: string;
 }
 
 /**
@@ -15,15 +16,29 @@ export async function apiRequest(
   request: APIRequestContext,
   options: ApiRequestOptions
 ): Promise<APIResponse> {
-  const { method = 'GET', path, data, headers, multipart } = options;
+  const { method = 'GET', path, data, headers = {}, multipart, token } = options;
   
   // Ensure path starts with /
   const url = path.startsWith('/') ? path : `/${path}`;
+  
+  // Debug log
+  console.log(`[API Request] ${method} ${url}`);
 
-  return await request.fetch(url, {
+  const requestHeaders = { ...headers };
+  if (token) {
+    requestHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await request.fetch(url, {
     method,
     data,
-    headers,
+    headers: requestHeaders,
     multipart,
   });
+
+  if (!response.ok()) {
+      console.error(`[API Error] ${response.status()} ${response.statusText()} for ${url}`);
+  }
+
+  return response;
 }
