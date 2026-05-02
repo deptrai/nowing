@@ -1382,7 +1382,31 @@ class CryptoProject(BaseModel, TimestampMixin):
 
 
 class CryptoDataSnapshot(Base):
-    """Append-only cache of external crypto API tool results with TTL."""
+    """Append-only cache of external crypto API tool results with TTL.
+
+    **Bi-modal scoping (ADR-013, Story 11.7 T4)**
+
+    `search_space_id` is intentionally nullable. Snapshots come in two flavors:
+
+    1. **Global cache rows** (`search_space_id IS NULL`):
+       Written by the proactive refresh task (`_prefetch_category` in
+       `crypto_refresh_tasks.py`) to pre-warm popular tokens. Reused across
+       all workspaces. Cleanup is purely TTL-based via `expires_at`.
+
+    2. **Per-workspace rows** (`search_space_id IS NOT NULL`):
+       Written by user-triggered tool calls inside a chat that's bound to a
+       specific search space. Workspace-scoped for billing/quota and RLS.
+       Cleanup includes both TTL expiry AND orphan-purge (when the workspace
+       is deleted, the FK cascade handles the live case; the weekly
+       `cleanup_orphaned_crypto_snapshots` Celery task handles legacy /
+       FK-bypass orphans).
+
+    The `cleanup_orphaned_crypto_snapshots` task scopes to flavor #2 only
+    (`WHERE search_space_id IS NOT NULL`), leaving global rows alone.
+
+    See `_bmad-output/planning-artifacts/adrs/ADR-013-snapshot-scoping-bimodal.md`
+    for the design rationale.
+    """
 
     __tablename__ = "crypto_data_snapshots"
 
@@ -1434,6 +1458,15 @@ class CryptoDataSnapshot(Base):
             "data_category",
             "tool_name",
             "args_hash",
+        ),
+        # Story 11.7 T3: partial index for the weekly orphan-purge query.
+        # Optimised for `WHERE search_space_id IS NOT NULL ORDER BY id ASC
+        # LIMIT 1000` — produced by `cleanup_orphaned_crypto_snapshots`.
+        # Created CONCURRENTLY in migration 141.
+        Index(
+            "ix_crypto_snapshots_orphan_purge",
+            "id",
+            postgresql_where=text("search_space_id IS NOT NULL"),
         ),
     )
 

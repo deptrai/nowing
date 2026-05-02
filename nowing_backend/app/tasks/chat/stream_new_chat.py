@@ -85,6 +85,21 @@ async def _with_heartbeat(
     Wrap an async generator to yield SSE heartbeats if idle for timeout seconds.
     Uses a robust task-based approach to avoid cancelling the underlying generator
     iterator during idle periods.
+
+    Story 11.7 T2 / round-2 review: cancellation safety. When the SSE consumer
+    disconnects, Starlette cancels this generator. Two-phase cleanup:
+      1. Cancel the in-flight `next_task` (which is awaiting the inner
+         generator's next step) and let `CancelledError` propagate to its
+         await point.
+      2. Explicitly call `generator.aclose()`, which throws `GeneratorExit`
+         into the inner generator at its latest await — this is the documented
+         Python protocol for graceful generator cleanup. Inner generator's
+         `try/finally` (DB sessions, LangGraph checkpoints, Redis pubsub) gets
+         to release resources cleanly.
+    Both cleanup steps are wrapped with `asyncio.shield` so an outer cancel
+    of the heartbeat wrapper itself doesn't interrupt the inner cleanup mid-
+    write. We absorb expected exceptions (`CancelledError`, `StopAsyncIteration`,
+    `GeneratorExit`, plus `RuntimeError` from "generator already closed").
     """
     it = generator.__aiter__()
     # Use anext() if available (Python 3.10+), else it.__anext__()
@@ -111,10 +126,38 @@ async def _with_heartbeat(
             else:
                 yield VercelStreamingService.format_heartbeat()
     finally:
+        # Phase 1: cancel the in-flight next-step task. The shield prevents an
+        # outer cancel of the heartbeat wrapper from racing this drain.
         if not next_task.done():
             next_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError, StopAsyncIteration):
-                await next_task
+            with contextlib.suppress(
+                asyncio.CancelledError, StopAsyncIteration, GeneratorExit
+            ):
+                await asyncio.shield(_drain(next_task))
+
+        # Phase 2: call aclose() so the inner generator's `finally` blocks
+        # run with a deterministic `GeneratorExit` rather than a half-applied
+        # CancelledError. This is what releases DB sessions / LangGraph
+        # checkpoint state / Redis pubsub subscriptions in the inner code
+        # path. Suppress the standard cleanup exceptions; a misbehaving
+        # generator that re-raises is logged but never propagated past the
+        # wrapper boundary.
+        try:
+            await asyncio.shield(generator.aclose())
+        except (asyncio.CancelledError, StopAsyncIteration, GeneratorExit, RuntimeError):
+            pass
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                "_with_heartbeat: inner generator raised during aclose(): %s", exc
+            )
+
+
+async def _drain(task: asyncio.Task) -> None:
+    """Helper: await a task that's already been cancelled, swallow its result."""
+    try:
+        await task
+    except (asyncio.CancelledError, StopAsyncIteration, GeneratorExit):
+        pass
 
 
 def format_mentioned_nowing_docs_as_context(

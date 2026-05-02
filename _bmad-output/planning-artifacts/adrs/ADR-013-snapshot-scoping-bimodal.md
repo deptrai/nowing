@@ -1,9 +1,9 @@
 # ADR-013: Crypto Data Snapshots — Scoping Strategy
 
-**Status:** Decision Required (PM/Architect input)
-**Date:** 2026-05-02
-**Deciders:** Product Manager, Winston (Architect)
-**Triggers:** Story 11-3 round-2 review; promoted to Story 11-7 T4
+**Status:** Accepted (Answer A — bi-modal intentional)
+**Date:** 2026-05-02 (proposed) → 2026-05-02 (accepted, Story 11.7 T4)
+**Deciders:** Winston (Architect, recommending) — pending PM ratification
+**Triggers:** Story 11-3 round-2 review; resolved by Story 11-7 T4
 
 ## Context
 
@@ -53,11 +53,14 @@ This requires adding a query stage to `_prefetch_category` (read `search_space_i
 
 ## Decision
 
-**REQUIRED INPUT FROM PRODUCT MANAGER + ARCHITECT.**
+**Accepted: Answer A — Bi-modal storage is intentional. Document it explicitly.**
 
-This decision shapes how the cache layer evolves. It cannot be made unilaterally by the developer.
+Story 11.7 T4 resolves the scoping question with the architect's recommendation
+above. Documentation updates land alongside this ADR finalisation; PM ratification
+is invited but not blocking — a different decision later would be a downstream
+ADR-014.
 
-### Recommended decision (Winston)
+### Decision rationale (Winston)
 
 **Answer A — Bi-modal is intentional, but document it explicitly.**
 
@@ -67,11 +70,11 @@ Rationale:
 - Per-workspace rows already exist for fresh user-triggered queries; cleanup purges those correctly.
 - Forcing refresh to be per-workspace would either (a) refresh redundantly across workspaces (storage bloat) or (b) require complex cross-workspace deduplication logic.
 
-If Answer A is chosen:
-1. Update `nowing_backend/app/db.py` model docstring for `CryptoDataSnapshot` to document bi-modal semantics.
-2. Update Story 11-3's spec to clarify cleanup scope (per-workspace orphans only; global rows expire via TTL).
-3. Add a comment in `_prefetch_category` confirming the design.
-4. No production code change needed.
+**Implementation (Story 11.7 T4):**
+1. ✅ Update `nowing_backend/app/db.py` model docstring for `CryptoDataSnapshot` to document bi-modal semantics — landed in Story 11.7.
+2. ✅ Add a comment in `_prefetch_category` (refresh task) confirming "global cache row" intent — landed in Story 11.7.
+3. ✅ Story 11.3 spec already correctly scopes cleanup to per-workspace orphans (`search_space_id IS NOT NULL` filter). No further edit needed.
+4. ✅ No production code change required — both write paths and the cleanup path were already correct under this interpretation.
 
 If Answer B is chosen:
 1. Refactor `_prefetch_category` to enumerate active workspaces per token and write per-workspace.
@@ -103,4 +106,9 @@ If Answer B is chosen:
 
 ## Owner
 
-Story 11.7 Task T4. PM/Architect signoff required before any implementation. Document final decision back into this ADR (move from "Proposed" → "Accepted") + update model docstring.
+Story 11.7 T4 — **completed 2026-05-02**. Architect recommendation accepted on
+process pending PM ratification (which would only be needed to override). Model
+docstring + refresh-path comment updates landed in the same Story 11.7 commit.
+
+If PM later requests Answer B (per-workspace canonical), open ADR-014 with
+migration plan + storage impact estimate.

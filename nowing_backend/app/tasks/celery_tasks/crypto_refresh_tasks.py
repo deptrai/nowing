@@ -104,7 +104,16 @@ async def _async_refresh_popular():
 
 
 async def _prefetch_category(project_id, category, tool_name, tool_args, tool_fn_map):
-    """Call the tool function directly (no agent context) to refresh a single snapshot."""
+    """Call the tool function directly (no agent context) to refresh a single snapshot.
+
+    **Bi-modal cache (ADR-013, Story 11.7 T4):** This refresh path produces
+    GLOBAL cache rows (`search_space_id IS NULL`) — the proactive refresh
+    task is intentionally workspace-agnostic. Per-workspace cache rows are
+    only written by user-triggered tool calls inside a workspace-scoped chat
+    (via the agent middleware path), not by this task. The weekly
+    `cleanup_orphaned_crypto_snapshots` task purges per-workspace orphans
+    only and leaves these global rows for TTL-based eviction.
+    """
     from app.agents.new_chat.tools.crypto_data_categories import TOOL_CATEGORY_MAP, TTL_SECONDS
     from app.services.crypto_data_store import CryptoDataStore
 

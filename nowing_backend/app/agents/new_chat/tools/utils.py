@@ -47,32 +47,54 @@ def crypto_tool_decorator(source: str):
                     "event": "rate_limited"
                 }
 
-            # 3. Apply Pacing (Semaphore)
-            async with _OUTBOUND_SEMAPHORE:
-                try:
-                    result = await func(*args, **kwargs)
+            # Story 11.7 T1 / token-waste fix: track whether the tool actually
+            # made a billable outbound call. Acquired tokens are returned to
+            # the bucket on internal failures (TimeoutError, unhandled
+            # exceptions) so we don't double-penalise our local quota for
+            # work that never reached the provider.
+            token_consumed = True
+            try:
+                # 3. Apply Pacing (Semaphore)
+                async with _OUTBOUND_SEMAPHORE:
+                    try:
+                        result = await func(*args, **kwargs)
 
-                    # 4. Record Success if no logical error in result
-                    if isinstance(result, dict) and "error" in result:
+                        # 4. Record Success if no logical error in result
+                        if isinstance(result, dict) and "error" in result:
+                            await circuit_breaker.record_failure(source)
+                        else:
+                            await circuit_breaker.record_success(source)
+
+                        return result
+
+                    except asyncio.TimeoutError:
+                        # Provider didn't respond — request likely never billable.
+                        # Return the token; the circuit breaker still counts the
+                        # failure so repeated timeouts trip the breaker.
                         await circuit_breaker.record_failure(source)
-                    else:
-                        await circuit_breaker.record_success(source)
+                        token_consumed = False
+                        return {"status": "error", "error": f"{source} request timed out."}
 
-                    return result
-
-                except asyncio.TimeoutError:
-                    await circuit_breaker.record_failure(source)
-                    return {"status": "error", "error": f"{source} request timed out."}
-
-                except Exception as exc:
-                    # 5. Global Exception Handling
-                    await circuit_breaker.record_failure(source)
-                    logger.error("Unhandled exception in crypto tool %s: %s", func.__name__, exc, exc_info=True)
-                    return {
-                        "status": "error",
-                        "error": f"Unexpected error in {source}: {type(exc).__name__}",
-                        "details": str(exc) if not isinstance(exc, RuntimeError) else "Internal error"
-                    }
+                    except Exception as exc:
+                        # 5. Global Exception Handling — internal failure
+                        # (network, parsing, programming bug). Token returned
+                        # by best practice; provider not actually charged.
+                        await circuit_breaker.record_failure(source)
+                        token_consumed = False
+                        logger.error("Unhandled exception in crypto tool %s: %s", func.__name__, exc, exc_info=True)
+                        return {
+                            "status": "error",
+                            "error": f"Unexpected error in {source}: {type(exc).__name__}",
+                            "details": str(exc) if not isinstance(exc, RuntimeError) else "Internal error"
+                        }
+            finally:
+                if not token_consumed:
+                    # Best-effort release; never raises — release() swallows
+                    # Redis errors internally so the response path stays clean.
+                    try:
+                        await limiter.release()
+                    except Exception:
+                        logger.exception("rate-limiter release failed for %s", source)
 
         return wrapper
 

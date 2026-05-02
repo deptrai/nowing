@@ -448,6 +448,89 @@ async def test_ac7_throttle_log_emitted_at_most_twice_not_per_poll(caplog):
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Story 11.7 T1 — release() API
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_release_returns_token_to_local_bucket():
+    """Story 11.7 T1: release() must add a token back when called without Redis."""
+    limiter = TokenBucketRateLimiter(provider="rel_local", capacity=3, refill_rate=0.0)
+
+    with patch(
+        "app.agents.new_chat.middleware.rate_limiter.get_redis_client",
+        return_value=None,
+    ):
+        # Drain to 0
+        for _ in range(3):
+            assert await limiter.acquire(timeout_s=0.05) is True
+        assert limiter._local_tokens < 1.0
+
+        # Release returns it
+        await limiter.release()
+        assert limiter._local_tokens >= 1.0
+
+        # Subsequent acquire succeeds (proves the released token is real)
+        assert await limiter.acquire(timeout_s=0.05) is True
+
+
+@pytest.mark.asyncio
+async def test_release_capped_at_capacity():
+    """Releases beyond capacity must clamp — no infinite token store."""
+    limiter = TokenBucketRateLimiter(provider="rel_cap", capacity=2, refill_rate=0.0)
+
+    with patch(
+        "app.agents.new_chat.middleware.rate_limiter.get_redis_client",
+        return_value=None,
+    ):
+        # Bucket starts at capacity. Release more.
+        await limiter.release(count=5.0)
+        assert limiter._local_tokens == 2.0  # clamped
+
+
+@pytest.mark.asyncio
+async def test_release_via_redis_lua_path():
+    """When Redis is up, release() runs the atomic Lua script and mirrors locally."""
+    mock_redis = AsyncMock()
+    mock_redis.eval.return_value = "3.0"  # post-release token count from Lua
+
+    limiter = TokenBucketRateLimiter(provider="rel_redis", capacity=10, refill_rate=0.0)
+    # Simulate prior drain
+    limiter._local_tokens = 2.0
+
+    with patch(
+        "app.agents.new_chat.middleware.rate_limiter.get_redis_client",
+        return_value=mock_redis,
+    ):
+        await limiter.release(count=1.0)
+
+        # Redis Lua was called
+        mock_redis.eval.assert_called_once()
+        # Local mirror reflects the +1
+        assert limiter._local_tokens == 3.0
+
+
+@pytest.mark.asyncio
+async def test_release_swallows_redis_errors():
+    """release() must NOT raise even if Redis is broken — callers in finally
+    blocks should not have to wrap it."""
+    mock_redis = AsyncMock()
+    mock_redis.eval.side_effect = RuntimeError("Redis connection lost")
+
+    limiter = TokenBucketRateLimiter(provider="rel_err", capacity=5, refill_rate=0.0)
+    limiter._local_tokens = 1.0
+
+    with patch(
+        "app.agents.new_chat.middleware.rate_limiter.get_redis_client",
+        return_value=mock_redis,
+    ):
+        # Should not raise.
+        await limiter.release(count=1.0)
+        # Local fallback still applied.
+        assert limiter._local_tokens == 2.0
+
+
 def test_get_limiter_is_case_insensitive():
     a = get_limiter("CoinGecko")
     b = get_limiter("coingecko")

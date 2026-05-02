@@ -74,6 +74,32 @@ return {acquired, tostring(tokens), tostring(now)}
 """
 
 
+# Lua script for atomic token release (Story 11.7 / 11.4 round-2 token-waste fix)
+# Refills the bucket by `count` (capped at capacity) without touching
+# `last_refill`, since a release does not represent a refill event — it just
+# returns a previously-acquired token to the pool. Idempotent across retries.
+_RELEASE_SCRIPT = """
+local capacity = tonumber(ARGV[1])
+local count = tonumber(ARGV[2])
+
+local state = redis.call("HMGET", KEYS[1], "tokens", "last_refill")
+local tokens = tonumber(state[1]) or capacity
+local last_refill = tonumber(state[2])
+
+tokens = math.min(capacity, tokens + count)
+
+if last_refill == nil then
+    local redis_time = redis.call("TIME")
+    last_refill = tonumber(redis_time[1]) + (tonumber(redis_time[2]) / 1000000)
+end
+
+redis.call("HMSET", KEYS[1], "tokens", tokens, "last_refill", last_refill)
+redis.call("EXPIRE", KEYS[1], 3600)
+
+return tostring(tokens)
+"""
+
+
 class TokenBucketRateLimiter:
     """
     Per-provider rate limiter using Token Bucket algorithm.
@@ -257,6 +283,42 @@ class TokenBucketRateLimiter:
                 self._local_tokens -= 1
                 return True
             return False
+
+    async def release(self, count: float = 1.0) -> None:
+        """Return previously-acquired token(s) to the bucket.
+
+        Story 11.7 / round-2 review of 11.4 — token-waste fix. When a tool
+        raises an exception or times out AFTER `acquire()` succeeded, the
+        outbound request was never made (or never received a 200), so the
+        provider's quota wasn't actually charged. Returning the token avoids
+        double-penalising our local quota.
+
+        The release is best-effort: capped at capacity, atomic via Lua on
+        Redis, lock-protected on the local fallback. Failures are logged but
+        never raise — callers should not need to catch in their `except`.
+        """
+        # Atomic Lua: refill bucket by `count`, capped at capacity.
+        redis = get_redis_client()
+        if redis is not None:
+            try:
+                await redis.eval(_RELEASE_SCRIPT, 1, self.key, self.capacity, count)
+                # Mirror the post-release state into the local fallback so a
+                # subsequent Redis flap reflects the released token.
+                async with self._local_lock:
+                    self._local_tokens = min(self.capacity, self._local_tokens + count)
+                return
+            except Exception as exc:
+                if not self._warned_redis:
+                    logger.warning(
+                        "TokenBucket(%s): Redis error on release, falling back: %s",
+                        self.provider, exc,
+                    )
+                    self._warned_redis = True
+                # Fall through to local-only release.
+
+        # Local-only release path.
+        async with self._local_lock:
+            self._local_tokens = min(self.capacity, self._local_tokens + count)
 
 
 # Singleton registry for easy access in decorator

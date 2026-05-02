@@ -164,7 +164,7 @@ development_status:
   # ─── EPIC 11: Architecture Resilience & Stability (from Senior Architect Review 2026-05-01) ───
   # Source: _bmad-output/architecture-improvement-proposals-2026-05-01.md (v2)
   # Scope: P0+P1 items — SSE resilience, shared circuit breaker, cache hygiene, rate limiting, quota enforcement
-  epic-11: in-progress  # 11-6 (P0) and 11-7 (P1) follow-up stories pending (added 2026-05-02 by SCP)
+  epic-11: done  # All P0 and P1 stories shipped 2026-05-02; T5 production-mirror sign-off gated by deployment runbook
 
   # P0 — Critical
   11-1-sse-heartbeat-auto-reconnect: done
@@ -177,6 +177,6 @@ development_status:
 
   # Round-2 review follow-ups (added 2026-05-02 by Sprint Change Proposal)
   11-6-production-go-live-hardening: done          # P0 — completed 2026-05-02 (CDN docs, HTTP/2 docs, plan-id codegen, Redis-flap state-mirror)
-  11-7-resilience-hardening-round2: backlog        # P1 — within 2 weeks of launch
+  11-7-resilience-hardening-round2: done           # P1 — completed 2026-05-02 (release API, heartbeat cancel safety, orphan-purge index, ADR-013 accepted)
 
   epic-11-retrospective: optional
