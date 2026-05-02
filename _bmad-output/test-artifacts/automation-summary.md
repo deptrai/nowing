@@ -1,76 +1,108 @@
-# Test Automation Summary — bmad-testarch-automate
-**Date**: 2026-04-21  
-**Stack**: `nowing_web` frontend (Vitest 3.2.4 + @testing-library/react)  
-**Mode**: Sequential (Create)
-
+---
+stepsCompleted: ['step-01-preflight-and-context']
+lastStep: 'step-01-preflight-and-context'
+lastSaved: '2026-05-02T17:30:00Z'
+inputDocuments:
+  - _bmad-output/planning-artifacts/stories/11-3-orphaned-cache-purge.md
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/test-artifacts/test-design/test-design-api-layer.md
+  - nowing_backend/pyproject.toml
+  - nowing_web/playwright.config.ts
+  - _bmad/tea/config.yaml
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/test-levels-framework.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/test-priorities-matrix.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/data-factories.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/selective-testing.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/ci-burn-in.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/test-quality.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/overview.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/api-request.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/network-recorder.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/auth-session.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/intercept-network-call.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/recurse.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/log.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/file-utils.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/burn-in.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/network-error-monitor.md
+  - .agents/skills/bmad-testarch-automate/resources/knowledge/fixtures-composition.md
 ---
 
-## Files Generated This Session
+# Automation Summary - Step 1 Complete
 
-| File | Tests | Status |
-|------|-------|--------|
-| `__tests__/lib/announcements/announcements-utils.test.ts` | 23 | ✅ PASS |
-| `__tests__/lib/announcements/announcements-storage.test.ts` | 21 | ✅ PASS |
-| `__tests__/lib/auth-utils.test.ts` | 32 | ✅ PASS |
-| `__tests__/lib/chat/message-utils.test.ts` | 21 | ✅ PASS |
-| `__tests__/lib/format-date.test.ts` | 15 | ✅ PASS |
+## Project Context
+- **Project:** Nowing
+- **Stack:** Fullstack (FastAPI + Next.js)
+- **Frameworks:** pytest (Backend), Playwright (Frontend)
+- **Execution Mode:** BMad-Integrated
 
-**Total new tests**: 112 (covering `__tests__/lib/`)  
-**All lib tests**: 112/112 PASS
+## Loaded Artifacts
+- **Story 11.3:** Purge orphaned snapshots from `crypto_data_snapshots` weekly.
+- **Test Design:** API layer strategy (Murat), P0 blocks identified in RBAC, Documents, and Chat.
+
+## Knowledge profile
+- **Profile:** Full UI+API (Playwright Utils enabled)
+- **Tiers:** Core + Extended Playwright Utils fragments loaded.
+
+## Step 2: Automation Targets & Coverage Plan
+### Coverage Plan
+| Target | Level | Priority | Rationale |
+| :--- | :--- | :--- | :--- |
+| RBAC Isolation | API | P0 | Security risk 9; prevent data leaks. |
+| Document Upload | API | P0 | Core product value; ETL pipeline entry. |
+| Chat SSE Stream | API | P0 | Primary user journey; revenue critical. |
+| Orphaned Purge SQL | Integration | P1 | Verify performance/safety of `NOT EXISTS`. |
+| Orphaned Purge Schedule | System | P1 | Verify crontab and beat registration. |
+
+### Justification
+Addressing P0 gaps identified in the Test Design is critical for system security and core functionality. Story 11.3 verification ensures the new architectural resilience feature works as intended with actual DB constraints.
+
+## Step 3C: Aggregate Test Generation Results
+✅ Test Generation Complete (SEQUENTIAL)
+
+📊 Summary:
+- Stack Type: fullstack
+- Total Tests: 9
+  - API Tests: 5 (3 files)
+  - E2E Tests: 2 (2 files)
+  - Backend Tests: 2 (2 files)
+- Fixtures Created: 3 helpers/utils
+- Priority Coverage:
+  - P0 (Critical): 5 tests
+  - P1 (High): 4 tests
+  - P2 (Medium): 0 tests
+  - P3 (Low): 0 tests
+
+🚀 Performance: baseline (direct generation)
+
+📂 Generated Files:
+- nowing_web/playwright/api/rbac-isolation.spec.ts
+- nowing_web/playwright/api/document-upload.spec.ts
+- nowing_web/playwright/api/chat-sse.spec.ts
+- nowing_web/playwright/e2e/document-upload-journey.spec.ts
+- nowing_web/playwright/e2e/chat-journey.spec.ts
+- nowing_backend/tests/integration/test_orphaned_purge.py
+- nowing_backend/tests/system/test_celery_schedule.py
+- nowing_web/playwright/utils/api-request.ts
+- nowing_web/playwright/utils/recurse.ts
+
+✅ Ready for validation (Step 4)
+
+## Step 4: Final Summary & Recommendations
+### Created Infrastructure
+- **Helpers**: `nowing_web/playwright/utils/api-request.ts`, `nowing_web/playwright/utils/recurse.ts`
+- **Config**: Expanded `playwright.config.ts` with dedicated `api` project.
+- **Scripts**: New `pnpm test:api` and `pnpm test:e2e:p0` in frontend. `make test-system` in backend.
+
+### Key Assumptions & Risks
+- **Data Persistence**: Integration tests assume a fresh test database for each run (handled by existing `db_session` fixture).
+- **Network**: Chat SSE tests use internal mocking but can be switched to real endpoints for staging.
+- **RBAC**: Isolation tests assume `SEARCH_SPACE_ID_A` is non-accessible to current user.
+
+### Next Steps
+1. **[TR] Traceability** (`bmad-testarch-trace`): Map these new tests back to the PRD requirements to ensure full alignment.
+2. **[RV] Test Review** (`bmad-testarch-test-review`): Perform a quality review of the generated test code using Murat's standards.
+3. **Execution**: Run `pnpm test:e2e:p0` locally to verify the new journeys.
 
 ---
-
-## Coverage Map
-
-### `lib/announcements/announcements-utils.ts`
-- `isAnnouncementActive` — 8 tests (range, boundaries, invalid dates, inverted window)
-- `announcementMatchesAudience` — 5 tests (all/users/web_visitors/unknown)
-- `getActiveAnnouncements` — 4 tests (filter by active + audience)
-- `msUntilNextTransition` — 6 tests (future start/end, nearest, all-past, empty, invalid)
-
-### `lib/announcements/announcements-storage.ts`
-- `getAnnouncementState` — 6 tests (empty, persisted, malformed JSON, partial state)
-- `markAnnouncementRead` — 4 tests (add, dedup, persist, preserve existing)
-- `markAllAnnouncementsRead` — 4 tests (mark all, dedup, no-op, empty input)
-- `markAnnouncementToasted` — 3 tests (add, dedup, isolation from readIds)
-- `isAnnouncementRead` / `isAnnouncementToasted` — 4 tests
-
-### `lib/auth-utils.ts` — P0 Security Critical
-- `isPublicRoute` — 19 tests (all public prefixes + protected routes)
-- `handleUnauthorized` — 9 tests (clears both tokens, redirects on protected, saves redirect path, excluded paths: /auth /auth/callback /, no redirect on public)
-- `getAndClearRedirectPath` — 4 tests (null, returns value, clears, null on 2nd call)
-
-### `lib/chat/message-utils.ts`
-- String content — 2 tests
-- Non-string/non-array fallback — 2 tests
-- Array content basic — 4 tests
-- Filter mentioned-documents/attachments — 3 tests
-- thinking-steps → data-thinking-steps migration — 4 tests
-- Return shape (id, role, createdAt, metadata) — 6 tests
-
-### `lib/format-date.ts`
-- "Just now" (< 1 min) — 3 tests
-- "Xm ago" (1–59 min) — 3 tests
-- "Today, …" (same day, ≥ 60 min) — 2 tests
-- "Yesterday, …" — 2 tests
-- "Xd ago" (2–6 days) — 2 tests
-- Absolute "MMM d, yyyy" (≥ 7 days) — 3 tests
-
----
-
-## Previously Generated (Pre-Skill, AC Gaps)
-| File | Tests |
-|------|-------|
-| `__tests__/lib/announcements/announcements-utils.test.ts` | (generated this session) |
-| `__tests__/app/redeem/redeem-page.test.tsx` | 7 (FE-11) |
-| `__tests__/components/pricing/offline-indicator.test.tsx` | 4 (FE-6, fixed) |
-| `__tests__/components/new-chat/system-model-selector.test.tsx` | 11 (FE-5) |
-| `__tests__/components/tool-ui/citation.test.tsx` | 8 (FE-4) |
-
----
-
-## Notes
-- All tests are pure unit/component level — no Playwright (detected_stack: frontend only)
-- localStorage tests use mock store pattern (not `vi.clearAllMocks` to avoid wiping implementations)
-- `formatRelativeDate` uses `vi.useFakeTimers()` + `vi.setSystemTime()` for deterministic date branches
-- auth-utils P0 tests cover both clear-tokens AND redirect behavior precisely
+*Generated by Master Test Architect — BMad framework | 2026-05-02*

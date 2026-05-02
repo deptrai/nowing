@@ -12,6 +12,10 @@ test-unit:
 test-integration:
 	uv run pytest -m integration
 
+## Run only system tests
+test-system:
+	uv run pytest tests/system/
+
 ## Run only API tests
 test-api:
 	uv run pytest tests/api/
