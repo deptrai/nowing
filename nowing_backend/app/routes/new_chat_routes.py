@@ -62,6 +62,7 @@ from app.routes.model_list_routes import get_tier_for_model_id
 from app.services.token_quota_service import TokenQuotaExceededError, TokenQuotaService
 from app.tasks.chat.stream_new_chat import _with_heartbeat, stream_new_chat, stream_resume_chat
 from app.users import current_active_user
+from app.services.new_streaming_service import VercelStreamingService
 from app.utils.rbac import check_permission
 
 _logger = logging.getLogger(__name__)
