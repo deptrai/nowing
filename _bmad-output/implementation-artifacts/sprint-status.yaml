@@ -172,7 +172,7 @@ development_status:
 
   # P1 — Important
   11-3-orphaned-cache-purge: done
-  11-4-per-api-token-buckets: ready-for-dev
-  11-5-client-quota-enforcement: ready-for-dev
+  11-4-per-api-token-buckets: done
+  11-5-client-quota-enforcement: done
 
   epic-11-retrospective: optional

@@ -24,7 +24,11 @@ def crypto_tool_decorator(source: str):
     def decorator(func: Callable):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> dict[str, Any]:
-            # 1. Check Circuit Breaker
+            # 1. Check Circuit Breaker FIRST — short-circuit before consuming a
+            # rate-limit token. (Round 2 review fix: previously the limiter was
+            # consulted first; if the breaker was OPEN every short-circuited
+            # request still drained one token, exhausting the bucket during a
+            # provider outage.)
             if await circuit_breaker.is_open(source):
                 return {
                     "status": "error",
@@ -32,12 +36,23 @@ def crypto_tool_decorator(source: str):
                     "fallback_hint": "use chainlens_deep_research"
                 }
 
-            # 2. Apply Pacing (Semaphore)
+            # 2. Rate Limiter (Token Bucket) - AC#1, AC#3
+            from app.agents.new_chat.middleware.rate_limiter import get_limiter
+
+            limiter = get_limiter(source)
+            if not await limiter.acquire(timeout_s=5.0):
+                return {
+                    "status": "error",
+                    "error": f"Rate limit exceeded for {source}. Provider quota exhausted.",
+                    "event": "rate_limited"
+                }
+
+            # 3. Apply Pacing (Semaphore)
             async with _OUTBOUND_SEMAPHORE:
                 try:
                     result = await func(*args, **kwargs)
 
-                    # 3. Record Success if no logical error in result
+                    # 4. Record Success if no logical error in result
                     if isinstance(result, dict) and "error" in result:
                         await circuit_breaker.record_failure(source)
                     else:
@@ -50,7 +65,7 @@ def crypto_tool_decorator(source: str):
                     return {"status": "error", "error": f"{source} request timed out."}
 
                 except Exception as exc:
-                    # 4. Global Exception Handling
+                    # 5. Global Exception Handling
                     await circuit_breaker.record_failure(source)
                     logger.error("Unhandled exception in crypto tool %s: %s", func.__name__, exc, exc_info=True)
                     return {

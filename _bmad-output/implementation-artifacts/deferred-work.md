@@ -404,3 +404,20 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **`_async_cleanup` (daily 3 AM) thiếu try/finally** [crypto_refresh_tasks.py:195-219] — Pre-existing trong daily cleanup; nếu DELETE đầu tiên throw, JSON metric log bị mất. Pre-existing, không thuộc scope 11-3.
 - **`passive_deletes` thiếu trên `SearchSpace.crypto_snapshots` relationship** [app/db.py SearchSpace model] — ORM-level delete của SearchSpace sẽ load all snapshots vào memory. Tangential to 11-3.
 - **Search-space scoping mismatch giữa refresh & cleanup path** [crypto_refresh_tasks.py:88-174 vs 248-289] — `_prefetch_category` ghi snapshots với `search_space_id=NULL`, cleanup chỉ purge `search_space_id IS NOT NULL`. Có thể đều đúng theo intent riêng (refresh = global popular tokens, cleanup = per-workspace), nhưng cần document rõ hai loại snapshot. Design question lan ra khỏi scope 11-3, cần input từ PM/architect — bàn lại trong epic-11 retrospective.
+
+## Deferred from: code review of story 11-4-per-api-token-buckets round 2 (2026-05-02)
+
+- **Token wasted khi tool exception/timeout sau acquire** [nowing_backend/app/agents/new_chat/tools/utils.py:48-71] — `crypto_tool_decorator` không có return-token API. Khi tool raise sau khi đã acquire, token bị mất → quota double-penalty (provider chỉ count successful 200s, ta count mọi attempt). Cần thêm `release()` API cho `TokenBucketRateLimiter` hoặc accept tradeoff.
+- **Local fallback bursts at capacity sau Redis flap** [rate_limiter.py:79-101] — Khi Redis up→down→up, local bucket starts fresh while Redis was drained → 1 request có thể consume token cả 2 stores. AC#5 chấp nhận over-count nên defer, nhưng nên document.
+- **No EVALSHA caching → perf overhead** [rate_limiter.py:85-91] — Mỗi tool call ship ~600B Lua script qua wire. redis-py asyncio support `register_script()` / `Script` để auto-EVALSHA. Optimization, không phải bug.
+- **`get_limiter` registry race** [rate_limiter.py:140-153] — Plain `dict` không lock, race nếu mixed asyncio + threadpool. Asyncio-only deployment hiện tại safe.
+- **Bucket pre-filled at startup → thundering herd** [rate_limiter.py:67] — N workers boot đồng thời có thể burst N× capacity. AC#5 accepts over-count nhưng có thể giảm cold-start risk bằng `capacity * 0.5`.
+- **wait_step floor 100ms vs fast refill** [rate_limiter.py:113] — Etherscan refill 200ms nhưng wait_step floor 100ms; minor latency tax. Pre-existing perf tradeoff.
+
+## Deferred from: code review of story 11-5-client-quota-enforcement (2026-05-02)
+
+- **Duplicate ProContentGate on responsive breakpoints** [nowing_web/components/new-chat/report/crypto-report-layout.tsx:259-307] — `2xl:hidden` + `hidden 2xl:block` cả 2 mount + render skeleton kể cả khi chỉ 1 visible. CSS responsive pattern hiện có; cả 2 mount là intentional. Có thể consolidate sang dùng `useBreakpoint()` hook nếu muốn skip mount inactive copy.
+- **Offline check one-shot, không reactive** [ProContentGate.tsx:30] — `navigator.onLine` đọc 1 lần per render, không listen `online`/`offline` events. AC#6 chỉ require cold-mount behavior nên acceptable.
+- **`PRO_PLANS` không shared giữa FE và BE** [nowing_web/lib/entitlements.ts:1 + nowing_backend/app/routes/stripe_routes.py:779] — Hardcoded list trùng cả 2 nơi. Nếu BE thêm SKU mới (ví dụ `team_yearly`), FE silently deny. Cần shared contract types hoặc generated constant.
+- **Test mock `vi.mock("jotai")` globally** [__tests__/hooks/use-subscription-gate.test.tsx:7-9] — Replace tất cả jotai exports → Provider/useSetAtom undefined trong test. Hidden coupling; chỉ catch bug nếu SUT literally call useAtomValue. Refactor sang dùng test wrapper với Provider.
+- **CTA `/pricing` không locale-prefixed** [ProContentGate.tsx:62] — Hard-code `<Link href="/pricing">`. Nếu project sau add i18n routing (`/en/pricing`, `/vi/pricing`), CTA broken silently. No i18n yet nên defer.
