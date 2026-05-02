@@ -204,4 +204,17 @@ celery_app.conf.beat_schedule = {
             "expires": 3600,
         },
     },
+    # Crypto data cache: weekly orphaned purge at Sunday 4 AM UTC (Story 11.3).
+    # crontab(...) is interpreted in the configured timezone (UTC, see line 110).
+    # `expires` covers the case where the beat scheduler is briefly down — for a
+    # weekly task we accept any pickup within the same day rather than skipping
+    # to next week. Hard `time_limit`/`soft_time_limit` are set on the task
+    # decorator so a runaway task cannot exceed the maintenance window.
+    "crypto-cleanup-orphaned-snapshots": {
+        "task": "crypto.cleanup_orphaned_snapshots",
+        "schedule": crontab(hour=4, minute=0, day_of_week=0),
+        "options": {
+            "expires": 43200,  # 12h — weekly task, tolerate same-day delays
+        },
+    },
 }

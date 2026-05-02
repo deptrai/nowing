@@ -388,3 +388,19 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **AC#5 (Story 11-1) HTTP/2 multiplexing 3+ tabs** — Skipped trong môi trường dev per Task 3.1 dev note. Cần verify Traefik/reverse proxy config khi deploy production.
 - **`Cache-Control: no-transform` có thể không hiệu quả với một số CDN** [nowing_backend/app/services/new_streaming_service.py] — Cloudflare free tier ignore `no-transform` cho SSE và có thể recompress làm hỏng framing. Verify deployment-specific khi go-live.
 - **`streamWithRetry` không handle quota error qua SSE event payload** [nowing_web/lib/apis/chat-runs-api.service.ts:877-880] — Hiện chỉ check 402 ở HTTP response. Nếu BE emit quota event giữa stream, FE sẽ retry vô ích. Defer vì BE hiện không emit quota event giữa stream.
+
+## Deferred from: code review of 11-3-orphaned-cache-purge (2026-05-02)
+
+- **Sử dụng `asyncio.new_event_loop()` thay vì `asyncio.run()`** [nowing_backend/app/tasks/celery_tasks/crypto_refresh_tasks.py] — Deferred do đây là pre-existing pattern được yêu cầu bắt buộc clone theo spec. Cần đợt refactor riêng để chuyển toàn bộ các celery tasks sang dùng `asyncio.run()`.
+
+
+## Deferred from: code review of story 11-3-orphaned-cache-purge round 2 (2026-05-02)
+
+- **`td.factory({})` empty config in `_prefetch_category`** [nowing_backend/app/tasks/celery_tasks/crypto_refresh_tasks.py:118] — Tools instantiated với empty dict config có thể overwrite cached snapshots với data sai (thiếu API keys/region). Refresh task, không thuộc scope 11-3 chặt chẽ.
+- **`NOT EXISTS` subquery có thể full-scan trên large table** [crypto_refresh_tasks.py:261-271] — Trên 10M-row `crypto_data_snapshots`, mỗi batch có thể vài phút. Cần index analysis (`ix_crypto_snapshots_cache_lookup` có cover hết không?) + có thể thêm `statement_timeout` ở DB-side config.
+- **Test SQL string-match không verify semantics** [test_story_11_3_orphaned_cache_purge.py:43-51] — `"not exists" in stmt_str` pass kể cả khi correlation sai (`searchspaces.id = searchspaces.id` self-join bug). Cần integration test với Postgres seeded để verify.
+- **`crypto_data_snapshots.search_space_id` đã có `ondelete=CASCADE`** [app/db.py:1390-1392] — "orphan" set chỉ tồn tại từ bypassing FK hoặc pre-migration legacy. Đặt câu hỏi: 11-3 có giải quyết bug thật hay che giấu integrity issue khác?
+- **`loop.shutdown_asyncgens()` chưa await** [crypto_refresh_tasks.py:235-241] — Pre-existing pattern cho cả 3 cleanup tasks; leak async generators qua nhiều Celery worker run. Nên consolidate khi refactor.
+- **`_async_cleanup` (daily 3 AM) thiếu try/finally** [crypto_refresh_tasks.py:195-219] — Pre-existing trong daily cleanup; nếu DELETE đầu tiên throw, JSON metric log bị mất. Pre-existing, không thuộc scope 11-3.
+- **`passive_deletes` thiếu trên `SearchSpace.crypto_snapshots` relationship** [app/db.py SearchSpace model] — ORM-level delete của SearchSpace sẽ load all snapshots vào memory. Tangential to 11-3.
+- **Search-space scoping mismatch giữa refresh & cleanup path** [crypto_refresh_tasks.py:88-174 vs 248-289] — `_prefetch_category` ghi snapshots với `search_space_id=NULL`, cleanup chỉ purge `search_space_id IS NOT NULL`. Có thể đều đúng theo intent riêng (refresh = global popular tokens, cleanup = per-workspace), nhưng cần document rõ hai loại snapshot. Design question lan ra khỏi scope 11-3, cần input từ PM/architect — bàn lại trong epic-11 retrospective.

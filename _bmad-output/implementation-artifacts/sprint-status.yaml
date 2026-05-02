@@ -171,7 +171,7 @@ development_status:
   11-2-redis-circuit-breaker: done
 
   # P1 — Important
-  11-3-orphaned-cache-purge: ready-for-dev
+  11-3-orphaned-cache-purge: done
   11-4-per-api-token-buckets: ready-for-dev
   11-5-client-quota-enforcement: ready-for-dev
 
