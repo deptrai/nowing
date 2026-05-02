@@ -164,7 +164,7 @@ development_status:
   # ─── EPIC 11: Architecture Resilience & Stability (from Senior Architect Review 2026-05-01) ───
   # Source: _bmad-output/architecture-improvement-proposals-2026-05-01.md (v2)
   # Scope: P0+P1 items — SSE resilience, shared circuit breaker, cache hygiene, rate limiting, quota enforcement
-  epic-11: in-progress
+  epic-11: in-progress  # 11-6 (P0) and 11-7 (P1) follow-up stories pending (added 2026-05-02 by SCP)
 
   # P0 — Critical
   11-1-sse-heartbeat-auto-reconnect: done
@@ -174,5 +174,9 @@ development_status:
   11-3-orphaned-cache-purge: done
   11-4-per-api-token-buckets: done
   11-5-client-quota-enforcement: done
+
+  # Round-2 review follow-ups (added 2026-05-02 by Sprint Change Proposal)
+  11-6-production-go-live-hardening: done          # P0 — completed 2026-05-02 (CDN docs, HTTP/2 docs, plan-id codegen, Redis-flap state-mirror)
+  11-7-resilience-hardening-round2: backlog        # P1 — within 2 weeks of launch
 
   epic-11-retrospective: optional

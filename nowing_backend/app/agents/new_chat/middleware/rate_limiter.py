@@ -38,6 +38,10 @@ PROVIDER_RATE_LIMITS = {
 }
 
 # Lua script for atomic token bucket acquisition using Redis server time (Review Patch #4)
+#
+# Story 11.6 / ADR-011: returns `[acquired, tokens, last_refill]` so the Python
+# caller can mirror Redis state into the local fallback bucket on every
+# successful EVAL — eliminates the Redis-flap double-consume bug.
 _ACQUIRE_SCRIPT = """
 local capacity = tonumber(ARGV[1])
 local refill_rate = tonumber(ARGV[2])
@@ -64,7 +68,9 @@ redis.call("HMSET", KEYS[1], "tokens", tokens, "last_refill", now)
 -- Set TTL to 1 hour to keep keys clean if unused
 redis.call("EXPIRE", KEYS[1], 3600)
 
-return acquired
+-- Return Redis-side state so Python can mirror it into the local fallback
+-- bucket. Format: [acquired (0/1), tokens (float-as-string), last_refill (float-as-string)]
+return {acquired, tostring(tokens), tostring(now)}
 """
 
 
@@ -85,6 +91,13 @@ class TokenBucketRateLimiter:
         self._local_last_refill = time.monotonic()
         self._local_lock = asyncio.Lock()
         self._warned_redis = False
+        # Story 11.6 round 2: Redis-side wall-clock of the most recent
+        # successful EVAL we mirrored. Two concurrent acquires can finish
+        # their EVAL out of order; we only apply the mirror write if the
+        # Redis timestamp is newer than what's already mirrored, otherwise
+        # an older response would clobber the freshest state and leak the
+        # double-consume window the mirror was designed to close.
+        self._last_redis_ts: float = 0.0
 
     async def acquire(self, timeout_s: float = 5.0) -> bool:
         """
@@ -120,12 +133,48 @@ class TokenBucketRateLimiter:
                         self.capacity,
                         self.refill_rate,
                     )
-                    # Defensive cast: some redis clients may return bytes/str
-                    # for Lua integer responses.
-                    try:
-                        acquired = int(res) == 1
-                    except (TypeError, ValueError):
-                        acquired = bool(res)
+                    # Story 11.6 / ADR-011: Lua returns [acquired, tokens, last_refill].
+                    # Mirror Redis state into the local fallback bucket so a
+                    # subsequent Redis-down iteration starts from the *current*
+                    # remaining count (not a stale `capacity` snapshot) —
+                    # eliminates the double-consume window during Redis flap.
+                    #
+                    # Round 2 fix: we use Redis's `last_refill` timestamp as
+                    # an ordering guard so concurrent acquires can't apply
+                    # mirror writes out of order. We do NOT use it for the
+                    # local refill clock — `_local_last_refill` stays on
+                    # `time.monotonic()` because Redis wall-clock and local
+                    # monotonic are different clocks.
+                    if isinstance(res, (list, tuple)) and len(res) >= 3:
+                        try:
+                            acquired = int(res[0]) == 1
+                        except (TypeError, ValueError):
+                            acquired = bool(res[0])
+                        try:
+                            redis_tokens = float(res[1])
+                            redis_ts = float(res[2])
+                        except (TypeError, ValueError, IndexError):
+                            # Bad Lua response shape — treat as flap, do not
+                            # update local mirror.
+                            pass
+                        else:
+                            async with self._local_lock:
+                                # Skip the mirror write if a fresher response
+                                # has already landed: prevents the TOCTOU
+                                # double-consume regression where a stale
+                                # higher token count clobbers a fresh lower
+                                # one under concurrent acquires.
+                                if redis_ts >= self._last_redis_ts:
+                                    self._local_tokens = min(self.capacity, redis_tokens)
+                                    self._local_last_refill = time.monotonic()
+                                    self._last_redis_ts = redis_ts
+                    else:
+                        # Defensive: some clients may return scalar for
+                        # legacy script versions or unexpected shapes.
+                        try:
+                            acquired = int(res) == 1
+                        except (TypeError, ValueError):
+                            acquired = bool(res)
                     self._warned_redis = False
                 except Exception as exc:
                     # Chặn log spam (Review Patch #5)

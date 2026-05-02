@@ -12,11 +12,15 @@ on:
     branches: [main, dev]
     paths:
       - "nowing_web/**"
+      - "scripts/generate_plan_ids.py"
+      - "nowing_backend/app/schemas/stripe.py"
       - ".github/workflows/frontend-tests.yml"
   pull_request:
     branches: [main, dev]
     paths:
       - "nowing_web/**"
+      - "scripts/generate_plan_ids.py"
+      - "nowing_backend/app/schemas/stripe.py"
       - ".github/workflows/frontend-tests.yml"
   schedule:
     # Weekly burn-in — Sundays at 02:00 UTC
@@ -55,6 +59,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Verify plan-ids drift (Story 11.6 / ADR-012)
+        # Fails CI if nowing_web/lib/generated/plan-ids.ts is out of sync
+        # with the canonical BE PlanId enum. Single source of truth for Pro
+        # plan SKUs — stops silent FE/BE drift.
+        run: pnpm verify:plan-ids
 
       - name: Run Next.js linter
         run: pnpm exec next lint

@@ -108,9 +108,10 @@ async def test_refill_logic():
 
 @pytest.mark.asyncio
 async def test_redis_logic():
-    """Verify Redis EVAL is invoked and a Lua return of 1 is treated as success."""
+    """Verify Redis EVAL is invoked and Lua return [1, tokens, last_refill] is success."""
     mock_redis = AsyncMock()
-    mock_redis.eval.return_value = 1
+    # Story 11.6 / ADR-011: Lua now returns [acquired, tokens, last_refill]
+    mock_redis.eval.return_value = [1, "9.0", "1234567890.123"]
 
     limiter = TokenBucketRateLimiter(provider="redis_test", capacity=10, refill_rate=1.0)
     with patch(
@@ -122,12 +123,11 @@ async def test_redis_logic():
 
 
 @pytest.mark.asyncio
-async def test_redis_eval_returns_bytes_treated_as_int():
-    """Round 2 defensive: redis-py wrappers may return bytes/str for Lua ints.
-    The defensive `int(res) == 1` cast must handle this without flipping
-    every request to fail-and-wait."""
+async def test_redis_eval_returns_legacy_int_still_works():
+    """Defensive: if Lua somehow returns a scalar (legacy script, unexpected
+    deployment), the limiter still works."""
     mock_redis = AsyncMock()
-    mock_redis.eval.return_value = b"1"  # some clients
+    mock_redis.eval.return_value = b"1"
 
     limiter = TokenBucketRateLimiter(provider="bytes_redis", capacity=10, refill_rate=1.0)
     with patch(
@@ -135,6 +135,87 @@ async def test_redis_eval_returns_bytes_treated_as_int():
         return_value=mock_redis,
     ):
         assert await limiter.acquire(timeout_s=0.1) is True
+
+
+@pytest.mark.asyncio
+async def test_ac4_concurrent_mirror_writes_use_redis_ts_ordering():
+    """Story 11.6 round 2: when two concurrent acquires complete EVAL out of
+    order (B's response with `last_refill=t1` lands before A's stale
+    `last_refill=t0`), the older response must NOT clobber the fresher mirror.
+    Otherwise local would carry a stale-too-high token count and reintroduce
+    a smaller version of the double-consume bug ADR-011 was meant to close.
+    """
+    limiter = TokenBucketRateLimiter(provider="toctou", capacity=10, refill_rate=0.0)
+
+    # Manually exercise both mirror writes in deliberate-stale order.
+    # Newer response (smaller tokens, larger ts) lands first.
+    async def apply_mirror(redis_tokens: float, redis_ts: float) -> None:
+        async with limiter._local_lock:
+            if redis_ts >= limiter._last_redis_ts:
+                limiter._local_tokens = min(limiter.capacity, redis_tokens)
+                limiter._local_last_refill = time.monotonic()
+                limiter._last_redis_ts = redis_ts
+
+    # Worker B's fresh response: tokens=1.0, ts=1001
+    await apply_mirror(1.0, 1001.0)
+    # Worker A's STALE response: tokens=2.0, ts=1000 (arrives later)
+    await apply_mirror(2.0, 1000.0)
+
+    # Local must reflect the fresher write, not the stale one.
+    assert limiter._local_tokens == 1.0, (
+        f"stale mirror clobbered fresh state: got {limiter._local_tokens}, expected 1.0"
+    )
+
+
+@pytest.mark.asyncio
+async def test_ac4_redis_flap_no_double_consume():
+    """Story 11.6 / ADR-011: when Redis flaps mid-acquire, total tokens
+    consumed across Redis + local must NOT exceed the bucket capacity.
+
+    Setup: capacity=3, refill_rate=0. Redis succeeds twice (consume 2),
+    then goes down. The local mirror should reflect the post-EVAL state
+    (1 token left), so subsequent Redis-down acquires drain from `1`,
+    not from `3` (which would be the stale "fresh capacity" bug).
+    """
+    state = {"calls": 0}
+
+    async def flaky_eval(*_args, **_kwargs):
+        state["calls"] += 1
+        if state["calls"] == 1:
+            # Redis up: consumed 1, tokens left = 2
+            return [1, "2.0", "1000.0"]
+        if state["calls"] == 2:
+            # Redis up: consumed 1, tokens left = 1
+            return [1, "1.0", "1001.0"]
+        # Redis down from call 3 onward
+        raise RuntimeError("Redis connection lost")
+
+    mock_redis = AsyncMock()
+    mock_redis.eval.side_effect = flaky_eval
+
+    limiter = TokenBucketRateLimiter(provider="flap_test", capacity=3, refill_rate=0.0)
+
+    with patch(
+        "app.agents.new_chat.middleware.rate_limiter.get_redis_client",
+        return_value=mock_redis,
+    ):
+        # Phase 1: Redis up — 2 acquires succeed, local mirror tracks Redis.
+        assert await limiter.acquire(timeout_s=0.1) is True
+        assert await limiter.acquire(timeout_s=0.1) is True
+
+        # After 2 successful Redis EVALs, local mirror should hold 1 token.
+        # Without the state-mirror fix, _local_tokens would still be `capacity`
+        # (3) — leaving room for 3 more local consumes = 5 total (over capacity).
+        assert limiter._local_tokens <= 1.0, (
+            f"local mirror should reflect Redis state (~1 token), "
+            f"got {limiter._local_tokens}"
+        )
+
+        # Phase 2: Redis down — local fallback drains from mirrored state,
+        # not from a stale `capacity` reset.
+        assert await limiter.acquire(timeout_s=0.1) is True  # consume 3rd
+        # Bucket should now be empty across BOTH stores.
+        assert await limiter.acquire(timeout_s=0.1) is False  # 4th rejected
 
 
 # ---------------------------------------------------------------------------

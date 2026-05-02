@@ -7,6 +7,8 @@
 		"dev": "next dev --turbopack -p 4998",
 		"dev:turbo": "next dev --turbopack",
 		"build": "next build",
+		"gen:plan-ids": "python3 ../scripts/generate_plan_ids.py",
+		"verify:plan-ids": "python3 ../scripts/generate_plan_ids.py --check",
 		"start": "next start",
 		"lint": "next lint",
 		"format": "biome check --write ./ --max-diagnostics 500",

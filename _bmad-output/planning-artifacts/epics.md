@@ -1273,7 +1273,10 @@ So that future dashboard features (token tracker, price history chart) can consu
 
 **Context:** Sau Adversarial Review và Senior Architect Critical Review, 10 proposals được triage thành 3 tiers. Epic 11 implement Tier 1 (P0+P1). Tier 2 (P2: jittered refresh, lock TTL reduction, elapsed timers) và Tier 3 (P3: fallback UI, graceful shutdown) deferred.
 
-**Estimated Effort:** 2-3 weeks (1 BE + 0.5 FE)
+**Estimated Effort:** 3-4 weeks (1 BE + 0.5 FE + 0.2 DevOps)
+  - 11-1..11-5: 2-3 weeks (delivered 2026-05-02)
+  - 11-6 (production hardening): 4 days (P0 — pre-launch)
+  - 11-7 (resilience round 2): 5 days (P1 — within 2 weeks post-launch)
 **Prerequisite:** Epic 10 (crypto data layer — cache infrastructure)
 
 ---
@@ -1359,6 +1362,64 @@ So that users không bypass quota bằng cách đọc IndexedDB offline sau khi 
 **Then** deep research content bị redact — chỉ hiển thị basic metadata + upgrade CTA
 **And** hoạt động offline (pure client-side timestamp check)
 **And** auto-unlock khi Zero-sync push renewal
+
+---
+
+#### Story 11.6: Production Go-Live Hardening
+📄 **Story file**: [`stories/11-6-production-go-live-hardening.md`](./stories/11-6-production-go-live-hardening.md) | **P0**
+
+**Source:** Sprint Change Proposal 2026-05-02 — round-2 review CRITICAL items from stories 11-1, 11-4, 11-5
+
+As a system operator,
+I want production-environment-specific hardening for SSE / rate-limiter / entitlement contracts before user-facing launch,
+So that day-1 production incidents from CDN buffering, HTTP/2 absence, FE-BE plan drift, and Redis-flap double-consume are eliminated.
+
+**Acceptance Criteria:**
+
+**Given** Cloudflare CDN deployment serving SSE traffic,
+**When** a `/runs/{id}/stream` connection runs with `Cache-Control: no-cache, no-transform`,
+**Then** verify (via deployment smoke test in production-mirror env) the response is NOT recompressed/buffered. Document Cloudflare-specific config requirement (page rule or worker bypass) in `docs/deployment/sse-cdn.md`.
+
+**And given** Traefik (or active reverse proxy) serving Nowing,
+**When** 3+ browser tabs open SSE streams concurrently,
+**Then** all tabs maintain connections via HTTP/2 multiplexing (verify in staging, document required Traefik config flags in `docs/deployment/http2.md`).
+
+**And given** FE consumes `PRO_PLANS` (entitlements.ts),
+**When** BE adds/removes a plan SKU,
+**Then** FE auto-syncs without manual edit — implement via build-time codegen from BE `PlanId` enum (no runtime call).
+
+**And given** Redis flap (up → down → up mid-request),
+**When** a single `acquire()` call is in-flight during the flap,
+**Then** at most 1 token is consumed across Redis + local stores combined (mirror Redis state to local on each successful EVAL).
+
+---
+
+#### Story 11.7: Resilience & Performance Hardening Round 2
+📄 **Story file**: [`stories/11-7-resilience-hardening-round2.md`](./stories/11-7-resilience-hardening-round2.md) | **P1**
+
+**Source:** Sprint Change Proposal 2026-05-02 — round-2 review IMPORTANT items from stories 11-1, 11-3, 11-4
+
+As a system operator,
+I want round-2-review resilience gaps (token-waste, heartbeat-cancel safety, slow-table DELETE, scoping clarification) addressed within 2 weeks of launch,
+So that production stability degrades gracefully under sustained load and edge cases.
+
+**Acceptance Criteria:**
+
+**Given** a tool raises exception/timeout AFTER `limiter.acquire()` succeeded,
+**When** the wrapper catches the exception,
+**Then** the consumed token is returned to the bucket (`TokenBucketRateLimiter` exposes `release()`; decorator calls it on exception path).
+
+**And given** a SSE consumer disconnects mid-stream during `_with_heartbeat` wrap,
+**When** Starlette cancels the request,
+**Then** the inner generator's cancellation does NOT corrupt LangGraph state or leak DB sessions (use structured concurrency / sentinel pattern; integration test simulating disconnect mid-DB-write asserts session is properly closed).
+
+**And given** `crypto_data_snapshots` table grows to 10M+ rows,
+**When** `cleanup_orphaned_crypto_snapshots` runs the `NOT EXISTS` batch,
+**Then** each batch completes within 60s (verify index `ix_crypto_snapshots_cache_lookup` covers the orphan-detection query plan via `EXPLAIN ANALYZE`).
+
+**And given** `_prefetch_category` (refresh) writes snapshots without `search_space_id` while cleanup purges `search_space_id IS NOT NULL`,
+**When** PM/Architect reviews,
+**Then** an ADR is written (ADR-013) documenting the design decision: snapshots intentionally bi-modal (global + per-workspace) OR refresh task should pass `search_space_id`.
 
 ### Epic 12: Nowing Desktop & Local Intelligence
 Người dùng có thể sử dụng Nowing như một ứng dụng Native trên máy tính, hỗ trợ quản lý tài liệu local tự động và chat với AI hoàn toàn Offline khi cần thiết. Epic này tập trung vào việc tối ưu hóa trải nghiệm trên môi trường máy tính cá nhân và tích hợp LLM cục bộ.

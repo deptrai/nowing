@@ -14,11 +14,17 @@
  *   re-implement the check.
  * - Removed `"trialing"` (backend enum doesn't emit it).
  * - Tightened types to accept `null` (matches contracts/types/user.types.ts).
+ *
+ * Story 11.6 fix (2026-05-02 / ADR-012):
+ * - PRO_PLANS list is now generated from BE `PlanId` enum at build time
+ *   (`scripts/generate_plan_ids.py`). Edit BE schema, not this file.
+ *   CI fails if generated file drifts from BE source.
  */
 
-export const PRO_PLANS = ["pro_monthly", "pro_yearly", "max_monthly", "max_yearly"] as const;
+import { PRO_PLANS, type ProPlan } from "./generated/plan-ids";
 
-export type ProPlan = (typeof PRO_PLANS)[number];
+export { PRO_PLANS };
+export type { ProPlan };
 
 export interface EntitlementUser {
 	plan_id?: string | null;

@@ -384,31 +384,47 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 
 ## Deferred from: code review of story 11-1-sse-heartbeat-auto-reconnect & 11-2-redis-circuit-breaker (2026-05-02)
 
-- **`_with_heartbeat` cancel `next_task` mid-await có thể leak DB session/LangGraph state** [nowing_backend/app/tasks/chat/stream_new_chat.py:318-355] — Khi consumer disconnect, `task.cancel()` propagates `CancelledError` vào inner generator tại điểm `await` bất kỳ trong `_stream_new_chat_inner` (DB/LLM work). Cần redesign cancellation strategy (e.g. structured concurrency / sentinel) — không phải trivial fix, deferred cho hardening pass riêng.
-- **AC#5 (Story 11-1) HTTP/2 multiplexing 3+ tabs** — Skipped trong môi trường dev per Task 3.1 dev note. Cần verify Traefik/reverse proxy config khi deploy production.
-- **`Cache-Control: no-transform` có thể không hiệu quả với một số CDN** [nowing_backend/app/services/new_streaming_service.py] — Cloudflare free tier ignore `no-transform` cho SSE và có thể recompress làm hỏng framing. Verify deployment-specific khi go-live.
+> **Triage 2026-05-02 (Sprint Change Proposal):**
+> - 2 items → **PROMOTED → 11-6** (HTTP/2, Cloudflare CDN — pre-launch blockers)
+> - 1 item → **PROMOTED → 11-7** (heartbeat cancel safety — post-launch)
+> - 1 item → REMAINS deferred (BE doesn't emit quota mid-stream yet)
+
+- [PROMOTED → 11-7] **`_with_heartbeat` cancel `next_task` mid-await có thể leak DB session/LangGraph state** [nowing_backend/app/tasks/chat/stream_new_chat.py:318-355] — Khi consumer disconnect, `task.cancel()` propagates `CancelledError` vào inner generator tại điểm `await` bất kỳ trong `_stream_new_chat_inner` (DB/LLM work). Cần redesign cancellation strategy (e.g. structured concurrency / sentinel) — không phải trivial fix, deferred cho hardening pass riêng.
+- [PROMOTED → 11-6] **AC#5 (Story 11-1) HTTP/2 multiplexing 3+ tabs** — Skipped trong môi trường dev per Task 3.1 dev note. Cần verify Traefik/reverse proxy config khi deploy production.
+- [PROMOTED → 11-6] **`Cache-Control: no-transform` có thể không hiệu quả với một số CDN** [nowing_backend/app/services/new_streaming_service.py] — Cloudflare free tier ignore `no-transform` cho SSE và có thể recompress làm hỏng framing. Verify deployment-specific khi go-live.
 - **`streamWithRetry` không handle quota error qua SSE event payload** [nowing_web/lib/apis/chat-runs-api.service.ts:877-880] — Hiện chỉ check 402 ở HTTP response. Nếu BE emit quota event giữa stream, FE sẽ retry vô ích. Defer vì BE hiện không emit quota event giữa stream.
 
 ## Deferred from: code review of 11-3-orphaned-cache-purge (2026-05-02)
 
-- **Sử dụng `asyncio.new_event_loop()` thay vì `asyncio.run()`** [nowing_backend/app/tasks/celery_tasks/crypto_refresh_tasks.py] — Deferred do đây là pre-existing pattern được yêu cầu bắt buộc clone theo spec. Cần đợt refactor riêng để chuyển toàn bộ các celery tasks sang dùng `asyncio.run()`.
+> **Triage 2026-05-02 (Sprint Change Proposal): DROPPED — pre-existing pattern across all celery tasks; round 2 already hardened the orphan task itself; codebase-wide refactor not scoped to Epic 11.**
+
+- [DROPPED 2026-05-02] **Sử dụng `asyncio.new_event_loop()` thay vì `asyncio.run()`** [nowing_backend/app/tasks/celery_tasks/crypto_refresh_tasks.py] — Deferred do đây là pre-existing pattern được yêu cầu bắt buộc clone theo spec. Cần đợt refactor riêng để chuyển toàn bộ các celery tasks sang dùng `asyncio.run()`.
 
 
 ## Deferred from: code review of story 11-3-orphaned-cache-purge round 2 (2026-05-02)
 
+> **Triage 2026-05-02 (Sprint Change Proposal):**
+> - 2 items → **PROMOTED → 11-7** (NOT EXISTS scan analysis, search-space scoping ADR-013)
+> - 6 items → REMAIN deferred (pre-existing patterns or speculative concerns)
+
 - **`td.factory({})` empty config in `_prefetch_category`** [nowing_backend/app/tasks/celery_tasks/crypto_refresh_tasks.py:118] — Tools instantiated với empty dict config có thể overwrite cached snapshots với data sai (thiếu API keys/region). Refresh task, không thuộc scope 11-3 chặt chẽ.
-- **`NOT EXISTS` subquery có thể full-scan trên large table** [crypto_refresh_tasks.py:261-271] — Trên 10M-row `crypto_data_snapshots`, mỗi batch có thể vài phút. Cần index analysis (`ix_crypto_snapshots_cache_lookup` có cover hết không?) + có thể thêm `statement_timeout` ở DB-side config.
+- [PROMOTED → 11-7] **`NOT EXISTS` subquery có thể full-scan trên large table** [crypto_refresh_tasks.py:261-271] — Trên 10M-row `crypto_data_snapshots`, mỗi batch có thể vài phút. Cần index analysis (`ix_crypto_snapshots_cache_lookup` có cover hết không?) + có thể thêm `statement_timeout` ở DB-side config.
 - **Test SQL string-match không verify semantics** [test_story_11_3_orphaned_cache_purge.py:43-51] — `"not exists" in stmt_str` pass kể cả khi correlation sai (`searchspaces.id = searchspaces.id` self-join bug). Cần integration test với Postgres seeded để verify.
 - **`crypto_data_snapshots.search_space_id` đã có `ondelete=CASCADE`** [app/db.py:1390-1392] — "orphan" set chỉ tồn tại từ bypassing FK hoặc pre-migration legacy. Đặt câu hỏi: 11-3 có giải quyết bug thật hay che giấu integrity issue khác?
 - **`loop.shutdown_asyncgens()` chưa await** [crypto_refresh_tasks.py:235-241] — Pre-existing pattern cho cả 3 cleanup tasks; leak async generators qua nhiều Celery worker run. Nên consolidate khi refactor.
 - **`_async_cleanup` (daily 3 AM) thiếu try/finally** [crypto_refresh_tasks.py:195-219] — Pre-existing trong daily cleanup; nếu DELETE đầu tiên throw, JSON metric log bị mất. Pre-existing, không thuộc scope 11-3.
 - **`passive_deletes` thiếu trên `SearchSpace.crypto_snapshots` relationship** [app/db.py SearchSpace model] — ORM-level delete của SearchSpace sẽ load all snapshots vào memory. Tangential to 11-3.
-- **Search-space scoping mismatch giữa refresh & cleanup path** [crypto_refresh_tasks.py:88-174 vs 248-289] — `_prefetch_category` ghi snapshots với `search_space_id=NULL`, cleanup chỉ purge `search_space_id IS NOT NULL`. Có thể đều đúng theo intent riêng (refresh = global popular tokens, cleanup = per-workspace), nhưng cần document rõ hai loại snapshot. Design question lan ra khỏi scope 11-3, cần input từ PM/architect — bàn lại trong epic-11 retrospective.
+- [PROMOTED → 11-7] **Search-space scoping mismatch giữa refresh & cleanup path** [crypto_refresh_tasks.py:88-174 vs 248-289] — `_prefetch_category` ghi snapshots với `search_space_id=NULL`, cleanup chỉ purge `search_space_id IS NOT NULL`. Có thể đều đúng theo intent riêng (refresh = global popular tokens, cleanup = per-workspace), nhưng cần document rõ hai loại snapshot. **Owner: PM/Architect via ADR-013.**
 
 ## Deferred from: code review of story 11-4-per-api-token-buckets round 2 (2026-05-02)
 
-- **Token wasted khi tool exception/timeout sau acquire** [nowing_backend/app/agents/new_chat/tools/utils.py:48-71] — `crypto_tool_decorator` không có return-token API. Khi tool raise sau khi đã acquire, token bị mất → quota double-penalty (provider chỉ count successful 200s, ta count mọi attempt). Cần thêm `release()` API cho `TokenBucketRateLimiter` hoặc accept tradeoff.
-- **Local fallback bursts at capacity sau Redis flap** [rate_limiter.py:79-101] — Khi Redis up→down→up, local bucket starts fresh while Redis was drained → 1 request có thể consume token cả 2 stores. AC#5 chấp nhận over-count nên defer, nhưng nên document.
+> **Triage 2026-05-02 (Sprint Change Proposal):**
+> - 1 item → **PROMOTED → 11-7** (Token release API on exception)
+> - 1 item → **PROMOTED → 11-6** (Redis-flap state-mirror, ADR-011)
+> - 4 items → REMAIN deferred (perf optimizations, speculative concerns)
+
+- [PROMOTED → 11-7] **Token wasted khi tool exception/timeout sau acquire** [nowing_backend/app/agents/new_chat/tools/utils.py:48-71] — `crypto_tool_decorator` không có return-token API. Khi tool raise sau khi đã acquire, token bị mất → quota double-penalty (provider chỉ count successful 200s, ta count mọi attempt). Cần thêm `release()` API cho `TokenBucketRateLimiter` hoặc accept tradeoff.
+- [PROMOTED → 11-6] **Local fallback bursts at capacity sau Redis flap** [rate_limiter.py:79-101] — Khi Redis up→down→up, local bucket starts fresh while Redis was drained → 1 request có thể consume token cả 2 stores. AC#5 chấp nhận over-count nên defer, nhưng nên document. **Owner: ADR-011 + 11-6 T4.**
 - **No EVALSHA caching → perf overhead** [rate_limiter.py:85-91] — Mỗi tool call ship ~600B Lua script qua wire. redis-py asyncio support `register_script()` / `Script` để auto-EVALSHA. Optimization, không phải bug.
 - **`get_limiter` registry race** [rate_limiter.py:140-153] — Plain `dict` không lock, race nếu mixed asyncio + threadpool. Asyncio-only deployment hiện tại safe.
 - **Bucket pre-filled at startup → thundering herd** [rate_limiter.py:67] — N workers boot đồng thời có thể burst N× capacity. AC#5 accepts over-count nhưng có thể giảm cold-start risk bằng `capacity * 0.5`.
@@ -416,8 +432,12 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 
 ## Deferred from: code review of story 11-5-client-quota-enforcement (2026-05-02)
 
+> **Triage 2026-05-02 (Sprint Change Proposal):**
+> - 1 item → **PROMOTED → 11-6** (PRO_PLANS shared contract via ADR-012)
+> - 4 items → REMAIN deferred (intentional CSS, no-i18n, test smell, no production signal yet)
+
 - **Duplicate ProContentGate on responsive breakpoints** [nowing_web/components/new-chat/report/crypto-report-layout.tsx:259-307] — `2xl:hidden` + `hidden 2xl:block` cả 2 mount + render skeleton kể cả khi chỉ 1 visible. CSS responsive pattern hiện có; cả 2 mount là intentional. Có thể consolidate sang dùng `useBreakpoint()` hook nếu muốn skip mount inactive copy.
 - **Offline check one-shot, không reactive** [ProContentGate.tsx:30] — `navigator.onLine` đọc 1 lần per render, không listen `online`/`offline` events. AC#6 chỉ require cold-mount behavior nên acceptable.
-- **`PRO_PLANS` không shared giữa FE và BE** [nowing_web/lib/entitlements.ts:1 + nowing_backend/app/routes/stripe_routes.py:779] — Hardcoded list trùng cả 2 nơi. Nếu BE thêm SKU mới (ví dụ `team_yearly`), FE silently deny. Cần shared contract types hoặc generated constant.
+- [PROMOTED → 11-6] **`PRO_PLANS` không shared giữa FE và BE** [nowing_web/lib/entitlements.ts:1 + nowing_backend/app/schemas/stripe.py:14-17 + nowing_backend/app/config/__init__.py:317-348] — Hardcoded list trùng 3 nơi. Nếu BE thêm SKU mới (ví dụ `team_yearly`), FE silently deny → silent revenue loss. **Owner: ADR-012 + 11-6 T3.**
 - **Test mock `vi.mock("jotai")` globally** [__tests__/hooks/use-subscription-gate.test.tsx:7-9] — Replace tất cả jotai exports → Provider/useSetAtom undefined trong test. Hidden coupling; chỉ catch bug nếu SUT literally call useAtomValue. Refactor sang dùng test wrapper với Provider.
 - **CTA `/pricing` không locale-prefixed** [ProContentGate.tsx:62] — Hard-code `<Link href="/pricing">`. Nếu project sau add i18n routing (`/en/pricing`, `/vi/pricing`), CTA broken silently. No i18n yet nên defer.
