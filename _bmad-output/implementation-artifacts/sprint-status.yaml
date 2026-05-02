@@ -167,8 +167,8 @@ development_status:
   epic-11: in-progress
 
   # P0 — Critical
-  11-1-sse-heartbeat-auto-reconnect: ready-for-dev
-  11-2-redis-circuit-breaker: ready-for-dev
+  11-1-sse-heartbeat-auto-reconnect: review
+  11-2-redis-circuit-breaker: review
 
   # P1 — Important
   11-3-orphaned-cache-purge: ready-for-dev

@@ -24,7 +24,7 @@ so that hệ thống không bị 429 từ CoinGecko (30/min) trong khi DeFiLlama
   - [ ] 1.1 Tạo `TokenBucketRateLimiter` class trong `nowing_backend/app/agents/new_chat/middleware/rate_limiter.py` (NEW file)
   - [ ] 1.2 Redis-backed: key `rl:{provider}:tokens` (float) + `rl:{provider}:last_refill` (timestamp). Algorithm: refill `rate` tokens per second, max `capacity`.
   - [ ] 1.3 `async acquire(timeout_s=5.0) -> bool` — wait up to timeout_s for token, return False if exhausted
-  - [ ] 1.4 In-memory fallback khi Redis unavailable (clone pattern từ Story 11.2)
+  - [ ] 1.4 In-memory fallback khi Redis unavailable (cùng pattern `get_redis_client()` trả None → local counter)
 - [ ] Task 2: Provider rate config (AC: #6)
   - [ ] 2.1 Define `PROVIDER_RATE_LIMITS` dict:
     ```python
@@ -38,9 +38,9 @@ so that hệ thống không bị 429 từ CoinGecko (30/min) trong khi DeFiLlama
         "alternative_me": {"capacity": 30, "refill_rate": 0.5}, # conservative
     }
     ```
-- [ ] Task 3: Tool integration (AC: #1, #3, #7)
-  - [ ] 3.1 Trong mỗi crypto tool (defillama.py, crypto_sentiment.py, crypto_news.py, contract_analysis.py), thêm `await rate_limiter.acquire()` trước HTTP call
-  - [ ] 3.2 Hoặc tạo decorator `@rate_limited("provider_name")` để tránh boilerplate
+- [ ] Task 3: Integration vào `crypto_tool_decorator` (AC: #1, #3, #7)
+  - [ ] 3.1 Trong `nowing_backend/app/agents/new_chat/tools/utils.py`, thêm `await rate_limiter.acquire(source)` VÀO ĐẦU `crypto_tool_decorator.wrapper()` — TRƯỚC circuit breaker check. Đây là single integration point cho tất cả crypto tools.
+  - [ ] 3.2 Flow trong decorator: Token Bucket acquire → Circuit Breaker check → Semaphore acquire → Execute tool
 - [ ] Task 4: Tests
   - [ ] 4.1 Unit test: 30 tokens consumed → acquire waits
   - [ ] 4.2 Unit test: refill after time passes → acquire succeeds
@@ -51,25 +51,24 @@ so that hệ thống không bị 429 từ CoinGecko (30/min) trong khi DeFiLlama
 
 ### Architecture Compliance
 
-- **Thay thế global semaphore**: Existing `asyncio.Semaphore(5)` trong outbound pacing — story này KHÔNG remove semaphore, chỉ ADD per-provider rate limiting. Semaphore giữ nguyên làm global concurrency cap.
+- **Không có global outbound semaphore**: Codebase hiện tại dùng per-function `asyncio.Semaphore` (e.g., `Semaphore(4)` trong `web_search.py`), KHÔNG có global outbound pacing semaphore. Story này thêm per-provider rate limiting — independent layer.
 - **Stateless tools**: Crypto tools có `requires=[]` (NFR-CS4). Rate limiter inject qua module-level singleton, KHÔNG qua dependency injection.
-- **Redis reuse**: Cùng Redis connection với Story 11.2 (circuit breaker). Import `get_redis_client()` từ config.
+- **Redis access**: Dùng `get_redis_client()` từ `nowing_backend/app/services/crypto_cache_lock.py` — trả về `redis.asyncio` client hoặc None. Cùng pattern với circuit breaker.
 
 ### Existing Code to Modify
 
 | File | Action | Notes |
 |------|--------|-------|
 | `nowing_backend/app/agents/new_chat/middleware/rate_limiter.py` | NEW | Token bucket class + provider config |
-| `nowing_backend/app/agents/new_chat/tools/defillama.py` | UPDATE | Add rate_limiter.acquire() |
-| `nowing_backend/app/agents/new_chat/tools/crypto_sentiment.py` | UPDATE | Add rate_limiter.acquire() |
-| `nowing_backend/app/agents/new_chat/tools/crypto_news.py` | UPDATE | Add rate_limiter.acquire() |
-| `nowing_backend/app/agents/new_chat/tools/contract_analysis.py` | UPDATE | Add rate_limiter.acquire() |
+| `nowing_backend/app/agents/new_chat/tools/utils.py` | UPDATE | Add token bucket acquire into `crypto_tool_decorator` — single integration point |
 
 ### Anti-patterns to Avoid
 
-- **KHÔNG** remove existing `Semaphore(5)` — token bucket là per-provider, semaphore là global concurrency
+- **KHÔNG** scatter rate_limiter.acquire() vào từng tool file — centralize trong `crypto_tool_decorator` (`utils.py`)
+- **KHÔNG** remove existing `_OUTBOUND_SEMAPHORE(5)` — token bucket là per-provider rate control, semaphore là global concurrency cap
 - **KHÔNG** raise exception on throttle — wait up to 5s, chỉ return error dict `{"error": "rate_limited"}` nếu timeout
 - **KHÔNG** hardcode rates trong tool files — centralize trong `PROVIDER_RATE_LIMITS` dict
+- **KHÔNG** tạo Redis connection riêng — dùng `get_redis_client()` từ `crypto_cache_lock.py`
 
 ### References
 

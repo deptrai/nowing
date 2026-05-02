@@ -38,3 +38,9 @@ export class NotFoundError extends AppError {
 		super(message, status, statusText);
 	}
 }
+
+export class QuotaExceededError extends AppError {
+	constructor(message = "Token quota exceeded") {
+		super(message, 402, "Payment Required");
+	}
+}

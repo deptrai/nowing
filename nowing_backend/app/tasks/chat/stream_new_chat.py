@@ -77,6 +77,46 @@ from app.utils.perf import get_perf_logger, log_system_snapshot, trim_native_hea
 _perf_log = get_perf_logger()
 
 
+async def _with_heartbeat(
+    generator: AsyncGenerator[str, None],
+    timeout: float = 15.0,
+) -> AsyncGenerator[str, None]:
+    """
+    Wrap an async generator to yield SSE heartbeats if idle for timeout seconds.
+    Uses a robust task-based approach to avoid cancelling the underlying generator
+    iterator during idle periods.
+    """
+    it = generator.__aiter__()
+    # Use anext() if available (Python 3.10+), else it.__anext__()
+    try:
+        next_task = asyncio.create_task(anext(it))
+    except NameError:
+        next_task = asyncio.create_task(it.__anext__())
+
+    try:
+        while True:
+            done, pending = await asyncio.wait(
+                [next_task], timeout=timeout, return_when=asyncio.FIRST_COMPLETED
+            )
+            if next_task in done:
+                try:
+                    result = next_task.result()
+                    yield result
+                    try:
+                        next_task = asyncio.create_task(anext(it))
+                    except NameError:
+                        next_task = asyncio.create_task(it.__anext__())
+                except StopAsyncIteration:
+                    break
+            else:
+                yield VercelStreamingService.format_heartbeat()
+    finally:
+        if not next_task.done():
+            next_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, StopAsyncIteration):
+                await next_task
+
+
 def format_mentioned_nowing_docs_as_context(
     documents: list[NowingDocsDocument],
 ) -> str:
@@ -1603,30 +1643,80 @@ async def stream_new_chat(
     thread_visibility: ChatVisibility | None = None,
     current_user_display_name: str | None = None,
     disabled_tools: list[str] | None = None,
+    langgraph_thread_id_override: str | None = None,
+    heartbeat_timeout: float | None = 15.0,
+) -> AsyncGenerator[str, None]:
+    """
+    Stream chat responses with optional heartbeat.
+    """
+    gen = _stream_new_chat_inner(
+        user_query=user_query,
+        search_space_id=search_space_id,
+        chat_id=chat_id,
+        user_id=user_id,
+        llm_config_id=llm_config_id,
+        mentioned_document_ids=mentioned_document_ids,
+        mentioned_nowing_doc_ids=mentioned_nowing_doc_ids,
+        checkpoint_id=checkpoint_id,
+        needs_history_bootstrap=needs_history_bootstrap,
+        thread_visibility=thread_visibility,
+        current_user_display_name=current_user_display_name,
+        disabled_tools=disabled_tools,
+        langgraph_thread_id_override=langgraph_thread_id_override,
+    )
+    if heartbeat_timeout is not None:
+        async for chunk in _with_heartbeat(gen, timeout=heartbeat_timeout):
+            yield chunk
+    else:
+        async for chunk in gen:
+            yield chunk
+
+
+async def stream_resume_chat(
+    chat_id: int,
+    search_space_id: int,
+    decisions: list[dict],
+    user_id: str | None = None,
+    llm_config_id: int = -1,
+    thread_visibility: ChatVisibility | None = None,
+    heartbeat_timeout: float | None = 15.0,
+) -> AsyncGenerator[str, None]:
+    """
+    Resume chat responses with optional heartbeat.
+    """
+    gen = _stream_resume_chat_inner(
+        chat_id=chat_id,
+        search_space_id=search_space_id,
+        decisions=decisions,
+        user_id=user_id,
+        llm_config_id=llm_config_id,
+        thread_visibility=thread_visibility,
+    )
+    if heartbeat_timeout is not None:
+        async for chunk in _with_heartbeat(gen, timeout=heartbeat_timeout):
+            yield chunk
+    else:
+        async for chunk in gen:
+            yield chunk
+
+
+async def _stream_new_chat_inner(
+    user_query: str,
+    search_space_id: int,
+    chat_id: int,
+    user_id: str | None = None,
+    llm_config_id: int = -1,
+    mentioned_document_ids: list[int] | None = None,
+    mentioned_nowing_doc_ids: list[int] | None = None,
+    checkpoint_id: str | None = None,
+    needs_history_bootstrap: bool = False,
+    thread_visibility: ChatVisibility | None = None,
+    current_user_display_name: str | None = None,
+    disabled_tools: list[str] | None = None,
     langgraph_thread_id_override: str | None = None,  # C1: detached runs use run-{uuid} for checkpoint isolation
 ) -> AsyncGenerator[str, None]:
     """
-    Stream chat responses from the new Nowing deep agent.
-
-    This uses the Vercel AI SDK Data Stream Protocol (SSE format) for streaming.
-    The chat_id is used as LangGraph's thread_id for memory/checkpointing.
-
-    The function creates and manages its own database session to guarantee proper
-    cleanup even when Starlette's middleware cancels the task on client disconnect.
-
-    Args:
-        user_query: The user's query
-        search_space_id: The search space ID
-        chat_id: The chat ID (used as LangGraph thread_id for memory)
-        user_id: The current user's UUID string (for memory tools and session state)
-        llm_config_id: The LLM configuration ID (default: -1 for first global config)
-        needs_history_bootstrap: If True, load message history from DB (for cloned chats)
-        mentioned_document_ids: Optional list of document IDs mentioned with @ in the chat
-        mentioned_nowing_doc_ids: Optional list of Nowing doc IDs mentioned with @ in the chat
-        checkpoint_id: Optional checkpoint ID to rewind/fork from (for edit/reload operations)
-
-    Yields:
-        str: SSE formatted response strings
+    Inner implementation of stream_new_chat.
     """
     streaming_service = VercelStreamingService()
     stream_result = StreamResult()
@@ -2159,7 +2249,7 @@ async def stream_new_chat(
         log_system_snapshot("stream_new_chat_END")
 
 
-async def stream_resume_chat(
+async def _stream_resume_chat_inner(
     chat_id: int,
     search_space_id: int,
     decisions: list[dict],
@@ -2167,6 +2257,9 @@ async def stream_resume_chat(
     llm_config_id: int = -1,
     thread_visibility: ChatVisibility | None = None,
 ) -> AsyncGenerator[str, None]:
+    """
+    Inner implementation of stream_resume_chat.
+    """
     streaming_service = VercelStreamingService()
     stream_result = StreamResult()
     _t_total = time.perf_counter()
@@ -2513,6 +2606,7 @@ async def stream_new_chat_detached(
             current_user_display_name=current_user_display_name,
             disabled_tools=disabled_tools,
             langgraph_thread_id_override=langgraph_thread_id,  # C1: isolated checkpoint
+            heartbeat_timeout=None,  # Detached runs don't need SSE heartbeats
         )
         async for chunk in gen:
             if cancel_event is not None and cancel_event.is_set():

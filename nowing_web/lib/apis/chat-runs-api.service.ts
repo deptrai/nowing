@@ -1,6 +1,24 @@
 import { getBearerToken } from "../auth-utils";
+import { readSSEStream, type SSEEvent } from "../chat/streaming-state";
+import { QuotaExceededError } from "../error";
 
 const backendUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
+
+/**
+ * Exponential backoff delay.
+ * @param attempt current attempt number (0-based)
+ * @param baseDelay initial delay in ms
+ * @param maxDelay maximum delay in ms
+ */
+export async function exponentialBackoff(
+	attempt: number,
+	baseDelay = 1000,
+	maxDelay = 30000
+): Promise<void> {
+	const delay = Math.min(maxDelay, baseDelay * 2 ** attempt);
+	const jitter = Math.random() * 1000;
+	return new Promise((resolve) => setTimeout(resolve, delay + jitter));
+}
 
 export interface ChatRun {
 	id: string;
@@ -54,22 +72,103 @@ export async function getActiveRuns(threadId: number): Promise<ChatRun[]> {
 	return response.json();
 }
 
-export function streamRun(
+/**
+ * Generic stream with retry and exponential backoff.
+ * @param urlFactory function to generate URL (can include currentSeq)
+ * @param options fetch options
+ * @param initialSeq starting sequence number
+ * @param signal optional abort signal
+ */
+export async function* streamWithRetry(
+	urlFactory: (seq: number) => string,
+	options: RequestInit,
+	initialSeq = -1,
+	signal?: AbortSignal
+): AsyncGenerator<SSEEvent> {
+	let currentSeq = initialSeq;
+	let attempt = 0;
+
+	while (true) {
+		if (signal?.aborted) return;
+
+		try {
+			const response = await fetch(urlFactory(currentSeq), {
+				...options,
+				signal,
+			});
+
+			if (!response.ok) {
+				if (response.status === 402) {
+					throw new QuotaExceededError();
+				}
+				if (
+					response.status === 401 ||
+					response.status === 403 ||
+					response.status === 404
+				) {
+					throw new Error(`Terminal stream error: ${response.status}`);
+				}
+				throw new Error(`Retriable stream error: ${response.status}`);
+			}
+
+			attempt = 0; // Reset attempts on success
+
+			for await (const event of readSSEStream(response)) {
+				// biome-ignore lint/suspicious/noExplicitAny: SSEEvent might have seq
+				const anyEvent = event as any;
+				if (anyEvent.seq != null && typeof anyEvent.seq === "number") {
+					currentSeq = anyEvent.seq;
+				}
+
+				yield event;
+
+				if (anyEvent._marker === "run-end") {
+					return;
+				}
+			}
+
+			// If stream closed normally but we expect more (no run-end marker), retry
+			console.warn("[streamWithRetry] Stream closed unexpectedly, retrying...");
+		} catch (err) {
+			if (signal?.aborted) return;
+
+			if (err instanceof Error && err.message.startsWith("Terminal")) {
+				throw err;
+			}
+			if (err instanceof QuotaExceededError) {
+				throw err;
+			}
+
+			console.warn(`[streamWithRetry] Connection lost (attempt ${attempt}), retrying...`, err);
+			await exponentialBackoff(attempt++);
+		}
+	}
+}
+
+/**
+ * SSE: replay persisted events then tail live via Redis pubsub.
+ * Automatically handles reconnection with exponential backoff.
+ */
+export async function* streamRun(
 	threadId: number,
 	runId: string,
 	afterSeq = -1,
 	signal?: AbortSignal
-): Promise<Response> {
+): AsyncGenerator<SSEEvent> {
 	const token = getBearerToken();
-	return fetch(
-		`${backendUrl}/api/v1/threads/${threadId}/runs/${runId}/stream?after_seq=${afterSeq}`,
+	const urlFactory = (seq: number) =>
+		`${backendUrl}/api/v1/threads/${threadId}/runs/${runId}/stream?after_seq=${seq}`;
+
+	yield* streamWithRetry(
+		urlFactory,
 		{
 			headers: {
 				Accept: "text/event-stream",
 				...(token ? { Authorization: `Bearer ${token}` } : {}),
 			},
-			signal,
-		}
+		},
+		afterSeq,
+		signal
 	);
 }
 

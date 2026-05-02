@@ -1188,11 +1188,7 @@ async def handle_new_chat(
                 disabled_tools=request.disabled_tools,
             ),
             media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
+            headers=VercelStreamingService.get_response_headers(),
         )
 
     except HTTPException:
@@ -1501,11 +1497,7 @@ async def regenerate_response(
         return StreamingResponse(
             stream_with_cleanup(),
             media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
+            headers=VercelStreamingService.get_response_headers(),
         )
 
     except HTTPException:
@@ -1621,11 +1613,7 @@ async def resume_chat(
                 thread_visibility=thread.visibility,
             ),
             media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
+            headers=VercelStreamingService.get_response_headers(),
         )
 
     except HTTPException:
@@ -1775,22 +1763,37 @@ async def get_active_runs(
     return [_run_to_response(r) for r in runs]
 
 
-def _rebuild_vercel_wire(event_type: str, payload: object) -> str:
+def _rebuild_vercel_wire(event_type: str, payload: object, seq: int | None = None) -> str:
     """Reconstruct Vercel UI Stream wire format from stored JSONB payload.
 
     Handles three payload generations:
     - Legacy (9-UX-1b): {"_raw": "data: ...\\n\\n"} — pass through verbatim
     - text-delta (T4):   {"type": "text-delta", "_vercel": "0:\\"text\\""} — bare data line
     - structured (T4):   {"type": ..., "data": {...}} — bare data:{json}\\n\\n
+
+    M7: Injects `seq` into structured payloads to enable client-side resume tracking.
     """
     if not isinstance(payload, dict):
+        if seq is not None:
+            # If payload is a string or list, we can't easily inject seq into it
+            # without changing the protocol. For now, only inject into dicts.
+            return f"data: {json.dumps(payload)}\n\n"
         return f"data: {json.dumps(payload)}\n\n"
+
+    # Inject seq if provided and payload is a dict
+    if seq is not None and "seq" not in payload:
+        payload = {**payload, "seq": seq}
+
     raw = payload.get("_raw")
     if isinstance(raw, str) and raw:
+        # For legacy raw payloads, we can't easily inject seq without parsing it.
+        # But 9-UX-1b+ should be using structured payloads.
         return raw
+
     vercel = payload.get("_vercel")
     if isinstance(vercel, str) and vercel:
         return f"data: {vercel}\n\n"
+
     return f"data: {json.dumps(payload)}\n\n"
 
 
@@ -1859,7 +1862,7 @@ async def stream_run(
             yield f"data: {json.dumps({'_marker': 'replay-start', 'seq': last_seq, 'runStartedAtMs': run_started_ms})}\n\n"
 
             for seq, event_type, payload, ts_ms in persisted:
-                wire = _rebuild_vercel_wire(event_type, payload)
+                wire = _rebuild_vercel_wire(event_type, payload, seq=seq)
                 # Inject _ts into structured events so FE can use server timestamp
                 # instead of Date.now() for per-agent elapsed calculations.
                 if ts_ms and wire.startswith("data: {"):
@@ -1903,7 +1906,9 @@ async def stream_run(
                     if seq <= last_seq:
                         continue
                     wire = _rebuild_vercel_wire(
-                        row_data.get("event_type", "message"), row_data.get("payload", {})
+                        row_data.get("event_type", "message"),
+                        row_data.get("payload", {}),
+                        seq=seq,
                     )
                     last_seq = seq
                     yield wire
@@ -1988,7 +1993,7 @@ async def stream_run(
     return StreamingResponse(
         _event_generator(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+        headers=VercelStreamingService.get_response_headers(),
     )
 
 

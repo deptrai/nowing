@@ -154,6 +154,7 @@ uv pip install fastapi uvicorn celery pydantic-settings sqlmodel psycopg2-binary
 - **Vector Storage:** Extension `pgvector` (Version đã verify: `0.8.2`) tích hợp trực tiếp vào DB chính nhằm tận dụng ưu thế JOIN data và RLS.
 - **ORM / Query Builder:** `SQLModel` trên Backend và auto-generated Schema của Prisma cung cấp DDL cho Zero-sync.
 - **Caching & Local-First Strategy:** Dùng `@rocicorp/zero` (Version đã verify: `1.1.1`) đổ dữ liệu xuống IndexedDB, Next.js sẽ subscribe trực tiếp qua Zero cache thay vì gọi FETCH thông thường.
+- **Local File Synchronization (Desktop Only):** Tích hợp `chokidar` vào tiến trình nền của Electron để giám sát (monitor) các thư mục tài liệu cục bộ của người dùng. Mọi thay đổi sẽ được gửi qua Zero-sync mutators để cập nhật Metadata trong Knowledge Base ngay lập tức.
 
 **Gift Subscription Tables (thêm vào migration 127+):**
 (Đã cập nhật logic extension: Chỉ cộng dồn thời gian vào kỳ hiện tại; pro-rata logic cho việc đổi plan được đẩy sang v2).
@@ -165,6 +166,7 @@ uv pip install fastapi uvicorn celery pydantic-settings sqlmodel psycopg2-binary
 - **Authentication Method:** JWT Token Auth do Backend FastAPI kiểm soát. Frontend nhận JWT và trao nó cho bộ khởi tạo `ZeroClient`.
 - **Authorization Pattern:** Row-level Security (RLS) bắt buộc trên mọi tables Postgres. Logic từ FastAPI đến DB và luồng Zero repl-stream từ DB chọc xuống Next.js đều chịu chung bộ luật RLS này.
 - **Security Middleware:** Áp dụng purge (làm sạch) lập tức IndexedDB & localStorage bằng hook `onLogout()`.
+- **Desktop Native Security Bypass:** Tận dụng `ipcMain` và Node.js context trong Electron để thực hiện các cuộc gọi API tới Ollama Local, vượt qua các giới hạn về CORS/CSP của trình duyệt và cho phép ứng dụng tự động cấu hình hệ thống.
 
 ### API & Communication Patterns
 
@@ -173,6 +175,10 @@ uv pip install fastapi uvicorn celery pydantic-settings sqlmodel psycopg2-binary
   - **Server-Sent Events (SSE) / WebSockets:** Quyết định dùng SSE cho luồng Streaming Response của Agentic RAG vì nó mượt hơn, một chiều từ Server gửi câu trả lời về UI.
   - Zero-sync protocol quản lý kết nối WebSocket cho dữ liệu đồng bộ tĩnh.
 - **Job Orchestration:** Kết nối FastAPI và Celery Workers qua Redis Message Broker (`redis:7.4+`).
+- **Hybrid LLM Routing Strategy:** 
+  - **Cloud-first:** Mặc định sử dụng các API LLM (GPT-4, Claude) qua LiteLLM Router trên Server.
+  - **Privacy-centric (Web SaaS):** Khi chọn model Local trên trình duyệt, Frontend sẽ gọi trực tiếp Ollama (`localhost:11434`).
+  - **Embedded Backend (Desktop):** Electron sẽ quản lý vòng đời của một instance FastAPI Backend cục bộ (đóng gói qua `PyInstaller`), hỗ trợ tự động định tuyến (failover) giữa Cloud và Local.
 
 **Gift Subscription Endpoints (thêm vào `nowing_backend/app/routes/gift_routes.py`):**
 
@@ -224,6 +230,7 @@ if session.metadata.get("purchase_type") == "gift":
 - **Hosting Strategy:** Docker-Compose cho toàn bộ hệ thống (đáp ứng PRD local-first).
 - **Environment Configuration:** Quản lý môi trường cứng qua `.env` kết nối bằng `pydantic-settings` (FastAPI). 
 - **Message Broker:** Redis phiên bản containerized.
+- **Desktop Packaging:** Sử dụng `electron-builder` kết hợp với `esbuild` để đóng gói ứng dụng. File thực thi bao gồm cả Web UI (Next.js export) và Backend binary (FastAPI) để đảm bảo khả năng chạy Offline hoàn toàn.
 
 ### Decision Impact Analysis
 

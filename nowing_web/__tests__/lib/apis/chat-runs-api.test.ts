@@ -128,7 +128,8 @@ describe("streamRun", () => {
 		const mockResponse = { ok: true, body: null };
 		globalThis.fetch = vi.fn().mockResolvedValue(mockResponse);
 
-		const result = await streamRun(42, "run-uuid-1");
+		const gen = streamRun(42, "run-uuid-1");
+		await gen.next(); // Trigger first fetch
 
 		expect(fetch).toHaveBeenCalledWith(
 			expect.stringContaining("/api/v1/threads/42/runs/run-uuid-1/stream?after_seq=-1"),
@@ -139,8 +140,38 @@ describe("streamRun", () => {
 				}),
 			})
 		);
-		expect(result).toBe(mockResponse);
 	});
+
+	it("uses custom afterSeq parameter", async () => {
+		globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
+		const gen = streamRun(42, "run-uuid-1", 15);
+		await gen.next();
+
+		expect(fetch).toHaveBeenCalledWith(expect.stringContaining("after_seq=15"), expect.anything());
+	});
+
+	it("passes AbortSignal when provided", async () => {
+		globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
+		const controller = new AbortController();
+		const gen = streamRun(42, "run-uuid-1", -1, controller.signal);
+		await gen.next();
+
+		expect(fetch).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ signal: controller.signal })
+		);
+	});
+
+	it("omits Authorization header when no token", async () => {
+		vi.mocked(getBearerToken).mockReturnValue(null);
+		globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
+		const gen = streamRun(42, "run-uuid-1");
+		await gen.next();
+
+		const headers = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].headers;
+		expect(headers).not.toHaveProperty("Authorization");
+	});
+});
 
 	it("uses custom afterSeq parameter", async () => {
 		globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });

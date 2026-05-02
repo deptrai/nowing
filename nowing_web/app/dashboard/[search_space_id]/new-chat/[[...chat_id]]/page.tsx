@@ -82,7 +82,6 @@ import {
 	buildContentForUI,
 	type ContentPartsState,
 	FrameBatchedUpdater,
-	readSSEStream,
 	type ThinkingStepData,
 	updateThinkingSteps,
 	updateToolCall,
@@ -95,7 +94,7 @@ import {
 	getThreadMessages,
 	type ThreadRecord,
 } from "@/lib/chat/thread-persistence";
-import { NotFoundError } from "@/lib/error";
+import { NotFoundError, QuotaExceededError } from "@/lib/error";
 import {
 	trackChatCreated,
 	trackChatError,
@@ -271,16 +270,6 @@ function extractMentionedDocuments(content: unknown): MentionedDocumentInfo[] {
 	}
 
 	return [];
-}
-
-/**
- * Throw this when the backend returns 402 Payment Required (quota exceeded).
- */
-class QuotaExceededError extends Error {
-	constructor() {
-		super("Token quota exceeded");
-		this.name = "QuotaExceededError";
-	}
 }
 
 /**
@@ -621,8 +610,6 @@ export default function NewChatPage() {
 			abortControllers.push(ac);
 			try {
 				const resumeFrom = lastSeqByRun.get(run.id) ?? -1;
-				const resp = await streamRun(threadId, run.id, resumeFrom, ac.signal);
-				if (!resp.ok) return;
 				// Add placeholder assistant message so OrchestraStrip has a mounting point
 				const placeholderMsgId = `msg-assistant-resume-${run.id}`;
 				setMessages((prev) => {
@@ -637,79 +624,59 @@ export default function NewChatPage() {
 						},
 					];
 				});
-				const reader = resp.body?.getReader();
-				if (!reader) return;
-				readers.push(reader);
-				const decoder = new TextDecoder();
-				let buf = "";
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					buf += decoder.decode(value, { stream: true });
-					const parts = buf.split(/\r?\n\r?\n/);
-					buf = parts.pop() ?? "";
-					for (const part of parts) {
-						// M25: skip SSE comment / heartbeat lines (`: text`)
-						if (part.startsWith(":")) continue;
-						const dataLine = part.match(/^data:\s*(.+)$/m)?.[1];
-						if (!dataLine) continue;
-						// M24: any malformed event must NOT abort the stream — try/catch continue
-						try {
-							const parsed = JSON.parse(dataLine);
-							// T22: handle _marker sentinels (replace old event: run-replay-end)
-							if (parsed && parsed._marker) {
-								if (parsed._marker === "replay-start") {
-									// entering replay — future: suppress animation
-								} else if (parsed._marker === "replay-end") {
-									if (parsed.status !== "live") {
-										setActiveRuns((prev) => removeRun(prev, run.id, threadId));
-										if (parsed.status === "abandoned") {
-											// keep in abandonedRuns / abandonedSessionIds for Resume UI
-											setAbandonedSessionIds((prev) => new Set([...prev, run.langgraph_thread_id]));
-										} else {
-											// completed / failed / cancelled — fully done
-											setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
-											setAbandonedSessionIds((prev) => {
-												const s = new Set(prev);
-												s.delete(run.langgraph_thread_id);
-												return s;
-											});
-										}
-										return;
-									}
-									// status === "live": transitioning to live tail
-								} else if (parsed._marker === "run-end") {
-									setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+
+				for await (const parsed of streamRun(threadId, run.id, resumeFrom, ac.signal)) {
+					// M7: update lastSeq for next reconnect attempt
+					// biome-ignore lint/suspicious/noExplicitAny: SSEEvent might have seq
+					const anyParsed = parsed as any;
+					if (anyParsed.seq != null && typeof anyParsed.seq === "number") {
+						lastSeqByRun.set(run.id, anyParsed.seq);
+					}
+
+					// T22: handle _marker sentinels (replace old event: run-replay-end)
+					if (anyParsed && anyParsed._marker) {
+						if (anyParsed._marker === "replay-start") {
+							// entering replay — future: suppress animation
+						} else if (anyParsed._marker === "replay-end") {
+							if (anyParsed.status !== "live") {
+								setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+								if (anyParsed.status === "abandoned") {
+									// keep in abandonedRuns / abandonedSessionIds for Resume UI
+									setAbandonedSessionIds((prev) => new Set([...prev, run.langgraph_thread_id]));
+								} else {
+									// completed / failed / cancelled — fully done
 									setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
 									setAbandonedSessionIds((prev) => {
 										const s = new Set(prev);
 										s.delete(run.langgraph_thread_id);
 										return s;
 									});
-									setMessages((prev) =>
-										prev.filter((m) => m.id !== `msg-assistant-resume-${run.id}`)
-									);
-									return;
 								}
-								continue; // marker events don't reach the orchestra reducer
+								return;
 							}
-							if (parsed && parsed.type) {
-								setOrchestraState((prev: unknown) =>
-									applyOrchestraEvent(prev as never, parsed as never)
-								);
-							}
-							if (parsed && typeof parsed.seq === "number") {
-								lastSeqByRun.set(run.id, parsed.seq);
-							}
-						} catch {
-							// malformed JSON — skip this event, keep stream alive
+							// status === "live": transitioning to live tail
+						} else if (anyParsed._marker === "run-end") {
+							setActiveRuns((prev) => removeRun(prev, run.id, threadId));
+							setAbandonedRuns((prev) => prev.filter((r) => r.id !== run.id));
+							setAbandonedSessionIds((prev) => {
+								const s = new Set(prev);
+								s.delete(run.langgraph_thread_id);
+								return s;
+							});
+							setMessages((prev) => prev.filter((m) => m.id !== `msg-assistant-resume-${run.id}`));
+							return;
 						}
+						continue; // marker events don't reach the orchestra reducer
+					}
+					if (anyParsed && anyParsed.type) {
+						setOrchestraState((prev: unknown) =>
+							applyOrchestraEvent(prev as never, anyParsed as never)
+						);
 					}
 				}
-			} catch (err: unknown) {
-				if (err instanceof Error && err.name !== "AbortError") {
-					console.warn("run stream error", run.id, err);
-				}
+			} catch (err) {
+				if (ac.signal.aborted) return;
+				console.warn(`[attachToRun] Run ${run.id} failed:`, err);
 			}
 		};
 
@@ -974,13 +941,6 @@ export default function NewChatPage() {
 				activeRun = run;
 				setActiveRuns((prev) => upsertRun(prev, run));
 
-				const response = await streamRun(currentThreadId, run.id, -1, controller.signal);
-
-				if (!response.ok) {
-					if (response.status === 402) throw new QuotaExceededError();
-					throw new Error(`Backend error: ${response.status}`);
-				}
-
 				const flushMessages = () => {
 					setMessages((prev) =>
 						prev.map((m) =>
@@ -992,7 +952,7 @@ export default function NewChatPage() {
 				};
 				const scheduleFlush = () => batcher.schedule(flushMessages);
 
-				for await (const parsed of readSSEStream(response)) {
+				for await (const parsed of streamRun(currentThreadId, run.id, -1, controller.signal)) {
 					switch (parsed.type) {
 						case "text-delta":
 							appendText(contentPartsState, parsed.delta);

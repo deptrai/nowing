@@ -21,7 +21,7 @@ so that database không bị bloat bởi dead data vô chủ.
 
 - [ ] Task 1: Implement Celery task (AC: #1, #2, #3, #4, #5, #6)
   - [ ] 1.1 Thêm task `cleanup_orphaned_crypto_snapshots` vào `nowing_backend/app/tasks/celery_tasks/crypto_refresh_tasks.py`
-  - [ ] 1.2 SQL logic: `DELETE FROM crypto_data_snapshots WHERE search_space_id NOT IN (SELECT id FROM searchspaces)` — execute in batches of 1000
+  - [ ] 1.2 SQL logic: `DELETE FROM crypto_data_snapshots WHERE search_space_id IS NOT NULL AND search_space_id NOT IN (SELECT id FROM searchspaces)` — execute in batches of 1000. Note: `search_space_id` is **nullable** (Integer, FK ondelete=CASCADE, nullable=True) — chỉ xóa records có `search_space_id` thực sự orphaned, không xóa records có `search_space_id IS NULL`.
   - [ ] 1.3 Wrap trong `asyncio.new_event_loop()` pattern (clone từ existing `cleanup_expired_crypto_snapshots`)
 - [ ] Task 2: Register in Celery Beat (AC: #1)
   - [ ] 2.1 Thêm beat schedule entry `crypto-cleanup-orphaned-snapshots` vào `nowing_backend/app/celery_app.py`
@@ -40,7 +40,7 @@ so that database không bị bloat bởi dead data vô chủ.
 
 - **Existing cleanup task**: `cleanup_expired_crypto_snapshots` đã tồn tại trong cùng file (`crypto_refresh_tasks.py`), chạy daily 3 AM UTC. Task mới chạy weekly 4 AM Sunday — KHÔNG overlap.
 - **Pattern clone**: Clone pattern từ `_async_cleanup()` — dùng `get_celery_session_maker()`, `asyncio.new_event_loop()`, structured logging.
-- **Table references**: `CryptoDataSnapshot` model có FK `search_space_id → searchspaces(id)`. Query JOIN hoặc subquery để detect orphans.
+- **Table references**: `CryptoDataSnapshot` model (file `nowing_backend/app/db.py`) có `search_space_id = Column(Integer, FK("searchspaces.id", ondelete="CASCADE"), nullable=True)` và `project_id = Column(Integer, FK("crypto_projects.id", ondelete="CASCADE"), nullable=False)`. Orphan detection dựa trên `search_space_id` (workspace ownership), KHÔNG phải `project_id` (crypto project reference).
 - **Celery task naming**: Follow convention `crypto.cleanup_orphaned_snapshots` (prefix `crypto.`).
 
 ### Existing Code to Modify
@@ -61,7 +61,7 @@ so that database không bị bloat bởi dead data vô chủ.
 - [Source: _bmad-output/architecture-improvement-proposals-2026-05-01.md#3]
 - [Source: nowing_backend/app/tasks/celery_tasks/crypto_refresh_tasks.py — existing cleanup pattern]
 - [Source: nowing_backend/app/celery_app.py — beat schedule, line 191-206]
-- [Source: nowing_backend/app/db.py hoặc app/models.py — `CryptoDataSnapshot` model]
+- [Source: nowing_backend/app/db.py — `CryptoDataSnapshot` model, line ~1384]
 
 ## Dev Agent Record
 
