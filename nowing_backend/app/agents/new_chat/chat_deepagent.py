@@ -92,6 +92,12 @@ from app.agents.new_chat.subagents.crypto.yield_optimizer_spec import (
     YIELD_OPTIMIZER_NAME,
     YIELD_OPTIMIZER_PROMPT,
 )
+from app.agents.new_chat.subagents.crypto.smart_money_spec import (
+    SMART_MONEY_ALLOWED_TOOLS,
+    SMART_MONEY_ANALYST_DESCRIPTION,
+    SMART_MONEY_ANALYST_NAME,
+    SMART_MONEY_ANALYST_PROMPT,
+)
 from app.agents.new_chat.subagents.crypto.whale_tracker_spec import (
     WHALE_TRACKER_ALLOWED_TOOLS,
     WHALE_TRACKER_DESCRIPTION,
@@ -2320,6 +2326,7 @@ async def create_nowing_deep_agent(
     smart_contract_tools = _scope_tools(SMART_CONTRACT_ALLOWED_TOOLS, SMART_CONTRACT_ANALYST_NAME)
     tokenomics_tools = _scope_tools(TOKENOMICS_ALLOWED_TOOLS, TOKENOMICS_ANALYST_NAME)
     yield_optimizer_tools = _scope_tools(YIELD_OPTIMIZER_ALLOWED_TOOLS, YIELD_OPTIMIZER_NAME)
+    smart_money_tools = _scope_tools(SMART_MONEY_ALLOWED_TOOLS, SMART_MONEY_ANALYST_NAME)
 
     # whale_tracker is optional — only built when feature flag is on (Story 9-UX-4 AC5).
     _whale_tracker_enabled = (
@@ -2393,6 +2400,14 @@ async def create_nowing_deep_agent(
         "tools": yield_optimizer_tools,
         "middleware": _build_gp_middleware(agent_name=YIELD_OPTIMIZER_NAME),
     }
+    smart_money_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
+        "name": SMART_MONEY_ANALYST_NAME,
+        "description": SMART_MONEY_ANALYST_DESCRIPTION,
+        "system_prompt": SMART_MONEY_ANALYST_PROMPT,
+        "model": llm,
+        "tools": smart_money_tools,
+        "middleware": _build_gp_middleware(agent_name=SMART_MONEY_ANALYST_NAME),
+    }
 
     # whale_tracker spec — only built when CRYPTO_ORCHESTRA_ENABLE_WHALE_TRACKER=true (AC5)
     whale_tracker_spec: SubAgent | None = (
@@ -2442,6 +2457,7 @@ async def create_nowing_deep_agent(
                 smart_contract_analyst_spec,
                 tokenomics_analyst_spec,    # Story 9.1
                 yield_optimizer_spec,       # Story 9.4
+                smart_money_spec,           # Story 10.1
                 *([whale_tracker_spec] if whale_tracker_spec is not None else []),  # Story 9-UX-4 AC5
             ],
         ),

@@ -1,5 +1,17 @@
 # Deferred Work
 
+## Deferred from: code review of 10-1-entity-resolution-smart-money.md (2026-05-04)
+- viewMode preference lost on Sheet remount: a11y user toggle "Table View" rồi đóng/mở mobile Sheet → chart view trở lại. Lift state lên context/localStorage. [nowing_web/components/crypto/SankeyFlowChart.tsx:245]
+- `_ALL_TOOL_NAMES` thêm `get_certik_*`, `get_live_token_price` không liên quan Story 10.1: anticipates future stories, scope creep. [nowing_backend/tests/unit/agents/new_chat/test_crypto_subagent_specs.py:131-150]
+- Tokenomics test docstring weakened: "exactly these tools" thay vì list cụ thể; thuộc Story 9.1 scope. [nowing_backend/tests/unit/agents/new_chat/test_crypto_subagent_specs.py:273-274]
+- `min-h-[400px]` outer + `min-h-[300px]` inner double constraint trong Sheet `h-[calc(100%-60px)]`: layout NIT cần visual verification. [nowing_web/components/crypto/SankeyFlowChart.tsx]
+
+## Deferred from: code review of 10-1-entity-resolution-smart-money.md (2026-05-01)
+- Mobile Modal Rendering Crash Risk: The mobile view mounts the `ResponsiveSankey` inside a conditionally opened `<Sheet>`. Nivo charts historically fail to calculate their bounding boxes when mounted inside unmeasured portals/modals, often resulting in a `0x0` invisible chart until a window resize event is triggered. [nowing_web/components/crypto/SankeyFlowChart.tsx]
+- Nivo Link Reference Error: `Nivo Sankey` throws fatal runtime error if link source or target ID missing from nodes array. Guard snippet: `<ResponsiveSankey data={{...data, links: data.links.filter(l => data.nodes.some(n => n.id === l.source) && data.nodes.some(n => n.id === l.target))}} />` [nowing_web/components/crypto/SankeyFlowChart.tsx:81]
+- Poor Error Handling Strategy: The prompt instructs the LLM on how to handle tool errors. Relying on an LLM to reliably parse stringified JSON errors and self-regulate is a known anti-pattern. Error boundaries should be handled in the code's execution layer, not in the prompt text. [nowing_backend/app/agents/new_chat/subagents/crypto/smart_money_spec.py]
+- Brittle Unit Tests: `test_smart_money_analyst_spec_valid` asserts that exactly 5 tools are present (`len(...) == 5`). This is a lazy test that provides no value but guarantees the test suite will break if a valid tool is simply added or removed in the future. [nowing_backend/tests/unit/agents/new_chat/test_crypto_subagent_specs.py]
+
 ## Resolved 2026-04-25 — Lost partial work on rate-limit (Story 0.6b AC8/AC9)
 
 - **Sub-agent 429 killed entire stream + discarded all completed sub-agents' outputs** — deepagents `atask()` had no try/except → exception killed LangGraph stream → user saw "Sorry, there was an error" despite N/6 agents succeeding. **Resolved** by Story 0.6b Layer 4: `SubAgentResilienceMiddleware` (AC8) retries + converts to error ToolMessage; `_extract_partial_analysis` (AC9) salvages from checkpointer when synthesis itself fails. User **always** sees graceful partial result.
