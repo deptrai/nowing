@@ -1186,7 +1186,7 @@ So that external API calls are skipped for data already fetched within TTL windo
 ---
 
 ### Story 10.3: Thundering Herd Protection
-📄 **Story file**: [`stories/10-3-thundering-herd-protection.md`](./stories/10-3-thundering-herd-protection.md) | **Phase 3 · Depends: 10.2**
+📄 **Story file**: [`stories/9-DF-3-thundering-herd-protection.md`](./stories/9-DF-3-thundering-herd-protection.md) | **Phase 3 · Depends: 10.2**
 As a system handling concurrent users,
 I want distributed locking to prevent N concurrent cache misses from all calling the same API simultaneously,
 So that 50 users querying ETH at the same moment trigger ≤ 1 API call instead of 50.
@@ -1240,8 +1240,8 @@ So that active users rarely experience cache misses for frequently queried token
 
 ---
 
-### Story 10.5: Workspace Watchlist API
-📄 **Story file**: [`stories/10-5-workspace-watchlist-api.md`](./stories/10-5-workspace-watchlist-api.md) | **Phase 5 · Depends: 10.1**
+### Story 9-DF-5: Workspace Watchlist API
+📄 **Story file**: [`stories/9-DF-5-workspace-watchlist-api.md`](./stories/9-DF-5-workspace-watchlist-api.md) | **Phase 5 · Depends: 10.1**
 As a workspace member,
 I want REST endpoints to access my workspace's tracked crypto projects and their historical data timeline,
 So that future dashboard features (token tracker, price history chart) can consume this data.

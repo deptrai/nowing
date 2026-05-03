@@ -318,7 +318,7 @@ Cấu trúc API (FastAPI) bao gồm:
 - **FR34 (Smart Agent Selection):** Main agent system prompt có instruction để chọn subset agents phù hợp với câu hỏi cụ thể (không spawn cả 10 agents khi user chỉ hỏi về 1 khía cạnh). Lookup table: agent name → chuyên môn → trigger keywords.
 - **FR35 (Graceful Degradation):** Khi 1 hoặc nhiều sub-agents fail (rate limit 429, timeout, API unavailable), main agent vẫn tổng hợp response từ các agents thành công và mention rõ nguồn nào unavailable trong response — không crash toàn bộ analysis.
 
-### Persistent Shared Crypto Data Layer (Epic 10)
+### Crypto Data Layer Foundation
 - **FR36 (Crypto Data Schema):** Hệ thống tạo 3 bảng PostgreSQL mới: `crypto_projects` (entity registry với project_id, symbol, coingecko_id, defillama_slug), `crypto_data_snapshots` (append-only timeline với data_category, tool_name, tool_args JSONB, data JSONB, ttl_seconds, expires_at, is_error), và `search_space_crypto_watchlist` (workspace → project link với pin_order). Tất cả crypto tool results được persist với full metadata.
 - **FR37 (Cache Middleware Interception):** `CryptoDataCacheMiddleware` intercept `awrap_tool_call` trước khi gọi external API — check DB cho fresh snapshot (expires_at > NOW()), return cached data nếu có. Nếu miss → gọi API → write snapshot. Middleware đặt sau `SourceAttributionMiddleware` trong stack. Feature flag `CRYPTO_DATA_CACHE_ENABLED` cho phép bật/tắt không cần redeploy. Graceful degradation: nếu DB/Redis fail → pass-through to direct API call, không throw exception.
 - **FR38 (Thundering Herd Protection):** Khi nhiều concurrent requests cùng query token X và cache miss, hệ thống dùng Redis distributed lock (SET NX EX 60s) để đảm bảo chỉ 1 request gọi external API, các requests còn lại double-check DB sau khi acquire lock. Fallback sang `asyncio.Lock` per-process nếu Redis unavailable.
@@ -374,4 +374,14 @@ Cấu trúc API (FastAPI) bao gồm:
 - **NFR-R2 (SSE Connection Reliability):** SSE stream phải survive proxy timeout (Nginx default 60s, Cloudflare 100s) qua heartbeat mechanism. Auto-reconnect phải recover trong < 5s (P95) sau network interruption. Multi-tab scenario (3+ tabs) phải hoạt động nhờ HTTP/2 multiplexing.
 - **NFR-R3 (Circuit Breaker Consistency):** Circuit breaker state phải consistent across tất cả Uvicorn workers (< 1s propagation delay qua Redis). Khi Redis unavailable, last-known state phải retained (không default closed/open).
 - **NFR-P5 (Rate Limit Prevention):** Per-API token bucket phải prevent > 95% of 429 responses từ external providers (so với baseline không có rate limiter). Đo bằng `http_429_total` counter before/after deployment.
+
+### Institutional Research Terminal (Epic 10)
+- **FR49 (Entity Resolution):** Gom nhóm tự động các ví (wallets) và phân tích dòng tiền (Smart Money Flow) thông qua biểu đồ Sankey. Tự động phát hiện ví Insider/Dev.
+- **FR50 (Protocol Revenue Modeling):** Phân tích P/E, P/S ratio dựa trên dữ liệu DefiLlama/Token Terminal. AI đọc lịch vesting từ contract để dựng biểu đồ áp lực bán trong 12 tháng.
+- **FR51 (Narrative & Macro Correlation):** NLP Heatmap quét Governance Forums, Github, Twitter để dự báo trend. Ma trận tương quan với các chỉ số vĩ mô (DXY, NASDAQ).
+- **FR52 (Enterprise Risk Management):** Portfolio stress testing dưới kịch bản sụp đổ, AI scan lỗi smart contract và rủi ro pháp lý (ví dụ: bị SEC phân loại là chứng khoán).
+- **FR53 (Liquidity Routing):** Profiler phân tích độ sâu sổ lệnh trên CEX/DEX để gợi ý chiến lược xả hàng/gom hàng lớn tối ưu slippage, cùng scanner tìm yield an toàn trên đa chuỗi.
+
+: bị SEC phân loại là chứng khoán).
+- **FR53 (Liquidity Routing):** Profiler phân tích độ sâu sổ lệnh trên CEX/DEX để gợi ý chiến lược xả hàng/gom hàng lớn tối ưu slippage, cùng scanner tìm yield an toàn trên đa chuỗi.
 
