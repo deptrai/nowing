@@ -149,6 +149,7 @@ _ALL_TOOL_NAMES = [
     "get_certik_audit_score",
     "get_certik_incident_history",
     # Nansen / Smart Money
+    "get_smart_money_flow",
     "get_nansen_smart_money",
     "get_nansen_wallet_label",
     "get_nansen_token_god_mode",
@@ -285,6 +286,17 @@ def test_tokenomics_has_exactly_coingecko_and_chainlens() -> None:
     }
 
 
+def test_smart_money_has_exactly_nansen_and_web_search() -> None:
+    """Story 10.1.1: smart_money_analyst must have exactly these tools."""
+    assert set(SMART_MONEY_ALLOWED_TOOLS) == {
+        "get_smart_money_flow",
+        "get_nansen_smart_money",
+        "get_nansen_wallet_label",
+        "get_nansen_token_god_mode",
+        "web_search",
+    }
+
+
 def test_tokenomics_does_not_have_defi_or_security_tools() -> None:
     """Story 9.1 AC3: tokenomics must not accidentally see DeFiLlama, GoPlus,
     or CryptoPanic tools (scope isolation)."""
@@ -340,6 +352,7 @@ def test_allowed_tools_exist_in_real_registry() -> None:
         ("smart_contract_analyst", SMART_CONTRACT_ALLOWED_TOOLS),
         ("tokenomics_analyst", TOKENOMICS_ALLOWED_TOOLS),
         ("yield_optimizer", YIELD_OPTIMIZER_ALLOWED_TOOLS),
+        ("smart_money_analyst", SMART_MONEY_ALLOWED_TOOLS),
     ]:
         missing = set(allowed) - registered
         assert not missing, (

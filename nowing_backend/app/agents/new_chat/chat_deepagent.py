@@ -975,6 +975,20 @@ class SourceAttributionMiddleware(AgentMiddleware):
                 custom_event_name="orchestra_fact_captured",
             )
 
+        # Story 10.1.1: emit smart-money-flow event for FE visualization
+        if tool_name == "get_smart_money_flow" and isinstance(result, dict) and "nodes" in result:
+            _emit_orchestra_event(
+                "smart-money-flow",
+                {
+                    "agentId": self._agent_name,
+                    "nodes": result.get("nodes", []),
+                    "links": result.get("links", []),
+                    "net_flow_amount": result.get("net_flow_amount", 0.0),
+                    "currency": result.get("currency", "USD"),
+                },
+                custom_event_name="smart_money_flow",
+            )
+
         return result
 
 
