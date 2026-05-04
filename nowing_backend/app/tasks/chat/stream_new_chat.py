@@ -1529,6 +1529,18 @@ async def _stream_agent_events(
                 tier=data.get("tier"),
             )
 
+        elif event_type == "on_custom_event" and event.get("name") == "smart_money_flow":
+            data = event.get("data", {})
+            yield streaming_service.format_data(
+                "smart-money-flow",
+                {
+                    "nodes": data.get("nodes", []),
+                    "links": data.get("links", []),
+                    "net_flow_amount": data.get("net_flow_amount", 0.0),
+                    "currency": data.get("currency", "USD"),
+                },
+            )
+
         elif event_type == "on_custom_event" and event.get("name") == "data_agent_result":
             # Fallback path when _orchestra_writer ContextVar isn't set (nested LangGraph
             # invocation boundaries). Mirror the writer's routing: bare-type events go

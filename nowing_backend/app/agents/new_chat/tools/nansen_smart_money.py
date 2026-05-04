@@ -30,6 +30,7 @@ from typing import Any
 import httpx
 from langchain_core.tools import tool
 
+from ..middleware.circuit_breaker import circuit_breaker
 from ._rate_limiter import _ApiRateLimiter
 
 logger = logging.getLogger(__name__)
@@ -56,11 +57,12 @@ def _auth_headers() -> dict[str, str]:
 
 
 def _unavailable_error(status: int) -> dict[str, Any]:
-    """Return structured error for 401/403/429 responses (AC13)."""
+    """Return structured error for 401/403/429/503 responses (AC13)."""
     messages = {
         401: "Nansen API key missing or invalid. Add NANSEN_API_KEY to .env.",
         403: "Nansen API key does not have access to this endpoint (paid tier required).",
         429: "Nansen rate limit exceeded. Reduce request frequency or upgrade plan.",
+        503: "Nansen API is currently unavailable (circuit breaker open).",
     }
     return {
         "error": messages.get(status, f"Nansen API returned HTTP {status}"),
@@ -96,6 +98,10 @@ def create_nansen_smart_money_tool():
         if not _api_key():
             return _unavailable_error(401)
 
+        # AC3: Circuit Breaker check
+        if await circuit_breaker.is_open("nansen"):
+            return _unavailable_error(503)
+
         await _nansen_rl.acquire()
         url = f"{_NANSEN_BASE}/token/smart-money"
         try:
@@ -107,8 +113,17 @@ def create_nansen_smart_money_tool():
                 )
             if resp.status_code in (401, 403, 429):
                 return _unavailable_error(resp.status_code)
+            
+            # AC3: Record failure for 5xx
+            if resp.status_code >= 500:
+                await circuit_breaker.record_failure("nansen")
+                return {"error": f"Nansen API error: {resp.status_code}", "source_domain": "nansen.ai", "status": resp.status_code}
+                
             resp.raise_for_status()
             data = resp.json()
+            
+            # AC3: Record success
+            await circuit_breaker.record_success("nansen")
 
             wallets = data.get("data", {}).get("wallets", [])
             net_flow = data.get("data", {}).get("netFlow24hUsd", 0.0)
@@ -138,12 +153,15 @@ def create_nansen_smart_money_tool():
                 "signal": signal,
                 "wallet_count": len(wallets),
             }
-        except httpx.TimeoutException:
-            logger.warning("nansen smart_money timeout for %s", token_address)
-            return {"error": "Nansen API timeout", "source_domain": "nansen.ai"}
+        except (httpx.TimeoutException, httpx.NetworkError):
+            logger.warning("nansen smart_money timeout/network error for %s", token_address)
+            await circuit_breaker.record_failure("nansen")
+            return {"error": "Nansen API timeout or network error", "source_domain": "nansen.ai"}
         except httpx.HTTPStatusError as exc:
             logger.warning("nansen smart_money HTTP error %s for %s", exc.response.status_code, token_address)
-            return {"error": f"Nansen API error: {exc.response.status_code}", "source_domain": "nansen.ai"}
+            if exc.response.status_code >= 500:
+                await circuit_breaker.record_failure("nansen")
+            return {"error": f"Nansen API error: {exc.response.status_code}", "source_domain": "nansen.ai", "status": exc.response.status_code}
         except Exception as exc:
             logger.exception("nansen smart_money unexpected error for %s", token_address)
             return {"error": f"Unexpected error: {exc}", "source_domain": "nansen.ai"}
@@ -177,6 +195,10 @@ def create_nansen_wallet_label_tool():
         if not _api_key():
             return _unavailable_error(401)
 
+        # AC3: Circuit Breaker check
+        if await circuit_breaker.is_open("nansen"):
+            return _unavailable_error(503)
+
         await _nansen_rl.acquire()
         url = f"{_NANSEN_BASE}/wallet/label"
         try:
@@ -188,8 +210,16 @@ def create_nansen_wallet_label_tool():
                 )
             if resp.status_code in (401, 403, 429):
                 return _unavailable_error(resp.status_code)
+            
+            # AC3: Record failure for 5xx
+            if resp.status_code >= 500:
+                await circuit_breaker.record_failure("nansen")
+                return {"error": f"Nansen API error: {resp.status_code}", "source_domain": "nansen.ai", "status": resp.status_code}
+
             if resp.status_code == 404:
                 # Unknown wallet — return short address, not an error
+                # Note: successes reset failure count
+                await circuit_breaker.record_success("nansen")
                 short = f"{address[:6]}...{address[-4:]}"
                 return {
                     "source_domain": "nansen.ai",
@@ -200,6 +230,9 @@ def create_nansen_wallet_label_tool():
                 }
             resp.raise_for_status()
             data = resp.json().get("data", {})
+            
+            # AC3: Record success
+            await circuit_breaker.record_success("nansen")
 
             return {
                 "source_domain": "nansen.ai",
@@ -208,12 +241,15 @@ def create_nansen_wallet_label_tool():
                 "entity_type": data.get("entityType", "unknown"),
                 "entity_tag": data.get("entityTag", ""),
             }
-        except httpx.TimeoutException:
-            logger.warning("nansen wallet_label timeout for %s", address)
-            return {"error": "Nansen API timeout", "source_domain": "nansen.ai"}
+        except (httpx.TimeoutException, httpx.NetworkError):
+            logger.warning("nansen wallet_label timeout/network error for %s", address)
+            await circuit_breaker.record_failure("nansen")
+            return {"error": "Nansen API timeout or network error", "source_domain": "nansen.ai"}
         except httpx.HTTPStatusError as exc:
             logger.warning("nansen wallet_label HTTP error %s for %s", exc.response.status_code, address)
-            return {"error": f"Nansen API error: {exc.response.status_code}", "source_domain": "nansen.ai"}
+            if exc.response.status_code >= 500:
+                await circuit_breaker.record_failure("nansen")
+            return {"error": f"Nansen API error: {exc.response.status_code}", "source_domain": "nansen.ai", "status": exc.response.status_code}
         except Exception as exc:
             logger.exception("nansen wallet_label unexpected error for %s", address)
             return {"error": f"Unexpected error: {exc}", "source_domain": "nansen.ai"}
@@ -248,6 +284,10 @@ def create_nansen_token_god_mode_tool():
         if not _api_key():
             return _unavailable_error(401)
 
+        # AC3: Circuit Breaker check
+        if await circuit_breaker.is_open("nansen"):
+            return _unavailable_error(503)
+
         await _nansen_rl.acquire()
         url = f"{_NANSEN_BASE}/token/god-mode"
         try:
@@ -259,8 +299,17 @@ def create_nansen_token_god_mode_tool():
                 )
             if resp.status_code in (401, 403, 429):
                 return _unavailable_error(resp.status_code)
+            
+            # AC3: Record failure for 5xx
+            if resp.status_code >= 500:
+                await circuit_breaker.record_failure("nansen")
+                return {"error": f"Nansen API error: {resp.status_code}", "source_domain": "nansen.ai", "status": resp.status_code}
+                
             resp.raise_for_status()
             data = resp.json().get("data", {})
+            
+            # AC3: Record success
+            await circuit_breaker.record_success("nansen")
 
             cohorts = data.get("cohorts", [])
             top10 = data.get("top10ConcentrationPct", 0.0)
@@ -281,14 +330,18 @@ def create_nansen_token_god_mode_tool():
                 "top_10_concentration_pct": top10,
                 "total_holders": total,
             }
-        except httpx.TimeoutException:
-            logger.warning("nansen god_mode timeout for %s", token_address)
-            return {"error": "Nansen API timeout", "source_domain": "nansen.ai"}
+        except (httpx.TimeoutException, httpx.NetworkError):
+            logger.warning("nansen god_mode timeout/network error for %s", token_address)
+            await circuit_breaker.record_failure("nansen")
+            return {"error": "Nansen API timeout or network error", "source_domain": "nansen.ai"}
         except httpx.HTTPStatusError as exc:
             logger.warning("nansen god_mode HTTP error %s for %s", exc.response.status_code, token_address)
-            return {"error": f"Nansen API error: {exc.response.status_code}", "source_domain": "nansen.ai"}
+            if exc.response.status_code >= 500:
+                await circuit_breaker.record_failure("nansen")
+            return {"error": f"Nansen API error: {exc.response.status_code}", "source_domain": "nansen.ai", "status": exc.response.status_code}
         except Exception as exc:
             logger.exception("nansen god_mode unexpected error for %s", token_address)
             return {"error": f"Unexpected error: {exc}", "source_domain": "nansen.ai"}
 
     return get_nansen_token_god_mode
+

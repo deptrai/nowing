@@ -369,6 +369,15 @@ export type SSEEvent =
 			};
 	  }
 	| {
+			type: "data-smart-money-flow";
+			data: {
+				nodes: any[];
+				links: any[];
+				net_flow_amount: number;
+				currency: string;
+			};
+	  }
+	| {
 			type: "data-report-type";
 			data: { report_type: string };
 	  }

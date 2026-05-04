@@ -40,6 +40,10 @@ const CoinComparisonOverlay = dynamic(
 	() => import("../compare/coin-comparison-overlay").then((m) => m.CoinComparisonOverlay),
 	{ ssr: false }
 );
+const SankeyFlowChart = dynamic(
+	() => import("@/components/crypto/SankeyFlowChart").then((m) => m.SankeyFlowChart),
+	{ ssr: false, loading: () => <div className="h-[400px] w-full animate-pulse bg-muted/20 rounded-xl" /> }
+);
 
 const SENTINEL = "<!-- crypto-report-v2 -->";
 
@@ -51,6 +55,12 @@ interface CryptoReportMeta {
 	coingecko_id?: string;
 	follow_ups?: string[];
 	thread_id?: number;
+	smart_money_flow?: {
+		nodes: any[];
+		links: any[];
+		net_flow_amount: number;
+		currency: string;
+	};
 }
 
 function isCryptoReport(text: string, meta: CryptoReportMeta | null): boolean {
@@ -255,6 +265,22 @@ const CryptoReportLayoutImpl = () => {
 							)}
 						</ProContentGate>
 					</div>
+
+					{meta?.smart_money_flow && (
+						<div className="mt-6">
+							<ProContentGate
+								title="Smart Money Flow"
+								description="Visualize whale accumulation and distribution with Pro."
+							>
+								<SankeyFlowChart
+									nodes={meta.smart_money_flow.nodes}
+									links={meta.smart_money_flow.links}
+									netFlowAmount={meta.smart_money_flow.net_flow_amount}
+									currency={meta.smart_money_flow.currency}
+								/>
+							</ProContentGate>
+						</div>
+					)}
 
 					<NextActionBar
 						tokenSymbol={tokenSymbol}

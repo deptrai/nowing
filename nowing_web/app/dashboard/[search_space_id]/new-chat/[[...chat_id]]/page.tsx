@@ -1190,6 +1190,36 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-smart-money-flow": {
+							const flowData = parsed.data as {
+								nodes: any[];
+								links: any[];
+								net_flow_amount: number;
+								currency: string;
+							};
+							setMessages((prev) =>
+								prev.map((m) =>
+									m.id === assistantMsgId
+										? {
+												...m,
+												metadata: {
+													...(m.metadata as Record<string, unknown> | undefined),
+													custom: {
+														...((
+															m.metadata as {
+																custom?: Record<string, unknown>;
+															}
+														)?.custom ?? {}),
+														smart_money_flow: flowData,
+													},
+												},
+											}
+										: m
+								)
+							);
+							break;
+						}
+
 						case "data-report-type": {
 							const reportTypeData = parsed.data as { report_type: string };
 							if (reportTypeData?.report_type) {
@@ -1654,6 +1684,36 @@ export default function NewChatPage() {
 							break;
 						}
 
+						case "data-smart-money-flow": {
+							const flowData = parsed.data as {
+								nodes: any[];
+								links: any[];
+								net_flow_amount: number;
+								currency: string;
+							};
+							setMessages((prev) =>
+								prev.map((m) =>
+									m.id === assistantMsgId
+										? {
+												...m,
+												metadata: {
+													...(m.metadata as Record<string, unknown> | undefined),
+													custom: {
+														...((
+															m.metadata as {
+																custom?: Record<string, unknown>;
+															}
+														)?.custom ?? {}),
+														smart_money_flow: flowData,
+													},
+												},
+											}
+										: m
+								)
+							);
+							break;
+						}
+
 						case "data-report-type": {
 							const reportTypeData = parsed.data as { report_type: string };
 							if (reportTypeData?.report_type) {
@@ -2057,6 +2117,36 @@ export default function NewChatPage() {
 									)
 								);
 							}
+							break;
+						}
+
+						case "data-smart-money-flow": {
+							const flowData = parsed.data as {
+								nodes: any[];
+								links: any[];
+								net_flow_amount: number;
+								currency: string;
+							};
+							setMessages((prev) =>
+								prev.map((m) =>
+									m.id === assistantMsgId
+										? {
+												...m,
+												metadata: {
+													...(m.metadata as Record<string, unknown> | undefined),
+													custom: {
+														...((
+															m.metadata as {
+																custom?: Record<string, unknown>;
+															}
+														)?.custom ?? {}),
+														smart_money_flow: flowData,
+													},
+												},
+											}
+										: m
+								)
+							);
 							break;
 						}
 
