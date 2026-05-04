@@ -185,8 +185,8 @@ development_status:
 
   # ─── EPIC 10: Institutional Research & Risk Management Terminal (Formerly Epic 13) ───
   epic-10: in-progress
-  10-1-entity-resolution-smart-money: in-progress  # 2026-05-04 re-review found CRITICAL NameError + 2 unresolved decisions (D1 tool, D2 mount). 16 patches applied; D1+D2 require dev-story.
-  10-1-1-smart-money-integration: ready-for-dev   # 2026-05-04 spawned from 10.1 re-review to close D1 (tool wrapper), D2 (UI mount), P2 (Nansen circuit breaker)
+  10-1-entity-resolution-smart-money: in-progress  # 2026-05-04 re-review: 15 patches applied. D1/D2 deferred to Story 10.1.1.
+  10-1-1-smart-money-integration: ready-for-dev   # 2026-05-04 story spec created. AC1-4: tool wrapper, UI mount, circuit breaker, E2E.
   10-2-protocol-revenue-tokenomics: ready-for-dev
   10-3-narrative-heatmap-macro: ready-for-dev
   10-4-enterprise-risk-management: ready-for-dev
