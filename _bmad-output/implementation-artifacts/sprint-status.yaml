@@ -185,8 +185,8 @@ development_status:
 
   # ─── EPIC 10: Institutional Research & Risk Management Terminal (Formerly Epic 13) ───
   epic-10: in-progress
-  10-1-entity-resolution-smart-money: in-progress  # 2026-05-04 re-review: 15 patches applied. D1/D2 deferred to Story 10.1.1.
-  10-1-1-smart-money-integration: ready-for-dev   # 2026-05-04 story spec created. AC1-4: tool wrapper, UI mount, circuit breaker, E2E.
+  10-1-entity-resolution-smart-money: done        # 2026-05-04 re-review: 15 patches applied, committed (5e14cb04c).
+  10-1-1-smart-money-integration: in-progress    # 2026-05-04 AC1+AC2 implemented (e4dc326e6), AC3/AC4 pending.
   10-2-protocol-revenue-tokenomics: ready-for-dev
   10-3-narrative-heatmap-macro: ready-for-dev
   10-4-enterprise-risk-management: ready-for-dev
