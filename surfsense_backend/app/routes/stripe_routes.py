@@ -88,10 +88,22 @@ def _normalize_optional_string(value: Any) -> str | None:
 
 
 def _get_metadata(checkout_session: Any) -> dict[str, str]:
+    """Extract checkout session metadata as a plain ``str -> str`` dict.
+
+    Works for both ``dict`` (e.g. when the metadata round-tripped through
+    JSON) and Stripe's ``StripeObject`` wrapper. Recent Stripe SDK
+    versions stopped subclassing ``dict`` for ``StripeObject``, so
+    ``isinstance(metadata, dict)`` is False and ``dict(metadata)`` falls
+    into the sequence protocol, looking up integer indices and raising
+    ``KeyError: 0``. ``.items()`` is exposed by both shapes via the
+    Mapping protocol, so we always use that.
+    """
     metadata = getattr(checkout_session, "metadata", None) or {}
-    if isinstance(metadata, dict):
-        return {str(key): str(value) for key, value in metadata.items()}
-    return dict(metadata)
+    try:
+        items = metadata.items()
+    except AttributeError:
+        return {}
+    return {str(key): str(value) for key, value in items}
 
 
 async def _get_or_create_purchase_from_checkout_session(
@@ -439,41 +451,55 @@ async def stripe_webhook(
             detail="Invalid Stripe webhook signature.",
         ) from exc
 
-    if event.type in {
-        "checkout.session.completed",
-        "checkout.session.async_payment_succeeded",
-    }:
-        checkout_session = event.data.object
-        payment_status = getattr(checkout_session, "payment_status", None)
-
-        if event.type == "checkout.session.completed" and payment_status not in {
-            "paid",
-            "no_payment_required",
+    try:
+        if event.type in {
+            "checkout.session.completed",
+            "checkout.session.async_payment_succeeded",
         }:
-            logger.info(
-                "Received checkout.session.completed for unpaid session %s; waiting for async success.",
-                checkout_session.id,
-            )
-            return StripeWebhookResponse()
+            checkout_session = event.data.object
+            payment_status = getattr(checkout_session, "payment_status", None)
 
-        metadata = _get_metadata(checkout_session)
-        purchase_type = metadata.get("purchase_type", "page_packs")
-        if purchase_type == "premium_tokens":
-            return await _fulfill_completed_token_purchase(db_session, checkout_session)
-        return await _fulfill_completed_purchase(db_session, checkout_session)
+            if event.type == "checkout.session.completed" and payment_status not in {
+                "paid",
+                "no_payment_required",
+            }:
+                logger.info(
+                    "Received checkout.session.completed for unpaid session %s; waiting for async success.",
+                    checkout_session.id,
+                )
+                return StripeWebhookResponse()
 
-    if event.type in {
-        "checkout.session.async_payment_failed",
-        "checkout.session.expired",
-    }:
-        checkout_session = event.data.object
-        metadata = _get_metadata(checkout_session)
-        purchase_type = metadata.get("purchase_type", "page_packs")
-        if purchase_type == "premium_tokens":
-            return await _mark_token_purchase_failed(
-                db_session, str(checkout_session.id)
-            )
-        return await _mark_purchase_failed(db_session, str(checkout_session.id))
+            metadata = _get_metadata(checkout_session)
+            purchase_type = metadata.get("purchase_type", "page_packs")
+            if purchase_type == "premium_tokens":
+                return await _fulfill_completed_token_purchase(
+                    db_session, checkout_session
+                )
+            return await _fulfill_completed_purchase(db_session, checkout_session)
+
+        if event.type in {
+            "checkout.session.async_payment_failed",
+            "checkout.session.expired",
+        }:
+            checkout_session = event.data.object
+            metadata = _get_metadata(checkout_session)
+            purchase_type = metadata.get("purchase_type", "page_packs")
+            if purchase_type == "premium_tokens":
+                return await _mark_token_purchase_failed(
+                    db_session, str(checkout_session.id)
+                )
+            return await _mark_purchase_failed(db_session, str(checkout_session.id))
+    except Exception:
+        # Re-raise so FastAPI returns 500 and Stripe retries this delivery.
+        # Logging here gives us a structured trail with event id + type so
+        # future webhook bugs surface immediately in the logs without
+        # having to grep by request_id.
+        logger.exception(
+            "Stripe webhook handler failed for event id=%s type=%s — Stripe will retry",
+            getattr(event, "id", "?"),
+            getattr(event, "type", "?"),
+        )
+        raise
 
     return StripeWebhookResponse()
 
