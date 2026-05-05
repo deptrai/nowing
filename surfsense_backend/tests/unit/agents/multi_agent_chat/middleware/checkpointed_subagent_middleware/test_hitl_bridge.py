@@ -12,7 +12,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 from typing_extensions import TypedDict
 
-from app.agents.multi_agent_chat.main_agent.graph.middleware.checkpointed_subagent_middleware.task_tool import (
+from app.agents.multi_agent_chat.middleware.main_agent.checkpointed_subagent_middleware.task_tool import (
     build_task_tool_with_parent_config,
 )
 
