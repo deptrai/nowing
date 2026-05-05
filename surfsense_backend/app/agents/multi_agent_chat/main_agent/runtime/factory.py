@@ -129,7 +129,16 @@ async def create_multi_agent_chat_deep_agent(
     }
 
     _t0 = time.perf_counter()
-    mcp_tools_by_agent = await load_mcp_tools_by_connector(db_session, search_space_id)
+    try:
+        mcp_tools_by_agent = await load_mcp_tools_by_connector(db_session, search_space_id)
+    except Exception as e:
+        # Degrade to builtins-only rather than aborting the turn: a transient
+        # DB or MCP-server hiccup should not deny the user a response.
+        logging.warning(
+            "MCP tool discovery failed; subagents will run without MCP tools this turn: %s",
+            e,
+        )
+        mcp_tools_by_agent = {}
     _perf_log.info(
         "[create_agent] load_mcp_tools_by_connector in %.3fs (%d buckets)",
         time.perf_counter() - _t0,

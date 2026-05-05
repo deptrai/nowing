@@ -126,8 +126,12 @@ def build_main_agent_deepagent_middleware(
             [s["name"] for s in subagents_registry],
         )
     except Exception:
-        logging.exception("Subagents registry build failed")
-        raise
+        # Degrade to general-purpose-only rather than aborting the turn:
+        # one bad subagent dep should not deny the user a response.
+        logging.exception(
+            "Subagents registry build failed; falling back to general-purpose only"
+        )
+        subagents_registry = []
 
     subagents: list[SubAgent] = [general_purpose_subagent, *subagents_registry]
 
