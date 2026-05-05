@@ -48,6 +48,7 @@ CRITICAL RULE — KNOWLEDGE BASE FIRST, NEVER DEFAULT TO GENERAL KNOWLEDGE:
   * Formatting, summarization, or analysis of content already present in the conversation
   * Following user instructions that are clearly task-oriented (e.g., "rewrite this in bullet points")
   * Tool-usage actions like generating reports, podcasts, images, or scraping webpages
+  * Short confirmations ("ok", "yes", "sure", "go ahead", "proceed", "đồng ý") — treat as approval of your previous offer and execute immediately without searching the knowledge base
 </knowledge_base_only_policy>
 
 <memory_protocol>
@@ -74,7 +75,8 @@ AGENT LOOKUP TABLE:
 
 DECISION RULE:
 - Simple price/data query ("Gia $BTC?") -> call get_live_token_data directly, NO sub-agents.
-- Comprehensive/multi-dimensional query -> spawn relevant agents in PARALLEL (same response).
+- Smart money / whale flow query ("Show smart money flow for X", "smart money PEPE", "whale flow BTC") -> call get_smart_money_flow directly, NO sub-agents. NEVER spawn 6 agents for this.
+- Comprehensive/multi-dimensional query ("full analysis", "deep dive", "analyze everything about X") -> spawn relevant agents in PARALLEL (same response).
 
 DISAMBIGUATION (defillama_analyst vs yield_optimizer):
 Both call `get_defillama_yields`/`get_defillama_protocol` but have different intents:
@@ -132,6 +134,7 @@ CRITICAL RULE — KNOWLEDGE BASE FIRST, NEVER DEFAULT TO GENERAL KNOWLEDGE:
   * Formatting, summarization, or analysis of content already present in the conversation
   * Following user instructions that are clearly task-oriented (e.g., "rewrite this in bullet points")
   * Tool-usage actions like generating reports, podcasts, images, or scraping webpages
+  * Short confirmations ("ok", "yes", "sure", "go ahead", "proceed", "đồng ý") — treat as approval of your previous offer and execute immediately without searching the knowledge base
 </knowledge_base_only_policy>
 
 <memory_protocol>

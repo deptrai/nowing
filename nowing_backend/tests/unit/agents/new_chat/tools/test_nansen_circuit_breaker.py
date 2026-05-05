@@ -19,14 +19,14 @@ async def test_nansen_circuit_opens_after_3_consecutive_5xx():
     with patch("app.agents.new_chat.tools.nansen_smart_money._api_key", return_value="fake-key"):
         tool = create_nansen_smart_money_tool()
         token = "0x" + "a" * 40
-        url = "https://api.nansen.ai/v1/token/smart-money"
+        url = "https://api.nansen.ai/api/v1/tgm/who-bought-sold"
 
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None  # circuit closed initially
         mock_redis.incr.return_value = FAILURE_THRESHOLD  # threshold reached on this call
 
         with patch.object(circuit_breaker, "_redis", mock_redis):
-            respx.get(url).mock(return_value=Response(500))
+            respx.post(url).mock(return_value=Response(500))
 
             res = await tool.ainvoke({"token_address": token})
             assert res.get("status") == 500
@@ -59,13 +59,13 @@ async def test_nansen_404_returns_empty_wallets_not_error():
     with patch("app.agents.new_chat.tools.nansen_smart_money._api_key", return_value="fake-key"):
         tool = create_nansen_smart_money_tool()
         token = "0x" + "a" * 40
-        url = "https://api.nansen.ai/v1/token/smart-money"
+        url = "https://api.nansen.ai/api/v1/tgm/who-bought-sold"
 
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None  # circuit closed
 
         with patch.object(circuit_breaker, "_redis", mock_redis):
-            respx.get(url).mock(return_value=Response(404))
+            respx.post(url).mock(return_value=Response(404))
 
             res = await tool.ainvoke({"token_address": token})
             assert "error" not in res
@@ -82,7 +82,7 @@ async def test_nansen_circuit_half_open_probe_succeeds():
     with patch("app.agents.new_chat.tools.nansen_smart_money._api_key", return_value="fake-key"):
         tool = create_nansen_smart_money_tool()
         token = "0x" + "a" * 40
-        url = "https://api.nansen.ai/v1/token/smart-money"
+        url = "https://api.nansen.ai/api/v1/tgm/who-bought-sold"
 
         mock_redis = AsyncMock()
         # Sequence on is_open():
@@ -93,8 +93,8 @@ async def test_nansen_circuit_half_open_probe_succeeds():
         mock_redis.decr.return_value = 0  # probe allowed
 
         with patch.object(circuit_breaker, "_redis", mock_redis):
-            respx.get(url).mock(
-                return_value=Response(200, json={"data": {"wallets": [], "netFlow24hUsd": 0}})
+            respx.post(url).mock(
+                return_value=Response(200, json={"data": [], "pagination": {"page": 1, "per_page": 30, "is_last_page": True}})
             )
 
             res = await tool.ainvoke({"token_address": token})

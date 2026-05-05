@@ -90,6 +90,7 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 						links?: unknown;
 						net_flow_amount?: unknown;
 						currency?: unknown;
+						source_domain?: unknown;
 					};
 				};
 				if (Array.isArray(smfPart.data?.nodes)) {
@@ -98,6 +99,10 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 						links: Array.isArray(smfPart.data.links) ? (smfPart.data.links as SankeyLink[]) : [],
 						net_flow_amount: Number(smfPart.data.net_flow_amount ?? 0) || 0,
 						currency: typeof smfPart.data.currency === "string" ? smfPart.data.currency : "USD",
+						source_domain:
+							typeof smfPart.data.source_domain === "string"
+								? smfPart.data.source_domain
+								: undefined,
 					};
 				}
 			}

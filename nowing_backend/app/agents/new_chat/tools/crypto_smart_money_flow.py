@@ -1,33 +1,242 @@
 """Smart money flow wrapper tool.
 
 Wraps the raw Nansen smart money data to provide Sankey-ready visualization data.
-
-Wallet cohorts (per Nansen taxonomy) used as Sankey node labels:
-- smart_money: top-tier traders historically profitable
-- cex: centralized exchange hot/cold wallets (Binance, Coinbase, etc.)
-- dex: decentralized exchange pools / routers
-- retail: small holders (heuristically classified)
-- insider: addresses linked to founders/team/treasury
-
-Each wallet's `net_flow_usd` over the last 24h becomes a Sankey link to/from the
-synthetic "Market" node, with sign indicating accumulation (Market→wallet) vs
-distribution (wallet→Market).
+Fallback to Arkham Intelligence and Dune Analytics if Nansen is unavailable or missing data.
 """
 
 import asyncio
+import logging
+import os
 import re
 from typing import Any
 
 from langchain_core.tools import tool
 
+from app.connectors.arkham_connector import ArkhamConnector, ArkhamFatalError
 from app.connectors.dexscreener_connector import DexScreenerConnector
+from app.connectors.dune_connector import DuneConnector
 
+from ..middleware.circuit_breaker import circuit_breaker
+from ._rate_limiter import _ApiRateLimiter
 from .nansen_smart_money import create_nansen_smart_money_tool
+
+logger = logging.getLogger(__name__)
 
 _EVM_ADDRESS_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
 _DEXSCREENER_RESOLVE_TIMEOUT = 10.0
 _NANSEN_INVOKE_TIMEOUT = 30.0
+_ARKHAM_INVOKE_TIMEOUT = 15.0
+_DUNE_INVOKE_TIMEOUT = 60.0
 _MAX_WALLETS_IN_SANKEY = 30
+
+# Spec mitigation: prefer fund/whale entities when Arkham labels them.
+# Entities without a `type` field are kept (insufficient signal to filter out).
+_ARKHAM_PREFERRED_ENTITY_TYPES = frozenset({"fund", "whale"})
+
+
+def _arkham_usd_gte_default() -> int:
+    """Min USD threshold for Arkham `/transfers`.
+
+    Defaults to $1k to avoid noise on majors like ETH/PEPE. Operators can lower
+    via `ARKHAM_USD_GTE` for low-cap tokens where whale activity is sub-$1k.
+    """
+    raw = os.getenv("ARKHAM_USD_GTE")
+    try:
+        return max(0, int(raw)) if raw else 1000
+    except ValueError:
+        return 1000
+
+
+def _disambiguate_label(label: str, addr: str) -> str:
+    """Produce a Sankey node id that won't collapse two distinct wallets sharing
+    the same entity name (e.g. multiple "Binance" hot wallets).
+
+    Mirrors the Nansen path: `f"{label} ({addr_prefix})"` when addr is available.
+    """
+    label = (label or "").strip() or "Unknown"
+    if addr and addr.startswith("0x"):
+        return f"{label} ({addr[:8]})"
+    return label
+
+_arkham_rl = _ApiRateLimiter(max_calls=1, window_seconds=1.0, name="arkham")
+_dune_rl = _ApiRateLimiter(max_calls=15, window_seconds=60.0, name="dune")
+
+
+async def _safe_circuit_is_open(name: str) -> bool:
+    try:
+        return await circuit_breaker.is_open(name)
+    except Exception as exc:
+        logger.warning("circuit_breaker.is_open failed for %s: %s", name, exc)
+        return False
+
+
+async def _safe_circuit_record_failure(name: str) -> None:
+    try:
+        await circuit_breaker.record_failure(name)
+    except Exception as exc:
+        logger.warning("circuit_breaker.record_failure failed for %s: %s", name, exc)
+
+
+async def _safe_circuit_record_success(name: str) -> None:
+    try:
+        await circuit_breaker.record_success(name)
+    except Exception as exc:
+        logger.warning("circuit_breaker.record_success failed for %s: %s", name, exc)
+
+
+async def _try_arkham(token_address: str, chain: str) -> dict[str, Any] | None:
+    if await _safe_circuit_is_open("arkham"):
+        return None
+    try:
+        await _arkham_rl.acquire()
+        connector = ArkhamConnector()
+        res = await connector.get_transfers(
+            base_address=token_address,
+            chain=chain,
+            usd_gte=_arkham_usd_gte_default(),
+        )
+        await _safe_circuit_record_success("arkham")
+        return res
+    except ArkhamFatalError as exc:
+        # 401/403 = bad key/tier; 429 = rate-limited. Both should trip the circuit
+        # so we stop hammering the upstream, but log distinctly so operators can
+        # tell config errors from runtime degradation.
+        if exc.status in (401, 403):
+            logger.error("Arkham auth/tier error: %s — fallback disabled until key fixed", exc)
+        else:
+            logger.warning("Arkham %s — backing off via circuit breaker", exc)
+        await _safe_circuit_record_failure("arkham")
+        return None
+    except Exception as exc:
+        logger.warning("Arkham fallback failed: %s", exc, exc_info=True)
+        await _safe_circuit_record_failure("arkham")
+        return None
+
+
+def _arkham_entity_passes_filter(entity: dict[str, Any]) -> bool:
+    """Spec mitigation: keep transfers whose entity is fund/whale, OR has no `type`
+    field at all (insufficient signal). Drop CEX/DEX/exchange flows that pollute
+    the smart-money view.
+    """
+    etype = (entity.get("type") or "").strip().lower()
+    if not etype:
+        return True
+    return etype in _ARKHAM_PREFERRED_ENTITY_TYPES
+
+
+def _build_sankey_from_arkham(transfers: dict[str, Any]) -> dict[str, Any] | None:
+    if not isinstance(transfers, dict):
+        return None
+
+    nodes_dict: dict[str, bool] = {"Market": True}
+    raw_links: list[dict[str, Any]] = []
+    net_flow_usd = 0.0
+
+    for t in (transfers.get("in") or []):
+        if not isinstance(t, dict):
+            continue
+        entity = t.get("fromAddress", {}).get("arkhamEntity", {}) or {}
+        if not _arkham_entity_passes_filter(entity):
+            continue
+        addr = t.get("fromAddress", {}).get("address", "")
+        label = _disambiguate_label(entity.get("name") or "", addr)
+        try:
+            usd = float(t.get("token", {}).get("usdAmount", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if usd > 0:
+            raw_links.append({"source": label, "target": "Market", "value": usd})
+            net_flow_usd += usd
+
+    for t in (transfers.get("out") or []):
+        if not isinstance(t, dict):
+            continue
+        entity = t.get("toAddress", {}).get("arkhamEntity", {}) or {}
+        if not _arkham_entity_passes_filter(entity):
+            continue
+        addr = t.get("toAddress", {}).get("address", "")
+        label = _disambiguate_label(entity.get("name") or "", addr)
+        try:
+            usd = float(t.get("token", {}).get("usdAmount", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if usd > 0:
+            raw_links.append({"source": "Market", "target": label, "value": usd})
+            net_flow_usd -= usd
+
+    if not raw_links:
+        return None
+
+    raw_links = sorted(raw_links, key=lambda x: x["value"], reverse=True)[:_MAX_WALLETS_IN_SANKEY]
+    for link in raw_links:
+        nodes_dict[link["source"]] = True
+        nodes_dict[link["target"]] = True
+
+    return {
+        "nodes": [{"id": n} for n in nodes_dict.keys()],
+        "links": raw_links,
+        "net_flow_amount": net_flow_usd,
+        "currency": "USD",
+        "source_domain": "arkm.com",
+    }
+
+
+async def _try_dune(token_address: str) -> list[dict[str, Any]] | None:
+    if await _safe_circuit_is_open("dune"):
+        return None
+    try:
+        await _dune_rl.acquire()
+        connector = DuneConnector()
+        res = await connector.get_smart_money_flow(token_address)
+        await _safe_circuit_record_success("dune")
+        return res
+    except Exception as exc:
+        logger.warning("Dune fallback failed: %s", exc, exc_info=True)
+        await _safe_circuit_record_failure("dune")
+        return None
+
+
+def _build_sankey_from_dune(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not isinstance(rows, list):
+        return None
+
+    nodes_dict: dict[str, bool] = {"Market": True}
+    raw_links: list[dict[str, Any]] = []
+    net_flow_usd = 0.0
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        addr = row.get("address", "") or ""
+        label = _disambiguate_label(row.get("label") or "", addr)
+        try:
+            flow = float(row.get("net_flow_usd") or 0)
+        except (TypeError, ValueError):
+            continue
+        if flow == 0:
+            continue
+
+        nodes_dict[label] = True
+        if flow > 0:
+            # Net buyer: Market → wallet
+            raw_links.append({"source": "Market", "target": label, "value": flow})
+        else:
+            # Net seller: wallet → Market
+            raw_links.append({"source": label, "target": "Market", "value": abs(flow)})
+        net_flow_usd += flow
+
+    if not raw_links:
+        return None
+
+    raw_links = sorted(raw_links, key=lambda x: x["value"], reverse=True)[:_MAX_WALLETS_IN_SANKEY]
+
+    return {
+        "nodes": [{"id": n} for n in nodes_dict.keys()],
+        "links": raw_links,
+        "net_flow_amount": net_flow_usd,
+        "currency": "USD",
+        "source_domain": "dune.com",
+    }
 
 
 def create_smart_money_flow_tool():
@@ -37,14 +246,16 @@ def create_smart_money_flow_tool():
 
     @tool
     async def get_smart_money_flow(token_address: str, chain: str = "ethereum") -> dict[str, Any]:
-        """Get smart money flow visualized as a Sankey diagram.
+        """Show smart money flow for a token as an interactive Sankey chart.
 
-        Transforms the raw Nansen smart money output into a structured format
-        (nodes and links) representing 24h USD value flows, ready for UI display.
+        ALWAYS use this tool when the user asks to "show", "display", "visualize",
+        or "get" smart money flow, whale flows, or on-chain capital flows for any token.
+        This renders an interactive Sankey diagram in the UI automatically.
+        Falls back to Dune Analytics if Nansen has no data.
 
         Args:
             token_address: EVM token contract address (0x...) OR a token symbol (e.g., 'PEPE').
-            chain: Target chain — currently only "ethereum" is supported (Nansen scope).
+            chain: Target chain — currently only "ethereum" is supported.
 
         Returns:
             Dict containing 'nodes', 'links', 'net_flow_amount', 'currency',
@@ -58,8 +269,6 @@ def create_smart_money_flow_tool():
             return {"error": f"chain '{chain}' not supported; only 'ethereum'", "source_domain": "nansen.ai"}
 
         # Resolve symbol → address upfront so the cache key (downstream) is stable.
-        # On failure, surface a clear error rather than falling through with a symbol —
-        # the inner tool would otherwise resolve again, doubling DexScreener calls.
         if not _EVM_ADDRESS_RE.match(normalized):
             try:
                 connector = DexScreenerConnector()
@@ -93,80 +302,111 @@ def create_smart_money_flow_tool():
             normalized = best_pair.get("baseToken", {}).get("address", normalized)
 
         # Call the underlying nansen tool with a resolved address (cache-key consistent).
+        nansen_res = None
         try:
             res = await asyncio.wait_for(
                 nansen_tool.ainvoke({"token_address": normalized}),
                 timeout=_NANSEN_INVOKE_TIMEOUT,
             )
+            nansen_res = res
         except asyncio.TimeoutError:
-            return {"error": "Nansen smart money fetch timed out", "source_domain": "nansen.ai"}
+            nansen_res = {"error": "Nansen smart money fetch timed out", "source_domain": "nansen.ai"}
+            logger.warning("Nansen timed out for %s", normalized)
         except Exception as exc:  # noqa: BLE001 — tool must never raise
-            return {"error": f"Nansen smart money fetch failed: {exc}", "source_domain": "nansen.ai"}
+            nansen_res = {"error": f"Nansen smart money fetch failed: {exc}", "source_domain": "nansen.ai"}
+            logger.warning("Nansen fetch failed", exc_info=True)
 
-        if not isinstance(res, dict):
-            return {"error": "Nansen tool returned non-dict response", "source_domain": "nansen.ai"}
-
-        if "error" in res:
-            return {
-                "error": res["error"],
-                "source_domain": res.get("source_domain", "nansen.ai"),
-                "status": res.get("status"),
-            }
-
-        wallets = res.get("smart_money_wallets") or []
-        try:
-            net_flow_usd = float(res.get("net_flow_24h_usd") or 0)
-        except (TypeError, ValueError):
-            net_flow_usd = 0.0
-
-        # Empty result: still return a valid Sankey shape so FE doesn't break.
-        if not wallets:
-            return {
-                "source_domain": "nansen.ai",
-                "nodes": [{"id": "Market"}],
-                "links": [],
-                "net_flow_amount": net_flow_usd,
-                "currency": "USD",
-            }
-
-        # Cap to keep Sankey readable; sort by abs(flow) so the largest movers stay.
-        def _abs_flow(w: dict) -> float:
-            try:
-                return abs(float(w.get("net_flow_usd") or 0))
-            except (TypeError, ValueError):
-                return 0.0
-
-        wallets = sorted(wallets, key=_abs_flow, reverse=True)[:_MAX_WALLETS_IN_SANKEY]
-
-        nodes_dict: dict[str, bool] = {"Market": True}
-        links: list[dict[str, Any]] = []
-
-        for idx, w in enumerate(wallets):
-            label = (w.get("label") or "Unknown").strip() or "Unknown"
-            try:
-                flow = float(w.get("net_flow_usd") or 0)
-            except (TypeError, ValueError):
-                continue
-            if flow == 0:
-                continue
-
-            # Suffix index when label is non-unique to avoid Sankey node collision.
-            addr = (w.get("address") or "")[:8]
-            node_id = label if addr == "" else f"{label} ({addr})"
-            nodes_dict[node_id] = True
-
-            if flow > 0:
-                links.append({"source": "Market", "target": node_id, "value": flow})
+        if isinstance(nansen_res, dict):
+            if "error" in nansen_res:
+                logger.warning("Nansen returned error: %s", nansen_res["error"])
             else:
-                links.append({"source": node_id, "target": "Market", "value": abs(flow)})
+                wallets = nansen_res.get("smart_money_wallets") or []
+                if wallets:
+                    try:
+                        net_flow_usd = float(nansen_res.get("net_flow_24h_usd") or 0)
+                    except (TypeError, ValueError):
+                        net_flow_usd = 0.0
 
-        nodes = [{"id": n} for n in nodes_dict.keys()]
+                    def _abs_flow(w: dict) -> float:
+                        try:
+                            return abs(float(w.get("net_flow_usd") or 0))
+                        except (TypeError, ValueError):
+                            return 0.0
 
+                    wallets = sorted(wallets, key=_abs_flow, reverse=True)[:_MAX_WALLETS_IN_SANKEY]
+
+                    nodes_dict: dict[str, bool] = {"Market": True}
+                    links: list[dict[str, Any]] = []
+
+                    for idx, w in enumerate(wallets):
+                        if not isinstance(w, dict):
+                            continue
+                        label = (w.get("label") or "Unknown").strip() or "Unknown"
+                        try:
+                            flow = float(w.get("net_flow_usd") or 0)
+                        except (TypeError, ValueError):
+                            continue
+                        if flow == 0:
+                            continue
+
+                        addr = (w.get("address") or "")[:8]
+                        node_id = label if addr == "" else f"{label} ({addr})"
+                        nodes_dict[node_id] = True
+
+                        if flow > 0:
+                            links.append({"source": "Market", "target": node_id, "value": flow})
+                        else:
+                            links.append({"source": node_id, "target": "Market", "value": abs(flow)})
+
+                    nodes = [{"id": n} for n in nodes_dict.keys()]
+
+                    return {
+                        "source_domain": "nansen.ai",
+                        "nodes": nodes,
+                        "links": links,
+                        "net_flow_amount": net_flow_usd,
+                        "currency": "USD",
+                    }
+
+        # 3. Fallback: Arkham
+        if os.getenv("ARKHAM_API_KEY"):
+            try:
+                arkham_res = await asyncio.wait_for(
+                    _try_arkham(normalized, chain),
+                    timeout=_ARKHAM_INVOKE_TIMEOUT,
+                )
+            except asyncio.TimeoutError:
+                logger.warning("Arkham fallback timed out for %s", normalized)
+                arkham_res = None
+            if arkham_res:
+                sankey = _build_sankey_from_arkham(arkham_res)
+                if sankey:
+                    return sankey
+
+        # 4. Fallback: Dune
+        if os.getenv("DUNE_API_KEY"):
+            try:
+                dune_res = await asyncio.wait_for(
+                    _try_dune(normalized),
+                    timeout=_DUNE_INVOKE_TIMEOUT,
+                )
+            except asyncio.TimeoutError:
+                logger.warning("Dune fallback timed out for %s", normalized)
+                dune_res = None
+            if dune_res:
+                sankey = _build_sankey_from_dune(dune_res)
+                if sankey:
+                    return sankey
+
+        # 5. All failed — empty but valid Sankey.
+        # Always attribute to nansen.ai (the primary provider tried). The previous
+        # "system" sentinel produced a broken citation badge URL on the FE
+        # (icons.duckduckgo.com/ip3/system.ico → 404).
         return {
             "source_domain": "nansen.ai",
-            "nodes": nodes,
-            "links": links,
-            "net_flow_amount": net_flow_usd,
+            "nodes": [{"id": "Market"}],
+            "links": [],
+            "net_flow_amount": 0.0,
             "currency": "USD",
         }
 

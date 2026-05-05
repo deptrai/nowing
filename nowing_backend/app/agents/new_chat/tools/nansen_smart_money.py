@@ -25,6 +25,7 @@ Rate limits (AC14):
 import logging
 import os
 import re
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -36,7 +37,7 @@ from ._rate_limiter import _ApiRateLimiter
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = 30.0
-_NANSEN_BASE = "https://api.nansen.ai/v1"
+_NANSEN_BASE = "https://api.nansen.ai/api/v1"
 _EVM_ADDRESS_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
 
 # AC14: per-tool rate limiter — 100 calls/min (Nansen paid tier is 500,
@@ -77,7 +78,7 @@ def _auth_headers() -> dict[str, str]:
     key = _api_key()
     if not key:
         return {}
-    return {"x-api-key": key}
+    return {"apiKey": key}
 
 
 def _unavailable_error(status: int) -> dict[str, Any]:
@@ -100,14 +101,19 @@ def create_nansen_smart_money_tool():
 
     @tool
     async def get_nansen_smart_money(token_address: str) -> dict[str, Any]:
-        """Get smart-money wallet flows and accumulation signals for a token.
+        """Get raw smart-money wallet data for a token (text/analysis only).
+
+        IMPORTANT: If the user asks to "show", "visualize", or "display" smart
+        money flow as a chart or diagram, use get_smart_money_flow instead —
+        it returns Sankey-ready visualization data and triggers the UI chart.
+        Use THIS tool only when the user wants a text summary or analysis of
+        who is accumulating/selling (not a visual flow diagram).
 
         Returns the top wallets labeled "Smart Money" by Nansen, their
-        accumulating vs. distributing flags, and the 24-hour net flow
-        (USD and token amount).
+        accumulating vs. distributing flags, and the 24-hour net flow.
 
         Use when the user asks who is accumulating/selling a token, what
-        smart money is doing, or wants whale flow data.
+        smart money is doing, or wants whale flow data as plain text.
 
         Args:
             token_address: EVM token contract address (0x...) OR token symbol (e.g., 'PEPE').
@@ -136,18 +142,25 @@ def create_nansen_smart_money_tool():
             return _unavailable_error(503)
 
         await _nansen_rl.acquire()
-        url = f"{_NANSEN_BASE}/token/smart-money"
+        url = f"{_NANSEN_BASE}/tgm/who-bought-sold"
+        now = datetime.now(timezone.utc)
+        yesterday = now - timedelta(hours=24)
+        body = {
+            "chain": "ethereum",
+            "token_address": token_address,
+            "date": {
+                "from": yesterday.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "to": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            },
+            "pagination": {"page": 1, "per_page": 30},
+        }
         try:
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                resp = await client.get(
-                    url,
-                    params={"address": token_address},
-                    headers=_auth_headers(),
-                )
+                resp = await client.post(url, json=body, headers=_auth_headers())
             if resp.status_code in (401, 403, 429):
                 return _unavailable_error(resp.status_code)
 
-            # 404 = token not indexed by Nansen (not an API failure)
+            # 404 = token not tracked by Nansen (not an API failure)
             if resp.status_code == 404:
                 await _safe_circuit_record_success("nansen")
                 return {
@@ -170,10 +183,36 @@ def create_nansen_smart_money_tool():
             # AC3: Record success
             await _safe_circuit_record_success("nansen")
 
-            wallets = data.get("data", {}).get("wallets", [])
-            net_flow = data.get("data", {}).get("netFlow24hUsd", 0.0)
+            items = data.get("data") or []
+            net_flow = 0.0
+            wallets = []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                try:
+                    bought = float(item.get("bought_volume_usd") or 0)
+                    sold = float(item.get("sold_volume_usd") or 0)
+                except (TypeError, ValueError):
+                    continue
+                net = bought - sold
+                net_flow += net
+                addr = item.get("address", "")
+                raw_label = (item.get("address_label") or "").strip()
+                label = raw_label or (addr[:8] if addr else "") or "Unknown"
+                if net > 0:
+                    direction = "accumulating"
+                elif net < 0:
+                    direction = "distributing"
+                else:
+                    direction = "neutral"
+                wallets.append({
+                    "address": addr,
+                    "label": label,
+                    "tag": "",
+                    "net_flow_usd": net,
+                    "direction": direction,
+                })
 
-            # Derive signal from net flow
             if net_flow > 0:
                 signal = "accumulating"
             elif net_flow < 0:
@@ -184,16 +223,7 @@ def create_nansen_smart_money_tool():
             return {
                 "source_domain": "nansen.ai",
                 "token_address": token_address,
-                "smart_money_wallets": [
-                    {
-                        "address": w.get("address", ""),
-                        "label": w.get("label", "Unknown Wallet"),
-                        "tag": w.get("entityTag", ""),
-                        "net_flow_usd": w.get("netFlowUsd", 0.0),
-                        "direction": "accumulating" if w.get("netFlowUsd", 0) > 0 else "distributing",
-                    }
-                    for w in wallets[:10]  # top 10
-                ],
+                "smart_money_wallets": wallets,
                 "net_flow_24h_usd": net_flow,
                 "signal": signal,
                 "wallet_count": len(wallets),

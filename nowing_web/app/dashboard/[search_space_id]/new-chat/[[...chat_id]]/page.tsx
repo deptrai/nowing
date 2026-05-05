@@ -240,6 +240,7 @@ function parseSmartMoneyFlow(raw: unknown): SmartMoneyFlowData | null {
 		links?: unknown;
 		net_flow_amount?: unknown;
 		currency?: unknown;
+		source_domain?: unknown;
 	};
 	if (!Array.isArray(data.nodes) || !Array.isArray(data.links)) return null;
 	return {
@@ -247,6 +248,7 @@ function parseSmartMoneyFlow(raw: unknown): SmartMoneyFlowData | null {
 		links: data.links as SmartMoneyFlowData["links"],
 		net_flow_amount: Number(data.net_flow_amount ?? 0) || 0,
 		currency: typeof data.currency === "string" ? data.currency : "USD",
+		source_domain: typeof data.source_domain === "string" ? data.source_domain : undefined,
 	};
 }
 
@@ -1251,12 +1253,7 @@ export default function NewChatPage() {
 							const flowData = parseSmartMoneyFlow(parsed.data);
 							console.log("flowData parsed:", flowData);
 							if (flowData) {
-								applySmartMoneyFlowUpdate(
-									flowData,
-									assistantMsgId,
-									contentPartsState,
-									setMessages,
-								);
+								applySmartMoneyFlowUpdate(flowData, assistantMsgId, contentPartsState, setMessages);
 							}
 							break;
 						}
@@ -1730,12 +1727,7 @@ export default function NewChatPage() {
 							const flowData = parseSmartMoneyFlow(parsed.data);
 							console.log("flowData parsed:", flowData);
 							if (flowData) {
-								applySmartMoneyFlowUpdate(
-									flowData,
-									assistantMsgId,
-									contentPartsState,
-									setMessages,
-								);
+								applySmartMoneyFlowUpdate(flowData, assistantMsgId, contentPartsState, setMessages);
 							}
 							break;
 						}
@@ -2151,12 +2143,7 @@ export default function NewChatPage() {
 							const flowData = parseSmartMoneyFlow(parsed.data);
 							console.log("flowData parsed:", flowData);
 							if (flowData) {
-								applySmartMoneyFlowUpdate(
-									flowData,
-									assistantMsgId,
-									contentPartsState,
-									setMessages,
-								);
+								applySmartMoneyFlowUpdate(flowData, assistantMsgId, contentPartsState, setMessages);
 							}
 							break;
 						}

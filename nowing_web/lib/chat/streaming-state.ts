@@ -22,6 +22,7 @@ export interface SmartMoneyFlowData {
 	links: SankeyLink[];
 	net_flow_amount: number;
 	currency: string;
+	source_domain?: string;
 }
 
 export type ContentPart =

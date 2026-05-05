@@ -65,6 +65,42 @@ interface SmartMoneyFlowData {
 	links: SankeyLink[];
 	net_flow_amount: number;
 	currency: string;
+	source_domain?: string;
+}
+
+function EmptySmartMoneyState({ sourceDomain }: { sourceDomain?: string }) {
+	return (
+		<div className="rounded-xl border border-border/40 bg-muted/10 p-8 text-center">
+			<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted/30">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					className="text-muted-foreground"
+				>
+					<path d="M3 7c2 0 3 2 6 2s4-2 6-2 4 2 6 2" />
+					<path d="M3 12c2 0 3 2 6 2s4-2 6-2 4 2 6 2" />
+					<path d="M3 17c2 0 3 2 6 2s4-2 6-2 4 2 6 2" />
+				</svg>
+			</div>
+			<h4 className="mb-1 text-sm font-semibold text-foreground">No labeled smart money flow</h4>
+			<p className="mx-auto max-w-md text-xs text-muted-foreground">
+				No labeled smart-money inflows/outflows for this token on Ethereum. Activity may be
+				primarily on another chain (e.g., BNB Chain for CAKE, Solana for SOL-native tokens).
+			</p>
+			{sourceDomain && (
+				<p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground/70">
+					source: {sourceDomain}
+				</p>
+			)}
+		</div>
+	);
 }
 
 interface CryptoReportMeta {
@@ -286,16 +322,14 @@ const CryptoReportLayoutImpl = () => {
 						</ProContentGate>
 					</div>
 
-					{meta?.smart_money_flow &&
-						Array.isArray(meta.smart_money_flow.nodes) &&
-						meta.smart_money_flow.nodes.length > 0 &&
-						Array.isArray(meta.smart_money_flow.links) &&
-						meta.smart_money_flow.links.length > 0 && (
-							<div className="mt-6">
-								<ProContentGate
-									title="Smart Money Flow"
-									description="Visualize whale accumulation and distribution with Pro."
-								>
+					{meta?.smart_money_flow && Array.isArray(meta.smart_money_flow.nodes) && (
+						<div className="mt-6">
+							<ProContentGate
+								title="Smart Money Flow"
+								description="Visualize whale accumulation and distribution with Pro."
+							>
+								{Array.isArray(meta.smart_money_flow.links) &&
+								meta.smart_money_flow.links.length > 0 ? (
 									<SankeyFlowChart
 										nodes={meta.smart_money_flow.nodes}
 										links={meta.smart_money_flow.links}
@@ -303,9 +337,12 @@ const CryptoReportLayoutImpl = () => {
 										currency={meta.smart_money_flow.currency}
 										isLoading={false}
 									/>
-								</ProContentGate>
-							</div>
-						)}
+								) : (
+									<EmptySmartMoneyState sourceDomain={meta.smart_money_flow.source_domain} />
+								)}
+							</ProContentGate>
+						</div>
+					)}
 
 					<NextActionBar
 						tokenSymbol={tokenSymbol}

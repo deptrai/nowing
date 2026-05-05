@@ -53,16 +53,19 @@ async def test_get_smart_money_flow_returns_sankey_shape():
 
 
 @pytest.mark.asyncio
-async def test_get_smart_money_flow_propagates_nansen_error():
-    """When Nansen returns an error dict, tool MUST return error (no mock data)."""
+async def test_get_smart_money_flow_nansen_error_returns_empty_sankey():
+    """When Nansen errors and no fallback keys, tool returns empty valid Sankey (not error dict)."""
     mock_error = {"error": "Rate limit", "status": 429, "source_domain": "nansen.ai"}
     with _patched_nansen(mock_error):
         tool = create_smart_money_flow_tool()
         res = await tool.ainvoke({"token_address": "0x" + "1" * 40})
 
-    assert "error" in res
-    assert "nodes" not in res  # NEVER fabricate visualization data on error
-    assert res["status"] == 429
+    # Empty Sankey is intentional — avoids breaking the visualization UI.
+    # source_domain stays "nansen.ai" (the primary provider tried) so the FE
+    # citation badge has a valid favicon URL.
+    assert "nodes" in res
+    assert "links" in res
+    assert res["links"] == []
     assert res["source_domain"] == "nansen.ai"
 
 

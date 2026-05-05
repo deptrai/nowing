@@ -992,6 +992,7 @@ class SourceAttributionMiddleware(AgentMiddleware):
                     "links": result.get("links", []),
                     "net_flow_amount": result.get("net_flow_amount", 0.0),
                     "currency": result.get("currency", "USD"),
+                    "source_domain": result.get("source_domain"),
                 },
                 custom_event_name="smart_money_flow",
             )
@@ -1698,18 +1699,15 @@ synthesize with what's available."""
             )
             return ModelResponse(result=[synthetic_ai])
 
-        # Non-comprehensive query: inject directive into system message and delegate to LLM.
-        # Wrap with RateLimitError catch + indefinite retry — provider 429 is transient,
-        # we MUST eventually complete the response. Exponential backoff capped at MAX_BACKOFF
-        # so the operator sees the system pacing instead of giving up.
-        from deepagents.middleware._utils import append_to_system_message
-
-        new_sys = append_to_system_message(request.system_message, self._DIRECTIVE)
+        # Non-comprehensive query: pass through unchanged so the LLM follows
+        # the DECISION RULE in system_prompt.py (call direct tool, no sub-agents).
+        # Keep retry-on-429 wrapper because provider 429 is transient and we MUST
+        # eventually complete the response. Exponential backoff capped at MAX_BACKOFF.
         main_attempt = 0
         main_started = time.time()
         while True:
             try:
-                return await handler(request.override(system_message=new_sys, messages=messages))
+                return await handler(request)
             except Exception as exc:
                 err_str = str(exc).lower()
                 is_rate_limit = (
