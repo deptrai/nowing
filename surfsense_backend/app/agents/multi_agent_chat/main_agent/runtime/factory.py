@@ -26,6 +26,7 @@ from app.agents.new_chat.feature_flags import AgentFeatureFlags, get_flags
 from app.agents.new_chat.filesystem_backends import build_backend_resolver
 from app.agents.new_chat.filesystem_selection import FilesystemMode, FilesystemSelection
 from app.agents.new_chat.llm_config import AgentConfig
+from app.agents.new_chat.prompt_caching import apply_litellm_prompt_caching
 from app.agents.new_chat.tools.invalid_tool import INVALID_TOOL_NAME, invalid_tool
 from app.agents.new_chat.tools.registry import build_tools_async
 from app.db import ChatVisibility
@@ -62,6 +63,9 @@ async def create_surfsense_deep_agent(
 ):
     """Deep agent with SurfSense tools/middleware; registry route subagents behind ``task`` when enabled."""
     _t_agent_total = time.perf_counter()
+
+    apply_litellm_prompt_caching(llm, agent_config=agent_config, thread_id=thread_id)
+
     filesystem_selection = filesystem_selection or FilesystemSelection()
     backend_resolver = build_backend_resolver(
         filesystem_selection,
