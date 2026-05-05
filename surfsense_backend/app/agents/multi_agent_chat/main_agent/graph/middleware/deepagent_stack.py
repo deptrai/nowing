@@ -210,10 +210,8 @@ def build_main_agent_deepagent_middleware(
         )
         gp_middleware.insert(_patch_idx, subagent_deny_permission_mw)
 
-    # Defined here (instead of further down with the other ``wrap_model_call``
-    # middlewares) so subagents share the same instances as the parent —
-    # otherwise a connector subagent would die on the first provider hiccup
-    # while the parent stays resilient.
+    # Defined early so the same instances reach both gp_middleware and
+    # subagent_extra_middleware below.
     retry_mw = (
         RetryAfterMiddleware(max_retries=3)
         if flags.enable_retry_after and not flags.disable_new_agent_stack
@@ -230,9 +228,7 @@ def build_main_agent_deepagent_middleware(
             logging.warning("ScopedModelFallbackMiddleware init failed; skipping.")
             fallback_mw = None
 
-    # Cost / loop ceiling shared with subagents. ``state_schema`` of these
-    # middlewares is per-agent; counts are not summed across parent + sub —
-    # the cap acts as a safety net per agent, not a global budget.
+    # Per-agent caps; counts are not summed across parent + subagents.
     model_call_limit_mw = (
         ModelCallLimitMiddleware(
             thread_limit=120,
@@ -250,9 +246,8 @@ def build_main_agent_deepagent_middleware(
         else None
     )
 
-    # Mirror the parent's ordering: retry / fallback / limits wrap caching,
-    # which wraps the model. ``gp_middleware`` is held by reference inside
-    # ``general_purpose_spec`` so this insertion propagates into the spec.
+    # gp_middleware is held by reference inside general_purpose_spec, so
+    # mutating it here propagates into the spec.
     _gp_resilience: list[Any] = [
         m
         for m in (retry_mw, fallback_mw, model_call_limit_mw, tool_call_limit_mw)

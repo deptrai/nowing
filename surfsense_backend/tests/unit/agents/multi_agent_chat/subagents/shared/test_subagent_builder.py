@@ -1,11 +1,4 @@
-"""Resilience contract for subagents built via ``pack_subagent``.
-
-Subagents (jira, linear, notion, ...) run on the same LLM as the parent. When
-the provider rate-limits or returns an empty stream, a single hiccup must not
-abort the user's HITL flow — the connector subagent has to keep moving. This
-relies on ``ModelFallbackMiddleware`` being usable as a subagent
-``extra_middleware`` so the production builder can wire it in.
-"""
+"""Subagent resilience contract: ``extra_middleware`` reaches the agent chain."""
 
 from __future__ import annotations
 
@@ -32,11 +25,10 @@ from app.agents.multi_agent_chat.subagents.shared.subagent_builder import (
 
 
 class RateLimitError(Exception):
-    """Provider-style 429; matches the scoped-fallback eligibility allowlist by name."""
+    """Name matches the scoped-fallback eligibility allowlist."""
 
 
 class _AlwaysFailingChatModel(BaseChatModel):
-    """Mimics a provider hard-failing on every call (rate limit / empty stream)."""
 
     @property
     def _llm_type(self) -> str:
@@ -76,7 +68,7 @@ class _AlwaysFailingChatModel(BaseChatModel):
 
 @pytest.mark.asyncio
 async def test_subagent_recovers_when_primary_llm_fails():
-    """Primary blows up → fallback in extra_middleware finishes the turn."""
+    """Fallback in ``extra_middleware`` must finish the turn when primary raises."""
     primary = _AlwaysFailingChatModel()
     fallback = FakeMessagesListChatModel(
         responses=[AIMessage(content="recovered via fallback")]

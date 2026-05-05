@@ -1,10 +1,4 @@
-"""Pure-function tests for the HITL resume side-channel helpers.
-
-Tests the invariant that backs the bridge: a queued resume value must be
-read exactly once per turn. A second read returns ``None`` so the
-parent ``task`` tool falls through to its fail-loud guard rather than
-replaying the same resume payload (which would re-fire the interrupt).
-"""
+"""Resume side-channel must be read exactly once per turn."""
 
 from __future__ import annotations
 
@@ -17,7 +11,6 @@ from app.agents.multi_agent_chat.main_agent.graph.middleware.checkpointed_subage
 
 
 def _runtime_with_config(config: dict) -> ToolRuntime:
-    """Real ToolRuntime; only ``.config`` is exercised by the helpers."""
     return ToolRuntime(
         state=None,
         context=None,
@@ -37,9 +30,6 @@ class TestConsumeSurfsenseResume:
         assert consume_surfsense_resume(runtime) == {"decisions": ["approve"]}
 
     def test_second_call_returns_none(self):
-        # Regression guard: a second read must not replay the queued
-        # resume. If it did, the subagent would re-invoke with the
-        # same Command and the user-facing interrupt would fire twice.
         configurable: dict = {"surfsense_resume_value": {"decisions": ["approve"]}}
         runtime = _runtime_with_config({"configurable": configurable})
 
@@ -68,9 +58,6 @@ class TestHasSurfsenseResume:
         assert has_surfsense_resume(runtime) is True
 
     def test_does_not_consume_payload(self):
-        # The fail-loud guard in ``task_tool`` calls ``has_surfsense_resume``
-        # *before* deciding to consume; the check itself must leave the
-        # payload queued for the matching ``consume_surfsense_resume`` call.
         configurable = {"surfsense_resume_value": "approve"}
         runtime = _runtime_with_config({"configurable": configurable})
 

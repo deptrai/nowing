@@ -1,17 +1,4 @@
-"""Fallback only on provider/network errors; let programming bugs raise.
-
-Upstream :class:`langchain.agents.middleware.ModelFallbackMiddleware` catches
-every ``Exception``. With a non-provider bug (``KeyError``, ``TypeError``,
-``AttributeError`` from middleware/state), every fallback model in the chain
-hits the same bug — burning latency and tokens before the real cause finally
-surfaces. Scoping the catch to provider-style exception types lets bugs fail
-fast with clean tracebacks.
-
-Class-name matching (instead of ``isinstance`` against imported provider
-types) keeps the dependency surface flat: openai, anthropic, google,
-mistral, etc. all ship their own ``RateLimitError`` and we don't want to
-import them all.
-"""
+"""Fallback only on provider/network errors; let programming bugs raise."""
 
 from __future__ import annotations
 
@@ -26,17 +13,16 @@ if TYPE_CHECKING:
     from langchain_core.messages import AIMessage
 
 
+# Matched by class name across the MRO so we don't have to import every
+# provider SDK (openai/anthropic/google/...). Extend as new providers ship.
 _FALLBACK_ELIGIBLE_NAMES: frozenset[str] = frozenset(
     {
-        # Rate / quota
         "RateLimitError",
-        # Server-side
         "APIStatusError",
         "InternalServerError",
         "ServiceUnavailableError",
         "BadGatewayError",
         "GatewayTimeoutError",
-        # Network
         "APIConnectionError",
         "APITimeoutError",
         "ConnectError",
@@ -45,18 +31,16 @@ _FALLBACK_ELIGIBLE_NAMES: frozenset[str] = frozenset(
         "RemoteProtocolError",
         "TimeoutError",
         "TimeoutException",
-        # Can be extended to other exceptions in the future
     }
 )
 
 
 def _is_fallback_eligible(exc: BaseException) -> bool:
-    """Eligible if the exception or any base in its MRO matches by class name."""
     return any(cls.__name__ in _FALLBACK_ELIGIBLE_NAMES for cls in type(exc).__mro__)
 
 
 class ScopedModelFallbackMiddleware(ModelFallbackMiddleware):
-    """``ModelFallbackMiddleware`` that re-raises non-provider exceptions."""
+    """Re-raise non-provider exceptions instead of walking the fallback chain."""
 
     def wrap_model_call(  # type: ignore[override]
         self,

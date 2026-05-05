@@ -1,12 +1,4 @@
-"""Exception-scope contract for ``ScopedModelFallbackMiddleware``.
-
-Upstream ``ModelFallbackMiddleware`` catches every ``Exception`` and walks
-the fallback chain. That means a programming bug (``KeyError`` from a
-botched tool config, ``TypeError`` from middleware, ...) burns 1+N model
-round-trips and ~Nx tokens before its real cause surfaces. The scoped
-variant only falls back on provider/network exception types so bugs fail
-fast, with clean tracebacks.
-"""
+"""``ScopedModelFallbackMiddleware`` triggers fallback only on provider errors."""
 
 from __future__ import annotations
 
@@ -24,8 +16,6 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 
 
 class _RaisingChatModel(BaseChatModel):
-    """LLM that raises a configurable exception on every invocation."""
-
     exc_to_raise: Any
 
     @property
@@ -61,8 +51,6 @@ class _RaisingChatModel(BaseChatModel):
 
 
 class _RecordingChatModel(BaseChatModel):
-    """Returns a fixed message and counts how often it was called."""
-
     response_text: str = "fallback-ok"
     call_count: int = 0
 
@@ -94,14 +82,11 @@ class _RecordingChatModel(BaseChatModel):
         return self._generate(messages, stop, None, **kwargs)
 
 
-# Locally defined provider-style error: importing openai/anthropic/etc.
-# would couple the test to provider SDKs the contract intentionally avoids.
 class RateLimitError(Exception):
-    """Mimics ``openai.RateLimitError`` for name-based eligibility."""
+    """Name matches the scoped-fallback eligibility allowlist."""
 
 
 def _build_agent(primary: BaseChatModel, fallback: BaseChatModel):
-    """Compile a no-tools agent with the scoped fallback wired in."""
     from langchain.agents import create_agent
 
     from app.agents.new_chat.middleware.scoped_model_fallback import (
@@ -118,7 +103,7 @@ def _build_agent(primary: BaseChatModel, fallback: BaseChatModel):
 
 @pytest.mark.asyncio
 async def test_provider_errors_trigger_fallback():
-    """Class names matching the provider allowlist drive the fallback chain."""
+    """Eligible exception names must drive the fallback chain."""
     primary = _RaisingChatModel(exc_to_raise=RateLimitError("429 from provider"))
     fallback = _RecordingChatModel(response_text="recovered")
 
@@ -133,7 +118,7 @@ async def test_provider_errors_trigger_fallback():
 
 @pytest.mark.asyncio
 async def test_programming_errors_propagate_without_invoking_fallback():
-    """``KeyError`` from agent-side bugs must surface immediately, no fallback retry."""
+    """Non-eligible exceptions must propagate; fallback must not be invoked."""
     primary = _RaisingChatModel(exc_to_raise=KeyError("missing_state_field"))
     fallback = _RecordingChatModel(response_text="should-never-arrive")
 
@@ -142,7 +127,4 @@ async def test_programming_errors_propagate_without_invoking_fallback():
     with pytest.raises(KeyError, match="missing_state_field"):
         await agent.ainvoke({"messages": [("user", "hi")]})
 
-    assert fallback.call_count == 0, (
-        "fallback was invoked for a programming error; "
-        "scoping rule is broken"
-    )
+    assert fallback.call_count == 0
