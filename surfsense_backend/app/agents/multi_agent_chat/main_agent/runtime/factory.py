@@ -85,7 +85,18 @@ async def create_surfsense_deep_agent(
         )
 
     except Exception as e:
-        logging.warning("Failed to discover available connectors/document types: %s", e)
+        logging.warning(
+            "Connector/doc-type discovery failed; excluding connector subagents this turn: %s",
+            e,
+        )
+
+    # Fail closed: a None list short-circuits ``get_subagents_to_exclude`` to "exclude
+    # nothing", which would silently advertise every connector specialist on a flaky
+    # discovery call. Empty list excludes connector-gated subagents while keeping builtins.
+    if available_connectors is None:
+        available_connectors = []
+    if available_document_types is None:
+        available_document_types = []
     _perf_log.info(
         "[create_agent] Connector/doc-type discovery in %.3fs",
         time.perf_counter() - _t0,
