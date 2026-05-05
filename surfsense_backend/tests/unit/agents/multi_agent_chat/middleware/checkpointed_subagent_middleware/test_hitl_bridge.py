@@ -130,3 +130,41 @@ async def test_resume_bridge_dispatches_decision_into_pending_subagent():
     # 5. Subagent moved past the interrupt (no pending tasks remain).
     final = await subagent.aget_state(parent_config)
     assert not final.tasks or all(not t.interrupts for t in final.tasks)
+
+
+@pytest.mark.asyncio
+async def test_pending_interrupt_without_resume_value_raises_runtime_error():
+    """Bridge must fail loud if a paused subagent has no decision queued.
+
+    The fail-open alternative (silently re-invoking) would re-fire the
+    same interrupt to the user. The error surfaces a real broken bridge
+    instead of confusing duplicate approval cards.
+    """
+    subagent = _build_single_interrupt_subagent()
+    task_tool = build_task_tool_with_parent_config(
+        [
+            {
+                "name": "approver",
+                "description": "approves things",
+                "runnable": subagent,
+            }
+        ]
+    )
+
+    parent_config: dict = {
+        "configurable": {"thread_id": "guard-thread"},
+        "recursion_limit": 100,
+    }
+    await subagent.ainvoke({"messages": [HumanMessage(content="seed")]}, parent_config)
+    snap = await subagent.aget_state(parent_config)
+    assert snap.tasks and snap.tasks[0].interrupts, "fixture broken"
+
+    # No surfsense_resume_value injected — bridge must refuse to proceed.
+    runtime = _make_runtime(parent_config)
+
+    with pytest.raises(RuntimeError, match="resume bridge is broken"):
+        await task_tool.coroutine(
+            description="please approve",
+            subagent_type="approver",
+            runtime=runtime,
+        )
