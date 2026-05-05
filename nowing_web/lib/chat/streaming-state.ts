@@ -7,6 +7,23 @@ export interface ThinkingStepData {
 	items: string[];
 }
 
+export interface SankeyNode {
+	id: string;
+}
+
+export interface SankeyLink {
+	source: string;
+	target: string;
+	value: number;
+}
+
+export interface SmartMoneyFlowData {
+	nodes: SankeyNode[];
+	links: SankeyLink[];
+	net_flow_amount: number;
+	currency: string;
+}
+
 export type ContentPart =
 	| { type: "text"; text: string }
 	| {
@@ -23,6 +40,10 @@ export type ContentPart =
 	| {
 			type: "data-citation-map";
 			data: { citation_map: Record<string, unknown> };
+	  }
+	| {
+			type: "data-smart-money-flow";
+			data: SmartMoneyFlowData;
 	  }
 	| {
 			type: "data-agent-results";
@@ -213,6 +234,8 @@ export function buildContentForPersistence(
 			parts.push(part);
 		} else if (part.type === "data-citation-map") {
 			parts.push(part);
+		} else if (part.type === "data-smart-money-flow") {
+			parts.push(part);
 		} else if (part.type === "data-agent-results") {
 			parts.push(part);
 		}
@@ -370,12 +393,7 @@ export type SSEEvent =
 	  }
 	| {
 			type: "data-smart-money-flow";
-			data: {
-				nodes: any[];
-				links: any[];
-				net_flow_amount: number;
-				currency: string;
-			};
+			data: SmartMoneyFlowData;
 	  }
 	| {
 			type: "data-report-type";

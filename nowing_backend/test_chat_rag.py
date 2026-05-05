@@ -61,7 +61,7 @@ def test_chat_query(token: str, thread_id: int, query: str) -> bool:
     payload = {
         "chat_id": thread_id,  # The API expects 'chat_id', not 'thread_id'
         "user_query": query,   # The API expects 'user_query', not 'query'
-        "search_space_id": 7,
+        "search_space_id": 1,
     }
     
     # We use stream=False for easier testing, or handle SSE if needed.
@@ -127,10 +127,10 @@ def main():
     # Step 2: Create Thread
     # Note: Using search_space_id=1 for verifying if default space works or 7 if specific
     # Implementation plan said 7.
-    thread_id = create_thread(token, space_id=7)
+    thread_id = create_thread(token, space_id=1)
     
     # Step 3: Chat Query
-    success = test_chat_query(token, thread_id, "What is the price of WETH on Ethereum?")
+    success = test_chat_query(token, thread_id, "Show smart money flow for PEPE?")
     
     if success:
         print("\n🎉 Verification Successful!")

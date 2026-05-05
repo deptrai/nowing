@@ -42,10 +42,30 @@ const CoinComparisonOverlay = dynamic(
 );
 const SankeyFlowChart = dynamic(
 	() => import("@/components/crypto/SankeyFlowChart").then((m) => m.SankeyFlowChart),
-	{ ssr: false, loading: () => <div className="h-[400px] w-full animate-pulse bg-muted/20 rounded-xl" /> }
+	{
+		ssr: false,
+		loading: () => <div className="h-[400px] w-full animate-pulse bg-muted/20 rounded-xl" />,
+	}
 );
 
 const SENTINEL = "<!-- crypto-report-v2 -->";
+
+interface SankeyNode {
+	id: string;
+}
+
+interface SankeyLink {
+	source: string;
+	target: string;
+	value: number;
+}
+
+interface SmartMoneyFlowData {
+	nodes: SankeyNode[];
+	links: SankeyLink[];
+	net_flow_amount: number;
+	currency: string;
+}
 
 interface CryptoReportMeta {
 	report_type?: string;
@@ -55,16 +75,16 @@ interface CryptoReportMeta {
 	coingecko_id?: string;
 	follow_ups?: string[];
 	thread_id?: number;
-	smart_money_flow?: {
-		nodes: any[];
-		links: any[];
-		net_flow_amount: number;
-		currency: string;
-	};
+	smart_money_flow?: SmartMoneyFlowData;
 }
 
 function isCryptoReport(text: string, meta: CryptoReportMeta | null): boolean {
 	if (meta?.report_type === "comprehensive_crypto") return true;
+	// Standalone smart money flow queries don't carry report_type or sentinel,
+	// but still need the crypto layout to host the Sankey chart. Other sections
+	// (TokenHero, TOC, etc.) are independently conditional and skip cleanly when
+	// their data is absent — so this path produces a minimal layout, not noise.
+	if (meta?.smart_money_flow) return true;
 	return text.includes(SENTINEL);
 }
 
@@ -93,6 +113,8 @@ const CryptoReportLayoutImpl = () => {
 			((message as { metadata?: { custom?: unknown } })?.metadata
 				?.custom as CryptoReportMeta | null) ?? null
 	);
+
+	console.log("CryptoReportLayoutImpl meta keys:", JSON.stringify(meta ? Object.keys(meta) : null));
 
 	const [selectedCitation, setSelectedCitation] = useState<CryptoDataCitation | null>(null);
 	const [panelOpen, setPanelOpen] = useState(false);
@@ -211,9 +233,7 @@ const CryptoReportLayoutImpl = () => {
 				{/* Round-2 review: TOC also gated. The TOC enumerates every Pro-only
 				    section heading and links straight into the (still-DOM) blurred
 				    body, leaking the report's outline to free users. */}
-				{isProUser ? (
-					<ReportTOC content={cleanText} className="hidden lg:block" />
-				) : null}
+				{isProUser ? <ReportTOC content={cleanText} className="hidden lg:block" /> : null}
 
 				<div className="min-w-0 flex-1">
 					<TokenHeroCard
@@ -266,21 +286,26 @@ const CryptoReportLayoutImpl = () => {
 						</ProContentGate>
 					</div>
 
-					{meta?.smart_money_flow && (
-						<div className="mt-6">
-							<ProContentGate
-								title="Smart Money Flow"
-								description="Visualize whale accumulation and distribution with Pro."
-							>
-								<SankeyFlowChart
-									nodes={meta.smart_money_flow.nodes}
-									links={meta.smart_money_flow.links}
-									netFlowAmount={meta.smart_money_flow.net_flow_amount}
-									currency={meta.smart_money_flow.currency}
-								/>
-							</ProContentGate>
-						</div>
-					)}
+					{meta?.smart_money_flow &&
+						Array.isArray(meta.smart_money_flow.nodes) &&
+						meta.smart_money_flow.nodes.length > 0 &&
+						Array.isArray(meta.smart_money_flow.links) &&
+						meta.smart_money_flow.links.length > 0 && (
+							<div className="mt-6">
+								<ProContentGate
+									title="Smart Money Flow"
+									description="Visualize whale accumulation and distribution with Pro."
+								>
+									<SankeyFlowChart
+										nodes={meta.smart_money_flow.nodes}
+										links={meta.smart_money_flow.links}
+										netFlowAmount={meta.smart_money_flow.net_flow_amount}
+										currency={meta.smart_money_flow.currency}
+										isLoading={false}
+									/>
+								</ProContentGate>
+							</div>
+						)}
 
 					<NextActionBar
 						tokenSymbol={tokenSymbol}

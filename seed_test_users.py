@@ -12,13 +12,13 @@ async def seed():
     async with async_session_maker() as session:
         users_to_create = [
             {
-                "email": "free@nowing.test",
+                "email": "free@nowing.ai",
                 "password": "Password@123",
                 "plan_id": "free",
                 "subscription_status": SubscriptionStatus.FREE,
             },
             {
-                "email": "pro@nowing.test",
+                "email": "pro@nowing.ai",
                 "password": "Password@123",
                 "plan_id": "pro_monthly",
                 "subscription_status": SubscriptionStatus.ACTIVE,

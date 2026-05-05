@@ -975,8 +975,15 @@ class SourceAttributionMiddleware(AgentMiddleware):
                 custom_event_name="orchestra_fact_captured",
             )
 
-        # Story 10.1.1: emit smart-money-flow event for FE visualization
-        if tool_name == "get_smart_money_flow" and isinstance(result, dict) and "nodes" in result:
+        # Story 10.1.1: emit smart-money-flow event for FE visualization.
+        # Only emit when payload has the visualization shape — error dicts
+        # ({"error": ...}) must NOT be forwarded as flow data.
+        if (
+            tool_name == "get_smart_money_flow"
+            and isinstance(result, dict)
+            and "nodes" in result
+            and "links" in result
+        ):
             _emit_orchestra_event(
                 "smart-money-flow",
                 {

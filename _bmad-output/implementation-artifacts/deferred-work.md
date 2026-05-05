@@ -1,5 +1,9 @@
 # Deferred Work
 
+## Deferred from: Story 10.1.1 smart money integration (2026-05-05)
+- **Nansen 404 → empty Sankey for tokens not in Nansen index** (e.g., PEPE với mock key): Fixed 404→empty-wallets trong `nansen_smart_money.py` và added `links.length > 0` FE guard. Full solution cần Dune + Arkham fallback → **Story 10.1.2** (`_bmad-output/planning-artifacts/stories/10-1-2-nansen-failover-dune-arkham.md`).
+- **Local dev luôn empty Sankey** vì `NANSEN_API_KEY=mock-key-for-testing`. Cần set `DUNE_API_KEY` hoặc `ARKHAM_API_KEY` để có real data → Story 10.1.2.
+
 ## Deferred from: code review of 10-1-entity-resolution-smart-money.md (2026-05-04)
 - viewMode preference lost on Sheet remount: a11y user toggle "Table View" rồi đóng/mở mobile Sheet → chart view trở lại. Lift state lên context/localStorage. [nowing_web/components/crypto/SankeyFlowChart.tsx:245]
 - `_ALL_TOOL_NAMES` thêm `get_certik_*`, `get_live_token_price` không liên quan Story 10.1: anticipates future stories, scope creep. [nowing_backend/tests/unit/agents/new_chat/test_crypto_subagent_specs.py:131-150]
@@ -453,3 +457,12 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - [PROMOTED → 11-6] **`PRO_PLANS` không shared giữa FE và BE** [nowing_web/lib/entitlements.ts:1 + nowing_backend/app/schemas/stripe.py:14-17 + nowing_backend/app/config/__init__.py:317-348] — Hardcoded list trùng 3 nơi. Nếu BE thêm SKU mới (ví dụ `team_yearly`), FE silently deny → silent revenue loss. **Owner: ADR-012 + 11-6 T3.**
 - **Test mock `vi.mock("jotai")` globally** [__tests__/hooks/use-subscription-gate.test.tsx:7-9] — Replace tất cả jotai exports → Provider/useSetAtom undefined trong test. Hidden coupling; chỉ catch bug nếu SUT literally call useAtomValue. Refactor sang dùng test wrapper với Provider.
 - **CTA `/pricing` không locale-prefixed** [ProContentGate.tsx:62] — Hard-code `<Link href="/pricing">`. Nếu project sau add i18n routing (`/en/pricing`, `/vi/pricing`), CTA broken silently. No i18n yet nên defer.
+
+## Deferred from: code review of story-10.1.1 (2026-05-05)
+
+- **Stale closure `assistantMsgId` trong page.tsx handlers** — pre-existing pattern trong tất cả SSE handlers, không phải lỗi do story 10.1.1 introduce. Fix sẽ touch nhiều handler khác (citation_map, agent_results, report_type). [page.tsx:1190]
+- **Net flow sign convention vs link magnitude** — `net_flow_usd` (signed) vs links dùng `abs(flow)`. Có thể là design intentional (Sankey magnitude vs net flow indicator) — cần verify với UX/PO trước khi đổi. [crypto_smart_money_flow.py:79-99]
+- **Singleton `nansen_tool` factory closure** — `nansen_tool = create_nansen_smart_money_tool()` ở module-level closure là pre-existing pattern; refactor cần touch nhiều tools wrapper khác. [crypto_smart_money_flow.py:13-15]
+- **Circuit breaker race condition (is_open → request)** — minor probabilistic gap (~ms): circuit có thể mở giữa `is_open()` check và HTTP request. Cần distributed lock để fix triệt để — không justified cho tool latency. [nansen_smart_money.py:108-110]
+- **`record_success` reset failure counter trên 404** — Trong `nansen_smart_money.py:227-228`, 404 được treat như success → reset failure counter. Debatable: có thể là intentional (404 không phải lỗi service) hoặc bug (che health issue). Cần product decision. [nansen_smart_money.py:227-228]
+- **`import re` inside function body** — Cosmetic; không ảnh hưởng behavior, nhưng pattern không idiomatic Python. [crypto_smart_money_flow.py:17]

@@ -1529,8 +1529,16 @@ async def _stream_agent_events(
                 tier=data.get("tier"),
             )
 
-        elif event_type == "on_custom_event" and event.get("name") == "smart_money_flow":
-            data = event.get("data", {})
+        elif event_type == "on_custom_event" and event.get("name") in ("smart_money_flow", "smart-money-flow"):
+            # Two name forms accepted by design:
+            # - "smart_money_flow" (underscore) — LangChain dispatch_custom_event constraint
+            # - "smart-money-flow" (hyphen) — canonical SSE event type (matches FE handler)
+            # Both originate from chat_deepagent._emit_orchestra_event(...).
+            data = event.get("data") or {}
+            if isinstance(data, dict) and "data" in data and isinstance(data["data"], dict):
+                data = data["data"]
+            if not isinstance(data, dict):
+                continue
             yield streaming_service.format_data(
                 "smart-money-flow",
                 {

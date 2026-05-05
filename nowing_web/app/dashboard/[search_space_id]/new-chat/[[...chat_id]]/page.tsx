@@ -82,6 +82,7 @@ import {
 	buildContentForUI,
 	type ContentPartsState,
 	FrameBatchedUpdater,
+	type SmartMoneyFlowData,
 	type ThinkingStepData,
 	updateThinkingSteps,
 	updateToolCall,
@@ -227,6 +228,61 @@ const MobileReportPanel = dynamic(
  * After a tool produces output, mark any previously-decided interrupt tool
  * calls as completed so the ApprovalCard can transition from shimmer to done.
  */
+/**
+ * Validate raw SSE smart-money-flow payload and coerce into SmartMoneyFlowData.
+ * Returns null when payload is malformed (missing nodes/links) so the caller
+ * can short-circuit instead of polluting state with partial data.
+ */
+function parseSmartMoneyFlow(raw: unknown): SmartMoneyFlowData | null {
+	if (typeof raw !== "object" || raw === null) return null;
+	const data = raw as {
+		nodes?: unknown;
+		links?: unknown;
+		net_flow_amount?: unknown;
+		currency?: unknown;
+	};
+	if (!Array.isArray(data.nodes) || !Array.isArray(data.links)) return null;
+	return {
+		nodes: data.nodes as SmartMoneyFlowData["nodes"],
+		links: data.links as SmartMoneyFlowData["links"],
+		net_flow_amount: Number(data.net_flow_amount ?? 0) || 0,
+		currency: typeof data.currency === "string" ? data.currency : "USD",
+	};
+}
+
+/**
+ * Apply a smart-money-flow SSE event to both contentPartsState (for DB persistence)
+ * and React message metadata (for live render). Used by all 3 SSE handlers
+ * (onNew, handleResume, regenerate).
+ */
+function applySmartMoneyFlowUpdate(
+	flowData: SmartMoneyFlowData,
+	assistantMsgId: string,
+	contentPartsState: ContentPartsState,
+	setMessages: (updater: (prev: ThreadMessageLike[]) => ThreadMessageLike[]) => void
+): void {
+	contentPartsState.contentParts.push({
+		type: "data-smart-money-flow",
+		data: flowData,
+	});
+	setMessages((prev) =>
+		prev.map((m) =>
+			m.id === assistantMsgId
+				? {
+						...m,
+						metadata: {
+							...(m.metadata as Record<string, unknown> | undefined),
+							custom: {
+								...((m.metadata as { custom?: Record<string, unknown> })?.custom ?? {}),
+								smart_money_flow: flowData,
+							},
+						},
+					}
+				: m
+		)
+	);
+}
+
 function markInterruptsCompleted(contentParts: Array<{ type: string; result?: unknown }>): void {
 	for (const part of contentParts) {
 		if (
@@ -1191,32 +1247,17 @@ export default function NewChatPage() {
 						}
 
 						case "data-smart-money-flow": {
-							const flowData = parsed.data as {
-								nodes: any[];
-								links: any[];
-								net_flow_amount: number;
-								currency: string;
-							};
-							setMessages((prev) =>
-								prev.map((m) =>
-									m.id === assistantMsgId
-										? {
-												...m,
-												metadata: {
-													...(m.metadata as Record<string, unknown> | undefined),
-													custom: {
-														...((
-															m.metadata as {
-																custom?: Record<string, unknown>;
-															}
-														)?.custom ?? {}),
-														smart_money_flow: flowData,
-													},
-												},
-											}
-										: m
-								)
-							);
+							console.log("data-smart-money-flow event:", parsed.data);
+							const flowData = parseSmartMoneyFlow(parsed.data);
+							console.log("flowData parsed:", flowData);
+							if (flowData) {
+								applySmartMoneyFlowUpdate(
+									flowData,
+									assistantMsgId,
+									contentPartsState,
+									setMessages,
+								);
+							}
 							break;
 						}
 
@@ -1685,32 +1726,17 @@ export default function NewChatPage() {
 						}
 
 						case "data-smart-money-flow": {
-							const flowData = parsed.data as {
-								nodes: any[];
-								links: any[];
-								net_flow_amount: number;
-								currency: string;
-							};
-							setMessages((prev) =>
-								prev.map((m) =>
-									m.id === assistantMsgId
-										? {
-												...m,
-												metadata: {
-													...(m.metadata as Record<string, unknown> | undefined),
-													custom: {
-														...((
-															m.metadata as {
-																custom?: Record<string, unknown>;
-															}
-														)?.custom ?? {}),
-														smart_money_flow: flowData,
-													},
-												},
-											}
-										: m
-								)
-							);
+							console.log("data-smart-money-flow event:", parsed.data);
+							const flowData = parseSmartMoneyFlow(parsed.data);
+							console.log("flowData parsed:", flowData);
+							if (flowData) {
+								applySmartMoneyFlowUpdate(
+									flowData,
+									assistantMsgId,
+									contentPartsState,
+									setMessages,
+								);
+							}
 							break;
 						}
 
@@ -2121,32 +2147,17 @@ export default function NewChatPage() {
 						}
 
 						case "data-smart-money-flow": {
-							const flowData = parsed.data as {
-								nodes: any[];
-								links: any[];
-								net_flow_amount: number;
-								currency: string;
-							};
-							setMessages((prev) =>
-								prev.map((m) =>
-									m.id === assistantMsgId
-										? {
-												...m,
-												metadata: {
-													...(m.metadata as Record<string, unknown> | undefined),
-													custom: {
-														...((
-															m.metadata as {
-																custom?: Record<string, unknown>;
-															}
-														)?.custom ?? {}),
-														smart_money_flow: flowData,
-													},
-												},
-											}
-										: m
-								)
-							);
+							console.log("data-smart-money-flow event:", parsed.data);
+							const flowData = parseSmartMoneyFlow(parsed.data);
+							console.log("flowData parsed:", flowData);
+							if (flowData) {
+								applySmartMoneyFlowUpdate(
+									flowData,
+									assistantMsgId,
+									contentPartsState,
+									setMessages,
+								);
+							}
 							break;
 						}
 

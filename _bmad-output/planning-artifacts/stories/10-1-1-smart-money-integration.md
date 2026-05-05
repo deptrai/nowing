@@ -184,3 +184,77 @@ _(append during implementation)_
 - `nowing_web/lib/chat/streaming-state.ts` (UPDATE)
 - `nowing_web/app/dashboard/[search_space_id]/new-chat/[[...chat_id]]/page.tsx` (UPDATE)
 - `nowing_web/components/new-chat/report/crypto-report-layout.tsx` (UPDATE)
+- `nowing_backend/app/agents/new_chat/system_prompt.py` (UPDATE — exception block for live market data)
+- `nowing_backend/app/agents/new_chat/middleware/circuit_breaker.py` (UPDATE — threshold 5→3 per AC3)
+- `nowing_backend/app/connectors/dexscreener_connector.py` (UPDATE — search_pairs + URL encode)
+- `nowing_web/lib/chat/message-utils.ts` (UPDATE — extract smart_money_flow on reload)
+
+### Review Findings (2026-05-05)
+
+#### Decision Needed
+
+- [x] [Review][Decision] **Mock data fabrication on Nansen errors** — Tool trả về hardcoded fake nodes (`a16z`, `Binance Hot Wallet`, `Unknown Whale 1`) khi Nansen 401/403/404/429. Comment `MOCK FOR E2E UI TEST` cho thấy debug code lọt vào prod. Vi phạm graceful degradation trong Dev Notes (line 96). Cần quyết định: gate behind env flag, hay bỏ hoàn toàn? [crypto_smart_money_flow.py:121-138]
+- [x] [Review][Decision] **AC3 threshold = 5 thay vì 3** — Spec AC3 yêu cầu "≥3 lỗi 5xx liên tiếp"; implementation `FAILURE_THRESHOLD = 5`. Sửa lại 3 hay giữ 5 (cần rationale)? [middleware/circuit_breaker.py:12]
+- [x] [Review][Decision] **System prompt scope creep + KB-first conflict** — Thêm rule `Do NOT search the knowledge base for this data unless...` mâu thuẫn với "KNOWLEDGE BASE FIRST" rule ngay trên. Vượt scope 4 ACs. Giữ hay revert? [system_prompt.py:32-44]
+- [x] [Review][Decision] **DexScreener scope creep** — `dexscreener_connector.py` không trong File List spec nhưng diff thêm 33 dòng. Giữ trong story 10.1.1 hay tách ra story riêng? [dexscreener_connector.py]
+- [x] [Review][Decision] **`isCryptoReport` heuristic hijack** — Thêm `if (meta?.smart_money_flow) return true;` khiến mọi message có `smart_money_flow` đều render full crypto layout. Side effect intentional hay nên gate hẹp hơn? [crypto-report-layout.tsx:67]
+
+#### Patches
+
+- [x] [Review][Patch] **Source attribution emit invalid event khi result là error dict** — Cần guard `if "nodes" in result and "links" in result` trước khi emit. Hiện tại tool trả `{"error": ..., "source_domain": ...}` cũng được emit như smart-money-flow event với undefined nodes/links. [chat_deepagent.py:909-913]
+- [x] [Review][Patch] **AC1 missing `chain` parameter** — Spec yêu cầu `get_smart_money_flow(token_address, chain="ethereum")`. Implementation chỉ nhận `token_address`. [crypto_smart_money_flow.py:91]
+- [x] [Review][Patch] **AC1 duplicate DexScreener resolve** — Wrapper resolve symbol → address rồi `nansen_tool` lại resolve lần nữa. Vi phạm "không duplicate request" trong AC1. [crypto_smart_money_flow.py:21-31]
+- [x] [Review][Patch] **URL injection trong DexScreener** — `f"latest/dex/search?q={query}"` không URL-encode. Dùng `urllib.parse.quote(query)`. [dexscreener_connector.py:106]
+- [x] [Review][Patch] **Event name inconsistency** — Filter check cả `smart_money_flow` và `smart-money-flow`; chọn 1 canonical name và unify. [stream_new_chat.py:1532]
+- [x] [Review][Patch] **FE `any[]` xuyên suốt** — Define interface `SmartMoneyFlowData { nodes: SankeyNode[]; links: SankeyLink[]; ...}` thay cho `any[]`. [streaming-state.ts:27-34, message-utils.ts:51-53, page.tsx:1192-1196, crypto-report-layout.tsx:58-62]
+- [x] [Review][Patch] **Code duplicated 3x trong page.tsx** — Extract helper `function applySmartMoneyFlowUpdate(state, flowData)` để 3 handlers (onNew, handleResume, callback#3) gọi chung. [page.tsx:1193-1226, 1691-1724, 2131-2164]
+- [x] [Review][Patch] **Wallets aggregate không bound** — Cap N wallets (~30) trước khi build nodes/links để Sankey không freeze FE. [crypto_smart_money_flow.py:75-89]
+- [x] [Review][Patch] **Duplicate wallet labels collide** — Multiple "Unknown Whale" gộp thành 1 node, mất thông tin. Dùng unique ID (vd. `f"{label}_{addr_short}"`). [crypto_smart_money_flow.py:80-94]
+- [x] [Review][Patch] **Symbol không normalize** — Thêm `.strip().upper()` trước khi check regex và resolve để `" PEPE"` không gây query khác. [crypto_smart_money_flow.py:18, nansen_smart_money.py:91]
+- [x] [Review][Patch] **Missing `isLoading` prop trên SankeyFlowChart** — Spec AC2 yêu cầu wire 5 props; code wire 4/5. [crypto-report-layout.tsx:277-281]
+- [x] [Review][Patch] **Test names không match spec sub-tasks** — Thêm/rename: `test_nansen_circuit_opens_after_3_consecutive_5xx`, `test_nansen_circuit_half_open_probe_succeeds`, `test_nansen_circuit_returns_503_when_open`. [test_nansen_circuit_breaker.py]
+- [x] [Review][Patch] **AsyncMock misuse trong test** — `mock_tool = AsyncMock()` rồi `mock_tool.ainvoke.return_value = ...` → `ainvoke` trả coroutine; cần `mock_tool.ainvoke = AsyncMock(return_value=mock_output)`. [test_smart_money_flow.py:21-24]
+- [x] [Review][Patch] **Sync sprint-status.yaml** — Story file ghi `Status: done` nhưng `sprint-status.yaml:189` ghi `in-progress`. [sprint-status.yaml]
+- [x] [Review][Patch] **File List thiếu entries** — Thêm `system_prompt.py`, `dexscreener_connector.py`, `message-utils.ts` vào File List. [10-1-1-smart-money-integration.md:172-186]
+- [x] [Review][Patch] **Docstring chưa document cohorts** — Sub-task yêu cầu "Documented trong docstring + 1 test fixture" về cohorts (smart_money/cex/dex/retail/insider). [crypto_smart_money_flow.py:91-103]
+- [x] [Review][Patch] **Per-tool circuit breaker logging** — Spec dòng 36 yêu cầu "per-tool name"; code log `source: "nansen"` (per-vendor). [middleware/circuit_breaker.py:33-42]
+- [x] [Review][Patch] **Empty `smart_money_wallets` edge case** — Khi Nansen trả 200 nhưng wallets rỗng, return Sankey hợp lệ với 1 node `Market` thay vì để pipeline tự build empty list. [crypto_smart_money_flow.py:54-56]
+- [x] [Review][Patch] **`wallet.label` None/empty handling** — `label = w.get("label") or "Unknown"`. [crypto_smart_money_flow.py:62]
+- [x] [Review][Patch] **`net_flow_usd` None handling** — `flow = float(w.get("net_flow_usd") or 0)` để tránh TypeError. [crypto_smart_money_flow.py:65]
+- [x] [Review][Patch] **`liquidity.usd` type coercion** — try/except quanh `float(p.get("liquidity",{}).get("usd",0) or 0)`. [crypto_smart_money_flow.py:31]
+- [x] [Review][Patch] **No timeout cho DexScreener resolve** — Bọc `connector.search_pairs` trong `asyncio.wait_for(timeout=10)`. [crypto_smart_money_flow.py:21-31, nansen_smart_money.py:93-100]
+- [x] [Review][Patch] **No timeout cho `nansen_tool.ainvoke`** — `asyncio.wait_for(nansen_tool.ainvoke(...), timeout=30)`. [crypto_smart_money_flow.py:35]
+- [x] [Review][Patch] **Empty nodes/links FE render block trống** — `{meta?.smart_money_flow?.nodes?.length > 0 && <SankeyFlowChart .../>}`. [crypto-report-layout.tsx:267-282]
+- [x] [Review][Patch] **`parsed.data` missing fields** — Validate `flowData.nodes && flowData.links` trước khi push & setMessages. [page.tsx:1190-1224]
+- [x] [Review][Patch] **`smfPart.data.nodes` non-array handling** — `if (Array.isArray(smfPart.data?.nodes)) {...}`. [message-utils.ts:81-100]
+- [x] [Review][Patch] **`net_flow_amount` string handling** — `Number(smfPart.data.net_flow_amount ?? 0)`. [message-utils.ts:91]
+- [x] [Review][Patch] **`circuit_breaker.is_open` Redis offline** — try/except → `False` để tool không die khi Redis tạm xuống. [nansen_smart_money.py:108-110, 207-209, 291-293]
+- [x] [Review][Patch] **`circuit_breaker.record_failure` Redis down** — try/except + warning log để không che lỗi gốc. [nansen_smart_money.py:130-134]
+- [x] [Review][Patch] **Missing test cho `stream_new_chat` smart_money_flow handler** — Logic unwrap 2 shapes (line 1533-1538) không có test. [stream_new_chat.py:1532-1542]
+- [x] [Review][Patch] **Magic number 5 trong test** — Dùng constant `FAILURE_THRESHOLD` thay vì hardcode `mock_redis.incr.return_value = 5`. [test_nansen_circuit_breaker.py:25]
+- [x] [Review][Patch] **`httpx.NetworkError` không phải public API** — Dùng `httpx.RequestError` (base) hoặc `httpx.ConnectError`/`ReadError`. [nansen_smart_money.py:170, 238, 349]
+
+#### Deferred (pre-existing or non-actionable)
+
+- [x] [Review][Defer] **Stale closure `assistantMsgId` trong page.tsx handlers** — pre-existing pattern, không phải lỗi do story 10.1.1 introduce. [page.tsx:1190]
+- [x] [Review][Defer] **Net flow sign convention vs link magnitude** — có thể là design intentional (net_flow signed vs links abs) — cần verify với UX trước khi đổi. [crypto_smart_money_flow.py:79-99]
+- [x] [Review][Defer] **Singleton `nansen_tool` factory closure** — pre-existing pattern; refactor cần touch nhiều tools. [crypto_smart_money_flow.py:13-15]
+- [x] [Review][Defer] **Circuit breaker race condition (is_open → request)** — minor probabilistic gap; cần distributed lock để fix triệt để. [nansen_smart_money.py:108-110]
+- [x] [Review][Defer] **`record_success` reset failure counter trên 404** — debatable design; có thể là intentional behavior. [nansen_smart_money.py:227-228]
+- [x] [Review][Defer] **`import re` inside function body** — cosmetic; không ảnh hưởng behavior. [crypto_smart_money_flow.py:17]
+
+#### Resolution Summary (2026-05-05)
+
+**36 patches applied** in single review pass. Key changes:
+
+- **D1** (Mock data fabrication) → removed entirely; tool returns `{"error": ...}` per spec Dev Notes
+- **D2** (AC3 threshold) → `FAILURE_THRESHOLD = 3` to match spec; tests realigned
+- **D3** (System prompt KB-first conflict) → restructured with explicit `<exception name="live_market_data">` block
+- **D4** (DexScreener scope creep) → kept (necessary for AC1 symbol resolution); File List updated
+- **D5** (`isCryptoReport` heuristic) → kept with explanatory comment; verified other sections render-conditionally
+- **AC1 fixes** — added `chain="ethereum"` param, removed duplicate DexScreener resolve, added timeouts (10s/30s), capped wallets (≤30), unique node IDs to avoid label collision, normalized symbol input
+- **Resilience fixes** — Redis-fault-tolerant circuit breaker wrappers (`_safe_circuit_*`), `httpx.RequestError` instead of `httpx.NetworkError`, URL-encoded DexScreener queries
+- **FE quality fixes** — `SankeyNode`/`SankeyLink`/`SmartMoneyFlowData` interfaces replace `any[]`, helper functions `parseSmartMoneyFlow` + `applySmartMoneyFlowUpdate` extract 3x duplicated SSE handlers, `isLoading={false}` prop wired, length-guard on render
+- **Test fixes** — renamed to spec sub-task names (`test_nansen_circuit_opens_after_3_consecutive_5xx`, `_half_open_probe_succeeds`, `_returns_503_when_open`), AsyncMock pattern fixed, magic `5` → `FAILURE_THRESHOLD` constant, edge-case coverage added (empty wallets, cap, chain rejection)
+
+Verification: all Python files pass `ast.parse`; `pnpm tsc --noEmit` shows no new errors in modified FE files (1 pre-existing TS2352 in `message-utils.ts` line 35 is unrelated `data-thinking-steps` cast).

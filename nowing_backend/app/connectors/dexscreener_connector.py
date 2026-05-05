@@ -8,6 +8,7 @@ Allows fetching pair information for tracked tokens across multiple blockchain n
 import asyncio
 import logging
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -90,6 +91,39 @@ class DexScreenerConnector:
         import asyncio
         await asyncio.sleep(self.rate_limit_delay)
     
+    async def search_pairs(
+        self,
+        query: str
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        """
+        Search for trading pairs by token symbol or name.
+        
+        Args:
+            query: Token symbol or name (e.g., 'PEPE', 'Bitcoin')
+            
+        Returns:
+            Tuple containing (list of pairs, error message or None)
+        """
+        try:
+            endpoint = f"latest/dex/search?q={quote(query, safe='')}"
+            response = await self.make_request(endpoint)
+            
+            if response is None:
+                return [], f"No results found for: {query}"
+            
+            if isinstance(response, dict):
+                pairs = response.get("pairs", [])
+            else:
+                pairs = response if isinstance(response, list) else []
+            
+            if not pairs:
+                return [], f"No trading pairs found for {query}"
+            
+            return pairs, None
+            
+        except Exception as e:
+            return [], f"Error searching pairs for {query}: {e!s}"
+
     async def get_token_pairs(
         self, 
         chain_id: str, 
