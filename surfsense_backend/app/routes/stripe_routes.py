@@ -99,20 +99,49 @@ def _normalize_optional_string(value: Any) -> str | None:
 def _get_metadata(checkout_session: Any) -> dict[str, str]:
     """Extract checkout session metadata as a plain ``str -> str`` dict.
 
-    Works for both ``dict`` (e.g. when the metadata round-tripped through
-    JSON) and Stripe's ``StripeObject`` wrapper. Recent Stripe SDK
-    versions stopped subclassing ``dict`` for ``StripeObject``, so
-    ``isinstance(metadata, dict)`` is False and ``dict(metadata)`` falls
-    into the sequence protocol, looking up integer indices and raising
-    ``KeyError: 0``. ``.items()`` is exposed by both shapes via the
-    Mapping protocol, so we always use that.
+    In ``stripe>=15.0`` ``StripeObject`` is no longer a ``dict`` subclass
+    and exposes neither ``items()`` nor ``__iter__`` nor ``keys()``.
+    ``dict(obj)`` falls into the sequence protocol and raises
+    ``KeyError: 0``; ``obj.items()`` raises ``AttributeError``. The
+    supported way to materialize a ``StripeObject`` as a plain dict is
+    its ``to_dict()`` method (added in stripe-python 8.x, present in 15.x).
     """
-    metadata = getattr(checkout_session, "metadata", None) or {}
-    try:
-        items = metadata.items()
-    except AttributeError:
+    metadata = getattr(checkout_session, "metadata", None)
+    if metadata is None:
         return {}
-    return {str(key): str(value) for key, value in items}
+
+    # 1. Plain dict (older SDKs that subclassed dict, JSON-decoded events
+    #    in tests, etc.).
+    if isinstance(metadata, dict):
+        return {str(k): str(v) for k, v in metadata.items()}
+
+    # 2. Modern Stripe SDK: every ``StripeObject`` has ``to_dict()``.
+    #    ``recursive=False`` is correct because Stripe metadata values
+    #    are always primitive strings.
+    to_dict = getattr(metadata, "to_dict", None)
+    if callable(to_dict):
+        try:
+            d = to_dict(recursive=False)
+            if isinstance(d, dict):
+                return {str(k): str(v) for k, v in d.items()}
+        except Exception:
+            logger.exception(
+                "Stripe metadata.to_dict() failed for session %s",
+                getattr(checkout_session, "id", "?"),
+            )
+
+    # 3. Last-resort: read the SDK's private ``_data`` backing dict.
+    #    Stable across stripe-python 6.x -> 15.x.
+    inner = getattr(metadata, "_data", None)
+    if isinstance(inner, dict):
+        return {str(k): str(v) for k, v in inner.items()}
+
+    logger.warning(
+        "Could not extract metadata from checkout session %s (metadata type=%s)",
+        getattr(checkout_session, "id", "?"),
+        type(metadata).__name__,
+    )
+    return {}
 
 
 # Canonical purchase_type metadata values. ``premium_credit`` was emitted
@@ -583,6 +612,48 @@ async def finalize_checkout(
     is_token = _is_token_purchase(metadata)
     payment_status = getattr(checkout_session, "payment_status", None)
     session_status = getattr(checkout_session, "status", None)
+
+    # Defensive fallback: if metadata can't be read for any reason
+    # (extraction failure, manually-created session in Stripe dashboard,
+    # SDK upgrade breaking ``to_dict``, etc.) we'd otherwise route every
+    # purchase to the page_packs handler and get stuck. Resolve the
+    # purchase_type by checking which table actually has the row keyed
+    # by this Stripe session id.
+    if not metadata:
+        existing_token_purchase = (
+            await db_session.execute(
+                select(PremiumTokenPurchase.id).where(
+                    PremiumTokenPurchase.stripe_checkout_session_id
+                    == str(checkout_session.id)
+                )
+            )
+        ).scalar_one_or_none()
+        if existing_token_purchase is not None:
+            is_token = True
+        else:
+            existing_page_purchase = (
+                await db_session.execute(
+                    select(PagePurchase.id).where(
+                        PagePurchase.stripe_checkout_session_id
+                        == str(checkout_session.id)
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing_page_purchase is None:
+                logger.error(
+                    "finalize_checkout: no purchase row in either table "
+                    "and metadata is empty for session=%s user=%s",
+                    session_id,
+                    user.id,
+                )
+                # Fall through; downstream path will short-circuit on
+                # missing-row + empty-metadata.
+        logger.info(
+            "finalize_checkout: recovered purchase_type=%s for session=%s "
+            "via DB fallback (metadata was empty)",
+            "premium_tokens" if is_token else "page_packs",
+            session_id,
+        )
 
     is_paid = payment_status in {"paid", "no_payment_required"}
     is_expired = session_status == "expired"
