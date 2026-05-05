@@ -466,3 +466,34 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - **Circuit breaker race condition (is_open → request)** — minor probabilistic gap (~ms): circuit có thể mở giữa `is_open()` check và HTTP request. Cần distributed lock để fix triệt để — không justified cho tool latency. [nansen_smart_money.py:108-110]
 - **`record_success` reset failure counter trên 404** — Trong `nansen_smart_money.py:227-228`, 404 được treat như success → reset failure counter. Debatable: có thể là intentional (404 không phải lỗi service) hoặc bug (che health issue). Cần product decision. [nansen_smart_money.py:227-228]
 - **`import re` inside function body** — Cosmetic; không ảnh hưởng behavior, nhưng pattern không idiomatic Python. [crypto_smart_money_flow.py:17]
+
+## Deferred from: code review of 10-1-2-nansen-failover-dune-arkham.md (2026-05-05)
+- Unbounded Cascading Timeouts — Sequential fallback chain might exceed total reasonable limits if every provider stalls.
+- Dune Connector Interface Mismatch (Missing Chain parameter) — Drops chain parameter for Dune fallback query.
+- Arkham 'Base Address' Semantic Confusion — Arkham transfers might not perfectly mimic curated smart money behavior.
+- Flawed Circuit Breaker Success Metric — Records success purely based on missing exceptions, even if logical API errors occurred.
+
+## Deferred from: code review of 10-1-2-nansen-failover-dune-arkham.md (2026-05-06)
+- Nansen pagination only first page (per_page: 30) — net_flow_24h_usd and signal derived from partial data
+- Arkham 401/403/429 collapsed to None — no differentiation between auth, rate-limit, server errors
+- addr[:8] 8-char label collision risk for Sankey nodes (Nansen uses (addr) suffix; Arkham/Dune don't)
+- tag: "" hardcoded — old Nansen endpoint preserved entityTag; new endpoint silently drops it
+- system_prompt.py duplicate <knowledge_base_only_policy> block at lines 48 and 134
+- Test plan partial (3/5 tests; source_domain attributions tested inline rather than as separate cases)
+- Dune query ID drift — spec recommended 3493826, code defaults to 7431659
+- Spec recommended get_latest_result cache check before triggering new execution (cost optimization)
+- Spec recommended Arkham entity-type filter (entity.type in ["fund", "whale"]) — not implemented
+- Arkham chain parameter dropped — _try_arkham accepts chain but get_transfers doesn't forward it
+- Empty Nansen success falls through to Arkham+Dune — burns rate-limit budget on every empty Ethereum query
+- Multi-worker rate limit: _ApiRateLimiter is per-process module singleton, not Redis-coordinated
+- Arkham usd_gte=1000 hidden filter — silently filters sub-$1k whale activity for low-cap tokens
+- _safe_circuit_is_open fail-open on Redis exception (cost vs availability tradeoff)
+- Cohort taxonomy removed — old code categorized wallets; new code uses raw labels
+- Arkham label collision: same entity name across multiple transfers collapses into single Sankey node
+- Pre-10.1.1 messages may lose Sankey on reload — convertToThreadMessage rebuilds metadata from content parts only
+- Nansen TGM endpoint (/api/v1/tgm/who-bought-sold) requires higher subscription tier than Pro — backward-compat concern
+- source_domain="system" displayed in EmptySmartMoneyState — broken citation badge URL
+- Sub-agent emits smart-money-flow event tied to wrong assistant message — clobbers main metadata
+- pyproject.toml not updated for dune-client — uses raw httpx instead (justified in connector docstring)
+- .env.example claimed updated in spec File List but not visible in this diff
+- Out-of-scope changes for 10.1.2: middleware sub-agent fix, system_prompt rules, empty-state UI, FE source_domain plumbing, Nansen TGM endpoint migration — needs follow-up story
