@@ -121,7 +121,7 @@ def build_main_agent_deepagent_middleware(
             exclude=get_subagents_to_exclude(available_connectors),
             disabled_tools=disabled_tools,
         )
-        logging.info(
+        logging.debug(
             "Subagents registry: %s",
             [s["name"] for s in subagents_registry],
         )
