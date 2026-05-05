@@ -45,6 +45,7 @@ _FALLBACK_ELIGIBLE_NAMES: frozenset[str] = frozenset(
         "RemoteProtocolError",
         "TimeoutError",
         "TimeoutException",
+        # Can be extended to other exceptions in the future
     }
 )
 

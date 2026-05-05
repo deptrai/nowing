@@ -230,6 +230,22 @@ def build_main_agent_deepagent_middleware(
             logging.warning("ScopedModelFallbackMiddleware init failed; skipping.")
             fallback_mw = None
 
+    # Mirror the parent's ordering: retry / fallback wrap caching, which wraps
+    # the model. ``gp_middleware`` is held by reference inside
+    # ``general_purpose_spec`` so this insertion propagates into the spec.
+    _gp_resilience: list[Any] = [m for m in (retry_mw, fallback_mw) if m is not None]
+    if _gp_resilience:
+        _cache_idx = next(
+            (
+                i
+                for i, m in enumerate(gp_middleware)
+                if isinstance(m, AnthropicPromptCachingMiddleware)
+            ),
+            len(gp_middleware),
+        )
+        for offset, mw in enumerate(_gp_resilience):
+            gp_middleware.insert(_cache_idx + offset, mw)
+
     registry_subagents: list[SubAgent] = []
     try:
         subagent_extra_middleware: list[Any] = [
