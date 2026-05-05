@@ -16,6 +16,8 @@ its own module's tests.
 
 from __future__ import annotations
 
+import ast
+
 import pytest
 from langchain.tools import ToolRuntime
 from langchain_core.messages import HumanMessage
@@ -168,3 +170,84 @@ async def test_pending_interrupt_without_resume_value_raises_runtime_error():
             subagent_type="approver",
             runtime=runtime,
         )
+
+
+def _build_bundle_subagent():
+    """Subagent that raises a 3-action HITL bundle on its only node."""
+
+    def bundle_node(state):
+        from langchain_core.messages import AIMessage
+
+        decision = interrupt(
+            {
+                "action_requests": [
+                    {"name": "create_a", "args": {}, "description": ""},
+                    {"name": "create_b", "args": {}, "description": ""},
+                    {"name": "create_c", "args": {}, "description": ""},
+                ],
+                "review_configs": [{}, {}, {}],
+            }
+        )
+        return {
+            "messages": [AIMessage(content="bundle-done")],
+            "decision_text": repr(decision),
+        }
+
+    graph = StateGraph(_SubagentState)
+    graph.add_node("bundle", bundle_node)
+    graph.add_edge(START, "bundle")
+    graph.add_edge("bundle", END)
+    return graph.compile(checkpointer=InMemorySaver())
+
+
+@pytest.mark.asyncio
+async def test_bundle_three_mixed_decisions_arrive_in_order():
+    """Approve / edit / reject for a 3-action bundle land at ordinals 0/1/2.
+
+    Catches reshape regressions: truncation, decision collapse, order
+    scrambling, and the legacy single-decision broadcast that would
+    fan-out one verdict to every action.
+    """
+    subagent = _build_bundle_subagent()
+    task_tool = build_task_tool_with_parent_config(
+        [
+            {
+                "name": "bundler",
+                "description": "creates a bundle",
+                "runnable": subagent,
+            }
+        ]
+    )
+
+    parent_config: dict = {
+        "configurable": {"thread_id": "bundle-thread"},
+        "recursion_limit": 100,
+    }
+    await subagent.ainvoke({"messages": [HumanMessage(content="seed")]}, parent_config)
+
+    decisions_payload = {
+        "decisions": [
+            {"type": "approve", "args": {}},
+            {"type": "edit", "args": {"args": {"name": "edited-b"}}},
+            {"type": "reject", "args": {"message": "no thanks"}},
+        ]
+    }
+    parent_config["configurable"]["surfsense_resume_value"] = decisions_payload
+    runtime = _make_runtime(parent_config)
+
+    result = await task_tool.coroutine(
+        description="run bundle",
+        subagent_type="bundler",
+        runtime=runtime,
+    )
+
+    assert isinstance(result, Command)
+    decision_text = result.update["decision_text"]
+    received = ast.literal_eval(decision_text)
+    assert received == decisions_payload, "bundle decisions must arrive verbatim"
+    # Cross-checks for the regressions this test exists to catch.
+    assert len(received["decisions"]) == 3
+    assert received["decisions"][0]["type"] == "approve"
+    assert received["decisions"][1]["type"] == "edit"
+    assert received["decisions"][1]["args"] == {"args": {"name": "edited-b"}}
+    assert received["decisions"][2]["type"] == "reject"
