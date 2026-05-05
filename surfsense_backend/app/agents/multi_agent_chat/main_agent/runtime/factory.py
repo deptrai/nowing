@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from collections.abc import Sequence
@@ -33,12 +32,12 @@ from app.db import ChatVisibility
 from app.services.connector_service import ConnectorService
 from app.utils.perf import get_perf_logger
 
-from ..graph.compile_graph_sync import build_compiled_agent_graph_sync
 from ..system_prompt import build_main_agent_system_prompt
 from ..tools import (
     MAIN_AGENT_SURFSENSE_TOOL_NAMES,
     MAIN_AGENT_SURFSENSE_TOOL_NAMES_ORDERED,
 )
+from .agent_cache import build_agent_with_cache
 
 _perf_log = get_perf_logger()
 
@@ -210,9 +209,10 @@ async def create_surfsense_deep_agent(
 
     final_system_prompt = system_prompt + "\n\n" + BASE_AGENT_PROMPT
 
+    config_id = agent_config.config_id if agent_config is not None else None
+
     _t0 = time.perf_counter()
-    agent = await asyncio.to_thread(
-        build_compiled_agent_graph_sync,
+    agent = await build_agent_with_cache(
         llm=llm,
         tools=tools,
         final_system_prompt=final_system_prompt,
@@ -232,6 +232,7 @@ async def create_surfsense_deep_agent(
         subagent_dependencies=dependencies,
         mcp_tools_by_agent=mcp_tools_by_agent,
         disabled_tools=disabled_tools,
+        config_id=config_id,
     )
     _perf_log.info(
         "[create_agent] Middleware stack + graph compiled in %.3fs",
