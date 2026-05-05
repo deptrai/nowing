@@ -29,7 +29,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.agents.multi_agent_chat import (
-    create_surfsense_deep_agent as create_registry_deep_agent,
+    create_surfsense_deep_agent as create_multi_agent_chat,
 )
 from app.agents.new_chat.chat_deepagent import create_surfsense_deep_agent
 from app.agents.new_chat.checkpointer import get_checkpointer
@@ -2767,7 +2767,7 @@ async def stream_new_chat(
 
         _t0 = time.perf_counter()
         agent_factory = (
-            create_registry_deep_agent
+            create_multi_agent_chat
             if use_multi_agent
             else create_surfsense_deep_agent
         )
@@ -4130,7 +4130,7 @@ async def stream_resume_chat(
 
         _t0 = time.perf_counter()
         agent_factory = (
-            create_registry_deep_agent
+            create_multi_agent_chat
             if _app_config.MULTI_AGENT_CHAT_ENABLED
             else create_surfsense_deep_agent
         )
