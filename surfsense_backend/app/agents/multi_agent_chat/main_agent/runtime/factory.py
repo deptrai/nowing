@@ -42,7 +42,7 @@ from .agent_cache import build_agent_with_cache
 _perf_log = get_perf_logger()
 
 
-async def create_surfsense_deep_agent(
+async def create_multi_agent_chat_deep_agent(
     llm: BaseChatModel,
     search_space_id: int,
     db_session: AsyncSession,
