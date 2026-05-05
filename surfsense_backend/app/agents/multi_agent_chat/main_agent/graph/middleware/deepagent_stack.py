@@ -14,7 +14,6 @@ from deepagents.middleware.subagents import GENERAL_PURPOSE_SUBAGENT
 from langchain.agents.middleware import (
     LLMToolSelectorMiddleware,
     ModelCallLimitMiddleware,
-    ModelFallbackMiddleware,
     TodoListMiddleware,
     ToolCallLimitMiddleware,
 )
@@ -55,6 +54,9 @@ from app.agents.new_chat.middleware import (
     build_skills_backend_factory,
     create_surfsense_compaction_middleware,
     default_skills_sources,
+)
+from app.agents.new_chat.middleware.scoped_model_fallback import (
+    ScopedModelFallbackMiddleware,
 )
 from app.agents.new_chat.permissions import Rule, Ruleset
 from app.agents.new_chat.plugin_loader import (
@@ -217,15 +219,15 @@ def build_main_agent_deepagent_middleware(
         if flags.enable_retry_after and not flags.disable_new_agent_stack
         else None
     )
-    fallback_mw: ModelFallbackMiddleware | None = None
+    fallback_mw: ScopedModelFallbackMiddleware | None = None
     if flags.enable_model_fallback and not flags.disable_new_agent_stack:
         try:
-            fallback_mw = ModelFallbackMiddleware(
+            fallback_mw = ScopedModelFallbackMiddleware(
                 "openai:gpt-4o-mini",
                 "anthropic:claude-3-5-haiku-20241022",
             )
         except Exception:
-            logging.warning("ModelFallbackMiddleware init failed; skipping.")
+            logging.warning("ScopedModelFallbackMiddleware init failed; skipping.")
             fallback_mw = None
 
     registry_subagents: list[SubAgent] = []

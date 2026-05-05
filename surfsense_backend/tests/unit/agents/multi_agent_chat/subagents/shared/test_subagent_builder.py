@@ -31,12 +31,12 @@ from app.agents.multi_agent_chat.subagents.shared.subagent_builder import (
 )
 
 
-class _AlwaysFailingChatModel(BaseChatModel):
-    """Mimics a provider hard-failing on every call (rate limit / empty stream).
+class RateLimitError(Exception):
+    """Provider-style 429; matches the scoped-fallback eligibility allowlist by name."""
 
-    ``ModelFallbackMiddleware`` triggers on any ``Exception``, so the exact
-    error type doesn't matter for the contract under test.
-    """
+
+class _AlwaysFailingChatModel(BaseChatModel):
+    """Mimics a provider hard-failing on every call (rate limit / empty stream)."""
 
     @property
     def _llm_type(self) -> str:
@@ -50,7 +50,7 @@ class _AlwaysFailingChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         msg = "primary llm exploded"
-        raise RuntimeError(msg)
+        raise RateLimitError(msg)
 
     async def _agenerate(
         self,
@@ -60,17 +60,17 @@ class _AlwaysFailingChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         msg = "primary llm exploded"
-        raise RuntimeError(msg)
+        raise RateLimitError(msg)
 
     def _stream(self, *args: Any, **kwargs: Any) -> Iterator[ChatGeneration]:
         msg = "primary llm exploded"
-        raise RuntimeError(msg)
+        raise RateLimitError(msg)
 
     async def _astream(
         self, *args: Any, **kwargs: Any
     ) -> AsyncIterator[ChatGeneration]:
         msg = "primary llm exploded"
-        raise RuntimeError(msg)
+        raise RateLimitError(msg)
         yield  # pragma: no cover - unreachable, satisfies async generator typing
 
 
