@@ -208,6 +208,26 @@ def build_main_agent_deepagent_middleware(
         )
         gp_middleware.insert(_patch_idx, subagent_deny_permission_mw)
 
+    # Defined here (instead of further down with the other ``wrap_model_call``
+    # middlewares) so subagents share the same instances as the parent —
+    # otherwise a connector subagent would die on the first provider hiccup
+    # while the parent stays resilient.
+    retry_mw = (
+        RetryAfterMiddleware(max_retries=3)
+        if flags.enable_retry_after and not flags.disable_new_agent_stack
+        else None
+    )
+    fallback_mw: ModelFallbackMiddleware | None = None
+    if flags.enable_model_fallback and not flags.disable_new_agent_stack:
+        try:
+            fallback_mw = ModelFallbackMiddleware(
+                "openai:gpt-4o-mini",
+                "anthropic:claude-3-5-haiku-20241022",
+            )
+        except Exception:
+            logging.warning("ModelFallbackMiddleware init failed; skipping.")
+            fallback_mw = None
+
     registry_subagents: list[SubAgent] = []
     try:
         subagent_extra_middleware: list[Any] = [
@@ -222,6 +242,10 @@ def build_main_agent_deepagent_middleware(
         ]
         if subagent_deny_permission_mw is not None:
             subagent_extra_middleware.append(subagent_deny_permission_mw)
+        if retry_mw is not None:
+            subagent_extra_middleware.append(retry_mw)
+        if fallback_mw is not None:
+            subagent_extra_middleware.append(fallback_mw)
         registry_subagents = build_subagents(
             dependencies=subagent_dependencies,
             model=llm,
@@ -268,21 +292,6 @@ def build_main_agent_deepagent_middleware(
             backend_resolver=backend_resolver,
         )
 
-    retry_mw = (
-        RetryAfterMiddleware(max_retries=3)
-        if flags.enable_retry_after and not flags.disable_new_agent_stack
-        else None
-    )
-    fallback_mw: ModelFallbackMiddleware | None = None
-    if flags.enable_model_fallback and not flags.disable_new_agent_stack:
-        try:
-            fallback_mw = ModelFallbackMiddleware(
-                "openai:gpt-4o-mini",
-                "anthropic:claude-3-5-haiku-20241022",
-            )
-        except Exception:
-            logging.warning("ModelFallbackMiddleware init failed; skipping.")
-            fallback_mw = None
     model_call_limit_mw = (
         ModelCallLimitMiddleware(
             thread_limit=120,
