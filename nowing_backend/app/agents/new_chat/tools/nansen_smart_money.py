@@ -50,6 +50,72 @@ def _api_key() -> str | None:
     return os.getenv("NANSEN_API_KEY", "").strip() or None
 
 
+# ─── Story 10.1.4: wallet cohort classification ──────────────────────────────
+#
+# Maps a free-text `address_label` to one of: smart_money / cex / dex / retail /
+# insider / unknown. Used by Sankey to color-code nodes and compute
+# cohort_summary aggregates.
+#
+# Priority (high → low): insider > cex > dex > smart_money > retail.
+# Higher-priority keywords win when multiple match (e.g. "Binance Team Treasury"
+# → insider, not cex — supply-unlock signals are more critical than CEX flow).
+# Word-boundary matching prevents substring false positives (e.g. "Hummingbot
+# Trader" must not match "bot" → not in keyword list anyway).
+
+_COHORT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "insider",
+        ("team", "treasury", "vesting", "founder", "deployer", "mint"),
+    ),
+    (
+        "cex",
+        (
+            "binance", "coinbase", "kraken", "okx", "bybit", "bitfinex",
+            "kucoin", "huobi", "gate.io", "exchange",
+        ),
+    ),
+    (
+        "dex",
+        (
+            "uniswap", "pancakeswap", "sushiswap", "curve", "balancer",
+            "1inch", "router", "amm",
+        ),
+    ),
+    (
+        "smart_money",
+        (
+            "fund", "capital", "ventures", "a16z", "paradigm", "multicoin",
+            "jump", "wintermute", "dragonfly", "pantera",
+        ),
+    ),
+)
+
+
+def _classify_cohort(label: str | None) -> str:
+    """Classify a wallet label into a cohort category.
+
+    Args:
+        label: Free-text label (e.g. "Binance 14", "a16z Fund"). May be None,
+            empty, or whitespace.
+
+    Returns:
+        One of "smart_money", "cex", "dex", "retail", "insider", "unknown".
+        Empty/None labels return "unknown". Addr-like labels (starting with 0x
+        or no semantic content) return "retail".
+    """
+    if not label or not label.strip():
+        return "unknown"
+
+    haystack = label.lower()
+
+    for cohort, keywords in _COHORT_KEYWORDS:
+        if any(kw in haystack for kw in keywords):
+            return cohort
+
+    # Addr-like or generic label → retail (background activity, no signal)
+    return "retail"
+
+
 # Redis-backed circuit breaker — wrap calls so a Redis outage cannot bring
 # the tool down (fail-open: assume circuit closed if we can't read state).
 async def _safe_circuit_is_open(name: str) -> bool:
@@ -211,6 +277,7 @@ def create_nansen_smart_money_tool():
                     "tag": "",
                     "net_flow_usd": net,
                     "direction": direction,
+                    "cohort": _classify_cohort(raw_label),
                 })
 
             if net_flow > 0:

@@ -58,6 +58,52 @@ def _disambiguate_label(label: str, addr: str) -> str:
         return f"{label} ({addr[:8]})"
     return label
 
+
+# Story 10.1.4: cohort taxonomy. Categorize wallets so Sankey can color-code +
+# analytics can answer "smart money inflow vs CEX outflow".
+_VALID_COHORTS: tuple[str, ...] = (
+    "smart_money", "cex", "dex", "retail", "insider", "unknown",
+)
+
+# Arkham `arkhamEntity.type` → cohort mapping (AC6).
+_ARKHAM_TYPE_TO_COHORT: dict[str, str] = {
+    "fund": "smart_money",
+    "whale": "smart_money",
+    "cex": "cex",
+    "exchange": "cex",
+    "dex": "dex",
+}
+
+
+def _arkham_entity_to_cohort(entity: dict[str, Any]) -> str:
+    """Map Arkham entity to cohort taxonomy. Falls back to 'unknown'."""
+    etype = (entity.get("type") or "").strip().lower()
+    return _ARKHAM_TYPE_TO_COHORT.get(etype, "unknown")
+
+
+def _build_cohort_summary(
+    wallets: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Aggregate {cohort: {count, net_flow_usd}} from a list of wallet dicts.
+
+    Each wallet must carry `cohort` and `net_flow_usd`. Empty cohorts (count=0)
+    are omitted to keep the payload compact for downstream FE.
+    """
+    summary: dict[str, dict[str, Any]] = {
+        c: {"count": 0, "net_flow_usd": 0.0} for c in _VALID_COHORTS
+    }
+    for w in wallets:
+        cohort = w.get("cohort") or "unknown"
+        if cohort not in summary:
+            cohort = "unknown"
+        try:
+            flow = float(w.get("net_flow_usd") or 0)
+        except (TypeError, ValueError):
+            flow = 0.0
+        summary[cohort]["count"] += 1
+        summary[cohort]["net_flow_usd"] += flow
+    return {k: v for k, v in summary.items() if v["count"] > 0}
+
 _arkham_rl = _ApiRateLimiter(max_calls=1, window_seconds=1.0, name="arkham")
 _dune_rl = _ApiRateLimiter(max_calls=15, window_seconds=60.0, name="dune")
 
@@ -128,8 +174,10 @@ def _build_sankey_from_arkham(transfers: dict[str, Any]) -> dict[str, Any] | Non
     if not isinstance(transfers, dict):
         return None
 
-    nodes_dict: dict[str, bool] = {"Market": True}
+    # Track cohort per node id; Market is the aggregate counterparty (no cohort).
+    nodes_with_cohort: dict[str, str | None] = {"Market": None}
     raw_links: list[dict[str, Any]] = []
+    rendered_wallets: list[dict[str, Any]] = []
     net_flow_usd = 0.0
 
     for t in (transfers.get("in") or []):
@@ -145,7 +193,7 @@ def _build_sankey_from_arkham(transfers: dict[str, Any]) -> dict[str, Any] | Non
         except (TypeError, ValueError):
             continue
         if usd > 0:
-            raw_links.append({"source": label, "target": "Market", "value": usd})
+            raw_links.append({"source": label, "target": "Market", "value": usd, "_cohort": _arkham_entity_to_cohort(entity)})
             net_flow_usd += usd
 
     for t in (transfers.get("out") or []):
@@ -161,23 +209,34 @@ def _build_sankey_from_arkham(transfers: dict[str, Any]) -> dict[str, Any] | Non
         except (TypeError, ValueError):
             continue
         if usd > 0:
-            raw_links.append({"source": "Market", "target": label, "value": usd})
+            raw_links.append({"source": "Market", "target": label, "value": usd, "_cohort": _arkham_entity_to_cohort(entity)})
             net_flow_usd -= usd
 
     if not raw_links:
         return None
 
     raw_links = sorted(raw_links, key=lambda x: x["value"], reverse=True)[:_MAX_WALLETS_IN_SANKEY]
+
+    # Materialize nodes_with_cohort and rendered_wallets from final link set.
     for link in raw_links:
-        nodes_dict[link["source"]] = True
-        nodes_dict[link["target"]] = True
+        cohort = link.pop("_cohort", "unknown")
+        wallet_node = link["target"] if link["source"] == "Market" else link["source"]
+        nodes_with_cohort[wallet_node] = cohort
+        signed_flow = link["value"] if link["source"] == "Market" else -link["value"]
+        rendered_wallets.append({"cohort": cohort, "net_flow_usd": signed_flow})
+
+    nodes = [
+        ({"id": n} if cohort is None else {"id": n, "cohort": cohort})
+        for n, cohort in nodes_with_cohort.items()
+    ]
 
     return {
-        "nodes": [{"id": n} for n in nodes_dict.keys()],
+        "nodes": nodes,
         "links": raw_links,
         "net_flow_amount": net_flow_usd,
         "currency": "USD",
         "source_domain": "arkm.com",
+        "cohort_summary": _build_cohort_summary(rendered_wallets),
     }
 
 
@@ -200,9 +259,14 @@ def _build_sankey_from_dune(rows: list[dict[str, Any]]) -> dict[str, Any] | None
     if not isinstance(rows, list):
         return None
 
-    nodes_dict: dict[str, bool] = {"Market": True}
+    # Story 10.1.4: track cohort per node id; Market is aggregate counterparty
+    # (no cohort). Dune rows lack entity-type metadata so all wallet nodes
+    # default to "unknown" — future enhancement: classify via label heuristics
+    # once Dune query starts surfacing entity labels.
+    nodes_with_cohort: dict[str, str | None] = {"Market": None}
     raw_links: list[dict[str, Any]] = []
     net_flow_usd = 0.0
+    rendered_wallets: list[dict[str, Any]] = []
 
     for row in rows:
         if not isinstance(row, dict):
@@ -216,26 +280,32 @@ def _build_sankey_from_dune(rows: list[dict[str, Any]]) -> dict[str, Any] | None
         if flow == 0:
             continue
 
-        nodes_dict[label] = True
+        cohort = "unknown"
+        nodes_with_cohort[label] = cohort
         if flow > 0:
-            # Net buyer: Market → wallet
             raw_links.append({"source": "Market", "target": label, "value": flow})
         else:
-            # Net seller: wallet → Market
             raw_links.append({"source": label, "target": "Market", "value": abs(flow)})
         net_flow_usd += flow
+        rendered_wallets.append({"cohort": cohort, "net_flow_usd": flow})
 
     if not raw_links:
         return None
 
     raw_links = sorted(raw_links, key=lambda x: x["value"], reverse=True)[:_MAX_WALLETS_IN_SANKEY]
 
+    nodes = [
+        ({"id": n} if cohort is None else {"id": n, "cohort": cohort})
+        for n, cohort in nodes_with_cohort.items()
+    ]
+
     return {
-        "nodes": [{"id": n} for n in nodes_dict.keys()],
+        "nodes": nodes,
         "links": raw_links,
         "net_flow_amount": net_flow_usd,
         "currency": "USD",
         "source_domain": "dune.com",
+        "cohort_summary": _build_cohort_summary(rendered_wallets),
     }
 
 
@@ -335,10 +405,13 @@ def create_smart_money_flow_tool():
 
                     wallets = sorted(wallets, key=_abs_flow, reverse=True)[:_MAX_WALLETS_IN_SANKEY]
 
-                    nodes_dict: dict[str, bool] = {"Market": True}
+                    # Build nodes with cohort metadata (Story 10.1.4 AC2).
+                    # Market node is special — no cohort (it's the aggregate counterparty).
+                    nodes_with_cohort: dict[str, str | None] = {"Market": None}
                     links: list[dict[str, Any]] = []
+                    rendered_wallets: list[dict[str, Any]] = []
 
-                    for idx, w in enumerate(wallets):
+                    for w in wallets:
                         if not isinstance(w, dict):
                             continue
                         label = (w.get("label") or "Unknown").strip() or "Unknown"
@@ -349,16 +422,22 @@ def create_smart_money_flow_tool():
                         if flow == 0:
                             continue
 
-                        addr = (w.get("address") or "")[:8]
-                        node_id = label if addr == "" else f"{label} ({addr})"
-                        nodes_dict[node_id] = True
+                        addr = w.get("address") or ""
+                        node_id = _disambiguate_label(label, addr)
+                        cohort = w.get("cohort") or "unknown"
+                        nodes_with_cohort[node_id] = cohort
 
                         if flow > 0:
                             links.append({"source": "Market", "target": node_id, "value": flow})
                         else:
                             links.append({"source": node_id, "target": "Market", "value": abs(flow)})
 
-                    nodes = [{"id": n} for n in nodes_dict.keys()]
+                        rendered_wallets.append({"cohort": cohort, "net_flow_usd": flow})
+
+                    nodes = [
+                        ({"id": n} if cohort is None else {"id": n, "cohort": cohort})
+                        for n, cohort in nodes_with_cohort.items()
+                    ]
 
                     return {
                         "source_domain": "nansen.ai",
@@ -366,6 +445,7 @@ def create_smart_money_flow_tool():
                         "links": links,
                         "net_flow_amount": net_flow_usd,
                         "currency": "USD",
+                        "cohort_summary": _build_cohort_summary(rendered_wallets),
                     }
 
         # 3. Fallback: Arkham
@@ -404,6 +484,7 @@ def create_smart_money_flow_tool():
         # (icons.duckduckgo.com/ip3/system.ico → 404).
         return {
             "source_domain": "nansen.ai",
+            "cohort_summary": {},
             "nodes": [{"id": "Market"}],
             "links": [],
             "net_flow_amount": 0.0,

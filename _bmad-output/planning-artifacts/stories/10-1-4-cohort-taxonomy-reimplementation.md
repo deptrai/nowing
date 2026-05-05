@@ -2,7 +2,7 @@
 
 **Epic:** 10 — Institutional Research & Risk Management Terminal
 **Depends on:** Story 10.1.3 (Out-of-Scope Follow-up — TGM endpoint migration)
-**Status:** backlog
+**Status:** review
 **Created:** 2026-05-06
 **Why:** Story 10.1.1 spec yêu cầu wallet categorization theo cohorts (`smart_money/cex/dex/retail/insider`). Khi migrate sang Nansen TGM endpoint trong story 10.1.3, taxonomy bị **regression** — code mới chỉ dùng raw `address_label` không phân loại. Cần re-implement để FE color-code Sankey theo cohort + analytics phân tích flow theo cohort type.
 
@@ -93,16 +93,72 @@ Dune rows từ query `7431659` → fallback "unknown" (Dune query không trả t
 
 ## Tasks/Subtasks
 
-- [ ] Implement `_classify_cohort(label: str) -> str` in `nansen_smart_money.py`
-- [ ] Update `get_nansen_smart_money` to populate `cohort` per wallet
-- [ ] Update Sankey builder to forward cohort + aggregate `cohort_summary`
-- [ ] Map Arkham `arkhamEntity.type` → cohort
-- [ ] Update `SankeyNode` type + add `cohort` field
-- [ ] Update `SankeyFlowChart` color logic
-- [ ] Create `SankeyLegend` component
-- [ ] Unit tests for classification heuristic (15+ test cases)
-- [ ] E2E test: PEPE Sankey shows green smart_money + orange cex nodes
-- [ ] Update story 10.1.3 references nếu cần
+- [x] Implement `_classify_cohort(label: str) -> str` in `nansen_smart_money.py`
+- [x] Update `get_nansen_smart_money` to populate `cohort` per wallet
+- [x] Update Sankey builder to forward cohort + aggregate `cohort_summary`
+- [x] Map Arkham `arkhamEntity.type` → cohort
+- [x] Update `SankeyNode` type + add `cohort` field
+- [x] Update `SankeyFlowChart` color logic
+- [x] Create `SankeyLegend` component
+- [x] Unit tests for classification heuristic (41 test cases — exceeds 15+ target)
+- [ ] E2E test: PEPE Sankey shows green smart_money + orange cex nodes (deferred to manual QA on staging)
+- [ ] Update story 10.1.3 references nếu cần (no updates needed — 10.1.3 unchanged)
+
+## Dev Agent Record
+
+### Implementation Plan
+1. RED: Write `test_cohort_classification.py` với 41 parametrized cases covering tất cả 6 cohorts, priority enforcement (insider > cex > dex > smart_money > retail), và case insensitivity.
+2. GREEN: Implement `_classify_cohort` trong `nansen_smart_money.py` với priority-ordered keyword tuples (`_COHORT_KEYWORDS`).
+3. Populate `cohort` field cho mỗi wallet trong Nansen TGM response parsing.
+4. Refactor 3 Sankey builders (Nansen inline, `_build_sankey_from_arkham`, `_build_sankey_from_dune`):
+   - Replace `nodes_dict: dict[str, bool]` → `nodes_with_cohort: dict[str, str | None]` (Market = None, wallets = cohort string)
+   - Final `nodes` serialize as `{id}` cho Market hoặc `{id, cohort}` cho wallet
+   - Add `_build_cohort_summary(rendered_wallets)` helper — aggregate `{cohort: {count, net_flow_usd}}`, drop empty cohorts
+5. Arkham path: map `arkhamEntity.type` → cohort via `_ARKHAM_TYPE_TO_COHORT` (`fund/whale → smart_money`, `cex/exchange → cex`, `dex → dex`, fallback `unknown`).
+6. Dune path: defaults all wallets to `unknown` cohort (rows lack entity type).
+7. Plumb `cohort_summary` qua BE event emission (`chat_deepagent.py`) → SSE forward (`stream_new_chat.py`) → FE parse (`page.tsx`) → DB persistence (`message-utils.ts`) → render layer.
+8. Create `cohort-colors.ts` shared module với `COHORT_COLORS` map, `COHORT_LABELS`, `COHORT_DESCRIPTIONS`, `COHORT_DISPLAY_ORDER`, `colorForCohort()` helper.
+9. `SankeyFlowChart`: use `colorForCohort(node.cohort)` first, fallback to `nodeColor`/palette rotation.
+10. `SankeyLegend`: render colored chips per cohort showing count + compact USD net_flow.
+11. Mount `SankeyLegend` ngay sau `SankeyFlowChart` trong `crypto-report-layout.tsx`.
+
+### Completion Notes
+- **AC1 PASS** — Mỗi wallet trong `smart_money_wallets` có field `cohort` ∈ {smart_money, cex, dex, retail, insider, unknown} derived từ `address_label` heuristics.
+- **AC2 PASS** — Sankey nodes carry `cohort` (Market node remains `{id}` only). `colorForCohort()` map: smart_money green (#22c55e), cex orange (#f97316), dex blue (#3b82f6), retail gray (#6b7280), insider red (#ef4444), unknown light-gray (#9ca3af).
+- **AC3 PASS** — `cohort_summary` per response: `{cohort: {count, net_flow_usd}}`, empty cohorts dropped.
+- **AC4 PASS** — 41/41 parametrized test cases pass (priority enforcement, case insensitivity, edge cases). Heuristic order: insider > cex > dex > smart_money > retail > unknown fallback.
+- **AC5 PASS** — `<SankeyLegend />` always-visible (when cohort_summary non-empty), shows colored chip + count + compact net_flow per cohort. Tooltip via `title` attr exposes cohort description.
+- **AC6 PASS** — Arkham `entityType` mapped to cohort taxonomy. Dune defaults to `unknown` (acceptable; no entity type in current Dune query response).
+
+**Test results:** 75/75 smart money + cohort tests pass (`test_nansen_smart_money` + `test_smart_money_flow` + `test_smart_money_fallback` + `test_nansen_circuit_breaker` + new `test_cohort_classification`). 7 pre-existing failures trong `test_dune_query.py` + `test_contract_analysis.py` không liên quan story này (verified via stash test).
+
+**FE TypeScript:** `pnpm tsc --noEmit` — 0 new errors trong cohort-related files (cohort-colors.ts, SankeyLegend.tsx, SankeyFlowChart.tsx, crypto-report-layout.tsx). Pre-existing project errors unchanged.
+
+### Debug Log
+- Test fixture `test_nansen_empty_triggers_arkham_fallback` originally asserted node shape `{id}` only — updated to expect `{id, cohort: "unknown"}` (Arkham fixture has no entity.type).
+- Considered adding label-based heuristic to Dune fallback (`_classify_cohort(row.get("label"))`) but Dune query 7431659 currently surfaces mostly addr-only labels — would mostly classify as "retail". Left as `unknown` with TODO comment for future enhancement.
+
+## File List
+
+**Backend:**
+- `nowing_backend/app/agents/new_chat/tools/nansen_smart_money.py` (UPDATE — `_classify_cohort` + `_COHORT_KEYWORDS` + populate cohort per wallet)
+- `nowing_backend/app/agents/new_chat/tools/crypto_smart_money_flow.py` (UPDATE — `_VALID_COHORTS`, `_ARKHAM_TYPE_TO_COHORT`, `_arkham_entity_to_cohort`, `_build_cohort_summary`; refactored all 3 Sankey builders)
+- `nowing_backend/app/agents/new_chat/chat_deepagent.py` (UPDATE — emit `cohort_summary` in smart-money-flow event)
+- `nowing_backend/app/tasks/chat/stream_new_chat.py` (UPDATE — forward `cohort_summary` qua SSE)
+- `nowing_backend/tests/unit/agents/new_chat/tools/test_cohort_classification.py` (CREATE — 41 cases)
+- `nowing_backend/tests/unit/agents/new_chat/tools/test_smart_money_fallback.py` (UPDATE — assert new node shape with cohort + cohort_summary)
+
+**Frontend:**
+- `nowing_web/lib/chat/streaming-state.ts` (UPDATE — `WalletCohort`, `CohortSummaryEntry`, extend `SankeyNode` and `SmartMoneyFlowData`)
+- `nowing_web/lib/chat/message-utils.ts` (UPDATE — extract `cohort_summary` on reload)
+- `nowing_web/app/dashboard/[search_space_id]/new-chat/[[...chat_id]]/page.tsx` (UPDATE — `parseSmartMoneyFlow` forwards `cohort_summary`)
+- `nowing_web/components/crypto/cohort-colors.ts` (CREATE — shared color/label/description maps + `colorForCohort` helper)
+- `nowing_web/components/crypto/SankeyFlowChart.tsx` (UPDATE — `cohort` field on `SankeyNode`, color resolution prefers cohort)
+- `nowing_web/components/crypto/SankeyLegend.tsx` (CREATE — always-visible legend with per-cohort chip + count + flow)
+- `nowing_web/components/new-chat/report/crypto-report-layout.tsx` (UPDATE — mount SankeyLegend; extend types)
+
+## Change Log
+- 2026-05-06: Story 10.1.4 implementation complete. Cohort taxonomy re-implemented for TGM endpoint (regression from story 10.1.2 fixed). 41 new heuristic tests + 75/75 existing smart money tests pass. FE color-codes Sankey by cohort + always-visible legend. Status → review.
 
 ---
 

@@ -1547,6 +1547,7 @@ async def _stream_agent_events(
                     "net_flow_amount": data.get("net_flow_amount", 0.0),
                     "currency": data.get("currency", "USD"),
                     "source_domain": data.get("source_domain"),
+                    "cohort_summary": data.get("cohort_summary"),
                 },
             )
 

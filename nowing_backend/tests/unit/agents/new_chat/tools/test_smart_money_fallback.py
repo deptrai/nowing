@@ -54,10 +54,16 @@ async def test_nansen_empty_triggers_arkham_fallback(tool, mocker):
 
     assert mock_try_arkham.called
     assert result["source_domain"] == "arkm.com"
-    # Label is disambiguated with addr suffix to prevent Sankey node collision
+    # Label is disambiguated with addr suffix to prevent Sankey node collision.
+    # Cohort defaults to "unknown" because the test fixture entity has no `type` field.
     expected_label = "Test Fund (0x123)"
-    assert result["nodes"] == [{"id": "Market"}, {"id": expected_label}]
+    assert result["nodes"] == [
+        {"id": "Market"},
+        {"id": expected_label, "cohort": "unknown"},
+    ]
     assert result["links"] == [{"source": expected_label, "target": "Market", "value": 5000.0}]
+    # Cohort summary aggregates wallets by category (Story 10.1.4 AC3)
+    assert result["cohort_summary"] == {"unknown": {"count": 1, "net_flow_usd": -5000.0}}
 
 
 @pytest.mark.asyncio

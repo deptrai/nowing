@@ -993,6 +993,7 @@ class SourceAttributionMiddleware(AgentMiddleware):
                     "net_flow_amount": result.get("net_flow_amount", 0.0),
                     "currency": result.get("currency", "USD"),
                     "source_domain": result.get("source_domain"),
+                    "cohort_summary": result.get("cohort_summary"),
                 },
                 custom_event_name="smart_money_flow",
             )

@@ -241,6 +241,7 @@ function parseSmartMoneyFlow(raw: unknown): SmartMoneyFlowData | null {
 		net_flow_amount?: unknown;
 		currency?: unknown;
 		source_domain?: unknown;
+		cohort_summary?: unknown;
 	};
 	if (!Array.isArray(data.nodes) || !Array.isArray(data.links)) return null;
 	return {
@@ -249,6 +250,10 @@ function parseSmartMoneyFlow(raw: unknown): SmartMoneyFlowData | null {
 		net_flow_amount: Number(data.net_flow_amount ?? 0) || 0,
 		currency: typeof data.currency === "string" ? data.currency : "USD",
 		source_domain: typeof data.source_domain === "string" ? data.source_domain : undefined,
+		cohort_summary:
+			data.cohort_summary && typeof data.cohort_summary === "object"
+				? (data.cohort_summary as SmartMoneyFlowData["cohort_summary"])
+				: undefined,
 	};
 }
 

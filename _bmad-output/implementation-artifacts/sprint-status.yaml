@@ -190,7 +190,7 @@ development_status:
   10-1-1-smart-money-integration: done           # 2026-05-05 code review complete — 36 patches applied (mock removed, threshold 5→3, types tightened, helper extracted, tests realigned with spec sub-task names).
   10-1-2-nansen-failover-dune-arkham: done  # 2026-05-05: story created — Dune + Arkham as free-tier fallbacks when Nansen has no data (404)
   10-1-3-smart-money-out-of-scope-followup: in-progress    # 2026-05-06: drafted — out-of-scope changes from 10.1.2 (middleware sub-agent fix, DECISION RULE, empty-state UI, FE source_domain plumbing, Nansen TGM endpoint migration) — work landed, story documents retroactively
-  10-1-4-cohort-taxonomy-reimplementation: backlog         # 2026-05-06: drafted — re-implement smart_money/cex/dex/retail/insider cohort categorization (regressed in TGM migration)
+  10-1-4-cohort-taxonomy-reimplementation: review          # 2026-05-06: implementation complete — _classify_cohort heuristic + Sankey color-coding + SankeyLegend; 41 new + 75/75 existing smart money tests pass
   10-1-5-nansen-pagination-multi-page: backlog             # 2026-05-06: drafted — multi-page fetch for accurate net_flow_24h_usd (currently first 30 wallets only)
   10-1-6-nansen-tgm-tier-detection: backlog                # 2026-05-06: drafted — detect Pro→TGM tier mismatch + customer comms; new TGM endpoint requires higher tier than Pro
   10-1-7-pre-10-1-1-reload-backward-compat: backlog        # 2026-05-06: drafted — pre-10.1.1 messages may lose Sankey on reload; FE backward-compat read + optional DB migration

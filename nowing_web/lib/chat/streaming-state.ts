@@ -7,8 +7,13 @@ export interface ThinkingStepData {
 	items: string[];
 }
 
+export type WalletCohort = "smart_money" | "cex" | "dex" | "retail" | "insider" | "unknown";
+
 export interface SankeyNode {
 	id: string;
+	// Story 10.1.4: cohort omitted for the aggregate "Market" node, present on
+	// every wallet node. FE color-codes Sankey by this field.
+	cohort?: WalletCohort;
 }
 
 export interface SankeyLink {
@@ -17,12 +22,20 @@ export interface SankeyLink {
 	value: number;
 }
 
+export interface CohortSummaryEntry {
+	count: number;
+	net_flow_usd: number;
+}
+
 export interface SmartMoneyFlowData {
 	nodes: SankeyNode[];
 	links: SankeyLink[];
 	net_flow_amount: number;
 	currency: string;
 	source_domain?: string;
+	// Aggregate per-cohort stats. Empty cohorts omitted by BE — keys are a
+	// subset of WalletCohort values.
+	cohort_summary?: Partial<Record<WalletCohort, CohortSummaryEntry>>;
 }
 
 export type ContentPart =

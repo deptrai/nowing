@@ -91,6 +91,7 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 						net_flow_amount?: unknown;
 						currency?: unknown;
 						source_domain?: unknown;
+						cohort_summary?: unknown;
 					};
 				};
 				if (Array.isArray(smfPart.data?.nodes)) {
@@ -102,6 +103,10 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 						source_domain:
 							typeof smfPart.data.source_domain === "string"
 								? smfPart.data.source_domain
+								: undefined,
+						cohort_summary:
+							smfPart.data.cohort_summary && typeof smfPart.data.cohort_summary === "object"
+								? (smfPart.data.cohort_summary as SmartMoneyFlowData["cohort_summary"])
 								: undefined,
 					};
 				}

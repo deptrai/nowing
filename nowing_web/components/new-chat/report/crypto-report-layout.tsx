@@ -47,11 +47,23 @@ const SankeyFlowChart = dynamic(
 		loading: () => <div className="h-[400px] w-full animate-pulse bg-muted/20 rounded-xl" />,
 	}
 );
+const SankeyLegend = dynamic(
+	() => import("@/components/crypto/SankeyLegend").then((m) => m.SankeyLegend),
+	{ ssr: false }
+);
 
 const SENTINEL = "<!-- crypto-report-v2 -->";
 
+type WalletCohort = "smart_money" | "cex" | "dex" | "retail" | "insider" | "unknown";
+
+interface CohortSummaryEntry {
+	count: number;
+	net_flow_usd: number;
+}
+
 interface SankeyNode {
 	id: string;
+	cohort?: WalletCohort;
 }
 
 interface SankeyLink {
@@ -66,6 +78,7 @@ interface SmartMoneyFlowData {
 	net_flow_amount: number;
 	currency: string;
 	source_domain?: string;
+	cohort_summary?: Partial<Record<WalletCohort, CohortSummaryEntry>>;
 }
 
 function EmptySmartMoneyState({ sourceDomain }: { sourceDomain?: string }) {
@@ -330,13 +343,19 @@ const CryptoReportLayoutImpl = () => {
 							>
 								{Array.isArray(meta.smart_money_flow.links) &&
 								meta.smart_money_flow.links.length > 0 ? (
-									<SankeyFlowChart
-										nodes={meta.smart_money_flow.nodes}
-										links={meta.smart_money_flow.links}
-										netFlowAmount={meta.smart_money_flow.net_flow_amount}
-										currency={meta.smart_money_flow.currency}
-										isLoading={false}
-									/>
+									<>
+										<SankeyFlowChart
+											nodes={meta.smart_money_flow.nodes}
+											links={meta.smart_money_flow.links}
+											netFlowAmount={meta.smart_money_flow.net_flow_amount}
+											currency={meta.smart_money_flow.currency}
+											isLoading={false}
+										/>
+										<SankeyLegend
+											cohortSummary={meta.smart_money_flow.cohort_summary}
+											currency={meta.smart_money_flow.currency}
+										/>
+									</>
 								) : (
 									<EmptySmartMoneyState sourceDomain={meta.smart_money_flow.source_domain} />
 								)}
