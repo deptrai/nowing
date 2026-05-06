@@ -16,7 +16,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Maximize2, TableProperties, LineChart } from "lucide-react";
 import type { WalletCohort } from "@/lib/chat/streaming-state";
-import { COHORT_LABELS, colorForCohort } from "./cohort-colors";
+import { colorForCohort } from "./cohort-colors";
 
 // Types for Smart Money Data
 export interface SankeyNode {

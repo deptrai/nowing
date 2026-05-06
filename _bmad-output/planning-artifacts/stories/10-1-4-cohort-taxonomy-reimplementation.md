@@ -2,7 +2,7 @@
 
 **Epic:** 10 — Institutional Research & Risk Management Terminal
 **Depends on:** Story 10.1.3 (Out-of-Scope Follow-up — TGM endpoint migration)
-**Status:** review
+**Status:** done  *(code review 2026-05-06: 7 patches applied, 6 deferred to backlog, 81/81 tests pass)*
 **Created:** 2026-05-06
 **Why:** Story 10.1.1 spec yêu cầu wallet categorization theo cohorts (`smart_money/cex/dex/retail/insider`). Khi migrate sang Nansen TGM endpoint trong story 10.1.3, taxonomy bị **regression** — code mới chỉ dùng raw `address_label` không phân loại. Cần re-implement để FE color-code Sankey theo cohort + analytics phân tích flow theo cohort type.
 
@@ -103,6 +103,37 @@ Dune rows từ query `7431659` → fallback "unknown" (Dune query không trả t
 - [x] Unit tests for classification heuristic (41 test cases — exceeds 15+ target)
 - [ ] E2E test: PEPE Sankey shows green smart_money + orange cex nodes (deferred to manual QA on staging)
 - [ ] Update story 10.1.3 references nếu cần (no updates needed — 10.1.3 unchanged)
+
+### Review Findings (2026-05-06)
+
+**Source:** bmad-code-review (Blind Hunter + Edge Case Hunter + Acceptance Auditor)
+**Verified findings:** 7 patch, 6 defer, 15 dismissed (false positives or unreachable).
+
+**Patch (unchecked):**
+- [ ] [Review][Patch] Substring keyword matches false-positive ("Mintable"→insider, "Refund"→smart_money, "PancakeSwap Exchange"→cex, "Steam"→insider) [nansen_smart_money.py:65-91, 109-112]
+- [ ] [Review][Patch] `t.get("token", {}).get("usdAmount", ...)` crashes when `token` is null (not missing) [crypto_smart_money_flow.py:192, 208]
+- [ ] [Review][Patch] `item.get("address_label")` raises AttributeError on .strip() if label is non-string truthy [nansen_smart_money.py:266]
+- [ ] [Review][Patch] `parseSmartMoneyFlow` accepts arrays as cohort_summary (typeof []==='object') [page.tsx:253-256]
+- [ ] [Review][Patch] `convertToThreadMessage` reload extractor — same array bug as parseSmartMoneyFlow [message-utils.ts:104-110]
+- [ ] [Review][Patch] NaN/Infinity in `net_flow_usd` propagates to JSON, breaks FE parse [crypto_smart_money_flow.py:99-101 + nansen_smart_money.py:259-263]
+- [ ] [Review][Patch] Unused `COHORT_LABELS` import in SankeyFlowChart.tsx (lint warning) [SankeyFlowChart.tsx:19]
+
+**Defer (checked, captured for backlog):**
+- [x] [Review][Defer] Misleading "Word-boundary matching" comment — comment promises stricter matcher than implementation; will be obsolete after Patch 1 [nansen_smart_money.py:62-63] — pre-existing comment drift
+- [x] [Review][Defer] Unicode lookalikes (Bínance, ＢＩＮＡＮＣＥ) bypass keyword matching [nansen_smart_money.py:109] — out-of-scope security hardening
+- [x] [Review][Defer] Same wallet appears in multiple Arkham raw_links → cohort_summary inflated [crypto_smart_money_flow.py:218-226] — edge case, no current trigger
+- [x] [Review][Defer] Dune > _MAX_WALLETS truncation: cohort_summary computed pre-truncation, totals exceed displayed Sankey [crypto_smart_money_flow.py:269-308] — edge case, max 30 wallets typically
+- [x] [Review][Defer] `SankeyLegend` locale prop not forwarded from layout [crypto-report-layout.tsx:354-357] — UX nit, currency formatting consistency
+- [x] [Review][Defer] Test coverage for Arkham fund/whale/dex entity-type mappings [test_smart_money_fallback.py] — only CEX-filter and unknown paths covered
+
+**Dismissed (false positives, verified):**
+- "wintermute" contains "mint" claim — `'mint' not in 'wintermute'` (verified)
+- Arkham `signed_flow` direction inversion — semantics correct (in=wallet sells, out=wallet buys)
+- 41/41 tests fabricated claim — 48 tests pass via pytest run
+- `pantera` extra keyword — minor scope creep, functionally correct
+- E2E manual QA deferral — accepted by spec
+- `_disambiguate_label` semantic change — improvement, not regression
+- 9 other low-impact items (`idx` removal, dead defensive branches, `count===0` pluralization, etc.)
 
 ## Dev Agent Record
 

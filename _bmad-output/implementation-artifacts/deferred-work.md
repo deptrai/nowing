@@ -1,5 +1,13 @@
 # Deferred Work
 
+## Deferred from: code review of 10-1-4-cohort-taxonomy-reimplementation (2026-05-06)
+- Misleading "Word-boundary matching" comment in `_classify_cohort` docstring — comment promises stricter matcher than substring `in` impl; will be obsolete after Patch 1 (regex word-boundary). [nansen_smart_money.py:62-63]
+- Unicode lookalike obfuscation (`Bínance`, fullwidth `ＢＩＮＡＮＣＥ`) bypasses keyword matching → label-spoof CEX classified as retail. [nansen_smart_money.py:109]
+- Same wallet appears in multiple Arkham `raw_links` (in + out) → `cohort_summary` count and net_flow inflated vs displayed Sankey nodes. [crypto_smart_money_flow.py:218-226]
+- Dune > `_MAX_WALLETS_IN_SANKEY` rows: cohort_summary computed pre-truncation; legend totals can exceed displayed Sankey nodes. [crypto_smart_money_flow.py:269-308]
+- `SankeyLegend` locale prop not forwarded from `crypto-report-layout` → currency format may diverge from chart in non-en locale. [crypto-report-layout.tsx:354-357]
+- Test coverage for Arkham `fund`/`whale`/`dex` entity-type mappings — current tests cover only CEX-drop and `unknown` fallback. [test_smart_money_fallback.py]
+
 ## Deferred from: Story 10.1.1 smart money integration (2026-05-05)
 - **Nansen 404 → empty Sankey for tokens not in Nansen index** (e.g., PEPE với mock key): Fixed 404→empty-wallets trong `nansen_smart_money.py` và added `links.length > 0` FE guard. Full solution cần Dune + Arkham fallback → **Story 10.1.2** (`_bmad-output/planning-artifacts/stories/10-1-2-nansen-failover-dune-arkham.md`).
 - **Local dev luôn empty Sankey** vì `NANSEN_API_KEY=mock-key-for-testing`. Cần set `DUNE_API_KEY` hoặc `ARKHAM_API_KEY` để có real data → Story 10.1.2.

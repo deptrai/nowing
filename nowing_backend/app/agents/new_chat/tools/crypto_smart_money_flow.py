@@ -6,6 +6,7 @@ Fallback to Arkham Intelligence and Dune Analytics if Nansen is unavailable or m
 
 import asyncio
 import logging
+import math
 import os
 import re
 from typing import Any
@@ -100,6 +101,8 @@ def _build_cohort_summary(
             flow = float(w.get("net_flow_usd") or 0)
         except (TypeError, ValueError):
             flow = 0.0
+        if not math.isfinite(flow):
+            flow = 0.0
         summary[cohort]["count"] += 1
         summary[cohort]["net_flow_usd"] += flow
     return {k: v for k, v in summary.items() if v["count"] > 0}
@@ -183,34 +186,36 @@ def _build_sankey_from_arkham(transfers: dict[str, Any]) -> dict[str, Any] | Non
     for t in (transfers.get("in") or []):
         if not isinstance(t, dict):
             continue
-        entity = t.get("fromAddress", {}).get("arkhamEntity", {}) or {}
+        entity = (t.get("fromAddress") or {}).get("arkhamEntity") or {}
         if not _arkham_entity_passes_filter(entity):
             continue
-        addr = t.get("fromAddress", {}).get("address", "")
+        addr = (t.get("fromAddress") or {}).get("address", "")
         label = _disambiguate_label(entity.get("name") or "", addr)
         try:
-            usd = float(t.get("token", {}).get("usdAmount", 0) or 0)
+            usd = float((t.get("token") or {}).get("usdAmount", 0) or 0)
         except (TypeError, ValueError):
             continue
-        if usd > 0:
-            raw_links.append({"source": label, "target": "Market", "value": usd, "_cohort": _arkham_entity_to_cohort(entity)})
-            net_flow_usd += usd
+        if not math.isfinite(usd) or usd <= 0:
+            continue
+        raw_links.append({"source": label, "target": "Market", "value": usd, "_cohort": _arkham_entity_to_cohort(entity)})
+        net_flow_usd += usd
 
     for t in (transfers.get("out") or []):
         if not isinstance(t, dict):
             continue
-        entity = t.get("toAddress", {}).get("arkhamEntity", {}) or {}
+        entity = (t.get("toAddress") or {}).get("arkhamEntity") or {}
         if not _arkham_entity_passes_filter(entity):
             continue
-        addr = t.get("toAddress", {}).get("address", "")
+        addr = (t.get("toAddress") or {}).get("address", "")
         label = _disambiguate_label(entity.get("name") or "", addr)
         try:
-            usd = float(t.get("token", {}).get("usdAmount", 0) or 0)
+            usd = float((t.get("token") or {}).get("usdAmount", 0) or 0)
         except (TypeError, ValueError):
             continue
-        if usd > 0:
-            raw_links.append({"source": "Market", "target": label, "value": usd, "_cohort": _arkham_entity_to_cohort(entity)})
-            net_flow_usd -= usd
+        if not math.isfinite(usd) or usd <= 0:
+            continue
+        raw_links.append({"source": "Market", "target": label, "value": usd, "_cohort": _arkham_entity_to_cohort(entity)})
+        net_flow_usd -= usd
 
     if not raw_links:
         return None
@@ -277,7 +282,7 @@ def _build_sankey_from_dune(rows: list[dict[str, Any]]) -> dict[str, Any] | None
             flow = float(row.get("net_flow_usd") or 0)
         except (TypeError, ValueError):
             continue
-        if flow == 0:
+        if not math.isfinite(flow) or flow == 0:
             continue
 
         cohort = "unknown"

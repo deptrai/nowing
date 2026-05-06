@@ -251,7 +251,9 @@ function parseSmartMoneyFlow(raw: unknown): SmartMoneyFlowData | null {
 		currency: typeof data.currency === "string" ? data.currency : "USD",
 		source_domain: typeof data.source_domain === "string" ? data.source_domain : undefined,
 		cohort_summary:
-			data.cohort_summary && typeof data.cohort_summary === "object"
+			data.cohort_summary &&
+			typeof data.cohort_summary === "object" &&
+			!Array.isArray(data.cohort_summary)
 				? (data.cohort_summary as SmartMoneyFlowData["cohort_summary"])
 				: undefined,
 	};

@@ -105,7 +105,9 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 								? smfPart.data.source_domain
 								: undefined,
 						cohort_summary:
-							smfPart.data.cohort_summary && typeof smfPart.data.cohort_summary === "object"
+							smfPart.data.cohort_summary &&
+							typeof smfPart.data.cohort_summary === "object" &&
+							!Array.isArray(smfPart.data.cohort_summary)
 								? (smfPart.data.cohort_summary as SmartMoneyFlowData["cohort_summary"])
 								: undefined,
 					};

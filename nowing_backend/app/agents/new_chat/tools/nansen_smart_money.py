@@ -23,6 +23,7 @@ Rate limits (AC14):
 """
 
 import logging
+import math
 import os
 import re
 from datetime import datetime, timedelta, timezone
@@ -70,8 +71,10 @@ _COHORT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "cex",
         (
+            # Named CEXes only — "exchange" was removed because it false-positives
+            # on DEX labels like "PancakeSwap Exchange" / "SushiSwap Exchange".
             "binance", "coinbase", "kraken", "okx", "bybit", "bitfinex",
-            "kucoin", "huobi", "gate.io", "exchange",
+            "kucoin", "huobi", "gate.io",
         ),
     ),
     (
@@ -90,6 +93,15 @@ _COHORT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
 )
 
+# Pre-compiled word-boundary patterns per cohort. Substring matching would
+# false-positive on "Mintable" → insider, "Refund Address" → smart_money,
+# "PancakeSwap Exchange" → cex. `\b` requires alphanumeric boundary so
+# `mint` matches "mint" / "mint contract" but not "mintable" / "wintermute".
+_COHORT_PATTERNS: tuple[tuple[str, "re.Pattern[str]"], ...] = tuple(
+    (cohort, re.compile(r"\b(?:" + "|".join(re.escape(kw) for kw in keywords) + r")\b"))
+    for cohort, keywords in _COHORT_KEYWORDS
+)
+
 
 def _classify_cohort(label: str | None) -> str:
     """Classify a wallet label into a cohort category.
@@ -103,13 +115,13 @@ def _classify_cohort(label: str | None) -> str:
         Empty/None labels return "unknown". Addr-like labels (starting with 0x
         or no semantic content) return "retail".
     """
-    if not label or not label.strip():
+    if not isinstance(label, str) or not label.strip():
         return "unknown"
 
     haystack = label.lower()
 
-    for cohort, keywords in _COHORT_KEYWORDS:
-        if any(kw in haystack for kw in keywords):
+    for cohort, pattern in _COHORT_PATTERNS:
+        if pattern.search(haystack):
             return cohort
 
     # Addr-like or generic label → retail (background activity, no signal)
@@ -261,9 +273,12 @@ def create_nansen_smart_money_tool():
                 except (TypeError, ValueError):
                     continue
                 net = bought - sold
+                if not math.isfinite(net):
+                    continue
                 net_flow += net
-                addr = item.get("address", "")
-                raw_label = (item.get("address_label") or "").strip()
+                addr = item.get("address", "") if isinstance(item.get("address"), str) else ""
+                raw_label_value = item.get("address_label")
+                raw_label = raw_label_value.strip() if isinstance(raw_label_value, str) else ""
                 label = raw_label or (addr[:8] if addr else "") or "Unknown"
                 if net > 0:
                     direction = "accumulating"

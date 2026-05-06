@@ -63,6 +63,17 @@ from app.agents.new_chat.tools.nansen_smart_money import _classify_cohort
     ("BINANCE COLD STORAGE", "cex"),
     ("uniswap router", "dex"),
     ("A16Z VENTURES", "smart_money"),
+
+    # ── word-boundary protection (substring traps) ──
+    # Pre-fix bugs: "Mintable" matched "mint" (insider), "Refund Address"
+    # matched "fund" (smart_money), "PancakeSwap Exchange" matched "exchange"
+    # (cex). Word-boundary regex prevents all three.
+    ("Mintable", "retail"),
+    ("Refund Address", "retail"),
+    ("PancakeSwap Exchange", "dex"),
+    ("SushiSwap Exchange", "dex"),
+    ("Steam Wallet", "retail"),
+    ("Insurance Fund", "smart_money"),  # 'fund' is whole word here — still hits
 ])
 def test_classify_cohort_heuristic(label, expected):
     assert _classify_cohort(label) == expected
