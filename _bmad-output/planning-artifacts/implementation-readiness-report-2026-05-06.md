@@ -596,9 +596,42 @@ Code-level implementation đã đủ vững (Epic 11 hardening done, smart money
 
 ---
 
+## ✅ Resolution Status (Updated 2026-05-06 — same day)
+
+All 17 actionable items resolved across 5 commits:
+
+| Commit | Items resolved |
+|---|---|
+| `ffdd915c4` (doc-drift) | CR-1, CR-2, CR-3, MD-3 (epic refs), UX-CR-1, UX-CR-2, LO-2 |
+| `ee7f15379` (story restructures) | QV-1, QV-2, QV-3, QV-4 |
+| `41f50b5c5` (PRD/UX completeness) | HI-1, MD-1, MD-3 (PRD body), MD-4, LO-1, UX-HI-1 |
+| `40f753524` (architecture gap) | UX-HI-2 |
+| `a809e813e` (cleanup) | QV-7, QV-10, QV-11 |
+| Dismissed (false positives) | QV-9 (Dev Notes already exist) |
+
+**Final state:**
+- ✅ All 4 P0 items fixed
+- ✅ All 7 P1 items fixed (including new story 10-1-8 to gate 10-2..10-5 from regression)
+- ✅ All 4 P2 items fixed (or dismissed false positives)
+- ✅ All 3 P3 items fixed
+- 📦 5 commits total, ~1500 lines docs added/modified, 0 dev cycles consumed
+
+**New stories created during fix pass:**
+- `10-1-6a-nansen-tgm-tier-detection` (split from 10-1-6 dev-only)
+- `10-1-6b-nansen-tgm-customer-comms` (split from 10-1-6 cross-functional)
+- `10-1-8-data-freshness-indicator` (architectural gap — gates 10-2..10-5)
+- `11-9-circuit-breaker-redis-down-policy` (split from 11-8)
+
+**Stories dismissed:**
+- `10-1-7-pre-10-1-1-reload-backward-compat` (SQL audit confirmed zero legacy data)
+
+**Project status update:** Project moves from 🟡 NEEDS WORK → 🟢 **READY** for Epic 10 implementation. PRD/Epics/UX/Architecture aligned. Dev team có thể pick up next stories từ backlog với clear context.
+
+---
+
 **Report generated:** 2026-05-06
 **Assessor:** Winston (System Architect)
-**Previous IR:** 2026-05-04 (5/3 issues addressed; 4 new doc-drift items surfaced post-Epic-10-rename)
+**Resolution:** Same-day, 5 commits
 
 
 
