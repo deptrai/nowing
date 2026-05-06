@@ -196,6 +196,7 @@ development_status:
   10-1-6a-nansen-tgm-tier-detection: backlog               # 2026-05-06: split from old 10-1-6 — dev-only tier detection + FE notice + graceful fallback
   10-1-6b-nansen-tgm-customer-comms: backlog               # 2026-05-06: split from old 10-1-6 — cross-functional (Marketing/Sales/Support/Finance) customer comms post 10-1-6a deploy
   10-1-7-pre-10-1-1-reload-backward-compat: dismissed      # 2026-05-06: dismissed — SQL audit confirms new_chat_messages has no metadata column → zero legacy rows to migrate
+  10-1-8-data-freshness-indicator: backlog                 # 2026-05-06: drafted — per-widget Live/Delayed/Stale tag (FreshnessChip); BLOCKS stories 10-2/10-3/10-4/10-5 to avoid UX regression vs Phụ lục B § 3
   10-2-protocol-revenue-tokenomics: ready-for-dev
   10-3-narrative-heatmap-macro: ready-for-dev
   10-4-enterprise-risk-management: ready-for-dev
