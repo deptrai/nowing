@@ -120,7 +120,7 @@ development_status:
   epic-0-retrospective: optional
 
   # ─── EPIC 9: Crypto Orchestra (Phased rollout 1→2→3) ───
-  epic-9: backlog
+  epic-9: in-progress  # 2026-05-06: status corrected per IR § QV-10 — 4/6 stories done (9.1, 9.2, 9.4, 9.5); 9.3 + 9.6 backlog
 
   # Phase 1 — Easy Wins Tier (deterministic APIs)
   9-1-tokenomics-analyst: done

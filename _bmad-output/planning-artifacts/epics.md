@@ -1114,7 +1114,7 @@ So that my analysis matches what Messari/Nansen terminal users get.
 
 ## Epic 9-DF: Persistent Shared Crypto Data Layer
 
-> **🔄 Renamed 2026-05-06:** Originally "Epic 10" in this document. Renamed to `9-DF-*` (Data Foundation) prefix to make room for new "Epic 10: Institutional Research Terminal" (FR49-53). Story files have been renamed: `9-DF-1-crypto-data-schema`, `9-DF-2-crypto-cache-middleware`, `9-DF-3-thundering-herd-protection`, `9-DF-4-background-refresh`. Story 9-DF-5 (Watchlist API) is now tracked as `10-6-workspace-watchlist-api` in sprint-status.yaml (verify naming before next pass).
+> **🔄 Renamed 2026-05-06:** Originally "Epic 10" in this document. Renamed to `9-DF-*` (Data Foundation) prefix to make room for new "Epic 10: Institutional Research Terminal" (FR49-53). Story files renamed: `9-DF-1-crypto-data-schema`, `9-DF-2-crypto-cache-middleware`, `9-DF-3-thundering-herd-protection`, `9-DF-4-background-refresh`. Original 5th story (Watchlist API) renamed to `10-6-workspace-watchlist-api` to match sprint-status assignment to Epic 10.
 
 **Added:** 2026-04-29 by Winston (Architect) + Mary (BA)
 **Goal:** Eliminate redundant external API calls across concurrent users by persisting crypto tool results in a shared PostgreSQL pool with append-only timeline and hybrid TTL strategy.
@@ -1247,10 +1247,10 @@ So that active users rarely experience cache misses for frequently queried token
 
 ---
 
-### Story 9-DF-5: Workspace Watchlist API
-📄 **Story file**: [`stories/9-DF-5-workspace-watchlist-api.md`](./stories/9-DF-5-workspace-watchlist-api.md) | **Phase 5 · Depends: 9-DF-1**
+### Story 10-6: Workspace Watchlist API (originally drafted as 9-DF-5)
+📄 **Story file**: [`stories/10-6-workspace-watchlist-api.md`](./stories/10-6-workspace-watchlist-api.md) | **Done · Depends: 9-DF-1**
 
-> **Note:** Sprint-status tracks this story as `10-6-workspace-watchlist-api: done`. Story file naming in `stories/` folder may need cleanup to match (rename `9-DF-5-workspace-watchlist-api.md` → `10-6-workspace-watchlist-api.md` or vice versa). See readiness report 2026-05-06 § QV-7.
+> **🔄 Renamed 2026-05-06** per IR § QV-7 — story file renamed `9-DF-5-*` → `10-6-*` to match sprint-status.yaml. Drafted as part of 9-DF data layer epic but assigned to Epic 10 (Institutional Research) for sprint tracking.
 As a workspace member,
 I want REST endpoints to access my workspace's tracked crypto projects and their historical data timeline,
 So that future dashboard features (token tracker, price history chart) can consume this data.
@@ -1295,6 +1295,8 @@ So that future dashboard features (token tracker, price history chart) can consu
 📄 **Story file**: [`stories/10-1-entity-resolution-smart-money.md`](./stories/10-1-entity-resolution-smart-money.md) | **Done**
 Foundation for FR49 — DexScreener resolver + DataFusionMiddleware + Sankey component infrastructure.
 
+> **Numbering convention (per IR § QV-11):** Epic 10 uses 3-level story numbering `10-X-Y` for FR49 (smart money) chỉ khi feature có nhiều phases natural sequencing (foundation → integration → fallback → cohort → tier handling). Other Epic 10 stories (10-2, 10-3, 10-4, 10-5, 10-6) use standard 2-level numbering. The 3-level pattern is intentional design choice, not legacy artifact.
+
 **Sub-stories** (3-level numbering for phased rollout of FR49):
 - **10-1-1** Smart Money Integration — Nansen tool wrapper, circuit breaker, UI mounting (done)
 - **10-1-2** Nansen Failover — Dune + Arkham fallbacks (done)
@@ -1334,10 +1336,9 @@ CEX/DEX order book depth profiler + multi-chain yield scanner.
 
 ---
 
-### Story 10-6: Workspace Watchlist API (was 9-DF-5)
-📄 **Story file**: [`stories/9-DF-5-workspace-watchlist-api.md`](./stories/9-DF-5-workspace-watchlist-api.md) | **Done**
-**FR Coverage:** FR40
-> **Naming note:** Sprint-status tracks as `10-6` but story file in `stories/` is `9-DF-5-workspace-watchlist-api.md`. Rename pending in next cleanup pass.
+### Story 10-6: Workspace Watchlist API (originally drafted as 9-DF-5)
+📄 **Story file**: [`stories/10-6-workspace-watchlist-api.md`](./stories/10-6-workspace-watchlist-api.md) | **Done**
+**FR Coverage:** FR40 (data layer infra) + Epic 10 watchlist consumer.
 
 ---
 
