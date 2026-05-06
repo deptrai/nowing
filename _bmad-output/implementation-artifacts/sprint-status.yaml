@@ -174,7 +174,8 @@ development_status:
   # Round-2 review follow-ups
   11-6-production-go-live-hardening: done
   11-7-resilience-hardening-round2: done
-  11-8-resilience-hardening-round3: backlog        # 2026-05-06: drafted — tool-level _ApiRateLimiter migrate to Redis-coordinated; circuit breaker fail-open policy explicit
+  11-8-redis-coordinated-tool-rate-limiter: backlog        # 2026-05-06: split from old 11-8 — tool-level _ApiRateLimiter migrate to Redis-coordinated (per AC6 phased rollout: Arkham → Dune → Nansen)
+  11-9-circuit-breaker-redis-down-policy: backlog          # 2026-05-06: split from old 11-8 — explicit fail-open/fail-closed/degrade-to-local policy via CIRCUIT_BREAKER_REDIS_DOWN_POLICY env
 
   # ─── EPIC 8: Nowing Desktop & Local Intelligence (Formerly Epic 12) ───
   epic-8: in-progress
@@ -189,11 +190,12 @@ development_status:
   10-1-entity-resolution-smart-money: done        # 2026-05-04 re-review: 15 patches applied, committed (5e14cb04c).
   10-1-1-smart-money-integration: done           # 2026-05-05 code review complete — 36 patches applied (mock removed, threshold 5→3, types tightened, helper extracted, tests realigned with spec sub-task names).
   10-1-2-nansen-failover-dune-arkham: done  # 2026-05-05: story created — Dune + Arkham as free-tier fallbacks when Nansen has no data (404)
-  10-1-3-smart-money-out-of-scope-followup: in-progress    # 2026-05-06: drafted — out-of-scope changes from 10.1.2 (middleware sub-agent fix, DECISION RULE, empty-state UI, FE source_domain plumbing, Nansen TGM endpoint migration) — work landed, story documents retroactively
+  10-1-3-smart-money-out-of-scope-followup: review         # 2026-05-06: implementation landed in commits ac289a1aa/78e47aec1/ffdd915c4; status → review pending 6 staging QA tasks (PEPE, CAKE, comprehensive, reload, source_domain, prod TGM access)
   10-1-4-cohort-taxonomy-reimplementation: review          # 2026-05-06: implementation complete — _classify_cohort heuristic + Sankey color-coding + SankeyLegend; 41 new + 75/75 existing smart money tests pass
   10-1-5-nansen-pagination-multi-page: backlog             # 2026-05-06: drafted — multi-page fetch for accurate net_flow_24h_usd (currently first 30 wallets only)
-  10-1-6-nansen-tgm-tier-detection: backlog                # 2026-05-06: drafted — detect Pro→TGM tier mismatch + customer comms; new TGM endpoint requires higher tier than Pro
-  10-1-7-pre-10-1-1-reload-backward-compat: backlog        # 2026-05-06: drafted — pre-10.1.1 messages may lose Sankey on reload; FE backward-compat read + optional DB migration
+  10-1-6a-nansen-tgm-tier-detection: backlog               # 2026-05-06: split from old 10-1-6 — dev-only tier detection + FE notice + graceful fallback
+  10-1-6b-nansen-tgm-customer-comms: backlog               # 2026-05-06: split from old 10-1-6 — cross-functional (Marketing/Sales/Support/Finance) customer comms post 10-1-6a deploy
+  10-1-7-pre-10-1-1-reload-backward-compat: dismissed      # 2026-05-06: dismissed — SQL audit confirms new_chat_messages has no metadata column → zero legacy rows to migrate
   10-2-protocol-revenue-tokenomics: ready-for-dev
   10-3-narrative-heatmap-macro: ready-for-dev
   10-4-enterprise-risk-management: ready-for-dev

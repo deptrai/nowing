@@ -2,7 +2,7 @@
 
 **Epic:** 10 — Institutional Research & Risk Management Terminal
 **Depends on:** Story 10.1.2 (Nansen Failover — done)
-**Status:** in-progress  *(work already landed in branch; this story documents and reviews scope retroactively)*
+**Status:** review  *(implementation already landed in commits ac289a1aa, 78e47aec1, ffdd915c4; remaining work is QA verification only)*
 **Created:** 2026-05-06
 **Why:** Trong quá trình debug "show smart money flow for cake" user-reported regression, 5 thay đổi out-of-scope của story 10.1.2 đã được áp dụng cùng lúc. Code đã merge, tests pass, nhưng không có spec để traceability/QA/sprint-tracking nắm được scope thật của các thay đổi này.
 
@@ -143,8 +143,15 @@ AND Sankey/empty-state render lại đúng
 - [x] Nansen TGM endpoint migration (AC5)
 - [x] Reload extract `source_domain` from content part (AC6)
 - [x] 4 new tests added (label disambiguation, entity-type filter, source_domain attribution)
-- [ ] **Manual QA on staging:** PEPE (Ethereum, real Sankey), CAKE (BNB, empty-state), full analysis ETH (6 agents)
-- [ ] **Production smoke test:** verify Nansen TGM access works on prod credentials
+
+### Remaining QA tasks (gates story → done)
+
+- [ ] **Staging QA — PEPE:** Login `test@nowing.test`, hỏi "Show smart money flow for PEPE". Expect: 1 tool call (`get_smart_money_flow`), Sankey renders với real data từ Nansen TGM
+- [ ] **Staging QA — CAKE:** Hỏi "Show smart money flow for CAKE". Expect: 1 tool call, `<EmptySmartMoneyState />` renders với caption "No labeled smart money flow"
+- [ ] **Staging QA — Comprehensive:** Hỏi "full crypto analysis for ETH". Expect: 6 sub-agents spawn (`_DIRECTIVE` injected via synthetic-bypass branch; behavior unchanged from pre-10.1.3)
+- [ ] **Staging QA — Reload persistence:** Reload page sau Sankey response. Expect: Sankey + cohort legend persist (verify content part `data-smart-money-flow` reconstructs `metadata.custom.smart_money_flow`)
+- [ ] **Staging QA — `source_domain`:** DevTools Network tab inspect SSE event. Verify payload có `source_domain` field (`nansen.ai`/`arkm.com`/`dune.com`)
+- [ ] **Production smoke test:** Verify production `NANSEN_API_KEY` has TGM tier access. Expect: Sankey với real Nansen data on majors (ETH, USDC). Nếu 403 → escalate to story 10-1-6 (TGM tier detection + comms)
 
 ---
 

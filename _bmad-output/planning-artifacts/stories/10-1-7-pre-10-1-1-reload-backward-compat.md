@@ -2,8 +2,22 @@
 
 **Epic:** 10 — Institutional Research & Risk Management Terminal
 **Depends on:** Story 10.1.1 (Smart Money Integration)
-**Status:** backlog
+**Status:** dismissed
 **Created:** 2026-05-06
+**Closed:** 2026-05-06
+
+## ❌ Dismissed — No Legacy Data Exists
+
+**Decision (2026-05-06):** SQL audit confirms `new_chat_messages` table has **no `metadata` column** in schema — only `content: jsonb`. Pre-10.1.1 implementation never persisted `smart_money_flow` to DB at all (React-side state only, lost on reload pre-10.1.1).
+
+```sql
+SELECT column_name FROM information_schema.columns WHERE table_name = 'new_chat_messages';
+-- Returns: content (jsonb). NO metadata column exists.
+```
+
+→ **Zero legacy rows** to migrate. The hypothetical "pre-10.1.1 reload regression" scenario assumed there was persisted metadata to lose; reality is metadata was always React-only until story 10-1-1 introduced the `data-smart-money-flow` content part.
+
+Story closed without implementation. Backward-compat is automatic since legacy reload path produced no Sankey anyway.
 **Why:** Story 10.1.1 introduced `data-smart-money-flow` content part để persist Sankey data vào DB. Messages persisted **trước khi 10.1.1 ship** không có content part này → reload trang thread cũ làm Sankey biến mất. Cần migration path cho legacy data.
 
 ---
