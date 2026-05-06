@@ -1,10 +1,12 @@
-# Architecture Extension: Institutional Research Terminal (Epic 13)
+# Architecture Extension: Institutional Research Terminal (Epic 10)
+
+> **🔄 Renamed 2026-05-06:** Originally "Epic 13" — renamed to **Epic 10** in sprint-status. Filename `architecture-extension-epic13.md` retained for git history audit; canonical reference now reads "Epic 10". All architectural decisions below remain valid.
 
 **Document Status:** 📝 REVISED (Pragmatic Architecture)
 **Date:** 2026-05-03
 
 ## 1. Introduction & Context
-Epic 13 expands Nowing from a retail co-pilot to an institutional-grade research terminal. This requires processing high-velocity on-chain data and off-chain sentiment streams. 
+Epic 10 (formerly Epic 13) expands Nowing from a retail co-pilot to an institutional-grade research terminal. This requires processing high-velocity on-chain data and off-chain sentiment streams. 
 
 Following the principle of "Boring technology for stability", this architecture aggressively favors 3rd-party APIs and existing infrastructure over deploying complex new distributed systems (e.g., deferring Kafka, Neo4j, and Elasticsearch until absolutely necessary).
 

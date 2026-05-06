@@ -318,7 +318,10 @@ Cấu trúc API (FastAPI) bao gồm:
 - **FR34 (Smart Agent Selection):** Main agent system prompt có instruction để chọn subset agents phù hợp với câu hỏi cụ thể (không spawn cả 10 agents khi user chỉ hỏi về 1 khía cạnh). Lookup table: agent name → chuyên môn → trigger keywords.
 - **FR35 (Graceful Degradation):** Khi 1 hoặc nhiều sub-agents fail (rate limit 429, timeout, API unavailable), main agent vẫn tổng hợp response từ các agents thành công và mention rõ nguồn nào unavailable trong response — không crash toàn bộ analysis.
 
-### Crypto Data Layer Foundation
+### Crypto Data Layer Foundation (Epic 9-DF)
+
+> **Doc-drift note (2026-05-06):** This section was originally labeled "Epic 10" trong PRD edit history `2026-04-29`. Stories đã được renamed `9-DF-1` đến `9-DF-5` (data foundation). Tên "Epic 10" giờ là Institutional Research Terminal (FR49-53). Implementation files: `nowing_backend/app/agents/new_chat/middleware/crypto_data_cache.py`, `app/db/models/crypto_*.py`.
+
 - **FR36 (Crypto Data Schema):** Hệ thống tạo 3 bảng PostgreSQL mới: `crypto_projects` (entity registry với project_id, symbol, coingecko_id, defillama_slug), `crypto_data_snapshots` (append-only timeline với data_category, tool_name, tool_args JSONB, data JSONB, ttl_seconds, expires_at, is_error), và `search_space_crypto_watchlist` (workspace → project link với pin_order). Tất cả crypto tool results được persist với full metadata.
 - **FR37 (Cache Middleware Interception):** `CryptoDataCacheMiddleware` intercept `awrap_tool_call` trước khi gọi external API — check DB cho fresh snapshot (expires_at > NOW()), return cached data nếu có. Nếu miss → gọi API → write snapshot. Middleware đặt sau `SourceAttributionMiddleware` trong stack. Feature flag `CRYPTO_DATA_CACHE_ENABLED` cho phép bật/tắt không cần redeploy. Graceful degradation: nếu DB/Redis fail → pass-through to direct API call, không throw exception.
 - **FR38 (Thundering Herd Protection):** Khi nhiều concurrent requests cùng query token X và cache miss, hệ thống dùng Redis distributed lock (SET NX EX 60s) để đảm bảo chỉ 1 request gọi external API, các requests còn lại double-check DB sau khi acquire lock. Fallback sang `asyncio.Lock` per-process nếu Redis unavailable.
@@ -359,7 +362,7 @@ Cấu trúc API (FastAPI) bao gồm:
 - **NFR-CS3 (API Rate Awareness):** Crypto tools phải handle rate limits gracefully — CoinGecko 30 req/min (hoặc Pro tier nếu upgrade), GoPlus 2000 req/day, CryptoPanic public tier, DeFiLlama unlimited. Khi rate limit hit, agent fallback sang `chainlens_deep_research` hoặc trả error message để main agent xử lý (NFR-Q3 graceful degradation).
 - **NFR-CS4 (Stateless Tools):** Tất cả crypto tools đăng ký với `requires=[]` trong tool registry — không phụ thuộc DB, không cần session state, không cần workspace context. Đảm bảo các agents có thể scale horizontal mà không cần shared state.
 
-### Crypto Data Cache (Epic 10)
+### Crypto Data Cache (Epic 9-DF)
 - **NFR-CS5 (Cache Hit Rate):** Sau warmup period (24h từ khi enable `CRYPTO_DATA_CACHE_ENABLED`), cache hit rate cho top-10 tokens (ETH, BTC, SOL, BNB, etc.) phải ≥ 70% khi có ≥ 10 requests/hour. Đo bằng Prometheus counter `crypto_cache_hits_total / (crypto_cache_hits_total + crypto_cache_misses_total)`.
 - **NFR-CS6 (Cache Failure Isolation):** Khi DB hoặc Redis không khả dụng, `CryptoDataCacheMiddleware` phải tự động bypass và gọi trực tiếp external API — không raise exception, không thay đổi response format, không ảnh hưởng agent execution. P99 overhead của cache layer (khi cache miss) phải < 5ms.
 
