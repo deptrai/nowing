@@ -84,7 +84,7 @@ Nowing là nền tảng tìm kiếm và trích xuất ngữ cảnh (Context Extr
 
 ### User Success
 
-Người dùng trải nghiệm được khoảnh khắc "Aha!" khi nhận được luồng phản hồi (streaming response) từ Agentic RAG ngay lập tức (dưới 1 giây kể từ khi submit) và có thể truy vấn ngữ cảnh/kho tài liệu ở dạng offline mượt mà không khác gì khi có mạng nhờ Zero-cache.
+Người dùng trải nghiệm được khoảnh khắc "Aha!" khi nhận được luồng phản hồi (streaming response) từ Agentic RAG ngay lập tức (TTFT dưới 1.5 giây — see NFR-P1) và có thể truy vấn ngữ cảnh/kho tài liệu ở dạng offline mượt mà không khác gì khi có mạng nhờ Zero-cache.
 
 ### Business Success
 
@@ -197,7 +197,7 @@ Cơ chế Local-first (Zero-cache) đồng bộ hàng nghìn vector và bản gh
 Đa số các công cụ RAG SaaS hiện tại phụ thuộc hoàn toàn vào Cloud (gây lo ngại về bảo mật tài liệu và phụ thuộc internet). Ngược lại, các công cụ Local (chạy LLM trên máy cá nhân) lại thiếu tính liên thông giữa nhiều thiết bị và giới hạn bởi phần cứng nội bộ. Nowing đánh vào khoảng trống ở giữa (Sweet Spot): Nắm giữ độ bảo mật và tốc độ của "Local", đồng thời khai thác sức mạnh khổng lồ của "Cloud LLM/Agents".
 
 ### Validation Approach
-- **Đo lường TTFT:** Đo đạc "Time-to-First-Token", đặt mục tiêu luôn phản hồi dưới 1 giây nhờ việc bớt đi một bước gọi Database trung gian.
+- **Đo lường TTFT:** Đo đạc "Time-to-First-Token", target < 1.5 giây (NFR-P1) nhờ việc bớt đi một bước gọi Database trung gian.
 - **Kiểm thử Offline-to-Online:** Đánh giá khả năng hoạt động (đọc Context/State) bất chấp việc mất mạng và tự động phục hồi sự kiện khi có wifi trở lại.
 
 ### Risk Mitigation
@@ -212,7 +212,7 @@ Nowing kết hợp giữa kiến trúc Single Page Application (SPA) cực kỳ 
 ### Technical Architecture Considerations
 - **Kiến trúc SPA & Real-time:** Next.js sẽ đóng vai trò SPA cung cấp trải nghiệm liền mạch. Trạng thái ứng dụng được đồng bộ real-time mà không cần tải lại trang.
 - **Browser Matrix (Hỗ trợ trình duyệt):** Yêu cầu bắt buộc trên trình duyệt hiện đại (Chrome 90+, Safari 15+, Edge 90+) vì dữ liệu Zero-cache nội bộ phụ thuộc vào WebAssembly và IndexedDB.
-- **Performance Targets:** Giới hạn Time-to-First-Token (TTFT) ở mức dưới 1 giây. Tốc độ đồng bộ Local-DB dưới 2 giây cho một chunk dữ liệu mới.
+- **Performance Targets:** Giới hạn Time-to-First-Token (TTFT) ở mức dưới 1.5 giây (NFR-P1). Tốc độ đồng bộ Local-DB dưới 2 giây cho một chunk dữ liệu mới.
 
 ### Endpoint Specifications
 Cấu trúc API (FastAPI) bao gồm:
@@ -338,7 +338,17 @@ Cấu trúc API (FastAPI) bao gồm:
 - **FR44 (Per-API Token Bucket Rate Limiters):** Per-provider Redis-backed token bucket rate limiter thay vì rely chỉ vào circuit breaker sau 429. Mỗi provider có capacity/refill_rate riêng (CoinGecko 30/min, GoPlus ~33/30min, Etherscan 5/sec, DeFiLlama generous 120/min). Tool chờ tối đa 5s cho bucket refill trước khi return error. In-memory fallback khi Redis unavailable.
 - **FR45 (Client-Side Quota Enforcement):** `useSubscriptionGate()` hook đọc `subscription_current_period_end` từ Zero local cache — redact deep research content (blur + upgrade CTA) khi subscription expired. Hoạt động offline (pure client-side timestamp check). Auto-unlock khi Zero-sync push renewal. Bổ sung cho server-side enforcement — không thay thế.
 
-## Non-Functional Requirements
+### Desktop App & Local Intelligence (Epic 8)
+
+> **Backfilled 2026-05-06** từ epics.md per IR § MD-3 (Desktop FRs missing from PRD body).
+
+- **FR46 (Desktop Backend Lifecycle):** Desktop App (Electron) tự động khởi chạy và quản lý vòng đời của FastAPI Backend cục bộ (đóng gói binary qua PyInstaller). App start → spawn backend process → wait for health endpoint → render UI. App quit → graceful shutdown backend process (SIGTERM, max 5s grace period). Crash recovery: backend death detected qua heartbeat → auto-restart với exponential backoff (1s/2s/4s/max 30s).
+
+- **FR47 (Local File Auto-Sync):** Desktop App tự động đồng bộ Metadata của các file trong thư mục local được chỉ định (configurable, default `~/Documents/Nowing/`) vào Knowledge Base qua Zero-sync mutators. Sử dụng `chokidar` cho file watcher (nodejs library). Workflow: file added/modified → debounce 2s → metadata extracted (filename, path, size, mtime) → mutate Zero local DB → backend Celery worker pulls metadata → embeds content → Zero pushes update back to Desktop UI. Privacy guard: chỉ metadata được sync, file content stays local (encrypted at rest in Zero IndexedDB).
+
+- **FR48 (Hybrid LLM Routing):** Desktop App hỗ trợ định tuyến LLM thông minh giữa Cloud (LiteLLM gateway) và Local (Ollama localhost:11434). Routing decision dựa trên: (a) user preference toggle ("Cloud-first" / "Local-first" / "Auto"), (b) network status (Cloud blocked when offline), (c) request type (Sensitive PDFs route Local nếu Auto + offline). Fallback: Cloud unavailable → automatic fallback Local + UI banner "Switched to local LLM". UI hiển thị rõ ràng provider đang dùng cho mỗi response (badge: "GPT-4o" / "Llama 3.1 8B local").
+
+### Institutional Research Terminal (Epic 10)
 
 ### Performance
 - **NFR-P1 (Time to First Token - TTFT):** Hệ thống bắt buộc phải phản hồi ký tự đầu tiên từ AI Agent thông qua SSE dưới 1.5 giây kể từ khi user nhấn Submit.
@@ -379,12 +389,79 @@ Cấu trúc API (FastAPI) bao gồm:
 - **NFR-P5 (Rate Limit Prevention):** Per-API token bucket phải prevent > 95% of 429 responses từ external providers (so với baseline không có rate limiter). Đo bằng `http_429_total` counter before/after deployment.
 
 ### Institutional Research Terminal (Epic 10)
-- **FR49 (Entity Resolution):** Gom nhóm tự động các ví (wallets) và phân tích dòng tiền (Smart Money Flow) thông qua biểu đồ Sankey. Tự động phát hiện ví Insider/Dev.
-- **FR50 (Protocol Revenue Modeling):** Phân tích P/E, P/S ratio dựa trên dữ liệu DefiLlama/Token Terminal. AI đọc lịch vesting từ contract để dựng biểu đồ áp lực bán trong 12 tháng.
-- **FR51 (Narrative & Macro Correlation):** NLP Heatmap quét Governance Forums, Github, Twitter để dự báo trend. Ma trận tương quan với các chỉ số vĩ mô (DXY, NASDAQ).
-- **FR52 (Enterprise Risk Management):** Portfolio stress testing dưới kịch bản sụp đổ, AI scan lỗi smart contract và rủi ro pháp lý (ví dụ: bị SEC phân loại là chứng khoán).
-- **FR53 (Liquidity Routing):** Profiler phân tích độ sâu sổ lệnh trên CEX/DEX để gợi ý chiến lược xả hàng/gom hàng lớn tối ưu slippage, cùng scanner tìm yield an toàn trên đa chuỗi.
 
-: bị SEC phân loại là chứng khoán).
-- **FR53 (Liquidity Routing):** Profiler phân tích độ sâu sổ lệnh trên CEX/DEX để gợi ý chiến lược xả hàng/gom hàng lớn tối ưu slippage, cùng scanner tìm yield an toàn trên đa chuỗi.
+> **ACs deepened 2026-05-06** từ 1-line per FR sang G/W/T patterns per IR § HI-1. Original story files (`10-1`...`10-5`) đã có ACs đầy đủ; PRD-level ACs mirror để traceability.
 
+- **FR49 (Entity Resolution + Smart Money Sankey):**
+  - **Acceptance:**
+    - **GIVEN** user types token address hoặc symbol (e.g., "$PEPE", "0x6982...")
+    - **WHEN** `get_smart_money_flow` tool dispatches
+    - **THEN** DexScreener resolves symbol → EVM address (cached 1h), Nansen TGM endpoint queries `who-bought-sold` past 24h
+    - **AND** Sankey Diagram renders với cohort color-coding (smart_money green / cex orange / dex blue / insider red / retail gray / unknown light-gray)
+    - **AND** SankeyLegend displays per-cohort wallet count + net flow USD
+  - **AND GIVEN** Nansen returns empty wallets (token not in TGM index)
+    - **WHEN** fallback chain triggers
+    - **THEN** Arkham Intelligence (`/transfers` API) tried first → if empty/unavailable, Dune Analytics community query (#7431659) tried
+    - **AND** all paths cap rate-limit budget (Arkham 1/s, Dune 15/min, Nansen 100/min)
+  - **AND GIVEN** all 3 providers return empty (e.g., CAKE on BNB Chain, Nowing only Ethereum-indexed)
+    - **WHEN** wrapper builds final response
+    - **THEN** EmptySmartMoneyState component renders với caption "No labeled smart money flow" + alternative-chain hint
+    - **AND** `source_domain="nansen.ai"` (last-attempted, valid favicon URL)
+
+- **FR50 (Protocol Revenue Modeling):**
+  - **Acceptance:**
+    - **GIVEN** user requests fundamentals analysis cho token (e.g., $UNI, $AAVE)
+    - **WHEN** agent dispatches `tokenomics_analyst` với data từ DefiLlama/Token Terminal
+    - **THEN** Context Pane renders summary table: Protocol Revenue (30D, 1Y), Token Incentives (Inflation), Real Yield, P/E Ratio, P/S Ratio
+    - **AND** LLM tự động so sánh với sector average (e.g., "P/E của UNI rẻ hơn 30% so với DEX category mean")
+  - **AND GIVEN** vesting schedule data (TokenUnlocks, public endpoints)
+    - **WHEN** user opens "Vesting Chart" widget
+    - **THEN** chart hiển thị Projected Circulating Supply (12-36 tháng) + cột mark các unlock events lớn
+    - **AND** "Estimated Sell Pressure" được tính từ unlock amount × current liquidity depth ratio
+  - **AND GIVEN** Tokenomics Sandbox loaded với base parameters (burn rate, emission, staking ratio)
+    - **WHEN** user drags slider để tinh chỉnh giả định
+    - **THEN** chart projection (Market Cap & Token Price) cập nhật **client-side < 150ms** (no API call)
+    - **AND** auto-save sandbox state cho session restore
+
+- **FR51 (Narrative & Macro Correlation):**
+  - **Acceptance:**
+    - **GIVEN** Celery beat task fetches social/governance data (Twitter, GitHub commit velocity, Snapshot proposals)
+    - **WHEN** user opens Narrative Heatmap widget
+    - **THEN** Treemap visualization render với:
+      - **Cell size:** Volume thảo luận trong 7-day window
+      - **Cell color:** Sentiment (red ← negative, green → positive) qua VADER + LLM scoring hybrid
+    - **AND** narratives covered: AI/ML, RWA (Real-World Assets), DeFi, Memecoins, Layer 2s, Restaking
+  - **AND GIVEN** user clicks on narrative cell ("RWA")
+    - **WHEN** drill-down view opens
+    - **THEN** sub-treemap hiển thị top tokens trong narrative đó với same volume/sentiment encoding
+  - **AND GIVEN** user requests macro correlation
+    - **WHEN** agent compares token price series với DXY, NASDAQ, BTC dominance, ETH/BTC ratio
+    - **THEN** correlation matrix renders với rolling 30/90-day Pearson coefficients
+    - **AND** flag any |r| > 0.7 (strong correlation) hoặc < -0.5 (inverse)
+
+- **FR52 (Enterprise Risk Management):**
+  - **Acceptance:**
+    - **GIVEN** user uploads/configures portfolio (basket of N tokens với weights)
+    - **WHEN** user runs "Stress Test" với scenario presets (BTC -30% / ETH -50% / Stablecoin depeg / SEC enforcement action)
+    - **THEN** scenario engine (client-side) calculates portfolio MTM under each scenario
+    - **AND** displays loss waterfall: per-token loss × correlation contagion factor
+  - **AND GIVEN** user requests smart contract risk audit
+    - **WHEN** `smart_contract_analyst` agent dispatches via GoPlus + CertiK
+    - **THEN** report covers: known vulnerabilities, audit history, proxy admin keys, mint capability, blacklist function
+    - **AND** flag tokens với "transfer fee > 5%" hoặc "non-renounced ownership"
+  - **AND GIVEN** regulatory risk assessment
+    - **WHEN** agent queries SEC enforcement DB + token classification heuristics
+    - **THEN** assigns Howey-test risk score (low/medium/high) với supporting reasoning
+    - **AND** explicitly flags tokens với pending SEC actions hoặc Wells notices
+
+- **FR53 (Liquidity Routing):**
+  - **Acceptance:**
+    - **GIVEN** user wants to execute large trade ($100k+ USDC into illiquid token)
+    - **WHEN** Liquidity Routing Profiler dispatched
+    - **THEN** profiler analyzes order book depth across CEX (Binance, Coinbase, Kraken) + DEX pools (Uniswap V3 multi-tick, Curve, Balancer)
+    - **AND** outputs optimal split routing với slippage estimate per venue: "Route 60% Binance @ 0.12% slippage, 40% Uniswap V3 0.05% pool @ 0.08% slippage"
+  - **AND GIVEN** user wants yield discovery
+    - **WHEN** Yield Scanner runs across multi-chain (Ethereum, Arbitrum, Base, Optimism, Polygon)
+    - **THEN** ranks pools by `risk_adjusted_apy = base_apy / (audit_score × tvl_score)` formula
+    - **AND** filters out: pools with TVL < $1M, audit_score = N/A, smart_contract risk = high
+    - **AND** displays results với 3 risk tiers (Conservative / Moderate / Aggressive) — see story 9.4 yield_optimizer

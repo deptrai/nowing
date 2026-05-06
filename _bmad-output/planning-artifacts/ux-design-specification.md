@@ -831,3 +831,236 @@ Cài đặt Workspace, thanh toán Gift Subscription, đổi thông số Tokenom
   - 🟡 Delayed (Dữ liệu cách đây X phút)
   - 🔴 Stale (Mất kết nối với Stream, đang hiển thị cache).
 - **Skeleton Loaders:** Khi load các biểu đồ nặng, hiển thị khung xương (Skeleton) với hình dáng của biểu đồ thay vì spinner tròn đơn điệu.
+
+
+---
+
+## Phụ lục C: UX Design cho Epic 8 (Nowing Desktop & Local Intelligence)
+
+> **Added 2026-05-06** per IR § UX-HI-1 — Desktop UX missing. Required before story 8-1 enters dev.
+
+**Goal:** Mở rộng Nowing từ web app sang Native Desktop App (Electron) với tích hợp file system local, hybrid LLM routing, và offline-first patterns. Desktop App giữ design language consistent với web (shadcn/ui + Tailwind + Inter typography) nhưng bổ sung patterns native cho Mac/Windows/Linux.
+
+### 1. Desktop-Specific Layout Patterns
+
+#### 1.1. Native Window Chrome
+- **macOS:** Traffic light buttons (close/minimize/maximize) ở top-left, custom title bar có thể drag, frameless window option cho minimalist mode.
+- **Windows/Linux:** Standard chrome controls top-right, custom Mica-style background trên Windows 11.
+- **Common:** App icon trong title bar, breadcrumb-style chat thread ID hiển thị giữa title bar.
+
+#### 1.2. System Tray Integration
+- **Tray icon** (16x16 / 32x32 hi-res) hiển thị màu sắc theo backend status:
+  - Green: Backend running, network online
+  - Yellow: Backend running, offline mode (Cloud LLM unreachable)
+  - Red: Backend crashed (auto-restart attempting)
+- **Tray menu:** "Open Nowing", "Toggle Local LLM (Auto/Cloud-first/Local-first)", "Pause File Sync", "Quit". Right-click contextual menu.
+- **Notifications:** Native OS notifications cho background events (file sync done, embedding finished, Cloud→Local LLM switch).
+
+#### 1.3. Main Window Layout
+- **Identical to web** (Split-pane: Chat trái 60%, Context Pane phải 40%). Desktop adds:
+  - **Left sidebar (collapsible):** File tree của watched directories, drag-drop targets
+  - **Bottom status bar (24px height):**
+    - LLM provider badge: "GPT-4o" (cloud) hoặc "Llama 3.1 8B" (local)
+    - Network indicator: 🟢 Online / 🟡 Slow / 🔴 Offline
+    - File sync indicator: "5 files queued" / "✓ Synced 2m ago"
+    - Backend health: "🟢 Backend OK" / "🟡 Restarting..." / "🔴 Crashed"
+
+### 2. File Watcher UX (FR47)
+
+#### 2.1. Watched Directory Configuration
+- **Settings → Local Files panel:**
+  - Default: `~/Documents/Nowing/` (auto-created on first run)
+  - User can add multiple directories với folder picker (native OS dialog)
+  - Per-directory toggles: "Include subfolders", "Exclude file types" (regex)
+  - Storage cap warning: "Watching > 10GB may slow indexing — confirm?"
+
+#### 2.2. Sync Progress Visualization
+- **First-time sync of large directory** (>1000 files):
+  - Modal dialog với progress bar + ETA: "Indexing 2,341 files... ~3 min remaining"
+  - Cancellable button: "Pause sync" → resume from checkpoint trên next launch
+  - **NO blocking UI** — user can chat normally while index continues background
+- **Ongoing sync** (incremental):
+  - Toast notification khi file added: "File analysis.pdf indexed"
+  - Bottom status bar shows queue depth: "5 files queued"
+
+#### 2.3. Privacy Indicators
+- **File metadata only sync — NO content uploaded by default**
+- File list trong sidebar có 🔒 icon next to file name → tooltip: "Stored locally only. Not synced to cloud."
+- "Send to Cloud" override per-file (right-click menu): explicit consent before content leaves device.
+
+### 3. Hybrid LLM Routing UX (FR48)
+
+#### 3.1. Provider Selection
+- **Settings → AI Models panel:**
+  - 3 routing modes (radio):
+    - "Cloud-first" (default — GPT-4o/Claude prioritized, fallback Local nếu offline)
+    - "Local-first" (Ollama prioritized — privacy max, fallback Cloud nếu Local model unavailable)
+    - "Auto" (smart routing dựa trên: query complexity, sensitive content detection, network status)
+  - Local model picker (dropdown): "Llama 3.1 8B" / "Mistral 7B" / "Phi-3.5 Mini" / "Custom Ollama tag..."
+  - Cloud model picker: respects existing `/dashboard/settings/models` config
+
+#### 3.2. Per-Message Provider Indicator
+- **Mỗi assistant message** hiển thị badge phía trên text:
+  - "💎 GPT-4o" (cloud, premium)
+  - "🏠 Llama 3.1 8B (local)" (offline mode)
+  - "⚡ Auto: Llama 3.1 8B" (auto mode picked local)
+- Hover tooltip: "Why this model? — Auto mode detected sensitive PDF content; routed to local for privacy."
+
+#### 3.3. Provider Switch Animation
+- Khi routing engine switches mid-conversation (e.g., network drops):
+  - Toast: "Switched to local LLM (Llama 3.1 8B)" — duration 4s, dismissable
+  - Bottom status bar updates network + LLM indicator
+  - **No interruption** to active streaming — current response completes on existing provider, next message uses new provider
+
+### 4. Offline States (FR48 + FR10/11 extensions)
+
+#### 4.1. Online → Offline Transition
+- **Detection:** Native OS network event (`navigator.onLine === false`) + Cloud health check fail
+- **UI changes:**
+  - Bottom status bar 🟢 → 🔴 với label "Offline"
+  - Cloud LLM models grayed-out trong picker
+  - "Send" button stays enabled (Local LLM available)
+  - File sync indicator: "Paused (offline)"
+  - **Critically:** Existing chat threads remain fully readable (Zero-cache + IndexedDB)
+
+#### 4.2. Offline-Locked Features
+- Disable với clear messaging:
+  - Cloud-only models: blur card với "Requires online connection" overlay
+  - Stripe billing pages: redirect to "Settings only available online" placeholder
+  - Deep research (Chainlens API): show banner "Deep research unavailable offline; using local Ollama for general analysis"
+
+#### 4.3. Offline → Online Recovery
+- **Detection:** Network restored + Cloud health check pass
+- **Auto-recovery flow:**
+  - Toast: "Back online — syncing 5 queued files"
+  - Bottom status bar 🔴 → 🟢
+  - Background: file sync resumes, Zero pushes pending mutations
+  - User-visible: cloud model picker re-enables, premium features unblock
+
+### 5. Settings & Configuration
+
+#### 5.1. Settings Window Pattern
+- Native preferences pattern:
+  - macOS: Cmd+, opens preferences window (separate from main)
+  - Windows/Linux: Settings menu item opens within main window panel
+- Tabs: General / Local Files / AI Models / Notifications / Advanced (Backend logs)
+
+#### 5.2. Backend Logs Panel (Advanced tab)
+- Shows last 200 lines của FastAPI backend stdout/stderr (FR46)
+- "Restart backend" button (graceful)
+- "Open backend log file" → opens system file manager với log path highlighted
+- Health metrics: PID, uptime, memory usage, queue depth
+
+### 6. Cross-Platform Consistency
+
+#### 6.1. Keyboard Shortcuts
+| Action | macOS | Windows/Linux |
+|---|---|---|
+| New chat | Cmd+N | Ctrl+N |
+| Toggle file sync | Cmd+Shift+S | Ctrl+Shift+S |
+| Switch LLM provider | Cmd+L | Ctrl+L |
+| Open settings | Cmd+, | Ctrl+, |
+| Quit | Cmd+Q | Ctrl+Q |
+
+#### 6.2. File Drag-Drop
+- Drop files onto:
+  - Chat input → "Attach to current message"
+  - Sidebar file tree → "Add to watched directory"
+  - Knowledge Base panel → "Upload + index immediately"
+
+#### 6.3. Context Menu Patterns
+- Native right-click menus throughout (use Electron `contextBridge` + native menu API):
+  - Chat message: Copy / Quote / Branch / Delete
+  - File in sidebar: Open / Reveal in Finder/Explorer / Re-index / Remove from watch
+  - Citation badge: Open source / Copy URL / Compare with another source
+
+---
+
+> **End of Phụ lục C — Desktop UX.** Required reading before story 8-1 (Desktop Backend Lifecycle) enters dev.
+
+
+---
+
+## Phụ lục D: UX Design cho Epic 6 (Gift Subscription) — Backfilled
+
+> **Backfilled 2026-05-06** per IR § MD-1 — Epic 6 đã ship 100% (9 stories done) but UX spec không reflect. Section này document patterns đã built post-hoc cho consistency reference.
+
+### 1. Gift Purchase Flow (FR18-FR20)
+
+#### 1.1. Entry Points
+- **Pricing page banner:** "Tặng quà cho bạn bè — Gift PRO subscription" CTA → `/gift/buy`
+- **Settings → Subscription:** "Mua làm quà" button next to user's own plan management
+- **Empty workspace state:** Subtle "Got Nowing PRO from a friend? Redeem here" link
+
+#### 1.2. `/gift/buy` Page Layout
+- **Above fold:**
+  - Heading: "Tặng Nowing PRO làm quà"
+  - Sub: "Chọn plan + thời hạn → thanh toán → nhận gift code chia sẻ"
+  - Plan selector (cards): PRO (1mo / 3mo / 6mo / 12mo), price highlighted với discount badge cho yearly (e.g., "Save 20%")
+- **Below fold:**
+  - Recipient details (optional): email để Nowing gửi notification thay người mua
+  - Personal message (textarea, 280 chars max)
+  - Stripe Checkout button: "Thanh toán $X via Stripe"
+
+#### 1.3. Post-Purchase Confirmation
+- Stripe webhook fires → email với gift code: `GIFT-XXXX-XXXX-XXXX`
+- In-app modal: "Mã quà tặng của bạn"
+  - Copy button (large, primary): "Copy code"
+  - Share buttons: Email / Telegram / WhatsApp / X (pre-filled message)
+  - 90-day expiry countdown ("Valid until DD/MM/YYYY")
+  - "Xem lịch sử quà tặng đã mua" link → `/gift/history`
+
+#### 1.4. Admin-Approval Fallback (FR23)
+- GIVEN Stripe env not configured → "Mua quà" button shows secondary state: "Submit request — admin approval required"
+- Submission form: same as Stripe path but ends với "Yêu cầu đã gửi" confirmation thay vì payment
+- Email to user khi admin approves: gift code arrives within 24h
+- Admin UI: `/admin/gift-requests` table với approve/reject actions
+
+### 2. Gift Redemption Flow (FR21-FR22)
+
+#### 2.1. Entry Points
+- Direct link from email: `/redeem?code=GIFT-XXXX-XXXX-XXXX` (auto-fills code)
+- Manual entry: `/redeem` page với code input
+- In-app banner cho new signups: "Got a gift code? Redeem here"
+
+#### 2.2. `/redeem` Page Layout
+- Code input: monospace font, auto-uppercase, 4-4-4 segment display với hyphen separators
+- "Validate" button → backend checks: format / not used / not expired / signature valid
+- Success state:
+  - "✓ Valid gift code" với plan + duration shown
+  - User auth gate: "Đăng nhập để kích hoạt" (existing user) / "Đăng ký để kích hoạt" (new user)
+  - Post-auth: subscription instantly active, redirect to `/dashboard` với toast "PRO activated!"
+- Error states (clear, actionable):
+  - Invalid format: "Mã không hợp lệ — kiểm tra lại 12 ký tự"
+  - Already used: "Mã này đã được dùng vào DD/MM/YYYY"
+  - Expired: "Mã đã hết hạn vào DD/MM/YYYY. Liên hệ người gửi để xin mã mới."
+
+#### 2.3. Stacking Logic Visualization (FR22)
+- GIVEN user already has active subscription → modal explains stacking:
+  - Current expiry: "DD/MM/YYYY"
+  - Gift duration: "+ 3 tháng PRO"
+  - New expiry: "DD/MM/YYYY (3 tháng later)"
+  - Confirm button: "Xác nhận kích hoạt"
+
+### 3. Gift History & Management
+
+#### 3.1. `/gift/history` Page
+- Table columns: Code (masked) / Recipient email / Plan / Status (Pending/Active/Expired) / Purchase date
+- Filter: All / Active / Used / Expired
+- Resend button cho codes chưa redeem (resend email với code)
+- Cannot revoke after redeem (legal commitment)
+
+### 4. Visual Patterns (already shipped)
+
+- **Gift code monospace styling:** `font-family: 'JetBrains Mono'`, letter-spacing wide cho readability
+- **Plan badges:** PRO 3mo (silver), PRO 6mo (gold), PRO 12mo (platinum) — visual hierarchy
+- **Expiry urgency colors:**
+  - >30 days: green
+  - 7-30 days: yellow
+  - <7 days: red với "Hết hạn sớm" warning
+
+### 5. A11y Notes
+- Gift code field: `aria-label="Gift code 12-character format GIFT-XXXX-XXXX-XXXX"`
+- Plan selector: keyboard-navigable cards với visible focus rings
+- Confirmation dialogs: focus trapped, Esc dismisses
+- Toast notifications: `role="status"` for screen readers
