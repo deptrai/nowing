@@ -24,6 +24,34 @@ def is_ffmpeg_installed():
     return shutil.which("ffmpeg") is not None
 
 
+def _bootstrap_global_llm_config_from_env() -> None:
+    """Materialize global_llm_config.yaml from an env var on first load.
+
+    The YAML carries provider API keys, so it is .gitignored and never baked
+    into the image. On hosted deploys (Dokploy/containers) we ship it as a
+    base64-encoded env var GLOBAL_LLM_CONFIG_B64 (same pattern as other
+    secrets) and write it to disk once at startup if the file is absent.
+
+    No-op when the env var is unset or the file already exists.
+    """
+    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
+    if global_config_file.exists():
+        return
+    b64 = os.getenv("GLOBAL_LLM_CONFIG_B64")
+    if not b64:
+        return
+    try:
+        import base64
+
+        decoded = base64.b64decode(b64).decode("utf-8")
+        # Validate it parses as YAML before writing — avoid persisting garbage
+        yaml.safe_load(decoded)
+        global_config_file.write_text(decoded, encoding="utf-8")
+        print("Bootstrapped global_llm_config.yaml from GLOBAL_LLM_CONFIG_B64")
+    except Exception as e:  # noqa: BLE001 — never crash startup over optional config
+        print(f"Warning: failed to bootstrap global_llm_config from env: {e}")
+
+
 def load_global_llm_configs():
     """
     Load global LLM configurations from YAML file.
@@ -32,6 +60,7 @@ def load_global_llm_configs():
     Returns:
         list: List of global LLM config dictionaries, or empty list if file doesn't exist
     """
+    _bootstrap_global_llm_config_from_env()
     # Try main config file first
     global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
 
