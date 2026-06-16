@@ -9,5 +9,4 @@ export const baseOptions: BaseLayoutProps = {
 			</>
 		),
 	},
-	githubUrl: "https://github.com/MODSetter/Nowing",
 };

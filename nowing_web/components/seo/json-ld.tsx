@@ -23,7 +23,6 @@ export function OrganizationJsonLd() {
 			description:
 				"Open source NotebookLM alternative for teams with no data limits. Use ChatGPT, Claude AI, and any AI model for free.",
 				sameAs: [
-					"https://github.com/MODSetter/Nowing",
 					"https://discord.gg/Cg2M4GUJ",
 				],
 				contactPoint: {
@@ -75,13 +74,13 @@ export function SoftwareApplicationJsonLd() {
 					description: "Free plan with 500 pages included",
 				},
 			description:
-				"Open source NotebookLM alternative with free access to ChatGPT, Claude AI, and any model. Connect Slack, Google Drive, Notion, Confluence, GitHub, and dozens more data sources.",
+				"Open source NotebookLM alternative with free access to ChatGPT, Claude AI, and any model. Connect Slack, Google Drive, Notion, Confluence, and dozens more data sources.",
 				url: "https://nowing.com",
-				downloadUrl: "https://github.com/MODSetter/Nowing/releases",
+				downloadUrl: "https://nowing.com",
 			featureList: [
 				"Free access to ChatGPT, Claude AI, and any AI model",
 				"AI-powered semantic search across all connected tools",
-				"Federated search across Slack, Google Drive, Notion, Confluence, GitHub",
+				"Federated search across Slack, Google Drive, Notion, and Confluence",
 				"No data limits with open source self-hosting",
 				"Real-time collaborative team chats",
 				"Document Q&A with citations",

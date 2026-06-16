@@ -1,6 +1,5 @@
 import {
 	IconBrandDiscord,
-	IconBrandGithub,
 	IconBrandLinkedin,
 	IconBrandTwitter,
 } from "@tabler/icons-react";
@@ -53,11 +52,6 @@ export function FooterNew() {
 			title: "LinkedIn",
 			href: "https://www.linkedin.com/company/nowing/",
 			icon: IconBrandLinkedin,
-		},
-		{
-			title: "GitHub",
-			href: "https://github.com/MODSetter",
-			icon: IconBrandGithub,
 		},
 		{
 			title: "Discord",

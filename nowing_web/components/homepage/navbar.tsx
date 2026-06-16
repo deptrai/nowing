@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { SignInButton } from "@/components/auth/sign-in-button";
-import { NavbarGitHubStars } from "@/components/homepage/github-stars-badge";
 import { Logo } from "@/components/Logo";
 import { ThemeTogglerComponent } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -128,7 +127,6 @@ const DesktopNav = ({ navItems, isScrolled, scrolledBgClassName }: DesktopNavPro
 				>
 					<IconBrandReddit className="h-5 w-5 text-neutral-600 dark:text-neutral-300" />
 				</Link>
-				<NavbarGitHubStars className="hidden md:flex" />
 				<ThemeTogglerComponent />
 				<SignInButton variant="desktop" />
 			</div>
@@ -227,7 +225,6 @@ const MobileNav = ({ navItems, isScrolled, scrolledBgClassName }: MobileNavProps
 							>
 								<IconBrandReddit className="h-5 w-5 text-neutral-600 dark:text-neutral-300" />
 							</Link>
-							<NavbarGitHubStars className="rounded-lg" />
 							<ThemeTogglerComponent />
 						</div>
 						<SignInButton variant="mobile" />

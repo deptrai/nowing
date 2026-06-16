@@ -1,22 +1,11 @@
 "use client";
-import { ChevronDown, Download, Monitor } from "lucide-react";
+import { Monitor } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import Balancer from "react-wrap-balancer";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ExpandedMediaOverlay, useExpandedMedia } from "@/components/ui/expanded-gif-overlay";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-	GITHUB_RELEASES_URL,
-	getAssetLabel,
-	usePrimaryDownload,
-} from "@/lib/desktop-download-utils";
 import { AUTH_TYPE, BACKEND_URL } from "@/lib/env-config";
 import { trackLoginAttempt } from "@/lib/posthog/events";
 import { cn } from "@/lib/utils";
@@ -162,7 +151,6 @@ export function HeroSection() {
 					</p>
 
 						<div className="relative mb-4 flex w-full flex-col justify-center gap-y-2 sm:flex-row sm:justify-start sm:space-y-0 sm:space-x-4">
-							<DownloadButton />
 							<GetStartedButton />
 						</div>
 					</div>
@@ -201,68 +189,6 @@ function GetStartedButton() {
 		>
 			Get Started
 		</Link>
-	);
-}
-
-function DownloadButton() {
-	const { os, primary, alternatives } = usePrimaryDownload();
-
-	const fallbackUrl = GITHUB_RELEASES_URL;
-
-	if (!primary) {
-		return (
-			<a
-				href={fallbackUrl}
-				target="_blank"
-				rel="noopener noreferrer"
-				className="flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white text-center text-base font-medium text-neutral-700 shadow-sm transition duration-150 active:scale-98 hover:bg-neutral-50 sm:w-auto sm:px-6 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-			>
-				<Download className="size-4" />
-				Download for {os}
-			</a>
-		);
-	}
-
-	return (
-		<div className="flex h-14 w-full items-stretch sm:w-auto">
-			<a
-				href={primary.url}
-				className="flex flex-1 items-center justify-center gap-2 rounded-l-lg border border-r-0 border-neutral-200 bg-white px-5 text-base font-medium text-neutral-700 shadow-sm transition duration-150 active:scale-[0.99] hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-			>
-				<Download className="size-4 shrink-0" />
-				Download for {os}
-			</a>
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<button
-						type="button"
-						className="flex items-center justify-center rounded-r-lg border border-neutral-200 bg-white px-2.5 text-neutral-500 shadow-sm transition duration-150 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800"
-					>
-						<ChevronDown className="size-4" />
-					</button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end" className="w-64">
-					{alternatives.map((asset) => (
-						<DropdownMenuItem key={asset.name} asChild>
-							<a href={asset.url} className="cursor-pointer">
-								<Download className="mr-2 size-3.5" />
-								{getAssetLabel(asset.name)}
-							</a>
-						</DropdownMenuItem>
-					))}
-					<DropdownMenuItem asChild>
-						<a
-							href={fallbackUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="cursor-pointer"
-						>
-							All downloads
-						</a>
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
-		</div>
 	);
 }
 

@@ -3,7 +3,6 @@
 import {
 	Check,
 	ChevronUp,
-	Download,
 	ExternalLink,
 	Info,
 	Languages,
@@ -30,8 +29,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { useLocaleContext } from "@/contexts/LocaleContext";
-import { usePlatform } from "@/hooks/use-platform";
-import { GITHUB_RELEASES_URL, usePrimaryDownload } from "@/lib/desktop-download-utils";
 import { APP_VERSION } from "@/lib/env-config";
 import { cn } from "@/lib/utils";
 import type { User } from "../../types/layout.types";
@@ -54,7 +51,6 @@ const THEMES = [
 
 const LEARN_MORE_LINKS = [
 	{ key: "documentation" as const, href: "https://nowing.com/docs" },
-	{ key: "github" as const, href: "https://github.com/MODSetter/Nowing" },
 ];
 
 interface SidebarUserProfileProps {
@@ -152,13 +148,10 @@ export function SidebarUserProfile({
 }: SidebarUserProfileProps) {
 	const t = useTranslations("sidebar");
 	const { locale, setLocale } = useLocaleContext();
-	const { isDesktop } = usePlatform();
-	const { os, primary } = usePrimaryDownload();
 	const [isLoggingOut, setIsLoggingOut] = useState(false);
 	const bgColor = stringToColor(user.email);
 	const initials = getInitials(user.email);
 	const displayName = user.name || user.email.split("@")[0];
-	const downloadUrl = primary?.url ?? GITHUB_RELEASES_URL;
 
 	const handleLanguageChange = (newLocale: "en" | "es" | "pt" | "hi" | "zh") => {
 		setLocale(newLocale);
@@ -299,15 +292,6 @@ export function SidebarUserProfile({
 								</DropdownMenuSubContent>
 							</DropdownMenuPortal>
 						</DropdownMenuSub>
-
-						{!isDesktop && (
-							<DropdownMenuItem asChild className="font-medium">
-								<a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-									<Download className="h-4 w-4" strokeWidth={2.5} />
-									{t("download_for_os", { os })}
-								</a>
-							</DropdownMenuItem>
-						)}
 
 						<DropdownMenuSeparator className="dark:bg-neutral-700" />
 
@@ -453,15 +437,6 @@ export function SidebarUserProfile({
 							</DropdownMenuSubContent>
 						</DropdownMenuPortal>
 					</DropdownMenuSub>
-
-					{!isDesktop && (
-						<DropdownMenuItem asChild className="font-medium">
-							<a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-								<Download className="h-4 w-4" strokeWidth={2.5} />
-								{t("download_for_os", { os })}
-							</a>
-						</DropdownMenuItem>
-					)}
 
 					<DropdownMenuSeparator className="dark:bg-neutral-700" />
 
