@@ -24,11 +24,11 @@ export const BACKEND_URL = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http:
 export const ETL_SERVICE = process.env.NEXT_PUBLIC_ETL_SERVICE || "DOCLING";
 
 // Deployment Mode: "self-hosted" or "cloud"
-// Matches backend's NOWING_DEPLOYMENT_MODE - defaults to "self-hosted"
-// self-hosted: Full access to local file system connectors (Obsidian, etc.)
-// cloud: Only cloud-based connectors available
+// Matches backend's NOWING_DEPLOYMENT_MODE - defaults to "cloud" (SaaS)
+// self-hosted: Full access to local file system connectors (Obsidian, etc.) + BYOK model config
+// cloud: System-managed models (no BYOK), only cloud-based connectors available
 // Placeholder: __NEXT_PUBLIC_DEPLOYMENT_MODE__
-export const DEPLOYMENT_MODE = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE || "self-hosted";
+export const DEPLOYMENT_MODE = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE || "cloud";
 
 // App version - defaults to package.json version
 // Can be overridden at build time with NEXT_PUBLIC_APP_VERSION for full git tag version

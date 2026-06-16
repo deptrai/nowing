@@ -3,9 +3,9 @@ import { BreadcrumbNav } from "@/components/seo/breadcrumb-nav";
 import PricingBasic from "@/components/pricing/pricing-section";
 
 export const metadata: Metadata = {
-	title: "Pricing | Nowing - Free AI Search Plans",
+	title: "Pricing | Nowing - AI Knowledge Platform for Teams",
 	description:
-		"Explore Nowing plans and pricing. Use ChatGPT, Claude AI, and any AI model free. Open source NotebookLM alternative for teams.",
+		"Explore Nowing plans and pricing. The AI knowledge platform for teams — cited answers, reports, and podcasts from your documents and connectors.",
 	alternates: {
 		canonical: "https://nowing.com/pricing",
 	},

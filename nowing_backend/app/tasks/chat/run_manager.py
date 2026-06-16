@@ -139,7 +139,7 @@ async def start_run(
         session_id=session_id,
         langgraph_thread_id=langgraph_thread_id,
         user_query=user_query,
-        llm_config_id=llm_config_id if llm_config_id >= 0 else None,
+        llm_config_id=llm_config_id if llm_config_id > 0 else None,
         model_id=model_id,
         mentioned_document_ids=mentioned_document_ids,
         disabled_tools=disabled_tools,

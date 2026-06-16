@@ -21,7 +21,7 @@ export function OrganizationJsonLd() {
 				url: "https://nowing.com",
 				logo: "https://nowing.com/logo.png",
 			description:
-				"Open source NotebookLM alternative for teams with no data limits. Use ChatGPT, Claude AI, and any AI model for free.",
+				"The AI knowledge platform for teams. Turn your documents, connectors, and conversations into cited answers, reports, and podcasts.",
 				sameAs: [
 					"https://discord.gg/Cg2M4GUJ",
 				],
@@ -44,7 +44,7 @@ export function WebSiteJsonLd() {
 				name: "Nowing",
 				url: "https://nowing.com",
 			description:
-				"Open source NotebookLM alternative for teams with no data limits. Free ChatGPT, Claude AI, and any AI model.",
+				"The AI knowledge platform for teams. Turn your documents, connectors, and conversations into cited answers, reports, and podcasts.",
 				potentialAction: {
 					"@type": "SearchAction",
 					target: {
@@ -74,20 +74,20 @@ export function SoftwareApplicationJsonLd() {
 					description: "Free plan with 500 pages included",
 				},
 			description:
-				"Open source NotebookLM alternative with free access to ChatGPT, Claude AI, and any model. Connect Slack, Google Drive, Notion, Confluence, and dozens more data sources.",
+				"The AI knowledge platform for teams. Connect Slack, Google Drive, Notion, Confluence, and dozens more data sources, then get cited answers, reports, and podcasts.",
 				url: "https://nowing.com",
 				downloadUrl: "https://nowing.com",
 			featureList: [
-				"Free access to ChatGPT, Claude AI, and any AI model",
+				"Best-in-class AI models managed for you",
 				"AI-powered semantic search across all connected tools",
 				"Federated search across Slack, Google Drive, Notion, and Confluence",
-				"No data limits with open source self-hosting",
+				"No data limits on sources, notebooks, or file size",
 				"Real-time collaborative team chats",
 				"Document Q&A with citations",
 				"Report generation",
 				"Podcast and video generation from sources",
 				"Enterprise knowledge management",
-				"Self-hostable and privacy-focused",
+				"Role-based access control for teams",
 			],
 			}}
 		/>

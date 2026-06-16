@@ -355,7 +355,7 @@ docker compose logs backend | grep -i "error"
 
 如果遇到问题，可以通过以下方式获取帮助：
 
-- 💬 [GitHub Issues](https://github.com/MODSetter/Nowing/issues)
+- 💬 [Discord](https://discord.gg/ejRNvftDp9)
 - 💬 [Discord Community](https://discord.gg/ejRNvftDp9)
 - 📧 Email: [项目维护者邮箱]
 

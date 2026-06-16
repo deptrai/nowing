@@ -5,34 +5,16 @@ icon: BookOpen
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
-import { ClipboardCheck, Download, Container, Wrench, Cable, BookOpen, FlaskConical, Heart } from 'lucide-react';
+import { Rocket, Cable, BookOpen } from 'lucide-react';
 
 Welcome to **Nowing's Documentation!** Here, you'll find everything you need to get the most out of Nowing. Dive in to explore how Nowing can be your AI-powered research companion.
 
 <Cards>
   <Card
-    icon={<ClipboardCheck />}
-    title="Prerequisites"
-    description="Required setup before installing Nowing"
-    href="/docs/prerequisites"
-  />
-  <Card
-    icon={<Download />}
-    title="Installation"
-    description="Choose your installation method"
-    href="/docs/installation"
-  />
-  <Card
-    icon={<Container />}
-    title="Docker Installation"
-    description="Deploy Nowing with Docker Compose"
-    href="/docs/docker-installation"
-  />
-  <Card
-    icon={<Wrench />}
-    title="Manual Installation"
-    description="Set up Nowing manually from source"
-    href="/docs/manual-installation"
+    icon={<Rocket />}
+    title="Getting Started"
+    description="Create an account and start using Nowing in minutes"
+    href="/docs/getting-started"
   />
   <Card
     icon={<Cable />}
@@ -45,17 +27,5 @@ Welcome to **Nowing's Documentation!** Here, you'll find everything you need to 
     title="How-To Guides"
     description="Step-by-step guides for common tasks"
     href="/docs/how-to"
-  />
-  <Card
-    icon={<FlaskConical />}
-    title="Testing"
-    description="Running and writing tests for Nowing"
-    href="/docs/testing"
-  />
-  <Card
-    icon={<Heart />}
-    title="Code of Conduct"
-    description="Community guidelines and expectations"
-    href="/docs/code-of-conduct"
   />
 </Cards>

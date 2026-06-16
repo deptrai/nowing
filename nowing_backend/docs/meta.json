@@ -5,14 +5,8 @@
 	"pages": [
 		"---Guides---",
 		"index",
-		"prerequisites",
-		"installation",
-		"manual-installation",
-		"docker-installation",
+		"getting-started",
 		"connectors",
-		"how-to",
-		"---Developers---",
-		"testing",
-		"code-of-conduct"
+		"how-to"
 	]
 }

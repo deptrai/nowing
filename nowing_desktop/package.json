@@ -14,9 +14,9 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "electron-rebuild"
   },
-  "homepage": "https://github.com/MODSetter/Nowing",
+  "homepage": "https://www.nowing.com",
   "author": {
-    "name": "MODSetter",
+    "name": "Nowing",
     "email": "rohan@nowing.com"
   },
   "license": "MIT",

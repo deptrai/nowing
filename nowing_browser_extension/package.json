@@ -3,7 +3,7 @@
 	"displayName": "Nowing Browser Extension",
 	"version": "0.0.15",
 	"description": "Extension to collect Browsing History for Nowing.",
-	"author": "https://github.com/MODSetter",
+	"author": "https://www.nowing.com",
 	"pnpm": {
 		"overrides": {
 			"sharp": "^0.33.5"

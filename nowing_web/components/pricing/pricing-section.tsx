@@ -146,7 +146,6 @@ function PricingBasic() {
 			period: "month",
 			billingText: "No credit card required",
 			features: [
-				"Self hostable",
 				"500 pages ETL / month",
 				"50K LLM tokens / month",
 				"50 LLM messages / day",

@@ -18,11 +18,13 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useGlobalLoadingEffect } from "@/hooks/use-global-loading";
 import { getBearerToken, redirectToLogin } from "@/lib/auth-utils";
+import { isCloud } from "@/lib/env-config";
 
 export default function OnboardPage() {
 	const router = useRouter();
 	const params = useParams();
 	const searchSpaceId = Number(params.search_space_id);
+	const cloudMode = isCloud();
 	// Queries
 	const {
 		data: globalConfigs = [],
@@ -51,6 +53,14 @@ export default function OnboardPage() {
 			redirectToLogin();
 		}
 	}, []);
+
+	// Cloud mode (SaaS): models are managed centrally — skip onboarding entirely.
+	// The backend resolves Auto mode / system models without user-supplied config.
+	useEffect(() => {
+		if (cloudMode) {
+			router.replace(`/dashboard/${searchSpaceId}/new-chat`);
+		}
+	}, [cloudMode, router, searchSpaceId]);
 
 	// Check if onboarding is already complete (including 0 for Auto mode)
 	const isOnboardingComplete =
@@ -141,6 +151,11 @@ export default function OnboardPage() {
 
 	const isLoading = globalConfigsLoading || preferencesLoading || isAutoConfiguring;
 	useGlobalLoadingEffect(isLoading);
+
+	// Cloud mode: don't render the BYOK form — we're redirecting to chat.
+	if (cloudMode) {
+		return null;
+	}
 
 	if (isLoading) {
 		return null;

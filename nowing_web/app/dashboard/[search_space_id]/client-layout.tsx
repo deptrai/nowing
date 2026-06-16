@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useFolderSync } from "@/hooks/use-folder-sync";
 import { useGlobalLoadingEffect } from "@/hooks/use-global-loading";
 import { useElectronAPI } from "@/hooks/use-platform";
+import { isCloud } from "@/lib/env-config";
 
 export function DashboardClientLayout({
 	children,
@@ -64,6 +65,13 @@ export function DashboardClientLayout({
 
 	useEffect(() => {
 		if (isOnboardingPage) {
+			setHasCheckedOnboarding(true);
+			return;
+		}
+
+		// Cloud mode (SaaS): models are managed centrally — no onboarding/BYOK step.
+		// Backend resolves Auto mode / system models without user-supplied config.
+		if (isCloud()) {
 			setHasCheckedOnboarding(true);
 			return;
 		}

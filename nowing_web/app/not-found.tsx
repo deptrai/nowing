@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
 	title: "Page Not Found | Nowing",
-	description: "The page you're looking for doesn't exist. Explore Nowing - open source enterprise AI search and knowledge management.",
+	description: "The page you're looking for doesn't exist. Explore Nowing - the AI knowledge platform for teams.",
 };
 
 export default function NotFound() {

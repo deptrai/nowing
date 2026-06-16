@@ -257,9 +257,9 @@ class Config:
             )
 
     # Deployment Mode (self-hosted or cloud)
-    # self-hosted: Full access to local file system connectors (Obsidian, etc.)
-    # cloud: Only cloud-based connectors available
-    DEPLOYMENT_MODE = os.getenv("NOWING_DEPLOYMENT_MODE", "self-hosted")
+    # self-hosted: Full access to local file system connectors (Obsidian, etc.) + BYOK model config
+    # cloud: System-managed models (no BYOK), only cloud-based connectors available
+    DEPLOYMENT_MODE = os.getenv("NOWING_DEPLOYMENT_MODE", "cloud")
 
     @classmethod
     def is_self_hosted(cls) -> bool:

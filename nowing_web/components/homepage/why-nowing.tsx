@@ -10,15 +10,15 @@ import { cn } from "@/lib/utils";
 
 const cards = [
 	{
-		title: "Unlimited & Self-Hosted",
+		title: "No Data Limits",
 		description:
-			"No caps on sources, notebooks, or file sizes. Deploy on your own infra and your data never leaves your control.",
+			"No caps on sources, notebooks, or file sizes. Bring your entire knowledge base and search across all of it.",
 		skeleton: <UnlimitedSkeleton />,
 	},
 	{
-		title: "100+ LLMs, Zero Lock-in",
+		title: "Best-in-Class Models",
 		description:
-			"Swap between 100+ LLMs via OpenAI spec and LiteLLM, or run fully private with vLLM, Ollama, and more.",
+			"Powered by frontier models like GPT, Claude, and Gemini — managed for you, always up to date. No setup, no API keys.",
 		skeleton: <LLMFlexibilitySkeleton />,
 	},
 	{
@@ -40,8 +40,8 @@ export function WhyNowing() {
 					Everything NotebookLM should have been
 				</h2>
 				<p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground">
-					Open source. No data limits. No vendor lock-in. Built for teams that care about privacy
-					and flexibility.
+					No data limits. Best-in-class AI, managed for you. Built for teams that care about
+					speed and collaboration.
 				</p>
 			</div>
 
@@ -64,7 +64,7 @@ function UnlimitedSkeleton({ className }: { className?: string }) {
 		{ label: "Sources", notebookLm: "50-600", nowing: "Unlimited", icon: "📄" },
 		{ label: "Notebooks", notebookLm: "100-500", nowing: "Unlimited", icon: "📓" },
 		{ label: "File size", notebookLm: "200 MB", nowing: "No limit", icon: "📦" },
-		{ label: "Self-host", notebookLm: "No", nowing: "Yes", icon: "🏠" },
+		{ label: "Connectors", notebookLm: "Limited", nowing: "27+", icon: "🔌" },
 	];
 
 	return (
@@ -322,16 +322,6 @@ const comparisonRows: {
 		feature: "LLM Support",
 		notebookLm: "Gemini only",
 		nowing: "100+ LLMs",
-	},
-	{
-		feature: "Self-Hostable",
-		notebookLm: false,
-		nowing: true,
-	},
-	{
-		feature: "Open Source",
-		notebookLm: false,
-		nowing: true,
 	},
 	{
 		feature: "External Connectors",

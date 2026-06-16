@@ -686,7 +686,7 @@ CORRECT citation formats:
 - [citation:chunk_id1], [citation:chunk_id2], [citation:chunk_id3] (multiple citations)
 
 INCORRECT citation formats (DO NOT use):
-- Using parentheses and markdown links: ([citation:5](https://github.com/MODSetter/Nowing))
+- Using parentheses and markdown links: ([citation:5](https://www.nowing.com))
 - Using parentheses around brackets: ([citation:5])
 - Using hyperlinked text: [link to source 5](https://example.com)
 - Using footnote style: ... library¹

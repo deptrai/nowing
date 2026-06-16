@@ -332,12 +332,6 @@ class SubscriptionStatus(StrEnum):
 # Centralized configuration for incentive tasks
 # This makes it easy to add new tasks without changing code in multiple places
 INCENTIVE_TASKS_CONFIG = {
-    IncentiveTaskType.GITHUB_STAR: {
-        "title": "Star our GitHub repository",
-        "description": "Show your support by starring Nowing on GitHub",
-        "pages_reward": 30,
-        "action_url": "https://github.com/MODSetter/Nowing",
-    },
     IncentiveTaskType.REDDIT_FOLLOW: {
         "title": "Join our Subreddit",
         "description": "Join the Nowing community on Reddit",
@@ -350,13 +344,6 @@ INCENTIVE_TASKS_CONFIG = {
         "pages_reward": 40,
         "action_url": "https://discord.gg/ejRNvftDp9",
     },
-    # Future tasks can be configured here:
-    # IncentiveTaskType.GITHUB_ISSUE: {
-    #     "title": "Create an issue",
-    #     "description": "Help improve Nowing by reporting bugs or suggesting features",
-    #     "pages_reward": 50,
-    #     "action_url": "https://github.com/MODSetter/Nowing/issues/new/choose",
-    # },
 }
 
 

@@ -180,6 +180,8 @@ if not config.BACKEND_URL or (
             "http://127.0.0.1:3000",
             "http://localhost:3999",
             "http://127.0.0.1:3999",
+            "http://localhost:4998",
+            "http://127.0.0.1:4998",
         ]
     )
 

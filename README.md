@@ -6,174 +6,93 @@
 <a href="https://discord.gg/ejRNvftDp9">
 <img src="https://img.shields.io/discord/1359368468260192417" alt="Discord">
 </a>
-<a href="https://www.reddit.com/r/Nowing/">
-<img src="https://img.shields.io/reddit/subreddit-subscribers/Nowing?style=social" alt="Reddit">
-</a>
-</div>
-
-<div align="center">
-
-[English](README.md) | [Español](README.es.md) | [Português](README.pt-BR.md) | [हिन्दी](README.hi.md) | [简体中文](README.zh-CN.md)
-
-</div>
-<div align="center">
-<a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FNowing | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
 # Nowing
 
-NotebookLM is one of the best and most useful AI platforms out there, but once you start using it regularly you also feel its limitations leaving something to be desired more.
+**Nowing is the AI knowledge platform for teams.** Turn your documents, connectors, and conversations into cited answers, reports, and podcasts — all in one collaborative workspace.
 
-1. There are limits on the amount of sources you can add in a notebook.
-2. There are limits on the number of notebooks you can have.
-3. You cannot have sources that exceed 500,000 words and are more than 200MB.
-4. You are vendor locked in to Google services (LLMs, usage models, etc.) with no option to configure them.
-5. Limited external data sources and service integrations.
-6. NotebookLM Agent is specifically optimised for just studying and researching, but you can do so much more with the source data.
-7. Lack of multiplayer support.
+NotebookLM is one of the best AI research tools out there, but teams quickly run into its limits:
+
+1. Caps on the number of sources you can add to a notebook.
+2. Caps on the number of notebooks you can have.
+3. Sources can't exceed 500,000 words or 200MB.
+4. Locked to Google's models, with no team collaboration.
+5. Limited external data sources and integrations.
+6. Optimised for studying and research only.
+7. No real-time multiplayer.
 
 ...and more.
 
-**Nowing is specifically made to solve these problems.** Nowing empowers you to:
+**Nowing is built to solve these problems.** Nowing gives your team:
 
-- **Control Your Data Flow** - Keep your data private and secure.
-- **No Data Limits** - Add an unlimited amount of sources and notebooks.
-- **No Vendor Lock-in** - Configure any LLM, image, TTS, and STT models to use.
-- **25+ External Data Sources** - Add your sources from Google Drive, OneDrive, Dropbox, Notion, and many other external services.
-- **Real-Time Multiplayer Support** - Work easily with your team members in a shared notebook.
-- **Desktop App** - Get AI assistance in any application with Quick Assist, General Assist, Extreme Assist, and local folder sync.
+- **No Data Limits** - Add an unlimited number of sources and notebooks.
+- **Best-in-Class Models, Managed** - Frontier models kept up to date for you. No API keys to configure.
+- **27+ External Data Sources** - Connect Google Drive, OneDrive, Dropbox, Slack, Notion, and many more.
+- **Real-Time Multiplayer** - Work together in a shared notebook with roles and live chat.
+- **Cited Answers, Reports & Podcasts** - Perplexity-style citations, plus generated reports, podcasts, and videos.
 
 ...and more to come.
 
-
-
-## Video Agent Sample
-
-https://github.com/user-attachments/assets/012a7ffa-6f76-4f06-9dda-7632b470057a
-
-
-
-## Podcast Agent Sample
-
-https://github.com/user-attachments/assets/a0a16566-6967-4374-ac51-9b3e07fbecd7
-
-
 ## How to Use Nowing
 
-### Cloud
-
-1. Go to [nowing.com](https://www.nowing.com) and login.
+1. Go to [nowing.com](https://www.nowing.com) and sign up.
 
 <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/LoginFlowGif.gif" alt="Login" /></p>
 
-2. Connect your connectors and sync. Enable periodic syncing to keep connectors synced.
+2. Connect your sources and sync. Enable periodic syncing to keep connectors up to date.
 
 <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/ConnectorFlowGif.gif" alt="Connectors" /></p>
 
-3. Till connectors data index, upload Documents.
+3. While connectors index, upload documents directly.
 
 <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/DocUploadGif.gif" alt="Upload Documents" /></p>
 
-4. Once everything is indexed, Ask Away (Use Cases):
+4. Once everything is indexed, ask away:
 
-   - Desktop App — General Assist
-
-   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/general_assist.gif" alt="General Assist" /></p>
-
-   - Desktop App — Quick Assist
-
-   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/quick_assist.gif" alt="Quick Assist" /></p>
-
-   - Desktop App — Extreme Assist
-
-   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/extreme_assist.gif" alt="Extreme Assist" /></p>
-
-   - Desktop App — Watch Local Folder
-
-   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/folder_watch.gif" alt="Watch Local Folder" /></p>
-
-   - Video Generation
-
-   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/video_gen_gif.gif" alt="Video Generation" /></p>
-
-   - Basic search and citation
+   - Search & Citation
 
    <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/BSNCGif.gif" alt="Search and Citation" /></p>
 
-   - Document Mention QNA
+   - Document Mention Q&A
 
    <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="Document Mention QNA" /></p>
-   <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="Document Mention QNA" /></p>
 
-   - Report Generations and Exports (PDF, DOCX, HTML, LaTeX, EPUB, ODT, Plain Text)
+   - Report Generation & Exports (PDF, DOCX, HTML, LaTeX, EPUB, ODT, Plain Text)
 
    <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/ReportGenGif_compressed.gif" alt="Report Generation" /></p>
 
-   - Podcast Generations
+   - Podcast Generation
 
    <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/PodcastGenGif.gif" alt="Podcast Generation" /></p>
 
-   - Image Generations
+   - Image Generation
 
    <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/ImageGenGif.gif" alt="Image Generation" /></p>
 
    - And more coming soon.
 
+For full guides, see the [documentation](https://www.nowing.com/docs/).
 
-### Self Hosted
+### Real-Time Collaboration (Beta)
 
-Run Nowing on your own infrastructure for full data control and privacy.
-
-**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) must be installed and running.
-
-#### For Linux/MacOS users:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/MODSetter/Nowing/main/docker/scripts/install.sh | bash
-```
-
-#### For Windows users:
-
-```bash
-irm https://raw.githubusercontent.com/MODSetter/Nowing/main/docker/scripts/install.ps1 | iex
-```
-
-The install script sets up [Watchtower](https://github.com/nicholas-fedor/watchtower) automatically for daily auto-updates. To skip it, add the `--no-watchtower` flag.
-
-For Docker Compose, manual installation, and other deployment options, see the [docs](https://www.nowing.com/docs/).
-
-### Desktop App
-
-Nowing also ships a desktop app that brings AI assistance to every application on your computer. Download it from the [latest release](https://github.com/MODSetter/Nowing/releases/latest).
-
-The desktop app includes these powerful features:
-
-- **General Assist** — Launch Nowing instantly from any application with a global shortcut.
-- **Quick Assist** — Select text anywhere, then ask AI to explain, rewrite, or act on it.
-- **Extreme Assist** — Get inline writing suggestions powered by your knowledge base as you type in any app.
-- **Watch Local Folder** — Watch a local folder and automatically sync file changes to your knowledge base. **Pro tip:** Point it at your Obsidian vault to keep your notes searchable in Nowing.
-
-All features operate against your chosen search space, so your answers are always grounded in your own data.
-
-### How to Realtime Collaborate (Beta)
-
-1. Go to Manage Members page and create an invite.
+1. Go to the Manage Members page and create an invite.
 
    <p align="center"><img src="https://github.com/user-attachments/assets/40ed7683-5aa6-48a0-a3df-00575528c392" alt="Invite Members" /></p>
 
-2. Teammate joins and that SearchSpace becomes shared.
+2. A teammate joins and that search space becomes shared.
 
    <p align="center"><img src="https://github.com/user-attachments/assets/ea4e1057-4d2b-4fd2-9ca0-cd19286a285e" alt="Invite Join Flow" /></p>
 
-3. Make chat shared.
+3. Make a chat shared.
 
    <p align="center"><img src="https://github.com/user-attachments/assets/17b93904-0888-4c3a-ac12-51a24a8ea26a" alt="Make Chat Shared" /></p>
 
-4. Your team can now chat in realtime.
+4. Your team can now chat in real time.
 
    <p align="center"><img src="nowing_web/public/homepage/hero_realtime/RealTimeChatGif.gif" alt="Realtime Chat" /></p>
 
-5. Add comment to tag teammates.
+5. Add comments to tag teammates.
 
    <p align="center"><img src="nowing_web/public/homepage/hero_realtime/RealTimeCommentsFlow.gif" alt="Realtime Comments" /></p>
 
@@ -184,79 +103,26 @@ All features operate against your chosen search space, so your answers are alway
 | **Sources per Notebook** | 50 (Free) to 600 (Ultra, $249.99/mo) | Unlimited |
 | **Number of Notebooks** | 100 (Free) to 500 (paid tiers) | Unlimited |
 | **Source Size Limit** | 500,000 words / 200MB per source | No limit |
-| **Pricing** | Free tier available; Pro $19.99/mo, Ultra $249.99/mo | Free and open source, self-host on your own infra |
-| **LLM Support** | Google Gemini only | 100+ LLMs via OpenAI spec & LiteLLM |
-| **Embedding Models** | Google only | 6,000+ embedding models, all major rerankers |
-| **Local / Private LLMs** | Not available | Full support (vLLM, Ollama) - your data stays yours |
-| **Self Hostable** | No | Yes - Docker one-liner or full Docker Compose |
-| **Open Source** | No | Yes |
-| **External Connectors** | Google Drive, YouTube, websites | 27+ connectors - Search Engines, Google Drive, OneDrive, Dropbox, Slack, Teams, Jira, Notion, GitHub, Discord & [more](#external-sources) |
-| **File Format Support** | PDFs, Docs, Slides, Sheets, CSV, Word, EPUB, images, web URLs, YouTube | 50+ formats - documents, images, videos via LlamaCloud, Unstructured, or Docling (local) |
+| **LLM Support** | Google Gemini only | Best-in-class models, managed for you |
+| **External Connectors** | Google Drive, YouTube, websites | 27+ connectors - Search Engines, Google Drive, OneDrive, Dropbox, Slack, Teams, Jira, Notion, Discord & [more](#external-sources) |
+| **File Format Support** | PDFs, Docs, Slides, Sheets, CSV, Word, EPUB, images, web URLs, YouTube | 50+ formats - documents, images, videos |
 | **Search** | Semantic search | Hybrid Search - Semantic + Full Text with Hierarchical Indices & Reciprocal Rank Fusion |
 | **Cited Answers** | Yes | Yes - Perplexity-style cited responses |
-| **Agentic Architecture** | No | Yes - powered by [LangChain Deep Agents](https://docs.langchain.com/oss/python/deepagents/overview) with planning, subagents, and file system access |
+| **Agentic Architecture** | No | Yes - planning, subagents, and file system access |
 | **Real-Time Multiplayer** | Shared notebooks with Viewer/Editor roles (no real-time chat) | RBAC with Owner / Admin / Editor / Viewer roles, real-time chat & comment threads |
 | **Video Generation** | Cinematic Video Overviews via Veo 3 (Ultra only) | Available (NotebookLM is better here, actively improving) |
 | **Presentation Generation** | Better looking slides but not editable | Create editable, slide-based presentations |
-| **Podcast Generation** | Audio Overviews with customizable hosts and languages | Available with multiple TTS providers (NotebookLM is better here, actively improving) |
-| **Desktop App** | No | Native app with General Assist, Quick Assist, Extreme Assist, and local folder sync |
+| **Podcast Generation** | Audio Overviews with customizable hosts and languages | Available (NotebookLM is better here, actively improving) |
 | **Browser Extension** | No | Cross-browser extension to save any webpage, including auth-protected pages |
 
 <details>
 <summary><b>Full list of External Sources</b></summary>
 <a id="external-sources"></a>
 
-Search Engines (Tavily, LinkUp) · SearxNG · Google Drive · OneDrive · Dropbox · Slack · Microsoft Teams · Linear · Jira · ClickUp · Confluence · BookStack · Notion · Gmail · YouTube Videos · GitHub · Discord · Airtable · Google Calendar · Luma · Circleback · Elasticsearch · Obsidian, and more to come.
+Search Engines (Tavily, LinkUp) · SearxNG · Google Drive · OneDrive · Dropbox · Slack · Microsoft Teams · Linear · Jira · ClickUp · Confluence · BookStack · Notion · Gmail · YouTube Videos · Discord · Airtable · Google Calendar · Luma · Circleback · Elasticsearch, and more to come.
 
 </details>
 
+## Community
 
-## FEATURE REQUESTS AND FUTURE
-
-
-**Nowing is actively being developed.** While it's not yet production-ready, you can help us speed up the process.
-
-Join the [Nowing Discord](https://discord.gg/ejRNvftDp9) and help shape the future of Nowing!
-
-## Roadmap
-
-Stay up to date with our development progress and upcoming features!  
-Check out our public roadmap and contribute your ideas or feedback:
-
-**Roadmap Discussion:** [Nowing 2026 Roadmap](https://github.com/MODSetter/Nowing/discussions/565)
-
-**Kanban Board:** [Nowing Project Board](https://github.com/users/MODSetter/projects/3)
-
-
-## Contribute
-
-All contributions welcome, from stars and bug reports to backend improvements. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
-
-Thanks to all our Surfers:
-
-<a href="https://github.com/MODSetter/Nowing/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=MODSetter/Nowing" />
-</a>
-
-## Star History
-
-<a href="https://www.star-history.com/#MODSetter/Nowing&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=MODSetter/Nowing&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=MODSetter/Nowing&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=MODSetter/Nowing&type=Date" />
- </picture>
-</a>
-
----
----
-<p align="center">
-    <img 
-      src="https://github.com/user-attachments/assets/329c9bc2-6005-4aed-a629-700b5ae296b4" 
-      alt="Catalyst Project" 
-      width="200"
-    />
-</p>
-
----
----
+**Nowing is actively being developed.** Join the [Nowing Discord](https://discord.gg/ejRNvftDp9) to share feedback and help shape the future of Nowing.
