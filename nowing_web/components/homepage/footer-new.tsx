@@ -55,7 +55,7 @@ export function FooterNew() {
 		},
 		{
 			title: "Discord",
-			href: "https://discord.gg/ejRNvftDp9",
+			href: "https://discord.com/invite/ejRNvftDp9",
 			icon: IconBrandDiscord,
 		},
 	];

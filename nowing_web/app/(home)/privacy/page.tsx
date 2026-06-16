@@ -184,7 +184,7 @@ export default function PrivacyPolicy() {
 						contact us at:
 					</p>
 					<p className="mt-2">
-						<strong>Email:</strong> rohan@nowing.com
+						<strong>Email:</strong> andy@nowing.com
 					</p>
 				</section>
 			</div>

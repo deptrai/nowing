@@ -229,9 +229,9 @@ export function MorePagesContent() {
 						</DialogDescription>
 					</DialogHeader>
 					<Button asChild className="w-full gap-2">
-						<a href="mailto:rohan@nowing.com?subject=Claim%20100K%20Free%20Tokens&body=Hi%2C%20I'd%20like%20to%20claim%20the%20100K%20free%20token%20offer.%0A%0AMy%20account%20email%3A%20">
+						<a href="mailto:andy@nowing.com?subject=Claim%20100K%20Free%20Tokens&body=Hi%2C%20I'd%20like%20to%20claim%20the%20100K%20free%20token%20offer.%0A%0AMy%20account%20email%3A%20">
 							<Mail className="h-4 w-4" />
-							rohan@nowing.com
+							andy@nowing.com
 						</a>
 					</Button>
 				</DialogContent>
@@ -248,9 +248,9 @@ export function MorePagesContent() {
 						</DialogDescription>
 					</DialogHeader>
 					<Button asChild className="w-full gap-2">
-						<a href="mailto:rohan@nowing.com?subject=Claim%203%2C000%20Free%20Pages&body=Hi%2C%20I'd%20like%20to%20claim%20the%203%2C000%20free%20pages%20offer.%0A%0AMy%20account%20email%3A%20">
+						<a href="mailto:andy@nowing.com?subject=Claim%203%2C000%20Free%20Pages&body=Hi%2C%20I'd%20like%20to%20claim%20the%203%2C000%20free%20pages%20offer.%0A%0AMy%20account%20email%3A%20">
 							<Mail className="h-4 w-4" />
-							rohan@nowing.com
+							andy@nowing.com
 						</a>
 					</Button>
 				</DialogContent>

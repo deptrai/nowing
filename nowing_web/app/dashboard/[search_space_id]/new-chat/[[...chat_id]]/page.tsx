@@ -319,12 +319,6 @@ export default function NewChatPage() {
 	const [currentThread, setCurrentThread] = useState<ThreadRecord | null>(null);
 	const [messages, setMessages] = useState<ThreadMessageLike[]>([]);
 	const [isRunning, setIsRunning] = useState(false);
-	const [lastTokenUsage, setLastTokenUsage] = useState<{
-		tokens_this_request: number;
-		tokens_used_total: number;
-		monthly_limit: number;
-		tokens_remaining: number;
-	} | null>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const [pendingInterrupt, setPendingInterrupt] = useState<{
 		threadId: number;
@@ -895,7 +889,6 @@ export default function NewChatPage() {
 				.catch((err) => console.error("Failed to persist user message:", err));
 
 			// Start streaming response
-			setLastTokenUsage(null);
 			setIsRunning(true);
 			const controller = new AbortController();
 			abortControllerRef.current = controller;
@@ -1095,7 +1088,25 @@ export default function NewChatPage() {
 								monthly_limit: number;
 								tokens_remaining: number;
 							};
-							setLastTokenUsage(usageData);
+							// Attach usage to the assistant message so it renders under that
+							// specific response (footer), not floating over the composer.
+							setMessages((prev) =>
+								prev.map((m) =>
+									m.id === assistantMsgId
+										? {
+												...m,
+												metadata: {
+													...(m.metadata as Record<string, unknown> | undefined),
+													custom: {
+														...((m.metadata as { custom?: Record<string, unknown> })?.custom ??
+															{}),
+														token_usage: usageData,
+													},
+												},
+											}
+										: m
+								)
+							);
 							break;
 						}
 
@@ -1617,7 +1628,25 @@ export default function NewChatPage() {
 								monthly_limit: number;
 								tokens_remaining: number;
 							};
-							setLastTokenUsage(usageData);
+							// Attach usage to the assistant message so it renders under that
+							// specific response (footer), not floating over the composer.
+							setMessages((prev) =>
+								prev.map((m) =>
+									m.id === assistantMsgId
+										? {
+												...m,
+												metadata: {
+													...(m.metadata as Record<string, unknown> | undefined),
+													custom: {
+														...((m.metadata as { custom?: Record<string, unknown> })?.custom ??
+															{}),
+														token_usage: usageData,
+													},
+												},
+											}
+										: m
+								)
+							);
 							break;
 						}
 
@@ -2023,7 +2052,25 @@ export default function NewChatPage() {
 								monthly_limit: number;
 								tokens_remaining: number;
 							};
-							setLastTokenUsage(usageData);
+							// Attach usage to the assistant message so it renders under that
+							// specific response (footer), not floating over the composer.
+							setMessages((prev) =>
+								prev.map((m) =>
+									m.id === assistantMsgId
+										? {
+												...m,
+												metadata: {
+													...(m.metadata as Record<string, unknown> | undefined),
+													custom: {
+														...((m.metadata as { custom?: Record<string, unknown> })?.custom ??
+															{}),
+														token_usage: usageData,
+													},
+												},
+											}
+										: m
+								)
+							);
 							break;
 						}
 
@@ -2338,41 +2385,6 @@ export default function NewChatPage() {
 						</div>
 					)}
 					<Thread />
-					{lastTokenUsage && !isRunning && (
-						<div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none px-4 z-10">
-							<div className="bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-1.5 text-xs text-muted-foreground flex items-center gap-2 shadow-sm pointer-events-auto">
-								<span>
-									Request:{" "}
-									<span className="text-foreground font-medium">
-										{lastTokenUsage.tokens_this_request.toLocaleString()}
-									</span>{" "}
-									tokens
-								</span>
-								<span className="text-border">|</span>
-								<span>
-									Used:{" "}
-									<span className="text-foreground font-medium">
-										{lastTokenUsage.tokens_used_total.toLocaleString()}
-									</span>
-									{" / "}
-									{lastTokenUsage.monthly_limit.toLocaleString()}
-								</span>
-								<span className="text-border">|</span>
-								<span>
-									Remaining:{" "}
-									<span
-										className={
-											lastTokenUsage.tokens_remaining < lastTokenUsage.monthly_limit * 0.1
-												? "text-destructive font-medium"
-												: "text-foreground font-medium"
-										}
-									>
-										{lastTokenUsage.tokens_remaining.toLocaleString()}
-									</span>
-								</span>
-							</div>
-						</div>
-					)}
 				</div>
 				<MobileReportPanel />
 				<MobileEditorPanel />

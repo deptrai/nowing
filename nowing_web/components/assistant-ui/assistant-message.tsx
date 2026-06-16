@@ -475,8 +475,9 @@ const AssistantMessageInner: FC = () => {
 				</div>
 			)}
 
-			<div className="aui-assistant-message-footer mt-1 mb-5 ml-2 flex">
+			<div className="aui-assistant-message-footer mt-1 mb-5 ml-2 flex items-center gap-3 flex-wrap">
 				<AssistantActionBar />
+				<TokenUsageBar />
 			</div>
 		</CitationMetadataProvider>
 	);
@@ -673,5 +674,52 @@ const AssistantActionBar: FC = () => {
 				</TooltipIconButton>
 			)}
 		</ActionBarPrimitive.Root>
+	);
+};
+
+interface TokenUsageMeta {
+	tokens_this_request: number;
+	tokens_used_total: number;
+	monthly_limit: number;
+	tokens_remaining: number;
+}
+
+const TokenUsageBar: FC = () => {
+	const usage = useAuiState(({ message }) => {
+		const custom = (message?.metadata as { custom?: Record<string, unknown> } | undefined)
+			?.custom;
+		return (custom?.token_usage as TokenUsageMeta | undefined) ?? null;
+	});
+
+	if (!usage) return null;
+
+	const lowRemaining = usage.tokens_remaining < usage.monthly_limit * 0.1;
+
+	return (
+		<div className="flex items-center gap-2 text-xs text-muted-foreground">
+			<span>
+				Request:{" "}
+				<span className="text-foreground font-medium">
+					{usage.tokens_this_request.toLocaleString()}
+				</span>{" "}
+				tokens
+			</span>
+			<span className="text-border">|</span>
+			<span>
+				Used:{" "}
+				<span className="text-foreground font-medium">
+					{usage.tokens_used_total.toLocaleString()}
+				</span>
+				{" / "}
+				{usage.monthly_limit.toLocaleString()}
+			</span>
+			<span className="text-border">|</span>
+			<span>
+				Remaining:{" "}
+				<span className={lowRemaining ? "text-destructive font-medium" : "text-foreground font-medium"}>
+					{usage.tokens_remaining.toLocaleString()}
+				</span>
+			</span>
+		</div>
 	);
 };

@@ -228,7 +228,7 @@ function PricingBasic() {
 			],
 			description: "Custom setup for teams & organisations",
 			buttonText: "Contact Sales",
-			href: "mailto:rohan@nowing.com?subject=Enterprise%20Inquiry",
+			href: "mailto:andy@nowing.com?subject=Enterprise%20Inquiry",
 			isPopular: false,
 		},
 	];

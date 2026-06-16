@@ -27,7 +27,7 @@ export function OrganizationJsonLd() {
 				],
 				contactPoint: {
 					"@type": "ContactPoint",
-					email: "rohan@nowing.com",
+					email: "andy@nowing.com",
 					contactType: "sales",
 				},
 			}}
