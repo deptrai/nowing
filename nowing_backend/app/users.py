@@ -27,6 +27,7 @@ from app.db import (
     get_user_db,
 )
 from app.prompts.system_defaults import SYSTEM_PROMPT_DEFAULTS
+from app.services.email_service import send_reset_password_email, send_verify_email, send_welcome_email
 from app.utils.refresh_tokens import create_refresh_token
 
 logger = logging.getLogger(__name__)
@@ -211,15 +212,21 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                 f"Failed to create default search space for user {user.id}: {e}"
             )
 
+        # Send welcome email (non-blocking, no-op if Resend not configured)
+        send_welcome_email(user.email, user.display_name)
+
+        # Request email verification (triggers on_after_request_verify → sends link)
+        await self.request_verify(user, request)
+
     async def on_after_forgot_password(
         self, user: User, token: str, request: Request | None = None
     ):
-        print(f"User {user.id} has forgot their password. Reset token: {token}")
+        send_reset_password_email(user.email, token, user.display_name)
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Request | None = None
     ):
-        print(f"Verification requested for user {user.id}. Verification token: {token}")
+        send_verify_email(user.email, token, user.display_name)
 
 
 async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
