@@ -321,17 +321,12 @@ const comparisonRows: {
 	{
 		feature: "LLM Support",
 		notebookLm: "Gemini only",
-		nowing: "100+ LLMs",
+		nowing: "GPT, Claude, Gemini",
 	},
 	{
 		feature: "External Connectors",
 		notebookLm: "Limited",
 		nowing: "27+",
-	},
-	{
-		feature: "Desktop App",
-		notebookLm: false,
-		nowing: true,
 	},
 	{
 		feature: "Agentic Architecture",

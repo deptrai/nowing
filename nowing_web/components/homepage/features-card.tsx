@@ -56,13 +56,13 @@ export function FeaturesCards() {
 								<Sliders className="size-6" aria-hidden />
 							</CardDecorator>
 
-							<h3 className="mt-6 font-medium">Fully Customizable</h3>
+							<h3 className="mt-6 font-medium">Always the Best Model</h3>
 						</CardHeader>
 
 						<CardContent>
 							<p className="text-sm">
-								Choose from 100+ leading LLMs, seamlessly calling any model on demand. Even run
-								on-prem local LLM inference via vLLM, Ollama, llama.cpp, LM Studio, and more.
+								Frontier models like GPT, Claude, and Gemini — managed for you and always
+								up to date. The right model picked for each task, no setup or API keys.
 							</p>
 						</CardContent>
 					</Card>

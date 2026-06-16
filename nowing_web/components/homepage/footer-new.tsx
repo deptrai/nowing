@@ -45,7 +45,7 @@ export function FooterNew() {
 	const socials = [
 		{
 			title: "Twitter",
-			href: "https://x.com/mod_setter",
+			href: "https://x.com/nowing_ai",
 			icon: IconBrandTwitter,
 		},
 		{
