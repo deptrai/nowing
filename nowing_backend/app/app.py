@@ -331,6 +331,37 @@ if config.AUTH_TYPE == "GOOGLE":
 app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
 
 
+@app.post("/internal/set-password")
+async def set_password_endpoint(request: Request):
+    """Temporary endpoint. Remove after use."""
+    import os
+    from app.db import shielded_async_session, get_user_db
+    from app.users import get_user_manager
+    from fastapi_users.password import PasswordHelper
+
+    body = await request.json()
+    if body.get("secret") != os.getenv("SECRET_KEY", ""):
+        return {"error": "unauthorized"}
+    email = body.get("email", "")
+    new_password = body.get("password", "")
+    if not email or not new_password:
+        return {"error": "email and password required"}
+
+    ph = PasswordHelper()
+    hashed = ph.hash(new_password)
+    from sqlalchemy import text
+    async with shielded_async_session() as session:
+        result = await session.execute(
+            text('UPDATE "user" SET hashed_password=:hp WHERE email=:email RETURNING id'),
+            {"hp": hashed, "email": email},
+        )
+        await session.commit()
+        row = result.fetchone()
+        if row:
+            return {"success": True, "user_id": str(row[0])}
+        return {"error": "user not found"}
+
+
 @app.get("/verify-token")
 async def authenticated_route(
     user: User = Depends(current_active_user),
