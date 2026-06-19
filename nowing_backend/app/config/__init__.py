@@ -25,26 +25,24 @@ def is_ffmpeg_installed():
 
 
 def _bootstrap_global_llm_config_from_env() -> None:
-    """Materialize global_llm_config.yaml from an env var on first load.
+    """Materialize global_llm_config.yaml from GLOBAL_LLM_CONFIG_B64 env var.
 
     The YAML carries provider API keys, so it is .gitignored and never baked
     into the image. On hosted deploys (Dokploy/containers) we ship it as a
-    base64-encoded env var GLOBAL_LLM_CONFIG_B64 (same pattern as other
-    secrets) and write it to disk once at startup if the file is absent.
+    base64-encoded env var (same pattern as other secrets).
 
-    No-op when the env var is unset or the file already exists.
+    Always overwrites the on-disk file when the env var is set — env is the
+    source of truth for production. No-op only when the env var is unset.
+    Local dev (no env var set) keeps its hand-edited file untouched.
     """
-    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
-    if global_config_file.exists():
-        return
     b64 = os.getenv("GLOBAL_LLM_CONFIG_B64")
     if not b64:
         return
+    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
     try:
         import base64
 
         decoded = base64.b64decode(b64).decode("utf-8")
-        # Validate it parses as YAML before writing — avoid persisting garbage
         yaml.safe_load(decoded)
         global_config_file.write_text(decoded, encoding="utf-8")
         print("Bootstrapped global_llm_config.yaml from GLOBAL_LLM_CONFIG_B64")
