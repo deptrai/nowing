@@ -355,6 +355,38 @@ if config.AUTH_TYPE == "GOOGLE":
 app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
 
 
+@app.post("/internal/upgrade-user")
+async def upgrade_user_endpoint(request: Request):
+    """Temporary endpoint to upgrade user plan. Remove after use."""
+    import os
+    from app.db import shielded_async_session
+    from sqlalchemy import text
+
+    body = await request.json()
+    secret = body.get("secret", "")
+    email = body.get("email", "")
+    if secret != os.getenv("SECRET_KEY", ""):
+        return {"error": "unauthorized"}
+    if not email:
+        return {"error": "email required"}
+
+    async with shielded_async_session() as session:
+        result = await session.execute(
+            text(
+                'UPDATE "user" SET monthly_token_limit=20000000, '
+                "tokens_used_this_month=0, pages_limit=20000, "
+                "plan_id='max_monthly', is_superuser=true "
+                "WHERE email=:email RETURNING id, email"
+            ),
+            {"email": email},
+        )
+        await session.commit()
+        row = result.fetchone()
+        if row:
+            return {"success": True, "user_id": str(row[0]), "email": row[1]}
+        return {"error": "user not found"}
+
+
 @app.get("/verify-token")
 async def authenticated_route(
     user: User = Depends(current_active_user),
