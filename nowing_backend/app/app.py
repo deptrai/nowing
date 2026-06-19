@@ -107,8 +107,6 @@ async def lifespan(app: FastAPI):
     try:
         from app.db import shielded_async_session
         from sqlalchemy import text as _text
-        from fastapi_users.password import PasswordHelper
-        _ph = PasswordHelper()
         async with shielded_async_session() as _s:
             for plan_id, limits in config.PLAN_LIMITS.items():
                 await _s.execute(
@@ -118,15 +116,6 @@ async def lifespan(app: FastAPI):
                     ),
                     {"limit": limits["monthly_token_limit"], "plan": plan_id},
                 )
-            # One-shot: reset admin password (remove after confirmed working)
-            _admin_pw = _os.getenv("ADMIN_RESET_PASSWORD", "").strip()
-            if _admin_pw:
-                _hashed = _ph.hash(_admin_pw)
-                await _s.execute(
-                    _text('UPDATE "user" SET hashed_password=:hp WHERE email=:email'),
-                    {"hp": _hashed, "email": "admin@nowing.ai"},
-                )
-                logger.info("[Bootstrap] Reset admin@nowing.ai password")
             await _s.commit()
     except Exception as _e:
         logger.warning("[Bootstrap] Sync plan limits failed: %s", _e)
