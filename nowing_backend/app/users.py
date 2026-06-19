@@ -213,10 +213,10 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             )
 
         # Send welcome email (non-blocking, no-op if Resend not configured)
-        send_welcome_email(user.email, user.display_name)
-
-        # Request email verification (triggers on_after_request_verify → sends link)
-        await self.request_verify(user, request)
+        try:
+            send_welcome_email(user.email, user.display_name)
+        except Exception as e:
+            logger.warning(f"Welcome email failed for {user.id}: {e}")
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Request | None = None
