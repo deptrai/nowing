@@ -103,6 +103,22 @@ async def lifespan(app: FastAPI):
     # Mark any DB-running runs as abandoned (survived worker restart)
     from app.tasks.chat.run_manager import mark_abandoned_runs_on_startup
     await mark_abandoned_runs_on_startup()
+    # Sync existing users' token limits to match current PLAN_LIMITS config
+    try:
+        from app.db import shielded_async_session
+        from sqlalchemy import text as _text
+        async with shielded_async_session() as _s:
+            for plan_id, limits in config.PLAN_LIMITS.items():
+                await _s.execute(
+                    _text(
+                        'UPDATE "user" SET monthly_token_limit=:limit '
+                        "WHERE plan_id=:plan AND monthly_token_limit!=:limit"
+                    ),
+                    {"limit": limits["monthly_token_limit"], "plan": plan_id},
+                )
+            await _s.commit()
+    except Exception as _e:
+        logger.warning("[Bootstrap] Sync plan limits failed: %s", _e)
     # Initialize LLM Router for Auto mode load balancing
     initialize_llm_router()
     # Seed Nowing documentation in background (CPU-heavy embedding blocks event loop)
@@ -329,37 +345,6 @@ if config.AUTH_TYPE == "GOOGLE":
 
 
 app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
-
-
-@app.post("/internal/set-password")
-async def set_password_endpoint(request: Request):
-    """Temporary endpoint. Remove after use."""
-    import os
-    from app.db import shielded_async_session, get_user_db
-    from app.users import get_user_manager
-    from fastapi_users.password import PasswordHelper
-
-    body = await request.json()
-    if body.get("secret") != os.getenv("SECRET_KEY", ""):
-        return {"error": "unauthorized"}
-    email = body.get("email", "")
-    new_password = body.get("password", "")
-    if not email or not new_password:
-        return {"error": "email and password required"}
-
-    ph = PasswordHelper()
-    hashed = ph.hash(new_password)
-    from sqlalchemy import text
-    async with shielded_async_session() as session:
-        result = await session.execute(
-            text('UPDATE "user" SET hashed_password=:hp WHERE email=:email RETURNING id'),
-            {"hp": hashed, "email": email},
-        )
-        await session.commit()
-        row = result.fetchone()
-        if row:
-            return {"success": True, "user_id": str(row[0])}
-        return {"error": "user not found"}
 
 
 @app.get("/verify-token")
