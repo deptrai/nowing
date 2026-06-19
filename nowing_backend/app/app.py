@@ -11,7 +11,12 @@ from app.agents.new_chat.checkpointer import (
     close_checkpointer,
     setup_checkpointer_tables,
 )
-from app.config import config, initialize_llm_router
+from app.config import (
+    config,
+    initialize_image_gen_router,
+    initialize_llm_router,
+    initialize_vision_llm_router,
+)
 from app.db import User, create_db_and_tables, get_async_session
 from app.routes import router as crud_router
 from app.routes.auth_routes import router as auth_router
@@ -121,6 +126,11 @@ async def lifespan(app: FastAPI):
         logger.warning("[Bootstrap] Sync plan limits failed: %s", _e)
     # Initialize LLM Router for Auto mode load balancing
     initialize_llm_router()
+    # Initialize Image Generation + Vision LLM routers for Auto mode.
+    # The agent runs in this (uvicorn) process, so the generate_image tool
+    # needs these routers initialized here — not only in celery_app.py.
+    initialize_image_gen_router()
+    initialize_vision_llm_router()
     # Seed Nowing documentation in background (CPU-heavy embedding blocks event loop)
     import asyncio
     _docs_task = asyncio.create_task(seed_nowing_docs())
