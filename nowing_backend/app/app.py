@@ -103,30 +103,6 @@ async def lifespan(app: FastAPI):
     # Mark any DB-running runs as abandoned (survived worker restart)
     from app.tasks.chat.run_manager import mark_abandoned_runs_on_startup
     await mark_abandoned_runs_on_startup()
-    # One-shot: upgrade user to max plan (env-triggered, safe — no special chars)
-    _upgrade_email = _os.getenv("ADMIN_UPGRADE_USER", "").strip()
-    if _upgrade_email:
-        try:
-            from app.db import shielded_async_session
-            from sqlalchemy import text as _text
-            async with shielded_async_session() as _s:
-                result = await _s.execute(
-                    _text(
-                        'UPDATE "user" SET monthly_token_limit=20000000, '
-                        "tokens_used_this_month=0, pages_limit=20000, "
-                        "plan_id='max_monthly', is_superuser=true "
-                        "WHERE email=:email RETURNING id"
-                    ),
-                    {"email": _upgrade_email},
-                )
-                await _s.commit()
-                row = result.fetchone()
-                if row:
-                    logger.info("[Bootstrap] Upgraded user %s to max plan", _upgrade_email)
-                else:
-                    logger.warning("[Bootstrap] User %s not found", _upgrade_email)
-        except Exception as _e:
-            logger.warning("[Bootstrap] ADMIN_UPGRADE_USER failed: %s", _e)
     # Initialize LLM Router for Auto mode load balancing
     initialize_llm_router()
     # Seed Nowing documentation in background (CPU-heavy embedding blocks event loop)
@@ -353,38 +329,6 @@ if config.AUTH_TYPE == "GOOGLE":
 
 
 app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
-
-
-@app.post("/internal/upgrade-user")
-async def upgrade_user_endpoint(request: Request):
-    """Temporary endpoint to upgrade user plan. Remove after use."""
-    import os
-    from app.db import shielded_async_session
-    from sqlalchemy import text
-
-    body = await request.json()
-    secret = body.get("secret", "")
-    email = body.get("email", "")
-    if secret != os.getenv("SECRET_KEY", ""):
-        return {"error": "unauthorized"}
-    if not email:
-        return {"error": "email required"}
-
-    async with shielded_async_session() as session:
-        result = await session.execute(
-            text(
-                'UPDATE "user" SET monthly_token_limit=20000000, '
-                "tokens_used_this_month=0, pages_limit=20000, "
-                "plan_id='max_monthly', is_superuser=true "
-                "WHERE email=:email RETURNING id, email"
-            ),
-            {"email": email},
-        )
-        await session.commit()
-        row = result.fetchone()
-        if row:
-            return {"success": True, "user_id": str(row[0]), "email": row[1]}
-        return {"error": "user not found"}
 
 
 @app.get("/verify-token")
