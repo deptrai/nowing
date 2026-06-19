@@ -103,6 +103,18 @@ async def lifespan(app: FastAPI):
     # Mark any DB-running runs as abandoned (survived worker restart)
     from app.tasks.chat.run_manager import mark_abandoned_runs_on_startup
     await mark_abandoned_runs_on_startup()
+    # One-shot admin SQL (env-triggered, runs once per deploy then remove env)
+    _bootstrap_sql = _os.getenv("ADMIN_BOOTSTRAP_SQL", "").strip()
+    if _bootstrap_sql:
+        try:
+            from app.db import shielded_async_session
+            from sqlalchemy import text as _text
+            async with shielded_async_session() as _s:
+                await _s.execute(_text(_bootstrap_sql))
+                await _s.commit()
+            logger.info("[Bootstrap] Executed ADMIN_BOOTSTRAP_SQL successfully")
+        except Exception as _e:
+            logger.warning("[Bootstrap] ADMIN_BOOTSTRAP_SQL failed: %s", _e)
     # Initialize LLM Router for Auto mode load balancing
     initialize_llm_router()
     # Seed Nowing documentation in background (CPU-heavy embedding blocks event loop)
