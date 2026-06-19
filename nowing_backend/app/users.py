@@ -27,7 +27,6 @@ from app.db import (
     get_user_db,
 )
 from app.prompts.system_defaults import SYSTEM_PROMPT_DEFAULTS
-from app.services.email_service import send_reset_password_email, send_verify_email, send_welcome_email
 from app.utils.refresh_tokens import create_refresh_token
 
 logger = logging.getLogger(__name__)
@@ -214,6 +213,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
         # Send welcome email (non-blocking, no-op if Resend not configured)
         try:
+            from app.services.email_service import send_welcome_email
             send_welcome_email(user.email, user.display_name)
         except Exception as e:
             logger.warning(f"Welcome email failed for {user.id}: {e}")
@@ -221,12 +221,20 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     async def on_after_forgot_password(
         self, user: User, token: str, request: Request | None = None
     ):
-        send_reset_password_email(user.email, token, user.display_name)
+        try:
+            from app.services.email_service import send_reset_password_email
+            send_reset_password_email(user.email, token, user.display_name)
+        except Exception as e:
+            logger.warning(f"Reset password email failed for {user.id}: {e}")
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Request | None = None
     ):
-        send_verify_email(user.email, token, user.display_name)
+        try:
+            from app.services.email_service import send_verify_email
+            send_verify_email(user.email, token, user.display_name)
+        except Exception as e:
+            logger.warning(f"Verify email failed for {user.id}: {e}")
 
 
 async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
