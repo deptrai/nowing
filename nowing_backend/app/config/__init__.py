@@ -340,11 +340,11 @@ class Config:
 
     # Subscription plan limits
     PLAN_LIMITS: dict[str, dict[str, int]] = {
-        "free": {"monthly_token_limit": 50_000, "pages_limit": 500},
-        "pro_monthly": {"monthly_token_limit": 1_000_000, "pages_limit": 5_000},
-        "pro_yearly": {"monthly_token_limit": 1_000_000, "pages_limit": 5_000},
-        "max_monthly": {"monthly_token_limit": 20_000_000, "pages_limit": 20_000},
-        "max_yearly": {"monthly_token_limit": 20_000_000, "pages_limit": 20_000},
+        "free": {"monthly_token_limit": 1_000_000, "pages_limit": 500},
+        "pro_monthly": {"monthly_token_limit": 25_000_000, "pages_limit": 5_000},
+        "pro_yearly": {"monthly_token_limit": 25_000_000, "pages_limit": 5_000},
+        "max_monthly": {"monthly_token_limit": 300_000_000, "pages_limit": 20_000},
+        "max_yearly": {"monthly_token_limit": 300_000_000, "pages_limit": 20_000},
     }
 
     # Token top-up packs (PAYG)
