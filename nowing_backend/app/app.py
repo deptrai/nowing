@@ -103,18 +103,30 @@ async def lifespan(app: FastAPI):
     # Mark any DB-running runs as abandoned (survived worker restart)
     from app.tasks.chat.run_manager import mark_abandoned_runs_on_startup
     await mark_abandoned_runs_on_startup()
-    # One-shot admin SQL (env-triggered, runs once per deploy then remove env)
-    _bootstrap_sql = _os.getenv("ADMIN_BOOTSTRAP_SQL", "").strip()
-    if _bootstrap_sql:
+    # One-shot admin upgrade (env-triggered: set ADMIN_UPGRADE_USER=email to upgrade to max plan)
+    _upgrade_email = _os.getenv("ADMIN_UPGRADE_USER", "").strip()
+    if _upgrade_email:
         try:
             from app.db import shielded_async_session
             from sqlalchemy import text as _text
             async with shielded_async_session() as _s:
-                await _s.execute(_text(_bootstrap_sql))
+                result = await _s.execute(
+                    _text(
+                        "UPDATE \"user\" SET monthly_token_limit=20000000, "
+                        "tokens_used_this_month=0, pages_limit=20000, "
+                        "plan_id='max_monthly', is_superuser=true "
+                        "WHERE email=:email RETURNING id"
+                    ),
+                    {"email": _upgrade_email},
+                )
                 await _s.commit()
-            logger.info("[Bootstrap] Executed ADMIN_BOOTSTRAP_SQL successfully")
+                row = result.fetchone()
+                if row:
+                    logger.info("[Bootstrap] Upgraded user %s to max plan", _upgrade_email)
+                else:
+                    logger.warning("[Bootstrap] User %s not found for upgrade", _upgrade_email)
         except Exception as _e:
-            logger.warning("[Bootstrap] ADMIN_BOOTSTRAP_SQL failed: %s", _e)
+            logger.warning("[Bootstrap] ADMIN_UPGRADE_USER failed: %s", _e)
     # Initialize LLM Router for Auto mode load balancing
     initialize_llm_router()
     # Seed Nowing documentation in background (CPU-heavy embedding blocks event loop)
