@@ -7,7 +7,7 @@ This document contains all code files ready for implementation.
 
 ## File 1: Update `stripe.types.ts`
 
-**Location:** `surfsense_web/contracts/types/stripe.types.ts`
+**Location:** `nowing_web/contracts/types/stripe.types.ts`
 
 **Action:** Add these imports and exports to the existing file
 
@@ -39,7 +39,7 @@ export type CreateGiftCheckoutResponse = z.infer<typeof createGiftCheckoutRespon
 
 ## File 2: Update `stripe-api.service.ts`
 
-**Location:** `surfsense_web/lib/apis/stripe-api.service.ts`
+**Location:** `nowing_web/lib/apis/stripe-api.service.ts`
 
 **Action:** Add import and method to the existing StripeApiService class
 
@@ -79,7 +79,7 @@ export const stripeApiService = new StripeApiService();
 
 ## File 3: Create `gift/page.tsx`
 
-**Location:** `surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx`
+**Location:** `nowing_web/app/dashboard/[search_space_id]/gift/page.tsx`
 
 **Action:** Create new file with this content
 
@@ -188,7 +188,7 @@ export default function GiftPage() {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Gift a Subscription</h1>
           <p className="text-sm text-muted-foreground">
-            Give your friends or colleagues a PRO subscription for SurfSense.
+            Give your friends or colleagues a PRO subscription for Nowing.
             They'll receive a gift code to activate their account.
           </p>
         </div>
@@ -286,12 +286,12 @@ export default function GiftPage() {
 Create the new directory structure:
 
 ```bash
-mkdir -p surfsense_web/app/dashboard/[search_space_id]/gift
+mkdir -p nowing_web/app/dashboard/[search_space_id]/gift
 ```
 
 Then place `page.tsx` inside:
 ```
-surfsense_web/app/dashboard/[search_space_id]/gift/page.tsx
+nowing_web/app/dashboard/[search_space_id]/gift/page.tsx
 ```
 
 ---
@@ -404,7 +404,7 @@ const handlePurchase = async () => {
 
 After 6.6 complete, Story 6.7 creates the redemption page:
 
-**Location:** `surfsense_web/app/redeem/page.tsx`
+**Location:** `nowing_web/app/redeem/page.tsx`
 
 This public page allows gift code redemption (no auth required initially).
 

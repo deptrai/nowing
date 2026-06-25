@@ -2,23 +2,23 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "SurfSense Frontend",
+      "name": "Nowing Frontend",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
-      "cwd": "surfsense_web",
-      "port": 3999,
+      "cwd": "nowing_web",
+      "port": 4998,
       "autoPort": false
     },
     {
-      "name": "SurfSense Backend",
+      "name": "Nowing Backend",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
-      "cwd": "surfsense_backend",
-      "port": 8000,
+      "runtimeArgs": ["run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "4999", "--reload"],
+      "cwd": "nowing_backend",
+      "port": 4999,
       "autoPort": false
     },
     {
-      "name": "SurfSense Full Stack (Docker Dev)",
+      "name": "Nowing Full Stack (Docker Dev)",
       "runtimeExecutable": "docker",
       "runtimeArgs": ["compose", "-f", "docker/docker-compose.dev.yml", "up", "--build"],
       "cwd": ".",

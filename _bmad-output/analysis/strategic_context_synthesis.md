@@ -1,4 +1,4 @@
-# Strategic Context - SurfSense Crypto Co-Pilot
+# Strategic Context - Nowing Crypto Co-Pilot
 
 **Date:** February 1, 2026  
 **Analysis Type:** Innovation Strategy  
@@ -9,8 +9,8 @@
 ## 🎯 STRATEGIC FRAMING
 
 ### Company Context
-**Name:** SurfSense Crypto Co-Pilot (will rebrand as standalone)  
-**Current Status:** Extension of SurfSense (open-source project)  
+**Name:** Nowing Crypto Co-Pilot (will rebrand as standalone)  
+**Current Status:** Extension of Nowing (open-source project)  
 **Future Vision:** Independent product with separate brand identity
 
 **Critical Insight:** 
@@ -32,20 +32,20 @@
 
 **Strategic Logic:**
 - Market timing is NOW (bull runs don't last forever)
-- Technical capability ready (SurfSense infrastructure)
+- Technical capability ready (Nowing infrastructure)
 - Opportunity window is open but limited
 
 ---
 
 ## 🏢 CURRENT BUSINESS MODEL
 
-**SurfSense Status:**
+**Nowing Status:**
 - Open-source project
 - No current revenue
 - No existing monetization
 
 **Customer Base Overlap:**
-- **Clarification needed:** SurfSense users có phải crypto traders không?
+- **Clarification needed:** Nowing users có phải crypto traders không?
 - **Assumption:** Likely minimal overlap (browser history tracking ≠ crypto trading)
 - **Implication:** This is NEW market entry, not existing customer expansion
 

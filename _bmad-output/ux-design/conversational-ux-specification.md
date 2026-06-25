@@ -1,4 +1,4 @@
-# SurfSense 2.0 - Conversational AI Crypto Advisor UX Specification
+# Nowing 2.0 - Conversational AI Crypto Advisor UX Specification
 
 **Version:** 3.0
 **Date:** 2026-02-02
@@ -11,11 +11,11 @@
 
 ### The Problem
 
-The current SurfSense 2.0 design treats crypto features as **isolated UI components** (Crypto Dashboard, Watchlist, Alerts, Portfolio) that don't work together as an integrated AI assistant. Users must navigate between screens and manually configure each feature.
+The current Nowing 2.0 design treats crypto features as **isolated UI components** (Crypto Dashboard, Watchlist, Alerts, Portfolio) that don't work together as an integrated AI assistant. Users must navigate between screens and manually configure each feature.
 
 ### The Vision
 
-SurfSense should function as a **true crypto advisory AI assistant** where:
+Nowing should function as a **true crypto advisory AI assistant** where:
 
 1. **Conversation is the primary interface** - Users interact through natural language
 2. **AI proactively helps** - Not just responding, but anticipating needs
@@ -128,7 +128,7 @@ SurfSense should function as a **true crypto advisory AI assistant** where:
 │  │  you might want to take partial profits"                            │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
-│  [User opens SurfSense]                                                    │
+│  [User opens Nowing]                                                    │
 │                                                                             │
 │  AI: "🚨 **BULLA Alert Triggered**                                         │
 │                                                                             │
@@ -429,7 +429,7 @@ The AI maintains multiple layers of context to personalize responses:
 ```typescript
 // System prompt template with context injection
 const systemPrompt = `
-You are SurfSense, an AI crypto advisor assistant.
+You are Nowing, an AI crypto advisor assistant.
 
 ## User Profile
 - Risk Tolerance: ${userProfile.riskTolerance}
@@ -672,7 +672,7 @@ To avoid notification fatigue, AI batches and prioritizes alerts:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ 🧠 SurfSense                                    [Search Space ▼] [⚙️] [👤] │
+│ 🧠 Nowing                                    [Search Space ▼] [⚙️] [👤] │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
@@ -1033,7 +1033,7 @@ interface UserContext {
 // Build system prompt with context
 function buildSystemPrompt(context: UserContext): string {
   return `
-You are SurfSense, an AI crypto advisor assistant.
+You are Nowing, an AI crypto advisor assistant.
 
 ## User Profile
 - Risk Tolerance: ${context.profile.riskTolerance}
@@ -1212,7 +1212,7 @@ CREATE TABLE user_context (
 
 ## Summary
 
-This UX specification transforms SurfSense from a collection of isolated crypto UI components into a **true conversational AI crypto advisor**. The key shifts are:
+This UX specification transforms Nowing from a collection of isolated crypto UI components into a **true conversational AI crypto advisor**. The key shifts are:
 
 | Aspect | Before | After |
 |--------|--------|-------|

@@ -1,53 +1,145 @@
 <!DOCTYPE html>
-<html class="dark">
+<html lang="en">
 <head>
-    <title>SurfSense Design Directions</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { zinc: { 900: '#18181b', 800: '#27272a', 950: '#09090b' }, indigo: { 500: '#6366f1', 400: '#818cf8', 300: '#a5b4fc' } } } } }
-    </script>
-</head>
-<body class="bg-zinc-900 text-slate-300 font-sans p-8 max-w-5xl mx-auto">
-    <h1 class="text-3xl font-bold text-white mb-2">SurfSense Design Directions</h1>
-    <p class="text-zinc-400 mb-10">Mô phỏng thiết kế dựa trên phong cách Monochrome & Indigo Focus.</p>
-    
-    <div class="mb-16">
-        <h2 class="text-xl font-semibold text-indigo-400 mb-2">Direction 1: "The Scholar" (Split-Pane Layout)</h2>
-        <p class="mb-6 text-sm text-zinc-400">Giao diện chia đôi màn hình chuẩn mực. Khung Chat bên trái, Tài liệu cuộn bên phải. Tối ưu cho việc đối chiếu và nghiên cứu sâu.</p>
-        <div class="border border-zinc-700 rounded-xl overflow-hidden flex h-[500px] bg-zinc-950 shadow-2xl">
-            <!-- Sidebar / Chat -->
-            <div class="w-1/3 border-r border-zinc-800 p-4 flex flex-col justify-between relative bg-zinc-900">
-                <div class="space-y-4">
-                    <div class="bg-zinc-800 p-4 rounded-lg text-sm shadow-sm"><span class="text-indigo-400 font-semibold text-xs border border-indigo-500/50 px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider">You</span>Nguyên nhân chính là gì?</div>
-                    <div class="p-2 text-sm leading-relaxed"><span class="font-bold text-white mb-2 block flex items-center"><div class="w-2 h-2 bg-indigo-500 rounded-full mr-2 glow"></div> SurfSense AI</span>Nguyên nhân chính được báo cáo nhắc đến chủ yếu do sự thay đổi biểu đồ nhiệt độ toàn cầu <span class="bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded cursor-pointer hover:ring-1 hover:ring-indigo-500 transition-all">[1]</span>.</div>
-                </div>
-                <div class="mt-4"><input type="text" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all placeholder-zinc-500" placeholder="Ask a question..."></div>
-            </div>
-            <!-- Document Pane -->
-            <div class="w-2/3 p-10 overflow-y-auto bg-zinc-950 relative">
-                <div class="absolute top-4 right-4 text-xs font-mono text-zinc-500 border border-zinc-800 px-2 rounded">SYNCED</div>
-                <h3 class="text-xl font-bold text-white mb-6">Climate_Report_2024.pdf</h3>
-                <p class="text-base leading-8 text-zinc-400 mb-4">... Mặc dù có nhiều giả thuyết, các hiện tượng quan sát được cho thấy <span class="bg-indigo-500/20 text-indigo-100 font-medium px-1 rounded ring-1 ring-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.2)]">thay đổi biểu đồ nhiệt độ toàn cầu</span> là tác nhân định hướng chính yếu của sự kiện này ...</p>
-                <p class="text-base leading-8 text-zinc-400">Các nhà khoa học cũng đồng thuận rằng...</p>
-            </div>
-        </div>
-    </div>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nowing UX Design Directions (Epic 10 Included)</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; color: #111; }
+        .direction-card { background: white; border-radius: 8px; padding: 24px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .direction-card h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .mockup-area { border: 1px solid #ddd; height: 400px; border-radius: 6px; margin: 15px 0; background: #fafafa; display: flex; overflow: hidden; }
+        
+        /* Direction 1: The Dense Terminal (Bloomberg-lite) */
+        .d1-sidebar { width: 60px; background: #1a1b1e; display:flex; flex-direction: column; align-items:center; padding-top:10px;}
+        .d1-icon { width: 30px; height: 30px; background: #333; border-radius: 4px; margin-bottom: 10px; }
+        .d1-main { flex: 1; display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; padding: 10px; background: #000; color: #0f0; font-family: monospace; }
+        .d1-panel { border: 1px solid #333; padding: 10px; }
+        .d1-chat { grid-column: 1 / -1; border-top: 1px solid #333; padding: 10px; display: flex; align-items: flex-end;}
+        .d1-input { width: 100%; background: #111; border: 1px solid #333; color: #0f0; padding: 8px; }
 
-    <div class="mb-12">
-        <h2 class="text-xl font-semibold text-indigo-400 mb-2">Direction 2: "Focus Mode" (Floating Overlay)</h2>
-        <p class="mb-6 text-sm text-zinc-400">Tài liệu chiếm trọn không gian, Chat là một Floating Widget nổi bên dưới tựa như Spotlight. Tối ưu cho việc đọc liền mạch, thỉnh thoảng mới hỏi AI.</p>
-        <div class="border border-zinc-700 rounded-xl overflow-hidden relative h-[500px] bg-zinc-950 shadow-2xl p-10 text-center flex flex-col items-center pt-20">
-            <h3 class="text-2xl font-bold text-white mb-6">Climate_Report_2024.pdf</h3>
-            <p class="text-lg leading-8 text-zinc-400 max-w-2xl mx-auto text-left">... Mặc dù có nhiều giả thuyết, các hiện tượng quan sát được cho thấy thay đổi biểu đồ nhiệt độ toàn cầu là tác nhân định hướng chính yếu của sự kiện này ... Các nhà khoa học cũng đồng thuận rằng mức độ nghiêm trọng cần được đánh giá lại...</p>
-            
-            <!-- Floating Hover Chat -->
-            <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-3/4 max-w-2xl bg-zinc-800/90 backdrop-blur-md border border-zinc-700/50 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-5">
-                <div class="mb-4 text-sm text-zinc-300 text-left flex items-start"><div class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 mr-3"></div><div class="leading-relaxed">Nguyên nhân chính được báo cáo nhắc đến chủ yếu do sự thay đổi biểu đồ nhiệt độ toàn cầu <span class="text-indigo-400 font-medium cursor-pointer hover:underline">[1]</span>.</div></div>
-                <div class="relative">
-                    <input type="text" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 pl-4 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner" placeholder="Follow up...">
-                    <div class="absolute right-3 top-3 w-5 h-5 bg-indigo-500 text-white rounded text-xs flex items-center justify-center font-bold font-mono shadow">↵</div>
+        /* Direction 2: The Clean Analyst (Messari style) */
+        .d2-header { height: 50px; background: white; border-bottom: 1px solid #eaeaea; display: flex; align-items: center; padding: 0 20px; font-weight: bold;}
+        .d2-body { display: flex; flex: 1; }
+        .d2-sidebar { width: 250px; border-right: 1px solid #eaeaea; padding: 20px; background: #fdfdfd; }
+        .d2-content { flex: 1; padding: 20px; overflow-y: auto; background: white;}
+        .d2-card { border: 1px solid #eaeaea; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);}
+        .d2-chart { height: 100px; background: #f0f4f8; border-radius: 4px; margin-top: 10px;}
+        .d2-chat-float { position: absolute; bottom: 20px; right: 20px; width: 300px; height: 400px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eaeaea; display: flex; flex-direction: column; }
+
+        /* Direction 3: Split-Pane Conversational (Current Evolution) */
+        .d3-sidebar { width: 200px; background: #f9fafb; border-right: 1px solid #e5e7eb; padding: 15px; }
+        .d3-chat { flex: 1; display: flex; flex-direction: column; background: white; }
+        .d3-chat-history { flex: 1; padding: 20px; }
+        .d3-msg { background: #f3f4f6; padding: 12px; border-radius: 8px; margin-bottom: 10px; max-width: 80%; }
+        .d3-msg.user { background: #e0e7ff; align-self: flex-end; margin-left: auto; }
+        .d3-input-area { padding: 20px; border-top: 1px solid #e5e7eb; }
+        .d3-context { width: 400px; background: #ffffff; border-left: 1px solid #e5e7eb; padding: 0; display: flex; flex-direction: column;}
+        .d3-tabs { display: flex; border-bottom: 1px solid #e5e7eb; }
+        .d3-tab { padding: 10px 15px; border-bottom: 2px solid transparent; font-size: 13px; font-weight: 500; color: #6b7280; }
+        .d3-tab.active { border-bottom-color: #3b82f6; color: #111827; }
+        .d3-widget { margin: 15px; background: #f9fafb; border-radius: 8px; padding: 15px; border: 1px solid #e5e7eb;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>UX Design Directions: Nowing Institutional Terminal</h1>
+        <p>Exploring how to integrate Epic 10 (Smart Money, Heatmaps, Tokenomics) into the RAG workflow.</p>
+
+        <!-- Direction 1 -->
+        <div class="direction-card">
+            <h2>Direction 1: The Dense Terminal (Bloomberg-lite)</h2>
+            <p><strong>Focus:</strong> Maximum data density, dark mode default, multi-panel layouts. The chat is a command line at the bottom.</p>
+            <div class="mockup-area" style="position: relative;">
+                <div class="d1-sidebar">
+                    <div class="d1-icon"></div><div class="d1-icon"></div><div class="d1-icon"></div>
+                </div>
+                <div class="d1-main">
+                    <div class="d1-panel">Sankey Diagram: Smart Money Flow ($UNI)</div>
+                    <div class="d1-panel">NLP Heatmap: Governance Sentiment</div>
+                    <div class="d1-panel">Tokenomics Sandbox (Sliders)</div>
+                    <div class="d1-panel">Order Book Depth</div>
+                    <div class="d1-chat">
+                        <input type="text" class="d1-input" value="> analyze $UNI sell pressure ... _">
+                    </div>
                 </div>
             </div>
+            <p><strong>Pros:</strong> Institutional feel, shows everything at once. <strong>Cons:</strong> Steep learning curve, intimidating for retail users.</p>
+        </div>
+
+        <!-- Direction 2 -->
+        <div class="direction-card">
+            <h2>Direction 2: The Clean Analyst (Messari Style)</h2>
+            <p><strong>Focus:</strong> Report-centric, reading-optimized. Dashboards and reports are the main view; AI chat is a floating assistant.</p>
+            <div class="mockup-area" style="flex-direction: column; position: relative;">
+                <div class="d2-header">Nowing Institutional / Uniswap (UNI)</div>
+                <div class="d2-body">
+                    <div class="d2-sidebar">
+                        <div>Overview</div><div>Smart Money</div><div>Tokenomics</div><div>Risks</div>
+                    </div>
+                    <div class="d2-content">
+                        <div class="d2-card">
+                            <h3>Protocol Revenue vs Token Incentives</h3>
+                            <div class="d2-chart"></div>
+                        </div>
+                        <div class="d2-card">
+                            <h3>Enterprise Risk Report</h3>
+                            <p>Smart Contract Audit: Safe. Legal Risk: Medium (SEC scrutiny).</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="d2-chat-float">
+                    <div style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Ask Nowing AI</div>
+                    <div style="flex: 1; padding: 10px;"><em>"Can you simulate a 20% TVL drop?"</em></div>
+                    <div style="padding: 10px; border-top: 1px solid #eee;"><input type="text" style="width:100%" placeholder="Type here..."></div>
+                </div>
+            </div>
+            <p><strong>Pros:</strong> Very familiar to traditional finance researchers. Great for reading. <strong>Cons:</strong> Makes the AI feel like a secondary feature rather than the core engine.</p>
+        </div>
+
+        <!-- Direction 3 -->
+        <div class="direction-card">
+            <h2>Direction 3: Split-Pane Conversational (Current Evolution)</h2>
+            <p><strong>Focus:</strong> The chat IS the workspace. When AI generates data (Sankey, Heatmaps), it opens rich interactive widgets in a right-side context pane.</p>
+            <div class="mockup-area">
+                <div class="d3-sidebar">
+                    <div>Histories</div>
+                    <div style="color: #666; font-size: 12px; margin-top: 10px;">Today</div>
+                    <div>$UNI Analysis</div>
+                    <div>Arbitrage paths</div>
+                </div>
+                <div class="d3-chat">
+                    <div class="d3-chat-history">
+                        <div class="d3-msg user">Phân tích dòng tiền thông minh của $UNI và rủi ro tokenomics.</div>
+                        <div class="d3-msg">
+                            <strong>Đang phân tích... (Spawning 4 agents)</strong><br>
+                            Tôi đã lấy dữ liệu từ Nansen và Token Terminal. Mời bạn xem biểu đồ dòng tiền và áp lực bán ở panel bên phải.
+                        </div>
+                    </div>
+                    <div class="d3-input-area">
+                        <input type="text" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;" placeholder="Ask anything...">
+                    </div>
+                </div>
+                <div class="d3-context">
+                    <div class="d3-tabs">
+                        <div class="d3-tab active">Smart Money Flow</div>
+                        <div class="d3-tab">Tokenomics Sandbox</div>
+                        <div class="d3-tab">Sources (12)</div>
+                    </div>
+                    <div class="d3-widget">
+                        <strong>Sankey Diagram</strong><br><br>
+                        <div style="height: 150px; background: #e0e7ff; border-radius: 4px; display:flex; align-items:center; justify-content:center;">[Interactive Chart]</div>
+                    </div>
+                    <div class="d3-widget">
+                        <strong>Simulation Controls</strong><br><br>
+                        <input type="range" style="width:100%"><br>
+                        <span style="font-size: 12px;">Inflation Shock (+20%)</span>
+                    </div>
+                </div>
+            </div>
+            <p><strong>Pros:</strong> AI remains the core driver. Complex data doesn't clutter the chat text. <strong>Cons:</strong> Requires wide desktop screens to work well.</p>
         </div>
     </div>
 </body>

@@ -1,17 +1,17 @@
 # Phân Tích Cây Mã Nguồn
 
-Tài liệu này ánh xạ các thư mục và tệp tin quan trọng trong dự án đa phần (multi-part) SurfSense.
+Tài liệu này ánh xạ các thư mục và tệp tin quan trọng trong dự án đa phần (multi-part) Nowing.
 
 ## Sơ Đồ Thư Mục
 
 ```
-/Users/mac_1/Documents/GitHub/SurfSense/
+/Users/mac_1/Documents/GitHub/Nowing/
 ├── docs/                                   # Tài liệu cấp dự án
 │   └── chinese-llm-setup.md                # Hướng dẫn cài đặt chuyên biệt
 ├── docker-compose.yml                      # File điều phối chính
 ├── .env.example                            # Mẫu biến môi trường toàn cục (Global environment)
 │
-├── surfsense_backend/                      # [PART: Backend]
+├── nowing_backend/                      # [PART: Backend]
 │   ├── app/
 │   │   ├── api/                            # Các tiện ích API
 │   │   ├── config/                         # Cấu hình & Cài đặt
@@ -29,7 +29,7 @@ Tài liệu này ánh xạ các thư mục và tệp tin quan trọng trong dự
 │   ├── pyproject.toml                      # Dependencies (kiểu uv/poetry)
 │   └── Dockerfile                          # Cấu hình container Backend
 │
-├── surfsense_web/                          # [PART: Web]
+├── nowing_web/                          # [PART: Web]
 │   ├── app/                                # Next.js App Router (Pages & API)
 │   │   ├── (home)/                         # Marketing/Landing Pages
 │   │   ├── dashboard/                      # Ứng dụng người dùng (đã xác thực)
@@ -48,7 +48,7 @@ Tài liệu này ánh xạ các thư mục và tệp tin quan trọng trong dự
 │   ├── package.json                        # Dependencies (pnpm)
 │   └── next.config.ts                      # Cấu hình Next.js
 │
-└── surfsense_browser_extension/            # [PART: Extension]
+└── nowing_browser_extension/            # [PART: Extension]
     ├── background/                         # Service Workers
     │   └── index.ts                        # Điểm nhập Background
     ├── routes/                             # Extension UI Routes
@@ -60,15 +60,15 @@ Tài liệu này ánh xạ các thư mục và tệp tin quan trọng trong dự
 
 ## Phân Tích Các Thư Mục Quan Trọng
 
-### Backend (`surfsense_backend`)
+### Backend (`nowing_backend`)
 - **`app/routes/`**: Chứa tất cả REST API endpoints. Mỗi file thường tương ứng với một miền tính năng (ví dụ: `discord_add_connector_route.py`).
 - **`app/connectors/`**: Logic tích hợp cốt lõi cho hơn 30 dịch vụ bên ngoài. Đây là nơi quá trình data ingestion diễn ra.
 - **`app/db.py`**: Hệ thống thần kinh trung ương để lưu trữ dữ liệu. Định nghĩa tất cả các SQLAlchemy models và kết nối database.
 
-### Web (`surfsense_web`)
+### Web (`nowing_web`)
 - **`app/dashboard/`**: Giao diện ứng dụng chính mà người dùng tương tác. Được bảo vệ bởi xác thực (auth).
 - **`components/assistant-ui/`**: Các components chuyên biệt cho giao diện AI chat, xử lý streaming, tool calls, và lịch sử tin nhắn.
 - **`lib/apis/`**: Lớp client được định kiểu (typed client layer) giao tiếp với Backend.
 
-### Extension (`surfsense_browser_extension`)
+### Extension (`nowing_browser_extension`)
 - **`background/`**: Xử lý logic bền vững (persistent logic) như thu thập lịch sử và giám sát tab ngay cả khi popup đã đóng.

@@ -51,18 +51,18 @@ bump_toml() {
   fi
 }
 
-bump_json "$REPO_ROOT/surfsense_web/package.json"
-bump_json "$REPO_ROOT/surfsense_browser_extension/package.json"
-bump_json "$REPO_ROOT/surfsense_desktop/package.json"
-bump_toml "$REPO_ROOT/surfsense_backend/pyproject.toml"
+bump_json "$REPO_ROOT/nowing_web/package.json"
+bump_json "$REPO_ROOT/nowing_browser_extension/package.json"
+bump_json "$REPO_ROOT/nowing_desktop/package.json"
+bump_toml "$REPO_ROOT/nowing_backend/pyproject.toml"
 
 echo ""
 echo "Syncing lock files..."
 if command -v uv &>/dev/null; then
-  (cd "$REPO_ROOT/surfsense_backend" && uv lock)
-  echo "  OK    surfsense_backend/uv.lock"
+  (cd "$REPO_ROOT/nowing_backend" && uv lock)
+  echo "  OK    nowing_backend/uv.lock"
 else
-  echo "  SKIP  uv not found -- run 'uv lock' in surfsense_backend/ manually"
+  echo "  SKIP  uv not found -- run 'uv lock' in nowing_backend/ manually"
 fi
 
 echo "---------------------------------"

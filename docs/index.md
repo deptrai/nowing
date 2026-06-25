@@ -1,4 +1,4 @@
-# SurfSense Project Documentation Index
+# Nowing Project Documentation Index
 
 ## 🌟 Project Overview
 - **Type:** monorepo with 4 parts
@@ -7,19 +7,19 @@
 
 ## 🏗️ Quick Reference
 
-### Frontend (`surfsense_web/`)
+### Frontend (`nowing_web/`)
 - **Type:** web
 - **Tech Stack:** Next.js 16 (App Router), React 19, TailwindCSS 4, Drizzle ORM, @rocicorp/zero (Local-first sync)
 
-### Backend (`surfsense_backend/`)
+### Backend (`nowing_backend/`)
 - **Type:** backend
 - **Tech Stack:** FastAPI (Python 3.12), SQLAlchemy, Alembic, Celery, Redis, LangGraph, pgvector
 
-### Browser Extension (`surfsense_browser_extension/`)
+### Browser Extension (`nowing_browser_extension/`)
 - **Type:** extension
 - **Tech Stack:** React, TypeScript
 
-### Desktop Client (`surfsense_desktop/`)
+### Desktop Client (`nowing_desktop/`)
 - **Type:** desktop
 - **Tech Stack:** TypeScript (TBD frameworks)
 
@@ -40,6 +40,7 @@ Dự án đã được phân tích bằng công cụ Code Review Graph, trích x
 - [API Contracts](./api-contracts.md)
 - [Data Models](./data-models.md)
 - [Integration Architecture](./integration-architecture.md)
+- [Chainlens Deep Research Integration](./chainlens-integration.md)
 
 ## 📁 Existing Documentation
 - [Code Review Graph Wiki](../.code-review-graph/wiki/_index.md) - Chi tiết từng community và file dependency.

@@ -1,0 +1,2072 @@
+"""
+Routes for the new chat feature with assistant-ui integration.
+
+These endpoints support the ThreadHistoryAdapter pattern from assistant-ui:
+- GET /threads - List threads for sidebar (ThreadListPrimitive)
+- POST /threads - Create a new thread
+- GET /threads/{thread_id} - Get thread with messages (load)
+- PUT /threads/{thread_id} - Update thread (rename, archive)
+- DELETE /threads/{thread_id} - Delete thread
+- POST /threads/{thread_id}/messages - Append message
+"""
+
+import asyncio
+import json
+import os
+import logging
+from datetime import UTC, datetime
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+from sqlalchemy import func, or_, text
+from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
+
+from app.db import (
+    ChatComment,
+    ChatRun,
+    ChatRunStatus,
+    ChatVisibility,
+    NewChatMessage,
+    NewChatMessageRole,
+    NewChatThread,
+    Permission,
+    SearchSpace,
+    User,
+    get_async_session,
+    shielded_async_session,
+)
+from app.schemas.new_chat import (
+    AgentToolInfo,
+    NewChatMessageRead,
+    NewChatRequest,
+    NewChatThreadCreate,
+    NewChatThreadRead,
+    NewChatThreadUpdate,
+    NewChatThreadVisibilityUpdate,
+    NewChatThreadWithMessages,
+    PublicChatSnapshotCreateResponse,
+    PublicChatSnapshotListResponse,
+    RegenerateRequest,
+    ResumeRequest,
+    ThreadHistoryLoadResponse,
+    ThreadListItem,
+    ThreadListResponse,
+)
+from app.config import config
+from app.routes.model_list_routes import get_tier_for_model_id
+from app.services.token_quota_service import TokenQuotaExceededError, TokenQuotaService
+from app.tasks.chat.stream_new_chat import _with_heartbeat, stream_new_chat, stream_resume_chat
+from app.users import current_active_user
+from app.services.new_streaming_service import VercelStreamingService
+from app.utils.rbac import check_permission
+
+_logger = logging.getLogger(__name__)
+_background_tasks: set[asyncio.Task] = set()
+
+router = APIRouter()
+
+
+def _try_delete_sandbox(thread_id: int) -> None:
+    """Fire-and-forget sandbox + local file deletion so the HTTP response isn't blocked."""
+    from app.agents.new_chat.sandbox import (
+        delete_local_sandbox_files,
+        delete_sandbox,
+        is_sandbox_enabled,
+    )
+
+    if not is_sandbox_enabled():
+        return
+
+    async def _bg() -> None:
+        try:
+            await delete_sandbox(thread_id)
+        except Exception:
+            _logger.warning(
+                "Background sandbox delete failed for thread %s",
+                thread_id,
+                exc_info=True,
+            )
+        try:
+            delete_local_sandbox_files(thread_id)
+        except Exception:
+            _logger.warning(
+                "Local sandbox file cleanup failed for thread %s",
+                thread_id,
+                exc_info=True,
+            )
+
+    try:
+        loop = asyncio.get_running_loop()
+        task = loop.create_task(_bg())
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
+    except RuntimeError:
+        pass
+
+
+async def check_thread_access(
+    session: AsyncSession,
+    thread: NewChatThread,
+    user: User,
+    require_ownership: bool = False,
+) -> bool:
+    """
+    Check if a user has access to a thread based on visibility rules.
+
+    Access is granted if:
+    - User is the creator of the thread
+    - Thread visibility is SEARCH_SPACE (any member can access) - for read/update operations only
+    - Thread is a legacy thread (created_by_id is NULL) - only if user is search space owner
+
+    Args:
+        session: Database session
+        thread: The thread to check access for
+        user: The user requesting access
+        require_ownership: If True, ONLY the creator can perform this action (e.g., changing visibility).
+                          This is checked FIRST, before visibility rules.
+
+    Returns:
+        True if access is granted
+
+    Raises:
+        HTTPException: If access is denied
+    """
+    is_owner = thread.created_by_id == user.id
+    is_legacy = thread.created_by_id is None
+
+    # If ownership is required (e.g., changing visibility), ONLY the creator can do it
+    # This check comes first to ensure ownership-required operations are always creator-only
+    if require_ownership:
+        if not is_owner:
+            raise HTTPException(
+                status_code=403,
+                detail="Only the creator of this chat can perform this action",
+            )
+        return True
+
+    # Shared threads (SEARCH_SPACE) are accessible by any member for read/update operations
+    if thread.visibility == ChatVisibility.SEARCH_SPACE:
+        return True
+
+    # For legacy threads (created before visibility feature),
+    # only the search space owner can access
+    if is_legacy:
+        search_space_query = select(SearchSpace).filter(
+            SearchSpace.id == thread.search_space_id
+        )
+        search_space_result = await session.execute(search_space_query)
+        search_space = search_space_result.scalar_one_or_none()
+        is_search_space_owner = search_space and search_space.user_id == user.id
+
+        if is_search_space_owner:
+            return True
+        # Legacy threads are not accessible to non-owners
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have access to this chat",
+        )
+
+    # For read access: owner can access their own private threads
+    if is_owner:
+        return True
+
+    # Private thread and user is not the owner
+    raise HTTPException(
+        status_code=403,
+        detail="You don't have access to this private chat",
+    )
+
+
+# =============================================================================
+# Thread Endpoints
+# =============================================================================
+
+
+@router.get("/threads", response_model=ThreadListResponse)
+async def list_threads(
+    search_space_id: int,
+    limit: int | None = None,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    List all accessible threads for the current user in a search space.
+    Returns threads and archived_threads for ThreadListPrimitive.
+
+    A user can see threads that are:
+    - Created by them (regardless of visibility)
+    - Shared with the search space (visibility = SEARCH_SPACE)
+    - Legacy threads with no creator (created_by_id is NULL) - only if user is search space owner
+
+    Args:
+        search_space_id: The search space to list threads for
+        limit: Optional limit on number of threads to return (applies to active threads only)
+
+    Requires CHATS_READ permission.
+    """
+    try:
+        await check_permission(
+            session,
+            user,
+            search_space_id,
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this search space",
+        )
+
+        # Check if user is the search space owner (for legacy thread visibility)
+        search_space_query = select(SearchSpace).filter(
+            SearchSpace.id == search_space_id
+        )
+        search_space_result = await session.execute(search_space_query)
+        search_space = search_space_result.scalar_one_or_none()
+        is_search_space_owner = search_space and search_space.user_id == user.id
+
+        # Build filter conditions:
+        # 1. Created by the current user (any visibility)
+        # 2. Shared with the search space (visibility = SEARCH_SPACE)
+        # 3. Legacy threads (created_by_id is NULL) - only visible to search space owner
+        filter_conditions = [
+            NewChatThread.created_by_id == user.id,
+            NewChatThread.visibility == ChatVisibility.SEARCH_SPACE,
+        ]
+
+        # Only include legacy threads for the search space owner
+        if is_search_space_owner:
+            filter_conditions.append(NewChatThread.created_by_id.is_(None))
+
+        query = (
+            select(NewChatThread)
+            .filter(
+                NewChatThread.search_space_id == search_space_id,
+                or_(*filter_conditions),
+            )
+            .order_by(NewChatThread.updated_at.desc())
+        )
+
+        result = await session.execute(query)
+        all_threads = result.scalars().all()
+
+        # Separate active and archived threads
+        threads = []
+        archived_threads = []
+
+        for thread in all_threads:
+            # Legacy threads (no creator) are treated as own threads for owner
+            is_own_thread = thread.created_by_id == user.id or (
+                thread.created_by_id is None and is_search_space_owner
+            )
+            item = ThreadListItem(
+                id=thread.id,
+                title=thread.title,
+                archived=thread.archived,
+                visibility=thread.visibility,
+                created_by_id=thread.created_by_id,
+                is_own_thread=is_own_thread,
+                created_at=thread.created_at,
+                updated_at=thread.updated_at,
+            )
+            if thread.archived:
+                archived_threads.append(item)
+            else:
+                threads.append(item)
+
+        # Apply limit to active threads if specified
+        if limit is not None and limit > 0:
+            threads = threads[:limit]
+
+        return ThreadListResponse(threads=threads, archived_threads=archived_threads)
+
+    except HTTPException:
+        raise
+    except OperationalError:
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while fetching threads: {e!s}",
+        ) from None
+
+
+@router.get("/threads/search", response_model=list[ThreadListItem])
+async def search_threads(
+    search_space_id: int,
+    title: str,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Search accessible threads by title in a search space.
+
+    A user can search threads that are:
+    - Created by them (regardless of visibility)
+    - Shared with the search space (visibility = SEARCH_SPACE)
+    - Legacy threads with no creator (created_by_id is NULL) - only if user is search space owner
+
+    Args:
+        search_space_id: The search space to search in
+        title: The search query (case-insensitive partial match)
+
+    Requires CHATS_READ permission.
+    """
+    try:
+        await check_permission(
+            session,
+            user,
+            search_space_id,
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this search space",
+        )
+
+        # Check if user is the search space owner (for legacy thread visibility)
+        search_space_query = select(SearchSpace).filter(
+            SearchSpace.id == search_space_id
+        )
+        search_space_result = await session.execute(search_space_query)
+        search_space = search_space_result.scalar_one_or_none()
+        is_search_space_owner = search_space and search_space.user_id == user.id
+
+        # Build filter conditions
+        filter_conditions = [
+            NewChatThread.created_by_id == user.id,
+            NewChatThread.visibility == ChatVisibility.SEARCH_SPACE,
+        ]
+
+        # Only include legacy threads for the search space owner
+        if is_search_space_owner:
+            filter_conditions.append(NewChatThread.created_by_id.is_(None))
+
+        # Search accessible threads by title (case-insensitive)
+        query = (
+            select(NewChatThread)
+            .filter(
+                NewChatThread.search_space_id == search_space_id,
+                NewChatThread.title.ilike(f"%{title}%"),
+                or_(*filter_conditions),
+            )
+            .order_by(NewChatThread.updated_at.desc())
+        )
+
+        result = await session.execute(query)
+        threads = result.scalars().all()
+
+        return [
+            ThreadListItem(
+                id=thread.id,
+                title=thread.title,
+                archived=thread.archived,
+                visibility=thread.visibility,
+                created_by_id=thread.created_by_id,
+                # Legacy threads (no creator) are treated as own threads for owner
+                is_own_thread=(
+                    thread.created_by_id == user.id
+                    or (thread.created_by_id is None and is_search_space_owner)
+                ),
+                created_at=thread.created_at,
+                updated_at=thread.updated_at,
+            )
+            for thread in threads
+        ]
+
+    except HTTPException:
+        raise
+    except OperationalError:
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while searching threads: {e!s}",
+        ) from None
+
+
+@router.post("/threads", response_model=NewChatThreadRead)
+async def create_thread(
+    thread: NewChatThreadCreate,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Create a new chat thread.
+
+    The thread is created with the specified visibility (defaults to PRIVATE).
+    The current user is recorded as the creator of the thread.
+
+    Requires CHATS_CREATE permission.
+    """
+    try:
+        await check_permission(
+            session,
+            user,
+            thread.search_space_id,
+            Permission.CHATS_CREATE.value,
+            "You don't have permission to create chats in this search space",
+        )
+
+        now = datetime.now(UTC)
+        db_thread = NewChatThread(
+            title=thread.title,
+            archived=thread.archived,
+            visibility=thread.visibility,
+            search_space_id=thread.search_space_id,
+            created_by_id=user.id,
+            updated_at=now,
+        )
+        session.add(db_thread)
+        await session.commit()
+        await session.refresh(db_thread)
+        return db_thread
+
+    except HTTPException:
+        raise
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Database constraint violation. Please check your input data.",
+        ) from None
+    except OperationalError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while creating the thread: {e!s}",
+        ) from None
+
+
+@router.get("/threads/{thread_id}", response_model=ThreadHistoryLoadResponse)
+async def get_thread_messages(
+    thread_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Get a thread with all its messages.
+    This is used by ThreadHistoryAdapter.load() to restore conversation.
+
+    Access is granted if:
+    - User is the creator of the thread
+    - Thread visibility is SEARCH_SPACE
+
+    Requires CHATS_READ permission.
+    """
+    try:
+        # Get thread first
+        result = await session.execute(
+            select(NewChatThread).filter(NewChatThread.id == thread_id)
+        )
+        thread = result.scalars().first()
+
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        # Check permission to read chats in this search space
+        await check_permission(
+            session,
+            user,
+            thread.search_space_id,
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this search space",
+        )
+
+        # Check thread-level access based on visibility
+        await check_thread_access(session, thread, user)
+
+        # Get messages with their authors loaded
+        messages_result = await session.execute(
+            select(NewChatMessage)
+            .options(selectinload(NewChatMessage.author))
+            .filter(NewChatMessage.thread_id == thread_id)
+            .order_by(NewChatMessage.created_at)
+        )
+        db_messages = messages_result.scalars().all()
+
+        # Return messages in the format expected by assistant-ui
+        messages = [
+            NewChatMessageRead(
+                id=msg.id,
+                thread_id=msg.thread_id,
+                role=msg.role,
+                content=msg.content,
+                created_at=msg.created_at,
+                author_id=msg.author_id,
+                author_display_name=msg.author.display_name if msg.author else None,
+                author_avatar_url=msg.author.avatar_url if msg.author else None,
+            )
+            for msg in db_messages
+        ]
+
+        return ThreadHistoryLoadResponse(messages=messages)
+
+    except HTTPException:
+        raise
+    except OperationalError:
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while fetching the thread: {e!s}",
+        ) from None
+
+
+@router.get("/threads/{thread_id}/full", response_model=NewChatThreadWithMessages)
+async def get_thread_full(
+    thread_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Get full thread details with all messages.
+
+    Access is granted if:
+    - User is the creator of the thread
+    - Thread visibility is SEARCH_SPACE
+
+    Requires CHATS_READ permission.
+    """
+    try:
+        result = await session.execute(
+            select(NewChatThread)
+            .options(selectinload(NewChatThread.messages))
+            .filter(NewChatThread.id == thread_id)
+        )
+        thread = result.scalars().first()
+
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        await check_permission(
+            session,
+            user,
+            thread.search_space_id,
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this search space",
+        )
+
+        # Check thread-level access based on visibility
+        await check_thread_access(session, thread, user)
+
+        # Check if thread has any comments
+        comment_count = await session.scalar(
+            select(func.count())
+            .select_from(ChatComment)
+            .join(NewChatMessage, ChatComment.message_id == NewChatMessage.id)
+            .where(NewChatMessage.thread_id == thread.id)
+        )
+
+        return {
+            **thread.__dict__,
+            "messages": thread.messages,
+            "has_comments": (comment_count or 0) > 0,
+        }
+
+    except HTTPException:
+        raise
+    except OperationalError:
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while fetching the thread: {e!s}",
+        ) from None
+
+
+@router.put("/threads/{thread_id}", response_model=NewChatThreadRead)
+async def update_thread(
+    thread_id: int,
+    thread_update: NewChatThreadUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Update a thread (title, archived status).
+    Used for renaming and archiving threads.
+
+    - PRIVATE threads: Only the creator can update
+    - SEARCH_SPACE threads: Any member with CHATS_UPDATE permission can update
+
+    Requires CHATS_UPDATE permission.
+    """
+    try:
+        result = await session.execute(
+            select(NewChatThread).filter(NewChatThread.id == thread_id)
+        )
+        db_thread = result.scalars().first()
+
+        if not db_thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        await check_permission(
+            session,
+            user,
+            db_thread.search_space_id,
+            Permission.CHATS_UPDATE.value,
+            "You don't have permission to update chats in this search space",
+        )
+
+        # For PRIVATE threads, only the creator can update
+        # For SEARCH_SPACE threads, any member with permission can update
+        if db_thread.visibility == ChatVisibility.PRIVATE:
+            await check_thread_access(session, db_thread, user, require_ownership=True)
+
+        # Update fields
+        update_data = thread_update.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_thread, key, value)
+
+        db_thread.updated_at = datetime.now(UTC)
+
+        await session.commit()
+        await session.refresh(db_thread)
+        return db_thread
+
+    except HTTPException:
+        raise
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Database constraint violation. Please check your input data.",
+        ) from None
+    except OperationalError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while updating the thread: {e!s}",
+        ) from None
+
+
+@router.delete("/threads/{thread_id}", response_model=dict)
+async def delete_thread(
+    thread_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Delete a thread and all its messages.
+
+    - PRIVATE threads: Only the creator can delete
+    - SEARCH_SPACE threads: Any member with CHATS_DELETE permission can delete
+
+    Requires CHATS_DELETE permission.
+    """
+    try:
+        result = await session.execute(
+            select(NewChatThread).filter(NewChatThread.id == thread_id)
+        )
+        db_thread = result.scalars().first()
+
+        if not db_thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        await check_permission(
+            session,
+            user,
+            db_thread.search_space_id,
+            Permission.CHATS_DELETE.value,
+            "You don't have permission to delete chats in this search space",
+        )
+
+        # For PRIVATE threads, only the creator can delete
+        # For SEARCH_SPACE threads, any member with permission can delete
+        # Legacy threads (created_by_id is NULL) have no recorded creator,
+        # so we skip strict ownership and fall through to legacy handling
+        # which allows the search space owner to delete them
+        if db_thread.visibility == ChatVisibility.PRIVATE:
+            await check_thread_access(
+                session,
+                db_thread,
+                user,
+                require_ownership=(db_thread.created_by_id is not None),
+            )
+
+        await session.delete(db_thread)
+        await session.commit()
+
+        _try_delete_sandbox(thread_id)
+
+        return {"message": "Thread deleted successfully"}
+
+    except HTTPException:
+        raise
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=400, detail="Cannot delete thread due to existing dependencies."
+        ) from None
+    except OperationalError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while deleting the thread: {e!s}",
+        ) from None
+
+
+@router.patch("/threads/{thread_id}/visibility", response_model=NewChatThreadRead)
+async def update_thread_visibility(
+    thread_id: int,
+    visibility_update: NewChatThreadVisibilityUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Update the visibility/sharing settings of a thread.
+
+    Only the creator of the thread can change its visibility.
+    - PRIVATE: Only the creator can access the thread (default)
+    - SEARCH_SPACE: All members of the search space can access the thread
+
+    Requires CHATS_UPDATE permission.
+    """
+    try:
+        result = await session.execute(
+            select(NewChatThread).filter(NewChatThread.id == thread_id)
+        )
+        db_thread = result.scalars().first()
+
+        if not db_thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        await check_permission(
+            session,
+            user,
+            db_thread.search_space_id,
+            Permission.CHATS_UPDATE.value,
+            "You don't have permission to update chats in this search space",
+        )
+
+        # Only the creator can change visibility
+        await check_thread_access(session, db_thread, user, require_ownership=True)
+
+        # Update visibility
+        db_thread.visibility = visibility_update.visibility
+        db_thread.updated_at = datetime.now(UTC)
+
+        await session.commit()
+        await session.refresh(db_thread)
+        return db_thread
+
+    except HTTPException:
+        raise
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Database constraint violation. Please check your input data.",
+        ) from None
+    except OperationalError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while updating thread visibility: {e!s}",
+        ) from None
+
+
+# =============================================================================
+# Snapshot Endpoints
+# =============================================================================
+
+
+@router.post(
+    "/threads/{thread_id}/snapshots", response_model=PublicChatSnapshotCreateResponse
+)
+async def create_thread_snapshot(
+    thread_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Create a public snapshot of the thread.
+
+    Returns existing snapshot URL if content unchanged (deduplication).
+    """
+    from app.services.public_chat_service import create_snapshot
+
+    return await create_snapshot(
+        session=session,
+        thread_id=thread_id,
+        user=user,
+    )
+
+
+@router.get(
+    "/threads/{thread_id}/snapshots", response_model=PublicChatSnapshotListResponse
+)
+async def list_thread_snapshots(
+    thread_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    List all public snapshots for this thread.
+
+    Only the thread owner can view snapshots.
+    """
+    from app.services.public_chat_service import list_snapshots_for_thread
+
+    return PublicChatSnapshotListResponse(
+        snapshots=await list_snapshots_for_thread(
+            session=session,
+            thread_id=thread_id,
+            user=user,
+        )
+    )
+
+
+@router.delete("/threads/{thread_id}/snapshots/{snapshot_id}")
+async def delete_thread_snapshot(
+    thread_id: int,
+    snapshot_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Delete a specific snapshot.
+
+    Only the thread owner can delete snapshots.
+    """
+    from app.services.public_chat_service import delete_snapshot
+
+    await delete_snapshot(
+        session=session,
+        thread_id=thread_id,
+        snapshot_id=snapshot_id,
+        user=user,
+    )
+    return {"message": "Snapshot deleted successfully"}
+
+
+# =============================================================================
+# Message Endpoints
+# =============================================================================
+
+
+@router.post("/threads/{thread_id}/messages", response_model=NewChatMessageRead)
+async def append_message(
+    thread_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Append a message to a thread.
+    This is used by ThreadHistoryAdapter.append() to persist messages.
+
+    Access is granted if:
+    - User is the creator of the thread
+    - Thread visibility is SEARCH_SPACE
+
+    Requires CHATS_UPDATE permission.
+    """
+    try:
+        # Parse raw body - extract only role and content, ignoring extra fields
+        raw_body = await request.json()
+        role = raw_body.get("role")
+        content = raw_body.get("content")
+
+        if not role:
+            raise HTTPException(status_code=400, detail="Missing required field: role")
+        if content is None:
+            raise HTTPException(
+                status_code=400, detail="Missing required field: content"
+            )
+
+        # Validate role early (before any DB work)
+        role_str = role.lower() if isinstance(role, str) else role
+        try:
+            message_role = NewChatMessageRole(role_str)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid role: {role}. Must be 'user', 'assistant', or 'system'.",
+            ) from None
+
+        # Get thread
+        result = await session.execute(
+            select(NewChatThread).filter(NewChatThread.id == thread_id)
+        )
+        thread = result.scalars().first()
+
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        await check_permission(
+            session,
+            user,
+            thread.search_space_id,
+            Permission.CHATS_UPDATE.value,
+            "You don't have permission to update chats in this search space",
+        )
+
+        # Check thread-level access based on visibility
+        await check_thread_access(session, thread, user)
+
+        # Create message
+        db_message = NewChatMessage(
+            thread_id=thread_id,
+            role=message_role,
+            content=content,
+            author_id=user.id,
+        )
+        session.add(db_message)
+
+        # Update thread's updated_at timestamp
+        thread.updated_at = datetime.now(UTC)
+
+        # flush assigns the PK/defaults without a round-trip SELECT
+        await session.flush()
+        await session.commit()
+
+        # Return the in-memory object (already has id from flush) instead of
+        # doing an extra refresh() SELECT.
+        return db_message
+
+    except HTTPException:
+        raise
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Database constraint violation. Please check your input data.",
+        ) from None
+    except OperationalError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while appending the message: {e!s}",
+        ) from None
+
+
+@router.get("/threads/{thread_id}/messages", response_model=list[NewChatMessageRead])
+async def list_messages(
+    thread_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    List messages in a thread with pagination.
+
+    Access is granted if:
+    - User is the creator of the thread
+    - Thread visibility is SEARCH_SPACE
+
+    Requires CHATS_READ permission.
+    """
+    try:
+        # Verify thread exists and user has access
+        result = await session.execute(
+            select(NewChatThread).filter(NewChatThread.id == thread_id)
+        )
+        thread = result.scalars().first()
+
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        await check_permission(
+            session,
+            user,
+            thread.search_space_id,
+            Permission.CHATS_READ.value,
+            "You don't have permission to read chats in this search space",
+        )
+
+        # Check thread-level access based on visibility
+        await check_thread_access(session, thread, user)
+
+        # Get messages
+        query = (
+            select(NewChatMessage)
+            .filter(NewChatMessage.thread_id == thread_id)
+            .order_by(NewChatMessage.created_at)
+            .offset(skip)
+            .limit(limit)
+        )
+
+        result = await session.execute(query)
+        return result.scalars().all()
+
+    except HTTPException:
+        raise
+    except OperationalError:
+        raise HTTPException(
+            status_code=503, detail="Database operation failed. Please try again later."
+        ) from None
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while fetching messages: {e!s}",
+        ) from None
+
+
+# =============================================================================
+# Agent Tools Endpoint
+# =============================================================================
+
+
+@router.get("/agent/tools", response_model=list[AgentToolInfo])
+async def list_agent_tools(
+    _user: User = Depends(current_active_user),
+):
+    """Return the list of built-in agent tools with their metadata.
+
+    Hidden (WIP) tools are excluded from the response.
+    """
+    from app.agents.new_chat.tools.registry import BUILTIN_TOOLS
+
+    return [
+        AgentToolInfo(
+            name=t.name,
+            description=t.description,
+            enabled_by_default=t.enabled_by_default,
+        )
+        for t in BUILTIN_TOOLS
+        if not t.hidden
+    ]
+
+
+# =============================================================================
+# Chat Streaming Endpoint
+# =============================================================================
+
+
+@router.post("/new_chat")
+async def handle_new_chat(
+    request: NewChatRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Stream chat responses from the deep agent.
+
+    This endpoint handles the new chat functionality with streaming responses
+    using Server-Sent Events (SSE) format compatible with Vercel AI SDK.
+
+    Access is granted if:
+    - User is the creator of the thread
+    - Thread visibility is SEARCH_SPACE
+
+    Requires CHATS_CREATE permission.
+    """
+    try:
+        # Verify thread exists and user has permission
+        result = await session.execute(
+            select(NewChatThread).filter(NewChatThread.id == request.chat_id)
+        )
+        thread = result.scalars().first()
+
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        await check_permission(
+            session,
+            user,
+            thread.search_space_id,
+            Permission.CHATS_CREATE.value,
+            "You don't have permission to chat in this search space",
+        )
+
+        # Check thread-level access based on visibility
+        await check_thread_access(session, thread, user)
+
+        # Get search space to check LLM config preferences
+        search_space_result = await session.execute(
+            select(SearchSpace).filter(SearchSpace.id == request.search_space_id)
+        )
+        search_space = search_space_result.scalars().first()
+
+        if not search_space:
+            raise HTTPException(status_code=404, detail="Search space not found")
+
+        # Use agent_llm_id from search space for chat operations
+        # Positive IDs load from NewLLMConfig database table
+        # Negative IDs load from YAML global configs
+        # Falls back to -1 (first global config) if not configured
+        llm_config_id = (
+            search_space.agent_llm_id if search_space.agent_llm_id is not None else -1
+        )
+
+        # Cloud mode: allow frontend to override with a system model selection
+        # Security: only negative IDs (system models from YAML) are allowed in cloud mode
+        if config.is_cloud() and request.model_id is not None:
+            if request.model_id > 0:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Custom LLM configurations are not allowed in cloud mode. Use system models only.",
+                )
+            llm_config_id = request.model_id
+
+            # Enforce subscription tier for the selected model
+            required_tier = get_tier_for_model_id(request.model_id)
+            if required_tier == "pro" and hasattr(user, "subscription_status"):
+                user_status = getattr(user, "subscription_status", None)
+                if user_status is None or str(user_status) not in ("active",):
+                    raise HTTPException(
+                        status_code=403,
+                        detail={
+                            "error": "tier_restricted",
+                            "message": f"This model requires a Pro subscription. Current status: {user_status}",
+                            "required_tier": required_tier,
+                        },
+                    )
+
+        # Cloud mode: enforce monthly token quota before streaming
+        if config.is_cloud():
+            try:
+                token_quota_service = TokenQuotaService(session)
+                await token_quota_service.check_token_quota(str(user.id))
+            except TokenQuotaExceededError as exc:
+                raise HTTPException(
+                    status_code=402,
+                    detail={
+                        "error": "token_quota_exceeded",
+                        "message": str(exc),
+                        "tokens_used": exc.tokens_used,
+                        "monthly_token_limit": exc.monthly_token_limit,
+                        "upgrade_url": "/pricing",
+                    },
+                ) from exc
+
+        # Release the read-transaction so we don't hold ACCESS SHARE locks
+        # on searchspaces/documents for the entire duration of the stream.
+        # expire_on_commit=False keeps loaded ORM attrs usable.
+        await session.commit()
+        # Close the dependency session now so its connection returns to
+        # the pool before streaming begins.  Without this, Starlette's
+        # BaseHTTPMiddleware cancels the scope on client disconnect and
+        # the dependency generator's __aexit__ never runs, orphaning the
+        # connection (the "Exception terminating connection" errors).
+        await session.close()
+
+        return StreamingResponse(
+            stream_new_chat(
+                user_query=request.user_query,
+                search_space_id=request.search_space_id,
+                chat_id=request.chat_id,
+                user_id=str(user.id),
+                llm_config_id=llm_config_id,
+                mentioned_document_ids=request.mentioned_document_ids,
+                mentioned_nowing_doc_ids=request.mentioned_nowing_doc_ids,
+                needs_history_bootstrap=thread.needs_history_bootstrap,
+                thread_visibility=thread.visibility,
+                current_user_display_name=user.display_name or "A team member",
+                disabled_tools=request.disabled_tools,
+            ),
+            media_type="text/event-stream",
+            headers=VercelStreamingService.get_response_headers(),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred: {e!s}",
+        ) from None
+
+
+# =============================================================================
+# Chat Regeneration Endpoint (Edit/Reload)
+# =============================================================================
+
+
+@router.post("/threads/{thread_id}/regenerate")
+async def regenerate_response(
+    thread_id: int,
+    request: RegenerateRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Regenerate the AI response for a chat thread.
+
+    This endpoint supports two operations:
+    1. **Edit**: Provide a new `user_query` to replace the last user message and regenerate
+    2. **Reload**: Leave `user_query` empty (or None) to regenerate with the same query
+
+    Both operations:
+    - Rewind the LangGraph checkpointer to the state before the last AI response
+    - Delete the last user message and AI response from the database
+    - Stream a new response from that checkpoint
+
+    Access is granted if:
+    - User is the creator of the thread
+    - Thread visibility is SEARCH_SPACE
+
+    Requires CHATS_UPDATE permission.
+    """
+    from langchain_core.messages import HumanMessage
+
+    from app.agents.new_chat.checkpointer import get_checkpointer
+
+    try:
+        # Verify thread exists and user has permission
+        result = await session.execute(
+            select(NewChatThread).filter(NewChatThread.id == thread_id)
+        )
+        thread = result.scalars().first()
+
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        await check_permission(
+            session,
+            user,
+            thread.search_space_id,
+            Permission.CHATS_UPDATE.value,
+            "You don't have permission to update chats in this search space",
+        )
+
+        # Check thread-level access based on visibility
+        await check_thread_access(session, thread, user)
+
+        # Get the checkpointer and state history
+        checkpointer = await get_checkpointer()
+
+        checkpoint_config = {"configurable": {"thread_id": str(thread_id)}}
+
+        # Collect checkpoint tuples from the async iterator
+        # CheckpointTuple has: config, checkpoint (dict with channel_values), metadata, parent_config
+        checkpoint_tuples = []
+        async for cp_tuple in checkpointer.alist(checkpoint_config):
+            checkpoint_tuples.append(cp_tuple)
+
+        if not checkpoint_tuples:
+            raise HTTPException(
+                status_code=400, detail="No conversation history found for this thread"
+            )
+
+        # Find the checkpoint to rewind to
+        # Checkpoints are in reverse chronological order (newest first)
+        # We need to find a checkpoint before the last user message was added
+        #
+        # The checkpointer stores states after each node execution.
+        # For a typical conversation flow:
+        # - User sends message -> state 1 (with HumanMessage)
+        # - Agent responds -> state 2 (with HumanMessage + AIMessage)
+        #
+        # To regenerate, we need the state BEFORE the last HumanMessage was processed
+
+        target_checkpoint_id = None
+        user_query_to_use = request.user_query
+
+        # Look through checkpoints to find the right one
+        # We want to find the checkpoint just before the last HumanMessage
+        for i, cp_tuple in enumerate(checkpoint_tuples):
+            # Access the checkpoint's channel_values which contains "messages"
+            checkpoint_data = cp_tuple.checkpoint
+            channel_values = checkpoint_data.get("channel_values", {})
+            state_messages = channel_values.get("messages", [])
+
+            if state_messages:
+                last_msg = state_messages[-1]
+                # Find a checkpoint where the last message is NOT a HumanMessage
+                # This means we're at a state before the user's last message
+                if not isinstance(last_msg, HumanMessage):
+                    # If no new user_query provided (reload), extract from a later checkpoint
+                    if user_query_to_use is None and i > 0:
+                        # Get the user query from a more recent checkpoint
+                        for prev_cp_tuple in checkpoint_tuples[:i]:
+                            prev_checkpoint_data = prev_cp_tuple.checkpoint
+                            prev_channel_values = prev_checkpoint_data.get(
+                                "channel_values", {}
+                            )
+                            prev_messages = prev_channel_values.get("messages", [])
+                            for msg in reversed(prev_messages):
+                                if isinstance(msg, HumanMessage):
+                                    user_query_to_use = msg.content
+                                    break
+                            if user_query_to_use:
+                                break
+
+                    target_checkpoint_id = cp_tuple.config["configurable"][
+                        "checkpoint_id"
+                    ]
+                    break
+
+        # If we couldn't find a good checkpoint, try alternative approaches
+        if target_checkpoint_id is None and checkpoint_tuples:
+            if len(checkpoint_tuples) == 1:
+                # Only one checkpoint - get the user query from it if not provided
+                if user_query_to_use is None:
+                    checkpoint_data = checkpoint_tuples[0].checkpoint
+                    channel_values = checkpoint_data.get("channel_values", {})
+                    state_messages = channel_values.get("messages", [])
+                    for msg in state_messages:
+                        if isinstance(msg, HumanMessage):
+                            user_query_to_use = msg.content
+                            break
+            else:
+                # Use the oldest checkpoint
+                target_checkpoint_id = checkpoint_tuples[-1].config["configurable"][
+                    "checkpoint_id"
+                ]
+
+        # If we still don't have a user query, get it from the database
+        if user_query_to_use is None:
+            # Get the last user message from the database
+            last_user_msg_result = await session.execute(
+                select(NewChatMessage)
+                .filter(
+                    NewChatMessage.thread_id == thread_id,
+                    NewChatMessage.role == NewChatMessageRole.USER,
+                )
+                .order_by(NewChatMessage.created_at.desc())
+                .limit(1)
+            )
+            last_user_msg = last_user_msg_result.scalars().first()
+            if last_user_msg:
+                content = last_user_msg.content
+                if isinstance(content, str):
+                    user_query_to_use = content
+                elif isinstance(content, list):
+                    # Extract text from content parts
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "text":
+                            user_query_to_use = part.get("text", "")
+                            break
+                        elif isinstance(part, str):
+                            user_query_to_use = part
+                            break
+
+        if user_query_to_use is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not determine user query for regeneration. Please provide a user_query.",
+            )
+
+        # Get the last two messages to delete AFTER streaming succeeds
+        # This prevents data loss if streaming fails
+        last_messages_result = await session.execute(
+            select(NewChatMessage)
+            .filter(NewChatMessage.thread_id == thread_id)
+            .order_by(NewChatMessage.created_at.desc())
+            .limit(2)
+        )
+        messages_to_delete = list(last_messages_result.scalars().all())
+
+        message_ids_to_delete = [msg.id for msg in messages_to_delete]
+
+        # Get search space for LLM config
+        search_space_result = await session.execute(
+            select(SearchSpace).filter(SearchSpace.id == request.search_space_id)
+        )
+        search_space = search_space_result.scalars().first()
+
+        if not search_space:
+            raise HTTPException(status_code=404, detail="Search space not found")
+
+        llm_config_id = (
+            search_space.agent_llm_id if search_space.agent_llm_id is not None else -1
+        )
+
+        # Cloud mode: allow frontend to override with a system model selection
+        # Security: only negative IDs (system models from YAML) are allowed in cloud mode
+        if config.is_cloud() and request.model_id is not None:
+            if request.model_id > 0:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Custom LLM configurations are not allowed in cloud mode. Use system models only.",
+                )
+            llm_config_id = request.model_id
+
+            # Enforce subscription tier for the selected model
+            required_tier = get_tier_for_model_id(request.model_id)
+            if required_tier == "pro" and hasattr(user, "subscription_status"):
+                user_status = getattr(user, "subscription_status", None)
+                if user_status is None or str(user_status) not in ("active",):
+                    raise HTTPException(
+                        status_code=403,
+                        detail={
+                            "error": "tier_restricted",
+                            "message": f"This model requires a Pro subscription. Current status: {user_status}",
+                            "required_tier": required_tier,
+                        },
+                    )
+
+        # Cloud mode: enforce monthly token quota before streaming
+        if config.is_cloud():
+            try:
+                token_quota_service = TokenQuotaService(session)
+                await token_quota_service.check_token_quota(str(user.id))
+            except TokenQuotaExceededError as exc:
+                raise HTTPException(
+                    status_code=402,
+                    detail={
+                        "error": "token_quota_exceeded",
+                        "message": str(exc),
+                        "tokens_used": exc.tokens_used,
+                        "monthly_token_limit": exc.monthly_token_limit,
+                        "upgrade_url": "/pricing",
+                    },
+                ) from exc
+
+        # Release the read-transaction so we don't hold ACCESS SHARE locks
+        # on searchspaces/documents for the entire duration of the stream.
+        # expire_on_commit=False keeps loaded ORM attrs (including messages_to_delete PKs) usable.
+        await session.commit()
+        await session.close()
+
+        # Create a wrapper generator that deletes messages only AFTER streaming succeeds
+        # This prevents data loss if streaming fails (network error, LLM error, etc.)
+        async def stream_with_cleanup():
+            streaming_completed = False
+            try:
+                async for chunk in stream_new_chat(
+                    user_query=user_query_to_use,
+                    search_space_id=request.search_space_id,
+                    chat_id=thread_id,
+                    user_id=str(user.id),
+                    llm_config_id=llm_config_id,
+                    mentioned_document_ids=request.mentioned_document_ids,
+                    mentioned_nowing_doc_ids=request.mentioned_nowing_doc_ids,
+                    checkpoint_id=target_checkpoint_id,
+                    needs_history_bootstrap=thread.needs_history_bootstrap,
+                    thread_visibility=thread.visibility,
+                    current_user_display_name=user.display_name or "A team member",
+                    disabled_tools=request.disabled_tools,
+                ):
+                    yield chunk
+                streaming_completed = True
+            finally:
+                # Only delete old messages if streaming completed successfully.
+                # Uses a fresh session since stream_new_chat manages its own.
+                if streaming_completed and message_ids_to_delete:
+                    try:
+                        async with shielded_async_session() as cleanup_session:
+                            for msg_id in message_ids_to_delete:
+                                _res = await cleanup_session.execute(
+                                    select(NewChatMessage).filter(
+                                        NewChatMessage.id == msg_id
+                                    )
+                                )
+                                _msg = _res.scalars().first()
+                                if _msg:
+                                    await cleanup_session.delete(_msg)
+                            await cleanup_session.commit()
+
+                            from app.services.public_chat_service import (
+                                delete_affected_snapshots,
+                            )
+
+                            await delete_affected_snapshots(
+                                cleanup_session, thread_id, message_ids_to_delete
+                            )
+                    except Exception as cleanup_error:
+                        _logger.warning(
+                            "[regenerate] Failed to delete old messages: %s",
+                            cleanup_error,
+                        )
+
+        # Return streaming response with checkpoint_id for rewinding
+        return StreamingResponse(
+            stream_with_cleanup(),
+            media_type="text/event-stream",
+            headers=VercelStreamingService.get_response_headers(),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred during regeneration: {e!s}",
+        ) from None
+
+
+# =============================================================================
+# Resume Interrupted Chat Endpoint
+# =============================================================================
+
+
+@router.post("/threads/{thread_id}/resume")
+async def resume_chat(
+    thread_id: int,
+    request: ResumeRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    try:
+        result = await session.execute(
+            select(NewChatThread).filter(NewChatThread.id == thread_id)
+        )
+        thread = result.scalars().first()
+
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        await check_permission(
+            session,
+            user,
+            thread.search_space_id,
+            Permission.CHATS_CREATE.value,
+            "You don't have permission to chat in this search space",
+        )
+
+        await check_thread_access(session, thread, user)
+
+        search_space_result = await session.execute(
+            select(SearchSpace).filter(SearchSpace.id == request.search_space_id)
+        )
+        search_space = search_space_result.scalars().first()
+
+        if not search_space:
+            raise HTTPException(status_code=404, detail="Search space not found")
+
+        llm_config_id = (
+            search_space.agent_llm_id if search_space.agent_llm_id is not None else -1
+        )
+
+        # Cloud mode: allow frontend to override with a system model selection
+        # Security: only negative IDs (system models from YAML) are allowed in cloud mode
+        if config.is_cloud() and request.model_id is not None:
+            if request.model_id > 0:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Custom LLM configurations are not allowed in cloud mode. Use system models only.",
+                )
+            llm_config_id = request.model_id
+
+            # Enforce subscription tier for the selected model
+            required_tier = get_tier_for_model_id(request.model_id)
+            if required_tier == "pro" and hasattr(user, "subscription_status"):
+                user_status = getattr(user, "subscription_status", None)
+                if user_status is None or str(user_status) not in ("active",):
+                    raise HTTPException(
+                        status_code=403,
+                        detail={
+                            "error": "tier_restricted",
+                            "message": f"This model requires a Pro subscription. Current status: {user_status}",
+                            "required_tier": required_tier,
+                        },
+                    )
+
+        # Cloud mode: enforce monthly token quota before streaming
+        if config.is_cloud():
+            try:
+                token_quota_service = TokenQuotaService(session)
+                await token_quota_service.check_token_quota(str(user.id))
+            except TokenQuotaExceededError as exc:
+                raise HTTPException(
+                    status_code=402,
+                    detail={
+                        "error": "token_quota_exceeded",
+                        "message": str(exc),
+                        "tokens_used": exc.tokens_used,
+                        "monthly_token_limit": exc.monthly_token_limit,
+                        "upgrade_url": "/pricing",
+                    },
+                ) from exc
+
+        decisions = [d.model_dump() for d in request.decisions]
+
+        # Release the read-transaction so we don't hold ACCESS SHARE locks
+        # on searchspaces/documents for the entire duration of the stream.
+        await session.commit()
+        await session.close()
+
+        return StreamingResponse(
+            stream_resume_chat(
+                chat_id=thread_id,
+                search_space_id=request.search_space_id,
+                decisions=decisions,
+                user_id=str(user.id),
+                llm_config_id=llm_config_id,
+                thread_visibility=thread.visibility,
+            ),
+            media_type="text/event-stream",
+            headers=VercelStreamingService.get_response_headers(),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred during resume: {e!s}",
+        ) from None
+
+
+# =============================================================================
+# Persistent Background Run Endpoints (9-UX-1b)
+# =============================================================================
+
+
+class StartRunRequest(BaseModel):
+    search_space_id: int
+    user_query: str
+    mentioned_document_ids: list[int] | None = None
+    mentioned_nowing_doc_ids: list[int] | None = None
+    disabled_tools: list[str] | None = None
+    model_id: int | None = None
+
+
+class RunResponse(BaseModel):
+    id: str
+    thread_id: int
+    session_id: str
+    status: str
+    user_query: str | None
+    started_at: datetime
+    completed_at: datetime | None = None
+    final_message_id: int | None = None
+
+
+def _run_to_response(run) -> dict:
+    return {
+        "id": str(run.id),
+        "thread_id": run.thread_id,
+        "session_id": run.session_id,
+        "langgraph_thread_id": run.langgraph_thread_id,
+        "status": run.status,
+        "user_query": run.user_query,
+        "started_at": run.started_at.isoformat() if run.started_at else None,
+        "completed_at": run.completed_at.isoformat() if run.completed_at else None,
+        "final_message_id": run.final_message_id,
+    }
+
+
+@router.post("/threads/{thread_id}/runs")
+async def start_new_run(
+    thread_id: int,
+    request: StartRunRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """Dispatch a detached agent execution task. Returns run_id + session_id immediately."""
+    from app.tasks.chat.run_manager import start_run
+
+    result = await session.execute(
+        select(NewChatThread).filter(NewChatThread.id == thread_id)
+    )
+    thread = result.scalars().first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    await check_permission(
+        session, user, thread.search_space_id, Permission.CHATS_UPDATE.value,
+        "You don't have permission to update chats in this search space",
+    )
+    await check_thread_access(session, thread, user)
+
+    search_space_result = await session.execute(
+        select(SearchSpace).filter(SearchSpace.id == request.search_space_id)
+    )
+    search_space = search_space_result.scalars().first()
+    if not search_space:
+        raise HTTPException(status_code=404, detail="Search space not found")
+
+    llm_config_id = search_space.agent_llm_id if search_space.agent_llm_id is not None else -1
+    if config.is_cloud() and request.model_id is not None:
+        if request.model_id > 0:
+            raise HTTPException(status_code=403, detail="Custom LLM configurations are not allowed in cloud mode.")
+        llm_config_id = request.model_id
+
+    if config.is_cloud():
+        try:
+            token_quota_service = TokenQuotaService(session)
+            await token_quota_service.check_token_quota(str(user.id))
+        except TokenQuotaExceededError as exc:
+            raise HTTPException(
+                status_code=402,
+                detail={"error": "token_quota_exceeded", "message": str(exc)},
+            ) from exc
+
+    await session.commit()
+
+    run = await start_run(
+        thread_id=thread_id,
+        user_query=request.user_query,
+        user_id=user.id,
+        search_space_id=request.search_space_id,
+        llm_config_id=llm_config_id,
+        model_id=request.model_id,
+        mentioned_document_ids=request.mentioned_document_ids,
+        mentioned_nowing_doc_ids=request.mentioned_nowing_doc_ids,
+        disabled_tools=request.disabled_tools,
+        needs_history_bootstrap=thread.needs_history_bootstrap,
+        thread_visibility=thread.visibility,
+        current_user_display_name=user.display_name or "A team member",
+    )
+    return _run_to_response(run)
+
+
+@router.get("/threads/{thread_id}/runs/active")
+async def get_active_runs(
+    thread_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """Return all running or abandoned runs for this thread."""
+    # M3: feature flag gate — when disabled, return empty list (FE falls back to /regenerate)
+    if os.getenv("RESUMABLE_RUNS_ENABLED", "true").lower() != "true":
+        return []
+
+    result = await session.execute(
+        select(NewChatThread).filter(NewChatThread.id == thread_id)
+    )
+    thread = result.scalars().first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    await check_thread_access(session, thread, user)
+
+    # Run-level ownership: only return runs created by this user
+    runs_result = await session.execute(
+        select(ChatRun).where(
+            ChatRun.thread_id == thread_id,
+            ChatRun.created_by_id == user.id,
+            ChatRun.status.in_([ChatRunStatus.RUNNING, ChatRunStatus.ABANDONED]),
+        )
+    )
+    runs = runs_result.scalars().all()
+    return [_run_to_response(r) for r in runs]
+
+
+def _rebuild_vercel_wire(event_type: str, payload: object, seq: int | None = None) -> str:
+    """Reconstruct Vercel UI Stream wire format from stored JSONB payload.
+
+    Handles three payload generations:
+    - Legacy (9-UX-1b): {"_raw": "data: ...\\n\\n"} — pass through verbatim
+    - text-delta (T4):   {"type": "text-delta", "_vercel": "0:\\"text\\""} — bare data line
+    - structured (T4):   {"type": ..., "data": {...}} — bare data:{json}\\n\\n
+
+    M7: Injects `seq` into structured payloads to enable client-side resume tracking.
+    For non-dict / `_raw` / `_vercel` payloads where seq cannot be embedded into
+    the original payload format, prepend a separate `data: {"_seq": N}` event so
+    the client can advance `lastSeq` even for legacy/text-delta events. This
+    prevents duplicate text-delta replay on reconnect (story 11-1 AC#4).
+    """
+    seq_prefix = ""
+    if seq is not None:
+        seq_prefix = f"data: {json.dumps({'_seq': seq})}\n\n"
+
+    if not isinstance(payload, dict):
+        return f"{seq_prefix}data: {json.dumps(payload)}\n\n"
+
+    # Inject seq if provided and payload is a dict
+    if seq is not None and "seq" not in payload:
+        payload = {**payload, "seq": seq}
+
+    raw = payload.get("_raw")
+    if isinstance(raw, str) and raw:
+        # Legacy raw payloads — prepend _seq marker for resume tracking.
+        return f"{seq_prefix}{raw}"
+
+    vercel = payload.get("_vercel")
+    if isinstance(vercel, str) and vercel:
+        return f"{seq_prefix}data: {vercel}\n\n"
+
+    # Structured dict — seq already merged into payload above; no prefix needed.
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+@router.get("/threads/{thread_id}/runs/{run_id}/stream")
+async def stream_run(
+    thread_id: int,
+    run_id: UUID,
+    request: Request,
+    after_seq: int = -1,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """SSE: replay persisted events then tail live via Redis pubsub."""
+    result = await session.execute(
+        select(NewChatThread).filter(NewChatThread.id == thread_id)
+    )
+    thread = result.scalars().first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    await check_thread_access(session, thread, user)
+
+    run_result = await session.execute(
+        select(ChatRun).where(ChatRun.id == run_id, ChatRun.thread_id == thread_id)
+    )
+    run = run_result.scalars().first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    # Run-level ownership check (separate from thread access)
+    if run.created_by_id != user.id:
+        raise HTTPException(status_code=403, detail="You do not own this run")
+    captured_user_id = user.id  # capture before session closes
+
+    async def _event_generator():
+        import redis.asyncio as aioredis
+        from app.celery_app import CELERY_BROKER_URL
+
+        last_seq = after_seq
+
+        redis_client = aioredis.from_url(CELERY_BROKER_URL, decode_responses=True)
+        channel = f"nowing:run:{run_id}"
+        pubsub = redis_client.pubsub()
+
+        # T1/C3: SUBSCRIBE before DB SELECT — no gap between replay and live tail
+        await pubsub.subscribe(channel)
+
+        try:
+            # Phase 1: replay persisted events from DB
+            async with shielded_async_session() as db:
+                rows = await db.execute(
+                    text(
+                        "SELECT seq, event_type, payload, "
+                        "EXTRACT(EPOCH FROM created_at)::bigint * 1000 AS ts_ms "
+                        "FROM chat_run_events "
+                        "WHERE run_id = :rid AND seq > :after ORDER BY seq"
+                    ),
+                    {"rid": str(run_id), "after": after_seq},
+                )
+                persisted = rows.fetchall()
+
+            if persisted:
+                last_seq = persisted[-1][0]
+
+            # T3: replay-start sentinel — include run.started_at so FE can seed spawnedAt
+            run_started_ms = int(run.started_at.timestamp() * 1000)
+            yield f"data: {json.dumps({'_marker': 'replay-start', 'seq': last_seq, 'runStartedAtMs': run_started_ms})}\n\n"
+
+            for seq, event_type, payload, ts_ms in persisted:
+                wire = _rebuild_vercel_wire(event_type, payload, seq=seq)
+                # Inject _ts into structured events so FE can use server timestamp
+                # instead of Date.now() for per-agent elapsed calculations.
+                if ts_ms and wire.startswith("data: {"):
+                    try:
+                        obj = json.loads(wire[6:].rstrip())
+                        if isinstance(obj, dict) and "_ts" not in obj:
+                            obj["_ts"] = int(ts_ms)
+                            wire = f"data: {json.dumps(obj)}\n\n"
+                    except Exception:
+                        pass
+                yield wire
+
+            # Check if run is terminal — if so, close after replay
+            async with shielded_async_session() as db:
+                status_row = await db.execute(
+                    text("SELECT status, last_event_seq FROM chat_runs WHERE id = :rid"),
+                    {"rid": str(run_id)},
+                )
+                status_info = status_row.fetchone()
+
+            if status_info and status_info[0] not in (ChatRunStatus.RUNNING,):
+                yield f"data: {json.dumps({'_marker': 'replay-end', 'seq': status_info[1] or last_seq, 'status': str(status_info[0])})}\n\n"
+                return
+
+            # T3: replay-end + live start sentinel
+            yield f"data: {json.dumps({'_marker': 'replay-end', 'seq': last_seq, 'status': 'live'})}\n\n"
+
+            # T1: drain buffered messages that arrived between subscribe() and SELECT
+            while True:
+                try:
+                    buf_msg = await asyncio.wait_for(
+                        pubsub.get_message(ignore_subscribe_messages=True), timeout=0.05
+                    )
+                except asyncio.TimeoutError:
+                    break
+                if buf_msg is None:
+                    break
+                try:
+                    row_data = json.loads(buf_msg["data"])
+                    seq = row_data.get("seq", 0)
+                    if seq <= last_seq:
+                        continue
+                    wire = _rebuild_vercel_wire(
+                        row_data.get("event_type", "message"),
+                        row_data.get("payload", {}),
+                        seq=seq,
+                    )
+                    last_seq = seq
+                    yield wire
+                except Exception:
+                    log.warning("stream_run buffer-drain: failed to process pubsub message for run %s", run_id, exc_info=True)
+                    continue
+
+            # Phase 2: live tail loop
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    message = await asyncio.wait_for(
+                        pubsub.get_message(ignore_subscribe_messages=True),
+                        timeout=1.0,  # T11: 1s poll for DB gap-scan
+                    )
+                except asyncio.TimeoutError:
+                    message = None
+
+                if message is not None:
+                    try:
+                        row_data = json.loads(message["data"])
+                        seq = row_data.get("seq", 0)
+                        if seq <= last_seq:
+                            continue
+                        wire = _rebuild_vercel_wire(
+                            row_data.get("event_type", "message"), row_data.get("payload", {})
+                        )
+                        last_seq = seq
+                        yield wire
+                    except Exception:
+                        log.warning("stream_run live-tail: failed to process pubsub message for run %s", run_id, exc_info=True)
+                    continue
+
+                # Pubsub timeout: T11 DB poll + gap-scan for missed events
+                async with shielded_async_session() as db:
+                    chk = await db.execute(
+                        text("SELECT status, last_event_seq FROM chat_runs WHERE id = :rid"),
+                        {"rid": str(run_id)},
+                    )
+                    row = chk.fetchone()
+
+                if row is None:
+                    break
+
+                db_last_seq = row[1] if row[1] is not None else last_seq
+                if db_last_seq > last_seq:
+                    async with shielded_async_session() as db:
+                        gap_rows = await db.execute(
+                            text(
+                                "SELECT seq, event_type, payload FROM chat_run_events "
+                                "WHERE run_id = :rid AND seq > :after ORDER BY seq"
+                            ),
+                            {"rid": str(run_id), "after": last_seq},
+                        )
+                        for seq, event_type, payload in gap_rows.fetchall():
+                            last_seq = seq
+                            yield _rebuild_vercel_wire(event_type, payload)
+
+                if row[0] not in (ChatRunStatus.RUNNING,):
+                    break
+
+                # Heartbeat is now injected by _with_heartbeat wrapper (15s idle).
+
+        except Exception as exc:
+            _logger.warning("stream_run pubsub error for run %s: %s", run_id, exc)
+        finally:
+            await pubsub.unsubscribe(channel)
+            await redis_client.aclose()
+
+        # T3: final run-end sentinel
+        async with shielded_async_session() as db:
+            final = await db.execute(
+                text("SELECT status, last_event_seq FROM chat_runs WHERE id = :rid"),
+                {"rid": str(run_id)},
+            )
+            final_info = final.fetchone()
+        final_status = str(final_info[0]) if final_info else "unknown"
+        final_seq = final_info[1] if final_info else last_seq
+        yield f"data: {json.dumps({'_marker': 'run-end', 'seq': final_seq, 'status': final_status})}\n\n"
+
+    return StreamingResponse(
+        _with_heartbeat(_event_generator()),
+        media_type="text/event-stream",
+        headers=VercelStreamingService.get_response_headers(),
+    )
+
+
+@router.post("/threads/{thread_id}/runs/{run_id}/cancel")
+async def cancel_run_endpoint(
+    thread_id: int,
+    run_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    from app.tasks.chat.run_manager import cancel_run
+
+    result = await session.execute(
+        select(NewChatThread).filter(NewChatThread.id == thread_id)
+    )
+    thread = result.scalars().first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    await check_thread_access(session, thread, user)
+
+    run_result = await session.execute(
+        select(ChatRun).where(ChatRun.id == run_id, ChatRun.thread_id == thread_id)
+    )
+    run = run_result.scalars().first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.created_by_id != user.id:
+        raise HTTPException(status_code=403, detail="You do not own this run")
+
+    cancelled = await cancel_run(run_id)
+    return {"cancelled": cancelled}
+
+
+@router.post("/threads/{thread_id}/runs/{run_id}/resume")
+async def resume_run_endpoint(
+    thread_id: int,
+    run_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    from app.tasks.chat.run_manager import resume_run
+
+    result = await session.execute(
+        select(NewChatThread).filter(NewChatThread.id == thread_id)
+    )
+    thread = result.scalars().first()
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    await check_thread_access(session, thread, user)
+
+    run_result = await session.execute(
+        select(ChatRun).where(ChatRun.id == run_id, ChatRun.thread_id == thread_id)
+    )
+    run = run_result.scalars().first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.created_by_id != user.id:
+        raise HTTPException(status_code=403, detail="You do not own this run")
+
+    search_space_result = await session.execute(
+        select(SearchSpace).filter(SearchSpace.id == thread.search_space_id)
+    )
+    search_space = search_space_result.scalars().first()
+
+    resumed = await resume_run(
+        run_id=run_id,
+        search_space_id=thread.search_space_id,
+        thread_visibility=thread.visibility,
+        current_user_display_name=user.display_name or "A team member",
+    )
+    return _run_to_response(resumed)

@@ -1,4 +1,4 @@
-# SurfSense Browser Extension - New Features Documentation
+# Nowing Browser Extension - New Features Documentation
 
 **Last Updated:** 2026-02-04  
 **Version:** 0.0.12

@@ -6,8 +6,8 @@
   },
   "mode": "full_rescan",
   "scan_level": "exhaustive",
-  "project_root": "/Users/luisphan/Documents/GitHub/SurfSense",
-  "project_knowledge": "/Users/luisphan/Documents/GitHub/SurfSense/docs",
+  "project_root": "/Users/luisphan/Documents/GitHub/Nowing",
+  "project_knowledge": "/Users/luisphan/Documents/GitHub/Nowing/docs",
   "completed_steps": [
     "step_1",
     "step_2",
@@ -23,10 +23,10 @@
   "findings": {
     "project_type_id": "web_monorepo",
     "structure": [
-      "surfsense_web/",
-      "surfsense_backend/",
-      "surfsense_browser_extension/",
-      "surfsense_desktop/",
+      "nowing_web/",
+      "nowing_backend/",
+      "nowing_browser_extension/",
+      "nowing_desktop/",
       "docker/",
       "scripts/"
     ],
@@ -47,14 +47,14 @@
       "ui_components_count": 200
     },
     "entry_points": [
-      "surfsense_backend/app/main.py",
-      "surfsense_backend/app/celery_app.py",
-      "surfsense_web/app/layout.tsx"
+      "nowing_backend/app/main.py",
+      "nowing_backend/app/celery_app.py",
+      "nowing_web/app/layout.tsx"
     ],
     "config_files": [
       "docker/docker-compose.yml",
-      "surfsense_web/package.json",
-      "surfsense_backend/pyproject.toml"
+      "nowing_web/package.json",
+      "nowing_backend/pyproject.toml"
     ],
     "data_storage": [
       "PostgreSQL (Drizzle/SQLAlchemy)",

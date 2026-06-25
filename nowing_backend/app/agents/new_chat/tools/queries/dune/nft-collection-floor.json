@@ -1,0 +1,18 @@
+{
+  "query_id": 12348,
+  "name": "NFT Collection Floor + Volume",
+  "description": "Floor price, 24h volume, and top sales for an NFT collection on OpenSea/Blur. Includes wash-trading filter and holder count over time.",
+  "params_schema": {
+    "collection_slug": {
+      "type": "text",
+      "description": "OpenSea collection slug (e.g. 'cryptopunks', 'bored-ape-yacht-club')",
+      "required": true
+    },
+    "days": {
+      "type": "number",
+      "description": "Lookback period in days (default 7)",
+      "required": false
+    }
+  },
+  "dune_url": "https://dune.com/queries/12348"
+}

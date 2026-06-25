@@ -1,6 +1,6 @@
 ---
 stepsCompleted: ['step-01-document-discovery']
-project: SurfSense
+project: Nowing
 date: 2026-02-02
 reviewer: Winston (Architect Agent)
 documents_assessed:
@@ -22,7 +22,7 @@ documents_assessed:
 # Implementation Readiness Assessment Report
 
 **Date:** 2026-02-02  
-**Project:** SurfSense 2.0 - Crypto AI Co-Pilot  
+**Project:** Nowing 2.0 - Crypto AI Co-Pilot  
 **Reviewer:** Winston (Architect Agent)  
 **Assessment Type:** Formal BMAD Implementation Readiness Review
 
@@ -812,7 +812,7 @@ If not implemented, create Epic 0 or add to Epic 1.
 **Severity:** **HIGH**
 
 **Details:**
-- SurfSense 2.0 is a **user-facing Chrome Extension** with 17 Extension FRs requiring UI
+- Nowing 2.0 is a **user-facing Chrome Extension** with 17 Extension FRs requiring UI
 - PRD describes UI elements (Side Panel, Chat, Token Cards) but no visual designs
 - No user journey validation before implementation
 
@@ -857,7 +857,7 @@ If not implemented, create Epic 0 or add to Epic 1.
 
 **Mitigation Required:**
 - Define design system in UX Design document
-- Use existing SurfSense 1.0 design tokens if available
+- Use existing Nowing 1.0 design tokens if available
 - OR create new design system for 2.0 rebrand
 
 **Responsible Party:** UX Designer
@@ -1652,7 +1652,7 @@ This assessment identified **16 issues** across **4 categories** (PRD, Epic Cove
 - 📝 **Before production:** Complete UX Design wireframes in Figma (estimated 1 week)
 
 **Positive Note:**
-The foundation is **excellent** (PRD, Architecture, Epics). With **7 out of 8 P2 issues resolved**, SurfSense 2.0 is **READY FOR IMPLEMENTATION**. The remaining P2 issue (Web Dashboard verification) can be addressed in parallel with Epic 1 development.
+The foundation is **excellent** (PRD, Architecture, Epics). With **7 out of 8 P2 issues resolved**, Nowing 2.0 is **READY FOR IMPLEMENTATION**. The remaining P2 issue (Web Dashboard verification) can be addressed in parallel with Epic 1 development.
 
 ---
 

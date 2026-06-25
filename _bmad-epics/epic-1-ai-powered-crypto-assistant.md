@@ -14,7 +14,7 @@
 
 ## Tổng quan Epic
 
-Mang AI co-pilot của SurfSense vào trình duyệt, cho phép users chat với AI, nhận insights về token, và lưu thông tin quan trọng ngay khi đang browse các trang crypto.
+Mang AI co-pilot của Nowing vào trình duyệt, cho phép users chat với AI, nhận insights về token, và lưu thông tin quan trọng ngay khi đang browse các trang crypto.
 
 **Giá trị cho User:**
 - **Chat với AI ngay trong browser** - Không cần chuyển tab, hỏi AI về bất kỳ token nào đang xem.
@@ -238,8 +238,8 @@ const token = await storage.get("auth_token");
 ### Story 1.0: Hệ thống Xác thực (Authentication System)
 **[FR-EXT-00]** ⚠️ **P0 BLOCKER** - ⏳ **CHƯA BẮT ĐẦU**
 
-**Là một** SurfSense user,
-**Tôi muốn** đăng nhập vào extension với tài khoản SurfSense của tôi,
+**Là một** Nowing user,
+**Tôi muốn** đăng nhập vào extension với tài khoản Nowing của tôi,
 **Để** extension có thể đồng bộ settings, lịch sử chat, và truy cập backend APIs.
 
 **Trạng thái:** ⏳ Backend APIs chưa được implement
@@ -440,8 +440,8 @@ chrome.sidePanel
 ```
 
 **Files:**
-- `surfsense_browser_extension/sidepanel.tsx` ✅
-- `surfsense_browser_extension/package.json` (thêm sidePanel permission) ✅
+- `nowing_browser_extension/sidepanel.tsx` ✅
+- `nowing_browser_extension/package.json` (thêm sidePanel permission) ✅
 
 ---
 
@@ -756,7 +756,7 @@ function extractDexScreenerData(): TokenData {
 ### Story 1.6: Đồng bộ Cài đặt (Settings Sync) với Frontend
 **[FR-EXT-06]** ⏳ **PENDING** - Backend APIs chưa sẵn sàng
 
-**Là một** SurfSense user,
+**Là một** Nowing user,
 **Tôi muốn** extension sử dụng cùng model và search space như web dashboard,
 **Để** tôi không phải cấu hình lại.
 
@@ -1139,7 +1139,7 @@ function FloatingButton() {
 
       {/* Quick Info Popup */}
       {isOpen && (
-        <div id="surfsense-floating-popup">
+        <div id="nowing-floating-popup">
           {/* Token info display */}
           <button onClick={handleOpenSidepanel}>
             Full Analysis
@@ -1251,7 +1251,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 | `TradingSuggestionToolUI` | `TradingSuggestionWidget` | P1 | Gợi ý entry/exit points |
 
 **Files cần tạo:**
-- `surfsense_web/components/tool-ui/crypto/trading-suggestion.tsx` (new)
+- `nowing_web/components/tool-ui/crypto/trading-suggestion.tsx` (new)
 
 ---
 

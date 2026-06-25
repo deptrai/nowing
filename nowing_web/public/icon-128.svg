@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- nowing · monogram "n" (kNOWING / knowledge). Đơn sắc để dùng với dark:invert -->
+  <path d="M30 36
+           a8 8 0 0 1 16 0
+           v6
+           a26 26 0 0 1 44 19
+           v31
+           a8 8 0 0 1 -16 0
+           v-31
+           a10 10 0 0 0 -28 0
+           v31
+           a8 8 0 0 1 -16 0
+           z"
+        fill="#0A0A0A"/>
+  <!-- chấm tri thức / dấu chấm "i" ẩn -->
+  <circle cx="96" cy="34" r="7" fill="#0A0A0A"/>
+</svg>

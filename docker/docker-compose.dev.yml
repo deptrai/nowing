@@ -1,5 +1,5 @@
 # =============================================================================
-# SurfSense — Development Docker Compose
+# Nowing — Development Docker Compose
 # =============================================================================
 # Usage (from repo root):
 #   docker compose -f docker/docker-compose.dev.yml up --build
@@ -8,7 +8,7 @@
 # For production with prebuilt images, use docker/docker-compose.yml instead.
 # =============================================================================
 
-name: surfsense-dev
+name: nowing-dev
 
 services:
   db:
@@ -21,10 +21,10 @@ services:
     environment:
       - POSTGRES_USER=${DB_USER:-postgres}
       - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
-      - POSTGRES_DB=${DB_NAME:-surfsense}
+      - POSTGRES_DB=${DB_NAME:-nowing}
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-surfsense}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-nowing}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -34,8 +34,8 @@ services:
     ports:
       - "${PGADMIN_PORT:-5050}:80"
     environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:-admin@surfsense.com}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:-surfsense}
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:-admin@nowing.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:-nowing}
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
@@ -61,7 +61,7 @@ services:
     volumes:
       - ./searxng:/etc/searxng
     environment:
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-surfsense-searxng-secret}
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-nowing-searxng-secret}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
       interval: 10s
@@ -69,20 +69,20 @@ services:
       retries: 5
 
   backend:
-    build: ../surfsense_backend
+    build: ../nowing_backend
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
-      - ../surfsense_backend/app:/app/app
+      - ../nowing_backend/app:/app/app
       - shared_temp:/shared_tmp
     env_file:
-      - ../surfsense_backend/.env
+      - ../nowing_backend/.env
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-surfsense}}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-nowing}}
       - CELERY_BROKER_URL=${REDIS_URL:-redis://redis:6379/0}
       - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
       - REDIS_APP_URL=${REDIS_URL:-redis://redis:6379/0}
-      - CELERY_TASK_DEFAULT_QUEUE=surfsense
+      - CELERY_TASK_DEFAULT_QUEUE=nowing
       - PYTHONPATH=/app
       - UVICORN_LOOP=asyncio
       - UNSTRUCTURED_HAS_PATCHED_LOOP=1
@@ -112,18 +112,18 @@ services:
       start_period: 200s
 
   celery_worker:
-    build: ../surfsense_backend
+    build: ../nowing_backend
     volumes:
-      - ../surfsense_backend/app:/app/app
+      - ../nowing_backend/app:/app/app
       - shared_temp:/shared_tmp
     env_file:
-      - ../surfsense_backend/.env
+      - ../nowing_backend/.env
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-surfsense}}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-nowing}}
       - CELERY_BROKER_URL=${REDIS_URL:-redis://redis:6379/0}
       - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
       - REDIS_APP_URL=${REDIS_URL:-redis://redis:6379/0}
-      - CELERY_TASK_DEFAULT_QUEUE=surfsense
+      - CELERY_TASK_DEFAULT_QUEUE=nowing
       - PYTHONPATH=/app
       - SEARXNG_DEFAULT_HOST=${SEARXNG_DEFAULT_HOST:-http://searxng:8080}
       - SERVICE_ROLE=worker
@@ -136,14 +136,14 @@ services:
         condition: service_healthy
 
   celery_beat:
-    build: ../surfsense_backend
+    build: ../nowing_backend
     env_file:
-      - ../surfsense_backend/.env
+      - ../nowing_backend/.env
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-surfsense}}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-nowing}}
       - CELERY_BROKER_URL=${REDIS_URL:-redis://redis:6379/0}
       - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
-      - CELERY_TASK_DEFAULT_QUEUE=surfsense
+      - CELERY_TASK_DEFAULT_QUEUE=nowing
       - PYTHONPATH=/app
       - SERVICE_ROLE=beat
     depends_on:
@@ -155,11 +155,11 @@ services:
         condition: service_started
 
   # flower:
-  #   build: ../surfsense_backend
+  #   build: ../nowing_backend
   #   ports:
   #     - "${FLOWER_PORT:-5555}:5555"
   #   env_file:
-  #     - ../surfsense_backend/.env
+  #     - ../nowing_backend/.env
   #   environment:
   #     - CELERY_BROKER_URL=${REDIS_URL:-redis://redis:6379/0}
   #     - CELERY_RESULT_BACKEND=${REDIS_URL:-redis://redis:6379/0}
@@ -179,11 +179,11 @@ services:
       backend:
         condition: service_healthy
     environment:
-      - ZERO_UPSTREAM_DB=${ZERO_UPSTREAM_DB:-postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-surfsense}?sslmode=${DB_SSLMODE:-disable}}
-      - ZERO_CVR_DB=${ZERO_CVR_DB:-postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-surfsense}?sslmode=${DB_SSLMODE:-disable}}
-      - ZERO_CHANGE_DB=${ZERO_CHANGE_DB:-postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-surfsense}?sslmode=${DB_SSLMODE:-disable}}
+      - ZERO_UPSTREAM_DB=${ZERO_UPSTREAM_DB:-postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-nowing}?sslmode=${DB_SSLMODE:-disable}}
+      - ZERO_CVR_DB=${ZERO_CVR_DB:-postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-nowing}?sslmode=${DB_SSLMODE:-disable}}
+      - ZERO_CHANGE_DB=${ZERO_CHANGE_DB:-postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-db}:${DB_PORT:-5432}/${DB_NAME:-nowing}?sslmode=${DB_SSLMODE:-disable}}
       - ZERO_REPLICA_FILE=/data/zero.db
-      - ZERO_ADMIN_PASSWORD=${ZERO_ADMIN_PASSWORD:-surfsense-zero-admin}
+      - ZERO_ADMIN_PASSWORD=${ZERO_ADMIN_PASSWORD:-nowing-zero-admin}
       - ZERO_APP_PUBLICATIONS=${ZERO_APP_PUBLICATIONS:-zero_publication}
       - ZERO_NUM_SYNC_WORKERS=${ZERO_NUM_SYNC_WORKERS:-4}
       - ZERO_UPSTREAM_MAX_CONNS=${ZERO_UPSTREAM_MAX_CONNS:-20}
@@ -201,7 +201,7 @@ services:
 
   frontend:
     build:
-      context: ../surfsense_web
+      context: ../nowing_web
       args:
         NEXT_PUBLIC_FASTAPI_BACKEND_URL: ${NEXT_PUBLIC_FASTAPI_BACKEND_URL:-http://localhost:8000}
         NEXT_PUBLIC_FASTAPI_BACKEND_AUTH_TYPE: ${NEXT_PUBLIC_FASTAPI_BACKEND_AUTH_TYPE:-LOCAL}
@@ -211,7 +211,7 @@ services:
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     env_file:
-      - ../surfsense_web/.env
+      - ../nowing_web/.env
     depends_on:
       backend:
         condition: service_healthy
@@ -220,12 +220,12 @@ services:
 
 volumes:
   postgres_data:
-    name: surfsense-dev-postgres
+    name: nowing-dev-postgres
   pgadmin_data:
-    name: surfsense-dev-pgadmin
+    name: nowing-dev-pgadmin
   redis_data:
-    name: surfsense-dev-redis
+    name: nowing-dev-redis
   shared_temp:
-    name: surfsense-dev-shared-temp
+    name: nowing-dev-shared-temp
   zero_cache_data:
-    name: surfsense-dev-zero-cache
+    name: nowing-dev-zero-cache

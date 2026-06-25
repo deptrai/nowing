@@ -1,0 +1,12 @@
+{
+	"title": "Documentation",
+	"description": "Nowing Documentation",
+	"root": true,
+	"pages": [
+		"---Guides---",
+		"index",
+		"getting-started",
+		"connectors",
+		"how-to"
+	]
+}

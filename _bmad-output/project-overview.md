@@ -1,16 +1,16 @@
-# Tổng Quan Dự Án SurfSense
+# Tổng Quan Dự Án Nowing
 
 ## Tóm Tắt Điều Hành
-SurfSense là một nền tảng tìm kiếm và quản lý kiến thức toàn diện được hỗ trợ bởi AI. Hệ thống bao gồm một Browser Extension chuyên dụng để thu thập dữ liệu, một Python Backend hiệu năng cao để xử lý AI và RAG (Retrieval-Augmented Generation), và một Web Dashboard hiện đại xây dựng trên Next.js để tương tác người dùng. Hệ thống tận dụng framework DeepAgents và LangGraph cho các quy trình agentic (agentic workflows) tiên tiến.
+Nowing là một nền tảng tìm kiếm và quản lý kiến thức toàn diện được hỗ trợ bởi AI. Hệ thống bao gồm một Browser Extension chuyên dụng để thu thập dữ liệu, một Python Backend hiệu năng cao để xử lý AI và RAG (Retrieval-Augmented Generation), và một Web Dashboard hiện đại xây dựng trên Next.js để tương tác người dùng. Hệ thống tận dụng framework DeepAgents và LangGraph cho các quy trình agentic (agentic workflows) tiên tiến.
 
 ## Cấu Trúc Dự Án
 Dự án được tổ chức dưới dạng kho lưu trữ đa phần (multi-part repository) chứa ba thành phần riêng biệt:
 
 | Thành phần | Thư mục | Loại | Công nghệ chính |
 |------------|---------|------|-----------------|
-| **Backend** | `surfsense_backend/` | Microservice | Python, FastAPI, LangGraph, DeepAgents, Postgres, Redis |
-| **Web Frontend** | `surfsense_web/` | Web App | Next.js 16, React 19, Tailwind v4, Drizzle ORM |
-| **Browser Extension** | `surfsense_browser_extension/` | Extension | Plasmo, React 18, Tailwind |
+| **Backend** | `nowing_backend/` | Microservice | Python, FastAPI, LangGraph, DeepAgents, Postgres, Redis |
+| **Web Frontend** | `nowing_web/` | Web App | Next.js 16, React 19, Tailwind v4, Drizzle ORM |
+| **Browser Extension** | `nowing_browser_extension/` | Extension | Plasmo, React 18, Tailwind |
 
 ## Loại Kiến Trúc
 **Layered Microservice Architecture** (Kiến trúc Microservice phân lớp) kết hợp với **Distributed Client System** (Hệ thống Client phân tán).

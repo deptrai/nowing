@@ -1,4 +1,4 @@
-# SurfSense Development Guide
+# Nowing Development Guide
 
 ## Prerequisites
 - **Node.js**: v18+ with `pnpm` (managed via packageManager: "pnpm@10.24.0").
@@ -8,10 +8,10 @@
 
 ## Monorepo Setup
 
-The SurfSense project relies on a multi-part configuration.
+The Nowing project relies on a multi-part configuration.
 The core directories include:
-- `surfsense_web/`: Next.js frontend (App Router)
-- `surfsense_backend/`: FastAPI backend with language models and Celery integration.
+- `nowing_web/`: Next.js frontend (App Router)
+- `nowing_backend/`: FastAPI backend with language models and Celery integration.
 - `docker/`: Docker compose files.
 
 ## Environment Configuration
@@ -29,7 +29,7 @@ docker compose -f docker/docker-compose.dev.yml up -d db redis searxng zero-cach
 ## Running the Web Frontend
 The frontend uses Next.js with Zero for local-first syncing.
 ```bash
-cd surfsense_web
+cd nowing_web
 pnpm install
 pnpm dev
 # Runs on http://localhost:3000
@@ -38,7 +38,7 @@ pnpm dev
 ## Running the Backend
 The backend utilizes Python FastAPI.
 ```bash
-cd surfsense_backend
+cd nowing_backend
 # Set up virtual environment
 python3 -m venv venv
 source venv/bin/activate
@@ -55,7 +55,7 @@ celery -A app.celery_app beat --loglevel=info
 ```
 
 ## Testing Protocol
-- Backend tests use `pytest` with `pytest-asyncio`. Run from `surfsense_backend` via `pytest`.
+- Backend tests use `pytest` with `pytest-asyncio`. Run from `nowing_backend` via `pytest`.
 - Backend code standards are maintained with `ruff`.
 
 ## Contribution Guidelines

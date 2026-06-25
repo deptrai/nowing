@@ -4,7 +4,7 @@ inputDocuments: []
 workflowType: 'research'
 lastStep: 1
 research_type: 'technical'
-research_topic: 'Gift Subscription System cho SurfSense'
+research_topic: 'Gift Subscription System cho Nowing'
 research_goals: 'Nghiên cứu cách xây dựng tính năng mua gift subscription (tương tự Claude gift), bao gồm: Stripe payment integration, gift code generation/redemption, database schema, và subscription lifecycle management'
 user_name: 'Luisphan'
 date: '2026-04-16'
@@ -12,7 +12,7 @@ web_research_enabled: true
 source_verification: true
 ---
 
-# Gift Subscription System cho SurfSense — Nghiên cứu kỹ thuật toàn diện
+# Gift Subscription System cho Nowing — Nghiên cứu kỹ thuật toàn diện
 
 **Date:** 2026-04-16
 **Author:** Luisphan
@@ -22,7 +22,7 @@ source_verification: true
 
 ## Executive Summary
 
-Nghiên cứu này phân tích cách xây dựng tính năng gift subscription cho SurfSense, tương tự Claude/Anthropic gift feature. Sau khi đánh giá 3 approach (Custom Gift Code, Stripe Coupons, Third-party platforms), **Custom Gift Code System + Stripe `mode: "payment"`** là lựa chọn tối ưu nhất — tái sử dụng 90% patterns có sẵn trong codebase, hoạt động cả khi có và không có Stripe API key (admin-approval fallback).
+Nghiên cứu này phân tích cách xây dựng tính năng gift subscription cho Nowing, tương tự Claude/Anthropic gift feature. Sau khi đánh giá 3 approach (Custom Gift Code, Stripe Coupons, Third-party platforms), **Custom Gift Code System + Stripe `mode: "payment"`** là lựa chọn tối ưu nhất — tái sử dụng 90% patterns có sẵn trong codebase, hoạt động cả khi có và không có Stripe API key (admin-approval fallback).
 
 Stripe **không có native gift subscription API**. Điều này được xác nhận bởi Cardivo (Stripe-verified partner) và nhiều SaaS communities. Các platform lớn (Netflix, Claude, Codedamn) đều tự build custom gift code system.
 
@@ -55,13 +55,13 @@ Stripe **không có native gift subscription API**. Điều này được xác n
 
 ## Research Overview
 
-Nghiên cứu sử dụng phương pháp multi-source: web search verification (Perplexity), codebase analysis (SymDex semantic search), và source code review (Serena + direct reads). Tất cả claims kỹ thuật được verify bằng ít nhất 2 nguồn độc lập. Nghiên cứu tập trung vào tính khả thi thực tế cho SurfSense — không phải generic patterns — bằng cách phân tích trực tiếp code hiện tại (`stripe_routes.py`, `admin_routes.py`, migration 127) để xác định chính xác những gì có thể tái sử dụng
+Nghiên cứu sử dụng phương pháp multi-source: web search verification (Perplexity), codebase analysis (SymDex semantic search), và source code review (Serena + direct reads). Tất cả claims kỹ thuật được verify bằng ít nhất 2 nguồn độc lập. Nghiên cứu tập trung vào tính khả thi thực tế cho Nowing — không phải generic patterns — bằng cách phân tích trực tiếp code hiện tại (`stripe_routes.py`, `admin_routes.py`, migration 127) để xác định chính xác những gì có thể tái sử dụng
 
 ---
 
 ## Technical Research Scope Confirmation
 
-**Research Topic:** Gift Subscription System cho SurfSense
+**Research Topic:** Gift Subscription System cho Nowing
 **Research Goals:** Nghiên cứu cách xây dựng tính năng mua gift subscription (tương tự Claude gift), bao gồm: Stripe payment integration, gift code generation/redemption, database schema, và subscription lifecycle management
 
 **Technical Research Scope:**
@@ -100,14 +100,14 @@ _Source: https://cardivo.com/stripe-gift-cards_
 **Ưu điểm:**
 - Toàn quyền kiểm soát logic gift code
 - Gift code không phụ thuộc Stripe — hoạt động cả khi admin-approval mode (không có Stripe key)
-- Đơn giản nhất cho use case của SurfSense (subscription = feature access, không cần recurring billing cho gift)
+- Đơn giản nhất cho use case của Nowing (subscription = feature access, không cần recurring billing cho gift)
 - Gift chỉ là "prepaid time" — không cần Stripe Subscription object
 
 **Nhược điểm:**
 - Phải tự build toàn bộ: generate code, validate, redeem, expiry tracking
 - Không tận dụng được Stripe subscription lifecycle (dunning, retry, etc.) — nhưng gift không cần recurring nên OK
 
-**Confidence: ⭐⭐⭐⭐⭐ (Cao nhất) — Phù hợp nhất cho SurfSense**
+**Confidence: ⭐⭐⭐⭐⭐ (Cao nhất) — Phù hợp nhất cho Nowing**
 
 #### Approach B: Stripe Coupons/Promotion Codes (100% discount)
 
@@ -139,9 +139,9 @@ _Source: https://docs.stripe.com/billing/subscriptions/coupons_
 
 **Nhược điểm:**
 - Thêm dependency bên thứ 3 — chi phí, vendor lock-in
-- Khó customize UX theo SurfSense brand
+- Khó customize UX theo Nowing brand
 - Không hoạt động với admin-approval mode
-- Overkill cho SurfSense — các platform này thiết kế cho e-commerce, không phải SaaS subscription
+- Overkill cho Nowing — các platform này thiết kế cho e-commerce, không phải SaaS subscription
 
 **Confidence: ⭐⭐ (Thấp) — Không khuyến nghị**
 
@@ -150,7 +150,7 @@ _Source: https://cardivo.com/stripe-gift-cards_
 
 ### Khuyến nghị: Approach A — Custom Gift Code System
 
-SurfSense nên dùng **Approach A** vì:
+Nowing nên dùng **Approach A** vì:
 
 1. **Đã có admin-approval fallback** — gift system cần hoạt động cả khi không có Stripe. Approach A duy nhất đáp ứng điều này.
 2. **Gift = prepaid time** — không cần recurring billing. Chỉ cần: mua → generate code → redeem → set `subscription_current_period_end`.
@@ -162,7 +162,7 @@ _Source: https://community.revenuecat.com/general-questions-7/is-there-a-way-to-
 
 ### Programming Languages & Frameworks
 
-**Backend:** Python (FastAPI) — đã có trong SurfSense, gift system sẽ là thêm routes + models
+**Backend:** Python (FastAPI) — đã có trong Nowing, gift system sẽ là thêm routes + models
 **Frontend:** TypeScript (Next.js) — đã có, thêm gift purchase/redeem pages
 **Database:** PostgreSQL + SQLAlchemy — đã có, thêm `GiftCode` model
 **Payment:** Stripe Checkout (`mode: "payment"`) — one-time payment cho gift purchase
@@ -235,9 +235,9 @@ _Source: https://community.revenuecat.com/general-questions-7/is-there-a-way-to-
 
 ## Integration Patterns Analysis
 
-### Pattern hiện tại trong SurfSense — Stripe + Admin-Approval Fallback
+### Pattern hiện tại trong Nowing — Stripe + Admin-Approval Fallback
 
-SurfSense đã có **2 flows** sử dụng cùng pattern mà gift feature sẽ tái sử dụng:
+Nowing đã có **2 flows** sử dụng cùng pattern mà gift feature sẽ tái sử dụng:
 
 #### Flow 1: Token Topup (`create_token_topup_checkout`, L573-646)
 
@@ -366,7 +366,7 @@ gift_duration_months: int | None  # chỉ cho gift
 ### Frontend Integration
 
 ```
-surfsense_web/
+nowing_web/
 ├─ app/dashboard/[id]/gift/page.tsx       # Gift purchase page
 │   ├─ Chọn plan (PRO Monthly/Yearly)
 │   ├─ Chọn duration (1/3/6/12 months)
@@ -390,7 +390,7 @@ surfsense_web/
 - **Code expiry:** Default 1 year from purchase date
 - **Auth required:** Both purchase and redeem require `current_active_user` dependency
 
-_Source: SurfSense codebase — stripe_routes.py L573-765, admin_routes.py L53-212_
+_Source: Nowing codebase — stripe_routes.py L573-765, admin_routes.py L53-212_
 _Source: https://docs.stripe.com/checkout/quickstart (mode=payment for one-time)_
 _Source: https://blog.wenhaofree.com/en/posts/technology/stripe-payment-guide/ (webhook = source of truth)_
 
@@ -488,7 +488,7 @@ GIFT_PRICING = {
 
 ### Scalability Considerations
 
-**Hiện tại không cần optimize** — SurfSense là SaaS early stage:
+**Hiện tại không cần optimize** — Nowing là SaaS early stage:
 - Gift codes table: dưới 10K rows trong năm đầu
 - Redeem endpoint: low traffic, không cần caching
 - Single PostgreSQL database: đủ cho tất cả
@@ -506,7 +506,7 @@ Không thay đổi deployment — gift feature chạy trong monolith hiện tạ
 - **Frontend:** 2 pages mới trong Next.js app
 - **Webhook:** Extend handler hiện tại trong `stripe_webhook()`
 
-_Source: SurfSense codebase architecture analysis_
+_Source: Nowing codebase architecture analysis_
 _Source: https://github.com/dotabod/frontend/blob/master/giftsubs.md (gift subscription aggregation pattern)_
 _Source: https://flexprice.io/blog/billing-edge-cases-break-homegrown-systems (billing edge cases to avoid)_
 
@@ -589,7 +589,7 @@ class GiftCodeItem(BaseModel):
 
 **Task 2.2: Gift Code Display** (after purchase)
 - Success page hiển thị gift code + copy button + share link
-- Format: `https://surfsense.app/redeem?code=GIFT-XXXX-XXXX-XXXX`
+- Format: `https://nowing.ai/redeem?code=GIFT-XXXX-XXXX-XXXX`
 
 **Task 2.3: Gift Redemption Page** (`/redeem/page.tsx`)
 - Input field cho code (auto-fill từ URL query param)
@@ -626,13 +626,13 @@ class GiftCodeItem(BaseModel):
 
 **Files cần tạo mới:**
 ```
-surfsense_backend/
+nowing_backend/
 ├─ alembic/versions/132_add_gift_codes_table.py
 ├─ alembic/versions/133_add_gift_requests_table.py
 ├─ app/routes/gift_routes.py                    # NEW
 └─ app/schemas/gift.py                          # NEW (hoặc thêm vào schemas/)
 
-surfsense_web/
+nowing_web/
 ├─ app/dashboard/[id]/gift/page.tsx             # NEW
 ├─ app/redeem/page.tsx                          # NEW  
 ├─ app/admin/gift-requests/page.tsx             # NEW
@@ -641,13 +641,13 @@ surfsense_web/
 
 **Files cần sửa:**
 ```
-surfsense_backend/
+nowing_backend/
 ├─ app/routes/__init__.py                       # Register gift_routes router
 ├─ app/routes/stripe_routes.py                  # Extend webhook handler
 ├─ app/routes/admin_routes.py                   # Add gift approval endpoints
 └─ app/db.py                                    # Import new models
 
-surfsense_web/
+nowing_web/
 ├─ components/layout/ui/sidebar/Sidebar.tsx     # Add "Gift" nav link
 └─ lib/api.ts (or equivalent)                   # Add gift API calls
 ```
@@ -695,7 +695,7 @@ Sau technical research này, recommended workflow:
 
 ### Tóm tắt Key Findings
 
-Gift subscription cho SurfSense là tính năng **low-risk, high-reuse** — tái sử dụng 90% code patterns hiện tại. Stripe không có native gift feature, nhưng custom implementation với `mode: "payment"` + admin-approval fallback là approach được industry chứng minh (Netflix, Claude, Dotabod). Kiến trúc tách biệt (`gift_codes` + `gift_requests` tables riêng) đảm bảo zero risk cho existing billing features.
+Gift subscription cho Nowing là tính năng **low-risk, high-reuse** — tái sử dụng 90% code patterns hiện tại. Stripe không có native gift feature, nhưng custom implementation với `mode: "payment"` + admin-approval fallback là approach được industry chứng minh (Netflix, Claude, Dotabod). Kiến trúc tách biệt (`gift_codes` + `gift_requests` tables riêng) đảm bảo zero risk cho existing billing features.
 
 ### Rủi ro chính cần chú ý
 
@@ -706,7 +706,7 @@ Gift subscription cho SurfSense là tính năng **low-risk, high-reuse** — tá
 ### Độ tin cậy nghiên cứu
 
 - **Cao:** Approach A (Custom Gift Code), extension formula, security patterns — verified từ nhiều nguồn + production systems
-- **Cao:** Integration patterns — verified trực tiếp từ SurfSense codebase
+- **Cao:** Integration patterns — verified trực tiếp từ Nowing codebase
 - **Trung bình:** Pricing strategy (volume discounts) — cần validate với business requirements
 
 ---
@@ -715,4 +715,4 @@ Gift subscription cho SurfSense là tính năng **low-risk, high-reuse** — tá
 **Source Verification:** All technical facts cited with current sources
 **Confidence Level:** High — based on codebase analysis + multiple authoritative sources
 
-_This technical research document serves as the foundation for Epic 6: Gift Subscriptions implementation in SurfSense._
+_This technical research document serves as the foundation for Epic 6: Gift Subscriptions implementation in Nowing._

@@ -1,7 +1,7 @@
 # Component Inventory (Giao Diện)
 
 ## Tổng quan
-SurfSense Frontend sử dụng hệ thống Component quy mô lớn (hơn 200 components) đặt tại `surfsense_web/components/`. 
+Nowing Frontend sử dụng hệ thống Component quy mô lớn (hơn 200 components) đặt tại `nowing_web/components/`. 
 Hệ thống tuân thủ thiết kế phân rã (Atomic/Feature-based) để tái sử dụng.
 
 ## Mục Lục Các Trụ Cột Thành Phần (Major Folders)

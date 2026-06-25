@@ -283,7 +283,7 @@ Data |  DEX Screener
 
 **Barriers to Entry:**
 - **Low technical barriers (Basic):** APIs are accessible (DexScreener, DefiLlama free).
-- **HIGH technical barriers (AI):** Building a robust RAG pipeline + Agentic capabilities (which SurfSense **already has**) takes months of specialized engineering.
+- **HIGH technical barriers (AI):** Building a robust RAG pipeline + Agentic capabilities (which Nowing **already has**) takes months of specialized engineering.
 - **Brand barriers:** Established players have trust.
 
 **Strategic Implication:**

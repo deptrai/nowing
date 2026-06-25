@@ -1,4 +1,4 @@
-# Hướng Dẫn Quản Trị SurfSense
+# Hướng Dẫn Quản Trị Nowing
 
 **Dành cho Administrators**
 
@@ -6,7 +6,7 @@
 
 ## 📖 Giới Thiệu
 
-Tài liệu này hướng dẫn administrators cách quản lý và vận hành hệ thống SurfSense.
+Tài liệu này hướng dẫn administrators cách quản lý và vận hành hệ thống Nowing.
 
 ---
 
@@ -36,7 +36,7 @@ Tài liệu này hướng dẫn administrators cách quản lý và vận hành 
 ## 🔑 Default Admin Account
 
 **Tài khoản quản trị mặc định:**
-- **Email:** `admin@surfsense.ai`
+- **Email:** `admin@nowing.ai`
 - **Password:** `password123`
 
 > [!WARNING]
@@ -52,7 +52,7 @@ Tài liệu này hướng dẫn administrators cách quản lý và vận hành 
 **Via CLI:**
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 python manage.py create-user \
   --email user@example.com \
   --name "John Doe" \
@@ -88,10 +88,10 @@ python manage.py set-role --email user@example.com --role admin
 
 ### Environment Variables
 
-**File: `surfsense_backend/.env`**
+**File: `nowing_backend/.env`**
 
 ```bash
-DATABASE_URL=postgresql://user:password@localhost:5432/surfsense
+DATABASE_URL=postgresql://user:password@localhost:5432/nowing
 REDIS_URL=redis://localhost:6379/0
 
 OPENAI_API_KEY=sk-...
@@ -108,7 +108,7 @@ LOG_LEVEL=INFO
 ### Database Migrations
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 alembic upgrade head
 ```
 
@@ -119,7 +119,7 @@ alembic upgrade head
 ### Health Check
 
 ```bash
-curl https://api.surfsense.ai/health
+curl https://api.nowing.ai/health
 ```
 
 **Response:**
@@ -139,10 +139,10 @@ curl https://api.surfsense.ai/health
 
 ```bash
 # Real-time logs
-tail -f surfsense_backend/logs/app.log
+tail -f nowing_backend/logs/app.log
 
 # Docker logs
-docker logs -f surfsense_backend
+docker logs -f nowing_backend
 ```
 
 ### Performance Metrics
@@ -164,7 +164,7 @@ docker logs -f surfsense_backend
 sudo apt install certbot python3-certbot-nginx
 
 # Obtain certificate
-sudo certbot --nginx -d api.surfsense.ai
+sudo certbot --nginx -d api.nowing.ai
 ```
 
 ### Backup
@@ -174,10 +174,10 @@ sudo certbot --nginx -d api.surfsense.ai
 ```bash
 #!/bin/bash
 DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/backups/surfsense"
+BACKUP_DIR="/backups/nowing"
 
-pg_dump -U surfsense surfsense > $BACKUP_DIR/db_$DATE.sql
-tar -czf $BACKUP_DIR/uploads_$DATE.tar.gz /var/surfsense/uploads
+pg_dump -U nowing nowing > $BACKUP_DIR/db_$DATE.sql
+tar -czf $BACKUP_DIR/uploads_$DATE.tar.gz /var/nowing/uploads
 
 # Keep last 7 days
 find $BACKUP_DIR -type f -mtime +7 -delete
@@ -186,7 +186,7 @@ find $BACKUP_DIR -type f -mtime +7 -delete
 **Cron job (2AM daily):**
 
 ```bash
-0 2 * * * /usr/local/bin/backup.sh >> /var/log/surfsense-backup.log 2>&1
+0 2 * * * /usr/local/bin/backup.sh >> /var/log/nowing-backup.log 2>&1
 ```
 
 ---
@@ -197,7 +197,7 @@ find $BACKUP_DIR -type f -mtime +7 -delete
 
 ```bash
 # Check logs
-tail -n 100 surfsense_backend/logs/app.log
+tail -n 100 nowing_backend/logs/app.log
 
 # Test database
 python -c "from app.db import engine; engine.connect()"
@@ -236,14 +236,14 @@ CREATE INDEX idx_content_tags ON content USING GIN(tags);
 version: '3.8'
 services:
   backend:
-    build: ./surfsense_backend
+    build: ./nowing_backend
     ports: ["8000:8000"]
     depends_on: [db, redis]
   
   db:
     image: postgres:15
     environment:
-      POSTGRES_USER: surfsense
+      POSTGRES_USER: nowing
       POSTGRES_PASSWORD: password
   
   redis:

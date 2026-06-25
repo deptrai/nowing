@@ -1,29 +1,1388 @@
-2026-04-13 11:08:51,512 | WARNING  | chonkie.chunker.code:__init__:75 - The language is set to `auto`. This would adversely affect the performance of the chunker. Consider setting the `language` parameter to a specific language to improve performance.
-INFO:     Will watch for changes in these directories: ['/Users/luisphWARNING:  WatchFiles detected changes in 'app/db.py', 'app/tasks/connector_indexers/dexscreener_indexer.py', 'app/routes/airtable_add_connector_route.py', 'app/connectors/discord_connector.py', 'app/agents/new_chat/tools/crypto_realtime.py', 'app/services/connector_service.py', 'tests/unit/tasks/test_dexscreener_indexer.py', 'app/connectors/clickup_history.py', 'app/tasks/celery_tasks/connector_tasks.py', 'app/routes/search_source_connectors_routes.py', 'app/routes/dexscreener_add_connector_route.py', 'app/connectors/teams_connector.py', 'app/agents/new_chat/tools/__init__.py', 'app/agents/new_chat/tools/knowledge_base.py', 'app/utils/airtable_token_utils.py', 'tests/unit/connectors/test_dexscreener_connector.py', 'app/routes/__init__.py', 'app/connectors/notion_history.py', 'app/agents/new_chat/chat_deepagent.py', 'app/connectors/slack_history.py', 'app/agents/new_chat/tools/registry.py', 'tests/conftest.py', 'app/connectors/airtable_history.py', 'tests/unit/routes/__init__.py', 'test_dexscreener_integration.py', 'tests/unit/routes/test_dexscreener_routes.py', 'app/utils/validators.py', 'app/connectors/dexscreener_connector.py', 'alembic/versions/85_add_dexscreener_connector.py', 'test_chat_rag.py', 'app/tasks/celery_tasks/schedule_checker_task.py', 'app/connectors/jira_history.py', 'app/app.py', 'app/connectors/confluence_history.py', 'app/tasks/connector_indexers/__init__.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/connectors/confluence_history.py', 'tests/conftest.py', 'app/routes/airtable_add_connector_route.py', 'app/app.py', 'app/connectors/jira_history.py', 'app/connectors/notion_history.py', 'app/tasks/connector_indexers/__init__.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/routes/__init__.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/db.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/chat_deepagent.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/knowledge_base.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/knowledge_base.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/knowledge_base.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/__init__.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/__init__.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/registry.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/registry.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/registry.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
-WARNING:  WatchFiles detected changes in 'app/agents/new_chat/tools/registry.py'. Reloading...
-ERROR:    Error loading ASGI app. Could not import module "app.main".
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/chonkie/chunker/code.py:82: UserWarning: The language is set to `auto`. This would adversely affect the performance of the chunker. Consider setting the `language` parameter to a specific language to improve performance.
+  warnings.warn("The language is set to `auto`. This would adversely affect the performance of the chunker. " +
+INFO:     Will watch for changes in these directories: ['/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app']
+2026-05-05 13:03:22 - app.agents.new_chat.tools.dune_query - WARNING - Dune query 'NFT Collection Floor + Volume' has placeholder ID 12348 — replace with a real Dune query ID before use. Skipping.
+2026-05-05 13:03:22 - app.agents.new_chat.tools.dune_query - WARNING - Dune query 'Lido / RocketPool Staking Flows' has placeholder ID 12346 — replace with a real Dune query ID before use. Skipping.
+2026-05-05 13:03:22 - app.agents.new_chat.tools.dune_query - WARNING - Dune query 'Uniswap DEX Volume by Pool' has placeholder ID 12345 — replace with a real Dune query ID before use. Skipping.
+2026-05-05 13:03:22 - app.agents.new_chat.tools.dune_query - WARNING - Dune query 'Whale Concentration — Top 10 Holders %' has placeholder ID 12347 — replace with a real Dune query ID before use. Skipping.
+2026-05-05 13:03:22 - app.agents - INFO - provider_rate_gate: installed ChatLiteLLM gate (10 RPM / 60s window → min_interval=6.0s between calls)
+2026-05-05 13:03:22 - app.agents - INFO - provider_rate_gate: disabled litellm.num_retries (gate handles pacing)
+INFO:     Started server process [12971]
+INFO:     Waiting for application startup.
+2026-05-05 13:03:24 - app.agents.new_chat.checkpointer - INFO - [Checkpointer] Created AsyncPostgresSaver with connection pool
+2026-05-05 13:03:24 - app.agents.new_chat.checkpointer - INFO - [Checkpointer] PostgreSQL checkpoint tables ready
+2026-05-05 13:03:24 - app.app - INFO - [Chainlens] Integration DISABLED (CHAINLENS_RESEARCH_ENABLED=false) — using built-in research only
+2026-05-05 13:03:24 - app.tasks.nowing_docs_indexer - INFO - Starting Nowing docs indexing...
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-05-05 13:03:24 - app.tasks.nowing_docs_indexer - INFO - Found 39 MDX files to index
+2026-05-05 13:03:24 - app.tasks.nowing_docs_indexer - INFO - Indexing complete: 0 created, 0 updated, 39 skipped, 0 deleted
+2026-05-05 13:03:24 - app.tasks.nowing_docs_indexer - INFO - Nowing docs indexing complete: created=0, updated=0, skipped=39, deleted=0
+Info: No global LLM configs found, Auto mode will not be available
+INFO:     127.0.0.1:50113 - "HEAD /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50218 - "OPTIONS /auth/jwt/login HTTP/1.1" 200 OK
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  return self._jws.encode(
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:50218 - "POST /auth/jwt/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50220 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50220 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50220 - "OPTIONS /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "OPTIONS /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "OPTIONS /api/v1/search-spaces/1/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50233 - "OPTIONS /api/v1/searchspaces/1/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50220 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "GET /api/v1/search-spaces/1/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50233 - "GET /api/v1/searchspaces/1/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50233 - "OPTIONS /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "OPTIONS /api/v1/search-source-connectors?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "OPTIONS /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50235 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50235 - "OPTIONS /api/v1/new-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50235 - "OPTIONS /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50239 - "OPTIONS /api/v1/image-generation-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50241 - "OPTIONS /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50241 - "OPTIONS /api/v1/vision-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50233 - "GET /api/v1/search-source-connectors?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50233 - "OPTIONS /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "GET /api/v1/new-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "OPTIONS /api/v1/searchspaces/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "OPTIONS /api/v1/notifications/unread-counts-batch?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50220 - "GET /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50241 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50235 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50235 - "OPTIONS /api/v1/documents?page=0&page_size=200&search_space_id=1&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50233 - "GET /api/v1/vision-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50220 - "GET /api/v1/searchspaces/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50241 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50239 - "GET /api/v1/image-generation-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50235 - "GET /api/v1/documents?page=0&page_size=200&search_space_id=1&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50235 - "OPTIONS /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50235 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50239 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50241 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50241 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50241 - "OPTIONS /api/v1/notifications?search_space_id=1&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50241 - "OPTIONS /api/v1/notifications?search_space_id=1&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50239 - "GET /api/v1/notifications?search_space_id=1&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50235 - "GET /api/v1/notifications?search_space_id=1&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50365 - "OPTIONS /api/v1/threads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50365 - "POST /api/v1/threads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50365 - "OPTIONS /api/v1/threads/18/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50367 - "OPTIONS /api/v1/threads/18/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50369 - "OPTIONS /api/v1/threads/18/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50365 - "POST /api/v1/threads/18/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50371 - "GET /api/v1/threads/18/runs/active HTTP/1.1" 200 OK
+2026-05-05 13:06:25 - app.tasks.chat.run_manager - INFO - spawned run 407f145d-593b-4be1-ab53-21627d9e4685 (thread=18, langgraph_thread=run-407f145d-593b-4be1-ab53-21627d9e4685)
+INFO:     127.0.0.1:50367 - "POST /api/v1/threads/18/runs HTTP/1.1" 200 OK
+2026-05-05 13:06:25,712 [PERF] [stream_new_chat_START] rss=259.6MB cpu=0.0% threads=14 fds=35 asyncio_tasks=12 gc=(520, 8, 25)
+INFO:     127.0.0.1:50367 - "OPTIONS /api/v1/threads/18/snapshots HTTP/1.1" 200 OK
+2026-05-05 13:06:25,932 [PERF] [stream_new_chat] LLM config loaded in 0.197s (config_id=9)
+INFO:     127.0.0.1:50365 - "OPTIONS /api/v1/threads/18/runs/407f145d-593b-4be1-ab53-21627d9e4685/stream?after_seq=-1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50369 - "OPTIONS /api/v1/threads/18/runs/407f145d-593b-4be1-ab53-21627d9e4685/stream?after_seq=-1 HTTP/1.1" 200 OK
+2026-05-05 13:06:25,963 [PERF] [stream_new_chat] Connector service + firecrawl key in 0.031s
+2026-05-05 13:06:25,963 [PERF] [stream_new_chat] Checkpointer ready in 0.000s
+INFO:     127.0.0.1:50371 - "GET /api/v1/threads/18/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50365 - "GET /api/v1/threads/18/runs/407f145d-593b-4be1-ab53-21627d9e4685/stream?after_seq=-1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50367 - "GET /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+2026-05-05 13:06:25,996 [PERF] [create_agent] Connector/doc-type discovery in 0.032s
+2026-05-05 13:06:26,045 [PERF] [build_tools_async] Built-in tools in 0.048s (30 tools)
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+2026-05-05 13:06:26 - app.agents.new_chat.tools.mcp_tool - INFO - Loaded 0 MCP tools for search space 1
+2026-05-05 13:06:26,048 [PERF] [build_tools_async] MCP tools loaded in 0.003s (0 tools)
+2026-05-05 13:06:26 - root - INFO - Registered 0 MCP tools: []
+2026-05-05 13:06:26 - root - INFO - Total tools for agent: 30 - ['generate_podcast', 'generate_video_presentation', 'generate_report', 'generate_image', 'scrape_webpage', 'web_search', 'search_nowing_docs', 'update_memory', 'get_live_token_price', 'get_live_token_data', 'get_defillama_protocol', 'get_defillama_tvl_overview', 'get_defillama_yields', 'get_defillama_stablecoins', 'get_defillama_bridges', 'get_cmc_sentiment', 'get_reddit_crypto_sentiment', 'get_crypto_news', 'get_coingecko_token_info', 'get_contract_info', 'check_token_security', 'get_nansen_smart_money', 'get_nansen_wallet_label', 'get_nansen_token_god_mode', 'get_smart_money_flow', 'get_certik_audit_score', 'get_certik_incident_history', 'run_dune_query', 'get_tokeninsight_rating', 'get_tokeninsight_research_snippet']
+2026-05-05 13:06:26,048 [PERF] [create_agent] build_tools_async in 0.052s (30 tools)
+2026-05-05 13:06:26,048 [PERF] [create_agent] System prompt built in 0.000s
+2026-05-05 13:06:26,077 [PERF] [create_agent] sub-agent defillama_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:06:26,077 [PERF] [create_agent] sub-agent sentiment_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:06:26,077 [PERF] [create_agent] sub-agent news_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:06:26,077 [PERF] [create_agent] sub-agent smart_contract_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:06:26,077 [PERF] [create_agent] sub-agent tokenomics_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:06:26,077 [PERF] [create_agent] sub-agent yield_optimizer missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:06:26,077 [PERF] [create_agent] chainlens_deep_research is NOT in the tool registry but all 6 crypto sub-agent prompts reference it. Either enable CHAINLENS_RESEARCH_ENABLED or update crypto sub-agent prompts to remove chainlens references.
+INFO:     127.0.0.1:50371 - "GET /api/v1/threads/18/runs/407f145d-593b-4be1-ab53-21627d9e4685/stream?after_seq=-1 HTTP/1.1" 200 OK
+2026-05-05 13:06:26,416 [PERF] [create_agent] Graph compiled (create_agent) in 0.021s
+2026-05-05 13:06:26,416 [PERF] [create_agent] Total agent creation in 0.453s
+2026-05-05 13:06:26,417 [PERF] [stream_new_chat] Agent created in 0.453s
+2026-05-05 13:06:26,425 [PERF] [stream_new_chat] History bootstrap + doc/report queries in 0.008s
+2026-05-05 13:06:26,427 [PERF] [stream_new_chat] Total pre-stream setup in 0.715s (chat_id=18)
+[92m13:06:26 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= qwen-3.6; provider = openai
+2026-05-05 13:06:26 - LiteLLM - INFO - 
+LiteLLM completion() model= qwen-3.6; provider = openai
+2026-05-05 13:06:26 - app.agents - INFO - provider_rate_gate: spacing 5.7s before next call (min_interval=6.0s, elapsed=0.3s)
+2026-05-05 13:06:28 - langsmith.client - WARNING - Failed to multipart ingest runs: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:06:28 - openai._base_client - INFO - Retrying request to /chat/completions in 0.429672 seconds
+2026-05-05 13:06:30 - openai._base_client - INFO - Retrying request to /chat/completions in 0.830639 seconds
+[92m13:06:32 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= qwen-3.6; provider = openai
+2026-05-05 13:06:32 - LiteLLM - INFO - 
+LiteLLM completion() model= qwen-3.6; provider = openai
+2026-05-05 13:06:33 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:06:34 - openai._base_client - INFO - Retrying request to /chat/completions in 0.440368 seconds
+2026-05-05 13:06:35 - openai._base_client - INFO - Retrying request to /chat/completions in 0.909869 seconds
+2026-05-05 13:06:38 - app.agents.new_chat.middleware.knowledge_search - WARNING - KB planner failed, using raw query: litellm.ServiceUnavailableError: ServiceUnavailableError: OpenAIException - Something wrong, please try again. If you need support, please contact admin
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]2026-05-05 13:06:39 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+Batches: 100%|██████████| 1/1 [00:00<00:00,  1.02it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.02it/s]
+2026-05-05 13:06:39,244 [PERF] [chunk_search] hybrid_search RRF query in 0.086s results=0 space=1 type=None
+2026-05-05 13:06:39,257 [PERF] [kb_fs_middleware] completed in 12.341s query='Show smart money flow for PEPE?' optimized='Show smart money flow for PEPE?' mentioned=0 new_files=0 total=0
+2026-05-05 13:06:39,258 [PERF] [stream_new_chat] First agent event in 12.816s (time since stream start), 13.547s (total since request start) (chat_id=18)
+2026-05-05 13:06:39 - app.agents - INFO - provider_rate_gate: spacing 5.8s before next call (min_interval=6.0s, elapsed=0.2s)
+2026-05-05 13:06:40 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:06:45 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= qwen-3.6; provider = openai
+2026-05-05 13:06:45 - LiteLLM - INFO - 
+LiteLLM completion() model= qwen-3.6; provider = openai
+2026-05-05 13:06:47 - openai._base_client - INFO - Retrying request to /chat/completions in 0.388453 seconds
+2026-05-05 13:06:50 - openai._base_client - INFO - Retrying request to /chat/completions in 0.980340 seconds
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:50373 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+[stream_new_chat] Error during chat: litellm.ServiceUnavailableError: ServiceUnavailableError: OpenAIException - Something wrong, please try again. If you need support, please contact admin
+[stream_new_chat] Exception type: ServiceUnavailableError
+[stream_new_chat] Traceback:
+Traceback (most recent call last):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/llms/openai/openai.py", line 1112, in async_streaming
+    headers, response = await self.make_openai_chat_completion_request(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/litellm_core_utils/logging_utils.py", line 297, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/llms/openai/openai.py", line 460, in make_openai_chat_completion_request
+    raise e
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/llms/openai/openai.py", line 437, in make_openai_chat_completion_request
+    await openai_aclient.chat.completions.with_raw_response.create(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/openai/_legacy_response.py", line 381, in wrapped
+    return cast(LegacyAPIResponse[R], await func(*args, **kwargs))
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/openai/resources/chat/completions/completions.py", line 2678, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/openai/_base_client.py", line 1794, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/openai/_base_client.py", line 1594, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 503 - {'error': {'message': 'Something wrong, please try again. If you need support, please contact admin', 'type': 'new_api_error'}}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/main.py", line 620, in acompletion
+    response = await init_response
+               ^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/llms/openai/openai.py", line 1162, in async_streaming
+    raise OpenAIError(
+litellm.llms.openai.common_utils.OpenAIError: Error code: 503 - {'error': {'message': 'Something wrong, please try again. If you need support, please contact admin', 'type': 'new_api_error'}}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/tasks/chat/stream_new_chat.py", line 2089, in _stream_new_chat_inner
+    async for sse in _stream_agent_events(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/tasks/chat/stream_new_chat.py", line 437, in _stream_agent_events
+    async for event in agent.astream_events(input_data, config=config, version="v2"):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/runnables/base.py", line 1516, in astream_events
+    async for event in event_stream:
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/tracers/event_stream.py", line 1100, in _astream_events_implementation_v2
+    await task
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/tracers/event_stream.py", line 1055, in consume_astream
+    async for _ in event_streamer.tap_output_aiter(run_id, stream):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/tracers/event_stream.py", line 222, in tap_output_aiter
+    async for chunk in output:
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langgraph/pregel/main.py", line 3128, in astream
+    async for _ in runner.atick(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langgraph/pregel/_runner.py", line 304, in atick
+    await arun_with_retry(
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langgraph/pregel/_retry.py", line 237, in arun_with_retry
+    async for _ in task.proc.astream(task.input, config):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langgraph/_internal/_runnable.py", line 839, in astream
+    output = await asyncio.create_task(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langgraph/_internal/_runnable.py", line 904, in _consume_aiter
+    async for chunk in it:
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/tracers/event_stream.py", line 199, in tap_output_aiter
+    first = await anext(output, sentinel)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/runnables/base.py", line 1589, in atransform
+    async for ichunk in input:
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/runnables/base.py", line 1170, in astream
+    yield await self.ainvoke(input, config, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langgraph/_internal/_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 1361, in amodel_node
+    result = await awrap_model_call_handler(request, _execute_model_async)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 386, in composed
+    outer_result = await outer(request, inner_handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/agents/new_chat/chat_deepagent.py", line 1015, in awrap_model_call
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 376, in inner_handler
+    inner_result = await inner(req, handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 386, in composed
+    outer_result = await outer(request, inner_handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/agents/new_chat/chat_deepagent.py", line 865, in awrap_model_call
+    _result = await handler(request)
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 376, in inner_handler
+    inner_result = await inner(req, handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 386, in composed
+    outer_result = await outer(request, inner_handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/middleware/todo.py", line 271, in awrap_model_call
+    return await handler(request.override(system_message=new_system_message))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 376, in inner_handler
+    inner_result = await inner(req, handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 386, in composed
+    outer_result = await outer(request, inner_handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/deepagents/middleware/filesystem.py", line 1310, in awrap_model_call
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 376, in inner_handler
+    inner_result = await inner(req, handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 386, in composed
+    outer_result = await outer(request, inner_handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/deepagents/middleware/subagents.py", line 550, in awrap_model_call
+    return await handler(request.override(system_message=new_system_message))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 376, in inner_handler
+    inner_result = await inner(req, handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 386, in composed
+    outer_result = await outer(request, inner_handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/agents/new_chat/chat_deepagent.py", line 1709, in awrap_model_call
+    return await handler(request.override(system_message=new_sys, messages=messages))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 376, in inner_handler
+    inner_result = await inner(req, handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 386, in composed
+    outer_result = await outer(request, inner_handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/deepagents/middleware/summarization.py", line 1045, in awrap_model_call
+    return await handler(request.override(messages=truncated_messages))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 376, in inner_handler
+    inner_result = await inner(req, handler)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_anthropic/middleware/prompt_caching.py", line 180, in awrap_model_call
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain/agents/factory.py", line 1330, in _execute_model_async
+    output = await model_.ainvoke(messages)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/runnables/base.py", line 5708, in ainvoke
+    return await self.bound.ainvoke(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/language_models/chat_models.py", line 477, in ainvoke
+    llm_result = await self.agenerate_prompt(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/language_models/chat_models.py", line 1196, in agenerate_prompt
+    return await self.agenerate(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/language_models/chat_models.py", line 1154, in agenerate
+    raise exceptions[0]
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_core/language_models/chat_models.py", line 1380, in _agenerate_with_cache
+    async for chunk in self._astream(messages, stop=stop, **kwargs):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/agents/new_chat/chat_deepagent.py", line 475, in _gated_astream
+    async for chunk in _orig_astream(self, *args, **kwargs):
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_litellm/chat_models/litellm.py", line 721, in _astream
+    async for chunk in await self.acompletion_with_retry(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_litellm/chat_models/litellm.py", line 521, in acompletion_with_retry
+    return await _completion_with_retry(**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 189, in async_wrapped
+    return await copy(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 111, in __call__
+    do = await self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 153, in iter
+    result = await action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/tenacity/_utils.py", line 99, in inner
+    return call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 400, in <lambda>
+    self._add_action_func(lambda rs: rs.outcome.result())
+                                     ^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 114, in __call__
+    result = await fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/langchain_litellm/chat_models/litellm.py", line 519, in _completion_with_retry
+    return await self.client.acompletion(**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/utils.py", line 2090, in wrapper_async
+    raise e
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/utils.py", line 1889, in wrapper_async
+    result = await original_function(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/main.py", line 639, in acompletion
+    raise exception_type(
+          ^^^^^^^^^^^^^^^
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 2456, in exception_type
+    raise e
+  File "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 606, in exception_type
+    raise ServiceUnavailableError(
+litellm.exceptions.ServiceUnavailableError: litellm.ServiceUnavailableError: ServiceUnavailableError: OpenAIException - Something wrong, please try again. If you need support, please contact admin
+During task with name 'model' and id 'dcaac7a8-e4df-b0b2-4162-aea2f66748a6'
+2026-05-05 13:06:54,046 [PERF] [stream_new_chat] gc.collect() reclaimed 1812 objects (chat_id=18)
+2026-05-05 13:06:54,046 [PERF] [stream_new_chat_END] rss=798.9MB delta=+539.3MB cpu=0.0% threads=40 fds=44 asyncio_tasks=15 gc=(25, 0, 0)
+2026-05-05 13:06:54,047 [PERF] [MEMORY_SPIKE] stream_new_chat_END: RSS jumped by 539.3MB (now 798.9MB). Possible leak — check recent operations.
+2026-05-05 13:06:54 - app.tasks.chat.run_manager - INFO - run 407f145d-593b-4be1-ab53-21627d9e4685 completed
+2026-05-05 13:06:54 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+
+INFO:     127.0.0.1:50598 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50677 - "PUT /api/v1/search-spaces/1/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50684 - "OPTIONS /api/v1/threads/18/regenerate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50684 - "POST /api/v1/threads/18/regenerate HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:50781 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "POST /api/v1/threads/18/messages HTTP/1.1" 200 OK
+2026-05-05 13:12:15 - app.tasks.chat.run_manager - INFO - spawned run 29b83f68-19e7-4e23-8af2-3dac29d3f30c (thread=18, langgraph_thread=run-29b83f68-19e7-4e23-8af2-3dac29d3f30c)
+INFO:     127.0.0.1:50869 - "POST /api/v1/threads/18/runs HTTP/1.1" 200 OK
+2026-05-05 13:12:15,591 [PERF] [stream_new_chat_START] rss=249.3MB delta=-549.6MB cpu=0.0% threads=41 fds=40 asyncio_tasks=10 gc=(65, 2, 0)
+2026-05-05 13:12:15,614 [PERF] [stream_new_chat] LLM config loaded in 0.006s (config_id=4)
+INFO:     127.0.0.1:50869 - "OPTIONS /api/v1/threads/18/runs/29b83f68-19e7-4e23-8af2-3dac29d3f30c/stream?after_seq=-1 HTTP/1.1" 200 OK
+2026-05-05 13:12:15,629 [PERF] [stream_new_chat] Connector service + firecrawl key in 0.015s
+2026-05-05 13:12:15,629 [PERF] [stream_new_chat] Checkpointer ready in 0.000s
+INFO:     127.0.0.1:50868 - "GET /api/v1/threads/18/runs/29b83f68-19e7-4e23-8af2-3dac29d3f30c/stream?after_seq=-1 HTTP/1.1" 200 OK
+2026-05-05 13:12:15,639 [PERF] [create_agent] Connector/doc-type discovery in 0.010s
+2026-05-05 13:12:15,712 [PERF] [build_tools_async] Built-in tools in 0.060s (30 tools)
+2026-05-05 13:12:15 - app.agents.new_chat.tools.mcp_tool - INFO - Loaded 0 MCP tools for search space 1
+2026-05-05 13:12:15,715 [PERF] [build_tools_async] MCP tools loaded in 0.002s (0 tools)
+2026-05-05 13:12:15 - root - INFO - Registered 0 MCP tools: []
+2026-05-05 13:12:15 - root - INFO - Total tools for agent: 30 - ['generate_podcast', 'generate_video_presentation', 'generate_report', 'generate_image', 'scrape_webpage', 'web_search', 'search_nowing_docs', 'update_memory', 'get_live_token_price', 'get_live_token_data', 'get_defillama_protocol', 'get_defillama_tvl_overview', 'get_defillama_yields', 'get_defillama_stablecoins', 'get_defillama_bridges', 'get_cmc_sentiment', 'get_reddit_crypto_sentiment', 'get_crypto_news', 'get_coingecko_token_info', 'get_contract_info', 'check_token_security', 'get_nansen_smart_money', 'get_nansen_wallet_label', 'get_nansen_token_god_mode', 'get_smart_money_flow', 'get_certik_audit_score', 'get_certik_incident_history', 'run_dune_query', 'get_tokeninsight_rating', 'get_tokeninsight_research_snippet']
+2026-05-05 13:12:15,715 [PERF] [create_agent] build_tools_async in 0.076s (30 tools)
+2026-05-05 13:12:15,715 [PERF] [create_agent] System prompt built in 0.000s
+2026-05-05 13:12:15,741 [PERF] [create_agent] sub-agent defillama_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:12:15,741 [PERF] [create_agent] sub-agent sentiment_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:12:15,741 [PERF] [create_agent] sub-agent news_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:12:15,741 [PERF] [create_agent] sub-agent smart_contract_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:12:15,741 [PERF] [create_agent] sub-agent tokenomics_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:12:15,741 [PERF] [create_agent] sub-agent yield_optimizer missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:12:15,741 [PERF] [create_agent] chainlens_deep_research is NOT in the tool registry but all 6 crypto sub-agent prompts reference it. Either enable CHAINLENS_RESEARCH_ENABLED or update crypto sub-agent prompts to remove chainlens references.
+2026-05-05 13:12:16,004 [PERF] [create_agent] Graph compiled (create_agent) in 0.011s
+2026-05-05 13:12:16,004 [PERF] [create_agent] Total agent creation in 0.375s
+2026-05-05 13:12:16,004 [PERF] [stream_new_chat] Agent created in 0.376s
+2026-05-05 13:12:16,007 [PERF] [stream_new_chat] History bootstrap + doc/report queries in 0.002s
+2026-05-05 13:12:16,007 [PERF] [stream_new_chat] Total pre-stream setup in 0.418s (chat_id=18)
+[92m13:12:16 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:12:16 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:12:16 - app.agents - INFO - provider_rate_gate: spacing 6.0s before next call (min_interval=6.0s, elapsed=0.0s)
+2026-05-05 13:12:16 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:12:18 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:12:22 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:12:22 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:12:24,741 [PERF] [stream_new_chat] First agent event in 8.723s (time since stream start), 9.151s (total since request start) (chat_id=18)
+2026-05-05 13:12:24,762 [PERF] [kb_fs_middleware] planner in 8.716s query='Show smart money flow for PEPE?' optimized='smart money flow PEPE' start=None end=None
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.72it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.72it/s]
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:50889 - "GET /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+2026-05-05 13:12:25,440 [PERF] [chunk_search] hybrid_search RRF query in 0.092s results=0 space=1 type=None
+2026-05-05 13:12:25,451 [PERF] [kb_fs_middleware] completed in 9.404s query='Show smart money flow for PEPE?' optimized='smart money flow PEPE' mentioned=0 new_files=0 total=0
+2026-05-05 13:12:25 - app.agents - INFO - provider_rate_gate: spacing 2.6s before next call (min_interval=6.0s, elapsed=3.4s)
+2026-05-05 13:12:25 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:12:26 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:12:28 - app.agents - INFO - provider_rate_gate: spacing 5.8s before next call (min_interval=6.0s, elapsed=0.2s)
+2026-05-05 13:12:29 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:12:34 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:12:34 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:12:39 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:12:40 - app.agents.new_chat.tools.nansen_smart_money - WARNING - nansen smart_money HTTP error 404 for 0x6982508145454Ce325dDbE47a25d4ec3d2311933
+2026-05-05 13:12:40 - app.agents - INFO - provider_rate_gate: spacing 5.9s before next call (min_interval=6.0s, elapsed=0.1s)
+2026-05-05 13:12:41 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:12:46 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:12:46 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:12:51,433 [PERF] [stream_new_chat] Agent stream completed in 35.415s (chat_id=18)
+2026-05-05 13:12:51,435 [PERF] [stream_new_chat_END] rss=312.2MB delta=+62.9MB cpu=0.0% threads=44 fds=42 asyncio_tasks=12 gc=(6, 7, 16)
+2026-05-05 13:12:51 - app.agents - INFO - provider_rate_gate: spacing 0.6s before next call (min_interval=6.0s, elapsed=5.4s)
+2026-05-05 13:12:52,003 [PERF] [stream_new_chat] gc.collect() reclaimed 19803 objects (chat_id=18)
+2026-05-05 13:12:52,004 [PERF] [stream_new_chat_END] rss=817.0MB delta=+504.8MB cpu=0.0% threads=34 fds=42 asyncio_tasks=14 gc=(93, 0, 0)
+2026-05-05 13:12:52,004 [PERF] [MEMORY_SPIKE] stream_new_chat_END: RSS jumped by 504.8MB (now 817.0MB). Possible leak — check recent operations.
+2026-05-05 13:12:52 - app.tasks.chat.run_manager - INFO - run 29b83f68-19e7-4e23-8af2-3dac29d3f30c completed
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:50868 - "POST /api/v1/threads/18/messages HTTP/1.1" 200 OK
+[92m13:12:52 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:12:52 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+INFO:     127.0.0.1:50868 - "OPTIONS /api/v1/messages/32/comments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50868 - "GET /api/v1/messages/32/comments HTTP/1.1" 200 OK
+2026-05-05 13:12:52 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+INFO:     127.0.0.1:50868 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+2026-05-05 13:12:54 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+INFO:     127.0.0.1:51068 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "OPTIONS /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "OPTIONS /api/v1/search-spaces/1/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "OPTIONS /api/v1/searchspaces/1/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51070 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "GET /api/v1/searchspaces/1/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "GET /api/v1/search-spaces/1/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "OPTIONS /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "OPTIONS /api/v1/search-source-connectors?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51070 - "GET /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "GET /api/v1/search-source-connectors?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51070 - "OPTIONS /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "OPTIONS /api/v1/new-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "OPTIONS /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "OPTIONS /api/v1/image-generation-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "OPTIONS /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51080 - "OPTIONS /api/v1/vision-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51080 - "OPTIONS /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51081 - "GET /api/v1/vision-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "GET /api/v1/image-generation-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51070 - "GET /api/v1/new-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51080 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51080 - "OPTIONS /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51080 - "OPTIONS /api/v1/searchspaces/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51080 - "OPTIONS /api/v1/notifications/unread-counts-batch?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51081 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "GET /api/v1/searchspaces/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51070 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51070 - "OPTIONS /api/v1/documents?page=0&page_size=200&search_space_id=1&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "GET /api/v1/documents?page=0&page_size=200&search_space_id=1&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "OPTIONS /api/v1/notifications?search_space_id=1&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51070 - "OPTIONS /api/v1/notifications?search_space_id=1&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "GET /api/v1/notifications?search_space_id=1&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51081 - "GET /api/v1/notifications?search_space_id=1&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51081 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51081 - "OPTIONS /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51081 - "OPTIONS /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51080 - "OPTIONS /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51080 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51081 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51070 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "OPTIONS /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "OPTIONS /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "GET /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51068 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51075 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51106 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51106 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51257 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51288 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51466 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51530 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51572 - "OPTIONS /api/v1/threads/18/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51573 - "OPTIONS /api/v1/threads/18/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51572 - "POST /api/v1/threads/18/messages HTTP/1.1" 200 OK
+2026-05-05 13:19:19 - app.tasks.chat.run_manager - INFO - spawned run faa03b9a-f6e6-4d7a-b673-19d37e2b33f4 (thread=18, langgraph_thread=run-faa03b9a-f6e6-4d7a-b673-19d37e2b33f4)
+INFO:     127.0.0.1:51573 - "POST /api/v1/threads/18/runs HTTP/1.1" 200 OK
+2026-05-05 13:19:19,376 [PERF] [stream_new_chat_START] rss=124.2MB delta=-692.8MB cpu=0.0% threads=44 fds=43 asyncio_tasks=10 gc=(65, 2, 1)
+INFO:     127.0.0.1:51573 - "OPTIONS /api/v1/threads/18/runs/faa03b9a-f6e6-4d7a-b673-19d37e2b33f4/stream?after_seq=-1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51572 - "GET /api/v1/threads/18/runs/faa03b9a-f6e6-4d7a-b673-19d37e2b33f4/stream?after_seq=-1 HTTP/1.1" 200 OK
+2026-05-05 13:19:19,418 [PERF] [stream_new_chat] LLM config loaded in 0.003s (config_id=4)
+2026-05-05 13:19:19,424 [PERF] [stream_new_chat] Connector service + firecrawl key in 0.006s
+2026-05-05 13:19:19,424 [PERF] [stream_new_chat] Checkpointer ready in 0.000s
+2026-05-05 13:19:19,428 [PERF] [create_agent] Connector/doc-type discovery in 0.004s
+2026-05-05 13:19:19,561 [PERF] [build_tools_async] Built-in tools in 0.126s (30 tools)
+2026-05-05 13:19:19 - app.agents.new_chat.tools.mcp_tool - INFO - Loaded 0 MCP tools for search space 1
+2026-05-05 13:19:19,568 [PERF] [build_tools_async] MCP tools loaded in 0.007s (0 tools)
+2026-05-05 13:19:19 - root - INFO - Registered 0 MCP tools: []
+2026-05-05 13:19:19 - root - INFO - Total tools for agent: 30 - ['generate_podcast', 'generate_video_presentation', 'generate_report', 'generate_image', 'scrape_webpage', 'web_search', 'search_nowing_docs', 'update_memory', 'get_live_token_price', 'get_live_token_data', 'get_defillama_protocol', 'get_defillama_tvl_overview', 'get_defillama_yields', 'get_defillama_stablecoins', 'get_defillama_bridges', 'get_cmc_sentiment', 'get_reddit_crypto_sentiment', 'get_crypto_news', 'get_coingecko_token_info', 'get_contract_info', 'check_token_security', 'get_nansen_smart_money', 'get_nansen_wallet_label', 'get_nansen_token_god_mode', 'get_smart_money_flow', 'get_certik_audit_score', 'get_certik_incident_history', 'run_dune_query', 'get_tokeninsight_rating', 'get_tokeninsight_research_snippet']
+2026-05-05 13:19:19,568 [PERF] [create_agent] build_tools_async in 0.140s (30 tools)
+2026-05-05 13:19:19,569 [PERF] [create_agent] System prompt built in 0.000s
+2026-05-05 13:19:19,671 [PERF] [create_agent] sub-agent defillama_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:19:19,671 [PERF] [create_agent] sub-agent sentiment_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:19:19,671 [PERF] [create_agent] sub-agent news_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:19:19,671 [PERF] [create_agent] sub-agent smart_contract_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:19:19,671 [PERF] [create_agent] sub-agent tokenomics_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:19:19,671 [PERF] [create_agent] sub-agent yield_optimizer missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:19:19,672 [PERF] [create_agent] chainlens_deep_research is NOT in the tool registry but all 6 crypto sub-agent prompts reference it. Either enable CHAINLENS_RESEARCH_ENABLED or update crypto sub-agent prompts to remove chainlens references.
+2026-05-05 13:19:20,184 [PERF] [create_agent] Graph compiled (create_agent) in 0.023s
+2026-05-05 13:19:20,184 [PERF] [create_agent] Total agent creation in 0.760s
+2026-05-05 13:19:20,184 [PERF] [stream_new_chat] Agent created in 0.760s
+2026-05-05 13:19:20,199 [PERF] [stream_new_chat] History bootstrap + doc/report queries in 0.015s
+2026-05-05 13:19:20,201 [PERF] [stream_new_chat] Total pre-stream setup in 0.825s (chat_id=18)
+[92m13:19:20 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:19:20 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:19:21 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:19:22,526 [PERF] [kb_fs_middleware] planner in 2.172s query='Show smart money flow for PEPE?' optimized='smart money flow PEPE' start=None end=None
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.56it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.56it/s]
+2026-05-05 13:19:22,966 [PERF] [chunk_search] hybrid_search RRF query in 0.040s results=0 space=1 type=None
+2026-05-05 13:19:22,975 [PERF] [kb_fs_middleware] completed in 2.620s query='Show smart money flow for PEPE?' optimized='smart money flow PEPE' mentioned=0 new_files=0 total=0
+2026-05-05 13:19:22 - app.agents - INFO - provider_rate_gate: spacing 3.4s before next call (min_interval=6.0s, elapsed=2.6s)
+2026-05-05 13:19:23 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:19:26,538 [PERF] [stream_new_chat] First agent event in 6.305s (time since stream start), 7.162s (total since request start) (chat_id=18)
+2026-05-05 13:19:26 - app.agents - INFO - provider_rate_gate: spacing 5.8s before next call (min_interval=6.0s, elapsed=0.2s)
+2026-05-05 13:19:27 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:19:32 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:19:32 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:19:38 - app.agents.new_chat.tools.nansen_smart_money - WARNING - nansen smart_money HTTP error 404 for 0x6982508145454Ce325dDbE47a25d4ec3d2311933
+2026-05-05 13:19:38 - app.agents - INFO - provider_rate_gate: spacing 5.8s before next call (min_interval=6.0s, elapsed=0.2s)
+2026-05-05 13:19:39 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:19:44 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:19:44 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:19:52,199 [PERF] [stream_new_chat] Agent stream completed in 31.966s (chat_id=18)
+2026-05-05 13:19:52,200 [PERF] [stream_new_chat_END] rss=152.9MB delta=+28.7MB cpu=0.0% threads=48 fds=44 asyncio_tasks=12 gc=(6, 4, 17)
+[92m13:19:52 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:19:52 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:19:53,171 [PERF] [stream_new_chat] gc.collect() reclaimed 1664 objects (chat_id=18)
+2026-05-05 13:19:53,172 [PERF] [stream_new_chat_END] rss=692.5MB delta=+539.6MB cpu=0.0% threads=48 fds=44 asyncio_tasks=14 gc=(24, 0, 0)
+2026-05-05 13:19:53,173 [PERF] [MEMORY_SPIKE] stream_new_chat_END: RSS jumped by 539.6MB (now 692.5MB). Possible leak — check recent operations.
+2026-05-05 13:19:53 - app.tasks.chat.run_manager - INFO - run faa03b9a-f6e6-4d7a-b673-19d37e2b33f4 completed
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:51572 - "POST /api/v1/threads/18/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51572 - "OPTIONS /api/v1/messages/34/comments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51575 - "GET /api/v1/messages/34/comments HTTP/1.1" 200 OK
+2026-05-05 13:19:53 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:19:55 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+INFO:     127.0.0.1:51839 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51902 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52070 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52101 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52312 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52312 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52343 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52343 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52497 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52518 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52678 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52704 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52861 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52891 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53071 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53090 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53417 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53417 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53468 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53468 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53712 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53714 - "OPTIONS /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53719 - "OPTIONS /api/v1/search-source-connectors?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53710 - "OPTIONS /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53724 - "OPTIONS /api/v1/search-source-connectors?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53726 - "OPTIONS /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53726 - "OPTIONS /api/v1/new-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53729 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53726 - "OPTIONS /api/v1/search-spaces/1/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53730 - "OPTIONS /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53726 - "OPTIONS /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53730 - "OPTIONS /api/v1/image-generation-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53726 - "OPTIONS /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53730 - "OPTIONS /api/v1/vision-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53726 - "OPTIONS /api/v1/searchspaces/1/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53730 - "OPTIONS /api/v1/threads/18/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53730 - "OPTIONS /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53730 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53724 - "GET /api/v1/search-source-connectors?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53712 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53712 - "OPTIONS /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "OPTIONS /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53722 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "OPTIONS /api/v1/searchspaces/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53724 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53722 - "OPTIONS /api/v1/new-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53712 - "OPTIONS /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53722 - "OPTIONS /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "OPTIONS /api/v1/search-spaces/1/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53722 - "OPTIONS /api/v1/image-generation-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "OPTIONS /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "OPTIONS /api/v1/notifications/unread-counts-batch?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53722 - "OPTIONS /api/v1/vision-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53714 - "GET /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53719 - "GET /api/v1/search-source-connectors?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53729 - "GET /api/v1/new-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53710 - "GET /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53710 - "OPTIONS /api/v1/notifications?search_space_id=1&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53710 - "OPTIONS /api/v1/notifications?search_space_id=1&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53712 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "OPTIONS /api/v1/searchspaces/1/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53726 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53719 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "OPTIONS /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "OPTIONS /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "OPTIONS /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "OPTIONS /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53730 - "GET /api/v1/search-spaces/1/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53724 - "GET /api/v1/image-generation-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53741 - "GET /api/v1/new-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53729 - "GET /api/v1/vision-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53712 - "GET /api/v1/vision-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53710 - "GET /api/v1/searchspaces/1/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53726 - "GET /api/v1/threads/18/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53726 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "GET /api/v1/searchspaces/1/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53724 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53729 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53714 - "GET /api/v1/image-generation-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53730 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53710 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53741 - "GET /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53722 - "GET /api/v1/search-spaces/1/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53726 - "GET /api/v1/notifications?search_space_id=1&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53708 - "GET /api/v1/searchspaces/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53722 - "OPTIONS /api/v1/documents?page=0&page_size=200&search_space_id=1&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53724 - "GET /api/v1/notifications?search_space_id=1&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53729 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53712 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53714 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53719 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53741 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53714 - "OPTIONS /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53719 - "OPTIONS /api/v1/searchspaces/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53712 - "OPTIONS /api/v1/notifications/unread-counts-batch?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "OPTIONS /api/v1/notifications?search_space_id=1&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53741 - "OPTIONS /api/v1/notifications?search_space_id=1&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53722 - "GET /api/v1/documents?page=0&page_size=200&search_space_id=1&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53719 - "GET /api/v1/searchspaces/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53712 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53714 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53741 - "GET /api/v1/notifications?search_space_id=1&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "GET /api/v1/notifications?search_space_id=1&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "OPTIONS /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53741 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53741 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53739 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53827 - "OPTIONS /api/v1/threads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53827 - "POST /api/v1/threads HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53827 - "OPTIONS /api/v1/threads/19/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53829 - "OPTIONS /api/v1/threads/19/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53832 - "OPTIONS /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53827 - "POST /api/v1/threads/19/messages HTTP/1.1" 200 OK
+2026-05-05 13:37:37 - app.tasks.chat.run_manager - INFO - spawned run c280e67b-cdc5-49fd-bd3f-163e9cfd7702 (thread=19, langgraph_thread=run-c280e67b-cdc5-49fd-bd3f-163e9cfd7702)
+INFO:     127.0.0.1:53829 - "POST /api/v1/threads/19/runs HTTP/1.1" 200 OK
+2026-05-05 13:37:37,720 [PERF] [stream_new_chat_START] rss=95.0MB delta=-597.5MB cpu=0.0% threads=48 fds=50 asyncio_tasks=11 gc=(64, 4, 1)
+INFO:     127.0.0.1:53833 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+2026-05-05 13:37:37,772 [PERF] [stream_new_chat] LLM config loaded in 0.025s (config_id=4)
+INFO:     127.0.0.1:53833 - "OPTIONS /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+2026-05-05 13:37:37,789 [PERF] [stream_new_chat] Connector service + firecrawl key in 0.017s
+2026-05-05 13:37:37,791 [PERF] [stream_new_chat] Checkpointer ready in 0.002s
+2026-05-05 13:37:37,804 [PERF] [create_agent] Connector/doc-type discovery in 0.010s
+2026-05-05 13:37:38,030 [PERF] [build_tools_async] Built-in tools in 0.107s (30 tools)
+2026-05-05 13:37:38 - app.agents.new_chat.tools.mcp_tool - INFO - Loaded 0 MCP tools for search space 1
+2026-05-05 13:37:38,039 [PERF] [build_tools_async] MCP tools loaded in 0.008s (0 tools)
+2026-05-05 13:37:38 - root - INFO - Registered 0 MCP tools: []
+2026-05-05 13:37:38 - root - INFO - Total tools for agent: 30 - ['generate_podcast', 'generate_video_presentation', 'generate_report', 'generate_image', 'scrape_webpage', 'web_search', 'search_nowing_docs', 'update_memory', 'get_live_token_price', 'get_live_token_data', 'get_defillama_protocol', 'get_defillama_tvl_overview', 'get_defillama_yields', 'get_defillama_stablecoins', 'get_defillama_bridges', 'get_cmc_sentiment', 'get_reddit_crypto_sentiment', 'get_crypto_news', 'get_coingecko_token_info', 'get_contract_info', 'check_token_security', 'get_nansen_smart_money', 'get_nansen_wallet_label', 'get_nansen_token_god_mode', 'get_smart_money_flow', 'get_certik_audit_score', 'get_certik_incident_history', 'run_dune_query', 'get_tokeninsight_rating', 'get_tokeninsight_research_snippet']
+2026-05-05 13:37:38,039 [PERF] [create_agent] build_tools_async in 0.235s (30 tools)
+2026-05-05 13:37:38,041 [PERF] [create_agent] System prompt built in 0.002s
+2026-05-05 13:37:38,104 [PERF] [create_agent] sub-agent defillama_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:37:38,104 [PERF] [create_agent] sub-agent sentiment_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:37:38,104 [PERF] [create_agent] sub-agent news_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:37:38,104 [PERF] [create_agent] sub-agent smart_contract_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:37:38,104 [PERF] [create_agent] sub-agent tokenomics_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:37:38,104 [PERF] [create_agent] sub-agent yield_optimizer missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:37:38,104 [PERF] [create_agent] chainlens_deep_research is NOT in the tool registry but all 6 crypto sub-agent prompts reference it. Either enable CHAINLENS_RESEARCH_ENABLED or update crypto sub-agent prompts to remove chainlens references.
+INFO:     127.0.0.1:53827 - "OPTIONS /api/v1/threads/19/runs/c280e67b-cdc5-49fd-bd3f-163e9cfd7702/stream?after_seq=-1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53832 - "OPTIONS /api/v1/threads/19/runs/c280e67b-cdc5-49fd-bd3f-163e9cfd7702/stream?after_seq=-1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53829 - "GET /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+2026-05-05 13:37:38,412 [PERF] [create_agent] Graph compiled (create_agent) in 0.016s
+2026-05-05 13:37:38,412 [PERF] [create_agent] Total agent creation in 0.619s
+2026-05-05 13:37:38,412 [PERF] [stream_new_chat] Agent created in 0.621s
+2026-05-05 13:37:38,416 [PERF] [stream_new_chat] History bootstrap + doc/report queries in 0.004s
+2026-05-05 13:37:38,417 [PERF] [stream_new_chat] Total pre-stream setup in 0.701s (chat_id=19)
+INFO:     127.0.0.1:53827 - "GET /api/v1/threads/19/runs/c280e67b-cdc5-49fd-bd3f-163e9cfd7702/stream?after_seq=-1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53833 - "GET /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+[92m13:37:38 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:37:38 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+INFO:     127.0.0.1:53829 - "GET /api/v1/threads/19/runs/c280e67b-cdc5-49fd-bd3f-163e9cfd7702/stream?after_seq=-1 HTTP/1.1" 200 OK
+2026-05-05 13:37:38 - app.agents - INFO - provider_rate_gate: spacing 5.9s before next call (min_interval=6.0s, elapsed=0.1s)
+2026-05-05 13:37:40 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:37:43 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:37:44 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:37:44 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:37:46,526 [PERF] [stream_new_chat] First agent event in 8.096s (time since stream start), 8.810s (total since request start) (chat_id=19)
+2026-05-05 13:37:46,551 [PERF] [kb_fs_middleware] planner in 8.015s query='Show smart money flow for PEPE?' optimized='smart money flow PEPE' start=None end=None
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.30it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.30it/s]
+2026-05-05 13:37:47,410 [PERF] [chunk_search] hybrid_search RRF query in 0.031s results=0 space=1 type=None
+2026-05-05 13:37:47,419 [PERF] [kb_fs_middleware] completed in 8.883s query='Show smart money flow for PEPE?' optimized='smart money flow PEPE' mentioned=0 new_files=0 total=0
+INFO:     127.0.0.1:53837 - "GET /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+2026-05-05 13:37:47 - app.agents - INFO - provider_rate_gate: spacing 3.0s before next call (min_interval=6.0s, elapsed=3.0s)
+2026-05-05 13:37:47 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:37:48 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:37:50 - app.agents - INFO - provider_rate_gate: spacing 5.7s before next call (min_interval=6.0s, elapsed=0.3s)
+2026-05-05 13:37:51 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:37:56 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:37:56 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:38:01 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:38:01 - app.agents.new_chat.tools.nansen_smart_money - WARNING - nansen smart_money HTTP error 404 for 0x6982508145454Ce325dDbE47a25d4ec3d2311933
+2026-05-05 13:38:01 - app.agents - INFO - provider_rate_gate: spacing 0.9s before next call (min_interval=6.0s, elapsed=5.1s)
+2026-05-05 13:38:02 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:38:02 - app.agents - INFO - provider_rate_gate: spacing 5.9s before next call (min_interval=6.0s, elapsed=0.1s)
+2026-05-05 13:38:03 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:38:08 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:38:08 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:38:17,081 [PERF] [stream_new_chat] Agent stream completed in 38.651s (chat_id=19)
+2026-05-05 13:38:17,082 [PERF] [stream_new_chat_END] rss=136.8MB delta=+41.8MB cpu=0.0% threads=50 fds=51 asyncio_tasks=14 gc=(54, 10, 17)
+[92m13:38:17 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:38:17 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:38:18,537 [PERF] [stream_new_chat] gc.collect() reclaimed 34165 objects (chat_id=19)
+2026-05-05 13:38:18,537 [PERF] [stream_new_chat_END] rss=681.8MB delta=+545.0MB cpu=0.0% threads=40 fds=51 asyncio_tasks=17 gc=(93, 0, 0)
+2026-05-05 13:38:18,537 [PERF] [MEMORY_SPIKE] stream_new_chat_END: RSS jumped by 545.0MB (now 681.8MB). Possible leak — check recent operations.
+2026-05-05 13:38:18 - app.tasks.chat.run_manager - INFO - run c280e67b-cdc5-49fd-bd3f-163e9cfd7702 completed
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:53829 - "POST /api/v1/threads/19/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53829 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53827 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+2026-05-05 13:38:18 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:38:24 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+INFO:     127.0.0.1:53980 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53982 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54227 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54231 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54452 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54454 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54577 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54577 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54577 - "GET /api/v1/global-new-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54585 - "GET /api/v1/searchspaces/1/my-access HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54583 - "GET /api/v1/search-spaces/1/llm-preferences HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54577 - "GET /api/v1/stripe/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54583 - "GET /api/v1/threads?search_space_id=1&limit=40 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54588 - "GET /api/v1/global-image-generation-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54588 - "OPTIONS /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54592 - "GET /api/v1/global-vision-llm-configs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54592 - "GET /api/v1/searchspaces/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54577 - "GET /api/v1/new-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54588 - "GET /api/v1/searchspaces?limit=10&skip=0&owned_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54590 - "GET /api/v1/image-generation-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54585 - "GET /api/v1/search-source-connectors?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54577 - "GET /api/v1/vision-models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54583 - "GET /api/v1/vision-llm-configs?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54592 - "GET /api/v1/notifications/unread-counts-batch?search_space_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54592 - "OPTIONS /api/v1/documents?page=0&page_size=200&search_space_id=1&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54577 - "GET /api/v1/documents?page=0&page_size=200&search_space_id=1&sort_by=created_at&sort_order=desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54577 - "GET /api/v1/notifications?search_space_id=1&category=comments&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54592 - "GET /api/v1/notifications?search_space_id=1&category=status&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54592 - "OPTIONS /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54583 - "OPTIONS /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54577 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54585 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54590 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54592 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54583 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54588 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54588 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54588 - "GET /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54583 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+2026-05-05 13:44:01 - app.tasks.chat.run_manager - INFO - spawned run eeba0399-116e-4e3c-a133-13947b6f24ce (thread=19, langgraph_thread=run-eeba0399-116e-4e3c-a133-13947b6f24ce)
+INFO:     127.0.0.1:54588 - "POST /api/v1/threads/19/runs HTTP/1.1" 200 OK
+2026-05-05 13:44:01,068 [PERF] [stream_new_chat_START] rss=112.9MB delta=-568.9MB cpu=0.0% threads=51 fds=52 asyncio_tasks=11 gc=(222, 0, 1)
+INFO:     127.0.0.1:54583 - "POST /api/v1/threads/19/messages HTTP/1.1" 200 OK
+2026-05-05 13:44:01,110 [PERF] [stream_new_chat] LLM config loaded in 0.014s (config_id=4)
+INFO:     127.0.0.1:54583 - "OPTIONS /api/v1/threads/19/runs/eeba0399-116e-4e3c-a133-13947b6f24ce/stream?after_seq=-1 HTTP/1.1" 200 OK
+2026-05-05 13:44:01,125 [PERF] [stream_new_chat] Connector service + firecrawl key in 0.015s
+2026-05-05 13:44:01,125 [PERF] [stream_new_chat] Checkpointer ready in 0.000s
+2026-05-05 13:44:01,129 [PERF] [create_agent] Connector/doc-type discovery in 0.004s
+2026-05-05 13:44:01,217 [PERF] [build_tools_async] Built-in tools in 0.072s (30 tools)
+INFO:     127.0.0.1:54588 - "GET /api/v1/threads/19/runs/eeba0399-116e-4e3c-a133-13947b6f24ce/stream?after_seq=-1 HTTP/1.1" 200 OK
+2026-05-05 13:44:01 - app.agents.new_chat.tools.mcp_tool - INFO - Loaded 0 MCP tools for search space 1
+2026-05-05 13:44:01,226 [PERF] [build_tools_async] MCP tools loaded in 0.010s (0 tools)
+2026-05-05 13:44:01 - root - INFO - Registered 0 MCP tools: []
+2026-05-05 13:44:01 - root - INFO - Total tools for agent: 30 - ['generate_podcast', 'generate_video_presentation', 'generate_report', 'generate_image', 'scrape_webpage', 'web_search', 'search_nowing_docs', 'update_memory', 'get_live_token_price', 'get_live_token_data', 'get_defillama_protocol', 'get_defillama_tvl_overview', 'get_defillama_yields', 'get_defillama_stablecoins', 'get_defillama_bridges', 'get_cmc_sentiment', 'get_reddit_crypto_sentiment', 'get_crypto_news', 'get_coingecko_token_info', 'get_contract_info', 'check_token_security', 'get_nansen_smart_money', 'get_nansen_wallet_label', 'get_nansen_token_god_mode', 'get_smart_money_flow', 'get_certik_audit_score', 'get_certik_incident_history', 'run_dune_query', 'get_tokeninsight_rating', 'get_tokeninsight_research_snippet']
+2026-05-05 13:44:01,226 [PERF] [create_agent] build_tools_async in 0.097s (30 tools)
+2026-05-05 13:44:01,227 [PERF] [create_agent] System prompt built in 0.000s
+2026-05-05 13:44:01,274 [PERF] [create_agent] sub-agent defillama_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:44:01,274 [PERF] [create_agent] sub-agent sentiment_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:44:01,274 [PERF] [create_agent] sub-agent news_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:44:01,274 [PERF] [create_agent] sub-agent smart_contract_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:44:01,274 [PERF] [create_agent] sub-agent tokenomics_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:44:01,274 [PERF] [create_agent] sub-agent yield_optimizer missing tools from registry: ['chainlens_deep_research']
+2026-05-05 13:44:01,274 [PERF] [create_agent] chainlens_deep_research is NOT in the tool registry but all 6 crypto sub-agent prompts reference it. Either enable CHAINLENS_RESEARCH_ENABLED or update crypto sub-agent prompts to remove chainlens references.
+2026-05-05 13:44:01,577 [PERF] [create_agent] Graph compiled (create_agent) in 0.011s
+2026-05-05 13:44:01,578 [PERF] [create_agent] Total agent creation in 0.452s
+2026-05-05 13:44:01,578 [PERF] [stream_new_chat] Agent created in 0.452s
+2026-05-05 13:44:01,584 [PERF] [stream_new_chat] History bootstrap + doc/report queries in 0.006s
+2026-05-05 13:44:01,584 [PERF] [stream_new_chat] Total pre-stream setup in 0.517s (chat_id=19)
+[92m13:44:01 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:44:01 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:44:02 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:44:03,717 [PERF] [kb_fs_middleware] planner in 2.076s query='Show smart money flow for PEPE?' optimized='smart money flow PEPE' start=None end=None
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.96it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.96it/s]
+2026-05-05 13:44:04,429 [PERF] [chunk_search] hybrid_search RRF query in 0.182s results=0 space=1 type=None
+2026-05-05 13:44:04,439 [PERF] [kb_fs_middleware] completed in 2.798s query='Show smart money flow for PEPE?' optimized='smart money flow PEPE' mentioned=0 new_files=0 total=0
+2026-05-05 13:44:04 - app.agents - INFO - provider_rate_gate: spacing 3.2s before next call (min_interval=6.0s, elapsed=2.8s)
+2026-05-05 13:44:04 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:44:05 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:44:07,837 [PERF] [stream_new_chat] First agent event in 6.232s (time since stream start), 6.770s (total since request start) (chat_id=19)
+2026-05-05 13:44:07 - app.agents - INFO - provider_rate_gate: spacing 5.8s before next call (min_interval=6.0s, elapsed=0.2s)
+2026-05-05 13:44:09 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:44:13 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:44:13 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:44:19 - app.agents.new_chat.tools.nansen_smart_money - WARNING - nansen smart_money HTTP error 404 for 0x6982508145454Ce325dDbE47a25d4ec3d2311933
+2026-05-05 13:44:19 - app.agents - INFO - provider_rate_gate: spacing 0.3s before next call (min_interval=6.0s, elapsed=5.7s)
+2026-05-05 13:44:19 - app.agents - INFO - provider_rate_gate: spacing 5.7s before next call (min_interval=6.0s, elapsed=0.3s)
+2026-05-05 13:44:20 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m13:44:25 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:44:25 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:44:32,657 [PERF] [stream_new_chat] Agent stream completed in 31.052s (chat_id=19)
+2026-05-05 13:44:32,658 [PERF] [stream_new_chat_END] rss=161.5MB delta=+48.6MB cpu=0.0% threads=54 fds=49 asyncio_tasks=12 gc=(6, 3, 17)
+[92m13:44:32 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:44:32 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 13:44:33,261 [PERF] [stream_new_chat] gc.collect() reclaimed 1928 objects (chat_id=19)
+2026-05-05 13:44:33,262 [PERF] [stream_new_chat_END] rss=678.5MB delta=+517.0MB cpu=0.0% threads=54 fds=49 asyncio_tasks=14 gc=(26, 0, 0)
+2026-05-05 13:44:33,262 [PERF] [MEMORY_SPIKE] stream_new_chat_END: RSS jumped by 517.0MB (now 678.5MB). Possible leak — check recent operations.
+2026-05-05 13:44:33 - app.tasks.chat.run_manager - INFO - run eeba0399-116e-4e3c-a133-13947b6f24ce completed
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:54588 - "POST /api/v1/threads/19/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54588 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+2026-05-05 13:44:33 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 13:44:35 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+INFO:     127.0.0.1:54727 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54727 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54835 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54835 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54937 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55020 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55124 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55213 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55330 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55427 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55602 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55693 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55805 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55805 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55895 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55895 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55991 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56118 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56233 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56344 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56458 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56552 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56669 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56783 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56886 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56886 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56964 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56964 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57053 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57140 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57246 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57343 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57462 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57552 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57775 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57898 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57898 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58013 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58013 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58134 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58267 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58466 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58606 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58714 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58859 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58972 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59062 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59173 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59173 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59284 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59284 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59410 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59504 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59624 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59731 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59828 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59915 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60026 - "OPTIONS /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60027 - "OPTIONS /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60029 - "OPTIONS /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60027 - "OPTIONS /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60031 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60029 - "OPTIONS /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60033 - "OPTIONS /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60036 - "OPTIONS /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60037 - "OPTIONS /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60036 - "OPTIONS /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60039 - "OPTIONS /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60037 - "OPTIONS /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60041 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60036 - "OPTIONS /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60043 - "OPTIONS /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60047 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60045 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60043 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60029 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60036 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60031 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60033 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60041 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60027 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60026 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60037 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60039 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60033 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60043 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60033 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60026 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60031 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60037 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60039 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60027 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60039 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60037 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60027 - "OPTIONS /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60027 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60037 - "OPTIONS /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60039 - "GET /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60031 - "GET /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60026 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60039 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60037 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60124 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60130 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60126 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60121 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60122 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60128 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60121 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60122 - "GET /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60128 - "GET /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60126 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60174 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60182 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60170 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60178 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60172 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60177 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60180 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60169 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60169 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60180 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60199 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60205 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60201 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60195 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60203 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60197 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60207 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60195 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60197 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60209 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60199 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60203 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60205 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60201 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60199 - "GET /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60197 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60201 - "GET /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60205 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60234 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60240 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60237 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60238 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60231 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60232 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60232 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60238 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60256 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60252 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60262 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60254 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60259 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60260 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60264 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60252 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60256 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60254 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60266 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60260 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60259 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60262 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60254 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60262 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60635 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60635 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60640 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60640 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61170 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61172 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61459 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61461 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61661 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61664 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61857 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61854 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62114 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62114 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62118 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62118 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62321 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62323 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62529 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62532 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62769 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62775 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62995 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62997 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63177 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63181 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63177 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63181 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63369 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63371 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63560 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63562 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63730 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63728 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64184 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64182 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65201 - "OPTIONS /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65202 - "OPTIONS /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65204 - "OPTIONS /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65206 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65208 - "OPTIONS /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65214 - "OPTIONS /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65216 - "OPTIONS /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65218 - "OPTIONS /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65220 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65222 - "OPTIONS /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65208 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65206 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65222 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65216 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65220 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65202 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65218 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65204 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65224 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65201 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65214 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65210 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65206 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65206 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65204 - "OPTIONS /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65218 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65202 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65218 - "OPTIONS /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65220 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65204 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65216 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65224 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65210 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65224 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65201 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65222 - "GET /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65214 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65208 - "GET /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65206 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65216 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49376 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49365 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49378 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49370 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49375 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49369 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49366 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49372 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49366 - "GET /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49372 - "GET /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49369 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49375 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49493 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49491 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49486 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49484 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49487 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49490 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49487 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49490 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49591 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49585 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49587 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49582 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49589 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49589 - "GET /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49582 - "GET /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49587 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49674 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49676 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49676 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49674 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50192 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50189 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50363 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50365 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50529 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50527 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50729 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50732 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50912 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50912 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50919 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50919 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51093 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51098 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51287 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51289 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51460 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51463 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51632 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51634 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51816 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51816 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51820 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51820 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51997 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51999 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52172 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52170 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52344 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52342 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52527 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52529 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52729 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52729 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52735 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52735 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52927 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52929 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53129 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53132 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53350 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53352 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53567 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53565 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53763 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53765 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53763 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53765 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53966 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53964 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54165 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54163 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54378 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54376 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54559 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54557 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54733 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54735 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54735 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54733 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54922 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54920 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55133 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55135 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55341 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55344 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55571 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55781 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55781 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55785 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55785 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55992 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55995 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56219 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56221 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56533 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56535 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56719 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56721 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56951 - "OPTIONS /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56953 - "OPTIONS /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56955 - "OPTIONS /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56957 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56959 - "OPTIONS /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56963 - "OPTIONS /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56965 - "OPTIONS /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56967 - "OPTIONS /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56969 - "OPTIONS /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56971 - "OPTIONS /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56957 - "GET /api/v1/threads/19/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56969 - "GET /api/v1/threads/6/runs/active HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56967 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56955 - "GET /api/v1/nowing-docs?page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56965 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56973 - "GET /api/v1/threads/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56961 - "GET /api/v1/threads/19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56951 - "GET /api/v1/threads/19/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56963 - "GET /api/v1/threads/6/full HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56953 - "GET /api/v1/documents/search/titles?search_space_id=1&page=0&page_size=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56953 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56951 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56963 - "OPTIONS /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56951 - "OPTIONS /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56973 - "GET /api/v1/agent/tools HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56951 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56961 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56953 - "GET /api/v1/threads/19/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56973 - "OPTIONS /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56963 - "GET /api/v1/threads/6/snapshots HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56963 - "OPTIONS /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56973 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57003 - "OPTIONS /api/v1/threads/19/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57004 - "OPTIONS /api/v1/threads/19/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57003 - "POST /api/v1/threads/19/messages HTTP/1.1" 200 OK
+2026-05-05 16:17:15 - app.tasks.chat.run_manager - INFO - spawned run 3f35f7f3-fa0d-45e5-99ea-9e3bb182b1d4 (thread=19, langgraph_thread=run-3f35f7f3-fa0d-45e5-99ea-9e3bb182b1d4)
+INFO:     127.0.0.1:57004 - "POST /api/v1/threads/19/runs HTTP/1.1" 200 OK
+2026-05-05 16:17:15,788 [PERF] [stream_new_chat_START] rss=102.0MB delta=-576.5MB cpu=0.0% threads=53 fds=50 asyncio_tasks=10 gc=(65, 7, 7)
+INFO:     127.0.0.1:57004 - "OPTIONS /api/v1/threads/19/runs/3f35f7f3-fa0d-45e5-99ea-9e3bb182b1d4/stream?after_seq=-1 HTTP/1.1" 200 OK
+2026-05-05 16:17:15,889 [PERF] [stream_new_chat] LLM config loaded in 0.053s (config_id=4)
+INFO:     127.0.0.1:57003 - "GET /api/v1/threads/19/runs/3f35f7f3-fa0d-45e5-99ea-9e3bb182b1d4/stream?after_seq=-1 HTTP/1.1" 200 OK
+2026-05-05 16:17:15,913 [PERF] [stream_new_chat] Connector service + firecrawl key in 0.023s
+2026-05-05 16:17:15,914 [PERF] [stream_new_chat] Checkpointer ready in 0.001s
+2026-05-05 16:17:15,940 [PERF] [create_agent] Connector/doc-type discovery in 0.024s
+2026-05-05 16:17:16,300 [PERF] [build_tools_async] Built-in tools in 0.164s (30 tools)
+2026-05-05 16:17:16 - app.agents.new_chat.tools.mcp_tool - INFO - Loaded 0 MCP tools for search space 1
+2026-05-05 16:17:16,307 [PERF] [build_tools_async] MCP tools loaded in 0.007s (0 tools)
+2026-05-05 16:17:16 - root - INFO - Registered 0 MCP tools: []
+2026-05-05 16:17:16 - root - INFO - Total tools for agent: 30 - ['generate_podcast', 'generate_video_presentation', 'generate_report', 'generate_image', 'scrape_webpage', 'web_search', 'search_nowing_docs', 'update_memory', 'get_live_token_price', 'get_live_token_data', 'get_defillama_protocol', 'get_defillama_tvl_overview', 'get_defillama_yields', 'get_defillama_stablecoins', 'get_defillama_bridges', 'get_cmc_sentiment', 'get_reddit_crypto_sentiment', 'get_crypto_news', 'get_coingecko_token_info', 'get_contract_info', 'check_token_security', 'get_nansen_smart_money', 'get_nansen_wallet_label', 'get_nansen_token_god_mode', 'get_smart_money_flow', 'get_certik_audit_score', 'get_certik_incident_history', 'run_dune_query', 'get_tokeninsight_rating', 'get_tokeninsight_research_snippet']
+2026-05-05 16:17:16,308 [PERF] [create_agent] build_tools_async in 0.368s (30 tools)
+2026-05-05 16:17:16,311 [PERF] [create_agent] System prompt built in 0.003s
+2026-05-05 16:17:16,407 [PERF] [create_agent] sub-agent defillama_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 16:17:16,407 [PERF] [create_agent] sub-agent sentiment_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 16:17:16,407 [PERF] [create_agent] sub-agent news_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 16:17:16,408 [PERF] [create_agent] sub-agent smart_contract_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 16:17:16,408 [PERF] [create_agent] sub-agent tokenomics_analyst missing tools from registry: ['chainlens_deep_research']
+2026-05-05 16:17:16,408 [PERF] [create_agent] sub-agent yield_optimizer missing tools from registry: ['chainlens_deep_research']
+2026-05-05 16:17:16,408 [PERF] [create_agent] chainlens_deep_research is NOT in the tool registry but all 6 crypto sub-agent prompts reference it. Either enable CHAINLENS_RESEARCH_ENABLED or update crypto sub-agent prompts to remove chainlens references.
+2026-05-05 16:17:16,823 [PERF] [create_agent] Graph compiled (create_agent) in 0.023s
+2026-05-05 16:17:16,823 [PERF] [create_agent] Total agent creation in 0.909s
+2026-05-05 16:17:16,823 [PERF] [stream_new_chat] Agent created in 0.909s
+2026-05-05 16:17:16,828 [PERF] [stream_new_chat] History bootstrap + doc/report queries in 0.005s
+2026-05-05 16:17:16,829 [PERF] [stream_new_chat] Total pre-stream setup in 1.048s (chat_id=19)
+[92m16:17:16 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 16:17:16 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 16:17:17 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 16:17:19,546 [PERF] [kb_fs_middleware] planner in 2.648s query='Show smart money flow for PEPE' optimized='smart money flow PEPE cryptocurrency' start=None end=None
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]2026-05-05 16:17:20 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+Batches: 100%|██████████| 1/1 [00:01<00:00,  1.24s/it]Batches: 100%|██████████| 1/1 [00:01<00:00,  1.24s/it]
+2026-05-05 16:17:20,979 [PERF] [chunk_search] hybrid_search RRF query in 0.099s results=0 space=1 type=None
+2026-05-05 16:17:21,012 [PERF] [kb_fs_middleware] completed in 4.114s query='Show smart money flow for PEPE' optimized='smart money flow PEPE cryptocurrency' mentioned=0 new_files=0 total=0
+2026-05-05 16:17:21 - app.agents - INFO - provider_rate_gate: spacing 1.9s before next call (min_interval=6.0s, elapsed=4.1s)
+2026-05-05 16:17:21 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 16:17:23,119 [PERF] [stream_new_chat] First agent event in 6.286s (time since stream start), 7.338s (total since request start) (chat_id=19)
+2026-05-05 16:17:23 - app.agents - INFO - provider_rate_gate: spacing 5.8s before next call (min_interval=6.0s, elapsed=0.2s)
+2026-05-05 16:17:23 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m16:17:28 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 16:17:28 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 16:17:35 - app.agents.new_chat.tools.nansen_smart_money - WARNING - nansen smart_money HTTP error 404 for 0x6982508145454Ce325dDbE47a25d4ec3d2311933
+2026-05-05 16:17:36 - app.agents - INFO - provider_rate_gate: spacing 5.8s before next call (min_interval=6.0s, elapsed=0.2s)
+2026-05-05 16:17:36 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 16:17:37 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+[92m16:17:41 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 16:17:41 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+INFO:     127.0.0.1:57078 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+/Users/luisphan/Documents/GitHub/nowing/nowing_backend/.venv/lib/python3.12/site-packages/jwt/api_jwt.py:365: InsecureKeyLengthWarning: The HMAC key is 6 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+INFO:     127.0.0.1:57007 - "OPTIONS /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57078 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57008 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+2026-05-05 16:17:49,111 [PERF] [stream_new_chat] Agent stream completed in 32.277s (chat_id=19)
+2026-05-05 16:17:49,112 [PERF] [stream_new_chat_END] rss=185.6MB delta=+83.6MB cpu=0.0% threads=53 fds=53 asyncio_tasks=12 gc=(82, 5, 23)
+[92m16:17:49 - LiteLLM:INFO[0m: utils.py:4004 - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 16:17:49 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o; provider = openai
+2026-05-05 16:17:50 - asyncio - ERROR - Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x149dce240>
+2026-05-05 16:17:50,411 [PERF] [stream_new_chat] gc.collect() reclaimed 18050 objects (chat_id=19)
+2026-05-05 16:17:50,412 [PERF] [stream_new_chat_END] rss=686.4MB delta=+500.8MB cpu=0.0% threads=43 fds=53 asyncio_tasks=14 gc=(59, 0, 0)
+2026-05-05 16:17:50,412 [PERF] [MEMORY_SPIKE] stream_new_chat_END: RSS jumped by 500.8MB (now 686.4MB). Possible leak — check recent operations.
+2026-05-05 16:17:50 - app.tasks.chat.run_manager - INFO - run 3f35f7f3-fa0d-45e5-99ea-9e3bb182b1d4 completed
+INFO:     127.0.0.1:57003 - "POST /api/v1/threads/19/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57003 - "POST /api/v1/messages/comments/batch HTTP/1.1" 200 OK
+2026-05-05 16:17:50 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+2026-05-05 16:17:51 - langsmith.client - WARNING - Failed to send compressed multipart ingest: langsmith.utils.LangSmithError: Failed to POST https://api.smith.langchain.com/runs/multipart in LangSmith API. HTTPError('403 Client Error: Forbidden for url: https://api.smith.langchain.com/runs/multipart', '{"error":"Forbidden"}\n')
+INFO:     127.0.0.1:57266 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57264 - "GET /api/v1/searchspaces/1/members HTTP/1.1" 200 OK

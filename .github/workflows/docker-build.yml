@@ -5,9 +5,10 @@ on:
     branches:
       - main
       - dev
+      - develop
     paths:
-      - 'surfsense_backend/**'
-      - 'surfsense_web/**'
+      - 'nowing_backend/**'
+      - 'nowing_web/**'
   workflow_dispatch:
     inputs:
       branch:
@@ -105,13 +106,13 @@ jobs:
             suffix: arm64
             os: ubuntu-24.04-arm
           - image: backend
-            name: surfsense-backend
-            context: ./surfsense_backend
-            file: ./surfsense_backend/Dockerfile
+            name: nowing-backend
+            context: ./nowing_backend
+            file: ./nowing_backend/Dockerfile
           - image: web
-            name: surfsense-web
-            context: ./surfsense_web
-            file: ./surfsense_web/Dockerfile
+            name: nowing-web
+            context: ./nowing_web
+            file: ./nowing_web/Dockerfile
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
 
@@ -192,9 +193,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: surfsense-backend
+          - name: nowing-backend
             image: backend
-          - name: surfsense-web
+          - name: nowing-web
             image: web
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
@@ -261,6 +262,21 @@ jobs:
           docker buildx imagetools inspect ${{ steps.image.outputs.name }}:${{ steps.meta.outputs.version }}
 
       - name: Summary
-        run: | 
+        run: |
           echo "Multi-arch manifest created for ${{ matrix.name }}!"
           echo "Tags: $(jq -cr '.tags | join(", ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: create_manifest
+    if: always() && needs.create_manifest.result == 'success'
+    strategy:
+      matrix:
+        include:
+          - image: web
+            webhook_secret: DOKPLOY_WEBHOOK_FRONTEND
+    steps:
+      - name: Trigger Dokploy redeploy
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            -X GET "http://167.172.66.16:3000/api/deploy/${{ secrets[matrix.webhook_secret] }}"

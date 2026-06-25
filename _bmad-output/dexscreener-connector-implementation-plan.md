@@ -2,7 +2,7 @@
 
 ## 📋 Tổng Quan
 
-Sau khi research kỹ [DexScreener API Documentation](https://docs.dexscreener.com/api/reference) và phân tích source code SurfSense, đây là phương án implementation chính xác nhất cho DexScreener Connector.
+Sau khi research kỹ [DexScreener API Documentation](https://docs.dexscreener.com/api/reference) và phân tích source code Nowing, đây là phương án implementation chính xác nhất cho DexScreener Connector.
 
 ## 🔍 DexScreener API Research Findings
 
@@ -103,7 +103,7 @@ Max: 30 addresses (comma-separated)
 
 **Use Case**: Batch query nhiều tokens cùng lúc
 
-## 🏗️ SurfSense Architecture Analysis
+## 🏗️ Nowing Architecture Analysis
 
 ### Pattern Đã Xác Định
 
@@ -469,5 +469,5 @@ Data được index sẽ tự động available trong:
 
 **Note**: Implementation này dựa trên:
 - Official DexScreener API Documentation
-- Existing SurfSense connector patterns (Luma, Slack, etc.)
+- Existing Nowing connector patterns (Luma, Slack, etc.)
 - Best practices từ production connectors

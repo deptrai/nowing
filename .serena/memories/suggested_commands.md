@@ -1,23 +1,23 @@
-# SurfSense - Suggested Commands
+# Nowing - Suggested Commands
 
 ## Docker Services (Infrastructure)
 ```bash
 # Start all infra services (db + pgadmin)
-cd /Users/luisphan/Documents/GitHub/SurfSense
+cd /Users/luisphan/Documents/GitHub/Nowing
 docker compose -f docker/docker-compose.dev.yml --env-file docker/.env up -d db pgadmin
 
 # Start zero-cache standalone (BE & FE run local)
 docker run -d \
-  --name surfsense-zero-cache \
-  --network surfsense-dev_default \
+  --name nowing-zero-cache \
+  --network nowing-dev_default \
   --add-host "host.docker.internal:host-gateway" \
   -p 4848:4848 \
-  -v surfsense-dev-zero-cache:/data \
-  -e ZERO_UPSTREAM_DB="postgresql://postgres:postgres@surfsense-dev-db-1:5432/surfsense?sslmode=disable" \
-  -e ZERO_CVR_DB="postgresql://postgres:postgres@surfsense-dev-db-1:5432/surfsense?sslmode=disable" \
-  -e ZERO_CHANGE_DB="postgresql://postgres:postgres@surfsense-dev-db-1:5432/surfsense?sslmode=disable" \
+  -v nowing-dev-zero-cache:/data \
+  -e ZERO_UPSTREAM_DB="postgresql://postgres:postgres@nowing-dev-db-1:5432/nowing?sslmode=disable" \
+  -e ZERO_CVR_DB="postgresql://postgres:postgres@nowing-dev-db-1:5432/nowing?sslmode=disable" \
+  -e ZERO_CHANGE_DB="postgresql://postgres:postgres@nowing-dev-db-1:5432/nowing?sslmode=disable" \
   -e ZERO_REPLICA_FILE="/data/zero.db" \
-  -e ZERO_ADMIN_PASSWORD="surfsense-zero-admin" \
+  -e ZERO_ADMIN_PASSWORD="nowing-zero-admin" \
   -e ZERO_APP_PUBLICATIONS="zero_publication" \
   -e ZERO_NUM_SYNC_WORKERS="4" \
   -e ZERO_UPSTREAM_MAX_CONNS="20" \
@@ -32,17 +32,17 @@ docker run -d \
 
 ## Backend (FastAPI)
 ```bash
-cd /Users/luisphan/Documents/GitHub/SurfSense/surfsense_backend
+cd /Users/luisphan/Documents/GitHub/Nowing/nowing_backend
 uv sync                        # install deps
 uv run alembic upgrade head    # run migrations
 uv run python main.py --reload # start dev server on port 8001
 # OR Celery worker:
-uv run celery -A app.celery_app worker -Q surfsense --loglevel=info
+uv run celery -A app.celery_app worker -Q nowing --loglevel=info
 ```
 
 ## Frontend (Next.js)
 ```bash
-cd /Users/luisphan/Documents/GitHub/SurfSense/surfsense_web
+cd /Users/luisphan/Documents/GitHub/Nowing/nowing_web
 pnpm install
 pnpm dev                       # http://localhost:3000
 
@@ -57,7 +57,7 @@ pnpm db:studio                 # Drizzle Studio UI
 |---------------|-------|-------|
 | PostgreSQL    | 5432  | docker |
 | pgAdmin       | 5050  | docker, http://localhost:5050 |
-| Redis (local) | 6379  | db=1 for SurfSense |
+| Redis (local) | 6379  | db=1 for Nowing |
 | SearXNG       | 8888  | shared mrholmes-searxng |
 | zero-cache    | 4848  | docker standalone |
 | Backend       | 8001  | port 8000 used by chainlens |
@@ -69,5 +69,5 @@ curl http://localhost:8001/health    # {"status":"ok"}
 curl http://localhost:3000           # HTML
 nc -z localhost 4848 && echo OK     # zero-cache
 redis-cli ping                       # PONG
-docker ps --filter "name=surfsense" # docker services
+docker ps --filter "name=nowing" # docker services
 ```

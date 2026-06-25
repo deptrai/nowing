@@ -2,25 +2,33 @@
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
-completedAt: '2026-04-13T01:02:23+07:00'
-lastUpdated: '2026-04-16'
+completedAt: '2026-05-01T00:00:00+07:00'
+lastUpdated: '2026-05-01'
 editHistory:
+  - date: '2026-05-01'
+    changes: 'Senior Architect Critical Review: Triaged 10 proposals into 3 tiers (Implement/Revise/Reject). Rejected #2 Dynamic Pacing (oscillation risk), #6 Prompt Cache Hash (5min TTL auto-expire), #7 Adaptive ETA (over-engineered). Revised #4 Breaker (Redis primary, not fallback), #9 Lock (reduce TTL, no bypass), #10 Quota (add client-side expiry check). Added #11 HTTP/2 multiplexing, #12 Shared breaker state, #13 Stale data indicator, #14 Orchestra graceful shutdown (deferred). Identified 5 architectural gaps: browser SSE connection limits, circuit breaker worker isolation, Zero-sync stale data, quota bypass via IndexedDB, graceful shutdown.'
+  - date: '2026-05-01'
+    changes: 'Adversarial Review Resolutions: (1) Redis-based Global Circuit Breaker. (2) Outbound Pacing Middleware. (3) Global Tool Error Decorator. (4) Optimistic Fallback (500ms). (5) Crypto Cache Workspace Isolation (search_space_id). (6) Vector DB Scaling ADR.'
+  - date: '2026-04-23'
+    changes: 'Thêm Crypto Orchestra Architecture: (1) Per-agent SSE event contract (6 event types, resolve 4 open questions từ UX handoff §3). (2) ParallelismTelemetryMiddleware design (Story 0.5). (3) Circuit breaker + graceful degradation (Story 0.6). (4) Tool registry pattern cho 11 crypto tools (Story 0.1). (5) Multi-agent orchestration prompt architecture (Story 0.3). (6) NFR-Q1..Q4 measurement architecture. (7) Resolved 5 open design questions từ UX handoff §7. (8) C4-inspired component diagram cho 11-agent orchestration.'
+  - date: '2026-04-18'
+    changes: 'Fix Chainlens Integration Architecture: (1) Health check đổi sang /api/v1/b2b/health (public, không cần auth) — /api/config yêu cầu Supabase session nên không dùng được. (2) B2B route ĐÃ CÓ AUTH qua middleware (Bearer token + rate limit 120req/min + daily quota) — sửa lại nhận định trước đó. (3) Tool registration đổi sang ToolDefinition + BUILTIN_TOOLS registry (đúng pattern thực tế). (4) CHAINLENS_RESEARCH_API_KEY bắt buộc vì B2B yêu cầu Bearer auth.'
   - date: '2026-04-16'
     changes: 'Thêm Gift Subscription Architecture: Data Architecture (gift_codes/gift_requests tables), API Patterns (3 endpoints mới), Project Structure (new files), Integration Points (gift flow)'
 inputDocuments: [
-  "/Users/luisphan/Documents/GitHub/SurfSense/_bmad-output/planning-artifacts/prd.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/_bmad-output/planning-artifacts/research/technical-gift-subscription-research-2026-04-16.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/index.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/architecture-backend.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/architecture-web.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/integration-architecture.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/deployment-guide.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/development-guide.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/api-contracts.md",
-  "/Users/luisphan/Documents/GitHub/SurfSense/docs/data-models.md"
+  "/Users/luisphan/Documents/GitHub/Nowing/_bmad-output/planning-artifacts/prd.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/_bmad-output/planning-artifacts/research/technical-gift-subscription-research-2026-04-16.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/index.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/architecture-backend.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/architecture-web.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/integration-architecture.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/deployment-guide.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/development-guide.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/api-contracts.md",
+  "/Users/luisphan/Documents/GitHub/Nowing/docs/data-models.md"
 ]
 workflowType: 'architecture'
-project_name: 'SurfSense'
+project_name: 'Nowing'
 user_name: 'Luisphan'
 date: '2026-04-13'
 ---
@@ -75,7 +83,7 @@ Full-stack Web3/AI Application (Next.js + FastAPI) based on project requirements
 Dựa trên yêu cầu của PRD và hệ sinh thái công nghệ, tôi đã khảo sát các giải pháp Boilerplate/Starter template chuẩn công nghiệp:
 
 **1. Dành cho Next.js (Front-end Web Client):**
-Công cụ chính chủ `create-next-app` vẫn là bộ khung đáng tin cậy nhất. Nó linh hoạt cấu hình App Router, TailwindCSS và TypeScript. Vì SurfSense chạy mô hình Local-first đòi hỏi thiết lập bộ đệm Zero-sync (IndexedDB) cực kỳ đặc thù, việc dùng một boilerplate cồng kềnh chứa sẵn logic DB/Auth khác (như T3 Stack) sẽ dẫn tới rủi ro xung đột cao.
+Công cụ chính chủ `create-next-app` vẫn là bộ khung đáng tin cậy nhất. Nó linh hoạt cấu hình App Router, TailwindCSS và TypeScript. Vì Nowing chạy mô hình Local-first đòi hỏi thiết lập bộ đệm Zero-sync (IndexedDB) cực kỳ đặc thù, việc dùng một boilerplate cồng kềnh chứa sẵn logic DB/Auth khác (như T3 Stack) sẽ dẫn tới rủi ro xung đột cao.
 
 **2. Dành cho FastAPI (Backend API & Async Workers):**
 - **Full Stack FastAPI Template (Official):** Chứa đủ SQLModel, Docker, rất tốt nhưng bị nhồi nhét sẵn React admin thừa kềnh càng.
@@ -90,7 +98,7 @@ Hệ thống Agentic RAG và Zero-sync quá đặc thù, yêu cầu một khung 
 
 ```bash
 # Frontend
-npx create-next-app@latest surfsense-web
+npx create-next-app@latest nowing-web
 
 # Backend (Khởi tạo bằng uv)
 uv venv
@@ -146,54 +154,19 @@ uv pip install fastapi uvicorn celery pydantic-settings sqlmodel psycopg2-binary
 - **Vector Storage:** Extension `pgvector` (Version đã verify: `0.8.2`) tích hợp trực tiếp vào DB chính nhằm tận dụng ưu thế JOIN data và RLS.
 - **ORM / Query Builder:** `SQLModel` trên Backend và auto-generated Schema của Prisma cung cấp DDL cho Zero-sync.
 - **Caching & Local-First Strategy:** Dùng `@rocicorp/zero` (Version đã verify: `1.1.1`) đổ dữ liệu xuống IndexedDB, Next.js sẽ subscribe trực tiếp qua Zero cache thay vì gọi FETCH thông thường.
+- **Local File Synchronization (Desktop Only):** Tích hợp `chokidar` vào tiến trình nền của Electron để giám sát (monitor) các thư mục tài liệu cục bộ của người dùng. Mọi thay đổi sẽ được gửi qua Zero-sync mutators để cập nhật Metadata trong Knowledge Base ngay lập tức.
 
 **Gift Subscription Tables (thêm vào migration 127+):**
+(Đã cập nhật logic extension: Chỉ cộng dồn thời gian vào kỳ hiện tại; pro-rata logic cho việc đổi plan được đẩy sang v2).
 
-```sql
--- gift_codes: lưu gift code được tạo sau khi payment thành công
-gift_codes (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code          VARCHAR(16) UNIQUE NOT NULL,  -- format: GIFT-XXXX-XXXX-XXXX
-  plan_id       VARCHAR(50) NOT NULL,          -- e.g. "pro_monthly"
-  duration_months INTEGER NOT NULL,            -- 1, 3, 6, 12
-  amount_paid   INTEGER NOT NULL,              -- cents (e.g. 1200 = $12.00)
-  purchaser_id  INTEGER NOT NULL REFERENCES users(id),
-  stripe_payment_intent_id VARCHAR(255),
-  redeemer_id   INTEGER REFERENCES users(id), -- NULL cho đến khi redeem
-  status        VARCHAR(20) DEFAULT 'active',  -- active|redeemed|expired|revoked
-  expires_at    TIMESTAMP NOT NULL,            -- 1 năm từ ngày tạo
-  created_at    TIMESTAMP DEFAULT now(),
-  redeemed_at   TIMESTAMP                      -- NULL cho đến khi redeem
-)
-
--- gift_requests: admin-approval fallback khi Stripe checkout không hoạt động
-gift_requests (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id         INTEGER NOT NULL REFERENCES users(id),
-  plan_id         VARCHAR(50) NOT NULL,
-  duration_months INTEGER NOT NULL,
-  status          VARCHAR(20) DEFAULT 'pending', -- pending|approved|rejected
-  gift_code_id    UUID REFERENCES gift_codes(id), -- gán khi approved
-  created_at      TIMESTAMP DEFAULT now(),
-  updated_at      TIMESTAMP DEFAULT now()
-)
-```
-
-**Gift Code Generation:**
-- Format: `GIFT-XXXX-XXXX-XXXX` (12 chars từ `string.ascii_uppercase + string.digits`)
-- Entropy: 36^12 ≈ 4.7 × 10^18 combinations (brute-force không khả thi)
-- Implementation: `secrets.choice(alphabet)` — cryptographically secure
-
-**Extension Formula khi redeem:**
-```python
-new_expiry = max(current_period_end, now()) + timedelta(days=30 * duration_months)
-```
-
-### Authentication & Security
+**Crypto Data Cache & Security (Updated 2026-05-01):**
+- **Workspace Isolation:** Bảng `crypto_data_snapshots` bắt buộc có cột `workspace_id` và áp dụng Postgres RLS để ngăn rò rỉ dữ liệu giữa các không gian tìm kiếm.
+- **Cache Persistence:** Dữ liệu cuối cùng (Final Report) được lưu qua Zero-sync để local-first, nhưng trạng thái "đang chạy" (Orchestra Strip) chỉ truyền qua SSE để giảm tải cho hạ tầng đồng bộ.
 
 - **Authentication Method:** JWT Token Auth do Backend FastAPI kiểm soát. Frontend nhận JWT và trao nó cho bộ khởi tạo `ZeroClient`.
 - **Authorization Pattern:** Row-level Security (RLS) bắt buộc trên mọi tables Postgres. Logic từ FastAPI đến DB và luồng Zero repl-stream từ DB chọc xuống Next.js đều chịu chung bộ luật RLS này.
 - **Security Middleware:** Áp dụng purge (làm sạch) lập tức IndexedDB & localStorage bằng hook `onLogout()`.
+- **Desktop Native Security Bypass:** Tận dụng `ipcMain` và Node.js context trong Electron để thực hiện các cuộc gọi API tới Ollama Local, vượt qua các giới hạn về CORS/CSP của trình duyệt và cho phép ứng dụng tự động cấu hình hệ thống.
 
 ### API & Communication Patterns
 
@@ -202,8 +175,12 @@ new_expiry = max(current_period_end, now()) + timedelta(days=30 * duration_month
   - **Server-Sent Events (SSE) / WebSockets:** Quyết định dùng SSE cho luồng Streaming Response của Agentic RAG vì nó mượt hơn, một chiều từ Server gửi câu trả lời về UI.
   - Zero-sync protocol quản lý kết nối WebSocket cho dữ liệu đồng bộ tĩnh.
 - **Job Orchestration:** Kết nối FastAPI và Celery Workers qua Redis Message Broker (`redis:7.4+`).
+- **Hybrid LLM Routing Strategy:** 
+  - **Cloud-first:** Mặc định sử dụng các API LLM (GPT-4, Claude) qua LiteLLM Router trên Server.
+  - **Privacy-centric (Web SaaS):** Khi chọn model Local trên trình duyệt, Frontend sẽ gọi trực tiếp Ollama (`localhost:11434`).
+  - **Embedded Backend (Desktop):** Electron sẽ quản lý vòng đời của một instance FastAPI Backend cục bộ (đóng gói qua `PyInstaller`), hỗ trợ tự động định tuyến (failover) giữa Cloud và Local.
 
-**Gift Subscription Endpoints (thêm vào `surfsense_backend/app/routes/gift_routes.py`):**
+**Gift Subscription Endpoints (thêm vào `nowing_backend/app/routes/gift_routes.py`):**
 
 | Method | Endpoint | Auth | Mô tả |
 |--------|----------|------|-------|
@@ -211,7 +188,7 @@ new_expiry = max(current_period_end, now()) + timedelta(days=30 * duration_month
 | `POST` | `/api/v1/stripe/redeem-gift` | JWT | Redeem gift code. Body: `{code}`. Verify code valid, extend subscription dùng extension formula, đánh dấu code `redeemed`. |
 | `GET`  | `/api/v1/stripe/gift-codes` | JWT | Lấy danh sách gift codes đã mua bởi current user (lịch sử mua quà). |
 
-**Gift Pricing Config (`surfsense_backend/app/config/__init__.py`):**
+**Gift Pricing Config (`nowing_backend/app/config/__init__.py`):**
 ```python
 GIFT_PRICING = {
     # Aligned with Pro/Max subscription pricing (pricing-section.tsx):
@@ -253,6 +230,7 @@ if session.metadata.get("purchase_type") == "gift":
 - **Hosting Strategy:** Docker-Compose cho toàn bộ hệ thống (đáp ứng PRD local-first).
 - **Environment Configuration:** Quản lý môi trường cứng qua `.env` kết nối bằng `pydantic-settings` (FastAPI). 
 - **Message Broker:** Redis phiên bản containerized.
+- **Desktop Packaging:** Sử dụng `electron-builder` kết hợp với `esbuild` để đóng gói ứng dụng. File thực thi bao gồm cả Web UI (Next.js export) và Backend binary (FastAPI) để đảm bảo khả năng chạy Offline hoàn toàn.
 
 ### Decision Impact Analysis
 
@@ -347,9 +325,9 @@ Dùng `Fetch()` gọi API ngoài luồng Zero-sync cho các đối tượng đã
 ### Complete Project Directory Structure
 
 ```text
-surfsense/
+nowing/
 ├── .github/                  # CI/CD workflows & PR templates
-├── surfsense_backend/        # FastAPI Backend (Python)
+├── nowing_backend/        # FastAPI Backend (Python)
 │   ├── pyproject.toml        
 │   └── app/
 │       ├── main.py           # Application entry point
@@ -360,7 +338,7 @@ surfsense/
 │       ├── retriever/        # Hybrid Search (Full-text + PgVector RRF)
 │       ├── schemas/          # Pydantic validation
 │       └── tasks/            # Celery workers & beat (Redis)
-├── surfsense_web/            # Next.js Frontend (TypeScript)
+├── nowing_web/            # Next.js Frontend (TypeScript)
 │   ├── package.json
 │   ├── tailwind.config.ts
 │   ├── tsconfig.json
@@ -375,8 +353,8 @@ surfsense/
 │   ├── lib/                  # Generic utilities
 │   ├── hooks/                # Custom hooks (Zero-sync wrappers)
 │   └── store/                # UI State
-├── surfsense_browser_extension/  # Trình duyệt mở rộng
-├── surfsense_desktop/            # App Desktop (TBD)
+├── nowing_browser_extension/  # Trình duyệt mở rộng
+├── nowing_desktop/            # App Desktop (TBD)
 ├── docker/                       # Cấu hình Docker & Infrastructure
 │   └── docker-compose.yml        # Orchestration (DB, Redis, Zero Cache, Backend, SearXNG)
 ├── docs/                         # Documentation files
@@ -384,15 +362,15 @@ surfsense/
 ```
 
 **Backend Gift Files (mới):**
-- `surfsense_backend/app/routes/gift_routes.py` — 3 endpoints: create-gift-checkout, redeem-gift, gift-codes
-- `surfsense_backend/alembic/versions/128_add_gift_tables.py` — migration tạo `gift_codes` + `gift_requests`
-- Webhook branch thêm vào `surfsense_backend/app/routes/stripe_routes.py` (không tạo file mới)
+- `nowing_backend/app/routes/gift_routes.py` — 3 endpoints: create-gift-checkout, redeem-gift, gift-codes
+- `nowing_backend/alembic/versions/128_add_gift_tables.py` — migration tạo `gift_codes` + `gift_requests`
+- Webhook branch thêm vào `nowing_backend/app/routes/stripe_routes.py` (không tạo file mới)
 
 ### Architectural Boundaries
 
 **API Boundaries:**
 - **FastAPI Endpoint Boundaries:** Chỉ phục vụ các tác vụ backend, AI Streaming RAG (Server-Sent Events), ETL, và Celery queueing.
-- **Next.js Route Handlers (`surfsense_web/app/api/`):** Chỉ đóng vai trò Proxy an toàn hoặc xử lý Zero-Sync mutators (`/api/zero/mutate`) & query.
+- **Next.js Route Handlers (`nowing_web/app/api/`):** Chỉ đóng vai trò Proxy an toàn hoặc xử lý Zero-Sync mutators (`/api/zero/mutate`) & query.
 
 **Component Boundaries:**
 - **UI vs Feature Components:** Component được định hình rõ ràng giữa các khối giao diện UI thông thường và smart components kết nối trực tiếp với Zero queries.
@@ -404,8 +382,8 @@ surfsense/
 
 **Epic/Feature Mapping (Agentic RAG & Streaming):**
 - *Tính năng:* AI Search Streaming & Semantic Retreival
-- **Backend Components:** `surfsense_backend/app/retriever/chunks_hybrid_search.py` (chứa Postgres RRF queries kết hợp vector).
-- **Frontend Components:** `surfsense_web/app/...` và các hook chat streaming.
+- **Backend Components:** `nowing_backend/app/retriever/chunks_hybrid_search.py` (chứa Postgres RRF queries kết hợp vector).
+- **Frontend Components:** `nowing_web/app/...` và các hook chat streaming.
 
 **Cross-Cutting Concerns (Local-First Experience):**
 - *Tính năng:* Đồng bộ siêu trễ, UI luôn mượt dù mạng chậm.
@@ -444,6 +422,357 @@ Luồng Upload tài liệu & RAG:
 4. Áp dụng extension formula: `new_expiry = max(current_period_end, now()) + duration`.
 5. Update `users.subscription_current_period_end`, đổi `gift_codes.status=redeemed`, ghi `redeemed_at`.
 6. Return success → Frontend hiển thị confirmation với ngày hết hạn mới.
+
+## Deep Research — Chainlens Integration Architecture
+
+### Bối cảnh & Động lực
+
+Tính năng Deep Research hiện tại của Nowing chỉ là một `report_style="deep_research"` parameter trong tool `generate_report()` — chạy qua LLM nội bộ, dùng KB search hoặc conversation context. Không có web research chuyên sâu thực sự.
+
+Giải pháp: Tích hợp **Chainlens Research** (`/api/v1/b2b/research`) làm engine research chuyên sâu bên ngoài, với cơ chế fallback tự động về Nowing khi Chainlens không khả dụng.
+
+### Nguyên tắc thiết kế
+
+1. **Zero-downtime cho user:** Nếu Chainlens API không live → fallback về Nowing ngay lập tức, user không chờ.
+2. **Health check trước khi gọi:** Cached health check (TTL 30s) qua `GET /api/v1/b2b/health` (public, không cần auth) tránh gọi API chết gây delay.
+3. **Sửa ít nhất có thể:** Tận dụng 100% kiến trúc hiện tại (tool system, SSE streaming, system prompt).
+4. **Feature flag:** Bật/tắt qua env var `CHAINLENS_RESEARCH_ENABLED`.
+
+### B2B Authentication (Đã có sẵn)
+
+Chainlens Research B2B API **đã được bảo vệ** qua Next.js middleware (`src/middleware.ts`):
+
+- **Bearer Token Auth:** Mọi request tới `/api/v1/b2b/*` (trừ `/health`) bắt buộc header `Authorization: Bearer <api_key>`.
+- **API Key Storage:** SHA-256 hashed, lưu trong bảng `api_keys` (Drizzle ORM + Supabase Postgres).
+- **Rate Limiting:** 120 requests/phút per API key (in-memory, auto-cleanup).
+- **Daily Quota:** Configurable per key (`quotaLimit = -1` = unlimited), tự động reset hàng ngày.
+- **Key Management:** Generate, revoke qua `src/lib/b2b/auth.ts`.
+
+**Nowing backend cần:** Một API key hợp lệ trong env var `CHAINLENS_RESEARCH_API_KEY` để gọi B2B endpoints.
+
+**Ngoại lệ:** `GET /api/v1/b2b/health` — public endpoint, middleware skip auth, dùng cho health check.
+
+### Chainlens B2B API Contract
+
+```
+POST /api/v1/b2b/research
+Content-Type: application/json
+
+Request Body:
+{
+  "query": string,           // Required, min 1 char
+  "sources": ["web", "discussions", "academic"],  // Optional, default ["web"]
+  "stream": boolean           // Optional, default false
+}
+
+Response (non-stream, HTTP 200):
+{
+  "message": string,          // Full research result (markdown)
+  "sources": [...]            // Array of source references
+}
+
+Response (stream, SSE):
+  { "type": "init", "data": "Stream connected" }
+  { "type": "response", "data": "<chunk>" }   // Repeated
+  { "type": "sources", "data": [...] }
+  { "type": "done" }
+
+Timeout: 120 seconds (internal)
+Error responses: 400 (validation), 500 (internal), 504 (timeout)
+```
+
+### Luồng Fallback (Flowchart)
+
+```
+User gửi query cần Deep Research
+       │
+       ▼
+┌──────────────────────────┐
+│ CHAINLENS_RESEARCH_      │
+│ ENABLED == TRUE?         │
+│                          │
+│  NO ──────────────────────────────────────────┐
+│  YES                     │                    │
+│   │                      │                    │
+│   ▼                      │                    │
+│ Health Check             │                    │
+│ GET /api/v1/b2b/health   │                    │
+│ (cached 30s, timeout 3s) │                    │
+│                          │                    │
+│  NOT LIVE ────────────────────────────────────┤
+│  LIVE ✅                  │                    │
+│   │                      │                    │
+│   ▼                      │                    │
+│ POST /b2b/research       │                    │
+│ (stream=false,           │                    │
+│  timeout=120s)           │                    │
+│                          │                    │
+│  ERROR/TIMEOUT ──────────────────────────────┤
+│  SUCCESS ✅               │                    │
+│   │                      │                    │
+│   ▼                      │                    ▼
+│ Return Chainlens result  │    FALLBACK: generate_report()
+│ {message, sources}       │    report_style="deep_research"
+│                          │    source_strategy="kb_search"
+└──────────────────────────┘    + web_search tool
+```
+
+### Configuration (Thêm vào `.env` + `Config` class)
+
+```python
+# .env — Thêm 4 biến mới
+CHAINLENS_RESEARCH_API_URL=http://localhost:3001  # hoặc production URL
+CHAINLENS_RESEARCH_API_KEY=                        # REQUIRED — B2B API key (Bearer token auth)
+CHAINLENS_RESEARCH_ENABLED=TRUE                    # feature flag bật/tắt
+CHAINLENS_HEALTH_CACHE_TTL=30                      # seconds, cache health check
+```
+
+```python
+# config/__init__.py — Thêm vào class Config:
+CHAINLENS_RESEARCH_API_URL = os.getenv("CHAINLENS_RESEARCH_API_URL", "")
+CHAINLENS_RESEARCH_API_KEY = os.getenv("CHAINLENS_RESEARCH_API_KEY", "")
+CHAINLENS_RESEARCH_ENABLED = os.getenv("CHAINLENS_RESEARCH_ENABLED", "FALSE").upper() == "TRUE"
+CHAINLENS_HEALTH_CACHE_TTL = int(os.getenv("CHAINLENS_HEALTH_CACHE_TTL", "30"))
+```
+
+### Service Layer — `ChainlensResearchService`
+
+File mới: `nowing_backend/app/services/chainlens_research_service.py` (~100 LOC)
+
+```python
+import time
+import httpx
+from app.config import Config
+
+class ChainlensUnavailableError(Exception):
+    """Raised when Chainlens API is unreachable or returns error."""
+    pass
+
+class ChainlensResearchService:
+    """Proxy service gọi Chainlens Research B2B API với health check cached."""
+
+    _health_cache: tuple[bool, float] = (False, 0.0)  # (is_live, timestamp)
+
+    @classmethod
+    async def is_available(cls) -> bool:
+        """Health check với cache TTL. Dùng HEAD request nhẹ."""
+        now = time.monotonic()
+        is_live, cached_at = cls._health_cache
+        if now - cached_at < Config.CHAINLENS_HEALTH_CACHE_TTL:
+            return is_live
+
+        if not Config.CHAINLENS_RESEARCH_ENABLED or not Config.CHAINLENS_RESEARCH_API_URL:
+            cls._health_cache = (False, now)
+            return False
+
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(f"{Config.CHAINLENS_RESEARCH_API_URL}/api/v1/b2b/health")
+                live = resp.status_code == 200
+                cls._health_cache = (live, now)
+                return live
+        except Exception:
+            cls._health_cache = (False, now)
+            return False
+
+    @classmethod
+    async def research(cls, query: str, sources: list[str] | None = None) -> dict:
+        """Gọi Chainlens B2B API (non-stream). Raise nếu fail."""
+        if not await cls.is_available():
+            raise ChainlensUnavailableError("Chainlens API not available")
+
+        headers = {"Content-Type": "application/json"}
+        if Config.CHAINLENS_RESEARCH_API_KEY:
+            headers["Authorization"] = f"Bearer {Config.CHAINLENS_RESEARCH_API_KEY}"
+        else:
+            raise ChainlensUnavailableError("CHAINLENS_RESEARCH_API_KEY not configured")
+
+        payload = {
+            "query": query,
+            "sources": sources or ["web"],
+            "stream": False,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=125.0) as client:
+                resp = await client.post(
+                    f"{Config.CHAINLENS_RESEARCH_API_URL}/api/v1/b2b/research",
+                    json=payload,
+                    headers=headers,
+                )
+                if resp.status_code != 200:
+                    raise ChainlensUnavailableError(f"HTTP {resp.status_code}")
+                return resp.json()
+        except httpx.TimeoutException:
+            # Invalidate health cache khi timeout
+            cls._health_cache = (False, time.monotonic())
+            raise ChainlensUnavailableError("Chainlens API timeout")
+        except Exception as e:
+            cls._health_cache = (False, time.monotonic())
+            raise ChainlensUnavailableError(str(e))
+```
+
+### Tool Layer — `chainlens_deep_research`
+
+File mới: `nowing_backend/app/agents/new_chat/tools/chainlens_research.py` (~60 LOC)
+
+```python
+from langchain_core.tools import tool
+from langchain_core.callbacks import dispatch_custom_event
+from app.services.chainlens_research_service import (
+    ChainlensResearchService,
+    ChainlensUnavailableError,
+)
+
+def create_chainlens_research_tool():
+    @tool
+    async def chainlens_deep_research(
+        query: str,
+        sources: list[str] | None = None,
+    ) -> dict:
+        """Perform deep web research using Chainlens Research engine.
+
+        Use this when the user asks for deep research, thorough investigation,
+        or comprehensive web research on a topic. This tool provides
+        significantly better research quality than built-in search.
+
+        Falls back automatically to Nowing's built-in research if Chainlens
+        is unavailable.
+
+        Args:
+            query: The research question or topic.
+            sources: Research sources to use. Options: "web", "discussions",
+                     "academic". Default: ["web"].
+        """
+        try:
+            dispatch_custom_event(
+                "research_status",
+                {"phase": "chainlens", "message": "Starting deep research via Chainlens..."},
+            )
+            result = await ChainlensResearchService.research(query, sources)
+            return {
+                "status": "success",
+                "provider": "chainlens",
+                "message": result.get("message", ""),
+                "sources": result.get("sources", []),
+            }
+        except ChainlensUnavailableError:
+            dispatch_custom_event(
+                "research_status",
+                {"phase": "fallback", "message": "Chainlens unavailable, using Nowing research..."},
+            )
+            return {
+                "status": "fallback",
+                "provider": "nowing",
+                "message": "Chainlens Research is currently unavailable. "
+                           "Please use generate_report with report_style='deep_research' "
+                           "and source_strategy='kb_search' to produce a research report "
+                           "using Nowing's built-in capabilities.",
+            }
+
+    return chainlens_deep_research
+```
+
+### System Prompt Integration
+
+Thêm vào `system_prompt.py` — `_TOOL_INSTRUCTIONS` và `_TOOL_EXAMPLES`:
+
+```python
+_TOOL_INSTRUCTIONS["chainlens_deep_research"] = """
+- chainlens_deep_research: Perform deep web research using Chainlens Research engine.
+  - Use this when the user explicitly asks for "deep research", "thorough research",
+    "comprehensive investigation", or needs high-quality web research results.
+  - This tool provides significantly better research than web_search — it synthesizes
+    multiple sources into a structured research report.
+  - Falls back automatically to Nowing's built-in research if Chainlens is unavailable.
+  - Args:
+    - query: The research question or topic
+    - sources: ["web", "discussions", "academic"] — types of sources to search
+  - Returns: { status, provider, message, sources }
+  - FALLBACK HANDLING: If status is "fallback", use generate_report with
+    report_style="deep_research" and source_strategy="kb_search" instead.
+  - Do NOT use this for simple factual questions — use web_search for those.
+"""
+
+_TOOL_EXAMPLES["chainlens_deep_research"] = """
+- User: "Do a deep research on AI agents in 2026"
+  - Call: `chainlens_deep_research(query="AI agents landscape and trends in 2026", sources=["web", "academic"])`
+- User: "Thoroughly investigate the impact of DeFi on traditional banking"
+  - Call: `chainlens_deep_research(query="Impact of DeFi on traditional banking industry", sources=["web", "discussions"])`
+- If result has status="fallback":
+  - Call: `generate_report(topic="DeFi Impact on Banking", source_strategy="kb_search", search_queries=["DeFi banking impact", "decentralized finance disruption"], report_style="deep_research")`
+"""
+
+# Thêm vào _ALL_TOOL_NAMES_ORDERED:
+_ALL_TOOL_NAMES_ORDERED = [
+    "search_nowing_docs",
+    "web_search",
+    "chainlens_deep_research",   # ← NEW
+    "generate_podcast",
+    "generate_video_presentation",
+    "generate_report",
+    "generate_image",
+    "scrape_webpage",
+    "update_memory",
+]
+```
+
+### Tool Binding Integration
+
+Đăng ký trong `tools/registry.py` — thêm vào `BUILTIN_TOOLS` list (đúng pattern hiện tại):
+
+```python
+# Trong BUILTIN_TOOLS list (tools/registry.py):
+from app.agents.new_chat.tools.chainlens_research import create_chainlens_research_tool
+
+ToolDefinition(
+    name="chainlens_deep_research",
+    description="Perform deep web research using Chainlens Research engine with auto-fallback",
+    factory=create_chainlens_research_tool,
+    requires=[],  # No DB/connector dependencies — uses external API
+    enabled_by_default=True,  # Controlled by CHAINLENS_RESEARCH_ENABLED env var inside tool
+),
+```
+
+**Lưu ý:** Feature flag `CHAINLENS_RESEARCH_ENABLED` được kiểm tra **bên trong tool** (qua `ChainlensResearchService.is_available()`), không phải ở registry level. Tool luôn được register nhưng sẽ fallback ngay nếu flag tắt.
+
+### Project Structure (Files thay đổi)
+
+```text
+nowing_backend/
+├── app/
+│   ├── config/__init__.py                          # [EDIT] +4 env vars
+│   ├── services/
+│   │   └── chainlens_research_service.py           # [NEW] ~100 LOC
+│   ├── agents/new_chat/
+│   │   ├── system_prompt.py                        # [EDIT] +30 dòng tool instructions
+│   │   └── tools/
+│   │       ├── registry.py                         # [EDIT] +1 ToolDefinition entry
+│   │       └── chainlens_research.py               # [NEW] ~60 LOC
+├── .env                                            # [EDIT] +4 biến
+```
+
+**Tổng impact: 2 file mới, 4 file sửa nhỏ (dưới 40 dòng mỗi file). Frontend: 0 thay đổi.**
+
+### Data Flow — Deep Research Integration
+
+*Luồng thành công (Chainlens live):*
+1. User gửi "deep research about X" trong chat.
+2. Nowing Agent detect intent → gọi tool `chainlens_deep_research(query="X")`.
+3. Tool gọi `ChainlensResearchService.is_available()` → check cached health → LIVE ✅.
+4. Tool gọi `ChainlensResearchService.research(query, sources)` → POST tới Chainlens B2B API.
+5. Chainlens trả về `{message, sources}` trong ≤120s.
+6. Tool return `{status: "success", provider: "chainlens", message, sources}`.
+7. Agent trình bày kết quả research cho user trên chat (SSE streaming).
+
+*Luồng fallback (Chainlens down):*
+1. User gửi "deep research about X" trong chat.
+2. Nowing Agent detect intent → gọi tool `chainlens_deep_research(query="X")`.
+3. Tool gọi `ChainlensResearchService.is_available()` → NOT LIVE ❌ (hoặc timeout).
+4. Tool return `{status: "fallback", provider: "nowing", message: "use generate_report..."}`.
+5. Agent tự động gọi `generate_report(report_style="deep_research", source_strategy="kb_search")`.
+6. Nowing's built-in research chạy, kết quả trả về user qua report card.
+7. User không bị gián đoạn, chỉ nhận thông báo nhẹ "Using Nowing's built-in research".
 
 ## Architecture Validation Results
 
@@ -514,4 +843,654 @@ Luồng Upload tài liệu & RAG:
 - Gift Subscription được thiết kế isolate hoàn toàn: không ảnh hưởng existing billing code, dùng separate tables, clone proven patterns.
 
 **Implementation Handoff**
-- **First Implementation Priority:** Dùng hệ thống sẵn có (đã khởi tạo Next.js `surfsense_web` và FastAPI `surfsense_backend`). Môi trường local chạy qua `docker compose -f docker/docker-compose.dev.yml up -d` với đầy đủ Postgres (pgvector), Redis, Zero-Cache và SearXNG.
+- **First Implementation Priority:** Dùng hệ thống sẵn có (đã khởi tạo Next.js `nowing_web` và FastAPI `nowing_backend`). Môi trường local chạy qua `docker compose -f docker/docker-compose.dev.yml up -d` với đầy đủ Postgres (pgvector), Redis, Zero-Cache và SearXNG.
+
+## Crypto Orchestra Architecture
+
+### Bối cảnh & Phạm vi
+
+**Mục tiêu**: Hỗ trợ Journey #8 (Crypto Power User "Khoa") — query "phân tích toàn diện $UNI" → main agent spawn 4-11 sub-agents song song → trả về aggregated insights trong P95 < 90s với graceful degradation > 98%.
+
+**Scope mới (delta so với Epic 1-7 baseline):**
+- **Epic 0** (foundation): 6 stories (0.1–0.6) — tool infrastructure, sub-agents, orchestration prompt, parallel telemetry, circuit breaker.
+- **Epic 9** (advanced): 6 sub-agents bổ sung (tokenomics, whale tracker, token unlock, yield optimizer, governance, technical analysis).
+- **UX layer**: 7 frontend components mới + 8 telemetry events (chi tiết ở `ux-crypto-orchestra-handoff.md`).
+
+**Baseline KHÔNG đổi**: SSE pipe `/api/v1/chat` (Epic 7), LangGraph DeepAgent framework, system prompt structure, Zero-sync layer.
+
+---
+
+### Architecture Overview (C4-Inspired Component Diagram)
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                         BROWSER (Next.js Web Client)                   │
+│  ┌─────────────────────────────────────────────────────────────────┐  │
+│  │  ChatBubble                                                      │  │
+│  │  ├─ <OrchestraStrip />          ◀──── SSE: orchestra.* events    │  │
+│  │  │   ├─ <AgentRow /> × N        ◀──── orchestra.update           │  │
+│  │  │   └─ <DegradationNotice />   ◀──── orchestra.fail             │  │
+│  │  ├─ <MessageContent />          ◀──── existing SSE: chunk        │  │
+│  │  │   └─ <MultiCitationBadge />                                   │  │
+│  │  └─ <SourceTabsPanel />                                          │  │
+│  │                                                                   │  │
+│  │  useOrchestraStore (Zustand) ── PGLite snapshot via Zero mutator │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────┬─────────────────────────────────────────┘
+                               │ SSE  /api/v1/chat
+                               ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                       FastAPI Backend (nowing_backend)                  │
+│                                                                         │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  ChatRouter (api/routes/chat.py)                                  │ │
+│  │      └─ stream_event_publisher (SSE wrapper)                       │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                              │                                          │
+│                              ▼                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  chat_deepagent.create_deepagent()                                 │ │
+│  │  ├── Middleware Stack (gp_middleware):                            │ │
+│  │  │   ├─ TodoListMiddleware                                         │ │
+│  │  │   ├─ MemoryMiddleware                                           │ │
+│  │  │   ├─ NowingFilesystemMiddleware                                │ │
+│  │  │   ├─ SummarizationMiddleware                                    │ │
+│  │  │   ├─ PatchToolCalls                                             │ │
+│  │  │   ├─ AnthropicPromptCaching                                     │ │
+│  │  │   ├─ ParallelismTelemetryMiddleware  ★ Story 0.5                │ │
+│  │  │   └─ CircuitBreakerMiddleware        ★ Story 0.6                │ │
+│  │  │                                                                  │ │
+│  │  ├── SubAgentMiddleware (registry of 11 specialists):              │ │
+│  │  │   ├─ general_purpose                                            │ │
+│  │  │   ├─ defillama_analyst       ─┐                                 │ │
+│  │  │   ├─ sentiment_analyst        │                                 │ │
+│  │  │   ├─ news_analyst             ├─ Epic 0 base (4 agents)         │ │
+│  │  │   ├─ smart_contract_analyst  ─┘                                 │ │
+│  │  │   ├─ tokenomics_analyst      ─┐                                 │ │
+│  │  │   ├─ whale_tracker            │                                 │ │
+│  │  │   ├─ token_unlock_scheduler   ├─ Epic 9 advanced (6 agents)     │ │
+│  │  │   ├─ yield_optimizer          │                                 │ │
+│  │  │   ├─ governance_analyst       │                                 │ │
+│  │  │   └─ technical_analyst       ─┘                                 │ │
+│  │  │                                                                  │ │
+│  │  └── ToolNode (LangGraph) — parallel batch executor                 │ │
+│  │      └─ task() tool — spawns sub-agent in same graph step           │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                              │                                          │
+│                              ▼                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  Tool Registry (BUILTIN_TOOLS, requires=[])                       │ │
+│  │   • defillama.py          (5 tools)                                │ │
+│  │   • crypto_sentiment.py   (2 tools: F&G, Reddit)                   │ │
+│  │   • crypto_news.py        (2 tools: CryptoPanic, CoinGecko)        │ │
+│  │   • contract_analysis.py  (2 tools: Etherscan, GoPlus)             │ │
+│  │   • chainlens_research.py (1 tool — fallback engine)               │ │
+│  │   • crypto_realtime.py    (DexScreener live price)                 │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                              │                                          │
+│                              ▼                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  ObservabilityClient (app/observability/metrics.py)                │ │
+│  │   • crypto_orchestra_parallelism_ratio (histogram)                 │ │
+│  │   • crypto_orchestra_full_suite_duration_seconds (histogram)       │ │
+│  │   • crypto_orchestra_agent_errors_total (counter)                  │ │
+│  │   • crypto_orchestra_graceful_degradation_total (counter)          │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│   External APIs (stateless, requires=[])                                │
+│   DeFiLlama │ CoinGecko │ GoPlus │ CryptoPanic │ Etherscan │ Reddit    │
+│   alternative.me F&G │ Chainlens B2B (fallback)                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 1. Per-Agent SSE Event Contract
+
+**Decision**: Mở rộng existing SSE pipe `/api/v1/chat` với 6 event types mới namespaced `orchestra.*`. KHÔNG tạo channel WebSocket mới — reuse pipeline đã production-grade từ Epic 7.
+
+**Schema (Pydantic models trong `app/schemas/sse_events.py`):**
+
+```python
+# app/schemas/sse_events.py — NEW FILE
+
+from typing import Literal
+from pydantic import BaseModel, Field
+
+# ─── Shared types ─────────────────────────────────────────────────────
+class AgentManifest(BaseModel):
+    name: str                              # snake_case e.g. "defillama_analyst"
+    display_name: str                      # human label e.g. "DeFi"
+    estimated_p50_ms: int                  # ETA heuristic from telemetry P50
+    tools_count: int                       # for UI density hint
+
+class AgentSummary(BaseModel):
+    fact_count: int
+    sources: list[str]                     # canonical names: "DeFiLlama", "Reddit", ...
+
+FailReason = Literal[
+    "rate_limit", "timeout", "unavailable",
+    "cancelled_by_user", "circuit_open"
+]
+
+# ─── 6 Orchestra Events ───────────────────────────────────────────────
+class OrchestraSpawnEvent(BaseModel):
+    event: Literal["orchestra.spawn"] = "orchestra.spawn"
+    query_hash: str                        # sha256(query + user_id)[:16]
+    agents: list[AgentManifest]
+    spawn_count: int
+
+class OrchestraUpdateEvent(BaseModel):
+    event: Literal["orchestra.update"] = "orchestra.update"
+    agent_name: str
+    status: Literal["running"]
+    elapsed_ms: int
+    # Backpressure: server-side throttle to 1 update / agent / 500ms
+
+class OrchestraDoneEvent(BaseModel):
+    event: Literal["orchestra.done"] = "orchestra.done"
+    agent_name: str
+    duration_ms: int
+    summary: AgentSummary
+
+class OrchestraFailEvent(BaseModel):
+    event: Literal["orchestra.fail"] = "orchestra.fail"
+    agent_name: str
+    reason: FailReason
+    fallback_used: bool = False           # True if agent fell back to chainlens/web_search
+
+class OrchestraCancelEvent(BaseModel):
+    event: Literal["orchestra.cancel"] = "orchestra.cancel"
+    at_ms: int
+    partial_results: bool
+
+class OrchestraCompleteEvent(BaseModel):
+    event: Literal["orchestra.complete"] = "orchestra.complete"
+    total_ms: int
+    success: int
+    failed: int
+    p95_bucket: Literal["fast", "normal", "slow"]  # < 30s | 30-60s | > 60s
+```
+
+**SSE wire format** (consistent với Epic 7 pattern):
+```
+event: orchestra.spawn
+data: {"query_hash":"a3f9...","agents":[{...}],"spawn_count":4}
+
+event: orchestra.update
+data: {"agent_name":"defillama_analyst","status":"running","elapsed_ms":1240}
+```
+
+#### Resolution — 4 Open Questions từ UX Handoff §3
+
+| # | Question | Decision |
+|---|----------|----------|
+| 1 | Event naming convention consistent với Epic 7? | ✅ **Namespace `orchestra.*`** — phân biệt với existing `chunk`, `tool_call`, `done`. Reuse SSE wire format `event: <name>\ndata: <json>\n\n`. |
+| 2 | Backpressure: rate-limit `orchestra.update` server-side hay client-side? | ✅ **Server-side throttle**: `ParallelismTelemetryMiddleware` debounce update events đến **1 update / agent / 500ms** (configurable via `ORCHESTRA_UPDATE_THROTTLE_MS`). Client KHÔNG cần debounce — tránh complexity. |
+| 3 | Multi-session shared hay duplicated? | ✅ **MVP: duplicated per session** (mỗi tab = 1 SSE stream, 1 agent run). v2 sẽ implement shared via Redis pub/sub keyed `(query_hash, user_id)` — hiện tại không justify complexity. |
+| 4 | Conflict detection: backend emit `orchestra.conflict` event hay FE tự detect? | ✅ **FE tự detect từ citation metadata** (numeric delta > 5% → render `[2≠4]`). Backend KHÔNG emit conflict event — agent independence + LLM judgment handle disagreements. Conflict UI là pure rendering layer. |
+
+---
+
+### 2. ParallelismTelemetryMiddleware Design (Story 0.5)
+
+**File**: `nowing_backend/app/agents/new_chat/middleware/parallelism_telemetry.py` (NEW)
+
+**Mục tiêu**:
+1. Capture per-agent timing (start, end, duration) qua LangGraph callbacks.
+2. Compute `parallelism_ratio = step_duration / max(agent_duration)` real-time per request.
+3. Emit metrics `parallelism_ratio` + `full_suite_duration` ra Prometheus/Datadog.
+4. Throttle `orchestra.update` SSE events (xem §1, decision #2).
+5. Detect sequential anti-pattern (2+ `task()` calls trong khác step) → log warning.
+
+**Skeleton**:
+
+```python
+# app/agents/new_chat/middleware/parallelism_telemetry.py
+
+from collections import defaultdict
+from typing import Any
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain_core.messages import ToolMessage
+from app.observability.metrics import (
+    parallelism_ratio_histogram,
+    full_suite_duration_histogram,
+    sequential_antipattern_counter,
+)
+import time
+
+class ParallelismTelemetryMiddleware(BaseCallbackHandler):
+    """Track parallel sub-agent execution metrics + emit SSE update events."""
+
+    def __init__(self, sse_publisher, throttle_ms: int = 500):
+        self.sse = sse_publisher
+        self.throttle_ms = throttle_ms
+        self._step_starts: dict[str, float] = {}            # step_id -> start_time
+        self._agent_starts: dict[str, dict] = {}            # call_id -> {agent_name, step_id, start}
+        self._last_update_emit: dict[str, float] = {}       # agent_name -> last_emit_ms
+        self._task_calls_per_step: dict[str, list] = defaultdict(list)
+
+    async def on_tool_start(self, serialized, input_str, *, run_id, parent_run_id, tags=None, metadata=None, **kwargs):
+        if serialized.get("name") != "task":
+            return
+        agent_name = self._parse_agent_name(input_str)
+        step_id = (metadata or {}).get("langgraph_step", "unknown")
+        now = time.perf_counter()
+
+        self._agent_starts[str(run_id)] = {
+            "agent_name": agent_name, "step_id": step_id, "start": now,
+        }
+        self._task_calls_per_step[step_id].append(agent_name)
+        self._step_starts.setdefault(step_id, now)
+
+    async def on_tool_end(self, output, *, run_id, parent_run_id=None, **kwargs):
+        ctx = self._agent_starts.pop(str(run_id), None)
+        if not ctx:
+            return
+        duration = time.perf_counter() - ctx["start"]
+        await self.sse.emit("orchestra.done", {
+            "agent_name": ctx["agent_name"],
+            "duration_ms": int(duration * 1000),
+            "summary": self._extract_summary(output),
+        })
+
+    async def on_chain_end(self, outputs, **kwargs):
+        """When LangGraph step ends — compute parallelism_ratio if multi-spawn."""
+        for step_id, agents in self._task_calls_per_step.items():
+            if len(agents) < 2:
+                continue
+            step_duration = time.perf_counter() - self._step_starts[step_id]
+            # Find max individual agent duration in this step
+            max_individual = max(
+                (time.perf_counter() - ctx["start"])
+                for ctx in self._agent_starts.values()
+                if ctx["step_id"] == step_id
+            ) or step_duration
+            ratio = step_duration / max_individual
+            parallelism_ratio_histogram.observe(ratio, labels={"agents_count": len(agents)})
+
+            # Sequential anti-pattern detection: if same query has 2+ steps with task() calls
+            if self._has_sequential_pattern():
+                sequential_antipattern_counter.inc()
+
+    async def heartbeat_update(self, agent_name: str, elapsed_ms: int):
+        """Throttled emit of orchestra.update — call from agent ainvoke loop."""
+        last = self._last_update_emit.get(agent_name, 0)
+        now_ms = time.monotonic() * 1000
+        if now_ms - last < self.throttle_ms:
+            return
+        self._last_update_emit[agent_name] = now_ms
+        await self.sse.emit("orchestra.update", {
+            "agent_name": agent_name,
+            "status": "running",
+            "elapsed_ms": elapsed_ms,
+        })
+```
+
+**Wiring vào `chat_deepagent.py`**:
+```python
+# Add to gp_middleware stack (cần inject sse_publisher từ chat route)
+gp_middleware = [
+    TodoListMiddleware(),
+    MemoryMiddleware(),
+    # ... existing
+    ParallelismTelemetryMiddleware(sse_publisher=sse_pub),  # NEW
+    CircuitBreakerMiddleware(),                              # NEW (§3)
+]
+```
+
+**Feature flag**: `PARALLELISM_TELEMETRY_ENABLED=true` (default true). Disable nếu phát hiện perf regression.
+
+---
+
+### 3. Circuit Breaker + Graceful Degradation Pattern (Story 0.6)
+
+**Mục tiêu**: Đáp ứng NFR-Q3 (≥ 98% requests có ≥1 agent error vẫn trả response đúng cấu trúc) qua 3 lớp bảo vệ:
+
+#### Layer 1 — Tool-level Error Contract
+
+**Convention bắt buộc**: Mọi tool **return `{"error": "<msg>"}` dict**, KHÔNG raise exception.
+
+```python
+# Pattern chuẩn cho tools (tools/defillama.py, crypto_news.py, ...)
+@tool
+async def get_defillama_protocol(protocol_slug: str) -> dict:
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(f"https://api.llama.fi/protocol/{protocol_slug}")
+            if resp.status_code == 429:
+                return {"error": "DeFiLlama rate limit reached, try again in 1 minute"}
+            if resp.status_code >= 500:
+                return {"error": f"DeFiLlama API unavailable (HTTP {resp.status_code})"}
+            return resp.json()
+    except httpx.TimeoutException:
+        return {"error": "DeFiLlama timeout"}
+    except Exception as exc:
+        logger.warning("get_defillama_protocol failed", exc_info=True)
+        return {"error": f"Unexpected: {type(exc).__name__}"}
+```
+
+#### Layer 2 — CircuitBreakerMiddleware (per-API circuit)
+
+**File**: `nowing_backend/app/agents/new_chat/middleware/circuit_breaker.py` (NEW)
+
+**Algorithm** (simplified Hystrix pattern):
+
+```python
+class CircuitBreaker:
+    """Per-source circuit breaker: open after 5 consecutive failures, half-open after 30s."""
+
+    STATE_CLOSED = "closed"      # normal operation
+    STATE_OPEN = "open"          # blocking — fail-fast
+    STATE_HALF_OPEN = "half_open"  # probe with 1 request
+
+    def __init__(self, source: str, failure_threshold: int = 5, reset_timeout_s: int = 30):
+        self.source = source
+        self.failure_threshold = failure_threshold
+        self.reset_timeout_s = reset_timeout_s
+        self.failure_count = 0
+        self.state = self.STATE_CLOSED
+        self.opened_at: float | None = None
+
+    def record_success(self):
+        self.failure_count = 0
+        self.state = self.STATE_CLOSED
+        self.opened_at = None
+
+    def record_failure(self):
+        self.failure_count += 1
+        if self.failure_count >= self.failure_threshold:
+            self.state = self.STATE_OPEN
+            self.opened_at = time.monotonic()
+
+    def is_open(self) -> bool:
+        if self.state == self.STATE_CLOSED:
+            return False
+        if self.state == self.STATE_OPEN:
+            if time.monotonic() - self.opened_at > self.reset_timeout_s:
+                self.state = self.STATE_HALF_OPEN
+                return False  # allow 1 probe
+            return True
+        return False  # half_open allows 1 request
+
+# Registry (singleton per source)
+_BREAKERS: dict[str, CircuitBreaker] = {
+    src: CircuitBreaker(src) for src in
+    ["defillama", "coingecko", "goplus", "cryptopanic", "etherscan", "reddit"]
+}
+```
+
+**Integration**: Tools call `_BREAKERS[source].is_open()` trước khi gọi HTTP — nếu open thì trả về `{"error": "circuit_open", "fallback_hint": "use chainlens_deep_research"}` ngay (fail-fast, không waste time).
+
+#### Layer 3 — Agent-level Fallback (sub-agent system prompts)
+
+Mỗi sub-agent có system prompt instruct: "If primary tool returns `{error: ...}`, fall back to (1) alternative tool listed below, OR (2) `chainlens_deep_research`, OR (3) honest 'data unavailable' note. NEVER hallucinate."
+
+**Fallback matrix:**
+
+| Sub-agent | Primary tool | Fallback chain |
+|-----------|-------------|----------------|
+| `defillama_analyst` | `get_defillama_*` | → `chainlens_deep_research` → "limited DeFi data" note |
+| `sentiment_analyst` | `get_cmc_sentiment` | → `get_reddit_crypto_sentiment` → `web_search` → note |
+| `news_analyst` | `get_crypto_news` (CryptoPanic) | → `chainlens_deep_research` → `web_search` → note |
+| `smart_contract_analyst` | `check_token_security` (GoPlus) | → `get_contract_info` (Etherscan only) → note "security score unavailable" |
+
+#### Layer 4 — Orchestration-level Synthesis (main agent prompt)
+
+Main agent system prompt instruct (xem §5 Rule C):
+- Nếu 1-2 sub-agents fail → synthesize từ remaining agents, **explicitly mention** unavailable source.
+- Nếu 4/4 fail → trả "service issues, please retry in a few minutes" — **KHÔNG hallucinate**.
+
+#### Telemetry — Degradation Outcome Classification
+
+Per request, `ParallelismTelemetryMiddleware` (extended trong Story 0.6) classifies outcome:
+
+| Outcome | Definition | Counter label |
+|---------|-----------|---------------|
+| `success` | All spawned agents return non-error result | `outcome="success"` |
+| `partial` | 1+ agent error nhưng response > 100 chars | `outcome="partial"` |
+| `failed` | All agents error AND response < 100 chars | `outcome="failed"` |
+
+**Quality Gate NFR-Q3**: `(success + partial) / total >= 0.98` over 1h rolling window.
+
+---
+
+### 4. Tool Registry Pattern cho 11 Crypto Tools (Story 0.1)
+
+**File**: `nowing_backend/app/agents/new_chat/tools/registry.py` (EDIT — append entries)
+
+**Constraint chuẩn**:
+- ✅ Mọi crypto tool có `requires=[]` (NFR-CS4 — stateless, no DB).
+- ✅ Factory pattern `factory=lambda deps: create_<name>_tool()` — instance per spawn.
+- ✅ Tool function async (httpx.AsyncClient — non-blocking).
+- ✅ Error contract Layer 1 (xem §3).
+
+**11 ToolDefinition entries**:
+
+```python
+# tools/registry.py — extension
+
+from app.agents.new_chat.tools.defillama import (
+    create_defillama_protocol_tool,
+    create_defillama_tvl_overview_tool,
+    create_defillama_yields_tool,
+    create_defillama_stablecoins_tool,
+    create_defillama_bridges_tool,
+)
+from app.agents.new_chat.tools.crypto_sentiment import (
+    create_cmc_sentiment_tool,
+    create_reddit_sentiment_tool,
+)
+from app.agents.new_chat.tools.crypto_news import (
+    create_crypto_news_tool,
+    create_coingecko_token_info_tool,
+)
+from app.agents.new_chat.tools.contract_analysis import (
+    create_contract_info_tool,
+    create_check_token_security_tool,
+)
+
+CRYPTO_TOOLS = [
+    ToolDefinition(name="get_defillama_protocol",       factory=lambda d: create_defillama_protocol_tool(),       requires=[]),
+    ToolDefinition(name="get_defillama_tvl_overview",   factory=lambda d: create_defillama_tvl_overview_tool(),   requires=[]),
+    ToolDefinition(name="get_defillama_yields",         factory=lambda d: create_defillama_yields_tool(),         requires=[]),
+    ToolDefinition(name="get_defillama_stablecoins",    factory=lambda d: create_defillama_stablecoins_tool(),    requires=[]),
+    ToolDefinition(name="get_defillama_bridges",        factory=lambda d: create_defillama_bridges_tool(),        requires=[]),
+    ToolDefinition(name="get_cmc_sentiment",            factory=lambda d: create_cmc_sentiment_tool(),            requires=[]),
+    ToolDefinition(name="get_reddit_crypto_sentiment",  factory=lambda d: create_reddit_sentiment_tool(),         requires=[]),
+    ToolDefinition(name="get_crypto_news",              factory=lambda d: create_crypto_news_tool(),              requires=[]),
+    ToolDefinition(name="get_coingecko_token_info",     factory=lambda d: create_coingecko_token_info_tool(),     requires=[]),
+    ToolDefinition(name="get_contract_info",            factory=lambda d: create_contract_info_tool(),            requires=[]),
+    ToolDefinition(name="check_token_security",         factory=lambda d: create_check_token_security_tool(),     requires=[]),
+]
+BUILTIN_TOOLS.extend(CRYPTO_TOOLS)
+```
+
+**Sub-agent scoped tool list** (NFR-CS1 — avoid context confusion): SubAgentMiddleware passes scoped subset, KHÔNG full registry. Mapping:
+
+| Sub-agent | Scoped tools |
+|-----------|-------------|
+| `defillama_analyst` | `get_defillama_*` (5) + `get_live_token_data` + `web_search` |
+| `sentiment_analyst` | `get_cmc_sentiment`, `get_reddit_crypto_sentiment`, `web_search`, `scrape_webpage` |
+| `news_analyst` | `get_crypto_news`, `get_coingecko_token_info`, `web_search`, `scrape_webpage`, `chainlens_deep_research` |
+| `smart_contract_analyst` | `get_contract_info`, `check_token_security`, `web_search`, `scrape_webpage` |
+| `tokenomics_analyst` (Epic 9) | `get_coingecko_token_info`, `web_search`, `scrape_webpage`, `chainlens_deep_research` |
+| `whale_tracker` (Epic 9) | `web_search`, `scrape_webpage`, `chainlens_deep_research` |
+| `token_unlock_scheduler` (Epic 9) | `web_search`, `scrape_webpage` |
+| `yield_optimizer` (Epic 9) | `get_defillama_yields`, `get_defillama_protocol`, `check_token_security` |
+| `governance_analyst` (Epic 9) | `web_search`, `scrape_webpage`, `chainlens_deep_research` |
+| `technical_analyst` (Epic 9) | `get_live_token_data`, `web_search`, `scrape_webpage` |
+
+---
+
+### 5. Multi-Agent Orchestration Prompt Architecture (Story 0.3)
+
+**File**: `nowing_backend/app/agents/new_chat/system_prompt.py` (EDIT — add section)
+
+**Architecture intent**: Convert "smart agent selection" (FR-34) thành deterministic LLM behavior qua structured prompt với 4-rule decision tree.
+
+**Decision Tree**:
+
+```text
+                    ┌──────────────────────┐
+                    │  User query received │
+                    └──────────┬───────────┘
+                               ▼
+                    ┌──────────────────────┐
+                    │  Intent classification │
+                    │  (LLM judgment)       │
+                    └──────────┬───────────┘
+                               │
+        ┌──────────────────────┼──────────────────────┬─────────────────────┐
+        ▼                      ▼                      ▼                     ▼
+  Rule A: Direct tool   Rule B: Single        Rule C: Parallel       Rule D: Selective
+  "Giá BTC?"            "Audit 0xabc"         "Phân tích toàn diện"  "Token có scam?"
+        │                      │                      │                     │
+        ▼                      ▼                      ▼                     ▼
+  call get_*()          task(1 agent)         task(4-11 agents) ★    task(2-3 agents)
+                                              ★ ALL in 1 LLM turn
+                                              → LangGraph batch
+```
+
+**Critical insight cho NFR-Q2 (parallelism ratio < 1.3x)**: LangGraph chỉ batch parallel khi LLM emit MULTIPLE `task()` calls trong **CÙNG 1 response**. Prompt phải chứa explicit example block để LLM internalize pattern.
+
+**Token budget**: ~2000 tokens added vào main prompt (acceptable trong 47KB total budget).
+
+**Anti-pattern detection** (capture bởi `ParallelismTelemetryMiddleware` §2):
+- Multiple `task()` calls across different `langgraph_step` IDs → log `sequential_antipattern_counter`.
+- Operations team alert khi rate > 5% trong 1h.
+
+---
+
+### 6. NFR-Q1..Q5 Measurement Architecture
+
+**Mapping**: 5 quality gates → telemetry → dashboard tiles. (NFR-Q1-Q4 = product gates per PRD; NFR-Q5 = orchestrator routing gate added 2026-04-23 to disambiguate from accuracy.)
+
+| NFR | Definition | Metric source | Dashboard tile | Alert threshold |
+|-----|-----------|---------------|----------------|----------------|
+| **NFR-Q1** Accuracy | Factual error rate < 3% (sample QA vs raw API ground truth) | Manual QA 100 queries / 2 weeks + automated cross-check sampling | Gauge "% factual errors" | > 3% trong 2-week window |
+| **NFR-Q2** Parallelism ratio | P95 `total_elapsed / max(individual)` < 1.3x | `parallelism_ratio_histogram` (Story 0.5) | Histogram with P50/P95/P99 lines | P95 > 1.3x trong 1h |
+| **NFR-Q3** Graceful degradation | ≥ 98% requests `success+partial` outcome | `crypto_orchestra_graceful_degradation_total{outcome}` | Gauge "% graceful" | < 98% trong 1h |
+| **NFR-Q4** Speed | P95 full-suite duration < 90s | `full_suite_duration_seconds` histogram | Histogram with P50/P95 + 90s threshold line | P95 > 90s trong 1h |
+| **NFR-Q5** Smart selection accuracy | ≥ 90% queries route đúng Rule A/B/C/D | Manual classification 20 sample queries (Story 0.3 AC6) + production sampling | `orchestra.spawn` event distribution by agent_count buckets {1, 2, 3, 4+} | < 85% trong tuần |
+
+**Telemetry stack:**
+- **Backend metrics**: Prometheus client (`prometheus_client` lib) — 4 metrics defined trong `app/observability/metrics.py`.
+- **Frontend events**: 8 telemetry events (xem `ux-crypto-orchestra-handoff.md` §4) → existing analytics pipe.
+- **Dashboard**: Grafana panel "Crypto Orchestra Health" với 4 tiles + sequential anti-pattern counter.
+
+**Sample sizing**:
+- NFR-Q1: Manual QA 100 queries / 2 weeks (production sampling vs raw API ground truth).
+- NFR-Q5: 20 manual queries cho Story 0.3 AC, then production sampling 100 queries/day.
+- NFR-Q2/Q4: Statistical benchmark 100 queries (Story 0.5 AC4-AC5) + production rolling P95.
+- NFR-Q3: 100 queries với fault injection (Story 0.6 AC10) + production rolling.
+
+---
+
+### 7. Resolution — 5 Open Design Questions từ UX Handoff §7
+
+| # | Question | Decision | Rationale |
+|---|----------|----------|-----------|
+| 1 | Agent display names i18n? | ✅ **Technical EN-only cho v1** (`whale_tracker` → `display_name: "whale-track"`) | i18n sẽ thêm complexity ở `AgentManifest`; v2 evaluate sau khi có user feedback. |
+| 2 | Retry agent-level vs query-level? | ✅ **Query-level only cho v1** | Single-agent re-spawn đòi hỏi state preservation phức tạp (graph step replay). v1 retry button → re-run full query. v2 implement single-agent retry với cached results from successful agents. |
+| 3 | Cancel semantics — terminate ongoing LLM streams? | ✅ **Best-effort terminate** — issue `agent.cancel()` trên `asyncio.Task` của mỗi sub-agent. Cost vẫn count cho tokens đã consumed (industry standard). Frontend hiển thị "cancelled, partial cost incurred". | Hard-stop LLM streams unsafe (provider abstraction). Best-effort matches OpenAI/Anthropic patterns. |
+| 4 | Conflict threshold cho `[2≠4]` citation? | ✅ **Numeric field với delta > 5%** (UX recommendation accepted). Implement trong `<MultiCitationBadge />` rendering layer — backend KHÔNG emit conflict event (xem §1 decision #4). | Pure FE detection avoids backend coupling; threshold tunable via constants. |
+| 5 | Background mode cross-tab sync? | ✅ **Single-tab MVP**, v2 cross-tab via BroadcastChannel | MVP scope; cross-tab adds complexity to Zustand persistence layer + race conditions. |
+
+---
+
+### 8. Files Touched / Created (Backend Summary)
+
+**New files (Epic 0)**:
+- `app/agents/new_chat/tools/defillama.py` (5 tools)
+- `app/agents/new_chat/tools/crypto_sentiment.py` (2 tools)
+- `app/agents/new_chat/tools/crypto_news.py` (2 tools)
+- `app/agents/new_chat/tools/contract_analysis.py` (2 tools)
+- `app/agents/new_chat/middleware/parallelism_telemetry.py`
+- `app/agents/new_chat/middleware/circuit_breaker.py`
+- `app/agents/new_chat/subagents/crypto/` (4 base + 6 advanced specs)
+- `app/schemas/sse_events.py` (6 Orchestra event types)
+- `app/observability/metrics.py` (4 Prometheus metrics)
+
+**Modified files**:
+- `app/agents/new_chat/tools/registry.py` (+11 ToolDefinition entries)
+- `app/agents/new_chat/chat_deepagent.py` (+ParallelismTelemetryMiddleware + CircuitBreakerMiddleware in `gp_middleware`; wire 10 crypto sub-agents into SubAgentMiddleware)
+- `app/agents/new_chat/system_prompt.py` (+"Crypto Analysis Orchestration" section ~2000 tokens)
+- `app/api/routes/chat.py` (inject sse_publisher into telemetry middleware)
+
+**Frontend** (xem `ux-crypto-orchestra-handoff.md` §8 cho danh sách đầy đủ): 8 components mới + 1 Zustand store + 1 telemetry helper.
+
+---
+
+### 9. Cross-cutting Concerns & Constraints
+
+**Performance**:
+- HTTP timeout: 30s mặc định (override per-tool nếu cần). Total per-agent budget ~45s.
+- ToolNode parallel: LangGraph dùng `asyncio.gather` — concurrency unbounded; rely on per-API rate limiter (CoinGecko 30/min, GoPlus 2000/day).
+- `httpx.AsyncClient` reused per-tool-call (connection pooling) — NOT shared across tools (avoid coupling).
+
+**Security**:
+- All crypto tools `requires=[]` → no DB session, no user PII access. Safe to run in Celery worker pool standalone.
+- API keys (Etherscan, BscScan) qua `pydantic-settings` env vars; NOT logged.
+- Tool errors logged với `exc_info=True` nhưng KHÔNG include user query content (PII safety).
+
+**Observability**:
+- All 4 NFR-Q metrics exported qua `/metrics` endpoint (Prometheus scraping).
+- Structured logs (JSON): `{request_id, query_hash, agents_spawned, parallelism_ratio, outcome}`.
+- LangSmith tracing optional (env `LANGSMITH_TRACING=true`) cho deep debugging.
+
+**Rollback / Feature Flags**:
+- `PARALLELISM_TELEMETRY_ENABLED` (default true) — disable middleware nếu perf regression.
+- `CIRCUIT_BREAKER_ENABLED` (default true) — disable nếu false-positive opens.
+- `DEGRADATION_TELEMETRY_ENABLED` (default true).
+- Per-agent kill switch: `CRYPTO_AGENT_<NAME>_ENABLED` env vars (e.g., `CRYPTO_AGENT_WHALE_TRACKER_ENABLED=false`) — agent KHÔNG được spawn nếu false.
+
+---
+
+### 10. Implementation Sequence (Crypto Orchestra Delta)
+
+**Phase 0 (Foundation, blocking Phase 1)** — Stories 0.1 → 0.6 sequential:
+1. **Story 0.1** Tool infrastructure (4 files, 11 tools, registry).
+2. **Story 0.2** 4 base sub-agent specs + SubAgentMiddleware wiring.
+3. **Story 0.3** Main agent orchestration prompt (system_prompt.py).
+4. **Story 0.4** API integration tests (real API calls).
+5. **Story 0.5** Parallel execution validation + `ParallelismTelemetryMiddleware`.
+6. **Story 0.6** Error handling + `CircuitBreakerMiddleware` + degradation tests.
+
+**Gate**: Quality Gates NFR-Q2/Q3/Q4 PASS trên 100-query benchmark → Phase 1.
+
+**Phase 1 (Epic 9 base + UX MVP)** — Parallel:
+- Backend: Stories 9.1 (Tokenomics) + 9.4 (Yield Optimizer) — leverages existing tools.
+- Frontend: UX phase 9.0 (`OrchestraStrip` + `AgentRow` + `DegradationNotice` + extended `CitationBadge`).
+
+**Phase 2 (Epic 9 advanced + Trust polish)**:
+- Backend: Stories 9.2 (Whale) + 9.5 (Governance).
+- Frontend: UX phase 9.1 (`ConflictCompare` + `SourceTabsPanel` + 8 telemetry events).
+
+**Phase 3 (Final batch)**:
+- Backend: Stories 9.3 (Token Unlock) + 9.6 (Technical Analysis).
+- Frontend: UX phase 9.2 (background mode + 5-min cache + soft-attention milestone).
+
+---
+
+### 11. Coherence with Existing Architecture
+
+**Decision Compatibility ✅**:
+- Reuses Epic 7 SSE pipeline (`/api/v1/chat`) — zero net-new transport layer.
+- LangGraph DeepAgent + SubAgentMiddleware pattern đã production cho `general_purpose` agent — extension chỉ là registry entries.
+- Tool factory + `requires=[]` pattern đã established bởi `chainlens_research.py` — clone proven approach.
+- Pydantic schemas alias `by_alias=True` (existing rule) áp dụng cho `OrchestraEvent` types → camelCase JSON cho frontend.
+
+**Non-conflicting với baseline**:
+- KHÔNG đổi DB schema (no new tables backend-side; FE Rocicorp Zero `orchestra_sessions` table optional, separate concern).
+- KHÔNG đổi authentication/RLS — sub-agents chạy trong cùng request context của main agent.
+- KHÔNG đổi Celery worker pool — crypto tools chạy in-request (FastAPI async), không enqueue.
+
+**Naming compliance**:
+- Sub-agent names: `snake_case` ✅ (Python convention).
+- SSE event names: `orchestra.<verb>` lower dot-notation ✅.
+- Pydantic event classes: `PascalCase` ✅.
+- Tool function names: `snake_case` ✅ (Python convention + LangChain tool naming).

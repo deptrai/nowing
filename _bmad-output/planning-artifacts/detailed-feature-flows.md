@@ -1,11 +1,11 @@
-# SurfSense: Chi tiết Micro User Flows
+# Nowing: Chi tiết Micro User Flows
 
 Dưới đây là sơ đồ chi tiết (Micro Flows) phân tách sâu vào 4 tính năng lõi quan trọng nhất của hệ thống, bao phủ cả trải nghiệm người dùng lẫn luồng dữ liệu ngầm phía sau. 
 
 ---
 
 ## 1. Luồng Tự động Nhập dữ liệu (Local-First Ingestion)
-Đây là "vũ khí bí mật" của SurfSense. Thay vì bắt user bấm nút upload thủ công, hệ thống sử dụng Desktop App và Extension để tự động hóa việc đưa tài liệu vào ngữ cảnh của AI.
+Đây là "vũ khí bí mật" của Nowing. Thay vì bắt user bấm nút upload thủ công, hệ thống sử dụng Desktop App và Extension để tự động hóa việc đưa tài liệu vào ngữ cảnh của AI.
 
 ```mermaid
 sequenceDiagram
@@ -16,14 +16,14 @@ sequenceDiagram
     participant ETL as ETL & Indexing Pipeline
 
     %% Desktop Sync
-    User->>Desk: Luu file PDF/Doc vao thu muc "SurfSense"
+    User->>Desk: Luu file PDF/Doc vao thu muc "Nowing"
     activate Desk
     Desk->>Desk: Phat hien file moi (chokidar)
     Desk->>API: Upload file background
     deactivate Desk
 
     %% Extension Sync
-    User->>Ext: Chon "Luu vao SurfSense" khi dang doc bao
+    User->>Ext: Chon "Luu vao Nowing" khi dang doc bao
     activate Ext
     Ext->>Ext: Dung content.ts trich xuat HTML/Text
     Ext->>API: Gui data qua API
@@ -50,7 +50,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User as Nguoi Dung
-    participant Web as Web (surfsense_web)
+    participant Web as Web (nowing_web)
     participant API as FastAPI Backend
     participant RAG as Retriever (Vector DB)
     participant LLM as AI Agents
@@ -82,7 +82,7 @@ sequenceDiagram
 ---
 
 ## 3. Luồng Hỏi Đáp Thần Tốc (Desktop Quick Ask)
-Một tính năng nổi bật giúp SurfSense gắn chặt vào thói quen hàng ngày của User. Bất kể đang mở app nào, user chỉ cần bấm tổ hợp phím là có thể truy vấn mọi tài liệu.
+Một tính năng nổi bật giúp Nowing gắn chặt vào thói quen hàng ngày của User. Bất kể đang mở app nào, user chỉ cần bấm tổ hợp phím là có thể truy vấn mọi tài liệu.
 
 ```mermaid
 sequenceDiagram
@@ -108,7 +108,7 @@ sequenceDiagram
     
     %% Tuy chon
     User->>QA: Click Open in App
-    QA->>OS: Mo Surfsense Web hoac App chinh tung ung
+    QA->>OS: Mo Nowing Web hoac App chinh tung ung
     deactivate QA
 ```
 
@@ -128,7 +128,7 @@ sequenceDiagram
     activate Desk
     Desk-->>User: Hien "Login with Browser"
     User->>Desk: Bấm Login
-    Desk->>Web: Mo trinh duyet voi Deep Link (schema: surfsense://)
+    Desk->>Web: Mo trinh duyet voi Deep Link (schema: nowing://)
     deactivate Desk
     
     activate Web
@@ -138,7 +138,7 @@ sequenceDiagram
     end
     Web->>API: Tao Token phien lam viec
     API-->>Web: Tra ve Token an toan
-    Web->>Desk: Chuyen huong ve surfsense://auth?token=...
+    Web->>Desk: Chuyen huong ve nowing://auth?token=...
     deactivate Web
     
     activate Desk

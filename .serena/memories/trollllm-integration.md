@@ -1,4 +1,4 @@
-# TrollLLM — Hướng dẫn tích hợp vào SurfSense
+# TrollLLM — Hướng dẫn tích hợp vào Nowing
 
 ## Base URL
 - OpenAI-compatible endpoint: `https://chat.trollllm.xyz/v1`
@@ -20,7 +20,7 @@
 | `gpt-5.2-codex` | OpenAI | Code |
 | `gpt-5.3-codex` | OpenAI | Code |
 
-## Cách add model vào SurfSense (đúng cách)
+## Cách add model vào Nowing (đúng cách)
 
 ### Cách 1 — Dùng Provider = OPENAI (khuyến nghị, dùng cho mọi model)
 - **LLM Provider**: `OPENAI`
@@ -41,5 +41,5 @@
 3. **Base URL sai**: `https://trollllm.xyz/v1` ❌ → `https://chat.trollllm.xyz/v1` ✅
 
 ## Lưu ý đặc biệt
-- TrollLLM yêu cầu `User-Agent` header để bypass Cloudflare, nhưng SurfSense/LiteLLM thường tự set header này.
+- TrollLLM yêu cầu `User-Agent` header để bypass Cloudflare, nhưng Nowing/LiteLLM thường tự set header này.
 - Nếu dùng Anthropic SDK format: dùng `x-api-key` header thay vì `Authorization: Bearer`.

@@ -1,88 +1,52 @@
 
-> surfsense_web@0.0.15 dev
-> next dev --turbopack
+> nowing_web@0.0.15 dev /Users/luisphan/Documents/GitHub/nowing/nowing_web
+> next dev --turbopack -p 4998
 
-▲ Next.js 16.1.6 (Turbopack)
-- Local:         http://localhost:3000
-- Network:       http://192.168.1.9:3000
+▲ Next.js 16.1.0 (Turbopack)
+- Local:         http://localhost:4998
+- Network:       http://192.168.1.3:4998
 - Environments: .env
 - Experiments (use with caution):
   · optimizePackageImports
 
 ✓ Starting...
-[MDX] generated files in 7.297166999999945ms
+[MDX] generated files in 19.011250000000018ms
 [MDX] started dev server
-⨯ Unable to acquire lock at /Users/luisphan/Documents/GitHub/SurfSense/surfsense_web/.next/de
-thread 'tokio-runtime-worker' (11801668) panicked at /Users/geist/dev/actions-runner/_work/next.js/next.js/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
-Failed to restore task data (corrupted database or bug): Meta for determine_module_type_for_directory (TaskId 563198))
-
-Caused by:
-    0: Looking up data for TaskId 563198 from database failed
-    1: Unable to open static sorted file referenced from 00000594.meta
-    2: Unable to open static sorted file 00000590.sst
-    3: No such file or directory (os error 2)
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
-thread 'tokio-runtime-worker' (11801668) panicked at /Users/geist/dev/actions-runner/_work/next.js/next.js/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
-Failed to restore task data (corrupted database or bug): Meta for determine_module_type_for_directory (TaskId 563198))
-
-Caused by:
-    0: Looking up data for TaskId 563198 from database failed
-    1: Unable to open static sorted file referenced from 00000594.meta
-    2: Unable to open static sorted file 00000590.sst
-    3: No such file or directory (os error 2)
-[MDX] generated files in 55.22929099947214ms
-
-thread 'tokio-runtime-worker' (11801675) panicked at /Users/geist/dev/actions-runner/_work/next.js/next.js/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
-Failed to restore task data (corrupted database or bug): Meta for realpath_with_links (TaskId 1366130))
-
-Caused by:
-    0: Looking up data for TaskId 1366130 from database failed
-    1: Unable to open static sorted file referenced from 00000594.meta
-    2: Unable to open static sorted file 00000590.sst
-    3: No such file or directory (os error 2)
-
-thread 'tokio-runtime-worker' (11801674) panicked at /Users/geist/dev/actions-runner/_work/next.js/next.js/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
-Failed to restore task data (corrupted database or bug): Meta for find_context_file (TaskId 572))
-
-Caused by:
-    0: Looking up data for TaskId 572 from database failed
-    1: Unable to open static sorted file referenced from 00000594.meta
-    2: Unable to open static sorted file 00000590.sst
-    3: No such file or directory (os error 2)
-
-thread 'tokio-runtime-worker' (12171593) panicked at /Users/geist/dev/actions-runner/_work/next.js/next.js/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
-Failed to restore task data (corrupted database or bug): Meta for find_context_file (TaskId 523))
-
-Caused by:
-    0: Looking up data for TaskId 523 from database failed
-    1: Unable to open static sorted file referenced from 00000594.meta
-    2: Unable to open static sorted file 00000590.sst
-    3: No such file or directory (os error 2)
-
-thread 'tokio-runtime-worker' (11801674) panicked at /Users/geist/dev/actions-runner/_work/next.js/next.js/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
-Failed to restore task data (corrupted database or bug): Meta for project_container_entrypoints_operation (TaskId 15))
-
-Caused by:
-    0: Looking up data for TaskId 15 from database failed
-    1: Unable to open static sorted file referenced from 00000594.meta
-    2: Unable to open static sorted file 00000590.sst
-    3: No such file or directory (os error 2)
-
-thread 'tokio-runtime-worker' (11801674) panicked at /Users/geist/dev/actions-runner/_work/next.js/next.js/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
-Failed to restore task data (corrupted database or bug): Meta for pick_endpoint (TaskId 929))
-
-Caused by:
-    0: Looking up data for TaskId 929 from database failed
-    1: Unable to open static sorted file referenced from 00000594.meta
-    2: Unable to open static sorted file 00000590.sst
-    3: No such file or directory (os error 2)
-
-thread 'tokio-runtime-worker' (12171593) panicked at /Users/geist/dev/actions-runner/_work/next.js/next.js/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
-Failed to restore task data (corrupted database or bug): Meta for pick_endpoint (TaskId 929))
-
-Caused by:
-    0: Looking up data for TaskId 929 from database failed
-    1: Unable to open static sorted file referenced from 00000594.meta
-    2: Unable to open static sorted file 00000590.sst
-    3: No such file or directory (os error 2)
+✓ Ready in 1883ms
+ GET /dashboard/1/new-chat 200 in 3.8s (compile: 2.9s, render: 892ms)
+ GET /login 200 in 180ms (compile: 48ms, render: 132ms)
+ GET /auth/callback?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxM2IwZWYzOS1lYzVlLTRjMTQtODgyNi04NGRlNDgyYmI0OTQiLCJhdWQiOlsiZmFzdGFwaS11c2VyczphdXRoIl0sImV4cCI6MTc3ODA0NzQ4N30.w_uDGrRRl8GFqnaME6M-Czu5wkBXlCoNyXomgAglKCY 200 in 100ms (compile: 64ms, render: 35ms)
+ GET /dashboard 200 in 365ms (compile: 47ms, render: 318ms)
+ GET /dashboard/1/new-chat 200 in 104ms (compile: 22ms, render: 82ms)
+ GET /dashboard/1/new-chat/6 200 in 268ms (compile: 49ms, render: 220ms)
+✓ Compiled in 1087ms
+✓ Compiled in 1662ms
+✓ Compiled in 1596ms
+Detected multiple Jotai instances. It may cause unexpected behavior with the default store. https://github.com/pmndrs/jotai/discussions/2044
+ GET /dashboard/1/new-chat/19 200 in 2.8s (compile: 952ms, render: 1865ms)
+✓ Compiled in 888ms
+✓ Compiled in 0ms
+✓ Finished filesystem cache database compaction in 23.1s
+✓ Finished writing to filesystem cache in 20.4s
+✓ Compiled in 1002ms
+✓ Compiled in 316ms
+✓ Compiled in 650ms
+✓ Compiled in 544ms
+✓ Compiled in 297ms
+✓ Compiled in 2.7s
+✓ Compiled in 3.9s
+✓ Finished filesystem cache database compaction in 49s
+✓ Finished writing to filesystem cache in 16.4s
+✓ Compiled in 1667ms
+✓ Compiled in 1315ms
+✓ Compiled in 1540ms
+✓ Compiled in 1814ms
+✓ Compiled in 834ms
+✓ Compiled in 1754ms
+✓ Finished filesystem cache database compaction in 63s
+✓ Finished writing to filesystem cache in 53s
+✓ Compiled in 993ms
+✓ Compiled in 365ms
+✓ Compiled in 572ms
+✓ Compiled in 287ms
+ ELIFECYCLE  Command failed.

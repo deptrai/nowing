@@ -1,7 +1,7 @@
 # Kiến Trúc Browser Extension
 
 ## Tổng Quan
-SurfSense Browser Extension là "tai mắt" của hệ thống, cho phép thu thập dữ liệu (ingestion) liền mạch và hỗ trợ người dùng ngay trên bất kỳ trang web nào. Nó được xây dựng bằng **Plasmo Framework**, giúp đơn giản hóa việc phát triển extension cho Chrome (Manifest V3).
+Nowing Browser Extension là "tai mắt" của hệ thống, cho phép thu thập dữ liệu (ingestion) liền mạch và hỗ trợ người dùng ngay trên bất kỳ trang web nào. Nó được xây dựng bằng **Plasmo Framework**, giúp đơn giản hóa việc phát triển extension cho Chrome (Manifest V3).
 
 ## Stack Công Nghệ
 
@@ -19,7 +19,7 @@ SurfSense Browser Extension là "tai mắt" của hệ thống, cho phép thu th
 - **Chức năng**:
     - Đăng nhập/Đăng xuất.
     - Chuyển đổi trạng thái "Tracking" (Bật/Tắt thu thập active tab).
-    - Tìm kiếm nhanh (Quick Search) vào kho kiến thức SurfSense.
+    - Tìm kiếm nhanh (Quick Search) vào kho kiến thức Nowing.
     - Hiển thị thông báo trạng thái hệ thống.
 
 ### 2. Background Service Worker (`background/`)
@@ -34,7 +34,7 @@ SurfSense Browser Extension là "tai mắt" của hệ thống, cho phép thu th
 - **Nhiệm vụ**:
     - Trích xuất nội dung trang (DOM parsing, Readability.js).
     - Lắng nghe các sự kiện (ví dụ: user copy text -> gợi ý lưu làm note).
-    - Inject UI (nếu cần): Hiển thị nút "Lưu vào SurfSense" trực tiếp trên trang.
+    - Inject UI (nếu cần): Hiển thị nút "Lưu vào Nowing" trực tiếp trên trang.
 
 ## Luồng Hoạt Động (Workflows)
 
@@ -51,7 +51,7 @@ SurfSense Browser Extension là "tai mắt" của hệ thống, cho phép thu th
 ### Quy Trình Tra Cứu (Lookup Flow)
 1. User bôi đen 1 đoạn text trên web.
 2. Extension hiển thị tooltip nhỏ.
-3. User click "Search in SurfSense".
+3. User click "Search in Nowing".
 4. Request gửi về Backend để tìm kiếm các tài liệu liên quan đến đoạn text đó.
 5. Kết quả hiển thị ngay trong Side Panel hoặc Popup.
 
@@ -241,7 +241,7 @@ async function fetchTokenData(address: string) {
 // 1. Service Worker caching for static assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open('surfsense-v1').then((cache) => {
+    caches.open('nowing-v1').then((cache) => {
       return cache.addAll([
         '/sidepanel.html',
         '/sidepanel.js',
@@ -254,7 +254,7 @@ self.addEventListener('install', (event) => {
 // 2. IndexedDB for offline chat history
 import { openDB } from 'idb';
 
-const db = await openDB('surfsense-chat', 1, {
+const db = await openDB('nowing-chat', 1, {
   upgrade(db) {
     db.createObjectStore('messages', { keyPath: 'id' });
   },

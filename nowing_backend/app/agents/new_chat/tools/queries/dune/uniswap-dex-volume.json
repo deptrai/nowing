@@ -1,0 +1,18 @@
+{
+  "query_id": 12345,
+  "name": "Uniswap DEX Volume by Pool",
+  "description": "24-hour trading volume, fee revenue, and liquidity for a Uniswap v3 pool address. Shows top traders and price impact statistics.",
+  "params_schema": {
+    "pool_address": {
+      "type": "text",
+      "description": "Uniswap v3 pool contract address (0x...)",
+      "required": true
+    },
+    "days": {
+      "type": "number",
+      "description": "Lookback period in days (default 7)",
+      "required": false
+    }
+  },
+  "dune_url": "https://dune.com/queries/12345"
+}

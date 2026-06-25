@@ -1,13 +1,13 @@
-# SurfSense Stories
+# Nowing Stories
 
-Danh sách các user stories cho dự án SurfSense.
+Danh sách các user stories cho dự án Nowing.
 
 ## 📋 Active Stories
 
 ### Story 1.1: DexScreener Connector Integration
 - **Status**: Ready for Development
 - **Priority**: High
-- **Epic**: SurfSense Connectors Enhancement
+- **Epic**: Nowing Connectors Enhancement
 - **File**: [story-1.1-dexscreener-connector.md](./story-1.1-dexscreener-connector.md)
 - **Implementation Plan**: [dexscreener-connector-implementation-plan.md](../_bmad-output/dexscreener-connector-implementation-plan.md)
 

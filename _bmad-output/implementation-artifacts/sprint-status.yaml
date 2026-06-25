@@ -1,6 +1,6 @@
 # generated: 2026-04-13T02:50:25+07:00
-# last_updated: 2026-04-13T02:50:25+07:00
-# project: SurfSense
+# last_updated: 2026-05-04T01:33:05+07:00
+# project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
 # story_location: {project-root}/_bmad-output/implementation-artifacts
@@ -35,11 +35,22 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-04-17T02:46:00+07:00
-project: SurfSense
+last_updated: 2026-05-06T00:00:00+07:00
+project: Nowing
+# 2026-04-24: Story 0.3 review complete (2 MAJOR fixed inline, 4 MINOR deferred)
+# 2026-04-25: Story 0.6b (Tier 3 paced sequential escalation) scope-in — E2E verified, code merged, docs updated
+# 2026-04-25: Story 0.6b AC8/AC9 extension — SubAgentResilienceMiddleware + partial-synthesis fallback. E2E verified with 0/6 agents scenario → graceful UI response (no more "Sorry, there was an error")
+# 2026-04-25 late: Story 0.6b AC10 — min-interval gate (no bursts possible) + unbounded retry with wall-clock cap. E2E at 8 RPM showed 50+ gate-spacings, 0 stream-fatal 429s, only 3 transient retries across 17+ min. Architecture proven: at any RPM ≥ 1, system pacing guarantees completion.
+# 2026-04-25 evening: Story 0.6b AC11 — Synthesis Mode (no respawn loop). Strip task tool + tool_choice=none + replace directive when pending=[]. LDO token query (chat_id=30) produced full markdown analysis with Copy/Download buttons enabled. Final text output guaranteed regardless of provider RPM.
+# 2026-04-25 late night: Phase 2 UX overhaul planned by Sally (UX) + Mary (BA). 4 sub-epic stories created: 9-UX-1 (Live Research Lab), 9-UX-2 (Crypto Report Layout), 9-UX-3 (Interactive Analysis), 9-UX-4 (Additional Data Sources). 6-8 week rollout. Spec at .claude/plans/harmonic-cuddling-glacier.md.
+# 2026-04-26: Story 9-UX-1c adversarial code review complete. 9 patches applied (P1-P9): stale-closure refs FE, last_heartbeat_at on resume, stop() signal fix, get_running_loop, last_seq ordering, _rebuild_vercel_wire type guards, overflow log wording. 47 BE + 20 FE unit tests pass. Story → done.
+# 2026-04-26: Full 3-layer adversarial review of 9-UX(a,b,c). 42 raw findings → 6 patches applied (pending_delta.clear, deque re-enqueue, flush_task.cancel race, seq:-1 cancel, resume heartbeat, resume toast). 40 unit tests pass.
+# 2026-04-29: Full Story 9 audit — spec vs code gap analysis → 12 fixes applied across all 4 UX stories: tokenomics tool wiring (get_tokeninsight_rating), defillama tool scope (get_live_token_price), narration template coverage (8 new tools), TokenInsight rating prop wire, DegradationNotice.onRetry wiring, dead code deletion (agent-row, section-attribution-badge, wallet-label), Price Alert honest messaging, eth_shock slider added, data-agent-result persistence (streaming-state + page.tsx handleSend/Resume/Regenerate + message-utils metadata), Dune placeholder guard (skip IDs<100k), CoinGecko BE proxy (GET /compare/coingecko-price/{coin_id}), i18n consolidation (8 files, ~18 Vietnamese strings → English). TypeScript compiles clean.
+# 2026-05-01: Adversarial Review Resolution — Resilience & Security overhaul: (1) Redis-based Global Circuit Breaker. (2) Outbound Pacing (Semaphore). (3) Global Tool Error Decorator. (4) Optimistic Fallback (500ms). (5) Crypto Cache Workspace Isolation (search_space_id). 17/17 tests pass. Traceability Matrix updated (100% P0/P1 coverage).
+# 2026-05-01: Senior Architect Critical Review → Epic 11 created (5 stories). P0: SSE heartbeat+reconnect, Redis-first circuit breaker. P1: orphaned cache purge, per-API token buckets, client-side quota enforcement.
 project_key: NOKEY
 tracking_system: file-system
-story_location: "{project-root}/_bmad-output/implementation-artifacts"
+story_location: "{project-root}/_bmad-output/planning-artifacts/stories"
 
 development_status:
   epic-1: done
@@ -85,3 +96,110 @@ development_status:
   6-8-backend-api-admin-approve-gift-request: done
   6-9-frontend-admin-gift-requests-page: done
   epic-6-retrospective: optional
+  epic-7: done
+  7-1-chainlens-research-service-health-check: done
+  7-2-chainlens-deep-research-langgraph-tool: done
+  7-3-agent-intent-detection-streaming: done
+  7-4-feature-flag-configuration: done
+  epic-7-retrospective: optional
+
+  # ═══════════════════════════════════════════════════════════════
+  # CRYPTO ORCHESTRA INITIATIVE (added 2026-04-23 by Mary)
+  # Story files: _bmad-output/planning-artifacts/stories/
+  # ═══════════════════════════════════════════════════════════════
+
+  # ─── EPIC 0: Crypto Foundation (Retroactive — close drift) ───
+  epic-0: done
+  0-1-crypto-tool-infrastructure: done
+  0-2-base-sub-agents: done
+  0-3-main-agent-prompt: done
+  0-4-api-integration-tests: done
+  0-5-parallel-execution-validation: done
+  0-6-error-handling-fallback: done
+  0-6b-rate-limit-paced-escalation: done  # Tier 3 code + docs done, pending unit tests + canary
+  epic-0-retrospective: optional
+
+  # ─── EPIC 9: Crypto Orchestra (Phased rollout 1→2→3) ───
+  epic-9: in-progress  # 2026-05-06: status corrected per IR § QV-10 — 4/6 stories done (9.1, 9.2, 9.4, 9.5); 9.3 + 9.6 backlog
+
+  # Phase 1 — Easy Wins Tier (deterministic APIs)
+  9-1-tokenomics-analyst: done
+  9-4-yield-optimizer: done
+  9-FE-1-orchestra-conductor-strip-citation-stacking: done
+  phase-1-quality-gate-review: in-progress  # 🟡 AMBER — structural gates PASS, canary data pending. See quality-gates/phase-1-quality-gate-review.md
+
+  # Phase 2 — Web Research Tier (Chainlens-heavy) — blocked on Phase 1 GO
+  9-2-whale-tracker: done
+  9-5-governance-analyst: done
+  phase-2-quality-gate-review: backlog
+
+  # Phase 3 — Spike-Required Tier (highest risk) — blocked on Phase 2 GO + spikes
+  # Note: spike research merged into story files (9.3 and 9.6 each have PRE-STORY SPIKE section)
+  9-3-token-unlock-scheduler: backlog
+  9-6-technical-analyst: backlog
+  phase-3-final-quality-gate-review: backlog
+  crypto-orchestra-launch: backlog
+
+  # ─── PHASE 2 UX OVERHAUL (added 2026-04-25 by Sally + Mary) ───
+  # Goal: lift experience to Messari Pro × Perplexity × Nansen bar
+  9-UX-1-live-research-lab: done                 # 2026-04-25 v2 — 22+15 patches applied · 58 tests pass · BE spawn pipeline wired
+  9-UX-1b-background-agent-resume: done          # 2026-04-26: all patches applied via 9-UX-1c; ETA formula fixed (median-based) + replay _ts timestamps; 47 BE + 20 FE tests pass
+  9-UX-1c-background-agent-architectural-fixes: done    # 2026-04-26 — adversarial review complete. 9/9 patches applied (P1-P9), 5 deferred to 9-UX-1d, 7 pre-existing deferred. 47 BE + 20 FE tests pass.
+  9-UX-2-crypto-report-layout: done              # 2026-04-28: closed — 15 patches applied, 9 deferred (TokenHeroCard, AC14 middleware, mobile TOC → 9-UX-3)
+  9-UX-3-interactive-analysis: done                # 2026-04-28: code review done — 7 decisions resolved, 42 patches applied, 11 deferred
+  9-UX-4-additional-data-sources: done            # 2026-04-28: all 15 tasks complete — 4 BE tools, whale_tracker spec, smart_contract CertiK ext, synthesis directive, 4 FE tokens, WalletLabel, TokenInsight badge, Dune deeplink, 2 Playwright specs
+
+  epic-9-retrospective: optional
+
+  # ─── PHASE 3 DATA FOUNDATION (Formerly Epic 10) ───
+  phase-3-data-foundation: done
+  9-DF-1-crypto-data-schema: done
+  9-DF-2-crypto-cache-middleware: done
+  9-DF-3-thundering-herd-protection: done
+  9-DF-4-background-refresh: done
+
+  # ─── ARCHITECTURE RESILIENCE & STABILITY NFRs (Formerly Epic 11) ───
+  # Scope: P0+P1 items — SSE resilience, shared circuit breaker, cache hygiene, rate limiting, quota enforcement
+  architecture-resilience-nfrs: done
+
+  # P0 — Critical
+  11-1-sse-heartbeat-auto-reconnect: done
+  11-2-redis-circuit-breaker: done
+
+  # P1 — Important
+  11-3-orphaned-cache-purge: done
+  11-4-per-api-token-buckets: done
+  11-5-client-quota-enforcement: done
+
+  # Round-2 review follow-ups
+  11-6-production-go-live-hardening: done
+  11-7-resilience-hardening-round2: done
+  11-8-redis-coordinated-tool-rate-limiter: backlog        # 2026-05-06: split from old 11-8 — tool-level _ApiRateLimiter migrate to Redis-coordinated (per AC6 phased rollout: Arkham → Dune → Nansen)
+  11-9-circuit-breaker-redis-down-policy: backlog          # 2026-05-06: split from old 11-8 — explicit fail-open/fail-closed/degrade-to-local policy via CIRCUIT_BREAKER_REDIS_DOWN_POLICY env
+
+  # ─── EPIC 8: Nowing Desktop & Local Intelligence (Formerly Epic 12) ───
+  epic-8: in-progress
+  8-1-desktop-backend-lifecycle: ready-for-dev
+  8-2-local-file-auto-sync: backlog
+  8-3-dynamic-hybrid-llm-routing: backlog
+  8-4-desktop-ux-offline-indicators: backlog
+  epic-8-retrospective: optional
+
+  # ─── EPIC 10: Institutional Research & Risk Management Terminal (Formerly Epic 13) ───
+  epic-10: in-progress
+  10-1-entity-resolution-smart-money: done        # 2026-05-04 re-review: 15 patches applied, committed (5e14cb04c).
+  10-1-1-smart-money-integration: done           # 2026-05-05 code review complete — 36 patches applied (mock removed, threshold 5→3, types tightened, helper extracted, tests realigned with spec sub-task names).
+  10-1-2-nansen-failover-dune-arkham: done  # 2026-05-05: story created — Dune + Arkham as free-tier fallbacks when Nansen has no data (404)
+  10-1-3-smart-money-out-of-scope-followup: done           # 2026-05-06: all 6 QA tasks passed — Nansen TGM 30 wallets/PEPE, CAKE empty-state, middleware pass-through verified, reload persistence confirmed, source_domain SSE verified, prod key TGM tier OK
+  10-1-4-cohort-taxonomy-reimplementation: review          # 2026-05-06: implementation complete — _classify_cohort heuristic + Sankey color-coding + SankeyLegend; 41 new + 75/75 existing smart money tests pass
+  10-1-5-nansen-pagination-multi-page: backlog             # 2026-05-06: drafted — multi-page fetch for accurate net_flow_24h_usd (currently first 30 wallets only)
+  10-1-6a-nansen-tgm-tier-detection: backlog               # 2026-05-06: split from old 10-1-6 — dev-only tier detection + FE notice + graceful fallback
+  10-1-6b-nansen-tgm-customer-comms: backlog               # 2026-05-06: split from old 10-1-6 — cross-functional (Marketing/Sales/Support/Finance) customer comms post 10-1-6a deploy
+  10-1-7-pre-10-1-1-reload-backward-compat: dismissed      # 2026-05-06: dismissed — SQL audit confirms new_chat_messages has no metadata column → zero legacy rows to migrate
+  10-1-8-data-freshness-indicator: backlog                 # 2026-05-06: drafted — per-widget Live/Delayed/Stale tag (FreshnessChip); BLOCKS stories 10-2/10-3/10-4/10-5 to avoid UX regression vs Phụ lục B § 3
+  10-2-protocol-revenue-tokenomics: ready-for-dev
+  10-3-narrative-heatmap-macro: ready-for-dev
+  10-4-enterprise-risk-management: ready-for-dev
+  10-5-liquidity-routing-insights: ready-for-dev
+  10-6-workspace-watchlist-api: done
+  epic-10-retrospective: optional

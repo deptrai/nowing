@@ -1,14 +1,14 @@
-# SurfSense Project Overview
+# Nowing Project Overview
 
 ## Mục Đích Dự Án
-SurfSense là một hệ thống đa nền tảng (Web, Desktop, Extension) cho phép thu thập, lưu trữ, lập chỉ mục (indexing) và phân tích dữ liệu qua AI. Hệ thống sử dụng phương pháp **local-first** sync (ưu tiên đồng bộ local realtime qua Zero) để mang lại trải nghiệm người dùng liền mạch và không có độ trễ. 
+Nowing là một hệ thống đa nền tảng (Web, Desktop, Extension) cho phép thu thập, lưu trữ, lập chỉ mục (indexing) và phân tích dữ liệu qua AI. Hệ thống sử dụng phương pháp **local-first** sync (ưu tiên đồng bộ local realtime qua Zero) để mang lại trải nghiệm người dùng liền mạch và không có độ trễ. 
 
 ## Cấp Độ Kiến Trúc (Executive Summary)
 Dự án được xây dựng dưới dạng **Monorepo** chia làm 4 bộ phận độc lập có tính kết nối cao qua API và Websocket (Sync):
-1. **Frontend App (`surfsense_web`)**: Dashboard và giao diện end-user.
-2. **Backend Service (`surfsense_backend`)**: Nơi xử lý dữ liệu nặng (Extract-Transform-Load, LLM processing, Background Tasks, Embedding).
-3. **Browser Extension (`surfsense_browser_extension`)**: Tool capture dữ liệu từ trình duyệt người dùng.
-4. **Desktop App (`surfsense_desktop`)**: Native client hỗ trợ sâu các tính năng OS-level.
+1. **Frontend App (`nowing_web`)**: Dashboard và giao diện end-user.
+2. **Backend Service (`nowing_backend`)**: Nơi xử lý dữ liệu nặng (Extract-Transform-Load, LLM processing, Background Tasks, Embedding).
+3. **Browser Extension (`nowing_browser_extension`)**: Tool capture dữ liệu từ trình duyệt người dùng.
+4. **Desktop App (`nowing_desktop`)**: Native client hỗ trợ sâu các tính năng OS-level.
 
 ## Tiêu Chuẩn Công Nghệ Cốt Lõi
 | Hạng Mục | Công Nghệ | Vai trò / Justification |
@@ -24,14 +24,14 @@ Dự án được xây dựng dưới dạng **Monorepo** chia làm 4 bộ phậ
 ## Thư Mục Mã Nguồn Chính
 Kiến trúc mã nguồn được phân bổ như sau:
 ```text
-SurfSense/
+Nowing/
 ├── docs/                        # Tài liệu dự án (kết quả sau scan BMAD)
 ├── docker/                      # Cấu hình container & infra (Compose)
-├── surfsense_web/               # Giao diện Next.js
+├── nowing_web/               # Giao diện Next.js
 │   ├── app/                     # Page routers
 │   ├── components/              # ~200 ui components
 │   └── public/                  # Static assets
-├── surfsense_backend/           # Server APIs
+├── nowing_backend/           # Server APIs
 │   ├── app/
 │   │   ├── api/routes           # Định tuyến API
 │   │   ├── schemas/             # Pydantic validation

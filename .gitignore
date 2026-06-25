@@ -1,9 +1,35 @@
 .flashrank_cache*
-./surfsense_backend/podcasts/
+./nowing_backend/podcasts/
 .env
 node_modules/
 .ruff_cache/
 .venv
+.venv_new/
+.venv_py312/
+nowing_backend/backend.log
+.symdex/
 .pnpm-store
 .DS_Store
+<<<<<<< HEAD
 deepagents/.symdex/
+=======
+deepagents/
+
+# Python build / cache artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Serena local cache / project state
+.serena/cache/
+.serena/project.local.yml
+
+# Runtime logs and ad-hoc audio artifacts
+nohup.out
+nowing_backend/nohup.out
+nowing_backend/temp_audio/
+nowing_backend/video_presentation_audio/
+>>>>>>> develop

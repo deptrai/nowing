@@ -62,20 +62,20 @@ function Bump-Toml {
     }
 }
 
-Bump-Json (Join-Path $RepoRoot "surfsense_web\package.json")
-Bump-Json (Join-Path $RepoRoot "surfsense_browser_extension\package.json")
-Bump-Json (Join-Path $RepoRoot "surfsense_desktop\package.json")
-Bump-Toml (Join-Path $RepoRoot "surfsense_backend\pyproject.toml")
+Bump-Json (Join-Path $RepoRoot "nowing_web\package.json")
+Bump-Json (Join-Path $RepoRoot "nowing_browser_extension\package.json")
+Bump-Json (Join-Path $RepoRoot "nowing_desktop\package.json")
+Bump-Toml (Join-Path $RepoRoot "nowing_backend\pyproject.toml")
 
 Write-Host ""
 Write-Host "Syncing lock files..."
 if (Get-Command uv -ErrorAction SilentlyContinue) {
-    Push-Location (Join-Path $RepoRoot "surfsense_backend")
+    Push-Location (Join-Path $RepoRoot "nowing_backend")
     uv lock
     Pop-Location
-    Write-Host "  OK    surfsense_backend/uv.lock"
+    Write-Host "  OK    nowing_backend/uv.lock"
 } else {
-    Write-Host "  SKIP  uv not found -- run 'uv lock' in surfsense_backend/ manually"
+    Write-Host "  SKIP  uv not found -- run 'uv lock' in nowing_backend/ manually"
 }
 
 Write-Host "---------------------------------"

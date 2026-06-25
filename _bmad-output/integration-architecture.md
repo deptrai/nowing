@@ -1,6 +1,6 @@
 # Kiến Trúc Tích Hợp
 
-Tài liệu này phác thảo cách ba thành phần của SurfSense (Backend, Web, Extension) giao tiếp và chia sẻ dữ liệu.
+Tài liệu này phác thảo cách ba thành phần của Nowing (Backend, Web, Extension) giao tiếp và chia sẻ dữ liệu.
 
 ## Sơ Đồ Hệ Thống
 

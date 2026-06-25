@@ -1,0 +1,18 @@
+{
+  "query_id": 12346,
+  "name": "Lido / RocketPool Staking Flows",
+  "description": "Net staking inflows and outflows (ETH, stETH, rETH) for liquid staking protocols. Shows APY trends and validator queue depth.",
+  "params_schema": {
+    "protocol": {
+      "type": "text",
+      "description": "Protocol slug: 'lido' or 'rocketpool'",
+      "required": false
+    },
+    "days": {
+      "type": "number",
+      "description": "Lookback period in days (default 30)",
+      "required": false
+    }
+  },
+  "dune_url": "https://dune.com/queries/12346"
+}

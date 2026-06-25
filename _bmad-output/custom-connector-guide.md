@@ -1,12 +1,12 @@
-# Hướng Dẫn Tạo Custom Connectors cho SurfSense
+# Hướng Dẫn Tạo Custom Connectors cho Nowing
 
 ## Tổng Quan
 
-Bạn **hoàn toàn có thể** tạo custom connectors để kết nối đến các API bên ngoài như DexScreener, DefiLlama để phân tích token crypto. SurfSense có kiến trúc connector rất linh hoạt và dễ mở rộng.
+Bạn **hoàn toàn có thể** tạo custom connectors để kết nối đến các API bên ngoài như DexScreener, DefiLlama để phân tích token crypto. Nowing có kiến trúc connector rất linh hoạt và dễ mở rộng.
 
 ## Kiến Trúc Connector
 
-Mỗi connector trong SurfSense bao gồm 3 phần chính:
+Mỗi connector trong Nowing bao gồm 3 phần chính:
 
 ### 1. **Connector Class** (`app/connectors/`)
 - Xử lý logic kết nối đến API bên ngoài
@@ -26,7 +26,7 @@ Mỗi connector trong SurfSense bao gồm 3 phần chính:
 
 ### Bước 1: Tạo Connector Class
 
-Tạo file `/Users/mac_1/Documents/GitHub/SurfSense/surfsense_backend/app/connectors/dexscreener_connector.py`:
+Tạo file `/Users/mac_1/Documents/GitHub/Nowing/nowing_backend/app/connectors/dexscreener_connector.py`:
 
 ```python
 """
@@ -261,7 +261,7 @@ class DexScreenerConnector:
 
 ### Bước 2: Thêm Connector Type vào Database
 
-Sửa file `/Users/mac_1/Documents/GitHub/SurfSense/surfsense_backend/app/db.py`:
+Sửa file `/Users/mac_1/Documents/GitHub/Nowing/nowing_backend/app/db.py`:
 
 ```python
 class SearchSourceConnectorType(str, Enum):
@@ -272,7 +272,7 @@ class SearchSourceConnectorType(str, Enum):
 
 ### Bước 3: Tạo API Routes
 
-Tạo file `/Users/mac_1/Documents/GitHub/SurfSense/surfsense_backend/app/routes/dexscreener_add_connector_route.py`:
+Tạo file `/Users/mac_1/Documents/GitHub/Nowing/nowing_backend/app/routes/dexscreener_add_connector_route.py`:
 
 ```python
 import logging
@@ -500,7 +500,7 @@ async def test_dexscreener_connector(
 
 ### Bước 4: Đăng Ký Routes
 
-Sửa file `/Users/mac_1/Documents/GitHub/SurfSense/surfsense_backend/app/main.py`:
+Sửa file `/Users/mac_1/Documents/GitHub/Nowing/nowing_backend/app/main.py`:
 
 ```python
 # Import route
@@ -813,7 +813,7 @@ The LLM **WILL NOT** be able to retrieve this data unless you add the connector 
 
 ### The Fix
 
-**File:** `surfsense_backend/app/agents/new_chat/chat_deepagent.py`
+**File:** `nowing_backend/app/agents/new_chat/chat_deepagent.py`
 
 **Add your connector to `_CONNECTOR_TYPE_TO_SEARCHABLE`:**
 
@@ -895,11 +895,11 @@ curl -X POST http://localhost:8000/api/chat \
 
 ## Kết Luận
 
-Với kiến trúc connector linh hoạt của SurfSense, bạn có thể:
+Với kiến trúc connector linh hoạt của Nowing, bạn có thể:
 
 ✅ Kết nối đến **bất kỳ API nào** (DexScreener, DefiLlama, CoinGecko, etc.)
 ✅ Tự động **index và search** data từ nhiều nguồn
 ✅ **Customize** logic fetch và format data
 ✅ **Scale** dễ dàng với nhiều connectors
 
-Connector system cho phép bạn biến SurfSense thành một **unified search platform** cho mọi loại data - từ emails, documents đến crypto analytics!
+Connector system cho phép bạn biến Nowing thành một **unified search platform** cho mọi loại data - từ emails, documents đến crypto analytics!
