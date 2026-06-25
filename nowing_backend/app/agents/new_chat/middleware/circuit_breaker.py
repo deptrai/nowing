@@ -8,8 +8,9 @@ from app.services.crypto_cache_lock import get_redis_client
 
 logger = logging.getLogger(__name__)
 
-# Constants for Breaker behavior
-FAILURE_THRESHOLD = 5
+# Constants for Breaker behavior — per Story 10.1.1 AC3:
+# "Nansen API trả ≥3 lỗi 5xx liên tiếp trong 60s" → threshold=3, window=60s, cooldown=30s
+FAILURE_THRESHOLD = 3
 FAILURE_WINDOW_SECONDS = 60
 OPEN_COOLDOWN_SECONDS = 30
 # Probe allowance is bound to the cooldown window — if no probe arrives within
@@ -29,6 +30,11 @@ def _emit_state_change_log(source: str, from_state: str, to_state: str) -> None:
 
     AC#5 requires structured JSON regardless of upstream logging config, so we
     serialise inline rather than relying on `extra=` + a JSON formatter.
+
+    `source` is vendor-scoped (e.g. "nansen") — multiple tools sharing the same
+    upstream API share one breaker because they share rate limits and outage
+    modes. Per-tool granularity would slow detection (3x failures needed) and
+    add no recovery benefit.
     """
     logger.info(
         json.dumps(

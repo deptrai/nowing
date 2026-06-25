@@ -127,6 +127,7 @@ from .nansen_smart_money import (  # Story 9-UX-4 AC1
     create_nansen_wallet_label_tool,
     create_nansen_token_god_mode_tool,
 )
+from .crypto_smart_money_flow import create_smart_money_flow_tool
 from .certik_skynet import (  # Story 9-UX-4 AC2
     create_certik_audit_score_tool,
     create_certik_incident_history_tool,
@@ -695,6 +696,12 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
         name="get_nansen_token_god_mode",
         description="Get holder distribution by cohort (smart money %, exchanges %, retail %, VCs %) and top-10 concentration for a token",
         factory=lambda deps: create_nansen_token_god_mode_tool(),
+        requires=[],
+    ),
+    ToolDefinition(
+        name="get_smart_money_flow",
+        description="Get smart money flow visualized as a Sankey diagram (nodes and links) representing 24h USD value flows. Use this for flow visualization instead of raw nansen tools.",
+        factory=lambda deps: create_smart_money_flow_tool(),
         requires=[],
     ),
     # =========================================================================

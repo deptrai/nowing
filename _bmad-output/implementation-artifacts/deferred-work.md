@@ -1,5 +1,29 @@
 # Deferred Work
 
+## Deferred from: code review of 10-1-4-cohort-taxonomy-reimplementation (2026-05-06)
+- Misleading "Word-boundary matching" comment in `_classify_cohort` docstring — comment promises stricter matcher than substring `in` impl; will be obsolete after Patch 1 (regex word-boundary). [nansen_smart_money.py:62-63]
+- Unicode lookalike obfuscation (`Bínance`, fullwidth `ＢＩＮＡＮＣＥ`) bypasses keyword matching → label-spoof CEX classified as retail. [nansen_smart_money.py:109]
+- Same wallet appears in multiple Arkham `raw_links` (in + out) → `cohort_summary` count and net_flow inflated vs displayed Sankey nodes. [crypto_smart_money_flow.py:218-226]
+- Dune > `_MAX_WALLETS_IN_SANKEY` rows: cohort_summary computed pre-truncation; legend totals can exceed displayed Sankey nodes. [crypto_smart_money_flow.py:269-308]
+- `SankeyLegend` locale prop not forwarded from `crypto-report-layout` → currency format may diverge from chart in non-en locale. [crypto-report-layout.tsx:354-357]
+- Test coverage for Arkham `fund`/`whale`/`dex` entity-type mappings — current tests cover only CEX-drop and `unknown` fallback. [test_smart_money_fallback.py]
+
+## Deferred from: Story 10.1.1 smart money integration (2026-05-05)
+- **Nansen 404 → empty Sankey for tokens not in Nansen index** (e.g., PEPE với mock key): Fixed 404→empty-wallets trong `nansen_smart_money.py` và added `links.length > 0` FE guard. Full solution cần Dune + Arkham fallback → **Story 10.1.2** (`_bmad-output/planning-artifacts/stories/10-1-2-nansen-failover-dune-arkham.md`).
+- **Local dev luôn empty Sankey** vì `NANSEN_API_KEY=mock-key-for-testing`. Cần set `DUNE_API_KEY` hoặc `ARKHAM_API_KEY` để có real data → Story 10.1.2.
+
+## Deferred from: code review of 10-1-entity-resolution-smart-money.md (2026-05-04)
+- viewMode preference lost on Sheet remount: a11y user toggle "Table View" rồi đóng/mở mobile Sheet → chart view trở lại. Lift state lên context/localStorage. [nowing_web/components/crypto/SankeyFlowChart.tsx:245]
+- `_ALL_TOOL_NAMES` thêm `get_certik_*`, `get_live_token_price` không liên quan Story 10.1: anticipates future stories, scope creep. [nowing_backend/tests/unit/agents/new_chat/test_crypto_subagent_specs.py:131-150]
+- Tokenomics test docstring weakened: "exactly these tools" thay vì list cụ thể; thuộc Story 9.1 scope. [nowing_backend/tests/unit/agents/new_chat/test_crypto_subagent_specs.py:273-274]
+- `min-h-[400px]` outer + `min-h-[300px]` inner double constraint trong Sheet `h-[calc(100%-60px)]`: layout NIT cần visual verification. [nowing_web/components/crypto/SankeyFlowChart.tsx]
+
+## Deferred from: code review of 10-1-entity-resolution-smart-money.md (2026-05-01)
+- Mobile Modal Rendering Crash Risk: The mobile view mounts the `ResponsiveSankey` inside a conditionally opened `<Sheet>`. Nivo charts historically fail to calculate their bounding boxes when mounted inside unmeasured portals/modals, often resulting in a `0x0` invisible chart until a window resize event is triggered. [nowing_web/components/crypto/SankeyFlowChart.tsx]
+- Nivo Link Reference Error: `Nivo Sankey` throws fatal runtime error if link source or target ID missing from nodes array. Guard snippet: `<ResponsiveSankey data={{...data, links: data.links.filter(l => data.nodes.some(n => n.id === l.source) && data.nodes.some(n => n.id === l.target))}} />` [nowing_web/components/crypto/SankeyFlowChart.tsx:81]
+- Poor Error Handling Strategy: The prompt instructs the LLM on how to handle tool errors. Relying on an LLM to reliably parse stringified JSON errors and self-regulate is a known anti-pattern. Error boundaries should be handled in the code's execution layer, not in the prompt text. [nowing_backend/app/agents/new_chat/subagents/crypto/smart_money_spec.py]
+- Brittle Unit Tests: `test_smart_money_analyst_spec_valid` asserts that exactly 5 tools are present (`len(...) == 5`). This is a lazy test that provides no value but guarantees the test suite will break if a valid tool is simply added or removed in the future. [nowing_backend/tests/unit/agents/new_chat/test_crypto_subagent_specs.py]
+
 ## Resolved 2026-04-25 — Lost partial work on rate-limit (Story 0.6b AC8/AC9)
 
 - **Sub-agent 429 killed entire stream + discarded all completed sub-agents' outputs** — deepagents `atask()` had no try/except → exception killed LangGraph stream → user saw "Sorry, there was an error" despite N/6 agents succeeding. **Resolved** by Story 0.6b Layer 4: `SubAgentResilienceMiddleware` (AC8) retries + converts to error ToolMessage; `_extract_partial_analysis` (AC9) salvages from checkpointer when synthesis itself fails. User **always** sees graceful partial result.
@@ -441,3 +465,43 @@ Review: `_bmad-output/test-artifacts/test-reviews/test-review.md` — Overall D 
 - [PROMOTED → 11-6] **`PRO_PLANS` không shared giữa FE và BE** [nowing_web/lib/entitlements.ts:1 + nowing_backend/app/schemas/stripe.py:14-17 + nowing_backend/app/config/__init__.py:317-348] — Hardcoded list trùng 3 nơi. Nếu BE thêm SKU mới (ví dụ `team_yearly`), FE silently deny → silent revenue loss. **Owner: ADR-012 + 11-6 T3.**
 - **Test mock `vi.mock("jotai")` globally** [__tests__/hooks/use-subscription-gate.test.tsx:7-9] — Replace tất cả jotai exports → Provider/useSetAtom undefined trong test. Hidden coupling; chỉ catch bug nếu SUT literally call useAtomValue. Refactor sang dùng test wrapper với Provider.
 - **CTA `/pricing` không locale-prefixed** [ProContentGate.tsx:62] — Hard-code `<Link href="/pricing">`. Nếu project sau add i18n routing (`/en/pricing`, `/vi/pricing`), CTA broken silently. No i18n yet nên defer.
+
+## Deferred from: code review of story-10.1.1 (2026-05-05)
+
+- **Stale closure `assistantMsgId` trong page.tsx handlers** — pre-existing pattern trong tất cả SSE handlers, không phải lỗi do story 10.1.1 introduce. Fix sẽ touch nhiều handler khác (citation_map, agent_results, report_type). [page.tsx:1190]
+- **Net flow sign convention vs link magnitude** — `net_flow_usd` (signed) vs links dùng `abs(flow)`. Có thể là design intentional (Sankey magnitude vs net flow indicator) — cần verify với UX/PO trước khi đổi. [crypto_smart_money_flow.py:79-99]
+- **Singleton `nansen_tool` factory closure** — `nansen_tool = create_nansen_smart_money_tool()` ở module-level closure là pre-existing pattern; refactor cần touch nhiều tools wrapper khác. [crypto_smart_money_flow.py:13-15]
+- **Circuit breaker race condition (is_open → request)** — minor probabilistic gap (~ms): circuit có thể mở giữa `is_open()` check và HTTP request. Cần distributed lock để fix triệt để — không justified cho tool latency. [nansen_smart_money.py:108-110]
+- **`record_success` reset failure counter trên 404** — Trong `nansen_smart_money.py:227-228`, 404 được treat như success → reset failure counter. Debatable: có thể là intentional (404 không phải lỗi service) hoặc bug (che health issue). Cần product decision. [nansen_smart_money.py:227-228]
+- **`import re` inside function body** — Cosmetic; không ảnh hưởng behavior, nhưng pattern không idiomatic Python. [crypto_smart_money_flow.py:17]
+
+## Deferred from: code review of 10-1-2-nansen-failover-dune-arkham.md (2026-05-05)
+- Unbounded Cascading Timeouts — Sequential fallback chain might exceed total reasonable limits if every provider stalls.
+- Dune Connector Interface Mismatch (Missing Chain parameter) — Drops chain parameter for Dune fallback query.
+- Arkham 'Base Address' Semantic Confusion — Arkham transfers might not perfectly mimic curated smart money behavior.
+- Flawed Circuit Breaker Success Metric — Records success purely based on missing exceptions, even if logical API errors occurred.
+
+## Deferred from: code review of 10-1-2-nansen-failover-dune-arkham.md (2026-05-06)
+- Nansen pagination only first page (per_page: 30) — net_flow_24h_usd and signal derived from partial data
+- Arkham 401/403/429 collapsed to None — no differentiation between auth, rate-limit, server errors
+- addr[:8] 8-char label collision risk for Sankey nodes (Nansen uses (addr) suffix; Arkham/Dune don't)
+- tag: "" hardcoded — old Nansen endpoint preserved entityTag; new endpoint silently drops it
+- system_prompt.py duplicate <knowledge_base_only_policy> block at lines 48 and 134
+- Test plan partial (3/5 tests; source_domain attributions tested inline rather than as separate cases)
+- Dune query ID drift — spec recommended 3493826, code defaults to 7431659
+- Spec recommended get_latest_result cache check before triggering new execution (cost optimization)
+- Spec recommended Arkham entity-type filter (entity.type in ["fund", "whale"]) — not implemented
+- Arkham chain parameter dropped — _try_arkham accepts chain but get_transfers doesn't forward it
+- Empty Nansen success falls through to Arkham+Dune — burns rate-limit budget on every empty Ethereum query
+- Multi-worker rate limit: _ApiRateLimiter is per-process module singleton, not Redis-coordinated
+- Arkham usd_gte=1000 hidden filter — silently filters sub-$1k whale activity for low-cap tokens
+- _safe_circuit_is_open fail-open on Redis exception (cost vs availability tradeoff)
+- Cohort taxonomy removed — old code categorized wallets; new code uses raw labels
+- Arkham label collision: same entity name across multiple transfers collapses into single Sankey node
+- Pre-10.1.1 messages may lose Sankey on reload — convertToThreadMessage rebuilds metadata from content parts only
+- Nansen TGM endpoint (/api/v1/tgm/who-bought-sold) requires higher subscription tier than Pro — backward-compat concern
+- source_domain="system" displayed in EmptySmartMoneyState — broken citation badge URL
+- Sub-agent emits smart-money-flow event tied to wrong assistant message — clobbers main metadata
+- pyproject.toml not updated for dune-client — uses raw httpx instead (justified in connector docstring)
+- .env.example claimed updated in spec File List but not visible in this diff
+- Out-of-scope changes for 10.1.2: middleware sub-agent fix, system_prompt rules, empty-state UI, FE source_domain plumbing, Nansen TGM endpoint migration — needs follow-up story

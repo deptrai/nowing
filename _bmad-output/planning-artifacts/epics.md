@@ -149,9 +149,14 @@ FR42: Epic 11 - Circuit Breaker Hardening (HALF_OPEN probe + structured logging)
 FR43: Epic 11 - Orphaned Cache Purge (weekly Celery cleanup)
 FR44: Epic 11 - Per-API Token Bucket Rate Limiters (prevent 429s proactively)
 FR45: Epic 11 - Client-Side Quota Enforcement (offline bypass prevention)
-FR46: Epic 12 - Tự động quản lý vòng đời FastAPI Backend binary trong Electron
-FR47: Epic 12 - Đồng bộ Metadata file cục bộ tự động qua Zero-sync mutators
-FR48: Epic 12 - Dynamic Hybrid LLM Routing (Cloud failover to Local Ollama)
+FR46: Epic 8 - Tự động quản lý vòng đời FastAPI Backend binary trong Electron
+FR47: Epic 8 - Đồng bộ Metadata file cục bộ tự động qua Zero-sync mutators
+FR48: Epic 8 - Dynamic Hybrid LLM Routing (Cloud failover to Local Ollama)
+FR49: Epic 10 - Entity Resolution + Smart Money Sankey (`10-1-*` stories: entity-resolution, smart-money-integration, nansen-failover, out-of-scope-followup, cohort-taxonomy)
+FR50: Epic 10 - Protocol Revenue Tokenomics modeling (`10-2-protocol-revenue-tokenomics`)
+FR51: Epic 10 - Narrative & Macro Correlation heatmap (`10-3-narrative-heatmap-macro`)
+FR52: Epic 10 - Enterprise Risk Management portfolio stress testing (`10-4-enterprise-risk-management`)
+FR53: Epic 10 - Liquidity Routing CEX/DEX depth profiler (`10-5-liquidity-routing-insights`)
 
 ### Crypto Sub-Agents NonFunctional Requirements
 
@@ -1107,7 +1112,9 @@ So that my analysis matches what Messari/Nansen terminal users get.
 
 ---
 
-## Epic 10: Persistent Shared Crypto Data Layer
+## Epic 9-DF: Persistent Shared Crypto Data Layer
+
+> **🔄 Renamed 2026-05-06:** Originally "Epic 10" in this document. Renamed to `9-DF-*` (Data Foundation) prefix to make room for new "Epic 10: Institutional Research Terminal" (FR49-53). Story files renamed: `9-DF-1-crypto-data-schema`, `9-DF-2-crypto-cache-middleware`, `9-DF-3-thundering-herd-protection`, `9-DF-4-background-refresh`. Original 5th story (Watchlist API) renamed to `10-6-workspace-watchlist-api` to match sprint-status assignment to Epic 10.
 
 **Added:** 2026-04-29 by Winston (Architect) + Mary (BA)
 **Goal:** Eliminate redundant external API calls across concurrent users by persisting crypto tool results in a shared PostgreSQL pool with append-only timeline and hybrid TTL strategy.
@@ -1115,15 +1122,15 @@ So that my analysis matches what Messari/Nansen terminal users get.
 **FRs Covered:** FR36 (Schema), FR37 (Middleware), FR38 (Thundering Herd), FR39 (Background Refresh), FR40 (Watchlist API)
 **NFRs Covered:** NFR-CS5 (Cache Hit Rate ≥ 70%), NFR-CS6 (Cache Failure Isolation)
 
-**Context:** Crypto Orchestra spawn 7 sub-agents × 2-5 external API calls = ~15-35 API calls per analysis. 100 concurrent users querying ETH → ~3500 API calls/hr for identical data. Epic 10 reduces này xuống ~1 API call set per TTL window per token.
+**Context:** Crypto Orchestra spawn 7 sub-agents × 2-5 external API calls = ~15-35 API calls per analysis. 100 concurrent users querying ETH → ~3500 API calls/hr for identical data. Epic 9-DF reduces này xuống ~1 API call set per TTL window per token.
 
 **Estimated Effort:** 2-3 weeks (1 BE)
 **Prerequisite:** Epic 0 (crypto tool infrastructure), Epic 9 (sub-agents must exist)
-**Enables:** Epic 10 watchlist data powers future "token tracker" dashboard features
+**Enables:** Watchlist data powers future "token tracker" dashboard features
 
 ---
 
-### Story 10.1: Crypto Data Schema & Services
+### Story 9-DF-1: Crypto Data Schema & Services
 📄 **Story file**: [`stories/10-1-crypto-data-schema.md`](./stories/10-1-crypto-data-schema.md) | **Phase 1 · Ready-for-dev**
 As a backend developer,
 I want the 3 new DB tables (crypto_projects, crypto_data_snapshots, search_space_crypto_watchlist) + CryptoProjectResolver + CryptoDataStore services,
@@ -1149,12 +1156,12 @@ So that subsequent stories have a stable foundation to build cache middleware an
 **When** called after `expires_at`
 **Then** returns None (cache miss)
 
-**Effort:** 3-4 days · **Blocks:** Story 10.2
+**Effort:** 3-4 days · **Blocks:** Story 9-DF-2
 
 ---
 
-### Story 10.2: CryptoDataCacheMiddleware
-📄 **Story file**: [`stories/10-2-crypto-cache-middleware.md`](./stories/10-2-crypto-cache-middleware.md) | **Phase 2 · Depends: 10.1**
+### Story 9-DF-2: CryptoDataCacheMiddleware
+📄 **Story file**: [`stories/9-DF-2-crypto-cache-middleware.md`](./stories/9-DF-2-crypto-cache-middleware.md) | **Phase 2 · Depends: 9-DF-1**
 As a sub-agent making tool calls,
 I want tool results transparently served from DB cache when fresh,
 So that external API calls are skipped for data already fetched within TTL window.
@@ -1181,12 +1188,12 @@ So that external API calls are skipped for data already fetched within TTL windo
 **When** any crypto tool called
 **Then** middleware is complete pass-through, zero overhead
 
-**Effort:** 3-4 days · **Depends:** 10.1 · **Blocks:** Story 10.3
+**Effort:** 3-4 days · **Depends:** 9-DF-1 · **Blocks:** Story 9-DF-3
 
 ---
 
-### Story 10.3: Thundering Herd Protection
-📄 **Story file**: [`stories/10-3-thundering-herd-protection.md`](./stories/10-3-thundering-herd-protection.md) | **Phase 3 · Depends: 10.2**
+### Story 9-DF-3: Thundering Herd Protection
+📄 **Story file**: [`stories/9-DF-3-thundering-herd-protection.md`](./stories/9-DF-3-thundering-herd-protection.md) | **Phase 3 · Depends: 9-DF-2**
 As a system handling concurrent users,
 I want distributed locking to prevent N concurrent cache misses from all calling the same API simultaneously,
 So that 50 users querying ETH at the same moment trigger ≤ 1 API call instead of 50.
@@ -1208,12 +1215,12 @@ So that 50 users querying ETH at the same moment trigger ≤ 1 API call instead 
 **When** another request acquires lock after 60s TTL
 **Then** second request calls API and writes snapshot normally (no deadlock)
 
-**Effort:** 2-3 days · **Depends:** 10.2
+**Effort:** 2-3 days · **Depends:** 9-DF-2
 
 ---
 
-### Story 10.4: Background Data Refresh
-📄 **Story file**: [`stories/10-4-background-refresh.md`](./stories/10-4-background-refresh.md) | **Phase 4 · Depends: 10.1**
+### Story 9-DF-4: Background Data Refresh
+📄 **Story file**: [`stories/9-DF-4-background-refresh.md`](./stories/9-DF-4-background-refresh.md) | **Phase 4 · Depends: 9-DF-1**
 As a system operator,
 I want Celery background tasks to pre-warm popular token data before TTL expiry,
 So that active users rarely experience cache misses for frequently queried tokens.
@@ -1236,12 +1243,14 @@ So that active users rarely experience cache misses for frequently queried token
 **When** API returns 429
 **Then** task logs warning, skips that category, continues with others (no crash)
 
-**Effort:** 2-3 days · **Depends:** 10.1 (schema)
+**Effort:** 2-3 days · **Depends:** 9-DF-1 (schema)
 
 ---
 
-### Story 10.5: Workspace Watchlist API
-📄 **Story file**: [`stories/10-5-workspace-watchlist-api.md`](./stories/10-5-workspace-watchlist-api.md) | **Phase 5 · Depends: 10.1**
+### Story 10-6: Workspace Watchlist API (originally drafted as 9-DF-5)
+📄 **Story file**: [`stories/10-6-workspace-watchlist-api.md`](./stories/10-6-workspace-watchlist-api.md) | **Done · Depends: 9-DF-1**
+
+> **🔄 Renamed 2026-05-06** per IR § QV-7 — story file renamed `9-DF-5-*` → `10-6-*` to match sprint-status.yaml. Drafted as part of 9-DF data layer epic but assigned to Epic 10 (Institutional Research) for sprint tracking.
 As a workspace member,
 I want REST endpoints to access my workspace's tracked crypto projects and their historical data timeline,
 So that future dashboard features (token tracker, price history chart) can consume this data.
@@ -1259,7 +1268,77 @@ So that future dashboard features (token tracker, price history chart) can consu
 **And** response is read-only (no write endpoints in this story)
 **And** max 100 results per page (cursor-based pagination)
 
-**Effort:** 2-3 days · **Depends:** 10.1
+**Effort:** 2-3 days · **Depends:** 9-DF-1
+
+---
+
+## Epic 10: Institutional Research Terminal
+
+> **🔄 Renamed 2026-05-06:** Originally tracked as "Epic 13" trong UX spec (`Phụ lục B`) and ADR (`adrs/architecture-extension-epic13.md`). Renamed to `Epic 10` in sprint-status when old Epic 10 (Data Layer) was renumbered to `9-DF-*`.
+
+**Added:** 2026-05-03 by Winston (Architect) + Mary (BA)
+**Goal:** Mở rộng Nowing từ retail co-pilot thành institutional-grade research terminal. Process high-velocity on-chain data + off-chain sentiment streams thông qua Sankey/Heatmap/Sandbox visualizations, với architecture pragmatic favoring 3rd-party APIs (Nansen, Arkham, DefiLlama) over self-hosted complex distributed systems.
+**ADR:** [`adrs/architecture-extension-epic13.md`](./adrs/architecture-extension-epic13.md) (filename retained for git history; content covers Epic 10 institutional research)
+**FRs Covered:** FR49 (Entity Resolution + Smart Money Sankey), FR50 (Protocol Revenue Modeling), FR51 (Narrative & Macro Correlation), FR52 (Enterprise Risk Management), FR53 (Liquidity Routing)
+**Prerequisite:** Epic 9 (sub-agents Tokenomics + Whale + Yield + Smart Contract), Epic 9-DF (CryptoDataCacheMiddleware), Epic 11 (resilience hardening)
+
+**Estimated Effort:** 8-12 weeks total across 5 stories
+  - 10-1 → 10-1-x (Smart Money Sankey + entity resolution + cohort taxonomy): 4 weeks (in-progress, partial done)
+  - 10-2 (Protocol Revenue Tokenomics): 2 weeks
+  - 10-3 (Narrative Heatmap): 2-3 weeks
+  - 10-4 (Enterprise Risk Management): 2-3 weeks
+  - 10-5 (Liquidity Routing): 2 weeks
+
+---
+
+### Story 10-1: Entity Resolution & Smart Money (Foundation)
+📄 **Story file**: [`stories/10-1-entity-resolution-smart-money.md`](./stories/10-1-entity-resolution-smart-money.md) | **Done**
+Foundation for FR49 — DexScreener resolver + DataFusionMiddleware + Sankey component infrastructure.
+
+> **Numbering convention (per IR § QV-11):** Epic 10 uses 3-level story numbering `10-X-Y` for FR49 (smart money) chỉ khi feature có nhiều phases natural sequencing (foundation → integration → fallback → cohort → tier handling). Other Epic 10 stories (10-2, 10-3, 10-4, 10-5, 10-6) use standard 2-level numbering. The 3-level pattern is intentional design choice, not legacy artifact.
+
+**Sub-stories** (3-level numbering for phased rollout of FR49):
+- **10-1-1** Smart Money Integration — Nansen tool wrapper, circuit breaker, UI mounting (done)
+- **10-1-2** Nansen Failover — Dune + Arkham fallbacks (done)
+- **10-1-3** Out-of-Scope Followup — middleware sub-agent fix, DECISION RULE, empty-state UI, FE source_domain plumbing, Nansen TGM endpoint migration (in-progress, retroactive doc)
+- **10-1-4** Cohort Taxonomy Re-implementation — wallet categorization (smart_money/cex/dex/retail/insider/unknown), Sankey color-coding, SankeyLegend component (review)
+- **10-1-5** Nansen Pagination Multi-Page — multi-page fetch for accurate net_flow (backlog)
+- **10-1-6** Nansen TGM Tier Detection — tier mismatch handling + customer comms (backlog)
+- **10-1-7** Pre-10.1.1 Reload Backward-Compat — DB migration for legacy messages (backlog)
+
+---
+
+### Story 10-2: Protocol Revenue & Tokenomics
+📄 **Story file**: [`stories/10-2-protocol-revenue-tokenomics.md`](./stories/10-2-protocol-revenue-tokenomics.md) | **Ready-for-dev**
+**FR Coverage:** FR50
+Phân tích P/E, P/S ratio dựa trên DefiLlama/Token Terminal. Vesting schedule sandbox client-side simulation.
+
+---
+
+### Story 10-3: Narrative Heatmap & Macro Correlation
+📄 **Story file**: [`stories/10-3-narrative-heatmap-macro.md`](./stories/10-3-narrative-heatmap-macro.md) | **Ready-for-dev**
+**FR Coverage:** FR51
+NLP heatmap quét governance forums, GitHub, Twitter. Treemap visualization với sentiment color coding.
+
+---
+
+### Story 10-4: Enterprise Risk Management
+📄 **Story file**: [`stories/10-4-enterprise-risk-management.md`](./stories/10-4-enterprise-risk-management.md) | **Ready-for-dev**
+**FR Coverage:** FR52
+Portfolio stress testing dưới kịch bản sụp đổ, AI scan smart contract bugs, regulatory risks (SEC classification).
+
+---
+
+### Story 10-5: Liquidity Routing Insights
+📄 **Story file**: [`stories/10-5-liquidity-routing-insights.md`](./stories/10-5-liquidity-routing-insights.md) | **Ready-for-dev**
+**FR Coverage:** FR53
+CEX/DEX order book depth profiler + multi-chain yield scanner.
+
+---
+
+### Story 10-6: Workspace Watchlist API (originally drafted as 9-DF-5)
+📄 **Story file**: [`stories/10-6-workspace-watchlist-api.md`](./stories/10-6-workspace-watchlist-api.md) | **Done**
+**FR Coverage:** FR40 (data layer infra) + Epic 10 watchlist consumer.
 
 ---
 
@@ -1277,7 +1356,7 @@ So that future dashboard features (token tracker, price history chart) can consu
   - 11-1..11-5: 2-3 weeks (delivered 2026-05-02)
   - 11-6 (production hardening): 4 days (P0 — pre-launch)
   - 11-7 (resilience round 2): 5 days (P1 — within 2 weeks post-launch)
-**Prerequisite:** Epic 10 (crypto data layer — cache infrastructure)
+**Prerequisite:** Epic 9-DF (crypto data layer — cache infrastructure)
 
 ---
 
@@ -1421,11 +1500,14 @@ So that production stability degrades gracefully under sustained load and edge c
 **When** PM/Architect reviews,
 **Then** an ADR is written (ADR-013) documenting the design decision: snapshots intentionally bi-modal (global + per-workspace) OR refresh task should pass `search_space_id`.
 
-### Epic 12: Nowing Desktop & Local Intelligence
+### Epic 8: Nowing Desktop & Local Intelligence
+
+> **🔄 Renamed 2026-05-06:** Originally "Epic 12" in this document. Renamed to `Epic 8` in sprint-status (`epic-8: in-progress`) — sequential numbering after Epic 7. Story files `8-1` through `8-4`.
+
 Người dùng có thể sử dụng Nowing như một ứng dụng Native trên máy tính, hỗ trợ quản lý tài liệu local tự động và chat với AI hoàn toàn Offline khi cần thiết. Epic này tập trung vào việc tối ưu hóa trải nghiệm trên môi trường máy tính cá nhân và tích hợp LLM cục bộ.
 **FRs covered:** FR46, FR47, FR48
 
-#### Story 12.1: Quản lý Vòng đời Backend Binary trong Electron (Desktop Backend Lifecycle)
+#### Story 8.1: Quản lý Vòng đời Backend Binary trong Electron (Desktop Backend Lifecycle)
 As a Kỹ sư Hệ thống,
 I want đóng gói FastAPI Backend thành file binary và tích hợp vào tiến trình nền của Electron,
 So that người dùng chỉ cần mở 1 file ứng dụng duy nhất là có thể sử dụng đầy đủ tính năng mà không cần cài đặt Python thủ công.
@@ -1437,7 +1519,7 @@ So that người dùng chỉ cần mở 1 file ứng dụng duy nhất là có t
 **And** khi tắt ứng dụng Electron, tiến trình Backend cũng được đóng (cleanup) an toàn.
 **And** Ứng dụng hiển thị thông báo nếu Backend không thể khởi chạy.
 
-#### Story 12.2: Đồng bộ Metadata Tài liệu Local tự động (Local File Auto-Sync)
+#### Story 8.2: Đồng bộ Metadata Tài liệu Local tự động (Local File Auto-Sync)
 As a Người dùng,
 I want chỉ định một thư mục trên máy tính và mọi file PDF/TXT trong đó tự động xuất hiện trong Knowledge Base,
 So that tôi không phải tải lên (upload) thủ công từng file một.
@@ -1448,7 +1530,7 @@ So that tôi không phải tải lên (upload) thủ công từng file một.
 **Then** thư viện `chokidar` phát hiện thay đổi và trigger Zero-sync mutator để cập nhật Metadata
 **And** tài liệu xuất hiện trong danh sách Knowledge Base với trạng thái "Local" (FR47).
 
-#### Story 12.3: Định tuyến Hybrid LLM thông minh (Dynamic Hybrid LLM Routing)
+#### Story 8.3: Định tuyến Hybrid LLM thông minh (Dynamic Hybrid LLM Routing)
 As a Người dùng,
 I want hệ thống tự động chuyển sang dùng Ollama khi tôi mất mạng hoặc khi tôi chọn model Local,
 So that việc nghiên cứu và hội thoại không bị gián đoạn.
@@ -1459,7 +1541,7 @@ So that việc nghiên cứu và hội thoại không bị gián đoạn.
 **Then** hệ thống định tuyến yêu cầu tới `localhost:11434` (Ollama) qua Electron IPC (NFR-S3)
 **And** phản hồi từ Local LLM được stream mượt mà lên UI (FR48).
 
-#### Story 12.4: Giao diện Chỉ báo Trạng thái & Cấu hình Offline (Desktop UX & Offline Indicators)
+#### Story 8.4: Giao diện Chỉ báo Trạng thái & Cấu hình Offline (Desktop UX & Offline Indicators)
 As a Người dùng,
 I want thấy rõ mình đang Online hay Offline và dễ dàng cấu hình Ollama,
 So that tôi chủ động biết được khả năng phản hồi của hệ thống.

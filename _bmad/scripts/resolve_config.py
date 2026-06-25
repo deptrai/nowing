@@ -32,10 +32,13 @@ from pathlib import Path
 try:
     import tomllib
 except ImportError:
-    sys.stderr.write(
-        "error: Python 3.11+ is required (stdlib `tomllib` not found).\n"
-    )
-    sys.exit(3)
+    try:
+        import tomli as tomllib
+    except ImportError:
+        sys.stderr.write(
+            "error: Python 3.11+ is required (stdlib `tomllib` not found).\n"
+        )
+        sys.exit(3)
 
 
 _MISSING = object()

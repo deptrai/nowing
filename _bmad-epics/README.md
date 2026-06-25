@@ -30,8 +30,9 @@ Tài liệu này tổ chức tất cả epics và user stories cho Nowing 2.0, �
 | [Epic 2: Smart Monitoring & Alerts](./epic-2-smart-monitoring-alerts.md) | Phase 2 | 3 | 🚧 IN PROGRESS | 100% ✅ | 0% ❌ | P0 |
 | [Epic 3: Trading Intelligence](./epic-3-trading-intelligence.md) | Phase 3 | 3 | 🚧 IN PROGRESS | 100% ✅ | 0% ❌ | P1 |
 | [Epic 4: Content Creation & Productivity](./epic-4-content-creation-productivity.md) | Phase 4 | 5 | 🚧 IN PROGRESS | 100% ✅ | 0% ❌ | P2 |
+| [Epic 13: Institutional Research Terminal](./epic-13-institutional-research.md) | Phase 5 | 5 | 📝 PLANNING | 0% ❌ | 0% ❌ | P2 |
 
-**Total:** 4 epics, 21 user stories
+**Total:** 5 epics, 26 user stories
 
 **🔴 BLOCKER:** Backend APIs chưa được implement (Authentication, Settings, Chat sync, Data APIs)
 

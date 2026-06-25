@@ -1,4 +1,5 @@
 import type { ThreadMessageLike } from "@assistant-ui/react";
+import type { SankeyLink, SankeyNode, SmartMoneyFlowData } from "./streaming-state";
 import type { MessageRecord } from "./thread-persistence";
 
 /**
@@ -18,7 +19,8 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 				return (
 					partType !== "mentioned-documents" &&
 					partType !== "attachments" &&
-					partType !== "data-citation-map"
+					partType !== "data-citation-map" &&
+					partType !== "data-smart-money-flow"
 				);
 			})
 			.map((part: unknown) => {
@@ -47,6 +49,7 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 	// so CryptoCitationProvider has it after page reload
 	let citationMap: Record<string, unknown> | undefined;
 	let agentResults: Array<{ agentId: string; resultText: string; truncated: boolean }> | undefined;
+	let smartMoneyFlow: SmartMoneyFlowData | undefined;
 	if (Array.isArray(msg.content)) {
 		for (const part of msg.content) {
 			if (
@@ -74,11 +77,47 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 					agentResults = arPart.data.results;
 				}
 			}
+			if (
+				typeof part === "object" &&
+				part !== null &&
+				"type" in part &&
+				(part as { type: string }).type === "data-smart-money-flow"
+			) {
+				const smfPart = part as {
+					type: string;
+					data?: {
+						nodes?: unknown;
+						links?: unknown;
+						net_flow_amount?: unknown;
+						currency?: unknown;
+						source_domain?: unknown;
+						cohort_summary?: unknown;
+					};
+				};
+				if (Array.isArray(smfPart.data?.nodes)) {
+					smartMoneyFlow = {
+						nodes: smfPart.data.nodes as SankeyNode[],
+						links: Array.isArray(smfPart.data.links) ? (smfPart.data.links as SankeyLink[]) : [],
+						net_flow_amount: Number(smfPart.data.net_flow_amount ?? 0) || 0,
+						currency: typeof smfPart.data.currency === "string" ? smfPart.data.currency : "USD",
+						source_domain:
+							typeof smfPart.data.source_domain === "string"
+								? smfPart.data.source_domain
+								: undefined,
+						cohort_summary:
+							smfPart.data.cohort_summary &&
+							typeof smfPart.data.cohort_summary === "object" &&
+							!Array.isArray(smfPart.data.cohort_summary)
+								? (smfPart.data.cohort_summary as SmartMoneyFlowData["cohort_summary"])
+								: undefined,
+					};
+				}
+			}
 		}
 	}
 
 	const metadata =
-		msg.author_id || citationMap || agentResults
+		msg.author_id || citationMap || agentResults || smartMoneyFlow
 			? {
 					custom: {
 						...(msg.author_id
@@ -91,6 +130,7 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 							: {}),
 						...(citationMap ? { citation_map: citationMap } : {}),
 						...(agentResults ? { agent_results: agentResults } : {}),
+						...(smartMoneyFlow ? { smart_money_flow: smartMoneyFlow } : {}),
 					},
 				}
 			: undefined;

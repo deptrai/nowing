@@ -92,6 +92,12 @@ from app.agents.new_chat.subagents.crypto.yield_optimizer_spec import (
     YIELD_OPTIMIZER_NAME,
     YIELD_OPTIMIZER_PROMPT,
 )
+from app.agents.new_chat.subagents.crypto.smart_money_spec import (
+    SMART_MONEY_ALLOWED_TOOLS,
+    SMART_MONEY_ANALYST_DESCRIPTION,
+    SMART_MONEY_ANALYST_NAME,
+    SMART_MONEY_ANALYST_PROMPT,
+)
 from app.agents.new_chat.subagents.crypto.whale_tracker_spec import (
     WHALE_TRACKER_ALLOWED_TOOLS,
     WHALE_TRACKER_DESCRIPTION,
@@ -969,6 +975,29 @@ class SourceAttributionMiddleware(AgentMiddleware):
                 custom_event_name="orchestra_fact_captured",
             )
 
+        # Story 10.1.1: emit smart-money-flow event for FE visualization.
+        # Only emit when payload has the visualization shape — error dicts
+        # ({"error": ...}) must NOT be forwarded as flow data.
+        if (
+            tool_name == "get_smart_money_flow"
+            and isinstance(result, dict)
+            and "nodes" in result
+            and "links" in result
+        ):
+            _emit_orchestra_event(
+                "smart-money-flow",
+                {
+                    "agentId": self._agent_name,
+                    "nodes": result.get("nodes", []),
+                    "links": result.get("links", []),
+                    "net_flow_amount": result.get("net_flow_amount", 0.0),
+                    "currency": result.get("currency", "USD"),
+                    "source_domain": result.get("source_domain"),
+                    "cohort_summary": result.get("cohort_summary"),
+                },
+                custom_event_name="smart_money_flow",
+            )
+
         return result
 
 
@@ -1671,18 +1700,15 @@ synthesize with what's available."""
             )
             return ModelResponse(result=[synthetic_ai])
 
-        # Non-comprehensive query: inject directive into system message and delegate to LLM.
-        # Wrap with RateLimitError catch + indefinite retry — provider 429 is transient,
-        # we MUST eventually complete the response. Exponential backoff capped at MAX_BACKOFF
-        # so the operator sees the system pacing instead of giving up.
-        from deepagents.middleware._utils import append_to_system_message
-
-        new_sys = append_to_system_message(request.system_message, self._DIRECTIVE)
+        # Non-comprehensive query: pass through unchanged so the LLM follows
+        # the DECISION RULE in system_prompt.py (call direct tool, no sub-agents).
+        # Keep retry-on-429 wrapper because provider 429 is transient and we MUST
+        # eventually complete the response. Exponential backoff capped at MAX_BACKOFF.
         main_attempt = 0
         main_started = time.time()
         while True:
             try:
-                return await handler(request.override(system_message=new_sys, messages=messages))
+                return await handler(request)
             except Exception as exc:
                 err_str = str(exc).lower()
                 is_rate_limit = (
@@ -2320,6 +2346,7 @@ async def create_nowing_deep_agent(
     smart_contract_tools = _scope_tools(SMART_CONTRACT_ALLOWED_TOOLS, SMART_CONTRACT_ANALYST_NAME)
     tokenomics_tools = _scope_tools(TOKENOMICS_ALLOWED_TOOLS, TOKENOMICS_ANALYST_NAME)
     yield_optimizer_tools = _scope_tools(YIELD_OPTIMIZER_ALLOWED_TOOLS, YIELD_OPTIMIZER_NAME)
+    smart_money_tools = _scope_tools(SMART_MONEY_ALLOWED_TOOLS, SMART_MONEY_ANALYST_NAME)
 
     # whale_tracker is optional — only built when feature flag is on (Story 9-UX-4 AC5).
     _whale_tracker_enabled = (
@@ -2393,6 +2420,14 @@ async def create_nowing_deep_agent(
         "tools": yield_optimizer_tools,
         "middleware": _build_gp_middleware(agent_name=YIELD_OPTIMIZER_NAME),
     }
+    smart_money_spec: SubAgent = {  # type: ignore[typeddict-unknown-key]
+        "name": SMART_MONEY_ANALYST_NAME,
+        "description": SMART_MONEY_ANALYST_DESCRIPTION,
+        "system_prompt": SMART_MONEY_ANALYST_PROMPT,
+        "model": llm,
+        "tools": smart_money_tools,
+        "middleware": _build_gp_middleware(agent_name=SMART_MONEY_ANALYST_NAME),
+    }
 
     # whale_tracker spec — only built when CRYPTO_ORCHESTRA_ENABLE_WHALE_TRACKER=true (AC5)
     whale_tracker_spec: SubAgent | None = (
@@ -2442,6 +2477,7 @@ async def create_nowing_deep_agent(
                 smart_contract_analyst_spec,
                 tokenomics_analyst_spec,    # Story 9.1
                 yield_optimizer_spec,       # Story 9.4
+                smart_money_spec,           # Story 10.1
                 *([whale_tracker_spec] if whale_tracker_spec is not None else []),  # Story 9-UX-4 AC5
             ],
         ),

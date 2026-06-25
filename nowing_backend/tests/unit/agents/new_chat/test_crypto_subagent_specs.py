@@ -44,6 +44,12 @@ from app.agents.new_chat.subagents.crypto.yield_optimizer_spec import (
     YIELD_OPTIMIZER_NAME,
     YIELD_OPTIMIZER_PROMPT,
 )
+from app.agents.new_chat.subagents.crypto.smart_money_spec import (
+    SMART_MONEY_ALLOWED_TOOLS,
+    SMART_MONEY_ANALYST_DESCRIPTION,
+    SMART_MONEY_ANALYST_NAME,
+    SMART_MONEY_ANALYST_PROMPT,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +65,7 @@ from app.agents.new_chat.subagents.crypto.yield_optimizer_spec import (
         ("smart_contract_analyst", SMART_CONTRACT_ANALYST_PROMPT),
         ("tokenomics_analyst", TOKENOMICS_ANALYST_PROMPT),
         ("yield_optimizer", YIELD_OPTIMIZER_PROMPT),
+        ("smart_money_analyst", SMART_MONEY_ANALYST_PROMPT),
     ],
 )
 def test_prompts_under_token_budget(label: str, prompt: str) -> None:
@@ -124,6 +131,7 @@ _ALL_TOOL_NAMES = [
     "get_defillama_yields",
     "get_defillama_stablecoins",
     "get_defillama_bridges",
+    "get_live_token_price",
     # DexScreener
     "get_live_token_data",
     # Chainlens
@@ -134,9 +142,17 @@ _ALL_TOOL_NAMES = [
     # News + CoinGecko
     "get_crypto_news",
     "get_coingecko_token_info",
+    "get_tokeninsight_rating",
     # Contract analysis
     "get_contract_info",
     "check_token_security",
+    "get_certik_audit_score",
+    "get_certik_incident_history",
+    # Nansen / Smart Money
+    "get_smart_money_flow",
+    "get_nansen_smart_money",
+    "get_nansen_wallet_label",
+    "get_nansen_token_god_mode",
     # Unrelated tools (must NOT appear in scoped lists)
     "web_search",
     "read_file",
@@ -235,8 +251,13 @@ def test_chainlens_available_to_all_crypto_agents() -> None:
 
 
 def test_unrelated_tools_excluded_from_all_crypto_agents() -> None:
-    """Tools like web_search/read_file/create_document must not leak into any crypto agent."""
-    unrelated = {"web_search", "read_file", "create_document"}
+    """Tools like read_file/create_document must not leak into any crypto agent.
+
+    web_search is generally excluded BUT smart_money_analyst is whitelisted to use
+    it as a fallback when Nansen rate-limits (Story 10.1, prior review finding).
+    """
+    base_unrelated = {"read_file", "create_document"}
+    web_search_users = {"smart_money_analyst"}  # explicit whitelist
     for label, allowed in [
         ("defillama_analyst", _DEFILLAMA_ALLOWED),
         ("sentiment_analyst", _SENTIMENT_ALLOWED),
@@ -244,7 +265,9 @@ def test_unrelated_tools_excluded_from_all_crypto_agents() -> None:
         ("smart_contract_analyst", _SMART_CONTRACT_ALLOWED),
         ("tokenomics_analyst", _TOKENOMICS_ALLOWED),
         ("yield_optimizer", _YIELD_OPTIMIZER_ALLOWED),
+        ("smart_money_analyst", SMART_MONEY_ALLOWED_TOOLS),
     ]:
+        unrelated = base_unrelated if label in web_search_users else base_unrelated | {"web_search"}
         scoped_names = {t.name for t in _scope(allowed)}
         leaked = scoped_names & unrelated
         assert not leaked, f"{label} has unrelated tools: {leaked}"
@@ -255,11 +278,22 @@ def test_unrelated_tools_excluded_from_all_crypto_agents() -> None:
 # ---------------------------------------------------------------------------
 
 def test_tokenomics_has_exactly_coingecko_and_chainlens() -> None:
-    """Story 9.1 AC3: tokenomics_analyst must have ONLY get_coingecko_token_info
-    and chainlens_deep_research — nothing else."""
+    """Story 9.1 AC3: tokenomics_analyst must have exactly these tools."""
     assert set(TOKENOMICS_ALLOWED_TOOLS) == {
         "get_coingecko_token_info",
+        "get_tokeninsight_rating",
         "chainlens_deep_research",
+    }
+
+
+def test_smart_money_has_exactly_nansen_and_web_search() -> None:
+    """Story 10.1.1: smart_money_analyst must have exactly these tools."""
+    assert set(SMART_MONEY_ALLOWED_TOOLS) == {
+        "get_smart_money_flow",
+        "get_nansen_smart_money",
+        "get_nansen_wallet_label",
+        "get_nansen_token_god_mode",
+        "web_search",
     }
 
 
@@ -318,6 +352,7 @@ def test_allowed_tools_exist_in_real_registry() -> None:
         ("smart_contract_analyst", SMART_CONTRACT_ALLOWED_TOOLS),
         ("tokenomics_analyst", TOKENOMICS_ALLOWED_TOOLS),
         ("yield_optimizer", YIELD_OPTIMIZER_ALLOWED_TOOLS),
+        ("smart_money_analyst", SMART_MONEY_ALLOWED_TOOLS),
     ]:
         missing = set(allowed) - registered
         assert not missing, (
@@ -328,16 +363,19 @@ def test_allowed_tools_exist_in_real_registry() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Story 9.4: assert SubAgentMiddleware registers exactly 7 sub-agents
-# (general_purpose + 4 Epic 0.2 base crypto agents + tokenomics_analyst + yield_optimizer)
+# Story 10.1: assert SubAgentMiddleware registers exactly 8 sub-agents
+# (general_purpose + 4 Epic 0.2 base + tokenomics + yield_optimizer + smart_money)
+# whale_tracker is conditional on feature flag — counted separately.
 # ---------------------------------------------------------------------------
 
-def test_subagent_middleware_registers_seven_agents() -> None:
-    """chat_deepagent.py must wire exactly 7 sub-agents after Story 9.4.
+def test_subagent_middleware_registers_eight_agents() -> None:
+    """chat_deepagent.py must wire exactly 8 unconditional sub-agents.
 
     Greps the source for the SubAgentMiddleware(...) block to verify the
-    subagents= list contains exactly the expected 7 spec references. This
-    guards against accidental additions/removals without test coverage.
+    subagents= list contains exactly the expected spec identifiers. The
+    whale_tracker is wrapped in a conditional spread (`*([...] if ...)`),
+    which is normalized to a single placeholder before token comparison so
+    the test stays stable across formatting changes of that conditional.
     """
     import re
     from pathlib import Path
@@ -350,16 +388,25 @@ def test_subagent_middleware_registers_seven_agents() -> None:
 
     source = source_path.read_text(encoding="utf-8")
 
-    # Match SubAgentMiddleware(...) call and extract the subagents=[...] list.
-    # Strip inline comments before splitting by comma.
+    # Pre-normalize the conditional spread for whale_tracker into a single
+    # identifier BEFORE extraction so the inner `]` of `[whale_tracker_spec]`
+    # does not prematurely close the outer subagents=[...] capture.
+    normalized_source = re.sub(
+        r"\*\(\s*\[whale_tracker_spec\].*?\)",
+        "whale_tracker_spec_optional",
+        source,
+        flags=re.DOTALL,
+    )
+
     match = re.search(
         r"SubAgentMiddleware\s*\(\s*.*?subagents\s*=\s*\[(.*?)\]\s*,?\s*\)",
-        source,
+        normalized_source,
         re.DOTALL,
     )
     assert match, "Could not locate SubAgentMiddleware(subagents=[...]) in chat_deepagent.py"
 
     subagents_block = match.group(1)
+    # Strip inline comments
     cleaned = re.sub(r"#[^\n]*", "", subagents_block)
 
     expected_specs = {
@@ -370,6 +417,8 @@ def test_subagent_middleware_registers_seven_agents() -> None:
         "smart_contract_analyst_spec",
         "tokenomics_analyst_spec",
         "yield_optimizer_spec",
+        "smart_money_spec",
+        "whale_tracker_spec_optional",
     }
     found_specs = {
         token.strip() for token in cleaned.split(",") if token.strip()
@@ -379,9 +428,6 @@ def test_subagent_middleware_registers_seven_agents() -> None:
         f"SubAgentMiddleware subagent registration drift.\n"
         f"  Expected: {sorted(expected_specs)}\n"
         f"  Found:    {sorted(found_specs)}"
-    )
-    assert len(found_specs) == 7, (
-        f"Expected exactly 7 sub-agents, got {len(found_specs)}: {sorted(found_specs)}"
     )
 
 
@@ -429,3 +475,4 @@ def test_yield_optimizer_tools_are_stateless() -> None:
             f"yield_optimizer tool {tool_name!r} must be stateless (requires=[]), "
             f"got requires={td.requires!r}. NFR-CS4 violated."
         )
+

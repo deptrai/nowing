@@ -3,6 +3,7 @@ import { app, BrowserWindow } from 'electron';
 let isQuitting = false;
 import { registerGlobalErrorHandlers, showErrorDialog } from './modules/errors';
 import { startNextServer } from './modules/server';
+import { startFastAPIBackend, shutdownFastAPIBackend } from './modules/backend-manager';
 import { createMainWindow, getMainWindow } from './modules/window';
 import { setupDeepLinks, handlePendingDeepLink } from './modules/deep-links';
 import { setupAutoUpdater } from './modules/auto-updater';
@@ -27,6 +28,7 @@ app.whenReady().then(async () => {
   trackEvent('desktop_app_launched');
   setupMenu();
   try {
+    await startFastAPIBackend();
     await startNextServer();
   } catch (error) {
     showErrorDialog('Failed to start Nowing', error);
@@ -78,6 +80,7 @@ app.on('will-quit', async (e) => {
   if (didCleanup) return;
   didCleanup = true;
   e.preventDefault();
+  shutdownFastAPIBackend();
   unregisterQuickAsk();
   unregisterAutocomplete();
   unregisterFolderWatcher();

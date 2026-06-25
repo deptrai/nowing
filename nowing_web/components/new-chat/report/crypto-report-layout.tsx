@@ -40,8 +40,81 @@ const CoinComparisonOverlay = dynamic(
 	() => import("../compare/coin-comparison-overlay").then((m) => m.CoinComparisonOverlay),
 	{ ssr: false }
 );
+const SankeyFlowChart = dynamic(
+	() => import("@/components/crypto/SankeyFlowChart").then((m) => m.SankeyFlowChart),
+	{
+		ssr: false,
+		loading: () => <div className="h-[400px] w-full animate-pulse bg-muted/20 rounded-xl" />,
+	}
+);
+const SankeyLegend = dynamic(
+	() => import("@/components/crypto/SankeyLegend").then((m) => m.SankeyLegend),
+	{ ssr: false }
+);
 
 const SENTINEL = "<!-- crypto-report-v2 -->";
+
+type WalletCohort = "smart_money" | "cex" | "dex" | "retail" | "insider" | "unknown";
+
+interface CohortSummaryEntry {
+	count: number;
+	net_flow_usd: number;
+}
+
+interface SankeyNode {
+	id: string;
+	cohort?: WalletCohort;
+}
+
+interface SankeyLink {
+	source: string;
+	target: string;
+	value: number;
+}
+
+interface SmartMoneyFlowData {
+	nodes: SankeyNode[];
+	links: SankeyLink[];
+	net_flow_amount: number;
+	currency: string;
+	source_domain?: string;
+	cohort_summary?: Partial<Record<WalletCohort, CohortSummaryEntry>>;
+}
+
+function EmptySmartMoneyState({ sourceDomain }: { sourceDomain?: string }) {
+	return (
+		<div className="rounded-xl border border-border/40 bg-muted/10 p-8 text-center">
+			<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted/30">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					className="text-muted-foreground"
+				>
+					<path d="M3 7c2 0 3 2 6 2s4-2 6-2 4 2 6 2" />
+					<path d="M3 12c2 0 3 2 6 2s4-2 6-2 4 2 6 2" />
+					<path d="M3 17c2 0 3 2 6 2s4-2 6-2 4 2 6 2" />
+				</svg>
+			</div>
+			<h4 className="mb-1 text-sm font-semibold text-foreground">No labeled smart money flow</h4>
+			<p className="mx-auto max-w-md text-xs text-muted-foreground">
+				No labeled smart-money inflows/outflows for this token on Ethereum. Activity may be
+				primarily on another chain (e.g., BNB Chain for CAKE, Solana for SOL-native tokens).
+			</p>
+			{sourceDomain && (
+				<p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground/70">
+					source: {sourceDomain}
+				</p>
+			)}
+		</div>
+	);
+}
 
 interface CryptoReportMeta {
 	report_type?: string;
@@ -51,10 +124,16 @@ interface CryptoReportMeta {
 	coingecko_id?: string;
 	follow_ups?: string[];
 	thread_id?: number;
+	smart_money_flow?: SmartMoneyFlowData;
 }
 
 function isCryptoReport(text: string, meta: CryptoReportMeta | null): boolean {
 	if (meta?.report_type === "comprehensive_crypto") return true;
+	// Standalone smart money flow queries don't carry report_type or sentinel,
+	// but still need the crypto layout to host the Sankey chart. Other sections
+	// (TokenHero, TOC, etc.) are independently conditional and skip cleanly when
+	// their data is absent — so this path produces a minimal layout, not noise.
+	if (meta?.smart_money_flow) return true;
 	return text.includes(SENTINEL);
 }
 
@@ -83,6 +162,8 @@ const CryptoReportLayoutImpl = () => {
 			((message as { metadata?: { custom?: unknown } })?.metadata
 				?.custom as CryptoReportMeta | null) ?? null
 	);
+
+	console.log("CryptoReportLayoutImpl meta keys:", JSON.stringify(meta ? Object.keys(meta) : null));
 
 	const [selectedCitation, setSelectedCitation] = useState<CryptoDataCitation | null>(null);
 	const [panelOpen, setPanelOpen] = useState(false);
@@ -201,9 +282,7 @@ const CryptoReportLayoutImpl = () => {
 				{/* Round-2 review: TOC also gated. The TOC enumerates every Pro-only
 				    section heading and links straight into the (still-DOM) blurred
 				    body, leaking the report's outline to free users. */}
-				{isProUser ? (
-					<ReportTOC content={cleanText} className="hidden lg:block" />
-				) : null}
+				{isProUser ? <ReportTOC content={cleanText} className="hidden lg:block" /> : null}
 
 				<div className="min-w-0 flex-1">
 					<TokenHeroCard
@@ -255,6 +334,34 @@ const CryptoReportLayoutImpl = () => {
 							)}
 						</ProContentGate>
 					</div>
+
+					{meta?.smart_money_flow && Array.isArray(meta.smart_money_flow.nodes) && (
+						<div className="mt-6">
+							<ProContentGate
+								title="Smart Money Flow"
+								description="Visualize whale accumulation and distribution with Pro."
+							>
+								{Array.isArray(meta.smart_money_flow.links) &&
+								meta.smart_money_flow.links.length > 0 ? (
+									<>
+										<SankeyFlowChart
+											nodes={meta.smart_money_flow.nodes}
+											links={meta.smart_money_flow.links}
+											netFlowAmount={meta.smart_money_flow.net_flow_amount}
+											currency={meta.smart_money_flow.currency}
+											isLoading={false}
+										/>
+										<SankeyLegend
+											cohortSummary={meta.smart_money_flow.cohort_summary}
+											currency={meta.smart_money_flow.currency}
+										/>
+									</>
+								) : (
+									<EmptySmartMoneyState sourceDomain={meta.smart_money_flow.source_domain} />
+								)}
+							</ProContentGate>
+						</div>
+					)}
 
 					<NextActionBar
 						tokenSymbol={tokenSymbol}

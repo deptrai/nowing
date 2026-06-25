@@ -48,6 +48,7 @@ TOOL_CATEGORY_MAP: dict[str, tuple[DataCategory, str]] = {
     "get_nansen_smart_money": (DataCategory.SMART_MONEY, "nansen"),
     "get_nansen_wallet_label": (DataCategory.SMART_MONEY, "nansen"),
     "get_nansen_token_god_mode": (DataCategory.SMART_MONEY, "nansen"),
+    "get_smart_money_flow": (DataCategory.SMART_MONEY, "nansen"),
     # run_dune_query excluded: Dune query IDs are not token-resolvable
     "check_token_security": (DataCategory.SECURITY_AUDIT, "goplus"),
     "get_certik_audit_score": (DataCategory.SECURITY_AUDIT, "certik"),

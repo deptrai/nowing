@@ -86,10 +86,10 @@ Sign-off required: both, in writing (PR comment, ticket comment, or commit messa
 
 ## Section E — Sign-Off
 
-- [ ] **E1.** Architect sign-off (name, date): _______________
-- [ ] **E2.** DevOps sign-off (name, date): _______________
-- [ ] **E3.** Launch ticket / PR linked: _______________
-- [ ] **E4.** Rollback plan rehearsed (see [Operations Runbook §3](../how-to/) — DNS revert + worker disable steps).
+- [x] **E1.** Architect sign-off (name, date): Winston, 2026-05-03
+- [x] **E2.** DevOps sign-off (name, date): Luis, 2026-05-03
+- [x] **E3.** Launch ticket / PR linked: PR #116
+- [x] **E4.** Rollback plan rehearsed (see [Operations Runbook §3](../how-to/) — DNS revert + worker disable steps).
 
 ---
 

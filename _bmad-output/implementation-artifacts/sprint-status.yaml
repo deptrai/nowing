@@ -1,5 +1,5 @@
 # generated: 2026-04-13T02:50:25+07:00
-# last_updated: 2026-04-25T15:30:00+07:00
+# last_updated: 2026-05-04T01:33:05+07:00
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-13T02:50:25+07:00
-last_updated: 2026-05-02T00:00:00+07:00
+last_updated: 2026-05-06T00:00:00+07:00
 project: Nowing
 # 2026-04-24: Story 0.3 review complete (2 MAJOR fixed inline, 4 MINOR deferred)
 # 2026-04-25: Story 0.6b (Tier 3 paced sequential escalation) scope-in — E2E verified, code merged, docs updated
@@ -120,7 +120,7 @@ development_status:
   epic-0-retrospective: optional
 
   # ─── EPIC 9: Crypto Orchestra (Phased rollout 1→2→3) ───
-  epic-9: backlog
+  epic-9: in-progress  # 2026-05-06: status corrected per IR § QV-10 — 4/6 stories done (9.1, 9.2, 9.4, 9.5); 9.3 + 9.6 backlog
 
   # Phase 1 — Easy Wins Tier (deterministic APIs)
   9-1-tokenomics-analyst: done
@@ -151,20 +151,16 @@ development_status:
 
   epic-9-retrospective: optional
 
-  # ─── EPIC 10: Crypto Data Layer (Persistent shared cache) ───
-  epic-10: done
+  # ─── PHASE 3 DATA FOUNDATION (Formerly Epic 10) ───
+  phase-3-data-foundation: done
+  9-DF-1-crypto-data-schema: done
+  9-DF-2-crypto-cache-middleware: done
+  9-DF-3-thundering-herd-protection: done
+  9-DF-4-background-refresh: done
 
-  10-1-crypto-data-schema: done
-  10-2-crypto-cache-middleware: done
-  10-3-thundering-herd-protection: done
-  10-4-background-refresh: done
-  10-5-workspace-watchlist-api: done
-  epic-10-retrospective: optional
-
-  # ─── EPIC 11: Architecture Resilience & Stability (from Senior Architect Review 2026-05-01) ───
-  # Source: _bmad-output/architecture-improvement-proposals-2026-05-01.md (v2)
+  # ─── ARCHITECTURE RESILIENCE & STABILITY NFRs (Formerly Epic 11) ───
   # Scope: P0+P1 items — SSE resilience, shared circuit breaker, cache hygiene, rate limiting, quota enforcement
-  epic-11: done  # All P0 and P1 stories shipped 2026-05-02; T5 production-mirror sign-off gated by deployment runbook
+  architecture-resilience-nfrs: done
 
   # P0 — Critical
   11-1-sse-heartbeat-auto-reconnect: done
@@ -175,8 +171,35 @@ development_status:
   11-4-per-api-token-buckets: done
   11-5-client-quota-enforcement: done
 
-  # Round-2 review follow-ups (added 2026-05-02 by Sprint Change Proposal)
-  11-6-production-go-live-hardening: done          # P0 — completed 2026-05-02 (CDN docs, HTTP/2 docs, plan-id codegen, Redis-flap state-mirror)
-  11-7-resilience-hardening-round2: done           # P1 — completed 2026-05-02 (release API, heartbeat cancel safety, orphan-purge index, ADR-013 accepted)
+  # Round-2 review follow-ups
+  11-6-production-go-live-hardening: done
+  11-7-resilience-hardening-round2: done
+  11-8-redis-coordinated-tool-rate-limiter: backlog        # 2026-05-06: split from old 11-8 — tool-level _ApiRateLimiter migrate to Redis-coordinated (per AC6 phased rollout: Arkham → Dune → Nansen)
+  11-9-circuit-breaker-redis-down-policy: backlog          # 2026-05-06: split from old 11-8 — explicit fail-open/fail-closed/degrade-to-local policy via CIRCUIT_BREAKER_REDIS_DOWN_POLICY env
 
-  epic-11-retrospective: optional
+  # ─── EPIC 8: Nowing Desktop & Local Intelligence (Formerly Epic 12) ───
+  epic-8: in-progress
+  8-1-desktop-backend-lifecycle: ready-for-dev
+  8-2-local-file-auto-sync: backlog
+  8-3-dynamic-hybrid-llm-routing: backlog
+  8-4-desktop-ux-offline-indicators: backlog
+  epic-8-retrospective: optional
+
+  # ─── EPIC 10: Institutional Research & Risk Management Terminal (Formerly Epic 13) ───
+  epic-10: in-progress
+  10-1-entity-resolution-smart-money: done        # 2026-05-04 re-review: 15 patches applied, committed (5e14cb04c).
+  10-1-1-smart-money-integration: done           # 2026-05-05 code review complete — 36 patches applied (mock removed, threshold 5→3, types tightened, helper extracted, tests realigned with spec sub-task names).
+  10-1-2-nansen-failover-dune-arkham: done  # 2026-05-05: story created — Dune + Arkham as free-tier fallbacks when Nansen has no data (404)
+  10-1-3-smart-money-out-of-scope-followup: done           # 2026-05-06: all 6 QA tasks passed — Nansen TGM 30 wallets/PEPE, CAKE empty-state, middleware pass-through verified, reload persistence confirmed, source_domain SSE verified, prod key TGM tier OK
+  10-1-4-cohort-taxonomy-reimplementation: review          # 2026-05-06: implementation complete — _classify_cohort heuristic + Sankey color-coding + SankeyLegend; 41 new + 75/75 existing smart money tests pass
+  10-1-5-nansen-pagination-multi-page: backlog             # 2026-05-06: drafted — multi-page fetch for accurate net_flow_24h_usd (currently first 30 wallets only)
+  10-1-6a-nansen-tgm-tier-detection: backlog               # 2026-05-06: split from old 10-1-6 — dev-only tier detection + FE notice + graceful fallback
+  10-1-6b-nansen-tgm-customer-comms: backlog               # 2026-05-06: split from old 10-1-6 — cross-functional (Marketing/Sales/Support/Finance) customer comms post 10-1-6a deploy
+  10-1-7-pre-10-1-1-reload-backward-compat: dismissed      # 2026-05-06: dismissed — SQL audit confirms new_chat_messages has no metadata column → zero legacy rows to migrate
+  10-1-8-data-freshness-indicator: backlog                 # 2026-05-06: drafted — per-widget Live/Delayed/Stale tag (FreshnessChip); BLOCKS stories 10-2/10-3/10-4/10-5 to avoid UX regression vs Phụ lục B § 3
+  10-2-protocol-revenue-tokenomics: ready-for-dev
+  10-3-narrative-heatmap-macro: ready-for-dev
+  10-4-enterprise-risk-management: ready-for-dev
+  10-5-liquidity-routing-insights: ready-for-dev
+  10-6-workspace-watchlist-api: done
+  epic-10-retrospective: optional
