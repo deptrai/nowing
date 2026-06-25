@@ -135,9 +135,24 @@ class LLMRouterService:
             logger.debug("LLM Router already initialized, skipping")
             return
 
-        # Build model list from global configs
+        # Build model list from global configs.
+        # Configs with ``exclude_from_router: true`` are skipped — they remain
+        # available as explicit model selections but are NOT added to the
+        # ``auto`` router group.  This is used for models that have their own
+        # built-in tools / system prompt (e.g. coding-agent models proxied
+        # through OpenAI-compatible endpoints) which conflict with the
+        # Nowing agent's tool set and cause tool-calling failures in Auto mode.
         model_list = []
+        skipped = 0
         for config in global_configs:
+            if config.get("exclude_from_router"):
+                skipped += 1
+                logger.info(
+                    "Skipping model %s (id=%s) for router: exclude_from_router=true",
+                    config.get("model_name"),
+                    config.get("id"),
+                )
+                continue
             deployment = cls._config_to_deployment(config)
             if deployment:
                 model_list.append(deployment)
@@ -184,9 +199,11 @@ class LLMRouterService:
             instance._router = Router(**router_kwargs)
             instance._initialized = True
             logger.info(
-                "LLM Router initialized with %d deployments, "
+                "LLM Router initialized with %d deployments "
+                "(%d excluded from router), "
                 "strategy: %s, context_window_fallbacks: %s",
                 len(model_list),
+                skipped,
                 final_settings.get("routing_strategy"),
                 ctx_fallbacks or "none",
             )

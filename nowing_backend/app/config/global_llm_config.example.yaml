@@ -378,6 +378,12 @@ global_vision_llm_configs:
 # - All standard LiteLLM providers are supported
 # - rpm/tpm: Optional rate limits for load balancing (requests/tokens per minute)
 #   These help the router distribute load evenly and avoid rate limit errors
+# - exclude_from_router: true | false (default: false) — if true, this model is
+#   NOT added to the Auto mode LiteLLM Router group. It remains available as an
+#   explicit model selection but won't be selected by Auto mode. Use this for
+#   models that have their own built-in tools or system prompt (e.g. coding
+#   agent models proxied through OpenAI-compatible endpoints) which conflict
+#   with the Nowing agent's tool set and cause tool-calling failures.
 #
 #
 # IMAGE GENERATION NOTES:
