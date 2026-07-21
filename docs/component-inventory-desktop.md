@@ -1,4 +1,4 @@
-# SurfSense Desktop - Component Inventory
+# Nowing Desktop - Component Inventory
 
 **Ngày tạo:** 2026-07-21 16:49:13
 

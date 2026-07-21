@@ -1,4 +1,4 @@
-# Hướng dẫn phát triển - SurfSense Web
+# Hướng dẫn phát triển - Nowing Web
 
 **Ngày tạo:** 2026-07-21 16:59:34
 
@@ -10,7 +10,7 @@
 ## Cài đặt
 
 ```bash
-cd surfsense_web
+cd nowing_web
 pnpm install
 ```
 

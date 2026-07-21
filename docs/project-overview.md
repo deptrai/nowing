@@ -1,10 +1,10 @@
-# SurfSense - Tổng quan dự án
+# Nowing - Tổng quan dự án
 
 **Ngày tạo:** 2026-07-21 16:57:34
 
 ## Executive Summary
 
-SurfSense là nền tảng nghiên cứu web mở (open-source NotebookLM alternative) cho AI agents, cung cấp live data connectors qua REST API và MCP server. Hệ thống gồm backend Python/FastAPI, frontend Next.js, desktop Electron, browser extension Plasmo, plugin Obsidian, MCP server Python, và evaluation harness.
+Nowing là nền tảng nghiên cứu web mở (open-source NotebookLM alternative) cho AI agents, cung cấp live data connectors qua REST API và MCP server. Hệ thống gồm backend Python/FastAPI, frontend Next.js, desktop Electron, browser extension Plasmo, plugin Obsidian, MCP server Python, và evaluation harness.
 
 ## Phân loại dự án
 
@@ -15,59 +15,59 @@ SurfSense là nền tảng nghiên cứu web mở (open-source NotebookLM altern
 
 ## Cấu trúc các phần
 
-### SurfSense Backend
+### Nowing Backend
 
 - **Loại:** backend
-- **Vị trí:** `/Users/luisphan/Documents/SurfSense/surfsense_backend`
+- **Vị trí:** `/Users/luisphan/Documents/Nowing/nowing_backend`
 - **Công nghệ:** Python 3.12 / FastAPI
 
-### SurfSense Web
+### Nowing Web
 
 - **Loại:** web
-- **Vị trí:** `/Users/luisphan/Documents/SurfSense/surfsense_web`
+- **Vị trí:** `/Users/luisphan/Documents/Nowing/nowing_web`
 - **Công nghệ:** Next.js 16 / React 19
 
-### SurfSense Browser Extension
+### Nowing Browser Extension
 
 - **Loại:** extension
-- **Vị trí:** `/Users/luisphan/Documents/SurfSense/surfsense_browser_extension`
+- **Vị trí:** `/Users/luisphan/Documents/Nowing/nowing_browser_extension`
 - **Công nghệ:** Plasmo / React 18
 
-### SurfSense Desktop
+### Nowing Desktop
 
 - **Loại:** desktop
-- **Vị trí:** `/Users/luisphan/Documents/SurfSense/surfsense_desktop`
+- **Vị trí:** `/Users/luisphan/Documents/Nowing/nowing_desktop`
 - **Công nghệ:** Electron 42 / TypeScript
 
-### SurfSense Obsidian Plugin
+### Nowing Obsidian Plugin
 
 - **Loại:** extension
-- **Vị trí:** `/Users/luisphan/Documents/SurfSense/surfsense_obsidian`
+- **Vị trí:** `/Users/luisphan/Documents/Nowing/nowing_obsidian`
 - **Công nghệ:** TypeScript / esbuild / Obsidian API
 
-### SurfSense MCP Server
+### Nowing MCP Server
 
 - **Loại:** backend
-- **Vị trí:** `/Users/luisphan/Documents/SurfSense/surfsense_mcp`
+- **Vị trí:** `/Users/luisphan/Documents/Nowing/nowing_mcp`
 - **Công nghệ:** Python 3.11 / MCP SDK / Starlette
 
-### SurfSense Evals
+### Nowing Evals
 
 - **Loại:** data
-- **Vị trí:** `/Users/luisphan/Documents/SurfSense/surfsense_evals`
+- **Vị trí:** `/Users/luisphan/Documents/Nowing/nowing_evals`
 - **Công nghệ:** Python 3.12 / CLI
 
 ## Tổng quan công nghệ
 
 | Phần | Công nghệ chính | Framework | Package Manager |
 |---|---|---|---|
-| SurfSense Backend | Python 3.12 | FastAPI / MCP SDK / CLI | uv / pip |
-| SurfSense Web | Node.js 20+ | Next.js 16, React 19, Tailwind CSS v4 | pnpm |
+| Nowing Backend | Python 3.12 | FastAPI / MCP SDK / CLI | uv / pip |
+| Nowing Web | Node.js 20+ | Next.js 16, React 19, Tailwind CSS v4 | pnpm |
 | Browser Extension | Node.js 18+ | Plasmo, React 18, Tailwind CSS | pnpm |
 | Desktop | Node.js | Electron 42, TypeScript | pnpm |
 | Obsidian Plugin | Node.js | TypeScript, esbuild, Obsidian API | npm/pnpm |
-| SurfSense MCP Server | Python 3.11 | FastAPI / MCP SDK / CLI | uv / pip |
-| SurfSense Evals | Python 3.12 | FastAPI / MCP SDK / CLI | uv / pip |
+| Nowing MCP Server | Python 3.11 | FastAPI / MCP SDK / CLI | uv / pip |
+| Nowing Evals | Python 3.12 | FastAPI / MCP SDK / CLI | uv / pip |
 
 ## Điểm nổi bật kiến trúc
 

@@ -99,19 +99,19 @@ jobs:
           node-version: 22
           cache: 'pnpm'
           cache-dependency-path: |
-            surfsense_web/pnpm-lock.yaml
-            surfsense_desktop/pnpm-lock.yaml
+            nowing_web/pnpm-lock.yaml
+            nowing_desktop/pnpm-lock.yaml
 
       - name: Install web dependencies
         run: pnpm install
-        working-directory: surfsense_web
+        working-directory: nowing_web
 
       - name: Build Next.js standalone
         run: pnpm build
-        working-directory: surfsense_web
+        working-directory: nowing_web
         env:
           NEXT_PUBLIC_FASTAPI_BACKEND_URL: ${{ vars.HOSTED_BACKEND_URL }}
-          SURFSENSE_BACKEND_INTERNAL_URL: ${{ vars.HOSTED_BACKEND_URL }}
+          NOWING_BACKEND_INTERNAL_URL: ${{ vars.HOSTED_BACKEND_URL }}
           NEXT_PUBLIC_ZERO_CACHE_URL: ${{ vars.NEXT_PUBLIC_ZERO_CACHE_URL }}
           NEXT_PUBLIC_DEPLOYMENT_MODE: ${{ vars.NEXT_PUBLIC_DEPLOYMENT_MODE }}
           NEXT_PUBLIC_AUTH_TYPE: ${{ vars.NEXT_PUBLIC_AUTH_TYPE }}
@@ -120,11 +120,11 @@ jobs:
 
       - name: Install desktop dependencies
         run: pnpm install
-        working-directory: surfsense_desktop
+        working-directory: nowing_desktop
 
       - name: Build Electron
         run: pnpm build
-        working-directory: surfsense_desktop
+        working-directory: nowing_desktop
         env:
           HOSTED_BACKEND_URL: ${{ vars.HOSTED_BACKEND_URL }}
           HOSTED_FRONTEND_URL: ${{ vars.HOSTED_FRONTEND_URL }}
@@ -156,7 +156,7 @@ jobs:
           fi
 
           "${CMD[@]}"
-        working-directory: surfsense_desktop
+        working-directory: nowing_desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_DESKTOP_CLIENT_ID: ${{ vars.GOOGLE_DESKTOP_CLIENT_ID }}

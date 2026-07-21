@@ -1,4 +1,4 @@
-# Hướng dẫn phát triển - SurfSense Backend
+# Hướng dẫn phát triển - Nowing Backend
 
 **Ngày tạo:** 2026-07-21 16:59:34
 
@@ -12,7 +12,7 @@
 ## Cài đặt
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 uv sync
 # hoặc
 pip install -e .

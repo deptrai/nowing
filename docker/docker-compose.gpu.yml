@@ -4,8 +4,8 @@ services:
       resources:
         reservations:
           devices:
-            - driver: ${SURFSENSE_GPU_DRIVER:-nvidia}
-              count: ${SURFSENSE_GPU_COUNT:-1}
+            - driver: ${NOWING_GPU_DRIVER:-nvidia}
+              count: ${NOWING_GPU_COUNT:-1}
               capabilities:
                 - gpu
 
@@ -14,8 +14,8 @@ services:
       resources:
         reservations:
           devices:
-            - driver: ${SURFSENSE_GPU_DRIVER:-nvidia}
-              count: ${SURFSENSE_GPU_COUNT:-1}
+            - driver: ${NOWING_GPU_DRIVER:-nvidia}
+              count: ${NOWING_GPU_COUNT:-1}
               capabilities:
                 - gpu
 
@@ -24,7 +24,7 @@ services:
       resources:
         reservations:
           devices:
-            - driver: ${SURFSENSE_GPU_DRIVER:-nvidia}
-              count: ${SURFSENSE_GPU_COUNT:-1}
+            - driver: ${NOWING_GPU_DRIVER:-nvidia}
+              count: ${NOWING_GPU_COUNT:-1}
               capabilities:
                 - gpu

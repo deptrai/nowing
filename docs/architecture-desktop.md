@@ -1,4 +1,4 @@
-# Kiến trúc - SurfSense Desktop
+# Kiến trúc - Nowing Desktop
 
 **Ngày tạo:** 2026-07-21 16:59:34
 

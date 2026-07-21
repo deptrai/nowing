@@ -149,7 +149,7 @@ jobs:
         with:
           filters: |
             backend:
-              - 'surfsense_backend/**'
+              - 'nowing_backend/**'
               - '.github/workflows/code-quality.yml'
 
       - name: Cache dependencies
@@ -158,12 +158,12 @@ jobs:
         with:
           path: |
             ~/.cache/uv
-            surfsense_backend/.venv
-          key: python-deps-${{ hashFiles('surfsense_backend/uv.lock') }}
+            nowing_backend/.venv
+          key: python-deps-${{ hashFiles('nowing_backend/uv.lock') }}
 
       - name: Install dependencies
         if: steps.backend-changes.outputs.backend == 'true'
-        working-directory: surfsense_backend
+        working-directory: nowing_backend
         run: uv sync
 
       - name: Install pre-commit for backend checks
@@ -235,20 +235,20 @@ jobs:
         with:
           filters: |
             web:
-              - 'surfsense_web/**'
+              - 'nowing_web/**'
               - '.github/workflows/code-quality.yml'
             extension:
-              - 'surfsense_browser_extension/**'
+              - 'nowing_browser_extension/**'
               - '.github/workflows/code-quality.yml'
 
       - name: Install dependencies for web
         if: steps.frontend-changes.outputs.web == 'true'
-        working-directory: surfsense_web
+        working-directory: nowing_web
         run: pnpm install --frozen-lockfile
 
       - name: Install dependencies for extension
         if: steps.frontend-changes.outputs.extension == 'true'
-        working-directory: surfsense_browser_extension
+        working-directory: nowing_browser_extension
         run: pnpm install --frozen-lockfile
 
       - name: Install pre-commit

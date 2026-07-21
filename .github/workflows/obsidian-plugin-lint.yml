@@ -11,12 +11,12 @@ on:
   push:
     branches: ["**"]
     paths:
-      - "surfsense_obsidian/**"
+      - "nowing_obsidian/**"
       - ".github/workflows/obsidian-plugin-lint.yml"
   pull_request:
     branches: ["**"]
     paths:
-      - "surfsense_obsidian/**"
+      - "nowing_obsidian/**"
       - ".github/workflows/obsidian-plugin-lint.yml"
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: surfsense_obsidian
+        working-directory: nowing_obsidian
     steps:
       - uses: actions/checkout@v6
 
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: 22.x
           cache: npm
-          cache-dependency-path: surfsense_obsidian/package-lock.json
+          cache-dependency-path: nowing_obsidian/package-lock.json
 
       - run: npm ci
       - run: npm run lint

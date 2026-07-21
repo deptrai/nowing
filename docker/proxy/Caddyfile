@@ -1,6 +1,6 @@
 {
 	# Optional ACME/global settings. These are harmless in the default :80
-	# localhost mode and become active when SURFSENSE_SITE_ADDRESS is a domain.
+	# localhost mode and become active when NOWING_SITE_ADDRESS is a domain.
 	{$CERT_EMAIL}
 	acme_ca {$CERT_ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
 	{$CERT_ACME_DNS}
@@ -10,9 +10,9 @@
 	}
 }
 
-(surfsense_proxy) {
+(nowing_proxy) {
 	request_body {
-		max_size {$SURFSENSE_MAX_BODY_SIZE:5GB}
+		max_size {$NOWING_MAX_BODY_SIZE:5GB}
 	}
 
 	# Frontend-owned auth page (the post-login token handler). More specific than
@@ -36,7 +36,7 @@
 	reverse_proxy /zero/context backend:8000
 
 	# Zero accepts a single path-component base URL (Zero >= 0.6).
-	# Preserve /zero so browser cacheURL can be ${SURFSENSE_PUBLIC_URL}/zero.
+	# Preserve /zero so browser cacheURL can be ${NOWING_PUBLIC_URL}/zero.
 	reverse_proxy /zero/* zero-cache:4848
 
 	# Next.js app and frontend-owned API routes:
@@ -44,6 +44,6 @@
 	reverse_proxy /* frontend:3000
 }
 
-{$SURFSENSE_SITE_ADDRESS::80} {
-	import surfsense_proxy
+{$NOWING_SITE_ADDRESS::80} {
+	import nowing_proxy
 }

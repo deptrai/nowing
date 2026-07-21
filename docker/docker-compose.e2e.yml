@@ -1,5 +1,5 @@
 # =============================================================================
-# SurfSense — E2E Docker Compose stack
+# Nowing — E2E Docker Compose stack
 # =============================================================================
 # Hermetic backend stack for Playwright E2E tests:
 #   - db / redis on an internal-only network (no internet egress)
@@ -7,10 +7,10 @@
 #     bridge so the host runner can reach :8000
 #   - celery_worker on the internal network only — zero egress surface
 #
-# The backend image is built from surfsense_backend/Dockerfile target=e2e,
+# The backend image is built from nowing_backend/Dockerfile target=e2e,
 # which adds tests/ via the `tests-source` additional context (tests/ is
 # excluded from the main context by .dockerignore so production never ships
-# test fakes). See surfsense_backend/Dockerfile for stage layout.
+# test fakes). See nowing_backend/Dockerfile for stage layout.
 #
 # Usage from repo root:
 #   docker compose -f docker/docker-compose.e2e.yml up -d --build --wait
@@ -19,14 +19,14 @@
 #   docker compose -f docker/docker-compose.e2e.yml down -v
 # =============================================================================
 
-name: surfsense-e2e
+name: nowing-e2e
 
 x-backend-env: &backend-env
-  DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/surfsense_e2e
+  DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/nowing_e2e
   CELERY_BROKER_URL: redis://redis:6379/0
   CELERY_RESULT_BACKEND: redis://redis:6379/0
   REDIS_APP_URL: redis://redis:6379/0
-  CELERY_TASK_DEFAULT_QUEUE: surfsense
+  CELERY_TASK_DEFAULT_QUEUE: nowing
   SECRET_KEY: ci-test-secret-key-not-for-production
   AUTH_TYPE: LOCAL
   REGISTRATION_ENABLED: "TRUE"
@@ -70,12 +70,12 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: surfsense_e2e
+      POSTGRES_DB: nowing_e2e
     # Ephemeral storage — every CI run gets a clean DB, no volume cleanup needed.
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d surfsense_e2e"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nowing_e2e"]
       interval: 2s
       timeout: 3s
       retries: 30
@@ -92,20 +92,20 @@ services:
 
   backend:
     build:
-      context: ../surfsense_backend
+      context: ../nowing_backend
       dockerfile: Dockerfile
       target: e2e
       additional_contexts:
         # tests/ is excluded from the main context by .dockerignore;
         # the e2e stage's `COPY --from=tests-source` pulls it in here.
-        tests-source: ../surfsense_backend/tests
+        tests-source: ../nowing_backend/tests
       args:
         EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
       cache_from:
-        - type=gha,scope=surfsense-e2e-backend
+        - type=gha,scope=nowing-e2e-backend
       cache_to:
-        - type=gha,mode=max,scope=surfsense-e2e-backend
-    image: surfsense-e2e-backend:local
+        - type=gha,mode=max,scope=nowing-e2e-backend
+    image: nowing-e2e-backend:local
     environment:
       <<: *backend-env
       SERVICE_ROLE: api
@@ -141,7 +141,7 @@ services:
       - ingress       # so host can reach :8000
 
   celery_worker:
-    image: surfsense-e2e-backend:local
+    image: nowing-e2e-backend:local
     pull_policy: never
     # No build: section — reuses the image built by the `backend` service.
     # Compose v2 builds shared images exactly once across services that

@@ -1,10 +1,10 @@
-# Kiến trúc - SurfSense Obsidian Plugin
+# Kiến trúc - Nowing Obsidian Plugin
 
 **Ngày tạo:** 2026-07-21 16:59:34
 
 ## Tóm tắt
 
-Plugin Obsidian đồng bộ vault notes với SurfSense, hỗ trợ desktop và mobile.
+Plugin Obsidian đồng bộ vault notes với Nowing, hỗ trợ desktop và mobile.
 
 ## Tech Stack
 

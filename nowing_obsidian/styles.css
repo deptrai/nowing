@@ -1,0 +1,48 @@
+/*
+ * Nowing Obsidian plugin styles. Status-bar widget only — the settings
+ * tab uses Obsidian's stock Setting rows, no custom CSS needed.
+ */
+
+.nowing-status {
+	gap: 6px;
+}
+
+.nowing-status--clickable {
+	cursor: pointer;
+}
+
+.nowing-status__icon {
+	display: inline-flex;
+	width: 14px;
+	height: 14px;
+}
+
+.nowing-status__icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.nowing-status--err .nowing-status__icon {
+	color: var(--color-red);
+}
+
+.nowing-connection-indicator {
+	display: inline-flex;
+	width: 14px;
+	height: 14px;
+}
+
+.nowing-connection-heading {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.nowing-connection-indicator svg {
+	width: 14px;
+	height: 14px;
+}
+
+.nowing-connection-indicator--err {
+	color: var(--color-red);
+}

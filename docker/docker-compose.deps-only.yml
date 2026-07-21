@@ -1,22 +1,22 @@
 # =============================================================================
-# SurfSense — Dependencies only (no backend / frontend / Celery images)
+# Nowing — Dependencies only (no backend / frontend / Celery images)
 # =============================================================================
 # Postgres, Redis, pgAdmin, Zero — run API + Next + Celery on the host.
-# Celery is not Dockerized here: use `uv run` from surfsense_backend/ (no extra
+# Celery is not Dockerized here: use `uv run` from nowing_backend/ (no extra
 # backend image build just for workers).
 #
-# From repo root (SurfSense/):
+# From repo root (Nowing/):
 #   docker compose -f docker/docker-compose.deps-only.yml up -d
 #
 # Compose variable substitution uses `docker/.env` (copy from .env.example).
 # Bind mounts use ./postgresql.conf in this directory.
 #
-# Local Celery (from surfsense_backend/, after Redis is up):
-#   uv run celery -A celery_worker.celery_app worker --loglevel=info --concurrency=1 --pool=solo --queues=surfsense,surfsense.connectors
+# Local Celery (from nowing_backend/, after Redis is up):
+#   uv run celery -A celery_worker.celery_app worker --loglevel=info --concurrency=1 --pool=solo --queues=nowing,nowing.connectors
 #   uv run celery -A celery_worker.celery_app beat --loglevel=info
 #
 # Host setup:
-#   - Backend .env: DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/surfsense
+#   - Backend .env: DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/nowing
 #   - Backend .env: CELERY_BROKER_URL / REDIS_APP_URL → redis://localhost:6379/0
 #   - Web .env: NEXT_PUBLIC_ZERO_CACHE_URL=http://localhost:${ZERO_CACHE_PORT:-4848}
 #
@@ -27,13 +27,13 @@
 #   `Unknown or invalid publications. Specified: [zero_publication]`.
 #
 #   First-time / after-pull:
-#     cd surfsense_backend && uv run alembic upgrade head
+#     cd nowing_backend && uv run alembic upgrade head
 #
 #   The other compose files (docker-compose.yml, docker-compose.dev.yml)
 #   handle this automatically via a dedicated `migrations` service.
 # =============================================================================
 
-name: surfsense-deps
+name: nowing-deps
 
 services:
   db:
@@ -46,10 +46,10 @@ services:
     environment:
       - POSTGRES_USER=${DB_USER:-postgres}
       - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
-      - POSTGRES_DB=${DB_NAME:-surfsense}
+      - POSTGRES_DB=${DB_NAME:-nowing}
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-surfsense}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-nowing}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -59,8 +59,8 @@ services:
     ports:
       - "${PGADMIN_PORT:-5050}:80"
     environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:-admin@surfsense.com}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:-surfsense}
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:-admin@nowing.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:-nowing}
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
@@ -82,7 +82,7 @@ services:
   # NOTE: zero-cache requires the `zero_publication` Postgres publication to
   # exist before it starts. In this deps-only stack there is no backend
   # container to run migrations, so you must run `uv run alembic upgrade head`
-  # from `surfsense_backend/` on the host BEFORE `docker compose up -d`.
+  # from `nowing_backend/` on the host BEFORE `docker compose up -d`.
   zero-cache:
     image: rocicorp/zero:1.6.0
     ports:
@@ -93,11 +93,11 @@ services:
       db:
         condition: service_healthy
     environment:
-      - ZERO_UPSTREAM_DB=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-surfsense}?sslmode=${DB_SSLMODE:-disable}
-      - ZERO_CVR_DB=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-surfsense}?sslmode=${DB_SSLMODE:-disable}
-      - ZERO_CHANGE_DB=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-surfsense}?sslmode=${DB_SSLMODE:-disable}
+      - ZERO_UPSTREAM_DB=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-nowing}?sslmode=${DB_SSLMODE:-disable}
+      - ZERO_CVR_DB=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-nowing}?sslmode=${DB_SSLMODE:-disable}
+      - ZERO_CHANGE_DB=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-nowing}?sslmode=${DB_SSLMODE:-disable}
       - ZERO_REPLICA_FILE=/data/zero.db
-      - ZERO_ADMIN_PASSWORD=${ZERO_ADMIN_PASSWORD:-surfsense-zero-admin}
+      - ZERO_ADMIN_PASSWORD=${ZERO_ADMIN_PASSWORD:-nowing-zero-admin}
       - ZERO_APP_PUBLICATIONS=${ZERO_APP_PUBLICATIONS:-zero_publication}
       - ZERO_AUTO_RESET=${ZERO_AUTO_RESET:-true}
       - ZERO_NUM_SYNC_WORKERS=${ZERO_NUM_SYNC_WORKERS:-4}
@@ -122,9 +122,9 @@ services:
 
   # OPTIONAL — Azurite emulates Azure Blob Storage for testing the Azure
   # original-file backend. The default filesystem backend needs none of this.
-  # To exercise it, set in surfsense_backend/.env:
+  # To exercise it, set in nowing_backend/.env:
   #   FILE_STORAGE_BACKEND=azure
-  #   AZURE_STORAGE_CONTAINER=surfsense-documents
+  #   AZURE_STORAGE_CONTAINER=nowing-documents
   #   AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:${AZURITE_BLOB_PORT:-10000}/devstoreaccount1;
   # The backend creates blobs on upload; create the container once first
   # (Azure CLI / Storage Explorer), then upload a document.
@@ -139,12 +139,12 @@ services:
 
 volumes:
   postgres_data:
-    name: surfsense-deps-postgres
+    name: nowing-deps-postgres
   pgadmin_data:
-    name: surfsense-deps-pgadmin
+    name: nowing-deps-pgadmin
   redis_data:
-    name: surfsense-deps-redis
+    name: nowing-deps-redis
   zero_cache_data:
-    name: surfsense-deps-zero-cache
+    name: nowing-deps-zero-cache
   azurite_data:
-    name: surfsense-deps-azurite
+    name: nowing-deps-azurite

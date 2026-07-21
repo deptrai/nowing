@@ -1,8 +1,8 @@
 # =============================================================================
-# SurfSense — One-line Install Script (Windows / PowerShell)
+# Nowing — One-line Install Script (Windows / PowerShell)
 #
 #
-# Usage: irm https://raw.githubusercontent.com/MODSetter/SurfSense/main/docker/scripts/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/nowing/Nowing/main/docker/scripts/install.ps1 | iex
 #
 # To pass flags, save and run locally:
 #   .\install.ps1 -NoWatchtower
@@ -11,8 +11,8 @@
 #   .\install.ps1 -Variant cuda -GpuCount all
 #
 # Handles two cases automatically:
-#   1. Fresh install        — no prior SurfSense data detected
-#   2. Migration from the legacy all-in-one container (surfsense-data volume)
+#   1. Fresh install        — no prior Nowing data detected
+#   2. Migration from the legacy all-in-one container (nowing-data volume)
 #      Downloads and runs migrate-database.sh --yes, then restores the dump
 #      into the new PostgreSQL 17 stack. The user runs one command for both.
 # =============================================================================
@@ -34,33 +34,33 @@ $ErrorActionPreference = 'Stop'
 
 # ── Configuration ───────────────────────────────────────────────────────────
 
-$RepoRaw            = "https://raw.githubusercontent.com/MODSetter/SurfSense/main"
-$InstallDir         = ".\surfsense"
-$OldVolume          = "surfsense-data"
-$DumpFile           = ".\surfsense_migration_backup.sql"
-$KeyFile            = ".\surfsense_migration_secret.key"
+$RepoRaw            = "https://raw.githubusercontent.com/nowing/Nowing/main"
+$InstallDir         = ".\nowing"
+$OldVolume          = "nowing-data"
+$DumpFile           = ".\nowing_migration_backup.sql"
+$KeyFile            = ".\nowing_migration_secret.key"
 $MigrationDoneFile  = "$InstallDir\.migration_done"
 $MigrationMode      = $false
 $SetupWatchtower    = -not $NoWatchtower
 $WatchtowerContainer = "watchtower"
 
 if ($Variant -and $Variant -notin @("cpu", "cuda", "cuda126")) {
-    Write-Host "[SurfSense] ERROR: Invalid -Variant '$Variant'. Use 'cpu', 'cuda', or 'cuda126'." -ForegroundColor Red
+    Write-Host "[Nowing] ERROR: Invalid -Variant '$Variant'. Use 'cpu', 'cuda', or 'cuda126'." -ForegroundColor Red
     exit 1
 }
 
 if ($GpuCount -and $GpuCount -notmatch '^([0-9]+|all)$') {
-    Write-Host "[SurfSense] ERROR: Invalid -GpuCount '$GpuCount'. Use a number or 'all'." -ForegroundColor Red
+    Write-Host "[Nowing] ERROR: Invalid -GpuCount '$GpuCount'. Use a number or 'all'." -ForegroundColor Red
     exit 1
 }
 
 # ── Output helpers ──────────────────────────────────────────────────────────
 
-function Write-Info    { param([string]$Msg) Write-Host "[SurfSense] " -ForegroundColor Cyan -NoNewline; Write-Host $Msg }
-function Write-Ok      { param([string]$Msg) Write-Host "[SurfSense] " -ForegroundColor Green -NoNewline; Write-Host $Msg }
-function Write-Warn    { param([string]$Msg) Write-Host "[SurfSense] " -ForegroundColor Yellow -NoNewline; Write-Host $Msg }
+function Write-Info    { param([string]$Msg) Write-Host "[Nowing] " -ForegroundColor Cyan -NoNewline; Write-Host $Msg }
+function Write-Ok      { param([string]$Msg) Write-Host "[Nowing] " -ForegroundColor Green -NoNewline; Write-Host $Msg }
+function Write-Warn    { param([string]$Msg) Write-Host "[Nowing] " -ForegroundColor Yellow -NoNewline; Write-Host $Msg }
 function Write-Step    { param([string]$Msg) Write-Host "`n-- $Msg" -ForegroundColor Cyan }
-function Write-Err     { param([string]$Msg) Write-Host "[SurfSense] ERROR: $Msg" -ForegroundColor Red; exit 1 }
+function Write-Err     { param([string]$Msg) Write-Host "[Nowing] ERROR: $Msg" -ForegroundColor Red; exit 1 }
 
 function Show-Banner {
     Write-Host ""
@@ -78,7 +78,7 @@ function Show-Banner {
 "@ -ForegroundColor White
     Write-Host "           NotebookLM for Open Web Research" -ForegroundColor Yellow
     Write-Host ("=" * 62) -ForegroundColor Cyan
-    Write-Info "This installer will create $InstallDir\ and start SurfSense with Docker Compose."
+    Write-Info "This installer will create $InstallDir\ and start Nowing with Docker Compose."
 }
 
 Show-Banner
@@ -177,8 +177,8 @@ function Invoke-StackFailureReport {
     Write-Host ""
     Write-Host "Recovery hints:" -ForegroundColor Yellow
     Write-Host "  1. Inspect migrations:   cd $InstallDir; docker compose logs migrations"
-    Write-Host "  2. Verify publication:   cd $InstallDir; docker compose exec db psql -U surfsense -d surfsense -c 'SELECT pubname FROM pg_publication;'"
-    Write-Host "  3. Hard reset zero db:   cd $InstallDir; docker compose down; docker volume rm surfsense-zero-cache; docker compose up -d --wait"
+    Write-Host "  2. Verify publication:   cd $InstallDir; docker compose exec db psql -U nowing -d nowing -c 'SELECT pubname FROM pg_publication;'"
+    Write-Host "  3. Hard reset zero db:   cd $InstallDir; docker compose down; docker volume rm nowing-zero-cache; docker compose up -d --wait"
     Write-Host ""
     exit 1
 }
@@ -269,7 +269,7 @@ function Resolve-Variant {
         }
         if (-not $hasRuntime) {
             Write-Warn "NVIDIA GPU detected, but NVIDIA Container Toolkit was not detected; falling back to CPU variant."
-            Write-Warn "Install the toolkit before enabling SurfSense GPU acceleration."
+            Write-Warn "Install the toolkit before enabling Nowing GPU acceleration."
             return "cpu"
         }
         return $Variant
@@ -281,7 +281,7 @@ function Resolve-Variant {
 
     if ($hasGpu -and $hasRuntime -and -not $Quiet -and [Environment]::UserInteractive) {
         Write-Host ""
-        Write-Host "SurfSense detected an NVIDIA GPU." -ForegroundColor Cyan
+        Write-Host "Nowing detected an NVIDIA GPU." -ForegroundColor Cyan
         $choice = Read-Host "Use GPU acceleration? [Y/n]"
         switch ($choice) {
             "" { return $recommended }
@@ -302,19 +302,19 @@ function Set-VariantEnv {
 
     if ((Test-Path $Path) -and -not $AllowExistingUpdate) {
         Write-Warn ".env already exists - keeping your existing configuration."
-        Write-Info "To change variants later, edit SURFSENSE_VARIANT and COMPOSE_FILE in $Path, then run docker compose up -d --wait."
+        Write-Info "To change variants later, edit NOWING_VARIANT and COMPOSE_FILE in $Path, then run docker compose up -d --wait."
         return
     }
 
     if ($SelectedVariant -eq "cpu") {
-        Set-EnvValue -Path $Path -Key "SURFSENSE_VARIANT" -Value ""
+        Set-EnvValue -Path $Path -Key "NOWING_VARIANT" -Value ""
         Remove-EnvValue -Path $Path -Key "COMPOSE_FILE"
-        Remove-EnvValue -Path $Path -Key "SURFSENSE_GPU_COUNT"
+        Remove-EnvValue -Path $Path -Key "NOWING_GPU_COUNT"
     } else {
-        Set-EnvValue -Path $Path -Key "SURFSENSE_VARIANT" -Value $SelectedVariant
+        Set-EnvValue -Path $Path -Key "NOWING_VARIANT" -Value $SelectedVariant
         Set-EnvValue -Path $Path -Key "COMPOSE_FILE" -Value "docker-compose.yml;docker-compose.gpu.yml"
         if ($GpuCount) {
-            Set-EnvValue -Path $Path -Key "SURFSENSE_GPU_COUNT" -Value $GpuCount
+            Set-EnvValue -Path $Path -Key "NOWING_GPU_COUNT" -Value $GpuCount
         }
     }
 
@@ -325,7 +325,7 @@ $SelectedVariant = Resolve-Variant
 
 # ── Download files ──────────────────────────────────────────────────────────
 
-Write-Step "Downloading SurfSense files"
+Write-Step "Downloading Nowing files"
 Write-Info "Installation directory: $InstallDir"
 
 New-Item -ItemType Directory -Path "$InstallDir\scripts" -Force | Out-Null
@@ -370,13 +370,13 @@ if (($volumeList -split "`n") -contains $OldVolume -and -not (Test-Path $Migrati
         Write-Warn "Your original data will NOT be deleted."
         Write-Host ""
         Write-Info "Running data extraction (migrate-database.ps1 -Yes)..."
-        Write-Info "Full extraction log: ./surfsense-migration.log"
+        Write-Info "Full extraction log: ./nowing-migration.log"
         Write-Host ""
 
         $migrateScript = Join-Path $InstallDir "scripts/migrate-database.ps1"
         & $migrateScript -Yes
         if ($LASTEXITCODE -ne 0) {
-            Write-Err "Data extraction failed. See ./surfsense-migration.log for details.`nYou can also run migrate-database.ps1 manually with custom flags."
+            Write-Err "Data extraction failed. See ./nowing-migration.log for details.`nYou can also run migrate-database.ps1 manually with custom flags."
         }
 
         Write-Host ""
@@ -415,7 +415,7 @@ if (-not (Test-Path $envPath)) {
 } else {
     if ($PSBoundParameters.ContainsKey('Variant')) {
         Set-VariantEnv -Path $envPath -SelectedVariant $SelectedVariant -AllowExistingUpdate $true
-        Write-Info "Updated SurfSense image variant in existing $envPath"
+        Write-Info "Updated Nowing image variant in existing $envPath"
     } else {
         Set-VariantEnv -Path $envPath -SelectedVariant $SelectedVariant -AllowExistingUpdate $false
     }
@@ -428,9 +428,9 @@ if ($MigrationMode) {
     $DbUser = ($envContent | Select-String '^DB_USER=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
     $DbPass = ($envContent | Select-String '^DB_PASSWORD=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
     $DbName = ($envContent | Select-String '^DB_NAME=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
-    if (-not $DbUser) { $DbUser = "surfsense" }
-    if (-not $DbPass) { $DbPass = "surfsense" }
-    if (-not $DbName) { $DbName = "surfsense" }
+    if (-not $DbUser) { $DbUser = "nowing" }
+    if (-not $DbPass) { $DbPass = "nowing" }
+    if (-not $DbName) { $DbName = "nowing" }
 
     Write-Step "Starting PostgreSQL 17"
     Push-Location $InstallDir
@@ -445,7 +445,7 @@ if ($MigrationMode) {
     $DumpFilePath = (Resolve-Path $DumpFile).Path
     Write-Info "Restoring dump into PostgreSQL 17 - this may take a while for large databases..."
 
-    $restoreErrFile = Join-Path $env:TEMP "surfsense_restore_err.log"
+    $restoreErrFile = Join-Path $env:TEMP "nowing_restore_err.log"
     Push-Location $InstallDir
     Invoke-NativeSafe { Get-Content -LiteralPath $DumpFilePath | docker compose exec -T -e "PGPASSWORD=$DbPass" db psql -U $DbUser -d $DbName 2>$restoreErrFile | Out-Null } | Out-Null
     Pop-Location
@@ -461,7 +461,7 @@ if ($MigrationMode) {
     if ($fatalErrors.Count -gt 0) {
         Write-Warn "Restore completed with errors (may be harmless pg_dump header noise):"
         $fatalErrors | ForEach-Object { Write-Host $_ }
-        Write-Warn "If SurfSense behaves incorrectly, inspect manually."
+        Write-Warn "If Nowing behaves incorrectly, inspect manually."
     } else {
         Write-Ok "Database restored with no fatal errors."
     }
@@ -479,14 +479,14 @@ if ($MigrationMode) {
         New-Item -Path $MigrationDoneFile -ItemType File -Force | Out-Null
     }
 
-    Write-Step "Starting all SurfSense services"
+    Write-Step "Starting all Nowing services"
     Invoke-ComposeUpWait
     Write-Ok "All services started and healthy."
 
     Remove-Item $KeyFile -ErrorAction SilentlyContinue
 
 } else {
-    Write-Step "Starting SurfSense"
+    Write-Step "Starting Nowing"
     Invoke-ComposeUpWait
     Write-Ok "All services started and healthy."
 }
@@ -518,7 +518,7 @@ if ($SetupWatchtower) {
         } | Out-Null
 
         if ($LASTEXITCODE -eq 0) {
-            Write-Ok "Watchtower started - labeled SurfSense containers will auto-update."
+            Write-Ok "Watchtower started - labeled Nowing containers will auto-update."
         } else {
             Write-Warn "Could not start Watchtower. You can set it up manually or use: docker compose pull; docker compose up -d --wait"
         }
@@ -530,12 +530,12 @@ if ($SetupWatchtower) {
 # ── Done ────────────────────────────────────────────────────────────────────
 
 Write-Host ""
-$versionDisplay = (Get-Content $envPath | Select-String '^SURFSENSE_VERSION=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
+$versionDisplay = (Get-Content $envPath | Select-String '^NOWING_VERSION=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
 if (-not $versionDisplay) { $versionDisplay = "latest" }
-$variantDisplay = (Get-Content $envPath | Select-String '^SURFSENSE_VARIANT=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
+$variantDisplay = (Get-Content $envPath | Select-String '^NOWING_VARIANT=' | ForEach-Object { ($_ -split '=',2)[1].Trim('"') }) | Select-Object -First 1
 if (-not $variantDisplay) { $variantDisplay = "cpu" }
 $wtHours = [math]::Floor($WatchtowerInterval / 3600)
-Write-Step "SurfSense is now installed [$versionDisplay]"
+Write-Step "Nowing is now installed [$versionDisplay]"
 
 Write-Info "  Frontend:  http://localhost:3929"
 Write-Info "  Backend:   http://localhost:8929"

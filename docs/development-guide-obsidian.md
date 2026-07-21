@@ -3,13 +3,13 @@
 **Ngày tạo:** 2026-07-21 16:59:34
 
 ```bash
-cd surfsense_obsidian
+cd nowing_obsidian
 npm install
 npm run dev     # esbuild watch
 npm run build
 ```
 
-Symlink folder plugin vào `<vault>/.obsidian/plugins/surfsense/` để test.
+Symlink folder plugin vào `<vault>/.obsidian/plugins/nowing/` để test.
 
 ---
 

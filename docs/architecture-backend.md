@@ -1,10 +1,10 @@
-# Kiến trúc - SurfSense Backend
+# Kiến trúc - Nowing Backend
 
 **Ngày tạo:** 2026-07-21 16:59:34
 
 ## Tóm tắt
 
-Backend FastAPI cung cấp REST API cho toàn bộ hệ sinh thái SurfSense: xác thực, quản lý workspaces, tài liệu, chat agents, scrapers, connectors, podcast/video, automations, notifications, billing, gateway messaging.
+Backend FastAPI cung cấp REST API cho toàn bộ hệ sinh thái Nowing: xác thực, quản lý workspaces, tài liệu, chat agents, scrapers, connectors, podcast/video, automations, notifications, billing, gateway messaging.
 
 ## Tech Stack
 

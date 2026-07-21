@@ -7,7 +7,7 @@ visual_tools: intermediate
 
 # Core Configuration Values
 user_name: Luisphan
-project_name: SurfSense
+project_name: Nowing
 communication_language: Việt Nam
 document_output_language: Việt Nam
 output_folder: "{project-root}/_bmad-output"

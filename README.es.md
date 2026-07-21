@@ -1,4 +1,4 @@
-﻿<a href="https://www.surfsense.com/"><img width="1584" height="396" alt="SurfSense, la alternativa de código abierto a NotebookLM para investigación de la web abierta" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
+﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing, la alternativa de código abierto a NotebookLM para investigación de la web abierta" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
 
 
 
@@ -6,8 +6,8 @@
 <a href="https://discord.gg/ejRNvftDp9">
 <img src="https://img.shields.io/discord/1359368468260192417" alt="Discord">
 </a>
-<a href="https://www.reddit.com/r/SurfSense/">
-<img src="https://img.shields.io/reddit/subreddit-subscribers/SurfSense?style=social" alt="Reddit">
+<a href="https://www.reddit.com/r/Nowing/">
+<img src="https://img.shields.io/reddit/subreddit-subscribers/Nowing?style=social" alt="Reddit">
 </a>
 </div>
 
@@ -17,36 +17,36 @@
 
 </div>
 <div align="center">
-<a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FSurfSense | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FNowing | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-# SurfSense: La alternativa de código abierto a NotebookLM para la investigación de la web abierta
+# Nowing: La alternativa de código abierto a NotebookLM para la investigación de la web abierta
 
-SurfSense es la **alternativa de código abierto a NotebookLM para agentes de IA**, una plataforma de investigación de la web abierta con conectores de datos en vivo. Tus agentes investigan la web en vivo con datos estructurados de **Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search y cualquier página de la web abierta**, a través de una única **API REST** o un **servidor MCP**. Agentes programados y activados por eventos convierten lo que encuentran en informes y alertas, y una base de conocimiento integrada mantiene cada hallazgo disponible para búsqueda con citas.
+Nowing es la **alternativa de código abierto a NotebookLM para agentes de IA**, una plataforma de investigación de la web abierta con conectores de datos en vivo. Tus agentes investigan la web en vivo con datos estructurados de **Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search y cualquier página de la web abierta**, a través de una única **API REST** o un **servidor MCP**. Agentes programados y activados por eventos convierten lo que encuentran en informes y alertas, y una base de conocimiento integrada mantiene cada hallazgo disponible para búsqueda con citas.
 
 > [!NOTE]
 > **📢 Una nota para nuestros usuarios de la alternativa a NotebookLM**
 >
-> Durante los últimos meses construimos SurfSense como el mejor agente de investigación general para tu propio conocimiento, y ese capítulo nos dio una comunidad de la que estamos genuinamente orgullosos. Herramientas agénticas como Claude, OpenCode, Hermes y OpenClaw ya han demostrado que los agentes son el futuro, y razonar sobre un índice estático se está convirtiendo en algo que todo agente capaz hace de fábrica. Lo que a los agentes todavía les falta son **datos en vivo de los lugares donde realmente viven las respuestas, y los flujos de trabajo a su alrededor**. Ahí es donde estamos dirigiendo toda nuestra energía: darles a los agentes las primitivas para investigar la web abierta.
+> Durante los últimos meses construimos Nowing como el mejor agente de investigación general para tu propio conocimiento, y ese capítulo nos dio una comunidad de la que estamos genuinamente orgullosos. Herramientas agénticas como Claude, OpenCode, Hermes y OpenClaw ya han demostrado que los agentes son el futuro, y razonar sobre un índice estático se está convirtiendo en algo que todo agente capaz hace de fábrica. Lo que a los agentes todavía les falta son **datos en vivo de los lugares donde realmente viven las respuestas, y los flujos de trabajo a su alrededor**. Ahí es donde estamos dirigiendo toda nuestra energía: darles a los agentes las primitivas para investigar la web abierta.
 >
-> **Nada de lo que dependes va a desaparecer.** Tu base de conocimiento, el chat con citas, los informes, los podcasts, las presentaciones, las automatizaciones y los chats colaborativos siguen funcionando, y el autoalojamiento sigue siendo gratuito y de código abierto. Lee el anuncio completo en [nuestro changelog](https://www.surfsense.com/changelog).
+> **Nada de lo que dependes va a desaparecer.** Tu base de conocimiento, el chat con citas, los informes, los podcasts, las presentaciones, las automatizaciones y los chats colaborativos siguen funcionando, y el autoalojamiento sigue siendo gratuito y de código abierto. Lee el anuncio completo en [nuestro changelog](https://www.nowing.com/changelog).
 
 ## Tabla de contenidos
 
-- [Por qué los agentes necesitan SurfSense](#por-qué-los-agentes-necesitan-surfsense)
+- [Por qué los agentes necesitan Nowing](#por-qué-los-agentes-necesitan-nowing)
 - [Conectores de datos en vivo](#conectores-de-datos-en-vivo)
 - [Inicio rápido](#inicio-rápido)
 - [Todo lo demás que viene incluido](#todo-lo-demás-que-viene-incluido)
-- [Cómo se compara SurfSense](#cómo-se-compara-surfsense)
+- [Cómo se compara Nowing](#cómo-se-compara-nowing)
 - [Hoja de ruta](#hoja-de-ruta)
 - [Contribuye](#contribuye)
 
-## Por qué los agentes necesitan SurfSense
+## Por qué los agentes necesitan Nowing
 
-Pregúntale a cualquier agente capaz "¿qué está diciendo Reddit sobre este producto desde el lanzamiento?" o "¿de qué se quejan realmente las reseñas de estos diez lugares?" y no tiene ningún lugar confiable donde buscar. Las APIs oficiales de las plataformas tienen límites de tasa, precios pensados para empresas grandes o directamente no existen; la infraestructura de scraping es frágil; y manejar un navegador con un LLM quema minutos y tokens por página. SurfSense les da a los agentes las primitivas en su lugar:
+Pregúntale a cualquier agente capaz "¿qué está diciendo Reddit sobre este producto desde el lanzamiento?" o "¿de qué se quejan realmente las reseñas de estos diez lugares?" y no tiene ningún lugar confiable donde buscar. Las APIs oficiales de las plataformas tienen límites de tasa, precios pensados para empresas grandes o directamente no existen; la infraestructura de scraping es frágil; y manejar un navegador con un LLM quema minutos y tokens por página. Nowing les da a los agentes las primitivas en su lugar:
 
 - **Una única superficie tipada para dondequiera que vivan los datos.** Cada conector es un endpoint REST que devuelve JSON estructurado: publicaciones, comentarios, transcripciones, reseñas, SERPs, páginas. Sin ruleta de límites de tasa, sin parsear HTML, sin bucles de navegador.
-- **Un servidor MCP** que expone cada conector como una herramienta nativa (`surfsense_reddit_scrape`, `surfsense_google_search` y más) para Claude, Cursor o cualquier framework de agentes.
+- **Un servidor MCP** que expone cada conector como una herramienta nativa (`nowing_reddit_scrape`, `nowing_google_search` y más) para Claude, Cursor o cualquier framework de agentes.
 - **Un arnés de agentes**, no solo datos en bruto: reintentos, salida estructurada y medición de créditos vienen integrados, así que los agentes pasan de una pregunta a un informe con citas sin que tú construyas la infraestructura.
 - **Código abierto y autoalojable**, para que tu investigación se quede en tu propia infraestructura.
 
@@ -54,29 +54,29 @@ Pregúntale a cualquier agente capaz "¿qué está diciendo Reddit sobre este pr
 
 | Conector | Qué obtienen tus agentes | Más información |
 |---|---|---|
-| **Reddit** | Publicaciones, comentarios y flujos de subreddits sin los límites de tasa de la API oficial | [Reddit Scraper API](https://www.surfsense.com/reddit) |
-| **YouTube** | Videos, transcripciones e hilos de comentarios a escala | [YouTube Scraper API](https://www.surfsense.com/youtube) |
-| **Instagram** | Perfiles, publicaciones y reels públicos sin la Graph API | [Instagram Scraper API](https://www.surfsense.com/instagram) |
-| **TikTok** | Videos, comentarios, hashtags y perfiles sin aprobación de la Research API | [TikTok Scraper API](https://www.surfsense.com/tiktok) |
-| **Google Maps** | Lugares, calificaciones y reseñas para investigar negocios locales | [Google Maps Scraper API](https://www.surfsense.com/google-maps) |
-| **Google Search** | SERPs en vivo para investigación y monitoreo de búsquedas | [Google Search API](https://www.surfsense.com/google-search) |
-| **Amazon** | Datos públicos de productos: precios, calificaciones, ofertas, vendedores y rankings de más vendidos | [Amazon Product API](https://www.surfsense.com/amazon) |
-| **Web Crawl** (rastreo web) | Cualquier página de la web abierta como contenido limpio y estructurado | [Web Crawling API](https://www.surfsense.com/web-crawl) |
-| **Conectores MCP externos** | Conecta cualquier servidor MCP a tus agentes, con OAuth de un clic para Notion, Slack, Jira y más | [External MCP Connectors](https://www.surfsense.com/external-mcp-connectors) |
+| **Reddit** | Publicaciones, comentarios y flujos de subreddits sin los límites de tasa de la API oficial | [Reddit Scraper API](https://www.nowing.com/reddit) |
+| **YouTube** | Videos, transcripciones e hilos de comentarios a escala | [YouTube Scraper API](https://www.nowing.com/youtube) |
+| **Instagram** | Perfiles, publicaciones y reels públicos sin la Graph API | [Instagram Scraper API](https://www.nowing.com/instagram) |
+| **TikTok** | Videos, comentarios, hashtags y perfiles sin aprobación de la Research API | [TikTok Scraper API](https://www.nowing.com/tiktok) |
+| **Google Maps** | Lugares, calificaciones y reseñas para investigar negocios locales | [Google Maps Scraper API](https://www.nowing.com/google-maps) |
+| **Google Search** | SERPs en vivo para investigación y monitoreo de búsquedas | [Google Search API](https://www.nowing.com/google-search) |
+| **Amazon** | Datos públicos de productos: precios, calificaciones, ofertas, vendedores y rankings de más vendidos | [Amazon Product API](https://www.nowing.com/amazon) |
+| **Web Crawl** (rastreo web) | Cualquier página de la web abierta como contenido limpio y estructurado | [Web Crawling API](https://www.nowing.com/web-crawl) |
+| **Conectores MCP externos** | Conecta cualquier servidor MCP a tus agentes, con OAuth de un clic para Notion, Slack, Jira y más | [External MCP Connectors](https://www.nowing.com/external-mcp-connectors) |
 
 El catálogo de conectores está creciendo más allá de las plataformas sociales y la búsqueda; cada nueva fuente llega como un endpoint tipado sobre la misma API y el mismo servidor MCP.
 
-La facturación es de pago por uso: los conectores facturan por elemento realmente devuelto, los rastreos por página obtenida con éxito, y las llamadas fallidas nunca se facturan. Las instalaciones autoalojadas funcionan con la facturación desactivada. Consulta los [precios](https://www.surfsense.com/pricing).
+La facturación es de pago por uso: los conectores facturan por elemento realmente devuelto, los rastreos por página obtenida con éxito, y las llamadas fallidas nunca se facturan. Las instalaciones autoalojadas funcionan con la facturación desactivada. Consulta los [precios](https://www.nowing.com/pricing).
 
 ## Inicio rápido
 
 ### Llama a un conector desde código
 
-Cada conector es un endpoint REST que puedes llamar desde cualquier lenguaje con tu clave de API de SurfSense:
+Cada conector es un endpoint REST que puedes llamar desde cualquier lenguaje con tu clave de API de Nowing:
 
 ```bash
-curl -X POST "$SURFSENSE_API_URL/workspaces/$WORKSPACE_ID/scrapers/reddit/scrape" \
-  -H "Authorization: Bearer $SURFSENSE_API_KEY" \
+curl -X POST "$NOWING_API_URL/workspaces/$WORKSPACE_ID/scrapers/reddit/scrape" \
+  -H "Authorization: Bearer $NOWING_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "search_queries": ["your brand"],
@@ -86,28 +86,28 @@ curl -X POST "$SURFSENSE_API_URL/workspaces/$WORKSPACE_ID/scrapers/reddit/scrape
   }'
 ```
 
-Cada [página de conector](https://www.surfsense.com/connectors) tiene ejemplos listos para copiar y pegar en Python, JavaScript, Go, PHP, Ruby, Java y C#.
+Cada [página de conector](https://www.nowing.com/connectors) tiene ejemplos listos para copiar y pegar en Python, JavaScript, Go, PHP, Ruby, Java y C#.
 
 ### Dale las herramientas a tus agentes vía MCP
 
-Agrega el servidor MCP de SurfSense a Claude, Cursor o tu propio framework de agentes:
+Agrega el servidor MCP de Nowing a Claude, Cursor o tu propio framework de agentes:
 
 ```json
 {
   "mcpServers": {
-    "surfsense": {
-      "url": "https://mcp.surfsense.com/mcp",
-      "headers": { "Authorization": "Bearer ${SURFSENSE_API_KEY}" }
+    "nowing": {
+      "url": "https://mcp.nowing.com/mcp",
+      "headers": { "Authorization": "Bearer ${NOWING_API_KEY}" }
     }
   }
 }
 ```
 
-Tu agente ahora puede llamar a cada conector como una herramienta nativa. Consulta la página del [servidor MCP de SurfSense](https://www.surfsense.com/mcp-server) para ver la lista completa de herramientas, o ejecuta el servidor localmente desde [`surfsense_mcp`](./surfsense_mcp).
+Tu agente ahora puede llamar a cada conector como una herramienta nativa. Consulta la página del [servidor MCP de Nowing](https://www.nowing.com/mcp-server) para ver la lista completa de herramientas, o ejecuta el servidor localmente desde [`nowing_mcp`](./nowing_mcp).
 
 ### Usa la nube
 
-Ve a [surfsense.com](https://www.surfsense.com), inicia sesión y pídele al agente datos de la web en vivo en lenguaje natural. Las cuentas nuevas comienzan con $5 de crédito gratuito y sin suscripción.
+Ve a [nowing.com](https://www.nowing.com), inicia sesión y pídele al agente datos de la web en vivo en lenguaje natural. Las cuentas nuevas comienzan con $5 de crédito gratuito y sin suscripción.
 
 ### Autoalójalo gratis
 
@@ -118,20 +118,20 @@ Ejecuta toda la plataforma, los conectores, los agentes, las automatizaciones y 
 Para Linux/macOS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/MODSetter/SurfSense/main/docker/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nowing/Nowing/main/docker/scripts/install.sh | bash
 ```
 
 Para Windows:
 
 ```bash
-irm https://raw.githubusercontent.com/MODSetter/SurfSense/main/docker/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/nowing/Nowing/main/docker/scripts/install.ps1 | iex
 ```
 
-El script de instalación configura [Watchtower](https://github.com/nicholas-fedor/watchtower) automáticamente para actualizaciones automáticas diarias. Para omitirlo, agrega la opción `--no-watchtower`. Para Docker Compose, instalación manual y otras opciones de despliegue, consulta la [documentación](https://www.surfsense.com/docs/).
+El script de instalación configura [Watchtower](https://github.com/nicholas-fedor/watchtower) automáticamente para actualizaciones automáticas diarias. Para omitirlo, agrega la opción `--no-watchtower`. Para Docker Compose, instalación manual y otras opciones de despliegue, consulta la [documentación](https://www.nowing.com/docs/).
 
 ## Todo lo demás que viene incluido
 
-El espacio de trabajo de investigación que convirtió a SurfSense en la alternativa de código abierto líder a NotebookLM sigue aquí, y todo lo que tus agentes recopilan aterriza en él.
+El espacio de trabajo de investigación que convirtió a Nowing en la alternativa de código abierto líder a NotebookLM sigue aquí, y todo lo que tus agentes recopilan aterriza en él.
 
 **Base de conocimiento**
 
@@ -139,7 +139,7 @@ El espacio de trabajo de investigación que convirtió a SurfSense en la alterna
 - Búsqueda híbrida semántica y de texto completo con respuestas citadas al estilo Perplexity.
 - La organización de archivos con IA clasifica los documentos automáticamente por fuente, fecha y tema.
 
-<p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="Chatea con tus PDFs y documentos" /></p>
+<p align="center"><img src="nowing_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="Chatea con tus PDFs y documentos" /></p>
 
 **Estudio de entregables**
 
@@ -147,7 +147,7 @@ El espacio de trabajo de investigación que convirtió a SurfSense en la alterna
 - Podcasts de IA con dos presentadores a partir de cualquier documento o carpeta en menos de 20 segundos.
 - Presentaciones de diapositivas editables, resúmenes en video narrados y generación de imágenes con IA.
 
-<p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/ReportGenGif_compressed.gif" alt="Generador de informes con IA" /></p>
+<p align="center"><img src="nowing_web/public/homepage/hero_tutorial/ReportGenGif_compressed.gif" alt="Generador de informes con IA" /></p>
 
 **Automatizaciones**
 
@@ -158,18 +158,18 @@ El espacio de trabajo de investigación que convirtió a SurfSense en la alterna
 - Chats de IA colaborativos en tiempo real con comentarios y menciones.
 - RBAC con roles de Propietario, Administrador, Editor y Visualizador.
 
-<p align="center"><img src="surfsense_web/public/homepage/hero_realtime/RealTimeChatGif.gif" alt="Chat de IA colaborativo" /></p>
+<p align="center"><img src="nowing_web/public/homepage/hero_realtime/RealTimeChatGif.gif" alt="Chat de IA colaborativo" /></p>
 
 **Aplicación de escritorio**
 
-Asistencia de IA nativa en todas las aplicaciones de tu computadora. Descárgala desde la [última versión](https://github.com/MODSetter/SurfSense/releases/latest).
+Asistencia de IA nativa en todas las aplicaciones de tu computadora. Descárgala desde la [última versión](https://github.com/nowing/Nowing/releases/latest).
 
-- **General Assist**: abre SurfSense desde cualquier aplicación con un atajo global.
+- **General Assist**: abre Nowing desde cualquier aplicación con un atajo global.
 - **Quick Assist**: selecciona texto en cualquier lugar y pídele a la IA que lo explique, lo reescriba o actúe sobre él.
 - **Screenshot Assist**: captura cualquier región de tu pantalla y pregúntale a la IA sobre ella.
 - **Watch Local Folder** (vigilar carpeta local): sincroniza automáticamente una carpeta local con tu base de conocimiento. Apúntala a tu bóveda de Obsidian para mantener tus notas disponibles para búsqueda.
 
-<p align="center"><img src="surfsense_web/public/homepage/hero_tutorial/quick_assist.gif" alt="Quick Assist" /></p>
+<p align="center"><img src="nowing_web/public/homepage/hero_tutorial/quick_assist.gif" alt="Quick Assist" /></p>
 
 **Sin dependencia de un proveedor**
 
@@ -197,25 +197,25 @@ https://github.com/user-attachments/assets/a0a16566-6967-4374-ac51-9b3e07fbecd7
 
 3. Haz que un chat sea compartido y trabajen en él juntos en tiempo real, con comentarios para etiquetar a compañeros.
 
-   <p align="center"><img src="surfsense_web/public/homepage/hero_realtime/RealTimeCommentsFlow.gif" alt="Comentarios en tiempo real" /></p>
+   <p align="center"><img src="nowing_web/public/homepage/hero_realtime/RealTimeCommentsFlow.gif" alt="Comentarios en tiempo real" /></p>
 
-## Cómo se compara SurfSense
+## Cómo se compara Nowing
 
-SurfSense es el único producto de código abierto que combina un espacio de trabajo de investigación al estilo NotebookLM para personas con primitivas de datos en vivo para agentes. Así se compara frente a cada clase de herramienta.
+Nowing es el único producto de código abierto que combina un espacio de trabajo de investigación al estilo NotebookLM para personas con primitivas de datos en vivo para agentes. Así se compara frente a cada clase de herramienta.
 
-**vs agentes de navegador (Browserbase, Browser Use).** Los agentes de navegador manejan un navegador real con un LLM en el bucle: la herramienta correcta cuando una tarea requiere hacer clic, iniciar sesión o rellenar formularios. Pero la mayor parte de la investigación es recuperación de solo lectura, y para recuperar información el bucle de LLM-en-un-navegador te cuesta minutos y miles de tokens por página. Una llamada a un conector de SurfSense es una sola petición HTTP: segundos, determinista y cero tokens gastados en decidir dónde hacer clic.
+**vs agentes de navegador (Browserbase, Browser Use).** Los agentes de navegador manejan un navegador real con un LLM en el bucle: la herramienta correcta cuando una tarea requiere hacer clic, iniciar sesión o rellenar formularios. Pero la mayor parte de la investigación es recuperación de solo lectura, y para recuperar información el bucle de LLM-en-un-navegador te cuesta minutos y miles de tokens por página. Una llamada a un conector de Nowing es una sola petición HTTP: segundos, determinista y cero tokens gastados en decidir dónde hacer clic.
 
-**vs APIs de scraping (Firecrawl).** Las APIs de scraping son excelentes para convertir una página genérica en markdown, pero un bloque de markdown sigue dejando a tu agente extrayendo la estructura de la prosa, y se degradan en plataformas protegidas contra bots como Reddit, TikTok e Instagram. Los conectores de SurfSense devuelven elementos estructurados nativos de cada plataforma — publicaciones, comentarios, transcripciones, reseñas — y facturan solo por los elementos realmente devueltos; las llamadas fallidas nunca se facturan.
+**vs APIs de scraping (Firecrawl).** Las APIs de scraping son excelentes para convertir una página genérica en markdown, pero un bloque de markdown sigue dejando a tu agente extrayendo la estructura de la prosa, y se degradan en plataformas protegidas contra bots como Reddit, TikTok e Instagram. Los conectores de Nowing devuelven elementos estructurados nativos de cada plataforma — publicaciones, comentarios, transcripciones, reseñas — y facturan solo por los elementos realmente devueltos; las llamadas fallidas nunca se facturan.
 
 **vs APIs de búsqueda (Exa, Tavily, Parallel).** Las APIs de búsqueda responden desde un índice de la web, que es la herramienta correcta para "encuéntrame páginas sobre X". No pueden extraer los comentarios de un hilo de Reddit, las reacciones de TikTok, las transcripciones de YouTube ni las reseñas de Google Maps: los lugares donde la respuesta suele vivir realmente.
 
-**vs marketplaces de scrapers (Apify).** Los marketplaces te dan miles de actores de la comunidad, cada uno con su propio esquema, calidad y precio. SurfSense es una única API tipada y un único servidor MCP con un arnés de agentes y un espacio de trabajo de investigación detrás, y es de código abierto.
+**vs marketplaces de scrapers (Apify).** Los marketplaces te dan miles de actores de la comunidad, cada uno con su propio esquema, calidad y precio. Nowing es una única API tipada y un único servidor MCP con un arnés de agentes y un espacio de trabajo de investigación detrás, y es de código abierto.
 
-### SurfSense vs Google NotebookLM
+### Nowing vs Google NotebookLM
 
 ¿Todavía nos comparas como una alternativa a NotebookLM? Aquí tienes el desglose honesto.
 
-| Característica | Google NotebookLM | SurfSense |
+| Característica | Google NotebookLM | Nowing |
 |---------|-------------------|-----------|
 | **Datos web en vivo para agentes** | No | Conectores de Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search y rastreo web vía API REST y MCP |
 | **Servidor MCP** | No | Cada conector expuesto como herramienta nativa de agente, más servidores MCP propios con aplicaciones OAuth de un clic |
@@ -242,17 +242,17 @@ SurfSense es el único producto de código abierto que combina un espacio de tra
 
 ## Solicitudes de funciones y futuro
 
-**SurfSense está en desarrollo activo.** Aunque todavía no está listo para producción, puedes ayudarnos a acelerar el proceso.
+**Nowing está en desarrollo activo.** Aunque todavía no está listo para producción, puedes ayudarnos a acelerar el proceso.
 
-¡Únete al [Discord de SurfSense](https://discord.gg/ejRNvftDp9) y ayuda a dar forma al futuro de SurfSense!
+¡Únete al [Discord de Nowing](https://discord.gg/ejRNvftDp9) y ayuda a dar forma al futuro de Nowing!
 
 ## Hoja de ruta
 
 Mantente al día con nuestro progreso de desarrollo y las próximas funciones. Consulta nuestra hoja de ruta pública y aporta tus ideas o comentarios:
 
-**Discusión de la hoja de ruta:** [SurfSense 2026 Roadmap](https://github.com/MODSetter/SurfSense/discussions/565)
+**Discusión de la hoja de ruta:** [Nowing 2026 Roadmap](https://github.com/nowing/Nowing/discussions/565)
 
-**Tablero Kanban:** [SurfSense Project Board](https://github.com/users/MODSetter/projects/3)
+**Tablero Kanban:** [Nowing Project Board](https://github.com/users/MODSetter/projects/3)
 
 ## Contribuye
 
@@ -260,17 +260,17 @@ Todas las contribuciones son bienvenidas, desde estrellas y reportes de errores 
 
 Gracias a todos nuestros Surfers:
 
-<a href="https://github.com/MODSetter/SurfSense/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=MODSetter/SurfSense" />
+<a href="https://github.com/nowing/Nowing/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=nowing/Nowing" />
 </a>
 
 ## Historial de estrellas
 
-<a href="https://www.star-history.com/#MODSetter/SurfSense&Date">
+<a href="https://www.star-history.com/#nowing/Nowing&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=MODSetter/SurfSense&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=MODSetter/SurfSense&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=MODSetter/SurfSense&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=nowing/Nowing&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=nowing/Nowing&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=nowing/Nowing&type=Date" />
  </picture>
 </a>
 

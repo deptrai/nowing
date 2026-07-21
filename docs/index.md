@@ -1,54 +1,54 @@
-# SurfSense Documentation Index
+# Nowing Documentation Index
 
 **Ngày tạo:** 2026-07-21 16:59:34
 
 ## Tổng quan dự án
 
-SurfSense là nền tảng nghiên cứu web mở (open-source NotebookLM alternative) cho AI agents, bao gồm backend FastAPI, web Next.js, desktop Electron, browser extension, plugin Obsidian, MCP server, và evaluation harness.
+Nowing là nền tảng nghiên cứu web mở (open-source NotebookLM alternative) cho AI agents, bao gồm backend FastAPI, web Next.js, desktop Electron, browser extension, plugin Obsidian, MCP server, và evaluation harness.
 
 ## Cấu trúc các phần
 
-### SurfSense Backend (backend)
+### Nowing Backend (backend)
 
 - **Loại:** backend
 - **Stack:** Python 3.12 / FastAPI
-- **Entry:** `/Users/luisphan/Documents/SurfSense/surfsense_backend/main.py`
+- **Entry:** `/Users/luisphan/Documents/Nowing/nowing_backend/main.py`
 
-### SurfSense Web (web)
+### Nowing Web (web)
 
 - **Loại:** web
 - **Stack:** Next.js 16 / React 19
-- **Entry:** `/Users/luisphan/Documents/SurfSense/surfsense_web/app/layout.tsx`
+- **Entry:** `/Users/luisphan/Documents/Nowing/nowing_web/app/layout.tsx`
 
-### SurfSense Browser Extension (browser_extension)
+### Nowing Browser Extension (browser_extension)
 
 - **Loại:** extension
 - **Stack:** Plasmo / React 18
-- **Entry:** `/Users/luisphan/Documents/SurfSense/surfsense_browser_extension/popup.tsx`
+- **Entry:** `/Users/luisphan/Documents/Nowing/nowing_browser_extension/popup.tsx`
 
-### SurfSense Desktop (desktop)
+### Nowing Desktop (desktop)
 
 - **Loại:** desktop
 - **Stack:** Electron 42 / TypeScript
-- **Entry:** `/Users/luisphan/Documents/SurfSense/surfsense_desktop/src/main.ts`
+- **Entry:** `/Users/luisphan/Documents/Nowing/nowing_desktop/src/main.ts`
 
-### SurfSense Obsidian Plugin (obsidian)
+### Nowing Obsidian Plugin (obsidian)
 
 - **Loại:** extension
 - **Stack:** TypeScript / esbuild / Obsidian API
-- **Entry:** `/Users/luisphan/Documents/SurfSense/surfsense_obsidian/src/main.ts`
+- **Entry:** `/Users/luisphan/Documents/Nowing/nowing_obsidian/src/main.ts`
 
-### SurfSense MCP Server (mcp)
+### Nowing MCP Server (mcp)
 
 - **Loại:** backend
 - **Stack:** Python 3.11 / MCP SDK / Starlette
-- **Entry:** `/Users/luisphan/Documents/SurfSense/surfsense_mcp/mcp_server/__main__.py`
+- **Entry:** `/Users/luisphan/Documents/Nowing/nowing_mcp/mcp_server/__main__.py`
 
-### SurfSense Evals (evals)
+### Nowing Evals (evals)
 
 - **Loại:** data
 - **Stack:** Python 3.12 / CLI
-- **Entry:** `/Users/luisphan/Documents/SurfSense/surfsense_evals/src/surfsense_evals/__main__.py`
+- **Entry:** `/Users/luisphan/Documents/Nowing/nowing_evals/src/nowing_evals/__main__.py`
 
 ## Tài liệu chính
 
@@ -93,7 +93,7 @@ SurfSense là nền tảng nghiên cứu web mở (open-source NotebookLM altern
 
 - `README.md` – Giới thiệu dự án
 - `CONTRIBUTING.md` – Hướng dẫn đóng góp
-- `surfsense_web/content/docs/` – Fumadocs docs website
+- `nowing_web/content/docs/` – Fumadocs docs website
 - `.github/workflows/` – CI/CD pipelines
 - `docs/chinese-llm-setup.md` – Hướng dẫn setup Chinese LLM
 
@@ -102,7 +102,7 @@ SurfSense là nền tảng nghiên cứu web mở (open-source NotebookLM altern
 ### Backend
 
 ```bash
-cd surfsense_backend
+cd nowing_backend
 uv sync
 cp .env.example .env
 alembic upgrade head
@@ -112,7 +112,7 @@ uv run python main.py --reload
 ### Web
 
 ```bash
-cd surfsense_web
+cd nowing_web
 pnpm install
 cp .env.example .env.local
 pnpm dev

@@ -1,36 +1,36 @@
-# SurfSense - Phân tích cây thư mục
+# Nowing - Phân tích cây thư mục
 
 **Ngày tạo:** 2026-07-21 16:59:34
 
 ## Tổng quan
 
-Dự án SurfSense là monorepo gồm 7 phần chính. Mỗi phần có cấu trúc riêng nhưng cùng nằm dưới một repository.
+Dự án Nowing là monorepo gồm 7 phần chính. Mỗi phần có cấu trúc riêng nhưng cùng nằm dưới một repository.
 
 ## Cấu trúc repository
 
 ```
-SurfSense/
+Nowing/
 ├── README.md, CONTRIBUTING.md, LICENSE, VERSION
 ├── _bmad/                  # Cấu hình BMAD
 ├── _bmad-output/           # Artifact outputs
 ├── docker/                 # Docker Compose & scripts cài đặt
 ├── docs/                   # Tài liệu dự án được tạo
 ├── scripts/                # Script hỗ trợ
-├── surfsense_backend/      # Backend FastAPI
-├── surfsense_web/          # Web app Next.js
-├── surfsense_browser_extension/  # Tiện ích trình duyệt Plasmo
-├── surfsense_desktop/      # Ứng dụng Electron
-├── surfsense_evals/        # Evaluation harness
-├── surfsense_mcp/          # MCP server
-└── surfsense_obsidian/     # Plugin Obsidian
+├── nowing_backend/      # Backend FastAPI
+├── nowing_web/          # Web app Next.js
+├── nowing_browser_extension/  # Tiện ích trình duyệt Plasmo
+├── nowing_desktop/      # Ứng dụng Electron
+├── nowing_evals/        # Evaluation harness
+├── nowing_mcp/          # MCP server
+└── nowing_obsidian/     # Plugin Obsidian
 ```
 
 ## Cây thư mục từng phần
 
-### surfsense_backend
+### nowing_backend
 
 ```
-surfsense_backend/
+nowing_backend/
 ├── .dockerignore
 ├── .env
 ├── .env.example
@@ -98,7 +98,7 @@ surfsense_backend/
 │   │   ├── 143_force_zero_publication_resync.py
 │   │   ├── 144_add_automation_tables.py
 │   │   ├── 145_add_automations_permissions_to_roles.py
-│   │   ├── 146_drop_surfsense_docs_tables.py
+│   │   ├── 146_drop_nowing_docs_tables.py
 │   │   ├── 147_add_event_to_automation_trigger_type.py
 │   │   ├── 148_add_automation_runs_to_zero_publication.py
 │   │   ├── 149_add_gateway_tables.py
@@ -178,7 +178,7 @@ surfsense_backend/
 │   │   ├── 58_unique_connector_name_per_space_user.py
 │   │   ├── 59_add_teams_connector_enums.py
 │   │   ├── 5_remove_title_char_limit.py
-│   │   ├── 60_add_surfsense_docs_tables.py
+│   │   ├── 60_add_nowing_docs_tables.py
 │   │   ├── 61_add_chat_visibility_and_created_by.py
 │   │   ├── 62_add_mcp_connector_type.py
 │   │   ├── 63_allow_multiple_connectors_with_unique_.py
@@ -1756,10 +1756,10 @@ surfsense_backend/
 │   │   ├── helpers.py
 ```
 
-### surfsense_web
+### nowing_web
 
 ```
-surfsense_web/
+nowing_web/
 ├── .cursorrules
 ├── .dockerignore
 ├── .env
@@ -3245,10 +3245,10 @@ surfsense_web/
 │   │   ├── user.ts
 ```
 
-### surfsense_browser_extension
+### nowing_browser_extension
 
 ```
-surfsense_browser_extension/
+nowing_browser_extension/
 ├── .env.example
 ├── .gitignore
 ├── README.md
@@ -3296,10 +3296,10 @@ surfsense_browser_extension/
 │   ├── interfaces.ts
 ```
 
-### surfsense_desktop
+### nowing_desktop
 
 ```
-surfsense_desktop/
+nowing_desktop/
 ├── .env.example
 ├── .gitignore
 ├── .npmrc
@@ -3369,10 +3369,10 @@ surfsense_desktop/
 │   │   │   ├── window-picker.ts
 ```
 
-### surfsense_obsidian
+### nowing_obsidian
 
 ```
-surfsense_obsidian/
+nowing_obsidian/
 ├── .editorconfig
 ├── .gitignore
 ├── .npmrc
@@ -3407,10 +3407,10 @@ surfsense_obsidian/
 │   ├── vault-identity.ts
 ```
 
-### surfsense_mcp
+### nowing_mcp
 
 ```
-surfsense_mcp/
+nowing_mcp/
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
@@ -3474,10 +3474,10 @@ surfsense_mcp/
 │   ├── test_workspace_context.py
 ```
 
-### surfsense_evals
+### nowing_evals
 
 ```
-surfsense_evals/
+nowing_evals/
 ├── .env.example
 ├── .gitignore
 ├── README.md
@@ -3508,7 +3508,7 @@ surfsense_evals/
 │   ├── summarise_parser_compare_run.py
 │   ├── test_context_overflow_hypothesis.py
 ├── src/
-│   ├── surfsense_evals/
+│   ├── nowing_evals/
 │   │   ├── __init__.py
 │   │   ├── __main__.py
 │   │   ├── core/
@@ -3525,7 +3525,7 @@ surfsense_evals/
 │   │   │   │   ├── bare_llm.py
 │   │   │   │   ├── base.py
 │   │   │   │   ├── native_pdf.py
-│   │   │   │   ├── surfsense.py
+│   │   │   │   ├── nowing.py
 │   │   │   ├── clients/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── documents.py
@@ -3627,7 +3627,7 @@ surfsense_evals/
 | desktop | `src/main.ts`, `src/ipc/` | Main process & IPC |
 | obsidian | `src/` | Plugin source |
 | mcp | `mcp_server/` | MCP server implementation |
-| evals | `src/surfsense_evals/` | Core evaluation harness |
+| evals | `src/nowing_evals/` | Core evaluation harness |
 
 ---
 

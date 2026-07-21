@@ -1,4 +1,4 @@
-# SurfSense Web - Component Inventory
+# Nowing Web - Component Inventory
 
 **Ngày tạo:** 2026-07-21 16:59:34
 

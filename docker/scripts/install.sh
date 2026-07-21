@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# SurfSense — One-line Install Script
+# Nowing — One-line Install Script
 #
 #
-# Usage: curl -fsSL https://raw.githubusercontent.com/MODSetter/SurfSense/main/docker/scripts/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/nowing/Nowing/main/docker/scripts/install.sh | bash
 #
 # Flags:
 #   --no-watchtower              Skip automatic Watchtower setup
@@ -15,8 +15,8 @@
 #   --quiet                      Skip interactive prompts
 #
 # Handles two cases automatically:
-#   1. Fresh install        — no prior SurfSense data detected
-#   2. Migration from the legacy all-in-one container (surfsense-data volume)
+#   1. Fresh install        — no prior Nowing data detected
+#   2. Migration from the legacy all-in-one container (nowing-data volume)
 #      Downloads and runs migrate-database.sh --yes, then restores the dump
 #      into the new PostgreSQL 17 stack. The user runs one command for both.
 #
@@ -30,11 +30,11 @@ set -euo pipefail
 
 main() {
 
-REPO_RAW="https://raw.githubusercontent.com/MODSetter/SurfSense/main"
-INSTALL_DIR="./surfsense"
-OLD_VOLUME="surfsense-data"
-DUMP_FILE="./surfsense_migration_backup.sql"
-KEY_FILE="./surfsense_migration_secret.key"
+REPO_RAW="https://raw.githubusercontent.com/nowing/Nowing/main"
+INSTALL_DIR="./nowing"
+OLD_VOLUME="nowing-data"
+DUMP_FILE="./nowing_migration_backup.sql"
+KEY_FILE="./nowing_migration_secret.key"
 MIGRATION_DONE_FILE="${INSTALL_DIR}/.migration_done"
 MIGRATION_MODE=false
 SETUP_WATCHTOWER=true
@@ -66,10 +66,10 @@ RED='\033[0;31m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-info()    { printf "${CYAN}[SurfSense]${NC} %s\n"        "$1"; }
-success() { printf "${GREEN}[SurfSense]${NC} %s\n"       "$1"; }
-warn()    { printf "${YELLOW}[SurfSense]${NC} %s\n"      "$1"; }
-error()   { printf "${RED}[SurfSense]${NC} ERROR: %s\n"  "$1" >&2; exit 1; }
+info()    { printf "${CYAN}[Nowing]${NC} %s\n"        "$1"; }
+success() { printf "${GREEN}[Nowing]${NC} %s\n"       "$1"; }
+warn()    { printf "${YELLOW}[Nowing]${NC} %s\n"      "$1"; }
+error()   { printf "${RED}[Nowing]${NC} ERROR: %s\n"  "$1" >&2; exit 1; }
 step()    { printf "\n${BOLD}${CYAN}── %s${NC}\n"        "$1"; }
 
 show_banner() {
@@ -89,7 +89,7 @@ show_banner() {
 EOF
     printf "${YELLOW}           NotebookLM for Open Web Research${NC}\n"
     printf "${CYAN}══════════════════════════════════════════════════════════════${NC}\n"
-    info "This installer will create ${INSTALL_DIR}/ and start SurfSense with Docker Compose."
+    info "This installer will create ${INSTALL_DIR}/ and start Nowing with Docker Compose."
 }
 
 show_banner
@@ -174,8 +174,8 @@ stack_failure_report() {
     echo ""
     echo "Recovery hints:"
     echo "  1. Inspect migrations:   cd ${INSTALL_DIR} && ${DC} logs migrations"
-    echo "  2. Verify publication:   cd ${INSTALL_DIR} && ${DC} exec db psql -U surfsense -d surfsense -c 'SELECT pubname FROM pg_publication;'"
-    echo "  3. Hard reset zero db:   cd ${INSTALL_DIR} && ${DC} down && docker volume rm surfsense-zero-cache && ${DC} up -d --wait"
+    echo "  2. Verify publication:   cd ${INSTALL_DIR} && ${DC} exec db psql -U nowing -d nowing -c 'SELECT pubname FROM pg_publication;'"
+    echo "  3. Hard reset zero db:   cd ${INSTALL_DIR} && ${DC} down && docker volume rm nowing-zero-cache && ${DC} up -d --wait"
     echo ""
     exit 1
 }
@@ -269,7 +269,7 @@ resolve_variant() {
         fi
         if ! $has_runtime; then
             warn "NVIDIA GPU detected, but NVIDIA Container Toolkit was not detected; falling back to CPU variant." >&2
-            warn "Install the toolkit before enabling SurfSense GPU acceleration." >&2
+            warn "Install the toolkit before enabling Nowing GPU acceleration." >&2
             printf 'cpu'
             return 0
         fi
@@ -284,7 +284,7 @@ resolve_variant() {
     if $has_gpu && $has_runtime && ! $QUIET && [[ -r /dev/tty && -w /dev/tty ]]; then
         local choice
         echo "" > /dev/tty
-        printf "${BOLD}${CYAN}SurfSense detected an NVIDIA GPU.${NC}\n" > /dev/tty
+        printf "${BOLD}${CYAN}Nowing detected an NVIDIA GPU.${NC}\n" > /dev/tty
         printf "Use GPU acceleration? [Y/n]: " > /dev/tty
         read -r choice < /dev/tty || choice=""
         case "$choice" in
@@ -306,19 +306,19 @@ apply_variant_env() {
 
     if [[ -f "$env_file" && "$allow_existing_update" != "true" ]]; then
         warn ".env already exists — keeping your existing configuration."
-        info "To change variants later, edit SURFSENSE_VARIANT and COMPOSE_FILE in ${env_file}, then run ${DC} up -d --wait."
+        info "To change variants later, edit NOWING_VARIANT and COMPOSE_FILE in ${env_file}, then run ${DC} up -d --wait."
         return 0
     fi
 
     if [[ "$variant" == "cpu" ]]; then
-        set_env_value "$env_file" "SURFSENSE_VARIANT" ""
+        set_env_value "$env_file" "NOWING_VARIANT" ""
         remove_env_value "$env_file" "COMPOSE_FILE"
-        remove_env_value "$env_file" "SURFSENSE_GPU_COUNT"
+        remove_env_value "$env_file" "NOWING_GPU_COUNT"
     else
-        set_env_value "$env_file" "SURFSENSE_VARIANT" "$variant"
+        set_env_value "$env_file" "NOWING_VARIANT" "$variant"
         set_env_value "$env_file" "COMPOSE_FILE" "docker-compose.yml:docker-compose.gpu.yml"
         if [[ -n "$GPU_COUNT" ]]; then
-            set_env_value "$env_file" "SURFSENSE_GPU_COUNT" "$GPU_COUNT"
+            set_env_value "$env_file" "NOWING_GPU_COUNT" "$GPU_COUNT"
         fi
     fi
 
@@ -329,7 +329,7 @@ SELECTED_VARIANT=$(resolve_variant)
 
 # ── Download files ───────────────────────────────────────────────────────────
 
-step "Downloading SurfSense files"
+step "Downloading Nowing files"
 info "Installation directory: ${INSTALL_DIR}"
 mkdir -p "${INSTALL_DIR}/scripts"
 mkdir -p "${INSTALL_DIR}/proxy"
@@ -355,7 +355,7 @@ chmod +x "${INSTALL_DIR}/scripts/migrate-database.sh"
 success "All files downloaded to ${INSTALL_DIR}/"
 
 # ── Legacy all-in-one detection ──────────────────────────────────────────────
-# Detect surfsense-data volume → migration mode.
+# Detect nowing-data volume → migration mode.
 # If a dump already exists (from a previous partial run) skip extraction and
 # go straight to restore — this makes re-runs safe and idempotent.
 
@@ -375,13 +375,13 @@ if docker volume ls --format '{{.Name}}' 2>/dev/null < /dev/null | grep -q "^${O
         warn "Your original data will NOT be deleted."
         printf "\n"
         info "Running data extraction (migrate-database.sh --yes)..."
-        info "Full extraction log: ./surfsense-migration.log"
+        info "Full extraction log: ./nowing-migration.log"
         printf "\n"
 
         # Run extraction non-interactively. On failure the error from
         # migrate-database.sh is printed and install.sh exits here.
         bash "${INSTALL_DIR}/scripts/migrate-database.sh" --yes < /dev/null \
-            || error "Data extraction failed. See ./surfsense-migration.log for details.\nYou can also run migrate-database.sh manually with custom flags:\n  bash ${INSTALL_DIR}/scripts/migrate-database.sh --db-user X --db-password Y"
+            || error "Data extraction failed. See ./nowing-migration.log for details.\nYou can also run migrate-database.sh manually with custom flags:\n  bash ${INSTALL_DIR}/scripts/migrate-database.sh --db-user X --db-password Y"
 
         printf "\n"
         success "Data extraction complete. Proceeding with installation and restore."
@@ -414,7 +414,7 @@ if [ ! -f "${INSTALL_DIR}/.env" ]; then
 else
     if $VARIANT_EXPLICIT; then
         apply_variant_env "${INSTALL_DIR}/.env" "$SELECTED_VARIANT" "true"
-        info "Updated SurfSense image variant in existing ${INSTALL_DIR}/.env"
+        info "Updated Nowing image variant in existing ${INSTALL_DIR}/.env"
     else
         apply_variant_env "${INSTALL_DIR}/.env" "$SELECTED_VARIANT" "false"
     fi
@@ -427,9 +427,9 @@ if $MIGRATION_MODE; then
     DB_USER=$(grep '^DB_USER=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
     DB_PASS=$(grep '^DB_PASSWORD=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
     DB_NAME=$(grep '^DB_NAME=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
-    DB_USER="${DB_USER:-surfsense}"
-    DB_PASS="${DB_PASS:-surfsense}"
-    DB_NAME="${DB_NAME:-surfsense}"
+    DB_USER="${DB_USER:-nowing}"
+    DB_PASS="${DB_PASS:-nowing}"
+    DB_NAME="${DB_NAME:-nowing}"
 
     step "Starting PostgreSQL 17"
     (cd "${INSTALL_DIR}" && ${DC} up -d db) < /dev/null
@@ -437,10 +437,10 @@ if $MIGRATION_MODE; then
 
     step "Restoring database"
     [[ -f "${DUMP_FILE}" ]] \
-        || error "Dump file '${DUMP_FILE}' not found. The migration script may have failed.\n  Check: ./surfsense-migration.log\n  Or run manually: bash ${INSTALL_DIR}/scripts/migrate-database.sh --yes"
+        || error "Dump file '${DUMP_FILE}' not found. The migration script may have failed.\n  Check: ./nowing-migration.log\n  Or run manually: bash ${INSTALL_DIR}/scripts/migrate-database.sh --yes"
     info "Restoring dump into PostgreSQL 17 — this may take a while for large databases..."
 
-    RESTORE_ERR="/tmp/surfsense_restore_err.log"
+    RESTORE_ERR="/tmp/nowing_restore_err.log"
     (cd "${INSTALL_DIR}" && ${DC} exec -T \
         -e PGPASSWORD="${DB_PASS}" \
         db psql -U "${DB_USER}" -d "${DB_NAME}" \
@@ -455,7 +455,7 @@ if $MIGRATION_MODE; then
     if [[ -n "${FATAL_ERRORS}" ]]; then
         warn "Restore completed with errors (may be harmless pg_dump header noise):"
         printf "%s\n" "${FATAL_ERRORS}"
-        warn "If SurfSense behaves incorrectly, inspect manually:"
+        warn "If Nowing behaves incorrectly, inspect manually:"
         warn "  cd ${INSTALL_DIR} && ${DC} exec db psql -U ${DB_USER} -d ${DB_NAME} < ${DUMP_FILE}"
     else
         success "Database restored with no fatal errors."
@@ -477,7 +477,7 @@ if $MIGRATION_MODE; then
         touch "${MIGRATION_DONE_FILE}"
     fi
 
-    step "Starting all SurfSense services"
+    step "Starting all Nowing services"
     if ! compose_up_wait; then
         stack_failure_report
     fi
@@ -487,7 +487,7 @@ if $MIGRATION_MODE; then
     rm -f "${KEY_FILE}"
 
 else
-    step "Starting SurfSense"
+    step "Starting Nowing"
     if ! compose_up_wait; then
         stack_failure_report
     fi
@@ -515,7 +515,7 @@ if $SETUP_WATCHTOWER; then
             nickfedor/watchtower \
             --label-enable \
             --interval "${WATCHTOWER_INTERVAL}" >/dev/null 2>&1 < /dev/null \
-            && success "Watchtower started — labeled SurfSense containers will auto-update." \
+            && success "Watchtower started — labeled Nowing containers will auto-update." \
             || warn "Could not start Watchtower. You can set it up manually or use: docker compose pull && docker compose up -d --wait"
     fi
 else
@@ -525,16 +525,16 @@ fi
 # ── Done ─────────────────────────────────────────────────────────────────────
 
 echo ""
-_version_display=$(grep '^SURFSENSE_VERSION=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
+_version_display=$(grep '^NOWING_VERSION=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
 _version_display="${_version_display:-latest}"
-_variant_display=$(grep '^SURFSENSE_VARIANT=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
+_variant_display=$(grep '^NOWING_VARIANT=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' | head -1 || true)
 _variant_display="${_variant_display:-cpu}"
-step "SurfSense is now installed [${_version_display}]"
+step "Nowing is now installed [${_version_display}]"
 
-_public_url=$(grep '^SURFSENSE_PUBLIC_URL=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' | head -1 || true)
+_public_url=$(grep '^NOWING_PUBLIC_URL=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' | head -1 || true)
 _public_url="${_public_url:-http://localhost:3929}"
 
-info "  SurfSense: ${_public_url}"
+info "  Nowing: ${_public_url}"
 info "  Backend:   ${_public_url}/api/v1"
 info "  Zero sync: ${_public_url}/zero"
 info ""

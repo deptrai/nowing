@@ -1,10 +1,10 @@
-# Kiến trúc - SurfSense Browser Extension
+# Kiến trúc - Nowing Browser Extension
 
 **Ngày tạo:** 2026-07-21 16:59:34
 
 ## Tóm tắt
 
-Tiện ích trình duyệt dùng Plasmo framework, thu thập lịch sử duyệt web và gửi về backend SurfSense.
+Tiện ích trình duyệt dùng Plasmo framework, thu thập lịch sử duyệt web và gửi về backend Nowing.
 
 ## Tech Stack
 

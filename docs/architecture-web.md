@@ -1,10 +1,10 @@
-# Kiến trúc - SurfSense Web
+# Kiến trúc - Nowing Web
 
 **Ngày tạo:** 2026-07-21 16:59:34
 
 ## Tóm tắt
 
-Frontend chính của SurfSense, xây dựng bằng Next.js 16 App Router. Cung cấp landing page, dashboard, chat, connectors, settings, docs site, và desktop-specific pages.
+Frontend chính của Nowing, xây dựng bằng Next.js 16 App Router. Cung cấp landing page, dashboard, chat, connectors, settings, docs site, và desktop-specific pages.
 
 ## Tech Stack
 

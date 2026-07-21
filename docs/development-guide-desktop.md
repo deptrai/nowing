@@ -3,7 +3,7 @@
 **Ngày tạo:** 2026-07-21 16:59:34
 
 ```bash
-cd surfsense_desktop
+cd nowing_desktop
 pnpm install
 pnpm dev          # build & chạy Electron với web dev
 pnpm build        # build main+preload

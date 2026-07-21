@@ -3,7 +3,7 @@
 **Ngày tạo:** 2026-07-21 16:59:34
 
 ```bash
-cd surfsense_browser_extension
+cd nowing_browser_extension
 pnpm install
 pnpm dev        # Plasmo dev mode
 pnpm build
