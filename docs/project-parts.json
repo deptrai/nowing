@@ -1,0 +1,111 @@
+{
+  "repository_type": "monorepo",
+  "parts": [
+    {
+      "part_id": "backend",
+      "part_name": "SurfSense Backend",
+      "root_path": "/Users/luisphan/Documents/SurfSense/surfsense_backend",
+      "project_type_id": "backend",
+      "display_name": "Backend",
+      "primary_tech": "Python 3.12 / FastAPI"
+    },
+    {
+      "part_id": "web",
+      "part_name": "SurfSense Web",
+      "root_path": "/Users/luisphan/Documents/SurfSense/surfsense_web",
+      "project_type_id": "web",
+      "display_name": "Web",
+      "primary_tech": "Next.js 16 / React 19"
+    },
+    {
+      "part_id": "browser_extension",
+      "part_name": "SurfSense Browser Extension",
+      "root_path": "/Users/luisphan/Documents/SurfSense/surfsense_browser_extension",
+      "project_type_id": "extension",
+      "display_name": "Browser Extension",
+      "primary_tech": "Plasmo / React 18"
+    },
+    {
+      "part_id": "desktop",
+      "part_name": "SurfSense Desktop",
+      "root_path": "/Users/luisphan/Documents/SurfSense/surfsense_desktop",
+      "project_type_id": "desktop",
+      "display_name": "Desktop",
+      "primary_tech": "Electron 42 / TypeScript"
+    },
+    {
+      "part_id": "obsidian",
+      "part_name": "SurfSense Obsidian Plugin",
+      "root_path": "/Users/luisphan/Documents/SurfSense/surfsense_obsidian",
+      "project_type_id": "extension",
+      "display_name": "Obsidian Plugin",
+      "primary_tech": "TypeScript / esbuild / Obsidian API"
+    },
+    {
+      "part_id": "mcp",
+      "part_name": "SurfSense MCP Server",
+      "root_path": "/Users/luisphan/Documents/SurfSense/surfsense_mcp",
+      "project_type_id": "backend",
+      "display_name": "MCP Server",
+      "primary_tech": "Python 3.11 / MCP SDK / Starlette"
+    },
+    {
+      "part_id": "evals",
+      "part_name": "SurfSense Evals",
+      "root_path": "/Users/luisphan/Documents/SurfSense/surfsense_evals",
+      "project_type_id": "data",
+      "display_name": "Evals",
+      "primary_tech": "Python 3.12 / CLI"
+    }
+  ],
+  "integration_points": [
+    {
+      "from": "web",
+      "to": "backend",
+      "type": "REST API",
+      "details": "Proxy qua app/api/v1/[...path]/route.ts"
+    },
+    {
+      "from": "web",
+      "to": "backend",
+      "type": "Zero sync",
+      "details": "app/api/zero/mutate & /query"
+    },
+    {
+      "from": "desktop",
+      "to": "web",
+      "type": "Embed",
+      "details": "Electron load web app"
+    },
+    {
+      "from": "desktop",
+      "to": "backend",
+      "type": "REST",
+      "details": "Main process HTTP calls"
+    },
+    {
+      "from": "browser_extension",
+      "to": "backend",
+      "type": "REST",
+      "details": "Background service worker API calls"
+    },
+    {
+      "from": "obsidian",
+      "to": "backend",
+      "type": "REST",
+      "details": "api-client.ts g\u1ecdi /obsidian/*"
+    },
+    {
+      "from": "mcp",
+      "to": "backend",
+      "type": "REST",
+      "details": "mcp_server/core/client.py g\u1ecdi backend"
+    },
+    {
+      "from": "evals",
+      "to": "backend",
+      "type": "REST",
+      "details": "surfsense_evals core clients g\u1ecdi /api/v1/*"
+    }
+  ]
+}
