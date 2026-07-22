@@ -6,17 +6,22 @@ import {
 	type DeleteWorkspaceRequest,
 	deleteWorkspaceRequest,
 	deleteWorkspaceResponse,
+	type GetWorkspaceMcpToolsResponse,
 	type GetWorkspaceRequest,
 	type GetWorkspacesRequest,
+	getWorkspaceMcpToolsResponse,
 	getWorkspaceRequest,
 	getWorkspaceResponse,
 	getWorkspacesRequest,
 	getWorkspacesResponse,
 	leaveWorkspaceResponse,
 	type UpdateWorkspaceApiAccessRequest,
+	type UpdateWorkspaceMcpToolRequest,
 	type UpdateWorkspaceRequest,
 	updateWorkspaceApiAccessRequest,
 	updateWorkspaceApiAccessResponse,
+	updateWorkspaceMcpToolRequest,
+	updateWorkspaceMcpToolResponse,
 	updateWorkspaceRequest,
 	updateWorkspaceResponse,
 } from "@/contracts/types/workspace.types";
@@ -137,6 +142,31 @@ class WorkspacesApiService {
 		}
 
 		return baseApiService.delete(`/api/v1/workspaces/${request.id}`, deleteWorkspaceResponse);
+	};
+
+	getWorkspaceMcpTools = async (workspaceId: number): Promise<GetWorkspaceMcpToolsResponse> => {
+		return baseApiService.get(
+			`/api/v1/workspaces/${workspaceId}/mcp-tools`,
+			getWorkspaceMcpToolsResponse
+		);
+	};
+
+	updateWorkspaceMcpTool = async (request: UpdateWorkspaceMcpToolRequest) => {
+		const parsedRequest = updateWorkspaceMcpToolRequest.safeParse(request);
+
+		if (!parsedRequest.success) {
+			console.error("Invalid request:", parsedRequest.error);
+			const errorMessage = parsedRequest.error.issues.map((issue) => issue.message).join(", ");
+			throw new ValidationError(`Invalid request: ${errorMessage}`);
+		}
+
+		return baseApiService.put(
+			`/api/v1/workspaces/${request.id}/mcp-tools/${request.tool_name}`,
+			updateWorkspaceMcpToolResponse,
+			{
+				body: { enabled: parsedRequest.data.enabled },
+			}
+		);
 	};
 
 	/**

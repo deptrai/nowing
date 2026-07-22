@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StrictBool
 
 from .base import IDModel, TimestampModel
 from .model_connections import LlmSetupStatusRead
@@ -48,3 +48,16 @@ class WorkspaceWithStats(WorkspaceRead):
 
     member_count: int = 1
     is_owner: bool = False
+
+
+class WorkspaceMcpToolRead(BaseModel):
+    name: str
+    enabled: bool
+    is_system: bool
+    group: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WorkspaceMcpToolUpdate(BaseModel):
+    enabled: StrictBool

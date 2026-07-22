@@ -7,6 +7,64 @@ export type WorkspaceRow = {
 	description: string | null;
 };
 
+export type RoleRow = {
+	id: number;
+	name: string;
+	description: string | null;
+};
+
+export type InviteRow = {
+	id: number;
+	invite_code: string;
+	workspace_id: number;
+	role: RoleRow | null;
+};
+
+export async function listWorkspaceRoles(
+	request: APIRequestContext,
+	token: string,
+	workspaceId: number
+): Promise<RoleRow[]> {
+	const response = await request.get(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/roles`, {
+		headers: authHeaders(token),
+	});
+	if (!response.ok()) {
+		throw new Error(`listWorkspaceRoles failed (${response.status()}): ${await response.text()}`);
+	}
+	return (await response.json()) as RoleRow[];
+}
+
+export async function createInvite(
+	request: APIRequestContext,
+	token: string,
+	workspaceId: number,
+	email: string,
+	roleId: number
+): Promise<InviteRow> {
+	const response = await request.post(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/invites`, {
+		headers: authHeaders(token),
+		data: { email, role_id: roleId },
+	});
+	if (!response.ok()) {
+		throw new Error(`createInvite failed (${response.status()}): ${await response.text()}`);
+	}
+	return (await response.json()) as InviteRow;
+}
+
+export async function acceptInvite(
+	request: APIRequestContext,
+	token: string,
+	inviteCode: string
+): Promise<void> {
+	const response = await request.post(`${BACKEND_URL}/api/v1/invites/accept`, {
+		headers: authHeaders(token),
+		data: { invite_code: inviteCode },
+	});
+	if (!response.ok()) {
+		throw new Error(`acceptInvite failed (${response.status()}): ${await response.text()}`);
+	}
+}
+
 export async function createWorkspace(
 	request: APIRequestContext,
 	token: string,

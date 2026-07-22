@@ -52,6 +52,7 @@ export const cacheKeys = {
 		withQueryParams: (queries: GetWorkspacesRequest["queryParams"]) =>
 			["workspaces", ...stableEntries(queries)] as const,
 		detail: (workspaceId: string) => ["workspaces", workspaceId] as const,
+		mcpTools: (workspaceId: number) => ["workspace-mcp-tools", workspaceId] as const,
 	},
 	user: {
 		current: () => ["user", "me"] as const,

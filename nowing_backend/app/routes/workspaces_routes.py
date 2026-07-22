@@ -2,6 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -9,15 +10,24 @@ from app.auth.context import AuthContext
 from app.db import (
     Permission,
     Workspace,
+    WorkspaceMcpToolSetting,
     WorkspaceMembership,
     WorkspaceRole,
     get_async_session,
     get_default_roles_config,
 )
+from app.mcp_tools import (
+    MCP_TOOL_CATALOG,
+    MCP_TOOL_GROUP_MAP,
+    MCP_TOOL_NAMES,
+    MCP_TOOL_SYSTEM_TOOLS,
+)
 from app.routes.model_connections_routes import compute_llm_setup_status
 from app.schemas import (
     WorkspaceApiAccessUpdate,
     WorkspaceCreate,
+    WorkspaceMcpToolRead,
+    WorkspaceMcpToolUpdate,
     WorkspaceRead,
     WorkspaceUpdate,
     WorkspaceWithStats,
@@ -420,3 +430,122 @@ async def list_workspace_snapshots(
         auth=auth,
     )
     return PublicChatSnapshotsBySpaceResponse(snapshots=snapshots)
+
+
+@router.get(
+    "/workspaces/{workspace_id}/mcp-tools",
+    response_model=list[WorkspaceMcpToolRead],
+)
+async def list_workspace_mcp_tools(
+    workspace_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    List all built-in MCP tools for a workspace with their enabled state.
+
+    Requires SETTINGS_VIEW permission.
+    """
+    try:
+        await check_permission(
+            session,
+            auth,
+            workspace_id,
+            Permission.SETTINGS_VIEW.value,
+            "You don't have permission to view this workspace's settings",
+        )
+
+        result = await session.execute(
+            select(WorkspaceMcpToolSetting).filter(
+                WorkspaceMcpToolSetting.workspace_id == workspace_id
+            )
+        )
+        stored_settings = {
+            setting.tool_name: setting.enabled for setting in result.scalars().all()
+        }
+
+        return [
+            WorkspaceMcpToolRead(
+                name=tool["name"],
+                enabled=stored_settings.get(tool["name"], True),
+                is_system=tool["name"] in MCP_TOOL_SYSTEM_TOOLS,
+                group=tool["group"],
+            )
+            for tool in MCP_TOOL_CATALOG
+        ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to list MCP tools: {e!s}",
+        ) from e
+
+
+@router.put(
+    "/workspaces/{workspace_id}/mcp-tools/{tool_name}",
+    response_model=WorkspaceMcpToolRead,
+)
+async def update_workspace_mcp_tool(
+    workspace_id: int,
+    tool_name: str,
+    body: WorkspaceMcpToolUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Enable or disable a built-in MCP tool for a workspace.
+
+    Requires SETTINGS_UPDATE permission.
+    """
+    try:
+        if tool_name not in MCP_TOOL_NAMES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown tool: {tool_name}",
+            )
+        if tool_name in MCP_TOOL_SYSTEM_TOOLS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"System tool '{tool_name}' cannot be disabled",
+            )
+
+        await check_permission(
+            session,
+            auth,
+            workspace_id,
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to update this workspace's settings",
+        )
+
+        upsert = (
+            insert(WorkspaceMcpToolSetting)
+            .values(
+                workspace_id=workspace_id,
+                tool_name=tool_name,
+                enabled=body.enabled,
+            )
+            .on_conflict_do_update(
+                index_elements=["workspace_id", "tool_name"],
+                set_={"enabled": body.enabled},
+            )
+            .returning(WorkspaceMcpToolSetting.enabled)
+        )
+        result = await session.execute(upsert)
+        enabled = result.scalar_one()
+        await session.commit()
+
+        return WorkspaceMcpToolRead(
+            name=tool_name,
+            enabled=enabled,
+            is_system=False,
+            group=MCP_TOOL_GROUP_MAP[tool_name],
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update MCP tool: {e!s}",
+        ) from e

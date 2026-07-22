@@ -1837,6 +1837,36 @@ class Workspace(BaseModel, TimestampMixin):
         order_by="WorkspaceInvite.id",
         cascade="all, delete-orphan",
     )
+    mcp_tool_settings = relationship(
+        "WorkspaceMcpToolSetting",
+        back_populates="workspace",
+        order_by="WorkspaceMcpToolSetting.tool_name",
+        cascade="all, delete-orphan",
+    )
+
+
+class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
+    __tablename__ = "workspace_mcp_tool_settings"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "tool_name",
+            name="uq_workspace_mcp_tool",
+        ),
+    )
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    tool_name = Column(String(120), nullable=False, index=True)
+    enabled = Column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+
+    workspace = relationship("Workspace", back_populates="mcp_tool_settings")
 
 
 class SearchSourceConnector(BaseModel, TimestampMixin):

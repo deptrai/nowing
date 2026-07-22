@@ -11,6 +11,8 @@ import type { APIRequestContext } from "@playwright/test";
 
 export const BACKEND_URL = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "http://localhost:8000";
 
+const FRONTEND_ORIGIN = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
+
 const TEST_USER_EMAIL = process.env.PLAYWRIGHT_TEST_EMAIL || "e2e-test@nowing.net";
 const TEST_USER_PASSWORD = process.env.PLAYWRIGHT_TEST_PASSWORD || "E2eTestPassword123!";
 const E2E_MINT_SECRET = process.env.E2E_MINT_SECRET || "local-e2e-mint-secret-not-for-production";
@@ -31,6 +33,7 @@ export async function mintTestToken(
 		headers: {
 			"Content-Type": "application/json",
 			"X-E2E-Mint-Secret": E2E_MINT_SECRET,
+			Origin: FRONTEND_ORIGIN,
 		},
 	});
 	if (!response.ok()) {
@@ -45,13 +48,14 @@ export async function mintTestToken(
 	return access_token;
 }
 
-export async function loginAsTestUser(request: APIRequestContext): Promise<string> {
+export async function loginUser(
+	request: APIRequestContext,
+	email: string,
+	password: string
+): Promise<string> {
 	const response = await request.post(`${BACKEND_URL}/auth/desktop/login`, {
-		data: {
-			email: TEST_USER_EMAIL,
-			password: TEST_USER_PASSWORD,
-		},
-		headers: { "Content-Type": "application/json" },
+		data: { email, password },
+		headers: { "Content-Type": "application/json", Origin: FRONTEND_ORIGIN },
 	});
 
 	if (!response.ok()) {
@@ -65,6 +69,26 @@ export async function loginAsTestUser(request: APIRequestContext): Promise<strin
 		throw new Error("Backend response missing access_token");
 	}
 	return access_token;
+}
+
+export async function loginAsTestUser(request: APIRequestContext): Promise<string> {
+	return loginUser(request, TEST_USER_EMAIL, TEST_USER_PASSWORD);
+}
+
+export async function registerUser(
+	request: APIRequestContext,
+	email: string,
+	password: string
+): Promise<void> {
+	const response = await request.post(`${BACKEND_URL}/auth/register`, {
+		data: { email, password },
+		headers: { "Content-Type": "application/json", Origin: FRONTEND_ORIGIN },
+	});
+	if (!response.ok()) {
+		throw new Error(
+			`Register at ${BACKEND_URL}/auth/register failed (${response.status()}): ${await response.text()}`
+		);
+	}
 }
 
 /**

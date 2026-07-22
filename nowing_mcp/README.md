@@ -24,7 +24,8 @@ Connect it two ways:
   `nowing_instagram_scrape`, `nowing_instagram_details`,
   `nowing_tiktok_scrape`, `nowing_tiktok_comments`,
   `nowing_tiktok_user_search`, `nowing_tiktok_trending`,
-  `nowing_google_maps_scrape`, `nowing_google_maps_reviews`
+  `nowing_google_maps_scrape`, `nowing_google_maps_reviews`,
+  `nowing_chainlens_research`
 - `nowing_list_scraper_runs`, `nowing_get_scraper_run` — retrieve past
   results in full (useful when a large result was truncated inline)
 
@@ -37,6 +38,10 @@ Connect it two ways:
 Workspace-scoped tools default to the active workspace; pass `workspace` (a name
 or id) to override for a single call. Ids never need to be typed by hand — the
 model carries them between calls.
+
+Workspace owners can enable or disable individual built-in tools from the
+workspace settings. Disabled tools are hidden from `tools/list` and rejected by
+`call_tool` for that workspace.
 
 ## Get an API key
 

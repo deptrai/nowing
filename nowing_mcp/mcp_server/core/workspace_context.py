@@ -61,6 +61,10 @@ class WorkspaceContext:
     def active(self) -> Workspace | None:
         return self._active_by_identity.get(current_identity())
 
+    @property
+    def client(self) -> NowingClient:
+        return self._client
+
     def remember(self, workspace: Workspace) -> Workspace:
         """Make ``workspace`` the default for the current caller's later calls."""
         identity = current_identity()

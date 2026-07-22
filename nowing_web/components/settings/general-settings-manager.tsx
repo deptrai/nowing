@@ -3,9 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { updateWorkspaceMutationAtom } from "@/atoms/workspaces/workspace-mutation.atoms";
+import { workspacesAtom } from "@/atoms/workspaces/workspace-query.atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ import { buildBackendUrl } from "@/lib/env-config";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
 import { Spinner } from "../ui/spinner";
 import { WorkspaceApiAccessControl } from "./workspace-api-access-control";
+import { WorkspaceMcpToolsControl } from "./workspace-mcp-tools-control";
 
 interface GeneralSettingsManagerProps {
 	workspaceId: number;
@@ -36,6 +38,13 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 	});
 
 	const { mutateAsync: updateWorkspace } = useAtomValue(updateWorkspaceMutationAtom);
+	const { data: workspacesData } = useAtomValue(workspacesAtom);
+
+	const isOwner = useMemo(
+		() =>
+			workspacesData ? workspacesData.some((w) => w.id === workspaceId && w.is_owner) : undefined,
+		[workspacesData, workspaceId]
+	);
 
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -181,6 +190,12 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 			</form>
 
 			<WorkspaceApiAccessControl workspaceId={workspaceId} className="border-t pt-6" />
+
+			<WorkspaceMcpToolsControl
+				workspaceId={workspaceId}
+				isOwner={isOwner}
+				className="border-t pt-6"
+			/>
 
 			<div className="border-t pt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 				<div className="space-y-1">

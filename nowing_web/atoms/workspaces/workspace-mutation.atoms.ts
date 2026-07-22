@@ -4,6 +4,7 @@ import type {
 	CreateWorkspaceRequest,
 	DeleteWorkspaceRequest,
 	UpdateWorkspaceApiAccessRequest,
+	UpdateWorkspaceMcpToolRequest,
 	UpdateWorkspaceRequest,
 } from "@/contracts/types/workspace.types";
 import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
@@ -68,6 +69,25 @@ export const updateWorkspaceApiAccessMutationAtom = atomWithMutation((get) => {
 			});
 			queryClient.invalidateQueries({
 				queryKey: cacheKeys.workspaces.detail(String(request.id)),
+			});
+		},
+	};
+});
+
+export const updateWorkspaceMcpToolMutationAtom = atomWithMutation((get) => {
+	const activeWorkspaceId = get(activeWorkspaceIdAtom);
+
+	return {
+		mutationKey: ["update-workspace-mcp-tool", activeWorkspaceId],
+		enabled: !!activeWorkspaceId,
+		mutationFn: async (request: UpdateWorkspaceMcpToolRequest) => {
+			return workspacesApiService.updateWorkspaceMcpTool(request);
+		},
+
+		onSuccess: (_, request: UpdateWorkspaceMcpToolRequest) => {
+			toast.success("Tool setting updated");
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.workspaces.mcpTools(request.id),
 			});
 		},
 	};

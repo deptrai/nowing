@@ -600,6 +600,8 @@ Backend FastAPI exposes hơn 300 endpoints qua các module route. Các route ch�
 | GET | `/workspaces/{workspace_id}` | `read_workspace` |  |
 | PUT | `/workspaces/{workspace_id}` | `update_workspace` |  |
 | PUT | `/workspaces/{workspace_id}/api-access` | `update_workspace_api_access` |  |
+| GET | `/workspaces/{workspace_id}/mcp-tools` | `list_workspace_mcp_tools` | List built-in MCP tools with per-workspace enabled state. |
+| PUT | `/workspaces/{workspace_id}/mcp-tools/{tool_name}` | `update_workspace_mcp_tool` | Enable or disable a built-in MCP tool. |
 | DELETE | `/workspaces/{workspace_id}` | `delete_workspace` |  |
 | GET | `/workspaces/{workspace_id}/snapshots` | `list_workspace_snapshots` |  |
 

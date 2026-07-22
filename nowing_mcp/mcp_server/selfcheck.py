@@ -34,6 +34,7 @@ EXPECTED_TOOLS = {
     "nowing_instagram_details",
     "nowing_list_scraper_runs",
     "nowing_get_scraper_run",
+    "nowing_chainlens_research",
     # knowledge-base management
     "nowing_search_knowledge_base",
     "nowing_list_documents",

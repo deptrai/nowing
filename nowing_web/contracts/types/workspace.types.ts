@@ -92,8 +92,29 @@ export const leaveWorkspaceResponse = z.object({
 	message: z.literal("Successfully left the workspace"),
 });
 
+export const workspaceMcpTool = z.object({
+	name: z.string(),
+	enabled: z.boolean(),
+	is_system: z.boolean(),
+	group: z.string(),
+});
+
+export const getWorkspaceMcpToolsResponse = z.array(workspaceMcpTool);
+
+export const updateWorkspaceMcpToolRequest = z.object({
+	id: z.number(),
+	tool_name: z.string(),
+	enabled: z.boolean(),
+});
+
+export const updateWorkspaceMcpToolResponse = workspaceMcpTool;
+
 // Inferred types
 export type Workspace = z.infer<typeof workspace>;
+export type WorkspaceMcpTool = z.infer<typeof workspaceMcpTool>;
+export type GetWorkspaceMcpToolsResponse = z.infer<typeof getWorkspaceMcpToolsResponse>;
+export type UpdateWorkspaceMcpToolRequest = z.infer<typeof updateWorkspaceMcpToolRequest>;
+export type UpdateWorkspaceMcpToolResponse = z.infer<typeof updateWorkspaceMcpToolResponse>;
 export type GetWorkspacesRequest = z.infer<typeof getWorkspacesRequest>;
 export type GetWorkspacesResponse = z.infer<typeof getWorkspacesResponse>;
 export type CreateWorkspaceRequest = z.infer<typeof createWorkspaceRequest>;
