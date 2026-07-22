@@ -25,3 +25,10 @@ content_research/
 automation-design-plan.md
 automation-frontend-builder-plan.md
 nowing_desktop/.env
+
+# Local agent / AI generated artifacts
+.playwright-mcp/
+.serena/
+nowing_mcp/.serena/
+_bmad-output/
+project-context.md

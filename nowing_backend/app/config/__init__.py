@@ -744,6 +744,18 @@ class Config:
     # proxy, where every retry re-hits the same exit.
     TIKTOK_LISTING_MAX_ATTEMPTS = int(os.getenv("TIKTOK_LISTING_MAX_ATTEMPTS", "3"))
 
+    # ChainLens Research integration (https://research-api.chainlens.net or local).
+    # One API key is enough: the ChainLens API resolves the key to a user and
+    # enforces its own rate limit / quota.
+    CHAINLENS_API_URL = os.getenv("CHAINLENS_API_URL", "http://localhost:3001").rstrip("/")
+    CHAINLENS_API_KEY = os.getenv("CHAINLENS_API_KEY", "")
+    CHAINLENS_REQUEST_TIMEOUT_SECONDS = float(
+        os.getenv("CHAINLENS_REQUEST_TIMEOUT_SECONDS", "300")
+    )
+    CHAINLENS_QUERY_MICROS_PER_CALL = int(
+        os.getenv("CHAINLENS_QUERY_MICROS_PER_CALL", "5000")
+    )
+
     # Low-balance WARNING threshold (micro-USD). Surfaced by the quota service
     # so the UI can nudge the user to top up / enable auto-reload. $0.50.
     CREDIT_LOW_BALANCE_WARNING_MICROS = int(

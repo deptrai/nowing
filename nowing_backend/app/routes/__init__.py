@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 
 # Import verb namespaces for their registration side effects before the door builds.
 import app.capabilities.amazon
+import app.capabilities.chainlens
 import app.capabilities.google_maps
 import app.capabilities.google_search
 import app.capabilities.instagram

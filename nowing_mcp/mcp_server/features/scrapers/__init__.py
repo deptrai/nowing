@@ -15,6 +15,7 @@ from ...core.workspace_context import WorkspaceContext
 from . import run_history
 from .platforms import (
     amazon,
+    chainlens,
     google_maps,
     google_search,
     instagram,
@@ -33,6 +34,7 @@ _REGISTRARS = (
     tiktok,
     google_maps,
     amazon,
+    chainlens,
     run_history,
 )
 
