@@ -641,7 +641,7 @@ async def resolve_or_get_pinned_llm_config_id(
     byok_candidates = [c for c in candidates if _tier_of(c) == "byok"]
     if premium_eligible:
         premium_candidates = [c for c in candidates if _tier_of(c) == "premium"]
-        eligible = premium_candidates or byok_candidates
+        eligible = premium_candidates or byok_candidates or candidates
     else:
         eligible = [c for c in candidates if _tier_of(c) != "premium"]
 

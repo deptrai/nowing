@@ -88,7 +88,9 @@ def load_global_llm_configs():
 
         seen_slugs: dict[str, int] = {}
         for cfg in configs:
-            cfg.setdefault("billing_tier", "free")
+            tier = str(cfg.get("tier_required", "free")).lower()
+            default_billing = "premium" if tier == "pro" else tier or "free"
+            cfg.setdefault("billing_tier", default_billing)
             cfg.setdefault("anonymous_enabled", False)
             cfg.setdefault("seo_enabled", False)
             # Capability flag: explicit YAML override always wins. When the
@@ -208,7 +210,9 @@ def load_global_image_gen_configs():
         configs = copy.deepcopy(data.get("global_image_generation_configs", []) or [])
         for cfg in configs:
             if isinstance(cfg, dict):
-                cfg.setdefault("billing_tier", "free")
+                tier = str(cfg.get("tier_required", "free")).lower()
+                default_billing = "premium" if tier == "pro" else tier or "free"
+                cfg.setdefault("billing_tier", default_billing)
         return configs
     except Exception as e:
         print(f"Warning: Failed to load global image generation configs: {e}")
