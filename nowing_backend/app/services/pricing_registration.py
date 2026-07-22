@@ -34,6 +34,8 @@ from typing import Any
 
 import litellm
 
+from app.services.provider_registry import spec_for
+
 logger = logging.getLogger(__name__)
 
 
@@ -130,10 +132,12 @@ def _register_chat_shape_configs(
     *,
     or_pricing: dict[str, dict[str, str]],
     label: str,
+    mode: str = "chat",
 ) -> tuple[int, int, int, list[str]]:
-    """Common loop that registers per-token pricing for a list of "chat-shape"
-    configs (chat or vision LLM — both use ``input_cost_per_token`` /
-    ``output_cost_per_token`` and the LiteLLM ``mode="chat"`` cost shape).
+    """Common loop that registers per-token pricing for a list of token-shaped
+    configs (chat, vision, or image-generation — all use ``input_cost_per_token`` /
+    ``output_cost_per_token``; the ``mode`` distinguishes the LiteLLM cost map
+    entry).
 
     Returns ``(registered_models, registered_aliases, skipped, sample_keys)``.
     """
@@ -149,7 +153,11 @@ def _register_chat_shape_configs(
         base_model = str(litellm_params.get("base_model") or model_name).strip()
 
         if provider == "openrouter":
-            entry = or_pricing.get(model_name)
+            # OpenRouter raw pricing is only trustworthy for chat/vision models
+            # where prompt/completion are per-token. Image-gen models on
+            # OpenRouter are billed per-image via response_cost, so we only
+            # register them when the operator declares per-token pricing inline.
+            entry = or_pricing.get(model_name) if mode != "image_generation" else None
             if entry:
                 input_cost = _safe_float(entry.get("prompt"))
                 output_cost = _safe_float(entry.get("completion"))
@@ -162,11 +170,13 @@ def _register_chat_shape_configs(
                 skipped_no_pricing += 1
                 continue
             aliases = _alias_set_for_openrouter(model_name)
+            litellm_provider = spec_for("openrouter").litellm_prefix or "openrouter"
             count = _register(
                 aliases,
                 input_cost=input_cost,
                 output_cost=output_cost,
-                provider="openrouter",
+                provider=litellm_provider,
+                mode=mode,
             )
             if count > 0:
                 registered_models += 1
@@ -187,11 +197,13 @@ def _register_chat_shape_configs(
             skipped_no_pricing += 1
             continue
         aliases = _alias_set_for_yaml(provider, model_name, base_model)
+        litellm_provider = spec_for(provider).litellm_prefix or provider or "openai"
         count = _register(
             aliases,
             input_cost=input_cost,
             output_cost=output_cost,
-            provider=provider,
+            provider=litellm_provider,
+            mode=mode,
         )
         if count > 0:
             registered_models += 1
@@ -214,35 +226,34 @@ def _register_chat_shape_configs(
 def register_pricing_from_global_configs() -> None:
     """Register pricing for every known LLM deployment with LiteLLM.
 
-    Walks ``config.GLOBAL_LLM_CONFIGS`` so chat and vision calls can resolve
-    cost from the same chat-shaped deployment configs:
+    Walks ``config.GLOBAL_LLM_CONFIGS`` (chat/vision) and
+    ``config.GLOBAL_IMAGE_GEN_CONFIGS`` (image generation) and registers
+    per-token pricing for every config that declares it, so calls in every
+    mode can resolve cost from the registered LiteLLM cost map:
 
     1. ``OPENROUTER``: pulls the cached raw pricing from
        ``OpenRouterIntegrationService`` (populated during its own
        startup fetch) and converts the per-token strings to floats. For
-       vision configs that carry pricing inline (``input_cost_per_token`` /
+       configs that carry pricing inline (``input_cost_per_token`` /
        ``output_cost_per_token`` set on the cfg itself) we fall back to
        those values when the OR cache misses the model.
     2. Anything else: looks for operator-declared
        ``input_cost_per_token`` / ``output_cost_per_token`` on the YAML
        config block (top-level or nested under ``litellm_params``).
 
-    **Image generation is intentionally NOT registered here.** The cost
-    shape for image-gen is per-image (``output_cost_per_image``), not
-    per-token, and LiteLLM's ``register_model`` doesn't accept those
-    keys via the chat-cost path. OpenRouter image-gen models populate
-    ``response_cost`` directly from their response header instead, and
-    Azure-native image-gen models are already in LiteLLM's cost map.
-
-    Calls without a resolved pair of costs are skipped, not registered
-    with zeros — operators who forget pricing get a "$0 debit" warning
-    in ``TokenTrackingCallback`` rather than silently overwriting any
-    pricing LiteLLM might know natively.
+    Image-generation models are registered with ``mode="image_generation"``
+    when they declare per-token pricing. Calls without a resolvable pair of
+    costs are skipped, not registered with zeros — operators who forget
+    pricing get a "$0 debit" warning in ``TokenTrackingCallback`` rather
+    than silently overwriting any pricing LiteLLM might know natively.
     """
     from app.config import config as app_config
 
     chat_configs: list[dict] = list(getattr(app_config, "GLOBAL_LLM_CONFIGS", []) or [])
-    if not chat_configs:
+    image_configs: list[dict] = list(
+        getattr(app_config, "GLOBAL_IMAGE_GEN_CONFIGS", []) or []
+    )
+    if not chat_configs and not image_configs:
         logger.info("[PricingRegistration] no global configs to register")
         return
 
@@ -261,3 +272,10 @@ def register_pricing_from_global_configs() -> None:
 
     if chat_configs:
         _register_chat_shape_configs(chat_configs, or_pricing=or_pricing, label="chat")
+    if image_configs:
+        _register_chat_shape_configs(
+            image_configs,
+            or_pricing=or_pricing,
+            label="image",
+            mode="image_generation",
+        )

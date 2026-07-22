@@ -377,12 +377,14 @@ def _generate_image_gen_configs(
     irrelevant for the ``aimage_generation`` API. ``billing_tier`` is
     derived per model the same way as chat (``_openrouter_tier``).
 
-    Cost is intentionally *not* registered with LiteLLM at startup
-    (``pricing_registration`` skips image gen): OpenRouter image-gen
-    models are not in LiteLLM's native cost map and OpenRouter populates
-    ``response_cost`` directly from the response header. A defensive
-    branch in ``_extract_cost_usd`` handles the rare case where
-    ``usage.cost`` is missing — see ``token_tracking_service``.
+    Cost is resolved at call time rather than fully pre-registered:
+    OpenRouter populates ``response_cost`` directly from the response header
+    for image-gen calls, and ``_extract_cost_usd`` in ``token_tracking_service``
+    falls back to ``litellm.cost_per_token`` when that is missing. Static
+    image-gen configs that declare ``input_cost_per_token`` /
+    ``output_cost_per_token`` are registered by ``pricing_registration``
+    at startup; dynamic OpenRouter image-gen models are only registered
+    if they also carry explicit per-token pricing.
     """
     id_offset: int = int(
         settings.get("image_id_offset") or _OPENROUTER_IMAGE_ID_OFFSET_DEFAULT

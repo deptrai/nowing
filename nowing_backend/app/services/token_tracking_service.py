@@ -294,13 +294,10 @@ def _extract_cost_usd(
          exposed on the response itself.
       3. ``litellm.completion_cost(completion_response=response_obj)``
          — recompute from the response and LiteLLM's pricing table.
-      4. ``litellm.cost_per_token(model, prompt_tokens, completion_tokens)``
-         — manual fallback for OpenRouter/custom-Azure models that
-         only resolve via aliases registered by
-         ``pricing_registration`` at startup. **Skipped for image
-         responses** — ``cost_per_token`` does not support ``ImageResponse``
-         and would raise; the cost map for image-gen lives in different
-         keys (``output_cost_per_image``) handled by ``completion_cost``.
+      4. ``litellm.cost_per_token(...)`` — fallback using aliases registered
+         by ``pricing_registration`` at startup. ``call_type`` is set to
+         ``"image_generation"`` for image calls and ``"completion"`` for chat
+         so LiteLLM looks up the right cost map entry.
     """
     cost = kwargs.get("response_cost")
     if cost is not None:
@@ -328,27 +325,16 @@ def _extract_cost_usd(
             return value
     except Exception as exc:
         if is_image:
-            # Image-gen path: OpenRouter's image responses can omit
-            # ``usage.cost`` and LiteLLM's ``default_image_cost_calculator``
-            # then *raises* (no cost map for OpenRouter image models).
-            # Bail out with a warning rather than falling through to
-            # cost_per_token (which is also incompatible with ImageResponse).
             logger.warning(
                 "[TokenTracking] completion_cost failed for image model=%s "
-                "(provider may have omitted usage.cost). Debiting 0. "
-                "Cause: %s",
+                "(will try cost_per_token). Cause: %s",
                 model,
                 exc,
             )
-            return 0.0
-        logger.debug(
-            "[TokenTracking] completion_cost failed for model=%s: %s", model, exc
-        )
-
-    if is_image:
-        # Never call cost_per_token for ImageResponse — keys mismatch and
-        # the function is documented chat-only.
-        return 0.0
+        else:
+            logger.debug(
+                "[TokenTracking] completion_cost failed for model=%s: %s", model, exc
+            )
 
     if model and (prompt_tokens > 0 or completion_tokens > 0):
         try:
@@ -356,6 +342,7 @@ def _extract_cost_usd(
                 model=model,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
+                call_type="image_generation" if is_image else "completion",
             )
             value = float(prompt_cost) + float(completion_cost)
             if value > 0:
