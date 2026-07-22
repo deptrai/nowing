@@ -128,18 +128,19 @@ REGISTRY: dict[str, ProviderSpec] = {
 
 
 def spec_for(provider: str | None) -> ProviderSpec:
-    provider_key = (provider or "").strip()
+    provider_key = (provider or "").strip().lower()
     return REGISTRY.get(provider_key) or ProviderSpec(
         Transport.NATIVE, provider_key or "openai", "static", None, False, "native"
     )
 
 
 def provider_label(provider: str | None) -> str:
-    provider_key = (provider or "").strip()
+    provider_key = (provider or "").strip().lower()
     spec = spec_for(provider_key)
     if spec.display_name:
         return spec.display_name
-    return provider_key.replace("_", " ").title() if provider_key else "Provider"
+    original = (provider or "").strip()
+    return original.replace("_", " ").title() if original else "Provider"
 
 
 __all__ = ["REGISTRY", "ProviderSpec", "Transport", "provider_label", "spec_for"]

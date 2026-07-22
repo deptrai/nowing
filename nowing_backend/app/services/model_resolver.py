@@ -51,21 +51,22 @@ def to_litellm(
 ) -> tuple[str, dict[str, Any]]:
     """Return ``(model_string, litellm_kwargs)`` for any model role."""
     provider = _conn_value(conn, "provider")
+    provider_key = (provider or "").strip().lower()
     base_url = _conn_value(conn, "base_url")
     api_key = _conn_value(conn, "api_key")
     extra = _conn_value(conn, "extra") or {}
-    spec = spec_for(provider)
+    spec = spec_for(provider_key)
 
     kwargs: dict[str, Any] = {}
     if api_key:
         kwargs["api_key"] = api_key
 
-    prefix = spec.litellm_prefix or str(provider)
+    prefix = spec.litellm_prefix or provider_key
     model_string = f"{prefix}/{model_id}" if prefix else model_id
     if base_url:
         if spec.transport == Transport.OPENAI_COMPATIBLE:
             api_base = ensure_v1(base_url)
-        elif provider == "anthropic":
+        elif provider_key == "anthropic":
             # LiteLLM's Anthropic handler appends ``/v1/messages`` to api_base,
             # so a base URL ending in ``/v1`` must be reduced to the API root.
             api_base = strip_version_suffix(base_url)
@@ -77,7 +78,7 @@ def to_litellm(
         kwargs["api_version"] = api_version
     kwargs.update(extra.get("litellm_params", {}))
     kwargs.update(extra.get("kwargs", {}))
-    if provider == "bedrock" and (
+    if provider_key == "bedrock" and (
         bearer_token := kwargs.pop("aws_bearer_token_bedrock", None)
     ):
         kwargs["api_key"] = bearer_token

@@ -20,6 +20,16 @@ set -e
 SERVICE_ROLE="${SERVICE_ROLE:-all}"
 echo "Starting Nowing with SERVICE_ROLE=${SERVICE_ROLE}"
 
+# Materialise global_llm_config.yaml from base64 env if provided.
+# This lets operators inject keys/credentials without committing the file.
+if [ -n "${GLOBAL_LLM_CONFIG_B64:-}" ]; then
+    if ! echo -n "$GLOBAL_LLM_CONFIG_B64" | base64 -d > /app/app/config/global_llm_config.yaml; then
+        echo "ERROR: Failed to decode GLOBAL_LLM_CONFIG_B64 to global_llm_config.yaml" >&2
+        exit 1
+    fi
+    echo "Wrote /app/app/config/global_llm_config.yaml from GLOBAL_LLM_CONFIG_B64"
+fi
+
 # ── Autoscale defaults (override via env) ────────────────────
 #   CELERY_MAX_WORKERS  – max concurrent worker processes
 #   CELERY_MIN_WORKERS  – min workers kept warm
