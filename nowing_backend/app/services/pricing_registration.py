@@ -50,6 +50,22 @@ def _safe_float(value: Any) -> float:
     return f if f > 0 else 0.0
 
 
+def _per_token_cost(
+    cfg: dict[str, Any],
+    litellm_params: dict[str, Any],
+    token_key: str,
+    per_1k_key: str,
+) -> float:
+    """Return per-token cost, preferring explicit per-token fields and
+    falling back to per-1k-token fields divided by 1000.
+    """
+    cost = _safe_float(cfg.get(token_key) or litellm_params.get(token_key))
+    if cost:
+        return cost
+    per_1k = _safe_float(cfg.get(per_1k_key) or litellm_params.get(per_1k_key))
+    return per_1k / 1000.0 if per_1k else 0.0
+
+
 def _alias_set_for_openrouter(model_id: str) -> list[str]:
     """Return the alias keys to register an OpenRouter model under.
 
@@ -164,8 +180,18 @@ def _register_chat_shape_configs(
             else:
                 # Some dynamically materialized configs can carry pricing
                 # inline when the raw OpenRouter cache has no matching entry.
-                input_cost = _safe_float(cfg.get("input_cost_per_token"))
-                output_cost = _safe_float(cfg.get("output_cost_per_token"))
+                input_cost = _per_token_cost(
+                    cfg,
+                    litellm_params,
+                    "input_cost_per_token",
+                    "cost_per_1k_input_tokens",
+                )
+                output_cost = _per_token_cost(
+                    cfg,
+                    litellm_params,
+                    "output_cost_per_token",
+                    "cost_per_1k_output_tokens",
+                )
             if input_cost == 0.0 and output_cost == 0.0:
                 skipped_no_pricing += 1
                 continue
@@ -185,13 +211,17 @@ def _register_chat_shape_configs(
                     sample_keys.extend(aliases[:2])
             continue
 
-        input_cost = _safe_float(
-            cfg.get("input_cost_per_token")
-            or litellm_params.get("input_cost_per_token")
+        input_cost = _per_token_cost(
+            cfg,
+            litellm_params,
+            "input_cost_per_token",
+            "cost_per_1k_input_tokens",
         )
-        output_cost = _safe_float(
-            cfg.get("output_cost_per_token")
-            or litellm_params.get("output_cost_per_token")
+        output_cost = _per_token_cost(
+            cfg,
+            litellm_params,
+            "output_cost_per_token",
+            "cost_per_1k_output_tokens",
         )
         if input_cost == 0.0 and output_cost == 0.0:
             skipped_no_pricing += 1
