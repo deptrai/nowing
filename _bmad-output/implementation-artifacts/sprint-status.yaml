@@ -1,0 +1,109 @@
+# generated: 2026-07-23T01:01:55
+# last_updated: 2026-07-23T06:11:52
+# project: Nowing
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
+
+generated: 2026-07-23T01:01:55
+last_updated: 2026-07-23T20:00:00
+project: Nowing
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: done
+  1-1-user-authentication: done
+  1-2-personal-access-tokens-api-access: done
+  1-3-workspace-creation: done
+  1-4-workspace-invites-memberships: done
+  1-5-rbac-with-owner-editor-viewer-admin-removed: done
+  1-6-custom-roles: done
+  epic-1-retrospective: optional
+  epic-2: done
+  2-1-built-in-scraper-connectors: done
+  2-2-external-oauth-connectors: done
+  2-3-external-mcp-connectors: done
+  2-4-chainlens-research-mcp-tool: done
+  2-5-workspace-mcp-tool-enable-disable-toggle-new-gap: done
+  epic-2-retrospective: optional
+  epic-3: done
+  3-1-document-upload-parse-index: done
+  3-2-folders-document-management: done
+  3-3-hybrid-search-over-knowledge-base: done
+  3-4-citation-panel: done
+  3-5-ai-file-sorting-removed: done
+  3-6-citation-scroll-to-highlight-in-full-document-editor-new-gap: done
+  3-7-data-retention-lifecycle-new-gap: done
+  epic-3-retrospective: optional
+  epic-4: done
+  4-1-chat-threads-messages: done
+  4-2-multi-agent-runtime-with-tools: done
+  4-3-real-time-collaborative-chat: done
+  4-4-anonymous-chat: done
+  epic-4-retrospective: optional
+  epic-5: done
+  5-1-report-generation-export: done
+  5-2-podcast-generation: done
+  5-3-video-presentation-generation: done
+  5-4-image-generation: done
+  epic-5-retrospective: optional
+  epic-6: in-progress
+  6-1-automation-triggers: done
+  6-2-automation-runs-retries: done
+  6-3-agent-task-action: done
+  6-4-direct-write-back-actions-new-gap: backlog
+  epic-6-retrospective: optional
+  epic-7: done
+  7-1-web-client-next-js: done
+  7-2-desktop-client-electron: done
+  7-3-browser-extension-plasmo: done
+  7-4-obsidian-plugin: done
+  7-5-mcp-server: done
+  epic-7-retrospective: optional
+  epic-8: in-progress
+  8-1-token-usage-tracking: done
+  8-2-credit-wallet-purchases: done
+  8-3-usage-credit-dashboard-new-gap: backlog
+  8-4-observability-logging: done
+  8-5-security-permissions: done
+  8-6-multi-tenant-isolation: done
+  epic-8-retrospective: optional
+
+action_items: []
