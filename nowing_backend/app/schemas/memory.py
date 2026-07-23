@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.db import MemorySourceType, MemoryType
 
 
 class MemoryVersionRead(BaseModel):
@@ -47,6 +49,18 @@ class MemoryCreate(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     research_thread_id: int | None = None
 
+    @field_validator("type", "source_type", mode="before")
+    @classmethod
+    def _validate_enum_strings(cls, value: Any, info) -> Any:
+        if not isinstance(value, str):
+            return value
+        enum_cls = MemoryType if info.field_name == "type" else MemorySourceType
+        try:
+            enum_cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Invalid {info.field_name}: {value}") from exc
+        return value
+
 
 class MemoryUpdate(BaseModel):
     corrected_content: str
@@ -58,6 +72,17 @@ class MemorySearchRequest(BaseModel):
     type: str | None = None
     tags: list[str] = Field(default_factory=list)
     research_thread_id: int | None = None
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _validate_type(cls, value: Any) -> Any:
+        if value is None or not isinstance(value, str):
+            return value
+        try:
+            MemoryType(value)
+        except ValueError as exc:
+            raise ValueError(f"Invalid type: {value}") from exc
+        return value
 
 
 class MemorySearchHit(BaseModel):

@@ -4,6 +4,13 @@ from __future__ import annotations
 
 import logging
 
+from litellm.exceptions import (
+    APIConnectionError,
+    InternalServerError,
+    RateLimitError,
+    ServiceUnavailableError,
+    Timeout as LiteLLMTimeout,
+)
 from sqlalchemy import select
 
 from app.celery_app import celery_app
@@ -40,7 +47,20 @@ async def _extract_memory_after_chat_turn(message_id: int) -> None:
         )
 
 
-@celery_app.task(name="extract_memory_after_chat_turn", bind=True)
+@celery_app.task(
+    name="extract_memory_after_chat_turn",
+    bind=True,
+    autoretry_for=(
+        TimeoutError,
+        LiteLLMTimeout,
+        APIConnectionError,
+        RateLimitError,
+        ServiceUnavailableError,
+        InternalServerError,
+    ),
+    retry_backoff=True,
+    retry_kwargs={"max_retries": 3},
+)
 def extract_memory_after_chat_turn(self, message_id: int) -> None:
     """Best-effort memory extraction after an assistant turn is finalized."""
     return run_async_celery_task(lambda: _extract_memory_after_chat_turn(message_id))

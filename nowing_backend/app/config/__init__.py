@@ -24,6 +24,28 @@ os.environ.setdefault("OR_APP_NAME", "Nowing")
 os.environ.setdefault("OR_SITE_URL", "https://nowing.com")
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        print(f"Warning: Invalid {name}={raw!r}; using default {default}")
+        return default
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        print(f"Warning: Invalid {name}={raw!r}; using default {default}")
+        return default
+
+
 @lru_cache(maxsize=8)
 def _read_global_config_yaml(path_str: str) -> dict:
     """Read and parse ``global_llm_config.yaml`` once per resolved path.
@@ -582,11 +604,11 @@ class Config:
     MEMORY_AUTO_EXTRACT_ENABLED = (
         os.getenv("MEMORY_AUTO_EXTRACT_ENABLED", "true").strip().lower() == "true"
     )
-    MEMORY_AUTO_EXTRACT_CONFIDENCE = float(
-        os.getenv("MEMORY_AUTO_EXTRACT_CONFIDENCE", "0.7")
+    MEMORY_AUTO_EXTRACT_CONFIDENCE = _env_float(
+        "MEMORY_AUTO_EXTRACT_CONFIDENCE", 0.7
     )
-    MEMORY_AUTO_EXTRACT_MAX_ITEMS = int(
-        os.getenv("MEMORY_AUTO_EXTRACT_MAX_ITEMS", "3")
+    MEMORY_AUTO_EXTRACT_MAX_ITEMS = _env_int(
+        "MEMORY_AUTO_EXTRACT_MAX_ITEMS", 3
     )
 
     NOWING_PUBLIC_URL = os.getenv("NOWING_PUBLIC_URL")

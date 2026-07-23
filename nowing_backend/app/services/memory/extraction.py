@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
 
+from litellm.exceptions import (
+    APIConnectionError,
+    AuthenticationError,
+    BadRequestError,
+    ContextWindowExceededError,
+    InternalServerError,
+    RateLimitError,
+    ServiceUnavailableError,
+    Timeout as LiteLLMTimeout,
+)
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +38,8 @@ from app.utils.content_utils import extract_text_content, strip_markdown_fences
 
 logger = logging.getLogger(__name__)
 
+
+_EXTRACTION_LLM_TIMEOUT_SECONDS = 30.0
 
 _EXTRACTION_SYSTEM_PROMPT = (
     "You are a memory extraction assistant. Your job is to identify durable facts, "
@@ -121,7 +134,7 @@ class MemoryExtractionService:
         # Resolve workspace and global auto-extract gate.
         workspace = await self.session.get(Workspace, thread.workspace_id)
         if workspace is None:
-            logger.warning("Workspace %s not found; skipping extraction", thread.workspace_id)
+            logger.error("Workspace %s not found for thread %s; skipping extraction", thread.workspace_id, thread_id)
             return []
 
         if not config.MEMORY_AUTO_EXTRACT_ENABLED or not workspace.memory_auto_extract_enabled:
@@ -155,6 +168,10 @@ class MemoryExtractionService:
         user_text = extract_text_content(user_message.content)
         assistant_text = extract_text_content(assistant_message.content)
 
+        if not user_text.strip() and not assistant_text.strip():
+            logger.debug("User and assistant text are both empty; skipping extraction")
+            return []
+
         prompt = (
             f"{_EXTRACTION_SYSTEM_PROMPT}\n\n"
             f"User message:\n{user_text}\n\n"
@@ -166,11 +183,30 @@ class MemoryExtractionService:
 
         async with scoped_turn() as acc:
             try:
-                response = await llm.ainvoke(prompt)
+                response = await asyncio.wait_for(
+                    llm.ainvoke(prompt),
+                    timeout=_EXTRACTION_LLM_TIMEOUT_SECONDS,
+                )
                 raw_output = response.content if hasattr(response, "content") else str(response)
-            except Exception as exc:
-                logger.warning("Memory extraction LLM call failed: %s", exc)
+            except ContextWindowExceededError as exc:
+                logger.warning("Memory extraction prompt exceeded context window: %s", exc)
                 return []
+            except (AuthenticationError, BadRequestError) as exc:
+                logger.exception("Memory extraction failed due to auth/config error: %s", exc)
+                raise
+            except (
+                TimeoutError,
+                LiteLLMTimeout,
+                APIConnectionError,
+                RateLimitError,
+                ServiceUnavailableError,
+                InternalServerError,
+            ) as exc:
+                logger.warning("Memory extraction LLM transient error (will retry): %s", exc)
+                raise
+            except Exception as exc:
+                logger.exception("Memory extraction LLM call failed unexpectedly: %s", exc)
+                raise
 
             facts = self._parse_llm_output(raw_output)
             confidence_threshold = config.MEMORY_AUTO_EXTRACT_CONFIDENCE
@@ -182,29 +218,41 @@ class MemoryExtractionService:
                 try:
                     memory_type = MemoryType(fact.type)
                 except ValueError:
+                    logger.warning(
+                        "Invalid memory type '%s' from extraction LLM; falling back to semantic",
+                        fact.type,
+                    )
                     memory_type = MemoryType.SEMANTIC
 
-                memory = await repo.create_memory(
-                    workspace_id=workspace.id,
-                    content=fact.content,
-                    type=memory_type,
-                    source_type=MemorySourceType.CHAT_MESSAGE,
-                    source_id=assistant_message_id,
-                    tags=fact.tags,
-                    confidence=fact.confidence,
-                    research_thread_id=thread.research_thread_id,
-                    created_by_id=created_by_id,
-                    update_on_duplicate=True,
-                )
+                try:
+                    memory = await repo.create_memory(
+                        workspace_id=workspace.id,
+                        content=fact.content,
+                        type=memory_type,
+                        source_type=MemorySourceType.CHAT_MESSAGE,
+                        source_id=assistant_message_id,
+                        tags=fact.tags,
+                        confidence=fact.confidence,
+                        research_thread_id=thread.research_thread_id,
+                        created_by_id=created_by_id,
+                        update_on_duplicate=True,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to persist extracted memory (embedding/service error): %s",
+                        exc,
+                    )
+                    continue
                 created_memories.append(memory)
 
         # Record token usage for the extraction LLM call.
-        if created_by_id is not None:
+        attributed_user_id = created_by_id or workspace.user_id
+        if attributed_user_id is not None:
             await record_token_usage(
                 self.session,
                 usage_type="memory_create",
                 workspace_id=workspace.id,
-                user_id=created_by_id,
+                user_id=attributed_user_id,
                 message_id=assistant_message_id,
                 prompt_tokens=acc.total_prompt_tokens,
                 completion_tokens=acc.total_completion_tokens,
