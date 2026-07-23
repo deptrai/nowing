@@ -57,6 +57,7 @@ from .linear_add_connector_route import router as linear_add_connector_router
 from .logs_routes import router as logs_router
 from .luma_add_connector_route import router as luma_add_connector_router
 from .mcp_oauth_route import router as mcp_oauth_router
+from .memories_routes import router as memories_router
 from .memory_routes import router as memory_router
 from .model_connections_routes import router as model_connections_router
 from .model_list_routes import router as model_list_router
@@ -147,6 +148,7 @@ router.include_router(stripe_router)  # Stripe checkout for additional page pack
 router.include_router(usage_router)  # Usage and credit dashboard
 router.include_router(youtube_router)  # YouTube playlist resolution
 router.include_router(prompts_router)
+router.include_router(memories_router)  # Structured memory CRUD/search
 router.include_router(memory_router)  # User personal memory (memory.md style)
 router.include_router(team_memory_router)  # Workspace team memory
 router.include_router(automations_router)  # Automations CRUD + run history

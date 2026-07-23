@@ -335,6 +335,7 @@ export function EditorPanelContent({
 					setMemoryLimits(limits);
 					const content: EditorContent = document;
 					markdownRef.current = content.source_markdown;
+					setLocalFileContent(content.source_markdown);
 					setDisplayTitle(content.title);
 					setEditorDoc(content);
 					initialLoadDone.current = true;
@@ -469,6 +470,7 @@ export function EditorPanelContent({
 						markdown: markdownRef.current,
 					});
 					markdownRef.current = savedContent;
+					setLocalFileContent(savedContent);
 					setMemoryLimits(limits ?? memoryLimits);
 					setEditorDoc((prev) => (prev ? { ...prev, source_markdown: savedContent } : prev));
 					setEditedMarkdown(null);
@@ -542,7 +544,7 @@ export function EditorPanelContent({
 		: false;
 	// Render through PlateEditor only when the backend says the rich editor is safe.
 	// Monaco mode is a raw markdown safety path for large documents.
-	const renderInPlateEditor = isEditableType;
+	const renderInPlateEditor = isEditableType && !(isMemoryMode && isEditing);
 	const hasUnsavedChanges = editedMarkdown !== null;
 	const showDesktopHeader = !!onClose;
 	const showEditingActions = isEditableType && isEditing;
@@ -897,6 +899,21 @@ export function EditorPanelContent({
 								totalChunks={chunkHighlight?.totalChunks}
 							/>
 						</div>
+					</div>
+				) : isMemoryMode && isEditing ? (
+					<div className="h-full overflow-hidden">
+						<SourceCodeEditor
+							path={editorDoc.title.endsWith(".md") ? editorDoc.title : `${editorDoc.title}.md`}
+							language="markdown"
+							value={localFileContent}
+							onChange={(next) => {
+								markdownRef.current = next;
+								setLocalFileContent(next);
+								if (!initialLoadDone.current) return;
+								setEditedMarkdown(next === (editorDoc?.source_markdown ?? "") ? null : next);
+							}}
+							onSave={() => void handleSave({ silent: true })}
+						/>
 					</div>
 				) : renderInPlateEditor ? (
 					// Editable doc (FILE/NOTE) — Plate editing UX.

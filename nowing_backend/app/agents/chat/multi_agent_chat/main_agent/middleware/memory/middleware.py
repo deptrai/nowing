@@ -18,8 +18,8 @@ from langgraph.runtime import Runtime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import ChatVisibility, User, Workspace, shielded_async_session
-from app.services.memory import MEMORY_HARD_LIMIT, MEMORY_SOFT_LIMIT
+from app.db import ChatVisibility, Memory, shielded_async_session
+from app.services.memory import MEMORY_HARD_LIMIT, MEMORY_SOFT_LIMIT, render_memory_markdown
 from app.utils.perf import get_perf_logger
 
 logger = logging.getLogger(__name__)
@@ -134,27 +134,42 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
         self, session: AsyncSession
     ) -> tuple[str | None, str | None]:
         """Return (memory_content, display_name)."""
+        from app.db import User
+
         try:
             result = await session.execute(
-                select(User.memory_md, User.display_name).where(User.id == self.user_id)
+                select(User.display_name).where(User.id == self.user_id)
             )
-            row = result.one_or_none()
-            if row is None:
-                return None, None
-            return row.memory_md or None, row.display_name
+            display_name = result.scalar_one_or_none()
+        except Exception:
+            logger.exception("Failed to load user display name")
+            display_name = None
+
+        try:
+            result = await session.execute(
+                select(Memory)
+                .where(
+                    Memory.workspace_id.is_(None),
+                    Memory.created_by_id == self.user_id,
+                )
+                .order_by(Memory.created_at)
+            )
+            memories = result.scalars().all()
+            memory_md = render_memory_markdown(list(memories), scope="user") or None
+            return memory_md, display_name
         except Exception:
             logger.exception("Failed to load user memory")
-            return None, None
+            return None, display_name
 
     async def _load_team_memory(self, session: AsyncSession) -> str | None:
         try:
             result = await session.execute(
-                select(Workspace.shared_memory_md).where(
-                    Workspace.id == self.workspace_id
-                )
+                select(Memory)
+                .where(Memory.workspace_id == self.workspace_id)
+                .order_by(Memory.created_at)
             )
-            row = result.scalar_one_or_none()
-            return row if row else None
+            memories = result.scalars().all()
+            return render_memory_markdown(list(memories), scope="team") or None
         except Exception:
             logger.exception("Failed to load team memory")
             return None

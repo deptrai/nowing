@@ -18,6 +18,7 @@ class McpToolGroup(StrEnum):
     SCRAPER = "scraper"
     RUN_HISTORY = "run_history"
     KNOWLEDGE_BASE = "knowledge_base"
+    MEMORY = "memory"
 
 
 MCP_TOOL_CATALOG: list[dict[str, str]] = [
@@ -47,6 +48,10 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
     {"name": "nowing_search_knowledge_base", "group": McpToolGroup.KNOWLEDGE_BASE},
     {"name": "nowing_update_document", "group": McpToolGroup.KNOWLEDGE_BASE},
     {"name": "nowing_upload_file", "group": McpToolGroup.KNOWLEDGE_BASE},
+    {"name": "nowing_remember", "group": McpToolGroup.MEMORY},
+    {"name": "nowing_recall", "group": McpToolGroup.MEMORY},
+    {"name": "nowing_update_fact", "group": McpToolGroup.MEMORY},
+    {"name": "nowing_continue_research", "group": McpToolGroup.MEMORY},
 ]
 
 MCP_TOOL_SYSTEM_TOOLS = {"nowing_list_workspaces", "nowing_select_workspace"}

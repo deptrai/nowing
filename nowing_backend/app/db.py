@@ -18,6 +18,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     Enum as SQLAlchemyEnum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -388,6 +389,12 @@ class Permission(StrEnum):
     AUTOMATIONS_DELETE = "automations:delete"
     AUTOMATIONS_EXECUTE = "automations:execute"
 
+    # Memory
+    MEMORY_CREATE = "memory:create"
+    MEMORY_READ = "memory:read"
+    MEMORY_UPDATE = "memory:update"
+    MEMORY_DELETE = "memory:delete"
+
     # Full access wildcard
     FULL_ACCESS = "*"
 
@@ -448,6 +455,10 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.AUTOMATIONS_READ.value,
         Permission.AUTOMATIONS_UPDATE.value,
         Permission.AUTOMATIONS_EXECUTE.value,
+        # Memory (no delete)
+        Permission.MEMORY_CREATE.value,
+        Permission.MEMORY_READ.value,
+        Permission.MEMORY_UPDATE.value,
     ],
     "Viewer": [
         # Documents (read only)
@@ -481,6 +492,8 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.PUBLIC_SHARING_VIEW.value,
         # Automations (read only)
         Permission.AUTOMATIONS_READ.value,
+        # Memory (read only)
+        Permission.MEMORY_READ.value,
     ],
 }
 
@@ -540,6 +553,36 @@ class ExternalChatPlatform(StrEnum):
 class ExternalChatAccountMode(StrEnum):
     CLOUD_SHARED = "cloud_shared"
     SELF_HOST_BYO = "self_host_byo"
+
+
+class MemoryType(StrEnum):
+    """Kind of long-term memory being stored."""
+
+    SEMANTIC = "semantic"
+    EPISODIC = "episodic"
+    PROCEDURAL = "procedural"
+    WORKING = "working"
+
+
+class MemorySourceType(StrEnum):
+    """Origin of a memory fact."""
+
+    DOCUMENT = "document"
+    CHAT_MESSAGE = "chat_message"
+    SCRAPER_RUN = "scraper_run"
+    MANUAL = "manual"
+    UNKNOWN = "unknown"
+
+
+class MemoryRelationType(StrEnum):
+    """Relationship between a memory and another entity."""
+
+    RELATED = "related"
+    DERIVED_FROM = "derived_from"
+    CORRECTS = "corrects"
+    SOURCE_DOCUMENT = "source_document"
+    SOURCE_CHAT = "source_chat"
+    SOURCE_RUN = "source_run"
 
 
 class ExternalChatHealthStatus(StrEnum):
@@ -666,6 +709,12 @@ class NewChatThread(BaseModel, TimestampMixin):
         nullable=True,
         index=True,
     )
+    research_thread_id = Column(
+        Integer,
+        ForeignKey("research_threads.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Relationships
     workspace = relationship("Workspace", back_populates="new_chat_threads")
@@ -691,6 +740,11 @@ class NewChatThread(BaseModel, TimestampMixin):
         "ExternalChatBinding",
         foreign_keys=[external_chat_binding_id],
         back_populates="threads",
+    )
+    research_thread = relationship(
+        "ResearchThread",
+        foreign_keys=[research_thread_id],
+        back_populates="new_chat_threads",
     )
 
 
@@ -1726,8 +1780,6 @@ class Workspace(BaseModel, TimestampMixin):
         Text, nullable=True, default=""
     )  # User's custom instructions
 
-    shared_memory_md = Column(Text, nullable=True, server_default="")
-
     # Connection/model role bindings.
     # Note: ID values preserve the existing convention:
     #   - 0: Auto mode
@@ -1866,6 +1918,23 @@ class Workspace(BaseModel, TimestampMixin):
         order_by="WorkspaceMcpToolSetting.tool_name",
         cascade="all, delete-orphan",
     )
+    research_threads = relationship(
+        "ResearchThread",
+        back_populates="workspace",
+        order_by="ResearchThread.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
+    memories = relationship(
+        "Memory",
+        back_populates="workspace",
+        order_by="Memory.created_at.desc()",
+        cascade="all, delete-orphan",
+    )
+    memory_relations = relationship(
+        "MemoryRelation",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+    )
 
 
 class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
@@ -1890,6 +1959,202 @@ class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
     )
 
     workspace = relationship("Workspace", back_populates="mcp_tool_settings")
+
+
+class ResearchThread(BaseModel, TimestampMixin):
+    """Container for a chain of related chat sessions that share memory."""
+
+    __tablename__ = "research_threads"
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    title = Column(String(500), nullable=True)
+    current_chat_thread_id = Column(
+        Integer,
+        ForeignKey("new_chat_threads.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+    workspace = relationship("Workspace", back_populates="research_threads")
+    created_by = relationship("User", back_populates="research_threads")
+    current_chat_thread = relationship(
+        "NewChatThread",
+        foreign_keys=[current_chat_thread_id],
+        uselist=False,
+    )
+    new_chat_threads = relationship(
+        "NewChatThread",
+        back_populates="research_thread",
+        foreign_keys="NewChatThread.research_thread_id",
+    )
+    memories = relationship(
+        "Memory",
+        back_populates="research_thread",
+        cascade="all, delete-orphan",
+    )
+
+
+class Memory(BaseModel, TimestampMixin):
+    """A single, embedded long-term memory fact."""
+
+    __tablename__ = "memories"
+    __table_args__ = (
+        Index(
+            "ix_memories_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        Index(
+            "ix_memories_content_search",
+            text("to_tsvector('english', content)"),
+            postgresql_using="gin",
+        ),
+    )
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    research_thread_id = Column(
+        Integer,
+        ForeignKey("research_threads.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    type = Column(
+        SQLAlchemyEnum(
+            MemoryType,
+            name="memory_type",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=MemoryType.SEMANTIC,
+        index=True,
+    )
+    content = Column(Text, nullable=False)
+    embedding = Column(Vector(config.embedding_model_instance.dimension), nullable=False)
+    source_type = Column(
+        SQLAlchemyEnum(
+            MemorySourceType,
+            name="memory_source_type",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=MemorySourceType.UNKNOWN,
+    )
+    source_id = Column(Integer, nullable=True, index=True)
+    tags = Column(ARRAY(String), nullable=True, default=list)
+    confidence = Column(Float, nullable=False, default=1.0, server_default="1.0")
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+    workspace = relationship("Workspace", back_populates="memories")
+    created_by = relationship("User", back_populates="memories")
+    research_thread = relationship("ResearchThread", back_populates="memories")
+    versions = relationship(
+        "MemoryVersion",
+        back_populates="memory",
+        order_by="MemoryVersion.created_at",
+        cascade="all, delete-orphan",
+    )
+    relations = relationship(
+        "MemoryRelation",
+        foreign_keys="MemoryRelation.from_memory_id",
+        back_populates="memory",
+        cascade="all, delete-orphan",
+    )
+
+
+class MemoryVersion(BaseModel, TimestampMixin):
+    """Immutable prior content for a memory (audit/correction trail)."""
+
+    __tablename__ = "memory_versions"
+
+    memory_id = Column(
+        Integer,
+        ForeignKey("memories.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    previous_content = Column(Text, nullable=False)
+    corrected_content = Column(Text, nullable=False)
+    corrected_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    memory = relationship("Memory", back_populates="versions")
+    corrected_by = relationship("User", back_populates="memory_versions")
+
+
+class MemoryRelation(BaseModel, TimestampMixin):
+    """Links a memory to another memory, document, chat, or scraper run."""
+
+    __tablename__ = "memory_relations"
+
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    from_memory_id = Column(
+        Integer,
+        ForeignKey("memories.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    to_memory_id = Column(Integer, nullable=True, index=True)
+    relation_type = Column(
+        SQLAlchemyEnum(
+            MemoryRelationType,
+            name="memory_relation_type",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+    )
+    weight = Column(Float, nullable=False, default=1.0, server_default="1.0")
+
+    workspace = relationship("Workspace", back_populates="memory_relations")
+    memory = relationship(
+        "Memory",
+        foreign_keys=[from_memory_id],
+        back_populates="relations",
+    )
 
 
 class SearchSourceConnector(BaseModel, TimestampMixin):
@@ -2402,8 +2667,6 @@ if config.AUTH_TYPE == "GOOGLE":
 
         last_login = Column(TIMESTAMP(timezone=True), nullable=True)
 
-        memory_md = Column(Text, nullable=True, server_default="")
-
         # Refresh tokens for this user
         refresh_tokens = relationship(
             "RefreshToken",
@@ -2414,6 +2677,22 @@ if config.AUTH_TYPE == "GOOGLE":
             "PersonalAccessToken",
             back_populates="user",
             cascade="all, delete-orphan",
+        )
+        # Memory created by this user
+        memories = relationship(
+            "Memory",
+            back_populates="created_by",
+            passive_deletes=True,
+        )
+        memory_versions = relationship(
+            "MemoryVersion",
+            back_populates="corrected_by",
+            passive_deletes=True,
+        )
+        research_threads = relationship(
+            "ResearchThread",
+            back_populates="created_by",
+            passive_deletes=True,
         )
 
 else:
@@ -2539,8 +2818,6 @@ else:
 
         last_login = Column(TIMESTAMP(timezone=True), nullable=True)
 
-        memory_md = Column(Text, nullable=True, server_default="")
-
         # Refresh tokens for this user
         refresh_tokens = relationship(
             "RefreshToken",
@@ -2551,6 +2828,22 @@ else:
             "PersonalAccessToken",
             back_populates="user",
             cascade="all, delete-orphan",
+        )
+        # Memory created by this user
+        memories = relationship(
+            "Memory",
+            back_populates="created_by",
+            passive_deletes=True,
+        )
+        memory_versions = relationship(
+            "MemoryVersion",
+            back_populates="corrected_by",
+            passive_deletes=True,
+        )
+        research_threads = relationship(
+            "ResearchThread",
+            back_populates="created_by",
+            passive_deletes=True,
         )
 
 

@@ -1,6 +1,8 @@
 """First-class memory service for user and team markdown memory."""
 
+from .renderer import render_memory_markdown
 from .schemas import MemoryLimits, MemoryRead
+from .search import MemoryHybridSearch
 from .service import (
     MemoryScope,
     SaveResult,
@@ -19,12 +21,14 @@ from .validation import (
 __all__ = [
     "MEMORY_HARD_LIMIT",
     "MEMORY_SOFT_LIMIT",
+    "MemoryHybridSearch",
     "MemoryLimits",
     "MemoryRead",
     "MemoryScope",
     "SaveResult",
     "memory_limits",
     "read_memory",
+    "render_memory_markdown",
     "reset_memory",
     "save_memory",
     "validate_bullet_format",

@@ -39,7 +39,6 @@ class WorkspaceRead(WorkspaceBase, IDModel, TimestampModel):
     citations_enabled: bool
     api_access_enabled: bool = False
     qna_custom_instructions: str | None = None
-    shared_memory_md: str | None = None
     document_retention_days: int | None = None
     auto_archive_enabled: bool = False
     document_retention_action: str = "archive"

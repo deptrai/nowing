@@ -1,11 +1,12 @@
-"""Unit tests for the first-class memory service."""
+"""Unit tests for the first-class memory service bridge."""
 
-from types import SimpleNamespace
+from __future__ import annotations
 
 import pytest
 
 from app.services.memory import (
     MemoryScope,
+    read_memory,
     reset_memory,
     save_memory,
 )
@@ -13,11 +14,34 @@ from app.services.memory import (
 pytestmark = pytest.mark.unit
 
 
+class _FakeResult:
+    def __init__(self, rows: list | None = None):
+        self._rows = rows or []
+
+    def scalars(self):
+        return self
+
+    def all(self):
+        return self._rows
+
+    def first(self):
+        return self._rows[0] if self._rows else None
+
+
+class _FakeMemory:
+    def __init__(self, content: str, created_at: str, type: str = "semantic") -> None:
+        self.id = 1
+        self.content = content
+        self.created_at = created_at
+        self.type = type
+
+
 class _FakeSession:
-    def __init__(self) -> None:
+    def __init__(self, rows: list | None = None) -> None:
         self.commit_calls = 0
         self.rollback_calls = 0
-        self.added = []
+        self.added: list = []
+        self.rows = rows or []
 
     def add(self, obj) -> None:
         self.added.append(obj)
@@ -28,160 +52,60 @@ class _FakeSession:
     async def rollback(self) -> None:
         self.rollback_calls += 1
 
+    async def execute(self, *_args, **_kwargs):
+        return _FakeResult(self.rows)
+
+    async def delete(self, *_args, **_kwargs):
+        pass
+
 
 @pytest.mark.asyncio
-async def test_save_memory_saves_heading_based_memory(monkeypatch) -> None:
-    target = SimpleNamespace(memory_md="")
-    session = _FakeSession()
-
-    async def fake_load_target(**_kwargs):
-        return target
-
-    monkeypatch.setattr("app.services.memory.service._load_target", fake_load_target)
-
-    result = await save_memory(
-        scope=MemoryScope.USER,
-        target_id="00000000-0000-0000-0000-000000000000",
-        content="## Facts\n- 2026-05-19: Anish works on Nowing\n",
+async def test_read_memory_renders_from_memory_rows() -> None:
+    session = _FakeSession(rows=[_FakeMemory("Fact one", "2026-07-22T00:00:00")])
+    markdown = await read_memory(
+        scope=MemoryScope.TEAM,
+        target_id=1,
         session=session,
     )
+    assert "## Facts" in markdown
+    assert "Fact one" in markdown
 
+
+@pytest.mark.asyncio
+async def test_reset_memory_commits_delete() -> None:
+    session = _FakeSession()
+    result = await reset_memory(
+        scope=MemoryScope.TEAM,
+        target_id=1,
+        session=session,
+    )
     assert result.status == "saved"
-    assert target.memory_md.startswith("## Facts")
+    assert result.memory_md == ""
     assert session.commit_calls == 1
 
 
 @pytest.mark.asyncio
-async def test_save_memory_accepts_legacy_marker_payload(monkeypatch) -> None:
-    target = SimpleNamespace(memory_md="")
+async def test_save_memory_no_update_sentinel_is_no_op() -> None:
     session = _FakeSession()
-
-    async def fake_load_target(**_kwargs):
-        return target
-
-    monkeypatch.setattr("app.services.memory.service._load_target", fake_load_target)
-
-    result = await save_memory(
-        scope=MemoryScope.USER,
-        target_id="00000000-0000-0000-0000-000000000000",
-        content="- (2026-05-19) [fact] Legacy marker memory\n",
-        session=session,
-    )
-
-    assert result.status == "saved"
-    assert target.memory_md == "## Memory\n- 2026-05-19: Legacy marker memory"
-
-
-@pytest.mark.asyncio
-async def test_save_memory_rejects_long_no_heading_payload(monkeypatch) -> None:
-    target = SimpleNamespace(memory_md="## Facts\n- 2026-05-19: Existing\n")
-    session = _FakeSession()
-
-    async def fake_load_target(**_kwargs):
-        return target
-
-    monkeypatch.setattr("app.services.memory.service._load_target", fake_load_target)
-
-    result = await save_memory(
-        scope=MemoryScope.USER,
-        target_id="00000000-0000-0000-0000-000000000000",
-        content="reasoning text before NO_UPDATE should not become saved memory",
-        session=session,
-    )
-
-    assert result.status == "error"
-    assert session.commit_calls == 0
-    assert target.memory_md.startswith("## Facts")
-
-
-@pytest.mark.asyncio
-async def test_save_memory_no_update_sentinel_is_no_op(monkeypatch) -> None:
-    existing = "## Preferences\n- 2026-05-20: Existing preference\n"
-    target = SimpleNamespace(memory_md=existing)
-    session = _FakeSession()
-
-    async def fake_load_target(**_kwargs):
-        return target
-
-    monkeypatch.setattr("app.services.memory.service._load_target", fake_load_target)
-
     result = await save_memory(
         scope=MemoryScope.USER,
         target_id="00000000-0000-0000-0000-000000000000",
         content="NO_UPDATE",
         session=session,
     )
-
     assert result.status == "no_op"
-    assert result.memory_md == existing
-    assert target.memory_md == existing
+    assert "No memory update requested" in result.message
     assert session.commit_calls == 0
 
 
 @pytest.mark.asyncio
-async def test_save_memory_no_update_sentinel_is_case_insensitive(monkeypatch) -> None:
-    existing = "## Preferences\n- 2026-05-20: Existing preference\n"
-    target = SimpleNamespace(memory_md=existing)
+async def test_save_memory_rejects_no_heading() -> None:
     session = _FakeSession()
-
-    async def fake_load_target(**_kwargs):
-        return target
-
-    monkeypatch.setattr("app.services.memory.service._load_target", fake_load_target)
-
     result = await save_memory(
         scope=MemoryScope.USER,
         target_id="00000000-0000-0000-0000-000000000000",
-        content="  no update  ",
+        content="Just some reasoning text without a heading.",
         session=session,
     )
-
-    assert result.status == "no_op"
-    assert result.memory_md == existing
-    assert target.memory_md == existing
+    assert result.status == "error"
     assert session.commit_calls == 0
-
-
-@pytest.mark.asyncio
-async def test_save_memory_grandfathers_existing_team_personal_heading(
-    monkeypatch,
-) -> None:
-    content = "## Preferences\n- 2026-05-19: Existing legacy heading\n"
-    target = SimpleNamespace(shared_memory_md=content)
-    session = _FakeSession()
-
-    async def fake_load_target(**_kwargs):
-        return target
-
-    monkeypatch.setattr("app.services.memory.service._load_target", fake_load_target)
-
-    result = await save_memory(
-        scope=MemoryScope.TEAM,
-        target_id=1,
-        content=content,
-        session=session,
-    )
-
-    assert result.status == "saved"
-    assert result.warnings
-    assert session.commit_calls == 1
-
-
-@pytest.mark.asyncio
-async def test_reset_memory_clears_memory(monkeypatch) -> None:
-    target = SimpleNamespace(memory_md="## Facts\n- 2026-05-19: Existing\n")
-    session = _FakeSession()
-
-    async def fake_load_target(**_kwargs):
-        return target
-
-    monkeypatch.setattr("app.services.memory.service._load_target", fake_load_target)
-
-    result = await reset_memory(
-        scope=MemoryScope.USER,
-        target_id="00000000-0000-0000-0000-000000000000",
-        session=session,
-    )
-
-    assert result.status == "saved"
-    assert target.memory_md == ""

@@ -54,6 +54,7 @@ async def update_team_memory(
         target_id=workspace_id,
         content=body.memory_md,
         session=session,
+        created_by_id=auth.user.id,
     )
     if result.status == "error":
         raise HTTPException(status_code=400, detail=result.message)

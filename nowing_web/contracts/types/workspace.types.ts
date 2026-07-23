@@ -11,7 +11,6 @@ export const workspace = z.object({
 	citations_enabled: z.boolean(),
 	api_access_enabled: z.boolean().optional().default(false),
 	qna_custom_instructions: z.string().nullable(),
-	shared_memory_md: z.string().nullable().optional(),
 	document_retention_days: z.number().nullable().optional(),
 	auto_archive_enabled: z.boolean().optional().default(false),
 	document_retention_action: z.string().optional().default("archive"),

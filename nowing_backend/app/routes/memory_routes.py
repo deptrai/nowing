@@ -51,6 +51,7 @@ async def update_user_memory(
         target_id=user.id,
         content=body.memory_md,
         session=session,
+        created_by_id=user.id,
     )
     if result.status == "error":
         raise HTTPException(status_code=400, detail=result.message)

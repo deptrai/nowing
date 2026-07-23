@@ -39,6 +39,16 @@ from .image_generation import (
     ImageGenerationRead,
 )
 from .logs import LogBase, LogCreate, LogFilter, LogRead, LogUpdate
+from .memory import (
+    MemoryCreate,
+    MemoryRead,
+    MemoryReadLegacy,
+    MemorySearchHit,
+    MemorySearchRequest,
+    MemorySearchResponse,
+    MemoryUpdate,
+    MemoryVersionRead,
+)
 from .model_connections import (
     ConnectionCreate,
     ConnectionRead,
@@ -190,6 +200,15 @@ __all__ = [
     "InviteUpdate",
     # Auth schemas
     "LlmSetupStatusRead",
+    # Memory schemas
+    "MemoryCreate",
+    "MemoryRead",
+    "MemoryReadLegacy",
+    "MemorySearchHit",
+    "MemorySearchRequest",
+    "MemorySearchResponse",
+    "MemoryUpdate",
+    "MemoryVersionRead",
     # Log schemas
     "LogBase",
     "LogCreate",
