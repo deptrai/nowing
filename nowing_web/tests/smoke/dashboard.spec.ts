@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures";
 
 /**
  * Tracer-bullet smoke test: proves the entire E2E pipeline is wired up.

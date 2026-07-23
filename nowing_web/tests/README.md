@@ -109,6 +109,32 @@ docker compose -f docker/docker-compose.e2e.yml down -v --remove-orphans
 This builds the ~9 GB e2e backend image, so the deps-only flow is faster for
 day-to-day work.
 
+## Playwright configuration reference
+
+`playwright.config.ts` reads the following environment variables (all have
+sensible defaults, so a fresh checkout works without a `.env` file):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PLAYWRIGHT_BASE_URL` | `http://localhost:${PORT}` | Origin the browser navigates to. |
+| `NEXT_PUBLIC_FASTAPI_BACKEND_URL` | `http://localhost:8000` | Public backend origin used by the Next.js app. |
+| `NOWING_BACKEND_INTERNAL_URL` | same as backend | Server-side backend origin. |
+| `PLAYWRIGHT_TEST_EMAIL` | `e2e-test@nowing.net` | E2E user email. |
+| `PLAYWRIGHT_TEST_PASSWORD` | `E2eTestPassword123!` | E2E user password. |
+| `E2E_MINT_SECRET` | `local-e2e-mint-secret-not-for-production` | Shared secret for `/__e2e__/auth/token`. |
+| `PLAYWRIGHT_WORKERS` | `2` in CI, `1` locally | Parallel workers. |
+| `PLAYWRIGHT_NO_WEB_SERVER` | unset | If `true`, Playwright will not start the Next.js dev server. |
+| `PLAYWRIGHT_USE_PROXY_ORIGIN` | `false` | Route backend calls through the same origin proxy. |
+
+Timeouts are configured in `playwright.config.ts`:
+
+- Test timeout: **60s**
+- Action timeout: **15s**
+- Navigation timeout: **30s**
+- Expect timeout: **15s**
+
+Traces, screenshots, and videos are retained **on failure**.
+
 ## Adding a new connector
 
 The directory tree is designed so a new connector lives mostly inside

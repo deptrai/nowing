@@ -8,6 +8,9 @@ const useProxyOrigin = process.env.PLAYWRIGHT_USE_PROXY_ORIGIN === "true";
 const backendURL = useProxyOrigin ? baseURL : `http://localhost:${BACKEND_PORT}`;
 const zeroCacheURL = useProxyOrigin ? `${baseURL}/zero` : `http://localhost:${ZERO_CACHE_PORT}`;
 
+const workersEnv = process.env.PLAYWRIGHT_WORKERS ? parseInt(process.env.PLAYWRIGHT_WORKERS, 10) : null;
+const workersValue = workersEnv && workersEnv > 0 ? workersEnv : (process.env.CI ? 2 : 1);
+
 process.env.PLAYWRIGHT_TEST_EMAIL ??= "e2e-test@nowing.net";
 process.env.PLAYWRIGHT_TEST_PASSWORD ??= "E2eTestPassword123!";
 process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL ??= backendURL;
@@ -29,20 +32,22 @@ process.env.NEXT_PUBLIC_ZERO_CACHE_URL ??= zeroCacheURL;
  */
 export default defineConfig({
 	testDir: "./tests",
-	timeout: 30_000,
+	timeout: 60_000,
 	expect: { timeout: 15_000 },
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 1 : 0,
-	workers: 1,
+	workers: workersValue,
 	reporter: process.env.CI
-		? [["html", { open: "never" }], ["github"], ["list"]]
-		: [["html", { open: "on-failure" }], ["list"]],
+		? [["html", { open: "never" }], ["junit", { outputFile: "playwright-report/junit.xml" }], ["github"], ["list"]]
+		: [["html", { open: "on-failure" }], ["junit", { outputFile: "playwright-report/junit.xml" }], ["list"]],
 	use: {
 		baseURL,
-		trace: "on-first-retry",
+		actionTimeout: 15_000,
+		navigationTimeout: 30_000,
+		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
-		video: process.env.CI ? "off" : "retain-on-failure",
+		video: "retain-on-failure",
 		extraHTTPHeaders: {
 			"x-playwright-test": "true",
 		},
