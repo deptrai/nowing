@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
 	Check,
@@ -34,6 +35,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useElectronAPI } from "@/hooks/use-platform";
 import { authenticatedFetch } from "@/lib/auth-fetch";
+import { documentsApiService } from "@/lib/apis/documents-api.service";
 import { inferMonacoLanguageFromPath } from "@/lib/editor-language";
 import { buildBackendUrl } from "@/lib/env-config";
 
@@ -141,6 +143,37 @@ function formatBytes(bytes: number): string {
 	return `${bytes}B`;
 }
 
+interface ChunkHighlightInfo {
+	text: string;
+	offset: number;
+	length: number;
+	position: number;
+	totalChunks: number;
+}
+
+function findChunkInSource(source: string, text: string, position: number, totalChunks: number): { offset: number; length: number } {
+	if (!source || !text) return { offset: -1, length: 0 };
+	const indices: number[] = [];
+	let idx = source.indexOf(text);
+	while (idx !== -1) {
+		indices.push(idx);
+		idx = source.indexOf(text, idx + 1);
+	}
+	if (indices.length === 1) return { offset: indices[0], length: text.length };
+	const safePosition = Math.max(0, position);
+	const safeTotal = Math.max(1, totalChunks - 1);
+	const targetRatio = Math.max(0, Math.min(1, safePosition / safeTotal));
+	if (indices.length > 1) {
+		const targetOffset = Math.min(source.length, Math.floor(targetRatio * source.length));
+		const nearest = indices.reduce((best, cur) =>
+			Math.abs(cur - targetOffset) < Math.abs(best - targetOffset) ? cur : best
+		);
+		return { offset: nearest, length: text.length };
+	}
+	// Not found: fall back to a proportional offset so callers still have a scroll target.
+	return { offset: Math.min(source.length, Math.floor(targetRatio * source.length)), length: 0 };
+}
+
 export function EditorPanelContent({
 	kind = "document",
 	documentId,
@@ -148,6 +181,7 @@ export function EditorPanelContent({
 	memoryScope,
 	workspaceId,
 	title,
+	chunkId,
 	onClose,
 }: {
 	kind?: "document" | "local_file" | "memory";
@@ -156,6 +190,7 @@ export function EditorPanelContent({
 	memoryScope?: "user" | "team";
 	workspaceId?: number;
 	title: string | null;
+	chunkId?: number;
 	onClose?: () => void;
 }) {
 	const electronAPI = useElectronAPI();
@@ -166,6 +201,40 @@ export function EditorPanelContent({
 	const [downloading, setDownloading] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
 	const [memoryLimits, setMemoryLimits] = useState<MemoryLimits | null>(null);
+	const [chunkHighlight, setChunkHighlight] = useState<ChunkHighlightInfo | null>(null);
+
+	const { data: chunkData } = useQuery({
+		queryKey: ["editor-chunk", chunkId],
+		queryFn: () =>
+			documentsApiService.getDocumentByChunk({ chunk_id: chunkId!, chunk_window: 0 }),
+		enabled: kind === "document" && !!chunkId,
+		staleTime: 5 * 60 * 1000,
+	});
+
+	useEffect(() => {
+		if (kind !== "document" || !chunkId || !editorDoc || !chunkData) {
+			setChunkHighlight(null);
+			return;
+		}
+		const chunk = chunkData.chunks.find((c) => c.id === chunkId);
+		if (!chunk) {
+			setChunkHighlight(null);
+			return;
+		}
+		const location = findChunkInSource(
+			editorDoc.source_markdown,
+			chunk.content,
+			chunk.position,
+			chunkData.total_chunks
+		);
+		setChunkHighlight({
+			text: chunk.content,
+			offset: location.offset,
+			length: location.length,
+			position: chunk.position,
+			totalChunks: chunkData.total_chunks,
+		});
+	}, [kind, chunkId, editorDoc, chunkData]);
 
 	const [editedMarkdown, setEditedMarkdown] = useState<string | null>(null);
 	const [localFileContent, setLocalFileContent] = useState("");
@@ -219,6 +288,7 @@ export function EditorPanelContent({
 		setHasCopied(false);
 		setIsEditing(false);
 		setMemoryLimits(null);
+		setChunkHighlight(null);
 		initialLoadDone.current = false;
 		changeCountRef.current = 0;
 
@@ -244,7 +314,7 @@ export function EditorPanelContent({
 						document_id: -1,
 						title: inferredTitle,
 						document_type: "NOTE",
-						source_markdown: readResult.content,
+						source_markdown: readResult.content ?? "",
 					};
 					markdownRef.current = content.source_markdown;
 					setLocalFileContent(content.source_markdown);
@@ -802,6 +872,11 @@ export function EditorPanelContent({
 								if (!initialLoadDone.current) return;
 								setEditedMarkdown(next === (editorDoc?.source_markdown ?? "") ? null : next);
 							}}
+							highlightText={chunkHighlight?.text}
+							highlightOffset={chunkHighlight?.offset}
+							highlightLength={chunkHighlight?.length}
+							highlightPosition={chunkHighlight?.position}
+							totalChunks={chunkHighlight?.totalChunks}
 						/>
 					</div>
 				) : viewerMode === "monaco" && !isLocalFileMode ? (
@@ -815,6 +890,11 @@ export function EditorPanelContent({
 								value={editorDoc.source_markdown}
 								readOnly
 								onChange={() => {}}
+								highlightText={chunkHighlight?.text}
+								highlightOffset={chunkHighlight?.offset}
+								highlightLength={chunkHighlight?.length}
+								highlightPosition={chunkHighlight?.position}
+								totalChunks={chunkHighlight?.totalChunks}
 							/>
 						</div>
 					</div>
@@ -841,6 +921,11 @@ export function EditorPanelContent({
 										value={editorDoc.source_markdown}
 										readOnly
 										onChange={() => {}}
+										highlightText={chunkHighlight?.text}
+										highlightOffset={chunkHighlight?.offset}
+										highlightLength={chunkHighlight?.length}
+										highlightPosition={chunkHighlight?.position}
+										totalChunks={chunkHighlight?.totalChunks}
 									/>
 								}
 							>
@@ -861,13 +946,22 @@ export function EditorPanelContent({
 									// tokens directly. `local_file` never reaches this branch
 									// (handled by the source_code editor above).
 									enableCitations={!isEditing && !isLocalFileMode && !isMemoryMode}
+									highlightText={chunkHighlight?.text}
+									highlightPosition={chunkHighlight?.position}
+									totalChunks={chunkHighlight?.totalChunks}
 								/>
 							</PlateErrorBoundary>
 						</div>
 					</div>
 				) : (
 					<div className="h-full overflow-y-auto px-5 py-4">
-						<MarkdownViewer content={editorDoc.source_markdown} enableCitations />
+						<MarkdownViewer
+							content={editorDoc.source_markdown}
+							enableCitations
+							highlightText={chunkHighlight?.text}
+							highlightPosition={chunkHighlight?.position}
+							totalChunks={chunkHighlight?.totalChunks}
+						/>
 					</div>
 				)}
 			</div>
@@ -904,6 +998,7 @@ function DesktopEditorPanel() {
 				memoryScope={panelState.memoryScope ?? undefined}
 				workspaceId={panelState.workspaceId ?? undefined}
 				title={panelState.title}
+				chunkId={panelState.chunkId ?? undefined}
 				onClose={closePanel}
 			/>
 		</div>
@@ -944,6 +1039,7 @@ function MobileEditorDrawer() {
 						memoryScope={panelState.memoryScope ?? undefined}
 						workspaceId={panelState.workspaceId ?? undefined}
 						title={panelState.title}
+						chunkId={panelState.chunkId ?? undefined}
 					/>
 				</div>
 			</DrawerContent>

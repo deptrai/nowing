@@ -1,5 +1,6 @@
 import { useContext } from "react";
 import { PlatformContext, type PlatformContextValue } from "@/contexts/platform-context";
+import type { ElectronAPI } from "@/types/window";
 
 export function usePlatform(): Pick<PlatformContextValue, "isDesktop" | "isWeb"> {
 	const { isDesktop, isWeb } = useContext(PlatformContext);

@@ -136,6 +136,8 @@ export interface ActionsConfig {
 	items: Action[];
 	align?: "left" | "center" | "right";
 	confirmTimeout?: number;
+	confirm?: Action;
+	cancel?: Action;
 }
 
 export const SerializableActionsConfigSchema = z.object({

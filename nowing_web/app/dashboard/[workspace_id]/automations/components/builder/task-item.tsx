@@ -4,7 +4,18 @@ import { ChevronDown, ChevronRight, ChevronUp, Trash2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { BuilderTask } from "@/lib/automations/builder-schema";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import type {
+	BuilderTask,
+	WriteBackAction,
+	WriteBackParams,
+} from "@/lib/automations/builder-schema";
 import { Field } from "./form-field";
 import { MentionTaskInput } from "./mention-task-input";
 
@@ -20,11 +31,80 @@ interface TaskItemProps {
 	onRemove: () => void;
 }
 
+const ACTION_OPTIONS: { value: WriteBackAction; label: string }[] = [
+	{ value: "agent_task", label: "Agent task" },
+	{ value: "write_back_notion", label: "Write back to Notion" },
+	{ value: "write_back_linear", label: "Write back to Linear" },
+	{ value: "write_back_jira", label: "Write back to Jira" },
+	{ value: "write_back_slack", label: "Write back to Slack" },
+];
+
 function parseOptionalInt(raw: string): number | null {
 	const trimmed = raw.trim();
 	if (trimmed === "") return null;
 	const value = Number.parseInt(trimmed, 10);
 	return Number.isNaN(value) ? null : value;
+}
+
+function defaultWriteBackParams(action: WriteBackAction): WriteBackParams {
+	switch (action) {
+		case "write_back_notion":
+			return {
+				provider: "notion",
+				title: "",
+				content: null,
+				parent_page_id: null,
+				connector_name: null,
+				object_id: null,
+			};
+		case "write_back_linear":
+			return {
+				provider: "linear",
+				title: "",
+				description: null,
+				team_id: null,
+				state: null,
+				connector_name: null,
+				object_id: null,
+			};
+		case "write_back_jira":
+			return {
+				provider: "jira",
+				project_key: "",
+				summary: "",
+				description: null,
+				issue_type: "Task",
+				connector_name: null,
+				object_id: null,
+			};
+		case "write_back_slack":
+			return {
+				provider: "slack",
+				channel: "",
+				text: "",
+				thread_ts: null,
+				connector_name: null,
+				object_id: null,
+			};
+		default:
+			// Should never happen for non write-back actions.
+			return {
+				provider: "notion",
+				title: "",
+				content: null,
+				parent_page_id: null,
+				connector_name: null,
+				object_id: null,
+			};
+	}
+}
+
+function patchWriteBackParams(
+	task: BuilderTask,
+	patch: Partial<WriteBackParams>
+): WriteBackParams | null {
+	if (!task.writeBackParams) return null;
+	return { ...task.writeBackParams, ...patch } as WriteBackParams;
 }
 
 export function TaskItem({
@@ -38,15 +118,48 @@ export function TaskItem({
 	onMoveDown,
 	onRemove,
 }: TaskItemProps) {
+	function handleActionChange(value: WriteBackAction) {
+		if (value === "agent_task") {
+			onChange({ action: value, writeBackParams: null, query: "" });
+		} else {
+			onChange({
+				action: value,
+				writeBackParams: defaultWriteBackParams(value),
+				query: "",
+			});
+		}
+	}
+
+	function updateWriteBackParam(patch: Partial<WriteBackParams>) {
+		const next = patchWriteBackParams(task, patch);
+		if (next) onChange({ writeBackParams: next });
+	}
+
+	const params = task.writeBackParams;
+
 	return (
 		<div className="rounded-md border border-border/60 bg-transparent p-3 space-y-3">
 			<div className="flex items-center justify-between gap-2">
-				<span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
-					<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
-						{index + 1}
+				<div className="flex items-center gap-2">
+					<span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
+						<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
+							{index + 1}
+						</span>
+						Task {index + 1}
 					</span>
-					Task {index + 1}
-				</span>
+					<Select value={task.action} onValueChange={(value) => handleActionChange(value as WriteBackAction)}>
+						<SelectTrigger className="h-7 text-xs" aria-label="Task action">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{ACTION_OPTIONS.map((opt) => (
+								<SelectItem key={opt.value} value={opt.value}>
+									{opt.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
 				<div className="flex items-center gap-0.5">
 					<Button
 						type="button"
@@ -84,18 +197,204 @@ export function TaskItem({
 				</div>
 			</div>
 
-			<Field
-				error={error}
-				hint="Type @ to reference files, folders, or connectors for extra context."
-			>
-				<MentionTaskInput
-					workspaceId={workspaceId}
-					value={task.query}
-					mentions={task.mentions}
-					placeholder="What should the agent do? e.g. Summarize new docs in @Marketing since the last run."
-					onChange={(query, mentions) => onChange({ query, mentions })}
-				/>
-			</Field>
+			{error && <p className="text-xs text-destructive">{error}</p>}
+
+			{task.action === "agent_task" ? (
+				<Field hint="Type @ to reference files, folders, or connectors for extra context.">
+					<MentionTaskInput
+						workspaceId={workspaceId}
+						value={task.query ?? ""}
+						mentions={task.mentions}
+						placeholder="What should the agent do? e.g. Summarize new docs in @Marketing since the last run."
+						onChange={(query, mentions) => onChange({ query, mentions })}
+					/>
+				</Field>
+			) : (
+				<div className="space-y-3">
+					<Field label="Connector name" hint="Optional when only one connector of this type exists.">
+						<Input
+							type="text"
+							value={params?.connector_name ?? ""}
+							aria-label="Connector name" placeholder="e.g. Acme Notion"
+							onChange={(e) =>
+								updateWriteBackParam({
+									connector_name: e.target.value.trim() || null,
+								} as Partial<WriteBackParams>)
+							}
+						/>
+					</Field>
+					{task.action === "write_back_notion" && params?.provider === "notion" && (
+						<>
+							<Field label="Title" required>
+								<Input
+									type="text"
+									value={params.title}
+									aria-label="Title" placeholder="Page title"
+									onChange={(e) => updateWriteBackParam({ title: e.target.value } as Partial<WriteBackParams>)}
+								/>
+							</Field>
+							<Field label="Content">
+								<Input
+									type="text"
+									value={params.content ?? ""}
+									aria-label="Content" placeholder="Page content"
+									onChange={(e) =>
+										updateWriteBackParam({
+											content: e.target.value.trim() || null,
+										} as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+							<Field label="Parent page id">
+								<Input
+									type="text"
+									value={params.parent_page_id ?? ""}
+									aria-label="Parent page id" placeholder="Optional parent page id"
+									onChange={(e) =>
+										updateWriteBackParam({
+											parent_page_id: e.target.value.trim() || null,
+										} as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+						</>
+					)}
+					{task.action === "write_back_linear" && params?.provider === "linear" && (
+						<>
+							<Field label="Title" required>
+								<Input
+									type="text"
+									value={params.title}
+									aria-label="Title" placeholder="Issue title"
+									onChange={(e) => updateWriteBackParam({ title: e.target.value } as Partial<WriteBackParams>)}
+								/>
+							</Field>
+							<Field label="Description">
+								<Input
+									type="text"
+									value={params.description ?? ""}
+									aria-label="Description" placeholder="Issue description"
+									onChange={(e) =>
+										updateWriteBackParam({
+											description: e.target.value.trim() || null,
+										} as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+							<Field label="Team id">
+								<Input
+									type="text"
+									value={params.team_id ?? ""}
+									aria-label="Team id" placeholder="Team identifier"
+									onChange={(e) =>
+										updateWriteBackParam({ team_id: e.target.value.trim() || null } as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+							<Field label="State">
+								<Input
+									type="text"
+									value={params.state ?? ""}
+									aria-label="State" placeholder="Issue state"
+									onChange={(e) =>
+										updateWriteBackParam({ state: e.target.value.trim() || null } as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+						</>
+					)}
+					{task.action === "write_back_jira" && params?.provider === "jira" && (
+						<>
+							<Field label="Project key" required>
+								<Input
+									type="text"
+									value={params.project_key}
+									aria-label="Project key" placeholder="e.g. PROJ"
+									onChange={(e) =>
+										updateWriteBackParam({ project_key: e.target.value } as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+							<Field label="Summary" required>
+								<Input
+									type="text"
+									value={params.summary}
+									aria-label="Summary" placeholder="Issue summary"
+									onChange={(e) =>
+										updateWriteBackParam({ summary: e.target.value } as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+							<Field label="Description">
+								<Input
+									type="text"
+									value={params.description ?? ""}
+									aria-label="Description" placeholder="Issue description"
+									onChange={(e) =>
+										updateWriteBackParam({
+											description: e.target.value.trim() || null,
+										} as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+							<Field label="Issue type" required>
+								<Input
+									type="text"
+									value={params.issue_type}
+									aria-label="Issue type" placeholder="Task"
+									onChange={(e) =>
+										updateWriteBackParam({ issue_type: e.target.value } as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+						</>
+					)}
+					{task.action === "write_back_slack" && params?.provider === "slack" && (
+						<>
+							<Field label="Channel" required>
+								<Input
+									type="text"
+									value={params.channel}
+									aria-label="Channel" placeholder="#daily-digest"
+									onChange={(e) => updateWriteBackParam({ channel: e.target.value } as Partial<WriteBackParams>)}
+								/>
+							</Field>
+							<Field label="Message text" required>
+								<Input
+									type="text"
+									value={params.text}
+									aria-label="Message text" placeholder="What to send"
+									onChange={(e) => updateWriteBackParam({ text: e.target.value } as Partial<WriteBackParams>)}
+								/>
+							</Field>
+							<Field label="Thread ts">
+								<Input
+									type="text"
+									value={params.thread_ts ?? ""}
+									aria-label="Thread ts" placeholder="Optional thread timestamp"
+									onChange={(e) =>
+										updateWriteBackParam({
+											thread_ts: e.target.value.trim() || null,
+										} as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+						</>
+					)}
+					<Field label="Existing object id" hint="Optional: update instead of create.">
+						<Input
+							type="text"
+							value={params?.object_id ?? ""}
+							aria-label="Existing object id" placeholder="page id / issue key / message ts"
+							onChange={(e) =>
+								updateWriteBackParam({
+									object_id: e.target.value.trim() || null,
+								} as Partial<WriteBackParams>)
+							}
+						/>
+					</Field>
+				</div>
+			)}
 
 			<Accordion type="single" collapsible>
 				<AccordionItem value="advanced" className="border-b-0">

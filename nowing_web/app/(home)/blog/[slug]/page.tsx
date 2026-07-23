@@ -2,6 +2,7 @@ import { loader } from "fumadocs-core/source";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import type { ComponentType } from "react";
 import { blog } from "@/.source/server";
 import { ArticleJsonLd, FAQJsonLd } from "@/components/seo/json-ld";
 import { extractFaqFromBlogPost } from "@/lib/blog-faq";
@@ -23,8 +24,8 @@ interface BlogData {
 	tags?: string[];
 	// Populated by Fumadocs when `lastModifiedTime: "git"` is set in source.config.ts.
 	lastModified?: Date;
-	body: React.ComponentType<{
-		components?: Record<string, React.ComponentType>;
+	body: ComponentType<{
+		components?: Record<string, ComponentType>;
 	}>;
 }
 
@@ -148,7 +149,7 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
 				</div>
 
 				<div className="prose dark:prose-invert max-w-none prose-headings:scroll-mt-8 prose-headings:font-semibold prose-a:no-underline prose-headings:tracking-tight prose-headings:text-balance prose-p:tracking-tight prose-p:text-balance prose-img:rounded-xl prose-img:shadow-lg">
-					<MDX components={getMDXComponents()} />
+					<MDX components={getMDXComponents() as Record<string, ComponentType>} />
 				</div>
 			</div>
 		</div>

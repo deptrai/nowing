@@ -101,7 +101,10 @@ class ChucksHybridSearchRetriever:
             select(Chunk)
             .options(joinedload(Chunk.document).joinedload(Document.workspace))
             .join(Document, Chunk.document_id == Document.id)
-            .where(Document.workspace_id == workspace_id)
+            .where(
+                Document.workspace_id == workspace_id,
+                Document.archived_at.is_(None),
+            )
         )
 
         # Add time-based filtering if provided
@@ -166,7 +169,10 @@ class ChucksHybridSearchRetriever:
             select(Chunk)
             .options(joinedload(Chunk.document).joinedload(Document.workspace))
             .join(Document, Chunk.document_id == Document.id)
-            .where(Document.workspace_id == workspace_id)
+            .where(
+                Document.workspace_id == workspace_id,
+                Document.archived_at.is_(None),
+            )
             .where(
                 tsvector.op("@@")(tsquery)
             )  # Only include results that match the query
@@ -253,10 +259,12 @@ class ChucksHybridSearchRetriever:
         tsquery = func.plainto_tsquery("english", query_text)
 
         # Base conditions for chunk filtering - workspace is required.
-        # Exclude documents in "deleting" state (background deletion in progress).
+        # Exclude documents in "deleting" state (background deletion in progress)
+        # and archived documents (soft-deleted / pending retention cleanup).
         base_conditions = [
             Document.workspace_id == workspace_id,
             func.coalesce(Document.status["state"].astext, "ready") != "deleting",
+            Document.archived_at.is_(None),
         ]
 
         # Add document type filter if provided (single string or list of strings)

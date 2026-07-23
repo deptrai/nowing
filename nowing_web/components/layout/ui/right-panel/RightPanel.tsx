@@ -289,6 +289,7 @@ export function RightPanel({ showTopBorder = false }: RightPanelProps) {
 										memoryScope={editorState.memoryScope ?? undefined}
 										workspaceId={editorState.workspaceId ?? undefined}
 										title={editorState.title}
+										chunkId={editorState.chunkId ?? undefined}
 										onClose={closeEditor}
 									/>
 								</div>

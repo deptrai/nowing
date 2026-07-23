@@ -152,6 +152,8 @@ MCP_SERVICES: dict[str, MCPServiceConfig] = {
             "groups:history",
             "mpim:history",
             "im:history",
+            "chat:write",
+            "chat:write:user",
         ],
         # Both prefixed and unprefixed variants: sources disagree on which
         # names mcp.slack.com currently advertises. Unmatched entries are
@@ -163,6 +165,8 @@ MCP_SERVICES: dict[str, MCPServiceConfig] = {
             "search_channels",
             "read_channel",
             "read_thread",
+            "send_message",
+            "slack_send_message",
         ],
         readonly_tools=frozenset(
             {

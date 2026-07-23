@@ -373,12 +373,18 @@ async def read_documents(
             query = (
                 select(Document)
                 .options(selectinload(Document.created_by))
-                .filter(Document.workspace_id == workspace_id)
+                .filter(
+                    Document.workspace_id == workspace_id,
+                    Document.archived_at.is_(None),
+                )
             )
             count_query = (
                 select(func.count())
                 .select_from(Document)
-                .filter(Document.workspace_id == workspace_id)
+                .filter(
+                    Document.workspace_id == workspace_id,
+                    Document.archived_at.is_(None),
+                )
             )
         else:
             # Get documents from all workspaces user has membership in
@@ -387,14 +393,20 @@ async def read_documents(
                 .options(selectinload(Document.created_by))
                 .join(Workspace)
                 .join(WorkspaceMembership)
-                .filter(WorkspaceMembership.user_id == user.id)
+                .filter(
+                    WorkspaceMembership.user_id == user.id,
+                    Document.archived_at.is_(None),
+                )
             )
             count_query = (
                 select(func.count())
                 .select_from(Document)
                 .join(Workspace)
                 .join(WorkspaceMembership)
-                .filter(WorkspaceMembership.user_id == user.id)
+                .filter(
+                    WorkspaceMembership.user_id == user.id,
+                    Document.archived_at.is_(None),
+                )
             )
 
         # Filter by document_types if provided
@@ -476,6 +488,7 @@ async def read_documents(
                     unique_identifier_hash=doc.unique_identifier_hash,
                     created_at=doc.created_at,
                     updated_at=doc.updated_at,
+                    archived_at=doc.archived_at,
                     workspace_id=doc.workspace_id,
                     folder_id=doc.folder_id,
                     created_by_id=doc.created_by_id,
@@ -554,12 +567,18 @@ async def search_documents(
             query = (
                 select(Document)
                 .options(selectinload(Document.created_by))
-                .filter(Document.workspace_id == workspace_id)
+                .filter(
+                    Document.workspace_id == workspace_id,
+                    Document.archived_at.is_(None),
+                )
             )
             count_query = (
                 select(func.count())
                 .select_from(Document)
-                .filter(Document.workspace_id == workspace_id)
+                .filter(
+                    Document.workspace_id == workspace_id,
+                    Document.archived_at.is_(None),
+                )
             )
         else:
             # Get documents from all workspaces user has membership in
@@ -568,14 +587,20 @@ async def search_documents(
                 .options(selectinload(Document.created_by))
                 .join(Workspace)
                 .join(WorkspaceMembership)
-                .filter(WorkspaceMembership.user_id == user.id)
+                .filter(
+                    WorkspaceMembership.user_id == user.id,
+                    Document.archived_at.is_(None),
+                )
             )
             count_query = (
                 select(func.count())
                 .select_from(Document)
                 .join(Workspace)
                 .join(WorkspaceMembership)
-                .filter(WorkspaceMembership.user_id == user.id)
+                .filter(
+                    WorkspaceMembership.user_id == user.id,
+                    Document.archived_at.is_(None),
+                )
             )
 
         # Only search by title (case-insensitive)
@@ -637,6 +662,7 @@ async def search_documents(
                     unique_identifier_hash=doc.unique_identifier_hash,
                     created_at=doc.created_at,
                     updated_at=doc.updated_at,
+                    archived_at=doc.archived_at,
                     workspace_id=doc.workspace_id,
                     folder_id=doc.folder_id,
                     created_by_id=doc.created_by_id,
@@ -807,7 +833,10 @@ async def search_document_titles(
             Document.id,
             Document.title,
             Document.document_type,
-        ).filter(Document.workspace_id == workspace_id)
+        ).filter(
+            Document.workspace_id == workspace_id,
+            Document.archived_at.is_(None),
+        )
 
         # If query is too short, return recent documents ordered by updated_at
         if len(title.strip()) < 2:
@@ -1027,7 +1056,10 @@ async def get_document_type_counts(
             )
             query = (
                 select(Document.document_type, func.count(Document.id))
-                .filter(Document.workspace_id == workspace_id)
+                .filter(
+                    Document.workspace_id == workspace_id,
+                    Document.archived_at.is_(None),
+                )
                 .group_by(Document.document_type)
             )
         else:
@@ -1036,7 +1068,10 @@ async def get_document_type_counts(
                 select(Document.document_type, func.count(Document.id))
                 .join(Workspace)
                 .join(WorkspaceMembership)
-                .filter(WorkspaceMembership.user_id == user.id)
+                .filter(
+                    WorkspaceMembership.user_id == user.id,
+                    Document.archived_at.is_(None),
+                )
                 .group_by(Document.document_type)
             )
 
@@ -1077,7 +1112,10 @@ async def get_document_by_chunk_id(
             )
 
         document_result = await session.execute(
-            select(Document).filter(Document.id == chunk.document_id)
+            select(Document).filter(
+                Document.id == chunk.document_id,
+                Document.archived_at.is_(None),
+            )
         )
         document = document_result.scalars().first()
 
@@ -1131,12 +1169,13 @@ async def get_document_by_chunk_id(
             id=document.id,
             title=document.title,
             document_type=document.document_type,
-            document_metadata=document.document_metadata,
+            document_metadata=document.document_metadata or {},
             content=document.content,
             content_hash=document.content_hash,
             unique_identifier_hash=document.unique_identifier_hash,
             created_at=document.created_at,
             updated_at=document.updated_at,
+            archived_at=document.archived_at,
             workspace_id=document.workspace_id,
             chunks=windowed_chunks,
             total_chunks=total_chunks,
@@ -1264,7 +1303,10 @@ async def read_document(
     """
     try:
         result = await session.execute(
-            select(Document).filter(Document.id == document_id)
+            select(Document).filter(
+                Document.id == document_id,
+                Document.archived_at.is_(None),
+            )
         )
         document = result.scalars().first()
 
@@ -1294,6 +1336,7 @@ async def read_document(
             unique_identifier_hash=document.unique_identifier_hash,
             created_at=document.created_at,
             updated_at=document.updated_at,
+            archived_at=document.archived_at,
             workspace_id=document.workspace_id,
             folder_id=document.folder_id,
         )

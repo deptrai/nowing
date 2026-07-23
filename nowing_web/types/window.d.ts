@@ -10,7 +10,7 @@ interface WatchedFolderConfig {
 	active: boolean;
 }
 
-interface FolderSyncFileChangedEvent {
+export interface FolderSyncFileChangedEvent {
 	id: string;
 	rootFolderId: number | null;
 	workspaceId: number;
@@ -27,7 +27,7 @@ interface FolderSyncWatcherReadyEvent {
 	folderPath: string;
 }
 
-interface LocalFileData {
+export interface LocalFileData {
 	name: string;
 	data: ArrayBuffer;
 	mimeType: string;
@@ -87,7 +87,7 @@ interface UpdateDownloadedEvent {
 	version: string;
 }
 
-interface ElectronAPI {
+export interface ElectronAPI {
 	versions: {
 		electron: string;
 		node: string;

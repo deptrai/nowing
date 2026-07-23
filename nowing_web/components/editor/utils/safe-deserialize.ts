@@ -43,6 +43,10 @@ export function safeDeserializeMarkdown(
 	editor: PlateEditorInstance,
 	markdown: string
 ): Descendant[] {
+	if (!editor) {
+		return plainTextFallback(markdown);
+	}
+
 	const api = editor.getApi(MarkdownPlugin).markdown;
 
 	try {

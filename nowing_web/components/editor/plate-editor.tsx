@@ -76,6 +76,12 @@ export interface PlateEditorProps {
 	 * have no markdown serialize rule.
 	 */
 	enableCitations?: boolean;
+	/** Text to scroll into view and highlight (best-effort via DOM selection). */
+	highlightText?: string;
+	/** Optional proportional position for fallback scrolling when the exact text is not found. */
+	highlightPosition?: number;
+	/** Total chunk count used with highlightPosition. */
+	totalChunks?: number;
 }
 
 function PlateEditorContent({
@@ -115,9 +121,15 @@ export function PlateEditor({
 	preset = "full",
 	extraPlugins = [],
 	enableCitations = false,
+	highlightText,
+	highlightPosition,
+	totalChunks,
 }: PlateEditorProps) {
 	const lastMarkdownRef = useRef(markdown);
 	const lastHtmlRef = useRef(html);
+	const highlightContainerRef = useRef<HTMLDivElement>(null);
+	const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const highlightedElementRef = useRef<HTMLElement | null>(null);
 
 	// Keep a stable ref to the latest onSave callback so the plugin shortcut
 	// always calls the most recent version without re-creating the editor.
@@ -142,6 +154,112 @@ export function PlateEditor({
 			}),
 		[]
 	);
+
+	// ponytail: DOM-based highlight/scroll for a citation chunk. This is a
+	// best-effort heuristic: the chunk text is the raw source substring, but
+	// Plate deserializes markdown into Slate text nodes, so markers like `#`
+	// are stripped. We search rendered text nodes; if found, select and scroll.
+	// A more robust mapping would require Slate-aware chunk offsets (upgrade path).
+	useEffect(() => {
+		if (!highlightText || !highlightContainerRef.current) return;
+		const target = highlightText.trim();
+		if (!target) return;
+		const container = highlightContainerRef.current;
+
+		const clearHighlight = () => {
+			if (highlightTimeoutRef.current) {
+				clearTimeout(highlightTimeoutRef.current);
+				highlightTimeoutRef.current = null;
+			}
+			if (highlightedElementRef.current) {
+				highlightedElementRef.current.classList.remove("bg-yellow-200", "dark:bg-yellow-800");
+				highlightedElementRef.current = null;
+			}
+			const selection = window.getSelection();
+			if (selection) selection.removeAllRanges();
+		};
+
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+		let attempts = 0;
+		const MAX_ATTEMPTS = 20;
+
+		const tryHighlight = () => {
+			timeoutId = setTimeout(() => {
+				const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+				let matchNode: Text | null = null;
+				let matchOffset = -1;
+				while (walker.nextNode()) {
+					const node = walker.currentNode as Text;
+					const text = node.textContent ?? "";
+					const idx = text.indexOf(target);
+					if (idx >= 0) {
+						matchNode = node;
+						matchOffset = idx;
+						break;
+					}
+				}
+
+				if (!matchNode) {
+					// Proportional fallback: scroll to the text node nearest the expected position.
+					if (highlightPosition === undefined || totalChunks === undefined || totalChunks <= 0) return;
+					const fullText = container.textContent ?? "";
+					if (!fullText) {
+						if (attempts < MAX_ATTEMPTS) {
+							attempts += 1;
+							timeoutId = setTimeout(tryHighlight, 50);
+						}
+						return;
+					}
+					const safePosition = Math.max(0, highlightPosition);
+					const safeTotal = Math.max(1, totalChunks - 1);
+					const targetRatio = Math.max(0, Math.min(1, safePosition / safeTotal));
+					const targetOffset = Math.floor(targetRatio * (fullText.length - 1));
+					let accumulated = 0;
+					walker.currentNode = container; // reset walker
+					while (walker.nextNode()) {
+						const node = walker.currentNode as Text;
+						const text = node.textContent ?? "";
+						if (accumulated + text.length > targetOffset) {
+							matchNode = node;
+							matchOffset = Math.max(0, targetOffset - accumulated);
+							break;
+						}
+						accumulated += text.length;
+					}
+				}
+
+				if (!matchNode) return;
+				const range = document.createRange();
+				range.setStart(matchNode, matchOffset);
+				range.setEnd(matchNode, Math.min(matchOffset + target.length, matchNode.textContent?.length ?? 0));
+				const selection = window.getSelection();
+				if (selection) {
+					selection.removeAllRanges();
+					selection.addRange(range);
+				}
+
+				const element = matchNode.parentElement;
+				if (element) {
+					element.scrollIntoView({ behavior: "auto", block: "center" });
+					element.classList.add("bg-yellow-200", "dark:bg-yellow-800");
+					highlightedElementRef.current = element;
+				}
+
+				highlightTimeoutRef.current = setTimeout(() => {
+					clearHighlight();
+				}, 3000);
+			}, 0);
+		};
+
+		timeoutId = setTimeout(tryHighlight, 100);
+
+		return () => {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
+			clearHighlight();
+		};
+	}, [highlightText, highlightPosition, totalChunks]);
 
 	// Resolve the plugin set from the chosen preset
 	const presetPlugins = presetMap[preset];
@@ -223,13 +341,14 @@ export function PlateEditor({
 
 	return (
 		<EditorSaveContext.Provider value={contextProviderValue}>
-			<Plate
-				editor={editor}
-				// Only pass readOnly as a controlled prop when forced (permanently read-only).
-				// For non-forced mode, the Plate store manages readOnly internally
-				// (initialized to true via usePlateEditor, toggled via ModeToolbarButton).
-				{...(readOnly ? { readOnly: true } : {})}
-				onChange={({ value }) => {
+			<div ref={highlightContainerRef} className="h-full min-h-0">
+				<Plate
+					editor={editor}
+					// Only pass readOnly as a controlled prop when forced (permanently read-only).
+					// For non-forced mode, the Plate store manages readOnly internally
+					// (initialized to true via usePlateEditor, toggled via ModeToolbarButton).
+					{...(readOnly ? { readOnly: true } : {})}
+					onChange={({ value }) => {
 					// View-only citation mode: skip serialization. The custom
 					// `citation` inline-void element has no markdown serialize
 					// rule, so emitting changes here would overwrite
@@ -254,6 +373,7 @@ export function PlateEditor({
 					<PlateEditorContent editorVariant={editorVariant} placeholder={placeholder} />
 				</EditorContainer>
 			</Plate>
+			</div>
 		</EditorSaveContext.Provider>
 	);
 }

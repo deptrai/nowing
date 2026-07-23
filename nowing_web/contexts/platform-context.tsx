@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useEffect, useState } from "react";
+import type { ElectronAPI } from "@/types/window";
 
 export interface PlatformContextValue {
 	isDesktop: boolean;

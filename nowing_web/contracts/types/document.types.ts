@@ -46,6 +46,7 @@ export const document = z.object({
 	unique_identifier_hash: z.string().nullable(),
 	created_at: z.string(),
 	updated_at: z.string().nullable(),
+	archived_at: z.string().nullable().optional(),
 	workspace_id: z.number(),
 	created_by_id: z.string().nullable().optional(),
 	created_by_name: z.string().nullable().optional(),
@@ -69,6 +70,8 @@ export const documentWithChunks = document.extend({
 		z.object({
 			id: z.number(),
 			content: z.string(),
+			position: z.number(),
+			document_id: z.number(),
 			created_at: z.string(),
 		})
 	),
@@ -249,6 +252,7 @@ export const getDocumentChunksRequest = z.object({
 export const chunkRead = z.object({
 	id: z.number(),
 	content: z.string(),
+	position: z.number(),
 	document_id: z.number(),
 	created_at: z.string(),
 });

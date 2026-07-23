@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.db import DocumentType
 
@@ -52,13 +52,14 @@ class DocumentRead(BaseModel):
     id: int
     title: str
     document_type: DocumentType
-    document_metadata: dict
+    document_metadata: dict = Field(default_factory=dict)
     content: str = ""
     content_preview: str = ""
     content_hash: str
     unique_identifier_hash: str | None
     created_at: datetime
     updated_at: datetime | None
+    archived_at: datetime | None = None
     workspace_id: int
     folder_id: int | None = None
     created_by_id: UUID | None = None
@@ -67,6 +68,11 @@ class DocumentRead(BaseModel):
     status: DocumentStatusSchema | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("document_metadata", mode="before")
+    @classmethod
+    def _ensure_document_metadata_dict(cls, v: object) -> dict:
+        return v if isinstance(v, dict) else {}
 
 
 class DocumentWithChunksRead(DocumentRead):

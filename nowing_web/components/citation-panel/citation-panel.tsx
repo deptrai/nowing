@@ -79,6 +79,7 @@ export const CitationPanelContent: FC<CitationPanelContentProps> = ({
 			documentId: data.id,
 			workspaceId: data.workspace_id,
 			title: data.title,
+			chunkId,
 		});
 	};
 

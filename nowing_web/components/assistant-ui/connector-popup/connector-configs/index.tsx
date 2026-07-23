@@ -75,7 +75,7 @@ export function getConnectorConfigComponent(
 	if (!loader) return null;
 
 	if (!componentCache.has(connectorType)) {
-		componentCache.set(connectorType, dynamic(loader, { ssr: false }));
+		componentCache.set(connectorType, dynamic(loader, { ssr: false }) as ConnectorConfigComponent);
 	}
 
 	return componentCache.get(connectorType)!;

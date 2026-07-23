@@ -1,6 +1,27 @@
 import type { APIRequestContext } from "@playwright/test";
 import { authHeaders, BACKEND_URL } from "./auth";
 
+export type ThreadRow = {
+	id: number;
+	title: string;
+	archived: boolean;
+	workspace_id: number;
+	visibility: "PRIVATE" | "SEARCH_SPACE";
+	created_by_id: string | null;
+	created_at: string;
+	updated_at: string;
+};
+
+export type MessageRow = {
+	id: number;
+	thread_id: number;
+	role: "user" | "assistant" | "system";
+	content: unknown;
+	created_at: string;
+	author_id?: string | null;
+	turn_id?: string | null;
+};
+
 export type ChatStreamEvent = {
 	type: string;
 	payload: unknown;
@@ -64,4 +85,36 @@ export async function streamChatToCompletion(
 	}
 
 	return { assistantText, events };
+}
+
+export async function createThread(
+	request: APIRequestContext,
+	token: string,
+	workspaceId: number,
+	title = "ATDD Citation Thread"
+): Promise<ThreadRow> {
+	const response = await request.post(`${BACKEND_URL}/api/v1/threads`, {
+		headers: authHeaders(token),
+		data: { title, archived: false, workspace_id: workspaceId },
+	});
+	if (!response.ok()) {
+		throw new Error(`createThread failed (${response.status()}): ${await response.text()}`);
+	}
+	return (await response.json()) as ThreadRow;
+}
+
+export async function appendAssistantMessage(
+	request: APIRequestContext,
+	token: string,
+	threadId: number,
+	content: string
+): Promise<MessageRow> {
+	const response = await request.post(`${BACKEND_URL}/api/v1/threads/${threadId}/messages`, {
+		headers: authHeaders(token),
+		data: { role: "assistant", content },
+	});
+	if (!response.ok()) {
+		throw new Error(`appendAssistantMessage failed (${response.status()}): ${await response.text()}`);
+	}
+	return (await response.json()) as MessageRow;
 }

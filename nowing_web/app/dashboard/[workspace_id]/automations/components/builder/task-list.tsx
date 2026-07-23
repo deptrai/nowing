@@ -41,7 +41,7 @@ export function TaskList({ tasks, errors, workspaceId, onChange }: TaskListProps
 					total={tasks.length}
 					task={task}
 					workspaceId={workspaceId}
-					error={errors[`tasks.${index}.query`]}
+					error={errors[`tasks.${index}.query`] || errors[`tasks.${index}.writeBackParams`]}
 					onChange={(patch) => updateAt(index, patch)}
 					onMoveUp={() => move(index, -1)}
 					onMoveDown={() => move(index, 1)}

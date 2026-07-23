@@ -190,6 +190,7 @@ celery_app = Celery(
         "app.tasks.celery_tasks.stripe_reconciliation_task",
         "app.tasks.celery_tasks.refresh_token_cleanup_task",
         "app.tasks.celery_tasks.auto_reload_task",
+        "app.tasks.celery_tasks.document_retention_task",
         "app.tasks.celery_tasks.gateway_tasks",
         "app.etl_pipeline.cache.eviction.task",
         "app.indexing_pipeline.cache.eviction.task",
@@ -304,6 +305,11 @@ celery_app.conf.beat_schedule = {
     "gateway-retention-sweep": {
         "task": "gateway.retention_sweep",
         "schedule": crontab(hour="3", minute="17"),
+        "options": {"expires": 600},
+    },
+    "apply-document-retention-policies": {
+        "task": "apply_document_retention_policies",
+        "schedule": crontab(hour="3", minute="0"),
         "options": {"expires": 600},
     },
     "purge-refresh-tokens": {

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Spinner } from "@/components/ui/spinner";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
@@ -17,6 +17,29 @@ interface SourceCodeEditorProps {
 	readOnly?: boolean;
 	fontSize?: number;
 	onSave?: () => Promise<void> | void;
+	highlightText?: string;
+	highlightOffset?: number;
+	highlightLength?: number;
+	highlightPosition?: number;
+	totalChunks?: number;
+}
+
+function offsetToLineColumn(text: string, offset: number): { line: number; column: number } {
+	let line = 1;
+	let column = 1;
+	for (let i = 0; i < offset && i < text.length; i++) {
+		const char = text[i];
+		if (char === "\n" || char === "\r") {
+			line++;
+			column = 1;
+			if (char === "\r" && text[i + 1] === "\n") {
+				i++;
+			}
+		} else {
+			column++;
+		}
+	}
+	return { line, column };
 }
 
 export function SourceCodeEditor({
@@ -27,10 +50,24 @@ export function SourceCodeEditor({
 	readOnly = false,
 	fontSize = 12,
 	onSave,
+	highlightText,
+	highlightOffset,
+	highlightLength,
+	highlightPosition,
+	totalChunks,
 }: SourceCodeEditorProps) {
 	const { resolvedTheme } = useTheme();
 	const onSaveRef = useRef(onSave);
 	const monacoRef = useRef<any>(null);
+	const editorRef = useRef<any>(null);
+	const highlightDecorationRef = useRef<string[]>([]);
+	const highlightTextRef = useRef(highlightText);
+	const highlightOffsetRef = useRef(highlightOffset);
+	const highlightLengthRef = useRef(highlightLength);
+	const highlightPositionRef = useRef(highlightPosition);
+	const totalChunksRef = useRef(totalChunks);
+	const layoutListenerRef = useRef<{ dispose: () => void } | null>(null);
+	const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const normalizedModelPath = (() => {
 		const raw = (path || "local-file.txt").trim();
 		const withLeadingSlash = raw.startsWith("/") ? raw : `/${raw}`;
@@ -83,6 +120,150 @@ export function SourceCodeEditor({
 		applySidebarTheme(monacoRef.current);
 	}, [resolvedTheme]);
 
+	const clearHighlight = useCallback((editor: any, monaco: any) => {
+		if (!editor || !monaco) return;
+		if (highlightTimeoutRef.current) {
+			clearTimeout(highlightTimeoutRef.current);
+			highlightTimeoutRef.current = null;
+		}
+		highlightDecorationRef.current = editor.deltaDecorations(highlightDecorationRef.current, []);
+	}, []);
+
+	const applyHighlight = useCallback((editor: any, monaco: any, { layoutOnly = false }: { layoutOnly?: boolean } = {}) => {
+		if (!editor || !monaco) return;
+		const model = editor.getModel();
+		if (!model) return;
+
+		// Layout-only re-applications should not resurrect a highlight that has already
+		// auto-cleared.
+		if (layoutOnly && highlightTimeoutRef.current === null) {
+			return;
+		}
+
+		const currentHighlightText = highlightTextRef.current ?? "";
+		const currentHighlightOffset = highlightOffsetRef.current ?? -1;
+		const currentHighlightLength = highlightLengthRef.current ?? 0;
+		const currentHighlightPosition = highlightPositionRef.current;
+		const currentTotalChunks = totalChunksRef.current;
+
+		const hasHighlight =
+			currentHighlightOffset >= 0 ||
+			(currentHighlightText.length > 0 &&
+				(currentHighlightPosition === undefined || currentTotalChunks === undefined || currentTotalChunks > 0));
+		if (!hasHighlight) {
+			clearHighlight(editor, monaco);
+			return;
+		}
+
+		// On a real highlight change, reset the auto-clear timer and clear old decoration.
+		if (!layoutOnly) {
+			if (highlightTimeoutRef.current) {
+				clearTimeout(highlightTimeoutRef.current);
+			}
+			highlightDecorationRef.current = editor.deltaDecorations(highlightDecorationRef.current, []);
+		}
+
+		const text = model.getValue();
+
+		let startLine = 1;
+		let startColumn = 1;
+		let endLine = 1;
+		let endColumn = 1;
+
+		if (currentHighlightOffset >= 0) {
+			({ line: startLine, column: startColumn } = offsetToLineColumn(text, currentHighlightOffset));
+			if (currentHighlightLength > 0) {
+				({ line: endLine, column: endColumn } = offsetToLineColumn(
+					text,
+					currentHighlightOffset + currentHighlightLength
+				));
+			} else {
+				endLine = startLine;
+				endColumn = startColumn;
+			}
+		} else if (currentHighlightText.length > 0) {
+			const idx = text.indexOf(currentHighlightText);
+			if (idx >= 0) {
+				({ line: startLine, column: startColumn } = offsetToLineColumn(text, idx));
+				({ line: endLine, column: endColumn } = offsetToLineColumn(
+					text,
+					idx + currentHighlightText.length
+				));
+			} else if (
+				currentHighlightPosition !== undefined &&
+				currentTotalChunks !== undefined &&
+				currentTotalChunks > 0
+			) {
+				const lineCount = model.getLineCount() ?? 1;
+				const safePosition = Math.max(0, currentHighlightPosition);
+				const safeTotal = Math.max(1, currentTotalChunks - 1);
+				startLine = Math.max(
+					1,
+					Math.min(
+						lineCount,
+						Math.floor((safePosition / safeTotal) * (lineCount - 1)) + 1
+					)
+				);
+				endLine = startLine;
+				endColumn = startColumn;
+			} else {
+				// Highlight target is not present in the current model value yet.
+				return;
+			}
+		}
+
+		const range = new monaco.Range(startLine, startColumn, endLine, endColumn);
+
+		if (!layoutOnly) {
+			editor.revealRangeInCenter(range);
+			editor.setSelection(range);
+		}
+
+		const isCollapsed = range.startLineNumber === range.endLineNumber && range.startColumn === range.endColumn;
+		highlightDecorationRef.current = editor.deltaDecorations(highlightDecorationRef.current, [
+			{
+				range,
+				options: {
+					className: "bg-yellow-200 dark:bg-yellow-800",
+					isWholeLine: isCollapsed,
+					inlineClassName: "bg-yellow-200 dark:bg-yellow-800",
+				},
+			},
+		]);
+
+		if (!layoutOnly) {
+			highlightTimeoutRef.current = setTimeout(() => {
+				clearHighlight(editor, monaco);
+				highlightTimeoutRef.current = null;
+			}, 3000);
+		}
+	}, [clearHighlight]);
+
+	useEffect(() => {
+		highlightTextRef.current = highlightText;
+		highlightOffsetRef.current = highlightOffset;
+		highlightLengthRef.current = highlightLength;
+		highlightPositionRef.current = highlightPosition;
+		totalChunksRef.current = totalChunks;
+
+		const editor = editorRef.current;
+		const monaco = monacoRef.current;
+		if (editor && monaco) {
+			applyHighlight(editor, monaco);
+		}
+	}, [highlightText, highlightOffset, highlightLength, highlightPosition, totalChunks, applyHighlight]);
+
+	useEffect(() => {
+		return () => {
+			layoutListenerRef.current?.dispose();
+			layoutListenerRef.current = null;
+			if (highlightTimeoutRef.current) {
+				clearTimeout(highlightTimeoutRef.current);
+				highlightTimeoutRef.current = null;
+			}
+		};
+	}, []);
+
 	const isManualSaveEnabled = !!onSave && !readOnly;
 
 	return (
@@ -103,8 +284,15 @@ export function SourceCodeEditor({
 					applySidebarTheme(monaco);
 				}}
 				onMount={(editor, monaco) => {
+					editorRef.current = editor;
 					monacoRef.current = monaco;
 					applySidebarTheme(monaco);
+
+					layoutListenerRef.current = editor.onDidLayoutChange(() => {
+						applyHighlight(editor, monaco, { layoutOnly: true });
+					});
+					applyHighlight(editor, monaco);
+
 					if (!isManualSaveEnabled) return;
 					editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
 						void onSaveRef.current?.();

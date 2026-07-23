@@ -10,6 +10,7 @@ export const documentTable = table("documents")
 		createdById: string().optional().from("created_by_id"),
 		status: json(),
 		createdAt: number().from("created_at"),
+		archivedAt: number().optional().from("archived_at"),
 	})
 	.primaryKey("id");
 

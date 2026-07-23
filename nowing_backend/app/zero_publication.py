@@ -34,6 +34,7 @@ DOCUMENT_COLS = [
     "status",
     "created_at",
     "updated_at",
+    "archived_at",
 ]
 
 USER_COLS = [

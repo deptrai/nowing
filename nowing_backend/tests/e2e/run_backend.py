@@ -313,10 +313,61 @@ def _install_test_only_app_extensions(app) -> None:
     production auth surface. See tests/e2e/auth_mint.py.
     """
     from tests.e2e.auth_mint import install as install_e2e_mint
+    from tests.e2e.document_archive import _install as install_e2e_document_archive
     from tests.e2e.middleware.scenario import ScenarioMiddleware
 
     app.add_middleware(ScenarioMiddleware)
     install_e2e_mint(app)
+    install_e2e_document_archive(app)
+
+
+class _InlineTaskDispatcher:
+    """Process uploaded files synchronously so E2E tests don't need a Celery worker.
+
+    The fakes already stubbed ETL, embeddings, and chunking, so processing the
+    small markdown files used by the frontend test suite inline is fast enough
+    for the request. Exceptions are swallowed to match Celery fire-and-forget
+    semantics; the document processor marks failures internally.
+    """
+
+    async def dispatch_file_processing(
+        self,
+        *,
+        document_id: int,
+        temp_path: str,
+        filename: str,
+        workspace_id: int,
+        user_id: str,
+        use_vision_llm: bool = False,
+        processing_mode: str = "basic",
+    ) -> None:
+        import contextlib
+
+        from app.services.task_dispatcher import get_task_dispatcher
+        from app.tasks.celery_tasks.document_tasks import (
+            _process_file_with_document,
+        )
+
+        # In case a previous integration override already exists, keep it.
+        app.dependency_overrides[get_task_dispatcher] = lambda: self
+
+        with contextlib.suppress(Exception):
+            await _process_file_with_document(
+                document_id=document_id,
+                temp_path=temp_path,
+                filename=filename,
+                workspace_id=workspace_id,
+                user_id=user_id,
+                use_vision_llm=use_vision_llm,
+                processing_mode=processing_mode,
+            )
+
+
+def _install_inline_task_dispatcher(app) -> None:
+    """Swap the Celery file dispatcher for an inline one in the E2E backend."""
+    from app.services.task_dispatcher import get_task_dispatcher
+
+    app.dependency_overrides[get_task_dispatcher] = lambda: _InlineTaskDispatcher()
 
 
 def _bootstrap():
@@ -350,6 +401,7 @@ def _bootstrap():
     _patch_llm_bindings()
     _install_runtime_fakes()
     _install_test_only_app_extensions(production_app)
+    _install_inline_task_dispatcher(production_app)
     return production_app
 
 

@@ -33,7 +33,7 @@ from app.schemas import (
     WorkspaceWithStats,
 )
 from app.users import allow_any_principal, get_auth_context, require_session_context
-from app.utils.rbac import check_permission, check_workspace_access
+from app.utils.rbac import check_permission, check_workspace_access, is_workspace_owner
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +239,11 @@ async def read_workspace(
         if not workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-        return workspace
+        response = WorkspaceRead.model_validate(workspace)
+        response.is_owner = await is_workspace_owner(
+            session, auth.user.id, workspace_id
+        )
+        return response
 
     except HTTPException:
         raise
@@ -280,11 +284,23 @@ async def update_workspace(
 
         update_data = workspace_update.model_dump(exclude_unset=True)
 
+        if update_data.get("auto_archive_enabled"):
+            days = update_data.get("document_retention_days")
+            if not isinstance(days, int) or days <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="document_retention_days must be a positive integer when auto_archive_enabled is true",
+                )
+
         for key, value in update_data.items():
             setattr(db_workspace, key, value)
         await session.commit()
         await session.refresh(db_workspace)
-        return db_workspace
+        response = WorkspaceRead.model_validate(db_workspace)
+        response.is_owner = await is_workspace_owner(
+            session, auth.user.id, workspace_id
+        )
+        return response
     except HTTPException:
         raise
     except Exception as e:

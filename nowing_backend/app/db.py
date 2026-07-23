@@ -201,6 +201,11 @@ class DocumentStatus:
         return None
 
 
+class DocumentRetentionAction(StrEnum):
+    ARCHIVE = "archive"
+    DELETE = "delete"
+
+
 class ConnectionScope(StrEnum):
     GLOBAL = "GLOBAL"
     SEARCH_SPACE = "SEARCH_SPACE"
@@ -1349,6 +1354,9 @@ class Folder(BaseModel, TimestampMixin):
 
 class Document(BaseModel, TimestampMixin):
     __tablename__ = "documents"
+    __table_args__ = (
+        Index("ix_documents_archived_at_workspace_id", "archived_at", "workspace_id"),
+    )
 
     title = Column(String, nullable=False, index=True)
     document_type = Column(SQLAlchemyEnum(DocumentType), nullable=False)
@@ -1383,6 +1391,9 @@ class Document(BaseModel, TimestampMixin):
 
     # Track when document was last updated by indexers, processors, or editor
     updated_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
+
+    # Soft-archive timestamp; non-NULL documents are excluded from search/lists.
+    archived_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
 
     workspace_id = Column(
         Integer,
@@ -1736,6 +1747,18 @@ class Workspace(BaseModel, TimestampMixin):
     # NULL = never self-configured. Set once, never cleared; splits a needs_setup
     # verdict into first-run vs. recovery.
     llm_setup_completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    # Data retention / lifecycle settings.
+    document_retention_days = Column(Integer, nullable=True)
+    auto_archive_enabled = Column(
+        Boolean, nullable=False, default=False, server_default="false", index=True
+    )
+    document_retention_action = Column(
+        String(20),
+        nullable=False,
+        default=DocumentRetentionAction.ARCHIVE,
+        server_default="archive",
+    )
 
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False

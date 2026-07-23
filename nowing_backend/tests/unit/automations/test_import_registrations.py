@@ -28,6 +28,20 @@ def test_bundled_agent_task_action_is_registered_after_package_import() -> None:
     assert definition.type == "agent_task"
 
 
+
+def test_write_back_actions_are_registered_after_package_import() -> None:
+    """All direct write-back action types must be discoverable after import."""
+    for action_type in (
+        "write_back_notion",
+        "write_back_linear",
+        "write_back_jira",
+        "write_back_slack",
+    ):
+        definition = get_action(action_type)
+        assert definition is not None, f"{action_type!r} not registered"
+        assert definition.type == action_type
+
+
 def test_bundled_schedule_trigger_is_registered_after_package_import() -> None:
     """``schedule`` — the only v1 trigger — must be discoverable in the
     registry after the package is imported."""

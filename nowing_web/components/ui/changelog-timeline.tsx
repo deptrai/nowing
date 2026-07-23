@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 export type ChangelogTimelineEntry = {
 	version: string;
 	date: string;
-	title: string;
-	description: string;
+	title?: string;
+	description?: string;
 	items?: string[];
 	image?: string;
 	content?: ReactNode;

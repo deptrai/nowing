@@ -69,7 +69,7 @@ export function getConnectFormComponent(connectorType: string): ConnectFormCompo
 	if (!loader) return null;
 
 	if (!componentCache.has(connectorType)) {
-		componentCache.set(connectorType, dynamic(loader, { ssr: false }));
+		componentCache.set(connectorType, dynamic(loader, { ssr: false }) as ConnectFormComponent);
 	}
 
 	return componentCache.get(connectorType)!;

@@ -213,6 +213,7 @@ async def virtual_path_to_doc(
         select(Document).where(
             Document.workspace_id == workspace_id,
             Document.unique_identifier_hash == unique_hash,
+            Document.archived_at.is_(None),
         )
     )
     document = result.scalar_one_or_none()
@@ -234,6 +235,7 @@ async def virtual_path_to_doc(
             select(Document).where(
                 Document.workspace_id == workspace_id,
                 Document.id == suffix_doc_id,
+                Document.archived_at.is_(None),
             )
         )
         document = result.scalar_one_or_none()
@@ -255,6 +257,7 @@ async def virtual_path_to_doc(
         query = select(Document).where(
             Document.workspace_id == workspace_id,
             Document.title == candidate,
+            Document.archived_at.is_(None),
         )
         if folder_id is None:
             query = query.where(Document.folder_id.is_(None))
@@ -273,6 +276,7 @@ async def virtual_path_to_doc(
     # by ``safe_filename(title)`` to recover the original document.
     folder_scan = select(Document).where(
         Document.workspace_id == workspace_id,
+        Document.archived_at.is_(None),
     )
     if folder_id is None:
         folder_scan = folder_scan.where(Document.folder_id.is_(None))

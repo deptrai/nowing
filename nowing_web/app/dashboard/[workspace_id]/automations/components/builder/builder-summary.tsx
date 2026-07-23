@@ -11,6 +11,19 @@ interface BuilderSummaryProps {
  * Live, read-only mirror of what will be created. Mirrors the layout of the
  * chat ``AutomationDraftPreview`` so the two creation paths feel consistent.
  */
+function taskSummary(task: BuilderForm["tasks"][number]): string {
+	if (task.action === "agent_task") {
+		return task.query?.trim() || "No instructions yet";
+	}
+	if (task.writeBackParams) {
+		if (task.writeBackParams.provider === "slack") return `Post to ${task.writeBackParams.channel}`;
+		if (task.writeBackParams.provider === "jira") return `Jira: ${task.writeBackParams.summary}`;
+		if (task.writeBackParams.provider === "linear") return `Linear: ${task.writeBackParams.title}`;
+		return `Notion: ${task.writeBackParams.title}`;
+	}
+	return task.action.replace(/_/g, " ");
+}
+
 export function BuilderSummary({ form }: BuilderSummaryProps) {
 	const automationName = form.name.trim() || "Untitled automation";
 	const scheduleDescription = form.schedule ? describeCron(scheduleToCron(form.schedule)) : null;
@@ -46,9 +59,7 @@ export function BuilderSummary({ form }: BuilderSummaryProps) {
 						{visibleTasks.map((task, index) => (
 							<li key={task.id} className="flex gap-2">
 								<span className="shrink-0 text-muted-foreground">{index + 1}.</span>
-								<span className="line-clamp-1 min-w-0">
-									{task.query.trim() || "No instructions yet"}
-								</span>
+								<span className="line-clamp-1 min-w-0">{taskSummary(task)}</span>
 							</li>
 						))}
 						{hiddenTaskCount > 0 && (

@@ -70,7 +70,12 @@ Required JSON shape:
 }
 
 v1 catalog (only these are valid):
-- Actions: agent_task — params: query (string, Jinja), auto_approve_all (bool).
+- Actions:
+  - agent_task — params: query (string, Jinja), auto_approve_all (bool).
+  - write_back_notion — params: title (string, Jinja), content (string, Jinja), parent_page_id (string, optional), object_id/page_id (string, optional), connector_name (string, optional).
+  - write_back_linear — params: title (string, Jinja), description (string, optional), team_id (string, optional), state (string, optional), object_id/issue_id (string, optional), connector_name (string, optional).
+  - write_back_jira — params: project_key (string), summary (string, Jinja), description (string, Jinja, optional), issue_type (string, default "Task"), object_id/issue_key (string, optional), connector_name (string, optional).
+  - write_back_slack — params: channel (string, Jinja), text (string, Jinja), thread_ts (string, optional), object_id/message_ts (string, optional), connector_name (string, optional).
 - Triggers: schedule — params: cron (5-field), timezone (IANA, e.g. "UTC",
   "Europe/Paris"). Has static_inputs (object).
 
@@ -152,6 +157,47 @@ output:
       "type": "schedule",
       "params": {"cron": "0 7 * * 1", "timezone": "Europe/Paris"},
       "static_inputs": {"jira_project_key": "CORE", "notion_parent_page_id": "REPLACE_ME"},
+      "enabled": true
+    }
+  ]
+}
+
+### Example 3 — agent_task then write_back_slack referencing a previous step
+intent: "Every weekday at 09:00 UTC, summarize documents added to folder_id=12 since the last run, then post the summary to Slack channel '#daily-digest'. Static inputs: folder_id=12, slack_channel='#daily-digest'."
+output:
+{
+  "name": "Daily folder 12 Slack digest",
+  "description": "Weekday 09:00 UTC summary of folder 12 documents posted to #daily-digest",
+  "definition": {
+    "schema_version": "1.0",
+    "name": "Daily folder 12 Slack digest",
+    "goal": "Summarize new docs in folder 12 since the last run and post to #daily-digest",
+    "plan": [
+      {
+        "step_id": "summarize",
+        "action": "agent_task",
+        "params": {
+          "query": "Summarize documents added to folder {{ inputs.folder_id }} since {{ inputs.last_fired_at or 'yesterday' }}. Output a concise summary and include a final_message field.",
+          "auto_approve_all": true
+        }
+      },
+      {
+        "step_id": "post_to_slack",
+        "action": "write_back_slack",
+        "params": {
+          "channel": "{{ inputs.slack_channel }}",
+          "text": "{{ steps.summarize.final_message }}",
+          "connector_name": null
+        }
+      }
+    ],
+    "metadata": {"tags": ["daily", "digest", "slack"]}
+  },
+  "triggers": [
+    {
+      "type": "schedule",
+      "params": {"cron": "0 9 * * 1-5", "timezone": "UTC"},
+      "static_inputs": {"folder_id": 12, "slack_channel": "#daily-digest"},
       "enabled": true
     }
   ]

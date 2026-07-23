@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useElectronAPI } from "@/hooks/use-platform";
 import { documentsApiService } from "@/lib/apis/documents-api.service";
+import type { FolderSyncFileChangedEvent, LocalFileData } from "@/types/window";
 
 interface FileChangedEvent {
 	id: string;
@@ -59,7 +60,7 @@ export function useFolderSync() {
 					const fullPaths = addChangeFiles.map((f) => f.fullPath);
 					const fileDataArr = await electronAPI.readLocalFiles(fullPaths);
 
-					const files: File[] = fileDataArr.map((fd) => {
+					const files: File[] = fileDataArr.map((fd: LocalFileData) => {
 						const blob = new Blob([fd.data], { type: fd.mimeType || "application/octet-stream" });
 						return new File([blob], fd.name, { type: blob.type });
 					});
@@ -167,7 +168,7 @@ export function useFolderSync() {
 
 		electronAPI.signalRendererReady?.();
 
-		void electronAPI.getPendingFileEvents?.().then((pendingEvents) => {
+		void electronAPI.getPendingFileEvents?.().then((pendingEvents: FolderSyncFileChangedEvent[]) => {
 			if (!isMountedRef.current || !pendingEvents?.length) return;
 			for (const event of pendingEvents) {
 				enqueueWithDebounce(event);

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, StrictBool
 
@@ -22,6 +23,9 @@ class WorkspaceUpdate(BaseModel):
     description: str | None = None
     citations_enabled: bool | None = None
     qna_custom_instructions: str | None = None
+    document_retention_days: int | None = None
+    auto_archive_enabled: bool | None = None
+    document_retention_action: Literal["archive", "delete"] | None = None
 
 
 class WorkspaceApiAccessUpdate(BaseModel):
@@ -36,6 +40,10 @@ class WorkspaceRead(WorkspaceBase, IDModel, TimestampModel):
     api_access_enabled: bool = False
     qna_custom_instructions: str | None = None
     shared_memory_md: str | None = None
+    document_retention_days: int | None = None
+    auto_archive_enabled: bool = False
+    document_retention_action: str = "archive"
+    is_owner: bool = False
     # Populated only by create_workspace so the client can route straight to
     # onboarding vs. new-chat on the first hop. Null everywhere else.
     llm_setup: LlmSetupStatusRead | None = None

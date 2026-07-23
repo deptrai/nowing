@@ -9,6 +9,7 @@ interface EditorPanelState {
 	workspaceId: number | null;
 	memoryScope: "user" | "team" | null;
 	title: string | null;
+	chunkId: number | null;
 }
 
 const initialState: EditorPanelState = {
@@ -19,6 +20,7 @@ const initialState: EditorPanelState = {
 	workspaceId: null,
 	memoryScope: null,
 	title: null,
+	chunkId: null,
 };
 
 export const editorPanelAtom = atom<EditorPanelState>(initialState);
@@ -33,7 +35,7 @@ export const openEditorPanelAtom = atom(
 		get,
 		set,
 		payload:
-			| { documentId: number; workspaceId: number; title?: string; kind?: "document" }
+			| { documentId: number; workspaceId: number; title?: string; kind?: "document"; chunkId?: number | null }
 			| {
 					kind: "local_file";
 					localFilePath: string;
@@ -59,6 +61,7 @@ export const openEditorPanelAtom = atom(
 				workspaceId: payload.workspaceId ?? null,
 				memoryScope: null,
 				title: payload.title ?? null,
+				chunkId: null,
 			});
 			set(rightPanelTabAtom, "editor");
 			set(rightPanelCollapsedAtom, false);
@@ -73,6 +76,7 @@ export const openEditorPanelAtom = atom(
 				workspaceId: payload.workspaceId ?? null,
 				memoryScope: payload.memoryScope,
 				title: payload.title ?? null,
+				chunkId: null,
 			});
 			set(rightPanelTabAtom, "editor");
 			set(rightPanelCollapsedAtom, false);
@@ -86,6 +90,7 @@ export const openEditorPanelAtom = atom(
 			workspaceId: payload.workspaceId,
 			memoryScope: null,
 			title: payload.title ?? null,
+			chunkId: ("chunkId" in payload ? payload.chunkId : null) ?? null,
 		});
 		set(rightPanelTabAtom, "editor");
 		set(rightPanelCollapsedAtom, false);

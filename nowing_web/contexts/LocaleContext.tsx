@@ -13,15 +13,15 @@ type Locale = "en" | "es" | "pt" | "hi" | "zh" | "ko";
 const loadMessages = async (locale: Locale): Promise<typeof enMessages> => {
 	switch (locale) {
 		case "es":
-			return (await import("../messages/es.json")).default;
+			return (await import("../messages/es.json")).default as typeof enMessages;
 		case "hi":
-			return (await import("../messages/hi.json")).default;
+			return (await import("../messages/hi.json")).default as typeof enMessages;
 		case "pt":
-			return (await import("../messages/pt.json")).default;
+			return (await import("../messages/pt.json")).default as typeof enMessages;
 		case "zh":
-			return (await import("../messages/zh.json")).default;
+			return (await import("../messages/zh.json")).default as typeof enMessages;
 		case "ko":
-			return (await import("../messages/ko.json")).default;
+			return (await import("../messages/ko.json")).default as typeof enMessages;
 		default:
 			return enMessages;
 	}

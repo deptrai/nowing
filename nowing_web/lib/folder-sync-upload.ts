@@ -1,5 +1,12 @@
 import { documentsApiService } from "@/lib/apis/documents-api.service";
 
+interface FolderFileEntry {
+	relativePath: string;
+	fullPath: string;
+	size: number;
+	mtimeMs: number;
+}
+
 const MAX_BATCH_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 const MAX_BATCH_FILES = 10;
 const UPLOAD_CONCURRENCY = 3;
@@ -82,6 +89,8 @@ async function uploadBatchesWithConcurrency(
 
 			const batch = batches[idx];
 			const fullPaths = batch.map((e) => e.fullPath);
+
+			if (!api) throw new Error("Electron API not available");
 
 			try {
 				const fileDataArr = await api.readLocalFiles(fullPaths);

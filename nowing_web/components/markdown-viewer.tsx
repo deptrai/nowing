@@ -3,7 +3,7 @@ import { createMathPlugin } from "@streamdown/math";
 import { Streamdown, type StreamdownProps } from "streamdown";
 import "katex/dist/katex.min.css";
 import Image from "next/image";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { processChildrenWithCitations } from "@/components/citations/citation-renderer";
 import { type CitationUrlMap, preprocessCitationMarkdown } from "@/lib/citations/citation-parser";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,12 @@ interface MarkdownViewerProps {
 	maxLength?: number;
 	/** Render citation tokens as interactive badges. */
 	enableCitations?: boolean;
+	/** Text to scroll into view and highlight after rendering. */
+	highlightText?: string;
+	/** Optional proportional position for fallback scrolling when the exact text is not found. */
+	highlightPosition?: number;
+	/** Total chunk count used with highlightPosition. */
+	totalChunks?: number;
 }
 
 const EMPTY_URL_MAP: CitationUrlMap = new Map();
@@ -64,9 +70,97 @@ export function MarkdownViewer({
 	className,
 	maxLength,
 	enableCitations = false,
+	highlightText,
+	highlightPosition,
+	totalChunks,
 }: MarkdownViewerProps) {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const highlightedElementRef = useRef<HTMLElement | null>(null);
+	const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const isTruncated = maxLength != null && content.length > maxLength;
 	const displayContent = isTruncated ? content.slice(0, maxLength) : content;
+
+	const clearHighlight = () => {
+		if (highlightTimeoutRef.current) {
+			clearTimeout(highlightTimeoutRef.current);
+			highlightTimeoutRef.current = null;
+		}
+		if (highlightedElementRef.current) {
+			highlightedElementRef.current.classList.remove("bg-yellow-200", "dark:bg-yellow-800");
+			highlightedElementRef.current = null;
+		}
+		const selection = window.getSelection();
+		if (selection) selection.removeAllRanges();
+	};
+
+	useEffect(() => {
+		const container = containerRef.current;
+		clearHighlight();
+		if (!container || !highlightText) return;
+
+		const target = highlightText.trim();
+		if (!target) return;
+
+		const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+		let matchNode: Text | null = null;
+		let matchOffset = -1;
+		while (walker.nextNode()) {
+			const node = walker.currentNode as Text;
+			const text = node.textContent ?? "";
+			const idx = text.indexOf(target);
+			if (idx >= 0) {
+				matchNode = node;
+				matchOffset = idx;
+				break;
+			}
+		}
+
+		if (!matchNode) {
+			// Proportional fallback: scroll to the text node nearest the expected position.
+			if (highlightPosition === undefined || totalChunks === undefined || totalChunks <= 0) return;
+			const fullText = container.textContent ?? "";
+			if (!fullText) return;
+			const safePosition = Math.max(0, highlightPosition);
+			const safeTotal = Math.max(1, totalChunks - 1);
+			const targetRatio = Math.max(0, Math.min(1, safePosition / safeTotal));
+			const targetOffset = Math.floor(targetRatio * (fullText.length - 1));
+			let accumulated = 0;
+			walker.currentNode = container; // reset walker
+			while (walker.nextNode()) {
+				const node = walker.currentNode as Text;
+				const text = node.textContent ?? "";
+				if (accumulated + text.length > targetOffset) {
+					matchNode = node;
+					matchOffset = Math.max(0, targetOffset - accumulated);
+					break;
+				}
+				accumulated += text.length;
+			}
+		}
+
+		if (!matchNode) return;
+
+		const range = document.createRange();
+		range.setStart(matchNode, matchOffset);
+		range.setEnd(matchNode, Math.min(matchOffset + target.length, matchNode.textContent?.length ?? 0));
+
+		const selection = window.getSelection();
+		if (selection) {
+			selection.removeAllRanges();
+			selection.addRange(range);
+		}
+
+		const element = matchNode.parentElement;
+		if (element) {
+			element.scrollIntoView({ behavior: "auto", block: "center" });
+			element.classList.add("bg-yellow-200", "dark:bg-yellow-800");
+			highlightedElementRef.current = element;
+		}
+
+		highlightTimeoutRef.current = setTimeout(() => {
+			clearHighlight();
+		}, 3000);
+	}, [highlightText, highlightPosition, totalChunks]);
 
 	// Rewrite citation URLs before markdown autolinking can split them.
 	const { processedContent, urlMap } = useMemo(() => {
@@ -194,6 +288,7 @@ export function MarkdownViewer({
 
 	return (
 		<div
+			ref={containerRef}
 			className={cn(
 				"max-w-none overflow-hidden",
 				"[&_[data-streamdown=code-block-header]]:!bg-transparent",

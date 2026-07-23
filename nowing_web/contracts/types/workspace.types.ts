@@ -12,6 +12,9 @@ export const workspace = z.object({
 	api_access_enabled: z.boolean().optional().default(false),
 	qna_custom_instructions: z.string().nullable(),
 	shared_memory_md: z.string().nullable().optional(),
+	document_retention_days: z.number().nullable().optional(),
+	auto_archive_enabled: z.boolean().optional().default(false),
+	document_retention_action: z.string().optional().default("archive"),
 	member_count: z.number(),
 	is_owner: z.boolean(),
 });
@@ -46,7 +49,7 @@ export const createWorkspaceResponse = workspace
  */
 export const getWorkspaceRequest = workspace.pick({ id: true });
 
-export const getWorkspaceResponse = workspace.omit({ member_count: true, is_owner: true });
+export const getWorkspaceResponse = workspace.omit({ member_count: true });
 
 /**
  * Update workspace
@@ -60,11 +63,14 @@ export const updateWorkspaceRequest = z.object({
 			citations_enabled: true,
 			api_access_enabled: true,
 			qna_custom_instructions: true,
+			document_retention_days: true,
+			auto_archive_enabled: true,
+			document_retention_action: true,
 		})
 		.partial(),
 });
 
-export const updateWorkspaceResponse = workspace.omit({ member_count: true, is_owner: true });
+export const updateWorkspaceResponse = workspace.omit({ member_count: true });
 
 export const updateWorkspaceApiAccessRequest = z.object({
 	id: z.number(),
