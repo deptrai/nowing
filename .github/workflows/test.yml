@@ -1,0 +1,505 @@
+name: Test Pipeline
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      burn-in-count:
+        description: 'Number of burn-in iterations'
+        type: string
+        required: false
+        default: '10'
+      test-grep:
+        description: 'Optional pytest -k filter for backend tests (data only)'
+        type: string
+        required: false
+        default: ''
+  schedule:
+    # Weekly burn-in on Sundays at 2 AM UTC
+    - cron: "0 2 * * 0"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '20'
+  EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Paths filter
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            backend:
+              - 'nowing_backend/**'
+              - '.github/workflows/test.yml'
+            web:
+              - 'nowing_web/**'
+              - 'nowing_browser_extension/**'
+              - '.github/workflows/test.yml'
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache Python dependencies
+        if: needs.changes.outputs.backend == 'true'
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/uv
+            nowing_backend/.venv
+          key: python-deps-${{ hashFiles('nowing_backend/uv.lock') }}
+          restore-keys: |
+            python-deps-
+
+      - name: Backend lint
+        if: needs.changes.outputs.backend == 'true'
+        working-directory: nowing_backend
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Set up Node.js
+        if: needs.changes.outputs.web == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        if: needs.changes.outputs.web == 'true'
+        uses: pnpm/action-setup@v6
+
+      - name: Cache pnpm store
+        if: needs.changes.outputs.web == 'true'
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.pnpm-store
+            nowing_web/node_modules
+          key: pnpm-${{ runner.os }}-${{ hashFiles('nowing_web/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-${{ runner.os }}-
+
+      - name: Frontend lint
+        if: needs.changes.outputs.web == 'true'
+        working-directory: nowing_web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec biome check . --diagnostic-level=error
+
+  backend-unit:
+    name: Backend Unit Tests (Shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event.pull_request.draft == false && needs.changes.outputs.backend == 'true'
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/uv
+            nowing_backend/.venv
+          key: python-deps-${{ hashFiles('nowing_backend/uv.lock') }}
+          restore-keys: |
+            python-deps-
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-${{ env.EMBEDDING_MODEL }}
+
+      - name: Install dependencies
+        working-directory: nowing_backend
+        run: uv sync
+
+      - name: Collect unit tests and shard
+        id: shard
+        working-directory: nowing_backend
+        env:
+          TEST_GREP: ${{ github.event.inputs.test-grep || '' }}
+        run: |
+          # Security: inputs passed through env: to prevent script injection
+          if [ -n "$TEST_GREP" ]; then
+            uv run pytest -m unit --collect-only -q -k "$TEST_GREP" > all-tests.txt
+          else
+            uv run pytest -m unit --collect-only -q > all-tests.txt
+          fi
+          total=$(wc -l < all-tests.txt)
+          echo "total-unit-tests=$total" >> "$GITHUB_OUTPUT"
+          split -d -l $(( (total + 3) / 4 )) all-tests.txt unit-shard-
+          ls unit-shard-*
+
+      - name: Run unit tests (shard ${{ matrix.shard }})
+        working-directory: nowing_backend
+        run: |
+          idx=$(( ${{ matrix.shard }} - 1 ))
+          shard_file=$(printf "unit-shard-%02d" "$idx")
+          uv run pytest --override-ini="addopts=" -v --tb=short "@${shard_file}" \
+            --junitxml=pytest-unit-${{ matrix.shard }}.xml
+
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-unit-shard-${{ matrix.shard }}
+          path: nowing_backend/pytest-unit-${{ matrix.shard }}.xml
+          retention-days: 14
+
+  backend-integration:
+    name: Backend Integration Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event.pull_request.draft == false && needs.changes.outputs.backend == 'true'
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nowing_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nowing_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/uv
+            nowing_backend/.venv
+          key: python-deps-${{ hashFiles('nowing_backend/uv.lock') }}
+          restore-keys: |
+            python-deps-
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-${{ env.EMBEDDING_MODEL }}
+
+      - name: Install dependencies
+        working-directory: nowing_backend
+        run: uv sync
+
+      - name: Run integration tests
+        working-directory: nowing_backend
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_test
+          SECRET_KEY: ci-test-secret-key-not-for-production
+          ETL_SERVICE: DOCLING
+        run: |
+          uv run pytest -m integration --tb=short --junitxml=pytest-integration.xml
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-integration
+          path: nowing_backend/pytest-integration.xml
+          retention-days: 14
+
+  frontend-build:
+    name: Frontend Build Smoke Test
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event.pull_request.draft == false && needs.changes.outputs.web == 'true'
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Cache pnpm store
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.pnpm-store
+            nowing_web/node_modules
+          key: pnpm-${{ runner.os }}-${{ hashFiles('nowing_web/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-${{ runner.os }}-
+
+      - name: Cache Next.js build
+        uses: actions/cache@v5
+        with:
+          path: nowing_web/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('nowing_web/pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('nowing_web/pnpm-lock.yaml') }}-
+            nextjs-${{ runner.os }}-
+
+      - name: Install dependencies
+        working-directory: nowing_web
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        working-directory: nowing_web
+        run: pnpm build
+
+      - name: Upload Next.js build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-build-failure
+          path: |
+            nowing_web/.next/
+            nowing_web/tsc_out.txt
+          retention-days: 7
+
+  burn-in:
+    name: Burn-In (Flaky Detection)
+    runs-on: ubuntu-latest
+    needs: [backend-unit, backend-integration]
+    if: |
+      always() &&
+      needs.backend-unit.result == 'success' &&
+      (needs.backend-integration.result == 'success' || needs.backend-integration.result == 'skipped') &&
+      (github.event_name == 'pull_request' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/uv
+            nowing_backend/.venv
+          key: python-deps-${{ hashFiles('nowing_backend/uv.lock') }}
+          restore-keys: |
+            python-deps-
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-${{ env.EMBEDDING_MODEL }}
+
+      - name: Install dependencies
+        working-directory: nowing_backend
+        run: uv sync
+
+      - name: Run burn-in loop
+        working-directory: nowing_backend
+        env:
+          BURN_IN_COUNT: ${{ github.event.inputs.burn-in-count || '5' }}
+          TEST_GREP: ${{ github.event.inputs.test-grep || '' }}
+        run: |
+          # Security: inputs passed through env: to prevent script injection
+          echo "🔥 Starting burn-in loop"
+          count=0
+          for i in $(seq 1 "$BURN_IN_COUNT"); do
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔥 Burn-in iteration $i/$BURN_IN_COUNT"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            if [ -n "$TEST_GREP" ]; then
+              uv run pytest -m unit --tb=short -k "$TEST_GREP" || exit 1
+            else
+              uv run pytest -m unit --tb=short || exit 1
+            fi
+            count=$((count + 1))
+          done
+          echo "✅ Burn-in complete - $count iterations passed"
+
+      - name: Upload burn-in failure logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: burn-in-failures
+          path: nowing_backend/.pytest_cache/
+          retention-days: 14
+
+  report:
+    name: Test Report
+    runs-on: ubuntu-latest
+    needs: [lint, backend-unit, backend-integration, frontend-build, burn-in]
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Generate summary
+        run: |
+          echo "## Test Execution Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Stage | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Lint | ${{ needs.lint.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend Unit | ${{ needs.backend-unit.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend Integration | ${{ needs.backend-integration.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Frontend Build | ${{ needs.frontend-build.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Burn-In | ${{ needs.burn-in.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ needs.burn-in.result }}" == "failure" ]; then
+            echo "⚠️ **Flaky tests detected in burn-in** - Review burn-in artifacts" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "### Artifact files" >> "$GITHUB_STEP_SUMMARY"
+          find artifacts -type f | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY" || true
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: report
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Compute pass rate from JUnit XML
+        id: pass-rate
+        run: |
+          python3 - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+
+          total = failures = errors = skipped = 0
+          for root, _dirs, files in os.walk('artifacts'):
+              for f in files:
+                  if not f.endswith('.xml'):
+                      continue
+                  try:
+                      tree = ET.parse(os.path.join(root, f))
+                      root_el = tree.getroot()
+                      suites = []
+                      if root_el.tag == 'testsuites':
+                          suites = root_el.findall('testsuite')
+                      elif root_el.tag == 'testsuite':
+                          suites = [root_el]
+                      for suite in suites:
+                          total += int(suite.get('tests', 0) or 0)
+                          failures += int(suite.get('failures', 0) or 0)
+                          errors += int(suite.get('errors', 0) or 0)
+                          skipped += int(suite.get('skipped', 0) or 0)
+                  except Exception as exc:
+                      print(f"warning: could not parse {f}: {exc}")
+
+          passed = total - failures - errors - skipped
+          pass_rate = (passed / max(total, 1)) * 100
+          print(f"total={total} passed={passed} failures={failures} errors={errors} skipped={skipped} pass_rate={pass_rate:.2f}")
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+              fh.write(f"total={total}\n")
+              fh.write(f"passed={passed}\n")
+              fh.write(f"failures={failures}\n")
+              fh.write(f"errors={errors}\n")
+              fh.write(f"skipped={skipped}\n")
+              fh.write(f"pass-rate={pass_rate:.2f}\n")
+          PY
+
+      - name: Enforce quality threshold (P1 >= 95%)
+        run: |
+          pass_rate="${{ steps.pass-rate.outputs.pass-rate }}"
+          echo "Pass rate: ${pass_rate}%"
+          python3 - <<'PY'
+          import sys
+          pass_rate = float("${{ steps.pass-rate.outputs.pass-rate }}")
+          if pass_rate < 95.0:
+              print(f"::error::Pass rate {pass_rate:.2f}% is below P1 threshold (95%)")
+              sys.exit(1)
+          print(f"::notice::Pass rate {pass_rate:.2f}% meets P1 threshold (>= 95%)")
+          PY
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"❌ Quality gate failed for ${{ github.repository }} on ${{ github.ref }}"}' \
+            "${{ secrets.SLACK_WEBHOOK_URL }}" || true

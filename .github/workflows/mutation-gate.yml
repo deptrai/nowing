@@ -1,0 +1,90 @@
+name: Mutation Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      services:
+        description: 'Comma-separated service names (default: P0 services)'
+        required: false
+        default: 'pricing_registration,token_quota_service,token_tracking_service,provider_registry,model_resolver,auth,llm_service,llm_router_service,web_crawl_credit_service,platform_scrape_credit_service'
+      timeout:
+        description: 'Per-mutant timeout in seconds'
+        required: false
+        default: '120'
+  schedule:
+    # Weekly on Sundays at 04:00 UTC
+    - cron: "0 4 * * 0"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  split-services:
+    name: Prepare service matrix
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.set.outputs.services }}
+    steps:
+      - name: Set service matrix
+        id: set
+        run: |
+          SERVICES="${{ github.event.inputs.services || 'pricing_registration,token_quota_service,token_tracking_service,provider_registry,model_resolver,auth,llm_service,llm_router_service,web_crawl_credit_service,platform_scrape_credit_service' }}"
+          JSON=$(echo "$SERVICES" | tr ',' '\n' | jq -R . | jq -s -c .)
+          echo "services=$JSON" >> "$GITHUB_OUTPUT"
+
+  mutation-gate:
+    name: Mutation gate ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: split-services
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.split-services.outputs.services) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/uv
+            nowing_backend/.venv
+          key: python-deps-${{ hashFiles('nowing_backend/uv.lock') }}
+          restore-keys: |
+            python-deps-
+
+      - name: Install dependencies
+        working-directory: nowing_backend
+        run: uv sync
+
+      - name: Install cosmic-ray
+        working-directory: nowing_backend
+        run: uv pip install --python .venv/bin/python cosmic-ray
+
+      - name: Run mutation gate
+        run: python scripts/mutation-gate.py --services ${{ matrix.service }} --timeout ${{ github.event.inputs.timeout || '120' }} --project-root .
+
+      - name: Upload mutation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-nowing-${{ matrix.service }}
+          path: |
+            _bmad-output/test-artifacts/mutation-nowing-${{ matrix.service }}*
+            nowing_backend/mutation-nowing-${{ matrix.service }}*
+          if-no-files-found: ignore
+          retention-days: 14
