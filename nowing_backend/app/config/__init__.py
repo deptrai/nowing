@@ -50,7 +50,22 @@ def _global_config_data() -> dict:
 
     ``BASE_DIR`` is read at call time (not bound at import) so a
     ``monkeypatch.setattr(config, "BASE_DIR", tmp_path)`` is honored.
+
+    If ``GLOBAL_LLM_CONFIG_B64`` is set, it takes precedence over the local
+    ``global_llm_config.yaml`` file. This matches the Docker entrypoint
+    behaviour and lets local developers keep keys in ``.env`` instead of a
+    gitignored file.
     """
+    b64 = os.environ.get("GLOBAL_LLM_CONFIG_B64")
+    if b64:
+        import base64
+
+        try:
+            decoded = base64.b64decode(b64).decode("utf-8")
+            return yaml.safe_load(decoded) or {}
+        except Exception as e:
+            print(f"Warning: Failed to decode GLOBAL_LLM_CONFIG_B64: {e}")
+
     path = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
     return _read_global_config_yaml(str(path))
 
@@ -944,8 +959,9 @@ class Config:
     # Used to gate the per-workspace LLM onboarding flow: when a global
     # config file exists, workspaces inherit it and onboarding is skipped.
     GLOBAL_LLM_CONFIG_FILE_EXISTS = (
-        BASE_DIR / "app" / "config" / "global_llm_config.yaml"
-    ).exists()
+        (BASE_DIR / "app" / "config" / "global_llm_config.yaml").exists()
+        or bool(os.environ.get("GLOBAL_LLM_CONFIG_B64"))
+    )
 
     # Global LLM Configurations (optional)
     # Load from global_llm_config.yaml if available

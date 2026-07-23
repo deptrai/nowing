@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
-import { AlarmClock, AlertTriangle, Shapes, SquareTerminal } from "lucide-react";
+import { AlarmClock, AlertTriangle, BarChart3, Shapes, SquareTerminal } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
@@ -69,6 +69,7 @@ export function LayoutDataProvider({
 	const t = useTranslations("dashboard");
 	const tCommon = useTranslations("common");
 	const tSidebar = useTranslations("sidebar");
+	const tNav = useTranslations("nav_menu");
 	const router = useRouter();
 	const params = useParams();
 	const pathname = usePathname();
@@ -299,10 +300,17 @@ export function LayoutDataProvider({
 	const isAutomationsActive = pathname?.includes("/automations") === true;
 	const isArtifactsActive = pathname?.endsWith("/artifacts") === true;
 	const isPlaygroundRoute = pathname?.includes("/playground") === true;
+	const isUsageActive = pathname?.includes("/usage") === true;
 	const navItems: NavItem[] = useMemo(
 		() =>
 			(
 				[
+					{
+						title: tNav("usage"),
+						url: `/dashboard/${workspaceId}/usage`,
+						icon: BarChart3,
+						isActive: isUsageActive,
+					},
 					{
 						title: "Automations",
 						url: `/dashboard/${workspaceId}/automations`,
@@ -323,7 +331,7 @@ export function LayoutDataProvider({
 					},
 				] as (NavItem | null)[]
 			).filter((item): item is NavItem => item !== null),
-		[workspaceId, isAutomationsActive, isArtifactsActive, isPlaygroundRoute]
+		[workspaceId, isUsageActive, isAutomationsActive, isArtifactsActive, isPlaygroundRoute, tNav]
 	);
 
 	// Handlers
