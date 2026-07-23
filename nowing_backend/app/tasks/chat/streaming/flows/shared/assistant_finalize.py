@@ -22,6 +22,7 @@ Never raises (best-effort, logs only).
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from app.agents.chat.multi_agent_chat.shared.citations import (
@@ -34,6 +35,7 @@ from app.utils.perf import get_perf_logger
 if TYPE_CHECKING:
     from app.services.token_tracking_service import TokenAccumulator
 
+logger = logging.getLogger(__name__)
 _perf_log = get_perf_logger()
 
 
@@ -146,3 +148,16 @@ async def finalize_assistant_message(
         content=content_payload,
         accumulator=accumulator,
     )
+
+    # Best-effort: enqueue memory extraction for this assistant turn.
+    try:
+        from app.tasks.celery_tasks.memory_extraction_task import (
+            extract_memory_after_chat_turn,
+        )
+
+        extract_memory_after_chat_turn.delay(stream_result.assistant_message_id)
+    except Exception:
+        logger.exception(
+            "Failed to enqueue memory extraction for message %s",
+            stream_result.assistant_message_id,
+        )

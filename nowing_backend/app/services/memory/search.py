@@ -8,7 +8,7 @@ import numpy as np
 from sqlalchemy import Float, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import Memory
+from app.db import Memory, MemoryType
 
 
 def _as_np(embedding: Any) -> np.ndarray:
@@ -28,6 +28,7 @@ class MemoryHybridSearch:
         query: str,
         query_embedding: list[float] | np.ndarray,
         top_k: int = 5,
+        type: str | None = None,
         tags: list[str] | None = None,
         research_thread_id: int | None = None,
     ) -> list[Memory]:
@@ -38,6 +39,8 @@ class MemoryHybridSearch:
         tsquery = func.plainto_tsquery("english", query)
 
         base_conditions = [Memory.workspace_id == workspace_id]
+        if type is not None:
+            base_conditions.append(Memory.type == MemoryType(type))
         if research_thread_id is not None:
             base_conditions.append(Memory.research_thread_id == research_thread_id)
         if tags:

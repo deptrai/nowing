@@ -13,7 +13,6 @@ pytestmark = [pytest.mark.integration, pytest.mark.memory]
 BASE = "/api/v1/workspaces"
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: type filter not implemented")
 async def test_search_memory_filters_by_type(client, db_workspace):
     """POST /workspaces/{id}/memories/search with type returns only that type."""
     await client.post(
@@ -43,7 +42,6 @@ async def test_search_memory_filters_by_type(client, db_workspace):
     assert items[0]["type"] == "semantic"
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: type filter not implemented")
 async def test_search_memory_with_unknown_type_returns_empty(client, db_workspace):
     """A type that matches no memories returns an empty result set."""
     await client.post(

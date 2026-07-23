@@ -43,6 +43,11 @@ EXPECTED_TOOLS = {
     "nowing_upload_file",
     "nowing_update_document",
     "nowing_delete_document",
+    # memory management
+    "nowing_remember",
+    "nowing_recall",
+    "nowing_update_fact",
+    "nowing_continue_research",
 }
 
 _MIN_DESCRIPTION_CHARS = 40

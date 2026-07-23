@@ -578,6 +578,17 @@ class Config:
         os.getenv("NOWING_CONNECTOR_DISCOVERY_TTL_SECONDS", "30")
     )
 
+    # Memory auto-extraction defaults.
+    MEMORY_AUTO_EXTRACT_ENABLED = (
+        os.getenv("MEMORY_AUTO_EXTRACT_ENABLED", "true").strip().lower() == "true"
+    )
+    MEMORY_AUTO_EXTRACT_CONFIDENCE = float(
+        os.getenv("MEMORY_AUTO_EXTRACT_CONFIDENCE", "0.7")
+    )
+    MEMORY_AUTO_EXTRACT_MAX_ITEMS = int(
+        os.getenv("MEMORY_AUTO_EXTRACT_MAX_ITEMS", "3")
+    )
+
     NOWING_PUBLIC_URL = os.getenv("NOWING_PUBLIC_URL")
     NEXT_FRONTEND_URL = os.getenv("NEXT_FRONTEND_URL") or NOWING_PUBLIC_URL
     # Backend URL to override the http to https in the OAuth redirect URI

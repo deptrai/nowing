@@ -19,7 +19,6 @@ _BACKEND_ROOT = os.path.abspath(
 if _BACKEND_ROOT not in sys.path:
     sys.path.insert(0, _BACKEND_ROOT)
 
-from app.mcp_tools import MCP_TOOL_NAMES  # noqa: E402
 from mcp.server.lowlevel.server import request_ctx as mcp_request_ctx  # noqa: E402
 from mcp_server.config import Settings  # noqa: E402
 from mcp_server.core.auth import identity  # noqa: E402
@@ -93,7 +92,6 @@ def settings() -> Settings:
     )
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: selfcheck must include memory tools")
 def test_selfcheck_includes_memory_tools():
     """Offline selfcheck catalog must include the four memory tools."""
     from mcp_server.selfcheck import EXPECTED_TOOLS
@@ -104,7 +102,6 @@ def test_selfcheck_includes_memory_tools():
     assert "nowing_continue_research" in EXPECTED_TOOLS
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: memory tools must register")
 def test_memory_tools_appear_in_manifest(settings):
     """All four memory tools must appear in the offline tool manifest."""
     mcp, _client = build_server(settings)
@@ -116,7 +113,6 @@ def test_memory_tools_appear_in_manifest(settings):
     assert "nowing_continue_research" in names
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: nowing_remember not implemented")
 def test_remember_calls_create_memory_endpoint(monkeypatch, settings):
     """nowing_remember calls POST /workspaces/{id}/memories and returns the saved memory."""
     monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
@@ -158,7 +154,6 @@ def test_remember_calls_create_memory_endpoint(monkeypatch, settings):
     )
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: nowing_recall not implemented")
 def test_recall_calls_search_endpoint(monkeypatch, settings):
     """nowing_recall calls POST /workspaces/{id}/memories/search and returns hits."""
     monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
@@ -185,7 +180,6 @@ def test_recall_calls_search_endpoint(monkeypatch, settings):
     )
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: nowing_update_fact not implemented")
 def test_update_fact_calls_patch_endpoint(monkeypatch, settings):
     """nowing_update_fact calls PATCH /memories/{id} and returns the updated memory."""
     monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
@@ -214,7 +208,6 @@ def test_update_fact_calls_patch_endpoint(monkeypatch, settings):
     )
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: nowing_continue_research not implemented")
 def test_continue_research_calls_search_with_thread(monkeypatch, settings):
     """nowing_continue_research searches memories filtered by research_thread_id."""
     monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
@@ -241,7 +234,6 @@ def test_continue_research_calls_search_with_thread(monkeypatch, settings):
     )
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: workspace tool filtering for memory tools")
 def test_disabled_memory_tool_is_hidden(monkeypatch, settings):
     """A workspace that disables nowing_remember omits it from tools/list."""
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,6 +89,7 @@ async def search_memory(
         query=body.query,
         query_embedding=query_embedding[0],
         top_k=body.top_k,
+        type=body.type,
         tags=body.tags,
         research_thread_id=body.research_thread_id,
     )

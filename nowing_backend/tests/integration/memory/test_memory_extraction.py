@@ -93,7 +93,6 @@ def fake_llm_low_confidence_response():
     )
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: MemoryExtractionService not implemented")
 async def test_extract_memory_after_chat_turn(
     db_session,
     db_workspace,
@@ -138,7 +137,6 @@ async def test_extract_memory_after_chat_turn(
     assert memory.created_by_id == user_message.author_id
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: extraction token usage not implemented")
 async def test_extract_memory_records_token_usage(
     db_session,
     db_workspace,
@@ -185,7 +183,6 @@ async def test_extract_memory_records_token_usage(
     assert usage.message_id == assistant_message.id
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: workspace auto-extract toggle not implemented")
 async def test_auto_extract_respects_workspace_toggle(
     db_session,
     db_workspace,
@@ -231,7 +228,6 @@ async def test_auto_extract_respects_workspace_toggle(
     assert remaining.scalar_one_or_none() is None
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: confidence filtering not implemented")
 async def test_extract_filters_low_confidence_facts(
     db_session,
     db_workspace,
@@ -269,7 +265,6 @@ async def test_extract_filters_low_confidence_facts(
     assert memories == []
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: semantic dedup not implemented")
 async def test_extract_updates_near_duplicate(
     db_session,
     db_workspace,
@@ -321,7 +316,6 @@ async def test_extract_updates_near_duplicate(
     assert memories[0].versions[0].previous_content == first.content
 
 
-@pytest.mark.skip(reason="Story 4.5 red phase: Celery extraction task not implemented")
 async def test_celery_extraction_task_exists(
     db_session,
     chat_turn,

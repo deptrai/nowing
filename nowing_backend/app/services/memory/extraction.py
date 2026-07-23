@@ -1,0 +1,216 @@
+"""Extract durable memories from chat turns using the workspace chat model."""
+
+from __future__ import annotations
+
+import json
+import logging
+from typing import Any
+
+from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import config
+from app.db import (
+    Memory,
+    MemorySourceType,
+    MemoryType,
+    NewChatMessage,
+    NewChatMessageRole,
+    NewChatThread,
+    Workspace,
+)
+from app.services.llm_service import get_agent_llm
+from app.services.memory.repository import MemoryRepository
+from app.services.token_tracking_service import record_token_usage, scoped_turn
+from app.utils.content_utils import extract_text_content, strip_markdown_fences
+
+logger = logging.getLogger(__name__)
+
+
+_EXTRACTION_SYSTEM_PROMPT = (
+    "You are a memory extraction assistant. Your job is to identify durable facts, "
+    "decisions, or preferences from the user message and assistant response below. "
+    "Ignore greetings, chitchat, and transient details. "
+    "Return ONLY a valid JSON array. Each element must be an object with these fields:\n"
+    "- content (string): a concise, standalone fact\n"
+    "- type (string): one of semantic, episodic, procedural, working\n"
+    "- tags (list of strings): relevant keywords\n"
+    "- confidence (number 0.0-1.0): how important and durable this fact is\n"
+    "If nothing is worth remembering, return an empty array: []"
+)
+
+
+class ExtractedFact(BaseModel):
+    """One durable fact produced by the extraction LLM."""
+
+    content: str
+    type: str = "semantic"
+    tags: list[str] = Field(default_factory=list)
+    confidence: float = Field(default=0.9, ge=0.0, le=1.0)
+
+
+class MemoryExtractionResult(BaseModel):
+    """Structured output from the extraction LLM."""
+
+    facts: list[ExtractedFact] = Field(default_factory=list)
+
+
+class MemoryExtractionService:
+    """Turn a single assistant turn into durable memory rows."""
+
+    def __init__(
+        self,
+        *,
+        session: AsyncSession,
+        workspace_id: int | None = None,
+        user_id: Any | None = None,
+    ) -> None:
+        self.session = session
+        self.workspace_id = workspace_id
+        self.user_id = user_id
+
+    @staticmethod
+    def _parse_llm_output(raw: str) -> list[ExtractedFact]:
+        """Strip markdown fences and parse the LLM JSON response."""
+        cleaned = strip_markdown_fences(raw).strip()
+        if not cleaned:
+            return []
+        # Handle both a top-level array and {"facts": [...]} wrappers.
+        try:
+            data = json.loads(cleaned)
+        except json.JSONDecodeError as exc:
+            logger.warning("Memory extraction LLM returned invalid JSON: %s", exc)
+            return []
+
+        if isinstance(data, list):
+            facts = data
+        elif isinstance(data, dict):
+            facts = data.get("facts", [])
+        else:
+            return []
+
+        valid: list[ExtractedFact] = []
+        for item in facts:
+            if not isinstance(item, dict):
+                continue
+            try:
+                valid.append(ExtractedFact.model_validate(item))
+            except ValidationError as exc:
+                logger.debug("Skipping invalid extracted fact: %s", exc)
+        return valid
+
+    async def extract_from_turn(
+        self,
+        thread_id: int,
+        turn_id: str | None,
+        assistant_message_id: int,
+    ) -> list[Memory]:
+        """Extract and persist memories for a single assistant turn."""
+        # Load the assistant message and its thread.
+        assistant_message = await self.session.get(NewChatMessage, assistant_message_id)
+        if assistant_message is None:
+            logger.warning("Assistant message %s not found; skipping extraction", assistant_message_id)
+            return []
+
+        thread = await self.session.get(NewChatThread, thread_id)
+        if thread is None:
+            logger.warning("Chat thread %s not found; skipping extraction", thread_id)
+            return []
+
+        # Resolve workspace and global auto-extract gate.
+        workspace = await self.session.get(Workspace, thread.workspace_id)
+        if workspace is None:
+            logger.warning("Workspace %s not found; skipping extraction", thread.workspace_id)
+            return []
+
+        if not config.MEMORY_AUTO_EXTRACT_ENABLED or not workspace.memory_auto_extract_enabled:
+            logger.debug("Memory auto-extraction disabled for workspace %s", workspace.id)
+            return []
+
+        # Find the paired user message for this turn.
+        stmt = (
+            select(NewChatMessage)
+            .where(
+                NewChatMessage.thread_id == thread_id,
+                NewChatMessage.turn_id == turn_id,
+                NewChatMessage.role == NewChatMessageRole.USER,
+            )
+            .order_by(NewChatMessage.created_at)
+        )
+        result = await self.session.execute(stmt)
+        user_message = result.scalars().first()
+        if user_message is None:
+            logger.debug("No user message for turn %s; skipping extraction", turn_id)
+            return []
+
+        # Resolve the author to attribute memory and token usage.
+        created_by_id = user_message.author_id
+
+        llm = await get_agent_llm(self.session, workspace.id, disable_streaming=True)
+        if llm is None:
+            logger.warning("No agent LLM for workspace %s; skipping extraction", workspace.id)
+            return []
+
+        user_text = extract_text_content(user_message.content)
+        assistant_text = extract_text_content(assistant_message.content)
+
+        prompt = (
+            f"{_EXTRACTION_SYSTEM_PROMPT}\n\n"
+            f"User message:\n{user_text}\n\n"
+            f"Assistant response:\n{assistant_text}"
+        )
+
+        repo = MemoryRepository(session=self.session)
+        created_memories: list[Memory] = []
+
+        async with scoped_turn() as acc:
+            try:
+                response = await llm.ainvoke(prompt)
+                raw_output = response.content if hasattr(response, "content") else str(response)
+            except Exception as exc:
+                logger.warning("Memory extraction LLM call failed: %s", exc)
+                return []
+
+            facts = self._parse_llm_output(raw_output)
+            confidence_threshold = config.MEMORY_AUTO_EXTRACT_CONFIDENCE
+            max_items = config.MEMORY_AUTO_EXTRACT_MAX_ITEMS
+
+            for fact in facts[:max_items]:
+                if fact.confidence < confidence_threshold:
+                    continue
+                try:
+                    memory_type = MemoryType(fact.type)
+                except ValueError:
+                    memory_type = MemoryType.SEMANTIC
+
+                memory = await repo.create_memory(
+                    workspace_id=workspace.id,
+                    content=fact.content,
+                    type=memory_type,
+                    source_type=MemorySourceType.CHAT_MESSAGE,
+                    source_id=assistant_message_id,
+                    tags=fact.tags,
+                    confidence=fact.confidence,
+                    research_thread_id=thread.research_thread_id,
+                    created_by_id=created_by_id,
+                    update_on_duplicate=True,
+                )
+                created_memories.append(memory)
+
+        # Record token usage for the extraction LLM call.
+        if created_by_id is not None:
+            await record_token_usage(
+                self.session,
+                usage_type="memory_create",
+                workspace_id=workspace.id,
+                user_id=created_by_id,
+                message_id=assistant_message_id,
+                prompt_tokens=acc.total_prompt_tokens,
+                completion_tokens=acc.total_completion_tokens,
+                total_tokens=acc.grand_total,
+                cost_micros=acc.total_cost_micros,
+            )
+            await self.session.commit()
+
+        return created_memories

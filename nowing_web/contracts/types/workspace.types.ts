@@ -14,6 +14,7 @@ export const workspace = z.object({
 	document_retention_days: z.number().nullable().optional(),
 	auto_archive_enabled: z.boolean().optional().default(false),
 	document_retention_action: z.string().optional().default("archive"),
+	memory_auto_extract_enabled: z.boolean().optional().default(true),
 	member_count: z.number(),
 	is_owner: z.boolean(),
 });
@@ -65,6 +66,7 @@ export const updateWorkspaceRequest = z.object({
 			document_retention_days: true,
 			auto_archive_enabled: true,
 			document_retention_action: true,
+			memory_auto_extract_enabled: true,
 		})
 		.partial(),
 });

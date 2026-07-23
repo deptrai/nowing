@@ -1812,6 +1812,10 @@ class Workspace(BaseModel, TimestampMixin):
         server_default="archive",
     )
 
+    memory_auto_extract_enabled = Column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
     )

@@ -26,6 +26,7 @@ class WorkspaceUpdate(BaseModel):
     document_retention_days: int | None = None
     auto_archive_enabled: bool | None = None
     document_retention_action: Literal["archive", "delete"] | None = None
+    memory_auto_extract_enabled: bool | None = None
 
 
 class WorkspaceApiAccessUpdate(BaseModel):
@@ -42,6 +43,7 @@ class WorkspaceRead(WorkspaceBase, IDModel, TimestampModel):
     document_retention_days: int | None = None
     auto_archive_enabled: bool = False
     document_retention_action: str = "archive"
+    memory_auto_extract_enabled: bool = True
     is_owner: bool = False
     # Populated only by create_workspace so the client can route straight to
     # onboarding vs. new-chat on the first hop. Null everywhere else.

@@ -17,7 +17,7 @@ from .config import Settings
 from .core.client import NowingClient
 from .core.errors import ToolError as WorkspaceToolError
 from .core.workspace_context import WorkspaceContext
-from .features import knowledge_base, scrapers, workspaces
+from .features import knowledge_base, memory, scrapers, workspaces
 
 logger = logging.getLogger(__name__)
 
@@ -136,4 +136,5 @@ def build_server(settings: Settings) -> tuple[WorkspaceAwareFastMCP, NowingClien
     workspaces.register(mcp, context)
     scrapers.register(mcp, client, context)
     knowledge_base.register(mcp, client, context)
+    memory.register(mcp, client, context)
     return mcp, client
