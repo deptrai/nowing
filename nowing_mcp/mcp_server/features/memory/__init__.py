@@ -17,6 +17,7 @@ from .annotations import (
     MemoryId,
     MemoryTags,
     MemoryType,
+    OptionalResearchThreadId,
     ResearchThreadId,
     TopK,
 )
@@ -49,7 +50,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
             int | None,
             Field(description="Id of the source object, if any."),
         ] = None,
-        research_thread_id: ResearchThreadId = None,
+        research_thread_id: OptionalResearchThreadId = None,
         workspace: WorkspaceParam = None,
         response_format: ResponseFormatParam = "markdown",
     ) -> str:
@@ -97,7 +98,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
             ),
         ] = None,
         tags: MemoryTags = None,
-        research_thread_id: ResearchThreadId = None,
+        research_thread_id: OptionalResearchThreadId = None,
         workspace: WorkspaceParam = None,
         response_format: ResponseFormatParam = "markdown",
     ) -> str:

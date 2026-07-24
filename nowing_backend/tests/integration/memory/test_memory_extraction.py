@@ -285,13 +285,14 @@ async def test_extract_updates_near_duplicate(
     repo = MemoryRepository(session=db_session)
     first = await repo.create_memory(
         workspace_id=db_workspace.id,
-        content="Competitor X raised prices by 10% in Q2 2026.",
+        content="Competitor X raised prices last quarter.",
         embedding=[0.1] * 384,
         type="semantic",
         source_type="chat_message",
-        source_id=assistant_message.id,
+        source_id=None,
         created_by_id=db_user.id,
     )
+    original_content = first.content
 
     fake_llm = AsyncMock()
     fake_llm.ainvoke.return_value = type("FakeMsg", (), {"content": fake_llm_response})()
@@ -313,8 +314,64 @@ async def test_extract_updates_near_duplicate(
 
     assert len(memories) == 1
     assert memories[0].id == first.id
+    # Content changed (near-duplicate by embedding), so a version is recorded.
     assert len(memories[0].versions) == 1
-    assert memories[0].versions[0].previous_content == first.content
+    assert memories[0].versions[0].previous_content == original_content
+    # Auto-dedup must not re-attribute the original author.
+    assert memories[0].created_by_id == db_user.id
+
+
+async def test_extract_is_idempotent_for_same_message(
+    db_session,
+    db_workspace,
+    db_user,
+    chat_turn,
+    patched_embeddings,
+    fake_llm_response,
+    monkeypatch,
+):
+    """Re-running extraction for the same assistant message is a no-op.
+
+    Guards against Celery at-least-once redelivery / double finalize creating
+    duplicate LLM calls, token rows, and versions.
+    """
+    from sqlalchemy import func, select
+
+    from app.db import Memory
+    from app.services.memory.extraction import MemoryExtractionService
+
+    thread, _user_message, assistant_message = chat_turn
+
+    fake_llm = AsyncMock()
+    fake_llm.ainvoke.return_value = type("FakeMsg", (), {"content": fake_llm_response})()
+    monkeypatch.setattr(
+        "app.services.memory.extraction.get_agent_llm",
+        AsyncMock(return_value=fake_llm),
+    )
+
+    service = MemoryExtractionService(
+        session=db_session,
+        workspace_id=db_workspace.id,
+        user_id=db_user.id,
+    )
+    first = await service.extract_from_turn(
+        thread.id, assistant_message.turn_id, assistant_message.id
+    )
+    assert len(first) == 1
+
+    second = await service.extract_from_turn(
+        thread.id, assistant_message.turn_id, assistant_message.id
+    )
+    assert second == []
+    # The extraction LLM must not be invoked again for the same turn.
+    assert fake_llm.ainvoke.await_count == 1
+
+    count = await db_session.execute(
+        select(func.count())
+        .select_from(Memory)
+        .where(Memory.source_id == assistant_message.id)
+    )
+    assert count.scalar_one() == 1
 
 
 async def test_celery_extraction_task_exists(

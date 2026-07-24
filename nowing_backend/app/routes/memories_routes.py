@@ -82,12 +82,15 @@ async def search_memory(
         error_message="You don't have permission to search memory in this workspace",
     )
 
-    query_embedding = await asyncio.to_thread(embed_texts, [body.query])
+    query_embedding = None
+    if body.query.strip():
+        embeddings = await asyncio.to_thread(embed_texts, [body.query])
+        query_embedding = embeddings[0]
     search = MemoryHybridSearch(session)
     results = await search.search(
         workspace_id=workspace_id,
         query=body.query,
-        query_embedding=query_embedding[0],
+        query_embedding=query_embedding,
         top_k=body.top_k,
         type=body.type,
         tags=body.tags,
@@ -130,6 +133,13 @@ async def update_memory(
             Permission.MEMORY_UPDATE.value,
             error_message="You don't have permission to update this memory",
         )
+    elif memory.created_by_id is None or str(memory.created_by_id) != str(auth.user.id):
+        # Workspace-less (personal) memory: only its owner may update it.
+        # Fail closed when the memory has no owner or the caller is unknown.
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to update this memory",
+        )
 
     updated = await repo.update_memory(
         memory_id=memory_id,
@@ -159,6 +169,13 @@ async def delete_memory(
             memory.workspace_id,
             Permission.MEMORY_DELETE.value,
             error_message="You don't have permission to delete this memory",
+        )
+    elif memory.created_by_id is None or str(memory.created_by_id) != str(auth.user.id):
+        # Workspace-less (personal) memory: only its owner may delete it.
+        # Fail closed when the memory has no owner or the caller is unknown.
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to delete this memory",
         )
 
     await repo.delete_memory(memory_id)

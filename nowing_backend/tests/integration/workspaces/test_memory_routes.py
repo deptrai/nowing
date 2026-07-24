@@ -255,3 +255,51 @@ async def test_search_memory_with_research_thread_filter(client, db_workspace):
     )
     assert resp.status_code == 200
     assert isinstance(resp.json()["items"], list)
+
+
+async def test_search_empty_query_requires_thread(client, db_workspace):
+    """An empty query without a research_thread_id is rejected (422)."""
+    resp = await client.post(
+        f"{BASE}/{db_workspace.id}/memories/search",
+        json={"query": "", "top_k": 5},
+    )
+    assert resp.status_code == 422
+
+
+async def test_continue_research_empty_query_scopes_by_thread(client, db_workspace):
+    """Empty query + research_thread_id is allowed (query-less thread recall).
+
+    Regression guard for the nowing_continue_research 422: an empty query must
+    be accepted when a thread is provided, returning recency-ordered results
+    without invoking the embedding/keyword ranking path.
+    """
+    resp = await client.post(
+        f"{BASE}/{db_workspace.id}/memories/search",
+        json={"query": "", "top_k": 5, "research_thread_id": 1},
+    )
+    assert resp.status_code == 200
+    assert isinstance(resp.json()["items"], list)
+
+
+async def test_cannot_modify_other_users_personal_memory(
+    client_as_other, db_session, db_user
+):
+    """A non-owner cannot PATCH or DELETE a workspace-less (personal) memory."""
+    from app.services.memory.repository import MemoryRepository
+
+    repo = MemoryRepository(db_session)
+    mem = await repo.create_memory(
+        workspace_id=None,
+        content="Owner's private note.",
+        embedding=[0.1] * 384,
+        created_by_id=db_user.id,
+    )
+
+    patch_resp = await client_as_other.patch(
+        f"/api/v1/memories/{mem.id}",
+        json={"corrected_content": "hijacked"},
+    )
+    assert patch_resp.status_code == 403
+
+    delete_resp = await client_as_other.delete(f"/api/v1/memories/{mem.id}")
+    assert delete_resp.status_code == 403

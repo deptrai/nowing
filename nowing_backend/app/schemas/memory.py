@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.db import MemorySourceType, MemoryType
 
@@ -67,7 +67,9 @@ class MemoryUpdate(BaseModel):
 
 
 class MemorySearchRequest(BaseModel):
-    query: Annotated[str, Field(min_length=1)]
+    # Empty query is allowed only for thread-scoped recall (see validator);
+    # nowing_continue_research relies on this to resume a thread with no query.
+    query: str = ""
     top_k: int = Field(default=5, ge=1, le=100)
     type: str | None = None
     tags: list[str] = Field(default_factory=list)
@@ -83,6 +85,14 @@ class MemorySearchRequest(BaseModel):
         except ValueError as exc:
             raise ValueError(f"Invalid type: {value}") from exc
         return value
+
+    @model_validator(mode="after")
+    def _require_query_or_thread(self) -> MemorySearchRequest:
+        if not self.query.strip() and self.research_thread_id is None:
+            raise ValueError(
+                "query must be non-empty unless research_thread_id is provided"
+            )
+        return self
 
 
 class MemorySearchHit(BaseModel):

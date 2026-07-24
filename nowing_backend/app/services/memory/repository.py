@@ -106,6 +106,15 @@ class MemoryRepository:
         loaded = result.scalar_one_or_none()
         return loaded if loaded is not None else memory
 
+    async def _persist(self, *, commit: bool) -> None:
+        """Commit when running standalone, or flush to keep the caller's
+        transaction open (e.g. batch extraction that commits once at the end so
+        a mid-loop crash leaves nothing behind)."""
+        if commit:
+            await self.session.commit()
+        else:
+            await self.session.flush()
+
     async def create_memory(
         self,
         *,
@@ -120,6 +129,7 @@ class MemoryRepository:
         created_by_id: UUID | None = None,
         embedding: np.ndarray | list[float] | None = None,
         update_on_duplicate: bool = False,
+        commit: bool = True,
     ) -> Memory:
         if isinstance(type, str):
             type = MemoryType(type)
@@ -142,7 +152,12 @@ class MemoryRepository:
         )
         if existing is not None:
             if update_on_duplicate:
-                return await self.update_memory(
+                # Auto-dedup updates content but must NOT re-attribute a
+                # shared-workspace memory: preserve the original created_by_id
+                # (the version records who made the change via corrected_by_id).
+                # skip_version_if_unchanged avoids version churn when a fact is
+                # re-derived identically (retries / repeated turns).
+                updated = await self.update_memory(
                     existing.id,
                     corrected_content=content,
                     corrected_by_id=created_by_id,
@@ -151,23 +166,31 @@ class MemoryRepository:
                     tags=tags,
                     confidence=confidence,
                     research_thread_id=research_thread_id,
-                    created_by_id=created_by_id,
                     embedding=embedding,
+                    skip_version_if_unchanged=True,
+                    commit=commit,
                 )
-            existing.content = content
-            existing.type = type
-            existing.source_type = source_type
-            existing.source_id = source_id
-            existing.tags = tags or []
-            existing.confidence = confidence
-            existing.research_thread_id = research_thread_id
-            if created_by_id is not None:
-                existing.created_by_id = created_by_id
-            existing.updated_at = datetime.now(UTC)
-            self.session.add(existing)
-            await self.session.commit()
-            self.session.expire(existing, ["versions"])
-            return await self._load_with_versions(existing)
+                if updated is not None:
+                    return updated
+                # The duplicate was deleted concurrently between find and
+                # update; fall through to insert a fresh row so we always
+                # return a Memory (matches the -> Memory contract).
+            else:
+                existing.content = content
+                existing.type = type
+                existing.source_type = source_type
+                existing.source_id = source_id
+                existing.tags = tags or []
+                existing.confidence = confidence
+                # Only overwrite the thread association when a new one is given,
+                # so re-creating a duplicate doesn't silently wipe it.
+                if research_thread_id is not None:
+                    existing.research_thread_id = research_thread_id
+                existing.updated_at = datetime.now(UTC)
+                self.session.add(existing)
+                await self._persist(commit=commit)
+                self.session.expire(existing, ["versions"])
+                return await self._load_with_versions(existing)
 
         memory = Memory(
             workspace_id=workspace_id,
@@ -182,7 +205,7 @@ class MemoryRepository:
             created_by_id=created_by_id,
         )
         self.session.add(memory)
-        await self.session.commit()
+        await self._persist(commit=commit)
         self.session.expire(memory, ["versions"])
         return await self._load_with_versions(memory)
 
@@ -200,6 +223,7 @@ class MemoryRepository:
         created_by_id: UUID | None = None,
         embedding: np.ndarray | list[float] | None = None,
         skip_version_if_unchanged: bool = False,
+        commit: bool = True,
     ) -> Memory | None:
         result = await self.session.execute(
             select(Memory).where(Memory.id == memory_id)
@@ -248,7 +272,7 @@ class MemoryRepository:
             memory.embedding = new_embedding
 
         self.session.add(memory)
-        await self.session.commit()
+        await self._persist(commit=commit)
         self.session.expire(memory, ["versions"])
         return await self._load_with_versions(memory)
 

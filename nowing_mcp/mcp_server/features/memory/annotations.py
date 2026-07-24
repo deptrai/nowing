@@ -39,6 +39,11 @@ ResearchThreadId = Annotated[
     Field(description="Research thread id to scope memory search to."),
 ]
 
+OptionalResearchThreadId = Annotated[
+    int | None,
+    Field(description="Optional research thread id to scope memory search to."),
+]
+
 TopK = Annotated[
     int,
     Field(ge=1, le=20, description="Maximum memories to return."),

@@ -26,7 +26,7 @@ class MemoryHybridSearch:
         *,
         workspace_id: int,
         query: str,
-        query_embedding: list[float] | np.ndarray,
+        query_embedding: list[float] | np.ndarray | None = None,
         top_k: int = 5,
         type: str | None = None,
         tags: list[str] | None = None,
@@ -35,9 +35,6 @@ class MemoryHybridSearch:
         k = 60
         n_results = top_k * 3
 
-        tsvector = func.to_tsvector("english", Memory.content)
-        tsquery = func.plainto_tsquery("english", query)
-
         base_conditions = [Memory.workspace_id == workspace_id]
         if type is not None:
             base_conditions.append(Memory.type == MemoryType(type))
@@ -45,6 +42,22 @@ class MemoryHybridSearch:
             base_conditions.append(Memory.research_thread_id == research_thread_id)
         if tags:
             base_conditions.append(Memory.tags.op("&&")(tags))
+
+        # Query-less thread recall: when no query text/embedding is supplied
+        # (e.g. nowing_continue_research scoping by thread), return the most
+        # recent matching memories instead of ranking by relevance.
+        if query_embedding is None or not str(query).strip():
+            stmt = (
+                select(Memory)
+                .where(*base_conditions)
+                .order_by(Memory.created_at.desc())
+                .limit(top_k)
+            )
+            result = await self.session.execute(stmt)
+            return list(result.scalars().all())
+
+        tsvector = func.to_tsvector("english", Memory.content)
+        tsquery = func.plainto_tsquery("english", query)
 
         embedding = _as_np(query_embedding)
 
