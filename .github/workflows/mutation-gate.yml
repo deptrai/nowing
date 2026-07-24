@@ -75,6 +75,9 @@ jobs:
         working-directory: nowing_backend
         run: uv pip install --python .venv/bin/python cosmic-ray
 
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Run mutation gate
         run: python scripts/mutation-gate.py --services ${{ matrix.service }} --timeout ${{ github.event.inputs.timeout || '120' }} --project-root .
 
