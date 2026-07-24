@@ -2,4 +2,7 @@
 
 from __future__ import annotations
 
-from . import document_entered_folder  # noqa: F401
+from . import (
+    document_entered_folder,  # noqa: F401
+    memory_changed,  # noqa: F401
+)

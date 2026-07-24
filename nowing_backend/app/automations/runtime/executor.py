@@ -17,6 +17,7 @@ from app.automations.schemas.definition.plan_step import PlanStep
 from app.automations.templating import build_run_context
 
 from . import repository
+from .origin import automation_run_origin
 from .step import execute_step
 
 
@@ -43,36 +44,91 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
         await session.commit()
         return
 
-    await repository.mark_running(session, run)
-    await session.commit()
+    # Stamp the automation origin for the whole run so any in-process memory
+    # write inside it (e.g. the agent_task tool → MemoryRepository.create_memory)
+    # is recognised as automation-originated and does NOT emit ``memory.changed``
+    # — the loop guard that stops a memory-writing automation from re-firing its
+    # own ``memory_change`` trigger (Story 6.5, AC-5).
+    with automation_run_origin(run.id):
+        # AC-4: a ``continue_research`` step param links the run to its thread
+        # (executor-side; the trigger-inputs path is handled in launch_run).
+        await _maybe_link_research_thread_from_plan(session, run, definition)
 
-    step_outputs: dict[str, Any] = {}
-
-    for step in definition.plan:
-        template_ctx = _build_template_ctx(run, step_outputs)
-        action_ctx = _build_action_ctx(session, run, step, definition.models)
-        result = await execute_step(
-            step=step,
-            template_context=template_ctx,
-            action_context=action_ctx,
-            default_max_retries=definition.execution.max_retries,
-            default_retry_backoff=definition.execution.retry_backoff,
-            default_timeout_seconds=definition.execution.timeout_seconds,
-        )
-        await repository.append_step_result(session, run, result)
+        await repository.mark_running(session, run)
         await session.commit()
 
-        if result["status"] == "failed":
-            await _run_on_failure(session, run, definition)
-            await repository.mark_failed(session, run, result.get("error"))
+        step_outputs: dict[str, Any] = {}
+
+        for step in definition.plan:
+            template_ctx = _build_template_ctx(run, step_outputs)
+            action_ctx = _build_action_ctx(session, run, step, definition.models)
+            result = await execute_step(
+                step=step,
+                template_context=template_ctx,
+                action_context=action_ctx,
+                default_max_retries=definition.execution.max_retries,
+                default_retry_backoff=definition.execution.retry_backoff,
+                default_timeout_seconds=definition.execution.timeout_seconds,
+            )
+            await repository.append_step_result(session, run, result)
             await session.commit()
-            return
 
-        if result["status"] == "succeeded":
-            step_outputs[step.output_as or step.step_id] = result.get("result")
+            if result["status"] == "failed":
+                await _run_on_failure(session, run, definition)
+                await repository.mark_failed(session, run, result.get("error"))
+                await session.commit()
+                return
 
-    await repository.mark_succeeded(session, run)
-    await session.commit()
+            if result["status"] == "succeeded":
+                step_outputs[step.output_as or step.step_id] = result.get("result")
+
+        await repository.mark_succeeded(session, run)
+        await session.commit()
+
+
+async def _maybe_link_research_thread_from_plan(
+    session: AsyncSession,
+    run: AutomationRun,
+    definition: AutomationDefinition,
+) -> None:
+    """Link the run to a ``continue_research`` step's thread when not already set.
+
+    Only a literal integer ``research_thread_id`` param is honoured (a templated
+    value can't be resolved before execution); the id is validated to exist in
+    the run's workspace before it's set, so a bad id is dropped silently.
+    """
+    if run.research_thread_id is not None:
+        return
+    raw = _plan_continue_research_thread_id(definition)
+    if raw is None:
+        return
+    # Lazy import: dispatch.launch pulls in the run-execute Celery task, which
+    # imports app.automations.runtime — importing it at module top level while
+    # runtime is still initializing would be a partial-import cycle.
+    from app.automations.dispatch import resolve_research_thread_id
+
+    workspace_id = run.automation.workspace_id if run.automation else None
+    resolved = await resolve_research_thread_id(
+        session, workspace_id=workspace_id, raw=raw
+    )
+    if resolved is not None:
+        run.research_thread_id = resolved
+        session.add(run)
+
+
+def _plan_continue_research_thread_id(definition: AutomationDefinition) -> int | None:
+    """First literal ``research_thread_id`` from a ``continue_research`` step, if any."""
+    for step in definition.plan:
+        if step.action != "continue_research":
+            continue
+        raw = (step.params or {}).get("research_thread_id")
+        if isinstance(raw, bool):  # int subclass — never a valid FK
+            continue
+        if isinstance(raw, int):
+            return raw
+        if isinstance(raw, str) and raw.isdigit():
+            return int(raw)
+    return None
 
 
 async def _run_on_failure(

@@ -36,6 +36,13 @@ class MemoryRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        # Deferred ``memory.changed`` payloads for ``commit=False`` batch writes
+        # (auto-extraction): the caller commits once at the end, then calls
+        # ``flush_pending_memory_changed`` so each durable memory is announced
+        # exactly once (never per-flush). Entries are ``(workspace_id, payload)``
+        # dicts built while the ORM row is still loaded, so flushing after the
+        # caller's commit never triggers async lazy-load on expired attributes.
+        self._pending_memory_changed: list[tuple[int, dict[str, Any]]] = []
 
     async def _embed(
         self,
@@ -115,6 +122,101 @@ class MemoryRepository:
         else:
             await self.session.flush()
 
+    async def _emit_memory_changed(
+        self,
+        memory: Memory | None,
+        *,
+        change: str,
+        commit: bool,
+        automation_run_id: int | None,
+    ) -> None:
+        """Announce a durable memory write as ``memory.changed`` (Story 6.5, AC-1).
+
+        Immediate (``commit=True``) writes publish right away; batch
+        (``commit=False``) writes are buffered and published by the caller via
+        ``flush_pending_memory_changed`` after its final commit, so
+        auto-extraction announces each durable memory exactly once (not
+        per-flush).
+
+        Loop guard (AC-5, mechanism 1): the origin is resolved from the explicit
+        ``automation_run_id`` kwarg OR, when absent, the contextvar the run
+        executor stamps (``get_current_automation_run_id``) so in-process writes
+        inside an automation run are recognised WITHOUT a hand-passed kwarg. An
+        automation-origin write is never announced, so a memory-writing
+        automation cannot re-fire its own ``memory_change`` trigger. Truthiness
+        is used consistently with the selector's drop (``0`` is not a valid run
+        id — treated as no origin).
+
+        Only workspace-scoped memories are announced (user-scoped memory has no
+        workspace to route the event to). A bus failure never fails the write.
+        """
+        run_id = automation_run_id
+        if run_id is None:
+            # Lazy import: the memory repository is imported while ``app.automations``
+            # self-registers (the continue_research action pulls in the memory
+            # search/citations modules), so importing the automations runtime at
+            # module top level here would risk a partial-import cycle. At call
+            # time everything is loaded, so a function-level import is safe.
+            from app.automations.runtime.origin import get_current_automation_run_id
+
+            run_id = get_current_automation_run_id()
+        if run_id:  # automation origin (truthy) → skip: loop guard, mechanism 1
+            return
+        if memory is None or memory.workspace_id is None:
+            return
+
+        # Build the payload NOW, while the ORM row is loaded, so a deferred flush
+        # after the caller's commit never touches expired attributes.
+        payload = self._build_memory_changed_payload(memory, change=change)
+        if commit:
+            await self._publish_memory_changed(memory.workspace_id, payload)
+        else:
+            self._pending_memory_changed.append((memory.workspace_id, payload))
+
+    @staticmethod
+    def _build_memory_changed_payload(memory: Memory, *, change: str) -> dict[str, Any]:
+        from app.event_bus.events.memory_changed import MemoryChangedPayload
+
+        return MemoryChangedPayload(
+            memory_id=memory.id,
+            workspace_id=memory.workspace_id,
+            type=getattr(memory.type, "value", memory.type),
+            tags=list(memory.tags or []),
+            change=change,
+            source_type=getattr(memory.source_type, "value", memory.source_type),
+            research_thread_id=memory.research_thread_id,
+            # Repo-emitted events are non-origin by construction (origin writes
+            # are skipped above); the field carries the selector's contract.
+            automation_run_id=None,
+        ).model_dump(mode="json")
+
+    async def _publish_memory_changed(
+        self, workspace_id: int, payload: dict[str, Any]
+    ) -> None:
+        """Best-effort publish; a bus failure must never fail the memory write."""
+        try:
+            from app.event_bus import bus
+            from app.event_bus.events.memory_changed import EVENT_TYPE
+
+            await bus.publish(EVENT_TYPE, payload, workspace_id=workspace_id)
+        except Exception:  # best-effort: never fail a write on a bus error
+            logger.warning(
+                "best-effort memory.changed emission failed for memory %s",
+                payload.get("memory_id"),
+                exc_info=True,
+            )
+
+    async def flush_pending_memory_changed(self) -> None:
+        """Publish the ``memory.changed`` events buffered by ``commit=False`` writes.
+
+        Called by batch callers (auto-extraction) AFTER their single commit, so
+        each durable memory is announced exactly once. Best-effort per event;
+        the buffer is drained even if a publish fails so a retry cannot re-emit.
+        """
+        pending, self._pending_memory_changed = self._pending_memory_changed, []
+        for workspace_id, payload in pending:
+            await self._publish_memory_changed(workspace_id, payload)
+
     async def create_memory(
         self,
         *,
@@ -130,6 +232,7 @@ class MemoryRepository:
         embedding: np.ndarray | list[float] | None = None,
         update_on_duplicate: bool = False,
         commit: bool = True,
+        automation_run_id: int | None = None,
     ) -> Memory:
         if isinstance(type, str):
             type = MemoryType(type)
@@ -169,6 +272,7 @@ class MemoryRepository:
                     embedding=embedding,
                     skip_version_if_unchanged=True,
                     commit=commit,
+                    automation_run_id=automation_run_id,
                 )
                 if updated is not None:
                     return updated
@@ -176,6 +280,10 @@ class MemoryRepository:
                 # update; fall through to insert a fresh row so we always
                 # return a Memory (matches the -> Memory contract).
             else:
+                # This branch is only reached for a CONTENT-matching duplicate
+                # (content_match_required=True), so ``content`` is effectively
+                # unchanged — but other fields (tags/type/source) may differ.
+                content_changed = existing.content != content
                 existing.content = content
                 existing.type = type
                 existing.source_type = source_type
@@ -190,7 +298,17 @@ class MemoryRepository:
                 self.session.add(existing)
                 await self._persist(commit=commit)
                 self.session.expire(existing, ["versions"])
-                return await self._load_with_versions(existing)
+                loaded = await self._load_with_versions(existing)
+                # No-op content re-write must not announce ``change="updated"``:
+                # a spurious event would re-fire ``memory_change`` triggers.
+                if content_changed:
+                    await self._emit_memory_changed(
+                        loaded,
+                        change="updated",
+                        commit=commit,
+                        automation_run_id=automation_run_id,
+                    )
+                return loaded
 
         memory = Memory(
             workspace_id=workspace_id,
@@ -207,7 +325,14 @@ class MemoryRepository:
         self.session.add(memory)
         await self._persist(commit=commit)
         self.session.expire(memory, ["versions"])
-        return await self._load_with_versions(memory)
+        loaded = await self._load_with_versions(memory)
+        await self._emit_memory_changed(
+            loaded,
+            change="created",
+            commit=commit,
+            automation_run_id=automation_run_id,
+        )
+        return loaded
 
     async def update_memory(
         self,
@@ -224,6 +349,7 @@ class MemoryRepository:
         embedding: np.ndarray | list[float] | None = None,
         skip_version_if_unchanged: bool = False,
         commit: bool = True,
+        automation_run_id: int | None = None,
     ) -> Memory | None:
         result = await self.session.execute(
             select(Memory).where(Memory.id == memory_id)
@@ -274,7 +400,19 @@ class MemoryRepository:
         self.session.add(memory)
         await self._persist(commit=commit)
         self.session.expire(memory, ["versions"])
-        return await self._load_with_versions(memory)
+        loaded = await self._load_with_versions(memory)
+        # Gate on content_changed: a no-op update (e.g. a re-derived identical
+        # fact via skip_version_if_unchanged) must not announce
+        # ``change="updated"`` — a spurious event would re-fire memory_change
+        # triggers (Story 6.5).
+        if content_changed:
+            await self._emit_memory_changed(
+                loaded,
+                change="updated",
+                commit=commit,
+                automation_run_id=automation_run_id,
+            )
+        return loaded
 
     async def get_memory(self, memory_id: int) -> Memory | None:
         result = await self.session.execute(

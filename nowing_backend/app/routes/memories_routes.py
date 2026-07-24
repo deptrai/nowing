@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -40,6 +40,7 @@ async def create_memory(
     body: MemoryCreate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    x_automation_run_id: int | None = Header(default=None),
 ):
     await check_permission(
         session,
@@ -60,6 +61,12 @@ async def create_memory(
         confidence=body.confidence,
         research_thread_id=body.research_thread_id,
         created_by_id=auth.user.id,
+        # Loop guard (Story 6.5, AC-5): a cross-process automation write (an
+        # external MCP server calling this endpoint) threads its origin via the
+        # ``X-Automation-Run-Id`` header, since a Python contextvar cannot cross
+        # the HTTP boundary. The repository skips ``memory.changed`` emission for
+        # an automation-origin write so it cannot re-fire its own trigger.
+        automation_run_id=x_automation_run_id,
     )
     return _to_memory_read(memory)
 
@@ -120,6 +127,7 @@ async def update_memory(
     body: MemoryUpdate,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
+    x_automation_run_id: int | None = Header(default=None),
 ):
     repo = MemoryRepository(session)
     memory = await repo.get_memory(memory_id)
@@ -146,6 +154,8 @@ async def update_memory(
         corrected_content=body.corrected_content,
         corrected_by_id=auth.user.id,
         skip_version_if_unchanged=True,
+        # See create_memory: cross-process automation origin via header (AC-5).
+        automation_run_id=x_automation_run_id,
     )
     if updated is None:
         raise HTTPException(status_code=404, detail="Memory not found")

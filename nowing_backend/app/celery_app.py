@@ -198,6 +198,7 @@ celery_app = Celery(
         "app.automations.tasks.execute_run",
         "app.automations.triggers.builtin.schedule.selector",
         "app.automations.triggers.builtin.event.selector",
+        "app.automations.triggers.builtin.memory_change.selector",
     ],
 )
 

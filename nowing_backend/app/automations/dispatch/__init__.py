@@ -3,6 +3,6 @@
 from __future__ import annotations
 
 from .errors import DispatchError
-from .launch import launch_run
+from .launch import launch_run, resolve_research_thread_id
 
-__all__ = ["DispatchError", "launch_run"]
+__all__ = ["DispatchError", "launch_run", "resolve_research_thread_id"]

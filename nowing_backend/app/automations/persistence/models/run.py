@@ -34,6 +34,17 @@ class AutomationRun(BaseModel, TimestampMixin):
         index=True,
     )
 
+    # Links a run to the research thread that drove it (a ``continue_research``
+    # step, or a ``memory_change`` trigger carrying a thread). Nullable — most
+    # runs are not research-driven. SET NULL so deleting a thread does not delete
+    # its historical runs.
+    research_thread_id = Column(
+        Integer,
+        ForeignKey("research_threads.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     status = Column(
         SQLAlchemyEnum(
             RunStatus,
@@ -64,3 +75,4 @@ class AutomationRun(BaseModel, TimestampMixin):
 
     automation = relationship("Automation", back_populates="runs")
     trigger = relationship("AutomationTrigger", back_populates="runs")
+    research_thread = relationship("ResearchThread")

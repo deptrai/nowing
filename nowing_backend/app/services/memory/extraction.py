@@ -297,4 +297,13 @@ class MemoryExtractionService:
         # committed rows, so a partial write can never make it skip real work.
         await self.session.commit()
 
+        # AC-1: extracted facts are written with commit=False, so create_memory
+        # deferred their ``memory.changed`` events into the repo buffer. Now that
+        # the batch is durable, announce each exactly once (best-effort). The
+        # buffer already excluded automation-origin writes (loop guard) — moot
+        # here since auto-extraction is not reachable from an automation run, but
+        # kept consistent. Redelivery re-hits the idempotency guard above and
+        # returns [] before this point, so events are emitted exactly once.
+        await repo.flush_pending_memory_changed()
+
         return created_memories

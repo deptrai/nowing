@@ -2,4 +2,4 @@
 
 from __future__ import annotations
 
-from . import event, schedule  # noqa: F401
+from . import event, memory_change, schedule  # noqa: F401

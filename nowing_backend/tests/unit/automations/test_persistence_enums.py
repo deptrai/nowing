@@ -39,7 +39,13 @@ def test_run_status_string_values_are_stable() -> None:
 
 
 def test_trigger_type_keeps_manual_member_even_though_unregistered() -> None:
-    """``schedule`` and ``event`` are registered; ``MANUAL`` is reserved
-    (mirrors the Postgres enum) but the trigger store does not register it.
-    The enum must keep every member so DB rows and migrations stay valid."""
-    assert {member.value for member in TriggerType} == {"schedule", "event", "manual"}
+    """``schedule``, ``event``, and ``memory_change`` are registered; ``MANUAL``
+    is reserved (mirrors the Postgres enum) but the trigger store does not
+    register it. The enum must keep every member so DB rows and migrations stay
+    valid."""
+    assert {member.value for member in TriggerType} == {
+        "schedule",
+        "event",
+        "manual",
+        "memory_change",
+    }

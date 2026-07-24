@@ -73,7 +73,7 @@ development_status:
   3-7-data-retention-lifecycle-new-gap: done
   3-8-long-term-research-memory: done
   # --- Gap mới từ PRFAQ re-evaluation 2026-07-24 (không có trong sprint trước) ---
-  3-9-memory-recall-eval-gate: backlog
+  3-9-memory-recall-eval-gate: ready-for-dev
   3-10a-legacy-memory-data-safety-spike: done  # ops 2026-07-25: 178 chưa apply prod (alembic 174), memory_md rỗng, snapshot đã tạo → không mất dữ liệu
   3-10b-legacy-memory-recovery-backfill: done  # G1.2 guard trong 178.upgrade() (raise nếu legacy data chưa backfill) + G1.1 app-level command scripts/backfill_legacy_memory.py (embeddings không chạy được trong raw migration) + 5 integration tests xanh (backfill create/idempotent/dry-run + guard block/drop-after). Deploy-order: mig177 → backfill → mig178.
   epic-3-retrospective: optional
@@ -96,7 +96,7 @@ development_status:
   6-2-automation-runs-retries: done
   6-3-agent-task-action: done
   6-4-direct-write-back-actions-new-gap: done
-  6-5-memory-driven-automations: ready-for-dev
+  6-5-memory-driven-automations: done
   epic-6-retrospective: optional
   epic-7: done
   7-1-web-client-next-js: done
@@ -113,7 +113,7 @@ development_status:
   8-5-security-permissions: done
   8-6-multi-tenant-isolation: done
   # --- Gap mới từ PRFAQ re-evaluation 2026-07-24 ---
-  8-7-auto-extract-spend-budget-cap: backlog
+  8-7-auto-extract-spend-budget-cap: ready-for-dev
   epic-8-retrospective: optional
 
 action_items: []
