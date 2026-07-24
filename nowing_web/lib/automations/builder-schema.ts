@@ -106,10 +106,16 @@ export const builderTaskSchema = z
 		message: "Describe what the agent should do",
 		path: ["query"],
 	})
-	.refine((data) => data.action === "agent_task" || data.writeBackParams !== null, {
-		message: "Fill in the write-back fields",
-		path: ["writeBackParams"],
-	});
+	.refine(
+		(data) =>
+			data.action === "agent_task" ||
+			(data.writeBackParams !== null &&
+				`write_back_${data.writeBackParams.provider}` === data.action),
+		{
+			message: "Fill in the write-back fields",
+			path: ["writeBackParams"],
+		},
+	);
 export type BuilderTask = z.infer<typeof builderTaskSchema>;
 
 export const builderScheduleSchema = z.discriminatedUnion("mode", [

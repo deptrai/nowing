@@ -107,11 +107,6 @@ async def resolve_connector(
         server_config = cfg.get("server_config")
         if server_config is None or not isinstance(server_config, dict):
             continue
-        if cfg.get("auth_expired"):
-            raise RuntimeError(
-                f"The {provider} connector '{connector.name}' authentication expired. "
-                "Please re-authenticate the connector in your settings."
-            )
         ct = _connector_type_value(connector.connector_type)
         if ct != target_value:
             continue
@@ -131,7 +126,15 @@ async def resolve_connector(
             f"Multiple {provider} connectors found: {names}; provide connector_name"
         )
 
-    return matches[0]
+    selected = matches[0]
+    # Check auth only on the connector we actually selected, so an unrelated
+    # expired same-type connector cannot block a healthy, explicitly-named one.
+    if _config(selected).get("auth_expired"):
+        raise RuntimeError(
+            f"The {provider} connector '{selected.name}' authentication expired. "
+            "Please re-authenticate the connector in your settings."
+        )
+    return selected
 
 
 async def load_tools_for_connector(
@@ -201,20 +204,39 @@ def select_write_tool(
             return True
         return False
 
+    selected: Any | None = None
     for tool in tools:
         if matches(tool):
-            return tool
+            selected = tool
+            break
 
-    # Fallback: if exactly one tool belongs to the target connector, use it.
-    # This is mainly exercised by unit tests using fake tools without the
-    # exact MCP original names; production servers should advertise known names.
-    connector_tools = [t for t in tools if _tool_connector_id(t) == connector_id]
-    if len(connector_tools) == 1:
-        return connector_tools[0]
+    if selected is None:
+        # Fallback: if exactly one tool belongs to the target connector, use it.
+        # Mainly exercised by unit tests using fake tools without the exact MCP
+        # original names; production servers should advertise known names.
+        connector_tools = [t for t in tools if _tool_connector_id(t) == connector_id]
+        if len(connector_tools) == 1:
+            selected = connector_tools[0]
 
-    raise RuntimeError(
-        f"No MCP write tool found for {provider} on connector {connector_id}"
-    )
+    if selected is None:
+        raise RuntimeError(
+            f"No MCP write tool found for {provider} on connector {connector_id}"
+        )
+
+    # Update requested but only a create tool is advertised → refuse rather than
+    # silently create a duplicate. Providers whose update tool == create tool
+    # (e.g. Slack) are create-only by design and never trip this.
+    if object_id:
+        resolved = _tool_original_name(selected) or _strip_prefix(
+            selected.name, connector_id, provider
+        )
+        if resolved in create_names and resolved not in update_names:
+            raise RuntimeError(
+                f"Update requested (object_id set) for {provider}, but only a create "
+                f"tool ('{resolved}') is available; refusing to create a duplicate."
+            )
+
+    return selected
 
 
 def _set_if_present(args: dict[str, Any], key: str, value: Any) -> None:
@@ -427,7 +449,14 @@ async def resolve_jira_cloud_id(
 
     first = resources[0]
     if isinstance(first, dict):
-        return str(first.get("id") or first.get("cloudId"))
+        cloud_id = first.get("id") or first.get("cloudId")
+        if not cloud_id:
+            raise RuntimeError(
+                "Atlassian resource is missing an id/cloudId for the Jira connector"
+            )
+        return str(cloud_id)
+    if not first:
+        raise RuntimeError("No Atlassian cloudId found for Jira connector")
     return str(first)
 
 
