@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -185,7 +186,7 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
                 module = backend / "app" / "services" / f"{service}.py"
 
     test_files = discover_tests(backend, service)
-    test_cmd = f'bash -c "uv run --no-sync pytest {" ".join(test_files)} -m \\"unit or not integration\\" -x 2>&1"'
+    test_cmd = f'bash -c "COSMIC_RAY=1 .venv/bin/python -m pytest {" ".join(test_files)} -m \\"unit or not integration\\" -x 2>&1"'
 
     toml = f"""[cosmic-ray]
 module-path = "{module.relative_to(backend)}"
@@ -322,6 +323,8 @@ def main() -> int:
     parser.add_argument("--backend-dir", default="nowing_backend", help="Backend directory name")
     parser.add_argument("--timeout", type=float, default=60.0, help="Per-mutant timeout in seconds")
     args = parser.parse_args()
+
+    os.environ["COSMIC_RAY"] = "1"
 
     project_root = Path(args.project_root).resolve()
     backend = project_root / args.backend_dir

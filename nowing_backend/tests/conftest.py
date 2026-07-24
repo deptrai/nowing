@@ -21,6 +21,56 @@ os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("AUTH_TYPE", "LOCAL")
 os.environ.setdefault("REGISTRATION_ENABLED", "TRUE")
 
+# Mutation gate: avoid heavy model/library imports in each mutant process.
+# `app.config` is imported by `app.db` below and eagerly initializes embeddings,
+# chunkers, and rerankers, which adds several seconds of import overhead per
+# subprocess. Under cosmic-ray we inject lightweight stubs for these third-party
+# modules before `app.config` is loaded.
+if os.environ.get("COSMIC_RAY") == "1":
+    import sys
+    import types
+
+    os.environ.setdefault("EMBEDDING_MODEL", "dummy-embedding-model")
+
+    class _CosmicRayEmbedding:
+        dimension = 384
+        max_seq_length = 512
+
+        def get_tokenizer(self):
+            return str.split
+
+        def embed(self, _text):
+            return [0.0] * self.dimension
+
+        def embed_batch(self, texts):
+            return [[0.0] * self.dimension for _ in texts]
+
+    class _CosmicRayAutoEmbeddings:
+        @classmethod
+        def get_embeddings(cls, *args, **kwargs):
+            return _CosmicRayEmbedding()
+
+    class _CosmicRayChunker:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __call__(self, text, *args, **kwargs):
+            return [text]
+
+    _fake_chonkie = types.ModuleType("chonkie")
+    _fake_chonkie.AutoEmbeddings = _CosmicRayAutoEmbeddings
+    _fake_chonkie.CodeChunker = _CosmicRayChunker
+    _fake_chonkie.RecursiveChunker = _CosmicRayChunker
+    sys.modules["chonkie"] = _fake_chonkie
+
+    class _CosmicRayReranker:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    _fake_rerankers = types.ModuleType("rerankers")
+    _fake_rerankers.Reranker = _CosmicRayReranker
+    sys.modules["rerankers"] = _fake_rerankers
+
 import pytest  # noqa: E402
 
 from app.db import DocumentType  # noqa: E402
