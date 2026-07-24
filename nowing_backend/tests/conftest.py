@@ -71,6 +71,63 @@ if os.environ.get("COSMIC_RAY") == "1":
     _fake_rerankers.Reranker = _CosmicRayReranker
     sys.modules["rerankers"] = _fake_rerankers
 
+    # litellm takes ~3s to import; memory code only needs its exception classes.
+    _fake_litellm = types.ModuleType("litellm")
+    _fake_litellm_exceptions = types.ModuleType("litellm.exceptions")
+
+    class _LiteLLMError(Exception): ...
+    class APIConnectionError(_LiteLLMError): ...
+    class AuthenticationError(_LiteLLMError): ...
+    class BadRequestError(_LiteLLMError): ...
+    class ContextWindowExceededError(_LiteLLMError): ...
+    class InternalServerError(_LiteLLMError): ...
+    class RateLimitError(_LiteLLMError): ...
+    class ServiceUnavailableError(_LiteLLMError): ...
+    class Timeout(_LiteLLMError): ...
+
+    _fake_litellm_exceptions.APIConnectionError = APIConnectionError
+    _fake_litellm_exceptions.AuthenticationError = AuthenticationError
+    _fake_litellm_exceptions.BadRequestError = BadRequestError
+    _fake_litellm_exceptions.ContextWindowExceededError = ContextWindowExceededError
+    _fake_litellm_exceptions.InternalServerError = InternalServerError
+    _fake_litellm_exceptions.RateLimitError = RateLimitError
+    _fake_litellm_exceptions.ServiceUnavailableError = ServiceUnavailableError
+    _fake_litellm_exceptions.Timeout = Timeout
+
+    async def _no_op_async(*args, **kwargs):
+        return None
+
+    def _no_op_info(*args, **kwargs):
+        return {}
+
+    def _token_counter(*args, **kwargs):
+        return 0
+
+    def _completion_cost(*args, **kwargs):
+        return 1e-6
+
+    def _cost_per_token(*args, **kwargs):
+        return 1e-7, 1e-7
+
+    _fake_litellm.atranscription = _no_op_async
+    _fake_litellm.get_model_info = _no_op_info
+    _fake_litellm.token_counter = _token_counter
+    _fake_litellm.completion_cost = _completion_cost
+    _fake_litellm.cost_per_token = _cost_per_token
+    _fake_litellm.exceptions = _fake_litellm_exceptions
+
+    class CustomLogger:
+        pass
+
+    _fake_litellm_integrations = types.ModuleType("litellm.integrations")
+    _fake_litellm_custom_logger = types.ModuleType("litellm.integrations.custom_logger")
+    _fake_litellm_custom_logger.CustomLogger = CustomLogger
+    _fake_litellm_integrations.custom_logger = _fake_litellm_custom_logger
+    sys.modules["litellm"] = _fake_litellm
+    sys.modules["litellm.exceptions"] = _fake_litellm_exceptions
+    sys.modules["litellm.integrations"] = _fake_litellm_integrations
+    sys.modules["litellm.integrations.custom_logger"] = _fake_litellm_custom_logger
+
 import pytest  # noqa: E402
 
 from app.db import DocumentType  # noqa: E402

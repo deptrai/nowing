@@ -78,6 +78,12 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
+      - name: Set safe service name
+        id: safe
+        run: |
+          SAFE_SERVICE=$(echo '${{ matrix.service }}' | tr '/' '-')
+          echo "service=$SAFE_SERVICE" >> "$GITHUB_OUTPUT"
+
       - name: Run mutation gate
         run: python scripts/mutation-gate.py --services ${{ matrix.service }} --timeout ${{ github.event.inputs.timeout || '120' }} --project-root .
 
@@ -85,9 +91,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mutation-nowing-${{ matrix.service }}
+          name: mutation-nowing-${{ steps.safe.outputs.service }}
           path: |
-            _bmad-output/test-artifacts/mutation-nowing-${{ matrix.service }}*
-            nowing_backend/mutation-nowing-${{ matrix.service }}*
+            _bmad-output/test-artifacts/mutation-nowing-${{ steps.safe.outputs.service }}*
+            nowing_backend/mutation-nowing-${{ steps.safe.outputs.service }}*
           if-no-files-found: ignore
           retention-days: 14
