@@ -101,15 +101,19 @@ def discover_tests(backend: Path, service: str) -> list[str]:
     if not tests_dir.exists():
         return ["tests/unit"]
 
+    # A service may be scoped to a submodule (e.g. "memory/repository"); use the
+    # package name for test discovery since submodule tests usually live under
+    # the package's test files.
+    search_key = service.split("/")[0] if "/" in service else service
     candidates = []
-    import_pattern = f"app.services.{service}"
+    import_pattern = f"app.services.{search_key}"
 
     for p in tests_dir.rglob("*.py"):
         if p.name == "conftest.py":
             continue
         name = p.stem
         # Filename match.
-        if service in name or name in service.replace("_", ""):
+        if search_key in name or name in search_key.replace("_", ""):
             candidates.append(str(p.relative_to(backend)))
             continue
         # Content match: test file imports the service module.
@@ -122,7 +126,7 @@ def discover_tests(backend: Path, service: str) -> list[str]:
 
     # Also search one directory level for service-named folders.
     for p in tests_dir.rglob("*"):
-        if p.is_dir() and service in p.name:
+        if p.is_dir() and search_key in p.name:
             for test_file in p.glob("test_*.py"):
                 rel = str(test_file.relative_to(backend))
                 if rel not in candidates:
@@ -166,10 +170,11 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
     out_dir = project_root / "_bmad-output" / "test-artifacts"
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    safe_service = service.replace("/", "-")
 
-    config = backend / f"mutation-nowing-{service}-{stamp}.toml"
+    config = backend / f"mutation-nowing-{safe_service}-{stamp}.toml"
     # Session path relative to backend so `cosmic-ray init/exec` can reach it.
-    session = out_dir / f"mutation-nowing-{service}-{stamp}.sqlite"
+    session = out_dir / f"mutation-nowing-{safe_service}-{stamp}.sqlite"
 
     module = backend / "app" / "services" / f"{service}.py"
     if not module.exists():
