@@ -146,7 +146,7 @@ def run(cmd: list[str] | str, *, cwd: Path, timeout: int = 600) -> subprocess.Co
 
 def ensure_cosmic_ray(backend: Path) -> None:
     """Fail fast with install instructions if cosmic-ray is missing."""
-    result = run(["uv", "run", "cosmic-ray", "--version"], cwd=backend, timeout=60)
+    result = run(["uv", "run", "--no-sync", "cosmic-ray", "--version"], cwd=backend, timeout=60)
     if result.returncode != 0:
         print("cosmic-ray not available. Install with:")
         print(f"  cd {backend} && uv add --dev cosmic-ray")
@@ -185,13 +185,13 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
                 module = backend / "app" / "services" / f"{service}.py"
 
     test_files = discover_tests(backend, service)
-    test_cmd = f"uv run pytest {' '.join(test_files)} -m 'unit or not integration' -x"
+    test_cmd = f'bash -c "uv run --no-sync pytest {" ".join(test_files)} -m \\"unit or not integration\\" -x 2>&1"'
 
     toml = f"""[cosmic-ray]
 module-path = "{module.relative_to(backend)}"
 timeout = {timeout}
 excluded-modules = ["tests", "migrations", "proprietary"]
-test-command = "{test_cmd}"
+test-command = '{test_cmd}'
 
 [cosmic-ray.distributor]
 name = "local"
@@ -204,11 +204,11 @@ def run_cosmic_ray(backend: Path, config: Path, session: Path) -> None:
     """Run baseline, init, exec for a service."""
     for step in ("baseline", "init", "exec"):
         if step == "init":
-            cmd = ["uv", "run", "cosmic-ray", step, str(config), str(session)]
+            cmd = ["uv", "run", "--no-sync", "cosmic-ray", step, str(config), str(session)]
         elif step == "exec":
-            cmd = ["uv", "run", "cosmic-ray", step, str(config), str(session)]
+            cmd = ["uv", "run", "--no-sync", "cosmic-ray", step, str(config), str(session)]
         else:
-            cmd = ["uv", "run", "cosmic-ray", step, str(config)]
+            cmd = ["uv", "run", "--no-sync", "cosmic-ray", step, str(config)]
 
         print(f"[mutation] cosmic-ray {step} {config.name}")
         result = run(cmd, cwd=backend, timeout=7200)
@@ -225,7 +225,7 @@ def dump_session(backend: Path, session: Path) -> list[dict]:
     We merge the two dicts into a single record.
     """
     jsonl = session.with_suffix(".jsonl")
-    result = run(["uv", "run", "cosmic-ray", "dump", str(session)], cwd=backend, timeout=120)
+    result = run(["uv", "run", "--no-sync", "cosmic-ray", "dump", str(session)], cwd=backend, timeout=120)
     if result.returncode != 0:
         raise RuntimeError(f"cosmic-ray dump failed: {result.stderr}")
     jsonl.write_text(result.stdout)
