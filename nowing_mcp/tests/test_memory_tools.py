@@ -22,6 +22,7 @@ if _BACKEND_ROOT not in sys.path:
 from mcp.server.lowlevel.server import request_ctx as mcp_request_ctx  # noqa: E402
 from mcp_server.config import Settings  # noqa: E402
 from mcp_server.core.auth import identity  # noqa: E402
+from mcp_server.core.client import ToolError  # noqa: E402
 from mcp_server.server import build_server  # noqa: E402
 
 
@@ -74,6 +75,28 @@ class FakeNowingClient:
                 "content": kwargs.get("json", {}).get("corrected_content", ""),
                 "previous_versions": [
                     {"previous_content": "Old fact"}
+                ],
+            }
+        if method == "GET" and "/research-threads/" in path and path.endswith(
+            "/context"
+        ):
+            return {
+                "thread_id": 9,
+                "title": "Q3 research",
+                "memories": [
+                    {
+                        "id": 7,
+                        "content": "Competitor X raised prices by 10%.",
+                        "type": "semantic",
+                        "confidence": 0.95,
+                    }
+                ],
+                "citations": [
+                    {
+                        "label": "example.com",
+                        "url": "https://example.com/pricing",
+                        "source_type": "url",
+                    }
                 ],
             }
         return []
@@ -208,8 +231,9 @@ def test_update_fact_calls_patch_endpoint(monkeypatch, settings):
     )
 
 
-def test_continue_research_calls_search_with_thread(monkeypatch, settings):
-    """nowing_continue_research searches memories filtered by research_thread_id."""
+def test_continue_research_reads_context_endpoint(monkeypatch, settings):
+    """nowing_continue_research reads the research-thread context endpoint and
+    renders BOTH the recalled memories and the thread's prior citations."""
     monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
 
     mcp, _client = build_server(settings)
@@ -227,11 +251,42 @@ def test_continue_research_calls_search_with_thread(monkeypatch, settings):
         identity.unbind_api_key(identity_token)
         mcp_request_ctx.reset(token)
 
-    assert "Competitor X" in str(result)
+    assert "Competitor X" in str(result)  # memory rendered
+    assert "https://example.com/pricing" in str(result)  # citation rendered
     assert any(
-        call[0] == "POST" and "/memories/search" in call[1]
+        call[0] == "GET" and "/research-threads/9/context" in call[1]
         for call in _client.calls
     )
+
+
+def test_continue_research_missing_thread_surfaces_not_found(monkeypatch, settings):
+    """A backend 404 on the context endpoint becomes a clear 'not found' error."""
+
+    class NotFoundClient(FakeNowingClient):
+        async def request(self, method: str, path: str, **kwargs):
+            if method == "GET" and path.endswith("/context"):
+                raise ToolError("Research thread not found")
+            return await super().request(method, path, **kwargs)
+
+    monkeypatch.setattr("mcp_server.server.NowingClient", NotFoundClient)
+
+    mcp, _client = build_server(settings)
+    token = mcp_request_ctx.set(SimpleNamespace())
+    identity_token = identity.bind_api_key("nw_pat_test")
+
+    try:
+        with pytest.raises(Exception) as exc:
+            asyncio.run(
+                mcp.call_tool(
+                    "nowing_continue_research",
+                    {"research_thread_id": 999999},
+                )
+            )
+    finally:
+        identity.unbind_api_key(identity_token)
+        mcp_request_ctx.reset(token)
+
+    assert "not found" in str(exc.value).lower()
 
 
 def test_disabled_memory_tool_is_hidden(monkeypatch, settings):

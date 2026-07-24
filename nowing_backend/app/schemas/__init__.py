@@ -48,6 +48,8 @@ from .memory import (
     MemorySearchResponse,
     MemoryUpdate,
     MemoryVersionRead,
+    ResearchThreadContext,
+    ThreadCitation,
 )
 from .model_connections import (
     ConnectionCreate,
@@ -200,15 +202,6 @@ __all__ = [
     "InviteUpdate",
     # Auth schemas
     "LlmSetupStatusRead",
-    # Memory schemas
-    "MemoryCreate",
-    "MemoryRead",
-    "MemoryReadLegacy",
-    "MemorySearchHit",
-    "MemorySearchRequest",
-    "MemorySearchResponse",
-    "MemoryUpdate",
-    "MemoryVersionRead",
     # Log schemas
     "LogBase",
     "LogCreate",
@@ -226,6 +219,15 @@ __all__ = [
     "MembershipRead",
     "MembershipReadWithUser",
     "MembershipUpdate",
+    # Memory schemas
+    "MemoryCreate",
+    "MemoryRead",
+    "MemoryReadLegacy",
+    "MemorySearchHit",
+    "MemorySearchRequest",
+    "MemorySearchResponse",
+    "MemoryUpdate",
+    "MemoryVersionRead",
     "ModelCreate",
     "ModelPreviewRead",
     "ModelProviderRead",
@@ -258,6 +260,7 @@ __all__ = [
     "ReportContentUpdate",
     "ReportRead",
     "ReportVersionInfo",
+    "ResearchThreadContext",
     "RoleCreate",
     "RoleRead",
     "RoleUpdate",
@@ -266,6 +269,7 @@ __all__ = [
     "SearchSourceConnectorRead",
     "SearchSourceConnectorUpdate",
     "StripeWebhookResponse",
+    "ThreadCitation",
     "ThreadHistoryLoadResponse",
     "ThreadListItem",
     "ThreadListResponse",

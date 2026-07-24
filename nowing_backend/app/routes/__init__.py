@@ -71,13 +71,14 @@ from .prompts_routes import router as prompts_router
 from .public_chat_routes import router as public_chat_router
 from .rbac_routes import router as rbac_router
 from .reports_routes import router as reports_router
+from .research_threads_routes import router as research_threads_router
 from .sandbox_routes import router as sandbox_router
 from .search_source_connectors_routes import router as search_source_connectors_router
 from .slack_add_connector_route import router as slack_add_connector_router
 from .stripe_routes import router as stripe_router
-from .usage_routes import router as usage_router
 from .team_memory_routes import router as team_memory_router
 from .teams_add_connector_route import router as teams_add_connector_router
+from .usage_routes import router as usage_router
 from .video_presentations_routes import router as video_presentations_router
 from .workspaces_routes import router as workspaces_router
 from .youtube_routes import router as youtube_router
@@ -149,6 +150,9 @@ router.include_router(usage_router)  # Usage and credit dashboard
 router.include_router(youtube_router)  # YouTube playlist resolution
 router.include_router(prompts_router)
 router.include_router(memories_router)  # Structured memory CRUD/search
+router.include_router(
+    research_threads_router
+)  # Research-thread continuity context (4.6)
 router.include_router(memory_router)  # User personal memory (memory.md style)
 router.include_router(team_memory_router)  # Workspace team memory
 router.include_router(automations_router)  # Automations CRUD + run history

@@ -110,6 +110,29 @@ class MemorySearchResponse(BaseModel):
     items: list[MemorySearchHit]
 
 
+class ThreadCitation(BaseModel):
+    """A prior source cited within a research thread's chat history.
+
+    ``url`` is populated for web-result citations (the MVP source of truth, per
+    FR-33); knowledge-base chunk citations carry a ``label``/``source_type`` but
+    no URL until chunk resolution lands. ``label`` is always present so the
+    citation is renderable even when a locator is not available.
+    """
+
+    label: str
+    url: str | None = None
+    source_type: str | None = None
+
+
+class ResearchThreadContext(BaseModel):
+    """Continuity payload for a research thread: its ranked memories + citations."""
+
+    thread_id: int
+    title: str | None = None
+    memories: list[MemorySearchHit] = Field(default_factory=list)
+    citations: list[ThreadCitation] = Field(default_factory=list)
+
+
 class MemoryLimits(BaseModel):
     soft: int
     hard: int

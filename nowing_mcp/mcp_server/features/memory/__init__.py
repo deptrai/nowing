@@ -8,6 +8,7 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import Field
 
 from ...core.client import NowingClient
+from ...core.errors import ToolError
 from ...core.rendering import ResponseFormatParam, clip, to_json
 from ...core.workspace_context import WorkspaceContext, WorkspaceParam
 from .annotations import (
@@ -159,34 +160,50 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         research_thread_id: ResearchThreadId,
         query: Annotated[
             str,
-            Field(description="Optional query to filter memories in the thread."),
+            Field(
+                description="Optional query to rank memories in the thread; "
+                "empty returns the most recent thread context."
+            ),
         ] = "",
         top_k: TopK = 5,
         workspace: WorkspaceParam = None,
         response_format: ResponseFormatParam = "markdown",
     ) -> str:
-        """Recall memories tied to a research thread to continue prior work.
+        """Resume a research thread with its prior memories and citations.
 
-        Use this when the user asks to continue a research topic; it scopes
-        recall to the research thread and returns the most relevant context.
+        Use this when the user asks to continue a research topic. It scopes
+        recall to the research thread (same ranking as nowing_recall) and also
+        returns the thread's previously cited sources, so you can pick up prior
+        work with both the facts and where they came from. Fails with a clear
+        error if the thread does not exist — it never creates one.
         """
         resolved = await context.resolve(workspace)
-        payload = {
-            "query": query or "",
+        params = {
+            "query": query or None,
             "top_k": max(1, min(top_k, 20)),
-            "type": None,
-            "tags": [],
-            "research_thread_id": research_thread_id,
         }
-        hits = await client.request(
-            "POST",
-            f"/workspaces/{resolved.id}/memories/search",
-            json=payload,
-        )
-        items = (hits or {}).get("items", [])
+        try:
+            data = await client.request(
+                "GET",
+                f"/workspaces/{resolved.id}/research-threads/{research_thread_id}/context",
+                params=params,
+            )
+        except ToolError as exc:
+            if "not found" in str(exc).lower():
+                raise ToolError(
+                    f"Research thread {research_thread_id} not found in workspace "
+                    f"'{resolved.name}'. It may not exist or belongs to another "
+                    "workspace; no thread was created."
+                ) from exc
+            raise
+        data = data or {}
         if response_format == "json":
-            return to_json(items)
-        return _render_recall(query or "research context", items)
+            return to_json(data)
+        return _render_continue(
+            query or "research context",
+            data.get("memories", []),
+            data.get("citations", []),
+        )
 
 
 def _render_memory(memory: dict | None, action: str) -> str:
@@ -216,4 +233,21 @@ def _render_recall(query: str, items: list[dict]) -> str:
             f"confidence {hit.get('confidence', 1.0):.2f}): "
             f"{clip(hit.get('content', '') or '(empty)', 500)}"
         )
+    return "\n".join(lines).strip()
+
+
+def _render_continue(query: str, memories: list[dict], citations: list[dict]) -> str:
+    """Render a research-thread continuity view: recalled memories + citations."""
+    sections = [_render_recall(query, memories), _render_citations(citations)]
+    return "\n\n".join(section for section in sections if section).strip()
+
+
+def _render_citations(citations: list[dict]) -> str:
+    if not citations:
+        return "## Previous citations\n\n_No prior citations recorded for this thread._"
+    lines = [f"## {len(citations)} previous citation(s)", ""]
+    for citation in citations:
+        label = citation.get("label") or citation.get("url") or "source"
+        url = citation.get("url")
+        lines.append(f"- [{label}]({url})" if url else f"- {label}")
     return "\n".join(lines).strip()
