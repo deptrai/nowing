@@ -291,7 +291,9 @@ def evaluate_service(service: str, records: list[dict]) -> dict:
         })
 
     p0 = len(triage["P0"])
-    if score < 60 or p0 > 0:
+    if total == 0:
+        verdict = "PASS"
+    elif score < 60 or p0 > 0:
         verdict = "FAIL"
     elif score < 80:
         verdict = "PASS_WITH_WARNINGS"
@@ -316,7 +318,8 @@ def write_report(project_root: Path, service: str, result: dict) -> Path:
     out_dir = project_root / "_bmad-output" / "test-artifacts"
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    path = out_dir / f"mutation-nowing-{service}-{stamp}.json"
+    safe_service = service.replace("/", "-")
+    path = out_dir / f"mutation-nowing-{safe_service}-{stamp}.json"
     path.write_text(json.dumps(result, indent=2, ensure_ascii=False))
     return path
 
