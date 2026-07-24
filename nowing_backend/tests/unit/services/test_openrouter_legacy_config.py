@@ -23,6 +23,9 @@ def _patch_base_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from app import config as config_module
 
     monkeypatch.setattr(config_module, "BASE_DIR", tmp_path)
+    # Ensure the test's on-disk YAML is used; an injected env var would
+    # otherwise take precedence and produce an empty config.
+    monkeypatch.delenv("GLOBAL_LLM_CONFIG_B64", raising=False)
 
 
 def test_legacy_billing_tier_emits_warning(monkeypatch, tmp_path, capsys):

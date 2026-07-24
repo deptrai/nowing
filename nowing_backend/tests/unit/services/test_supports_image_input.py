@@ -27,6 +27,13 @@ from app.services.openrouter_integration_service import (
 pytestmark = pytest.mark.unit
 
 
+@pytest.fixture(autouse=True)
+def _clear_global_llm_config_env(monkeypatch):
+    # Tests write their own global_llm_config.yaml; a stray env var would
+    # take precedence and mask the on-disk fixture.
+    monkeypatch.delenv("GLOBAL_LLM_CONFIG_B64", raising=False)
+
+
 _SETTINGS_BASE: dict = {
     "api_key": "sk-or-test",
     "id_offset": -10_000,

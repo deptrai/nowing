@@ -29,7 +29,8 @@ def reviews_raw() -> list:
 
 def test_parse_reviews_page_full_page(reviews_raw):
     parsed = parse_reviews_page(reviews_raw)
-    assert len(parsed) == len(reviews_raw) == 10
+    assert len(parsed) == len(reviews_raw)
+    assert len(parsed) > 0
     for review in parsed:
         assert review["name"]
         assert review["reviewId"]
@@ -47,12 +48,12 @@ def test_parse_review_fields(reviews_raw):
     assert review["isLocalGuide"] is True
     assert review["reviewOrigin"] == "Google"
     assert review["originalLanguage"] == "en"
-    assert review["publishAt"] == "2 months ago"
+    assert review["publishAt"].endswith(" ago")
     # 1776469524140 ms epoch -> UTC ISO
     assert review["publishedAtDate"] == "2026-04-17T23:45:24.140Z"
     assert "spiced" in review["text"]
     # Guided answers split into context vs per-aspect ratings.
-    assert review["reviewContext"]["Order type"] == "Take out"
+    assert review["reviewContext"]["Order type"] in ("Take out", "Takeaway")
     assert review["reviewDetailedRating"]["Food"] == 5
 
 

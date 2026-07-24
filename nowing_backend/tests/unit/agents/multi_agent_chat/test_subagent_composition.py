@@ -28,6 +28,7 @@ pytestmark = pytest.mark.unit
 _EXPECTED_SUBAGENTS = frozenset(
     {
         "amazon",
+        "chainlens",
         "deliverables",
         "dropbox",
         "google_drive",
