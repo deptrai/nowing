@@ -283,9 +283,9 @@ def _extract_cost_usd(
 ) -> float:
     """Best-effort USD cost extraction for a single LLM/image call.
 
-    Tries four sources in priority order and returns the first that
-    yields a positive number; returns 0.0 if all four fail (the call
-    will then debit nothing from the user's balance — fail-safe).
+    Tries up to four sources in priority order and returns the first that
+    yields a positive number; returns 0.0 if all fail (the call will then
+    debit nothing from the user's balance — fail-safe).
 
     Sources:
       1. ``kwargs["response_cost"]`` — LiteLLM's standard callback
@@ -295,9 +295,8 @@ def _extract_cost_usd(
       3. ``litellm.completion_cost(completion_response=response_obj)``
          — recompute from the response and LiteLLM's pricing table.
       4. ``litellm.cost_per_token(...)`` — fallback using aliases registered
-         by ``pricing_registration`` at startup. ``call_type`` is set to
-         ``"image_generation"`` for image calls and ``"completion"`` for chat
-         so LiteLLM looks up the right cost map entry.
+         by ``pricing_registration`` at startup, only for non-image chat calls;
+         image generation has no per-token cost table.
     """
     cost = kwargs.get("response_cost")
     if cost is not None:
@@ -336,13 +335,13 @@ def _extract_cost_usd(
                 "[TokenTracking] completion_cost failed for model=%s: %s", model, exc
             )
 
-    if model and (prompt_tokens > 0 or completion_tokens > 0):
+    if model and not is_image and (prompt_tokens > 0 or completion_tokens > 0):
         try:
             prompt_cost, completion_cost = litellm.cost_per_token(
                 model=model,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
-                call_type="image_generation" if is_image else "completion",
+                call_type="completion",
             )
             value = float(prompt_cost) + float(completion_cost)
             if value > 0:
