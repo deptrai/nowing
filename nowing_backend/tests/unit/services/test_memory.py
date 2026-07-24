@@ -17,7 +17,10 @@ class _FakeResult:
         self._value = value
         self._rows = rows or []
 
-    async def scalar_one_or_none(self):
+    def scalar_one_or_none(self):
+        return self._value
+
+    def scalar_one(self):
         return self._value
 
     def all(self):
@@ -42,6 +45,9 @@ class _FakeSession:
 
     async def refresh(self, obj, attribute_names=None):
         return obj
+
+    def expire(self, obj, attribute_names=None):
+        pass
 
 
 @pytest.mark.asyncio

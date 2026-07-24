@@ -150,6 +150,26 @@ async def finalize_assistant_message(
     )
 
     # Best-effort: enqueue memory extraction for this assistant turn.
+    # Respect the workspace toggle (and global default) before enqueueing,
+    # so disabled workspaces never spawn Celery tasks.
+    try:
+        from app.config import config
+        from app.db import Workspace, shielded_async_session
+
+        async with shielded_async_session() as ws:
+            workspace = await ws.get(Workspace, workspace_id)
+            if workspace is None or not (
+                config.MEMORY_AUTO_EXTRACT_ENABLED
+                and workspace.memory_auto_extract_enabled
+            ):
+                return
+    except Exception:
+        logger.exception(
+            "Failed to resolve workspace before enqueueing memory extraction for message %s",
+            stream_result.assistant_message_id,
+        )
+        return
+
     try:
         from app.tasks.celery_tasks.memory_extraction_task import (
             extract_memory_after_chat_turn,

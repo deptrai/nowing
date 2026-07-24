@@ -26,8 +26,6 @@ from app.utils.document_converters import embed_texts
 
 logger = logging.getLogger(__name__)
 
-_SIMILARITY_THRESHOLD = 0.97
-
 
 def _as_np(embedding: Any) -> np.ndarray:
     return np.asarray(embedding, dtype=np.float32)
@@ -71,14 +69,21 @@ class MemoryRepository:
         content: str,
         embedding: np.ndarray,
         *,
+        created_by_id: UUID | None = None,
         content_match_required: bool = True,
     ) -> Memory | None:
+        conditions = [
+            Memory.workspace_id == workspace_id,
+            Memory.embedding.op("<=>", return_type=Float)(embedding) < 0.08,
+        ]
+        # User-scoped memories have no workspace; scope deduplication to the
+        # owner so one user's personal memory cannot overwrite another's.
+        if workspace_id is None and created_by_id is not None:
+            conditions.append(Memory.created_by_id == created_by_id)
+
         stmt = (
             select(Memory)
-            .where(
-                Memory.workspace_id == workspace_id,
-                Memory.embedding.op("<=>", return_type=Float)(embedding) < 0.08,
-            )
+            .where(*conditions)
             .order_by(Memory.embedding.op("<=>", return_type=Float)(embedding))
             .limit(1)
         )
@@ -91,6 +96,15 @@ class MemoryRepository:
         if existing.content.strip().lower() == content.strip().lower():
             return existing
         return None
+
+    async def _load_with_versions(self, memory: Memory) -> Memory:
+        result = await self.session.execute(
+            select(Memory)
+            .options(selectinload(Memory.versions))
+            .where(Memory.id == memory.id)
+        )
+        loaded = result.scalar_one_or_none()
+        return loaded if loaded is not None else memory
 
     async def create_memory(
         self,
@@ -123,6 +137,7 @@ class MemoryRepository:
             workspace_id,
             content,
             embedding,
+            created_by_id=created_by_id,
             content_match_required=not update_on_duplicate,
         )
         if existing is not None:
@@ -151,7 +166,8 @@ class MemoryRepository:
             existing.updated_at = datetime.now(UTC)
             self.session.add(existing)
             await self.session.commit()
-            return existing
+            self.session.expire(existing, ["versions"])
+            return await self._load_with_versions(existing)
 
         memory = Memory(
             workspace_id=workspace_id,
@@ -167,8 +183,8 @@ class MemoryRepository:
         )
         self.session.add(memory)
         await self.session.commit()
-        await self.session.refresh(memory, attribute_names=["versions"])
-        return memory
+        self.session.expire(memory, ["versions"])
+        return await self._load_with_versions(memory)
 
     async def update_memory(
         self,
@@ -183,19 +199,24 @@ class MemoryRepository:
         research_thread_id: int | None = None,
         created_by_id: UUID | None = None,
         embedding: np.ndarray | list[float] | None = None,
-    ) -> Memory:
+        skip_version_if_unchanged: bool = False,
+    ) -> Memory | None:
         result = await self.session.execute(
             select(Memory).where(Memory.id == memory_id)
         )
-        memory = result.scalar_one()
+        memory = result.scalar_one_or_none()
+        if memory is None:
+            return None
 
-        version = MemoryVersion(
-            memory_id=memory.id,
-            previous_content=memory.content,
-            corrected_content=corrected_content,
-            corrected_by_id=corrected_by_id,
-        )
-        self.session.add(version)
+        content_changed = memory.content != corrected_content
+        if not (skip_version_if_unchanged and not content_changed):
+            version = MemoryVersion(
+                memory_id=memory.id,
+                previous_content=memory.content,
+                corrected_content=corrected_content,
+                corrected_by_id=corrected_by_id,
+            )
+            self.session.add(version)
 
         memory.content = corrected_content
         memory.updated_at = datetime.now(UTC)
@@ -218,7 +239,7 @@ class MemoryRepository:
         # Re-embed when content changes, unless an embedding is provided.
         if embedding is not None:
             memory.embedding = _as_np(embedding)
-        else:
+        elif content_changed:
             new_embedding = await self._embed(
                 corrected_content,
                 workspace_id=memory.workspace_id,
@@ -228,8 +249,8 @@ class MemoryRepository:
 
         self.session.add(memory)
         await self.session.commit()
-        await self.session.refresh(memory, attribute_names=["versions"])
-        return memory
+        self.session.expire(memory, ["versions"])
+        return await self._load_with_versions(memory)
 
     async def get_memory(self, memory_id: int) -> Memory | None:
         result = await self.session.execute(

@@ -233,7 +233,8 @@ python_functions = ["test_*"]
 addopts = "-v --tb=short -x --strict-markers -ra --durations=5 --import-mode=importlib"
 markers = [
     "unit: pure logic tests, no DB or external services",
-    "integration: tests that require a real PostgreSQL database"
+    "integration: tests that require a real PostgreSQL database",
+    "memory: tests for the memory subsystem",
 ]
 filterwarnings = [
     "ignore::UserWarning:chonkie",

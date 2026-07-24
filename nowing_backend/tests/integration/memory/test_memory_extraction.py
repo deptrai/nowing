@@ -174,13 +174,14 @@ async def test_extract_memory_records_token_usage(
     from app.db import TokenUsage
 
     result = await db_session.execute(
-        select(TokenUsage).where(TokenUsage.message_id == assistant_message.id)
+        select(TokenUsage).where(
+            TokenUsage.thread_id == thread.id,
+            TokenUsage.usage_type == "memory_create",
+        )
     )
     usage = result.scalar_one_or_none()
     assert usage is not None
-    assert usage.usage_type == "memory_create"
     assert usage.workspace_id == db_workspace.id
-    assert usage.message_id == assistant_message.id
 
 
 async def test_auto_extract_respects_workspace_toggle(

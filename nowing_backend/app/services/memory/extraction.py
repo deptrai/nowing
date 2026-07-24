@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 from litellm.exceptions import (
     APIConnectionError,
@@ -57,7 +57,7 @@ _EXTRACTION_SYSTEM_PROMPT = (
 class ExtractedFact(BaseModel):
     """One durable fact produced by the extraction LLM."""
 
-    content: str
+    content: Annotated[str, Field(min_length=1)]
     type: str = "semantic"
     tags: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.9, ge=0.0, le=1.0)
@@ -149,7 +149,7 @@ class MemoryExtractionService:
                 NewChatMessage.turn_id == turn_id,
                 NewChatMessage.role == NewChatMessageRole.USER,
             )
-            .order_by(NewChatMessage.created_at)
+            .order_by(NewChatMessage.created_at, NewChatMessage.id)
         )
         result = await self.session.execute(stmt)
         user_message = result.scalars().first()
@@ -246,6 +246,9 @@ class MemoryExtractionService:
                 created_memories.append(memory)
 
         # Record token usage for the extraction LLM call.
+        # ponytail: token_usage has a partial unique index on message_id, so
+        # reuse the assistant message_id would collide with the chat turn's
+        # own usage row. Track extraction cost against the thread instead.
         attributed_user_id = created_by_id or workspace.user_id
         if attributed_user_id is not None:
             await record_token_usage(
@@ -253,7 +256,7 @@ class MemoryExtractionService:
                 usage_type="memory_create",
                 workspace_id=workspace.id,
                 user_id=attributed_user_id,
-                message_id=assistant_message_id,
+                thread_id=thread.id,
                 prompt_tokens=acc.total_prompt_tokens,
                 completion_tokens=acc.total_completion_tokens,
                 total_tokens=acc.grand_total,

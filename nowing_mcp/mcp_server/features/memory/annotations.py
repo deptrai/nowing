@@ -35,7 +35,7 @@ MemoryTags = Annotated[
 ]
 
 ResearchThreadId = Annotated[
-    int | None,
+    int,
     Field(description="Research thread id to scope memory search to."),
 ]
 

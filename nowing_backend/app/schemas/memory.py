@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -41,7 +41,7 @@ class MemoryRead(BaseModel):
 
 
 class MemoryCreate(BaseModel):
-    content: str
+    content: Annotated[str, Field(min_length=1)]
     type: str = "semantic"
     source_type: str = "manual"
     source_id: int | None = None
@@ -63,12 +63,12 @@ class MemoryCreate(BaseModel):
 
 
 class MemoryUpdate(BaseModel):
-    corrected_content: str
+    corrected_content: Annotated[str, Field(min_length=1)]
 
 
 class MemorySearchRequest(BaseModel):
-    query: str
-    top_k: int = 5
+    query: Annotated[str, Field(min_length=1)]
+    top_k: int = Field(default=5, ge=1, le=100)
     type: str | None = None
     tags: list[str] = Field(default_factory=list)
     research_thread_id: int | None = None

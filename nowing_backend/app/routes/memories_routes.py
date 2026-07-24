@@ -135,7 +135,10 @@ async def update_memory(
         memory_id=memory_id,
         corrected_content=body.corrected_content,
         corrected_by_id=auth.user.id,
+        skip_version_if_unchanged=True,
     )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Memory not found")
     return _to_memory_read(updated)
 
 

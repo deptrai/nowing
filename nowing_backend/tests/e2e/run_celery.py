@@ -190,6 +190,7 @@ def _patch_llm_bindings() -> None:
 
     targets = [
         "app.services.llm_service.get_agent_llm",
+        "app.services.memory.extraction.get_agent_llm",
         "app.tasks.connector_indexers.confluence_indexer.get_agent_llm",
         "app.tasks.connector_indexers.google_drive_indexer.get_agent_llm",
         "app.tasks.connector_indexers.google_gmail_indexer.get_agent_llm",

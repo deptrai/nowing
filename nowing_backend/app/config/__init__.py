@@ -1,4 +1,5 @@
 import copy
+import logging
 import os
 import shutil
 from functools import lru_cache
@@ -23,6 +24,8 @@ load_dotenv(env_file)
 os.environ.setdefault("OR_APP_NAME", "Nowing")
 os.environ.setdefault("OR_SITE_URL", "https://nowing.com")
 
+logger = logging.getLogger(__name__)
+
 
 def _env_float(name: str, default: float) -> float:
     raw = os.getenv(name)
@@ -30,8 +33,8 @@ def _env_float(name: str, default: float) -> float:
         return default
     try:
         return float(raw)
-    except ValueError:
-        print(f"Warning: Invalid {name}={raw!r}; using default {default}")
+    except (ValueError, OverflowError):
+        logger.warning("Invalid %s=%r; using default %s", name, raw, default)
         return default
 
 
@@ -41,8 +44,8 @@ def _env_int(name: str, default: int) -> int:
         return default
     try:
         return int(raw)
-    except ValueError:
-        print(f"Warning: Invalid {name}={raw!r}; using default {default}")
+    except (ValueError, OverflowError):
+        logger.warning("Invalid %s=%r; using default %s", name, raw, default)
         return default
 
 
@@ -604,11 +607,11 @@ class Config:
     MEMORY_AUTO_EXTRACT_ENABLED = (
         os.getenv("MEMORY_AUTO_EXTRACT_ENABLED", "true").strip().lower() == "true"
     )
-    MEMORY_AUTO_EXTRACT_CONFIDENCE = _env_float(
-        "MEMORY_AUTO_EXTRACT_CONFIDENCE", 0.7
+    MEMORY_AUTO_EXTRACT_CONFIDENCE = max(
+        0.0, min(1.0, _env_float("MEMORY_AUTO_EXTRACT_CONFIDENCE", 0.7))
     )
-    MEMORY_AUTO_EXTRACT_MAX_ITEMS = _env_int(
-        "MEMORY_AUTO_EXTRACT_MAX_ITEMS", 3
+    MEMORY_AUTO_EXTRACT_MAX_ITEMS = max(
+        1, _env_int("MEMORY_AUTO_EXTRACT_MAX_ITEMS", 3)
     )
 
     NOWING_PUBLIC_URL = os.getenv("NOWING_PUBLIC_URL")

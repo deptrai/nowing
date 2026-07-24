@@ -155,7 +155,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         structured_output=False,
     )
     async def continue_research(
-        research_thread_id: ResearchThreadId = None,
+        research_thread_id: ResearchThreadId,
         query: Annotated[
             str,
             Field(description="Optional query to filter memories in the thread."),

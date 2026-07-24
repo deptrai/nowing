@@ -1,4 +1,4 @@
-"""Deterministic LLM fake for the E2E indexing pipeline.
+"""Deterministic LLM fake for the E2E indexing pipeline and memory extraction.
 
 The production indexing pipeline summarizes documents with:
 
@@ -6,15 +6,9 @@ The production indexing pipeline summarizes documents with:
     summary_result = await summary_chain.ainvoke({"document": ...})
     summary_content = summary_result.content
 
-The `llm` parameter is supplied per-document by
-`app.services.llm_service.get_agent_llm`. We patch THAT
-function to return a langchain-native FakeListChatModel so the rest of
-the chain works unchanged. No real LLM provider package is touched.
-
-Run-backend / run-celery use unittest.mock.patch.start() to install
-this at every binding site (the source module + every consumer that
-did `from app.services.llm_service import get_agent_llm`
-at module load time).
+Memory extraction reuses ``app.services.llm_service.get_agent_llm`` and calls
+``llm.ainvoke(prompt)`` directly.  We return a stub that emits a deterministic
+summary for normal prompts and a valid JSON fact array for extraction prompts.
 """
 
 from __future__ import annotations
@@ -23,17 +17,15 @@ import logging
 from typing import Any
 
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
+from langchain_core.messages import AIMessage
 
 logger = logging.getLogger(__name__)
+
+_EXTRACTION_MARKER = "memory extraction assistant"
 
 
 def _make_fake_llm() -> FakeListChatModel:
     """Build a fresh FakeListChatModel that returns a deterministic summary."""
-    # FakeListChatModel cycles through `responses` for each invocation. We
-    # supply a single deterministic string. The summary content is tagged
-    # with a marker that specs CAN assert on if they want, but the
-    # primary indexing assertion is on the file content (chunked + stored
-    # separately by the pipeline).
     fake = FakeListChatModel(
         responses=[
             "E2E_FAKE_SUMMARY: Indexed by Playwright E2E run with deterministic LLM stub."
@@ -42,7 +34,32 @@ def _make_fake_llm() -> FakeListChatModel:
     return fake
 
 
+class ConditionalFakeChatModel:
+    """Returns a memory-extraction JSON array for extraction prompts, else a summary."""
+
+    async def ainvoke(
+        self,
+        input: Any,
+        config: Any | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        prompt = input if isinstance(input, str) else str(input)
+        if _EXTRACTION_MARKER in prompt or "Return ONLY a valid JSON array" in prompt:
+            logger.info("[fake-llm] returning memory extraction JSON")
+            content = (
+                '[{"content":"Competitor X raised prices by 10% in Q2 2026.",'
+                '"type":"episodic","tags":["competitor","pricing"],'
+                '"confidence":0.95}]'
+            )
+        else:
+            logger.info("[fake-llm] returning deterministic summary")
+            content = (
+                "E2E_FAKE_SUMMARY: Indexed by Playwright E2E run with deterministic LLM stub."
+            )
+        return AIMessage(content=content)
+
+
 async def fake_get_agent_llm(*args: Any, **kwargs: Any) -> Any:
     """Drop-in replacement for app.services.llm_service.get_agent_llm."""
-    logger.info("[fake-llm] returning FakeListChatModel for E2E indexing")
-    return _make_fake_llm()
+    logger.info("[fake-llm] returning ConditionalFakeChatModel for E2E")
+    return ConditionalFakeChatModel()
