@@ -7,7 +7,15 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # pragma: no cover
     from .comparison import McnemarResult, bootstrap_delta_ci, mcnemar_test, paired_aggregate
     from .mc_accuracy import AccuracyResult, accuracy_with_wilson_ci, wilson_ci
-    from .retrieval import RetrievalScores, mrr, ndcg_at_k, recall_at_k, score_run
+    from .retrieval import (
+        RetrievalScores,
+        mrr,
+        ndcg_at_k,
+        noise_rate,
+        precision_at_k,
+        recall_at_k,
+        score_run,
+    )
 
 __all__ = [
     "AccuracyResult",
@@ -18,7 +26,9 @@ __all__ = [
     "mcnemar_test",
     "mrr",
     "ndcg_at_k",
+    "noise_rate",
     "paired_aggregate",
+    "precision_at_k",
     "recall_at_k",
     "score_run",
     "wilson_ci",
@@ -32,6 +42,8 @@ _MODULE_FOR = {
     "RetrievalScores": "retrieval",
     "mrr": "retrieval",
     "ndcg_at_k": "retrieval",
+    "noise_rate": "retrieval",
+    "precision_at_k": "retrieval",
     "recall_at_k": "retrieval",
     "score_run": "retrieval",
     "McnemarResult": "comparison",

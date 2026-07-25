@@ -272,9 +272,7 @@ async def _cmd_setup(args: argparse.Namespace) -> int:
                     raise
         if existing is None:
             ss_name = f"eval-{suite}-{utc_iso_timestamp()}"
-            row = await ss_client.create(
-                ss_name, description=f"nowing-evals lifecycle ({suite})"
-            )
+            row = await ss_client.create(ss_name, description=f"nowing-evals lifecycle ({suite})")
             console.print(
                 f"Created SearchSpace [cyan]{row.name}[/cyan] (id={row.id}) "
                 f"for suite [bold]{suite}[/bold]."
@@ -570,6 +568,75 @@ async def _cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_gate(args: argparse.Namespace) -> int:
+    """Evaluate the latest run artifact against the ship-gate thresholds (AC-6).
+
+    Deliberately does NOT require ``get_suite_state`` the way ``report`` does.
+    The gate's whole job is to run in CI against a committed/produced artifact;
+    requiring a live ``setup`` would make it un-runnable exactly where it matters.
+
+    Exit codes: ``0`` pass, ``1`` fail (threshold miss), ``2`` operator error
+    (no artifact, unreadable config). A threshold miss and a missing artifact are
+    kept distinct so a silently-absent run can never be mistaken for a pass.
+    """
+
+    from .gate import GateConfigError, evaluate_gate, load_gate_thresholds
+
+    config = load_config()
+    suite = args.suite
+    benchmark = args.benchmark
+
+    try:
+        thresholds = load_gate_thresholds(args.config)
+    except GateConfigError as exc:
+        console.print(f"[red]Invalid gate config: {exc}[/red]")
+        return 2
+
+    artifacts = _collect_artifacts(config, suite, [benchmark])
+    if not artifacts:
+        console.print(
+            f"[red]No run artifact found for {suite}/{benchmark} under "
+            f"{config.suite_runs_dir(suite)}. Run the benchmark before gating.[/red]"
+        )
+        return 2
+
+    latest = max(artifacts, key=lambda a: a.run_timestamp)
+    result = evaluate_gate(latest.metrics, thresholds)
+
+    def _fmt(value: Any) -> str:
+        if value is None:
+            return "[red]missing[/red]"
+        if isinstance(value, float):
+            return f"{value:.3f}"
+        return str(value)
+
+    observed = result.observed
+    table = Table(title=f"Ship-gate — {suite}/{benchmark} @ {latest.run_timestamp}")
+    table.add_column("check")
+    table.add_column("observed")
+    table.add_column("threshold")
+    table.add_row(
+        "precision@5",
+        _fmt(observed.get("precision_at_5")),
+        f">= {thresholds.precision_at_5_min:.3f}",
+    )
+    table.add_row(
+        "noise rate",
+        _fmt(observed.get("noise_rate")),
+        f"<= {thresholds.noise_rate_max:.3f}",
+    )
+    table.add_row("n_queries", _fmt(observed.get("n_queries")), "> 0")
+    console.print(table)
+
+    if result.passed:
+        console.print(f"[green]gate PASS[/green] — {suite}/{benchmark}")
+        return 0
+
+    for reason in result.reasons:
+        console.print(f"[red]gate FAIL[/red] {reason}")
+    return 1
+
+
 def _collect_artifacts(
     config: Config, suite: str, benchmark_names: list[str]
 ) -> list[registry.RunArtifact]:
@@ -753,6 +820,20 @@ def _build_parser() -> argparse.ArgumentParser:
     p_report.add_argument("--suite", required=True)
     p_report.add_argument("--benchmark", default=None, help="Optional: report only this benchmark.")
     p_report.set_defaults(_func=_cmd_report, _async=True)
+
+    p_gate = sub.add_parser(
+        "gate",
+        help="Evaluate the latest run artifact against ship-gate thresholds (non-zero on fail).",
+    )
+    p_gate.add_argument("--suite", required=True)
+    p_gate.add_argument("--benchmark", required=True)
+    p_gate.add_argument(
+        "--config",
+        default=None,
+        help="Gate config path (default: the committed suites/<suite>/<benchmark>/gate.yaml).",
+    )
+    # Synchronous: reading a manifest and comparing floats needs no event loop.
+    p_gate.set_defaults(_func=_cmd_gate, _async=False)
 
     return parser
 

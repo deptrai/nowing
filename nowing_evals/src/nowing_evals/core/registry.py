@@ -20,7 +20,7 @@ from typing import Any, Protocol, runtime_checkable
 
 import httpx
 
-from .clients import DocumentsClient, NewChatClient, SearchSpaceClient
+from .clients import DocumentsClient, MemoriesClient, NewChatClient, SearchSpaceClient
 from .config import Config, SuiteState
 
 # ---------------------------------------------------------------------------
@@ -105,6 +105,11 @@ class RunContext:
 
     def new_chat_client(self) -> NewChatClient:
         return NewChatClient(self.http, self.config.nowing_api_base)
+
+    def memories_client(self) -> MemoriesClient:
+        """Long-term memory surface (Story 3.9): create + hybrid search."""
+
+        return MemoriesClient(self.http, self.config.nowing_api_base)
 
     def maps_dir(self) -> Path:
         path = self.config.suite_maps_dir(self.suite)

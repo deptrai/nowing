@@ -22,6 +22,10 @@ dependencies = [
     "scipy>=1.12.0",
     "python-dotenv>=1.0.0",
     "rich>=13.7.0",
+    # Reads suites/memory/recall/gate.yaml (Story 3.9 eval-gate). Previously
+    # available only as a transitive dep of datasets/huggingface_hub — declared
+    # directly so the gate cannot break when that chain changes.
+    "PyYAML>=6.0",
     "trafilatura>=1.12.0",
     "pypdf>=5.1.0",
     "azure-ai-documentintelligence>=1.0.2",

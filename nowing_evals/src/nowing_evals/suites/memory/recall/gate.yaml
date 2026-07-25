@@ -1,0 +1,18 @@
+# Memory-recall ship-gate thresholds — Story 3.9 (AC-6), SM-10.
+#
+# CONCRETE NUMBERS ONLY. A placeholder here (">=X%", null, a quoted string) is
+# rejected at load time by core/gate.py: an unset threshold is a broken gate, and
+# a broken gate that reports "pass" is worse than having no gate at all.
+#
+# Ship conditions (both must hold, plus n_queries > 0):
+precision_at_5_min: 0.80   # SM-10 floor: >= 4 of the top 5 hits are relevant.
+noise_rate_max: 0.20       # = 1 - precision floor. Ship-blocking ceiling.
+
+# Recall-surface params the run must have scored with (RS-2). These pin the
+# oracle, so the thresholds above are measured against a specified surface
+# rather than whatever the runner happened to default to.
+min_similarity: 0.30       # Similarity floor; only enforced when the backend
+                           # actually returns a score column (see §9 — the route
+                           # currently hardcodes score=0.0, so the oracle
+                           # degrades to rank-only and this value is inert).
+top_k: 5                   # Clamped to <= 5 by RS-2.

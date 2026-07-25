@@ -67,6 +67,15 @@ class VisionModelEntry:
         )
 
 
+# Backwards-compatible alias. ``VisionModelEntry`` was previously named
+# ``VisionLlmConfigEntry``; the rename missed ``core/vision_llm.py`` and
+# ``tests/core/test_vision_llm.py``, which left the whole CLI unimportable
+# (``python -m nowing_evals <anything>`` raised ImportError at startup).
+# Keeping the old name bound here fixes both call sites without a churny
+# rename, and marks the alias as the deprecated spelling.
+VisionLlmConfigEntry = VisionModelEntry
+
+
 @dataclass
 class ModelRoles:
     """Model role ids for a search space."""
