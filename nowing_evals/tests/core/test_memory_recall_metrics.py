@@ -245,3 +245,40 @@ def test_new_metrics_exported_from_metrics_package():
 
     for name in ("precision_at_k", "noise_rate", "distractor_rate", "off_corpus_rate"):
         assert hasattr(metrics, name), name
+
+
+# --------------------------------------------------------------------------- #
+# recall_at_k / ndcg_at_k / score_run — edge cases not covered above
+# --------------------------------------------------------------------------- #
+
+
+def test_recall_at_k_is_zero_when_no_relevant_docs_are_labeled():
+    """An empty relevant set has nothing to find; must not divide by zero."""
+    from nowing_evals.core.metrics.retrieval import recall_at_k
+
+    assert recall_at_k(["a", "b"], [], k=5) == 0.0
+
+
+def test_ndcg_at_k_is_zero_when_qrels_is_empty():
+    """No labels at all -> nDCG is 0.0, not a ZeroDivisionError."""
+    from nowing_evals.core.metrics.retrieval import ndcg_at_k
+
+    assert ndcg_at_k(["a", "b"], {}, k=5) == 0.0
+
+
+def test_ndcg_at_k_is_zero_when_every_qrel_grade_is_zero():
+    """A qrels mapping whose grades are all 0 has an ideal DCG of 0 (idcg == 0),
+    which must short-circuit to 0.0 rather than raising ZeroDivisionError."""
+    from nowing_evals.core.metrics.retrieval import ndcg_at_k
+
+    assert ndcg_at_k(["a", "b"], {"a": 0.0, "b": 0.0}, k=5) == 0.0
+
+
+def test_score_run_rejects_primary_k_below_one():
+    """primary_k is a window size; zero or negative is not a valid window."""
+    with pytest.raises(ValueError, match="primary_k must be >= 1"):
+        score_run(
+            per_query_retrieved={"q1": ["a"]},
+            per_query_qrels={"q1": {"a": 1}},
+            primary_k=0,
+        )

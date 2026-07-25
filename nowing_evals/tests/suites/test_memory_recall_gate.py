@@ -158,6 +158,118 @@ def test_gate_fails_closed_on_unusable_metric_values(bad):
 
 
 # --------------------------------------------------------------------------- #
+# Missing-metric reasons — every "is missing" branch, not just "out of range"
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    ("drop_key", "expected_substring"),
+    [
+        ("n_queries", "n_queries is missing"),
+        ("top_k", "top_k is missing from the artifact"),
+        ("oracle_mode", "oracle_mode is missing from the artifact"),
+        ("distractor_noise_rate", "distractor_noise_rate is missing"),
+        ("off_corpus_rate", "off_corpus_rate is missing"),
+        ("recall_at_k", "recall@5 is missing"),
+        ("mrr", "mrr is missing"),
+    ],
+)
+def test_gate_reports_missing_metric_by_name(drop_key, expected_substring):
+    """A metric absent from the artifact must be reported distinctly from
+    a metric that is merely below/above threshold."""
+    metrics = _metrics()
+    del metrics[drop_key]
+    result = evaluate_gate(metrics, _thresholds())
+    assert result.passed is False
+    assert any(expected_substring in reason for reason in result.reasons)
+
+
+def test_gate_reports_non_integer_n_failed_queries_as_missing():
+    """Unlike ``n_queries``, ``n_failed_queries`` defaults to 0 when absent —
+    but a present, non-integer value must still be reported as unusable
+    rather than silently coerced."""
+    result = evaluate_gate(_metrics(n_failed_queries="none"), _thresholds())
+    assert result.passed is False
+    assert any("n_failed_queries is missing" in reason for reason in result.reasons)
+
+
+def test_gate_reports_empty_oracle_mode_string_as_missing():
+    """An empty string is not a usable oracle_mode, and must not compare
+    equal to itself as if it were a legitimate value."""
+    result = evaluate_gate(_metrics(oracle_mode=""), _thresholds())
+    assert result.passed is False
+    assert any("oracle_mode is missing" in reason for reason in result.reasons)
+
+
+def test_gate_observed_dict_reports_none_for_missing_oracle_mode():
+    """``observed['oracle_mode']`` must be ``None``, not the raw non-string value,
+    so the CLI table renders 'missing' rather than crashing on ``:.3f``."""
+    result = evaluate_gate(_metrics(oracle_mode=123), _thresholds())
+    assert result.observed["oracle_mode"] is None
+
+
+# --------------------------------------------------------------------------- #
+# Threshold field validators not otherwise exercised
+# --------------------------------------------------------------------------- #
+
+
+def test_thresholds_reject_unsupported_oracle_mode():
+    with pytest.raises(ValueError, match="rank_only, score_threshold"):
+        _thresholds(required_oracle_mode="fuzzy_match")
+
+
+def test_thresholds_reject_extra_unknown_fields():
+    """``extra='forbid'``: a typo'd threshold key must not be silently ignored."""
+    with pytest.raises(ValueError):
+        GateThresholds(
+            recall_at_5_min=0.9,
+            mrr_min=0.7,
+            distractor_noise_rate_max=0.1,
+            off_corpus_rate_max=0.05,
+            min_queries=30,
+            recall_at_1_min=0.5,  # not a real field
+        )
+
+
+# --------------------------------------------------------------------------- #
+# load_gate_thresholds — failure modes beyond "file missing" / "not a mapping"
+# --------------------------------------------------------------------------- #
+
+
+def test_gate_config_loader_rejects_malformed_yaml(tmp_path):
+    """Broken YAML syntax must raise GateConfigError, not the raw yaml.YAMLError."""
+    bad = tmp_path / "gate.yaml"
+    bad.write_text("recall_at_5_min: [unclosed\n", encoding="utf-8")
+    with pytest.raises(GateConfigError, match="not valid YAML"):
+        load_gate_thresholds(bad)
+
+
+def test_gate_config_loader_rejects_invalid_utf8(tmp_path):
+    """A config file that isn't valid UTF-8 must raise GateConfigError."""
+    bad = tmp_path / "gate.yaml"
+    bad.write_bytes(b"recall_at_5_min: 0.9\xff\xfe")
+    with pytest.raises(GateConfigError, match="not valid UTF-8"):
+        load_gate_thresholds(bad)
+
+
+def test_gate_config_loader_surfaces_field_validation_errors(tmp_path):
+    """A structurally valid YAML mapping with an out-of-range value must still
+    raise GateConfigError (wrapping the pydantic ValueError), not propagate a
+    raw pydantic exception type the CLI does not catch."""
+    bad = tmp_path / "gate.yaml"
+    bad.write_text(
+        "recall_at_5_min: 1.5\n"
+        "mrr_min: 0.7\n"
+        "distractor_noise_rate_max: 0.1\n"
+        "off_corpus_rate_max: 0.05\n"
+        "min_queries: 30\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(GateConfigError, match="Invalid gate configuration"):
+        load_gate_thresholds(bad)
+
+
+# --------------------------------------------------------------------------- #
 # AC-6 — thresholds must be concrete AND ratified
 # --------------------------------------------------------------------------- #
 

@@ -380,6 +380,58 @@ async def test_memories_delete_tolerates_already_deleted(respx_mock, http):
 
 @pytest.mark.asyncio
 @respx.mock(base_url=_BASE)
+async def test_memories_create_reports_unexpected_payload_shape(respx_mock, http):
+    """A 200 that isn't a JSON object must raise, not return a garbage dict."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    respx_mock.post("/api/v1/workspaces/7/memories").mock(
+        return_value=httpx.Response(200, json=[1, 2, 3])
+    )
+    client = MemoriesClient(http, _BASE)
+    with pytest.raises(RuntimeError, match="Unexpected memory create payload"):
+        await client.create(7, "x")
+
+
+@pytest.mark.asyncio
+async def test_memories_search_rejects_non_integer_top_k(http):
+    """A bool or float top_k must be rejected before the request is sent."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    client = MemoriesClient(http, _BASE)
+    with pytest.raises(ValueError, match="top_k must be an integer"):
+        await client.search(7, "q", top_k=True)
+    with pytest.raises(ValueError, match="top_k must be an integer"):
+        await client.search(7, "q", top_k=2.5)
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_memories_search_reports_unexpected_payload_shape(respx_mock, http):
+    """A JSON body that decodes but has no 'items' list must raise clearly."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    respx_mock.post("/api/v1/workspaces/7/memories/search").mock(
+        return_value=httpx.Response(200, json={"result": "ok"})
+    )
+    client = MemoriesClient(http, _BASE)
+    with pytest.raises(RuntimeError, match="Unexpected memory search payload"):
+        await client.search(7, "q", top_k=5)
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_memories_delete_raises_on_non_404_error(respx_mock, http):
+    """A real server error must propagate rather than being swallowed like 404."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    respx_mock.delete("/api/v1/memories/42").mock(return_value=httpx.Response(500))
+    client = MemoriesClient(http, _BASE)
+    with pytest.raises(httpx.HTTPStatusError):
+        await client.delete(42)
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
 async def test_memories_search_unwraps_ranked_items_and_filters(respx_mock, http):
     """Search posts the workspace-scoped payload and returns the ordered items."""
     from nowing_evals.core.clients import MemoriesClient

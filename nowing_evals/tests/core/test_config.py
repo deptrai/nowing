@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from nowing_evals.core.config import (
     DEFAULT_SCENARIO,
     SCENARIOS,
@@ -159,3 +161,51 @@ def test_load_config_picks_explicit_memory_workspace_id(tmp_env, monkeypatch):  
     monkeypatch.setenv("NOWING_EVAL_WORKSPACE_ID", "27")
     config = load_config()
     assert config.memory_workspace_id == 27
+
+
+def test_load_config_ignores_non_integer_workspace_id(tmp_env, monkeypatch, caplog):  # noqa: ARG001
+    """A typo'd env var must not crash `models list` / `report` — it warns and
+    leaves memory_workspace_id unset so the memory suite fails loudly later."""
+    import logging
+
+    monkeypatch.setenv("NOWING_EVAL_WORKSPACE_ID", "not-a-number")
+    with caplog.at_level(logging.WARNING):
+        config = load_config()
+    assert config.memory_workspace_id is None
+    assert any("not an integer" in record.getMessage() for record in caplog.records)
+
+
+def test_load_config_ignores_non_positive_workspace_id(tmp_env, monkeypatch, caplog):  # noqa: ARG001
+    """Workspace ids are positive integers; 0 or negative must be ignored, not
+    accepted as a (nonsensical) workspace id."""
+    import logging
+
+    monkeypatch.setenv("NOWING_EVAL_WORKSPACE_ID", "0")
+    with caplog.at_level(logging.WARNING):
+        config = load_config()
+    assert config.memory_workspace_id is None
+    assert any("must be positive" in record.getMessage() for record in caplog.records)
+
+
+def test_load_config_ignores_empty_workspace_id_env(tmp_env, monkeypatch):  # noqa: ARG001
+    """An env var explicitly set to the empty string behaves like unset."""
+    monkeypatch.setenv("NOWING_EVAL_WORKSPACE_ID", "")
+    config = load_config()
+    assert config.memory_workspace_id is None
+
+
+def test_corrupted_state_file_raises_actionable_error(tmp_env):  # noqa: ARG001
+    """A hand-edited or truncated state.json must fail loudly with a path to
+    fix it, rather than being silently treated as 'no suites configured'."""
+    config = load_config()
+    config.data_dir.mkdir(parents=True, exist_ok=True)
+    config.state_path.write_text("{ not json", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="Failed to read state file"):
+        get_suite_state(config, "medical")
+
+
+def test_clear_suite_state_on_unknown_suite_returns_false(tmp_env):  # noqa: ARG001
+    """Clearing a suite that was never set up is a no-op, not an error."""
+    config = load_config()
+    assert clear_suite_state(config, "never-configured") is False
