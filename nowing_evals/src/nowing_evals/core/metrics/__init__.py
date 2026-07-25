@@ -7,7 +7,18 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # pragma: no cover
     from .comparison import McnemarResult, bootstrap_delta_ci, mcnemar_test, paired_aggregate
     from .mc_accuracy import AccuracyResult, accuracy_with_wilson_ci, wilson_ci
-    from .retrieval import RetrievalScores, mrr, ndcg_at_k, recall_at_k, score_run
+    from .retrieval import (
+        RetrievalScores,
+        distractor_rate,
+        mrr,
+        ndcg_at_k,
+        noise_rate,
+        off_corpus_rate,
+        precision_at_k,
+        recall_at_k,
+        score_run,
+        slot_share,
+    )
 
 __all__ = [
     "AccuracyResult",
@@ -15,12 +26,17 @@ __all__ = [
     "RetrievalScores",
     "accuracy_with_wilson_ci",
     "bootstrap_delta_ci",
+    "distractor_rate",
     "mcnemar_test",
     "mrr",
     "ndcg_at_k",
+    "noise_rate",
+    "off_corpus_rate",
     "paired_aggregate",
+    "precision_at_k",
     "recall_at_k",
     "score_run",
+    "slot_share",
     "wilson_ci",
 ]
 
@@ -30,10 +46,15 @@ _MODULE_FOR = {
     "accuracy_with_wilson_ci": "mc_accuracy",
     "wilson_ci": "mc_accuracy",
     "RetrievalScores": "retrieval",
+    "distractor_rate": "retrieval",
     "mrr": "retrieval",
     "ndcg_at_k": "retrieval",
+    "noise_rate": "retrieval",
+    "off_corpus_rate": "retrieval",
+    "precision_at_k": "retrieval",
     "recall_at_k": "retrieval",
     "score_run": "retrieval",
+    "slot_share": "retrieval",
     "McnemarResult": "comparison",
     "bootstrap_delta_ci": "comparison",
     "mcnemar_test": "comparison",

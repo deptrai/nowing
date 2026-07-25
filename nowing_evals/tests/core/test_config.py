@@ -152,3 +152,10 @@ def test_scenario_constants_are_stable():
 
     assert SCENARIOS == ("head-to-head", "symmetric-cheap", "cost-arbitrage")
     assert DEFAULT_SCENARIO == "head-to-head"
+
+
+def test_load_config_picks_explicit_memory_workspace_id(tmp_env, monkeypatch):  # noqa: ARG001
+    """Memory recall never infers a Workspace id from a SearchSpace id."""
+    monkeypatch.setenv("NOWING_EVAL_WORKSPACE_ID", "27")
+    config = load_config()
+    assert config.memory_workspace_id == 27

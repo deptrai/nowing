@@ -14,6 +14,7 @@ are idempotent without forcing the operator to remember an integer.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -22,6 +23,8 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Resolve once at import time. ``find_dotenv`` walks up; an explicit ``.env``
 # at the package root or in CWD wins. Silent-no-op if neither exists.
@@ -59,6 +62,11 @@ class Config:
     # Filesystem paths.
     data_dir: Path
     reports_dir: Path
+
+    # Required only by the memory-recall suite. It intentionally stays
+    # separate from ``search_space_id`` because the memory API is
+    # workspace-scoped; a default preserves Config's existing callers.
+    memory_workspace_id: int | None = None
 
     @property
     def state_path(self) -> Path:
@@ -103,10 +111,34 @@ def load_config() -> Config:
     project_root = _project_root()
     data_dir = Path(os.environ.get("EVAL_DATA_DIR") or (project_root / "data")).resolve()
     reports_dir = Path(os.environ.get("EVAL_REPORTS_DIR") or (project_root / "reports")).resolve()
+    raw_workspace_id = os.environ.get("NOWING_EVAL_WORKSPACE_ID")
+    memory_workspace_id: int | None = None
+    if raw_workspace_id:
+        # Parsed leniently on purpose: ``load_config`` runs for EVERY command, so
+        # raising here would break `models list` / `report` / a CUREv1 run over an
+        # env var only the memory suite reads. ``resolve_workspace_id`` enforces
+        # it loudly at the operation boundary instead.
+        try:
+            parsed = int(raw_workspace_id)
+        except ValueError:
+            logger.warning(
+                "Ignoring NOWING_EVAL_WORKSPACE_ID=%r: not an integer. Memory-suite "
+                "commands will fail until it is corrected.",
+                raw_workspace_id,
+            )
+        else:
+            if parsed > 0:
+                memory_workspace_id = parsed
+            else:
+                logger.warning(
+                    "Ignoring NOWING_EVAL_WORKSPACE_ID=%r: must be positive.",
+                    raw_workspace_id,
+                )
     return Config(
         nowing_api_base=os.environ.get("NOWING_API_BASE", "http://localhost:8000").rstrip(
             "/"
         ),
+        memory_workspace_id=memory_workspace_id,
         openrouter_api_key=os.environ.get("OPENROUTER_API_KEY") or None,
         openrouter_base_url=os.environ.get(
             "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"

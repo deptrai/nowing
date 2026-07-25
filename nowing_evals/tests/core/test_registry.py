@@ -56,3 +56,27 @@ def test_register_unregister_roundtrip():
     assert ("_demo", "hello") in registry.snapshot()
     registry.unregister("_demo", "hello")
     assert dict(registry.snapshot()) == snapshot_before
+
+
+async def test_run_context_creates_memories_client(isolated_config):
+    """New benchmark suites receive the shared authenticated memory client seam."""
+    import httpx
+
+    from nowing_evals.core.clients import MemoriesClient
+    from nowing_evals.core.config import SuiteState
+    from nowing_evals.core.registry import RunContext
+
+    async with httpx.AsyncClient() as http:
+        context = RunContext(
+            suite="memory",
+            benchmark="recall",
+            config=isolated_config,
+            suite_state=SuiteState(
+                search_space_id=10,
+                chat_model_id=-1,
+                provider_model="openai/gpt-5",
+                created_at="2026-07-25T00-00-00Z",
+            ),
+            http=http,
+        )
+        assert isinstance(context.memories_client(), MemoriesClient)

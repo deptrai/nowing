@@ -1,0 +1,61 @@
+# Memory-recall ship gate — NFR-8 / SM-10 / RS-2 / RS-7 (Story 3.9).
+#
+# Every value here is a CONCRETE number: epics AC3 forbids placeholders such as
+# ">=X%". But concrete is not the same as validated — epics.md also requires the
+# SM-10 figures to be chosen AFTER a measured baseline ("Given baseline đã đo,
+# When chốt số SM-10"), and prd.md warns that setting thresholds before
+# measuring repeats the NFR6 mistake. The values below are therefore PROVISIONAL
+# and `baseline_ratified: false` makes the gate fail closed until they are
+# replaced with measured numbers and signed off by the SM-10 metric owner.
+#
+# Why these metrics and not precision@5 (Story 3.9 review, DEC-1):
+# the labeled dataset is known-item retrieval (1-2 relevant memories per query
+# over a 36-memory corpus), so precision@5 is bounded above by
+# |relevant| / 5 = 0.20-0.40 and is really success@5 rescaled. Gating on it
+# would either be unreachable or force a degenerate corpus where ~11% of every
+# memory is relevant to every query. precision@5 is still computed and reported
+# as a diagnostic, with its Wilson CI paired to the pooled estimator it
+# actually brackets.
+
+# Did the retriever surface the right memory at all, within the RS-2 window?
+recall_at_5_min: 0.90
+
+# Was it ranked well, not merely present? Guards against "it is in there
+# somewhere at rank 5" passing as remembering.
+mrr_min: 0.70
+
+# Share of judged slots taken by memories the dataset labels as
+# must-not-recall. Independent of precision by construction (DEC-4), unlike
+# `1 - precision@5`, which is algebraically determined by precision and so
+# cannot act as a second constraint.
+distractor_noise_rate_max: 0.10
+
+# Share of judged slots that resolve to NO labeled memory: pre-existing tenant
+# rows, duplicates from a failed ingest, auto-extracted facts. Without a
+# ceiling here a polluted workspace scores perfectly, because foreign memories
+# are simply absent from the qrels. The eval workspace must be dedicated.
+off_corpus_rate_max: 0.05
+
+# A lucky single query is not evidence. The committed dataset has 36 queries;
+# this allows a few to be dropped without silently shrinking the sample.
+min_queries: 30
+
+# RS-2: the recall window. The gate refuses artifacts scored at a different
+# depth rather than comparing incomparable numbers.
+top_k: 5
+
+# The oracle definition the artifact must have been produced under.
+# `rank_only` because the backend discards the RRF score and serialises
+# score=0.0 for every hit (app/services/memory/search.py -> memories_routes.py),
+# so a similarity threshold cannot be applied to this surface today. Exposing
+# the real score is deferred to Story 3.11; see deferred-work.md. Recording the
+# mode here means a run that claims a threshold it could not apply is rejected
+# instead of quietly redefining the metric.
+required_oracle_mode: rank_only
+
+# SM-10 ratification. Flip to true, and fill baseline_source with the run id /
+# evidence pointer, only once the numbers above come from a measured baseline on
+# the real corpus (per Story 3.9 section 8: after 3.10b recovery and after
+# story 8.7 freezes auto-extract) and the metric owner has signed off.
+baseline_ratified: false
+baseline_source: ""

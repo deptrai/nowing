@@ -35,6 +35,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import re
 import sys
 from dataclasses import dataclass
 from typing import Any
@@ -71,6 +72,10 @@ from .vision_llm import VisionConfigError, resolve_vision_llm
 
 logger = logging.getLogger("nowing_evals")
 console = Console(legacy_windows=False)
+
+#: Run directories are named by ``utc_iso_timestamp()``. Anything else is not a
+#: run and must not take part in the "latest wins" ordering.
+_RUN_TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$")
 
 
 # ---------------------------------------------------------------------------
@@ -452,17 +457,47 @@ def _cmd_benchmarks_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _detached_suite_state() -> SuiteState:
+    """Synthetic state for benchmarks that need no SearchSpace or chat model.
+
+    A workspace-scoped suite (memory recall) touches neither, so requiring
+    ``setup`` would force it to provision an unrelated SearchSpace and pin an
+    OpenRouter model it never calls — undoing the very decoupling that
+    ``Config.memory_workspace_id`` exists to express.
+    """
+
+    return SuiteState(
+        search_space_id=0,
+        chat_model_id=0,
+        provider_model="",
+        created_at=utc_iso_timestamp(),
+    )
+
+
+def _resolve_suite_state(
+    config: Config, suite: str, benchmark: Any
+) -> tuple[SuiteState | None, int]:
+    """Return ``(state, exit_code)``; a non-zero code means the caller should stop."""
+
+    state = get_suite_state(config, suite)
+    if state is not None:
+        return state, 0
+    if not getattr(benchmark, "requires_suite_setup", True):
+        return _detached_suite_state(), 0
+    console.print(
+        f"[red]No setup for suite {suite!r}. Run "
+        f"`python -m nowing_evals setup --suite {suite} "
+        f"--provider-model <slug>` first.[/red]"
+    )
+    return None, 2
+
+
 async def _cmd_ingest(args: argparse.Namespace) -> int:
     benchmark = registry.get(args.suite, args.benchmark)
     config = load_config()
-    state = get_suite_state(config, args.suite)
+    state, code = _resolve_suite_state(config, args.suite, benchmark)
     if state is None:
-        console.print(
-            f"[red]No setup for suite {args.suite!r}. Run "
-            f"`python -m nowing_evals setup --suite {args.suite} "
-            f"--provider-model <slug>` first.[/red]"
-        )
-        return 2
+        return code
     try:
         token = await acquire_token(config)
     except CredentialError as exc:
@@ -492,14 +527,9 @@ async def _cmd_ingest(args: argparse.Namespace) -> int:
 async def _cmd_run(args: argparse.Namespace) -> int:
     benchmark = registry.get(args.suite, args.benchmark)
     config = load_config()
-    state = get_suite_state(config, args.suite)
+    state, code = _resolve_suite_state(config, args.suite, benchmark)
     if state is None:
-        console.print(
-            f"[red]No setup for suite {args.suite!r}. Run "
-            f"`python -m nowing_evals setup --suite {args.suite} "
-            f"--provider-model <slug>` first.[/red]"
-        )
-        return 2
+        return code
     try:
         token = await acquire_token(config)
     except CredentialError as exc:
@@ -523,6 +553,157 @@ async def _cmd_run(args: argparse.Namespace) -> int:
 
     console.print(f"[green]run OK[/green] {args.suite}/{args.benchmark} → {artifact.raw_path}")
     return 0
+
+
+async def _cmd_purge(args: argparse.Namespace) -> int:
+    """Delete fixtures a benchmark wrote into a live tenant.
+
+    Seeding synthetic memories into a real workspace is only acceptable if it is
+    reversible; ``teardown`` removes the harness SearchSpace and cannot help
+    here, because memory rows live in the product tenant.
+    """
+
+    benchmark = registry.get(args.suite, args.benchmark)
+    purge = getattr(benchmark, "purge", None)
+    if purge is None:
+        console.print(
+            f"[red]Benchmark {args.suite}/{args.benchmark} does not support purge.[/red]"
+        )
+        return 2
+    config = load_config()
+    state, code = _resolve_suite_state(config, args.suite, benchmark)
+    if state is None:
+        return code
+    try:
+        token = await acquire_token(config)
+    except CredentialError as exc:
+        console.print(f"[red]{exc}[/red]")
+        return 2
+    async with client_with_auth(config, token) as http:
+        ctx = registry.RunContext(
+            suite=args.suite,
+            benchmark=args.benchmark,
+            config=config,
+            suite_state=state,
+            http=http,
+        )
+        deleted = await purge(ctx, workspace_id=args.workspace_id)
+    console.print(f"[green]purge OK[/green] {args.suite}/{args.benchmark} → {deleted} deleted")
+    return 0
+
+
+#: ``gate`` exit codes, kept distinct so CI can tell a quality failure from a
+#: broken setup. Collapsing them makes "recall regressed" indistinguishable
+#: from "somebody typo'd the config".
+GATE_EXIT_PASS = 0
+GATE_EXIT_QUALITY_FAIL = 1
+GATE_EXIT_NO_ARTIFACT = 2
+GATE_EXIT_CONFIG_ERROR = 3
+
+
+def _fmt_observed(value: Any) -> str:
+    if value is None:
+        return "missing"
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float):
+        return f"{value:.3f}"
+    return str(value)
+
+
+def _cmd_gate(args: argparse.Namespace) -> int:
+    """Evaluate the latest persisted artifact against a deterministic ship gate."""
+
+    from .gate import GateConfigError, evaluate_gate, load_gate_thresholds
+
+    config = load_config()
+    try:
+        benchmark = registry.get(args.suite, args.benchmark)
+    except KeyError as exc:
+        # Without this the gate happily evaluates a stale artifact for a
+        # benchmark that no longer imports, and prints PASS.
+        console.print(f"[red]{exc}[/red]")
+        return GATE_EXIT_CONFIG_ERROR
+
+    config_path = args.config_path
+    if config_path is None:
+        getter = getattr(benchmark, "gate_config_path", None)
+        if getter is None:
+            console.print(
+                f"[red]Benchmark {args.suite}/{args.benchmark} declares no gate config; "
+                "pass --config explicitly.[/red]"
+            )
+            return GATE_EXIT_CONFIG_ERROR
+        config_path = getter()
+
+    try:
+        thresholds = load_gate_thresholds(config_path)
+    except GateConfigError as exc:
+        console.print(f"[red]{exc}[/red]")
+        return GATE_EXIT_CONFIG_ERROR
+
+    artifacts = _collect_artifacts(config, args.suite, [args.benchmark])
+    artifact = next((item for item in artifacts if item.benchmark == args.benchmark), None)
+    if artifact is None:
+        console.print(
+            "[yellow]No run artifact found for "
+            f"{args.suite}/{args.benchmark} under {config.suite_runs_dir(args.suite)}.[/yellow]"
+        )
+        return GATE_EXIT_NO_ARTIFACT
+
+    result = evaluate_gate(artifact.metrics, thresholds)
+    table = Table(title=f"Eval gate — {args.suite}/{args.benchmark}")
+    table.add_column("metric", style="bold")
+    table.add_column("observed", justify="right")
+    table.add_column("threshold", justify="right")
+    for label, key, threshold_text in (
+        (
+            f"recall@{thresholds.top_k}",
+            "recall_at_5",
+            f">= {thresholds.recall_at_5_min:.3f}",
+        ),
+        ("MRR", "mrr", f">= {thresholds.mrr_min:.3f}"),
+        (
+            "distractor noise rate",
+            "distractor_noise_rate",
+            f"<= {thresholds.distractor_noise_rate_max:.3f}",
+        ),
+        (
+            "off-corpus rate",
+            "off_corpus_rate",
+            f"<= {thresholds.off_corpus_rate_max:.3f}",
+        ),
+        ("queries", "n_queries", f">= {thresholds.min_queries}"),
+        ("failed queries", "n_failed_queries", "== 0"),
+    ):
+        table.add_row(label, _fmt_observed(result.observed.get(key)), threshold_text)
+    console.print(table)
+    # Report the config the ARTIFACT was produced under, not the config we hoped
+    # for — printing the pinned values while the run used others is how a gate
+    # ends up misrepresenting its own verdict.
+    console.print(
+        "Artifact scoring config: "
+        f"top_k={_fmt_observed(result.observed.get('top_k'))}, "
+        f"oracle_mode={_fmt_observed(result.observed.get('oracle_mode'))} "
+        f"(gate requires top_k={thresholds.top_k}, "
+        f"oracle_mode={thresholds.required_oracle_mode})"
+    )
+    console.print(
+        "SM-10 baseline ratified: "
+        + (
+            f"[green]yes[/green] ({thresholds.baseline_source})"
+            if thresholds.baseline_ratified
+            else "[red]no — thresholds are provisional, gate fails closed[/red]"
+        )
+    )
+    if result.passed:
+        console.print(f"[green]gate PASS[/green] artifact={artifact.run_timestamp}")
+        return GATE_EXIT_PASS
+
+    console.print(f"[red]gate FAIL[/red] artifact={artifact.run_timestamp}")
+    for reason in result.reasons:
+        console.print(f"[red]- {reason}[/red]")
+    return GATE_EXIT_QUALITY_FAIL
 
 
 async def _cmd_report(args: argparse.Namespace) -> int:
@@ -589,6 +770,16 @@ def _collect_artifacts(
     for ts_dir in sorted(runs_dir.iterdir()):
         if not ts_dir.is_dir():
             continue
+        if not _RUN_TIMESTAMP_RE.match(ts_dir.name):
+            # "Latest run wins" is a lexicographic sort over these names, so a
+            # hand-made directory ("ci-fixture") would sort after every real
+            # ISO timestamp and shadow genuine runs forever.
+            logger.warning(
+                "Skipping run directory %s: name is not a %s timestamp",
+                ts_dir,
+                "YYYY-MM-DDTHH-MM-SSZ",
+            )
+            continue
         for bench_name in benchmark_names:
             bench_dir = ts_dir / bench_name
             manifest = bench_dir / "run_artifact.json"
@@ -597,15 +788,35 @@ def _collect_artifacts(
             try:
                 with manifest.open("r", encoding="utf-8") as fh:
                     payload = json.load(fh)
-            except (OSError, json.JSONDecodeError):
-                continue
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+                # Fail loudly rather than silently falling back to an older,
+                # possibly passing artifact.
+                raise RuntimeError(
+                    f"Run manifest {manifest} is unreadable ({exc}). Refusing to fall back "
+                    "to an older run — delete or repair it."
+                ) from exc
+            if not isinstance(payload, dict):
+                raise RuntimeError(f"Run manifest {manifest} must contain a JSON object")
+            declared_suite = payload.get("suite")
+            declared_benchmark = payload.get("benchmark")
+            if declared_suite not in (None, suite) or declared_benchmark not in (
+                None,
+                bench_name,
+            ):
+                raise RuntimeError(
+                    f"Run manifest {manifest} declares "
+                    f"{declared_suite}/{declared_benchmark} but is filed under "
+                    f"{suite}/{bench_name}"
+                )
+            metrics = payload.get("metrics", {})
+            extra = payload.get("extra", {})
             artifact = registry.RunArtifact(
                 suite=suite,
                 benchmark=bench_name,
                 run_timestamp=ts_dir.name,
-                raw_path=bench_dir / payload.get("raw_path", "raw.jsonl"),
-                metrics=payload.get("metrics", {}),
-                extra=payload.get("extra", {}),
+                raw_path=bench_dir / str(payload.get("raw_path", "raw.jsonl")),
+                metrics=metrics if isinstance(metrics, dict) else {},
+                extra=extra if isinstance(extra, dict) else {},
             )
             # Latest run wins per benchmark.
             by_bench[bench_name] = artifact
@@ -753,6 +964,32 @@ def _build_parser() -> argparse.ArgumentParser:
     p_report.add_argument("--suite", required=True)
     p_report.add_argument("--benchmark", default=None, help="Optional: report only this benchmark.")
     p_report.set_defaults(_func=_cmd_report, _async=True)
+
+    p_gate = sub.add_parser(
+        "gate", help="Evaluate the latest benchmark artifact against concrete ship thresholds."
+    )
+    p_gate.add_argument("--suite", required=True)
+    p_gate.add_argument("--benchmark", required=True)
+    p_gate.add_argument(
+        "--config",
+        dest="config_path",
+        default=None,
+        help=(
+            "Optional YAML gate config. Defaults to the path the benchmark declares "
+            "via gate_config_path(). Exit codes: 0 pass, 1 quality failure, "
+            "2 no artifact, 3 configuration error."
+        ),
+    )
+    p_gate.set_defaults(_func=_cmd_gate, _async=False)
+
+    p_purge = sub.add_parser(
+        "purge",
+        help="Delete fixtures a benchmark seeded into a live tenant (if it supports purging).",
+    )
+    p_purge.add_argument("--suite", required=True)
+    p_purge.add_argument("--benchmark", required=True)
+    p_purge.add_argument("--workspace-id", type=int, default=None)
+    p_purge.set_defaults(_func=_cmd_purge, _async=True)
 
     return parser
 

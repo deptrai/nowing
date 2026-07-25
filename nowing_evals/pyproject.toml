@@ -26,6 +26,10 @@ dependencies = [
     "pypdf>=5.1.0",
     "azure-ai-documentintelligence>=1.0.2",
     "llama-cloud-services>=0.6.25",
+    # Gate configs are YAML (core/gate.py). Previously only resolvable
+    # transitively via datasets/huggingface-hub, which would vanish the day
+    # those drop it.
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +50,13 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["nowing_evals*"]
+
+# Suites ship committed fixtures (labeled JSONL datasets) and gate configs.
+# Without this they are omitted from a wheel, so ``load_dataset`` /
+# ``load_gate_thresholds`` raise on any non-editable install — and a console
+# script is declared, so installed use is an intended path.
+[tool.setuptools.package-data]
+nowing_evals = ["**/*.jsonl", "**/*.yaml", "**/*.yml"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

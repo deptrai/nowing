@@ -67,6 +67,10 @@ class VisionModelEntry:
         )
 
 
+# Compatibility name retained for the vision resolution module.
+VisionLlmConfigEntry = VisionModelEntry
+
+
 @dataclass
 class ModelRoles:
     """Model role ids for a search space."""

@@ -269,3 +269,142 @@ async def test_ask_409_exhausts_retries(respx_mock, http):
     client = NewChatClient(http, _BASE)
     with pytest.raises(ThreadBusyError):
         await client.ask(thread_id=1, search_space_id=2, user_query="hi", max_busy_retries=1)
+
+
+# ---------------------------------------------------------------------------
+# MemoriesClient
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_memories_create_serializes_full_memory_contract(respx_mock, http):
+    """The eval client must preserve the backend create-memory contract."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    route = respx_mock.post("/api/v1/workspaces/7/memories").mock(
+        return_value=httpx.Response(
+            201,
+            json={"id": 42, "workspace_id": 7, "content": "Q2 pricing increased"},
+        )
+    )
+    client = MemoriesClient(http, _BASE)
+    memory = await client.create(
+        7,
+        "Q2 pricing increased",
+        type_="semantic",
+        tags=["competitor", "pricing"],
+        confidence=0.95,
+        # Must be a real ``MemorySourceType``. This test previously asserted
+        # ``source_type="eval"``, a value the backend enum has no member for — so
+        # a test named after "the create-memory contract" was serialising a
+        # payload the API would have rejected with a 422.
+        source_type="manual",
+        source_id=11,
+    )
+
+    assert memory["id"] == 42
+    assert json.loads(route.calls[-1].request.content) == {
+        "content": "Q2 pricing increased",
+        "type": "semantic",
+        "tags": ["competitor", "pricing"],
+        "confidence": 0.95,
+        "source_type": "manual",
+        "source_id": 11,
+        "research_thread_id": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_memories_create_rejects_unknown_source_type(http):
+    """Fail locally instead of sending a payload the backend will 422."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    client = MemoriesClient(http, _BASE)
+    with pytest.raises(ValueError, match="MemorySourceType"):
+        await client.create(7, "x", source_type="eval")
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_memories_search_preserves_rank_of_malformed_items(respx_mock, http):
+    """A non-object item must raise, not be silently dropped.
+
+    Filtering one out shifts every later item up a rank, so the item that was
+    really 6th gets scored as if it were 5th.
+    """
+    from nowing_evals.core.clients import MemoriesClient
+
+    respx_mock.post("/api/v1/workspaces/7/memories/search").mock(
+        return_value=httpx.Response(200, json={"items": [None, {"id": 1}]})
+    )
+    client = MemoriesClient(http, _BASE)
+    with pytest.raises(RuntimeError, match="rank 1"):
+        await client.search(7, "q", top_k=5)
+
+
+@pytest.mark.asyncio
+async def test_memories_search_validates_top_k_locally(http):
+    """A local error beats a bare 422 from the server."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    client = MemoriesClient(http, _BASE)
+    with pytest.raises(ValueError, match="top_k"):
+        await client.search(7, "q", top_k=0)
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_memories_search_reports_non_json_body(respx_mock, http):
+    """A proxy or login page returning 200 text/html must name the failing call."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    respx_mock.post("/api/v1/workspaces/7/memories/search").mock(
+        return_value=httpx.Response(200, text="<html>login</html>")
+    )
+    client = MemoriesClient(http, _BASE)
+    with pytest.raises(RuntimeError, match="non-JSON body"):
+        await client.search(7, "q", top_k=5)
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_memories_delete_tolerates_already_deleted(respx_mock, http):
+    """``purge`` must be re-runnable after a partial failure."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    respx_mock.delete("/api/v1/memories/42").mock(return_value=httpx.Response(404))
+    client = MemoriesClient(http, _BASE)
+    await client.delete(42)  # does not raise
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_memories_search_unwraps_ranked_items_and_filters(respx_mock, http):
+    """Search posts the workspace-scoped payload and returns the ordered items."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    route = respx_mock.post("/api/v1/workspaces/7/memories/search").mock(
+        return_value=httpx.Response(
+            200,
+            json={"items": [{"id": 42, "content": "Q2 pricing increased", "score": 0.0}]},
+        )
+    )
+    client = MemoriesClient(http, _BASE)
+    items = await client.search(
+        7,
+        "pricing",
+        top_k=5,
+        type_="semantic",
+        tags=["competitor"],
+        research_thread_id=3,
+    )
+
+    assert items == [{"id": 42, "content": "Q2 pricing increased", "score": 0.0}]
+    assert json.loads(route.calls[-1].request.content) == {
+        "query": "pricing",
+        "top_k": 5,
+        "type": "semantic",
+        "tags": ["competitor"],
+        "research_thread_id": 3,
+    }
