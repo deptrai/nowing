@@ -1,0 +1,123 @@
+name: Memory Recall Gate
+
+# What this job does and — importantly — what it does NOT do.
+#
+# Measuring recall quality needs a live Nowing instance with a seeded workspace,
+# so it cannot be a per-PR check. Story 3.9 §9 already settled this: the gate
+# runs deterministically on committed artifacts here, and the live run is
+# opt-in. The actual ship decision lives in memory-recall-release-gate.yml.
+#
+# The previous version of this workflow hand-wrote a run_artifact.json whose
+# metrics were exactly equal to the thresholds and then gated on it. That is a
+# constant PASS: it proves nothing about recall and cannot fail. It also wrote
+# into the real data dir under a non-timestamp directory name ("ci-fixture"),
+# which sorts after every ISO timestamp and would permanently shadow genuine
+# runs in the "latest run wins" lookup.
+#
+# So this job asserts the one thing a hermetic environment legitimately can:
+# the gate BLOCKS a run that misses its thresholds, and refuses to bless
+# thresholds that no measured baseline backs. Everything happens in a temporary
+# EVAL_DATA_DIR.
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'nowing_evals/**'
+      - 'nowing_mcp/**'
+      - '.github/workflows/memory-recall-gate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  memory-recall-gate:
+    name: Memory recall gate and MCP contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      # nowing_evals declares its test tooling under
+      # [project.optional-dependencies], not [dependency-groups], so
+      # `--all-groups` installs none of it and pytest is missing.
+      - name: Sync eval dependencies
+        working-directory: nowing_evals
+        run: uv sync --all-extras --frozen
+
+      - name: Run memory recall acceptance tests
+        working-directory: nowing_evals
+        run: >-
+          uv run --active python -m pytest
+          tests/core/test_memory_recall_metrics.py
+          tests/suites/test_memory_recall_dataset.py
+          tests/suites/test_memory_recall_suite.py
+          tests/suites/test_memory_recall_gate.py
+          tests/suites/test_memory_recall_selfcheck_ci.py
+          -q
+
+      - name: Verify memory recall gate blocks a below-threshold run
+        working-directory: nowing_evals
+        run: |
+          set -euo pipefail
+          EVAL_DATA_DIR="$(mktemp -d)/data"
+          export EVAL_DATA_DIR
+          RUN_DIR="$EVAL_DATA_DIR/memory/runs/2026-01-01T00-00-00Z/recall"
+          mkdir -p "$RUN_DIR"
+          : > "$RUN_DIR/raw.jsonl"
+          cat > "$RUN_DIR/run_artifact.json" <<'JSON'
+          {
+            "suite": "memory",
+            "benchmark": "recall",
+            "raw_path": "raw.jsonl",
+            "metrics": {
+              "recall_at_k": {"1": 0.30, "5": 0.55},
+              "mrr": 0.31,
+              "distractor_noise_rate": 0.42,
+              "off_corpus_rate": 0.18,
+              "off_corpus_measured": true,
+              "precision_at_k": {"1": 0.30, "5": 0.11},
+              "precision_at_primary_k_micro": 0.11,
+              "precision_at_5_ci": [0.07, 0.17],
+              "noise_rate": 0.89,
+              "n_queries": 36,
+              "n_failed_queries": 0,
+              "primary_k": 5,
+              "top_k": 5,
+              "oracle_mode": "rank_only"
+            },
+            "extra": {"fixture": "deliberately below threshold"}
+          }
+          JSON
+          echo "--- gate output ---"
+          set +e
+          uv run --active python -m nowing_evals gate --suite memory --benchmark recall
+          status=$?
+          set -e
+          echo "gate exit status: $status"
+          if [ "$status" -ne 1 ]; then
+            echo "::error::expected exit 1 (quality failure) from a below-threshold artifact, got $status"
+            exit 1
+          fi
+
+      - name: Sync MCP dependencies
+        working-directory: nowing_mcp
+        run: uv sync --all-groups --frozen
+
+      - name: Run MCP selfcheck
+        working-directory: nowing_mcp
+        run: uv run --active python -m mcp_server.selfcheck
+
+      - name: Run MCP memory tools contract
+        working-directory: nowing_mcp
+        run: uv run --active python -m pytest tests/test_memory_tools.py -q

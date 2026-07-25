@@ -1,0 +1,97 @@
+name: Memory Recall Release Gate (live)
+
+# The real NFR-8 / RS-7 ship gate: seed the labeled corpus into a dedicated
+# workspace on a live Nowing instance, measure recall, and block on the SM-10
+# thresholds. Manual by design — it mutates a real tenant and needs credentials,
+# so it must never fire automatically on a pull request.
+#
+# Before this can go green, gate.yaml needs `baseline_ratified: true` plus a
+# baseline_source. That flip is only legitimate after the numbers come from a
+# measured baseline on the real corpus (Story 3.9 §8: after 3.10b recovery and
+# after story 8.7 freezes auto-extract) and the SM-10 metric owner signs off.
+# Until then this job fails closed, which is the correct pre-baseline state.
+#
+# Use `purge: true` to delete the seeded fixtures afterwards. The eval workspace
+# must be dedicated: off_corpus_rate counts anything the labels cannot judge, so
+# a shared workspace will fail the gate.
+
+on:
+  workflow_dispatch:
+    inputs:
+      workspace_id:
+        description: 'Dedicated Nowing workspace id to seed and measure'
+        required: true
+        type: string
+      top_k:
+        description: 'Recall window (RS-2 caps this at 5)'
+        required: false
+        default: '5'
+        type: string
+      purge:
+        description: 'Delete the seeded fixture memories when finished'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.workspace_id }}
+  cancel-in-progress: false
+
+jobs:
+  release-gate:
+    name: Live memory recall measurement and ship gate
+    runs-on: ubuntu-latest
+    environment: memory-recall-eval
+    env:
+      NOWING_API_BASE: ${{ secrets.NOWING_API_BASE }}
+      NOWING_JWT: ${{ secrets.NOWING_EVAL_JWT }}
+      NOWING_EVAL_WORKSPACE_ID: ${{ inputs.workspace_id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Sync eval dependencies
+        working-directory: nowing_evals
+        run: uv sync --all-extras --frozen
+
+      - name: Seed the labeled corpus
+        working-directory: nowing_evals
+        run: uv run --active python -m nowing_evals ingest memory recall
+
+      - name: Measure recall
+        working-directory: nowing_evals
+        run: >-
+          uv run --active python -m nowing_evals run memory recall
+          --top-k ${{ inputs.top_k }}
+
+      - name: Ship gate
+        working-directory: nowing_evals
+        run: uv run --active python -m nowing_evals gate --suite memory --benchmark recall
+
+      - name: Report
+        if: always()
+        working-directory: nowing_evals
+        run: uv run --active python -m nowing_evals report --suite memory --benchmark recall
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory-recall-run-${{ inputs.workspace_id }}
+          path: nowing_evals/data/memory/runs/
+          if-no-files-found: warn
+
+      # Runs even when the gate fails: leaving fixture memories behind in a real
+      # tenant is exactly the contamination the purge path exists to prevent.
+      - name: Purge seeded fixtures
+        if: always() && inputs.purge
+        working-directory: nowing_evals
+        run: uv run --active python -m nowing_evals purge --suite memory --benchmark recall
