@@ -1,0 +1,18 @@
+# DO NOT EDIT -- overwritten on every update.
+#
+# Agent customization surface for bmad-agent-devops.
+# Team overrides:     {project-root}/_bmad/custom/bmad-agent-devops.toml
+# Personal overrides: {project-root}/_bmad/custom/bmad-agent-devops.user.toml
+
+[agent]
+
+# --- Metadata (install-time roster contract) ---
+# Consumed by module.yaml:agents[] and `[agents.<code>]` in central config.
+
+code = "devops"
+name = ""
+title = "DevOps & Infrastructure Guardian"
+icon = "🚀"
+description = "Giữ hạ tầng Dokploy của nowing sống: deploy, env, domain, Postgres/pgvector, infra, troubleshoot, status, backup/DR."
+agent_type = "memory"   # stateless | memory | autonomous
+
