@@ -614,6 +614,29 @@ class Config:
         1, _env_int("MEMORY_AUTO_EXTRACT_MAX_ITEMS", 3)
     )
 
+    # Memory auto-extraction cost controls (Story 8.7 / AR-6 / RS-1).
+    # All default to disabled/no-op so enabling auto-extract introduces no new
+    # gating until an operator opts in; the wallet pre-check floor is the only
+    # always-on guard (see app.services.memory.extract_budget).
+    MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS = _env_int(
+        "MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS", 100
+    )
+    # Per-workspace spend ceiling (micro-USD) for memory_create TokenUsage over
+    # the current MEMORY_AUTO_EXTRACT_BUDGET_WINDOW. 0 = disabled (no gating).
+    MEMORY_AUTO_EXTRACT_BUDGET_MICROS = _env_int("MEMORY_AUTO_EXTRACT_BUDGET_MICROS", 0)
+    # Rolling budget window; "day" is a rolling 24h lookback (not a calendar-day
+    # cliff) to avoid a midnight reset that lets a burst through right after
+    # rollover. One of "day" / "week" / "month".
+    MEMORY_AUTO_EXTRACT_BUDGET_WINDOW = (
+        os.getenv("MEMORY_AUTO_EXTRACT_BUDGET_WINDOW", "day").strip().lower()
+    )
+    # Max extractions per workspace per MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS.
+    # 0 = disabled (no throttling).
+    MEMORY_AUTO_EXTRACT_RATE_MAX = _env_int("MEMORY_AUTO_EXTRACT_RATE_MAX", 0)
+    MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS = _env_int(
+        "MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS", 3600
+    )
+
     NOWING_PUBLIC_URL = os.getenv("NOWING_PUBLIC_URL")
     NEXT_FRONTEND_URL = os.getenv("NEXT_FRONTEND_URL") or NOWING_PUBLIC_URL
     # Backend URL to override the http to https in the OAuth redirect URI

@@ -17,7 +17,7 @@ from ``tests/integration/conftest.py`` and the local ``chat_turn`` /
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
@@ -149,7 +149,6 @@ async def _memory_count_for_message(db_session, message_id) -> int:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): insufficient wallet must skip BEFORE llm.ainvoke")
 async def test_extract_skips_before_llm_when_wallet_insufficient(
     db_session, db_workspace, db_user, chat_turn, patched_embeddings, fake_llm
 ):
@@ -172,7 +171,6 @@ async def test_extract_skips_before_llm_when_wallet_insufficient(
     assert await _memory_create_usage_count(db_session, thread.id) == 0
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): funded wallet proceeds as baseline")
 async def test_extract_proceeds_when_wallet_funded(
     db_session, db_workspace, db_user, chat_turn, patched_embeddings, fake_llm
 ):
@@ -199,7 +197,6 @@ async def test_extract_proceeds_when_wallet_funded(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): workspace over budget must skip BEFORE llm.ainvoke")
 async def test_extract_skips_when_workspace_over_budget(
     db_session, db_workspace, db_user, chat_turn, patched_embeddings, fake_llm, monkeypatch
 ):
@@ -237,7 +234,6 @@ async def test_extract_skips_when_workspace_over_budget(
     assert await _memory_count_for_message(db_session, assistant.id) == 0
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): default budget (0) does not gate a funded workspace")
 async def test_extract_unchanged_when_budget_default(
     db_session, db_workspace, db_user, chat_turn, patched_embeddings, fake_llm, monkeypatch
 ):
@@ -264,7 +260,6 @@ async def test_extract_unchanged_when_budget_default(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): rate-limited workspace must skip BEFORE llm.ainvoke")
 async def test_extract_skips_when_rate_limited(
     db_session, db_workspace, db_user, chat_turn, patched_embeddings, fake_llm, monkeypatch
 ):
@@ -297,7 +292,6 @@ async def test_extract_skips_when_rate_limited(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): anonymous turn must skip with no spend")
 async def test_extract_skips_anonymous_turn(
     db_session, db_workspace, anon_chat_turn, patched_embeddings, fake_llm
 ):
@@ -318,7 +312,6 @@ async def test_extract_skips_anonymous_turn(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): global kill-switch OFF skips without any LLM call")
 async def test_global_kill_switch_off_skips_without_llm(
     db_session, db_workspace, db_user, chat_turn, patched_embeddings, fake_llm, monkeypatch
 ):
@@ -338,7 +331,6 @@ async def test_global_kill_switch_off_skips_without_llm(
     fake_llm.ainvoke.assert_not_awaited()
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): per-workspace flag OFF skips without any LLM call")
 async def test_workspace_flag_off_skips_without_llm(
     db_session, db_workspace, db_user, chat_turn, patched_embeddings, fake_llm
 ):
@@ -363,41 +355,120 @@ async def test_workspace_flag_off_skips_without_llm(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): finalize must NOT enqueue when the gate blocks")
-async def test_finalize_skips_enqueue_when_gate_blocks(monkeypatch):
-    """P1/AC7: over-budget/insufficient workspace -> no Celery task enqueued."""
-    import app.tasks.chat.streaming.flows.shared.assistant_finalize as fin
-    from app.services.memory.extract_budget import ExtractGateResult
+@pytest.fixture
+def _finalize_deps(monkeypatch, db_session):
+    """Wire finalize_assistant_message's real DB lookups onto the test session.
 
-    delay = AsyncMock()
+    ``shielded_async_session`` normally opens a brand-new engine connection,
+    which would not see the (uncommitted, savepoint-scoped) db_workspace /
+    db_user rows this test seeds. Patching it to hand back the test's own
+    ``db_session`` keeps the gate's queries inside the same transaction that
+    gets rolled back at teardown, while still exercising the REAL
+    ``finalize_assistant_message`` control flow (no mocking of the gate or
+    the enqueue check itself).
+
+    Also stubs ``finalize_assistant_turn`` (the DB write for the assistant
+    message content, covered by its own tests elsewhere) so this test can
+    call ``finalize_assistant_message`` without pre-creating a full
+    streaming payload.
+    """
+    from contextlib import asynccontextmanager
+
+    import app.db as db_module
+
+    @asynccontextmanager
+    async def _fake_shielded_session():
+        yield db_session
+
+    monkeypatch.setattr(db_module, "shielded_async_session", _fake_shielded_session)
+
+    finalize_turn = AsyncMock()
+    monkeypatch.setattr(
+        "app.tasks.chat.persistence.finalize_assistant_turn", finalize_turn
+    )
+    return finalize_turn
+
+
+def _make_stream_result(assistant_message_id: int, turn_id: str):
+    from app.tasks.chat.streaming.shared.stream_result import StreamResult
+
+    return StreamResult(
+        turn_id=turn_id,
+        assistant_message_id=assistant_message_id,
+        accumulated_text="ok",
+    )
+
+
+async def test_finalize_skips_enqueue_when_gate_blocks(
+    db_session, db_workspace, db_user, chat_turn, _finalize_deps, monkeypatch
+):
+    """P1/AC7: insufficient wallet -> finalize_assistant_message does NOT
+    enqueue the Celery extraction task (real gate, real DB, no mocking of
+    check_extract_allowed itself)."""
+    from app.services.token_tracking_service import TurnTokenAccumulator
+    from app.tasks.chat.streaming.flows.shared.assistant_finalize import (
+        finalize_assistant_message,
+    )
+
+    db_user.credit_micros_balance = 0
+    db_user.credit_micros_reserved = 0
+    await db_session.flush()
+
+    thread, _user, assistant = chat_turn
+    # ``.delay(...)`` is a synchronous Celery call (never awaited by the
+    # production code), so a plain MagicMock — not AsyncMock — matches how
+    # it is actually invoked.
+    delay = MagicMock()
     monkeypatch.setattr(
         "app.tasks.celery_tasks.memory_extraction_task.extract_memory_after_chat_turn.delay",
         delay,
         raising=False,
     )
-    monkeypatch.setattr(
-        "app.services.memory.extract_budget.check_extract_allowed",
-        AsyncMock(return_value=ExtractGateResult(allowed=False, reason="budget_exceeded")),
-        raising=False,
+
+    await finalize_assistant_message(
+        stream_result=_make_stream_result(assistant.id, assistant.turn_id),
+        chat_id=thread.id,
+        workspace_id=db_workspace.id,
+        user_id=str(db_user.id),
+        accumulator=TurnTokenAccumulator(),
+        log_prefix="test",
     )
 
-    # The enqueue helper is expected to consult the gate before .delay(...).
-    assert hasattr(fin, "finalize_assistant_message")
     delay.assert_not_called()
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): finalize enqueues when the gate allows")
-async def test_finalize_enqueues_when_gate_allows(monkeypatch):
-    """P2/AC7: allowed workspace -> Celery task enqueued once."""
-    import app.tasks.chat.streaming.flows.shared.assistant_finalize as fin
-    from app.services.memory.extract_budget import ExtractGateResult
+async def test_finalize_enqueues_when_gate_allows(
+    db_session, db_workspace, db_user, chat_turn, _finalize_deps, monkeypatch
+):
+    """P2/AC7: funded wallet, no caps -> the Celery task IS enqueued exactly
+    once (real gate allows; only the Celery boundary itself is mocked)."""
+    from app.services.token_tracking_service import TurnTokenAccumulator
+    from app.tasks.chat.streaming.flows.shared.assistant_finalize import (
+        finalize_assistant_message,
+    )
 
+    db_user.credit_micros_balance = 5_000_000
+    db_user.credit_micros_reserved = 0
+    await db_session.flush()
+
+    thread, _user, assistant = chat_turn
+    delay = MagicMock()
     monkeypatch.setattr(
-        "app.services.memory.extract_budget.check_extract_allowed",
-        AsyncMock(return_value=ExtractGateResult(allowed=True, reason=None)),
+        "app.tasks.celery_tasks.memory_extraction_task.extract_memory_after_chat_turn.delay",
+        delay,
         raising=False,
     )
-    assert hasattr(fin, "finalize_assistant_message")
+
+    await finalize_assistant_message(
+        stream_result=_make_stream_result(assistant.id, assistant.turn_id),
+        chat_id=thread.id,
+        workspace_id=db_workspace.id,
+        user_id=str(db_user.id),
+        accumulator=TurnTokenAccumulator(),
+        log_prefix="test",
+    )
+
+    delay.assert_called_once_with(assistant.id)
 
 
 # ---------------------------------------------------------------------------
@@ -405,7 +476,6 @@ async def test_finalize_enqueues_when_gate_allows(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): a skip logs a structured reason and writes no usage")
 async def test_skip_emits_structured_log_and_no_usage(
     db_session, db_workspace, db_user, chat_turn, patched_embeddings, fake_llm, caplog
 ):

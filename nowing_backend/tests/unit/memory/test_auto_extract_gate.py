@@ -83,7 +83,6 @@ def _defaults(monkeypatch, **overrides: int) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): wallet pre-check must block before any LLM call")
 async def test_gate_blocks_when_wallet_below_min_reserve(monkeypatch):
     """P0/AC1: spendable balance below the min reserve blocks extraction."""
     from app.services.memory.extract_budget import check_extract_allowed
@@ -99,7 +98,6 @@ async def test_gate_blocks_when_wallet_below_min_reserve(monkeypatch):
     assert result.reason == "insufficient_wallet"
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): funded wallet must allow extraction")
 async def test_gate_allows_when_wallet_covers_min_reserve(monkeypatch):
     """P0/AC1: spendable balance at/above the min reserve allows extraction."""
     from app.services.memory.extract_budget import check_extract_allowed
@@ -120,7 +118,6 @@ async def test_gate_allows_when_wallet_covers_min_reserve(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): period spend at/over cap must block")
 async def test_gate_blocks_when_period_spend_at_or_over_cap(monkeypatch):
     """P0/AC2: summed memory_create spend >= cap blocks extraction."""
     from app.services.memory.extract_budget import check_extract_allowed
@@ -136,7 +133,6 @@ async def test_gate_blocks_when_period_spend_at_or_over_cap(monkeypatch):
     assert result.reason == "budget_exceeded"
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): spend under cap must allow")
 async def test_gate_allows_when_period_spend_under_cap(monkeypatch):
     """P1/AC2: spend below the cap allows extraction."""
     from app.services.memory.extract_budget import check_extract_allowed
@@ -151,7 +147,6 @@ async def test_gate_allows_when_period_spend_under_cap(monkeypatch):
     assert result.allowed is True
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): budget cap disabled by default = no gating")
 async def test_gate_budget_disabled_by_default_no_gating(monkeypatch):
     """P1/AC2+AC6: cap unset/0 (default) applies no budget gating."""
     from app.services.memory.extract_budget import check_extract_allowed
@@ -172,7 +167,6 @@ async def test_gate_budget_disabled_by_default_no_gating(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): rate-limit reached must block")
 async def test_gate_blocks_when_rate_limit_reached(monkeypatch):
     """P1/AC3: window count >= rate max blocks extraction."""
     from app.services.memory.extract_budget import check_extract_allowed
@@ -188,7 +182,6 @@ async def test_gate_blocks_when_rate_limit_reached(monkeypatch):
     assert result.reason == "rate_limited"
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): under rate-limit must allow")
 async def test_gate_allows_under_rate_limit(monkeypatch):
     """P1/AC3: window count below rate max allows extraction."""
     from app.services.memory.extract_budget import check_extract_allowed
@@ -203,7 +196,6 @@ async def test_gate_allows_under_rate_limit(monkeypatch):
     assert result.allowed is True
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): rate-limit disabled by default = no throttling")
 async def test_gate_rate_limit_disabled_by_default(monkeypatch):
     """P1/AC3+AC6: rate max unset/0 (default) applies no throttling."""
     from app.services.memory.extract_budget import check_extract_allowed
@@ -223,7 +215,6 @@ async def test_gate_rate_limit_disabled_by_default(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): anonymous turn (no owner) must be skipped unbilled")
 async def test_gate_blocks_anonymous_turn_unbilled(monkeypatch):
     """P0/AC4: no billable owner -> block with reason=anonymous_unbilled."""
     from app.services.memory.extract_budget import check_extract_allowed
@@ -245,7 +236,6 @@ async def test_gate_blocks_anonymous_turn_unbilled(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): default caps + funded wallet = no regression (allow)")
 async def test_gate_allows_by_default_with_funded_wallet(monkeypatch):
     """P0/AC6: all caps at defaults + funded wallet behaves like baseline (allow)."""
     from app.services.memory.extract_budget import check_extract_allowed
@@ -261,7 +251,6 @@ async def test_gate_allows_by_default_with_funded_wallet(monkeypatch):
     assert result.reason is None
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): wallet-check error must fail closed (block, never raise)")
 async def test_gate_fails_closed_on_wallet_check_error(monkeypatch):
     """P1/AC6: an error inside the wallet seam blocks extraction, never raises."""
     import app.services.memory.extract_budget as gate
@@ -287,7 +276,6 @@ async def test_gate_fails_closed_on_wallet_check_error(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="ATDD red-phase (Story 8.7): every block exposes a stable machine-parseable reason")
 async def test_gate_reasons_are_stable_identifiers(monkeypatch):
     """P1/AC8: block reasons are drawn from the documented reason set."""
     from app.services.memory.extract_budget import check_extract_allowed

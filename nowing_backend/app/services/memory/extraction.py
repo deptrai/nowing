@@ -32,6 +32,7 @@ from app.db import (
     Workspace,
 )
 from app.services.llm_service import get_agent_llm
+from app.services.memory.extract_budget import check_extract_allowed, record_extraction
 from app.services.memory.repository import MemoryRepository
 from app.services.token_tracking_service import record_token_usage, scoped_turn
 from app.utils.content_utils import extract_text_content, strip_markdown_fences
@@ -182,6 +183,22 @@ class MemoryExtractionService:
         # Resolve the author to attribute memory and token usage.
         created_by_id = user_message.author_id
 
+        # Cost-control gate (Story 8.7 / AR-6 / RS-1): wallet pre-check, spend
+        # budget cap, rate-limit, and anonymous-turn skip. Must run before any
+        # LLM call — this is the authoritative gate; assistant_finalize.py
+        # also consults it as a cheap best-effort fast-path before enqueueing.
+        #
+        # Pass created_by_id directly (NOT the workspace-owner fallback used
+        # below for usage attribution): AC-4 requires a turn with no author to
+        # be skipped as anonymous, not silently billed to the workspace owner.
+        # If the gate allows, created_by_id is guaranteed not None (the
+        # anonymous check would have blocked otherwise).
+        gate_result = await check_extract_allowed(
+            self.session, workspace=workspace, attributed_user_id=created_by_id
+        )
+        if not gate_result.allowed:
+            return []
+
         llm = await get_agent_llm(self.session, workspace.id, disable_streaming=True)
         if llm is None:
             logger.warning("No agent LLM for workspace %s; skipping extraction", workspace.id)
@@ -199,6 +216,11 @@ class MemoryExtractionService:
             f"User message:\n{user_text}\n\n"
             f"Assistant response:\n{assistant_text}"
         )
+
+        # Increment the rate-limit window counter only now that the turn is
+        # actually about to call the LLM (not on the enqueue-side best-effort
+        # check), so the two gate consults never double-count.
+        await record_extraction(workspace.id)
 
         repo = MemoryRepository(session=self.session)
         created_memories: list[Memory] = []
@@ -276,6 +298,9 @@ class MemoryExtractionService:
         # ponytail: token_usage has a partial unique index on message_id, so
         # reuse the assistant message_id would collide with the chat turn's
         # own usage row. Track extraction cost against the thread instead.
+        # (created_by_id passed the gate above, so it is not None here; the
+        # workspace-owner fallback only matters if it were ever None, which
+        # the gate already ruled out.)
         attributed_user_id = created_by_id or workspace.user_id
         if attributed_user_id is not None:
             await record_token_usage(

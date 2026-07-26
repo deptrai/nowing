@@ -151,10 +151,24 @@ async def finalize_assistant_message(
 
     # Best-effort: enqueue memory extraction for this assistant turn.
     # Respect the workspace toggle (and global default) before enqueueing,
-    # so disabled workspaces never spawn Celery tasks.
+    # so disabled workspaces never spawn Celery tasks. Also consult the
+    # Story 8.7 cost-control gate (wallet/budget/rate/anonymous) as a cheap
+    # fast-path — this check is best-effort, not authoritative:
+    # extract_from_turn (extraction.py) re-checks the same gate before
+    # calling the LLM, since Celery is at-least-once and workspace state can
+    # change between enqueue and execution.
     try:
+        from uuid import UUID
+
         from app.config import config
         from app.db import Workspace, shielded_async_session
+        from app.services.memory.extract_budget import check_extract_allowed
+
+        attributed_user_id: UUID | None
+        try:
+            attributed_user_id = UUID(str(user_id)) if user_id is not None else None
+        except ValueError:
+            attributed_user_id = None
 
         async with shielded_async_session() as ws:
             workspace = await ws.get(Workspace, workspace_id)
@@ -162,6 +176,11 @@ async def finalize_assistant_message(
                 config.MEMORY_AUTO_EXTRACT_ENABLED
                 and workspace.memory_auto_extract_enabled
             ):
+                return
+            gate_result = await check_extract_allowed(
+                ws, workspace=workspace, attributed_user_id=attributed_user_id
+            )
+            if not gate_result.allowed:
                 return
     except Exception:
         logger.exception(
