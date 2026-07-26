@@ -1,0 +1,14 @@
+# Nowing quality pipeline override for bmad-retrospective.
+# Team override — committed, applies to every developer.
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad/custom/nowing-quality-pipeline.md",
+]
+
+on_complete = """
+After the retrospective document is saved and sprint-status is updated, output the "Next steps in Nowing quality pipeline" section per the format in nowing-quality-pipeline.md.
+
+Next: 4.0 bmad-sprint-planning (if starting a new epic) → 4.1 bmad-create-story for the next story.
+"""

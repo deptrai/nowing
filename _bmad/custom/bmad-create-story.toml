@@ -1,0 +1,20 @@
+# Nowing quality pipeline override for bmad-create-story.
+# Team override — committed, applies to every developer.
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad/custom/nowing-quality-pipeline.md",
+]
+
+on_complete = """
+After the story file is saved and sprint-status.yaml is updated, output the "Next steps in Nowing quality pipeline" section per the format in nowing-quality-pipeline.md.
+
+At minimum, list:
+- 4.2 bmad-create-story (validate) — recommended quality check before dev starts
+- 4.3 bmad-nowing-grill-me — recommended challenge phase if the story is non-trivial (duplicate-logic risk or spec-gap risk)
+- 4.4 bmad-nowing-test-first-atdd — recommended test description skeleton if the story has acceptance criteria
+- 4.7 bmad-dev-story (BẮT BUỘC) — implement the story
+
+If the story is doc-only or a hotfix, note which steps are skipped and why.
+"""

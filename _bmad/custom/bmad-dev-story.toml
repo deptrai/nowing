@@ -1,0 +1,20 @@
+# Nowing quality pipeline override for bmad-dev-story.
+# Team override — committed, applies to every developer.
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad/custom/nowing-quality-pipeline.md",
+]
+
+on_complete = """
+After marking story tasks complete and updating status to "review", output the "Next steps in Nowing quality pipeline" section per the format in nowing-quality-pipeline.md.
+
+At minimum, list:
+- 4.8 bmad-code-review (BẮT BUỘC)
+- 4.6 bmad-nowing-integration-test (P0-gated — if story touches DB/SQL logic and integration tests weren't already written pre-implementation)
+- 4.10 bmad-nowing-mutation-gate (P0-gated — if P0 source files listed in nowing-quality-pipeline.md were touched: token/credit, auth, provider/model routing, pricing, RAG/connector sync)
+- 4.13 bmad-nowing-human-review-gate (P0-gated — if P0 areas touched)
+
+If story is doc-only or non-P0, note which steps are skipped and why.
+"""

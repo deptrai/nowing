@@ -1,0 +1,14 @@
+# Nowing quality pipeline override for bmad-testarch-nfr.
+# Team override — committed, applies to every developer.
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/_bmad/custom/nowing-quality-pipeline.md",
+]
+
+on_complete = """
+After the NFR evidence audit, output the "Next steps in Nowing quality pipeline" section per the format in nowing-quality-pipeline.md.
+
+Next: 4.13 bmad-nowing-human-review-gate (P0-gated) → 4.14 bmad-nowing-web-e2e-gate (recommended) → next story or 4.17 bmad-retrospective if epic done.
+"""
