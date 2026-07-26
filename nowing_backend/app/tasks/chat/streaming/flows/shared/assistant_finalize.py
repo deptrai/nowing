@@ -150,43 +150,67 @@ async def finalize_assistant_message(
     )
 
     # Best-effort: enqueue memory extraction for this assistant turn.
-    # Respect the workspace toggle (and global default) before enqueueing,
-    # so disabled workspaces never spawn Celery tasks. Also consult the
-    # Story 8.7 cost-control gate (wallet/budget/rate/anonymous) as a cheap
-    # fast-path — this check is best-effort, not authoritative:
-    # extract_from_turn (extraction.py) re-checks the same gate before
-    # calling the LLM, since Celery is at-least-once and workspace state can
-    # change between enqueue and execution.
+    # Respect the workspace toggle (and global default) before enqueueing, so
+    # disabled workspaces never spawn Celery tasks. Also consult the Story 8.7
+    # workspace-scoped caps (budget, rate) as a cheap fast-path.
+    #
+    # Deliberately principal-free: this call site only knows the streaming
+    # caller, who is not guaranteed to be the author of the turn's user message
+    # (a workspace member may resume a thread someone else wrote into, and
+    # `resume_chat` authorizes at workspace level). Evaluating the wallet or
+    # anonymous checks here could therefore drop a turn the authoritative gate
+    # would allow, and it would put a per-turn `User` lookup on this shielded
+    # teardown path. Both are left to `extract_from_turn`, which re-checks the
+    # full gate before calling the LLM — necessary anyway, since Celery is
+    # at-least-once and workspace state can change between enqueue and
+    # execution.
+    skip_enqueue = False
     try:
-        from uuid import UUID
-
         from app.config import config
         from app.db import Workspace, shielded_async_session
-        from app.services.memory.extract_budget import check_extract_allowed
-
-        attributed_user_id: UUID | None
-        try:
-            attributed_user_id = UUID(str(user_id)) if user_id is not None else None
-        except ValueError:
-            attributed_user_id = None
+        from app.services.memory.extract_budget import (
+            REASON_DISABLED,
+            check_workspace_gates,
+        )
 
         async with shielded_async_session() as ws:
             workspace = await ws.get(Workspace, workspace_id)
-            if workspace is None or not (
+            if workspace is None:
+                logger.warning(
+                    "Workspace %s not found before enqueueing memory extraction "
+                    "for message %s",
+                    workspace_id,
+                    stream_result.assistant_message_id,
+                )
+                skip_enqueue = True
+            elif not (
                 config.MEMORY_AUTO_EXTRACT_ENABLED
                 and workspace.memory_auto_extract_enabled
             ):
-                return
-            gate_result = await check_extract_allowed(
-                ws, workspace=workspace, attributed_user_id=attributed_user_id
-            )
-            if not gate_result.allowed:
-                return
+                # AC-8: `disabled` shares the gate's structured vocabulary. The
+                # gate itself logs its own block reasons, so a skip still emits
+                # exactly one line.
+                logger.info(
+                    "memory_extract_skip reason=%s workspace_id=%s stage=enqueue",
+                    REASON_DISABLED,
+                    workspace_id,
+                )
+                skip_enqueue = True
+            elif not (await check_workspace_gates(ws, workspace=workspace)).allowed:
+                skip_enqueue = True
     except Exception:
+        # Fall through and enqueue on purpose. This pre-check is an
+        # optimisation; the authoritative gate in `extract_from_turn` is the one
+        # allowed to decide. Returning here would let a fast-path failure
+        # permanently drop the turn's extraction without the real gate ever
+        # running.
         logger.exception(
-            "Failed to resolve workspace before enqueueing memory extraction for message %s",
+            "Enqueue-side memory-extraction pre-check failed for message %s; "
+            "enqueueing anyway and deferring to the authoritative gate",
             stream_result.assistant_message_id,
         )
+
+    if skip_enqueue:
         return
 
     try:

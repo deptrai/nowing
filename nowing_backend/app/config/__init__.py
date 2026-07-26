@@ -49,6 +49,31 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_choice(name: str, default: str, allowed: tuple[str, ...]) -> str:
+    """Read a lower-cased enum-like env var, warning on unrecognised values.
+
+    Without this, a typo in an enum-valued setting silently falls through to
+    whatever branch the consumer treats as its else-case — e.g.
+    ``MEMORY_AUTO_EXTRACT_BUDGET_WINDOW=monthly`` reading as a 1-day window,
+    a 30x tighter cap than the operator intended. Mirrors ``_env_int``'s
+    warn-and-default behaviour.
+    """
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value not in allowed:
+        logger.warning(
+            "Invalid %s=%r; expected one of %s; using default %r",
+            name,
+            raw,
+            "/".join(allowed),
+            default,
+        )
+        return default
+    return value
+
+
 @lru_cache(maxsize=8)
 def _read_global_config_yaml(path_str: str) -> dict:
     """Read and parse ``global_llm_config.yaml`` once per resolved path.
@@ -615,26 +640,41 @@ class Config:
     )
 
     # Memory auto-extraction cost controls (Story 8.7 / AR-6 / RS-1).
-    # All default to disabled/no-op so enabling auto-extract introduces no new
-    # gating until an operator opts in; the wallet pre-check floor is the only
-    # always-on guard (see app.services.memory.extract_budget).
-    MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS = _env_int(
-        "MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS", 100
+    # The budget cap and rate-limit default to disabled/no-op so enabling
+    # auto-extract introduces no new gating until an operator opts in. The
+    # wallet pre-check is the only always-on gate, but note what it is: an
+    # ELIGIBILITY gate (skip optional background work for an owner who cannot
+    # pay for their foreground work), NOT a spend meter for extraction. Per
+    # AD-8 the wallet-debit surface is ETL pages / premium model calls /
+    # deep-research; memory extraction is deliberately excluded, and
+    # usage_type="memory_create" is Story 8.9's observability record, not a
+    # debit. The bounds that actually apply to extraction spend are
+    # MEMORY_AUTO_EXTRACT_ENABLED (kill-switch, Story 8.8) and the opt-in
+    # budget cap below. See app.services.memory.extract_budget.
+    #
+    # Clamped to >= 1: 0 would disable the always-on gate entirely. Use 1 to
+    # mean "only block a fully empty wallet".
+    MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS = max(
+        1, _env_int("MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS", 100)
     )
     # Per-workspace spend ceiling (micro-USD) for memory_create TokenUsage over
     # the current MEMORY_AUTO_EXTRACT_BUDGET_WINDOW. 0 = disabled (no gating).
+    # Ships at 0 on purpose: AD-8's 2026-07-25 amendment forbids fixing a cost
+    # figure before story 8-7 + FR-37 produce measured numbers.
     MEMORY_AUTO_EXTRACT_BUDGET_MICROS = _env_int("MEMORY_AUTO_EXTRACT_BUDGET_MICROS", 0)
     # Rolling budget window; "day" is a rolling 24h lookback (not a calendar-day
     # cliff) to avoid a midnight reset that lets a burst through right after
-    # rollover. One of "day" / "week" / "month".
-    MEMORY_AUTO_EXTRACT_BUDGET_WINDOW = (
-        os.getenv("MEMORY_AUTO_EXTRACT_BUDGET_WINDOW", "day").strip().lower()
+    # rollover. "month" is a flat 30-day lookback, not a calendar month.
+    MEMORY_AUTO_EXTRACT_BUDGET_WINDOW = _env_choice(
+        "MEMORY_AUTO_EXTRACT_BUDGET_WINDOW", "day", ("day", "week", "month")
     )
     # Max extractions per workspace per MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS.
     # 0 = disabled (no throttling).
     MEMORY_AUTO_EXTRACT_RATE_MAX = _env_int("MEMORY_AUTO_EXTRACT_RATE_MAX", 0)
-    MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS = _env_int(
-        "MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS", 3600
+    # Clamped to >= 1: Redis EXPIRE with a non-positive TTL deletes the key, so
+    # 0 would make every increment self-destruct and silently void the limit.
+    MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS = max(
+        1, _env_int("MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS", 3600)
     )
 
     NOWING_PUBLIC_URL = os.getenv("NOWING_PUBLIC_URL")

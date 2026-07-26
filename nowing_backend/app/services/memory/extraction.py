@@ -32,7 +32,11 @@ from app.db import (
     Workspace,
 )
 from app.services.llm_service import get_agent_llm
-from app.services.memory.extract_budget import check_extract_allowed, record_extraction
+from app.services.memory.extract_budget import (
+    REASON_DISABLED,
+    check_extract_allowed,
+    record_extraction,
+)
 from app.services.memory.repository import MemoryRepository
 from app.services.token_tracking_service import record_token_usage, scoped_turn
 from app.utils.content_utils import extract_text_content, strip_markdown_fences
@@ -141,7 +145,15 @@ class MemoryExtractionService:
             return []
 
         if not config.MEMORY_AUTO_EXTRACT_ENABLED or not workspace.memory_auto_extract_enabled:
-            logger.debug("Memory auto-extraction disabled for workspace %s", workspace.id)
+            # AC-8 enumerates `disabled` alongside the four gate reasons, so it
+            # emits the same structured line at the same level — a DEBUG message
+            # without a machine-parseable `reason=` is invisible to log
+            # consumers in the configurations that matter.
+            logger.info(
+                "memory_extract_skip reason=%s workspace_id=%s",
+                REASON_DISABLED,
+                workspace.id,
+            )
             return []
 
         # Idempotency guard: extracted memories carry source_id == the assistant
@@ -217,11 +229,6 @@ class MemoryExtractionService:
             f"Assistant response:\n{assistant_text}"
         )
 
-        # Increment the rate-limit window counter only now that the turn is
-        # actually about to call the LLM (not on the enqueue-side best-effort
-        # check), so the two gate consults never double-count.
-        await record_extraction(workspace.id)
-
         repo = MemoryRepository(session=self.session)
         created_memories: list[Memory] = []
 
@@ -256,6 +263,16 @@ class MemoryExtractionService:
             except Exception as exc:
                 logger.exception("Memory extraction LLM call failed unexpectedly: %s", exc)
                 raise
+
+            # Count the extraction against the rate-limit window only now that
+            # the LLM call has actually succeeded. Incrementing before the call
+            # inflated the counter on every Celery retry: the transient errors
+            # above are re-raised for `autoretry_for` (max_retries=3), and a
+            # turn that produced no memories does not trip the idempotency
+            # guard on redelivery, so one logical turn could burn up to four
+            # slots. `record_extraction` is a no-op while the rate limit is
+            # disabled, so the default configuration adds no Redis traffic here.
+            await record_extraction(workspace.id)
 
             facts = self._parse_llm_output(raw_output)
             confidence_threshold = config.MEMORY_AUTO_EXTRACT_CONFIDENCE
@@ -298,22 +315,21 @@ class MemoryExtractionService:
         # ponytail: token_usage has a partial unique index on message_id, so
         # reuse the assistant message_id would collide with the chat turn's
         # own usage row. Track extraction cost against the thread instead.
-        # (created_by_id passed the gate above, so it is not None here; the
-        # workspace-owner fallback only matters if it were ever None, which
-        # the gate already ruled out.)
-        attributed_user_id = created_by_id or workspace.user_id
-        if attributed_user_id is not None:
-            await record_token_usage(
-                self.session,
-                usage_type="memory_create",
-                workspace_id=workspace.id,
-                user_id=attributed_user_id,
-                thread_id=thread.id,
-                prompt_tokens=acc.total_prompt_tokens,
-                completion_tokens=acc.total_completion_tokens,
-                total_tokens=acc.grand_total,
-                cost_micros=acc.total_cost_micros,
-            )
+        # `created_by_id` passed the gate's anonymous check above, so it is
+        # guaranteed non-None here. No workspace-owner fallback: re-introducing
+        # one would silently attribute an authorless turn to the owner, which is
+        # exactly the AC-4 mis-attribution the gate exists to prevent.
+        await record_token_usage(
+            self.session,
+            usage_type="memory_create",
+            workspace_id=workspace.id,
+            user_id=created_by_id,
+            thread_id=thread.id,
+            prompt_tokens=acc.total_prompt_tokens,
+            completion_tokens=acc.total_completion_tokens,
+            total_tokens=acc.grand_total,
+            cost_micros=acc.total_cost_micros,
+        )
 
         # Commit the extracted memories (created with commit=False) and the
         # token-usage row together. Because every fact for this turn is written

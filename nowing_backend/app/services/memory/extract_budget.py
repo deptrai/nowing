@@ -9,15 +9,36 @@ block wins, all evaluated BEFORE any LLM call:
     3. period spend >= budget cap        -> reason="budget_exceeded"
     4. rate count >= rate max            -> reason="rate_limited"
 
+**What the wallet pre-check is, and is not.** It is an *eligibility* gate: do
+not perform optional background work for an owner who cannot pay for their
+foreground work. It is **not** a spend meter for extraction, and it cannot
+bound extraction spend. Per **AD-8** the wallet-debit surface is enumerated as
+ETL pages / premium model calls / deep-research — memory extraction is
+deliberately excluded, and ``record_token_usage(usage_type="memory_create")``
+is Story 8.9's *observability* record (it writes a ``TokenUsage`` row; it does
+not debit the wallet). Extraction spend against platform-key models is
+therefore unmetered by design; the bounds that actually apply are the
+``MEMORY_AUTO_EXTRACT_ENABLED`` / per-workspace kill-switch (Story 8.8) and the
+opt-in budget cap below.
+
 The budget and rate checks are opt-in (default ``0`` = disabled, matching the
 repo's billing-flag convention: ``WEB_CRAWL_CREDIT_BILLING_ENABLED``,
-``PLATFORM_SCRAPE_BILLING_ENABLED``). The wallet pre-check is always on — it
-is the P0 guard against cost bleed from AR-6.
+``PLATFORM_SCRAPE_BILLING_ENABLED``).
 
 Deliberately path-agnostic: this module knows nothing about chat threads or
-messages. It only takes a ``session``, a ``workspace``-like object (needs
-``.id``, ``.user_id``), and an ``attributed_user_id``. Story 3.13 will add a
-second (scraper-run) extraction path that must reuse this same gate.
+messages. :func:`check_extract_allowed` takes a ``session``, a
+``workspace``-like object (only ``.id`` is read) and an ``attributed_user_id``.
+Story 3.13 will add a second (scraper-run) extraction path that must reuse this
+same gate.
+
+:func:`check_workspace_gates` is the cheap, principal-free variant used by the
+enqueue-side fast-path in ``assistant_finalize``. It evaluates only the
+workspace-scoped caps (budget, rate) and never fails closed, leaving the wallet
+and anonymous determination to the authoritative service-side call. Keeping the
+principal out of the enqueue side avoids verdict drift: the streaming caller
+and the turn's message author are not guaranteed to be the same user (a
+workspace member may resume a thread someone else wrote into), and it keeps an
+always-on ``User`` lookup off the shielded SSE teardown path.
 
 Collaborator seams (``_wallet_spendable_micros`` / ``_period_spend_micros`` /
 ``_rate_count``) are module-level functions rather than being inlined so
@@ -26,9 +47,13 @@ tests can monkeypatch them individually without a live DB/Redis.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from threading import Lock
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import func, select
@@ -56,41 +81,94 @@ class ExtractGateResult:
 
 
 # Stable reason vocabulary (AC-8). Keep values snake_case and unchanging —
-# callers/log consumers key off these strings.
+# callers/log consumers key off these strings. ``disabled`` is not produced by
+# this module; it is the shared identifier the two call sites use when the
+# kill-switch or the per-workspace flag short-circuits before the gate runs, so
+# that every skip kind AC-8 enumerates shares one vocabulary.
 REASON_ANONYMOUS_UNBILLED = "anonymous_unbilled"
 REASON_INSUFFICIENT_WALLET = "insufficient_wallet"
 REASON_BUDGET_EXCEEDED = "budget_exceeded"
 REASON_RATE_LIMITED = "rate_limited"
+REASON_DISABLED = "disabled"
+REASON_GATE_ERROR = "gate_error"
 
 _RATE_LIMIT_KEY_PREFIX = "nowing:memory_extract_rate"
+
+_redis = None
+_memory_hits: dict[str, list[float]] = defaultdict(list)
+_memory_lock = Lock()
+
+
+def _redis_client():
+    """Lazily build and cache the sync Redis client.
+
+    Cached in a module global, mirroring
+    ``app.capabilities.core.access.rate_limit`` and every other Redis site in
+    the repo. Building a client per call would allocate a fresh
+    ``ConnectionPool`` — and leak its socket until GC — on a per-chat-turn path.
+    """
+    global _redis
+    if _redis is None:
+        import redis
+
+        _redis = redis.from_url(config.REDIS_APP_URL, decode_responses=True)
+    return _redis
+
+
+def _rate_key(workspace_id: int) -> str:
+    return f"{_RATE_LIMIT_KEY_PREFIX}:{workspace_id}"
+
+
+def _memory_count(key: str, window_seconds: int) -> int:
+    """Per-worker in-memory window count (Redis-unavailable fallback)."""
+    now = time.monotonic()
+    with _memory_lock:
+        hits = [t for t in _memory_hits[key] if now - t < window_seconds]
+        _memory_hits[key] = hits
+        return len(hits)
+
+
+def _memory_incr(key: str, window_seconds: int) -> int:
+    """Per-worker in-memory window increment (Redis-unavailable fallback)."""
+    now = time.monotonic()
+    with _memory_lock:
+        hits = [t for t in _memory_hits[key] if now - t < window_seconds]
+        hits.append(now)
+        _memory_hits[key] = hits
+        return len(hits)
 
 
 async def _wallet_spendable_micros(session: AsyncSession, user_id: Any) -> int:
     """Return the owner's spendable balance (``balance - reserved``) in micros.
 
-    A user_id that no longer resolves to a row is treated as having nothing
-    spendable (fail-closed), not as an error — the wallet-error path is
-    reserved for actual query failures (DB down, etc.).
-    """
-    from app.db import User
+    Delegates to the canonical
+    :func:`app.services.wallet_credit.spendable_micros` so this gate cannot
+    drift from the reader the credit doors already trust. Two deliberate
+    adaptations for gate use:
 
-    result = await session.execute(
-        select(User.credit_micros_balance, User.credit_micros_reserved).where(
-            User.id == user_id
-        )
-    )
-    row = result.first()
-    if row is None:
+    * a ``user_id`` that no longer resolves to a row raises ``ValueError``
+      there; here it counts as "nothing spendable" (fail-closed), because the
+      wallet-*error* path is reserved for real query failures (DB down, etc.);
+    * the canonical reader can return a negative difference; clamped to 0 so
+      callers only ever compare non-negative amounts.
+    """
+    from app.services import wallet_credit
+
+    try:
+        spendable = await wallet_credit.spendable_micros(session, user_id)
+    except ValueError:
         return 0
-    balance, reserved = row
-    return max(0, int(balance) - int(reserved))
+    return max(0, int(spendable))
 
 
 def _period_window_start(now: datetime | None = None) -> datetime:
     """Rolling lookback start for the budget window.
 
     Rolling (``now - N``), not a calendar-day/-week/-month cliff, so a burst
-    right after midnight rollover cannot slip through (Dev Notes R4).
+    right after midnight rollover cannot slip through (Dev Notes R4). ``month``
+    is a flat 30-day lookback, not a calendar month. The setting is validated at
+    config load, so an unrecognised value has already been normalised to
+    ``day`` before it reaches here.
     """
     now = now or datetime.now(UTC)
     window = config.MEMORY_AUTO_EXTRACT_BUDGET_WINDOW
@@ -116,52 +194,154 @@ async def _period_spend_micros(session: AsyncSession, workspace_id: int) -> int:
     return int(result.scalar_one())
 
 
+def _rate_count_sync(workspace_id: int) -> int:
+    key = _rate_key(workspace_id)
+    window = config.MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS
+    try:
+        raw = _redis_client().get(key)
+        return int(raw) if raw is not None else 0
+    except Exception:
+        logger.warning(
+            "memory_extract_rate_count_redis_unavailable workspace_id=%s fallback=in_memory",
+            workspace_id,
+        )
+        return _memory_count(key, window)
+
+
 async def _rate_count(workspace_id: int) -> int:
     """Return the current window's extraction count for ``workspace_id``.
 
     Fixed-window counter over Redis, mirroring
-    ``app.capabilities.core.access.rate_limit`` (sync ``redis`` client,
-    read-only here — increment happens in ``record_extraction`` after the
-    gate passes and the LLM is actually invoked). Internally falls back to
-    ``0`` when Redis itself is unreachable: the rate-limit is an abuse guard,
-    not the AR-6 cost-bleed guard (that is the wallet pre-check, which does
-    not depend on Redis), so an unreachable counter should not block
-    extraction. ``check_extract_allowed`` still wraps this call in its own
-    try/except for defense in depth in case this internal handling is ever
-    bypassed (e.g. a test substituting this seam directly).
-    """
-    try:
-        import redis
+    ``app.capabilities.core.access.rate_limit``. The underlying ``redis`` client
+    is synchronous, so the call is off-loaded with :func:`asyncio.to_thread`:
+    the gate is awaited from ``finalize_assistant_message``, which runs on the
+    API event loop inside a shielded (non-cancellable) cleanup scope, where a
+    blocking socket read would stall every other coroutine on that worker.
 
-        client = redis.from_url(config.REDIS_APP_URL, decode_responses=True)
-        raw = client.get(f"{_RATE_LIMIT_KEY_PREFIX}:{workspace_id}")
-        return int(raw) if raw is not None else 0
+    Degrades to a per-worker in-memory window when Redis is unreachable — the
+    same fallback ``rate_limit.py`` uses — rather than giving up entirely: the
+    rate-limit is an abuse guard, not the cost-bleed guard, so an unreachable
+    counter must neither block legitimate extraction nor silently stop counting.
+    """
+    return await asyncio.to_thread(_rate_count_sync, workspace_id)
+
+
+def _record_extraction_sync(workspace_id: int) -> None:
+    key = _rate_key(workspace_id)
+    window = config.MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS
+    try:
+        client = _redis_client()
+        client.incr(key)
+        # Refresh the TTL on every increment, not only when the counter reads 1.
+        # An EXPIRE lost after a successful INCR would otherwise leave a key
+        # with no TTL that never decays, throttling the workspace permanently.
+        client.expire(key, window)
     except Exception:
         logger.warning(
-            "memory_extract_rate_count_unavailable workspace_id=%s", workspace_id
+            "memory_extract_rate_increment_redis_unavailable workspace_id=%s fallback=in_memory",
+            workspace_id,
         )
-        return 0
+        _memory_incr(key, window)
 
 
 async def record_extraction(workspace_id: int) -> None:
-    """Increment the rate-limit window counter after an allowed extraction.
+    """Increment the rate-limit window counter for an extraction that ran.
 
-    Called by the service only once the gate has passed AND the LLM call is
-    actually about to happen — never on the enqueue-side best-effort check —
-    so the enqueue-side consult (AC-7) cannot double-count.
+    No-op when the rate limit is disabled (``MEMORY_AUTO_EXTRACT_RATE_MAX``
+    unset/0, the default), so the shipped configuration adds no Redis traffic to
+    the extraction path at all (AC-6: behaviour identical to baseline at
+    defaults).
+
+    The service calls this only *after* the extraction LLM call has actually
+    succeeded — never before it, and never from the enqueue-side fast-path — so
+    neither a Celery retry of a failed call nor the enqueue-side consult can
+    inflate the counter.
     """
-    try:
-        import redis
+    if config.MEMORY_AUTO_EXTRACT_RATE_MAX <= 0:
+        return
+    await asyncio.to_thread(_record_extraction_sync, workspace_id)
 
-        client = redis.from_url(config.REDIS_APP_URL, decode_responses=True)
-        key = f"{_RATE_LIMIT_KEY_PREFIX}:{workspace_id}"
-        count = int(client.incr(key))
-        if count == 1:
-            client.expire(key, config.MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS)
+
+async def _check_budget(
+    session: AsyncSession, workspace_id: int, *, stage: str, fail_closed: bool
+) -> ExtractGateResult | None:
+    """Budget cap check. Returns a blocking verdict, or ``None`` to continue.
+
+    ``fail_closed`` controls what a failed aggregate query means. The
+    authoritative service-side call blocks (bounded cost is the whole point of
+    the cap); the enqueue-side fast-path continues, because blocking there
+    would drop the turn before the authoritative gate ever runs.
+    """
+    budget_cap = config.MEMORY_AUTO_EXTRACT_BUDGET_MICROS
+    if budget_cap <= 0:
+        return None
+
+    try:
+        spent = await _period_spend_micros(session, workspace_id)
     except Exception:
         logger.warning(
-            "memory_extract_rate_increment_failed workspace_id=%s", workspace_id
+            "memory_extract_skip reason=%s workspace_id=%s stage=%s "
+            "budget_check_failed=true fail_closed=%s",
+            REASON_BUDGET_EXCEEDED,
+            workspace_id,
+            stage,
+            fail_closed,
         )
+        if fail_closed:
+            return ExtractGateResult(allowed=False, reason=REASON_BUDGET_EXCEEDED)
+        return None
+
+    if spent >= budget_cap:
+        logger.info(
+            "memory_extract_skip reason=%s workspace_id=%s stage=%s spent=%s cap=%s",
+            REASON_BUDGET_EXCEEDED,
+            workspace_id,
+            stage,
+            spent,
+            budget_cap,
+        )
+        return ExtractGateResult(allowed=False, reason=REASON_BUDGET_EXCEEDED)
+    return None
+
+
+async def _check_rate(
+    workspace_id: int, *, stage: str, fail_closed: bool
+) -> ExtractGateResult | None:
+    """Rate-limit check. Returns a blocking verdict, or ``None`` to continue.
+
+    ``_rate_count`` already contains its own Redis fallback and does not raise,
+    so the ``except`` here is defense in depth for a substituted seam.
+    """
+    rate_max = config.MEMORY_AUTO_EXTRACT_RATE_MAX
+    if rate_max <= 0:
+        return None
+
+    try:
+        rate = await _rate_count(workspace_id)
+    except Exception:
+        logger.warning(
+            "memory_extract_skip reason=%s workspace_id=%s stage=%s "
+            "rate_check_failed=true fail_closed=%s",
+            REASON_RATE_LIMITED,
+            workspace_id,
+            stage,
+            fail_closed,
+        )
+        if fail_closed:
+            return ExtractGateResult(allowed=False, reason=REASON_RATE_LIMITED)
+        return None
+
+    if rate >= rate_max:
+        logger.info(
+            "memory_extract_skip reason=%s workspace_id=%s stage=%s rate=%s max=%s",
+            REASON_RATE_LIMITED,
+            workspace_id,
+            stage,
+            rate,
+            rate_max,
+        )
+        return ExtractGateResult(allowed=False, reason=REASON_RATE_LIMITED)
+    return None
 
 
 async def check_extract_allowed(
@@ -172,99 +352,123 @@ async def check_extract_allowed(
 ) -> ExtractGateResult:
     """Decide whether a memory-extraction LLM call may proceed.
 
-    Runs BEFORE any LLM call. First block wins; each gate is evaluated only
-    if the prior ones passed, so a single call resolves at most one reason.
+    The authoritative gate. Runs BEFORE any LLM call. First block wins; each
+    check is evaluated only if the prior ones passed, so a single call resolves
+    at most one reason. Never raises: every branch, including reading
+    ``workspace.id``, is contained so a gate failure can never break the chat
+    turn that already succeeded.
     """
-    workspace_id = workspace.id
-
-    # 1. Anonymous / no billable owner.
-    if attributed_user_id is None:
-        logger.info(
-            "memory_extract_skip reason=%s workspace_id=%s",
-            REASON_ANONYMOUS_UNBILLED,
-            workspace_id,
-        )
-        return ExtractGateResult(allowed=False, reason=REASON_ANONYMOUS_UNBILLED)
-
-    # 2. Wallet pre-check (always-on; the core AR-6 cost-bleed guard).
-    # Fail-closed: any error resolving the wallet blocks extraction rather
-    # than letting an outage turn into unbounded spend.
     try:
-        spendable = await _wallet_spendable_micros(session, attributed_user_id)
+        workspace_id = workspace.id
+    except Exception:
+        # A detached/expired ORM instance (Story 3.13 will reuse this gate from
+        # a different path) must not raise into the caller.
+        logger.warning(
+            "memory_extract_skip reason=%s stage=service workspace_unreadable=true",
+            REASON_GATE_ERROR,
+            exc_info=True,
+        )
+        return ExtractGateResult(allowed=False, reason=REASON_GATE_ERROR)
+
+    try:
+        # 1. Anonymous / no billable owner.
+        if attributed_user_id is None:
+            logger.info(
+                "memory_extract_skip reason=%s workspace_id=%s stage=service",
+                REASON_ANONYMOUS_UNBILLED,
+                workspace_id,
+            )
+            return ExtractGateResult(allowed=False, reason=REASON_ANONYMOUS_UNBILLED)
+
+        # 2. Wallet eligibility pre-check (always-on). Fail-closed: an error
+        # resolving the wallet blocks optional background work rather than
+        # letting an outage widen what runs unmetered.
+        try:
+            spendable = await _wallet_spendable_micros(session, attributed_user_id)
+        except Exception:
+            logger.warning(
+                "memory_extract_skip reason=%s workspace_id=%s stage=service "
+                "wallet_check_failed=true",
+                REASON_INSUFFICIENT_WALLET,
+                workspace_id,
+            )
+            return ExtractGateResult(allowed=False, reason=REASON_INSUFFICIENT_WALLET)
+
+        if spendable < config.MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS:
+            logger.info(
+                "memory_extract_skip reason=%s workspace_id=%s stage=service "
+                "spendable=%s min_reserve=%s",
+                REASON_INSUFFICIENT_WALLET,
+                workspace_id,
+                spendable,
+                config.MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS,
+            )
+            return ExtractGateResult(allowed=False, reason=REASON_INSUFFICIENT_WALLET)
+
+        # 3. Per-workspace spend/budget cap over the rolling period.
+        blocked = await _check_budget(
+            session, workspace_id, stage="service", fail_closed=True
+        )
+        if blocked is not None:
+            return blocked
+
+        # 4. Time-based rate-limit.
+        blocked = await _check_rate(workspace_id, stage="service", fail_closed=True)
+        if blocked is not None:
+            return blocked
     except Exception:
         logger.warning(
-            "memory_extract_skip reason=%s workspace_id=%s wallet_check_failed=true",
-            REASON_INSUFFICIENT_WALLET,
+            "memory_extract_skip reason=%s workspace_id=%s stage=service",
+            REASON_GATE_ERROR,
             workspace_id,
+            exc_info=True,
         )
-        return ExtractGateResult(allowed=False, reason=REASON_INSUFFICIENT_WALLET)
+        return ExtractGateResult(allowed=False, reason=REASON_GATE_ERROR)
 
-    if spendable < config.MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS:
-        logger.info(
-            "memory_extract_skip reason=%s workspace_id=%s spendable=%s min_reserve=%s",
-            REASON_INSUFFICIENT_WALLET,
-            workspace_id,
-            spendable,
-            config.MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS,
+    return ExtractGateResult(allowed=True, reason=None)
+
+
+async def check_workspace_gates(
+    session: AsyncSession, *, workspace: Workspace
+) -> ExtractGateResult:
+    """Workspace-scoped caps only (budget, rate) — no principal required.
+
+    The enqueue-side fast-path (AC-7). Deliberately omits the wallet and
+    anonymous checks: both need a principal, and the enqueue site's principal
+    (the streaming caller) is not guaranteed to be the turn's message author,
+    so consulting them here could drop a turn the authoritative gate would
+    allow. Omitting them also keeps a per-turn ``User`` lookup off the shielded
+    SSE teardown path.
+
+    Never fails closed and never raises — any uncertainty resolves to
+    "enqueue and let :func:`check_extract_allowed` decide".
+    """
+    try:
+        workspace_id = workspace.id
+        blocked = await _check_budget(
+            session, workspace_id, stage="enqueue", fail_closed=False
         )
-        return ExtractGateResult(allowed=False, reason=REASON_INSUFFICIENT_WALLET)
-
-    # 3. Per-workspace spend/budget cap over the rolling period. Disabled
-    # (no gating) when the cap is unset/0 — back-compat default.
-    budget_cap = config.MEMORY_AUTO_EXTRACT_BUDGET_MICROS
-    if budget_cap > 0:
-        try:
-            spent = await _period_spend_micros(session, workspace_id)
-        except Exception:
-            logger.warning(
-                "memory_extract_skip reason=%s workspace_id=%s budget_check_failed=true",
-                REASON_BUDGET_EXCEEDED,
-                workspace_id,
-            )
-            return ExtractGateResult(allowed=False, reason=REASON_BUDGET_EXCEEDED)
-
-        if spent >= budget_cap:
-            logger.info(
-                "memory_extract_skip reason=%s workspace_id=%s spent=%s cap=%s",
-                REASON_BUDGET_EXCEEDED,
-                workspace_id,
-                spent,
-                budget_cap,
-            )
-            return ExtractGateResult(allowed=False, reason=REASON_BUDGET_EXCEEDED)
-
-    # 4. Time-based rate-limit. Disabled (no throttling) when unset/0.
-    rate_max = config.MEMORY_AUTO_EXTRACT_RATE_MAX
-    if rate_max > 0:
-        try:
-            rate = await _rate_count(workspace_id)
-        except Exception:
-            logger.warning(
-                "memory_extract_skip reason=%s workspace_id=%s rate_check_failed=true",
-                REASON_RATE_LIMITED,
-                workspace_id,
-            )
-            return ExtractGateResult(allowed=False, reason=REASON_RATE_LIMITED)
-
-        if rate >= rate_max:
-            logger.info(
-                "memory_extract_skip reason=%s workspace_id=%s rate=%s max=%s",
-                REASON_RATE_LIMITED,
-                workspace_id,
-                rate,
-                rate_max,
-            )
-            return ExtractGateResult(allowed=False, reason=REASON_RATE_LIMITED)
-
+        if blocked is not None:
+            return blocked
+        blocked = await _check_rate(workspace_id, stage="enqueue", fail_closed=False)
+        if blocked is not None:
+            return blocked
+    except Exception:
+        logger.warning(
+            "memory_extract_enqueue_gate_error falling_through=true", exc_info=True
+        )
     return ExtractGateResult(allowed=True, reason=None)
 
 
 __all__ = [
     "REASON_ANONYMOUS_UNBILLED",
     "REASON_BUDGET_EXCEEDED",
+    "REASON_DISABLED",
+    "REASON_GATE_ERROR",
     "REASON_INSUFFICIENT_WALLET",
     "REASON_RATE_LIMITED",
     "ExtractGateResult",
     "check_extract_allowed",
+    "check_workspace_gates",
     "record_extraction",
 ]
