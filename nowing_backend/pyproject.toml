@@ -230,7 +230,13 @@ pythonpath = ["."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short -x --strict-markers -ra --durations=5 --import-mode=importlib"
+# `--maxfail=5` rather than `-x`: fail-fast still bounds a broken run, but a
+# single red test no longer hides every downstream result. With `-x`, an
+# order-dependent or environment-dependent failure was indistinguishable from a
+# cascade, `--lf`/rerun tooling could not build a full pass/fail matrix, and
+# regression sweeps had to be run with `-o addopts=""` to see the real picture.
+# Pass `-x` ad hoc when bisecting locally.
+addopts = "-v --tb=short --maxfail=5 --strict-markers -ra --durations=5 --import-mode=importlib"
 markers = [
     "unit: pure logic tests, no DB or external services",
     "integration: tests that require a real PostgreSQL database",

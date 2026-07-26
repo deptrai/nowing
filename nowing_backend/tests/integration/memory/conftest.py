@@ -30,7 +30,18 @@ from app.users import get_auth_context
 
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
-limiter.enabled = False
+
+@pytest.fixture(autouse=True)
+def _rate_limiter_disabled(monkeypatch):
+    """Disable request rate limiting for the duration of each test.
+
+    Previously this was a module-level ``limiter.enabled = False`` executed at
+    *import* time — an unrestored global mutation that leaked to every other
+    test module collected in the same pytest process, so a module that never
+    asked for it silently inherited a disabled limiter (and could not test
+    limiting at all). Scoped to a fixture so monkeypatch restores it.
+    """
+    monkeypatch.setattr(limiter, "enabled", False)
 
 
 async def _client_for_user(
