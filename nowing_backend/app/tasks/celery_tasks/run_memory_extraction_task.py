@@ -30,6 +30,10 @@ import logging
 from sqlalchemy import update
 
 from app.celery_app import celery_app
+from app.observability.metrics import (
+    record_run_memory_failed,
+    record_run_memory_retried,
+)
 from app.services.memory.pipeline import TRANSIENT_LLM_ERRORS
 from app.services.memory.run_extraction import (
     STATUS_FAILED,
@@ -121,8 +125,10 @@ async def _extract_memory_after_run(run_id, *, retries_left: bool = True) -> Non
             # the terminal `failed` marker once the budget is gone.
             if retries_left:
                 await _release_claim(session, run_id)
+                record_run_memory_retried()
             else:
                 await _mark_failed(session, run_id)
+                record_run_memory_failed()
             raise
         except Exception:
             # Terminal (auth/config/validation/persistence): no retry would help.
@@ -130,6 +136,7 @@ async def _extract_memory_after_run(run_id, *, retries_left: bool = True) -> Non
             # so a fact staged before a later failure can never leak through.
             await session.rollback()
             await _mark_failed(session, run_id)
+            record_run_memory_failed()
             raise
 
 

@@ -34,6 +34,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
 from app.db import Memory, MemorySourceType, NewChatThread, Run, Workspace
+from app.observability.metrics import (
+    record_run_memory_created,
+    record_run_memory_skipped,
+    record_run_memory_zero_fact,
+)
 from app.services.llm_service import get_agent_llm
 from app.services.memory.extract_budget import (
     REASON_DISABLED,
@@ -226,6 +231,14 @@ class RunMemoryExtractionService:
         run.memory_extraction_completed_at = datetime.now(UTC)
         await self.session.commit()
 
+        # T6/AC-9: counted here rather than at each branch so a new skip reason
+        # cannot be added without telemetry. `reason` is drawn from the closed
+        # snake_case vocabulary of Story 8.7/8.8 plus this module's own
+        # identifiers, so the label stays low-cardinality and never carries
+        # scraped payload.
+        if status == STATUS_SKIPPED:
+            record_run_memory_skipped(reason=reason or "unknown")
+
     async def extract_from_run(self, run_id: UUID) -> list[Memory]:
         """Extract and persist memory for a single successful run.
 
@@ -393,6 +406,15 @@ class RunMemoryExtractionService:
         run.memory_extraction_completed_at = datetime.now(UTC)
 
         await self.session.commit()
+
+        # Counted only after the commit, so the metric reflects durable rows
+        # rather than an attempt that may still roll back (T6/AC-9). Both
+        # counters are payload-free: a count and, for the skip counter, a value
+        # from the fixed reason vocabulary — never scraped text.
+        if created_memories:
+            record_run_memory_created(len(created_memories))
+        else:
+            record_run_memory_zero_fact()
 
         # Events only after the batch is durable, exactly once (AC-6).
         await repo.flush_pending_memory_changed()
