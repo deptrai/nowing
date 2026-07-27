@@ -297,7 +297,7 @@ async def test_run_extraction_is_all_or_nothing_on_second_fact_failure(
 
     published: list = []
 
-    async def capture_publish(self, workspace_id, payload):  # noqa: ARG001
+    async def capture_publish(self, workspace_id, payload):
         published.append(payload)
 
     llm = _llm_returning(FACTS_JSON)
@@ -332,9 +332,7 @@ async def test_run_extraction_is_all_or_nothing_on_second_fact_failure(
 
 
 @pytest.mark.asyncio
-async def test_run_extraction_zero_facts_still_marks_completed(
-    db_session, scraper_run
-):
+async def test_run_extraction_zero_facts_still_marks_completed(db_session, scraper_run):
     """AC-6/D6: a successful zero-fact extraction is terminal, not retryable."""
     from app.services.memory.run_extraction import RunMemoryExtractionService
 

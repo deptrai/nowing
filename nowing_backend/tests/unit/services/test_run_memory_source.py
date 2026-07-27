@@ -137,7 +137,9 @@ def test_scraped_instructions_are_kept_as_data_not_promoted():
         }
     )
     block = _build(
-        capability="web.crawl", run_input={"url": "https://evil.test"}, output_text=malicious
+        capability="web.crawl",
+        run_input={"url": "https://evil.test"},
+        output_text=malicious,
     )
 
     # The payload is preserved verbatim as analysable content...

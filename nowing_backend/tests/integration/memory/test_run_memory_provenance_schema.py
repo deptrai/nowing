@@ -21,7 +21,6 @@ the same technique ``test_backfill_legacy_memory.py`` uses for migration 178.
 from __future__ import annotations
 
 import importlib.util
-import uuid
 from pathlib import Path
 
 import pytest

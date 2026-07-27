@@ -125,9 +125,7 @@ def _serialize_input(run_input: Any) -> str:
     if isinstance(run_input, str):
         return run_input
     try:
-        return json.dumps(
-            run_input, default=str, ensure_ascii=False, sort_keys=True
-        )
+        return json.dumps(run_input, default=str, ensure_ascii=False, sort_keys=True)
     except (TypeError, ValueError):
         return str(run_input)
 
@@ -268,7 +266,10 @@ class RunMemoryExtractionService:
             )
             return []
 
-        if not config.MEMORY_AUTO_EXTRACT_ENABLED or not workspace.memory_auto_extract_enabled:
+        if (
+            not config.MEMORY_AUTO_EXTRACT_ENABLED
+            or not workspace.memory_auto_extract_enabled
+        ):
             logger.info(
                 "run_memory_extract_skip reason=%s workspace_id=%s run_id=%s",
                 REASON_DISABLED,
