@@ -90,7 +90,7 @@ async def _make_research_thread(session, workspace, user, *, title="Q3 research"
     return thread
 
 
-def _action_context(session, workspace, user):
+def _action_context(session, workspace, user, *, schema_version="1.1"):
     from app.automations.actions.types import ActionContext
 
     return ActionContext(
@@ -99,6 +99,7 @@ def _action_context(session, workspace, user):
         step_id="continue",
         workspace_id=workspace.id,
         creator_user_id=user.id,
+        schema_version=schema_version,
     )
 
 
@@ -149,7 +150,7 @@ async def test_continue_research_recall_matches_hybrid_search(
     )
     result = await handler({"research_thread_id": thread.id, "top_k": 5})
 
-    assert [m["id"] for m in result["memories"]] == [m.id for m in expected]
+    assert [m["id"] for m in result["memories"]] == [hit.memory.id for hit in expected]
 
 
 async def test_continue_research_citations_match_thread_citations(
@@ -313,3 +314,118 @@ async def test_continue_research_top_k_limits_recall(db_session, db_workspace, d
     result = await handler({"research_thread_id": thread.id, "top_k": 2})
 
     assert len(result["memories"]) == 2
+
+
+# --- Story 3.14 (D9): schema_version-gated top_k contract -----------------------
+
+
+async def test_continue_research_new_schema_rejects_top_k_above_five(
+    db_session, db_workspace, db_user
+):
+    """A ``schema_version 1.1`` (default/new-write) run never accepts top_k > 5."""
+    from pydantic import ValidationError
+
+    from app.automations.actions.store import get_action
+    from app.db import ResearchThread
+
+    thread = ResearchThread(
+        workspace_id=db_workspace.id, created_by_id=db_user.id, title="T"
+    )
+    db_session.add(thread)
+    await db_session.flush()
+
+    handler = get_action("continue_research").build_handler(
+        _action_context(db_session, db_workspace, db_user, schema_version="1.1")
+    )
+
+    with pytest.raises(ValidationError):
+        await handler({"research_thread_id": thread.id, "top_k": 6})
+
+
+async def test_continue_research_legacy_schema_clamps_top_k_with_warning(
+    db_session, db_workspace, db_user, caplog
+):
+    """A persisted ``schema_version 1.0`` run still accepts a legacy top_k above
+    5 (up to 100), but the recall is clamped to 5 with a warning logged."""
+    from app.automations.actions.store import get_action
+    from app.db import Memory, MemorySourceType, MemoryType, ResearchThread
+
+    thread = ResearchThread(
+        workspace_id=db_workspace.id, created_by_id=db_user.id, title="Legacy thread"
+    )
+    db_session.add(thread)
+    await db_session.flush()
+
+    for i in range(7):
+        db_session.add(
+            Memory(
+                workspace_id=db_workspace.id,
+                content=f"Legacy fact {i}.",
+                embedding=[0.1 * (i + 1)] * 384,
+                type=MemoryType.SEMANTIC,
+                source_type=MemorySourceType.MANUAL,
+                research_thread_id=thread.id,
+                created_by_id=db_user.id,
+            )
+        )
+    await db_session.flush()
+
+    handler = get_action("continue_research").build_handler(
+        _action_context(db_session, db_workspace, db_user, schema_version="1.0")
+    )
+
+    with caplog.at_level("WARNING"):
+        result = await handler({"research_thread_id": thread.id, "top_k": 50})
+
+    assert len(result["memories"]) == 5  # clamped, never the raw legacy value
+    assert "top_k" not in result  # record unmodified — clamp is recall-only
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert any("clamping" in r.message for r in warnings)
+
+
+async def test_continue_research_legacy_schema_rejects_above_legacy_ceiling(
+    db_session, db_workspace, db_user
+):
+    """Even the wider legacy ceiling (100) is enforced — 101 still fails clean."""
+    from pydantic import ValidationError
+
+    from app.automations.actions.store import get_action
+    from app.db import ResearchThread
+
+    thread = ResearchThread(
+        workspace_id=db_workspace.id, created_by_id=db_user.id, title="T"
+    )
+    db_session.add(thread)
+    await db_session.flush()
+
+    handler = get_action("continue_research").build_handler(
+        _action_context(db_session, db_workspace, db_user, schema_version="1.0")
+    )
+
+    with pytest.raises(ValidationError):
+        await handler({"research_thread_id": thread.id, "top_k": 101})
+
+
+async def test_continue_research_legacy_schema_within_ceiling_is_not_clamped(
+    db_session, db_workspace, db_user, caplog
+):
+    """A legacy top_k already within the strict ceiling (<=5) recalls as-is —
+    no clamp, no warning."""
+    from app.automations.actions.store import get_action
+    from app.db import ResearchThread
+
+    thread = ResearchThread(
+        workspace_id=db_workspace.id, created_by_id=db_user.id, title="T"
+    )
+    db_session.add(thread)
+    await db_session.flush()
+
+    handler = get_action("continue_research").build_handler(
+        _action_context(db_session, db_workspace, db_user, schema_version="1.0")
+    )
+
+    with caplog.at_level("WARNING"):
+        result = await handler({"research_thread_id": thread.id, "top_k": 5})
+
+    assert result["research_thread_id"] == thread.id
+    assert not any("clamping" in r.message for r in caplog.records)

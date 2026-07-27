@@ -44,7 +44,7 @@ Required JSON shape:
   "name": "<1-200 char identifier>",
   "description": "<one-liner or null>",
   "definition": {
-    "schema_version": "1.0",
+    "schema_version": "1.1",
     "name": "<same as outer name>",
     "goal": "<one sentence>",
     "plan": [
@@ -105,7 +105,7 @@ output:
   "name": "Daily folder 12 digest",
   "description": "Weekday 09:00 UTC summary of folder 12 documents posted to #daily-digest",
   "definition": {
-    "schema_version": "1.0",
+    "schema_version": "1.1",
     "name": "Daily folder 12 digest",
     "goal": "Summarize new docs in folder 12 since the last run and post to #daily-digest",
     "plan": [
@@ -137,7 +137,7 @@ output:
   "name": "Weekly CORE Jira recap",
   "description": "Monday 07:00 Europe/Paris recap of last week's CORE Jira issues, drafted to Notion",
   "definition": {
-    "schema_version": "1.0",
+    "schema_version": "1.1",
     "name": "Weekly CORE Jira recap",
     "goal": "Recap last week's CORE Jira issues into a Notion page",
     "plan": [
@@ -169,7 +169,7 @@ output:
   "name": "Daily folder 12 Slack digest",
   "description": "Weekday 09:00 UTC summary of folder 12 documents posted to #daily-digest",
   "definition": {
-    "schema_version": "1.0",
+    "schema_version": "1.1",
     "name": "Daily folder 12 Slack digest",
     "goal": "Summarize new docs in folder 12 since the last run and post to #daily-digest",
     "plan": [

@@ -12,7 +12,10 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.automations.runtime.executor import _build_action_ctx
-from app.automations.schemas.definition.envelope import AutomationModels
+from app.automations.schemas.definition.envelope import (
+    AutomationDefinition,
+    AutomationModels,
+)
 from app.automations.schemas.definition.plan_step import PlanStep
 
 pytestmark = pytest.mark.unit
@@ -22,6 +25,14 @@ def _run() -> SimpleNamespace:
     return SimpleNamespace(
         id=1,
         automation=SimpleNamespace(workspace_id=42, created_by_user_id="u-1"),
+    )
+
+
+def _definition(**kwargs) -> AutomationDefinition:
+    return AutomationDefinition(
+        name="A",
+        plan=[PlanStep(step_id="s1", action="agent_task")],
+        **kwargs,
     )
 
 
@@ -36,7 +47,7 @@ def test_build_action_ctx_propagates_captured_models() -> None:
         cast(AsyncSession, None),
         _run(),
         PlanStep(step_id="s1", action="agent_task"),
-        models,
+        _definition(models=models),
     )
 
     assert ctx.workspace_id == 42
@@ -51,9 +62,22 @@ def test_build_action_ctx_none_models_leaves_fields_none() -> None:
         cast(AsyncSession, None),
         _run(),
         PlanStep(step_id="s1", action="agent_task"),
-        None,
+        _definition(models=None),
     )
 
     assert ctx.chat_model_id is None
     assert ctx.image_gen_model_id is None
     assert ctx.vision_model_id is None
+
+
+def test_build_action_ctx_propagates_schema_version() -> None:
+    """Story 3.14 (D9): the run's definition ``schema_version`` threads onto the
+    ``ActionContext``, so an action can branch on which contract produced it."""
+    ctx = _build_action_ctx(
+        cast(AsyncSession, None),
+        _run(),
+        PlanStep(step_id="s1", action="agent_task"),
+        _definition(schema_version="1.0"),
+    )
+
+    assert ctx.schema_version == "1.0"
