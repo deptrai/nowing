@@ -111,7 +111,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         resolved = await context.resolve(workspace)
         payload = {
             "query": query,
-            "top_k": max(1, min(top_k, 20)),
+            "top_k": top_k,
             "type": type,
             "tags": tags or [],
             "research_thread_id": research_thread_id,
@@ -180,7 +180,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         resolved = await context.resolve(workspace)
         params = {
             "query": query or None,
-            "top_k": max(1, min(top_k, 20)),
+            "top_k": top_k,
         }
         try:
             data = await client.request(
