@@ -22,6 +22,10 @@ on:
         description: 'Dedicated Nowing workspace id to seed and measure'
         required: true
         type: string
+      backend_build_id:
+        description: 'Deployed backend build/commit identifier this run evaluates'
+        required: true
+        type: string
       top_k:
         description: 'Recall window (RS-2 caps this at 5)'
         required: false
@@ -47,6 +51,21 @@ jobs:
       NOWING_JWT: ${{ secrets.NOWING_EVAL_JWT }}
       NOWING_EVAL_WORKSPACE_ID: ${{ inputs.workspace_id }}
     steps:
+      - name: Validate backend_build_id is not blank
+        run: |
+          if [ -z "$(echo "${{ inputs.backend_build_id }}" | tr -d '[:space:]')" ]; then
+            echo "::error::backend_build_id must not be blank"
+            exit 1
+          fi
+
+      # Isolated per run attempt so a re-run (or a concurrent dispatch, despite
+      # the concurrency group above) can never read or upload another run's
+      # artifacts. Exported via GITHUB_ENV rather than the job-level `env:`
+      # block because the `runner` context isn't available there.
+      - name: Compute isolated eval data dir
+        run: |
+          echo "EVAL_DATA_DIR=${{ runner.temp }}/nowing-eval-data-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_ENV"
+
       - name: Checkout code
         uses: actions/checkout@v6
 
@@ -62,6 +81,13 @@ jobs:
         working-directory: nowing_evals
         run: uv sync --all-extras --frozen
 
+      - name: Assert isolated eval data dir starts empty
+        run: |
+          if [ -e "$EVAL_DATA_DIR" ] && [ -n "$(ls -A "$EVAL_DATA_DIR" 2>/dev/null)" ]; then
+            echo "::error::EVAL_DATA_DIR already exists and is not empty: $EVAL_DATA_DIR"
+            exit 1
+          fi
+
       - name: Seed the labeled corpus
         working-directory: nowing_evals
         run: uv run --active python -m nowing_evals ingest memory recall
@@ -71,6 +97,7 @@ jobs:
         run: >-
           uv run --active python -m nowing_evals run memory recall
           --top-k ${{ inputs.top_k }}
+          --backend-build-id "${{ inputs.backend_build_id }}"
 
       - name: Ship gate
         working-directory: nowing_evals
@@ -86,7 +113,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: memory-recall-run-${{ inputs.workspace_id }}
-          path: nowing_evals/data/memory/runs/
+          path: ${{ env.EVAL_DATA_DIR }}/memory/runs/
           if-no-files-found: warn
 
       # Runs even when the gate fails: leaving fixture memories behind in a real

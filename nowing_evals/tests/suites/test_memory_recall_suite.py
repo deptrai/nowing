@@ -351,7 +351,10 @@ async def test_run_persists_artifact_with_quality_metrics(tmp_path, monkeypatch)
     )
 
     artifact = await MemoryRecallBenchmark().run(
-        _fake_ctx(tmp_path, dataset, FakeMemoriesClient()), top_k=5, min_similarity=0.3
+        _fake_ctx(tmp_path, dataset, FakeMemoriesClient()),
+        top_k=5,
+        min_similarity=0.3,
+        backend_build_id="test-build",
     )
 
     required = {
@@ -426,7 +429,9 @@ async def test_run_scores_noise_over_the_full_returned_set(tmp_path, monkeypatch
     ]
 
     artifact = await MemoryRecallBenchmark().run(
-        _fake_ctx(tmp_path, dataset, FakeMemoriesClient(), map_rows=rows), top_k=5
+        _fake_ctx(tmp_path, dataset, FakeMemoriesClient(), map_rows=rows),
+        top_k=5,
+        backend_build_id="test-build",
     )
     metrics = artifact.metrics
     assert metrics["recall_at_k"]["5"] == pytest.approx(1.0), "the memory was found"
@@ -457,7 +462,9 @@ async def test_run_counts_unmappable_results_as_off_corpus(tmp_path, monkeypatch
         "nowing_evals.suites.memory.recall.runner.load_dataset", lambda **_kw: dataset
     )
     artifact = await MemoryRecallBenchmark().run(
-        _fake_ctx(tmp_path, dataset, FakeMemoriesClient()), top_k=5
+        _fake_ctx(tmp_path, dataset, FakeMemoriesClient()),
+        top_k=5,
+        backend_build_id="test-build",
     )
     assert artifact.metrics["off_corpus_rate"] == pytest.approx(0.8)
     assert artifact.metrics["off_corpus_measured"] is True
@@ -493,7 +500,9 @@ async def test_run_records_failed_queries_instead_of_aborting(tmp_path, monkeypa
     )
     rows = [{"memory_ref": "m1", "memory_id": 101, "workspace_id": 42}]
     artifact = await MemoryRecallBenchmark().run(
-        _fake_ctx(tmp_path, dataset, FlakyClient(), map_rows=rows), top_k=5
+        _fake_ctx(tmp_path, dataset, FlakyClient(), map_rows=rows),
+        top_k=5,
+        backend_build_id="test-build",
     )
     assert artifact.metrics["n_failed_queries"] == 1
     assert artifact.metrics["n_queries"] == 1  # only the successful query was judged
@@ -518,7 +527,9 @@ async def test_run_refuses_a_partially_ingested_corpus(tmp_path, monkeypatch):
     rows = [{"memory_ref": "m1", "memory_id": 101, "workspace_id": 42}]
     with pytest.raises(RuntimeError, match="not fully ingested"):
         await MemoryRecallBenchmark().run(
-            _fake_ctx(tmp_path, dataset, FakeMemoriesClient(), map_rows=rows), top_k=5
+            _fake_ctx(tmp_path, dataset, FakeMemoriesClient(), map_rows=rows),
+            top_k=5,
+            backend_build_id="test-build",
         )
 
 
@@ -535,5 +546,63 @@ async def test_run_rejects_invalid_min_similarity_before_calling_the_api(tmp_pat
     )
     with pytest.raises(ValueError, match="min_similarity"):
         await MemoryRecallBenchmark().run(
-            _fake_ctx(tmp_path, dataset, ExplodingClient()), top_k=5, min_similarity=5.0
+            _fake_ctx(tmp_path, dataset, ExplodingClient()),
+            top_k=5,
+            min_similarity=5.0,
+            backend_build_id="test-build",
         )
+
+
+# --------------------------------------------------------------------------- #
+# D10 — pre-auth backend_build_id gate
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("backend_build_id", [None, "", "   ", 123])
+def test_validate_run_options_rejects_missing_or_blank_build_id(backend_build_id):
+    """The CLI's pre-auth hook and run()'s own defensive re-check share this."""
+    with pytest.raises(ValueError, match="backend-build-id"):
+        MemoryRecallBenchmark().validate_run_options(backend_build_id=backend_build_id)
+
+
+def test_validate_run_options_accepts_nonblank_build_id():
+    MemoryRecallBenchmark().validate_run_options(backend_build_id="sha-abc123")  # no raise
+
+
+async def test_run_rejects_blank_build_id_before_touching_the_client(tmp_path, monkeypatch):
+    """Runner-level defense (D10): even a direct ``run()`` call without going
+    through the CLI must not reach the network without a build id."""
+    dataset = _fake_dataset()
+
+    class ExplodingClient:
+        async def search(self, *_a, **_kw):
+            raise AssertionError("must not reach the network")
+
+    monkeypatch.setattr(
+        "nowing_evals.suites.memory.recall.runner.load_dataset", lambda **_kw: dataset
+    )
+    with pytest.raises(ValueError, match="backend-build-id"):
+        await MemoryRecallBenchmark().run(
+            _fake_ctx(tmp_path, dataset, ExplodingClient()), top_k=5
+        )
+
+
+async def test_run_records_backend_build_id_in_artifact_extra(tmp_path, monkeypatch):
+    """The artifact must name the exact backend build it evaluated (D10)."""
+    dataset = _fake_dataset()
+
+    class FakeMemoriesClient:
+        async def search(self, workspace_id: int, query: str, *, top_k: int) -> list[dict]:
+            return [{"id": 101, "score": 0.0}][:top_k]
+
+    monkeypatch.setattr(
+        "nowing_evals.suites.memory.recall.runner.load_dataset", lambda **_kw: dataset
+    )
+
+    artifact = await MemoryRecallBenchmark().run(
+        _fake_ctx(tmp_path, dataset, FakeMemoriesClient()),
+        top_k=5,
+        backend_build_id="sha-abc123",
+    )
+
+    assert artifact.extra["backend_build_id"] == "sha-abc123"

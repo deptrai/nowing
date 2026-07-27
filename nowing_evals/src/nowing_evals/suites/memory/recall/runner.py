@@ -174,8 +174,8 @@ class MemoryRecallBenchmark:
             default=0.3,
             help=(
                 "Similarity floor, applied only when the response carries a usable "
-                "score signal. The current backend serialises score=0.0 for every "
-                "hit, so runs degrade to rank-only and record that in the artifact."
+                "score signal (at least two distinct finite scores across the run). "
+                "A run that degrades to rank-only records that in the artifact."
             ),
         )
         parser.add_argument("--concurrency", type=int, default=4)
@@ -184,6 +184,16 @@ class MemoryRecallBenchmark:
             type=int,
             default=None,
             help="Workspace tenant for memory endpoints; overrides NOWING_EVAL_WORKSPACE_ID.",
+        )
+        parser.add_argument(
+            "--backend-build-id",
+            type=str,
+            default=None,
+            help=(
+                "Deployed backend build/commit identifier this run evaluates. "
+                "Required: without it the artifact can silently drift from what's "
+                "actually live, invalidating the gate's ship/no-ship decision."
+            ),
         )
 
     async def ingest(self, ctx: RunContext, **opts: Any) -> None:
@@ -198,7 +208,24 @@ class MemoryRecallBenchmark:
 
         return await run_purge(ctx, workspace_id=workspace_id)
 
+    def validate_run_options(self, **opts: Any) -> None:
+        """Reject a run before any config/auth/network call (D10).
+
+        The CLI's ``_cmd_run`` calls this as a pre-auth hook; ``run()`` below
+        calls it again as a defensive re-check for any caller that invokes
+        ``run()`` directly. A missing/blank ``backend_build_id`` would let an
+        artifact silently drift from the backend it actually evaluated.
+        """
+
+        backend_build_id = opts.get("backend_build_id")
+        if not isinstance(backend_build_id, str) or not backend_build_id.strip():
+            raise ValueError(
+                "--backend-build-id is required and must be a non-blank string "
+                "identifying the deployed backend this run evaluates."
+            )
+
     async def run(self, ctx: RunContext, **opts: Any) -> RunArtifact:
+        self.validate_run_options(**opts)
         effective_top_k = clamp_top_k(int(opts.get("top_k", 5)))
         # Validated before any network call, not per returned item — otherwise an
         # invalid value costs a full run before raising, or never raises at all
@@ -340,6 +367,7 @@ class MemoryRecallBenchmark:
             "sample_n": len(queries),
             "provider_model": getattr(ctx, "provider_model", None),
             "failures": failures,
+            "backend_build_id": opts.get("backend_build_id"),
         }
         artifact = RunArtifact(
             suite=self.suite,

@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from nowing_evals.suites.memory.recall import MemoryRecallBenchmark
 from nowing_evals.suites.memory.recall.dataset import Dataset
 from nowing_evals.suites.memory.recall.ingest import (
     EVAL_TAG,
@@ -144,6 +145,20 @@ async def test_ingest_seeds_corpus_and_records_ids(tmp_path, monkeypatch):
     assert len(client.created) == 3
     mapping = load_corpus_map(map_path, workspace_id=42, corpus=dataset.corpus)
     assert set(mapping) == set(dataset.corpus)
+
+
+async def test_benchmark_ingest_does_not_require_backend_build_id(tmp_path, monkeypatch):
+    """D10's pre-auth gate is a ``run``-only requirement (AC-7): ingest seeds a
+    tenant's fixtures and has no per-run backend to pin down, so it must stay
+    callable through the benchmark's own ``ingest()`` with no build id at all."""
+    dataset = _dataset()
+    _patch_dataset(monkeypatch, dataset)
+    client = RecordingClient()
+    ctx = _Ctx(tmp_path, client)
+
+    await MemoryRecallBenchmark().ingest(ctx)  # no backend_build_id, no raise
+
+    assert len(client.created) == 3
 
 
 async def test_ingest_stamps_the_reserved_eval_tag(tmp_path, monkeypatch):
