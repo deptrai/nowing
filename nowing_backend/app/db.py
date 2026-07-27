@@ -2031,6 +2031,16 @@ class Memory(BaseModel, TimestampMixin):
             text("to_tsvector('english', content)"),
             postgresql_using="gin",
         ),
+        # Serves the thread-recency read (`WHERE research_thread_id = :t ORDER
+        # BY created_at DESC, id DESC LIMIT n`) via backward index scan —
+        # without it PostgreSQL top-N sorts the whole thread (migration 181).
+        Index(
+            "ix_memories_thread_recency",
+            "research_thread_id",
+            "created_at",
+            "id",
+            postgresql_where=text("research_thread_id IS NOT NULL"),
+        ),
     )
 
     workspace_id = Column(

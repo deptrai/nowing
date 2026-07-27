@@ -107,16 +107,17 @@ async def search_memory(
     return MemorySearchResponse(
         items=[
             MemorySearchHit(
-                id=memory.id,
-                content=memory.content,
-                type=memory.type.value,
-                tags=memory.tags or [],
-                confidence=memory.confidence,
-                source_type=memory.source_type.value,
-                source_id=memory.source_id,
-                score=0.0,
+                id=hit.memory.id,
+                content=hit.memory.content,
+                type=hit.memory.type.value,
+                tags=hit.memory.tags or [],
+                confidence=hit.memory.confidence,
+                source_type=hit.memory.source_type.value,
+                source_id=hit.memory.source_id,
+                score=hit.score,
+                similarity=hit.similarity,
             )
-            for memory in results
+            for hit in results
         ]
     )
 

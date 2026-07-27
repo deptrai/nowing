@@ -13,6 +13,7 @@ from sqlalchemy import Float, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import config
 from app.db import (
     Memory,
     MemoryRelation,
@@ -21,14 +22,22 @@ from app.db import (
     MemoryType,
     MemoryVersion,
 )
+from app.services.memory.vector import (
+    VectorValidationError,
+    validate_embedding_vector,
+    validate_single_embedding_result,
+)
 from app.services.token_tracking_service import record_token_usage
 from app.utils.document_converters import embed_texts
 
 logger = logging.getLogger(__name__)
 
 
-def _as_np(embedding: Any) -> np.ndarray:
-    return np.asarray(embedding, dtype=np.float32)
+def _validate_vector(embedding: Any) -> np.ndarray:
+    """Validate a caller-supplied embedding before dedup SQL/assignment/flush (D6)."""
+    return validate_embedding_vector(
+        embedding, dimension=config.embedding_model_instance.dimension
+    )
 
 
 class MemoryRepository:
@@ -50,8 +59,12 @@ class MemoryRepository:
         workspace_id: int | None,
         user_id: UUID | None,
     ) -> np.ndarray:
-        embeddings = await asyncio.to_thread(embed_texts, [content])
-        embedding = embeddings[0]
+        try:
+            embeddings = await asyncio.to_thread(embed_texts, [content])
+        except Exception as exc:
+            raise VectorValidationError("provider_error") from exc
+        embedding = validate_single_embedding_result(embeddings)
+        embedding = _validate_vector(embedding)
 
         # Best-effort token accounting: estimate one token per ~4 chars.
         # User memory has no workspace, so token usage is recorded only when a
@@ -244,7 +257,7 @@ class MemoryRepository:
                 content, workspace_id=workspace_id, user_id=created_by_id
             )
         else:
-            embedding = _as_np(embedding)
+            embedding = _validate_vector(embedding)
 
         existing = await self._find_near_duplicate(
             workspace_id,
@@ -388,7 +401,7 @@ class MemoryRepository:
 
         # Re-embed when content changes, unless an embedding is provided.
         if embedding is not None:
-            memory.embedding = _as_np(embedding)
+            memory.embedding = _validate_vector(embedding)
         elif content_changed:
             new_embedding = await self._embed(
                 corrected_content,

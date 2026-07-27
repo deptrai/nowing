@@ -45,7 +45,7 @@ async def get_research_thread_context(
             "most recent (recency-ordered) recall, matching nowing_recall."
         ),
     ),
-    top_k: int = Query(default=5, ge=1, le=100),
+    top_k: int = Query(default=5, ge=1, le=5),
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
 ) -> ResearchThreadContext:
@@ -77,7 +77,7 @@ async def get_research_thread_context(
         query_embedding = embeddings[0]
 
     search = MemoryHybridSearch(session)
-    memories = await search.search(
+    hits = await search.search(
         workspace_id=workspace_id,
         query=query,
         query_embedding=query_embedding,
@@ -92,16 +92,17 @@ async def get_research_thread_context(
         title=thread.title,
         memories=[
             MemorySearchHit(
-                id=memory.id,
-                content=memory.content,
-                type=memory.type.value,
-                tags=memory.tags or [],
-                confidence=memory.confidence,
-                source_type=memory.source_type.value,
-                source_id=memory.source_id,
-                score=0.0,
+                id=hit.memory.id,
+                content=hit.memory.content,
+                type=hit.memory.type.value,
+                tags=hit.memory.tags or [],
+                confidence=hit.memory.confidence,
+                source_type=hit.memory.source_type.value,
+                source_id=hit.memory.source_id,
+                score=hit.score,
+                similarity=hit.similarity,
             )
-            for memory in memories
+            for hit in hits
         ],
         citations=citations,
     )

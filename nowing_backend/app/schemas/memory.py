@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.db import MemorySourceType, MemoryType
+from app.utils.strict_fields import strict_top_k
 
 
 class MemoryVersionRead(BaseModel):
@@ -70,7 +71,7 @@ class MemorySearchRequest(BaseModel):
     # Empty query is allowed only for thread-scoped recall (see validator);
     # nowing_continue_research relies on this to resume a thread with no query.
     query: str = ""
-    top_k: int = Field(default=5, ge=1, le=100)
+    top_k: strict_top_k(le=5, description="Maximum memories to return.") = 5
     type: str | None = None
     tags: list[str] = Field(default_factory=list)
     research_thread_id: int | None = None
@@ -103,7 +104,10 @@ class MemorySearchHit(BaseModel):
     confidence: float = 1.0
     source_type: str
     source_id: int | None = None
-    score: float
+    # Both null for a recency (query-less) hit; both finite for a ranked hit —
+    # never a fake 0.0 placeholder (Story 3.14, D1/D6, AC-6).
+    score: float | None = None
+    similarity: float | None = None
 
 
 class MemorySearchResponse(BaseModel):
