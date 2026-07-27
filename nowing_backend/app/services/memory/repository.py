@@ -225,6 +225,7 @@ class MemoryRepository:
         type: str | MemoryType = MemoryType.SEMANTIC,
         source_type: str | MemorySourceType = MemorySourceType.MANUAL,
         source_id: int | None = None,
+        source_run_id: UUID | None = None,
         tags: list[str] | None = None,
         confidence: float = 1.0,
         research_thread_id: int | None = None,
@@ -266,6 +267,7 @@ class MemoryRepository:
                     corrected_by_id=created_by_id,
                     source_type=source_type,
                     source_id=source_id,
+                    source_run_id=source_run_id,
                     tags=tags,
                     confidence=confidence,
                     research_thread_id=research_thread_id,
@@ -288,6 +290,14 @@ class MemoryRepository:
                 existing.type = type
                 existing.source_type = source_type
                 existing.source_id = source_id
+                # Story 3.13 (D6): a run-derived fact that semantically matches
+                # an existing memory must not silently lose its run identity —
+                # the idempotency guard and the recall citation both key off
+                # ``source_run_id``. Only overwrite when a run id is supplied so
+                # a chat-origin re-write cannot erase an earlier run's
+                # provenance.
+                if source_run_id is not None:
+                    existing.source_run_id = source_run_id
                 existing.tags = tags or []
                 existing.confidence = confidence
                 # Only overwrite the thread association when a new one is given,
@@ -317,6 +327,7 @@ class MemoryRepository:
             type=type,
             source_type=source_type,
             source_id=source_id,
+            source_run_id=source_run_id,
             tags=tags or [],
             confidence=confidence,
             research_thread_id=research_thread_id,
@@ -342,6 +353,7 @@ class MemoryRepository:
         corrected_by_id: UUID | None = None,
         source_type: str | MemorySourceType | None = None,
         source_id: int | None = None,
+        source_run_id: UUID | None = None,
         tags: list[str] | None = None,
         confidence: float | None = None,
         research_thread_id: int | None = None,
@@ -377,6 +389,10 @@ class MemoryRepository:
             memory.source_type = source_type
         if source_id is not None:
             memory.source_id = source_id
+        # Soft run provenance is only ever set, never cleared, by an update: see
+        # the dedupe note in ``create_memory``.
+        if source_run_id is not None:
+            memory.source_run_id = source_run_id
         if tags is not None:
             memory.tags = tags
         if confidence is not None:

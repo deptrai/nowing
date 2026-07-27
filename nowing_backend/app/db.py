@@ -2075,6 +2075,13 @@ class Memory(BaseModel, TimestampMixin):
         default=MemorySourceType.UNKNOWN,
     )
     source_id = Column(Integer, nullable=True, index=True)
+    # Soft provenance for scraper-run-derived memory (Story 3.13, D4).
+    # Deliberately NOT a foreign key to ``runs.id``: run logs are retained ~30
+    # days and cleaned up opportunistically, while the memory they produced is
+    # durable. A hard FK would either delete the memory with its run or block
+    # the cleanup. ``source_id`` stays an integer (chat message ids); the run's
+    # UUID lives here instead of being coerced into it.
+    source_run_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     tags = Column(ARRAY(String), nullable=True, default=list)
     confidence = Column(Float, nullable=False, default=1.0, server_default="1.0")
     updated_at = Column(
@@ -3179,6 +3186,22 @@ class Run(Base, TimestampMixin):
     # Coarse progress log (list of throttled events) captured during the run;
     # the live fine-grained stream is ephemeral (bus/SSE only).
     progress = Column(JSONB, nullable=True)
+    # Durable memory-extraction state (Story 3.13, D6). Celery delivery is
+    # at-least-once, so idempotency cannot rely on "did this run produce
+    # memory rows" alone: a successful extraction that found ZERO qualifying
+    # facts must also be terminal, or every redelivery re-calls (and re-pays
+    # for) the LLM. ``pending`` is claimed via compare-and-set before the LLM
+    # call so two concurrent workers resolve to exactly one LLM call.
+    #   NULL      -> never enqueued/considered
+    #   pending   -> claimed by a worker, LLM call in flight
+    #   completed -> extraction ran to completion (with or without facts)
+    #   skipped   -> policy/gate/missing-creator decision, terminal
+    #   failed    -> retry budget exhausted, terminal
+    memory_extraction_status = Column(String(16), nullable=True, index=True)
+    memory_extraction_completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    # Structured skip/failure reason, sharing Story 8.7/8.8's vocabulary
+    # (``disabled``, ``anonymous_unbilled``, ``missing_creator``, ...).
+    memory_extraction_skip_reason = Column(String(64), nullable=True)
 
 
 class ToolOutputSpill(Base, TimestampMixin):
