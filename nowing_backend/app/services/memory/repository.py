@@ -175,7 +175,7 @@ class MemoryRepository:
             run_id = get_current_automation_run_id()
         if run_id:  # automation origin (truthy) → skip: loop guard, mechanism 1
             return
-        if memory is None or memory.workspace_id is None:
+        if memory is None or memory.workspace_id is None or memory.id is None:
             return
 
         # Build the payload NOW, while the ORM row is loaded, so a deferred flush
