@@ -206,6 +206,24 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         )
 
 
+def _source_suffix(item: dict) -> str:
+    """Render run provenance as a markdown suffix, or "" when there is none.
+
+    Story 3.13 (D7/AC-3): the JSON surface carries ``source_type``/
+    ``source_run_id``/``citation`` for free because it is an untyped
+    pass-through, but markdown is hand-rendered and silently dropped all three.
+    A model reading the markdown had no way to tell a scraped-run fact from a
+    chat fact, let alone cite it — so the citation is rendered explicitly here.
+
+    Only run-derived facts get a suffix: chat/manual/document memories have no
+    ``citation`` and must render exactly as before (no regression).
+    """
+    citation = item.get("citation")
+    if not citation:
+        return ""
+    return f" [source: {citation}]"
+
+
 def _render_memory(memory: dict | None, action: str) -> str:
     if not memory:
         return f"{action} memory, but the response was empty."
@@ -214,9 +232,10 @@ def _render_memory(memory: dict | None, action: str) -> str:
         f"- type: {memory.get('type')}",
         f"- confidence: {memory.get('confidence', 1.0)}",
         f"- updated: {memory.get('updated_at')}",
-        "",
-        clip(memory.get('content', '') or '(empty)'),
     ]
+    if memory.get("citation"):
+        lines.append(f"- source: {memory.get('source_type')} ({memory.get('citation')})")
+    lines.extend(["", clip(memory.get('content', '') or '(empty)')])
     if memory.get('previous_versions'):
         lines.append("")
         lines.append("_Previous versions preserved._")
@@ -232,6 +251,7 @@ def _render_recall(query: str, items: list[dict]) -> str:
             f"- **id {hit.get('id')}** ({hit.get('type')}, "
             f"confidence {hit.get('confidence', 1.0):.2f}): "
             f"{clip(hit.get('content', '') or '(empty)', 500)}"
+            f"{_source_suffix(hit)}"
         )
     return "\n".join(lines).strip()
 

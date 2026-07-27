@@ -57,16 +57,7 @@ async def continue_research(ctx: ActionContext, params: dict[str, Any]) -> dict[
     return {
         "research_thread_id": parsed.research_thread_id,
         "memories": [
-            MemorySearchHit(
-                id=memory.id,
-                content=memory.content,
-                type=memory.type.value,
-                tags=memory.tags or [],
-                confidence=memory.confidence,
-                source_type=memory.source_type.value,
-                source_id=memory.source_id,
-                score=0.0,
-            ).model_dump(mode="json")
+            MemorySearchHit.from_memory(memory).model_dump(mode="json")
             for memory in memories
         ],
         "citations": [citation.model_dump(mode="json") for citation in citations],

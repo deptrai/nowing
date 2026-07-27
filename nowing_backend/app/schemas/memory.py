@@ -5,7 +5,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 from app.db import MemorySourceType, MemoryType
 
@@ -18,6 +25,20 @@ class MemoryVersionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+def _run_citation(source_run_id: Any | None) -> str | None:
+    """Render the stable ``run_<uuid>`` citation for a run-derived memory (D7).
+
+    A *soft* citation by construction: it is derived from the id the memory
+    carries, never from a live ``runs`` lookup. ``runs`` has a 30-day retention,
+    so after cleanup the citation still renders identically and recall does not
+    fail on a dangling reference (AC-7) — resolving it back to a run detail page
+    is what becomes unavailable, not the memory.
+    """
+    if source_run_id is None:
+        return None
+    return f"run_{source_run_id}"
+
+
 class MemoryRead(BaseModel):
     id: int
     workspace_id: int | None = None
@@ -27,6 +48,10 @@ class MemoryRead(BaseModel):
     content: str
     source_type: str
     source_id: int | None = None
+    # Story 3.13 (D7/AC-3): soft provenance for run-derived facts. UUID-shaped,
+    # typed as ``str`` (not UUID) so JSON consumers (REST, MCP, generated
+    # clients) need no UUID handling; ``None`` for chat/manual/document memories.
+    source_run_id: str | None = None
     tags: list[str] = Field(default_factory=list)
     confidence: float = 1.0
     created_at: datetime
@@ -38,6 +63,24 @@ class MemoryRead(BaseModel):
     )
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def citation(self) -> str | None:
+        """``run_<uuid>`` for a run-derived fact, else ``None``.
+
+        Computed rather than stored so the citation cannot drift from
+        ``source_run_id`` — every surface that serializes this model gets the
+        same string without each call site formatting it by hand.
+        """
+        return _run_citation(self.source_run_id)
+
+    @field_validator("source_run_id", mode="before")
+    @classmethod
+    def _stringify_run_id(cls, value: Any) -> Any:
+        # ORM hands over a ``uuid.UUID``; normalise at the edge so both the field
+        # and the citation are plain strings in every serialization mode.
+        return str(value) if value is not None else None
 
 
 class MemoryCreate(BaseModel):
@@ -103,7 +146,43 @@ class MemorySearchHit(BaseModel):
     confidence: float = 1.0
     source_type: str
     source_id: int | None = None
+    # Story 3.13 (D7/AC-3): same soft run provenance as ``MemoryRead``.
+    source_run_id: str | None = None
     score: float
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def citation(self) -> str | None:
+        """``run_<uuid>`` for a run-derived fact, else ``None``."""
+        return _run_citation(self.source_run_id)
+
+    @field_validator("source_run_id", mode="before")
+    @classmethod
+    def _stringify_run_id(cls, value: Any) -> Any:
+        return str(value) if value is not None else None
+
+    @classmethod
+    def from_memory(cls, memory: Any, *, score: float = 0.0) -> MemorySearchHit:
+        """Build a hit from an ORM ``Memory``.
+
+        Exists because three call sites (REST search, the research-thread context
+        route and the ``continue_research`` automation action) previously built
+        this model field-by-field. Adding provenance to three hand-rolled literals
+        is how one surface silently ends up without a citation, so the mapping now
+        lives in one place. ``score`` keeps its per-caller default rather than
+        being hardcoded here.
+        """
+        return cls(
+            id=memory.id,
+            content=memory.content,
+            type=memory.type.value,
+            tags=memory.tags or [],
+            confidence=memory.confidence,
+            source_type=memory.source_type.value,
+            source_id=memory.source_id,
+            source_run_id=memory.source_run_id,
+            score=score,
+        )
 
 
 class MemorySearchResponse(BaseModel):

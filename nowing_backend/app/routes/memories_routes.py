@@ -106,16 +106,7 @@ async def search_memory(
 
     return MemorySearchResponse(
         items=[
-            MemorySearchHit(
-                id=memory.id,
-                content=memory.content,
-                type=memory.type.value,
-                tags=memory.tags or [],
-                confidence=memory.confidence,
-                source_type=memory.source_type.value,
-                source_id=memory.source_id,
-                score=0.0,
-            )
+            MemorySearchHit.from_memory(memory)
             for memory in results
         ]
     )

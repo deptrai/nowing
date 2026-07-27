@@ -40,3 +40,53 @@ def test_compact_items_drops_html_and_excerpts_long_fields():
 def test_compact_items_passes_through_non_item_results():
     assert compact_items({"ok": True}) == {"ok": True}
     assert compact_items([1, 2]) == [1, 2]
+
+
+# ── Run provenance in recall markdown (Story 3.13, T5 / AC-3) ────────────────
+# The JSON payload is an untyped pass-through, so it gained `source_run_id` and
+# `citation` for free. Markdown is hand-rendered and therefore silently dropped
+# them -- these two pin the fix and the no-regression case.
+
+
+def test_render_recall_surfaces_the_run_citation():
+    import uuid
+
+    from mcp_server.features.memory import _render_recall
+
+    run_id = uuid.uuid4()
+    rendered = _render_recall(
+        "widget pricing",
+        [
+            {
+                "id": 11,
+                "type": "semantic",
+                "confidence": 0.9,
+                "content": "Competitor X sells the widget at 19.99 USD",
+                "source_type": "scraper_run",
+                "source_run_id": str(run_id),
+                "citation": f"run_{run_id}",
+            }
+        ],
+    )
+
+    assert f"run_{run_id}" in rendered
+
+
+def test_render_recall_unchanged_for_memory_without_citation():
+    from mcp_server.features.memory import _render_recall
+
+    rendered = _render_recall(
+        "pricing",
+        [
+            {
+                "id": 12,
+                "type": "semantic",
+                "confidence": 0.8,
+                "content": "chat-derived fact",
+                "source_type": "chat_message",
+            }
+        ],
+    )
+
+    assert "source:" not in rendered
+    assert "chat-derived fact" in rendered
