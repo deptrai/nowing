@@ -45,6 +45,9 @@ from app.capabilities.core.store import all_capabilities
 from app.capabilities.core.types import Capability, CapabilityContext
 from app.db import Run, async_session_maker, get_async_session
 from app.exceptions import ExternalServiceError, NowingError
+from app.services.memory.run_enqueue import (
+    enqueue_run_memory_extraction_after_commit,
+)
 from app.services.web_crawl_credit_service import InsufficientCreditsError
 from app.users import get_auth_context
 from app.utils.rbac import check_workspace_access
@@ -268,7 +271,7 @@ async def _finalize_async(
     if duration_ms is None and started is not None:
         duration_ms = int((time.perf_counter() - started) * 1000)
     async with async_session_maker() as session:
-        await finalize_run(
+        finalized = await finalize_run(
             session,
             run_id=run_id,
             status=status,
@@ -278,6 +281,16 @@ async def _finalize_async(
             cost_micros=cost_micros,
             progress=progress,
         )
+
+    # Story 3.13 (T4/D1): the async door's single completion point, so all three
+    # `_finalize_async` call sites are covered here rather than individually.
+    # Gated on `finalized` because `finalize_run` is best-effort: a run whose
+    # terminal status never committed is still `running` to any other
+    # connection, and enqueueing on it would hand the task a row the service
+    # correctly refuses to extract from. `status` is filtered inside the seam, so
+    # the error/cancel paths through here never enqueue.
+    if finalized:
+        enqueue_run_memory_extraction_after_commit(run_id, status=status)
 
 
 def _publish_finished(run_id: str, status: str, **extra) -> None:
@@ -420,6 +433,11 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
             )
         if run_id is not None:
             response.headers["X-Run-Id"] = f"run_{run_id}"
+        # Story 3.13 (D1/D2): the recorder above owns its own session and has
+        # already committed, so the run row is visible to the worker that will
+        # pick this up. Enqueue-only — never an inline LLM/embedding call — and
+        # never able to change what this endpoint returns (AC-5).
+        enqueue_run_memory_extraction_after_commit(run_id)
         return output
 
     router.add_api_route(

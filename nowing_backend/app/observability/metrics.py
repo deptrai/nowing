@@ -490,6 +490,61 @@ def _gateway_webhook_parse_errors():
     )
 
 
+# ── Run-derived memory extraction (Story 3.13, T6/AC-9) ──────────────────────
+# Deliberately low-cardinality: the only attribute any of these carries is the
+# already-enumerated skip `reason` vocabulary from Story 8.7/8.8. No capability
+# name (15 values today but operator-extensible), no workspace/run id, and never
+# any scraped payload — AC-9 requires metric labels to stay free of run content.
+
+
+@lru_cache(maxsize=1)
+def _run_memory_enqueued():
+    return _get_meter().create_counter(
+        "run_memory_enqueued_total",
+        description="Count of successful capability runs enqueued for memory extraction.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _run_memory_created():
+    return _get_meter().create_counter(
+        "run_memory_created_total",
+        description="Count of durable memories created from capability runs.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _run_memory_zero_fact():
+    return _get_meter().create_counter(
+        "run_memory_zero_fact_total",
+        description="Count of run extractions that succeeded but yielded no qualifying fact.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _run_memory_skipped():
+    return _get_meter().create_counter(
+        "run_memory_skipped_total",
+        description="Count of run extractions skipped by a gate or policy decision.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _run_memory_failed():
+    return _get_meter().create_counter(
+        "run_memory_failed_total",
+        description="Count of run extractions that exhausted their retry budget or failed terminally.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _run_memory_retried():
+    return _get_meter().create_counter(
+        "run_memory_retried_total",
+        description="Count of run extraction attempts re-scheduled after a transient failure.",
+    )
+
+
 def record_model_call_duration(
     duration_ms: float, *, model: str | None, provider: str | None
 ) -> None:
@@ -870,6 +925,53 @@ def record_gateway_byo_longpoll_running_delta(delta: int, *, account_id: int) ->
 
 def record_gateway_webhook_parse_error() -> None:
     _add(_gateway_webhook_parse_errors(), 1, {})
+
+
+def record_run_memory_enqueued() -> None:
+    """One successful run handed to the extraction queue (AC-9).
+
+    Counted at the enqueue seam, not at task start: the funnel's first stage is
+    "the run became eligible", and a broker outage that drops the message must
+    show up as enqueued-without-created rather than vanishing entirely.
+    """
+    _add(_run_memory_enqueued(), 1, {})
+
+
+def record_run_memory_created(count: int = 1) -> None:
+    """``count`` durable memories were committed from one run extraction."""
+    if count <= 0:
+        return
+    _add(_run_memory_created(), count, {})
+
+
+def record_run_memory_zero_fact() -> None:
+    """A run extraction ran the LLM successfully and found nothing worth keeping.
+
+    Distinct from ``skipped``: the spend already happened, so collapsing the two
+    would hide the case where extraction is running and costing money while
+    producing no recall value.
+    """
+    _add(_run_memory_zero_fact(), 1, {})
+
+
+def record_run_memory_skipped(*, reason: str) -> None:
+    """A run extraction was skipped before the LLM call.
+
+    ``reason`` must come from the Story 8.7/8.8 vocabulary (``disabled``,
+    ``anonymous_unbilled``, ``insufficient_wallet``, ``budget_exceeded``,
+    ``rate_limited``, ``gate_error``, ``missing_creator``, ``empty_output``,
+    ``context_window``, ``no_llm``) — a closed set, which is what keeps this
+    label low-cardinality.
+    """
+    _add(_run_memory_skipped(), 1, {"reason": reason})
+
+
+def record_run_memory_failed() -> None:
+    _add(_run_memory_failed(), 1, {})
+
+
+def record_run_memory_retried() -> None:
+    _add(_run_memory_retried(), 1, {})
 
 
 def _runtime_snapshot_value(key: str, transform: Any = None) -> list[Any]:

@@ -12,6 +12,7 @@ subagent can follow a truncation reference without extra wiring.
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from langchain_core.tools import BaseTool, StructuredTool
 
@@ -25,6 +26,9 @@ from app.capabilities.core.runs import (
 from app.capabilities.core.store import all_capabilities
 from app.capabilities.core.types import Capability, CapabilityContext
 from app.db import async_session_maker
+from app.services.memory.run_enqueue import (
+    enqueue_run_memory_extraction_after_commit,
+)
 from app.services.web_crawl_credit_service import InsufficientCreditsError
 
 
@@ -32,10 +36,19 @@ def build_capability_tools(
     *,
     workspace_id: int,
     capabilities: list[Capability] | None = None,
+    user_id: Any | None = None,
 ) -> list[BaseTool]:
-    """Emit one tool per verb (defaults to the whole registry), plus the run readers."""
+    """Emit one tool per verb (defaults to the whole registry), plus the run readers.
+
+    ``user_id`` is the active chat principal, threaded through to ``record_run`` so
+    an agent-origin run carries a creator (Story 3.13, D4/T4). Without it every
+    agent run is authorless, and memory extraction can only skip it as
+    ``missing_creator`` — the run is still recorded either way. It stays optional
+    because the caller resolves it from the subagent dependency dict, where it can
+    legitimately be absent (e.g. an unauthenticated internal invocation).
+    """
     caps = capabilities if capabilities is not None else all_capabilities()
-    tools = [_capability_tool(cap, workspace_id) for cap in caps]
+    tools = [_capability_tool(cap, workspace_id, user_id=user_id) for cap in caps]
     # Deferred import: the reader lives in the agents package (which imports from
     # here), so importing it lazily avoids an import-time cycle.
     from app.agents.chat.multi_agent_chat.subagents.shared.run_reader import (
@@ -58,7 +71,9 @@ def _current_thread_id() -> str | None:
         return None
 
 
-def _capability_tool(capability: Capability, workspace_id: int) -> BaseTool:
+def _capability_tool(
+    capability: Capability, workspace_id: int, *, user_id: Any | None = None
+) -> BaseTool:
     input_model = capability.input_schema
     unit = capability.billing_unit
     executor = capability.executor
@@ -93,6 +108,7 @@ def _capability_tool(capability: Capability, workspace_id: int) -> BaseTool:
                             origin="agent",
                             status="error",
                             input=input_dump,
+                            user_id=user_id,
                             error=str(exc),
                             thread_id=thread_id,
                             duration_ms=duration_ms,
@@ -113,11 +129,17 @@ def _capability_tool(capability: Capability, workspace_id: int) -> BaseTool:
                     status="success",
                     serialized=serialized,
                     input=input_dump,
+                    user_id=user_id,
                     thread_id=thread_id,
                     duration_ms=duration_ms,
                     cost_micros=cost_micros,
                     progress=reporter.coarse,
                 )
+
+            # T4/D1: the recorder owns its own session and has committed by the
+            # time it returns a run id, so the row the task will load is already
+            # visible to another connection. Never raises (AC-5).
+            enqueue_run_memory_extraction_after_commit(run_id)
 
         if serialized.char_count <= RUN_OUTPUT_CHAR_CAP:
             dump = output.model_dump(exclude_none=True)

@@ -27,4 +27,8 @@ def load_tools(
     return build_capability_tools(
         workspace_id=d.get("workspace_id"),
         capabilities=_CI_VERBS,
+        # Story 3.13 (D4/T4): thread the active chat principal through so an
+        # agent-origin run is recorded with a creator and its memory extraction
+        # is attributable instead of skipped as `missing_creator`.
+        user_id=d.get("user_id"),
     )
