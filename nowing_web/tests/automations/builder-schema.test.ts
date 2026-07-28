@@ -6,7 +6,11 @@
  */
 
 import assert from "node:assert/strict";
-import { buildCreatePayload, buildUpdatePayload, createEmptyForm } from "@/lib/automations/builder-schema";
+import {
+	buildCreatePayload,
+	buildUpdatePayload,
+	createEmptyForm,
+} from "@/lib/automations/builder-schema";
 
 function formWithTask() {
 	const form = createEmptyForm();
@@ -22,6 +26,7 @@ function testBuildCreatePayloadEmitsSchemaVersion11() {
 
 function testBuildUpdatePayloadEmitsSchemaVersion11() {
 	const payload = buildUpdatePayload(formWithTask());
+	assert.ok(payload.definition, "buildUpdatePayload must always set definition");
 	assert.equal(payload.definition.schema_version, "1.1");
 }
 

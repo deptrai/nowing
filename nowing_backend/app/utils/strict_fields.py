@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import BeforeValidator, Field
+from pydantic import BeforeValidator, Field, StrictInt
 
 
 def _reject_bool(value: object) -> object:
@@ -28,8 +28,10 @@ def strict_top_k(*, le: int, description: str) -> type:
     single field's value outside of a full model (see
     ``app.automations.actions.validation``).
     """
+    # B13: StrictInt rejects float/string coercion; BeforeValidator rejects bool
+    # (bool is a subclass of int, so StrictInt alone would still allow it).
     return Annotated[
-        int,
+        StrictInt,
         BeforeValidator(_reject_bool),
         Field(ge=1, le=le, description=description),
     ]

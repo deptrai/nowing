@@ -893,7 +893,8 @@ def record_memory_injection_failure(*, scope: str, stage: str, reason: str) -> N
     attrs = {"scope": scope, "stage": stage, "reason": reason}
     with contextlib.suppress(Exception):
         _memory_injection_failure_logger.warning("memory_injection.failure", extra=attrs)
-    _add(_memory_injection_failures(), 1, attrs)
+    with contextlib.suppress(Exception):
+        _add(_memory_injection_failures(), 1, attrs)
 
 
 def _runtime_snapshot_value(key: str, transform: Any = None) -> list[Any]:

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from typing import Any
 from uuid import UUID
 
@@ -80,6 +81,24 @@ def _normalize_text(message: Any) -> str:
 def _is_protected(normalized: str) -> bool:
     stripped = normalized.lstrip()
     return any(stripped.startswith(prefix) for prefix in PROTECTED_SYSTEM_PREFIXES)
+
+
+def _validate_hits(hits: Any) -> None:
+    """D8: verify search returned a bounded list of valid ScoredMemory objects."""
+
+    if not isinstance(hits, list):
+        raise ValueError("search result is not a list")
+    if len(hits) > _MEMORY_INJECTION_TOP_K:
+        raise ValueError(f"search returned more than {_MEMORY_INJECTION_TOP_K} results")
+    for hit in hits:
+        if not isinstance(hit, ScoredMemory):
+            raise ValueError("search result item is not a ScoredMemory")
+        if hit.memory is None:
+            raise ValueError("search result missing memory")
+        if hit.score is None or hit.similarity is None:
+            raise ValueError("ranked hit missing score/similarity")
+        if not (math.isfinite(hit.score) and math.isfinite(hit.similarity)):
+            raise ValueError("ranked hit has non-finite score/similarity")
 
 
 def _usable_records(messages: list[Any]) -> list[tuple[str, str]]:
@@ -156,27 +175,37 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
         runtime: Runtime[Any],
     ) -> dict[str, Any] | None:
         del runtime
-        messages = state.get("messages") or []
-        if not messages:
-            return None
 
         is_team = self.visibility == ChatVisibility.SEARCH_SPACE
         scope = "team" if is_team else "user"
 
-        # D4 earliest-possible guard: team bypasses this guard entirely.
+        # C1 / D4 earliest-possible guard: team bypasses this guard entirely.
+        # This must happen before any transcript work or telemetry.
         if not is_team and self.user_id is None:
+            return None
+
+        messages = state.get("messages") or []
+        if not messages:
             return None
 
         if not isinstance(messages[-1], HumanMessage):
             return None
 
-        query = _build_transcript_query(messages)
+        try:
+            query = _build_transcript_query(messages)
+        except Exception as exc:
+            logger.exception("memory injection transcript query rendering failed")
+            record_memory_injection_failure(
+                scope=scope, stage="query", reason="render_error"
+            )
+            return None
         if query is None:
             return None
 
         try:
             embedding = await self._embed_query(query)
         except VectorValidationError as exc:
+            logger.exception("memory injection embedding validation failed")
             record_memory_injection_failure(
                 scope=scope, stage="embedding", reason=exc.reason
             )
@@ -185,7 +214,8 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
         cm = shielded_async_session()
         try:
             session = await cm.__aenter__()
-        except Exception:
+        except Exception as exc:
+            logger.exception("memory injection session enter failed")
             record_memory_injection_failure(
                 scope=scope, stage="session", reason="enter_error"
             )
@@ -200,9 +230,12 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
                 hits = await self._run_search(
                     session, scope=scope, query=query, embedding=embedding
                 )
-            except Exception:
+                _validate_hits(hits)
+            except Exception as exc:
+                logger.exception("memory injection search failed")
+                reason = "invalid_result" if isinstance(exc, ValueError) else "query_error"
                 record_memory_injection_failure(
-                    scope=scope, stage="search", reason="query_error"
+                    scope=scope, stage="search", reason=reason
                 )
                 terminal = True
 
@@ -210,13 +243,15 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
                 try:
                     async with session.begin_nested():
                         display_name = await self._lookup_display_name(session)
-                except Exception:
+                except Exception as exc:
+                    logger.exception("memory injection display name lookup failed")
                     pending = ("display_name", "lookup_error")
         finally:
             try:
                 await cm.__aexit__(None, None, None)
-            except Exception:
+            except Exception as exc:
                 if not terminal:
+                    logger.exception("memory injection session exit failed")
                     record_memory_injection_failure(
                         scope=scope, stage="session", reason="exit_error"
                     )

@@ -61,11 +61,17 @@ def validate_min_similarity(min_similarity: float) -> float:
 
 
 def _numeric_score(item: Mapping[str, Any]) -> float | None:
-    score = item.get("score")
-    if score is None or isinstance(score, bool):
+    # A1: AC-7 threshold must read cosine similarity, not RRF score.
+    # Score is retained in the artifact for ordering/diagnostics only.
+    # Fallback to ``score`` only when the response carries no ``similarity`` key
+    # (legacy / simplified test fixtures); production hits always include both.
+    similarity = item.get("similarity")
+    if similarity is None and "similarity" not in item and "score" in item:
+        similarity = item.get("score")
+    if similarity is None or isinstance(similarity, bool):
         return None
     try:
-        numeric = float(score)
+        numeric = float(similarity)
     except (TypeError, ValueError):
         return None
     return numeric if math.isfinite(numeric) else None

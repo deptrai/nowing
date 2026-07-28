@@ -6,6 +6,8 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import ValidationError
+
 from app.automations.actions import get_action
 from app.automations.actions.types import ActionContext
 from app.automations.schemas.definition.plan_step import PlanStep
@@ -55,6 +57,16 @@ async def execute_step(
                 "type": "ActionNotFound",
             },
         )
+
+    # B10: v1.1 runs validate the fully-rendered params against the registered
+    # model before the handler is built and before any retry loop.
+    if getattr(action_context, "schema_version", None) == "1.1":
+        try:
+            action.params_model.model_validate(resolved_params)
+        except ValidationError as exc:
+            return _result(
+                step, "failed", started_at, attempts=0, error=_error(exc, "params")
+            )
 
     handler = action.build_handler(action_context)
 

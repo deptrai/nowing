@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from mcp.types import ToolAnnotations
-from pydantic import BeforeValidator, Field
+from pydantic import BeforeValidator, Field, StrictInt
 
 
 def _reject_bool_top_k(value: object) -> object:
@@ -54,7 +54,7 @@ OptionalResearchThreadId = Annotated[
 ]
 
 TopK = Annotated[
-    int,
+    StrictInt,
     BeforeValidator(_reject_bool_top_k),
     Field(ge=1, le=5, description="Maximum memories to return (1-5)."),
 ]

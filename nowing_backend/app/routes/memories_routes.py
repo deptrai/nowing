@@ -19,6 +19,7 @@ from app.schemas.memory import (
 )
 from app.services.memory.repository import MemoryRepository
 from app.services.memory.search import MemoryHybridSearch
+from app.services.memory.vector import validate_single_embedding_result
 from app.users import get_auth_context
 from app.utils.document_converters import embed_texts
 from app.utils.rbac import check_permission
@@ -92,7 +93,7 @@ async def search_memory(
     query_embedding = None
     if body.query.strip():
         embeddings = await asyncio.to_thread(embed_texts, [body.query])
-        query_embedding = embeddings[0]
+        query_embedding = validate_single_embedding_result(embeddings)
     search = MemoryHybridSearch(session)
     results = await search.search(
         workspace_id=workspace_id,

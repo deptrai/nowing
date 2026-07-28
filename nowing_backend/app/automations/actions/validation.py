@@ -25,7 +25,7 @@ from pydantic import TypeAdapter, ValidationError
 from app.automations.actions import get_action
 from app.automations.schemas.definition.plan_step import PlanStep
 
-_JINJA_PATTERN = re.compile(r"{{.*}}", re.DOTALL)
+_JINJA_PATTERN = re.compile(r"{{.*?}}", re.DOTALL)
 
 
 class StepValidationError(ValueError):
@@ -60,7 +60,12 @@ def _validate_step(step: PlanStep) -> None:
                 f"unknown params field {key!r} for action {step.action!r}",
             )
 
-    templated_keys = {key for key, value in params.items() if _is_templated(value)}
+    try:
+        templated_keys = {
+            key for key, value in params.items() if _is_templated(value)
+        }
+    except ValueError as exc:
+        raise StepValidationError(step.step_id, str(exc)) from exc
 
     if not templated_keys:
         try:
@@ -90,4 +95,21 @@ def _validate_step(step: PlanStep) -> None:
 
 
 def _is_templated(value: Any) -> bool:
-    return isinstance(value, str) and bool(_JINJA_PATTERN.search(value))
+    """Detect a Jinja template anywhere in a string, list, or dict (B12).
+
+    A string containing ``{{`` or ``}}`` without a balanced pair is treated as
+    a malformed template and raises ``ValueError`` rather than passing static
+    validation silently.
+    """
+
+    if isinstance(value, str):
+        if "{{" in value or "}}" in value:
+            if not _JINJA_PATTERN.search(value):
+                raise ValueError(f"malformed Jinja template markers in {value!r}")
+            return True
+        return False
+    if isinstance(value, list):
+        return any(_is_templated(item) for item in value)
+    if isinstance(value, dict):
+        return any(_is_templated(v) for v in value.values())
+    return False

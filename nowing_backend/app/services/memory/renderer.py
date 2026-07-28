@@ -150,6 +150,11 @@ def _truncate_atoms(escaped: str, budget: int, marker: str = _TRUNCATION_MARKER)
         if not advanced:
             break
 
+    # B15: at least one whole escaped atom must survive; otherwise the record
+    # would be reduced to just the marker, which violates D7 rule 10/11.
+    if head_end == 0 and tail_start == n:
+        return None
+
     return "".join(atoms[:head_end]) + marker + "".join(atoms[tail_start:])
 
 

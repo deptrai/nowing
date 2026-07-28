@@ -9,6 +9,8 @@ before checking it: see ``validate_single_embedding_result``.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 
 #: Ordered per D6; kept in sync with the taxonomy documented in the story.
@@ -67,7 +69,12 @@ def validate_embedding_vector(value: object, *, dimension: int) -> np.ndarray:
     if norm <= 0:
         raise VectorValidationError("zero_norm")
 
-    return np.ascontiguousarray(array, dtype=np.float32)
+    # B3: float64 values that overflow to inf when narrowed to float32 must
+    # fail the same guarantee. Re-check finiteness on the actual return dtype.
+    converted = np.ascontiguousarray(array, dtype=np.float32)
+    if not np.all(np.isfinite(converted)):
+        raise VectorValidationError("non_finite")
+    return converted
 
 
 def validate_single_embedding_result(result: object) -> object:
@@ -78,6 +85,12 @@ def validate_single_embedding_result(result: object) -> object:
     ``VectorValidationError("invalid_count")`` otherwise — never index
     ``[0]`` before this check.
     """
-    if not isinstance(result, (list, tuple)) or len(result) != 1:
+    # C4: accept any non-string/non-bytes Sequence (e.g. numpy array) but
+    # still require exactly one item before indexing [0].
+    if (
+        isinstance(result, (str, bytes))
+        or not isinstance(result, (Sequence, np.ndarray))
+        or len(result) != 1
+    ):
         raise VectorValidationError("invalid_count")
     return result[0]

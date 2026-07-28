@@ -46,6 +46,8 @@ import hashlib
 import json
 import logging
 import math
+import os
+import platform
 import statistics
 import sys
 import time
@@ -56,7 +58,7 @@ from typing import Any
 
 import numpy as np
 from langchain_core.messages import HumanMessage
-from sqlalchemy import delete, func, insert, select, text
+from sqlalchemy import TextClause, delete, func, insert, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -91,6 +93,11 @@ from app.schemas.memory import (
 from app.services.memory import search as search_module
 from app.services.memory.search import MemoryHybridSearch, ScoredMemory
 from app.services.memory.thread_citations import collect_thread_citations
+from app.services.memory.vector import (
+    VectorValidationError,
+    validate_embedding_vector,
+    validate_single_embedding_result,
+)
 from app.utils.document_converters import embed_texts
 from app.utils.rbac import check_permission
 
@@ -110,6 +117,9 @@ RECENCY_TAIL_ROWS = 5
 # Fixed cell order per the story's AC-3 table — never reordered.
 CELL_KINDS = ("injection-personal", "injection-team", "rest-ranked", "thread-recency")
 CELL_SIZES = ("small", "large")
+
+# AC-3: benchmark is strictly sequential; concurrency exists only as metadata.
+CONCURRENCY = 1
 
 # D6 constant reused verbatim for EXPLAIN reconstruction fidelity.
 _MAX_CANDIDATES = search_module._MAX_CANDIDATES
@@ -140,10 +150,6 @@ def _vector_literal(vec: np.ndarray) -> str:
     return "'[" + ",".join(f"{float(x):.8f}" for x in vec) + "]'::vector"
 
 
-def _sql_escape(text_value: str) -> str:
-    return text_value.replace("'", "''")
-
-
 def nearest_rank(sorted_values: list[float], p: float) -> float:
     n = len(sorted_values)
     idx = max(0, min(math.ceil(p * n) - 1, n - 1))
@@ -161,6 +167,41 @@ def stats_for(samples_ms: list[float]) -> dict[str, float]:
         "p95_ms": nearest_rank(ordered, 0.95),
         "p99_ms": nearest_rank(ordered, 0.99),
     }
+
+
+def _build_sentinel_manifest(manifest: CellManifest) -> dict[int, str]:
+    """Map every DB row id in the cell to its sentinel, if any."""
+    mapping: dict[int, str] = {}
+    for _q, pairs in manifest.canonical_by_query.items():
+        for row_id, sentinel in pairs:
+            mapping[row_id] = sentinel
+    for row_id, sentinel in zip(
+        manifest.row_ids[-RECENCY_TAIL_ROWS:], manifest.canonical_recency, strict=True
+    ):
+        mapping[row_id] = sentinel
+    return mapping
+
+
+async def _audit_stored_vectors(
+    session: AsyncSession, row_ids: list[int], dim: int
+) -> dict[str, Any]:
+    """D6/B20: read every seeded embedding and classify failures by reason."""
+    audit: dict[str, Any] = {"valid_count": 0, "invalid_count": 0, "by_reason": {}}
+    for chunk in _chunked(row_ids, _DELETE_CHUNK_SIZE):
+        result = await session.execute(
+            select(Memory.id, Memory.embedding).where(Memory.id.in_(chunk))
+        )
+        for row_id, embedding in result:
+            try:
+                validate_embedding_vector(embedding, dimension=dim)
+                audit["valid_count"] += 1
+            except VectorValidationError as exc:
+                audit["invalid_count"] += 1
+                audit["by_reason"][exc.reason] = audit["by_reason"].get(exc.reason, 0) + 1
+                logger.warning(
+                    "stored-row vector audit: id=%s reason=%s", row_id, exc.reason
+                )
+    return audit
 
 
 # --------------------------------------------------------------------------
@@ -193,6 +234,8 @@ class CellManifest:
     query_text_raw: dict[int, str] = field(default_factory=dict)
     query_embedding_raw: dict[int, list[float]] = field(default_factory=dict)
     query_embedding_wrapped: dict[int, list[float]] = field(default_factory=dict)
+    sentinel_manifest: dict[int, str] = field(default_factory=dict)
+    vector_audit: dict[str, Any] = field(default_factory=dict)
 
 
 #: Per-bucket subject phrases with mutually disjoint vocabulary. An earlier
@@ -221,12 +264,11 @@ _QUERY_SUBJECTS = (
 
 
 def query_text_for_bucket(q: int) -> str:
-    # Keyword arm: `plainto_tsquery` ANDs every lexeme, and "s314probe"
-    # appears in no corpus row, so the keyword CTE matches exactly zero rows
-    # for every query — RRF fusion collapses to pure semantic-rank order and
-    # the canonical top-5 is fully determined by the vector geometry we
-    # control (see module docstring).
-    return f"s314probe {_QUERY_SUBJECTS[q]}"
+    # B16: query the query-bucket content keyword plus a distinct subject.
+    # `s314bucket{q:02d}` matches the 1% of rows that share this content bucket;
+    # target rows are seeded into that bucket and repeat the keyword, so the
+    # keyword arm contributes meaningfully to RRF instead of collapsing.
+    return f"s314bucket{q:02d} {_QUERY_SUBJECTS[q]}"
 
 
 #: Pairwise centroid ceiling. A foreign bucket's target sits within ~0.05 of
@@ -259,11 +301,23 @@ def assert_centroid_geometry(centroids: dict[int, np.ndarray], label: str) -> fl
 
 
 def _build_content(
-    run_tag: str, cell: str, row_index: int, bucket: int, sentinel: str | None
+    run_tag: str,
+    cell: str,
+    row_index: int,
+    bucket: int,
+    sentinel: str | None,
+    extra_keyword: str | None = None,
+    keyword_repeats: int = 5,
 ) -> str:
+    # B16: query bucket keyword is repeated in target rows so their keyword rank
+    # dominates the 1% of rows that share the same content bucket.
+    keyword_block = ""
+    if extra_keyword:
+        keyword_block = (extra_keyword + " ") * keyword_repeats
     base = (
-        f"{run_tag} s314bucket{bucket:02d} benchmark filler content row {row_index} "
-        f"for cell {cell} lorem ipsum dolor sit amet consectetur adipiscing elit."
+        f"{keyword_block}{run_tag} s314bucket{bucket:02d} benchmark filler content "
+        f"row {row_index} for cell {cell} lorem ipsum dolor sit amet consectetur "
+        f"adipiscing elit."
     )
     if sentinel:
         base = f"{base} {sentinel}"
@@ -314,9 +368,14 @@ def generate_ranked_cell_rows(
             direction = direction / direction_norm
             epsilon = 0.01 * rank  # strictly increasing -> strictly increasing distance
             vec = centroid_unit + epsilon * direction
-            bucket = row_index % N_CONTENT_BUCKETS
+            # B16: target rows are placed in the query's own content bucket so the
+            # keyword arm matches them, and the bucket keyword is repeated.
+            bucket = q
             sentinel = f"s314:{cell}:{q:02d}:{rank}"
-            content = _build_content(run_tag, cell, row_index, bucket, sentinel)
+            extra_keyword = f"s314bucket{q:02d}"
+            content = _build_content(
+                run_tag, cell, row_index, bucket, sentinel, extra_keyword=extra_keyword
+            )
             rows.append(
                 RowSpec(
                     row_index=row_index,
@@ -571,6 +630,10 @@ class CellTiming:
     db_ms: list[float] = field(default_factory=list)
     total_ms: list[float] = field(default_factory=list)
     verification_failures: list[str] = field(default_factory=list)
+    per_sample: list[dict[str, Any]] = field(default_factory=list)
+    expected: dict[str, Any] = field(default_factory=dict)
+    sentinel_manifest: dict[int, str] = field(default_factory=dict)
+    vector_audit: dict[str, Any] = field(default_factory=dict)
     explain: dict[str, Any] | None = None
 
 
@@ -607,12 +670,57 @@ def _verify_hits(
     return True
 
 
+def _verify_injection_payload(
+    *,
+    cell: str,
+    label: str,
+    payload: str | None,
+    expected_sentinels: list[str],
+    failures: list[str],
+    is_team: bool,
+) -> bool:
+    """B17: assert the real middleware payload is one bounded wrapper with all sentinels."""
+
+    if payload is None:
+        failures.append(f"{label}: middleware returned no injected payload")
+        return False
+    if len(payload) > 8_000:
+        failures.append(f"{label}: injection payload {len(payload)} chars exceeds 8000")
+        return False
+    tag = "team_memory" if is_team else "user_memory"
+    open_tag = f"<{tag}>"
+    close_tag = f"</{tag}>"
+    if payload.count(open_tag) != 1 or payload.count(close_tag) != 1:
+        failures.append(f"{label}: payload does not contain exactly one {open_tag} wrapper")
+        return False
+    for i, sentinel in enumerate(expected_sentinels):
+        # Each sentinel must appear exactly once and in canonical order.
+        if payload.count(sentinel) != 1:
+            failures.append(f"{label}: expected sentinel {sentinel!r} once in payload, found {payload.count(sentinel)}")
+            return False
+        prev = payload.find(expected_sentinels[i - 1]) if i > 0 else 0
+        pos = payload.find(sentinel)
+        if pos < prev:
+            failures.append(f"{label}: sentinel {sentinel!r} is out of order in payload")
+            return False
+    return True
+
+
 async def run_injection_cell(
     manifest: CellManifest, *, warmups: int, samples: int, capture_explain: bool
 ) -> CellTiming:
     is_team = manifest.kind == "injection-team"
     identity = manifest.identity
     timing = CellTiming(cell=manifest.cell)
+    timing.sentinel_manifest = manifest.sentinel_manifest
+    timing.expected = {
+        f"{q:02d}": {
+            "ids": [row_id for row_id, _ in pairs],
+            "sentinels": [sentinel for _, sentinel in pairs],
+        }
+        for q, pairs in manifest.canonical_by_query.items()
+    }
+    timing.vector_audit = manifest.vector_audit
 
     mw = MemoryInjectionMiddleware(
         user_id=None if is_team else identity["user"].id,
@@ -634,7 +742,9 @@ async def run_injection_cell(
         finally:
             db_timer["end"] = time.perf_counter()
 
-    async def run_once(query_bucket: int) -> tuple[float, float, list[ScoredMemory]]:
+    async def run_once(
+        query_bucket: int,
+    ) -> tuple[float, float, list[ScoredMemory], str | None]:
         query_text = manifest.query_text_raw[query_bucket]
         state = {"messages": [HumanMessage(content=query_text)]}
 
@@ -650,36 +760,65 @@ async def run_injection_cell(
         MemoryHybridSearch.search = capturing_search
         try:
             total_start = time.perf_counter()
-            await mw.abefore_agent(state, None)  # type: ignore[arg-type]
+            abefore_result = await mw.abefore_agent(state, None)  # type: ignore[arg-type]
             total_end = time.perf_counter()
         finally:
             middleware_module.shielded_async_session = real_shielded
             MemoryHybridSearch.search = real_search
 
         hits = captured[0] if captured else []
+        payload: str | None = None
+        if isinstance(abefore_result, dict) and isinstance(abefore_result.get("messages"), list):
+            for msg in abefore_result["messages"]:
+                if hasattr(msg, "content") and isinstance(msg.content, str) and "<" in msg.content:
+                    payload = msg.content
+                    break
         db_ms = (db_timer["end"] - db_timer["start"]) * 1000
         total_ms = (total_end - total_start) * 1000
-        return db_ms, total_ms, hits
+        return db_ms, total_ms, hits, payload
 
     for i in range(warmups):
         await run_once(i % N_QUERY_BUCKETS)
 
     for i in range(samples):
         q = i % N_QUERY_BUCKETS
-        db_ms, total_ms, hits = await run_once(q)
+        db_ms, total_ms, hits, payload = await run_once(q)
         timing.db_ms.append(db_ms)
         timing.total_ms.append(total_ms)
         expected_ids, expected_sentinels = _extract_expected(
             manifest.canonical_by_query[q]
         )
+        actual_ids = [h.memory.id for h in hits]
         _verify_hits(
             cell=manifest.cell,
             label=f"sample {i} (query {q:02d})",
             expected_ids=expected_ids,
             expected_sentinels=expected_sentinels,
-            actual_ids=[h.memory.id for h in hits],
+            actual_ids=actual_ids,
             actual_contents=[h.memory.content for h in hits],
             failures=timing.verification_failures,
+        )
+        _verify_injection_payload(
+            cell=manifest.cell,
+            label=f"sample {i} (query {q:02d})",
+            payload=payload,
+            expected_sentinels=expected_sentinels,
+            failures=timing.verification_failures,
+            is_team=is_team,
+        )
+        timing.per_sample.append(
+            {
+                "query_bucket": q,
+                "expected_ids": expected_ids,
+                "expected_sentinels": expected_sentinels,
+                "actual_ids": actual_ids,
+                "actual_sentinels": [manifest.sentinel_manifest.get(i) for i in actual_ids],
+                "actual_scores": [h.score for h in hits],
+                "actual_similarities": [h.similarity for h in hits],
+                "payload_length": len(payload) if payload else None,
+                "db_ms": db_ms,
+                "total_ms": total_ms,
+            }
         )
 
     if capture_explain:
@@ -692,18 +831,29 @@ async def run_injection_cell(
     return timing
 
 
-def _scope_sql_for_injection(manifest: CellManifest) -> str:
-    if manifest.kind == "injection-team":
+def _scope_sql_for_injection(manifest: CellManifest) -> TextClause:
+    if manifest.kind in ("injection-team", "rest-ranked"):
         ws_id = manifest.identity["workspace"].id
-        return f"workspace_id = {ws_id}"
+        return text("workspace_id = :workspace_id").bindparams(workspace_id=int(ws_id))
     user_id = manifest.identity["user"].id
-    return f"workspace_id IS NULL AND created_by_id = '{user_id}'"
+    return text(
+        "workspace_id IS NULL AND created_by_id = :user_id"
+    ).bindparams(user_id=str(user_id))
 
 
 async def run_rest_ranked_cell(
     manifest: CellManifest, *, warmups: int, samples: int, capture_explain: bool
 ) -> CellTiming:
     timing = CellTiming(cell=manifest.cell)
+    timing.sentinel_manifest = manifest.sentinel_manifest
+    timing.expected = {
+        f"{q:02d}": {
+            "ids": [row_id for row_id, _ in pairs],
+            "sentinels": [sentinel for _, sentinel in pairs],
+        }
+        for q, pairs in manifest.canonical_by_query.items()
+    }
+    timing.vector_audit = manifest.vector_audit
     identity = manifest.identity
     owner = identity["owner"]
     ws_id = identity["workspace"].id
@@ -721,7 +871,7 @@ async def run_rest_ranked_cell(
             )
             start = time.perf_counter()
             embeddings = await asyncio.to_thread(embed_texts, [query_text])
-            query_embedding = embeddings[0]
+            query_embedding = validate_single_embedding_result(embeddings)
             search = MemoryHybridSearch(session)
             hits = await search.search(
                 workspace_id=ws_id,
@@ -758,20 +908,36 @@ async def run_rest_ranked_cell(
         expected_ids, expected_sentinels = _extract_expected(
             manifest.canonical_by_query[q]
         )
+        actual_ids = [item.id for item in response.items]
         _verify_hits(
             cell=manifest.cell,
             label=f"sample {i} (query {q:02d})",
             expected_ids=expected_ids,
             expected_sentinels=expected_sentinels,
-            actual_ids=[item.id for item in response.items],
+            actual_ids=actual_ids,
             actual_contents=[item.content for item in response.items],
             failures=timing.verification_failures,
+        )
+        timing.per_sample.append(
+            {
+                "query_bucket": q,
+                "expected_ids": expected_ids,
+                "expected_sentinels": expected_sentinels,
+                "actual_ids": actual_ids,
+                "actual_sentinels": [
+                    manifest.sentinel_manifest.get(i) for i in actual_ids
+                ],
+                "actual_scores": [item.score for item in response.items],
+                "actual_similarities": [item.similarity for item in response.items],
+                "db_ms": None,
+                "total_ms": total_ms,
+            }
         )
 
     if capture_explain:
         timing.explain = await explain_ranked_query(
             cell=manifest.cell,
-            scope_sql=f"workspace_id = {ws_id}",
+            scope_sql=_scope_sql_for_injection(manifest),
             query_embedding=manifest.query_embedding_raw[0],
             query_text=manifest.query_text_raw[0],
         )
@@ -782,6 +948,8 @@ async def run_thread_recency_cell(
     manifest: CellManifest, *, warmups: int, samples: int, capture_explain: bool
 ) -> CellTiming:
     timing = CellTiming(cell=manifest.cell)
+    timing.sentinel_manifest = manifest.sentinel_manifest
+    timing.vector_audit = manifest.vector_audit
     identity = manifest.identity
     owner = identity["owner"]
     ws_id = identity["workspace"].id
@@ -807,6 +975,9 @@ async def run_thread_recency_cell(
     # in reverse insertion order (rank1 = most recent = last inserted).
     expected_ids = list(reversed(manifest.row_ids[-RECENCY_TAIL_ROWS:]))
     expected_sentinels = manifest.canonical_recency
+    timing.expected = {
+        "recency": {"ids": expected_ids, "sentinels": expected_sentinels}
+    }
 
     async def run_once() -> tuple[float, ResearchThreadContext]:
         async with async_session_maker() as session:
@@ -855,14 +1026,30 @@ async def run_thread_recency_cell(
     for i in range(samples):
         total_ms, response = await run_once()
         timing.total_ms.append(total_ms)
+        actual_ids = [item.id for item in response.memories]
         _verify_hits(
             cell=manifest.cell,
             label=f"sample {i}",
             expected_ids=expected_ids,
             expected_sentinels=expected_sentinels,
-            actual_ids=[item.id for item in response.memories],
+            actual_ids=actual_ids,
             actual_contents=[item.content for item in response.memories],
             failures=timing.verification_failures,
+        )
+        timing.per_sample.append(
+            {
+                "query_bucket": None,
+                "expected_ids": expected_ids,
+                "expected_sentinels": expected_sentinels,
+                "actual_ids": actual_ids,
+                "actual_sentinels": [
+                    manifest.sentinel_manifest.get(i) for i in actual_ids
+                ],
+                "actual_scores": [item.score for item in response.memories],
+                "actual_similarities": [item.similarity for item in response.memories],
+                "db_ms": None,
+                "total_ms": total_ms,
+            }
         )
 
     if capture_explain:
@@ -877,49 +1064,51 @@ async def run_thread_recency_cell(
 # --------------------------------------------------------------------------
 
 
-def _semantic_cte_sql(*, scope_sql: str, query_embedding: list[float]) -> str:
+def _semantic_cte_sql(*, scope_sql: TextClause, query_embedding: list[float]) -> TextClause:
     vec_literal = _vector_literal(np.asarray(query_embedding, dtype=np.float64))
     limit = _MAX_CANDIDATES
-    return (
+    params = {**scope_sql.compile().params, "limit": limit}
+    return text(
         f"SELECT id, row_number() OVER (ORDER BY embedding <=> {vec_literal} ASC, id ASC) AS rank "
-        f"FROM memories WHERE {scope_sql} "
-        f"ORDER BY embedding <=> {vec_literal} ASC, id ASC LIMIT {limit}"
-    )
+        f"FROM memories WHERE {scope_sql.text} "
+        f"ORDER BY embedding <=> {vec_literal} ASC, id ASC LIMIT :limit"
+    ).bindparams(**params)
 
 
-def _keyword_cte_sql(*, scope_sql: str, query_text: str) -> str:
-    qtext = _sql_escape(query_text)
+def _keyword_cte_sql(*, scope_sql: TextClause, query_text: str) -> TextClause:
     limit = _MAX_CANDIDATES
-    rank_expr = f"ts_rank_cd(to_tsvector('english', content), plainto_tsquery('english', '{qtext}'))"
-    return (
-        f"SELECT id, row_number() OVER (ORDER BY {rank_expr} DESC, id ASC) AS rank "
-        f"FROM memories WHERE {scope_sql} AND to_tsvector('english', content) @@ plainto_tsquery('english', '{qtext}') "
-        f"ORDER BY {rank_expr} DESC, id ASC LIMIT {limit}"
-    )
+    params = {**scope_sql.compile().params, "qtext": query_text, "limit": limit}
+    return text(
+        "SELECT id, row_number() OVER (ORDER BY ts_rank_cd(to_tsvector('english', content), "
+        "plainto_tsquery('english', :qtext)) DESC, id ASC) AS rank "
+        f"FROM memories WHERE {scope_sql.text} AND to_tsvector('english', content) @@ plainto_tsquery('english', :qtext) "
+        "ORDER BY ts_rank_cd(to_tsvector('english', content), plainto_tsquery('english', :qtext)) "
+        "DESC, id ASC LIMIT :limit"
+    ).bindparams(**params)
 
 
 def _ranked_query_sql(
-    *, scope_sql: str, query_embedding: list[float], query_text: str
-) -> str:
+    *, scope_sql: TextClause, query_embedding: list[float], query_text: str
+) -> TextClause:
     vec_literal = _vector_literal(np.asarray(query_embedding, dtype=np.float64))
-    qtext = _sql_escape(query_text)
     limit = _MAX_CANDIDATES
-    return f"""
+    params = {**scope_sql.compile().params, "qtext": query_text, "limit": limit}
+    return text(f"""
 WITH semantic_memory AS (
     SELECT id, row_number() OVER (ORDER BY embedding <=> {vec_literal} ASC, id ASC) AS rank
     FROM memories
-    WHERE {scope_sql}
+    WHERE {scope_sql.text}
     ORDER BY embedding <=> {vec_literal} ASC, id ASC
-    LIMIT {limit}
+    LIMIT :limit
 ),
 keyword_memory AS (
     SELECT id, row_number() OVER (
-        ORDER BY ts_rank_cd(to_tsvector('english', content), plainto_tsquery('english', '{qtext}')) DESC, id ASC
+        ORDER BY ts_rank_cd(to_tsvector('english', content), plainto_tsquery('english', :qtext)) DESC, id ASC
     ) AS rank
     FROM memories
-    WHERE {scope_sql} AND to_tsvector('english', content) @@ plainto_tsquery('english', '{qtext}')
-    ORDER BY ts_rank_cd(to_tsvector('english', content), plainto_tsquery('english', '{qtext}')) DESC, id ASC
-    LIMIT {limit}
+    WHERE {scope_sql.text} AND to_tsvector('english', content) @@ plainto_tsquery('english', :qtext)
+    ORDER BY ts_rank_cd(to_tsvector('english', content), plainto_tsquery('english', :qtext)) DESC, id ASC
+    LIMIT :limit
 )
 SELECT m.id,
     COALESCE(1.0 / (60 + semantic_memory.rank), 0.0) + COALESCE(1.0 / (60 + keyword_memory.rank), 0.0) AS score,
@@ -928,15 +1117,15 @@ FROM semantic_memory
 FULL OUTER JOIN keyword_memory ON semantic_memory.id = keyword_memory.id
 JOIN memories m ON m.id = COALESCE(semantic_memory.id, keyword_memory.id)
 ORDER BY score DESC, similarity DESC, m.created_at DESC, m.id ASC
-LIMIT {limit}
-""".strip()
+LIMIT :limit
+""".strip()).bindparams(**params)
 
 
-def _recency_query_sql(*, ws_id: int, thread_id: int) -> str:
-    return (
-        f"SELECT id FROM memories WHERE workspace_id = {ws_id} AND research_thread_id = {thread_id} "
-        f"ORDER BY created_at DESC, id DESC LIMIT 5"
-    )
+def _recency_query_sql(*, ws_id: int, thread_id: int) -> TextClause:
+    return text(
+        "SELECT id FROM memories WHERE workspace_id = :ws_id AND research_thread_id = :thread_id "
+        "ORDER BY created_at DESC, id DESC LIMIT :limit"
+    ).bindparams(ws_id=ws_id, thread_id=thread_id, limit=5)
 
 
 def _plan_has_memories_seqscan(node: Any) -> bool:
@@ -952,19 +1141,22 @@ def _plan_has_memories_seqscan(node: Any) -> bool:
     return False
 
 
-async def _capture_explain(sql: str) -> dict[str, Any]:
+async def _capture_explain(sql: TextClause) -> dict[str, Any]:
+    compiled = sql.compile()
     async with async_session_maker() as session:
-        result = await session.execute(text(f"EXPLAIN (FORMAT JSON) {sql}"))
+        result = await session.execute(
+            text(f"EXPLAIN (FORMAT JSON) {compiled.string}").bindparams(**compiled.params)
+        )
         plan = result.scalar_one()
     return {
         "plan": plan,
         "no_seq_scan_on_memories": not _plan_has_memories_seqscan(plan),
-        "sql": sql,
+        "sql": compiled.string,
     }
 
 
 async def explain_ranked_query(
-    *, cell: str, scope_sql: str, query_embedding: list[float], query_text: str
+    *, cell: str, scope_sql: TextClause, query_embedding: list[float], query_text: str
 ) -> dict[str, Any]:
     """Capture EXPLAIN for the semantic CTE, keyword CTE, and final fused query
     separately, per AC-3's "large-cell JSON EXPLAIN ... semantic+keyword+final"
@@ -1185,6 +1377,9 @@ async def prepare_cell(
             remapped[q] = [(ids[row_index], sentinel) for row_index, sentinel in pairs]
         manifest.canonical_by_query = remapped
 
+    manifest.sentinel_manifest = _build_sentinel_manifest(manifest)
+    manifest.vector_audit = await _audit_stored_vectors(session, manifest.row_ids, dim)
+
     return manifest
 
 
@@ -1260,13 +1455,108 @@ def evaluate_gates(cell_timings: dict[str, CellTiming]) -> dict[str, Any]:
                 f"{timing.cell}: EXPLAIN plan contains a Seq Scan on memories"
             )
 
+    for timing in cell_timings.values():
+        invalid = timing.vector_audit.get("invalid_count", 0)
+        if invalid:
+            gates["failures"].append(
+                f"{timing.cell}: stored-row vector audit found {invalid} invalid row(s) "
+                f"by reason {timing.vector_audit.get('by_reason', {})}"
+            )
+
     return gates
+
+
+def _alembic_head_from_filesystem(script_path: Path) -> str | None:
+    """Return the highest numeric revision prefix in the alembic versions dir."""
+    versions_dir = script_path.parent.parent / "alembic" / "versions"
+    numeric = []
+    for path in versions_dir.glob("*.py"):
+        stem = path.stem
+        if stem[0].isdigit():
+            try:
+                numeric.append((int(stem.split("_", 1)[0]), stem))
+            except ValueError:
+                continue
+    if not numeric:
+        return None
+    return max(numeric, key=lambda pair: pair[0])[1]
+
+
+async def _collect_environment_metadata(
+    session: AsyncSession,
+    manifests: list[CellManifest],
+    *,
+    script_path: Path,
+    warmups: int,
+    freshness_samples: int,
+) -> dict[str, Any]:
+    """B19: capture the DB, runtime and generator metadata required by AC-3."""
+
+    pg_version = (await session.execute(text("SELECT version()"))).scalar_one()
+    pgvector_version = (
+        await session.execute(
+            text("SELECT extversion FROM pg_extension WHERE extname='vector'")
+        )
+    ).scalar_one_or_none()
+    current_revisions = (
+        await session.execute(text("SELECT version_num FROM alembic_version"))
+    ).scalars().all()
+
+    index_rows = await session.execute(
+        text(
+            "SELECT indexname, indexdef FROM pg_indexes "
+            "WHERE tablename='memories' AND schemaname='public'"
+        )
+    )
+    index_inventory = [
+        {"name": name, "defn": defn} for name, defn in index_rows
+    ]
+
+    uv_lock_path = script_path.parent.parent / "uv.lock"
+    uv_lock_hash = (
+        hashlib.sha256(uv_lock_path.read_bytes()).hexdigest()
+        if uv_lock_path.is_file()
+        else None
+    )
+    script_hash = hashlib.sha256(script_path.read_bytes()).hexdigest()
+
+    cell_identities: dict[str, dict[str, Any]] = {}
+    for manifest in manifests:
+        ids: dict[str, Any] = {}
+        if "user" in manifest.identity:
+            ids["user_id"] = str(manifest.identity["user"].id)
+        if "owner" in manifest.identity:
+            ids["owner_id"] = str(manifest.identity["owner"].id)
+        if "workspace" in manifest.identity:
+            ids["workspace_id"] = manifest.identity["workspace"].id
+        if "thread" in manifest.identity:
+            ids["thread_id"] = manifest.identity["thread"].id
+        cell_identities[manifest.cell] = ids
+
+    return {
+        "postgresql_version": pg_version,
+        "pgvector_version": pgvector_version,
+        "migration_current_revisions": list(current_revisions),
+        "migration_head_revision": _alembic_head_from_filesystem(script_path),
+        "memories_index_inventory": index_inventory,
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+        "generator_script_path": str(script_path),
+        "generator_script_hash": script_hash,
+        "uv_lock_hash": uv_lock_hash,
+        "argv": sys.argv,
+        "cache_warmups": warmups,
+        "concurrency": CONCURRENCY,
+        "requested_freshness_samples": freshness_samples,
+        "cell_identities": cell_identities,
+    }
 
 
 async def main_async(args: argparse.Namespace) -> int:
     dim = config.embedding_model_instance.dimension
     run_id = str(uuid.uuid4())
     run_tag = f"s314run:{run_id}"
+    script_path = Path(__file__).resolve()
 
     logger.warning(
         "AC-5 live freshness harness is SKIPPED this run: no LLM API keys configured in this "
@@ -1368,7 +1658,10 @@ async def main_async(args: argparse.Namespace) -> int:
                     raise RuntimeError(
                         f"{manifest.cell}: scoped count {count} != expected {manifest.corpus_size}"
                     )
+            # B18: ANALYZE is transactional; the session must commit before close
+            # or the statistics are rolled back with the transaction.
             await session.execute(text("ANALYZE memories"))
+            await session.commit()
 
         provenance["g_after_seed"] = g_after_seed
         provenance["run_tag_count"] = tag_count
@@ -1413,8 +1706,19 @@ async def main_async(args: argparse.Namespace) -> int:
                     f"global count drift after timed run: {g_after_seed} != {g_after_run}"
                 )
 
+        async with async_session_maker() as session:
+            environment = await _collect_environment_metadata(
+                session,
+                manifests,
+                script_path=script_path,
+                warmups=args.warmups,
+                freshness_samples=args.freshness_samples,
+            )
+        provenance["environment"] = environment
+
         gates = evaluate_gates(cell_timings)
 
+        # B20: per-sample expected/actual evidence plus sentinel/vector audit.
         provenance["samples_stats"] = {
             cell: {
                 "db_ms": t.db_ms or None,
@@ -1422,25 +1726,63 @@ async def main_async(args: argparse.Namespace) -> int:
                 "db_stats": stats_for(t.db_ms) if t.db_ms else None,
                 "total_stats": stats_for(t.total_ms),
                 "verification_failures": t.verification_failures,
+                "expected": t.expected,
+                "sentinel_manifest": t.sentinel_manifest,
+                "per_sample": t.per_sample,
+                "vector_audit": t.vector_audit,
             }
             for cell, t in cell_timings.items()
+        }
+        provenance["vector_audit_summary"] = {
+            cell: t.vector_audit for cell, t in cell_timings.items()
         }
         provenance["explain"] = {
             cell: t.explain for cell, t in cell_timings.items() if t.explain is not None
         }
         provenance["gates"] = gates
-        provenance["freshness"] = {
-            "status": "skipped",
-            "reason": "no_llm_credentials",
-            "detail": (
-                "nowing_backend/.env has zero LLM API keys in this environment; AC-5's live freshness "
-                "harness requires a real Celery worker performing real LLM-based memory extraction. "
-                "Story's own escape clause: 'No live credentials/worker->not done'. Deferred by explicit "
-                "user decision, not attempted."
-            ),
-            "requested_freshness_samples": args.freshness_samples,
-        }
-        provenance["pass"] = len(gates["failures"]) == 0
+
+        # D2: do not silently pass when freshness was requested but cannot run.
+        if args.freshness_samples == 0:
+            freshness = {
+                "status": "skipped",
+                "pass": True,
+                "reason": "disabled_by_user",
+                "detail": "--freshness-samples is 0; AC-5 phase explicitly disabled.",
+                "requested_freshness_samples": 0,
+            }
+            freshness_partial = False
+        elif not _has_llm_credentials():
+            freshness = {
+                "status": "partial",
+                "pass": False,
+                "reason": "missing_llm_credentials",
+                "detail": (
+                    "nowing_backend/.env has zero LLM API keys in this environment; AC-5's live freshness "
+                    "harness requires a real Celery worker performing real LLM-based memory extraction. "
+                    "Story's own escape clause: 'No live credentials/worker->not done'. "
+                    "Latency evidence is complete; freshness is not."
+                ),
+                "requested_freshness_samples": args.freshness_samples,
+            }
+            freshness_partial = True
+        else:
+            # Credentials are present, but the live harness is not implemented here.
+            freshness = {
+                "status": "partial",
+                "pass": False,
+                "reason": "harness_not_implemented",
+                "detail": (
+                    "LLM credentials are present but this script does not yet implement the AC-5 live "
+                    "freshness harness (real Celery worker + sequential finalizer turns). "
+                    "Run with --freshness-samples 0 to skip this phase."
+                ),
+                "requested_freshness_samples": args.freshness_samples,
+            }
+            freshness_partial = True
+
+        provenance["freshness"] = freshness
+        provenance["pass"] = len(gates["failures"]) == 0 and not freshness_partial
+        provenance["status"] = "partial" if freshness_partial else "complete"
 
     finally:
         cleanup_audit: dict[str, Any] = {}
@@ -1480,15 +1822,53 @@ async def main_async(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _positive_int(value: str) -> int:
+    try:
+        ivalue = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"{value!r} is not an integer") from exc
+    if ivalue < 1:
+        raise argparse.ArgumentTypeError(f"{value!r} is not a positive integer")
+    return ivalue
+
+
+def _non_negative_int(value: str) -> int:
+    try:
+        ivalue = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"{value!r} is not an integer") from exc
+    if ivalue < 0:
+        raise argparse.ArgumentTypeError(f"{value!r} is not a non-negative integer")
+    return ivalue
+
+
+def _has_llm_credentials() -> bool:
+    """Best-effort check for at least one LLM API key in the loaded environment."""
+    keys = (
+        "OPENAI_API_KEY",
+        "AZURE_OPENAI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GROQ_API_KEY",
+        "GOOGLE_API_KEY",
+    )
+    return any(bool(os.environ.get(k, "").strip()) for k in keys)
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Story 3.14 AC-3 live memory latency benchmark"
     )
-    parser.add_argument("--small-corpus", type=int, default=100)
-    parser.add_argument("--large-corpus", type=int, default=50_000)
-    parser.add_argument("--warmups", type=int, default=20)
-    parser.add_argument("--samples", type=int, default=100)
-    parser.add_argument("--freshness-samples", type=int, default=30)
+    parser.add_argument("--small-corpus", type=_positive_int, default=100)
+    parser.add_argument("--large-corpus", type=_positive_int, default=50_000)
+    parser.add_argument("--warmups", type=_positive_int, default=20)
+    parser.add_argument("--samples", type=_positive_int, default=100)
+    parser.add_argument(
+        "--freshness-samples",
+        type=_non_negative_int,
+        default=30,
+        help="AC-5 live freshness samples. 0 disables the phase; >0 requires LLM credentials + a real Celery worker.",
+    )
     parser.add_argument("--output", type=str, required=True)
     return parser.parse_args(argv)
 

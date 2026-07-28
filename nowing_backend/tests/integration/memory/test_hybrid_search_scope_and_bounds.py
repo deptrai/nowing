@@ -11,15 +11,16 @@ from __future__ import annotations
 
 import pytest
 
-from app.db import Memory, MemorySourceType, MemoryType
+from app.db import Memory, MemorySourceType, MemoryType, ResearchThread
 from app.services.memory.search import MemoryHybridSearch
 
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
 
-async def _add_memory(db_session, *, workspace_id=None, created_by_id=None, content, embedding):
+async def _add_memory(db_session, *, workspace_id=None, created_by_id=None, research_thread_id=None, content, embedding):
     memory = Memory(
         workspace_id=workspace_id,
+        research_thread_id=research_thread_id,
         content=content,
         embedding=embedding,
         type=MemoryType.SEMANTIC,
@@ -58,8 +59,8 @@ async def test_search_personal_scope_isolated_by_user(db_session, db_user, db_ot
     assert all(hit.memory.created_by_id == db_user.id for hit in hits)
 
 
-async def test_search_bounds_output_to_five_regardless_of_top_k(db_session, db_workspace):
-    """D6: output is bounded to 5 even when top_k is requested much larger."""
+async def test_search_rejects_top_k_out_of_bounds(db_session, db_workspace):
+    """D9: internal search raises for 0, bool, or top_k above the 5 ceiling."""
     for i in range(8):
         await _add_memory(
             db_session,
@@ -68,14 +69,13 @@ async def test_search_bounds_output_to_five_regardless_of_top_k(db_session, db_w
             embedding=[0.1 + i * 0.01] * 384,
         )
 
-    hits = await MemoryHybridSearch(db_session).search(
-        workspace_id=db_workspace.id,
-        query="widget report",
-        query_embedding=[0.1] * 384,
-        top_k=100,
-    )
-
-    assert len(hits) <= 5
+    with pytest.raises(ValueError):
+        await MemoryHybridSearch(db_session).search(
+            workspace_id=db_workspace.id,
+            query="widget report",
+            query_embedding=[0.1] * 384,
+            top_k=100,
+        )
 
 
 async def test_search_ranked_hits_have_finite_score_and_similarity(db_session, db_workspace):
@@ -128,12 +128,21 @@ async def test_search_skips_stored_zero_norm_embedding(db_session, db_workspace)
     assert invalid.id not in ids
 
 
-async def test_search_recency_mode_returns_null_score_and_similarity(db_session, db_workspace):
+async def test_search_recency_mode_returns_null_score_and_similarity(db_session, db_workspace, db_user):
     """Query-less (recency) recall never fakes a 0.0 score/similarity — both are null."""
+    thread = ResearchThread(
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+        title="Recency thread",
+    )
+    db_session.add(thread)
+    await db_session.flush()
+
     for i in range(3):
         await _add_memory(
             db_session,
             workspace_id=db_workspace.id,
+            research_thread_id=thread.id,
             content=f"Recency note {i}",
             embedding=[0.5] * 384,
         )
@@ -142,6 +151,7 @@ async def test_search_recency_mode_returns_null_score_and_similarity(db_session,
         workspace_id=db_workspace.id,
         query="",
         query_embedding=None,
+        research_thread_id=thread.id,
         top_k=5,
     )
 

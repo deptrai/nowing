@@ -92,12 +92,27 @@ class MemoryHybridSearch:
         if tags:
             base_conditions.append(Memory.tags.op("&&")(tags))
 
-        output_limit = min(max(top_k, 0), _MAX_RESULTS)
+        query_blank = not str(query).strip()
+        query_embedding_missing = query_embedding is None
 
-        # Query-less thread recall: when no query text/embedding is supplied
-        # (e.g. nowing_continue_research scoping by thread), return the most
-        # recent matching memories instead of ranking by relevance.
-        if query_embedding is None or not str(query).strip():
+        if (
+            isinstance(top_k, bool)
+            or not isinstance(top_k, (int, np.integer))
+            or top_k < 1
+            or top_k > _MAX_RESULTS
+        ):
+            raise ValueError(
+                f"top_k must be a positive integer between 1 and {_MAX_RESULTS}, got {top_k!r}"
+            )
+        output_limit = top_k
+
+        if query_blank and query_embedding_missing:
+            # D6: recency = blank query + no embedding + a concrete thread id.
+            if research_thread_id is None:
+                raise ValueError(
+                    "recency recall requires a research_thread_id; "
+                    "ranked recall requires a nonblank query and a valid embedding"
+                )
             stmt = (
                 select(Memory)
                 .where(*base_conditions)
@@ -109,11 +124,19 @@ class MemoryHybridSearch:
                 ScoredMemory(memory=memory, score=None, similarity=None)
                 for memory in result.scalars().all()
             ]
+        elif not query_blank and not query_embedding_missing:
+            # D6: ranked = nonblank query + valid embedding.
+            pass
+        else:
+            raise ValueError(
+                "query and query_embedding must both be provided for ranked recall, "
+                "or both absent for recency recall"
+            )
 
         embedding = validate_embedding_vector(
             query_embedding, dimension=config.embedding_model_instance.dimension
         )
-        candidate_limit = min(max(top_k, 0) * 3, _MAX_CANDIDATES)
+        candidate_limit = min(top_k * 3, _MAX_CANDIDATES)
 
         tsvector = func.to_tsvector("english", Memory.content)
         tsquery = func.plainto_tsquery("english", query)

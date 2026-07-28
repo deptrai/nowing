@@ -70,7 +70,7 @@ class MemoryUpdate(BaseModel):
 class MemorySearchRequest(BaseModel):
     # Empty query is allowed only for thread-scoped recall (see validator);
     # nowing_continue_research relies on this to resume a thread with no query.
-    query: str = ""
+    query: str = Field(default="", max_length=4000)
     top_k: strict_top_k(le=5, description="Maximum memories to return.") = 5
     type: str | None = None
     tags: list[str] = Field(default_factory=list)

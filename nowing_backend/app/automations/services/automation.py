@@ -47,7 +47,9 @@ class AutomationService:
         """Create an automation and its initial triggers in one transaction."""
         await self._authorize(payload.workspace_id, Permission.AUTOMATIONS_CREATE.value)
 
+        # B8: validate both the main plan and on_failure steps at save time.
         self._validate_plan_or_raise(payload.definition.plan)
+        self._validate_plan_or_raise(payload.definition.execution.on_failure or [])
         # New-write producer: always persist the current schema version, even
         # when the client omits it or still sends the legacy "1.0" (Story 3.14,
         # D9 point 1/3) — the envelope's "1.0" default is legacy-read
@@ -138,7 +140,12 @@ class AutomationService:
         if "status" in data:
             automation.status = data["status"]
         if "definition" in data:
+            # B9: `definition: null` is not a valid update payload.
+            if patch.definition is None:
+                raise HTTPException(status_code=422, detail="definition cannot be null")
+            # B8: validate both the main plan and on_failure steps at save time.
             self._validate_plan_or_raise(patch.definition.plan)
+            self._validate_plan_or_raise(patch.definition.execution.on_failure or [])
             # Same new-write normalization as create() — an edited definition
             # always persists as the current schema version (Story 3.14, D9
             # point 1/3). A patch that omits "definition" entirely never

@@ -25,8 +25,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
-
 from alembic import op
 
 revision: str = "181"
@@ -38,13 +36,16 @@ INDEX_NAME = "ix_memories_thread_recency"
 
 
 def upgrade() -> None:
-    op.create_index(
-        INDEX_NAME,
-        "memories",
-        ["research_thread_id", "created_at", "id"],
-        postgresql_where=sa.text("research_thread_id IS NOT NULL"),
-    )
+    # CREATE INDEX on a hot table must be CONCURRENTLY and cannot run inside
+    # a transaction. Use an autocommit block and raw SQL for the partial index.
+    with op.get_context().autocommit_block():
+        op.execute(
+            f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {INDEX_NAME} "
+            "ON memories (research_thread_id, created_at, id) "
+            "WHERE research_thread_id IS NOT NULL"
+        )
 
 
 def downgrade() -> None:
-    op.drop_index(INDEX_NAME, table_name="memories")
+    with op.get_context().autocommit_block():
+        op.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {INDEX_NAME}")

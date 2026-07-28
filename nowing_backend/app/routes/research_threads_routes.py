@@ -14,6 +14,7 @@ delegated to ``collect_thread_citations`` (AC-1b / AC-4).
 from __future__ import annotations
 
 import asyncio
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -23,6 +24,8 @@ from app.auth.context import AuthContext
 from app.db import Permission, ResearchThread, get_async_session
 from app.schemas.memory import MemorySearchHit, ResearchThreadContext
 from app.services.memory.search import MemoryHybridSearch
+from app.utils.strict_fields import strict_top_k
+from app.services.memory.vector import validate_single_embedding_result
 from app.services.memory.thread_citations import collect_thread_citations
 from app.users import get_auth_context
 from app.utils.document_converters import embed_texts
@@ -40,12 +43,19 @@ async def get_research_thread_context(
     thread_id: int,
     query: str = Query(
         default="",
+        max_length=4000,
         description=(
             "Optional query to rank the thread's memories; empty returns the "
             "most recent (recency-ordered) recall, matching nowing_recall."
         ),
     ),
-    top_k: int = Query(default=5, ge=1, le=5),
+    top_k: Annotated[
+        strict_top_k(
+            le=5,
+            description="Number of thread-scoped memories to recall.",
+        ),
+        Query(),
+    ] = 5,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
 ) -> ResearchThreadContext:
@@ -74,7 +84,7 @@ async def get_research_thread_context(
     query_embedding = None
     if query.strip():
         embeddings = await asyncio.to_thread(embed_texts, [query])
-        query_embedding = embeddings[0]
+        query_embedding = validate_single_embedding_result(embeddings)
 
     search = MemoryHybridSearch(session)
     hits = await search.search(
