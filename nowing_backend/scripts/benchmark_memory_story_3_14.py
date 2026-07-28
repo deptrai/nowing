@@ -46,7 +46,6 @@ import hashlib
 import json
 import logging
 import math
-import os
 import platform
 import statistics
 import sys
@@ -62,6 +61,10 @@ from sqlalchemy import TextClause, delete, func, insert, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from benchmark_memory_story_3_14_freshness import (
+    run_freshness_harness as _run_freshness_harness,
+)
 
 from app.agents.chat.multi_agent_chat.main_agent.middleware.memory import (
     middleware as middleware_module,
@@ -1559,12 +1562,6 @@ async def main_async(args: argparse.Namespace) -> int:
     run_tag = f"s314run:{run_id}"
     script_path = Path(__file__).resolve()
 
-    logger.warning(
-        "AC-5 live freshness harness is SKIPPED this run: no LLM API keys configured in this "
-        "environment (0 keys in nowing_backend/.env), invoking the story's own "
-        "'No live credentials/worker->not done' escape clause. See story Dev Agent Record."
-    )
-
     small = args.small_corpus
     large = args.large_corpus
 
@@ -1742,48 +1739,7 @@ async def main_async(args: argparse.Namespace) -> int:
         }
         provenance["gates"] = gates
 
-        # D2: do not silently pass when freshness was requested but cannot run.
-        if args.freshness_samples == 0:
-            freshness = {
-                "status": "skipped",
-                "pass": True,
-                "reason": "disabled_by_user",
-                "detail": "--freshness-samples is 0; AC-5 phase explicitly disabled.",
-                "requested_freshness_samples": 0,
-            }
-            freshness_partial = False
-        elif not _has_llm_credentials():
-            freshness = {
-                "status": "partial",
-                "pass": False,
-                "reason": "missing_llm_credentials",
-                "detail": (
-                    "nowing_backend/.env has zero LLM API keys in this environment; AC-5's live freshness "
-                    "harness requires a real Celery worker performing real LLM-based memory extraction. "
-                    "Story's own escape clause: 'No live credentials/worker->not done'. "
-                    "Latency evidence is complete; freshness is not."
-                ),
-                "requested_freshness_samples": args.freshness_samples,
-            }
-            freshness_partial = True
-        else:
-            # Credentials are present, but the live harness is not implemented here.
-            freshness = {
-                "status": "partial",
-                "pass": False,
-                "reason": "harness_not_implemented",
-                "detail": (
-                    "LLM credentials are present but this script does not yet implement the AC-5 live "
-                    "freshness harness (real Celery worker + sequential finalizer turns). "
-                    "Run with --freshness-samples 0 to skip this phase."
-                ),
-                "requested_freshness_samples": args.freshness_samples,
-            }
-            freshness_partial = True
-
-        provenance["freshness"] = freshness
-        provenance["pass"] = len(gates["failures"]) == 0 and not freshness_partial
-        provenance["status"] = "partial" if freshness_partial else "complete"
+        # AC-5 freshness results are finalized in the finally block after latency cleanup.
 
     finally:
         cleanup_audit: dict[str, Any] = {}
@@ -1803,6 +1759,36 @@ async def main_async(args: argparse.Namespace) -> int:
                 g_final,
                 tag_final,
             )
+
+        # AC-5: live freshness harness runs only after AC-3 latency cleanup.
+        if args.freshness_samples > 0:
+            try:
+                freshness, freshness_partial = await _run_freshness_harness(
+                    n=args.freshness_samples,
+                    run_tag=run_tag,
+                )
+            except Exception as exc:
+                freshness = {
+                    "status": "partial",
+                    "pass": False,
+                    "reason": "harness_error",
+                    "detail": f"Freshness harness raised: {exc}",
+                    "requested_freshness_samples": args.freshness_samples,
+                }
+                freshness_partial = True
+        else:
+            freshness = {
+                "status": "skipped",
+                "pass": True,
+                "reason": "disabled_by_user",
+                "detail": "--freshness-samples is 0; AC-5 phase explicitly disabled.",
+                "requested_freshness_samples": 0,
+            }
+            freshness_partial = False
+        provenance["freshness"] = freshness
+        gates = provenance.get("gates", {})
+        provenance["pass"] = len(gates.get("failures", [])) == 0 and not freshness_partial
+        provenance["status"] = "partial" if freshness_partial else "complete"
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1841,19 +1827,6 @@ def _non_negative_int(value: str) -> int:
     if ivalue < 0:
         raise argparse.ArgumentTypeError(f"{value!r} is not a non-negative integer")
     return ivalue
-
-
-def _has_llm_credentials() -> bool:
-    """Best-effort check for at least one LLM API key in the loaded environment."""
-    keys = (
-        "OPENAI_API_KEY",
-        "AZURE_OPENAI_API_KEY",
-        "OPENROUTER_API_KEY",
-        "ANTHROPIC_API_KEY",
-        "GROQ_API_KEY",
-        "GOOGLE_API_KEY",
-    )
-    return any(bool(os.environ.get(k, "").strip()) for k in keys)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
