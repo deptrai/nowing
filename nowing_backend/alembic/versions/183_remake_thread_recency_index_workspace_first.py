@@ -43,25 +43,25 @@ INDEX_NAME = "ix_memories_thread_recency"
 
 
 def upgrade() -> None:
-    # CONCURRENTLY is intentionally omitted for this revision:
-    # the index change must be testable in the local asyncpg/alembic
-    # transaction-per-migration configuration used by this project.
-    # On a hot production table, run these two statements in an
-    # autocommit session or during a maintenance window.
+    # DROP INDEX is a quick catalog update; the brief ACCESS EXCLUSIVE lock
+    # is acceptable. CREATE INDEX must be CONCURRENTLY so the build on a hot
+    # table does not block writes for the full duration.
     op.execute(f"DROP INDEX IF EXISTS {INDEX_NAME}")
-    op.execute(
-        f"CREATE INDEX IF NOT EXISTS {INDEX_NAME} "
-        "ON memories (workspace_id, research_thread_id, created_at, id) "
-        "WHERE research_thread_id IS NOT NULL"
-    )
+    with op.get_context().autocommit_block():
+        op.execute(
+            f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {INDEX_NAME} "
+            "ON memories (workspace_id, research_thread_id, created_at, id) "
+            "WHERE research_thread_id IS NOT NULL"
+        )
     op.execute("ANALYZE memories")
 
 
 def downgrade() -> None:
     op.execute(f"DROP INDEX IF EXISTS {INDEX_NAME}")
-    op.execute(
-        f"CREATE INDEX IF NOT EXISTS {INDEX_NAME} "
-        "ON memories (research_thread_id, created_at, id) "
-        "WHERE research_thread_id IS NOT NULL"
-    )
+    with op.get_context().autocommit_block():
+        op.execute(
+            f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {INDEX_NAME} "
+            "ON memories (research_thread_id, created_at, id) "
+            "WHERE research_thread_id IS NOT NULL"
+        )
     op.execute("ANALYZE memories")

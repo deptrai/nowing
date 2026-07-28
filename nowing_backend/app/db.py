@@ -2031,11 +2031,13 @@ class Memory(BaseModel, TimestampMixin):
             text("to_tsvector('english', content)"),
             postgresql_using="gin",
         ),
-        # Serves the thread-recency read (`WHERE research_thread_id = :t ORDER
-        # BY created_at DESC, id DESC LIMIT n`) via backward index scan —
-        # without it PostgreSQL top-N sorts the whole thread (migration 181).
+        # Serves the thread-recency read (`WHERE workspace_id = :w AND
+        # research_thread_id = :t ORDER BY created_at DESC, id DESC LIMIT n`)
+        # via backward index scan — without it PostgreSQL top-N sorts the
+        # whole thread (migrations 181 and 183).
         Index(
             "ix_memories_thread_recency",
+            "workspace_id",
             "research_thread_id",
             "created_at",
             "id",
@@ -2062,10 +2064,10 @@ class Memory(BaseModel, TimestampMixin):
         # No single-column index: every production filter on this column is
         # always paired with a workspace_id/user_id scope condition (D5,
         # app/services/memory/search.py), and ix_memories_thread_recency
-        # (leading column research_thread_id, migration 181) already serves
-        # that combined equality+ORDER BY pattern strictly better. Migration
-        # 182 drops the single-column ix_memories_research_thread_id that
-        # index=True used to create here — keep this Column in sync with it.
+        # (leading columns workspace_id, research_thread_id, migrations 181/183)
+        # already serves that combined equality+ORDER BY pattern strictly better.
+        # Migration 182 drops the single-column ix_memories_research_thread_id
+        # that index=True used to create here — keep this Column in sync with it.
     )
     type = Column(
         SQLAlchemyEnum(
