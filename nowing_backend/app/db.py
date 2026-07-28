@@ -2059,7 +2059,13 @@ class Memory(BaseModel, TimestampMixin):
         Integer,
         ForeignKey("research_threads.id", ondelete="SET NULL"),
         nullable=True,
-        index=True,
+        # No single-column index: every production filter on this column is
+        # always paired with a workspace_id/user_id scope condition (D5,
+        # app/services/memory/search.py), and ix_memories_thread_recency
+        # (leading column research_thread_id, migration 181) already serves
+        # that combined equality+ORDER BY pattern strictly better. Migration
+        # 182 drops the single-column ix_memories_research_thread_id that
+        # index=True used to create here — keep this Column in sync with it.
     )
     type = Column(
         SQLAlchemyEnum(
