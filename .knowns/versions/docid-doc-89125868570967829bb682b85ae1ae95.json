@@ -1,0 +1,53 @@
+{
+  "docId": "doc-89125868570967829bb682b85ae1ae95",
+  "docPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-quality-review-nowing-2026-07-22-re-validation-sau-update-pass",
+  "currentPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-quality-review-nowing-2026-07-22-re-validation-sau-update-pass",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-89125868570967829bb682b85ae1ae95",
+      "docPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-quality-review-nowing-2026-07-22-re-validation-sau-update-pass",
+      "currentPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-quality-review-nowing-2026-07-22-re-validation-sau-update-pass",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:49.416367Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "ddaf69b89d0a51769829abc613730e36161a6a6c7d90757d2f911f890667f678",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-quality-review-nowing-2026-07-22-re-validation-sau-update-pass"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "PRD Quality Review — Nowing (2026-07-22) · Re-validation sau update pass"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 123,
+          "deltaBytes": 123
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 77,
+          "deltaBytes": 77
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-quality-review-nowing-2026-07-22-re-validation-sau-update-pass",
+        "title": "PRD Quality Review — Nowing (2026-07-22) · Re-validation sau update pass"
+      }
+    }
+  ]
+}

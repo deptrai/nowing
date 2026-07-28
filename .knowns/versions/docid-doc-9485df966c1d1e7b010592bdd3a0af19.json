@@ -1,0 +1,79 @@
+{
+  "docId": "doc-9485df966c1d1e7b010592bdd3a0af19",
+  "docPath": "platforms/platform-youtube",
+  "currentPath": "platforms/platform-youtube",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-9485df966c1d1e7b010592bdd3a0af19",
+      "docPath": "platforms/platform-youtube",
+      "currentPath": "platforms/platform-youtube",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:12.60444Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "5804b3c337ed271bd7389c4e47e29bca4afb488525327eaa46a2e6a6969e03b2",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "platforms/platform-youtube"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Platform - youtube"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "YouTube Scraper"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 28,
+          "deltaBytes": 28
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 20,
+          "deltaBytes": 20
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 17,
+          "deltaBytes": 17
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "YouTube Scraper",
+        "path": "platforms/platform-youtube",
+        "title": "Platform - youtube"
+      }
+    }
+  ]
+}

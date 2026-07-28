@@ -1,0 +1,79 @@
+{
+  "docId": "doc-c5fc925bffd53244d5e55194fc4abf7e",
+  "docPath": "project/claude",
+  "currentPath": "project/claude",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-c5fc925bffd53244d5e55194fc4abf7e",
+      "docPath": "project/claude",
+      "currentPath": "project/claude",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.07624Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "938baab7ba1fb9517c66a70728becadf25ff2a7bf166a1fbbfa9e476a013ff0f",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "project/claude"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "CLAUDE"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "CLAUDE"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 16,
+          "deltaBytes": 16
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 8,
+          "deltaBytes": 8
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 8,
+          "deltaBytes": 8
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "CLAUDE",
+        "path": "project/claude",
+        "title": "CLAUDE"
+      }
+    }
+  ]
+}

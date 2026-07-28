@@ -1,0 +1,66 @@
+{
+  "docId": "doc-5cf669084cf36ce7b6d3deea9dae0bde",
+  "docPath": "planning/nowing-epics",
+  "currentPath": "planning/nowing-epics",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-5cf669084cf36ce7b6d3deea9dae0bde",
+      "docPath": "planning/nowing-epics",
+      "currentPath": "planning/nowing-epics",
+      "version": 1,
+      "timestamp": "2026-07-28T10:28:32.81291Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "8a1031e8f55e97c94aeba331ca2918d99ddc8f6b9bf9901caed7d6e2292adef9",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/nowing-epics"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Nowing Epics"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 23,
+          "deltaBytes": 23
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 14,
+          "deltaBytes": 14
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "path": "planning/nowing-epics",
+        "title": "Nowing Epics"
+      }
+    }
+  ]
+}

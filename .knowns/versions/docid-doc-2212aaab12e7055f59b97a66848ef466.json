@@ -1,0 +1,53 @@
+{
+  "docId": "doc-2212aaab12e7055f59b97a66848ef466",
+  "docPath": "planning/planning-artifacts/architecture/architecture-Nowing-2026-07-22/architecture-spine-nowing",
+  "currentPath": "planning/planning-artifacts/architecture/architecture-Nowing-2026-07-22/architecture-spine-nowing",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-2212aaab12e7055f59b97a66848ef466",
+      "docPath": "planning/planning-artifacts/architecture/architecture-Nowing-2026-07-22/architecture-spine-nowing",
+      "currentPath": "planning/planning-artifacts/architecture/architecture-Nowing-2026-07-22/architecture-spine-nowing",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:49.546532Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "2968cf12d82d87246560e0811d590d3d06578a5a301f858e83734d1d1496a657",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/architecture/architecture-Nowing-2026-07-22/architecture-spine-nowing"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Architecture Spine — Nowing"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 99,
+          "deltaBytes": 99
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 31,
+          "deltaBytes": 31
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/architecture/architecture-Nowing-2026-07-22/architecture-spine-nowing",
+        "title": "Architecture Spine — Nowing"
+      }
+    }
+  ]
+}

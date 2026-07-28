@@ -1,0 +1,79 @@
+{
+  "docId": "doc-9c0dd0884b4e95b736777616065c54b1",
+  "docPath": "docs/nowing-mutation-gate-reference",
+  "currentPath": "docs/nowing-mutation-gate-reference",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-9c0dd0884b4e95b736777616065c54b1",
+      "docPath": "docs/nowing-mutation-gate-reference",
+      "currentPath": "docs/nowing-mutation-gate-reference",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:12.051713Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "24e321a683e806ca9107830af4fdfa1674f363d8ced153ca9ba11df395cc8583",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/nowing-mutation-gate-reference"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "nowing-mutation-gate-reference"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Mutation Gate Reference — Nowing"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 37,
+          "deltaBytes": 37
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 32,
+          "deltaBytes": 32
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 36,
+          "deltaBytes": 36
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Mutation Gate Reference — Nowing",
+        "path": "docs/nowing-mutation-gate-reference",
+        "title": "nowing-mutation-gate-reference"
+      }
+    }
+  ]
+}

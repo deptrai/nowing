@@ -1,0 +1,118 @@
+{
+  "taskId": "84wz8h",
+  "currentVersion": 3,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "84wz8h",
+      "version": 1,
+      "timestamp": "2026-07-28T10:30:26.835219Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "in-progress"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "high"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T17:30:26.832878+07:00",
+        "description": "test 3-14",
+        "id": "84wz8h",
+        "labels": [
+          "epic-3",
+          "p0"
+        ],
+        "parent": "gz7a08",
+        "priority": "high",
+        "spec": "stories/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Story 3.14: Memory Injection - Bounded Retrieval \u0026 Latency Budget",
+        "updatedAt": "2026-07-28T17:30:26.832878+07:00"
+      }
+    },
+    {
+      "id": "v2",
+      "taskId": "84wz8h",
+      "version": 2,
+      "timestamp": "2026-07-28T10:30:52.095638Z",
+      "author": "luisphan",
+      "changes": [
+        {
+          "field": "labels",
+          "oldValue": [
+            "epic-3",
+            "p0"
+          ],
+          "newValue": [
+            "epic-3",
+            "p0",
+            "in-progress"
+          ]
+        },
+        {
+          "field": "description",
+          "oldValue": "test 3-14",
+          "newValue": "NFR-1b/1c/1d + AD-18 (mới). Story file: implementation-artifacts/3-14-memory-injection-bounded-retrieval.md. Chặn trên retrieval + 8.000-char read budget + latency/fail-soft counter + real RRF/cosine signals; nên chạy trước khi chốt SM-10 của 3-9. Bắt đầu dev 2026-07-26."
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:30:26.832Z",
+        "description": "NFR-1b/1c/1d + AD-18 (mới). Story file: implementation-artifacts/3-14-memory-injection-bounded-retrieval.md. Chặn trên retrieval + 8.000-char read budget + latency/fail-soft counter + real RRF/cosine signals; nên chạy trước khi chốt SM-10 của 3-9. Bắt đầu dev 2026-07-26.",
+        "id": "84wz8h",
+        "labels": [
+          "epic-3",
+          "p0",
+          "in-progress"
+        ],
+        "parent": "gz7a08",
+        "priority": "high",
+        "spec": "stories/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Story 3.14: Memory Injection - Bounded Retrieval \u0026 Latency Budget",
+        "updatedAt": "2026-07-28T10:30:52.095638Z"
+      }
+    },
+    {
+      "id": "v3",
+      "taskId": "84wz8h",
+      "version": 3,
+      "timestamp": "2026-07-28T13:32:37.564271Z",
+      "author": "api",
+      "changes": [
+        {
+          "field": "order",
+          "oldValue": null,
+          "newValue": 0
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:30:26.832Z",
+        "description": "NFR-1b/1c/1d + AD-18 (mới). Story file: implementation-artifacts/3-14-memory-injection-bounded-retrieval.md. Chặn trên retrieval + 8.000-char read budget + latency/fail-soft counter + real RRF/cosine signals; nên chạy trước khi chốt SM-10 của 3-9. Bắt đầu dev 2026-07-26.",
+        "id": "84wz8h",
+        "labels": [
+          "epic-3",
+          "p0",
+          "in-progress"
+        ],
+        "order": 0,
+        "parent": "gz7a08",
+        "priority": "high",
+        "spec": "stories/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Story 3.14: Memory Injection - Bounded Retrieval \u0026 Latency Budget",
+        "updatedAt": "2026-07-28T13:32:37.564271Z"
+      }
+    }
+  ]
+}

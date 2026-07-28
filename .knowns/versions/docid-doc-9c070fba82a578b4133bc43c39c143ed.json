@@ -1,0 +1,79 @@
+{
+  "docId": "doc-9c070fba82a578b4133bc43c39c143ed",
+  "docPath": "docs/component-inventory-browser-extension",
+  "currentPath": "docs/component-inventory-browser-extension",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-9c070fba82a578b4133bc43c39c143ed",
+      "docPath": "docs/component-inventory-browser-extension",
+      "currentPath": "docs/component-inventory-browser-extension",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.481747Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "dcbdf245459c8518d924f457b5f9e079963d5e8ab752c15f03f0d3dc9884151f",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/component-inventory-browser-extension"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "component-inventory-browser_extension"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Nowing Browser Extension - Component Inventory"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 44,
+          "deltaBytes": 44
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 39,
+          "deltaBytes": 39
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 48,
+          "deltaBytes": 48
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Nowing Browser Extension - Component Inventory",
+        "path": "docs/component-inventory-browser-extension",
+        "title": "component-inventory-browser_extension"
+      }
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "taskId": "pjuwfe",
+  "currentVersion": 3,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "pjuwfe",
+      "version": 1,
+      "timestamp": "2026-07-28T10:28:33.57555Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "todo"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T17:28:33.572185+07:00",
+        "description": "Story 9-2-deep-research-cost-metering from sprint-status",
+        "id": "pjuwfe",
+        "labels": [
+          "epic-9",
+          "backlog"
+        ],
+        "parent": "nspcxd",
+        "priority": "medium",
+        "status": "todo",
+        "timeSpent": 0,
+        "title": "9-2-deep-research-cost-metering",
+        "updatedAt": "2026-07-28T17:28:33.572185+07:00"
+      }
+    },
+    {
+      "id": "v2",
+      "taskId": "pjuwfe",
+      "version": 2,
+      "timestamp": "2026-07-28T10:31:34.309725Z",
+      "author": "luisphan",
+      "changes": [
+        {
+          "field": "priority",
+          "oldValue": "medium",
+          "newValue": "high"
+        },
+        {
+          "field": "labels",
+          "oldValue": [
+            "epic-9",
+            "backlog"
+          ],
+          "newValue": [
+            "epic-9",
+            "backlog",
+            "p0"
+          ]
+        },
+        {
+          "field": "description",
+          "oldValue": "Story 9-2-deep-research-cost-metering from sprint-status",
+          "newValue": "P0 — FR-37. Parse costDollars → TokenUsage(usage_type=deep_research); hiện under-meter 2.1-3.3x. Dep: ChainLens 42-1 + OQ-7(3)"
+        },
+        {
+          "field": "spec",
+          "oldValue": null,
+          "newValue": "planning/nowing-epics"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:28:33.572Z",
+        "description": "P0 — FR-37. Parse costDollars → TokenUsage(usage_type=deep_research); hiện under-meter 2.1-3.3x. Dep: ChainLens 42-1 + OQ-7(3)",
+        "id": "pjuwfe",
+        "labels": [
+          "epic-9",
+          "backlog",
+          "p0"
+        ],
+        "parent": "nspcxd",
+        "priority": "high",
+        "spec": "planning/nowing-epics",
+        "status": "todo",
+        "timeSpent": 0,
+        "title": "9-2-deep-research-cost-metering",
+        "updatedAt": "2026-07-28T10:31:34.309725Z"
+      }
+    },
+    {
+      "id": "v3",
+      "taskId": "pjuwfe",
+      "version": 3,
+      "timestamp": "2026-07-28T13:32:19.947619Z",
+      "author": "api",
+      "changes": [
+        {
+          "field": "order",
+          "oldValue": null,
+          "newValue": 1
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:28:33.572Z",
+        "description": "P0 — FR-37. Parse costDollars → TokenUsage(usage_type=deep_research); hiện under-meter 2.1-3.3x. Dep: ChainLens 42-1 + OQ-7(3)",
+        "id": "pjuwfe",
+        "labels": [
+          "epic-9",
+          "backlog",
+          "p0"
+        ],
+        "order": 1,
+        "parent": "nspcxd",
+        "priority": "high",
+        "spec": "planning/nowing-epics",
+        "status": "todo",
+        "timeSpent": 0,
+        "title": "9-2-deep-research-cost-metering",
+        "updatedAt": "2026-07-28T13:32:19.947619Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "docId": "doc-e3dcff0da7bee950eadf3ae1f428d386",
+  "docPath": "planning/test-artifacts/step-1-detect-mode-prerequisites",
+  "currentPath": "planning/test-artifacts/step-1-detect-mode-prerequisites",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-e3dcff0da7bee950eadf3ae1f428d386",
+      "docPath": "planning/test-artifacts/step-1-detect-mode-prerequisites",
+      "currentPath": "planning/test-artifacts/step-1-detect-mode-prerequisites",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:49.102327Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "8002f655967079b7f745756c17e07121e7f2b401faf9f94f34c45658358b30fc",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/test-artifacts/step-1-detect-mode-prerequisites"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Step 1: Detect Mode \u0026 Prerequisites"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 58,
+          "deltaBytes": 58
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 42,
+          "deltaBytes": 42
+        }
+      ],
+      "snapshot": {
+        "path": "planning/test-artifacts/step-1-detect-mode-prerequisites",
+        "title": "Step 1: Detect Mode \u0026 Prerequisites"
+      }
+    }
+  ]
+}

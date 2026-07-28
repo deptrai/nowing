@@ -1,0 +1,79 @@
+{
+  "docId": "doc-11ad81c92e43acc306b38b8acf1d99e9",
+  "docPath": "docs/development-guide-evals",
+  "currentPath": "docs/development-guide-evals",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-11ad81c92e43acc306b38b8acf1d99e9",
+      "docPath": "docs/development-guide-evals",
+      "currentPath": "docs/development-guide-evals",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.797428Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "7036d2e65effe6e48ef37bfef49f5baebc5e1d2c79834f1fdde1072b5a7ace03",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/development-guide-evals"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "development-guide-evals"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Hướng dẫn phát triển - Evals"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 30,
+          "deltaBytes": 30
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 25,
+          "deltaBytes": 25
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 38,
+          "deltaBytes": 38
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Hướng dẫn phát triển - Evals",
+        "path": "docs/development-guide-evals",
+        "title": "development-guide-evals"
+      }
+    }
+  ]
+}

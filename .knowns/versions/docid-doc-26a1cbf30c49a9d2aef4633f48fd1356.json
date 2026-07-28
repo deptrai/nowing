@@ -1,0 +1,53 @@
+{
+  "docId": "doc-26a1cbf30c49a9d2aef4633f48fd1356",
+  "docPath": "planning/implementation-artifacts/story-8-11-admin-ui-for-global-llm-model-configuration",
+  "currentPath": "planning/implementation-artifacts/story-8-11-admin-ui-for-global-llm-model-configuration",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-26a1cbf30c49a9d2aef4633f48fd1356",
+      "docPath": "planning/implementation-artifacts/story-8-11-admin-ui-for-global-llm-model-configuration",
+      "currentPath": "planning/implementation-artifacts/story-8-11-admin-ui-for-global-llm-model-configuration",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.438486Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "bb30889e8b07442c9a39d0c5dbe1e45db6293b22709553acf3bc66b2a1cead79",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/implementation-artifacts/story-8-11-admin-ui-for-global-llm-model-configuration"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Story 8.11: Admin UI for Global LLM Model Configuration"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 90,
+          "deltaBytes": 90
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 57,
+          "deltaBytes": 57
+        }
+      ],
+      "snapshot": {
+        "path": "planning/implementation-artifacts/story-8-11-admin-ui-for-global-llm-model-configuration",
+        "title": "Story 8.11: Admin UI for Global LLM Model Configuration"
+      }
+    }
+  ]
+}

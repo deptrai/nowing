@@ -1,0 +1,126 @@
+{
+  "taskId": "1p3la2",
+  "currentVersion": 3,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "1p3la2",
+      "version": 1,
+      "timestamp": "2026-07-28T10:29:05.060003Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "todo"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T17:29:05.057313+07:00",
+        "id": "1p3la2",
+        "labels": [
+          "epic-9",
+          "backlog"
+        ],
+        "parent": "nspcxd",
+        "priority": "medium",
+        "status": "todo",
+        "timeSpent": 0,
+        "title": "9-1b-research-contract-regression-guard",
+        "updatedAt": "2026-07-28T17:29:05.057313+07:00"
+      }
+    },
+    {
+      "id": "v2",
+      "taskId": "1p3la2",
+      "version": 2,
+      "timestamp": "2026-07-28T10:31:33.862823Z",
+      "author": "luisphan",
+      "changes": [
+        {
+          "field": "priority",
+          "oldValue": "medium",
+          "newValue": "high"
+        },
+        {
+          "field": "labels",
+          "oldValue": [
+            "epic-9",
+            "backlog"
+          ],
+          "newValue": [
+            "epic-9",
+            "backlog",
+            "p0"
+          ]
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "P0 nhưng KHÔNG chặn public repo — FR-24. Contract test khoá SSE format. Tách từ 9-1 (Q-3). Đối ứng ChainLens 42-2"
+        },
+        {
+          "field": "spec",
+          "oldValue": null,
+          "newValue": "planning/nowing-epics"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:29:05.057Z",
+        "description": "P0 nhưng KHÔNG chặn public repo — FR-24. Contract test khoá SSE format. Tách từ 9-1 (Q-3). Đối ứng ChainLens 42-2",
+        "id": "1p3la2",
+        "labels": [
+          "epic-9",
+          "backlog",
+          "p0"
+        ],
+        "parent": "nspcxd",
+        "priority": "high",
+        "spec": "planning/nowing-epics",
+        "status": "todo",
+        "timeSpent": 0,
+        "title": "9-1b-research-contract-regression-guard",
+        "updatedAt": "2026-07-28T10:31:33.862823Z"
+      }
+    },
+    {
+      "id": "v3",
+      "taskId": "1p3la2",
+      "version": 3,
+      "timestamp": "2026-07-28T13:32:22.186643Z",
+      "author": "api",
+      "changes": [
+        {
+          "field": "order",
+          "oldValue": null,
+          "newValue": 2
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:29:05.057Z",
+        "description": "P0 nhưng KHÔNG chặn public repo — FR-24. Contract test khoá SSE format. Tách từ 9-1 (Q-3). Đối ứng ChainLens 42-2",
+        "id": "1p3la2",
+        "labels": [
+          "epic-9",
+          "backlog",
+          "p0"
+        ],
+        "order": 2,
+        "parent": "nspcxd",
+        "priority": "high",
+        "spec": "planning/nowing-epics",
+        "status": "todo",
+        "timeSpent": 0,
+        "title": "9-1b-research-contract-regression-guard",
+        "updatedAt": "2026-07-28T13:32:22.186643Z"
+      }
+    }
+  ]
+}

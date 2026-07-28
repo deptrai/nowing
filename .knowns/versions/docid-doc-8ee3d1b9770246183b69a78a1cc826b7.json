@@ -1,0 +1,53 @@
+{
+  "docId": "doc-8ee3d1b9770246183b69a78a1cc826b7",
+  "docPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-review-prfaq-coverage-gap-re-check-nowing",
+  "currentPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-review-prfaq-coverage-gap-re-check-nowing",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-8ee3d1b9770246183b69a78a1cc826b7",
+      "docPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-review-prfaq-coverage-gap-re-check-nowing",
+      "currentPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-review-prfaq-coverage-gap-re-check-nowing",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:49.502378Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "b47fb390a1bab492c87a7872d5340542839e170ca634cfd95695e0875a8ed5c2",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-review-prfaq-coverage-gap-re-check-nowing"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "PRD Review — PRFAQ Coverage Gap (RE-CHECK): Nowing"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 102,
+          "deltaBytes": 102
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 54,
+          "deltaBytes": 54
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-review-prfaq-coverage-gap-re-check-nowing",
+        "title": "PRD Review — PRFAQ Coverage Gap (RE-CHECK): Nowing"
+      }
+    }
+  ]
+}

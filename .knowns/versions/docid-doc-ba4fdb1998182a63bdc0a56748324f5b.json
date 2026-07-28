@@ -1,0 +1,53 @@
+{
+  "docId": "doc-ba4fdb1998182a63bdc0a56748324f5b",
+  "docPath": "planning/implementation-artifacts/blind-hunter-review-story-3-14",
+  "currentPath": "planning/implementation-artifacts/blind-hunter-review-story-3-14",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-ba4fdb1998182a63bdc0a56748324f5b",
+      "docPath": "planning/implementation-artifacts/blind-hunter-review-story-3-14",
+      "currentPath": "planning/implementation-artifacts/blind-hunter-review-story-3-14",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.482918Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "acde28d817c69bea729554e30f149b2b0e38342598f6b569d9cb722b40e8c49f",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/implementation-artifacts/blind-hunter-review-story-3-14"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Blind Hunter Review — Story 3-14"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 66,
+          "deltaBytes": 66
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 36,
+          "deltaBytes": 36
+        }
+      ],
+      "snapshot": {
+        "path": "planning/implementation-artifacts/blind-hunter-review-story-3-14",
+        "title": "Blind Hunter Review — Story 3-14"
+      }
+    }
+  ]
+}

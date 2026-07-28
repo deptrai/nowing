@@ -1,0 +1,79 @@
+{
+  "docId": "doc-3b478f1b50214ecedb773cafd2b458ca",
+  "docPath": "docs/api-contracts-mcp",
+  "currentPath": "docs/api-contracts-mcp",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-3b478f1b50214ecedb773cafd2b458ca",
+      "docPath": "docs/api-contracts-mcp",
+      "currentPath": "docs/api-contracts-mcp",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.130914Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "e276d115cb2f1061fddea3b24464434e00a363c3f15ca3fcf7ff9b3975a94d57",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/api-contracts-mcp"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "api-contracts-mcp"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Nowing MCP Server - Tool Contracts"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 24,
+          "deltaBytes": 24
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 19,
+          "deltaBytes": 19
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 36,
+          "deltaBytes": 36
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Nowing MCP Server - Tool Contracts",
+        "path": "docs/api-contracts-mcp",
+        "title": "api-contracts-mcp"
+      }
+    }
+  ]
+}

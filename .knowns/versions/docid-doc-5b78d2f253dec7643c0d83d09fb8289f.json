@@ -1,0 +1,53 @@
+{
+  "docId": "doc-5b78d2f253dec7643c0d83d09fb8289f",
+  "docPath": "planning/implementation-artifacts/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+  "currentPath": "planning/implementation-artifacts/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-5b78d2f253dec7643c0d83d09fb8289f",
+      "docPath": "planning/implementation-artifacts/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+      "currentPath": "planning/implementation-artifacts/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.642703Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "d112f749d10c4a514d57071b9d3b7a74a8e1e1621e753c4f28d938eb7c63a721",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/implementation-artifacts/story-3-14-memory-injection-bounded-retrieval-latency-budget"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Story 3.14: Memory Injection — Bounded Retrieval \u0026 Latency Budget"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 96,
+          "deltaBytes": 96
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 74,
+          "deltaBytes": 74
+        }
+      ],
+      "snapshot": {
+        "path": "planning/implementation-artifacts/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+        "title": "Story 3.14: Memory Injection — Bounded Retrieval \u0026 Latency Budget"
+      }
+    }
+  ]
+}

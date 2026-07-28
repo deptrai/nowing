@@ -1,0 +1,79 @@
+{
+  "docId": "doc-ddfcaddcd56592c53d791c62c80c4e68",
+  "docPath": "docs/chinese-llm-setup",
+  "currentPath": "docs/chinese-llm-setup",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-ddfcaddcd56592c53d791c62c80c4e68",
+      "docPath": "docs/chinese-llm-setup",
+      "currentPath": "docs/chinese-llm-setup",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.381878Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "c2e856d6be7e65440f5f5ca023d45f1910b104e37c3679fb15c7754a836f846d",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/chinese-llm-setup"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "chinese-llm-setup"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "国产 LLM 配置指南 | Chinese LLM Setup Guide"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 24,
+          "deltaBytes": 24
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 19,
+          "deltaBytes": 19
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 51,
+          "deltaBytes": 51
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "国产 LLM 配置指南 | Chinese LLM Setup Guide",
+        "path": "docs/chinese-llm-setup",
+        "title": "chinese-llm-setup"
+      }
+    }
+  ]
+}

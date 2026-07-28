@@ -1,0 +1,53 @@
+{
+  "docId": "doc-d6c118d98c86709bde964097d9d78123",
+  "docPath": "planning/planning-artifacts/sprint-change-proposal-nowing-s-n-ph-m-chainlens-engine-2026-07-25",
+  "currentPath": "planning/planning-artifacts/sprint-change-proposal-nowing-s-n-ph-m-chainlens-engine-2026-07-25",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-d6c118d98c86709bde964097d9d78123",
+      "docPath": "planning/planning-artifacts/sprint-change-proposal-nowing-s-n-ph-m-chainlens-engine-2026-07-25",
+      "currentPath": "planning/planning-artifacts/sprint-change-proposal-nowing-s-n-ph-m-chainlens-engine-2026-07-25",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.273242Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "2a7bb4f53a7bc21ad4d8f01a890f37621184654180c0b382558f82d3c5b96d54",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/sprint-change-proposal-nowing-s-n-ph-m-chainlens-engine-2026-07-25"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Sprint Change Proposal — Nowing = Sản phẩm, ChainLens = Engine (2026-07-25)"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 96,
+          "deltaBytes": 96
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 83,
+          "deltaBytes": 83
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/sprint-change-proposal-nowing-s-n-ph-m-chainlens-engine-2026-07-25",
+        "title": "Sprint Change Proposal — Nowing = Sản phẩm, ChainLens = Engine (2026-07-25)"
+      }
+    }
+  ]
+}

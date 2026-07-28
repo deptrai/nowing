@@ -1,0 +1,53 @@
+{
+  "docId": "doc-22838e7abd407dfa9663fbf6a486e554",
+  "docPath": "planning/test-artifacts/atdd-checklist-story-3-9-memory-recall-eval-gate",
+  "currentPath": "planning/test-artifacts/atdd-checklist-story-3-9-memory-recall-eval-gate",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-22838e7abd407dfa9663fbf6a486e554",
+      "docPath": "planning/test-artifacts/atdd-checklist-story-3-9-memory-recall-eval-gate",
+      "currentPath": "planning/test-artifacts/atdd-checklist-story-3-9-memory-recall-eval-gate",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.830801Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "7312f7e9ccfe8e9d186614fc68f0156d0928834e6a969891190f85454a146b6f",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/test-artifacts/atdd-checklist-story-3-9-memory-recall-eval-gate"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "ATDD Checklist: Story 3.9 — Memory Recall Eval-Gate"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 74,
+          "deltaBytes": 74
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 55,
+          "deltaBytes": 55
+        }
+      ],
+      "snapshot": {
+        "path": "planning/test-artifacts/atdd-checklist-story-3-9-memory-recall-eval-gate",
+        "title": "ATDD Checklist: Story 3.9 — Memory Recall Eval-Gate"
+      }
+    }
+  ]
+}

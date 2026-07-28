@@ -1,0 +1,53 @@
+{
+  "docId": "doc-c162b3d0da5bc04d7368b3651e41e1aa",
+  "docPath": "planning/planning-artifacts/nowing-epic-breakdown",
+  "currentPath": "planning/planning-artifacts/nowing-epic-breakdown",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-c162b3d0da5bc04d7368b3651e41e1aa",
+      "docPath": "planning/planning-artifacts/nowing-epic-breakdown",
+      "currentPath": "planning/planning-artifacts/nowing-epic-breakdown",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.304211Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "4a93e2695c0926bbf87883cf74df9e411e24b57465aae3389773c9d96429b297",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/nowing-epic-breakdown"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Nowing - Epic Breakdown"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 51,
+          "deltaBytes": 51
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 25,
+          "deltaBytes": 25
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/nowing-epic-breakdown",
+        "title": "Nowing - Epic Breakdown"
+      }
+    }
+  ]
+}

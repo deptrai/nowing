@@ -1,0 +1,79 @@
+{
+  "docId": "doc-3bbd8626862675c75dcf47322035ac32",
+  "docPath": "tests/tests-nowing-web",
+  "currentPath": "tests/tests-nowing-web",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-3bbd8626862675c75dcf47322035ac32",
+      "docPath": "tests/tests-nowing-web",
+      "currentPath": "tests/tests-nowing-web",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:12.66818Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "0131e6cf44ab43cb73df09a5261215c4b4439825e497ce36964065a7fcfacac3",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "tests/tests-nowing-web"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Tests - nowing_web"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Playwright E2E Suite"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 24,
+          "deltaBytes": 24
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 20,
+          "deltaBytes": 20
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 22,
+          "deltaBytes": 22
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Playwright E2E Suite",
+        "path": "tests/tests-nowing-web",
+        "title": "Tests - nowing_web"
+      }
+    }
+  ]
+}

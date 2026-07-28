@@ -1,0 +1,79 @@
+{
+  "docId": "doc-c821b56fe0b69eb46a12e726424f98d6",
+  "docPath": "docs/architecture-desktop",
+  "currentPath": "docs/architecture-desktop",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-c821b56fe0b69eb46a12e726424f98d6",
+      "docPath": "docs/architecture-desktop",
+      "currentPath": "docs/architecture-desktop",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.239477Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "72d341617f53368dcdcc1a64d331d4e8c1ce4219a467d324e40d614341237b4b",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/architecture-desktop"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "architecture-desktop"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Kiến trúc - Nowing Desktop"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 27,
+          "deltaBytes": 27
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 22,
+          "deltaBytes": 22
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 31,
+          "deltaBytes": 31
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Kiến trúc - Nowing Desktop",
+        "path": "docs/architecture-desktop",
+        "title": "architecture-desktop"
+      }
+    }
+  ]
+}

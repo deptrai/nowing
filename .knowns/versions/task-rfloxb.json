@@ -1,0 +1,108 @@
+{
+  "taskId": "rfloxb",
+  "currentVersion": 3,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "rfloxb",
+      "version": 1,
+      "timestamp": "2026-07-28T10:28:33.529157Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "todo"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T17:28:33.525817+07:00",
+        "description": "Story 8-10-docs-readme-vision-sync from sprint-status",
+        "id": "rfloxb",
+        "labels": [
+          "epic-8",
+          "backlog"
+        ],
+        "parent": "pqriro",
+        "priority": "medium",
+        "status": "todo",
+        "timeSpent": 0,
+        "title": "8-10-docs-readme-vision-sync",
+        "updatedAt": "2026-07-28T17:28:33.525817+07:00"
+      }
+    },
+    {
+      "id": "v2",
+      "taskId": "rfloxb",
+      "version": 2,
+      "timestamp": "2026-07-28T10:31:32.918184Z",
+      "author": "luisphan",
+      "changes": [
+        {
+          "field": "description",
+          "oldValue": "Story 8-10-docs-readme-vision-sync from sprint-status",
+          "newValue": "VIỆC THẬT CHƯA LÀM — trước đây không được track ở đâu cả. OQ-6 + AR-10 + RS-5. Làm cùng 9-4. Đánh lại số từ 8.6"
+        },
+        {
+          "field": "spec",
+          "oldValue": null,
+          "newValue": "planning/nowing-epics"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:28:33.525Z",
+        "description": "VIỆC THẬT CHƯA LÀM — trước đây không được track ở đâu cả. OQ-6 + AR-10 + RS-5. Làm cùng 9-4. Đánh lại số từ 8.6",
+        "id": "rfloxb",
+        "labels": [
+          "epic-8",
+          "backlog"
+        ],
+        "parent": "pqriro",
+        "priority": "medium",
+        "spec": "planning/nowing-epics",
+        "status": "todo",
+        "timeSpent": 0,
+        "title": "8-10-docs-readme-vision-sync",
+        "updatedAt": "2026-07-28T10:31:32.918184Z"
+      }
+    },
+    {
+      "id": "v3",
+      "taskId": "rfloxb",
+      "version": 3,
+      "timestamp": "2026-07-28T13:32:36.193371Z",
+      "author": "api",
+      "changes": [
+        {
+          "field": "order",
+          "oldValue": null,
+          "newValue": 11
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:28:33.525Z",
+        "description": "VIỆC THẬT CHƯA LÀM — trước đây không được track ở đâu cả. OQ-6 + AR-10 + RS-5. Làm cùng 9-4. Đánh lại số từ 8.6",
+        "id": "rfloxb",
+        "labels": [
+          "epic-8",
+          "backlog"
+        ],
+        "order": 11,
+        "parent": "pqriro",
+        "priority": "medium",
+        "spec": "planning/nowing-epics",
+        "status": "todo",
+        "timeSpent": 0,
+        "title": "8-10-docs-readme-vision-sync",
+        "updatedAt": "2026-07-28T13:32:36.193371Z"
+      }
+    }
+  ]
+}

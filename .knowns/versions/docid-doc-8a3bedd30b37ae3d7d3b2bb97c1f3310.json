@@ -1,0 +1,79 @@
+{
+  "docId": "doc-8a3bedd30b37ae3d7d3b2bb97c1f3310",
+  "docPath": "docs/source-tree-analysis",
+  "currentPath": "docs/source-tree-analysis",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-8a3bedd30b37ae3d7d3b2bb97c1f3310",
+      "docPath": "docs/source-tree-analysis",
+      "currentPath": "docs/source-tree-analysis",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:12.117231Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "7eb8c5edd7b59190ffc9e22977f50814c4fdbd558d57b38df146a93d95316dc9",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/source-tree-analysis"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "source-tree-analysis"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Nowing - Phân tích cây thư mục"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 27,
+          "deltaBytes": 27
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 22,
+          "deltaBytes": 22
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 38,
+          "deltaBytes": 38
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Nowing - Phân tích cây thư mục",
+        "path": "docs/source-tree-analysis",
+        "title": "source-tree-analysis"
+      }
+    }
+  ]
+}

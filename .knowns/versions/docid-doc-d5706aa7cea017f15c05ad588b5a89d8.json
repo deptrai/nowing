@@ -1,0 +1,66 @@
+{
+  "docId": "doc-d5706aa7cea017f15c05ad588b5a89d8",
+  "docPath": "stories/test-story-doc",
+  "currentPath": "stories/test-story-doc",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-d5706aa7cea017f15c05ad588b5a89d8",
+      "docPath": "stories/test-story-doc",
+      "currentPath": "stories/test-story-doc",
+      "version": 1,
+      "timestamp": "2026-07-28T10:27:13.208049Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "66d54c743721b43f535ee4289812ee4763e9fbbed34e1e09826225ebcebb96cf",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "stories/test-story-doc"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Test Story Doc"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 24,
+          "deltaBytes": 24
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 16,
+          "deltaBytes": 16
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "path": "stories/test-story-doc",
+        "title": "Test Story Doc"
+      }
+    }
+  ]
+}

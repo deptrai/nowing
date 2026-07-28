@@ -1,0 +1,53 @@
+{
+  "docId": "doc-8dc8ea0c6b44c3083818c82e7bb9a344",
+  "docPath": "planning/implementation-artifacts/story-3-8-unified-long-term-research-memory-backend",
+  "currentPath": "planning/implementation-artifacts/story-3-8-unified-long-term-research-memory-backend",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-8dc8ea0c6b44c3083818c82e7bb9a344",
+      "docPath": "planning/implementation-artifacts/story-3-8-unified-long-term-research-memory-backend",
+      "currentPath": "planning/implementation-artifacts/story-3-8-unified-long-term-research-memory-backend",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.713785Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "c762492d89ea94ba60d9b5366599aebde77ab4600526a597d8f61132fc5b8095",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/implementation-artifacts/story-3-8-unified-long-term-research-memory-backend"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Story 3.8 — Unified Long-Term Research Memory Backend"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 87,
+          "deltaBytes": 87
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 57,
+          "deltaBytes": 57
+        }
+      ],
+      "snapshot": {
+        "path": "planning/implementation-artifacts/story-3-8-unified-long-term-research-memory-backend",
+        "title": "Story 3.8 — Unified Long-Term Research Memory Backend"
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "docId": "doc-38df6aaf1209f481eef1ec9adb993c10",
+  "docPath": "planning/implementation-artifacts/story-3-13-first-run-value-research-run-sinh-ra-memory",
+  "currentPath": "planning/implementation-artifacts/story-3-13-first-run-value-research-run-sinh-ra-memory",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-38df6aaf1209f481eef1ec9adb993c10",
+      "docPath": "planning/implementation-artifacts/story-3-13-first-run-value-research-run-sinh-ra-memory",
+      "currentPath": "planning/implementation-artifacts/story-3-13-first-run-value-research-run-sinh-ra-memory",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.676047Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "edc4a42729fe56ba98c8fcde286a90852313ad8d9740ff902be6f7e05e758f2b",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/implementation-artifacts/story-3-13-first-run-value-research-run-sinh-ra-memory"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Story 3.13: First-Run Value — Research Run sinh ra Memory"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 90,
+          "deltaBytes": 90
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 61,
+          "deltaBytes": 61
+        }
+      ],
+      "snapshot": {
+        "path": "planning/implementation-artifacts/story-3-13-first-run-value-research-run-sinh-ra-memory",
+        "title": "Story 3.13: First-Run Value — Research Run sinh ra Memory"
+      }
+    }
+  ]
+}
