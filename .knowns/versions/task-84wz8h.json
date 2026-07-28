@@ -1,6 +1,6 @@
 {
   "taskId": "84wz8h",
-  "currentVersion": 3,
+  "currentVersion": 8,
   "versions": [
     {
       "id": "v1",
@@ -112,6 +112,182 @@
         "timeSpent": 0,
         "title": "Story 3.14: Memory Injection - Bounded Retrieval \u0026 Latency Budget",
         "updatedAt": "2026-07-28T13:32:37.564271Z"
+      }
+    },
+    {
+      "id": "v4",
+      "taskId": "84wz8h",
+      "version": 4,
+      "timestamp": "2026-07-28T13:57:40.05744Z",
+      "author": "luisphan",
+      "changes": [
+        {
+          "field": "labels",
+          "oldValue": [
+            "epic-3",
+            "p0",
+            "in-progress"
+          ],
+          "newValue": [
+            "epic-3",
+            "3-14-memory-injection-bounded-retrieval"
+          ]
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:30:26.832Z",
+        "description": "NFR-1b/1c/1d + AD-18 (mới). Story file: implementation-artifacts/3-14-memory-injection-bounded-retrieval.md. Chặn trên retrieval + 8.000-char read budget + latency/fail-soft counter + real RRF/cosine signals; nên chạy trước khi chốt SM-10 của 3-9. Bắt đầu dev 2026-07-26.",
+        "id": "84wz8h",
+        "labels": [
+          "epic-3",
+          "3-14-memory-injection-bounded-retrieval"
+        ],
+        "order": 0,
+        "parent": "gz7a08",
+        "priority": "high",
+        "spec": "stories/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Story 3.14: Memory Injection - Bounded Retrieval \u0026 Latency Budget",
+        "updatedAt": "2026-07-28T13:57:40.05744Z"
+      }
+    },
+    {
+      "id": "v5",
+      "taskId": "84wz8h",
+      "version": 5,
+      "timestamp": "2026-07-28T14:13:06.635099Z",
+      "author": "mcp",
+      "changes": [
+        {
+          "field": "implementationNotes",
+          "oldValue": null,
+          "newValue": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified."
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:30:26.832Z",
+        "description": "NFR-1b/1c/1d + AD-18 (mới). Story file: implementation-artifacts/3-14-memory-injection-bounded-retrieval.md. Chặn trên retrieval + 8.000-char read budget + latency/fail-soft counter + real RRF/cosine signals; nên chạy trước khi chốt SM-10 của 3-9. Bắt đầu dev 2026-07-26.",
+        "id": "84wz8h",
+        "implementationNotes": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified.",
+        "labels": [
+          "epic-3",
+          "3-14-memory-injection-bounded-retrieval"
+        ],
+        "order": 0,
+        "parent": "gz7a08",
+        "priority": "high",
+        "spec": "stories/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Story 3.14: Memory Injection - Bounded Retrieval \u0026 Latency Budget",
+        "updatedAt": "2026-07-28T14:13:06.635099Z"
+      }
+    },
+    {
+      "id": "v6",
+      "taskId": "84wz8h",
+      "version": 6,
+      "timestamp": "2026-07-28T14:21:40.163405Z",
+      "author": "mcp",
+      "changes": [
+        {
+          "field": "implementationNotes",
+          "oldValue": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified.",
+          "newValue": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified.\n2026-07-28: Benchmark AC-3 seeding in progress; memories count 50,206 / 200,406."
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:30:26.832Z",
+        "description": "NFR-1b/1c/1d + AD-18 (mới). Story file: implementation-artifacts/3-14-memory-injection-bounded-retrieval.md. Chặn trên retrieval + 8.000-char read budget + latency/fail-soft counter + real RRF/cosine signals; nên chạy trước khi chốt SM-10 của 3-9. Bắt đầu dev 2026-07-26.",
+        "id": "84wz8h",
+        "implementationNotes": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified.\n2026-07-28: Benchmark AC-3 seeding in progress; memories count 50,206 / 200,406.",
+        "labels": [
+          "epic-3",
+          "3-14-memory-injection-bounded-retrieval"
+        ],
+        "order": 0,
+        "parent": "gz7a08",
+        "priority": "high",
+        "spec": "stories/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Story 3.14: Memory Injection - Bounded Retrieval \u0026 Latency Budget",
+        "updatedAt": "2026-07-28T14:21:40.163405Z"
+      }
+    },
+    {
+      "id": "v7",
+      "taskId": "84wz8h",
+      "version": 7,
+      "timestamp": "2026-07-28T14:59:35.638284Z",
+      "author": "mcp",
+      "changes": [
+        {
+          "field": "implementationNotes",
+          "oldValue": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified.\n2026-07-28: Benchmark AC-3 seeding in progress; memories count 50,206 / 200,406.",
+          "newValue": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified.\n2026-07-28: Benchmark AC-3 seeding in progress; memories count 50,206 / 200,406.\n2026-07-28: Fixed _scope_sql_for_injection to bind UUID not string; re-running full benchmark after cleanup restored g0=6."
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:30:26.832Z",
+        "description": "NFR-1b/1c/1d + AD-18 (mới). Story file: implementation-artifacts/3-14-memory-injection-bounded-retrieval.md. Chặn trên retrieval + 8.000-char read budget + latency/fail-soft counter + real RRF/cosine signals; nên chạy trước khi chốt SM-10 của 3-9. Bắt đầu dev 2026-07-26.",
+        "id": "84wz8h",
+        "implementationNotes": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified.\n2026-07-28: Benchmark AC-3 seeding in progress; memories count 50,206 / 200,406.\n2026-07-28: Fixed _scope_sql_for_injection to bind UUID not string; re-running full benchmark after cleanup restored g0=6.",
+        "labels": [
+          "epic-3",
+          "3-14-memory-injection-bounded-retrieval"
+        ],
+        "order": 0,
+        "parent": "gz7a08",
+        "priority": "high",
+        "spec": "stories/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Story 3.14: Memory Injection - Bounded Retrieval \u0026 Latency Budget",
+        "updatedAt": "2026-07-28T14:59:35.638284Z"
+      }
+    },
+    {
+      "id": "v8",
+      "taskId": "84wz8h",
+      "version": 8,
+      "timestamp": "2026-07-28T16:30:27.699959Z",
+      "author": "mcp",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": "in-progress",
+          "newValue": "review"
+        },
+        {
+          "field": "implementationNotes",
+          "oldValue": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified.\n2026-07-28: Benchmark AC-3 seeding in progress; memories count 50,206 / 200,406.\n2026-07-28: Fixed _scope_sql_for_injection to bind UUID not string; re-running full benchmark after cleanup restored g0=6.",
+          "newValue": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified.\n2026-07-28: Benchmark AC-3 seeding in progress; memories count 50,206 / 200,406.\n2026-07-28: Fixed _scope_sql_for_injection to bind UUID not string; re-running full benchmark after cleanup restored g0=6.\n2026-07-28: AC-3 benchmark passed after migration 183 + script fixes; nowing-evals run completed; gate fails closed on baseline unratified (expected). D1 (AC-5 freshness skip) remains due to no LLM credentials/worker."
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:30:26.832Z",
+        "description": "NFR-1b/1c/1d + AD-18 (mới). Story file: implementation-artifacts/3-14-memory-injection-bounded-retrieval.md. Chặn trên retrieval + 8.000-char read budget + latency/fail-soft counter + real RRF/cosine signals; nên chạy trước khi chốt SM-10 của 3-9. Bắt đầu dev 2026-07-26.",
+        "id": "84wz8h",
+        "implementationNotes": "2026-07-28: Restarted benchmark after fixing _build_sentinel_manifest guard; seeded eval workspace 47; backend running on 0.0.0.0:8000; /health build_id verified.\n2026-07-28: Benchmark AC-3 seeding in progress; memories count 50,206 / 200,406.\n2026-07-28: Fixed _scope_sql_for_injection to bind UUID not string; re-running full benchmark after cleanup restored g0=6.\n2026-07-28: AC-3 benchmark passed after migration 183 + script fixes; nowing-evals run completed; gate fails closed on baseline unratified (expected). D1 (AC-5 freshness skip) remains due to no LLM credentials/worker.",
+        "labels": [
+          "epic-3",
+          "3-14-memory-injection-bounded-retrieval"
+        ],
+        "order": 0,
+        "parent": "gz7a08",
+        "priority": "high",
+        "spec": "stories/story-3-14-memory-injection-bounded-retrieval-latency-budget",
+        "status": "review",
+        "timeSpent": 0,
+        "title": "Story 3.14: Memory Injection - Bounded Retrieval \u0026 Latency Budget",
+        "updatedAt": "2026-07-28T16:30:27.699959Z"
       }
     }
   ]

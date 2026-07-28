@@ -204,8 +204,8 @@ def _build_provenance(
         "argv": sys.argv,
         "run_id": run_id,
         "workspace_id": (
-            getattr(ctx, "suite_state", None).memory_workspace_id
-            if getattr(ctx, "suite_state", None) is not None
+            ctx.config.memory_workspace_id
+            if ctx is not None
             else None
         ),
         "requested_params": {

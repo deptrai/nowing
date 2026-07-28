@@ -175,10 +175,11 @@ def _build_sentinel_manifest(manifest: CellManifest) -> dict[int, str]:
     for _q, pairs in manifest.canonical_by_query.items():
         for row_id, sentinel in pairs:
             mapping[row_id] = sentinel
-    for row_id, sentinel in zip(
-        manifest.row_ids[-RECENCY_TAIL_ROWS:], manifest.canonical_recency, strict=True
-    ):
-        mapping[row_id] = sentinel
+    if manifest.canonical_recency:
+        for row_id, sentinel in zip(
+            manifest.row_ids[-RECENCY_TAIL_ROWS:], manifest.canonical_recency, strict=True
+        ):
+            mapping[row_id] = sentinel
     return mapping
 
 
@@ -838,7 +839,7 @@ def _scope_sql_for_injection(manifest: CellManifest) -> TextClause:
     user_id = manifest.identity["user"].id
     return text(
         "workspace_id IS NULL AND created_by_id = :user_id"
-    ).bindparams(user_id=str(user_id))
+    ).bindparams(user_id=user_id)
 
 
 async def run_rest_ranked_cell(
