@@ -27,6 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
+from app.capabilities.core import execute_with_context
 from app.capabilities.core.access.rate_limit import enforce_capability_rate_limit
 from app.capabilities.core.billing import (
     charge_capability,
@@ -208,8 +209,36 @@ async def _execute_async_run(
                 "ts": _now_ms(),
             },
         )
+        output = None
+        ctx: CapabilityContext | None = None
         try:
-            output = await executor(payload)
+            async with async_session_maker() as session:
+                ctx = CapabilityContext(session=session, workspace_id=workspace_id)
+                output = await execute_with_context(
+                    executor, payload=payload, ctx=ctx
+                )
+                duration_ms = int((time.perf_counter() - started) * 1000)
+                cost_micros: int | None = None
+                try:
+                    if output.billable_units > 0:
+                        cost_micros = await charge_capability(output, unit, ctx)
+                except Exception:
+                    logger.exception("charge failed for async run %s", run_id)
+
+                serialized = serialize_output(output)
+                await _finalize_async(
+                    run_id,
+                    status="success",
+                    serialized=serialized,
+                    started=started,
+                    duration_ms=duration_ms,
+                    cost_micros=cost_micros,
+                    progress=reporter.coarse,
+                )
+                _publish_finished(
+                    run_id, "success", item_count=serialized.item_count
+                )
+                return
         except asyncio.CancelledError:
             raise
         except (NowingError, HTTPException) as exc:
@@ -233,28 +262,6 @@ async def _execute_async_run(
             )
             _publish_finished(run_id, "error", error="upstream error")
             return
-
-        duration_ms = int((time.perf_counter() - started) * 1000)
-        cost_micros: int | None
-        try:
-            async with async_session_maker() as session:
-                ctx = CapabilityContext(session=session, workspace_id=workspace_id)
-                cost_micros = await charge_capability(output, unit, ctx)
-        except Exception:
-            logger.exception("charge failed for async run %s", run_id)
-            cost_micros = None
-
-        serialized = serialize_output(output)
-        await _finalize_async(
-            run_id,
-            status="success",
-            serialized=serialized,
-            started=started,
-            duration_ms=duration_ms,
-            cost_micros=cost_micros,
-            progress=reporter.coarse,
-        )
-        _publish_finished(run_id, "success", item_count=serialized.item_count)
 
 
 async def _finalize_async(
@@ -384,7 +391,9 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
         with progress_scope() as reporter:
             started = time.perf_counter()
             try:
-                output = await executor(payload)
+                output = await execute_with_context(
+                    executor, payload=payload, ctx=ctx
+                )
             except (NowingError, HTTPException) as exc:
                 await _record_rest_run(
                     workspace_id=workspace_id,

@@ -1083,13 +1083,94 @@ def register_runtime_observables() -> None:
     _OBSERVABLES_REGISTERED = True
 
 
+# ── ChainLens research degradation (Story 9.1a) ──────────────────────────────
+# Low-cardinality telemetry: degradation_reason and final_status are from a
+# closed vocabulary; the user's query, API key, and answer are intentionally
+# NOT included in metric labels.
+
+
+@lru_cache(maxsize=1)
+def _chainlens_degradation():
+    return _get_meter().create_counter(
+        "nowing.chainlens.degradation",
+        description="Count of ChainLens research degradations by reason and outcome.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _kb_fallback_hit_count():
+    return _get_meter().create_histogram(
+        "nowing.chainlens.fallback_kb_hits",
+        unit="{hit}",
+        description="Number of workspace KB chunks used as ChainLens fallback citations.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _blocked_url_coverage():
+    return _get_meter().create_counter(
+        "nowing.chainlens.blocked_url_coverage",
+        description="Count of blocked URLs by block type (URL redacted from labels).",
+    )
+
+
+def record_chainlens_degradation(
+    *,
+    degradation_reason: str,
+    final_status: str,
+    fallback_attempted: bool,
+    fallback_used: bool,
+    fallback_hit_count: int,
+    workspace_id: int | None = None,
+    query: str | None = None,
+    api_key: str | None = None,
+    answer: str | None = None,
+) -> None:
+    """Count one ChainLens research degradation.
+
+    ``workspace_id``, ``query``, ``api_key``, and ``answer`` are accepted for
+    source-context but are intentionally excluded from metric labels.
+    """
+    _add(
+        _chainlens_degradation(),
+        1,
+        {
+            "degradation_reason": degradation_reason,
+            "final_status": final_status,
+            "fallback_attempted": bool(fallback_attempted),
+            "fallback_used": bool(fallback_used),
+            "fallback_hit_count": int(fallback_hit_count),
+        },
+    )
+
+
+def record_kb_fallback_hit_count(
+    fallback_hit_count: int, *, workspace_id: int | None = None
+) -> None:
+    """Record how many workspace KB chunks were cited in a degraded fallback."""
+    if fallback_hit_count < 0:
+        return
+    _record(
+        _kb_fallback_hit_count(),
+        fallback_hit_count,
+        {"fallback_hit_count": fallback_hit_count},
+    )
+
+
+def record_blocked_url_coverage(*, url: str, block_type: str) -> None:
+    """Count one blocked URL by its block type; the URL never enters labels."""
+    _add(_blocked_url_coverage(), 1, {"block_type": block_type})
+
+
 __all__ = [
     "categorize_exception",
     "parse_celery_task_label",
     "record_auth_failure",
+    "record_blocked_url_coverage",
     "record_celery_heartbeat_failure",
     "record_celery_heartbeat_refresh",
     "record_celery_queue_latency",
+    "record_chainlens_degradation",
     "record_chat_request_duration",
     "record_chat_request_outcome",
     "record_chunk_reconcile",
@@ -1105,6 +1186,7 @@ __all__ = [
     "record_indexing_document_duration",
     "record_indexing_document_outcome",
     "record_interrupt",
+    "record_kb_fallback_hit_count",
     "record_kb_search_duration",
     "record_memory_injection_failure",
     "record_model_call_duration",

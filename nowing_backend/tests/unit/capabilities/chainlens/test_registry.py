@@ -15,3 +15,8 @@ def test_chainlens_research_is_registered_and_metered():
     assert capability.input_schema is ResearchInput
     assert capability.output_schema is ResearchOutput
     assert capability.billing_unit is BillingUnit.CHAINLENS_QUERY
+
+
+def test_chainlens_research_capability_is_context_aware():
+    capability = get_capability("chainlens.research")
+    assert getattr(capability, "context_aware", False) is True

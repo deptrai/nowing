@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
@@ -252,12 +252,12 @@ async def _charge_platform(
         return 0
 
     charged = await _charge_platform_meter(
-        service, ctx, owner_user_id, unit, output.billable_units
+        service, ctx, owner_user_id, unit, output.billable_units, output
     )
     if unit is BillingUnit.GOOGLE_MAPS_PLACE:
         reviews = getattr(output, "attached_review_count", 0)
         charged += await _charge_platform_meter(
-            service, ctx, owner_user_id, BillingUnit.GOOGLE_MAPS_REVIEW, reviews
+            service, ctx, owner_user_id, BillingUnit.GOOGLE_MAPS_REVIEW, reviews, output
         )
     return charged
 
@@ -268,19 +268,26 @@ async def _charge_platform_meter(
     owner_user_id: UUID,
     unit: BillingUnit,
     items: int,
+    output: BillableOutput,
 ) -> int:
     if items <= 0:
         return 0
     rate = _platform_rate(unit)
     cost_micros = service.items_to_micros(items, rate)
     # Stage the audit row before charge's commit flushes both.
+    call_details: dict[str, Any] = {"items": items}
+    if getattr(output, "degraded", False):
+        call_details["degradation_reason"] = getattr(
+            output, "degradation_reason", None
+        ) or "unknown"
+        call_details["final_status"] = getattr(output, "status", None) or "unknown"
     await record_token_usage(
         ctx.session,
         usage_type=unit.value,
         workspace_id=ctx.workspace_id,
         user_id=owner_user_id,
         cost_micros=cost_micros,
-        call_details={"items": items},
+        call_details=call_details,
     )
     await service.charge(owner_user_id, items, rate)
     return cost_micros

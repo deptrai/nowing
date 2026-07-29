@@ -70,3 +70,4 @@ class Capability:
     executor: Executor
     billing_unit: BillingUnit | None
     docs_url: str | None = None
+    context_aware: bool = False

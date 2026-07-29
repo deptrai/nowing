@@ -1,0 +1,172 @@
+"""Red-phase scaffolds for REST sync/async ChainLens degradation (9.1a)."""
+
+from __future__ import annotations
+
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
+
+import pytest
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+
+from app.capabilities.chainlens.research.schemas import ResearchInput, ResearchOutput
+from app.capabilities.core.access import rest
+from app.capabilities.core.types import BillingUnit, Capability, CapabilityContext
+
+pytestmark = pytest.mark.unit
+
+
+class _ResearchSpy:
+    def __init__(self, output: ResearchOutput):
+        self.output = output
+        self.calls: list[tuple[tuple, dict]] = []
+
+    async def __call__(self, *args, **kwargs):
+        self.calls.append((args, kwargs))
+        return self.output
+
+
+def _client(app: FastAPI) -> AsyncClient:
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+async def _noop_async(*args, **kwargs) -> None:
+    return None
+
+
+async def _fake_record(**kwargs) -> str:
+    return "test-run-id"
+
+
+def _build_app(capabilities, monkeypatch) -> FastAPI:
+    monkeypatch.setattr(rest, "check_workspace_access", _noop_async, raising=True)
+    monkeypatch.setattr(rest, "_record_rest_run", _fake_record, raising=True)
+    monkeypatch.setattr(rest, "charge_capability", AsyncMock(return_value=0))
+    monkeypatch.setattr(rest, "gate_capability", AsyncMock())
+
+    from app.db import get_async_session
+    from app.users import get_auth_context
+
+    app = FastAPI()
+    app.include_router(rest.build_capabilities_router(capabilities), prefix="/api/v1")
+    app.dependency_overrides[get_auth_context] = lambda: SimpleNamespace(user=None)
+
+    async def _session():
+        yield SimpleNamespace()
+
+    app.dependency_overrides[get_async_session] = _session
+    return app
+
+
+async def test_rest_sync_passes_capability_context_to_chainlens_research(monkeypatch):
+    output = ResearchOutput()
+    output.status = "engine_unavailable"
+    output.next_action = "Deep research is not available in self-host Phase 1."
+    spy = _ResearchSpy(output)
+
+    capability = Capability(
+        name="chainlens.research",
+        description="Research.",
+        input_schema=ResearchInput,
+        output_schema=ResearchOutput,
+        executor=spy,
+        billing_unit=BillingUnit.CHAINLENS_QUERY,
+    )
+
+    app = _build_app([capability], monkeypatch)
+    async with _client(app) as client:
+        resp = await client.post(
+            "/api/v1/workspaces/7/scrapers/chainlens/research",
+            json={"query": "hello"},
+        )
+
+    assert resp.status_code == 200
+    assert any(
+        isinstance(arg, CapabilityContext)
+        for args, _ in spy.calls
+        for arg in args
+    ), "CapabilityContext was not passed to the executor"
+
+
+async def test_rest_sync_body_contains_degraded_status(monkeypatch):
+    output = ResearchOutput()
+    output.status = "engine_unavailable"
+    output.next_action = "Deep research is not available in self-host Phase 1."
+
+    capability = Capability(
+        name="chainlens.research",
+        description="Research.",
+        input_schema=ResearchInput,
+        output_schema=ResearchOutput,
+        executor=_ResearchSpy(output),
+        billing_unit=BillingUnit.CHAINLENS_QUERY,
+    )
+
+    app = _build_app([capability], monkeypatch)
+    async with _client(app) as client:
+        resp = await client.post(
+            "/api/v1/workspaces/7/scrapers/chainlens/research",
+            json={"query": "hello"},
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "engine_unavailable"
+    assert body["degraded"] is True
+    assert body["next_action"] is not None
+    assert body["billable_units"] == 0
+
+
+async def test_rest_async_executor_receives_capability_context(monkeypatch):
+    output = ResearchOutput()
+    output.status = "engine_unavailable"
+    output.next_action = "Deep research is not available in self-host Phase 1."
+    spy = _ResearchSpy(output)
+
+    monkeypatch.setattr(rest, "charge_capability", AsyncMock(return_value=0))
+    monkeypatch.setattr(rest, "finalize_run", AsyncMock(return_value=True))
+    from app.capabilities.core.events import run_event_bus
+
+    run_event_bus.publish = Mock()
+    run_event_bus.close = Mock()
+
+    await rest._execute_async_run(
+        run_id="run-1",
+        workspace_id=7,
+        capability="chainlens.research",
+        unit=BillingUnit.CHAINLENS_QUERY,
+        executor=spy,
+        payload=ResearchInput(query="hello"),
+    )
+
+    assert any(
+        isinstance(arg, CapabilityContext)
+        for args, _ in spy.calls
+        for arg in args
+    ), "CapabilityContext was not passed to the async executor"
+
+
+async def test_rest_async_degraded_run_persists_cost_micros_none(monkeypatch):
+    output = ResearchOutput()
+    output.status = "engine_unavailable"
+
+    spy = _ResearchSpy(output)
+    finalize = AsyncMock(return_value=True)
+    monkeypatch.setattr(rest, "charge_capability", AsyncMock(return_value=0))
+    monkeypatch.setattr(rest, "finalize_run", finalize)
+    from app.capabilities.core.events import run_event_bus
+
+    run_event_bus.publish = Mock()
+    run_event_bus.close = Mock()
+
+    await rest._execute_async_run(
+        run_id="run-1",
+        workspace_id=7,
+        capability="chainlens.research",
+        unit=BillingUnit.CHAINLENS_QUERY,
+        executor=spy,
+        payload=ResearchInput(query="hello"),
+    )
+
+    _, kwargs = finalize.call_args
+    assert kwargs["cost_micros"] is None

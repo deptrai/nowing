@@ -18,6 +18,7 @@ CHAINLENS_RESEARCH = Capability(
     executor=build_research_executor(),
     billing_unit=BillingUnit.CHAINLENS_QUERY,
     docs_url="/docs/connectors/native/chainlens-research",
+    context_aware=True,
 )
 
 register_capability(CHAINLENS_RESEARCH)

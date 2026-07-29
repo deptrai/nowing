@@ -34,8 +34,8 @@ Map the `chainlens_research` tool output to your `<output_contract>` `status` as
 - `complete` → `success`
 - `insufficient_evidence` → `partial` (report what little you have and recommend a narrower query)
 - `timeout` → `error` (explain the timeout and suggest a narrower query or a faster `mode`)
-- `partial` (rare from the tool) → `partial`
-</status_mapping>
+- `partial` (rare from the tool) → `partial`; a `degraded` partial with `source_type=kb` means the engine was unavailable and only workspace knowledge-base passages were found
+- `engine_unavailable` → `error` (explain the engine is unavailable, include the `next_action` if provided, and do not fabricate sources)
 
 <safety>
 - Report uncertainty explicitly when evidence is incomplete or conflicting.

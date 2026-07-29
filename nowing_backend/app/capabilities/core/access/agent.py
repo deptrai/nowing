@@ -16,6 +16,7 @@ from typing import Any
 
 from langchain_core.tools import BaseTool, StructuredTool
 
+from app.capabilities.core import execute_with_context
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.progress import progress_scope
 from app.capabilities.core.runs import (
@@ -97,7 +98,9 @@ def _capability_tool(
 
                 started = time.perf_counter()
                 try:
-                    output = await executor(payload)
+                    output = await execute_with_context(
+                        executor, payload=payload, ctx=ctx
+                    )
                 except Exception as exc:
                     duration_ms = int((time.perf_counter() - started) * 1000)
                     async with async_session_maker() as rec_session:
@@ -143,6 +146,8 @@ def _capability_tool(
 
         if serialized.char_count <= RUN_OUTPUT_CHAR_CAP:
             dump = output.model_dump(exclude_none=True)
+            if "next_action" in dump:
+                dump.setdefault("next_step", dump["next_action"])
             if run_id is not None:
                 dump["run_id"] = f"run_{run_id}"
             return dump

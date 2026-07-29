@@ -6,6 +6,7 @@ WebCrawlCreditService debit math and the owner-billed decision.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
@@ -478,3 +479,74 @@ async def test_instagram_gate_blocks_when_worst_case_exceeds_balance(
             BillingUnit.INSTAGRAM_ITEM,
             _ctx(session),
         )
+
+
+# Red-phase scaffolds for 9.1a
+
+
+async def test_chainlens_charge_records_degradation_in_call_details(
+    monkeypatch, record_usage
+):
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "CHAINLENS_QUERY_MICROS_PER_CALL", 5000)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        billable_units=1,
+        status="partial",
+        degraded=True,
+        degradation_reason="fallback_kb_hits",
+    )
+
+    await charge_capability(output, BillingUnit.CHAINLENS_QUERY, _ctx(session))
+
+    assert record_usage.awaited
+    details = record_usage.await_args.kwargs["call_details"]
+    assert details["degradation_reason"] == "fallback_kb_hits"
+    assert details["final_status"] == "partial"
+
+
+async def test_engine_unavailable_no_content_does_not_record_token_usage(
+    monkeypatch, record_usage
+):
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput()
+    output.status = "engine_unavailable"
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 0
+    assert getattr(output, "degraded", False) is True
+    assert getattr(output, "degradation_reason", None) == "not_configured"
+    record_usage.assert_not_awaited()
+    assert user.credit_micros_balance == 100_000
+
+
+async def test_chainlens_charge_does_not_leak_secrets_in_call_details(
+    monkeypatch, record_usage
+):
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        billable_units=1,
+        status="partial",
+        degraded=True,
+        degradation_reason="rate_limited",
+    )
+
+    await charge_capability(output, BillingUnit.CHAINLENS_QUERY, _ctx(session))
+
+    details = record_usage.await_args.kwargs["call_details"]
+    assert details["degradation_reason"] == "rate_limited"
+    assert details["final_status"] == "partial"
+    details_str = str(details)
+    assert "query text" not in details_str.lower()
+    assert "secret-key" not in details_str.lower()
+    assert "https://example.com" not in details_str

@@ -1,14 +1,14 @@
 ---
 id: opwtmp
 title: 'Story 9.1a: Research Degradation & Self-Host Independence'
-status: todo
+status: review
 priority: high
 labels:
   - bmad
   - bmad-key-9-1a-research-degradation-selfhost-independence
   - epic-9
 createdAt: '2026-07-28T15:10:19.175Z'
-updatedAt: '2026-07-28T15:20:22.548Z'
+updatedAt: '2026-07-29T14:34:11.512Z'
 timeSpent: 0
 parent: rzwqza
 spec: stories/story-9-1a-research-degradation-self-host-independence
