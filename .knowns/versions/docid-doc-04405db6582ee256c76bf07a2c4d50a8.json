@@ -1,0 +1,79 @@
+{
+  "docId": "doc-04405db6582ee256c76bf07a2c4d50a8",
+  "docPath": "docs/architecture-mcp",
+  "currentPath": "docs/architecture-mcp",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-04405db6582ee256c76bf07a2c4d50a8",
+      "docPath": "docs/architecture-mcp",
+      "currentPath": "docs/architecture-mcp",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.294393Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "519aeddb91ce31fe917d7babae2fd68ccd4598a5607708da15554f3a087d7af8",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/architecture-mcp"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "architecture-mcp"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Kiến trúc - Nowing MCP Server"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 23,
+          "deltaBytes": 23
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 18,
+          "deltaBytes": 18
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 34,
+          "deltaBytes": 34
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Kiến trúc - Nowing MCP Server",
+        "path": "docs/architecture-mcp",
+        "title": "architecture-mcp"
+      }
+    }
+  ]
+}

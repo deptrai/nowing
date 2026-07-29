@@ -1,0 +1,66 @@
+{
+  "docId": "doc-61ea3976b4b83d3cf34561e96d2e7b52",
+  "docPath": "planning/nowing-architecture-spine",
+  "currentPath": "planning/nowing-architecture-spine",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-61ea3976b4b83d3cf34561e96d2e7b52",
+      "docPath": "planning/nowing-architecture-spine",
+      "currentPath": "planning/nowing-architecture-spine",
+      "version": 1,
+      "timestamp": "2026-07-28T10:28:32.862832Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "6604f3d0c4eb9191f98598895800ee55f494b49764b10189966c381337b39fb8",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/nowing-architecture-spine"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Nowing Architecture Spine"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 36,
+          "deltaBytes": 36
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 27,
+          "deltaBytes": 27
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "path": "planning/nowing-architecture-spine",
+        "title": "Nowing Architecture Spine"
+      }
+    }
+  ]
+}

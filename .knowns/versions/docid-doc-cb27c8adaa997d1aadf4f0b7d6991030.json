@@ -1,0 +1,79 @@
+{
+  "docId": "doc-cb27c8adaa997d1aadf4f0b7d6991030",
+  "docPath": "platforms/platform-instagram",
+  "currentPath": "platforms/platform-instagram",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-cb27c8adaa997d1aadf4f0b7d6991030",
+      "docPath": "platforms/platform-instagram",
+      "currentPath": "platforms/platform-instagram",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:12.514636Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "b584bab543ad2f63c53861e95a00dab04f0a8a36923d6dee6ecbd96bf85eeba4",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "platforms/platform-instagram"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Platform - instagram"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Instagram scraper (anonymous)"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 30,
+          "deltaBytes": 30
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 22,
+          "deltaBytes": 22
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 31,
+          "deltaBytes": 31
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Instagram scraper (anonymous)",
+        "path": "platforms/platform-instagram",
+        "title": "Platform - instagram"
+      }
+    }
+  ]
+}

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
+from app.automations.actions.validation import StepValidationError, validate_plan_steps
 from app.automations.persistence.enums.trigger_type import TriggerType
 from app.automations.persistence.models.automation import Automation
 from app.automations.persistence.models.trigger import AutomationTrigger
@@ -20,6 +21,7 @@ from app.automations.schemas.api import (
     TriggerCreate,
 )
 from app.automations.schemas.definition.envelope import AutomationModels
+from app.automations.schemas.definition.plan_step import PlanStep
 from app.automations.services.model_policy import (
     AutomationModelPolicyError,
     assert_automation_models_billable,
@@ -44,6 +46,15 @@ class AutomationService:
     async def create(self, payload: AutomationCreate) -> Automation:
         """Create an automation and its initial triggers in one transaction."""
         await self._authorize(payload.workspace_id, Permission.AUTOMATIONS_CREATE.value)
+
+        # B8: validate both the main plan and on_failure steps at save time.
+        self._validate_plan_or_raise(payload.definition.plan)
+        self._validate_plan_or_raise(payload.definition.execution.on_failure or [])
+        # New-write producer: always persist the current schema version, even
+        # when the client omits it or still sends the legacy "1.0" (Story 3.14,
+        # D9 point 1/3) — the envelope's "1.0" default is legacy-read
+        # compatibility only, never a value a create/update call should persist.
+        payload.definition.schema_version = "1.1"
 
         # Capture the model profile onto the definition so runs are insulated
         # from later chat/workspace model changes. Two sources:
@@ -129,6 +140,17 @@ class AutomationService:
         if "status" in data:
             automation.status = data["status"]
         if "definition" in data:
+            # B9: `definition: null` is not a valid update payload.
+            if patch.definition is None:
+                raise HTTPException(status_code=422, detail="definition cannot be null")
+            # B8: validate both the main plan and on_failure steps at save time.
+            self._validate_plan_or_raise(patch.definition.plan)
+            self._validate_plan_or_raise(patch.definition.execution.on_failure or [])
+            # Same new-write normalization as create() — an edited definition
+            # always persists as the current schema version (Story 3.14, D9
+            # point 1/3). A patch that omits "definition" entirely never
+            # reaches this branch, so the old snapshot/version is untouched.
+            patch.definition.schema_version = "1.1"
             new_def = patch.definition.model_dump(mode="json", by_alias=True)
             # Model snapshot handling on edit:
             #   * absent in the patch  -> preserve the captured snapshot
@@ -230,6 +252,15 @@ class AutomationService:
                 vision_model_id=models.vision_model_id,
             )
         except AutomationModelPolicyError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    def _validate_plan_or_raise(self, plan: list[PlanStep]) -> None:
+        """422 on an unknown action, unknown/missing params, or an out-of-range
+        static value (Story 3.14, D9 point 4) — never lets a broken step reach
+        a run."""
+        try:
+            validate_plan_steps(plan)
+        except StepValidationError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     async def _authorize(self, workspace_id: int, permission: str) -> None:

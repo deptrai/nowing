@@ -198,6 +198,107 @@ def test_release_gate_purges_even_when_the_gate_fails():
     assert any("always()" in str(step.get("if", "")) for step in purge_steps)
 
 
+def test_release_gate_purge_condition_is_exact():
+    """D10: the purge condition must survive the D10 changes byte-for-byte —
+    a looser rewrite (e.g. dropping `inputs.purge`) would purge unconditionally."""
+    doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
+    purge_steps = [
+        step
+        for job in doc["jobs"].values()
+        for step in job["steps"]
+        if "purge" in str(step.get("run", "")) and "gate --suite" not in str(step.get("run", ""))
+    ]
+    assert purge_steps, "expected a purge step"
+    assert all(step.get("if") == "always() && inputs.purge" for step in purge_steps)
+
+
+def test_release_gate_requires_a_nonblank_backend_build_id():
+    """D10: the artifact must be tied to the exact backend it evaluated.
+
+    ``workflow_dispatch`` declares the input required, but that alone doesn't
+    stop an API dispatch from sending an empty string, so an explicit
+    fail-fast validation step is required too.
+    """
+    doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
+    inputs = doc.get("on", doc.get(True))["workflow_dispatch"]["inputs"]
+    assert inputs["backend_build_id"]["required"] is True
+
+    runs = [
+        str(step.get("run", ""))
+        for job in doc["jobs"].values()
+        for step in job["steps"]
+    ]
+    validation_steps = [r for r in runs if "backend_build_id" in r and "exit 1" in r]
+    assert validation_steps, "expected a step that fails fast on a blank backend_build_id"
+
+
+def test_release_gate_passes_backend_build_id_into_the_run_command():
+    doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
+    runs = [
+        str(step.get("run", ""))
+        for job in doc["jobs"].values()
+        for step in job["steps"]
+    ]
+    run_step = next(r for r in runs if "run memory recall" in r)
+    assert "--backend-build-id" in run_step
+
+
+def test_release_gate_isolates_eval_data_dir_per_run_attempt():
+    """D10: the run's artifacts must live in a directory keyed to this exact
+    run attempt, not the checked-out repo's static ``data/`` path — otherwise
+    a re-run (or another concurrent workflow) can read or clobber them."""
+    text = RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8")
+    assert "EVAL_DATA_DIR" in text
+    assert "github.run_id" in text
+    assert "github.run_attempt" in text
+
+    doc = yaml.safe_load(text)
+    runs = [
+        str(step.get("run", ""))
+        for job in doc["jobs"].values()
+        for step in job["steps"]
+    ]
+    assert any(
+        "EVAL_DATA_DIR=" in r and "github.run_id" in r and "github.run_attempt" in r
+        for r in runs
+    ), "expected a step computing EVAL_DATA_DIR from the run id + run attempt"
+
+
+def test_release_gate_asserts_the_isolated_dir_starts_empty():
+    doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
+    runs = [
+        str(step.get("run", ""))
+        for job in doc["jobs"].values()
+        for step in job["steps"]
+    ]
+    ingest_at = next(i for i, r in enumerate(runs) if "ingest memory recall" in r)
+    assertion_steps = [
+        i for i, r in enumerate(runs) if "EVAL_DATA_DIR" in r and "exit 1" in r
+    ]
+    assert assertion_steps, "expected a step asserting EVAL_DATA_DIR starts absent/empty"
+    assert any(i < ingest_at for i in assertion_steps), (
+        "the empty-dir assertion must run before the corpus is seeded into it"
+    )
+
+
+def test_release_gate_uploads_exactly_the_isolated_run_dir():
+    """D10: upload the run-attempt-isolated dir, not the old hardcoded path —
+    a stale hardcoded path would silently upload nothing (or another run's
+    leftovers) once EVAL_DATA_DIR points elsewhere."""
+    doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
+    upload_steps = [
+        step
+        for job in doc["jobs"].values()
+        for step in job["steps"]
+        if step.get("uses", "").startswith("actions/upload-artifact")
+    ]
+    assert upload_steps, "expected an upload-artifact step"
+    for step in upload_steps:
+        path = str(step["with"]["path"])
+        assert "EVAL_DATA_DIR" in path
+        assert path == "${{ env.EVAL_DATA_DIR }}/memory/runs/"
+
+
 def test_mcp_selfcheck_declares_nowing_recall():
     """AC-7: the MCP selfcheck contract still lists nowing_recall."""
     selfcheck = REPO_ROOT / "nowing_mcp" / "mcp_server" / "selfcheck.py"

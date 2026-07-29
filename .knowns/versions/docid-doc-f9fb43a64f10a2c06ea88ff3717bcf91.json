@@ -1,0 +1,79 @@
+{
+  "docId": "doc-f9fb43a64f10a2c06ea88ff3717bcf91",
+  "docPath": "docs/development-guide-obsidian",
+  "currentPath": "docs/development-guide-obsidian",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-f9fb43a64f10a2c06ea88ff3717bcf91",
+      "docPath": "docs/development-guide-obsidian",
+      "currentPath": "docs/development-guide-obsidian",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.874861Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "cc12ae8474f90d6d8e8a72f221829644a47014242e27acafb56d3f4c28944562",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/development-guide-obsidian"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "development-guide-obsidian"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Hướng dẫn phát triển - Obsidian Plugin"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 33,
+          "deltaBytes": 33
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 28,
+          "deltaBytes": 28
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 48,
+          "deltaBytes": 48
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Hướng dẫn phát triển - Obsidian Plugin",
+        "path": "docs/development-guide-obsidian",
+        "title": "development-guide-obsidian"
+      }
+    }
+  ]
+}

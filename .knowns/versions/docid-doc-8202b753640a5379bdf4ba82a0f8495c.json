@@ -1,0 +1,79 @@
+{
+  "docId": "doc-8202b753640a5379bdf4ba82a0f8495c",
+  "docPath": "tests/tests-nowing-backend",
+  "currentPath": "tests/tests-nowing-backend",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-8202b753640a5379bdf4ba82a0f8495c",
+      "docPath": "tests/tests-nowing-backend",
+      "currentPath": "tests/tests-nowing-backend",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:12.638322Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "005821851859159d3f18cd3e2ec4a9899ccc022f5c9b0ef4c6e9a27e948135c5",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "tests/tests-nowing-backend"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Tests - nowing_backend"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Tests"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 28,
+          "deltaBytes": 28
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 24,
+          "deltaBytes": 24
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 7,
+          "deltaBytes": 7
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Tests",
+        "path": "tests/tests-nowing-backend",
+        "title": "Tests - nowing_backend"
+      }
+    }
+  ]
+}

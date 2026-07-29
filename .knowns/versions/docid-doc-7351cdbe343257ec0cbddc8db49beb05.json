@@ -1,0 +1,79 @@
+{
+  "docId": "doc-7351cdbe343257ec0cbddc8db49beb05",
+  "docPath": "docs/index",
+  "currentPath": "docs/index",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-7351cdbe343257ec0cbddc8db49beb05",
+      "docPath": "docs/index",
+      "currentPath": "docs/index",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.98576Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "7c182046d3a3b837a39e40f3de13a5f13f607c04c6113d762efb0ea791123bed",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/index"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "index"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Nowing Documentation Index"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 12,
+          "deltaBytes": 12
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 7,
+          "deltaBytes": 7
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 28,
+          "deltaBytes": 28
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Nowing Documentation Index",
+        "path": "docs/index",
+        "title": "index"
+      }
+    }
+  ]
+}

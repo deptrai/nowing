@@ -1,0 +1,79 @@
+{
+  "docId": "doc-ef26dbe17f8211778a85d78cd52e658c",
+  "docPath": "modules/readme-nowing-desktop",
+  "currentPath": "modules/readme-nowing-desktop",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-ef26dbe17f8211778a85d78cd52e658c",
+      "docPath": "modules/readme-nowing-desktop",
+      "currentPath": "modules/readme-nowing-desktop",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:12.204101Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "1cde2754e9d47784bca39a3260f7f0a7c82d5b74706320922832eebd3f387393",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "modules/readme-nowing-desktop"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "README - nowing_desktop"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Nowing Desktop"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 31,
+          "deltaBytes": 31
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 25,
+          "deltaBytes": 25
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 16,
+          "deltaBytes": 16
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Nowing Desktop",
+        "path": "modules/readme-nowing-desktop",
+        "title": "README - nowing_desktop"
+      }
+    }
+  ]
+}

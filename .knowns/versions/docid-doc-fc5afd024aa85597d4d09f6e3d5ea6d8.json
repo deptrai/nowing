@@ -1,0 +1,53 @@
+{
+  "docId": "doc-fc5afd024aa85597d4d09f6e3d5ea6d8",
+  "docPath": "planning/planning-artifacts/prfaq-distillate-nowing-post-pivot-2026-07-22",
+  "currentPath": "planning/planning-artifacts/prfaq-distillate-nowing-post-pivot-2026-07-22",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-fc5afd024aa85597d4d09f6e3d5ea6d8",
+      "docPath": "planning/planning-artifacts/prfaq-distillate-nowing-post-pivot-2026-07-22",
+      "currentPath": "planning/planning-artifacts/prfaq-distillate-nowing-post-pivot-2026-07-22",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.185393Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "43fe930c83e4036e0bed5e6794b1f7631ad34592bff3b09254946ab2c2893231",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/prfaq-distillate-nowing-post-pivot-2026-07-22"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "PRFAQ Distillate — Nowing (post-pivot 2026-07-22)"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 75,
+          "deltaBytes": 75
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 53,
+          "deltaBytes": 53
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/prfaq-distillate-nowing-post-pivot-2026-07-22",
+        "title": "PRFAQ Distillate — Nowing (post-pivot 2026-07-22)"
+      }
+    }
+  ]
+}

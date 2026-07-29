@@ -1,0 +1,53 @@
+{
+  "docId": "doc-64a76f01bc90c59d153b73588f9f97e7",
+  "docPath": "planning/planning-artifacts/sprint-change-proposal-nowing-vision-pivot-2026-07-22",
+  "currentPath": "planning/planning-artifacts/sprint-change-proposal-nowing-vision-pivot-2026-07-22",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-64a76f01bc90c59d153b73588f9f97e7",
+      "docPath": "planning/planning-artifacts/sprint-change-proposal-nowing-vision-pivot-2026-07-22",
+      "currentPath": "planning/planning-artifacts/sprint-change-proposal-nowing-vision-pivot-2026-07-22",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.125742Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "cb90567f9a27a185b2eece35e6238352467bb031af660a186a76a5b80be9773d",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/sprint-change-proposal-nowing-vision-pivot-2026-07-22"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Sprint Change Proposal — Nowing Vision Pivot (2026-07-22)"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 83,
+          "deltaBytes": 83
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 61,
+          "deltaBytes": 61
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/sprint-change-proposal-nowing-vision-pivot-2026-07-22",
+        "title": "Sprint Change Proposal — Nowing Vision Pivot (2026-07-22)"
+      }
+    }
+  ]
+}

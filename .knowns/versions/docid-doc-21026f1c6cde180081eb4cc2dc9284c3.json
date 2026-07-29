@@ -1,0 +1,53 @@
+{
+  "docId": "doc-21026f1c6cde180081eb4cc2dc9284c3",
+  "docPath": "planning/planning-artifacts/legal/send-from-here",
+  "currentPath": "planning/planning-artifacts/legal/send-from-here",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-21026f1c6cde180081eb4cc2dc9284c3",
+      "docPath": "planning/planning-artifacts/legal/send-from-here",
+      "currentPath": "planning/planning-artifacts/legal/send-from-here",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:49.285318Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "098461dca272675867ba2bf56e64af94c6b3e34dd4058428a1706912b2202aef",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/legal/send-from-here"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "SEND FROM HERE"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 50,
+          "deltaBytes": 50
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 16,
+          "deltaBytes": 16
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/legal/send-from-here",
+        "title": "SEND FROM HERE"
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "docId": "doc-e427c67def435bc8800ef4455158b8e6",
+  "docPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-nowing",
+  "currentPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-nowing",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-e427c67def435bc8800ef4455158b8e6",
+      "docPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-nowing",
+      "currentPath": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-nowing",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:49.35225Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "d38c88476d6f265b6e6ebd7860581bb2c6fd208e47cbb810bcbb2ca765b55f4c",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-nowing"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "PRD: Nowing"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 67,
+          "deltaBytes": 67
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 13,
+          "deltaBytes": 13
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/prds/prd-Nowing-2026-07-22/prd-nowing",
+        "title": "PRD: Nowing"
+      }
+    }
+  ]
+}

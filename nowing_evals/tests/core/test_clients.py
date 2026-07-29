@@ -354,6 +354,17 @@ async def test_memories_search_validates_top_k_locally(http):
 
 
 @pytest.mark.asyncio
+async def test_memories_search_rejects_top_k_above_backend_ceiling(http):
+    """Story 3.14 (D9) tightened ``MemorySearchRequest.top_k`` to ``le=5``; the
+    client's local pre-check must track that ceiling, not the old ``le=100``."""
+    from nowing_evals.core.clients import MemoriesClient
+
+    client = MemoriesClient(http, _BASE)
+    with pytest.raises(ValueError, match="top_k must be between 1 and 5"):
+        await client.search(7, "q", top_k=6)
+
+
+@pytest.mark.asyncio
 @respx.mock(base_url=_BASE)
 async def test_memories_search_reports_non_json_body(respx_mock, http):
     """A proxy or login page returning 200 text/html must name the failing call."""

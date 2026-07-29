@@ -1,0 +1,53 @@
+{
+  "docId": "doc-1b5f03c095ac13c09e44b582ddef902b",
+  "docPath": "planning/test-artifacts/atdd-checklist-story-8-7-auto-extract-spend-budget-cap-wallet-pre-check-rate-limit-new-gap",
+  "currentPath": "planning/test-artifacts/atdd-checklist-story-8-7-auto-extract-spend-budget-cap-wallet-pre-check-rate-limit-new-gap",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-1b5f03c095ac13c09e44b582ddef902b",
+      "docPath": "planning/test-artifacts/atdd-checklist-story-8-7-auto-extract-spend-budget-cap-wallet-pre-check-rate-limit-new-gap",
+      "currentPath": "planning/test-artifacts/atdd-checklist-story-8-7-auto-extract-spend-budget-cap-wallet-pre-check-rate-limit-new-gap",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:49.036383Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "2a54038c99786a74ad0cb61d7776713df9fe2f4e2ab4bb06339c9d134f29273d",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/test-artifacts/atdd-checklist-story-8-7-auto-extract-spend-budget-cap-wallet-pre-check-rate-limit-new-gap"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "ATDD Checklist: Story 8.7 — Auto-Extract Spend/Budget Cap, Wallet Pre-Check \u0026 Rate-Limit (New Gap)"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 116,
+          "deltaBytes": 116
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 107,
+          "deltaBytes": 107
+        }
+      ],
+      "snapshot": {
+        "path": "planning/test-artifacts/atdd-checklist-story-8-7-auto-extract-spend-budget-cap-wallet-pre-check-rate-limit-new-gap",
+        "title": "ATDD Checklist: Story 8.7 — Auto-Extract Spend/Budget Cap, Wallet Pre-Check \u0026 Rate-Limit (New Gap)"
+      }
+    }
+  ]
+}

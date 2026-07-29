@@ -1,12 +1,15 @@
 import asyncio
 import contextlib
+import functools
 import gc
 import logging
+import os
 import time
 import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 from threading import Lock
 
 import redis
@@ -1137,11 +1140,43 @@ app.include_router(anonymous_chat_router)
 app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
 
 
+@functools.lru_cache(maxsize=1)
+def _backend_build_id() -> str:
+    """Resolve the running backend's git commit for build-label verification.
+
+    ``NOWING_GIT_SHA`` is preferred (set by build / CI).  Fall back to reading
+    the local ``.git`` head.  If neither is available, return ``"unknown"``
+    rather than faking a build label.
+    """
+    build_id = os.environ.get("NOWING_GIT_SHA")
+    if build_id:
+        return build_id.strip()
+
+    repo_root = Path(__file__).resolve().parents[2]
+    git_dir = repo_root / ".git"
+    head = git_dir / "HEAD"
+    try:
+        ref = head.read_text().strip()
+    except (OSError, UnicodeDecodeError):
+        return "unknown"
+
+    if ref.startswith("ref:"):
+        ref_path = git_dir / ref[4:].strip()
+        try:
+            build_id = ref_path.read_text().strip()
+        except (OSError, UnicodeDecodeError):
+            return "unknown"
+        return build_id
+
+    # Detached HEAD stores the SHA directly.
+    return ref
+
+
 @app.get("/health", tags=["health"])
 @limiter.exempt
 async def health_check():
     """Lightweight liveness probe exempt from rate limiting."""
-    return {"status": "ok"}
+    return {"status": "ok", "build_id": _backend_build_id()}
 
 
 @app.get("/ready", tags=["health"])

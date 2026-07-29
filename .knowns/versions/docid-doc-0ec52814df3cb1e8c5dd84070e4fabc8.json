@@ -1,0 +1,66 @@
+{
+  "docId": "doc-0ec52814df3cb1e8c5dd84070e4fabc8",
+  "docPath": "stories/story-4-6-research-continuity",
+  "currentPath": "stories/story-4-6-research-continuity",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-0ec52814df3cb1e8c5dd84070e4fabc8",
+      "docPath": "stories/story-4-6-research-continuity",
+      "currentPath": "stories/story-4-6-research-continuity",
+      "version": 1,
+      "timestamp": "2026-07-28T10:28:33.186585Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "79743b687fffb30eb22129dcf7cfdc0eaf0c7ea3257f23bca88b63877a91be5c",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "stories/story-4-6-research-continuity"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Story 4.6: Research Continuity"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 39,
+          "deltaBytes": 39
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 32,
+          "deltaBytes": 32
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "path": "stories/story-4-6-research-continuity",
+        "title": "Story 4.6: Research Continuity"
+      }
+    }
+  ]
+}

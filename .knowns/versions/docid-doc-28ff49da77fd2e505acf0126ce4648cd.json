@@ -1,0 +1,66 @@
+{
+  "docId": "doc-28ff49da77fd2e505acf0126ce4648cd",
+  "docPath": "stories/story-2-5-workspace-mcp-tool-enable-disable-toggle",
+  "currentPath": "stories/story-2-5-workspace-mcp-tool-enable-disable-toggle",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-28ff49da77fd2e505acf0126ce4648cd",
+      "docPath": "stories/story-2-5-workspace-mcp-tool-enable-disable-toggle",
+      "currentPath": "stories/story-2-5-workspace-mcp-tool-enable-disable-toggle",
+      "version": 1,
+      "timestamp": "2026-07-28T10:28:32.981484Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "08f8e7873c27222f81395ace5a90a7ff1a9a6d4e595231848d51296b27c8f047",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "stories/story-2-5-workspace-mcp-tool-enable-disable-toggle"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Story 2.5: Workspace MCP Tool Enable/Disable Toggle"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 60,
+          "deltaBytes": 60
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 53,
+          "deltaBytes": 53
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "path": "stories/story-2-5-workspace-mcp-tool-enable-disable-toggle",
+        "title": "Story 2.5: Workspace MCP Tool Enable/Disable Toggle"
+      }
+    }
+  ]
+}

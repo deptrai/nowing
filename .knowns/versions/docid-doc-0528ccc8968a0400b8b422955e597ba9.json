@@ -1,0 +1,66 @@
+{
+  "docId": "doc-0528ccc8968a0400b8b422955e597ba9",
+  "docPath": "stories/story-9-1a-research-degradation-self-host-independence",
+  "currentPath": "stories/story-9-1a-research-degradation-self-host-independence",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-0528ccc8968a0400b8b422955e597ba9",
+      "docPath": "stories/story-9-1a-research-degradation-self-host-independence",
+      "currentPath": "stories/story-9-1a-research-degradation-self-host-independence",
+      "version": 1,
+      "timestamp": "2026-07-28T10:28:33.311037Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "be1820f0fa6c429fbfa89ec3529a68885221fc1b8daef69627a0b2665d36e77f",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "stories/story-9-1a-research-degradation-self-host-independence"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Story 9.1a: Research Degradation \u0026 Self-Host Independence"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 64,
+          "deltaBytes": 64
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 64,
+          "deltaBytes": 64
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "path": "stories/story-9-1a-research-degradation-self-host-independence",
+        "title": "Story 9.1a: Research Degradation \u0026 Self-Host Independence"
+      }
+    }
+  ]
+}

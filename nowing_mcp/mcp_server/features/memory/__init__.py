@@ -111,7 +111,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         resolved = await context.resolve(workspace)
         payload = {
             "query": query,
-            "top_k": max(1, min(top_k, 20)),
+            "top_k": top_k,
             "type": type,
             "tags": tags or [],
             "research_thread_id": research_thread_id,
@@ -180,7 +180,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         resolved = await context.resolve(workspace)
         params = {
             "query": query or None,
-            "top_k": max(1, min(top_k, 20)),
+            "top_k": top_k,
         }
         try:
             data = await client.request(
@@ -246,10 +246,21 @@ def _render_recall(query: str, items: list[dict]) -> str:
     if not items:
         return f'No memories found for "{query}".'
     lines = [f'# {len(items)} result(s) for "{query}"', ""]
-    for hit in items:
+    for rank, hit in enumerate(items, start=1):
+        score = hit.get("score")
+        similarity = hit.get("similarity")
+        if score is None and similarity is None:
+            meta = f"rank=recency, rrf=n/a, similarity=n/a"
+        else:
+            try:
+                score_num = float(score)
+                sim_num = float(similarity)
+                meta = f"rrf={score_num:.6f}, similarity={sim_num:.6f}"
+            except (TypeError, ValueError):
+                meta = f"rank={rank}, rrf=n/a, similarity=n/a"
         lines.append(
             f"- **id {hit.get('id')}** ({hit.get('type')}, "
-            f"confidence {hit.get('confidence', 1.0):.2f}): "
+            f"confidence {hit.get('confidence', 1.0):.2f}, {meta}): "
             f"{clip(hit.get('content', '') or '(empty)', 500)}"
             f"{_source_suffix(hit)}"
         )

@@ -311,7 +311,7 @@ function buildPlan(form: BuilderForm) {
 
 function buildDefinition(form: BuilderForm): AutomationDefinition {
 	return {
-		schema_version: "1.0",
+		schema_version: "1.1",
 		name: form.name.trim(),
 		goal: form.goal,
 		// Triggers are attached at the top level of the create payload, not in

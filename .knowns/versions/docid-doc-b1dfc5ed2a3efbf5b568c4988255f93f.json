@@ -1,0 +1,53 @@
+{
+  "docId": "doc-b1dfc5ed2a3efbf5b568c4988255f93f",
+  "docPath": "planning/test-artifacts/atdd-checklist-story-6-4-direct-write-back-actions",
+  "currentPath": "planning/test-artifacts/atdd-checklist-story-6-4-direct-write-back-actions",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-b1dfc5ed2a3efbf5b568c4988255f93f",
+      "docPath": "planning/test-artifacts/atdd-checklist-story-6-4-direct-write-back-actions",
+      "currentPath": "planning/test-artifacts/atdd-checklist-story-6-4-direct-write-back-actions",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.951922Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "726513fc985093f122bb3ce0dc050f4a2b2d8d2f790be2c9ed62336fe0c1d5cf",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/test-artifacts/atdd-checklist-story-6-4-direct-write-back-actions"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "ATDD Checklist: Story 6.4 — Direct Write-Back Actions"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 76,
+          "deltaBytes": 76
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 57,
+          "deltaBytes": 57
+        }
+      ],
+      "snapshot": {
+        "path": "planning/test-artifacts/atdd-checklist-story-6-4-direct-write-back-actions",
+        "title": "ATDD Checklist: Story 6.4 — Direct Write-Back Actions"
+      }
+    }
+  ]
+}

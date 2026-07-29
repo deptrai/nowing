@@ -526,6 +526,24 @@ async def _cmd_ingest(args: argparse.Namespace) -> int:
 
 async def _cmd_run(args: argparse.Namespace) -> int:
     benchmark = registry.get(args.suite, args.benchmark)
+
+    extra_kwargs = {
+        k: v
+        for k, v in vars(args).items()
+        if k not in {"_func", "_async", "command", "subcommand", "suite", "benchmark", "log_level"}
+    }
+
+    # Pre-auth hook (D10): a benchmark that declares run-option requirements
+    # (e.g. memory-recall's --backend-build-id) rejects an invalid run before
+    # any config/auth/network call, not after paying for those first.
+    validate_run_options = getattr(benchmark, "validate_run_options", None)
+    if validate_run_options is not None:
+        try:
+            validate_run_options(**extra_kwargs)
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            return 2
+
     config = load_config()
     state, code = _resolve_suite_state(config, args.suite, benchmark)
     if state is None:
@@ -536,11 +554,6 @@ async def _cmd_run(args: argparse.Namespace) -> int:
         console.print(f"[red]{exc}[/red]")
         return 2
 
-    extra_kwargs = {
-        k: v
-        for k, v in vars(args).items()
-        if k not in {"_func", "_async", "command", "subcommand", "suite", "benchmark", "log_level"}
-    }
     async with client_with_auth(config, token) as http:
         ctx = registry.RunContext(
             suite=args.suite,

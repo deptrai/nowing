@@ -1,0 +1,79 @@
+{
+  "docId": "doc-5d518f0310b77e8b10e6e91270abad58",
+  "docPath": "docs/architecture-web",
+  "currentPath": "docs/architecture-web",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-5d518f0310b77e8b10e6e91270abad58",
+      "docPath": "docs/architecture-web",
+      "currentPath": "docs/architecture-web",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.349828Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "e4c5a4b5758a10ca54b8280015db954a8c07d4cd9fb213a59d965fbc5f02d6b8",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/architecture-web"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "architecture-web"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Kiến trúc - Nowing Web"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 23,
+          "deltaBytes": 23
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 18,
+          "deltaBytes": 18
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 27,
+          "deltaBytes": 27
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Kiến trúc - Nowing Web",
+        "path": "docs/architecture-web",
+        "title": "architecture-web"
+      }
+    }
+  ]
+}

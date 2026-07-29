@@ -1,0 +1,79 @@
+{
+  "docId": "doc-a57f9d4959b67e50d5107409cb269bd8",
+  "docPath": "docs/api-contracts-backend",
+  "currentPath": "docs/api-contracts-backend",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-a57f9d4959b67e50d5107409cb269bd8",
+      "docPath": "docs/api-contracts-backend",
+      "currentPath": "docs/api-contracts-backend",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.102741Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "43b2a0747a56455518fedecce2e0e11566bce5f48eeb631811f8a834280362b0",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/api-contracts-backend"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "api-contracts-backend"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Nowing Backend - API Contracts"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 28,
+          "deltaBytes": 28
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 23,
+          "deltaBytes": 23
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 32,
+          "deltaBytes": 32
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Nowing Backend - API Contracts",
+        "path": "docs/api-contracts-backend",
+        "title": "api-contracts-backend"
+      }
+    }
+  ]
+}

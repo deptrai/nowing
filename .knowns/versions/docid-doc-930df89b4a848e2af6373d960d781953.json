@@ -1,0 +1,79 @@
+{
+  "docId": "doc-930df89b4a848e2af6373d960d781953",
+  "docPath": "docs/development-guide-mcp",
+  "currentPath": "docs/development-guide-mcp",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-930df89b4a848e2af6373d960d781953",
+      "docPath": "docs/development-guide-mcp",
+      "currentPath": "docs/development-guide-mcp",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.835136Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "535847db3a7e6e7015e4f4476fdfb0251a5c1e8c89708c0201a26db34acb1f8f",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/development-guide-mcp"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "development-guide-mcp"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Hướng dẫn phát triển - MCP Server"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 28,
+          "deltaBytes": 28
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 23,
+          "deltaBytes": 23
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 43,
+          "deltaBytes": 43
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Hướng dẫn phát triển - MCP Server",
+        "path": "docs/development-guide-mcp",
+        "title": "development-guide-mcp"
+      }
+    }
+  ]
+}

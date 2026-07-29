@@ -1,0 +1,53 @@
+{
+  "docId": "doc-bec17a86f06f181d053e484876ebabab",
+  "docPath": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
+  "currentPath": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-bec17a86f06f181d053e484876ebabab",
+      "docPath": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
+      "currentPath": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.243767Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "b546fb932c4db9a425f9ba9e9b5f77cf00ee0edbdefa5c982f5774b48152c981",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "OQ-7 — Nowing trả lời ChainLens (story `42-3`)"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 69,
+          "deltaBytes": 69
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 54,
+          "deltaBytes": 54
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
+        "title": "OQ-7 — Nowing trả lời ChainLens (story `42-3`)"
+      }
+    }
+  ]
+}

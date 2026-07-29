@@ -1,0 +1,53 @@
+{
+  "docId": "doc-3392f6bda670090c05a020f9d45a94d0",
+  "docPath": "planning/implementation-artifacts/story-4-5-agent-memory-tools-via-mcp",
+  "currentPath": "planning/implementation-artifacts/story-4-5-agent-memory-tools-via-mcp",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-3392f6bda670090c05a020f9d45a94d0",
+      "docPath": "planning/implementation-artifacts/story-4-5-agent-memory-tools-via-mcp",
+      "currentPath": "planning/implementation-artifacts/story-4-5-agent-memory-tools-via-mcp",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.513876Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "c570058eeec13159f0323a016ce45baf36b0f4e60e85123e095415a8282af978",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/implementation-artifacts/story-4-5-agent-memory-tools-via-mcp"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Story 4.5 — Agent Memory Tools via MCP"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 72,
+          "deltaBytes": 72
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 42,
+          "deltaBytes": 42
+        }
+      ],
+      "snapshot": {
+        "path": "planning/implementation-artifacts/story-4-5-agent-memory-tools-via-mcp",
+        "title": "Story 4.5 — Agent Memory Tools via MCP"
+      }
+    }
+  ]
+}

@@ -6,8 +6,7 @@ These tests will fail until `MemoryExtractionService`, the Celery task, and the
 
 from __future__ import annotations
 
-import uuid
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -106,7 +105,7 @@ async def test_extract_memory_after_chat_turn(
     from app.db import Memory
     from app.services.memory.extraction import MemoryExtractionService
 
-    thread, user_message, assistant_message = chat_turn
+    thread, _user_message, assistant_message = chat_turn
 
     fake_llm = AsyncMock()
     fake_llm.ainvoke.return_value = type("FakeMsg", (), {"content": fake_llm_response})()
@@ -134,7 +133,7 @@ async def test_extract_memory_after_chat_turn(
     assert memory.source_type.value == "chat_message"
     assert memory.source_id == assistant_message.id
     assert memory.workspace_id == db_workspace.id
-    assert memory.created_by_id == user_message.author_id
+    assert memory.created_by_id == _user_message.author_id
 
 
 async def test_extract_memory_records_token_usage(
@@ -150,7 +149,7 @@ async def test_extract_memory_records_token_usage(
     from app.db import TokenUsage
     from app.services.memory.extraction import MemoryExtractionService
 
-    thread, user_message, assistant_message = chat_turn
+    thread, _user_message, assistant_message = chat_turn
 
     fake_llm = AsyncMock()
     fake_llm.ainvoke.return_value = type("FakeMsg", (), {"content": fake_llm_response})()
@@ -171,7 +170,6 @@ async def test_extract_memory_records_token_usage(
     )
 
     from sqlalchemy import select
-    from app.db import TokenUsage
 
     result = await db_session.execute(
         select(TokenUsage).where(
@@ -197,7 +195,7 @@ async def test_auto_extract_respects_workspace_toggle(
     from app.db import Memory
     from app.services.memory.extraction import MemoryExtractionService
 
-    thread, user_message, assistant_message = chat_turn
+    thread, _user_message, assistant_message = chat_turn
     db_workspace.memory_auto_extract_enabled = False
 
     fake_llm = AsyncMock()
@@ -221,7 +219,6 @@ async def test_auto_extract_respects_workspace_toggle(
     assert memories == []
 
     from sqlalchemy import select
-    from app.db import Memory
 
     remaining = await db_session.execute(
         select(Memory).where(Memory.source_id == assistant_message.id)
@@ -241,7 +238,7 @@ async def test_extract_filters_low_confidence_facts(
     """Facts below the configured confidence threshold are not persisted."""
     from app.services.memory.extraction import MemoryExtractionService
 
-    thread, user_message, assistant_message = chat_turn
+    thread, _user_message, assistant_message = chat_turn
 
     fake_llm = AsyncMock()
     fake_llm.ainvoke.return_value = type(
@@ -276,11 +273,10 @@ async def test_extract_updates_near_duplicate(
     monkeypatch,
 ):
     """A fact semantically near an existing memory updates it and versions the old content."""
-    from app.db import Memory
     from app.services.memory.extraction import MemoryExtractionService
     from app.services.memory.repository import MemoryRepository
 
-    thread, user_message, assistant_message = chat_turn
+    thread, _user_message, assistant_message = chat_turn
 
     repo = MemoryRepository(session=db_session)
     first = await repo.create_memory(

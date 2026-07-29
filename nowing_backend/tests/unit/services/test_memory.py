@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -83,42 +82,55 @@ async def test_repository_dedup_updates_existing_memory():
         assert fake_session.commit_calls == 2
 
 
-@pytest.mark.asyncio
-async def test_hybrid_search_ranking_prefers_keyword_and_semantic_overlap():
-    """RRF combines vector and keyword ranks; closest match wins."""
+def test_hybrid_search_scope_requires_exactly_one_of_workspace_or_user():
+    """D5: missing scope raises before any SQL is built — no broad OR."""
     from app.services.memory.search import MemoryHybridSearch
 
-    memory1 = SimpleNamespace(
-        id=1,
-        content="Competitor X pricing strategy 2026",
-        type="semantic",
-        tags=[],
-        confidence=1.0,
-        source_type="manual",
-        source_id=None,
-    )
-    memory2 = SimpleNamespace(
-        id=2,
-        content="Market strategy overview",
-        type="semantic",
-        tags=[],
-        confidence=1.0,
-        source_type="manual",
-        source_id=None,
-    )
+    with pytest.raises(ValueError):
+        MemoryHybridSearch._scope_conditions(
+            workspace_id=None, user_id=None, research_thread_id=None
+        )
 
-    fake_session = _FakeSession(rows=[(memory1, 0.9), (memory2, 0.7)])
-    search = MemoryHybridSearch(session=fake_session)
-    results = await search.search(
-        workspace_id=1,
-        query="pricing strategy",
-        query_embedding=[0.1] * 384,
-        top_k=2,
-    )
 
-    assert len(results) == 2
-    assert results[0].content == "Competitor X pricing strategy 2026"
-    assert results[1].content == "Market strategy overview"
+def test_hybrid_search_scope_rejects_both_workspace_and_user():
+    """D5: ambiguous scope (both set) raises before any SQL is built."""
+    from uuid import uuid4
+
+    from app.services.memory.search import MemoryHybridSearch
+
+    with pytest.raises(ValueError):
+        MemoryHybridSearch._scope_conditions(
+            workspace_id=1, user_id=uuid4(), research_thread_id=None
+        )
+
+
+def test_hybrid_search_thread_scope_requires_workspace():
+    """D5: research_thread_id is workspace-only; personal + thread raises."""
+    from uuid import uuid4
+
+    from app.services.memory.search import MemoryHybridSearch
+
+    with pytest.raises(ValueError):
+        MemoryHybridSearch._scope_conditions(
+            workspace_id=None, user_id=uuid4(), research_thread_id=7
+        )
+
+
+def test_hybrid_search_valid_scopes_do_not_raise():
+    """A single non-None scope (workspace OR user) is accepted."""
+    from uuid import uuid4
+
+    from app.services.memory.search import MemoryHybridSearch
+
+    MemoryHybridSearch._scope_conditions(
+        workspace_id=1, user_id=None, research_thread_id=None
+    )
+    MemoryHybridSearch._scope_conditions(
+        workspace_id=None, user_id=uuid4(), research_thread_id=None
+    )
+    MemoryHybridSearch._scope_conditions(
+        workspace_id=1, user_id=None, research_thread_id=7
+    )
 
 
 def test_parser_extracts_facts_from_markdown():

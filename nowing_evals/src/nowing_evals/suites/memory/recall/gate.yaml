@@ -45,13 +45,13 @@ min_queries: 30
 top_k: 5
 
 # The oracle definition the artifact must have been produced under.
-# `rank_only` because the backend discards the RRF score and serialises
-# score=0.0 for every hit (app/services/memory/search.py -> memories_routes.py),
-# so a similarity threshold cannot be applied to this surface today. Exposing
-# the real score is deferred to Story 3.11; see deferred-work.md. Recording the
-# mode here means a run that claims a threshold it could not apply is rejected
-# instead of quietly redefining the metric.
-required_oracle_mode: rank_only
+# `score_threshold` since Story 3.14 (Task 1) replaced the backend's fake
+# score=0.0 placeholder with real, distinct RRF similarities
+# (app/services/memory/search.py -> memories_routes.py), so a live run now
+# normally carries a usable signal instead of degrading to rank-only.
+# Recording the mode here means a run that claims a threshold it could not
+# apply is rejected instead of quietly redefining the metric.
+required_oracle_mode: score_threshold
 
 # SM-10 ratification. Flip to true, and fill baseline_source with the run id /
 # evidence pointer, only once the numbers above come from a measured baseline on

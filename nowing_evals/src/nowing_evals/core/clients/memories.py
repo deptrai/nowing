@@ -21,9 +21,10 @@ VALID_SOURCE_TYPES = frozenset(
     {"document", "chat_message", "scraper_run", "manual", "unknown"}
 )
 
-# ``MemorySearchRequest.top_k`` is constrained ``ge=1, le=100`` server-side.
+# ``MemorySearchRequest.top_k`` is constrained ``strict_top_k(le=5)`` (1..5,
+# bool rejected) server-side since Story 3.14's D9 tightening.
 _MIN_TOP_K = 1
-_MAX_TOP_K = 100
+_MAX_TOP_K = 5
 
 
 class MemoriesClient:

@@ -1,0 +1,53 @@
+{
+  "docId": "doc-d8f1351fb74c15b9b64f8343338bf51d",
+  "docPath": "planning/planning-artifacts/sprint-change-proposal-nowing-2026-07-22",
+  "currentPath": "planning/planning-artifacts/sprint-change-proposal-nowing-2026-07-22",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-d8f1351fb74c15b9b64f8343338bf51d",
+      "docPath": "planning/planning-artifacts/sprint-change-proposal-nowing-2026-07-22",
+      "currentPath": "planning/planning-artifacts/sprint-change-proposal-nowing-2026-07-22",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.332452Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "49f9bc4044999b0d0736e3d1d28e6229d21d9ab438a3c532f88b953210fa425b",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/sprint-change-proposal-nowing-2026-07-22"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Sprint Change Proposal — Nowing (2026-07-22)"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 70,
+          "deltaBytes": 70
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 48,
+          "deltaBytes": 48
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/sprint-change-proposal-nowing-2026-07-22",
+        "title": "Sprint Change Proposal — Nowing (2026-07-22)"
+      }
+    }
+  ]
+}

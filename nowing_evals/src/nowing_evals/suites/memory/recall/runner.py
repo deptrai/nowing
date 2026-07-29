@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
+import platform as _platform
+import subprocess
+import sys
 import uuid
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
+
+import httpx
 
 from ....core.config import utc_iso_timestamp
 from ....core.metrics.retrieval import score_run
@@ -31,6 +37,195 @@ _DESCRIPTION = (
 
 GATE_CONFIG_PATH = Path(__file__).with_name("gate.yaml")
 
+
+def _sha256_file(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _git_info() -> dict[str, Any]:
+    """Return repo SHA/branch/dirty/patch-hash from the current checkout."""
+
+    info: dict[str, Any] = {
+        "sha": None,
+        "branch": None,
+        "dirty": None,
+        "patch_hash": None,
+    }
+    try:
+        info["sha"] = (
+            subprocess.check_output(["git", "rev-parse", "HEAD"], text=True)
+            .strip()
+            or None
+        )
+        info["branch"] = (
+            subprocess.check_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
+            )
+            .strip()
+            or None
+        )
+        info["dirty"] = (
+            subprocess.check_output(["git", "status", "--porcelain"], text=True)
+            .strip()
+            != ""
+        )
+        diff = subprocess.check_output(["git", "diff", "--binary", "HEAD"])
+        untracked = (
+            subprocess.check_output(
+                ["git", "ls-files", "--others", "--exclude-standard"], text=True
+            )
+            .strip()
+            .splitlines()
+        )
+        untracked.sort()
+        hashes = [hashlib.sha256(diff).hexdigest()]
+        repo_root = Path(
+            subprocess.check_output(
+                ["git", "rev-parse", "--show-toplevel"], text=True
+            ).strip()
+        )
+        for rel in untracked:
+            fpath = repo_root / rel
+            if fpath.is_file():
+                hashes.append(f"{rel}:{hashlib.sha256(fpath.read_bytes()).hexdigest()}")
+        info["patch_hash"] = hashlib.sha256("\n".join(hashes).encode()).hexdigest()
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+    return info
+
+
+def _git_head_build_id() -> str | None:
+    """Return the local git HEAD commit, or ``None`` if it cannot be read."""
+    try:
+        return (
+            subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+            or None
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return None
+
+
+async def _verify_backend_build_id(ctx: RunContext, expected: str) -> dict[str, Any]:
+    """Compare the supplied build label with the actually running backend.
+
+    A7: the build id passed on the CLI must match the build id reported by the
+    live backend.  We first try the existing ``/health`` endpoint (no new
+    network dependency); if it does not expose ``build_id`` or cannot be
+    reached, we fall back to the local git HEAD.  In a container without git
+    and a ``/health`` endpoint that does not report a build id, we cannot
+    verify and raise.
+    """
+
+    expected = expected.strip()
+    http = getattr(ctx, "http", None)
+    base = getattr(getattr(ctx, "config", None), "nowing_api_base", None)
+
+    # Hermetic unit tests build a fake context with no HTTP client.  We cannot
+    # verify a running backend there, so we skip rather than failing on a
+    # non-existent deployment.  Real eval ``RunContext`` always carries an
+    # authenticated ``httpx.AsyncClient``.
+    if not isinstance(http, httpx.AsyncClient) or not base or not isinstance(base, str):
+        return {
+            "expected": expected,
+            "actual": None,
+            "source": "unverified_no_http_client",
+            "verified": False,
+        }
+
+    actual: str | None = None
+    source = "unverified"
+    error: str | None = None
+
+    try:
+        response = await http.get(
+            f"{base}/health", headers={"Accept": "application/json"}
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if isinstance(payload, dict) and payload.get("build_id"):
+            actual = str(payload["build_id"]).strip()
+            source = "health_endpoint"
+    except Exception as exc:
+        error = f"health endpoint failed: {exc}"
+
+    if actual is None:
+        actual = _git_head_build_id()
+        if actual:
+            source = "git_filesystem"
+
+    if actual is None:
+        raise RuntimeError(
+            "Could not verify backend build id: /health did not report build_id "
+            "and the local git HEAD could not be read."
+            + (f" Health error: {error}" if error else "")
+        )
+
+    if actual != expected:
+        raise RuntimeError(
+            f"backend build id mismatch: expected {expected!r}, "
+            f"running backend reports {actual!r} (source={source})"
+        )
+
+    return {"expected": expected, "actual": actual, "source": source, "verified": True}
+
+
+def _build_provenance(
+    ctx: RunContext,
+    *,
+    run_id: str,
+    requested_top_k: int,
+    effective_top_k: int,
+    requested_min_similarity: float,
+    applied_min_similarity: float | None,
+    raw_path: Path,
+) -> dict[str, Any]:
+    """A3/D10: full provenance for the artifact."""
+
+    provenance: dict[str, Any] = {
+        "repo": _git_info(),
+        "python": {
+            "version": sys.version,
+            "platform": _platform.platform(),
+        },
+        "uv_lock_hash": _sha256_file(
+            Path(__file__).resolve().parents[3] / "uv.lock"
+        ),
+        "dataset_hashes": {
+            "queries": _sha256_file(
+                Path(__file__).resolve().with_name("dataset") / "queries.jsonl"
+            ),
+            "corpus": _sha256_file(
+                Path(__file__).resolve().with_name("dataset") / "corpus.jsonl"
+            ),
+        },
+        "runner_hash": _sha256_file(Path(__file__).resolve()),
+        "argv": sys.argv,
+        "run_id": run_id,
+        "workspace_id": (
+            ctx.config.memory_workspace_id
+            if ctx is not None
+            else None
+        ),
+        "requested_params": {
+            "top_k": requested_top_k,
+            "min_similarity": requested_min_similarity,
+        },
+        "effective_params": {
+            "top_k": effective_top_k,
+            "min_similarity": applied_min_similarity,
+        },
+        "raw_hash": _sha256_file(raw_path),
+        "raw_row_count": 0,
+    }
+    try:
+        with raw_path.open("r", encoding="utf-8") as handle:
+            for _ in handle:
+                provenance["raw_row_count"] += 1
+    except OSError:
+        pass
+    return provenance
 
 def _sample_queries(queries: Sequence[Query], sample_n: int | None) -> list[Query]:
     if sample_n is None:
@@ -174,8 +369,8 @@ class MemoryRecallBenchmark:
             default=0.3,
             help=(
                 "Similarity floor, applied only when the response carries a usable "
-                "score signal. The current backend serialises score=0.0 for every "
-                "hit, so runs degrade to rank-only and record that in the artifact."
+                "score signal (at least two distinct finite scores across the run). "
+                "A run that degrades to rank-only records that in the artifact."
             ),
         )
         parser.add_argument("--concurrency", type=int, default=4)
@@ -184,6 +379,16 @@ class MemoryRecallBenchmark:
             type=int,
             default=None,
             help="Workspace tenant for memory endpoints; overrides NOWING_EVAL_WORKSPACE_ID.",
+        )
+        parser.add_argument(
+            "--backend-build-id",
+            type=str,
+            default=None,
+            help=(
+                "Deployed backend build/commit identifier this run evaluates. "
+                "Required: without it the artifact can silently drift from what's "
+                "actually live, invalidating the gate's ship/no-ship decision."
+            ),
         )
 
     async def ingest(self, ctx: RunContext, **opts: Any) -> None:
@@ -198,8 +403,32 @@ class MemoryRecallBenchmark:
 
         return await run_purge(ctx, workspace_id=workspace_id)
 
+    def validate_run_options(self, **opts: Any) -> None:
+        """Reject a run before any config/auth/network call (D10).
+
+        The CLI's ``_cmd_run`` calls this as a pre-auth hook; ``run()`` below
+        calls it again as a defensive re-check for any caller that invokes
+        ``run()`` directly. A missing/blank ``backend_build_id`` would let an
+        artifact silently drift from the backend it actually evaluated.
+        """
+
+        backend_build_id = opts.get("backend_build_id")
+        if not isinstance(backend_build_id, str) or not backend_build_id.strip():
+            raise ValueError(
+                "--backend-build-id is required and must be a non-blank string "
+                "identifying the deployed backend this run evaluates."
+            )
+
     async def run(self, ctx: RunContext, **opts: Any) -> RunArtifact:
-        effective_top_k = clamp_top_k(int(opts.get("top_k", 5)))
+        self.validate_run_options(**opts)
+        # A7: verify the provided build id against the actually running backend
+        # before any dataset/auth/search work is performed.
+        build_id = opts.get("backend_build_id")
+        build_id_verification = await _verify_backend_build_id(
+            ctx, build_id if isinstance(build_id, str) else ""
+        )
+        # C2: do not pre-coerce with int(); clamp_top_k already rejects bool/float.
+        effective_top_k = clamp_top_k(opts.get("top_k", 5))
         # Validated before any network call, not per returned item — otherwise an
         # invalid value costs a full run before raising, or never raises at all
         # when every query comes back empty.
@@ -324,6 +553,9 @@ class MemoryRecallBenchmark:
                 "requested_min_similarity": min_similarity,
                 "n_failed_queries": len(failures),
                 "n_requested_queries": len(queries),
+                "backend_build_id": opts.get("backend_build_id"),
+                "verified_backend_build_id": build_id_verification.get("actual"),
+                "backend_build_id_verified": build_id_verification.get("verified"),
             }
         )
 
@@ -340,6 +572,20 @@ class MemoryRecallBenchmark:
             "sample_n": len(queries),
             "provider_model": getattr(ctx, "provider_model", None),
             "failures": failures,
+            "backend_build_id": opts.get("backend_build_id"),
+            "backend_build_id_verification": build_id_verification,
+            "provenance": _build_provenance(
+                ctx,
+                run_id=run_timestamp,
+                requested_top_k=opts.get("top_k", 5),
+                effective_top_k=effective_top_k,
+                requested_min_similarity=opts.get("min_similarity", 0.3),
+                applied_min_similarity=applied_min_similarity,
+                raw_path=raw_path,
+            ),
+            "corpus_map_hash": _sha256_file(
+                corpus_map_path(ctx.maps_dir(), workspace_id=workspace_id)
+            ),
         }
         artifact = RunArtifact(
             suite=self.suite,

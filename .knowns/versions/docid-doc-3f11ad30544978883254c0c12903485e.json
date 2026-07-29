@@ -1,0 +1,53 @@
+{
+  "docId": "doc-3f11ad30544978883254c0c12903485e",
+  "docPath": "planning/implementation-artifacts/blind-hunter-story-3-13-chunk-1",
+  "currentPath": "planning/implementation-artifacts/blind-hunter-story-3-13-chunk-1",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-3f11ad30544978883254c0c12903485e",
+      "docPath": "planning/implementation-artifacts/blind-hunter-story-3-13-chunk-1",
+      "currentPath": "planning/implementation-artifacts/blind-hunter-story-3-13-chunk-1",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:48.611545Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "733ee9ec2c44702580d2d5310b01279c9823761701bd4f7cfabac1937f68b034",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/implementation-artifacts/blind-hunter-story-3-13-chunk-1"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Blind Hunter — Story 3.13 chunk 1"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 67,
+          "deltaBytes": 67
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 37,
+          "deltaBytes": 37
+        }
+      ],
+      "snapshot": {
+        "path": "planning/implementation-artifacts/blind-hunter-story-3-13-chunk-1",
+        "title": "Blind Hunter — Story 3.13 chunk 1"
+      }
+    }
+  ]
+}

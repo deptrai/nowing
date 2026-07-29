@@ -1,0 +1,79 @@
+{
+  "docId": "doc-53ac76b2b5f562f8bf0c5ae367dced4d",
+  "docPath": "modules/readme-nowing-mcp",
+  "currentPath": "modules/readme-nowing-mcp",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-53ac76b2b5f562f8bf0c5ae367dced4d",
+      "docPath": "modules/readme-nowing-mcp",
+      "currentPath": "modules/readme-nowing-mcp",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:12.289915Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "000eb3cc9be22f0bcc9026259a3ce63ed3fc94706317af8281bd2c19d36d9ee0",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "modules/readme-nowing-mcp"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "README - nowing_mcp"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Nowing MCP Server"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 27,
+          "deltaBytes": 27
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 21,
+          "deltaBytes": 21
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 19,
+          "deltaBytes": 19
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Nowing MCP Server",
+        "path": "modules/readme-nowing-mcp",
+        "title": "README - nowing_mcp"
+      }
+    }
+  ]
+}

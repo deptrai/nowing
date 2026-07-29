@@ -9,10 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.automations.actions.types import ActionContext
 from app.automations.persistence.enums.run_status import RunStatus
 from app.automations.persistence.models.run import AutomationRun
-from app.automations.schemas.definition.envelope import (
-    AutomationDefinition,
-    AutomationModels,
-)
+from app.automations.schemas.definition.envelope import AutomationDefinition
 from app.automations.schemas.definition.plan_step import PlanStep
 from app.automations.templating import build_run_context
 
@@ -61,7 +58,7 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
 
         for step in definition.plan:
             template_ctx = _build_template_ctx(run, step_outputs)
-            action_ctx = _build_action_ctx(session, run, step, definition.models)
+            action_ctx = _build_action_ctx(session, run, step, definition)
             result = await execute_step(
                 step=step,
                 template_context=template_ctx,
@@ -141,7 +138,7 @@ async def _run_on_failure(
         return
     template_ctx = _build_template_ctx(run, step_outputs={})
     for step in definition.execution.on_failure:
-        action_ctx = _build_action_ctx(session, run, step, definition.models)
+        action_ctx = _build_action_ctx(session, run, step, definition)
         result = await execute_step(
             step=step,
             template_context=template_ctx,
@@ -179,9 +176,10 @@ def _build_action_ctx(
     session: AsyncSession,
     run: AutomationRun,
     step: PlanStep,
-    models: AutomationModels | None,
+    definition: AutomationDefinition,
 ) -> ActionContext:
     automation = run.automation
+    models = definition.models
     return ActionContext(
         session=session,
         run_id=run.id,
@@ -191,4 +189,5 @@ def _build_action_ctx(
         chat_model_id=models.chat_model_id if models else None,
         image_gen_model_id=models.image_gen_model_id if models else None,
         vision_model_id=models.vision_model_id if models else None,
+        schema_version=definition.schema_version,
     )

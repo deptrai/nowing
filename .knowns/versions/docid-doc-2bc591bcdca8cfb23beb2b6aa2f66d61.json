@@ -1,0 +1,79 @@
+{
+  "docId": "doc-2bc591bcdca8cfb23beb2b6aa2f66d61",
+  "docPath": "docs/component-inventory-web",
+  "currentPath": "docs/component-inventory-web",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-2bc591bcdca8cfb23beb2b6aa2f66d61",
+      "docPath": "docs/component-inventory-web",
+      "currentPath": "docs/component-inventory-web",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.567855Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "ddfdf99ebda2ca6b18b4fe20484d173ccd98377619c8f4530b652e0225c6e98c",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/component-inventory-web"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "component-inventory-web"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Nowing Web - Component Inventory"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 30,
+          "deltaBytes": 30
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 25,
+          "deltaBytes": 25
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 34,
+          "deltaBytes": 34
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Nowing Web - Component Inventory",
+        "path": "docs/component-inventory-web",
+        "title": "component-inventory-web"
+      }
+    }
+  ]
+}

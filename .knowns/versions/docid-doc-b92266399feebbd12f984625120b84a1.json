@@ -1,0 +1,79 @@
+{
+  "docId": "doc-b92266399feebbd12f984625120b84a1",
+  "docPath": "docs/component-inventory-obsidian",
+  "currentPath": "docs/component-inventory-obsidian",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-b92266399feebbd12f984625120b84a1",
+      "docPath": "docs/component-inventory-obsidian",
+      "currentPath": "docs/component-inventory-obsidian",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.537443Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "4fd6c95d0247014984ec1982946090792f71369df832eadb6e3edffc82e4f489",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/component-inventory-obsidian"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "component-inventory-obsidian"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Nowing Obsidian Plugin - Component Inventory"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 35,
+          "deltaBytes": 35
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 30,
+          "deltaBytes": 30
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 46,
+          "deltaBytes": 46
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Nowing Obsidian Plugin - Component Inventory",
+        "path": "docs/component-inventory-obsidian",
+        "title": "component-inventory-obsidian"
+      }
+    }
+  ]
+}

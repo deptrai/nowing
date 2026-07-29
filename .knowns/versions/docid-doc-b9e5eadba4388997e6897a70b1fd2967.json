@@ -1,0 +1,79 @@
+{
+  "docId": "doc-b9e5eadba4388997e6897a70b1fd2967",
+  "docPath": "docs/architecture-backend",
+  "currentPath": "docs/architecture-backend",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-b9e5eadba4388997e6897a70b1fd2967",
+      "docPath": "docs/architecture-backend",
+      "currentPath": "docs/architecture-backend",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.174192Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "d63b96a79516f0dabfc43d4330c459361cf232896f10eb1658b33ff1fa096edf",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/architecture-backend"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "architecture-backend"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Kiến trúc - Nowing Backend"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 27,
+          "deltaBytes": 27
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 22,
+          "deltaBytes": 22
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 31,
+          "deltaBytes": 31
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Kiến trúc - Nowing Backend",
+        "path": "docs/architecture-backend",
+        "title": "architecture-backend"
+      }
+    }
+  ]
+}

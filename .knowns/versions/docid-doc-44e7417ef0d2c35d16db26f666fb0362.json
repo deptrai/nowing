@@ -1,0 +1,66 @@
+{
+  "docId": "doc-44e7417ef0d2c35d16db26f666fb0362",
+  "docPath": "stories/story-8-3-usage-credit-dashboard-new-gap",
+  "currentPath": "stories/story-8-3-usage-credit-dashboard-new-gap",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-44e7417ef0d2c35d16db26f666fb0362",
+      "docPath": "stories/story-8-3-usage-credit-dashboard-new-gap",
+      "currentPath": "stories/story-8-3-usage-credit-dashboard-new-gap",
+      "version": 1,
+      "timestamp": "2026-07-28T10:28:33.26107Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "1bb448c6a7116592091f76e22d05851b5ff216500cafcce3a58637d09272c09c",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "stories/story-8-3-usage-credit-dashboard-new-gap"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Story 8.3: Usage \u0026 Credit Dashboard (New Gap)"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 50,
+          "deltaBytes": 50
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 52,
+          "deltaBytes": 52
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "path": "stories/story-8-3-usage-credit-dashboard-new-gap",
+        "title": "Story 8.3: Usage \u0026 Credit Dashboard (New Gap)"
+      }
+    }
+  ]
+}

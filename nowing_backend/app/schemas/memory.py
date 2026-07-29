@@ -15,6 +15,7 @@ from pydantic import (
 )
 
 from app.db import MemorySourceType, MemoryType
+from app.utils.strict_fields import strict_top_k
 
 
 class MemoryVersionRead(BaseModel):
@@ -112,8 +113,8 @@ class MemoryUpdate(BaseModel):
 class MemorySearchRequest(BaseModel):
     # Empty query is allowed only for thread-scoped recall (see validator);
     # nowing_continue_research relies on this to resume a thread with no query.
-    query: str = ""
-    top_k: int = Field(default=5, ge=1, le=100)
+    query: str = Field(default="", max_length=4000)
+    top_k: strict_top_k(le=5, description="Maximum memories to return.") = 5
     type: str | None = None
     tags: list[str] = Field(default_factory=list)
     research_thread_id: int | None = None
@@ -148,7 +149,10 @@ class MemorySearchHit(BaseModel):
     source_id: int | None = None
     # Story 3.13 (D7/AC-3): same soft run provenance as ``MemoryRead``.
     source_run_id: str | None = None
-    score: float
+    # Both null for a recency (query-less) hit; both finite for a ranked hit —
+    # never a fake 0.0 placeholder (Story 3.14, D1/D6, AC-6).
+    score: float | None = None
+    similarity: float | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -162,15 +166,21 @@ class MemorySearchHit(BaseModel):
         return str(value) if value is not None else None
 
     @classmethod
-    def from_memory(cls, memory: Any, *, score: float = 0.0) -> MemorySearchHit:
+    def from_memory(
+        cls,
+        memory: Any,
+        *,
+        score: float | None = None,
+        similarity: float | None = None,
+    ) -> MemorySearchHit:
         """Build a hit from an ORM ``Memory``.
 
         Exists because three call sites (REST search, the research-thread context
         route and the ``continue_research`` automation action) previously built
         this model field-by-field. Adding provenance to three hand-rolled literals
         is how one surface silently ends up without a citation, so the mapping now
-        lives in one place. ``score`` keeps its per-caller default rather than
-        being hardcoded here.
+        lives in one place. ``score`` and ``similarity`` are passed by callers that
+        have them (ranked search); recency callers omit them and both stay ``None``.
         """
         return cls(
             id=memory.id,
@@ -182,6 +192,7 @@ class MemorySearchHit(BaseModel):
             source_id=memory.source_id,
             source_run_id=memory.source_run_id,
             score=score,
+            similarity=similarity,
         )
 
 

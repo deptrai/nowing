@@ -26,6 +26,12 @@ class ActionContext:
     chat_model_id: int | None = None
     image_gen_model_id: int | None = None
     vision_model_id: int | None = None
+    # ``AutomationDefinition.schema_version`` of the run this step belongs to
+    # (Story 3.14, D9). Defaults to the current new-write producer version so
+    # call sites that don't thread a run's definition through (unit/integration
+    # tests constructing ``ActionContext`` directly) get today's strict 1..5
+    # ``continue_research`` behaviour rather than the legacy 1..100 path.
+    schema_version: str = "1.1"
 
 
 ActionHandler = Callable[[dict[str, Any]], Awaitable[Any]]

@@ -158,6 +158,19 @@ def evaluate_gate(metrics: Mapping[str, Any], thresholds: GateThresholds) -> Gat
 
     reasons: list[str] = []
 
+    # A7: if the runner recorded a backend build id, the gate must confirm it
+    # was verified against the running backend.
+    if "backend_build_id" in metrics:
+        if not metrics.get("backend_build_id_verified"):
+            reasons.append(
+                "backend_build_id was not verified against the running backend"
+            )
+        elif metrics.get("backend_build_id") != metrics.get("verified_backend_build_id"):
+            reasons.append(
+                f"backend_build_id mismatch: artifact claims {metrics.get('backend_build_id')!r}, "
+                f"running backend is {metrics.get('verified_backend_build_id')!r}"
+            )
+
     if not thresholds.baseline_ratified:
         reasons.append(
             "SM-10 thresholds are not ratified against a measured baseline "

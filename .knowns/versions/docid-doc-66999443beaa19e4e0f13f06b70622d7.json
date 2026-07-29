@@ -1,0 +1,53 @@
+{
+  "docId": "doc-66999443beaa19e4e0f13f06b70622d7",
+  "docPath": "planning/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research-progress-first",
+  "currentPath": "planning/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research-progress-first",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-66999443beaa19e4e0f13f06b70622d7",
+      "docPath": "planning/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research-progress-first",
+      "currentPath": "planning/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research-progress-first",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:49.317347Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "11eb93c9cbb0cff3275f187bb4b4855f5baa1a6cdf4cee02559ccc6e8c616bbc",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research-progress-first"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "UX Contract — Async Deep Research (progress-first)"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 108,
+          "deltaBytes": 108
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 54,
+          "deltaBytes": 54
+        }
+      ],
+      "snapshot": {
+        "path": "planning/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research-progress-first",
+        "title": "UX Contract — Async Deep Research (progress-first)"
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 """Integration tests for run-memory provenance schema (Story 3.13, T1 / AC-7).
 
-Exercises migration ``182_add_run_memory_provenance`` against real PostgreSQL:
+Exercises migration ``184_add_run_memory_provenance`` against real PostgreSQL:
 
 * ``memories.source_run_id`` is a nullable, indexed ``uuid`` and is **not** a
   foreign key to ``runs.id`` — runs are retention-cleaned after 30 days while
@@ -33,7 +33,7 @@ _MIGRATION_PATH = (
     Path(__file__).resolve().parents[3]
     / "alembic"
     / "versions"
-    / "182_add_run_memory_provenance.py"
+    / "184_add_run_memory_provenance.py"
 )
 
 _EMBEDDING_DIM = 384
@@ -48,8 +48,8 @@ RUN_COLUMNS = (
 
 def _load_migration():
     """Load the migration by file path (alembic version files are not importable)."""
-    spec = importlib.util.spec_from_file_location("_migration_182", _MIGRATION_PATH)
-    assert spec and spec.loader, "could not load migration 182 spec"
+    spec = importlib.util.spec_from_file_location("_migration_184", _MIGRATION_PATH)
+    assert spec and spec.loader, "could not load migration 184 spec"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -67,7 +67,7 @@ def _run_migration(sync_conn, fn_name: str) -> None:
 
 
 async def _drop_added_objects(db_session: AsyncSession) -> None:
-    """Return the schema to its pre-182 shape so ``upgrade()`` has work to do."""
+    """Return the schema to its pre-184 shape so ``upgrade()`` has work to do."""
     module = _load_migration()
     await db_session.execute(
         text(f"DROP INDEX IF EXISTS {module.MEMORY_SOURCE_RUN_INDEX}")

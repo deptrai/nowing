@@ -94,7 +94,7 @@ async def test_continue_research_missing_thread_returns_clear_error(settings):
 # --- helpers that drive the registered tool against a fake client ---------------
 
 
-async def _invoke_continue_research(server, *, research_thread_id):
+async def _invoke_continue_research(server, *, research_thread_id, **extra):
     """Call the registered nowing_continue_research tool and return its text.
 
     A request context is set so FastMCP can build a call context; the tool
@@ -104,11 +104,49 @@ async def _invoke_continue_research(server, *, research_thread_id):
     try:
         result = await server.call_tool(
             "nowing_continue_research",
-            {"research_thread_id": research_thread_id},
+            {"research_thread_id": research_thread_id, **extra},
         )
         return str(result)
     finally:
         mcp_request_ctx.reset(token)
+
+
+class _EchoContextClient:
+    """Fake backend client for top_k validation tests: never actually asserts
+    on the recalled top_k value, since a rejected top_k must fail before any
+    request is made."""
+
+    async def request(self, method, path, **_kwargs):
+        return {"thread_id": 7, "title": "Q3 research", "memories": [], "citations": []}
+
+
+@pytest.mark.parametrize("top_k", [1, 5])
+async def test_continue_research_accepts_boundary_top_k(top_k):
+    """Story 3.14 (D9): MCP recall/continue top_k accepts the full 1..5 range."""
+    result = await _invoke_continue_research(
+        _server_with_client(_EchoContextClient()), research_thread_id=7, top_k=top_k
+    )
+    assert "No prior citations" in result or "citation" in result.lower()
+
+
+async def test_continue_research_rejects_top_k_above_five():
+    """Story 3.14 (D9): 6+ is a validation error, never silently clamped."""
+    from mcp.server.fastmcp.exceptions import ToolError
+
+    with pytest.raises(ToolError):
+        await _invoke_continue_research(
+            _server_with_client(_EchoContextClient()), research_thread_id=7, top_k=6
+        )
+
+
+async def test_continue_research_rejects_bool_top_k():
+    """Story 3.14 (D9): bool is invalid everywhere, even though it's an int subclass."""
+    from mcp.server.fastmcp.exceptions import ToolError
+
+    with pytest.raises(ToolError):
+        await _invoke_continue_research(
+            _server_with_client(_EchoContextClient()), research_thread_id=7, top_k=True
+        )
 
 
 def _server_with_client(client):

@@ -1,0 +1,79 @@
+{
+  "docId": "doc-f9e357c5932847a8455d865d90df4749",
+  "docPath": "docs/architecture-obsidian",
+  "currentPath": "docs/architecture-obsidian",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-f9e357c5932847a8455d865d90df4749",
+      "docPath": "docs/architecture-obsidian",
+      "currentPath": "docs/architecture-obsidian",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.324003Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "d409f36f422f1ae4cd08c4c066b18d83c94880dd876d70a1e0bdc711689c5e42",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/architecture-obsidian"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "architecture-obsidian"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Kiến trúc - Nowing Obsidian Plugin"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 28,
+          "deltaBytes": 28
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 23,
+          "deltaBytes": 23
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 39,
+          "deltaBytes": 39
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Kiến trúc - Nowing Obsidian Plugin",
+        "path": "docs/architecture-obsidian",
+        "title": "architecture-obsidian"
+      }
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "docId": "doc-d092629472ba5daa4d45dfdaf1e06468",
+  "docPath": "architecture-mcp",
+  "currentPath": "architecture-mcp",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-d092629472ba5daa4d45dfdaf1e06468",
+      "docPath": "architecture-mcp",
+      "currentPath": "architecture-mcp",
+      "version": 1,
+      "timestamp": "2026-07-28T10:19:42.027678Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "de1618b854f335b2a767d83c13e3a867d5cbdc076645048e0a836158f7b194a1",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "architecture-mcp"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Architecture - MCP"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 18,
+          "deltaBytes": 18
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 20,
+          "deltaBytes": 20
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "path": "architecture-mcp",
+        "title": "Architecture - MCP"
+      }
+    }
+  ]
+}

@@ -974,6 +974,31 @@ def record_run_memory_retried() -> None:
     _add(_run_memory_retried(), 1, {})
 
 
+_memory_injection_failure_logger = logging.getLogger("memory_injection.failure")
+
+
+@lru_cache(maxsize=1)
+def _memory_injection_failures():
+    return _get_meter().create_counter(
+        "nowing.memory.injection.failures",
+        description="Count of memory injection failures by scope/stage/reason.",
+    )
+
+
+def record_memory_injection_failure(*, scope: str, stage: str, reason: str) -> None:
+    """Log + count exactly one ordinary memory injection failure attempt.
+
+    D8: the single owner of both the ``memory_injection.failure`` log and the
+    ``nowing.memory.injection.failures`` counter — callers must invoke this at
+    most once per failed attempt (precedence is resolved by the caller).
+    """
+    attrs = {"scope": scope, "stage": stage, "reason": reason}
+    with contextlib.suppress(Exception):
+        _memory_injection_failure_logger.warning("memory_injection.failure", extra=attrs)
+    with contextlib.suppress(Exception):
+        _add(_memory_injection_failures(), 1, attrs)
+
+
 def _runtime_snapshot_value(key: str, transform: Any = None) -> list[Any]:
     from opentelemetry.metrics import Observation
 
@@ -1081,6 +1106,7 @@ __all__ = [
     "record_indexing_document_outcome",
     "record_interrupt",
     "record_kb_search_duration",
+    "record_memory_injection_failure",
     "record_model_call_duration",
     "record_model_token_usage",
     "record_perf_elapsed",

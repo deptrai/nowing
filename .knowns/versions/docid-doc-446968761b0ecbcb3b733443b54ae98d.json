@@ -1,0 +1,53 @@
+{
+  "docId": "doc-446968761b0ecbcb3b733443b54ae98d",
+  "docPath": "planning/test-artifacts/test-design-epic-3-knowledge-base-search-story-3-8-unified-long-term-research-memory-backend",
+  "currentPath": "planning/test-artifacts/test-design-epic-3-knowledge-base-search-story-3-8-unified-long-term-research-memory-backend",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-446968761b0ecbcb3b733443b54ae98d",
+      "docPath": "planning/test-artifacts/test-design-epic-3-knowledge-base-search-story-3-8-unified-long-term-research-memory-backend",
+      "currentPath": "planning/test-artifacts/test-design-epic-3-knowledge-base-search-story-3-8-unified-long-term-research-memory-backend",
+      "version": 1,
+      "timestamp": "2026-07-28T12:47:49.070691Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "e16be81f3dae26fd81fd30b754fcdc89130f58c4e5180c542e041a878b02430b",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/test-artifacts/test-design-epic-3-knowledge-base-search-story-3-8-unified-long-term-research-memory-backend"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Test Design: Epic 3 - Knowledge Base \u0026 Search (Story 3.8: Unified Long-Term Research Memory Backend)"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 118,
+          "deltaBytes": 118
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 107,
+          "deltaBytes": 107
+        }
+      ],
+      "snapshot": {
+        "path": "planning/test-artifacts/test-design-epic-3-knowledge-base-search-story-3-8-unified-long-term-research-memory-backend",
+        "title": "Test Design: Epic 3 - Knowledge Base \u0026 Search (Story 3.8: Unified Long-Term Research Memory Backend)"
+      }
+    }
+  ]
+}

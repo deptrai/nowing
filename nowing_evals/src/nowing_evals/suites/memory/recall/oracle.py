@@ -9,13 +9,14 @@ non-hits in the scored result set — dropping them shrinks the precision/noise
 denominator and drives both toward a perfect score. See
 :func:`judge_returned_items`, which returns one entry per returned slot.
 
-**The score signal is decided once per run, not per query.** The backend
-currently discards the RRF score and serialises ``score=0.0`` for every hit
-(``app/services/memory/search.py`` → ``memories_routes.py``), so a similarity
-threshold cannot be applied at all. That degradation is legitimate (§9
-anticipated it) but it must be an explicit, recorded, run-level fact — never a
-per-query heuristic that silently flips definitions, and never one that reads
-"every score is 0.0" as "every result is a hit".
+**The score signal is decided once per run, not per query.** Story 3.14
+(Task 1) replaced the backend's fake ``score=0.0`` placeholder with real,
+distinct RRF similarities, so a live run now normally carries a usable
+signal. The degraded path is still reachable — a stale deployment, or a
+corpus that genuinely ties on every score — and it must remain an explicit,
+recorded, run-level fact rather than a per-query heuristic that silently
+flips definitions, and never one that reads "every score is 0.0" as "every
+result is a hit".
 """
 
 from __future__ import annotations
@@ -60,11 +61,17 @@ def validate_min_similarity(min_similarity: float) -> float:
 
 
 def _numeric_score(item: Mapping[str, Any]) -> float | None:
-    score = item.get("score")
-    if score is None or isinstance(score, bool):
+    # A1: AC-7 threshold must read cosine similarity, not RRF score.
+    # Score is retained in the artifact for ordering/diagnostics only.
+    # Fallback to ``score`` only when the response carries no ``similarity`` key
+    # (legacy / simplified test fixtures); production hits always include both.
+    similarity = item.get("similarity")
+    if similarity is None and "similarity" not in item and "score" in item:
+        similarity = item.get("score")
+    if similarity is None or isinstance(similarity, bool):
         return None
     try:
-        numeric = float(score)
+        numeric = float(similarity)
     except (TypeError, ValueError):
         return None
     return numeric if math.isfinite(numeric) else None
@@ -75,10 +82,10 @@ def resolve_oracle_mode(all_returned_items: Sequence[Mapping[str, Any]]) -> str:
 
     ``score_threshold`` requires a usable similarity signal, which means at
     least two distinct finite scores across the run. A response where every
-    score is identical (notably the backend's constant ``0.0``) carries no
-    ordering information beyond rank, so the run degrades to
-    ``rank_only`` — recorded in the artifact so the gate can verify which
-    definition produced the numbers.
+    score is identical (a stale deployment still serialising a constant
+    ``0.0``, or a corpus that genuinely ties) carries no ordering information
+    beyond rank, so the run degrades to ``rank_only`` — recorded in the
+    artifact so the gate can verify which definition produced the numbers.
 
     Note the safety direction: under ``rank_only`` every slot inside ``top_k``
     is *judged*, not *awarded*. Relevance still comes from the qrels, so a

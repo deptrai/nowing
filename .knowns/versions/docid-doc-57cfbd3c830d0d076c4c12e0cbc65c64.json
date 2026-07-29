@@ -1,0 +1,66 @@
+{
+  "docId": "doc-57cfbd3c830d0d076c4c12e0cbc65c64",
+  "docPath": "stories/story-3-7-data-retention-lifecycle-new-gap",
+  "currentPath": "stories/story-3-7-data-retention-lifecycle-new-gap",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-57cfbd3c830d0d076c4c12e0cbc65c64",
+      "docPath": "stories/story-3-7-data-retention-lifecycle-new-gap",
+      "currentPath": "stories/story-3-7-data-retention-lifecycle-new-gap",
+      "version": 1,
+      "timestamp": "2026-07-28T10:28:33.085009Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "1616e5e4525af13742a2aa51f38eec15766832856eb187866034a6472a5fa22c",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "stories/story-3-7-data-retention-lifecycle-new-gap"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Story 3.7: Data Retention \u0026 Lifecycle (New Gap)"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 52,
+          "deltaBytes": 52
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 54,
+          "deltaBytes": 54
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "path": "stories/story-3-7-data-retention-lifecycle-new-gap",
+        "title": "Story 3.7: Data Retention \u0026 Lifecycle (New Gap)"
+      }
+    }
+  ]
+}

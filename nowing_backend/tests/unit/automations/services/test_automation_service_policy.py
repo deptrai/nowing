@@ -54,7 +54,7 @@ def _service(workspace: Any) -> AutomationService:
 def _definition(**kwargs: Any) -> AutomationDefinition:
     return AutomationDefinition(
         name="A",
-        plan=[PlanStep(step_id="s1", action="agent_task")],
+        plan=[PlanStep(step_id="s1", action="agent_task", params={"query": "hello"})],
         **kwargs,
     )
 

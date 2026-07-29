@@ -1,0 +1,79 @@
+{
+  "docId": "doc-8ea50d2c2296b57c6ebfa83b3b2358ba",
+  "docPath": "platforms/platform-amazon",
+  "currentPath": "platforms/platform-amazon",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-8ea50d2c2296b57c6ebfa83b3b2358ba",
+      "docPath": "platforms/platform-amazon",
+      "currentPath": "platforms/platform-amazon",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:12.382762Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "07ed122a26e82af26851c9605f0bb5dd384ba28b8d86174deab07527c0b8238d",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "platforms/platform-amazon"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Platform - amazon"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "Amazon Product Scraper"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 27,
+          "deltaBytes": 27
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 19,
+          "deltaBytes": 19
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 24,
+          "deltaBytes": 24
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "Amazon Product Scraper",
+        "path": "platforms/platform-amazon",
+        "title": "Platform - amazon"
+      }
+    }
+  ]
+}

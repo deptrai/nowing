@@ -1,0 +1,136 @@
+{
+  "taskId": "hc504w",
+  "currentVersion": 4,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "hc504w",
+      "version": 1,
+      "timestamp": "2026-07-28T10:28:33.381753Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "in-progress"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "high"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T17:28:33.379151+07:00",
+        "description": "Epic 6 from sprint-status",
+        "id": "hc504w",
+        "labels": [
+          "epic-6"
+        ],
+        "priority": "high",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Epic 6: Automations",
+        "updatedAt": "2026-07-28T17:28:33.379151+07:00"
+      }
+    },
+    {
+      "id": "v2",
+      "taskId": "hc504w",
+      "version": 2,
+      "timestamp": "2026-07-28T13:31:50.218279Z",
+      "author": "api",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": "in-progress",
+          "newValue": "done"
+        },
+        {
+          "field": "completedAt",
+          "oldValue": null,
+          "newValue": "2026-07-28T13:31:50.218279Z"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T13:31:50.218279Z",
+        "createdAt": "2026-07-28T10:28:33.379Z",
+        "description": "Epic 6 from sprint-status",
+        "id": "hc504w",
+        "labels": [
+          "epic-6"
+        ],
+        "priority": "high",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "Epic 6: Automations",
+        "updatedAt": "2026-07-28T13:31:50.218279Z"
+      }
+    },
+    {
+      "id": "v3",
+      "taskId": "hc504w",
+      "version": 3,
+      "timestamp": "2026-07-28T13:32:44.283417Z",
+      "author": "api",
+      "changes": [
+        {
+          "field": "order",
+          "oldValue": null,
+          "newValue": 0
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T13:31:50.218Z",
+        "createdAt": "2026-07-28T10:28:33.379Z",
+        "description": "Epic 6 from sprint-status",
+        "id": "hc504w",
+        "labels": [
+          "epic-6"
+        ],
+        "order": 0,
+        "priority": "high",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "Epic 6: Automations",
+        "updatedAt": "2026-07-28T13:32:44.283417Z"
+      }
+    },
+    {
+      "id": "v4",
+      "taskId": "hc504w",
+      "version": 4,
+      "timestamp": "2026-07-28T13:39:42.213153Z",
+      "author": "api",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": "done",
+          "newValue": "in-progress"
+        },
+        {
+          "field": "completedAt",
+          "oldValue": "2026-07-28T13:31:50.218Z",
+          "newValue": null
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T10:28:33.379Z",
+        "description": "Epic 6 from sprint-status",
+        "id": "hc504w",
+        "labels": [
+          "epic-6"
+        ],
+        "order": 0,
+        "priority": "high",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Epic 6: Automations",
+        "updatedAt": "2026-07-28T13:39:42.213153Z"
+      }
+    }
+  ]
+}

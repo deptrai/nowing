@@ -1,0 +1,79 @@
+{
+  "docId": "doc-e1f42cef5674bde219c91880f3844cec",
+  "docPath": "docs/ci",
+  "currentPath": "docs/ci",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-e1f42cef5674bde219c91880f3844cec",
+      "docPath": "docs/ci",
+      "currentPath": "docs/ci",
+      "version": 1,
+      "timestamp": "2026-07-28T10:20:11.453722Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "28f8b06930bf9a6c94650244e9b2c1c5bb79e5be679ffdb5461904eeab61edf8",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "docs/ci"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "ci"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "CI/CD Pipeline Guide"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "-"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 9,
+          "deltaBytes": 9
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 4,
+          "deltaBytes": 4
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 22,
+          "deltaBytes": 22
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 1,
+          "deltaBytes": 1
+        }
+      ],
+      "snapshot": {
+        "content": "-",
+        "description": "CI/CD Pipeline Guide",
+        "path": "docs/ci",
+        "title": "ci"
+      }
+    }
+  ]
+}

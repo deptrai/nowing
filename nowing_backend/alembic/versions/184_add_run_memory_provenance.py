@@ -17,14 +17,12 @@ Story 3.13 (FR-40, first-run value — research run produces memory):
   re-calls (and re-pays for) the extraction LLM. ``status`` is indexed because
   the claim is a compare-and-set on it.
 
-Revision ID: 182
-Revises: 180
+Revision ID: 184
+Revises: 183
 
-Revision choice: ``180`` is the tracked integration head at baseline
-``25ba542c2``. Revision ``181`` is deliberately skipped — Story 3.14 holds an
-untracked ``181_add_memories_thread_recency_index.py`` in another working tree,
-and reusing the id would collide on merge. If 3.14's ``181`` reaches the
-integration branch first, rebase this revision's ``down_revision`` onto it.
+Revision choice: ``183`` is the tracked integration head at the time of merge.
+Rebasing past Story 3.14's ``181`` and the intervening ``182``/``183`` avoids a
+revision-id collision on ``develop``.
 """
 
 from __future__ import annotations
@@ -36,8 +34,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision: str = "182"
-down_revision: str | None = "180"
+revision: str = "184"
+down_revision: str | None = "183"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

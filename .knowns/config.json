@@ -1,0 +1,97 @@
+{
+  "name": "nowing",
+  "id": "nowing",
+  "createdAt": "2026-07-28T09:15:42.463983Z",
+  "settings": {
+    "defaultPriority": "high",
+    "taskLifecycle": {
+      "excludeDoneFromDefaultRetrieval": true,
+      "autoArchive": true,
+      "archiveAfter": "30d",
+      "purgeAfter": null
+    },
+    "gitTrackingMode": "git-tracked",
+    "gitTracking": {
+      "tasks": true,
+      "docs": true,
+      "templates": true,
+      "memories": true,
+      "decisions": true
+    },
+    "statuses": [
+      "todo",
+      "in-progress",
+      "in-review",
+      "done",
+      "blocked",
+      "on-hold",
+      "urgent"
+    ],
+    "statusColors": {
+      "blocked": "red",
+      "done": "green",
+      "in-progress": "blue",
+      "in-review": "purple",
+      "on-hold": "yellow",
+      "todo": "gray",
+      "urgent": "orange"
+    },
+    "visibleColumns": [
+      "todo",
+      "in-progress",
+      "blocked",
+      "done",
+      "in-review",
+      "on-hold",
+      "urgent"
+    ],
+    "semanticSearch": {
+      "enabled": true,
+      "model": "nomic-embed-text-v1.5",
+      "provider": "local",
+      "huggingFaceId": "Xenova/nomic-embed-text-v1.5",
+      "dimensions": 768,
+      "maxTokens": 512
+    },
+    "serverPort": 6420,
+    "platforms": [
+      "claude-code"
+    ],
+    "enableChatUI": true,
+    "lsp": {
+      "enabled": true,
+      "languages": {
+        "bash": {
+          "enabled": true
+        },
+        "c_cpp": {
+          "enabled": true
+        },
+        "javascript": {
+          "enabled": true
+        },
+        "json": {
+          "enabled": true
+        },
+        "markdown": {
+          "enabled": true
+        },
+        "python": {
+          "enabled": true
+        },
+        "scss": {
+          "enabled": true
+        },
+        "typescript": {
+          "enabled": true
+        },
+        "typescriptreact": {
+          "enabled": true
+        },
+        "yaml": {
+          "enabled": true
+        }
+      }
+    }
+  }
+}
