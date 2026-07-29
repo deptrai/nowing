@@ -1,0 +1,41 @@
+{
+  "taskId": "y5pi1g",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "y5pi1g",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.508494Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.503894Z",
+        "createdAt": "2026-07-28T22:10:18.503894+07:00",
+        "id": "y5pi1g",
+        "labels": [
+          "bmad",
+          "bmad-key-4-3-real-time-collaborative-chat",
+          "epic-4"
+        ],
+        "parent": "dx8h2w",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "4 3 Real Time Collaborative Chat",
+        "updatedAt": "2026-07-28T15:10:18.503894Z"
+      }
+    }
+  ]
+}

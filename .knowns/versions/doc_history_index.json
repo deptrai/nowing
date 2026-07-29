@@ -1,6 +1,9 @@
 {
   "paths": {
     "architecture-mcp": "doc-d092629472ba5daa4d45dfdaf1e06468",
+    "bridge-test/at-test": "doc-60e10a86f26b0436af8884cb4c0f7407",
+    "bridge-test/bridge-test": "doc-d994161ff3a0466d7d7a026267851ad7",
+    "bridge-test/cli-then-direct": "doc-4f7b6c664104f6b787a04033ac572b70",
     "docs/api-contracts-backend": "doc-a57f9d4959b67e50d5107409cb269bd8",
     "docs/api-contracts-mcp": "doc-3b478f1b50214ecedb773cafd2b458ca",
     "docs/architecture-backend": "doc-b9e5eadba4388997e6897a70b1fd2967",
@@ -36,6 +39,7 @@
     "modules/readme-nowing-evals": "doc-fc5e03a2b5d6c15178b6b9d4cd95870e",
     "modules/readme-nowing-mcp": "doc-53ac76b2b5f562f8bf0c5ae367dced4d",
     "modules/readme-nowing-obsidian": "doc-fc52345a0dc1b1d904a69797d3b6939e",
+    "planning/chainlens-search-agent-platform-v2-epic-breakdown": "doc-90f33f944c46ab3063cf67ebed67cd2e",
     "planning/implementation-artifacts/acceptance-auditor-story-3-13-chunk-1": "doc-8ca2782c4c5d3204daaee46812c1743a",
     "planning/implementation-artifacts/blind-hunter-review-story-3-14": "doc-ba4fdb1998182a63bdc0a56748324f5b",
     "planning/implementation-artifacts/blind-hunter-story-3-13-chunk-1": "doc-3f11ad30544978883254c0c12903485e",
@@ -101,6 +105,7 @@
     "stories/story-3-6-citation-scroll-to-highlight-in-full-document-editor-new-gap": "doc-77dcbc395ad44dfc31d047ffcac832bb",
     "stories/story-3-7-data-retention-lifecycle-new-gap": "doc-57cfbd3c830d0d076c4c12e0cbc65c64",
     "stories/story-3-8-unified-long-term-research-memory-backend": "doc-c6f03411f7b567951ee7e3969156dd8e",
+    "stories/story-3-9-memory-recall-eval-gate": "doc-648e755970f3d573a5016a59dcf14a15",
     "stories/story-4-5-agent-memory-tools-via-mcp": "doc-7df186a13634254e49e40ca5f75a4a66",
     "stories/story-4-6-research-continuity": "doc-0ec52814df3cb1e8c5dd84070e4fabc8",
     "stories/story-6-4-direct-write-back-actions": "doc-6cffa08c8c177ea744b9f5d18a7b2bf9",
@@ -109,7 +114,9 @@
     "stories/story-8-7-auto-extract-spend-budget-cap-wallet-pre-check-rate-limit-new-gap": "doc-b1564b30e04e1c7879e362a3821e0eb0",
     "stories/story-9-1a-research-degradation-self-host-independence": "doc-0528ccc8968a0400b8b422955e597ba9",
     "stories/test-story-doc": "doc-d5706aa7cea017f15c05ad588b5a89d8",
+    "testbig/big-test": "doc-56d9b6119289844e181fc348df6c981e",
     "tests/tests-nowing-backend": "doc-8202b753640a5379bdf4ba82a0f8495c",
-    "tests/tests-nowing-web": "doc-3bbd8626862675c75dcf47322035ac32"
+    "tests/tests-nowing-web": "doc-3bbd8626862675c75dcf47322035ac32",
+    "testslug/prd-foo-bar-v2-0-test-ok": "doc-c7e0bff57ee1a1c7a519ae98e144a06a"
   }
 }

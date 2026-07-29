@@ -1,0 +1,43 @@
+{
+  "taskId": "u0001p",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "u0001p",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.911839Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.9086Z",
+        "createdAt": "2026-07-28T22:10:18.9086+07:00",
+        "description": "**Status:** done  \n**Epic:** 8 — Platform Operations  \n**Source:** \u003cref_file file=\"/Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/epics.md\" /\u003e  \n**Related PRD:** NFR-7 (§5) in \u003cref_file file=\"/Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md\" /\u003e  \n**Related Architecture:** AD-8, AD-10, AD-DEFER-5 in \u003cref_file file=\"/Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITE",
+        "id": "u0001p",
+        "labels": [
+          "bmad",
+          "bmad-key-8-3-usage-credit-dashboard-new-gap",
+          "epic-8"
+        ],
+        "parent": "kaffa6",
+        "priority": "medium",
+        "spec": "stories/story-8-3-usage-credit-dashboard-new-gap",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "Story 8.3: Usage \u0026 Credit Dashboard (New Gap)",
+        "updatedAt": "2026-07-28T15:10:18.9086Z"
+      }
+    }
+  ]
+}

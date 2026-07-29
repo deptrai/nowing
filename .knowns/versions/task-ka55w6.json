@@ -1,0 +1,41 @@
+{
+  "taskId": "ka55w6",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "ka55w6",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.230659Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.227454Z",
+        "createdAt": "2026-07-28T22:10:18.227454+07:00",
+        "id": "ka55w6",
+        "labels": [
+          "bmad",
+          "bmad-key-2-5-workspace-mcp-tool-enable-disable-toggle-new-gap",
+          "epic-2"
+        ],
+        "parent": "ss451b",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "2 5 Workspace Mcp Tool Enable Disable Toggle New Gap",
+        "updatedAt": "2026-07-28T15:10:18.227454Z"
+      }
+    }
+  ]
+}

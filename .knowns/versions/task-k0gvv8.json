@@ -1,0 +1,40 @@
+{
+  "taskId": "k0gvv8",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "k0gvv8",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:17.678456Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:17.673783Z",
+        "createdAt": "2026-07-28T22:10:17.673783+07:00",
+        "id": "k0gvv8",
+        "labels": [
+          "bmad",
+          "bmad-key-epic-1",
+          "epic-1"
+        ],
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "Epic epic-1",
+        "updatedAt": "2026-07-28T15:10:17.673783Z"
+      }
+    }
+  ]
+}

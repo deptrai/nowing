@@ -1,0 +1,41 @@
+{
+  "taskId": "vh70dv",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "vh70dv",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.169815Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.167188Z",
+        "createdAt": "2026-07-28T22:10:18.167188+07:00",
+        "id": "vh70dv",
+        "labels": [
+          "bmad",
+          "bmad-key-2-2-external-oauth-connectors",
+          "epic-2"
+        ],
+        "parent": "ss451b",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "2 2 External Oauth Connectors",
+        "updatedAt": "2026-07-28T15:10:18.167188Z"
+      }
+    }
+  ]
+}

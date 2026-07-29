@@ -1,0 +1,41 @@
+{
+  "taskId": "sypp7b",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "sypp7b",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.488402Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.485516Z",
+        "createdAt": "2026-07-28T22:10:18.485516+07:00",
+        "id": "sypp7b",
+        "labels": [
+          "bmad",
+          "bmad-key-4-2-multi-agent-runtime-with-tools",
+          "epic-4"
+        ],
+        "parent": "dx8h2w",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "4 2 Multi Agent Runtime With Tools",
+        "updatedAt": "2026-07-28T15:10:18.485516Z"
+      }
+    }
+  ]
+}

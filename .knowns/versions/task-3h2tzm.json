@@ -1,0 +1,43 @@
+{
+  "taskId": "3h2tzm",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "3h2tzm",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.73376Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.731257Z",
+        "createdAt": "2026-07-28T22:10:18.731257+07:00",
+        "description": "Status: done\n\n\nAs a workspace member,\nI want automation actions to write directly to Notion, Slack, Linear, or Jira,\nso that research outputs land in the tools my team already uses.\n\n\n1. **Action registry accepts new types**\n   - `write_back_notion`, `write_back_linear`, `write_back_jira`, `write_back_slack` are registered as `ActionDefinition` entries.\n   - Each has its own `params_model` and handler package under `app/automations/actions/builtin/`.\n\n2. **Each action writes through the connecte",
+        "id": "3h2tzm",
+        "labels": [
+          "bmad",
+          "bmad-key-6-4-direct-write-back-actions-new-gap",
+          "epic-6"
+        ],
+        "parent": "jw240f",
+        "priority": "medium",
+        "spec": "stories/story-6-4-direct-write-back-actions",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "Story 6.4: Direct Write-Back Actions",
+        "updatedAt": "2026-07-28T15:10:18.731257Z"
+      }
+    }
+  ]
+}

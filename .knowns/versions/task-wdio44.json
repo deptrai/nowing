@@ -1,0 +1,42 @@
+{
+  "taskId": "wdio44",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "wdio44",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:19.110796Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:19.108088Z",
+        "createdAt": "2026-07-28T22:10:19.108088+07:00",
+        "description": "code-complete qua sprint story 8-4 observability-logging. Đánh lại số từ 8.5",
+        "id": "wdio44",
+        "labels": [
+          "bmad",
+          "bmad-key-8-9-memory-cost-turn-observability",
+          "epic-8"
+        ],
+        "parent": "kaffa6",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "8 9 Memory Cost Turn Observability",
+        "updatedAt": "2026-07-28T15:10:19.108088Z"
+      }
+    }
+  ]
+}

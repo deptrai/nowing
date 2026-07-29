@@ -1,0 +1,43 @@
+{
+  "taskId": "h77c67",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "h77c67",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.35097Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.347619Z",
+        "createdAt": "2026-07-28T22:10:18.347619+07:00",
+        "description": "**Status:** done\n**Epic:** 3 — Knowledge Base \u0026 Search\n**Source:** \u003cref_file file=\"/Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/epics.md\" /\u003e\n**Related PRD:** FR-13, NFR-6 in \u003cref_file file=\"/Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md\" /\u003e\n**Related Architecture:** AD-DEFER-1 in \u003cref_file file=\"/Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md\"",
+        "id": "h77c67",
+        "labels": [
+          "bmad",
+          "bmad-key-3-6-citation-scroll-to-highlight-in-full-document-editor-new-gap",
+          "epic-3"
+        ],
+        "parent": "i5cw4u",
+        "priority": "medium",
+        "spec": "stories/story-3-6-citation-scroll-to-highlight-in-full-document-editor-new-gap",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "Story 3.6: Citation Scroll-to-Highlight in Full Document Editor (New Gap)",
+        "updatedAt": "2026-07-28T15:10:18.347619Z"
+      }
+    }
+  ]
+}

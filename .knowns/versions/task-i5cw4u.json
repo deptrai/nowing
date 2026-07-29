@@ -1,0 +1,39 @@
+{
+  "taskId": "i5cw4u",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "i5cw4u",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:17.756836Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "in-progress"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T22:10:17.75494+07:00",
+        "id": "i5cw4u",
+        "labels": [
+          "bmad",
+          "bmad-key-epic-3",
+          "epic-3"
+        ],
+        "priority": "medium",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Epic epic-3",
+        "updatedAt": "2026-07-28T22:10:17.75494+07:00"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "taskId": "20rb6c",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "20rb6c",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.592753Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.589469Z",
+        "createdAt": "2026-07-28T22:10:18.589469+07:00",
+        "id": "20rb6c",
+        "labels": [
+          "bmad",
+          "bmad-key-5-1-report-generation-export",
+          "epic-5"
+        ],
+        "parent": "cv5wzz",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "5 1 Report Generation Export",
+        "updatedAt": "2026-07-28T15:10:18.589469Z"
+      }
+    }
+  ]
+}

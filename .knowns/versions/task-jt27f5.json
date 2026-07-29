@@ -1,0 +1,41 @@
+{
+  "taskId": "jt27f5",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "jt27f5",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:19.19979Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "backlog"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "high"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T22:10:19.196327+07:00",
+        "description": "P0 nhưng KHÔNG chặn public repo — FR-24. Contract test khoá SSE format. Tách từ 9-1 (Q-3). Đối ứng ChainLens 42-2",
+        "id": "jt27f5",
+        "labels": [
+          "bmad",
+          "bmad-key-9-1b-research-contract-regression-guard",
+          "epic-9"
+        ],
+        "parent": "rzwqza",
+        "priority": "high",
+        "status": "backlog",
+        "timeSpent": 0,
+        "title": "9 1B Research Contract Regression Guard",
+        "updatedAt": "2026-07-28T22:10:19.196327+07:00"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "taskId": "58hnkx",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "58hnkx",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.930688Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.927999Z",
+        "createdAt": "2026-07-28T22:10:18.927999+07:00",
+        "id": "58hnkx",
+        "labels": [
+          "bmad",
+          "bmad-key-8-4-observability-logging",
+          "epic-8"
+        ],
+        "parent": "kaffa6",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "8 4 Observability Logging",
+        "updatedAt": "2026-07-28T15:10:18.927999Z"
+      }
+    }
+  ]
+}

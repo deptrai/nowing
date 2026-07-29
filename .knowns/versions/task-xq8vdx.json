@@ -1,0 +1,41 @@
+{
+  "taskId": "xq8vdx",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "xq8vdx",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.714652Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.711502Z",
+        "createdAt": "2026-07-28T22:10:18.711502+07:00",
+        "id": "xq8vdx",
+        "labels": [
+          "bmad",
+          "bmad-key-6-3-agent-task-action",
+          "epic-6"
+        ],
+        "parent": "jw240f",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "6 3 Agent Task Action",
+        "updatedAt": "2026-07-28T15:10:18.711502Z"
+      }
+    }
+  ]
+}

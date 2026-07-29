@@ -1,0 +1,41 @@
+{
+  "taskId": "k0f0p1",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "k0f0p1",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.651269Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.648575Z",
+        "createdAt": "2026-07-28T22:10:18.648575+07:00",
+        "id": "k0f0p1",
+        "labels": [
+          "bmad",
+          "bmad-key-5-4-image-generation",
+          "epic-5"
+        ],
+        "parent": "cv5wzz",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "5 4 Image Generation",
+        "updatedAt": "2026-07-28T15:10:18.648575Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "taskId": "jw240f",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "jw240f",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:17.872675Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "in-progress"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T22:10:17.868936+07:00",
+        "id": "jw240f",
+        "labels": [
+          "bmad",
+          "bmad-key-epic-6",
+          "epic-6"
+        ],
+        "priority": "medium",
+        "status": "in-progress",
+        "timeSpent": 0,
+        "title": "Epic epic-6",
+        "updatedAt": "2026-07-28T22:10:17.868936+07:00"
+      }
+    }
+  ]
+}

@@ -2,6 +2,691 @@
 title: Architecture Spine — Nowing
 description: ''
 createdAt: '2026-07-28T12:47:49.533Z'
-updatedAt: '2026-07-28T12:47:49.533Z'
-tags: []
+updatedAt: '2026-07-28T15:17:33.210Z'
+tags:
+  - bmad
+  - bmad-source-bmad-output-planning-artifacts-architecture-architecture-nowing-2026-07-22-architecture-spine-md
 ---
+
+---
+name: 'Nowing Architecture Spine'
+type: architecture-spine
+purpose: build-substrate
+altitude: feature
+paradigm: 'layered modular monolith + stateless MCP server + client-server with Zero sync'
+scope: 'Toàn bộ hệ sinh thái Nowing: backend FastAPI, web Next.js, desktop Electron, browser extension, Obsidian plugin, MCP server, và evals.'
+status: draft
+created: '2026-07-22'
+updated: '2026-07-26'
+binds: []
+sources:
+  - /Users/luisphan/Documents/nowing/docs/architecture-backend.md
+  - /Users/luisphan/Documents/nowing/docs/architecture-web.md
+  - /Users/luisphan/Documents/nowing/docs/architecture-mcp.md
+  - /Users/luisphan/Documents/nowing/docs/api-contracts-backend.md
+  - /Users/luisphan/Documents/nowing/docs/api-contracts-mcp.md
+  - /Users/luisphan/Documents/nowing/docs/integration-architecture.md
+companions:
+  - /Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md
+  - /Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/epics.md
+  - /Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md
+  - /Users/luisphan/Documents/chainlens-research/_bmad-output/planning-artifacts/architecture/ADR-CHAINLENS-AS-NOWING-MICROSERVICE.md
+---
+
+# Architecture Spine — Nowing
+
+> **⛵ Amendment 2026-07-25 — Nowing = sản phẩm, ChainLens = engine.** Nguồn: `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md` (✅ ADOPTED). Thay đổi: **AD-15 mới** (ChainLens là external deep-research dependency, không phải scraper capability) · **AD-16 mới** (ranh giới license ba tầng; `app/proprietary/` là biên BSL 1.1) · **AD-DEFER-7 mới** (owned web index / crawl-at-scale = NON-GOAL) · **AD-3 amended** (bỏ FR-24 khỏi binds) · **AD-8 amended** (cost thật từ `costDollars`, không giá phẳng) · **AD-11 amended** (provenance phải nối được về nguồn chạy lại được — FR-39, hiện đang bị defect schema) · Capability map re-bind. Đối ứng phía ChainLens: `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` (✅ ACCEPTED).
+>
+> **🧹 Dọn 2026-07-25 (readiness check `implementation-readiness-report-2026-07-25.md`).** Section `## Deferred / Gaps` có **5 mục lỗi thời** — hoãn thứ mà code đã làm. Đã verify từng cái bằng code rồi đóng: **AD-DEFER-1** (citation highlight) · **AD-DEFER-2** (write-back actions) · **AD-DEFER-3** (MCP tool toggle) · **AD-DEFER-5** (usage dashboard) · **AD-DEFER-6** (memory-driven automations). **AD-DEFER-4** hạ xuống `PARTIAL` (doc-retention schema đã có; legal/right-to-delete cho memory mới là phần còn mở). Sửa thêm: **AD-16 bị đặt lạc vào section Deferred** → chuyển về `## Invariants & Rules`; **`AD-REMOVED` trùng lặp hai chỗ** → giữ một.
+>
+> **✅ Bổ sung 2026-07-25 (đợt 2) — hai AD giải nốt readiness Q-2 / U-1 / U-2:**
+> - **`AD-11.1`** (trong AD-11) — **chốt:** `Memory` **tự chứa recipe** (`source_capability` + `source_input` + soft `source_run_id`), **không** dùng retention có điều kiện cho `runs`. Story **`9.6a`/`9.6b`** giờ có AC xác định.
+> - **`AD-17` mới** — deep research chạy trên **async door SẴN CÓ** của capability. **Cải chính readiness U-1:** hạ tầng async đã build end-to-end (`?mode=async` → 202, SSE `runs/{id}/events`, ring buffer replay 500 event, cancel, history) và **web đã có typed client**; `chainlens.research` đã nằm sau nó. **U-2 chốt:** đi SSE, **không** thêm `runs` vào `ZERO_PUBLICATION`. ⇒ Story `9.3` **thu hẹp** còn 3 việc thật: **Redis-backed bus** (bus hiện *single-process*, nhiều replica sẽ im lặng mất event), **async agent door** (agent door đang sync — đây mới là chỗ block chat turn), **notification + deliverable persistence**.
+>
+> **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
+> - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
+> - **`AD-20` mới** — screenshot-as-evidence dùng **browser tier sẵn có** (patchright đã mở đúng trang, `page.screenshot()` là một lời gọi) + vision model **đã có** (`get_vision_llm`, `Workspace.vision_model_id`) khi extraction mỏng. **KHÔNG** adopt visual-RAG stack (PixelRAG): `AD-2` pgvector **không đổi**, không FAISS/Qdrant, không GPU cho self-host, không nhân storage 100–500×, citation `FR-13`/`NFR-6` không vỡ. Cải chính một nhầm lẫn loại: **visual RAG không phải giải pháp CAPTCHA**.
+
+## Design Paradigm
+
+**Backend: Layered modular monolith.**
+```
+HTTP request
+    ↓
+app/routes/          (FastAPI controllers / request validation)
+    ↓
+app/services/        (business logic, external services)
+app/capabilities/    (scraper capabilities, self-registering routes)
+app/agents/          (multi-agent chat runtime)
+app/automations/     (trigger/action/run engine)
+app/tasks/           (Celery background tasks)
+    ↓
+app/db.py            (SQLAlchemy models)
+app/retriever/       (hybrid search)
+```
+
+**Client-Server: Server-driven state với Zero sync.**
+- Web (Next.js App Router) proxy mọi REST call tới backend qua `/api/v1/[...path]`.
+- Real-time state (chat, comments, automations) sync qua Rocicorp Zero publication.
+- Desktop bọc web app và thêm native capabilities qua preload IPC.
+- Browser extension / Obsidian plugin gọi REST trực tiếp bằng PAT.
+
+**MCP Server: Stateless HTTP service.**
+- Không giữ session; mỗi request mang `Authorization: Bearer <NOWING_API_KEY>`.
+- `WorkspaceContext` chọn workspace active; tool gọi backend REST qua `NowingClient`.
+
+## Inherited Invariants
+
+Không có parent spine; đây là spine cao nhất.
+
+## Invariants & Rules
+
+### AD-1 — Backend là monolith module hóa, không microservice
+- **Binds:** toàn bộ backend
+- **Prevents:** việc tách scraper/agent/automation thành các service riêng lẻ gây overhead giao tiếp
+- **Rule:** Mọi nghiệp vụ nằm trong một process FastAPI; giao tiếp nội bộ qua function call; chỉ gọi ngoài qua HTTP (OAuth, LLM, Stripe, **ChainLens deep-research engine**) hoặc queue (Celery). Mỗi domain có thư mục riêng (`app/capabilities/`, `app/agents/`, `app/automations/`).
+- **Ghi chú 2026-07-25:** AD-1 cấm tách **nghiệp vụ nội bộ** thành microservice; nó **không** cấm gọi service ngoài. ChainLens (AD-15) là service ngoài gọi qua HTTP — nằm trong ngoại lệ đã có của AD-1, không phải vi phạm.
+
+### AD-2 — Async SQLAlchemy + Alembic + PostgreSQL/pgvector
+- **Binds:** toàn bộ persistence
+- **Prevents:** blocking I/O trên database; schema drift không kiểm soát
+- **Rule:** Mọi DB I/O dùng `AsyncSession`. Mọi thay đổi schema phải có migration Alembic. Mọi model dùng `DeclarativeBase` trong `app/db.py`. Vector search dùng `pgvector` với embedding column.
+
+### AD-3 — Scraper capabilities tự đăng ký route
+- **Binds:** FR-6, built-in connectors *(amended 2026-07-25: **FR-24 đã rời AD-3** → governed by AD-15)*
+- **Prevents:** phải sửa `app/routes/__init__.py` khi thêm scraper mới
+- **Rule:** Mỗi capability trong `app/capabilities/<platform>/` export `definition.py` với `build_capabilities_router()`; `app/routes/__init__.py` gọi registry để mount động. Mỗi capability tạo `Run` row.
+- **⚠️ Amendment 2026-07-25 (SCP chainlens-engine-boundary, A2):** `app/capabilities/chainlens/` **KHÔNG** còn được governed bởi AD-3. Module code giữ nguyên vị trí trong `app/capabilities/` (không refactor — đổi layout là churn không giá trị), nhưng nó là **external service dependency**, không phải scraper: nó có contract phải giữ ổn định, cost thật phải đo, failure mode phải degrade. Governed by **AD-15**. Không được suy ra bất kỳ tính chất "scraper" nào (ví dụ: billing phẳng per-run) cho ChainLens từ AD-3.
+
+### AD-4 — Multi-agent chat runtime với tool registry và permission middleware
+- **Binds:** FR-15, FR-16, agent tools
+- **Prevents:** agent tự do gọi tool không kiểm soát, hoặc ghi đè dữ liệu không mong muốn
+- **Rule:** Main agent chọn tool từ `main_agent/tools/registry.py`. Mọi tool call ghi `AgentActionLog`. `PermissionMiddleware`/`AgentPermissionRule` kiểm tra trước khi cho phép mutate documents/folders. Revert dùng `DocumentRevision`/`FolderRevision`.
+
+### AD-5 — Zero sync cho real-time client state
+- **Binds:** FR-16, real-time web chat
+- **Prevents:** polling hoặc WebSocket custom
+- **Rule:** Backend tạo `zero_publication` Postgres publication. Web dùng `/api/zero/mutate` và `/api/zero/query` để đồng bộ `new_chat_threads`, `new_chat_messages`, `chat_comments`, `notifications`, `automation_runs`.
+
+### AD-6 — Next.js server proxy tới backend
+- **Binds:** FR-25, web client
+- **Prevents:** CORS và env leak ở browser
+- **Rule:** `app/api/v1/[...path]/route.ts` forward mọi method/body/query/header tới `BACKEND_URL`. Client không gọi backend trực tiếp ngoại trừ Zero.
+
+### AD-7 — MCP server stateless với workspace context
+- **Binds:** FR-29, FR-24, OQ-4
+- **Prevents:** MCP server giữ state per client
+- **Rule:** `mcp_server/server.py` tạo `FastMCP` với `stateless_http=True`. Mọi tool nhận `WorkspaceParam`; `WorkspaceContext` resolve workspace theo tên/id hoặc active workspace. `NowingClient` gọi backend với API key.
+
+### AD-8 — Unified credit wallet
+- **Binds:** FR-31, FR-30, **FR-37** *(amended 2026-07-25)*
+- **Prevents:** nhiều loại credit/token khác nhau; **và (mới) cost basis phỏng đoán làm nguồn chân lý**
+- **Rule:** `User.credit_micros_balance` là ví duy nhất. `TokenUsage.cost_micros` ghi chi phí. `CreditPurchase`/`PagePurchase`/`UserIncentiveTask` cộng vào balance. ETL/premium model calls trừ qua `wallet_credit.py`.
+- **⚠️ Amendment 2026-07-25 (SCP chainlens-engine-boundary, A3) — cost thật, không giá phẳng:**
+  - Chi phí của external service phải lấy từ **cost do service báo về**, không từ hằng số env. Với ChainLens: parse `costDollars` ở SSE terminal event → `TokenUsage` với `usage_type = "deep_research"` → wallet debit.
+  - `CHAINLENS_QUERY_MICROS_PER_CALL` (`app/config/__init__.py:806`) và `BillingUnit.CHAINLENS_QUERY` **xuống hạng fallback**, chỉ dùng khi engine không emit cost, và **mỗi lần dùng phải log warning** để đo tần suất.
+  - **Lý do (verified 2026-07-25):** giá phẳng $0.005/call trong khi `mode` default là `quality` (target cost $0.0105; deep research $0.0164) → **under-meter 2.1–3.3×**. Tệ hơn: các số target đó tính trên DeepSeek stack chưa vào prod (ChainLens `DEFAULT_MODEL_POLICY` = 100% `ag/` Gemini, output đắt hơn DeepSeek ~3.5×).
+  - **Gate:** không chốt con số pricing/subscription nào trước khi FR-37 và story `8-7` (auto-extract spend cap) có số đo thật.
+
+### AD-9 — RBAC chỉ ba system roles
+- **Binds:** FR-10
+- **Prevents:** reintroduce Admin system role
+- **Rule:** `get_default_roles_config()` chỉ tạo Owner/Editor/Viewer. `WorkspaceRole.is_system_role=True` chỉ dành cho 3 role này. Custom role có `is_system_role=False`. Migration 72 đã xóa Admin; không tạo lại Admin.
+
+### AD-10 — Token usage tracking per message/workspace/user
+- **Binds:** FR-30
+- **Prevents:** mất dấu vết chi phí
+- **Rule:** `TokenUsage` row được tạo qua `record_token_usage()` trong `app/services/token_tracking_service.py`. `message_id` unique khi not null. `usage_type` cho phép mở rộng (chat, indexing, image, podcast).
+
+### AD-11 — Long-term research memory là first-class persistence layer (unified)
+- **Binds:** FR-32, Story 3.8, Story 4.5
+- **Prevents:** nhiều hệ thống memory chồng chéo (markdown user/team memory vs. structured research memory)
+- **Rule:**
+  - `Memory` table là single source of truth cho workspace memory. `User.memory_md` và `Workspace.shared_memory_md` deprecated; migration sẽ `DROP COLUMN` sau khi bridge hoạt động.
+  - `Memory` là workspace-wide (`workspace_id` bắt buộc). `research_thread_id` là nullable FK trên `Memory` cho optional thread link (MVP); nếu sau này một memory thuộc nhiều thread thì tách thành bảng join.
+  - `Memory` lưu `content`, `embedding`, `type` (semantic/episodic/procedural/working), `source_type`, `source_id`, `tags`, `confidence`, `created_by_id`.
+  - `MemoryVersion` ghi lịch sử mỗi correction/update.
+  - `MemoryRelation` lưu edges giữa memories/documents/chats/scraper runs bằng adjacency list trong Postgres; không dùng graph DB riêng cho MVP.
+  - `app/services/memory/` trở thành canonical memory package: `repository.py` (CRUD/search), `renderer.py` (render `Memory` rows ra markdown cho agent prompt), `parser.py` (parse markdown từ old PUT endpoints thành facts), `service.py` (markdown-compatible public API cho routes và `MemoryInjectionMiddleware` cũ).
+  - `app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py` load user/team memory từ `Memory` table thay vì `User.memory_md`/`Workspace.shared_memory_md`.
+  - Structured endpoints: `POST /workspaces/{id}/memories`, `POST /workspaces/{id}/memories/search`, `PATCH /memories/{id}`, `DELETE /memories/{id}`. Legacy bridge endpoints (`GET/PUT /workspaces/{id}/memory`, `GET/PUT /users/me/memory`) vẫn hoạt động nhưng backed by `Memory` table.
+  - `TokenUsage.usage_type` mở rộng thêm `memory_create` (và `memory_recall` nếu recall có bước summarization) để theo dõi chi phí extraction/embedding.
+  - **Provenance phải nối được về nguồn có thể chạy lại (bổ sung 2026-07-25, FR-39).** `source_type`/`source_id` không chỉ để hiển thị citation — với nguồn `scraper_run`, `Memory` phải giữ đủ thông tin để **chạy lại đúng truy vấn cũ** và kiểm fact còn đúng không. Đây là nền của khả năng re-validate.
+  - **🔒 AD-11.1 — Memory tự chứa recipe, KHÔNG phụ thuộc retention của `Run`** *(quyết định chốt 2026-07-25; giải readiness **Q-2**)*
+    - **Quyết định:** khi tạo memory từ dữ liệu scrape, `Memory` **sao chép** `capability` (ví dụ `reddit.scrape`) và `input` (JSONB) từ `Run` vào chính nó, cộng thêm một **soft reference** tới `run_id` để truy vết.
+    - **Loại bỏ:** retention có điều kiện cho `runs` (giữ `Run` nào đang được `Memory` tham chiếu). **Không** làm cách này.
+    - **Vì sao:** (a) `RUNS_RETENTION_DAYS = 30` với cleanup **cơ hội** (`_maybe_cleanup` chạy trên ~1% insert, `app/capabilities/core/runs.py:33-37`) — làm nó có điều kiện nghĩa là mỗi lần xoá phải join sang `memories`, biến một cleanup rẻ thành truy vấn có khoá; (b) `runs.output_text` có thể rất lớn (JSONL) nên giữ vô hạn vì memory là **đắt sai chỗ** — cái cần giữ chỉ là *recipe*, không phải *payload*; (c) memory là first-class persistence layer theo chính AD-11 này, nên nó **không được** phụ thuộc lifecycle của bảng log; (d) một `Memory` sống 2 năm vẫn re-validate được dù `Run` đã bị xoá 23 tháng trước.
+    - **Rule cụ thể:** `Memory` thêm `source_capability` (String) + `source_input` (JSONB) + `source_run_id` (UUID, nullable, **không** FK cứng — `Run` được phép biến mất). `Memory.source_id` (Integer) **giữ nguyên** cho nguồn `document`/`chat_message`; **không** đổi kiểu cột đó (chống hồi quy).
+    - **Re-validate:** `revalidate(memory_id)` đọc `source_capability` + `source_input` → gọi lại capability → so sánh → cập nhật `confidence` hoặc tạo `MemoryVersion`. **Không** xoá cứng memory cũ (giữ kỷ luật FR-34).
+    - **Ràng buộc:** `source_input` là **snapshot bất biến** — không sửa sau khi tạo. Nếu cần đổi truy vấn thì tạo memory mới, không mutate recipe cũ (nếu không thì "re-validate" mất nghĩa).
+    - **Áp dụng cho:** Story **`9.6a`** (provenance recipe) và **`9.6b`** (re-validation API) — AC giờ **xác định**, không còn "chọn một trong hai".
+    - **⚠️ Hiện trạng vi phạm rule này (defect, verified 2026-07-25):** `Memory.source_id` là `Integer` (`app/db.py:2077`) nhưng `Run.id` là `UUID` (`app/db.py:3155`) → không lưu được link; **không có code nào ghi** `MemorySourceType.SCRAPER_RUN` (enum khai báo ở `app/db.py:572` rồi bỏ đó); và chưa có `source_capability`/`source_input`.
+
+### AD-12 — MCP server expose memory tools
+- **Binds:** FR-29, Story 4.5
+- **Prevents:** MCP client phải tự quản lý memory hoặc inject full file context
+- **Rule:**
+  - `app/mcp_tools.py` thêm `McpToolGroup.MEMORY` và catalog entries cho `nowing_remember`, `nowing_recall`, `nowing_update_fact`, `nowing_continue_research`.
+  - `nowing_mcp/mcp_server/features/memory.py` đăng ký 4 memory tools.
+  - Các tool gọi backend `MemoryService` qua `NowingClient` tại structured endpoints (`/workspaces/{id}/memories/*`).
+  - `nowing_remember` có thể được gọi bởi agent **hoặc** bởi backend auto-extraction sau mỗi chat turn.
+  - `nowing_recall` trả về compact string, `top_k` mặc định thấp (≤5), có thể filter `type`/`tags` để tiết kiệm context window.
+  - `nowing_continue_research` load `ResearchThread` context và `Memory` liên quan trước khi trả lời.
+
+### AD-13 — Research Thread là continuation context
+- **Binds:** Story 4.6, Story 6.5
+- **Prevents:** mỗi chat là một island, mất lịch sử research
+- **Rule:**
+  - `ResearchThread` liên kết 1-n `ChatThread` (`new_chat_threads.research_thread_id` nullable FK).
+  - `ResearchThread` workspace-wide, optional link với `Memory` qua `Memory.research_thread_id` (MVP).
+  - Agent loop load `ResearchThread` context qua `nowing_recall` với `research_thread_id` trước khi trả lời.
+  - `AutomationRun` có thể reference `research_thread_id` (post-MVP cho memory-driven automations).
+
+### AD-14 — Auto-extract memory từ chat turn
+- **Binds:** Story 4.5, FR-32
+- **Prevents:** mất context giữa các session và agent phải tự nhớ mọi thứ
+- **Rule:**
+  - Sau khi một assistant message được lưu, `MemoryExtractionService` (chạy async/Celery) gọi cheap model để extract facts từ user + assistant messages.
+  - Mỗi fact được kiểm tra `confidence >= threshold` (configurable, default 0.7) và **deduplicate** với existing memory (vector similarity; nếu similarity > 0.92 thì update, không insert mới).
+  - Mỗi turn giới hạn số memory items extract (vd tối đa 3) để tránh pollution.
+  - Mỗi extraction/upsert ghi `TokenUsage.usage_type = "memory_create"`.
+  - Workspace có thể bật/tắt qua `MEMORY_AUTO_EXTRACT_ENABLED` (default `True` cloud, `False` self-host nếu muốn tiết kiệm).
+
+### AD-15 — ChainLens là external deep-research dependency, KHÔNG phải scraper capability
+- **Binds:** FR-24, FR-37, FR-38, NFR-9; Epic 9 (Story 9.1–9.4)
+- **Supersedes:** AD-3 đối với `app/capabilities/chainlens/` (xem amendment AD-3)
+- **Đối ứng:** ChainLens `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` (✅ ACCEPTED 2026-07-25) + `sprint-change-proposal-2026-07-25-v4-nowing-microservice.md`
+- **Prevents:**
+  - Coi ChainLens như một connector/scraper ngang hàng Reddit → mất contract discipline, mất cost accounting, mất failure handling.
+  - Merge ChainLens vào monolith (khác runtime/ngôn ngữ) hoặc ngược lại, biến ChainLens thành sản phẩm độc lập cạnh tranh Nowing.
+  - Nowing hard-fail khi engine không khả dụng, dù chính Nowing đã có hybrid search.
+- **Rule:**
+  - **Ranh giới.** Nowing sở hữu: account/auth/onboarding, workspace/RBAC, memory, connectors, chat, deliverables, automations, **billing/credit/metering**, đa client, distribution. ChainLens sở hữu: deep-research pipeline (classifier → planner → researcher → writer → reflection), provider chain search/extract + failover, cost-optimized LLM routing, semantic cache, citations/quality. **ChainLens không có end-user auth và không có billing.**
+  - **Contract (🔒 versioned + regression-guarded).** `POST {CHAINLENS_API_URL}/api/v1/search`, SSE. Auth `Authorization: Bearer <CHAINLENS_API_KEY>` — **service-to-service, Nowing giữ một key**; ChainLens không biết end-user, định danh/hạn mức end-user do Nowing quản. Request `{ query, optimizationMode, sources, history, systemInstructions?, chatId? }`. Response block-based SSE (`event:`/`data:`, `type:block` / `type:updateBlock` RFC6902, `data:[DONE]`, `event:error`) → `{ answer, sources[] }`. Contract này phải có **regression test trong CI phía Nowing** (Story 9.1) — Nowing vỡ nếu ChainLens break contract, nên Nowing tự bảo vệ mình.
+  - **Cost.** Lấy từ `costDollars` do engine emit (xem AD-8 amendment). Giá phẳng chỉ là fallback có log.
+  - **Failure → degrade, không hard-fail.** Timeout / 5xx / chưa cấu hình → fallback sang `app/retriever/` hybrid search + trạng thái tường minh `partial` / `engine_unavailable`. **Không bịa citation**, không giả vờ là câu trả lời đầy đủ. Nowing self-host không cấu hình ChainLens vẫn dùng được mọi tính năng khác.
+  - **Không merge.** Nowing = Python/FastAPI, ChainLens = TypeScript/NestJS. Giữ hai service riêng, giao tiếp qua HTTP. Đây là ngoại lệ hợp lệ của AD-1 (monolith): AD-1 cấm tách *nghiệp vụ nội bộ* thành microservice, không cấm gọi *service ngoài*.
+  - **Mode.** Default `balanced` (quyết định D3, 2026-07-25). `quality` là opt-in tường minh cho deep-research/deliverable. Đổi default phải validate trên `nowing_evals`.
+  - **Ranh giới OSS/Cloud (D5, 2026-07-25).** Engine **closed-source, hosted**; chỉ Nowing được public. ⇒ **Mọi self-host instance chạy ở trạng thái không có engine** → FR-38 degradation là **tiền đề trước khi public repo**, không phải một tính năng reliability tuỳ chọn.
+  - **Phase 2 (post-MVP, nếu mở):** self-host dùng deep research phải đi theo `self-host Nowing → Nowing Cloud API (metered, key theo account) → engine (vẫn 1 service key)`. **CẤM** `self-host → engine trực tiếp`: cách đó biến engine thành public multi-tenant SaaS với end-user auth, phá `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` §4/§5 và SCP v4 de-scope. Nowing Cloud là biên multi-tenant duy nhất, vì nó vốn đã sở hữu account + credit wallet (`AD-8`).
+  - **Latency.** Xem NFR-9: State A (async deliverable) là sàn bắt buộc; State B (sync chat-mode sau flag) mở khi có số đo. Nowing đo p50/p95 **từ phía mình**, không chờ engine tự báo.
+- **Ghi chú (verified 2026-07-25):** ChainLens đã de-facto là research backend của Nowing từ trước — `app/capabilities/chainlens/research/executor.py` gọi `POST {CHAINLENS_API_URL}/api/v1/search`. AD-15 chỉ ghi lại đúng thực tế và bổ sung kỷ luật thiếu (contract guard, cost thật, degradation).
+
+### AD-16 — Ranh giới license ba tầng; `app/proprietary/` là biên BSL
+- **Binds:** D5; toàn bộ `nowing_backend/app/proprietary/**`; mọi tài liệu công khai
+- **Prevents:** (a) code BSL trôi ra ngoài biên hoặc code Apache-2.0 bị kéo vào trong; (b) tài liệu công khai gọi sai license
+- **Rule:**
+  - **Ba tầng:** Apache-2.0 cho mọi thứ **ngoài** `nowing_backend/app/proprietary/` · **BSL 1.1** cho `app/proprietary/**` (84 file Python, ~16.6k dòng: fetcher từng nền tảng, YouTube InnerTube, CAPTCHA, session/pool, stealth testbench, proxy registry — ⚠️ **kế thừa từ SurfSense, KHÔNG phải tự xây**, xem `AD-16.1`) · **closed-source hosted** cho deep-research engine (không nằm trong repo, `AD-15`).
+  - **Chiều import một phía:** code Apache-2.0 **được** import từ `app.proprietary`; code đặt **bên trong** `app/proprietary/` không được tính là Apache-2.0. Đừng move logic Apache-2.0 vào trong biên, và đừng copy logic BSL ra ngoài.
+  - **BSL Additional Use Grant:** cho phép production use; **cấm** đem Licensed Work (hoặc sản phẩm/dịch vụ mà giá trị chủ yếu bắt nguồn từ nó) bán cho bên thứ ba như commercial product hoặc hosted/managed service. Change Date: 4 năm → Apache-2.0.
+  - **Tài liệu công khai:** không gọi cả sản phẩm là "open source"; dùng *"Apache-2.0 core + BSL 1.1 crawler engine"*. BSL là điểm bán (bảo vệ moat, vẫn cho self-host chạy production) — nói thẳng, không lấp liếm.
+  - Thêm capability scraper mới → phần fetch/anti-bot thuộc `app/proprietary/`; phần `definition.py`/`schemas.py` (contract) có thể ở ngoài. Giữ nguyên tách biệt này (`AD-3` vẫn áp dụng cho lớp đăng ký route).
+- **Nguồn:** `LICENSE` (root) · `nowing_backend/app/proprietary/LICENSE` · docstring `app/proprietary/__init__.py`
+- **Ghi chú:** đây là mô hình **đã tồn tại trong code**, AD-16 chỉ ghi lại và đặt kỷ luật quanh nó. Trước 2026-07-25 nó không có trong bất kỳ artifact planning nào — PRD/brief đang gọi sai là "OSS thuần".
+
+---
+
+#### 🔴 AD-16.1 — CẢI CHÍNH: Nowing là FORK của SurfSense; `app/proprietary/` KHÔNG phải "tự xây"
+- **Giải:** readiness **`L-1`** · **Cổng thứ hai trước public repo** (cạnh `9-1a`) · chủ sở hữu: action item **`AI-2026-07-25-7`** (`Founder + Legal`, P0, `blocks: public-repo`)
+
+> **Phát hiện 2026-07-25 khi thiết lập versioning cho artifact.** `git remote` có `upstream = https://github.com/MODSetter/SurfSense.git`. Không artifact planning nào — kể cả AD-16, SCP, brief, PRD — **từng nhắc tới việc Nowing là fork**. Việc này đổi tiền đề thực tế của chính AD-16.
+
+**Đo bằng git, không suy đoán** (so `nowing_backend/app/proprietary/` với `upstream/main:surfsense_backend/app/proprietary/`):
+
+| Phép đo | Kết quả |
+|---|---|
+| Số file `.py` hai bên | **84 vs 84** |
+| Đường dẫn tương đối trùng nhau | **84 / 84 (100%)** |
+| **Giống hệt byte-for-byte** | **73 / 84 (87%)** |
+| File có khác biệt | 11 — mỗi file **2–4 dòng** |
+| Tổng dòng khác biệt | **~26 / ~16.600 dòng (0,16%)** |
+| **26 dòng đó là gì** | **Chỉ đổi chuỗi `SurfSense` → `Nowing`** — comment, docstring, và một thuộc tính `name = "surfsense_site"` → `"nowing_site"`. **Không có thay đổi chức năng nào.** |
+
+**⇒ Câu "crawler engine tự xây" trong AD-16 ở trên là SAI VỀ THỰC TẾ.** `app/proprietary/` là crawler engine của SurfSense, đổi tên, không sửa logic.
+
+> #### 🔴🔴 AD-16.1a — CẢI CHÍNH PHẠM VI (2026-07-26): fork là TOÀN REPO, không chỉ `app/proprietary/`
+>
+> **AD-16.1 ở trên đo thiếu.** Nó chỉ so thư mục BSL rồi kết luận "99,84% code kế thừa" — đúng, nhưng **hẹp**. Đo lại rộng hơn (verify bằng git 2026-07-26, mọi số tái lập được):
+>
+> | Phép đo | Kết quả |
+> |---|---|
+> | `git merge-base HEAD upstream/main` | `bea603e22` = upstream tag **`0.0.34.1`** |
+> | Commit upstream tại điểm fork | **7.713** |
+> | Commit của Nowing kể từ đó | **45** |
+> | **Cả 7 component đều là rename 1:1** | `surfsense_{backend,web,desktop,browser_extension,obsidian,mcp,evals}` → `nowing_*` |
+> | Mọi file top-level cũng kế thừa | `LICENSE`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md` + 4 bản dịch, `VERSION`, `manifest.json`, `versions.json`, `docker/`, `docs/`, `scripts/`, `.github/` |
+> | Thư mục **của Nowing**, không có ở upstream | chỉ `.agents`, `.claude`, `.devin`, `.kiro`, `_bmad` — **config AI tooling, không phải code sản phẩm** |
+> | **Phần Apache-2.0** (backend `app/**/*.py`, TRỪ `proprietary/`) | upstream 1.227 file → **993 byte-identical (81%)**, 234 sửa, **0 xoá** |
+>
+> **Hệ quả — nặng hơn AD-16.1:** nghĩa vụ attribution của **Apache-2.0 §4** áp lên **toàn bộ phần core** (993 file y nguyên + 234 file sửa mà **không file nào** có change-notice theo §4(b)), không chỉ lên thư mục BSL. Và dòng `Copyright (c) SurfSense` → `(c) Nowing` ở root `LICENSE` giờ phủ **cả một codebase Apache-2.0 kế thừa**, không phải một subdirectory.
+>
+> **Rule bổ sung:** mọi tài liệu — kể cả `AD-16`, PRD §1.1, brief — **không** được mô tả tier Apache-2.0 là "core của Nowing" theo nghĩa tự viết. Nó là core kế thừa **có** phần đóng góp của Nowing (memory layer, tích hợp engine, billing) đặt lên trên.
+>
+> **Brief gửi luật sư:** `_bmad-output/planning-artifacts/legal/legal-brief-upstream-attribution-2026-07-26.md` — 5 câu hỏi (Apache-2.0 §4 · quyền đặt mình làm BSL Licensor · Additional Use Grant vs hosted engine · điều kiện trước khi public · phơi nhiễm giai đoạn chưa publish) + 5 phương án A–E + lệnh tái lập mọi số liệu.
+>
+> **Sau khi có kết luận:** amend `AD-16` + `AD-16.1` phạm vi · cập nhật PRD §1.1 · quyết lại `D5` nếu cấu trúc BSL phải đổi · gỡ chặn `public-repo`.
+
+**Cả hai file license cũng là bản copy đổi tên — attribution bị THAY, không phải được bổ sung:**
+
+| Trường | SurfSense (upstream) | Nowing |
+|---|---|---|
+| root `LICENSE` | `Copyright (c) SurfSense` | `Copyright (c) Nowing` |
+| BSL `Licensor` | `SurfSense` | `Nowing` |
+| BSL `Licensed Work` | `The SurfSense Proprietary Components…` `(c) 2026 SurfSense` | `The Nowing Proprietary Components…` `(c) 2026 Nowing` |
+| `Change Date` / `Change License` | Four years / Apache-2.0 | **giống hệt** |
+| `Additional Use Grant` | — | **giống hệt** |
+
+Và: **không có `NOTICE`** (upstream cũng không có), **README không credit SurfSense**, cấu trúc dual-license ba tầng mà AD-16 trình bày như quyết định của Nowing thực ra **thừa hưởng nguyên vẹn**.
+
+**Hệ quả với lập luận thương mại — đây là phần nặng nhất:**
+- **`D5` và brief bán BSL như "moat" và "điểm bán".** Moat đó là **99,84% code Nowing không viết**. Lập luận "bảo vệ crawler engine tự xây" không đứng được ở dạng hiện tại.
+- **`AD-16` đặt `Licensor: Nowing`** trên khối code này. Nowing tự đặt mình làm Licensor của BSL cho code kế thừa.
+- `9-1a` (degradation) hiện là **cổng duy nhất** trước public repo. Phát hiện này là **cổng thứ hai**, độc lập, chạy song song được.
+
+**Rule bổ sung (hiệu lực ngay):**
+1. **KHÔNG public repo** trước khi vấn đề attribution được luật sư xem xét và xử lý. Đây là **cổng thứ hai** cạnh `9-1a`.
+2. **Không tài liệu nào được gọi `app/proprietary/` là "tự xây" / "self-built" / "our own crawler engine"** cho tới khi có kết luận. Sửa AD-16 dòng trên, PRD, brief, và mọi marketing copy.
+3. **Mọi lập luận moat dựa trên BSL phải nêu lại tiền đề.** Nếu moat thật của Nowing là research memory (theo brief §1) thì đừng dựa vào crawler engine để biện minh BSL.
+4. Câu hỏi cần luật sư trả lời — **không phải việc của artifact này quyết**: (a) Apache-2.0 §4 yêu cầu giữ attribution tới mức nào, và việc **thay** dòng copyright có thoả không; (b) Nowing có quyền đặt mình làm **BSL Licensor** cho code kế thừa không, và BSL gốc của SurfSense ràng buộc gì; (c) cần `NOTICE` + credit ở README/LICENSE dạng nào.
+- **Nguồn (tái lập được):** `git remote -v` · `git show upstream/main:LICENSE` · `git show upstream/main:surfsense_backend/app/proprietary/LICENSE` · so hash 84 file như bảng trên · `upstream/main` = tag `0.0.34.1`, commit `bea603e22`.
+
+### AD-17 — Deep research chạy trên async door SẴN CÓ của capability; không phát minh flow mới
+- **Binds:** NFR-9 State A, FR-24, FR-38; Story `9.3`
+- **Prevents:** story `9.3` tự thiết kế một cơ chế job/progress/notify riêng cho deep research trong khi hạ tầng đó **đã tồn tại và đã có typed client ở web**
+- **Giải:** readiness **U-1** (không có AD cho async flow) + **U-2** (quyết định delivery)
+
+#### 🔎 Cải chính U-1 — hạ tầng async ĐÃ CÓ end-to-end (verified 2026-07-25)
+
+Readiness report ghi *"không AD nào định nghĩa flow này"* và ngụ ý phải xây mới. **Không đúng.** Async door cho capability đã build đủ, và `chainlens.research` **đã nằm sau nó** vì nó là capability đăng ký qua `register_capability` (`app/capabilities/chainlens/research/definition.py:23`):
+
+| Mảnh | Đã có ở đâu |
+|---|---|
+Submit fire-and-forget | `POST /workspaces/{id}/scrapers/chainlens/research?mode=async` → insert `Run` status `running`, spawn background task, trả **202** + `X-Run-Id` (`app/capabilities/core/access/rest.py:312-330`) |
+Progress live | `GET .../runs/{run_id}/events` — SSE (`rest.py:493`), nguồn từ `emit_progress` qua `progress_scope` |
+Replay khi reconnect | `run_event_bus` giữ **ring buffer 500 event** per run (`app/capabilities/core/events.py`) |
+Terminal | event `run.finished`; client kết nối muộn đọc snapshot cuối từ hàng `runs` |
+Cancel | `POST .../runs/{run_id}/cancel` (`rest.py:559`) — bus giữ luôn `asyncio.Task` để với tới |
+History | `GET .../runs` + `GET .../runs/{run_id}` (`rest.py:463`, `482`) |
+**Typed client ở web** | `nowing_web/lib/apis/scrapers-api.service.ts:68` đã build `?mode=async`; `contracts/types/scraper.types.ts:56` type response 202 |
+
+⇒ **Rule: Story `9.3` PHẢI dùng đường này.** Không tạo bảng job mới, không tạo endpoint progress mới, không thêm `runs` vào `ZERO_PUBLICATION`.
+
+#### Quyết định U-2 — delivery đi bằng SSE của `run_event_bus`, KHÔNG mở Zero cho `runs`
+- **Chọn:** SSE (đã có) · **Loại:** thêm `runs` vào `ZERO_PUBLICATION` · **Loại:** polling.
+- **Vì sao không Zero:** `runs` là bảng **log khối lượng lớn, TTL 30 ngày**, có `output_text` JSONL cỡ lớn. Zero sync là cho **state client cần theo dõi liên tục** (chat, comments, automations, notifications) — đẩy một bảng log ephemeral vào publication làm phình sync payload mà không ai cần lịch sử realtime của nó. `AD-5` giữ nguyên phạm vi.
+- **Vì sao không polling:** SSE + ring buffer đã giải đúng bài toán reconnect; polling thêm độ trễ và tải DB mà không được gì.
+
+#### 🔴 Ba việc CÒN THIẾU thật — đây mới là nội dung của Story `9.3`
+
+1. **Bus chỉ hoạt động trong MỘT process.** `events.py` tự ghi: *"`ponytail:` single-process only — a multi-worker deployment needs Redis pub/sub (or Postgres LISTEN/NOTIFY) behind this same interface."* Nếu API chạy nhiều replica/worker, client tail SSE ở replica A sẽ **không thấy** event của run đang chạy ở replica B — im lặng, không lỗi. **Rule:** trước khi bật deep-research async trên môi trường nhiều replica, phải đặt **Redis pub/sub** (Redis đã có sẵn cho Celery — `AD-4`) sau **cùng interface `run_event_bus`**. Không đổi call-site.
+2. **Agent door là SYNC — đây mới là chỗ block chat turn.** `app/capabilities/core/access/agent.py` gọi executor inline, không có `mode=async`. Nên khi agent gọi deep research trong một chat turn, nó **chặn** tới 300s. State A yêu cầu agent door cũng submit-and-return: agent nhận `run_id` + thông báo "đang chạy", chat turn kết thúc, kết quả về sau. **Đây là phần khó nhất của `9.3`**, không phải phần transport.
+3. **Không có notify khi xong, và kết quả không thành deliverable.** `run.finished` chỉ là event trên bus — grep `Notification|notify` trong `rest.py`/`runs.py` = **0 hit**. Client đóng tab là mất. Và kết quả deep research nằm trong `runs.output_text` (TTL 30 ngày), **không** phải deliverable hạng nhất như `Report`/`Podcast`. **Rule:** State A hoàn chỉnh cần (a) emit `Notification` khi `run.finished` — bảng `notifications` đã có (`app/notifications/persistence.py`) và **đã nằm trong `ZERO_PUBLICATION`** nên realtime sẵn; (b) persist kết quả thành deliverable nếu user yêu cầu, không dựa vào TTL của `runs`.
+
+#### Ràng buộc phụ thuộc ngoài
+Progress hiện chỉ có **2 event** cho deep research — `emit_progress("starting")` (`executor.py:189`) và `("done")` (`:206`). Transport chạy tốt nhưng **không có gì để truyền** trong 57–198s ở giữa. Progress theo phase (classifier → planner → researcher → writer → reflection) phải do **engine** emit ⇒ đây là câu hỏi phải gửi ChainLens, **bổ sung vào OQ-7** (readiness **U-3**).
+
+#### Consequences
+- Story `9.3` thu hẹp lại: **không** xây flow, mà (1) Redis-backed bus, (2) async agent door, (3) notification + deliverable persistence, (4) đo p50/p95, (5) ngưỡng cổng A→B.
+- `AD-5` không đổi (`runs` **không** vào Zero publication).
+- `AD-4` được tái dùng (Redis đã có cho Celery).
+- Story `9.4` docs phải nói deep research là tác vụ **async** ở self-host lẫn cloud.
+
+### AD-18 — Memory injection dùng retrieval CÓ CHẶN TRÊN; hai đường recall phải tách tên
+- **Binds:** NFR-1b, NFR-1c, NFR-1d, NFR-8, FR-32, FR-40; Story `3-14`
+- **Prevents:** prompt size và DB cost của **mọi lượt chat** tăng tuyến tính theo số memory của workspace — im lặng, không lỗi, và tệ dần đúng theo mức độ người dùng dùng sản phẩm nhiều
+- **Giải:** readiness **C-1** + **P-5**
+
+#### 🔎 Phát hiện — có HAI đường recall, PRD chỉ mô tả một (verified 2026-07-25)
+
+| Đường | Code | Chặn lượt chat? | Dùng index? | Có LIMIT? |
+|---|---|---|---|---|
+| **Memory injection** | `MemoryInjectionMiddleware.abefore_agent` | ✅ **mọi lượt** | ❌ **không** | ❌ **không** |
+| **Recall tool** | `nowing_recall` · `/memories/search` | chỉ khi agent gọi | ✅ | ✅ top_k ≤5 |
+
+Schema `memories` **đã có sẵn hai index chuyên dụng cho retrieval**:
+- `ix_memories_embedding` — HNSW, `vector_cosine_ops`
+- `ix_memories_content_search` — GIN trên `to_tsvector('english', content)`
+
+Nhưng đường nóng **không dùng cái nào**. Nó chạy:
+```sql
+SELECT * FROM memories WHERE workspace_id = ? ORDER BY created_at   -- không LIMIT
+```
+rồi `render_memory_markdown(...)` toàn bộ vào prompt. Docstring của model tự nói `Memory` là *"A single, embedded long-term memory fact"* — **fact-level, nhiều row mỗi workspace**, không có unique constraint nào trên `workspace_id`. Nên N tăng vô hạn.
+
+#### Vì sao phanh hiện tại KHÔNG đóng được lỗ này
+- `MEMORY_HARD_LIMIT = 25.000` được enforce bởi `validate_memory_size(content)` — trên **một** `content`, ở **đường ghi**. Aggregate của N fact **chưa từng bị kiểm tra**.
+- Middleware chỉ **báo** `chars=` và, khi vượt `MEMORY_SOFT_LIMIT = 18.000`, chèn `<memory_warning>` nhờ LLM tự gọi `update_memory` để consolidate. Đây là **vòng lặp phụ thuộc LLM hợp tác**, và nó **không thể** thắng được `extract_from_turn` (Celery) — vốn ghi thêm row mà LLM chưa từng consolidate. Tốc độ sinh vượt tốc độ dọn.
+- Fail-soft `except → return None` khiến recall vắng mặt **im lặng**: chỉ có `logger.exception`, không counter, không alert.
+
+#### Rules
+1. **Memory injection PHẢI có chặn trên ở đường ĐỌC** — top-k bounded qua HNSW/GIN đã có, **không** full-scan. Chi phí phải là **O(top-k)**, không phải O(N).
+2. **Tổng ký tự inject ≤ 8.000, cắt ở đường đọc.** Không tin vào `<memory_warning>` như cơ chế giới hạn — giữ nó như một tín hiệu chất lượng, không phải một cái phanh.
+3. **Hai đường phải tách tên trong mọi tài liệu và metric.** "Recall" không được dùng mơ hồ. `memory_injection` ≠ `memory_recall`.
+4. **Fail-soft giữ nguyên, nhưng phải phát counter.** Degrade im lặng trên đường nóng là không chấp nhận được.
+5. **Auto-extract KHÔNG được lên critical path.** Hiện đúng (Celery), nhưng **không có test nào giữ** — cần regression test khoá bất biến.
+6. **NFR-8 (recall quality) không đo được trước khi rule 1+2 xong.** Baseline chất lượng lấy trên một lượng inject phụ thuộc N là baseline không tái lập được. ⇒ `3-14` **nên chạy trước khi chốt số SM-10** của `3-9`.
+
+#### Hệ quả
+- Hook đo **đã có sẵn**: `_perf_log.info("[memory_injection] scope=%s injected=%d db=%.3fs total=%.3fs")`. `3-14` là **chốt ngân sách + assert + cắt**, không phải dựng instrumentation → phạm vi nhỏ hơn vẻ ngoài.
+- `FR-40` (research → memory) làm N tăng **nhanh hơn** hiện tại. ⇒ `3-14` là **điều kiện đi kèm** của `3-13`, không phải việc dọn dẹp để sau.
+- `AD-11.1` không đổi.
+
+### AD-19 — Năng lực vượt tường (anti-bot / CAPTCHA) thuộc Nowing; engine KHÔNG có stack riêng và KHÔNG gọi ngược inline
+- **Binds:** FR-38, FR-24, NFR-9, FR-39; Story `9-1a`, `9-3`, `9-6b`
+- **Liên quan:** `AD-15` (biên engine — **không** amend), `AD-16`/`AD-16.1` (biên BSL + cổng pháp lý), `AD-17` (async door), `AD-8` (cost), `AD-DEFER-7`/NG-1 (không owned index)
+- **Prevents:**
+  - Dựng lại stack anti-bot thứ hai trong ChainLens (TypeScript) — hai bộ credential proxy, hai account solver, hai stack bypass phải bảo trì, cho **một** use case.
+  - Cắm thang stealth vào **critical path** của deep research → làm `NFR-9` State B không bao giờ mở được.
+  - Tạo phụ thuộc **hai chiều** Nowing ↔ engine, phá phát biểu một chiều của `AD-15`.
+  - Đục lỗ vào `FR-37`: chi phí proxy/CAPTCHA phát sinh bên Nowing nhưng bị hiểu là thiếu trong `costDollars` → tái diễn under-meter từ hướng khác.
+  - Coi "vượt CAPTCHA" là một tính năng có trạng thái hoàn thành.
+
+#### 🔎 Trạng thái thật (verified 2026-07-26 — đọc code cả hai repo)
+
+| | Nowing | ChainLens engine |
+|---|---|---|
+| Thang fetch nhiều tầng | ✅ `app/proprietary/web_crawler/connector.py` — AsyncFetcher (static, TLS `impersonate="chrome"`) → DynamicFetcher (browser) → StealthyFetcher (patchright) | ❌ `deepExtractor.ts` — `raceFirstNonNull([crawl4ai, jinaDirect])`, timeout 8s |
+| Giải Cloudflare | ✅ `solve_cloudflare=True` (in-framework, không vendor) | ❌ |
+| Detect + giải CAPTCHA | ✅ `web_crawler/captcha.py` (v2/v3/hCaptcha; widget + iframe `?k=` + api.js `?render=`) + `app/utils/captcha/solvers.py` (2captcha, capsolver, có Enterprise `data-s`) | ❌ |
+| Proxy provider / geo / sticky | ✅ `app/utils/proxy/` — ABC + registry + `get_geo_proxy_url` / `get_sticky_proxy_url` / `rotation.py` | ❌ |
+| Hardening fingerprint | ✅ `web_crawler/stealth.py` — `block_webrtc`, `hide_canvas`, `dns_over_https`, referer Google, locale/timezone khớp IP exit | ❌ |
+| Phân loại tường | ✅ `app/utils/crawl/classifier.py` — `BlockType`: `CLOUDFLARE` / `CAPTCHA_RECAPTCHA` / `CAPTCHA_HCAPTCHA` / `DATADOME` / `KASADA` / `RATE_LIMITED` … stamp trên **mọi** `CrawlOutcome` | ❌ |
+| Session ấm theo nền tảng | ✅ `proprietary/platforms/{reddit,tiktok,instagram}` | ❌ |
+| Dependency browser/proxy | ✅ patchright/camoufox, curl_cffi | ❌ `apps/api/package.json` **không có** playwright/puppeteer/patchright; không có code proxy/captcha; Firecrawl chỉ là assumption A1, **chưa implement** |
+
+**Hành vi engine khi trang bị chắn:** `jina-retry.ts` retry **chỉ** 408/429/5xx — **không bao giờ** 403. Non-ok → `null` → chunk giữ snippet SearXNG, chỉ `logger.warn`. Nguồn đó **âm thầm mất full-text**. CAPTCHA duy nhất engine xử lý nằm ở **tầng search** (SearXNG bị chắn → failover Brave), không phải tầng đọc trang.
+
+⇒ Năng lực này **đã tồn tại 100% ở Nowing và 0% ở engine.** AD-19 chỉ ghi lại đúng thực tế và đặt kỷ luật quanh nó.
+
+#### Rule 1 — Code sống ở Nowing. Engine không được có stack anti-bot riêng.
+Biên giữ nguyên như `AD-16`: **bypass logic** (detect/inject/tuning) trong `app/proprietary/**` (BSL 1.1); **seam vendor-agnostic** (client solver, provider proxy, classifier) ở Apache-2.0 `app/utils/{captcha,proxy,crawl}/`. Chiều import một phía, không đổi.
+
+Nếu ai đề xuất port sang TypeScript: Rule of Three — engine có **một** use case, không phải ba; và nó nhân đôi đúng thứ `D5` gọi là moat.
+
+#### Rule 2 — Engine KHÔNG gọi ngược vào crawler của Nowing trong lượt research.
+`AD-15` vẫn **một chiều**: Nowing → engine. Engine chỉ **báo tín hiệu** "URL này không đọc được + lý do", **không** yêu cầu Nowing fetch hộ.
+
+Engine **đã emit** đủ tín hiệu đó rồi — `{type:'partial', state:'insufficient_evidence', reason}`, `{type:'insufficientEvidence', partial, reason}`, `heartbeat` — và Nowing đang **bỏ hết 6 loại event** vì `_parse_sse` chỉ dispatch 4 type (`AI-2026-07-25-5`). Việc đọc chúng thuộc `9-1a`, không phải việc mới.
+
+**Cấm:** thêm `workspace_id` hay bất kỳ khái niệm tenancy nào của Nowing vào contract engine. Đó là thứ biến engine thành multi-tenant surface mà `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` §4/§5 đã de-scope.
+
+#### Rule 3 — Escalation chạy ASYNC/enrichment, KHÔNG inline.
+Thang stealth chạy tuần tự: browser launch + `solve_cloudflare` + `CAPTCHA_SOLVE_TIMEOUT_S = 120`. Một URL xấu có thể mất 2–3 phút; deep research fan-out N URL.
+
+`NFR-9` latency đang là **"chưa biết"** và đang bị gate State A→B. Cắm thang stealth vào critical path là tự tay đóng State B.
+
+⇒ Blocked URL trở thành **capability run async** trên door **đã có** (`?mode=async` → 202 + `X-Run-Id`, SSE `runs/{id}/events` — `AD-17`), bổ sung nguồn *sau*. Không tạo bảng job mới, không endpoint progress mới, không thêm `runs` vào `ZERO_PUBLICATION` (`AD-5` giữ nguyên).
+
+**Lợi ích kép:** đây **đúng là** hạ tầng `FR-39`/`9-6b` (re-validation) cần — không phải việc phát sinh thêm.
+
+#### Rule 4 — Thứ tự đầu tư: bậc 0/1 trước bậc 3. CAPTCHA là arms race không có trạng thái kết thúc.
+| Bậc | Nội dung | Trạng thái Nowing | Biên chi phí |
+|---|---|---|---|
+| **0. Đừng chạm vào nó** | TLS fingerprint thật · residential proxy có geo coherence · hardening fingerprint · sticky session ấm · pacing | ✅ gần đủ | **0** |
+| **1. Đi cửa chính site tự mở** | API chính thức · RSS/Atom · sitemap · JSON-LD nhúng · oEmbed · AMP · `r.jina.ai` | 🟠 **dùng chưa tới** (engine đã special-case arxiv Atom) | **0**, hợp lệ, ổn định |
+| **2. Giải challenge in-framework** | Cloudflare Turnstile/interstitial | ✅ `solve_cloudflare=True` | 0 vendor |
+| **3. Solver farm trả tiền** | 2captcha / capsolver; token bind IP proxy; cap 1 attempt/URL; latch process | ✅ đã có | ~$1–3/1000 solve, 10–60s |
+| **4. Vendor scraping-API nguyên gói** | Bright Data / Zyte / Oxylabs / ScrapingBee / Firecrawl | ❌ chưa | đắt/request, bảo trì 0, họ gánh tư thế ToS |
+| **5. KHÔNG vượt** | tường login · ToS cấm tường minh · giải = vượt access control | ✅ đã ghi thành nguyên tắc trong config | — |
+
+**Rule:** dư địa bậc 0/1 phải cạn trước khi tăng chi ở bậc 3, và **bậc 5 là ranh giới cứng** — config hiện đã ghi đúng: solving có thể vi phạm ToS, coi là opt-in/owner-acknowledged, **chỉ dữ liệu công khai, không bypass trạng thái đăng nhập**. Giữ nguyên câu đó.
+
+#### Rule 5 — Cost nằm trên ledger Nowing, và `SM-11a` phải nói rõ điều đó.
+Chi phí crawl/CAPTCHA phát sinh **bên Nowing**, và **đã được meter** — `CrawlOutcome.captcha_attempts`/`captcha_solved` + `WEB_CRAWL_MICROS_PER_SUCCESS` (default 2000) + `WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE` (default 3000), mỗi cái một cờ billing riêng.
+
+⇒ Nó **không** nằm trong `costDollars` của engine, và **đó là đúng** — hai BillingUnit khác nhau, không phải cost ẩn. Nhưng `SM-11a` ("cost thật per deep-research call theo mode") phải **ghi tường minh** rằng nó loại trừ chi phí escalation phía Nowing, kèm một chỉ số phụ cho phần đó. Nếu không, số đọc lên sẽ trông như under-meter — đúng cái bug `FR-37` sinh ra để vá.
+
+#### 🚧 Gate — đo trước khi build
+Chưa ai đo **tỷ lệ URL deep-research bị 403/CAPTCHA** và **ảnh hưởng thật lên citation coverage**. 3% thì snippet fallback là câu trả lời đúng và việc này xếp sau `9-1a`/`9-2`; 30% thì là gap chất lượng thật.
+
+**Rule:** không build escalation trước khi có số này. Nó **rẻ**: `9-1a` dù sao cũng phải đọc `partial`/`insufficientEvidence` — gắn counter theo `BlockType` vào đó là gần như miễn phí (classifier đã stamp sẵn trên mọi outcome).
+
+#### ⚠️ Cổng pháp lý — không xây kiến trúc mới lên câu hỏi license chưa đóng
+`AD-16.1`: `app/proprietary/` là fork SurfSense, 73/84 file giống byte-for-byte, attribution chưa xử lý (`AI-2026-07-25-7`, P0, chặn public repo).
+
+BSL Additional Use Grant cấm bán Licensed Work — **hoặc sản phẩm mà giá trị chủ yếu bắt nguồn từ nó** — dưới dạng hosted/managed service cho bên thứ ba. Engine deep-research **là** hosted service bán cho bên thứ ba. Nếu nó bắt đầu lấy giá trị trích xuất từ khối BSL kế thừa đó, câu hỏi đang chờ luật sư trở thành **load-bearing về kiến trúc**.
+
+**Rule:** nếu kết luận pháp lý đòi đổi cấu trúc license hoặc trả attribution vào 84 file, việc biến khối đó thành cross-service dependency **phải chờ** — không vì thủ tục, mà vì có thể phải sửa lại chính chỗ vừa xây. Rule 2/Rule 3 (không gọi ngược, chạy async) **giảm** phơi nhiễm này, vì engine không bao giờ dùng trực tiếp code BSL.
+
+#### Ranh giới với `AD-DEFER-7`/NG-1
+Đây là **trích xuất per-request cho một URL cụ thể**, KHÔNG phải crawl-at-scale dựng corpus. Không vi phạm `AD-DEFER-7`. Ghi lại để không tranh luận lại.
+
+---
+
+### AD-20 — Screenshot-as-evidence dùng browser tier SẴN CÓ; KHÔNG adopt visual-RAG stack
+- **Binds:** FR-9, FR-12, FR-13, FR-39; NFR-6
+- **Liên quan:** `AD-2` (pgvector — **không** đổi), `AD-19` (browser tier), `AD-11.1` (provenance recipe), `AD-DEFER-7`/NG-1
+- **Prevents:**
+  - Kéo một hệ retrieval thứ hai (FAISS/Qdrant + pipeline embed riêng + lifecycle index riêng) vào repo cho **một** use case.
+  - Thêm một class hạ tầng mới (GPU cho VL embedding) vào một sản phẩm self-hostable.
+  - Nhân storage lên hai bậc độ lớn trong lúc `OQ-3` retention còn chưa đóng.
+  - Nhầm "visual RAG" là giải pháp CAPTCHA — **nó không phải** (xem dưới).
+
+#### 🔎 Bài toán có thật, và code của chính Nowing đã khai báo nó
+
+`app/proprietary/web_crawler/stealth.py` ghi đo thực tế: trafilatura drop div-grid pricing card / stat table như "boilerplate" — `duplicati.com/pricing` giữ **15%** text nhìn thấy được; `goauthentik.io/pricing` mất **0 trên 5** con số giá **dù mọi giá đều nằm trong static DOM**.
+
+Cách chữa hiện tại là một **regex tiền tệ** (`_CURRENCY_AMOUNT_RE`, 13 ký hiệu + ISO code + dạng amount-trước-symbol) để: mất giá → re-extract `favor_recall` → vẫn mất → `markdown_of_whole_body()`. Comment trong code tự gọi nó là *"recall 100%, precision be damned"*.
+
+Đó là band-aid thông minh cho một vấn đề **cấu trúc**: HTML→text làm rơi cấu trúc thị giác. Regex chỉ bắt được tiền — không bắt được biểu đồ, bảng so sánh, infographic.
+
+#### ❌ Cải chính một nhầm lẫn loại: visual RAG ≠ giải pháp CAPTCHA
+[PixelRAG](https://github.com/StarTrail-org/PixelRAG) (Berkeley SkyLab/BAIR, Apache-2.0, arXiv 2606.28344) render trang/PDF thành tile ảnh rồi retrieve trên ảnh bằng Qwen3-VL-Embedding-2B LoRA-tuned. Bộ render `pixelshot` chạy Playwright/CDP với profile Chrome dùng-rồi-bỏ — **không stealth, không proxy, không anti-bot**. Trang bị CAPTCHA chắn thì nó chụp cho bạn ảnh của cái CAPTCHA.
+
+**Rule:** không được viện visual RAG như giải pháp cho tường bot. Tường bot thuộc `AD-19`.
+
+#### ✅ Quyết định — lấy Ý TƯỞNG, không lấy dependency
+
+Visual RAG có hai đóng góp: **(a)** render-thay-vì-parse, **(b)** model VL embedding fine-tune + index.
+
+**Nowing lấy (a) gần như miễn phí từ hạ tầng đang chạy.** StealthyFetcher tier **đã** mở patchright Chromium trên đúng trang đó, đúng thời điểm extraction sắp thất bại; `page_action` đã nhận `page` object. `page.screenshot()` là một lời gọi — **không dependency mới, không GPU, không vector store thứ hai**.
+
+**Rule:** khi extraction mỏng (đã có tripwire: `looks_like_js_shell` hoặc `dropped_currency_amounts`), tier browser chụp ảnh trang và đưa **vision model** đọc thay — thay cho việc mở rộng regex.
+
+Hạ tầng vision **đã có sẵn**: `get_vision_llm(session, workspace_id)` (dùng thật ở `file_processors.py`, `google_drive_indexer.py`), role `Workspace.vision_model_id` + capability `"vision"`, `supports_image_input` derivation, và `AD-8` metering.
+
+Ảnh đó nuôi hai thứ cùng lúc:
+1. **Đọc nội dung thị giác** — bảng giá/biểu đồ mà text extraction làm rơi.
+2. **Evidence artifact cho provenance** — `FR-39`/`9-6b` cần biết trang *lúc đó* trông thế nào. Ảnh mạnh hơn markdown đã qua lossy extraction, và `RUNS_RETENTION_DAYS = 30` nên artifact **phải tự chứa** (đúng tinh thần `AD-11.1`).
+
+#### ❌ Bác bỏ — visual RAG như retrieval stack (5 lý do, xếp theo độ nặng)
+1. **Là hệ retrieval thứ hai, không phải thư viện.** `AD-2` chốt pgvector trong Postgres; PixelRAG ship FAISS/Qdrant + pipeline embed + lifecycle index riêng. Adopt trọn gói phải amend `AD-2`. Rule of Three: một use case.
+2. **Citation vỡ.** `FR-13`/`NFR-6` = chunk → highlight text span trong full editor; story `3-6` vừa ship đường đó. Citation trỏ vào **tile ảnh** không có text span để highlight ⇒ cần đường citation UX song song, trong khi `ux-designs/` còn scaffold rỗng.
+3. **Class hạ tầng mới cho sản phẩm self-hostable.** Embedding hiện tại là `all-MiniLM-L6-v2` (CPU, bé). VL-Embedding-2B cần GPU cho throughput; self-hoster CPU nhận đường tệ rõ rệt → đánh trực diện câu chuyện self-host của `D5`.
+4. **Storage.** Text chunk ~1KB vs tile ảnh 100–500KB = 100–500× cho cùng lượng nội dung, **và** vẫn phải giữ text cho hybrid search. Đặt cạnh `OQ-3` chưa đóng + doc-retention cron (mig 176) vừa bật xoá dữ liệu.
+5. **Độ chín.** Tác giả mạnh, license Apache-2.0 sạch (không bẫy BSL) — nhưng là research codebase mới công bố, có `train/` pin cứng torch. *Boring technology*: chưa phải lúc, ở vị trí core dependency.
+
+#### 🚧 Ranh giới với `AD-DEFER-7`/NG-1 — nêu rõ để không trôi
+Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng sẵn (~217GB)**. Dùng *pipeline* trên tài liệu của chính user = trong scope. **Tải/serve index Wikipedia của họ = đã trôi sang NG-1** (owned index, `AD-DEFER-7`, Epic 26 0/7 gate). Không làm.
+
+#### Việc còn phải quyết khi làm (không giả vờ là miễn phí)
+- **Chưa có code screenshot nào trong backend** — `grep screenshot app/**/*.py` = 0 hit. (`nowing_desktop` có screenshot assist nhưng đó là phía user, khác hoàn toàn.)
+- **`app/file_storage/` hiện document-scoped** — chỉ có `store_document_file` / `build_document_file_key`. Artifact ảnh crawl cần quyết một key namespace + retention riêng, **không** mượn nhờ khoá document.
+- **Cost:** một lượt vision-read là một premium model call → phải đi qua `AD-8` như mọi call khác, và bị chặn bởi cùng cơ chế quota. Không có đường tính phí ẩn.
+- **Cờ tắt:** đi cùng họ `CRAWL_*` hiện có (`CRAWL_BLOCK_WEBRTC`, `CRAWL_HIDE_CANVAS`, …) — mặc định **OFF**, bật opt-in, để không âm thầm nhân chi phí mỗi lượt crawl.
+
+---
+
+### AD-REMOVED — AI File Sorting đã bị gỡ bỏ
+- **Binds:** FR-5
+- **Prevents:** lập kế hoạch xây dựng tính năng không còn tồn tại
+- **Rule:** Migration `172_remove_ai_file_sort.py` đã `DROP COLUMN workspaces.ai_file_sort_enabled`. Không thêm lại cột, API, hay UI cho AI file sorting.
+- *(Mục trùng lặp trong `## Deferred / Gaps` đã xoá 2026-07-25 — chỉ giữ bản này ở `## Invariants & Rules`.)*
+
+## Consistency Conventions
+
+| Concern | Convention |
+|---|---|
+| Naming (Python) | `snake_case` cho modules, functions, variables; `PascalCase` cho classes; `SCREAMING_SNAKE_CASE` cho constants/enums. |
+| Naming (TypeScript) | `camelCase` cho variables/functions; `PascalCase` cho components/types; file components dùng `kebab-case`. |
+| IDs | `uuid.UUID` cho user, `int` auto-increment cho workspace/document/folder/thread, `UUID` cho purchases. |
+| Dates/Times | Lưu UTC `TIMESTAMP(timezone=True)` ở backend; ISO 8601 string ở API; client render theo local timezone. |
+| Error shapes | FastAPI trả HTTPException với `detail` string; client hiển thị toast hoặc inline error. |
+| State & cross-cutting | Mọi mutation workspace-scoped kiểm tra `workspace_id` và permission; mọi tool call ghi log; mọi async task chạy qua Celery. |
+| Config | Biến môi trường tập trung trong `app/config/__init__.py` (backend) và `.env.local` (web). Không hardcode secrets. |
+
+## Stack
+
+| Name | Version |
+|---|---|
+| Python | 3.12 |
+| FastAPI | latest stable (Pydantic v2) |
+| SQLAlchemy | 2.x async |
+| Alembic | latest |
+| PostgreSQL | 15+ với pgvector extension |
+| Redis | 7+ (cache + Celery broker) |
+| Celery | latest |
+| LiteLLM | latest |
+| LangChain / LangGraph | latest |
+| OpenTelemetry | latest |
+| Node.js | 20+ |
+| Next.js | 16 |
+| React | 19 |
+| Tailwind CSS | v4 |
+| Jotai / Zustand | latest |
+| Tanstack Query | latest |
+| Plate.js | latest |
+| Electron | 42 |
+| Plasmo | latest |
+| Obsidian API | latest |
+| MCP SDK Python | latest |
+
+## Structural Seed
+
+```text
+/Users/luisphan/Documents/nowing/
+├── nowing_backend/                 # Python FastAPI monolith
+│   ├── app/
+│   │   ├── app.py                  # FastAPI app, middleware, routers
+│   │   ├── routes/                 # FastAPI route modules (>40 modules)
+│   │   ├── capabilities/           # Built-in scraper capabilities
+│   │   ├── agents/                 # Multi-agent chat runtime
+│   │   ├── automations/            # Trigger/action/run engine
+│   │   ├── connectors/             # OAuth connector logic
+│   │   ├── indexing_pipeline/      # Upload, chunk, embed
+│   │   ├── etl_pipeline/           # Parsers (Docling, Unstructured, LlamaCloud)
+│   │   ├── retriever/              # Hybrid semantic + full-text search
+│   │   ├── memory/                 # Long-term memory storage, retrieval, auto-extract
+│   │   ├── services/               # Business services (wallet, token tracking, ...)
+│   │   ├── tasks/                  # Celery task definitions
+│   │   ├── db.py                   # SQLAlchemy models + helpers
+│   │   └── config/                 # Config modules
+│   ├── alembic/versions/           # Alembic migrations
+│   └── tests/                      # Unit/integration/e2e tests
+├── nowing_web/                     # Next.js 16 App Router
+│   ├── app/                        # Routes (home, dashboard, api, docs)
+│   ├── components/                 # UI components (assistant-ui, citation-panel, editor, ...)
+│   ├── lib/                        # API clients, auth fetch
+│   ├── atoms/                      # Jotai global state
+│   ├── zero/                       # Zero sync config
+│   └── content/docs/               # Fumadocs docs
+├── nowing_desktop/                 # Electron 42 + TypeScript
+├── nowing_browser_extension/       # Plasmo + React 18
+├── nowing_obsidian/                # Obsidian plugin TypeScript
+├── nowing_mcp/                     # MCP server Python
+│   └── mcp_server/
+│       ├── server.py               # FastMCP composition
+│       ├── core/                   # Client, auth, workspace context
+│       └── features/               # scrapers, knowledge_base, workspaces, memory
+├── nowing_evals/                   # Evaluation harness Python
+├── docker/                         # Docker Compose, install scripts
+└── docs/                           # Markdown docs (auto-generated)
+```
+
+## Capability → Architecture Map
+
+| Capability / Area | Lives in | Governed by |
+|---|---|---|
+| Auth (email/Google/PAT/session) | `nowing_backend/app/routes/auth_routes.py`, `app/users.py` | AD-2, AD-9 |
+| Workspace CRUD + RBAC | `nowing_backend/app/routes/workspaces_routes.py`, `app/db.py` (Workspace, WorkspaceRole, WorkspaceMembership) | AD-9 |
+| Built-in scrapers (Reddit, YouTube, ...) | `nowing_backend/app/capabilities/<platform>/` | AD-1, AD-3 |
+| **Deep-Research Engine (ChainLens)** — external dependency | `nowing_backend/app/capabilities/chainlens/research/` (executor/definition/schemas), `app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/`, `nowing_mcp/mcp_server/features/scrapers/platforms/chainlens.py`, config `app/config/__init__.py:798-807` | **AD-15**, AD-7 *(không còn AD-3 — amended 2026-07-25)* |
+| Deep-research cost metering | `nowing_backend/app/capabilities/chainlens/research/executor.py`, `app/capabilities/core/billing.py`, `app/services/token_tracking_service.py` | AD-15, **AD-8** |
+| **Crawler engine (biên BSL 1.1)** — fetcher từng nền tảng, InnerTube, CAPTCHA, session/pool, stealth testbench | `nowing_backend/app/proprietary/**` (84 file, ~16.6k dòng) | **AD-16**, **AD-19**, AD-3 |
+| Proxy provider registry + rotation | `nowing_backend/app/utils/proxy/` (registry + providers) | AD-16, **AD-19** |
+| **Thang fetch + escalation trang khó** (static → browser → stealth + `solve_cloudflare`) | `app/proprietary/web_crawler/connector.py` (`crawl_url`, `_run_tier_with_proxy_retry`) | **AD-19** |
+| **Detect / giải CAPTCHA** — bypass logic (BSL) vs seam vendor (Apache-2.0) | `app/proprietary/web_crawler/captcha.py` · `app/utils/captcha/solvers.py` (2captcha, capsolver) | **AD-19**, AD-16 |
+| **Phân loại tường bot** (`BlockType`, additive telemetry) | `app/utils/crawl/classifier.py` | **AD-19** |
+| Escalation trang bị chắn → enrichment async *(còn thiếu)* | sẽ chạy trên door `?mode=async` sẵn có; tín hiệu từ engine (`partial` / `insufficientEvidence`) | **AD-19**, AD-17, AD-15 |
+| **Screenshot-as-evidence + vision fallback** *(còn thiếu — `grep screenshot app/**/*.py` = 0 hit)* | sẽ chụp tại tier StealthyFetcher (`page_action` đã nhận `page`); đọc bằng `get_vision_llm` đã có; key namespace ảnh **chưa quyết** (`app/file_storage/` hiện document-scoped) | **AD-20**, AD-8, AD-11.1 |
+| Memory → scraper-run provenance & re-validation | `nowing_backend/app/services/memory/`, `app/db.py` (Memory.source_capability/source_input/source_run_id) | **AD-11.1** (FR-39 — hiện có defect) |
+| **Async capability door** (submit/SSE/replay/cancel/history) — deep research chạy trên đây | `nowing_backend/app/capabilities/core/access/rest.py` (`?mode=async`, `runs/{id}/events`, `cancel`), `core/events.py` (`run_event_bus` + ring buffer 500), `core/progress.py`; client `nowing_web/lib/apis/scrapers-api.service.ts` | **AD-17**, AD-3 |
+| Multi-replica bus cho async run *(còn thiếu)* | sẽ đặt Redis pub/sub sau interface `run_event_bus` | **AD-17**, AD-4 |
+| Research degradation → hybrid search | `nowing_backend/app/capabilities/chainlens/research/executor.py`, `app/retriever/` | AD-15 |
+| External OAuth connectors | `nowing_backend/app/routes/*_add_connector_route.py`, `app/connectors/` | AD-1 |
+| External MCP connectors | `nowing_backend/app/routes/composio_routes.py`, `app/routes/mcp_oauth_route.py` | AD-1, AD-7 |
+| Knowledge base upload/index | `nowing_backend/app/indexing_pipeline/`, `app/etl_pipeline/`, `app/file_storage/` | AD-2 |
+| Hybrid search | `nowing_backend/app/retriever/` | AD-2 |
+| Long-term memory storage & retrieval | `nowing_backend/app/services/memory/`, `app/db.py` (Memory, MemoryVersion, MemoryRelation, ResearchThread) | AD-11 |
+| **Memory injection vào chat prompt** (đường NÓNG, chặn mọi lượt) | `app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py` | **AD-18** (NFR-1b — hiện unbounded, bỏ qua HNSW+GIN) |
+| **First-run value: research run → memory** | `app/services/memory/extraction.py`, `app/capabilities/core/runs.py` | **AD-18**, `AD-11.1` (FR-40 — `SCRAPER_RUN` chưa có writer) |
+| Citation panel | `nowing_web/components/citation-panel/citation-panel.tsx`, `nowing_backend/app/routes/documents_routes.py` | AD-5, AD-6 |
+| Multi-agent chat | `nowing_backend/app/agents/chat/multi_agent_chat/` | AD-1, AD-4 |
+| MCP memory tools | `nowing_mcp/mcp_server/features/memory.py` | AD-7, AD-12 |
+| Research continuity | `nowing_backend/app/agents/chat/multi_agent_chat/` | AD-4, AD-13 |
+| Real-time chat/comments | `nowing_backend/app/notifications/`, `nowing_web/zero/`, `app/zero_publication.py` | AD-5 |
+| Report / Podcast / Video / Image | `nowing_backend/app/routes/reports_routes.py`, `app/podcasts/`, `app/routes/image_generation_routes.py` | AD-1, AD-2 |
+| Automations trigger/run | `nowing_backend/app/automations/` | AD-1 |
+| Web client | `nowing_web/` | AD-5, AD-6 |
+| Desktop client | `nowing_desktop/` | AD-6 |
+| Browser extension | `nowing_browser_extension/` | AD-6 |
+| Obsidian plugin | `nowing_obsidian/` | AD-6 |
+| MCP server | `nowing_mcp/mcp_server/` | AD-7 |
+| Token usage tracking | `nowing_backend/app/services/token_tracking_service.py`, `app/db.py` (TokenUsage) | AD-2, AD-10 |
+| Credit wallet | `nowing_backend/app/services/wallet_credit.py`, `app/db.py` (User.credit_micros_balance, CreditPurchase) | AD-2, AD-8 |
+
+## Deferred / Gaps
+
+Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
+
+### ~~AD-DEFER-1~~ — Citation scroll/highlight trong full document editor  `✅ ĐÓNG 2026-07-25`
+- **Status:** **KHÔNG CÒN DEFERRED — đã implement.** Lý do hoãn ghi ở đây đã lỗi thời.
+- **~~Reason (lỗi thời)~~:** ~~Citation panel đã cung cấp chunk window với highlight. Để mở full editor đúng chunk cần map `chunkId` -> block/range trong Plate/Monaco và thêm state `chunkId` vào `editorPanelAtom`.~~
+- **Verify code 2026-07-25 (readiness check U-4):** `nowing_web/atoms/editor/editor-panel.atom.ts` **đã có** `chunkId: number | null` (dòng 12, 23, 38, 64, 79, 93); logic dùng nó ở `components/editor-panel/editor-panel.tsx` + `components/editor/plugins/citation-kit.tsx`. Story `3-6` = `done` trong `sprint-status.yaml`.
+- **Linked PRD:** NFR-6 → đã sửa thành `[DONE]` cùng lượt này.
+
+> **🧹 Dọn section này 2026-07-25 (readiness check + Nhóm 1 remediation).** Bốn AD-DEFER dưới đây đã **lỗi thời** — việc chúng hoãn thì code **đã làm rồi**. Cùng loại lỗi với `AD-DEFER-1`. Verify bằng code trước khi đóng từng cái. Đây đúng là rủi ro mà readiness check tìm ra: tài liệu kiến trúc báo "hoãn" cho thứ đã ship → team lập kế hoạch làm lại.
+
+### ~~AD-DEFER-2~~ — Direct write-back automation actions  `✅ ĐÓNG 2026-07-25`
+- **Status:** **ĐÃ IMPLEMENT.** Không còn deferred.
+- **~~Reason (lỗi thời)~~:** ~~Agent có thể viết lại Notion/Slack/Linear/Jira trong một `agent_task` bằng agent tools. Direct action types riêng sẽ cần retry/audit/rollback chuyên biệt.~~
+- **Verify code:** `app/automations/actions/builtin/__init__.py` import `write_back_jira`, `write_back_linear`, `write_back_notion`, `write_back_slack` — mỗi cái một subpackage tự đăng ký. ⇒ **OQ-5 đã được trả lời trong thực thi: chọn action type riêng.**
+- **Linked PRD:** FR-18 → `[DONE]` · Story `6-4` = `done`
+
+### ~~AD-DEFER-3~~ — Per-workspace MCP tool enable/disable toggle  `✅ ĐÓNG 2026-07-25`
+- **Status:** **ĐÃ IMPLEMENT.**
+- **~~Reason (lỗi thời)~~:** ~~MCP server hiện expose tất cả tools. Thêm toggle đòi hỏi schema `workspace_mcp_tool_enabled` và filter `tools/list`/`tool call` server-side.~~
+- **Verify code:** bảng `workspace_mcp_tool_settings` (`app/db.py:1945`, unique constraint `uq_workspace_mcp_tool` dòng 1950) · migration `175_add_workspace_mcp_tool_settings.py` · `McpToolGroup` + catalog trong `app/mcp_tools.py`.
+- **Linked PRD:** OQ-4 → `[DONE]` · Story `2-5` = `done`
+
+### AD-DEFER-4 — Data retention & lifecycle per workspace  `⚠️ PARTIAL 2026-07-25 — schema đã có, legal còn mở`
+- **Status:** **không còn deferred hoàn toàn.** Schema + enforcement đã có; phần **legal/right-to-delete cho MEMORY** mới là chỗ còn mở.
+- **Verify code:** migration `176_add_document_retention.py` · `Workspace.document_retention_days` (`app/db.py:1804`), `auto_archive_enabled` (dòng 1805) · cron `apply-document-retention-policies` (xem `merge-to-prod-checklist.md` G5 — **automation xoá dữ liệu, chạy ngay khi deploy**).
+- **Còn mở thật:** retention + right-to-delete cho `memories`/versions/relations (khác doc retention) · phơi nhiễm ToS/bản quyền/PII cho dữ liệu scrape lưu dài hạn · tách trách nhiệm self-host vs cloud. **Chốt trước GA cloud.**
+- **Linked PRD:** OQ-3 `[GAP]` · Story `3-7` = `done` (phần doc retention)
+
+### ~~AD-DEFER-5~~ — Usage & credit dashboard  `✅ ĐÓNG 2026-07-25`
+- **Status:** **ĐÃ IMPLEMENT** (cả API lẫn UI).
+- **~~Reason (lỗi thời)~~:** ~~Dữ liệu `TokenUsage`/`credit_micros_balance` đã có nhưng chưa có aggregate API và UI.~~
+- **Verify code:** `app/routes/usage_routes.py` (`APIRouter(prefix="/usage")`) · UI `nowing_web/app/dashboard/[workspace_id]/usage/`.
+- **Linked PRD:** NFR-7 / FR-31 → `[DONE]` · Story `8-3` = `done`
+
+### ~~AD-DEFER-6~~ — Memory-driven automation triggers (`memory_change`, `continue_research`)  `✅ ĐÓNG 2026-07-25`
+- **Status:** **ĐÃ IMPLEMENT.**
+- **~~Reason (lỗi thời)~~:** ~~`AutomationTrigger` hiện chỉ có `schedule` và `event`; thêm `memory_change` đòi hỏi event stream từ `Memory` writes và action handler mới. Nên deferred post-MVP.~~
+- **Verify code:** `triggers/builtin/__init__.py`: `from . import event, memory_change, schedule` · `triggers/builtin/memory_change/` (`params.py`, `selector.py` — có guard *"a memory-writing automation cannot re-fire a matching `memory_change` trigger"*) · `actions/builtin/continue_research/` · `AutomationRun.research_thread_id` (`app/db.py:712`, relationship dòng 746) · `dispatch/launch.py:44` `resolve_research_thread_id`.
+- **Linked PRD:** FR-35 → `[DONE]` · Story `6-5` = `done`
+
+### AD-DEFER-7 — Owned web index / crawl-at-scale: OUT OF SCOPE (không phải "hoãn")
+- **Status:** **NON-GOAL**, không phải deferred-with-intent. Khác các AD-DEFER khác trong section này.
+- **Rule:** Nowing **không** xây owned web index, không xây crawl-at-scale corpus, và **không** bán research data như một sản phẩm dữ liệu. Deep open-web research đến từ ChainLens (AD-15), mà bản thân ChainLens là **orchestrator gọi provider** (Brave / Jina / Exa / Tavily / Perplexity Sonar / SearXNG) + extraction per-URL (Jina Reader / Firecrawl / Crawl4AI) — **không** phải index riêng.
+- **Reason (evidence, verified 2026-07-25):**
+  - ChainLens `epic-26-gate-tracking.md` (pre-indexed hybrid search): **DEFERRED — 0 of 7 gates passing**. Gate 1 demand ≥5K q/day = UNKNOWN; Gate 3 & 6 = *"infrastructure doesn't exist"*.
+  - `prd-epic-vs-exa-coverage-2026-07-23.md`: *"Owned index | Out of scope P3 | ❌ | Exa tự xây index; Chainlens dùng providers"*.
+  - Mô hình kinh doanh của Exa **là** owned index. Bán lại thứ đang mua, ở giá đã commoditize (~$7/1k), đấu specialist có vốn (Tavily→Nebius $400M, 2/2026) = arbitrage âm biên.
+  - `chainlens-direction-decision-brief-2026-07-24.md` §11: corpus moat không đáng xây cho team nhỏ — Stack Overflow đã khoá crawl (pay-per-crawl 2/2026, mất quyền là retroactive); a16z *"Empty Promise of Data Moats"*.
+- **Hệ quả cho latency:** kế hoạch giảm latency deep-research **không được dựa vào index search**. Ba đòn bẩy hợp lệ nằm trên ChainLens Epic 43 — `43-5` semantic cache hit-rate, `43-2` planner-DAG parallel sub-research (lever lớn nhất), `43-4` multi-stage rerank — cộng `29-5` cost routing (done). Xem NFR-9.
+- **Muốn mở lại?** Phải qua SCP mới, và điều kiện tối thiểu là ChainLens Epic 26 pass các gate của nó trước.
+- **Linked PRD:** §2.4 NG-1 / §6.2 / NFR-9
+
+*(`AD-REMOVED — AI File Sorting` đã chuyển về `## Invariants & Rules` để không trùng lặp — 2026-07-25.)*

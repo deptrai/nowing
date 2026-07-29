@@ -1,0 +1,41 @@
+{
+  "taskId": "l00wrm",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "l00wrm",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.671762Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.667961Z",
+        "createdAt": "2026-07-28T22:10:18.667961+07:00",
+        "id": "l00wrm",
+        "labels": [
+          "bmad",
+          "bmad-key-6-1-automation-triggers",
+          "epic-6"
+        ],
+        "parent": "jw240f",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "6 1 Automation Triggers",
+        "updatedAt": "2026-07-28T15:10:18.667961Z"
+      }
+    }
+  ]
+}

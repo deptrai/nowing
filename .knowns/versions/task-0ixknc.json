@@ -1,0 +1,41 @@
+{
+  "taskId": "0ixknc",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "0ixknc",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.129578Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.126847Z",
+        "createdAt": "2026-07-28T22:10:18.126847+07:00",
+        "id": "0ixknc",
+        "labels": [
+          "bmad",
+          "bmad-key-1-6-custom-roles",
+          "epic-1"
+        ],
+        "parent": "k0gvv8",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "1 6 Custom Roles",
+        "updatedAt": "2026-07-28T15:10:18.126847Z"
+      }
+    }
+  ]
+}

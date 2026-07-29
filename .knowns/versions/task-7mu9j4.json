@@ -1,0 +1,41 @@
+{
+  "taskId": "7mu9j4",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "7mu9j4",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.631708Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.629447Z",
+        "createdAt": "2026-07-28T22:10:18.629447+07:00",
+        "id": "7mu9j4",
+        "labels": [
+          "bmad",
+          "bmad-key-5-3-video-presentation-generation",
+          "epic-5"
+        ],
+        "parent": "cv5wzz",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "5 3 Video Presentation Generation",
+        "updatedAt": "2026-07-28T15:10:18.629447Z"
+      }
+    }
+  ]
+}

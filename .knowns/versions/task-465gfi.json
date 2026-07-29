@@ -1,0 +1,42 @@
+{
+  "taskId": "465gfi",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "465gfi",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.451242Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.448199Z",
+        "createdAt": "2026-07-28T22:10:18.448199+07:00",
+        "description": "G1.2 guard trong 178.upgrade() (raise nếu legacy data chưa backfill) + G1.1 app-level command scripts/backfill_legacy_memory.py (embeddings không chạy được trong raw migration) + 5 integration tests xanh (backfill create/idempotent/dry-run + guard block/drop-after). Deploy-order: mig177 → backfill → mig178.",
+        "id": "465gfi",
+        "labels": [
+          "bmad",
+          "bmad-key-3-10b-legacy-memory-recovery-backfill",
+          "epic-3"
+        ],
+        "parent": "i5cw4u",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "3 10B Legacy Memory Recovery Backfill",
+        "updatedAt": "2026-07-28T15:10:18.448199Z"
+      }
+    }
+  ]
+}

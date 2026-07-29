@@ -1,0 +1,41 @@
+{
+  "taskId": "ufaufs",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "ufaufs",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:19.318195Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "backlog"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T22:10:19.315131+07:00",
+        "description": "FR-39 phần re-validate. Dep: 9-6a. revalidate(memory_id) → chạy lại capability → confidence/MemoryVersion. Tách từ 9-6 (Q-4)",
+        "id": "ufaufs",
+        "labels": [
+          "bmad",
+          "bmad-key-9-6b-source-revalidation-api",
+          "epic-9"
+        ],
+        "parent": "rzwqza",
+        "priority": "medium",
+        "status": "backlog",
+        "timeSpent": 0,
+        "title": "9 6B Source Revalidation Api",
+        "updatedAt": "2026-07-28T22:10:19.315131+07:00"
+      }
+    }
+  ]
+}

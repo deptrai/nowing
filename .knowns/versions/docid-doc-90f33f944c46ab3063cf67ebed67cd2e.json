@@ -1,0 +1,66 @@
+{
+  "docId": "doc-90f33f944c46ab3063cf67ebed67cd2e",
+  "docPath": "planning/chainlens-search-agent-platform-v2-epic-breakdown",
+  "currentPath": "planning/chainlens-search-agent-platform-v2-epic-breakdown",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-90f33f944c46ab3063cf67ebed67cd2e",
+      "docPath": "planning/chainlens-search-agent-platform-v2-epic-breakdown",
+      "currentPath": "planning/chainlens-search-agent-platform-v2-epic-breakdown",
+      "version": 1,
+      "timestamp": "2026-07-28T14:58:24.584963Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "126adbe1bb0792613bc96e92bc16ec76831789731d9b38d2280ecf6872bd2f28",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "planning/chainlens-search-agent-platform-v2-epic-breakdown"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "Chainlens Search \u0026 Agent Platform v2 - Epic Breakdown"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "# test"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 60,
+          "deltaBytes": 60
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 60,
+          "deltaBytes": 60
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 6,
+          "deltaBytes": 6
+        }
+      ],
+      "snapshot": {
+        "content": "# test",
+        "path": "planning/chainlens-search-agent-platform-v2-epic-breakdown",
+        "title": "Chainlens Search \u0026 Agent Platform v2 - Epic Breakdown"
+      }
+    }
+  ]
+}

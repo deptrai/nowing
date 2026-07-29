@@ -1,0 +1,41 @@
+{
+  "taskId": "n1xosj",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "n1xosj",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.851981Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.849258Z",
+        "createdAt": "2026-07-28T22:10:18.849258+07:00",
+        "id": "n1xosj",
+        "labels": [
+          "bmad",
+          "bmad-key-7-5-mcp-server",
+          "epic-7"
+        ],
+        "parent": "1o515o",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "7 5 Mcp Server",
+        "updatedAt": "2026-07-28T15:10:18.849258Z"
+      }
+    }
+  ]
+}

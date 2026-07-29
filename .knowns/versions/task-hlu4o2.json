@@ -1,0 +1,41 @@
+{
+  "taskId": "hlu4o2",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "hlu4o2",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.11015Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.106969Z",
+        "createdAt": "2026-07-28T22:10:18.106969+07:00",
+        "id": "hlu4o2",
+        "labels": [
+          "bmad",
+          "bmad-key-1-5-rbac-with-owner-editor-viewer-admin-removed",
+          "epic-1"
+        ],
+        "parent": "k0gvv8",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "1 5 Rbac With Owner Editor Viewer Admin Removed",
+        "updatedAt": "2026-07-28T15:10:18.106969Z"
+      }
+    }
+  ]
+}

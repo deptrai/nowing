@@ -1,0 +1,41 @@
+{
+  "taskId": "il2e1s",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "il2e1s",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:19.297684Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "backlog"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T22:10:19.29457+07:00",
+        "description": "FR-39 phần provenance + AD-11.1. Memory tự chứa source_capability/source_input/source_run_id. KHÔNG sửa retention của runs. Tách từ 9-6 (Q-4)",
+        "id": "il2e1s",
+        "labels": [
+          "bmad",
+          "bmad-key-9-6a-memory-provenance-recipe",
+          "epic-9"
+        ],
+        "parent": "rzwqza",
+        "priority": "medium",
+        "status": "backlog",
+        "timeSpent": 0,
+        "title": "9 6A Memory Provenance Recipe",
+        "updatedAt": "2026-07-28T22:10:19.29457+07:00"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "taskId": "w6p2dz",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "w6p2dz",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.529573Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.526485Z",
+        "createdAt": "2026-07-28T22:10:18.526485+07:00",
+        "id": "w6p2dz",
+        "labels": [
+          "bmad",
+          "bmad-key-4-4-anonymous-chat",
+          "epic-4"
+        ],
+        "parent": "dx8h2w",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "4 4 Anonymous Chat",
+        "updatedAt": "2026-07-28T15:10:18.526485Z"
+      }
+    }
+  ]
+}

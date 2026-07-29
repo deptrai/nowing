@@ -1,0 +1,41 @@
+{
+  "taskId": "soiywf",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "soiywf",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.052328Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.050251Z",
+        "createdAt": "2026-07-28T22:10:18.050251+07:00",
+        "id": "soiywf",
+        "labels": [
+          "bmad",
+          "bmad-key-1-2-personal-access-tokens-api-access",
+          "epic-1"
+        ],
+        "parent": "k0gvv8",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "1 2 Personal Access Tokens Api Access",
+        "updatedAt": "2026-07-28T15:10:18.050251Z"
+      }
+    }
+  ]
+}

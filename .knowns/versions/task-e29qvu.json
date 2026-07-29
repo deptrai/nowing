@@ -1,0 +1,41 @@
+{
+  "taskId": "e29qvu",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "e29qvu",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:19.219602Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "backlog"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "high"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T22:10:19.216501+07:00",
+        "description": "P0 — FR-37. Parse costDollars → TokenUsage(usage_type=deep_research); hiện under-meter 2.1-3.3x. Dep: ChainLens 42-1 + OQ-7(3)",
+        "id": "e29qvu",
+        "labels": [
+          "bmad",
+          "bmad-key-9-2-deep-research-cost-metering",
+          "epic-9"
+        ],
+        "parent": "rzwqza",
+        "priority": "high",
+        "status": "backlog",
+        "timeSpent": 0,
+        "title": "9 2 Deep Research Cost Metering",
+        "updatedAt": "2026-07-28T22:10:19.216501+07:00"
+      }
+    }
+  ]
+}

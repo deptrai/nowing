@@ -1,0 +1,41 @@
+{
+  "taskId": "x0r6jl",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "x0r6jl",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.287311Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.284955Z",
+        "createdAt": "2026-07-28T22:10:18.284955+07:00",
+        "id": "x0r6jl",
+        "labels": [
+          "bmad",
+          "bmad-key-3-3-hybrid-search-over-knowledge-base",
+          "epic-3"
+        ],
+        "parent": "i5cw4u",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "3 3 Hybrid Search Over Knowledge Base",
+        "updatedAt": "2026-07-28T15:10:18.284955Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "taskId": "wizdrj",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "wizdrj",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.830132Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.827626Z",
+        "createdAt": "2026-07-28T22:10:18.827626+07:00",
+        "id": "wizdrj",
+        "labels": [
+          "bmad",
+          "bmad-key-7-4-obsidian-plugin",
+          "epic-7"
+        ],
+        "parent": "1o515o",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "7 4 Obsidian Plugin",
+        "updatedAt": "2026-07-28T15:10:18.827626Z"
+      }
+    }
+  ]
+}

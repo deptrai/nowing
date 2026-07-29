@@ -1,0 +1,41 @@
+{
+  "taskId": "g30bpp",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "g30bpp",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.089339Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.086841Z",
+        "createdAt": "2026-07-28T22:10:18.086841+07:00",
+        "id": "g30bpp",
+        "labels": [
+          "bmad",
+          "bmad-key-1-4-workspace-invites-memberships",
+          "epic-1"
+        ],
+        "parent": "k0gvv8",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "1 4 Workspace Invites Memberships",
+        "updatedAt": "2026-07-28T15:10:18.086841Z"
+      }
+    }
+  ]
+}

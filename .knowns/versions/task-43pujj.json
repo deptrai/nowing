@@ -1,0 +1,43 @@
+{
+  "taskId": "43pujj",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "43pujj",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.753637Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.750782Z",
+        "createdAt": "2026-07-28T22:10:18.750782+07:00",
+        "description": "Status: done\n\n**Story ID:** 6.5\n**Epic:** Epic 6 — Automations\n**Priority:** P2 (post-MVP per PRD)\n**Source artifacts:**\n- PRD: `_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md` (FR-35 Memory-Driven Automations — marked `[GAP]`)\n- Epics: `_bmad-output/planning-artifacts/epics.md` (Epic 6, Story 6.5)\n- Architecture: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` (automations + AD-13 research thread)\n- Previous stories: `6-4-di",
+        "id": "43pujj",
+        "labels": [
+          "bmad",
+          "bmad-key-6-5-memory-driven-automations",
+          "epic-6"
+        ],
+        "parent": "jw240f",
+        "priority": "medium",
+        "spec": "stories/story-6-5-memory-driven-automations",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "Story 6.5: Memory-Driven Automations",
+        "updatedAt": "2026-07-28T15:10:18.750782Z"
+      }
+    }
+  ]
+}

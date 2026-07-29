@@ -1,0 +1,41 @@
+{
+  "taskId": "i0j55x",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "i0j55x",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.269096Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.266381Z",
+        "createdAt": "2026-07-28T22:10:18.266381+07:00",
+        "id": "i0j55x",
+        "labels": [
+          "bmad",
+          "bmad-key-3-2-folders-document-management",
+          "epic-3"
+        ],
+        "parent": "i5cw4u",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "3 2 Folders Document Management",
+        "updatedAt": "2026-07-28T15:10:18.266381Z"
+      }
+    }
+  ]
+}

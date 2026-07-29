@@ -1,0 +1,41 @@
+{
+  "taskId": "7g5i96",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "7g5i96",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.250822Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.246876Z",
+        "createdAt": "2026-07-28T22:10:18.246876+07:00",
+        "id": "7g5i96",
+        "labels": [
+          "bmad",
+          "bmad-key-3-1-document-upload-parse-index",
+          "epic-3"
+        ],
+        "parent": "i5cw4u",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "3 1 Document Upload Parse Index",
+        "updatedAt": "2026-07-28T15:10:18.246876Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "taskId": "mzk01w",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "mzk01w",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.148554Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.145504Z",
+        "createdAt": "2026-07-28T22:10:18.145504+07:00",
+        "id": "mzk01w",
+        "labels": [
+          "bmad",
+          "bmad-key-2-1-built-in-scraper-connectors",
+          "epic-2"
+        ],
+        "parent": "ss451b",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "2 1 Built In Scraper Connectors",
+        "updatedAt": "2026-07-28T15:10:18.145504Z"
+      }
+    }
+  ]
+}

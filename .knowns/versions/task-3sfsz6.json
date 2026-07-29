@@ -1,0 +1,41 @@
+{
+  "taskId": "3sfsz6",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "3sfsz6",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.9707Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.96784Z",
+        "createdAt": "2026-07-28T22:10:18.96784+07:00",
+        "id": "3sfsz6",
+        "labels": [
+          "bmad",
+          "bmad-key-8-6-multi-tenant-isolation",
+          "epic-8"
+        ],
+        "parent": "kaffa6",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "8 6 Multi Tenant Isolation",
+        "updatedAt": "2026-07-28T15:10:18.96784Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "taskId": "1kh6cr",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "taskId": "1kh6cr",
+      "version": 1,
+      "timestamp": "2026-07-28T15:10:18.211357Z",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": null,
+          "newValue": "done"
+        },
+        {
+          "field": "priority",
+          "oldValue": null,
+          "newValue": "medium"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-07-28T15:10:18.208041Z",
+        "createdAt": "2026-07-28T22:10:18.208041+07:00",
+        "id": "1kh6cr",
+        "labels": [
+          "bmad",
+          "bmad-key-2-4-chainlens-research-mcp-tool",
+          "epic-2"
+        ],
+        "parent": "ss451b",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "2 4 Chainlens Research Mcp Tool",
+        "updatedAt": "2026-07-28T15:10:18.208041Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "docId": "doc-4f7b6c664104f6b787a04033ac572b70",
+  "docPath": "bridge-test/cli-then-direct",
+  "currentPath": "bridge-test/cli-then-direct",
+  "currentVersion": 1,
+  "versions": [
+    {
+      "id": "v1",
+      "docId": "doc-4f7b6c664104f6b787a04033ac572b70",
+      "docPath": "bridge-test/cli-then-direct",
+      "currentPath": "bridge-test/cli-then-direct",
+      "version": 1,
+      "timestamp": "2026-07-28T14:53:06.195585Z",
+      "author": "cli",
+      "actor": "cli",
+      "source": "cli",
+      "newHash": "bc683b6265acca7ece63de9e0dc16033eab8161c979f69ef153e596a3dae2abd",
+      "checkpoint": true,
+      "changes": [
+        {
+          "field": "path",
+          "oldValue": null,
+          "newValue": "bridge-test/cli-then-direct"
+        },
+        {
+          "field": "title",
+          "oldValue": null,
+          "newValue": "CLI then Direct"
+        },
+        {
+          "field": "description",
+          "oldValue": null,
+          "newValue": "test"
+        },
+        {
+          "field": "content",
+          "oldValue": null,
+          "newValue": "initial"
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "path",
+          "field": "path",
+          "summary": "path",
+          "newBytes": 29,
+          "deltaBytes": 29
+        },
+        {
+          "type": "field",
+          "field": "title",
+          "summary": "title",
+          "newBytes": 17,
+          "deltaBytes": 17
+        },
+        {
+          "type": "field",
+          "field": "description",
+          "summary": "description",
+          "newBytes": 6,
+          "deltaBytes": 6
+        },
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 7,
+          "deltaBytes": 7
+        }
+      ],
+      "snapshot": {
+        "content": "initial",
+        "description": "test",
+        "path": "bridge-test/cli-then-direct",
+        "title": "CLI then Direct"
+      }
+    }
+  ]
+}
