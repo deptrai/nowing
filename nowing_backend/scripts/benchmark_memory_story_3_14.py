@@ -17,12 +17,11 @@ Run (from ``nowing_backend/``):
       --warmups 20 --samples 100 --freshness-samples 30 \\
       --output ../_bmad-output/implementation-artifacts/evidence/3-14-memory-performance.json
 
-AC-5's live freshness harness (real Celery worker + real LLM extraction) is
-NOT run by this script: this environment has zero LLM API keys configured
-(see the story's Dev Agent Record), which is the story's own explicit
-"No live credentials/worker->not done" escape clause. ``--freshness-samples``
-is accepted for CLI/documentation compatibility but the artifact records the
-freshness section as ``status: skipped``.
+AC-5's live freshness harness (real Celery worker + real LLM extraction) runs
+after AC-3 cleanup when ``--freshness-samples`` is greater than 0 and live LLM
+credentials/worker are detected. If the environment has no live credentials or
+worker, the harness records ``status: partial`` with
+``reason: missing_llm_credentials``.
 
 Timer placement note: the story specifies REST/context timers as "after
 RBAC/before embedding through response compose" and injection timers as
@@ -50,6 +49,7 @@ import platform
 import statistics
 import sys
 import time
+import traceback
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -1741,12 +1741,24 @@ async def main_async(args: argparse.Namespace) -> int:
 
         # AC-5 freshness results are finalized in the finally block after latency cleanup.
 
+    except Exception as exc:
+        provenance["error"] = str(exc)
+        provenance["traceback"] = traceback.format_exc()
+        logger.exception("AC-3 benchmark failed: %s", exc)
+
     finally:
         cleanup_audit: dict[str, Any] = {}
-        async with async_session_maker() as session:
-            cleanup_audit = await cleanup_all(session, manifests, identities)
-            g_final = await global_memory_count(session)
-            tag_final = await run_tag_count(session, run_tag)
+        g_final = g0
+        tag_final = 0
+        try:
+            async with async_session_maker() as session:
+                cleanup_audit = await cleanup_all(session, manifests, identities)
+                g_final = await global_memory_count(session)
+                tag_final = await run_tag_count(session, run_tag)
+        except Exception as exc:
+            cleanup_audit["success"] = False
+            cleanup_audit["errors"] = [str(exc), traceback.format_exc()]
+            logger.exception("AC-3 cleanup failed: %s", exc)
         cleanup_audit["global_restored_to_g0"] = g_final == g0
         cleanup_audit["g0"] = g0
         cleanup_audit["g_final"] = g_final
@@ -1760,19 +1772,35 @@ async def main_async(args: argparse.Namespace) -> int:
                 tag_final,
             )
 
-        # AC-5: live freshness harness runs only after AC-3 latency cleanup.
+        # AC-5: live freshness harness runs only after AC-3 latency cleanup succeeds
+        # and no earlier benchmark error was recorded.
+        cleanup_ok = g_final == g0 and tag_final == 0 and "error" not in provenance
+        freshness_partial = False
         if args.freshness_samples > 0:
-            try:
-                freshness, freshness_partial = await _run_freshness_harness(
-                    n=args.freshness_samples,
-                    run_tag=run_tag,
-                )
-            except Exception as exc:
+            if cleanup_ok:
+                try:
+                    freshness, freshness_partial = await _run_freshness_harness(
+                        n=args.freshness_samples,
+                        run_tag=run_tag,
+                    )
+                except Exception as exc:
+                    freshness = {
+                        "status": "partial",
+                        "pass": False,
+                        "reason": "harness_error",
+                        "detail": f"Freshness harness raised: {exc}",
+                        "requested_freshness_samples": args.freshness_samples,
+                    }
+                    freshness_partial = True
+            else:
                 freshness = {
                     "status": "partial",
                     "pass": False,
-                    "reason": "harness_error",
-                    "detail": f"Freshness harness raised: {exc}",
+                    "reason": "ac3_not_clean",
+                    "detail": (
+                        "AC-5 skipped because AC-3 cleanup did not reach zero "
+                        "or an earlier benchmark error was recorded."
+                    ),
                     "requested_freshness_samples": args.freshness_samples,
                 }
                 freshness_partial = True
@@ -1787,17 +1815,43 @@ async def main_async(args: argparse.Namespace) -> int:
             freshness_partial = False
         provenance["freshness"] = freshness
         gates = provenance.get("gates", {})
-        provenance["pass"] = len(gates.get("failures", [])) == 0 and not freshness_partial
-        provenance["status"] = "partial" if freshness_partial else "complete"
+        provenance["pass"] = (
+            "error" not in provenance
+            and len(gates.get("failures", [])) == 0
+            and not freshness_partial
+        )
+        provenance["status"] = (
+            "error" if "error" in provenance else ("partial" if freshness_partial else "complete")
+        )
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Post-freshness DB count assertion: the whole benchmark must leave the
+    # database exactly where it started.
+    g_after_freshness = g_final
+    tag_after_freshness = tag_final
+    try:
+        async with async_session_maker() as session:
+            g_after_freshness = await global_memory_count(session)
+            tag_after_freshness = await run_tag_count(session, run_tag)
+    except Exception as exc:
+        logger.exception("Post-freshness count failed: %s", exc)
+        provenance.setdefault("post_freshness_error", str(exc))
+    if "cleanup" in provenance:
+        provenance["cleanup"]["g_after_freshness"] = g_after_freshness
+        provenance["cleanup"]["tag_after_freshness"] = tag_after_freshness
+        provenance["cleanup"]["global_restored_to_g0_after_freshness"] = (
+            g_after_freshness == g0
+        )
+
     output_path.write_text(json.dumps(provenance, indent=2, default=str))
 
     ok = (
         provenance.get("pass", False)
         and cleanup_audit.get("global_restored_to_g0", False)
         and cleanup_audit.get("run_tag_count_final") == 0
+        and g_after_freshness == g0
     )
     print(f"Artifact written to {output_path}")
     print(f"PASS={ok}")
