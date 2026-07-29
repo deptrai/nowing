@@ -12,7 +12,7 @@ import { ApiMcpTabs } from "./api-mcp-tabs";
 import { ConnectorFaq } from "./connector-faq";
 import { Reveal } from "./reveal";
 
-const GITHUB_URL = "https://github.com/nowing/Nowing";
+const GITHUB_URL = "https://github.com/deptrai/nowing";
 
 function SchemaTable({ caption, fields }: { caption: string; fields: SchemaField[] }) {
 	return (

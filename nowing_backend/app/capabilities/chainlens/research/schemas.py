@@ -7,7 +7,7 @@ synthesized answer plus the web sources that ground it.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -48,7 +48,7 @@ class ResearchInput(BaseModel):
         max_length=2000,
         description="Optional instructions for the synthesis writer, e.g. language.",
     )
-    history: list[tuple[str, str]] = Field(
+    history: list[Annotated[list[str], Field(min_length=2, max_length=2)]] = Field(
         default_factory=list,
         max_length=50,
         description="Optional conversation history as [role, content] pairs.",

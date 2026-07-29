@@ -12,7 +12,7 @@ import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
 const PLUGIN_RELEASES_URL =
-	"https://github.com/nowing/Nowing/releases?q=obsidian&expanded=true";
+	"https://github.com/deptrai/nowing/releases?q=obsidian&expanded=true";
 
 /**
  * Obsidian connect form for the plugin-only architecture.

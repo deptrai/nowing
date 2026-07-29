@@ -64,7 +64,7 @@ const THEMES = [
 
 const LEARN_MORE_LINKS = [
 	{ key: "documentation" as const, href: "https://www.nowing.com/docs" },
-	{ key: "github" as const, href: "https://github.com/nowing/Nowing" },
+	{ key: "github" as const, href: "https://github.com/deptrai/nowing" },
 ];
 
 type MobileProfileSubmenu = "theme" | "language" | "learn_more";

@@ -21,7 +21,7 @@ export function OrganizationJsonLd() {
 				description:
 					"Nowing is an open-source NotebookLM alternative for AI agents. It researches the live web with structured data through one API or MCP server.",
 				sameAs: [
-					"https://github.com/nowing/Nowing",
+					"https://github.com/deptrai/nowing",
 					"https://discord.gg/ejRNvftDp9",
 					"https://www.reddit.com/r/Nowing/",
 					"https://www.linkedin.com/company/nowing/",
@@ -78,7 +78,7 @@ export function SoftwareApplicationJsonLd() {
 				description:
 					"Nowing is an open-source NotebookLM alternative for AI agents. It researches the live web with platform-native connectors for Reddit, YouTube, TikTok, Amazon, Google Maps, Google Search, and any page on the open web, through one API or MCP server.",
 				url: "https://www.nowing.com",
-				downloadUrl: "https://github.com/nowing/Nowing/releases",
+				downloadUrl: "https://github.com/deptrai/nowing/releases",
 				featureList: [
 					"Platform-native connectors: Reddit, YouTube, TikTok, Amazon, Google Maps, Google Search, Web Crawl",
 					"MCP server that exposes every connector as a native agent tool",

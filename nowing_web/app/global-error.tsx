@@ -5,7 +5,7 @@ import posthog from "posthog-js";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 
-const ISSUES_URL = "https://github.com/nowing/Nowing/issues/new";
+const ISSUES_URL = "https://github.com/deptrai/nowing/issues/new";
 
 function buildBasicIssueUrl(error: Error & { digest?: string }) {
 	const params = new URLSearchParams();

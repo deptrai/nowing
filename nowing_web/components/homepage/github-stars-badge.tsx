@@ -241,9 +241,9 @@ type NavbarGitHubStarsProps = {
 };
 
 function NavbarGitHubStars({
-	username = "MODSetter",
-	repo = "Nowing",
-	href = "https://github.com/nowing/Nowing",
+	username = "deptrai",
+	repo = "nowing",
+	href = "https://github.com/deptrai/nowing",
 	className,
 }: NavbarGitHubStarsProps) {
 	const { data: stars = 0, isLoading } = useQuery({

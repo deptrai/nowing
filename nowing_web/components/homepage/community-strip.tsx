@@ -5,7 +5,7 @@ import { Reveal } from "@/components/connectors-marketing/reveal";
 import { MarketingSection } from "@/components/marketing/section";
 import { Button } from "@/components/ui/button";
 
-const GITHUB_URL = "https://github.com/nowing/Nowing";
+const GITHUB_URL = "https://github.com/deptrai/nowing";
 const DISCORD_URL = "https://discord.gg/ejRNvftDp9";
 const REDDIT_URL = "https://www.reddit.com/r/Nowing/";
 

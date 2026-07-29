@@ -1,4 +1,4 @@
-export const NOWING_ISSUES_URL = "https://github.com/nowing/Nowing/issues";
+export const NOWING_ISSUES_URL = "https://github.com/deptrai/nowing/issues";
 
 export class AppError extends Error {
 	status?: number;

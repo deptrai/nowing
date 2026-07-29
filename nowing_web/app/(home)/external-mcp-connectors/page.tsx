@@ -206,7 +206,7 @@ export default function ExternalMcpConnectorsPage() {
 								</Button>
 								<Button asChild variant="ghost" size="lg">
 									<Link
-										href="https://github.com/nowing/Nowing"
+										href="https://github.com/deptrai/nowing"
 										target="_blank"
 										rel="noopener noreferrer"
 									>

@@ -49,14 +49,15 @@ export function useLatestRelease() {
 
 	useEffect(() => {
 		const controller = new AbortController();
-		fetch("https://api.github.com/repos/nowing/Nowing/releases/latest", {
+		fetch("https://api.github.com/repos/deptrai/nowing/releases", {
 			signal: controller.signal,
 		})
-			.then((r) => r.json())
+			.then((r) => (r.ok ? r.json() : []))
 			.then((data) => {
-				if (data?.assets) {
+				const release = Array.isArray(data) ? data[0] : data;
+				if (release?.assets) {
 					setAssets(
-						data.assets
+						release.assets
 							.filter((a: { name: string }) => /\.(exe|dmg|AppImage|deb)$/.test(a.name))
 							.map((a: { name: string; browser_download_url: string }) => ({
 								name: a.name,
@@ -89,7 +90,7 @@ export function getAssetLabel(name: string): string {
 	return name;
 }
 
-export const GITHUB_RELEASES_URL = "https://github.com/nowing/Nowing/releases/latest";
+export const GITHUB_RELEASES_URL = "https://github.com/deptrai/nowing/releases/latest";
 
 export function usePrimaryDownload() {
 	const { os, arch } = useUserOS();

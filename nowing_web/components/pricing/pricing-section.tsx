@@ -24,7 +24,7 @@ const demoPlans = [
 		],
 		description: "",
 		buttonText: "View on GitHub",
-		href: "https://github.com/nowing/Nowing",
+		href: "https://github.com/deptrai/nowing",
 		isPopular: false,
 	},
 	{

@@ -9,5 +9,5 @@ export const baseOptions: BaseLayoutProps = {
 			</>
 		),
 	},
-	githubUrl: "https://github.com/nowing/Nowing",
+	githubUrl: "https://github.com/deptrai/nowing",
 };

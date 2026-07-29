@@ -93,6 +93,7 @@ def _load_dotenv_and_set_env_defaults() -> None:
     os.environ.setdefault("OPENAI_API_KEY", "local-deny-real-call-sentinel")
     os.environ.setdefault("ANTHROPIC_API_KEY", "local-deny-real-call-sentinel")
     os.environ.setdefault("LITELLM_API_KEY", "local-deny-real-call-sentinel")
+    os.environ.setdefault("CHAINLENS_API_KEY", "local-deny-real-call-sentinel")
 
     os.environ.setdefault("ATLASSIAN_CLIENT_ID", "fake-atlassian-client-id")
     os.environ.setdefault("ATLASSIAN_CLIENT_SECRET", "fake-atlassian-client-secret")
@@ -272,6 +273,7 @@ def _patch_llm_bindings() -> None:
 def _install_runtime_fakes() -> None:
     """Run each fake's install() against the active patch stack."""
     from tests.e2e.fakes import (
+        chainlens_research as _fake_chainlens_research,
         clickup_module as _fake_clickup_module,
         confluence_indexer as _fake_confluence_indexer,
         confluence_oauth as _fake_confluence_oauth,
@@ -289,6 +291,7 @@ def _install_runtime_fakes() -> None:
         slack_module as _fake_slack_module,
     )
 
+    _fake_chainlens_research.install(_active_patches)
     _fake_embeddings.install(_active_patches)
     _fake_docling_service.install(_active_patches)
     _fake_confluence_oauth.install(_active_patches)
