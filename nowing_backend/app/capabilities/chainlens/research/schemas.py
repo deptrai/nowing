@@ -119,6 +119,22 @@ class ResearchOutput(BaseModel):
         default="",
         description="Synthesized answer with inline citations when available.",
     )
+    cost_micros: int | None = Field(
+        default=None,
+        description="Exact cost in micro-USD reported by the engine, rounded from costDollars.",
+    )
+    cost_basis: Literal["actual", "estimated", "fallback"] | None = Field(
+        default=None,
+        description="Source of cost_micros: actual engine cost, estimated engine cost, or flat-rate fallback.",
+    )
+    resolved_mode: str | None = Field(
+        default=None,
+        description="Mode the engine actually ran (e.g. speed/balanced/quality/deep), if reported.",
+    )
+    tokens_total: int | None = Field(
+        default=None,
+        description="Total token count reported by the engine, if any.",
+    )
     sources: list[Source] = Field(
         default_factory=list,
         description="Grounding sources, in the order they were cited.",

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
@@ -23,6 +25,8 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 
 # Each platform meter -> the config knob holding its micro-USD per-item rate.
@@ -191,6 +195,8 @@ async def charge_capability(
         charged = await _charge_web_crawl(ctx, output.billable_units)
         charged += await _charge_captcha(ctx, getattr(output, "captcha_attempts", 0))
         return charged
+    if unit is BillingUnit.CHAINLENS_QUERY:
+        return await _charge_chainlens(output, ctx)
     return await _charge_platform(output, unit, ctx)
 
 
@@ -238,6 +244,91 @@ async def _charge_captcha(ctx: CapabilityContext, attempts: int) -> int:
     )
     await service.charge_captcha(owner_user_id, attempts)
     return cost_micros
+
+
+async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> int:
+    """Charge a deep-research call using the real cost from the engine.
+
+    Falls back to the configured flat rate when the engine does not emit
+    ``costDollars``. Always records a ``TokenUsage`` row so cost analytics
+    work even when billing is disabled.
+    """
+    service = PlatformScrapeCreditService(ctx.session)
+    billing_enabled = service.billing_enabled()
+    owner_user_id = await _resolve_workspace_owner(ctx.session, ctx.workspace_id)
+    if owner_user_id is None:
+        return 0
+
+    # Do not charge for a complete engine failure with no usable content.
+    status = getattr(output, "status", None)
+    has_content = bool(getattr(output, "answer", None) or getattr(output, "sources", None))
+    if status == "engine_unavailable" and not has_content:
+        return 0
+
+    cost_micros: int | None = getattr(output, "cost_micros", None)
+    cost_basis: str | None = getattr(output, "cost_basis", None)
+    resolved_mode: str | None = getattr(output, "resolved_mode", None)
+    tokens_total: int | None = getattr(output, "tokens_total", None)
+
+    if cost_micros is None:
+        rate = _platform_rate(BillingUnit.CHAINLENS_QUERY)
+        cost_micros = service.items_to_micros(1, rate)
+        cost_basis = "fallback"
+        resolved_mode = resolved_mode or getattr(output, "mode", None)
+        logger.warning(
+            "chainlens.research using fallback flat rate "
+            "(%d micros) for workspace %s: no costDollars in SSE",
+            cost_micros,
+            ctx.workspace_id,
+        )
+
+    if cost_micros is None or cost_micros <= 0:
+        return 0
+
+    call_details: dict[str, Any] = {
+        "resolved_mode": resolved_mode,
+        "cost_basis": cost_basis,
+        "tokens_total": tokens_total,
+        "cost_dollars": float(Decimal(cost_micros) / Decimal("1000000")),
+    }
+    if getattr(output, "degraded", False):
+        call_details["degradation_reason"] = (
+            getattr(output, "degradation_reason", None) or "unknown"
+        )
+        call_details["final_status"] = getattr(output, "status", None) or "unknown"
+
+    if not billing_enabled:
+        await _record_deep_research_token_usage(
+            ctx, owner_user_id, cost_micros, call_details
+        )
+        return 0
+
+    await wallet_credit.check_balance(ctx.session, owner_user_id, cost_micros)
+    await _record_deep_research_token_usage(
+        ctx, owner_user_id, cost_micros, call_details
+    )
+    await wallet_credit.apply_debit(ctx.session, owner_user_id, cost_micros)
+    return cost_micros
+
+
+async def _record_deep_research_token_usage(
+    ctx: CapabilityContext,
+    owner_user_id: UUID,
+    cost_micros: int,
+    call_details: dict[str, Any],
+) -> None:
+    """Stage the audit row. Fail-open: log and continue if persistence fails."""
+    try:
+        await record_token_usage(
+            ctx.session,
+            usage_type="deep_research",
+            workspace_id=ctx.workspace_id,
+            user_id=owner_user_id,
+            cost_micros=cost_micros,
+            call_details=call_details,
+        )
+    except Exception:
+        logger.exception("Failed to record deep_research token usage; continuing")
 
 
 async def _charge_platform(

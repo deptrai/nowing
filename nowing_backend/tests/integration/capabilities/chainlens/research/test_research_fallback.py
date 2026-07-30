@@ -235,12 +235,13 @@ async def test_charge_capability_creates_token_usage_for_partial_with_sources(
         await db_session.execute(
             select(TokenUsage).where(
                 TokenUsage.workspace_id == db_workspace.id,
-                TokenUsage.usage_type == BillingUnit.CHAINLENS_QUERY.value,
+                TokenUsage.usage_type == "deep_research",
             )
         )
     ).scalars().all()
     assert len(rows) == 1
     assert rows[0].cost_micros > 0
+    assert rows[0].call_details["cost_basis"] == "fallback"
     # FK: the TokenUsage is tied to the workspace owner.
     assert rows[0].user_id == db_user.id
 

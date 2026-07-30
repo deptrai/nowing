@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
 import httpx
@@ -102,14 +103,19 @@ class _SSEParser:
         "blocked_url_coverage",
         "blocks",
         "chat_id",
+        "cost_basis",
+        "cost_dollars",
         "degradation_reason",
         "engine_reason",
         "error_msg",
+        "estimated",
+        "resolved_mode",
         "saw_done",
         "saw_heartbeat",
         "saw_unknown",
         "sources",
         "status",
+        "tokens_total",
         "web_url",
     )
 
@@ -127,6 +133,11 @@ class _SSEParser:
         self.degradation_reason: str | None = None
         self.engine_reason: str | None = None
         self.blocked_url_coverage: dict[str, int] = {}
+        self.cost_dollars: float | None = None
+        self.cost_basis: Literal["actual", "estimated", "fallback"] | None = None
+        self.resolved_mode: str | None = None
+        self.estimated: bool | None = None
+        self.tokens_total: int | None = None
 
     def feed_line(self, raw_line: str) -> None:
         """Ingest one raw ``data:`` SSE line and update parser state.
@@ -166,10 +177,12 @@ class _SSEParser:
             )
             return
 
-        if event_type == "done":
-            self.saw_done = True
+        if event_type in {"done", "usage"}:
+            if event_type == "done":
+                self.saw_done = True
             self.chat_id = event.get("chatId") or event.get("chat_id") or self.chat_id
             self.web_url = event.get("webUrl") or self.web_url
+            self._extract_cost(event)
             return
 
         if event_type == "block" and isinstance(event.get("block"), dict):
@@ -265,9 +278,58 @@ class _SSEParser:
             self.saw_heartbeat = True
             return
 
-        if event_type not in {"block", "updateBlock", "done"}:
+        if event_type not in {"block", "updateBlock", "done", "usage"}:
             self.saw_unknown = True
             return
+
+    def _extract_cost(self, event: dict[str, Any]) -> None:
+        """Extract ``costDollars`` and related metadata from an engine event.
+
+        Overwrites any previous value so the last valid ``usage``/``done``
+        event wins. Malformed/negative values are ignored and logged.
+        """
+        raw_cost = event.get("costDollars")
+        if raw_cost is None:
+            return
+        if not isinstance(raw_cost, (int, float)):
+            logger.warning(
+                "Ignoring malformed costDollars in SSE event: %r", raw_cost
+            )
+            return
+        if raw_cost < 0:
+            logger.warning("Ignoring negative costDollars: %r", raw_cost)
+            return
+        if raw_cost != raw_cost:  # NaN
+            logger.warning("Ignoring NaN costDollars")
+            return
+
+        self.cost_dollars = float(raw_cost)
+        self.resolved_mode = (
+            event.get("resolvedMode")
+            or event.get("resolved_mode")
+            or self.resolved_mode
+        )
+        self.estimated = event.get("estimated")
+
+        tokens = event.get("tokens")
+        if isinstance(tokens, dict):
+            total = tokens.get("total")
+            if isinstance(total, int):
+                self.tokens_total = total
+
+        if isinstance(self.estimated, bool) and self.estimated:
+            self.cost_basis = "estimated"
+        else:
+            self.cost_basis = "actual"
+
+    def _cost_micros(self) -> int | None:
+        """Convert stored ``cost_dollars`` to micro-USD with half-up rounding."""
+        if self.cost_dollars is None:
+            return None
+        micros = (
+            Decimal(str(self.cost_dollars)) * Decimal("1000000")
+        ).to_integral_value(ROUND_HALF_UP)
+        return int(micros)
 
     def finalize(self) -> ResearchOutput:
         """Return the parsed research output after all lines have been fed."""
@@ -304,6 +366,10 @@ class _SSEParser:
             engine_reason=self.engine_reason,
             saw_heartbeat=self.saw_heartbeat,
             blocked_url_coverage_by_block_type=self.blocked_url_coverage,
+            cost_micros=self._cost_micros(),
+            cost_basis=self.cost_basis,
+            resolved_mode=self.resolved_mode,
+            tokens_total=self.tokens_total,
         )
 
 

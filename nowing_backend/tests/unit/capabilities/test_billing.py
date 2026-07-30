@@ -41,6 +41,7 @@ def _make_session(owner_id, balance_micros):
         result = MagicMock()
         result.scalar_one_or_none.return_value = owner_id  # owner resolution
         result.unique.return_value.scalar_one_or_none.return_value = fake_user  # debit
+        result.first.return_value = (balance_micros, 0)  # spendable_micros
         return result
 
     session.execute = AsyncMock(side_effect=_make_result)
@@ -550,3 +551,137 @@ async def test_chainlens_charge_does_not_leak_secrets_in_call_details(
     assert "query text" not in details_str.lower()
     assert "secret-key" not in details_str.lower()
     assert "https://example.com" not in details_str
+
+
+# Red-phase scaffolds for 9.2 — deep-research cost metering
+
+
+async def test_chainlens_charge_uses_actual_cost_micros_and_deep_research_usage(
+    monkeypatch, record_usage
+):
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        cost_micros=12300,
+        cost_basis="actual",
+        resolved_mode="quality",
+        tokens_total=1280,
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 12300
+    assert user.credit_micros_balance == 100_000 - 12300
+    record_usage.assert_awaited_once()
+    kwargs = record_usage.await_args.kwargs
+    assert kwargs["usage_type"] == "deep_research"
+    assert kwargs["cost_micros"] == 12300
+    assert kwargs["user_id"] == _OWNER
+    assert kwargs["workspace_id"] == _WORKSPACE_ID
+    details = kwargs["call_details"]
+    assert details["cost_basis"] == "actual"
+    assert details["resolved_mode"] == "quality"
+    assert details["tokens_total"] == 1280
+
+
+async def test_chainlens_charge_fallback_to_flat_rate_logs_warning(
+    monkeypatch, record_usage, caplog
+):
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "CHAINLENS_QUERY_MICROS_PER_CALL", 5000)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(answer="Answer", status="complete")
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 5000
+    assert user.credit_micros_balance == 100_000 - 5000
+    record_usage.assert_awaited_once()
+    kwargs = record_usage.await_args.kwargs
+    assert kwargs["usage_type"] == "deep_research"
+    assert kwargs["cost_micros"] == 5000
+    assert kwargs["call_details"]["cost_basis"] == "fallback"
+    assert any("fallback" in rec.message for rec in caplog.records)
+
+
+async def test_chainlens_billing_disabled_records_usage_without_debit(
+    monkeypatch, record_usage
+):
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", False)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        cost_micros=12300,
+        cost_basis="actual",
+        resolved_mode="quality",
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 0
+    assert user.credit_micros_balance == 100_000
+    record_usage.assert_awaited_once()
+    kwargs = record_usage.await_args.kwargs
+    assert kwargs["usage_type"] == "deep_research"
+    assert kwargs["cost_micros"] == 12300
+
+
+async def test_chainlens_charge_raises_when_actual_cost_exceeds_balance(
+    monkeypatch, record_usage
+):
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=10_000)
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        cost_micros=12_300,
+        cost_basis="actual",
+        resolved_mode="quality",
+    )
+
+    with pytest.raises(InsufficientCreditsError):
+        await charge_capability(
+            output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+        )
+
+    assert user.credit_micros_balance == 10_000
+
+
+async def test_chainlens_engine_unavailable_with_no_content_is_free(
+    monkeypatch, record_usage
+):
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(status="engine_unavailable")
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 0
+    assert user.credit_micros_balance == 100_000
+    record_usage.assert_not_awaited()
