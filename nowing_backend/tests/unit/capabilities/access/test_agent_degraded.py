@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from pydantic import BaseModel
 
 from app.capabilities.chainlens.research.schemas import ResearchInput, ResearchOutput
 from app.capabilities.core.access import agent as agent_mod
@@ -112,3 +111,58 @@ async def test_agent_tool_returns_partial_with_fallback_hits(isolate_agent):
     assert result["status"] == "partial"
     assert result["degraded"] is True
     assert result["fallback_hit_count"] == 1
+
+
+async def test_agent_tool_charge_failure_does_not_raise(isolate_agent):
+    """FM-12: a failing charge_capability must not make the agent tool raise."""
+    output = ResearchOutput(
+        status="engine_unavailable",
+        degradation_reason="not_configured",
+    )
+    cap = _research_capability(output)
+
+    # Make the wallet charge fail inside the tool; the executor already degraded.
+    isolate_agent.charge.side_effect = RuntimeError("wallet down")
+
+    tools = agent_mod.build_capability_tools(
+        workspace_id=7, capabilities=[cap], user_id="u-1"
+    )
+    tool = next(t for t in tools if t.name == "chainlens_research")
+    result = await tool.ainvoke({"query": "hello"})
+
+    assert isinstance(result, dict)
+    assert result["status"] == "engine_unavailable"
+    assert result["degraded"] is True
+    assert result.get("degradation_reason") == "not_configured"
+    assert "next_action" in result or "next_step" in result
+
+
+async def test_agent_tool_rejects_unauthorized_workspace(isolate_agent, monkeypatch):
+    """Agent door must re-validate workspace access before executing the tool."""
+    from fastapi import HTTPException
+
+    from app.exceptions import ForbiddenError
+
+    output = ResearchOutput(status="engine_unavailable")
+    output.next_action = "Deep research is not available in self-host Phase 1."
+    cap = _research_capability(output)
+
+    auth = SimpleNamespace(
+        user=SimpleNamespace(id="u-1"), is_gated=False, method="session"
+    )
+
+    async def _deny(*args, **kwargs):
+        raise HTTPException(status_code=403, detail="Unauthorized workspace")
+
+    monkeypatch.setattr(agent_mod, "check_workspace_access", _deny)
+
+    tools = agent_mod.build_capability_tools(
+        workspace_id=7, capabilities=[cap], user_id="u-1", auth_context=auth
+    )
+    tool = next(t for t in tools if t.name == "chainlens_research")
+
+    with pytest.raises(ForbiddenError, match="Unauthorized workspace"):
+        await tool.ainvoke({"query": "hello"})
+
+    # The capability executor must not run when workspace access is denied.
+    assert not cap.executor.calls

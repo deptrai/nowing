@@ -199,6 +199,12 @@ async def _execute_async_run(
     """
     prefixed = f"run_{run_id}"
     started = time.perf_counter()
+    final_status = "error"
+    final_error: str | None = None
+    serialized = None
+    duration_ms: int | None = None
+    cost_micros: int | None = None
+
     with progress_scope(run_id=run_id, bus=run_event_bus) as reporter:
         run_event_bus.publish(
             run_id,
@@ -214,11 +220,8 @@ async def _execute_async_run(
         try:
             async with async_session_maker() as session:
                 ctx = CapabilityContext(session=session, workspace_id=workspace_id)
-                output = await execute_with_context(
-                    executor, payload=payload, ctx=ctx
-                )
+                output = await execute_with_context(executor, payload=payload, ctx=ctx)
                 duration_ms = int((time.perf_counter() - started) * 1000)
-                cost_micros: int | None = None
                 try:
                     if output.billable_units > 0:
                         cost_micros = await charge_capability(output, unit, ctx)
@@ -226,42 +229,35 @@ async def _execute_async_run(
                     logger.exception("charge failed for async run %s", run_id)
 
                 serialized = serialize_output(output)
-                await _finalize_async(
-                    run_id,
-                    status="success",
-                    serialized=serialized,
-                    started=started,
-                    duration_ms=duration_ms,
-                    cost_micros=cost_micros,
-                    progress=reporter.coarse,
-                )
-                _publish_finished(
-                    run_id, "success", item_count=serialized.item_count
-                )
-                return
+                final_status = "success"
         except asyncio.CancelledError:
             raise
         except (NowingError, HTTPException) as exc:
-            await _finalize_async(
-                run_id,
-                status="error",
-                error=str(exc),
-                started=started,
-                progress=reporter.coarse,
-            )
-            _publish_finished(run_id, "error", error=str(exc))
-            return
+            final_status = "error"
+            final_error = str(exc)
         except Exception:
             logger.exception("async run %s failed with an upstream error", run_id)
-            await _finalize_async(
-                run_id,
-                status="error",
-                error=f"The '{capability}' capability failed due to an upstream error.",
-                started=started,
-                progress=reporter.coarse,
+            final_status = "error"
+            final_error = (
+                f"The '{capability}' capability failed due to an upstream error."
             )
-            _publish_finished(run_id, "error", error="upstream error")
-            return
+
+    await _finalize_async(
+        run_id,
+        status=final_status,
+        serialized=serialized,
+        error=final_error,
+        started=started,
+        duration_ms=duration_ms,
+        cost_micros=cost_micros,
+        progress=reporter.coarse,
+    )
+    if final_status == "success":
+        _publish_finished(
+            run_id, "success", item_count=serialized.item_count if serialized else 0
+        )
+    else:
+        _publish_finished(run_id, "error", error=final_error or "upstream error")
 
 
 async def _finalize_async(
@@ -391,9 +387,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
         with progress_scope() as reporter:
             started = time.perf_counter()
             try:
-                output = await execute_with_context(
-                    executor, payload=payload, ctx=ctx
-                )
+                output = await execute_with_context(executor, payload=payload, ctx=ctx)
             except (NowingError, HTTPException) as exc:
                 await _record_rest_run(
                     workspace_id=workspace_id,
@@ -425,7 +419,11 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                 ) from exc
 
             duration_ms = int((time.perf_counter() - started) * 1000)
-            cost_micros = await charge_capability(output, unit, ctx)
+            cost_micros = None
+            try:
+                cost_micros = await charge_capability(output, unit, ctx)
+            except Exception:
+                logger.exception("charge failed for sync run")
 
             serialized = serialize_output(output)
             run_id = await _record_rest_run(

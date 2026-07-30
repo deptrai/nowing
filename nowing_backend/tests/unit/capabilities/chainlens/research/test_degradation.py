@@ -8,7 +8,10 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from app.agents.chat.multi_agent_chat.shared.retrieval.models import ChunkHit, DocumentHit
+from app.agents.chat.multi_agent_chat.shared.retrieval.models import (
+    ChunkHit,
+    DocumentHit,
+)
 from app.capabilities.chainlens.research.schemas import ResearchInput
 from app.capabilities.core.types import CapabilityContext
 
@@ -211,3 +214,59 @@ async def test_degraded_output_does_not_fabricate_answer():
     assert not output.answer
     assert not output.sources
     assert output.next_action is not None
+
+
+async def test_knowledge_base_fallback_is_tenant_isolated():
+    """Negative tenant test: fallback only keeps hits for the authorized workspace.
+
+    The mock ``search_chunks`` pool contains documents from two workspaces. The
+    fallback function is invoked with the authorized ``workspace_id`` and must
+    only return hits for that workspace; the executor then surfaces only those
+    chunks in the final answer.
+    """
+    from types import SimpleNamespace
+
+    execute = _load_execute_with_context()
+    assert execute is not None
+
+    async def search(_):
+        raise httpx.TimeoutException("timeout")
+
+    authorized_workspace = 7
+    unauthorized_workspace = 99
+
+    def _make_workspace_hit(workspace_id: int, doc_id: int, chunk_id: int):
+        base = _make_hit(doc_id, chunk_id)
+        # Add a workspace tag so the mock search_chunks can filter by tenant.
+        return SimpleNamespace(
+            workspace_id=workspace_id,
+            document_id=base.document_id,
+            title=base.title,
+            document_type=base.document_type,
+            metadata=base.metadata,
+            score=base.score,
+            chunks=base.chunks,
+        )
+
+    pool = [
+        _make_workspace_hit(authorized_workspace, 10, 100),
+        _make_workspace_hit(unauthorized_workspace, 20, 200),
+    ]
+
+    async def fallback(*, query, scope, top_k, session, workspace_id):
+        # Simulates the real search_chunks contract: filter by workspace_id.
+        return [h for h in pool if h.workspace_id == workspace_id]
+
+    ctx = CapabilityContext(session=AsyncMock(), workspace_id=authorized_workspace)
+    output = await execute(
+        ResearchInput(query="hello"),
+        ctx,
+        search_fn=search,
+        fallback_fn=fallback,
+    )
+
+    assert output.status == "partial"
+    assert output.fallback_hit_count == 1
+    assert output.sources[0].document_id == 10
+    assert output.sources[0].content == "relevant chunk"
+    assert all(s.document_id != 20 for s in output.sources)

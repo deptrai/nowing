@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 pytestmark = pytest.mark.unit
 
 
-_PROMPT_PATH = "/Users/luisphan/Documents/nowing/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/system_prompt.md"
+_PROMPT_PATH = (
+    Path(__file__).resolve().parents[8]
+    / "app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/system_prompt.md"
+)
 
 
 def _prompt_text() -> str:

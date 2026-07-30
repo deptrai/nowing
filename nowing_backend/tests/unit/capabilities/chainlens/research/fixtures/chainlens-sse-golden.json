@@ -1,0 +1,9 @@
+[
+  {"type": "block", "block": {"id": "txt", "type": "text", "data": "ChainLens golden answer"}},
+  {"type": "block", "block": {"id": "src", "type": "source", "data": [{"metadata": {"title": "Example", "url": "https://example.com"}, "content": "snippet"}]}},
+  {"type": "updateBlock", "blockId": "txt", "patch": [{"op": "replace", "path": "/data", "value": "Updated golden answer"}]},
+  {"type": "partial", "state": "insufficient_evidence", "reason": "low coverage", "answer": "partial golden", "sources": [{"title": "Partial", "url": "https://example.com/partial"}]},
+  {"type": "insufficientEvidence", "reason": "no reliable sources", "partial": {"answer": "", "sources": [{"title": "Weak", "url": "https://example.com/weak"}]}},
+  {"type": "heartbeat"},
+  {"type": "done", "chatId": "chat-golden", "webUrl": "https://research.chainlens.net/c/chat-golden"}
+]

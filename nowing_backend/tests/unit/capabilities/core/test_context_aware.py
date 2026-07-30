@@ -23,11 +23,11 @@ async def test_execute_with_context_accepts_executor_payload_and_context():
     execute_with_context = getattr(core, "execute_with_context", None)
     assert execute_with_context is not None
 
-    async def executor(payload):
-        return {"received": payload}
+    async def executor(payload, ctx):
+        return {"received": payload, "workspace_id": ctx.workspace_id}
 
-    ctx = CapabilityContext(session=SimpleNamespace(), workspace_id=7)
-    result = await execute_with_context(executor, payload="hello", ctx=ctx)
+    cap_ctx = CapabilityContext(session=SimpleNamespace(), workspace_id=7)
+    result = await execute_with_context(executor, payload="hello", ctx=cap_ctx)
     assert result["received"] == "hello"
     assert result["workspace_id"] == 7
 

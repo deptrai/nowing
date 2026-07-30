@@ -38,10 +38,7 @@ async def test_record_chainlens_degradation_uses_low_cardinality_labels():
             fallback_attempted=False,
             fallback_used=False,
             fallback_hit_count=0,
-            workspace_id=1,
-            query="self-host independence",
-            api_key="secret-key",
-            answer="classified answer text",
+            engine_reason="missing_key",
         )
     finally:
         metrics._add = original_add
@@ -56,6 +53,37 @@ async def test_record_chainlens_degradation_uses_low_cardinality_labels():
         assert value not in labels, f" leaked secret in metric labels: {value}"
     assert recorded["attrs"]["degradation_reason"] == "not_configured"
     assert recorded["attrs"]["final_status"] == "engine_unavailable"
+    # Arbitrary engine reasons are redacted to keep labels low-cardinality.
+    assert recorded["attrs"]["engine_reason"] == "redacted"
+
+
+async def test_record_chainlens_degradation_passes_closed_vocabulary_engine_reasons():
+    from app.observability import metrics
+
+    fn = getattr(metrics, "record_chainlens_degradation", None)
+    assert fn is not None
+
+    recorded = {}
+    original_add = metrics._add
+
+    def _capture_add(counter, value, attrs):
+        recorded["counter"] = counter
+        recorded["attrs"] = attrs
+
+    metrics._add = _capture_add
+    try:
+        fn(
+            degradation_reason="timeout",
+            final_status="engine_unavailable",
+            fallback_attempted=False,
+            fallback_used=False,
+            fallback_hit_count=0,
+            engine_reason="  TimeOut  ",
+        )
+    finally:
+        metrics._add = original_add
+
+    assert recorded["attrs"]["engine_reason"] == "timeout"
 
 
 async def test_record_blocked_url_coverage_counts_by_block_type():
@@ -72,8 +100,8 @@ async def test_record_blocked_url_coverage_counts_by_block_type():
 
     metrics._add = _capture_add
     try:
-        fn(url="https://example.com", block_type=BlockType.CLOUDFLARE)
-        fn(url="https://example.org", block_type=BlockType.CAPTCHA_RECAPTCHA)
+        fn(block_type=BlockType.CLOUDFLARE)
+        fn(block_type=BlockType.CAPTCHA_RECAPTCHA)
     finally:
         metrics._add = original_add
 
@@ -101,9 +129,63 @@ async def test_record_kb_fallback_hit_count_is_exact():
 
     metrics._record = _capture_record
     try:
-        fn(3, workspace_id=1)
+        fn(3)
     finally:
         metrics._record = original_record
 
     assert recorded["value"] == 3
-    assert recorded["attrs"].get("fallback_hit_count") == 3
+    assert recorded["attrs"].get("hit_bucket") == "1-5"
+
+
+async def test_kb_search_duration_is_recorded_and_bounded(monkeypatch):
+    """NFR-latency: fallback search records a bounded duration via the KB histogram."""
+    from app.agents.chat.multi_agent_chat.shared.retrieval.hybrid_search import (
+        search_chunks,
+    )
+    from app.agents.chat.multi_agent_chat.shared.retrieval.models import SearchScope
+    from app.observability import metrics
+
+    recorded = {}
+    original_record = metrics._record
+
+    def _capture_record(counter, value, attrs):
+        recorded["counter"] = counter
+        recorded["value"] = value
+        recorded["attrs"] = attrs
+
+    monkeypatch.setattr(metrics, "_record", _capture_record)
+
+    class _FakeTime:
+        _times = [1000.0, 1000.0045]
+
+        def perf_counter(self):
+            return self._times.pop(0)
+
+    monkeypatch.setattr(
+        "app.agents.chat.multi_agent_chat.shared.retrieval.hybrid_search.time",
+        _FakeTime(),
+    )
+
+    class _FakeResult:
+        def all(self):
+            return []
+
+    class _FakeSession:
+        async def execute(self, query):
+            return _FakeResult()
+
+    await search_chunks(
+        _FakeSession(),
+        workspace_id=7,
+        query="hello",
+        scope=SearchScope(),
+        top_k=5,
+        query_embedding=[0.0] * 384,
+    )
+
+    assert recorded.get("value") == pytest.approx(4.5, abs=0.1)
+    assert recorded.get("attrs", {}).get("search.surface") == "chunks"
+    assert recorded.get("attrs", {}).get("workspace.id") == 7
+    assert recorded.get("value", float("inf")) <= 100.0
+
+    monkeypatch.setattr(metrics, "_record", original_record)

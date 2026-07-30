@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable
 from typing import Any, Literal
 
 import httpx
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.capabilities.chainlens.research.schemas import (
     ResearchInput,
@@ -52,10 +53,7 @@ class _Block:
         self.data = data
 
 
-_SourceDict = dict[str, Any]
-
-
-def _block_type_for(raw: str | None) -> BlockType:
+def _block_type_for(raw: str // None) -> BlockType:
     """Map a raw block-type string to the classifier enum; unknown → UNKNOWN."""
     if not raw:
         return BlockType.UNKNOWN
@@ -65,9 +63,9 @@ def _block_type_for(raw: str | None) -> BlockType:
         return BlockType.UNKNOWN
 
 
-def _parse_sources(raw_sources: list[_SourceDict] | None) -> list[Source]:
+def _parse_sources(raw_sources: Any) -> list[Source]:
     """Normalize a list of ChainLens source blobs into typed ``Source`` objects."""
-    if not raw_sources:
+    if not isinstance(raw_sources, list):
         return []
     sources: list[Source] = []
     for raw_source in raw_sources:
@@ -92,203 +90,266 @@ def _parse_sources(raw_sources: list[_SourceDict] | None) -> list[Source]:
     return sources
 
 
-def _parse_sse(raw: str) -> ResearchOutput:
-    """Parse the ChainLens block-based SSE stream into a research output.
+class _SSEParser:
+    """Incremental SSE parser for the ChainLens research stream.
 
-    The wire protocol is documented in ``apps/mcp/src/lib/apiClient.ts``:
-    - ``event: error`` followed by a ``data:`` line -> surface error.
-    - ``data: [DONE]`` / empty data lines are ignored.
-    - ``type: block`` creates/replaces a block id.
-    - ``type: updateBlock`` applies RFC6902-style patches (we only honor
-      ``replace``/``add`` on ``/data``).
-    - ``type: done`` carries chatId and webUrl metadata.
-
-    9.1a additions: the engine can also emit ``partial`` and
-    ``insufficientEvidence`` data frames (with an embedded ``reason`` and
-    optional ``blocked_metadata``). Heartbeats and unknown event types are
-    tolerated without raising.
+    Feed each line as it arrives and call :meth:`finalize` once the stream
+    ends. This keeps memory bounded for long research streams.
     """
-    blocks: dict[str, _Block] = {}
-    error_msg: str | None = None
-    chat_id: str | None = None
-    web_url: str | None = None
-    saw_done = False
-    saw_heartbeat = False
-    saw_unknown = False
-    pending_event_type = "message"
 
-    status: _ResearchStatus = "complete"
-    answer = ""
-    sources: list[Source] = []
-    degradation_reason: str | None = None
-    engine_reason: str | None = None
-    blocked_url_coverage: dict[str, int] = {}
+    __slots__ = (
+        "answer",
+        "blocked_url_coverage",
+        "blocks",
+        "chat_id",
+        "degradation_reason",
+        "engine_reason",
+        "error_msg",
+        "saw_done",
+        "saw_heartbeat",
+        "saw_unknown",
+        "sources",
+        "status",
+        "web_url",
+    )
 
-    for raw_line in raw.splitlines():
+    def __init__(self) -> None:
+        self.blocks: dict[str, _Block] = {}
+        self.error_msg: str | None = None
+        self.chat_id: str | None = None
+        self.web_url: str | None = None
+        self.saw_done = False
+        self.saw_heartbeat = False
+        self.saw_unknown = False
+        self.status: _ResearchStatus = "complete"
+        self.answer = ""
+        self.sources: list[Source] = []
+        self.degradation_reason: str | None = None
+        self.engine_reason: str | None = None
+        self.blocked_url_coverage: dict[str, int] = {}
+
+    def feed_line(self, raw_line: str) -> None:
+        """Ingest one raw ``data:`` SSE line and update parser state.
+
+        The ChainLens contract uses data-only frames; ``event:`` lines and
+        ``[DONE]`` markers are ignored.
+        """
         line = raw_line.strip()
         if not line:
-            pending_event_type = "message"
-            continue
-
-        if line.startswith("event:"):
-            pending_event_type = line[len("event:") :].strip()
-            continue
+            return
 
         if not line.startswith("data:"):
-            continue
+            return
         payload = line[len("data:") :].strip()
 
         if not payload or payload == "[DONE]":
-            continue
-
-        if pending_event_type == "error":
-            error_msg = payload
-            continue
+            return
 
         try:
             event = json.loads(payload)
         except json.JSONDecodeError:
             logger.debug("Ignoring malformed SSE JSON payload: %r", payload[:200])
-            continue
+            return
 
         if not isinstance(event, dict):
             logger.debug("Ignoring non-object SSE event: %r", type(event))
-            continue
+            return
 
         event_type = event.get("type")
 
         if event_type == "error":
             data = event.get("data")
-            error_msg = (
+            self.error_msg = (
                 data
                 if isinstance(data, str)
                 else (json.dumps(data) if data is not None else "Upstream SSE error")
             )
-            continue
+            return
 
         if event_type == "done":
-            saw_done = True
-            chat_id = event.get("chatId") or event.get("chat_id") or chat_id
-            web_url = event.get("webUrl") or web_url
-            continue
+            self.saw_done = True
+            self.chat_id = event.get("chatId") or event.get("chat_id") or self.chat_id
+            self.web_url = event.get("webUrl") or self.web_url
+            return
 
         if event_type == "block" and isinstance(event.get("block"), dict):
             block = event["block"]
             block_id = block.get("id")
             if isinstance(block_id, str):
-                blocks[block_id] = _Block(block.get("type", ""), block.get("data"))
-            continue
+                self.blocks[block_id] = _Block(block.get("type", ""), block.get("data"))
+            return
 
         if event_type == "updateBlock" and isinstance(event.get("blockId"), str):
             block_id = event["blockId"]
-            current = blocks.get(block_id)
+            current = self.blocks.get(block_id)
             if current is None:
-                continue
+                return
             for op in event.get("patch") or []:
                 if not isinstance(op, dict):
                     continue
                 if op.get("path") == "/data" and op.get("op") in {"replace", "add"}:
                     current.data = op.get("value")
-            continue
+            return
 
         if event_type == "partial":
-            status = "partial"
-            degradation_reason = "partial"
-            engine_reason = event.get("reason") or engine_reason
-            answer = (
-                event.get("answer")
-                or (event.get("partial") or {}).get("answer")
-                or ""
+            self.engine_reason = event.get("reason") or self.engine_reason
+            partial_blob = event.get("partial")
+            if not isinstance(partial_blob, dict):
+                partial_blob = {}
+            answer = event.get("answer")
+            if not isinstance(answer, str):
+                answer = partial_blob.get("answer")
+            if not isinstance(answer, str):
+                answer = ""
+            self.answer = answer
+            self.sources = _parse_sources(
+                event.get("sources")
+                if isinstance(event.get("sources"), list)
+                else partial_blob.get("sources")
             )
-            sources = _parse_sources(
-                event.get("sources") or (event.get("partial") or {}).get("sources")
-            )
-            for entry in event.get("blocked_metadata") or []:
-                if not isinstance(entry, dict):
-                    continue
-                url = str(entry.get("url") or "").strip()
-                if not url:
-                    continue
-                bt = _block_type_for(entry.get("block_type"))
-                blocked_url_coverage[bt.value] = (
-                    blocked_url_coverage.get(bt.value, 0) + 1
-                )
-                metrics.record_blocked_url_coverage(url=url, block_type=bt)
-            continue
+            state = event.get("state")
+            if state == "insufficient_evidence" and not answer and not self.sources:
+                self.status = "insufficient_evidence"
+                self.degradation_reason = "insufficient_evidence"
+            else:
+                self.status = "partial"
+                self.degradation_reason = "partial"
+            blocked_metadata = event.get("blocked_metadata")
+            if isinstance(blocked_metadata, list):
+                for entry in blocked_metadata:
+                    if not isinstance(entry, dict):
+                        continue
+                    url = str(entry.get("url") or "").strip()
+                    if not url:
+                        continue
+                    bt = _block_type_for(entry.get("block_type"))
+                    self.blocked_url_coverage[bt.value] = (
+                        self.blocked_url_coverage.get(bt.value, 0) + 1
+                    )
+                    metrics.record_blocked_url_coverage(block_type=bt)
+            return
 
         if event_type == "insufficientEvidence":
-            engine_reason = event.get("reason") or engine_reason
-            partial_blob = event.get("partial") or {}
-            partial_answer = partial_blob.get("answer") or ""
+            self.engine_reason = event.get("reason") or self.engine_reason
+            partial_blob = event.get("partial")
+            if not isinstance(partial_blob, dict):
+                partial_blob = {}
+            partial_answer = partial_blob.get("answer")
+            if not isinstance(partial_answer, str):
+                partial_answer = ""
             partial_sources = _parse_sources(partial_blob.get("sources"))
             if partial_answer or partial_sources:
-                status = "partial"
-                answer = partial_answer
-                sources = partial_sources
-                degradation_reason = "insufficient_evidence"
+                self.status = "partial"
+                self.answer = partial_answer
+                self.sources = partial_sources
+                self.degradation_reason = "insufficient_evidence"
             else:
-                status = "insufficient_evidence"
-                degradation_reason = "insufficient_evidence"
-            for entry in event.get("blocked_metadata") or []:
-                if not isinstance(entry, dict):
-                    continue
-                url = str(entry.get("url") or "").strip()
-                if not url:
-                    continue
-                bt = _block_type_for(entry.get("block_type"))
-                blocked_url_coverage[bt.value] = (
-                    blocked_url_coverage.get(bt.value, 0) + 1
-                )
-                metrics.record_blocked_url_coverage(url=url, block_type=bt)
-            continue
+                self.status = "insufficient_evidence"
+                self.degradation_reason = "insufficient_evidence"
+            blocked_metadata = event.get("blocked_metadata")
+            if isinstance(blocked_metadata, list):
+                for entry in blocked_metadata:
+                    if not isinstance(entry, dict):
+                        continue
+                    url = str(entry.get("url") or "").strip()
+                    if not url:
+                        continue
+                    bt = _block_type_for(entry.get("block_type"))
+                    self.blocked_url_coverage[bt.value] = (
+                        self.blocked_url_coverage.get(bt.value, 0) + 1
+                    )
+                    metrics.record_blocked_url_coverage(block_type=bt)
+            return
 
         if event_type == "heartbeat":
-            saw_heartbeat = True
-            continue
+            self.saw_heartbeat = True
+            return
 
         if event_type not in {"block", "updateBlock", "done"}:
-            saw_unknown = True
-            continue
+            self.saw_unknown = True
+            return
 
-    if error_msg:
-        raise ChainLensError(error_msg, code="CHAINLENS_UPSTREAM_ERROR")
+    def finalize(self) -> ResearchOutput:
+        """Return the parsed research output after all lines have been fed."""
+        if self.error_msg:
+            raise ChainLensError(self.error_msg, code="CHAINLENS_UPSTREAM_ERROR")
 
-    text_parts: list[str] = []
-    block_sources: list[Source] = []
-    for block in blocks.values():
-        if block.type == "text" and isinstance(block.data, str):
-            text_parts.append(block.data)
-        elif block.type == "source" and isinstance(block.data, list):
-            block_sources.extend(_parse_sources(block.data))
+        text_parts: list[str] = []
+        block_sources: list[Source] = []
+        for block in self.blocks.values():
+            if block.type == "text" and isinstance(block.data, str):
+                text_parts.append(block.data)
+            elif block.type == "source" and isinstance(block.data, list):
+                block_sources.extend(_parse_sources(block.data))
 
-    if not answer and not sources:
-        answer = "\n\n".join(text_parts).strip()
-        sources = block_sources
+        if not self.answer and not self.sources:
+            self.answer = "\n\n".join(text_parts).strip()
+            self.sources = block_sources
 
-    if status == "complete" and not answer and not sources:
-        if saw_done:
-            if saw_unknown or saw_heartbeat:
-                status = "engine_unavailable"
-                degradation_reason = "stream_incomplete"
+        if self.status == "complete" and not self.answer and not self.sources:
+            if self.saw_done or self.saw_heartbeat or self.saw_unknown:
+                self.status = "engine_unavailable"
+                self.degradation_reason = "stream_incomplete"
             else:
-                status = "insufficient_evidence"
-        elif saw_heartbeat or saw_unknown:
-            status = "engine_unavailable"
-            degradation_reason = "stream_incomplete"
-        else:
-            status = "timeout"
-            degradation_reason = "stream_incomplete"
+                self.status = "timeout"
+                self.degradation_reason = "stream_incomplete"
 
-    return ResearchOutput(
-        answer=answer,
-        sources=sources,
-        chat_id=chat_id,
-        web_url=web_url,
-        status=status,
-        degradation_reason=degradation_reason,
-        engine_reason=engine_reason,
-        saw_heartbeat=saw_heartbeat,
-        blocked_url_coverage_by_block_type=blocked_url_coverage,
+        return ResearchOutput(
+            answer=self.answer,
+            sources=self.sources,
+            chat_id=self.chat_id,
+            web_url=self.web_url,
+            status=self.status,
+            degradation_reason=self.degradation_reason,
+            engine_reason=self.engine_reason,
+            saw_heartbeat=self.saw_heartbeat,
+            blocked_url_coverage_by_block_type=self.blocked_url_coverage,
+        )
+
+
+def _parse_sse(
+    source: str | AsyncIterator[str] | AsyncIterable[str],
+) -> ResearchOutput | Awaitable[ResearchOutput]:
+    """Parse the ChainLens block-based SSE stream into a research output.
+
+    The wire protocol uses data-only SSE frames (one JSON payload per
+    ``data:`` line, no ``event:`` line):
+    - ``data: [DONE]`` / empty data lines are ignored.
+    - ``type: block`` creates/replaces a block id.
+    - ``type: updateBlock`` applies RFC6902-style patches (we only honor
+      ``replace``/``add`` on ``/data``).
+    - ``type: done`` carries chatId and webUrl metadata and marks the
+      terminal frame.
+    - ``type: error`` surfaces as a ``ChainLensError``.
+
+    9.1a additions: the engine can also emit ``partial`` and
+    ``insufficientEvidence`` data frames (with an embedded ``reason`` and
+    optional ``blocked_metadata``). Heartbeats and unknown event types are
+    tolerated without raising.
+
+    ``source`` may be a complete response string (for tests and local parsing)
+    or an async iterator of lines from a streaming response.
+    """
+    parser = _SSEParser()
+
+    if isinstance(source, str):
+        for raw_line in source.splitlines():
+            parser.feed_line(raw_line)
+        return parser.finalize()
+
+    if isinstance(source, (AsyncIterator, AsyncIterable)) or hasattr(
+        source, "__aiter__"
+    ):
+
+        async def _consume() -> ResearchOutput:
+            async for raw_line in source:
+                parser.feed_line(raw_line)
+            return parser.finalize()
+
+        return _consume()
+
+    raise TypeError(
+        f"_parse_sse expects str or an async iterator of lines, got {type(source)!r}"
     )
 
 
@@ -298,7 +359,11 @@ def _engine_unavailable(reason: str) -> ResearchOutput:
 
 
 async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
-    """Make the upstream ChainLens research call and parse the SSE response."""
+    """Make the upstream ChainLens research call and parse the SSE response.
+
+    The SSE body is parsed incrementally from ``response.aiter_lines()`` so
+    that long research streams do not have to be buffered into one string.
+    """
     if not config.CHAINLENS_API_KEY or not config.CHAINLENS_API_KEY.strip():
         logger.warning("CHAINLENS_API_KEY is not configured; degrading research.")
         return _engine_unavailable("not_configured")
@@ -309,42 +374,47 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
         "tier": "research",
         "sources": payload.sources,
         "history": payload.history,
-        "stream": False,
+        "stream": True,
     }
     if payload.system_instructions:
         body["systemInstructions"] = payload.system_instructions
     if payload.chat_id:
         body["chatId"] = payload.chat_id
 
-    url = f"{config.CHAINLENS_API_URL}/api/v1/search"
-    logger.info("Calling ChainLens research at %s", url)
+    logger.info("Calling ChainLens research")
 
     async with httpx.AsyncClient(
         timeout=config.CHAINLENS_REQUEST_TIMEOUT_SECONDS,
         follow_redirects=True,
     ) as client:
         response = await client.post(
-            url,
+            f"{config.CHAINLENS_API_URL}/api/v1/search",
             headers={
                 "Content-Type": "application/json",
                 "Accept": "text/event-stream",
                 "Authorization": f"Bearer {config.CHAINLENS_API_KEY}",
             },
             json=body,
+            stream=True,
         )
 
-    if response.status_code == 401:
-        return _engine_unavailable("auth_failed")
-    if response.status_code == 403:
-        return _engine_unavailable("auth_failed")
-    if response.status_code == 429:
-        return _engine_unavailable("rate_limited")
-    if response.status_code >= 500:
-        return _engine_unavailable("upstream_error")
-    if response.status_code >= 400:
-        return _engine_unavailable("upstream_error")
+        try:
+            if response.status_code == 401:
+                return _engine_unavailable("auth_failed")
+            if response.status_code == 403:
+                return _engine_unavailable("auth_failed")
+            if response.status_code == 429:
+                return _engine_unavailable("rate_limited")
+            if response.status_code >= 500:
+                return _engine_unavailable("upstream_error")
+            if response.status_code >= 400:
+                return _engine_unavailable("upstream_error")
+            if response.status_code != 200:
+                return _engine_unavailable("upstream_error")
 
-    return _parse_sse(response.text)
+            return await _parse_sse(response.aiter_lines())
+        finally:
+            await response.aclose()
 
 
 async def _kb_fallback(
@@ -376,7 +446,7 @@ async def execute_with_context(
     *,
     search_fn: SearchFn,
     fallback_fn: Callable[..., Awaitable[list[Any]]] = _kb_fallback,
-    top_k: int = 5,
+    top_k: int = 6,
 ) -> ResearchOutput:
     """Run research and, when the engine fails, fall back to workspace KB.
 
@@ -386,6 +456,7 @@ async def execute_with_context(
     """
     degradation_reason: str | None = None
     engine_reason: str | None = None
+    output: ResearchOutput | None = None
 
     try:
         output = await search_fn(payload)
@@ -394,18 +465,14 @@ async def execute_with_context(
             engine_reason = output.engine_reason
     except httpx.TimeoutException:
         degradation_reason = "timeout"
-        output = None
     except httpx.RequestError:
         degradation_reason = "unreachable"
-        output = None
-    except ChainLensError:
+    except ChainLensError as exc:
         degradation_reason = "upstream_error"
-        engine_reason = None
-        output = None
+        engine_reason = str(exc)
     except Exception:
-        logger.exception("ChainLens research failed for query: %s", payload.query[:80])
+        logger.exception("ChainLens research failed")
         degradation_reason = "upstream_error"
-        output = None
 
     if output is None:
         output = ResearchOutput(
@@ -418,33 +485,38 @@ async def execute_with_context(
     fallback_used = False
     fallback_hit_count = 0
 
-    if output.status in (
-        "engine_unavailable",
-        "insufficient_evidence",
-        "timeout",
-    ) and (ctx is not None and ctx.session is not None):
+    # Only engine failures and stream timeouts trigger the KB fallback.
+    # Explicit ``insufficient_evidence`` or engine ``partial`` are not
+    # silently backfilled; they preserve the engine's own conclusion.
+    if output.status in ("engine_unavailable", "timeout") and (
+        ctx is not None and ctx.session is not None
+    ):
         fallback_attempted = True
+        clamped_top_k = max(1, min(top_k, 5))
         try:
             hits = await fallback_fn(
                 query=payload.query,
                 scope=None,
-                top_k=min(top_k, 5),
+                top_k=clamped_top_k,
                 session=ctx.session,
                 workspace_id=ctx.workspace_id,
             )
             if hits:
                 fallback_sources: list[Source] = []
                 for hit in hits:
+                    if len(fallback_sources) >= clamped_top_k:
+                        break
                     document_id = hit.document_id
                     title = hit.title or "KB Document"
                     for chunk in hit.chunks:
+                        if len(fallback_sources) >= clamped_top_k:
+                            break
                         chunk_id = chunk.chunk_id
-                        content = chunk.content
                         fallback_sources.append(
                             Source(
                                 title=title,
                                 url=f"nowing://documents/{document_id}/chunks/{chunk_id}",
-                                content=content,
+                                content=chunk.content,
                                 source_type="kb",
                                 document_id=document_id,
                                 chunk_id=chunk_id,
@@ -453,39 +525,39 @@ async def execute_with_context(
                 fallback_hit_count = len(fallback_sources)
                 if fallback_hit_count:
                     fallback_used = True
+                    summary_lines = [
+                        "Deep research engine is unavailable. Showing workspace knowledge base results:"
+                    ]
+                    for src in fallback_sources:
+                        summary_lines.append(
+                            f"- {src.title}: {src.content or '(no preview)'}"
+                        )
                     output = ResearchOutput(
                         status="partial",
-                        answer="Deep research engine is unavailable; showing workspace knowledge base results.",
+                        answer="\n".join(summary_lines),
                         sources=fallback_sources,
-                        engine_reason=output.degradation_reason
-                        or output.engine_reason,
+                        engine_reason=output.engine_reason or output.degradation_reason,
                         degraded=True,
                         degradation_reason="fallback_kb_hits",
-                        fallback_hit_count=fallback_hit_count,
                     )
                 else:
                     output = ResearchOutput(
                         status="engine_unavailable",
                         degradation_reason="fallback_kb_empty",
-                        engine_reason=output.degradation_reason
-                        or output.engine_reason,
+                        engine_reason=output.engine_reason or output.degradation_reason,
                     )
             else:
                 output = ResearchOutput(
                     status="engine_unavailable",
                     degradation_reason="fallback_kb_empty",
-                    engine_reason=output.degradation_reason
-                    or output.engine_reason,
+                    engine_reason=output.engine_reason or output.degradation_reason,
                 )
-        except Exception:
-            logger.exception(
-                "KB fallback failed for query: %s", payload.query[:80]
-            )
+        except (SQLAlchemyError, RuntimeError, OSError, httpx.RequestError):
+            logger.exception("KB fallback failed")
             output = ResearchOutput(
                 status="engine_unavailable",
                 degradation_reason="fallback_kb_error",
-                engine_reason=output.degradation_reason
-                or output.engine_reason,
+                engine_reason=output.degradation_reason or output.engine_reason,
             )
 
     if output.degraded:
@@ -495,16 +567,10 @@ async def execute_with_context(
             fallback_attempted=fallback_attempted,
             fallback_used=fallback_used,
             fallback_hit_count=output.fallback_hit_count or 0,
-            workspace_id=ctx.workspace_id if ctx else None,
-            query=payload.query,
-            api_key=config.CHAINLENS_API_KEY or "",
-            answer=output.answer,
+            engine_reason=output.engine_reason,
         )
         if fallback_hit_count:
-            metrics.record_kb_fallback_hit_count(
-                fallback_hit_count,
-                workspace_id=ctx.workspace_id if ctx else None,
-            )
+            metrics.record_kb_fallback_hit_count(fallback_hit_count)
 
     return output
 
@@ -518,21 +584,14 @@ def build_research_executor(
     async def execute(
         payload: ResearchInput, ctx: CapabilityContext | None = None
     ) -> ResearchOutput:
-        emit_progress("starting", f"Researching: {payload.query[:80]}...")
-        try:
-            output = await execute_with_context(
-                payload,
-                ctx,
-                search_fn=search,
-                fallback_fn=_kb_fallback,
-                top_k=5,
-            )
-        except Exception:
-            logger.exception("ChainLens research failed for query: %s", payload.query[:80])
-            output = ResearchOutput(
-                status="engine_unavailable",
-                degradation_reason="upstream_error",
-            )
+        emit_progress("starting", "Researching...")
+        output = await execute_with_context(
+            payload,
+            ctx,
+            search_fn=search,
+            fallback_fn=_kb_fallback,
+            top_k=5,
+        )
         emit_progress("done", f"ChainLens returned {len(output.sources)} source(s)")
         return output
 

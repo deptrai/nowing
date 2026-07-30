@@ -28,4 +28,6 @@ def load_tools(
         # agent-origin run is recorded with a creator and its memory extraction
         # is attributable instead of skipped as `missing_creator`.
         user_id=d.get("user_id"),
+        # Re-validate workspace access the same way the REST door does.
+        auth_context=d.get("auth_context"),
     )

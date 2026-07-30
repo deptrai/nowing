@@ -322,6 +322,16 @@ def _build_app_with_rows(monkeypatch, rows):
         async def execute(self, stmt):
             return _Result()
 
+    class _SessionContext:
+        async def __aenter__(self):
+            return _Session()
+
+        async def __aexit__(self, *exc):
+            return False
+
+    # The SSE endpoint opens its own session via async_session_maker.
+    monkeypatch.setattr(rest, "async_session_maker", lambda: _SessionContext())
+
     app = FastAPI()
     app.include_router(rest.build_capabilities_router([]), prefix="/api/v1")
     app.dependency_overrides[get_auth_context] = lambda: SimpleNamespace(user=None)

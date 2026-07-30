@@ -994,7 +994,9 @@ def record_memory_injection_failure(*, scope: str, stage: str, reason: str) -> N
     """
     attrs = {"scope": scope, "stage": stage, "reason": reason}
     with contextlib.suppress(Exception):
-        _memory_injection_failure_logger.warning("memory_injection.failure", extra=attrs)
+        _memory_injection_failure_logger.warning(
+            "memory_injection.failure", extra=attrs
+        )
     with contextlib.suppress(Exception):
         _add(_memory_injection_failures(), 1, attrs)
 
@@ -1089,6 +1091,25 @@ def register_runtime_observables() -> None:
 # NOT included in metric labels.
 
 
+# Closed vocabulary for ``engine_reason``. Any value outside this set is
+# redacted before it reaches a metric label so exception messages, upstream
+# text, or run content cannot leak into telemetry.
+_CHAINLENS_ENGINE_REASON_VOCABULARY: frozenset[str] = frozenset({
+    "not_configured",
+    "timeout",
+    "unreachable",
+    "auth_failed",
+    "rate_limited",
+    "upstream_error",
+    "stream_incomplete",
+    "fallback_kb_hits",
+    "fallback_kb_empty",
+    "fallback_kb_error",
+    "partial",
+    "insufficient_evidence",
+})
+
+
 @lru_cache(maxsize=1)
 def _chainlens_degradation():
     return _get_meter().create_counter(
@@ -1114,6 +1135,19 @@ def _blocked_url_coverage():
     )
 
 
+def _redact_engine_reason(engine_reason: str | None) -> str | None:
+    """Return a low-cardinality engine reason or ``None`` if missing.
+
+    Values matching the closed vocabulary are normalized to lowercase. Anything
+    else is redacted to ``"redacted"`` to keep arbitrary exception messages,
+    query text, and upstream responses out of metric labels.
+    """
+    if not engine_reason:
+        return None
+    normalized = engine_reason.strip().lower()
+    return normalized if normalized in _CHAINLENS_ENGINE_REASON_VOCABULARY else "redacted"
+
+
 def record_chainlens_degradation(
     *,
     degradation_reason: str,
@@ -1121,15 +1155,14 @@ def record_chainlens_degradation(
     fallback_attempted: bool,
     fallback_used: bool,
     fallback_hit_count: int,
-    workspace_id: int | None = None,
-    query: str | None = None,
-    api_key: str | None = None,
-    answer: str | None = None,
+    engine_reason: str | None = None,
 ) -> None:
     """Count one ChainLens research degradation.
 
-    ``workspace_id``, ``query``, ``api_key``, and ``answer`` are accepted for
-    source-context but are intentionally excluded from metric labels.
+    Only low-cardinality reason/status labels are emitted. Query text, URLs,
+    answer text, API keys, workspace ids, and user ids are never accepted or
+    recorded. ``engine_reason`` is enforced against a closed vocabulary; any
+    arbitrary value is redacted to ``"redacted"`` before it is emitted.
     """
     _add(
         _chainlens_degradation(),
@@ -1139,25 +1172,35 @@ def record_chainlens_degradation(
             "final_status": final_status,
             "fallback_attempted": bool(fallback_attempted),
             "fallback_used": bool(fallback_used),
-            "fallback_hit_count": int(fallback_hit_count),
+            "engine_reason": _redact_engine_reason(engine_reason) or "none",
         },
     )
 
 
-def record_kb_fallback_hit_count(
-    fallback_hit_count: int, *, workspace_id: int | None = None
-) -> None:
-    """Record how many workspace KB chunks were cited in a degraded fallback."""
+def _fallback_hit_bucket(count: int) -> str:
+    if count == 0:
+        return "0"
+    if count <= 5:
+        return "1-5"
+    return "6+"
+
+
+def record_kb_fallback_hit_count(fallback_hit_count: int) -> None:
+    """Record how many workspace KB chunks were cited in a degraded fallback.
+
+    The exact value is recorded on the histogram; the label is a small bucket
+    to keep cardinality low.
+    """
     if fallback_hit_count < 0:
         return
     _record(
         _kb_fallback_hit_count(),
         fallback_hit_count,
-        {"fallback_hit_count": fallback_hit_count},
+        {"hit_bucket": _fallback_hit_bucket(fallback_hit_count)},
     )
 
 
-def record_blocked_url_coverage(*, url: str, block_type: str) -> None:
+def record_blocked_url_coverage(*, block_type: str) -> None:
     """Count one blocked URL by its block type; the URL never enters labels."""
     _add(_blocked_url_coverage(), 1, {"block_type": block_type})
 

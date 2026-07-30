@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 from typing import Any
 
@@ -38,6 +39,32 @@ __all__ = [
 ]
 
 
+def _executor_accepts_ctx(executor: Executor) -> bool:
+    """Return True when ``executor`` has a ``ctx`` parameter or catches ``**kwargs``."""
+    if executor is None:
+        return False
+    sig = inspect.signature(executor)
+    if "ctx" in sig.parameters:
+        return True
+    return any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+
+
+def _executor_accepts_positional_ctx(executor: Executor) -> bool:
+    """Return True when ``ctx`` can be passed as a second positional argument."""
+    if executor is None:
+        return False
+    sig = inspect.signature(executor)
+    ctx_param = sig.parameters.get("ctx")
+    if ctx_param is not None and ctx_param.kind in (
+        inspect.Parameter.POSITIONAL_ONLY,
+        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+    ):
+        return True
+    return any(
+        p.kind == inspect.Parameter.VAR_POSITIONAL for p in sig.parameters.values()
+    )
+
+
 async def execute_with_context(
     executor: Executor,
     *,
@@ -48,27 +75,12 @@ async def execute_with_context(
 
     Context-aware executors (e.g. ``chainlens.research``) accept a second
     positional ``CapabilityContext``. Legacy executors take only the payload;
-    this helper falls back to the single-argument call so existing verbs keep
-    working and the workspace context is still surfaced in the result.
+    this helper inspects the executor signature to choose the right arity and
+    never falls back by catching a ``TypeError``.
     """
+    if ctx is None or not _executor_accepts_ctx(executor):
+        return await executor(payload)
 
-    async def _call() -> Any:
-        if ctx is None:
-            return await executor(payload)
-
-        try:
-            return await executor(payload, ctx)
-        except TypeError as exc:
-            msg = str(exc).lower()
-            if "takes" in msg and "positional argument" in msg:
-                return await executor(payload)
-            if "unexpected keyword" in msg or "got an unexpected" in msg:
-                return await executor(payload)
-            raise
-
-    result = await _call()
-
-    if ctx is not None and isinstance(result, dict) and "workspace_id" not in result:
-        result["workspace_id"] = ctx.workspace_id
-
-    return result
+    if _executor_accepts_positional_ctx(executor):
+        return await executor(payload, ctx)
+    return await executor(payload, ctx=ctx)

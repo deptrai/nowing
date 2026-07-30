@@ -127,8 +127,8 @@ async def test_rest_async_executor_receives_capability_context(monkeypatch):
     monkeypatch.setattr(rest, "finalize_run", AsyncMock(return_value=True))
     from app.capabilities.core.events import run_event_bus
 
-    run_event_bus.publish = Mock()
-    run_event_bus.close = Mock()
+    monkeypatch.setattr(run_event_bus, "publish", Mock())
+    monkeypatch.setattr(run_event_bus, "close", Mock())
 
     await rest._execute_async_run(
         run_id="run-1",
@@ -156,8 +156,8 @@ async def test_rest_async_degraded_run_persists_cost_micros_none(monkeypatch):
     monkeypatch.setattr(rest, "finalize_run", finalize)
     from app.capabilities.core.events import run_event_bus
 
-    run_event_bus.publish = Mock()
-    run_event_bus.close = Mock()
+    monkeypatch.setattr(run_event_bus, "publish", Mock())
+    monkeypatch.setattr(run_event_bus, "close", Mock())
 
     await rest._execute_async_run(
         run_id="run-1",
@@ -170,3 +170,88 @@ async def test_rest_async_degraded_run_persists_cost_micros_none(monkeypatch):
 
     _, kwargs = finalize.call_args
     assert kwargs["cost_micros"] is None
+
+
+async def test_rest_async_degraded_output_text_matches_sync_and_sse_terminal(
+    monkeypatch,
+):
+    """AC-7: async run persists the same status/reason as sync and emits a terminal event."""
+    from unittest.mock import Mock
+
+    from app.capabilities.core.events import run_event_bus
+
+    output = ResearchOutput(
+        status="engine_unavailable",
+        degradation_reason="not_configured",
+    )
+    spy = _ResearchSpy(output)
+
+    monkeypatch.setattr(rest, "charge_capability", AsyncMock(side_effect=RuntimeError("wallet down")))
+    monkeypatch.setattr(rest, "gate_capability", AsyncMock())
+    finalize = AsyncMock(return_value=True)
+    monkeypatch.setattr(rest, "finalize_run", finalize)
+
+    publish = Mock()
+    close = Mock()
+    monkeypatch.setattr(run_event_bus, "publish", publish)
+    monkeypatch.setattr(run_event_bus, "close", close)
+
+    await rest._execute_async_run(
+        run_id="run-ac7",
+        workspace_id=7,
+        capability="chainlens.research",
+        unit=BillingUnit.CHAINLENS_QUERY,
+        executor=spy,
+        payload=ResearchInput(query="hello"),
+    )
+
+    _, f_kwargs = finalize.call_args
+    serialized = f_kwargs["serialized"]
+    assert serialized is not None
+    assert "engine_unavailable" in serialized.text
+    assert "not_configured" in serialized.text
+
+    finished = [
+        call
+        for call in publish.call_args_list
+        if len(call.args) > 1 and call.args[1].get("type") == "run.finished"
+    ]
+    assert len(finished) == 1
+    assert finished[0].args[1]["status"] == "success"
+    close.assert_called_once_with("run-ac7")
+
+
+async def test_rest_sync_charge_failure_still_returns_degraded_status(monkeypatch):
+    """FM-12: a failing charge_capability must not turn a degraded result into HTTP 500."""
+    output = ResearchOutput(
+        status="engine_unavailable",
+        degradation_reason="not_configured",
+    )
+    spy = _ResearchSpy(output)
+
+    capability = Capability(
+        name="chainlens.research",
+        description="Research.",
+        input_schema=ResearchInput,
+        output_schema=ResearchOutput,
+        executor=spy,
+        billing_unit=BillingUnit.CHAINLENS_QUERY,
+    )
+
+    app = _build_app([capability], monkeypatch)
+    monkeypatch.setattr(
+        rest, "charge_capability", AsyncMock(side_effect=RuntimeError("wallet down"))
+    )
+
+    async with _client(app) as client:
+        resp = await client.post(
+            "/api/v1/workspaces/7/scrapers/chainlens/research",
+            json={"query": "hello"},
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "engine_unavailable"
+    assert body.get("degraded") is True
+    assert body.get("degradation_reason") == "not_configured"
+    assert "next_action" in body

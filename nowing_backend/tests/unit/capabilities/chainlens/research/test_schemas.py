@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from app.capabilities.chainlens.research.schemas import ResearchInput, ResearchOutput, Source
+from app.capabilities.chainlens.research.schemas import (
+    ResearchInput,
+    ResearchOutput,
+    Source,
+)
 
 pytestmark = pytest.mark.unit
 

@@ -11,11 +11,14 @@ subagent can follow a truncation reference without extra wiring.
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
+from fastapi import HTTPException
 from langchain_core.tools import BaseTool, StructuredTool
 
+from app.auth.context import AuthContext
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.progress import progress_scope
@@ -27,10 +30,14 @@ from app.capabilities.core.runs import (
 from app.capabilities.core.store import all_capabilities
 from app.capabilities.core.types import Capability, CapabilityContext
 from app.db import async_session_maker
+from app.exceptions import ForbiddenError
 from app.services.memory.run_enqueue import (
     enqueue_run_memory_extraction_after_commit,
 )
 from app.services.web_crawl_credit_service import InsufficientCreditsError
+from app.utils.rbac import check_workspace_access
+
+logger = logging.getLogger(__name__)
 
 
 def build_capability_tools(
@@ -38,6 +45,7 @@ def build_capability_tools(
     workspace_id: int,
     capabilities: list[Capability] | None = None,
     user_id: Any | None = None,
+    auth_context: AuthContext | None = None,
 ) -> list[BaseTool]:
     """Emit one tool per verb (defaults to the whole registry), plus the run readers.
 
@@ -47,9 +55,17 @@ def build_capability_tools(
     ``missing_creator`` — the run is still recorded either way. It stays optional
     because the caller resolves it from the subagent dependency dict, where it can
     legitimately be absent (e.g. an unauthenticated internal invocation).
+
+    ``auth_context`` is used to re-validate workspace access before executing the
+    tool, mirroring the REST door's trust-boundary check.
     """
     caps = capabilities if capabilities is not None else all_capabilities()
-    tools = [_capability_tool(cap, workspace_id, user_id=user_id) for cap in caps]
+    tools = [
+        _capability_tool(
+            cap, workspace_id, user_id=user_id, auth_context=auth_context
+        )
+        for cap in caps
+    ]
     # Deferred import: the reader lives in the agents package (which imports from
     # here), so importing it lazily avoids an import-time cycle.
     from app.agents.chat.multi_agent_chat.subagents.shared.run_reader import (
@@ -72,8 +88,28 @@ def _current_thread_id() -> str | None:
         return None
 
 
+async def _verify_workspace_access(
+    session: Any, workspace_id: int, auth_context: AuthContext
+) -> None:
+    """Re-validate workspace access before creating a ``CapabilityContext``.
+
+    This is the same trust-boundary check the REST door runs via
+    ``check_workspace_access``. ``HTTPException`` is remapped to a controlled
+    ``ForbiddenError`` so the agent tool never raises an unhandled 500.
+    """
+    try:
+        await check_workspace_access(session, auth_context, workspace_id)
+    except HTTPException as exc:
+        message = str(exc.detail) if exc.detail is not None else "Workspace access denied."
+        raise ForbiddenError(message) from exc
+
+
 def _capability_tool(
-    capability: Capability, workspace_id: int, *, user_id: Any | None = None
+    capability: Capability,
+    workspace_id: int,
+    *,
+    user_id: Any | None = None,
+    auth_context: AuthContext | None = None,
 ) -> BaseTool:
     input_model = capability.input_schema
     unit = capability.billing_unit
@@ -90,6 +126,8 @@ def _capability_tool(
         # ``scraper_progress`` custom events that surface on the chat thinking step.
         with progress_scope() as reporter:
             async with async_session_maker() as session:
+                if auth_context is not None:
+                    await _verify_workspace_access(session, workspace_id, auth_context)
                 ctx = CapabilityContext(session=session, workspace_id=workspace_id)
                 try:
                     await gate_capability(payload, unit, ctx)
@@ -120,7 +158,11 @@ def _capability_tool(
                     raise
 
                 duration_ms = int((time.perf_counter() - started) * 1000)
-                cost_micros = await charge_capability(output, unit, ctx)
+                cost_micros = None
+                try:
+                    cost_micros = await charge_capability(output, unit, ctx)
+                except Exception:
+                    logger.exception("charge failed for agent run %s", name)
 
             serialized = serialize_output(output)
             async with async_session_maker() as rec_session:

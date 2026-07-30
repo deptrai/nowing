@@ -104,16 +104,22 @@ def discover_tests(backend: Path, service: str) -> list[str]:
     # A service may be scoped to a submodule (e.g. "memory/repository"); use the
     # package name for test discovery since submodule tests usually live under
     # the package's test files.
-    search_key = service.split("/")[0] if "/" in service else service
+    segments = service.split("/")
+    search_key = segments[0]
+    last_segment = segments[-1]
     candidates = []
-    import_pattern = f"app.services.{search_key}"
+    import_patterns = [f"app.services.{search_key}", f"app.capabilities.{search_key}"]
 
     for p in tests_dir.rglob("*.py"):
         if p.name == "conftest.py":
             continue
         name = p.stem
-        # Filename match.
-        if search_key in name or name in search_key.replace("_", ""):
+        # Filename match on any path segment.
+        if (
+            search_key in name
+            or last_segment in name
+            or name in search_key.replace("_", "")
+        ):
             candidates.append(str(p.relative_to(backend)))
             continue
         # Content match: test file imports the service module.
@@ -121,16 +127,28 @@ def discover_tests(backend: Path, service: str) -> list[str]:
             text = p.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
-        if import_pattern in text:
+        if any(pattern in text for pattern in import_patterns):
             candidates.append(str(p.relative_to(backend)))
 
-    # Also search one directory level for service-named folders.
+    # Also search directories that match any segment or the full subpath.
+    target_tail = Path(service)
     for p in tests_dir.rglob("*"):
-        if p.is_dir() and search_key in p.name:
+        if not p.is_dir():
+            continue
+        rel = p.relative_to(tests_dir)
+        # Full subpath match, e.g. "capabilities/chainlens/research".
+        if list(rel.parts) == list(target_tail.parts) or rel.name == last_segment:
+            for test_file in p.rglob("test_*.py"):
+                rel_test = str(test_file.relative_to(backend))
+                if rel_test not in candidates:
+                    candidates.append(rel_test)
+            continue
+        # First-segment match (e.g. "chainlens").
+        if search_key in p.name:
             for test_file in p.glob("test_*.py"):
-                rel = str(test_file.relative_to(backend))
-                if rel not in candidates:
-                    candidates.append(rel)
+                rel_test = str(test_file.relative_to(backend))
+                if rel_test not in candidates:
+                    candidates.append(rel_test)
 
     if not candidates:
         return ["tests/unit"]
@@ -178,7 +196,8 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
 
     module = backend / "app" / "services" / f"{service}.py"
     if not module.exists():
-        # Try package directory.
+        # Try package directory in services, then top-level app packages,
+        # then capabilities package layout.
         pkg = backend / "app" / "services" / service
         if pkg.is_dir():
             module = pkg
@@ -187,8 +206,12 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
             if pkg.is_dir():
                 module = pkg
             else:
-                print(f"[warn] module for {service} not found at {module}; using file path anyway")
-                module = backend / "app" / "services" / f"{service}.py"
+                pkg = backend / "app" / "capabilities" / service
+                if pkg.is_dir():
+                    module = pkg
+                else:
+                    print(f"[warn] module for {service} not found at {module}; using file path anyway")
+                    module = backend / "app" / "services" / f"{service}.py"
 
     test_files = discover_tests(backend, service)
     test_cmd = f'bash -c "COSMIC_RAY=1 .venv/bin/python -m pytest {" ".join(test_files)} -m \\"unit or not integration\\" -x 2>&1"'

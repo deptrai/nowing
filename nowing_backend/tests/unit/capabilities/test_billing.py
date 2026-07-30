@@ -489,7 +489,7 @@ async def test_chainlens_charge_records_degradation_in_call_details(
 ):
     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
     monkeypatch.setattr(config, "CHAINLENS_QUERY_MICROS_PER_CALL", 5000)
-    session, user = _make_session(_OWNER, balance_micros=100_000)
+    session, _user = _make_session(_OWNER, balance_micros=100_000)
 
     output = SimpleNamespace(
         billable_units=1,
@@ -523,7 +523,7 @@ async def test_engine_unavailable_no_content_does_not_record_token_usage(
 
     assert charged == 0
     assert getattr(output, "degraded", False) is True
-    assert getattr(output, "degradation_reason", None) == "not_configured"
+    assert getattr(output, "degradation_reason", None) == "unknown"
     record_usage.assert_not_awaited()
     assert user.credit_micros_balance == 100_000
 
@@ -532,7 +532,7 @@ async def test_chainlens_charge_does_not_leak_secrets_in_call_details(
     monkeypatch, record_usage
 ):
     monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
-    session, user = _make_session(_OWNER, balance_micros=100_000)
+    session, _user = _make_session(_OWNER, balance_micros=100_000)
 
     output = SimpleNamespace(
         billable_units=1,

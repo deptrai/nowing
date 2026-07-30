@@ -12,12 +12,12 @@ tags:
 baseline_commit: 25ba542c2a3dec95b0a4020da8c129242ba748e2
 baseline_branch: develop
 story_key: 9-1a-research-degradation-selfhost-independence
-status: ready-for-dev
+status: done
 ---
 
 # Story 9.1a: Research Degradation & Self-Host Independence
 
-**Status:** ready-for-dev
+**Status:** done
 **Epic:** 9 — Deep Research dang tin cay: khong vo, khong treo, tinh phi dung
 **Priority:** P0 — tien de truoc khi public repo
 **Requirements:** FR-38; AD-15; AD-17; AD-19 measurement seam
@@ -407,6 +407,14 @@ The dev agent must leave reviewer-readable evidence that public repo gate 1 is s
 - `nowing_mcp/mcp_server/features/scrapers/platforms/chainlens.py:68-82` — MCP ChainLens tool calls REST scraper path.
 
 ## Dev Agent Record
+
+### NFR Assessment
+
+- **Overall gate:** `PASS`
+- **Focused tests:** 117 passed / 117 collected (≈6.78s), ruff check passed.
+- **Risk 1 (SSE buffering):** `_call_chainlens` now streams via `response.aiter_lines()` and `_parse_sse` supports `str` or async iterators; the response is closed with `await response.aclose()` (`executor.py:398-425`).
+- **Risk 2 (`engine_reason` label leakage):** `metrics._redact_engine_reason` enforces the closed vocabulary and redacts arbitrary values (`metrics.py:1097-1148`).
+- **Risk 3 (agent workspace re-validation):** `agent.py` calls `check_workspace_access` with `auth_context` before creating `CapabilityContext` and maps `HTTPException` to `ForbiddenError` (`agent.py:91-104`, `agent.py:129-130`).
 
 ### Agent Model Used
 

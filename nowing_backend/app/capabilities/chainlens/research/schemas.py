@@ -10,7 +10,14 @@ from __future__ import annotations
 import re
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 MAX_QUERY_LENGTH = 500
 """ChainLens clamps queries at 500 characters."""
@@ -89,6 +96,14 @@ class ResearchInput(BaseModel):
         description="Optional ChainLens chat session handle for continuity.",
     )
 
+    @field_validator("query", mode="before")
+    @classmethod
+    def _strip_query(cls, value: object) -> object:
+        """Strip leading/trailing whitespace before length validation."""
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
     @property
     def estimated_units(self) -> int:
         """One research call = one billed query."""
@@ -97,6 +112,8 @@ class ResearchInput(BaseModel):
 
 class ResearchOutput(BaseModel):
     """Output of a ChainLens research query."""
+
+    model_config = ConfigDict(validate_assignment=True)
 
     answer: str = Field(
         default="",
@@ -168,67 +185,65 @@ class ResearchOutput(BaseModel):
         description="Internal: blocked URL counts by block type.",
     )
 
-    def model_post_init(self, __context: object) -> None:
-        """Stamp degradation defaults and infer KB fallback counters."""
-        _recompute_degradation(self)
-        _recompute_fallback(self)
+    @model_validator(mode="after")
+    def _recompute(self) -> ResearchOutput:
+        """Keep degradation flags, next actions, and KB fallback counters in sync."""
+        self._recompute_degradation()
+        self._recompute_fallback()
+        return self
 
-    def __setattr__(self, name, value):
-        super().__setattr__(name, value)
-        if name == "status":
-            _recompute_degradation(self, force=True)
-            _recompute_fallback(self)
+    def _recompute_degradation(self) -> None:
+        """Derive ``degraded``, ``degradation_reason`` and ``next_action``."""
+        status = self.status
+
+        # Degraded means anything other than a complete ChainLens result.
+        object.__setattr__(self, "degraded", status != "complete")
+
+        if self.degradation_reason is None:
+            default_reason: str | None = None
+            if status == "engine_unavailable":
+                default_reason = "unknown"
+            elif status == "partial":
+                default_reason = "partial"
+            elif status == "insufficient_evidence":
+                default_reason = "insufficient_evidence"
+            elif status == "timeout":
+                default_reason = "stream_incomplete"
+            if default_reason is not None:
+                object.__setattr__(self, "degradation_reason", default_reason)
+
+        if self.next_action is None and self.degraded:
+            object.__setattr__(
+                self,
+                "next_action",
+                _default_next_action(
+                    status,
+                    self.degradation_reason,
+                    self.engine_reason,
+                ),
+            )
+
+    def _recompute_fallback(self) -> None:
+        """Count KB fallback citations and mirror the primary source identifiers."""
+        kb_sources = [
+            s for s in self.sources if s.url and s.url.startswith("nowing://")
+        ]
+        object.__setattr__(self, "fallback_hit_count", len(kb_sources))
+        if kb_sources:
+            primary = kb_sources[0]
+            object.__setattr__(self, "source_type", primary.source_type)
+            object.__setattr__(self, "document_id", primary.document_id)
+            object.__setattr__(self, "chunk_id", primary.chunk_id)
+        else:
+            object.__setattr__(self, "source_type", None)
+            object.__setattr__(self, "document_id", None)
+            object.__setattr__(self, "chunk_id", None)
 
     @computed_field
     @property
     def billable_units(self) -> int:
         """Bill one unit only when the call returned usable content."""
         return 1 if self.answer or self.sources else 0
-
-
-def _recompute_degradation(
-    output: ResearchOutput, *, force: bool = False
-) -> None:
-    """Keep the degradation flag, reason, and next-action in sync with status."""
-    if output.status == "engine_unavailable":
-        if force or output.degraded is None:
-            output.degraded = True
-        if output.degradation_reason is None:
-            output.degradation_reason = "not_configured"
-    elif force or output.degraded is None:
-        output.degraded = output.status != "complete"
-
-    if output.degradation_reason is None and output.status not in (
-        "complete",
-        "engine_unavailable",
-    ):
-        default_reason = {
-            "partial": "partial",
-            "insufficient_evidence": "insufficient_evidence",
-            "timeout": "stream_incomplete",
-        }.get(output.status)
-        if default_reason:
-            output.degradation_reason = default_reason
-
-    if output.next_action is None and output.degraded:
-        output.next_action = _default_next_action(
-            output.status,
-            output.degradation_reason,
-            output.engine_reason,
-        )
-
-
-def _recompute_fallback(output: ResearchOutput) -> None:
-    """Count KB fallback citations and mirror the primary source identifiers."""
-    kb_sources = [
-        s for s in output.sources if s.url and s.url.startswith("nowing://")
-    ]
-    output.fallback_hit_count = len(kb_sources)
-    if kb_sources:
-        primary = kb_sources[0]
-        output.source_type = primary.source_type
-        output.document_id = primary.document_id
-        output.chunk_id = primary.chunk_id
 
 
 def _default_next_action(
@@ -248,7 +263,9 @@ def _default_next_action(
         if degradation_reason == "unreachable":
             return "The deep research engine is unreachable. Check your network and try again."
         if degradation_reason in ("auth_failed", "rate_limited", "upstream_error"):
-            return "The deep research engine is temporarily unavailable. Try again later."
+            return (
+                "The deep research engine is temporarily unavailable. Try again later."
+            )
         return "The deep research engine is unavailable. Try again later."
     if status == "partial":
         reason = engine_reason or degradation_reason
@@ -256,5 +273,7 @@ def _default_next_action(
     if status == "insufficient_evidence":
         return "No relevant sources were found. Try rephrasing the query."
     if status == "timeout":
-        return "The ChainLens stream ended before returning a complete result. Try again."
+        return (
+            "The ChainLens stream ended before returning a complete result. Try again."
+        )
     return None

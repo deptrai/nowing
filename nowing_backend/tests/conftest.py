@@ -73,6 +73,7 @@ if os.environ.get("COSMIC_RAY") == "1":
 
     # litellm takes ~3s to import; memory code only needs its exception classes.
     _fake_litellm = types.ModuleType("litellm")
+    _fake_litellm.__path__ = []
     _fake_litellm_exceptions = types.ModuleType("litellm.exceptions")
 
     class _LiteLLMError(Exception): ...
@@ -83,7 +84,7 @@ if os.environ.get("COSMIC_RAY") == "1":
     class InternalServerError(_LiteLLMError): ...
     class RateLimitError(_LiteLLMError): ...
     class ServiceUnavailableError(_LiteLLMError): ...
-    class Timeout(_LiteLLMError): ...
+    class Timeout(_LiteLLMError): ...  # noqa: N818
 
     _fake_litellm_exceptions.APIConnectionError = APIConnectionError
     _fake_litellm_exceptions.AuthenticationError = AuthenticationError
@@ -110,11 +111,28 @@ if os.environ.get("COSMIC_RAY") == "1":
         return 1e-7, 1e-7
 
     _fake_litellm.atranscription = _no_op_async
+    _fake_litellm.aspeech = _no_op_async
+    _fake_litellm.acompletion = _no_op_async
+    _fake_litellm.aimage_generation = _no_op_async
+    _fake_litellm.image_generation = _no_op_async
     _fake_litellm.get_model_info = _no_op_info
     _fake_litellm.token_counter = _token_counter
     _fake_litellm.completion_cost = _completion_cost
     _fake_litellm.cost_per_token = _cost_per_token
     _fake_litellm.exceptions = _fake_litellm_exceptions
+
+    class _FakeRouter:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    _fake_litellm.Router = _FakeRouter
+
+    class _ImageResponse:
+        pass
+
+    _fake_litellm_utils = types.ModuleType("litellm.utils")
+    _fake_litellm_utils.ImageResponse = _ImageResponse
+    _fake_litellm.utils = _fake_litellm_utils
 
     class CustomLogger:
         pass
@@ -123,8 +141,19 @@ if os.environ.get("COSMIC_RAY") == "1":
     _fake_litellm_custom_logger = types.ModuleType("litellm.integrations.custom_logger")
     _fake_litellm_custom_logger.CustomLogger = CustomLogger
     _fake_litellm_integrations.custom_logger = _fake_litellm_custom_logger
+
+    # langchain_litellm expects litellm.types.utils.Delta.
+    _fake_litellm_types = types.ModuleType("litellm.types")
+    _fake_litellm_types_utils = types.ModuleType("litellm.types.utils")
+    class _Delta: ...
+    _fake_litellm_types_utils.Delta = _Delta
+    _fake_litellm_types.utils = _fake_litellm_types_utils
+
     sys.modules["litellm"] = _fake_litellm
     sys.modules["litellm.exceptions"] = _fake_litellm_exceptions
+    sys.modules["litellm.utils"] = _fake_litellm_utils
+    sys.modules["litellm.types"] = _fake_litellm_types
+    sys.modules["litellm.types.utils"] = _fake_litellm_types_utils
     sys.modules["litellm.integrations"] = _fake_litellm_integrations
     sys.modules["litellm.integrations.custom_logger"] = _fake_litellm_custom_logger
 

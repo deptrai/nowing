@@ -239,8 +239,10 @@ python_functions = ["test_*"]
 addopts = "-v --tb=short --maxfail=5 --strict-markers -ra --durations=5 --import-mode=importlib"
 markers = [
     "unit: pure logic tests, no DB or external services",
+    "contract: contract regression tests for ChainLens integration",
     "integration: tests that require a real PostgreSQL database",
     "memory: tests for the memory subsystem",
+    "test_id: test identifier marker",
 ]
 filterwarnings = [
     "ignore::UserWarning:chonkie",
