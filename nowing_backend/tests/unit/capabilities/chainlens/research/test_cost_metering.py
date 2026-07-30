@@ -1,9 +1,4 @@
-"""Red-phase contract tests for story 9.2 — deep-research cost metering.
-
-These tests currently fail (red) because `ResearchOutput` and `_SSEParser`
-do not yet expose `cost_micros`, `cost_basis`, `resolved_mode`, or
-`tokens_total`. They guide the implementation.
-"""
+"""Contract tests for story 9.2 — deep-research cost metering."""
 
 from __future__ import annotations
 

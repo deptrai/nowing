@@ -285,11 +285,12 @@ class _SSEParser:
     def _extract_cost(self, event: dict[str, Any]) -> None:
         """Extract ``costDollars`` and related metadata from an engine event.
 
-        Overwrites any previous value so the last valid ``usage``/``done``
-        event wins. Malformed/negative values are ignored and logged.
+        The first valid ``costDollars`` (from ``usage`` or ``done``) wins.
+        Later events are ignored so ``done`` does not overwrite an earlier
+        ``usage`` and vice versa. Malformed/negative values are ignored.
         """
         raw_cost = event.get("costDollars")
-        if raw_cost is None:
+        if raw_cost is None or self.cost_dollars is not None:
             return
         if not isinstance(raw_cost, (int, float)):
             logger.warning(

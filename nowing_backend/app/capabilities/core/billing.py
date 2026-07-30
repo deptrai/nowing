@@ -282,7 +282,7 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
             ctx.workspace_id,
         )
 
-    if cost_micros is None or cost_micros <= 0:
+    if cost_micros is None or cost_micros < 0:
         return 0
 
     call_details: dict[str, Any] = {
