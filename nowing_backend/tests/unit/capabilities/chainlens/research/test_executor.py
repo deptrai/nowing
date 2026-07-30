@@ -146,7 +146,7 @@ def test_research_input_rejects_oversized_query():
 
 
 @pytest.mark.test_id("9-1b-009")
-def test_parse_sse_raises_on_error_event_with_json_payload():
+def test_parse_sse_raises_on_error_data_frame_with_json_payload():
     raw = _sse_line({"type": "error", "data": {"message": "boom"}})
     with pytest.raises(ChainLensError, match="boom"):
         _parse_sse(raw)

@@ -53,7 +53,7 @@ class _Block:
         self.data = data
 
 
-def _block_type_for(raw: str // None) -> BlockType:
+def _block_type_for(raw: str | None) -> BlockType:
     """Map a raw block-type string to the classifier enum; unknown → UNKNOWN."""
     if not raw:
         return BlockType.UNKNOWN
