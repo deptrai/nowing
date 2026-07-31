@@ -553,6 +553,129 @@ async def test_chainlens_charge_does_not_leak_secrets_in_call_details(
     assert "https://example.com" not in details_str
 
 
+# Mutation-killing tests for pre-existing billing paths
+
+
+def test_pricing_meters_boundaries(monkeypatch):
+    """pricing_meters returns the correct meters and respects None/disabled billing."""
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_MICROS_PER_SUCCESS", 1000)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", False)
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "CHAINLENS_QUERY_MICROS_PER_CALL", 2500)
+
+    from app.capabilities.core.billing import pricing_meters
+
+    assert pricing_meters(None) == []
+    assert pricing_meters(BillingUnit.WEB_CRAWL) == [
+        {"unit": "page", "micros_per_unit": 1000}
+    ]
+    assert pricing_meters(BillingUnit.CHAINLENS_QUERY) == [
+        {"unit": "query", "micros_per_unit": 2500}
+    ]
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", False)
+    assert pricing_meters(BillingUnit.CHAINLENS_QUERY) == []
+
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE", 3000)
+    monkeypatch.setattr(billing, "captcha_enabled", lambda: True)
+    crawl_meters = pricing_meters(BillingUnit.WEB_CRAWL)
+    assert {"unit": "captcha solve", "micros_per_unit": 3000} in crawl_meters
+
+
+async def test_gate_web_crawl_reserves_crawl_and_captcha(monkeypatch):
+    """_gate_web_crawl checks balance for successes plus worst-case captcha."""
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_MICROS_PER_SUCCESS", 1000)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE", 3000)
+    monkeypatch.setattr(config, "CAPTCHA_MAX_ATTEMPTS_PER_URL", 3)
+    monkeypatch.setattr(billing, "captcha_enabled", lambda: True)
+
+    from app.capabilities.core.billing import _gate_web_crawl
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+    mock_check = AsyncMock()
+    monkeypatch.setattr(billing.wallet_credit, "check_balance", mock_check)
+
+    await _gate_web_crawl(_ctx(session), 2)
+
+    # Worst-case cost is 2*1000 + 2*3*3000 = 20000
+    mock_check.assert_awaited_once()
+    assert mock_check.await_args.args[2] == 20000
+
+
+async def test_charge_web_crawl_zero_or_negative_successes_is_free(
+    monkeypatch, record_usage
+):
+    """Zero/negative successes must return 0 and skip audit."""
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", True)
+
+    from app.capabilities.core.billing import _charge_web_crawl
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    assert await _charge_web_crawl(_ctx(session), 0) == 0
+    assert await _charge_web_crawl(_ctx(session), -1) == 0
+    record_usage.assert_not_awaited()
+
+
+async def test_charge_captcha_zero_or_negative_attempts_is_free(
+    monkeypatch, record_usage
+):
+    """Zero/negative captcha attempts must return 0 and skip audit."""
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", True)
+
+    from app.capabilities.core.billing import _charge_captcha
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    assert await _charge_captcha(_ctx(session), 0) == 0
+    assert await _charge_captcha(_ctx(session), -1) == 0
+    record_usage.assert_not_awaited()
+
+
+async def test_charge_web_crawl_records_usage_for_positive_successes(
+    monkeypatch, record_usage
+):
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_MICROS_PER_SUCCESS", 1000)
+
+    from app.capabilities.core.billing import _charge_web_crawl
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    charged = await _charge_web_crawl(_ctx(session), 3)
+
+    assert charged == 3000
+    record_usage.assert_awaited_once()
+    kwargs = record_usage.await_args.kwargs
+    assert kwargs["usage_type"] == "web_crawl"
+    assert kwargs["cost_micros"] == 3000
+    assert kwargs["call_details"]["successes"] == 3
+
+
+async def test_charge_captcha_records_usage_for_positive_attempts(
+    monkeypatch, record_usage
+):
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE", 3000)
+
+    from app.capabilities.core.billing import _charge_captcha
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    charged = await _charge_captcha(_ctx(session), 2)
+
+    assert charged == 6000
+    record_usage.assert_awaited_once()
+    kwargs = record_usage.await_args.kwargs
+    assert kwargs["usage_type"] == "web_crawl_captcha"
+    assert kwargs["cost_micros"] == 6000
+    assert kwargs["call_details"]["attempts"] == 2
+
+
 # Red-phase scaffolds for 9.2 — deep-research cost metering
 
 
@@ -685,3 +808,167 @@ async def test_chainlens_engine_unavailable_with_no_content_is_free(
     assert charged == 0
     assert user.credit_micros_balance == 100_000
     record_usage.assert_not_awaited()
+
+
+async def test_chainlens_engine_unavailable_with_content_charges_fallback(
+    monkeypatch, record_usage
+):
+    """Engine unavailable with KB fallback content still falls back to flat rate."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "CHAINLENS_QUERY_MICROS_PER_CALL", 5000)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(
+        status="engine_unavailable", answer="Fallback answer."
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 5000
+    assert user.credit_micros_balance == 100_000 - 5000
+    record_usage.assert_awaited_once()
+    kwargs = record_usage.await_args.kwargs
+    assert kwargs["usage_type"] == "deep_research"
+    assert kwargs["call_details"]["cost_basis"] == "fallback"
+
+
+async def test_chainlens_charge_records_exact_cost_dollars(
+    monkeypatch, record_usage
+):
+    """call_details cost_dollars must round-trip from cost_micros exactly."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        cost_micros=12300,
+        cost_basis="actual",
+        resolved_mode="quality",
+    )
+
+    await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    record_usage.assert_awaited_once()
+    details = record_usage.await_args.kwargs["call_details"]
+    assert details["cost_dollars"] == 0.0123
+
+
+async def test_chainlens_charge_preserves_resolved_mode_on_fallback(
+    monkeypatch, record_usage
+):
+    """When falling back, resolved_mode from output is kept."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "CHAINLENS_QUERY_MICROS_PER_CALL", 5000)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        resolved_mode="deep",
+    )
+
+    await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    record_usage.assert_awaited_once()
+    details = record_usage.await_args.kwargs["call_details"]
+    assert details["resolved_mode"] == "deep"
+    assert details["cost_basis"] == "fallback"
+
+
+async def test_chainlens_charge_negative_cost_is_free(
+    monkeypatch, record_usage
+):
+    """A negative cost_micros must be rejected and not recorded."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        cost_micros=-1,
+        cost_basis="actual",
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 0
+    assert user.credit_micros_balance == 100_000
+    record_usage.assert_not_awaited()
+
+
+async def test_chainlens_charge_owner_not_found_is_free(
+    monkeypatch, record_usage
+):
+    """If workspace owner cannot be resolved, no charge and no audit row."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session = AsyncMock()
+    session.add = MagicMock()
+
+    def _no_owner(*_args, **_kwargs):
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        result.unique.return_value.scalar_one_or_none.return_value = None
+        result.first.return_value = (100_000, 0)
+        return result
+
+    session.execute = AsyncMock(side_effect=_no_owner)
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        cost_micros=12300,
+        cost_basis="actual",
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 0
+    record_usage.assert_not_awaited()
+
+
+async def test_chainlens_charge_does_not_add_degradation_when_not_degraded(
+    monkeypatch, record_usage
+):
+    """Non-degraded output must not populate degradation fields in call_details."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        cost_micros=12300,
+        cost_basis="actual",
+        degradation_reason=None,
+    )
+
+    await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    record_usage.assert_awaited_once()
+    details = record_usage.await_args.kwargs["call_details"]
+    assert "degradation_reason" not in details
+    assert "final_status" not in details

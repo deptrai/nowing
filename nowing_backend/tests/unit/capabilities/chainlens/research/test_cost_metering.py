@@ -162,3 +162,34 @@ def test_research_output_supports_cost_fields():
     assert output.cost_basis == "actual"
     assert output.resolved_mode == "quality"
     assert output.tokens_total == 1280
+
+
+def test_parse_sse_keeps_first_valid_cost_dollars():
+    """First usage/done with a valid costDollars wins; later events ignored."""
+    raw = _sse_line({"type": "usage", "costDollars": 0.0123, "resolvedMode": "deep"})
+    raw += _sse_line({"type": "done", "costDollars": 0.9999, "resolvedMode": "quality"})
+
+    output = _parse_sse(raw)
+
+    assert output.cost_micros == 12300
+    assert output.resolved_mode == "deep"
+
+
+def test_parse_sse_resolved_mode_from_resolved_mode_key():
+    """resolved_mode uses resolved_mode when present."""
+    raw = _sse_line(
+        {"type": "usage", "costDollars": 0.0123, "resolved_mode": "balanced"}
+    )
+
+    output = _parse_sse(raw)
+
+    assert output.resolved_mode == "balanced"
+
+
+def test_parse_sse_nan_cost_dollars_is_ignored():
+    raw = _sse_line({"type": "usage", "costDollars": float("nan")})
+    raw += _sse_line({"type": "done"})
+
+    output = _parse_sse(raw)
+
+    assert output.cost_micros is None
