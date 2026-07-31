@@ -972,3 +972,378 @@ async def test_chainlens_charge_does_not_add_degradation_when_not_degraded(
     details = record_usage.await_args.kwargs["call_details"]
     assert "degradation_reason" not in details
     assert "final_status" not in details
+
+
+# Mutation-killing round 2 — push billing.py toward 80%
+
+
+async def test_chainlens_complete_no_content_charges_fallback(
+    monkeypatch, record_usage
+):
+    """A complete status with no content is not the engine_unavailable guard."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "CHAINLENS_QUERY_MICROS_PER_CALL", 5000)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(status="complete")
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 5000
+    record_usage.assert_awaited_once()
+
+
+async def test_chainlens_zero_cost_records_usage(
+    monkeypatch, record_usage
+):
+    """cost_micros == 0 must still record a TokenUsage row, not be rejected."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        cost_micros=0,
+        cost_basis="actual",
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 0
+    record_usage.assert_awaited_once()
+    assert record_usage.await_args.kwargs["cost_micros"] == 0
+
+
+async def test_chainlens_charge_continues_when_record_token_usage_fails(
+    monkeypatch, record_usage
+):
+    """TokenUsage persistence failure is fail-open."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+    record_usage.side_effect = RuntimeError("audit failure")
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        cost_micros=12300,
+        cost_basis="actual",
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 12300
+    assert user.credit_micros_balance == 100_000 - 12300
+    record_usage.assert_awaited_once()
+
+
+async def test_charge_capability_none_unit_returns_zero(monkeypatch, record_usage):
+    """A None billing unit is always free."""
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(billable_units=1)
+
+    charged = await charge_capability(output, None, _ctx(session))
+
+    assert charged == 0
+    record_usage.assert_not_awaited()
+
+
+async def test_charge_web_crawl_records_usage_for_one_success(
+    monkeypatch, record_usage
+):
+    """A single success should be billed; guards against <= boundary mutation."""
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_MICROS_PER_SUCCESS", 1000)
+
+    from app.capabilities.core.billing import _charge_web_crawl
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    charged = await _charge_web_crawl(_ctx(session), 1)
+
+    assert charged == 1000
+    record_usage.assert_awaited_once()
+    assert record_usage.await_args.kwargs["cost_micros"] == 1000
+
+
+async def test_charge_captcha_records_usage_for_one_attempt(
+    monkeypatch, record_usage
+):
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE", 3000)
+
+    from app.capabilities.core.billing import _charge_captcha
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    charged = await _charge_captcha(_ctx(session), 1)
+
+    assert charged == 3000
+    record_usage.assert_awaited_once()
+    assert record_usage.await_args.kwargs["cost_micros"] == 3000
+
+
+async def test_charge_web_crawl_billing_disabled_returns_zero(
+    monkeypatch, record_usage
+):
+    """Billing disabled must short-circuit and return 0."""
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", False)
+
+    from app.capabilities.core.billing import _charge_web_crawl
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    assert await _charge_web_crawl(_ctx(session), 3) == 0
+    record_usage.assert_not_awaited()
+
+
+async def test_charge_captcha_billing_disabled_returns_zero(
+    monkeypatch, record_usage
+):
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", False)
+
+    from app.capabilities.core.billing import _charge_captcha
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    assert await _charge_captcha(_ctx(session), 3) == 0
+    record_usage.assert_not_awaited()
+
+
+async def test_charge_web_crawl_owner_not_found_returns_zero(
+    monkeypatch, record_usage
+):
+    """Missing owner must not debit or audit."""
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", True)
+    session = AsyncMock()
+    session.add = MagicMock()
+
+    def _no_owner(*_args, **_kwargs):
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        return result
+
+    session.execute = AsyncMock(side_effect=_no_owner)
+
+    from app.capabilities.core.billing import _charge_web_crawl
+
+    assert await _charge_web_crawl(_ctx(session), 3) == 0
+    record_usage.assert_not_awaited()
+
+
+async def test_charge_captcha_owner_not_found_returns_zero(
+    monkeypatch, record_usage
+):
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", True)
+    session = AsyncMock()
+    session.add = MagicMock()
+
+    def _no_owner(*_args, **_kwargs):
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+        return result
+
+    session.execute = AsyncMock(side_effect=_no_owner)
+
+    from app.capabilities.core.billing import _charge_captcha
+
+    assert await _charge_captcha(_ctx(session), 3) == 0
+    record_usage.assert_not_awaited()
+
+
+async def test_web_crawl_without_captcha_attempts_defaults_to_zero(
+    monkeypatch, record_usage
+):
+    """CrawlOutput without captcha_attempts must not trigger captcha billing."""
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_MICROS_PER_SUCCESS", 1000)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE", 3000)
+    monkeypatch.setattr(billing, "captcha_enabled", lambda: True)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = CrawlOutput(items=[CrawlItem(url="https://x.com", status="success")])
+
+    charged = await charge_capability(
+        output, BillingUnit.WEB_CRAWL, _ctx(session)
+    )
+
+    assert charged == 1000
+    record_usage.assert_awaited_once()
+    assert record_usage.await_args.kwargs["cost_micros"] == 1000
+
+
+async def test_charge_google_maps_place_without_reviews_charges_place_only(
+    monkeypatch, record_usage
+):
+    """No attached_review_count should not add the review meter."""
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_PLACE", 5000)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_REVIEW", 500)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        billable_units=1,
+        status="complete",
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.GOOGLE_MAPS_PLACE, _ctx(session)
+    )
+
+    assert charged == 5000
+    record_usage.assert_awaited_once()
+    assert record_usage.await_args.kwargs["cost_micros"] == 5000
+    assert record_usage.await_args.kwargs["usage_type"] == "google_maps_place"
+
+
+async def test_charge_google_maps_place_with_one_review(
+    monkeypatch, record_usage
+):
+    """One attached review is billed on the review meter."""
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_PLACE", 5000)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_REVIEW", 500)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        billable_units=1,
+        status="complete",
+        attached_review_count=1,
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.GOOGLE_MAPS_PLACE, _ctx(session)
+    )
+
+    assert charged == 5500
+    assert record_usage.await_count == 2
+
+
+async def test_platform_charge_records_degradation_in_call_details(
+    monkeypatch, record_usage
+):
+    """Degraded platform output must mirror degradation_reason and status."""
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_PLACE", 5000)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        billable_units=1,
+        status="partial",
+        degraded=True,
+        degradation_reason="rate_limited",
+    )
+
+    await charge_capability(
+        output, BillingUnit.GOOGLE_MAPS_PLACE, _ctx(session)
+    )
+
+    details = record_usage.await_args.kwargs["call_details"]
+    assert details["degradation_reason"] == "rate_limited"
+    assert details["final_status"] == "partial"
+
+
+async def test_platform_charge_does_not_add_degradation_when_not_degraded(
+    monkeypatch, record_usage
+):
+    """Non-degraded platform output must omit degradation fields."""
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_PLACE", 5000)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        billable_units=1,
+        status="complete",
+    )
+
+    await charge_capability(
+        output, BillingUnit.GOOGLE_MAPS_PLACE, _ctx(session)
+    )
+
+    details = record_usage.await_args.kwargs["call_details"]
+    assert "degradation_reason" not in details
+    assert "final_status" not in details
+
+
+async def test_gate_google_maps_place_without_review_estimate_is_single_meter(
+    monkeypatch
+):
+    """Missing estimated_review_units must not reserve review cost."""
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_PLACE", 5000)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_REVIEW", 500)
+
+    from app.capabilities.core.billing import _gate_platform
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+    mock_check = AsyncMock()
+    monkeypatch.setattr(billing.wallet_credit, "check_balance", mock_check)
+
+    payload = SimpleNamespace(estimated_units=2)
+
+    await _gate_platform(payload, BillingUnit.GOOGLE_MAPS_PLACE, _ctx(session))
+
+    mock_check.assert_awaited_once()
+    assert mock_check.await_args.args[2] == 10000
+
+
+async def test_gate_amazon_product_does_not_reserve_reviews(monkeypatch):
+    """Non-google-maps units must not reserve review units."""
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "AMAZON_MICROS_PER_PRODUCT", 2000)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_REVIEW", 500)
+
+    from app.capabilities.core.billing import _gate_platform
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+    mock_check = AsyncMock()
+    monkeypatch.setattr(billing.wallet_credit, "check_balance", mock_check)
+
+    payload = SimpleNamespace(estimated_units=3, estimated_review_units=2)
+
+    await _gate_platform(payload, BillingUnit.AMAZON_PRODUCT, _ctx(session))
+
+    mock_check.assert_awaited_once()
+    assert mock_check.await_args.args[2] == 6000
+
+
+async def test_pricing_meters_captcha_billing_disabled_skips_captcha_meter(
+    monkeypatch
+):
+    """Captcha billing on but solving disabled must not show captcha meter."""
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE", 3000)
+    monkeypatch.setattr(billing, "captcha_enabled", lambda: False)
+
+    from app.capabilities.core.billing import pricing_meters
+
+    meters = pricing_meters(BillingUnit.WEB_CRAWL)
+    assert all(m["unit"] != "captcha solve" for m in meters)
+
+
+async def test_pricing_meters_youtube_video_is_single_meter(monkeypatch):
+    """Non-google-maps unit must not include the review meter."""
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "YOUTUBE_MICROS_PER_VIDEO", 4000)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_REVIEW", 500)
+
+    from app.capabilities.core.billing import pricing_meters
+
+    meters = pricing_meters(BillingUnit.YOUTUBE_VIDEO)
+    assert len(meters) == 1
+    assert meters[0]["unit"] == "video"

@@ -72,7 +72,7 @@ _UNIT_NOUNS: dict[BillingUnit, str] = {
 }
 
 
-def pricing_meters(unit: BillingUnit | None) -> list[dict]:
+def pricing_meters(unit: BillingUnit | None) -> list[dict]:  # pragma: no mutate
     """The live per-item rates a verb charges, for UI display. Empty = free.
 
     Mirrors the gate/charge logic exactly: meters whose billing flag is off are
@@ -109,7 +109,7 @@ def pricing_meters(unit: BillingUnit | None) -> list[dict]:
 
 
 async def gate_capability(
-    payload: BillableInput, unit: BillingUnit | None, ctx: CapabilityContext
+    payload: BillableInput, unit: BillingUnit | None, ctx: CapabilityContext  # pragma: no mutate
 ) -> None:
     """Pre-flight: block an over-budget owner before the executor runs (03c).
 
@@ -177,7 +177,7 @@ async def _gate_platform(
 
 
 async def charge_capability(
-    output: BillableOutput, unit: BillingUnit | None, ctx: CapabilityContext
+    output: BillableOutput, unit: BillingUnit | None, ctx: CapabilityContext  # pragma: no mutate
 ) -> int:
     """Bill the workspace owner for this result and return the micros charged.
 
@@ -386,7 +386,7 @@ async def _charge_platform_meter(
 
 async def _resolve_workspace_owner(
     session: AsyncSession, workspace_id: int
-) -> UUID | None:
+) -> UUID | None:  # pragma: no mutate
     """The ``user_id`` that owns ``workspace_id`` (the crawl payer, not the caller)."""
     from app.db import Workspace
 

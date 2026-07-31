@@ -247,15 +247,80 @@ def run_cosmic_ray(backend: Path, config: Path, session: Path) -> None:
             raise RuntimeError(f"cosmic-ray {step} failed for {config.name}")
 
 
+def _dump_from_sqlite(session: Path) -> list[dict]:
+    """Fallback parser for cosmic-ray sessions that contain SKIPPED work items.
+
+    ``cosmic-ray dump`` can crash when a work result has no ``test_outcome``
+    (e.g. after ``cr-filter-pragma``). We read the SQLite work DB directly and
+    reconstruct the same record shape.
+    """
+    import sqlite3
+
+    conn = sqlite3.connect(str(session))
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT
+            m.module_path,
+            m.operator_name,
+            m.operator_args,
+            m.occurrence,
+            m.start_pos_row,
+            m.start_pos_col,
+            m.end_pos_row,
+            m.end_pos_col,
+            m.definition_name,
+            m.job_id,
+            r.worker_outcome,
+            r.test_outcome,
+            r.diff
+        FROM mutation_specs m
+        LEFT JOIN work_results r ON m.job_id = r.job_id
+        """
+    )
+    records = []
+    for row in cur.fetchall():
+        mutation = {
+            "module_path": row["module_path"],
+            "operator_name": row["operator_name"],
+            "occurrence": row["occurrence"],
+            "start_pos": [row["start_pos_row"], row["start_pos_col"]],
+            "end_pos": [row["end_pos_row"], row["end_pos_col"]],
+            "job_id": row["job_id"],
+        }
+        records.append(
+            {
+                "module_path": row["module_path"],
+                "operator_name": row["operator_name"],
+                "occurrence": row["occurrence"],
+                "start_pos": [row["start_pos_row"], row["start_pos_col"]],
+                "end_pos": [row["end_pos_row"], row["end_pos_col"]],
+                "definition_name": row["definition_name"],
+                "job_id": row["job_id"],
+                "mutations": [mutation],
+                "worker_outcome": (row["worker_outcome"] or "").lower(),
+                "test_outcome": (row["test_outcome"] or "").lower() or None,
+                "diff": row["diff"] or "",
+            }
+        )
+    conn.close()
+    return records
+
+
 def dump_session(backend: Path, session: Path) -> list[dict]:
     """Export session to JSONL and parse into records.
 
     cosmic-ray dump emits one JSON array per line: [mutation_meta, result].
-    We merge the two dicts into a single record.
+    We merge the two dicts into a single record. If ``dump`` fails because
+    the session contains SKIPPED items (e.g. after ``cr-filter-pragma``),
+    we fall back to reading the SQLite work DB directly.
     """
     jsonl = session.with_suffix(".jsonl")
     result = run(["uv", "run", "--no-sync", "cosmic-ray", "dump", str(session)], cwd=backend, timeout=120)
     if result.returncode != 0:
+        if "'NoneType' object has no attribute 'value'" in result.stderr:
+            return _dump_from_sqlite(session)
         raise RuntimeError(f"cosmic-ray dump failed: {result.stderr}")
     jsonl.write_text(result.stdout)
 
@@ -276,6 +341,13 @@ def dump_session(backend: Path, session: Path) -> list[dict]:
 
 def evaluate_service(service: str, records: list[dict]) -> dict:
     """Compute mutation score and triage surviving mutants."""
+    # Records marked as SKIPPED (e.g. by cr-filter-pragma) are excluded from the
+    # score so that equivalent/untestable mutants do not drag the score down.
+    records = [
+        r
+        for r in records
+        if r.get("worker_outcome") != "skipped" and r.get("test_outcome") is not None
+    ]
     total = len(records)
     outcomes = Counter(r.get("test_outcome", "pending") for r in records)
     killed = outcomes.get("killed", 0)
