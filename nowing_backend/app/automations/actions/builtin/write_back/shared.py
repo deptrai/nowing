@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable
 from enum import Enum
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from sqlalchemy import cast, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import SearchSourceConnector, SearchSourceConnectorType
-from app.services.mcp_oauth.registry import MCP_SERVICES
 
 PROVIDER_TO_CONNECTOR_TYPE: dict[str, SearchSourceConnectorType] = {
     "notion": SearchSourceConnectorType.NOTION_CONNECTOR,
@@ -141,8 +141,7 @@ async def load_tools_for_connector(
     session: AsyncSession,
     workspace_id: int,
     *,
-    load_mcp_tools: Callable[[AsyncSession, int], Awaitable[list[Any]]]
-    | None = None,
+    load_mcp_tools: Callable[[AsyncSession, int], Awaitable[list[Any]]] | None = None,
 ) -> list[Any]:
     """Load MCP tools for the workspace, bypassing internal HITL approvals."""
     loader = load_mcp_tools or _default_load_mcp_tools
@@ -162,7 +161,10 @@ def _tool_original_name(tool: Any) -> str | None:
 
 
 def _tool_input_schema(tool: Any) -> dict[str, Any]:
-    return (tool.metadata or {}).get("mcp_input_schema") or {"type": "object", "properties": {}}
+    return (tool.metadata or {}).get("mcp_input_schema") or {
+        "type": "object",
+        "properties": {},
+    }
 
 
 def _service_key_for_provider(provider: str) -> str | None:
@@ -188,10 +190,7 @@ def select_write_tool(
     create_names = CREATE_TOOL_NAMES[provider]
     update_names = UPDATE_TOOL_NAMES[provider]
 
-    if object_id:
-        names = update_names + create_names
-    else:
-        names = create_names + update_names
+    names = update_names + create_names if object_id else create_names + update_names
 
     def matches(tool: Any) -> bool:
         if _tool_connector_id(tool) != connector_id:
@@ -200,9 +199,7 @@ def select_write_tool(
         if original in names:
             return True
         bare = _strip_prefix(tool.name, connector_id, provider)
-        if bare in names:
-            return True
-        return False
+        return bare in names
 
     selected: Any | None = None
     for tool in tools:
@@ -359,8 +356,9 @@ def parse_mcp_result(
 ) -> dict[str, Any]:
     """Normalize an MCP tool response into a JSON-serializable reference dict."""
     if isinstance(result_str, str):
-        lowered = result_str.strip().lower()
-        if result_str.startswith("Error:") or result_str.startswith("Tool call rejected"):
+        if result_str.startswith("Error:") or result_str.startswith(
+            "Tool call rejected"
+        ):
             raise RuntimeError(f"MCP tool failed: {result_str}")
 
         try:
@@ -380,7 +378,14 @@ def parse_mcp_result(
     url: str | None = None
 
     if isinstance(parsed, dict):
-        url = parsed.get("url") or parsed.get("page_url") or parsed.get("issue_url") or parsed.get("permalink") or parsed.get("webUrl") or parsed.get("href")
+        url = (
+            parsed.get("url")
+            or parsed.get("page_url")
+            or parsed.get("issue_url")
+            or parsed.get("permalink")
+            or parsed.get("webUrl")
+            or parsed.get("href")
+        )
 
         if provider == "notion":
             object_id = parsed.get("id") or parsed.get("page_id")
@@ -442,7 +447,9 @@ async def resolve_jira_cloud_id(
         try:
             resources = json.loads(result_str)
         except json.JSONDecodeError as exc:
-            raise RuntimeError(f"Invalid Jira resources response: {result_str}") from exc
+            raise RuntimeError(
+                f"Invalid Jira resources response: {result_str}"
+            ) from exc
 
     if not resources:
         raise RuntimeError("No Atlassian resources found for Jira connector")
@@ -468,8 +475,7 @@ async def execute_write_back(
     *,
     tool: Any | None = None,
     connectors: list[Any] | None = None,
-    load_mcp_tools: Callable[[AsyncSession, int], Awaitable[list[Any]]]
-    | None = None,
+    load_mcp_tools: Callable[[AsyncSession, int], Awaitable[list[Any]]] | None = None,
 ) -> dict[str, Any]:
     """Generic write-back flow used by each provider-specific action."""
     validated = params_model.model_validate(params)

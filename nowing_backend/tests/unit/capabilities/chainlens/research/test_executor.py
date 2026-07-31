@@ -575,17 +575,14 @@ def test_parse_sse_block_replaces_existing_id():
 
 @pytest.mark.test_id("9-1b-029")
 def test_parse_sse_done_contract_carries_metadata():
-    raw = (
-        _sse_line(
-            {"type": "block", "block": {"id": "txt", "type": "text", "data": "Answer"}}
-        )
-        + _sse_line(
-            {
-                "type": "done",
-                "chatId": "chat-contract",
-                "webUrl": "https://research.chainlens.test/c/chat-contract",
-            }
-        )
+    raw = _sse_line(
+        {"type": "block", "block": {"id": "txt", "type": "text", "data": "Answer"}}
+    ) + _sse_line(
+        {
+            "type": "done",
+            "chatId": "chat-contract",
+            "webUrl": "https://research.chainlens.test/c/chat-contract",
+        }
     )
     output = _parse_sse(raw)
 
@@ -605,9 +602,7 @@ def test_parse_sse_update_block_replaces_data():
             {
                 "type": "updateBlock",
                 "blockId": "txt",
-                "patch": [
-                    {"op": "replace", "path": "/data", "value": "Replaced"}
-                ],
+                "patch": [{"op": "replace", "path": "/data", "value": "Replaced"}],
             }
         )
         + _sse_line({"type": "done"})
@@ -628,9 +623,7 @@ def test_parse_sse_update_block_adds_data():
             {
                 "type": "updateBlock",
                 "blockId": "txt",
-                "patch": [
-                    {"op": "add", "path": "/data", "value": "Added"}
-                ],
+                "patch": [{"op": "add", "path": "/data", "value": "Added"}],
             }
         )
         + _sse_line({"type": "done"})
@@ -694,32 +687,32 @@ def test_parse_sse_unknown_type_does_not_break_known_frames():
 
 @pytest.mark.test_id("9-1b-035")
 def test_parse_sse_preserves_source_order():
-    raw = (
-        _sse_line(
-            {
-                "type": "block",
-                "block": {
-                    "id": "src",
-                    "type": "source",
-                    "data": [
-                        {
-                            "metadata": {"title": "Alpha", "url": "https://a.example.com"},
-                            "content": "alpha",
+    raw = _sse_line(
+        {
+            "type": "block",
+            "block": {
+                "id": "src",
+                "type": "source",
+                "data": [
+                    {
+                        "metadata": {"title": "Alpha", "url": "https://a.example.com"},
+                        "content": "alpha",
+                    },
+                    {
+                        "metadata": {"title": "Bravo", "url": "https://b.example.com"},
+                        "content": "bravo",
+                    },
+                    {
+                        "metadata": {
+                            "title": "Charlie",
+                            "url": "https://c.example.com",
                         },
-                        {
-                            "metadata": {"title": "Bravo", "url": "https://b.example.com"},
-                            "content": "bravo",
-                        },
-                        {
-                            "metadata": {"title": "Charlie", "url": "https://c.example.com"},
-                            "content": "charlie",
-                        },
-                    ],
-                },
-            }
-        )
-        + _sse_line({"type": "done"})
-    )
+                        "content": "charlie",
+                    },
+                ],
+            },
+        }
+    ) + _sse_line({"type": "done"})
     output = _parse_sse(raw)
 
     assert len(output.sources) == 3

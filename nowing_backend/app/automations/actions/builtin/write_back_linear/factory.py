@@ -6,7 +6,6 @@ from typing import Any
 
 from ...types import ActionContext, ActionHandler
 from .invoke import write_back
-from .params import LinearActionParams
 
 
 def build_handler(ctx: ActionContext) -> ActionHandler:

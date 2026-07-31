@@ -41,7 +41,9 @@ async def chat_turn(db_session, db_workspace, db_user):
     assistant_message = NewChatMessage(
         thread_id=thread.id,
         role=NewChatMessageRole.ASSISTANT,
-        content=[{"type": "text", "text": "Yes, competitor X raised prices 10% in Q2."}],
+        content=[
+            {"type": "text", "text": "Yes, competitor X raised prices 10% in Q2."}
+        ],
         turn_id=turn_id,
     )
     db_session.add(user_message)

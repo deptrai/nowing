@@ -123,7 +123,9 @@ def test_parse_sse_missing_resolved_mode_uses_none():
 
 
 def test_parse_sse_preserves_existing_output_fields():
-    raw = _sse_line({"type": "block", "block": {"id": "txt", "type": "text", "data": "Answer"}})
+    raw = _sse_line(
+        {"type": "block", "block": {"id": "txt", "type": "text", "data": "Answer"}}
+    )
     raw += _sse_line(
         {
             "type": "done",

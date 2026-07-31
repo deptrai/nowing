@@ -137,7 +137,9 @@ router.include_router(jira_add_connector_router)
 router.include_router(confluence_add_connector_router)
 router.include_router(clickup_add_connector_router)
 router.include_router(dropbox_add_connector_router)
-router.include_router(admin_global_model_connections_router)  # Platform admin global models
+router.include_router(
+    admin_global_model_connections_router
+)  # Platform admin global models
 router.include_router(model_connections_router)  # Connection-centric model catalog
 router.include_router(model_list_router)  # Dynamic model catalogue from OpenRouter
 router.include_router(logs_router)

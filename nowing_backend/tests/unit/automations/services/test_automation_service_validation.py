@@ -47,7 +47,9 @@ def _service(session: _FakeSession) -> AutomationService:
     )
 
 
-def _valid_definition(*, plan: list[PlanStep] | None = None, **kwargs: Any) -> AutomationDefinition:
+def _valid_definition(
+    *, plan: list[PlanStep] | None = None, **kwargs: Any
+) -> AutomationDefinition:
     return AutomationDefinition(
         name="A",
         plan=plan

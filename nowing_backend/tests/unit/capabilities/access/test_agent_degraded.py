@@ -69,9 +69,7 @@ async def test_agent_tool_passes_capability_context_to_chainlens(isolate_agent):
 
     spy = cap.executor
     assert any(
-        isinstance(arg, CapabilityContext)
-        for args, _ in spy.calls
-        for arg in args
+        isinstance(arg, CapabilityContext) for args, _ in spy.calls for arg in args
     ), "CapabilityContext was not passed to the agent executor"
 
 

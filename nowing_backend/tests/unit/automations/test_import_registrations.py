@@ -28,7 +28,6 @@ def test_bundled_agent_task_action_is_registered_after_package_import() -> None:
     assert definition.type == "agent_task"
 
 
-
 def test_write_back_actions_are_registered_after_package_import() -> None:
     """All direct write-back action types must be discoverable after import."""
     for action_type in (

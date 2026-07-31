@@ -39,7 +39,6 @@ def _make_tool(
     )
 
 
-
 async def test_resolve_connector_finds_single_match_by_type():
     """When exactly one MCP connector of the target type exists, return it."""
     shared = _load_shared()
@@ -58,7 +57,6 @@ async def test_resolve_connector_finds_single_match_by_type():
     )
     assert result.id == 1
     assert result.name == "Notion"
-
 
 
 async def test_resolve_connector_requires_name_when_multiple():
@@ -88,7 +86,6 @@ async def test_resolve_connector_requires_name_when_multiple():
         )
 
 
-
 async def test_resolve_connector_fails_when_missing_server_config():
     """A connector without server_config is not a valid MCP write target."""
     shared = _load_shared()
@@ -108,13 +105,16 @@ async def test_resolve_connector_fails_when_missing_server_config():
         )
 
 
-
 async def test_select_tool_matches_by_connector_id_and_original_name():
     """Tool lookup must handle multi-account prefixing."""
     shared = _load_shared()
     tools = [
-        _make_tool(name="notion_7_create-pages", connector_id=7, original_name="create-pages"),
-        _make_tool(name="notion_8_create-pages", connector_id=8, original_name="create-pages"),
+        _make_tool(
+            name="notion_7_create-pages", connector_id=7, original_name="create-pages"
+        ),
+        _make_tool(
+            name="notion_8_create-pages", connector_id=8, original_name="create-pages"
+        ),
     ]
     selected = shared.select_write_tool(
         tools=tools,
@@ -122,7 +122,6 @@ async def test_select_tool_matches_by_connector_id_and_original_name():
         provider="notion",
     )
     assert selected.name == "notion_8_create-pages"
-
 
 
 async def test_select_tool_falls_back_to_known_aliases():
@@ -143,14 +142,12 @@ async def test_select_tool_falls_back_to_known_aliases():
     assert selected is not None
 
 
-
 async def test_jira_cloud_id_uses_config_value_first():
     """Jira cloudId resolution prefers connector.config.cloud_id."""
     shared = _load_shared()
     connector = SimpleNamespace(config={"cloud_id": "cloud-abc"})
     cloud_id = await shared.resolve_jira_cloud_id(session=None, connector=connector)
     assert cloud_id == "cloud-abc"
-
 
 
 async def test_jira_cloud_id_calls_resources_api_when_missing():
@@ -169,7 +166,6 @@ async def test_jira_cloud_id_calls_resources_api_when_missing():
     assert cloud_id == "cloud-xyz"
 
 
-
 async def test_parse_mcp_result_extracts_object_id_and_url():
     """Successful MCP tool responses are parsed into a normalized reference dict."""
     shared = _load_shared()
@@ -180,16 +176,14 @@ async def test_parse_mcp_result_extracts_object_id_and_url():
     assert result["provider"] == "notion"
 
 
-
 async def test_parse_mcp_result_raises_on_error_string():
     """Error strings returned by the MCP tool wrapper fail the step clearly."""
     shared = _load_shared()
-    with pytest.raises(RuntimeError, match="MCP tool .* failed"):
+    with pytest.raises(RuntimeError, match=r"MCP tool .* failed"):
         shared.parse_mcp_result(
             "Error: MCP tool 'create-pages' execution failed",
             provider="notion",
         )
-
 
 
 async def test_bypass_internal_hitl_is_passed_to_load_mcp_tools():

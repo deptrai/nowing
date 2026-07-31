@@ -158,10 +158,13 @@ async def test_transient_error_releases_claim_and_charges_nothing(
     transient_exc = _transient_error()
     llm = _llm_raising(transient_exc)
 
-    with patch(
-        "app.services.memory.run_extraction.get_agent_llm",
-        AsyncMock(return_value=llm),
-    ), pytest.raises(type(transient_exc)):
+    with (
+        patch(
+            "app.services.memory.run_extraction.get_agent_llm",
+            AsyncMock(return_value=llm),
+        ),
+        pytest.raises(type(transient_exc)),
+    ):
         await _extract_memory_after_run(run_id, retries_left=True)
 
     status, _, memories, usage = await _state(async_engine, run_id, workspace_id)
@@ -185,10 +188,13 @@ async def test_transient_error_with_budget_exhausted_marks_failed(
     transient_exc = _transient_error()
     llm = _llm_raising(transient_exc)
 
-    with patch(
-        "app.services.memory.run_extraction.get_agent_llm",
-        AsyncMock(return_value=llm),
-    ), pytest.raises(type(transient_exc)):
+    with (
+        patch(
+            "app.services.memory.run_extraction.get_agent_llm",
+            AsyncMock(return_value=llm),
+        ),
+        pytest.raises(type(transient_exc)),
+    ):
         await _extract_memory_after_run(run_id, retries_left=False)
 
     status, _, memories, usage = await _state(async_engine, run_id, workspace_id)
@@ -198,9 +204,7 @@ async def test_transient_error_with_budget_exhausted_marks_failed(
 
 
 @pytest.mark.asyncio
-async def test_terminal_error_marks_failed_without_release(
-    async_engine, committed_run
-):
+async def test_terminal_error_marks_failed_without_release(async_engine, committed_run):
     """AC-5: an auth/config error is terminal on the first attempt.
 
     Releasing the claim here would invite a retry that re-pays for a call which
@@ -217,10 +221,13 @@ async def test_terminal_error_marks_failed_without_release(
 
     llm = _llm_raising(_AuthBoomError("bad api key"))
 
-    with patch(
-        "app.services.memory.run_extraction.get_agent_llm",
-        AsyncMock(return_value=llm),
-    ), pytest.raises(_AuthBoomError):
+    with (
+        patch(
+            "app.services.memory.run_extraction.get_agent_llm",
+            AsyncMock(return_value=llm),
+        ),
+        pytest.raises(_AuthBoomError),
+    ):
         await _extract_memory_after_run(run_id, retries_left=True)
 
     status, _, memories, usage = await _state(async_engine, run_id, workspace_id)
@@ -230,9 +237,7 @@ async def test_terminal_error_marks_failed_without_release(
 
 
 @pytest.mark.asyncio
-async def test_persistence_failure_leaves_no_partial_batch(
-    async_engine, committed_run
-):
+async def test_persistence_failure_leaves_no_partial_batch(async_engine, committed_run):
     """AC-5: an embedding/persistence error commits nothing at all.
 
     The task-level counterpart of the service test: here the rollback happens

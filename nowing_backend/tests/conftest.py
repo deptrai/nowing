@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import os
 
-_DEFAULT_TEST_DB = (
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_test"
-)
+_DEFAULT_TEST_DB = "postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_test"
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", _DEFAULT_TEST_DB)
 
 # Force the app to use the test database regardless of any pre-existing
@@ -77,13 +75,21 @@ if os.environ.get("COSMIC_RAY") == "1":
     _fake_litellm_exceptions = types.ModuleType("litellm.exceptions")
 
     class _LiteLLMError(Exception): ...
+
     class APIConnectionError(_LiteLLMError): ...
+
     class AuthenticationError(_LiteLLMError): ...
+
     class BadRequestError(_LiteLLMError): ...
+
     class ContextWindowExceededError(_LiteLLMError): ...
+
     class InternalServerError(_LiteLLMError): ...
+
     class RateLimitError(_LiteLLMError): ...
+
     class ServiceUnavailableError(_LiteLLMError): ...
+
     class Timeout(_LiteLLMError): ...  # noqa: N818
 
     _fake_litellm_exceptions.APIConnectionError = APIConnectionError
@@ -145,7 +151,9 @@ if os.environ.get("COSMIC_RAY") == "1":
     # langchain_litellm expects litellm.types.utils.Delta.
     _fake_litellm_types = types.ModuleType("litellm.types")
     _fake_litellm_types_utils = types.ModuleType("litellm.types.utils")
+
     class _Delta: ...
+
     _fake_litellm_types_utils.Delta = _Delta
     _fake_litellm_types.utils = _fake_litellm_types_utils
 

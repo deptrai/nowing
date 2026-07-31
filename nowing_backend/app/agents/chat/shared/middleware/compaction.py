@@ -215,8 +215,8 @@ def create_nowing_compaction_middleware(
 
 
 __all__ = [
-    "PROTECTED_SYSTEM_PREFIXES",
     "NOWING_SUMMARY_PROMPT",
+    "PROTECTED_SYSTEM_PREFIXES",
     "NowingCompactionMiddleware",
     "create_nowing_compaction_middleware",
 ]

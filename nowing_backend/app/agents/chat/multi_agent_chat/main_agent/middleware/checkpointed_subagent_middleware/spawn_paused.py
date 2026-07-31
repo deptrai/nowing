@@ -33,9 +33,7 @@ logger = logging.getLogger(__name__)
 # Operators can disable the check entirely (e.g. local dev without Redis)
 # by setting ``NOWING_TASK_SPAWN_PAUSED_DISABLED=1``. Default is
 # enabled so production never relies on flipping an opt-out flag.
-_DISABLED = os.environ.get(
-    "NOWING_TASK_SPAWN_PAUSED_DISABLED", ""
-).strip().lower() in {
+_DISABLED = os.environ.get("NOWING_TASK_SPAWN_PAUSED_DISABLED", "").strip().lower() in {
     "1",
     "true",
     "yes",

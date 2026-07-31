@@ -126,13 +126,9 @@ class AgentFeatureFlags:
             enable_compaction_v2=_env_bool("NOWING_ENABLE_COMPACTION_V2", True),
             enable_retry_after=_env_bool("NOWING_ENABLE_RETRY_AFTER", True),
             enable_model_fallback=_env_bool("NOWING_ENABLE_MODEL_FALLBACK", False),
-            enable_model_call_limit=_env_bool(
-                "NOWING_ENABLE_MODEL_CALL_LIMIT", True
-            ),
+            enable_model_call_limit=_env_bool("NOWING_ENABLE_MODEL_CALL_LIMIT", True),
             enable_tool_call_limit=_env_bool("NOWING_ENABLE_TOOL_CALL_LIMIT", True),
-            enable_tool_call_repair=_env_bool(
-                "NOWING_ENABLE_TOOL_CALL_REPAIR", True
-            ),
+            enable_tool_call_repair=_env_bool("NOWING_ENABLE_TOOL_CALL_REPAIR", True),
             enable_doom_loop=_env_bool("NOWING_ENABLE_DOOM_LOOP", True),
             # Safety
             enable_permission=_env_bool("NOWING_ENABLE_PERMISSION", True),

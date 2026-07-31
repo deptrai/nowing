@@ -7,7 +7,7 @@ from app.agents.chat.shared.middleware.compaction import (
 from app.agents.chat.shared.middleware.retry_after import RetryAfterMiddleware
 
 __all__ = [
-    "RetryAfterMiddleware",
     "NowingCompactionMiddleware",
+    "RetryAfterMiddleware",
     "create_nowing_compaction_middleware",
 ]

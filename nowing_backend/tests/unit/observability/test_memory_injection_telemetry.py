@@ -84,7 +84,9 @@ def test_record_memory_injection_failure_swallows_counter_backend_error(
             raise RuntimeError("otel backend exploded")
 
     monkeypatch.setattr(ot_metrics, "_is_enabled", lambda: True)
-    monkeypatch.setattr(ot_metrics, "_memory_injection_failures", lambda: _ExplodingCounter())
+    monkeypatch.setattr(
+        ot_metrics, "_memory_injection_failures", lambda: _ExplodingCounter()
+    )
 
     ot_metrics.record_memory_injection_failure(
         scope="team", stage="session", reason="enter_error"

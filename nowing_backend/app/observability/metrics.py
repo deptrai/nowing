@@ -1094,20 +1094,22 @@ def register_runtime_observables() -> None:
 # Closed vocabulary for ``engine_reason``. Any value outside this set is
 # redacted before it reaches a metric label so exception messages, upstream
 # text, or run content cannot leak into telemetry.
-_CHAINLENS_ENGINE_REASON_VOCABULARY: frozenset[str] = frozenset({
-    "not_configured",
-    "timeout",
-    "unreachable",
-    "auth_failed",
-    "rate_limited",
-    "upstream_error",
-    "stream_incomplete",
-    "fallback_kb_hits",
-    "fallback_kb_empty",
-    "fallback_kb_error",
-    "partial",
-    "insufficient_evidence",
-})
+_CHAINLENS_ENGINE_REASON_VOCABULARY: frozenset[str] = frozenset(
+    {
+        "not_configured",
+        "timeout",
+        "unreachable",
+        "auth_failed",
+        "rate_limited",
+        "upstream_error",
+        "stream_incomplete",
+        "fallback_kb_hits",
+        "fallback_kb_empty",
+        "fallback_kb_error",
+        "partial",
+        "insufficient_evidence",
+    }
+)
 
 
 @lru_cache(maxsize=1)
@@ -1145,7 +1147,9 @@ def _redact_engine_reason(engine_reason: str | None) -> str | None:
     if not engine_reason:
         return None
     normalized = engine_reason.strip().lower()
-    return normalized if normalized in _CHAINLENS_ENGINE_REASON_VOCABULARY else "redacted"
+    return (
+        normalized if normalized in _CHAINLENS_ENGINE_REASON_VOCABULARY else "redacted"
+    )
 
 
 def record_chainlens_degradation(

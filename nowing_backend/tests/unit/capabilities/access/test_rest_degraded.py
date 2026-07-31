@@ -82,9 +82,7 @@ async def test_rest_sync_passes_capability_context_to_chainlens_research(monkeyp
 
     assert resp.status_code == 200
     assert any(
-        isinstance(arg, CapabilityContext)
-        for args, _ in spy.calls
-        for arg in args
+        isinstance(arg, CapabilityContext) for args, _ in spy.calls for arg in args
     ), "CapabilityContext was not passed to the executor"
 
 
@@ -140,9 +138,7 @@ async def test_rest_async_executor_receives_capability_context(monkeypatch):
     )
 
     assert any(
-        isinstance(arg, CapabilityContext)
-        for args, _ in spy.calls
-        for arg in args
+        isinstance(arg, CapabilityContext) for args, _ in spy.calls for arg in args
     ), "CapabilityContext was not passed to the async executor"
 
 
@@ -186,7 +182,9 @@ async def test_rest_async_degraded_output_text_matches_sync_and_sse_terminal(
     )
     spy = _ResearchSpy(output)
 
-    monkeypatch.setattr(rest, "charge_capability", AsyncMock(side_effect=RuntimeError("wallet down")))
+    monkeypatch.setattr(
+        rest, "charge_capability", AsyncMock(side_effect=RuntimeError("wallet down"))
+    )
     monkeypatch.setattr(rest, "gate_capability", AsyncMock())
     finalize = AsyncMock(return_value=True)
     monkeypatch.setattr(rest, "finalize_run", finalize)

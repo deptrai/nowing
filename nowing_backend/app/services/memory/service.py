@@ -16,7 +16,7 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import Memory, MemorySourceType, MemoryType, User
+from app.db import Memory, User
 from app.services.memory.document import parse_memory_document, render_memory_document
 from app.services.memory.parser import parse_memory_markdown_to_facts
 from app.services.memory.renderer import render_memory_markdown
@@ -93,12 +93,8 @@ def _normalize_user_id(target_id: str | UUID) -> UUID:
     return UUID(target_id) if isinstance(target_id, str) else target_id
 
 
-async def _load_user_display_name(
-    user_id: UUID, session: AsyncSession
-) -> str | None:
-    result = await session.execute(
-        select(User.display_name).where(User.id == user_id)
-    )
+async def _load_user_display_name(user_id: UUID, session: AsyncSession) -> str | None:
+    result = await session.execute(select(User.display_name).where(User.id == user_id))
     return result.scalar_one_or_none()
 
 
@@ -218,9 +214,7 @@ async def save_memory(
     else:
         workspace_id = int(target_id)
         # Delete existing workspace team memory facts before rewriting.
-        await session.execute(
-            delete(Memory).where(Memory.workspace_id == workspace_id)
-        )
+        await session.execute(delete(Memory).where(Memory.workspace_id == workspace_id))
         for fact in facts:
             await repo.create_memory(
                 workspace_id=workspace_id,
@@ -274,12 +268,12 @@ async def reset_memory(
         )
     else:
         workspace_id = int(target_id)
-        await session.execute(
-            delete(Memory).where(Memory.workspace_id == workspace_id)
-        )
+        await session.execute(delete(Memory).where(Memory.workspace_id == workspace_id))
     await session.commit()
     return SaveResult(
         status="saved",
-        message="Memory reset." if normalized is MemoryScope.USER else "Team memory reset.",
+        message="Memory reset."
+        if normalized is MemoryScope.USER
+        else "Team memory reset.",
         memory_md="",
     )

@@ -311,7 +311,10 @@ def test_research_output_preserves_manual_next_action():
 def test_research_output_preserves_manual_degradation_reason():
     output = ResearchOutput(status="engine_unavailable", degradation_reason="custom")
     assert output.degradation_reason == "custom"
-    assert output.next_action == "The deep research engine is unavailable. Try again later."
+    assert (
+        output.next_action
+        == "The deep research engine is unavailable. Try again later."
+    )
 
 
 def test_research_output_validate_assignment_rejects_bad_status():
@@ -326,7 +329,9 @@ def test_research_output_saw_heartbeat_default_false():
 
 
 def test_research_output_excludes_internal_fields_from_dump():
-    output = ResearchOutput(saw_heartbeat=True, blocked_url_coverage_by_block_type={"x": 1})
+    output = ResearchOutput(
+        saw_heartbeat=True, blocked_url_coverage_by_block_type={"x": 1}
+    )
     dumped = output.model_dump()
     assert "saw_heartbeat" not in dumped
     assert "blocked_url_coverage_by_block_type" not in dumped
@@ -405,7 +410,11 @@ def test_parse_sources_prefers_metadata_block():
 
 def test_parse_sources_falls_back_to_page_content():
     raw = [
-        {"title": "Page", "url": "https://page.example.com", "pageContent": "page text"},
+        {
+            "title": "Page",
+            "url": "https://page.example.com",
+            "pageContent": "page text",
+        },
     ]
     sources = _parse_sources(raw)
     assert sources[0].content == "page text"
@@ -485,20 +494,36 @@ def test_feed_line_error_event_with_none():
 def test_feed_line_block_event_requires_dict_block():
     parser = _SSEParser()
     parser.feed_line(_sse_line({"type": "block", "block": "not a dict"}))
-    parser.feed_line(_sse_line({"type": "block", "block": {"id": 123, "type": "text", "data": "nope"}}))
+    parser.feed_line(
+        _sse_line(
+            {"type": "block", "block": {"id": 123, "type": "text", "data": "nope"}}
+        )
+    )
     assert len(parser.blocks) == 0
 
 
 def test_feed_line_block_replaces_existing_block():
     parser = _SSEParser()
-    parser.feed_line(_sse_line({"type": "block", "block": {"id": "x", "type": "text", "data": "First"}}))
-    parser.feed_line(_sse_line({"type": "block", "block": {"id": "x", "type": "text", "data": "Second"}}))
+    parser.feed_line(
+        _sse_line(
+            {"type": "block", "block": {"id": "x", "type": "text", "data": "First"}}
+        )
+    )
+    parser.feed_line(
+        _sse_line(
+            {"type": "block", "block": {"id": "x", "type": "text", "data": "Second"}}
+        )
+    )
     assert parser.blocks["x"].data == "Second"
 
 
 def test_feed_line_update_block_only_acts_on_replace_and_add():
     parser = _SSEParser()
-    parser.feed_line(_sse_line({"type": "block", "block": {"id": "x", "type": "text", "data": "Initial"}}))
+    parser.feed_line(
+        _sse_line(
+            {"type": "block", "block": {"id": "x", "type": "text", "data": "Initial"}}
+        )
+    )
     parser.feed_line(
         _sse_line(
             {
@@ -654,8 +679,18 @@ def test_feed_line_heartbeat_is_tolerated():
 
 def test_feed_line_block_done_heartbeat_do_not_set_unknown():
     parser = _SSEParser()
-    parser.feed_line(_sse_line({"type": "block", "block": {"id": "x", "type": "text", "data": "A"}}))
-    parser.feed_line(_sse_line({"type": "updateBlock", "blockId": "x", "patch": [{"op": "add", "path": "/data", "value": "B"}]}))
+    parser.feed_line(
+        _sse_line({"type": "block", "block": {"id": "x", "type": "text", "data": "A"}})
+    )
+    parser.feed_line(
+        _sse_line(
+            {
+                "type": "updateBlock",
+                "blockId": "x",
+                "patch": [{"op": "add", "path": "/data", "value": "B"}],
+            }
+        )
+    )
     parser.feed_line(_sse_line({"type": "done"}))
     parser.feed_line(_sse_line({"type": "heartbeat"}))
     assert parser.saw_unknown is False
@@ -730,7 +765,9 @@ def test_parse_sse_string_path():
 
 async def test_parse_sse_async_iterator_path():
     async def _gen():
-        yield _sse_line({"type": "block", "block": {"id": "x", "type": "text", "data": "A"}})
+        yield _sse_line(
+            {"type": "block", "block": {"id": "x", "type": "text", "data": "A"}}
+        )
         yield _sse_line({"type": "done"})
 
     result = _parse_sse(_gen())
@@ -810,11 +847,15 @@ def stub_config(monkeypatch):
         (201, "upstream_error"),
     ],
 )
-async def test_call_chainlens_status_code_mapping(status_code, expected_reason, stub_config, monkeypatch):
+async def test_call_chainlens_status_code_mapping(
+    status_code, expected_reason, stub_config, monkeypatch
+):
     from app.capabilities.chainlens.research import executor as executor_mod
 
     response = {"status_code": status_code, "text": "whatever", "lines": []}
-    monkeypatch.setattr(executor_mod.httpx, "AsyncClient", _fake_http_client_class(response))
+    monkeypatch.setattr(
+        executor_mod.httpx, "AsyncClient", _fake_http_client_class(response)
+    )
 
     output = await _call_chainlens(ResearchInput(query="test"))
     assert output.status == "engine_unavailable"
@@ -834,11 +875,15 @@ async def test_call_chainlens_200_parses_sse(stub_config, monkeypatch):
     response = {
         "status_code": 200,
         "lines": [
-            _sse_line({"type": "block", "block": {"id": "x", "type": "text", "data": "A"}}),
+            _sse_line(
+                {"type": "block", "block": {"id": "x", "type": "text", "data": "A"}}
+            ),
             _sse_line({"type": "done"}),
         ],
     }
-    monkeypatch.setattr(executor_mod.httpx, "AsyncClient", _fake_http_client_class(response))
+    monkeypatch.setattr(
+        executor_mod.httpx, "AsyncClient", _fake_http_client_class(response)
+    )
 
     output = await _call_chainlens(ResearchInput(query="test"))
     assert output.status == "complete"
@@ -860,13 +905,19 @@ def _make_hit(doc_id: int, chunks: list[object], title: str = "Doc") -> object:
 
 async def test_execute_with_context_kb_fallback_partial():
     async def search_fn(_):
-        return ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")
+        return ResearchOutput(
+            status="engine_unavailable", degradation_reason="not_configured"
+        )
 
     async def fallback_fn(**kwargs):
         return [
             _make_hit(
                 1,
-                [types.SimpleNamespace(chunk_id=10, content="kb content", position=1, score=0.9)],
+                [
+                    types.SimpleNamespace(
+                        chunk_id=10, content="kb content", position=1, score=0.9
+                    )
+                ],
             )
         ]
 
@@ -886,7 +937,9 @@ async def test_execute_with_context_kb_fallback_partial():
 
 async def test_execute_with_context_kb_fallback_empty():
     async def search_fn(_):
-        return ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")
+        return ResearchOutput(
+            status="engine_unavailable", degradation_reason="not_configured"
+        )
 
     async def fallback_fn(**kwargs):
         return []
@@ -903,10 +956,14 @@ async def test_execute_with_context_kb_fallback_empty():
     assert output.degradation_reason == "fallback_kb_empty"
 
 
-@pytest.mark.parametrize("exc", [SQLAlchemyError, RuntimeError, OSError, httpx.RequestError])
+@pytest.mark.parametrize(
+    "exc", [SQLAlchemyError, RuntimeError, OSError, httpx.RequestError]
+)
 async def test_execute_with_context_kb_fallback_exception(exc):
     async def search_fn(_):
-        return ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")
+        return ResearchOutput(
+            status="engine_unavailable", degradation_reason="not_configured"
+        )
 
     async def fallback_fn(**kwargs):
         raise exc("kb failed")
@@ -931,7 +988,11 @@ async def test_execute_with_context_timeout_triggers_fallback():
         return [
             _make_hit(
                 1,
-                [types.SimpleNamespace(chunk_id=10, content="kb content", position=1, score=0.9)],
+                [
+                    types.SimpleNamespace(
+                        chunk_id=10, content="kb content", position=1, score=0.9
+                    )
+                ],
             )
         ]
 
@@ -1004,7 +1065,9 @@ async def test_execute_with_context_no_fallback_for_partial():
 
 async def test_execute_with_context_no_session_skips_fallback():
     async def search_fn(_):
-        return ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")
+        return ResearchOutput(
+            status="engine_unavailable", degradation_reason="not_configured"
+        )
 
     fallback_fn = AsyncMock()
     output = await execute_with_context(
@@ -1019,22 +1082,32 @@ async def test_execute_with_context_no_session_skips_fallback():
 
 async def test_execute_with_context_top_k_clamping_and_loop_breaks():
     async def search_fn(_):
-        return ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")
+        return ResearchOutput(
+            status="engine_unavailable", degradation_reason="not_configured"
+        )
 
     async def fallback_fn(**kwargs):
         return [
             _make_hit(
                 1,
                 [
-                    types.SimpleNamespace(chunk_id=10, content="c1", position=1, score=0.9),
-                    types.SimpleNamespace(chunk_id=11, content="c2", position=2, score=0.8),
+                    types.SimpleNamespace(
+                        chunk_id=10, content="c1", position=1, score=0.9
+                    ),
+                    types.SimpleNamespace(
+                        chunk_id=11, content="c2", position=2, score=0.8
+                    ),
                 ],
             ),
             _make_hit(
                 2,
                 [
-                    types.SimpleNamespace(chunk_id=20, content="c3", position=1, score=0.7),
-                    types.SimpleNamespace(chunk_id=21, content="c4", position=2, score=0.6),
+                    types.SimpleNamespace(
+                        chunk_id=20, content="c3", position=1, score=0.7
+                    ),
+                    types.SimpleNamespace(
+                        chunk_id=21, content="c4", position=2, score=0.6
+                    ),
                 ],
             ),
         ]
@@ -1052,12 +1125,19 @@ async def test_execute_with_context_top_k_clamping_and_loop_breaks():
 
 async def test_execute_with_context_top_k_default_is_five():
     async def search_fn(_):
-        return ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")
+        return ResearchOutput(
+            status="engine_unavailable", degradation_reason="not_configured"
+        )
 
     hits = [
         _make_hit(
             1,
-            [types.SimpleNamespace(chunk_id=i, content=f"c{i}", position=i, score=0.9) for i in range(1, 7)],
+            [
+                types.SimpleNamespace(
+                    chunk_id=i, content=f"c{i}", position=i, score=0.9
+                )
+                for i in range(1, 7)
+            ],
         )
     ]
 
@@ -1076,7 +1156,9 @@ async def test_execute_with_context_top_k_default_is_five():
 
 async def test_execute_with_context_empty_content_shows_no_preview():
     async def search_fn(_):
-        return ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")
+        return ResearchOutput(
+            status="engine_unavailable", degradation_reason="not_configured"
+        )
 
     async def fallback_fn(**kwargs):
         return [
@@ -1102,17 +1184,27 @@ async def test_execute_with_context_records_metrics_on_degraded_output(monkeypat
 
     record_degradation = MagicMock()
     record_kb_hits = MagicMock()
-    monkeypatch.setattr(executor_mod.metrics, "record_chainlens_degradation", record_degradation)
-    monkeypatch.setattr(executor_mod.metrics, "record_kb_fallback_hit_count", record_kb_hits)
+    monkeypatch.setattr(
+        executor_mod.metrics, "record_chainlens_degradation", record_degradation
+    )
+    monkeypatch.setattr(
+        executor_mod.metrics, "record_kb_fallback_hit_count", record_kb_hits
+    )
 
     async def search_fn(_):
-        return ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")
+        return ResearchOutput(
+            status="engine_unavailable", degradation_reason="not_configured"
+        )
 
     async def fallback_fn(**kwargs):
         return [
             _make_hit(
                 1,
-                [types.SimpleNamespace(chunk_id=10, content="kb content", position=1, score=0.9)],
+                [
+                    types.SimpleNamespace(
+                        chunk_id=10, content="kb content", position=1, score=0.9
+                    )
+                ],
             )
         ]
 
@@ -1155,26 +1247,93 @@ async def test_build_research_executor_uses_provided_search_fn():
 @pytest.mark.parametrize(
     "status, degradation_reason, engine_reason, expected",
     [
-        ("engine_unavailable", "not_configured", None, "Deep research is not available in self-host Phase 1. Set CHAINLENS_API_KEY to use the hosted engine."),
-        ("engine_unavailable", "fallback_kb_empty", None, "The deep research engine is unavailable and no matching workspace knowledge base passages were found. Try rephrasing your query."),
-        ("engine_unavailable", "fallback_kb_error", None, "The deep research engine is unavailable and workspace knowledge base lookup failed. Try again later."),
-        ("engine_unavailable", "timeout", None, "The deep research engine timed out. Try again with a faster mode or a narrower query."),
-        ("engine_unavailable", "stream_incomplete", None, "The deep research engine timed out. Try again with a faster mode or a narrower query."),
-        ("engine_unavailable", "unreachable", None, "The deep research engine is unreachable. Check your network and try again."),
-        ("engine_unavailable", "auth_failed", None, "The deep research engine is temporarily unavailable. Try again later."),
-        ("engine_unavailable", "rate_limited", None, "The deep research engine is temporarily unavailable. Try again later."),
-        ("engine_unavailable", "upstream_error", None, "The deep research engine is temporarily unavailable. Try again later."),
-        ("engine_unavailable", "unknown", None, "The deep research engine is unavailable. Try again later."),
-        ("engine_unavailable", None, "no reason", "The deep research engine is unavailable. Try again later."),
+        (
+            "engine_unavailable",
+            "not_configured",
+            None,
+            "Deep research is not available in self-host Phase 1. Set CHAINLENS_API_KEY to use the hosted engine.",
+        ),
+        (
+            "engine_unavailable",
+            "fallback_kb_empty",
+            None,
+            "The deep research engine is unavailable and no matching workspace knowledge base passages were found. Try rephrasing your query.",
+        ),
+        (
+            "engine_unavailable",
+            "fallback_kb_error",
+            None,
+            "The deep research engine is unavailable and workspace knowledge base lookup failed. Try again later.",
+        ),
+        (
+            "engine_unavailable",
+            "timeout",
+            None,
+            "The deep research engine timed out. Try again with a faster mode or a narrower query.",
+        ),
+        (
+            "engine_unavailable",
+            "stream_incomplete",
+            None,
+            "The deep research engine timed out. Try again with a faster mode or a narrower query.",
+        ),
+        (
+            "engine_unavailable",
+            "unreachable",
+            None,
+            "The deep research engine is unreachable. Check your network and try again.",
+        ),
+        (
+            "engine_unavailable",
+            "auth_failed",
+            None,
+            "The deep research engine is temporarily unavailable. Try again later.",
+        ),
+        (
+            "engine_unavailable",
+            "rate_limited",
+            None,
+            "The deep research engine is temporarily unavailable. Try again later.",
+        ),
+        (
+            "engine_unavailable",
+            "upstream_error",
+            None,
+            "The deep research engine is temporarily unavailable. Try again later.",
+        ),
+        (
+            "engine_unavailable",
+            "unknown",
+            None,
+            "The deep research engine is unavailable. Try again later.",
+        ),
+        (
+            "engine_unavailable",
+            None,
+            "no reason",
+            "The deep research engine is unavailable. Try again later.",
+        ),
         ("partial", None, "low coverage", "Partial result; low coverage."),
         ("partial", "partial", None, "Partial result; partial."),
         ("partial", None, None, "Partial result; some evidence was found."),
-        ("insufficient_evidence", None, None, "No relevant sources were found. Try rephrasing the query."),
-        ("timeout", None, None, "The ChainLens stream ended before returning a complete result. Try again."),
+        (
+            "insufficient_evidence",
+            None,
+            None,
+            "No relevant sources were found. Try rephrasing the query.",
+        ),
+        (
+            "timeout",
+            None,
+            None,
+            "The ChainLens stream ended before returning a complete result. Try again.",
+        ),
         ("complete", None, None, None),
     ],
 )
-def test_default_next_action_branches(status, degradation_reason, engine_reason, expected):
+def test_default_next_action_branches(
+    status, degradation_reason, engine_reason, expected
+):
     def _fresh(value):
         # Build an equal but non-identical string so `is`/`is not` mutations fail.
         return "".join(value) if isinstance(value, str) else value

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import AsyncGenerator
 from uuid import uuid4
 
@@ -10,8 +11,6 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import importlib
 
 from app.app import app, limiter
 from app.auth.context import AuthContext
@@ -70,9 +69,7 @@ async def client(
     app.dependency_overrides[get_async_session] = override_session
     app.dependency_overrides[get_auth_context] = override_auth
 
-    original_async_session_maker = _use_db_session_for_async_session_maker(
-        db_session
-    )
+    original_async_session_maker = _use_db_session_for_async_session_maker(db_session)
 
     try:
         async with httpx.AsyncClient(
@@ -105,9 +102,7 @@ async def client_as_other(
     app.dependency_overrides[get_async_session] = override_session
     app.dependency_overrides[get_auth_context] = override_auth
 
-    original_async_session_maker = _use_db_session_for_async_session_maker(
-        db_session
-    )
+    original_async_session_maker = _use_db_session_for_async_session_maker(db_session)
 
     try:
         async with httpx.AsyncClient(
@@ -147,9 +142,7 @@ async def db_other_workspace(
     space = Workspace(name="Other Space", user_id=db_other_user.id)
     db_session.add(space)
     await db_session.flush()
-    await create_default_roles_and_membership(
-        db_session, space.id, db_other_user.id
-    )
+    await create_default_roles_and_membership(db_session, space.id, db_other_user.id)
     await db_session.flush()
     return space
 

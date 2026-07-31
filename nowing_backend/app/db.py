@@ -700,9 +700,7 @@ class NewChatThread(BaseModel, TimestampMixin):
 
     # Surface metadata for first-party Nowing and external chat threads.
     # Zero publishes all chat-message sources; the UI can decide which surfaces to render.
-    source = Column(
-        Text, nullable=False, default="nowing", server_default="nowing"
-    )
+    source = Column(Text, nullable=False, default="nowing", server_default="nowing")
     external_chat_binding_id = Column(
         BigInteger,
         ForeignKey("external_chat_bindings.id", ondelete="SET NULL"),
@@ -801,9 +799,7 @@ class NewChatMessage(BaseModel, TimestampMixin):
 
     # Mirrors the parent thread source for publication-level filtering.
     # This denormalization avoids join-dependent logical replication rules.
-    source = Column(
-        Text, nullable=False, default="nowing", server_default="nowing"
-    )
+    source = Column(Text, nullable=False, default="nowing", server_default="nowing")
     platform_metadata = Column(JSONB, nullable=True)
 
     # Relationships
@@ -1958,9 +1954,7 @@ class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
         index=True,
     )
     tool_name = Column(String(120), nullable=False, index=True)
-    enabled = Column(
-        Boolean, nullable=False, default=True, server_default="true"
-    )
+    enabled = Column(Boolean, nullable=False, default=True, server_default="true")
 
     workspace = relationship("Workspace", back_populates="mcp_tool_settings")
 
@@ -2081,7 +2075,9 @@ class Memory(BaseModel, TimestampMixin):
         index=True,
     )
     content = Column(Text, nullable=False)
-    embedding = Column(Vector(config.embedding_model_instance.dimension), nullable=False)
+    embedding = Column(
+        Vector(config.embedding_model_instance.dimension), nullable=False
+    )
     source_type = Column(
         SQLAlchemyEnum(
             MemorySourceType,

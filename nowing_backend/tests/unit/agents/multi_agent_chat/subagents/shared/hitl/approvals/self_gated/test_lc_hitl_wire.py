@@ -76,10 +76,7 @@ async def test_paused_interrupt_uses_lc_hitl_action_requests_shape():
             "name": "send_gmail_email",
             "args": {"to": "alice@example.com", "subject": "hi"},
         }
-    ], (
-        "REGRESSION: self-gated approval reverted to legacy Nowing shape; "
-        f"got {value!r}"
-    )
+    ], f"REGRESSION: self-gated approval reverted to legacy Nowing shape; got {value!r}"
     assert value.get("review_configs") == [
         {
             "action_name": "send_gmail_email",

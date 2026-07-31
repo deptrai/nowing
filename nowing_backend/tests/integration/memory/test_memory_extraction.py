@@ -108,7 +108,9 @@ async def test_extract_memory_after_chat_turn(
     thread, _user_message, assistant_message = chat_turn
 
     fake_llm = AsyncMock()
-    fake_llm.ainvoke.return_value = type("FakeMsg", (), {"content": fake_llm_response})()
+    fake_llm.ainvoke.return_value = type(
+        "FakeMsg", (), {"content": fake_llm_response}
+    )()
     monkeypatch.setattr(
         "app.services.memory.extraction.get_agent_llm",
         AsyncMock(return_value=fake_llm),
@@ -152,7 +154,9 @@ async def test_extract_memory_records_token_usage(
     thread, _user_message, assistant_message = chat_turn
 
     fake_llm = AsyncMock()
-    fake_llm.ainvoke.return_value = type("FakeMsg", (), {"content": fake_llm_response})()
+    fake_llm.ainvoke.return_value = type(
+        "FakeMsg", (), {"content": fake_llm_response}
+    )()
     monkeypatch.setattr(
         "app.services.memory.extraction.get_agent_llm",
         AsyncMock(return_value=fake_llm),
@@ -199,7 +203,9 @@ async def test_auto_extract_respects_workspace_toggle(
     db_workspace.memory_auto_extract_enabled = False
 
     fake_llm = AsyncMock()
-    fake_llm.ainvoke.return_value = type("FakeMsg", (), {"content": fake_llm_response})()
+    fake_llm.ainvoke.return_value = type(
+        "FakeMsg", (), {"content": fake_llm_response}
+    )()
     monkeypatch.setattr(
         "app.services.memory.extraction.get_agent_llm",
         AsyncMock(return_value=fake_llm),
@@ -291,7 +297,9 @@ async def test_extract_updates_near_duplicate(
     original_content = first.content
 
     fake_llm = AsyncMock()
-    fake_llm.ainvoke.return_value = type("FakeMsg", (), {"content": fake_llm_response})()
+    fake_llm.ainvoke.return_value = type(
+        "FakeMsg", (), {"content": fake_llm_response}
+    )()
     monkeypatch.setattr(
         "app.services.memory.extraction.get_agent_llm",
         AsyncMock(return_value=fake_llm),
@@ -339,7 +347,9 @@ async def test_extract_is_idempotent_for_same_message(
     thread, _user_message, assistant_message = chat_turn
 
     fake_llm = AsyncMock()
-    fake_llm.ainvoke.return_value = type("FakeMsg", (), {"content": fake_llm_response})()
+    fake_llm.ainvoke.return_value = type(
+        "FakeMsg", (), {"content": fake_llm_response}
+    )()
     monkeypatch.setattr(
         "app.services.memory.extraction.get_agent_llm",
         AsyncMock(return_value=fake_llm),

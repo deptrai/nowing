@@ -189,7 +189,9 @@ def has_llm_credentials() -> bool:
     return False
 
 
-async def _make_freshness_identity(session: AsyncSession, run_tag: str) -> dict[str, Any]:
+async def _make_freshness_identity(
+    session: AsyncSession, run_tag: str
+) -> dict[str, Any]:
     """Create a dedicated workspace, user, research thread, and chat thread."""
     owner = User(
         id=uuid.uuid4(),
@@ -347,9 +349,9 @@ async def _get_worker_metadata() -> dict[str, Any]:
             stats = inspect.stats()
             if stats:
                 first = next(iter(stats.values()))
-                metadata["worker_concurrency"] = first.get("prefetch_count") or first.get(
-                    "pool", {}
-                ).get("max-concurrency")
+                metadata["worker_concurrency"] = first.get(
+                    "prefetch_count"
+                ) or first.get("pool", {}).get("max-concurrency")
             active_queues = inspect.active_queues()
             if active_queues:
                 metadata["initial_queue_depth"] = 0
@@ -562,11 +564,13 @@ async def run_freshness_harness(n: int, run_tag: str) -> tuple[dict[str, Any], b
                 # If the only match came from the direct source_id fallback, record
                 # that explicitly so the artifact remains truthful.
                 nonce_hits = [
-                    m for m in exact_memories
+                    m
+                    for m in exact_memories
                     if nonce.casefold() in (m.content or "").casefold()
                 ]
                 topic_hits = [
-                    m for m in exact_memories
+                    m
+                    for m in exact_memories
                     if topic.casefold() in (m.content or "").casefold()
                 ]
                 if nonce_hits:
@@ -631,9 +635,7 @@ async def run_freshness_harness(n: int, run_tag: str) -> tuple[dict[str, Any], b
             p95 = p50 = max_ms = None
 
         pass_gate = (
-            all_succeeded
-            and p95 is not None
-            and p95 <= _FRESHNESS_P95_BUDGET_MS
+            all_succeeded and p95 is not None and p95 <= _FRESHNESS_P95_BUDGET_MS
         )
 
         if pass_gate:

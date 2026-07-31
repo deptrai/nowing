@@ -17,7 +17,15 @@ from app.services.memory.search import MemoryHybridSearch
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
 
-async def _add_memory(db_session, *, workspace_id=None, created_by_id=None, research_thread_id=None, content, embedding):
+async def _add_memory(
+    db_session,
+    *,
+    workspace_id=None,
+    created_by_id=None,
+    research_thread_id=None,
+    content,
+    embedding,
+):
     memory = Memory(
         workspace_id=workspace_id,
         research_thread_id=research_thread_id,
@@ -32,7 +40,9 @@ async def _add_memory(db_session, *, workspace_id=None, created_by_id=None, rese
     return memory
 
 
-async def test_search_personal_scope_isolated_by_user(db_session, db_user, db_other_user):
+async def test_search_personal_scope_isolated_by_user(
+    db_session, db_user, db_other_user
+):
     """Personal scope (user_id) never leaks another user's workspace-less memory."""
     mine = await _add_memory(
         db_session,
@@ -78,7 +88,9 @@ async def test_search_rejects_top_k_out_of_bounds(db_session, db_workspace):
         )
 
 
-async def test_search_ranked_hits_have_finite_score_and_similarity(db_session, db_workspace):
+async def test_search_ranked_hits_have_finite_score_and_similarity(
+    db_session, db_workspace
+):
     """D6: similarity is computed for every ranked hit — never null/fake for a ranked query."""
     for i in range(3):
         await _add_memory(
@@ -128,7 +140,9 @@ async def test_search_skips_stored_zero_norm_embedding(db_session, db_workspace)
     assert invalid.id not in ids
 
 
-async def test_search_recency_mode_returns_null_score_and_similarity(db_session, db_workspace, db_user):
+async def test_search_recency_mode_returns_null_score_and_similarity(
+    db_session, db_workspace, db_user
+):
     """Query-less (recency) recall never fakes a 0.0 score/similarity — both are null."""
     thread = ResearchThread(
         workspace_id=db_workspace.id,
@@ -162,4 +176,6 @@ async def test_search_recency_mode_returns_null_score_and_similarity(db_session,
 async def test_search_missing_scope_raises_value_error(db_session):
     """D5: neither workspace_id nor user_id supplied raises before SQL."""
     with pytest.raises(ValueError):
-        await MemoryHybridSearch(db_session).search(query="anything", query_embedding=None)
+        await MemoryHybridSearch(db_session).search(
+            query="anything", query_embedding=None
+        )

@@ -49,7 +49,7 @@ def upgrade() -> None:
     )
 
     op.execute(
-        f"""
+        """
         CREATE TABLE IF NOT EXISTS research_threads (
             id SERIAL PRIMARY KEY,
             created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

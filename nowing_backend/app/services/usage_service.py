@@ -116,9 +116,7 @@ class UsageService:
                 func.coalesce(func.sum(TokenUsage.total_tokens), 0).label(
                     "total_tokens"
                 ),
-                func.coalesce(func.sum(TokenUsage.cost_micros), 0).label(
-                    "cost_micros"
-                ),
+                func.coalesce(func.sum(TokenUsage.cost_micros), 0).label("cost_micros"),
             )
             .filter(
                 TokenUsage.workspace_id == workspace_id,
@@ -266,9 +264,7 @@ class UsageService:
                 func.coalesce(func.sum(TokenUsage.total_tokens), 0).label(
                     "total_tokens"
                 ),
-                func.coalesce(func.sum(TokenUsage.cost_micros), 0).label(
-                    "cost_micros"
-                ),
+                func.coalesce(func.sum(TokenUsage.cost_micros), 0).label("cost_micros"),
             )
             .filter(
                 TokenUsage.workspace_id == workspace_id,
@@ -295,28 +291,40 @@ class UsageService:
     ) -> UsageTransactionsResponse:
         """Return a unified, paginated list of credit/page purchases and incentives."""
         credit_purchases = (
-            await self.session.execute(
-                select(CreditPurchase)
-                .where(CreditPurchase.user_id == self.user.id)
-                .order_by(CreditPurchase.created_at.desc())
+            (
+                await self.session.execute(
+                    select(CreditPurchase)
+                    .where(CreditPurchase.user_id == self.user.id)
+                    .order_by(CreditPurchase.created_at.desc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         page_purchases = (
-            await self.session.execute(
-                select(PagePurchase)
-                .where(PagePurchase.user_id == self.user.id)
-                .order_by(PagePurchase.created_at.desc())
+            (
+                await self.session.execute(
+                    select(PagePurchase)
+                    .where(PagePurchase.user_id == self.user.id)
+                    .order_by(PagePurchase.created_at.desc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         incentives = (
-            await self.session.execute(
-                select(UserIncentiveTask)
-                .where(UserIncentiveTask.user_id == self.user.id)
-                .order_by(UserIncentiveTask.completed_at.desc())
+            (
+                await self.session.execute(
+                    select(UserIncentiveTask)
+                    .where(UserIncentiveTask.user_id == self.user.id)
+                    .order_by(UserIncentiveTask.completed_at.desc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         transactions: list[UsageTransactionItem] = []
 

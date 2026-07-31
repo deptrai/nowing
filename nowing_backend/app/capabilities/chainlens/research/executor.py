@@ -293,9 +293,7 @@ class _SSEParser:
         if raw_cost is None or self.cost_dollars is not None:
             return
         if not isinstance(raw_cost, (int, float)):
-            logger.warning(
-                "Ignoring malformed costDollars in SSE event: %r", raw_cost
-            )
+            logger.warning("Ignoring malformed costDollars in SSE event: %r", raw_cost)
             return
         if raw_cost < 0:
             logger.warning("Ignoring negative costDollars: %r", raw_cost)

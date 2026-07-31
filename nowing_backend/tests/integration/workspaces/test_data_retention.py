@@ -112,7 +112,9 @@ async def test_owner_can_update_and_retrieve_retention_settings(client, db_works
 # ---------------------------------------------------------------------------
 
 
-async def test_update_retention_rejects_zero_days_when_auto_archive_enabled(client, db_workspace):
+async def test_update_retention_rejects_zero_days_when_auto_archive_enabled(
+    client, db_workspace
+):
     """Enabling auto-archive requires a positive document_retention_days value."""
     resp = await client.put(
         f"{BASE}/{db_workspace.id}",
@@ -130,7 +132,9 @@ async def test_update_retention_rejects_invalid_action(client, db_workspace):
     assert resp.status_code == 422
 
 
-async def test_non_owner_cannot_update_retention_settings(client_as_editor, db_workspace):
+async def test_non_owner_cannot_update_retention_settings(
+    client_as_editor, db_workspace
+):
     """Editors/Viewers must receive 403 when mutating workspace retention settings."""
     resp = await client_as_editor.put(
         f"{BASE}/{db_workspace.id}",
@@ -144,7 +148,9 @@ async def test_non_owner_cannot_update_retention_settings(client_as_editor, db_w
 # ---------------------------------------------------------------------------
 
 
-async def test_archived_document_excluded_from_document_list(client, db_workspace, db_user, db_session):
+async def test_archived_document_excluded_from_document_list(
+    client, db_workspace, db_user, db_session
+):
     """Archived documents must not appear in /documents list or counts."""
     user_id = str(db_user.id)
     visible = _make_document(
@@ -172,7 +178,9 @@ async def test_archived_document_excluded_from_document_list(client, db_workspac
     assert data["total"] == 1
 
 
-async def test_archived_document_excluded_from_search(client, db_workspace, db_user, db_session):
+async def test_archived_document_excluded_from_search(
+    client, db_workspace, db_user, db_session
+):
     """Archived documents must not appear in /documents/search results."""
     user_id = str(db_user.id)
     doc = _make_document(
@@ -238,7 +246,9 @@ async def test_archived_document_excluded_from_type_counts(
     db_session.add_all([visible, archived])
     await db_session.flush()
 
-    resp = await client.get(f"{DOCUMENTS_BASE}/type-counts?workspace_id={db_workspace.id}")
+    resp = await client.get(
+        f"{DOCUMENTS_BASE}/type-counts?workspace_id={db_workspace.id}"
+    )
     assert resp.status_code == 200
     counts = resp.json()
     assert counts.get("NOTE", 0) == 1
@@ -383,7 +393,9 @@ async def test_retention_task_only_touches_matching_workspace(
     other_workspace = Workspace(name="Other space", user_id=db_user.id)
     db_session.add(other_workspace)
     await db_session.flush()
-    await create_default_roles_and_membership(db_session, other_workspace.id, db_user.id)
+    await create_default_roles_and_membership(
+        db_session, other_workspace.id, db_user.id
+    )
 
     user_id = str(db_user.id)
     old_doc_1 = _make_document(

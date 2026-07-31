@@ -61,7 +61,9 @@ _RATE_WINDOW_SECONDS = 3600
 class _FakeWorkspace:
     """Minimal stand-in for ``app.db.Workspace`` (only ``.id`` is read)."""
 
-    def __init__(self, workspace_id: int = _WORKSPACE_ID, owner_id: UUID | None = _OWNER):
+    def __init__(
+        self, workspace_id: int = _WORKSPACE_ID, owner_id: UUID | None = _OWNER
+    ):
         self.id = workspace_id
         self.user_id = owner_id
         self.memory_auto_extract_enabled = True
@@ -364,7 +366,9 @@ async def test_rate_count_reads_the_documented_redis_key(monkeypatch, no_real_re
     assert await _rate_count(8) == 0, "the counter must be per-workspace"
 
 
-async def test_record_extraction_increments_and_refreshes_ttl(monkeypatch, no_real_redis):
+async def test_record_extraction_increments_and_refreshes_ttl(
+    monkeypatch, no_real_redis
+):
     """8.7-UNIT-013 - P1/AC3: each recorded extraction increments and re-sets the TTL.
 
     The TTL is refreshed on *every* increment, not only the first: an EXPIRE

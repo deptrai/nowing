@@ -61,9 +61,7 @@ def build_capability_tools(
     """
     caps = capabilities if capabilities is not None else all_capabilities()
     tools = [
-        _capability_tool(
-            cap, workspace_id, user_id=user_id, auth_context=auth_context
-        )
+        _capability_tool(cap, workspace_id, user_id=user_id, auth_context=auth_context)
         for cap in caps
     ]
     # Deferred import: the reader lives in the agents package (which imports from
@@ -100,7 +98,9 @@ async def _verify_workspace_access(
     try:
         await check_workspace_access(session, auth_context, workspace_id)
     except HTTPException as exc:
-        message = str(exc.detail) if exc.detail is not None else "Workspace access denied."
+        message = (
+            str(exc.detail) if exc.detail is not None else "Workspace access denied."
+        )
         raise ForbiddenError(message) from exc
 
 

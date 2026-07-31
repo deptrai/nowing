@@ -96,7 +96,9 @@ def _atoms(escaped: str) -> list[str]:
     return _ATOM_RE.findall(escaped)
 
 
-def _truncate_atoms(escaped: str, budget: int, marker: str = _TRUNCATION_MARKER) -> str | None:
+def _truncate_atoms(
+    escaped: str, budget: int, marker: str = _TRUNCATION_MARKER
+) -> str | None:
     """Entity-aware head/tail truncation (D7 rules 10-11).
 
     Returns ``None`` when even ``marker + 1`` atom cannot fit in ``budget`` —
@@ -200,10 +202,14 @@ def _build_records(hits: list[Any]) -> list[_Record]:
         normalized = "\n".join(str(content).splitlines()).strip()
         if not normalized:
             continue
-        escaped_lines = [html.escape(line, quote=True) for line in normalized.split("\n")]
+        escaped_lines = [
+            html.escape(line, quote=True) for line in normalized.split("\n")
+        ]
         entry_date = _to_iso(getattr(memory, "created_at", None))
         heading = _heading_for_type(getattr(memory, "type", None))
-        records.append(_Record(heading=heading, entry_date=entry_date, escaped_lines=escaped_lines))
+        records.append(
+            _Record(heading=heading, entry_date=entry_date, escaped_lines=escaped_lines)
+        )
     return records
 
 
@@ -260,7 +266,9 @@ def _compose_truncated_body(records: list[_Record], *, tag: str, max_chars: int)
 
     next_record = records[len(fitted)]
     heading_open = not fitted or fitted[-1].heading != next_record.heading
-    prefix = (f"## {next_record.heading}\n" if heading_open else "") + f"- {next_record.entry_date}: "
+    prefix = (
+        f"## {next_record.heading}\n" if heading_open else ""
+    ) + f"- {next_record.entry_date}: "
     if not fitted_body:
         separator = ""
     elif heading_open:

@@ -109,7 +109,9 @@ def pricing_meters(unit: BillingUnit | None) -> list[dict]:  # pragma: no mutate
 
 
 async def gate_capability(
-    payload: BillableInput, unit: BillingUnit | None, ctx: CapabilityContext  # pragma: no mutate
+    payload: BillableInput,
+    unit: BillingUnit | None,
+    ctx: CapabilityContext,  # pragma: no mutate
 ) -> None:
     """Pre-flight: block an over-budget owner before the executor runs (03c).
 
@@ -177,7 +179,9 @@ async def _gate_platform(
 
 
 async def charge_capability(
-    output: BillableOutput, unit: BillingUnit | None, ctx: CapabilityContext  # pragma: no mutate
+    output: BillableOutput,
+    unit: BillingUnit | None,
+    ctx: CapabilityContext,  # pragma: no mutate
 ) -> int:
     """Bill the workspace owner for this result and return the micros charged.
 
@@ -261,7 +265,9 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
 
     # Do not charge for a complete engine failure with no usable content.
     status = getattr(output, "status", None)
-    has_content = bool(getattr(output, "answer", None) or getattr(output, "sources", None))
+    has_content = bool(
+        getattr(output, "answer", None) or getattr(output, "sources", None)
+    )
     if status == "engine_unavailable" and not has_content:
         return 0
 
@@ -368,9 +374,9 @@ async def _charge_platform_meter(
     # Stage the audit row before charge's commit flushes both.
     call_details: dict[str, Any] = {"items": items}
     if getattr(output, "degraded", False):
-        call_details["degradation_reason"] = getattr(
-            output, "degradation_reason", None
-        ) or "unknown"
+        call_details["degradation_reason"] = (
+            getattr(output, "degradation_reason", None) or "unknown"
+        )
         call_details["final_status"] = getattr(output, "status", None) or "unknown"
     await record_token_usage(
         ctx.session,

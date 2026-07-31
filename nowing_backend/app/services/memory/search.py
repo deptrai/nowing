@@ -59,8 +59,7 @@ class MemoryHybridSearch:
         has_user = user_id is not None
         if has_workspace == has_user:
             raise ValueError(
-                "memory search scope must be exactly one of workspace_id or "
-                "user_id"
+                "memory search scope must be exactly one of workspace_id or user_id"
             )
         if research_thread_id is not None and not has_workspace:
             raise ValueError("research_thread_id requires workspace scope")
@@ -145,7 +144,9 @@ class MemoryHybridSearch:
         semantic = (
             select(
                 Memory.id,
-                func.row_number().over(order_by=(distance.asc(), Memory.id.asc())).label("rank"),
+                func.row_number()
+                .over(order_by=(distance.asc(), Memory.id.asc()))
+                .label("rank"),
             )
             .where(*base_conditions)
             .order_by(distance.asc(), Memory.id.asc())
@@ -218,7 +219,9 @@ class MemoryHybridSearch:
                 )
                 continue
             if score is None or similarity is None:
-                logger.warning("skipping memory %s with non-finite score/similarity", memory.id)
+                logger.warning(
+                    "skipping memory %s with non-finite score/similarity", memory.id
+                )
                 continue
             score = float(score)
             similarity = float(similarity)
@@ -227,6 +230,8 @@ class MemoryHybridSearch:
                     "skipping memory %s with non-finite score/similarity", memory.id
                 )
                 continue
-            valid.append(ScoredMemory(memory=memory, score=score, similarity=similarity))
+            valid.append(
+                ScoredMemory(memory=memory, score=score, similarity=similarity)
+            )
 
         return valid

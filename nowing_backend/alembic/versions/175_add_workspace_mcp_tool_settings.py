@@ -40,9 +40,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "workspace_id", "tool_name", name="uq_workspace_mcp_tool"
-        ),
+        sa.UniqueConstraint("workspace_id", "tool_name", name="uq_workspace_mcp_tool"),
     )
     op.create_index(
         "ix_workspace_mcp_tool_settings_workspace_id",

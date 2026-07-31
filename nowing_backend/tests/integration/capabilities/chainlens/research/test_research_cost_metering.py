@@ -9,7 +9,7 @@ from app.capabilities.chainlens.research.schemas import ResearchOutput
 from app.capabilities.core.billing import charge_capability
 from app.capabilities.core.types import BillingUnit, CapabilityContext
 from app.config import config
-from app.db import TokenUsage, User
+from app.db import TokenUsage
 from app.services.etl_credit_service import InsufficientCreditsError
 
 pytestmark = [pytest.mark.integration]
@@ -42,13 +42,17 @@ async def test_charge_capability_records_deep_research_token_usage_with_actual_c
     assert db_user.credit_micros_balance == 1_000_000 - 12_300
 
     rows = (
-        await db_session.execute(
-            select(TokenUsage).where(
-                TokenUsage.workspace_id == db_workspace.id,
-                TokenUsage.usage_type == "deep_research",
+        (
+            await db_session.execute(
+                select(TokenUsage).where(
+                    TokenUsage.workspace_id == db_workspace.id,
+                    TokenUsage.usage_type == "deep_research",
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
     usage = rows[0]
     assert usage.cost_micros == 12_300
@@ -84,13 +88,17 @@ async def test_charge_capability_fallback_to_flat_rate_when_no_actual_cost(
     assert db_user.credit_micros_balance == 1_000_000 - 5_000
 
     rows = (
-        await db_session.execute(
-            select(TokenUsage).where(
-                TokenUsage.workspace_id == db_workspace.id,
-                TokenUsage.usage_type == "deep_research",
+        (
+            await db_session.execute(
+                select(TokenUsage).where(
+                    TokenUsage.workspace_id == db_workspace.id,
+                    TokenUsage.usage_type == "deep_research",
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
     usage = rows[0]
     assert usage.cost_micros == 5_000
@@ -124,13 +132,17 @@ async def test_charge_capability_records_usage_without_debit_when_billing_disabl
     assert db_user.credit_micros_balance == 1_000_000
 
     rows = (
-        await db_session.execute(
-            select(TokenUsage).where(
-                TokenUsage.workspace_id == db_workspace.id,
-                TokenUsage.usage_type == "deep_research",
+        (
+            await db_session.execute(
+                select(TokenUsage).where(
+                    TokenUsage.workspace_id == db_workspace.id,
+                    TokenUsage.usage_type == "deep_research",
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
     assert rows[0].cost_micros == 12_300
 
@@ -160,12 +172,16 @@ async def test_charge_capability_raises_when_actual_cost_exceeds_balance(
 
     assert db_user.credit_micros_balance == 10_000
     rows = (
-        await db_session.execute(
-            select(TokenUsage).where(
-                TokenUsage.workspace_id == db_workspace.id,
+        (
+            await db_session.execute(
+                select(TokenUsage).where(
+                    TokenUsage.workspace_id == db_workspace.id,
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert rows == []
 
 

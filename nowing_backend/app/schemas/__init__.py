@@ -1,3 +1,15 @@
+from .admin_global_model_connections import (
+    AdminGlobalConnectionCreate,
+    AdminGlobalConnectionRead,
+    AdminGlobalConnectionUpdate,
+    AdminGlobalModelPricing,
+    AdminGlobalModelRead,
+    AdminGlobalModelsBulkUpdate,
+    AdminGlobalModelSelection,
+    AdminGlobalModelTest,
+    AdminGlobalModelTestPreview,
+    AdminGlobalModelUpdate,
+)
 from .auth import (
     LogoutAllResponse,
     LogoutRequest,
@@ -50,18 +62,6 @@ from .memory import (
     MemoryVersionRead,
     ResearchThreadContext,
     ThreadCitation,
-)
-from .admin_global_model_connections import (
-    AdminGlobalConnectionCreate,
-    AdminGlobalConnectionRead,
-    AdminGlobalConnectionUpdate,
-    AdminGlobalModelPricing,
-    AdminGlobalModelRead,
-    AdminGlobalModelSelection,
-    AdminGlobalModelTest,
-    AdminGlobalModelTestPreview,
-    AdminGlobalModelUpdate,
-    AdminGlobalModelsBulkUpdate,
 )
 from .model_connections import (
     ConnectionCreate,
@@ -165,6 +165,7 @@ __all__ = [
     "AdminGlobalModelRead",
     "AdminGlobalModelSelection",
     "AdminGlobalModelTest",
+    "AdminGlobalModelTestPreview",
     "AdminGlobalModelUpdate",
     "AdminGlobalModelsBulkUpdate",
     # Folder schemas

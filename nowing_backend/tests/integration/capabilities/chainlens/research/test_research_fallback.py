@@ -20,7 +20,7 @@ from app.capabilities.chainlens.research.schemas import (
 from app.capabilities.core.billing import charge_capability
 from app.capabilities.core.types import BillingUnit, CapabilityContext
 from app.config import config
-from app.db import Chunk, Document, DocumentType, Run, TokenUsage, Workspace
+from app.db import Chunk, Document, DocumentType, Run, TokenUsage
 
 pytestmark = [pytest.mark.integration]
 
@@ -196,13 +196,17 @@ async def test_charge_capability_creates_no_token_usage_for_engine_unavailable(
     await charge_capability(output, BillingUnit.CHAINLENS_QUERY, ctx)
 
     rows = (
-        await db_session.execute(
-            select(TokenUsage).where(
-                TokenUsage.workspace_id == db_workspace.id,
-                TokenUsage.usage_type == BillingUnit.CHAINLENS_QUERY.value,
+        (
+            await db_session.execute(
+                select(TokenUsage).where(
+                    TokenUsage.workspace_id == db_workspace.id,
+                    TokenUsage.usage_type == BillingUnit.CHAINLENS_QUERY.value,
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert rows == []
 
 
@@ -232,13 +236,17 @@ async def test_charge_capability_creates_token_usage_for_partial_with_sources(
     await charge_capability(output, BillingUnit.CHAINLENS_QUERY, ctx)
 
     rows = (
-        await db_session.execute(
-            select(TokenUsage).where(
-                TokenUsage.workspace_id == db_workspace.id,
-                TokenUsage.usage_type == "deep_research",
+        (
+            await db_session.execute(
+                select(TokenUsage).where(
+                    TokenUsage.workspace_id == db_workspace.id,
+                    TokenUsage.usage_type == "deep_research",
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
     assert rows[0].cost_micros > 0
     assert rows[0].call_details["cost_basis"] == "fallback"

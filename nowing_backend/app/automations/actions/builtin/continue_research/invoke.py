@@ -37,7 +37,9 @@ _LEGACY_SCHEMA_VERSION = "1.0"
 _STRICT_TOP_K_CEILING = 5
 
 
-async def continue_research(ctx: ActionContext, params: dict[str, Any]) -> dict[str, Any]:
+async def continue_research(
+    ctx: ActionContext, params: dict[str, Any]
+) -> dict[str, Any]:
     """Recall a research thread's memories + prior citations for the step output."""
     if ctx.schema_version == _LEGACY_SCHEMA_VERSION:
         parsed = _LegacyContinueResearchActionParams.model_validate(params)

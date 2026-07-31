@@ -156,7 +156,9 @@ async def chat_turn(db_session, db_workspace, db_user):
     assistant_message = NewChatMessage(
         thread_id=thread.id,
         role=NewChatMessageRole.ASSISTANT,
-        content=[{"type": "text", "text": "Yes, competitor X raised prices 10% in Q2 2026."}],
+        content=[
+            {"type": "text", "text": "Yes, competitor X raised prices 10% in Q2 2026."}
+        ],
         turn_id=turn_id,
     )
     db_session.add(user_message)
@@ -277,9 +279,7 @@ def patched_embeddings(monkeypatch):
     def _fake_embed_texts(texts):
         return [[0.1] * 384 for _ in texts]
 
-    monkeypatch.setattr(
-        "app.services.memory.repository.embed_texts", _fake_embed_texts
-    )
+    monkeypatch.setattr("app.services.memory.repository.embed_texts", _fake_embed_texts)
     return _fake_embed_texts
 
 
@@ -385,7 +385,13 @@ def _service(db_session, db_workspace, db_user=None):
 
 
 async def test_extract_skips_before_llm_when_wallet_insufficient(
-    db_session, db_workspace, db_user, empty_wallet, chat_turn, patched_embeddings, fake_llm
+    db_session,
+    db_workspace,
+    db_user,
+    empty_wallet,
+    chat_turn,
+    patched_embeddings,
+    fake_llm,
 ):
     """8.7-INT-001 - P0/AC1: balance 0 -> no LLM call, no memories, no usage row."""
     thread, _user, assistant = chat_turn
@@ -400,7 +406,13 @@ async def test_extract_skips_before_llm_when_wallet_insufficient(
 
 
 async def test_extract_proceeds_when_wallet_funded(
-    db_session, db_workspace, db_user, funded_wallet, chat_turn, patched_embeddings, fake_llm
+    db_session,
+    db_workspace,
+    db_user,
+    funded_wallet,
+    chat_turn,
+    patched_embeddings,
+    fake_llm,
 ):
     """8.7-INT-002 - P0/AC1: sufficient balance -> LLM called, fact persisted."""
     thread, _user, assistant = chat_turn
@@ -476,7 +488,13 @@ async def test_extract_proceeds_when_under_an_enabled_budget(
 
 
 async def test_extract_unchanged_when_budget_default(
-    db_session, db_workspace, db_user, funded_wallet, chat_turn, patched_embeddings, fake_llm
+    db_session,
+    db_workspace,
+    db_user,
+    funded_wallet,
+    chat_turn,
+    patched_embeddings,
+    fake_llm,
 ):
     """8.7-INT-005 - P1/AC2+AC6: budget unset/0 (default) -> baseline behaviour."""
     thread, _user, assistant = chat_turn
@@ -606,7 +624,14 @@ async def test_extract_skips_anonymous_turn(
 
 
 async def test_global_kill_switch_off_skips_without_llm(
-    db_session, db_workspace, db_user, funded_wallet, chat_turn, patched_embeddings, fake_llm, monkeypatch
+    db_session,
+    db_workspace,
+    db_user,
+    funded_wallet,
+    chat_turn,
+    patched_embeddings,
+    fake_llm,
+    monkeypatch,
 ):
     """8.7-INT-010 - P0/AC5: MEMORY_AUTO_EXTRACT_ENABLED=False -> [] and no LLM call."""
     from app.config import config
@@ -623,7 +648,14 @@ async def test_global_kill_switch_off_skips_without_llm(
 
 
 async def test_workspace_flag_off_skips_without_llm(
-    db_session, db_workspace, db_user, funded_wallet, disabled_workspace, chat_turn, patched_embeddings, fake_llm
+    db_session,
+    db_workspace,
+    db_user,
+    funded_wallet,
+    disabled_workspace,
+    chat_turn,
+    patched_embeddings,
+    fake_llm,
 ):
     """8.7-INT-011 - P0/AC5: workspace.memory_auto_extract_enabled=False -> no LLM call."""
     thread, _user, assistant = chat_turn
@@ -769,7 +801,13 @@ async def test_finalize_enqueues_when_owner_wallet_is_empty(
 
 
 async def test_finalize_enqueues_when_the_precheck_itself_errors(
-    db_workspace, db_user, funded_wallet, chat_turn, _finalize_deps, celery_delay, monkeypatch
+    db_workspace,
+    db_user,
+    funded_wallet,
+    chat_turn,
+    _finalize_deps,
+    celery_delay,
+    monkeypatch,
 ):
     """8.7-INT-015 - P1/AC7: a failing fast-path must not permanently drop the work.
 
@@ -792,7 +830,14 @@ async def test_finalize_enqueues_when_the_precheck_itself_errors(
 
 
 async def test_finalize_skips_enqueue_when_disabled(
-    db_workspace, db_user, funded_wallet, disabled_workspace, chat_turn, _finalize_deps, celery_delay, caplog
+    db_workspace,
+    db_user,
+    funded_wallet,
+    disabled_workspace,
+    chat_turn,
+    _finalize_deps,
+    celery_delay,
+    caplog,
 ):
     """8.7-INT-016 - P0/AC5+AC8: the kill-switch short-circuits, and says so structurally."""
     with caplog.at_level(logging.INFO):
@@ -813,7 +858,14 @@ async def test_finalize_skips_enqueue_when_disabled(
 
 
 async def test_skip_emits_structured_log_and_no_usage(
-    db_session, db_workspace, db_user, empty_wallet, chat_turn, patched_embeddings, fake_llm, caplog
+    db_session,
+    db_workspace,
+    db_user,
+    empty_wallet,
+    chat_turn,
+    patched_embeddings,
+    fake_llm,
+    caplog,
 ):
     """8.7-INT-017 - P1/AC8: a wallet skip emits ONE line with reason + workspace_id."""
     thread, _user, assistant = chat_turn
@@ -833,7 +885,15 @@ async def test_skip_emits_structured_log_and_no_usage(
 
 
 async def test_disabled_skip_emits_structured_log(
-    db_session, db_workspace, db_user, funded_wallet, disabled_workspace, chat_turn, patched_embeddings, fake_llm, caplog
+    db_session,
+    db_workspace,
+    db_user,
+    funded_wallet,
+    disabled_workspace,
+    chat_turn,
+    patched_embeddings,
+    fake_llm,
+    caplog,
 ):
     """8.7-INT-018 - P1/AC8: `disabled` is one of the five skip kinds AC-8 enumerates.
 

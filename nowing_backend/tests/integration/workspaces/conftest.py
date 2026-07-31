@@ -113,6 +113,7 @@ async def _client_for_user(
     user: User,
 ) -> AsyncGenerator[httpx.AsyncClient, None]:
     """Yield an httpx client authenticated as the given user."""
+
     async def override_session() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 

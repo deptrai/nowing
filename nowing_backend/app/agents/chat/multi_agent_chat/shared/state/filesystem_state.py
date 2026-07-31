@@ -214,7 +214,7 @@ class NowingFilesystemState(FilesystemState):
 
 __all__ = [
     "KbAnonDoc",
+    "NowingFilesystemState",
     "PendingDelete",
     "PendingMove",
-    "NowingFilesystemState",
 ]

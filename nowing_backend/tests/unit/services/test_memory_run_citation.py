@@ -55,9 +55,9 @@ def test_search_hit_citation_survives_json_serialization():
     from app.schemas.memory import MemorySearchHit
 
     run_id = uuid.uuid4()
-    payload = MemorySearchHit.from_memory(
-        _memory_row(source_run_id=run_id)
-    ).model_dump(mode="json")
+    payload = MemorySearchHit.from_memory(_memory_row(source_run_id=run_id)).model_dump(
+        mode="json"
+    )
 
     assert payload["source_run_id"] == str(run_id)
     assert payload["citation"] == f"run_{run_id}"

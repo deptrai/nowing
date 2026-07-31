@@ -53,9 +53,7 @@ class ConditionalFakeChatModel:
             )
         else:
             logger.info("[fake-llm] returning deterministic summary")
-            content = (
-                "E2E_FAKE_SUMMARY: Indexed by Playwright E2E run with deterministic LLM stub."
-            )
+            content = "E2E_FAKE_SUMMARY: Indexed by Playwright E2E run with deterministic LLM stub."
         return AIMessage(content=content)
 
 

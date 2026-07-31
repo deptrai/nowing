@@ -91,9 +91,7 @@ async def test_viewer_cannot_create_memory(client_as_viewer, db_workspace):
     assert resp.status_code == 403
 
 
-async def test_editor_can_create_but_not_delete_memory(
-    client_as_editor, db_workspace
-):
+async def test_editor_can_create_but_not_delete_memory(client_as_editor, db_workspace):
     """Editor can create and update memory, but not delete it."""
     create_payload = {
         "content": "Editor fact",

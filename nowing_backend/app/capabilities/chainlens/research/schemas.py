@@ -217,7 +217,7 @@ class ResearchOutput(BaseModel):
 
         if self.degradation_reason is None:
             default_reason: str | None = None
-            if status is "engine_unavailable":
+            if status == "engine_unavailable":
                 default_reason = "unknown"
             elif status == "partial":
                 default_reason = "partial"

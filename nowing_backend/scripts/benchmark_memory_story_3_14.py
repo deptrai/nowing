@@ -180,7 +180,9 @@ def _build_sentinel_manifest(manifest: CellManifest) -> dict[int, str]:
             mapping[row_id] = sentinel
     if manifest.canonical_recency:
         for row_id, sentinel in zip(
-            manifest.row_ids[-RECENCY_TAIL_ROWS:], manifest.canonical_recency, strict=True
+            manifest.row_ids[-RECENCY_TAIL_ROWS:],
+            manifest.canonical_recency,
+            strict=True,
         ):
             mapping[row_id] = sentinel
     return mapping
@@ -201,7 +203,9 @@ async def _audit_stored_vectors(
                 audit["valid_count"] += 1
             except VectorValidationError as exc:
                 audit["invalid_count"] += 1
-                audit["by_reason"][exc.reason] = audit["by_reason"].get(exc.reason, 0) + 1
+                audit["by_reason"][exc.reason] = (
+                    audit["by_reason"].get(exc.reason, 0) + 1
+                )
                 logger.warning(
                     "stored-row vector audit: id=%s reason=%s", row_id, exc.reason
                 )
@@ -695,17 +699,23 @@ def _verify_injection_payload(
     open_tag = f"<{tag}>"
     close_tag = f"</{tag}>"
     if payload.count(open_tag) != 1 or payload.count(close_tag) != 1:
-        failures.append(f"{label}: payload does not contain exactly one {open_tag} wrapper")
+        failures.append(
+            f"{label}: payload does not contain exactly one {open_tag} wrapper"
+        )
         return False
     for i, sentinel in enumerate(expected_sentinels):
         # Each sentinel must appear exactly once and in canonical order.
         if payload.count(sentinel) != 1:
-            failures.append(f"{label}: expected sentinel {sentinel!r} once in payload, found {payload.count(sentinel)}")
+            failures.append(
+                f"{label}: expected sentinel {sentinel!r} once in payload, found {payload.count(sentinel)}"
+            )
             return False
         prev = payload.find(expected_sentinels[i - 1]) if i > 0 else 0
         pos = payload.find(sentinel)
         if pos < prev:
-            failures.append(f"{label}: sentinel {sentinel!r} is out of order in payload")
+            failures.append(
+                f"{label}: sentinel {sentinel!r} is out of order in payload"
+            )
             return False
     return True
 
@@ -772,9 +782,15 @@ async def run_injection_cell(
 
         hits = captured[0] if captured else []
         payload: str | None = None
-        if isinstance(abefore_result, dict) and isinstance(abefore_result.get("messages"), list):
+        if isinstance(abefore_result, dict) and isinstance(
+            abefore_result.get("messages"), list
+        ):
             for msg in abefore_result["messages"]:
-                if hasattr(msg, "content") and isinstance(msg.content, str) and "<" in msg.content:
+                if (
+                    hasattr(msg, "content")
+                    and isinstance(msg.content, str)
+                    and "<" in msg.content
+                ):
                     payload = msg.content
                     break
         db_ms = (db_timer["end"] - db_timer["start"]) * 1000
@@ -816,7 +832,9 @@ async def run_injection_cell(
                 "expected_ids": expected_ids,
                 "expected_sentinels": expected_sentinels,
                 "actual_ids": actual_ids,
-                "actual_sentinels": [manifest.sentinel_manifest.get(i) for i in actual_ids],
+                "actual_sentinels": [
+                    manifest.sentinel_manifest.get(i) for i in actual_ids
+                ],
                 "actual_scores": [h.score for h in hits],
                 "actual_similarities": [h.similarity for h in hits],
                 "payload_length": len(payload) if payload else None,
@@ -840,9 +858,9 @@ def _scope_sql_for_injection(manifest: CellManifest) -> TextClause:
         ws_id = manifest.identity["workspace"].id
         return text("workspace_id = :workspace_id").bindparams(workspace_id=int(ws_id))
     user_id = manifest.identity["user"].id
-    return text(
-        "workspace_id IS NULL AND created_by_id = :user_id"
-    ).bindparams(user_id=user_id)
+    return text("workspace_id IS NULL AND created_by_id = :user_id").bindparams(
+        user_id=user_id
+    )
 
 
 async def run_rest_ranked_cell(
@@ -1068,7 +1086,9 @@ async def run_thread_recency_cell(
 # --------------------------------------------------------------------------
 
 
-def _semantic_cte_sql(*, scope_sql: TextClause, query_embedding: list[float]) -> TextClause:
+def _semantic_cte_sql(
+    *, scope_sql: TextClause, query_embedding: list[float]
+) -> TextClause:
     vec_literal = _vector_literal(np.asarray(query_embedding, dtype=np.float64))
     limit = _MAX_CANDIDATES
     params = {**scope_sql.compile().params, "limit": limit}
@@ -1097,7 +1117,8 @@ def _ranked_query_sql(
     vec_literal = _vector_literal(np.asarray(query_embedding, dtype=np.float64))
     limit = _MAX_CANDIDATES
     params = {**scope_sql.compile().params, "qtext": query_text, "limit": limit}
-    return text(f"""
+    return text(
+        f"""
 WITH semantic_memory AS (
     SELECT id, row_number() OVER (ORDER BY embedding <=> {vec_literal} ASC, id ASC) AS rank
     FROM memories
@@ -1122,7 +1143,8 @@ FULL OUTER JOIN keyword_memory ON semantic_memory.id = keyword_memory.id
 JOIN memories m ON m.id = COALESCE(semantic_memory.id, keyword_memory.id)
 ORDER BY score DESC, similarity DESC, m.created_at DESC, m.id ASC
 LIMIT :limit
-""".strip()).bindparams(**params)
+""".strip()
+    ).bindparams(**params)
 
 
 def _recency_query_sql(*, ws_id: int, thread_id: int) -> TextClause:
@@ -1149,7 +1171,9 @@ async def _capture_explain(sql: TextClause) -> dict[str, Any]:
     compiled = sql.compile()
     async with async_session_maker() as session:
         result = await session.execute(
-            text(f"EXPLAIN (FORMAT JSON) {compiled.string}").bindparams(**compiled.params)
+            text(f"EXPLAIN (FORMAT JSON) {compiled.string}").bindparams(
+                **compiled.params
+            )
         )
         plan = result.scalar_one()
     return {
@@ -1503,8 +1527,10 @@ async def _collect_environment_metadata(
         )
     ).scalar_one_or_none()
     current_revisions = (
-        await session.execute(text("SELECT version_num FROM alembic_version"))
-    ).scalars().all()
+        (await session.execute(text("SELECT version_num FROM alembic_version")))
+        .scalars()
+        .all()
+    )
 
     index_rows = await session.execute(
         text(
@@ -1512,9 +1538,7 @@ async def _collect_environment_metadata(
             "WHERE tablename='memories' AND schemaname='public'"
         )
     )
-    index_inventory = [
-        {"name": name, "defn": defn} for name, defn in index_rows
-    ]
+    index_inventory = [{"name": name, "defn": defn} for name, defn in index_rows]
 
     uv_lock_path = script_path.parent.parent / "uv.lock"
     uv_lock_hash = (
@@ -1821,7 +1845,9 @@ async def main_async(args: argparse.Namespace) -> int:
             and not freshness_partial
         )
         provenance["status"] = (
-            "error" if "error" in provenance else ("partial" if freshness_partial else "complete")
+            "error"
+            if "error" in provenance
+            else ("partial" if freshness_partial else "complete")
         )
 
     output_path = Path(args.output)

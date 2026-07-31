@@ -102,9 +102,7 @@ async def _count_memories(db_session: AsyncSession) -> int:
 
 def _load_migration_178():
     """Load the migration by file path (version files are not importable)."""
-    spec = importlib.util.spec_from_file_location(
-        "_migration_178", _MIGRATION_178_PATH
-    )
+    spec = importlib.util.spec_from_file_location("_migration_178", _MIGRATION_178_PATH)
     assert spec and spec.loader, "could not load migration 178 spec"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -169,9 +167,7 @@ async def test_backfill_creates_memories_from_legacy_columns(
     }
     assert "User prefers dark mode across the dashboard." in contents
     assert "User wants the weekly digest delivered on Mondays." in contents
-    assert (
-        "The team ships to production only on Tuesdays and Thursdays." in contents
-    )
+    assert "The team ships to production only on Tuesdays and Thursdays." in contents
 
 
 async def test_backfill_is_idempotent(

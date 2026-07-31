@@ -77,9 +77,7 @@ class TestConsumeNowingResume:
         assert consume_nowing_resume(runtime) is None
 
     def test_drops_empty_dict_after_last_entry_consumed(self):
-        configurable = {
-            "nowing_resume_value": {"tcid-A": {"decisions": ["approve"]}}
-        }
+        configurable = {"nowing_resume_value": {"tcid-A": {"decisions": ["approve"]}}}
         runtime = _runtime_with_config(
             {"configurable": configurable}, tool_call_id="tcid-A"
         )
@@ -115,9 +113,7 @@ class TestHasNowingResume:
         assert has_nowing_resume(runtime) is False
 
     def test_does_not_consume_payload(self):
-        configurable = {
-            "nowing_resume_value": {"tcid-A": {"decisions": ["approve"]}}
-        }
+        configurable = {"nowing_resume_value": {"tcid-A": {"decisions": ["approve"]}}}
         runtime = _runtime_with_config(
             {"configurable": configurable}, tool_call_id="tcid-A"
         )

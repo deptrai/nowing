@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.future import select
 
-from app.db import Document, WorkspaceMembership, async_session_maker, get_async_session
+from app.db import Document, WorkspaceMembership, get_async_session
 from app.users import get_auth_context
 
 router = APIRouter(prefix="/__e2e__", tags=["__e2e__"])

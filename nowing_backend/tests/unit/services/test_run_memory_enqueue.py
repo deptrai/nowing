@@ -85,4 +85,7 @@ def test_broker_failure_is_swallowed(seam):
     delay.side_effect = RuntimeError("broker unreachable")
 
     # No raise, and a falsey result so callers can log/metric if they care.
-    assert run_enqueue.enqueue_run_memory_extraction_after_commit(str(uuid.uuid4())) is False
+    assert (
+        run_enqueue.enqueue_run_memory_extraction_after_commit(str(uuid.uuid4()))
+        is False
+    )

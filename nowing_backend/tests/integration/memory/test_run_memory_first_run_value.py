@@ -133,9 +133,7 @@ async def test_recall_survives_run_retention_cleanup(
         await RunMemoryExtractionService(session=db_session).extract_from_run(run_id)
 
     before = await _recall(db_session, workspace_id, "widget pricing")
-    citation_before = next(
-        h.citation for h in before if h.source_run_id == str(run_id)
-    )
+    citation_before = next(h.citation for h in before if h.source_run_id == str(run_id))
 
     # Exactly what the opportunistic 30-day cleanup does. It succeeds only
     # because there is no hard FK from `memories` to `runs` (AC-7).

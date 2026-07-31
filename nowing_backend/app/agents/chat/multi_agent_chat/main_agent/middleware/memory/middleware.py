@@ -193,7 +193,7 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
 
         try:
             query = _build_transcript_query(messages)
-        except Exception as exc:
+        except Exception:
             logger.exception("memory injection transcript query rendering failed")
             record_memory_injection_failure(
                 scope=scope, stage="query", reason="render_error"
@@ -214,7 +214,7 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
         cm = shielded_async_session()
         try:
             session = await cm.__aenter__()
-        except Exception as exc:
+        except Exception:
             logger.exception("memory injection session enter failed")
             record_memory_injection_failure(
                 scope=scope, stage="session", reason="enter_error"
@@ -233,7 +233,9 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
                 _validate_hits(hits)
             except Exception as exc:
                 logger.exception("memory injection search failed")
-                reason = "invalid_result" if isinstance(exc, ValueError) else "query_error"
+                reason = (
+                    "invalid_result" if isinstance(exc, ValueError) else "query_error"
+                )
                 record_memory_injection_failure(
                     scope=scope, stage="search", reason=reason
                 )
@@ -243,13 +245,13 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
                 try:
                     async with session.begin_nested():
                         display_name = await self._lookup_display_name(session)
-                except Exception as exc:
+                except Exception:
                     logger.exception("memory injection display name lookup failed")
                     pending = ("display_name", "lookup_error")
         finally:
             try:
                 await cm.__aexit__(None, None, None)
-            except Exception as exc:
+            except Exception:
                 if not terminal:
                     logger.exception("memory injection session exit failed")
                     record_memory_injection_failure(

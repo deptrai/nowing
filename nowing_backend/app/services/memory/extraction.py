@@ -84,7 +84,10 @@ class MemoryExtractionService:
         # Load the assistant message and its thread.
         assistant_message = await self.session.get(NewChatMessage, assistant_message_id)
         if assistant_message is None:
-            logger.warning("Assistant message %s not found; skipping extraction", assistant_message_id)
+            logger.warning(
+                "Assistant message %s not found; skipping extraction",
+                assistant_message_id,
+            )
             return []
 
         thread = await self.session.get(NewChatThread, thread_id)
@@ -95,10 +98,17 @@ class MemoryExtractionService:
         # Resolve workspace and global auto-extract gate.
         workspace = await self.session.get(Workspace, thread.workspace_id)
         if workspace is None:
-            logger.error("Workspace %s not found for thread %s; skipping extraction", thread.workspace_id, thread_id)
+            logger.error(
+                "Workspace %s not found for thread %s; skipping extraction",
+                thread.workspace_id,
+                thread_id,
+            )
             return []
 
-        if not config.MEMORY_AUTO_EXTRACT_ENABLED or not workspace.memory_auto_extract_enabled:
+        if (
+            not config.MEMORY_AUTO_EXTRACT_ENABLED
+            or not workspace.memory_auto_extract_enabled
+        ):
             # AC-8 enumerates `disabled` alongside the four gate reasons, so it
             # emits the same structured line at the same level — a DEBUG message
             # without a machine-parseable `reason=` is invisible to log
@@ -167,7 +177,9 @@ class MemoryExtractionService:
 
         llm = await get_agent_llm(self.session, workspace.id, disable_streaming=True)
         if llm is None:
-            logger.warning("No agent LLM for workspace %s; skipping extraction", workspace.id)
+            logger.warning(
+                "No agent LLM for workspace %s; skipping extraction", workspace.id
+            )
             return []
 
         user_text = extract_text_content(user_message.content)

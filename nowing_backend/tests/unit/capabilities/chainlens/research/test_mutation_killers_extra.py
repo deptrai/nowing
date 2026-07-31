@@ -96,7 +96,9 @@ def test_default_next_action_uses_equality_not_identity():
 
 
 def test_research_output_billable_units_requires_property():
-    output = ResearchOutput(answer="answer", sources=[Source(title="S", url="https://x.com")])
+    output = ResearchOutput(
+        answer="answer", sources=[Source(title="S", url="https://x.com")]
+    )
     # If @property is removed, `output.billable_units` becomes the method object.
     assert output.billable_units == 1
 
@@ -347,7 +349,9 @@ async def test_kb_fallback_defaults_none_scope():
 # ---------------------------------------------------------------------------
 
 
-def _make_hit(document_id: int = 1, title: str = "KB Document", chunks: list | None = None):
+def _make_hit(
+    document_id: int = 1, title: str = "KB Document", chunks: list | None = None
+):
     if chunks is None:
         chunks = [types.SimpleNamespace(chunk_id=10, content="c1")]
     return types.SimpleNamespace(
@@ -366,7 +370,9 @@ async def test_execute_with_context_records_fallback_attempted_false_when_no_fal
             ResearchInput(query="q"),
             None,
             search_fn=AsyncMock(
-                return_value=ResearchOutput(status="engine_unavailable", degradation_reason="unreachable")
+                return_value=ResearchOutput(
+                    status="engine_unavailable", degradation_reason="unreachable"
+                )
             ),
         )
     assert output.status == "engine_unavailable"
@@ -387,7 +393,9 @@ async def test_execute_with_context_clamps_top_k_to_five():
         ResearchInput(query="q"),
         types.SimpleNamespace(session="session", workspace_id=1),
         search_fn=AsyncMock(
-            return_value=ResearchOutput(status="engine_unavailable", degradation_reason="unreachable")
+            return_value=ResearchOutput(
+                status="engine_unavailable", degradation_reason="unreachable"
+            )
         ),
         fallback_fn=fallback_fn,
         top_k=10,
@@ -399,7 +407,9 @@ async def test_execute_with_context_clamps_top_k_to_five():
 @pytest.mark.anyio
 async def test_execute_with_context_default_top_k_five():
     hits = [
-        _make_hit(document_id=i, chunks=[types.SimpleNamespace(chunk_id=i, content=f"c{i}")])
+        _make_hit(
+            document_id=i, chunks=[types.SimpleNamespace(chunk_id=i, content=f"c{i}")]
+        )
         for i in range(6)
     ]
 
@@ -410,7 +420,9 @@ async def test_execute_with_context_default_top_k_five():
         ResearchInput(query="q"),
         types.SimpleNamespace(session="session", workspace_id=1),
         search_fn=AsyncMock(
-            return_value=ResearchOutput(status="engine_unavailable", degradation_reason="unreachable")
+            return_value=ResearchOutput(
+                status="engine_unavailable", degradation_reason="unreachable"
+            )
         ),
         fallback_fn=fallback_fn,
     )
@@ -435,7 +447,9 @@ async def test_execute_with_context_fallback_title_or_default():
         ResearchInput(query="q"),
         types.SimpleNamespace(session="session", workspace_id=1),
         search_fn=AsyncMock(
-            return_value=ResearchOutput(status="engine_unavailable", degradation_reason="unreachable")
+            return_value=ResearchOutput(
+                status="engine_unavailable", degradation_reason="unreachable"
+            )
         ),
         fallback_fn=fallback_fn,
     )
@@ -461,7 +475,9 @@ async def test_execute_with_context_fallback_break_continue_inner():
         ResearchInput(query="q"),
         types.SimpleNamespace(session="session", workspace_id=1),
         search_fn=AsyncMock(
-            return_value=ResearchOutput(status="engine_unavailable", degradation_reason="unreachable")
+            return_value=ResearchOutput(
+                status="engine_unavailable", degradation_reason="unreachable"
+            )
         ),
         fallback_fn=fallback_fn,
         top_k=1,
@@ -524,7 +540,9 @@ async def test_build_research_executor_default_top_k_five():
     hits = [_make_hit(document_id=i) for i in range(6)]
 
     async def search_fn(payload: ResearchInput) -> ResearchOutput:
-        return ResearchOutput(status="engine_unavailable", degradation_reason="unreachable")
+        return ResearchOutput(
+            status="engine_unavailable", degradation_reason="unreachable"
+        )
 
     with patch(
         "app.capabilities.chainlens.research.executor._kb_fallback",

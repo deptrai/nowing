@@ -178,7 +178,6 @@ def test_match_ignores_automation_run_id_on_the_payload() -> None:
     assert trigger_matches_event(params, event) is True
 
 
-
 # --- Mutation-hardening (Story 6.5, Stage 5) ---------------------------------
 # cosmic-ray could not run in this environment (only `uv run` resolves the
 # correct litellm; its per-mutant native test-command is unavailable), so these
@@ -221,7 +220,6 @@ def test_memory_type_none_matches_any_but_set_is_strict() -> None:
             workspace_id=7,
         )
         assert trigger_matches_event({"memory_type": None, "tags": []}, event) is True
-        assert (
-            trigger_matches_event({"memory_type": "semantic", "tags": []}, event)
-            is (payload_type == "semantic")
-        )
+        assert trigger_matches_event(
+            {"memory_type": "semantic", "tags": []}, event
+        ) is (payload_type == "semantic")

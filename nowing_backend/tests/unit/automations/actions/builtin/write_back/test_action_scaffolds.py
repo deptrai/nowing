@@ -20,7 +20,9 @@ PROVIDERS: list[tuple[str, dict[str, Any]]] = [
 
 def _load_invoke(module_name: str) -> Any:
     """Lazy-load the invoke module for a write-back action."""
-    return importlib.import_module(f"app.automations.actions.builtin.{module_name}.invoke")
+    return importlib.import_module(
+        f"app.automations.actions.builtin.{module_name}.invoke"
+    )
 
 
 def _ctx() -> Any:
@@ -47,9 +49,10 @@ def _tool() -> Any:
     )
 
 
-
 @pytest.mark.parametrize("provider,params", PROVIDERS)
-async def test_handler_creates_object_when_no_object_id_given(provider: str, params: dict[str, Any]):
+async def test_handler_creates_object_when_no_object_id_given(
+    provider: str, params: dict[str, Any]
+):
     """Each write-back handler creates a new object when object_id is omitted."""
     invoke = _load_invoke(provider)
     result = await invoke.write_back(
@@ -62,9 +65,10 @@ async def test_handler_creates_object_when_no_object_id_given(provider: str, par
     assert result["provider"] == provider.replace("write_back_", "")
 
 
-
 @pytest.mark.parametrize("provider,params", PROVIDERS)
-async def test_handler_updates_object_when_object_id_given(provider: str, params: dict[str, Any]):
+async def test_handler_updates_object_when_object_id_given(
+    provider: str, params: dict[str, Any]
+):
     """Each write-back handler switches to update mode when object_id is provided."""
     invoke = _load_invoke(provider)
 
@@ -84,12 +88,13 @@ async def test_handler_updates_object_when_object_id_given(provider: str, params
     assert result["object_id"] == "existing-obj"
 
 
-
 @pytest.mark.parametrize("provider,_params", PROVIDERS)
-async def test_handler_fails_when_no_connector_available(provider: str, _params: dict[str, Any]):
+async def test_handler_fails_when_no_connector_available(
+    provider: str, _params: dict[str, Any]
+):
     """A clear error is raised when no MCP connector is configured for the provider."""
     invoke = _load_invoke(provider)
-    with pytest.raises(RuntimeError, match="No .* connector configured"):
+    with pytest.raises(RuntimeError, match=r"No .* connector configured"):
         await invoke.write_back(
             ctx=_ctx(),
             params=_params,

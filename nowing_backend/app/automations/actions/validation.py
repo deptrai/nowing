@@ -61,9 +61,7 @@ def _validate_step(step: PlanStep) -> None:
             )
 
     try:
-        templated_keys = {
-            key for key, value in params.items() if _is_templated(value)
-        }
+        templated_keys = {key for key, value in params.items() if _is_templated(value)}
     except ValueError as exc:
         raise StepValidationError(step.step_id, str(exc)) from exc
 

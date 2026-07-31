@@ -7,11 +7,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config as app_config
@@ -113,7 +112,9 @@ class TestGetDocumentByChunkExposesPosition:
     ) -> None:
         """The chunk that matches the requested chunk_id must expose its absolute position."""
         middle_chunk = seeded_document.chunks[1]
-        response = await client.get(f"/api/v1/documents/by-chunk/{middle_chunk.id}?chunk_window=1")
+        response = await client.get(
+            f"/api/v1/documents/by-chunk/{middle_chunk.id}?chunk_window=1"
+        )
         assert response.status_code == 200
         payload = response.json()
         assert "chunks" in payload
@@ -128,7 +129,9 @@ class TestGetDocumentByChunkExposesPosition:
     ) -> None:
         """Returned chunks in a window must be ordered by ascending position."""
         middle_chunk = seeded_document.chunks[1]
-        response = await client.get(f"/api/v1/documents/by-chunk/{middle_chunk.id}?chunk_window=5")
+        response = await client.get(
+            f"/api/v1/documents/by-chunk/{middle_chunk.id}?chunk_window=5"
+        )
         assert response.status_code == 200
         payload = response.json()
         positions = [chunk["position"] for chunk in payload["chunks"]]

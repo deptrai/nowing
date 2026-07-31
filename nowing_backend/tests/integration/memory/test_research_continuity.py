@@ -19,7 +19,9 @@ pytestmark = [pytest.mark.integration, pytest.mark.memory]
 BASE = "/api/v1/workspaces"
 
 
-async def _make_research_thread(db_session, workspace, user, *, title="Q3 competitor research"):
+async def _make_research_thread(
+    db_session, workspace, user, *, title="Q3 competitor research"
+):
     """Create a ResearchThread + a linked chat thread + an assistant message
     that carries persisted [citation:...] markers, plus a thread-scoped memory."""
     from app.db import (
@@ -80,7 +82,9 @@ async def _make_research_thread(db_session, workspace, user, *, title="Q3 compet
     return thread
 
 
-async def test_continue_context_returns_memories_and_citations(client, db_session, db_workspace, db_user):
+async def test_continue_context_returns_memories_and_citations(
+    client, db_session, db_workspace, db_user
+):
     """AC-1: context returns BOTH ranked memories and the thread's prior citations."""
     thread = await _make_research_thread(db_session, db_workspace, db_user)
 
@@ -107,17 +111,19 @@ async def test_continue_context_missing_thread_returns_404_and_creates_nothing(
     from app.db import ResearchThread
 
     before = await db_session.execute(
-        select(func.count()).select_from(ResearchThread).where(
-            ResearchThread.workspace_id == db_workspace.id
-        )
+        select(func.count())
+        .select_from(ResearchThread)
+        .where(ResearchThread.workspace_id == db_workspace.id)
     )
-    resp = await client.get(f"{BASE}/{db_workspace.id}/research-threads/99999999/context")
+    resp = await client.get(
+        f"{BASE}/{db_workspace.id}/research-threads/99999999/context"
+    )
     assert resp.status_code == 404
 
     after = await db_session.execute(
-        select(func.count()).select_from(ResearchThread).where(
-            ResearchThread.workspace_id == db_workspace.id
-        )
+        select(func.count())
+        .select_from(ResearchThread)
+        .where(ResearchThread.workspace_id == db_workspace.id)
     )
     assert after.scalar_one() == before.scalar_one()  # no implicit creation
 
@@ -170,11 +176,15 @@ async def test_continue_context_dedupes_and_skips_malformed_citations(
         ResearchThread,
     )
 
-    thread = ResearchThread(workspace_id=db_workspace.id, created_by_id=db_user.id, title="dupe")
+    thread = ResearchThread(
+        workspace_id=db_workspace.id, created_by_id=db_user.id, title="dupe"
+    )
     db_session.add(thread)
     await db_session.flush()
     chat = NewChatThread(
-        title="s", workspace_id=db_workspace.id, created_by_id=db_user.id,
+        title="s",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
         research_thread_id=thread.id,
     )
     db_session.add(chat)
@@ -198,7 +208,9 @@ async def test_continue_context_dedupes_and_skips_malformed_citations(
     )
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/{db_workspace.id}/research-threads/{thread.id}/context")
+    resp = await client.get(
+        f"{BASE}/{db_workspace.id}/research-threads/{thread.id}/context"
+    )
     assert resp.status_code == 200
     citations = resp.json()["citations"]
     dup_urls = [c for c in citations if c.get("url") == "https://example.com/dup"]
@@ -237,7 +249,9 @@ async def test_continue_context_citations_do_not_leak_across_threads(
         ResearchThread,
     )
 
-    target = await _make_research_thread(db_session, db_workspace, db_user, title="target")
+    target = await _make_research_thread(
+        db_session, db_workspace, db_user, title="target"
+    )
 
     sibling = ResearchThread(
         workspace_id=db_workspace.id, created_by_id=db_user.id, title="sibling"
@@ -245,7 +259,9 @@ async def test_continue_context_citations_do_not_leak_across_threads(
     db_session.add(sibling)
     await db_session.flush()
     sibling_chat = NewChatThread(
-        title="s", workspace_id=db_workspace.id, created_by_id=db_user.id,
+        title="s",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
         research_thread_id=sibling.id,
     )
     db_session.add(sibling_chat)
@@ -254,13 +270,20 @@ async def test_continue_context_citations_do_not_leak_across_threads(
         NewChatMessage(
             thread_id=sibling_chat.id,
             role=NewChatMessageRole.ASSISTANT,
-            content=[{"type": "text", "text": "Sibling [citation:https://example.com/SIBLING-ONLY]."}],
+            content=[
+                {
+                    "type": "text",
+                    "text": "Sibling [citation:https://example.com/SIBLING-ONLY].",
+                }
+            ],
             turn_id="t1",
         )
     )
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/{db_workspace.id}/research-threads/{target.id}/context")
+    resp = await client.get(
+        f"{BASE}/{db_workspace.id}/research-threads/{target.id}/context"
+    )
     assert resp.status_code == 200
     urls = {c.get("url") for c in resp.json()["citations"]}
     assert "https://example.com/pricing" in urls  # target's own citation present
@@ -278,11 +301,15 @@ async def test_continue_context_includes_chunk_citations_without_url(
         ResearchThread,
     )
 
-    thread = ResearchThread(workspace_id=db_workspace.id, created_by_id=db_user.id, title="kb")
+    thread = ResearchThread(
+        workspace_id=db_workspace.id, created_by_id=db_user.id, title="kb"
+    )
     db_session.add(thread)
     await db_session.flush()
     chat = NewChatThread(
-        title="s", workspace_id=db_workspace.id, created_by_id=db_user.id,
+        title="s",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
         research_thread_id=thread.id,
     )
     db_session.add(chat)
@@ -291,14 +318,20 @@ async def test_continue_context_includes_chunk_citations_without_url(
         NewChatMessage(
             thread_id=chat.id,
             role=NewChatMessageRole.ASSISTANT,
-            content=[{"type": "text", "text": "See [citation:42] and [citation:doc-7]."}],
+            content=[
+                {"type": "text", "text": "See [citation:42] and [citation:doc-7]."}
+            ],
             turn_id="t1",
         )
     )
     await db_session.flush()
 
-    resp = await client.get(f"{BASE}/{db_workspace.id}/research-threads/{thread.id}/context")
+    resp = await client.get(
+        f"{BASE}/{db_workspace.id}/research-threads/{thread.id}/context"
+    )
     assert resp.status_code == 200
     citations = resp.json()["citations"]
     assert any(c["url"] is None and c["source_type"] == "kb_chunk" for c in citations)
-    assert any(c["url"] is None and c["source_type"] == "kb_document" for c in citations)
+    assert any(
+        c["url"] is None and c["source_type"] == "kb_document" for c in citations
+    )
