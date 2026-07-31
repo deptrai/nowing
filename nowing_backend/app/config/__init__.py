@@ -1,9 +1,11 @@
+import asyncio
 import copy
 import logging
 import os
 import shutil
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 import yaml
 from chonkie import AutoEmbeddings, CodeChunker, RecursiveChunker
@@ -415,7 +417,9 @@ def initialize_openrouter_integration():
             except Exception as e:
                 print(f"Warning: Failed to inject OpenRouter image-gen configs: {e}")
 
-        refresh_global_model_catalog()
+        # Global catalog refresh is intentionally deferred to the async
+        # lifespan so DB-managed GLOBAL rows can be merged.
+        pass
     except Exception as e:
         print(f"Warning: Failed to initialize OpenRouter integration: {e}")
 
@@ -429,10 +433,53 @@ def materialize_global_configs():
     )
 
 
-def refresh_global_model_catalog():
-    connections, models = materialize_global_configs()
-    config.GLOBAL_CONNECTIONS = connections
-    config.GLOBAL_MODELS = models
+_global_catalog_refresh_lock = asyncio.Lock()
+
+
+async def refresh_global_model_catalog(
+    session: Any | None = None,
+    *,
+    rebuild_routers: bool = False,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Rebuild the in-memory global catalog, including DB-managed rows.
+
+    Uses a process-local lock to serialize concurrent refresh calls.  When
+    ``rebuild_routers`` is True (post-admin-mutation), also re-register
+    LiteLLM pricing and rebuild the LLM Router so the new global pool is
+    visible to router-backed paths.
+    """
+    from app.services.global_model_catalog import (
+        refresh_global_model_catalog as _service_refresh,
+    )
+
+    async with _global_catalog_refresh_lock:
+        connections, models = await _service_refresh(session)
+
+        if rebuild_routers:
+            try:
+                from app.services.pricing_registration import (
+                    register_pricing_for_managed_global_models,
+                    register_pricing_from_global_configs,
+                )
+
+                register_pricing_from_global_configs()
+                register_pricing_for_managed_global_models()
+            except Exception as exc:
+                logger.exception("Pricing registration failed after catalog refresh")
+                raise RuntimeError(f"Pricing registration failed: {exc}") from exc
+
+            try:
+                from app.services.llm_router_service import LLMRouterService
+
+                LLMRouterService.rebuild(
+                    getattr(config, "GLOBAL_LLM_CONFIGS", []),
+                    getattr(config, "ROUTER_SETTINGS", {}),
+                )
+            except Exception as exc:
+                logger.exception("LLM Router rebuild failed after catalog refresh")
+                raise RuntimeError(f"LLM Router rebuild failed: {exc}") from exc
+
+        return connections, models
 
 
 def initialize_pricing_registration():
@@ -450,10 +497,12 @@ def initialize_pricing_registration():
     """
     try:
         from app.services.pricing_registration import (
+            register_pricing_for_managed_global_models,
             register_pricing_from_global_configs,
         )
 
         register_pricing_from_global_configs()
+        register_pricing_for_managed_global_models()
     except Exception as e:
         print(f"Warning: Failed to register LiteLLM pricing: {e}")
 
@@ -524,8 +573,7 @@ class Config:
     # Check if ffmpeg is installed
     if not is_ffmpeg_installed():
         allow_static_ffmpeg = (
-            os.getenv("NOWING_ALLOW_STATIC_FFMPEG_DOWNLOAD", "TRUE").upper()
-            == "TRUE"
+            os.getenv("NOWING_ALLOW_STATIC_FFMPEG_DOWNLOAD", "TRUE").upper() == "TRUE"
         )
         if allow_static_ffmpeg:
             import static_ffmpeg
@@ -619,9 +667,7 @@ class Config:
 
     # Agent cache (in-process LRU+TTL cache for built agents)
     AGENT_CACHE_MAXSIZE = int(os.getenv("NOWING_AGENT_CACHE_MAXSIZE", "256"))
-    AGENT_CACHE_TTL_SECONDS = float(
-        os.getenv("NOWING_AGENT_CACHE_TTL_SECONDS", "1800")
-    )
+    AGENT_CACHE_TTL_SECONDS = float(os.getenv("NOWING_AGENT_CACHE_TTL_SECONDS", "1800"))
 
     # Connector discovery cache TTL
     CONNECTOR_DISCOVERY_TTL_SECONDS = float(
@@ -635,9 +681,7 @@ class Config:
     MEMORY_AUTO_EXTRACT_CONFIDENCE = max(
         0.0, min(1.0, _env_float("MEMORY_AUTO_EXTRACT_CONFIDENCE", 0.7))
     )
-    MEMORY_AUTO_EXTRACT_MAX_ITEMS = max(
-        1, _env_int("MEMORY_AUTO_EXTRACT_MAX_ITEMS", 3)
-    )
+    MEMORY_AUTO_EXTRACT_MAX_ITEMS = max(1, _env_int("MEMORY_AUTO_EXTRACT_MAX_ITEMS", 3))
 
     # Memory auto-extraction cost controls (Story 8.7 / AR-6 / RS-1).
     # The budget cap and rate-limit default to disabled/no-op so enabling
@@ -861,7 +905,9 @@ class Config:
     # ChainLens Research integration (https://research-api.chainlens.net or local).
     # One API key is enough: the ChainLens API resolves the key to a user and
     # enforces its own rate limit / quota.
-    CHAINLENS_API_URL = os.getenv("CHAINLENS_API_URL", "http://localhost:3001").rstrip("/")
+    CHAINLENS_API_URL = os.getenv("CHAINLENS_API_URL", "http://localhost:3001").rstrip(
+        "/"
+    )
     CHAINLENS_API_KEY = os.getenv("CHAINLENS_API_KEY", "")
     CHAINLENS_REQUEST_TIMEOUT_SECONDS = float(
         os.getenv("CHAINLENS_REQUEST_TIMEOUT_SECONDS", "300")
@@ -1058,9 +1104,8 @@ class Config:
     # Used to gate the per-workspace LLM onboarding flow: when a global
     # config file exists, workspaces inherit it and onboarding is skipped.
     GLOBAL_LLM_CONFIG_FILE_EXISTS = (
-        (BASE_DIR / "app" / "config" / "global_llm_config.yaml").exists()
-        or bool(os.environ.get("GLOBAL_LLM_CONFIG_B64"))
-    )
+        BASE_DIR / "app" / "config" / "global_llm_config.yaml"
+    ).exists() or bool(os.environ.get("GLOBAL_LLM_CONFIG_B64"))
 
     # Global LLM Configurations (optional)
     # Load from global_llm_config.yaml if available

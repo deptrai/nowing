@@ -38,6 +38,7 @@ from app.config import (
     initialize_llm_router,
     initialize_openrouter_integration,
     initialize_pricing_registration,
+    refresh_global_model_catalog,
 )
 from app.db import create_db_and_tables, get_async_session
 from app.exceptions import GENERIC_5XX_MESSAGE, ISSUES_URL, NowingError
@@ -652,6 +653,7 @@ async def lifespan(app: FastAPI):
     await _sweep_stale_scraper_runs()
     await setup_checkpointer_tables()
     initialize_openrouter_integration()
+    await refresh_global_model_catalog()
     _start_openrouter_background_refresh()
     initialize_pricing_registration()
     initialize_llm_router()

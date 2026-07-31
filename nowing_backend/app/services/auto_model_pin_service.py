@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import config
-from app.db import Connection, Model, NewChatThread
+from app.db import Connection, ConnectionScope, Model, NewChatThread
 from app.services.model_capabilities import has_capability
 from app.services.quality_score import _QUALITY_TOP_K
 from app.services.token_quota_service import TokenQuotaService
@@ -376,7 +376,11 @@ async def _db_candidates(
         select(Model)
         .options(selectinload(Model.connection))
         .join(Connection, Model.connection_id == Connection.id)
-        .where(Model.enabled.is_(True), Connection.enabled.is_(True))
+        .where(
+            Model.enabled.is_(True),
+            Connection.enabled.is_(True),
+            Connection.scope != ConnectionScope.GLOBAL,
+        )
     )
     result = await session.execute(stmt)
     models = result.scalars().all()

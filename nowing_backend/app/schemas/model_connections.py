@@ -23,6 +23,11 @@ class ModelRead(BaseModel):
     billing_tier: str | None = None
     catalog: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime | None = None
+    # Story 8.11 — runtime source labels and edit guards for the platform UI.
+    source_label: Literal["file", "config", "managed"] | None = None
+    can_edit: bool = False
+    can_delete: bool = False
+    db_model_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -40,6 +45,11 @@ class ConnectionRead(BaseModel):
     has_api_key: bool
     models: list[ModelRead] = Field(default_factory=list)
     created_at: datetime | None = None
+    # Story 8.11 — runtime source labels and edit guards for the platform UI.
+    source_label: Literal["file", "config", "managed"] | None = None
+    can_edit: bool = False
+    can_delete: bool = False
+    db_connection_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

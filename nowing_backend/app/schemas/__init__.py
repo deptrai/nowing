@@ -51,6 +51,18 @@ from .memory import (
     ResearchThreadContext,
     ThreadCitation,
 )
+from .admin_global_model_connections import (
+    AdminGlobalConnectionCreate,
+    AdminGlobalConnectionRead,
+    AdminGlobalConnectionUpdate,
+    AdminGlobalModelPricing,
+    AdminGlobalModelRead,
+    AdminGlobalModelSelection,
+    AdminGlobalModelTest,
+    AdminGlobalModelTestPreview,
+    AdminGlobalModelUpdate,
+    AdminGlobalModelsBulkUpdate,
+)
 from .model_connections import (
     ConnectionCreate,
     ConnectionRead,
@@ -145,6 +157,16 @@ from .workspace import (
 )
 
 __all__ = [
+    # Admin global model connection schemas
+    "AdminGlobalConnectionCreate",
+    "AdminGlobalConnectionRead",
+    "AdminGlobalConnectionUpdate",
+    "AdminGlobalModelPricing",
+    "AdminGlobalModelRead",
+    "AdminGlobalModelSelection",
+    "AdminGlobalModelTest",
+    "AdminGlobalModelUpdate",
+    "AdminGlobalModelsBulkUpdate",
     # Folder schemas
     "BulkDocumentMove",
     # Chat schemas (assistant-ui integration)

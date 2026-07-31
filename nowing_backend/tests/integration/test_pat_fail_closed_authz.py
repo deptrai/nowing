@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
 from app.db import PersonalAccessToken, User, Workspace
-from app.users import allow_any_principal, require_session_context
+from app.users import allow_any_principal, require_session_context, require_superuser
 from app.utils.rbac import check_workspace_access
 
 pytestmark = pytest.mark.integration
@@ -69,3 +69,30 @@ async def test_pat_is_allowed_for_api_enabled_space(
 
     assert membership.user_id == db_user.id
     assert membership.workspace_id == db_workspace.id
+
+
+async def test_superuser_dependency_rejects_pat(db_user: User):
+    auth = _pat_auth(db_user)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await require_superuser(auth=auth)
+
+    assert exc_info.value.status_code == 403
+
+
+async def test_superuser_dependency_rejects_non_superuser_session(db_user: User):
+    auth = AuthContext.session(db_user)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await require_superuser(auth=auth)
+
+    assert exc_info.value.status_code == 403
+
+
+async def test_superuser_dependency_allows_superuser_session(db_user: User):
+    db_user.is_superuser = True
+    auth = AuthContext.session(db_user)
+
+    result = await require_superuser(auth=auth)
+
+    assert result is auth

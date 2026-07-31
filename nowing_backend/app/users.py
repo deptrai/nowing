@@ -399,3 +399,19 @@ async def require_session_context(
             detail="This action requires an interactive session",
         )
     return auth
+
+
+async def require_superuser(
+    auth: AuthContext = Depends(require_session_context),
+) -> AuthContext:
+    """Require an interactive session from a platform superuser.
+
+    PATs are rejected by the session gate, and workspace roles do not
+    grant platform admin access. Only User.is_superuser is authoritative.
+    """
+    if not auth.user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action requires platform admin privileges",
+        )
+    return auth

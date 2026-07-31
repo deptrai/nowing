@@ -44,6 +44,9 @@ export const cacheKeys = {
 		roles: (workspaceId: number) => ["model-roles", workspaceId] as const,
 		setupStatus: (workspaceId: number) => ["llm-setup-status", workspaceId] as const,
 	},
+	admin: {
+		globalModelConnections: () => ["admin", "global-model-connections"] as const,
+	},
 	auth: {
 		user: ["auth", "user"] as const,
 	},

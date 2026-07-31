@@ -253,6 +253,67 @@ def _register_chat_shape_configs(
     return registered_models, registered_aliases, skipped_no_pricing, sample_keys
 
 
+def _alias_set_for_managed(provider: str, model_name: str) -> list[str]:
+    """Return LiteLLM aliases for a managed DB-backed global model.
+
+    Same idea as YAML aliases: the bare model id and the provider/model form.
+    """
+    provider_lower = (provider or "").lower()
+    aliases: list[str] = []
+    if model_name:
+        aliases.append(model_name)
+    if provider_lower and model_name:
+        aliases.append(f"{provider_lower}/{model_name}")
+    return list(dict.fromkeys(a for a in aliases if a))
+
+
+def register_pricing_for_managed_global_models() -> None:
+    """Register per-token pricing for DB-managed global model entries.
+
+    Walks ``config.GLOBAL_MODELS`` and registers any model whose catalog
+    contains normalized ``input_cost_per_token`` / ``output_cost_per_token``.
+    Skips when both are zero or missing.
+    """
+    from app.config import config as app_config
+
+    models: list[dict] = list(getattr(app_config, "GLOBAL_MODELS", []) or [])
+    if not models:
+        return
+
+    registered = 0
+    for model in models:
+        catalog = model.get("catalog") or {}
+        if catalog.get("admin_source") != "managed":
+            continue
+        connection = next(
+            (
+                c
+                for c in getattr(app_config, "GLOBAL_CONNECTIONS", [])
+                if c.get("id") == model.get("connection_id")
+            ),
+            None,
+        )
+        provider = (connection.get("provider") if connection else None) or "openai"
+        input_cost = _safe_float(catalog.get("input_cost_per_token"))
+        output_cost = _safe_float(catalog.get("output_cost_per_token"))
+        if input_cost == 0.0 and output_cost == 0.0:
+            continue
+        aliases = _alias_set_for_managed(provider, model.get("model_id"))
+        count = _register(
+            aliases,
+            input_cost=input_cost,
+            output_cost=output_cost,
+            provider=provider,
+            mode="chat",
+        )
+        if count:
+            registered += 1
+
+    logger.info(
+        "[PricingRegistration:managed] registered pricing for %d models", registered
+    )
+
+
 def register_pricing_from_global_configs() -> None:
     """Register pricing for every known LLM deployment with LiteLLM.
 
