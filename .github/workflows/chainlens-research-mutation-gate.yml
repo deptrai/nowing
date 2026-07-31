@@ -1,0 +1,74 @@
+name: ChainLens Research Mutation Gate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 0"
+  push:
+    branches:
+      - develop
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  chainlens-research-mutation:
+    name: Full Package Mutation Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/uv
+            nowing_backend/.venv
+          key: python-deps-${{ hashFiles('nowing_backend/uv.lock') }}
+          restore-keys: |
+            python-deps-
+
+      - name: Install dependencies and cosmic-ray
+        working-directory: nowing_backend
+        run: |
+          uv sync
+          uv pip install cosmic-ray
+
+      - name: Run full chainlens/research mutation gate
+        working-directory: nowing_backend
+        run: |
+          uv run --no-sync cosmic-ray baseline mutation-nowing-chainlens-research-manual.toml
+          uv run --no-sync cosmic-ray init mutation-nowing-chainlens-research-manual.toml /tmp/mutation-chainlens-research.sqlite
+          uv run --no-sync cosmic-ray exec mutation-nowing-chainlens-research-manual.toml /tmp/mutation-chainlens-research.sqlite
+          uv run --no-sync cr-rate --fail-over 20 /tmp/mutation-chainlens-research.sqlite
+
+      - name: Save mutation report
+        if: always()
+        working-directory: nowing_backend
+        run: |
+          uv run --no-sync cr-report /tmp/mutation-chainlens-research.sqlite > /tmp/mutation-chainlens-research-report.txt || true
+
+      - name: Upload mutation artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: chainlens-research-mutation
+          path: |
+            /tmp/mutation-chainlens-research.sqlite
+            /tmp/mutation-chainlens-research-report.txt
+          retention-days: 14
