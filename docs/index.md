@@ -4,7 +4,12 @@
 
 ## Tổng quan dự án
 
-Nowing là nền tảng nghiên cứu web mở (open-source NotebookLM alternative) cho AI agents, bao gồm backend FastAPI, web Next.js, desktop Electron, browser extension, plugin Obsidian, MCP server, và evaluation harness.
+Nowing là nền tảng nghiên cứu AI với **core mã nguồn mở** và **hosted deep-research engine**. Hệ thống bao gồm backend FastAPI, web Next.js, desktop Electron, browser extension, plugin Obsidian, MCP server, và evaluation harness.
+
+**License nhanh:**
+- Core: Apache 2.0.
+- Crawler engine (`nowing_backend/app/proprietary/`): BSL 1.1.
+- Deep-research engine: dịch vụ được host, không bán lẻ, không bundled.
 
 ## Cấu trúc các phần
 

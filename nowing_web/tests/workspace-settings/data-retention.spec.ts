@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { acquireTestToken, loginUser, registerUser } from "../helpers/api/auth";
+import { uploadMarkdown, waitForDocumentReady } from "../helpers/api/documents";
 import {
 	acceptInvite,
 	createInvite,
@@ -7,7 +8,6 @@ import {
 	deleteWorkspace,
 	listWorkspaceRoles,
 } from "../helpers/api/workspaces";
-import { listDocuments, uploadMarkdown, waitForDocumentReady } from "../helpers/api/documents";
 
 /**
  * E2E red-phase ATDD tests for Story 3.7: Data Retention & Lifecycle.
@@ -76,13 +76,7 @@ test.describe("Data retention workspace settings", () => {
 		const editorRole = roles.find((r) => r.name === "Editor");
 		if (!editorRole) throw new Error("Editor role not found");
 
-		const invite = await createInvite(
-			request,
-			ownerToken,
-			workspaceId,
-			memberEmail,
-			editorRole.id
-		);
+		const invite = await createInvite(request, ownerToken, workspaceId, memberEmail, editorRole.id);
 		await acceptInvite(request, memberToken, invite.invite_code);
 
 		const memberContext = await browser.newContext({

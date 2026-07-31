@@ -1,4 +1,4 @@
-<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing, the open-source NotebookLM alternative for open web research" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
+<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing — open-source AI research workspace with a hosted deep-research engine" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
 
 
 
@@ -20,16 +20,16 @@
 <a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FNowing | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-# Nowing: The Open-Source NotebookLM Alternative for Open Web Research
+# Nowing: AI Research Workspace with Open-Source Core + Hosted Deep-Research Engine
 
-Nowing is the **open-source NotebookLM alternative for AI agents**, an open web research platform with live data connectors. Your agents research the live web with structured data from **Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search, and any page on the open web**, through one **REST API** or **MCP server**. Scheduled and event-triggered agents turn what they find into briefs and alerts, and a built-in knowledge base keeps every finding searchable with citations.
+Nowing is an **AI research workspace** with an **open-source core** and a **hosted deep-research engine**. Your agents research the live web with structured data from **Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search, and any page on the open web**, through one **REST API** or **MCP server**. Scheduled and event-triggered agents turn what they find into briefs and alerts, and a built-in knowledge base keeps every finding searchable with citations.
 
 > [!NOTE]
 > **📢 A note for our NotebookLM-alternative users**
 >
 > For the past couple of months we built Nowing as the best general research agent for your own knowledge, and that chapter earned us a community we are genuinely proud of. Agentic tools like Claude, OpenCode, Hermes, and OpenClaw have now proven that agents are the future, and reasoning over a static index is becoming something every capable agent does out of the box. What agents still lack is **live data from the places where answers actually live, and the workflows around it**. That is where we are pointing all of our energy: giving agents the primitives to research the open web.
 >
-> **Nothing you rely on is going away.** Your knowledge base, chat with citations, reports, podcasts, presentations, automations, and collaborative chats all keep working, and self-hosting stays free and open source. Read the full announcement on [our changelog](https://www.nowing.com/changelog).
+> **Nothing you rely on is going away.** Your knowledge base, chat with citations, reports, podcasts, presentations, automations, and collaborative chats all keep working, and self-hosting the open-source core stays free. The hosted deep-research engine uses an optional cloud API key. Read the full announcement on [our changelog](https://www.nowing.com/changelog).
 
 ## Table of contents
 
@@ -48,7 +48,7 @@ Ask any capable agent "what is Reddit saying about this product since launch?" o
 - **One typed surface for wherever the data lives.** Every connector is a REST endpoint returning structured JSON — posts, comments, transcripts, reviews, SERPs, pages. No rate-limit roulette, no HTML parsing, no browser loop.
 - **An MCP server** that exposes every connector as a native tool (`nowing_reddit_scrape`, `nowing_google_search`, and more) to Claude, Cursor, or any agent framework.
 - **An agent harness**, not just raw data: retries, structured output, and credit metering are built in, so agents go from a question to a cited brief without you building the plumbing.
-- **Open source and self-hostable**, so your research stays on your own infrastructure.
+- **Open-source core, self-hostable**, so your research stays on your own infrastructure. The deep-research engine is a hosted, metered service.
 
 ## Live data connectors
 
@@ -131,7 +131,7 @@ The install script sets up [Watchtower](https://github.com/nicholas-fedor/watcht
 
 ## Everything else in the box
 
-The research workspace that made Nowing the leading open-source NotebookLM alternative is still here, and everything your agents gather lands in it.
+The research workspace that made Nowing a leading open-source-core AI research workspace is still here, and everything your agents gather lands in it.
 
 **Knowledge base**
 
@@ -201,7 +201,7 @@ https://github.com/user-attachments/assets/a0a16566-6967-4374-ac51-9b3e07fbecd7
 
 ## How Nowing compares
 
-Nowing is the only open-source product that combines a NotebookLM-style research workspace for people with live-data primitives for agents. Here is how that stacks up against each class of tool.
+Nowing is the only product with an open-source core that combines a NotebookLM-style research workspace for people with live-data primitives for agents. Here is how that stacks up against each class of tool.
 
 **vs browser agents (Browserbase, Browser Use).** Browser agents drive a real browser with an LLM in the loop — the right tool when a task needs clicking, logging in, or filling forms. But most research is read-only retrieval, and for retrieval the LLM-in-a-browser loop costs you minutes and thousands of tokens per page. A Nowing connector call is one HTTP request: seconds, deterministic, and zero tokens spent deciding where to click.
 
@@ -209,7 +209,7 @@ Nowing is the only open-source product that combines a NotebookLM-style research
 
 **vs search APIs (Exa, Tavily, Parallel).** Search APIs answer from a web index, which is the right tool for "find me pages about X." They cannot pull a Reddit thread's comments, TikTok reactions, YouTube transcripts, or Google Maps reviews — the places where the answer often actually lives.
 
-**vs scraper marketplaces (Apify).** Marketplaces give you thousands of community actors, each with its own schema, quality, and pricing. Nowing is one typed API and one MCP server with an agent harness and a research workspace behind it, and it is open source.
+**vs scraper marketplaces (Apify).** Marketplaces give you thousands of community actors, each with its own schema, quality, and pricing. Nowing is one typed API and one MCP server with an agent harness and a research workspace behind it, and its core is open source.
 
 ### Nowing vs Google NotebookLM
 
@@ -222,12 +222,12 @@ Still comparing us as a NotebookLM alternative? Here is the honest breakdown.
 | **Sources per Notebook** | 50 (Free) to 600 (Ultra, $249.99/mo) | Unlimited |
 | **Number of Notebooks** | 100 (Free) to 500 (paid tiers) | Unlimited |
 | **Source Size Limit** | 500,000 words / 200MB per source | No limit |
-| **Pricing** | Free tier; Pro $19.99/mo, Ultra $249.99/mo | Free and open source to self-host; cloud is pay as you go with $5 free credit |
+| **Pricing** | Free tier; Pro $19.99/mo, Ultra $249.99/mo | Free to self-host the open-source core; cloud is pay as you go with $5 free credit; deep-research engine billed at actual per-call cost |
 | **LLM Support** | Google Gemini only | 100+ LLMs via OpenAI spec & LiteLLM |
 | **Embedding Models** | Google only | 6,000+ embedding models, all major rerankers |
 | **Local / Private LLMs** | Not available | Full support (vLLM, Ollama), your data stays yours |
-| **Self Hostable** | No | Yes, Docker one-liner or full Docker Compose |
-| **Open Source** | No | Yes |
+| **Self Hostable** | No | Yes, Docker one-liner or full Docker Compose; deep-research engine is cloud-only in Phase 1 |
+| **Open Source** | No | Open-source core (Apache 2.0); hosted deep-research engine (BSL 1.1) |
 | **Knowledge Base Sources** | Google Drive, YouTube, websites | File uploads, Google Drive, OneDrive, Dropbox, local folder sync, and crawled pages |
 | **File Format Support** | PDFs, Docs, Slides, Sheets, CSV, Word, EPUB, images, web URLs, YouTube | 50+ formats: documents, images, videos via LlamaCloud, Unstructured, or Docling (local) |
 | **Search** | Semantic search | Hybrid semantic + full-text with hierarchical indices & reciprocal rank fusion |

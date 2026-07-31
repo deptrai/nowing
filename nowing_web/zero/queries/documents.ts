@@ -5,9 +5,7 @@ import { canReadSpace, constrainToAllowedSpaces, denySpace } from "./authz";
 
 export const documentQueries = {
 	bySpace: defineQuery(z.object({ workspaceId: z.number() }), ({ args: { workspaceId }, ctx }) => {
-		const query = zql.documents
-			.where("workspaceId", workspaceId)
-			.where("archivedAt", "IS", null);
+		const query = zql.documents.where("workspaceId", workspaceId).where("archivedAt", "IS", null);
 		if (!canReadSpace(ctx, workspaceId)) return denySpace(query).orderBy("createdAt", "desc");
 		return constrainToAllowedSpaces(query, ctx).orderBy("createdAt", "desc");
 	}),

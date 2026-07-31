@@ -1,9 +1,1 @@
-{
-  "mcpServers": {
-    "knowns-nowing": {
-      "command": "/opt/homebrew/bin/knowns",
-      "args": ["mcp", "--stdio", "--project", "/Users/luisphan/Documents/nowing"],
-      "transport": "stdio"
-    }
-  }
-}
+{}

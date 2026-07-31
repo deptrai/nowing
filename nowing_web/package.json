@@ -5,7 +5,7 @@
 	"packageManager": "pnpm@10.26.0",
 	"description": "Nowing Frontend",
 	"scripts": {
-		"dev": "next dev --turbopack",
+		"dev": "next dev --webpack",
 		"dev:turbo": "next dev --turbopack",
 		"build": "next build",
 		"start": "next start",
