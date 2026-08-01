@@ -142,7 +142,10 @@ export function MarkdownViewer({
 
 		const range = document.createRange();
 		range.setStart(matchNode, matchOffset);
-		range.setEnd(matchNode, Math.min(matchOffset + target.length, matchNode.textContent?.length ?? 0));
+		range.setEnd(
+			matchNode,
+			Math.min(matchOffset + target.length, matchNode.textContent?.length ?? 0)
+		);
 
 		const selection = window.getSelection();
 		if (selection) {

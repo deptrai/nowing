@@ -168,12 +168,14 @@ export function useFolderSync() {
 
 		electronAPI.signalRendererReady?.();
 
-		void electronAPI.getPendingFileEvents?.().then((pendingEvents: FolderSyncFileChangedEvent[]) => {
-			if (!isMountedRef.current || !pendingEvents?.length) return;
-			for (const event of pendingEvents) {
-				enqueueWithDebounce(event);
-			}
-		});
+		void electronAPI
+			.getPendingFileEvents?.()
+			.then((pendingEvents: FolderSyncFileChangedEvent[]) => {
+				if (!isMountedRef.current || !pendingEvents?.length) return;
+				for (const event of pendingEvents) {
+					enqueueWithDebounce(event);
+				}
+			});
 
 		const cleanup = electronAPI.onFileChanged((event: FileChangedEvent) => {
 			enqueueWithDebounce(event);

@@ -1,4 +1,4 @@
-import { json, number, string, table, type ReadonlyJSONValue } from "@rocicorp/zero";
+import { json, number, type ReadonlyJSONValue, string, table } from "@rocicorp/zero";
 
 export const folderTable = table("folders")
 	.columns({

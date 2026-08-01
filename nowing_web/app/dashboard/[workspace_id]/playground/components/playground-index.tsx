@@ -25,8 +25,8 @@ export function PlaygroundIndex({ workspaceId }: { workspaceId: number }) {
 				<Info />
 				<AlertDescription>
 					<p>
-						Manually run Nowing's platform-native APIs and inspect their output. To use these
-						APIs outside Nowing,{" "}
+						Manually run Nowing's platform-native APIs and inspect their output. To use these APIs
+						outside Nowing,{" "}
 						<Link
 							href={`${base}/api-keys`}
 							className="font-medium text-foreground underline-offset-4 hover:underline"

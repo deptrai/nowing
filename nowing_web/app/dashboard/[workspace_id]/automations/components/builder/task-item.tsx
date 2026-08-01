@@ -147,7 +147,10 @@ export function TaskItem({
 						</span>
 						Task {index + 1}
 					</span>
-					<Select value={task.action} onValueChange={(value) => handleActionChange(value as WriteBackAction)}>
+					<Select
+						value={task.action}
+						onValueChange={(value) => handleActionChange(value as WriteBackAction)}
+					>
 						<SelectTrigger className="h-7 text-xs" aria-label="Task action">
 							<SelectValue />
 						</SelectTrigger>
@@ -211,11 +214,15 @@ export function TaskItem({
 				</Field>
 			) : (
 				<div className="space-y-3">
-					<Field label="Connector name" hint="Optional when only one connector of this type exists.">
+					<Field
+						label="Connector name"
+						hint="Optional when only one connector of this type exists."
+					>
 						<Input
 							type="text"
 							value={params?.connector_name ?? ""}
-							aria-label="Connector name" placeholder="e.g. Acme Notion"
+							aria-label="Connector name"
+							placeholder="e.g. Acme Notion"
 							onChange={(e) =>
 								updateWriteBackParam({
 									connector_name: e.target.value.trim() || null,
@@ -229,15 +236,19 @@ export function TaskItem({
 								<Input
 									type="text"
 									value={params.title}
-									aria-label="Title" placeholder="Page title"
-									onChange={(e) => updateWriteBackParam({ title: e.target.value } as Partial<WriteBackParams>)}
+									aria-label="Title"
+									placeholder="Page title"
+									onChange={(e) =>
+										updateWriteBackParam({ title: e.target.value } as Partial<WriteBackParams>)
+									}
 								/>
 							</Field>
 							<Field label="Content">
 								<Input
 									type="text"
 									value={params.content ?? ""}
-									aria-label="Content" placeholder="Page content"
+									aria-label="Content"
+									placeholder="Page content"
 									onChange={(e) =>
 										updateWriteBackParam({
 											content: e.target.value.trim() || null,
@@ -249,7 +260,8 @@ export function TaskItem({
 								<Input
 									type="text"
 									value={params.parent_page_id ?? ""}
-									aria-label="Parent page id" placeholder="Optional parent page id"
+									aria-label="Parent page id"
+									placeholder="Optional parent page id"
 									onChange={(e) =>
 										updateWriteBackParam({
 											parent_page_id: e.target.value.trim() || null,
@@ -265,15 +277,19 @@ export function TaskItem({
 								<Input
 									type="text"
 									value={params.title}
-									aria-label="Title" placeholder="Issue title"
-									onChange={(e) => updateWriteBackParam({ title: e.target.value } as Partial<WriteBackParams>)}
+									aria-label="Title"
+									placeholder="Issue title"
+									onChange={(e) =>
+										updateWriteBackParam({ title: e.target.value } as Partial<WriteBackParams>)
+									}
 								/>
 							</Field>
 							<Field label="Description">
 								<Input
 									type="text"
 									value={params.description ?? ""}
-									aria-label="Description" placeholder="Issue description"
+									aria-label="Description"
+									placeholder="Issue description"
 									onChange={(e) =>
 										updateWriteBackParam({
 											description: e.target.value.trim() || null,
@@ -285,9 +301,12 @@ export function TaskItem({
 								<Input
 									type="text"
 									value={params.team_id ?? ""}
-									aria-label="Team id" placeholder="Team identifier"
+									aria-label="Team id"
+									placeholder="Team identifier"
 									onChange={(e) =>
-										updateWriteBackParam({ team_id: e.target.value.trim() || null } as Partial<WriteBackParams>)
+										updateWriteBackParam({
+											team_id: e.target.value.trim() || null,
+										} as Partial<WriteBackParams>)
 									}
 								/>
 							</Field>
@@ -295,9 +314,12 @@ export function TaskItem({
 								<Input
 									type="text"
 									value={params.state ?? ""}
-									aria-label="State" placeholder="Issue state"
+									aria-label="State"
+									placeholder="Issue state"
 									onChange={(e) =>
-										updateWriteBackParam({ state: e.target.value.trim() || null } as Partial<WriteBackParams>)
+										updateWriteBackParam({
+											state: e.target.value.trim() || null,
+										} as Partial<WriteBackParams>)
 									}
 								/>
 							</Field>
@@ -309,9 +331,12 @@ export function TaskItem({
 								<Input
 									type="text"
 									value={params.project_key}
-									aria-label="Project key" placeholder="e.g. PROJ"
+									aria-label="Project key"
+									placeholder="e.g. PROJ"
 									onChange={(e) =>
-										updateWriteBackParam({ project_key: e.target.value } as Partial<WriteBackParams>)
+										updateWriteBackParam({
+											project_key: e.target.value,
+										} as Partial<WriteBackParams>)
 									}
 								/>
 							</Field>
@@ -319,7 +344,8 @@ export function TaskItem({
 								<Input
 									type="text"
 									value={params.summary}
-									aria-label="Summary" placeholder="Issue summary"
+									aria-label="Summary"
+									placeholder="Issue summary"
 									onChange={(e) =>
 										updateWriteBackParam({ summary: e.target.value } as Partial<WriteBackParams>)
 									}
@@ -329,7 +355,8 @@ export function TaskItem({
 								<Input
 									type="text"
 									value={params.description ?? ""}
-									aria-label="Description" placeholder="Issue description"
+									aria-label="Description"
+									placeholder="Issue description"
 									onChange={(e) =>
 										updateWriteBackParam({
 											description: e.target.value.trim() || null,
@@ -341,7 +368,8 @@ export function TaskItem({
 								<Input
 									type="text"
 									value={params.issue_type}
-									aria-label="Issue type" placeholder="Task"
+									aria-label="Issue type"
+									placeholder="Task"
 									onChange={(e) =>
 										updateWriteBackParam({ issue_type: e.target.value } as Partial<WriteBackParams>)
 									}
@@ -355,23 +383,30 @@ export function TaskItem({
 								<Input
 									type="text"
 									value={params.channel}
-									aria-label="Channel" placeholder="#daily-digest"
-									onChange={(e) => updateWriteBackParam({ channel: e.target.value } as Partial<WriteBackParams>)}
+									aria-label="Channel"
+									placeholder="#daily-digest"
+									onChange={(e) =>
+										updateWriteBackParam({ channel: e.target.value } as Partial<WriteBackParams>)
+									}
 								/>
 							</Field>
 							<Field label="Message text" required>
 								<Input
 									type="text"
 									value={params.text}
-									aria-label="Message text" placeholder="What to send"
-									onChange={(e) => updateWriteBackParam({ text: e.target.value } as Partial<WriteBackParams>)}
+									aria-label="Message text"
+									placeholder="What to send"
+									onChange={(e) =>
+										updateWriteBackParam({ text: e.target.value } as Partial<WriteBackParams>)
+									}
 								/>
 							</Field>
 							<Field label="Thread ts">
 								<Input
 									type="text"
 									value={params.thread_ts ?? ""}
-									aria-label="Thread ts" placeholder="Optional thread timestamp"
+									aria-label="Thread ts"
+									placeholder="Optional thread timestamp"
 									onChange={(e) =>
 										updateWriteBackParam({
 											thread_ts: e.target.value.trim() || null,
@@ -385,7 +420,8 @@ export function TaskItem({
 						<Input
 							type="text"
 							value={params?.object_id ?? ""}
-							aria-label="Existing object id" placeholder="page id / issue key / message ts"
+							aria-label="Existing object id"
+							placeholder="page id / issue key / message ts"
 							onChange={(e) =>
 								updateWriteBackParam({
 									object_id: e.target.value.trim() || null,

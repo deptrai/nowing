@@ -21,7 +21,7 @@ import { SERVER_BACKEND_URL } from "@/lib/env-config";
 export const metadata: Metadata = {
 	title: "Free AI Chat, No Login Required | Nowing",
 	description:
-		"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and more for free. No sign-up required. Open source NotebookLM alternative with free AI chat and document Q&A.",
+		"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and more for free. No sign-up required. Open source long-term research memory for AI agents, with free AI chat and document Q&A.",
 	keywords: [
 		"chatgpt free",
 		"chat gpt free",
@@ -62,7 +62,8 @@ export const metadata: Metadata = {
 		"best free alternative to chatgpt",
 		"free ai apps",
 		"ai with no restrictions",
-		"notebooklm alternative",
+		"open source research memory",
+		"long-term research memory",
 	],
 	alternates: {
 		canonical: "https://www.nowing.com/free",
@@ -70,7 +71,7 @@ export const metadata: Metadata = {
 	openGraph: {
 		title: "Free AI Chat, No Login Required | Nowing",
 		description:
-			"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and 100+ AI models. Open source NotebookLM alternative.",
+			"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and 100+ AI models. Open source long-term research memory for AI agents.",
 		url: "https://www.nowing.com/free",
 		siteName: "Nowing",
 		type: "website",
@@ -138,7 +139,7 @@ const FAQ_ITEMS = [
 	{
 		question: "How is Nowing different from ChatGPT?",
 		answer:
-			"Nowing is an open source NotebookLM alternative that gives you access to multiple AI models in one place without login. Unlike ChatGPT alone, Nowing includes document Q&A with citations, integrations with Slack, Google Drive, Notion, and Confluence, plus team collaboration features.",
+			"Nowing is open source long-term research memory for AI agents. It gives you access to multiple AI models in one place without login. Unlike ChatGPT alone, Nowing includes document Q&A with citations, integrations with Slack, Google Drive, Notion, and Confluence, plus team collaboration features.",
 	},
 	{
 		question: "Is Nowing a free ChatGPT alternative?",
@@ -164,7 +165,7 @@ export default async function FreeHubPage() {
 					"@type": "CollectionPage",
 					name: "ChatGPT Free Online Without Login - Nowing",
 					description:
-						"Use ChatGPT, Claude AI, Gemini and more AI models free online without login or sign-up. Open source NotebookLM alternative with no login required.",
+						"Use ChatGPT, Claude AI, Gemini and more AI models free online without login or sign-up. Open source long-term research memory for AI agents with no login required.",
 					url: "https://www.nowing.com/free",
 					isPartOf: { "@type": "WebSite", name: "Nowing", url: "https://www.nowing.com" },
 					mainEntity: {
@@ -307,11 +308,11 @@ export default async function FreeHubPage() {
 							</p>
 						</div>
 						<div className="rounded-lg border bg-card p-5">
-							<h3 className="font-semibold mb-1.5">Open Source NotebookLM Alternative</h3>
+							<h3 className="font-semibold mb-1.5">Open Source Research Memory for AI Agents</h3>
 							<p className="text-sm text-muted-foreground leading-relaxed">
-								Nowing is a free, open source NotebookLM alternative with document Q&A and
-								citations, integrations with Slack, Google Drive, Notion, and Confluence, plus team
-								collaboration and self-hosting support.
+								Nowing is free, open source long-term research memory for AI agents, with document
+								Q&A and citations, integrations with Slack, Google Drive, Notion, and Confluence,
+								plus team collaboration and self-hosting support.
 							</p>
 						</div>
 					</div>

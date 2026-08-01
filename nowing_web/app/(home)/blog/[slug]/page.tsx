@@ -140,9 +140,7 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
 								className="h-8 w-8 rounded-full object-cover"
 							/>
 						)}
-						<span className="font-medium text-foreground">
-							{page.data.author ?? "Nowing Team"}
-						</span>
+						<span className="font-medium text-foreground">{page.data.author ?? "Nowing Team"}</span>
 						<span>·</span>
 						<time dateTime={page.data.date}>{formatDate(date)}</time>
 					</div>

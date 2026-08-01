@@ -18,6 +18,21 @@ pnpm tsc --noEmit
 pnpm exec biome check --max-diagnostics 500 app/admin/global-model-connections/page.tsx app/admin/admin-shell.tsx app/admin/layout.tsx atoms/model-connections/admin-global-model-connections.atoms.ts contracts/types/admin-global-model-connections.types.ts lib/apis/admin-global-models-api.service.ts
 ```
 
+## Story 8.10 verification commands
+
+Docs / README / vision sync (from repo root):
+
+```bash
+python3 scripts/check-docs-drift.py
+```
+
+Frontend typecheck (from `nowing_web/`) for changed TSX files:
+
+```bash
+pnpm tsc --noEmit
+pnpm exec biome check app/layout.tsx components/seo/json-ld.tsx components/homepage/hero-section.tsx components/homepage/compare-table.tsx 'app/(home)/free/page.tsx' messages/en.json messages/ko.json --diagnostic-level=error
+```
+
 Notes:
 - `pnpm lint` does not work because Next.js 16 CLI no longer exposes a `lint` subcommand and `eslint-plugin-react-hooks` is not installed.
 - `pnpm test` is not configured in `package.json`; use Playwright (`test:e2e*`) or backend pytest for verification.

@@ -288,19 +288,39 @@ jobs:
           # Exit with the same code as pre-commit
           exit ${exit_code:-0}
 
+  docs-drift:
+    name: Docs / README Drift Check
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Run docs-vs-code drift check
+        run: python3 scripts/check-docs-drift.py
+
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [file-quality, security-scan, python-backend, typescript-frontend]
+    needs: [file-quality, security-scan, python-backend, typescript-frontend, docs-drift]
     if: always()
-    
+
     steps:
       - name: Check all jobs status
         run: |
-          if [[ "${{ needs.file-quality.result }}" == "failure" || 
-                "${{ needs.security-scan.result }}" == "failure" || 
+          if [[ "${{ needs.file-quality.result }}" == "failure" ||
+                "${{ needs.security-scan.result }}" == "failure" ||
                 "${{ needs.python-backend.result }}" == "failure" ||
-                "${{ needs.typescript-frontend.result }}" == "failure" ]]; then
+                "${{ needs.typescript-frontend.result }}" == "failure" ||
+                "${{ needs.docs-drift.result }}" == "failure" ]]; then
             echo "❌ Code quality checks failed"
             exit 1
           else

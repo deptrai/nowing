@@ -15,7 +15,11 @@ test.describe("Usage & Credit Dashboard", () => {
 
 	test.beforeEach(async ({ request }) => {
 		ownerToken = await acquireTestToken(request);
-		const workspace = await createWorkspace(request, ownerToken, `ATDD Usage Dashboard ${Date.now()}`);
+		const workspace = await createWorkspace(
+			request,
+			ownerToken,
+			`ATDD Usage Dashboard ${Date.now()}`
+		);
 		workspaceId = workspace.id;
 	});
 

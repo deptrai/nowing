@@ -90,8 +90,7 @@ class BaseApiService {
 			const defaultOptions: RequestOptions = {
 				headers: {
 					...(desktopAccessToken ? { Authorization: `Bearer ${desktopAccessToken}` } : {}),
-					"X-Nowing-Client-Platform":
-						typeof window === "undefined" ? "web" : getClientPlatform(),
+					"X-Nowing-Client-Platform": typeof window === "undefined" ? "web" : getClientPlatform(),
 				},
 				method: "GET",
 				responseType: ResponseType.JSON,

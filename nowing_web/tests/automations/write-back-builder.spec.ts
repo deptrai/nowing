@@ -56,29 +56,31 @@ test.describe("Write-back automation builder (Story 6.4)", () => {
 		await expect(page.getByText(/summary is required/i)).toBeVisible();
 	});
 
-	test(
-		"[P0] automation with write-back step persists action type",
-		async ({ page, workspace, request, apiToken }) => {
-			await page.goto(`/dashboard/${workspace.id}/automations/new`);
-			await page.getByLabel(/name/i).fill("Notion write-back test");
+	test("[P0] automation with write-back step persists action type", async ({
+		page,
+		workspace,
+		request,
+		apiToken,
+	}) => {
+		await page.goto(`/dashboard/${workspace.id}/automations/new`);
+		await page.getByLabel(/name/i).fill("Notion write-back test");
 
-			await page.getByRole("button", { name: "Add task" }).click();
-			const taskSection = page.getByText("Task 1").locator("..");
-			await taskSection.getByRole("combobox", { name: /action/i }).click();
-			await page.getByRole("option", { name: /write back to notion/i }).click();
-			await taskSection.getByLabel(/title/i).fill("Digest");
-			await taskSection.getByLabel(/content/i).fill("Body");
+		await page.getByRole("button", { name: "Add task" }).click();
+		const taskSection = page.getByText("Task 1").locator("..");
+		await taskSection.getByRole("combobox", { name: /action/i }).click();
+		await page.getByRole("option", { name: /write back to notion/i }).click();
+		await taskSection.getByLabel(/title/i).fill("Digest");
+		await taskSection.getByLabel(/content/i).fill("Body");
 
-			await page.getByRole("button", { name: "Create automation" }).click();
-			await page.waitForURL(`/dashboard/${workspace.id}/automations/*`);
+		await page.getByRole("button", { name: "Create automation" }).click();
+		await page.waitForURL(`/dashboard/${workspace.id}/automations/*`);
 
-			const automationId = page.url().split("/").pop();
-			const response = await request.get(`/api/v1/automations/${automationId}`, {
-				headers: { Authorization: `Bearer ${apiToken}` },
-			});
-			expect(response.status()).toBe(200);
-			const body = await response.json();
-			expect(body.definition.plan[0].action).toBe("write_back_notion");
-		}
-	);
+		const automationId = page.url().split("/").pop();
+		const response = await request.get(`/api/v1/automations/${automationId}`, {
+			headers: { Authorization: `Bearer ${apiToken}` },
+		});
+		expect(response.status()).toBe(200);
+		const body = await response.json();
+		expect(body.definition.plan[0].action).toBe("write_back_notion");
+	});
 });

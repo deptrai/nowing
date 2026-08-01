@@ -114,7 +114,7 @@ export const builderTaskSchema = z
 		{
 			message: "Fill in the write-back fields",
 			path: ["writeBackParams"],
-		},
+		}
 	);
 export type BuilderTask = z.infer<typeof builderTaskSchema>;
 
@@ -280,7 +280,10 @@ function mentionParams(mentions: MentionedDocumentInfo[]): Record<string, unknow
 	return out;
 }
 
-function buildWriteBackParams(action: WriteBackAction, params: WriteBackParams | null): Record<string, unknown> {
+function buildWriteBackParams(
+	action: WriteBackAction,
+	params: WriteBackParams | null
+): Record<string, unknown> {
 	if (!params) return {};
 	// Provider is only used for form discrimination; the backend action already
 	// encodes the target service.

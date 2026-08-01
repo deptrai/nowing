@@ -201,7 +201,8 @@ export function PlateEditor({
 
 				if (!matchNode) {
 					// Proportional fallback: scroll to the text node nearest the expected position.
-					if (highlightPosition === undefined || totalChunks === undefined || totalChunks <= 0) return;
+					if (highlightPosition === undefined || totalChunks === undefined || totalChunks <= 0)
+						return;
 					const fullText = container.textContent ?? "";
 					if (!fullText) {
 						if (attempts < MAX_ATTEMPTS) {
@@ -231,7 +232,10 @@ export function PlateEditor({
 				if (!matchNode) return;
 				const range = document.createRange();
 				range.setStart(matchNode, matchOffset);
-				range.setEnd(matchNode, Math.min(matchOffset + target.length, matchNode.textContent?.length ?? 0));
+				range.setEnd(
+					matchNode,
+					Math.min(matchOffset + target.length, matchNode.textContent?.length ?? 0)
+				);
 				const selection = window.getSelection();
 				if (selection) {
 					selection.removeAllRanges();
@@ -349,30 +353,30 @@ export function PlateEditor({
 					// (initialized to true via usePlateEditor, toggled via ModeToolbarButton).
 					{...(readOnly ? { readOnly: true } : {})}
 					onChange={({ value }) => {
-					// View-only citation mode: skip serialization. The custom
-					// `citation` inline-void element has no markdown serialize
-					// rule, so emitting changes here would overwrite
-					// `lastMarkdownRef.current` (and downstream copy-to-clipboard
-					// state in EditorPanelContent) with a tree that loses every
-					// citation token. `enableCitations` is only ever set in
-					// read-only paths, so user input cannot reach this branch
-					// in practice — the guard exists for the initial Plate
-					// normalize emit.
-					if (enableCitations) return;
-					if (onHtmlChange && html) {
-						const serialized = slateToHtml(value as Descendant[]);
-						onHtmlChange(serialized);
-					} else if (onMarkdownChange) {
-						const md = editor.getApi(MarkdownPlugin).markdown.serialize({ value });
-						lastMarkdownRef.current = md;
-						onMarkdownChange(md);
-					}
-				}}
-			>
-				<EditorContainer variant={variant} className={className}>
-					<PlateEditorContent editorVariant={editorVariant} placeholder={placeholder} />
-				</EditorContainer>
-			</Plate>
+						// View-only citation mode: skip serialization. The custom
+						// `citation` inline-void element has no markdown serialize
+						// rule, so emitting changes here would overwrite
+						// `lastMarkdownRef.current` (and downstream copy-to-clipboard
+						// state in EditorPanelContent) with a tree that loses every
+						// citation token. `enableCitations` is only ever set in
+						// read-only paths, so user input cannot reach this branch
+						// in practice — the guard exists for the initial Plate
+						// normalize emit.
+						if (enableCitations) return;
+						if (onHtmlChange && html) {
+							const serialized = slateToHtml(value as Descendant[]);
+							onHtmlChange(serialized);
+						} else if (onMarkdownChange) {
+							const md = editor.getApi(MarkdownPlugin).markdown.serialize({ value });
+							lastMarkdownRef.current = md;
+							onMarkdownChange(md);
+						}
+					}}
+				>
+					<EditorContainer variant={variant} className={className}>
+						<PlateEditorContent editorVariant={editorVariant} placeholder={placeholder} />
+					</EditorContainer>
+				</Plate>
 			</div>
 		</EditorSaveContext.Provider>
 	);

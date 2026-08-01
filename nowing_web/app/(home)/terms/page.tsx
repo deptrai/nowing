@@ -19,9 +19,9 @@ export default function TermsOfService() {
 				<section className="mb-8">
 					<h2 className="text-2xl font-semibold mb-4">1. Introduction</h2>
 					<p>
-						Welcome to Nowing. These Terms of Service govern your access to and use of the
-						Nowing website and services. By accessing or using our services, you agree to be
-						bound by these Terms.
+						Welcome to Nowing. These Terms of Service govern your access to and use of the Nowing
+						website and services. By accessing or using our services, you agree to be bound by these
+						Terms.
 					</p>
 					<p className="mt-4">
 						Please read these Terms carefully before using our Services. By using our Services, you
@@ -85,10 +85,10 @@ export default function TermsOfService() {
 				<section className="mb-8">
 					<h2 className="text-2xl font-semibold mb-4">5. License and Intellectual Property</h2>
 					<p>
-						Nowing gives you a personal, worldwide, royalty-free, non-assignable and
-						non-exclusive license to use the software provided to you as part of the Services. This
-						license is for the sole purpose of enabling you to use and enjoy the benefit of the
-						Services as provided by Nowing, in the manner permitted by these terms.
+						Nowing gives you a personal, worldwide, royalty-free, non-assignable and non-exclusive
+						license to use the software provided to you as part of the Services. This license is for
+						the sole purpose of enabling you to use and enjoy the benefit of the Services as
+						provided by Nowing, in the manner permitted by these terms.
 					</p>
 					<p className="mt-4">
 						All content included in or made available through our Services—such as text, graphics,
@@ -109,8 +109,8 @@ export default function TermsOfService() {
 					<p>
 						We are constantly changing and improving our Services. We may add or remove
 						functionalities or features, and we may suspend or stop a Service altogether. You can
-						stop using our Services at any time. Nowing may also stop providing Services to you,
-						or add or create new limits on our Services at any time.
+						stop using our Services at any time. Nowing may also stop providing Services to you, or
+						add or create new limits on our Services at any time.
 					</p>
 					<p className="mt-4">
 						We believe that you own your data and preserving your access to such data is important.
@@ -133,8 +133,8 @@ export default function TermsOfService() {
 						about our Services.
 					</p>
 					<p className="mt-4 uppercase font-bold">
-						OTHER THAN AS EXPRESSLY SET OUT IN THESE TERMS OR ADDITIONAL TERMS, NEITHER NOWING
-						NOR ITS SUPPLIERS OR DISTRIBUTORS MAKE ANY SPECIFIC PROMISES ABOUT THE SERVICES. FOR
+						OTHER THAN AS EXPRESSLY SET OUT IN THESE TERMS OR ADDITIONAL TERMS, NEITHER NOWING NOR
+						ITS SUPPLIERS OR DISTRIBUTORS MAKE ANY SPECIFIC PROMISES ABOUT THE SERVICES. FOR
 						EXAMPLE, WE DON'T MAKE ANY COMMITMENTS ABOUT THE CONTENT WITHIN THE SERVICES, THE
 						SPECIFIC FUNCTIONS OF THE SERVICES, OR THEIR RELIABILITY, AVAILABILITY, OR ABILITY TO
 						MEET YOUR NEEDS. WE PROVIDE THE SERVICES "AS IS".
@@ -149,9 +149,9 @@ export default function TermsOfService() {
 				<section className="mb-8">
 					<h2 className="text-2xl font-semibold mb-4">8. Liability for our Services</h2>
 					<p className="uppercase font-bold">
-						WHEN PERMITTED BY LAW, NOWING, AND NOWING'S SUPPLIERS AND DISTRIBUTORS, WILL NOT
-						BE RESPONSIBLE FOR LOST PROFITS, REVENUES, OR DATA, FINANCIAL LOSSES OR INDIRECT,
-						SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES.
+						WHEN PERMITTED BY LAW, NOWING, AND NOWING'S SUPPLIERS AND DISTRIBUTORS, WILL NOT BE
+						RESPONSIBLE FOR LOST PROFITS, REVENUES, OR DATA, FINANCIAL LOSSES OR INDIRECT, SPECIAL,
+						CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES.
 					</p>
 					<p className="mt-4 uppercase font-bold">
 						TO THE EXTENT PERMITTED BY LAW, THE TOTAL LIABILITY OF NOWING, AND ITS SUPPLIERS AND
@@ -182,9 +182,9 @@ export default function TermsOfService() {
 					<p>
 						Any dispute arising out of or relating to these Terms, including the validity,
 						interpretation, breach, or termination thereof, shall be resolved by arbitration in
-						accordance with the rules of the arbitration authority in the jurisdiction where
-						Nowing operates. The arbitration shall be conducted by one arbitrator, in the English
-						language, and the decision of the arbitrator shall be final and binding on the parties.
+						accordance with the rules of the arbitration authority in the jurisdiction where Nowing
+						operates. The arbitration shall be conducted by one arbitrator, in the English language,
+						and the decision of the arbitrator shall be final and binding on the parties.
 					</p>
 					<p className="mt-4">
 						You agree that any dispute resolution proceedings will be conducted only on an

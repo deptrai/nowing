@@ -69,7 +69,10 @@ function mapFormErrors(error: z.ZodError): Record<string, string> {
 		const path = issue.path;
 		let key: string;
 		if (path[0] === "tasks" && typeof path[1] === "number") {
-			const field = path[2] === "writeBackParams" ? "writeBackParams" : (path[2] as string | undefined) ?? "query";
+			const field =
+				path[2] === "writeBackParams"
+					? "writeBackParams"
+					: ((path[2] as string | undefined) ?? "query");
 			key = `tasks.${path[1]}.${field}`;
 		} else if (path[0] === "schedule") key = "schedule";
 		else key = String(path[0] ?? "_root");

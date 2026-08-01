@@ -22,9 +22,9 @@ export function ConnectorGrid() {
 					</Badge>
 				</div>
 				<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-					Each connector is a platform-native REST API. Call it from your own app with your
-					Nowing API key, or hand it to your agents through the Nowing MCP server. Live data
-					in, structured intelligence out.
+					Each connector is a platform-native REST API. Call it from your own app with your Nowing
+					API key, or hand it to your agents through the Nowing MCP server. Live data in, structured
+					intelligence out.
 				</p>
 			</Reveal>
 			<Reveal>

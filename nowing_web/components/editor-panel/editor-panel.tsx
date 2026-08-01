@@ -34,8 +34,8 @@ import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useElectronAPI } from "@/hooks/use-platform";
-import { authenticatedFetch } from "@/lib/auth-fetch";
 import { documentsApiService } from "@/lib/apis/documents-api.service";
+import { authenticatedFetch } from "@/lib/auth-fetch";
 import { inferMonacoLanguageFromPath } from "@/lib/editor-language";
 import { buildBackendUrl } from "@/lib/env-config";
 
@@ -151,7 +151,12 @@ interface ChunkHighlightInfo {
 	totalChunks: number;
 }
 
-function findChunkInSource(source: string, text: string, position: number, totalChunks: number): { offset: number; length: number } {
+function findChunkInSource(
+	source: string,
+	text: string,
+	position: number,
+	totalChunks: number
+): { offset: number; length: number } {
 	if (!source || !text) return { offset: -1, length: 0 };
 	const indices: number[] = [];
 	let idx = source.indexOf(text);
@@ -205,8 +210,7 @@ export function EditorPanelContent({
 
 	const { data: chunkData } = useQuery({
 		queryKey: ["editor-chunk", chunkId],
-		queryFn: () =>
-			documentsApiService.getDocumentByChunk({ chunk_id: chunkId!, chunk_window: 0 }),
+		queryFn: () => documentsApiService.getDocumentByChunk({ chunk_id: chunkId!, chunk_window: 0 }),
 		enabled: kind === "document" && !!chunkId,
 		staleTime: 5 * 60 * 1000,
 	});

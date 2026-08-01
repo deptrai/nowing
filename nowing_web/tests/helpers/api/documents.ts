@@ -130,7 +130,13 @@ export async function getDocumentChunks(
 	documentId: number,
 	page = 0,
 	pageSize = 100
-): Promise<{ items: ChunkRow[]; total: number; page: number; page_size: number; has_more: boolean }> {
+): Promise<{
+	items: ChunkRow[];
+	total: number;
+	page: number;
+	page_size: number;
+	has_more: boolean;
+}> {
 	const response = await request.get(
 		`${BACKEND_URL}/api/v1/documents/${documentId}/chunks?page=${page}&page_size=${pageSize}`,
 		{ headers: authHeaders(token) }
@@ -138,7 +144,13 @@ export async function getDocumentChunks(
 	if (!response.ok()) {
 		throw new Error(`getDocumentChunks failed (${response.status()}): ${await response.text()}`);
 	}
-	return (await response.json()) as { items: ChunkRow[]; total: number; page: number; page_size: number; has_more: boolean };
+	return (await response.json()) as {
+		items: ChunkRow[];
+		total: number;
+		page: number;
+		page_size: number;
+		has_more: boolean;
+	};
 }
 
 export async function updateDocument(

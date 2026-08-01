@@ -1,7 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { acquireTestToken } from "../helpers/api/auth";
-import { getDocumentChunks, uploadMarkdown, waitForDocumentReady, updateDocument } from "../helpers/api/documents";
 import { appendAssistantMessage, createThread } from "../helpers/api/chat";
+import {
+	getDocumentChunks,
+	updateDocument,
+	uploadMarkdown,
+	waitForDocumentReady,
+} from "../helpers/api/documents";
 import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
 
 /**
@@ -71,9 +76,9 @@ test.describe("Citation scroll-to-highlight in editor", () => {
 		await appendAssistantMessage(request, ownerToken, thread.id, `Answer: [citation:${chunkId}]`);
 
 		await page.goto(`/dashboard/${workspaceId}/new-chat/${thread.id}`);
-		await expect(
-			page.getByRole("button", { name: `View cited chunk ${chunkId}` })
-		).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByRole("button", { name: `View cited chunk ${chunkId}` })).toBeVisible({
+			timeout: 15_000,
+		});
 
 		await page.getByRole("button", { name: `View cited chunk ${chunkId}` }).click();
 		await expect(page.getByText("Cited chunk")).toBeVisible({ timeout: 15_000 });
@@ -106,9 +111,10 @@ test.describe("Citation scroll-to-highlight in editor", () => {
 
 	test("Plate editor scrolls and highlights cited chunk", async ({ page, request }) => {
 		const marker = `plate-test-${Date.now()}`;
-		const content = `${marker} This sentence is the target chunk for the citation scroll highlight test. `.repeat(
-			25
-		);
+		const content =
+			`${marker} This sentence is the target chunk for the citation scroll highlight test. `.repeat(
+				25
+			);
 		const { documentId, filename } = await seedDocument(request, content);
 		const chunk = await pickChunkWithMarker(request, documentId, marker);
 
@@ -175,7 +181,9 @@ test.describe("Citation scroll-to-highlight in editor", () => {
 		await page.keyboard.press("Escape");
 		await page.keyboard.press("Escape");
 		await expect(page.getByText(filename)).not.toBeVisible();
-		await expect(page.locator('[class*="bg-yellow-200"], [class*="bg-yellow-800"]')).not.toBeVisible();
+		await expect(
+			page.locator('[class*="bg-yellow-200"], [class*="bg-yellow-800"]')
+		).not.toBeVisible();
 		await expect.poll(async () => (await selectedText(page)) === "").toBe(true);
 	});
 });

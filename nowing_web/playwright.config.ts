@@ -8,8 +8,10 @@ const useProxyOrigin = process.env.PLAYWRIGHT_USE_PROXY_ORIGIN === "true";
 const backendURL = useProxyOrigin ? baseURL : `http://localhost:${BACKEND_PORT}`;
 const zeroCacheURL = useProxyOrigin ? `${baseURL}/zero` : `http://localhost:${ZERO_CACHE_PORT}`;
 
-const workersEnv = process.env.PLAYWRIGHT_WORKERS ? parseInt(process.env.PLAYWRIGHT_WORKERS, 10) : null;
-const workersValue = workersEnv && workersEnv > 0 ? workersEnv : (process.env.CI ? 2 : 1);
+const workersEnv = process.env.PLAYWRIGHT_WORKERS
+	? parseInt(process.env.PLAYWRIGHT_WORKERS, 10)
+	: null;
+const workersValue = workersEnv && workersEnv > 0 ? workersEnv : process.env.CI ? 2 : 1;
 
 process.env.PLAYWRIGHT_TEST_EMAIL ??= "e2e-test@nowing.net";
 process.env.PLAYWRIGHT_TEST_PASSWORD ??= "E2eTestPassword123!";
@@ -39,8 +41,17 @@ export default defineConfig({
 	retries: process.env.CI ? 1 : 0,
 	workers: workersValue,
 	reporter: process.env.CI
-		? [["html", { open: "never" }], ["junit", { outputFile: "playwright-report/junit.xml" }], ["github"], ["list"]]
-		: [["html", { open: "on-failure" }], ["junit", { outputFile: "playwright-report/junit.xml" }], ["list"]],
+		? [
+				["html", { open: "never" }],
+				["junit", { outputFile: "playwright-report/junit.xml" }],
+				["github"],
+				["list"],
+			]
+		: [
+				["html", { open: "on-failure" }],
+				["junit", { outputFile: "playwright-report/junit.xml" }],
+				["list"],
+			],
 	use: {
 		baseURL,
 		actionTimeout: 15_000,

@@ -76,7 +76,7 @@ function Show-Banner {
                                                                            
 
 "@ -ForegroundColor White
-    Write-Host "           NotebookLM for Open Web Research" -ForegroundColor Yellow
+    Write-Host "     Long-Term Research Memory for AI Agents" -ForegroundColor Yellow
     Write-Host ("=" * 62) -ForegroundColor Cyan
     Write-Info "This installer will create $InstallDir\ and start Nowing with Docker Compose."
 }

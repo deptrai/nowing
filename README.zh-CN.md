@@ -1,4 +1,4 @@
-﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing，面向 AI 智能体的开源 NotebookLM 替代品" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
+﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing — 由托管深度研究引擎驱动的开源 AI 研究工作区" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
 
 
 
@@ -20,16 +20,18 @@
 <a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FNowing | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-# Nowing：面向开放网络研究的开源 NotebookLM 替代品
+# Nowing：面向 AI 智能体的开源研究记忆
 
-Nowing 是**面向 AI 智能体的开源 NotebookLM 替代品**，一个配备实时数据连接器的开放网络研究平台。你的智能体可以通过一个 **REST API** 或 **MCP 服务器**，利用来自 **Reddit、YouTube、Instagram、TikTok、Amazon、Google Maps、Google Search 以及开放网络上任意页面**的结构化数据研究实时网络。定时和事件触发的智能体会把发现的内容转化为简报和预警，内置的知识库则让每一条发现都可搜索、可引用。
+> **Nowing 是面向 AI 智能体的开源研究记忆——它记得自己曾经去查找并发现了什么，而不只是你告诉它的内容。**
+
+Nowing 是一个面向 AI 智能体和团队、具备长期研究记忆的自托管研究工作区，由开源核心和托管深度研究引擎驱动。你的智能体可以通过一个 **REST API** 或 **MCP 服务器**，利用来自 **Reddit、YouTube、Instagram、TikTok、Amazon、Google Maps、Google Search 以及开放网络上任意页面**的结构化数据研究实时网络。定时和事件触发的智能体会把发现的内容转化为简报和预警，内置的知识库则让每一条发现都可搜索、可引用。
 
 > [!NOTE]
-> **📢 致我们的 NotebookLM 替代品用户**
+> **📢 致我们的长期研究记忆用户**
 >
-> 在过去几个月里，我们把 Nowing 打造成了针对个人知识的最佳通用研究智能体，这段旅程为我们赢得了一个令我们由衷自豪的社区。如今，Claude、OpenCode、Hermes、OpenClaw 等智能体工具已经证明智能体就是未来，在静态索引上进行推理正在成为每个有能力的智能体开箱即用的功能。而智能体仍然缺少的是**来自答案真正所在之处的实时数据，以及围绕它的工作流**。这正是我们全力投入的方向：为智能体提供研究开放网络的基础原语。
+> 在过去几个月里，我们把 Nowing 打造成了一个将研究转化为持久、可检索记忆的工作区，这段经历为我们赢得了一个令我们由衷自豪的社区。如今，Claude、OpenCode、Hermes、OpenClaw 等智能体工具已经证明智能体就是未来，在静态索引上进行推理正在成为每个有能力的智能体开箱即用的功能。而智能体仍然缺少的是**来自答案真正所在之处的实时数据，以及围绕它的工作流**。这正是我们全力投入的方向：为智能体提供研究开放网络的基础原语。
 >
-> **你所依赖的一切功能都不会消失。**你的知识库、带引用的对话、报告、播客、演示文稿、自动化以及协作聊天都会继续可用，自托管也依然免费且开源。完整公告请阅读[我们的更新日志](https://www.nowing.com/changelog)。
+> **你所依赖的一切功能都不会消失。**你的知识库、带引用的对话、报告、播客、演示文稿、自动化以及协作聊天都会继续可用，自托管开源核心依然免费。托管深度研究引擎使用可选的云 API 密钥。完整公告请阅读[我们的更新日志](https://www.nowing.com/changelog)。
 
 ## 目录
 
@@ -131,13 +133,12 @@ irm https://raw.githubusercontent.com/nowing/Nowing/main/docker/scripts/install.
 
 ## 开箱即用的其他能力
 
-让 Nowing 成为领先的开源 NotebookLM 替代品的那套研究工作区依然都在，而且你的智能体收集到的一切都会汇入其中。
+让 Nowing 成为智能体研究独特归属的长期研究记忆工作区依然还在，你的智能体收集到的一切都会汇入其中。
 
 **知识库**
 
 - 上传 PDF、Office 文档、图片和音频，或同步 **Google Drive、OneDrive 和 Dropbox**。支持 50 多种文件格式。
 - 混合语义与全文搜索，提供 Perplexity 风格的带引用回答。
-- AI 文件整理功能按来源、日期和主题自动归类文档。
 
 <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="与你的 PDF 和文档对话" /></p>
 
@@ -156,7 +157,7 @@ irm https://raw.githubusercontent.com/nowing/Nowing/main/docker/scripts/install.
 **团队协作**
 
 - 支持评论和提及的实时协作 AI 聊天。
-- 基于角色的访问控制（RBAC），提供所有者、管理员、编辑者和查看者角色。
+- 基于角色的访问控制（RBAC），提供所有者、编辑者和查看者角色。
 
 <p align="center"><img src="nowing_web/public/homepage/hero_realtime/RealTimeChatGif.gif" alt="协作 AI 聊天" /></p>
 
@@ -201,7 +202,7 @@ https://github.com/user-attachments/assets/a0a16566-6967-4374-ac51-9b3e07fbecd7
 
 ## Nowing 与同类工具的对比
 
-Nowing 是唯一一款把面向人的 NotebookLM 式研究工作区与面向智能体的实时数据原语结合在一起的开源产品。下面是它与每一类工具的对比。
+Nowing 是唯一一款具备开源核心、将长期研究记忆与面向智能体的实时数据原语结合的产品。下面是它与每一类工具的对比。
 
 **对比浏览器智能体（Browserbase、Browser Use）。**浏览器智能体让 LLM 在循环中驱动一个真实浏览器——当任务需要点击、登录或填写表单时，这是正确的工具。但大多数研究都是只读的检索，而对于检索来说，“LLM 驱动浏览器”的循环每个页面都要花费数分钟和数千 token。一次 Nowing 连接器调用只是一个 HTTP 请求：几秒完成、结果确定，而且不用花一个 token 去决定该点哪里。
 
@@ -211,34 +212,25 @@ Nowing 是唯一一款把面向人的 NotebookLM 式研究工作区与面向智�
 
 **对比爬虫市场（Apify）。**市场提供成千上万个社区 actor，每个都有自己的 schema、质量和定价。Nowing 是一个强类型 API 加一个 MCP 服务器，背后还有智能体运行框架和研究工作区，而且它是开源的。
 
-### Nowing 对比 Google NotebookLM
+### Nowing 与消费级研究工具的对比
 
-还在把我们当作 NotebookLM 替代品来比较？这里是坦诚的对比。
+大多数记忆层只记住你告诉它们的内容。**Nowing 还记得它曾经去查找并发现了什么。**
 
-| 功能 | Google NotebookLM | Nowing |
-|---------|-------------------|-----------|
-| **面向智能体的实时网络数据** | 无 | 通过 REST API 和 MCP 提供 Reddit、YouTube、Instagram、TikTok、Amazon、Google Maps、Google Search 和网页爬取连接器 |
-| **MCP 服务器** | 无 | 每个连接器都作为原生智能体工具暴露，还可自带 MCP 服务器并使用一键 OAuth 应用 |
-| **每个笔记本的来源数** | 50 个（免费版）至 600 个（Ultra 版，249.99 美元/月） | 无限制 |
-| **笔记本数量** | 100 个（免费版）至 500 个（付费档位） | 无限制 |
-| **来源大小限制** | 每个来源 50 万字 / 200MB | 无限制 |
-| **定价** | 免费档；Pro 19.99 美元/月，Ultra 249.99 美元/月 | 自托管免费且开源；云端按量付费，附赠 5 美元免费额度 |
-| **LLM 支持** | 仅 Google Gemini | 通过 OpenAI 规范和 LiteLLM 支持 100 多种 LLM |
-| **嵌入模型** | 仅 Google | 6,000 多种嵌入模型，所有主流重排序器 |
-| **本地 / 私有 LLM** | 不支持 | 完整支持（vLLM、Ollama），你的数据始终属于你 |
-| **可自托管** | 否 | 是，Docker 一行命令或完整 Docker Compose |
-| **开源** | 否 | 是 |
-| **知识库来源** | Google Drive、YouTube、网站 | 文件上传、Google Drive、OneDrive、Dropbox、本地文件夹同步以及爬取的网页 |
-| **文件格式支持** | PDF、Docs、Slides、Sheets、CSV、Word、EPUB、图片、网页 URL、YouTube | 50 多种格式：文档、图片、视频，通过 LlamaCloud、Unstructured 或 Docling（本地）解析 |
-| **搜索** | 语义搜索 | 混合语义 + 全文搜索，带分层索引和倒数排名融合 |
-| **带引用的回答** | 有 | 有，Perplexity 风格的引用回答 |
-| **智能体架构** | 无 | 有，由 [LangChain Deep Agents](https://docs.langchain.com/oss/python/deepagents/overview) 驱动，具备规划、子智能体和文件系统访问能力 |
-| **AI 自动化与智能体** | 无 | 定时工作流、事件触发以及通过聊天构建的无代码自动化，可写回 Notion、Slack、Linear 和 Jira |
-| **实时多人协作** | 共享笔记本，仅有查看者/编辑者角色（无实时聊天） | RBAC 提供所有者 / 管理员 / 编辑者 / 查看者角色，支持实时聊天和评论串 |
-| **视频生成** | 通过 Veo 3 生成电影级视频概览（仅 Ultra 版） | 已提供（此项 NotebookLM 更强，我们正在积极改进） |
-| **演示文稿生成** | 幻灯片更美观但不可编辑 | 可编辑的幻灯片式演示文稿 |
-| **播客生成** | 音频概览，支持自定义主持人和语言 | 已提供，支持多种 TTS 服务商（此项 NotebookLM 更强，我们正在积极改进） |
-| **桌面应用** | 无 | 原生应用，包含 General Assist、Quick Assist、Screenshot Assist 和本地文件夹同步 |
+Nowing 不是一款更好的笔记应用；它是一个开放核心研究工作区，把实时网络研究转化为面向智能体和团队的可持久、可引用的记忆。
+
+| | 自托管（免费） | 云端（按量付费） |
+|---|---|---|
+| **记忆层 + 4 个 MCP 工具** | ✅ | ✅ |
+| **知识库 + 混合搜索 + 引用** | ✅ | ✅ |
+| **8 个平台 / 14 个抓取动作**（Reddit/YouTube/TikTok/Instagram/Google Search+Maps/Amazon/网页爬取） | ✅（BSL 1.1 crawler engine） | ✅ |
+| **聊天、成果、自动化** | ✅ | ✅ |
+| **5 个客户端**（网页/桌面/扩展/Obsidian/MCP） | ✅ | ✅ |
+| **深度多步骤开放网络研究** | 第 1 阶段：❌ · 第 2 阶段：💳 按量计费 | ✅ |
+
+**许可证一览：**
+- Core（`nowing_backend/app/proprietary/` 以外的所有内容）：**Apache-2.0** — 真正开源。
+- 爬虫引擎（`nowing_backend/app/proprietary/**`）：**BSL 1.1** — 可免费运行，包括生产环境，但不得作为托管/托管服务转售。
+- 深度研究引擎：**closed-source, hosted** — 第 1 阶段仅支持云端。
 
 ## 功能请求与未来规划
 

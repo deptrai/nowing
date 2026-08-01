@@ -763,7 +763,7 @@
 	"homepage": {
 		"hero_title_part1": "팀을 위한",
 		"hero_title_part2": "AI 워크스페이스",
-		"hero_description": "데이터 제한 없이 팀을 위한 개인정보 보호 중심의 오픈소스 NotebookLM 대안입니다.",
+		"hero_description": "AI 에이전트를 위한 오픈소스 연구 메모리입니다 — 직접 찾아 발견한 것도 기억하고, 사용자가 말한 것만 기억하는 것이 아닙니다.",
 		"cta_start_trial": "무료 체험 시작",
 		"cta_explore": "둘러보기",
 		"integrations_title": "통합",

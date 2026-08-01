@@ -35,7 +35,13 @@ export const openEditorPanelAtom = atom(
 		get,
 		set,
 		payload:
-			| { documentId: number; workspaceId: number; title?: string; kind?: "document"; chunkId?: number | null }
+			| {
+					documentId: number;
+					workspaceId: number;
+					title?: string;
+					kind?: "document";
+					chunkId?: number | null;
+			  }
 			| {
 					kind: "local_file";
 					localFilePath: string;

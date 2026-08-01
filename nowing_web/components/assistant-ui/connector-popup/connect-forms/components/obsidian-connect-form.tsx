@@ -11,8 +11,7 @@ import { copyToClipboard } from "@/lib/utils";
 import { getConnectorBenefits } from "../connector-benefits";
 import type { ConnectFormProps } from "../index";
 
-const PLUGIN_RELEASES_URL =
-	"https://github.com/deptrai/nowing/releases?q=obsidian&expanded=true";
+const PLUGIN_RELEASES_URL = "https://github.com/deptrai/nowing/releases?q=obsidian&expanded=true";
 
 /**
  * Obsidian connect form for the plugin-only architecture.
@@ -55,8 +54,8 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 				<Info />
 				<AlertTitle>Plugin-based sync</AlertTitle>
 				<AlertDescription>
-					Nowing now syncs Obsidian via an official plugin that runs inside Obsidian itself.
-					Works on desktop and mobile, in cloud and self-hosted deployments.
+					Nowing now syncs Obsidian via an official plugin that runs inside Obsidian itself. Works
+					on desktop and mobile, in cloud and self-hosted deployments.
 				</AlertDescription>
 			</Alert>
 
@@ -71,8 +70,8 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 							<h3 className="text-sm font-medium sm:text-base">Install the plugin</h3>
 						</header>
 						<p className="mb-3 text-[11px] text-muted-foreground sm:text-xs">
-							Grab the latest Nowing plugin release. Once it's in the community store, you'll
-							also be able to install it from{" "}
+							Grab the latest Nowing plugin release. Once it's in the community store, you'll also
+							be able to install it from{" "}
 							<span className="font-medium">Settings → Community plugins</span> inside Obsidian.
 						</p>
 						<a
@@ -151,9 +150,9 @@ export const ObsidianConnectForm: FC<ConnectFormProps> = ({ onBack }) => {
 							<h3 className="text-sm font-medium sm:text-base">Point the plugin at this server</h3>
 						</header>
 						<p className="text-[11px] text-muted-foreground sm:text-xs">
-							For Nowing Cloud, use the default{" "}
-							<span className="font-medium">nowing.com</span>. If you are self-hosting, set the
-							plugin's <span className="font-medium">Server URL</span> to your frontend domain.
+							For Nowing Cloud, use the default <span className="font-medium">nowing.com</span>. If
+							you are self-hosting, set the plugin's <span className="font-medium">Server URL</span>{" "}
+							to your frontend domain.
 						</p>
 					</article>
 

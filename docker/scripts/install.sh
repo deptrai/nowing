@@ -87,7 +87,7 @@ show_banner() {
                                                                            
 
 EOF
-    printf "${YELLOW}           NotebookLM for Open Web Research${NC}\n"
+    printf "${YELLOW}     Long-Term Research Memory for AI Agents${NC}\n"
     printf "${CYAN}══════════════════════════════════════════════════════════════${NC}\n"
     info "This installer will create ${INSTALL_DIR}/ and start Nowing with Docker Compose."
 }

@@ -114,7 +114,9 @@ export async function appendAssistantMessage(
 		data: { role: "assistant", content },
 	});
 	if (!response.ok()) {
-		throw new Error(`appendAssistantMessage failed (${response.status()}): ${await response.text()}`);
+		throw new Error(
+			`appendAssistantMessage failed (${response.status()}): ${await response.text()}`
+		);
 	}
 	return (await response.json()) as MessageRow;
 }

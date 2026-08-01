@@ -1,4 +1,4 @@
-﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing, la alternativa de código abierto a NotebookLM para investigación de la web abierta" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
+﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing — espacio de trabajo de investigación de IA de código abierto con un motor de investigación profunda alojado" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
 
 
 
@@ -20,16 +20,18 @@
 <a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FNowing | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-# Nowing: La alternativa de código abierto a NotebookLM para la investigación de la web abierta
+# Nowing: Memoria de investigación de código abierto para agentes de IA
 
-Nowing es la **alternativa de código abierto a NotebookLM para agentes de IA**, una plataforma de investigación de la web abierta con conectores de datos en vivo. Tus agentes investigan la web en vivo con datos estructurados de **Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search y cualquier página de la web abierta**, a través de una única **API REST** o un **servidor MCP**. Agentes programados y activados por eventos convierten lo que encuentran en informes y alertas, y una base de conocimiento integrada mantiene cada hallazgo disponible para búsqueda con citas.
+> **Nowing es memoria de investigación de código abierto para agentes de IA — recuerda lo que fue a buscar y encontró, no solo lo que le dijiste.**
+
+Nowing es un espacio de trabajo de investigación autoalojado con memoria a largo plazo para agentes de IA y equipos, impulsado por un núcleo de código abierto y un motor alojado de investigación profunda. Tus agentes investigan la web en vivo con datos estructurados de **Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search y cualquier página de la web abierta**, a través de una única **API REST** o un **servidor MCP**. Agentes programados y activados por eventos convierten lo que encuentran en informes y alertas, y una base de conocimiento integrada mantiene cada hallazgo disponible para búsqueda con citas.
 
 > [!NOTE]
-> **📢 Una nota para nuestros usuarios de la alternativa a NotebookLM**
+> **📢 Una nota para nuestros usuarios de memoria de investigación a largo plazo**
 >
-> Durante los últimos meses construimos Nowing como el mejor agente de investigación general para tu propio conocimiento, y ese capítulo nos dio una comunidad de la que estamos genuinamente orgullosos. Herramientas agénticas como Claude, OpenCode, Hermes y OpenClaw ya han demostrado que los agentes son el futuro, y razonar sobre un índice estático se está convirtiendo en algo que todo agente capaz hace de fábrica. Lo que a los agentes todavía les falta son **datos en vivo de los lugares donde realmente viven las respuestas, y los flujos de trabajo a su alrededor**. Ahí es donde estamos dirigiendo toda nuestra energía: darles a los agentes las primitivas para investigar la web abierta.
+> Durante los últimos meses construimos Nowing como un espacio de trabajo que convierte la investigación en memoria durable y recuperable, y ese capítulo nos dio una comunidad de la que estamos genuinamente orgullosos. Herramientas agénticas como Claude, OpenCode, Hermes y OpenClaw ya han demostrado que los agentes son el futuro, y razonar sobre un índice estático se está convirtiendo en algo que todo agente capaz hace de fábrica. Lo que a los agentes todavía les falta son **datos en vivo de los lugares donde realmente viven las respuestas, y los flujos de trabajo a su alrededor**. Ahí es donde estamos dirigiendo toda nuestra energía: darles a los agentes las primitivas para investigar la web abierta.
 >
-> **Nada de lo que dependes va a desaparecer.** Tu base de conocimiento, el chat con citas, los informes, los podcasts, las presentaciones, las automatizaciones y los chats colaborativos siguen funcionando, y el autoalojamiento sigue siendo gratuito y de código abierto. Lee el anuncio completo en [nuestro changelog](https://www.nowing.com/changelog).
+> **Nada de lo que dependes va a desaparecer.** Tu base de conocimiento, el chat con citas, los informes, los podcasts, las presentaciones, las automatizaciones y los chats colaborativos siguen funcionando, y el autoalojamiento del núcleo de código abierto sigue siendo gratuito. El motor alojado de investigación profunda utiliza una clave de API en la nube opcional. Lee el anuncio completo en [nuestro changelog](https://www.nowing.com/changelog).
 
 ## Tabla de contenidos
 
@@ -131,13 +133,12 @@ El script de instalación configura [Watchtower](https://github.com/nicholas-fed
 
 ## Todo lo demás que viene incluido
 
-El espacio de trabajo de investigación que convirtió a Nowing en la alternativa de código abierto líder a NotebookLM sigue aquí, y todo lo que tus agentes recopilan aterriza en él.
+El espacio de trabajo de memoria de investigación a largo plazo que convirtió a Nowing en un hogar único para la investigación de agentes sigue aquí, y todo lo que tus agentes recopilan aterriza en él.
 
 **Base de conocimiento**
 
 - Sube PDFs, documentos de Office, imágenes y audio, o sincroniza **Google Drive, OneDrive y Dropbox**. Más de 50 formatos de archivo compatibles.
 - Búsqueda híbrida semántica y de texto completo con respuestas citadas al estilo Perplexity.
-- La organización de archivos con IA clasifica los documentos automáticamente por fuente, fecha y tema.
 
 <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="Chatea con tus PDFs y documentos" /></p>
 
@@ -156,7 +157,7 @@ El espacio de trabajo de investigación que convirtió a Nowing en la alternativ
 **Colaboración en equipo**
 
 - Chats de IA colaborativos en tiempo real con comentarios y menciones.
-- RBAC con roles de Propietario, Administrador, Editor y Visualizador.
+- RBAC con roles de Propietario, Editor y Visualizador.
 
 <p align="center"><img src="nowing_web/public/homepage/hero_realtime/RealTimeChatGif.gif" alt="Chat de IA colaborativo" /></p>
 
@@ -201,7 +202,7 @@ https://github.com/user-attachments/assets/a0a16566-6967-4374-ac51-9b3e07fbecd7
 
 ## Cómo se compara Nowing
 
-Nowing es el único producto de código abierto que combina un espacio de trabajo de investigación al estilo NotebookLM para personas con primitivas de datos en vivo para agentes. Así se compara frente a cada clase de herramienta.
+Nowing es el único producto con un núcleo de código abierto que combina la memoria de investigación a largo plazo con primitivas de datos en vivo para agentes. Así se compara frente a cada clase de herramienta.
 
 **vs agentes de navegador (Browserbase, Browser Use).** Los agentes de navegador manejan un navegador real con un LLM en el bucle: la herramienta correcta cuando una tarea requiere hacer clic, iniciar sesión o rellenar formularios. Pero la mayor parte de la investigación es recuperación de solo lectura, y para recuperar información el bucle de LLM-en-un-navegador te cuesta minutos y miles de tokens por página. Una llamada a un conector de Nowing es una sola petición HTTP: segundos, determinista y cero tokens gastados en decidir dónde hacer clic.
 
@@ -211,34 +212,25 @@ Nowing es el único producto de código abierto que combina un espacio de trabaj
 
 **vs marketplaces de scrapers (Apify).** Los marketplaces te dan miles de actores de la comunidad, cada uno con su propio esquema, calidad y precio. Nowing es una única API tipada y un único servidor MCP con un arnés de agentes y un espacio de trabajo de investigación detrás, y es de código abierto.
 
-### Nowing vs Google NotebookLM
+### Cómo se compara Nowing con las herramientas de investigación para consumidores
 
-¿Todavía nos comparas como una alternativa a NotebookLM? Aquí tienes el desglose honesto.
+La mayoría de las capas de memoria recuerdan lo que les dijiste. **Nowing también recuerda lo que fue a buscar y encontró.**
 
-| Característica | Google NotebookLM | Nowing |
-|---------|-------------------|-----------|
-| **Datos web en vivo para agentes** | No | Conectores de Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search y rastreo web vía API REST y MCP |
-| **Servidor MCP** | No | Cada conector expuesto como herramienta nativa de agente, más servidores MCP propios con aplicaciones OAuth de un clic |
-| **Fuentes por Notebook** | 50 (gratis) a 600 (Ultra, $249.99/mes) | Ilimitadas |
-| **Número de Notebooks** | 100 (gratis) a 500 (niveles de pago) | Ilimitado |
-| **Límite de tamaño por fuente** | 500,000 palabras / 200MB por fuente | Sin límite |
-| **Precios** | Nivel gratuito; Pro $19.99/mes, Ultra $249.99/mes | Gratuito y de código abierto para autoalojar; la nube es de pago por uso con $5 de crédito gratuito |
-| **Soporte de LLM** | Solo Google Gemini | Más de 100 LLMs vía la especificación de OpenAI y LiteLLM |
-| **Modelos de embeddings** | Solo Google | Más de 6,000 modelos de embeddings, todos los rerankers principales |
-| **LLMs locales / privados** | No disponible | Soporte completo (vLLM, Ollama), tus datos siguen siendo tuyos |
-| **Autoalojable** | No | Sí, con un solo comando de Docker o Docker Compose completo |
-| **Código abierto** | No | Sí |
-| **Fuentes de la base de conocimiento** | Google Drive, YouTube, sitios web | Subida de archivos, Google Drive, OneDrive, Dropbox, sincronización de carpetas locales y páginas rastreadas |
-| **Formatos de archivo compatibles** | PDFs, Docs, Slides, Sheets, CSV, Word, EPUB, imágenes, URLs web, YouTube | Más de 50 formatos: documentos, imágenes, videos vía LlamaCloud, Unstructured o Docling (local) |
-| **Búsqueda** | Búsqueda semántica | Híbrida semántica + texto completo con índices jerárquicos y fusión de rangos recíprocos |
-| **Respuestas con citas** | Sí | Sí, respuestas citadas al estilo Perplexity |
-| **Arquitectura agéntica** | No | Sí, impulsada por [LangChain Deep Agents](https://docs.langchain.com/oss/python/deepagents/overview) con planificación, subagentes y acceso al sistema de archivos |
-| **Automatizaciones y agentes de IA** | No | Flujos de trabajo programados, activadores por eventos y automatizaciones sin código creadas por chat con escritura en Notion, Slack, Linear y Jira |
-| **Multijugador en tiempo real** | Notebooks compartidos con roles de Visualizador/Editor (sin chat en tiempo real) | RBAC con roles de Propietario / Administrador / Editor / Visualizador, chat en tiempo real e hilos de comentarios |
-| **Generación de video** | Resúmenes de video cinematográficos vía Veo 3 (solo Ultra) | Disponible (NotebookLM es mejor aquí, en mejora activa) |
-| **Generación de presentaciones** | Diapositivas más atractivas pero no editables | Presentaciones editables basadas en diapositivas |
-| **Generación de podcasts** | Resúmenes de audio con presentadores e idiomas personalizables | Disponible con múltiples proveedores de TTS (NotebookLM es mejor aquí, en mejora activa) |
-| **Aplicación de escritorio** | No | Aplicación nativa con General Assist, Quick Assist, Screenshot Assist y sincronización de carpetas locales |
+Nowing no es una mejor aplicación de notas; es un espacio de trabajo de investigación de núcleo abierto que convierte la investigación en la web en vivo en memoria duradera y citable para agentes y equipos.
+
+| | Self-host (gratuito) | Cloud (pago por uso) |
+|---|---|---|
+| **Capa de memoria + 4 herramientas MCP** | ✅ | ✅ |
+| **Base de conocimiento + búsqueda híbrida + citas** | ✅ | ✅ |
+| **8 plataformas / 14 verbos de scraping** (Reddit/YouTube/TikTok/Instagram/Google Search+Maps/Amazon/rastreo web) | ✅ (motor de rastreo BSL 1.1) | ✅ |
+| **Chat, entregables, automatizaciones** | ✅ | ✅ |
+| **5 superficies de cliente** (web/escritorio/extensión/Obsidian/MCP) | ✅ | ✅ |
+| **Investigación profunda multi-paso en la web abierta** | Fase 1: ❌ · Fase 2: 💳 medido | ✅ |
+
+**Licencia de un vistazo:**
+- Core (todo lo que está fuera de `nowing_backend/app/proprietary/`): **Apache-2.0** — verdaderamente código abierto.
+- Motor de rastreo (`nowing_backend/app/proprietary/**`): **BSL 1.1** — libre de ejecutar, incluida producción, pero no puede revenderse como un servicio alojado/gestionado.
+- Motor de investigación profunda: **closed-source, hosted** — solo en la nube en la Fase 1.
 
 ## Solicitudes de funciones y futuro
 

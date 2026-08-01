@@ -54,8 +54,8 @@ export function RemoveAdsBanner({ className }: { className?: string }) {
 				<AlertTitle>Go ad-free with a free account</AlertTitle>
 				<AlertDescription>
 					<p>
-						Create a free Nowing account to remove ads, unlock $5 of premium credit, and save
-						your chat history. You can keep chatting for free either way.
+						Create a free Nowing account to remove ads, unlock $5 of premium credit, and save your
+						chat history. You can keep chatting for free either way.
 					</p>
 					<Button asChild size="sm" className="mt-1">
 						<Link href="/login">Create Free Account</Link>
