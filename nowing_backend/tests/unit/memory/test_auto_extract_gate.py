@@ -366,18 +366,15 @@ async def test_rate_count_reads_the_documented_redis_key(monkeypatch, no_real_re
     assert await _rate_count(8) == 0, "the counter must be per-workspace"
 
 
-async def test_record_extraction_increments_and_refreshes_ttl(
+async def test_record_extraction_increments_and_sets_ttl_on_first(
     monkeypatch, no_real_redis
 ):
-    """8.7-UNIT-013 - P1/AC3: each recorded extraction increments and re-sets the TTL.
+    """8.7-UNIT-013 - P1/AC3: recorded extractions increment; TTL is set once.
 
-    The TTL is refreshed on *every* increment, not only the first: an EXPIRE
-    lost after a successful INCR would otherwise leave a key with no TTL that
-    never decays, throttling the workspace permanently.
-
-    Two increments in one test on purpose: "the TTL is set on the second call
-    too" is the whole contract, so the sequence cannot be split without losing
-    what is being asserted.
+    The rate counter is a fixed window: the TTL is set on the *first*
+    increment that creates the key and is not refreshed on subsequent
+    increments in the same window. This matches the pattern in
+    ``app.capabilities.core.access.rate_limit``.
     """
     from app.services.memory.extract_budget import record_extraction
 
@@ -397,7 +394,7 @@ async def test_record_extraction_increments_and_refreshes_ttl(
     client.ttls.clear()
     await record_extraction(7)
     assert client.store[key] == 2
-    assert client.ttls[key] == window, "TTL must be refreshed on every increment"
+    assert key not in client.ttls, "fixed window must not re-set TTL on later increments"
 
 
 async def test_record_extraction_is_noop_when_rate_limit_disabled(monkeypatch):

@@ -10,8 +10,8 @@ block wins, all evaluated BEFORE any LLM call:
     4. rate count >= rate max            -> reason="rate_limited"
 
 **What the wallet pre-check is, and is not.** It is an *eligibility* gate: do
-not perform optional background work for an owner who cannot pay for their
-foreground work. It is **not** a spend meter for extraction, and it cannot
+not perform optional background work for an attributed user who cannot pay for
+their foreground work. It is **not** a spend meter for extraction, and it cannot
 bound extraction spend. Per **AD-8** the wallet-debit surface is enumerated as
 ETL pages / premium model calls / deep-research — memory extraction is
 deliberately excluded, and ``record_token_usage(usage_type="memory_create")``
@@ -111,7 +111,12 @@ def _redis_client():
     if _redis is None:
         import redis
 
-        _redis = redis.from_url(config.REDIS_APP_URL, decode_responses=True)
+        _redis = redis.from_url(
+            config.REDIS_APP_URL,
+            decode_responses=True,
+            socket_connect_timeout=5,
+            socket_timeout=5,
+        )
     return _redis
 
 
@@ -139,7 +144,7 @@ def _memory_incr(key: str, window_seconds: int) -> int:
 
 
 async def _wallet_spendable_micros(session: AsyncSession, user_id: Any) -> int:
-    """Return the owner's spendable balance (``balance - reserved``) in micros.
+    """Return the attributed user's spendable balance (``balance - reserved``) in micros.
 
     Delegates to the canonical
     :func:`app.services.wallet_credit.spendable_micros` so this gate cannot
@@ -231,11 +236,15 @@ def _record_extraction_sync(workspace_id: int) -> None:
     window = config.MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS
     try:
         client = _redis_client()
-        client.incr(key)
-        # Refresh the TTL on every increment, not only when the counter reads 1.
-        # An EXPIRE lost after a successful INCR would otherwise leave a key
-        # with no TTL that never decays, throttling the workspace permanently.
-        client.expire(key, window)
+        count = client.incr(key)
+        # Fixed window: set the TTL on the *first* increment so the whole
+        # window expires at a single, predictable boundary. This mirrors the
+        # pattern in ``app.capabilities.core.access.rate_limit``.
+        # ponytail: if the EXPIRE after the very first INCR is lost, the key
+        # has no TTL and can persist indefinitely; a later hardening pass can
+        # wrap this in a Lua script or a TTL-repair check.
+        if count == 1:
+            client.expire(key, window)
     except Exception:
         logger.warning(
             "memory_extract_rate_increment_redis_unavailable workspace_id=%s fallback=in_memory",
@@ -279,16 +288,22 @@ async def _check_budget(
     try:
         spent = await _period_spend_micros(session, workspace_id)
     except Exception:
+        if fail_closed:
+            logger.warning(
+                "memory_extract_skip reason=%s workspace_id=%s stage=%s "
+                "budget_check_failed=true",
+                REASON_BUDGET_EXCEEDED,
+                workspace_id,
+                stage,
+            )
+            return ExtractGateResult(allowed=False, reason=REASON_BUDGET_EXCEEDED)
         logger.warning(
-            "memory_extract_skip reason=%s workspace_id=%s stage=%s "
-            "budget_check_failed=true fail_closed=%s",
+            "memory_extract_enqueue_gate_error reason=%s workspace_id=%s stage=%s "
+            "budget_check_failed=true fall_through=true",
             REASON_BUDGET_EXCEEDED,
             workspace_id,
             stage,
-            fail_closed,
         )
-        if fail_closed:
-            return ExtractGateResult(allowed=False, reason=REASON_BUDGET_EXCEEDED)
         return None
 
     if spent >= budget_cap:
@@ -319,16 +334,22 @@ async def _check_rate(
     try:
         rate = await _rate_count(workspace_id)
     except Exception:
+        if fail_closed:
+            logger.warning(
+                "memory_extract_skip reason=%s workspace_id=%s stage=%s "
+                "rate_check_failed=true",
+                REASON_RATE_LIMITED,
+                workspace_id,
+                stage,
+            )
+            return ExtractGateResult(allowed=False, reason=REASON_RATE_LIMITED)
         logger.warning(
-            "memory_extract_skip reason=%s workspace_id=%s stage=%s "
-            "rate_check_failed=true fail_closed=%s",
+            "memory_extract_enqueue_gate_error reason=%s workspace_id=%s stage=%s "
+            "rate_check_failed=true fall_through=true",
             REASON_RATE_LIMITED,
             workspace_id,
             stage,
-            fail_closed,
         )
-        if fail_closed:
-            return ExtractGateResult(allowed=False, reason=REASON_RATE_LIMITED)
         return None
 
     if rate >= rate_max:

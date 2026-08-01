@@ -208,16 +208,6 @@ class MemoryExtractionService:
                 # is exactly why the taxonomy lives in the pipeline (D3).
                 return []
 
-            # Count the extraction against the rate-limit window only now that
-            # the LLM call has actually succeeded. Incrementing before the call
-            # inflated the counter on every Celery retry: the transient errors
-            # above are re-raised for `autoretry_for` (max_retries=3), and a
-            # turn that produced no memories does not trip the idempotency
-            # guard on redelivery, so one logical turn could burn up to four
-            # slots. `record_extraction` is a no-op while the rate limit is
-            # disabled, so the default configuration adds no Redis traffic here.
-            await record_extraction(workspace.id)
-
             for fact in select_qualifying_facts(self._parse_llm_output(raw_output)):
                 memory_type = resolve_memory_type(fact.type)
 
@@ -269,6 +259,13 @@ class MemoryExtractionService:
         # redelivery re-extracts cleanly — the idempotency guard is keyed on
         # committed rows, so a partial write can never make it skip real work.
         await self.session.commit()
+
+        # Count the extraction against the rate-limit window only now that the
+        # transaction is durable. Incrementing before commit burned slots when
+        # the DB transaction rolled back, because the idempotency guard is keyed
+        # on committed rows and Celery retries a failed turn. `record_extraction`
+        # is a no-op while the rate limit is disabled.
+        await record_extraction(workspace.id)
 
         # AC-1: extracted facts are written with commit=False, so create_memory
         # deferred their ``memory.changed`` events into the repo buffer. Now that
