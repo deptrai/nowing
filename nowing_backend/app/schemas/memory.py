@@ -53,6 +53,10 @@ class MemoryRead(BaseModel):
     # typed as ``str`` (not UUID) so JSON consumers (REST, MCP, generated
     # clients) need no UUID handling; ``None`` for chat/manual/document memories.
     source_run_id: str | None = None
+    # Story 9.6a (AD-11.1): immutable source recipe from the Run that produced
+    # this memory. ``None`` for chat/manual/document memories.
+    source_capability: str | None = None
+    source_input: Any | None = None
     tags: list[str] = Field(default_factory=list)
     confidence: float = 1.0
     created_at: datetime
@@ -149,6 +153,9 @@ class MemorySearchHit(BaseModel):
     source_id: int | None = None
     # Story 3.13 (D7/AC-3): same soft run provenance as ``MemoryRead``.
     source_run_id: str | None = None
+    # Story 9.6a (AD-11.1): source recipe from the run that produced this hit.
+    source_capability: str | None = None
+    source_input: Any | None = None
     # Both null for a recency (query-less) hit; both finite for a ranked hit —
     # never a fake 0.0 placeholder (Story 3.14, D1/D6, AC-6).
     score: float | None = None
@@ -191,6 +198,8 @@ class MemorySearchHit(BaseModel):
             source_type=memory.source_type.value,
             source_id=memory.source_id,
             source_run_id=memory.source_run_id,
+            source_capability=memory.source_capability,
+            source_input=memory.source_input,
             score=score,
             similarity=similarity,
         )

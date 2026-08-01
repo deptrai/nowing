@@ -239,6 +239,8 @@ class MemoryRepository:
         source_type: str | MemorySourceType = MemorySourceType.MANUAL,
         source_id: int | None = None,
         source_run_id: UUID | None = None,
+        source_capability: str | None = None,
+        source_input: Any | None = None,
         tags: list[str] | None = None,
         confidence: float = 1.0,
         research_thread_id: int | None = None,
@@ -281,6 +283,8 @@ class MemoryRepository:
                     source_type=source_type,
                     source_id=source_id,
                     source_run_id=source_run_id,
+                    source_capability=source_capability,
+                    source_input=source_input,
                     tags=tags,
                     confidence=confidence,
                     research_thread_id=research_thread_id,
@@ -311,6 +315,10 @@ class MemoryRepository:
                 # provenance.
                 if source_run_id is not None:
                     existing.source_run_id = source_run_id
+                if source_capability is not None and existing.source_capability is None:
+                    existing.source_capability = source_capability
+                if source_input is not None and existing.source_input is None:
+                    existing.source_input = source_input
                 existing.tags = tags or []
                 existing.confidence = confidence
                 # Only overwrite the thread association when a new one is given,
@@ -341,6 +349,8 @@ class MemoryRepository:
             source_type=source_type,
             source_id=source_id,
             source_run_id=source_run_id,
+            source_capability=source_capability,
+            source_input=source_input,
             tags=tags or [],
             confidence=confidence,
             research_thread_id=research_thread_id,
@@ -367,6 +377,8 @@ class MemoryRepository:
         source_type: str | MemorySourceType | None = None,
         source_id: int | None = None,
         source_run_id: UUID | None = None,
+        source_capability: str | None = None,
+        source_input: Any | None = None,
         tags: list[str] | None = None,
         confidence: float | None = None,
         research_thread_id: int | None = None,
@@ -406,6 +418,13 @@ class MemoryRepository:
         # the dedupe note in ``create_memory``.
         if source_run_id is not None:
             memory.source_run_id = source_run_id
+        # Recipe is an immutable snapshot (Story 9.6a): only seed it when the
+        # memory does not already carry one. Re-validation creates a new memory
+        # or version rather than mutating the original recipe.
+        if source_capability is not None and memory.source_capability is None:
+            memory.source_capability = source_capability
+        if source_input is not None and memory.source_input is None:
+            memory.source_input = source_input
         if tags is not None:
             memory.tags = tags
         if confidence is not None:

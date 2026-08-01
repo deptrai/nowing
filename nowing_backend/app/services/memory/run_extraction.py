@@ -23,6 +23,7 @@ Two deliberate differences from the chat path:
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 from datetime import UTC, datetime
@@ -377,6 +378,8 @@ class RunMemoryExtractionService:
                     source_type=MemorySourceType.SCRAPER_RUN,
                     source_id=None,
                     source_run_id=run_id,
+                    source_capability=run.capability,
+                    source_input=copy.deepcopy(run.input),
                     tags=fact.tags,
                     confidence=fact.confidence,
                     research_thread_id=research_thread_id,

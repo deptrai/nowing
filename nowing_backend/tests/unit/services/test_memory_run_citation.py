@@ -23,7 +23,14 @@ import pytest
 pytestmark = pytest.mark.unit
 
 
-def _memory_row(*, source_run_id=None, source_type="scraper_run", source_id=None):
+def _memory_row(
+    *,
+    source_run_id=None,
+    source_type="scraper_run",
+    source_id=None,
+    source_capability=None,
+    source_input=None,
+):
     """A duck-typed stand-in for an ORM ``Memory`` row."""
     return SimpleNamespace(
         id=11,
@@ -34,6 +41,8 @@ def _memory_row(*, source_run_id=None, source_type="scraper_run", source_id=None
         source_type=SimpleNamespace(value=source_type),
         source_id=source_id,
         source_run_id=source_run_id,
+        source_capability=source_capability,
+        source_input=source_input,
     )
 
 

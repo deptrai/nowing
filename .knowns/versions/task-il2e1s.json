@@ -1,6 +1,6 @@
 {
   "taskId": "il2e1s",
-  "currentVersion": 1,
+  "currentVersion": 5,
   "versions": [
     {
       "id": "v1",
@@ -35,6 +35,156 @@
         "timeSpent": 0,
         "title": "9 6A Memory Provenance Recipe",
         "updatedAt": "2026-07-28T22:10:19.29457+07:00"
+      }
+    },
+    {
+      "id": "v2",
+      "taskId": "il2e1s",
+      "version": 2,
+      "timestamp": "2026-08-01T09:57:51.60455Z",
+      "author": "mcp",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": "backlog",
+          "newValue": "ready-for-dev"
+        },
+        {
+          "field": "implementationNotes",
+          "oldValue": null,
+          "newValue": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T15:10:19.294Z",
+        "description": "FR-39 phần provenance + AD-11.1. Memory tự chứa source_capability/source_input/source_run_id. KHÔNG sửa retention của runs. Tách từ 9-6 (Q-4)",
+        "id": "il2e1s",
+        "implementationNotes": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md",
+        "labels": [
+          "bmad",
+          "bmad-key-9-6a-memory-provenance-recipe",
+          "epic-9"
+        ],
+        "parent": "rzwqza",
+        "priority": "medium",
+        "status": "ready-for-dev",
+        "timeSpent": 0,
+        "title": "9 6A Memory Provenance Recipe",
+        "updatedAt": "2026-08-01T09:57:51.60455Z"
+      }
+    },
+    {
+      "id": "v3",
+      "taskId": "il2e1s",
+      "version": 3,
+      "timestamp": "2026-08-01T10:13:29.123142Z",
+      "author": "luisphan",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": "ready-for-dev",
+          "newValue": "review"
+        },
+        {
+          "field": "implementationNotes",
+          "oldValue": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md",
+          "newValue": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md\nImplemented 9.6a. Migration 186, Memory model, repository, run_extraction, schemas, tests. Focused suite 147 passed. Full suite has 4 unrelated env failures (CHAINLENS_API_KEY, PDF)."
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "createdAt": "2026-07-28T15:10:19.294Z",
+        "description": "FR-39 phần provenance + AD-11.1. Memory tự chứa source_capability/source_input/source_run_id. KHÔNG sửa retention của runs. Tách từ 9-6 (Q-4)",
+        "id": "il2e1s",
+        "implementationNotes": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md\nImplemented 9.6a. Migration 186, Memory model, repository, run_extraction, schemas, tests. Focused suite 147 passed. Full suite has 4 unrelated env failures (CHAINLENS_API_KEY, PDF).",
+        "labels": [
+          "bmad",
+          "bmad-key-9-6a-memory-provenance-recipe",
+          "epic-9"
+        ],
+        "parent": "rzwqza",
+        "priority": "medium",
+        "status": "review",
+        "timeSpent": 0,
+        "title": "9 6A Memory Provenance Recipe",
+        "updatedAt": "2026-08-01T10:13:29.123142Z"
+      }
+    },
+    {
+      "id": "v4",
+      "taskId": "il2e1s",
+      "version": 4,
+      "timestamp": "2026-08-01T10:25:26.778013Z",
+      "author": "luisphan",
+      "changes": [
+        {
+          "field": "status",
+          "oldValue": "review",
+          "newValue": "done"
+        },
+        {
+          "field": "implementationNotes",
+          "oldValue": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md\nImplemented 9.6a. Migration 186, Memory model, repository, run_extraction, schemas, tests. Focused suite 147 passed. Full suite has 4 unrelated env failures (CHAINLENS_API_KEY, PDF).",
+          "newValue": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md\nImplemented 9.6a. Migration 186, Memory model, repository, run_extraction, schemas, tests. Focused suite 147 passed. Full suite has 4 unrelated env failures (CHAINLENS_API_KEY, PDF).\nAll code review findings applied. Migration backfill added; tests for None input and recipe immutability added. Focused suite 44/44 passed."
+        },
+        {
+          "field": "completedAt",
+          "oldValue": null,
+          "newValue": "2026-08-01T10:25:26.778013Z"
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-08-01T10:25:26.778013Z",
+        "createdAt": "2026-07-28T15:10:19.294Z",
+        "description": "FR-39 phần provenance + AD-11.1. Memory tự chứa source_capability/source_input/source_run_id. KHÔNG sửa retention của runs. Tách từ 9-6 (Q-4)",
+        "id": "il2e1s",
+        "implementationNotes": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md\nImplemented 9.6a. Migration 186, Memory model, repository, run_extraction, schemas, tests. Focused suite 147 passed. Full suite has 4 unrelated env failures (CHAINLENS_API_KEY, PDF).\nAll code review findings applied. Migration backfill added; tests for None input and recipe immutability added. Focused suite 44/44 passed.",
+        "labels": [
+          "bmad",
+          "bmad-key-9-6a-memory-provenance-recipe",
+          "epic-9"
+        ],
+        "parent": "rzwqza",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "9 6A Memory Provenance Recipe",
+        "updatedAt": "2026-08-01T10:25:26.778013Z"
+      }
+    },
+    {
+      "id": "v5",
+      "taskId": "il2e1s",
+      "version": 5,
+      "timestamp": "2026-08-01T10:34:29.585064Z",
+      "author": "luisphan",
+      "changes": [
+        {
+          "field": "implementationNotes",
+          "oldValue": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md\nImplemented 9.6a. Migration 186, Memory model, repository, run_extraction, schemas, tests. Focused suite 147 passed. Full suite has 4 unrelated env failures (CHAINLENS_API_KEY, PDF).\nAll code review findings applied. Migration backfill added; tests for None input and recipe immutability added. Focused suite 44/44 passed.",
+          "newValue": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md\nImplemented 9.6a. Migration 186, Memory model, repository, run_extraction, schemas, tests. Focused suite 147 passed. Full suite has 4 unrelated env failures (CHAINLENS_API_KEY, PDF).\nAll code review findings applied. Migration backfill added; tests for None input and recipe immutability added. Focused suite 44/44 passed.\nRe-review complete: 1 patch applied (backfill NULL input test), 1 decision deferred (source_input size cap). Full memory/db/workspaces suite 151/151 passed."
+        }
+      ],
+      "snapshot": {
+        "archived": false,
+        "completedAt": "2026-08-01T10:25:26.778Z",
+        "createdAt": "2026-07-28T15:10:19.294Z",
+        "description": "FR-39 phần provenance + AD-11.1. Memory tự chứa source_capability/source_input/source_run_id. KHÔNG sửa retention của runs. Tách từ 9-6 (Q-4)",
+        "id": "il2e1s",
+        "implementationNotes": "Story context created and validated. File: _bmad-output/implementation-artifacts/9-6a-memory-provenance-recipe.md\nImplemented 9.6a. Migration 186, Memory model, repository, run_extraction, schemas, tests. Focused suite 147 passed. Full suite has 4 unrelated env failures (CHAINLENS_API_KEY, PDF).\nAll code review findings applied. Migration backfill added; tests for None input and recipe immutability added. Focused suite 44/44 passed.\nRe-review complete: 1 patch applied (backfill NULL input test), 1 decision deferred (source_input size cap). Full memory/db/workspaces suite 151/151 passed.",
+        "labels": [
+          "bmad",
+          "bmad-key-9-6a-memory-provenance-recipe",
+          "epic-9"
+        ],
+        "parent": "rzwqza",
+        "priority": "medium",
+        "status": "done",
+        "timeSpent": 0,
+        "title": "9 6A Memory Provenance Recipe",
+        "updatedAt": "2026-08-01T10:34:29.585064Z"
       }
     }
   ]

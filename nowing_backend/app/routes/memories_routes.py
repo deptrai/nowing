@@ -18,6 +18,10 @@ from app.schemas.memory import (
     MemoryUpdate,
 )
 from app.services.memory.repository import MemoryRepository
+from app.services.memory.revalidation_service import (
+    RevalidationError,
+    RevalidationService,
+)
 from app.services.memory.search import MemoryHybridSearch
 from app.services.memory.vector import validate_single_embedding_result
 from app.users import get_auth_context
@@ -154,6 +158,54 @@ async def update_memory(
     if updated is None:
         raise HTTPException(status_code=404, detail="Memory not found")
     return _to_memory_read(updated)
+
+
+@router.post(
+    "/workspaces/{workspace_id}/memories/{memory_id}/revalidate",
+    response_model=MemoryRead,
+)
+async def revalidate_memory(
+    workspace_id: int,
+    memory_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    x_automation_run_id: int | None = Header(default=None),
+):
+    repo = MemoryRepository(session)
+    memory = await repo.get_memory(memory_id)
+    if memory is None:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    if memory.workspace_id is not None and memory.workspace_id != workspace_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Memory does not belong to the specified workspace",
+        )
+
+    if memory.workspace_id is not None:
+        await check_permission(
+            session,
+            auth,
+            memory.workspace_id,
+            Permission.MEMORY_UPDATE.value,
+            error_message="You don't have permission to revalidate this memory",
+        )
+    elif memory.created_by_id is None or str(memory.created_by_id) != str(auth.user.id):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to revalidate this memory",
+        )
+
+    service = RevalidationService(session)
+    try:
+        result = await service.revalidate(
+            memory_id,
+            workspace_id=workspace_id,
+            actor_id=auth.user.id,
+        )
+    except RevalidationError as exc:
+        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from exc
+
+    return _to_memory_read(result.memory)
 
 
 @router.delete("/memories/{memory_id}", status_code=204)

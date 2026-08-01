@@ -357,6 +357,39 @@ async def test_rest_create_with_automation_run_header_does_not_emit_event(
     assert len(memory_events) == 1
 
 
+async def test_search_includes_source_recipe_fields(
+    client, db_workspace, db_session, db_user
+):
+    """Memory search response carries source recipe fields (null for manual)."""
+    import uuid
+
+    from app.db import MemorySourceType
+    from app.services.memory.repository import MemoryRepository
+
+    repo = MemoryRepository(db_session)
+    memory = await repo.create_memory(
+        workspace_id=db_workspace.id,
+        content="Competitor X raised prices by 10% in Q2 2026.",
+        source_type=MemorySourceType.SCRAPER_RUN,
+        source_run_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+        source_capability="reddit.scrape",
+        source_input={"subreddit": "r/nowing"},
+        created_by_id=db_user.id,
+    )
+    await db_session.commit()
+
+    resp = await client.post(
+        f"{BASE}/{db_workspace.id}/memories/search",
+        json={"query": "Competitor X", "top_k": 5},
+    )
+    assert resp.status_code == 200
+    items = resp.json()["items"]
+    assert len(items) == 1
+    assert items[0]["id"] == memory.id
+    assert items[0]["source_capability"] == "reddit.scrape"
+    assert items[0]["source_input"] == {"subreddit": "r/nowing"}
+
+
 async def test_rest_update_with_automation_run_header_does_not_emit_event(
     client, db_workspace, memory_events
 ):
@@ -382,4 +415,3 @@ async def test_rest_update_with_automation_run_header_does_not_emit_event(
     )
     assert patch.status_code == 200
     assert memory_events == []
-

@@ -115,6 +115,8 @@ async def test_run_extraction_creates_memory_with_run_provenance(
         assert memory.source_type == MemorySourceType.SCRAPER_RUN
         assert memory.source_id is None
         assert memory.source_run_id == scraper_run.id
+        assert memory.source_capability == scraper_run.capability
+        assert memory.source_input == scraper_run.input
         assert memory.workspace_id == db_workspace.id
         assert memory.created_by_id == db_user.id
         # D4: the free-form subagent thread_id must not leak in.

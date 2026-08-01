@@ -2109,6 +2109,11 @@ class Memory(BaseModel, TimestampMixin):
     # the cleanup. ``source_id`` stays an integer (chat message ids); the run's
     # UUID lives here instead of being coerced into it.
     source_run_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    # Source recipe for re-validation (Story 9.6a, AD-11.1).
+    # A soft copy of Run.capability and Run.input, not a live reference, so the
+    # memory remains re-executable after the run log is cleaned up.
+    source_capability = Column(String(100), nullable=True)
+    source_input = Column(JSONB, nullable=True)
     tags = Column(ARRAY(String), nullable=True, default=list)
     confidence = Column(Float, nullable=False, default=1.0, server_default="1.0")
     updated_at = Column(
