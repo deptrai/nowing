@@ -1230,6 +1230,18 @@ def record_chainlens_latency(
     _record(_chainlens_latency(), duration_ms, labels)
 
 
+@lru_cache(maxsize=1)
+def _run_event_bus_dropped():
+    return _get_meter().create_counter(
+        "nowing.run_event_bus.events.dropped",
+        description="Count of run-event bus events dropped before delivery.",
+    )
+
+
+def record_run_event_bus_dropped(*, reason: str = "queue_full") -> None:
+    _add(_run_event_bus_dropped(), 1, {"reason": reason})
+
+
 __all__ = [
     "categorize_exception",
     "parse_celery_task_label",
@@ -1263,6 +1275,7 @@ __all__ = [
     "record_perf_elapsed",
     "record_permission_ask",
     "record_rate_limit_rejection",
+    "record_run_event_bus_dropped",
     "record_subagent_invoke_duration",
     "record_subagent_invoke_outcome",
     "record_tool_call_duration",

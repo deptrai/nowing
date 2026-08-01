@@ -279,11 +279,12 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
     e2e_ms: int | None = getattr(output, "duration_ms", None)
     ttfb_ms: int | None = getattr(output, "first_token_time_ms", None)
 
+    resolved_mode = resolved_mode or mode_requested
+
     if cost_micros is None:
         rate = _platform_rate(BillingUnit.CHAINLENS_QUERY)
         cost_micros = service.items_to_micros(1, rate)
         cost_basis = "fallback"
-        resolved_mode = resolved_mode or getattr(output, "mode", None)
         logger.warning(
             "chainlens.research using fallback flat rate "
             "(%d micros) for workspace %s: no costDollars in SSE",
@@ -311,13 +312,27 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
 
     if not billing_enabled:
         await _record_deep_research_token_usage(
-            ctx, owner_user_id, cost_micros, call_details
+            ctx,
+            owner_user_id,
+            cost_micros,
+            call_details,
+            resolved_mode=resolved_mode,
+            mode_requested=mode_requested,
+            e2e_ms=e2e_ms,
+            ttfb_ms=ttfb_ms,
         )
         return 0
 
     await wallet_credit.check_balance(ctx.session, owner_user_id, cost_micros)
     await _record_deep_research_token_usage(
-        ctx, owner_user_id, cost_micros, call_details
+        ctx,
+        owner_user_id,
+        cost_micros,
+        call_details,
+        resolved_mode=resolved_mode,
+        mode_requested=mode_requested,
+        e2e_ms=e2e_ms,
+        ttfb_ms=ttfb_ms,
     )
     await wallet_credit.apply_debit(ctx.session, owner_user_id, cost_micros)
     return cost_micros
@@ -328,6 +343,11 @@ async def _record_deep_research_token_usage(
     owner_user_id: UUID,
     cost_micros: int,
     call_details: dict[str, Any],
+    *,
+    resolved_mode: str | None = None,
+    mode_requested: str | None = None,
+    e2e_ms: int | None = None,
+    ttfb_ms: int | None = None,
 ) -> None:
     """Stage the audit row. Fail-open: log and continue if persistence fails."""
     try:
@@ -338,6 +358,10 @@ async def _record_deep_research_token_usage(
             user_id=owner_user_id,
             cost_micros=cost_micros,
             call_details=call_details,
+            resolved_mode=resolved_mode,
+            mode_requested=mode_requested,
+            e2e_ms=e2e_ms,
+            ttfb_ms=ttfb_ms,
         )
     except Exception:
         logger.exception("Failed to record deep_research token usage; continuing")

@@ -194,7 +194,9 @@ async def _finalize_async(
     # the error/cancel paths through here never enqueue.
     if finalized:
         enqueue_run_memory_extraction_after_commit(run_id, status=status)
-    await _publish_finished(run_id, status, serialized=serialized, error=error)
+        await _publish_finished(run_id, status, serialized=serialized, error=error)
+    else:
+        logger.warning("run %s not finalized; skipping run.finished publish", run_id)
 
 
 async def _notify_terminal(run_id: str, status: str) -> None:
@@ -318,6 +320,9 @@ async def record_and_publish_sync_run(
         # Story 3.13 (T4/D1): the sync door also enqueues memory extraction at
         # a single point after the row is durable.
         enqueue_run_memory_extraction_after_commit(run_id)
+        await _publish_finished(
+            run_id, "success", serialized=serialized, error=None
+        )
     return run_id
 
 
@@ -349,6 +354,8 @@ async def record_and_publish_sync_run_error(
         duration_ms=duration_ms,
         progress=progress,
     )
+    if run_id is not None:
+        await _publish_finished(run_id, "error", error=error)
     return run_id
 
 

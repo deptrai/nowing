@@ -94,6 +94,16 @@ REASON_GATE_ERROR = "gate_error"
 
 _RATE_LIMIT_KEY_PREFIX = "nowing:memory_extract_rate"
 
+_INCR_EXPIRE_LUA = """
+local key = KEYS[1]
+local ttl = tonumber(ARGV[1])
+local count = redis.call('INCR', key)
+if count == 1 then
+    redis.call('EXPIRE', key, ttl)
+end
+return count
+"""
+
 _redis = None
 _memory_hits: dict[str, list[float]] = defaultdict(list)
 _memory_lock = Lock()
@@ -231,26 +241,24 @@ async def _rate_count(workspace_id: int) -> int:
     return await asyncio.to_thread(_rate_count_sync, workspace_id)
 
 
-def _record_extraction_sync(workspace_id: int) -> None:
+def _record_extraction_sync(workspace_id: int) -> int:
+    """Increment the extraction rate counter and return the new count.
+
+    Runs the INCR+EXPIRE inside a single Lua script so the EXPIRE cannot be
+    lost after the INCR. Falls back to the per-worker in-memory window when
+    Redis is unreachable.
+    """
     key = _rate_key(workspace_id)
     window = config.MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS
     try:
         client = _redis_client()
-        count = client.incr(key)
-        # Fixed window: set the TTL on the *first* increment so the whole
-        # window expires at a single, predictable boundary. This mirrors the
-        # pattern in ``app.capabilities.core.access.rate_limit``.
-        # ponytail: if the EXPIRE after the very first INCR is lost, the key
-        # has no TTL and can persist indefinitely; a later hardening pass can
-        # wrap this in a Lua script or a TTL-repair check.
-        if count == 1:
-            client.expire(key, window)
+        return int(client.eval(_INCR_EXPIRE_LUA, 1, key, window))
     except Exception:
         logger.warning(
             "memory_extract_rate_increment_redis_unavailable workspace_id=%s fallback=in_memory",
             workspace_id,
         )
-        _memory_incr(key, window)
+        return _memory_incr(key, window)
 
 
 async def record_extraction(workspace_id: int) -> None:

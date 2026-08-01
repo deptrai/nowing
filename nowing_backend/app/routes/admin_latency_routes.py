@@ -1,7 +1,8 @@
 """Admin endpoint for ChainLens deep-research latency percentiles (T5).
 
-The percentiles are computed in Python from ``TokenUsage.call_details`` so the
-JSON values do not require a migration to dedicated columns. The endpoint is
+Percentiles are computed in PostgreSQL with ``percentile_cont`` over the
+dedicated ``TokenUsage.e2e_ms`` / ``ttfb_ms`` columns, falling back to the JSON
+``call_details`` for rows written before the columns were added. The endpoint is
 intended for platform operators to baseline latency per research mode.
 """
 
@@ -9,11 +10,10 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import TokenUsage, get_async_session
@@ -26,8 +26,8 @@ router = APIRouter(prefix="/admin/metrics")
 
 class LatencyPercentile(BaseModel):
     mode: str
-    p50: float
-    p95: float
+    p50: float | None
+    p95: float | None
     samples: int
 
 
@@ -35,26 +35,6 @@ class DeepResearchLatencyResponse(BaseModel):
     metric: str
     window_days: int
     percentiles: list[LatencyPercentile]
-
-
-def _percentile(values: list[float], p: float) -> float:
-    """Return the ``p``-th percentile using linear interpolation.
-
-    Mirrors ``numpy.percentile`` for a small number of observations.
-    """
-    if not values:
-        return 0.0
-    sorted_values = sorted(values)
-    n = len(sorted_values)
-    if n == 1:
-        return float(sorted_values[0])
-    idx = (n - 1) * p
-    low = int(idx)
-    high = low + 1
-    if high >= n:
-        return float(sorted_values[-1])
-    weight = idx - low
-    return sorted_values[low] * (1 - weight) + sorted_values[high] * weight
 
 
 @router.get(
@@ -68,42 +48,71 @@ async def deep_research_latency(
     metric: str = Query(default="e2e", pattern="^(e2e|ttfb)$"),
     window_days: int = Query(default=7, ge=1, le=90),
     mode: str | None = Query(default=None),
+    p: float | None = Query(default=None, ge=0.0, le=1.0),
 ) -> DeepResearchLatencyResponse:
     """Return p50/p95 latency per research mode for the last ``window_days`` days."""
     field = "e2e_ms" if metric == "e2e" else "ttfb_ms"
+    column = TokenUsage.e2e_ms if metric == "e2e" else TokenUsage.ttfb_ms
     cutoff = datetime.now(UTC) - timedelta(days=window_days)
 
+    # Use the dedicated column when it exists, otherwise fall back to the JSON
+    # call_details value if it is actually a JSON number.
+    numeric_json = case(
+        (
+            func.jsonb_typeof(TokenUsage.call_details[field]) == "number",
+            TokenUsage.call_details[field].as_float(),
+        )
+    )
+    value_expr = func.coalesce(column, numeric_json)
+
+    # Resolve the effective research mode per row: resolved, then details,
+    # then requested, then "unknown".
+    mode_expr = func.coalesce(
+        TokenUsage.resolved_mode,
+        TokenUsage.call_details["resolved_mode"].as_string(),
+        TokenUsage.mode_requested,
+        TokenUsage.call_details["mode_requested"].as_string(),
+        "unknown",
+    ).label("mode")
+
     stmt = (
-        select(TokenUsage)
+        select(
+            mode_expr,
+            func.count(value_expr).label("samples"),
+            func.percentile_cont(0.5).within_group(value_expr.asc()).label("p50"),
+            func.percentile_cont(0.95).within_group(value_expr.asc()).label("p95"),
+        )
         .where(TokenUsage.usage_type == "deep_research")
         .where(TokenUsage.created_at >= cutoff)
+        .where(value_expr >= 0)
     )
     if mode:
-        stmt = stmt.where(TokenUsage.call_details["mode_requested"].as_string() == mode)
-
-    rows = (await session.execute(stmt)).scalars().all()
-
-    by_mode: dict[str, list[float]] = {}
-    for row in rows:
-        if not row.call_details:
-            continue
-        details: dict[str, Any] = row.call_details
-        value = details.get(field)
-        if not isinstance(value, (int, float)) or value < 0:
-            continue
-        mode_key = (
-            details.get("mode_requested") or details.get("resolved_mode") or "unknown"
+        stmt = stmt.where(
+            or_(
+                TokenUsage.resolved_mode == mode,
+                TokenUsage.mode_requested == mode,
+                TokenUsage.call_details["resolved_mode"].as_string() == mode,
+                TokenUsage.call_details["mode_requested"].as_string() == mode,
+            )
         )
-        by_mode.setdefault(str(mode_key), []).append(float(value))
 
+    rows = (await session.execute(stmt.group_by(mode_expr).order_by(mode_expr))).all()
+
+    p_target = p
     percentiles = []
-    for mode_key, values in by_mode.items():
+    for row in rows:
+        p50 = float(row.p50) if row.p50 is not None and row.samples > 0 else None
+        p95 = float(row.p95) if row.p95 is not None and row.samples > 0 else None
+        if p_target == 0.5:
+            p95 = p50
+        elif p_target == 0.95:
+            p50 = p95
         percentiles.append(
             LatencyPercentile(
-                mode=mode_key,
-                p50=_percentile(values, 0.5),
-                p95=_percentile(values, 0.95),
-                samples=len(values),
+                mode=row.mode,
+                p50=p50,
+                p95=p95,
+                samples=row.samples,
             )
         )
 

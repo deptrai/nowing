@@ -1147,6 +1147,15 @@ class TokenUsage(BaseModel, TimestampMixin):
             unique=True,
             postgresql_where=text("message_id IS NOT NULL"),
         ),
+        Index(
+            "ix_token_usage_deep_research_resolved_mode_created_at",
+            "usage_type",
+            "resolved_mode",
+            "created_at",
+            postgresql_where=text(
+                "usage_type = 'deep_research' AND resolved_mode IS NOT NULL"
+            ),
+        ),
     )
 
     prompt_tokens = Column(Integer, nullable=False, default=0)
@@ -1155,6 +1164,10 @@ class TokenUsage(BaseModel, TimestampMixin):
     cost_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
     model_breakdown = Column(JSONB, nullable=True)
     call_details = Column(JSONB, nullable=True)
+    resolved_mode = Column(String(50), nullable=True)
+    mode_requested = Column(String(50), nullable=True)
+    e2e_ms = Column(Integer, nullable=True)
+    ttfb_ms = Column(Integer, nullable=True)
 
     usage_type = Column(String(50), nullable=False, default="chat", index=True)
 

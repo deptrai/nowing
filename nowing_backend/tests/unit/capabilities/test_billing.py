@@ -712,6 +712,10 @@ async def test_chainlens_charge_uses_actual_cost_micros_and_deep_research_usage(
     assert details["cost_basis"] == "actual"
     assert details["resolved_mode"] == "quality"
     assert details["tokens_total"] == 1280
+    assert kwargs["resolved_mode"] == "quality"
+    assert kwargs["mode_requested"] is None
+    assert kwargs["e2e_ms"] is None
+    assert kwargs["ttfb_ms"] is None
 
 
 async def test_chainlens_charge_fallback_to_flat_rate_logs_warning(
@@ -736,6 +740,8 @@ async def test_chainlens_charge_fallback_to_flat_rate_logs_warning(
     assert kwargs["usage_type"] == "deep_research"
     assert kwargs["cost_micros"] == 5000
     assert kwargs["call_details"]["cost_basis"] == "fallback"
+    assert kwargs["resolved_mode"] is None
+    assert kwargs["mode_requested"] is None
     assert any("fallback" in rec.message for rec in caplog.records)
 
 
@@ -765,6 +771,7 @@ async def test_chainlens_billing_disabled_records_usage_without_debit(
     kwargs = record_usage.await_args.kwargs
     assert kwargs["usage_type"] == "deep_research"
     assert kwargs["cost_micros"] == 12300
+    assert kwargs["resolved_mode"] == "quality"
 
 
 async def test_chainlens_charge_raises_when_actual_cost_exceeds_balance(

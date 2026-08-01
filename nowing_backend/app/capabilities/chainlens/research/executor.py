@@ -11,6 +11,7 @@ import json
 import logging
 import time
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable
+from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
@@ -92,6 +93,32 @@ def _parse_sources(raw_sources: Any) -> list[Source]:
     return sources
 
 
+def _to_int(value: Any) -> int | None:
+    """Normalize a progress counter to a non-negative int."""
+    if isinstance(value, int) and value >= 0:
+        return value
+    if isinstance(value, float) and value.is_integer() and value >= 0:
+        return int(value)
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def _parse_engine_ts(value: Any) -> int | None:
+    """Parse an engine ISO-8601 timestamp to epoch milliseconds."""
+    if not isinstance(value, str):
+        return None
+    try:
+        # ponytail: fromisoformat handles 'Z' in Python 3.11+; fallback for older versions.
+        ts = value.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.UTC)
+        return int(dt.timestamp() * 1000)
+    except Exception:
+        return None
+
+
 class _SSEParser:
     """Incremental SSE parser for the ChainLens research stream.
 
@@ -110,9 +137,14 @@ class _SSEParser:
         "engine_reason",
         "error_msg",
         "estimated",
+        "evidence_ready_at",
+        "first_factual_chunk_at",
+        "first_progress_at",
         "first_token_time_ms",
+        "request_accepted_at",
         "resolved_mode",
         "saw_done",
+        "saw_engine_first_token",
         "saw_first_token",
         "saw_heartbeat",
         "saw_unknown",
@@ -129,6 +161,7 @@ class _SSEParser:
         self.chat_id: str | None = None
         self.web_url: str | None = None
         self.saw_done = False
+        self.saw_engine_first_token = False
         self.saw_first_token = False
         self.saw_heartbeat = False
         self.saw_unknown = False
@@ -144,19 +177,47 @@ class _SSEParser:
         self.estimated: bool | None = None
         self.tokens_total: int | None = None
         self.first_token_time_ms: int | None = None
+        self.request_accepted_at: int | None = None
+        self.first_progress_at: int | None = None
+        self.evidence_ready_at: int | None = None
+        self.first_factual_chunk_at: int | None = None
         self.start_time = start_time
 
     def _record_first_token(self) -> None:
-        """Capture TTFB on the first streamed token and surface it as a progress event."""
-        if self.saw_first_token or self.start_time is None:
+        """Capture TTFB and surface it as a progress event.
+
+        Prefer the engine's own ``firstFactualChunkAt - requestAcceptedAt``
+        milestones; fall back to the local Nowing clock only when the engine
+        does not publish them.
+        """
+        if (
+            self.request_accepted_at is not None
+            and self.first_factual_chunk_at is not None
+        ):
+            ttfb = max(0, self.first_factual_chunk_at - self.request_accepted_at)
+            if self.saw_engine_first_token and self.first_token_time_ms == ttfb:
+                return
+            self.saw_engine_first_token = True
+            self.saw_first_token = True
+            self.first_token_time_ms = ttfb
+            emit_progress(
+                "first_token",
+                message="First token received",
+                ttfb_ms=self.first_token_time_ms,
+            )
             return
-        self.saw_first_token = True
-        self.first_token_time_ms = int((time.perf_counter() - self.start_time) * 1000)
-        emit_progress(
-            "first_token",
-            message="First token received",
-            detail={"ttfb_ms": self.first_token_time_ms},
-        )
+        if (
+            self.start_time is not None
+            and not self.saw_first_token
+            and not self.saw_engine_first_token
+        ):
+            self.saw_first_token = True
+            self.first_token_time_ms = int((time.perf_counter() - self.start_time) * 1000)
+            emit_progress(
+                "first_token",
+                message="First token received",
+                ttfb_ms=self.first_token_time_ms,
+            )
 
     def _maybe_record_text_first_token(self, text: Any) -> None:
         if isinstance(text, str) and text.strip():
@@ -308,15 +369,63 @@ class _SSEParser:
             return
 
         if event_type == "progress":
+            self.request_accepted_at = (
+                _parse_engine_ts(event.get("requestAcceptedAt"))
+                or self.request_accepted_at
+            )
+            self.first_progress_at = (
+                _parse_engine_ts(event.get("firstProgressAt"))
+                or self.first_progress_at
+            )
+            self.evidence_ready_at = (
+                _parse_engine_ts(event.get("evidenceReadyAt"))
+                or self.evidence_ready_at
+            )
+            first_factual_chunk_at = _parse_engine_ts(
+                event.get("firstFactualChunkAt")
+            )
+            if first_factual_chunk_at is not None:
+                self.first_factual_chunk_at = first_factual_chunk_at
+                self._record_first_token()
             emit_progress(
                 event.get("phase", "progress"),
                 message=event.get("message") or None,
-                current=event.get("current")
-                if isinstance(event.get("current"), int)
-                else None,
-                total=event.get("total")
-                if isinstance(event.get("total"), int)
-                else None,
+                current=_to_int(event.get("current")),
+                total=_to_int(event.get("total")),
+                unit=event.get("unit") or None,
+            )
+            return
+
+        if event_type == "evidence_ready":
+            self.evidence_ready_at = (
+                _parse_engine_ts(event.get("evidenceReadyAt"))
+                or self.evidence_ready_at
+            )
+            emit_progress(
+                "evidence_ready",
+                message=event.get("message") or "Evidence ready",
+                current=_to_int(event.get("current")),
+                total=_to_int(event.get("total")),
+                unit=event.get("unit") or None,
+            )
+            return
+
+        if event_type == "synthesizing":
+            emit_progress(
+                "synthesizing",
+                message=event.get("message") or "Synthesizing answer",
+                current=_to_int(event.get("current")),
+                total=_to_int(event.get("total")),
+                unit=event.get("unit") or None,
+            )
+            return
+
+        if event_type == "researchComplete":
+            emit_progress(
+                "research_complete",
+                message=event.get("message") or "Research complete",
+                current=_to_int(event.get("current")),
+                total=_to_int(event.get("total")),
                 unit=event.get("unit") or None,
             )
             return
@@ -495,11 +604,13 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
     logger.info("Calling ChainLens research")
     start_time = time.perf_counter()
 
-    async with httpx.AsyncClient(
-        timeout=config.CHAINLENS_REQUEST_TIMEOUT_SECONDS,
-        follow_redirects=True,
-    ) as client:
-        response = await client.post(
+    async with (
+        httpx.AsyncClient(
+            timeout=config.CHAINLENS_REQUEST_TIMEOUT_SECONDS,
+            follow_redirects=True,
+        ) as client,
+        client.stream(
+            "POST",
             f"{config.CHAINLENS_API_URL}/api/v1/search",
             headers={
                 "Content-Type": "application/json",
@@ -507,10 +618,8 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
                 "Authorization": f"Bearer {config.CHAINLENS_API_KEY}",
             },
             json=body,
-            stream=True,
-        )
-
-        try:
+        ) as response,
+    ):
             if response.status_code == 401:
                 return _engine_unavailable("auth_failed")
             if response.status_code == 403:
@@ -525,8 +634,6 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
                 return _engine_unavailable("upstream_error")
 
             return await _parse_sse(response.aiter_lines(), start_time=start_time)
-        finally:
-            await response.aclose()
 
 
 async def _kb_fallback(
@@ -685,10 +792,10 @@ async def execute_with_context(
         if fallback_hit_count:
             metrics.record_kb_fallback_hit_count(fallback_hit_count)
 
-    output.mode_requested = output.mode_requested or payload.mode
-    output.duration_ms = output.duration_ms or int(
-        (time.perf_counter() - started) * 1000
-    )
+    if output.mode_requested is None:
+        output.mode_requested = payload.mode
+    if output.duration_ms is None:
+        output.duration_ms = int((time.perf_counter() - started) * 1000)
     if output.duration_ms is not None:
         metrics.record_chainlens_latency(
             duration_ms=output.duration_ms,

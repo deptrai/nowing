@@ -10,6 +10,7 @@ import pytest
 
 from app.capabilities.chainlens.research.executor import (
     ChainLensError,
+    _SSEParser,
     _call_chainlens,
     _parse_sse,
     build_research_executor,
@@ -307,7 +308,7 @@ def _fake_http_client(response):
         async def __aexit__(self, *exc):
             return None
 
-        async def post(self, *args, **kwargs):
+        def stream(self, *args, **kwargs):
             return self._response
 
     return _Client
@@ -443,6 +444,12 @@ def _request_capturing_client(captured: dict, done_chat_id: str | None = None):
     class _FakeResponse:
         status_code = 200
 
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
         async def aiter_lines(self):
             payload = {"type": "done"}
             if done_chat_id:
@@ -462,11 +469,11 @@ def _request_capturing_client(captured: dict, done_chat_id: str | None = None):
         async def __aexit__(self, *exc):
             return None
 
-        async def post(self, url, **kwargs):
+        def stream(self, method, url, **kwargs):
             captured["url"] = url
             captured["headers"] = kwargs.get("headers")
             captured["json"] = kwargs.get("json")
-            captured["stream"] = kwargs.get("stream")
+            captured["stream"] = True
             return _FakeResponse()
 
     return _FakeClient
@@ -784,3 +791,41 @@ def test_parse_sse_golden_fixture_parses():
     assert isinstance(output, ResearchOutput)
     assert output.status not in ("insufficient_evidence", "timeout")
     assert output.answer or output.sources
+
+
+@pytest.mark.test_id("9-1b-040")
+def test_parse_sse_progress_milestones_record_ttfb_and_phases():
+    from app.capabilities.core.progress import progress_scope
+
+    raw = (
+        _sse_line(
+            {
+                "type": "progress",
+                "requestAcceptedAt": "1970-01-01T00:00:01Z",
+                "firstProgressAt": "1970-01-01T00:00:01.200Z",
+                "evidenceReadyAt": "1970-01-01T00:00:03.500Z",
+                "firstFactualChunkAt": "1970-01-01T00:00:02.800Z",
+            }
+        )
+        + _sse_line({"type": "evidence_ready"})
+        + _sse_line({"type": "synthesizing"})
+        + _sse_line({"type": "researchComplete"})
+        + _sse_line({"type": "unknown"})
+        + _sse_line({"type": "done"})
+    )
+
+    with progress_scope() as reporter:
+        parser = _SSEParser()
+        for line in raw.splitlines():
+            parser.feed_line(line)
+        output = parser.finalize()
+
+    assert output.first_token_time_ms == 1800
+    phases = [e["phase"] for e in reporter.coarse]
+    assert "first_token" in phases
+    first_token_event = next(e for e in reporter.coarse if e["phase"] == "first_token")
+    assert first_token_event["detail"]["ttfb_ms"] == 1800
+    assert "evidence_ready" in phases
+    assert "synthesizing" in phases
+    assert "research_complete" in phases
+    assert parser.saw_unknown is True

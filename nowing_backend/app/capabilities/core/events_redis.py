@@ -25,6 +25,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from app.config import config
+from app.observability import metrics
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ class RedisRunEventBus:
         self._redis: Any | None = None
         self._pubsub: Any | None = None
         self._listener_task: asyncio.Task[None] | None = None
+        self._ensure_task: asyncio.Task[None] | None = None
         self._listener_lock = asyncio.Lock()
 
     # -- Redis client ----------------------------------------------------
@@ -61,6 +63,9 @@ class RedisRunEventBus:
             self._redis = aioredis.from_url(
                 config.REDIS_APP_URL,
                 decode_responses=True,
+                socket_connect_timeout=5,
+                socket_timeout=5,
+                health_check_interval=30,
             )
         return self._redis
 
@@ -73,6 +78,20 @@ class RedisRunEventBus:
             return asyncio.get_event_loop_policy().get_event_loop()
 
     # -- listener lifecycle ----------------------------------------------
+
+    def _log_task_exception(self, task: asyncio.Task[Any]) -> None:
+        """Log exceptions from fire-and-forget tasks to avoid asyncio swallowing them."""
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            logger.exception("run_event_bus background task %r failed", task.get_name())
+
+    def _fire(self, name: str, coro: Any) -> None:
+        """Schedule a fire-and-forget coroutine with exception logging."""
+        task = self._get_loop().create_task(coro, name=name)
+        task.add_done_callback(self._log_task_exception)
 
     def _ensure_listener(self) -> None:
         async def _start() -> None:
@@ -95,7 +114,22 @@ class RedisRunEventBus:
                     name="run_event_bus_redis_listener",
                 )
 
-        self._get_loop().create_task(_start())
+        if self._ensure_task is not None and not self._ensure_task.done():
+            with contextlib.suppress(Exception):
+                self._ensure_task.cancel()
+        self._ensure_task = self._get_loop().create_task(_start())
+        self._ensure_task.add_done_callback(self._log_task_exception)
+
+    async def _handle_listener_error(self) -> None:
+        """Close the broken pub/sub, back off, and schedule a restart."""
+        async with self._listener_lock:
+            pubsub = self._pubsub
+            self._pubsub = None
+            self._listener_task = None
+            with contextlib.suppress(Exception):
+                await pubsub.close()
+        await asyncio.sleep(1.0)
+        self._ensure_listener()
 
     async def _listener(self) -> None:
         """Forward Redis pub/sub messages to local queues."""
@@ -107,8 +141,8 @@ class RedisRunEventBus:
                 )
             except Exception:
                 logger.exception("run_event_bus redis listener error")
-                await asyncio.sleep(1.0)
-                continue
+                await self._handle_listener_error()
+                return
             if message is None:
                 continue
             if message.get("type") != "message":
@@ -130,31 +164,39 @@ class RedisRunEventBus:
                 try:
                     queue.put_nowait(event)
                 except asyncio.QueueFull:
-                    logger.debug(
+                    logger.warning(
                         "run %s: subscriber queue full, dropping event", run_id
                     )
+                    metrics.record_run_event_bus_dropped(reason="queue_full")
 
     def _subscribe_channel(self, run_id: str) -> None:
         async def _sub() -> None:
             if self._pubsub is None:
                 return
             channel = _channel(run_id)
-            await self._pubsub.subscribe(channel)
+            try:
+                await asyncio.wait_for(self._pubsub.subscribe(channel), timeout=5.0)
+            except Exception:
+                logger.warning("run %s: redis subscribe failed", run_id, exc_info=True)
 
         self._ensure_listener()
-        self._get_loop().create_task(_sub())
+        self._fire(f"run_event_bus_subscribe:{run_id}", _sub())
 
     def _unsubscribe_channel(self, run_id: str) -> None:
         async def _unsub() -> None:
             if self._pubsub is None:
                 return
             channel = _channel(run_id)
-            with contextlib.suppress(Exception):
-                await self._pubsub.unsubscribe(channel)
+            try:
+                await asyncio.wait_for(self._pubsub.unsubscribe(channel), timeout=5.0)
+            except Exception:
+                logger.warning(
+                    "run %s: redis unsubscribe failed", run_id, exc_info=True
+                )
             if not any(subs for subs in self._subscribers.values()):
                 await self._stop_listener()
 
-        self._get_loop().create_task(_unsub())
+        self._fire(f"run_event_bus_unsubscribe:{run_id}", _unsub())
 
     async def _stop_listener(self) -> None:
         async with self._listener_lock:
@@ -190,16 +232,35 @@ class RedisRunEventBus:
             try:
                 queue.put_nowait(event)
             except asyncio.QueueFull:
-                logger.debug("run %s: subscriber queue full, dropping event", run_id)
+                logger.warning("run %s: subscriber queue full, dropping event", run_id)
+                metrics.record_run_event_bus_dropped(reason="queue_full")
 
         # Cross-replica fan-out through Redis.
         async def _pub() -> None:
-            try:
-                await self._client().publish(_channel(run_id), json.dumps(event))
-            except Exception:
-                logger.exception("run_event_bus publish failed for run %s", run_id)
+            client = self._client()
+            payload = json.dumps(event)
+            channel = _channel(run_id)
+            for attempt in range(2):
+                try:
+                    await asyncio.wait_for(
+                        client.publish(channel, payload), timeout=5.0
+                    )
+                    return
+                except TimeoutError:
+                    logger.warning(
+                        "run %s: redis publish timed out (attempt %d/2)",
+                        run_id,
+                        attempt + 1,
+                    )
+                except Exception:
+                    logger.warning(
+                        "run %s: redis publish failed (attempt %d/2)",
+                        run_id,
+                        attempt + 1,
+                        exc_info=True,
+                    )
 
-        self._get_loop().create_task(_pub())
+        self._fire(f"run_event_bus_publish:{run_id}", _pub())
 
     def subscribe(self, run_id: str) -> asyncio.Queue[dict[str, Any]]:
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(

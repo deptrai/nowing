@@ -17,7 +17,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from app.db import Run, ToolOutputSpill
 
@@ -190,9 +190,18 @@ async def finalize_run(
 
     try:
         raw = run_id[len("run_") :] if run_id.startswith("run_") else run_id
-        run = await session.get(Run, _uuid.UUID(raw))
+        parsed_id = _uuid.UUID(raw)
+        result = await session.execute(
+            select(Run).where(Run.id == parsed_id).with_for_update()
+        )
+        run = result.scalar_one_or_none()
         if run is None:
             logger.warning("finalize_run: run %s not found", run_id)
+            return False
+        # ponytail: once a user cancels a run, never overwrite the row. A worker
+        # on another replica may still be finalizing; the guard keeps the user
+        # decision authoritative.
+        if run.status == "cancelled":
             return False
         run.status = status
         run.error = error

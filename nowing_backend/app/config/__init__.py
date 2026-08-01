@@ -923,7 +923,10 @@ class Config:
 
     # Default research mode. "balanced" is the planned new default (SD6/PRD D3);
     # "quality" is the old default and remains an explicit opt-in.
-    DEFAULT_RESEARCH_MODE = os.getenv("DEFAULT_RESEARCH_MODE", "balanced").strip()
+    _default_mode = os.getenv("DEFAULT_RESEARCH_MODE", "balanced").strip().lower()
+    DEFAULT_RESEARCH_MODE = (
+        _default_mode if _default_mode in {"speed", "balanced", "quality", "auto"} else "balanced"
+    )
     # State B: enable synchronous chat-mode deep research (inline agent/REST).
     # While disabled (State A), chainlens.research is always async.
     DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED = (

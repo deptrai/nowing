@@ -793,6 +793,12 @@ def _fake_http_client_class(response):
             self.text = text
             self._lines = lines or []
 
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
         async def aiter_lines(self):
             for line in self._lines:
                 yield line
@@ -810,7 +816,7 @@ def _fake_http_client_class(response):
         async def __aexit__(self, *exc):
             return None
 
-        async def post(self, *args, **kwargs):
+        def stream(self, *args, **kwargs):
             return _FakeResponse(
                 response["status_code"],
                 response.get("text", ""),

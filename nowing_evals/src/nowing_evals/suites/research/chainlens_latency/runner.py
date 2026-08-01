@@ -1,13 +1,14 @@
-"""ChainLens research latency gate (Story 9.3).
+"""ChainLens research latency + quality gate (Story 9.3).
 
 Runs a small set of research queries in each requested mode, records e2e and
-TTFB latency, and computes p50/p95 per mode. The gate can be used to validate
-that the default ``balanced`` mode meets the latency budget before enabling
-State B (sync chat mode).
+TTFB latency, and computes p50/p95 per mode. If a labeled reference file is
+provided with ``--references``, the runner also computes token-overlap
+``answer_recall`` and ``f1`` per mode so the quality of ``balanced`` can be
+compared to ``quality`` before enabling State B (sync chat mode).
 
-ponytail: This runner intentionally does not score answer quality; the
-``chainlens_latency`` gate is a latency/NFR-9 gate. Quality gating lives in
-separate suites once a labeled research dataset exists.
+ponytail: Token overlap is a cheap, dependency-free quality proxy; replace
+with a real evaluator (e.g. LLM-as-judge or ROUGE) once a labeled dataset
+exists.
 """
 
 from __future__ import annotations
@@ -16,8 +17,10 @@ import argparse
 import asyncio
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -48,13 +51,17 @@ _DEFAULT_QUERIES = [
 
 
 @dataclass
-class _Latencies:
+class _ModeStats:
     e2e: list[float] = None  # type: ignore[assignment]
     ttfb: list[float] = None  # type: ignore[assignment]
+    recall: list[float] = None  # type: ignore[assignment]
+    f1: list[float] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         self.e2e = []
         self.ttfb = []
+        self.recall = []
+        self.f1 = []
 
 
 def _percentile(values: list[float], p: float) -> float:
@@ -102,6 +109,18 @@ class ChainlensLatencyBenchmark:
             default=300.0,
             help="Max seconds to wait for an async run.",
         )
+        parser.add_argument(
+            "--references",
+            type=Path,
+            default=None,
+            help="Optional JSONL/JSON file with {'query': ..., 'reference': ...} records for quality scoring.",
+        )
+        parser.add_argument(
+            "--quality-latency-budget-ms",
+            type=float,
+            default=60_000.0,
+            help="Max p95 e2e latency (ms) the quality mode may add before it is rejected.",
+        )
 
     async def ingest(self, ctx: RunContext, **opts: Any) -> None:
         # No ingest required; this is a live latency gate against the engine.
@@ -115,6 +134,8 @@ class ChainlensLatencyBenchmark:
         concurrency = max(1, int(opts.get("concurrency") or 1))
         poll_interval = float(opts.get("poll_interval") or 2.0)
         poll_timeout = float(opts.get("poll_timeout") or 300.0)
+        references_path: Path | None = opts.get("references")
+        quality_latency_budget_ms = float(opts.get("quality_latency_budget_ms") or 60_000.0)
 
         workspace_id = ctx.config.memory_workspace_id
         if workspace_id is None:
@@ -124,7 +145,9 @@ class ChainlensLatencyBenchmark:
         if not queries:
             raise RuntimeError("No queries selected for chainlens_latency.")
 
-        by_mode: dict[str, _Latencies] = {m: _Latencies() for m in modes}
+        references = self._load_references(references_path)
+
+        by_mode: dict[str, _ModeStats] = {m: _ModeStats() for m in modes}
         raw_rows: list[dict[str, Any]] = []
 
         sem = asyncio.Semaphore(concurrency)
@@ -144,22 +167,57 @@ class ChainlensLatencyBenchmark:
         results = await asyncio.gather(*(_run_one(q, m) for m in modes for q in queries))
 
         for row in results:
-            mode = row["mode"]
+            mode_requested = row["mode"]
+            resolved_mode = row.get("resolved_mode")
+            mode = resolved_mode or mode_requested
+            if resolved_mode and resolved_mode != mode_requested:
+                logger.warning(
+                    "Run resolved to %r instead of requested %r for query %r",
+                    resolved_mode,
+                    mode_requested,
+                    row["query"],
+                )
+            if mode not in by_mode:
+                by_mode[mode] = _ModeStats()
             by_mode[mode].e2e.append(row["duration_ms"])
             if row["first_token_time_ms"] is not None:
                 by_mode[mode].ttfb.append(row["first_token_time_ms"])
+            recall, f1 = self._score_quality(row, references)
+            if recall is not None:
+                by_mode[mode].recall.append(recall)
+                by_mode[mode].f1.append(f1)
             raw_rows.append(row)
 
-        metrics: dict[str, Any] = {"modes": {}}
-        for mode, lat in by_mode.items():
+        metrics: dict[str, Any] = {"modes": {}, "recommendation": None}
+        for mode, stats in by_mode.items():
             metrics["modes"][mode] = {
-                "p50_e2e_ms": _percentile(lat.e2e, 0.5),
-                "p95_e2e_ms": _percentile(lat.e2e, 0.95),
-                "p50_ttfb_ms": _percentile(lat.ttfb, 0.5) if lat.ttfb else None,
-                "p95_ttfb_ms": _percentile(lat.ttfb, 0.95) if lat.ttfb else None,
-                "samples_e2e": len(lat.e2e),
-                "samples_ttfb": len(lat.ttfb),
+                "p50_e2e_ms": _percentile(stats.e2e, 0.5),
+                "p95_e2e_ms": _percentile(stats.e2e, 0.95),
+                "p50_ttfb_ms": _percentile(stats.ttfb, 0.5) if stats.ttfb else None,
+                "p95_ttfb_ms": _percentile(stats.ttfb, 0.95) if stats.ttfb else None,
+                "samples_e2e": len(stats.e2e),
+                "samples_ttfb": len(stats.ttfb),
+                "mean_answer_recall": sum(stats.recall) / len(stats.recall) if stats.recall else None,
+                "mean_f1": sum(stats.f1) / len(stats.f1) if stats.f1 else None,
+                "samples_quality": len(stats.recall),
             }
+
+        # Revert balanced -> quality when quality mode beats balanced on quality
+        # while staying inside the latency budget.
+        if "balanced" in metrics["modes"] and "quality" in metrics["modes"]:
+            b, q = metrics["modes"]["balanced"], metrics["modes"]["quality"]
+            b_f1 = b.get("mean_f1") if b.get("mean_f1") is not None else b.get("mean_answer_recall")
+            q_f1 = q.get("mean_f1") if q.get("mean_f1") is not None else q.get("mean_answer_recall")
+            q_p95 = q.get("p95_e2e_ms", float("inf"))
+            if (
+                b_f1 is not None
+                and q_f1 is not None
+                and q_f1 > b_f1 * 1.01
+                and q_p95 <= quality_latency_budget_ms
+            ):
+                metrics["recommendation"] = "quality"
+            else:
+                metrics["recommendation"] = "balanced"
 
         run_timestamp = utc_iso_timestamp()
         run_dir = ctx.runs_dir(run_timestamp=run_timestamp)
@@ -175,6 +233,8 @@ class ChainlensLatencyBenchmark:
             "concurrency": concurrency,
             "poll_interval": poll_interval,
             "poll_timeout": poll_timeout,
+            "references_path": str(references_path) if references_path else None,
+            "quality_latency_budget_ms": quality_latency_budget_ms,
         }
         manifest_path = run_dir / "run_artifact.json"
         manifest_path.write_text(
@@ -201,6 +261,57 @@ class ChainlensLatencyBenchmark:
             extra=extra,
         )
 
+    def _load_references(self, path: Path | None) -> dict[str, str]:
+        """Load optional query->reference mapping for quality scoring."""
+        if path is None:
+            return {}
+        text = path.read_text(encoding="utf-8")
+        references: dict[str, str] = {}
+        if not text.strip():
+            return references
+        try:
+            data = json.loads(text)
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict) and "query" in item and "reference" in item:
+                        references[item["query"]] = item["reference"]
+            elif isinstance(data, dict):
+                references = data
+        except json.JSONDecodeError:
+            for line in text.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    item = json.loads(line)
+                    if isinstance(item, dict) and "query" in item and "reference" in item:
+                        references[item["query"]] = item["reference"]
+                except json.JSONDecodeError:
+                    continue
+        return references
+
+    def _score_quality(
+        self, row: dict[str, Any], references: dict[str, str]
+    ) -> tuple[float | None, float | None]:
+        """Return (recall, f1) against the reference for this query, or (None, None)."""
+        reference = references.get(row["query"])
+        answer: str | None = row.get("answer")
+        if not reference or not answer:
+            return None, None
+
+        def _tokens(text: str) -> set[str]:
+            return set(re.findall(r"\b\w+\b", text.lower()))
+
+        ref_tokens = _tokens(reference)
+        ans_tokens = _tokens(answer)
+        if not ref_tokens or not ans_tokens:
+            return 0.0, 0.0
+        overlap = ans_tokens & ref_tokens
+        recall = len(overlap) / len(ref_tokens)
+        precision = len(overlap) / len(ans_tokens)
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+        return recall, f1
+
     async def _call_research(
         self,
         http: httpx.AsyncClient,
@@ -218,7 +329,7 @@ class ChainlensLatencyBenchmark:
             url,
             params={"mode": "sync"},
             json={"query": query, "mode": mode},
-            timeout=httpx.Timeout(30.0, connect=10.0),
+            timeout=httpx.Timeout(poll_timeout, connect=10.0),
         )
         if resp.status_code == 202:
             body = resp.json()
@@ -247,6 +358,8 @@ class ChainlensLatencyBenchmark:
             "status": output.get("status"),
             "source_count": len(output.get("sources") or []),
             "answer_length": len(output.get("answer") or ""),
+            "answer": output.get("answer") or "",
+            "sources": output.get("sources") or [],
         }
 
     async def _poll_run(
@@ -261,14 +374,22 @@ class ChainlensLatencyBenchmark:
         url = f"{base_url}/api/v1/workspaces/{workspace_id}/scrapers/runs/{run_id}"
         started = time.perf_counter()
         while True:
-            resp = await http.get(url, timeout=httpx.Timeout(30.0))
+            resp = await http.get(url, timeout=httpx.Timeout(poll_timeout, connect=10.0))
             if resp.status_code >= 400:
                 raise RuntimeError(f"Run poll failed: {resp.status_code} {resp.text[:200]}")
             data = resp.json()
             if data.get("status") not in ("running",):
                 return data
             if time.perf_counter() - started > poll_timeout:
-                raise RuntimeError(f"Timed out polling run {run_id}")
+                logger.warning(
+                    "Timed out polling run %s after %.1fs; recording partial result",
+                    run_id,
+                    poll_timeout,
+                )
+                data["status"] = "timeout"
+                data["duration_ms"] = int((time.perf_counter() - started) * 1000)
+                data.setdefault("error", f"Timed out polling run {run_id}")
+                return data
             await asyncio.sleep(poll_interval)
 
     def _parse_run(self, run_data: dict[str, Any], query: str, mode: str) -> dict[str, Any]:
@@ -288,30 +409,37 @@ class ChainlensLatencyBenchmark:
             "status": run_data.get("status"),
             "source_count": len(output.get("sources") or []),
             "answer_length": len(output.get("answer") or ""),
+            "answer": output.get("answer") or "",
+            "sources": output.get("sources") or [],
         }
 
     def report_section(self, artifacts: list[RunArtifact]) -> ReportSection:
         if not artifacts:
             return ReportSection(
-                title="ChainLens latency gate",
+                title="ChainLens latency + quality gate",
                 headline=False,
                 body_md="(no run artifacts found)",
                 body_json={},
             )
         latest = max(artifacts, key=lambda a: a.run_timestamp)
         m = latest.metrics
-        lines = ["| mode | p50 e2e | p95 e2e | p50 ttfb | p95 ttfb | samples |"]
-        lines.append("|---|---|---|---|---|---|")
+        lines = ["| mode | p50 e2e | p95 e2e | p50 ttfb | p95 ttfb | recall | f1 | samples |"]
+        lines.append("|---|---|---|---|---|---|---|---|")
         for mode, vals in m.get("modes", {}).items():
             lines.append(
                 f"| {mode} | {vals.get('p50_e2e_ms', 0):.0f} | "
                 f"{vals.get('p95_e2e_ms', 0):.0f} | "
                 f"{vals.get('p50_ttfb_ms') or 'n/a'} | "
                 f"{vals.get('p95_ttfb_ms') or 'n/a'} | "
+                f"{vals.get('mean_answer_recall') or 'n/a'} | "
+                f"{vals.get('mean_f1') or 'n/a'} | "
                 f"{vals.get('samples_e2e', 0)} |"
             )
+        if m.get("recommendation"):
+            lines.append("")
+            lines.append(f"**Recommended mode:** `{m['recommendation']}`")
         return ReportSection(
-            title="ChainLens research latency by mode",
+            title="ChainLens research latency + quality by mode",
             headline=False,
             body_md="\n".join(lines),
             body_json=m,

@@ -22,7 +22,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -234,6 +234,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
             return JSONResponse(
                 status_code=status.HTTP_202_ACCEPTED,
                 content={"run_id": f"run_{run_id}", "status": "running"},
+                headers={"X-Run-Id": f"run_{run_id}"},
             )
 
         # Sync mode: block until done, persisting the coarse progress log.
@@ -391,25 +392,26 @@ def _register_run_history(router: APIRouter) -> None:
                     yield _sse(event)
                 if any(e.get("type") == "run.finished" for e in replayed):
                     return
-                if run_event_bus.get_task(raw) is None:
-                    # Not actively streaming (finished before we attached, or a
-                    # sync/agent run) — snapshot the terminal state and close.
-                    async with async_session_maker() as snap_session:
-                        row = (
-                            await snap_session.execute(
-                                select(Run).where(
-                                    Run.id == parsed_id,
-                                    Run.workspace_id == workspace_id,
-                                )
+                # If the run is already terminal (finished before we attached,
+                # a sync run, or a run owned by another worker), snapshot it and
+                # close. Otherwise wait for the live event stream.
+                async with async_session_maker() as snap_session:
+                    row = (
+                        await snap_session.execute(
+                            select(Run).where(
+                                Run.id == parsed_id,
+                                Run.workspace_id == workspace_id,
                             )
-                        ).scalar_one_or_none()
+                        )
+                    ).scalar_one_or_none()
+                if row and row.status in {"success", "error", "cancelled"}:
                     yield _sse(
                         {
                             "type": "run.finished",
                             "run_id": f"run_{raw}",
-                            "status": row.status if row else "error",
-                            "item_count": row.item_count if row else 0,
-                            "error": row.error if row else None,
+                            "status": row.status,
+                            "item_count": row.item_count,
+                            "error": row.error,
                             "ts": _now_ms(),
                         }
                     )
@@ -502,9 +504,20 @@ def _register_run_history(router: APIRouter) -> None:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Run has no deliverable output.",
             )
+        lines = row.output_text.splitlines()
+        if not lines:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Run output is empty.",
+            )
+        first_line = lines[0]
         try:
-            first_line = row.output_text.splitlines()[0]
             output = ResearchOutput.model_validate_json(first_line)
+        except (json.JSONDecodeError, ValidationError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Run output is not valid deliverable JSON.",
+            ) from exc
         except Exception:
             logger.exception("Failed to parse run %s output as ResearchOutput", run_id)
             raise HTTPException(
@@ -514,17 +527,45 @@ def _register_run_history(router: APIRouter) -> None:
 
         query = (row.input or {}).get("query", "Deep Research")
         sources_md = _sources_to_markdown(output.sources)
-        content = f"# {query}\n\n{output.answer}\n\n## Sources\n\n{sources_md}"
+        content = f"{output.answer}\n\n{sources_md}"
+        existing = (
+            await session.execute(
+                select(Report)
+                .with_for_update(of=Report)
+                .where(
+                    Report.report_metadata["run_id"].as_string() == f"run_{row.id}",
+                    Report.workspace_id == workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Deliverable already exists for this run.",
+            )
+        report_thread_id: int | None = None
+        if row.thread_id is not None:
+            try:
+                report_thread_id = int(row.thread_id)
+            except (TypeError, ValueError):
+                logger.warning(
+                    "Run %s thread_id %r cannot be converted to an integer for the report",
+                    run_id,
+                    row.thread_id,
+                )
+        report_cost_micros = output.cost_micros or row.cost_micros or 0
         report = Report(
             workspace_id=workspace_id,
+            thread_id=report_thread_id,
             title=query[:500],
             content=content,
             content_type="markdown",
             report_style="deep_research",
             report_metadata={
                 "run_id": f"run_{row.id}",
+                "thread_id": row.thread_id,
                 "resolved_mode": output.resolved_mode,
-                "cost_micros": row.cost_micros,
+                "cost_micros": report_cost_micros,
             },
         )
         session.add(report)

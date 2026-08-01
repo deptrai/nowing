@@ -514,6 +514,10 @@ async def record_token_usage(
     call_details: dict[str, Any] | None = None,
     thread_id: int | None = None,
     message_id: int | None = None,
+    resolved_mode: str | None = None,
+    mode_requested: str | None = None,
+    e2e_ms: int | None = None,
+    ttfb_ms: int | None = None,
 ) -> TokenUsage | None:
     """Persist a single ``TokenUsage`` row.
 
@@ -530,6 +534,10 @@ async def record_token_usage(
             cost_micros=cost_micros,
             model_breakdown=model_breakdown,
             call_details=call_details,
+            resolved_mode=resolved_mode,
+            mode_requested=mode_requested,
+            e2e_ms=e2e_ms,
+            ttfb_ms=ttfb_ms,
             thread_id=thread_id,
             message_id=message_id,
             workspace_id=workspace_id,

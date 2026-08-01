@@ -8,8 +8,8 @@ raised ``MEMORY_AUTO_EXTRACT_RATE_MAX`` above zero without it and silently
 started reading a live ``redis://localhost:6379/0``, which is exactly the class
 of mistake a shared installer prevents.
 
-Covers only the three commands the counters use (``get`` / ``incr`` /
-``expire``). Deliberately not a full Redis emulation.
+Covers only the four commands the counters use (``get`` / ``incr`` /
+``expire`` / ``eval``). Deliberately not a full Redis emulation.
 """
 
 from __future__ import annotations
@@ -47,6 +47,18 @@ class FakeRedis:
         self._guard()
         self.ttls[key] = seconds
         return True
+
+    def eval(self, script: str, numkeys: int, *args: object) -> int:
+        """Minimal Lua double for the INCR+EXPIRE script used by extract_budget."""
+        self._guard()
+        keys = args[:numkeys]
+        argv = args[numkeys:]
+        if "redis.call('INCR'" in script and "redis.call('EXPIRE'" in script:
+            count = self.incr(str(keys[0]))
+            if count == 1:
+                self.expire(str(keys[0]), int(argv[0]))
+            return count
+        raise RuntimeError("FakeRedis does not support this script")
 
 
 def install_fake_redis(monkeypatch, module, *, fail: bool = False) -> FakeRedis:

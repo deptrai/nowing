@@ -20,6 +20,12 @@ from langchain_core.tools import BaseTool, StructuredTool
 
 from app.auth.context import AuthContext
 from app.capabilities.core import execute_with_context
+from app.capabilities.core.access.rate_limit import (
+    _KEY_PREFIX,
+    _WINDOW_SECONDS,
+    CAPABILITY_RATE_LIMIT_PER_MINUTE,
+    _incr,
+)
 from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.progress import progress_scope
@@ -88,6 +94,19 @@ def _current_thread_id() -> str | None:
         return None
 
 
+def _check_rate_limit(workspace_id: int) -> None:
+    """Enforce the same per-workspace per-minute capability cap as the REST door.
+
+    Unlike the REST dependency this does not raise HTTPException; it reuses the
+    InsufficientCreditsError handler so the agent tool returns a string error.
+    """
+    count = _incr(f"{_KEY_PREFIX}:{workspace_id}", _WINDOW_SECONDS)
+    if count > CAPABILITY_RATE_LIMIT_PER_MINUTE:
+        raise InsufficientCreditsError(
+            "Rate limit exceeded for this workspace. Try again shortly."
+        )
+
+
 async def _verify_workspace_access(
     session: Any, workspace_id: int, auth_context: AuthContext
 ) -> None:
@@ -135,6 +154,7 @@ def _capability_tool(
                     await _verify_workspace_access(session, workspace_id, auth_context)
                 ctx = CapabilityContext(session=session, workspace_id=workspace_id)
                 try:
+                    _check_rate_limit(workspace_id)
                     await gate_capability(payload, unit, ctx)
                 except InsufficientCreditsError as exc:
                     return str(exc)
