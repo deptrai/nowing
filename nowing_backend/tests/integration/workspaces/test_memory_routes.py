@@ -301,3 +301,85 @@ async def test_cannot_modify_other_users_personal_memory(
 
     delete_resp = await client_as_other.delete(f"/api/v1/memories/{mem.id}")
     assert delete_resp.status_code == 403
+
+
+@pytest.fixture
+def memory_events():
+    """Capture ``memory.changed`` events and isolate the bus from real
+    subscribers for the test's duration."""
+    from app.event_bus import bus
+
+    captured: list[dict] = []
+
+    async def _spy(event) -> None:
+        if event.event_type == "memory.changed":
+            captured.append(event)
+
+    snapshot = bus.subscribers()
+    bus._subscribers = [_spy]
+    try:
+        yield captured
+    finally:
+        bus._subscribers = snapshot
+
+
+async def test_rest_create_with_automation_run_header_does_not_emit_event(
+    client, db_workspace, memory_events
+):
+    """AC-5 (cross-process): a POST with ``X-Automation-Run-Id`` must not emit
+    ``memory.changed``, so an external automation step cannot re-fire over HTTP."""
+    payload = {
+        "content": "Cross-process automation fact.",
+        "type": "semantic",
+        "tags": ["competitor"],
+        "source_type": "manual",
+    }
+    resp = await client.post(
+        f"{BASE}/{db_workspace.id}/memories",
+        json=payload,
+        headers={"X-Automation-Run-Id": "123"},
+    )
+
+    assert resp.status_code == 201
+    assert memory_events == []
+
+    # Control: the same request without the header emits one event.
+    control = await client.post(
+        f"{BASE}/{db_workspace.id}/memories",
+        json={
+            "content": "Manual control fact.",
+            "type": "semantic",
+            "tags": ["competitor"],
+            "source_type": "manual",
+        },
+    )
+    assert control.status_code == 201
+    assert len(memory_events) == 1
+
+
+async def test_rest_update_with_automation_run_header_does_not_emit_event(
+    client, db_workspace, memory_events
+):
+    """AC-5 (cross-process): a PATCH with ``X-Automation-Run-Id`` must not emit
+    ``memory.changed``."""
+    create = await client.post(
+        f"{BASE}/{db_workspace.id}/memories",
+        json={
+            "content": "Original fact.",
+            "type": "semantic",
+            "tags": ["competitor"],
+            "source_type": "manual",
+        },
+    )
+    assert create.status_code == 201
+    memory_id = create.json()["id"]
+    memory_events.clear()
+
+    patch = await client.patch(
+        f"/api/v1/memories/{memory_id}",
+        json={"corrected_content": "Updated by automation."},
+        headers={"X-Automation-Run-Id": "123"},
+    )
+    assert patch.status_code == 200
+    assert memory_events == []
+
