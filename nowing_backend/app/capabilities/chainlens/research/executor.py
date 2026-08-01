@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
@@ -109,22 +110,26 @@ class _SSEParser:
         "engine_reason",
         "error_msg",
         "estimated",
+        "first_token_time_ms",
         "resolved_mode",
         "saw_done",
+        "saw_first_token",
         "saw_heartbeat",
         "saw_unknown",
         "sources",
+        "start_time",
         "status",
         "tokens_total",
         "web_url",
     )
 
-    def __init__(self) -> None:
+    def __init__(self, start_time: float | None = None) -> None:
         self.blocks: dict[str, _Block] = {}
         self.error_msg: str | None = None
         self.chat_id: str | None = None
         self.web_url: str | None = None
         self.saw_done = False
+        self.saw_first_token = False
         self.saw_heartbeat = False
         self.saw_unknown = False
         self.status: _ResearchStatus = "complete"
@@ -138,6 +143,24 @@ class _SSEParser:
         self.resolved_mode: str | None = None
         self.estimated: bool | None = None
         self.tokens_total: int | None = None
+        self.first_token_time_ms: int | None = None
+        self.start_time = start_time
+
+    def _record_first_token(self) -> None:
+        """Capture TTFB on the first streamed token and surface it as a progress event."""
+        if self.saw_first_token or self.start_time is None:
+            return
+        self.saw_first_token = True
+        self.first_token_time_ms = int((time.perf_counter() - self.start_time) * 1000)
+        emit_progress(
+            "first_token",
+            message="First token received",
+            detail={"ttfb_ms": self.first_token_time_ms},
+        )
+
+    def _maybe_record_text_first_token(self, text: Any) -> None:
+        if isinstance(text, str) and text.strip():
+            self._record_first_token()
 
     def feed_line(self, raw_line: str) -> None:
         """Ingest one raw ``data:`` SSE line and update parser state.
@@ -190,6 +213,8 @@ class _SSEParser:
             block_id = block.get("id")
             if isinstance(block_id, str):
                 self.blocks[block_id] = _Block(block.get("type", ""), block.get("data"))
+                if block.get("type") == "text":
+                    self._maybe_record_text_first_token(block.get("data"))
             return
 
         if event_type == "updateBlock" and isinstance(event.get("blockId"), str):
@@ -202,6 +227,8 @@ class _SSEParser:
                     continue
                 if op.get("path") == "/data" and op.get("op") in {"replace", "add"}:
                     current.data = op.get("value")
+                    if current.type == "text":
+                        self._maybe_record_text_first_token(op.get("value"))
             return
 
         if event_type == "partial":
@@ -214,6 +241,7 @@ class _SSEParser:
                 answer = partial_blob.get("answer")
             if not isinstance(answer, str):
                 answer = ""
+            self._maybe_record_text_first_token(answer)
             self.answer = answer
             self.sources = _parse_sources(
                 event.get("sources")
@@ -250,6 +278,7 @@ class _SSEParser:
             partial_answer = partial_blob.get("answer")
             if not isinstance(partial_answer, str):
                 partial_answer = ""
+            self._maybe_record_text_first_token(partial_answer)
             partial_sources = _parse_sources(partial_blob.get("sources"))
             if partial_answer or partial_sources:
                 self.status = "partial"
@@ -276,6 +305,20 @@ class _SSEParser:
 
         if event_type == "heartbeat":
             self.saw_heartbeat = True
+            return
+
+        if event_type == "progress":
+            emit_progress(
+                event.get("phase", "progress"),
+                message=event.get("message") or None,
+                current=event.get("current")
+                if isinstance(event.get("current"), int)
+                else None,
+                total=event.get("total")
+                if isinstance(event.get("total"), int)
+                else None,
+                unit=event.get("unit") or None,
+            )
             return
 
         if event_type not in {"block", "updateBlock", "done", "usage"}:
@@ -369,11 +412,13 @@ class _SSEParser:
             cost_basis=self.cost_basis,
             resolved_mode=self.resolved_mode,
             tokens_total=self.tokens_total,
+            first_token_time_ms=self.first_token_time_ms,
         )
 
 
 def _parse_sse(
     source: str | AsyncIterator[str] | AsyncIterable[str],
+    start_time: float | None = None,
 ) -> ResearchOutput | Awaitable[ResearchOutput]:
     """Parse the ChainLens block-based SSE stream into a research output.
 
@@ -386,6 +431,7 @@ def _parse_sse(
     - ``type: done`` carries chatId and webUrl metadata and marks the
       terminal frame.
     - ``type: error`` surfaces as a ``ChainLensError``.
+    - ``type: progress`` is relayed to the run progress bus (T4).
 
     9.1a additions: the engine can also emit ``partial`` and
     ``insufficientEvidence`` data frames (with an embedded ``reason`` and
@@ -395,7 +441,7 @@ def _parse_sse(
     ``source`` may be a complete response string (for tests and local parsing)
     or an async iterator of lines from a streaming response.
     """
-    parser = _SSEParser()
+    parser = _SSEParser(start_time=start_time)
 
     if isinstance(source, str):
         for raw_line in source.splitlines():
@@ -447,6 +493,7 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
         body["chatId"] = payload.chat_id
 
     logger.info("Calling ChainLens research")
+    start_time = time.perf_counter()
 
     async with httpx.AsyncClient(
         timeout=config.CHAINLENS_REQUEST_TIMEOUT_SECONDS,
@@ -477,7 +524,7 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
             if response.status_code != 200:
                 return _engine_unavailable("upstream_error")
 
-            return await _parse_sse(response.aiter_lines())
+            return await _parse_sse(response.aiter_lines(), start_time=start_time)
         finally:
             await response.aclose()
 
@@ -519,6 +566,7 @@ async def execute_with_context(
     workspace_id`` so it is compatible with :func:`_kb_fallback` and with
     unit tests that inject a fake fallback.
     """
+    started = time.perf_counter()
     degradation_reason: str | None = None
     engine_reason: str | None = None
     output: ResearchOutput | None = None
@@ -637,6 +685,22 @@ async def execute_with_context(
         if fallback_hit_count:
             metrics.record_kb_fallback_hit_count(fallback_hit_count)
 
+    output.mode_requested = output.mode_requested or payload.mode
+    output.duration_ms = output.duration_ms or int(
+        (time.perf_counter() - started) * 1000
+    )
+    if output.duration_ms is not None:
+        metrics.record_chainlens_latency(
+            duration_ms=output.duration_ms,
+            metric="e2e",
+            mode=output.mode_requested or payload.mode,
+        )
+    if output.first_token_time_ms is not None:
+        metrics.record_chainlens_latency(
+            duration_ms=output.first_token_time_ms,
+            metric="ttfb",
+            mode=output.mode_requested or payload.mode,
+        )
     return output
 
 

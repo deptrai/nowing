@@ -19,6 +19,8 @@ from pydantic import (
     model_validator,
 )
 
+from app.config import config
+
 MAX_QUERY_LENGTH = 500
 """ChainLens clamps queries at 500 characters."""
 
@@ -73,7 +75,7 @@ class ResearchInput(BaseModel):
         description="The research question or topic.",
     )
     mode: Literal["speed", "balanced", "quality", "auto"] = Field(
-        default="quality",
+        default=config.DEFAULT_RESEARCH_MODE,
         description="Research depth: speed (fast), balanced, or quality (thorough).",
     )
     sources: list[Literal["web", "discussions", "academic"]] = Field(
@@ -134,6 +136,18 @@ class ResearchOutput(BaseModel):
     tokens_total: int | None = Field(
         default=None,
         description="Total token count reported by the engine, if any.",
+    )
+    first_token_time_ms: int | None = Field(
+        default=None,
+        description="Time from request to first streamed token (TTFB), in milliseconds.",
+    )
+    duration_ms: int | None = Field(
+        default=None,
+        description="End-to-end research call duration, in milliseconds.",
+    )
+    mode_requested: str | None = Field(
+        default=None,
+        description="The mode requested by the caller (e.g. speed/balanced/quality).",
     )
     sources: list[Source] = Field(
         default_factory=list,

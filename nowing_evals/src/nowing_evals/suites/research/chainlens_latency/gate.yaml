@@ -1,0 +1,25 @@
+# ChainLens research latency gate — Story 9.3 / NFR-9 / State A->B.
+#
+# The default mode must stay inside the latency budget before the sync
+# chat-mode feature flag (DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED) can be
+# safely turned on. These numbers are PROVISIONAL and baseline_ratified
+# is false until measured on the real engine.
+
+# Maximum p95 end-to-end latency (ms) for the default/balanced mode.
+p95_e2e_ms_max_balanced: 60000
+
+# Maximum p95 TTFB (ms) for the default/balanced mode.
+p95_ttfb_ms_max_balanced: 15000
+
+# Minimum samples so a single fast run cannot pass the gate.
+min_samples: 5
+
+# The runner should produce latency numbers for at least these modes.
+required_modes:
+  - balanced
+  - quality
+
+# Baseline ratification. Flip to true once the numbers above are measured
+# on the real ChainLens engine and signed off by the NFR-9 owner.
+baseline_ratified: false
+baseline_source: ""

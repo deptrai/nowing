@@ -546,7 +546,7 @@ async def test_call_chainlens_request_contract_omits_optional_fields(monkeypatch
 
     assert captured["json"] == {
         "query": "minimal",
-        "optimizationMode": "quality",
+        "optimizationMode": "balanced",
         "tier": "research",
         "sources": ["web", "academic"],
         "history": [],

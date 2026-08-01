@@ -20,6 +20,7 @@ from app.podcasts.api import router as podcasts_router
 from .admin_global_model_connections_routes import (
     router as admin_global_model_connections_router,
 )
+from .admin_latency_routes import router as admin_latency_router
 from .agent_action_log_route import router as agent_action_log_router
 from .agent_flags_route import router as agent_flags_router
 from .agent_permissions_route import router as agent_permissions_router
@@ -140,6 +141,9 @@ router.include_router(dropbox_add_connector_router)
 router.include_router(
     admin_global_model_connections_router
 )  # Platform admin global models
+router.include_router(
+    admin_latency_router
+)  # Platform admin ChainLens latency percentiles
 router.include_router(model_connections_router)  # Connection-centric model catalog
 router.include_router(model_list_router)  # Dynamic model catalogue from OpenRouter
 router.include_router(logs_router)

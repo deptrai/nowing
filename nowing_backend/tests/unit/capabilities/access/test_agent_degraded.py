@@ -25,6 +25,9 @@ class _FakeSessionCtx:
 @pytest.fixture
 def isolate_agent(monkeypatch):
     monkeypatch.setattr(agent_mod, "async_session_maker", lambda: _FakeSessionCtx())
+    monkeypatch.setattr(
+        agent_mod.config, "DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED", True
+    )
     charge = AsyncMock(return_value=0)
     gate = AsyncMock()
     monkeypatch.setattr(agent_mod, "charge_capability", charge)

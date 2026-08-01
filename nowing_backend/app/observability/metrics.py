@@ -1209,6 +1209,27 @@ def record_blocked_url_coverage(*, block_type: str) -> None:
     _add(_blocked_url_coverage(), 1, {"block_type": block_type})
 
 
+@lru_cache(maxsize=1)
+def _chainlens_latency():
+    return _get_meter().create_histogram(
+        "nowing.chainlens.latency",
+        unit="ms",
+        description="ChainLens research latency by requested mode and metric type.",
+    )
+
+
+def record_chainlens_latency(
+    *, duration_ms: int, metric: str, mode: str | None = None
+) -> None:
+    """Record one e2e or TTFB latency observation for ChainLens research."""
+    if duration_ms is None or duration_ms < 0:
+        return
+    labels: dict[str, str] = {"metric": metric}
+    if mode:
+        labels["mode"] = mode
+    _record(_chainlens_latency(), duration_ms, labels)
+
+
 __all__ = [
     "categorize_exception",
     "parse_celery_task_label",
@@ -1218,6 +1239,7 @@ __all__ = [
     "record_celery_heartbeat_refresh",
     "record_celery_queue_latency",
     "record_chainlens_degradation",
+    "record_chainlens_latency",
     "record_chat_request_duration",
     "record_chat_request_outcome",
     "record_chunk_reconcile",

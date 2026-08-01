@@ -27,8 +27,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
+from app.capabilities.chainlens.research.schemas import ResearchOutput, Source
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.access.rate_limit import enforce_capability_rate_limit
+from app.capabilities.core.async_runner import (
+    finalize_cancelled_run,
+    record_and_publish_sync_run,
+    record_and_publish_sync_run_error,
+    start_async_run,
+)
 from app.capabilities.core.billing import (
     charge_capability,
     gate_capability,
@@ -36,19 +43,11 @@ from app.capabilities.core.billing import (
 )
 from app.capabilities.core.events import run_event_bus
 from app.capabilities.core.progress import progress_scope
-from app.capabilities.core.runs import (
-    create_pending_run,
-    finalize_run,
-    record_run,
-    serialize_output,
-)
 from app.capabilities.core.store import all_capabilities
 from app.capabilities.core.types import Capability, CapabilityContext
-from app.db import Run, async_session_maker, get_async_session
+from app.config import config
+from app.db import Report, Run, async_session_maker, get_async_session
 from app.exceptions import ExternalServiceError, NowingError
-from app.services.memory.run_enqueue import (
-    enqueue_run_memory_extraction_after_commit,
-)
 from app.services.web_crawl_credit_service import InsufficientCreditsError
 from app.users import get_auth_context
 from app.utils.rbac import check_workspace_access
@@ -119,12 +118,6 @@ def _sse(event: dict) -> str:
     return f"data: {json.dumps(event, default=str)}\n\n"
 
 
-async def _record_rest_run(**kwargs) -> str | None:
-    """Record a run on a dedicated session so it survives a failed request txn."""
-    async with async_session_maker() as session:
-        return await record_run(session, **kwargs)
-
-
 def build_capabilities_router(
     capabilities: list[Capability] | None = None,
 ) -> APIRouter:
@@ -181,142 +174,6 @@ def _register_capabilities_list(
     )
 
 
-async def _execute_async_run(
-    *,
-    run_id: str,
-    workspace_id: int,
-    capability: str,
-    unit,
-    executor,
-    payload,
-) -> None:
-    """Run a scrape in the background: stream progress, charge, finalize the row.
-
-    Owns its own DB sessions (the request session is long gone). Cancellation is
-    finalized by the cancel endpoint, so here we simply let ``CancelledError``
-    propagate. Every other failure finalizes the row as ``error`` and emits a
-    terminal event so subscribers unblock.
-    """
-    prefixed = f"run_{run_id}"
-    started = time.perf_counter()
-    final_status = "error"
-    final_error: str | None = None
-    serialized = None
-    duration_ms: int | None = None
-    cost_micros: int | None = None
-
-    with progress_scope(run_id=run_id, bus=run_event_bus) as reporter:
-        run_event_bus.publish(
-            run_id,
-            {
-                "type": "run.started",
-                "run_id": prefixed,
-                "capability": capability,
-                "ts": _now_ms(),
-            },
-        )
-        output = None
-        ctx: CapabilityContext | None = None
-        try:
-            async with async_session_maker() as session:
-                ctx = CapabilityContext(session=session, workspace_id=workspace_id)
-                output = await execute_with_context(executor, payload=payload, ctx=ctx)
-                duration_ms = int((time.perf_counter() - started) * 1000)
-                try:
-                    if output.billable_units > 0:
-                        cost_micros = await charge_capability(output, unit, ctx)
-                except Exception:
-                    logger.exception("charge failed for async run %s", run_id)
-
-                serialized = serialize_output(output)
-                final_status = "success"
-        except asyncio.CancelledError:
-            raise
-        except (NowingError, HTTPException) as exc:
-            final_status = "error"
-            final_error = str(exc)
-        except Exception:
-            logger.exception("async run %s failed with an upstream error", run_id)
-            final_status = "error"
-            final_error = (
-                f"The '{capability}' capability failed due to an upstream error."
-            )
-
-    await _finalize_async(
-        run_id,
-        status=final_status,
-        serialized=serialized,
-        error=final_error,
-        started=started,
-        duration_ms=duration_ms,
-        cost_micros=cost_micros,
-        progress=reporter.coarse,
-    )
-    if final_status == "success":
-        _publish_finished(
-            run_id, "success", item_count=serialized.item_count if serialized else 0
-        )
-    else:
-        _publish_finished(run_id, "error", error=final_error or "upstream error")
-
-
-async def _finalize_async(
-    run_id: str,
-    *,
-    status: str,
-    serialized=None,
-    error: str | None = None,
-    started: float | None = None,
-    duration_ms: int | None = None,
-    cost_micros: int | None = None,
-    progress: list[dict] | None = None,
-) -> None:
-    if duration_ms is None and started is not None:
-        duration_ms = int((time.perf_counter() - started) * 1000)
-    async with async_session_maker() as session:
-        finalized = await finalize_run(
-            session,
-            run_id=run_id,
-            status=status,
-            serialized=serialized,
-            error=error,
-            duration_ms=duration_ms,
-            cost_micros=cost_micros,
-            progress=progress,
-        )
-
-    # Story 3.13 (T4/D1): the async door's single completion point, so all three
-    # `_finalize_async` call sites are covered here rather than individually.
-    # Gated on `finalized` because `finalize_run` is best-effort: a run whose
-    # terminal status never committed is still `running` to any other
-    # connection, and enqueueing on it would hand the task a row the service
-    # correctly refuses to extract from. `status` is filtered inside the seam, so
-    # the error/cancel paths through here never enqueue.
-    if finalized:
-        enqueue_run_memory_extraction_after_commit(run_id, status=status)
-
-
-def _publish_finished(run_id: str, status: str, **extra) -> None:
-    """Emit the terminal event to subscribers, then drop the run's bus state."""
-    event = {
-        "type": "run.finished",
-        "run_id": f"run_{run_id}",
-        "status": status,
-        "ts": _now_ms(),
-    }
-    event.update(extra)
-    run_event_bus.publish(run_id, event)
-    run_event_bus.close(run_id)
-
-
-def _log_task_result(run_id: str, task: asyncio.Task) -> None:
-    if task.cancelled():
-        return
-    exc = task.exception()
-    if exc is not None:
-        logger.error("async run %s task crashed: %r", run_id, exc)
-
-
 def _register_verb(router: APIRouter, capability: Capability) -> None:
     input_model = capability.input_schema
     output_model = capability.output_schema
@@ -334,6 +191,15 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
         mode: str = Query(default="sync", pattern="^(sync|async)$"),
     ):
         await check_workspace_access(session, auth, workspace_id)
+
+        # State A/B: chainlens.research is always async unless the sync chat-mode
+        # feature flag is explicitly enabled. Other scrapers still allow sync.
+        if (
+            name == "chainlens.research"
+            and not config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED
+        ):
+            mode = "async"
+
         ctx = CapabilityContext(session=session, workspace_id=workspace_id)
         try:
             await gate_capability(payload, unit, ctx)
@@ -348,17 +214,16 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                 },
             ) from exc
 
-        input_dump = payload.model_dump(exclude_none=True)
         user_id = getattr(auth.user, "id", None)
         origin = _origin_for(auth)
 
         if mode == "async":
-            run_id = await create_pending_run(
-                session,
+            run_id = await start_async_run(
+                session=session,
                 workspace_id=workspace_id,
-                capability=name,
+                capability=capability,
+                payload=payload,
                 origin=origin,
-                input=input_dump,
                 user_id=user_id,
             )
             if run_id is None:
@@ -366,18 +231,6 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="Could not start run.",
                 )
-            task = asyncio.create_task(
-                _execute_async_run(
-                    run_id=run_id,
-                    workspace_id=workspace_id,
-                    capability=name,
-                    unit=unit,
-                    executor=executor,
-                    payload=payload,
-                )
-            )
-            run_event_bus.register_task(run_id, task)
-            task.add_done_callback(lambda t: _log_task_result(run_id, t))
             return JSONResponse(
                 status_code=status.HTTP_202_ACCEPTED,
                 content={"run_id": f"run_{run_id}", "status": "running"},
@@ -389,30 +242,34 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
             try:
                 output = await execute_with_context(executor, payload=payload, ctx=ctx)
             except (NowingError, HTTPException) as exc:
-                await _record_rest_run(
+                run_id = await record_and_publish_sync_run_error(
+                    session=session,
                     workspace_id=workspace_id,
                     capability=name,
                     origin=origin,
-                    status="error",
-                    input=input_dump,
+                    payload=payload,
                     user_id=user_id,
                     error=str(exc),
                     duration_ms=int((time.perf_counter() - started) * 1000),
                     progress=reporter.coarse,
                 )
+                if run_id is not None:
+                    response.headers["X-Run-Id"] = f"run_{run_id}"
                 raise
             except Exception as exc:
-                await _record_rest_run(
+                run_id = await record_and_publish_sync_run_error(
+                    session=session,
                     workspace_id=workspace_id,
                     capability=name,
                     origin=origin,
-                    status="error",
-                    input=input_dump,
+                    payload=payload,
                     user_id=user_id,
                     error=str(exc),
                     duration_ms=int((time.perf_counter() - started) * 1000),
                     progress=reporter.coarse,
                 )
+                if run_id is not None:
+                    response.headers["X-Run-Id"] = f"run_{run_id}"
                 raise ExternalServiceError(
                     f"The '{name}' capability failed due to an upstream error.",
                     code="CAPABILITY_UPSTREAM_ERROR",
@@ -425,14 +282,13 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
             except Exception:
                 logger.exception("charge failed for sync run")
 
-            serialized = serialize_output(output)
-            run_id = await _record_rest_run(
+            run_id = await record_and_publish_sync_run(
+                session=session,
                 workspace_id=workspace_id,
                 capability=name,
                 origin=origin,
-                status="success",
-                serialized=serialized,
-                input=input_dump,
+                payload=payload,
+                output=output,
                 user_id=user_id,
                 duration_ms=duration_ms,
                 cost_micros=cost_micros,
@@ -440,11 +296,6 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
             )
         if run_id is not None:
             response.headers["X-Run-Id"] = f"run_{run_id}"
-        # Story 3.13 (D1/D2): the recorder above owns its own session and has
-        # already committed, so the run row is visible to the worker that will
-        # pick this up. Enqueue-only — never an inline LLM/embedding call — and
-        # never able to change what this endpoint returns (AC-5).
-        enqueue_run_memory_extraction_after_commit(run_id)
         return output
 
     router.add_api_route(
@@ -601,14 +452,7 @@ def _register_run_history(router: APIRouter) -> None:
             task.cancel()
         # No output produced -> nothing charged. ponytail: any pre-cancel captcha
         # attempts go unbilled; upgrade path is charging from progress counters.
-        async with async_session_maker() as cancel_session:
-            await finalize_run(
-                cancel_session,
-                run_id=raw,
-                status="cancelled",
-                error="Cancelled by user",
-            )
-        _publish_finished(raw, "cancelled")
+        await finalize_cancelled_run(raw)
         return JSONResponse(content={"run_id": f"run_{raw}", "status": "cancelled"})
 
     router.add_api_route(
@@ -637,6 +481,84 @@ def _register_run_history(router: APIRouter) -> None:
         methods=["POST"],
         name="scraper:cancel_run",
     )
+
+    async def create_deliverable(
+        workspace_id: int,
+        run_id: str,
+        session: AsyncSession = Depends(get_async_session),
+        auth: AuthContext = Depends(get_auth_context),
+    ):
+        """Materialize a finished deep-research run as a Report deliverable."""
+        await check_workspace_access(session, auth, workspace_id)
+        parsed_id = _parse_run_uuid(run_id)
+        row = await _load_run(session, workspace_id, parsed_id)
+        if row.capability != "chainlens.research":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Run is not a deep research run.",
+            )
+        if row.status != "success" or not row.output_text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Run has no deliverable output.",
+            )
+        try:
+            first_line = row.output_text.splitlines()[0]
+            output = ResearchOutput.model_validate_json(first_line)
+        except Exception:
+            logger.exception("Failed to parse run %s output as ResearchOutput", run_id)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not parse run output.",
+            ) from None
+
+        query = (row.input or {}).get("query", "Deep Research")
+        sources_md = _sources_to_markdown(output.sources)
+        content = f"# {query}\n\n{output.answer}\n\n## Sources\n\n{sources_md}"
+        report = Report(
+            workspace_id=workspace_id,
+            title=query[:500],
+            content=content,
+            content_type="markdown",
+            report_style="deep_research",
+            report_metadata={
+                "run_id": f"run_{row.id}",
+                "resolved_mode": output.resolved_mode,
+                "cost_micros": row.cost_micros,
+            },
+        )
+        session.add(report)
+        await session.commit()
+        await session.refresh(report)
+        if report.report_group_id is None:
+            report.report_group_id = report.id
+            await session.commit()
+            await session.refresh(report)
+        return JSONResponse(
+            content={
+                "report_id": report.id,
+                "report_group_id": report.report_group_id or report.id,
+                "run_id": f"run_{row.id}",
+            }
+        )
+
+    router.add_api_route(
+        "/workspaces/{workspace_id}/scrapers/runs/{run_id}/deliverable",
+        create_deliverable,
+        methods=["POST"],
+        name="scraper:create_deliverable",
+    )
+
+
+def _sources_to_markdown(sources: list[Source]) -> str:
+    """Format a list of sources as a simple markdown list."""
+    if not sources:
+        return "_No sources available._"
+    lines = []
+    for i, source in enumerate(sources, start=1):
+        title = source.title or source.url
+        lines.append(f"{i}. [{title}]({source.url})")
+    return "\n".join(lines)
 
 
 def _to_summary(row: Run) -> RunSummary:

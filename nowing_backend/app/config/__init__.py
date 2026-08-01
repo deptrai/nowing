@@ -916,6 +916,20 @@ class Config:
         os.getenv("CHAINLENS_QUERY_MICROS_PER_CALL", "5000")
     )
 
+    # Capability run event bus backend. "memory" keeps events in-process (the
+    # default for single-process/test deployments); "redis" uses Redis pub/sub
+    # so multiple API replicas can tail the same run.
+    RUN_EVENT_BUS = os.getenv("RUN_EVENT_BUS", "memory").strip().lower()
+
+    # Default research mode. "balanced" is the planned new default (SD6/PRD D3);
+    # "quality" is the old default and remains an explicit opt-in.
+    DEFAULT_RESEARCH_MODE = os.getenv("DEFAULT_RESEARCH_MODE", "balanced").strip()
+    # State B: enable synchronous chat-mode deep research (inline agent/REST).
+    # While disabled (State A), chainlens.research is always async.
+    DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED = (
+        os.getenv("DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED", "FALSE").upper() == "TRUE"
+    )
+
     # Low-balance WARNING threshold (micro-USD). Surfaced by the quota service
     # so the UI can nudge the user to top up / enable auto-reload. $0.50.
     CREDIT_LOW_BALANCE_WARNING_MICROS = int(

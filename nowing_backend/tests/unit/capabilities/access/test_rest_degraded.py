@@ -10,8 +10,10 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.capabilities.chainlens.research.schemas import ResearchInput, ResearchOutput
+from app.capabilities.core import async_runner
 from app.capabilities.core.access import rest
 from app.capabilities.core.types import BillingUnit, Capability, CapabilityContext
+from app.config import config
 
 pytestmark = pytest.mark.unit
 
@@ -34,15 +36,31 @@ async def _noop_async(*args, **kwargs) -> None:
     return None
 
 
+class _FakeSessionCtx:
+    async def __aenter__(self):
+        return SimpleNamespace()
+
+    async def __aexit__(self, *exc):
+        return False
+
+
 async def _fake_record(**kwargs) -> str:
     return "test-run-id"
 
 
 def _build_app(capabilities, monkeypatch) -> FastAPI:
     monkeypatch.setattr(rest, "check_workspace_access", _noop_async, raising=True)
-    monkeypatch.setattr(rest, "_record_rest_run", _fake_record, raising=True)
+    monkeypatch.setattr(
+        rest, "record_and_publish_sync_run", _fake_record, raising=False
+    )
+    monkeypatch.setattr(
+        rest, "record_and_publish_sync_run_error", _fake_record, raising=False
+    )
     monkeypatch.setattr(rest, "charge_capability", AsyncMock(return_value=0))
     monkeypatch.setattr(rest, "gate_capability", AsyncMock())
+    monkeypatch.setattr(
+        config, "DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED", True
+    )
 
     from app.db import get_async_session
     from app.users import get_auth_context
@@ -115,20 +133,39 @@ async def test_rest_sync_body_contains_degraded_status(monkeypatch):
     assert body["billable_units"] == 0
 
 
+async def _fake_execute_with_context(executor, *, payload, ctx):
+    return await executor(payload, ctx)
+
+
+def _stub_async_runner(monkeypatch, finalize, charge):
+    monkeypatch.setattr(async_runner, "async_session_maker", _FakeSessionCtx)
+    monkeypatch.setattr(
+        async_runner, "enqueue_run_memory_extraction_after_commit", Mock(return_value=True)
+    )
+    monkeypatch.setattr(
+        async_runner, "execute_with_context", _fake_execute_with_context
+    )
+    monkeypatch.setattr(async_runner, "charge_capability", charge)
+    monkeypatch.setattr(async_runner, "finalize_run", finalize)
+
+
 async def test_rest_async_executor_receives_capability_context(monkeypatch):
     output = ResearchOutput()
     output.status = "engine_unavailable"
     output.next_action = "Deep research is not available in self-host Phase 1."
     spy = _ResearchSpy(output)
 
-    monkeypatch.setattr(rest, "charge_capability", AsyncMock(return_value=0))
-    monkeypatch.setattr(rest, "finalize_run", AsyncMock(return_value=True))
     from app.capabilities.core.events import run_event_bus
 
     monkeypatch.setattr(run_event_bus, "publish", Mock())
     monkeypatch.setattr(run_event_bus, "close", Mock())
+    _stub_async_runner(
+        monkeypatch,
+        finalize=AsyncMock(return_value=True),
+        charge=AsyncMock(return_value=0),
+    )
 
-    await rest._execute_async_run(
+    await async_runner._execute_async_run(
         run_id="run-1",
         workspace_id=7,
         capability="chainlens.research",
@@ -148,14 +185,17 @@ async def test_rest_async_degraded_run_persists_cost_micros_none(monkeypatch):
 
     spy = _ResearchSpy(output)
     finalize = AsyncMock(return_value=True)
-    monkeypatch.setattr(rest, "charge_capability", AsyncMock(return_value=0))
-    monkeypatch.setattr(rest, "finalize_run", finalize)
     from app.capabilities.core.events import run_event_bus
 
     monkeypatch.setattr(run_event_bus, "publish", Mock())
     monkeypatch.setattr(run_event_bus, "close", Mock())
+    _stub_async_runner(
+        monkeypatch,
+        finalize=finalize,
+        charge=AsyncMock(return_value=0),
+    )
 
-    await rest._execute_async_run(
+    await async_runner._execute_async_run(
         run_id="run-1",
         workspace_id=7,
         capability="chainlens.research",
@@ -182,19 +222,18 @@ async def test_rest_async_degraded_output_text_matches_sync_and_sse_terminal(
     )
     spy = _ResearchSpy(output)
 
-    monkeypatch.setattr(
-        rest, "charge_capability", AsyncMock(side_effect=RuntimeError("wallet down"))
-    )
-    monkeypatch.setattr(rest, "gate_capability", AsyncMock())
     finalize = AsyncMock(return_value=True)
-    monkeypatch.setattr(rest, "finalize_run", finalize)
-
     publish = Mock()
     close = Mock()
     monkeypatch.setattr(run_event_bus, "publish", publish)
     monkeypatch.setattr(run_event_bus, "close", close)
+    _stub_async_runner(
+        monkeypatch,
+        finalize=finalize,
+        charge=AsyncMock(side_effect=RuntimeError("wallet down")),
+    )
 
-    await rest._execute_async_run(
+    await async_runner._execute_async_run(
         run_id="run-ac7",
         workspace_id=7,
         capability="chainlens.research",

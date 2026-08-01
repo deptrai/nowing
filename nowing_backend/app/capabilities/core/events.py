@@ -95,3 +95,13 @@ class RunEventBus:
 
 
 run_event_bus = RunEventBus()
+
+# ponytail: swap to a Redis-backed bus when RUN_EVENT_BUS=redis. The default stays
+# in-process because most local/test deployments are single-process; production
+# multi-replica deployments opt in via the environment.
+from app.config import config  # noqa: E402
+
+if getattr(config, "RUN_EVENT_BUS", "memory").lower() == "redis":
+    from app.capabilities.core.events_redis import RedisRunEventBus
+
+    run_event_bus = RedisRunEventBus()

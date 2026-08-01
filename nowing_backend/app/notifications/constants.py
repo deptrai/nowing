@@ -17,5 +17,6 @@ CATEGORY_TYPES: dict[str, tuple[str, ...]] = {
         "document_processing",
         "insufficient_credits",
         "auto_reload_failed",
+        "deep_research_complete",
     ),
 }

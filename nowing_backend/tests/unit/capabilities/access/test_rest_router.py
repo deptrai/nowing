@@ -40,7 +40,8 @@ def _build_app(capabilities, monkeypatch) -> FastAPI:
     from app.capabilities.core.access.rate_limit import enforce_capability_rate_limit
 
     monkeypatch.setattr(rest, "check_workspace_access", _noop_async, raising=True)
-    monkeypatch.setattr(rest, "_record_rest_run", _fake_record, raising=True)
+    monkeypatch.setattr(rest, "record_and_publish_sync_run", _fake_record, raising=False)
+    monkeypatch.setattr(rest, "record_and_publish_sync_run_error", _fake_record, raising=False)
 
     app = FastAPI()
     app.include_router(rest.build_capabilities_router(capabilities), prefix="/api/v1")
@@ -411,10 +412,8 @@ async def test_async_mode_returns_202_and_pending_run(monkeypatch):
     from app.capabilities.core.access import rest
 
     monkeypatch.setattr(
-        rest, "create_pending_run", AsyncMock(return_value="async-id"), raising=True
+        rest, "start_async_run", AsyncMock(return_value="async-id"), raising=False
     )
-    # Don't actually run the scrape in the background during this unit test.
-    monkeypatch.setattr(rest, "_execute_async_run", AsyncMock(), raising=True)
 
     app = _build_app([_ECHO], monkeypatch)
     async with _client(app) as client:
@@ -465,7 +464,7 @@ async def test_cancel_finalizes_running_run(monkeypatch):
     from app.capabilities.core.events import run_event_bus
 
     finalize = AsyncMock(return_value=True)
-    monkeypatch.setattr(rest, "finalize_run", finalize, raising=True)
+    monkeypatch.setattr(rest, "finalize_cancelled_run", finalize, raising=False)
 
     row = _fake_run_row(status="running")
     raw = str(row.id)
@@ -481,7 +480,7 @@ async def test_cancel_finalizes_running_run(monkeypatch):
         assert resp.status_code == 200
         assert resp.json() == {"run_id": f"run_{raw}", "status": "cancelled"}
         finalize.assert_awaited_once()
-        assert finalize.await_args.kwargs["status"] == "cancelled"
+        assert finalize.await_args.args[0] == raw
     finally:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)

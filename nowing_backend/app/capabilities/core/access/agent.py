@@ -20,6 +20,7 @@ from langchain_core.tools import BaseTool, StructuredTool
 
 from app.auth.context import AuthContext
 from app.capabilities.core import execute_with_context
+from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.progress import progress_scope
 from app.capabilities.core.runs import (
@@ -29,8 +30,9 @@ from app.capabilities.core.runs import (
 )
 from app.capabilities.core.store import all_capabilities
 from app.capabilities.core.types import Capability, CapabilityContext
+from app.config import config
 from app.db import async_session_maker
-from app.exceptions import ForbiddenError
+from app.exceptions import ExternalServiceError, ForbiddenError
 from app.services.memory.run_enqueue import (
     enqueue_run_memory_extraction_after_commit,
 )
@@ -120,6 +122,41 @@ def _capability_tool(
         payload = input_model(**kwargs)
         input_dump = payload.model_dump(exclude_none=True)
         thread_id = _current_thread_id()
+
+        # State A/B: deep research is always async in chat unless the sync
+        # chat-mode feature flag is on. The agent submits the run and returns
+        # the run id so the chat turn can finish without blocking on ChainLens.
+        if (
+            name == "chainlens.research"
+            and not config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED
+        ):
+            async with async_session_maker() as session:
+                if auth_context is not None:
+                    await _verify_workspace_access(session, workspace_id, auth_context)
+                ctx = CapabilityContext(session=session, workspace_id=workspace_id)
+                try:
+                    await gate_capability(payload, unit, ctx)
+                except InsufficientCreditsError as exc:
+                    return str(exc)
+                run_id = await start_async_run(
+                    session=session,
+                    workspace_id=workspace_id,
+                    capability=capability,
+                    payload=payload,
+                    origin="agent",
+                    user_id=user_id,
+                    thread_id=thread_id,
+                )
+            if run_id is None:
+                raise ExternalServiceError(
+                    "Could not start deep research run.",
+                    code="CAPABILITY_START_ERROR",
+                )
+            return {
+                "run_id": f"run_{run_id}",
+                "status": "running",
+                "message": "Deep research started. The result will stream via the run events endpoint.",
+            }
 
         # A buffer-only reporter: coarse progress lands in ``runs.progress`` and,
         # because we're inside a LangGraph tool call, ``emit_progress`` also fires

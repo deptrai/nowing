@@ -275,6 +275,9 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
     cost_basis: str | None = getattr(output, "cost_basis", None)
     resolved_mode: str | None = getattr(output, "resolved_mode", None)
     tokens_total: int | None = getattr(output, "tokens_total", None)
+    mode_requested: str | None = getattr(output, "mode_requested", None)
+    e2e_ms: int | None = getattr(output, "duration_ms", None)
+    ttfb_ms: int | None = getattr(output, "first_token_time_ms", None)
 
     if cost_micros is None:
         rate = _platform_rate(BillingUnit.CHAINLENS_QUERY)
@@ -293,8 +296,11 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
 
     call_details: dict[str, Any] = {
         "resolved_mode": resolved_mode,
+        "mode_requested": mode_requested,
         "cost_basis": cost_basis,
         "tokens_total": tokens_total,
+        "e2e_ms": e2e_ms,
+        "ttfb_ms": ttfb_ms,
         "cost_dollars": float(Decimal(cost_micros) / Decimal("1000000")),
     }
     if getattr(output, "degraded", False):
