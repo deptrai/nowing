@@ -3,10 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { updateWorkspaceMutationAtom } from "@/atoms/workspaces/workspace-mutation.atoms";
-import { workspacesAtom } from "@/atoms/workspaces/workspace-query.atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,13 +37,8 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 	});
 
 	const { mutateAsync: updateWorkspace } = useAtomValue(updateWorkspaceMutationAtom);
-	const { data: workspacesData } = useAtomValue(workspacesAtom);
 
-	const isOwner = useMemo(
-		() =>
-			workspacesData ? workspacesData.some((w) => w.id === workspaceId && w.is_owner) : undefined,
-		[workspacesData, workspaceId]
-	);
+	const isOwner = workspace?.is_owner;
 
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
