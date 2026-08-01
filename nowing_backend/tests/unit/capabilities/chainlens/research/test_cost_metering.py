@@ -51,6 +51,32 @@ def test_parse_sse_done_payload_sets_cost_micros():
     assert output.resolved_mode == "balanced"
 
 
+def test_parse_sse_done_usage_sets_cost_micros():
+    """ChainLens 42-1 contract: costDollars lives inside done.usage."""
+    raw = _sse_line(
+        {
+            "type": "done",
+            "chatId": "chat-123",
+            "resolvedMode": "balanced",
+            "requestedMode": "auto",
+            "usage": {
+                "promptTokens": 4273,
+                "completionTokens": 3677,
+                "totalTokens": 7950,
+                "model": "gemini-3.6-flash",
+                "costDollars": 0.0105,
+            },
+        }
+    )
+
+    output = _parse_sse(raw)
+
+    assert output.cost_micros == 10500
+    assert output.cost_basis == "actual"
+    assert output.resolved_mode == "balanced"
+    assert output.tokens_total == 7950
+
+
 def test_parse_sse_usage_after_done_is_parsed_defensively():
     raw = _sse_line({"type": "done"})
     raw += _sse_line(

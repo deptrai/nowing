@@ -67,10 +67,15 @@ async def _event_stream(query: str, mode: str) -> None:
         {"type": "researchComplete", "message": "Research complete"},
         {
             "type": "done",
-            "costDollars": 0.0123,
             "resolvedMode": "balanced",
             "chatId": "chat-mock-123",
-            "tokens": {"total": 1280},
+            "usage": {
+                "promptTokens": 4273,
+                "completionTokens": 3677,
+                "totalTokens": 7950,
+                "model": "gemini-3.6-flash",
+                "costDollars": 0.0123,
+            },
         },
     ]
 

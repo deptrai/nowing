@@ -437,13 +437,27 @@ class _SSEParser:
     def _extract_cost(self, event: dict[str, Any]) -> None:
         """Extract ``costDollars`` and related metadata from an engine event.
 
-        The first valid ``costDollars`` (from ``usage`` or ``done``) wins.
+        The first valid ``costDollars`` wins. ChainLens 42-1 places it inside
+        the terminal ``done`` frame's ``usage`` object, but we also accept the
+        older top-level location and a standalone ``usage`` event defensively.
         Later events are ignored so ``done`` does not overwrite an earlier
         ``usage`` and vice versa. Malformed/negative values are ignored.
         """
-        raw_cost = event.get("costDollars")
-        if raw_cost is None or self.cost_dollars is not None:
+        if self.cost_dollars is not None:
             return
+
+        usage = event.get("usage")
+        if not isinstance(usage, dict):
+            usage = None
+
+        raw_cost = None
+        if usage is not None:
+            raw_cost = usage.get("costDollars")
+        if raw_cost is None:
+            raw_cost = event.get("costDollars")
+        if raw_cost is None:
+            return
+
         if not isinstance(raw_cost, (int, float)):
             logger.warning("Ignoring malformed costDollars in SSE event: %r", raw_cost)
             return
@@ -456,19 +470,25 @@ class _SSEParser:
 
         self.cost_dollars = float(raw_cost)
         self.resolved_mode = (
-            event.get("resolvedMode")
+            (usage.get("resolvedMode") if usage else None)
+            or event.get("resolvedMode")
             or event.get("resolved_mode")
             or self.resolved_mode
         )
-        self.estimated = event.get("estimated")
 
-        tokens = event.get("tokens")
+        estimated = (usage.get("estimated") if usage else None) or event.get("estimated")
+        self.estimated = estimated if isinstance(estimated, bool) else None
+
+        tokens = (usage.get("tokens") if usage else None) or event.get("tokens")
+        total = None
         if isinstance(tokens, dict):
             total = tokens.get("total")
-            if isinstance(total, int):
-                self.tokens_total = total
+        if usage is not None:
+            total = total or usage.get("totalTokens")
+        if isinstance(total, int):
+            self.tokens_total = total
 
-        if isinstance(self.estimated, bool) and self.estimated:
+        if self.estimated is True:
             self.cost_basis = "estimated"
         else:
             self.cost_basis = "actual"
