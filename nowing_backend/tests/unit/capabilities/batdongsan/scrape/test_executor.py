@@ -27,7 +27,11 @@ class _FakeScraper:
         self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None
     ) -> dict[str, Any]:
         self.calls.append((actor_input, limit))
-        return {"items": self._items, "total_items": len(self._items), "degraded": False}
+        return {
+            "items": self._items,
+            "total_items": len(self._items),
+            "degraded": False,
+        }
 
 
 @pytest.mark.asyncio
@@ -52,3 +56,22 @@ async def test_maps_input_and_wraps_items():
     assert actor_input.district_id == 1
     assert actor_input.max_items == 5
     assert limit == 5
+
+
+@pytest.mark.asyncio
+async def test_actor_exception_degrades_without_crashing():
+    async def exploding_scraper(
+        actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+    ) -> dict[str, Any]:
+        raise RuntimeError("boom")
+
+    execute = build_scrape_executor(scrape_fn=exploding_scraper)
+
+    out = await execute(ScrapeInput(city="HN", max_items=5))
+
+    assert isinstance(out, ScrapeOutput)
+    assert out.total_items == 0
+    assert out.items == []
+    assert out.degraded is True
+    assert out.degradation_reason == "api_error"
+    assert out.cost_micros == 0

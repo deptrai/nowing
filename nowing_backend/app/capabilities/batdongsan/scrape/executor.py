@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -15,6 +16,8 @@ from app.proprietary.platforms.batdongsan import (
 from app.proprietary.platforms.batdongsan.schemas import BatdongsanScrapeInput
 
 from .schemas import ScrapeInput, ScrapeOutput
+
+logger = logging.getLogger(__name__)
 
 ScrapeFn = Callable[..., Awaitable[BatdongsanScrapeOutput | dict[str, Any]]]
 
@@ -43,7 +46,16 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             total=payload.max_items,
             unit="item",
         )
-        raw = await scrape_fn(actor_input, limit=payload.max_items)
+        try:
+            raw = await scrape_fn(actor_input, limit=payload.max_items)
+        except Exception as exc:
+            logger.exception("batdongsan.scrape actor failed: %s", exc)
+            return ScrapeOutput(
+                items=[],
+                cost_micros=0,
+                degraded=True,
+                degradation_reason="api_error",
+            )
         result = _unwrap_result(raw)
 
         items = result["items"]

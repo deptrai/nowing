@@ -60,3 +60,8 @@ class BatdongsanScrapeOutput(BaseModel):
     total_items: int = 0
     degraded: bool = False
     degradation_reason: str | None = None
+
+    @property
+    def billable_units(self) -> int:
+        """One returned listing = one billable unit."""
+        return self.total_items

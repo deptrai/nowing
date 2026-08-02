@@ -15,6 +15,7 @@ from ...core.workspace_context import WorkspaceContext
 from . import run_history
 from .platforms import (
     amazon,
+    batdongsan,
     chainlens,
     google_maps,
     google_search,
@@ -35,6 +36,7 @@ _REGISTRARS = (
     google_maps,
     amazon,
     chainlens,
+    batdongsan,
     run_history,
 )
 

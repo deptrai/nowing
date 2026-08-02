@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
+from app.config import config
+
 from .fetch import (
     BatdongsanAccessBlockedError,
+    BatdongsanDecodeError,
     BatdongsanRateLimitedError,
     fetch_listings,
 )
@@ -25,7 +29,9 @@ def now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
-def _build_page_payload(input_model: BatdongsanScrapeInput, page: int) -> dict[str, Any]:
+def _build_page_payload(
+    input_model: BatdongsanScrapeInput, page: int
+) -> dict[str, Any]:
     payload = {
         "ptype": 38 if input_model.listing_type == "buy" else 49,
         "cate": 0,
@@ -50,6 +56,11 @@ def _build_page_payload(input_model: BatdongsanScrapeInput, page: int) -> dict[s
     return payload
 
 
+def _page_delay() -> float:
+    """Pacing between page requests, so pagination stays polite."""
+    return max(0.0, getattr(config, "BATDONGSAN_PAGE_DELAY_S", 0.5))
+
+
 async def scrape_batdongsan(
     input_model: BatdongsanScrapeInput,
     *,
@@ -65,6 +76,7 @@ async def scrape_batdongsan(
     max_pages = input_model.max_pages
 
     items: list[BatdongsanListing] = []
+    seen_ids: set[int] = set()
     degraded = False
     degradation_reason: str | None = None
     rate_limited_seen = False
@@ -87,7 +99,13 @@ async def scrape_batdongsan(
             except BatdongsanRateLimitedError:
                 rate_limited_seen = True
                 if attempt < _MAX_RETRIES:
+                    await asyncio.sleep(_page_delay())
                     continue
+                page_failed = True
+                break
+            except BatdongsanDecodeError:
+                degraded = True
+                degradation_reason = "decode_error"
                 page_failed = True
                 break
             except (BatdongsanAccessBlockedError, Exception):
@@ -95,22 +113,42 @@ async def scrape_batdongsan(
                 break
 
         if page_failed:
+            if degradation_reason is None:
+                degradation_reason = (
+                    "rate_limited" if rate_limited_seen else "api_error"
+                )
             degraded = True
-            degradation_reason = "rate_limited" if rate_limited_seen else "api_error"
             break
 
         if not isinstance(page_data, list):
-            page_data = []
+            degraded = True
+            degradation_reason = "api_error"
+            break
 
-        parsed = parse_listings(page_data)
-        for listing in parsed:
+        # An empty first page means the district/constraints matched nothing —
+        # a user mistake or an invalid ``dist``, not a normal end of results.
+        if page == 1 and not page_data:
+            degraded = True
+            degradation_reason = "empty"
+            break
+
+        for listing in parse_listings(page_data):
             if len(items) >= cap:
                 break
+            # Promoted listings can repeat across pages; dedupe so the same
+            # listing is never returned (or billed) twice.
+            if listing.listing_id is not None:
+                if listing.listing_id in seen_ids:
+                    continue
+                seen_ids.add(listing.listing_id)
             items.append(listing)
 
         # ``m`` (more flag) is ``None`` at end of list; also stop on empty page.
         if not page_data or page_meta is None:
             break
+
+        if page < max_pages and len(items) < cap:
+            await asyncio.sleep(_page_delay())
 
     for item in items:
         item.scrapedAt = now_iso()

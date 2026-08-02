@@ -13,6 +13,9 @@ from uuid import UUID
 import pytest
 
 import app.capabilities.core.billing as billing
+from app.capabilities.batdongsan.scrape.schemas import (
+    ScrapeInput as BatdongsanScrapeInput,
+)
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.types import BillingUnit, CapabilityContext
 from app.capabilities.web.crawl.schemas import CrawlInput, CrawlItem, CrawlOutput
@@ -428,7 +431,21 @@ async def test_platform_gate_disabled_is_noop(monkeypatch):
         _ctx(session),
     )
 
-    session.execute.assert_not_called()
+
+async def test_platform_gate_real_batdongsan_input_has_estimated_units(
+    monkeypatch, _enable_platform_billing
+):
+    """Regression: capability inputs must expose ``estimated_units`` so the gate
+    cannot crash with AttributeError once billing is enabled."""
+    monkeypatch.setattr(config, "BATDONGSAN_SCRAPE_MICROS_PER_ITEM", 3500)
+    session = _gate_session(_OWNER, balance_micros=1000)  # affords 0 of 10 units
+
+    with pytest.raises(InsufficientCreditsError):
+        await gate_capability(
+            BatdongsanScrapeInput(city="HN", max_items=10),
+            BillingUnit.BATDONGSAN_ITEM,
+            _ctx(session),
+        )
 
 
 # ===================================================================

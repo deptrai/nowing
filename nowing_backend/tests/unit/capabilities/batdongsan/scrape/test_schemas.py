@@ -19,6 +19,11 @@ def test_scrape_input_defaults():
     assert inp.max_items == 10
 
 
+def test_scrape_input_estimated_units_equals_max_items():
+    assert ScrapeInput(city="HN").estimated_units == 10
+    assert ScrapeInput(city="HN", max_items=3).estimated_units == 3
+
+
 def test_scrape_input_rejects_invalid_listing_type():
     with pytest.raises(ValidationError):
         ScrapeInput(city="HN", listing_type="sale")

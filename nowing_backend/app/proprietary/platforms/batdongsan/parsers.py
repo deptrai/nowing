@@ -7,7 +7,6 @@ from typing import Any
 
 from .schemas import BatdongsanListing
 
-
 # District/city prefixes seen in Vietnamese addresses. Quận = urban district,
 # Huyện = rural district, Thị xã = town, TP = city.
 _DISTRICT_PREFIXES = ("Quận", "Huyện", "Thị xã", "TX.", "H.")
@@ -22,10 +21,14 @@ def _normalize_whitespace(value: Any) -> str | None:
 
 
 def _extract_number_and_unit(text: str | None) -> str | None:
-    """Pull the leading ``number unit`` token out of strings like ``75 m²``."""
+    """Pull the leading ``number unit`` token out of strings like ``75 m²``.
+
+    Handles ranges (``72-75 m²``) by keeping the dash inside the number group
+    so it is never mistaken for a unit separator.
+    """
     if not text:
         return None
-    match = re.search(r"([\d.,]+)\s*([a-zA-Zđ²³/]+)", text)
+    match = re.search(r"([\d.,]+(?:-[\d.,]+)?)\s*([^\d.,\s-]+)", text)
     if match:
         return f"{match.group(1)} {match.group(2)}".strip()
     return text.strip() or None
@@ -77,7 +80,9 @@ def _split_address(address: str | None) -> tuple[str | None, str | None]:
     if not parts:
         return None, None
     city = _strip_prefixes(parts[-1], _CITY_PREFIXES)
-    district = _strip_prefixes(parts[-2], _DISTRICT_PREFIXES) if len(parts) >= 2 else None
+    district = (
+        _strip_prefixes(parts[-2], _DISTRICT_PREFIXES) if len(parts) >= 2 else None
+    )
     return district, city
 
 

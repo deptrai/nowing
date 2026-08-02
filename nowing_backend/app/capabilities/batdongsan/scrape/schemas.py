@@ -22,14 +22,26 @@ class ScrapeInput(BaseModel):
     min_area: int | None = None
     max_area: int | None = None
 
+    @property
+    def estimated_units(self) -> int:
+        """Worst-case billable items for the pre-flight gate: ``max_items`` is a
+        hard ceiling (le=100), so no single call can exceed it."""
+        return self.max_items
+
     @model_validator(mode="after")
-    def _price_and_area_bounds(self) -> "ScrapeInput":
-        if self.min_price is not None and self.max_price is not None:
-            if self.min_price > self.max_price:
-                raise ValueError("min_price cannot be greater than max_price")
-        if self.min_area is not None and self.max_area is not None:
-            if self.min_area > self.max_area:
-                raise ValueError("min_area cannot be greater than max_area")
+    def _price_and_area_bounds(self) -> ScrapeInput:
+        if (
+            self.min_price is not None
+            and self.max_price is not None
+            and self.min_price > self.max_price
+        ):
+            raise ValueError("min_price cannot be greater than max_price")
+        if (
+            self.min_area is not None
+            and self.max_area is not None
+            and self.min_area > self.max_area
+        ):
+            raise ValueError("min_area cannot be greater than max_area")
         return self
 
 
@@ -46,4 +58,9 @@ class ScrapeOutput(BaseModel):
     @computed_field
     @property
     def total_items(self) -> int:
+        return len(self.items)
+
+    @property
+    def billable_units(self) -> int:
+        """One returned listing = one billable unit."""
         return len(self.items)

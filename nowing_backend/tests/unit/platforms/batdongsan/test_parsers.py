@@ -20,7 +20,9 @@ _FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
 
 def _load_sample() -> list[dict]:
-    decoded = json.loads((_FIXTURE_DIR / "sample_p_sync.json").read_text(encoding="utf-8"))
+    decoded = json.loads(
+        (_FIXTURE_DIR / "sample_p_sync.json").read_text(encoding="utf-8")
+    )
     return decoded["data"]
 
 
@@ -34,14 +36,21 @@ def test_parse_listings_maps_all_fields():
     assert isinstance(first, BatdongsanListing)
     assert first.listing_id == 46122640
     assert first.title == "Bán nhà riêng tại Ba Đình"
+    assert first.price == "19.8 Tỷ"
     assert first.price_raw == "19.8 Tỷ"
+    assert first.area == "75 m²"
     assert first.area_raw == "75 m²"
     assert first.location == "Phường Quán Thánh, Quận Ba Đình, Hà Nội"
     assert first.city == "Hà Nội"
     assert first.district == "Ba Đình"
     assert first.post_date == "31/07/2026"
-    assert first.thumbnail_url == "https://file4.batdongsan.com.vn/crop/200x200/some.jpg"
-    assert first.detail_url == "https://batdongsan.com.vn/nha-dat-ban-ba-dinh/some-pr46122640"
+    assert (
+        first.thumbnail_url == "https://file4.batdongsan.com.vn/crop/200x200/some.jpg"
+    )
+    assert (
+        first.detail_url
+        == "https://batdongsan.com.vn/nha-dat-ban-ba-dinh/some-pr46122640"
+    )
     assert first.latitude == 21.0286146035022
     assert first.longitude == 105.812719675434
     assert first.rooms == 18
@@ -79,3 +88,10 @@ def test_parse_listings_parses_rent_listing():
     assert len(listings) == 1
     assert listings[0].listing_id == 46122641
     assert listings[0].title == "Cho thuê căn hộ Quận 1"
+
+
+def test_parse_listing_keeps_area_range_token():
+    listing = parse_listing({"id": 1, "area": "72-75 m²"})
+
+    assert listing.area == "72-75 m²"
+    assert listing.area_raw == "72-75 m²"

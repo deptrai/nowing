@@ -30,6 +30,7 @@ EXPECTED_TOOLS = {
     "nowing_google_maps_scrape",
     "nowing_google_maps_reviews",
     "nowing_amazon_scrape",
+    "nowing_batdongsan_scrape",
     "nowing_instagram_scrape",
     "nowing_instagram_details",
     "nowing_list_scraper_runs",

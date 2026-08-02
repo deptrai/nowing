@@ -13,7 +13,13 @@ from pathlib import Path
 
 import pytest
 
-from app.proprietary.platforms.batdongsan.fetch import decode_response, fetch_listings
+from app.proprietary.platforms.batdongsan.fetch import (
+    BatdongsanAccessBlockedError,
+    BatdongsanDecodeError,
+    BatdongsanRateLimitedError,
+    decode_response,
+    fetch_listings,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -72,6 +78,13 @@ def test_decode_response_raises_decode_error_for_invalid_bytes():
         decode_response(b"not-valid-data")
 
 
+def test_decode_response_raises_decode_error_for_gzip_bomb(mocker):
+    mocker.patch("app.proprietary.platforms.batdongsan.fetch._MAX_DECODED_BYTES", 1024)
+    bomb = gzip.compress(b"\x00" * 8192)
+    with pytest.raises(BatdongsanDecodeError, match="size cap"):
+        decode_response(bomb)
+
+
 @pytest.mark.asyncio
 async def test_fetch_listings_returns_data(mocker):
     decoded = _load_sample()
@@ -93,3 +106,78 @@ async def test_fetch_listings_returns_data(mocker):
     assert "data" in result
     assert len(result["data"]) == 2
     mock_post.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_fetch_listings_raises_decode_error_without_retrying(mocker):
+    mock_page = mocker.MagicMock()
+    mock_page.status = 200
+    mock_page.content = b"not-valid-data"
+    mock_post = mocker.patch(
+        "app.proprietary.platforms.batdongsan.fetch.AsyncFetcher.post",
+        new_callable=mocker.AsyncMock,
+    )
+    mock_post.return_value = mock_page
+
+    with pytest.raises(BatdongsanDecodeError):
+        await fetch_listings({"ptype": 38, "city": "HN"})
+
+    mock_post.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_fetch_listings_404_raises_blocked(mocker):
+    mock_page = mocker.MagicMock()
+    mock_page.status = 404
+    mock_page.content = b""
+    mock_post = mocker.patch(
+        "app.proprietary.platforms.batdongsan.fetch.AsyncFetcher.post",
+        new_callable=mocker.AsyncMock,
+    )
+    mock_post.return_value = mock_page
+    mocker.patch("app.proprietary.platforms.batdongsan.fetch.asyncio.sleep")
+
+    with pytest.raises(BatdongsanAccessBlockedError):
+        await fetch_listings({"ptype": 38, "city": "HN"})
+
+
+@pytest.mark.asyncio
+async def test_fetch_listings_429_raises_rate_limited(mocker):
+    mock_page = mocker.MagicMock()
+    mock_page.status = 429
+    mock_page.content = b""
+    mock_post = mocker.patch(
+        "app.proprietary.platforms.batdongsan.fetch.AsyncFetcher.post",
+        new_callable=mocker.AsyncMock,
+    )
+    mock_post.return_value = mock_page
+    mocker.patch("app.proprietary.platforms.batdongsan.fetch.asyncio.sleep")
+
+    with pytest.raises(BatdongsanRateLimitedError):
+        await fetch_listings({"ptype": 38, "city": "HN"})
+
+
+@pytest.mark.asyncio
+async def test_fetch_listings_rotates_on_403_then_succeeds(mocker):
+    decoded = _load_sample()
+    raw = _encode_fixture(decoded)
+
+    blocked_page = mocker.MagicMock()
+    blocked_page.status = 403
+    blocked_page.content = b""
+
+    ok_page = mocker.MagicMock()
+    ok_page.status = 200
+    ok_page.content = raw
+
+    mock_post = mocker.patch(
+        "app.proprietary.platforms.batdongsan.fetch.AsyncFetcher.post",
+        new_callable=mocker.AsyncMock,
+    )
+    mock_post.side_effect = [blocked_page, ok_page]
+    mocker.patch("app.proprietary.platforms.batdongsan.fetch.asyncio.sleep")
+
+    result = await fetch_listings({"ptype": 38, "city": "HN"})
+
+    assert isinstance(result, dict)
+    assert mock_post.await_count == 2

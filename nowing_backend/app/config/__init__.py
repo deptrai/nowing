@@ -893,6 +893,13 @@ class Config:
     BATDONGSAN_SCRAPE_MICROS_PER_ITEM = int(
         os.getenv("BATDONGSAN_SCRAPE_MICROS_PER_ITEM", "3500")
     )
+    # Pacing: seconds between page requests while paginating, and the base of
+    # the exponential backoff (base * 2**attempt) between retries. Politeness
+    # keeps the mobile endpoint from rate-limiting us.
+    BATDONGSAN_PAGE_DELAY_S = float(os.getenv("BATDONGSAN_PAGE_DELAY_S", "0.5"))
+    BATDONGSAN_RETRY_BACKOFF_BASE_S = float(
+        os.getenv("BATDONGSAN_RETRY_BACKOFF_BASE_S", "0.5")
+    )
     # Browser-driven listings make TikTok heavier per item than the API-backed
     # video meter, so it sits a touch above YouTube's video rate.
     TIKTOK_MICROS_PER_VIDEO = int(os.getenv("TIKTOK_MICROS_PER_VIDEO", "3500"))

@@ -103,6 +103,7 @@ const TOOL_GROUPS = [
 			"nowing_google_maps_reviews",
 			"nowing_google_search",
 			"nowing_amazon_scrape",
+			"nowing_batdongsan_scrape",
 			"nowing_web_crawl",
 			"nowing_list_scraper_runs",
 			"nowing_get_scraper_run",
