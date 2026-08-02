@@ -33,6 +33,16 @@ pnpm tsc --noEmit
 pnpm exec biome check app/layout.tsx components/seo/json-ld.tsx components/homepage/hero-section.tsx components/homepage/compare-table.tsx 'app/(home)/free/page.tsx' messages/en.json messages/ko.json --diagnostic-level=error
 ```
 
+## Production auth cookie domain
+
+When the Nowing frontend (`nowing.net`), backend (`api.nowing.net`) and Zero cache (`zero.nowing.net`) run on different subdomains, the backend must set auth cookies with a shared parent domain. If `COOKIE_DOMAIN` is left empty, the `nowing_session` and `nowing_refresh` cookies are host-only for `api.nowing.net`; the browser will not send them to `zero.nowing.net`, causing Zero sync to return 401 and the dashboard to log the user out after the auth-retry limit is exhausted.
+
+Fix: set `COOKIE_DOMAIN=nowing.net` (or `.nowing.net`) in the backend production environment.
+
+Verification:
+- Login response `Set-Cookie` headers should include `Domain=nowing.net`.
+- After logging in, the user should stay on `/dashboard/*` for at least 2 minutes without console `TransformFailed 401` errors.
+
 Notes:
 - `pnpm lint` does not work because Next.js 16 CLI no longer exposes a `lint` subcommand and `eslint-plugin-react-hooks` is not installed.
 - `pnpm test` is not configured in `package.json`; use Playwright (`test:e2e*`) or backend pytest for verification.
