@@ -737,11 +737,12 @@ export const ThemeToggleButton = ({
 				</clipPath>
 				<g clipPath={`url(#${clipPathId})`}>
 					<motion.circle
-						r={8}
-						animate={{ r: isDark ? 10 : 8 }}
-						transition={{ ease: "easeInOut", duration: 0.35 }}
 						cx="16"
 						cy="16"
+						r={8}
+						initial={{ r: 8 }}
+						animate={{ r: isDark ? 10 : 8 }}
+						transition={{ ease: "easeInOut", duration: 0.35 }}
 					/>
 					<motion.g
 						animate={{
