@@ -1,25 +1,33 @@
 # ChainLens research latency gate — Story 9.3 / NFR-9 / State A->B.
 #
-# The default mode must stay inside the latency budget before the sync
-# chat-mode feature flag (DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED) can be
-# safely turned on. These numbers are PROVISIONAL and baseline_ratified
-# is false until measured on the real engine.
+# Nowing e2e benchmark: calls POST /workspaces/{id}/scrapers/chainlens/research
+# and measures p50/p95 end-to-end and TTFB latency per mode. Numbers are
+# PROVISIONAL; baseline_ratified stays false until the clean ChainLens benchmark
+# and this Nowing e2e run both land.
 
-# Maximum p95 end-to-end latency (ms) for the default/balanced mode.
-p95_e2e_ms_max_balanced: 60000
+# NFR-9 State B unlock thresholds (p95 e2e, ms).
+# Provisional targets: speed <= 30s, balanced <= 30s, quality (mapped from
+# ChainLens deep/deep-reasoning) <= 60s.
+p95_e2e_ms_max_speed: 30000
+p95_e2e_ms_max_balanced: 30000
+p95_e2e_ms_max_quality: 60000
 
-# Maximum p95 TTFB (ms) for the default/balanced mode.
-p95_ttfb_ms_max_balanced: 15000
+# Provisional p95 TTFB targets (ms). Subject to ratification when baseline clean.
+p95_ttfb_ms_max_speed: 10000
+p95_ttfb_ms_max_balanced: 10000
+p95_ttfb_ms_max_quality: 15000
 
 # Minimum samples so a single fast run cannot pass the gate.
 min_samples: 5
 
-# The runner should produce latency numbers for at least these modes.
+# The runner should produce latency numbers for at least these Nowing modes.
+# (ChainLens 'deep' / 'deep-reasoning' maps to Nowing 'quality' in this suite.)
 required_modes:
+  - speed
   - balanced
   - quality
 
 # Baseline ratification. Flip to true once the numbers above are measured
-# on the real ChainLens engine and signed off by the NFR-9 owner.
+# on the real ChainLens engine + this Nowing e2e harness and signed off.
 baseline_ratified: false
 baseline_source: ""

@@ -10,6 +10,7 @@ Domain-agnostic eval harness for Nowing. Each benchmark is a Python subpackage u
 | `medical/mirage`                | Nowing single-arm, MCQ                        | no               | `vision=off, mode=basic`   |
 | `medical/cure`                  | Nowing single-arm retrieval (Recall/MRR/nDCG) | no               | `vision=off, mode=basic`   |
 | `multimodal_doc/mmlongbench`    | Native PDF vs Nowing head-to-head, open-ended | yes              | `vision=on, mode=basic`    |
+| `research/chainlens_latency`    | Nowing deep-research p50/p95 e2e + TTFB       | no               | none (live engine calls)   |
 
 Future domains (`legal/`, `finance/`, `code/`, `scientific/`) drop into `suites/` without touching `core/` or the CLI.
 
@@ -66,6 +67,21 @@ python -m nowing_evals report --suite multimodal_doc
 python -m nowing_evals teardown --suite medical
 python -m nowing_evals teardown --suite multimodal_doc
 ```
+
+## ChainLens research latency (NFR-9 / Story 9.3)
+
+The `research/chainlens_latency` benchmark calls the Nowing deep-research REST endpoint and measures p50/p95 end-to-end and TTFB latency across modes. No setup/ingest is required; it only needs `NOWING_EVAL_WORKSPACE_ID` and a running backend with `CHAINLENS_API_KEY` configured.
+
+```bash
+# cp .env.example .env and fill NOWING_API_BASE + NOWING_EVAL_WORKSPACE_ID + auth.
+python -m nowing_evals run research chainlens_latency --modes speed,balanced,quality --concurrency 1 --n 3
+python -m nowing_evals report --suite research --benchmark chainlens_latency
+```
+
+Notes:
+- `quality` is the Nowing schema mode that maps to ChainLens `deep`/`deep-reasoning`.
+- The benchmark defaults to 5 representative factual queries; use `--n` for a quick smoke run.
+- Targets live in `src/nowing_evals/suites/research/chainlens_latency/gate.yaml` and are provisional until `baseline_ratified` is flipped after a clean ChainLens benchmark.
 
 ## Asymmetric scenarios — the "vision-extract once, answer cheap" play
 

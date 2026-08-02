@@ -85,12 +85,21 @@ class ChainlensLatencyBenchmark:
     name: str = "chainlens_latency"
     headline: bool = False
     description: str = _DESCRIPTION
+    #: The benchmark hits a workspace-scoped research endpoint; it does not need
+    #: a SearchSpace or a pinned chat model, so it must not require `setup`.
+    requires_suite_setup: bool = False
 
     def add_run_args(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "--modes",
-            default="balanced,quality",
-            help="Comma-separated research modes to compare.",
+            default="speed,balanced,quality",
+            help="Comma-separated research modes to compare (Nowing schema: speed, balanced, quality; use quality for ChainLens deep/deep-reasoning).",
+        )
+        parser.add_argument(
+            "--workspace-id",
+            type=int,
+            default=None,
+            help="Workspace tenant for the research endpoint; overrides NOWING_EVAL_WORKSPACE_ID.",
         )
         parser.add_argument(
             "--n",
@@ -137,9 +146,11 @@ class ChainlensLatencyBenchmark:
         references_path: Path | None = opts.get("references")
         quality_latency_budget_ms = float(opts.get("quality_latency_budget_ms") or 60_000.0)
 
-        workspace_id = ctx.config.memory_workspace_id
+        workspace_id = opts.get("workspace_id") or ctx.config.memory_workspace_id
         if workspace_id is None:
-            raise RuntimeError("NOWING_EVAL_WORKSPACE_ID is required for chainlens_latency.")
+            raise RuntimeError(
+                "NOWING_EVAL_WORKSPACE_ID or --workspace-id is required for chainlens_latency."
+            )
 
         queries = _DEFAULT_QUERIES[:sample_n] if sample_n else _DEFAULT_QUERIES
         if not queries:
@@ -396,9 +407,18 @@ class ChainlensLatencyBenchmark:
         output_text = run_data.get("output_text") or ""
         output: dict[str, Any] = {}
         if output_text:
-            try:
-                output = json.loads(output_text.splitlines()[0])
-            except Exception:
+            for line in output_text.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    parsed = json.loads(line)
+                    if isinstance(parsed, dict):
+                        output = parsed
+                        break
+                except json.JSONDecodeError:
+                    continue
+            if not output:
                 logger.warning("Could not parse run output_text for query %r", query)
         return {
             "query": query,
@@ -406,7 +426,7 @@ class ChainlensLatencyBenchmark:
             "resolved_mode": output.get("resolved_mode"),
             "duration_ms": run_data.get("duration_ms") or output.get("duration_ms") or 0,
             "first_token_time_ms": output.get("first_token_time_ms"),
-            "status": run_data.get("status"),
+            "status": run_data.get("status") or output.get("status"),
             "source_count": len(output.get("sources") or []),
             "answer_length": len(output.get("answer") or ""),
             "answer": output.get("answer") or "",
