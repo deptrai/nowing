@@ -54,7 +54,9 @@ async def _column_exists(session, table: str, column: str) -> bool:
         WHERE table_name = :table AND column_name = :column
         LIMIT 1
     """
-    return bool((await session.execute(text(sql), {"table": table, "column": column})).scalar())
+    return bool(
+        (await session.execute(text(sql), {"table": table, "column": column})).scalar()
+    )
 
 
 async def _table_exists(session, table: str) -> bool:
@@ -64,20 +66,20 @@ async def _table_exists(session, table: str) -> bool:
 
 def _g2_count_sql() -> tuple[str, str]:
     return (
-        'SELECT count(*) FROM "user" WHERE memory_md IS NOT NULL AND btrim(memory_md) <> \'\'',
+        "SELECT count(*) FROM \"user\" WHERE memory_md IS NOT NULL AND btrim(memory_md) <> ''",
         "SELECT count(*) FROM workspaces WHERE shared_memory_md IS NOT NULL AND btrim(shared_memory_md) <> ''",
     )
 
 
 def _g1_unmigrated_sql() -> tuple[str, str]:
-    user_sql = '''
+    user_sql = """
         SELECT count(*) FROM "user" u
         WHERE u.memory_md IS NOT NULL AND btrim(u.memory_md) <> ''
           AND NOT EXISTS (
               SELECT 1 FROM memories m
               WHERE m.created_by_id = u.id AND m.workspace_id IS NULL
           )
-    '''
+    """
     ws_sql = """
         SELECT count(*) FROM workspaces w
         WHERE w.shared_memory_md IS NOT NULL AND btrim(w.shared_memory_md) <> ''
@@ -92,7 +94,9 @@ async def _g2(session) -> tuple[int, int]:
     user_has_col = await _column_exists(session, "user", "memory_md")
     ws_has_col = await _column_exists(session, "workspaces", "shared_memory_md")
     if not user_has_col and not ws_has_col:
-        logger.info("G2 SKIP: legacy columns already dropped (migration 178 may already be applied).")
+        logger.info(
+            "G2 SKIP: legacy columns already dropped (migration 178 may already be applied)."
+        )
         return 0, 0
 
     user_sql, ws_sql = _g2_count_sql()
@@ -103,7 +107,9 @@ async def _g2(session) -> tuple[int, int]:
 
 async def _g1_unmigrated(session) -> tuple[int, int]:
     if not await _table_exists(session, "public.memories"):
-        logger.warning("G1 SKIP: `memories` table not found (migration 177 not applied?).")
+        logger.warning(
+            "G1 SKIP: `memories` table not found (migration 177 not applied?)."
+        )
         return 0, 0
 
     user_has_col = await _column_exists(session, "user", "memory_md")
@@ -172,7 +178,9 @@ async def main() -> int:
         # G2 — legacy memory count right before deploy
         # ------------------------------------------------------------------
         user_md, ws_md = await _g2(session)
-        logger.info("G2 legacy memory_md count:  users=%d  workspaces=%d", user_md, ws_md)
+        logger.info(
+            "G2 legacy memory_md count:  users=%d  workspaces=%d", user_md, ws_md
+        )
 
         # ------------------------------------------------------------------
         # G1 — migration 178 backfill safety
@@ -250,7 +258,9 @@ async def main() -> int:
         # ------------------------------------------------------------------
         logger.info("Pre-merge gate check complete.")
         if not enabled_workspaces:
-            logger.info("All gates G1/G2/G5 are satisfied. Safe to run `alembic upgrade head`.")
+            logger.info(
+                "All gates G1/G2/G5 are satisfied. Safe to run `alembic upgrade head`."
+            )
         else:
             logger.warning(
                 "G1/G2 satisfied, but G5 has enabled workspaces. Review before deploy."
