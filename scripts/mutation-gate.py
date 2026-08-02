@@ -42,6 +42,11 @@ P0_SERVICES = {
 
 def classify_pattern(operator: str, diff: str, file: str) -> str:
     """Map a cosmic-ray operator to one of the 6 anti-patterns."""
+    # cosmic-ray 8.x dumps operators with a "core/" prefix (e.g.
+    # "core/ReplaceComparisonOperator_Gt_Eq"); strip it so the prefix
+    # checks below actually match. Without this every mutant fell through
+    # to the generic "2-over-mocking" fallback and P0 triage was useless.
+    operator = operator.rsplit("/", 1)[-1]
     if operator.startswith("ReplaceComparisonOperator"):
         return "3-happy-path-only"
     if operator.startswith("ReplaceAndWithOr") or operator.startswith("ReplaceOrWithAnd"):
