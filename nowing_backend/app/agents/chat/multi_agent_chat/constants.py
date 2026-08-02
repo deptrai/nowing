@@ -30,6 +30,7 @@ CONNECTOR_TYPE_TO_CONNECTOR_AGENT_MAPS: dict[str, str] = {
 # map to the GOOGLE_* tokens in connector_searchable_types).
 SUBAGENT_TO_REQUIRED_CONNECTOR_MAP: dict[str, frozenset[str]] = {
     "amazon": frozenset(),
+    "batdongsan": frozenset(),
     "chainlens": frozenset(),
     "deliverables": frozenset(),
     "knowledge_base": frozenset(),
