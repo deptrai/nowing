@@ -912,8 +912,12 @@ class Config:
     CHAINLENS_REQUEST_TIMEOUT_SECONDS = float(
         os.getenv("CHAINLENS_REQUEST_TIMEOUT_SECONDS", "300")
     )
+    # Fallback flat rate for deep-research calls that do not emit costDollars.
+    # Default is ~the average real cost observed in ChainLens benchmark 2026-08-02
+    # (report-per-mode.md: avg $0.0519; research balanced $0.0482, quality $0.0671).
+    # Override via env for a specific deployment/pricing model.
     CHAINLENS_QUERY_MICROS_PER_CALL = int(
-        os.getenv("CHAINLENS_QUERY_MICROS_PER_CALL", "5000")
+        os.getenv("CHAINLENS_QUERY_MICROS_PER_CALL", "60000")
     )
 
     # Capability run event bus backend. "memory" keeps events in-process (the
