@@ -124,7 +124,7 @@ async def fetch_listings(payload: dict[str, Any]) -> dict[str, Any]:
             )
 
             if page.status == 200:
-                return decode_response(page.content)
+                return decode_response(page.body)
 
             _raise_for_status(page.status, P_SYNC_URL)
         except BatdongsanDecodeError:

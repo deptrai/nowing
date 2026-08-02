@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import {
 	AmazonIcon,
+	BatdongsanIcon,
 	GoogleMapsIcon,
 	GoogleSearchIcon,
 	InstagramIcon,
@@ -41,6 +42,12 @@ export const PLAYGROUND_PLATFORMS: PlaygroundPlatform[] = [
 		label: "Reddit",
 		icon: RedditIcon,
 		verbs: [{ name: "reddit.scrape", verb: "scrape", label: "Scrape" }],
+	},
+	{
+		id: "batdongsan",
+		label: "Batdongsan",
+		icon: BatdongsanIcon,
+		verbs: [{ name: "batdongsan.scrape", verb: "scrape", label: "Scrape" }],
 	},
 	{
 		id: "youtube",

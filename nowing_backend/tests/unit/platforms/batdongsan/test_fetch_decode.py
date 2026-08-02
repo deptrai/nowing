@@ -92,7 +92,7 @@ async def test_fetch_listings_returns_data(mocker):
 
     mock_page = mocker.MagicMock()
     mock_page.status = 200
-    mock_page.content = raw
+    mock_page.body = raw
     mock_post = mocker.patch(
         "app.proprietary.platforms.batdongsan.fetch.AsyncFetcher.post",
         new_callable=mocker.AsyncMock,
@@ -112,7 +112,7 @@ async def test_fetch_listings_returns_data(mocker):
 async def test_fetch_listings_raises_decode_error_without_retrying(mocker):
     mock_page = mocker.MagicMock()
     mock_page.status = 200
-    mock_page.content = b"not-valid-data"
+    mock_page.body = b"not-valid-data"
     mock_post = mocker.patch(
         "app.proprietary.platforms.batdongsan.fetch.AsyncFetcher.post",
         new_callable=mocker.AsyncMock,
@@ -129,7 +129,7 @@ async def test_fetch_listings_raises_decode_error_without_retrying(mocker):
 async def test_fetch_listings_404_raises_blocked(mocker):
     mock_page = mocker.MagicMock()
     mock_page.status = 404
-    mock_page.content = b""
+    mock_page.body = b""
     mock_post = mocker.patch(
         "app.proprietary.platforms.batdongsan.fetch.AsyncFetcher.post",
         new_callable=mocker.AsyncMock,
@@ -145,7 +145,7 @@ async def test_fetch_listings_404_raises_blocked(mocker):
 async def test_fetch_listings_429_raises_rate_limited(mocker):
     mock_page = mocker.MagicMock()
     mock_page.status = 429
-    mock_page.content = b""
+    mock_page.body = b""
     mock_post = mocker.patch(
         "app.proprietary.platforms.batdongsan.fetch.AsyncFetcher.post",
         new_callable=mocker.AsyncMock,
@@ -164,11 +164,11 @@ async def test_fetch_listings_rotates_on_403_then_succeeds(mocker):
 
     blocked_page = mocker.MagicMock()
     blocked_page.status = 403
-    blocked_page.content = b""
+    blocked_page.body = b""
 
     ok_page = mocker.MagicMock()
     ok_page.status = 200
-    ok_page.content = raw
+    ok_page.body = raw
 
     mock_post = mocker.patch(
         "app.proprietary.platforms.batdongsan.fetch.AsyncFetcher.post",

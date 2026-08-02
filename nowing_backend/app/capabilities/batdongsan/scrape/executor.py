@@ -13,6 +13,11 @@ from app.proprietary.platforms.batdongsan import (
     BatdongsanScrapeOutput,
     scrape_batdongsan,
 )
+from app.proprietary.platforms.batdongsan.fetch import (
+    BatdongsanAccessBlockedError,
+    BatdongsanDecodeError,
+    BatdongsanRateLimitedError,
+)
 from app.proprietary.platforms.batdongsan.schemas import BatdongsanScrapeInput
 
 from .schemas import ScrapeInput, ScrapeOutput
@@ -22,7 +27,9 @@ logger = logging.getLogger(__name__)
 ScrapeFn = Callable[..., Awaitable[BatdongsanScrapeOutput | dict[str, Any]]]
 
 
-def _unwrap_result(result: BatdongsanScrapeOutput | dict[str, Any]) -> dict[str, Any]:
+def _unwrap_result(result: BatdongsanScrapeOutput | dict[str, Any] | None) -> dict[str, Any]:
+    if result is None:
+        return {"items": [], "total_items": 0, "degraded": True, "degradation_reason": "unknown"}
     if isinstance(result, BatdongsanScrapeOutput):
         return {
             "items": [item.to_output() for item in result.items],
@@ -48,7 +55,23 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
         )
         try:
             raw = await scrape_fn(actor_input, limit=payload.max_items)
-        except Exception as exc:
+        except BatdongsanRateLimitedError:
+            logger.exception("batdongsan.scrape rate limited")
+            return ScrapeOutput(
+                items=[],
+                cost_micros=0,
+                degraded=True,
+                degradation_reason="rate_limited",
+            )
+        except BatdongsanDecodeError:
+            logger.exception("batdongsan.scrape decode error")
+            return ScrapeOutput(
+                items=[],
+                cost_micros=0,
+                degraded=True,
+                degradation_reason="decode_error",
+            )
+        except (BatdongsanAccessBlockedError, Exception) as exc:
             logger.exception("batdongsan.scrape actor failed: %s", exc)
             return ScrapeOutput(
                 items=[],
@@ -58,9 +81,14 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             )
         result = _unwrap_result(raw)
 
-        items = result["items"]
-        total = result["total_items"]
-        cost = total * getattr(config, "BATDONGSAN_SCRAPE_MICROS_PER_ITEM", 3500)
+        items = result.get("items", []) or []
+        total_raw = result.get("total_items", 0)
+        total = int(total_raw) if total_raw is not None else 0
+        degraded = bool(result.get("degraded", False))
+        if degraded:
+            cost = 0
+        else:
+            cost = total * getattr(config, "BATDONGSAN_SCRAPE_MICROS_PER_ITEM", 3500)
 
         emit_progress(
             "done",
@@ -72,7 +100,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
         return ScrapeOutput(
             items=items,
             cost_micros=cost,
-            degraded=result.get("degraded", False),
+            degraded=degraded,
             degradation_reason=result.get("degradation_reason"),
         )
 
