@@ -889,6 +889,10 @@ class Config:
     INSTAGRAM_SCRAPE_MICROS_PER_COMMENT = int(
         os.getenv("INSTAGRAM_SCRAPE_MICROS_PER_COMMENT", "1500")
     )
+    # Mobile API listings are cheap and stable, priced near Reddit/Instagram.
+    BATDONGSAN_SCRAPE_MICROS_PER_ITEM = int(
+        os.getenv("BATDONGSAN_SCRAPE_MICROS_PER_ITEM", "3500")
+    )
     # Browser-driven listings make TikTok heavier per item than the API-backed
     # video meter, so it sits a touch above YouTube's video rate.
     TIKTOK_MICROS_PER_VIDEO = int(os.getenv("TIKTOK_MICROS_PER_VIDEO", "3500"))

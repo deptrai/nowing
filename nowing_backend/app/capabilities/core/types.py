@@ -32,6 +32,7 @@ class BillingUnit(StrEnum):
     TIKTOK_USER = "tiktok_user"
     TIKTOK_COMMENT = "tiktok_comment"
     CHAINLENS_QUERY = "chainlens_query"
+    BATDONGSAN_ITEM = "batdongsan_item"
 
 
 class BillableInput(Protocol):

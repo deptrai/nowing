@@ -1,0 +1,33 @@
+{
+  "data": [
+    {
+      "title": "B\u00e1n nh\u00e0 ri\u00eang t\u1ea1i Ba \u0110\u00ecnh",
+      "address": "Ph\u01b0\u1eddng Qu\u00e1n Th\u00e1nh, Qu\u1eadn Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+      "avatar": "https://file4.batdongsan.com.vn/crop/200x200/some.jpg",
+      "price": "19.8 T\u1ef7",
+      "lat": 21.0286146035022,
+      "lon": 105.812719675434,
+      "id": 46122640,
+      "area": "75 m\u00b2",
+      "cat": "B\u00e1n nh\u00e0 ri\u00eang",
+      "date": "31/07/2026",
+      "room": 18,
+      "url": "https://batdongsan.com.vn/nha-dat-ban-ba-dinh/some-pr46122640"
+    },
+    {
+      "title": "Cho thu\u00ea c\u0103n h\u1ed9 Qu\u1eadn 1",
+      "address": "Ph\u01b0\u1eddng B\u1ebfn Ngh\u00e9, Qu\u1eadn 1, H\u1ed3 Ch\u00ed Minh",
+      "avatar": "https://file4.batdongsan.com.vn/crop/200x200/other.jpg",
+      "price": "25 tri\u1ec7u/th\u00e1ng",
+      "lat": 10.772,
+      "lon": 106.698,
+      "id": 46122641,
+      "area": "65 m\u00b2",
+      "cat": "Cho thu\u00ea c\u0103n h\u1ed9",
+      "date": "30/07/2026",
+      "room": 2,
+      "url": "https://batdongsan.com.vn/nha-dat-cho-thue-quan-1/other-pr46122641"
+    }
+  ],
+  "m": "ok"
+}
