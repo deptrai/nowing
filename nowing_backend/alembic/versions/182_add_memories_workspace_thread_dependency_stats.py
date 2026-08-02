@@ -72,13 +72,13 @@ OLD_INDEX_NAME = "ix_memories_research_thread_id"
 
 def upgrade() -> None:
     op.execute(
-        f"CREATE STATISTICS {STATS_NAME} (dependencies) "
+        f"CREATE STATISTICS IF NOT EXISTS {STATS_NAME} (dependencies) "
         "ON workspace_id, research_thread_id FROM memories"
     )
-    # DROP INDEX on a hot table must be CONCURRENTLY and cannot run inside a
-    # transaction. Wrap the index drop in an autocommit block.
-    with op.get_context().autocommit_block():
-        op.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {OLD_INDEX_NAME}")
+    # Dropping the redundant single-column index is fast even on a warm table
+    # and avoids the transactional restrictions of CONCURRENTLY, which is
+    # problematic inside asyncpg/alembic autocommit blocks.
+    op.execute(f"DROP INDEX IF EXISTS {OLD_INDEX_NAME}")
     op.execute("ANALYZE memories")
 
 
