@@ -28,7 +28,7 @@ export const HOME_FAQ = [
 	{
 		question: "Can I self-host Nowing?",
 		answer:
-			"Yes. Nowing is open source and self-hostable, so you can run the entire platform on your own infrastructure and keep sensitive research in-house. Use the cloud version to start in minutes, or deploy from the GitHub repository when you need full control.",
+			"Yes. Nowing is open-core and self-hostable, so you can run the entire platform on your own infrastructure and keep sensitive research in-house. Use the cloud version to start in minutes, or deploy from the GitHub repository when you need full control.",
 	},
 ];
 

@@ -1,4 +1,4 @@
-﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing — workspace de pesquisa de IA open source com um motor de pesquisa aprofundada hospedado" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
+﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing — workspace de pesquisa de IA open-core com um motor de pesquisa aprofundada hospedado" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
 
 
 
@@ -20,18 +20,18 @@
 <a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FNowing | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-# Nowing: Memória de pesquisa open source para agentes de IA
+# Nowing: Memória de pesquisa open-core para agentes de IA
 
-> **O Nowing é memória de pesquisa open source para agentes de IA — lembra o que foi buscar e encontrou, não só o que você contou.**
+> **O Nowing é memória de pesquisa open-core para agentes de IA — lembra o que foi buscar e encontrou, não só o que você contou.**
 
-O Nowing é um workspace de pesquisa auto-hospedado com memória de longo prazo para agentes de IA e equipes, impulsionado por um núcleo open source e um motor hospedado de pesquisa aprofundada. Seus agentes pesquisam a web ao vivo com dados estruturados do **Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search e de qualquer página da web aberta**, por meio de uma única **API REST** ou de um **servidor MCP**. Agentes agendados ou acionados por eventos transformam o que encontram em relatórios e alertas, e uma base de conhecimento integrada mantém cada descoberta pesquisável, com citações.
+O Nowing é um workspace de pesquisa auto-hospedado com memória de longo prazo para agentes de IA e equipes, impulsionado por um núcleo Apache-2.0 e um motor hospedado de pesquisa aprofundada. Seus agentes pesquisam a web ao vivo com dados estruturados do **Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search e de qualquer página da web aberta**, por meio de uma única **API REST** ou de um **servidor MCP**. Agentes agendados ou acionados por eventos transformam o que encontram em relatórios e alertas, e uma base de conhecimento integrada mantém cada descoberta pesquisável, com citações.
 
 > [!NOTE]
 > **📢 Um recado para nossos usuários de memória de pesquisa de longo prazo**
 >
 > Nos últimos meses, construímos o Nowing como um workspace que transforma pesquisa em memória durável e recuperável, e esse capítulo nos rendeu uma comunidade da qual temos muito orgulho. Ferramentas agênticas como Claude, OpenCode, Hermes e OpenClaw já provaram que os agentes são o futuro, e raciocinar sobre um índice estático está se tornando algo que todo agente capaz faz nativamente. O que ainda falta aos agentes são **dados ao vivo dos lugares onde as respostas realmente vivem, e os fluxos de trabalho em torno deles**. É para lá que estamos direcionando toda a nossa energia: dar aos agentes as primitivas para pesquisar a web aberta.
 >
-> **Nada do que você usa vai deixar de existir.** Sua base de conhecimento, o chat com citações, os relatórios, os podcasts, as apresentações, as automações e os chats colaborativos continuam funcionando, e a auto-hospedagem do núcleo open source continua gratuita. O motor hospedado de pesquisa aprofundada usa uma chave de API de nuvem opcional. Leia o anuncio completo no [nosso changelog](https://www.nowing.com/changelog).
+> **Nada do que você usa vai deixar de existir.** Sua base de conhecimento, o chat com citações, os relatórios, os podcasts, as apresentações, as automações e os chats colaborativos continuam funcionando, e a auto-hospedagem do núcleo Apache-2.0 continua gratuita. O motor hospedado de pesquisa aprofundada usa uma chave de API de nuvem opcional. Leia o anuncio completo no [nosso changelog](https://www.nowing.com/changelog).
 
 ## Sumário
 
@@ -50,7 +50,7 @@ Pergunte a qualquer agente capaz "o que o Reddit está dizendo sobre este produt
 - **Uma única superfície tipada para onde quer que os dados estejam.** Cada conector é um endpoint REST que retorna JSON estruturado — posts, comentários, transcrições, reviews, SERPs, páginas. Sem roleta de limites de requisição, sem parsing de HTML, sem loop de navegador.
 - **Um servidor MCP** que expõe cada conector como uma ferramenta nativa (`nowing_reddit_scrape`, `nowing_google_search` e outras) para o Claude, o Cursor ou qualquer framework de agentes.
 - **Um harness de agentes**, não apenas dados brutos: novas tentativas, saída estruturada e medição de créditos já vêm prontos, então os agentes vão de uma pergunta a um relatório com citações sem que você precise construir a infraestrutura.
-- **Open source e auto-hospedável**, para que sua pesquisa permaneça na sua própria infraestrutura.
+- **Open-core e auto-hospedável**, para que sua pesquisa permaneça na sua própria infraestrutura.
 
 ## Conectores de dados ao vivo
 
@@ -202,7 +202,7 @@ https://github.com/user-attachments/assets/a0a16566-6967-4374-ac51-9b3e07fbecd7
 
 ## Como o Nowing se compara
 
-O Nowing é o único produto com um núcleo open source que combina memória de pesquisa de longo prazo com primitivas de dados ao vivo para agentes. Veja como isso se compara a cada classe de ferramenta.
+O Nowing é o único produto com um núcleo Apache-2.0 que combina memória de pesquisa de longo prazo com primitivas de dados ao vivo para agentes. Veja como isso se compara a cada classe de ferramenta.
 
 **vs agentes de navegador (Browserbase, Browser Use).** Agentes de navegador controlam um navegador real com um LLM no loop — a ferramenta certa quando a tarefa exige clicar, fazer login ou preencher formulários. Mas a maior parte da pesquisa é recuperação somente leitura, e para recuperação o loop de LLM no navegador custa minutos e milhares de tokens por página. Uma chamada de conector do Nowing é uma única requisição HTTP: segundos, determinística e zero tokens gastos decidindo onde clicar.
 
@@ -210,7 +210,7 @@ O Nowing é o único produto com um núcleo open source que combina memória de 
 
 **vs APIs de busca (Exa, Tavily, Parallel).** APIs de busca respondem a partir de um índice da web, o que é a ferramenta certa para "encontre páginas sobre X". Elas não conseguem trazer os comentários de uma thread do Reddit, as reações no TikTok, as transcrições do YouTube ou os reviews do Google Maps — os lugares onde a resposta muitas vezes realmente vive.
 
-**vs marketplaces de scrapers (Apify).** Marketplaces oferecem milhares de actors da comunidade, cada um com seu próprio schema, qualidade e preço. O Nowing é uma única API tipada e um único servidor MCP, com um harness de agentes e um workspace de pesquisa por trás, e é open source.
+**vs marketplaces de scrapers (Apify).** Marketplaces oferecem milhares de actors da comunidade, cada um com seu próprio schema, qualidade e preço. O Nowing é uma única API tipada e um único servidor MCP, com um harness de agentes e um workspace de pesquisa por trás, e é open-core.
 
 ### Como o Nowing se compara com ferramentas de pesquisa para consumidores
 
@@ -228,7 +228,7 @@ O Nowing não é um app de anotações melhor; é um workspace de pesquisa de n�
 | **Pesquisa profunda multi-passo na web aberta** | Fase 1: ❌ · Fase 2: 💳 medido | ✅ |
 
 **Licença em um relâmpago:**
-- Core (tudo fora de `nowing_backend/app/proprietary/`): **Apache-2.0** — verdadeiramente open source.
+- Core (tudo fora de `nowing_backend/app/proprietary/`): **Apache-2.0** — livre para usar e modificar.
 - Motor de rastreamento (`nowing_backend/app/proprietary/**`): **BSL 1.1** — livre para executar, inclusive em produção, mas não pode ser revendido como um serviço hospedado/gerenciado.
 - Motor de pesquisa aprofundada: **closed-source, hosted** — apenas na nuvem na Fase 1.
 

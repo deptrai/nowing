@@ -340,7 +340,7 @@ If you are choosing an architecture for a long-PDF Q&A product *today*:
 
 ## Reproduce this benchmark
 
-Everything that produced these numbers is open source. The eval harness is its own package inside the Nowing monorepo:
+Everything that produced these numbers is open-core. The eval harness is its own package inside the Nowing monorepo:
 
 - [`nowing_evals/`](https://github.com/nowing/Nowing/tree/main/nowing_evals) — the harness root (extensible base classes, providers, cost ledger).
 - [`suites/multimodal_doc/parser_compare/`](https://github.com/nowing/Nowing/tree/main/nowing_evals/src/nowing_evals/suites/multimodal_doc/parser_compare) — the benchmark used in this post (prompts, ingest, runner).
@@ -382,6 +382,6 @@ The dataset itself is on [Hugging Face](https://huggingface.co/datasets/yubo2333
 
 If you find that the rankings shuffle on your own document set, we want to hear about it. Open an issue on [the Nowing repo](https://github.com/nowing/Nowing/issues) with the run artifacts and we will link your results from this post.
 
-The eval harness is open source and runs against any OpenRouter model, so you can re-run the same questions on `openai/gpt-4o`, `google/gemini-2.5-pro`, or whichever model you are evaluating for production. Wire your own RAG framework into the [`Arm` base class](https://github.com/nowing/Nowing/blob/main/nowing_evals/src/nowing_evals/core/arms/base.py) (LangChain, LlamaIndex, Haystack, your own stack) and you can drop it into the same comparison without changing the rest of the pipeline.
+The eval harness is open-core and runs against any OpenRouter model, so you can re-run the same questions on `openai/gpt-4o`, `google/gemini-2.5-pro`, or whichever model you are evaluating for production. Wire your own RAG framework into the [`Arm` base class](https://github.com/nowing/Nowing/blob/main/nowing_evals/src/nowing_evals/core/arms/base.py) (LangChain, LlamaIndex, Haystack, your own stack) and you can drop it into the same comparison without changing the rest of the pipeline.
 
 If you want a hosted way to try agentic RAG on your own PDFs without writing the harness yourself, [Nowing](/free) is one option (it is the same agentic stack that powered the `nowing_agentic` arm above).

@@ -51,11 +51,11 @@ export function ArtifactCard({
 			{artifact.sourceThreadId ? (
 				<Link
 					href={`/dashboard/${workspaceId}/new-chat/${artifact.sourceThreadId}`}
-					title="Open source chat"
+					title="Open original chat"
 					className="relative z-10 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
 				>
 					<MessageSquareText className="size-4" />
-					<span className="sr-only">Open source chat</span>
+					<span className="sr-only">Open original chat</span>
 				</Link>
 			) : null}
 		</div>

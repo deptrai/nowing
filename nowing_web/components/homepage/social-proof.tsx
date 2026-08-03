@@ -32,19 +32,19 @@ const YOUTUBE: Post[] = [
 	{
 		kind: "youtube",
 		url: "https://www.youtube.com/watch?v=i9AJ7PHGSGg",
-		title: "Nowing vs NotebookLM",
+		title: "Nowing research memory walkthrough",
 		channel: "rezasaad plus",
 	},
 	{
 		kind: "youtube",
 		url: "https://www.youtube.com/watch?v=VBOwuD6xVK0",
-		title: "NotebookLM Is Great… Until You See Nowing",
+		title: "Nowing feature overview",
 		channel: "Thomas AI",
 	},
 	{
 		kind: "youtube",
 		url: "https://www.youtube.com/watch?v=UaekqjhUiJM",
-		title: "NotebookLM vs Nowing en 6 pruebas reales (sorprendente)",
+		title: "Nowing en 6 pruebas reales (sorprendente)",
 		channel: "NextGen IA Hub",
 	},
 	{
@@ -56,31 +56,31 @@ const YOUTUBE: Post[] = [
 	{
 		kind: "youtube",
 		url: "https://www.youtube.com/watch?v=cfNAIQtNbKY",
-		title: "¿Adiós NotebookLM? Probé Nowing y es BRUTAL (IA Gratis)",
+		title: "Probé Nowing y es BRUTAL (IA Gratis)",
 		channel: "NextGen IA Hub",
 	},
 	{
 		kind: "youtube",
 		url: "https://www.youtube.com/watch?v=pIWOKSHhf38",
-		title: "¿Superaron a NotebookLM? Nowing es Open Source, privada y GRATIS",
+		title: "Nowing es privada y GRATIS",
 		channel: "academIArtificial",
 	},
 	{
 		kind: "youtube",
 		url: "https://www.youtube.com/watch?v=K5xx-J_mQZ8",
-		title: "¿Mejor que NotebookLM? IA GRATIS con modo local",
+		title: "IA GRATIS con modo local",
 		channel: "Migue Baena IA",
 	},
 	{
 		kind: "youtube",
 		url: "https://www.youtube.com/watch?v=AKxM3RUBFsc",
-		title: "¿Nueva IA GRATIS destroza a NotebookLM de Google? (OPEN SOURCE)",
+		title: "¿Nueva IA GRATIS para investigación? (open-core)",
 		channel: "Inteligencia Artificial Top",
 	},
 	{
 		kind: "youtube",
 		url: "https://www.youtube.com/watch?v=jCAgeaVgPDA",
-		title: "¿Nueva Herramienta IA GRATIS Destroza a NotebookLM? (OPEN SOURCE)",
+		title: "¿Nueva Herramienta IA GRATIS? (open-core)",
 		channel: "Joaquín Barberá",
 	},
 ];

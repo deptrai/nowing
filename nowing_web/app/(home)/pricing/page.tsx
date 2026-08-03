@@ -6,7 +6,7 @@ const canonicalUrl = "https://www.nowing.com/pricing";
 
 const metaTitle = "Nowing Pricing: Self-Host Free or Pay As You Go";
 const metaDescription =
-	"Self-host Nowing for free from our open-source repo, or use the cloud with $5 of free credit and pay as you go at provider cost. No subscription.";
+	"Self-host Nowing for free from our open-core repo, or use the cloud with $5 of free credit and pay as you go at provider cost. No subscription.";
 
 export const metadata: Metadata = {
 	title: metaTitle,
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 	keywords: [
 		"nowing pricing",
 		"pay as you go ai platform",
-		"open source ai agent platform",
+		"open core ai agent platform",
 		"self-hosted ai workspace",
 		"ai automation pricing",
 		"web scraping api pricing",
@@ -56,7 +56,7 @@ const page = () => {
 							price: "0",
 							priceCurrency: "USD",
 							description:
-								"Open source and self-hostable with unlimited usage. Bring your own model keys.",
+								"Open-core and self-hostable with unlimited usage. Bring your own model keys.",
 						},
 						{
 							"@type": "Offer",

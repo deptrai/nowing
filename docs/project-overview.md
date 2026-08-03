@@ -1,8 +1,8 @@
 # Nowing — Project Overview
 
-**Nowing is open-source research memory for AI agents — it remembers what it went and found, not just what you told it.**
+**Nowing is open-core research memory for AI agents — it remembers what it went and found, not just what you told it.**
 
-It is a self-hosted research workspace with long-term memory for AI agents and teams, backed by an open-source core and a hosted deep-research engine.
+It is a self-hosted research workspace with long-term memory for AI agents and teams, backed by an Apache-2.0 core and a hosted deep-research engine.
 
 ## What it does
 
@@ -15,7 +15,7 @@ It is a self-hosted research workspace with long-term memory for AI agents and t
 
 | Layer | Scope | License | Self-host |
 |---|---|---|---|
-| Core | Everything outside `nowing_backend/app/proprietary/` | Apache-2.0 (open source) | ✅ free |
+| Core | Everything outside `nowing_backend/app/proprietary/` | Apache-2.0 | ✅ free |
 | Crawler engine | `nowing_backend/app/proprietary/**` | BSL 1.1 (free to run, including production; cannot resell as hosted/managed service) | ✅ free |
 | Deep-research engine | Hosted cloud service | Closed-source | Phase 1: ❌ (returns `engine_unavailable`) · Phase 2: metered |
 

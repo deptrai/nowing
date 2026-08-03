@@ -50,11 +50,11 @@ export const metadata: Metadata = {
 	alternates: {
 		canonical: "https://www.nowing.com",
 	},
-	title: "Nowing - Open-Source Research Memory for AI Agents",
+	title: "Nowing - Open-Core Research Memory for AI Agents",
 	description:
-		"Open-source research memory for AI agents — it remembers what it went and found, not just what you told it. Your agents pull live, structured data from Reddit, YouTube, Amazon, and any page via one API or MCP server.",
+		"Open-core research memory for AI agents — it remembers what it went and found, not just what you told it. Your agents pull live, structured data from Reddit, YouTube, Amazon, and any page via one API or MCP server.",
 	keywords: [
-		"open source research memory",
+		"open core research memory",
 		"long-term research memory",
 		"AI agent memory",
 		"open web research platform",
@@ -69,9 +69,9 @@ export const metadata: Metadata = {
 		"Nowing",
 	],
 	openGraph: {
-		title: "Nowing - Open-Source Research Memory for AI Agents",
+		title: "Nowing - Open-Core Research Memory for AI Agents",
 		description:
-			"Open-source research memory for AI agents — it remembers what it went and found, not just what you told it. Research the live web with structured data from Reddit, YouTube, Amazon, Google Maps, and Google Search, through one API or MCP server.",
+			"Open-core research memory for AI agents — it remembers what it went and found, not just what you told it. Research the live web with structured data from Reddit, YouTube, Amazon, Google Maps, and Google Search, through one API or MCP server.",
 		url: "https://www.nowing.com",
 		siteName: "Nowing",
 		type: "website",
@@ -80,16 +80,16 @@ export const metadata: Metadata = {
 				url: "/og-image.png",
 				width: 1200,
 				height: 630,
-				alt: "Nowing, open-source research memory for AI agents",
+				alt: "Nowing, open-core research memory for AI agents",
 			},
 		],
 		locale: "en_US",
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "Nowing - Open-Source Research Memory for AI Agents",
+		title: "Nowing - Open-Core Research Memory for AI Agents",
 		description:
-			"Open-source research memory for AI agents — it remembers what it went and found, not just what you told it. Research the live web with structured data from Reddit, YouTube, Amazon, Google Maps, and Google Search, through one API or MCP server.",
+			"Open-core research memory for AI agents — it remembers what it went and found, not just what you told it. Research the live web with structured data from Reddit, YouTube, Amazon, Google Maps, and Google Search, through one API or MCP server.",
 		creator: "@NowingAI",
 		site: "@NowingAI",
 		images: [
@@ -97,7 +97,7 @@ export const metadata: Metadata = {
 				url: "/og-image-twitter.png",
 				width: 1200,
 				height: 630,
-				alt: "Nowing, open-source research memory for AI agents",
+				alt: "Nowing, open-core research memory for AI agents",
 			},
 		],
 	},

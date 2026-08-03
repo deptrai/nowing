@@ -21,7 +21,7 @@ import { SERVER_BACKEND_URL } from "@/lib/env-config";
 export const metadata: Metadata = {
 	title: "Free AI Chat, No Login Required | Nowing",
 	description:
-		"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and more for free. No sign-up required. Open source long-term research memory for AI agents, with free AI chat and document Q&A.",
+		"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and more for free. No sign-up required. Open-core long-term research memory for AI agents, with free AI chat and document Q&A.",
 	keywords: [
 		"chatgpt free",
 		"chat gpt free",
@@ -49,11 +49,6 @@ export const metadata: Metadata = {
 		"claude free",
 		"free claude ai",
 		"free claude",
-		"chatgpt alternative free",
-		"free chatgpt alternative",
-		"chatgpt free alternative",
-		"free alternative to chatgpt",
-		"alternative to chatgpt free",
 		"ai like chatgpt",
 		"sites like chatgpt",
 		"free ai chatbot like chatgpt",
@@ -62,7 +57,7 @@ export const metadata: Metadata = {
 		"best free alternative to chatgpt",
 		"free ai apps",
 		"ai with no restrictions",
-		"open source research memory",
+		"open core research memory",
 		"long-term research memory",
 	],
 	alternates: {
@@ -71,7 +66,7 @@ export const metadata: Metadata = {
 	openGraph: {
 		title: "Free AI Chat, No Login Required | Nowing",
 		description:
-			"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and 100+ AI models. Open source long-term research memory for AI agents.",
+			"Use ChatGPT free online without login. Chat with GPT-4, Claude AI, Gemini and 100+ AI models. Open-core long-term research memory for AI agents.",
 		url: "https://www.nowing.com/free",
 		siteName: "Nowing",
 		type: "website",
@@ -124,7 +119,7 @@ const FAQ_ITEMS = [
 	{
 		question: "What AI models can I use for free without login?",
 		answer:
-			"Nowing offers free access without login to models from OpenAI (GPT-4, GPT-4 Turbo), Anthropic (Claude 3, Claude free), Google (Gemini), DeepSeek, Mistral, Llama, and more. All available as a free ChatGPT alternative online with no login required.",
+			"Nowing offers free access without login to models from OpenAI (GPT-4, GPT-4 Turbo), Anthropic (Claude 3, Claude free), Google (Gemini), DeepSeek, Mistral, Llama, and more. All available as a free AI chat online with no login required.",
 	},
 	{
 		question: "What happens after I use my free tokens?",
@@ -139,17 +134,17 @@ const FAQ_ITEMS = [
 	{
 		question: "How is Nowing different from ChatGPT?",
 		answer:
-			"Nowing is open source long-term research memory for AI agents. It gives you access to multiple AI models in one place without login. Unlike ChatGPT alone, Nowing includes document Q&A with citations, integrations with Slack, Google Drive, Notion, and Confluence, plus team collaboration features.",
+			"Nowing is open-core long-term research memory for AI agents. It gives you access to multiple AI models in one place without login. Unlike ChatGPT alone, Nowing includes document Q&A with citations, integrations with Slack, Google Drive, Notion, and Confluence, plus team collaboration features.",
 	},
 	{
-		question: "Is Nowing a free ChatGPT alternative?",
+		question: "Is Nowing a free AI chat without login?",
 		answer:
-			"Yes. Nowing is a free, open source alternative to ChatGPT that works without login. It gives you access to Claude AI free, Gemini, and other AI models alongside document Q&A with citations, team collaboration, and 30+ integrations.",
+			"Yes. Nowing is a free, open-core AI chat that works without login. It gives you access to Claude AI free, Gemini, and other AI models alongside document Q&A with citations, team collaboration, and 30+ integrations.",
 	},
 	{
 		question: "Is my data private when using free AI chat without login?",
 		answer:
-			"Anonymous chat sessions are not stored in any database. No account means no personal data collected. Nowing is open source, so you can self-host for complete data control and privacy.",
+			"Anonymous chat sessions are not stored in any database. No account means no personal data collected. Nowing is open-core, so you can self-host for complete data control and privacy.",
 	},
 ];
 
@@ -165,7 +160,7 @@ export default async function FreeHubPage() {
 					"@type": "CollectionPage",
 					name: "ChatGPT Free Online Without Login - Nowing",
 					description:
-						"Use ChatGPT, Claude AI, Gemini and more AI models free online without login or sign-up. Open source long-term research memory for AI agents with no login required.",
+						"Use ChatGPT, Claude AI, Gemini and more AI models free online without login or sign-up. Open-core long-term research memory for AI agents with no login required.",
 					url: "https://www.nowing.com/free",
 					isPartOf: { "@type": "WebSite", name: "Nowing", url: "https://www.nowing.com" },
 					mainEntity: {
@@ -204,7 +199,7 @@ export default async function FreeHubPage() {
 							{seoModels.length} AI models
 						</Badge>
 						<Badge variant="secondary" className="px-3 py-1.5 text-sm">
-							Open source
+							Open-core
 						</Badge>
 					</div>
 				</section>
@@ -288,7 +283,7 @@ export default async function FreeHubPage() {
 				{/* Why Nowing */}
 				<section className="max-w-4xl mx-auto">
 					<h2 className="text-2xl font-bold mb-6">
-						Why Use Nowing as Your Free ChatGPT Alternative
+						Why Use Nowing for Free AI Chat
 					</h2>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div className="rounded-lg border bg-card p-5">
@@ -308,9 +303,9 @@ export default async function FreeHubPage() {
 							</p>
 						</div>
 						<div className="rounded-lg border bg-card p-5">
-							<h3 className="font-semibold mb-1.5">Open Source Research Memory for AI Agents</h3>
+							<h3 className="font-semibold mb-1.5">Open-Core Research Memory for AI Agents</h3>
 							<p className="text-sm text-muted-foreground leading-relaxed">
-								Nowing is free, open source long-term research memory for AI agents, with document
+								Nowing is free, open-core long-term research memory for AI agents, with document
 								Q&A and citations, integrations with Slack, Google Drive, Notion, and Confluence,
 								plus team collaboration and self-hosting support.
 							</p>

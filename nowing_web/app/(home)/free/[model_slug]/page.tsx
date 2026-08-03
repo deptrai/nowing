@@ -45,7 +45,7 @@ function buildSeoTitle(model: AnonModel): string {
 
 function buildSeoDescription(model: AnonModel): string {
 	if (model.seo_description) return model.seo_description;
-	return `Use ${model.name} free online without login. No sign-up required. Chat with ${model.name} by ${model.provider} instantly on Nowing, the open source ChatGPT alternative with no login.`;
+	return `Use ${model.name} free online without login. No sign-up required. Chat with ${model.name} by ${model.provider} instantly on Nowing, an open-core AI chat with no login.`;
 }
 
 function buildModelFaq(model: AnonModel) {

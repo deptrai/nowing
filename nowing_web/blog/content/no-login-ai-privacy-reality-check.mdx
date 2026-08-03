@@ -24,8 +24,8 @@ featured: false
 >
 > - **Want ChatGPT?** Open `chatgpt.com` in a fresh tab. Guest mode works, no signup, but the message cap is tight.
 > - **Want Claude?** `claude.ai` itself still wants an account, but Anthropic [shipped incognito mode on April 9, 2026](https://support.claude.com/en/articles/12260368-using-incognito-chats). For zero-account Claude, use [Duck.ai](https://duck.ai) (Claude Haiku 4.5, anonymized) or [Brave Leo](https://brave.com/leo/) inside the Brave browser.
-> - **Want Gemini?** Google requires a Google account on `gemini.google.com`. The closest no-signup path is an open-source aggregator like our own [Nowing /free](/free), which lists Gemini among its model options without a Google sign-in.
-> - **Want all of them in one place?** Our open-source [Nowing /free](/free) lets you pick from ChatGPT, Claude, Gemini, DeepSeek, Mistral, Llama, and a rotating list of other models with no account, and you get 500,000 free tokens to spend across any of them. [Duck.ai](https://duck.ai) and [Brave Leo](https://brave.com/leo/) are strong privacy-first alternatives.
+> - **Want Gemini?** Google requires a Google account on `gemini.google.com`. The closest no-signup path is an open-core aggregator like our own [Nowing /free](/free), which lists Gemini among its model options without a Google sign-in.
+> - **Want all of them in one place?** Our open-core [Nowing /free](/free) lets you pick from ChatGPT, Claude, Gemini, DeepSeek, Mistral, Llama, and a rotating list of other models with no account, and you get 500,000 free tokens to spend across any of them. [Duck.ai](https://duck.ai) and [Brave Leo](https://brave.com/leo/) are strong privacy-first alternatives.
 > - **Care about privacy too?** Most "no login" pages still log your IP and prompt content. The exceptions are Brave Leo, Duck.ai, and self-hosted models. Skip to [the privacy honest-talk](#the-privacy-honest-talk-no-login-is-not-the-same-as-anonymous) if that's the part you came for.
 
 <img
@@ -58,7 +58,7 @@ The shortest answer: open [chatgpt.com](https://chatgpt.com) in a private/incogn
 
 If GPT-5 quality on a no-signup page matters more than going through OpenAI specifically, [Bing Copilot](https://copilot.microsoft.com) at `copilot.microsoft.com` runs on a GPT-5-class backend, also works without a Microsoft account, and tends to have a more generous cap because Microsoft monetises through Bing search instead of subscriptions.
 
-You can also use **[Nowing /free](/free)** (full disclosure: this is our own open-source aggregator) which lists ChatGPT among its no-signup models. You get 500,000 free tokens to spend across any model on the page, which is meaningfully more than what guest mode gives you before the signup wall. The source code is on [GitHub](https://github.com/nowing/Nowing) so the privacy and quota behavior is auditable, not just promised.
+You can also use **[Nowing /free](/free)** (full disclosure: this is our own open-core aggregator) which lists ChatGPT among its no-signup models. You get 500,000 free tokens to spend across any model on the page, which is meaningfully more than what guest mode gives you before the signup wall. The source code is on [GitHub](https://github.com/nowing/Nowing) so the privacy and quota behavior is auditable, not just promised.
 
 ### Claude, with as little friction as possible
 
@@ -72,7 +72,7 @@ Anthropic does require an account on `claude.ai` itself, but the picture is much
 
 **Path 4: Multi-model aggregator pages.** These wrap the Anthropic API and serve Claude responses without an account on Anthropic. The pick we'd recommend (with the obvious disclosure that we made it) is **[Nowing /free](/free)**: it lists Claude alongside ChatGPT, Gemini, DeepSeek, Mistral, and Llama in one chat UI, the source code is open on [GitHub](https://github.com/nowing/Nowing) so the privacy and quota behavior is verifiable, and the 500K free token quota is shared across any model you pick (so you can spend the budget on Claude if that's what you came for). The closed-source alternatives ([HIX.AI](https://hix.ai/claude), [EaseMate](https://www.easemate.ai/ai-chat/ask-claude), [Eye2.ai](https://eye2.ai), [NoteGPT](https://notegpt.io/ai-models/claude-sonnet-4-5)) work too, but quality and message limits vary widely.
 
-For the developer-specific paths (Claude Code with Bedrock or Vertex AI authentication, the Claude for Open Source program), see Anthropic's [Claude Code authentication docs](https://code.claude.com/docs/en/authentication).
+For the developer-specific paths (Claude Code with Bedrock or Vertex AI authentication, the Claude for OSS program), see Anthropic's [Claude Code authentication docs](https://code.claude.com/docs/en/authentication).
 
 ### Gemini, the awkward one
 
@@ -81,14 +81,14 @@ Google requires a Google account on `gemini.google.com` and there is no first-pa
 The realistic options:
 
 - **Sign in with a throwaway Google account.** Imperfect but functional, and Google's free tier on Gemini is genuinely good (15 GB of Drive storage, deep web research, native voice).
-- **Use an aggregator that wraps Gemini.** **[Nowing /free](/free)** (disclosure: ours, open source on [GitHub](https://github.com/nowing/Nowing)) lists Gemini among its model options and forwards requests to Google's API behind the scenes, so the user-facing chat works with no Google sign-in and no Google identity tied to your prompts. Quality matches the underlying Gemini API tier we pay for. Other wrapper pages do the same thing but few publish their privacy or quota behavior; ours is auditable in source, and the 500K-token quota is shared across any model on the page (not just Gemini).
+- **Use an aggregator that wraps Gemini.** **[Nowing /free](/free)** (disclosure: ours, source on [GitHub](https://github.com/nowing/Nowing)) lists Gemini among its model options and forwards requests to Google's API behind the scenes, so the user-facing chat works with no Google sign-in and no Google identity tied to your prompts. Quality matches the underlying Gemini API tier we pay for. Other wrapper pages do the same thing but few publish their privacy or quota behavior; ours is auditable in source, and the 500K-token quota is shared across any model on the page (not just Gemini).
 - **Pick a different model.** If "I want long-context plus web search without signing in" is the actual need, Brave Leo with Claude Haiku, Bing Copilot, or Perplexity (more on that below) are no-signup substitutes for the most common Gemini use cases.
 
 ### Multiple models in one tab
 
 If you want to compare answers from Claude, GPT, Gemini, and others without juggling four browser tabs and four signup walls, three products do this without an account:
 
-- **[Nowing /free](/free)** (disclosure: ours, open source on [GitHub](https://github.com/nowing/Nowing)) gives you a rotating list of models from OpenAI, Anthropic, Google, DeepSeek, Mistral, and Meta in one chat UI, no account, with **500,000 free tokens shared across any model** on the page (meaningfully more than the per-session caps you'll hit on Duck.ai or Brave Leo before they make you wait). The model lineup updates as new models ship, and the wrapper-layer code is on GitHub so the no-account session, the no-database-storage claim, and the quota behavior are all auditable. Trade-off: when you hit the 500K, you either sign up ($5 free credit, then $1 per $1 of model cost) or self-host.
+- **[Nowing /free](/free)** (disclosure: ours, with the source on [GitHub](https://github.com/nowing/Nowing)) gives you a rotating list of models from OpenAI, Anthropic, Google, DeepSeek, Mistral, and Meta in one chat UI, no account, with **500,000 free tokens shared across any model** on the page (meaningfully more than the per-session caps you'll hit on Duck.ai or Brave Leo before they make you wait). The model lineup updates as new models ship, and the wrapper-layer code is on GitHub so the no-account session, the no-database-storage claim, and the quota behavior are all auditable. Trade-off: when you hit the 500K, you either sign up ($5 free credit, then $1 per $1 of model cost) or self-host.
 - **[Duck.ai](https://duck.ai)** has Claude 4.5 Haiku, Llama 4 Scout, Mistral Small 3 24B, GPT-4o mini, GPT-5 mini, and gpt-oss-120b on the free tier. The big win is genuine IP anonymisation; the trade-off is that everything is the cheaper tier of each model.
 - **[Brave Leo](https://brave.com/leo/)** has Claude Haiku, Llama 3.1 8B, Mixtral, and Qwen 3 14B in the Brave browser sidebar. Best privacy story of the three, but you have to use Brave as your browser.
 
@@ -148,7 +148,7 @@ The honest categorisation of no-signup AI looks like this.
 
 When you're evaluating any "free [Brand] without login" page, the question to ask is: *does their privacy page explicitly say they don't store prompts and don't pass identifying information to the model provider?* If the answer is just "no signup required!" with nothing about logging, you're in the wrapper category.
 
-**Open-source wrappers** are a half-step better than the closed ones, and worth calling out as a separate category. Our own [Nowing /free](/free) is in this bucket: the source code that handles your prompt is on [GitHub](https://github.com/nowing/Nowing), so the claims about anonymous sessions, no persistent identity, and no prompt retention are auditable rather than promised. That doesn't make it equivalent to Brave Leo or Duck.ai (the model provider behind /free still receives the prompt content), but it does mean you can verify the wrapper layer doesn't add its own logging on top. If you're going to use a wrapper anyway, prefer one whose code you can read.
+**Open-core wrappers** are a half-step better than the closed ones, and worth calling out as a separate category. Our own [Nowing /free](/free) is in this bucket: the source code that handles your prompt is on [GitHub](https://github.com/nowing/Nowing), so the claims about anonymous sessions, no persistent identity, and no prompt retention are auditable rather than promised. That doesn't make it equivalent to Brave Leo or Duck.ai (the model provider behind /free still receives the prompt content), but it does mean you can verify the wrapper layer doesn't add its own logging on top. If you're going to use a wrapper anyway, prefer one whose code you can read.
 
 ### What every public AI provider logs (with citations)
 
@@ -230,7 +230,7 @@ Self-hosting an open-weights model is the only path where "private" means privat
 
 Quality is genuinely competitive for most casual use. Llama 3.3 8B handles writing, summarisation, and general Q&A well. For better quality, swap to `qwen2.5:14b` or `mistral-small:24b` if you have 16+ GB of RAM. For coding-specific work, `deepseek-coder-v2` is the current open-weights leader.
 
-If you want a graphical interface instead of a terminal, install [LM Studio](https://lmstudio.ai). For a hosted-but-self-controlled experience, the open-source Nowing stack on the [GitHub repo](https://github.com/nowing/Nowing) gives you the same chat UI with the same model options, running on your own servers.
+If you want a graphical interface instead of a terminal, install [LM Studio](https://lmstudio.ai). For a hosted-but-self-controlled experience, the open-core Nowing stack on the [GitHub repo](https://github.com/nowing/Nowing) gives you the same chat UI with the same model options, running on your own servers.
 
 For the deeper performance trade-offs between local and frontier models on real document Q&A, our [agentic RAG vs long-context LLMs benchmark](/blog/agentic-rag-vs-long-context-llms-benchmark) has the numbers.
 
@@ -242,11 +242,11 @@ Yes. Open `chatgpt.com` in a private tab and you'll get guest mode automatically
 
 ### Can I use Claude without an account?
 
-Not on `claude.ai` itself, which still requires signup. The closest no-account paths are [Duck.ai](https://duck.ai) (Claude Haiku 4.5, free, anonymised), [Brave Leo](https://brave.com/leo/) (Claude Haiku in the Brave browser sidebar), and aggregator pages like our open-source [Nowing /free](/free), which lists Claude among the models you can pick with no Anthropic account and a 500K free token budget shared across the whole page.
+Not on `claude.ai` itself, which still requires signup. The closest no-account paths are [Duck.ai](https://duck.ai) (Claude Haiku 4.5, free, anonymised), [Brave Leo](https://brave.com/leo/) (Claude Haiku in the Brave browser sidebar), and aggregator pages like our open-core [Nowing /free](/free), which lists Claude among the models you can pick with no Anthropic account and a 500K free token budget shared across the whole page.
 
 ### Can I use Gemini without a Google account?
 
-Not on Google's own product pages. Aggregator sites like our open-source [Nowing /free](/free) include Gemini among the models you can pick and forward requests to the Gemini API behind the scenes, so the user-facing chat works without a Google sign-in. If you specifically want what Gemini is best at (long-context, web research, Workspace integration), there isn't a perfect Google-free substitute, though Brave Leo with Claude Haiku and Perplexity cover most use cases.
+Not on Google's own product pages. Aggregator sites like our open-core [Nowing /free](/free) include Gemini among the models you can pick and forward requests to the Gemini API behind the scenes, so the user-facing chat works without a Google sign-in. If you specifically want what Gemini is best at (long-context, web research, Workspace integration), there isn't a perfect Google-free substitute, though Brave Leo with Claude Haiku and Perplexity cover most use cases.
 
 ### What is Claude incognito mode?
 

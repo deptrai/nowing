@@ -16,7 +16,7 @@ export function CommunityStrip() {
 			<Reveal>
 				<div className="rounded-2xl border bg-card p-8 text-center sm:p-12">
 					<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-						Open source, built in public
+						Open-core, built in public
 					</h2>
 					<p className="mx-auto mt-3 max-w-xl text-muted-foreground leading-relaxed">
 						No CI incumbent can show you its code. Nowing can. Star the repository, join the

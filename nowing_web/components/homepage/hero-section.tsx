@@ -646,7 +646,7 @@ export function HeroSection() {
 						"relative mt-4 max-w-4xl text-left text-4xl font-bold tracking-tight text-balance text-neutral-900 sm:text-5xl md:text-6xl dark:text-neutral-50"
 					)}
 				>
-					<Balancer>Open-source research memory for AI agents.</Balancer>
+					<Balancer>Open-core research memory for AI agents.</Balancer>
 				</h1>
 				<div className="mt-4 flex w-full flex-col items-start justify-between gap-4 md:mt-8 md:flex-row md:items-end md:gap-10">
 					<div>
@@ -655,7 +655,7 @@ export function HeroSection() {
 								"relative mb-8 max-w-2xl text-left text-sm text-neutral-600 antialiased sm:text-base md:text-lg dark:text-neutral-400"
 							)}
 						>
-							Nowing is open-source research memory for AI agents — it remembers what it went and
+							Nowing is open-core research memory for AI agents — it remembers what it went and
 							found, not just what you told it. Your AI agents research the live web with structured
 							data from Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search, and
 							any page on the open web.

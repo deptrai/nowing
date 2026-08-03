@@ -39,7 +39,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
             list[str] | None,
             Field(
                 description="Terms to search Reddit for, e.g. "
-                "['NotebookLM alternatives']. Provide search_queries OR urls."
+                "['open-core research tools']. Provide search_queries OR urls."
             ),
         ] = None,
         community: Annotated[

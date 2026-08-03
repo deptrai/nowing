@@ -17,7 +17,7 @@ export const announcements: Announcement[] = [
 		id: "2026-07-05-competitive-intelligence-direction",
 		title: "Nowing's Next Chapter: Open Web Research for AI Agents",
 		description:
-			"Happy Independence Day to everyone celebrating in the United States! We picked this week to share some big news: Nowing is now the open-source open web research platform for AI agents. Your agents research the live web with structured data from Reddit, YouTube, Google Maps, Google Search, and any page on the open web, through one REST API or MCP server. Everything you rely on today keeps working, and self-hosting stays free.",
+			"Happy Independence Day to everyone celebrating in the United States! We picked this week to share some big news: Nowing is now the open-core open web research platform for AI agents. Your agents research the live web with structured data from Reddit, YouTube, Google Maps, Google Search, and any page on the open web, through one REST API or MCP server. Everything you rely on today keeps working, and self-hosting stays free.",
 		category: "update",
 		date: "2026-07-05T00:00:00Z",
 		startTime: "2026-07-05T00:00:00Z",

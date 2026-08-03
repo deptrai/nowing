@@ -1,4 +1,4 @@
-﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing — espacio de trabajo de investigación de IA de código abierto con un motor de investigación profunda alojado" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
+﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing — espacio de trabajo de investigación de IA open-core con un motor de investigación profunda alojado" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
 
 
 
@@ -20,18 +20,18 @@
 <a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FNowing | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-# Nowing: Memoria de investigación de código abierto para agentes de IA
+# Nowing: Memoria de investigación open-core para agentes de IA
 
-> **Nowing es memoria de investigación de código abierto para agentes de IA — recuerda lo que fue a buscar y encontró, no solo lo que le dijiste.**
+> **Nowing es memoria de investigación open-core para agentes de IA — recuerda lo que fue a buscar y encontró, no solo lo que le dijiste.**
 
-Nowing es un espacio de trabajo de investigación autoalojado con memoria a largo plazo para agentes de IA y equipos, impulsado por un núcleo de código abierto y un motor alojado de investigación profunda. Tus agentes investigan la web en vivo con datos estructurados de **Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search y cualquier página de la web abierta**, a través de una única **API REST** o un **servidor MCP**. Agentes programados y activados por eventos convierten lo que encuentran en informes y alertas, y una base de conocimiento integrada mantiene cada hallazgo disponible para búsqueda con citas.
+Nowing es un espacio de trabajo de investigación autoalojado con memoria a largo plazo para agentes de IA y equipos, impulsado por un núcleo Apache-2.0 y un motor alojado de investigación profunda. Tus agentes investigan la web en vivo con datos estructurados de **Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search y cualquier página de la web abierta**, a través de una única **API REST** o un **servidor MCP**. Agentes programados y activados por eventos convierten lo que encuentran en informes y alertas, y una base de conocimiento integrada mantiene cada hallazgo disponible para búsqueda con citas.
 
 > [!NOTE]
 > **📢 Una nota para nuestros usuarios de memoria de investigación a largo plazo**
 >
 > Durante los últimos meses construimos Nowing como un espacio de trabajo que convierte la investigación en memoria durable y recuperable, y ese capítulo nos dio una comunidad de la que estamos genuinamente orgullosos. Herramientas agénticas como Claude, OpenCode, Hermes y OpenClaw ya han demostrado que los agentes son el futuro, y razonar sobre un índice estático se está convirtiendo en algo que todo agente capaz hace de fábrica. Lo que a los agentes todavía les falta son **datos en vivo de los lugares donde realmente viven las respuestas, y los flujos de trabajo a su alrededor**. Ahí es donde estamos dirigiendo toda nuestra energía: darles a los agentes las primitivas para investigar la web abierta.
 >
-> **Nada de lo que dependes va a desaparecer.** Tu base de conocimiento, el chat con citas, los informes, los podcasts, las presentaciones, las automatizaciones y los chats colaborativos siguen funcionando, y el autoalojamiento del núcleo de código abierto sigue siendo gratuito. El motor alojado de investigación profunda utiliza una clave de API en la nube opcional. Lee el anuncio completo en [nuestro changelog](https://www.nowing.com/changelog).
+> **Nada de lo que dependes va a desaparecer.** Tu base de conocimiento, el chat con citas, los informes, los podcasts, las presentaciones, las automatizaciones y los chats colaborativos siguen funcionando, y el autoalojamiento del núcleo Apache-2.0 sigue siendo gratuito. El motor alojado de investigación profunda utiliza una clave de API en la nube opcional. Lee el anuncio completo en [nuestro changelog](https://www.nowing.com/changelog).
 
 ## Tabla de contenidos
 
@@ -50,7 +50,7 @@ Pregúntale a cualquier agente capaz "¿qué está diciendo Reddit sobre este pr
 - **Una única superficie tipada para dondequiera que vivan los datos.** Cada conector es un endpoint REST que devuelve JSON estructurado: publicaciones, comentarios, transcripciones, reseñas, SERPs, páginas. Sin ruleta de límites de tasa, sin parsear HTML, sin bucles de navegador.
 - **Un servidor MCP** que expone cada conector como una herramienta nativa (`nowing_reddit_scrape`, `nowing_google_search` y más) para Claude, Cursor o cualquier framework de agentes.
 - **Un arnés de agentes**, no solo datos en bruto: reintentos, salida estructurada y medición de créditos vienen integrados, así que los agentes pasan de una pregunta a un informe con citas sin que tú construyas la infraestructura.
-- **Código abierto y autoalojable**, para que tu investigación se quede en tu propia infraestructura.
+- **Open-core y autoalojable**, para que tu investigación se quede en tu propia infraestructura.
 
 ## Conectores de datos en vivo
 
@@ -202,7 +202,7 @@ https://github.com/user-attachments/assets/a0a16566-6967-4374-ac51-9b3e07fbecd7
 
 ## Cómo se compara Nowing
 
-Nowing es el único producto con un núcleo de código abierto que combina la memoria de investigación a largo plazo con primitivas de datos en vivo para agentes. Así se compara frente a cada clase de herramienta.
+Nowing es el único producto con un núcleo Apache-2.0 que combina la memoria de investigación a largo plazo con primitivas de datos en vivo para agentes. Así se compara frente a cada clase de herramienta.
 
 **vs agentes de navegador (Browserbase, Browser Use).** Los agentes de navegador manejan un navegador real con un LLM en el bucle: la herramienta correcta cuando una tarea requiere hacer clic, iniciar sesión o rellenar formularios. Pero la mayor parte de la investigación es recuperación de solo lectura, y para recuperar información el bucle de LLM-en-un-navegador te cuesta minutos y miles de tokens por página. Una llamada a un conector de Nowing es una sola petición HTTP: segundos, determinista y cero tokens gastados en decidir dónde hacer clic.
 
@@ -210,7 +210,7 @@ Nowing es el único producto con un núcleo de código abierto que combina la me
 
 **vs APIs de búsqueda (Exa, Tavily, Parallel).** Las APIs de búsqueda responden desde un índice de la web, que es la herramienta correcta para "encuéntrame páginas sobre X". No pueden extraer los comentarios de un hilo de Reddit, las reacciones de TikTok, las transcripciones de YouTube ni las reseñas de Google Maps: los lugares donde la respuesta suele vivir realmente.
 
-**vs marketplaces de scrapers (Apify).** Los marketplaces te dan miles de actores de la comunidad, cada uno con su propio esquema, calidad y precio. Nowing es una única API tipada y un único servidor MCP con un arnés de agentes y un espacio de trabajo de investigación detrás, y es de código abierto.
+**vs marketplaces de scrapers (Apify).** Los marketplaces te dan miles de actores de la comunidad, cada uno con su propio esquema, calidad y precio. Nowing es una única API tipada y un único servidor MCP con un arnés de agentes y un espacio de trabajo de investigación detrás, y es open-core.
 
 ### Cómo se compara Nowing con las herramientas de investigación para consumidores
 
@@ -228,7 +228,7 @@ Nowing no es una mejor aplicación de notas; es un espacio de trabajo de investi
 | **Investigación profunda multi-paso en la web abierta** | Fase 1: ❌ · Fase 2: 💳 medido | ✅ |
 
 **Licencia de un vistazo:**
-- Core (todo lo que está fuera de `nowing_backend/app/proprietary/`): **Apache-2.0** — verdaderamente código abierto.
+- Core (todo lo que está fuera de `nowing_backend/app/proprietary/`): **Apache-2.0** — libre para usar y modificar.
 - Motor de rastreo (`nowing_backend/app/proprietary/**`): **BSL 1.1** — libre de ejecutar, incluida producción, pero no puede revenderse como un servicio alojado/gestionado.
 - Motor de investigación profunda: **closed-source, hosted** — solo en la nube en la Fase 1.
 

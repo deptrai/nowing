@@ -14,7 +14,7 @@ const demoPlans = [
 		price: "0",
 		yearlyPrice: "0",
 		period: "",
-		billingText: "Open source. Run it on your own infrastructure",
+		billingText: "Self-host free. Run it on your own infrastructure",
 		features: [
 			"Full platform: connectors, agents, automations, and the MCP server",
 			"Unlimited scraping and crawling, you control billing",
@@ -180,7 +180,7 @@ const faqData: FAQSection[] = [
 			{
 				question: "Is the self-hosted version really free and unlimited?",
 				answer:
-					"Yes. Nowing is open source, and the default self-hosted configuration ships with all credit billing switched off. Scraping, crawling, document processing, and agent runs are limited only by your own infrastructure and the model provider keys you bring.",
+					"Yes. Nowing is open-core, and the default self-hosted configuration ships with all credit billing switched off. Scraping, crawling, document processing, and agent runs are limited only by your own infrastructure and the model provider keys you bring.",
 			},
 			{
 				question: "What is the difference between self-hosted and cloud?",

@@ -1,4 +1,4 @@
-﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing — 由托管深度研究引擎驱动的开源 AI 研究工作区" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
+﻿<a href="https://www.nowing.com/"><img width="1584" height="396" alt="Nowing — 由托管深度研究引擎驱动的open-core AI 研究工作区" src="https://github.com/user-attachments/assets/9361ef58-1753-4b6e-b275-5020d8847261" /></a>
 
 
 
@@ -20,18 +20,18 @@
 <a href="https://trendshift.io/repositories/13606" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13606" alt="MODSetter%2FNowing | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-# Nowing：面向 AI 智能体的开源研究记忆
+# Nowing：面向 AI 智能体的open-core 研究记忆
 
-> **Nowing 是面向 AI 智能体的开源研究记忆——它记得自己曾经去查找并发现了什么，而不只是你告诉它的内容。**
+> **Nowing 是面向 AI 智能体的open-core 研究记忆——它记得自己曾经去查找并发现了什么，而不只是你告诉它的内容。**
 
-Nowing 是一个面向 AI 智能体和团队、具备长期研究记忆的自托管研究工作区，由开源核心和托管深度研究引擎驱动。你的智能体可以通过一个 **REST API** 或 **MCP 服务器**，利用来自 **Reddit、YouTube、Instagram、TikTok、Amazon、Google Maps、Google Search 以及开放网络上任意页面**的结构化数据研究实时网络。定时和事件触发的智能体会把发现的内容转化为简报和预警，内置的知识库则让每一条发现都可搜索、可引用。
+Nowing 是一个面向 AI 智能体和团队、具备长期研究记忆的自托管研究工作区，由Apache-2.0 核心和托管深度研究引擎驱动。你的智能体可以通过一个 **REST API** 或 **MCP 服务器**，利用来自 **Reddit、YouTube、Instagram、TikTok、Amazon、Google Maps、Google Search 以及开放网络上任意页面**的结构化数据研究实时网络。定时和事件触发的智能体会把发现的内容转化为简报和预警，内置的知识库则让每一条发现都可搜索、可引用。
 
 > [!NOTE]
 > **📢 致我们的长期研究记忆用户**
 >
 > 在过去几个月里，我们把 Nowing 打造成了一个将研究转化为持久、可检索记忆的工作区，这段经历为我们赢得了一个令我们由衷自豪的社区。如今，Claude、OpenCode、Hermes、OpenClaw 等智能体工具已经证明智能体就是未来，在静态索引上进行推理正在成为每个有能力的智能体开箱即用的功能。而智能体仍然缺少的是**来自答案真正所在之处的实时数据，以及围绕它的工作流**。这正是我们全力投入的方向：为智能体提供研究开放网络的基础原语。
 >
-> **你所依赖的一切功能都不会消失。**你的知识库、带引用的对话、报告、播客、演示文稿、自动化以及协作聊天都会继续可用，自托管开源核心依然免费。托管深度研究引擎使用可选的云 API 密钥。完整公告请阅读[我们的更新日志](https://www.nowing.com/changelog)。
+> **你所依赖的一切功能都不会消失。**你的知识库、带引用的对话、报告、播客、演示文稿、自动化以及协作聊天都会继续可用，自托管Apache-2.0 核心依然免费。托管深度研究引擎使用可选的云 API 密钥。完整公告请阅读[我们的更新日志](https://www.nowing.com/changelog)。
 
 ## 目录
 
@@ -50,7 +50,7 @@ Nowing 是一个面向 AI 智能体和团队、具备长期研究记忆的自托
 - **一个覆盖所有数据来源的强类型接口。**每个连接器都是返回结构化 JSON 的 REST 端点——帖子、评论、字幕转录、点评、搜索结果页、网页。不用赌速率限制，不用解析 HTML，也没有浏览器循环。
 - **一个 MCP 服务器**，把每个连接器都作为原生工具（`nowing_reddit_scrape`、`nowing_google_search` 等）暴露给 Claude、Cursor 或任何智能体框架。
 - **一套智能体运行框架**，而不只是原始数据：重试、结构化输出和额度计量都已内置，智能体可以从一个问题直达一份带引用的简报，无需你自己搭建管线。
-- **开源且可自托管**，你的研究数据始终留在你自己的基础设施上。
+- **open-core 且可自托管**，你的研究数据始终留在你自己的基础设施上。
 
 ## 实时数据连接器
 
@@ -202,7 +202,7 @@ https://github.com/user-attachments/assets/a0a16566-6967-4374-ac51-9b3e07fbecd7
 
 ## Nowing 与同类工具的对比
 
-Nowing 是唯一一款具备开源核心、将长期研究记忆与面向智能体的实时数据原语结合的产品。下面是它与每一类工具的对比。
+Nowing 是唯一一款具备Apache-2.0 核心、将长期研究记忆与面向智能体的实时数据原语结合的产品。下面是它与每一类工具的对比。
 
 **对比浏览器智能体（Browserbase、Browser Use）。**浏览器智能体让 LLM 在循环中驱动一个真实浏览器——当任务需要点击、登录或填写表单时，这是正确的工具。但大多数研究都是只读的检索，而对于检索来说，“LLM 驱动浏览器”的循环每个页面都要花费数分钟和数千 token。一次 Nowing 连接器调用只是一个 HTTP 请求：几秒完成、结果确定，而且不用花一个 token 去决定该点哪里。
 
@@ -210,7 +210,7 @@ Nowing 是唯一一款具备开源核心、将长期研究记忆与面向智能�
 
 **对比搜索 API（Exa、Tavily、Parallel）。**搜索 API 基于网络索引作答，对于“帮我找关于 X 的页面”来说是正确的工具。但它们拉不到 Reddit 帖子串的评论、TikTok 的用户反应、YouTube 的字幕转录或 Google Maps 的点评——而答案往往就藏在这些地方。
 
-**对比爬虫市场（Apify）。**市场提供成千上万个社区 actor，每个都有自己的 schema、质量和定价。Nowing 是一个强类型 API 加一个 MCP 服务器，背后还有智能体运行框架和研究工作区，而且它是开源的。
+**对比爬虫市场（Apify）。**市场提供成千上万个社区 actor，每个都有自己的 schema、质量和定价。Nowing 是一个强类型 API 加一个 MCP 服务器，背后还有智能体运行框架和研究工作区，而且它是 open-core 的。
 
 ### Nowing 与消费级研究工具的对比
 
@@ -228,7 +228,7 @@ Nowing 不是一款更好的笔记应用；它是一个开放核心研究工作�
 | **深度多步骤开放网络研究** | 第 1 阶段：❌ · 第 2 阶段：💳 按量计费 | ✅ |
 
 **许可证一览：**
-- Core（`nowing_backend/app/proprietary/` 以外的所有内容）：**Apache-2.0** — 真正开源。
+- Core（`nowing_backend/app/proprietary/` 以外的所有内容）：**Apache-2.0** — 可免费使用和修改。
 - 爬虫引擎（`nowing_backend/app/proprietary/**`）：**BSL 1.1** — 可免费运行，包括生产环境，但不得作为托管/托管服务转售。
 - 深度研究引擎：**closed-source, hosted** — 第 1 阶段仅支持云端。
 

@@ -1,6 +1,6 @@
 # Nowing Documentation
 
-**Nowing is open-source research memory for AI agents — it remembers what it went and found, not just what you told it.**
+**Nowing is open-core research memory for AI agents — it remembers what it went and found, not just what you told it.**
 
 This documentation is for developers and operators running or contributing to Nowing.
 

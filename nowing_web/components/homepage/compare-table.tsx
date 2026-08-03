@@ -65,7 +65,7 @@ export function CompareTable() {
 			<Reveal>
 				<h2 className="text-2xl font-bold tracking-tight sm:text-3xl">How Nowing compares</h2>
 				<p className="mt-3 max-w-2xl text-muted-foreground leading-relaxed">
-					Nowing is the only open-source product that combines long-term research memory with
+					Nowing is the only open-core product that combines long-term research memory with
 					live-data primitives for agents. Here is how that stacks up against each class of tool.
 				</p>
 			</Reveal>

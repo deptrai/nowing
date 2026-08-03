@@ -19,7 +19,7 @@ export function OrganizationJsonLd() {
 				url: "https://www.nowing.com",
 				logo: "https://www.nowing.com/logo.png",
 				description:
-					"Nowing is open-source research memory for AI agents — it remembers what it went and found, not just what you told it.",
+					"Nowing is open-core research memory for AI agents — it remembers what it went and found, not just what you told it.",
 				sameAs: [
 					"https://github.com/deptrai/nowing",
 					"https://discord.gg/ejRNvftDp9",
@@ -45,7 +45,7 @@ export function WebSiteJsonLd() {
 				name: "Nowing",
 				url: "https://www.nowing.com",
 				description:
-					"Nowing is open-source research memory for AI agents — it remembers what it went and found, not just what you told it. It is an open web research platform with live data connectors served through one API or MCP server.",
+					"Nowing is open-core research memory for AI agents — it remembers what it went and found, not just what you told it. It is an open web research platform with live data connectors served through one API or MCP server.",
 				potentialAction: {
 					"@type": "SearchAction",
 					target: {
@@ -73,10 +73,10 @@ export function SoftwareApplicationJsonLd() {
 					price: "0",
 					priceCurrency: "USD",
 					description:
-						"Free self-hosted from the open-source repo; cloud starts with $5 of free credit, then pay as you go",
+						"Free self-hosted from the open-core repo; cloud starts with $5 of free credit, then pay as you go",
 				},
 				description:
-					"Nowing is open-source research memory for AI agents — it remembers what it went and found, not just what you told it. It researches the live web with platform-native connectors for Reddit, YouTube, TikTok, Amazon, Google Maps, Google Search, and any page on the open web, through one API or MCP server.",
+					"Nowing is open-core research memory for AI agents — it remembers what it went and found, not just what you told it. It researches the live web with platform-native connectors for Reddit, YouTube, TikTok, Amazon, Google Maps, Google Search, and any page on the open web, through one API or MCP server.",
 				url: "https://www.nowing.com",
 				downloadUrl: "https://github.com/deptrai/nowing/releases",
 				featureList: [
@@ -90,7 +90,7 @@ export function SoftwareApplicationJsonLd() {
 					"Document Q&A with citations, report, podcast, and video generation",
 					"Real-time collaborative team chats",
 					"Native desktop app with Quick, General, and Screenshot Assist",
-					"Open source and self-hostable with no data limits",
+					"Open-core and self-hostable with no data limits",
 				],
 			}}
 		/>

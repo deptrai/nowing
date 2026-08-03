@@ -48,13 +48,21 @@ FORBIDDEN = [
         "Open-source NotebookLM alternative phrase",
         re.compile(r"(?i)open[- ]?source\s+notebooklm\s+alternative"),
     ),
+    (
+        'Product-level "open source" claim',
+        re.compile(r"(?i)\bopen[- ]?source\b"),
+    ),
+    (
+        "ChatGPT alternative positioning",
+        re.compile(r"(?i)chatgpt\s+alternatives?"),
+    ),
 ]
 
 # Required phrases in README.md (case-insensitive).
 REQUIRED = [
     (
         "README one-sentence promise (or close variation)",
-        re.compile(r"(?i)open-source research memory for AI agents"),
+        re.compile(r"(?i)open-core research memory for AI agents"),
     ),
     (
         "Long-term research memory framing",
