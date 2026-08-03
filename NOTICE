@@ -1,0 +1,36 @@
+Nowing
+Copyright (c) Nowing
+
+This product is a derivative of SurfSense
+(https://github.com/MODSetter/SurfSense), originally developed by MODSetter.
+
+Portions of this software are Copyright (c) SurfSense and are used under the
+terms of the original SurfSense licenses:
+
+- The SurfSense core codebase is licensed under the Apache License, Version 2.0
+  (see the root LICENSE file).
+- The SurfSense crawler/proprietary engine is licensed under the Business
+  Source License 1.1 (see nowing_backend/app/proprietary/LICENSE).
+
+The following Nowing components are direct directory renames of SurfSense
+components:
+
+- nowing_backend                   <- surfsense_backend
+- nowing_web                       <- surfsense_web
+- nowing_desktop                   <- surfsense_desktop
+- nowing_browser_extension         <- surfsense_browser_extension
+- nowing_obsidian                  <- surfsense_obsidian
+- nowing_mcp                       <- surfsense_mcp
+- nowing_evals                     <- surfsense_evals
+
+Nowing was forked from SurfSense at commit bea603e2 (tag 0.0.34.1). A
+substantial portion of the codebase remains byte-identical or substantially
+derived from SurfSense at that point. Since the fork, Nowing has made
+modifications and additions, including feature work in the Apache-2.0 core and
+a security-related host guard in the proprietary crawler engine.
+
+A complete file-level divergence report and the legal analysis are maintained
+in:
+
+  _bmad-output/planning-artifacts/legal/legal-brief-upstream-attribution-2026-07-26.md
+  _bmad-output/planning-artifacts/legal-package-prep-2026-08-04.md
