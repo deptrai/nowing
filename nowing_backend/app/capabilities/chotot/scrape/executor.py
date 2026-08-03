@@ -15,7 +15,7 @@ from app.proprietary.platforms.chotot import (
 )
 from app.proprietary.platforms.chotot.fetch import (
     ChototBdsAccessBlockedError,
-    ChototBdsBotDetectedError,  # noqa: F401
+    ChototBdsBotDetectedError,
     ChototBdsDecodeError,
     ChototBdsRateLimitedError,
 )
@@ -78,6 +78,14 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                 cost_micros=0,
                 degraded=True,
                 degradation_reason="decode_error",
+            )
+        except ChototBdsBotDetectedError:
+            logger.exception("chotot_bds.scrape bot detected")
+            return ScrapeOutput(
+                items=[],
+                cost_micros=0,
+                degraded=True,
+                degradation_reason="bot_detected",
             )
         except (ChototBdsAccessBlockedError, Exception) as exc:
             logger.exception("chotot_bds.scrape actor failed: %s", exc)

@@ -75,3 +75,37 @@ def test_parse_listing_returns_none_fields_for_missing_optional():
 
 def test_parse_listings_returns_empty_for_empty_input():
     assert parse_listings([]) == []
+
+
+def test_parse_price_string_handles_vietnamese_units():
+    from app.proprietary.platforms.chotot.parsers import _parse_price_string
+
+    assert _parse_price_string("6,3 tỷ") == 6_300_000_000
+    assert _parse_price_string("5 triệu") == 5_000_000
+    assert _parse_price_string("3 tr.") == 3_000_000
+    assert _parse_price_string("500 nghìn") == 500_000
+    assert _parse_price_string("Thỏa thuận") is None
+    # Per-square-meter prices must not be converted to a total.
+    assert _parse_price_string("5 triệu/m²") is None
+    assert _parse_price_string("3 tr/m2") is None
+    # Overflowing prices should degrade gracefully.
+    assert _parse_price_string("999999999999999999999 tỷ") is None
+
+
+def test_parse_detail_url_rejects_invalid_list_id():
+    from app.proprietary.platforms.chotot.parsers import _build_detail_url
+
+    assert _build_detail_url("abc") is None
+    assert _build_detail_url(-1) is None
+    assert _build_detail_url("999999999999999999999999") is None
+    assert _build_detail_url(133886560) == "https://www.nhatot.com/133886560.htm"
+
+
+def test_parse_area_rejects_extreme_values():
+    from app.proprietary.platforms.chotot.parsers import _format_area
+
+    assert _format_area(float("inf"), None) == (None, None, None)
+    assert _format_area(float("nan"), None) == (None, None, None)
+    assert _format_area(-5, None) == (None, None, None)
+    assert _format_area(1_000_000, None) == (None, None, None)
+    assert _format_area(56.7, None) == ("56.7 m²", "56.7 m²", 56.7)

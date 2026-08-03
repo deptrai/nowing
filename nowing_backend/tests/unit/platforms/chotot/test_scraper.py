@@ -138,6 +138,36 @@ async def test_scrape_dedupes_across_pages():
 
 
 @pytest.mark.asyncio
+async def test_scrape_handles_malformed_regions_gracefully():
+    async def fake_fetch(**kwargs: Any) -> dict[str, Any]:
+        return _load_sample()
+
+    async def fake_regions() -> dict[str, Any]:
+        return {
+            "regionFollowId": {
+                "entities": {
+                    "regions": {
+                        "13000": {
+                            "id": "13000",
+                            "name": "Tp Hồ Chí Minh",
+                            "area": "not-a-dict",
+                        }
+                    }
+                }
+            }
+        }
+
+    output = await scrape_chotot_bds(
+        ChototBdsScrapeInput(city="ho chi minh", district="Quận Bình Tân"),
+        fetch_fn=fake_fetch,
+        regions_fn=fake_regions,
+    )
+
+    assert output.degraded is True
+    assert "invalid_input" in (output.degradation_reason or "")
+
+
+@pytest.mark.asyncio
 async def test_scrape_returns_degraded_for_unknown_city():
     async def fake_fetch(**kwargs: Any) -> dict[str, Any]:
         return _load_sample()

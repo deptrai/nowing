@@ -167,11 +167,11 @@ async def fetch_listings(
                 url,
                 params=params,
                 headers={
-                    "User-Agent": _MOBILE_USER_AGENT,
+                    "User-Agent": _user_agent(attempt),
                     "Accept": "application/json",
                 },
                 proxy=get_proxy_url(),
-                timeout=30,
+                timeout=_timeout(),
             )
             fetch_ms = (time.perf_counter() - started) * 1000
             logger.info(
@@ -240,7 +240,12 @@ async def load_regions() -> dict[str, Any]:
                     timeout=_timeout(),
                 )
                 if page.status == 200:
-                    _REGIONS_CACHE = _decode(page.body)
+                    decoded = _decode(page.body)
+                    if not isinstance(decoded, dict) or "regionFollowId" not in decoded:
+                        raise ChototBdsDecodeError(
+                            "loadRegions payload missing expected structure"
+                        )
+                    _REGIONS_CACHE = decoded
                     return _REGIONS_CACHE
                 _raise_for_status(page.status, REGIONS_URL)
             except Exception as exc:

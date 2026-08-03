@@ -109,3 +109,21 @@ async def test_decode_error_actor_degrades_with_decode_error_reason():
     assert out.degraded is True
     assert out.degradation_reason == "decode_error"
     assert out.cost_micros == 0
+
+
+@pytest.mark.asyncio
+async def test_bot_detected_actor_degrades_with_bot_detected_reason():
+    from app.proprietary.platforms.chotot.fetch import ChototBdsBotDetectedError
+
+    async def blocked_scraper(
+        actor_input: ChototBdsScrapeInput, *, limit: int | None = None
+    ) -> dict[str, Any]:
+        raise ChototBdsBotDetectedError("403")
+
+    execute = build_scrape_executor(scrape_fn=blocked_scraper)
+
+    out = await execute(ScrapeInput(city="hanoi", max_items=5))
+
+    assert out.degraded is True
+    assert out.degradation_reason == "bot_detected"
+    assert out.cost_micros == 0

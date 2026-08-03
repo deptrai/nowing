@@ -91,7 +91,10 @@ def _resolve_region_v2(city: str, regions: dict[str, Any]) -> int:
         pass
 
     for region_id, region in regions.items():
-        if _normalize_text(region.get("name", "")) == city_norm:
+        name = region.get("name", "")
+        if not isinstance(name, str) or not name:
+            continue
+        if _normalize_text(name) == city_norm:
             try:
                 return int(region_id)
             except (ValueError, OverflowError):
@@ -124,11 +127,16 @@ def _resolve_area_v2(
 
     region = regions.get(str(region_id), {})
     areas = region.get("area", {})
+    if not isinstance(areas, dict):
+        areas = {}
     query_norm = _normalize_text(district_query)
 
     # Exact match only; substring fallback removed to avoid false positives.
     for area_id, area in areas.items():
-        if _normalize_text(area.get("name", "")) == query_norm:
+        name = area.get("name", "")
+        if not isinstance(name, str) or not name:
+            continue
+        if _normalize_text(name) == query_norm:
             try:
                 parsed = int(area_id)
                 if parsed < 0:

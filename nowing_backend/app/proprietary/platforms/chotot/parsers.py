@@ -41,7 +41,13 @@ def _parse_price_string(raw: str) -> int | None:
     elif re.search(r"\b(nghìn|ngàn)\b|\bk\b", lowered):
         multiplier = 1_000
 
-    return int(value * multiplier)
+    result = value * multiplier
+    if result > 1e15:
+        return None
+    try:
+        return int(result)
+    except (OverflowError, ValueError):
+        return None
 
 
 def _format_price(
@@ -64,11 +70,17 @@ def _format_area(
     size_value: Any, size_unit: str | None
 ) -> tuple[str | None, str | None, float | None]:
     """Return ``(area, area_raw, area_value)`` from size fields."""
-    if isinstance(size_value, (int, float)):
-        unit = _normalize_whitespace(size_unit) or "m²"
-        raw = f"{size_value} {unit}"
-        return raw, raw, float(size_value)
-    return None, None, None
+    if not isinstance(size_value, (int, float)) or isinstance(size_value, bool):
+        return None, None, None
+    try:
+        size_float = float(size_value)
+    except (ValueError, OverflowError):
+        return None, None, None
+    if not (0 < size_float < 1_000_000) or size_float != size_float:  # reject NaN/inf
+        return None, None, None
+    unit = _normalize_whitespace(size_unit) or "m²"
+    raw = f"{size_value} {unit}"
+    return raw, raw, size_float
 
 
 def _first_image(raw: dict[str, Any]) -> str | None:
@@ -89,7 +101,9 @@ def _build_detail_url(list_id: Any) -> str | None:
     """Canonical public detail URL for a Nhà Tốt listing."""
     try:
         list_id_int = int(list_id)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if list_id_int <= 0 or list_id_int > 10**15:
         return None
     return f"https://www.nhatot.com/{list_id_int}.htm"
 
