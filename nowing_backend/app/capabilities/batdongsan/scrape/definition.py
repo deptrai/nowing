@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from app.capabilities.core import BillingUnit, Capability, register_capability
-
 from app.proprietary.platforms.batdongsan.fetch import fetch_web_listings
 
 from .executor import build_scrape_executor

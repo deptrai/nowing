@@ -113,7 +113,13 @@ async def test_recorded_fixture_billing_only_charges_parsed_items(
 )
 @pytest.mark.asyncio
 async def test_live_scrape_against_real_api():
-    """AC-1/AC-5: real API call returns listings or a typed degradation."""
+    """AC-1/AC-5: real API call returns listings or a typed degradation.
+
+    The live ``p_sync`` response no longer reliably includes the ``url`` field,
+    so ``detail_url`` is constructed from ``listing_id``, city and title when
+    ``resolve_phones=True``; the web-listing resolver only runs if construction
+    leaves gaps.
+    """
     output = await scrape_batdongsan(
         BatdongsanScrapeInput(
             listing_type="buy",
@@ -136,4 +142,3 @@ async def test_live_scrape_against_real_api():
         for item in output.items:
             assert item.listing_id is not None
             assert item.title
-            assert item.detail_url

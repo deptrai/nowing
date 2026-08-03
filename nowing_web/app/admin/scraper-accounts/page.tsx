@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,135 @@ const PLATFORM_OPTIONS = [
 	{ value: "chotot_bds", label: "Chotot BĐS" },
 ];
 
+// Cookie names / prefixes that actually matter for authenticated Batdongsan
+// sessions. Analytics and ad cookies are stripped to keep the cookie string
+// short and avoid accidental exposure of unrelated tracking values.
+const BATDONGSAN_COOKIE_KEEP_EXACT = new Set([
+	"clientIp",
+	"con.unl.lat",
+	"con.unl.sc",
+	"con.ses.id",
+	"USER_PRODUCT_SEARCH",
+	"userinfo",
+	"c_u_id",
+	"exp.stg.userid",
+	"exp.stg.stableid",
+	"ajs_user_id",
+	"ajs_anonymous_id",
+	"CURRENT_SECTION",
+	"AWSALB",
+	"AWSALBCORS",
+	"con.unl.usr.id",
+	"con.unl.cli.id",
+	"__uif",
+	"_dd_s",
+	"BDS.UMS.Cookie",
+	"_cfuvid",
+	"accessToken",
+	"refreshToken",
+	"_gcl_au",
+	"_ga",
+	"_ga_HTS298453C",
+	"_fbp",
+	"ph_phc_Twg4bLVDz7InVj8BSvMQBW4gX1KtsbnaOKWSdn0SupU_posthog",
+	"CURRENT_SECTION",
+	"ttcsid",
+	"ttcsid_CHHL1E3C77U1H95PSJM0",
+]);
+
+const BATDONGSAN_COOKIE_KEEP_PREFIXES = [
+	"ab.storage.deviceId.",
+	"ab.storage.userId.",
+	"ab.storage.sessionId.",
+	"ttcsid",
+	"ttcsid_",
+];
+
+const BATDONGSAN_COOKIE_DROP_PREFIXES = [
+	"_ga",
+	"_ga_",
+	"_fbp",
+	"__uidac",
+	"__admUTMtime",
+	"_tt_enable_cookie",
+	"_ttp",
+	"__iid",
+	"__su",
+	"__RC",
+	"__R",
+	"_hjSession",
+	"_hjSessionUser_",
+	"__tb",
+	"__IP",
+	"__gads",
+	"__gpi",
+	"__eoi",
+	"ph_phc_",
+];
+
+function shouldKeepBatdongsanCookie(name: string): boolean {
+	if (BATDONGSAN_COOKIE_KEEP_EXACT.has(name)) {
+		return true;
+	}
+	if (BATDONGSAN_COOKIE_KEEP_PREFIXES.some((p) => name.startsWith(p))) {
+		return true;
+	}
+	if (BATDONGSAN_COOKIE_DROP_PREFIXES.some((p) => name.startsWith(p))) {
+		return false;
+	}
+	return true;
+}
+
+function parseCookieInput(raw: string): { name: string; value: string }[] {
+	const trimmed = raw.trim();
+	if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+		try {
+			const parsed = JSON.parse(trimmed);
+			const arr = Array.isArray(parsed) ? parsed : [parsed];
+			return arr
+				.filter((c) => c && typeof c.name === "string")
+				.map((c) => ({ name: c.name, value: String(c.value ?? "") }));
+		} catch {
+			// fall through to legacy parsing
+		}
+	}
+
+	return raw
+		.split(";")
+		.map((part) => part.trim())
+		.filter((part) => part.includes("="))
+		.map((part) => {
+			const eq = part.indexOf("=");
+			const name = part.slice(0, eq).trim();
+			const value = part.slice(eq + 1).trim();
+			return { name, value };
+		});
+}
+
+function filterBatdongsanCookies(raw: string): string {
+	const trimmed = raw.trim();
+	const isJson = trimmed.startsWith("[") || trimmed.startsWith("{");
+	const parsed = parseCookieInput(raw);
+	const kept = parsed.filter(({ name }) => shouldKeepBatdongsanCookie(name));
+
+	if (isJson) {
+		try {
+			const arr = JSON.parse(trimmed);
+			const fullArr = Array.isArray(arr) ? arr : [arr];
+			const keptNames = new Set(kept.map((c) => c.name));
+			const filtered = fullArr.filter(
+				(c) => c && typeof c.name === "string" && keptNames.has(c.name)
+			);
+			return JSON.stringify(filtered);
+		} catch {
+			// fall through
+		}
+	}
+
+	// Legacy compact cookie string for backwards compatibility.
+	return kept.map(({ name, value }) => `${name}=${value}`).join("; ");
+}
+
 interface AccountForm {
 	platform: string;
 	label: string;
@@ -67,6 +196,18 @@ function toForm(account: ScraperPlatformAccount): AccountForm {
 	};
 }
 
+function extractBearerTokenFromCookies(cookiesRaw: string): string | null {
+	const trimmed = cookiesRaw.trim();
+	if (!trimmed.startsWith("[")) return null;
+	try {
+		const arr = JSON.parse(trimmed) as Array<{ name: string; value: string }>;
+		const access = arr.find((c) => c.name === "accessToken");
+		return access?.value || null;
+	} catch {
+		return null;
+	}
+}
+
 function fromForm(form: AccountForm): {
 	platform: string;
 	label: string | null;
@@ -74,16 +215,18 @@ function fromForm(form: AccountForm): {
 	is_default: boolean;
 	credentials: ScraperPlatformAccountCredentials | null;
 } {
+	const cookies = form.cookies.trim() || null;
+	const token = form.token.trim() || extractBearerTokenFromCookies(form.cookies) || null;
 	return {
 		platform: form.platform,
 		label: form.label.trim() || null,
 		is_enabled: form.is_enabled,
 		is_default: form.is_default,
 		credentials:
-			form.cookies.trim() || form.token.trim()
+			cookies || token
 				? {
-						cookies: form.cookies.trim() || null,
-						token: form.token.trim() || null,
+						cookies,
+						token,
 					}
 				: null,
 	};
@@ -101,10 +244,11 @@ export default function ScraperAccountsAdminPage() {
 		draft: AccountForm;
 	}>({ open: false, account: null, draft: emptyForm });
 	const [deleteDialog, setDeleteDialog] = useState<ScraperPlatformAccount | null>(null);
+	const [capturing, setCapturing] = useState<string | null>(null);
 
 	const isSuperuser = user?.is_superuser ?? false;
 
-	const load = async () => {
+	const load = useCallback(async () => {
 		setListLoading(true);
 		try {
 			const data = await scraperPlatformAccountsApiService.list();
@@ -114,13 +258,13 @@ export default function ScraperAccountsAdminPage() {
 		} finally {
 			setListLoading(false);
 		}
-	};
+	}, []);
 
 	useEffect(() => {
 		if (isSuperuser) {
 			void load();
 		}
-	}, [isSuperuser]);
+	}, [isSuperuser, load]);
 
 	useEffect(() => {
 		if (!createOpen) {
@@ -179,6 +323,31 @@ export default function ScraperAccountsAdminPage() {
 			await load();
 		} catch {
 			toast.error("Failed to update account");
+		}
+	}
+
+	async function handleCapture(platform: string) {
+		try {
+			setCapturing(platform);
+			const res = await scraperPlatformAccountsApiService.capture(platform);
+			toast.success(res.message, {
+				description:
+					"A browser window has opened. Log in and the cookies will be saved automatically.",
+			});
+			// Poll for an update a few times so the UI reflects the new cookies
+			// once the admin finishes login.
+			for (let i = 0; i < 30; i++) {
+				await new Promise((resolve) => setTimeout(resolve, 5_000));
+				await load();
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: "Failed to start capture. Make sure the backend can open a browser.";
+			toast.error(message);
+		} finally {
+			setCapturing(null);
 		}
 	}
 
@@ -250,6 +419,16 @@ export default function ScraperAccountsAdminPage() {
 											checked={account.is_enabled}
 											onCheckedChange={() => handleToggleEnabled(account)}
 										/>
+										{account.platform === "batdongsan" && (
+											<Button
+												variant="outline"
+												size="sm"
+												disabled={capturing === account.platform}
+												onClick={() => handleCapture(account.platform)}
+											>
+												{capturing === account.platform ? "Capturing..." : "Capture session"}
+											</Button>
+										)}
 										<Button variant="outline" size="sm" onClick={() => openEdit(account)}>
 											Edit
 										</Button>
@@ -396,13 +575,36 @@ function AccountFormFields({
 			</div>
 
 			<div className="space-y-2">
-				<Label>Browser cookie string</Label>
+				<div className="flex items-center justify-between">
+					<Label>Browser cookie string</Label>
+					{form.platform === "batdongsan" && form.cookies.trim() && (
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={() => update("cookies", filterBatdongsanCookies(form.cookies))}
+						>
+							Auto-filter for Batdongsan
+						</Button>
+					)}
+				</div>
 				<textarea
 					value={form.cookies}
 					onChange={(e) => update("cookies", e.target.value)}
-					placeholder="Paste document.cookie here"
+					placeholder={
+						form.platform === "batdongsan"
+							? "Paste a Playwright JSON cookie array or document.cookie string from batdongsan.com.vn"
+							: "Paste document.cookie here"
+					}
 					className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				/>
+				{form.platform === "batdongsan" && (
+					<p className="text-xs text-muted-foreground">
+						Tip: DevTools → Console → document.cookie only shows non-HttpOnly cookies. For the auth
+						cookies (accessToken, refreshToken) use a cookie editor extension (e.g. Cookie-Editor)
+						to export all cookies as JSON, then paste here.
+					</p>
+				)}
 			</div>
 
 			<div className="space-y-2">

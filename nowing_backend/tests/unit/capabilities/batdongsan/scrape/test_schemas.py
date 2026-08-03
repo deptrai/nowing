@@ -29,50 +29,63 @@ def test_scrape_input_rejects_invalid_listing_type():
         ScrapeInput(city="HN", listing_type="sale")
 
 
-def test_scrape_input_rejects_max_pages_above_ceiling():
-    with pytest.raises(ValidationError):
-        ScrapeInput(city="HN", max_pages=100)
+def test_scrape_input_clamps_max_pages_above_ceiling():
+    assert ScrapeInput(city="HN", max_pages=100).max_pages == 20
 
 
 def test_scrape_input_accepts_max_pages_at_ceiling():
     assert ScrapeInput(city="HN", max_pages=20).max_pages == 20
 
 
-def test_scrape_input_rejects_max_pages_above_ceiling_by_one():
-    with pytest.raises(ValidationError):
-        ScrapeInput(city="HN", max_pages=21)
+def test_scrape_input_clamps_max_pages_above_ceiling_by_one():
+    assert ScrapeInput(city="HN", max_pages=21).max_pages == 20
 
 
-def test_scrape_input_rejects_max_pages_below_floor():
+def test_scrape_input_accepts_max_pages_at_zero():
+    assert ScrapeInput(city="HN", max_pages=0).max_pages == 0
+
+
+def test_scrape_input_rejects_max_pages_negative():
     with pytest.raises(ValidationError):
-        ScrapeInput(city="HN", max_pages=0)
+        ScrapeInput(city="HN", max_pages=-1)
 
 
 def test_scrape_input_accepts_max_pages_at_floor():
     assert ScrapeInput(city="HN", max_pages=1).max_pages == 1
 
 
-def test_scrape_input_rejects_max_items_above_ceiling():
-    with pytest.raises(ValidationError):
-        ScrapeInput(city="HN", max_items=200)
+def test_scrape_input_clamps_max_items_above_ceiling():
+    assert ScrapeInput(city="HN", max_items=200).max_items == 100
 
 
 def test_scrape_input_accepts_max_items_at_ceiling():
     assert ScrapeInput(city="HN", max_items=100).max_items == 100
 
 
-def test_scrape_input_rejects_max_items_above_ceiling_by_one():
-    with pytest.raises(ValidationError):
-        ScrapeInput(city="HN", max_items=101)
+def test_scrape_input_clamps_max_items_above_ceiling_by_one():
+    assert ScrapeInput(city="HN", max_items=101).max_items == 100
 
 
-def test_scrape_input_rejects_max_items_below_floor():
+def test_scrape_input_accepts_max_items_at_zero():
+    assert ScrapeInput(city="HN", max_items=0).max_items == 0
+
+
+def test_scrape_input_rejects_max_items_negative():
     with pytest.raises(ValidationError):
-        ScrapeInput(city="HN", max_items=0)
+        ScrapeInput(city="HN", max_items=-1)
 
 
 def test_scrape_input_accepts_max_items_at_floor():
     assert ScrapeInput(city="HN", max_items=1).max_items == 1
+
+
+def test_scrape_input_rejects_unknown_city():
+    with pytest.raises(ValidationError):
+        ScrapeInput(city="XX")
+
+
+def test_scrape_input_accepts_known_city():
+    assert ScrapeInput(city="SG").city == "SG"
 
 
 def test_scrape_input_rejects_min_price_above_max_price():

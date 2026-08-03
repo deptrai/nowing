@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "knowns": {
+      "command": [
+        "knowns",
+        "mcp",
+        "--stdio"
+      ],
+      "enabled": true,
+      "type": "local"
+    },
+    "nowing": {
+      "command": [
+        "uv",
+        "run",
+        "--directory",
+        "/Users/luisphan/Documents/GitHub/nowing/nowing_mcp",
+        "python",
+        "-m",
+        "mcp_server"
+      ],
+      "enabled": true,
+      "type": "local",
+      "environment": {
+        "NOWING_BASE_URL": "http://localhost:8000",
+        "NOWING_API_KEY": "nw_pat_p_RF8PDexSUMtQjE1mjkvh4APk2kx1fJ6zcai6VwU1s"
+      }
+    }
+  }
+}

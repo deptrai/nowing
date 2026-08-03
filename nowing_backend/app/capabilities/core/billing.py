@@ -403,10 +403,9 @@ async def _charge_platform_meter(
     items: int,
     output: BillableOutput,
 ) -> int:
-    if items <= 0:
+    if items <= 0 and not getattr(output, "degraded", False):
         return 0
     rate = _platform_rate(unit)
-    cost_micros = service.items_to_micros(items, rate)
     # Stage the audit row before charge's commit flushes both.
     call_details: dict[str, Any] = {"items": items}
     if getattr(output, "degraded", False):
@@ -414,6 +413,18 @@ async def _charge_platform_meter(
             getattr(output, "degradation_reason", None) or "unknown"
         )
         call_details["final_status"] = getattr(output, "status", None) or "unknown"
+        # Degraded runs are not billed, but we still record a 0-cost audit row
+        # so analytics can see the failure reason.
+        await record_token_usage(
+            ctx.session,
+            usage_type=unit.value,
+            workspace_id=ctx.workspace_id,
+            user_id=owner_user_id,
+            cost_micros=0,
+            call_details=call_details,
+        )
+        return 0
+    cost_micros = service.items_to_micros(items, rate)
     await record_token_usage(
         ctx.session,
         usage_type=unit.value,

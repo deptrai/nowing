@@ -8,6 +8,7 @@ from http.cookies import SimpleCookie
 from typing import Any
 
 from sqlalchemy import select, update as sql_update
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
@@ -44,19 +45,52 @@ def decrypt_credentials(encrypted: str | None) -> dict[str, Any] | None:
         raise ValueError("Stored scraper credentials are not valid JSON") from exc
 
 
-def cookie_string_to_playwright(cookie_string: str, domain: str) -> list[dict[str, str]]:
-    """Parse a ``name=value; ...`` string into Playwright ``add_cookies`` format."""
-    jar = SimpleCookie(cookie_string)
+def _parse_cookie_input(
+    cookie_input: str | list[dict[str, Any]],
+    domain: str | None = None,
+) -> list[dict[str, Any]]:
+    """Normalize cookies from a JSON array or a ``name=value; ...`` string."""
+    if isinstance(cookie_input, list):
+        return cookie_input
+    text = cookie_input.strip()
+    if text.startswith("["):
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+    jar = SimpleCookie(text)
+    return [
+        {"name": key, "value": morsel.value, "domain": domain or "", "path": "/"}
+        for key, morsel in jar.items()
+    ]
+
+
+def cookie_string_to_playwright(
+    cookie_input: str | list[dict[str, Any]],
+    domain: str,
+) -> list[dict[str, Any]]:
+    """Parse cookies into Playwright ``add_cookies`` format.
+
+    Accepts either a JSON array (from browser extensions) or a
+    ``name=value; ...`` string (legacy ``document.cookie`` format).
+    """
+    cookies = _parse_cookie_input(cookie_input, domain=domain)
+    if cookies:
+        return cookies
+    # Fallback for legacy empty/whitespace strings.
+    jar = SimpleCookie(str(cookie_input))
     return [
         {"name": key, "value": morsel.value, "domain": domain, "path": "/"}
         for key, morsel in jar.items()
     ]
 
 
-def cookie_string_to_dict(cookie_string: str) -> dict[str, str]:
-    """Parse a ``name=value; ...`` string into a plain name -> value dict."""
-    jar = SimpleCookie(cookie_string)
-    return {key: morsel.value for key, morsel in jar.items()}
+def cookie_string_to_dict(cookie_input: str | list[dict[str, Any]]) -> dict[str, str]:
+    """Parse cookies into a plain ``name -> value`` dict."""
+    cookies = _parse_cookie_input(cookie_input)
+    return {c["name"]: c.get("value", "") for c in cookies}
 
 
 class ScraperPlatformAccountService:
@@ -67,7 +101,9 @@ class ScraperPlatformAccountService:
         stmt = select(ScraperPlatformAccount)
         if platform:
             stmt = stmt.where(ScraperPlatformAccount.platform == platform)
-        result = await self.session.execute(stmt.order_by(ScraperPlatformAccount.created_at))
+        result = await self.session.execute(
+            stmt.order_by(ScraperPlatformAccount.created_at)
+        )
         return list(result.scalars().all())
 
     async def get(self, account_id: int) -> ScraperPlatformAccount | None:
@@ -107,7 +143,9 @@ class ScraperPlatformAccountService:
             label=label,
             is_enabled=is_enabled,
             is_default=is_default,
-            encrypted_credentials=encrypt_credentials(credentials) if credentials else None,
+            encrypted_credentials=encrypt_credentials(credentials)
+            if credentials
+            else None,
         )
         self.session.add(account)
         await self.session.commit()
@@ -156,5 +194,13 @@ class ScraperPlatformAccountService:
 
 async def get_default_credentials(platform: str) -> dict[str, Any] | None:
     """Fetch the default enabled credentials for a platform without a pre-existing session."""
-    async with async_session_maker() as session:
-        return await ScraperPlatformAccountService(session).get_default_credentials(platform)
+    try:
+        async with async_session_maker() as session:
+            return await ScraperPlatformAccountService(session).get_default_credentials(
+                platform
+            )
+    except ProgrammingError as exc:
+        logger.warning(
+            "scraper_platform_accounts table not available for %s: %s", platform, exc
+        )
+        return None

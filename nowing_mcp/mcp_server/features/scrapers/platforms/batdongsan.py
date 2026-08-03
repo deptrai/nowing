@@ -58,11 +58,18 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
             Field(description="Maximum area in square meters."),
         ] = None,
         max_pages: Annotated[
-            int, Field(ge=1, le=20, description="Maximum result pages to fetch.")
+            int, Field(ge=0, le=20, description="Maximum result pages to fetch.")
         ] = 5,
         max_items: Annotated[
-            int, Field(ge=1, le=100, description="Maximum listings to return.")
+            int, Field(ge=0, le=100, description="Maximum listings to return.")
         ] = 10,
+        resolve_phones: Annotated[
+            bool,
+            Field(
+                description="Open detail pages to resolve full phone numbers "
+                "(slower, requires a batdongsan session)."
+            ),
+        ] = True,
         workspace: WorkspaceParam = None,
         response_format: ResponseFormatParam = "markdown",
     ) -> str:
@@ -89,6 +96,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
                 "max_area": max_area,
                 "max_pages": max_pages,
                 "max_items": max_items,
+                "resolve_phones": resolve_phones,
             },
             workspace=workspace,
             response_format=response_format,

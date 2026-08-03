@@ -29,7 +29,7 @@ class _FakeScraper:
         self.calls: list[tuple[BatdongsanScrapeInput, int | None]] = []
 
     async def __call__(
-        self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+        self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         self.calls.append((actor_input, limit))
         return {
@@ -66,7 +66,7 @@ async def test_maps_input_and_wraps_items():
 @pytest.mark.asyncio
 async def test_actor_exception_degrades_without_crashing():
     async def exploding_scraper(
-        actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+        actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         raise RuntimeError("boom")
 
@@ -85,7 +85,7 @@ async def test_actor_exception_degrades_without_crashing():
 @pytest.mark.asyncio
 async def test_rate_limited_actor_degrades_with_rate_limited_reason():
     async def limited_scraper(
-        actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+        actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         raise BatdongsanRateLimitedError("429")
 
@@ -101,7 +101,7 @@ async def test_rate_limited_actor_degrades_with_rate_limited_reason():
 @pytest.mark.asyncio
 async def test_decode_error_actor_degrades_with_decode_error_reason():
     async def broken_scraper(
-        actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+        actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         raise BatdongsanDecodeError("bad bytes")
 
@@ -117,7 +117,7 @@ async def test_decode_error_actor_degrades_with_decode_error_reason():
 @pytest.mark.asyncio
 async def test_blocked_actor_degrades_with_api_error_reason():
     async def blocked_scraper(
-        actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+        actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         raise BatdongsanAccessBlockedError("blocked")
 
@@ -134,7 +134,7 @@ async def test_blocked_actor_degrades_with_api_error_reason():
 async def test_degraded_run_is_free():
     class _DegradedScraper(_FakeScraper):
         async def __call__(
-            self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+            self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
         ) -> dict[str, Any]:
             return {
                 "items": self._items,
@@ -158,7 +158,7 @@ async def test_degraded_run_is_free():
 async def test_missing_degraded_key_defaults_to_false():
     class _NoDegradedScraper(_FakeScraper):
         async def __call__(
-            self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+            self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
         ) -> dict[str, Any]:
             return {"items": self._items, "total_items": len(self._items)}
 
@@ -176,7 +176,7 @@ async def test_missing_degraded_key_defaults_to_false():
 async def test_none_result_degrades_with_unknown_reason():
     class _NoneScraper(_FakeScraper):
         async def __call__(
-            self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+            self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
         ) -> dict[str, Any] | None:
             return None
 
@@ -194,7 +194,7 @@ async def test_none_result_degrades_with_unknown_reason():
 async def test_dict_without_total_items_counts_zero():
     class _NoCountScraper(_FakeScraper):
         async def __call__(
-            self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+            self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
         ) -> dict[str, Any]:
             return {"items": self._items}
 
@@ -212,7 +212,7 @@ async def test_dict_without_total_items_counts_zero():
 async def test_dict_with_none_total_items_counts_zero():
     class _NoneCountScraper(_FakeScraper):
         async def __call__(
-            self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None
+            self, actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
         ) -> dict[str, Any]:
             return {"items": self._items, "total_items": None}
 

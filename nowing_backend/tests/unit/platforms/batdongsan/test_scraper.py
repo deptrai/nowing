@@ -368,3 +368,102 @@ async def test_web_fallback_blocked_degrades_empty():
     assert output.total_items == 0
     assert output.degraded is True
     assert output.degradation_reason == "empty"
+
+
+@pytest.mark.asyncio
+async def test_scraper_constructs_detail_url_and_falls_back_to_title_phone(mocker):
+    pages = [[{
+        "id": 12345,
+        "title": "Bán đất Quận 7 LH: 0916754123",
+        "address": "Phường Tân Định, Quận 1, TP. Hồ Chí Minh",
+        "price": "13 tỷ",
+        "area": "100 m²",
+        "date": "01/08/2026",
+    }]]
+    fetcher = _FakeFetcher(pages)
+
+    # No valid token → browser unmasking skipped; title phone is used.
+    mocker.patch(
+        f"{_MODULE}.get_default_credentials", return_value={"cookies": "c=1"}
+    )
+
+    input_model = BatdongsanScrapeInput(
+        listing_type="buy", city="SG", max_pages=1, max_items=1
+    )
+    output = await scrape_batdongsan(
+        input_model, fetch_fn=fetcher, resolve_phones=True
+    )
+
+    assert output.total_items == 1
+    item = output.items[0]
+    assert (
+        item.detail_url
+        == "https://batdongsan.com.vn/ban-nha-dat-tp-hcm/ban-dat-quan-7-lh-0916754123-pr12345"
+    )
+    assert item.phone == "0916754123"
+
+
+@pytest.mark.asyncio
+async def test_scraper_resolves_phone_when_token_fresh(mocker):
+    pages = [[{
+        "id": 12346,
+        "title": "Bán nhà Quận 1",
+        "address": "Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+        "price": "15 tỷ",
+        "area": "80 m²",
+        "date": "01/08/2026",
+    }]]
+    fetcher = _FakeFetcher(pages)
+
+    mocker.patch(
+        f"{_MODULE}.get_default_credentials", return_value={"cookies": "c=1"}
+    )
+    # Pretend the access token is still fresh so the browser path is attempted.
+    mocker.patch(f"{_MODULE}._access_token_expires_at", return_value=2_000_000_000.0)
+    mocker.patch(
+        f"{_MODULE}.fetch_detail_phone",
+        return_value=("0916 754 456", "0916 754 456"),
+    )
+
+    input_model = BatdongsanScrapeInput(
+        listing_type="buy", city="SG", max_pages=1, max_items=1
+    )
+    output = await scrape_batdongsan(
+        input_model, fetch_fn=fetcher, resolve_phones=True
+    )
+
+    assert output.total_items == 1
+    assert output.items[0].phone == "0916 754 456"
+
+
+@pytest.mark.asyncio
+async def test_scraper_extracts_phone_from_title_when_detail_fails(mocker):
+    pages = [[{
+        "id": 12347,
+        "title": "Bán nhà Quận 1 LH 0916 754 123",
+        "address": "Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+        "price": "15 tỷ",
+        "area": "80 m²",
+        "date": "01/08/2026",
+    }]]
+    fetcher = _FakeFetcher(pages)
+
+    mocker.patch(
+        f"{_MODULE}.get_default_credentials", return_value={"cookies": "c=1"}
+    )
+    # Masked detail phone and no full phone; fallback should use title.
+    mocker.patch(
+        f"{_MODULE}.fetch_detail_phone",
+        return_value=(None, "0916 754 ***"),
+    )
+
+    input_model = BatdongsanScrapeInput(
+        listing_type="buy", city="SG", max_pages=1, max_items=1
+    )
+    output = await scrape_batdongsan(
+        input_model, fetch_fn=fetcher, resolve_phones=True
+    )
+
+    assert output.total_items == 1
+    item = output.items[0]
+    assert item.phone == "0916754123"

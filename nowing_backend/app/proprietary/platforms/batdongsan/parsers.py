@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any
 
 from bs4 import BeautifulSoup
 
+from .city_codes import CITY_SLUGS
 from .schemas import BatdongsanListing
 
 # District/city prefixes seen in Vietnamese addresses. Quận = urban district,
@@ -105,6 +107,83 @@ def _to_int(value: Any) -> int | None:
     return None
 
 
+_WEB_ORIGIN = "https://batdongsan.com.vn"
+
+
+_TITLE_PHONE_RE = re.compile(
+    r"(?:LH|ĐT|SDT|sdt|đt|liên hệ|phone|call)?\s*[:\-]?\s*(\d[\d\s\.\-]{8,}\d)",
+    re.IGNORECASE,
+)
+
+
+def _normalize_phone_text(text: str) -> str | None:
+    """Extract a clean 10+ digit Vietnamese phone number from free text."""
+    text = text.strip()
+    # Remove separators and keep spacing every 3-4 digits for readability.
+    digits = re.sub(r"[^\d]", "", text)
+    if len(digits) >= 9 and digits.startswith("0"):
+        return digits
+    # Some titles include numbers like '0916 754 123' separated by spaces.
+    parts = re.split(r"[\.\s\-]+", text.strip())
+    if len(parts) >= 3 and all(p.isdigit() for p in parts):
+        return "".join(parts)
+    return None
+
+
+def extract_phone_from_title(title: str | None) -> str | None:
+    """Best-effort phone extraction from listing title (e.g. ``LH: 0916754123``)."""
+    if not title:
+        return None
+    m = _TITLE_PHONE_RE.search(title)
+    if not m:
+        return None
+    phone = _normalize_phone_text(m.group(1))
+    return phone
+
+
+def _slugify_title(title: str | None) -> str:
+    """Create a URL-safe slug from a listing title.
+
+    The slug is not authoritative on batdongsan.com.vn; the canonical
+    ``pr<listing_id>`` suffix determines the page.  We keep the title for
+    readability but aggressively strip non-ASCII diacritics.
+    """
+    if not title:
+        return "tin-dang"
+    # Pre-map a couple of Vietnamese consonants before NFKD so the result
+    # contains the right ASCII base letter (đ/Đ → d/D).
+    text = title.replace("\u0110", "D").replace("\u0111", "d")
+    # Decompose and drop combining marks, then keep alphanumerics and spaces.
+    nfkd = unicodedata.normalize("NFKD", text)
+    ascii_text = nfkd.encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^\w\s-]", "", ascii_text).strip().lower()
+    slug = re.sub(r"[\s_]+", "-", slug)
+    slug = re.sub(r"-+", "-", slug)
+    return slug or "tin-dang"
+
+
+def build_detail_url(
+    listing_id: int | None,
+    title: str | None,
+    city_code: str,
+    listing_type: str = "buy",
+) -> str | None:
+    """Construct a batdongsan.com.vn detail URL from known listing fields.
+
+    The site accepts an arbitrary last-segment slug as long as the canonical
+    ``pr<listing_id>`` suffix is present and the parent category/city path
+    exists, so we can avoid scanning web listing pages for a match.
+    """
+    if not listing_id or not city_code:
+        return None
+    city_slug = CITY_SLUGS.get(city_code)
+    if not city_slug:
+        return None
+    prefix = "ban-nha-dat" if listing_type == "buy" else "nha-dat-cho-thue"
+    slug = _slugify_title(title)
+    return f"{_WEB_ORIGIN}/{prefix}-{city_slug}/{slug}-pr{listing_id}"
+
+
 def parse_listing(raw: dict[str, Any]) -> BatdongsanListing:
     """Map a single raw data dict to a typed listing."""
     address = _normalize_whitespace(raw.get("address"))
@@ -144,9 +223,6 @@ def parse_listings(raw_items: list[dict[str, Any]]) -> list[BatdongsanListing]:
     if not raw_items:
         return []
     return [parse_listing(item) for item in raw_items if isinstance(item, dict)]
-
-
-_WEB_ORIGIN = "https://batdongsan.com.vn"
 
 
 def parse_web_listings(html: str) -> list[dict[str, Any]]:
@@ -206,3 +282,54 @@ def parse_web_listings(html: str) -> list[dict[str, Any]]:
             }
         )
     return items
+
+
+def parse_detail_phone(html: str) -> tuple[str | None, str | None]:
+    """Extract the best-effort phone info from a Batdongsan detail page.
+
+    The public page shows a masked number (e.g. ``0906 782 ***``) behind a
+    ``Hiện số`` button.  Full numbers require a logged-in session and often
+    an SMS OTP, so we return the masked display as ``phone_display`` and only
+    set ``phone`` when the button already contains a fully numeric string.
+    """
+    soup = BeautifulSoup(html, "lxml")
+
+    # Primary: the contact button on the listing detail page.
+    phone_btn = (
+        soup.select_one("div.js__phone-event")
+        or soup.select_one("div.re__btn-phone-icon")
+        or soup.select_one("a.re__link-phone")
+        or soup.select_one(".js__phone")
+    )
+    if phone_btn:
+        text = phone_btn.get_text(strip=True)
+        # Text is typically "0906 782 *** · Hiện số" or a full number.
+        if "·" in text:
+            text = text.split("·")[0].strip()
+        if re.search(r"\d", text):
+            digits_only = re.sub(r"[^\d\s]", "", text).strip()
+            phone_display = text
+            # Consider it a full phone if it has at least 10 digits and no mask.
+            phone = (
+                phone_display
+                if len(digits_only) >= 10 and "*" not in phone_display
+                else None
+            )
+            return phone, phone_display
+
+    # Fallback: a plain phone text span (often a support hotline, not the agent).
+    fallback = soup.select_one("span.re__text-phone")
+    if fallback:
+        text = fallback.get_text(strip=True)
+        if re.search(r"\d", text):
+            # Accept only a single mobile-style number (not support/landline/multi-number).
+            digits = re.sub(r"[^\d]", "", text)
+            if (
+                len(digits) in (10, 11)
+                and digits.startswith(("09", "08", "07", "05", "03"))
+                and "(" not in text
+                and "-" not in text
+            ):
+                return text, text
+
+    return None, None

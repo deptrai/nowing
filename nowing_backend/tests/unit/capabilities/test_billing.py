@@ -273,9 +273,19 @@ async def test_gate_is_noop_for_free_verb(monkeypatch):
 class _FakePlatformOutput:
     """Stand-in for a verb output: only the billing-read properties matter."""
 
-    def __init__(self, items: int, attached_review_count: int = 0):
+    def __init__(
+        self,
+        items: int,
+        attached_review_count: int = 0,
+        degraded: bool = False,
+        degradation_reason: str | None = None,
+        status: str = "complete",
+    ):
         self._items = items
         self._reviews = attached_review_count
+        self._degraded = degraded
+        self._degradation_reason = degradation_reason
+        self._status = status
 
     @property
     def billable_units(self) -> int:
@@ -284,6 +294,18 @@ class _FakePlatformOutput:
     @property
     def attached_review_count(self) -> int:
         return self._reviews
+
+    @property
+    def degraded(self) -> bool:
+        return self._degraded
+
+    @property
+    def degradation_reason(self) -> str | None:
+        return self._degradation_reason
+
+    @property
+    def status(self) -> str:
+        return self._status
 
 
 class _FakePlatformInput:
@@ -1267,6 +1289,27 @@ async def test_platform_charge_does_not_add_degradation_when_not_degraded(
     details = record_usage.await_args.kwargs["call_details"]
     assert "degradation_reason" not in details
     assert "final_status" not in details
+
+
+async def test_platform_charge_does_not_debit_when_degraded(
+    monkeypatch, record_usage, _enable_platform_billing
+):
+    """Degraded platform output must record a 0-cost audit row but not debit the owner."""
+    monkeypatch.setattr(config, "REDDIT_SCRAPE_MICROS_PER_ITEM", 3500)
+    session, user = _make_session(_OWNER, balance_micros=1_000_000)
+
+    output = _FakePlatformOutput(
+        items=3, degraded=True, degradation_reason="rate_limited", status="partial"
+    )
+    charged = await charge_capability(output, BillingUnit.REDDIT_ITEM, _ctx(session))
+
+    assert charged == 0
+    assert user.credit_micros_balance == 1_000_000
+    record_usage.assert_awaited_once()
+    kwargs = record_usage.await_args.kwargs
+    assert kwargs["cost_micros"] == 0
+    assert kwargs["call_details"]["degradation_reason"] == "rate_limited"
+    assert kwargs["call_details"]["final_status"] == "partial"
 
 
 async def test_gate_google_maps_place_without_review_estimate_is_single_meter(

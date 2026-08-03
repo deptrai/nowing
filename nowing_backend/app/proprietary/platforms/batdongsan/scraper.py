@@ -4,19 +4,29 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
 from app.config import config
+from app.services.scraper_platform_account_service import get_default_credentials
 
 from .fetch import (
+    AsyncStealthySession,
     BatdongsanAccessBlockedError,
     BatdongsanDecodeError,
     BatdongsanRateLimitedError,
+    _access_token_expires_at,
+    fetch_detail_phone,
     fetch_listings,
+    resolve_detail_urls,
 )
-from .parsers import parse_listings
+from .parsers import (
+    build_detail_url,
+    extract_phone_from_title,
+    parse_listings,
+)
 from .schemas import BatdongsanListing, BatdongsanScrapeInput, BatdongsanScrapeOutput
 
 logger = logging.getLogger(__name__)
@@ -25,6 +35,11 @@ FetchFn = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 
 # Retry a single page this many times before giving up on that page.
 _MAX_RETRIES = 2
+
+# Phone detail fetches are slow and expensive; bound concurrency and per-call
+# wall time so a run does not wait on many sequential browser sessions.
+_MAX_PHONE_CONCURRENCY = 2
+_PHONE_RESOLVE_TIMEOUT_S = 60.0
 
 
 def now_iso() -> str:
@@ -86,6 +101,7 @@ async def scrape_batdongsan(
     limit: int | None = None,
     fetch_fn: FetchFn | None = None,
     web_fetch_fn: FetchFn | None = None,
+    resolve_phones: bool = False,
 ) -> BatdongsanScrapeOutput:
     """Collect listings across pages, honoring caps and degradation.
 
@@ -207,6 +223,79 @@ async def scrape_batdongsan(
 
         if page < max_pages and len(items) < cap:
             await asyncio.sleep(_page_delay())
+
+    # Best-effort: resolve detail URLs and then fetch phone numbers.  The
+    # mobile ``p_sync`` API no longer reliably includes ``url``, so we
+    # construct a canonical detail URL from the listing id, city and title
+    # before falling back to the slower web-listing resolver.
+    # Full phone numbers are usually gated by login/OTP, so we also keep a
+    # masked ``phone_display`` and fall back to extracting a number from the
+    # title (e.g. ``LH: 0916754123``) when the detail page cannot unmask it.
+    if resolve_phones:
+        try:
+            for item in items:
+                if not item.detail_url and item.listing_id is not None:
+                    item.detail_url = build_detail_url(
+                        item.listing_id,
+                        item.title,
+                        input_model.city,
+                        listing_type=input_model.listing_type,
+                    )
+
+            if AsyncStealthySession is not None:
+                credentials = await get_default_credentials("batdongsan")
+                # Only page-scan if construction left gaps (unknown city, etc.).
+                if any(item.detail_url is None for item in items):
+                    await resolve_detail_urls(
+                        input_model, items, credentials=credentials, web_fetch_fn=web_fetch_fn
+                    )
+
+                token_exp = _access_token_expires_at(credentials)
+                token_fresh = token_exp is not None and token_exp - time.time() > 60
+                if token_exp is not None and not token_fresh:
+                    logger.warning(
+                        "Batdongsan access token expired; phone unmasking skipped, "
+                        "falling back to title extraction"
+                    )
+
+                semaphore = asyncio.Semaphore(_MAX_PHONE_CONCURRENCY)
+
+                async def _resolve_phone(item: BatdongsanListing) -> None:
+                    if not item.detail_url:
+                        return
+
+                    phone: str | None = None
+                    phone_display: str | None = None
+
+                    # With an expired token the detail-page XHR cannot decrypt
+                    # the phone, so avoid the expensive browser round-trip and
+                    # rely on the title fallback.
+                    if token_fresh:
+                        async with semaphore:
+                            try:
+                                async with asyncio.timeout(_PHONE_RESOLVE_TIMEOUT_S):
+                                    phone, phone_display = await fetch_detail_phone(
+                                        item.detail_url, credentials=credentials
+                                    )
+                            except TimeoutError:
+                                logger.warning(
+                                    "Batdongsan phone resolve timed out for %s", item.detail_url
+                                )
+
+                    if phone:
+                        item.phone = phone
+                        item.phone_display = phone
+                    elif phone_display:
+                        item.phone_display = phone_display
+                    if not item.phone and item.title:
+                        title_phone = extract_phone_from_title(item.title)
+                        if title_phone:
+                            item.phone = title_phone
+                            item.phone_display = title_phone
+
+                await asyncio.gather(*(_resolve_phone(item) for item in items))
+        except Exception:
+            logger.exception("batdongsan detail/phone resolution failed")
 
     for item in items:
         item.scrapedAt = now_iso()

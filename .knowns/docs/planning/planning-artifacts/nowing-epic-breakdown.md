@@ -2,7 +2,7 @@
 title: Nowing - Epic Breakdown
 description: ''
 createdAt: '2026-07-28T12:47:48.297Z'
-updatedAt: '2026-07-28T15:17:33.175Z'
+updatedAt: '2026-08-03T16:11:51.632Z'
 tags:
   - bmad
   - bmad-source-bmad-output-planning-artifacts-epics-md
@@ -721,3 +721,19 @@ _FR-39 (phần re-validate) · **`AD-11.1`** · FR-34 · AD-8. **Dep: 9.6a.** **
 - **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
 - **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
 - Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
+
+---
+
+## Epic 12: BYO Telegram Bot & Mini App `[ready-for-dev]`
+
+_Tạo 2026-08-03 từ technical research `BYO Telegram bot, Telegram Mini App integration, and full-capability Telegram bot in Nowing`. Mở rộng Epic 11 để user mang bot Telegram riêng và chạy Nowing UI qua Telegram Mini App._
+
+**FRs:** FR-TELE-BYO-1 (BYO account), FR-TELE-BYO-2 (long-poll), FR-TELE-BYO-3 (pairing/commands), FR-TELE-BYO-4 (notification), FR-TELE-BYO-5 (Mini App setup), FR-TELE-BYO-6 (Mini App auth), FR-TELE-BYO-7 (workspace/automation), FR-TELE-BYO-8 (memory/deep research), FR-TELE-BYO-9 (settings), FR-TELE-BYO-10 (scale/security).
+
+**NFRs:** NFR-TELE-BYO-1 (token encryption), NFR-TELE-BYO-2 (initData HMAC), NFR-TELE-BYO-3 (webhook secret), NFR-TELE-BYO-4 (one poller per token), NFR-TELE-BYO-5 (multi-platform Mini App), NFR-TELE-BYO-6 (cross-subdomain cookie).
+
+**Stories:** 12.1 BYO account & token API · 12.2 BYO long-poll supervisor · 12.3 BYO pairing & binding · 12.4 BYO bot commands · 12.5 BYO notification & run completion · 12.6 Mini App URL & WebView setup · 12.7 Mini App authentication · 12.8 Mini App workspace & automation · 12.9 Mini App memory & deep research · 12.10 Mini App settings & theme · 12.11 Scale, observability & security hardening.
+
+**Phụ thuộc:** Epic 11.1–11.3 ổn định; `ExternalChatAccount` `SELF_HOST_BYO` pattern đã tồn tại; `byo_long_poll.py` infrastructure sẵn có.
+
+**Link:** doc:planning/planning-artifacts/epic-12-byo-telegram-bot-mini-app

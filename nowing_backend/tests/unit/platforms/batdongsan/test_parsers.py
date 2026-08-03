@@ -11,7 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from app.proprietary.platforms.batdongsan.parsers import parse_listing, parse_listings
+from app.proprietary.platforms.batdongsan.parsers import (
+    build_detail_url,
+    extract_phone_from_title,
+    parse_listing,
+    parse_listings,
+)
 from app.proprietary.platforms.batdongsan.schemas import BatdongsanListing
 
 pytestmark = pytest.mark.unit
@@ -150,3 +155,27 @@ def test_parse_web_listings_feeds_into_parse_listing():
     assert listing.rooms == 2
     assert listing.thumbnail_url is not None
     assert listing.detail_url is not None
+
+
+def test_build_detail_url_buy_and_rent():
+    assert build_detail_url(
+        12345, "Bán nhà riêng tại Ba Đình", "HN", listing_type="buy"
+    ) == "https://batdongsan.com.vn/ban-nha-dat-ha-noi/ban-nha-rieng-tai-ba-dinh-pr12345"
+    assert build_detail_url(
+        12345, "Cho thuê căn hộ Quận 1", "SG", listing_type="rent"
+    ) == "https://batdongsan.com.vn/nha-dat-cho-thue-tp-hcm/cho-thue-can-ho-quan-1-pr12345"
+
+
+def test_build_detail_url_unknown_city_returns_none():
+    assert build_detail_url(12345, "Bán nhà", "XX", listing_type="buy") is None
+
+
+def test_build_detail_url_missing_id_returns_none():
+    assert build_detail_url(None, "Bán nhà", "HN", listing_type="buy") is None
+
+
+def test_extract_phone_from_title_variants():
+    assert extract_phone_from_title("LH: 0916754123") == "0916754123"
+    assert extract_phone_from_title("LH 0916 754 123") == "0916754123"
+    assert extract_phone_from_title("Call 0916.754.123") == "0916754123"
+    assert extract_phone_from_title("Bán nhà giá 6.8 tỷ") is None

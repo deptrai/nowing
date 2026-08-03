@@ -65,7 +65,10 @@ def build_scrape_executor(
             unit="item",
         )
         try:
-            kwargs: dict[str, Any] = {"limit": payload.max_items}
+            kwargs: dict[str, Any] = {
+                "limit": payload.max_items,
+                "resolve_phones": payload.resolve_phones,
+            }
             if web_fetch_fn is not None:
                 kwargs["web_fetch_fn"] = web_fetch_fn
             raw = await scrape_fn(actor_input, **kwargs)

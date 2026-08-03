@@ -38,6 +38,14 @@ export interface ScraperPlatformAccountUpdate {
 	credentials?: ScraperPlatformAccountCredentials | null;
 }
 
+export const captureSessionResponse = z.object({
+	message: z.string(),
+	platform: z.string(),
+	capture_id: z.string(),
+});
+
+export type CaptureSessionResponse = z.infer<typeof captureSessionResponse>;
+
 class ScraperPlatformAccountsApiService {
 	private base = "/api/v1/admin/scraper-platform-accounts";
 
@@ -71,6 +79,14 @@ class ScraperPlatformAccountsApiService {
 
 	delete = async (id: number) => {
 		return baseApiService.delete(`${this.base}/${id}`);
+	};
+
+	capture = async (platform: string) => {
+		return baseApiService.post<CaptureSessionResponse>(
+			`${this.base}/${platform}/capture-session`,
+			captureSessionResponse,
+			{}
+		);
 	};
 }
 

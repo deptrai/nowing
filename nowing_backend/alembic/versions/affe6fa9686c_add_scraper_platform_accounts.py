@@ -27,6 +27,7 @@ def upgrade() -> None:
         sa.Column('is_default', sa.Boolean(), server_default='false', nullable=False),
         sa.Column('encrypted_credentials', sa.Text(), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_scraper_platform_accounts_created_at'), 'scraper_platform_accounts', ['created_at'], unique=False)
@@ -40,4 +41,5 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_scraper_platform_accounts_platform'), table_name='scraper_platform_accounts')
     op.drop_index(op.f('ix_scraper_platform_accounts_id'), table_name='scraper_platform_accounts')
     op.drop_index(op.f('ix_scraper_platform_accounts_created_at'), table_name='scraper_platform_accounts')
+    op.drop_column('scraper_platform_accounts', 'updated_at')
     op.drop_table('scraper_platform_accounts')
