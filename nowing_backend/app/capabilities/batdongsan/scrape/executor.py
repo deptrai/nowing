@@ -27,9 +27,16 @@ logger = logging.getLogger(__name__)
 ScrapeFn = Callable[..., Awaitable[BatdongsanScrapeOutput | dict[str, Any]]]
 
 
-def _unwrap_result(result: BatdongsanScrapeOutput | dict[str, Any] | None) -> dict[str, Any]:
+def _unwrap_result(
+    result: BatdongsanScrapeOutput | dict[str, Any] | None,
+) -> dict[str, Any]:
     if result is None:
-        return {"items": [], "total_items": 0, "degraded": True, "degradation_reason": "unknown"}
+        return {
+            "items": [],
+            "total_items": 0,
+            "degraded": True,
+            "degradation_reason": "unknown",
+        }
     if isinstance(result, BatdongsanScrapeOutput):
         return {
             "items": [item.to_output() for item in result.items],
@@ -40,9 +47,13 @@ def _unwrap_result(result: BatdongsanScrapeOutput | dict[str, Any] | None) -> di
     return result
 
 
-def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
+def build_scrape_executor(
+    scrape_fn: ScrapeFn | None = None,
+    web_fetch_fn: ScrapeFn | None = None,
+) -> Executor:
     """Bind the executor to a scraper fn (defaults to the proprietary actor)."""
     scrape_fn = scrape_fn or scrape_batdongsan
+    web_fetch_fn = web_fetch_fn
 
     async def execute(payload: ScrapeInput) -> ScrapeOutput:
         actor_input = BatdongsanScrapeInput(**payload.model_dump(exclude_unset=True))
@@ -54,7 +65,10 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             unit="item",
         )
         try:
-            raw = await scrape_fn(actor_input, limit=payload.max_items)
+            kwargs: dict[str, Any] = {"limit": payload.max_items}
+            if web_fetch_fn is not None:
+                kwargs["web_fetch_fn"] = web_fetch_fn
+            raw = await scrape_fn(actor_input, **kwargs)
         except BatdongsanRateLimitedError:
             logger.exception("batdongsan.scrape rate limited")
             return ScrapeOutput(

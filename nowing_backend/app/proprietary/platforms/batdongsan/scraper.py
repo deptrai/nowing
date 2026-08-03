@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -17,6 +18,8 @@ from .fetch import (
 )
 from .parsers import parse_listings
 from .schemas import BatdongsanListing, BatdongsanScrapeInput, BatdongsanScrapeOutput
+
+logger = logging.getLogger(__name__)
 
 FetchFn = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 
@@ -61,15 +64,35 @@ def _page_delay() -> float:
     return max(0.0, getattr(config, "BATDONGSAN_PAGE_DELAY_S", 0.5))
 
 
+def _web_fallback_applicable(input_model: BatdongsanScrapeInput) -> bool:
+    """Web fallback only for city-level queries without price/area bounds.
+
+    The SSR URL cannot express district or numeric filters, so falling back
+    for filtered queries would return results that violate the user's
+    constraints.
+    """
+    return (
+        input_model.district_id is None
+        and input_model.min_price is None
+        and input_model.max_price is None
+        and input_model.min_area is None
+        and input_model.max_area is None
+    )
+
+
 async def scrape_batdongsan(
     input_model: BatdongsanScrapeInput,
     *,
     limit: int | None = None,
     fetch_fn: FetchFn | None = None,
+    web_fetch_fn: FetchFn | None = None,
 ) -> BatdongsanScrapeOutput:
     """Collect listings across pages, honoring caps and degradation.
 
     ``fetch_fn`` is a seam for tests; production uses :func:`fetch_listings`.
+    ``web_fetch_fn`` is an optional SSR web fallback used when the mobile API
+    returns an empty first page for a city-level query (e.g. provinces not
+    indexed by the mobile API).
     """
     fetch = fetch_fn or fetch_listings
     cap = limit if limit is not None else input_model.max_items
@@ -80,6 +103,7 @@ async def scrape_batdongsan(
     degraded = False
     degradation_reason: str | None = None
     rate_limited_seen = False
+    using_web = False
 
     for page in range(1, max_pages + 1):
         if len(items) >= cap:
@@ -90,9 +114,10 @@ async def scrape_batdongsan(
         page_meta: Any = None
         page_failed = False
 
+        active_fetch = web_fetch_fn if using_web else fetch
         for attempt in range(_MAX_RETRIES + 1):
             try:
-                result = await fetch(payload)
+                result = await active_fetch(payload)
                 page_data = result.get("data") or []
                 page_meta = result.get("m")
                 break
@@ -111,6 +136,39 @@ async def scrape_batdongsan(
             except (BatdongsanAccessBlockedError, Exception):
                 page_failed = True
                 break
+
+        # Web fallback: only on page 1 when mobile gave nothing, the
+        # query is city-level, and a web fetcher is wired.
+        if (
+            page == 1
+            and not page_data
+            and not page_failed
+            and web_fetch_fn is not None
+            and _web_fallback_applicable(input_model)
+        ):
+            for attempt in range(_MAX_RETRIES + 1):
+                try:
+                    web_result = await web_fetch_fn(payload)
+                    web_data = web_result.get("data") or []
+                    if web_data:
+                        page_data = web_data
+                        page_meta = web_result.get("m")
+                        using_web = True
+                        logger.info(
+                            "[batdongsan] web fallback engaged for city=%s "
+                            "page=%s (%d items)",
+                            input_model.city,
+                            page,
+                            len(web_data),
+                        )
+                    break
+                except BatdongsanRateLimitedError:
+                    if attempt < _MAX_RETRIES:
+                        await asyncio.sleep(_page_delay())
+                        continue
+                    break
+                except (BatdongsanAccessBlockedError, BatdongsanDecodeError, Exception):
+                    break
 
         if page_failed:
             if degradation_reason is None:

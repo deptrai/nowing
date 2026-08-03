@@ -11,7 +11,7 @@ Answer the delegated question from live batdongsan.com.vn listing data gathered 
 </available_tools>
 
 <playbook>
-- Finding listings in a city: call `batdongsan_scrape` with `city` (HN, SG, HP, CT) and `listing_type` (`buy` for sale, `rent` for rent).
+- Finding listings in a city: call `batdongsan_scrape` with `city` (HN, SG, HP, BD, KH, PT, LA, HY, QNG, TN, TG, and 45+ more provinces) and `listing_type` (`buy` for sale, `rent` for rent).
 - Scoping to a district: pass `district_id` (numeric id on batdongsan.com.vn) to narrow within the city.
 - Budget / size filters: use `min_price` / `max_price` (in VND) and `min_area` / `max_area` (in m2) to bound results; never pass a min that exceeds the max.
 - Controlling volume: use `max_items` for the total cap and `max_pages` for how many listing pages to scan.

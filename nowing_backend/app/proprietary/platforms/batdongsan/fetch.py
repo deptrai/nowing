@@ -15,6 +15,8 @@ from scrapling.fetchers import AsyncFetcher
 from app.config import config
 from app.utils.proxy import get_proxy_url
 
+from .parsers import parse_web_listings
+
 logger = logging.getLogger(__name__)
 
 API_ORIGIN = "https://batdongsan.com.vn"
@@ -160,3 +162,160 @@ def _retry_delay(attempt: int) -> float:
     """Exponential backoff for retry attempts, with a floor of 0.5s."""
     base = max(0.5, getattr(config, "BATDONGSAN_RETRY_BACKOFF_BASE_S", 0.5))
     return base * (2**attempt)
+
+
+WEB_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/126.0.0.0 Safari/537.36"
+)
+
+CITY_SLUGS: dict[str, str] = {
+    "AG": "an-giang",
+    "BD": "binh-duong",
+    "BDI": "binh-dinh",
+    "BG": "bac-giang",
+    "BK": "bac-kan",
+    "BL": "bac-lieu",
+    "BN": "bac-ninh",
+    "BP": "binh-phuoc",
+    "BT": "ben-tre",
+    "BTH": "binh-thuan",
+    "CB": "cao-bang",
+    "CM": "ca-mau",
+    "CT": "can-tho",
+    "DI": "dien-bien",
+    "DKL": "dak-lak",
+    "DN": "da-nang",
+    "DNO": "dak-nong",
+    "DT": "dong-thap",
+    "GL": "gia-lai",
+    "HD": "hai-duong",
+    "HG": "ha-giang",
+    "HN": "ha-noi",
+    "HP": "hai-phong",
+    "HT": "ha-tinh",
+    "HUG": "hau-giang",
+    "HY": "hung-yen",
+    "KH": "khanh-hoa",
+    "KG": "kien-giang",
+    "KT": "kon-tum",
+    "LA": "long-an",
+    "LB": "long-bien",
+    "LC": "lao-cai",
+    "LCH": "lai-chau",
+    "LD": "lam-dong",
+    "LS": "lang-son",
+    "NA": "nghe-an",
+    "NB": "ninh-binh",
+    "ND": "nam-dinh",
+    "NT": "ninh-thuan",
+    "PT": "phu-tho",
+    "PY": "phu-yen",
+    "QB": "quang-binh",
+    "QN": "quang-ninh",
+    "QNG": "quang-ngai",
+    "QT": "quang-tri",
+    "SG": "tp-hcm",
+    "SL": "son-la",
+    "ST": "soc-trang",
+    "TB": "thai-binh",
+    "TG": "tien-giang",
+    "TH": "thanh-hoa",
+    "TN": "thai-nguyen",
+    "TQ": "tuyen-quang",
+    "TV": "tra-vinh",
+    "TTH": "hue",
+    "VL": "vinh-long",
+    "VT": "ba-ria-vung-tau",
+    "YB": "yen-bai",
+}
+
+
+def build_web_listings_url(listing_type: str, slug: str, page: int) -> str:
+    """Build the SSR URL for a city-level buy/rent listing page."""
+    if listing_type == "buy":
+        path = f"/ban-nha-dat-{slug}"
+    else:
+        path = f"/nha-dat-cho-thue-{slug}"
+    if page > 1:
+        path = f"{path}/p{page}"
+    return f"{API_ORIGIN}{path}"
+
+
+async def fetch_web_listings(payload: dict[str, Any]) -> dict[str, Any]:
+    """GET the SSR web page and parse listing cards.
+
+    Returns an envelope shaped like the mobile ``p_sync`` response
+    (``{"data": [...], "m": "ok" | None}``) so the scraper can treat
+    both fetchers uniformly.
+    """
+    city_code = payload.get("city", "")
+    slug = CITY_SLUGS.get(city_code)
+    if not slug:
+        return {"data": [], "m": None}
+
+    listing_type = "rent" if payload.get("ptype") == 49 else "buy"
+    page = int(payload.get("page", 1))
+    url = build_web_listings_url(listing_type, slug, page)
+
+    headers = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
+        "Accept-Language": "vi-VN,vi;q=0.9,en;q=0.8",
+        "User-Agent": WEB_USER_AGENT,
+    }
+
+    for attempt in range(_MAX_ROTATIONS + 1):
+        try:
+            started = time.perf_counter()
+            resp = await AsyncFetcher.get(
+                url,
+                headers=headers,
+                proxy=get_proxy_url(),
+                stealthy_headers=True,
+                timeout=30,
+            )
+            fetch_ms = (time.perf_counter() - started) * 1000
+            logger.info(
+                "[batdongsan][perf][web] url=%s status=%s fetch_ms=%.1f",
+                url,
+                resp.status,
+                fetch_ms,
+            )
+
+            if resp.status == 200:
+                body = resp.body
+                if isinstance(body, bytes):
+                    body = body.decode("utf-8", errors="replace")
+                items = parse_web_listings(body)
+                more = "ok" if len(items) >= 20 else None
+                return {"data": items, "m": more}
+
+            _raise_for_status(resp.status, url)
+        except BatdongsanDecodeError:
+            raise
+        except BatdongsanRateLimitedError:
+            if attempt < _MAX_ROTATIONS:
+                await asyncio.sleep(_retry_delay(attempt))
+                continue
+            raise
+        except BatdongsanAccessBlockedError:
+            if attempt < _MAX_ROTATIONS:
+                logger.warning(
+                    "Batdongsan web block on %s, rotating (attempt %s/%s)",
+                    url,
+                    attempt + 1,
+                    _MAX_ROTATIONS,
+                )
+                await asyncio.sleep(_retry_delay(attempt))
+                continue
+            raise
+        except Exception as exc:
+            logger.warning("Batdongsan web GET %s failed: %s", url, exc)
+            if attempt >= _MAX_ROTATIONS:
+                raise BatdongsanAccessBlockedError(
+                    f"{url} failed after {_MAX_ROTATIONS} attempts"
+                ) from exc
+            await asyncio.sleep(_retry_delay(attempt))
+
+    raise BatdongsanAccessBlockedError(f"{url} exhausted all retries")

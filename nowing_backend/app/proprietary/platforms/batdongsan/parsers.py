@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from bs4 import BeautifulSoup
+
 from .schemas import BatdongsanListing
 
 # District/city prefixes seen in Vietnamese addresses. Quận = urban district,
@@ -142,3 +144,65 @@ def parse_listings(raw_items: list[dict[str, Any]]) -> list[BatdongsanListing]:
     if not raw_items:
         return []
     return [parse_listing(item) for item in raw_items if isinstance(item, dict)]
+
+
+_WEB_ORIGIN = "https://batdongsan.com.vn"
+
+
+def parse_web_listings(html: str) -> list[dict[str, Any]]:
+    """Parse SSR listing cards from a batdongsan.com.vn web page.
+
+    Returns raw dicts shaped like mobile ``p_sync`` items so
+    :func:`parse_listings` can consume them uniformly.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    cards = soup.select("div.js__card-listing")
+    items: list[dict[str, Any]] = []
+    for card in cards:
+        prid = card.get("prid")
+        if not prid:
+            continue
+        try:
+            listing_id = int(prid)
+        except (TypeError, ValueError):
+            continue
+
+        link = card.select_one("a.js__product-link-for-product-id")
+        href = (link.get("href") or "") if link else ""
+        detail_url = f"{_WEB_ORIGIN}{href}" if href else None
+
+        title_el = card.select_one("span.js__card-title")
+        title = title_el.get_text(strip=True) if title_el else None
+
+        price_el = card.select_one("span.re__card-config-price")
+        price = price_el.get_text(strip=True) if price_el else None
+
+        area_el = card.select_one("span.re__card-config-area")
+        area = area_el.get_text(strip=True) if area_el else None
+
+        loc_el = card.select_one("div.re__card-location")
+        location = loc_el.get_text(strip=True) if loc_el else None
+
+        avatar = card.get("prav")
+
+        bedroom_el = card.select_one("span.re__card-config-bedroom")
+        room: int | None = None
+        if bedroom_el:
+            aria = bedroom_el.get("aria-label") or ""
+            m = re.search(r"\d+", aria)
+            if m:
+                room = int(m.group(0))
+
+        items.append(
+            {
+                "id": listing_id,
+                "title": title,
+                "price": price,
+                "area": area,
+                "address": location,
+                "avatar": avatar,
+                "url": detail_url,
+                "room": room,
+            }
+        )
+    return items

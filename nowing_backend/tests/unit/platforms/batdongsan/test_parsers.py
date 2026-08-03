@@ -95,3 +95,58 @@ def test_parse_listing_keeps_area_range_token():
 
     assert listing.area == "72-75 m²"
     assert listing.area_raw == "72-75 m²"
+
+
+def test_parse_web_listings_extracts_cards():
+    from app.proprietary.platforms.batdongsan.parsers import parse_web_listings
+
+    html = (_FIXTURE_DIR / "web_page.html").read_text(encoding="utf-8")
+    items = parse_web_listings(html)
+
+    assert len(items) == 2
+    first = items[0]
+    assert first["id"] == 45972873
+    assert (
+        first["title"]
+        == "Bán nhà hẻm 222/20 Thủ Khoa Huân, phường Phú Thủy, DT 102.7m2"
+    )
+    assert first["price"] == "3,4 tỷ"
+    assert first["area"] == "102,7 m²"
+    assert first["address"] == "TP. Phan Thiết (P. Phú Thủy mới)"
+    assert (
+        first["avatar"]
+        == "https://file4.batdongsan.com.vn/crop/200x140/2026/06/28/img1_wm.jpg"
+    )
+    assert (
+        first["url"]
+        == "https://batdongsan.com.vn/ban-nha-rieng-duong-thu-khoa-huan-phuong-phu-thuy-1-181/ban-hem-222-20-pr45972873"
+    )
+    assert first["room"] == 2
+
+    second = items[1]
+    assert second["id"] == 45972874
+    assert second["room"] == 3
+
+
+def test_parse_web_listings_empty_html():
+    from app.proprietary.platforms.batdongsan.parsers import parse_web_listings
+
+    assert parse_web_listings("<html><body></body></html>") == []
+
+
+def test_parse_web_listings_feeds_into_parse_listing():
+    from app.proprietary.platforms.batdongsan.parsers import (
+        parse_listing,
+        parse_web_listings,
+    )
+
+    html = (_FIXTURE_DIR / "web_page.html").read_text(encoding="utf-8")
+    items = parse_web_listings(html)
+    listing = parse_listing(items[0])
+
+    assert listing.listing_id == 45972873
+    assert listing.price == "3,4 tỷ"
+    assert listing.area == "102,7 m²"
+    assert listing.rooms == 2
+    assert listing.thumbnail_url is not None
+    assert listing.detail_url is not None
