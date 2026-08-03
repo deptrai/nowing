@@ -379,6 +379,55 @@ The `con.ses.id` session cookie is short-lived (~10 minutes) and the `DecryptPho
 
 ---
 
+## 7.5 2026-08-04 Update — Per-account rate limit & cookie rotation
+
+### What changed
+
+One account was locked after repeated phone unmask requests, so the scraper now
+rotates across multiple `ScraperPlatformAccount` rows and applies a per-account
+token-bucket rate limit to avoid hammering a single cookie.
+
+### Implementation
+
+- Added `last_used_at` and `usage_state` columns to `scraper_platform_accounts`
+  via migration `188_add_scraper_account_usage_tracking.py`.
+- Added `ScraperPlatformAccountRotator` and `RateLimit` in
+  `app/services/scraper_platform_account_service.py`.
+  - Token-bucket per account: `BATDONGSAN_PHONE_RPM`, `BATDONGSAN_PHONE_BURST`.
+  - Cooldown on `USER_NO_PERMISSION` (`error_type="restricted"`) and on 429
+    (`error_type="rate_limited"`) with `BATDONGSAN_PHONE_COOLDOWN_S`.
+  - Picks the least-recently-used account with the most tokens; waits if all
+    accounts are exhausted.
+- `scraper.py` now opens a single DB session, creates the rotator, and fetches
+  credentials for every phone resolve call instead of using one default account
+  for the whole batch.
+- `fetch.py` raises `BatdongsanAccountRestrictedError` when `DecryptPhone` returns
+  `USER_NO_PERMISSION...`, so the rotator can mark that account and move to the
+  next one.
+- New tests in `tests/unit/services/test_scraper_platform_account_service.py`
+  cover rotation, rate-limit blocking, and cooldown state.
+
+### Rate-limit defaults & tuning
+
+- `BATDONGSAN_PHONE_RPM=5.0` requests per minute per account.
+- `BATDONGSAN_PHONE_BURST=2` (initial burst).
+- `BATDONGSAN_PHONE_COOLDOWN_S=300`.
+- `BATDONGSAN_PHONE_MAX_CONSECUTIVE_FAILURES=3`.
+
+These are conservative defensive defaults; batdongsan.com.vn does not publish its
+real phone-reveal threshold. Tune `BATDONGSAN_PHONE_RPM` up or down based on live
+logs. For large batches, add more enabled `ScraperPlatformAccount` rows and use
+residential/Vietnamese proxies (`SCRAPE_PROXY_URL`) to distribute traffic.
+
+### Verified
+
+- `pytest tests/unit/platforms/batdongsan tests/unit/services/test_scraper_platform_account_service.py tests/unit/capabilities/batdongsan/scrape/test_billing.py tests/unit/capabilities/test_billing.py tests/integration/capabilities/batdongsan/scrape/test_batdongsan_scrape.py -q` — 124 passed, 1 skipped.
+- `alembic upgrade head` applied migration 188 successfully.
+- Live smoke test with a restricted account: 2 items, ~28s, `phone_display` masked,
+  no crash, fallback to title phone still works.
+
+---
+
 ## Status
 
 **Status:** done (review 2026-08-03: P-1 → P-5 + D-1/D-2 + F-1 resolved; syntax clean; tests green)
@@ -392,7 +441,7 @@ The `con.ses.id` session cookie is short-lived (~10 minutes) and the `DecryptPho
 - [x] AC-5 — Xử lý lỗi & degraded mode (typed `degradation_reason`, không charge trang lỗi)
 - [x] AC-6 — MCP / REST / Agent exposure (`nowing_batdongsan_scrape`/`batdongsan.scrape`)
 - [x] AC-7 — Test coverage (unit decoder/parser + fixture, integration recorded + `SCRAPE_LIVE`, billing)
-- [x] AC-8 — Phone unmasking với authenticated session (`AsyncStealthySession`, in-page XHR `DecryptPhone`, `phone`/`phone_display` đầy đủ, fallback mask, log `USER_NO_PERMISSION_TO_VIEW_PHONE`)
+- [x] AC-8 — Phone unmasking với authenticated session (`AsyncStealthySession`, in-page XHR `DecryptPhone`, `phone`/`phone_display` đầy đủ, fallback mask, log `USER_NO_PERMISSION_TO_VIEW_PHONE`, per-account rate limit & cookie rotation)
 - [x] AC-9 — Admin cookie capture & session pre-warm (JSON cookie arrays, preserve HttpOnly, auto-extract `accessToken`, `con.ses.id` pre-warm trước khi hết hạn)
 
 ---

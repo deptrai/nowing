@@ -900,6 +900,16 @@ class Config:
     BATDONGSAN_RETRY_BACKOFF_BASE_S = float(
         os.getenv("BATDONGSAN_RETRY_BACKOFF_BASE_S", "0.5")
     )
+    # Phone-reveal rate limits per account.  These are conservative defaults
+    # for batdongsan.com.vn; tune them once you have measured the real threshold.
+    BATDONGSAN_PHONE_RPM = float(os.getenv("BATDONGSAN_PHONE_RPM", "5.0"))
+    BATDONGSAN_PHONE_BURST = int(os.getenv("BATDONGSAN_PHONE_BURST", "2"))
+    BATDONGSAN_PHONE_COOLDOWN_S = float(
+        os.getenv("BATDONGSAN_PHONE_COOLDOWN_S", "300.0")
+    )
+    BATDONGSAN_PHONE_MAX_CONSECUTIVE_FAILURES = int(
+        os.getenv("BATDONGSAN_PHONE_MAX_CONSECUTIVE_FAILURES", "3")
+    )
     # Chợ Tốt Nhà uses a public JSON gateway, similar cost to Batdongsan.
     CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM = int(
         os.getenv("CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM", "3500")

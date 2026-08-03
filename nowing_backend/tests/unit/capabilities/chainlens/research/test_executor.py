@@ -10,9 +10,9 @@ import pytest
 
 from app.capabilities.chainlens.research.executor import (
     ChainLensError,
-    _SSEParser,
     _call_chainlens,
     _parse_sse,
+    _SSEParser,
     build_research_executor,
 )
 from app.capabilities.chainlens.research.schemas import ResearchInput, ResearchOutput

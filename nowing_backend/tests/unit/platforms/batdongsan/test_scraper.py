@@ -29,6 +29,18 @@ def _no_page_delay(mocker):
     mocker.patch(f"{_MODULE}.asyncio.sleep")
 
 
+@pytest.fixture(autouse=True)
+def _mock_scraper_accounts(mocker):
+    """Provide a fake rotator and DB session so phone resolve is testable."""
+    session_cm = mocker.AsyncMock()
+    session_cm.__aenter__.return_value = mocker.AsyncMock()
+    mocker.patch(f"{_MODULE}.async_session_maker", return_value=session_cm)
+
+    rotator = mocker.AsyncMock()
+    rotator.get_credentials.return_value = (mocker.Mock(), {"cookies": "c=1"})
+    mocker.patch(f"{_MODULE}.ScraperPlatformAccountRotator", return_value=rotator)
+
+
 def _listing(id_: int, title: str = "Listing") -> dict[str, Any]:
     return {
         "id": id_,
@@ -383,9 +395,6 @@ async def test_scraper_constructs_detail_url_and_falls_back_to_title_phone(mocke
     fetcher = _FakeFetcher(pages)
 
     # No valid token → browser unmasking skipped; title phone is used.
-    mocker.patch(
-        f"{_MODULE}.get_default_credentials", return_value={"cookies": "c=1"}
-    )
 
     input_model = BatdongsanScrapeInput(
         listing_type="buy", city="SG", max_pages=1, max_items=1
@@ -415,9 +424,6 @@ async def test_scraper_resolves_phone_when_token_fresh(mocker):
     }]]
     fetcher = _FakeFetcher(pages)
 
-    mocker.patch(
-        f"{_MODULE}.get_default_credentials", return_value={"cookies": "c=1"}
-    )
     # Pretend the access token is still fresh so the browser path is attempted.
     mocker.patch(f"{_MODULE}._access_token_expires_at", return_value=2_000_000_000.0)
     mocker.patch(
@@ -448,9 +454,6 @@ async def test_scraper_extracts_phone_from_title_when_detail_fails(mocker):
     }]]
     fetcher = _FakeFetcher(pages)
 
-    mocker.patch(
-        f"{_MODULE}.get_default_credentials", return_value={"cookies": "c=1"}
-    )
     # Masked detail phone and no full phone; fallback should use title.
     mocker.patch(
         f"{_MODULE}.fetch_detail_phone",

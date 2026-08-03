@@ -62,6 +62,11 @@ class BatdongsanRateLimitedError(RuntimeError):
     """Raised when Batdongsan returns 429."""
 
 
+class BatdongsanAccountRestrictedError(RuntimeError):
+    """Raised when the authenticated account is blocked from viewing phones."""
+
+
+
 def _access_token_expires_at(credentials: dict[str, Any] | None) -> float | None:
     """Extract the ``exp`` claim from a Batdongsan JWT access token."""
     token = credentials.get("token") if credentials else None
@@ -179,14 +184,18 @@ def _extract_phone_from_xhr(phone_text: str, detail_url: str) -> str | None:
                 logger.warning(
                     "Batdongsan phone API refused for %s: %s", detail_url, message
                 )
-                return None
+                raise BatdongsanAccountRestrictedError(
+                    f"Account cannot view phone for {detail_url}: {message}"
+                )
             phone = payload.get("phone")
             if phone:
                 return str(phone).strip()
             return None
     if "USER_NO_PERMISSION" in text:
         logger.warning("Batdongsan phone API refused for %s: %s", detail_url, text)
-        return None
+        raise BatdongsanAccountRestrictedError(
+            f"Account cannot view phone for {detail_url}: {text}"
+        )
     return text
 
 
@@ -499,6 +508,10 @@ async def fetch_detail_phone(
             )
             return None, None
         return parse_detail_phone(html)
+    except (BatdongsanAccountRestrictedError, BatdongsanRateLimitedError):
+        # Account-level failures should be handled by the caller so it can
+        # rotate to another cookie and apply rate-limit cooldowns.
+        raise
     except Exception as exc:
         logger.warning("Batdongsan detail phone fetch %s failed: %s", detail_url, exc)
         return None, None

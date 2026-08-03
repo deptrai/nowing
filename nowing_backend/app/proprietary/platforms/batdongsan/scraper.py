@@ -10,11 +10,17 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.config import config
-from app.services.scraper_platform_account_service import get_default_credentials
+from app.db import async_session_maker
+from app.services.scraper_platform_account_service import (
+    RateLimit,
+    ScraperPlatformAccountRotator,
+    ScraperPlatformAccountService,
+)
 
 from .fetch import (
     AsyncStealthySession,
     BatdongsanAccessBlockedError,
+    BatdongsanAccountRestrictedError,
     BatdongsanDecodeError,
     BatdongsanRateLimitedError,
     _access_token_expires_at,
@@ -243,57 +249,106 @@ async def scrape_batdongsan(
                     )
 
             if AsyncStealthySession is not None:
-                credentials = await get_default_credentials("batdongsan")
-                # Only page-scan if construction left gaps (unknown city, etc.).
-                if any(item.detail_url is None for item in items):
-                    await resolve_detail_urls(
-                        input_model, items, credentials=credentials, web_fetch_fn=web_fetch_fn
+                async with async_session_maker() as session:
+                    service = ScraperPlatformAccountService(session)
+                    limit = RateLimit(
+                        requests_per_minute=config.BATDONGSAN_PHONE_RPM,
+                        burst=config.BATDONGSAN_PHONE_BURST,
+                        cooldown_seconds=config.BATDONGSAN_PHONE_COOLDOWN_S,
+                        max_consecutive_failures=config.BATDONGSAN_PHONE_MAX_CONSECUTIVE_FAILURES,
+                    )
+                    rotator = ScraperPlatformAccountRotator(service, "batdongsan", limit)
+
+                    # Grab one account for the (rare) web-listing resolver.
+                    _web_account, web_credentials = await rotator.get_credentials(
+                        wait=False, timeout=5.0
                     )
 
-                token_exp = _access_token_expires_at(credentials)
-                token_fresh = token_exp is not None and token_exp - time.time() > 60
-                if token_exp is not None and not token_fresh:
-                    logger.warning(
-                        "Batdongsan access token expired; phone unmasking skipped, "
-                        "falling back to title extraction"
-                    )
+                    # Only page-scan if construction left gaps (unknown city, etc.).
+                    if any(item.detail_url is None for item in items):
+                        await resolve_detail_urls(
+                            input_model,
+                            items,
+                            credentials=web_credentials,
+                            web_fetch_fn=web_fetch_fn,
+                        )
 
-                semaphore = asyncio.Semaphore(_MAX_PHONE_CONCURRENCY)
+                    semaphore = asyncio.Semaphore(_MAX_PHONE_CONCURRENCY)
 
-                async def _resolve_phone(item: BatdongsanListing) -> None:
-                    if not item.detail_url:
-                        return
+                    async def _resolve_phone(item: BatdongsanListing) -> None:
+                        if not item.detail_url:
+                            return
 
-                    phone: str | None = None
-                    phone_display: str | None = None
+                        phone: str | None = None
+                        phone_display: str | None = None
 
-                    # With an expired token the detail-page XHR cannot decrypt
-                    # the phone, so avoid the expensive browser round-trip and
-                    # rely on the title fallback.
-                    if token_fresh:
-                        async with semaphore:
-                            try:
-                                async with asyncio.timeout(_PHONE_RESOLVE_TIMEOUT_S):
-                                    phone, phone_display = await fetch_detail_phone(
-                                        item.detail_url, credentials=credentials
-                                    )
-                            except TimeoutError:
+                        account, credentials = await rotator.get_credentials(
+                            wait=True, timeout=60.0
+                        )
+                        if not credentials:
+                            logger.warning(
+                                "No batdongsan account available for phone resolve; "
+                                "falling back to title extraction"
+                            )
+                        else:
+                            token_exp = _access_token_expires_at(credentials)
+                            token_fresh = (
+                                token_exp is not None and token_exp - time.time() > 60
+                            )
+                            if token_exp is not None and not token_fresh:
                                 logger.warning(
-                                    "Batdongsan phone resolve timed out for %s", item.detail_url
+                                    "Batdongsan access token expired; phone unmasking skipped"
                                 )
 
-                    if phone:
-                        item.phone = phone
-                        item.phone_display = phone
-                    elif phone_display:
-                        item.phone_display = phone_display
-                    if not item.phone and item.title:
-                        title_phone = extract_phone_from_title(item.title)
-                        if title_phone:
-                            item.phone = title_phone
-                            item.phone_display = title_phone
+                            if token_fresh:
+                                async with semaphore:
+                                    try:
+                                        async with asyncio.timeout(_PHONE_RESOLVE_TIMEOUT_S):
+                                            phone, phone_display = await fetch_detail_phone(
+                                                item.detail_url, credentials=credentials
+                                            )
+                                        await rotator.record_use(account, success=True)
+                                    except TimeoutError:
+                                        logger.warning(
+                                            "Batdongsan phone resolve timed out for %s",
+                                            item.detail_url,
+                                        )
+                                        await rotator.record_use(account, success=False)
+                                    except BatdongsanAccountRestrictedError as exc:
+                                        logger.warning(
+                                            "Batdongsan account restricted for %s: %s",
+                                            item.detail_url,
+                                            exc,
+                                        )
+                                        await rotator.record_use(
+                                            account, success=False, error_type="restricted"
+                                        )
+                                    except BatdongsanRateLimitedError:
+                                        logger.warning(
+                                            "Batdongsan rate limited for %s", item.detail_url
+                                        )
+                                        await rotator.record_use(
+                                            account, success=False, error_type="rate_limited"
+                                        )
+                                    except Exception:
+                                        logger.exception(
+                                            "Batdongsan phone resolve failed for %s",
+                                            item.detail_url,
+                                        )
+                                        await rotator.record_use(account, success=False)
 
-                await asyncio.gather(*(_resolve_phone(item) for item in items))
+                        if phone:
+                            item.phone = phone
+                            item.phone_display = phone
+                        elif phone_display:
+                            item.phone_display = phone_display
+                        if not item.phone and item.title:
+                            title_phone = extract_phone_from_title(item.title)
+                            if title_phone:
+                                item.phone = title_phone
+                                item.phone_display = title_phone
+
+                    await asyncio.gather(*(_resolve_phone(item) for item in items))
         except Exception:
             logger.exception("batdongsan detail/phone resolution failed")
 
