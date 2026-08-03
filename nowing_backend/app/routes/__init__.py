@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 import app.capabilities.amazon
 import app.capabilities.batdongsan
 import app.capabilities.chainlens
+import app.capabilities.chotot
 import app.capabilities.google_maps
 import app.capabilities.google_search
 import app.capabilities.instagram

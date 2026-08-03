@@ -47,6 +47,7 @@ _PLATFORM_RATE_KEYS: dict[BillingUnit, str] = {
     BillingUnit.TIKTOK_COMMENT: "TIKTOK_MICROS_PER_COMMENT",
     BillingUnit.CHAINLENS_QUERY: "CHAINLENS_QUERY_MICROS_PER_CALL",
     BillingUnit.BATDONGSAN_ITEM: "BATDONGSAN_SCRAPE_MICROS_PER_ITEM",
+    BillingUnit.CHOTOT_BDS_ITEM: "CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM",
 }
 
 
@@ -71,6 +72,7 @@ _UNIT_NOUNS: dict[BillingUnit, str] = {
     BillingUnit.TIKTOK_COMMENT: "comment",
     BillingUnit.CHAINLENS_QUERY: "query",
     BillingUnit.BATDONGSAN_ITEM: "listing",
+    BillingUnit.CHOTOT_BDS_ITEM: "listing",
 }
 
 

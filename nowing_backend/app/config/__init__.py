@@ -900,6 +900,17 @@ class Config:
     BATDONGSAN_RETRY_BACKOFF_BASE_S = float(
         os.getenv("BATDONGSAN_RETRY_BACKOFF_BASE_S", "0.5")
     )
+    # Chợ Tốt Nhà uses a public JSON gateway, similar cost to Batdongsan.
+    CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM = int(
+        os.getenv("CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM", "3500")
+    )
+    CHOTOT_BDS_PAGE_DELAY_S = float(os.getenv("CHOTOT_BDS_PAGE_DELAY_S", "0.5"))
+    CHOTOT_BDS_RETRY_BACKOFF_BASE_S = float(
+        os.getenv("CHOTOT_BDS_RETRY_BACKOFF_BASE_S", "0.5")
+    )
+    # rate sits above the API-backed Batdongsan/Chotot rates.
+    )
+    )
     # Browser-driven listings make TikTok heavier per item than the API-backed
     # video meter, so it sits a touch above YouTube's video rate.
     TIKTOK_MICROS_PER_VIDEO = int(os.getenv("TIKTOK_MICROS_PER_VIDEO", "3500"))
@@ -940,7 +951,9 @@ class Config:
     # "quality" is the old default and remains an explicit opt-in.
     _default_mode = os.getenv("DEFAULT_RESEARCH_MODE", "balanced").strip().lower()
     DEFAULT_RESEARCH_MODE = (
-        _default_mode if _default_mode in {"speed", "balanced", "quality", "auto"} else "balanced"
+        _default_mode
+        if _default_mode in {"speed", "balanced", "quality", "auto"}
+        else "balanced"
     )
     # State B: enable synchronous chat-mode deep research (inline agent/REST).
     # While disabled (State A), chainlens.research is always async.

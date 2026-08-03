@@ -21,6 +21,9 @@ from app.agents.chat.multi_agent_chat.subagents.builtins.batdongsan.agent import
 from app.agents.chat.multi_agent_chat.subagents.builtins.chainlens.agent import (
     build_subagent as build_chainlens_subagent,
 )
+from app.agents.chat.multi_agent_chat.subagents.builtins.chotot_bds.agent import (
+    build_subagent as build_chotot_bds_subagent,
+)
 from app.agents.chat.multi_agent_chat.subagents.builtins.deliverables.agent import (
     build_subagent as build_deliverables_subagent,
 )
@@ -41,6 +44,7 @@ from app.agents.chat.multi_agent_chat.subagents.builtins.mcp_discovery.agent imp
 )
 from app.agents.chat.multi_agent_chat.subagents.builtins.memory.agent import (
     build_subagent as build_memory_subagent,
+)
 )
 from app.agents.chat.multi_agent_chat.subagents.builtins.reddit.agent import (
     build_subagent as build_reddit_subagent,
@@ -91,6 +95,7 @@ class SubagentBuilder(Protocol):
 SUBAGENT_BUILDERS_BY_NAME: dict[str, SubagentBuilder] = {
     "amazon": build_amazon_subagent,
     "batdongsan": build_batdongsan_subagent,
+    "chotot_bds": build_chotot_bds_subagent,
     "chainlens": build_chainlens_subagent,
     "deliverables": build_deliverables_subagent,
     "dropbox": build_dropbox_subagent,
