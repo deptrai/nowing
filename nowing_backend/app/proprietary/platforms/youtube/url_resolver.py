@@ -13,6 +13,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 ResolvedKind = Literal["video", "channel", "playlist", "hashtag", "search"]
 
+_YOUTUBE_HOSTS = frozenset({"www.youtube.com", "youtube.com", "m.youtube.com"})
+
 _PLAYLIST_ID_RE = re.compile(r"[?&]list=([\w-]+)")
 
 
@@ -42,15 +44,19 @@ def resolve_url(url: str) -> ResolvedUrl | None:
     """Classify a YouTube URL into a scrape job, or ``None`` if unrecognized."""
     parsed = urlparse(url)
     path = parsed.path or ""
+    hostname = parsed.hostname or ""
 
-    # Shorts are videos with their own path.
-    if "/shorts/" in path:
-        vid = path.split("/shorts/")[1].split("/")[0]
-        return ResolvedUrl("video", vid, url) if vid else None
-
+    # Videos (watch / youtu.be / embed / v / shorts). get_youtube_video_id
+    # already restricts video extraction to youtu.be + the three YouTube hosts.
     video_id = get_youtube_video_id(url)
     if video_id:
         return ResolvedUrl("video", video_id, url)
+
+    # Host-spoofing guard (Story 2.9 AC-5): a YouTube-shaped path on a
+    # non-YouTube host (e.g. https://evil.com/@handle) is NOT a YouTube page
+    # and must not be classified as channel / playlist / search / hashtag.
+    if hostname not in _YOUTUBE_HOSTS:
+        return None
 
     # Playlist (either a /playlist page or any URL carrying ?list=).
     playlist_match = _PLAYLIST_ID_RE.search(url)

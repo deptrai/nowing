@@ -40,3 +40,8 @@ def test_error_items_are_not_billable():
     )
 
     assert output.billable_units == 1
+
+
+def test_rejects_malformed_urls():
+    with pytest.raises(ValidationError):
+        ScrapeInput(urls=["not-a-url", "https://www.amazon.com/dp/B09V3KXJPB"])

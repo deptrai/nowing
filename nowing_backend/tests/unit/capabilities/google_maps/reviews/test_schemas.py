@@ -33,3 +33,8 @@ def test_rejects_more_sources_than_the_cap():
     too_many = [f"ChIJ{i}" for i in range(MAX_MAPS_REVIEW_SOURCES + 1)]
     with pytest.raises(ValidationError):
         ReviewsInput(place_ids=too_many)
+
+
+def test_rejects_malformed_urls():
+    with pytest.raises(ValidationError):
+        ReviewsInput(urls=["not-a-url"])

@@ -10,6 +10,8 @@ import {
 	AuthorizationError,
 	NetworkError,
 	NotFoundError,
+	ValidationError,
+	type ValidationFieldError,
 } from "../error";
 
 enum ResponseType {
@@ -164,6 +166,17 @@ class BaseApiService {
 				const requestId: string | undefined =
 					envelope?.request_id ?? response.headers.get("X-Request-ID") ?? undefined;
 				const reportUrl: string | undefined = envelope?.report_url;
+				const fields: ValidationFieldError[] | undefined = Array.isArray(envelope?.fields)
+					? envelope.fields.filter((item: unknown): item is ValidationFieldError => {
+							if (typeof item !== "object" || item === null) return false;
+							const { loc, msg } = item as { loc?: unknown; msg?: unknown };
+							return (
+								Array.isArray(loc) &&
+								loc.every((part) => typeof part === "string" || typeof part === "number") &&
+								typeof msg === "string"
+							);
+						})
+					: undefined;
 
 				// Handle 401 - try to refresh token first (only once)
 				if (response.status === 401) {
@@ -207,6 +220,13 @@ class BaseApiService {
 							errorMessage || "Resource not found",
 							response.status,
 							response.statusText
+						);
+					case 422:
+						throw new ValidationError(
+							errorMessage || "Invalid request",
+							response.status,
+							response.statusText,
+							fields
 						);
 					default:
 						throw new AppError(
@@ -286,7 +306,9 @@ class BaseApiService {
 			}
 
 			console.error("Request failed:", JSON.stringify(error));
-			if (!(error instanceof AuthenticationError)) {
+			const isClientError =
+				error instanceof AppError && error.status !== undefined && error.status < 500;
+			if (!(error instanceof AuthenticationError) && !isClientError) {
 				import("posthog-js")
 					.then(({ default: posthog }) => {
 						posthog.captureException(error, {

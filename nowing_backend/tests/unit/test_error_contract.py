@@ -14,8 +14,10 @@ import json
 
 import pytest
 from fastapi import HTTPException
+from pydantic import BaseModel, Field
 from starlette.testclient import TestClient
 
+from app.capabilities.core.validation import HttpUrlStr
 from app.exceptions import (
     GENERIC_5XX_MESSAGE,
     ISSUES_URL,
@@ -32,6 +34,21 @@ from app.exceptions import (
 pytestmark = pytest.mark.unit
 
 
+# NOTE: models must live at module level — with ``from __future__ import
+# annotations`` FastAPI resolves body annotations via module globals, so a
+# class defined only inside ``_make_test_app`` would be treated as a query
+# param (harness bug found during Story 2.9 red-phase).
+
+
+class _Item(BaseModel):
+    name: str = Field(min_length=1)
+    count: int
+
+
+class _ScrapeBody(BaseModel):
+    urls: list[HttpUrlStr]
+
+
 # ---------------------------------------------------------------------------
 # Helpers - lightweight FastAPI app that re-uses the real global handlers
 # ---------------------------------------------------------------------------
@@ -41,7 +58,6 @@ def _make_test_app():
     """Build a minimal FastAPI app with the same handlers as the real one."""
     from fastapi import FastAPI
     from fastapi.exceptions import RequestValidationError
-    from pydantic import BaseModel
 
     from app.app import (
         RequestIDMiddleware,
@@ -116,13 +132,13 @@ def _make_test_app():
     async def raise_unhandled():
         raise RuntimeError("should never reach the client")
 
-    class Item(BaseModel):
-        name: str
-        count: int
-
     @app.post("/validated")
-    async def validated(item: Item):
+    async def validated(item: _Item):
         return item.model_dump()
+
+    @app.post("/scrape")
+    async def scrape(body: _ScrapeBody):
+        return body.model_dump()
 
     return app
 
@@ -276,6 +292,61 @@ class TestValidationErrorHandler:
         resp = client.post("/validated", json={"name": "test", "count": "not-a-number"})
         body = _assert_envelope(resp, 422)
         assert body["error"]["code"] == "VALIDATION_ERROR"
+
+    # --- AC-2: structured error.fields array ---------------------------------
+
+    def test_422_includes_error_fields_array(self, client):
+        resp = client.post("/scrape", json={"urls": ["not-a-url"]})
+        body = _assert_envelope(resp, 422)
+        fields = body["error"].get("fields")
+        assert isinstance(fields, list) and len(fields) == 1
+        item = fields[0]
+        assert set(item.keys()) == {"loc", "msg"}
+        assert isinstance(item["loc"], list)
+        assert isinstance(item["msg"], str) and len(item["msg"]) > 0
+
+    def test_error_fields_loc_starts_at_field_not_body(self, client):
+        # "body" root prefix must not leak into loc paths or the message summary.
+        resp = client.post("/scrape", json={"urls": ["not-a-url"]})
+        body = _assert_envelope(resp, 422)
+        fields = body["error"]["fields"]
+        assert fields[0]["loc"][0] == "urls"
+        assert "body" not in body["error"]["message"].lower()
+
+    def test_error_fields_reports_multiple_invalid_fields(self, client):
+        resp = client.post("/validated", json={"name": "", "count": "x"})
+        body = _assert_envelope(resp, 422)
+        fields = body["error"]["fields"]
+        assert len(fields) == 2
+        assert {"name", "count"} == {f["loc"][0] for f in fields}
+
+    def test_error_fields_list_index_loc_preserved(self, client):
+        # ["urls", 1] style list-index loc survives into the envelope.
+        resp = client.post("/scrape", json={"urls": ["https://example.com", "bad"]})
+        body = _assert_envelope(resp, 422)
+        fields = body["error"]["fields"]
+        assert fields[0]["loc"] == ["urls", 1]
+
+    def test_error_fields_non_list_body_still_422(self, client):
+        # null / non-object body must not crash the handler.
+        resp = client.post("/scrape", json=None)
+        body = _assert_envelope(resp, 422)
+        assert body["error"]["code"] == "VALIDATION_ERROR"
+
+    def test_validation_error_with_zero_errors_has_fallback_message(self, client):
+        # Over-mocking guard: empty exc.errors() -> no crash, generic message.
+        from fastapi import Request
+        from fastapi.exceptions import RequestValidationError
+
+        from app.app import _validation_error_handler
+
+        request = Request(
+            {"type": "http", "method": "POST", "path": "/scrape", "headers": []}
+        )
+        resp = _validation_error_handler(request, RequestValidationError(errors=[]))
+        body = json.loads(resp.body)
+        assert body["error"]["code"] == "VALIDATION_ERROR"
+        assert body["error"]["message"] == "Validation failed."
 
 
 # ---------------------------------------------------------------------------

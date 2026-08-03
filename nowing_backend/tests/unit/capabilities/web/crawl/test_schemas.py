@@ -67,3 +67,8 @@ def test_captcha_counters_are_excluded_from_the_wire_shape() -> None:
     dumped = out.model_dump()
     assert "captcha_attempts" not in dumped
     assert "captcha_solved" not in dumped
+
+
+def test_rejects_malformed_start_urls():
+    with pytest.raises(ValidationError):
+        CrawlInput(startUrls=["not-a-url"])

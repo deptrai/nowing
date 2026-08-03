@@ -33,3 +33,8 @@ def test_defaults_max_comments_and_newest_first():
 def test_rejects_zero_max_comments():
     with pytest.raises(ValidationError):
         CommentsInput(urls=["https://youtu.be/abc"], max_comments=0)
+
+
+def test_rejects_malformed_urls():
+    with pytest.raises(ValidationError):
+        CommentsInput(urls=["not-a-url"])

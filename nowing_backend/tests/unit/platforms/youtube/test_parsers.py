@@ -950,6 +950,52 @@ def test_resolve_url_unrecognized():
     assert resolve_url("https://example.com/foo") is None
 
 
+# --- host-spoofing guard (Story 2.9 AC-5) ------------------------------------
+# A well-formed non-YouTube URL with a YouTube-shaped path must NOT be
+# misclassified as a channel / playlist / search / hashtag / video.
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://evil.com/@handle",
+        "https://evil.com/shorts/abc123",
+        "https://evil.com/playlist?list=PL123",
+        "https://evil.com/results?search_query=scraping",
+        "https://evil.com/hashtag/tech",
+        "https://evil.com/watch?v=abc123",
+        "https://evil.com/channel/UC123",
+        "https://evil.com/c/Name",
+        "https://evil.com/user/Name",
+        "https://evil.com/videos?list=PL123",
+        "https://notyoutube.com/@handle",
+    ],
+)
+def test_resolve_url_rejects_youtube_shaped_paths_on_non_youtube_hosts(url):
+    assert resolve_url(url) is None
+
+
+@pytest.mark.parametrize(
+    "url,kind,value",
+    [
+        ("https://youtu.be/abc123", "video", "abc123"),
+        ("https://m.youtube.com/watch?v=abc123", "video", "abc123"),
+        ("https://www.youtube.com/@Apify", "channel", "Apify"),
+        ("https://youtube.com/@Apify", "channel", "Apify"),
+    ],
+)
+def test_resolve_url_keeps_youtube_host_variants_working(url, kind, value):
+    resolved = resolve_url(url)
+    assert resolved is not None
+    assert resolved.kind == kind
+    assert resolved.value == value
+
+
+def test_resolve_url_handles_missing_hostname():
+    # Over-mocking guard: no hostname must not crash — returns None.
+    assert resolve_url("/watch?v=abc123") is None
+
+
 # --- optional: exercise captured real fixtures if present --------------------
 
 

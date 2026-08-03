@@ -46,3 +46,8 @@ def test_error_items_are_not_billed():
     )
     assert len(out.items) == 2
     assert out.billable_units == 1
+
+
+def test_rejects_malformed_video_urls():
+    with pytest.raises(ValidationError):
+        CommentsInput(video_urls=["not-a-url"])

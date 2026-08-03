@@ -56,3 +56,8 @@ def test_error_items_are_not_billed():
     )
     assert len(out.items) == 2
     assert out.billable_units == 1
+
+
+def test_rejects_malformed_urls():
+    with pytest.raises(ValidationError):
+        ScrapeInput(urls=["not-a-url"])

@@ -12,6 +12,7 @@ import { useScraperCapabilities } from "@/hooks/use-scraper-capabilities";
 import { scrapersApiService } from "@/lib/apis/scrapers-api.service";
 import { AppError } from "@/lib/error";
 import { findVerb } from "@/lib/playground/catalog";
+import { fieldErrorsFromError } from "@/lib/playground/field-errors";
 import { formatCost, formatDuration, formatPricing } from "@/lib/playground/format";
 import { buildPayload, initialFormValues, parseSchemaFields } from "@/lib/playground/json-schema";
 import {
@@ -19,6 +20,7 @@ import {
 	getAmazonFieldOptions,
 	hasAmazonFranceValue,
 } from "@/lib/playground/platform-overrides/amazon";
+import { urlFieldWarnings } from "@/lib/playground/url-hints";
 import { ApiReference } from "./api-reference";
 import { OutputViewer } from "./output-viewer";
 import { RunProgressPanel } from "./run-progress-panel";
@@ -123,6 +125,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 	const fields = useMemo(() => parseSchemaFields(capability?.input_schema), [capability]);
 
 	const [values, setValues] = useState<Record<string, unknown>>({});
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 	const run = useRunStream(workspaceId);
 	const isRunning = run.status === "running";
 	const previousStatusRef = useRef(run.status);
@@ -164,10 +167,17 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 
 	const handleChange = (name: string, value: unknown) => {
 		setValues((prev) => ({ ...prev, [name]: value }));
+		setFieldErrors((prev) => {
+			if (!prev[name]) return prev;
+			const next = { ...prev };
+			delete next[name];
+			return next;
+		});
 	};
 
 	const handleRun = useCallback(() => {
 		const payload = buildPayload(fields, values);
+		setFieldErrors({});
 		void run.start(platform, verb, payload);
 	}, [fields, values, platform, verb, run]);
 
@@ -175,6 +185,7 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 		() => (run.detail ? parseJsonlOutput(run.detail.output_text) : null),
 		[run.detail]
 	);
+	const fieldWarnings = useMemo(() => urlFieldWarnings(platform, values), [platform, values]);
 	const endpoint = `POST /workspaces/${workspaceId}/scrapers/${platform}/${verb}`;
 	const isAmazonScrape = platform === "amazon" && verb === "scrape";
 	const hasAmazonFranceUrl = useMemo(() => hasAmazonFranceValue(values), [values]);
@@ -197,6 +208,11 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 			const key = `${run.runId ?? "run"}:error`;
 			if (notifiedRunRef.current === key) return;
 			notifiedRunRef.current = key;
+			const fieldErrors = fieldErrorsFromError(run.error);
+			if (Object.keys(fieldErrors).length > 0) {
+				setFieldErrors(fieldErrors);
+				return;
+			}
 			toast.error(getRunErrorMessage(run.error));
 		}
 	}, [run.status, run.runId, run.error]);
@@ -268,6 +284,8 @@ export function PlaygroundRunner({ workspaceId, platform, verb }: PlaygroundRunn
 						onChange={handleChange}
 						disabled={isRunning}
 						getFieldOptions={isAmazonScrape ? getAmazonFieldOptions : undefined}
+						fieldErrors={fieldErrors}
+						fieldWarnings={fieldWarnings}
 					/>
 					{isAmazonScrape ? <AmazonMarketplaceHint showFranceWarning={hasAmazonFranceUrl} /> : null}
 

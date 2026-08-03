@@ -74,3 +74,4 @@ class Capability:
     billing_unit: BillingUnit | None
     docs_url: str | None = None
     context_aware: bool = False
+    namespace: str | None = None

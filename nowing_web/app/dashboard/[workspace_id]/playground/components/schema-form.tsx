@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,8 @@ interface SchemaFormProps {
 	getFieldOptions?: FieldOptionsResolver;
 	/** Field names flagged by a 422 response, shown with error styling. */
 	fieldErrors?: Record<string, string>;
+	/** Non-blocking hints (e.g. host mismatch), shown when no error is present. */
+	fieldWarnings?: Record<string, string>;
 }
 
 function FieldControl({
@@ -147,6 +149,7 @@ function FieldRow({
 	onChange,
 	disabled,
 	error,
+	warning,
 	options,
 }: {
 	field: FormField;
@@ -154,6 +157,7 @@ function FieldRow({
 	onChange: (value: unknown) => void;
 	disabled?: boolean;
 	error?: string;
+	warning?: string;
 	options?: FieldOption[];
 }) {
 	return (
@@ -178,7 +182,11 @@ function FieldRow({
 				invalid={!!error}
 				options={options}
 			/>
-			{error && <p className="text-xs text-destructive">{error}</p>}
+			{error ? (
+				<p className="text-xs text-destructive">{error}</p>
+			) : warning ? (
+				<p className="text-xs text-amber-500">{warning}</p>
+			) : null}
 		</div>
 	);
 }
@@ -190,6 +198,7 @@ export function SchemaForm({
 	disabled,
 	getFieldOptions,
 	fieldErrors,
+	fieldWarnings,
 }: SchemaFormProps) {
 	const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -198,6 +207,23 @@ export function SchemaForm({
 		const advancedFields = fields.filter((f) => !f.required);
 		return { primary: primaryFields, advanced: advancedFields };
 	}, [fields]);
+
+	const errorFieldNames = useMemo(() => new Set(Object.keys(fieldErrors ?? {})), [fieldErrors]);
+
+	// Auto-expand Advanced and focus the first field with an error so inline
+	// errors are visible right after a failed run.
+	useEffect(() => {
+		if (errorFieldNames.size === 0) return;
+		const first = [...primary, ...advanced].find((field) => errorFieldNames.has(field.name));
+		if (!first) return;
+		if (!showAdvanced && advanced.some((field) => field.name === first.name)) {
+			setShowAdvanced(true);
+		}
+		const timer = setTimeout(() => {
+			document.getElementById(`field-${first.name}`)?.focus();
+		}, 0);
+		return () => clearTimeout(timer);
+	}, [errorFieldNames, primary, advanced, showAdvanced]);
 
 	return (
 		<div className="space-y-5">
@@ -209,6 +235,7 @@ export function SchemaForm({
 					onChange={(value) => onChange(field.name, value)}
 					disabled={disabled}
 					error={fieldErrors?.[field.name]}
+					warning={fieldWarnings?.[field.name]}
 					options={getFieldOptions?.(field)}
 				/>
 			))}
@@ -239,6 +266,7 @@ export function SchemaForm({
 									onChange={(value) => onChange(field.name, value)}
 									disabled={disabled}
 									error={fieldErrors?.[field.name]}
+									warning={fieldWarnings?.[field.name]}
 									options={getFieldOptions?.(field)}
 								/>
 							))}

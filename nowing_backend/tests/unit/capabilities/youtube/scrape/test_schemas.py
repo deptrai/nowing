@@ -38,3 +38,8 @@ def test_rejects_more_sources_than_the_cap():
     too_many = [f"https://youtu.be/{i}" for i in range(MAX_YOUTUBE_SOURCES + 1)]
     with pytest.raises(ValidationError):
         ScrapeInput(urls=too_many)
+
+
+def test_rejects_malformed_urls():
+    with pytest.raises(ValidationError):
+        ScrapeInput(urls=["not-a-url"])

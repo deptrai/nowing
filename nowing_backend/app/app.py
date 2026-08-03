@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 import redis
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
@@ -98,17 +99,21 @@ def _build_error_response(
     code: str = "INTERNAL_ERROR",
     request_id: str = "",
     extra_headers: dict[str, str] | None = None,
+    fields: list[dict[str, Any]] | None = None,
 ) -> JSONResponse:
     """Build the standardized error envelope (new ``error`` + legacy ``detail``)."""
+    error = {
+        "code": code,
+        "message": message,
+        "status": status_code,
+        "request_id": request_id,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "report_url": ISSUES_URL,
+    }
+    if fields:
+        error["fields"] = fields
     body = {
-        "error": {
-            "code": code,
-            "message": message,
-            "status": status_code,
-            "request_id": request_id,
-            "timestamp": datetime.now(UTC).isoformat(),
-            "report_url": ISSUES_URL,
-        },
+        "error": error,
         "detail": message,
     }
     headers = {"X-Request-ID": request_id}
@@ -228,14 +233,30 @@ def _validation_error_handler(
 ) -> JSONResponse:
     """Return 422 with field-level detail in the standard envelope."""
     rid = _get_request_id(request)
-    fields = []
+    fields: list[dict[str, Any]] = []
+    summaries: list[str] = []
     for err in exc.errors():
-        loc = " -> ".join(str(part) for part in err.get("loc", []))
-        fields.append(f"{loc}: {err.get('msg', 'invalid')}")
+        # Drop the "body" root from loc paths: clients map fields relative to
+        # the request body, and the message summary must not leak the prefix.
+        loc = list(err.get("loc", []))
+        if loc and loc[0] == "body":
+            loc = loc[1:]
+        fields.append({"loc": loc, "msg": err.get("msg", "invalid")})
+        if loc:
+            path = " -> ".join(str(part) for part in loc)
+            summaries.append(f"{path}: {err.get('msg', 'invalid')}")
     message = (
-        f"Validation failed: {'; '.join(fields)}" if fields else "Validation failed."
+        f"Validation failed: {'; '.join(summaries)}"
+        if summaries
+        else "Validation failed."
     )
-    return _build_error_response(422, message, code="VALIDATION_ERROR", request_id=rid)
+    return _build_error_response(
+        422,
+        message,
+        code="VALIDATION_ERROR",
+        request_id=rid,
+        fields=fields,
+    )
 
 
 def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:

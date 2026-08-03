@@ -1,18 +1,25 @@
 export const NOWING_ISSUES_URL = "https://github.com/deptrai/nowing/issues";
 
+export interface ValidationFieldError {
+	loc: (string | number)[];
+	msg: string;
+}
+
 export class AppError extends Error {
 	status?: number;
 	statusText?: string;
 	code?: string;
 	requestId?: string;
 	reportUrl?: string;
+	fields?: ValidationFieldError[];
 	constructor(
 		message: string,
 		status?: number,
 		statusText?: string,
 		code?: string,
 		requestId?: string,
-		reportUrl?: string
+		reportUrl?: string,
+		fields?: ValidationFieldError[]
 	) {
 		super(message);
 		this.name = this.constructor.name;
@@ -21,6 +28,7 @@ export class AppError extends Error {
 		this.code = code;
 		this.requestId = requestId;
 		this.reportUrl = reportUrl ?? NOWING_ISSUES_URL;
+		this.fields = fields;
 	}
 }
 
@@ -37,8 +45,13 @@ export class AbortedError extends AppError {
 }
 
 export class ValidationError extends AppError {
-	constructor(message: string, status?: number, statusText?: string) {
-		super(message, status, statusText, "VALIDATION_ERROR");
+	constructor(
+		message: string,
+		status?: number,
+		statusText?: string,
+		fields?: ValidationFieldError[]
+	) {
+		super(message, status, statusText, "VALIDATION_ERROR", undefined, undefined, fields);
 	}
 }
 
