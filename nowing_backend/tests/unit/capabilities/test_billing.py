@@ -878,6 +878,49 @@ async def test_chainlens_engine_unavailable_with_content_charges_fallback(
     assert kwargs["call_details"]["cost_basis"] == "fallback"
 
 
+async def test_chainlens_charge_records_full_pipeline_telemetry(
+    monkeypatch, record_usage
+):
+    """call_details captures chainlens, KB fallback, and total cost breakdown."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = ResearchOutput(
+        answer="Answer",
+        status="complete",
+        cost_micros=12_300,
+        cost_basis="actual",
+        resolved_mode="balanced",
+        kb_fallback_duration_ms=45,
+        kb_fallback_embedding_tokens=7,
+        kb_fallback_embedding_cost_micros=0,
+        kb_fallback_embedding_cost_basis="local",
+        kb_fallback_search_cost_micros=0,
+        fallback_hit_count=3,
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 12_300
+    record_usage.assert_awaited_once()
+    kwargs = record_usage.await_args.kwargs
+    details = kwargs["call_details"]
+    assert details["chainlens_cost_micros"] == 12_300
+    assert details["chainlens_cost_basis"] == "actual"
+    assert details["kb_fallback_duration_ms"] == 45
+    assert details["kb_fallback_embedding_tokens"] == 7
+    assert details["kb_fallback_embedding_cost_micros"] == 0
+    assert details["kb_fallback_embedding_cost_basis"] == "local"
+    assert details["kb_fallback_search_cost_micros"] == 0
+    assert details["total_cost_micros"] == 12_300
+    assert details["fallback_hit_count"] == 3
+    assert details["cost_dollars"] == 0.0123
+
+
 async def test_chainlens_charge_records_exact_cost_dollars(monkeypatch, record_usage):
     """call_details cost_dollars must round-trip from cost_micros exactly."""
     from app.capabilities.chainlens.research.schemas import ResearchOutput

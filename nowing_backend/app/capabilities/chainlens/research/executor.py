@@ -212,7 +212,9 @@ class _SSEParser:
             and not self.saw_engine_first_token
         ):
             self.saw_first_token = True
-            self.first_token_time_ms = int((time.perf_counter() - self.start_time) * 1000)
+            self.first_token_time_ms = int(
+                (time.perf_counter() - self.start_time) * 1000
+            )
             emit_progress(
                 "first_token",
                 message="First token received",
@@ -374,16 +376,12 @@ class _SSEParser:
                 or self.request_accepted_at
             )
             self.first_progress_at = (
-                _parse_engine_ts(event.get("firstProgressAt"))
-                or self.first_progress_at
+                _parse_engine_ts(event.get("firstProgressAt")) or self.first_progress_at
             )
             self.evidence_ready_at = (
-                _parse_engine_ts(event.get("evidenceReadyAt"))
-                or self.evidence_ready_at
+                _parse_engine_ts(event.get("evidenceReadyAt")) or self.evidence_ready_at
             )
-            first_factual_chunk_at = _parse_engine_ts(
-                event.get("firstFactualChunkAt")
-            )
+            first_factual_chunk_at = _parse_engine_ts(event.get("firstFactualChunkAt"))
             if first_factual_chunk_at is not None:
                 self.first_factual_chunk_at = first_factual_chunk_at
                 self._record_first_token()
@@ -398,8 +396,7 @@ class _SSEParser:
 
         if event_type == "evidence_ready":
             self.evidence_ready_at = (
-                _parse_engine_ts(event.get("evidenceReadyAt"))
-                or self.evidence_ready_at
+                _parse_engine_ts(event.get("evidenceReadyAt")) or self.evidence_ready_at
             )
             emit_progress(
                 "evidence_ready",
@@ -476,7 +473,9 @@ class _SSEParser:
             or self.resolved_mode
         )
 
-        estimated = (usage.get("estimated") if usage else None) or event.get("estimated")
+        estimated = (usage.get("estimated") if usage else None) or event.get(
+            "estimated"
+        )
         self.estimated = estimated if isinstance(estimated, bool) else None
 
         tokens = (usage.get("tokens") if usage else None) or event.get("tokens")
@@ -640,20 +639,41 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
             json=body,
         ) as response,
     ):
-            if response.status_code == 401:
-                return _engine_unavailable("auth_failed")
-            if response.status_code == 403:
-                return _engine_unavailable("auth_failed")
-            if response.status_code == 429:
-                return _engine_unavailable("rate_limited")
-            if response.status_code >= 500:
-                return _engine_unavailable("upstream_error")
-            if response.status_code >= 400:
-                return _engine_unavailable("upstream_error")
-            if response.status_code != 200:
-                return _engine_unavailable("upstream_error")
+        if response.status_code == 401:
+            return _engine_unavailable("auth_failed")
+        if response.status_code == 403:
+            return _engine_unavailable("auth_failed")
+        if response.status_code == 429:
+            return _engine_unavailable("rate_limited")
+        if response.status_code >= 500:
+            return _engine_unavailable("upstream_error")
+        if response.status_code >= 400:
+            return _engine_unavailable("upstream_error")
+        if response.status_code != 200:
+            return _engine_unavailable("upstream_error")
 
-            return await _parse_sse(response.aiter_lines(), start_time=start_time)
+        return await _parse_sse(response.aiter_lines(), start_time=start_time)
+
+
+def _embedding_token_count(query: str) -> int | None:
+    """Best-effort token count for the query-embedding call.
+
+    Local sentence-transformer models report token counts via ``count_tokens``
+    when available. Cloud embedding models may not expose this; fall back to
+    None and record cost as ``n/a``. The cost of the local call is treated as
+    zero infra; cloud calls would be metered by the provider and added here.
+    """
+    inst = getattr(config, "embedding_model_instance", None)
+    if inst is None:
+        return None
+    count_fn = getattr(inst, "count_tokens", None)
+    if count_fn is None:
+        return None
+    try:
+        return int(count_fn(query))
+    except Exception:
+        logger.debug("embedding_model.count_tokens failed for telemetry")
+        return None
 
 
 async def _kb_fallback(
@@ -728,11 +748,19 @@ async def execute_with_context(
     # Only engine failures and stream timeouts trigger the KB fallback.
     # Explicit ``insufficient_evidence`` or engine ``partial`` are not
     # silently backfilled; they preserve the engine's own conclusion.
+    kb_fallback_duration_ms: int | None = None
+    kb_fallback_embedding_tokens: int | None = None
+
     if output.status in ("engine_unavailable", "timeout") and (
         ctx is not None and ctx.session is not None
     ):
         fallback_attempted = True
         clamped_top_k = max(1, min(top_k, 5))
+        kb_fallback_embedding_tokens = _embedding_token_count(payload.query)
+        kb_fallback_embedding_cost_basis = (
+            "local" if kb_fallback_embedding_tokens is not None else "n/a"
+        )
+        kb_fallback_started = time.perf_counter()
         try:
             hits = await fallback_fn(
                 query=payload.query,
@@ -779,18 +807,30 @@ async def execute_with_context(
                         engine_reason=output.engine_reason or output.degradation_reason,
                         degraded=True,
                         degradation_reason="fallback_kb_hits",
+                        kb_fallback_embedding_tokens=kb_fallback_embedding_tokens,
+                        kb_fallback_embedding_cost_basis=kb_fallback_embedding_cost_basis,
+                        kb_fallback_embedding_cost_micros=0,
+                        kb_fallback_search_cost_micros=0,
                     )
                 else:
                     output = ResearchOutput(
                         status="engine_unavailable",
                         degradation_reason="fallback_kb_empty",
                         engine_reason=output.engine_reason or output.degradation_reason,
+                        kb_fallback_embedding_tokens=kb_fallback_embedding_tokens,
+                        kb_fallback_embedding_cost_basis=kb_fallback_embedding_cost_basis,
+                        kb_fallback_embedding_cost_micros=0,
+                        kb_fallback_search_cost_micros=0,
                     )
             else:
                 output = ResearchOutput(
                     status="engine_unavailable",
                     degradation_reason="fallback_kb_empty",
                     engine_reason=output.engine_reason or output.degradation_reason,
+                    kb_fallback_embedding_tokens=kb_fallback_embedding_tokens,
+                    kb_fallback_embedding_cost_basis=kb_fallback_embedding_cost_basis,
+                    kb_fallback_embedding_cost_micros=0,
+                    kb_fallback_search_cost_micros=0,
                 )
         except (SQLAlchemyError, RuntimeError, OSError, httpx.RequestError):
             logger.exception("KB fallback failed")
@@ -798,6 +838,19 @@ async def execute_with_context(
                 status="engine_unavailable",
                 degradation_reason="fallback_kb_error",
                 engine_reason=output.degradation_reason or output.engine_reason,
+                kb_fallback_embedding_tokens=kb_fallback_embedding_tokens,
+                kb_fallback_embedding_cost_basis=kb_fallback_embedding_cost_basis,
+                kb_fallback_embedding_cost_micros=0,
+                kb_fallback_search_cost_micros=0,
+            )
+        finally:
+            kb_fallback_duration_ms = int(
+                (time.perf_counter() - kb_fallback_started) * 1000
+            )
+            # Record duration even on empty or failed fallback so telemetry
+            # shows the attempt cost.
+            object.__setattr__(
+                output, "kb_fallback_duration_ms", kb_fallback_duration_ms
             )
 
     if output.degraded:

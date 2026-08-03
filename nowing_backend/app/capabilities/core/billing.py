@@ -301,6 +301,28 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
     if cost_micros is None or cost_micros < 0:
         return 0
 
+    kb_fallback_duration_ms: int | None = getattr(
+        output, "kb_fallback_duration_ms", None
+    )
+    kb_fallback_embedding_tokens: int | None = getattr(
+        output, "kb_fallback_embedding_tokens", None
+    )
+    kb_fallback_embedding_cost_micros: int | None = getattr(
+        output, "kb_fallback_embedding_cost_micros", None
+    )
+    kb_fallback_embedding_cost_basis: str | None = getattr(
+        output, "kb_fallback_embedding_cost_basis", None
+    )
+    kb_fallback_search_cost_micros: int | None = getattr(
+        output, "kb_fallback_search_cost_micros", None
+    )
+    fallback_hit_count: int | None = getattr(output, "fallback_hit_count", None)
+
+    kb_fallback_cost_micros = (kb_fallback_embedding_cost_micros or 0) + (
+        kb_fallback_search_cost_micros or 0
+    )
+    total_cost_micros = cost_micros + kb_fallback_cost_micros
+
     call_details: dict[str, Any] = {
         "resolved_mode": resolved_mode,
         "mode_requested": mode_requested,
@@ -308,7 +330,17 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         "tokens_total": tokens_total,
         "e2e_ms": e2e_ms,
         "ttfb_ms": ttfb_ms,
-        "cost_dollars": float(Decimal(cost_micros) / Decimal("1000000")),
+        "cost_dollars": float(Decimal(total_cost_micros) / Decimal("1000000")),
+        "chainlens_cost_micros": cost_micros,
+        "chainlens_cost_basis": cost_basis,
+        "kb_fallback_cost_micros": kb_fallback_cost_micros,
+        "kb_fallback_duration_ms": kb_fallback_duration_ms,
+        "kb_fallback_embedding_tokens": kb_fallback_embedding_tokens,
+        "kb_fallback_embedding_cost_micros": kb_fallback_embedding_cost_micros,
+        "kb_fallback_embedding_cost_basis": kb_fallback_embedding_cost_basis,
+        "kb_fallback_search_cost_micros": kb_fallback_search_cost_micros,
+        "total_cost_micros": total_cost_micros,
+        "fallback_hit_count": fallback_hit_count,
     }
     if getattr(output, "degraded", False):
         call_details["degradation_reason"] = (
@@ -320,7 +352,7 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         await _record_deep_research_token_usage(
             ctx,
             owner_user_id,
-            cost_micros,
+            total_cost_micros,
             call_details,
             resolved_mode=resolved_mode,
             mode_requested=mode_requested,
@@ -329,19 +361,19 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         )
         return 0
 
-    await wallet_credit.check_balance(ctx.session, owner_user_id, cost_micros)
+    await wallet_credit.check_balance(ctx.session, owner_user_id, total_cost_micros)
     await _record_deep_research_token_usage(
         ctx,
         owner_user_id,
-        cost_micros,
+        total_cost_micros,
         call_details,
         resolved_mode=resolved_mode,
         mode_requested=mode_requested,
         e2e_ms=e2e_ms,
         ttfb_ms=ttfb_ms,
     )
-    await wallet_credit.apply_debit(ctx.session, owner_user_id, cost_micros)
-    return cost_micros
+    await wallet_credit.apply_debit(ctx.session, owner_user_id, total_cost_micros)
+    return total_cost_micros
 
 
 async def _record_deep_research_token_usage(

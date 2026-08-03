@@ -204,6 +204,26 @@ class ResearchOutput(BaseModel):
         default=None,
         description="Number of workspace chunks used as KB fallback citations.",
     )
+    kb_fallback_duration_ms: int | None = Field(
+        default=None,
+        description="Time spent in workspace KB fallback search, in milliseconds.",
+    )
+    kb_fallback_embedding_tokens: int | None = Field(
+        default=None,
+        description="Input tokens consumed by the query-embedding call during KB fallback, if reported.",
+    )
+    kb_fallback_embedding_cost_micros: int | None = Field(
+        default=None,
+        description="Cost in micro-USD of the query-embedding call during KB fallback, if reported.",
+    )
+    kb_fallback_embedding_cost_basis: Literal["api", "local", "n/a"] | None = Field(
+        default=None,
+        description="Source of the embedding cost: api (metered), local (self-hosted), or n/a.",
+    )
+    kb_fallback_search_cost_micros: int | None = Field(
+        default=None,
+        description="Cost in micro-USD of the hybrid DB search during KB fallback, if metered.",
+    )
     saw_heartbeat: bool = Field(
         default=False,
         exclude=True,
@@ -255,6 +275,8 @@ class ResearchOutput(BaseModel):
 
     def _recompute_fallback(self) -> None:
         """Count KB fallback citations and mirror the primary source identifiers."""
+        if self.fallback_hit_count is not None:
+            return
         kb_sources = [
             s for s in self.sources if s.url and s.url.startswith("nowing://")
         ]
