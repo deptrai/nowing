@@ -236,7 +236,6 @@ async def scrape_muaban_bds(
 
         listings: list[MuabanBdsListing] = []
         seen_ids: set[int] = set()
-        total_reported = 0
 
         for page_number in range(1, max_pages + 1):
             url = f"{search_url}?page={page_number}"
@@ -272,14 +271,6 @@ async def scrape_muaban_bds(
             if not raw_items:
                 break
 
-            container = None
-            for key in ("classified", "estateSell", "estateRent"):
-                container = page_data.get("props", {}).get("pageProps", {}).get(key)
-                if isinstance(container, dict):
-                    break
-            if isinstance(container, dict):
-                total_reported = max(total_reported, container.get("total", 0) or 0)
-
             for raw in raw_items:
                 if len(listings) >= max_items:
                     break
@@ -311,7 +302,7 @@ async def scrape_muaban_bds(
         )
         return MuabanBdsScrapeOutput(
             items=listings,
-            total_items=total_reported or len(listings),
+            total_items=len(listings),
             degraded=False,
         )
     except Exception as exc:

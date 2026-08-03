@@ -50,7 +50,7 @@ async def test_scrape_city_hcm(mocker):
 
     assert not output.degraded
     assert len(output.items) == 5
-    assert output.total_items >= 5
+    assert output.total_items == 5
     assert output.items[0].city
     assert output.items[0].detail_url.startswith("https://muaban.net")
 
