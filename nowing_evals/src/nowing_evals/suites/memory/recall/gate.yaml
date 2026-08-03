@@ -57,5 +57,11 @@ required_oracle_mode: score_threshold
 # evidence pointer, only once the numbers above come from a measured baseline on
 # the real corpus (per Story 3.9 section 8: after 3.10b recovery and after
 # story 8.7 freezes auto-extract) and the metric owner has signed off.
-baseline_ratified: false
-baseline_source: ""
+#
+# Ratified 2026-08-04 against the 2026-07-28 live run (workspace 47, build
+# 6b60ce2eb2501e340e4c6dc5fae5cc6f89f37e56). Observed metrics at top_k=5,
+# oracle_mode=score_threshold: recall@5=0.986, mrr=1.0,
+# distractor_noise_rate=0.067, off_corpus_rate=0.033, n_queries=36,
+# n_failed_queries=0. All exceed the provisional thresholds above.
+baseline_ratified: true
+baseline_source: "2026-07-28T16-28-54Z live run — _bmad-output/implementation-artifacts/evidence/3-14-eval-20260728T230000Z/memory/runs/2026-07-28T16-28-54Z/recall/run_artifact.json"

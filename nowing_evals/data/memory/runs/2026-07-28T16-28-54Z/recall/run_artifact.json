@@ -1,0 +1,98 @@
+{
+  "benchmark": "recall",
+  "extra": {
+    "backend_build_id": "6b60ce2eb2501e340e4c6dc5fae5cc6f89f37e56",
+    "backend_build_id_verification": {
+      "actual": "6b60ce2eb2501e340e4c6dc5fae5cc6f89f37e56",
+      "expected": "6b60ce2eb2501e340e4c6dc5fae5cc6f89f37e56",
+      "source": "health_endpoint",
+      "verified": true
+    },
+    "concurrency": 4,
+    "corpus_map_hash": "36f8335ae362078e7dd4b68b9eebd92d0a6014a92170554c9ff12f46dfe86514",
+    "failures": [],
+    "provenance": {
+      "argv": [
+        "/Users/luisphan/Documents/nowing/nowing_evals/src/nowing_evals/__main__.py",
+        "run",
+        "memory",
+        "recall",
+        "--backend-build-id",
+        "6b60ce2eb2501e340e4c6dc5fae5cc6f89f37e56"
+      ],
+      "dataset_hashes": {
+        "corpus": "336a8760f56f51ff3b15282c4efb667d55ba46b08f1dbc428caa1d38e7a6a825",
+        "queries": "d472ce39d372550032b99e28dcaf94bf075ea434ee3d8775a0bd78b6f836fcc0"
+      },
+      "effective_params": {
+        "min_similarity": 0.3,
+        "top_k": 5
+      },
+      "python": {
+        "platform": "macOS-26.4.1-arm64-arm-64bit",
+        "version": "3.12.13 (main, Mar  3 2026, 12:39:30) [Clang 21.0.0 (clang-2100.0.123.102)]"
+      },
+      "raw_hash": "7047742ad99e0e5312e3a97df00c89444209ab65e4b41afd228b32bd24c07529",
+      "raw_row_count": 36,
+      "repo": {
+        "branch": "develop",
+        "dirty": true,
+        "patch_hash": "3912aff078f4aa684707efcd208852e92d03de69a61090b079b5e6cb130e864c",
+        "sha": "6b60ce2eb2501e340e4c6dc5fae5cc6f89f37e56"
+      },
+      "requested_params": {
+        "min_similarity": 0.3,
+        "top_k": 5
+      },
+      "run_id": "2026-07-28T16-28-54Z",
+      "runner_hash": "e42d0d6af1742a6945a64c8cf6bfd685f3a6e932c6e3c8a0430feb976f97c260",
+      "uv_lock_hash": null,
+      "workspace_id": 47
+    },
+    "provider_model": "",
+    "sample_n": 36,
+    "workspace_id": 47
+  },
+  "metrics": {
+    "backend_build_id": "6b60ce2eb2501e340e4c6dc5fae5cc6f89f37e56",
+    "backend_build_id_verified": true,
+    "distractor_noise_rate": 0.06666666666666667,
+    "min_similarity": 0.3,
+    "mrr": 1.0,
+    "n_failed_queries": 0,
+    "n_queries": 36,
+    "n_requested_queries": 36,
+    "ndcg_at_10": 0.9951731849202378,
+    "ndcg_at_k": {
+      "5": 0.9951731849202378
+    },
+    "ndcg_k": 5,
+    "noise_rate": 0.7722222222222226,
+    "off_corpus_measured": true,
+    "off_corpus_rate": 0.03333333333333334,
+    "oracle_mode": "score_threshold",
+    "precision_at_5_ci": [
+      0.17257452984228494,
+      0.2943574634705932
+    ],
+    "precision_at_k": {
+      "1": 1.0,
+      "5": 0.22777777777777786
+    },
+    "precision_at_primary_k_ci": [
+      0.17257452984228494,
+      0.2943574634705932
+    ],
+    "precision_at_primary_k_micro": 0.22777777777777777,
+    "primary_k": 5,
+    "recall_at_k": {
+      "1": 0.9166666666666666,
+      "5": 0.9861111111111112
+    },
+    "requested_min_similarity": 0.3,
+    "top_k": 5,
+    "verified_backend_build_id": "6b60ce2eb2501e340e4c6dc5fae5cc6f89f37e56"
+  },
+  "raw_path": "raw.jsonl",
+  "suite": "memory"
+}

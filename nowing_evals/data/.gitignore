@@ -20,3 +20,11 @@
 !multimodal_doc/runs/2026-05-14T00-53-19Z/parser_compare/raw_retries_summary.json
 !multimodal_doc/runs/2026-05-14T00-53-19Z/parser_compare/raw_post_retry.jsonl
 !multimodal_doc/runs/2026-05-14T00-53-19Z/parser_compare/run_artifact.json
+
+# SM-10 ratified memory-recall artifact.
+!memory/
+!memory/runs/
+!memory/runs/2026-07-28T16-28-54Z/
+!memory/runs/2026-07-28T16-28-54Z/recall/
+!memory/runs/2026-07-28T16-28-54Z/recall/run_artifact.json
+!memory/runs/2026-07-28T16-28-54Z/recall/raw.jsonl
