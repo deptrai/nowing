@@ -1,3 +1,4 @@
+import { Building2, Home } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -31,3 +32,6 @@ export const TikTokIcon = brandIcon("/connectors/tiktok.svg", "TikTok");
 export const GoogleMapsIcon = brandIcon("/connectors/google-maps.svg", "Google Maps");
 export const GoogleSearchIcon = brandIcon("/connectors/google-search.svg", "Google Search");
 export const WebIcon = brandIcon("/connectors/web.svg", "Web");
+
+export const ChototIcon = Home;
+export const MuabanBdsIcon = Building2;

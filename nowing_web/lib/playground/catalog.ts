@@ -2,9 +2,11 @@ import type { ComponentType } from "react";
 import {
 	AmazonIcon,
 	BatdongsanIcon,
+	ChototIcon,
 	GoogleMapsIcon,
 	GoogleSearchIcon,
 	InstagramIcon,
+	MuabanBdsIcon,
 	RedditIcon,
 	TikTokIcon,
 	WebIcon,
@@ -48,6 +50,18 @@ export const PLAYGROUND_PLATFORMS: PlaygroundPlatform[] = [
 		label: "Batdongsan",
 		icon: BatdongsanIcon,
 		verbs: [{ name: "batdongsan.scrape", verb: "scrape", label: "Scrape" }],
+	},
+	{
+		id: "chotot_bds",
+		label: "Chotot BĐS",
+		icon: ChototIcon,
+		verbs: [{ name: "chotot_bds.scrape", verb: "scrape", label: "Scrape" }],
+	},
+	{
+		id: "muaban_bds",
+		label: "Muaban BĐS",
+		icon: MuabanBdsIcon,
+		verbs: [{ name: "muaban_bds.scrape", verb: "scrape", label: "Scrape" }],
 	},
 	{
 		id: "youtube",
