@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
 import time
 from typing import Any
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 from scrapling.fetchers import AsyncFetcher
 
 from app.config import config
@@ -35,6 +38,22 @@ _USER_AGENT_POOL = (
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",
 )
+
+# Chợ Tốt Nhà public RSA key used to encrypt list_id before the phone API call.
+# Extracted from the web bundle's RSAPublicKey.production value.
+_CHOTOT_RSA_PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
+MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAxnvPjlA/K/adq6mA6+uU
+tlyBBxFaKeK+WD2FypOeCAP0qtucmaDrIbxirykrxQjRpGxl2HKRBwGd2h/hDuk9
+CxRUXD2p0Hrzb1Hb9M5px19TPXM6AWSClR1kozehRusIFrxP6PHqDLx5prJFLlSZ
+zg3N3oGhS6oP/a4Ku/iAdCUCiHb5TX3b3+y4Ll/QViZhpKZjU6BhIOsiVIJhyXvn
+0cSqLXPjNuXR5A4JkmRl9T9cWncEHTKmoVUyXQJaDZa3yH/OJSEmhhGyKNKkM5so
+lasJWSBKenFnFvphw3+KG8BGfJwGkvtRAVbS1ljduH8z8fxALxHgUdnTtgpxB+KZ
+/CVnNr97EGqYPLVlX+duGkuy1yCunqVTiY2HyL/0bMTBK84oCQjtMVAHgZ345hZn
+mGST71D8+i5HGtOOFoRyP6qK6ex1qfEROzWsmVDA00aHLlQcKOLaHvT/DB30aeUs
+ZoL/kQo100XccufpHESrits0mEuoyza4CCFM04F3pDOXAgMBAAE=
+-----END PUBLIC KEY-----"""
+
+_PHONE_URL = "https://gateway.chotot.com/v1/public/ad-listing/phone"
 
 
 class ChototBdsAccessBlockedError(RuntimeError):
@@ -212,6 +231,69 @@ async def fetch_listings(
             await asyncio.sleep(_retry_delay(attempt))
 
     raise ChototBdsAccessBlockedError(f"{url} exhausted all retries")
+
+async def fetch_phone(list_id: int) -> str | None:
+    """Fetch the public phone number for a Chợ Tốt listing.
+
+    The phone endpoint requires an RSA-PKCS1v15 encrypted ``list_id``
+    parameter.  Failure is non-fatal and returns ``None`` so the scraper
+    can continue with the listing masked/unavailable.
+    """
+    if not list_id or list_id <= 0:
+        return None
+
+    try:
+        key = serialization.load_pem_public_key(_CHOTOT_RSA_PUBLIC_KEY.encode())
+        ciphertext = key.encrypt(str(list_id).encode(), padding.PKCS1v15())
+        # The HTTP client URL-encodes query parameters, so pass the raw base64.
+        e = base64.b64encode(ciphertext).decode()
+    except Exception as exc:
+        logger.warning("Chotot BĐS phone encryption failed for %s: %s", list_id, exc)
+        return None
+
+    for attempt in range(_MAX_ROTATIONS + 1):
+        try:
+            page = await AsyncFetcher.get(
+                _PHONE_URL,
+                params={"e": e},
+                headers={
+                    "User-Agent": _user_agent(attempt),
+                    "Accept": "application/json",
+                },
+                proxy=get_proxy_url(),
+                timeout=_timeout(),
+            )
+            if page.status == 200:
+                data = _decode(page.body)
+                phone = data.get("phone")
+                if isinstance(phone, str) and phone.strip():
+                    return phone.strip()
+                return None
+
+            _raise_for_status(page.status, _PHONE_URL)
+        except ChototBdsDecodeError:
+            logger.warning("Chotot BĐS phone response decode failed for %s", list_id)
+            return None
+        except ChototBdsRateLimitedError:
+            if attempt < _MAX_ROTATIONS:
+                await asyncio.sleep(_retry_delay(attempt))
+                continue
+            logger.warning("Chotot BĐS phone fetch rate limited for %s", list_id)
+            return None
+        except ChototBdsAccessBlockedError as exc:
+            if attempt < _MAX_ROTATIONS:
+                logger.warning("Chotot BĐS phone fetch blocked for %s: %s", list_id, exc)
+                await asyncio.sleep(_retry_delay(attempt))
+                continue
+            logger.warning("Chotot BĐS phone fetch exhausted for %s: %s", list_id, exc)
+            return None
+        except Exception as exc:
+            logger.warning("Chotot BĐS phone fetch failed for %s: %s", list_id, exc)
+            if attempt >= _MAX_ROTATIONS:
+                return None
+            await asyncio.sleep(_retry_delay(attempt))
+
+    return None
 
 
 _REGIONS_CACHE: dict[str, Any] | None = None

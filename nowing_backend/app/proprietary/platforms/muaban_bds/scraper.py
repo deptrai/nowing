@@ -9,12 +9,17 @@ import unicodedata
 from typing import Any
 
 from app.config import config
+from app.services.scraper_platform_account_service import (
+    cookie_string_to_playwright,
+    get_default_credentials,
+)
 
 from .fetch import (
     AsyncStealthySession,
     MuabanBdsAccessBlockedError,
     MuabanBdsDecodeError,
     MuabanBdsRateLimitedError,
+    fetch_detail_phone,
     fetch_page,
 )
 from .parsers import extract_listings, parse_listing
@@ -149,7 +154,9 @@ def _item_passes_filters(
     )
 
 
-async def _open_session() -> Any:
+async def _open_session(
+    credentials: dict[str, Any] | None = None,
+) -> Any:
     """Create a browser session for the Muaban scrape run."""
     from app.utils.proxy import get_proxy_url
 
@@ -159,17 +166,27 @@ async def _open_session() -> Any:
         )
 
     proxy = get_proxy_url()
-    session = AsyncStealthySession(
-        headless=True,
-        solve_cloudflare=True,
-        real_chrome=True,
-        proxy=proxy,
-        disable_resources=True,
-        extra_headers={
+    session_kwargs: dict[str, Any] = {
+        "headless": True,
+        "solve_cloudflare": True,
+        "real_chrome": True,
+        "proxy": proxy,
+        "disable_resources": True,
+        "extra_headers": {
             "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
             "Referer": "https://www.google.com/",
         },
-    )
+    }
+    if credentials:
+        token = credentials.get("token")
+        if token:
+            session_kwargs["extra_headers"]["Authorization"] = f"Bearer {token}"
+        cookie_string = credentials.get("cookies")
+        if cookie_string:
+            session_kwargs["cookies"] = cookie_string_to_playwright(
+                cookie_string, ".muaban.net"
+            )
+    session = AsyncStealthySession(**session_kwargs)
     await session.start()
     return session
 
@@ -222,9 +239,10 @@ async def scrape_muaban_bds(
     )
     base_url = f"{BASE_ORIGIN}{base_path}"
 
+    credentials = await get_default_credentials("muaban_bds")
     session = None
     try:
-        session = await _open_session()
+        session = await _open_session(credentials)
         search_url, ok = await _resolve_district_path(
             session, base_url, input_model.district
         )
@@ -290,6 +308,30 @@ async def scrape_muaban_bds(
             if len(listings) >= max_items:
                 break
             if page_number < max_pages:
+                await asyncio.sleep(_page_delay())
+
+        # Best-effort: fetch each detail page to read phone_display/phone_enc
+        # and try the server-side phone API.  Full phone is usually gated by
+        # login/Cloudflare, so we keep the masked display number on failure.
+        if listings and session is not None:
+            for listing in listings:
+                if not listing.detail_url:
+                    continue
+                try:
+                    phone, phone_display, phone_enc = await fetch_detail_phone(
+                        session, listing.detail_url, credentials=credentials
+                    )
+                    if phone:
+                        listing.phone = phone
+                    elif phone_display:
+                        listing.phone = phone_display
+                    listing.phone_display = phone_display
+                    listing.phone_enc = phone_enc
+                except Exception:
+                    logger.exception(
+                        "failed to fetch detail phone for listing_id=%s",
+                        listing.listing_id,
+                    )
                 await asyncio.sleep(_page_delay())
 
         logger.info(

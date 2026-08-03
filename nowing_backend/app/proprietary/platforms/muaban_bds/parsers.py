@@ -195,6 +195,8 @@ def parse_listing(raw: dict[str, Any]) -> MuabanBdsListing:
         rooms=attr["rooms"],
         toilets=attr["toilets"],
         phone=_normalize_whitespace(raw.get("phone") or raw.get("phone_display")),
+        phone_display=_normalize_whitespace(raw.get("phone_display")),
+        phone_enc=_normalize_whitespace(raw.get("phone_enc")),
     )
 
 

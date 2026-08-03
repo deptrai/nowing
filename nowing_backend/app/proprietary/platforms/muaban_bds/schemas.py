@@ -55,6 +55,8 @@ class MuabanBdsListing(BaseModel):
     rooms: int | None = None
     toilets: int | None = None
     phone: str | None = None
+    phone_display: str | None = None
+    phone_enc: str | None = None
     scrapedAt: str | None = None
 
     def to_output(self) -> dict[str, Any]:

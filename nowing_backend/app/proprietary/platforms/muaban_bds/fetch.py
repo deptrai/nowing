@@ -9,7 +9,13 @@ import time
 from typing import Any
 
 from app.config import config
+from app.services.scraper_platform_account_service import cookie_string_to_dict
 from app.utils.proxy import get_proxy_url
+
+try:
+    from scrapling.fetchers import AsyncFetcher
+except Exception:  # pragma: no cover - defensive for minimal envs
+    AsyncFetcher = None
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +45,13 @@ _NEXT_DATA_RE = re.compile(
     r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>',
     re.DOTALL,
 )
+
+
+def _normalize_whitespace(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    return cleaned if cleaned else None
 
 
 def _page_delay() -> float:
@@ -128,3 +141,90 @@ async def fetch_page(
                 await session.close()
             except Exception as close_exc:
                 logger.warning("Muaban session close failed: %s", close_exc)
+
+def _extract_detail_phone(next_data: dict[str, Any]) -> tuple[str | None, str | None, str | None]:
+    """Pull phone fields from a Muaban detail ``__NEXT_DATA__`` payload."""
+    page_props = next_data.get("props", {}).get("pageProps", {})
+    classified = page_props.get("classified") or page_props.get("estateSell") or page_props.get("estateRent") or {}
+    if not isinstance(classified, dict):
+        return None, None, None
+    phone = _normalize_whitespace(classified.get("phone"))
+    phone_display = _normalize_whitespace(classified.get("phone_display"))
+    phone_enc = _normalize_whitespace(classified.get("phone_enc"))
+    return phone, phone_display, phone_enc
+
+
+async def fetch_detail_phone(
+    session: Any,
+    detail_url: str,
+    *,
+    credentials: dict[str, Any] | None = None,
+    timeout: int = 45_000,
+    solve_cloudflare: bool = True,
+) -> tuple[str | None, str | None, str | None]:
+    """Fetch a Muaban detail page and return the best phone info available.
+
+    The full phone number is served by a server-side API call that is
+    protected by Cloudflare and, in practice, requires an authenticated
+    session.  We attempt it best-effort but fall back to ``phone_display``
+    (the masked number) when the API does not cooperate.
+    """
+    page_data = await fetch_page(
+        detail_url,
+        session=session,
+        timeout=timeout,
+        solve_cloudflare=solve_cloudflare,
+    )
+    if page_data.get("notFound") or not isinstance(page_data, dict):
+        return None, None, None
+
+    phone, phone_display, phone_enc = _extract_detail_phone(page_data)
+    if phone:
+        return phone, phone_display, phone_enc
+
+    # Best-effort attempt to decrypt the phone server-side.
+    if phone_enc and AsyncFetcher is not None:
+        try:
+            listing_id = page_data.get("props", {}).get("pageProps", {}).get("classified", {}).get("id")
+            payload = {
+                "id": listing_id,
+                "phone_enc": phone_enc,
+                "site_id": 1,
+            }
+            headers = {
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                "Accept": "application/json",
+                "Referer": detail_url,
+            }
+            fetch_kwargs: dict[str, Any] = {"timeout": 20}
+            if credentials:
+                token = credentials.get("token")
+                if token:
+                    headers["Authorization"] = f"Bearer {token}"
+                cookie_string = credentials.get("cookies")
+                if cookie_string:
+                    fetch_kwargs["cookies"] = cookie_string_to_dict(cookie_string)
+            res = await AsyncFetcher.post(
+                "https://muaban.net/api/v1/phone/show",
+                json=payload,
+                headers=headers,
+                **fetch_kwargs,
+            )
+            if res.status == 200:
+                try:
+                    data = json.loads(res.body.decode("utf-8"))
+                    full = _normalize_whitespace(data.get("phone"))
+                    if full:
+                        return full, phone_display, phone_enc
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    pass
+            else:
+                logger.info(
+                    "Muaban phone API returned %s for %s; full phone unavailable without auth",
+                    res.status,
+                    detail_url,
+                )
+        except Exception as exc:
+            logger.debug("Muaban phone API attempt failed for %s: %s", detail_url, exc)
+
+    return phone or phone_display or None, phone_display, phone_enc

@@ -64,6 +64,7 @@ class ChototBdsListing(BaseModel):
     rooms: int | None = None
     floors: int | None = None
     toilets: int | None = None
+    phone: str | None = None
     scrapedAt: str | None = None
 
     def to_output(self) -> dict[str, Any]:

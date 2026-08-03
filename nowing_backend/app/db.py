@@ -940,6 +940,33 @@ class ExternalChatAccount(Base, TimestampMixin):
     )
 
 
+class ScraperPlatformAccount(Base, TimestampMixin):
+    """Admin-managed credentials for a proprietary scraper platform."""
+
+    __tablename__ = "scraper_platform_accounts"
+    __allow_unmapped__ = True
+
+    id = Column(Integer, primary_key=True, index=True)
+    platform = Column(String(64), nullable=False, index=True)
+    label = Column(String(255), nullable=True)
+    is_enabled = Column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    is_default = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    encrypted_credentials = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index(
+            "uq_scraper_platform_accounts_default",
+            "platform",
+            unique=True,
+            postgresql_where=text("is_default = true"),
+        ),
+    )
+
+
 class ExternalChatBinding(Base, TimestampMixin):
     __tablename__ = "external_chat_bindings"
     __allow_unmapped__ = True

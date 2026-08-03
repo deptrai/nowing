@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import unicodedata
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
@@ -16,10 +17,13 @@ from .fetch import (
     ChototBdsDecodeError,
     ChototBdsRateLimitedError,
     fetch_listings,
+    fetch_phone,
     load_regions,
 )
 from .parsers import parse_listings
 from .schemas import ChototBdsListing, ChototBdsScrapeInput, ChototBdsScrapeOutput
+
+logger = logging.getLogger(__name__)
 
 FetchFn = Callable[..., Awaitable[dict[str, Any]]]
 RegionsFn = Callable[[], Awaitable[dict[str, Any]]]
@@ -308,6 +312,24 @@ async def scrape_chotot_bds(
 
     for item in items:
         item.scrapedAt = _now_iso()
+
+    # Attempt to resolve the public phone number for each listing.
+    # This is a best-effort call: if the phone API blocks us we keep the
+    # listing and leave ``phone`` as ``None``.
+    if items:
+        _phone_semaphore = asyncio.Semaphore(3)
+
+        async def _resolve_phone(item: ChototBdsListing) -> None:
+            if not item.listing_id:
+                return
+            try:
+                async with _phone_semaphore:
+                    item.phone = await fetch_phone(item.listing_id)
+                    await asyncio.sleep(_page_delay())
+            except Exception:
+                logger.exception("failed to resolve phone for list_id=%s", item.listing_id)
+
+        await asyncio.gather(*(_resolve_phone(item) for item in items))
 
     return ChototBdsScrapeOutput(
         items=items,

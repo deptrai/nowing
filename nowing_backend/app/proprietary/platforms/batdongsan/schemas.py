@@ -42,6 +42,8 @@ class BatdongsanListing(BaseModel):
     post_date: str | None = None
     thumbnail_url: str | None = None
     detail_url: str | None = None
+    phone: str | None = None
+    phone_display: str | None = None
     latitude: float | None = None
     longitude: float | None = None
     category: str | None = None
