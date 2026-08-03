@@ -45,6 +45,8 @@ from app.agents.chat.multi_agent_chat.subagents.builtins.mcp_discovery.agent imp
 from app.agents.chat.multi_agent_chat.subagents.builtins.memory.agent import (
     build_subagent as build_memory_subagent,
 )
+from app.agents.chat.multi_agent_chat.subagents.builtins.muaban_bds.agent import (
+    build_subagent as build_muaban_bds_subagent,
 )
 from app.agents.chat.multi_agent_chat.subagents.builtins.reddit.agent import (
     build_subagent as build_reddit_subagent,
@@ -106,6 +108,7 @@ SUBAGENT_BUILDERS_BY_NAME: dict[str, SubagentBuilder] = {
     "knowledge_base": build_knowledge_base_subagent,
     "mcp_discovery": build_mcp_discovery_subagent,
     "memory": build_memory_subagent,
+    "muaban_bds": build_muaban_bds_subagent,
     "onedrive": build_onedrive_subagent,
     "reddit": build_reddit_subagent,
     "tiktok": build_tiktok_subagent,

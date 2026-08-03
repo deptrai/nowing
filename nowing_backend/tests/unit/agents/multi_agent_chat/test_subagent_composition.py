@@ -40,6 +40,7 @@ _EXPECTED_SUBAGENTS = frozenset(
         "knowledge_base",
         "mcp_discovery",
         "memory",
+        "muaban_bds",
         "onedrive",
         "reddit",
         "tiktok",

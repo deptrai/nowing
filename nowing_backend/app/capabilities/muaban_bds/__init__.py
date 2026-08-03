@@ -1,0 +1,1 @@
+"""Muaban BĐS capability namespace."""

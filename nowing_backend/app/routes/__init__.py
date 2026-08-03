@@ -8,6 +8,7 @@ import app.capabilities.chotot
 import app.capabilities.google_maps
 import app.capabilities.google_search
 import app.capabilities.instagram
+import app.capabilities.muaban_bds
 import app.capabilities.reddit
 import app.capabilities.tiktok
 import app.capabilities.web

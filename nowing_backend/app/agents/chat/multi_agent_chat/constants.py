@@ -32,6 +32,7 @@ SUBAGENT_TO_REQUIRED_CONNECTOR_MAP: dict[str, frozenset[str]] = {
     "amazon": frozenset(),
     "batdongsan": frozenset(),
     "chotot_bds": frozenset(),
+    "muaban_bds": frozenset(),
     "chainlens": frozenset(),
     "deliverables": frozenset(),
     "knowledge_base": frozenset(),

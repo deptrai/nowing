@@ -908,8 +908,14 @@ class Config:
     CHOTOT_BDS_RETRY_BACKOFF_BASE_S = float(
         os.getenv("CHOTOT_BDS_RETRY_BACKOFF_BASE_S", "0.5")
     )
+    # Muaban.net requires a headless browser to pass Cloudflare, so the per-item
     # rate sits above the API-backed Batdongsan/Chotot rates.
+    MUABAN_BDS_SCRAPE_MICROS_PER_ITEM = int(
+        os.getenv("MUABAN_BDS_SCRAPE_MICROS_PER_ITEM", "5500")
     )
+    MUABAN_BDS_PAGE_DELAY_S = float(os.getenv("MUABAN_BDS_PAGE_DELAY_S", "1.0"))
+    MUABAN_BDS_RETRY_BACKOFF_BASE_S = float(
+        os.getenv("MUABAN_BDS_RETRY_BACKOFF_BASE_S", "1.0")
     )
     # Browser-driven listings make TikTok heavier per item than the API-backed
     # video meter, so it sits a touch above YouTube's video rate.

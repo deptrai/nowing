@@ -34,6 +34,7 @@ class BillingUnit(StrEnum):
     CHAINLENS_QUERY = "chainlens_query"
     BATDONGSAN_ITEM = "batdongsan_item"
     CHOTOT_BDS_ITEM = "chotot_bds_item"
+    MUABAN_BDS_ITEM = "muaban_bds_item"
 
 
 class BillableInput(Protocol):
