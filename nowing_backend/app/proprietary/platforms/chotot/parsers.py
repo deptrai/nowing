@@ -15,6 +15,35 @@ def _normalize_whitespace(value: Any) -> str | None:
     return cleaned if cleaned else None
 
 
+def _parse_price_string(raw: str) -> int | None:
+    """Parse Vietnamese price strings such as \"6,3 tỷ\" or \"5 triệu\" into VND."""
+    lowered = raw.lower()
+    if re.search(r"/[mм]\s*²?|m²|m2|/m", lowered):
+        # Per-square-meter prices cannot be converted to a total without area.
+        return None
+
+    # Extract the first numeric token, accepting comma or dot as decimal separator.
+    match = re.search(r"[\d.,]+", raw)
+    if not match:
+        return None
+
+    num_str = match.group(0).replace(",", ".")
+    try:
+        value = float(num_str)
+    except ValueError:
+        return None
+
+    multiplier = 1
+    if re.search(r"(tỷ|tỉ|ty)\b", lowered):
+        multiplier = 1_000_000_000
+    elif re.search(r"\btriệu\b|(^|\s|\d)tr(\b|\.)", lowered):
+        multiplier = 1_000_000
+    elif re.search(r"\b(nghìn|ngàn)\b|\bk\b", lowered):
+        multiplier = 1_000
+
+    return int(value * multiplier)
+
+
 def _format_price(
     price_value: Any, price_string: str | None
 ) -> tuple[str | None, str | None, int | None]:
@@ -22,12 +51,13 @@ def _format_price(
     raw = _normalize_whitespace(price_string)
     if raw is None:
         return None, None, None
-    if isinstance(price_value, (int, float)):
+    if isinstance(price_value, (int, float)) and not isinstance(price_value, bool):
         return raw, raw, int(price_value)
+    parsed = _parse_price_string(raw)
+    if parsed is not None:
+        return raw, raw, parsed
     # Non-numeric strings like "Thỏa thuận" are kept in price_raw only.
-    if not re.search(r"[\d.,]+", raw):
-        return None, raw, None
-    return raw, raw, None
+    return None, raw, None
 
 
 def _format_area(

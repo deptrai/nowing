@@ -12,6 +12,7 @@ from app.config import config
 
 from .fetch import (
     ChototBdsAccessBlockedError,
+    ChototBdsBotDetectedError,
     ChototBdsDecodeError,
     ChototBdsRateLimitedError,
     fetch_listings,
@@ -86,14 +87,14 @@ def _resolve_region_v2(city: str, regions: dict[str, Any]) -> int:
     # Try direct numeric first.
     try:
         return int(city)
-    except ValueError:
+    except (ValueError, OverflowError):
         pass
 
     for region_id, region in regions.items():
         if _normalize_text(region.get("name", "")) == city_norm:
             try:
                 return int(region_id)
-            except ValueError:
+            except (ValueError, OverflowError):
                 continue
 
     raise ValueError(f"Unknown Chotot city: {city}")
@@ -107,34 +108,33 @@ def _resolve_area_v2(
 ) -> int | None:
     """Resolve a district name or numeric id to an ``area_v2`` code."""
     if district_id is not None:
+        if district_id < 0:
+            raise ValueError(f"Invalid negative district_id: {district_id}")
         return district_id
     if not district_query:
         return None
 
     try:
-        return int(district_query)
-    except ValueError:
+        parsed = int(district_query)
+        if parsed < 0:
+            raise ValueError(f"Invalid negative district query: {district_query}")
+        return parsed
+    except (ValueError, OverflowError):
         pass
 
     region = regions.get(str(region_id), {})
     areas = region.get("area", {})
     query_norm = _normalize_text(district_query)
 
-    # Exact match first.
+    # Exact match only; substring fallback removed to avoid false positives.
     for area_id, area in areas.items():
         if _normalize_text(area.get("name", "")) == query_norm:
             try:
-                return int(area_id)
-            except ValueError:
-                continue
-
-    # Substring fallback.
-    for area_id, area in areas.items():
-        name = _normalize_text(area.get("name", ""))
-        if query_norm in name or name in query_norm:
-            try:
-                return int(area_id)
-            except ValueError:
+                parsed = int(area_id)
+                if parsed < 0:
+                    continue
+                return parsed
+            except (ValueError, OverflowError):
                 continue
 
     raise ValueError(f"Unknown Chotot district: {district_query}")
@@ -211,7 +211,7 @@ async def scrape_chotot_bds(
             degradation_reason=f"invalid_input: {exc}",
         )
 
-    cap = limit if limit is not None else input_model.max_items
+    cap = max(0, limit if limit is not None else input_model.max_items)
     max_pages = input_model.max_pages
 
     items: list[ChototBdsListing] = []
@@ -237,8 +237,15 @@ async def scrape_chotot_bds(
             try:
                 result = await fetch(**payload)
                 ads = result.get("ads") or []
+                # ``total`` may be missing or 0; trust ``len(ads)`` for pagination.
                 page_total = int(result.get("total") or len(ads))
                 if not isinstance(ads, list):
+                    degradation_reason = "layout_changed"
+                    page_failed = True
+                    break
+                # If the response has no ``ads`` key at all, the layout likely changed.
+                if "ads" not in result:
+                    degradation_reason = "layout_changed"
                     page_failed = True
                     break
                 page_data = ads
@@ -253,6 +260,10 @@ async def scrape_chotot_bds(
             except ChototBdsDecodeError:
                 degradation_reason = "decode_error"
                 page_failed = True
+                break
+            except ChototBdsBotDetectedError:
+                page_failed = True
+                degradation_reason = "bot_detected"
                 break
             except (ChototBdsAccessBlockedError, Exception):
                 page_failed = True

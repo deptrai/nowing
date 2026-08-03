@@ -27,10 +27,22 @@ _MOBILE_USER_AGENT = (
 _BLOCK_STATUSES = frozenset({403, 429})
 _5XX = frozenset(range(500, 600))
 _MAX_ROTATIONS = 3
+_MAX_RESPONSE_BYTES = 50 * 1024 * 1024
+
+_USER_AGENT_POOL = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",
+)
 
 
 class ChototBdsAccessBlockedError(RuntimeError):
-    """Raised when Chợ Tốt blocks anonymous access."""
+    """Raised when Chợ Tốt blocks anonymous access (5xx / non-200)."""
+
+
+class ChototBdsBotDetectedError(ChototBdsAccessBlockedError):
+    """Raised when Chợ Tốt returns 403 (bot / akamai block)."""
 
 
 class ChototBdsRateLimitedError(RuntimeError):
@@ -44,6 +56,19 @@ class ChototBdsDecodeError(ValueError):
 def _retry_delay(attempt: int) -> float:
     base = max(0.5, getattr(config, "CHOTOT_BDS_RETRY_BACKOFF_BASE_S", 0.5))
     return base * (2**attempt)
+
+
+def _user_agent(attempt: int) -> str:
+    """Rotate a small pool of mobile/Chrome UAs per attempt/request."""
+    ua = getattr(config, "CHOTOT_BDS_USER_AGENT", None)
+    if ua:
+        return str(ua)
+    return _USER_AGENT_POOL[attempt % len(_USER_AGENT_POOL)]
+
+
+def _timeout() -> float:
+    """Allow operators to override the per-request timeout."""
+    return max(5.0, getattr(config, "CHOTOT_BDS_TIMEOUT_S", 30.0))
 
 
 def _build_listing_params(
@@ -84,13 +109,19 @@ def _build_listing_params(
 def _raise_for_status(status: int, url: str) -> None:
     if status == 429:
         raise ChototBdsRateLimitedError(f"{url} returned 429")
-    if status in _BLOCK_STATUSES | _5XX:
+    if status == 403:
+        raise ChototBdsBotDetectedError(f"{url} returned 403")
+    if status in _5XX:
         raise ChototBdsAccessBlockedError(f"{url} returned {status}")
     if status != 200:
         raise ChototBdsAccessBlockedError(f"{url} returned {status}")
 
 
 def _decode(raw: bytes) -> dict[str, Any]:
+    if len(raw) > _MAX_RESPONSE_BYTES:
+        raise ChototBdsDecodeError(
+            f"response exceeds {_MAX_RESPONSE_BYTES} bytes"
+        )
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
@@ -184,6 +215,7 @@ async def fetch_listings(
 
 
 _REGIONS_CACHE: dict[str, Any] | None = None
+_regions_lock = asyncio.Lock()
 
 
 async def load_regions() -> dict[str, Any]:
@@ -192,27 +224,31 @@ async def load_regions() -> dict[str, Any]:
     if _REGIONS_CACHE is not None:
         return _REGIONS_CACHE
 
-    for attempt in range(_MAX_ROTATIONS + 1):
-        try:
-            page = await AsyncFetcher.get(
-                REGIONS_URL,
-                headers={
-                    "User-Agent": _MOBILE_USER_AGENT,
-                    "Accept": "application/json",
-                },
-                proxy=get_proxy_url(),
-                timeout=30,
-            )
-            if page.status == 200:
-                _REGIONS_CACHE = _decode(page.body)
-                return _REGIONS_CACHE
-            _raise_for_status(page.status, REGIONS_URL)
-        except Exception as exc:
-            logger.warning("Chotot loadRegions failed: %s", exc)
-            if attempt >= _MAX_ROTATIONS:
-                raise ChototBdsAccessBlockedError(
-                    f"{REGIONS_URL} failed after {_MAX_ROTATIONS} attempts"
-                ) from exc
-            await asyncio.sleep(_retry_delay(attempt))
+    async with _regions_lock:
+        if _REGIONS_CACHE is not None:
+            return _REGIONS_CACHE
+
+        for attempt in range(_MAX_ROTATIONS + 1):
+            try:
+                page = await AsyncFetcher.get(
+                    REGIONS_URL,
+                    headers={
+                        "User-Agent": _user_agent(attempt),
+                        "Accept": "application/json",
+                    },
+                    proxy=get_proxy_url(),
+                    timeout=_timeout(),
+                )
+                if page.status == 200:
+                    _REGIONS_CACHE = _decode(page.body)
+                    return _REGIONS_CACHE
+                _raise_for_status(page.status, REGIONS_URL)
+            except Exception as exc:
+                logger.warning("Chotot loadRegions failed: %s", exc)
+                if attempt >= _MAX_ROTATIONS:
+                    raise ChototBdsAccessBlockedError(
+                        f"{REGIONS_URL} failed after {_MAX_ROTATIONS} attempts"
+                    ) from exc
+                await asyncio.sleep(_retry_delay(attempt))
 
     raise ChototBdsAccessBlockedError(f"{REGIONS_URL} exhausted all retries")

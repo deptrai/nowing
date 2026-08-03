@@ -112,6 +112,32 @@ async def test_scrape_returns_degraded_on_fetch_error():
 
 
 @pytest.mark.asyncio
+async def test_scrape_dedupes_across_pages():
+    sample = _load_sample()
+    single = sample["ads"][0]
+
+    async def fake_fetch(**kwargs: Any) -> dict[str, Any]:
+        page = kwargs["page"]
+        if page == 1:
+            return {"ads": sample["ads"][:1], "total": 2}
+        if page == 2:
+            return {"ads": [single], "total": 2}
+        return {"ads": [], "total": 2}
+
+    async def fake_regions() -> dict[str, Any]:
+        return _make_regions()
+
+    output = await scrape_chotot_bds(
+        ChototBdsScrapeInput(city="ho chi minh", max_pages=3, max_items=5),
+        fetch_fn=fake_fetch,
+        regions_fn=fake_regions,
+    )
+
+    assert output.total_items == 1
+    assert not output.degraded
+
+
+@pytest.mark.asyncio
 async def test_scrape_returns_degraded_for_unknown_city():
     async def fake_fetch(**kwargs: Any) -> dict[str, Any]:
         return _load_sample()

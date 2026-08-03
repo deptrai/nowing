@@ -908,6 +908,8 @@ class Config:
     CHOTOT_BDS_RETRY_BACKOFF_BASE_S = float(
         os.getenv("CHOTOT_BDS_RETRY_BACKOFF_BASE_S", "0.5")
     )
+    CHOTOT_BDS_TIMEOUT_S = float(os.getenv("CHOTOT_BDS_TIMEOUT_S", "30.0"))
+    CHOTOT_BDS_USER_AGENT = os.getenv("CHOTOT_BDS_USER_AGENT", "")
     # Muaban.net requires a headless browser to pass Cloudflare, so the per-item
     # rate sits above the API-backed Batdongsan/Chotot rates.
     MUABAN_BDS_SCRAPE_MICROS_PER_ITEM = int(

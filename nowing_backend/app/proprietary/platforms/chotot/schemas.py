@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ChototBdsScrapeInput(BaseModel):
@@ -17,13 +17,21 @@ class ChototBdsScrapeInput(BaseModel):
     property_type: Literal["apartment", "house", "land", "office", "all"] = "all"
     city: str = "hanoi"
     district: str | None = None
-    district_id: int | None = None
+    district_id: int | None = Field(default=None, ge=0)
     max_pages: int = Field(default=5, ge=1, le=20)
     max_items: int = Field(default=10, ge=1, le=100)
-    min_price: int | None = None
-    max_price: int | None = None
-    min_area: int | None = None
-    max_area: int | None = None
+    min_price: int | None = Field(default=None, ge=0)
+    max_price: int | None = Field(default=None, ge=0)
+    min_area: int | None = Field(default=None, ge=0)
+    max_area: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def _price_bounds(self) -> ChototBdsScrapeInput:
+        if self.min_price is not None and self.max_price is not None and self.min_price > self.max_price:
+            raise ValueError("min_price cannot exceed max_price")
+        if self.min_area is not None and self.max_area is not None and self.min_area > self.max_area:
+            raise ValueError("min_area cannot exceed max_area")
+        return self
 
 
 class ChototBdsListing(BaseModel):

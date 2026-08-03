@@ -15,6 +15,7 @@ from app.proprietary.platforms.chotot import (
 )
 from app.proprietary.platforms.chotot.fetch import (
     ChototBdsAccessBlockedError,
+    ChototBdsBotDetectedError,  # noqa: F401
     ChototBdsDecodeError,
     ChototBdsRateLimitedError,
 )
