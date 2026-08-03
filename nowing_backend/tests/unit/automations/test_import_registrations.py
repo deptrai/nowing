@@ -35,6 +35,7 @@ def test_write_back_actions_are_registered_after_package_import() -> None:
         "write_back_linear",
         "write_back_jira",
         "write_back_slack",
+        "write_back_telegram",
     ):
         definition = get_action(action_type)
         assert definition is not None, f"{action_type!r} not registered"

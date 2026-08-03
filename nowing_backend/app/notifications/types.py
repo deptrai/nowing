@@ -13,6 +13,7 @@ NotificationType = Literal[
     "insufficient_credits",
     "auto_reload_failed",
     "deep_research_complete",
+    "automation_run_complete",
 ]
 
 NotificationCategory = Literal["comments", "status"]

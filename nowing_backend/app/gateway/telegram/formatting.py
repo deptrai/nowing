@@ -11,10 +11,18 @@ MAX_TELEGRAM_MESSAGE_UNITS = 4096
 
 _RESERVED_RE = re.compile(r"([_\*\[\]\(\)~`>#+\-=|{}\.!])")
 
+# Remove backslashes only when they escape a reserved MarkdownV2 character.
+_UNESCAPE_RE = re.compile(r"\\([" + re.escape(MARKDOWN_V2_RESERVED) + r"])")
+
 
 def escape_markdown_v2(text: str) -> str:
     """Escape all Telegram MarkdownV2 reserved characters."""
     return _RESERVED_RE.sub(r"\\\1", text)
+
+
+def unescape_markdown_v2(text: str) -> str:
+    """Undo MarkdownV2 escaping so plain-text fallback does not show backslashes."""
+    return _UNESCAPE_RE.sub(r"\1", text)
 
 
 def _utf16_len(text: str) -> int:
@@ -39,6 +47,13 @@ def _split_at_boundary(text: str, max_units: int) -> tuple[str, str]:
         end = boundary + (
             2 if candidate[boundary : boundary + 2] in {"\n\n", ". "} else 1
         )
+
+    # Never split between a backslash and the MarkdownV2 reserved character it
+    # escapes; that would leave a stray backslash in one chunk and an unescaped
+    # reserved character in the next.  Walk the cut point back through any run
+    # of backslashes preceding a reserved character.
+    while end > 1 and text[end - 1] == "\\" and text[end] in MARKDOWN_V2_RESERVED:
+        end -= 1
 
     return text[:end], text[end:]
 

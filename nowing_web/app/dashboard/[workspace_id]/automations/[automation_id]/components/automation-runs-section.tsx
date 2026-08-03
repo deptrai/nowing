@@ -7,6 +7,7 @@ import { RunsLoading } from "./runs-loading";
 
 interface AutomationRunsSectionProps {
 	automationId: number;
+	highlightedRunId?: number;
 }
 
 const LIMIT = 20;
@@ -18,7 +19,10 @@ const LIMIT = 20;
  * enough to tell whether things are working. Real "load more" lands if
  * we see usage spike past that.
  */
-export function AutomationRunsSection({ automationId }: AutomationRunsSectionProps) {
+export function AutomationRunsSection({
+	automationId,
+	highlightedRunId,
+}: AutomationRunsSectionProps) {
 	const { data, isLoading, error } = useAutomationRuns(automationId, { limit: LIMIT });
 	const runs = data?.items ?? [];
 
@@ -56,7 +60,12 @@ export function AutomationRunsSection({ automationId }: AutomationRunsSectionPro
 				) : (
 					<div className="space-y-2">
 						{runs.map((run) => (
-							<RunRow key={run.id} run={run} automationId={automationId} />
+							<RunRow
+								key={run.id}
+								run={run}
+								automationId={automationId}
+								highlightedRunId={highlightedRunId}
+							/>
 						))}
 					</div>
 				)}

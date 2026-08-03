@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import type { Workspace } from "@/contracts/types/workspace.types";
+import { userApiService } from "@/lib/apis/user-api.service";
 import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
 import { authenticatedFetch } from "@/lib/auth-fetch";
 import { buildBackendUrl } from "@/lib/env-config";
@@ -84,6 +86,9 @@ export function MessagingChannelsContent() {
 	const [pairingPlatform, setPairingPlatform] = useState<PairingPlatform | null>(null);
 	const [baileysHealth, setBaileysHealth] = useState<BaileysHealth | null>(null);
 	const [refreshingPlatform, setRefreshingPlatform] = useState<GatewayPlatform | null>(null);
+	const [telegramNotificationsEnabled, setTelegramNotificationsEnabled] = useState(false);
+	const [isLoadingUserProfile, setIsLoadingUserProfile] = useState(true);
+	const [isSavingNotifications, setIsSavingNotifications] = useState(false);
 	const isGatewayConfigLoading = gatewayConfig === null;
 	const telegramGatewayEnabled = gatewayConfig?.telegram_enabled ?? false;
 	const whatsappMode = gatewayConfig?.whatsapp_intake_mode ?? "disabled";
@@ -155,6 +160,56 @@ export function MessagingChannelsContent() {
 	useEffect(() => {
 		void refreshBaileysHealth();
 	}, [refreshBaileysHealth]);
+
+	useEffect(() => {
+		userApiService
+			.getMe()
+			.then((user) => {
+				const prefs = user.notification_preferences as Record<
+					string,
+					Record<string, unknown> | unknown
+				> | null;
+				const automationPrefs = prefs?.automation_run_complete as
+					| Record<string, unknown>
+					| undefined;
+				setTelegramNotificationsEnabled(automationPrefs?.telegram === true);
+			})
+			.catch(() => {
+				setTelegramNotificationsEnabled(false);
+			})
+			.finally(() => {
+				setIsLoadingUserProfile(false);
+			});
+	}, []);
+
+	async function toggleTelegramNotifications(enabled: boolean) {
+		setTelegramNotificationsEnabled(enabled);
+		setIsSavingNotifications(true);
+		try {
+			const res = await authenticatedFetch(buildBackendUrl("/users/me/notification-preferences"), {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					notification_preferences: {
+						automation_run_complete: { telegram: enabled },
+					},
+				}),
+			});
+			if (!res.ok) {
+				setTelegramNotificationsEnabled(!enabled);
+				toast.error("Failed to update Telegram notification preference");
+				return;
+			}
+			toast.success(
+				enabled ? "Telegram run notifications enabled" : "Telegram run notifications disabled"
+			);
+		} catch {
+			setTelegramNotificationsEnabled(!enabled);
+			toast.error("Failed to update Telegram notification preference");
+		} finally {
+			setIsSavingNotifications(false);
+		}
+	}
 
 	async function startPairing(platform: PairingPlatform) {
 		const res = await authenticatedFetch(buildBackendUrl("/api/v1/gateway/bindings/start"), {
@@ -254,7 +309,7 @@ export function MessagingChannelsContent() {
 	};
 	const baileysQr = baileysHealth?.qr || null;
 	const hasTelegramConnection = connections.some(
-		(connection) => connection.platform === "telegram"
+		(connection) => connection.platform === "telegram" && connection.state === "bound"
 	);
 	const hasWhatsAppConnection = connections.some(
 		(connection) => connection.platform === "whatsapp" && isConnectionInActiveMode(connection)
@@ -449,6 +504,22 @@ export function MessagingChannelsContent() {
 						</div>
 
 						{hasTelegramConnection ? null : renderPairingPanel("telegram")}
+						{hasTelegramConnection ? (
+							<div className="flex items-center justify-between gap-3 rounded-md border border-accent/50 bg-accent/10 p-3">
+								<div className="space-y-0.5">
+									<p className="text-sm font-medium">Automation run notifications</p>
+									<p className="text-xs text-muted-foreground">
+										Notify me on Telegram when an automation run completes
+									</p>
+								</div>
+								<Switch
+									checked={telegramNotificationsEnabled}
+									onCheckedChange={toggleTelegramNotifications}
+									disabled={isLoadingUserProfile || isSavingNotifications}
+									aria-label="Notify me on Telegram when an automation run completes"
+								/>
+							</div>
+						) : null}
 						<Separator className="bg-accent" />
 						{renderConnectionRows("telegram", "No Telegram chats connected yet.")}
 					</CardContent>

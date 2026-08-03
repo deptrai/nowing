@@ -949,12 +949,8 @@ class ScraperPlatformAccount(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     platform = Column(String(64), nullable=False, index=True)
     label = Column(String(255), nullable=True)
-    is_enabled = Column(
-        Boolean, nullable=False, default=True, server_default="true"
-    )
-    is_default = Column(
-        Boolean, nullable=False, default=False, server_default="false"
-    )
+    is_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+    is_default = Column(Boolean, nullable=False, default=False, server_default="false")
     encrypted_credentials = Column(Text, nullable=True)
 
     __table_args__ = (
@@ -2737,6 +2733,10 @@ if config.AUTH_TYPE == "GOOGLE":
 
         last_login = Column(TIMESTAMP(timezone=True), nullable=True)
 
+        notification_preferences = Column(
+            JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+        )
+
         # Refresh tokens for this user
         refresh_tokens = relationship(
             "RefreshToken",
@@ -2887,6 +2887,10 @@ else:
         avatar_url = Column(String, nullable=True)
 
         last_login = Column(TIMESTAMP(timezone=True), nullable=True)
+
+        notification_preferences = Column(
+            JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+        )
 
         # Refresh tokens for this user
         refresh_tokens = relationship(

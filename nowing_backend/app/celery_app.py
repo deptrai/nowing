@@ -197,6 +197,7 @@ celery_app = Celery(
         "app.etl_pipeline.cache.eviction.task",
         "app.indexing_pipeline.cache.eviction.task",
         "app.automations.tasks.execute_run",
+        "app.automations.tasks.notify_run_complete",
         "app.automations.triggers.builtin.schedule.selector",
         "app.automations.triggers.builtin.event.selector",
         "app.automations.triggers.builtin.memory_change.selector",

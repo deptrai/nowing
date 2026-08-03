@@ -42,6 +42,7 @@ def _telegram_translator_factory(
     return TelegramStreamTranslator(
         adapter=adapter,  # type: ignore[arg-type]
         external_peer_id=event.external_peer_id,
+        reply_markup=(event.metadata or {}).get("reply_markup"),
     )
 
 

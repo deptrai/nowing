@@ -244,7 +244,14 @@ def _classify_telegram_event(payload: dict[str, Any]) -> str:
 
 
 def _telegram_message(payload: dict[str, Any]) -> dict[str, Any] | None:
-    return payload.get("message") or payload.get("edited_message")
+    if "message" in payload:
+        return payload["message"]
+    if "edited_message" in payload:
+        return payload["edited_message"]
+    callback_query = payload.get("callback_query")
+    if isinstance(callback_query, dict):
+        return callback_query.get("message")
+    return None
 
 
 @router.get("/slack/install")

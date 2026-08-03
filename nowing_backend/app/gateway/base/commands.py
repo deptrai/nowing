@@ -39,3 +39,23 @@ class BaseGatewayCommands:
         dashboard_url: str,
     ) -> None:
         return None
+
+    async def handle_status_command(
+        self,
+        *,
+        session,
+        adapter: BasePlatformAdapter,
+        event: ParsedInboundEvent,
+        binding,
+    ) -> bool:
+        return False
+
+    async def handle_run_command(
+        self,
+        *,
+        session,
+        adapter: BasePlatformAdapter,
+        event: ParsedInboundEvent,
+        binding,
+    ) -> bool:
+        return False

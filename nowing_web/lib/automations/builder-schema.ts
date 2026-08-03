@@ -36,6 +36,7 @@ export const writeBackActionSchema = z.enum([
 	"write_back_linear",
 	"write_back_jira",
 	"write_back_slack",
+	"write_back_telegram",
 ]);
 export type WriteBackAction = z.infer<typeof writeBackActionSchema>;
 
@@ -77,11 +78,25 @@ const slackWriteBackParamsSchema = z.object({
 	object_id: z.string().trim().nullable().default(null),
 });
 
+const telegramWriteBackParamsSchema = z.object({
+	provider: z.literal("telegram"),
+	text: z.string().trim().min(1, "Message text is required"),
+	chat_id: z.string().trim().nullable().default(null),
+	parse_mode: z.enum(["Markdown", "MarkdownV2", "none"]).nullable().default("Markdown"),
+	reply_markup: z.record(z.string(), z.any()).nullable().default(null),
+	account_id: z.number().int().nullable().default(null),
+	use_system_bot: z.boolean().default(true),
+	reply_to_message_id: z.string().trim().nullable().default(null),
+	connector_name: z.string().trim().nullable().default(null),
+	object_id: z.string().trim().nullable().default(null),
+});
+
 export const writeBackParamsSchema = z.discriminatedUnion("provider", [
 	notionWriteBackParamsSchema,
 	linearWriteBackParamsSchema,
 	jiraWriteBackParamsSchema,
 	slackWriteBackParamsSchema,
+	telegramWriteBackParamsSchema,
 ]);
 export type WriteBackParams = z.infer<typeof writeBackParamsSchema>;
 
@@ -288,6 +303,13 @@ function buildWriteBackParams(
 	// Provider is only used for form discrimination; the backend action already
 	// encodes the target service.
 	const { provider: _, ...rest } = params;
+	if (
+		action === "write_back_telegram" &&
+		params.provider === "telegram" &&
+		params.parse_mode === "none"
+	) {
+		return { ...rest, parse_mode: null };
+	}
 	return rest;
 }
 
@@ -532,6 +554,28 @@ function writeBackParamsFromParams(
 			object_id,
 		};
 	}
+	if (action === "write_back_telegram") {
+		const rawParseMode = stringOrNull(params.parse_mode);
+		const parse_mode: "Markdown" | "MarkdownV2" | "none" | null =
+			rawParseMode === "Markdown" || rawParseMode === "MarkdownV2" || rawParseMode === "none"
+				? rawParseMode
+				: "none";
+		return {
+			provider: "telegram",
+			text: stringOrNull(params.text) ?? "",
+			chat_id: stringOrNull(params.chat_id),
+			parse_mode,
+			reply_markup:
+				typeof params.reply_markup === "object" && params.reply_markup !== null
+					? (params.reply_markup as Record<string, unknown>)
+					: null,
+			account_id: typeof params.account_id === "number" ? params.account_id : null,
+			use_system_bot: typeof params.use_system_bot === "boolean" ? params.use_system_bot : true,
+			reply_to_message_id: stringOrNull(params.reply_to_message_id),
+			connector_name,
+			object_id,
+		};
+	}
 	return null;
 }
 
@@ -540,6 +584,7 @@ const WRITE_BACK_ACTIONS = new Set([
 	"write_back_linear",
 	"write_back_jira",
 	"write_back_slack",
+	"write_back_telegram",
 ]);
 
 export function hydrateForm(

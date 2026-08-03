@@ -19,7 +19,8 @@ function taskSummary(task: BuilderForm["tasks"][number]): string {
 		if (task.writeBackParams.provider === "slack") return `Post to ${task.writeBackParams.channel}`;
 		if (task.writeBackParams.provider === "jira") return `Jira: ${task.writeBackParams.summary}`;
 		if (task.writeBackParams.provider === "linear") return `Linear: ${task.writeBackParams.title}`;
-		return `Notion: ${task.writeBackParams.title}`;
+		if (task.writeBackParams.provider === "notion") return `Notion: ${task.writeBackParams.title}`;
+		return `Telegram: ${task.writeBackParams.text}`;
 	}
 	return task.action.replace(/_/g, " ");
 }

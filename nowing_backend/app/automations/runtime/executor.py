@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,20 @@ from app.automations.templating import build_run_context
 from . import repository
 from .origin import automation_run_origin
 from .step import execute_step
+
+logger = logging.getLogger(__name__)
+
+
+def _maybe_enqueue_run_notification(run_id: int) -> None:
+    """Fire-and-forget a notification task; never fail the run."""
+    try:
+        from app.automations.tasks.notify_run_complete import (
+            notify_telegram_run_complete,
+        )
+
+        notify_telegram_run_complete.apply_async(args=(run_id,), expires=3600)
+    except Exception:
+        logger.exception("Failed to enqueue run notification for run %s", run_id)
 
 
 async def execute_run(session: AsyncSession, run_id: int) -> None:
@@ -39,6 +54,7 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
             },
         )
         await session.commit()
+        _maybe_enqueue_run_notification(run.id)
         return
 
     # Stamp the automation origin for the whole run so any in-process memory
@@ -74,6 +90,7 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
                 await _run_on_failure(session, run, definition)
                 await repository.mark_failed(session, run, result.get("error"))
                 await session.commit()
+                _maybe_enqueue_run_notification(run.id)
                 return
 
             if result["status"] == "succeeded":
@@ -81,6 +98,7 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
 
         await repository.mark_succeeded(session, run)
         await session.commit()
+        _maybe_enqueue_run_notification(run.id)
 
 
 async def _maybe_link_research_thread_from_plan(

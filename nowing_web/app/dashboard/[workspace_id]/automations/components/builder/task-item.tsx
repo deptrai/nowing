@@ -37,6 +37,7 @@ const ACTION_OPTIONS: { value: WriteBackAction; label: string }[] = [
 	{ value: "write_back_linear", label: "Write back to Linear" },
 	{ value: "write_back_jira", label: "Write back to Jira" },
 	{ value: "write_back_slack", label: "Write back to Slack" },
+	{ value: "write_back_telegram", label: "Send Telegram message" },
 ];
 
 function parseOptionalInt(raw: string): number | null {
@@ -83,6 +84,19 @@ function defaultWriteBackParams(action: WriteBackAction): WriteBackParams {
 				channel: "",
 				text: "",
 				thread_ts: null,
+				connector_name: null,
+				object_id: null,
+			};
+		case "write_back_telegram":
+			return {
+				provider: "telegram",
+				text: "",
+				chat_id: null,
+				parse_mode: "Markdown",
+				reply_markup: null,
+				account_id: null,
+				use_system_bot: true,
+				reply_to_message_id: null,
 				connector_name: null,
 				object_id: null,
 			};
@@ -214,22 +228,24 @@ export function TaskItem({
 				</Field>
 			) : (
 				<div className="space-y-3">
-					<Field
-						label="Connector name"
-						hint="Optional when only one connector of this type exists."
-					>
-						<Input
-							type="text"
-							value={params?.connector_name ?? ""}
-							aria-label="Connector name"
-							placeholder="e.g. Acme Notion"
-							onChange={(e) =>
-								updateWriteBackParam({
-									connector_name: e.target.value.trim() || null,
-								} as Partial<WriteBackParams>)
-							}
-						/>
-					</Field>
+					{task.action !== "write_back_telegram" && (
+						<Field
+							label="Connector name"
+							hint="Optional when only one connector of this type exists."
+						>
+							<Input
+								type="text"
+								value={params?.connector_name ?? ""}
+								aria-label="Connector name"
+								placeholder="e.g. Acme Notion"
+								onChange={(e) =>
+									updateWriteBackParam({
+										connector_name: e.target.value.trim() || null,
+									} as Partial<WriteBackParams>)
+								}
+							/>
+						</Field>
+					)}
 					{task.action === "write_back_notion" && params?.provider === "notion" && (
 						<>
 							<Field label="Title" required>
@@ -416,19 +432,89 @@ export function TaskItem({
 							</Field>
 						</>
 					)}
-					<Field label="Existing object id" hint="Optional: update instead of create.">
-						<Input
-							type="text"
-							value={params?.object_id ?? ""}
-							aria-label="Existing object id"
-							placeholder="page id / issue key / message ts"
-							onChange={(e) =>
-								updateWriteBackParam({
-									object_id: e.target.value.trim() || null,
-								} as Partial<WriteBackParams>)
-							}
-						/>
-					</Field>
+					{task.action === "write_back_telegram" && params?.provider === "telegram" && (
+						<>
+							<Field label="Message text" required>
+								<Input
+									type="text"
+									value={params.text}
+									aria-label="Message text"
+									placeholder="What to send"
+									onChange={(e) =>
+										updateWriteBackParam({ text: e.target.value } as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+							<Field label="Chat id" hint="Optional: leave blank to use your paired Telegram chat">
+								<Input
+									type="text"
+									value={params.chat_id ?? ""}
+									aria-label="Chat id"
+									placeholder="@channelusername or 123456789"
+									onChange={(e) =>
+										updateWriteBackParam({
+											chat_id: e.target.value.trim() || null,
+										} as Partial<WriteBackParams>)
+									}
+								/>
+							</Field>
+							<Field label="Parse mode">
+								<Select
+									value={params.parse_mode ?? "none"}
+									onValueChange={(value) =>
+										updateWriteBackParam({
+											parse_mode: value === "none" ? null : (value as "Markdown" | "MarkdownV2"),
+										} as Partial<WriteBackParams>)
+									}
+								>
+									<SelectTrigger aria-label="Parse mode">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="Markdown">Markdown</SelectItem>
+										<SelectItem value="MarkdownV2">MarkdownV2</SelectItem>
+										<SelectItem value="none">none</SelectItem>
+									</SelectContent>
+								</Select>
+							</Field>
+							<Field label="Reply markup (raw JSON)" hint="Optional inline keyboard JSON">
+								<Input
+									type="text"
+									value={params.reply_markup ? JSON.stringify(params.reply_markup) : ""}
+									aria-label="Reply markup"
+									placeholder='{"inline_keyboard": [[{"text": "Open", "url": "..."}]]}'
+									onChange={(e) => {
+										const raw = e.target.value.trim();
+										if (!raw) {
+											updateWriteBackParam({ reply_markup: null } as Partial<WriteBackParams>);
+											return;
+										}
+										try {
+											const parsed = JSON.parse(raw) as Record<string, unknown>;
+											updateWriteBackParam({ reply_markup: parsed } as Partial<WriteBackParams>);
+										} catch {
+											// Ignore invalid JSON while the user is typing.
+										}
+									}}
+								/>
+							</Field>
+						</>
+					)}
+					{task.action !== "write_back_telegram" && (
+						<Field label="Existing object id" hint="Optional: update instead of create.">
+							<Input
+								type="text"
+								value={params?.object_id ?? ""}
+								aria-label="Existing object id"
+								placeholder="page id / issue key / message ts"
+								onChange={(e) =>
+									updateWriteBackParam({
+										object_id: e.target.value.trim() || null,
+									} as Partial<WriteBackParams>)
+								}
+							/>
+						</Field>
+					)}
 				</div>
 			)}
 

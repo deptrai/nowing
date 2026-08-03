@@ -1,6 +1,6 @@
 "use client";
 import { ChevronDown, ChevronRight, Hand } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LiveRunSummary } from "@/hooks/use-automation-runs";
 import { formatDuration } from "@/lib/automations/run-duration";
 import { formatRelativeDate } from "@/lib/format-date";
@@ -10,6 +10,7 @@ import { RunStatusBadge } from "./run-status-badge";
 interface RunRowProps {
 	run: LiveRunSummary;
 	automationId: number;
+	highlightedRunId?: number;
 }
 
 /**
@@ -17,15 +18,30 @@ interface RunRowProps {
  * Status and step_results come live from the parent's Zero query; the
  * panel itself only fetches the heavy REST fields on first expand.
  */
-export function RunRow({ run, automationId }: RunRowProps) {
-	const [open, setOpen] = useState(false);
+export function RunRow({ run, automationId, highlightedRunId }: RunRowProps) {
+	const isHighlighted = run.id === highlightedRunId;
+	const [open, setOpen] = useState(isHighlighted);
+	const hasScrolled = useRef(false);
 	const duration = formatDuration(run.started_at, run.finished_at);
 	const startedLabel = run.started_at
 		? formatRelativeDate(run.started_at)
 		: formatRelativeDate(run.created_at);
 
+	useEffect(() => {
+		if (isHighlighted && !hasScrolled.current) {
+			const element = document.getElementById(`run-${run.id}`);
+			if (element) {
+				element.scrollIntoView({ behavior: "smooth", block: "center" });
+				hasScrolled.current = true;
+			}
+		}
+	}, [isHighlighted, run.id]);
+
 	return (
-		<div className="rounded-md border border-border/60 overflow-hidden">
+		<div
+			id={isHighlighted ? `run-${run.id}` : undefined}
+			className="rounded-md border border-border/60 overflow-hidden"
+		>
 			<button
 				type="button"
 				onClick={() => setOpen((value) => !value)}

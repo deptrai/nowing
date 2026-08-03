@@ -12,7 +12,6 @@ from app.gateway.base.adapter import PlatformSendResult
 from app.gateway.base.translator import BaseStreamTranslator, GatewayStreamEvent
 from app.gateway.ratelimit import wait_for_token
 from app.gateway.telegram.adapter import TelegramAdapter
-from app.gateway.telegram.client import retry_plaintext_on_bad_markdown
 from app.gateway.telegram.formatting import chunk_message, escape_markdown_v2
 from app.observability.metrics import (
     record_gateway_hitl_aborted,
@@ -36,11 +35,13 @@ class TelegramStreamTranslator(BaseStreamTranslator):
         external_peer_id: str,
         assistant_message_id: int | None = None,
         debounce_seconds: float = 1.5,
+        reply_markup: dict | None = None,
     ) -> None:
         self.adapter = adapter
         self.external_peer_id = external_peer_id
         self.assistant_message_id = assistant_message_id
         self.debounce_seconds = debounce_seconds
+        self._reply_markup = reply_markup
         self._buffer = ""
         self._last_flush_at = 0.0
         self._external_message_ids: list[str] = []
@@ -73,14 +74,16 @@ class TelegramStreamTranslator(BaseStreamTranslator):
             return
 
         chunks = chunk_message(self._buffer)
-        # During streaming, keep edits on the last chunk only.  At final flush,
-        # send any additional chunks and mark the message as finalized by the
-        # persistence layer (wired through agent/task code).
         if len(chunks) > 1:
-            for chunk in chunks[:-1]:
+            # Buffer grew past Telegram's message limit. Commit each chunk as a
+            # final message and start a fresh buffer. ponytail: after overflow,
+            # the stream stops editing the prior message; subsequent text becomes
+            # a new message to avoid overwriting the committed tail chunk.
+            for chunk in chunks:
                 result = await self._send_text(chunk)
                 self._external_message_ids.append(result.external_message_id)
-            self._buffer = chunks[-1]
+            self._buffer = ""
+            return
 
         text = self._format_text(self._buffer)
         if self._external_message_ids:
@@ -90,6 +93,7 @@ class TelegramStreamTranslator(BaseStreamTranslator):
             self._external_message_ids.append(result.external_message_id)
 
         if final:
+            self._buffer = ""
             logger.debug(
                 "Telegram gateway finalized assistant message id=%s external_ids=%s",
                 self.assistant_message_id,
@@ -108,11 +112,11 @@ class TelegramStreamTranslator(BaseStreamTranslator):
             len(text),
         )
         try:
-            result = await retry_plaintext_on_bad_markdown(
-                self.adapter.send_message,
+            result = await self.adapter.send_message(
                 external_peer_id=self.external_peer_id,
                 text=self._format_text(text),
                 parse_mode=parse_mode,
+                reply_markup=self._reply_markup,
             )
         except Exception:
             record_gateway_outbound(platform="telegram", kind="send", status="failed")
@@ -135,12 +139,12 @@ class TelegramStreamTranslator(BaseStreamTranslator):
             len(text),
         )
         try:
-            result = await retry_plaintext_on_bad_markdown(
-                self.adapter.edit_message,
+            result = await self.adapter.edit_message(
                 external_peer_id=self.external_peer_id,
                 external_message_id=message_id,
                 text=text,
                 parse_mode=parse_mode,
+                reply_markup=self._reply_markup,
             )
         except Exception:
             record_gateway_outbound(platform="telegram", kind="edit", status="failed")

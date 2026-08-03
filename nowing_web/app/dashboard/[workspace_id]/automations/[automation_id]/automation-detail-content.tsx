@@ -1,5 +1,6 @@
 "use client";
 import { ShieldAlert } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useAutomation } from "@/hooks/use-automation";
 import { useAutomationPermissions } from "../hooks/use-automation-permissions";
 import { AutomationDefinitionSection } from "./components/automation-definition-section";
@@ -32,6 +33,10 @@ export function AutomationDetailContent({
 	automationId,
 }: AutomationDetailContentProps) {
 	const perms = useAutomationPermissions();
+	const searchParams = useSearchParams();
+	const highlightedRunId = searchParams.get("run_id")
+		? Number(searchParams.get("run_id"))
+		: undefined;
 	const validId = Number.isInteger(automationId) && automationId > 0;
 	const { data: automation, isLoading, error } = useAutomation(validId ? automationId : undefined);
 
@@ -75,7 +80,7 @@ export function AutomationDetailContent({
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 				<div className="space-y-6 min-w-0 lg:col-span-2">
 					<AutomationDefinitionSection definition={automation.definition} />
-					<AutomationRunsSection automationId={automation.id} />
+					<AutomationRunsSection automationId={automation.id} highlightedRunId={highlightedRunId} />
 				</div>
 				<div className="space-y-6 min-w-0">
 					<AutomationTriggersSection

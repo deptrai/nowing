@@ -9,6 +9,7 @@ export const user = z.object({
 	credit_micros_balance: z.number(),
 	display_name: z.string().nullish(),
 	avatar_url: z.string().nullish(),
+	notification_preferences: z.record(z.string(), z.unknown()).nullish(),
 });
 
 /**
@@ -22,6 +23,7 @@ export const getMeResponse = user;
 export const updateUserRequest = z.object({
 	display_name: z.string().nullish(),
 	avatar_url: z.string().nullish(),
+	notification_preferences: z.record(z.string(), z.unknown()).nullish(),
 });
 
 /**

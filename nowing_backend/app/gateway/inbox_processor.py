@@ -345,11 +345,44 @@ async def _dispatch_inbound_event(
             account.platform
             not in {ExternalChatPlatform.SLACK, ExternalChatPlatform.DISCORD}
             and parsed.external_peer_kind != ExternalChatPeerKind.DIRECT.value
+            and parsed.event_kind != "callback_query"
         ):
             if hasattr(adapter, "leave_chat"):
                 await adapter.leave_chat(external_peer_id=parsed.external_peer_id)
             event.status = ExternalChatEventStatus.IGNORED
             event.last_error = "group_rejected"
+            await session.commit()
+            return
+
+        if binding is not None and binding.state == ExternalChatBindingState.SUSPENDED:
+            if parsed.event_kind == "callback_query":
+                callback_query_id = (parsed.metadata or {}).get("callback_query_id")
+                if callback_query_id and hasattr(adapter, "answer_callback_query"):
+                    try:
+                        await adapter.answer_callback_query(
+                            callback_query_id=callback_query_id,
+                            text="This chat is suspended.",
+                            show_alert=True,
+                        )
+                    except Exception:
+                        logger.warning(
+                            "Failed to answer callback query %s",
+                            callback_query_id,
+                            exc_info=True,
+                        )
+            elif parsed.external_peer_id:
+                try:
+                    await adapter.send_message(
+                        external_peer_id=parsed.external_peer_id,
+                        text="This chat is suspended.",
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to send suspended notice to %s",
+                        parsed.external_peer_id,
+                    )
+            event.status = ExternalChatEventStatus.IGNORED
+            event.last_error = "suspended_binding"
             await session.commit()
             return
 
@@ -363,6 +396,24 @@ async def _dispatch_inbound_event(
                 return
 
         if binding is None:
+            if parsed.event_kind == "callback_query":
+                callback_query_id = (parsed.metadata or {}).get("callback_query_id")
+                if callback_query_id and hasattr(adapter, "answer_callback_query"):
+                    try:
+                        await adapter.answer_callback_query(
+                            callback_query_id=callback_query_id
+                        )
+                    except Exception:
+                        logger.warning(
+                            "Failed to answer callback query %s",
+                            callback_query_id,
+                            exc_info=True,
+                        )
+                event.status = ExternalChatEventStatus.PROCESSED
+                event.last_error = "unbound_callback"
+                await session.commit()
+                return
+
             if (
                 bundle.auto_bind_owner
                 and account.owner_user_id
@@ -394,6 +445,54 @@ async def _dispatch_inbound_event(
 
         event.external_chat_binding_id = binding.id
 
+        if parsed.event_kind == "callback_query":
+            handler = getattr(bundle.commands, "handle_callback_query", None)
+            if handler is not None:
+                callback_query_id = (parsed.metadata or {}).get("callback_query_id")
+                handler_failed = False
+                try:
+                    await handler(
+                        session=session,
+                        adapter=adapter,
+                        event=parsed,
+                        binding=binding,
+                    )
+                except Exception:
+                    handler_failed = True
+                    raise
+                finally:
+                    if (
+                        handler_failed
+                        and callback_query_id
+                        and hasattr(adapter, "answer_callback_query")
+                    ):
+                        try:
+                            await adapter.answer_callback_query(
+                                callback_query_id=callback_query_id
+                            )
+                        except Exception:
+                            logger.warning(
+                                "Failed to answer callback query %s",
+                                callback_query_id,
+                                exc_info=True,
+                            )
+            elif hasattr(adapter, "answer_callback_query"):
+                callback_query_id = (parsed.metadata or {}).get("callback_query_id")
+                if callback_query_id:
+                    try:
+                        await adapter.answer_callback_query(
+                            callback_query_id=callback_query_id
+                        )
+                    except Exception:
+                        logger.warning(
+                            "Failed to answer callback query %s",
+                            callback_query_id,
+                            exc_info=True,
+                        )
+            event.status = ExternalChatEventStatus.PROCESSED
+            await session.commit()
+            return
+
         if cmd == "/help":
             handled = await bundle.commands.handle_help_command(
                 adapter=adapter, event=parsed
@@ -414,6 +513,30 @@ async def _dispatch_inbound_event(
             event.status = ExternalChatEventStatus.PROCESSED
             await session.commit()
             return
+
+        if cmd == "/status":
+            handled = await bundle.commands.handle_status_command(
+                session=session,
+                adapter=adapter,
+                event=parsed,
+                binding=binding,
+            )
+            if handled:
+                event.status = ExternalChatEventStatus.PROCESSED
+                await session.commit()
+                return
+
+        if cmd == "/run":
+            handled = await bundle.commands.handle_run_command(
+                session=session,
+                adapter=adapter,
+                event=parsed,
+                binding=binding,
+            )
+            if handled:
+                event.status = ExternalChatEventStatus.PROCESSED
+                await session.commit()
+                return
 
         if not parsed.text:
             event.status = ExternalChatEventStatus.IGNORED
