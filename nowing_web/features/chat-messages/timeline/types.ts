@@ -68,6 +68,13 @@ export interface ToolCallItem extends BaseItem {
 	 * thinking-step ID, not the ``toolCallId``.
 	 */
 	thinkingStepId?: string;
+	/**
+	 * True when the tool's own result reports a degraded state (e.g.
+	 * ``chainlens.research`` returning ``engine_unavailable`` or
+	 * ``partial``). The timeline chrome and per-tool body use this to
+	 * avoid showing a plain "completed" checkmark.
+	 */
+	degraded?: boolean;
 }
 
 export type TimelineItem = ReasoningItem | ToolCallItem;

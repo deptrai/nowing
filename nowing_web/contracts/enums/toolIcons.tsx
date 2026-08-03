@@ -44,6 +44,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 	display_image: ImageIcon,
 	// Web / search
 	scrape_webpage: ScanLine,
+	chainlens_research: Search,
 	// Automations
 	create_automation: AlarmClock,
 	// Memory
@@ -147,6 +148,7 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
 	display_image: "Show image",
 	// Web / search
 	scrape_webpage: "Read webpage",
+	chainlens_research: "Deep research",
 	// Automations
 	create_automation: "Create automation",
 	// Memory

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { groupItems } from "./grouping";
 import { resolveItemTitle } from "./subagent-rename";
 import { TimelineGroupRow } from "./timeline-group-row";
-import type { ItemStatus, TimelineItem } from "./types";
+import type { ItemStatus, TimelineItem, ToolCallItem } from "./types";
 
 /**
  * Force a stale "running" to read as "completed" once the thread
@@ -89,7 +89,20 @@ export const Timeline: FC<{
 	if (effectiveItems.length === 0 && !hasPending) return null;
 
 	const headerText = (() => {
-		if (allSettled) return "Reviewed";
+		if (allSettled) {
+			const degraded = effectiveItems.find(
+				(it): it is ToolCallItem & { result: { status?: string } } =>
+					it.kind === "tool-call" && it.degraded === true
+			);
+			if (degraded) {
+				const status = degraded.result?.status;
+				if (status === "engine_unavailable") return "Engine unavailable — fallback";
+				if (status === "partial") return "Partial result";
+				if (status === "insufficient_evidence") return "No sources found";
+				return "Degraded";
+			}
+			return "Reviewed";
+		}
 		if (hasPending) return "Awaiting your decision";
 		if (inProgressTitle) return inProgressTitle;
 		if (isProcessing) return "Processing";

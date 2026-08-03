@@ -1,6 +1,13 @@
 "use client";
 
-import { CheckIcon, ChevronDownIcon, XCircleIcon } from "lucide-react";
+import {
+	AlertTriangle,
+	CheckIcon,
+	ChevronDownIcon,
+	Database,
+	Globe,
+	XCircleIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { NestedScroll } from "@/components/assistant-ui/nested-scroll";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +44,135 @@ function deriveResultMessage(result: unknown): string | null {
 	}
 }
 
+interface ResearchSource {
+	title?: string;
+	url?: string;
+	content?: string;
+	source_type?: string;
+	document_id?: number;
+	chunk_id?: number;
+}
+
+interface ResearchResult {
+	status?: "complete" | "partial" | "timeout" | "insufficient_evidence" | "engine_unavailable";
+	degraded?: boolean;
+	degradation_reason?: string;
+	next_action?: string;
+	answer?: string;
+	sources?: ResearchSource[];
+}
+
+function asResearchResult(result: unknown): ResearchResult | undefined {
+	if (typeof result !== "object" || result === null) return undefined;
+	const r = result as Record<string, unknown>;
+	if (r.degraded !== true && typeof r.status !== "string") return undefined;
+	if (!("answer" in r) && !("sources" in r) && r.degraded !== true) return undefined;
+	return r as ResearchResult;
+}
+
+function isChainlensResearchTool(toolName: string): boolean {
+	return toolName === "chainlens_research" || toolName === "chainlens.research";
+}
+
+function researchBadge(result: ResearchResult): string {
+	switch (result.status) {
+		case "engine_unavailable":
+			return "Engine unavailable";
+		case "partial":
+			return "Partial result";
+		case "insufficient_evidence":
+			return "No sources";
+		case "timeout":
+			return "Timed out";
+		default:
+			return result.degraded ? "Degraded" : "Completed";
+	}
+}
+
+function researchSubtitle(result: ResearchResult): string | null {
+	if (result.next_action) return result.next_action;
+	switch (result.status) {
+		case "engine_unavailable":
+			return result.degradation_reason === "fallback_kb_hits"
+				? "Engine unavailable — showing workspace knowledge base fallback"
+				: "The deep research engine is unavailable";
+		case "partial":
+			return "Partial result — some sources could not be verified";
+		case "insufficient_evidence":
+			return "No relevant sources were found";
+		case "timeout":
+			return "The research stream timed out";
+		default:
+			return null;
+	}
+}
+
+function ResearchResultView({ result }: { result: ResearchResult }) {
+	return (
+		<div className="flex flex-col gap-3">
+			{result.answer && (
+				<div className="flex flex-col gap-1 min-w-0">
+					<p className="text-xs font-medium text-muted-foreground">Answer</p>
+					<NestedScroll className="max-h-48 overflow-auto rounded-md bg-muted/40">
+						<p className="px-3 py-2 text-sm text-foreground/80 whitespace-pre-wrap">
+							{result.answer}
+						</p>
+					</NestedScroll>
+				</div>
+			)}
+			{result.sources && result.sources.length > 0 && (
+				<div className="flex flex-col gap-1.5 min-w-0">
+					<p className="text-xs font-medium text-muted-foreground">
+						{result.sources.some((s) => s.source_type === "kb" || s.url?.startsWith("nowing://"))
+							? "Workspace knowledge base sources"
+							: "Sources"}
+					</p>
+					<div className="flex flex-col gap-2">
+						{result.sources.map((source, idx) => {
+							const isKb = source.source_type === "kb" || source.url?.startsWith("nowing://");
+							const title = source.title || `Source ${idx + 1}`;
+							return (
+								<div
+									key={source.url || `${title}-${idx}`}
+									className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2"
+								>
+									{isKb ? (
+										<Database className="size-3.5 shrink-0 text-muted-foreground mt-0.5" />
+									) : (
+										<Globe className="size-3.5 shrink-0 text-muted-foreground mt-0.5" />
+									)}
+									<div className="flex min-w-0 flex-col gap-0.5">
+										{source.url && !isKb ? (
+											<a
+												href={source.url}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="text-xs font-medium text-foreground hover:underline break-all"
+											>
+												{title}
+											</a>
+										) : (
+											<span className="text-xs font-medium text-foreground break-all">{title}</span>
+										)}
+										{source.content && (
+											<p className="text-xs text-muted-foreground line-clamp-2">{source.content}</p>
+										)}
+										{isKb && (
+											<span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+												Workspace KB
+											</span>
+										)}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				</div>
+			)}
+		</div>
+	);
+}
+
 /**
  * Compact tool-call card. Used by ``FallbackToolBody`` for unregistered
  * tools whose result is not an HITL interrupt.
@@ -57,11 +193,20 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 	status,
 	langchainToolCallId,
 	progress,
+	degraded,
 }) => {
 	const isCancelled = status === "cancelled";
 	const isError = status === "error";
 	const isRunning = status === "running";
 	const liveProgress = isRunning ? (progress ?? []) : [];
+
+	const researchResult = useMemo(() => asResearchResult(result), [result]);
+	const isResearchCard = isChainlensResearchTool(toolName) && researchResult != null;
+	const isDegraded =
+		degraded === true ||
+		(isResearchCard &&
+			(researchResult.degraded === true ||
+				(researchResult.status != null && researchResult.status !== "complete")));
 
 	const [isExpanded, setIsExpanded] = useState(isRunning);
 	useEffect(() => {
@@ -76,11 +221,12 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 
 	const subtitle = useMemo(() => {
 		if (isError || isCancelled) return deriveResultMessage(result);
+		if (isDegraded && researchResult) return researchSubtitle(researchResult);
 		// While running, surface the latest streamed activity line so progress
 		// is visible even when the card is collapsed.
 		if (isRunning && liveProgress.length > 0) return liveProgress[liveProgress.length - 1];
 		return null;
-	}, [isError, isCancelled, isRunning, liveProgress, result]);
+	}, [isError, isCancelled, isDegraded, isRunning, liveProgress, result, researchResult]);
 
 	const displayName = getToolDisplayName(toolName);
 
@@ -89,7 +235,8 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 			className={cn(
 				"my-4 max-w-lg overflow-hidden",
 				isCancelled && "opacity-60",
-				isError && "border-destructive/30"
+				isError && "border-destructive/30",
+				isDegraded && "border-amber-500/50"
 			)}
 		>
 			<Collapsible
@@ -114,11 +261,19 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 							<div
 								className={cn(
 									"flex size-8 shrink-0 items-center justify-center rounded-lg",
-									isError ? "bg-destructive/10" : isCancelled ? "bg-muted" : "bg-primary/10"
+									isError
+										? "bg-destructive/10"
+										: isDegraded
+											? "bg-amber-500/10"
+											: isCancelled
+												? "bg-muted"
+												: "bg-primary/10"
 								)}
 							>
 								{isError ? (
 									<XCircleIcon className="size-4 text-destructive" />
+								) : isDegraded ? (
+									<AlertTriangle className="size-4 text-amber-600" />
 								) : isCancelled ? (
 									<XCircleIcon className="size-4 text-muted-foreground" />
 								) : isRunning ? (
@@ -134,7 +289,8 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 										className={cn(
 											"text-sm font-semibold truncate",
 											isCancelled && "text-muted-foreground line-through",
-											isError && "text-destructive"
+											isError && "text-destructive",
+											isDegraded && "text-amber-600 dark:text-amber-400"
 										)}
 									>
 										{displayName}
@@ -142,12 +298,24 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 									{isRunning && <Badge variant="secondary">Running</Badge>}
 									{isError && <Badge variant="destructive">Failed</Badge>}
 									{isCancelled && <Badge variant="outline">Cancelled</Badge>}
+									{isDegraded && researchResult && (
+										<Badge
+											variant="secondary"
+											className="bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-400"
+										>
+											{researchBadge(researchResult)}
+										</Badge>
+									)}
 								</div>
 								{subtitle && (
 									<p
 										className={cn(
 											"text-xs truncate",
-											isError ? "text-destructive/80" : "text-muted-foreground"
+											isError
+												? "text-destructive/80"
+												: isDegraded
+													? "text-amber-600/80 dark:text-amber-400/80"
+													: "text-muted-foreground"
 										)}
 									>
 										{subtitle}
@@ -225,11 +393,17 @@ export const DefaultFallbackCard: TimelineToolComponent = ({
 								<Separator />
 								<div className="flex flex-col gap-1 min-w-0">
 									<p className="text-xs font-medium text-muted-foreground">Result</p>
-									<NestedScroll className="max-h-64 overflow-auto rounded-md bg-muted/40">
-										<pre className="px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap break-all font-mono">
-											{typeof result === "string" ? result : serializedResult}
-										</pre>
-									</NestedScroll>
+									{isResearchCard && researchResult ? (
+										<NestedScroll className="max-h-96 overflow-auto rounded-md bg-muted/40 px-3 py-2">
+											<ResearchResultView result={researchResult} />
+										</NestedScroll>
+									) : (
+										<NestedScroll className="max-h-64 overflow-auto rounded-md bg-muted/40">
+											<pre className="px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap break-all font-mono">
+												{typeof result === "string" ? result : serializedResult}
+											</pre>
+										</NestedScroll>
+									)}
 								</div>
 							</>
 						)}

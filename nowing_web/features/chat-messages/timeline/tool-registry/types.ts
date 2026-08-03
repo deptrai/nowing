@@ -23,6 +23,11 @@ export interface TimelineToolProps {
 	langchainToolCallId?: string;
 	status: ItemStatus;
 	/**
+	 * True when the tool result carries a ``degraded`` flag. Timeline bodies
+	 * can use this to swap the success chrome for a warning treatment.
+	 */
+	degraded?: boolean;
+	/**
 	 * Live activity lines for this tool (the joined thinking-step items).
 	 * While ``status === "running"`` these are the streamed progress updates
 	 * (e.g. scraper ``scraper_progress`` events) so the fallback card can show

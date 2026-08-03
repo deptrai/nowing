@@ -149,6 +149,17 @@ function mapStepStatus(status: ThinkingStepInput["status"]): ItemStatus {
 }
 
 /**
+ * Detect a result that marks itself as degraded. Keeps the shared
+ * ``buildTimeline`` from swallowing backend status like
+ * ``engine_unavailable`` / ``partial``; per-tool bodies can then render
+ * the right warning instead of a green checkmark.
+ */
+function isDegradedResult(result: unknown): boolean {
+	if (typeof result !== "object" || result === null) return false;
+	return (result as { degraded?: unknown }).degraded === true;
+}
+
+/**
  * Pure builder: thinking steps + message content → ``TimelineItem[]``.
  * Joins tool-calls to thinking steps via ``metadata.thinkingStepId``,
  * appends unjoined tool-calls as orphans, drops superseded
@@ -198,6 +209,7 @@ export function buildTimeline(
 				kind: "tool-call",
 				id: step.id,
 				status: mapStepStatus(step.status),
+				degraded: isDegradedResult(joined.result),
 				items: step.items.length > 0 ? step.items : undefined,
 				spanId: stepSpanId ?? asNonEmptyString(joined.metadata?.spanId),
 				toolName: joined.toolName,
@@ -233,6 +245,7 @@ export function buildTimeline(
 				kind: "tool-call",
 				id: part.toolCallId,
 				status: deriveToolCallStatus(part.result),
+				degraded: isDegradedResult(part.result),
 				spanId: asNonEmptyString(part.metadata?.spanId),
 				toolName: part.toolName,
 				toolCallId: part.toolCallId,

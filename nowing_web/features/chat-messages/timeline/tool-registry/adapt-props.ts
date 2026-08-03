@@ -20,6 +20,7 @@ export function adaptItemToProps(item: ToolCallItem): TimelineToolProps {
 		result: item.result,
 		langchainToolCallId: item.langchainToolCallId,
 		status: item.status,
+		degraded: item.degraded,
 		progress: item.items,
 	};
 }
