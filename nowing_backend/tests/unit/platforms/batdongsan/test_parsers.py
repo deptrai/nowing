@@ -179,3 +179,21 @@ def test_extract_phone_from_title_variants():
     assert extract_phone_from_title("LH 0916 754 123") == "0916754123"
     assert extract_phone_from_title("Call 0916.754.123") == "0916754123"
     assert extract_phone_from_title("Bán nhà giá 6.8 tỷ") is None
+
+
+def test_parse_detail_phone_returns_masked_display():
+    from app.proprietary.platforms.batdongsan.parsers import parse_detail_phone
+
+    html = '<div class="re__btn re__btn-cyan-solid--md re__btn-phone-icon phone js__phone" raw="abc123">0906 782 *** · Hiện số</div>'
+    phone, display = parse_detail_phone(html)
+    assert phone is None
+    assert display == "0906 782 ***"
+
+
+def test_parse_detail_phone_rejects_support_hotline():
+    from app.proprietary.platforms.batdongsan.parsers import parse_detail_phone
+
+    html = '<span class="re__text-phone">(024) 3562 5939 - (024) 3562 5940</span>'
+    phone, display = parse_detail_phone(html)
+    assert phone is None
+    assert display is None

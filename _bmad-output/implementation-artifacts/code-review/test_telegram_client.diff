@@ -1,0 +1,174 @@
+diff --git a/nowing_backend/tests/unit/gateway/test_telegram_client.py b/nowing_backend/tests/unit/gateway/test_telegram_client.py
+new file mode 100644
+index 000000000..09dae55b0
+--- /dev/null
++++ b/nowing_backend/tests/unit/gateway/test_telegram_client.py
+@@ -0,0 +1,168 @@
++from __future__ import annotations
++
++from unittest.mock import MagicMock
++
++import pytest
++from telegram.error import BadRequest, RetryAfter
++
++from app.gateway.base.adapter import PlatformSendResult
++from app.gateway.telegram.client import TelegramClient
++
++
++@pytest.fixture
++def client(mocker):
++    token = "test-token"
++    client = TelegramClient(token)
++    client.bot = mocker.AsyncMock()
++    return client
++
++
++@pytest.mark.asyncio
++async def test_send_message_passes_reply_markup(client, mocker):
++    from telegram import InlineKeyboardMarkup
++
++    sent_msg = MagicMock()
++    sent_msg.message_id = 42
++    sent_msg.to_dict.return_value = {"message_id": 42}
++    client.bot.send_message = mocker.AsyncMock(return_value=sent_msg)
++
++    reply_markup = {
++        "inline_keyboard": [[{"text": "View", "callback_data": "view_run:123"}]]
++    }
++    result = await client.send_message(
++        chat_id="12345",
++        text="Hello",
++        parse_mode="Markdown",
++        reply_markup=reply_markup,
++    )
++
++    assert isinstance(result, PlatformSendResult)
++    assert result.external_message_id == "42"
++    call_kwargs = client.bot.send_message.call_args.kwargs
++    assert call_kwargs["chat_id"] == "12345"
++    assert call_kwargs["text"] == "Hello"
++    assert call_kwargs["parse_mode"] == "Markdown"
++    assert isinstance(call_kwargs["reply_markup"], InlineKeyboardMarkup)
++
++
++@pytest.mark.asyncio
++async def test_send_message_drops_invalid_reply_markup(client, mocker):
++    sent_msg = MagicMock()
++    sent_msg.message_id = 7
++    sent_msg.to_dict.return_value = {"message_id": 7}
++    client.bot.send_message = mocker.AsyncMock(return_value=sent_msg)
++
++    result = await client.send_message(
++        chat_id="12345",
++        text="Hello",
++        reply_markup={"not_a_keyboard": []},
++    )
++
++    assert result.external_message_id == "7"
++    call_kwargs = client.bot.send_message.call_args.kwargs
++    assert "reply_markup" not in call_kwargs
++
++
++@pytest.mark.asyncio
++async def test_send_message_falls_back_on_bad_markdown(client, mocker):
++    sent_msg = MagicMock()
++    sent_msg.message_id = 9
++    sent_msg.to_dict.return_value = {"message_id": 9}
++    client.bot.send_message = mocker.AsyncMock(
++        side_effect=[
++            BadRequest("Can't parse message text: can't find end of bold entity"),
++            sent_msg,
++        ]
++    )
++
++    result = await client.send_message(
++        chat_id="12345",
++        text="*unclosed bold",
++        parse_mode="Markdown",
++    )
++
++    assert client.bot.send_message.call_count == 2
++    assert client.bot.send_message.call_args.kwargs.get("parse_mode") is None
++    assert result.external_message_id == "9"
++
++
++@pytest.mark.asyncio
++async def test_send_message_falls_back_on_bad_reply_markup(client, mocker):
++    sent_msg = MagicMock()
++    sent_msg.message_id = 11
++    sent_msg.to_dict.return_value = {"message_id": 11}
++    client.bot.send_message = mocker.AsyncMock(
++        side_effect=[
++            BadRequest("button_data_invalid"),
++            sent_msg,
++        ]
++    )
++
++    result = await client.send_message(
++        chat_id="12345",
++        text="Hello",
++        reply_markup={
++            "inline_keyboard": [
++                [{"text": "Bad", "callback_data": "bad:data:way:too:long"}]
++            ]
++        },
++    )
++
++    assert client.bot.send_message.call_count == 2
++    assert client.bot.send_message.call_args.kwargs.get("reply_markup") is None
++    assert result.external_message_id == "11"
++
++
++@pytest.mark.asyncio
++async def test_send_message_retries_after_rate_limit(client, mocker):
++    sent_msg = MagicMock()
++    sent_msg.message_id = 13
++    sent_msg.to_dict.return_value = {"message_id": 13}
++    client.bot.send_message = mocker.AsyncMock(
++        side_effect=[
++            RetryAfter(1),
++            sent_msg,
++        ]
++    )
++
++    result = await client.send_message(chat_id="12345", text="Hello")
++
++    assert client.bot.send_message.call_count == 2
++    assert result.external_message_id == "13"
++
++
++@pytest.mark.asyncio
++async def test_answer_callback_query(client, mocker):
++    client.bot.answer_callback_query = mocker.AsyncMock()
++
++    await client.answer_callback_query(
++        callback_query_id="cqid",
++        text="Done",
++        show_alert=True,
++    )
++
++    client.bot.answer_callback_query.assert_awaited_once_with(
++        callback_query_id="cqid",
++        text="Done",
++        show_alert=True,
++    )
++
++
++@pytest.mark.asyncio
++async def test_edit_message_reply_markup(client, mocker):
++    from telegram import InlineKeyboardMarkup
++
++    client.bot.edit_message_reply_markup = mocker.AsyncMock()
++
++    await client.edit_message_reply_markup(
++        chat_id="12345",
++        message_id="99",
++        reply_markup={
++            "inline_keyboard": [[{"text": "View", "callback_data": "view_run:123"}]]
++        },
++    )
++
++    call_kwargs = client.bot.edit_message_reply_markup.call_args.kwargs
++    assert call_kwargs["chat_id"] == 12345
++    assert call_kwargs["message_id"] == 99
++    assert isinstance(call_kwargs["reply_markup"], InlineKeyboardMarkup)

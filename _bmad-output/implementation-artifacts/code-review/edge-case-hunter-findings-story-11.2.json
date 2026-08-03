@@ -1,0 +1,64 @@
+[
+  {
+    "location": "nowing_backend/app/automations/actions/builtin/write_back_telegram/params.py:19",
+    "trigger_condition": "Automation omits parse_mode",
+    "guard_snippet": "parse_mode: str | None = Field(default='Markdown')",
+    "potential_consequence": "Messages sent as plain text instead of Markdown"
+  },
+  {
+    "location": "nowing_backend/app/automations/actions/builtin/write_back_telegram/params.py:25-27",
+    "trigger_condition": "Automation omits use_system_bot and account_id",
+    "guard_snippet": "use_system_bot: bool = Field(default=True)",
+    "potential_consequence": "Resolves workspace BYO account instead of system bot"
+  },
+  {
+    "location": "nowing_backend/app/automations/actions/builtin/write_back_telegram/invoke.py:27-33",
+    "trigger_condition": "account_id belongs to another workspace",
+    "guard_snippet": "if account.owner_workspace_id != ctx.workspace_id: raise ValueError('account not in this workspace')",
+    "potential_consequence": "Cross-workspace token exposure and sends"
+  },
+  {
+    "location": "nowing_backend/app/automations/actions/builtin/write_back_telegram/factory.py:15-17",
+    "trigger_condition": "write_back_telegram raises any exception",
+    "guard_snippet": "except Exception as exc: return {'status': 'failed', 'error': str(exc)}",
+    "potential_consequence": "Unhandled exception skips on_failure step logic"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:61",
+    "trigger_condition": "reply_to_message_id is a non-numeric string",
+    "guard_snippet": "if not reply_to_message_id.isdigit(): raise ValueError('reply_to_message_id must be an integer')",
+    "potential_consequence": "Unhandled ValueError crashes send_message"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:100-105",
+    "trigger_condition": "edit_message external_message_id is non-numeric",
+    "guard_snippet": "if not message_id.isdigit(): raise ValueError('message_id must be an integer')",
+    "potential_consequence": "Unhandled ValueError crashes edit_message"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:220-225",
+    "trigger_condition": "edit_message_reply_markup message_id is non-numeric",
+    "guard_snippet": "if not message_id.isdigit(): raise ValueError('message_id must be an integer')",
+    "potential_consequence": "Unhandled ValueError crashes markup edit"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:138-154",
+    "trigger_condition": "BadRequest has an unrelated cause",
+    "guard_snippet": "if 'parse entities' not in str(exc).lower(): raise",
+    "potential_consequence": "Removed error-specific guard now fallbacks indiscriminately",
+    "kind": "deletion",
+    "confidence": "high"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:148-153",
+    "trigger_condition": "parse_mode was Markdown or HTML and text has backslashes",
+    "guard_snippet": "if original_parse_mode == 'MarkdownV2': call_kwargs = {**call_kwargs, key: unescape_markdown_v2(call_kwargs[key])}",
+    "potential_consequence": "Plain-text fallback corrupts non-MarkdownV2 messages"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:251-257",
+    "trigger_condition": "get_updates raises RetryAfter with wait longer than 5 seconds",
+    "guard_snippet": "except RetryAfter as exc: await asyncio.sleep(retry_after_seconds(exc.retry_after)); continue",
+    "potential_consequence": "Ignores Telegram rate-limit and retries too early"
+  }
+]

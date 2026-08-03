@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>PRD Validation: Nowing (2026-07-22) — re-validation</title>
+<style>
+  :root {
+    --bg: #fafaf9; --surface: #ffffff; --border: #e7e5e4; --text: #1c1917; --muted: #78716c;
+    --verdict-strong: #16a34a; --verdict-adequate: #65a30d; --verdict-thin: #d97706; --verdict-broken: #dc2626;
+    --sev-low: #64748b; --sev-medium: #ca8a04; --sev-high: #ea580c; --sev-critical: #dc2626;
+    --grade-exc: #16a34a; --grade-good: #65a30d; --grade-fair: #d97706; --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px; }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+  header.report-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade { padding: 10px 18px; border-radius: 8px; font-weight: 600; color: white; font-size: 15px; white-space: nowrap; }
+  .grade-excellent { background: var(--grade-exc); } .grade-good { background: var(--grade-good); } .grade-fair { background: var(--grade-fair); } .grade-poor { background: var(--grade-poor); }
+  .delta-banner { background: rgba(101,163,13,0.10); border: 1px solid rgba(101,163,13,0.35); border-radius: 8px; padding: 10px 16px; margin-bottom: 20px; font-size: 14px; color: #3f6212; }
+  .synthesis { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--grade-fair); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; font-size: 15.5px; }
+  .synthesis p { margin: 0 0 10px; } .synthesis p:last-child { margin-bottom: 0; }
+  .dimension-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 24px; }
+  .dim-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  section summary { padding: 14px 20px; cursor: pointer; user-select: none; list-style: none; display: flex; align-items: center; gap: 12px; }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before { content: "▸"; display: inline-block; color: var(--muted); transition: transform 0.15s ease; }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 { display: inline; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; flex: 1; }
+  .verdict-pill { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: white; }
+  .verdict-strong { background: var(--verdict-strong); } .verdict-adequate { background: var(--verdict-adequate); } .verdict-thin { background: var(--verdict-thin); } .verdict-broken { background: var(--verdict-broken); }
+  .dim-body { padding: 4px 20px 18px; } .dim-judgment { color: var(--text); font-size: 14.5px; } .dim-judgment p { margin: 0 0 10px; }
+  .findings-list { padding: 0 20px 4px; }
+  article.finding { padding: 14px 0; border-top: 1px solid var(--border); }
+  article.finding:first-child { border-top: none; }
+  article.finding header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .badge { font-size: 10.5px; padding: 3px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; }
+  .badge-sev-low { background: rgba(100,116,139,0.12); color: var(--sev-low); } .badge-sev-medium { background: rgba(202,138,4,0.14); color: var(--sev-medium); } .badge-sev-high { background: rgba(234,88,12,0.14); color: var(--sev-high); } .badge-sev-critical { background: rgba(220,38,38,0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; } .finding-fix strong { color: var(--muted); font-weight: 500; }
+  .reviewer-source { font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .mechanical { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 24px; font-size: 14px; }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; } .mechanical li { margin-bottom: 4px; color: var(--text); }
+  footer.report-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="report-header">
+      <div class="title">
+        <h1>Nowing PRD (2026-07-22) — Validation Report (re-run)</h1>
+        <div class="subtitle">_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md</div>
+      </div>
+      <div class="grade grade-fair">Fair</div>
+    </header>
+
+    <div class="delta-banner"><strong>Delta:</strong> Poor → <strong>Fair</strong>. Critical 2 → 0 · High 5 → 1 · PRFAQ coverage 0/4/6 → <strong>9 COVERED / 1 PARTIAL / 0 MISSING</strong> · contradiction retention đã RESOLVED.</div>
+
+    <div class="synthesis">
+      <p>Update pass đã <strong>nâng chất lượng PRD lên rõ rệt và đúng chỗ</strong>: canh bạc chiến lược trung tâm nay là một quyết định go/no-go tường minh (<code>[NOTE FOR PM]</code> §0); FR-32/33/34/36 có Acceptance Criteria kiểm chứng được; scope honesty siết lại (§6.1 "In Scope — CHƯA BUILD", §9 <code>[CORRECTED]</code> sửa mâu thuẫn retention); NFR-8/SM-10 thêm một eval gate chất lượng recall — mà reviewer đã <strong>verify là có thật</strong> (<code>nowing_evals</code> là harness thật). Cả hai high rubric-level trước đây đã được giải quyết; Decision-readiness lên <strong>strong</strong>.</p>
+      <p>Về coverage PRFAQ, reviewer gap chấm <strong>9 COVERED / 1 PARTIAL / 0 MISSING, 0 critical</strong> (từ 0/4/6 + 2 critical), và tuyên bố <strong>PROCEED</strong> xuống architecture/epics. Cả hai crack đỏ đóng bằng requirement ràng buộc trước-ship (FR-36 migration + NFR-8 eval gate); contradiction retention đã resolved.</p>
+      <p><strong>Vì sao vẫn là Fair chứ chưa Good:</strong> verify code làm lộ một <strong>high mới (SF-1)</strong> — FR-36 (chính cái gate vá crack #1) giả định hai cột markdown-memory cũ vẫn còn để migrate, nhưng migration <code>178_drop_legacy_memory_columns.py</code> đã DROP đúng hai cột đó, trong khi nhận thức migration của PRD dừng ở 172. Đóng SF-1 (xác định 178 đã chạy prod chưa; chỉnh FR-36 tương ứng) là việc duy nhất đứng giữa Fair và Good.</p>
+    </div>
+
+    <div class="dimension-summary">
+      <div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong ↑</div></div>
+      <div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+      <div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+      <div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+      <div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate ↓</div></div>
+    </div>
+
+    <section class="dimension"><details>
+      <summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-strong">strong ↑</span></summary>
+      <div class="dim-body"><div class="dim-judgment"><p>Prior high đóng dứt điểm. <code>[NOTE FOR PM]</code> §0 gọi đúng tension trung tâm bằng ngôn ngữ quyết định + hai điều kiện trước-ship (FR-36, NFR-8). §2.1 <code>[Beachhead]</code> chỉ định primary + thứ tự rollout. OQ-3/5/6 là câu hỏi mở thật.</p></div></div>
+      <div class="findings-list">
+        <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">OQ-5 + assumption write-back vẫn thiếu [NOTE FOR PM]</h3><span class="finding-location">§8 OQ-5, §9</span></header><div class="finding-note">Tension kiến trúc thứ cấp chưa nâng lên PM-facing (không còn high vì tension chủ đạo đã đặt trước mặt PM).</div><div class="finding-fix"><strong>Fix:</strong> thêm <code>[NOTE FOR PM]</code> ngắn tại OQ-5.</div></article>
+      </div>
+    </details></section>
+
+    <section class="dimension"><details>
+      <summary><h2>Substance over theater</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+      <div class="dim-body"><div class="dim-judgment"><p>Personas vẫn drive quyết định. NFR-8 là substance thật (precision@k, noise, harness <code>nowing_evals</code> đã verify tồn tại). NFR-6/7 nay tự-flag là feature-gap nhưng chưa move.</p></div></div>
+      <div class="findings-list">
+        <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">NFR-6/NFR-7 vẫn là feature-gap dán nhãn NFR</h3><span class="finding-location">§5</span></header><div class="finding-note">Nay tự-flag <code>[NOTE]</code> nhưng chưa move; trùng nội dung FR-13/FR-31.</div><div class="finding-fix"><strong>Fix:</strong> chuyển thành <code>[GAP]</code> FR hoặc gộp FR-13/FR-31.</div></article>
+        <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">NFR-1 bound mơ hồ</h3><span class="finding-location">§5 NFR-1</span></header><div class="finding-note">"limit phù hợp"/scraper "vài giây" chưa kiểm chứng được.</div><div class="finding-fix"><strong>Fix:</strong> p95 latency + timeout scraper.</div></article>
+      </div>
+    </details></section>
+
+    <section class="dimension"><details>
+      <summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+      <div class="dim-body"><div class="dim-judgment"><p>Thesis rõ hơn nhờ beachhead + SM-10 (chất lượng, không phải volume). Residual đã dịu: SM-1 primary vẫn là activity-metric và Vision §1 vẫn phát biểu Nowing "là" memory layer trong khi thân bài là platform-có-thêm-memory.</p></div></div>
+      <div class="findings-list">
+        <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Lệch identity + primary metric là activity, metric-thesis nằm trên FR chưa build</h3><span class="finding-location">§1 vs §4; §7 SM-1 vs SM-8/10</span></header><div class="finding-note">Chưa rõ Nowing "là memory layer" hay "platform có thêm memory"; SM-1 đo hoạt động.</div><div class="finding-fix"><strong>Fix:</strong> đưa framing "memory bổ sung vào platform" vào §1; khi memory build xong nâng SM-8/SM-10 lên primary + baseline.</div></article>
+      </div>
+    </details></section>
+
+    <section class="dimension"><details>
+      <summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+      <div class="dim-body"><div class="dim-judgment"><p>Nơi update pass tạo giá trị lớn nhất: FR-32/33/34/36 nay có Acceptance Criteria cụ thể (fields, dedupe, "recall hit", "correct" = version không hard-delete, propagation MVP không đệ quy). FR-15 khoá recall on-demand MVP. Ngưỡng cụ thể để mở, chốt cùng NFR-8/SM-10 — hợp lý ở cấp PRD. Residual là một chỗ mơ hồ cũ.</p></div></div>
+      <div class="findings-list">
+        <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">FR-22 "podcast dưới 20 giây" vẫn mơ hồ</h3><span class="finding-location">§4.5 FR-22</span></header><div class="finding-note">Không rõ 20 giây là độ dài audio hay thời gian tạo; feature đã build nên rủi ro thấp hơn nhưng vẫn không kiểm chứng được.</div><div class="finding-fix"><strong>Fix:</strong> nêu rõ ngữ nghĩa "20 giây".</div></article>
+      </div>
+    </details></section>
+
+    <section class="dimension"><details>
+      <summary><h2>Scope honesty</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+      <div class="dim-body"><div class="dim-judgment"><p>Prior medium đóng: §6.1 "In Scope — CHƯA BUILD", §6.2 mở rộng đúng (auto-extract per-workspace + budget; relation traversal OUT), §9 <code>[CORRECTED]</code> giữ vết struck-through. Scope honesty mẫu mực. Cảnh báo informational: open-items density cao hơn — memory phải đi kèm spec riêng, không đưa thẳng xuống epics.</p></div></div>
+      <div class="findings-list">
+        <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Open-items density cao cho doc feed-implementation</h3><span class="finding-location">§6.1/§6.2/§8/§9</span></header><div class="finding-note">Hợp lệ vì memory được gate rõ; nhưng cần tách "build-ready ngay" khỏi "cần spec + gate".</div><div class="finding-fix"><strong>Fix:</strong> §6.1 phân tách hai nhóm scope theo trạng thái sẵn-sàng-build.</div></article>
+      </div>
+    </details></section>
+
+    <section class="dimension"><details>
+      <summary><h2>Downstream usability</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+      <div class="dim-body"><div class="dim-judgment"><p>Prior low (FR ID phi tuyến) đóng: "Chỉ mục FR" đầu §4, đã đối chiếu — FR 1–36 đủ, unique. Glossary có domain noun cho memory. SM traceability tốt; SM-10 → NFR-8.</p></div></div>
+      <div class="findings-list">
+        <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">UJ-4 protagonist "Người dùng" vẫn generic</h3><span class="finding-location">§2.3</span></header><div class="finding-note">Khác các UJ có role cụ thể.</div><div class="finding-fix"><strong>Fix:</strong> đổi thành role (vd "Researcher lên lịch automation").</div></article>
+      </div>
+    </details></section>
+
+    <section class="dimension"><details open>
+      <summary><h2>Shape fit</h2><span class="verdict-pill verdict-adequate">adequate ↓</span></summary>
+      <div class="dim-body"><div class="dim-judgment"><p>Shape tổng thể vẫn khớp. Nhưng brownfield yêu cầu existing-code references chính xác — lần này reviewer verify code (thay vì để "chưa verify") và phát hiện sai lệch load-bearing trên FR-36.</p></div></div>
+      <div class="findings-list">
+        <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">SF-1: FR-36 không đối soát với migration 178_drop_legacy_memory_columns.py</h3><span class="finding-location">§4.3 FR-36 + §0 [NOTE FOR PM]; glossary §3 dừng ở 172</span></header><div class="finding-note">Migration 178 (upgrade) chạy <code>DROP COLUMN IF EXISTS memory_md</code> / <code>shared_memory_md</code> — đúng hai cột FR-36 giả định còn tồn tại để migrate. PRD không cite 178. Nếu 178 đã apply prod → dữ liệu legacy đã mất, gate "migrate trước khi bật" vô nghĩa; nếu chưa → FR-36 phải điều phối/hoãn 178.</div><div class="finding-fix"><strong>Fix:</strong> cập nhật FR-36 + glossary để (1) cite 178 + xác định trạng thái apply ở prod; (2) nếu chưa apply → gate/hoãn 178 tới khi migrate Memory + verify; (3) nếu đã apply → chuyển FR-36 thành "khôi phục/đánh giá mất mát từ backup" thay vì forward-migrate.</div></article>
+        <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">[GAP] FR-32 undercount surface memory hiện có</h3><span class="finding-location">§4.3 FR-32</span></header><div class="finding-note">Bỏ sót <code>memory_routes.py</code>/<code>team_memory_routes.py</code> + <code>read_memory</code>/<code>MemoryScope</code> (markdown-memory surface đang sống); mâu thuẫn nhẹ với FR-36.</div><div class="finding-fix"><strong>Fix:</strong> sửa câu "hiện chỉ có Document/Chunk/Chat…" để phản ánh markdown-memory routes đang sống.</div></article>
+      </div>
+    </details></section>
+
+    <section class="reviewer-section"><details>
+      <summary><h2>PRFAQ Coverage-Gap review (re-check)</h2><span class="reviewer-source">review-prfaq-gap.md</span></summary>
+      <div class="dim-body"><div class="dim-judgment"><p>9 COVERED / 1 PARTIAL / 0 MISSING · 0 critical (từ 0/4/6 + 2 critical). Cả 2 crack đỏ đóng; contradiction retention RESOLVED. Verdict: <strong>PROCEED</strong> xuống architecture/epics. Residual đều low, không blocker.</p></div></div>
+      <div class="findings-list">
+        <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">F1 — Success metrics chưa định lượng (mục PARTIAL duy nhất)</h3><span class="finding-location">Item 8 · §7</span></header><div class="finding-note">SM-3/SM-8 còn "≥ X%"; đã thừa nhận bằng <code>[NOTE]</code> + gate pre-launch, nhưng chưa chốt số.</div><div class="finding-fix"><strong>Fix:</strong> chốt baseline khi có dữ liệu beta; có thể instrument trước.</div></article>
+        <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">F2 — Legal/retention vẫn ở dạng OQ, chưa có policy nội dung</h3><span class="finding-location">Item 4 · OQ-3</span></header><div class="finding-note">Đã reframe đúng + set gate "trước GA cloud", nhưng chưa có FR/NFR/policy ràng buộc nội dung.</div><div class="finding-fix"><strong>Fix:</strong> nâng thành NFR/policy có nội dung trước mốc GA cloud.</div></article>
+        <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">F3 — Vision đoạn 2 vẫn liệt kê "everything" làm loãng wedge</h3><span class="finding-location">Item 5 · §1</span></header><div class="finding-note">Primary đã chỉ định (Beachhead), nhưng đoạn 2 tái liệt kê workspace + deliverables + automations + đa client (stylistic).</div><div class="finding-fix"><strong>Fix:</strong> tiết chế đoạn 2 để wedge nổi rõ.</div></article>
+      </div>
+    </details></section>
+
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li><strong>Migration lineage staleness (load-bearing):</strong> Glossary §3 cite tới ~172; repo có ≥178. Vì 178 liên quan trực tiếp FR-36, staleness này không còn vô hại (xem SF-1) — nên refresh danh sách migration được cite.</li>
+        <li><strong>Verify facts (không rubber-stamp):</strong> <code>nowing_evals</code> TỒN TẠI → NFR-8 hợp lệ; <code>epics.md</code> KHÔNG tồn tại → OQ-6 đúng; <code>memory_md</code>/<code>shared_memory_md</code> tồn tại NHƯNG có <code>178_drop_legacy_memory_columns.py</code> → nền tảng SF-1.</li>
+        <li><strong>ID continuity:</strong> FR 1–36 đủ, unique, không gap/dup; "Chỉ mục FR" bù thứ tự phi tuyến. UJ-1..7, SM-1..10 + SM-C1/C2 contiguous; SM-10 mới trỏ NFR-8.</li>
+        <li><strong>Assumptions Index:</strong> vẫn index-only (một chiều); thêm mục <code>[CORRECTED 2026-07-24]</code> strikethrough có chủ đích, hợp lệ.</li>
+        <li><strong>Glossary drift:</strong> "Research Thread" vs "research threads" — nhẹ.</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: .kiro/skills/bmad-prd/assets/prd-validation-checklist.md</span>
+        <span>Generated: 2026-07-24T00:00:00 (re-run)</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

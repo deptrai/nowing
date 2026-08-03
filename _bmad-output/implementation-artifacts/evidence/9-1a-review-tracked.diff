@@ -1,0 +1,1669 @@
+diff --git a/.knowns/tasks/task-opwtmp - Story-9-1a-Research-Degradation-Self-Host-Independ.md b/.knowns/tasks/task-opwtmp - Story-9-1a-Research-Degradation-Self-Host-Independ.md
+index 01e4c6226..cce1d8008 100644
+--- a/.knowns/tasks/task-opwtmp - Story-9-1a-Research-Degradation-Self-Host-Independ.md	
++++ b/.knowns/tasks/task-opwtmp - Story-9-1a-Research-Degradation-Self-Host-Independ.md	
+@@ -1,14 +1,14 @@
+ ---
+ id: opwtmp
+ title: 'Story 9.1a: Research Degradation & Self-Host Independence'
+-status: todo
++status: review
+ priority: high
+ labels:
+   - bmad
+   - bmad-key-9-1a-research-degradation-selfhost-independence
+   - epic-9
+ createdAt: '2026-07-28T15:10:19.175Z'
+-updatedAt: '2026-07-28T15:20:22.548Z'
++updatedAt: '2026-07-29T14:34:11.512Z'
+ timeSpent: 0
+ parent: rzwqza
+ spec: stories/story-9-1a-research-degradation-self-host-independence
+diff --git a/.knowns/versions/task-opwtmp.json b/.knowns/versions/task-opwtmp.json
+index 17d23aad6..c47df5776 100644
+--- a/.knowns/versions/task-opwtmp.json
++++ b/.knowns/versions/task-opwtmp.json
+@@ -1,6 +1,6 @@
+ {
+   "taskId": "opwtmp",
+-  "currentVersion": 1,
++  "currentVersion": 2,
+   "versions": [
+     {
+       "id": "v1",
+@@ -37,6 +37,38 @@
+         "title": "Story 9.1a: Research Degradation \u0026 Self-Host Independence",
+         "updatedAt": "2026-07-28T22:10:19.175643+07:00"
+       }
++    },
++    {
++      "id": "v2",
++      "taskId": "opwtmp",
++      "version": 2,
++      "timestamp": "2026-07-29T14:29:16.00107Z",
++      "author": "luisphan",
++      "changes": [
++        {
++          "field": "status",
++          "oldValue": "todo",
++          "newValue": "review"
++        }
++      ],
++      "snapshot": {
++        "archived": false,
++        "createdAt": "2026-07-28T15:10:19.175Z",
++        "description": "Story file: implementation-artifacts/9-1a-research-degradation-selfhost-independence.md. P0 — FR-38 public-repo gate; honest engine_unavailable + bounded KB fallback.",
++        "id": "opwtmp",
++        "labels": [
++          "bmad",
++          "bmad-key-9-1a-research-degradation-selfhost-independence",
++          "epic-9"
++        ],
++        "parent": "rzwqza",
++        "priority": "high",
++        "spec": "stories/story-9-1a-research-degradation-self-host-independence",
++        "status": "review",
++        "timeSpent": 0,
++        "title": "Story 9.1a: Research Degradation \u0026 Self-Host Independence",
++        "updatedAt": "2026-07-29T14:29:16.00107Z"
++      }
+     }
+   ]
+ }
+diff --git a/docker/.env.example b/docker/.env.example
+index 5ad1fbc63..0082eb214 100644
+--- a/docker/.env.example
++++ b/docker/.env.example
+@@ -552,3 +552,8 @@ NOLOGIN_MODE_ENABLED=FALSE
+ # AUTH_TYPE=LOCAL
+ # ETL_SERVICE=DOCLING
+ # DEPLOYMENT_MODE=self-hosted
++
++# ChainLens Research deep-research engine. Leaving CHAINLENS_API_KEY empty or
++# unset is valid for self-host Phase 1: the capability will degrade to the
++# workspace knowledge base instead of failing with a configuration error.
++# CHAINLENS_API_KEY=
+diff --git a/nowing_backend/.env.example b/nowing_backend/.env.example
+index 2274f1a67..4f8359c43 100644
+--- a/nowing_backend/.env.example
++++ b/nowing_backend/.env.example
+@@ -699,3 +699,9 @@ LANGSMITH_PROJECT=nowing
+ # abuse guard, not the cost guard — it fails open.
+ # MEMORY_AUTO_EXTRACT_RATE_MAX=0
+ # MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS=3600
++
++# ChainLens Research deep-research engine. Leaving CHAINLENS_API_KEY empty or
++# unset is valid for self-host Phase 1: the capability will degrade to the
++# workspace knowledge base instead of failing with a configuration error.
++# CHAINLENS_API_KEY=
++# CHAINLENS_API_URL=https://api.chainlens.net
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/system_prompt.md b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/system_prompt.md
+index 42ebae9bf..5cbff4e25 100644
+--- a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/system_prompt.md
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/system_prompt.md
+@@ -34,8 +34,8 @@ Map the `chainlens_research` tool output to your `<output_contract>` `status` as
+ - `complete` → `success`
+ - `insufficient_evidence` → `partial` (report what little you have and recommend a narrower query)
+ - `timeout` → `error` (explain the timeout and suggest a narrower query or a faster `mode`)
+-- `partial` (rare from the tool) → `partial`
+-</status_mapping>
++- `partial` (rare from the tool) → `partial`; a `degraded` partial with `source_type=kb` means the engine was unavailable and only workspace knowledge-base passages were found
++- `engine_unavailable` → `error` (explain the engine is unavailable, include the `next_action` if provided, and do not fabricate sources)
+ 
+ <safety>
+ - Report uncertainty explicitly when evidence is incomplete or conflicting.
+diff --git a/nowing_backend/app/capabilities/chainlens/research/definition.py b/nowing_backend/app/capabilities/chainlens/research/definition.py
+index 54e274057..b60a8df23 100644
+--- a/nowing_backend/app/capabilities/chainlens/research/definition.py
++++ b/nowing_backend/app/capabilities/chainlens/research/definition.py
+@@ -18,6 +18,7 @@ CHAINLENS_RESEARCH = Capability(
+     executor=build_research_executor(),
+     billing_unit=BillingUnit.CHAINLENS_QUERY,
+     docs_url="/docs/connectors/native/chainlens-research",
++    context_aware=True,
+ )
+ 
+ register_capability(CHAINLENS_RESEARCH)
+diff --git a/nowing_backend/app/capabilities/chainlens/research/executor.py b/nowing_backend/app/capabilities/chainlens/research/executor.py
+index 489dd1468..72fb498ef 100644
+--- a/nowing_backend/app/capabilities/chainlens/research/executor.py
++++ b/nowing_backend/app/capabilities/chainlens/research/executor.py
+@@ -1,4 +1,9 @@
+-"""``chainlens.research`` executor: call ChainLens ``POST /api/v1/search``."""
++"""``chainlens.research`` executor: call ChainLens ``POST /api/v1/search``.
++
++When ChainLens is unavailable, misconfigured, or returns partial/insufficient
++results, the executor degrades gracefully and optionally falls back to the
++workspace knowledge base so self-hosted installs remain useful.
++"""
+ 
+ from __future__ import annotations
+ 
+@@ -16,8 +21,11 @@ from app.capabilities.chainlens.research.schemas import (
+ )
+ from app.capabilities.core import Executor
+ from app.capabilities.core.progress import emit_progress
++from app.capabilities.core.types import CapabilityContext
+ from app.config import config
+-from app.exceptions import ConfigurationError, ExternalServiceError
++from app.exceptions import ExternalServiceError
++from app.observability import metrics
++from app.utils.crawl.classifier import BlockType
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -28,6 +36,7 @@ _ResearchStatus = Literal[
+     "partial",
+     "timeout",
+     "insufficient_evidence",
++    "engine_unavailable",
+ ]
+ 
+ 
+@@ -43,6 +52,46 @@ class _Block:
+         self.data = data
+ 
+ 
++_SourceDict = dict[str, Any]
++
++
++def _block_type_for(raw: str | None) -> BlockType:
++    """Map a raw block-type string to the classifier enum; unknown → UNKNOWN."""
++    if not raw:
++        return BlockType.UNKNOWN
++    try:
++        return BlockType(raw)
++    except ValueError:
++        return BlockType.UNKNOWN
++
++
++def _parse_sources(raw_sources: list[_SourceDict] | None) -> list[Source]:
++    """Normalize a list of ChainLens source blobs into typed ``Source`` objects."""
++    if not raw_sources:
++        return []
++    sources: list[Source] = []
++    for raw_source in raw_sources:
++        if not isinstance(raw_source, dict):
++            continue
++        meta = raw_source.get("metadata") or raw_source
++        if not isinstance(meta, dict):
++            continue
++        url = str(meta.get("url") or "").strip()
++        if not url:
++            continue
++        content = raw_source.get("content")
++        if content is None:
++            content = raw_source.get("pageContent")
++        sources.append(
++            Source(
++                title=str(meta.get("title") or meta.get("name") or "Source"),
++                url=url,
++                content=str(content) if content is not None else None,
++            )
++        )
++    return sources
++
++
+ def _parse_sse(raw: str) -> ResearchOutput:
+     """Parse the ChainLens block-based SSE stream into a research output.
+ 
+@@ -54,17 +103,27 @@ def _parse_sse(raw: str) -> ResearchOutput:
+       ``replace``/``add`` on ``/data``).
+     - ``type: done`` carries chatId and webUrl metadata.
+ 
+-    We treat each ``event:`` line as setting the type for subsequent ``data:``
+-    lines until a blank line or a new ``event:`` line resets it. This matches
+-    the SSE spec and avoids misclassifying multi-line events.
++    9.1a additions: the engine can also emit ``partial`` and
++    ``insufficientEvidence`` data frames (with an embedded ``reason`` and
++    optional ``blocked_metadata``). Heartbeats and unknown event types are
++    tolerated without raising.
+     """
+     blocks: dict[str, _Block] = {}
+     error_msg: str | None = None
+     chat_id: str | None = None
+     web_url: str | None = None
+     saw_done = False
++    saw_heartbeat = False
++    saw_unknown = False
+     pending_event_type = "message"
+ 
++    status: _ResearchStatus = "complete"
++    answer = ""
++    sources: list[Source] = []
++    degradation_reason: str | None = None
++    engine_reason: str | None = None
++    blocked_url_coverage: dict[str, int] = {}
++
+     for raw_line in raw.splitlines():
+         line = raw_line.strip()
+         if not line:
+@@ -97,6 +156,7 @@ def _parse_sse(raw: str) -> ResearchOutput:
+             continue
+ 
+         event_type = event.get("type")
++
+         if event_type == "error":
+             data = event.get("data")
+             error_msg = (
+@@ -131,45 +191,93 @@ def _parse_sse(raw: str) -> ResearchOutput:
+                     current.data = op.get("value")
+             continue
+ 
++        if event_type == "partial":
++            status = "partial"
++            degradation_reason = "partial"
++            engine_reason = event.get("reason") or engine_reason
++            answer = (
++                event.get("answer")
++                or (event.get("partial") or {}).get("answer")
++                or ""
++            )
++            sources = _parse_sources(
++                event.get("sources") or (event.get("partial") or {}).get("sources")
++            )
++            for entry in event.get("blocked_metadata") or []:
++                if not isinstance(entry, dict):
++                    continue
++                url = str(entry.get("url") or "").strip()
++                if not url:
++                    continue
++                bt = _block_type_for(entry.get("block_type"))
++                blocked_url_coverage[bt.value] = (
++                    blocked_url_coverage.get(bt.value, 0) + 1
++                )
++                metrics.record_blocked_url_coverage(url=url, block_type=bt)
++            continue
++
++        if event_type == "insufficientEvidence":
++            engine_reason = event.get("reason") or engine_reason
++            partial_blob = event.get("partial") or {}
++            partial_answer = partial_blob.get("answer") or ""
++            partial_sources = _parse_sources(partial_blob.get("sources"))
++            if partial_answer or partial_sources:
++                status = "partial"
++                answer = partial_answer
++                sources = partial_sources
++                degradation_reason = "insufficient_evidence"
++            else:
++                status = "insufficient_evidence"
++                degradation_reason = "insufficient_evidence"
++            for entry in event.get("blocked_metadata") or []:
++                if not isinstance(entry, dict):
++                    continue
++                url = str(entry.get("url") or "").strip()
++                if not url:
++                    continue
++                bt = _block_type_for(entry.get("block_type"))
++                blocked_url_coverage[bt.value] = (
++                    blocked_url_coverage.get(bt.value, 0) + 1
++                )
++                metrics.record_blocked_url_coverage(url=url, block_type=bt)
++            continue
++
++        if event_type == "heartbeat":
++            saw_heartbeat = True
++            continue
++
++        if event_type not in {"block", "updateBlock", "done"}:
++            saw_unknown = True
++            continue
++
+     if error_msg:
+         raise ChainLensError(error_msg, code="CHAINLENS_UPSTREAM_ERROR")
+ 
+     text_parts: list[str] = []
+-    sources: list[Source] = []
++    block_sources: list[Source] = []
+     for block in blocks.values():
+         if block.type == "text" and isinstance(block.data, str):
+             text_parts.append(block.data)
+         elif block.type == "source" and isinstance(block.data, list):
+-            for raw_source in block.data:
+-                if not isinstance(raw_source, dict):
+-                    continue
+-                meta = raw_source.get("metadata") or raw_source
+-                if not isinstance(meta, dict):
+-                    continue
+-                url = str(meta.get("url") or "")
+-                if not url:
+-                    continue
+-                content = raw_source.get("content")
+-                if content is None:
+-                    content = raw_source.get("pageContent")
+-                sources.append(
+-                    Source(
+-                        title=str(meta.get("title") or meta.get("name") or "Source"),
+-                        url=url,
+-                        content=str(content) if content is not None else None,
+-                    )
+-                )
++            block_sources.extend(_parse_sources(block.data))
+ 
+-    answer = "\n\n".join(text_parts).strip()
+-    status: _ResearchStatus = "complete"
+-    next_action: str | None = None
+     if not answer and not sources:
++        answer = "\n\n".join(text_parts).strip()
++        sources = block_sources
++
++    if status == "complete" and not answer and not sources:
+         if saw_done:
+-            status = "insufficient_evidence"
+-            next_action = "No relevant sources were found. Try rephrasing the query."
++            if saw_unknown or saw_heartbeat:
++                status = "engine_unavailable"
++                degradation_reason = "stream_incomplete"
++            else:
++                status = "insufficient_evidence"
++        elif saw_heartbeat or saw_unknown:
++            status = "engine_unavailable"
++            degradation_reason = "stream_incomplete"
+         else:
+             status = "timeout"
+-            next_action = "The ChainLens stream ended before returning a complete result. Try again."
++            degradation_reason = "stream_incomplete"
+ 
+     return ResearchOutput(
+         answer=answer,
+@@ -177,45 +285,23 @@ def _parse_sse(raw: str) -> ResearchOutput:
+         chat_id=chat_id,
+         web_url=web_url,
+         status=status,
+-        next_action=next_action,
++        degradation_reason=degradation_reason,
++        engine_reason=engine_reason,
++        saw_heartbeat=saw_heartbeat,
++        blocked_url_coverage_by_block_type=blocked_url_coverage,
+     )
+ 
+ 
+-def build_research_executor(search_fn: SearchFn | None = None) -> Executor:
+-    """Build the ``chainlens.research`` executor."""
+-    search = search_fn or _call_chainlens
+-
+-    async def execute(payload: ResearchInput) -> ResearchOutput:
+-        emit_progress("starting", f"Researching: {payload.query[:80]}...")
+-        try:
+-            output = await search(payload)
+-        except httpx.TimeoutException as exc:
+-            logger.warning(
+-                "ChainLens research timed out for query: %s", payload.query[:80]
+-            )
+-            raise ExternalServiceError(
+-                f"ChainLens research timed out after {config.CHAINLENS_REQUEST_TIMEOUT_SECONDS}s",
+-                code="CHAINLENS_TIMEOUT",
+-            ) from exc
+-        except httpx.RequestError as exc:
+-            logger.warning("ChainLens request failed: %s", exc)
+-            raise ExternalServiceError(
+-                "ChainLens is unreachable. Please check your network and try again.",
+-                code="CHAINLENS_UNREACHABLE",
+-            ) from exc
+-        emit_progress("done", f"ChainLens returned {len(output.sources)} source(s)")
+-        return output
+-
+-    return execute
++def _engine_unavailable(reason: str) -> ResearchOutput:
++    """Return a typed degradation result for an upstream HTTP fault."""
++    return ResearchOutput(status="engine_unavailable", degradation_reason=reason)
+ 
+ 
+ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
+     """Make the upstream ChainLens research call and parse the SSE response."""
+-    if not config.CHAINLENS_API_KEY:
+-        raise ConfigurationError(
+-            "CHAINLENS_API_KEY is not configured.",
+-            code="CHAINLENS_NOT_CONFIGURED",
+-        )
++    if not config.CHAINLENS_API_KEY or not config.CHAINLENS_API_KEY.strip():
++        logger.warning("CHAINLENS_API_KEY is not configured; degrading research.")
++        return _engine_unavailable("not_configured")
+ 
+     body: dict[str, Any] = {
+         "query": payload.query,
+@@ -248,21 +334,206 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
+         )
+ 
+     if response.status_code == 401:
+-        raise ChainLensError(
+-            "ChainLens rejected the API key.",
+-            code="CHAINLENS_AUTH_FAILED",
+-        )
++        return _engine_unavailable("auth_failed")
++    if response.status_code == 403:
++        return _engine_unavailable("auth_failed")
+     if response.status_code == 429:
+-        raise ChainLensError(
+-            "ChainLens rate or quota limit exceeded.",
+-            code="CHAINLENS_RATE_LIMITED",
+-        )
++        return _engine_unavailable("rate_limited")
++    if response.status_code >= 500:
++        return _engine_unavailable("upstream_error")
+     if response.status_code >= 400:
+-        text = response.text[:500]
+-        logger.warning("ChainLens returned HTTP %s: %s", response.status_code, text)
+-        raise ChainLensError(
+-            f"ChainLens returned HTTP {response.status_code}: {text}",
+-            code="CHAINLENS_UPSTREAM_ERROR",
+-        )
++        return _engine_unavailable("upstream_error")
+ 
+     return _parse_sse(response.text)
++
++
++async def _kb_fallback(
++    *,
++    query: str,
++    scope: Any,
++    top_k: int,
++    session: Any,
++    workspace_id: int,
++) -> list[Any]:
++    """Knowledge-base fallback: run hybrid chunk search within the workspace."""
++    from app.agents.chat.multi_agent_chat.shared.retrieval.hybrid_search import (
++        search_chunks,
++    )
++    from app.agents.chat.multi_agent_chat.shared.retrieval.models import SearchScope
++
++    return await search_chunks(
++        session,
++        workspace_id=workspace_id,
++        query=query,
++        scope=scope if scope is not None else SearchScope(),
++        top_k=top_k,
++    )
++
++
++async def execute_with_context(
++    payload: ResearchInput,
++    ctx: CapabilityContext | None,
++    *,
++    search_fn: SearchFn,
++    fallback_fn: Callable[..., Awaitable[list[Any]]] = _kb_fallback,
++    top_k: int = 5,
++) -> ResearchOutput:
++    """Run research and, when the engine fails, fall back to workspace KB.
++
++    ``fallback_fn`` accepts keyword-only ``query, scope, top_k, session,
++    workspace_id`` so it is compatible with :func:`_kb_fallback` and with
++    unit tests that inject a fake fallback.
++    """
++    degradation_reason: str | None = None
++    engine_reason: str | None = None
++
++    try:
++        output = await search_fn(payload)
++        if output.status == "engine_unavailable":
++            degradation_reason = output.degradation_reason
++            engine_reason = output.engine_reason
++    except httpx.TimeoutException:
++        degradation_reason = "timeout"
++        output = None
++    except httpx.RequestError:
++        degradation_reason = "unreachable"
++        output = None
++    except ChainLensError:
++        degradation_reason = "upstream_error"
++        engine_reason = None
++        output = None
++    except Exception:
++        logger.exception("ChainLens research failed for query: %s", payload.query[:80])
++        degradation_reason = "upstream_error"
++        output = None
++
++    if output is None:
++        output = ResearchOutput(
++            status="engine_unavailable",
++            degradation_reason=degradation_reason,
++            engine_reason=engine_reason,
++        )
++
++    fallback_attempted = False
++    fallback_used = False
++    fallback_hit_count = 0
++
++    if output.status in (
++        "engine_unavailable",
++        "insufficient_evidence",
++        "timeout",
++    ) and (ctx is not None and ctx.session is not None):
++        fallback_attempted = True
++        try:
++            hits = await fallback_fn(
++                query=payload.query,
++                scope=None,
++                top_k=min(top_k, 5),
++                session=ctx.session,
++                workspace_id=ctx.workspace_id,
++            )
++            if hits:
++                fallback_sources: list[Source] = []
++                for hit in hits:
++                    document_id = hit.document_id
++                    title = hit.title or "KB Document"
++                    for chunk in hit.chunks:
++                        chunk_id = chunk.chunk_id
++                        content = chunk.content
++                        fallback_sources.append(
++                            Source(
++                                title=title,
++                                url=f"nowing://documents/{document_id}/chunks/{chunk_id}",
++                                content=content,
++                                source_type="kb",
++                                document_id=document_id,
++                                chunk_id=chunk_id,
++                            )
++                        )
++                fallback_hit_count = len(fallback_sources)
++                if fallback_hit_count:
++                    fallback_used = True
++                    output = ResearchOutput(
++                        status="partial",
++                        answer="Deep research engine is unavailable; showing workspace knowledge base results.",
++                        sources=fallback_sources,
++                        engine_reason=output.degradation_reason
++                        or output.engine_reason,
++                        degraded=True,
++                        degradation_reason="fallback_kb_hits",
++                        fallback_hit_count=fallback_hit_count,
++                    )
++                else:
++                    output = ResearchOutput(
++                        status="engine_unavailable",
++                        degradation_reason="fallback_kb_empty",
++                        engine_reason=output.degradation_reason
++                        or output.engine_reason,
++                    )
++            else:
++                output = ResearchOutput(
++                    status="engine_unavailable",
++                    degradation_reason="fallback_kb_empty",
++                    engine_reason=output.degradation_reason
++                    or output.engine_reason,
++                )
++        except Exception:
++            logger.exception(
++                "KB fallback failed for query: %s", payload.query[:80]
++            )
++            output = ResearchOutput(
++                status="engine_unavailable",
++                degradation_reason="fallback_kb_error",
++                engine_reason=output.degradation_reason
++                or output.engine_reason,
++            )
++
++    if output.degraded:
++        metrics.record_chainlens_degradation(
++            degradation_reason=output.degradation_reason,
++            final_status=output.status,
++            fallback_attempted=fallback_attempted,
++            fallback_used=fallback_used,
++            fallback_hit_count=output.fallback_hit_count or 0,
++            workspace_id=ctx.workspace_id if ctx else None,
++            query=payload.query,
++            api_key=config.CHAINLENS_API_KEY or "",
++            answer=output.answer,
++        )
++        if fallback_hit_count:
++            metrics.record_kb_fallback_hit_count(
++                fallback_hit_count,
++                workspace_id=ctx.workspace_id if ctx else None,
++            )
++
++    return output
++
++
++def build_research_executor(
++    search_fn: SearchFn | None = None,
++) -> Executor:
++    """Build the ``chainlens.research`` executor."""
++    search = search_fn or _call_chainlens
++
++    async def execute(
++        payload: ResearchInput, ctx: CapabilityContext | None = None
++    ) -> ResearchOutput:
++        emit_progress("starting", f"Researching: {payload.query[:80]}...")
++        try:
++            output = await execute_with_context(
++                payload,
++                ctx,
++                search_fn=search,
++                fallback_fn=_kb_fallback,
++                top_k=5,
++            )
++        except Exception:
++            logger.exception("ChainLens research failed for query: %s", payload.query[:80])
++            output = ResearchOutput(
++                status="engine_unavailable",
++                degradation_reason="upstream_error",
++            )
++        emit_progress("done", f"ChainLens returned {len(output.sources)} source(s)")
++        return output
++
++    return execute
+diff --git a/nowing_backend/app/capabilities/chainlens/research/schemas.py b/nowing_backend/app/capabilities/chainlens/research/schemas.py
+index ef76ff7fd..7bbfd7710 100644
+--- a/nowing_backend/app/capabilities/chainlens/research/schemas.py
++++ b/nowing_backend/app/capabilities/chainlens/research/schemas.py
+@@ -7,16 +7,17 @@ synthesized answer plus the web sources that ground it.
+ 
+ from __future__ import annotations
+ 
++import re
+ from typing import Annotated, Literal
+ 
+-from pydantic import BaseModel, Field
++from pydantic import BaseModel, Field, computed_field
+ 
+ MAX_QUERY_LENGTH = 500
+ """ChainLens clamps queries at 500 characters."""
+ 
+ 
+ class Source(BaseModel):
+-    """One cited source from ChainLens."""
++    """One cited source from ChainLens or the workspace knowledge base."""
+ 
+     title: str = Field(description="Source title or page name.")
+     url: str = Field(min_length=1, description="Canonical source URL.")
+@@ -24,6 +25,36 @@ class Source(BaseModel):
+         default=None,
+         description="Snippet or markdown content when the source was deep-crawled.",
+     )
++    source_type: str | None = Field(
++        default=None,
++        description="'web' for ChainLens sources, 'kb' for workspace chunks.",
++    )
++    document_id: int | None = Field(
++        default=None,
++        description="Workspace document id when source_type is 'kb'.",
++    )
++    chunk_id: int | None = Field(
++        default=None,
++        description="Workspace chunk id when source_type is 'kb'.",
++    )
++
++    def model_post_init(self, __context: object) -> None:
++        """Derive KB locators and source type from internal URLs."""
++        if self.url and self.url.startswith("nowing://documents/"):
++            if self.document_id is None or self.chunk_id is None:
++                match = re.match(
++                    r"nowing://documents/(\d+)/chunks/(\d+)",
++                    self.url,
++                )
++                if match:
++                    if self.document_id is None:
++                        self.document_id = int(match.group(1))
++                    if self.chunk_id is None:
++                        self.chunk_id = int(match.group(2))
++            if self.source_type is None:
++                self.source_type = "kb"
++        elif self.url and self.source_type is None:
++            self.source_type = "web"
+ 
+ 
+ class ResearchInput(BaseModel):
+@@ -79,9 +110,13 @@ class ResearchOutput(BaseModel):
+         default=None,
+         description="ChainLens chat session handle to continue this conversation.",
+     )
+-    status: Literal["complete", "partial", "timeout", "insufficient_evidence"] = Field(
+-        default="complete", description="Result completeness status."
+-    )
++    status: Literal[
++        "complete",
++        "partial",
++        "timeout",
++        "insufficient_evidence",
++        "engine_unavailable",
++    ] = Field(default="complete", description="Result completeness status.")
+     web_url: str | None = Field(
+         default=None,
+         description="Deep link to view the ChainLens chat session on the web.",
+@@ -90,8 +125,136 @@ class ResearchOutput(BaseModel):
+         default=None,
+         description="Human-readable guidance when the result is partial or timed out.",
+     )
++    degraded: bool | None = Field(
++        default=None,
++        description="True when the result came from an engine failure or KB fallback.",
++    )
++    degradation_reason: str | None = Field(
++        default=None,
++        description="Low-cardinality reason for the degradation/fallback.",
++    )
++    engine_reason: str | None = Field(
++        default=None,
++        description="Reason reported by the ChainLens engine for partial/insufficient results.",
++    )
++    source_type: str | None = Field(
++        default=None,
++        description="Type of the primary/first source (internal mirror of Source.source_type).",
++    )
++    document_id: int | None = Field(
++        default=None,
++        description="Document id of the primary/first KB fallback source.",
++    )
++    chunk_id: int | None = Field(
++        default=None,
++        description="Chunk id of the primary/first KB fallback source.",
++    )
++    block_type: str | None = Field(
++        default=None,
++        description="Block classification of the primary/first blocked source.",
++    )
++    fallback_hit_count: int | None = Field(
++        default=None,
++        description="Number of workspace chunks used as KB fallback citations.",
++    )
++    saw_heartbeat: bool = Field(
++        default=False,
++        exclude=True,
++        description="Internal: parser saw a heartbeat event.",
++    )
++    blocked_url_coverage_by_block_type: dict[str, int] = Field(
++        default_factory=dict,
++        exclude=True,
++        description="Internal: blocked URL counts by block type.",
++    )
++
++    def model_post_init(self, __context: object) -> None:
++        """Stamp degradation defaults and infer KB fallback counters."""
++        _recompute_degradation(self)
++        _recompute_fallback(self)
+ 
++    def __setattr__(self, name, value):
++        super().__setattr__(name, value)
++        if name == "status":
++            _recompute_degradation(self, force=True)
++            _recompute_fallback(self)
++
++    @computed_field
+     @property
+     def billable_units(self) -> int:
+         """Bill one unit only when the call returned usable content."""
+         return 1 if self.answer or self.sources else 0
++
++
++def _recompute_degradation(
++    output: ResearchOutput, *, force: bool = False
++) -> None:
++    """Keep the degradation flag, reason, and next-action in sync with status."""
++    if output.status == "engine_unavailable":
++        if force or output.degraded is None:
++            output.degraded = True
++        if output.degradation_reason is None:
++            output.degradation_reason = "not_configured"
++    elif force or output.degraded is None:
++        output.degraded = output.status != "complete"
++
++    if output.degradation_reason is None and output.status not in (
++        "complete",
++        "engine_unavailable",
++    ):
++        default_reason = {
++            "partial": "partial",
++            "insufficient_evidence": "insufficient_evidence",
++            "timeout": "stream_incomplete",
++        }.get(output.status)
++        if default_reason:
++            output.degradation_reason = default_reason
++
++    if output.next_action is None and output.degraded:
++        output.next_action = _default_next_action(
++            output.status,
++            output.degradation_reason,
++            output.engine_reason,
++        )
++
++
++def _recompute_fallback(output: ResearchOutput) -> None:
++    """Count KB fallback citations and mirror the primary source identifiers."""
++    kb_sources = [
++        s for s in output.sources if s.url and s.url.startswith("nowing://")
++    ]
++    output.fallback_hit_count = len(kb_sources)
++    if kb_sources:
++        primary = kb_sources[0]
++        output.source_type = primary.source_type
++        output.document_id = primary.document_id
++        output.chunk_id = primary.chunk_id
++
++
++def _default_next_action(
++    status: str,
++    degradation_reason: str | None,
++    engine_reason: str | None,
++) -> str | None:
++    if status == "engine_unavailable":
++        if degradation_reason == "not_configured":
++            return "Deep research is not available in self-host Phase 1. Set CHAINLENS_API_KEY to use the hosted engine."
++        if degradation_reason == "fallback_kb_empty":
++            return "The deep research engine is unavailable and no matching workspace knowledge base passages were found. Try rephrasing your query."
++        if degradation_reason == "fallback_kb_error":
++            return "The deep research engine is unavailable and workspace knowledge base lookup failed. Try again later."
++        if degradation_reason in ("timeout", "stream_incomplete"):
++            return "The deep research engine timed out. Try again with a faster mode or a narrower query."
++        if degradation_reason == "unreachable":
++            return "The deep research engine is unreachable. Check your network and try again."
++        if degradation_reason in ("auth_failed", "rate_limited", "upstream_error"):
++            return "The deep research engine is temporarily unavailable. Try again later."
++        return "The deep research engine is unavailable. Try again later."
++    if status == "partial":
++        reason = engine_reason or degradation_reason
++        return f"Partial result; {reason or 'some evidence was found'}."
++    if status == "insufficient_evidence":
++        return "No relevant sources were found. Try rephrasing the query."
++    if status == "timeout":
++        return "The ChainLens stream ended before returning a complete result. Try again."
++    return None
+diff --git a/nowing_backend/app/capabilities/core/__init__.py b/nowing_backend/app/capabilities/core/__init__.py
+index 71d14b639..a5a6b9b4e 100644
+--- a/nowing_backend/app/capabilities/core/__init__.py
++++ b/nowing_backend/app/capabilities/core/__init__.py
+@@ -1,5 +1,10 @@
+ """Capability framework kernel: registry contracts, store, billing, and access doors."""
+ 
++from __future__ import annotations
++
++import logging
++from typing import Any
++
+ from app.capabilities.core.billing import charge_capability, gate_capability
+ from app.capabilities.core.store import (
+     all_capabilities,
+@@ -15,6 +20,8 @@ from app.capabilities.core.types import (
+     Executor,
+ )
+ 
++logger = logging.getLogger(__name__)
++
+ __all__ = [
+     "BillableInput",
+     "BillableOutput",
+@@ -24,7 +31,44 @@ __all__ = [
+     "Executor",
+     "all_capabilities",
+     "charge_capability",
++    "execute_with_context",
+     "gate_capability",
+     "get_capability",
+     "register_capability",
+ ]
++
++
++async def execute_with_context(
++    executor: Executor,
++    *,
++    payload: Any,
++    ctx: CapabilityContext | None = None,
++) -> Any:
++    """Invoke a capability executor, passing context when the executor accepts it.
++
++    Context-aware executors (e.g. ``chainlens.research``) accept a second
++    positional ``CapabilityContext``. Legacy executors take only the payload;
++    this helper falls back to the single-argument call so existing verbs keep
++    working and the workspace context is still surfaced in the result.
++    """
++
++    async def _call() -> Any:
++        if ctx is None:
++            return await executor(payload)
++
++        try:
++            return await executor(payload, ctx)
++        except TypeError as exc:
++            msg = str(exc).lower()
++            if "takes" in msg and "positional argument" in msg:
++                return await executor(payload)
++            if "unexpected keyword" in msg or "got an unexpected" in msg:
++                return await executor(payload)
++            raise
++
++    result = await _call()
++
++    if ctx is not None and isinstance(result, dict) and "workspace_id" not in result:
++        result["workspace_id"] = ctx.workspace_id
++
++    return result
+diff --git a/nowing_backend/app/capabilities/core/access/agent.py b/nowing_backend/app/capabilities/core/access/agent.py
+index 44d561cf0..690f33bf7 100644
+--- a/nowing_backend/app/capabilities/core/access/agent.py
++++ b/nowing_backend/app/capabilities/core/access/agent.py
+@@ -16,6 +16,7 @@ from typing import Any
+ 
+ from langchain_core.tools import BaseTool, StructuredTool
+ 
++from app.capabilities.core import execute_with_context
+ from app.capabilities.core.billing import charge_capability, gate_capability
+ from app.capabilities.core.progress import progress_scope
+ from app.capabilities.core.runs import (
+@@ -97,7 +98,9 @@ def _capability_tool(
+ 
+                 started = time.perf_counter()
+                 try:
+-                    output = await executor(payload)
++                    output = await execute_with_context(
++                        executor, payload=payload, ctx=ctx
++                    )
+                 except Exception as exc:
+                     duration_ms = int((time.perf_counter() - started) * 1000)
+                     async with async_session_maker() as rec_session:
+@@ -143,6 +146,8 @@ def _capability_tool(
+ 
+         if serialized.char_count <= RUN_OUTPUT_CHAR_CAP:
+             dump = output.model_dump(exclude_none=True)
++            if "next_action" in dump:
++                dump.setdefault("next_step", dump["next_action"])
+             if run_id is not None:
+                 dump["run_id"] = f"run_{run_id}"
+             return dump
+diff --git a/nowing_backend/app/capabilities/core/access/rest.py b/nowing_backend/app/capabilities/core/access/rest.py
+index fce2e60b1..c10405593 100644
+--- a/nowing_backend/app/capabilities/core/access/rest.py
++++ b/nowing_backend/app/capabilities/core/access/rest.py
+@@ -27,6 +27,7 @@ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from app.auth.context import AuthContext
++from app.capabilities.core import execute_with_context
+ from app.capabilities.core.access.rate_limit import enforce_capability_rate_limit
+ from app.capabilities.core.billing import (
+     charge_capability,
+@@ -208,8 +209,36 @@ async def _execute_async_run(
+                 "ts": _now_ms(),
+             },
+         )
++        output = None
++        ctx: CapabilityContext | None = None
+         try:
+-            output = await executor(payload)
++            async with async_session_maker() as session:
++                ctx = CapabilityContext(session=session, workspace_id=workspace_id)
++                output = await execute_with_context(
++                    executor, payload=payload, ctx=ctx
++                )
++                duration_ms = int((time.perf_counter() - started) * 1000)
++                cost_micros: int | None = None
++                try:
++                    if output.billable_units > 0:
++                        cost_micros = await charge_capability(output, unit, ctx)
++                except Exception:
++                    logger.exception("charge failed for async run %s", run_id)
++
++                serialized = serialize_output(output)
++                await _finalize_async(
++                    run_id,
++                    status="success",
++                    serialized=serialized,
++                    started=started,
++                    duration_ms=duration_ms,
++                    cost_micros=cost_micros,
++                    progress=reporter.coarse,
++                )
++                _publish_finished(
++                    run_id, "success", item_count=serialized.item_count
++                )
++                return
+         except asyncio.CancelledError:
+             raise
+         except (NowingError, HTTPException) as exc:
+@@ -234,28 +263,6 @@ async def _execute_async_run(
+             _publish_finished(run_id, "error", error="upstream error")
+             return
+ 
+-        duration_ms = int((time.perf_counter() - started) * 1000)
+-        cost_micros: int | None
+-        try:
+-            async with async_session_maker() as session:
+-                ctx = CapabilityContext(session=session, workspace_id=workspace_id)
+-                cost_micros = await charge_capability(output, unit, ctx)
+-        except Exception:
+-            logger.exception("charge failed for async run %s", run_id)
+-            cost_micros = None
+-
+-        serialized = serialize_output(output)
+-        await _finalize_async(
+-            run_id,
+-            status="success",
+-            serialized=serialized,
+-            started=started,
+-            duration_ms=duration_ms,
+-            cost_micros=cost_micros,
+-            progress=reporter.coarse,
+-        )
+-        _publish_finished(run_id, "success", item_count=serialized.item_count)
+-
+ 
+ async def _finalize_async(
+     run_id: str,
+@@ -384,7 +391,9 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
+         with progress_scope() as reporter:
+             started = time.perf_counter()
+             try:
+-                output = await executor(payload)
++                output = await execute_with_context(
++                    executor, payload=payload, ctx=ctx
++                )
+             except (NowingError, HTTPException) as exc:
+                 await _record_rest_run(
+                     workspace_id=workspace_id,
+diff --git a/nowing_backend/app/capabilities/core/billing.py b/nowing_backend/app/capabilities/core/billing.py
+index 19c6504b7..3afbbfe8a 100644
+--- a/nowing_backend/app/capabilities/core/billing.py
++++ b/nowing_backend/app/capabilities/core/billing.py
+@@ -2,7 +2,7 @@
+ 
+ from __future__ import annotations
+ 
+-from typing import TYPE_CHECKING
++from typing import TYPE_CHECKING, Any
+ 
+ from sqlalchemy import select
+ 
+@@ -252,12 +252,12 @@ async def _charge_platform(
+         return 0
+ 
+     charged = await _charge_platform_meter(
+-        service, ctx, owner_user_id, unit, output.billable_units
++        service, ctx, owner_user_id, unit, output.billable_units, output
+     )
+     if unit is BillingUnit.GOOGLE_MAPS_PLACE:
+         reviews = getattr(output, "attached_review_count", 0)
+         charged += await _charge_platform_meter(
+-            service, ctx, owner_user_id, BillingUnit.GOOGLE_MAPS_REVIEW, reviews
++            service, ctx, owner_user_id, BillingUnit.GOOGLE_MAPS_REVIEW, reviews, output
+         )
+     return charged
+ 
+@@ -268,19 +268,26 @@ async def _charge_platform_meter(
+     owner_user_id: UUID,
+     unit: BillingUnit,
+     items: int,
++    output: BillableOutput,
+ ) -> int:
+     if items <= 0:
+         return 0
+     rate = _platform_rate(unit)
+     cost_micros = service.items_to_micros(items, rate)
+     # Stage the audit row before charge's commit flushes both.
++    call_details: dict[str, Any] = {"items": items}
++    if getattr(output, "degraded", False):
++        call_details["degradation_reason"] = getattr(
++            output, "degradation_reason", None
++        ) or "unknown"
++        call_details["final_status"] = getattr(output, "status", None) or "unknown"
+     await record_token_usage(
+         ctx.session,
+         usage_type=unit.value,
+         workspace_id=ctx.workspace_id,
+         user_id=owner_user_id,
+         cost_micros=cost_micros,
+-        call_details={"items": items},
++        call_details=call_details,
+     )
+     await service.charge(owner_user_id, items, rate)
+     return cost_micros
+diff --git a/nowing_backend/app/capabilities/core/types.py b/nowing_backend/app/capabilities/core/types.py
+index a9776392f..b30212627 100644
+--- a/nowing_backend/app/capabilities/core/types.py
++++ b/nowing_backend/app/capabilities/core/types.py
+@@ -70,3 +70,4 @@ class Capability:
+     executor: Executor
+     billing_unit: BillingUnit | None
+     docs_url: str | None = None
++    context_aware: bool = False
+diff --git a/nowing_backend/app/observability/metrics.py b/nowing_backend/app/observability/metrics.py
+index b907c6851..a5372309d 100644
+--- a/nowing_backend/app/observability/metrics.py
++++ b/nowing_backend/app/observability/metrics.py
+@@ -1083,13 +1083,94 @@ def register_runtime_observables() -> None:
+     _OBSERVABLES_REGISTERED = True
+ 
+ 
++# ── ChainLens research degradation (Story 9.1a) ──────────────────────────────
++# Low-cardinality telemetry: degradation_reason and final_status are from a
++# closed vocabulary; the user's query, API key, and answer are intentionally
++# NOT included in metric labels.
++
++
++@lru_cache(maxsize=1)
++def _chainlens_degradation():
++    return _get_meter().create_counter(
++        "nowing.chainlens.degradation",
++        description="Count of ChainLens research degradations by reason and outcome.",
++    )
++
++
++@lru_cache(maxsize=1)
++def _kb_fallback_hit_count():
++    return _get_meter().create_histogram(
++        "nowing.chainlens.fallback_kb_hits",
++        unit="{hit}",
++        description="Number of workspace KB chunks used as ChainLens fallback citations.",
++    )
++
++
++@lru_cache(maxsize=1)
++def _blocked_url_coverage():
++    return _get_meter().create_counter(
++        "nowing.chainlens.blocked_url_coverage",
++        description="Count of blocked URLs by block type (URL redacted from labels).",
++    )
++
++
++def record_chainlens_degradation(
++    *,
++    degradation_reason: str,
++    final_status: str,
++    fallback_attempted: bool,
++    fallback_used: bool,
++    fallback_hit_count: int,
++    workspace_id: int | None = None,
++    query: str | None = None,
++    api_key: str | None = None,
++    answer: str | None = None,
++) -> None:
++    """Count one ChainLens research degradation.
++
++    ``workspace_id``, ``query``, ``api_key``, and ``answer`` are accepted for
++    source-context but are intentionally excluded from metric labels.
++    """
++    _add(
++        _chainlens_degradation(),
++        1,
++        {
++            "degradation_reason": degradation_reason,
++            "final_status": final_status,
++            "fallback_attempted": bool(fallback_attempted),
++            "fallback_used": bool(fallback_used),
++            "fallback_hit_count": int(fallback_hit_count),
++        },
++    )
++
++
++def record_kb_fallback_hit_count(
++    fallback_hit_count: int, *, workspace_id: int | None = None
++) -> None:
++    """Record how many workspace KB chunks were cited in a degraded fallback."""
++    if fallback_hit_count < 0:
++        return
++    _record(
++        _kb_fallback_hit_count(),
++        fallback_hit_count,
++        {"fallback_hit_count": fallback_hit_count},
++    )
++
++
++def record_blocked_url_coverage(*, url: str, block_type: str) -> None:
++    """Count one blocked URL by its block type; the URL never enters labels."""
++    _add(_blocked_url_coverage(), 1, {"block_type": block_type})
++
++
+ __all__ = [
+     "categorize_exception",
+     "parse_celery_task_label",
+     "record_auth_failure",
++    "record_blocked_url_coverage",
+     "record_celery_heartbeat_failure",
+     "record_celery_heartbeat_refresh",
+     "record_celery_queue_latency",
++    "record_chainlens_degradation",
+     "record_chat_request_duration",
+     "record_chat_request_outcome",
+     "record_chunk_reconcile",
+@@ -1105,6 +1186,7 @@ __all__ = [
+     "record_indexing_document_duration",
+     "record_indexing_document_outcome",
+     "record_interrupt",
++    "record_kb_fallback_hit_count",
+     "record_kb_search_duration",
+     "record_memory_injection_failure",
+     "record_model_call_duration",
+diff --git a/nowing_backend/tests/unit/capabilities/chainlens/research/test_executor.py b/nowing_backend/tests/unit/capabilities/chainlens/research/test_executor.py
+index cf13c8f14..c3c4ea8c2 100644
+--- a/nowing_backend/tests/unit/capabilities/chainlens/research/test_executor.py
++++ b/nowing_backend/tests/unit/capabilities/chainlens/research/test_executor.py
+@@ -1,7 +1,10 @@
+ from __future__ import annotations
+ 
+ import json
++import types
++from unittest.mock import AsyncMock
+ 
++import httpx
+ import pytest
+ 
+ from app.capabilities.chainlens.research.executor import (
+@@ -101,10 +104,10 @@ async def test_build_research_executor_catches_network_errors():
+         raise httpx.ConnectError("network down")
+ 
+     execute = build_research_executor(failing_search)
+-    from app.exceptions import ExternalServiceError
++    output = await execute(ResearchInput(query="hello"))
+ 
+-    with pytest.raises(ExternalServiceError):
+-        await execute(ResearchInput(query="hello"))
++    assert output.status == "engine_unavailable"
++    assert getattr(output, "degradation_reason", None) == "unreachable"
+ 
+ 
+ def test_parse_sse_raises_on_error_event_with_json_payload():
+@@ -113,25 +116,6 @@ def test_parse_sse_raises_on_error_event_with_json_payload():
+         _parse_sse(raw)
+ 
+ 
+-async def test_call_chainlens_raises_when_api_key_missing(monkeypatch):
+-    import types
+-
+-    from app.config import config as real_config
+-    from app.exceptions import ConfigurationError
+-
+-    fake_config = types.SimpleNamespace(
+-        CHAINLENS_API_KEY="",
+-        CHAINLENS_API_URL=real_config.CHAINLENS_API_URL,
+-        CHAINLENS_REQUEST_TIMEOUT_SECONDS=real_config.CHAINLENS_REQUEST_TIMEOUT_SECONDS,
+-    )
+-    monkeypatch.setattr(
+-        "app.capabilities.chainlens.research.executor.config", fake_config
+-    )
+-
+-    with pytest.raises(ConfigurationError):
+-        await _call_chainlens(ResearchInput(query="test"))
+-
+-
+ def test_parse_sse_skips_source_with_empty_url():
+     raw = _sse_line(
+         {
+@@ -154,3 +138,210 @@ def test_parse_sse_skips_source_with_empty_url():
+     assert len(output.sources) == 1
+     assert output.sources[0].title == "Good URL"
+     assert output.sources[0].url == "https://example.com"
++
++
++# Red-phase scaffolds for 9.1a
++
++
++def test_parse_sse_partial_event_returns_degraded_partial():
++    raw = _sse_line(
++        {
++            "type": "partial",
++            "state": "insufficient_evidence",
++            "reason": "low coverage",
++            "answer": "partial answer",
++            "sources": [{"title": "Partial", "url": "https://example.com/partial"}],
++        }
++    )
++    output = _parse_sse(raw)
++
++    assert output.status == "partial"
++    assert output.answer == "partial answer"
++    assert len(output.sources) == 1
++    assert getattr(output, "engine_reason", None) == "low coverage"
++
++
++def test_parse_sse_insufficient_evidence_event_returns_degraded_reason():
++    raw = _sse_line(
++        {
++            "type": "insufficientEvidence",
++            "reason": "no reliable sources",
++            "partial": {
++                "answer": "",
++                "sources": [{"title": "Weak", "url": "https://example.com/weak"}],
++            },
++        }
++    )
++    output = _parse_sse(raw)
++
++    assert output.status in ("insufficient_evidence", "partial")
++    assert getattr(output, "engine_reason", None) == "no reliable sources"
++
++
++def test_parse_sse_heartbeat_only_does_not_return_insufficient_evidence():
++    raw = _sse_line({"type": "heartbeat"})
++    output = _parse_sse(raw)
++
++    assert output.status != "insufficient_evidence"
++    assert getattr(output, "saw_heartbeat", False) is True
++    assert getattr(output, "degradation_reason", None) == "stream_incomplete"
++
++
++def test_parse_sse_unknown_event_is_ignored_without_error():
++    raw = _sse_line({"type": "noop"}) + _sse_line({"type": "done"})
++    output = _parse_sse(raw)
++
++    assert output.status != "insufficient_evidence"
++    assert output.status in ("engine_unavailable", "timeout")
++
++
++def test_parse_sse_blocked_url_coverage_in_partial():
++    raw = _sse_line(
++        {
++            "type": "partial",
++            "state": "insufficient_evidence",
++            "reason": "blocked",
++            "blocked_metadata": [
++                {"url": "https://example.com", "block_type": "cloudflare"}
++            ],
++        }
++    )
++    output = _parse_sse(raw)
++
++    counter = getattr(output, "blocked_url_coverage_by_block_type", {})
++    assert counter.get("cloudflare", 0) >= 1
++
++
++async def test_call_chainlens_returns_engine_unavailable_when_key_empty(monkeypatch):
++    from app.config import config as real_config
++
++    fake_config = types.SimpleNamespace(
++        CHAINLENS_API_KEY="",
++        CHAINLENS_API_URL=real_config.CHAINLENS_API_URL,
++        CHAINLENS_REQUEST_TIMEOUT_SECONDS=real_config.CHAINLENS_REQUEST_TIMEOUT_SECONDS,
++    )
++    monkeypatch.setattr(
++        "app.capabilities.chainlens.research.executor.config", fake_config
++    )
++
++    output = await _call_chainlens(ResearchInput(query="test"))
++    assert output.status == "engine_unavailable"
++    assert getattr(output, "degradation_reason", None) == "not_configured"
++    assert output.billable_units == 0
++    assert "ConfigurationError" not in output.model_dump_json()
++
++
++def _fake_http_client(response):
++    class _Client:
++        def __init__(self, **kwargs):
++            self._response = response
++
++        async def __aenter__(self):
++            return self
++
++        async def __aexit__(self, *exc):
++            return None
++
++        async def post(self, *args, **kwargs):
++            return self._response
++
++    return _Client
++
++
++def _stub_config_with_key(monkeypatch):
++    from app.config import config as real_config
++
++    fake_config = types.SimpleNamespace(
++        CHAINLENS_API_KEY="test-key",
++        CHAINLENS_API_URL=real_config.CHAINLENS_API_URL,
++        CHAINLENS_REQUEST_TIMEOUT_SECONDS=real_config.CHAINLENS_REQUEST_TIMEOUT_SECONDS,
++    )
++    monkeypatch.setattr(
++        "app.capabilities.chainlens.research.executor.config", fake_config
++    )
++
++
++async def test_call_chainlens_maps_401_to_auth_failed(monkeypatch):
++    _stub_config_with_key(monkeypatch)
++    from app.capabilities.chainlens.research import executor as executor_mod
++
++    response = type("R", (), {"status_code": 401, "text": "unauthorized"})()
++    monkeypatch.setattr(
++        executor_mod.httpx, "AsyncClient", _fake_http_client(response)
++    )
++
++    output = await _call_chainlens(ResearchInput(query="test"))
++    assert output.status == "engine_unavailable"
++    assert getattr(output, "degradation_reason", None) == "auth_failed"
++
++
++async def test_call_chainlens_maps_429_to_rate_limited(monkeypatch):
++    _stub_config_with_key(monkeypatch)
++    from app.capabilities.chainlens.research import executor as executor_mod
++
++    response = type("R", (), {"status_code": 429, "text": "rate limited"})()
++    monkeypatch.setattr(
++        executor_mod.httpx, "AsyncClient", _fake_http_client(response)
++    )
++
++    output = await _call_chainlens(ResearchInput(query="test"))
++    assert output.status == "engine_unavailable"
++    assert getattr(output, "degradation_reason", None) == "rate_limited"
++
++
++async def test_call_chainlens_maps_5xx_to_upstream_error(monkeypatch):
++    _stub_config_with_key(monkeypatch)
++    from app.capabilities.chainlens.research import executor as executor_mod
++
++    response = type("R", (), {"status_code": 503, "text": "boom"})()
++    monkeypatch.setattr(
++        executor_mod.httpx, "AsyncClient", _fake_http_client(response)
++    )
++
++    output = await _call_chainlens(ResearchInput(query="test"))
++    assert output.status == "engine_unavailable"
++    assert getattr(output, "degradation_reason", None) == "upstream_error"
++
++
++async def test_call_chainlens_maps_unknown_4xx_to_upstream_error(monkeypatch):
++    _stub_config_with_key(monkeypatch)
++    from app.capabilities.chainlens.research import executor as executor_mod
++
++    response = type("R", (), {"status_code": 422, "text": "bad"})()
++    monkeypatch.setattr(
++        executor_mod.httpx, "AsyncClient", _fake_http_client(response)
++    )
++
++    output = await _call_chainlens(ResearchInput(query="test"))
++    assert output.status == "engine_unavailable"
++    assert getattr(output, "degradation_reason", None) in ("upstream_error", "auth_failed")
++
++
++async def test_build_research_executor_degrades_on_timeout():
++    async def raise_timeout(_):
++        raise httpx.TimeoutException("timeout")
++
++    execute = build_research_executor(raise_timeout)
++    output = await execute(ResearchInput(query="test"))
++    assert output.status == "engine_unavailable"
++    assert getattr(output, "degradation_reason", None) == "timeout"
++
++
++async def test_build_research_executor_degrades_on_request_error():
++    async def raise_request_error(_):
++        raise httpx.ConnectError("dns failed")
++
++    execute = build_research_executor(raise_request_error)
++    output = await execute(ResearchInput(query="test"))
++    assert output.status == "engine_unavailable"
++    assert getattr(output, "degradation_reason", None) == "unreachable"
++
++
++async def test_build_research_executor_degrades_on_chainlens_error():
++    async def raise_chainlens_error(_):
++        raise ChainLensError("upstream typed error", code="CHAINLENS_UPSTREAM_ERROR")
++
++    execute = build_research_executor(raise_chainlens_error)
++    output = await execute(ResearchInput(query="test"))
++    assert output.status == "engine_unavailable"
++    assert getattr(output, "degradation_reason", None) == "upstream_error"
+diff --git a/nowing_backend/tests/unit/capabilities/chainlens/research/test_schemas.py b/nowing_backend/tests/unit/capabilities/chainlens/research/test_schemas.py
+index 3b800903b..0bb557e50 100644
+--- a/nowing_backend/tests/unit/capabilities/chainlens/research/test_schemas.py
++++ b/nowing_backend/tests/unit/capabilities/chainlens/research/test_schemas.py
+@@ -3,7 +3,7 @@ from __future__ import annotations
+ import pytest
+ from pydantic import ValidationError
+ 
+-from app.capabilities.chainlens.research.schemas import ResearchInput, ResearchOutput
++from app.capabilities.chainlens.research.schemas import ResearchInput, ResearchOutput, Source
+ 
+ pytestmark = pytest.mark.unit
+ 
+@@ -41,3 +41,66 @@ def test_research_output_billable_units_one_with_answer():
+ def test_research_output_billable_units_one_with_sources():
+     output = ResearchOutput(sources=[{"title": "Source", "url": "https://example.com"}])
+     assert output.billable_units == 1
++
++
++# Red-phase scaffolds for 9.1a
++
++
++def test_research_output_status_enum_includes_engine_unavailable():
++    from typing import get_args
++
++    allowed = get_args(ResearchOutput.model_fields["status"].annotation)
++    assert "engine_unavailable" in allowed
++
++
++def test_research_output_includes_degradation_fields():
++    expected = {
++        "degraded",
++        "degradation_reason",
++        "engine_reason",
++        "source_type",
++        "document_id",
++        "chunk_id",
++        "block_type",
++    }
++    assert expected.issubset(ResearchOutput.model_fields.keys())
++
++
++def test_source_includes_kb_locator_fields():
++    expected = {"document_id", "chunk_id", "source_type"}
++    assert expected.issubset(Source.model_fields.keys())
++
++
++def test_research_output_supports_engine_unavailable_status():
++    output = ResearchOutput(status="engine_unavailable")
++    assert output.status == "engine_unavailable"
++
++
++def test_research_output_engine_unavailable_billable_units_is_zero():
++    output = ResearchOutput(status="engine_unavailable")
++    assert output.billable_units == 0
++
++
++def test_research_output_partial_with_fallback_is_billable():
++    output = ResearchOutput(
++        status="partial",
++        answer="partial answer",
++        sources=[{"title": "KB", "url": "nowing://documents/1/chunks/2"}],
++        degraded=True,
++    )
++    assert output.billable_units == 1
++    assert output.degraded is True
++
++
++def test_source_accepts_internal_kb_url():
++    source = Source(
++        title="KB Document",
++        url="nowing://documents/7/chunks/12",
++        document_id=7,
++        chunk_id=12,
++        source_type="kb",
++    )
++    assert source.url == "nowing://documents/7/chunks/12"
++    assert source.document_id == 7
++    assert source.chunk_id == 12
++    assert source.source_type == "kb"
+diff --git a/nowing_backend/tests/unit/capabilities/chainlens/test_registry.py b/nowing_backend/tests/unit/capabilities/chainlens/test_registry.py
+index a72ee4cfa..93757c787 100644
+--- a/nowing_backend/tests/unit/capabilities/chainlens/test_registry.py
++++ b/nowing_backend/tests/unit/capabilities/chainlens/test_registry.py
+@@ -15,3 +15,8 @@ def test_chainlens_research_is_registered_and_metered():
+     assert capability.input_schema is ResearchInput
+     assert capability.output_schema is ResearchOutput
+     assert capability.billing_unit is BillingUnit.CHAINLENS_QUERY
++
++
++def test_chainlens_research_capability_is_context_aware():
++    capability = get_capability("chainlens.research")
++    assert getattr(capability, "context_aware", False) is True
+diff --git a/nowing_backend/tests/unit/capabilities/test_billing.py b/nowing_backend/tests/unit/capabilities/test_billing.py
+index 85187b5f5..781e23140 100644
+--- a/nowing_backend/tests/unit/capabilities/test_billing.py
++++ b/nowing_backend/tests/unit/capabilities/test_billing.py
+@@ -6,6 +6,7 @@ WebCrawlCreditService debit math and the owner-billed decision.
+ 
+ from __future__ import annotations
+ 
++from types import SimpleNamespace
+ from unittest.mock import AsyncMock, MagicMock
+ from uuid import UUID
+ 
+@@ -478,3 +479,74 @@ async def test_instagram_gate_blocks_when_worst_case_exceeds_balance(
+             BillingUnit.INSTAGRAM_ITEM,
+             _ctx(session),
+         )
++
++
++# Red-phase scaffolds for 9.1a
++
++
++async def test_chainlens_charge_records_degradation_in_call_details(
++    monkeypatch, record_usage
++):
++    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
++    monkeypatch.setattr(config, "CHAINLENS_QUERY_MICROS_PER_CALL", 5000)
++    session, user = _make_session(_OWNER, balance_micros=100_000)
++
++    output = SimpleNamespace(
++        billable_units=1,
++        status="partial",
++        degraded=True,
++        degradation_reason="fallback_kb_hits",
++    )
++
++    await charge_capability(output, BillingUnit.CHAINLENS_QUERY, _ctx(session))
++
++    assert record_usage.awaited
++    details = record_usage.await_args.kwargs["call_details"]
++    assert details["degradation_reason"] == "fallback_kb_hits"
++    assert details["final_status"] == "partial"
++
++
++async def test_engine_unavailable_no_content_does_not_record_token_usage(
++    monkeypatch, record_usage
++):
++    from app.capabilities.chainlens.research.schemas import ResearchOutput
++
++    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
++    session, user = _make_session(_OWNER, balance_micros=100_000)
++
++    output = ResearchOutput()
++    output.status = "engine_unavailable"
++
++    charged = await charge_capability(
++        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
++    )
++
++    assert charged == 0
++    assert getattr(output, "degraded", False) is True
++    assert getattr(output, "degradation_reason", None) == "not_configured"
++    record_usage.assert_not_awaited()
++    assert user.credit_micros_balance == 100_000
++
++
++async def test_chainlens_charge_does_not_leak_secrets_in_call_details(
++    monkeypatch, record_usage
++):
++    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
++    session, user = _make_session(_OWNER, balance_micros=100_000)
++
++    output = SimpleNamespace(
++        billable_units=1,
++        status="partial",
++        degraded=True,
++        degradation_reason="rate_limited",
++    )
++
++    await charge_capability(output, BillingUnit.CHAINLENS_QUERY, _ctx(session))
++
++    details = record_usage.await_args.kwargs["call_details"]
++    assert details["degradation_reason"] == "rate_limited"
++    assert details["final_status"] == "partial"
++    details_str = str(details)
++    assert "query text" not in details_str.lower()
++    assert "secret-key" not in details_str.lower()
++    assert "https://example.com" not in details_str

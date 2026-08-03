@@ -1,0 +1,1246 @@
+diff --git a/nowing_backend/tests/integration/capabilities/chainlens/research/conftest.py b/nowing_backend/tests/integration/capabilities/chainlens/research/conftest.py
+new file mode 100644
+index 000000000..086293b05
+--- /dev/null
++++ b/nowing_backend/tests/integration/capabilities/chainlens/research/conftest.py
+@@ -0,0 +1,197 @@
++"""Fixtures for chainlens.research fallback integration tests."""
++
++from __future__ import annotations
++
++from collections.abc import AsyncGenerator
++from uuid import uuid4
++
++import httpx
++import pytest
++import pytest_asyncio
++from httpx import ASGITransport
++from sqlalchemy.ext.asyncio import AsyncSession
++
++import importlib
++
++from app.app import app, limiter
++from app.auth.context import AuthContext
++from app.db import (
++    Chunk,
++    Document,
++    DocumentType,
++    User,
++    Workspace,
++    get_async_session,
++)
++from app.routes.workspaces_routes import create_default_roles_and_membership
++from app.users import get_auth_context
++
++_rest_module = importlib.import_module("app.capabilities.core.access.rest")
++
++pytestmark = pytest.mark.integration
++
++limiter.enabled = False
++
++
++class _DbSessionContext:
++    """Make db_session usable by code that opens a fresh ``async_session_maker()``."""
++
++    def __init__(self, session: AsyncSession) -> None:
++        self._session = session
++
++    async def __aenter__(self) -> AsyncSession:
++        return self._session
++
++    async def __aexit__(self, *args) -> None:
++        return None
++
++
++def _use_db_session_for_async_session_maker(session: AsyncSession):
++    """Patch the REST recorder's session factory so record_run sees the test txn."""
++    original = _rest_module.async_session_maker
++    _rest_module.async_session_maker = lambda: _DbSessionContext(session)
++    return original
++
++
++@pytest_asyncio.fixture
++async def client(
++    db_session: AsyncSession,
++    db_user: User,
++) -> AsyncGenerator[httpx.AsyncClient, None]:
++    """Authenticated as the workspace owner (db_user)."""
++
++    async def override_session() -> AsyncGenerator[AsyncSession, None]:
++        yield db_session
++
++    async def override_auth() -> AuthContext:
++        return AuthContext.session(db_user)
++
++    previous_overrides = app.dependency_overrides.copy()
++    app.dependency_overrides[get_async_session] = override_session
++    app.dependency_overrides[get_auth_context] = override_auth
++
++    original_async_session_maker = _use_db_session_for_async_session_maker(
++        db_session
++    )
++
++    try:
++        async with httpx.AsyncClient(
++            transport=ASGITransport(app=app),
++            base_url="http://test",
++            timeout=30.0,
++            follow_redirects=False,
++        ) as test_client:
++            yield test_client
++    finally:
++        app.dependency_overrides.clear()
++        app.dependency_overrides.update(previous_overrides)
++        _rest_module.async_session_maker = original_async_session_maker
++
++
++@pytest_asyncio.fixture
++async def client_as_other(
++    db_session: AsyncSession,
++    db_other_user: User,
++) -> AsyncGenerator[httpx.AsyncClient, None]:
++    """Authenticated as a non-member user."""
++
++    async def override_session() -> AsyncGenerator[AsyncSession, None]:
++        yield db_session
++
++    async def override_auth() -> AuthContext:
++        return AuthContext.session(db_other_user)
++
++    previous_overrides = app.dependency_overrides.copy()
++    app.dependency_overrides[get_async_session] = override_session
++    app.dependency_overrides[get_auth_context] = override_auth
++
++    original_async_session_maker = _use_db_session_for_async_session_maker(
++        db_session
++    )
++
++    try:
++        async with httpx.AsyncClient(
++            transport=ASGITransport(app=app),
++            base_url="http://test",
++            timeout=30.0,
++            follow_redirects=False,
++        ) as test_client:
++            yield test_client
++    finally:
++        app.dependency_overrides.clear()
++        app.dependency_overrides.update(previous_overrides)
++        _rest_module.async_session_maker = original_async_session_maker
++
++
++@pytest_asyncio.fixture
++async def db_other_user(db_session: AsyncSession) -> User:
++    """A second user who is not a member of db_workspace."""
++    user = User(
++        id=uuid4(),
++        email="other@nowing.net",
++        hashed_password="hashed",
++        is_active=True,
++        is_superuser=False,
++        is_verified=True,
++    )
++    db_session.add(user)
++    await db_session.flush()
++    return user
++
++
++@pytest_asyncio.fixture
++async def db_other_workspace(
++    db_session: AsyncSession, db_other_user: User
++) -> Workspace:
++    """A second workspace owned by db_other_user."""
++    space = Workspace(name="Other Space", user_id=db_other_user.id)
++    db_session.add(space)
++    await db_session.flush()
++    await create_default_roles_and_membership(
++        db_session, space.id, db_other_user.id
++    )
++    await db_session.flush()
++    return space
++
++
++@pytest_asyncio.fixture
++async def seed_research_document(db_session: AsyncSession):
++    """Factory to create a Document + Chunk for KB fallback tests."""
++
++    async def _make(
++        workspace_id: int,
++        *,
++        title: str = "Research Doc",
++        content: str = "Fallback evidence content.",
++        keyword: str = "evidence",
++        embedding: list[float] | None = None,
++    ) -> Document:
++        from app.config import config
++
++        if embedding is None:
++            embedding = [0.0] * config.embedding_model_instance.dimension
++
++        document = Document(
++            title=title,
++            document_type=DocumentType.FILE,
++            content=f"{keyword} {content}",
++            content_hash=uuid4().hex,
++            workspace_id=workspace_id,
++            status={"state": "ready"},
++            embedding=embedding,
++        )
++        db_session.add(document)
++        await db_session.flush()
++
++        db_session.add(
++            Chunk(
++                content=f"{keyword} {content}",
++                document_id=document.id,
++                position=0,
++                embedding=embedding,
++            )
++        )
++        await db_session.flush()
++        return document
++
++    return _make
+diff --git a/nowing_backend/tests/integration/capabilities/chainlens/research/test_research_fallback.py b/nowing_backend/tests/integration/capabilities/chainlens/research/test_research_fallback.py
+new file mode 100644
+index 000000000..ee1d5069d
+--- /dev/null
++++ b/nowing_backend/tests/integration/capabilities/chainlens/research/test_research_fallback.py
+@@ -0,0 +1,316 @@
++"""Integration tests for chainlens.research fallback + CapabilityContext (Story 9.1a)."""
++
++from __future__ import annotations
++
++import uuid
++
++import pytest
++from sqlalchemy import select
++from sqlalchemy.exc import IntegrityError
++
++from app.agents.chat.multi_agent_chat.shared.retrieval.hybrid_search import (
++    search_chunks,
++)
++from app.agents.chat.multi_agent_chat.shared.retrieval.models import SearchScope
++from app.capabilities.chainlens.research.schemas import (
++    ResearchInput,
++    ResearchOutput,
++    Source,
++)
++from app.capabilities.core.billing import charge_capability
++from app.capabilities.core.types import BillingUnit, CapabilityContext
++from app.config import config
++from app.db import Chunk, Document, DocumentType, Run, TokenUsage, Workspace
++
++pytestmark = [pytest.mark.integration]
++
++BASE = "/api/v1/workspaces/{workspace_id}/scrapers/chainlens/research"
++
++
++async def _add_kb_document(
++    db_session,
++    *,
++    workspace_id: int,
++    title: str = "KB Doc",
++    keyword: str = "evidence",
++    embedding: list[float] | None = None,
++) -> Document:
++    """Seed one indexed Document with one Chunk for fallback retrieval."""
++    if embedding is None:
++        embedding = [0.0] * config.embedding_model_instance.dimension
++
++    document = Document(
++        title=title,
++        document_type=DocumentType.FILE,
++        content=f"{keyword} fallback content.",
++        content_hash=uuid.uuid4().hex,
++        workspace_id=workspace_id,
++        status={"state": "ready"},
++        embedding=embedding,
++    )
++    db_session.add(document)
++    await db_session.flush()
++
++    db_session.add(
++        Chunk(
++            content=f"{keyword} fallback content.",
++            document_id=document.id,
++            position=0,
++            embedding=embedding,
++        )
++    )
++    await db_session.flush()
++    return document
++
++
++@pytest.mark.asyncio
++async def test_fallback_search_returns_zero_rows_for_empty_workspace(
++    db_session,
++    db_workspace,
++):
++    """AC-1 P6: fallback query runs and returns 0 rows when workspace has no docs."""
++    results = await search_chunks(
++        db_session,
++        workspace_id=db_workspace.id,
++        query="evidence",
++        scope=SearchScope(),
++        top_k=5,
++        query_embedding=[0.0] * config.embedding_model_instance.dimension,
++    )
++    assert results == []
++
++
++@pytest.mark.asyncio
++async def test_fallback_search_respects_workspace_id_filter(
++    db_session,
++    db_workspace,
++    db_other_workspace,
++):
++    """AC-1/AC-3 P6: workspace_id filter keeps unauthorized documents out."""
++    mine = await _add_kb_document(db_session, workspace_id=db_workspace.id)
++    await _add_kb_document(db_session, workspace_id=db_other_workspace.id)
++
++    results = await search_chunks(
++        db_session,
++        workspace_id=db_workspace.id,
++        query="evidence",
++        scope=SearchScope(),
++        top_k=5,
++        query_embedding=[0.0] * config.embedding_model_instance.dimension,
++    )
++
++    found = {hit.document_id for hit in results}
++    assert mine.id in found
++    assert db_other_workspace.id not in found
++
++
++@pytest.mark.asyncio
++async def test_fallback_search_returns_real_chunk_and_document_ids(
++    db_session,
++    db_workspace,
++):
++    """AC-4 P6: fallback sources carry real document_id and chunk_id."""
++    document = await _add_kb_document(db_session, workspace_id=db_workspace.id)
++    chunk_id_before = (
++        await db_session.execute(
++            select(Chunk.id).where(Chunk.document_id == document.id)
++        )
++    ).scalar_one()
++
++    results = await search_chunks(
++        db_session,
++        workspace_id=db_workspace.id,
++        query="evidence",
++        scope=SearchScope(),
++        top_k=5,
++        query_embedding=[0.0] * config.embedding_model_instance.dimension,
++    )
++
++    assert len(results) == 1
++    hit = results[0]
++    assert hit.document_id == document.id
++    assert hit.chunks
++    assert any(chunk.chunk_id == chunk_id_before for chunk in hit.chunks)
++
++
++@pytest.mark.asyncio
++async def test_fallback_search_top_k_bounded(
++    db_session,
++    db_workspace,
++):
++    """AC-2/AC-3 P6: fallback query uses a top_k of at most 5 documents."""
++    for i in range(7):
++        await _add_kb_document(
++            db_session,
++            workspace_id=db_workspace.id,
++            title=f"Doc {i}",
++        )
++
++    results = await search_chunks(
++        db_session,
++        workspace_id=db_workspace.id,
++        query="evidence",
++        scope=SearchScope(),
++        top_k=5,
++        query_embedding=[0.0] * config.embedding_model_instance.dimension,
++    )
++
++    assert len(results) <= 5
++
++
++@pytest.mark.asyncio
++async def test_foreign_key_rejects_chunk_for_nonexistent_document(
++    db_session,
++):
++    """AC-3 P6: Chunk.document_id FK enforces that citations reference real rows."""
++    with pytest.raises(IntegrityError):
++        db_session.add(
++            Chunk(
++                content="orphan chunk",
++                document_id=-1,
++                position=0,
++                embedding=[0.0] * config.embedding_model_instance.dimension,
++            )
++        )
++        await db_session.flush()
++
++
++@pytest.mark.asyncio
++async def test_charge_capability_creates_no_token_usage_for_engine_unavailable(
++    db_session,
++    db_user,
++    db_workspace,
++    monkeypatch,
++):
++    """AC-10 P6: no TokenUsage row for engine_unavailable with no content."""
++    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
++    db_user.credit_micros_balance = 10_000_000
++
++    # Schema update for engine_unavailable is pending; model_construct lets us
++    # exercise the future status without waiting for the Pydantic Literal change.
++    output = ResearchOutput.model_construct(
++        status="engine_unavailable",
++        degradation_reason="not_configured",
++    )
++    ctx = CapabilityContext(session=db_session, workspace_id=db_workspace.id)
++    await charge_capability(output, BillingUnit.CHAINLENS_QUERY, ctx)
++
++    rows = (
++        await db_session.execute(
++            select(TokenUsage).where(
++                TokenUsage.workspace_id == db_workspace.id,
++                TokenUsage.usage_type == BillingUnit.CHAINLENS_QUERY.value,
++            )
++        )
++    ).scalars().all()
++    assert rows == []
++
++
++@pytest.mark.asyncio
++async def test_charge_capability_creates_token_usage_for_partial_with_sources(
++    db_session,
++    db_user,
++    db_workspace,
++    monkeypatch,
++):
++    """AC-10 P6: a degraded partial with citable sources bills exactly one unit."""
++    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
++    db_user.credit_micros_balance = 10_000_000
++
++    output = ResearchOutput(
++        status="partial",
++        answer="The engine is unavailable; here is workspace evidence.",
++        sources=[
++            Source(
++                title="KB fallback",
++                url="nowing://documents/1/chunks/1",
++                content="Relevant passage.",
++            )
++        ],
++    )
++    ctx = CapabilityContext(session=db_session, workspace_id=db_workspace.id)
++    await charge_capability(output, BillingUnit.CHAINLENS_QUERY, ctx)
++
++    rows = (
++        await db_session.execute(
++            select(TokenUsage).where(
++                TokenUsage.workspace_id == db_workspace.id,
++                TokenUsage.usage_type == BillingUnit.CHAINLENS_QUERY.value,
++            )
++        )
++    ).scalars().all()
++    assert len(rows) == 1
++    assert rows[0].cost_micros > 0
++    # FK: the TokenUsage is tied to the workspace owner.
++    assert rows[0].user_id == db_user.id
++
++
++@pytest.mark.asyncio
++async def test_rest_sync_records_degraded_run_output_text(
++    client,
++    db_session,
++    db_workspace,
++    monkeypatch,
++):
++    """AC-7 P6: sync POST persists a Run row whose output_text carries the status."""
++    # Force the no-key self-host path so the request degrades instead of networking.
++    monkeypatch.setattr(
++        "app.capabilities.chainlens.research.executor.config.CHAINLENS_API_KEY",
++        "",
++    )
++
++    payload = ResearchInput(query="self-host deep research").model_dump()
++    resp = await client.post(
++        BASE.format(workspace_id=db_workspace.id),
++        json=payload,
++    )
++
++    # The route should eventually return a typed 200 with engine_unavailable.
++    # Until implemented it returns 500; this assertion is the red-phase target.
++    assert resp.status_code == 200
++    body = resp.json()
++    assert body["status"] == "engine_unavailable"
++
++    # The Run row must mirror the same status in output_text.
++    run_row = (
++        await db_session.execute(
++            select(Run).where(
++                Run.workspace_id == db_workspace.id,
++                Run.capability == "chainlens.research",
++            )
++        )
++    ).scalar_one()
++    assert run_row.output_text is not None
++    assert "engine_unavailable" in run_row.output_text
++
++
++@pytest.mark.asyncio
++async def test_rest_non_member_cannot_trigger_research(
++    client_as_other,
++    db_workspace,
++):
++    """Tenant boundary: a non-member must not reach the research route."""
++    payload = {"query": "self-host deep research"}
++    resp = await client_as_other.post(
++        BASE.format(workspace_id=db_workspace.id),
++        json=payload,
++    )
++    assert resp.status_code == 403
++
++
++@pytest.mark.asyncio
++async def test_run_foreign_key_rejects_nonexistent_workspace(db_session):
++    """AC-7 P6: Run.workspace_id FK rejects a row for a missing workspace."""
++    from uuid import uuid4
++
++    with pytest.raises(IntegrityError):
++        db_session.add(
++            Run(
++                id=uuid4(),
++                workspace_id=-1,
++                capability="chainlens.research",
++                origin="ui",
++                status="success",
++            )
++        )
++        await db_session.flush()
+diff --git a/nowing_backend/tests/unit/agents/chat/multi_agent_chat/subagents/builtins/chainlens/test_system_prompt.py b/nowing_backend/tests/unit/agents/chat/multi_agent_chat/subagents/builtins/chainlens/test_system_prompt.py
+new file mode 100644
+index 000000000..8ea63dcde
+--- /dev/null
++++ b/nowing_backend/tests/unit/agents/chat/multi_agent_chat/subagents/builtins/chainlens/test_system_prompt.py
+@@ -0,0 +1,27 @@
++"""Red-phase scaffold for ChainLens sub-agent prompt mapping (9.1a)."""
++
++from __future__ import annotations
++
++import pytest
++
++pytestmark = pytest.mark.unit
++
++
++_PROMPT_PATH = "/Users/luisphan/Documents/nowing/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/chainlens/system_prompt.md"
++
++
++def _prompt_text() -> str:
++    with open(_PROMPT_PATH) as f:
++        return f.read()
++
++
++def test_prompt_maps_engine_unavailable_to_error():
++    text = _prompt_text()
++    assert "engine_unavailable" in text
++    assert "engine_unavailable" in text.split("status_mapping")[-1]
++
++
++def test_prompt_maps_degraded_partial_to_partial_or_error():
++    text = _prompt_text()
++    assert "engine_unavailable" in text
++    assert "degraded" in text or "degraded partial" in text
+diff --git a/nowing_backend/tests/unit/capabilities/access/test_agent_degraded.py b/nowing_backend/tests/unit/capabilities/access/test_agent_degraded.py
+new file mode 100644
+index 000000000..a2cc31fd6
+--- /dev/null
++++ b/nowing_backend/tests/unit/capabilities/access/test_agent_degraded.py
+@@ -0,0 +1,114 @@
++"""Red-phase scaffolds for agent door ChainLens degradation (9.1a)."""
++
++from __future__ import annotations
++
++from types import SimpleNamespace
++from unittest.mock import AsyncMock
++
++import pytest
++from pydantic import BaseModel
++
++from app.capabilities.chainlens.research.schemas import ResearchInput, ResearchOutput
++from app.capabilities.core.access import agent as agent_mod
++from app.capabilities.core.types import BillingUnit, Capability, CapabilityContext
++
++pytestmark = pytest.mark.unit
++
++
++class _FakeSessionCtx:
++    async def __aenter__(self):
++        return SimpleNamespace()
++
++    async def __aexit__(self, *exc):
++        return False
++
++
++@pytest.fixture
++def isolate_agent(monkeypatch):
++    monkeypatch.setattr(agent_mod, "async_session_maker", lambda: _FakeSessionCtx())
++    charge = AsyncMock(return_value=0)
++    gate = AsyncMock()
++    monkeypatch.setattr(agent_mod, "charge_capability", charge)
++    monkeypatch.setattr(agent_mod, "gate_capability", gate)
++    record = AsyncMock(return_value="agent-run-id")
++    monkeypatch.setattr(agent_mod, "record_run", record)
++    return SimpleNamespace(charge=charge, gate=gate, record=record)
++
++
++class _ResearchSpy:
++    def __init__(self, output: ResearchOutput):
++        self.output = output
++        self.calls: list[tuple[tuple, dict]] = []
++
++    async def __call__(self, *args, **kwargs):
++        self.calls.append((args, kwargs))
++        return self.output
++
++
++def _research_capability(output: ResearchOutput) -> Capability:
++    return Capability(
++        name="chainlens.research",
++        description="Research.",
++        input_schema=ResearchInput,
++        output_schema=ResearchOutput,
++        executor=_ResearchSpy(output),
++        billing_unit=BillingUnit.CHAINLENS_QUERY,
++    )
++
++
++async def test_agent_tool_passes_capability_context_to_chainlens(isolate_agent):
++    output = ResearchOutput()
++    output.status = "engine_unavailable"
++    output.next_action = "Deep research is not available in self-host Phase 1."
++    cap = _research_capability(output)
++
++    tools = agent_mod.build_capability_tools(
++        workspace_id=7, capabilities=[cap], user_id="u-1"
++    )
++    tool = next(t for t in tools if t.name == "chainlens_research")
++    await tool.ainvoke({"query": "hello"})
++
++    spy = cap.executor
++    assert any(
++        isinstance(arg, CapabilityContext)
++        for args, _ in spy.calls
++        for arg in args
++    ), "CapabilityContext was not passed to the agent executor"
++
++
++async def test_agent_tool_does_not_raise_for_engine_unavailable(isolate_agent):
++    output = ResearchOutput()
++    output.status = "engine_unavailable"
++    output.next_action = "Deep research is not available in self-host Phase 1."
++    cap = _research_capability(output)
++
++    tools = agent_mod.build_capability_tools(
++        workspace_id=7, capabilities=[cap], user_id="u-1"
++    )
++    tool = next(t for t in tools if t.name == "chainlens_research")
++    result = await tool.ainvoke({"query": "hello"})
++
++    assert isinstance(result, dict)
++    assert result["status"] == "engine_unavailable"
++    assert result["degraded"] is True
++    assert result["next_step"] is not None or result["next_action"] is not None
++    assert "answer" not in result or not result.get("answer")
++
++
++async def test_agent_tool_returns_partial_with_fallback_hits(isolate_agent):
++    output = ResearchOutput(
++        answer="partial answer",
++        sources=[{"title": "KB", "url": "nowing://documents/7/chunks/12"}],
++    )
++    output.status = "partial"
++    cap = _research_capability(output)
++
++    tools = agent_mod.build_capability_tools(
++        workspace_id=7, capabilities=[cap], user_id="u-1"
++    )
++    tool = next(t for t in tools if t.name == "chainlens_research")
++    result = await tool.ainvoke({"query": "hello"})
++
++    assert result["status"] == "partial"
++    assert result["degraded"] is True
++    assert result["fallback_hit_count"] == 1
+diff --git a/nowing_backend/tests/unit/capabilities/access/test_rest_degraded.py b/nowing_backend/tests/unit/capabilities/access/test_rest_degraded.py
+new file mode 100644
+index 000000000..34e6ab4ff
+--- /dev/null
++++ b/nowing_backend/tests/unit/capabilities/access/test_rest_degraded.py
+@@ -0,0 +1,172 @@
++"""Red-phase scaffolds for REST sync/async ChainLens degradation (9.1a)."""
++
++from __future__ import annotations
++
++from types import SimpleNamespace
++from unittest.mock import AsyncMock, Mock
++
++import pytest
++from fastapi import FastAPI
++from httpx import ASGITransport, AsyncClient
++
++from app.capabilities.chainlens.research.schemas import ResearchInput, ResearchOutput
++from app.capabilities.core.access import rest
++from app.capabilities.core.types import BillingUnit, Capability, CapabilityContext
++
++pytestmark = pytest.mark.unit
++
++
++class _ResearchSpy:
++    def __init__(self, output: ResearchOutput):
++        self.output = output
++        self.calls: list[tuple[tuple, dict]] = []
++
++    async def __call__(self, *args, **kwargs):
++        self.calls.append((args, kwargs))
++        return self.output
++
++
++def _client(app: FastAPI) -> AsyncClient:
++    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
++
++
++async def _noop_async(*args, **kwargs) -> None:
++    return None
++
++
++async def _fake_record(**kwargs) -> str:
++    return "test-run-id"
++
++
++def _build_app(capabilities, monkeypatch) -> FastAPI:
++    monkeypatch.setattr(rest, "check_workspace_access", _noop_async, raising=True)
++    monkeypatch.setattr(rest, "_record_rest_run", _fake_record, raising=True)
++    monkeypatch.setattr(rest, "charge_capability", AsyncMock(return_value=0))
++    monkeypatch.setattr(rest, "gate_capability", AsyncMock())
++
++    from app.db import get_async_session
++    from app.users import get_auth_context
++
++    app = FastAPI()
++    app.include_router(rest.build_capabilities_router(capabilities), prefix="/api/v1")
++    app.dependency_overrides[get_auth_context] = lambda: SimpleNamespace(user=None)
++
++    async def _session():
++        yield SimpleNamespace()
++
++    app.dependency_overrides[get_async_session] = _session
++    return app
++
++
++async def test_rest_sync_passes_capability_context_to_chainlens_research(monkeypatch):
++    output = ResearchOutput()
++    output.status = "engine_unavailable"
++    output.next_action = "Deep research is not available in self-host Phase 1."
++    spy = _ResearchSpy(output)
++
++    capability = Capability(
++        name="chainlens.research",
++        description="Research.",
++        input_schema=ResearchInput,
++        output_schema=ResearchOutput,
++        executor=spy,
++        billing_unit=BillingUnit.CHAINLENS_QUERY,
++    )
++
++    app = _build_app([capability], monkeypatch)
++    async with _client(app) as client:
++        resp = await client.post(
++            "/api/v1/workspaces/7/scrapers/chainlens/research",
++            json={"query": "hello"},
++        )
++
++    assert resp.status_code == 200
++    assert any(
++        isinstance(arg, CapabilityContext)
++        for args, _ in spy.calls
++        for arg in args
++    ), "CapabilityContext was not passed to the executor"
++
++
++async def test_rest_sync_body_contains_degraded_status(monkeypatch):
++    output = ResearchOutput()
++    output.status = "engine_unavailable"
++    output.next_action = "Deep research is not available in self-host Phase 1."
++
++    capability = Capability(
++        name="chainlens.research",
++        description="Research.",
++        input_schema=ResearchInput,
++        output_schema=ResearchOutput,
++        executor=_ResearchSpy(output),
++        billing_unit=BillingUnit.CHAINLENS_QUERY,
++    )
++
++    app = _build_app([capability], monkeypatch)
++    async with _client(app) as client:
++        resp = await client.post(
++            "/api/v1/workspaces/7/scrapers/chainlens/research",
++            json={"query": "hello"},
++        )
++
++    assert resp.status_code == 200
++    body = resp.json()
++    assert body["status"] == "engine_unavailable"
++    assert body["degraded"] is True
++    assert body["next_action"] is not None
++    assert body["billable_units"] == 0
++
++
++async def test_rest_async_executor_receives_capability_context(monkeypatch):
++    output = ResearchOutput()
++    output.status = "engine_unavailable"
++    output.next_action = "Deep research is not available in self-host Phase 1."
++    spy = _ResearchSpy(output)
++
++    monkeypatch.setattr(rest, "charge_capability", AsyncMock(return_value=0))
++    monkeypatch.setattr(rest, "finalize_run", AsyncMock(return_value=True))
++    from app.capabilities.core.events import run_event_bus
++
++    run_event_bus.publish = Mock()
++    run_event_bus.close = Mock()
++
++    await rest._execute_async_run(
++        run_id="run-1",
++        workspace_id=7,
++        capability="chainlens.research",
++        unit=BillingUnit.CHAINLENS_QUERY,
++        executor=spy,
++        payload=ResearchInput(query="hello"),
++    )
++
++    assert any(
++        isinstance(arg, CapabilityContext)
++        for args, _ in spy.calls
++        for arg in args
++    ), "CapabilityContext was not passed to the async executor"
++
++
++async def test_rest_async_degraded_run_persists_cost_micros_none(monkeypatch):
++    output = ResearchOutput()
++    output.status = "engine_unavailable"
++
++    spy = _ResearchSpy(output)
++    finalize = AsyncMock(return_value=True)
++    monkeypatch.setattr(rest, "charge_capability", AsyncMock(return_value=0))
++    monkeypatch.setattr(rest, "finalize_run", finalize)
++    from app.capabilities.core.events import run_event_bus
++
++    run_event_bus.publish = Mock()
++    run_event_bus.close = Mock()
++
++    await rest._execute_async_run(
++        run_id="run-1",
++        workspace_id=7,
++        capability="chainlens.research",
++        unit=BillingUnit.CHAINLENS_QUERY,
++        executor=spy,
++        payload=ResearchInput(query="hello"),
++    )
++
++    _, kwargs = finalize.call_args
++    assert kwargs["cost_micros"] is None
+diff --git a/nowing_backend/tests/unit/capabilities/chainlens/research/test_degradation.py b/nowing_backend/tests/unit/capabilities/chainlens/research/test_degradation.py
+new file mode 100644
+index 000000000..8b4493a80
+--- /dev/null
++++ b/nowing_backend/tests/unit/capabilities/chainlens/research/test_degradation.py
+@@ -0,0 +1,213 @@
++"""Red-phase scaffolds for ChainLens degradation and bounded KB fallback."""
++
++from __future__ import annotations
++
++import importlib
++from unittest.mock import AsyncMock
++
++import httpx
++import pytest
++
++from app.agents.chat.multi_agent_chat.shared.retrieval.models import ChunkHit, DocumentHit
++from app.capabilities.chainlens.research.schemas import ResearchInput
++from app.capabilities.core.types import CapabilityContext
++
++pytestmark = pytest.mark.unit
++
++
++def _load_execute_with_context():
++    """Resolve the context-aware execution seam that 9.1a adds."""
++    mod = importlib.import_module("app.capabilities.chainlens.research.executor")
++    return getattr(mod, "execute_with_context", None)
++
++
++def _make_hit(doc_id: int, chunk_id: int) -> DocumentHit:
++    return DocumentHit(
++        document_id=doc_id,
++        title="KB Document",
++        document_type="pdf",
++        metadata={},
++        score=0.9,
++        chunks=[
++            ChunkHit(
++                chunk_id=chunk_id,
++                content="relevant chunk",
++                position=0,
++                score=0.9,
++            )
++        ],
++    )
++
++
++async def test_knowledge_base_fallback_returns_internal_citations():
++    execute = _load_execute_with_context()
++    assert execute is not None
++
++    async def search(_):
++        raise httpx.TimeoutException("timeout")
++
++    async def fallback(*, query, scope, top_k, session, workspace_id):
++        return [_make_hit(7, 12)]
++
++    ctx = CapabilityContext(session=AsyncMock(), workspace_id=1)
++    output = await execute(
++        ResearchInput(query="hello"),
++        ctx,
++        search_fn=search,
++        fallback_fn=fallback,
++    )
++
++    assert output.status == "partial"
++    assert output.degraded is True
++    assert output.fallback_hit_count == 1
++    assert output.sources[0].url == "nowing://documents/7/chunks/12"
++    assert output.sources[0].document_id == 7
++    assert output.sources[0].chunk_id == 12
++
++
++async def test_knowledge_base_fallback_empty_returns_engine_unavailable():
++    execute = _load_execute_with_context()
++    assert execute is not None
++
++    async def search(_):
++        raise httpx.ConnectError("unreachable")
++
++    async def fallback(*, query, scope, top_k, session, workspace_id):
++        return []
++
++    ctx = CapabilityContext(session=AsyncMock(), workspace_id=1)
++    output = await execute(
++        ResearchInput(query="hello"),
++        ctx,
++        search_fn=search,
++        fallback_fn=fallback,
++    )
++
++    assert output.status == "engine_unavailable"
++    assert output.degradation_reason == "fallback_kb_empty"
++    assert output.fallback_hit_count == 0
++    assert not output.answer
++    assert not output.sources
++
++
++async def test_knowledge_base_fallback_error_returns_engine_unavailable():
++    execute = _load_execute_with_context()
++    assert execute is not None
++
++    async def search(_):
++        raise httpx.TimeoutException("timeout")
++
++    async def fallback(*, query, scope, top_k, session, workspace_id):
++        raise RuntimeError("Postgres down")
++
++    ctx = CapabilityContext(session=AsyncMock(), workspace_id=1)
++    output = await execute(
++        ResearchInput(query="hello"),
++        ctx,
++        search_fn=search,
++        fallback_fn=fallback,
++    )
++
++    assert output.status == "engine_unavailable"
++    assert output.degradation_reason == "fallback_kb_error"
++    assert output.fallback_hit_count == 0
++
++
++async def test_knowledge_base_fallback_top_k_clamped_to_five():
++    execute = _load_execute_with_context()
++    assert execute is not None
++
++    called_top_k = None
++
++    async def search(_):
++        raise httpx.TimeoutException("timeout")
++
++    async def fallback(*, query, scope, top_k, session, workspace_id):
++        nonlocal called_top_k
++        called_top_k = top_k
++        return [_make_hit(1, 1)]
++
++    ctx = CapabilityContext(session=AsyncMock(), workspace_id=1)
++    await execute(
++        ResearchInput(query="hello"),
++        ctx,
++        search_fn=search,
++        fallback_fn=fallback,
++        top_k=100,
++    )
++
++    assert called_top_k == 5
++
++
++async def test_knowledge_base_fallback_uses_authorized_workspace_id():
++    execute = _load_execute_with_context()
++    assert execute is not None
++
++    seen_workspace_id = None
++
++    async def search(_):
++        raise httpx.TimeoutException("timeout")
++
++    async def fallback(*, query, scope, top_k, session, workspace_id):
++        nonlocal seen_workspace_id
++        seen_workspace_id = workspace_id
++        return []
++
++    ctx = CapabilityContext(session=AsyncMock(), workspace_id=42)
++    await execute(
++        ResearchInput(query="hello"),
++        ctx,
++        search_fn=search,
++        fallback_fn=fallback,
++    )
++
++    assert seen_workspace_id == 42
++
++
++async def test_missing_context_skips_fallback():
++    execute = _load_execute_with_context()
++    assert execute is not None
++
++    fallback_called = False
++
++    async def search(_):
++        raise httpx.TimeoutException("timeout")
++
++    async def fallback(*, query, scope, top_k, session, workspace_id):
++        nonlocal fallback_called
++        fallback_called = True
++        return []
++
++    output = await execute(
++        ResearchInput(query="hello"),
++        None,
++        search_fn=search,
++        fallback_fn=fallback,
++    )
++
++    assert fallback_called is False
++    assert output.status == "engine_unavailable"
++
++
++async def test_degraded_output_does_not_fabricate_answer():
++    execute = _load_execute_with_context()
++    assert execute is not None
++
++    async def search(_):
++        raise httpx.TimeoutException("timeout")
++
++    async def fallback(*, query, scope, top_k, session, workspace_id):
++        return []
++
++    ctx = CapabilityContext(session=AsyncMock(), workspace_id=1)
++    output = await execute(
++        ResearchInput(query="hello"),
++        ctx,
++        search_fn=search,
++        fallback_fn=fallback,
++    )
++
++    assert output.status == "engine_unavailable"
++    assert not output.answer
++    assert not output.sources
++    assert output.next_action is not None
+diff --git a/nowing_backend/tests/unit/capabilities/core/test_context_aware.py b/nowing_backend/tests/unit/capabilities/core/test_context_aware.py
+new file mode 100644
+index 000000000..db4fe3b69
+--- /dev/null
++++ b/nowing_backend/tests/unit/capabilities/core/test_context_aware.py
+@@ -0,0 +1,50 @@
++"""Red-phase scaffolds for the shared context-aware capability seam (9.1a)."""
++
++from __future__ import annotations
++
++from types import SimpleNamespace
++
++import pytest
++
++from app.capabilities.core.types import CapabilityContext
++
++pytestmark = pytest.mark.unit
++
++
++def test_core_exports_context_aware_execution_helper():
++    import app.capabilities.core as core
++
++    assert hasattr(core, "execute_with_context")
++
++
++async def test_execute_with_context_accepts_executor_payload_and_context():
++    import app.capabilities.core as core
++
++    execute_with_context = getattr(core, "execute_with_context", None)
++    assert execute_with_context is not None
++
++    async def executor(payload):
++        return {"received": payload}
++
++    ctx = CapabilityContext(session=SimpleNamespace(), workspace_id=7)
++    result = await execute_with_context(executor, payload="hello", ctx=ctx)
++    assert result["received"] == "hello"
++    assert result["workspace_id"] == 7
++
++
++async def test_execute_with_context_preserves_legacy_executor_signature():
++    """Capabilities that do not opt in keep the old ``executor(payload)`` shape."""
++    import app.capabilities.core as core
++
++    execute_with_context = getattr(core, "execute_with_context", None)
++    assert execute_with_context is not None
++
++    calls = []
++
++    async def legacy_executor(payload):
++        calls.append(payload)
++        return {"ok": True}
++
++    result = await execute_with_context(legacy_executor, payload="legacy")
++    assert result == {"ok": True}
++    assert calls == ["legacy"]
+diff --git a/nowing_backend/tests/unit/observability/test_chainlens_degradation.py b/nowing_backend/tests/unit/observability/test_chainlens_degradation.py
+new file mode 100644
+index 000000000..5dcbb6fba
+--- /dev/null
++++ b/nowing_backend/tests/unit/observability/test_chainlens_degradation.py
+@@ -0,0 +1,109 @@
++"""Red-phase scaffolds for ChainLens degradation observability (9.1a)."""
++
++from __future__ import annotations
++
++import pytest
++
++from app.utils.crawl.classifier import BlockType
++
++pytestmark = pytest.mark.unit
++
++
++def test_metrics_module_exposes_chainlens_degradation_helpers():
++    from app.observability import metrics
++
++    assert hasattr(metrics, "record_chainlens_degradation")
++    assert hasattr(metrics, "record_kb_fallback_hit_count")
++    assert hasattr(metrics, "record_blocked_url_coverage")
++
++
++async def test_record_chainlens_degradation_uses_low_cardinality_labels():
++    from app.observability import metrics
++
++    fn = getattr(metrics, "record_chainlens_degradation", None)
++    assert fn is not None
++
++    recorded = {}
++    original_add = metrics._add
++
++    def _capture_add(counter, value, attrs):
++        recorded["counter"] = counter
++        recorded["attrs"] = attrs
++
++    metrics._add = _capture_add
++    try:
++        fn(
++            degradation_reason="not_configured",
++            final_status="engine_unavailable",
++            fallback_attempted=False,
++            fallback_used=False,
++            fallback_hit_count=0,
++            workspace_id=1,
++            query="self-host independence",
++            api_key="secret-key",
++            answer="classified answer text",
++        )
++    finally:
++        metrics._add = original_add
++
++    labels = str(recorded.get("attrs", {}))
++    forbidden = [
++        "self-host independence",
++        "secret-key",
++        "classified answer text",
++    ]
++    for value in forbidden:
++        assert value not in labels, f" leaked secret in metric labels: {value}"
++    assert recorded["attrs"]["degradation_reason"] == "not_configured"
++    assert recorded["attrs"]["final_status"] == "engine_unavailable"
++
++
++async def test_record_blocked_url_coverage_counts_by_block_type():
++    from app.observability import metrics
++
++    fn = getattr(metrics, "record_blocked_url_coverage", None)
++    assert fn is not None
++
++    recorded = []
++    original_add = metrics._add
++
++    def _capture_add(counter, value, attrs):
++        recorded.append(attrs)
++
++    metrics._add = _capture_add
++    try:
++        fn(url="https://example.com", block_type=BlockType.CLOUDFLARE)
++        fn(url="https://example.org", block_type=BlockType.CAPTCHA_RECAPTCHA)
++    finally:
++        metrics._add = original_add
++
++    block_types = [r["block_type"] for r in recorded]
++    assert BlockType.CLOUDFLARE in block_types
++    assert BlockType.CAPTCHA_RECAPTCHA in block_types
++    for r in recorded:
++        assert "example.com" not in str(r)
++        assert "https" not in str(r)
++
++
++async def test_record_kb_fallback_hit_count_is_exact():
++    from app.observability import metrics
++
++    fn = getattr(metrics, "record_kb_fallback_hit_count", None)
++    assert fn is not None
++
++    recorded = {}
++    original_record = metrics._record
++
++    def _capture_record(counter, value, attrs):
++        recorded["counter"] = counter
++        recorded["value"] = value
++        recorded["attrs"] = attrs
++
++    metrics._record = _capture_record
++    try:
++        fn(3, workspace_id=1)
++    finally:
++        metrics._record = original_record
++
++    assert recorded["value"] == 3
++    assert recorded["attrs"].get("fallback_hit_count") == 3

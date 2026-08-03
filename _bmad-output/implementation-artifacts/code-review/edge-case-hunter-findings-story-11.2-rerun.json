@@ -1,0 +1,80 @@
+[
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:152-156",
+    "trigger_condition": "msg is True but message_id is None",
+    "guard_snippet": "if msg is True:\n    return PlatformSendResult(\n        external_message_id=str(inline_message_id or message_id),",
+    "potential_consequence": "Returns 'None' as external_message_id string"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:152-156",
+    "trigger_condition": "inline_message_id is None and msg is True",
+    "guard_snippet": "if msg is True:\n    return PlatformSendResult(\n        external_message_id=str(inline_message_id or message_id),",
+    "potential_consequence": "Returns 'None' as external_message_id string"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:34-40",
+    "trigger_condition": "Error message contains 'url' but not keyboard-related",
+    "guard_snippet": "_KEYBOARD_ERROR_PHRASES = (\n    \"button\",\n    \"keyboard\",\n    \"callback_data\",\n    \"url\",\n    \"inline\",\n)",
+    "potential_consequence": "Drops reply_markup for non-keyboard errors"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:34-40",
+    "trigger_condition": "Error message contains 'inline' but not keyboard-related",
+    "guard_snippet": "_KEYBOARD_ERROR_PHRASES = (\n    \"button\",\n    \"keyboard\",\n    \"callback_data\",\n    \"url\",\n    \"inline\",\n)",
+    "potential_consequence": "Drops reply_markup for non-keyboard errors"
+  },
+  {
+    "location": "nowing_web/lib/automations/builder-schema.ts:558-560",
+    "trigger_condition": "rawParseMode is invalid string value",
+    "guard_snippet": "const parse_mode: \"Markdown\" | \"MarkdownV2\" | \"none\" | null =\n    rawParseMode === null ? \"none\" : (rawParseMode as \"Markdown\" | \"MarkdownV2\" | \"none\");",
+    "potential_consequence": "Invalid parse_mode sent to backend"
+  },
+  {
+    "location": "nowing_web/app/dashboard/[workspace_id]/automations/components/builder/task-item.tsx:492-497",
+    "trigger_condition": "User types invalid JSON in reply_markup field",
+    "guard_snippet": "} catch {\n    // Ignore invalid JSON while the user is typing.\n}",
+    "potential_consequence": "Invalid JSON silently accepted, fails at submit"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/adapter.py:174-175",
+    "trigger_condition": "external_peer_id starts with 'inline:' but external_message_id is None",
+    "guard_snippet": "if external_peer_id.startswith(\"inline:\"):\n    inline_message_id = external_message_id",
+    "potential_consequence": "Passes None as inline_message_id to client"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/adapter.py:210-213",
+    "trigger_condition": "external_peer_id starts with 'inline:' but external_message_id is None",
+    "guard_snippet": "if external_peer_id.startswith(\"inline:\"):\n    await self.client.edit_message_reply_markup(\n        inline_message_id=external_message_id,",
+    "potential_consequence": "Passes None as inline_message_id to client"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/adapter.py:117-118",
+    "trigger_condition": "message is None and inline_message_id is None in callback_query",
+    "guard_snippet": "if message is not None:\n    chat = message.get(\"chat\") or {}\nelif inline_message_id is not None:",
+    "potential_consequence": "Returns event with None peer_id and message_id"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:241-252",
+    "trigger_condition": "answer_callback_query called with empty callback_query_id",
+    "guard_snippet": "async def answer_callback_query(\n    self,\n    *,\n    callback_query_id: str,\n    text: str | None = None,\n    show_alert: bool = False,\n) -> None:\n    await self.bot.answer_callback_query(",
+    "potential_consequence": "No validation of callback_query_id format"
+  },
+  {
+    "location": "nowing_backend/app/gateway/telegram/client.py:317",
+    "trigger_condition": "update.to_dict() fails and update.update_id is missing",
+    "guard_snippet": "next_offset = getattr(update, \"update_id\", 0) + 1",
+    "potential_consequence": "Offset remains at 0, infinite loop risk"
+  },
+  {
+    "location": "nowing_backend/app/automations/actions/builtin/write_back_telegram/invoke.py:67-69",
+    "trigger_condition": "Multiple system Telegram accounts exist",
+    "guard_snippet": "account = result.scalars().first()\nif account is None:\n    raise ValueError(\"No system Telegram account configured\")",
+    "potential_consequence": "Arbitrarily selects first system account"
+  },
+  {
+    "location": "nowing_backend/app/automations/actions/builtin/write_back_telegram/invoke.py:96-98",
+    "trigger_condition": "Multiple bindings exist for user/workspace/account",
+    "guard_snippet": "binding = result.scalars().first()\nif binding is None or not binding.external_peer_id:\n    raise ValueError(\"No Telegram chat bound to this user or workspace\")",
+    "potential_consequence": "Arbitrarily selects first binding"
+  }
+]

@@ -30,6 +30,7 @@ nowing_desktop/.env
 .playwright-mcp/
 .serena/
 nowing_mcp/.serena/
-_bmad-output/
+_bmad-output/test-artifacts/
+_bmad-output/*.txt
 project-context.md
 .knowns/

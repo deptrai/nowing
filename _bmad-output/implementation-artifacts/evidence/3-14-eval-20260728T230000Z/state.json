@@ -1,0 +1,17 @@
+{
+  "suites": {
+    "memory": {
+      "chat_model_id": 0,
+      "created_at": "2026-07-28T16-28-30Z",
+      "ingestion_maps": {
+        "memory_recall": "/Users/luisphan/Documents/nowing/_bmad-output/implementation-artifacts/evidence/3-14-eval-20260728T230000Z/memory/maps/memory_recall_corpus_map.w47.jsonl"
+      },
+      "native_arm_model": null,
+      "provider_model": "",
+      "scenario": "head-to-head",
+      "search_space_id": 0,
+      "vision_model_id": null,
+      "vision_provider_model": null
+    }
+  }
+}

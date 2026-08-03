@@ -1,0 +1,10 @@
+# Output công cụ — tái tạo được, có timestamp trong tên, ~8,1 MB.
+# Đây chính là lý do `_bmad-output/` từng bị blanket-ignore ở repo chính,
+# và cũng là lý do blanket-ignore đó kéo theo cả hồ sơ quyết định (45 file .md).
+# Tách riêng ở đây để giữ được phần đáng giữ.
+*.sqlite
+mutation-*.jsonl
+mutation-*.json
+
+# macOS
+.DS_Store

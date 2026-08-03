@@ -1,0 +1,1132 @@
+
+--- /dev/null
++++ b/nowing_backend/alembic/versions/187_add_user_notification_preferences.py
+diff --git a/nowing_backend/alembic/versions/187_add_user_notification_preferences.py b/nowing_backend/alembic/versions/187_add_user_notification_preferences.py
+new file mode 100644
+index 000000000..b260c2443
+--- /dev/null
++++ b/nowing_backend/alembic/versions/187_add_user_notification_preferences.py
+@@ -0,0 +1,37 @@
++"""Add user.notification_preferences JSONB column.
++
++Story 11.1 (FR-TELE-2, FR-TELE-1):
++
++* Stores per-user notification preferences (e.g. Telegram automation-run
++  completion) as a flexible JSONB map on the ``user`` table.
++* Defaults to an empty object so existing rows stay valid.
++"""
++
++from __future__ import annotations
++
++from collections.abc import Sequence
++
++import sqlalchemy as sa
++
++from alembic import op
++
++revision: str = "187"
++down_revision: str | None = "affe6fa9686c"
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++
++def upgrade() -> None:
++    op.add_column(
++        "user",
++        sa.Column(
++            "notification_preferences",
++            sa.dialects.postgresql.JSONB(),
++            nullable=False,
++            server_default=sa.text("'{}'::jsonb"),
++        ),
++    )
++
++
++def downgrade() -> None:
++    op.drop_column("user", "notification_preferences")
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index d91da73f0..f00e55f3b 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -949,12 +949,8 @@ class ScraperPlatformAccount(Base, TimestampMixin):
+     id = Column(Integer, primary_key=True, index=True)
+     platform = Column(String(64), nullable=False, index=True)
+     label = Column(String(255), nullable=True)
+-    is_enabled = Column(
+-        Boolean, nullable=False, default=True, server_default="true"
+-    )
+-    is_default = Column(
+-        Boolean, nullable=False, default=False, server_default="false"
+-    )
++    is_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
++    is_default = Column(Boolean, nullable=False, default=False, server_default="false")
+     encrypted_credentials = Column(Text, nullable=True)
+ 
+     __table_args__ = (
+@@ -2737,6 +2733,10 @@ if config.AUTH_TYPE == "GOOGLE":
+ 
+         last_login = Column(TIMESTAMP(timezone=True), nullable=True)
+ 
++        notification_preferences = Column(
++            JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
++        )
++
+         # Refresh tokens for this user
+         refresh_tokens = relationship(
+             "RefreshToken",
+@@ -2888,6 +2888,10 @@ else:
+ 
+         last_login = Column(TIMESTAMP(timezone=True), nullable=True)
+ 
++        notification_preferences = Column(
++            JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
++        )
++
+         # Refresh tokens for this user
+         refresh_tokens = relationship(
+             "RefreshToken",
+diff --git a/nowing_backend/app/schemas/users.py b/nowing_backend/app/schemas/users.py
+index 558463f57..ca574e3f9 100644
+--- a/nowing_backend/app/schemas/users.py
++++ b/nowing_backend/app/schemas/users.py
+@@ -1,12 +1,15 @@
+ import uuid
++from typing import Any
+ 
+ from fastapi_users import schemas
++from pydantic import BaseModel
+ 
+ 
+ class UserRead(schemas.BaseUser[uuid.UUID]):
+     credit_micros_balance: int
+     display_name: str | None = None
+     avatar_url: str | None = None
++    notification_preferences: dict[str, Any] | None = None
+ 
+ 
+ class UserCreate(schemas.BaseUserCreate):
+@@ -16,3 +19,8 @@ class UserCreate(schemas.BaseUserCreate):
+ class UserUpdate(schemas.BaseUserUpdate):
+     display_name: str | None = None
+     avatar_url: str | None = None
++    notification_preferences: dict[str, Any] | None = None
++
++
++class UserNotificationPreferencesUpdate(BaseModel):
++    notification_preferences: dict[str, Any]
+diff --git a/nowing_backend/app/routes/users_routes.py b/nowing_backend/app/routes/users_routes.py
+index dad8847af..221e5487e 100644
+--- a/nowing_backend/app/routes/users_routes.py
++++ b/nowing_backend/app/routes/users_routes.py
+@@ -1,9 +1,12 @@
+ """Cookie-aware user profile routes."""
+ 
++from typing import Any
++
+ from fastapi import APIRouter, Depends, Request
+ 
+ from app.auth.context import AuthContext
+-from app.schemas import UserRead, UserUpdate
++from app.schemas import UserRead
++from app.schemas.users import UserNotificationPreferencesUpdate, UserUpdate
+ from app.users import (
+     UserManager,
+     get_auth_context,
+@@ -14,6 +17,20 @@ from app.users import (
+ router = APIRouter(prefix="/users", tags=["users"])
+ 
+ 
++def _merge_notification_preferences(
++    current: dict[str, Any] | None,
++    incoming: dict[str, Any],
++) -> dict[str, Any]:
++    """Deep-merge incoming notification preferences into the existing map."""
++    merged: dict[str, Any] = dict(current) if isinstance(current, dict) else {}
++    for key, value in incoming.items():
++        if isinstance(value, dict) and isinstance(merged.get(key), dict):
++            merged[key] = {**merged[key], **value}
++        else:
++            merged[key] = value
++    return merged
++
++
+ @router.get("/me", response_model=UserRead)
+ async def get_current_user_profile(
+     auth: AuthContext = Depends(get_auth_context),
+@@ -32,3 +49,23 @@ async def update_current_user_profile(
+         update, auth.user, safe=True, request=request
+     )
+     return updated_user
++
++
++@router.patch("/me/notification-preferences", response_model=UserRead)
++async def update_current_user_notification_preferences(
++    update: UserNotificationPreferencesUpdate,
++    request: Request,
++    auth: AuthContext = Depends(require_session_context),
++    user_manager: UserManager = Depends(get_user_manager),
++):
++    merged = _merge_notification_preferences(
++        auth.user.notification_preferences,
++        update.notification_preferences,
++    )
++    updated_user = await user_manager.update(
++        UserUpdate(notification_preferences=merged),
++        auth.user,
++        safe=True,
++        request=request,
++    )
++    return updated_user
+diff --git a/nowing_backend/app/notifications/types.py b/nowing_backend/app/notifications/types.py
+index 6140f5842..ff55fe4ff 100644
+--- a/nowing_backend/app/notifications/types.py
++++ b/nowing_backend/app/notifications/types.py
+@@ -13,6 +13,7 @@ NotificationType = Literal[
+     "insufficient_credits",
+     "auto_reload_failed",
+     "deep_research_complete",
++    "automation_run_complete",
+ ]
+ 
+ NotificationCategory = Literal["comments", "status"]
+diff --git a/nowing_backend/app/notifications/constants.py b/nowing_backend/app/notifications/constants.py
+index 0b355eeb3..22114a55c 100644
+--- a/nowing_backend/app/notifications/constants.py
++++ b/nowing_backend/app/notifications/constants.py
+@@ -18,5 +18,6 @@ CATEGORY_TYPES: dict[str, tuple[str, ...]] = {
+         "insufficient_credits",
+         "auto_reload_failed",
+         "deep_research_complete",
++        "automation_run_complete",
+     ),
+ }
+diff --git a/nowing_backend/app/automations/runtime/executor.py b/nowing_backend/app/automations/runtime/executor.py
+index e9070ff91..52783f2b4 100644
+--- a/nowing_backend/app/automations/runtime/executor.py
++++ b/nowing_backend/app/automations/runtime/executor.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ 
++import logging
+ from typing import Any
+ 
+ from sqlalchemy.ext.asyncio import AsyncSession
+@@ -17,6 +18,20 @@ from . import repository
+ from .origin import automation_run_origin
+ from .step import execute_step
+ 
++logger = logging.getLogger(__name__)
++
++
++def _maybe_enqueue_run_notification(run_id: int) -> None:
++    """Fire-and-forget a notification task; never fail the run."""
++    try:
++        from app.automations.tasks.notify_run_complete import (
++            notify_telegram_run_complete,
++        )
++
++        notify_telegram_run_complete.apply_async(args=(run_id,), expires=30)
++    except Exception:
++        logger.exception("Failed to enqueue run notification for run %s", run_id)
++
+ 
+ async def execute_run(session: AsyncSession, run_id: int) -> None:
+     """Load run ``run_id`` and execute its snapshot plan to a terminal state."""
+@@ -39,6 +54,7 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
+             },
+         )
+         await session.commit()
++        _maybe_enqueue_run_notification(run.id)
+         return
+ 
+     # Stamp the automation origin for the whole run so any in-process memory
+@@ -74,6 +90,7 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
+                 await _run_on_failure(session, run, definition)
+                 await repository.mark_failed(session, run, result.get("error"))
+                 await session.commit()
++                _maybe_enqueue_run_notification(run.id)
+                 return
+ 
+             if result["status"] == "succeeded":
+@@ -81,6 +98,7 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
+ 
+         await repository.mark_succeeded(session, run)
+         await session.commit()
++        _maybe_enqueue_run_notification(run.id)
+ 
+ 
+ async def _maybe_link_research_thread_from_plan(
+
+--- /dev/null
++++ b/nowing_backend/app/automations/services/telegram_notifications.py
+diff --git a/nowing_backend/app/automations/services/telegram_notifications.py b/nowing_backend/app/automations/services/telegram_notifications.py
+new file mode 100644
+index 000000000..1bf8505d6
+--- /dev/null
++++ b/nowing_backend/app/automations/services/telegram_notifications.py
+@@ -0,0 +1,204 @@
++"""Telegram notifications for automation runs."""
++
++from __future__ import annotations
++
++import json
++import logging
++from typing import Any
++
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++from sqlalchemy.orm import selectinload
++
++from app.automations.persistence.enums.run_status import RunStatus
++from app.automations.persistence.models.automation import Automation
++from app.automations.persistence.models.run import AutomationRun
++from app.automations.runtime import repository
++from app.config import config
++from app.db import (
++    ExternalChatAccount,
++    ExternalChatBinding,
++    ExternalChatBindingState,
++    ExternalChatPlatform,
++    User,
++)
++from app.gateway.accounts import account_token
++from app.gateway.telegram.adapter import TelegramAdapter
++from app.gateway.telegram.formatting import chunk_message, escape_markdown_v2
++from app.notifications.service.facade import NotificationService
++
++logger = logging.getLogger(__name__)
++
++
++def _format_output_text(output: Any) -> str:
++    """Render a run output value as human-readable text."""
++    if output is None:
++        return ""
++    if isinstance(output, str):
++        return output
++    if isinstance(output, (list, dict)):
++        try:
++            return json.dumps(output, ensure_ascii=False, indent=2, default=str)
++        except Exception:
++            pass
++    return str(output)
++
++
++def _first_error_line(run_error: dict[str, Any] | None) -> str:
++    """Extract the first line of a structured run error."""
++    if not run_error:
++        return ""
++    message = (
++        run_error.get("message") if isinstance(run_error, dict) else str(run_error)
++    )
++    if not message:
++        return ""
++    return str(message).splitlines()[0]
++
++
++def format_automation_run_message(
++    run: AutomationRun,
++    automation: Automation,
++    run_error: dict[str, Any] | None = None,
++) -> list[str]:
++    """Build a MarkdownV2 message for an automation run and chunk it for Telegram."""
++    name = automation.name if automation and automation.name else "Unknown automation"
++    escaped_name = escape_markdown_v2(f"'{name}'")
++    is_success = run.status == RunStatus.SUCCEEDED
++
++    if is_success:
++        header = f"✅ Automation *{escaped_name}* finished successfully"
++    else:
++        header = f"❌ Automation *{escaped_name}* *failed*"
++
++    base_url = (config.NEXT_FRONTEND_URL or "").rstrip("/")
++    deep_link = (
++        f"{base_url}/dashboard/{automation.workspace_id}"
++        f"/automations/{automation.id}?run_id={run.id}"
++    )
++
++    parts: list[str] = [header, f"[Open run]({deep_link})"]
++
++    if not is_success:
++        first_error = _first_error_line(run_error or run.error)
++        if first_error:
++            parts.append(escape_markdown_v2(first_error))
++    elif run.output is not None:
++        output_text = _format_output_text(run.output)
++        if output_text:
++            parts.append(escape_markdown_v2(output_text))
++
++    full_text = "\n\n".join(parts)
++    return chunk_message(full_text)
++
++
++async def resolve_telegram_binding_for_run(
++    session: AsyncSession,
++    user_id: Any,
++    workspace_id: int,
++) -> ExternalChatBinding | None:
++    """Return the most recently created bound Telegram binding for a workspace."""
++    stmt = (
++        select(ExternalChatBinding)
++        .join(ExternalChatAccount)
++        .options(selectinload(ExternalChatBinding.account))
++        .where(
++            ExternalChatBinding.user_id == user_id,
++            ExternalChatBinding.workspace_id == workspace_id,
++            ExternalChatBinding.state == ExternalChatBindingState.BOUND,
++            ExternalChatAccount.platform == ExternalChatPlatform.TELEGRAM,
++        )
++        .order_by(ExternalChatBinding.created_at.desc())
++    )
++    result = await session.execute(stmt)
++    return result.scalars().first()
++
++
++async def send_automation_run_telegram_notification(
++    session: AsyncSession,
++    run_id: int,
++) -> None:
++    """Create an in-app notification and, if enabled, send a Telegram message."""
++    run = await repository.load_run(session, run_id)
++    if run is None:
++        logger.warning("automation_run %d not found for notification", run_id)
++        return
++
++    automation = run.automation
++    if automation is None:
++        logger.warning("automation for run %d not loaded", run_id)
++        return
++
++    if automation.created_by_user_id is None:
++        logger.warning(
++            "automation %d has no creator; skipping notification", automation.id
++        )
++        return
++
++    user = await session.get(User, automation.created_by_user_id)
++    if user is None:
++        logger.warning(
++            "creator %s for automation %d not found",
++            automation.created_by_user_id,
++            automation.id,
++        )
++        return
++
++    is_success = run.status == RunStatus.SUCCEEDED
++    status_label = "finished successfully" if is_success else "failed"
++    title = f"Automation '{automation.name}' {status_label}"
++
++    await NotificationService.create_notification(
++        session=session,
++        user_id=user.id,
++        notification_type="automation_run_complete",
++        title=title,
++        message=title,
++        workspace_id=automation.workspace_id,
++        notification_metadata={
++            "workspace_id": automation.workspace_id,
++            "run_id": run.id,
++            "automation_id": automation.id,
++            "status": run.status.value,
++        },
++    )
++
++    preferences = user.notification_preferences or {}
++    if not preferences.get("automation_run_complete", {}).get("telegram"):
++        return
++
++    binding = await resolve_telegram_binding_for_run(
++        session, user.id, automation.workspace_id
++    )
++    if binding is None:
++        logger.info(
++            "No active Telegram binding for user %s workspace %s",
++            user.id,
++            automation.workspace_id,
++        )
++        return
++
++    token = account_token(binding.account)
++    if not token:
++        logger.warning("No token available for Telegram account %s", binding.account_id)
++        return
++
++    if not binding.external_peer_id:
++        logger.warning("Telegram binding %s has no peer id", binding.id)
++        return
++
++    try:
++        chunks = format_automation_run_message(
++            run,
++            automation,
++            run_error=run.error if not is_success else None,
++        )
++        adapter = TelegramAdapter(token)
++        for chunk in chunks:
++            await adapter.send_message(
++                external_peer_id=binding.external_peer_id,
++                text=chunk,
++                parse_mode="MarkdownV2",
++            )
++    except Exception:
++        logger.exception("Failed to send Telegram notification for run %d", run_id)
+
+--- /dev/null
++++ b/nowing_backend/app/automations/tasks/notify_run_complete.py
+diff --git a/nowing_backend/app/automations/tasks/notify_run_complete.py b/nowing_backend/app/automations/tasks/notify_run_complete.py
+new file mode 100644
+index 000000000..258e0beab
+--- /dev/null
++++ b/nowing_backend/app/automations/tasks/notify_run_complete.py
+@@ -0,0 +1,45 @@
++"""Celery task that notifies a user when an automation run completes."""
++
++from __future__ import annotations
++
++import logging
++
++from app.automations.services.telegram_notifications import (
++    send_automation_run_telegram_notification,
++)
++from app.celery_app import celery_app
++from app.tasks.celery_tasks import (
++    get_celery_session_maker,
++    run_async_celery_task,
++)
++
++logger = logging.getLogger(__name__)
++
++TASK_NAME = "automation.notify_telegram_run_complete"
++
++
++@celery_app.task(
++    name=TASK_NAME,
++    bind=True,
++    soft_time_limit=30,
++    time_limit=60,
++)
++def notify_telegram_run_complete(self, run_id: int) -> None:
++    """Notify the automation owner that a run has finished.
++
++    In-app notifications are always created. Telegram delivery is gated by the
++    user's notification preferences and an active Telegram binding.
++    """
++    return run_async_celery_task(lambda: _impl(run_id))
++
++
++async def _impl(run_id: int) -> None:
++    session_maker = get_celery_session_maker()
++    async with session_maker() as session:
++        try:
++            await send_automation_run_telegram_notification(session, run_id)
++        except Exception:
++            logger.exception(
++                "Failed to process automation run notification for run %d", run_id
++            )
++            await session.rollback()
+diff --git a/nowing_backend/app/celery_app.py b/nowing_backend/app/celery_app.py
+index 89af6c4a7..1030c606a 100644
+--- a/nowing_backend/app/celery_app.py
++++ b/nowing_backend/app/celery_app.py
+@@ -197,6 +197,7 @@ celery_app = Celery(
+         "app.etl_pipeline.cache.eviction.task",
+         "app.indexing_pipeline.cache.eviction.task",
+         "app.automations.tasks.execute_run",
++        "app.automations.tasks.notify_run_complete",
+         "app.automations.triggers.builtin.schedule.selector",
+         "app.automations.triggers.builtin.event.selector",
+         "app.automations.triggers.builtin.memory_change.selector",
+diff --git a/nowing_backend/app/gateway/telegram/formatting.py b/nowing_backend/app/gateway/telegram/formatting.py
+index 668a6c7ed..d2d8cea79 100644
+--- a/nowing_backend/app/gateway/telegram/formatting.py
++++ b/nowing_backend/app/gateway/telegram/formatting.py
+@@ -11,12 +11,20 @@ MAX_TELEGRAM_MESSAGE_UNITS = 4096
+ 
+ _RESERVED_RE = re.compile(r"([_\*\[\]\(\)~`>#+\-=|{}\.!])")
+ 
++# Remove backslashes only when they escape a reserved MarkdownV2 character.
++_UNESCAPE_RE = re.compile(r"\\([" + re.escape(MARKDOWN_V2_RESERVED) + r"])")
++
+ 
+ def escape_markdown_v2(text: str) -> str:
+     """Escape all Telegram MarkdownV2 reserved characters."""
+     return _RESERVED_RE.sub(r"\\\1", text)
+ 
+ 
++def unescape_markdown_v2(text: str) -> str:
++    """Undo MarkdownV2 escaping so plain-text fallback does not show backslashes."""
++    return _UNESCAPE_RE.sub(r"\1", text)
++
++
+ def _utf16_len(text: str) -> int:
+     return len(text.encode("utf-16-le")) // 2
+ 
+
+--- /dev/null
++++ b/nowing_backend/tests/unit/automations/test_telegram_notification_formatter.py
+diff --git a/nowing_backend/tests/unit/automations/test_telegram_notification_formatter.py b/nowing_backend/tests/unit/automations/test_telegram_notification_formatter.py
+new file mode 100644
+index 000000000..5504d965b
+--- /dev/null
++++ b/nowing_backend/tests/unit/automations/test_telegram_notification_formatter.py
+@@ -0,0 +1,86 @@
++"""Unit tests for the automation-run Telegram message formatter."""
++
++from __future__ import annotations
++
++from types import SimpleNamespace
++
++import pytest
++
++from app.automations.persistence.enums.run_status import RunStatus
++from app.automations.services.telegram_notifications import (
++    format_automation_run_message,
++)
++from app.gateway.telegram.formatting import _utf16_len
++
++pytestmark = pytest.mark.unit
++
++
++class _FakeAutomation:
++    id = 123
++    name = "Test Automation"
++    workspace_id = 42
++
++
++class _FakeAutomationWithReservedName:
++    id = 456
++    name = "My*Bot!"
++    workspace_id = 7
++
++
++def _fake_run(status: RunStatus, *, output=None, error=None):
++    return SimpleNamespace(id=7, status=status, output=output, error=error)
++
++
++@pytest.fixture(autouse=True)
++def _patch_config(monkeypatch):
++    from app.config import config
++
++    monkeypatch.setattr(config, "NEXT_FRONTEND_URL", "https://app.nowing.net")
++
++
++def test_success_message_format() -> None:
++    run = _fake_run(RunStatus.SUCCEEDED)
++    chunks = format_automation_run_message(run, _FakeAutomation())
++
++    assert len(chunks) == 1
++    assert "✅ Automation *'Test Automation'* finished successfully" in chunks[0]
++    assert (
++        "[Open run](https://app.nowing.net/dashboard/42/automations/123?run_id=7)"
++        in chunks[0]
++    )
++
++
++def test_failure_message_includes_first_error_line() -> None:
++    run = _fake_run(
++        RunStatus.FAILED,
++        error={"message": "Something went wrong\nsecond line", "type": "RuntimeError"},
++    )
++    chunks = format_automation_run_message(run, _FakeAutomation(), run_error=run.error)
++
++    assert len(chunks) == 1
++    assert "❌ Automation *'Test Automation'* *failed*" in chunks[0]
++    assert "Something went wrong" in chunks[0]
++    assert "second line" not in chunks[0]
++    assert "[Open run]" in chunks[0]
++
++
++def test_large_output_chunks_and_first_chunk_has_deep_link() -> None:
++    large_output = "word " * 2000
++    run = _fake_run(RunStatus.SUCCEEDED, output=large_output)
++    chunks = format_automation_run_message(run, _FakeAutomation())
++
++    assert len(chunks) > 1
++    assert _utf16_len(chunks[0]) <= 4096
++    assert "[Open run]" in chunks[0]
++    assert "word" in chunks[1]
++
++
++def test_name_with_reserved_markdown_characters_is_escaped() -> None:
++    run = _fake_run(RunStatus.SUCCEEDED)
++    chunks = format_automation_run_message(run, _FakeAutomationWithReservedName())
++
++    assert len(chunks) == 1
++    # The raw reserved characters should not appear inside the bold name.
++    assert "My*Bot!" not in chunks[0]
++    assert "My\\*Bot\\!" in chunks[0]
++    assert "[Open run]" in chunks[0]
+
+--- /dev/null
++++ b/nowing_backend/tests/integration/automations/test_run_notification.py
+diff --git a/nowing_backend/tests/integration/automations/test_run_notification.py b/nowing_backend/tests/integration/automations/test_run_notification.py
+new file mode 100644
+index 000000000..811c69bd6
+--- /dev/null
++++ b/nowing_backend/tests/integration/automations/test_run_notification.py
+@@ -0,0 +1,229 @@
++"""Integration tests for automation-run Telegram notifications."""
++
++from __future__ import annotations
++
++import pytest
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.automations.persistence.enums.run_status import RunStatus
++from app.automations.persistence.models.automation import Automation
++from app.automations.persistence.models.run import AutomationRun
++from app.automations.runtime.executor import execute_run
++from app.automations.schemas.definition.envelope import AutomationDefinition
++from app.automations.schemas.definition.plan_step import PlanStep
++from app.automations.services.telegram_notifications import (
++    send_automation_run_telegram_notification,
++)
++from app.automations.tasks.notify_run_complete import notify_telegram_run_complete
++from app.db import (
++    ExternalChatAccount,
++    ExternalChatAccountMode,
++    ExternalChatBinding,
++    ExternalChatBindingState,
++    ExternalChatPlatform,
++    Notification,
++    User,
++    Workspace,
++)
++
++pytestmark = pytest.mark.integration
++
++
++async def _make_automation_and_run(
++    session: AsyncSession,
++    user: User,
++    workspace: Workspace,
++    *,
++    status: RunStatus = RunStatus.SUCCEEDED,
++    output: object = None,
++    error: dict | None = None,
++) -> AutomationRun:
++    automation = Automation(
++        name="Notify Test",
++        workspace_id=workspace.id,
++        created_by_user_id=user.id,
++        definition={},
++    )
++    session.add(automation)
++    await session.flush()
++
++    definition = AutomationDefinition(
++        name="Notify Test",
++        plan=[PlanStep(step_id="s1", action="noop", when="false")],
++    )
++    run = AutomationRun(
++        automation_id=automation.id,
++        status=status,
++        definition_snapshot=definition.model_dump(),
++        inputs={},
++        output=output,
++        error=error,
++    )
++    session.add(run)
++    await session.flush()
++    return run
++
++
++async def _make_telegram_binding(
++    session: AsyncSession,
++    user: User,
++    workspace: Workspace,
++) -> ExternalChatBinding:
++    account = ExternalChatAccount(
++        platform=ExternalChatPlatform.TELEGRAM,
++        mode=ExternalChatAccountMode.CLOUD_SHARED,
++        is_system_account=True,
++    )
++    session.add(account)
++    await session.flush()
++
++    binding = ExternalChatBinding(
++        account_id=account.id,
++        user_id=user.id,
++        workspace_id=workspace.id,
++        state=ExternalChatBindingState.BOUND,
++        external_peer_id="123456",
++    )
++    session.add(binding)
++    await session.flush()
++    return binding
++
++
++async def test_execute_run_enqueues_notification_task(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++    monkeypatch,
++) -> None:
++    calls: list[dict] = []
++
++    def _apply_async(*args, **kwargs) -> None:
++        calls.append({"args": args, "kwargs": kwargs})
++
++    monkeypatch.setattr(notify_telegram_run_complete, "apply_async", _apply_async)
++
++    run = await _make_automation_and_run(
++        db_session, db_user, db_workspace, status=RunStatus.PENDING
++    )
++    await execute_run(db_session, run.id)
++
++    assert run.status == RunStatus.SUCCEEDED
++    assert len(calls) == 1
++    assert calls[0]["kwargs"]["args"] == (run.id,)
++
++
++async def test_send_notification_creates_in_app_notification_and_telegram(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++    monkeypatch,
++) -> None:
++    db_user.notification_preferences = {"automation_run_complete": {"telegram": True}}
++    await _make_telegram_binding(db_session, db_user, db_workspace)
++
++    sent: list[dict] = []
++
++    class _FakeAdapter:
++        def __init__(self, token: str) -> None:
++            self.token = token
++
++        async def send_message(
++            self, *, external_peer_id, text, parse_mode=None, **kwargs
++        ) -> None:
++            sent.append(
++                {"peer_id": external_peer_id, "text": text, "parse_mode": parse_mode}
++            )
++
++    import app.automations.services.telegram_notifications as tn_mod
++
++    monkeypatch.setattr(tn_mod, "TelegramAdapter", _FakeAdapter)
++    monkeypatch.setattr(tn_mod, "account_token", lambda account: "test-token")
++
++    run = await _make_automation_and_run(db_session, db_user, db_workspace)
++    await send_automation_run_telegram_notification(db_session, run.id)
++
++    notification = (
++        await db_session.execute(
++            select(Notification).where(Notification.type == "automation_run_complete")
++        )
++    ).scalar_one_or_none()
++    assert notification is not None
++    assert notification.notification_metadata["run_id"] == run.id
++    assert notification.notification_metadata["status"] == RunStatus.SUCCEEDED.value
++
++    assert len(sent) == 1
++    assert sent[0]["peer_id"] == "123456"
++    assert sent[0]["parse_mode"] == "MarkdownV2"
++    assert "[Open run]" in sent[0]["text"]
++
++
++async def test_send_notification_skips_telegram_when_preference_disabled(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++    monkeypatch,
++) -> None:
++    db_user.notification_preferences = {}
++    await _make_telegram_binding(db_session, db_user, db_workspace)
++
++    sent: list[dict] = []
++
++    class _FakeAdapter:
++        def __init__(self, token: str) -> None:
++            self.token = token
++
++        async def send_message(
++            self, *, external_peer_id, text, parse_mode=None, **kwargs
++        ) -> None:
++            sent.append(
++                {"peer_id": external_peer_id, "text": text, "parse_mode": parse_mode}
++            )
++
++    import app.automations.services.telegram_notifications as tn_mod
++
++    monkeypatch.setattr(tn_mod, "TelegramAdapter", _FakeAdapter)
++    monkeypatch.setattr(tn_mod, "account_token", lambda account: "test-token")
++
++    run = await _make_automation_and_run(db_session, db_user, db_workspace)
++    await send_automation_run_telegram_notification(db_session, run.id)
++
++    notification = (
++        await db_session.execute(
++            select(Notification).where(Notification.type == "automation_run_complete")
++        )
++    ).scalar_one_or_none()
++    assert notification is not None
++    assert len(sent) == 0
++
++
++async def test_send_notification_telegram_failure_does_not_raise(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++    monkeypatch,
++) -> None:
++    db_user.notification_preferences = {"automation_run_complete": {"telegram": True}}
++    await _make_telegram_binding(db_session, db_user, db_workspace)
++
++    class _FailingAdapter:
++        def __init__(self, token: str) -> None:
++            self.token = token
++
++        async def send_message(self, **kwargs) -> None:
++            raise RuntimeError("Telegram API down")
++
++    import app.automations.services.telegram_notifications as tn_mod
++
++    monkeypatch.setattr(tn_mod, "TelegramAdapter", _FailingAdapter)
++    monkeypatch.setattr(tn_mod, "account_token", lambda account: "test-token")
++
++    run = await _make_automation_and_run(db_session, db_user, db_workspace)
++    await send_automation_run_telegram_notification(db_session, run.id)
++
++    notification = (
++        await db_session.execute(
++            select(Notification).where(Notification.type == "automation_run_complete")
++        )
++    ).scalar_one_or_none()
++    assert notification is not None
+
+--- /dev/null
++++ b/nowing_backend/tests/integration/routes/test_user_notification_preferences.py
+diff --git a/nowing_backend/tests/integration/routes/test_user_notification_preferences.py b/nowing_backend/tests/integration/routes/test_user_notification_preferences.py
+new file mode 100644
+index 000000000..12db9de19
+--- /dev/null
++++ b/nowing_backend/tests/integration/routes/test_user_notification_preferences.py
+@@ -0,0 +1,51 @@
++"""Integration tests for the user notification-preferences endpoint."""
++
++from __future__ import annotations
++
++import pytest
++
++pytestmark = pytest.mark.integration
++
++
++async def test_patch_notification_preferences_merges_and_persists(
++    client_as_regular_user,
++) -> None:
++    response = await client_as_regular_user.patch(
++        "/users/me/notification-preferences",
++        json={
++            "notification_preferences": {"automation_run_complete": {"telegram": True}}
++        },
++    )
++    assert response.status_code == 200
++    data = response.json()
++    assert (
++        data["notification_preferences"]["automation_run_complete"]["telegram"] is True
++    )
++
++    # A second patch with a different top-level key should deep-merge.
++    response = await client_as_regular_user.patch(
++        "/users/me/notification-preferences",
++        json={"notification_preferences": {"connector_indexing": {"telegram": False}}},
++    )
++    assert response.status_code == 200
++    data = response.json()
++    prefs = data["notification_preferences"]
++    assert prefs["automation_run_complete"]["telegram"] is True
++    assert prefs["connector_indexing"]["telegram"] is False
++
++
++async def test_get_current_user_includes_notification_preferences(
++    client_as_regular_user,
++) -> None:
++    await client_as_regular_user.patch(
++        "/users/me/notification-preferences",
++        json={
++            "notification_preferences": {"automation_run_complete": {"telegram": True}}
++        },
++    )
++    response = await client_as_regular_user.get("/users/me")
++    assert response.status_code == 200
++    data = response.json()
++    assert (
++        data["notification_preferences"]["automation_run_complete"]["telegram"] is True
++    )
+diff --git a/nowing_web/contracts/types/user.types.ts b/nowing_web/contracts/types/user.types.ts
+index 706656064..43c1a0217 100644
+--- a/nowing_web/contracts/types/user.types.ts
++++ b/nowing_web/contracts/types/user.types.ts
+@@ -9,6 +9,7 @@ export const user = z.object({
+ 	credit_micros_balance: z.number(),
+ 	display_name: z.string().nullish(),
+ 	avatar_url: z.string().nullish(),
++	notification_preferences: z.record(z.string(), z.unknown()).nullish(),
+ });
+ 
+ /**
+@@ -22,6 +23,7 @@ export const getMeResponse = user;
+ export const updateUserRequest = z.object({
+ 	display_name: z.string().nullish(),
+ 	avatar_url: z.string().nullish(),
++	notification_preferences: z.record(z.string(), z.unknown()).nullish(),
+ });
+ 
+ /**
+diff --git a/nowing_web/app/dashboard/[workspace_id]/user-settings/components/MessagingChannelsContent.tsx b/nowing_web/app/dashboard/[workspace_id]/user-settings/components/MessagingChannelsContent.tsx
+index bab7da725..05f9fca77 100644
+--- a/nowing_web/app/dashboard/[workspace_id]/user-settings/components/MessagingChannelsContent.tsx
++++ b/nowing_web/app/dashboard/[workspace_id]/user-settings/components/MessagingChannelsContent.tsx
+@@ -17,7 +17,9 @@ import {
+ } from "@/components/ui/select";
+ import { Separator } from "@/components/ui/separator";
+ import { Skeleton } from "@/components/ui/skeleton";
++import { Switch } from "@/components/ui/switch";
+ import type { Workspace } from "@/contracts/types/workspace.types";
++import { userApiService } from "@/lib/apis/user-api.service";
+ import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
+ import { authenticatedFetch } from "@/lib/auth-fetch";
+ import { buildBackendUrl } from "@/lib/env-config";
+@@ -84,6 +86,8 @@ export function MessagingChannelsContent() {
+ 	const [pairingPlatform, setPairingPlatform] = useState<PairingPlatform | null>(null);
+ 	const [baileysHealth, setBaileysHealth] = useState<BaileysHealth | null>(null);
+ 	const [refreshingPlatform, setRefreshingPlatform] = useState<GatewayPlatform | null>(null);
++	const [telegramNotificationsEnabled, setTelegramNotificationsEnabled] = useState(false);
++	const [isLoadingUserProfile, setIsLoadingUserProfile] = useState(true);
+ 	const isGatewayConfigLoading = gatewayConfig === null;
+ 	const telegramGatewayEnabled = gatewayConfig?.telegram_enabled ?? false;
+ 	const whatsappMode = gatewayConfig?.whatsapp_intake_mode ?? "disabled";
+@@ -156,6 +160,48 @@ export function MessagingChannelsContent() {
+ 		void refreshBaileysHealth();
+ 	}, [refreshBaileysHealth]);
+ 
++	useEffect(() => {
++		userApiService
++			.getMe()
++			.then((user) => {
++				const prefs = user.notification_preferences as Record<
++					string,
++					Record<string, unknown> | unknown
++				> | null;
++				const automationPrefs = prefs?.automation_run_complete as
++					| Record<string, unknown>
++					| undefined;
++				setTelegramNotificationsEnabled(automationPrefs?.telegram === true);
++			})
++			.catch(() => {
++				setTelegramNotificationsEnabled(false);
++			})
++			.finally(() => {
++				setIsLoadingUserProfile(false);
++			});
++	}, []);
++
++	async function toggleTelegramNotifications(enabled: boolean) {
++		setTelegramNotificationsEnabled(enabled);
++		const res = await authenticatedFetch(buildBackendUrl("/users/me/notification-preferences"), {
++			method: "PATCH",
++			headers: { "Content-Type": "application/json" },
++			body: JSON.stringify({
++				notification_preferences: {
++					automation_run_complete: { telegram: enabled },
++				},
++			}),
++		});
++		if (!res.ok) {
++			setTelegramNotificationsEnabled(!enabled);
++			toast.error("Failed to update Telegram notification preference");
++			return;
++		}
++		toast.success(
++			enabled ? "Telegram run notifications enabled" : "Telegram run notifications disabled"
++		);
++	}
++
+ 	async function startPairing(platform: PairingPlatform) {
+ 		const res = await authenticatedFetch(buildBackendUrl("/api/v1/gateway/bindings/start"), {
+ 			method: "POST",
+@@ -449,6 +495,22 @@ export function MessagingChannelsContent() {
+ 						</div>
+ 
+ 						{hasTelegramConnection ? null : renderPairingPanel("telegram")}
++						{hasTelegramConnection ? (
++							<div className="flex items-center justify-between gap-3 rounded-md border border-accent/50 bg-accent/10 p-3">
++								<div className="space-y-0.5">
++									<p className="text-sm font-medium">Automation run notifications</p>
++									<p className="text-xs text-muted-foreground">
++										Notify me on Telegram when an automation run completes
++									</p>
++								</div>
++								<Switch
++									checked={telegramNotificationsEnabled}
++									onCheckedChange={toggleTelegramNotifications}
++									disabled={isLoadingUserProfile}
++									aria-label="Notify me on Telegram when an automation run completes"
++								/>
++							</div>
++						) : null}
+ 						<Separator className="bg-accent" />
+ 						{renderConnectionRows("telegram", "No Telegram chats connected yet.")}
+ 					</CardContent>
+diff --git a/AGENTS.md b/AGENTS.md
+index a6d32271e..aea982b95 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -46,3 +46,56 @@ Verification:
+ Notes:
+ - `pnpm lint` does not work because Next.js 16 CLI no longer exposes a `lint` subcommand and `eslint-plugin-react-hooks` is not installed.
+ - `pnpm test` is not configured in `package.json`; use Playwright (`test:e2e*`) or backend pytest for verification.
++
++## Story 11.1 verification commands (Telegram Notification Foundation)
++
++Backend (from `nowing_backend/`):
++
++```bash
++ruff check app/db.py app/schemas/users.py app/routes/users_routes.py app/notifications/types.py app/notifications/constants.py app/gateway/telegram/formatting.py app/automations/runtime/executor.py app/automations/services/telegram_notifications.py app/automations/tasks/notify_run_complete.py app/celery_app.py alembic/versions/187_add_user_notification_preferences.py tests/unit/automations/test_telegram_notification_formatter.py tests/integration/automations/test_run_notification.py tests/integration/routes/test_user_notification_preferences.py
++ruff format app/db.py app/schemas/users.py app/routes/users_routes.py app/notifications/types.py app/notifications/constants.py app/gateway/telegram/formatting.py app/automations/runtime/executor.py app/automations/services/telegram_notifications.py app/automations/tasks/notify_run_complete.py app/celery_app.py alembic/versions/187_add_user_notification_preferences.py tests/unit/automations/test_telegram_notification_formatter.py tests/integration/automations/test_run_notification.py tests/integration/routes/test_user_notification_preferences.py
++pytest tests/unit/automations/test_telegram_notification_formatter.py tests/integration/automations/test_run_notification.py tests/integration/routes/test_user_notification_preferences.py -q
++pytest tests/unit/gateway/ -q
++pytest tests/integration/gateway/test_telegram_inbox.py -q
++```
++
++Frontend (from `nowing_web/`):
++
++```bash
++pnpm tsc --noEmit
++pnpm exec biome check app/dashboard/\[workspace_id\]/user-settings/components/MessagingChannelsContent.tsx contracts/types/user.types.ts
++```
++
++## Story 11.3 verification commands (Telegram interactive bot & commands)
++
++Backend (from `nowing_backend/`):
++
++```bash
++ruff check app/gateway/telegram/commands.py app/gateway/telegram/callbacks.py app/gateway/inbox_processor.py app/gateway/base/commands.py tests/unit/gateway/test_telegram_commands.py tests/unit/gateway/test_telegram_callbacks.py tests/integration/gateway/test_telegram_inbox.py
++ruff format app/gateway/telegram/commands.py app/gateway/telegram/callbacks.py app/gateway/inbox_processor.py app/gateway/base/commands.py tests/unit/gateway/test_telegram_commands.py tests/unit/gateway/test_telegram_callbacks.py tests/integration/gateway/test_telegram_inbox.py
++pytest tests/unit/gateway/ -q
++pytest tests/integration/gateway/test_telegram_inbox.py -q
++```
++
++## Story 10.x verification commands (scraper platform accounts + phone fetch)
++
++Backend (from `nowing_backend/`):
++
++```bash
++ruff check app/proprietary/platforms/batdongsan app/proprietary/platforms/muaban_bds app/services/scraper_platform_account_service.py app/routes/admin_scraper_platform_accounts_routes.py app/capabilities/batdongsan/scrape/executor.py
++pytest tests/unit/platforms/batdongsan -q
++pytest tests/unit/platforms/muaban_bds -q
++```
++
++Frontend (from `nowing_web/`):
++
++```bash
++pnpm tsc --noEmit
++pnpm exec biome check --max-diagnostics 500 app/admin/scraper-accounts/page.tsx lib/apis/scraper-platform-accounts-api.service.ts
++```
++
++Docs drift (from repo root):
++
++```bash
++python3 scripts/check-docs-drift.py
++```

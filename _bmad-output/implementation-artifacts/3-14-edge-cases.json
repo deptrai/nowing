@@ -1,0 +1,42 @@
+[
+  {
+    "location": "nowing_backend/app/routes/research_threads_routes.py:84-86",
+    "trigger_condition": "The route calls `embed_texts([query])` and immediately indexes `embeddings[0]` without validating the batch length or shape. The file imports `validate_single_embedding_result` (line 28) but never uses it.",
+    "guard_snippet": "    if query.strip():\n        embeddings = await asyncio.to_thread(embed_texts, [query])\n        query_embedding = embeddings[0]",
+    "potential_consequence": "If the embedding provider returns an empty list, a multi-element list, or a non-list object, the route will raise an `IndexError`/type error or silently use the wrong vector. The unhandled exception propagates as a 500, or the search runs on a malformed query embedding and returns incorrect results.",
+    "kind": "edge",
+    "confidence": "high"
+  },
+  {
+    "location": "nowing_backend/scripts/benchmark_memory_story_3_14.py:870-872",
+    "trigger_condition": "The benchmark calls `embed_texts([query_text])` and immediately indexes `embeddings[0]`. It imports `validate_embedding_vector`/`VectorValidationError` but not the cardinality guard `validate_single_embedding_result`.",
+    "guard_snippet": "            start = time.perf_counter()\n            embeddings = await asyncio.to_thread(embed_texts, [query_text])\n            query_embedding = embeddings[0]",
+    "potential_consequence": "A malformed or empty batch from the provider causes an `IndexError` and aborts the benchmark, or the wrong vector is used for latency/recall measurements, producing misleading AC-3 gate results.",
+    "kind": "edge",
+    "confidence": "high"
+  },
+  {
+    "location": "nowing_backend/app/automations/actions/validation.py:28,92-101",
+    "trigger_condition": "A plan step param contains an unbalanced Jinja marker, e.g. `{{` with no closing `}}`, or a closing `}}` that appears before any opening `{{`.",
+    "guard_snippet": "_JINJA_PATTERN = re.compile(r\"{{.*}}\", re.DOTALL)\n...\ndef _is_templated(value: Any) -> bool:\n    if isinstance(value, str):\n        return bool(_JINJA_PATTERN.search(value))",
+    "potential_consequence": "The value is treated as a static literal and validated against the field type instead of being exempted as a template. For non-string fields this yields a misleading validation error; for string fields the malformed marker passes save-time validation and may fail at render time with a Jinja syntax error.",
+    "kind": "edge",
+    "confidence": "medium"
+  },
+  {
+    "location": "nowing_backend/app/services/memory/vector.py:80-95",
+    "trigger_condition": "A caller passes a top-level numpy `ndarray` (e.g. a 2-D array of shape `(1, dim)` or a 1-D array) as the embedding batch result.",
+    "guard_snippet": "# C4: accept any non-string/non-bytes Sequence (e.g. numpy array) but\n# still require exactly one item before indexing [0].\nif (\n    isinstance(result, (str, bytes))\n    or not isinstance(result, Sequence)\n    or len(result) != 1\n):\n    raise VectorValidationError(\"invalid_count\")",
+    "potential_consequence": "The comment claims numpy arrays are accepted, but `ndarray` is not a `collections.abc.Sequence`, so a legitimate single-embedding numpy result is rejected with `VectorValidationError('invalid_count')`. Any provider or caller that returns an array instead of a list will break at this trust boundary.",
+    "kind": "edge",
+    "confidence": "medium"
+  },
+  {
+    "location": "nowing_backend/app/db.py:2058-2067 and nowing_backend/alembic/versions/182_add_memories_workspace_thread_dependency_stats.py:69-81",
+    "trigger_condition": "Migration 182 drops the single-column `ix_memories_research_thread_id` index and `db.py` removes `index=True` from `Memory.research_thread_id` in favor of the composite `ix_memories_thread_recency` index.",
+    "guard_snippet": "Index(\"ix_memories_thread_recency\", \"research_thread_id\", \"created_at\", \"id\", postgresql_where=text(\"research_thread_id IS NOT NULL\"))\n...\nwith op.get_context().autocommit_block():\n    op.execute(f\"DROP INDEX CONCURRENTLY IF EXISTS {OLD_INDEX_NAME}\")",
+    "potential_consequence": "Any future query that filters only by `research_thread_id` without an accompanying `workspace_id`/`user_id` scope will lose its btree index and fall back to a sequential scan. A code audit shows all current `research_thread_id` filters are paired with `workspace_id`, so the risk is low, but the deletion removes a safety net for unscoped future queries.",
+    "kind": "deletion",
+    "confidence": "low"
+  }
+]

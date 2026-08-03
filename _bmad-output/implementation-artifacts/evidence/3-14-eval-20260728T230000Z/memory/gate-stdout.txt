@@ -1,0 +1,18 @@
+           Eval gate — memory/recall            
+┏━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ metric                ┃ observed ┃ threshold ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━┩
+│ recall@5              │    0.986 │  >= 0.900 │
+│ MRR                   │    1.000 │  >= 0.700 │
+│ distractor noise rate │    0.067 │  <= 0.100 │
+│ off-corpus rate       │    0.033 │  <= 0.050 │
+│ queries               │       36 │     >= 30 │
+│ failed queries        │        0 │      == 0 │
+└───────────────────────┴──────────┴───────────┘
+Artifact scoring config: top_k=5, oracle_mode=score_threshold (gate requires 
+top_k=5, oracle_mode=score_threshold)
+SM-10 baseline ratified: no — thresholds are provisional, gate fails closed
+gate FAIL artifact=2026-07-28T16-28-54Z
+- SM-10 thresholds are not ratified against a measured baseline 
+(baseline_ratified=false) — epics AC3 requires the numbers to be chosen after a 
+real measurement, so the gate fails closed until an owner signs off

@@ -952,6 +952,13 @@ class ScraperPlatformAccount(Base, TimestampMixin):
     is_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
     is_default = Column(Boolean, nullable=False, default=False, server_default="false")
     encrypted_credentials = Column(Text, nullable=True)
+    last_used_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    usage_state = Column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
 
     __table_args__ = (
         Index(

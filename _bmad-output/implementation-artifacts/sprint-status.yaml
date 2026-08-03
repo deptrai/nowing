@@ -1,0 +1,136 @@
+# generated: 2026-08-02 22:30:00
+# last_updated: 2026-08-04 00:00:00
+# project: Nowing
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
+
+generated: "2026-08-02 22:30:00"
+last_updated: "2026-08-03"
+project: Nowing
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: done
+  epic-1-retrospective: optional
+
+  epic-2: done
+  2-5: done
+  2-6: ready-for-dev
+  2-7: ready-for-dev
+  2-8: ready-for-dev
+  2-9: done
+  epic-2-retrospective: optional
+
+  epic-3: done
+  3-6: done
+  3-7: done
+  3-9: done
+  3-10a: done
+  3-10b: done
+  3-11: done
+  3-12: done
+  3-13: done
+  3-14: done
+  3-15: ready-for-dev
+  3-16: ready-for-dev
+  epic-3-retrospective: optional
+
+  epic-4: done
+  4-7: ready-for-dev
+  epic-4-retrospective: optional
+
+  epic-5: done
+  epic-5-retrospective: optional
+
+  epic-6: done
+  6-4: done
+  6-5: done
+  epic-6-retrospective: optional
+
+  epic-7: done
+  7-4: ready-for-dev
+  epic-7-retrospective: optional
+
+  epic-8: done
+  8-3: done
+  8-7: done
+  8-8: done
+  8-9: done
+  8-10: done
+  8-11: done
+  8-12: ready-for-dev
+  8-13: ready-for-dev
+  epic-8-retrospective: done
+
+  epic-9: done
+  9-1a: done
+  9-1b: done
+  9-2: done
+  9-3: done
+  9-4: done
+  # 9-5 intentionally moved to deferred — see deferred section below.
+  9-6a: done
+  9-6b: done
+  epic-9-retrospective: done
+
+  epic-10: in-progress
+  10-1: done
+  10-2: done
+  10-3: done
+  10-4: backlog
+  epic-10-retrospective: optional
+
+  epic-11: done
+  11-1-telegram-notification-foundation: done
+  11-2-telegram-write-back-and-builder: done
+  11-3-telegram-interactive-bot-and-commands: done
+  epic-11-retrospective: done
+
+# Deferred work that is out of the current sprint / not approved for MVP.
+# Kept here for visibility; re-introduce via sprint-planning if approved.
+deferred:
+  - story: 9-5
+    reason: "Metered deep-research endpoint cho self-host — chưa phê duyệt, Post-MVP / P1 business."
+
+action_items:
+  - "Pre-merge gate scripts ready and smoke-tested on local DB (run_pre_merge_gates.py, disable_auto_archive_enabled.sql). Next: execute on actual production/staging DB before deploy."
+  - "Epic 9 retrospective done. Epic 8 retrospective is optional."
+  - "Deferred work still tracked: NFR-9 State B ratification, Redis cross-replica test, MCP async 202 handling, Story 9.5 approval. Consider creating new epic/stories via sprint-planning or correct-course when work resumes."
