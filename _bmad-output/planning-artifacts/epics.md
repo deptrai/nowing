@@ -862,7 +862,7 @@ _FR-25 · FR-7/8 · upstream PR #1624._
 
 _Tạo 2026-08-03 để chứa các scraper/capability mới ngoài phạm vi epic cũ._
 
-### Story 10.1: Batdongsan.com.vn Scraper  `[review]`
+### Story 10.1: Batdongsan.com.vn Scraper  `[done 2026-08-04 — per-account rate limit & cookie rotation added; AC-8 updated]`
 
 As a real-estate researcher or investor in Vietnam,  
 I want to scrape property listings from batdongsan.com.vn,  

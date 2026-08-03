@@ -116,6 +116,26 @@ export const updateWorkspaceMcpToolRequest = z.object({
 
 export const updateWorkspaceMcpToolResponse = workspaceMcpTool;
 
+/**
+ * Workspace limits
+ */
+export const workspaceLimitUsage = z.object({
+	documents: z.number(),
+	members: z.number(),
+	runs: z.number(),
+	storage_bytes: z.number(),
+});
+
+export const getWorkspaceLimitsResponse = z.object({
+	plan_tier: z.string().nullable(),
+	max_documents: z.number().nullable(),
+	max_members: z.number().nullable(),
+	max_runs: z.number().nullable(),
+	max_storage_bytes: z.number().nullable(),
+	run_period_hours: z.number(),
+	usage: workspaceLimitUsage,
+});
+
 // Inferred types
 export type Workspace = z.infer<typeof workspace>;
 export type WorkspaceMcpTool = z.infer<typeof workspaceMcpTool>;
@@ -134,3 +154,5 @@ export type UpdateWorkspaceApiAccessRequest = z.infer<typeof updateWorkspaceApiA
 export type UpdateWorkspaceApiAccessResponse = z.infer<typeof updateWorkspaceApiAccessResponse>;
 export type DeleteWorkspaceRequest = z.infer<typeof deleteWorkspaceRequest>;
 export type DeleteWorkspaceResponse = z.infer<typeof deleteWorkspaceResponse>;
+export type WorkspaceLimitUsage = z.infer<typeof workspaceLimitUsage>;
+export type GetWorkspaceLimitsResponse = z.infer<typeof getWorkspaceLimitsResponse>;

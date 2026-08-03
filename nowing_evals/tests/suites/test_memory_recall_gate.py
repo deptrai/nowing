@@ -374,17 +374,13 @@ def test_committed_gate_config_pins_the_recall_surface_contract():
     assert thresholds.required_oracle_mode in {"rank_only", "score_threshold"}
 
 
-def test_committed_gate_config_is_not_yet_ratified():
-    """Guard against flipping the flag without measuring.
+def test_committed_gate_config_is_ratified_with_baseline_source():
+    """SM-10 baseline is ratified and names the measured run that produced it."""
 
-    Delete this test in the same change that sets ``baseline_ratified: true``,
-    and only once ``baseline_source`` names a real measured run.
-    """
     thresholds = load_gate_thresholds(GATE_CONFIG_PATH)
-    assert thresholds.baseline_ratified is False, (
-        "baseline_ratified was flipped — confirm the numbers come from a measured "
-        "baseline signed off by the SM-10 owner, then remove this guard"
-    )
+    assert thresholds.baseline_ratified is True
+    assert thresholds.baseline_source.strip(), "ratified baseline must name its source"
+    assert "2026-07-28T16-28-54Z" in thresholds.baseline_source
 
 
 def test_committed_gate_config_is_real_yaml_with_provenance_comments():

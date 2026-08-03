@@ -56,6 +56,7 @@ export const cacheKeys = {
 			["workspaces", ...stableEntries(queries)] as const,
 		detail: (workspaceId: string) => ["workspaces", workspaceId] as const,
 		mcpTools: (workspaceId: number) => ["workspace-mcp-tools", workspaceId] as const,
+		limits: (workspaceId: number) => ["workspaces", "limits", workspaceId] as const,
 	},
 	user: {
 		current: () => ["user", "me"] as const,

@@ -1808,6 +1808,13 @@ class Workspace(BaseModel, TimestampMixin):
 
     name = Column(String(100), nullable=False, index=True)
     description = Column(String(500), nullable=True)
+    plan_tier = Column(
+        String(20),
+        nullable=False,
+        default="free",
+        server_default="free",
+        index=True,
+    )
 
     citations_enabled = Column(
         Boolean, nullable=False, default=True
@@ -1978,6 +1985,12 @@ class Workspace(BaseModel, TimestampMixin):
         back_populates="workspace",
         cascade="all, delete-orphan",
     )
+    workspace_limits = relationship(
+        "WorkspaceLimit",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
 
 class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
@@ -2000,6 +2013,48 @@ class WorkspaceMcpToolSetting(BaseModel, TimestampMixin):
     enabled = Column(Boolean, nullable=False, default=True, server_default="true")
 
     workspace = relationship("Workspace", back_populates="mcp_tool_settings")
+
+
+class WorkspaceLimit(BaseModel, TimestampMixin):
+    """
+    Plan-default or per-workspace override limits.
+
+    * ``plan_tier`` is set and ``workspace_id`` is NULL for plan defaults.
+    * ``workspace_id`` is set and ``plan_tier`` is NULL for workspace overrides.
+    * Partial unique indexes in migration 189 enforce one default per plan and
+      one override per workspace.
+    """
+
+    __tablename__ = "workspace_limits"
+    __table_args__ = (
+        CheckConstraint(
+            "(plan_tier IS NOT NULL) OR (workspace_id IS NOT NULL)",
+            name="ck_workspace_limits_plan_or_workspace",
+        ),
+    )
+
+    plan_tier = Column(String(20), nullable=True, index=True)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
+    max_documents = Column(Integer, nullable=True)
+    max_members = Column(Integer, nullable=True)
+    max_runs = Column(Integer, nullable=True)
+    max_storage_bytes = Column(BigInteger, nullable=True)
+    run_period_hours = Column(
+        Integer,
+        nullable=False,
+        default=720,
+        server_default="720",
+    )
+
+    workspace = relationship(
+        "Workspace", back_populates="workspace_limits", uselist=False
+    )
 
 
 class ResearchThread(BaseModel, TimestampMixin):

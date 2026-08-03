@@ -149,6 +149,8 @@ from .workspace import (
     WorkspaceApiAccessUpdate,
     WorkspaceBase,
     WorkspaceCreate,
+    WorkspaceLimitsResponse,
+    WorkspaceLimitUsage,
     WorkspaceMcpToolRead,
     WorkspaceMcpToolUpdate,
     WorkspaceRead,
@@ -312,6 +314,8 @@ __all__ = [
     # Workspace schemas
     "WorkspaceBase",
     "WorkspaceCreate",
+    "WorkspaceLimitUsage",
+    "WorkspaceLimitsResponse",
     "WorkspaceMcpToolRead",
     "WorkspaceMcpToolUpdate",
     "WorkspaceRead",

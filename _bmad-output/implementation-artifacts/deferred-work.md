@@ -1,5 +1,15 @@
 # Deferred Work
 
+## Deferred from: code review of 8-12-workspace-limits (2026-08-04)
+
+- **Finding:** Storage sum does not reconcile deleted backend files — `workspace_limits.py:199-209`.
+- **Action:** Marked `[x] [Review][Defer]` in `8-12-workspace-limits.md`.
+- **Reason / when to revisit:** `sum_storage_bytes` sums `DocumentFile.size_bytes` from DB rows. If a storage backend file is deleted without deleting the `DocumentFile` row (or vice versa), the metric drifts. Storage limits are soft/exploratory in Story 8.12. Revisit when storage enforcement is implemented.
+
+- **Finding:** Disable/enable Invite member and Upload affordances based on limits — `workspace-limits-manager.tsx`.
+- **Action:** Marked `[x] [Review][Defer]` in `8-12-workspace-limits.md`.
+- **Reason / when to revisit:** The backend is the source of truth for limit enforcement. The settings limits page is visibility/upgrade only. UI affordance gating in the team/invite and document upload flows is a defense-in-depth UX improvement that should be picked up when the product wants to reduce failed-action feedback loops for plan-limited workspaces.
+
 ## Deferred from: code review of story 11.1
 
 - **Finding:** Concurrent `PATCH /users/me/notification-preferences` updates can lose keys because `_merge_notification_preferences` reads the user row, merges in memory, and overwrites the whole JSONB column.

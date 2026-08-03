@@ -49,6 +49,7 @@ from app.config import config
 from app.db import Report, Run, async_session_maker, get_async_session
 from app.exceptions import ExternalServiceError, NowingError
 from app.services.web_crawl_credit_service import InsufficientCreditsError
+from app.services.workspace_limits import workspace_limit_service
 from app.users import get_auth_context
 from app.utils.rbac import check_workspace_access
 
@@ -191,6 +192,9 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
         mode: str = Query(default="sync", pattern="^(sync|async)$"),
     ):
         await check_workspace_access(session, auth, workspace_id)
+
+        # Enforce workspace run limit before meter-gate.
+        await workspace_limit_service.check_run_limit(session, workspace_id)
 
         # State A/B: chainlens.research is always async unless the sync chat-mode
         # feature flag is explicitly enabled. Other scrapers still allow sync.

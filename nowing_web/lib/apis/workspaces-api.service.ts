@@ -9,6 +9,7 @@ import {
 	type GetWorkspaceMcpToolsResponse,
 	type GetWorkspaceRequest,
 	type GetWorkspacesRequest,
+	getWorkspaceLimitsResponse,
 	getWorkspaceMcpToolsResponse,
 	getWorkspaceRequest,
 	getWorkspaceResponse,
@@ -188,6 +189,13 @@ class WorkspacesApiService {
 		return baseApiService.delete(
 			`/api/v1/workspaces/${workspaceId}/members/me`,
 			leaveWorkspaceResponse
+		);
+	};
+
+	getWorkspaceLimits = async (workspaceId: number) => {
+		return baseApiService.get(
+			`/api/v1/workspaces/${workspaceId}/limits`,
+			getWorkspaceLimitsResponse
 		);
 	};
 }

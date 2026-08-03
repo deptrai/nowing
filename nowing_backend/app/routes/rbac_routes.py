@@ -44,6 +44,7 @@ from app.schemas import (
     RoleUpdate,
     UserWorkspaceAccess,
 )
+from app.services.workspace_limits import workspace_limit_service
 from app.users import get_auth_context
 from app.utils.rbac import (
     check_permission,
@@ -751,6 +752,11 @@ async def create_invite(
             "You don't have permission to create invites",
         )
 
+        # Enforce workspace member limit before creating the invite.
+        await workspace_limit_service.check_member_limit(
+            session, workspace_id, additional=1
+        )
+
         # Verify role exists if specified
         if invite_data.role_id:
             role_result = await session.execute(
@@ -1066,6 +1072,16 @@ async def accept_invite(
                 detail="You are already a member of this workspace",
             )
 
+        # Consume the invite use before counting. This ensures a single-use
+        # invite is no longer counted as an active invite when we check the
+        # member limit, preventing a false "limit exceeded" at the boundary.
+        invite.uses_count += 1
+
+        # Enforce workspace member limit before accepting.
+        await workspace_limit_service.check_member_limit(
+            session, invite.workspace_id, additional=1
+        )
+
         # Determine role to assign
         role_id = invite.role_id
         if not role_id:
@@ -1082,9 +1098,6 @@ async def accept_invite(
             invited_by_invite_id=invite.id,
         )
         session.add(membership)
-
-        # Increment invite usage
-        invite.uses_count += 1
 
         await session.commit()
 

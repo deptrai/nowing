@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, BookText, Cpu, Earth, Settings, UserKey } from "lucide-react";
+import { Archive, BookText, Cpu, Earth, Gauge, Settings, UserKey } from "lucide-react";
 import { useSelectedLayoutSegment } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type React from "react";
@@ -13,7 +13,8 @@ export type WorkspaceSettingsTab =
 	| "team-roles"
 	| "prompts"
 	| "public-links"
-	| "data-retention";
+	| "data-retention"
+	| "limits";
 
 const DEFAULT_TAB: WorkspaceSettingsTab = "general";
 
@@ -66,6 +67,12 @@ export function WorkspaceSettingsLayoutShell({
 				label: t("nav_data_retention"),
 				href: `/dashboard/${workspaceId}/workspace-settings/data-retention`,
 				icon: <Archive className="h-4 w-4" />,
+			},
+			{
+				value: "limits" as const,
+				label: t("nav_limits"),
+				href: `/dashboard/${workspaceId}/workspace-settings/limits`,
+				icon: <Gauge className="h-4 w-4" />,
 			},
 		],
 		[t, workspaceId]

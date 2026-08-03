@@ -26,12 +26,15 @@ from app.routes.model_connections_routes import compute_llm_setup_status
 from app.schemas import (
     WorkspaceApiAccessUpdate,
     WorkspaceCreate,
+    WorkspaceLimitsResponse,
+    WorkspaceLimitUsage,
     WorkspaceMcpToolRead,
     WorkspaceMcpToolUpdate,
     WorkspaceRead,
     WorkspaceUpdate,
     WorkspaceWithStats,
 )
+from app.services.workspace_limits import workspace_limit_service
 from app.users import allow_any_principal, get_auth_context, require_session_context
 from app.utils.rbac import check_permission, check_workspace_access, is_workspace_owner
 
@@ -354,6 +357,48 @@ async def update_workspace_api_access(
         await session.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to update API access: {e!s}"
+        ) from e
+
+
+@router.get("/workspaces/{workspace_id}/limits", response_model=WorkspaceLimitsResponse)
+async def get_workspace_limits(
+    workspace_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """
+    Get effective limits and current usage for a workspace.
+    Requires SETTINGS_UPDATE permission (Owner-only by default).
+    """
+    try:
+        await check_permission(
+            session,
+            auth,
+            workspace_id,
+            Permission.SETTINGS_UPDATE.value,
+            "You don't have permission to view workspace limits",
+        )
+
+        limits = await workspace_limit_service.get_effective_limits(
+            session, workspace_id
+        )
+        usage = await workspace_limit_service.get_usage_snapshot(session, workspace_id)
+
+        return WorkspaceLimitsResponse(
+            plan_tier=limits.plan_tier,
+            max_documents=limits.max_documents,
+            max_members=limits.max_members,
+            max_runs=limits.max_runs,
+            max_storage_bytes=limits.max_storage_bytes,
+            run_period_hours=limits.run_period_hours,
+            usage=WorkspaceLimitUsage(**usage),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch workspace limits: {e!s}"
         ) from e
 
 

@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import json
 import logging
 import os
 import shutil
@@ -48,6 +49,17 @@ def _env_int(name: str, default: int) -> int:
         return int(raw)
     except (ValueError, OverflowError):
         logger.warning("Invalid %s=%r; using default %s", name, raw, default)
+        return default
+
+
+def _env_json(name: str, default: dict | None = None) -> dict | None:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Invalid JSON in %s=%r; ignoring", name, raw)
         return default
 
 
@@ -605,6 +617,14 @@ class Config:
         """Check if running in cloud mode."""
         return cls.DEPLOYMENT_MODE == "cloud"
 
+    # Optional plan-limit overrides.  Values must be a JSON object mapping
+    # plan tier -> {max_documents, max_members, max_runs, max_storage_bytes,
+    # run_period_hours}.  Database seeded defaults remain the source of truth
+    # unless overridden here.
+    WORKSPACE_PLAN_LIMITS: dict[str, dict[str, Any]] | None = _env_json(
+        "WORKSPACE_PLAN_LIMITS"
+    )
+
     # Database
     DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -973,8 +993,17 @@ class Config:
         if _default_mode in {"speed", "balanced", "quality", "auto"}
         else "balanced"
     )
-    # State B: enable synchronous chat-mode deep research (inline agent/REST).
-    # While disabled (State A), chainlens.research is always async.
+    # NFR-9 State A vs State B for deep research in chat.
+    #
+    # State A (default, launch setting): DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED is
+    # False. Both the REST and agent paths force chainlens.research to async mode
+    # so the chat turn returns immediately and ChainLens runs in the background.
+    # This is the launch default because the GTM review shows ChainLens balanced
+    # p95 at 44.3s, which is above the 30s synchronous target.
+    #
+    # State B (opt-in): DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED is True. The REST
+    # and agent paths may run chainlens.research synchronously, blocking on
+    # ChainLens. Do not enable until a ratified baseline shows p95 <= 30s.
     DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED = (
         os.getenv("DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED", "FALSE").upper() == "TRUE"
     )

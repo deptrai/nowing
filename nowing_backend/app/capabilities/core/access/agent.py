@@ -142,9 +142,18 @@ def _capability_tool(
         input_dump = payload.model_dump(exclude_none=True)
         thread_id = _current_thread_id()
 
-        # State A/B: deep research is always async in chat unless the sync
-        # chat-mode feature flag is on. The agent submits the run and returns
-        # the run id so the chat turn can finish without blocking on ChainLens.
+        # NFR-9 State A vs State B for deep research in chat.
+        #
+        # State A (launch default): DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED is False.
+        # chainlens.research is always async in chat. The agent submits the run
+        # via start_async_run and returns a run_id so the chat turn can finish
+        # without blocking on ChainLens. State A is required because the GTM
+        # review shows ChainLens balanced p95 (44.3s) exceeds the 30s target for
+        # a synchronous chat response.
+        #
+        # State B (opt-in): DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED is True. The
+        # agent may block and return the full ChainLens output inline. This is
+        # only viable once a ratified baseline shows p95 <= 30s.
         if (
             name == "chainlens.research"
             and not config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED

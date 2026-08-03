@@ -99,3 +99,23 @@ Docs drift (from repo root):
 ```bash
 python3 scripts/check-docs-drift.py
 ```
+
+## Story 8.12 verification commands (Workspace Limits)
+
+Backend (from `nowing_backend/`):
+
+```bash
+ruff check app/services/workspace_limits.py app/routes/workspaces_routes.py app/routes/documents_routes.py app/routes/rbac_routes.py app/capabilities/core/access/rest.py app/db.py app/schemas/workspace.py app/schemas/__init__.py app/config/__init__.py alembic/versions/189_add_workspace_plan_and_limits.py tests/integration/services/test_workspace_limits.py
+ruff format app/services/workspace_limits.py app/routes/workspaces_routes.py app/routes/documents_routes.py app/routes/rbac_routes.py app/capabilities/core/access/rest.py app/db.py app/schemas/workspace.py app/schemas/__init__.py app/config/__init__.py alembic/versions/189_add_workspace_plan_and_limits.py tests/integration/services/test_workspace_limits.py
+pytest tests/integration/services/test_workspace_limits.py -q
+```
+
+Frontend (from `nowing_web/`):
+
+```bash
+pnpm tsc --noEmit
+pnpm exec biome check --max-diagnostics 500 app/dashboard/\[workspace_id\]/workspace-settings/layout-shell.tsx app/dashboard/\[workspace_id\]/workspace-settings/limits/page.tsx components/settings/workspace-limits-manager.tsx lib/apis/workspaces-api.service.ts lib/query-client/cache-keys.ts contracts/types/workspace.types.ts messages/en.json
+```
+
+Notes:
+- `tests/integration/document_upload/test_document_upload.py` may fail locally if `ETL_SERVICE` is unset; that is an environment issue unrelated to this story.

@@ -70,3 +70,22 @@ class WorkspaceMcpToolRead(BaseModel):
 
 class WorkspaceMcpToolUpdate(BaseModel):
     enabled: StrictBool
+
+
+class WorkspaceLimitUsage(BaseModel):
+    documents: int
+    members: int
+    runs: int
+    storage_bytes: int
+
+
+class WorkspaceLimitsResponse(BaseModel):
+    """Effective limits and current usage for a workspace."""
+
+    plan_tier: str | None
+    max_documents: int | None
+    max_members: int | None
+    max_runs: int | None
+    max_storage_bytes: int | None
+    run_period_hours: int
+    usage: WorkspaceLimitUsage

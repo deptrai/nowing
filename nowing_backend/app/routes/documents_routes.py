@@ -35,6 +35,7 @@ from app.schemas import (
     PaginatedResponse,
 )
 from app.services.task_dispatcher import TaskDispatcher, get_task_dispatcher
+from app.services.workspace_limits import workspace_limit_service
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
@@ -75,6 +76,12 @@ async def create_documents(
             request.workspace_id,
             Permission.DOCUMENTS_CREATE.value,
             "You don't have permission to create documents in this workspace",
+        )
+
+        # Enforce workspace document limit (best-effort for EXTENSION; Celery
+        # creates the actual Document rows asynchronously).
+        await workspace_limit_service.check_document_limit(
+            session, request.workspace_id, additional=len(request.content)
         )
 
         if request.document_type == DocumentType.EXTENSION:
@@ -201,10 +208,12 @@ async def create_documents_file_upload(
 
         # ===== PHASE 1: Create pending documents for all files =====
         created_documents: list[Document] = []
+        new_documents: list[Document] = []
         # (document, temp_path, filename, content_type)
         files_to_process: list[tuple[Document, str, str, str | None]] = []
         skipped_duplicates = 0
         duplicate_document_ids: list[int] = []
+        new_document_count = 0
 
         for temp_path, filename, file_size, content_type in saved_files:
             try:
@@ -253,8 +262,12 @@ async def create_documents_file_upload(
                     updated_at=get_current_timestamp(),
                     created_by_id=str(user.id),
                 )
-                session.add(document)
+                # Do not add to session until after the limit check; otherwise
+                # AsyncSession autoflush would make count_documents see these
+                # pending rows and double-count them with `additional`.
+                new_document_count += 1
                 created_documents.append(document)
+                new_documents.append(document)
                 files_to_process.append((document, temp_path, filename, content_type))
 
             except HTTPException:
@@ -265,6 +278,16 @@ async def create_documents_file_upload(
                     status_code=422,
                     detail=f"Failed to process file {filename}: {e!s}",
                 ) from e
+
+        # Enforce workspace document limit before inserting pending rows.
+        if new_document_count:
+            await workspace_limit_service.check_document_limit(
+                session, workspace_id, additional=new_document_count
+            )
+
+        # Now add the new document rows; they were held back from the session
+        # until the limit check completed.
+        session.add_all(new_documents)
 
         if created_documents:
             await session.commit()

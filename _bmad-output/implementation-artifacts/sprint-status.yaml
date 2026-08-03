@@ -1,5 +1,5 @@
-# generated: 2026-08-02 22:30:00
-# last_updated: 2026-08-04 00:00:00
+# generated: 2026-08-04 01:00:00
+# last_updated: 2026-08-04
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -40,8 +40,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
-generated: "2026-08-02 22:30:00"
-last_updated: "2026-08-03"
+generated: "2026-08-04 01:00:00"
+last_updated: "2026-08-04"
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
@@ -89,14 +89,14 @@ development_status:
   7-4: ready-for-dev
   epic-7-retrospective: optional
 
-  epic-8: done
+  epic-8: in-progress
   8-3: done
   8-7: done
   8-8: done
   8-9: done
   8-10: done
   8-11: done
-  8-12: ready-for-dev
+  8-12: done
   8-13: ready-for-dev
   epic-8-retrospective: done
 
