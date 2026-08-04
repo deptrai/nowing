@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import math
 from datetime import UTC, datetime
 from statistics import StatisticsError, mean, stdev
 from typing import Any
@@ -25,7 +24,8 @@ PRICE_CONSISTENCY_WEIGHT = 0.30
 SOURCE_TRUST_COMPONENT_WEIGHT = 0.25
 
 PRICE_CONFLICT_PENALTY = 0.7
-FRESHNESS_HALF_LIFE_DAYS = 28
+FRESHNESS_FRESH_DAYS = 7
+FRESHNESS_STALE_DAYS = 90
 
 
 def _source_trust(sources: list[str]) -> float:
@@ -50,10 +50,16 @@ def _freshness_score(post_date: str | None) -> float:
     now = datetime.now(UTC)
     delta = now - parsed
     days = max(0.0, delta.total_seconds() / 86_400)
-    if days <= 0:
+    if days <= FRESHNESS_FRESH_DAYS:
         return 1.0
+    if days >= FRESHNESS_STALE_DAYS:
+        return 0.0
 
-    score = math.exp(-math.log(2) * days / FRESHNESS_HALF_LIFE_DAYS)
+    # Linear decay between fresh and stale thresholds.
+    ratio = (days - FRESHNESS_FRESH_DAYS) / (
+        FRESHNESS_STALE_DAYS - FRESHNESS_FRESH_DAYS
+    )
+    score = 1.0 - ratio
     return round(max(0.0, min(1.0, score)), 4)
 
 

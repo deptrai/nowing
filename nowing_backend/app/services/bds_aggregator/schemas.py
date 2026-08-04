@@ -104,6 +104,8 @@ class VnBdsAggregateInput(BaseModel):
         invalid = [s for s in value if s not in allowed]
         if invalid:
             raise ValueError(f"invalid sources: {invalid}")
+        if len(value) != len(set(value)):
+            raise ValueError("sources must be unique")
         return value
 
     @model_validator(mode="after")

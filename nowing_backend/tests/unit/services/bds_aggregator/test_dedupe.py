@@ -76,6 +76,81 @@ def test_address_dedupe_merges_same_district_ward():
     assert len(merged) == 1
 
 
+def test_transitive_dedupe_merges_linked_group():
+    a = _listing(
+        "batdongsan",
+        {
+            "listing_id": 1,
+            "title": "A",
+            "price": "10 Tỷ",
+            "area": "75 m²",
+            "district": "Ba Đình",
+            "phone": "0901234567",
+            "detail_url": "https://bd/1",
+        },
+    )
+    b = _listing(
+        "chotot_bds",
+        {
+            "listing_id": 2,
+            "title": "B",
+            "price": "10.2 Tỷ",
+            "area": "75 m²",
+            "district": "Ba Đình",
+            "ward": "Vĩnh Phúc",
+            "location": "Phố Nguyễn Thái Học",
+            "phone": "0901234567",
+            "detail_url": "https://ct/2",
+        },
+    )
+    c = _listing(
+        "muaban_bds",
+        {
+            "listing_id": 3,
+            "title": "C",
+            "price": "10.1 Tỷ",
+            "area": "75 m²",
+            "district": "Ba Đình",
+            "ward": "Vĩnh Phúc",
+            "location": "Phố Nguyễn Thái Học",
+            "detail_url": "https://mb/3",
+        },
+    )
+    merged = deduplicate([a, b, c])
+    assert len(merged) == 1
+    assert sorted(merged[0].sources) == ["batdongsan", "chotot_bds", "muaban_bds"]
+
+
+def test_image_dedupe_merges_same_image():
+    a = _listing(
+        "batdongsan",
+        {
+            "listing_id": 1,
+            "title": "A",
+            "price": "10 Tỷ",
+            "area": "75 m²",
+            "district": "Ba Đình",
+            "thumbnail_url": "https://example.com/img.jpg",
+            "detail_url": "https://bd/1",
+        },
+    )
+    b = _listing(
+        "chotot_bds",
+        {
+            "listing_id": 2,
+            "title": "B",
+            "price": "10.2 Tỷ",
+            "area": "75 m²",
+            "district": "Ba Đình",
+            "thumbnail_url": "https://example.com/img.jpg",
+            "detail_url": "https://ct/2",
+        },
+    )
+    merged = deduplicate([a, b])
+    assert len(merged) == 1
+    assert sorted(merged[0].sources) == ["batdongsan", "chotot_bds"]
+
+
 def test_price_conflict_flag():
     a = _listing(
         "batdongsan",

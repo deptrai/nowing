@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from app.services.bds_aggregator.normalize import normalize_listing
-from app.services.bds_aggregator.scoring import score_listing
+from app.services.bds_aggregator.scoring import _freshness_score, score_listing
 
 pytestmark = pytest.mark.unit
 
@@ -31,6 +33,18 @@ def test_single_source_confidence_components():
     assert scored.overlap_score == pytest.approx(1 / 3, abs=0.01)
     assert 0.0 <= scored.confidence_score <= 1.0
     assert scored.confidence_score > 0.0
+
+
+def test_freshness_score_uses_piecewise_decay():
+    fresh = (datetime.now(UTC) - timedelta(days=3)).strftime("%d/%m/%Y")
+    assert _freshness_score(fresh) == 1.0
+
+    stale = (datetime.now(UTC) - timedelta(days=91)).strftime("%d/%m/%Y")
+    assert _freshness_score(stale) == 0.0
+
+    mid = (datetime.now(UTC) - timedelta(days=48)).strftime("%d/%m/%Y")
+    score = _freshness_score(mid)
+    assert 0.0 < score < 1.0
 
 
 def test_multi_source_confidence_higher():

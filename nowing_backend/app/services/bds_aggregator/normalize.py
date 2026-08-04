@@ -14,34 +14,101 @@ from .schemas import VnBdsAggregatedListing, VnBdsProvenance
 
 logger = logging.getLogger(__name__)
 
-# V1 city alias table for Batdongsan code resolution. Other sources (Chotot,
-# Muaban) already normalize city aliases internally, so we only need to produce
-# a Batdongsan city code here. Expand the table as usage grows.
-_CITY_ALIASES: dict[str, str] = {
-    "ha noi": "HN",
-    "hanoi": "HN",
-    "hn": "HN",
-    "ha-noi": "HN",
-    "ho chi minh": "SG",
-    "hcm": "SG",
-    "tp hcm": "SG",
-    "tp ho chi minh": "SG",
-    "tphcm": "SG",
-    "ho-chi-minh": "SG",
-    "da nang": "DN",
-    "dn": "DN",
-    "da-nang": "DN",
-    "hai phong": "HP",
-    "hp": "HP",
-    "hai-phong": "HP",
-    "can tho": "CT",
-    "ct": "CT",
-    "can-tho": "CT",
-    "hue": "TTH",
-    "khanh hoa": "KH",
-    "khanh-hoa": "KH",
-    "khanhhoa": "KH",
+# Batdongsan city code → URL slug mapping.  This is a V1 snapshot of the
+# proprietary ``app.proprietary.platforms.batdongsan.city_codes`` table, kept
+# local so the aggregator can resolve free-form city input without triggering
+# heavy platform imports.
+_CITY_SLUGS: dict[str, str] = {
+    "AG": "an-giang",
+    "BD": "binh-duong",
+    "BDI": "binh-dinh",
+    "BG": "bac-giang",
+    "BK": "bac-kan",
+    "BL": "bac-lieu",
+    "BN": "bac-ninh",
+    "BP": "binh-phuoc",
+    "BT": "ben-tre",
+    "BTH": "binh-thuan",
+    "CB": "cao-bang",
+    "CM": "ca-mau",
+    "CT": "can-tho",
+    "DI": "dien-bien",
+    "DKL": "dak-lak",
+    "DN": "da-nang",
+    "DNO": "dak-nong",
+    "DT": "dong-thap",
+    "GL": "gia-lai",
+    "HD": "hai-duong",
+    "HG": "ha-giang",
+    "HN": "ha-noi",
+    "HP": "hai-phong",
+    "HT": "ha-tinh",
+    "HUG": "hau-giang",
+    "HY": "hung-yen",
+    "KH": "khanh-hoa",
+    "KG": "kien-giang",
+    "KT": "kon-tum",
+    "LA": "long-an",
+    "LB": "long-bien",
+    "LC": "lao-cai",
+    "LCH": "lai-chau",
+    "LD": "lam-dong",
+    "LS": "lang-son",
+    "NA": "nghe-an",
+    "NB": "ninh-binh",
+    "ND": "nam-dinh",
+    "NT": "ninh-thuan",
+    "PT": "phu-tho",
+    "PY": "phu-yen",
+    "QB": "quang-binh",
+    "QN": "quang-ninh",
+    "QNG": "quang-ngai",
+    "QT": "quang-tri",
+    "SG": "tp-hcm",
+    "SL": "son-la",
+    "ST": "soc-trang",
+    "TB": "thai-binh",
+    "TG": "tien-giang",
+    "TH": "thanh-hoa",
+    "TN": "thai-nguyen",
+    "TQ": "tuyen-quang",
+    "TV": "tra-vinh",
+    "TTH": "hue",
+    "VL": "vinh-long",
+    "VT": "ba-ria-vung-tau",
+    "YB": "yen-bai",
 }
+
+_CITY_CODES: frozenset[str] = frozenset(_CITY_SLUGS)
+
+# Extra common aliases for free-form Vietnamese input.  The generated aliases
+# below (slugs, unhyphenated slugs and lower-case codes) cover the standard
+# names; this table covers typos, abbreviations and colloquial forms.
+_CITY_OVERRIDES: dict[str, str] = {
+    "ha-noi": "HN",
+    "hanoi": "HN",
+    "ho-chi-minh": "SG",
+    "hcm": "SG",
+    "tp-hcm": "SG",
+    "tphcm": "SG",
+    "sai-gon": "SG",
+    "saigon": "SG",
+    "hue": "TTH",
+    "ba-ria-vung-tau": "VT",
+    "ba-ria": "VT",
+    "vung-tau": "VT",
+    "binh-dinh": "BDI",
+    "lai-chau": "LCH",
+}
+
+# Generate the full alias table from slugs, codes and manual overrides so any
+# of {slug, unhyphenated-slug, lowercase-code, common-name} resolve correctly.
+_CITY_ALIASES: dict[str, str] = {}
+for _code, _slug in _CITY_SLUGS.items():
+    _CITY_ALIASES[_slug] = _code
+    _CITY_ALIASES[_slug.replace("-", "")] = _code
+    _CITY_ALIASES[_code.lower()] = _code
+_CITY_ALIASES.update(_CITY_OVERRIDES)
 
 _ADDRESS_STOP_WORDS = frozenset(
     {
@@ -91,9 +158,9 @@ def to_batdongsan_city_code(user_city: str | None) -> str | None:
     if not user_city:
         return None
     raw = user_city.strip()
-    # Already a 2-3 letter uppercase code?
-    if re.fullmatch(r"[A-Z]{2,3}", raw):
-        return raw
+    # Accept any known city code case-insensitively.
+    if raw.upper() in _CITY_CODES:
+        return raw.upper()
 
     normalized = _to_slug(raw)
     if normalized in _CITY_ALIASES:
@@ -304,6 +371,21 @@ def _source_detail_url(raw: dict[str, Any]) -> str | None:
     return raw.get("detail_url") or raw.get("url") or raw.get("link")
 
 
+def _image_key(raw: dict[str, Any]) -> str | None:
+    """Return a comparable key for an image based on its URL.
+
+    Uses a truncated SHA-256 so the same image across sources matches even when
+    query parameters differ; ``None`` when no image is present.
+    """
+    url = raw.get("thumbnail_url") or raw.get("image_url") or raw.get("image")
+    if not url:
+        return None
+    # Normalize protocol, trailing path noise and query params.
+    text = re.sub(r"^https?://", "", str(url).strip().lower())
+    text = text.split("?")[0]
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
 def make_canonical_id(source_ids: dict[str, Any]) -> str:
     """Stable canonical id from sorted source key/values."""
     payload = json.dumps(
@@ -364,6 +446,7 @@ def normalize_listing(source: str, raw: dict[str, Any]) -> VnBdsAggregatedListin
         contact=contact,
         phone_key=phone_key,
         address_key=address_key,
+        image_key=_image_key(raw),
         thumbnail_url=raw.get("thumbnail_url") or raw.get("image_url"),
         detail_urls=detail_urls,
         sources=[source],
