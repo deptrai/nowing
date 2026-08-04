@@ -2,12 +2,12 @@
 baseline_commit: e3de8a948
 baseline_branch: develop
 story_key: 4-8c-production-query-sampler
-status: ready-for-dev
+status: done
 ---
 
 # Story 4.8c: Production query sampler + anonymizer
 
-**Status:** ready-for-dev  
+**Status:** done  
 **Epic:** 4 — Chat & Agents  
 **Priority:** HIGH  
 **Requirements:** FR-42, NFR-10  
@@ -62,25 +62,25 @@ So that the `chat/regression` benchmark can run against realistic queries withou
 
 ### Backend or standalone script
 
-- [ ] Decide location: `nowing_backend/app/admin/chat_query_sampler.py` (library) + `scripts/sample_chat_queries.py` (CLI), or a new `/admin/chat-query-sampler` endpoint.
-- [ ] Query `NewChatMessage` for `role='user'`, `created_at` within the last N days, limit M, random sample or stratified by tag.
-- [ ] Join `NewChatThread` to get `search_space_id`, `workspace_id`, and `mentioned_document_ids`.
-- [ ] Join `AgentActionLog` or tool-call records to infer `deep-research` / `multi-tool` tags.
-- [ ] Implement regex PII redaction.
-- [ ] Hash workspace name with a stable salt (env var `QUERY_SAMPLER_SALT`).
-- [ ] Write JSONL with fields: `case_id`, `query`, `tags`, `mentioned_document_ids`, `disabled_tools`, `workspace_id_hash`.
+- [x] Decide location: `nowing_backend/app/admin/chat_query_sampler.py` (library) + `scripts/sample_chat_queries.py` (CLI).
+- [x] Query `NewChatMessage` for `role='user'`, `created_at` within the last N days, limit M, ordered by `func.random()`.
+- [x] Join `NewChatThread` to get `workspace_id`. `search_space_id` is not a column on `NewChatThread`; `mentioned_document_ids` are inferred from `AgentActionLog` tool-call `args` where present.
+- [x] Join `AgentActionLog` to infer `deep-research` / `multi-tool` / `document` tags.
+- [x] Implement regex PII redaction.
+- [x] Hash workspace name with a stable salt (env var `QUERY_SAMPLER_SALT`).
+- [x] Write JSONL with fields: `case_id`, `query`, `tags`, `mentioned_document_ids`, `disabled_tools`, `workspace_id_hash`.
 
 ### Tests
 
-- [ ] Unit tests for redaction regex on synthetic PII.
-- [ ] Unit tests for tag heuristics on a small labeled corpus.
-- [ ] Integration test against a seeded DB in `tests/integration/admin/` or `tests/integration/chat/`.
+- [x] Unit tests for redaction regex on synthetic PII.
+- [x] Unit tests for tag heuristics on a small labeled corpus.
+- [x] Integration test in `tests/integration/admin/test_chat_query_sampler.py` against a seeded DB.
 
 ### Privacy & ops
 
-- [ ] Document required DB permissions (read-replica / backup).
-- [ ] Add `--dry-run` and `--max-queries` flags.
-- [ ] Update `.env.example` with `QUERY_SAMPLER_SALT`.
+- [x] CLI warns when not using a local DB; docstring mentions read-replica / sanitized backup.
+- [x] Add `--dry-run` and `--max-queries` flags.
+- [x] Update `.env.example` with `QUERY_SAMPLER_SALT` and `QUERY_SAMPLER_PAT`.
 
 ## Verification
 

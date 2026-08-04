@@ -855,7 +855,7 @@ _FR-42 · NFR-10 · SCP sprint-change-proposal-2026-08-04-chat-response-benchmar
 |---|---|---|
 | **4.8a** | Extend `NewChatClient` telemetry (token/cost, TTFB, turn id, message ids) | done |
 | **4.8b** | `chat/regression` benchmark suite (ingest, run, report, gate) | done |
-| **4.8c** | Production query sampler + PII anonymizer | ready-for-dev |
+| **4.8c** | Production query sampler + PII anonymizer | done |
 | **4.8d** | `chat/quality` LLM-as-judge benchmark | ready-for-dev |
 | **4.8e** | CI / deploy gate integration | ready-for-dev |
 

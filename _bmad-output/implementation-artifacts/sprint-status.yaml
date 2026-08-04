@@ -77,7 +77,7 @@ development_status:
   4-7: ready-for-dev
   4-8a: done
   4-8b: done
-  4-8c: ready-for-dev
+  4-8c: done  # production query sampler + anonymizer implemented and verified
   4-8d: ready-for-dev
   4-8e: ready-for-dev
   4-8f: in-progress  # operational metrics done; multi-turn + stress + chainlens latency remaining
