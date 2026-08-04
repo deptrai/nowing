@@ -52,3 +52,8 @@ async def test_executor_catches_exceptions_as_degraded():
     assert output.degraded is True
     assert output.degradation_reasons == ["api_error"]
     assert output.total_items == 0
+
+
+def test_input_rejects_duplicate_sources():
+    with pytest.raises(ValueError, match="unique"):
+        VnBdsAggregateInput(sources=["batdongsan", "batdongsan"], city="Hà Nội")

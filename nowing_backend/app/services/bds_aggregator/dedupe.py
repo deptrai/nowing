@@ -173,48 +173,54 @@ def merge_group(listings: list[VnBdsAggregatedListing]) -> VnBdsAggregatedListin
     return merged
 
 
-class _DedupeGroup:
-    """A set of listings considered the same canonical property."""
-
-    def __init__(self, listing: VnBdsAggregatedListing) -> None:
-        self.listings: list[VnBdsAggregatedListing] = [listing]
-        self._phone: set[str] = set()
-        self._address: set[str] = set()
-        self._image: set[str] = set()
-        self._add(listing)
-
-    def _add(self, listing: VnBdsAggregatedListing) -> None:
-        if listing.phone_key:
-            self._phone.add(listing.phone_key)
-        if listing.address_key:
-            self._address.add(listing.address_key)
-        if listing.image_key:
-            self._image.add(listing.image_key)
-
-    def matches(self, listing: VnBdsAggregatedListing) -> bool:
-        return (
-            (listing.phone_key and listing.phone_key in self._phone)
-            or (listing.address_key and listing.address_key in self._address)
-            or (listing.image_key and listing.image_key in self._image)
-        )
-
-    def append(self, listing: VnBdsAggregatedListing) -> None:
-        self.listings.append(listing)
-        self._add(listing)
-
-
 def deduplicate(listings: list[VnBdsAggregatedListing]) -> list[VnBdsAggregatedListing]:
-    """Group and merge listings by phone, address, or image hash."""
-    groups: list[_DedupeGroup] = []
-    for listing in listings:
-        matched: _DedupeGroup | None = None
-        for group in groups:
-            if group.matches(listing):
-                matched = group
-                break
-        if matched is not None:
-            matched.append(listing)
-        else:
-            groups.append(_DedupeGroup(listing))
+    """Group and merge listings by phone, address, or image hash.
 
-    return [merge_group(g.listings) for g in groups]
+    Uses a union-find structure so that transitive matches are merged into a
+    single canonical group (e.g. A matches B by phone, B matches C by address,
+    therefore A, B and C are the same listing).
+    """
+    if not listings:
+        return []
+
+    parent = list(range(len(listings)))
+
+    def _find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def _union(i: int, j: int) -> None:
+        root_i, root_j = _find(i), _find(j)
+        if root_i != root_j:
+            parent[root_i] = root_j
+
+    # Build an index of keys -> first listing index that has the key.
+    phone_index: dict[str, int] = {}
+    address_index: dict[str, int] = {}
+    image_index: dict[str, int] = {}
+
+    for idx, listing in enumerate(listings):
+        if listing.phone_key:
+            if listing.phone_key in phone_index:
+                _union(idx, phone_index[listing.phone_key])
+            else:
+                phone_index[listing.phone_key] = idx
+        if listing.address_key:
+            if listing.address_key in address_index:
+                _union(idx, address_index[listing.address_key])
+            else:
+                address_index[listing.address_key] = idx
+        if listing.image_key:
+            if listing.image_key in image_index:
+                _union(idx, image_index[listing.image_key])
+            else:
+                image_index[listing.image_key] = idx
+
+    clusters: dict[int, list[VnBdsAggregatedListing]] = {}
+    for idx, listing in enumerate(listings):
+        root = _find(idx)
+        clusters.setdefault(root, []).append(listing)
+
+    return [merge_group(cluster) for cluster in clusters.values()]

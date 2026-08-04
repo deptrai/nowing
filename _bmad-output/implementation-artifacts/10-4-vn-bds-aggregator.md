@@ -2,7 +2,7 @@
 baseline_commit: cca81a7f6d5060ada95766d2fec418375f09fd9a
 baseline_branch: develop
 story_key: 10-4-vn-bds-aggregator
-status: in-progress
+status: done
 ---
 
 # Story 10.4: Vietnam BĐS Listing Aggregator & Cross-Source Trust Score

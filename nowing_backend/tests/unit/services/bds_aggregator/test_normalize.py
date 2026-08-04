@@ -31,6 +31,14 @@ def test_city_code_passes_through_existing_code():
     assert to_batdongsan_city_code("SG") == "SG"
 
 
+def test_city_code_resolves_lowercase_codes_and_provinces():
+    assert to_batdongsan_city_code("bd") == "BD"
+    assert to_batdongsan_city_code("vt") == "VT"
+    assert to_batdongsan_city_code("Bình Dương") == "BD"
+    assert to_batdongsan_city_code("Bà Rịa Vũng Tàu") == "VT"
+    assert to_batdongsan_city_code("Lai Châu") == "LCH"
+
+
 def test_city_code_returns_none_for_unknown():
     assert to_batdongsan_city_code("Atlantis") is None
 
@@ -90,6 +98,8 @@ def test_normalize_listing_maps_fields():
     assert listing.city == "Hà Nội"
     assert listing.phone_key == "901234567"
     assert listing.contact == "0901xxx67"
+    assert listing.image_key is not None
+    assert len(listing.image_key) == 16
     assert listing.source_ids == {"batdongsan": 123}
 
 
