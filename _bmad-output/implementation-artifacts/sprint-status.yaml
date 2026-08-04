@@ -59,10 +59,10 @@ development_status:
   2-9: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress  # 3-9 in-progress, 3-15/3-16 ready-for-dev
+  epic-3: in-progress  # 3-9 done, 3-15/3-16 ready-for-dev
   3-6: done
   3-7: done
-  3-9: in-progress  # story file `stories/story-3-9-memory-recall-eval-gate` ghi in-progress; implementation chưa xong, baseline ratification pending; reconcile 2026-08-04
+  3-9: done  # baseline ratified 2026-08-04; gate.yaml has baseline_ratified=true + baseline_source
   3-10a: done
   3-10b: done
   3-11: done
