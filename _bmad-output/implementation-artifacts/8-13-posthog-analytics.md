@@ -269,3 +269,15 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_e2e_te
 ```
 
 Backend started successfully. Re-ran Playwright with `BACKEND_PORT=8001 NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8001`. The test failed at `auth.setup.ts` with a `500` from `POST /__e2e__/auth/token` because the `nowing_e2e_test` database is missing the `user.notification_preferences` column. Attempting `alembic upgrade head` for that database then failed on migration `affe6fa9686c` because the `scraper_platform_accounts` table already exists (DB is in a partially-applied/inconsistent state). E2E cannot be completed without repairing the E2E database or starting from a freshly migrated schema.
+
+### Playwright MCP E2E smoke
+
+Switched to Playwright MCP browser test (per user intent):
+
+- Start `pnpm exec next dev` on `localhost:3000`.
+- `NEXT_PUBLIC_POSTHOG_KEY=` is empty in `.env.local`.
+- Navigate to `http://localhost:3000/login` via MCP.
+- Check console messages (error + warning).
+- Result: **0 errors, 0 warnings, no console messages containing "posthog" or "analytics"**. Page title loaded as `Nowing - Open-Core Research Memory for AI Agents`.
+
+This validates AC-6 (opt-out/self-host): with no PostHog key, the app loads and the lazy-loaded `posthog-js` in error boundaries does not break the UI or emit PostHog-related console errors.
