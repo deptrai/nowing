@@ -121,7 +121,7 @@ class LlmConfigEntry:
 
 async def _list_global_llm_configs(http: httpx.AsyncClient, base: str) -> list[LlmConfigEntry]:
     response = await http.get(
-        f"{base}/api/v1/model-connections/global",
+        f"{base}/api/v1/global-model-connections",
         headers={"Accept": "application/json"},
     )
     response.raise_for_status()

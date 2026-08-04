@@ -89,9 +89,12 @@ class NewChatClient:
         archived: bool = False,
         visibility: str = "PRIVATE",
     ) -> int:
+        # ponytail: the local backend uses workspace_id in the thread body.
+        # The eval harness treats search_space_id as the workspace id for chat.
         response = await self._http.post(
             f"{self._base}/api/v1/threads",
             json={
+                "workspace_id": search_space_id,
                 "search_space_id": search_space_id,
                 "title": title,
                 "archived": archived,
@@ -139,6 +142,7 @@ class NewChatClient:
 
         body: dict[str, Any] = {
             "chat_id": thread_id,
+            "workspace_id": search_space_id,
             "search_space_id": search_space_id,
             "user_query": user_query,
         }
