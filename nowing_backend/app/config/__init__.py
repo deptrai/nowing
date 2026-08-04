@@ -949,6 +949,11 @@ class Config:
     MUABAN_BDS_RETRY_BACKOFF_BASE_S = float(
         os.getenv("MUABAN_BDS_RETRY_BACKOFF_BASE_S", "1.0")
     )
+    # Multi-source BĐS aggregation charges a flat query fee on top of the
+    # underlying scraper item costs. This covers normalize/dedupe/conflict work.
+    VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY = int(
+        os.getenv("VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY", "5000")
+    )
     # Browser-driven listings make TikTok heavier per item than the API-backed
     # video meter, so it sits a touch above YouTube's video rate.
     TIKTOK_MICROS_PER_VIDEO = int(os.getenv("TIKTOK_MICROS_PER_VIDEO", "3500"))

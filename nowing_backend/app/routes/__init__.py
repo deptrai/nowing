@@ -11,6 +11,7 @@ import app.capabilities.instagram
 import app.capabilities.muaban_bds
 import app.capabilities.reddit
 import app.capabilities.tiktok
+import app.capabilities.vn_bds
 import app.capabilities.web
 import app.capabilities.youtube  # noqa: F401
 from app.automations.api import router as automations_router

@@ -126,8 +126,10 @@ def build_server(settings: Settings) -> tuple[WorkspaceAwareFastMCP, NowingClien
             "communities), YouTube (videos, transcripts, comments), Instagram "
             "(posts, reels, profile details), TikTok (videos by hashtag, "
             "search, or URL), Google Maps (places, reviews), Google Search "
-            "results, ChainLens Research (deep multi-source research with "
-            "cited sources), or reading specific web pages. Scraper results are "
+            "results, Vietnamese real-estate listings (batdongsan, chotot_bds, "
+            "muaban_bds, and cross-source aggregate), ChainLens Research (deep "
+            "multi-source research with cited sources), or reading specific web "
+            "pages. Scraper results are "
             "persisted as runs; if an inline result is truncated, fetch it in "
             "full with nowing_get_scraper_run."
         ),

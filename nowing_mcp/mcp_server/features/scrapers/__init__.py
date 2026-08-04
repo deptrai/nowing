@@ -22,6 +22,7 @@ from .platforms import (
     instagram,
     reddit,
     tiktok,
+    vn_bds,
     web,
     youtube,
 )
@@ -38,6 +39,7 @@ _REGISTRARS = (
     chainlens,
     batdongsan,
     run_history,
+    vn_bds,
 )
 
 
