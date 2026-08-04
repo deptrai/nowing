@@ -227,3 +227,34 @@ The remaining work is to make the existing integration **privacy-safe, productio
 - `global-error.tsx` lazy-load pattern matches `error.tsx` and `dashboard/error.tsx`; `.catch(() => {})` on the same promise chain covers both import and `captureException` failures.
 - `connector_title` removal is a type-only cleanup; `grep` confirms zero in-repo consumers. Historical PostHog payloads did not include `connector_title` because `trackConnectorEvent` already excluded it.
 - One subagent run referenced a non-existent `.patch` path and reviewed full source files; those findings were scoped as pre-existing and not introduced by this diff.
+
+---
+
+## Test Review Findings
+
+**Date:** 2026-08-04
+**Review type:** bmad-testarch-test-review
+**Scope:** `nowing_web/app/global-error.tsx`, `nowing_web/lib/connector-telemetry.ts`
+**Reviewer:** manual / context-engine assisted
+
+### Tests reviewed
+
+- `nowing_web/lib/posthog/events.selfcheck.ts` — unit-style selfcheck that asserts `trackConnectorEvent` payload does **not** contain `connector_title` and does contain `connector_type`, `connector_group`, `is_oauth`.
+- `nowing_web/tests/posthog-privacy-smoke.spec.ts` — Playwright E2E that loads `/dashboard` and verifies no PostHog/analytics console errors when the key is missing or ad-blocked.
+- `nowing_web/tests/posthog-api-smoke.spec.ts` — Playwright E2E that exercises workspace create/list via backend API.
+
+### Verdict
+
+✅ **Adequate for this diff.** No new tests required.
+
+- `connector_title` removal from `ConnectorTelemetryMeta` is a type-only cleanup that does not change the `trackConnectorEvent` payload; `events.selfcheck.ts` already covers the payload shape.
+- `global-error.tsx` lazy-load change is consistent with the existing `error.tsx` and `dashboard/error.tsx` pattern and does not change user-facing behavior. A dedicated E2E for the global error boundary is possible but not cost-effective for a 5-line lazy-load fix.
+
+### E2E execution attempt
+
+```bash
+cd nowing_web
+pnpm test:e2e -- posthog-privacy-smoke.spec.ts --project=chromium
+```
+
+Result: **ABORTED at setup** — the frontend dev server started successfully, but `auth.setup.ts` failed because `http://localhost:8000/auth/desktop/login` returned `404` from an nginx backend (backend dev server is not running). The E2E suite cannot complete without the backend stack. To run E2E locally, start `nowing_backend/tests/e2e/run_backend.py` or a dev backend on port 8000 first.
