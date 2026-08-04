@@ -27,6 +27,7 @@ import asyncio
 import logging
 import os
 import sys
+from typing import Any
 
 import uvicorn
 
@@ -268,6 +269,30 @@ def _patch_llm_bindings() -> None:
             logger.info("[fake-chat-llm] patched %s", target)
         except (ModuleNotFoundError, AttributeError) as exc:
             logger.warning("[fake-chat-llm] could not patch %s: %s.", target, exc)
+
+    # Story 9.1a: the streaming chat path does not use the factory functions
+    # above; it instantiates a SanitizedChatLiteLLM directly via load_llm_bundle.
+    # Replace every imported reference to load_llm_bundle with a wrapper that
+    # returns the fake chat LLM while preserving the resolved AgentConfig.
+    try:
+        import app.tasks.chat.streaming.flows.shared.llm_bundle as _llm_bundle
+        from tests.e2e.fakes.chat_llm import FakeChatLLM
+
+        _original_load_llm_bundle = _llm_bundle.load_llm_bundle
+
+        async def _fake_load_llm_bundle(*args: Any, **kwargs: Any) -> Any:
+            _, agent_config, err = await _original_load_llm_bundle(*args, **kwargs)
+            if err:
+                return None, None, err
+            return FakeChatLLM(), agent_config, None
+
+        for _mod in list(sys.modules.values()):
+            if getattr(_mod, "load_llm_bundle", None) is _original_load_llm_bundle:
+                _mod.load_llm_bundle = _fake_load_llm_bundle
+        _llm_bundle.load_llm_bundle = _fake_load_llm_bundle
+        logger.info("[fake-chat-llm] wrapped load_llm_bundle for streaming")
+    except Exception as exc:
+        logger.warning("[fake-chat-llm] could not wrap load_llm_bundle: %s.", exc)
 
 
 def _install_runtime_fakes() -> None:

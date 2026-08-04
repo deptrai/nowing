@@ -27,6 +27,17 @@ async def fake_research_executor(payload: ResearchInput) -> ResearchOutput:
         payload.sources,
         len(payload.history),
     )
+    if (
+        "E2E_ENGINE_UNAVAILABLE" in payload.query
+        or "E2E deep research" in payload.query
+    ):
+        return ResearchOutput(
+            answer="",
+            sources=[],
+            status="engine_unavailable",
+            degradation_reason="not_configured",
+            next_action="Set CHAINLENS_API_KEY to enable deep research.",
+        )
     return ResearchOutput(
         answer=f"This is an E2E fake research answer for: {payload.query}",
         sources=[
