@@ -39,6 +39,7 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
     {"name": "nowing_tiktok_scrape", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_tiktok_trending", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_tiktok_user_search", "group": McpToolGroup.SCRAPER},
+    {"name": "nowing_vn_bds_aggregate", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_web_crawl", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_youtube_comments", "group": McpToolGroup.SCRAPER},
     {"name": "nowing_youtube_scrape", "group": McpToolGroup.SCRAPER},

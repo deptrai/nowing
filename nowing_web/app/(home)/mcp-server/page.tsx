@@ -16,7 +16,7 @@ import type { FaqItem } from "@/lib/connectors-marketing/types";
 const canonicalUrl = "https://www.nowing.com/mcp-server";
 
 const metaDescription =
-	"The Nowing MCP server gives Claude, Cursor, and any MCP client native tools for your workspace: scrape Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search, and the web, plus full knowledge base access. One API key.";
+	"The Nowing MCP server gives Claude, Cursor, and any MCP client native tools for your workspace: scrape Reddit, YouTube, Instagram, TikTok, Amazon, Google Maps, Google Search, Vietnamese real estate, and the web, plus full knowledge base access. One API key.";
 
 export const metadata: Metadata = {
 	title: "Nowing MCP Server: Scraper APIs and Knowledge Base as Agent Tools",
@@ -104,6 +104,9 @@ const TOOL_GROUPS = [
 			"nowing_google_search",
 			"nowing_amazon_scrape",
 			"nowing_batdongsan_scrape",
+			"nowing_chotot_bds_scrape",
+			"nowing_muaban_bds_scrape",
+			"nowing_vn_bds_aggregate",
 			"nowing_web_crawl",
 			"nowing_list_scraper_runs",
 			"nowing_get_scraper_run",

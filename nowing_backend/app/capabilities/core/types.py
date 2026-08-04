@@ -35,6 +35,7 @@ class BillingUnit(StrEnum):
     BATDONGSAN_ITEM = "batdongsan_item"
     CHOTOT_BDS_ITEM = "chotot_bds_item"
     MUABAN_BDS_ITEM = "muaban_bds_item"
+    VN_BDS_AGGREGATE_QUERY = "vn_bds_aggregate_query"
 
 
 class BillableInput(Protocol):
