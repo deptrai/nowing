@@ -99,7 +99,7 @@ KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(m�
 > **🆕 2026-07-25 (readiness Nhóm 3):** hai story mới, cả hai đều là **gap trước đây không có FR lẫn epic**. **3.13** — `MemoryExtractionService` chỉ có `extract_from_turn` và workspace mới không seed gì ⇒ `nowing_recall` session đầu **rỗng theo cấu trúc**, **M1 (first-run value ≤15 phút) không tồn tại**. **3.14** — `MemoryInjectionMiddleware` **chặn mọi lượt chat** với `SELECT` không LIMIT, bỏ qua cả HNSW + GIN index đã có sẵn ⇒ chi phí mỗi lượt tăng tuyến tính theo mức dùng. **3.14 nên chạy trước khi chốt số SM-10 của 3.9.**
 
 ### Epic 4: Chat & Agents — 🔄 IN-PROGRESS
-Multi-agent runtime + memory tools + research continuity. **FRs:** FR-14,15,16,17,42 (+4.5, 4.6). **Open:** 4.7 pointer-based tabs `[ready-for-dev]`, 4.8a chat telemetry `[review]`, 4.8b chat regression suite `[review]`, 4.8c/8d/8e `[ready-for-dev]`.
+Multi-agent runtime + memory tools + research continuity. **FRs:** FR-14,15,16,17,42 (+4.5, 4.6). **Open:** 4.7 pointer-based tabs `[ready-for-dev]`, 4.8a chat telemetry `[done]`, 4.8b chat regression suite `[done]`, 4.8c/8d/8e `[ready-for-dev]`, 4.8f benchmark stability `[ready-for-dev]`, 4.8g mode/tier matrix + local/prod `[ready-for-dev]`.
 
 ### Epic 5: Deliverables — ✅ DONE
 Report/podcast/video/image. **FRs:** FR-21,22,23.
