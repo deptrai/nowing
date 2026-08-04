@@ -1,4 +1,3 @@
-// auto-deploy webhook trigger
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { RootProvider } from "fumadocs-ui/provider/next";
