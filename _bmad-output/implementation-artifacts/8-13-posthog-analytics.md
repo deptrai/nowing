@@ -2,7 +2,7 @@
 baseline_commit: 25ba542c2a3dec95b0a4020da8c129242ba748e2
 baseline_branch: develop
 story_key: 8-13-posthog-analytics
-status: in-progress
+status: done
 ---
 
 # Story 8.13: PostHog Product Analytics
