@@ -104,10 +104,13 @@ Multi-agent runtime + memory tools + research continuity. **FRs:** FR-14,15,16,1
 ### Epic 5: Deliverables — ✅ DONE
 Report/podcast/video/image. **FRs:** FR-21,22,23.
 
-### Epic 6: Automations — ✅ CORE DONE (3 gap mới: playbook layer)
-Schedule/event/**memory_change** trigger + `agent_task`/`continue_research`/**write_back_notion|slack|linear|jira** action. **FRs:** FR-19, FR-20, **FR-18**, **FR-35**. **Open:** 6.6/6.7/6.8 (playbook templates + schema-driven UI + library) — **gated sau pilot BĐS**.
+### Epic 6: Automations — ✅ CORE DONE (4 gap mới: playbook layer)
+Schedule/event/**memory_change** trigger + `agent_task`/`continue_research`/**write_back_notion|slack|linear|jira** action. **FRs:** FR-19, FR-20, **FR-18**, **FR-35**. **Open:** 6.6/6.7/6.9/6.10 (playbook reuse + schema-driven UI + workspace vertical + library) — **gated sau pilot BĐS**.
 > **⚠️ Cải chính 2026-07-25:** header trước ghi *"DONE (2 gap)"* với 6.4 `[GAP]` và 6.5 `[GAP, post-MVP]` — **cả hai đều đã DONE** (verify code; xem Story 6.4/6.5).
-> **➕ Bổ sung 2026-08-05 (pivot bdsai):** core automation đã đủ, nhưng thiếu **lớp playbook** — user hiện phải mô tả lại `intent` mỗi lần, không dùng được cho nghiệp vụ vertical lặp lại. Thêm Story **6.6** (playbook có tham số), **6.7** (schema-driven form UI, giải một lần cho mọi tool/vertical), **6.8** (playbook library theo vertical). Cả ba **KHÔNG build trước pilot 2 tuần**.
+> **➕ Bổ sung 2026-08-05 (pivot bdsai):** core automation đã đủ, nhưng thiếu **lớp playbook** — user hiện phải mô tả lại `intent` mỗi lần, không dùng được cho nghiệp vụ vertical lặp lại.
+> **⚠️ Cải chính kiến trúc 2026-08-05 (architect review — Winston).** Bản đầu của 6.6 ghi *"thêm parameterization"* — **SAI**: `AutomationDefinition.inputs` + `Inputs.schema_` (JSON Schema 2020-12) + `PlanStep.params` render-at-execute + Jinja sandboxed `{run, inputs, steps}` **đã tồn tại** ⇒ automation vốn đã là template có tham số. 6.6 đổi thành **"expose cơ chế đã có"** (phạm vi nhỏ hơn nhiều), **cấm thêm lớp params thứ hai**. Thêm **6.9 (workspace `vertical`)** vì khái niệm này chưa tồn tại và nó **chặn** library; story library đổi số thành **6.10**. Bổ sung vào 6.7: **`x-ui` hints** (giữ một renderer, vẫn bản địa hoá được) và **validate output LLM bằng schema** trước khi lưu.
+> **ADR cần chốt:** *tool = code (subagent builtin) · nghiệp vụ = data (playbook definition)* — hiện có hai đường mở rộng song song (`registry.py` import tĩnh vs automation JSON); không chốt sẽ dẫn tới nghiệp vụ nửa code nửa data.
+> Cả bốn story **KHÔNG build trước pilot 2 tuần**.
 
 ### Epic 7: Multi-surface Clients — ✅ DONE
 Web/desktop/extension/Obsidian/MCP. **FRs:** FR-25,26,27,28,29. **Open:** 7.4 dedicated connectors layout `[ready-for-dev]`.
@@ -394,46 +397,63 @@ So that workflow nghiên cứu chạy liên tục không cần prompt tay.
 **Given** automation có trigger `memory_change` hoặc schedule, **When** memory mới match query/tags **OR** cron đến hạn, **Then** `AutomationRun` chạy với `research_thread_id` + memory context; action `continue_research`/`agent_task` write-back kết quả.
 _FR-35 · AD-DEFER-6._
 
-### Story 6.6: Playbook Templates — Automation có tham số  `[GAP — P1, gated sau pilot BĐS]`
+### Story 6.6: Playbook Reuse — expose `inputs.schema` đã có  `[GAP — P1, gated sau pilot BĐS]`
 
-> **Bối cảnh 2026-08-05.** Automation hiện là **instance**: mỗi nghiệp vụ phải mô tả lại `intent` từ đầu. Với vertical (môi giới BĐS), nghiệp vụ dài và lặp (khu vực + giá + loại + nguồn + tần suất verify) ⇒ user không thể prompt lại mỗi lần. Playbook = **automation template + params schema**, user chỉ điền biến.
+> **⚠️ Cải chính kiến trúc 2026-08-05 (Winston / architect review).** Bản đầu của story này viết *"thêm parameterization + `params_model` cho playbook"* — **SAI hiện trạng**. Verify code: `AutomationDefinition.inputs: Inputs | None` **đã tồn tại** và `Inputs.schema_` chính là *"JSON Schema (draft 2020-12) for accepted inputs"* (`schemas/definition/inputs.py`); `PlanStep.params` *"rendered at execute time"* (`plan_step.py:21-23`); `build_run_context()` expose namespace `{run, inputs, steps}` cho Jinja **sandboxed** (`templating/context.py:39`, `environment.py` — `SandboxedEnvironment` + `StrictUndefined`).
+> ⇒ **Automation ĐÃ là template có tham số.** Story này KHÔNG xây cơ chế mới, mà **expose cơ chế đã có** thành playbook tái dùng được. **Tuyệt đối không thêm lớp params thứ hai** (sẽ tạo hai đường render — nợ kiến trúc tệ nhất).
 
 As a workspace user (môi giới BĐS),
-I want lưu một nghiệp vụ thành playbook có tham số và chạy lại bằng cách điền biến,
+I want lưu một nghiệp vụ thành playbook tái dùng và chạy lại bằng cách điền biến,
 So that tôi không phải mô tả lại toàn bộ yêu cầu nghiệp vụ mỗi lần.
 
 **Acceptance Criteria:**
-**Given** một automation đã chạy đúng, **When** user lưu nó thành playbook, **Then** hệ thống tách phần cố định (nghiệp vụ/steps) khỏi phần biến (params) và lưu `params_model` cho playbook đó.
-**And** **Given** một playbook, **When** user tạo instance mới với bộ params khác, **Then** automation mới sinh ra không cần viết lại `intent`, và audit ghi rõ nó dẫn xuất từ playbook nào.
-**And** playbook scoped **per-workspace** (không rò rỉ giữa workspace), và khai **tool-scoping**: chỉ những subagent/tool playbook cần được phép gọi (giảm cost + tăng ổn định so với để agent tự chọn trong toàn bộ registry).
-_Nền tảng đã có: `ActionDefinition.params_model` + `params_schema` (JSON Schema draft 2020-12, `actions/types.py`) · `all_actions()` registry (`actions/store.py`) · `app/automations/templating` · `WorkspaceMcpToolSetting` (tiền lệ toggle per-workspace)._
-_⚠️ Gate: KHÔNG build trước khi pilot BĐS 2 tuần cho tín hiệu retention — playbook nào thắng mới template hoá (xem `vision-lock-and-this-week-2026-08-04.md`)._
+**Given** một `AutomationDefinition` đã chạy đúng, **When** user lưu nó thành playbook, **Then** hệ thống lưu definition đó làm template và **dùng chính `inputs.schema` sẵn có** làm hợp đồng tham số (KHÔNG sinh model params song song).
+**And** **Given** một playbook, **When** user tạo instance mới với bộ inputs khác, **Then** automation mới sinh ra không cần viết lại `intent`, inputs được **validate theo `inputs.schema`** trước khi lưu, và audit ghi rõ `derived_from_playbook_id`.
+**And** **Given** playbook được sửa sau khi đã có instance, **When** template đổi, **Then** hành vi versioning là tường minh: instance đang chạy **pin theo version cũ**, không bị đổi ngầm (tránh drift âm thầm).
+**And** playbook có **ownership rõ ràng**: `workspace` (user tạo) vs `system` (Nowing ship sẵn) — không rò rỉ giữa workspace.
+**And** playbook khai **tool-scoping**: chỉ subagent/tool cần thiết được phép gọi (giảm cost + tăng ổn định vs để agent tự chọn trong toàn bộ registry).
+_Nền tảng đã có (dùng lại, không xây mới): `AutomationDefinition.inputs` + `Inputs.schema_` · `PlanStep.params` render-at-execute · `templating/` (Jinja sandboxed, `{run, inputs, steps}`) · `ActionDefinition.params_schema` (`actions/types.py`) · `all_actions()` (`actions/store.py`) · `WorkspaceMcpToolSetting` (tiền lệ scope per-workspace)._
+_⚠️ Gate: KHÔNG build trước khi pilot BĐS 2 tuần cho tín hiệu retention — chưa biết `inputs.schema` cần field nào cho môi giới thì chưa build (xem `vision-lock-and-this-week-2026-08-04.md`)._
 
 ### Story 6.7: Schema-Driven Form UI cho playbook & action  `[GAP — P1, dep: 6.6]`
 
 > **Vấn đề UX cần giải một lần cho mọi vertical.** Nowing có ~17 subagent builtin + MCP tools, và sẽ thêm nữa (xe, thiết bị B2B, tuyển dụng). Nếu mỗi tool phải code UI riêng → nợ UI tăng theo số tool.
+> **Điểm mạnh kiến trúc:** cả `ActionDefinition.params_schema` (action) và `AutomationDefinition.inputs.schema` (playbook) đều là **JSON Schema draft 2020-12** ⇒ **một renderer dùng được cho cả hai**.
 
 As a workspace user,
 I want thao tác nghiệp vụ bằng form/filter thay vì viết prompt dài,
 So that tôi dùng được mọi tool mà không cần học prompt, và tool mới có UI ngay.
 
 **Acceptance Criteria:**
-**Given** một action/playbook có `params_schema`, **When** UI render nó, **Then** form được **tự sinh từ JSON Schema** (không hard-code UI cho từng tool) — thêm tool mới = thêm schema, **không thêm UI**.
-**And** **Given** user gõ yêu cầu tự nhiên (web hoặc Zalo/Telegram bot), **When** hệ thống parse, **Then** nó chọn action + điền params theo schema và **hiện form/xác nhận gọn để user sửa** trước khi lưu (chat → parse → confirm).
+**Given** một action/playbook có JSON Schema (`params_schema` hoặc `inputs.schema`), **When** UI render nó, **Then** form được **tự sinh từ schema** (không hard-code UI cho từng tool) — thêm tool mới = thêm schema, **không thêm UI**.
+**And** **Given** schema cần trải nghiệm bản địa (chọn quận, khoảng giá VNĐ, nhãn tiếng Việt), **When** render, **Then** renderer đọc **`x-ui` hints trong schema** (widget · label · options · đơn vị) để tùy biến — **giữ một renderer duy nhất**, không fork UI theo tool. *(Không có lớp hint này thì dự án sẽ bị kéo về hard-code UI từng tool — đúng thứ story muốn tránh.)*
+**And** **Given** user gõ yêu cầu tự nhiên (web hoặc Zalo/Telegram bot), **When** LLM parse thành inputs, **Then** inputs **BẮT BUỘC validate lại bằng schema (Pydantic) trước khi lưu** — không tin trực tiếp output LLM — rồi hiện form/xác nhận gọn để user sửa (chat → parse → **validate** → confirm).
 **And** **Given** một nghiệp vụ tần suất cao (Deal-Radar BĐS), **When** cần trải nghiệm tối ưu, **Then** cho phép override bằng filter UI chuyên biệt + nút **"Lưu tìm kiếm này thành cảnh báo"** (tái dùng thói quen filter sẵn có của môi giới, không bắt học prompt).
 **And** danh sách tool KHÔNG phơi ra dạng menu kỹ thuật: gom theo vertical + ẩn sau tên nghiệp vụ người dùng hiểu.
-_Nền tảng: `params_schema` tự sinh sẵn từ Pydantic ⇒ chỉ cần renderer phía FE._
 _⚠️ Gate: dep 6.6; và chỉ build sau pilot xanh._
 
-### Story 6.8: Playbook Library theo vertical  `[GAP — P2, dep: 6.6, 6.7]`
+### Story 6.9: Workspace `vertical` — tiền đề cho playbook library  `[GAP — P2, dep: none — chặn 6.10]`
+
+> **Phát hiện từ architect review:** khái niệm `vertical` **chưa tồn tại** trong schema. Không có nó thì không thể "gom playbook theo ngành".
+
+As a platform operator,
+I want mỗi workspace khai báo vertical của nó,
+So that playbook, tool và UI có thể lọc theo ngành thay vì phơi tất cả cho mọi user.
+
+**Acceptance Criteria:**
+**Given** một workspace, **When** tạo hoặc cập nhật, **Then** nó có thuộc tính `vertical` (ví dụ `real_estate` · `auto` · `b2b_equipment` · `general`), mặc định `general` để backward-compatible.
+**And** **Given** một playbook/tool khai `verticals[]`, **When** user duyệt, **Then** chỉ thấy item khớp vertical của workspace (hoặc `general`).
+_ADR cần chốt kèm: **tool = code (subagent builtin), nghiệp vụ = data (playbook definition)** — tránh tình trạng nghiệp vụ nửa nằm ở `registry.py` nửa nằm ở JSON._
+
+### Story 6.10: Playbook Library theo vertical  `[GAP — P2, dep: 6.6, 6.7, 6.9]`
 
 As a workspace user,
 I want chọn playbook làm sẵn theo ngành của tôi rồi điền biến,
 So that tôi bắt đầu ngay mà không phải tự thiết kế nghiệp vụ.
 
 **Acceptance Criteria:**
-**Given** workspace thuộc một vertical (BĐS / xe / thiết bị B2B), **When** user mở thư viện playbook, **Then** chỉ thấy playbook của vertical đó (BĐS: Deal-Radar · Verify tin đa nguồn · Tìm khách khớp · Viết mô tả tin).
-**And** **Given** vertical mới cần mở, **When** thêm playbook, **Then** chỉ cần khai **config/schema** (không sửa code UI) — đúng điều kiện `G6` của lộ trình nhân bản vertical.
+**Given** workspace có `vertical` (6.9), **When** user mở thư viện playbook, **Then** chỉ thấy playbook của vertical đó (BĐS: Deal-Radar · Verify tin đa nguồn · Tìm khách khớp · Viết mô tả tin).
+**And** **Given** vertical mới cần mở, **When** thêm playbook, **Then** chỉ cần khai **definition + schema (data)**, không sửa code UI và không thêm subagent — đúng điều kiện `G6` của lộ trình nhân bản vertical.
 _Tham chiếu: `vertical-expansion-roadmap-2026-08-04.md` (G6: mở vertical mới bằng config, ≤2-4 tuần)._
 
 ---
