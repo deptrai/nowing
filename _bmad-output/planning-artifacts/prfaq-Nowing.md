@@ -2,7 +2,7 @@
 title: "PRFAQ: Nowing"
 status: "complete"
 created: "2026-07-24"
-updated: "2026-07-24"
+updated: "2026-08-04"
 stage: 5
 inputs:
   - "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-22-vision-pivot.md"
@@ -48,7 +48,7 @@ Với Nowing, phát hiện được ghi nhớ ngay khi xuất hiện: một fact
 A: Trung thực: nếu bạn chỉ cần nhớ *hội thoại/agent state* thuần, Mem0 gọn hơn — dùng nó. Nowing khác ở chỗ memory **gắn liền nguồn (citation)** và **gồm cả live-data connectors + deliverables trong cùng một nơi**. Bạn *có thể* tự ghép Mem0 + connectors, nhưng khi đó bạn tự gánh: schema memory có provenance, hybrid search, correction/version, và giữ đám connector không vỡ. Nowing đóng gói sẵn. Ranh giới: **memory của bạn là "nghiên cứu có nguồn" → Nowing; memory là "chat/prefs" → incumbent.** (Đây là câu differentiator — phải chứng minh bằng demo, không chỉ tuyên bố.)
 
 ### Q2. Press release nói agent "tự nhớ, liên kết, sửa". Hôm nay bản mã nguồn mở làm được tới đâu — hay đó là roadmap?
-A: Chỗ này mình trung thực nhất. **Đã build & đang chạy:** connectors, hybrid KB search, citations, MCP server, automations. **Đang xây cho MVP:** 4 MCP memory tools + save/recall/correct **semantic facts**. **Post-MVP (chưa có):** auto-extract mọi lượt chat, relation-graph phong phú, decay/TTL. Nói thẳng: hôm nay "trí nhớ" là lời hứa đang thành hình, phần *khác biệt* (live-data + citations) mới là cái đã thật. → **Quyết định trade-off:** 4 tool + facts save/recall/correct = **launch blocker**; auto-extract + relations = **fast-follow**; decay/contradiction = **accepted (post-MVP)**.
+A: Chỗ này mình trung thực nhất. **Đã build & đang chạy:** connectors, hybrid KB search, citations, MCP server, 4 MCP memory tools (`remember/recall/continue_research/update_fact`), automations, credit wallet. **Đang xây cho MVP:** eval gate recall (story `3-9`, in-progress) + migration path từ markdown-memory cũ. **Post-MVP (chưa có):** auto-extract mọi lượt chat, relation-graph phong phú, decay/TTL. Nói thẳng: phần *khác biệt* (live-data + citations) đã thật; "trí nhớ" core đã chạy nhưng chưa đóng cổng chất lượng. → **Quyết định trade-off:** 4 tool + facts save/recall/correct = **done**; eval-gated recall + migration = **launch blocker**; auto-extract + relations = **fast-follow**; decay/contradiction = **accepted (post-MVP)**.
 
 ### Q3. Tôi đang dùng CLAUDE.md / files + RAG tự dựng để giữ context. Vì sao phải đổi?
 A: Nếu context của bạn nhỏ, tĩnh, một người → đừng đổi, files ổn. Nowing đáng đổi khi: context lớn/động, nhiều nguồn (web + nội bộ), cần provenance, hoặc nhiều người/agent dùng chung. Giá trị cụ thể: `recall` trả **top_k nhỏ đã rank** thay vì nhồi cả file → tiết kiệm token và giảm nhiễu. → **Accepted trade-off:** Nowing *không* nhắm người dùng solo/context nhỏ (khớp danh sách non-users).
@@ -63,7 +63,7 @@ A: Câu khó và đúng. Đây *là* pivot thứ 2 → rủi ro niềm tin có t
 A: Chạy với bất kỳ client nói **MCP** (Claude Desktop/Code, Cursor, OpenCode…). Client chưa hỗ trợ MCP → dùng **REST API**, hoặc giao diện web/desktop/extension/Obsidian. Trung thực: trải nghiệm "agent tự nhớ" tỏa sáng nhất qua MCP; ngoài MCP thì thao tác thủ công hơn.
 
 ### Q7. Cloud pay-as-you-go tính theo gì? Auto-extract mỗi lượt chat có làm hoá đơn phình ra không?
-A: Tính theo token LLM + embedding + lưu trữ. Và đúng — **auto-extract mỗi lượt = chi phí LLM cộng thêm mỗi lượt**, có thể phình. → **Requirements signal:** auto-extract nên **bật theo workspace + có ngân sách**, không mặc định bật toàn bộ; counter-metric SM-C2 (cost/turn) canh chừng. **Accepted trade-off nhưng phải có control.**
+A: Tính theo token LLM + embedding + lưu trữ. **Deep research cloud** cost thật 2026-08-02: speed $0.0353 · balanced $0.0482 · quality $0.0671 (parse `done.usage.costDollars`). Và đúng — **auto-extract mỗi lượt = chi phí LLM cộng thêm mỗi lượt**, có thể phình. → **Requirements signal:** auto-extract nên **bật theo workspace + có ngân sách**, không mặc định bật toàn bộ; counter-metric SM-C2 (cost/turn) canh chừng. **Accepted trade-off nhưng phải có control.**
 
 ### Q8. Làm sao memory không biến thành bãi rác — nhớ nhầm, nhớ trùng, nhớ thứ lỗi thời — rồi recall trả về nhiễu?
 A: Chống bằng: **typed facts + confidence + citation** (biết nguồn), **correction/version** (sửa được), **recall trả top_k nhỏ đã rank**. Trung thực: chống "rác" là bài toán *chưa giải xong* — MVP cố ý hẹp ("semantic facts first") đúng để tránh "dump everything into vector DB" (rủi ro docs tự nêu). Dedupe/decay/contradiction = post-MVP. → **Requirements signal:** cần **dedupe + ngưỡng confidence ngay từ MVP nhỏ**, không đợi. Đây là rủi ro sản phẩm số 1.
@@ -88,7 +88,7 @@ A: MVP = 4 MCP tool + facts CRUD trên hạ tầng sẵn có → **1–2 sprint 
 A: Citations họ thêm được trong vài tuần. Cái khó copy nhanh là **tích hợp dọc research đã có sẵn**: connectors → citations → memory → deliverables → multi-client, cộng OSS/self-host cho khách data-sensitive. Trung thực: moat = **head start + integration depth**, không phải công nghệ độc quyền → cửa sổ hẹp, phải chạy nhanh và "own" nhóm research-memory trước khi incumbent lấn sang.
 
 ### IQ5. Kinh tế cloud thế nào? Auto-extract mỗi lượt + embedding + LLM recall — biên có âm không?
-A: Chi phí biến đổi theo token (LLM + embedding + storage). Rủi ro rõ: **auto-extract đốt LLM mỗi lượt** → có thể âm biên ở workspace nặng. → **Requirements:** auto-extract bật-theo-workspace + ngân sách; pricing phải cover extract+embedding+storage, không chỉ chat. **Unknown `[finance]`:** chưa có số cost/turn thật → đo SM-C2 sớm trên bản cloud beta.
+A: Chi phí biến đổi theo token (LLM + embedding + storage). Rủi ro rõ: **auto-extract đốt LLM mỗi lượt** → có thể âm biên ở workspace nặng. → **Requirements:** auto-extract bật-theo-workspace + ngân sách; pricing phải cover extract+embedding+storage, không chỉ chat. **Cost thật 2026-08-02:** deep research speed $0.0353 · balanced $0.0482 · quality $0.0671; `done.usage.costDollars` parsed, fallback 60k micros. Cloud beta cần đo SM-C2 trên usage thật.
 
 ### IQ6. Lấy 100 user đầu ở đâu?
 A: OSS motion: phân phối qua **hệ sinh thái MCP** (người dùng Claude/Cursor/OpenCode), GitHub, và cộng đồng memory-MCP đang nóng; beachhead = agent builder (Framing B). Rủi ro: **install OSS ≠ active use** → cần onboarding self-host mượt (`docker compose up` chạy được trong 10 phút) và một "aha" recall đầu tiên nhanh. Cloud đến sau khi OSS chứng minh retention.
@@ -108,7 +108,7 @@ A: Câu quan trọng chưa ai đặt. Memory *bền* khác dữ liệu *ephemera
 
 **Phán quyết tổng: 🟡 NEEDS MORE HEAT (nghiêng tích cực) — ĐÁNG LÀM, có điều kiện.**
 
-Vision post-pivot đứng vững hơn hẳn vision cũ. Định vị (research-memory có provenance + gồm live web data) sắc và phòng thủ được, dựng trên đúng building blocks Nowing đã có. Nhưng **"trí nhớ" cốt lõi vẫn là lời hứa chưa build**, và có **2 lỗ execution chưa ai chạm** (migration, legal) cùng **1 cổng chất lượng bắt buộc** (recall eval). Đây là concept nên tiến hành — nhưng **chưa nên cam kết toàn lực cho tới khi vá lỗ và dựng cổng chất lượng.** Không phải "cracked" (không có deal-breaker), cũng chưa "forged" (quá nhiều gap execution + lõi chưa có).
+Vision post-pivot đứng vững hơn hẳn vision cũ. Định vị (research-memory có provenance + gồm live web data) sắc và phòng thủ được, dựng trên đúng building blocks Nowing đã có. **Cập nhật 2026-08-04:** 4 MCP memory tools đã chạy; deep-research cost thật đã đo (speed $0.0353 · balanced $0.0482 · quality $0.0671); degradation khi engine chết đã done (`9.1a`). **Vẫn mở:** "trí nhớ" cốt lõi chưa đóng cổng chất lượng (recall eval `3-9` in-progress), migration path từ markdown-memory cũ, và legal/retention. Đây là concept nên tiến hành — nhưng **chưa nên cam kết toàn lực cho tới khi vá lỗ và dựng cổng chất lượng.** Không phải "cracked" (không có deal-breaker), cũng chưa "forged" (quá nhiều gap execution + lõi chưa đóng gate).
 
 ### 🗡️ Forged in steel (đã thành thép)
 - **Wedge B:** "memory có nguồn + gồm live web data" — khác biệt thật, không me-too Mem0; dựng trên connectors/citations/KB/MCP đã có.
@@ -127,7 +127,7 @@ Vision post-pivot đứng vững hơn hẳn vision cũ. Định vị (research-m
 ### 🧱 Cracks in the foundation (nứt móng — phải xử lý có chủ đích)
 - 🔴 **Migration path** từ markdown-memory cũ chưa tồn tại → rủi ro mất dữ liệu. *Vá:* script migrate + đọc song song, **trước khi bật memory mới**.
 - 🔴 **Recall quality chưa chứng minh** → nếu nhiễu, toàn bộ "AI nhớ" sụp. *Vá:* eval-gate trên `nowing_evals` với ngưỡng precision **trước khi ship**.
-- 🟠 **Vision chưa kể ra thế giới:** README/docs pre-pivot, `epics.md` không tồn tại. *Vá:* đồng bộ docs + tạo epics + cam kết công khai (chống nhận thức "pivot thứ 3").
+- 🟠 **Vision chưa kể ra thế giới:** README/docs pre-pivot, `epics.md` đã cập nhật 2026-08-04. *Vá:* đồng bộ README/docs sang vision mới + cam kết công khai (chống nhận thức "pivot thứ 3").
 - 🟠 **Legal/retention** dữ liệu scrape lưu dài hạn chưa xử lý. *Vá:* ToS review + retention/right-to-delete **trước GA cloud**.
 - 🟠 **"Memory rác"** (rủi ro docs tự nêu). *Vá:* dedupe + ngưỡng confidence ngay từ MVP nhỏ.
 

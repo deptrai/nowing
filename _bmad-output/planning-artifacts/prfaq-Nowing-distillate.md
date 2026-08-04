@@ -3,6 +3,7 @@ title: "PRFAQ Distillate: Nowing"
 type: llm-distillate
 source: "prfaq-Nowing.md"
 created: "2026-07-24"
+updated: "2026-08-04"
 purpose: "Token-efficient context for downstream PRD creation"
 ---
 
@@ -29,6 +30,7 @@ purpose: "Token-efficient context for downstream PRD creation"
 
 ## Technical context / constraints
 - Tái dùng **Postgres + pgvector**; KHÔNG dựng graph DB mới (AD-11). Kỷ luật: "MCP tools trước, UI sau", "một memory type trước — semantic facts first".
+- **Deep research cost thật 2026-08-02:** speed $0.0353 · balanced $0.0482 · quality $0.0671; parse `done.usage.costDollars` (AD-8/AD-15).
 - Models mới: `Memory`, `MemoryVersion`, `MemoryRelation`, `ResearchThread`; package canonical `app/services/memory/`; memory-injection middleware trong agent loop; `MemoryExtractionService` (AD-14, auto-extract).
 - Components: backend (Python 3.12/FastAPI), mcp (Python 3.11), web (Next.js 16/React 19), desktop (Electron 42), browser_extension (Plasmo), obsidian plugin, evals. Monorepo 7 phần.
 - **Cổng chất lượng:** dùng `nowing_evals` để đo recall precision/noise TRƯỚC khi scale (eval-gated launch).
@@ -41,7 +43,7 @@ purpose: "Token-efficient context for downstream PRD creation"
 
 ## Scope signals
 - **MVP (in):** save/recall/correct **semantic facts** + 4 MCP tools + eval gate + migration path + dedupe/confidence tối thiểu.
-- **Fast-follow (bắt buộc):** đồng bộ README/docs với vision mới; tạo `epics.md` (hiện KHÔNG tồn tại); data export; auto-extract mỗi lượt (AD-14); relation graph; UI memory browser/research timeline cho analyst.
+- **Fast-follow (bắt buộc):** đồng bộ README/docs với vision mới; `epics.md` đã cập nhật 2026-08-04; data export; auto-extract mỗi lượt (AD-14); relation graph; UI memory browser/research timeline cho analyst.
 - **Out / post-MVP (accepted):** decay/TTL/contradiction resolution; memory-driven automations (`memory_change`, `continue_research`); per-workspace MCP toggle; SLA/compliance doanh nghiệp; native mobile.
 - **Non-users:** người cần browser thủ công; enterprise SLA/compliance; mobile app; người dùng solo/context nhỏ (files/CLAUDE.md đã đủ).
 
@@ -51,7 +53,7 @@ purpose: "Token-efficient context for downstream PRD creation"
 - Rủi ro nhân lực: team nhỏ dàn mỏng trên 7 component + memory layer.
 
 ## Open questions & unknowns (từ FAQ)
-- `[finance]` cost/turn thật của cloud (auto-extract + embedding + recall) → đo SM-C2 trên cloud beta trước khi định giá.
+- `[finance]` cost/turn thật của cloud (auto-extract + embedding + recall) → deep-research cost đã đo 2026-08-02: speed $0.0353 · balanced $0.0482 · quality $0.0671; còn cần SM-C2 trên cloud beta cho auto-extract + recall.
 - `[legal]` ToS/bản quyền/PII khi lưu dài hạn dữ liệu scrape → review pháp lý + policy trước GA cloud.
 - Ngưỡng recall precision nào là "đủ tốt" để ship → định lượng bằng eval harness.
 - Success metrics còn placeholder ("≥ X%") — cần chốt số cho SM-1..SM-9.
@@ -61,8 +63,8 @@ purpose: "Token-efficient context for downstream PRD creation"
 ## Verdict findings — actionable
 - **Overall: NEEDS MORE HEAT (nghiêng tích cực) — PROCEED có điều kiện.**
 - 🔴 **Crack 1 — Migration:** làm script migrate markdown→Memory + đọc song song, TRƯỚC khi bật memory mới cho user hiện hữu.
-- 🔴 **Crack 2 — Recall quality:** eval-gate trên `nowing_evals`, đặt ngưỡng precision, không ship nếu chưa đạt.
-- 🟠 **Crack 3 — Vision chưa kể:** đồng bộ README/docs/project-overview sang vision mới + tạo `epics.md` + cam kết công khai.
+- 🔴 **Crack 2 — Recall quality:** eval-gate trên `nowing_evals` (story `3-9` in-progress), đặt ngưỡng precision, không ship nếu chưa đạt.
+- 🟠 **Crack 3 — Vision chưa kể:** đồng bộ README/docs/project-overview sang vision mới; `epics.md` đã cập nhật 2026-08-04.
 - 🟠 **Crack 4 — Legal:** retention + right-to-delete policy; tách trách nhiệm self-host vs cloud.
 - 🟠 **Crack 5 — Memory rác:** dedupe + confidence threshold ngay MVP.
-- 🔥 **Needs heat:** một-câu-promise sắc hơn; lộ trình beachhead agent-builder→team; số unit economics cloud; định nghĩa "aha moment" recall đầu tiên; điền dateline PR.
+- 🔥 **Needs heat:** một-câu-promise sắc hơn; lộ trình beachhead agent-builder→team; số unit economics cloud (cost thật deep research đã đo 2026-08-02); định nghĩa "aha moment" recall đầu tiên; điền dateline PR.
