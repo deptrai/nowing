@@ -1,0 +1,82 @@
+name: Chat Regression Gate
+
+# Story 4.8e: CI / deploy gate for chat regression.
+#
+# This workflow runs the chat/regression benchmark against a live Nowing
+# instance. It is intended to be triggered manually or via a post-deploy
+# webhook (Dokploy / GitHub deployment_status). The gate is dry-run until
+# nowing_evals/src/nowing_evals/suites/chat/regression/gate.yaml has
+# baseline_ratified: true.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to evaluate (local or production)'
+        required: true
+        default: 'production'
+      modes:
+        description: 'Comma-separated chat modes'
+        required: true
+        default: 'speed,balanced,quality'
+      concurrency:
+        description: 'Concurrent cases'
+        required: true
+        default: '1'
+      max_total_cost_micros:
+        description: 'Cost cap in micros (e.g. 500000 = $0.50)'
+        required: true
+        default: '500000'
+      search_space_id:
+        description: 'SearchSpace id for thread creation'
+        required: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chat-regression-gate:
+    name: Chat regression benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Sync eval dependencies
+        working-directory: nowing_evals
+        run: uv sync --all-extras --frozen
+
+      - name: Run chat regression benchmark
+        working-directory: nowing_evals
+        env:
+          NOWING_API_BASE: ${{ secrets.NOWING_API_BASE }}
+          NOWING_USER_EMAIL: ${{ secrets.NOWING_USER_EMAIL }}
+          NOWING_USER_PASSWORD: ${{ secrets.NOWING_USER_PASSWORD }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          NOWING_EVALS_ARTIFACT_URL_PREFIX: ${{ vars.NOWING_EVALS_ARTIFACT_URL_PREFIX }}
+        run: >-
+          uv run --active python -m nowing_evals run chat regression
+          --environment ${{ github.event.inputs.environment }}
+          --search-space-id ${{ github.event.inputs.search_space_id }}
+          --modes ${{ github.event.inputs.modes }}
+          --concurrency ${{ github.event.inputs.concurrency }}
+          --max-total-cost-micros ${{ github.event.inputs.max_total_cost_micros }}
+
+      - name: Upload run artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat-regression-run
+          path: nowing_evals/data/chat/runs/*/regression/run_artifact.json
+          if-no-files-found: ignore

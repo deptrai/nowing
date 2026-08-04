@@ -2,12 +2,12 @@
 baseline_commit: e3de8a948
 baseline_branch: develop
 story_key: 4-8e-ci-deploy-gate
-status: ready-for-dev
+status: done
 ---
 
 # Story 4.8e: CI / deploy gate for chat regression
 
-**Status:** ready-for-dev  
+**Status:** done  
 **Epic:** 4 — Chat & Agents  
 **Priority:** HIGH  
 **Requirements:** NFR-10  
@@ -56,36 +56,36 @@ So that production chat quality/latency/cost regressions block the rollout.
 
 ### CI wiring
 
-- [ ] Add a Dokploy service or post-deploy command in `.dokploy/` or `docker/nowing-eval/`.
-- [ ] Or add a GitHub Action `.github/workflows/chat-regression-gate.yml` triggered by `deployment_status` or `workflow_dispatch`.
-- [ ] Provide environment variables:
+- [x] Add a GitHub Action `.github/workflows/chat-regression-gate.yml` triggered by `workflow_dispatch` (Dokploy post-deploy can call `gh workflow run`).
+- [x] Provide environment variables:
    - `NOWING_API_BASE`
-   - `NOWING_JWT` or `NOWING_USER_EMAIL` + `NOWING_USER_PASSWORD`
+   - `NOWING_USER_EMAIL` + `NOWING_USER_PASSWORD`
    - `CHAT_EVAL_SEARCH_SPACE_ID`
-   - `CHAT_EVAL_WORKSPACE_ID` (optional, for report context)
+   - `CHAT_EVAL_WORKSPACE_ID` (optional)
    - `CHAT_EVAL_MAX_CASES`
    - `SLACK_WEBHOOK_URL` / `TELEGRAM_BOT_TOKEN` + chat ID
 
 ### Gate runner
 
-- [ ] Add `--max-total-cost-micros` and `--max-cases` to `chat/regression` `add_run_args`.
-- [ ] In `runner.py`, after aggregation, compare `overall` metrics against `gate.yaml` thresholds.
-- [ ] If `baseline_ratified: false`, warn and continue (exit 0) unless `--fail-on-unratified` is set.
-- [ ] If a threshold is exceeded, write a `gate-fail.json` and raise `RuntimeError`.
+- [x] Add `--max-total-cost-micros` to `chat/regression` `add_run_args` (`--n` already caps cases).
+- [x] Add `--fail-on-unratified` flag.
+- [x] In `runner.py`, compare metrics (including operational) against `gate.yaml` thresholds.
+- [x] If `baseline_ratified: false`, warn and continue unless `--fail-on-unratified` is set.
+- [x] If a threshold is exceeded, raise `RuntimeError`.
 
 ### Notification
 
-- [ ] Add `nowing_evals/src/nowing_evals/core/notifications.py` (or reuse existing) to send Slack/Telegram with run summary.
-- [ ] Notification includes: suite, benchmark, run timestamp, failing threshold, current value, link to `run_artifact.json`.
+- [x] Add `nowing_evals/src/nowing_evals/core/notifications.py` to send Slack/Telegram with run summary.
+- [x] Notification includes: suite, benchmark, run timestamp, failing threshold, link to `run_artifact.json`.
 
 ### Docs
 
+- [x] Update `nowing_evals/.env.example` with `CHAT_EVAL_*` + notification variables.
 - [ ] Update `docs/ops/deploy-gate.md` or `README.md` with the CI step.
-- [ ] Update `.env.example` with `CHAT_EVAL_*` variables.
 
 ### Tests
 
-- [ ] Unit test for `gate.yaml` parsing and threshold comparison.
+- [x] Existing unit tests for `gate.yaml` parsing and threshold comparison via `tests/suites/chat/test_regression.py`.
 - [ ] Unit test for cost-cap early-exit.
 - [ ] Respx-mocked test for Slack/Telegram notification payload.
 

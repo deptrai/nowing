@@ -2,12 +2,12 @@
 baseline_commit: 412200504
 baseline_branch: develop
 story_key: 4-8f-benchmark-stability-scrape-captcha-rate-limit
-status: ready-for-dev
+status: done
 ---
 
 # Story 4.8f: Benchmark stability — scrape, captcha, rate-limit, and multi-turn
 
-**Status:** `done`  
+**Status:** done  
 **Epic:** 4 — Chat & Agents  
 **Priority:** HIGH  
 **Requirements:** FR-42, NFR-10  

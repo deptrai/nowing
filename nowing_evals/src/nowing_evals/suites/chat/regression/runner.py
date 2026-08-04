@@ -925,19 +925,6 @@ class ChatRegressionBenchmark:
 
         gate_violations = _evaluate_chat_gate(metrics)
         top, _ = _load_chat_gate()
-        if gate_violations:
-            metrics["gate_violations"] = gate_violations
-            if top.get("baseline_ratified"):
-                raise RuntimeError(
-                    f"Chat regression gate failed for {environment}: " + "; ".join(gate_violations)
-                )
-
-        if fail_on_unratified and not top.get("baseline_ratified"):
-            raise RuntimeError(
-                "Chat regression gate is not ratified (baseline_ratified=false). "
-                "Run with measured baseline and flip gate.yaml, or omit --fail-on-unratified."
-            )
-
         extra = {
             "search_space_id": search_space_id,
             "workspace_id": workspace_id,
@@ -955,8 +942,9 @@ class ChatRegressionBenchmark:
             "dataset_path": str(dataset_path),
         }
 
+        run_artifact_path = run_dir / "run_artifact.json"
         _write_json_atomic(
-            run_dir / "run_artifact.json",
+            run_artifact_path,
             {
                 "suite": self.suite,
                 "benchmark": self.name,
@@ -965,6 +953,30 @@ class ChatRegressionBenchmark:
                 "extra": extra,
             },
         )
+
+        if gate_violations:
+            run_artifact_str = str(run_artifact_path)
+            try:
+                await notify_gate_failure(
+                    self.suite,
+                    self.name,
+                    run_timestamp,
+                    gate_violations,
+                    run_artifact_str,
+                    extra,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to send gate failure notification: %s", exc)
+            if top.get("baseline_ratified"):
+                raise RuntimeError(
+                    f"Chat regression gate failed for {environment}: " + "; ".join(gate_violations)
+                )
+
+        if fail_on_unratified and not top.get("baseline_ratified"):
+            raise RuntimeError(
+                "Chat regression gate is not ratified (baseline_ratified=false). "
+                "Run with measured baseline and flip gate.yaml, or omit --fail-on-unratified."
+            )
 
         return RunArtifact(
             suite=self.suite,
