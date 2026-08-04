@@ -67,7 +67,7 @@ export function CreateWorkspaceDialog({ open, onOpenChange }: CreateWorkspaceDia
 				description: values.description || "",
 			});
 
-			trackWorkspaceCreated(result.id, values.name);
+			trackWorkspaceCreated(result.id);
 
 			// Seed the gate's query so it resolves without a loader flash, and
 			// route straight to onboarding vs. new-chat on the first hop.

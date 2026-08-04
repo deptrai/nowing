@@ -21,6 +21,11 @@ import { getConnectorTelemetryMeta } from "@/lib/connector-telemetry";
  * - settings: Settings changes
  * - automation: Automation lifecycle (create/update/delete/trigger/chat)
  * - marketing: Marketing/referral tracking
+ *
+ * NOTE: Outcome events (e.g. `workspace_created`, `connector_connected`) are
+ * retained in the frontend for now but intentionally carry no PII. They should
+ * migrate to a server-side analytics module when one lands so product analytics
+ * stays authoritative and the web client only sends intent/UX signals.
  */
 
 function safeCapture(event: string, properties?: Record<string, unknown>) {
@@ -78,21 +83,8 @@ export function trackLogout() {
 // SEARCH SPACE EVENTS
 // ============================================
 
-export function trackWorkspaceCreated(workspaceId: number, name: string) {
+export function trackWorkspaceCreated(workspaceId: number) {
 	safeCapture("workspace_created", {
-		workspace_id: workspaceId,
-		name,
-	});
-}
-
-export function trackWorkspaceDeleted(workspaceId: number) {
-	safeCapture("workspace_deleted", {
-		workspace_id: workspaceId,
-	});
-}
-
-export function trackWorkspaceViewed(workspaceId: number) {
-	safeCapture("workspace_viewed", {
 		workspace_id: workspaceId,
 	});
 }
@@ -258,36 +250,15 @@ export function trackDocumentUploadFailure(workspaceId: number, error?: string) 
 	});
 }
 
-export function trackDocumentDeleted(workspaceId: number, documentId: number) {
-	safeCapture("document_deleted", {
-		workspace_id: workspaceId,
-		document_id: documentId,
-	});
-}
-
-export function trackDocumentBulkDeleted(workspaceId: number, count: number) {
-	safeCapture("document_bulk_deleted", {
-		workspace_id: workspaceId,
-		count,
-	});
-}
-
-export function trackYouTubeImport(workspaceId: number, url: string) {
-	safeCapture("youtube_import_started", {
-		workspace_id: workspaceId,
-		url,
-	});
-}
-
 // ============================================
 // CONNECTOR EVENTS (generic lifecycle dispatcher)
 // ============================================
 //
-// All connector events go through `trackConnectorEvent`. The connector's
-// human-readable title and its group (oauth/composio/crawler/other) are
-// auto-attached from the shared registry in `connector-constants.ts`, so
-// adding a new connector to that list is the only change required for it
-// to show up correctly in PostHog dashboards.
+// All connector events go through `trackConnectorEvent`. Only the connector
+// type, group, and OAuth flag are sent to PostHog — never the human-readable
+// title (privacy). Add new connectors to `connector-constants.ts` to keep
+// group and title resolution centralized, but the analytics payload only uses
+// low-cardinality fields.
 
 export type ConnectorEventStage =
 	| "setup_started"
@@ -327,7 +298,6 @@ export function trackConnectorEvent(
 			error: options.error,
 		}),
 		connector_type: meta.connector_type,
-		connector_title: meta.connector_title,
 		connector_group: meta.connector_group,
 		is_oauth: meta.is_oauth,
 		...(options.extra ?? {}),
@@ -371,14 +341,6 @@ export function trackConnectorDeleted(
 	connectorId: number
 ) {
 	trackConnectorEvent("deleted", connectorType, { workspaceId, connectorId });
-}
-
-export function trackConnectorSynced(
-	workspaceId: number,
-	connectorType: string,
-	connectorId: number
-) {
-	trackConnectorEvent("synced", connectorType, { workspaceId, connectorId });
 }
 
 // ============================================
@@ -448,32 +410,22 @@ export function trackWorkspaceInviteSent(
 	});
 }
 
-export function trackWorkspaceInviteAccepted(
-	workspaceId: number,
-	workspaceName: string,
-	roleName?: string | null
-) {
+export function trackWorkspaceInviteAccepted(workspaceId: number, roleName?: string | null) {
 	safeCapture("workspace_invite_accepted", {
 		workspace_id: workspaceId,
-		workspace_name: workspaceName,
 		role_name: roleName,
 	});
 }
 
-export function trackWorkspaceInviteDeclined(workspaceName?: string) {
+export function trackWorkspaceInviteDeclined(workspaceId?: number) {
 	safeCapture("workspace_invite_declined", {
-		workspace_name: workspaceName,
+		workspace_id: workspaceId,
 	});
 }
 
-export function trackWorkspaceUserAdded(
-	workspaceId: number,
-	workspaceName: string,
-	roleName?: string | null
-) {
+export function trackWorkspaceUserAdded(workspaceId: number, roleName?: string | null) {
 	safeCapture("workspace_user_added", {
 		workspace_id: workspaceId,
-		workspace_name: workspaceName,
 		role_name: roleName,
 	});
 }

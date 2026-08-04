@@ -14,6 +14,45 @@ import {
 	type ValidationFieldError,
 } from "../error";
 
+/**
+ * Send an API exception to PostHog only when it represents a true fault:
+ * - network failures (`NetworkError` / `TypeError` not wrapped in `AppError`)
+ * - server-side 5xx errors
+ *
+ * 4xx client errors (auth, authorization, not found, validation) are expected
+ * application behavior and are not captured. `AuthenticationError` is also
+ * excluded because sign-in failures are a normal part of the auth flow.
+ */
+function captureApiException(error: unknown, url: string, method: string) {
+	if (error instanceof AuthenticationError) return;
+	if (error instanceof AuthorizationError) return;
+	if (error instanceof NotFoundError) return;
+	if (error instanceof ValidationError) return;
+
+	const shouldCapture =
+		error instanceof NetworkError ||
+		(error instanceof AppError && error.status !== undefined && error.status >= 500);
+
+	if (!shouldCapture) return;
+
+	import("posthog-js")
+		.then(({ default: posthog }) => {
+			posthog.captureException(error as Error, {
+				api_url: url,
+				api_method: method,
+				...(error instanceof AppError && {
+					status_code: error.status,
+					status_text: error.statusText,
+					error_code: error.code,
+					request_id: error.requestId,
+				}),
+			});
+		})
+		.catch(() => {
+			console.error("Failed to capture exception in PostHog");
+		});
+}
+
 enum ResponseType {
 	JSON = "json",
 	TEXT = "text",
@@ -296,37 +335,18 @@ class BaseApiService {
 			return data;
 		} catch (error) {
 			// Normalize browser-level fetch failures before anything else
+			let requestError: Error = error as Error;
 			if (error instanceof DOMException && error.name === "AbortError") {
-				throw new AbortedError();
-			}
-			if (error instanceof TypeError && !(error instanceof AppError)) {
-				throw new NetworkError(
+				requestError = new AbortedError();
+			} else if (error instanceof TypeError && !(error instanceof AppError)) {
+				requestError = new NetworkError(
 					"Unable to connect to the server. Check your internet connection and try again."
 				);
 			}
 
-			console.error("Request failed:", JSON.stringify(error));
-			const isClientError =
-				error instanceof AppError && error.status !== undefined && error.status < 500;
-			if (!(error instanceof AuthenticationError) && !isClientError) {
-				import("posthog-js")
-					.then(({ default: posthog }) => {
-						posthog.captureException(error, {
-							api_url: url,
-							api_method: options?.method ?? "GET",
-							...(error instanceof AppError && {
-								status_code: error.status,
-								status_text: error.statusText,
-								error_code: error.code,
-								request_id: error.requestId,
-							}),
-						});
-					})
-					.catch(() => {
-						console.error("Failed to capture exception in PostHog");
-					});
-			}
-			throw error;
+			console.error("Request failed:", JSON.stringify(requestError));
+			captureApiException(requestError, url, options?.method ?? "GET");
+			throw requestError;
 		}
 	}
 

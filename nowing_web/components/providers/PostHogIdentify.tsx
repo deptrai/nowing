@@ -37,12 +37,20 @@ function PostHogUserIdentify() {
 
 			// Only identify if this is a new user or different from previous
 			if (previousUserIdRef.current !== userId) {
-				identifyUser(userId, {
-					email: user.email,
-					name: user.display_name,
-					is_superuser: user.is_superuser,
-					is_verified: user.is_verified,
-				});
+				if (user.is_superuser) {
+					identifyUser(userId, {
+						is_superuser: true,
+						is_verified: user.is_verified,
+						is_internal_user: true,
+					});
+				} else {
+					identifyUser(userId, {
+						email: user.email,
+						name: user.display_name,
+						is_superuser: user.is_superuser,
+						is_verified: user.is_verified,
+					});
+				}
 				previousUserIdRef.current = userId;
 			}
 		}

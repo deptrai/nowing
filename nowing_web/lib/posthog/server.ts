@@ -2,9 +2,14 @@ import { PostHog } from "posthog-node";
 
 let posthogInstance: PostHog | null = null;
 
+const noOpPostHog = {
+	captureException: () => Promise.resolve(),
+	capture: () => Promise.resolve(),
+} as unknown as PostHog;
+
 export default function PostHogClient() {
 	if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-		throw new Error("NEXT_PUBLIC_POSTHOG_KEY is not set");
+		return noOpPostHog;
 	}
 
 	if (!posthogInstance) {

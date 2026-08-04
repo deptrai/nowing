@@ -12,7 +12,7 @@
 - [ ] **A3.** Import tracker CSV vào Google Sheets
 - [ ] **A4.** Lập danh sách ≥30 môi giới Bình Thạnh 3-4 tỷ (FB group / Chợ Tốt / Zalo / TikTok)
 - [ ] **A5.** Tạo tài khoản Zalo burner + group Zalo private cho pilot
-- [ ] **A6.** Viết/chạy script zca-js: gửi tin vào group Zalo (test gửi 1 tin)
+- [ ] **A6.** Set tay automation trên Nowing để gửi tin vào group Zalo khi trigger (test gửi 1 tin)
 - [ ] **A7.** Gắn 5 sự kiện đo: signup, tool_used, filter_created, alert_sent, return
 
 ### Tuần 1 (Ngày 1-7) — Tuyển + kích hoạt
@@ -20,13 +20,13 @@
 - [ ] **A9.** Ngày 2: onboard người rep vào group + tạo Deal-Radar filter đầu cho họ; nhắn 10-15 người mới
 - [ ] **A10.** Ngày 3: follow-up người chưa rep; phỏng vấn nhanh 2-3 người đã dùng
 - [ ] **A11.** Ngày 4: vá 1-2 điểm ma sát onboarding; tiếp tục nhắn
-- [ ] **A12.** Ngày 5: bật seed aggregator (tóm tắt facts + nguồn + link) để group có tin khớp gửi vào
+- [ ] **A12.** Ngày 5: gửi ≥1 match thủ công qua Nowing automation hoặc tay vào group Zalo
 - [ ] **A13.** Ngày 6: chạm mốc 30 người thử; ghi ai kích hoạt
 - [ ] **A14.** Ngày 7: review tuần 1 — đếm kích hoạt (mục tiêu 15-20), 3 phỏng vấn sâu
 
 ### Tuần 2 (Ngày 8-14) — Retention + match + tín hiệu giá
 - [ ] **A15.** Ngày 8: nhắn từng người tuần 1 một lý do cụ thể để quay lại
-- [ ] **A16.** Ngày 9: gửi ≥1 match thật vào group (Deal-Radar → alert + link)
+- [ ] **A16.** Ngày 9: gửi ≥1 match thật vào group Zalo qua Nowing automation (Deal-Radar → alert + link)
 - [ ] **A17.** Ngày 10: hỏi 5 môi giới "sẽ trả tiền không?" (chỉ hỏi, chưa thu)
 - [ ] **A18.** Ngày 11: vá điểm ma sát retention; tạo thêm 1 match
 - [ ] **A19.** Ngày 12: nhờ 2-3 người hài lòng giới thiệu 1 đồng nghiệp
@@ -46,7 +46,7 @@
 
 | # | Công việc code | BMAD skill | Mục đích | Ưu tiên chuẩn bị | Trạng thái |
 |---|---|---|---|---|---|
-| **B1** | **Rebrand Long Thành → Bình Thạnh + bdsai.vn** | `bmad-create-story` | Đổi copy, metadata, SEO, logo cho đúng vision mới | P0 | ✅ Story 3.6 trong epics.md |
+| **B1** | **Rebrand Long Thành → Việt Nam + bdsai.vn** | `bmad-create-story` | Đổi copy, metadata, SEO, logo cho đúng vision mới | P0 | ✅ Đã dev xong copy trên web |
 | **B2** | **Deal-Radar MVP** — filter bằng lời, alert vào Zalo group riêng | `bmad-create-story` → `bmad-spec` | Core tool cho môi giới, cần pilot | P0 | ✅ Story 5.1 + spec |
 | **B3** | **Dashboard CRM layout mới** — sidebar workspace cho môi giới | `bmad-ux` → `bmad-create-story` | Chuyển dashboard từ marketplace sang CRM | P0 | ✅ Story 5.3 + UX spec |
 | **B4** | **Lead management** — CRUD lead, trạng thái, gán listing | `bmad-create-story` | Quản lý người mua liên hệ | P1 | ✅ Story 5.2 + UX spec |
