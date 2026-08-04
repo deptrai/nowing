@@ -258,3 +258,14 @@ pnpm test:e2e -- posthog-privacy-smoke.spec.ts --project=chromium
 ```
 
 Result: **ABORTED at setup** — the frontend dev server started successfully, but `auth.setup.ts` failed because `http://localhost:8000/auth/desktop/login` returned `404` from an nginx backend (backend dev server is not running). The E2E suite cannot complete without the backend stack. To run E2E locally, start `nowing_backend/tests/e2e/run_backend.py` or a dev backend on port 8000 first.
+
+### Follow-up E2E execution attempt
+
+Tried to start the E2E backend on port 8001 (port 8000 already in use by nginx):
+
+```bash
+cd nowing_backend
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_e2e_test UVICORN_PORT=8001 uv run python tests/e2e/run_backend.py
+```
+
+Backend started successfully. Re-ran Playwright with `BACKEND_PORT=8001 NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8001`. The test failed at `auth.setup.ts` with a `500` from `POST /__e2e__/auth/token` because the `nowing_e2e_test` database is missing the `user.notification_preferences` column. Attempting `alembic upgrade head` for that database then failed on migration `affe6fa9686c` because the `scraper_platform_accounts` table already exists (DB is in a partially-applied/inconsistent state). E2E cannot be completed without repairing the E2E database or starting from a freshly migrated schema.
