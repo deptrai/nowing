@@ -20,10 +20,12 @@ import logging
 import re
 import time
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import httpx
+import yaml
 
 from ....core.config import utc_iso_timestamp
 from ....core.registry import (
@@ -73,6 +75,46 @@ class _ModeStats:
         self.degradation_reasons = {}
 
 
+@lru_cache(maxsize=1)
+def _load_chainlens_gate() -> tuple[dict[str, Any], dict[str, Any]]:
+    """Load (top-level, thresholds) from this benchmark's gate.yaml."""
+    gate_path = Path(__file__).parent / "gate.yaml"
+    if not gate_path.is_file():
+        return {}, {}
+    data = yaml.safe_load(gate_path.read_text(encoding="utf-8")) or {}
+    return data, data.get("thresholds") or {}
+
+
+def _evaluate_chainlens_gate(metrics: dict[str, Any]) -> list[str]:
+    """Return a list of threshold violations for the current metrics."""
+    top, thresholds = _load_chainlens_gate()
+    if not thresholds:
+        return []
+
+    violations: list[str] = []
+
+    def _check(name: str, value: float | None, max_val: float | None = None) -> None:
+        if value is None:
+            return
+        if max_val is not None and value > max_val:
+            violations.append(f"{name} {value:.3f} exceeds max {max_val:.3f}")
+
+    per_mode_thresholds = thresholds.get("per_mode", {})
+    for mode, vals in metrics.get("modes", {}).items():
+        t = per_mode_thresholds.get(mode, {})
+        _check(f"mode {mode} p95 e2e (ms)", vals.get("p95_e2e_ms"), t.get("max_p95_e2e_ms"))
+        _check(
+            f"mode {mode} degraded rate", vals.get("degraded_rate"), thresholds.get("max_degraded_rate")
+        )
+        _check(
+            f"mode {mode} engine unavailable rate",
+            vals.get("engine_unavailable_rate"),
+            thresholds.get("max_engine_unavailable_rate"),
+        )
+
+    return violations
+
+
 def _percentile(values: list[float], p: float) -> float:
     if not values:
         return 0.0
@@ -119,6 +161,22 @@ class ChainlensLatencyBenchmark:
         )
         parser.add_argument("--concurrency", type=int, default=1)
         parser.add_argument(
+            "--tier",
+            default="",
+            help="Tier label for the query set (e.g. short, long_context, multi_tool).",
+        )
+        parser.add_argument(
+            "--environment",
+            default="local",
+            help="Environment label for local vs production parity (local or production).",
+        )
+        parser.add_argument(
+            "--profile",
+            default="full",
+            choices=["quick", "full"],
+            help="quick: first mode + first query. full: full mode × query matrix.",
+        )
+        parser.add_argument(
             "--poll-interval", type=float, default=2.0, help="Seconds between run polls."
         )
         parser.add_argument(
@@ -154,6 +212,9 @@ class ChainlensLatencyBenchmark:
         poll_timeout = float(opts.get("poll_timeout") or 300.0)
         references_path: Path | None = opts.get("references")
         quality_latency_budget_ms = float(opts.get("quality_latency_budget_ms") or 60_000.0)
+        tier = str(opts.get("tier") or "")
+        environment = str(opts.get("environment") or "local")
+        profile = str(opts.get("profile") or "full")
 
         workspace_id = opts.get("workspace_id") or ctx.config.memory_workspace_id
         if workspace_id is None:
@@ -164,6 +225,11 @@ class ChainlensLatencyBenchmark:
         queries = _DEFAULT_QUERIES[:sample_n] if sample_n else _DEFAULT_QUERIES
         if not queries:
             raise RuntimeError("No queries selected for chainlens_latency.")
+
+        if profile == "quick":
+            concurrency = 1
+            queries = queries[:1]
+            modes = modes[:1]
 
         references = self._load_references(references_path)
 
@@ -187,6 +253,8 @@ class ChainlensLatencyBenchmark:
         results = await asyncio.gather(*(_run_one(q, m) for m in modes for q in queries))
 
         for row in results:
+            row["tier"] = tier
+            row["environment"] = environment
             mode_requested = row["mode"]
             resolved_mode = row.get("resolved_mode")
             mode = resolved_mode or mode_requested
@@ -266,6 +334,15 @@ class ChainlensLatencyBenchmark:
             else:
                 metrics["recommendation"] = "balanced"
 
+        gate_violations = _evaluate_chainlens_gate(metrics)
+        if gate_violations:
+            metrics["gate_violations"] = gate_violations
+            top, _ = _load_chainlens_gate()
+            if top.get("baseline_ratified"):
+                raise RuntimeError(
+                    f"ChainLens latency gate failed for {environment}: " + "; ".join(gate_violations)
+                )
+
         run_timestamp = utc_iso_timestamp()
         run_dir = ctx.runs_dir(run_timestamp=run_timestamp)
         raw_path = run_dir / "raw.jsonl"
@@ -282,6 +359,9 @@ class ChainlensLatencyBenchmark:
             "poll_timeout": poll_timeout,
             "references_path": str(references_path) if references_path else None,
             "quality_latency_budget_ms": quality_latency_budget_ms,
+            "tier": tier,
+            "environment": environment,
+            "profile": profile,
         }
         manifest_path = run_dir / "run_artifact.json"
         manifest_path.write_text(
@@ -507,6 +587,45 @@ class ChainlensLatencyBenchmark:
         if m.get("recommendation"):
             lines.append("")
             lines.append(f"**Recommended mode:** `{m['recommendation']}`")
+
+        gate_violations = m.get("gate_violations")
+        if gate_violations:
+            lines.append("")
+            lines.append("### Gate violations")
+            for v in gate_violations:
+                lines.append(f"- {v}")
+
+        # Local vs production parity delta when both environments are present.
+        by_env: dict[str, RunArtifact] = {}
+        for a in artifacts:
+            env = a.extra.get("environment") or "local"
+            if env not in by_env or a.run_timestamp > by_env[env].run_timestamp:
+                by_env[env] = a
+        if "local" in by_env and "production" in by_env:
+            local_m = by_env["local"].metrics
+            prod_m = by_env["production"].metrics
+
+            def _delta(prod: float | None, local: float | None) -> str:
+                if prod is None or local is None or local == 0:
+                    return "n/a"
+                return f"{(prod - local) / local:+.1%}"
+
+            lines.append("")
+            lines.append("### Local vs production parity")
+            lines.append("| mode | metric | local | production | delta |")
+            lines.append("|---|---|---|---|---|")
+            for mode in sorted(
+                set(local_m.get("modes", {}).keys()) | set(prod_m.get("modes", {}).keys())
+            ):
+                l_mode = local_m.get("modes", {}).get(mode, {})
+                p_mode = prod_m.get("modes", {}).get(mode, {})
+                for metric in ["p95_e2e_ms", "p95_ttfb_ms", "mean_cost_micros"]:
+                    lines.append(
+                        f"| {mode} | {metric} | {l_mode.get(metric) or 'n/a'} | "
+                        f"{p_mode.get(metric) or 'n/a'} | "
+                        f"{_delta(p_mode.get(metric), l_mode.get(metric))} |"
+                    )
+
         return ReportSection(
             title="ChainLens research latency + quality by mode",
             headline=False,

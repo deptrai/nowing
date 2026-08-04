@@ -65,6 +65,7 @@ class NowingArm(Arm):
                 user_query=request.prompt,
                 mentioned_document_ids=request.mentioned_document_ids,
                 disabled_tools=request.options.get("disabled_tools"),
+                mode=request.options.get("mode"),
             )
         except Exception as exc:  # noqa: BLE001
             return ArmResult(

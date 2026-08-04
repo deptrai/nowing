@@ -1,38 +1,13 @@
-# ChainLens research latency gate — Story 9.3 / NFR-9 / State A->B.
-#
-# Nowing e2e benchmark: calls POST /workspaces/{id}/scrapers/chainlens/research
-# and measures p50/p95 end-to-end and TTFB latency per mode. Numbers are
-# PROVISIONAL; baseline_ratified stays false until the clean ChainLens benchmark
-# and this Nowing e2e run both land.
-
-# NFR-9 State B unlock thresholds (p95 e2e, ms).
-# Provisional targets: speed <= 30s, balanced <= 30s, quality (mapped from
-# ChainLens deep/deep-reasoning) <= 60s.
-p95_e2e_ms_max_speed: 30000
-p95_e2e_ms_max_balanced: 30000
-p95_e2e_ms_max_quality: 60000
-
-# Provisional p95 TTFB targets (ms). Subject to ratification when baseline clean.
-p95_ttfb_ms_max_speed: 10000
-p95_ttfb_ms_max_balanced: 10000
-p95_ttfb_ms_max_quality: 15000
-
-# Minimum samples so a single fast run cannot pass the gate.
-min_samples: 5
-
-# The runner should produce latency numbers for at least these Nowing modes.
-# (ChainLens 'deep' / 'deep-reasoning' maps to Nowing 'quality' in this suite.)
-required_modes:
-  - speed
-  - balanced
-  - quality
-
-# Stability / degradation thresholds (Story 4.8f).
-max_sources_partial_rate: 0.15
-max_engine_unavailable_rate: 0.05
-max_degraded_rate: 0.20
-
-# Baseline ratification. Flip to true once the numbers above are measured
-# on the real ChainLens engine + this Nowing e2e harness and signed off.
 baseline_ratified: false
-baseline_source: ""
+
+thresholds:
+  # Provisional per-mode p95 e2e latency ceilings (Story 4.8g).
+  per_mode:
+    speed:
+      max_p95_e2e_ms: 15000
+    balanced:
+      max_p95_e2e_ms: 30000
+    quality:
+      max_p95_e2e_ms: 60000
+  max_degraded_rate: 0.10
+  max_engine_unavailable_rate: 0.05

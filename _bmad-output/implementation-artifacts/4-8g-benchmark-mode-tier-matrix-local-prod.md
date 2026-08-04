@@ -2,7 +2,7 @@
 baseline_commit: 412200504
 baseline_branch: develop
 story_key: 4-8g-benchmark-mode-tier-matrix-local-prod
-status: ready-for-dev
+status: done
 ---
 
 # Story 4.8g: Benchmark mode/tier matrix and local vs production parity
@@ -82,27 +82,27 @@ So that small changes and big updates are validated on the right surface area be
 
 ### Runner changes
 
-- [ ] Add `--modes` and `--tier` flags to `chat/regression` and `research/chainlens_latency` runners.
-- [ ] Extend dataset schema to accept `tier` and `modes` (optional override per case).
-- [ ] For each case, run once per requested mode; thread creation can be shared or per-mode depending on backend contract.
-- [ ] Aggregate metrics by `(mode, tier, tag)` in addition to `(tag)`.
-- [ ] Add `--environment` flag; write `environment` into `run_artifact.json`.
-- [ ] Add `--profile quick|full` presets:
+- [x] Add `--modes` and `--tier` flags to `chat/regression` and `research/chainlens_latency` runners.
+- [x] Extend dataset schema to accept `tier` and `modes` (optional override per case).
+- [x] For each case, run once per requested mode; thread is created per (case, mode).
+- [x] Aggregate metrics by `(mode, tier, tag)` in addition to `(tag)`.
+- [x] Add `--environment` flag; write `environment` into `run_artifact.json`.
+- [x] Add `--profile quick|full` presets:
   - `quick`: 1 mode, 1 case/tag, concurrency 1.
   - `full`: all modes, all tiers, configured concurrency.
-- [ ] Extend `report_section` to render mode × tier tables and local/prod delta.
-- [ ] Extend `gate.yaml` schema to support `per_mode` and `per_tier` thresholds.
+- [x] Extend `report_section` to render mode × tier tables and local/prod delta.
+- [x] Extend `gate.yaml` schema to support `per_mode` and `per_tier` thresholds.
 
 ### Tests
 
-- [ ] Unit tests for mode matrix aggregation.
-- [ ] Unit tests for tier tagging.
-- [ ] Unit tests for `--profile quick`/`--profile full` preset expansion.
-- [ ] Respx-mocked test for multi-mode run.
+- [x] Unit tests for mode matrix aggregation.
+- [x] Unit tests for tier tagging.
+- [x] Unit tests for `--profile quick`/`--profile full` preset expansion.
+- [x] Respx-mocked test for multi-mode run.
 
 ### Docs
 
-- [ ] Create/update `docs/benchmark.md` with:
+- [x] Create/update `docs/benchmark.md` with:
   - Benchmark suite inventory (`chat/regression`, `chat/quality`, `research/chainlens_latency`, medical, multimodal_doc, memory).
   - Mode/tier matrix guide.
   - Local vs production usage.

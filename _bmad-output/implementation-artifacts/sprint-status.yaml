@@ -81,7 +81,7 @@ development_status:
   4-8d: ready-for-dev
   4-8e: ready-for-dev
   4-8f: done  # benchmark stability: operational metrics, multi-turn, stress, chainlens latency
-  4-8g: ready-for-dev  # benchmark mode/tier matrix + local vs production parity
+  4-8g: done  # benchmark mode/tier matrix + local vs production parity
   epic-4-retrospective: optional
 
   epic-5: done

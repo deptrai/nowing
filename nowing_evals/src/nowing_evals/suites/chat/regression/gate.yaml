@@ -14,3 +14,25 @@ thresholds:
   max_tool_drop_rate: 0.05
   max_turn_error_rate: 0.05
   max_engine_unavailable_rate: 0.01
+
+  # Mode / tier matrix thresholds (Story 4.8g).
+  per_mode:
+    speed:
+      max_p95_e2e_ms: 15000
+      max_p95_cost_micros: 50000
+    balanced:
+      max_p95_e2e_ms: 30000
+      max_p95_cost_micros: 100000
+    quality:
+      max_p95_e2e_ms: 60000
+      max_p95_cost_micros: 200000
+    auto:
+      max_p95_e2e_ms: 30000
+      max_p95_cost_micros: 100000
+  per_tier:
+    short:
+      max_p95_e2e_ms: 15000
+    long_context:
+      max_p95_e2e_ms: 45000
+    multi_tool:
+      max_p95_e2e_ms: 60000

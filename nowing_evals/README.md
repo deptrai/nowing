@@ -83,6 +83,7 @@ Notes:
 - `quality` is the Nowing schema mode that maps to ChainLens `deep`/`deep-reasoning`.
 - The benchmark defaults to 5 representative factual queries; use `--n` for a quick smoke run.
 - Each mode report now includes `sources_partial_rate`, `engine_unavailable_rate`, `degraded_rate`, `degradation_reason_counts`, `fallback_kb_hits`, and `mean_cost_micros`.
+- Use `--profile quick` for one mode + one query, and `--environment production` to tag artifacts for local vs production parity.
 - Targets live in `src/nowing_evals/suites/research/chainlens_latency/gate.yaml` and are provisional until `baseline_ratified` is flipped after a clean ChainLens benchmark.
 
 ## Chat response regression (Story 4.8)
@@ -99,25 +100,37 @@ python -m nowing_evals ingest chat regression --dataset my-cases.jsonl
 # 2. run against a real SearchSpace
 python -m nowing_evals run chat regression --search-space-id 42 --concurrency 1
 
-# 3. stress mode: run each case in 4 parallel chat threads
+# 3. mode/tier matrix (Story 4.8g)
+python -m nowing_evals run chat regression --search-space-id 42 \
+  --modes speed,balanced,quality,auto \
+  --tier short,long_context,multi_tool \
+  --environment local
+
+# 4. quick smoke run: one case per tag, one mode, concurrency 1
+python -m nowing_evals run chat regression --search-space-id 42 --profile quick
+
+# 5. stress mode: run each case in 4 parallel chat threads
 python -m nowing_evals run chat regression --search-space-id 42 --concurrency 2 --threads 4
 
-# 4. report
+# 6. report
 python -m nowing_evals report --suite chat
 ```
 
 Dataset format (JSONL):
 
 ```jsonl
-{"case_id": "chat-mem-001", "query": "What do we know about AlphaCorp?", "tags": ["memory"], "expected_contains": ["AlphaCorp"]}
-{"case_id": "chat-doc-001", "query": "Summarize the NDA.", "tags": ["document"], "mentioned_document_ids": [123], "expected_contains": ["NDA"]}
-{"case_id": "chat-multi-001", "query": "What is the budget?", "tags": ["memory"], "turns": [{"query": "What is the budget?", "expected_contains": ["Q3"]}, {"query": "And the forecast?", "expected_contains": ["forecast"]}], "expected_contains": ["forecast"]}
+{"case_id": "chat-mem-001", "query": "What do we know about AlphaCorp?", "tags": ["memory"], "tier": "short", "expected_contains": ["AlphaCorp"]}
+{"case_id": "chat-doc-001", "query": "Summarize the NDA.", "tags": ["document"], "tier": "long_context", "mentioned_document_ids": [123], "expected_contains": ["NDA"]}
+{"case_id": "chat-multi-001", "query": "What is the budget?", "tags": ["memory"], "tier": "multi_tool", "turns": [{"query": "What is the budget?", "expected_contains": ["Q3"]}, {"query": "And the forecast?", "expected_contains": ["forecast"]}], "expected_contains": ["forecast"]}
 ```
 
 Notes:
 - Use `--tags memory,document` to run only cases with those tags.
+- Use `--tier short,long_context` to filter by the `tier` field.
+- Use `--modes speed,balanced,quality,auto` to run the same query under each mode. Cases may override with their own `modes` field.
+- `--environment {local,production}` tags each row and enables the report's local vs production parity table.
 - Multi-turn cases reuse a single thread and produce per-turn latency/TTFB/citation/keyword hits plus a `context_drift_score`.
-- The report includes an **"Operational / Stability"** table with the new metrics.
+- The report includes **per-mode**, **per-tier**, and **per-mode × tier** tables plus an **"Operational / Stability"** section.
 - Gate thresholds live in `src/nowing_evals/suites/chat/regression/gate.yaml` and are provisional until `baseline_ratified` is flipped.
 - See `docs/benchmark-stability.md` for a stability-metric reference.
 

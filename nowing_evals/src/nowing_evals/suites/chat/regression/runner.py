@@ -15,12 +15,16 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass, replace
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from ....core.arms import ArmRequest, ArmResult, NowingArm
 from ....core.clients import NewChatClient
 from ....core.config import utc_iso_timestamp
+from ....core.notifications import notify_gate_failure
 from ....core.registry import (
     ReportSection,
     RunArtifact,
@@ -42,6 +46,7 @@ _DEFAULT_DATASET: list[dict[str, Any]] = [
         "case_id": "chat-mem-001",
         "query": "What are the key facts we have stored about our competitor AlphaCorp?",
         "tags": ["memory", "factual"],
+        "tier": "short",
         "mentioned_document_ids": [],
         "disabled_tools": [],
         "expected_contains": ["AlphaCorp"],
@@ -50,6 +55,7 @@ _DEFAULT_DATASET: list[dict[str, Any]] = [
         "case_id": "chat-doc-001",
         "query": "Summarize the main clauses of the NDA document.",
         "tags": ["document"],
+        "tier": "long_context",
         "mentioned_document_ids": [],
         "disabled_tools": [],
         "expected_contains": ["NDA", "confidential"],
@@ -58,6 +64,7 @@ _DEFAULT_DATASET: list[dict[str, Any]] = [
         "case_id": "chat-research-001",
         "query": "What is the state of RAG evaluation in 2025?",
         "tags": ["deep-research"],
+        "tier": "multi_tool",
         "mentioned_document_ids": [],
         "disabled_tools": [],
         "expected_contains": ["RAG", "2025"],
@@ -66,6 +73,7 @@ _DEFAULT_DATASET: list[dict[str, Any]] = [
         "case_id": "chat-multi-001",
         "query": "Find the latest revenue numbers for Apple and compare them to Samsung.",
         "tags": ["multi-tool", "factual"],
+        "tier": "multi_tool",
         "mentioned_document_ids": [],
         "disabled_tools": [],
         "expected_contains": ["Apple", "Samsung"],
@@ -74,6 +82,7 @@ _DEFAULT_DATASET: list[dict[str, Any]] = [
         "case_id": "chat-creative-001",
         "query": "Draft a one-paragraph welcome message for a new workspace member.",
         "tags": ["creative"],
+        "tier": "short",
         "mentioned_document_ids": [],
         "disabled_tools": [],
         "expected_contains": ["welcome"],
@@ -95,6 +104,8 @@ class _Case:
     mentioned_document_ids: list[int]
     disabled_tools: list[str]
     expected_contains: list[str]
+    tier: str = ""
+    modes: list[str] | None = None
     turns: list[_Turn] | None = None
 
 
@@ -115,6 +126,9 @@ class _CaseResult:
     finished_normally: bool
     expected_contains: list[str]
     contains_hits: int
+    mode: str = ""
+    tier: str = ""
+    environment: str = ""
     raw_events: list[dict[str, Any]] | None = None
     call_details: list[dict[str, Any]] | None = None
     error_code: str | None = None
@@ -308,6 +322,20 @@ def _validate_case_row(row: Any) -> dict[str, Any]:
         if not isinstance(turns_value, list):
             raise RuntimeError(f"Case {case_id!r} 'turns' must be a list, got {turns_value!r}")
         turns = [_validate_turn(t, case_id, i) for i, t in enumerate(turns_value)]
+    modes_value = row.get("modes")
+    modes: list[str] | None = None
+    if modes_value is not None:
+        if isinstance(modes_value, str):
+            modes = [m.strip() for m in modes_value.split(",") if m.strip()]
+        elif isinstance(modes_value, list) and all(isinstance(v, str) for v in modes_value):
+            modes = modes_value  # type: ignore[assignment]
+        else:
+            raise RuntimeError(
+                f"Case {case_id!r} 'modes' must be a string or list of strings, got {modes_value!r}"
+            )
+
+    tier = str(row.get("tier") or "")
+
     return {
         "case_id": str(case_id),
         "query": query,
@@ -319,6 +347,8 @@ def _validate_case_row(row: Any) -> dict[str, Any]:
         "expected_contains": _list_of_str(
             row.get("expected_contains"), "expected_contains", case_id
         ),
+        "tier": tier,
+        "modes": modes,
         "turns": turns,
     }
 
@@ -339,6 +369,8 @@ def _load_cases(path: Path) -> list[_Case]:
                     mentioned_document_ids=row["mentioned_document_ids"],
                     disabled_tools=row["disabled_tools"],
                     expected_contains=row["expected_contains"],
+                    tier=row["tier"],
+                    modes=row["modes"],
                     turns=row["turns"],
                 )
             )
@@ -376,6 +408,39 @@ def _context_drift(turn_snapshots: list[dict[str, Any]]) -> float | None:
     return first_ratio - last_ratio
 
 
+def _one_case_per_tag(cases: list[_Case]) -> list[_Case]:
+    """Pick the first case for every unique tag, preserving original order."""
+    seen: set[str] = set()
+    selected: list[_Case] = []
+    for c in cases:
+        for tag in c.tags:
+            if tag not in seen:
+                selected.append(c)
+                for t in c.tags:
+                    seen.add(t)
+                break
+    return selected
+
+
+def _build_mode_matrix(
+    cases: list[_Case],
+    requested_modes: list[str],
+    profile: str,
+) -> list[tuple[_Case, str]]:
+    """Expand cases into the (case, mode) pairs to run."""
+    if profile == "quick":
+        quick_mode = requested_modes[0]
+        selected = _one_case_per_tag(cases)
+        return [(c, quick_mode) for c in selected]
+
+    matrix: list[tuple[_Case, str]] = []
+    for c in cases:
+        case_modes = c.modes if c.modes is not None else requested_modes
+        for m in case_modes:
+            matrix.append((c, m))
+    return matrix
+
+
 def _per_turn_metrics(
     turn_snapshots: list[dict[str, Any]],
     turns: list[_Turn],
@@ -390,6 +455,59 @@ def _per_turn_metrics(
         "turn_error_rate": n_failed_turns / n_turns if n_turns else None,
         "context_drift_score": _context_drift(turn_snapshots),
     }
+
+
+@lru_cache(maxsize=1)
+def _load_chat_gate() -> tuple[dict[str, Any], dict[str, Any]]:
+    """Load (top-level, thresholds) from this benchmark's gate.yaml."""
+    gate_path = Path(__file__).parent / "gate.yaml"
+    if not gate_path.is_file():
+        return {}, {}
+    data = yaml.safe_load(gate_path.read_text(encoding="utf-8")) or {}
+    return data, data.get("thresholds") or {}
+
+
+def _evaluate_chat_gate(metrics: dict[str, Any]) -> list[str]:
+    """Return a list of threshold violations for the current metrics."""
+    top, thresholds = _load_chat_gate()
+    if not thresholds:
+        return []
+
+    violations: list[str] = []
+
+    def _check(name: str, value: float | None, max_val: float | None = None, min_val: float | None = None) -> None:
+        if value is None:
+            return
+        if max_val is not None and value > max_val:
+            violations.append(f"{name} {value:.3f} exceeds max {max_val:.3f}")
+        if min_val is not None and value < min_val:
+            violations.append(f"{name} {value:.3f} is below min {min_val:.3f}")
+
+    overall = metrics.get("overall", {})
+    _check("overall p95 e2e (ms)", overall.get("p95_e2e_ms"), thresholds.get("max_p95_e2e_ms"))
+    _check("overall p95 cost (micros)", overall.get("p95_cost_micros"), thresholds.get("max_p95_cost_micros"))
+    _check("overall contains match rate", overall.get("contains_match_rate"), min_val=thresholds.get("min_contains_match_rate"))
+
+    per_mode_thresholds = thresholds.get("per_mode", {})
+    for mode, vals in metrics.get("per_mode", {}).items():
+        t = per_mode_thresholds.get(mode, {})
+        _check(f"mode {mode} p95 e2e (ms)", vals.get("p95_e2e_ms"), t.get("max_p95_e2e_ms"))
+        _check(f"mode {mode} p95 cost (micros)", vals.get("p95_cost_micros"), t.get("max_p95_cost_micros"))
+
+    per_tier_thresholds = thresholds.get("per_tier", {})
+    for tier, vals in metrics.get("per_tier", {}).items():
+        t = per_tier_thresholds.get(tier, {})
+        _check(f"tier {tier} p95 e2e (ms)", vals.get("p95_e2e_ms"), t.get("max_p95_e2e_ms"))
+
+    # Story 4.8f operational / stability thresholds.
+    operational = metrics.get("operational", {})
+    _check("scrape drop rate", operational.get("scrape_failure_rate"), thresholds.get("max_scrape_drop_rate"))
+    _check("rate limited rate", operational.get("rate_limited_rate"), thresholds.get("max_rate_limited_rate"))
+    _check("tool drop rate", operational.get("tool_drop_rate"), thresholds.get("max_tool_drop_rate"))
+    _check("turn error rate", operational.get("turn_error_rate"), thresholds.get("max_turn_error_rate"))
+    _check("engine unavailable rate", operational.get("engine_unavailable_rate"), thresholds.get("max_engine_unavailable_rate"))
+
+    return violations
 
 
 class ChatRegressionBenchmark:
@@ -434,6 +552,27 @@ class ChatRegressionBenchmark:
             help="Number of parallel chat threads to open per case for stress testing.",
         )
         parser.add_argument(
+            "--modes",
+            default="balanced",
+            help="Comma-separated chat modes to benchmark (e.g. speed,balanced,quality,auto).",
+        )
+        parser.add_argument(
+            "--tier",
+            default=None,
+            help="Comma-separated tier filter (e.g. short,long_context,multi_tool).",
+        )
+        parser.add_argument(
+            "--environment",
+            default="local",
+            help="Environment label for local vs production parity (local or production).",
+        )
+        parser.add_argument(
+            "--profile",
+            default="full",
+            choices=["quick", "full"],
+            help="quick: one case per tag, one mode, concurrency 1. full: full mode × tier matrix.",
+        )
+        parser.add_argument(
             "--tags",
             default=None,
             help="Comma-separated tag filter (e.g. memory,document).",
@@ -449,6 +588,17 @@ class ChatRegressionBenchmark:
             type=str,
             default=None,
             help="Deployed backend build/commit identifier this run evaluates.",
+        )
+        parser.add_argument(
+            "--max-total-cost-micros",
+            type=int,
+            default=None,
+            help="Abort if the total run cost exceeds this cap.",
+        )
+        parser.add_argument(
+            "--fail-on-unratified",
+            action="store_true",
+            help="Fail the run if gate.yaml baseline_ratified is false.",
         )
 
     async def ingest(self, ctx: RunContext, **opts: Any) -> None:
@@ -488,8 +638,20 @@ class ChatRegressionBenchmark:
         concurrency = max(1, int(opts.get("concurrency") or 1))
         threads = max(1, int(opts.get("threads") or 1))
         tags_filter = opts.get("tags")
+        tier_filter = opts.get("tier")
+        environment = str(opts.get("environment") or "local")
+        profile = str(opts.get("profile") or "full")
+        requested_modes = [m.strip() for m in (opts.get("modes") or "balanced").split(",") if m.strip()]
+        if not requested_modes:
+            raise RuntimeError("--modes must contain at least one mode.")
         timeout_s = float(opts.get("timeout") or 300.0)
         build_id = opts.get("backend_build_id")
+        max_total_cost_micros = opts.get("max_total_cost_micros")
+        fail_on_unratified = bool(opts.get("fail_on_unratified"))
+
+        if profile == "quick":
+            concurrency = 1
+            threads = 1
 
         dataset_path = opts.get("dataset") or _cases_path(ctx)
         if not dataset_path.is_file():
@@ -503,14 +665,23 @@ class ChatRegressionBenchmark:
         if tags_filter:
             wanted = {t.strip() for t in tags_filter.split(",") if t.strip()}
             cases = [c for c in cases if wanted.intersection(c.tags)]
+        if tier_filter:
+            wanted_tiers = {t.strip() for t in tier_filter.split(",") if t.strip()}
+            cases = [c for c in cases if c.tier in wanted_tiers]
         if sample_n:
             cases = cases[:sample_n]
 
-        # Stress mode: run the same case in multiple parallel chat threads.
-        if threads > 1:
-            cases = [replace(c, case_id=f"{c.case_id}:t{i}") for c in cases for i in range(threads)]
+        matrix = _build_mode_matrix(cases, requested_modes, profile)
 
-        if not cases:
+        # Stress mode: run the same case in multiple parallel chat threads.
+        if threads > 1 and profile == "full":
+            matrix = [
+                (replace(c, case_id=f"{c.case_id}:t{i}"), m)
+                for c, m in matrix
+                for i in range(threads)
+            ]
+
+        if not matrix:
             raise RuntimeError("No chat cases selected for the requested filters.")
 
         client = NewChatClient(ctx.http, ctx.config.nowing_api_base)
@@ -518,7 +689,7 @@ class ChatRegressionBenchmark:
 
         sem = asyncio.Semaphore(concurrency)
 
-        async def _run_one(case: _Case) -> _CaseResult:
+        async def _run_one(case: _Case, mode: str) -> _CaseResult:
             async with sem:
                 turns = (
                     list(case.turns)
@@ -575,6 +746,9 @@ class ChatRegressionBenchmark:
                         finished_normally=False,
                         expected_contains=final_expected,
                         contains_hits=_contains_hits(last_text, final_expected),
+                        mode=mode,
+                        tier=case.tier,
+                        environment=environment,
                         raw_events=raw_events,
                         call_details=call_details or None,
                         operational=operational,
@@ -587,8 +761,9 @@ class ChatRegressionBenchmark:
                         )
                         if thread_id is not None:
                             options["thread_id"] = thread_id
+                        options["mode"] = mode
                         request = ArmRequest(
-                            question_id=f"{case.case_id}:turn{i}",
+                            question_id=f"{case.case_id}:{mode}:turn{i}",
                             prompt=turn.query,
                             mentioned_document_ids=case.mentioned_document_ids or None,
                             options=options,
@@ -694,12 +869,15 @@ class ChatRegressionBenchmark:
                     ),
                     expected_contains=final_expected,
                     contains_hits=_contains_hits(final.raw_text, final_expected),
+                    mode=mode,
+                    tier=case.tier,
+                    environment=environment,
                     raw_events=raw_events,
                     call_details=call_details or None,
                     operational=operational,
                 )
 
-        results = await asyncio.gather(*(_run_one(c) for c in cases))
+        results = await asyncio.gather(*(_run_one(c, m) for c, m in matrix))
 
         run_timestamp = utc_iso_timestamp()
         run_dir = ctx.runs_dir(run_timestamp=run_timestamp)
@@ -724,6 +902,9 @@ class ChatRegressionBenchmark:
                             "finished_normally": r.finished_normally,
                             "expected_contains": r.expected_contains,
                             "contains_hits": r.contains_hits,
+                            "mode": r.mode,
+                            "tier": r.tier,
+                            "environment": r.environment,
                             "error_code": r.error_code,
                             "n_raw_events": len(r.raw_events) if r.raw_events else 0,
                             "operational": r.operational,
@@ -734,14 +915,40 @@ class ChatRegressionBenchmark:
                     + "\n"
                 )
 
+        total_cost_micros = sum(r.cost_micros for r in results)
+        if max_total_cost_micros and total_cost_micros > max_total_cost_micros:
+            raise RuntimeError(
+                f"Run cost {total_cost_micros} micros exceeds cap {max_total_cost_micros}."
+            )
+
         metrics = self._aggregate(results, concurrency=concurrency, threads=threads)
+
+        gate_violations = _evaluate_chat_gate(metrics)
+        top, _ = _load_chat_gate()
+        if gate_violations:
+            metrics["gate_violations"] = gate_violations
+            if top.get("baseline_ratified"):
+                raise RuntimeError(
+                    f"Chat regression gate failed for {environment}: " + "; ".join(gate_violations)
+                )
+
+        if fail_on_unratified and not top.get("baseline_ratified"):
+            raise RuntimeError(
+                "Chat regression gate is not ratified (baseline_ratified=false). "
+                "Run with measured baseline and flip gate.yaml, or omit --fail-on-unratified."
+            )
 
         extra = {
             "search_space_id": search_space_id,
             "workspace_id": workspace_id,
             "n_cases": len(cases),
+            "n_matrix_rows": len(matrix),
             "concurrency": concurrency,
             "threads": threads,
+            "modes": requested_modes,
+            "tier_filter": tier_filter,
+            "environment": environment,
+            "profile": profile,
             "timeout_s": timeout_s,
             "tags_filter": tags_filter,
             "build_id": build_id,
@@ -807,12 +1014,35 @@ class ChatRegressionBenchmark:
             }
 
         overall = _bucket(results)
-        per_tag: dict[str, list[_CaseResult]] = {}
-        for r in results:
-            for tag in r.tags:
-                per_tag.setdefault(tag, []).append(r)
 
-        per_tag_buckets = {tag: _bucket(items) for tag, items in per_tag.items()}
+        def _group_results(
+            results: list[_CaseResult],
+        ) -> dict[str, dict[str, list[_CaseResult]]]:
+            per_tag: dict[str, list[_CaseResult]] = {}
+            per_mode: dict[str, list[_CaseResult]] = {}
+            per_tier: dict[str, list[_CaseResult]] = {}
+            per_mode_tier: dict[str, list[_CaseResult]] = {}
+            for r in results:
+                for tag in r.tags:
+                    per_tag.setdefault(tag, []).append(r)
+                per_mode.setdefault(r.mode, []).append(r)
+                if r.tier:
+                    per_tier.setdefault(r.tier, []).append(r)
+                    per_mode_tier.setdefault(f"{r.mode}:{r.tier}", []).append(r)
+            return {
+                "per_tag": per_tag,
+                "per_mode": per_mode,
+                "per_tier": per_tier,
+                "per_mode_tier": per_mode_tier,
+            }
+
+        groups = _group_results(results)
+        per_tag_buckets = {tag: _bucket(items) for tag, items in groups["per_tag"].items()}
+        per_mode_buckets = {mode: _bucket(items) for mode, items in groups["per_mode"].items()}
+        per_tier_buckets = {tier: _bucket(items) for tier, items in groups["per_tier"].items()}
+        per_mode_tier_buckets = {
+            key: _bucket(items) for key, items in groups["per_mode_tier"].items()
+        }
 
         operational = _aggregate_operational(
             results,
@@ -821,18 +1051,36 @@ class ChatRegressionBenchmark:
             threads=threads,
         )
 
+        def _op_for(items: list[_CaseResult], bucket: dict[str, Any]) -> dict[str, Any]:
+            return _aggregate_operational(
+                items,
+                overall=bucket,
+                concurrency=concurrency,
+                threads=threads,
+            )
+
         return {
             "overall": overall,
             "operational": operational,
             "per_tag": per_tag_buckets,
             "per_tag_operational": {
-                tag: _aggregate_operational(
-                    items,
-                    overall=per_tag_buckets[tag],
-                    concurrency=concurrency,
-                    threads=threads,
-                )
-                for tag, items in per_tag.items()
+                tag: _op_for(items, per_tag_buckets[tag])
+                for tag, items in groups["per_tag"].items()
+            },
+            "per_mode": per_mode_buckets,
+            "per_mode_operational": {
+                mode: _op_for(items, per_mode_buckets[mode])
+                for mode, items in groups["per_mode"].items()
+            },
+            "per_tier": per_tier_buckets,
+            "per_tier_operational": {
+                tier: _op_for(items, per_tier_buckets[tier])
+                for tier, items in groups["per_tier"].items()
+            },
+            "per_mode_tier": per_mode_tier_buckets,
+            "per_mode_tier_operational": {
+                key: _op_for(items, per_mode_tier_buckets[key])
+                for key, items in groups["per_mode_tier"].items()
             },
         }
 
@@ -894,24 +1142,122 @@ class ChatRegressionBenchmark:
                         f"{vals.get('successes', 0)} | {vals.get('failures', 0)} | {vals.get('drops', 0)} |"
                     )
 
+        def _bucket_row(vals: dict[str, Any]) -> str:
+            match_rate = vals.get("contains_match_rate")
+            match_str = f"{match_rate:.2%}" if match_rate is not None else "n/a"
+            ttfb = vals.get("p95_ttfb_ms")
+            ttfb_str = f"{ttfb:.0f}" if ttfb is not None else "n/a"
+            return (
+                f"{vals.get('samples', 0)} | "
+                f"{vals.get('error_rate', 0):.2%} | "
+                f"{vals.get('p95_e2e_ms', 0):.0f} | "
+                f"{ttfb_str} | "
+                f"{vals.get('p95_cost_micros', 0):.0f} | "
+                f"{vals.get('p95_citation_count', 0):.1f} | "
+                f"{match_str}"
+            )
+
         per_tag = m.get("per_tag", {})
         if per_tag:
             lines.append("")
             lines.append(
-                "| tag | samples | error rate | p95 e2e | p95 cost | p95 citations | keyword match |"
+                "| tag | samples | error rate | p95 e2e | p95 TTFB | p95 cost | p95 citations | keyword match |"
             )
-            lines.append("|---|---|---|---|---|---|---|")
+            lines.append("|---|---|---|---|---|---|---|---|")
             for tag, vals in sorted(per_tag.items()):
-                match_rate = vals.get("contains_match_rate")
-                match_str = f"{match_rate:.2%}" if match_rate is not None else "n/a"
+                lines.append(f"| {tag} | {_bucket_row(vals)} |")
+
+        per_mode = m.get("per_mode", {})
+        if per_mode:
+            lines.append("")
+            lines.append("### Per mode")
+            lines.append(
+                "| mode | samples | error rate | p95 e2e | p95 TTFB | p95 cost | p95 citations | keyword match |"
+            )
+            lines.append("|---|---|---|---|---|---|---|---|")
+            for mode, vals in sorted(per_mode.items()):
+                lines.append(f"| {mode} | {_bucket_row(vals)} |")
+
+        per_tier = m.get("per_tier", {})
+        if per_tier:
+            lines.append("")
+            lines.append("### Per tier")
+            lines.append(
+                "| tier | samples | error rate | p95 e2e | p95 TTFB | p95 cost | p95 citations | keyword match |"
+            )
+            lines.append("|---|---|---|---|---|---|---|---|")
+            for tier, vals in sorted(per_tier.items()):
+                lines.append(f"| {tier} | {_bucket_row(vals)} |")
+
+        per_mode_tier = m.get("per_mode_tier", {})
+        if per_mode_tier:
+            lines.append("")
+            lines.append("### Per mode × tier")
+            lines.append(
+                "| mode:tier | samples | error rate | p95 e2e | p95 TTFB | p95 cost | p95 citations | keyword match |"
+            )
+            lines.append("|---|---|---|---|---|---|---|---|")
+            for key, vals in sorted(per_mode_tier.items()):
+                lines.append(f"| {key} | {_bucket_row(vals)} |")
+
+        # Local vs production parity delta when both environments are present.
+        by_env: dict[str, RunArtifact] = {}
+        for a in artifacts:
+            env = a.extra.get("environment") or "local"
+            if env not in by_env or a.run_timestamp > by_env[env].run_timestamp:
+                by_env[env] = a
+        if "local" in by_env and "production" in by_env:
+            local_m = by_env["local"].metrics
+            prod_m = by_env["production"].metrics
+            local_overall = local_m.get("overall", {})
+            prod_overall = prod_m.get("overall", {})
+
+            def _delta(prod: float | None, local: float | None) -> str:
+                if prod is None or local is None or local == 0:
+                    return "n/a"
+                return f"{(prod - local) / local:+.1%}"
+
+            lines.append("")
+            lines.append("### Local vs production parity")
+            lines.append(
+                "| metric | local | production | delta |"
+            )
+            lines.append("|---|---|---|---|")
+            lines.append(
+                f"| p95 e2e | {local_overall.get('p95_e2e_ms', 0):.0f} | "
+                f"{prod_overall.get('p95_e2e_ms', 0):.0f} | "
+                f"{_delta(prod_overall.get('p95_e2e_ms'), local_overall.get('p95_e2e_ms'))} |"
+            )
+            lines.append(
+                f"| p95 cost | {local_overall.get('p95_cost_micros', 0):.0f} | "
+                f"{prod_overall.get('p95_cost_micros', 0):.0f} | "
+                f"{_delta(prod_overall.get('p95_cost_micros'), local_overall.get('p95_cost_micros'))} |"
+            )
+            lines.append(
+                f"| p95 citations | {local_overall.get('p95_citation_count', 0):.1f} | "
+                f"{prod_overall.get('p95_citation_count', 0):.1f} | "
+                f"{_delta(prod_overall.get('p95_citation_count'), local_overall.get('p95_citation_count'))} |"
+            )
+
+            for mode in sorted(
+                set(local_m.get("per_mode", {}).keys())
+                | set(prod_m.get("per_mode", {}).keys())
+            ):
+                l_mode = local_m.get("per_mode", {}).get(mode, {})
+                p_mode = prod_m.get("per_mode", {}).get(mode, {})
+                lines.append("")
+                lines.append(f"**Mode `{mode}` local vs production**")
                 lines.append(
-                    f"| {tag} | {vals.get('samples', 0)} | "
-                    f"{vals.get('error_rate', 0):.2%} | "
-                    f"{vals.get('p95_e2e_ms', 0):.0f} | "
-                    f"{vals.get('p95_cost_micros', 0):.0f} | "
-                    f"{vals.get('p95_citation_count', 0):.1f} | "
-                    f"{match_str} |"
+                    "| metric | local | production | delta |"
                 )
+                lines.append("|---|---|---|---|")
+                for metric in ["p95_e2e_ms", "p95_cost_micros", "p95_citation_count"]:
+                    lines.append(
+                        f"| {metric} | {l_mode.get(metric, 0):.0f} | "
+                        f"{p_mode.get(metric, 0):.0f} | "
+                        f"{_delta(p_mode.get(metric), l_mode.get(metric))} |"
+                    )
+
         return ReportSection(
             title="Chat regression",
             headline=False,

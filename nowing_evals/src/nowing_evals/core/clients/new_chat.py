@@ -124,6 +124,7 @@ class NewChatClient:
         user_query: str,
         mentioned_document_ids: Sequence[int] | None = None,
         disabled_tools: Sequence[str] | None = None,
+        mode: str | None = None,
         max_busy_retries: int = 4,
         timeout_s: float = 600.0,
     ) -> StreamedAnswer:
@@ -145,6 +146,8 @@ class NewChatClient:
             body["mentioned_document_ids"] = list(mentioned_document_ids)
         if disabled_tools:
             body["disabled_tools"] = list(disabled_tools)
+        if mode:
+            body["mode"] = mode
 
         attempt = 0
         while True:

@@ -3,19 +3,37 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import httpx
 import pytest
+import respx
 
-from nowing_evals.core.config import Config
+from nowing_evals.core.config import Config, SuiteState
 from nowing_evals.core.registry import RunArtifact, RunContext
 from nowing_evals.suites.chat.regression.runner import (
     ChatRegressionBenchmark,
+    _build_mode_matrix,
+    _Case,
     _CaseResult,
     _contains_hits,
     _load_cases,
+    _one_case_per_tag,
 )
+
+_BASE = "http://test"
+
+
+@pytest.fixture
+def http() -> httpx.AsyncClient:
+    return httpx.AsyncClient(base_url=_BASE)
+
+
+def _sse_body(events: list[dict]) -> bytes:
+    parts = [f"data: {json.dumps(ev)}\n\n" for ev in events]
+    parts.append("data: [DONE]\n\n")
+    return "".join(parts).encode("utf-8")
 
 
 def test_contains_hits_counts_substring_matches() -> None:
@@ -41,6 +59,9 @@ def _make_result(
     text: str = "Answer is B.",
     expected_contains: list[str] | None = None,
     tags: list[str] | None = None,
+    mode: str = "balanced",
+    tier: str = "short",
+    environment: str = "local",
 ) -> _CaseResult:
     return _CaseResult(
         case_id=case_id,
@@ -58,6 +79,9 @@ def _make_result(
         finished_normally=finished_normally,
         expected_contains=expected_contains or [],
         contains_hits=_contains_hits(text, expected_contains or []),
+        mode=mode,
+        tier=tier,
+        environment=environment,
     )
 
 
@@ -273,3 +297,176 @@ def test_report_section_per_tag_includes_citations_and_keyword_match() -> None:
     assert "p95 citations" in section.body_md
     assert "keyword match" in section.body_md
     assert "budget" in section.body_md
+
+
+def test_aggregate_per_mode_tier_and_environment() -> None:
+    bench = ChatRegressionBenchmark()
+    results = [
+        _make_result("a", mode="balanced", tier="short", latency_ms=1000, cost_micros=50),
+        _make_result("b", mode="balanced", tier="long_context", latency_ms=2000, cost_micros=150),
+        _make_result("c", mode="quality", tier="short", latency_ms=3000, cost_micros=100),
+        _make_result("d", mode="quality", tier="long_context", error="boom", finished_normally=False),
+    ]
+
+    metrics = bench._aggregate(results)
+
+    assert "per_mode" in metrics
+    assert "per_tier" in metrics
+    assert "per_mode_tier" in metrics
+    assert metrics["per_mode"]["balanced"]["samples"] == 2
+    assert metrics["per_mode"]["quality"]["n_failed"] == 1
+    assert metrics["per_tier"]["short"]["samples"] == 2
+    assert metrics["per_mode_tier"]["balanced:short"]["p95_e2e_ms"] == 1000.0
+    assert metrics["per_mode_tier"]["quality:long_context"]["error_rate"] == 1.0
+
+
+def _make_case(
+    case_id: str,
+    tags: list[str],
+    tier: str = "short",
+    modes: list[str] | None = None,
+) -> _Case:
+    return _Case(
+        case_id=case_id,
+        query=f"q-{case_id}",
+        tags=tags,
+        mentioned_document_ids=[],
+        disabled_tools=[],
+        expected_contains=[],
+        tier=tier,
+        modes=modes,
+    )
+
+
+def test_build_mode_matrix_full_and_quick() -> None:
+    cases = [
+        _make_case("c1", ["a"], tier="short", modes=["speed"]),
+        _make_case("c2", ["b"], tier="long_context", modes=None),
+    ]
+    full = _build_mode_matrix(cases, ["balanced", "quality"], "full")
+    assert len(full) == 3
+    assert {m for _, m in full} == {"speed", "balanced", "quality"}
+
+    quick = _build_mode_matrix(cases, ["balanced", "quality"], "quick")
+    assert len(quick) == 2  # one case per unique tag (a, b)
+    assert quick[0][0].case_id == "c1"
+    assert quick[0][1] == "balanced"
+
+
+def test_one_case_per_tag_preserves_order() -> None:
+    cases = [
+        _make_case("c1", ["a", "b"]),
+        _make_case("c2", ["b"]),
+        _make_case("c3", ["c"]),
+    ]
+    selected = _one_case_per_tag(cases)
+    assert [c.case_id for c in selected] == ["c1", "c3"]
+
+
+def test_report_section_local_prod_delta() -> None:
+    bench = ChatRegressionBenchmark()
+    local = RunArtifact(
+        suite="chat",
+        benchmark="regression",
+        run_timestamp="2026-08-04T00:00:00Z",
+        raw_path=Path("/tmp/raw.jsonl"),
+        metrics={
+            "overall": {"p95_e2e_ms": 1000.0, "p95_cost_micros": 100.0, "p95_citation_count": 2.0},
+            "per_mode": {"balanced": {"p95_e2e_ms": 1000.0}},
+        },
+        extra={"environment": "local"},
+    )
+    prod = RunArtifact(
+        suite="chat",
+        benchmark="regression",
+        run_timestamp="2026-08-04T00:00:01Z",
+        raw_path=Path("/tmp/raw.jsonl"),
+        metrics={
+            "overall": {"p95_e2e_ms": 1200.0, "p95_cost_micros": 120.0, "p95_citation_count": 2.5},
+            "per_mode": {"balanced": {"p95_e2e_ms": 1200.0}},
+        },
+        extra={"environment": "production"},
+    )
+    section = bench.report_section([local, prod])
+    assert "Local vs production parity" in section.body_md
+    assert "+20.0%" in section.body_md
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_run_executes_mode_matrix_and_tags_environment(
+    respx_mock, http, isolated_config: Config, tmp_path: Path
+) -> None:
+    bench = ChatRegressionBenchmark()
+    config = replace(isolated_config, nowing_api_base=_BASE)
+
+    respx_mock.post("/api/v1/threads").mock(
+        return_value=httpx.Response(200, json={"id": 7})
+    )
+    respx_mock.delete(url__regex=r"/api/v1/threads/.*").mock(
+        return_value=httpx.Response(404, json={"detail": "not found"})
+    )
+
+    body = _sse_body(
+        [
+            {"type": "start", "messageId": "m1"},
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "Answer"},
+            {"type": "text-end", "id": "t1"},
+            {"type": "finish"},
+        ]
+    )
+    respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+
+    dataset_path = tmp_path / "cases.jsonl"
+    rows = [
+        {"case_id": "c1", "query": "q1", "tags": ["a"], "tier": "short"},
+        {"case_id": "c2", "query": "q2", "tags": ["b"], "tier": "long_context"},
+    ]
+    with dataset_path.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row) + "\n")
+
+    suite_state = SuiteState(
+        search_space_id=0,
+        chat_model_id=0,
+        provider_model="",
+        created_at="2026-08-04T00:00:00Z",
+    )
+    ctx = RunContext(
+        suite="chat",
+        benchmark="regression",
+        config=config,
+        suite_state=suite_state,
+        http=http,
+    )
+
+    artifact = await bench.run(
+        ctx,
+        dataset=dataset_path,
+        search_space_id=1,
+        modes="speed,balanced",
+        environment="production",
+        concurrency=1,
+    )
+
+    assert artifact.extra["environment"] == "production"
+    assert set(artifact.extra["modes"]) == {"speed", "balanced"}
+    assert len(artifact.metrics["per_mode"]) == 2
+    assert set(artifact.metrics["per_mode"].keys()) == {"speed", "balanced"}
+    assert len(artifact.metrics["per_tier"]) == 2
+    assert set(artifact.metrics["per_mode_tier"].keys()) == {
+        "speed:short",
+        "speed:long_context",
+        "balanced:short",
+        "balanced:long_context",
+    }
+
+    new_chat_calls = [c for c in respx_mock.calls if c.request.method == "POST" and "/new_chat" in str(c.request.url)]
+    assert len(new_chat_calls) == 4  # 2 cases × 2 modes
