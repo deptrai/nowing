@@ -119,3 +119,23 @@ pnpm exec biome check --max-diagnostics 500 app/dashboard/\[workspace_id\]/works
 
 Notes:
 - `tests/integration/document_upload/test_document_upload.py` may fail locally if `ETL_SERVICE` is unset; that is an environment issue unrelated to this story.
+
+## Story 4.8 verification commands
+
+Chat benchmark telemetry + regression suite (from `nowing_evals/`):
+
+```bash
+ruff check src/nowing_evals/core/clients/new_chat.py src/nowing_evals/core/arms/nowing.py src/nowing_evals/core/cli.py src/nowing_evals/core/registry.py src/nowing_evals/suites/chat/ tests/core/test_clients.py tests/core/test_cli_ingest_report.py tests/suites/chat/test_regression.py
+ruff format src/nowing_evals/core/clients/new_chat.py src/nowing_evals/core/arms/nowing.py src/nowing_evals/core/cli.py src/nowing_evals/core/registry.py src/nowing_evals/suites/chat/ tests/core/test_clients.py tests/core/test_cli_ingest_report.py tests/suites/chat/test_regression.py
+python -m pytest tests/core/test_clients.py tests/core/test_cli_ingest_report.py tests/suites/chat/test_regression.py -q
+python -m pytest -q
+python -m nowing_evals benchmarks list
+```
+
+Smoke (requires auth + search space):
+
+```bash
+python -m nowing_evals ingest chat regression
+python -m nowing_evals run chat regression --search-space-id <SEARCH_SPACE_ID> --concurrency 1
+python -m nowing_evals report --suite chat
+```

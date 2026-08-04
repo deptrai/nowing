@@ -188,7 +188,8 @@ class NewChatClient:
                     message=detail.get("message", "Thread is busy"),
                 )
             response.raise_for_status()
-            answer = await self._consume_sse(response, request_start_time=started)
+            stream_started = time.monotonic()
+            answer = await self._consume_sse(response, request_start_time=stream_started)
         answer.latency_ms = int((time.monotonic() - started) * 1000)
         return answer
 
@@ -279,34 +280,38 @@ class NewChatClient:
                     text_buffers[tid] = []
                     ordered_text_ids.append(tid)
             elif ev_type == "start":
-                msg_id = payload.get("messageId")
-                if isinstance(msg_id, str):
+                msg_id = _str_id(payload.get("messageId"))
+                if msg_id is not None:
                     user_message_id = user_message_id or msg_id
-            elif ev_type in ("data-user-message-id", "user-message-id"):
-                data_payload = payload.get("data") or payload
+            elif ev_type == "data-user-message-id":
+                data_payload = payload.get("data") or {}
                 msg_id = data_payload.get("message_id") or data_payload.get("id")
                 user_message_id = _str_id(msg_id) or user_message_id
                 turn_id = _str_id(data_payload.get("turn_id")) or turn_id
-            elif ev_type in ("data-assistant-message-id", "assistant-message-id"):
-                data_payload = payload.get("data") or payload
+            elif ev_type == "data-assistant-message-id":
+                data_payload = payload.get("data") or {}
                 msg_id = data_payload.get("message_id") or data_payload.get("id")
                 assistant_message_id = _str_id(msg_id) or assistant_message_id
                 turn_id = _str_id(data_payload.get("turn_id")) or turn_id
-            elif ev_type in ("data-turn-info", "turn-info"):
-                data_payload = payload.get("data") or payload
+            elif ev_type == "data-turn-info":
+                data_payload = payload.get("data") or {}
                 turn_id = _str_id(data_payload.get("chat_turn_id")) or turn_id
-            elif ev_type in ("data-token-usage", "token-usage"):
-                data_payload = payload.get("data") or payload
-                prompt_tokens = data_payload.get("prompt_tokens", 0) or prompt_tokens
-                completion_tokens = data_payload.get("completion_tokens", 0) or completion_tokens
-                total_tokens = data_payload.get("total_tokens", 0) or total_tokens
-                cost_micros = data_payload.get("cost_micros", cost_micros)
-                call_details = data_payload.get("call_details", call_details)
-                model_breakdown = (
-                    data_payload.get("usage")
-                    or data_payload.get("model_breakdown")
-                    or model_breakdown
-                )
+            elif ev_type == "data-token-usage":
+                data_payload = payload.get("data") or {}
+                if "prompt_tokens" in data_payload:
+                    prompt_tokens = data_payload["prompt_tokens"]
+                if "completion_tokens" in data_payload:
+                    completion_tokens = data_payload["completion_tokens"]
+                if "total_tokens" in data_payload:
+                    total_tokens = data_payload["total_tokens"]
+                if "cost_micros" in data_payload:
+                    cost_micros = data_payload["cost_micros"]
+                if "call_details" in data_payload:
+                    call_details = data_payload["call_details"]
+                if "usage" in data_payload:
+                    model_breakdown = data_payload["usage"]
+                elif "model_breakdown" in data_payload:
+                    model_breakdown = data_payload["model_breakdown"]
             elif ev_type == "finish":
                 finished = True
 

@@ -11,7 +11,7 @@ status: ready-for-dev
 **Epic:** 4 — UI/UX: Productivity & Collaboration
 **Priority:** HIGH
 **Requirements:** FR-14
-**Architecture:** AD-17 (local-first workspace)
+**Architecture:** AD-21 (client tab state pointer-only, local-first, v2 storage key)
 
 ## Story
 

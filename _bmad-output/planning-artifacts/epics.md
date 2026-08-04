@@ -44,7 +44,7 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 > **⚠️ Re-bind 2026-07-25 (SCP `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md`, ✅ ADOPTED):** **FR-24 rời Epic 2 (Connectors) sang Epic 9.** ChainLens không phải connector/scraper ngang hàng Reddit — nó là external dependency hạng nhất (`AD-15`). FR-37, FR-38, NFR-9 là mới. Story `2-4` giữ `done` làm lịch sử (nó đã ship tool thật), không revert.
 
 ### NonFunctional Requirements
-`[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = **`done`**; implementation complete; baseline ratification pending)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1). `[PARTIAL]` **NFR-9 Deep-research latency & availability budget** (hai trạng thái A/B; đường async deliverable State A đã có; ChainLens benchmark 2026-08-01 p95 35s/70s/115s speed/balanced/deep — vượt target; rerun focused 2026-08-02 p95 27.5s/44.3s/43.7s — speed/deep PASS, balanced FAIL; benchmark `report-per-mode.md` 2026-08-02 (31 queries) ghi cost thực tế: research speed $0.0353 / balanced $0.0482 / quality $0.0671, avg $0.0519; full 69-query benchmark đang lên lịch; ngưỡng cổng A→B chưa đạt) → **E9.3**.
+`[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = **`in-progress`** per story file `stories/story-3-9-memory-recall-eval-gate`; `sprint-status.yaml` ghi `done` — chưa sync; implementation in progress; baseline ratification pending)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1). `[PARTIAL]` **NFR-9 Deep-research latency & availability budget** (hai trạng thái A/B; đường async deliverable State A đã có; ChainLens benchmark 2026-08-01 p95 35s/70s/115s speed/balanced/deep — vượt target; rerun focused 2026-08-02 p95 27.5s/44.3s/43.7s — speed/deep PASS, balanced FAIL; benchmark `report-per-mode.md` 2026-08-02 (31 queries) ghi cost thực tế: research speed $0.0353 / balanced $0.0482 / quality $0.0671, avg $0.0519; full 69-query benchmark đang lên lịch; ngưỡng cổng A→B chưa đạt) → **E9.3**.
 
 ### Additional Requirements
 Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nhất trong Structural Seed: `nowing_evals/` (đã tồn tại, cần thêm memory suite).
@@ -65,11 +65,11 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 **N/A** — UX design contract chưa tồn tại (`ux-designs/ux-Nowing-2026-07-22/` chỉ có scaffold rỗng). Story có UI (3.6 citation jump, 8.3 dashboard) cần UX spec riêng trước khi build UI chi tiết — ghi nhận là tiền đề, không chặn backend/eval.
 
 ### FR Coverage Map
-- FR-1/2/3/4/10 → **E1** [DONE] · FR-6/7/8 → **E2** [DONE] · **FR-6 mở rộng → E10** [DONE 2026-08-04] (batdongsan / chotot / muaban / vn_bds aggregator) · FR-9/11/12/13 → **E3** [DONE] · FR-14/15/16/17 → **E4** [DONE] · FR-21/22/23 → **E5** [DONE] · FR-19/20 → **E6** [DONE] · FR-25/26/27/28/29 → **E7** [DONE] · FR-30 → **E8** [DONE] · **FR-41 → E8.11** [GAP, mới 2026-07-26]
+- FR-1/2/3/4/10 → **E1** [DONE] · FR-6/7/8 → **E2** [DONE] · **FR-6 mở rộng → E10** [DONE 2026-08-04] (batdongsan / chotot / muaban / vn_bds aggregator) · FR-9/11/12/13 → **E3** [IN-PROGRESS] · FR-14/15/16/17/42 → **E4** [IN-PROGRESS] · FR-21/22/23 → **E5** [DONE] · FR-19/20 → **E6** [DONE] · FR-25/26/27/28/29 → **E7** [DONE] · FR-30/31/41 → **E8** [DONE]
 - **FR-24/37/38/39 + NFR-9 → E9** (mới 2026-07-25; tách story theo readiness Q-3/Q-4): FR-38 → **E9.1a** [DONE, P0] · FR-24 → **E9.1b** [DONE, P0] · FR-37 → **E9.2** [DONE, P0, parser `done.usage.costDollars` + fallback 60k micros; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671] · NFR-9 → **E9.3** [PARTIAL, P1 — baseline ChainLens có, State B chưa đạt] · OQ-6/AR-10 (phần Nowing↔engine) → **E9.4** [DONE, P1] · D5-Phase2 → **E9.5** [deferred] · **FR-39 → E9.6a** (provenance) **+ E9.6b** (re-validate) [GAP, defect schema]
 - FR-32 → E3 (3.8 done; quality→3.9, dedupe→3.11) · FR-33 → E4 (4.6 done) · FR-34 → E3/E4 (done)
 - FR-36 → **E3.10a/b** [RESOLVED 2026-07-25] · FR-18 → **E6.4** [DONE] · FR-31/NFR-7 → **E8.3** [DONE] · FR-35 → **E6.5** [DONE — cải chính 2026-07-25]
-- NFR-8 → **E3.9** [DONE — implementation complete; baseline ratification pending] · NFR-6 → **E3.6** [DONE] · OQ-3/AR-4 → **E3.7** [PARTIAL] · OQ-4 → **E2.5** [DONE] · **OQ-5 → E6.4 [DONE]** *(2026-07-25: `6-4` = done; 4 action type `write_back_notion/slack/linear/jira` đã có ⇒ câu hỏi "action type riêng vs `agent_task`" **code đã trả lời: action type riêng**)* · OQ-6/AR-10 → **E8.10 + E9.4** [GAP] · **OQ-7 (4 câu hỏi từ ChainLens `42-3`) → E9.1b/E9.2/E9.3** [GAP] · FR-5 → [REMOVED]
+- NFR-8 → **E3.9** [IN-PROGRESS — story file `stories/story-3-9-memory-recall-eval-gate` ghi in-progress; baseline ratification pending] · NFR-6 → **E3.6** [DONE] · OQ-3/AR-4 → **E3.7** [PARTIAL] · OQ-4 → **E2.5** [DONE] · **OQ-5 → E6.4 [DONE]** *(2026-07-25: `6-4` = done; 4 action type `write_back_notion/slack/linear/jira` đã có ⇒ câu hỏi "action type riêng vs `agent_task`" **code đã trả lời: action type riêng**)* · OQ-6/AR-10 → **E8.10 + E9.4** [DONE] · **OQ-7 (4 câu hỏi từ ChainLens `42-3`) → E9.1b/E9.2/E9.3** [DONE 2026-08-04 — cost contract corrected] · **NFR-10 → E4.8** [IN-PROGRESS] · FR-5 → [REMOVED]
 - **Mới 2026-07-25 (readiness Nhóm 3 — trước đây KHÔNG có FR lẫn epic):** **FR-40** (first-run value: research run sinh memory; M1; brief §9 H-4) → **E3.13** [DONE, HIGH] · **NFR-1b/1c/1d** (bound cho memory injection + recall + auto-extract; `AD-18`) → **E3.14** [DONE, đi kèm E3.13]
   - ⚠️ **NFR-1 trước đây KHÔNG map sang epic nào** (readiness C-1) và không phủ memory (P-5). Nay: **NFR-1a** (CRUD/scraper) = nền tảng, không cần story riêng · **NFR-1b/1c/1d → E3.14**.
   - ⚠️ **Ràng buộc thứ tự mới:** **E3.14 nên chạy trước khi chốt số SM-10 của E3.9** (`AD-18` rule 6) — baseline recall quality đo trên lượng inject phụ thuộc N thì không tái lập được.
@@ -94,12 +94,12 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 Built-in scrapers + OAuth connectors + external MCP connectors; connectors là memory ingestion source. **FRs:** FR-6,7,8. **Open:** 2.6 Indeed `[ready-for-dev]`, 2.7 Walmart `[ready-for-dev]`, 2.8 Amazon EU `[ready-for-dev]`, 2.9 input validation `[DONE]`.
 > **⚠️ 2026-07-25: FR-24 (ChainLens) đã rời Epic 2 → Epic 9.** ChainLens không phải connector. Story `2-4-chainlens-research-mcp-tool` giữ `done` làm lịch sử — nó đã ship tool thật; việc còn lại thuộc Epic 9.
 
-### Epic 3: Knowledge Base + Long-Term Memory — ✅ DONE
-KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(mới)*, **NFR-1b/1c/1d** *(mới)*. **Open:** 3.15 run citations `[ready-for-dev]`, 3.16 OKF export `[ready-for-dev]`.
+### Epic 3: Knowledge Base + Long-Term Memory — 🔄 IN-PROGRESS
+KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(mới)*, **NFR-1b/1c/1d** *(mới)*. **Open:** 3.9 memory recall eval-gate `[in-progress]`, 3.15 run citations `[ready-for-dev]`, 3.16 OKF export `[ready-for-dev]`.
 > **🆕 2026-07-25 (readiness Nhóm 3):** hai story mới, cả hai đều là **gap trước đây không có FR lẫn epic**. **3.13** — `MemoryExtractionService` chỉ có `extract_from_turn` và workspace mới không seed gì ⇒ `nowing_recall` session đầu **rỗng theo cấu trúc**, **M1 (first-run value ≤15 phút) không tồn tại**. **3.14** — `MemoryInjectionMiddleware` **chặn mọi lượt chat** với `SELECT` không LIMIT, bỏ qua cả HNSW + GIN index đã có sẵn ⇒ chi phí mỗi lượt tăng tuyến tính theo mức dùng. **3.14 nên chạy trước khi chốt số SM-10 của 3.9.**
 
-### Epic 4: Chat & Agents — ✅ DONE
-Multi-agent runtime + memory tools + research continuity. **FRs:** FR-14,15,16,17 (+4.5, 4.6). **Open:** 4.7 pointer-based tabs `[ready-for-dev]`.
+### Epic 4: Chat & Agents — 🔄 IN-PROGRESS
+Multi-agent runtime + memory tools + research continuity. **FRs:** FR-14,15,16,17,42 (+4.5, 4.6). **Open:** 4.7 pointer-based tabs `[ready-for-dev]`, 4.8a chat telemetry `[review]`, 4.8b chat regression suite `[review]`, 4.8c/8d/8e `[ready-for-dev]`.
 
 ### Epic 5: Deliverables — ✅ DONE
 Report/podcast/video/image. **FRs:** FR-21,22,23.
@@ -112,7 +112,7 @@ Schedule/event/**memory_change** trigger + `agent_task`/`continue_research`/**wr
 Web/desktop/extension/Obsidian/MCP. **FRs:** FR-25,26,27,28,29. **Open:** 7.4 dedicated connectors layout `[ready-for-dev]`.
 
 ### Epic 8: Người dùng thấy và kiểm soát được chi phí — ✅ DONE (2026-08-02)
-Token tracking, ví credit, dashboard usage, guardrail chi phí, docs/vision sync, và admin UI cho global LLM model config. **FRs:** FR-30, FR-31, **FR-41** *(mới)*. 8.10 và 8.11 **done**. **Open:** 8.12 workspace limits `[ready-for-dev]`, 8.13 PostHog analytics `[ready-for-dev]`.
+Token tracking, ví credit, dashboard usage, guardrail chi phí, docs/vision sync, admin UI cho global LLM model config, workspace limits, và PostHog analytics. **FRs:** FR-30, FR-31, **FR-41** *(mới)*. 8.3, 8.7, 8.8, 8.9, 8.10, 8.11, **8.12**, **8.13** đều **done**. **Open:** không còn.
 > **⚠️ Đổi tên + đánh lại số hiệu 2026-07-25 (readiness Q-7 + C-C).** Tên trước *"Platform Operations (Billing/Usage/Token)"* là framing ops. **Và quan trọng hơn — số hiệu story đã bị xung đột với `sprint-status.yaml`:** `8.4a`/`8.5`/`8.6` trong tài liệu này nghĩa **khác** `8-4`/`8-5`/`8-6` trong sprint-status (observability-logging / security-permissions / multi-tenant-isolation). Đã đánh lại theo số **chưa dùng**: `8.4a → 8.8` · `8.5 → 8.9` · `8.6 → 8.10`. Từ giờ số hiệu ở hai tài liệu khớp 1-1.
 
 ### Epic 9: Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng — ✅ DONE (2026-08-02)
@@ -214,7 +214,7 @@ So that Nowing đáp ứng ToS/bản quyền/PII và người dùng kiểm soát
 **And** policy tách rõ **self-host vs cloud** (RS-6); **And** data export (RS-8); **And** doc retention (mig 176) được nối vào cùng policy.
 _OQ-3 · AR-4 · AD-DEFER-4._
 
-### Story 3.9: Memory Recall Eval-Gate  `(mới)`  `[DONE — SHIP-GATE implementation complete; baseline ratification pending]`
+### Story 3.9: Memory Recall Eval-Gate  `(mới)`  `[IN-PROGRESS — SHIP-GATE; story file ghi in-progress; sprint-status ghi done — cần reconcile]`
 As a platform team,
 I want một eval gate đo chất lượng recall của memory trên `nowing_evals`,
 So that không ship recall rác (agent "đoán" thay vì "nhớ").
@@ -850,6 +850,14 @@ So that we detect chat latency, cost, citation, and quality regressions before t
 
 **Kỹ thuật:** extend `NewChatClient` to parse `data-token-usage`, `data-turn-info`, and TTFB; add `nowing_evals/suites/chat/regression/` with `runner.py`, `ingest`, sample dataset, `gate.yaml`, and report section.
 _FR-42 · NFR-10 · SCP sprint-change-proposal-2026-08-04-chat-response-benchmark.md._
+
+| Story | Mô tả | Status |
+|---|---|---|
+| **4.8a** | Extend `NewChatClient` telemetry (token/cost, TTFB, turn id, message ids) | done |
+| **4.8b** | `chat/regression` benchmark suite (ingest, run, report, gate) | done |
+| **4.8c** | Production query sampler + PII anonymizer | ready-for-dev |
+| **4.8d** | `chat/quality` LLM-as-judge benchmark | ready-for-dev |
+| **4.8e** | CI / deploy gate integration | ready-for-dev |
 
 ---
 

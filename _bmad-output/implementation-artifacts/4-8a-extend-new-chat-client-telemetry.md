@@ -2,12 +2,12 @@
 baseline_commit: e3de8a948
 baseline_branch: develop
 story_key: 4-8a-extend-new-chat-client-telemetry
-status: in-progress
+status: done
 ---
 
 # Story 4.8a: Extend `NewChatClient` to capture benchmark telemetry
 
-**Status:** in-progress  
+**Status:** done  
 **Epic:** 4 — Chat & Agents  
 **Priority:** HIGH  
 **Requirements:** FR-42, NFR-10  

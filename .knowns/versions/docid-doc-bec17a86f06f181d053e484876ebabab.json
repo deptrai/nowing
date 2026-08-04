@@ -2,7 +2,7 @@
   "docId": "doc-bec17a86f06f181d053e484876ebabab",
   "docPath": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
   "currentPath": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
-  "currentVersion": 1,
+  "currentVersion": 2,
   "versions": [
     {
       "id": "v1",
@@ -46,6 +46,65 @@
       ],
       "snapshot": {
         "path": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
+        "title": "OQ-7 — Nowing trả lời ChainLens (story `42-3`)"
+      }
+    },
+    {
+      "id": "v2",
+      "docId": "doc-bec17a86f06f181d053e484876ebabab",
+      "docPath": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
+      "currentPath": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
+      "version": 2,
+      "timestamp": "2026-08-04T14:53:26.435888Z",
+      "author": "mcp",
+      "actor": "mcp",
+      "source": "mcp",
+      "baseHash": "b546fb932c4db9a425f9ba9e9b5f77cf00ee0edbdefa5c982f5774b48152c981",
+      "newHash": "2e726e73266fff13b9de34381c9bc37a120fceaf0e48352461a9ebcdb04eea8d",
+      "changes": [
+        {
+          "field": "content",
+          "oldValue": "",
+          "newValue": "# OQ-7 — Nowing trả lời ChainLens (story `42-3`)\n\n## Context\nStory `42-3` xác nhận nhu cầu tích hợp từ phía Nowing trước khi ChainLens hoàn tất contract v4 (`ADR-CHAINLENS-AS-NOWING-MICROSERVICE`).\n\n## 4 câu hỏi Nowing → ChainLens (E9.1b/E9.2/E9.3)\n\n### Q1 — Endpoint surface\n**Nowing chỉ cần `POST /api/v1/search` SSE.** Không cần `/api/v1/answer`, `/api/v1/contents`, `/api/v1/reason` hay `/api/v1/extract` trong v4.\n- Các endpoint `33-4/33-5` (`contents`/`answer` REST) bị `deferred`.\n- `39-2` playground chỉ hiển thị `/search` + `/extract` (JSON) với tab \"Coming soon\" cho các endpoint chưa có.\n\n### Q2 — SSE cost contract ⚠️ CORRECTED 2026-08-04\n**Bản gốc story 42-3 ghi \"flat billing (`CHAINLENS_QUERY`) → no per-query cost needed\" — ĐÃ LỖI THỜI.**\n\nNowing PRD `FR-37` + Epic 9.2 (done 2026-08-02) yêu cầu parse `costDollars` thật từ terminal `done` frame:\n- `done.usage.costDollars` là **số USD** (float), tính toàn pipeline (classifier + researcher + writer + reflection).\n- Nowing parse thành `TokenUsage.cost_micros` (1 USD = 1_000_000 micros).\n- Fallback 60k micros (~$0.06) chỉ khi engine không emit `costDollars`.\n- Số thật đo 2026-08-02: speed $0.0353 · balanced $0.0482 · quality $0.0671 (avg $0.0519).\n- `CHAINLENS_QUERY_MICROS_PER_CALL` hạ xuống fallback, log warning mỗi lần dùng.\n\n### Q3 — Geo-access\n**Nowing không cần geo-routed research (41-2).** Nowing crawler có proxy pool riêng, geo-access của ChainLens là redundant.\n- `41-2-geo-access-feature` trạng thái `deferred`.\n\n### Q4 — Auth / rate-limit\n**Nowing cần API key + per-key rate limit (Story 39-1, done).**\n- ChainLens `ApiKeyService` / `ApiKeyGuard` / `B2bRateLimiterService` mở rộng để lưu `rateLimit` per key.\n- Không dùng JWT/HMAC context của Nowing user trực tiếp; service-to-service qua API key.\n\n### Q5 — Mode mapping\nNowing UX modes: `speed`, `balanced`, `quality`, `auto`.\n- ChainLens `mode` trong `/api/v1/search`: `ask` | `reason` | `research` | `speed` | `balanced` | `quality`.\n- Nowing map nội bộ: `speed/balanced/quality` đến các policy tương ứng; `auto` để ChainLens chọn.\n\n## Liên kết\n- ChainLens: `42-3-verify-nowing-endpoint-needs.md`, `sprint-status.yaml` 42-3.\n- Nowing: `PRD` FR-37/NFR-9, `epics.md` E9.2, `9-2-deep-research-cost-metering.md`.\n\n## Action items\n- [ ] Sửa story `42-3-verify-nowing-endpoint-needs.md` dòng \"flat billing\" thành \"real costDollars parsing\".\n- [ ] Đồng bộ `chainlens-research/_bmad-output/sprint-status.yaml` reason dòng 42-3.\n- [ ] Xác nhận `apps/api/src/search/__tests__/fixtures/nowing-sse-parser.ts` parse `costDollars` theo FR-37.\n"
+        },
+        {
+          "field": "tags",
+          "oldValue": null,
+          "newValue": [
+            "oq-7",
+            "chainlens",
+            "nowing",
+            "integration",
+            "cost-contract"
+          ]
+        }
+      ],
+      "changedScopes": [
+        {
+          "type": "whole_doc",
+          "field": "content",
+          "summary": "Whole document content",
+          "newBytes": 2737,
+          "deltaBytes": 2737
+        },
+        {
+          "type": "field",
+          "field": "tags",
+          "summary": "tags",
+          "newBytes": 59,
+          "deltaBytes": 59
+        }
+      ],
+      "snapshot": {
+        "content": "# OQ-7 — Nowing trả lời ChainLens (story `42-3`)\n\n## Context\nStory `42-3` xác nhận nhu cầu tích hợp từ phía Nowing trước khi ChainLens hoàn tất contract v4 (`ADR-CHAINLENS-AS-NOWING-MICROSERVICE`).\n\n## 4 câu hỏi Nowing → ChainLens (E9.1b/E9.2/E9.3)\n\n### Q1 — Endpoint surface\n**Nowing chỉ cần `POST /api/v1/search` SSE.** Không cần `/api/v1/answer`, `/api/v1/contents`, `/api/v1/reason` hay `/api/v1/extract` trong v4.\n- Các endpoint `33-4/33-5` (`contents`/`answer` REST) bị `deferred`.\n- `39-2` playground chỉ hiển thị `/search` + `/extract` (JSON) với tab \"Coming soon\" cho các endpoint chưa có.\n\n### Q2 — SSE cost contract ⚠️ CORRECTED 2026-08-04\n**Bản gốc story 42-3 ghi \"flat billing (`CHAINLENS_QUERY`) → no per-query cost needed\" — ĐÃ LỖI THỜI.**\n\nNowing PRD `FR-37` + Epic 9.2 (done 2026-08-02) yêu cầu parse `costDollars` thật từ terminal `done` frame:\n- `done.usage.costDollars` là **số USD** (float), tính toàn pipeline (classifier + researcher + writer + reflection).\n- Nowing parse thành `TokenUsage.cost_micros` (1 USD = 1_000_000 micros).\n- Fallback 60k micros (~$0.06) chỉ khi engine không emit `costDollars`.\n- Số thật đo 2026-08-02: speed $0.0353 · balanced $0.0482 · quality $0.0671 (avg $0.0519).\n- `CHAINLENS_QUERY_MICROS_PER_CALL` hạ xuống fallback, log warning mỗi lần dùng.\n\n### Q3 — Geo-access\n**Nowing không cần geo-routed research (41-2).** Nowing crawler có proxy pool riêng, geo-access của ChainLens là redundant.\n- `41-2-geo-access-feature` trạng thái `deferred`.\n\n### Q4 — Auth / rate-limit\n**Nowing cần API key + per-key rate limit (Story 39-1, done).**\n- ChainLens `ApiKeyService` / `ApiKeyGuard` / `B2bRateLimiterService` mở rộng để lưu `rateLimit` per key.\n- Không dùng JWT/HMAC context của Nowing user trực tiếp; service-to-service qua API key.\n\n### Q5 — Mode mapping\nNowing UX modes: `speed`, `balanced`, `quality`, `auto`.\n- ChainLens `mode` trong `/api/v1/search`: `ask` | `reason` | `research` | `speed` | `balanced` | `quality`.\n- Nowing map nội bộ: `speed/balanced/quality` đến các policy tương ứng; `auto` để ChainLens chọn.\n\n## Liên kết\n- ChainLens: `42-3-verify-nowing-endpoint-needs.md`, `sprint-status.yaml` 42-3.\n- Nowing: `PRD` FR-37/NFR-9, `epics.md` E9.2, `9-2-deep-research-cost-metering.md`.\n\n## Action items\n- [ ] Sửa story `42-3-verify-nowing-endpoint-needs.md` dòng \"flat billing\" thành \"real costDollars parsing\".\n- [ ] Đồng bộ `chainlens-research/_bmad-output/sprint-status.yaml` reason dòng 42-3.\n- [ ] Xác nhận `apps/api/src/search/__tests__/fixtures/nowing-sse-parser.ts` parse `costDollars` theo FR-37.\n",
+        "path": "planning/planning-artifacts/oq-7-nowing-tr-l-i-chainlens-story-42-3",
+        "tags": [
+          "oq-7",
+          "chainlens",
+          "nowing",
+          "integration",
+          "cost-contract"
+        ],
         "title": "OQ-7 — Nowing trả lời ChainLens (story `42-3`)"
       }
     }

@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 import respx
 
+from nowing_evals.core.arms import ArmRequest
+from nowing_evals.core.arms.nowing import NowingArm
 from nowing_evals.core.clients import (
     DocumentsClient,
     NewChatClient,
     SearchSpaceClient,
 )
-from nowing_evals.core.clients.new_chat import ThreadBusyError
+from nowing_evals.core.clients.new_chat import StreamedAnswer, ThreadBusyError
 
 _BASE = "http://test"
 
@@ -533,3 +537,166 @@ async def test_memories_search_unwraps_ranked_items_and_filters(respx_mock, http
         "tags": ["competitor"],
         "research_thread_id": 3,
     }
+
+
+@pytest.mark.asyncio
+async def test_nowing_arm_maps_answer_telemetry_to_arm_result():
+    """`NowingArm` should expose per-answer telemetry in `ArmResult`."""
+    client = AsyncMock(spec=NewChatClient)
+    client.create_thread = AsyncMock(return_value=42)
+    client.delete_thread = AsyncMock(return_value=None)
+    client.ask = AsyncMock(
+        return_value=StreamedAnswer(
+            text="Answer: B.",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            cost_micros=100,
+            ttfb_ms=55,
+            latency_ms=123,
+            user_message_id="1843",
+            assistant_message_id="1844",
+            turn_id="533:1762900000000",
+            finished_normally=True,
+        )
+    )
+
+    arm = NowingArm(client=client, search_space_id=7, ephemeral_threads=True)
+    result = await arm.answer(
+        ArmRequest(
+            question_id="q1",
+            prompt="What is the answer?",
+            mentioned_document_ids=[1, 2],
+        )
+    )
+
+    assert result.ok
+    assert result.answer_letter == "B"
+    assert result.input_tokens == 10
+    assert result.output_tokens == 5
+    assert result.cost_micros == 100
+    assert result.latency_ms == 123
+    assert result.extra["ttfb_ms"] == 55
+    assert result.extra["turn_id"] == "533:1762900000000"
+    client.delete_thread.assert_awaited_once_with(42)
+
+
+@pytest.mark.asyncio
+async def test_nowing_arm_deletes_thread_when_answer_times_out():
+    """`NowingArm` must delete the thread even if `answer` is cancelled."""
+    client = AsyncMock(spec=NewChatClient)
+    client.create_thread = AsyncMock(return_value=42)
+    client.delete_thread = AsyncMock(return_value=None)
+    client.ask = AsyncMock(side_effect=asyncio.CancelledError)
+
+    arm = NowingArm(client=client, search_space_id=7, ephemeral_threads=True)
+    with pytest.raises(asyncio.CancelledError):
+        await arm.answer(
+            ArmRequest(
+                question_id="q1",
+                prompt="What is the answer?",
+            )
+        )
+
+    client.delete_thread.assert_awaited_once_with(42)
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_ask_coerces_integer_start_message_id(respx_mock, http):
+    body = _sse_body(
+        [
+            {"type": "start", "messageId": 1843},
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "ok"},
+            {"type": "text-end", "id": "t1"},
+            {"type": "finish"},
+        ]
+    )
+    respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+    client = NewChatClient(http, _BASE)
+    answer = await client.ask(thread_id=1, search_space_id=2, user_query="hi")
+    assert answer.user_message_id == "1843"
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_ask_without_token_usage_defaults_to_no_cost(respx_mock, http):
+    """Backward compatibility: older backends may not emit data-token-usage."""
+    body = _sse_body(
+        [
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "ok"},
+            {"type": "text-end", "id": "t1"},
+            {"type": "finish"},
+        ]
+    )
+    respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+    client = NewChatClient(http, _BASE)
+    answer = await client.ask(thread_id=1, search_space_id=2, user_query="hi")
+    assert answer.text == "ok"
+    assert answer.prompt_tokens == 0
+    assert answer.completion_tokens == 0
+    assert answer.total_tokens == 0
+    assert answer.cost_micros is None
+    assert answer.model_breakdown is None
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_ask_token_usage_zero_overrides_previous_values(respx_mock, http):
+    """Explicitly-zero token counts must replace previous non-zero values."""
+    body = _sse_body(
+        [
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "ok"},
+            {
+                "type": "data-token-usage",
+                "data": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                    "cost_micros": 100,
+                    "usage": {"openai/gpt-5.4-mini": {"prompt_tokens": 10}},
+                },
+            },
+            {
+                "type": "data-token-usage",
+                "data": {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0,
+                    "cost_micros": 0,
+                    "usage": {},
+                },
+            },
+            {"type": "text-end", "id": "t1"},
+            {"type": "finish"},
+        ]
+    )
+    respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+    client = NewChatClient(http, _BASE)
+    answer = await client.ask(thread_id=1, search_space_id=2, user_query="hi")
+    assert answer.prompt_tokens == 0
+    assert answer.completion_tokens == 0
+    assert answer.total_tokens == 0
+    assert answer.cost_micros == 0
+    assert answer.model_breakdown == {}

@@ -2,12 +2,12 @@
 baseline_commit: e3de8a948
 baseline_branch: develop
 story_key: 4-8b-chat-regression-suite
-status: review
+status: done
 ---
 
 # Story 4.8b: Chat Regression Benchmark Suite
 
-**Status:** review  
+**Status:** done  
 **Epic:** 4 — Chat & Agents  
 **Priority:** HIGH  
 **Requirements:** FR-42, NFR-10  

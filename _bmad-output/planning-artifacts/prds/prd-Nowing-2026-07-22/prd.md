@@ -1,7 +1,7 @@
 ---
 title: Nowing
 created: 2026-07-21
-updated: 2026-08-02
+updated: 2026-08-04
 ---
 
 # PRD: Nowing
@@ -149,11 +149,13 @@ ChainLens không có end-user account, billing, onboarding, hay kênh phân ph�
 
 ## 4. Features
 
-> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8 (Connectors §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)**. *(ID toàn cục, không tuần tự theo section.)*
+> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8 (Connectors §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)**. *(ID toàn cục, không tuần tự theo section.)*
 >
 > **⚠️ Thay đổi 2026-07-26:** **FR-41 mới** — Admin UI cho Global LLM Model Configuration (§4.8). Global model config hiện chỉ sửa được qua YAML/env + restart; chưa có UI admin.
 >
 > **⚠️ Thay đổi 2026-07-25:** **FR-24 đã rời §4.2 Connectors sang §4.9 Deep-Research Engine Integration.** ChainLens không còn được coi là một connector/scraper ngang hàng Reddit — nó là dependency kiến trúc hạng nhất (`AD-15`). FR-37 và FR-38 là mới.
+>
+> **⚠️ Thay đổi 2026-08-04:** **FR-42 mới** — Chat Response Benchmark (§4.4) · **NFR-10 mới** — Chat Response Regression Gate (§5). Nguồn chân lý tiến độ cho epics là `sprint-status.yaml`; `epics.md` đang lỗi thời ở status Epic 4 (`in-progress`, không phải `done`) và Epic 8 (`done`, không còn open 8.12/8.13).
 
 ### 4.1 Identity, Auth & Workspace RBAC
 **Description:** Người dùng đăng ký/đăng nhập qua email/password hoặc Google OAuth (`fastapi-users`). Mỗi workspace có Owner và các system roles; quyền kiểm tra qua `WorkspaceRole.permissions` và `has_permission`. Hỗ trợ custom roles do Owner/admin role tạo.
@@ -412,13 +414,16 @@ Hệ thống cung cấp benchmark trong `nowing_evals` để đo chat response v
 
 - `nowing_evals` gọi `POST /api/v1/new_chat` qua `NewChatClient`, mỗi case một thread mới.
 - Thu thập mỗi turn: latency, TTFB, prompt/completion/total tokens, `cost_micros`, citation count, finish status, turn/message ids.
-- Hỗ trợ `chat/regression` (drift gate trên nhiều tag: memory, document, deep-research, multi-tool, creative) và nền tảng cho `chat/quality` (LLM-as-judge) sau này.
+- Hỗ trợ `chat/regression` (drift gate trên nhiều tag: memory, document, deep-research, multi-tool, creative), `chat/quality` (LLM-as-judge), và nền tảng lấy mẫu query production đã anonymize.
 - Dữ liệu mặc định là synthetic; trích xuất query thật từ production phải qua bước anonymize PII.
 
 **Consequences:**
 - `nowing_evals/src/nowing_evals/core/clients/new_chat.py` parse `data-token-usage`, `data-turn-info`.
 - `nowing_evals/src/nowing_evals/suites/chat/regression/`.
+- `nowing_evals/src/nowing_evals/suites/chat/quality/` (Phase 2).
+- Admin/script sampler để trích xuất và anonymize query production.
 - `gate.yaml`, sample dataset, báo cáo theo tag.
+- CI / deploy gate (4.8e).
 
 ### 4.5 Deliverables
 **Description:** Nowing tạo các deliverable từ nội dung workspace: report (markdown/Typst) export đa định dạng, podcast (transcript/audio TTS), video presentation (slides/scene codes), image generation.
@@ -804,7 +809,7 @@ Chất lượng recall phải được đo và đạt ngưỡng **trước khi s
 - Ngưỡng cụ thể chốt cùng SM-10.
 
 **Gap:**
-- `[DONE — 2026-08-01]` NFR-8: Endpoint `/memories/search` + MCP `nowing_recall` đã có. Eval gate — story `3-9-memory-recall-eval-gate` = **`done`** trong `sprint-status.yaml` (implementation complete; baseline ratification pending). Crack đỏ #2 từ PRFAQ **đã có harness + gate logic**; ngưỡng SM-10 còn chờ baseline live đo và sign-off.
+- `[IN-PROGRESS — 2026-08-04]` NFR-8: Endpoint `/memories/search` + MCP `nowing_recall` đã có. Eval gate — story `3-9-memory-recall-eval-gate` = **`in-progress`** (story file ghi `in-progress`; `sprint-status.yaml` ghi `done` — chưa sync). Crack đỏ #2 từ PRFAQ **đã có harness + gate logic**; ngưỡng SM-10 còn chờ baseline live đo và sign-off.
 - **⚠️ Đây là cổng chặn launch.** `briefs/brief-Nowing-2026-07-25/brief.md` §11: toàn bộ định vị đứng trên chất lượng recall — recall ra nhiễu thì lời hứa "nhớ và tiếp tục được" sụp, và Nowing thành "một research workspace nữa". Không launch ồn ào trước khi gate đóng.
 
 #### NFR-9: Deep-Research Latency & Availability Budget (hai trạng thái)
@@ -1014,16 +1019,16 @@ README, `docs/`, `docs/project-overview.md` và `.env.example` đã được c�
 ADR `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` để ngỏ ba câu hỏi mà **Nowing phải trả lời** cho ChainLens team:
 1. Nowing có cần thêm endpoint riêng (`reason` / `answer` variants) hay chỉ `/api/v1/search` là đủ?
 2. Nowing có muốn geo-access (ChainLens story `41-2`, reach nguồn bị region-block) không?
-3. Format `costDollars` Nowing muốn parse thế nào — field trong SSE terminal event (`event: usage`)? (Ảnh hưởng trực tiếp FR-37.)
+3. Format `costDollars` Nowing muốn parse thế nào — `done.usage.costDollars` trong terminal `done` frame? (Ảnh hưởng trực tiếp FR-37.)
 4. ~~Engine có thể emit progress event theo phase không?~~ → **RÚT** (xem dưới).
 
-**Status:** ✅ **ĐÃ TRẢ LỜI 2026-07-25** — `oq7-answers-to-chainlens-2026-07-25.md` (verify code cả hai repo, **ba trong bốn câu lật so với giả định ban đầu**).
+**Status:** ✅ **ĐÃ TRẢ LỜI 2026-07-25, CẬP NHẬT 2026-08-04** — `oq7-answers-to-chainlens-2026-07-25.md` + `stories/42-3-verify-nowing-endpoint-needs.md` (verify code cả hai repo, **ba trong bốn câu lật so với giả định ban đầu**; cost contract được correct lại theo FR-37/Epic 9.2).
 
 | Câu | Kết luận |
 |---|---|
 **(1)** endpoint riêng | **Không.** `/api/v1/search` là đủ — Nowing có runtime multi-agent riêng nên thêm `answer`/`reason` sẽ tạo **hai lớp reasoning xếp lên nhau** (đắt gấp đôi, khó truy nguyên citation). Cần độ sâu khác → thêm **giá trị `optimizationMode`**, không thêm endpoint. Giữ nguyên "một contract" của `AD-15`. |
 **(2)** geo-access `41-2` | **Không phải bây giờ**, và **có trùng lặp**: Nowing đã có proxy registry + rotation + GeoIP match + WebRTC block + canvas hiding + DNS-over-HTTPS + CAPTCHA trong crawler BSL riêng (`app/proprietary/`, `app/utils/proxy/`). Phần không trùng là provider chain của engine. Chưa có khiếu nại cụ thể → **đừng build speculatively**. |
-**(3)** format `costDollars` | ✅ **Shape ChainLens đã thiết kế là đúng** — tìm thấy ở `sse-contract-fixtures.ts:168`: `{type:'usage', costDollars:0.0123, tokens:{total:1280}}`. Nowing xin thêm **`resolvedMode`** (vì `auto` khiến Nowing không biết mode thật đã chạy → SM-11a chia theo mode) và **`estimated: boolean`** (đo được vs ước lượng — ảnh hưởng việc dám chốt giá), và đặt event `usage` **trước** `{"type":"done"}`. |
+**(3)** format `costDollars` | ✅ **Chốt 2026-08-04**: `costDollars` nằm trong terminal `done` frame: `done.usage.costDollars` (USD float, toàn pipeline). Nowing parse thành `TokenUsage.cost_micros` (1 USD = 1_000_000 micros). Fallback 60k micros (~$0.06) khi field missing. Cần thêm **`resolvedMode`** (vì `auto` → SM-11a) và **`estimated: boolean`** (đo được vs ước lượng). Số thật 2026-08-02: speed $0.0353 · balanced $0.0482 · quality $0.0671. |
 **(4)** progress theo phase | 🔄 **Nowing RÚT — lỗi ở phía Nowing.** ChainLens **đã emit** `progress` từ trước (`api.ts:414`, `:1298`, `:221` với `requestAcceptedAt`/`firstProgressAt`/`evidenceReadyAt`/`firstFactualChunkAt`) + `evidence_ready`. Parser Nowing chỉ dispatch 4 type (`error`/`done`/`block`/`updateBlock`) nên bỏ hết. Xem FR-38 và NFR-9 cho việc phải sửa. |
 
 **Còn chặn gì:** chỉ **`42-1`** (`costDollars`) — chặn FR-37 / story `9.2` và việc chốt giá cloud. `42-3` đóng được sau khi ChainLens nhận bản trả lời.

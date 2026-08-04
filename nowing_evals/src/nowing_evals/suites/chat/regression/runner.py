@@ -129,6 +129,53 @@ def _cases_path(ctx: RunContext) -> Path:
     return ctx.benchmark_data_dir() / "cases.jsonl"
 
 
+def _list_of_str(value: Any, field: str, case_id: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list) and all(isinstance(v, str) for v in value):
+        return value  # type: ignore[return-value]
+    raise RuntimeError(
+        f"Invalid type for '{field}' in case {case_id!r}: expected list of strings, got {value!r}"
+    )
+
+
+def _list_of_int(value: Any, field: str, case_id: Any) -> list[int]:
+    if value is None:
+        return []
+    if isinstance(value, int):
+        return [value]
+    if isinstance(value, list) and all(isinstance(v, int) for v in value):
+        return value  # type: ignore[return-value]
+    raise RuntimeError(
+        f"Invalid type for '{field}' in case {case_id!r}: expected list of integers, got {value!r}"
+    )
+
+
+def _validate_case_row(row: Any) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        raise RuntimeError(f"Invalid case row: expected object, got {row!r}")
+    case_id = row.get("case_id")
+    if case_id is None:
+        raise RuntimeError("Case row missing 'case_id'")
+    query = row.get("query")
+    if not isinstance(query, str) or not query.strip():
+        raise RuntimeError(f"Case {case_id!r} missing or empty 'query'")
+    return {
+        "case_id": str(case_id),
+        "query": query,
+        "tags": _list_of_str(row.get("tags"), "tags", case_id),
+        "mentioned_document_ids": _list_of_int(
+            row.get("mentioned_document_ids"), "mentioned_document_ids", case_id
+        ),
+        "disabled_tools": _list_of_str(row.get("disabled_tools"), "disabled_tools", case_id),
+        "expected_contains": _list_of_str(
+            row.get("expected_contains"), "expected_contains", case_id
+        ),
+    }
+
+
 def _load_cases(path: Path) -> list[_Case]:
     cases: list[_Case] = []
     with path.open("r", encoding="utf-8") as fh:
@@ -136,17 +183,15 @@ def _load_cases(path: Path) -> list[_Case]:
             line = line.strip()
             if not line:
                 continue
-            row = json.loads(line)
+            row = _validate_case_row(json.loads(line))
             cases.append(
                 _Case(
-                    case_id=str(row["case_id"]),
-                    query=str(row["query"]),
-                    tags=[str(t) for t in row.get("tags", [])],
-                    mentioned_document_ids=[
-                        int(i) for i in row.get("mentioned_document_ids", []) or []
-                    ],
-                    disabled_tools=[str(t) for t in row.get("disabled_tools", []) or []],
-                    expected_contains=[str(t) for t in row.get("expected_contains", []) or []],
+                    case_id=row["case_id"],
+                    query=row["query"],
+                    tags=row["tags"],
+                    mentioned_document_ids=row["mentioned_document_ids"],
+                    disabled_tools=row["disabled_tools"],
+                    expected_contains=row["expected_contains"],
                 )
             )
     return cases
@@ -170,6 +215,7 @@ class ChatRegressionBenchmark:
     headline: bool = False
     description: str = _DESCRIPTION
     requires_suite_setup: bool = False
+    requires_auth_for_ingest: bool = False
 
     def add_run_args(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
@@ -232,12 +278,7 @@ class ChatRegressionBenchmark:
                     line = line.strip()
                     if not line:
                         continue
-                    row = json.loads(line)
-                    if not isinstance(row, dict) or "case_id" not in row or "query" not in row:
-                        raise RuntimeError(
-                            f"Invalid dataset row: {line[:200]!r}. "
-                            "Each row must be an object with 'case_id' and 'query'."
-                        )
+                    row = _validate_case_row(json.loads(line))
                     fh.write(json.dumps(row, ensure_ascii=False) + "\n")
             logger.info("Installed %d cases from %s", len(_load_cases(target)), dataset_path)
             return
@@ -484,14 +525,20 @@ class ChatRegressionBenchmark:
         per_tag = m.get("per_tag", {})
         if per_tag:
             lines.append("")
-            lines.append("| tag | samples | error rate | p95 e2e | p95 cost |")
-            lines.append("|---|---|---|---|---|")
+            lines.append(
+                "| tag | samples | error rate | p95 e2e | p95 cost | p95 citations | keyword match |"
+            )
+            lines.append("|---|---|---|---|---|---|---|")
             for tag, vals in sorted(per_tag.items()):
+                match_rate = vals.get("contains_match_rate")
+                match_str = f"{match_rate:.2%}" if match_rate is not None else "n/a"
                 lines.append(
                     f"| {tag} | {vals.get('samples', 0)} | "
                     f"{vals.get('error_rate', 0):.2%} | "
                     f"{vals.get('p95_e2e_ms', 0):.0f} | "
-                    f"{vals.get('p95_cost_micros', 0):.0f} |"
+                    f"{vals.get('p95_cost_micros', 0):.0f} | "
+                    f"{vals.get('p95_citation_count', 0):.1f} | "
+                    f"{match_str} |"
                 )
         return ReportSection(
             title="Chat regression",

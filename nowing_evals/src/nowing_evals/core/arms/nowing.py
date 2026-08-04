@@ -18,6 +18,7 @@ for the runner to map back to corpus ids.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from ..clients import NewChatClient
@@ -70,7 +71,9 @@ class NowingArm(Arm):
         finally:
             if self._ephemeral and thread_id is not None:
                 try:
-                    await self._client.delete_thread(thread_id)
+                    # Shield cleanup so an outer asyncio.wait_for timeout
+                    # cannot cancel the delete before the backend receives it.
+                    await asyncio.shield(self._client.delete_thread(thread_id))
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("Failed to delete thread %s: %s", thread_id, exc)
 

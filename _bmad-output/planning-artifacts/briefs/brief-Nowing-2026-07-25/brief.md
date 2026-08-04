@@ -2,7 +2,7 @@
 title: "Product Brief: Nowing"
 status: final
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-08-04
 editorial: "bmad-editorial-review-structure + bmad-editorial-review-prose đã áp dụng 2026-07-25"
 purpose: "Input cho README + landing page (đối tượng đọc: developer)"
 audience: developer
@@ -11,7 +11,8 @@ decisions_locked: ["12.1 câu một dòng", "12.2 chỉ tiếng Anh", "12.3 ch�
 license_model: "BA TẦNG — Apache-2.0 core · BSL 1.1 cho nowing_backend/app/proprietary/** (crawler engine, KHÔNG phải OSS) · closed-source hosted cho deep-research engine. Xem §5.1"
 open_items: ["ngưỡng 15 phút cho M1 (§9) — mục tiêu thiết kế, chưa validate bằng user thật", "target GitHub star / self-host install (§9) — chưa đặt số"]
 resolved: ["M-1 → 12.6", "M-2 → H-1", "M-3 → giải bằng code 2026-07-25, xem §12"]
-blocking_gates: ["eval gate recall (NFR-8/story 3-9) trước khi launch", "story 9.1 degradation trước khi public repo"]
+blocking_gates: ["eval gate recall (NFR-8/story 3-9) trước khi launch — story đang in-progress"]
+resolved_gates: ["story 9.1a degradation done 2026-08-02", "story 9.2 real costDollars parsing done 2026-08-02"]
 follow_ups: ["H-1 thứ tự 9.1 trước 9.2 — ĐÃ APPLY", "H-2 ranh giới OSS/Cloud sang PRD — ĐÃ APPLY", "H-3 defect provenance memory→scraper-run → FR-39 / Story 9.6 — ĐÃ ĐĂNG KÝ", "H-4 onboarding phải seed nội dung (§9 M1) — CHƯA có trong PRD"]
 authors: "Mary (Business Analyst) + Luisphan (PO)"
 sources:
@@ -282,17 +283,14 @@ Một workspace, gọi được từ mọi nơi.
 **☁️ Nói được nhưng CHỈ CLOUD:** deep multi-step open-web research. Phải ghi rõ trong bảng feature (§5.1) — không để người self-host tự phát hiện.
 
 **⚠️ Nói được nhưng phải kèm điều kiện:**
-- Chất lượng recall — eval gate đang `review` (story `3-9`). **Đừng công bố số precision trước khi gate đóng.**
-- Auto-extract memory mỗi lượt — đã có nhưng **spend cap chưa** (story `8-7`), migration chưa lên prod.
-- Deep research — **không hứa thời gian**, latency chưa validated (NFR-9).
+- Chất lượng recall — eval gate đang `in-progress` (story `3-9`). **Đừng công bố số precision trước khi gate đóng.**
+- Auto-extract memory mỗi lượt — đã có; **spend cap** done (story `8-7`).
+- Deep research — **không hứa thời gian**, latency chưa validated (NFR-9); **cost thật đã có**: speed $0.0353 · balanced $0.0482 · quality $0.0671 (2026-08-02).
 
 **❌ Chưa nói được:**
 - **Memory tự re-validate nguồn** — differentiator mạnh nhất về sau, nhưng hiện **bị chặn ở schema**, không chỉ là "chưa build": `Run.id` UUID vs `Memory.source_id` Integer · không có code ghi `SCRAPER_RUN` · `RUNS_RETENTION_DAYS = 30`. Xem §4 và §12 H-3
 - **Provenance từ memory về đúng lần scrape** — cùng nguyên nhân trên. Hiện chỉ nối được về document/chat
-- Degradation khi engine không khả dụng *(story 9.1)* — **giờ là điều kiện tiên quyết trước khi public repo**, xem §5.1
 - UI memory browser / research timeline
-- Usage & credit dashboard
-- Memory-driven automations
 - Retention + right-to-delete cho memory *(OQ-3, cần chốt trước GA cloud)*
 
 **🚫 Không bao giờ nói:** bán research data · owned web index · Perplexity-parity · tên ChainLens · định vị VN/tiếng Việt.
@@ -324,7 +322,7 @@ Một workspace, gọi được từ mọi nơi.
 **Số cụ thể: HOÃN CÓ CHỦ ĐÍCH** `✅ quyết định 2026-07-25`. Chưa chốt target nào, đợi **version cuối của engine deep-research** (ChainLens Epic 43: `43-1` eval-harness GATE 0 → `43-2` planner-DAG → `43-5` cache hit-rate). Lý do: cost và latency của deep research là **đòn bẩy conversion**, mà cả hai đều đang biến động — chốt số bây giờ là chốt trên nền chưa ổn định.
 
 **Hai gate cứng trước khi chốt bất kỳ con số nào:**
-1. Story `9-2` + `8-7` cho **số cost thật** — hiện đang under-meter engine **2.1–3.3×** (giá phẳng $0.005/call trong khi mode `quality` tốn ~$0.0105).
+1. Story `9-2` + `8-7` cho **số cost thật** — đã đo 2026-08-02: speed $0.0353 · balanced $0.0482 · quality $0.0671. Giá phẳng cũ **under-meter 2.1–3.3×** đã được thay bằng parse `done.usage.costDollars`.
 2. Có baseline latency đo được từ phía Nowing (story `9-3`). Đặt ngưỡng trước khi đo là lặp lại đúng lỗi NFR6 phía engine.
 
 **Counter-metric — đừng tối ưu:** số memory được tạo. Nhiều memory rác tệ hơn ít memory đúng. Và đừng nâng timeout để giấu tỷ lệ degradation.
@@ -347,7 +345,7 @@ Và vì nó mã nguồn mở, self-host được: những team quan tâm nhất 
 
 Toàn bộ câu chuyện này đứng trên **chất lượng recall**.
 
-Nếu `nowing_recall` trả về nhiễu, lời hứa "nhớ và tiếp tục được" sụp, và Nowing trở thành "một research workspace nữa" — cạnh Onyx (29K★, 1,000+ enterprise) và OpenWebUI (136K★). Đó là lý do NFR-8 / story `3-9` không phải một checkbox kỹ thuật: **nó là điều kiện tồn tại của định vị này.**
+Nếu `nowing_recall` trả về nhiễu, lời hứa "nhớ và tiếp tục được" sụp, và Nowing trở thành "một research workspace nữa" — cạnh Onyx (29K★, 1,000+ enterprise) và OpenWebUI (136K★). Đó là lý do NFR-8 / story `3-9` không phải một checkbox kỹ thuật: **nó là điều kiện tồn tại của định vị này** — story đang `in-progress`, baseline ratification pending.
 
 **Hệ quả cho việc kể:** đừng launch ồn ào trước khi eval gate đóng. Với OSS, ấn tượng đầu tiên chỉ có một lần, và một `recall` cho ra rác sẽ được kể lại trên HN lâu hơn bất kỳ feature nào.
 
@@ -380,11 +378,11 @@ Hệ quả: cần **một cheap experiment thật** (landing + checkout + đo co
 **H-1 — Story `9.1a` (degradation) đổi lý do tồn tại, và cần đổi thứ tự.** *(Story `9.1` gốc đã tách thành `9.1a` degradation + `9.1b` contract guard — readiness Q-3, 2026-07-25.)*
 Trước 12.3 nó là P0 vì *reliability*. Sau 12.3/12.6 nó là P0 vì **mô hình kinh doanh**: thiếu engine mà Nowing hard-fail thì self-host không dùng được, và toàn bộ đường OSS/PLG sụp.
 
-⇒ **`9.1a`** là **điều kiện tiên quyết trước khi public repo**, và chạy **trước `9.1b`/`9.2`**. `9.1b` là P0 nhưng **không** chặn.
-⇒ Thứ tự: **`9.1a`** → public repo (Phase 1) → `9.1b` + `9.2` + `8-7` → đo số self-host thật → mở Phase 2 nếu có nhu cầu.
+⇒ **`9.1a` đã done 2026-08-02** — public repo không còn bị block về degradation. `9.1b` (contract guard) và `9.2` (cost thật) đã done. `8-7` done.
+⇒ Thứ tự cập nhật: `9.1a` → `9.1b` + `9.2` + `8-7` → đo số self-host thật → mở Phase 2 nếu có nhu cầu.
 ⇒ Cần cập nhật thứ tự trong `epics.md` và `sprint-status.yaml`.
 
-**H-2 — Ranh giới OSS/Cloud chưa có trong PRD.** FR-38 hiện chỉ nói degradation kỹ thuật, không nói đây là đường phân chia thương mại. Cần propagate §5.1 sang PRD §1.1/§4.9/§6, nếu không thì người đọc PRD sẽ không hiểu vì sao `9.1a` quan trọng.
+**H-2 — Ranh giới OSS/Cloud đã propagate sang PRD/Spine.** FR-38 + AD-15 đã cập nhật 2026-08-04.
 
 **H-3 — Chuỗi provenance memory → scraper run đang bị chặn ở schema (defect thật, phát hiện 2026-07-25).**
 Ba việc, đều nhỏ, và là **tiền đề của differentiator "nguồn sống, tự re-validate"**:
@@ -402,15 +400,16 @@ Ba `[ASSUMPTION]` trước đó, nay đã kiểm chứng:
 
 | Assumption | Kết luận | Bằng chứng |
 |---|---|---|
-| Khoảnh khắc "aha" trong 15 phút đầu | **❌ SAI về logic** — "nhớ từ tuần trước" cần ≥2 session, không thể xảy ra ở phút 15. Đã tách thành M1 (first-run, ≤15 phút, cần seeding) và M2 (aha thật, session 2+) | Suy luận, §9 |
+| Khoảnh khắc "aha" trong 15 phút đầu | **❌ SAI về logic** — "nhớ từ tuần trước" cần ≥2 session, không thể xảy ra ở phút 15. Đã tách thành M1 (first-run, ≤15 phút, cần seeding) và M2 (aha thật, session 2+). | Suy luận, §9 |
 | Lợi thế cấu trúc về re-validation | **⚠️ ĐÚNG thiết kế, CHƯA nối được** — `Run` lưu `capability` + `input` JSONB nên **chạy lại được đúng truy vấn cũ**; nhưng 3 blocker ở H-3 | `db.py:2077/3155/572`, `runs.py:33` |
 | Data-acquisition là moat bậc 2 | 🔴 **CẢI CHÍNH 2026-07-25 — bản trước nâng lên "bậc 1" là SAI.** Năng lực thật (8 nền tảng / 14 verb, InnerTube + CAPTCHA + stealth testbench + proxy registry, chạy production) nhưng **không phải moat của Nowing**: `app/proprietary/` là **87% byte-identical với SurfSense**, 26/16.600 dòng khác biệt và chỉ là đổi tên. "BSL 1.1 bảo vệ" cũng phải hạ giọng — `Licensor: Nowing` đặt trên code kế thừa, attribution bị **thay**, là **cổng thứ hai trước public repo** (`L-1`) chứ không phải điểm bán. Xem `AD-16.1` | `app/proprietary/**`, `LICENSE`, `git show upstream/main:surfsense_backend/app/proprietary/` |
+| Cost thật của deep research | ✅ **ĐÃ ĐO 2026-08-02** — speed $0.0353 · balanced $0.0482 · quality $0.0671. Parse `done.usage.costDollars`, fallback 60k micros. | PRD FR-37, story 9.2, AD-8/AD-15 |
 
 ### ⚠️ Còn mở
 
 - **Ngưỡng 15 phút cho M1** — mục tiêu thiết kế, chưa validate bằng người dùng thật.
-- **M-3 đã đóng.** Không còn assumption nào chưa kiểm chứng trong brief.
+- **M-3 có thêm kết luận 2026-08-04 (cost thật).** Vẫn còn mở: ngưỡng M1, re-validation schema (H-3).
 
 ---
 
-*Brief by Mary (Business Analyst) — 2026-07-25. Mục đích: input cho README + landing. Companion: `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md`, `prd-Nowing-2026-07-22/prd.md`, `prfaq-Nowing-distillate.md`.*
+*Brief by Mary (Business Analyst) — 2026-07-25; updated 2026-08-04. Mục đích: input cho README + landing. Companion: `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md`, `prd-Nowing-2026-07-22/prd.md`, `prfaq-Nowing-distillate.md`.*

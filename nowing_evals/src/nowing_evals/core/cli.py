@@ -277,9 +277,7 @@ async def _cmd_setup(args: argparse.Namespace) -> int:
                     raise
         if existing is None:
             ss_name = f"eval-{suite}-{utc_iso_timestamp()}"
-            row = await ss_client.create(
-                ss_name, description=f"nowing-evals lifecycle ({suite})"
-            )
+            row = await ss_client.create(ss_name, description=f"nowing-evals lifecycle ({suite})")
             console.print(
                 f"Created SearchSpace [cyan]{row.name}[/cyan] (id={row.id}) "
                 f"for suite [bold]{suite}[/bold]."
@@ -498,11 +496,15 @@ async def _cmd_ingest(args: argparse.Namespace) -> int:
     state, code = _resolve_suite_state(config, args.suite, benchmark)
     if state is None:
         return code
-    try:
-        token = await acquire_token(config)
-    except CredentialError as exc:
-        console.print(f"[red]{exc}[/red]")
-        return 2
+
+    needs_auth = getattr(benchmark, "requires_auth_for_ingest", True)
+    token = None
+    if needs_auth:
+        try:
+            token = await acquire_token(config)
+        except CredentialError as exc:
+            console.print(f"[red]{exc}[/red]")
+            return 2
 
     # Forward parsed CLI flags into ingest() so a benchmark can honour
     # its own flags (e.g. MIRAGE's --skip-snippet-filter / --corpus).
@@ -511,15 +513,29 @@ async def _cmd_ingest(args: argparse.Namespace) -> int:
         for k, v in vars(args).items()
         if k not in {"_func", "_async", "command", "subcommand", "suite", "benchmark", "log_level"}
     }
-    async with client_with_auth(config, token) as http:
-        ctx = registry.RunContext(
-            suite=args.suite,
-            benchmark=args.benchmark,
-            config=config,
-            suite_state=state,
-            http=http,
-        )
-        await benchmark.ingest(ctx, **extra_kwargs)
+    if needs_auth:
+        async with client_with_auth(config, token) as http:
+            ctx = registry.RunContext(
+                suite=args.suite,
+                benchmark=args.benchmark,
+                config=config,
+                suite_state=state,
+                http=http,
+            )
+            await benchmark.ingest(ctx, **extra_kwargs)
+    else:
+        async with httpx.AsyncClient(
+            base_url=config.nowing_api_base,
+            timeout=httpx.Timeout(60.0, connect=10.0),
+        ) as http:
+            ctx = registry.RunContext(
+                suite=args.suite,
+                benchmark=args.benchmark,
+                config=config,
+                suite_state=state,
+                http=http,
+            )
+            await benchmark.ingest(ctx, **extra_kwargs)
     console.print(f"[green]ingest OK[/green] {args.suite}/{args.benchmark}")
     return 0
 
@@ -579,9 +595,7 @@ async def _cmd_purge(args: argparse.Namespace) -> int:
     benchmark = registry.get(args.suite, args.benchmark)
     purge = getattr(benchmark, "purge", None)
     if purge is None:
-        console.print(
-            f"[red]Benchmark {args.suite}/{args.benchmark} does not support purge.[/red]"
-        )
+        console.print(f"[red]Benchmark {args.suite}/{args.benchmark} does not support purge.[/red]")
         return 2
     config = load_config()
     state, code = _resolve_suite_state(config, args.suite, benchmark)
@@ -725,10 +739,13 @@ async def _cmd_report(args: argparse.Namespace) -> int:
     benchmark_filter = args.benchmark
     config = load_config()
     state = get_suite_state(config, args.suite)
-    if state is None:
-        console.print(f"[red]No setup for suite {args.suite!r}.[/red]")
-        return 2
     benchmarks = registry.list_benchmarks(args.suite)
+    if state is None:
+        if any(not getattr(b, "requires_suite_setup", True) for b in benchmarks):
+            state = _detached_suite_state()
+        else:
+            console.print(f"[red]No setup for suite {args.suite!r}.[/red]")
+            return 2
     if benchmark_filter:
         benchmarks = [b for b in benchmarks if b.name == benchmark_filter]
         if not benchmarks:

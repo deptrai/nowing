@@ -7,7 +7,7 @@ paradigm: 'layered modular monolith + stateless MCP server + client-server with 
 scope: 'Toàn bộ hệ sinh thái Nowing: backend FastAPI, web Next.js, desktop Electron, browser extension, Obsidian plugin, MCP server, và evals.'
 status: draft
 created: '2026-07-22'
-updated: '2026-07-29'
+updated: '2026-08-04'
 binds: []
 sources:
   - /Users/luisphan/Documents/nowing/docs/architecture-backend.md
@@ -32,6 +32,11 @@ companions:
 > **✅ Bổ sung 2026-07-25 (đợt 2) — hai AD giải nốt readiness Q-2 / U-1 / U-2:**
 > - **`AD-11.1`** (trong AD-11) — **chốt:** `Memory` **tự chứa recipe** (`source_capability` + `source_input` + soft `source_run_id`), **không** dùng retention có điều kiện cho `runs`. Story **`9.6a`/`9.6b`** giờ có AC xác định.
 > - **`AD-17` mới** — deep research chạy trên **async door SẴN CÓ** của capability. **Cải chính readiness U-1:** hạ tầng async đã build end-to-end (`?mode=async` → 202, SSE `runs/{id}/events`, ring buffer replay 500 event, cancel, history) và **web đã có typed client**; `chainlens.research` đã nằm sau nó. **U-2 chốt:** đi SSE, **không** thêm `runs` vào `ZERO_PUBLICATION`. ⇒ Story `9.3` **thu hẹp** còn 3 việc thật: **Redis-backed bus** (bus hiện *single-process*, nhiều replica sẽ im lặng mất event), **async agent door** (agent door đang sync — đây mới là chỗ block chat turn), **notification + deliverable persistence**.
+>
+> **✅ Bổ sung 2026-08-04 (đợt 4 — docs sync sau reconcile):**
+> - **`AD-8` amended** — `costDollars` parse từ terminal `done` frame (`done.usage.costDollars`), không phải event `usage` riêng; fallback 60k micros khi missing.
+> - **`AD-15` amended** — terminal `done` contract ghi rõ `usage.costDollars`, `resolvedMode`, `estimated`; `costDollars` là USD float toàn pipeline.
+> - **`AD-21` mới** — client tab state pointer-only, local-first, v2 storage key (Story 4.7); sửa lỗi story file ghi `Architecture: AD-17`.
 >
 > **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
 > - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
@@ -113,7 +118,7 @@ Không có parent spine; đây là spine cao nhất.
 - **Prevents:** nhiều loại credit/token khác nhau; **và (mới) cost basis phỏng đoán làm nguồn chân lý**
 - **Rule:** `User.credit_micros_balance` là ví duy nhất. `TokenUsage.cost_micros` ghi chi phí. `CreditPurchase`/`PagePurchase`/`UserIncentiveTask` cộng vào balance. ETL/premium model calls trừ qua `wallet_credit.py`.
 - **⚠️ Amendment 2026-07-25 (SCP chainlens-engine-boundary, A3) — cost thật, không giá phẳng:**
-  - Chi phí của external service phải lấy từ **cost do service báo về**, không từ hằng số env. Với ChainLens: parse `costDollars` ở SSE terminal event → `TokenUsage` với `usage_type = "deep_research"` → wallet debit.
+  - Chi phí của external service phải lấy từ **cost do service báo về**, không từ hằng số env. Với ChainLens: parse `costDollars` từ **SSE terminal `done` frame** (`done.usage.costDollars`) → `TokenUsage` với `usage_type = "deep_research"` → wallet debit.
   - `CHAINLENS_QUERY_MICROS_PER_CALL` (`app/config/__init__.py:806`) và `BillingUnit.CHAINLENS_QUERY` **xuống hạng fallback**, chỉ dùng khi engine không emit cost, và **mỗi lần dùng phải log warning** để đo tần suất.
   - **Lý do (verified 2026-07-25):** giá phẳng $0.005/call trong khi `mode` default là `quality` (target cost $0.0105; deep research $0.0164) → **under-meter 2.1–3.3×**. Tệ hơn: các số target đó tính trên DeepSeek stack chưa vào prod (ChainLens `DEFAULT_MODEL_POLICY` = 100% `ag/` Gemini, output đắt hơn DeepSeek ~3.5×).
   - **Gate:** không chốt con số pricing/subscription nào trước khi FR-37 và story `8-7` (auto-extract spend cap) có số đo thật.
@@ -192,7 +197,7 @@ Không có parent spine; đây là spine cao nhất.
   - Nowing hard-fail khi engine không khả dụng, dù chính Nowing đã có hybrid search.
 - **Rule:**
   - **Ranh giới.** Nowing sở hữu: account/auth/onboarding, workspace/RBAC, memory, connectors, chat, deliverables, automations, **billing/credit/metering**, đa client, distribution. ChainLens sở hữu: deep-research pipeline (classifier → planner → researcher → writer → reflection), provider chain search/extract + failover, cost-optimized LLM routing, semantic cache, citations/quality. **ChainLens không có end-user auth và không có billing.**
-  - **Contract (🔒 versioned + regression-guarded).** `POST {CHAINLENS_API_URL}/api/v1/search`, SSE. Auth `Authorization: Bearer <CHAINLENS_API_KEY>` — **service-to-service, Nowing giữ một key**; ChainLens không biết end-user, định danh/hạn mức end-user do Nowing quản. Request `{ query, optimizationMode, tier, sources, history, stream, systemInstructions?, chatId? }` — `query` được strip khoảng trắng đầu/cuối qua `field_validator("query", mode="before")` `_strip_query` trước khi `min_length=1`/`max_length=500` kiểm tra; `tier: "research"` và `stream: true` là một phần của contract (đã thêm từ 9.1a). Response là data-only SSE frames (`data: <json>\n\n`); `type` nằm trong JSON payload (`type:block` / `type:updateBlock` RFC6902 patch, `type:done`, `type:error`); terminal thật là `{"type":"done", "chatId": ..., "webUrl": ...}` — **không** có dòng `event:` hay sentinel `data:[DONE]`. Contract này được khoá bằng regression test trong CI (marker `contract: contract regression tests for ChainLens integration` trong `pyproject.toml`, target `pytest tests/unit/capabilities/chainlens/research/test_executor.py tests/unit/capabilities/chainlens/research/test_chainlens_fixture_drift.py -m contract -v`), sử dụng golden fixture `tests/unit/capabilities/chainlens/research/fixtures/chainlens-sse-golden.json` đồng bộ với `CHAINLENS_REPO_PATH/apps/api/src/search/__tests__/fixtures/nowing-sse-parser.ts` qua drift test.
+  - **Contract (🔒 versioned + regression-guarded).** `POST {CHAINLENS_API_URL}/api/v1/search`, SSE. Auth `Authorization: Bearer <CHAINLENS_API_KEY>` — **service-to-service, Nowing giữ một key**; ChainLens không biết end-user, định danh/hạn mức end-user do Nowing quản. Request `{ query, optimizationMode, tier, sources, history, stream, systemInstructions?, chatId? }` — `query` được strip khoảng trắng đầu/cuối qua `field_validator("query", mode="before")` `_strip_query` trước khi `min_length=1`/`max_length=500` kiểm tra; `tier: "research"` và `stream: true` là một phần của contract (đã thêm từ 9.1a). Response là data-only SSE frames (`data: <json>\n\n`); `type` nằm trong JSON payload (`type:block` / `type:updateBlock` RFC6902 patch, `type:done`, `type:error`); terminal thật là `{"type":"done", "chatId": ..., "webUrl": ..., "usage": {"costDollars": <float>, "resolvedMode": "speed|balanced|quality|...", "estimated": true|false, ...}}` — **không** có dòng `event:` hay sentinel `data:[DONE]`. Contract này được khoá bằng regression test trong CI (marker `contract: contract regression tests for ChainLens integration` trong `pyproject.toml`, target `pytest tests/unit/capabilities/chainlens/research/test_executor.py tests/unit/capabilities/chainlens/research/test_chainlens_fixture_drift.py -m contract -v`), sử dụng golden fixture `tests/unit/capabilities/chainlens/research/fixtures/chainlens-sse-golden.json` đồng bộ với `CHAINLENS_REPO_PATH/apps/api/src/search/__tests__/fixtures/nowing-sse-parser.ts` qua drift test.
   - **Cost.** Lấy từ `costDollars` do engine emit (xem AD-8 amendment). Giá phẳng chỉ là fallback có log.
   - **Failure → degrade, không hard-fail.** Timeout / 5xx / chưa cấu hình → fallback sang `app/retriever/` hybrid search + trạng thái tường minh `partial` / `engine_unavailable`. **Không bịa citation**, không giả vờ là câu trả lời đầy đủ. Nowing self-host không cấu hình ChainLens vẫn dùng được mọi tính năng khác.
   - **Không merge.** Nowing = Python/FastAPI, ChainLens = TypeScript/NestJS. Giữ hai service riêng, giao tiếp qua HTTP. Đây là ngoại lệ hợp lệ của AD-1 (monolith): AD-1 cấm tách *nghiệp vụ nội bộ* thành microservice, không cấm gọi *service ngoài*.
@@ -502,6 +507,16 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 - **Prevents:** lập kế hoạch xây dựng tính năng không còn tồn tại
 - **Rule:** Migration `172_remove_ai_file_sort.py` đã `DROP COLUMN workspaces.ai_file_sort_enabled`. Không thêm lại cột, API, hay UI cho AI file sorting.
 - *(Mục trùng lặp trong `## Deferred / Gaps` đã xoá 2026-07-25 — chỉ giữ bản này ở `## Invariants & Rules`.)*
+
+### AD-21 — Client tab state là pointer-only, local-first, v2 storage key
+- **Binds:** Story 4.7, FR-14
+- **Prevents:** tab state lưu snapshot đầy đủ (title, visibility, hasComments) gây stale và lớn; v1 key `nowing:tabs` không migrate được sang pointer shape
+- **Rule:**
+  - Tab chỉ lưu lightweight pointer: `{ id, type: "chat" | "document", entityId, workspaceId }`.
+  - Persist dưới **v2 localStorage key** khác v1 (`nowing:tabs` → `nowing:tabs:v2`); v1 snapshot bị drop, không merge.
+  - Titles/metadata resolve **live** qua `useResolvedTabs` hook kết hợp react-query/Zero; rename/delete mutations patch cache để tab tự cập nhật.
+  - Fallback navigation dựa trên `entityId` + `workspaceId` khi metadata chưa load.
+- **Nguồn:** SurfSense PR #1609 pattern; `nowing_web/atoms/tabs/tabs.atom.ts`, `TabBar.tsx`, `LayoutShell.tsx` cần refactor.
 
 ## Consistency Conventions
 
