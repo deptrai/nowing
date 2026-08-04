@@ -79,18 +79,14 @@ def _meaningful(value: str) -> str:
     return value.strip().strip(_INVISIBLE_CHARS).strip()
 
 
-def _required_string(
-    row: Mapping[str, Any], *, field: str, path: Path, line_number: int
-) -> str:
+def _required_string(row: Mapping[str, Any], *, field: str, path: Path, line_number: int) -> str:
     value = row.get(field)
     if not isinstance(value, str) or not _meaningful(value):
         raise _error(path, line_number, f"{field!r} must be a non-empty string")
     return value.strip()
 
 
-def _string_list(
-    value: Any, *, field: str, path: Path, line_number: int
-) -> list[str]:
+def _string_list(value: Any, *, field: str, path: Path, line_number: int) -> list[str]:
     if not isinstance(value, list) or any(
         not isinstance(item, str) or not _meaningful(item) for item in value
     ):
@@ -134,12 +130,7 @@ def _parse_qrels(row: Mapping[str, Any], *, path: Path, line_number: int) -> dic
             raise _error(path, line_number, "each relevant entry must be an object")
         memory_ref = _required_string(qrel, field="memory_ref", path=path, line_number=line_number)
         grade = qrel.get("grade")
-        if (
-            isinstance(grade, bool)
-            or not isinstance(grade, int)
-            or grade < 0
-            or grade > MAX_GRADE
-        ):
+        if isinstance(grade, bool) or not isinstance(grade, int) or grade < 0 or grade > MAX_GRADE:
             raise _error(
                 path,
                 line_number,
@@ -195,7 +186,9 @@ def _load_queries(path: Path, *, corpus: Mapping[str, dict[str, Any]]) -> list[Q
                 qrels=qrels,
                 distractors=distractors,
                 type=_required_string(row, field="type", path=path, line_number=line_number),
-                tags=_string_list(row.get("tags"), field="tags", path=path, line_number=line_number),
+                tags=_string_list(
+                    row.get("tags"), field="tags", path=path, line_number=line_number
+                ),
             )
         )
     if not queries:
@@ -214,7 +207,9 @@ def load_dataset(
     """
 
     resolved_corpus_path = Path(corpus_path) if corpus_path is not None else _DEFAULT_CORPUS_PATH
-    resolved_queries_path = Path(queries_path) if queries_path is not None else _DEFAULT_QUERIES_PATH
+    resolved_queries_path = (
+        Path(queries_path) if queries_path is not None else _DEFAULT_QUERIES_PATH
+    )
     corpus = _load_corpus(resolved_corpus_path)
     return Dataset(queries=_load_queries(resolved_queries_path, corpus=corpus), corpus=corpus)
 

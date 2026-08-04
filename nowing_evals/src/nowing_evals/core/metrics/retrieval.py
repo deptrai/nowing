@@ -314,9 +314,7 @@ def score_run(
         mrr_total += mrr(retrieved, relevant_docs)
         ndcg_total += ndcg_at_k(retrieved, qrels, ndcg_k)
         noise_total += noise_rate(retrieved, relevant_docs, primary_k)
-        distractor_total += distractor_rate(
-            retrieved, distractors_by_query.get(qid, ()), primary_k
-        )
+        distractor_total += distractor_rate(retrieved, distractors_by_query.get(qid, ()), primary_k)
         if off_corpus_by_query is not None:
             off_corpus_total += off_corpus_rate(
                 retrieved, off_corpus_by_query.get(qid, ()), primary_k

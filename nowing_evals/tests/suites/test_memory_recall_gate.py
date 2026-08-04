@@ -87,10 +87,8 @@ def test_gate_fails_when_workspace_is_polluted():
 
 
 def test_gate_fails_when_off_corpus_was_never_measured():
-    """"Clean" and "never looked" must not produce the same verdict."""
-    result = evaluate_gate(
-        _metrics(off_corpus_measured=False, off_corpus_rate=0.0), _thresholds()
-    )
+    """ "Clean" and "never looked" must not produce the same verdict."""
+    result = evaluate_gate(_metrics(off_corpus_measured=False, off_corpus_rate=0.0), _thresholds())
     assert result.passed is False
     assert any("off_corpus_rate was not measured" in reason for reason in result.reasons)
 
@@ -111,9 +109,7 @@ def test_gate_reports_every_miss_not_just_the_first():
 
 def test_gate_rejects_zero_query_run():
     """A zero-query run is "no evidence", not "no noise"."""
-    result = evaluate_gate(
-        _metrics(n_queries=0, recall_at_k={"5": 0.0}, mrr=0.0), _thresholds()
-    )
+    result = evaluate_gate(_metrics(n_queries=0, recall_at_k={"5": 0.0}, mrr=0.0), _thresholds())
     assert result.passed is False
     assert any("n_queries" in reason for reason in result.reasons)
 
@@ -456,7 +452,7 @@ def test_gate_cli_exits_nonzero_on_quality_failure(tmp_env, capsys):  # noqa: AR
 
 
 def test_gate_cli_exit_code_distinguishes_missing_artifact(tmp_env, capsys):  # noqa: ARG001
-    """"Nothing to judge" must not be reported as "quality failure"."""
+    """ "Nothing to judge" must not be reported as "quality failure"."""
     from nowing_evals.core.cli import GATE_EXIT_NO_ARTIFACT, main
 
     exit_code = main(["gate", "--suite", "memory", "--benchmark", "recall"])

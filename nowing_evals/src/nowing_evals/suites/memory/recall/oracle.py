@@ -93,7 +93,9 @@ def resolve_oracle_mode(all_returned_items: Sequence[Mapping[str, Any]]) -> str:
     """
 
     scores = [
-        score for score in (_numeric_score(item) for item in all_returned_items) if score is not None
+        score
+        for score in (_numeric_score(item) for item in all_returned_items)
+        if score is not None
     ]
     if len(set(scores)) < 2:
         return ORACLE_MODE_RANK_ONLY

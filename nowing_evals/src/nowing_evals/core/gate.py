@@ -162,9 +162,7 @@ def evaluate_gate(metrics: Mapping[str, Any], thresholds: GateThresholds) -> Gat
     # was verified against the running backend.
     if "backend_build_id" in metrics:
         if not metrics.get("backend_build_id_verified"):
-            reasons.append(
-                "backend_build_id was not verified against the running backend"
-            )
+            reasons.append("backend_build_id was not verified against the running backend")
         elif metrics.get("backend_build_id") != metrics.get("verified_backend_build_id"):
             reasons.append(
                 f"backend_build_id mismatch: artifact claims {metrics.get('backend_build_id')!r}, "
@@ -223,9 +221,7 @@ def evaluate_gate(metrics: Mapping[str, Any], thresholds: GateThresholds) -> Gat
     # --- Quality checks ----------------------------------------------------
     recall_at_5 = _metric_at(metrics, "recall_at_k", thresholds.top_k)
     if recall_at_5 is None:
-        reasons.append(
-            f"recall@{thresholds.top_k} is missing or not a finite number in [0, 1]"
-        )
+        reasons.append(f"recall@{thresholds.top_k} is missing or not a finite number in [0, 1]")
     elif recall_at_5 < thresholds.recall_at_5_min:
         reasons.append(
             f"recall@{thresholds.top_k} {recall_at_5:.3f} is below required "

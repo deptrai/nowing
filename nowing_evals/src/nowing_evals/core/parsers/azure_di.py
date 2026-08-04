@@ -63,9 +63,7 @@ async def parse_with_azure_di(
     endpoint = endpoint or os.environ.get("AZURE_DI_ENDPOINT")
     api_key = api_key or os.environ.get("AZURE_DI_KEY")
     if not endpoint or not api_key:
-        raise ValueError(
-            "AZURE_DI_ENDPOINT and AZURE_DI_KEY must be set (see nowing_evals/.env)."
-        )
+        raise ValueError("AZURE_DI_ENDPOINT and AZURE_DI_KEY must be set (see nowing_evals/.env).")
 
     model_id = _AZURE_MODEL_BY_MODE.get(processing_mode, "prebuilt-read")
 

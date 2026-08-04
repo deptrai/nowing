@@ -59,9 +59,7 @@ _OMIT = _Omit()
 
 
 def _load(tmp_path, **overrides):
-    return load_dataset(
-        queries_path=_queries(tmp_path, **overrides), corpus_path=_corpus(tmp_path)
-    )
+    return load_dataset(queries_path=_queries(tmp_path, **overrides), corpus_path=_corpus(tmp_path))
 
 
 # --------------------------------------------------------------------------- #
@@ -226,9 +224,7 @@ def test_loader_rejects_corpus_row_with_invalid_memory_type(tmp_path):
     """Catch a 422-bound fixture at load time, not part-way through ingest."""
     rows = [{"memory_ref": "m1", "content": "x", "type": "policy", "tags": []}]
     with pytest.raises(ValueError, match="MemoryType"):
-        load_dataset(
-            queries_path=_queries(tmp_path), corpus_path=_corpus(tmp_path, rows=rows)
-        )
+        load_dataset(queries_path=_queries(tmp_path), corpus_path=_corpus(tmp_path, rows=rows))
 
 
 def test_loader_rejects_duplicate_corpus_refs(tmp_path):
@@ -237,9 +233,7 @@ def test_loader_rejects_duplicate_corpus_refs(tmp_path):
         {"memory_ref": "m1", "content": "b", "type": "semantic", "tags": []},
     ]
     with pytest.raises(ValueError, match="duplicate memory_ref"):
-        load_dataset(
-            queries_path=_queries(tmp_path), corpus_path=_corpus(tmp_path, rows=rows)
-        )
+        load_dataset(queries_path=_queries(tmp_path), corpus_path=_corpus(tmp_path, rows=rows))
 
 
 def test_loader_rejects_empty_files(tmp_path):

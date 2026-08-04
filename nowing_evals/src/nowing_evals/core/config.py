@@ -135,9 +135,7 @@ def load_config() -> Config:
                     raw_workspace_id,
                 )
     return Config(
-        nowing_api_base=os.environ.get("NOWING_API_BASE", "http://localhost:8000").rstrip(
-            "/"
-        ),
+        nowing_api_base=os.environ.get("NOWING_API_BASE", "http://localhost:8000").rstrip("/"),
         memory_workspace_id=memory_workspace_id,
         openrouter_api_key=os.environ.get("OPENROUTER_API_KEY") or None,
         openrouter_base_url=os.environ.get(

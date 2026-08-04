@@ -76,9 +76,7 @@ def test_recall_hit_within_top_k_and_above_threshold():
     """AC-3: an item in top_k with score >= min_similarity is a hit."""
     item = {"id": 1, "score": 0.9}
     assert (
-        is_recall_hit(
-            item, rank=1, top_k=5, mode=ORACLE_MODE_SCORE_THRESHOLD, min_similarity=0.3
-        )
+        is_recall_hit(item, rank=1, top_k=5, mode=ORACLE_MODE_SCORE_THRESHOLD, min_similarity=0.3)
         is True
     )
 
@@ -87,9 +85,7 @@ def test_recall_hit_beyond_top_k_is_noise():
     """AC-3: an item ranked past top_k is never a hit (RS-2 clamps to <= 5)."""
     item = {"id": 1, "score": 0.99}
     assert (
-        is_recall_hit(
-            item, rank=6, top_k=5, mode=ORACLE_MODE_SCORE_THRESHOLD, min_similarity=0.3
-        )
+        is_recall_hit(item, rank=6, top_k=5, mode=ORACLE_MODE_SCORE_THRESHOLD, min_similarity=0.3)
         is False
     )
 
@@ -98,9 +94,7 @@ def test_recall_hit_below_similarity_threshold_is_noise():
     """AC-3: an item below the similarity threshold is noise even if top-ranked."""
     item = {"id": 1, "score": 0.1}
     assert (
-        is_recall_hit(
-            item, rank=1, top_k=5, mode=ORACLE_MODE_SCORE_THRESHOLD, min_similarity=0.3
-        )
+        is_recall_hit(item, rank=1, top_k=5, mode=ORACLE_MODE_SCORE_THRESHOLD, min_similarity=0.3)
         is False
     )
 
@@ -119,7 +113,7 @@ def test_score_threshold_mode_does_not_accept_a_missing_score():
     )
 
 
-def test_rank_only_mode_judges_on_position(): 
+def test_rank_only_mode_judges_on_position():
     """AC-3/§9: with no usable score signal the oracle degrades to top_k membership."""
     assert is_recall_hit({"id": 1}, rank=3, top_k=5, mode=ORACLE_MODE_RANK_ONLY) is True
     assert is_recall_hit({"id": 1}, rank=6, top_k=5, mode=ORACLE_MODE_RANK_ONLY) is False
@@ -135,9 +129,7 @@ def test_constant_scores_resolve_to_rank_only_for_the_whole_run():
     assert resolve_oracle_mode([{"score": 0.0}, {"score": 0.0}]) == ORACLE_MODE_RANK_ONLY
     assert resolve_oracle_mode([{"score": 0.7}, {"score": 0.7}]) == ORACLE_MODE_RANK_ONLY
     assert resolve_oracle_mode([]) == ORACLE_MODE_RANK_ONLY
-    assert (
-        resolve_oracle_mode([{"score": 0.9}, {"score": 0.2}]) == ORACLE_MODE_SCORE_THRESHOLD
-    )
+    assert resolve_oracle_mode([{"score": 0.9}, {"score": 0.2}]) == ORACLE_MODE_SCORE_THRESHOLD
 
 
 def test_all_zero_scores_are_never_treated_as_all_hits():
@@ -582,9 +574,7 @@ async def test_run_rejects_blank_build_id_before_touching_the_client(tmp_path, m
         "nowing_evals.suites.memory.recall.runner.load_dataset", lambda **_kw: dataset
     )
     with pytest.raises(ValueError, match="backend-build-id"):
-        await MemoryRecallBenchmark().run(
-            _fake_ctx(tmp_path, dataset, ExplodingClient()), top_k=5
-        )
+        await MemoryRecallBenchmark().run(_fake_ctx(tmp_path, dataset, ExplodingClient()), top_k=5)
 
 
 async def test_run_records_backend_build_id_in_artifact_extra(tmp_path, monkeypatch):

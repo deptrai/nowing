@@ -55,21 +55,14 @@ def _git_info() -> dict[str, Any]:
     }
     try:
         info["sha"] = (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], text=True)
-            .strip()
-            or None
+            subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip() or None
         )
         info["branch"] = (
-            subprocess.check_output(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
-            )
-            .strip()
+            subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
             or None
         )
         info["dirty"] = (
-            subprocess.check_output(["git", "status", "--porcelain"], text=True)
-            .strip()
-            != ""
+            subprocess.check_output(["git", "status", "--porcelain"], text=True).strip() != ""
         )
         diff = subprocess.check_output(["git", "diff", "--binary", "HEAD"])
         untracked = (
@@ -82,9 +75,7 @@ def _git_info() -> dict[str, Any]:
         untracked.sort()
         hashes = [hashlib.sha256(diff).hexdigest()]
         repo_root = Path(
-            subprocess.check_output(
-                ["git", "rev-parse", "--show-toplevel"], text=True
-            ).strip()
+            subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip()
         )
         for rel in untracked:
             fpath = repo_root / rel
@@ -99,10 +90,7 @@ def _git_info() -> dict[str, Any]:
 def _git_head_build_id() -> str | None:
     """Return the local git HEAD commit, or ``None`` if it cannot be read."""
     try:
-        return (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-            or None
-        )
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip() or None
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         return None
 
@@ -139,9 +127,7 @@ async def _verify_backend_build_id(ctx: RunContext, expected: str) -> dict[str, 
     error: str | None = None
 
     try:
-        response = await http.get(
-            f"{base}/health", headers={"Accept": "application/json"}
-        )
+        response = await http.get(f"{base}/health", headers={"Accept": "application/json"})
         response.raise_for_status()
         payload = response.json()
         if isinstance(payload, dict) and payload.get("build_id"):
@@ -189,25 +175,17 @@ def _build_provenance(
             "version": sys.version,
             "platform": _platform.platform(),
         },
-        "uv_lock_hash": _sha256_file(
-            Path(__file__).resolve().parents[3] / "uv.lock"
-        ),
+        "uv_lock_hash": _sha256_file(Path(__file__).resolve().parents[3] / "uv.lock"),
         "dataset_hashes": {
             "queries": _sha256_file(
                 Path(__file__).resolve().with_name("dataset") / "queries.jsonl"
             ),
-            "corpus": _sha256_file(
-                Path(__file__).resolve().with_name("dataset") / "corpus.jsonl"
-            ),
+            "corpus": _sha256_file(Path(__file__).resolve().with_name("dataset") / "corpus.jsonl"),
         },
         "runner_hash": _sha256_file(Path(__file__).resolve()),
         "argv": sys.argv,
         "run_id": run_id,
-        "workspace_id": (
-            ctx.config.memory_workspace_id
-            if ctx is not None
-            else None
-        ),
+        "workspace_id": (ctx.config.memory_workspace_id if ctx is not None else None),
         "requested_params": {
             "top_k": requested_top_k,
             "min_similarity": requested_min_similarity,
@@ -226,6 +204,7 @@ def _build_provenance(
     except OSError:
         pass
     return provenance
+
 
 def _sample_queries(queries: Sequence[Query], sample_n: int | None) -> list[Query]:
     if sample_n is None:
@@ -649,8 +628,7 @@ class MemoryRecallBenchmark:
             "Ship-gated:",
             f"- Recall@{primary_k}: {recall_text}",
             f"- MRR: {_safe_float(metrics.get('mrr')):.3f}",
-            f"- Distractor noise rate: "
-            f"{_safe_float(metrics.get('distractor_noise_rate')):.3f}",
+            f"- Distractor noise rate: {_safe_float(metrics.get('distractor_noise_rate')):.3f}",
             f"- Off-corpus rate: {off_corpus_text}",
             "",
             "Diagnostics:",

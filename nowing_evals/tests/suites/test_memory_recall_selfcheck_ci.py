@@ -115,9 +115,9 @@ def test_pr_workflow_proves_the_gate_blocks_a_failing_run():
         if "nowing_evals gate" in str(step.get("run", ""))
     ]
     assert gate_steps, "expected the PR job to invoke the gate"
-    assert any(
-        "-ne 1" in run or "!= 1" in run or "exit 1" in run for run in gate_steps
-    ), "the PR job must assert a non-zero gate exit, not merely run the gate"
+    assert any("-ne 1" in run or "!= 1" in run or "exit 1" in run for run in gate_steps), (
+        "the PR job must assert a non-zero gate exit, not merely run the gate"
+    )
 
 
 def test_pr_workflow_does_not_fabricate_a_passing_artifact():
@@ -170,11 +170,7 @@ def test_release_gate_is_manual_only():
 def test_release_gate_measures_before_it_judges():
     """The real ship gate must ingest, run and only then gate."""
     doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
-    runs = [
-        str(step.get("run", ""))
-        for job in doc["jobs"].values()
-        for step in job["steps"]
-    ]
+    runs = [str(step.get("run", "")) for job in doc["jobs"].values() for step in job["steps"]]
     joined = "\n".join(runs)
     assert "ingest memory recall" in joined
     assert "run memory recall" in joined
@@ -223,22 +219,14 @@ def test_release_gate_requires_a_nonblank_backend_build_id():
     inputs = doc.get("on", doc.get(True))["workflow_dispatch"]["inputs"]
     assert inputs["backend_build_id"]["required"] is True
 
-    runs = [
-        str(step.get("run", ""))
-        for job in doc["jobs"].values()
-        for step in job["steps"]
-    ]
+    runs = [str(step.get("run", "")) for job in doc["jobs"].values() for step in job["steps"]]
     validation_steps = [r for r in runs if "backend_build_id" in r and "exit 1" in r]
     assert validation_steps, "expected a step that fails fast on a blank backend_build_id"
 
 
 def test_release_gate_passes_backend_build_id_into_the_run_command():
     doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
-    runs = [
-        str(step.get("run", ""))
-        for job in doc["jobs"].values()
-        for step in job["steps"]
-    ]
+    runs = [str(step.get("run", "")) for job in doc["jobs"].values() for step in job["steps"]]
     run_step = next(r for r in runs if "run memory recall" in r)
     assert "--backend-build-id" in run_step
 
@@ -253,28 +241,17 @@ def test_release_gate_isolates_eval_data_dir_per_run_attempt():
     assert "github.run_attempt" in text
 
     doc = yaml.safe_load(text)
-    runs = [
-        str(step.get("run", ""))
-        for job in doc["jobs"].values()
-        for step in job["steps"]
-    ]
+    runs = [str(step.get("run", "")) for job in doc["jobs"].values() for step in job["steps"]]
     assert any(
-        "EVAL_DATA_DIR=" in r and "github.run_id" in r and "github.run_attempt" in r
-        for r in runs
+        "EVAL_DATA_DIR=" in r and "github.run_id" in r and "github.run_attempt" in r for r in runs
     ), "expected a step computing EVAL_DATA_DIR from the run id + run attempt"
 
 
 def test_release_gate_asserts_the_isolated_dir_starts_empty():
     doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
-    runs = [
-        str(step.get("run", ""))
-        for job in doc["jobs"].values()
-        for step in job["steps"]
-    ]
+    runs = [str(step.get("run", "")) for job in doc["jobs"].values() for step in job["steps"]]
     ingest_at = next(i for i, r in enumerate(runs) if "ingest memory recall" in r)
-    assertion_steps = [
-        i for i, r in enumerate(runs) if "EVAL_DATA_DIR" in r and "exit 1" in r
-    ]
+    assertion_steps = [i for i, r in enumerate(runs) if "EVAL_DATA_DIR" in r and "exit 1" in r]
     assert assertion_steps, "expected a step asserting EVAL_DATA_DIR starts absent/empty"
     assert any(i < ingest_at for i in assertion_steps), (
         "the empty-dir assertion must run before the corpus is seeded into it"

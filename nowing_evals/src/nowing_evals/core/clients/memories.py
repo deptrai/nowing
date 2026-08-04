@@ -17,9 +17,7 @@ import httpx
 # Mirrors ``MemorySourceType`` in ``nowing_backend/app/db.py``. Notably there is
 # no "eval" member, so eval fixtures are identified by a reserved tag instead
 # (see ``suites/memory/recall/ingest.EVAL_TAG``).
-VALID_SOURCE_TYPES = frozenset(
-    {"document", "chat_message", "scraper_run", "manual", "unknown"}
-)
+VALID_SOURCE_TYPES = frozenset({"document", "chat_message", "scraper_run", "manual", "unknown"})
 
 # ``MemorySearchRequest.top_k`` is constrained ``strict_top_k(le=5)`` (1..5,
 # bool rejected) server-side since Story 3.14's D9 tightening.
