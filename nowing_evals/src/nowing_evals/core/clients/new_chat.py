@@ -51,6 +51,8 @@ class StreamedAnswer:
     cost_micros: int | None = None
     model_breakdown: dict[str, Any] | None = None
     call_details: list[dict[str, Any]] | None = None
+    error: str | None = None
+    error_code: str | None = None
     finished_normally: bool = False
 
     @property
@@ -241,6 +243,8 @@ class NewChatClient:
         cost_micros: int | None = None
         model_breakdown: dict[str, Any] | None = None
         call_details: list[dict[str, Any]] | None = None
+        error: str | None = None
+        error_code: str | None = None
         ttfb_ms: int | None = None
         finished = False
 
@@ -314,6 +318,11 @@ class NewChatClient:
                     model_breakdown = data_payload["model_breakdown"]
             elif ev_type == "finish":
                 finished = True
+            elif ev_type == "error":
+                err_text = payload.get("errorText") or "SSE error"
+                err_code = payload.get("errorCode")
+                error = f"{err_code}: {err_text}" if err_code else err_text
+                error_code = err_code if err_code else error_code
 
         text = "".join("".join(text_buffers.get(tid, [])) for tid in ordered_text_ids)
         return StreamedAnswer(
@@ -329,6 +338,8 @@ class NewChatClient:
             cost_micros=cost_micros,
             model_breakdown=model_breakdown,
             call_details=call_details,
+            error=error,
+            error_code=error_code,
             finished_normally=finished,
         )
 

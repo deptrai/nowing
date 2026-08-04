@@ -7,7 +7,7 @@ status: ready-for-dev
 
 # Story 4.8f: Benchmark stability — scrape, captcha, rate-limit, and multi-turn
 
-**Status:** `ready-for-dev`  
+**Status:** `in-progress`  
 **Epic:** 4 — Chat & Agents  
 **Priority:** HIGH  
 **Requirements:** FR-42, NFR-10  
@@ -89,23 +89,25 @@ So that we can detect when external search, crawl, or tool providers degrade bef
 
 ### Backend / runner changes
 
-- [ ] Extend `NowingArm` / `NewChatClient` to capture and surface `call_details` from `data-token-usage` frames.
-- [ ] Parse `call_details` to extract per-tool success/failure and reason if present.
-- [ ] Add scrape/search result classification:
-  - Detect `captcha` / `rate_limit` / `timeout` / `5xx` / `parse_error` from SSE `error` frames or `call_details`.
+- [x] Extend `NowingArm` / `NewChatClient` to capture and surface `call_details` and `raw_events` from `data-token-usage` frames.
+- [x] Parse raw SSE events to extract per-tool success/failure, dropouts, and failure reasons.
+- [x] Add scrape/search result classification:
+  - Detect `captcha` / `rate_limit` / `timeout` / `5xx` / `parse_error` from SSE `error` frames, terminal info, and tool output.
+- [x] Update `ChatRegressionBenchmark._aggregate` and `report_section` to compute and render operational metrics (scrape success rate, tool drop rate, failure reason rates, engine unavailable, fallback KB hits).
 - [ ] Add multi-turn dataset support:
   - JSONL schema field `turns: list[{query, expected_contains}]`.
   - Runner reuses one thread for all turns in a case.
 - [ ] Add high-intensity flags:
   - `--concurrency` (already exists) documented for stress.
   - `--threads` to create multiple parallel chat threads.
-- [ ] Update `ChatRegressionBenchmark._aggregate` to compute operational metrics.
+  - Operational "under load" metrics (`p95_latency_under_load_ms`, `error_rate_under_load`, `rate_limited_rate_under_load`, `engine_unavailable_rate`).
 - [ ] Extend `research/chainlens_latency` runner to record `sources_partial_rate` and `engine_unavailable_rate`.
 
 ### Tests
 
-- [ ] Unit tests for `call_details` parser with synthetic payloads.
-- [ ] Unit tests for failure-reason classification.
+- [x] Unit tests for call_details/fallback extraction with synthetic payloads.
+- [x] Unit tests for failure-reason classification.
+- [x] Unit tests for tool-attempt/drop aggregation.
 - [ ] Unit tests for multi-turn aggregation.
 - [ ] Respx/httpx-mocked test for high-concurrency error rate.
 

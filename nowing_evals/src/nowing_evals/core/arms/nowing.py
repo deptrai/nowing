@@ -82,6 +82,7 @@ class NowingArm(Arm):
             arm=self.name,
             question_id=request.question_id,
             raw_text=answer.text,
+            error=answer.error,
             answer_letter=letter.letter,
             citations=answer.citations,
             input_tokens=answer.prompt_tokens,
@@ -96,11 +97,13 @@ class NowingArm(Arm):
                 "assistant_message_id": answer.assistant_message_id,
                 "turn_id": answer.turn_id,
                 "ttfb_ms": answer.ttfb_ms,
-                "finished_normally": answer.finished_normally,
+                "finished_normally": answer.finished_normally and answer.error is None,
                 "n_raw_events": len(answer.raw_events),
                 "n_mentioned_documents": len(request.mentioned_document_ids or []),
                 "model_breakdown": answer.model_breakdown,
                 "call_details": answer.call_details,
+                "raw_events": answer.raw_events,
+                "error_code": answer.error_code,
             },
         )
 

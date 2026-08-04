@@ -107,6 +107,99 @@ class _CaseResult:
     finished_normally: bool
     expected_contains: list[str]
     contains_hits: int
+    raw_events: list[dict[str, Any]] | None = None
+    call_details: list[dict[str, Any]] | None = None
+    error_code: str | None = None
+    operational: dict[str, Any] | None = None
+
+
+def _aggregate_operational(cases: list[_CaseResult]) -> dict[str, Any]:
+    """Sum per-case operational summaries across a list of results."""
+    n = len(cases)
+    if not n:
+        return {"samples": 0}
+
+    total_attempts = 0
+    total_successes = 0
+    total_failures = 0
+    total_drops = 0
+    scrape_attempts = 0
+    scrape_successes = 0
+    scrape_failures = 0
+    error_reason_counts: dict[str, int] = {}
+    degradation_reasons: dict[str, int] = {}
+    tool_stats: dict[str, dict[str, int]] = {}
+    fallback_kb_hits = 0
+    n_error_frames = 0
+    n_terminal_info = 0
+    n_terminal_errors = 0
+    engine_unavailable_count = 0
+
+    for c in cases:
+        op = c.operational or {}
+        total_attempts += op.get("total_tool_attempts", 0)
+        total_successes += op.get("total_tool_successes", 0)
+        total_failures += op.get("total_tool_failures", 0)
+        total_drops += op.get("total_tool_drops", 0)
+        scrape_attempts += op.get("scrape_attempts", 0)
+        scrape_successes += op.get("scrape_successes", 0)
+        scrape_failures += op.get("scrape_failures", 0)
+        fallback_kb_hits += op.get("fallback_kb_hits", 0)
+        n_error_frames += op.get("n_error_frames", 0)
+        n_terminal_info += op.get("n_terminal_info", 0)
+        n_terminal_errors += op.get("n_terminal_errors", 0)
+        engine_unavailable_count += op.get("engine_unavailable_count", 0)
+
+        for reason, count in op.get("error_reason_counts", {}).items():
+            error_reason_counts[reason] = error_reason_counts.get(reason, 0) + count
+        for reason, count in op.get("degradation_reasons", {}).items():
+            degradation_reasons[reason] = degradation_reasons.get(reason, 0) + count
+
+        for name, stats in op.get("tool_stats", {}).items():
+            entry = tool_stats.setdefault(
+                name,
+                {"attempts": 0, "successes": 0, "failures": 0, "drops": 0},
+            )
+            entry["attempts"] += stats.get("attempts", 0)
+            entry["successes"] += stats.get("successes", 0)
+            entry["failures"] += stats.get("failures", 0)
+            entry["drops"] += stats.get("drops", 0)
+
+    def _rate(num: int, denom: int) -> float | None:
+        return num / denom if denom else None
+
+    for _name, entry in tool_stats.items():
+        attempts = entry["attempts"]
+        entry["success_rate"] = _rate(entry["successes"], attempts)
+        entry["drop_rate"] = _rate(entry["drops"], attempts)
+
+    return {
+        "samples": n,
+        "scrape_attempts": scrape_attempts,
+        "scrape_successes": scrape_successes,
+        "scrape_failures": scrape_failures,
+        "scrape_success_rate": _rate(scrape_successes, scrape_attempts),
+        "scrape_failure_rate": _rate(scrape_failures, scrape_attempts),
+        "total_tool_attempts": total_attempts,
+        "total_tool_successes": total_successes,
+        "total_tool_failures": total_failures,
+        "total_tool_drops": total_drops,
+        "tool_drop_rate": _rate(total_drops, total_attempts),
+        "tool_success_rate": _rate(total_successes, total_attempts),
+        "tool_stats": tool_stats,
+        "captcha_rate": _rate(error_reason_counts.get("captcha", 0), n),
+        "rate_limited_rate": _rate(error_reason_counts.get("rate_limit", 0), n),
+        "timeout_rate": _rate(error_reason_counts.get("timeout", 0), n),
+        "server_error_rate": _rate(error_reason_counts.get("server_error", 0), n),
+        "parse_error_rate": _rate(error_reason_counts.get("parse_error", 0), n),
+        "engine_unavailable_rate": _rate(engine_unavailable_count, n),
+        "n_error_frames": n_error_frames,
+        "n_terminal_info": n_terminal_info,
+        "n_terminal_errors": n_terminal_errors,
+        "error_reason_counts": error_reason_counts,
+        "degradation_reasons": degradation_reasons,
+        "fallback_kb_hits": fallback_kb_hits,
+    }
 
 
 def _percentile(values: list[float], p: float) -> float:
@@ -415,6 +508,9 @@ class ChatRegressionBenchmark:
                             "finished_normally": r.finished_normally,
                             "expected_contains": r.expected_contains,
                             "contains_hits": r.contains_hits,
+                            "error_code": r.error_code,
+                            "n_raw_events": len(r.raw_events) if r.raw_events else 0,
+                            "operational": r.operational,
                         },
                         ensure_ascii=False,
                         default=str,
@@ -488,6 +584,7 @@ class ChatRegressionBenchmark:
             }
 
         overall = _bucket(results)
+        operational = _aggregate_operational(results)
         per_tag: dict[str, list[_CaseResult]] = {}
         for r in results:
             for tag in r.tags:
@@ -495,7 +592,11 @@ class ChatRegressionBenchmark:
 
         return {
             "overall": overall,
+            "operational": operational,
             "per_tag": {tag: _bucket(items) for tag, items in per_tag.items()},
+            "per_tag_operational": {
+                tag: _aggregate_operational(items) for tag, items in per_tag.items()
+            },
         }
 
     def report_section(self, artifacts: list[RunArtifact]) -> ReportSection:
@@ -522,6 +623,40 @@ class ChatRegressionBenchmark:
         ]
         if overall.get("contains_match_rate") is not None:
             lines.append(f"- keyword match rate: {overall['contains_match_rate']:.2%}")
+
+        operational = m.get("operational", {})
+        if operational.get("samples"):
+            lines.append("")
+            lines.append("### Operational / Stability")
+            lines.append(
+                f"- scrape: {operational.get('scrape_successes', 0)}/{operational.get('scrape_attempts', 0)} "
+                f"success ({operational.get('scrape_success_rate') or 0:.2%})"
+            )
+            lines.append(
+                f"- tool drop rate: {operational.get('tool_drop_rate') or 0:.2%} "
+                f"({operational.get('total_tool_drops', 0)} / {operational.get('total_tool_attempts', 0)})"
+            )
+            lines.append(
+                f"- engine unavailable rate: {operational.get('engine_unavailable_rate') or 0:.2%}"
+            )
+            lines.append(f"- fallback KB hits: {operational.get('fallback_kb_hits', 0)}")
+            reasons = operational.get("error_reason_counts", {})
+            if reasons:
+                lines.append(
+                    "- failure reasons: "
+                    + ", ".join(f"{k}: {v}" for k, v in sorted(reasons.items()))
+                )
+            tool_stats = operational.get("tool_stats", {})
+            if tool_stats:
+                lines.append("")
+                lines.append("| tool | attempts | successes | failures | drops |")
+                lines.append("|---|---|---|---|---|")
+                for name, vals in sorted(tool_stats.items()):
+                    lines.append(
+                        f"| {name} | {vals.get('attempts', 0)} | "
+                        f"{vals.get('successes', 0)} | {vals.get('failures', 0)} | {vals.get('drops', 0)} |"
+                    )
+
         per_tag = m.get("per_tag", {})
         if per_tag:
             lines.append("")
