@@ -20,7 +20,9 @@ Evaluation harness domain-agnostic để benchmark Nowing. Các benchmark tự �
 | Thư mục | Mục đích |
 |---|---|
 | `src/nowing_evals/core/` | CLI, registry, HTTP clients, arms, parsers, metrics, report writer |
-| `src/nowing_evals/suites/` | Benchmark suites (medical/, multimodal_doc/) |
+| `src/nowing_evals/core/clients/` | HTTP clients (`NewChatClient`, `SearchSpaceClient`, `DocumentsClient`, `MemoriesClient`) |
+| `src/nowing_evals/core/arms/` | Arms (`NowingArm`, `NativePdfArm`, `BareLlmArm`) |
+| `src/nowing_evals/suites/` | Benchmark suites (medical/, multimodal_doc/, research/, memory/, chat/) |
 | `data/` | Datasets, rendered PDFs, run outputs |
 | `reports/` | Báo cáo tổng hợp |
 | `scripts/` | Phân tích và hỗ trợ |
@@ -35,6 +37,14 @@ Evaluation harness domain-agnostic để benchmark Nowing. Các benchmark tự �
 - `medical/mirage` – Nowing single-arm MCQ
 - `medical/cure` – Nowing single-arm retrieval (Recall/MRR/nDCG)
 - `multimodal_doc/mmlongbench` – Long PDFs với hình ảnh, charts, tables
+- `research/chainlens_latency` – Deep-research p50/p95 e2e + TTFB
+- `memory/recall` – Workspace memory recall quality
+- `chat/regression` – Chat response regression (latency, cost, citations, keyword match) [4.8b]
+- `chat/quality` (Phase 2) – LLM-as-judge chat quality [4.8d]
+
+## Telemetry flow
+
+`NewChatClient._consume_sse` parses Vercel AI SDK SSE frames (`text-delta`, `data-token-usage`, `data-turn-info`, `data-user/assistant-message-id`) and exposes them in `StreamedAnswer`. `NowingArm` maps them into `ArmResult` so all chat suites can record tokens, cost, TTFB, turn id, and citations.
 
 ---
 

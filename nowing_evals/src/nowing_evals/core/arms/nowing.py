@@ -18,6 +18,7 @@ for the runner to map back to corpus ids.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from ..clients import NewChatClient
@@ -70,7 +71,9 @@ class NowingArm(Arm):
         finally:
             if self._ephemeral and thread_id is not None:
                 try:
-                    await self._client.delete_thread(thread_id)
+                    # Shield cleanup so an outer asyncio.wait_for timeout
+                    # cannot cancel the delete before the backend receives it.
+                    await asyncio.shield(self._client.delete_thread(thread_id))
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("Failed to delete thread %s: %s", thread_id, exc)
 
@@ -81,20 +84,23 @@ class NowingArm(Arm):
             raw_text=answer.text,
             answer_letter=letter.letter,
             citations=answer.citations,
+            input_tokens=answer.prompt_tokens,
+            output_tokens=answer.completion_tokens,
+            cost_micros=answer.cost_micros or 0,
             latency_ms=answer.latency_ms,
-            # Nowing doesn't surface input/output token counts in the
-            # SSE stream today; leaving the cost / token fields at 0
-            # documents that gap. Estimating from the raw text would
-            # bias the comparison against the Nowing arm.
             extra={
                 "thread_id": thread_id,
                 "search_space_id": self._search_space_id,
                 "answer_letter_strategy": letter.strategy,
                 "user_message_id": answer.user_message_id,
                 "assistant_message_id": answer.assistant_message_id,
+                "turn_id": answer.turn_id,
+                "ttfb_ms": answer.ttfb_ms,
                 "finished_normally": answer.finished_normally,
                 "n_raw_events": len(answer.raw_events),
                 "n_mentioned_documents": len(request.mentioned_document_ids or []),
+                "model_breakdown": answer.model_breakdown,
+                "call_details": answer.call_details,
             },
         )
 

@@ -41,8 +41,16 @@ class StreamedAnswer:
     text: str
     raw_events: list[dict[str, Any]] = field(default_factory=list)
     latency_ms: int = 0
+    ttfb_ms: int | None = None
     user_message_id: str | None = None
     assistant_message_id: str | None = None
+    turn_id: str | None = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    cost_micros: int | None = None
+    model_breakdown: dict[str, Any] | None = None
+    call_details: list[dict[str, Any]] | None = None
     finished_normally: bool = False
 
     @property
@@ -180,7 +188,8 @@ class NewChatClient:
                     message=detail.get("message", "Thread is busy"),
                 )
             response.raise_for_status()
-            answer = await self._consume_sse(response)
+            stream_started = time.monotonic()
+            answer = await self._consume_sse(response, request_start_time=stream_started)
         answer.latency_ms = int((time.monotonic() - started) * 1000)
         return answer
 
@@ -195,8 +204,11 @@ class NewChatClient:
         return payload if isinstance(payload, dict) else {}
 
     @staticmethod
-    async def _consume_sse(response: httpx.Response) -> StreamedAnswer:
-        """Walk SSE events, accumulate text-delta payloads.
+    async def _consume_sse(
+        response: httpx.Response,
+        request_start_time: float | None = None,
+    ) -> StreamedAnswer:
+        """Walk SSE events, accumulate text-delta payloads and telemetry.
 
         Backend events of interest:
 
@@ -205,6 +217,10 @@ class NewChatClient:
         * ``{"type": "text-end", "id": ...}``
         * ``{"type": "start", "messageId": ...}``  (top-level message id)
         * ``{"type": "finish"}``
+        * ``{"type": "data-token-usage", "data": {...}}``
+        * ``{"type": "data-turn-info", "data": {"chat_turn_id": ...}}``
+        * ``{"type": "data-user-message-id", "data": {"message_id": ...}}``
+        * ``{"type": "data-assistant-message-id", "data": {"message_id": ...}}``
         * literal ``[DONE]`` sentinel
 
         Multiple ``text-start`` blocks can interleave — each gets its
@@ -218,7 +234,20 @@ class NewChatClient:
         raw_events: list[dict[str, Any]] = []
         user_message_id: str | None = None
         assistant_message_id: str | None = None
+        turn_id: str | None = None
+        prompt_tokens: int = 0
+        completion_tokens: int = 0
+        total_tokens: int = 0
+        cost_micros: int | None = None
+        model_breakdown: dict[str, Any] | None = None
+        call_details: list[dict[str, Any]] | None = None
+        ttfb_ms: int | None = None
         finished = False
+
+        def _str_id(value: Any) -> str | None:
+            if value is None:
+                return None
+            return str(value)
 
         async for event in iter_sse_events(_aiter_lines(response)):
             data = event.data
@@ -235,6 +264,8 @@ class NewChatClient:
             raw_events.append(payload)
             ev_type = payload.get("type")
             if ev_type == "text-delta":
+                if request_start_time is not None and ttfb_ms is None:
+                    ttfb_ms = int((time.monotonic() - request_start_time) * 1000)
                 tid = str(payload.get("id", ""))
                 delta = payload.get("delta", "")
                 if not isinstance(delta, str):
@@ -249,17 +280,38 @@ class NewChatClient:
                     text_buffers[tid] = []
                     ordered_text_ids.append(tid)
             elif ev_type == "start":
-                msg_id = payload.get("messageId")
-                if isinstance(msg_id, str):
+                msg_id = _str_id(payload.get("messageId"))
+                if msg_id is not None:
                     user_message_id = user_message_id or msg_id
             elif ev_type == "data-user-message-id":
-                msg_id = (payload.get("data") or {}).get("id") or payload.get("id")
-                if isinstance(msg_id, str):
-                    user_message_id = msg_id
+                data_payload = payload.get("data") or {}
+                msg_id = data_payload.get("message_id") or data_payload.get("id")
+                user_message_id = _str_id(msg_id) or user_message_id
+                turn_id = _str_id(data_payload.get("turn_id")) or turn_id
             elif ev_type == "data-assistant-message-id":
-                msg_id = (payload.get("data") or {}).get("id") or payload.get("id")
-                if isinstance(msg_id, str):
-                    assistant_message_id = msg_id
+                data_payload = payload.get("data") or {}
+                msg_id = data_payload.get("message_id") or data_payload.get("id")
+                assistant_message_id = _str_id(msg_id) or assistant_message_id
+                turn_id = _str_id(data_payload.get("turn_id")) or turn_id
+            elif ev_type == "data-turn-info":
+                data_payload = payload.get("data") or {}
+                turn_id = _str_id(data_payload.get("chat_turn_id")) or turn_id
+            elif ev_type == "data-token-usage":
+                data_payload = payload.get("data") or {}
+                if "prompt_tokens" in data_payload:
+                    prompt_tokens = data_payload["prompt_tokens"]
+                if "completion_tokens" in data_payload:
+                    completion_tokens = data_payload["completion_tokens"]
+                if "total_tokens" in data_payload:
+                    total_tokens = data_payload["total_tokens"]
+                if "cost_micros" in data_payload:
+                    cost_micros = data_payload["cost_micros"]
+                if "call_details" in data_payload:
+                    call_details = data_payload["call_details"]
+                if "usage" in data_payload:
+                    model_breakdown = data_payload["usage"]
+                elif "model_breakdown" in data_payload:
+                    model_breakdown = data_payload["model_breakdown"]
             elif ev_type == "finish":
                 finished = True
 
@@ -267,8 +319,16 @@ class NewChatClient:
         return StreamedAnswer(
             text=text,
             raw_events=raw_events,
+            ttfb_ms=ttfb_ms,
             user_message_id=user_message_id,
             assistant_message_id=assistant_message_id,
+            turn_id=turn_id,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            cost_micros=cost_micros,
+            model_breakdown=model_breakdown,
+            call_details=call_details,
             finished_normally=finished,
         )
 

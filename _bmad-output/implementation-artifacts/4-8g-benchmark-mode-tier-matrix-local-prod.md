@@ -1,0 +1,151 @@
+---
+baseline_commit: 412200504
+baseline_branch: develop
+story_key: 4-8g-benchmark-mode-tier-matrix-local-prod
+status: ready-for-dev
+---
+
+# Story 4.8g: Benchmark mode/tier matrix and local vs production parity
+
+**Status:** `ready-for-dev`  
+**Epic:** 4 — Chat & Agents  
+**Priority:** MEDIUM  
+**Requirements:** FR-42, NFR-9, NFR-10  
+**Architecture:** `nowing_evals` harness, `AD-15`
+
+## Story
+
+As a release engineer,
+I want `nowing_evals` to run queries across all Nowing/ChainLens modes and query tiers, and to compare local dev results against production,
+So that small changes and big updates are validated on the right surface area before deploy.
+
+## Context
+
+- `4-8b` đã tạo `chat/regression` nhưng chỉ chạy một mode mặc định.
+- `4-8f` sẽ thêm stability metrics.
+- **Gap:** benchmark chưa:
+  - Chạy matrix `speed` × `balanced` × `quality` × `auto` trên cùng query.
+  - Phân tier theo độ phức tạp query (short/long context, single/multi-tool).
+  - So sánh local dev (có thể crawl mock) với production (real engine/crawl).
+  - Phân biệt gate cho small changes (nhanh, ít case) vs big updates (đầy đủ matrix, nhiều case).
+
+`4-8g` tập trung vào test matrix và environment parity.
+
+## Acceptance Criteria
+
+### AC1 — Mode matrix
+
+- **Given** a dataset case,
+  **When** `python -m nowing_evals run chat regression --modes speed,balanced,quality,auto` runs,
+  **Then** it replays the same query for each mode and records per-mode latency, TTFB, cost, citation count, and finish status.
+
+### AC2 — Tier tagging
+
+- **Given** a dataset with `tier` field (e.g., `short`, `long_context`, `multi_tool`),
+  **When** the run finishes,
+  **Then** the report shows `per_mode × per_tier` p50/p95 latency, cost, citation count, and error rate.
+
+### AC3 — Local vs production parity
+
+- **Given** `--environment local` or `--environment production`,
+  **When** the run finishes,
+  **Then** `run_artifact.json` tags each case with `environment`, and the report can surface `local_prod_delta` for latency/cost/citations if both environments have run artifacts.
+
+### AC4 — Small-change vs big-update modes
+
+- **Given** the CLI flag `--profile quick`,
+  **When** it runs,
+  **Then** it uses a small subset (e.g., 1 case per tag, 1 mode) for fast local validation.
+- **Given** the CLI flag `--profile full`,
+  **When** it runs,
+  **Then** it runs the full mode × tier matrix across production-like concurrency.
+
+### AC5 — Research latency mode matrix
+
+- **Given** `python -m nowing_evals run research chainlens_latency --modes speed,balanced,quality`,
+  **When** it runs,
+  **Then** it records p50/p95 e2e and TTFB per mode and compares against `gate.yaml` thresholds.
+
+### AC6 — Gate per mode/tier
+
+- **Given** `gate.yaml` with thresholds under `per_mode` and `per_tier`,
+  **When** any mode/tier violates its threshold,
+  **Then** the run exits non-zero and the report highlights the failing mode/tier.
+
+### AC7 — Docs benchmark
+
+- **Given** the story is done,
+  **When** a release engineer reads `docs/benchmark.md`,
+  **Then** they understand how to pick mode/tier matrix, run `--profile quick` for PR validation and `--profile full` for pre-release, and compare local vs production.
+
+## Tasks / Subtasks
+
+### Runner changes
+
+- [ ] Add `--modes` and `--tier` flags to `chat/regression` and `research/chainlens_latency` runners.
+- [ ] Extend dataset schema to accept `tier` and `modes` (optional override per case).
+- [ ] For each case, run once per requested mode; thread creation can be shared or per-mode depending on backend contract.
+- [ ] Aggregate metrics by `(mode, tier, tag)` in addition to `(tag)`.
+- [ ] Add `--environment` flag; write `environment` into `run_artifact.json`.
+- [ ] Add `--profile quick|full` presets:
+  - `quick`: 1 mode, 1 case/tag, concurrency 1.
+  - `full`: all modes, all tiers, configured concurrency.
+- [ ] Extend `report_section` to render mode × tier tables and local/prod delta.
+- [ ] Extend `gate.yaml` schema to support `per_mode` and `per_tier` thresholds.
+
+### Tests
+
+- [ ] Unit tests for mode matrix aggregation.
+- [ ] Unit tests for tier tagging.
+- [ ] Unit tests for `--profile quick`/`--profile full` preset expansion.
+- [ ] Respx-mocked test for multi-mode run.
+
+### Docs
+
+- [ ] Create/update `docs/benchmark.md` with:
+  - Benchmark suite inventory (`chat/regression`, `chat/quality`, `research/chainlens_latency`, medical, multimodal_doc, memory).
+  - Mode/tier matrix guide.
+  - Local vs production usage.
+  - `--profile quick` vs `--profile full`.
+  - Gate thresholds and how to ratify baseline.
+
+## Verification
+
+```bash
+cd nowing_evals
+python -m nowing_evals benchmarks list
+python -m nowing_evals run chat regression --search-space-id 42 --modes speed,balanced --profile quick --concurrency 1
+python -m nowing_evals run chat regression --search-space-id 42 --modes speed,balanced,quality,auto --profile full --concurrency 4
+python -m nowing_evals run research chainlens_latency --modes speed,balanced,quality --n 3
+python -m nowing_evals report --suite chat
+python -m nowing_evals report --suite research --benchmark chainlens_latency
+ruff check src/nowing_evals/suites/chat/regression/ src/nowing_evals/suites/research/chainlens_latency/
+python -m pytest tests/suites/chat/test_regression.py tests/suites/chat/test_mode_matrix.py -q
+```
+
+## Gate thresholds (provisional)
+
+```yaml
+per_mode:
+  speed:
+    max_p95_e2e_ms: 15000
+    max_p95_cost_micros: 100000
+  balanced:
+    max_p95_e2e_ms: 30000
+    max_p95_cost_micros: 150000
+  quality:
+    max_p95_e2e_ms: 60000
+    max_p95_cost_micros: 250000
+```
+
+`baseline_ratified: false` until measured.
+
+## References
+
+- `_bmad-output/implementation-artifacts/4-8b-chat-regression-suite.md`
+- `_bmad-output/implementation-artifacts/4-8f-benchmark-stability-scrape-captcha-rate-limit.md`
+- `nowing_evals/src/nowing_evals/suites/chat/regression/runner.py`
+- `nowing_evals/src/nowing_evals/suites/chat/regression/gate.yaml`
+- `nowing_evals/src/nowing_evals/suites/research/chainlens_latency/runner.py`
+- `nowing_evals/src/nowing_evals/suites/research/chainlens_latency/gate.yaml`
+- `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`

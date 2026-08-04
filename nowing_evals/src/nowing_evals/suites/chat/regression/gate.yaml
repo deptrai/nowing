@@ -1,0 +1,9 @@
+baseline_ratified: false
+
+thresholds:
+  # Provisional thresholds until baseline live measured.
+  max_error_rate: 0.05
+  max_p95_e2e_ms: 30000
+  max_p95_ttfb_ms: 5000
+  max_p95_cost_micros: 200000
+  min_contains_match_rate: 0.70
