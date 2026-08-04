@@ -111,12 +111,12 @@ development_status:
   9-6b: done
   epic-9-retrospective: done
 
-  epic-10: in-progress
+  epic-10: done
   10-1: done
   10-2: done
   10-3: done
   10-4: done
-  epic-10-retrospective: optional
+  epic-10-retrospective: done
 
   epic-11: done
   11-1-telegram-notification-foundation: done
@@ -134,3 +134,4 @@ action_items:
   - "Pre-merge gate scripts ready and smoke-tested on local DB (run_pre_merge_gates.py, disable_auto_archive_enabled.sql). Next: execute on actual production/staging DB before deploy."
   - "Epic 9 retrospective done. Epic 8 retrospective is optional."
   - "Deferred work still tracked: NFR-9 State B ratification, Redis cross-replica test, MCP async 202 handling, Story 9.5 approval. Consider creating new epic/stories via sprint-planning or correct-course when work resumes."
+  - "Epic 10 retrospective done. Follow-ups: reconcile stale epics.md/story headers, harden bds_aggregator tests against live-network flakiness, add aggregator output-quality eval-gate, and enable static typecheck for app/services/bds_aggregator and app/capabilities/vn_bds. See epic-10-retrospective-2026-08-04.md."

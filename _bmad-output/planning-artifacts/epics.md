@@ -65,7 +65,7 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 **N/A** — UX design contract chưa tồn tại (`ux-designs/ux-Nowing-2026-07-22/` chỉ có scaffold rỗng). Story có UI (3.6 citation jump, 8.3 dashboard) cần UX spec riêng trước khi build UI chi tiết — ghi nhận là tiền đề, không chặn backend/eval.
 
 ### FR Coverage Map
-- FR-1/2/3/4/10 → **E1** [DONE] · FR-6/7/8 → **E2** [DONE] · **FR-6 mở rộng → E10.1** [ready-for-dev] (batdongsan scraper) · FR-9/11/12/13 → **E3** [DONE] · FR-14/15/16/17 → **E4** [DONE] · FR-21/22/23 → **E5** [DONE] · FR-19/20 → **E6** [DONE] · FR-25/26/27/28/29 → **E7** [DONE] · FR-30 → **E8** [DONE] · **FR-41 → E8.11** [GAP, mới 2026-07-26]
+- FR-1/2/3/4/10 → **E1** [DONE] · FR-6/7/8 → **E2** [DONE] · **FR-6 mở rộng → E10** [DONE 2026-08-04] (batdongsan / chotot / muaban / vn_bds aggregator) · FR-9/11/12/13 → **E3** [DONE] · FR-14/15/16/17 → **E4** [DONE] · FR-21/22/23 → **E5** [DONE] · FR-19/20 → **E6** [DONE] · FR-25/26/27/28/29 → **E7** [DONE] · FR-30 → **E8** [DONE] · **FR-41 → E8.11** [GAP, mới 2026-07-26]
 - **FR-24/37/38/39 + NFR-9 → E9** (mới 2026-07-25; tách story theo readiness Q-3/Q-4): FR-38 → **E9.1a** [DONE, P0] · FR-24 → **E9.1b** [DONE, P0] · FR-37 → **E9.2** [DONE, P0, parser `done.usage.costDollars` + fallback 60k micros; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671] · NFR-9 → **E9.3** [PARTIAL, P1 — baseline ChainLens có, State B chưa đạt] · OQ-6/AR-10 (phần Nowing↔engine) → **E9.4** [DONE, P1] · D5-Phase2 → **E9.5** [deferred] · **FR-39 → E9.6a** (provenance) **+ E9.6b** (re-validate) [GAP, defect schema]
 - FR-32 → E3 (3.8 done; quality→3.9, dedupe→3.11) · FR-33 → E4 (4.6 done) · FR-34 → E3/E4 (done)
 - FR-36 → **E3.10a/b** [RESOLVED 2026-07-25] · FR-18 → **E6.4** [DONE] · FR-31/NFR-7 → **E8.3** [DONE] · FR-35 → **E6.5** [DONE — cải chính 2026-07-25]
@@ -119,7 +119,7 @@ Token tracking, ví credit, dashboard usage, guardrail chi phí, docs/vision syn
 Người dùng research sâu được mà **không vỡ** khi engine chết (9.1a), **không treo** cả chat turn khi engine chậm (9.3, State A mặc định), và **trả đúng tiền** cho thứ mình dùng (9.2). **FRs:** FR-38 [DONE,P0], FR-24 [DONE,P0], FR-37 [DONE,P0, parser `done.usage.costDollars` + fallback 60k micros ≈ $0.06; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671], FR-39 [DONE, 9.6a provenance recipe + 9.6b re-validation API], NFR-9 [DONE — baseline ChainLens đo, State A làm default; State B chat-mode sync vẫn tắt cho đến khi p95 `balanced` đạt 30s]. **Deferred / Post-MVP:** **9.5** metered self-host endpoint (chưa phê duyệt). **Governed by:** `AD-15` · `AD-16` (license — cho 9.4) · **`AD-11.1`** (provenance recipe — cho 9.6a/b) · **`AD-17`** (async door — cho 9.3) · **`AD-19`** (trang khó: anti-bot ở Nowing, engine không gọi ngược inline, escalation async — cho 9.1a/9.3) · **`AD-20`** (screenshot-as-evidence, không adopt visual-RAG stack) · AD-7, AD-8 amended.
 > **✅ Cập nhật 2026-08-02:** 9.1a, 9.1b, 9.2, 9.3, 9.4, 9.6a, 9.6b **done**. 9.5 **deferred**.
 >
-> **🆕 2026-08-03 — Epic 10: Connector & Scraper Expansion** (Vietnam BĐS + broader scraper port). **Open:** 10.1 batdongsan `[review]`, 10.2 chotot `[done]`, 10.3 muaban `[done]`, 10.4 cross-source aggregator `[backlog]`.
+> **🆕 2026-08-03 — Epic 10: Connector & Scraper Expansion** (Vietnam BĐS + broader scraper port). **Open:** 10.1 batdongsan `[done 2026-08-04]`, 10.2 chotot `[done]`, 10.3 muaban `[done]`, 10.4 cross-source aggregator `[done 2026-08-04]`.
 > **⚠️ Đổi tên 2026-07-25 (readiness Q-1).** Tên trước — *"Deep-Research Engine Integration (ChainLens)"* — là **technical epic**: nó mô tả hạ tầng, không mô tả điều user làm được. Ba mệnh đề trong tên mới map thẳng vào ba story P0/P1.
 >
 > **🆕 2026-08-03 — Epic 11: Telegram Automation & Bot** (notification, write-back, inline keyboard, commands). **Open:** 11.1 notification foundation `[done]`, 11.2 write-back & builder `[done]`, 11.3 interactive bot & commands `[done]`.
@@ -918,7 +918,7 @@ So that I can broaden cross-compare coverage beyond batdongsan and chotot.
 
 _FR-6 · AD-3 · AD-16 · AD-19 · `market-vietnam-real-estate-research-data-scraping-landscape-research-2026-08-03.md`._
 
-### Story 10.4: Vietnam BĐS Listing Aggregator & Cross-Source Trust Score  `[backlog]`
+### Story 10.4: Vietnam BĐS Listing Aggregator & Cross-Source Trust Score  `[done 2026-08-04]`
 
 As a real-estate researcher,  
 I want the system to merge and score listings from multiple Vietnamese BĐS sources,  
