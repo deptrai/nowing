@@ -11,6 +11,7 @@ Domain-agnostic eval harness for Nowing. Each benchmark is a Python subpackage u
 | `medical/cure`                  | Nowing single-arm retrieval (Recall/MRR/nDCG) | no               | `vision=off, mode=basic`   |
 | `multimodal_doc/mmlongbench`    | Native PDF vs Nowing head-to-head, open-ended | yes              | `vision=on, mode=basic`    |
 | `research/chainlens_latency`    | Nowing deep-research p50/p95 e2e + TTFB       | no               | none (live engine calls)   |
+| `chat/regression`               | Chat response regression: latency, token/cost, citations, finish status | no | default sample dataset |
 
 Future domains (`legal/`, `finance/`, `code/`, `scientific/`) drop into `suites/` without touching `core/` or the CLI.
 
@@ -82,6 +83,33 @@ Notes:
 - `quality` is the Nowing schema mode that maps to ChainLens `deep`/`deep-reasoning`.
 - The benchmark defaults to 5 representative factual queries; use `--n` for a quick smoke run.
 - Targets live in `src/nowing_evals/suites/research/chainlens_latency/gate.yaml` and are provisional until `baseline_ratified` is flipped after a clean ChainLens benchmark.
+
+## Chat response regression (Story 4.8)
+
+The `chat/regression` benchmark replays a dataset of user queries through `POST /api/v1/new_chat`, creates a fresh thread per case, and records e2e latency, TTFB, token/cost, citation count, finish status, and optional keyword-match checks. It requires no `setup`/`SearchSpace`, but it needs a live backend and a `search_space_id` where the bot can create threads.
+
+```bash
+# 1. (optional) use the default sample dataset or provide your own JSONL
+python -m nowing_evals ingest chat regression
+python -m nowing_evals ingest chat regression --dataset my-cases.jsonl
+
+# 2. run against a real SearchSpace
+python -m nowing_evals run chat regression --search-space-id 42 --concurrency 1
+
+# 3. report
+python -m nowing_evals report --suite chat
+```
+
+Dataset format (JSONL):
+
+```jsonl
+{"case_id": "chat-mem-001", "query": "What do we know about AlphaCorp?", "tags": ["memory"], "expected_contains": ["AlphaCorp"]}
+{"case_id": "chat-doc-001", "query": "Summarize the NDA.", "tags": ["document"], "mentioned_document_ids": [123], "expected_contains": ["NDA"]}
+```
+
+Notes:
+- Use `--tags memory,document` to run only cases with those tags.
+- Gate thresholds live in `src/nowing_evals/suites/chat/regression/gate.yaml` and are provisional until `baseline_ratified` is flipped.
 
 ## Asymmetric scenarios — the "vision-extract once, answer cheap" play
 

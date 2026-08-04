@@ -407,6 +407,19 @@ Người dùng chưa đăng nhập có thể chat với một document upload v�
 **Consequences:**
 - `/anonymous/*` routes.
 
+#### FR-42: Chat Response Benchmark
+Hệ thống cung cấp benchmark trong `nowing_evals` để đo chat response với dữ liệu thực tế hoặc curated.
+
+- `nowing_evals` gọi `POST /api/v1/new_chat` qua `NewChatClient`, mỗi case một thread mới.
+- Thu thập mỗi turn: latency, TTFB, prompt/completion/total tokens, `cost_micros`, citation count, finish status, turn/message ids.
+- Hỗ trợ `chat/regression` (drift gate trên nhiều tag: memory, document, deep-research, multi-tool, creative) và nền tảng cho `chat/quality` (LLM-as-judge) sau này.
+- Dữ liệu mặc định là synthetic; trích xuất query thật từ production phải qua bước anonymize PII.
+
+**Consequences:**
+- `nowing_evals/src/nowing_evals/core/clients/new_chat.py` parse `data-token-usage`, `data-turn-info`.
+- `nowing_evals/src/nowing_evals/suites/chat/regression/`.
+- `gate.yaml`, sample dataset, báo cáo theo tag.
+
 ### 4.5 Deliverables
 **Description:** Nowing tạo các deliverable từ nội dung workspace: report (markdown/Typst) export đa định dạng, podcast (transcript/audio TTS), video presentation (slides/scene codes), image generation.
 
@@ -865,6 +878,14 @@ Latency của Deep-Research Engine là **ràng buộc bên ngoài** với Nowing
 **Gap:**
 - `[PARTIAL]` NFR-9: đường async deliverable đã có (State A), baseline ChainLens đã có, nhưng ngưỡng A→B chưa đạt; cần benchmark e2e từ phía Nowing + benchmark sạch hơn. Story 9.3.
 - `[NOTE]` UX tiền đề: State A buộc pattern **async / progress-first**. `ux-designs/` hiện chỉ có scaffold rỗng — cần UX spec trước khi build UI deep-research.
+
+#### NFR-10: Chat Response Regression Gate
+Mọi deploy production phải qua gate chat regression trước khi mở rộng traffic.
+
+- `nowing_evals` chạy `chat/regression` trên tập query đại diện.
+- Metrics bắt buộc: p95 e2e latency, p95 TTFB, error rate, finish rate, citation count, cost/turn.
+- Ngưỡng cụ thể được chốt trong `gate.yaml` và chỉ có thể `baseline_ratified: true` sau 3 lần chạy liên tiếp ổn định.
+- Dữ liệu benchmark không chứa PII; self-host có thể dùng synthetic dataset.
 
 ## 6. MVP Scope
 

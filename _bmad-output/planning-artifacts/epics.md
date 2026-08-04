@@ -837,6 +837,20 @@ So that tab state is fast to save/load and titles stay up to date without stale 
 **Kỹ thuật:** refactor `Tab` to pointer-only state, add `useResolvedTabs` hook, resolve document/chat title via Zero/`react-query`, render `TabBar` from resolved tabs.
 _FR-14 · upstream PR #1609._
 
+### Story 4.8: Chat Response Quality & Regression Benchmark  `(mới 2026-08-04)`  `[in-progress]`
+As a Nowing team member,
+I want a benchmark suite that replays real or curated chat queries on every production deploy,
+So that we detect chat latency, cost, citation, and quality regressions before they reach users.
+
+**Acceptance Criteria:**
+- **Given** the `nowing_evals` harness, **When** `NewChatClient` consumes a `/new_chat` stream, **Then** it records token/cost, TTFB, turn id, and message ids.
+- **Given** a dataset of chat cases, **When** `python -m nowing_evals run chat regression` executes, **Then** it reports per-turn and per-tag p50/p95 latency, p95 cost, citation count, error rate, and keyword match rate.
+- **Given** a deployed backend, **When** the benchmark runs, **Then** it creates one fresh thread per case, never reuses a busy thread, and deletes ephemeral threads.
+- **Given** PII constraints, **Then** the default dataset is synthetic and any production-query sampler must run through an admin anonymization step.
+
+**Kỹ thuật:** extend `NewChatClient` to parse `data-token-usage`, `data-turn-info`, and TTFB; add `nowing_evals/suites/chat/regression/` with `runner.py`, `ingest`, sample dataset, `gate.yaml`, and report section.
+_FR-42 · NFR-10 · SCP sprint-change-proposal-2026-08-04-chat-response-benchmark.md._
+
 ---
 
 ## Epic 7: Multi-surface Clients

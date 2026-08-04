@@ -73,8 +73,13 @@ development_status:
   3-16: ready-for-dev
   epic-3-retrospective: optional
 
-  epic-4: done
+  epic-4: in-progress
   4-7: ready-for-dev
+  4-8a: review
+  4-8b: review
+  4-8c: ready-for-dev
+  4-8d: ready-for-dev
+  4-8e: ready-for-dev
   epic-4-retrospective: optional
 
   epic-5: done

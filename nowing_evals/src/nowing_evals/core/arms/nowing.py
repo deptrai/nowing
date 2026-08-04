@@ -81,20 +81,23 @@ class NowingArm(Arm):
             raw_text=answer.text,
             answer_letter=letter.letter,
             citations=answer.citations,
+            input_tokens=answer.prompt_tokens,
+            output_tokens=answer.completion_tokens,
+            cost_micros=answer.cost_micros or 0,
             latency_ms=answer.latency_ms,
-            # Nowing doesn't surface input/output token counts in the
-            # SSE stream today; leaving the cost / token fields at 0
-            # documents that gap. Estimating from the raw text would
-            # bias the comparison against the Nowing arm.
             extra={
                 "thread_id": thread_id,
                 "search_space_id": self._search_space_id,
                 "answer_letter_strategy": letter.strategy,
                 "user_message_id": answer.user_message_id,
                 "assistant_message_id": answer.assistant_message_id,
+                "turn_id": answer.turn_id,
+                "ttfb_ms": answer.ttfb_ms,
                 "finished_normally": answer.finished_normally,
                 "n_raw_events": len(answer.raw_events),
                 "n_mentioned_documents": len(request.mentioned_document_ids or []),
+                "model_breakdown": answer.model_breakdown,
+                "call_details": answer.call_details,
             },
         )
 

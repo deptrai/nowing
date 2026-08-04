@@ -259,6 +259,68 @@ async def test_ask_409_thread_busy_retries(respx_mock, http):
 
 @pytest.mark.asyncio
 @respx.mock(base_url=_BASE)
+async def test_ask_parses_telemetry_events(respx_mock, http):
+    body = _sse_body(
+        [
+            {"type": "data-turn-info", "data": {"chat_turn_id": "533:1762900000000"}},
+            {
+                "type": "data-user-message-id",
+                "data": {"message_id": 1843, "turn_id": "533:1762900000000"},
+            },
+            {
+                "type": "data-assistant-message-id",
+                "data": {"message_id": 1844, "turn_id": "533:1762900000000"},
+            },
+            {"type": "start", "messageId": "m1"},
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "Answer "},
+            {"type": "text-delta", "id": "t1", "delta": "is B."},
+            {"type": "text-end", "id": "t1"},
+            {
+                "type": "data-token-usage",
+                "data": {
+                    "usage": {
+                        "openai/gpt-5.4-mini": {
+                            "prompt_tokens": 10,
+                            "completion_tokens": 5,
+                            "total_tokens": 15,
+                            "cost_micros": 100,
+                        }
+                    },
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                    "cost_micros": 100,
+                    "call_details": [{"model": "openai/gpt-5.4-mini", "cost_micros": 100}],
+                },
+            },
+            {"type": "finish"},
+        ]
+    )
+    respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+    client = NewChatClient(http, _BASE)
+    answer = await client.ask(thread_id=1, search_space_id=2, user_query="What is the answer?")
+    assert answer.text == "Answer is B."
+    assert answer.turn_id == "533:1762900000000"
+    assert answer.user_message_id == "1843"
+    assert answer.assistant_message_id == "1844"
+    assert answer.prompt_tokens == 10
+    assert answer.completion_tokens == 5
+    assert answer.total_tokens == 15
+    assert answer.cost_micros == 100
+    assert answer.ttfb_ms is not None
+    assert answer.finished_normally is True
+    assert answer.model_breakdown is not None
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
 async def test_ask_409_exhausts_retries(respx_mock, http):
     busy = httpx.Response(
         409,
