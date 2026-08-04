@@ -7,7 +7,7 @@ status: done
 
 # Story 8.13: PostHog Product Analytics
 
-**Status:** ready-for-dev
+**Status:** done
 **Epic:** 8 — Platform Operations
 **Priority:** MEDIUM
 **Requirements:** NFR-3
@@ -208,3 +208,22 @@ The remaining work is to make the existing integration **privacy-safe, productio
 - `nowing_web/app/dashboard/[workspace_id]/team/team-content.tsx`
 - `nowing_web/hooks/use-run-stream.ts`
 - `nowing_web/lib/chat/stream-engine/engine.ts`
+
+---
+
+## Review Findings
+
+**Date:** 2026-08-04
+**Review type:** bmad-code-review follow-up
+**Scope:** `nowing_web/app/global-error.tsx`, `nowing_web/lib/connector-telemetry.ts`
+**Commit:** `c0af9f098`
+
+### Verdict
+
+✅ **PASS** — no actionable findings. 2 files reviewed with 3 valid review layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor). All raised concerns were triaged as pre-existing, out-of-diff, or already handled by the existing pattern in sibling error-boundary files.
+
+### Dismissed / deferred concerns
+
+- `global-error.tsx` lazy-load pattern matches `error.tsx` and `dashboard/error.tsx`; `.catch(() => {})` on the same promise chain covers both import and `captureException` failures.
+- `connector_title` removal is a type-only cleanup; `grep` confirms zero in-repo consumers. Historical PostHog payloads did not include `connector_title` because `trackConnectorEvent` already excluded it.
+- One subagent run referenced a non-existent `.patch` path and reviewed full source files; those findings were scoped as pre-existing and not introduced by this diff.
