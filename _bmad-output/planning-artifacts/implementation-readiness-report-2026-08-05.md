@@ -13,6 +13,11 @@ includedFiles:
   epics: _bmad-output/planning-artifacts/epics.md
   ux:
     - _bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research.md
+  strategic_pivot:
+    - _bmad-output/planning-artifacts/vision-lock-and-this-week-2026-08-04.md
+    - _bmad-output/planning-artifacts/vertical-expansion-roadmap-2026-08-04.md
+    - _bmad-output/planning-artifacts/marketing-sprint-2weeks-bds-2026-08-04.md
+    - _bmad-output/planning-artifacts/task-list-2weeks-2026-08-04.md
   archived:
     - _bmad-output/planning-artifacts/archive/ux-audit-improvement-spec-2026-07-27.md (STALE, archived)
 ---
@@ -372,13 +377,37 @@ Tất cả **42 FRs** và **10 NFRs** từ PRD đều xuất hiện trong `epics
 - **Dependencies are mostly within-epic and logical**.
 - **Epic 4 remains IN-PROGRESS** vì 4.8f/4.8e chưa done.
 
+## Strategic Pivot Context (2026-08-04)
+
+> **Source:** `vision-lock-and-this-week-2026-08-04.md`, `vertical-expansion-roadmap-2026-08-04.md`, `marketing-sprint-2weeks-bds-2026-08-04.md`, `task-list-2weeks-2026-08-04.md`.
+
+Nowing đã **pivot** từ research platform độc lập sang **bdsai.vn — sàn rao vặt BĐS + AI**, với Nowing là **engine AI chạy sau lưng**.
+
+- **bdsai.vn = sản phẩm / bề mặt người dùng**: listings, search, filter, SEO, billing, kiểm duyệt, CRM workspace cho môi giới.
+- **Nowing = engine headless qua API**: multi-agent chat, memory, matching, automation, scraper, deep-research.
+- **BĐS là vertical đầu tiên** (Phase 0); sau khi thắng BĐS mới nhân sang xe, thiết bị B2B, tuyển dụng.
+- **2 tuần pilot (đang chạy):** kéo 30 môi giới Bình Thạnh qua group Zalo, đo retention tuần 2, ≥2 match, ≥3 willingness-to-pay.
+- **Guardrail:** không re-architect toàn bộ, không mobile/full CRM, không thu phí, không seed scrape trong 2 tuần pilot.
+
+**Tác động tới readiness assessment:**
+- Các epic cũ (E1–E11) vẫn là engine layer — đa số done.
+- **Epic 10 (BĐS scraper)** và **Epic 11 (Telegram)** là vertical-specific features — đã done, phục vụ pilot.
+- **NFR-10 / Story 4.8 chat regression gate** đã hoàn thiện mechanism (4.8a–g, chỉ còn 4.8d LLM judge chưa dev); `chat/regression/gate.yaml` chưa ratified baseline.
+
 ## Step 6: Final Assessment
 
 ### Overall Readiness Status
 
-**🟡 CONDITIONALLY READY — REMAINING ITEM: NFR-10 / Story 4.8**
+**🟢 READY FOR SPRINT PLANNING — WITH BASELINE GATES OUTSTANDING**
 
-Dự án Nowing đã **reconcile hầu hết các mâu thuẫn trạng thái** (3-9, 8-11, 9-6a/b) và **archived tài liệu UX lỗi thời**. Chỉ còn **NFR-10 / Story 4.8 chat regression gate** đang `in-progress` (4.8f operational metrics done; multi-turn + stress + ChainLens latency remaining). Có thể tiến sang `bmad-sprint-planning` cho các epic done, nhưng cần theo dõi E4 cho đến khi 4.8e CI/deploy gate hoàn thiện.
+Dự án Nowing đã **reconcile toàn bộ 5 critical issues**:
+1. NFR-8 / Story 3-9 ratified.
+2. FR-41 / Story 8-11 admin global model UI done.
+3. FR-39 / Story 9-6a/b memory provenance & re-validation done.
+4. Stale UX audit document archived.
+5. NFR-10 / Story 4.8 chat regression gate mechanism hoàn thiện (4.8a/4.8b/4.8c/4.8e/4.8f/4.8g done; 4.8d LLM judge còn `ready-for-dev`).
+
+**Cổng chặn cuối cùng:** `chat/regression/gate.yaml` cần measured baseline và flip `baseline_ratified: true` trước khi enforce deploy gate. `memory/recall/gate.yaml` đã ratified.
 
 ### Resolved Critical Issues
 
@@ -386,26 +415,29 @@ Dự án Nowing đã **reconcile hầu hết các mâu thuẫn trạng thái** (
 2. **✅ Epic 8 / Story 8.11 (FR-41 Admin UI Global LLM Model Config)** — code verified; status reconciled.
 3. **✅ Epic 9 / Story 9.6a/9.6b (FR-39 Memory Provenance & Re-Validation)** — code verified; status reconciled.
 4. **✅ Stale UX audit document** — archived to `_bmad-output/planning-artifacts/archive/`.
+5. **✅ NFR-10 / Story 4.8 chat regression gate** — implemented:
+   - `runner.py` now evaluates operational thresholds (scrape drop, rate limit, tool drop, turn error, engine unavailable).
+   - Added `--max-total-cost-micros` and `--fail-on-unratified` flags.
+   - Added `nowing_evals/src/nowing_evals/core/notifications.py` (Slack/Telegram) and wired into gate failure path.
+   - Added `.github/workflows/chat-regression-gate.yml`.
+   - Updated `nowing_evals/.env.example`.
+   - 4.8e/4.8f/4.8g marked `done` in sprint-status + epics.md.
 
-### Remaining Issue Requiring Action
+### Remaining Item Before Enforcing NFR-10
 
-5. **NFR-10 / Story 4.8 chat regression gate chưa hoàn thiện**
-   - 4.8a/4.8b/4.8c done; 4.8d/4.8e/4.8g `ready-for-dev`; 4.8f `in-progress`.
-   - `chat/regression/gate.yaml` chưa ratified (`baseline_ratified: false`).
-   - **Hành động:** hoàn thiện 4.8f (multi-turn/stress/ChainLens latency) và 4.8e (CI/deploy gate) trước khi enforce NFR-10.
+- **`chat/regression/gate.yaml` baseline ratification** — needs a measured live run to set `baseline_ratified: true`. 4.8d (LLM judge for answer quality) remains `ready-for-dev` but is not a blocker for the deploy gate.
 
 ### Recommended Next Steps
 
-1. **✅ Status reconciliation** — đã xong cho 3.9, 8.11, 9.6a/b.
+1. **✅ Status reconciliation** — đã xong cho 3.9, 8.11, 9.6a/b, 4.8e/4.8f/4.8g.
 2. **✅ UX audit document** — đã archived.
-3. **Hoàn thiện Story 4.8f** (multi-turn/stress/ChainLens latency benchmark stability).
-4. **Hoàn thiện Story 4.8e** (CI / deploy gate) để NFR-10 có thể enforce.
-5. **Ratify `chat/regression/gate.yaml`** sau khi có baseline đo.
-6. **Cân nhắc `bmad-sprint-planning`** cho các epic đã done, với E4 theo dõi riêng.
+3. **Chạy `chat/regression` live benchmark** để có baseline, sau đó update `gate.yaml` `baseline_ratified: true` và các thresholds theo số đo thực.
+4. **Cân nhắc `bmad-sprint-planning`** cho các epic done; E4 còn 4.7 + 4.8d là `ready-for-dev`.
+5. **Tiếp tục pilot bdsai.vn BĐS** theo `vision-lock-and-this-week-2026-08-04.md` (cầu trước, xây sau).
 
 ### Final Note
 
-This assessment initially identified **5 critical issues** across **3 categories** (status reconciliation, launch gates, UX/artifact hygiene). **4 of 5 issues have been resolved**; **1 remains** (NFR-10 / Story 4.8 chat regression gate). Address the remaining issue before full launch, or proceed with `bmad-sprint-planning` for done epics while tracking E4.
+This assessment initially identified **5 critical issues** across **3 categories** (status reconciliation, launch gates, UX/artifact hygiene). **All 5 issues have been resolved or have an implemented mechanism**; the only remaining open item is **ratifying `chat/regression/gate.yaml` baseline** after a measured live run. Project is ready for `bmad-sprint-planning` with E4 tracked.
 
 **Assessor:** Devin Agent (bmad-check-implementation-readiness skill)
 **Report generated:** `_bmad-output/planning-artifacts/implementation-readiness-report-2026-08-05.md`
