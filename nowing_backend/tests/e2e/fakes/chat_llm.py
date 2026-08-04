@@ -545,7 +545,7 @@ class FakeChatLLM(BaseChatModel):
             and not has_clickup_evidence
         ):
             return f"Manual upload MD content found: {MANUAL_UPLOAD_MD_CANARY_TOKEN}"
-        return NO_RELEVANT_CONTENT_SENTINEL
+        return f"E2E fake assistant received: {latest_human}"
 
     def _tool_call_message_for(self, messages: list[BaseMessage]) -> AIMessage | None:
         latest_human = next(
@@ -817,3 +817,45 @@ def fake_create_chat_litellm_from_agent_config(
 def fake_create_chat_litellm_from_config(*args: Any, **kwargs: Any) -> FakeChatLLM:
     del args, kwargs
     return FakeChatLLM()
+
+
+# Some production call sites (e.g. `app.tasks.chat.streaming.flows.shared.llm_bundle`)
+# bypass the factory functions and instantiate `SanitizedChatLiteLLM` directly.
+# We wrap its streaming/generation methods to route every chat call through
+# `FakeChatLLM` without needing to replace the class (which breaks langchain
+# construction-time validation).
+
+
+def _fake_sanitized_generate(
+    self: Any,
+    messages: list[BaseMessage],
+    stop: list[str] | None = None,
+    run_manager: CallbackManagerForLLMRun | None = None,
+    **kwargs: Any,
+) -> ChatResult:
+    del self, stop, run_manager, kwargs
+    return FakeChatLLM()._generate(messages)
+
+
+async def _fake_sanitized_agenerate(
+    self: Any,
+    messages: list[BaseMessage],
+    stop: list[str] | None = None,
+    run_manager: AsyncCallbackManagerForLLMRun | None = None,
+    stream: bool | None = None,
+    **kwargs: Any,
+) -> ChatResult:
+    del self, stop, run_manager, stream, kwargs
+    return await FakeChatLLM()._agenerate(messages)
+
+
+async def _fake_sanitized_astream(
+    self: Any,
+    messages: list[BaseMessage],
+    stop: list[str] | None = None,
+    run_manager: AsyncCallbackManagerForLLMRun | None = None,
+    **kwargs: Any,
+) -> AsyncIterator[ChatGenerationChunk]:
+    del self, stop, run_manager, kwargs
+    async for chunk in FakeChatLLM()._astream(messages):
+        yield chunk

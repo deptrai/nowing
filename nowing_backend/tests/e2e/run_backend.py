@@ -206,7 +206,11 @@ def _patch_llm_bindings() -> None:
     """Replace LLM factories at every known binding site."""
     from unittest.mock import patch
 
+    from app.agents.chat.runtime.llm_config import SanitizedChatLiteLLM
     from tests.e2e.fakes.chat_llm import (
+        _fake_sanitized_agenerate,
+        _fake_sanitized_astream,
+        _fake_sanitized_generate,
         fake_create_chat_litellm_from_agent_config,
         fake_create_chat_litellm_from_config,
     )
@@ -241,6 +245,20 @@ def _patch_llm_bindings() -> None:
                 target,
                 exc,
             )
+
+    # Production call sites also instantiate SanitizedChatLiteLLM directly
+    # (e.g. in app.tasks.chat.streaming.flows.shared.llm_bundle). Patch the
+    # class methods so every chat call routes through the E2E fake.
+    method_patches = [
+        ("_astream", _fake_sanitized_astream),
+        ("_agenerate", _fake_sanitized_agenerate),
+        ("_generate", _fake_sanitized_generate),
+    ]
+    for method_name, replacement in method_patches:
+        p = patch.object(SanitizedChatLiteLLM, method_name, replacement)
+        p.start()
+        _active_patches.append(p)
+        logger.info("[fake-chat-llm] patched SanitizedChatLiteLLM.%s", method_name)
 
     chat_targets = [
         (

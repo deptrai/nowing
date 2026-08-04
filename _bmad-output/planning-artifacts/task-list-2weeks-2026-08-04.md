@@ -47,7 +47,7 @@
 | # | Công việc code | BMAD skill | Mục đích | Ưu tiên chuẩn bị | Trạng thái |
 |---|---|---|---|---|---|
 | **B1** | **Rebrand Long Thành → Việt Nam + bdsai.vn** | `bmad-create-story` | Đổi copy, metadata, SEO, logo cho đúng vision mới | P0 | ✅ Đã dev xong copy trên web |
-| **B2** | **Deal-Radar MVP** — filter bằng lời, alert vào Zalo group riêng | `bmad-create-story` → `bmad-spec` | Core tool cho môi giới, cần pilot | P0 | ✅ Story 5.1 + spec |
+| **B2** | **Deal-Radar MVP** — filter bằng lời, alert trigger Nowing automation gửi Zalo group | `bmad-create-story` → `bmad-spec` | Core tool cho môi giới, cần pilot | P0 | ✅ Story 5.1 + spec (updated) |
 | **B3** | **Dashboard CRM layout mới** — sidebar workspace cho môi giới | `bmad-ux` → `bmad-create-story` | Chuyển dashboard từ marketplace sang CRM | P0 | ✅ Story 5.3 + UX spec |
 | **B4** | **Lead management** — CRUD lead, trạng thái, gán listing | `bmad-create-story` | Quản lý người mua liên hệ | P1 | ✅ Story 5.2 + UX spec |
 | **B5** | **AI viết tin đăng** trong form đăng tin | `bmad-create-story` → `bmad-spec` | Hook free mạnh nhất | P1 | ✅ Story 4.3 + UX spec |
