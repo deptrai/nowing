@@ -95,7 +95,7 @@ Built-in scrapers + OAuth connectors + external MCP connectors; connectors là m
 > **⚠️ 2026-07-25: FR-24 (ChainLens) đã rời Epic 2 → Epic 9.** ChainLens không phải connector. Story `2-4-chainlens-research-mcp-tool` giữ `done` làm lịch sử — nó đã ship tool thật; việc còn lại thuộc Epic 9.
 
 ### Epic 3: Knowledge Base + Long-Term Memory — 🔄 IN-PROGRESS
-KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(mới)*, **NFR-1b/1c/1d** *(mới)*. **Open:** 3.9 memory recall eval-gate `[in-progress]`, 3.15 run citations `[ready-for-dev]`, 3.16 OKF export `[ready-for-dev]`.
+KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(mới)*, **NFR-1b/1c/1d** *(mới)*. **Open:** 3.9 memory recall eval-gate `[done]`, 3.15 run citations `[ready-for-dev]`, 3.16 OKF export `[ready-for-dev]`.
 > **🆕 2026-07-25 (readiness Nhóm 3):** hai story mới, cả hai đều là **gap trước đây không có FR lẫn epic**. **3.13** — `MemoryExtractionService` chỉ có `extract_from_turn` và workspace mới không seed gì ⇒ `nowing_recall` session đầu **rỗng theo cấu trúc**, **M1 (first-run value ≤15 phút) không tồn tại**. **3.14** — `MemoryInjectionMiddleware` **chặn mọi lượt chat** với `SELECT` không LIMIT, bỏ qua cả HNSW + GIN index đã có sẵn ⇒ chi phí mỗi lượt tăng tuyến tính theo mức dùng. **3.14 nên chạy trước khi chốt số SM-10 của 3.9.**
 
 ### Epic 4: Chat & Agents — 🔄 IN-PROGRESS

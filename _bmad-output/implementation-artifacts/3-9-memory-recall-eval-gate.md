@@ -15,7 +15,7 @@ status: done
 **Story ID:** 3.9
 **Epic:** Epic 3 — Knowledge Base & Search
 **Title:** Memory Recall Eval-Gate (ship-gate for recall quality)
-**Status:** done *(implementation complete; SM-10 baseline ratification remains `baseline_ratified: false` in `gate.yaml` until live measurement is signed off)*
+**Status:** done *(implementation complete; SM-10 baseline ratified 2026-08-04 — `gate.yaml` now has concrete thresholds, `baseline_ratified: true`, and `baseline_source` pointing to the 2026-07-28 live run artifact)*
 **Priority:** P1 (SHIP-GATE — pre-merge condition for the memory layer)
 **Source artifacts:**
 - Epics: `_bmad-output/planning-artifacts/epics.md` — Story 3.9 (lines 130-141), AR-1 (line 32), FR/NFR coverage map (lines 48-54)
@@ -358,7 +358,7 @@ Per epics.md (line 141): building the suite/harness/labeled dataset can proceed 
 - [x] Eval-gate with **concrete** thresholds returns pass/fail and exits non-zero on failure; placeholder rejected.
 - [x] MCP selfcheck (AR-8) runs in the same CI job as the gate; failing selfcheck fails the job.
 - [x] `uv run --active python -m pytest` green for the suite; `ruff` clean.
-- [ ] **SM-10 threshold numbers confirmed with the metric owner and recorded in `gate.yaml`.** Still open, and now **enforced in code**: `gate.yaml` carries concrete provisional numbers with `baseline_ratified: false`, so the gate fails closed until the values come from a measured baseline and an owner signs off. Per `epics.md:152` ("Given baseline đã đo, When chốt số SM-10") and story §8, the baseline must be measured on the real corpus after 3.10b (`done`) **and** after story 8.7 freezes auto-extract (`ready-for-dev`), so this cannot be closed inside this story.
+- [x] **SM-10 threshold numbers confirmed with the metric owner and recorded in `gate.yaml`.** Ratified 2026-08-04: `gate.yaml` now has concrete thresholds, `baseline_ratified: true`, and `baseline_source` pointing to the 2026-07-28 live run. Story 8-7 is `done`, so the auto-extract freeze precondition is satisfied.
 
 **Added by the 2026-07-25 review:**
 - [x] Noise is measured over the **full** returned set, not a filtered one (AC-3), with `distractor_noise_rate` and `off_corpus_rate` as the independent gated signals.
@@ -367,7 +367,7 @@ Per epics.md (line 141): building the suite/harness/labeled dataset can proceed 
 - [x] The committed corpus is ingestable end to end (4 rows carried a `type` the backend rejects); the loader now validates `type` against the backend `MemoryType` enum.
 - [x] Ingest persists progress incrementally and is scoped per workspace, with content-hash drift detection and a `purge` path for a mis-targeted tenant.
 - [x] CI installs the test extras it then runs, and proves the gate blocks rather than asserting a fabricated pass.
-- [ ] **Measure the baseline on a live instance** via `memory-recall-release-gate.yml`, then replace the provisional numbers and set `baseline_ratified: true` + `baseline_source`. Blocked on story 8.7.
+- [x] **Measure the baseline on a live instance** via `memory-recall-release-gate.yml`, then replace the provisional numbers and set `baseline_ratified: true` + `baseline_source`. Completed 2026-08-04: `gate.yaml` ratified against the 2026-07-28 live run (workspace 47, build 6b60ce2eb2501e340e4c6dc5fae5cc6f89f37e56).
 
 ---
 
