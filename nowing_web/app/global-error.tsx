@@ -1,7 +1,6 @@
 "use client";
 
 import "./globals.css";
-import posthog from "posthog-js";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -36,7 +35,11 @@ export default function GlobalError({
 	reset: () => void;
 }) {
 	useEffect(() => {
-		posthog.captureException(error);
+		import("posthog-js")
+			.then(({ default: posthog }) => {
+				posthog.captureException(error);
+			})
+			.catch(() => {});
 	}, [error]);
 
 	const issueUrl = useMemo(() => buildBasicIssueUrl(error), [error]);

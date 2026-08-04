@@ -15,7 +15,6 @@ export type ConnectorTelemetryGroup = "oauth" | "composio" | "crawler" | "other"
 
 export interface ConnectorTelemetryMeta {
 	connector_type: string;
-	connector_title: string;
 	connector_group: ConnectorTelemetryGroup;
 	is_oauth: boolean;
 }
@@ -36,7 +35,6 @@ function getConnectorTelemetryRegistry(): ReadonlyMap<string, ConnectorTelemetry
 	for (const c of OAUTH_CONNECTORS) {
 		map.set(c.connectorType, {
 			connector_type: c.connectorType,
-			connector_title: c.title,
 			connector_group: "oauth",
 			is_oauth: true,
 		});
@@ -44,7 +42,6 @@ function getConnectorTelemetryRegistry(): ReadonlyMap<string, ConnectorTelemetry
 	for (const c of COMPOSIO_CONNECTORS) {
 		map.set(c.connectorType, {
 			connector_type: c.connectorType,
-			connector_title: c.title,
 			connector_group: "composio",
 			is_oauth: true,
 		});
@@ -52,7 +49,6 @@ function getConnectorTelemetryRegistry(): ReadonlyMap<string, ConnectorTelemetry
 	for (const c of CRAWLERS) {
 		map.set(c.connectorType, {
 			connector_type: c.connectorType,
-			connector_title: c.title,
 			connector_group: "crawler",
 			is_oauth: false,
 		});
@@ -60,7 +56,6 @@ function getConnectorTelemetryRegistry(): ReadonlyMap<string, ConnectorTelemetry
 	for (const c of OTHER_CONNECTORS) {
 		map.set(c.connectorType, {
 			connector_type: c.connectorType,
-			connector_title: c.title,
 			connector_group: "other",
 			is_oauth: false,
 		});
@@ -81,7 +76,6 @@ export function getConnectorTelemetryMeta(connectorType: string): ConnectorTelem
 
 	return {
 		connector_type: connectorType,
-		connector_title: connectorType,
 		connector_group: "unknown",
 		is_oauth: false,
 	};
