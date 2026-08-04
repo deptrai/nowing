@@ -7,3 +7,10 @@ thresholds:
   max_p95_ttfb_ms: 5000
   max_p95_cost_micros: 200000
   min_contains_match_rate: 0.70
+
+  # Stability thresholds (Story 4.8f).
+  max_scrape_drop_rate: 0.10
+  max_rate_limited_rate: 0.05
+  max_tool_drop_rate: 0.05
+  max_turn_error_rate: 0.05
+  max_engine_unavailable_rate: 0.01

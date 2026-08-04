@@ -82,11 +82,14 @@ python -m nowing_evals report --suite research --benchmark chainlens_latency
 Notes:
 - `quality` is the Nowing schema mode that maps to ChainLens `deep`/`deep-reasoning`.
 - The benchmark defaults to 5 representative factual queries; use `--n` for a quick smoke run.
+- Each mode report now includes `sources_partial_rate`, `engine_unavailable_rate`, `degraded_rate`, `degradation_reason_counts`, `fallback_kb_hits`, and `mean_cost_micros`.
 - Targets live in `src/nowing_evals/suites/research/chainlens_latency/gate.yaml` and are provisional until `baseline_ratified` is flipped after a clean ChainLens benchmark.
 
 ## Chat response regression (Story 4.8)
 
 The `chat/regression` benchmark replays a dataset of user queries through `POST /api/v1/new_chat`, creates a fresh thread per case, and records e2e latency, TTFB, token/cost, citation count, finish status, and optional keyword-match checks. It requires no `setup`/`SearchSpace`, but it needs a live backend and a `search_space_id` where the bot can create threads.
+
+The benchmark also captures **operational / stability** metrics: scrape/search success rate, per-tool attempts/successes/drops, failure reason classification (captcha, rate-limit, timeout, 5xx, parse error, engine unavailable), fallback KB hits, and — with `--concurrency` or `--threads` — under-load p95 latency and error rates.
 
 ```bash
 # 1. (optional) use the default sample dataset or provide your own JSONL
@@ -96,7 +99,10 @@ python -m nowing_evals ingest chat regression --dataset my-cases.jsonl
 # 2. run against a real SearchSpace
 python -m nowing_evals run chat regression --search-space-id 42 --concurrency 1
 
-# 3. report
+# 3. stress mode: run each case in 4 parallel chat threads
+python -m nowing_evals run chat regression --search-space-id 42 --concurrency 2 --threads 4
+
+# 4. report
 python -m nowing_evals report --suite chat
 ```
 
@@ -105,11 +111,15 @@ Dataset format (JSONL):
 ```jsonl
 {"case_id": "chat-mem-001", "query": "What do we know about AlphaCorp?", "tags": ["memory"], "expected_contains": ["AlphaCorp"]}
 {"case_id": "chat-doc-001", "query": "Summarize the NDA.", "tags": ["document"], "mentioned_document_ids": [123], "expected_contains": ["NDA"]}
+{"case_id": "chat-multi-001", "query": "What is the budget?", "tags": ["memory"], "turns": [{"query": "What is the budget?", "expected_contains": ["Q3"]}, {"query": "And the forecast?", "expected_contains": ["forecast"]}], "expected_contains": ["forecast"]}
 ```
 
 Notes:
 - Use `--tags memory,document` to run only cases with those tags.
+- Multi-turn cases reuse a single thread and produce per-turn latency/TTFB/citation/keyword hits plus a `context_drift_score`.
+- The report includes an **"Operational / Stability"** table with the new metrics.
 - Gate thresholds live in `src/nowing_evals/suites/chat/regression/gate.yaml` and are provisional until `baseline_ratified` is flipped.
+- See `docs/benchmark-stability.md` for a stability-metric reference.
 
 ## Asymmetric scenarios — the "vision-extract once, answer cheap" play
 

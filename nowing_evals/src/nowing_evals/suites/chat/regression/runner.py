@@ -14,11 +14,11 @@ import argparse
 import asyncio
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from ....core.arms import ArmRequest, NowingArm
+from ....core.arms import ArmRequest, ArmResult, NowingArm
 from ....core.clients import NewChatClient
 from ....core.config import utc_iso_timestamp
 from ....core.registry import (
@@ -27,6 +27,7 @@ from ....core.registry import (
     RunContext,
     register,
 )
+from .operational import summarize_operational
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,12 @@ _DEFAULT_DATASET: list[dict[str, Any]] = [
 
 
 @dataclass
+class _Turn:
+    query: str
+    expected_contains: list[str]
+
+
+@dataclass
 class _Case:
     case_id: str
     query: str
@@ -88,6 +95,7 @@ class _Case:
     mentioned_document_ids: list[int]
     disabled_tools: list[str]
     expected_contains: list[str]
+    turns: list[_Turn] | None = None
 
 
 @dataclass
@@ -113,7 +121,13 @@ class _CaseResult:
     operational: dict[str, Any] | None = None
 
 
-def _aggregate_operational(cases: list[_CaseResult]) -> dict[str, Any]:
+def _aggregate_operational(
+    cases: list[_CaseResult],
+    *,
+    overall: dict[str, Any] | None = None,
+    concurrency: int = 1,
+    threads: int = 1,
+) -> dict[str, Any]:
     """Sum per-case operational summaries across a list of results."""
     n = len(cases)
     if not n:
@@ -173,6 +187,17 @@ def _aggregate_operational(cases: list[_CaseResult]) -> dict[str, Any]:
         entry["success_rate"] = _rate(entry["successes"], attempts)
         entry["drop_rate"] = _rate(entry["drops"], attempts)
 
+    under_load = concurrency > 1 or threads > 1
+    p95_latency_under_load_ms = None
+    error_rate_under_load = None
+    rate_limited_rate_under_load = None
+    engine_unavailable_rate_under_load = None
+    if under_load and overall:
+        p95_latency_under_load_ms = overall.get("p95_e2e_ms")
+        error_rate_under_load = overall.get("error_rate")
+        rate_limited_rate_under_load = _rate(error_reason_counts.get("rate_limit", 0), n)
+        engine_unavailable_rate_under_load = _rate(engine_unavailable_count, n)
+
     return {
         "samples": n,
         "scrape_attempts": scrape_attempts,
@@ -199,6 +224,12 @@ def _aggregate_operational(cases: list[_CaseResult]) -> dict[str, Any]:
         "error_reason_counts": error_reason_counts,
         "degradation_reasons": degradation_reasons,
         "fallback_kb_hits": fallback_kb_hits,
+        "p95_latency_under_load_ms": p95_latency_under_load_ms,
+        "error_rate_under_load": error_rate_under_load,
+        "rate_limited_rate_under_load": rate_limited_rate_under_load,
+        "engine_unavailable_rate_under_load": engine_unavailable_rate_under_load,
+        "concurrency": concurrency,
+        "threads": threads,
     }
 
 
@@ -246,6 +277,22 @@ def _list_of_int(value: Any, field: str, case_id: Any) -> list[int]:
     )
 
 
+def _validate_turn(value: Any, case_id: Any, index: int) -> _Turn:
+    if not isinstance(value, dict):
+        raise RuntimeError(
+            f"Invalid turn {index} in case {case_id!r}: expected object, got {value!r}"
+        )
+    query = value.get("query")
+    if not isinstance(query, str) or not query.strip():
+        raise RuntimeError(f"Turn {index} in case {case_id!r} missing or empty 'query'")
+    return _Turn(
+        query=query,
+        expected_contains=_list_of_str(
+            value.get("expected_contains"), "expected_contains", case_id
+        ),
+    )
+
+
 def _validate_case_row(row: Any) -> dict[str, Any]:
     if not isinstance(row, dict):
         raise RuntimeError(f"Invalid case row: expected object, got {row!r}")
@@ -255,6 +302,12 @@ def _validate_case_row(row: Any) -> dict[str, Any]:
     query = row.get("query")
     if not isinstance(query, str) or not query.strip():
         raise RuntimeError(f"Case {case_id!r} missing or empty 'query'")
+    turns_value = row.get("turns")
+    turns: list[_Turn] | None = None
+    if turns_value is not None:
+        if not isinstance(turns_value, list):
+            raise RuntimeError(f"Case {case_id!r} 'turns' must be a list, got {turns_value!r}")
+        turns = [_validate_turn(t, case_id, i) for i, t in enumerate(turns_value)]
     return {
         "case_id": str(case_id),
         "query": query,
@@ -266,6 +319,7 @@ def _validate_case_row(row: Any) -> dict[str, Any]:
         "expected_contains": _list_of_str(
             row.get("expected_contains"), "expected_contains", case_id
         ),
+        "turns": turns,
     }
 
 
@@ -285,6 +339,7 @@ def _load_cases(path: Path) -> list[_Case]:
                     mentioned_document_ids=row["mentioned_document_ids"],
                     disabled_tools=row["disabled_tools"],
                     expected_contains=row["expected_contains"],
+                    turns=row["turns"],
                 )
             )
     return cases
@@ -300,6 +355,41 @@ def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     tmp.replace(path)
+
+
+def _context_drift(turn_snapshots: list[dict[str, Any]]) -> float | None:
+    """Compare first vs last turn keyword match ratio.
+
+    A positive value means the last turn matched fewer keywords relative to
+    its own expectations than the first turn — i.e. context appears to drift.
+    """
+    if not turn_snapshots:
+        return None
+    first = turn_snapshots[0]
+    last = turn_snapshots[-1]
+    first_total = first.get("expected_count") or 0
+    last_total = last.get("expected_count") or 0
+    if not first_total or not last_total:
+        return None
+    first_ratio = first.get("contains_hits", 0) / first_total
+    last_ratio = last.get("contains_hits", 0) / last_total
+    return first_ratio - last_ratio
+
+
+def _per_turn_metrics(
+    turn_snapshots: list[dict[str, Any]],
+    turns: list[_Turn],
+) -> dict[str, Any]:
+    """Per-turn stability metrics for multi-turn cases."""
+    n_turns = len(turns)
+    n_failed_turns = sum(1 for t in turn_snapshots if t.get("error"))
+    return {
+        "turns": turn_snapshots,
+        "n_turns": n_turns,
+        "n_failed_turns": n_failed_turns,
+        "turn_error_rate": n_failed_turns / n_turns if n_turns else None,
+        "context_drift_score": _context_drift(turn_snapshots),
+    }
 
 
 class ChatRegressionBenchmark:
@@ -337,6 +427,12 @@ class ChatRegressionBenchmark:
             help="Cap the number of cases.",
         )
         parser.add_argument("--concurrency", type=int, default=1)
+        parser.add_argument(
+            "--threads",
+            type=int,
+            default=1,
+            help="Number of parallel chat threads to open per case for stress testing.",
+        )
         parser.add_argument(
             "--tags",
             default=None,
@@ -390,6 +486,7 @@ class ChatRegressionBenchmark:
         workspace_id = opts.get("workspace_id")
         sample_n = opts.get("sample_n")
         concurrency = max(1, int(opts.get("concurrency") or 1))
+        threads = max(1, int(opts.get("threads") or 1))
         tags_filter = opts.get("tags")
         timeout_s = float(opts.get("timeout") or 300.0)
         build_id = opts.get("backend_build_id")
@@ -409,6 +506,10 @@ class ChatRegressionBenchmark:
         if sample_n:
             cases = cases[:sample_n]
 
+        # Stress mode: run the same case in multiple parallel chat threads.
+        if threads > 1:
+            cases = [replace(c, case_id=f"{c.case_id}:t{i}") for c in cases for i in range(threads)]
+
         if not cases:
             raise RuntimeError("No chat cases selected for the requested filters.")
 
@@ -419,68 +520,183 @@ class ChatRegressionBenchmark:
 
         async def _run_one(case: _Case) -> _CaseResult:
             async with sem:
-                request = ArmRequest(
-                    question_id=case.case_id,
-                    prompt=case.query,
-                    mentioned_document_ids=case.mentioned_document_ids or None,
-                    options={"disabled_tools": case.disabled_tools} if case.disabled_tools else {},
+                turns = (
+                    list(case.turns)
+                    if case.turns
+                    else [_Turn(query=case.query, expected_contains=case.expected_contains)]
                 )
-                try:
-                    result = await asyncio.wait_for(arm.answer(request), timeout=timeout_s)
-                except TimeoutError:
+                final_expected = turns[-1].expected_contains
+                thread_id: int | None = None
+                turn_results: list[ArmResult] = []
+                turn_snapshots: list[dict[str, Any]] = []
+
+                def _build_operational(last_text: str) -> tuple[dict[str, Any], list[dict], list]:
+                    raw_events = [ev for r in turn_results for ev in r.extra.get("raw_events", [])]
+                    call_details: list[dict[str, Any]] = []
+                    for r in turn_results:
+                        cd = r.extra.get("call_details")
+                        if isinstance(cd, list):
+                            call_details.extend(cd)
+                    operational = summarize_operational(raw_events, call_details, last_text)
+                    operational.update(_per_turn_metrics(turn_snapshots, turns))
+                    return operational, raw_events, call_details
+
+                def _make_error_result(
+                    error_text: str,
+                    error_code: str | None = None,
+                    last_text: str = "",
+                    last_result: ArmResult | None = None,
+                    extra_latency_ms: int = 0,
+                ) -> _CaseResult:
+                    latencies = [r.latency_ms for r in turn_results]
+                    ttfbs = [
+                        r.extra.get("ttfb_ms")
+                        for r in turn_results
+                        if r.extra.get("ttfb_ms") is not None
+                    ]
+                    prompt_tokens = sum(r.input_tokens for r in turn_results)
+                    completion_tokens = sum(r.output_tokens for r in turn_results)
+                    cost = sum(r.cost_micros for r in turn_results)
+                    operational, raw_events, call_details = _build_operational(last_text)
                     return _CaseResult(
                         case_id=case.case_id,
                         tags=case.tags,
                         query=case.query,
-                        text="",
-                        error="TimeoutError: turn exceeded timeout",
-                        latency_ms=int(timeout_s * 1000),
-                        ttfb_ms=None,
-                        prompt_tokens=0,
-                        completion_tokens=0,
-                        total_tokens=0,
-                        cost_micros=0,
-                        citation_count=0,
+                        text=last_text,
+                        error=error_text,
+                        error_code=error_code,
+                        latency_ms=sum(latencies) + extra_latency_ms,
+                        ttfb_ms=min(ttfbs) if ttfbs else None,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        total_tokens=prompt_tokens + completion_tokens,
+                        cost_micros=cost,
+                        citation_count=len(last_result.citations) if last_result else 0,
                         finished_normally=False,
-                        expected_contains=case.expected_contains,
-                        contains_hits=0,
+                        expected_contains=final_expected,
+                        contains_hits=_contains_hits(last_text, final_expected),
+                        raw_events=raw_events,
+                        call_details=call_details or None,
+                        operational=operational,
                     )
 
-                if result.error:
-                    return _CaseResult(
-                        case_id=case.case_id,
-                        tags=case.tags,
-                        query=case.query,
-                        text=result.raw_text,
-                        error=result.error,
-                        latency_ms=result.latency_ms,
-                        ttfb_ms=result.extra.get("ttfb_ms"),
-                        prompt_tokens=result.input_tokens,
-                        completion_tokens=result.output_tokens,
-                        total_tokens=result.input_tokens + result.output_tokens,
-                        cost_micros=result.cost_micros,
-                        citation_count=len(result.citations),
-                        finished_normally=result.extra.get("finished_normally", False),
-                        expected_contains=case.expected_contains,
-                        contains_hits=_contains_hits(result.raw_text, case.expected_contains),
-                    )
+                try:
+                    for i, turn in enumerate(turns):
+                        options: dict[str, Any] = (
+                            {"disabled_tools": case.disabled_tools} if case.disabled_tools else {}
+                        )
+                        if thread_id is not None:
+                            options["thread_id"] = thread_id
+                        request = ArmRequest(
+                            question_id=f"{case.case_id}:turn{i}",
+                            prompt=turn.query,
+                            mentioned_document_ids=case.mentioned_document_ids or None,
+                            options=options,
+                        )
+                        try:
+                            result = await asyncio.wait_for(arm.answer(request), timeout=timeout_s)
+                        except TimeoutError:
+                            turn_snapshots.append(
+                                {
+                                    "query": turn.query,
+                                    "latency_ms": int(timeout_s * 1000),
+                                    "ttfb_ms": None,
+                                    "citation_count": 0,
+                                    "contains_hits": 0,
+                                    "expected_count": len(turn.expected_contains),
+                                    "error": "TimeoutError: turn exceeded timeout",
+                                    "error_code": "TimeoutError",
+                                }
+                            )
+                            return _make_error_result(
+                                "TimeoutError: turn exceeded timeout",
+                                error_code="TimeoutError",
+                                last_text=turn_results[-1].raw_text if turn_results else "",
+                                last_result=turn_results[-1] if turn_results else None,
+                                extra_latency_ms=int(timeout_s * 1000),
+                            )
 
+                        if result.error:
+                            turn_snapshots.append(
+                                {
+                                    "query": turn.query,
+                                    "latency_ms": result.latency_ms,
+                                    "ttfb_ms": result.extra.get("ttfb_ms"),
+                                    "citation_count": len(result.citations),
+                                    "contains_hits": _contains_hits(
+                                        result.raw_text, turn.expected_contains
+                                    ),
+                                    "expected_count": len(turn.expected_contains),
+                                    "error": result.error,
+                                    "error_code": result.extra.get("error_code"),
+                                }
+                            )
+                            return _make_error_result(
+                                result.error,
+                                error_code=result.extra.get("error_code"),
+                                last_text=result.raw_text,
+                                last_result=result,
+                                extra_latency_ms=result.latency_ms,
+                            )
+
+                        turn_results.append(result)
+                        thread_id = result.extra.get("thread_id")
+                        turn_snapshots.append(
+                            {
+                                "query": turn.query,
+                                "latency_ms": result.latency_ms,
+                                "ttfb_ms": result.extra.get("ttfb_ms"),
+                                "citation_count": len(result.citations),
+                                "contains_hits": _contains_hits(
+                                    result.raw_text, turn.expected_contains
+                                ),
+                                "expected_count": len(turn.expected_contains),
+                                "error": None,
+                                "error_code": None,
+                            }
+                        )
+                finally:
+                    if thread_id is not None and hasattr(arm, "delete_thread"):
+                        try:
+                            await arm.delete_thread(thread_id)
+                        except Exception as exc:  # noqa: BLE001
+                            logger.debug("Failed to delete thread %s: %s", thread_id, exc)
+
+                if not turn_results:
+                    return _make_error_result("No turns produced a result")
+
+                final = turn_results[-1]
+                prompt_tokens = sum(r.input_tokens for r in turn_results)
+                completion_tokens = sum(r.output_tokens for r in turn_results)
+                cost = sum(r.cost_micros for r in turn_results)
+                ttfbs = [
+                    r.extra.get("ttfb_ms")
+                    for r in turn_results
+                    if r.extra.get("ttfb_ms") is not None
+                ]
+                operational, raw_events, call_details = _build_operational(final.raw_text)
                 return _CaseResult(
                     case_id=case.case_id,
                     tags=case.tags,
                     query=case.query,
-                    text=result.raw_text,
+                    text=final.raw_text,
                     error=None,
-                    latency_ms=result.latency_ms,
-                    ttfb_ms=result.extra.get("ttfb_ms"),
-                    prompt_tokens=result.input_tokens,
-                    completion_tokens=result.output_tokens,
-                    total_tokens=result.input_tokens + result.output_tokens,
-                    cost_micros=result.cost_micros,
-                    citation_count=len(result.citations),
-                    finished_normally=result.extra.get("finished_normally", False),
-                    expected_contains=case.expected_contains,
-                    contains_hits=_contains_hits(result.raw_text, case.expected_contains),
+                    error_code=None,
+                    latency_ms=sum(r.latency_ms for r in turn_results),
+                    ttfb_ms=min(ttfbs) if ttfbs else None,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    total_tokens=prompt_tokens + completion_tokens,
+                    cost_micros=cost,
+                    citation_count=len(final.citations),
+                    finished_normally=all(
+                        r.extra.get("finished_normally", False) for r in turn_results
+                    ),
+                    expected_contains=final_expected,
+                    contains_hits=_contains_hits(final.raw_text, final_expected),
+                    raw_events=raw_events,
+                    call_details=call_details or None,
+                    operational=operational,
                 )
 
         results = await asyncio.gather(*(_run_one(c) for c in cases))
@@ -518,13 +734,14 @@ class ChatRegressionBenchmark:
                     + "\n"
                 )
 
-        metrics = self._aggregate(results)
+        metrics = self._aggregate(results, concurrency=concurrency, threads=threads)
 
         extra = {
             "search_space_id": search_space_id,
             "workspace_id": workspace_id,
             "n_cases": len(cases),
             "concurrency": concurrency,
+            "threads": threads,
             "timeout_s": timeout_s,
             "tags_filter": tags_filter,
             "build_id": build_id,
@@ -551,7 +768,13 @@ class ChatRegressionBenchmark:
             extra=extra,
         )
 
-    def _aggregate(self, results: list[_CaseResult]) -> dict[str, Any]:
+    def _aggregate(
+        self,
+        results: list[_CaseResult],
+        *,
+        concurrency: int = 1,
+        threads: int = 1,
+    ) -> dict[str, Any]:
         def _bucket(cases: list[_CaseResult]) -> dict[str, Any]:
             n = len(cases)
             if not n:
@@ -584,18 +807,32 @@ class ChatRegressionBenchmark:
             }
 
         overall = _bucket(results)
-        operational = _aggregate_operational(results)
         per_tag: dict[str, list[_CaseResult]] = {}
         for r in results:
             for tag in r.tags:
                 per_tag.setdefault(tag, []).append(r)
 
+        per_tag_buckets = {tag: _bucket(items) for tag, items in per_tag.items()}
+
+        operational = _aggregate_operational(
+            results,
+            overall=overall,
+            concurrency=concurrency,
+            threads=threads,
+        )
+
         return {
             "overall": overall,
             "operational": operational,
-            "per_tag": {tag: _bucket(items) for tag, items in per_tag.items()},
+            "per_tag": per_tag_buckets,
             "per_tag_operational": {
-                tag: _aggregate_operational(items) for tag, items in per_tag.items()
+                tag: _aggregate_operational(
+                    items,
+                    overall=per_tag_buckets[tag],
+                    concurrency=concurrency,
+                    threads=threads,
+                )
+                for tag, items in per_tag.items()
             },
         }
 

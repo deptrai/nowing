@@ -199,6 +199,43 @@ async def test_ingest_rejects_invalid_list_types(isolated_config: Config, tmp_pa
             await bench.ingest(ctx, dataset=dataset_path)
 
 
+def test_load_cases_with_multi_turn_list() -> None:
+    # Avoid relying on filesystem; write to a temp path manually.
+    import tempfile
+
+    row = {
+        "case_id": "mt1",
+        "query": "first",
+        "tags": ["multi"],
+        "turns": [
+            {"query": "turn one", "expected_contains": ["one"]},
+            {"query": "turn two", "expected_contains": ["two"]},
+        ],
+    }
+    with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False, encoding="utf-8") as fh:
+        fh.write(json.dumps(row) + "\n")
+        path = Path(fh.name)
+
+    try:
+        cases = _load_cases(path)
+        assert len(cases) == 1
+        assert cases[0].case_id == "mt1"
+        assert cases[0].query == "first"
+        assert cases[0].turns is not None
+        assert len(cases[0].turns) == 2
+        assert cases[0].turns[1].query == "turn two"
+        assert cases[0].turns[1].expected_contains == ["two"]
+    finally:
+        path.unlink()
+
+
+def test_validate_case_row_rejects_bad_turns() -> None:
+    from nowing_evals.suites.chat.regression.runner import _validate_case_row
+
+    with pytest.raises(RuntimeError, match="'turns' must be a list"):
+        _validate_case_row({"case_id": "b", "query": "q", "turns": "notalist"})
+
+
 def test_report_section_per_tag_includes_citations_and_keyword_match() -> None:
     bench = ChatRegressionBenchmark()
     metrics = {

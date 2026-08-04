@@ -47,12 +47,18 @@ class NowingArm(Arm):
         self._title_prefix = thread_title_prefix
 
     async def answer(self, request: ArmRequest) -> ArmResult:
-        thread_id: int | None = None
+        """Answer one turn. Reuse an existing thread when ``options["thread_id"]``
+        is provided (caller is then responsible for deletion unless it also sets
+        ``options["delete_thread"]=True``).
+        """
+        reused = request.options.get("thread_id")
+        thread_id: int | None = reused
         try:
-            thread_id = await self._client.create_thread(
-                search_space_id=self._search_space_id,
-                title=f"{self._title_prefix}:{request.question_id}",
-            )
+            if thread_id is None:
+                thread_id = await self._client.create_thread(
+                    search_space_id=self._search_space_id,
+                    title=f"{self._title_prefix}:{request.question_id}",
+                )
             answer = await self._client.ask(
                 thread_id=thread_id,
                 search_space_id=self._search_space_id,
@@ -69,7 +75,10 @@ class NowingArm(Arm):
                 extra={"thread_id": thread_id},
             )
         finally:
-            if self._ephemeral and thread_id is not None:
+            should_delete = request.options.get("delete_thread")
+            if should_delete is None:
+                should_delete = self._ephemeral and reused is None
+            if should_delete and thread_id is not None:
                 try:
                     # Shield cleanup so an outer asyncio.wait_for timeout
                     # cannot cancel the delete before the backend receives it.
@@ -106,6 +115,13 @@ class NowingArm(Arm):
                 "error_code": answer.error_code,
             },
         )
+
+    async def delete_thread(self, thread_id: int) -> None:
+        """Explicit cleanup helper for multi-turn runners."""
+        try:
+            await asyncio.shield(self._client.delete_thread(thread_id))
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Failed to delete thread %s: %s", thread_id, exc)
 
 
 __all__ = ["NowingArm"]

@@ -56,12 +56,21 @@ class _ModeStats:
     ttfb: list[float] = None  # type: ignore[assignment]
     recall: list[float] = None  # type: ignore[assignment]
     f1: list[float] = None  # type: ignore[assignment]
+    cost: list[float] = None  # type: ignore[assignment]
+    n_total: int = 0
+    n_partial: int = 0
+    n_engine_unavailable: int = 0
+    n_degraded: int = 0
+    fallback_hit_count: int = 0
+    degradation_reasons: dict[str, int] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         self.e2e = []
         self.ttfb = []
         self.recall = []
         self.f1 = []
+        self.cost = []
+        self.degradation_reasons = {}
 
 
 def _percentile(values: list[float], p: float) -> float:
@@ -190,17 +199,35 @@ class ChainlensLatencyBenchmark:
                 )
             if mode not in by_mode:
                 by_mode[mode] = _ModeStats()
-            by_mode[mode].e2e.append(row["duration_ms"])
+            stats = by_mode[mode]
+            stats.n_total += 1
+            stats.e2e.append(row["duration_ms"])
             if row["first_token_time_ms"] is not None:
-                by_mode[mode].ttfb.append(row["first_token_time_ms"])
+                stats.ttfb.append(row["first_token_time_ms"])
             recall, f1 = self._score_quality(row, references)
             if recall is not None:
-                by_mode[mode].recall.append(recall)
-                by_mode[mode].f1.append(f1)
+                stats.recall.append(recall)
+                stats.f1.append(f1)
+            if row.get("status") == "partial":
+                stats.n_partial += 1
+            if row.get("status") == "engine_unavailable":
+                stats.n_engine_unavailable += 1
+            if row.get("degraded"):
+                stats.n_degraded += 1
+            if row.get("degradation_reason"):
+                reason = row["degradation_reason"]
+                stats.degradation_reasons[reason] = stats.degradation_reasons.get(reason, 0) + 1
+            stats.fallback_hit_count += row.get("fallback_hit_count") or 0
+            if row.get("cost_micros"):
+                stats.cost.append(float(row["cost_micros"]))
             raw_rows.append(row)
+
+        def _rate(num: int, denom: int) -> float | None:
+            return num / denom if denom else None
 
         metrics: dict[str, Any] = {"modes": {}, "recommendation": None}
         for mode, stats in by_mode.items():
+            n = stats.n_total
             metrics["modes"][mode] = {
                 "p50_e2e_ms": _percentile(stats.e2e, 0.5),
                 "p95_e2e_ms": _percentile(stats.e2e, 0.95),
@@ -208,9 +235,18 @@ class ChainlensLatencyBenchmark:
                 "p95_ttfb_ms": _percentile(stats.ttfb, 0.95) if stats.ttfb else None,
                 "samples_e2e": len(stats.e2e),
                 "samples_ttfb": len(stats.ttfb),
-                "mean_answer_recall": sum(stats.recall) / len(stats.recall) if stats.recall else None,
+                "mean_answer_recall": sum(stats.recall) / len(stats.recall)
+                if stats.recall
+                else None,
                 "mean_f1": sum(stats.f1) / len(stats.f1) if stats.f1 else None,
                 "samples_quality": len(stats.recall),
+                "n_total": n,
+                "sources_partial_rate": _rate(stats.n_partial, n),
+                "engine_unavailable_rate": _rate(stats.n_engine_unavailable, n),
+                "degraded_rate": _rate(stats.n_degraded, n),
+                "degradation_reason_counts": dict(stats.degradation_reasons),
+                "fallback_kb_hits": stats.fallback_hit_count,
+                "mean_cost_micros": sum(stats.cost) / len(stats.cost) if stats.cost else None,
             }
 
         # Revert balanced -> quality when quality mode beats balanced on quality
@@ -367,10 +403,15 @@ class ChainlensLatencyBenchmark:
             "duration_ms": output.get("duration_ms") or 0,
             "first_token_time_ms": output.get("first_token_time_ms"),
             "status": output.get("status"),
+            "degraded": output.get("degraded") or False,
+            "degradation_reason": output.get("degradation_reason"),
+            "engine_reason": output.get("engine_reason"),
             "source_count": len(output.get("sources") or []),
             "answer_length": len(output.get("answer") or ""),
             "answer": output.get("answer") or "",
             "sources": output.get("sources") or [],
+            "cost_micros": output.get("cost_micros") or 0,
+            "fallback_hit_count": output.get("fallback_hit_count") or 0,
         }
 
     async def _poll_run(
@@ -427,10 +468,18 @@ class ChainlensLatencyBenchmark:
             "duration_ms": run_data.get("duration_ms") or output.get("duration_ms") or 0,
             "first_token_time_ms": output.get("first_token_time_ms"),
             "status": run_data.get("status") or output.get("status"),
+            "degraded": output.get("degraded") or run_data.get("degraded") or False,
+            "degradation_reason": output.get("degradation_reason")
+            or run_data.get("degradation_reason"),
+            "engine_reason": output.get("engine_reason") or run_data.get("engine_reason"),
             "source_count": len(output.get("sources") or []),
             "answer_length": len(output.get("answer") or ""),
             "answer": output.get("answer") or "",
             "sources": output.get("sources") or [],
+            "cost_micros": output.get("cost_micros") or run_data.get("cost_micros") or 0,
+            "fallback_hit_count": output.get("fallback_hit_count")
+            or run_data.get("fallback_hit_count")
+            or 0,
         }
 
     def report_section(self, artifacts: list[RunArtifact]) -> ReportSection:
