@@ -112,6 +112,7 @@ class SearchSourceConnectorType(StrEnum):
         "OBSIDIAN_CONNECTOR"  # Self-hosted only - Local Obsidian vault indexing
     )
     MCP_CONNECTOR = "MCP_CONNECTOR"  # Model Context Protocol - User-defined API tools
+    EXA_MCP_CONNECTOR = "EXA_MCP_CONNECTOR"  # Exa AI search MCP server
     DROPBOX_CONNECTOR = "DROPBOX_CONNECTOR"
     COMPOSIO_GOOGLE_DRIVE_CONNECTOR = "COMPOSIO_GOOGLE_DRIVE_CONNECTOR"
     COMPOSIO_GMAIL_CONNECTOR = "COMPOSIO_GMAIL_CONNECTOR"

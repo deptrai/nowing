@@ -41,6 +41,7 @@ _CONNECTOR_TYPE_TO_SEARCHABLE: dict[str, str] = {
     # Generic user-defined MCP server: unlocks the mcp_discovery subagent even
     # in a workspace with no hosted-service connectors.
     "MCP_CONNECTOR": "MCP_CONNECTOR",
+    "EXA_MCP_CONNECTOR": "EXA_MCP_CONNECTOR",
     # Composio connectors (unified to native document types).
     # Reverse of NATIVE_TO_LEGACY_DOCTYPE in app.db.
     "COMPOSIO_GOOGLE_DRIVE_CONNECTOR": "GOOGLE_DRIVE_FILE",

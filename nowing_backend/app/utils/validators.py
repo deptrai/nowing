@@ -604,6 +604,11 @@ def validate_connector_config(
         #     "validators": {}
         # },
         "LUMA_CONNECTOR": {"required": ["LUMA_API_KEY"], "validators": {}},
+        "EXA_MCP_CONNECTOR": {
+            "required": [],
+            "optional": ["exa_api_key", "server_config"],
+            "validators": {},
+        },
     }
 
     rules = connector_rules.get(connector_type_str)

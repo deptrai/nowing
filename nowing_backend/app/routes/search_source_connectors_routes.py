@@ -56,6 +56,7 @@ from app.schemas import (
     SearchSourceConnectorUpdate,
 )
 from app.services.composio_service import ComposioService, get_composio_service
+from app.services.mcp_oauth.registry import get_service
 from app.users import get_auth_context
 
 # NOTE: connector indexer functions are imported lazily inside each
@@ -226,6 +227,30 @@ async def create_search_source_connector(
             connector_data["name"] = await ensure_unique_connector_name(
                 session, connector_data["name"], workspace_id, user.id
             )
+
+        # Exa MCP connector: build server_config from service URL + API key.
+        # The raw exa_api_key is embedded into a request header and then removed
+        # from the persisted config so the API key never sits at the top level.
+        if connector.connector_type == SearchSourceConnectorType.EXA_MCP_CONNECTOR:
+            exa_svc = get_service("exa")
+            exa_url = exa_svc.mcp_url if exa_svc else "https://mcp.exa.ai/mcp"
+            cfg = connector_data.setdefault("config", {})
+            exa_api_key = cfg.pop("exa_api_key", None)
+            user_server_config = cfg.get("server_config") or {}
+            server_config = {
+                "transport": user_server_config.get("transport", "streamable-http"),
+                "url": user_server_config.get("url") or exa_url,
+            }
+            if exa_api_key:
+                headers = user_server_config.get("headers") or {}
+                headers["x-api-key"] = exa_api_key
+                server_config["headers"] = headers
+            elif user_server_config.get("headers"):
+                server_config["headers"] = user_server_config["headers"]
+            cfg["server_config"] = server_config
+            connector_data["is_indexable"] = False
+            connector_data["periodic_indexing_enabled"] = False
+            connector_data["indexing_frequency_minutes"] = None
 
         # Automatically set next_scheduled_at if periodic indexing is enabled
         if (
@@ -490,6 +515,26 @@ async def update_search_source_connector(
         # If validation passes, update the main update_data dict with the merged config
         update_data["config"] = merged_config
 
+    # Exa MCP connector: rebuild server_config from service URL + API key on update.
+    if db_connector.connector_type == SearchSourceConnectorType.EXA_MCP_CONNECTOR and "config" in update_data:
+        exa_svc = get_service("exa")
+        exa_url = exa_svc.mcp_url if exa_svc else "https://mcp.exa.ai/mcp"
+        cfg = update_data["config"]
+        exa_api_key = cfg.pop("exa_api_key", None)
+        user_server_config = cfg.get("server_config") or {}
+        server_config = {
+            "transport": user_server_config.get("transport", "streamable-http"),
+            "url": user_server_config.get("url") or exa_url,
+        }
+        if exa_api_key:
+            headers = user_server_config.get("headers") or {}
+            headers["x-api-key"] = exa_api_key
+            server_config["headers"] = headers
+        elif user_server_config.get("headers"):
+            server_config["headers"] = user_server_config["headers"]
+        cfg["server_config"] = server_config
+        update_data["config"] = cfg
+
     # Apply all updates (including the potentially merged config)
     for key, value in update_data.items():
         # Prevent changing connector_type if it causes a duplicate (check moved here)
@@ -679,7 +724,10 @@ async def delete_search_source_connector(
 
         # Delete the connector record
         workspace_id = db_connector.workspace_id
-        is_mcp = db_connector.connector_type == SearchSourceConnectorType.MCP_CONNECTOR
+        is_mcp = db_connector.connector_type in (
+            SearchSourceConnectorType.MCP_CONNECTOR,
+            SearchSourceConnectorType.EXA_MCP_CONNECTOR,
+        )
         await session.delete(db_connector)
         await session.commit()
 

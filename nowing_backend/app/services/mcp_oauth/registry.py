@@ -249,6 +249,18 @@ MCP_SERVICES: dict[str, MCPServiceConfig] = {
         ),
         account_metadata_keys=["cloud_id", "site_name", "base_url"],
     ),
+    "exa": MCPServiceConfig(
+        name="Exa",
+        mcp_url="https://mcp.exa.ai/mcp",
+        connector_type="EXA_MCP_CONNECTOR",
+        supports_dcr=False,
+        allowed_tools=[
+            "web_search_exa",
+            "web_fetch_exa",
+        ],
+        readonly_tools=frozenset({"web_search_exa", "web_fetch_exa"}),
+        account_metadata_keys=["user_email"],
+    ),
 }
 
 _CONNECTOR_TYPE_TO_SERVICE: dict[str, MCPServiceConfig] = {
