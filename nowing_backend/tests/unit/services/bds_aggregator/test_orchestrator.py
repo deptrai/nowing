@@ -124,7 +124,7 @@ async def test_min_confidence_filter():
         ]
     )
 
-    payload = VnBdsAggregateInput(city="Hà Nội", min_confidence=0.99)
+    payload = VnBdsAggregateInput(city="Hà Nội", min_confidence=0.99, sources=["batdongsan"])
     output = await aggregate(payload, source_executors={"batdongsan": fake_bds})
 
     assert output.total_items == 0
