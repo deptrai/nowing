@@ -24,7 +24,7 @@ from app.capabilities.core.access.rate_limit import (
     _KEY_PREFIX,
     _WINDOW_SECONDS,
     CAPABILITY_RATE_LIMIT_PER_MINUTE,
-    _incr,
+    _aincr,
 )
 from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.billing import charge_capability, gate_capability
@@ -38,10 +38,11 @@ from app.capabilities.core.store import all_capabilities
 from app.capabilities.core.types import Capability, CapabilityContext
 from app.config import config
 from app.db import async_session_maker
-from app.exceptions import ExternalServiceError, ForbiddenError
+from app.exceptions import ExternalServiceError, ForbiddenError, NowingError
 from app.services.memory.run_enqueue import (
     enqueue_run_memory_extraction_after_commit,
 )
+from app.services.token_tracking_service import add_current_turn_tool_cost
 from app.services.web_crawl_credit_service import InsufficientCreditsError
 from app.utils.rbac import check_workspace_access
 
@@ -94,13 +95,46 @@ def _current_thread_id() -> str | None:
         return None
 
 
-def _check_rate_limit(workspace_id: int) -> None:
+def _current_research_mode() -> str | None:
+    """Best-effort ``configurable.research_mode`` from the active LangGraph config."""
+    try:
+        from langgraph.config import get_config
+
+        cfg = get_config()
+        return (cfg.get("configurable") or {}).get("research_mode")
+    except Exception:
+        return None
+
+
+# NFR-9 State B: only speed/balanced may run synchronously in chat.
+# quality, deep-research, deep-reasoning, and auto (which may resolve to those)
+# are async-only until cost/latency targets are ratified.
+_SYNC_CHAT_ALLOWED_MODES: frozenset[str] = frozenset({"speed", "balanced"})
+
+
+def _is_sync_chat_mode_allowed(mode: str | None) -> bool:
+    """Return True only when the given research mode may block a chat turn.
+
+    ``None`` falls through to the default (``balanced``), which is allowed only
+    while the feature flag is on. ``auto`` is never allowed in chat because the
+    engine may resolve it to ``quality`` or deep modes.
+    """
+    if mode == "auto":
+        return False
+    if mode is None:
+        mode = config.DEFAULT_RESEARCH_MODE
+    return mode in _SYNC_CHAT_ALLOWED_MODES
+
+
+async def _check_rate_limit(workspace_id: int) -> None:
     """Enforce the same per-workspace per-minute capability cap as the REST door.
 
     Unlike the REST dependency this does not raise HTTPException; it reuses the
     InsufficientCreditsError handler so the agent tool returns a string error.
+    The underlying counter is off-loaded to a thread so the streaming event loop
+    is not blocked by the sync Redis client or the in-memory lock.
     """
-    count = _incr(f"{_KEY_PREFIX}:{workspace_id}", _WINDOW_SECONDS)
+    count = await _aincr(f"{_KEY_PREFIX}:{workspace_id}", _WINDOW_SECONDS)
     if count > CAPABILITY_RATE_LIMIT_PER_MINUTE:
         raise InsufficientCreditsError(
             "Rate limit exceeded for this workspace. Try again shortly."
@@ -138,6 +172,12 @@ def _capability_tool(
     name = capability.name
 
     async def _run(**kwargs: object) -> dict | str:
+        # ponytail: thread the chat request's explicit research mode through to
+        # chainlens.research so benchmark/user mode selections are honored.
+        if name == "chainlens.research":
+            research_mode = _current_research_mode()
+            if research_mode:
+                kwargs = {**kwargs, "mode": research_mode}
         payload = input_model(**kwargs)
         input_dump = payload.model_dump(exclude_none=True)
         thread_id = _current_thread_id()
@@ -151,36 +191,42 @@ def _capability_tool(
         # review shows ChainLens balanced p95 (44.3s) exceeds the 30s target for
         # a synchronous chat response.
         #
-        # State B (opt-in): DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED is True. The
-        # agent may block and return the full ChainLens output inline. This is
-        # only viable once a ratified baseline shows p95 <= 30s.
-        if (
-            name == "chainlens.research"
-            and not config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED
+        # State B (opt-in): DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED is True AND the
+        # requested mode is in the allow-list (speed/balanced). quality,
+        # deep-research, deep-reasoning, and auto remain async-only in chat.
+        if name == "chainlens.research" and not (
+            config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED
+            and _is_sync_chat_mode_allowed(research_mode)
         ):
             async with async_session_maker() as session:
-                if auth_context is not None:
-                    await _verify_workspace_access(session, workspace_id, auth_context)
                 ctx = CapabilityContext(session=session, workspace_id=workspace_id)
                 try:
-                    _check_rate_limit(workspace_id)
+                    if auth_context is not None:
+                        await _verify_workspace_access(
+                            session, workspace_id, auth_context
+                        )
+                    await _check_rate_limit(workspace_id)
                     await gate_capability(payload, unit, ctx)
+                    run_id = await start_async_run(
+                        session=session,
+                        workspace_id=workspace_id,
+                        capability=capability,
+                        payload=payload,
+                        origin="agent",
+                        user_id=user_id,
+                        thread_id=thread_id,
+                    )
+                    if run_id is None:
+                        raise ExternalServiceError(
+                            "Could not start deep research run.",
+                            code="CAPABILITY_START_ERROR",
+                        )
+                except ForbiddenError:
+                    raise
                 except InsufficientCreditsError as exc:
                     return str(exc)
-                run_id = await start_async_run(
-                    session=session,
-                    workspace_id=workspace_id,
-                    capability=capability,
-                    payload=payload,
-                    origin="agent",
-                    user_id=user_id,
-                    thread_id=thread_id,
-                )
-            if run_id is None:
-                raise ExternalServiceError(
-                    "Could not start deep research run.",
-                    code="CAPABILITY_START_ERROR",
-                )
+                except NowingError as exc:
+                    return f"Capability failed: {exc}"
             return {
                 "run_id": f"run_{run_id}",
                 "status": "running",
@@ -192,13 +238,20 @@ def _capability_tool(
         # ``scraper_progress`` custom events that surface on the chat thinking step.
         with progress_scope() as reporter:
             async with async_session_maker() as session:
-                if auth_context is not None:
-                    await _verify_workspace_access(session, workspace_id, auth_context)
                 ctx = CapabilityContext(session=session, workspace_id=workspace_id)
                 try:
+                    if auth_context is not None:
+                        await _verify_workspace_access(
+                            session, workspace_id, auth_context
+                        )
+                    await _check_rate_limit(workspace_id)
                     await gate_capability(payload, unit, ctx)
+                except ForbiddenError:
+                    raise
                 except InsufficientCreditsError as exc:
                     return str(exc)
+                except NowingError as exc:
+                    return f"Capability failed: {exc}"
 
                 started = time.perf_counter()
                 try:
@@ -227,6 +280,13 @@ def _capability_tool(
                 cost_micros = None
                 try:
                     cost_micros = await charge_capability(output, unit, ctx)
+                    if cost_micros:
+                        # ponytail: include deep-research/tool cost in the chat
+                        # turn's token-usage SSE so the benchmark sees the full cost.
+                        add_current_turn_tool_cost(
+                            cost_micros=cost_micros,
+                            call_kind=name,
+                        )
                 except Exception:
                     logger.exception("charge failed for agent run %s", name)
 

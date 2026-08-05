@@ -1,13 +1,46 @@
 baseline_ratified: false
 
 thresholds:
-  # Provisional per-mode p95 e2e latency ceilings (Story 4.8g).
+  # Provisional per-mode thresholds for NFR-9 / State A->B transition.
+  # TTFB and cost ceilings are placeholders until baseline live measured.
   per_mode:
     speed:
       max_p95_e2e_ms: 15000
+      max_p95_ttfb_ms: 3000
+      max_mean_cost_micros: 50000
+      max_error_rate: 0.05
     balanced:
       max_p95_e2e_ms: 30000
+      max_p95_ttfb_ms: 6000
+      max_mean_cost_micros: 100000
+      max_error_rate: 0.05
     quality:
       max_p95_e2e_ms: 60000
+      max_p95_ttfb_ms: 12000
+      max_mean_cost_micros: 200000
+      max_error_rate: 0.05
+    auto:
+      max_p95_e2e_ms: 30000
+      max_p95_ttfb_ms: 6000
+      max_mean_cost_micros: 100000
+      max_error_rate: 0.05
+  per_tier:
+    short:
+      max_p95_e2e_ms: 15000
+      max_p95_ttfb_ms: 3000
+      max_mean_cost_micros: 50000
+      max_error_rate: 0.05
+    long_context:
+      max_p95_e2e_ms: 45000
+      max_p95_ttfb_ms: 10000
+      max_mean_cost_micros: 150000
+      max_error_rate: 0.05
+    multi_tool:
+      max_p95_e2e_ms: 60000
+      max_p95_ttfb_ms: 12000
+      max_mean_cost_micros: 200000
+      max_error_rate: 0.05
+  # Per mode x tier thresholds can be filled once the matrix is measured.
+  per_mode_tier: {}
   max_degraded_rate: 0.10
   max_engine_unavailable_rate: 0.05

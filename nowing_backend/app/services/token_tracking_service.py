@@ -185,8 +185,50 @@ class TurnTokenAccumulator:
         """
         return sum(c.cost_micros for c in self.calls)
 
+    def add_tool_cost(
+        self,
+        *,
+        cost_micros: int,
+        call_kind: str = "tool",
+        model: str = "chainlens.research",
+    ) -> None:
+        """Add a non-LLM billable call (e.g. deep-research) to the turn.
+
+        Tokens are unknown/zero; the cost is the billed micro-USD amount.
+        """
+        self.calls.append(
+            TokenCallRecord(
+                model=model,
+                model_ref=None,
+                model_id=None,
+                display_name=None,
+                provider=None,
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+                cost_micros=cost_micros,
+                call_kind=call_kind,
+            )
+        )
+
     def serialized_calls(self) -> list[dict[str, Any]]:
         return [dataclasses.asdict(c) for c in self.calls]
+
+
+def add_current_turn_tool_cost(
+    *,
+    cost_micros: int,
+    call_kind: str = "tool",
+    model: str = "chainlens.research",
+) -> None:
+    """Best-effort: add a tool cost to the active chat turn accumulator."""
+    acc = _turn_accumulator.get()
+    if acc is not None:
+        acc.add_tool_cost(
+            cost_micros=cost_micros,
+            call_kind=call_kind,
+            model=model,
+        )
 
 
 _turn_accumulator: ContextVar[TurnTokenAccumulator | None] = ContextVar(

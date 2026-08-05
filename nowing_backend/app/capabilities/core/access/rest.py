@@ -56,6 +56,23 @@ from app.utils.rbac import check_workspace_access
 logger = logging.getLogger(__name__)
 
 _HEARTBEAT_SEC = 10
+
+# NFR-9 State B: only speed/balanced may run synchronously in chat.
+_SYNC_CHAT_ALLOWED_MODES: frozenset[str] = frozenset({"speed", "balanced"})
+
+
+def _is_sync_chat_mode_allowed(research_mode: str) -> bool:
+    """Return True only when the research mode may block a chat turn.
+
+    ``auto`` is never allowed because the engine may resolve it to ``quality``
+    or deep modes. ``quality``, ``deep-research``, and ``deep-reasoning`` are
+    async-only until cost/latency targets are ratified.
+    """
+    if research_mode == "auto":
+        return False
+    return research_mode in _SYNC_CHAT_ALLOWED_MODES
+
+
 _SSE_HEADERS = {
     "Cache-Control": "no-cache",
     "Connection": "keep-alive",
@@ -196,11 +213,12 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
         # Enforce workspace run limit before meter-gate.
         await workspace_limit_service.check_run_limit(session, workspace_id)
 
-        # State A/B: chainlens.research is always async unless the sync chat-mode
-        # feature flag is explicitly enabled. Other scrapers still allow sync.
-        if (
-            name == "chainlens.research"
-            and not config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED
+        # State A/B: chainlens.research is async unless the sync chat-mode flag
+        # is on AND the requested mode is in the allow-list (speed/balanced).
+        # quality, deep-research, deep-reasoning, and auto remain async-only.
+        if name == "chainlens.research" and not (
+            config.DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED
+            and _is_sync_chat_mode_allowed(payload.mode)
         ):
             mode = "async"
 

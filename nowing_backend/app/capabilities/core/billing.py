@@ -218,7 +218,9 @@ async def _gate_vn_bds_aggregate(
     )
     max_items = getattr(payload, "max_items_per_source", 10) or 0
 
-    required_micros = int(getattr(config, "VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY", 5000))
+    required_micros = int(
+        getattr(config, "VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY", 5000)
+    )
     for source in sources:
         child_unit = _SOURCE_BILLING_UNIT_MAP.get(source)
         if child_unit is None:

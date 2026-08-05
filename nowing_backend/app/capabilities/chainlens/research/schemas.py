@@ -76,7 +76,7 @@ class ResearchInput(BaseModel):
     )
     mode: Literal["speed", "balanced", "quality", "auto"] = Field(
         default=config.DEFAULT_RESEARCH_MODE,
-        description="Research depth: speed (fast), balanced, or quality (thorough).",
+        description="Research depth: speed (fast), balanced, quality (thorough), or auto (engine picks).",
     )
     sources: list[Literal["web", "discussions", "academic"]] = Field(
         default_factory=lambda: ["web", "academic"],
@@ -96,6 +96,10 @@ class ResearchInput(BaseModel):
     chat_id: str | None = Field(
         default=None,
         description="Optional ChainLens chat session handle for continuity.",
+    )
+    tier: Literal["ask", "reason", "research"] = Field(
+        default="research",
+        description="Engine optimization tier: ask, reason, or research.",
     )
 
     @field_validator("query", mode="before")
@@ -125,6 +129,10 @@ class ResearchOutput(BaseModel):
         default=None,
         description="Exact cost in micro-USD reported by the engine, rounded from costDollars.",
     )
+    cost_dollars: float | None = Field(
+        default=None,
+        description="Exact cost in USD reported by the engine, if available.",
+    )
     cost_basis: Literal["actual", "estimated", "fallback"] | None = Field(
         default=None,
         description="Source of cost_micros: actual engine cost, estimated engine cost, or flat-rate fallback.",
@@ -133,9 +141,21 @@ class ResearchOutput(BaseModel):
         default=None,
         description="Mode the engine actually ran (e.g. speed/balanced/quality/deep), if reported.",
     )
+    model: str | None = Field(
+        default=None,
+        description="Model that produced the research output, if reported.",
+    )
     tokens_total: int | None = Field(
         default=None,
         description="Total token count reported by the engine, if any.",
+    )
+    tokens_prompt: int | None = Field(
+        default=None,
+        description="Prompt token count reported by the engine, if any.",
+    )
+    tokens_completion: int | None = Field(
+        default=None,
+        description="Completion token count reported by the engine, if any.",
     )
     first_token_time_ms: int | None = Field(
         default=None,

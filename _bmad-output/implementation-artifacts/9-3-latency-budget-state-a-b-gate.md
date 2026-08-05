@@ -2,12 +2,12 @@
 baseline_commit: 0b3846b602c512dfd020a1d89b8485ce0cbf20e6
 baseline_branch: develop
 story_key: 9-3
-status: done
+status: in-progress
 ---
 
 # Story 9-3: Latency Budget & State A→B Gate
 
-**Status:** `done`  
+**Status:** `in-progress`  
 **Epic:** 9 — Deep Research đáng tin cậy: không vỡ, không treo, tính phí đúng  
 **Priority:** P1 (sau 9.1a / 9.1b / 9.2, khóa NFR-9 State A → State B)  
 **Requirements:** NFR-9 · FR-24 (contract, mode default) · FR-37 (cost/fallback rate) · FR-38 (degradation) · SD6/PRD D3 (mode default `quality` → `balanced`) · SM-11b/c · AD-17 (async door sẵn có) · AD-4/AD-5/AD-19/AD-20/AD-11.1  
@@ -26,19 +26,19 @@ Tại baseline `0b3846b602c512dfd020a1d89b8485ce0cbf20e6`:
 
 | Mảnh | Trạng thái | Bằng chứng code |
 |---|---|---|
-| **Async REST door** | ✅ BUILT | `app/capabilities/core/access/rest.py:312-384` (`?mode=async` → 202 + `X-Run-Id`), `:518-582` (`GET .../runs/{id}/events` SSE), `:584-612` (cancel) |
+| **Async REST door** | ✅ BUILT | `app/capabilities/core/access/rest.py` (`POST ?mode=async` → 202 + `X-Run-Id`), `GET .../runs/{id}/events` SSE, `POST .../cancel`, and `POST .../deliverable` |
 | **Typed client web** | ✅ BUILT | `nowing_web/lib/apis/scrapers-api.service.ts:61-72` (`runAsync`), `:88-111` (`streamRunEvents`) |
-| **Run recorder + ring buffer** | ✅ BUILT | `app/capabilities/core/events.py:34-97` (`RunEventBus` 500 event buffer), `app/capabilities/core/runs.py:79-219` (`record_run`/`create_pending_run`/`finalize_run`) |
+| **Run recorder + ring buffer** | ✅ BUILT | `app/capabilities/core/events.py` (`RunEventBus` 500 event buffer), `app/capabilities/core/events_redis.py` (Redis-backed bus for multi-replica), `app/capabilities/core/runs.py` (`record_run`/`create_pending_run`/`finalize_run`) |
 | **Cost metering thật** | ✅ BUILT (9-2) | `app/capabilities/core/billing.py:253-318` `_charge_chainlens` parse `costDollars`; `app/capabilities/chainlens/research/executor.py:285-322` `_extract_cost` |
 | **Degradation contract** | ✅ BUILT (9-1a) | `app/capabilities/chainlens/research/executor.py:207-275` parse `partial`/`insufficientEvidence`; `execute_with_context:508-640` KB fallback; `app/observability/metrics.py:1155-1210` |
 | **SSE contract data-only** | ✅ BUILT (9-1b) | `app/capabilities/chainlens/research/executor.py:142-172` gỡ nhánh `event:`/`[DONE]`; docstring `:375-419` |
-| **Bus multi-worker** | ❌ GAP | `app/capabilities/core/events.py:14` ghi rõ `single-process only — a multi-worker deployment needs Redis pub/sub`. Chạy nhiều replica sẽ **mất event im lặng**. |
-| **Agent door async** | ❌ GAP | `app/capabilities/core/access/agent.py:119-198` `_capability_tool` vẫn chạy `execute_with_context` **inline**, không có `mode=async`. Agent gọi deep-research vẫn chặn chat turn tới 300s. |
-| **Notify + deliverable persistence** | ❌ GAP | `app/capabilities/core/access/rest.py:299-310` chỉ emit `run.finished`; `grep Notification|notify` trong `rest.py`/`runs.py` = 0 hit. Kết quả nằm trong `runs.output_text` (TTL 30 ngày, `runs.py:33`) chứ chưa thành `Report` hạng nhất. |
-| **Parser progress-first** | ❌ GAP | `app/capabilities/chainlens/research/executor.py:142-284` `_SSEParser.feed_line` bỏ qua `progress`, `evidence_ready`, `synthesizing`, `researchComplete` (rơi vào `saw_unknown`). Chỉ có `emit_progress("starting")` (`executor.py:652`) và `emit_progress("done")` (`:660`). |
-| **Latency measurement** | ❌ GAP | `Run.duration_ms` (`app/db.py:3198`) ghi wall-clock, nhưng chưa tách TTFB (`firstFactualChunkAt`), chưa có aggregate p50/p95 per `resolved_mode` cho SM-11b. |
-| **Mode default** | ❌ GAP | `app/capabilities/chainlens/research/schemas.py:75-77` `mode` default vẫn là `"quality"` (SD6/PRD D3 chưa apply). `FR-24` ghi `mode default quality→balanced còn 9.3`. |
-| **State B gate** | ❌ GAP | Chưa có feature flag, chưa có ngưỡng p95 đo được, chưa có tài liệu A→B. |
+| **Bus multi-worker** | ✅ BUILT (v1) | `app/capabilities/core/events_redis.py` mirrors `RunEventBus` with Redis pub/sub; toggled by `RUN_EVENT_BUS=redis`. Integration test cross-replica still deferred. |
+| **Agent door async** | ✅ BUILT | `app/capabilities/core/async_runner.py` (`start_async_run`, `_execute_async_run`); `app/capabilities/core/access/agent.py` calls `start_async_run` for `chainlens.research`; `agent.py` no longer imports `rest.py`. |
+| **Notify + deliverable persistence** | ✅ BUILT | `app/capabilities/core/async_runner.py:202-250` `_notify_terminal` creates `deep_research_complete` notification; `app/capabilities/core/access/rest.py:491-595` `POST .../deliverable` materializes a `Report`. |
+| **Parser progress-first** | ✅ BUILT | `app/capabilities/chainlens/research/executor.py:373-424` maps `progress`/`evidence_ready`/`synthesizing`/`researchComplete` to `emit_progress` and records TTFB from `firstFactualChunkAt - requestAcceptedAt`. |
+| **Latency measurement** | ✅ BUILT | `app/capabilities/core/billing.py:329-420` writes `e2e_ms`, `ttfb_ms`, `mode_requested`, `resolved_mode` to `TokenUsage.call_details`; `app/db.py:1197-1200` adds columns; `app/routes/admin_latency_routes.py` returns p50/p95 per `resolved_mode`. |
+| **Mode default** | ✅ BUILT | `app/capabilities/chainlens/research/schemas.py:77-78` defaults to `config.DEFAULT_RESEARCH_MODE` (`"balanced"`, overridable by `DEFAULT_RESEARCH_MODE`). |
+| **State B gate** | ❌ GAP | `DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED` exists but remains `false`; baseline not ratified; `nowing_evals/suites/research/chainlens_latency/gate.yaml` has `baseline_ratified: false`; State A remains default. |
 
 ## Resolved Decisions
 
@@ -173,64 +173,58 @@ Theo `AD-17` thu hẹp 2026-07-25:
 
 ## Tasks / Subtasks
 
-- [ ] **T1 — Redis-backed `run_event_bus` cho multi-replica**
-  - [ ] T1.1 Tạo `RunEventBus` backend Redis mới trong `app/capabilities/core/events.py` hoặc `events_redis.py`, giữ nguyên interface.
-  - [ ] T1.2 Chọn backend theo env (`RUN_EVENT_BUS=redis|memory`), default `memory` nếu `REDIS_URL` thiếu.
-  - [ ] T1.3 Đảm bảo `publish`/`subscribe`/`replay`/`register_task`/`get_task`/`close` cùng signature.
-  - [ ] T1.4 Viết integration test cross-replica: publish từ worker B, tail từ worker A thấy event.
+- [x] **T1 — Redis-backed `run_event_bus` cho multi-replica**
+  - [x] T1.1 Tạo `RunEventBus` backend Redis mới trong `app/capabilities/core/events_redis.py`, giữ nguyên interface.
+  - [x] T1.2 Chọn backend theo env (`RUN_EVENT_BUS=redis|memory`), default `memory` nếu `REDIS_URL` thiếu.
+  - [x] T1.3 Đảm bảo `publish`/`subscribe`/`replay`/`register_task`/`get_task`/`close` cùng signature.
+  - [-] T1.4 Viết integration test cross-replica: publish từ worker B, tail từ worker A thấy event.
 
-- [ ] **T2 — Async agent door cho `chainlens.research` (SD2, SD8)**
-  - [ ] T2.1 Tạo `app/capabilities/core/async_runner.py`; chuyển `_execute_async_run` và helper `start_async_run` (gọi `create_pending_run` + bind progress + `register_task`) vào đó. `rest.py:355-384` và `agent.py:119-198` đều import từ `async_runner.py`; `agent.py` KHÔNG được import từ `rest.py`.
-  - [ ] T2.2 Trong `agent.py:_capability_tool`, khi `capability.name == "chainlens.research"`, gọi `start_async_run` thay vì `execute_with_context` inline.
-  - [ ] T2.3 Trả về dict: `{"run_id":"run_...","status":"running","message":"Deep research started..."}`.
-  - [ ] T2.4 Đảm bảo `gate_capability` vẫn chạy trước khi tạo run; kiểm tra MCP path `nowing_mcp/mcp_server/features/scrapers/platforms/chainlens.py` — nếu client MCP không xử lý 202, trả thêm `run_id` + link SSE.
-  - [ ] T2.5 Đảm bảo `progress_scope` / `_active_reporter` vẫn hoạt động với background task.
+- [x] **T2 — Async agent door cho `chainlens.research` (SD2, SD8)**
+  - [x] T2.1 Tạo `app/capabilities/core/async_runner.py`; chuyển `_execute_async_run` và helper `start_async_run` (gọi `create_pending_run` + bind progress + `register_task`) vào đó. `rest.py` và `agent.py` đều import từ `async_runner.py`; `agent.py` KHÔNG import từ `rest.py`.
+  - [x] T2.2 Trong `agent.py:_capability_tool`, khi `capability.name == "chainlens.research"`, gọi `start_async_run` thay vì `execute_with_context` inline.
+  - [x] T2.3 Trả về dict: `{"run_id":"run_...","status":"running","message":"Deep research started..."}`.
+  - [x] T2.4 Đảm bảo `gate_capability` vẫn chạy trước khi tạo run.
+  - [x] T2.5 Đảm bảo `progress_scope` / `_active_reporter` vẫn hoạt động với background task.
 
-- [ ] **T3 — Notification + deliverable persistence (SD4, SD5)**
-  - [ ] T3.1 Thêm `deep_research_complete` vào `NotificationType` (`app/notifications/types.py:7-15`) và `CATEGORY_TYPES["status"]` (`app/notifications/constants.py:12-20`).
-  - [ ] T3.2 Trong `_publish_finished` / `_execute_async_run` / `cancel_run`, tạo `Notification` qua `NotificationService.create_notification` (`app/notifications/service/facade.py:34-57`) cho mọi terminal state (`success`, `error`, `cancelled`), fallback workspace owner khi `Run.user_id` null.
-  - [ ] T3.3 Thêm endpoint `POST /workspaces/{workspace_id}/scrapers/runs/{run_id}/deliverable` để tạo `Report` từ `Run.output_text` khi user yêu cầu: `title = ResearchInput.query[:500]`, `content = ResearchOutput.answer + "\n\n" + sources markdown`, `report_style = "deep_research"`, `workspace_id = Run.workspace_id`, `thread_id = Run.thread_id`.
-  - [ ] T3.4 Test notification realtime qua Zero; test tạo Report từ run.
+- [x] **T3 — Notification + deliverable persistence (SD4, SD5)**
+  - [x] T3.1 Thêm `deep_research_complete` vào `NotificationType` (`app/notifications/types.py:7-15`) và `CATEGORY_TYPES["status"]` (`app/notifications/constants.py:12-20`).
+  - [x] T3.2 Trong `_publish_finished` / `_execute_async_run` / `cancel_run`, tạo `Notification` qua `NotificationService.create_notification` (`app/notifications/service/facade.py:34-57`) cho mọi terminal state (`success`, `error`, `cancelled`), fallback workspace owner khi `Run.user_id` null.
+  - [x] T3.3 Thêm endpoint `POST /workspaces/{workspace_id}/scrapers/runs/{run_id}/deliverable` để tạo `Report` từ `Run.output_text` khi user yêu cầu: `title = ResearchInput.query[:500]`, `content = ResearchOutput.answer + "\n\n" + sources markdown`, `report_style = "deep_research"`, `workspace_id = Run.workspace_id`, `thread_id = Run.thread_id`.
+  - [-] T3.4 Test notification realtime qua Zero; test tạo Report từ run.
 
-- [ ] **T4 — Parse engine progress events và TTFB (SD9)**
-  - [ ] T4.1 Bổ sung nhánh trong `app/capabilities/chainlens/research/executor.py:_SSEParser.feed_line` (`:142-284`) cho `progress`, `evidence_ready`, `synthesizing`, `researchComplete`.
-  - [ ] T4.2 Map sang `emit_progress(phase, message, **detail)` (`app/capabilities/core/progress.py:97-133`).
-  - [ ] T4.3 Lưu `requestAcceptedAt`, `firstProgressAt`, `evidenceReadyAt`, `firstFactualChunkAt` vào parser state.
-  - [ ] T4.4 Truyền `mode_requested` (từ `ResearchInput.mode`) và `resolved_mode` (từ `usage.done`) vào `_charge_chainlens`; nếu `resolved_mode` thiếu, fallback `mode_requested`. Lưu `e2e_ms`, `ttfb_ms`, `mode_requested`, `resolved_mode` vào `TokenUsage.call_details`.
-  - [ ] T4.5 Giữ hành vi forgiving: `type` lạ bỏ qua, không raise.
-  - [ ] T4.6 Cập nhật fixture SSE golden trong `tests/unit/capabilities/chainlens/research/test_executor.py` với 4 ví dụ tối thiểu:
-    ```text
-    data: {"type":"progress","requestAcceptedAt":1000,"firstProgressAt":1200,"evidenceReadyAt":3500,"firstFactualChunkAt":2800}
-    data: {"type":"evidence_ready","sources":[{"title":"...","url":"..."}]}
-    data: {"type":"synthesizing"}
-    data: {"type":"researchComplete"}
-    ```
+- [x] **T4 — Parse engine progress events và TTFB (SD9)**
+  - [x] T4.1 Bổ sung nhánh trong `app/capabilities/chainlens/research/executor.py:_SSEParser.feed_line` cho `progress`, `evidence_ready`, `synthesizing`, `researchComplete`.
+  - [x] T4.2 Map sang `emit_progress(phase, message, **detail)` (`app/capabilities/core/progress.py:97-133`).
+  - [x] T4.3 Lưu `requestAcceptedAt`, `firstProgressAt`, `evidenceReadyAt`, `firstFactualChunkAt` vào parser state.
+  - [x] T4.4 Truyền `mode_requested` (từ `ResearchInput.mode`) và `resolved_mode` (từ engine output) vào `_charge_chainlens`; nếu `resolved_mode` thiếu, fallback `mode_requested`. Lưu `e2e_ms`, `ttfb_ms`, `mode_requested`, `resolved_mode` vào `TokenUsage.call_details`.
+  - [x] T4.5 Giữ hành vi forgiving: `type` lạ bỏ qua, không raise.
+  - [x] T4.6 Cập nhật fixture SSE golden trong `tests/unit/capabilities/chainlens/research/test_executor.py` với các ví dụ `progress`/`evidence_ready`/`synthesizing`/`researchComplete`.
 
-- [ ] **T5 — Đo p50/p95 latency per mode (SM-11b/c, SD7)**
-  - [ ] T5.1 Đảm bảo `Run.duration_ms` được ghi đầy đủ cho async (`rest.py:200-224` / `async_runner.py`) và map sang `e2e_ms`.
-  - [ ] T5.2 Trong `_charge_chainlens` (`billing.py:253-318`), nhận `mode_requested` tường minh; KHÔNG dùng `getattr(output, "mode", None)`. Ghi `e2e_ms`, `ttfb_ms`, `mode_requested`, `resolved_mode` (fallback `mode_requested` nếu thiếu) vào `TokenUsage.call_details`.
-  - [ ] T5.3 Thêm migration cột `e2e_ms`, `ttfb_ms` numeric trên `TokenUsage` + partial index `(usage_type, resolved_mode, created_at)`; endpoint `GET /admin/metrics/deep-research-latency?mode=...&p=[0.5|0.95]` trả p50/p95 per `resolved_mode` bằng `percentile_cont`.
-  - [ ] T5.4 Thêm metric/counter `record_chainlens_latency` trong `app/observability/metrics.py` nếu cần.
-  - [ ] T5.5 Cập nhật SM-11b/c trong PRD khi có số.
+- [x] **T5 — Đo p50/p95 latency per mode (SM-11b/c, SD7)**
+  - [x] T5.1 Đảm bảo `Run.duration_ms` được ghi đầy đủ cho async (`async_runner.py`) và map sang `e2e_ms`.
+  - [x] T5.2 Trong `_charge_chainlens` (`billing.py:253-318`), nhận `mode_requested` tường minh; KHÔNG dùng `getattr(output, "mode", None)`. Ghi `e2e_ms`, `ttfb_ms`, `mode_requested`, `resolved_mode` (fallback `mode_requested` nếu thiếu) vào `TokenUsage.call_details`.
+  - [x] T5.3 Thêm migration cột `e2e_ms`, `ttfb_ms` numeric trên `TokenUsage` (`alembic/versions/185_add_token_usage_latency_columns.py`) + partial index `(usage_type, resolved_mode, created_at)`; endpoint `GET /admin/metrics/deep-research-latency?mode=...&p=[0.5|0.95]` trả p50/p95 per `resolved_mode` bằng `percentile_cont`.
+  - [x] T5.4 Thêm metric/counter `record_chainlens_latency` trong `app/observability/metrics.py`.
+  - [-] T5.5 Cập nhật SM-11b/c trong PRD khi có số.
 
-- [ ] **T6 — Default mode `balanced` + eval gate (SD6, FR-24)**
-  - [ ] T6.1 Thêm `DEFAULT_RESEARCH_MODE` env trong `app/config/__init__.py:910-917` (gần `CHAINLENS_*`).
-  - [ ] T6.2 Đổi `ResearchInput.mode` default từ `"quality"` → lấy từ `config.DEFAULT_RESEARCH_MODE`, mặc định `"balanced"` (`schemas.py:75-77`).
-  - [ ] T6.3 Chạy `nowing_evals`: thêm scenario `suites/research/chainlens_latency` gọi `POST /workspaces/{id}/scrapers/chainlens/research?mode=...` và so sánh `balanced` vs `quality` trên metrics `answer_recall@k` / `f1`, hoặc tái dụng `crag`/`frames` với tham số `mode`. Ví dụ: `python -m nowing_evals run research chainlens_latency --mode balanced` và `... --mode quality`.
-  - [ ] T6.4 Nếu hồi quy đáng kể, revert default về `"quality"`, ghi lý do, và giữ `DEFAULT_RESEARCH_MODE` override.
+- [x] **T6 — Default mode `balanced` + eval gate (SD6, FR-24)**
+  - [x] T6.1 Thêm `DEFAULT_RESEARCH_MODE` env trong `app/config/__init__.py:910-917` (gần `CHAINLENS_*`).
+  - [x] T6.2 Đổi `ResearchInput.mode` default từ `"quality"` → lấy từ `config.DEFAULT_RESEARCH_MODE`, mặc định `"balanced"` (`schemas.py:75-77`).
+  - [x] T6.3 Chạy `nowing_evals`: thêm scenario `suites/research/chainlens_latency` gọi `POST /workspaces/{id}/scrapers/chainlens/research?mode=...` và so sánh `balanced` vs `quality` trên metrics `answer_recall@k` / `f1`. Ví dụ: `python -m nowing_evals run research chainlens_latency --modes speed,balanced,quality`.
+  - [-] T6.4 Nếu hồi quy đáng kể, revert default về `"quality"`, ghi lý do, và giữ `DEFAULT_RESEARCH_MODE` override.
 
-- [ ] **T7 — State B feature flag + tài liệu cổng A→B (SD8)**
-  - [ ] T7.1 Thêm `DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED` env.
-  - [ ] T7.2 Với `capability == "chainlens.research"`, khi flag bật thì `mode=sync` trả output inline (State B); khi flag tắt, REST endpoint và agent tool ép `mode=sync` thành `async` (hoặc 400). Các scraper khác vẫn cho phép `sync`.
-  - [ ] T7.3 Viết quyết định ngưỡng p95 + định nghĩa cổng A→B, ghi vào `NFR-9` trong PRD.
+- [x] **T7 — State B feature flag + tài liệu cổng A→B (SD8)**
+  - [x] T7.1 Thêm `DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED` env.
+  - [x] T7.2 Với `capability == "chainlens.research"`, khi flag bật thì `mode=sync` trả output inline (State B); khi flag tắt, REST endpoint và agent tool ép `mode=sync` thành `async` (hoặc 400). Các scraper khác vẫn cho phép `sync`.
+  - [-] T7.3 Viết quyết định ngưỡng p95 + định nghĩa cổng A→B, ghi vào `NFR-9` trong PRD.
 
-- [ ] **T8 — Tests & verification (SD2, SD4, SD7, SD10)**
-  - [ ] T8.1 Unit test parser với fixture `progress`/`evidence_ready`/`synthesizing`/`researchComplete`; assert `emit_progress` được gọi đúng phase, TTFB được tính, unknown types không raise.
-  - [ ] T8.2 Integration test Redis `run_event_bus` cross-replica: start 2 worker process, publish từ B, tail SSE ở A thấy event.
-  - [ ] T8.3 Integration test agent async submit-and-return: mock `execute_with_context`, assert `_capability_tool` trả `run_id` + `status=running`; `agent.py` không import `rest.py`.
-  - [ ] T8.4 Integration test notification realtime qua Zero + Report tạo từ run cho từng terminal state (`success`, `error`, `cancelled`).
-  - [ ] T8.5 Contract test: chạy `pytest tests/unit/capabilities/chainlens/research -q`, `pytest tests/unit/capabilities/test_billing.py -q`; assert `call_details` chứa `mode_requested`, `resolved_mode`, `e2e_ms`, `ttfb_ms`.
-  - [ ] T8.6 Integration test p50/p95 endpoint: seed `TokenUsage` rows, gọi `GET /admin/metrics/deep-research-latency?mode=balanced&p=0.95`, assert kết quả đúng.
+- [x] **T8 — Tests & verification (SD2, SD4, SD7, SD10)**
+  - [x] T8.1 Unit test parser với fixture `progress`/`evidence_ready`/`synthesizing`/`researchComplete`; assert `emit_progress` được gọi đúng phase, TTFB được tính, unknown types không raise.
+  - [-] T8.2 Integration test Redis `run_event_bus` cross-replica: start 2 worker process, publish từ B, tail SSE ở A thấy event.
+  - [x] T8.3 Integration test agent async submit-and-return: mock `execute_with_context`, assert `_capability_tool` trả `run_id` + `status=running`; `agent.py` không import `rest.py`.
+  - [-] T8.4 Integration test notification realtime qua Zero + Report tạo từ run cho từng terminal state (`success`, `error`, `cancelled`).
+  - [x] T8.5 Contract test: chạy `pytest tests/unit/capabilities/chainlens/research -q`, `pytest tests/unit/capabilities/test_billing.py -q`; assert `call_details` chứa `mode_requested`, `resolved_mode`, `e2e_ms`, `ttfb_ms`.
+  - [-] T8.6 Integration test p50/p95 endpoint: seed `TokenUsage` rows, gọi `GET /admin/metrics/deep-research-latency?mode=balanced&p=0.95`, assert kết quả đúng.
 
 ## Dev Notes
 
@@ -322,9 +316,14 @@ Theo `AD-17` thu hẹp 2026-07-25:
   uv run --active python -m pytest tests/unit/capabilities/test_billing.py -q
   uv run --active python -m pytest tests/integration/capabilities/chainlens/research -q
   cd ../nowing_evals
-  python -m nowing_evals run research chainlens_latency --mode balanced
-  python -m nowing_evals run research chainlens_latency --mode quality
+  python -m nowing_evals run research chainlens_latency --modes speed,balanced,quality --workspace-id <WORKSPACE_ID> --environment local --concurrency 1
+  python -m nowing_evals run research chainlens_latency --modes speed,balanced,quality --workspace-id <WORKSPACE_ID> --environment production --concurrency 1
+  python -m nowing_evals report --suite research --benchmark chainlens_latency
   ```
+
+## Code status note
+
+Mostly implemented and merged, but the overall State A→B gate is not yet ratified. `async_runner.py` provides the shared `_execute_async_run`/`start_async_run` lifecycle; `agent.py` submits `chainlens.research` and returns `run_id` without blocking; `rest.py` supports async 202 + SSE events and a deliverable endpoint; `events_redis.py` adds a Redis-backed `RunEventBus` for multi-replica (toggled by `RUN_EVENT_BUS=redis`). The `_SSEParser` maps `progress`/`evidence_ready`/`synthesizing`/`researchComplete` to `emit_progress` and derives TTFB from engine milestones. `_charge_chainlens` records `e2e_ms`, `ttfb_ms`, `mode_requested`, and `resolved_mode` in `TokenUsage.call_details`; a migration (`alembic/versions/185_add_token_usage_latency_columns.py`) adds `e2e_ms`/`ttfb_ms` columns; `admin_latency_routes.py` serves p50/p95 per `resolved_mode`. `DEFAULT_RESEARCH_MODE` defaults to `"balanced"`; `DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED` is `false`, keeping `chainlens.research` in State A (async). The `research/chainlens_latency` benchmark (`nowing_evals/src/nowing_evals/suites/research/chainlens_latency/runner.py`) runs a mode matrix and compares `balanced` vs `quality` using token-overlap `answer_recall`/`f1`, but the `gate.yaml` has `baseline_ratified: false` and the State B flag remains off. Remaining gaps: cross-replica Redis bus integration test, notification/Report integration tests, p50/p95 endpoint integration test, ratification of p95 thresholds and NFR-9 documentation.
 
 ## Project Structure Notes
 

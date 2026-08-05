@@ -7,6 +7,7 @@ fallback when Redis is unavailable — mirroring the auth-endpoint limiter.
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections import defaultdict
 from threading import Lock
@@ -54,10 +55,20 @@ def _incr(key: str, window_seconds: int) -> int:
         return _incr_memory(key, window_seconds)
 
 
+async def _aincr(key: str, window_seconds: int) -> int:
+    """Async-safe wrapper around the synchronous Redis-or-memory counter.
+
+    The underlying Redis client (and the per-worker memory fallback lock) is
+    synchronous, so the increment is off-loaded with :func:`asyncio.to_thread`.
+    The sync :func:`_incr` is kept for callers that cannot await.
+    """
+    return await asyncio.to_thread(_incr, key, window_seconds)
+
+
 async def enforce_capability_rate_limit(request: Request) -> None:
     """Cap requests per workspace per minute; raise 429 when exceeded."""
     workspace_id = request.path_params.get("workspace_id")
-    count = _incr(f"{_KEY_PREFIX}:{workspace_id}", _WINDOW_SECONDS)
+    count = await _aincr(f"{_KEY_PREFIX}:{workspace_id}", _WINDOW_SECONDS)
     if count > CAPABILITY_RATE_LIMIT_PER_MINUTE:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,

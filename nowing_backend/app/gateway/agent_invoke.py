@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import AsyncIterator
+from typing import Literal
 
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,6 +64,7 @@ async def call_agent_for_gateway(
     translator: BaseStreamTranslator,
     platform_label: str = "telegram",
     request_id: str | None = None,
+    mode: Literal["speed", "balanced", "quality", "auto"] | None = None,
 ) -> None:
     user = await assert_authorization_invariant(session, binding)
     auth_context = AuthContext.system(user, source="gateway")
@@ -83,6 +85,7 @@ async def call_agent_for_gateway(
             current_user_display_name=user.display_name or "A team member",
             disabled_tools=sorted(DEFAULT_HITL_TOOL_NAMES),
             request_id=request_id or "gateway",
+            mode=mode,
             auth_context=auth_context,
         )
         events = _events_from_sse(stream)

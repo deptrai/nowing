@@ -192,15 +192,15 @@ def test_research_output_supports_cost_fields():
     assert output.tokens_total == 1280
 
 
-def test_parse_sse_keeps_first_valid_cost_dollars():
-    """First usage/done with a valid costDollars wins; later events ignored."""
+def test_parse_sse_terminal_done_overwrites_usage_cost():
+    """A terminal ``done`` frame with costDollars overwrites an earlier ``usage`` cost."""
     raw = _sse_line({"type": "usage", "costDollars": 0.0123, "resolvedMode": "deep"})
     raw += _sse_line({"type": "done", "costDollars": 0.9999, "resolvedMode": "quality"})
 
     output = _parse_sse(raw)
 
-    assert output.cost_micros == 12300
-    assert output.resolved_mode == "deep"
+    assert output.cost_micros == 999900
+    assert output.resolved_mode == "quality"
 
 
 def test_parse_sse_resolved_mode_from_resolved_mode_key():
@@ -221,3 +221,34 @@ def test_parse_sse_nan_cost_dollars_is_ignored():
     output = _parse_sse(raw)
 
     assert output.cost_micros is None
+
+
+def _load_fixture(name: str) -> object:
+    path = f"tests/unit/capabilities/chainlens/research/fixtures/{name}"
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "sse-done-estimated-2026-08-05.json",
+        "sse-done-actual-2026-08-05.json",
+    ],
+)
+def test_parse_sse_from_chainlens_golden_fixture(fixture_name):
+    """ChainLens golden fixtures define the canonical done frame contract."""
+    fixture = _load_fixture(fixture_name)
+    raw = _sse_line(fixture["frame"])
+
+    output = _parse_sse(raw)
+    expected = fixture["expectedNowingParserOutput"]
+
+    assert output.cost_dollars == expected["costDollars"]
+    assert output.cost_micros == expected["costMicros"]
+    assert output.cost_basis == expected["costBasis"]
+    assert output.resolved_mode == expected["resolvedMode"]
+    assert output.tokens_prompt == expected["promptTokens"]
+    assert output.tokens_completion == expected["completionTokens"]
+    assert output.tokens_total == expected["totalTokens"]
+    assert output.model == expected["model"]

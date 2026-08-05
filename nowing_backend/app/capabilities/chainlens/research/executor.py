@@ -7,8 +7,10 @@ workspace knowledge base so self-hosted installs remain useful.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import math
 import time
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable
 from datetime import datetime
@@ -16,7 +18,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
 import httpx
-from sqlalchemy.exc import SQLAlchemyError
 
 from app.capabilities.chainlens.research.schemas import (
     ResearchInput,
@@ -95,18 +96,38 @@ def _parse_sources(raw_sources: Any) -> list[Source]:
 
 def _to_int(value: Any) -> int | None:
     """Normalize a progress counter to a non-negative int."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        logger.warning("Ignoring bool progress counter: %r", value)
+        return None
     if isinstance(value, int) and value >= 0:
         return value
     if isinstance(value, float) and value.is_integer() and value >= 0:
         return int(value)
     if isinstance(value, str) and value.isdigit():
         return int(value)
+    logger.warning("Ignoring malformed progress counter: %r", value)
     return None
 
 
 def _parse_engine_ts(value: Any) -> int | None:
-    """Parse an engine ISO-8601 timestamp to epoch milliseconds."""
+    """Parse an engine timestamp to epoch milliseconds.
+
+    Accepts ISO-8601 strings or numeric epoch-millisecond values.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        logger.warning("Ignoring bool engine timestamp: %r", value)
+        return None
+    if isinstance(value, (int, float)):
+        if not math.isfinite(value) or value < 0:
+            logger.warning("Ignoring non-finite/negative engine timestamp: %r", value)
+            return None
+        return int(value)
     if not isinstance(value, str):
+        logger.warning("Ignoring malformed engine timestamp: %r", value)
         return None
     try:
         # ponytail: fromisoformat handles 'Z' in Python 3.11+; fallback for older versions.
@@ -116,6 +137,7 @@ def _parse_engine_ts(value: Any) -> int | None:
             dt = dt.replace(tzinfo=datetime.UTC)
         return int(dt.timestamp() * 1000)
     except Exception:
+        logger.warning("Ignoring unparseable engine timestamp: %r", value)
         return None
 
 
@@ -133,6 +155,7 @@ class _SSEParser:
         "chat_id",
         "cost_basis",
         "cost_dollars",
+        "cost_source",
         "degradation_reason",
         "engine_reason",
         "error_msg",
@@ -141,6 +164,7 @@ class _SSEParser:
         "first_factual_chunk_at",
         "first_progress_at",
         "first_token_time_ms",
+        "model",
         "request_accepted_at",
         "resolved_mode",
         "saw_done",
@@ -151,6 +175,8 @@ class _SSEParser:
         "sources",
         "start_time",
         "status",
+        "tokens_completion",
+        "tokens_prompt",
         "tokens_total",
         "web_url",
     )
@@ -173,9 +199,13 @@ class _SSEParser:
         self.blocked_url_coverage: dict[str, int] = {}
         self.cost_dollars: float | None = None
         self.cost_basis: Literal["actual", "estimated", "fallback"] | None = None
+        self.cost_source: str | None = None
         self.resolved_mode: str | None = None
+        self.model: str | None = None
         self.estimated: bool | None = None
         self.tokens_total: int | None = None
+        self.tokens_prompt: int | None = None
+        self.tokens_completion: int | None = None
         self.first_token_time_ms: int | None = None
         self.request_accepted_at: int | None = None
         self.first_progress_at: int | None = None
@@ -190,27 +220,24 @@ class _SSEParser:
         milestones; fall back to the local Nowing clock only when the engine
         does not publish them.
         """
+        if self.saw_first_token:
+            return
         if (
             self.request_accepted_at is not None
             and self.first_factual_chunk_at is not None
         ):
-            ttfb = max(0, self.first_factual_chunk_at - self.request_accepted_at)
-            if self.saw_engine_first_token and self.first_token_time_ms == ttfb:
-                return
             self.saw_engine_first_token = True
             self.saw_first_token = True
-            self.first_token_time_ms = ttfb
+            self.first_token_time_ms = max(
+                0, self.first_factual_chunk_at - self.request_accepted_at
+            )
             emit_progress(
                 "first_token",
                 message="First token received",
                 ttfb_ms=self.first_token_time_ms,
             )
             return
-        if (
-            self.start_time is not None
-            and not self.saw_first_token
-            and not self.saw_engine_first_token
-        ):
+        if self.start_time is not None:
             self.saw_first_token = True
             self.first_token_time_ms = int(
                 (time.perf_counter() - self.start_time) * 1000
@@ -264,8 +291,10 @@ class _SSEParser:
             return
 
         if event_type in {"done", "usage"}:
-            if event_type == "done":
-                self.saw_done = True
+            self.saw_done = True
+            usage = event.get("usage")
+            if not isinstance(usage, dict):
+                usage = None
             self.chat_id = event.get("chatId") or event.get("chat_id") or self.chat_id
             self.web_url = event.get("webUrl") or self.web_url
             self._extract_cost(event)
@@ -434,13 +463,13 @@ class _SSEParser:
     def _extract_cost(self, event: dict[str, Any]) -> None:
         """Extract ``costDollars`` and related metadata from an engine event.
 
-        The first valid ``costDollars`` wins. ChainLens 42-1 places it inside
-        the terminal ``done`` frame's ``usage`` object, but we also accept the
-        older top-level location and a standalone ``usage`` event defensively.
-        Later events are ignored so ``done`` does not overwrite an earlier
-        ``usage`` and vice versa. Malformed/negative values are ignored.
+        The terminal ``done`` frame's ``usage`` object is authoritative.
+        Earlier ``usage`` events are recorded but may be overwritten by a
+        later ``done`` event. Malformed, negative, and non-finite values are
+        ignored.
         """
-        if self.cost_dollars is not None:
+        event_type = event.get("type")
+        if self.cost_dollars is not None and self.cost_source == "done":
             return
 
         usage = event.get("usage")
@@ -458,14 +487,15 @@ class _SSEParser:
         if not isinstance(raw_cost, (int, float)):
             logger.warning("Ignoring malformed costDollars in SSE event: %r", raw_cost)
             return
+        if not math.isfinite(raw_cost):
+            logger.warning("Ignoring non-finite costDollars: %r", raw_cost)
+            return
         if raw_cost < 0:
             logger.warning("Ignoring negative costDollars: %r", raw_cost)
             return
-        if raw_cost != raw_cost:  # NaN
-            logger.warning("Ignoring NaN costDollars")
-            return
 
         self.cost_dollars = float(raw_cost)
+        self.cost_source = event_type
         self.resolved_mode = (
             (usage.get("resolvedMode") if usage else None)
             or event.get("resolvedMode")
@@ -478,14 +508,29 @@ class _SSEParser:
         )
         self.estimated = estimated if isinstance(estimated, bool) else None
 
+        self.model = (
+            (usage.get("model") if usage else None)
+            or event.get("model")
+            or self.model
+        )
+
         tokens = (usage.get("tokens") if usage else None) or event.get("tokens")
         total = None
         if isinstance(tokens, dict):
             total = tokens.get("total")
+        if usage is not None and total is None:
+            total = usage.get("totalTokens")
+        total_int = _to_int(total)
+        if total_int is not None:
+            self.tokens_total = total_int
+
         if usage is not None:
-            total = total or usage.get("totalTokens")
-        if isinstance(total, int):
-            self.tokens_total = total
+            prompt_int = _to_int(usage.get("promptTokens"))
+            if prompt_int is not None:
+                self.tokens_prompt = prompt_int
+            completion_int = _to_int(usage.get("completionTokens"))
+            if completion_int is not None:
+                self.tokens_completion = completion_int
 
         if self.estimated is True:
             self.cost_basis = "estimated"
@@ -536,10 +581,14 @@ class _SSEParser:
             engine_reason=self.engine_reason,
             saw_heartbeat=self.saw_heartbeat,
             blocked_url_coverage_by_block_type=self.blocked_url_coverage,
+            cost_dollars=self.cost_dollars,
             cost_micros=self._cost_micros(),
             cost_basis=self.cost_basis,
             resolved_mode=self.resolved_mode,
+            model=self.model,
             tokens_total=self.tokens_total,
+            tokens_prompt=self.tokens_prompt,
+            tokens_completion=self.tokens_completion,
             first_token_time_ms=self.first_token_time_ms,
         )
 
@@ -610,7 +659,7 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
     body: dict[str, Any] = {
         "query": payload.query,
         "optimizationMode": payload.mode,
-        "tier": "research",
+        "tier": payload.tier,
         "sources": payload.sources,
         "history": payload.history,
         "stream": True,
@@ -730,7 +779,9 @@ async def execute_with_context(
     except ChainLensError as exc:
         degradation_reason = "upstream_error"
         engine_reason = str(exc)
-    except Exception:
+    except Exception as exc:
+        if isinstance(exc, asyncio.CancelledError):
+            raise
         logger.exception("ChainLens research failed")
         degradation_reason = "upstream_error"
 
@@ -832,7 +883,9 @@ async def execute_with_context(
                     kb_fallback_embedding_cost_micros=0,
                     kb_fallback_search_cost_micros=0,
                 )
-        except (SQLAlchemyError, RuntimeError, OSError, httpx.RequestError):
+        except Exception as exc:
+            if isinstance(exc, asyncio.CancelledError):
+                raise
             logger.exception("KB fallback failed")
             output = ResearchOutput(
                 status="engine_unavailable",

@@ -267,6 +267,8 @@ async def test_rest_sync_records_degraded_run_output_text(
         "app.capabilities.chainlens.research.executor.config.CHAINLENS_API_KEY",
         "",
     )
+    # State B: allow chainlens.research to run synchronously through the REST door.
+    monkeypatch.setattr(config, "DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED", True)
 
     payload = ResearchInput(query="self-host deep research").model_dump()
     resp = await client.post(
