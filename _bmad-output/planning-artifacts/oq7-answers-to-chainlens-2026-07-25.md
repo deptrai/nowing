@@ -3,16 +3,16 @@ title: "OQ-7 — Nowing trả lời ChainLens (story 42-3)"
 created: 2026-07-25
 author: "Mary (Business Analyst) + Luisphan (PO), Nowing"
 to: "ChainLens team — story 42-3 (verify Nowing endpoint needs)"
-status: ready-to-send
+status: ADOPTED 2026-08-05
 unblocks: ["ChainLens 42-1 costDollars-in-SSE", "ChainLens 42-3", "Nowing 9-2", "Nowing 9-3"]
 method: "đọc code cả hai repo 2026-07-25, không trả lời theo phỏng đoán"
 ---
 
 # OQ-7 — Nowing trả lời ChainLens (story `42-3`)
 
-**Bối cảnh:** `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` §"Open questions" để ngỏ 3 câu hỏi cho Nowing. Nowing bổ sung câu thứ 4 (progress granularity) trong readiness check 2026-07-25.
+**Bối cảnh:** `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` §"Open questions" để ngỏ 3 câu hỏi cho Nowing. Nowing bổ sung câu thứ 4 (progress granularity) trong readiness check 2026-07-25, và câu thứ 5 (mode mapping) trong follow-up 2026-08-04.
 
-**Cách trả lời:** đọc code **cả hai repo** trước khi kết luận. Ba trong bốn câu **lật so với giả định ban đầu** — chi tiết dưới.
+**Cách trả lời:** đọc code **cả hai repo** trước khi kết luận. Ba trong năm câu **lật so với giả định ban đầu** — chi tiết dưới.
 
 ---
 
@@ -61,11 +61,11 @@ Tìm thấy trong repo các bạn — `apps/api/src/search/__tests__/fixtures/ss
 
 ### Ba điều Nowing xin thêm
 
-| Field | Vì sao |
-|---|---|
-**`resolvedMode`** | Nowing gửi `optimizationMode` nhưng với `auto` thì engine tự chọn. Nowing cần biết **mode thật đã chạy** để quy chi phí đúng theo mode (metric SM-11a của Nowing chia theo mode). Nếu `42-1` không có field này, Nowing phải suy đoán. |
-**`estimated: boolean`** | Nowing cần phân biệt cost **đo được** vs **ước lượng**. Ảnh hưởng trực tiếp việc Nowing có dám chốt giá subscription hay không. |
-**Vị trí event** | Xin đặt `usage` **trước** `{"type":"done"}`. Nowing coi `done` là mốc terminal; nếu `usage` đến sau, parser có thể đã dừng đọc. |
+|| Field | Vì sao |
+|---|---|---|
+|**`resolvedMode`** | Nowing gửi `optimizationMode` nhưng với `auto` thì engine tự chọn. Nowing cần biết **mode thật đã chạy** để quy chi phí đúng theo mode (metric SM-11a của Nowing chia theo mode). Nếu `42-1` không có field này, Nowing phải suy đoán. |
+|**`estimated: boolean`** | Nowing cần phân biệt cost **đo được** vs **ước lượng**. Ảnh hưởng trực tiếp việc Nowing có dám chốt giá subscription hay không. |
+|**Vị trí event** | Xin đặt `usage` **trước** `{"type":"done"}`. Nowing coi `done` là mốc terminal; nếu `usage` đến sau, parser có thể đã dừng đọc. |
 
 ### ⚠️ Bối cảnh vì sao Nowing cần cái này gấp
 
@@ -90,14 +90,14 @@ api.ts:1299  session.emit('data', { type: 'evidence_ready', ... })
 
 ### Nowing đang bỏ 6 loại event các bạn gửi
 
-| Event các bạn gửi | Nowing xử lý? | Nowing mất gì |
-|---|---|---|
-`progress` (milestones) | ❌ bỏ | UX progress-first không có gì hiển thị trong 57–198s |
-`insufficientEvidence` (`partial`, `reason`) | ❌ bỏ | **Nowing tự suy đoán lại trạng thái này — xem dưới** |
-`partial` (`state`, `reason`) | ❌ bỏ | cùng vấn đề |
-`synthesizing` | ❌ bỏ | mốc progress hữu ích |
-`heartbeat` | ❌ bỏ | không phân biệt được "đang chạy" vs "đã chết" |
-`noop` | ❌ bỏ | (vô hại) |
+|| Event các bạn gửi | Nowing xử lý? | Nowing mất gì |
+|---|---|---|---|
+|`progress` (milestones) | ❌ bỏ | UX progress-first không có gì hiển thị trong 57–198s |
+|`insufficientEvidence` (`partial`, `reason`) | ❌ bỏ | **Nowing tự suy đoán lại trạng thái này — xem dưới** |
+|`partial` (`state`, `reason`) | ❌ bỏ | cùng vấn đề |
+|`synthesizing` | ❌ bỏ | mốc progress hữu ích |
+|`heartbeat` | ❌ bỏ | không phân biệt được "đang chạy" vs "đã chết" |
+|`noop` | ❌ bỏ | (vô hại) |
 
 ### 🔴 Hệ quả nặng nhất — Nowing suy đoán lại thứ các bạn đã nói rõ
 
@@ -116,6 +116,21 @@ if not answer and not sources:
 Tức Nowing đang gộp *"tìm không ra bằng chứng"* và *"stream chết giữa đường"* vào một phép đoán, trong khi engine **đã phân biệt sẵn** kèm `reason`. Đây là defect phía Nowing, đã ghi vào story **`9.1a`** (degradation) — chính là story mà FR-38 của Nowing cần trạng thái `partial`/`engine_unavailable` tường minh.
 
 **Việc của Nowing, không phải của các bạn.** Không cần các bạn làm gì thêm cho Q4.
+
+---
+
+## Q5 — Mode mapping
+
+### ✅ Trả lời: Nowing UX modes `speed` | `balanced` | `quality` | `auto`
+
+ChainLens `mode` trong `/api/v1/search` vẫn là `ask | reason | research | speed | balanced | quality`.
+
+- `speed` / `balanced` / `quality` → Nowing map 1-1 sang ChainLens cùng tên.
+- `auto` → để ChainLens tự chọn mode dựa trên query complexity.
+- `research` → Nowing dùng khi user explicitly yêu cầu deep research.
+- `ask` / `reason` → Nowing **không dùng trực tiếp** ở UX; các mode này nằm trong `auto` routing nội bộ ChainLens hoặc được gọi rõ ràng qua API nếu cần.
+
+Nowing cần field **`resolvedMode`** trong terminal `done` frame để biết mode thật engine đã chạy, phục vụ metric SM-11a (cost/latency theo mode).
 
 ---
 
@@ -139,15 +154,16 @@ Không phải lỗi của các bạn, nhưng nó nguy hiểm: ai viết regressi
 
 ## Tóm tắt cho ChainLens team
 
-| Câu | Trả lời | Các bạn cần làm gì |
-|---|---|---|
-**Q1** endpoint riêng? | **Không.** `/api/v1/search` đủ. Cần độ sâu khác → thêm giá trị `optimizationMode` | Không gì. Đóng câu này. |
-**Q2** geo-access `41-2`? | **Không phải bây giờ.** Nowing đã có proxy/geo cho crawler riêng. Chưa có khiếu nại cụ thể | **Hạ ưu tiên `41-2`.** Ưu tiên `42-1` → `43-1` → `43-5` |
-**Q3** format `costDollars`? | **Shape các bạn đã thiết kế là đúng.** Xin thêm `resolvedMode` + `estimated`, và đặt `usage` **trước** `done` | **Ship `42-1`.** Additive nên không cần chờ Nowing |
-**Q4** progress theo phase? | **Nowing xin rút — các bạn đã emit rồi.** Lỗi ở parser Nowing | Không gì. Nowing tự sửa trong `9.1a`/`9.3` |
+|| Câu | Trả lời | Các bạn cần làm gì |
+|---|---|---|---|
+|**Q1** endpoint riêng? | **Không.** `/api/v1/search` đủ. Cần độ sâu khác → thêm giá trị `optimizationMode` | Không gì. Đóng câu này. |
+|**Q2** geo-access `41-2`? | **Không phải bây giờ.** Nowing đã có proxy/geo cho crawler riêng. Chưa có khiếu nại cụ thể | **Hạ ưu tiên `41-2`.** Ưu tiên `42-1` → `43-1` → `43-5` |
+|**Q3** format `costDollars`? | **Shape các bạn đã thiết kế là đúng.** Xin thêm `resolvedMode` + `estimated`, và đặt `usage` **trước** `done` | **Ship `42-1`.** Additive nên không cần chờ Nowing |
+|**Q4** progress theo phase? | **Nowing xin rút — các bạn đã emit rồi.** Lỗi ở parser Nowing | Không gì. Nowing tự sửa trong `9.1a`/`9.3` |
+|**Q5** mode mapping? | **`speed/balanced/quality/auto`** ở Nowing UX. Cần `resolvedMode` trong `done` | Không gì. Đảm bảo `done.resolvedMode` được emit khi `auto` |
 
-**Đường găng:** `42-1` là thứ duy nhất trong bốn câu mà các bạn còn phải làm, và nó đang chặn `9-2` của Nowing lẫn việc Nowing chốt giá cloud.
+**Đường găng:** `42-1` là thứ duy nhất trong năm câu mà các bạn còn phải làm, và nó đang chặn `9-2` của Nowing lẫn việc Nowing chốt giá cloud.
 
 ---
 
-*Soạn bởi Mary (BA, Nowing) — 2026-07-25. Verify bằng code cả hai repo. Companion: `prd-Nowing-2026-07-22/prd.md` §4.9 OQ-7, `ARCHITECTURE-SPINE` AD-15/AD-17, `implementation-readiness-report-2026-07-25.md` U-3.*
+*Soạn bởi Mary (BA, Nowing) — 2026-07-25. Cập nhật 2026-08-05: thêm Q5 (mode mapping), đổi status ADOPTED. Verify bằng code cả hai repo. Companion: `prd-Nowing-2026-07-22/prd.md` §4.9 OQ-7, `ARCHITECTURE-SPINE` AD-15/AD-17, `implementation-readiness-report-2026-07-25.md` U-3.*

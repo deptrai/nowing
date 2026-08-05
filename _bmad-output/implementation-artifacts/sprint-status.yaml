@@ -110,8 +110,8 @@ development_status:
   epic-9: done
   9-1a: done
   9-1b: done
-  9-2: done
-  9-3: done
+  9-2: done  # parse real `costDollars` from ChainLens SSE terminal `done.usage.costDollars` (FR-37); fallback 60k micros only when missing; OQ-7 ADOPTED 2026-08-05
+  9-3: done  # latency budget/State A-B gate fixes, epoch-ms TTFB, mode propagation, rate limit async safety, cost extraction
   9-4: done
   # 9-5 intentionally moved to deferred — see deferred section below.
   9-6a: done
