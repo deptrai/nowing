@@ -50,6 +50,7 @@ MANUAL_UPLOAD_PDF_CANARY_TOKEN = "E2E-MANUAL-UPLOAD-PDF-CANARY-9d2b"
 MANUAL_UPLOAD_PDF_CANARY_FILE = "canary.pdf"
 NO_RELEVANT_CONTENT_SENTINEL = "No relevant indexed content found."
 NO_RELEVANT_CONTENT_QUERY = "E2E_NO_RELEVANT_CONTENT_SMOKE"
+CHAINLENS_RESEARCH_QUERY = "E2E deep research self-host no key"
 
 
 def _content_to_text(content: Any) -> str:
@@ -103,9 +104,53 @@ class FakeChatLLM(BaseChatModel):
             return NO_RELEVANT_CONTENT_SENTINEL
 
         prompt_text = _messages_to_text(messages)
+        in_chainlens_subagent = (
+            "You are the Nowing ChainLens Research sub-agent" in prompt_text
+        )
         latest_tool = _latest_tool_message(messages)
         latest_tool_name = getattr(latest_tool, "name", None)
         latest_tool_text = _content_to_text(latest_tool.content) if latest_tool else ""
+
+        if in_chainlens_subagent and latest_tool_name == "chainlens_research":
+            if (
+                "engine_unavailable" in latest_tool_text
+                or "not_configured" in latest_tool_text
+            ):
+                return json.dumps(
+                    {
+                        "status": "engine_unavailable",
+                        "degradation_reason": "not_configured",
+                        "action_summary": "Deep research engine is unavailable",
+                        "evidence": {
+                            "findings": [],
+                            "sources": [],
+                            "confidence": "low",
+                        },
+                        "next_step": "Set CHAINLENS_API_KEY to enable deep research.",
+                        "missing_fields": None,
+                        "assumptions": None,
+                    }
+                )
+            return json.dumps(
+                {
+                    "status": "success",
+                    "action_summary": "Research complete",
+                    "evidence": {"findings": [], "sources": [], "confidence": "high"},
+                    "next_step": None,
+                    "missing_fields": None,
+                    "assumptions": None,
+                }
+            )
+
+        if (
+            not in_chainlens_subagent
+            and latest_tool_name == "task"
+            and (
+                "chainlens" in latest_tool_text
+                or "engine_unavailable" in latest_tool_text
+            )
+        ):
+            return "The deep research engine is unavailable. Set CHAINLENS_API_KEY to enable deep research."
 
         if (
             latest_tool_name == "read_gmail_email"
@@ -560,15 +605,65 @@ class FakeChatLLM(BaseChatModel):
         latest_tool_name = getattr(latest_tool, "name", None)
         latest_tool_text = _content_to_text(latest_tool.content) if latest_tool else ""
 
+        prompt_text = _messages_to_text(messages)
         # Marker unique to a connector subagent's prompt: the main agent must
         # delegate via ``task``; only the subagent has connector tools registered.
-        in_connector_subagent = "connected-apps specialist" in _messages_to_text(
-            messages
+        in_connector_subagent = "connected-apps specialist" in prompt_text
+        in_chainlens_subagent = (
+            "You are the Nowing ChainLens Research sub-agent" in prompt_text
         )
+
+        # Main agent: delegate deep research to the ``chainlens`` subagent.
+        if (
+            not in_connector_subagent
+            and not in_chainlens_subagent
+            and latest_tool is None
+            and _contains_any(
+                latest_human,
+                ("deep research", "chainlens research", CHAINLENS_RESEARCH_QUERY),
+            )
+        ):
+            return AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "task",
+                        "args": {
+                            "subagent_type": "chainlens",
+                            "description": latest_human,
+                        },
+                        "id": "call_e2e_task_chainlens",
+                    }
+                ],
+            )
+
+        # ChainLens subagent: call the research capability directly.
+        if (
+            in_chainlens_subagent
+            and latest_tool is None
+            and _contains_any(
+                latest_human,
+                ("deep research", "chainlens research", CHAINLENS_RESEARCH_QUERY),
+            )
+        ):
+            return AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "chainlens_research",
+                        "args": {"query": latest_human, "mode": "balanced"},
+                        "id": "call_e2e_chainlens_research",
+                    }
+                ],
+            )
 
         # Main agent: delegate live-tool connector work to its subagent (which
         # then runs the real tools below). Indexed connectors are absent here.
-        if not in_connector_subagent and latest_tool is None:
+        if (
+            not in_connector_subagent
+            and not in_chainlens_subagent
+            and latest_tool is None
+        ):
             connector_delegations = (
                 ("gmail", ("gmail", "email", "message", GMAIL_CANARY_SUBJECT)),
                 ("calendar", ("calendar", "event", "meeting", CALENDAR_CANARY_SUMMARY)),

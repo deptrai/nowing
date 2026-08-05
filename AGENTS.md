@@ -163,3 +163,34 @@ python -m nowing_evals ingest chat regression
 python -m nowing_evals run chat regression --search-space-id <SEARCH_SPACE_ID> --concurrency 1
 python -m nowing_evals report --suite chat
 ```
+
+## Story 9.1a verification commands (Research Degradation & Self-Host Independence)
+
+Backend (from `nowing_backend/`):
+
+```bash
+ruff check app/capabilities/chainlens/research app/capabilities/core/access/rest.py app/capabilities/core/access/agent.py tests/unit/capabilities/chainlens/research tests/unit/capabilities/access/test_rest_router.py tests/unit/capabilities/access/test_agent_tools.py
+ruff format app/capabilities/chainlens/research app/capabilities/core/access/rest.py app/capabilities/core/access/agent.py tests/unit/capabilities/chainlens/research tests/unit/capabilities/access/test_rest_router.py tests/unit/capabilities/access/test_agent_tools.py
+pytest tests/unit/capabilities/chainlens/research -q
+pytest tests/unit/capabilities/access/test_rest_router.py tests/unit/capabilities/access/test_agent_tools.py -q
+pytest tests/unit/capabilities/test_billing.py tests/unit/utils/test_crawl_classifier.py -q
+```
+
+E2E (from `nowing_web/`, requires backend with `CHAINLENS_API_KEY=""` and `DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED=true` so the agent research tool returns its result inline in the hermetic fake environment):
+
+```bash
+docker compose -f docker/docker-compose.deps-only.yml up -d db redis
+cd nowing_backend
+CHAINLENS_API_KEY="" DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED=true uv run python tests/e2e/run_backend.py
+# in another shell:
+CHAINLENS_API_KEY="" DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED=true uv run python tests/e2e/run_celery.py
+# in another shell:
+cd nowing_web
+NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8001 pnpm build
+# `next start` is not compatible with `output: standalone`; use the standalone server:
+NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8001 PORT=3000 node .next/standalone/nowing_web/server.js
+# in another shell:
+PLAYWRIGHT_NO_WEB_SERVER=1 NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8001 NOWING_BACKEND_INTERNAL_URL=http://localhost:8001 pnpm test:e2e tests/research/research-degradation.spec.ts
+# and the chat/agent path:
+PLAYWRIGHT_NO_WEB_SERVER=1 NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8001 NOWING_BACKEND_INTERNAL_URL=http://localhost:8001 pnpm test:e2e tests/research/research-degradation-chat.spec.ts
+```

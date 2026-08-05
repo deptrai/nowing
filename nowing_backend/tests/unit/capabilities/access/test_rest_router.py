@@ -40,8 +40,18 @@ def _build_app(capabilities, monkeypatch) -> FastAPI:
     from app.capabilities.core.access.rate_limit import enforce_capability_rate_limit
 
     monkeypatch.setattr(rest, "check_workspace_access", _noop_async, raising=True)
-    monkeypatch.setattr(rest, "record_and_publish_sync_run", _fake_record, raising=False)
-    monkeypatch.setattr(rest, "record_and_publish_sync_run_error", _fake_record, raising=False)
+    monkeypatch.setattr(
+        rest, "record_and_publish_sync_run", _fake_record, raising=False
+    )
+    monkeypatch.setattr(
+        rest, "record_and_publish_sync_run_error", _fake_record, raising=False
+    )
+    monkeypatch.setattr(
+        rest,
+        "workspace_limit_service",
+        SimpleNamespace(check_run_limit=_noop_async),
+        raising=False,
+    )
 
     app = FastAPI()
     app.include_router(rest.build_capabilities_router(capabilities), prefix="/api/v1")
