@@ -1,0 +1,1311 @@
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/automation/prompt.py b/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/automation/prompt.py
+index 9d37d4ac9..d7e76d36e 100644
+--- a/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/automation/prompt.py
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/tools/automation/prompt.py
+@@ -44,7 +44,7 @@ Required JSON shape:
+   "name": "<1-200 char identifier>",
+   "description": "<one-liner or null>",
+   "definition": {
+-    "schema_version": "1.0",
++    "schema_version": "1.1",
+     "name": "<same as outer name>",
+     "goal": "<one sentence>",
+     "plan": [
+@@ -105,7 +105,7 @@ output:
+   "name": "Daily folder 12 digest",
+   "description": "Weekday 09:00 UTC summary of folder 12 documents posted to #daily-digest",
+   "definition": {
+-    "schema_version": "1.0",
++    "schema_version": "1.1",
+     "name": "Daily folder 12 digest",
+     "goal": "Summarize new docs in folder 12 since the last run and post to #daily-digest",
+     "plan": [
+@@ -137,7 +137,7 @@ output:
+   "name": "Weekly CORE Jira recap",
+   "description": "Monday 07:00 Europe/Paris recap of last week's CORE Jira issues, drafted to Notion",
+   "definition": {
+-    "schema_version": "1.0",
++    "schema_version": "1.1",
+     "name": "Weekly CORE Jira recap",
+     "goal": "Recap last week's CORE Jira issues into a Notion page",
+     "plan": [
+@@ -169,7 +169,7 @@ output:
+   "name": "Daily folder 12 Slack digest",
+   "description": "Weekday 09:00 UTC summary of folder 12 documents posted to #daily-digest",
+   "definition": {
+-    "schema_version": "1.0",
++    "schema_version": "1.1",
+     "name": "Daily folder 12 Slack digest",
+     "goal": "Summarize new docs in folder 12 since the last run and post to #daily-digest",
+     "plan": [
+diff --git a/nowing_backend/app/automations/actions/builtin/continue_research/invoke.py b/nowing_backend/app/automations/actions/builtin/continue_research/invoke.py
+index 4acfe5aab..e9ecc059f 100644
+--- a/nowing_backend/app/automations/actions/builtin/continue_research/invoke.py
++++ b/nowing_backend/app/automations/actions/builtin/continue_research/invoke.py
+@@ -9,10 +9,16 @@ diverges from ``nowing_continue_research``.
+ The thread is loaded by id AND workspace so a thread from another workspace is
+ unreachable, and a missing thread fails the step with a clear error — never
+ creating one implicitly (consistent with Story 4.6, AC-2).
++
++Story 3.14 (D9) pins new (``schema_version 1.1``) writes to ``top_k`` 1..5. A
++persisted ``schema_version 1.0`` run instead validates against the wider legacy
++1..100 ceiling, then a still-valid 6..100 value is clamped to 5 with a one-time
++warning logged before the recall runs.
+ """
+ 
+ from __future__ import annotations
+ 
++import logging
+ from typing import Any
+ 
+ from sqlalchemy import select
+@@ -23,12 +29,36 @@ from app.services.memory.search import MemoryHybridSearch
+ from app.services.memory.thread_citations import collect_thread_citations
+ 
+ from ...types import ActionContext
+-from .params import ContinueResearchActionParams
++from .params import ContinueResearchActionParams, _LegacyContinueResearchActionParams
++
++logger = logging.getLogger(__name__)
++
++_LEGACY_SCHEMA_VERSION = "1.0"
++_STRICT_TOP_K_CEILING = 5
+ 
+ 
+ async def continue_research(ctx: ActionContext, params: dict[str, Any]) -> dict[str, Any]:
+     """Recall a research thread's memories + prior citations for the step output."""
+-    parsed = ContinueResearchActionParams.model_validate(params)
++    if ctx.schema_version == _LEGACY_SCHEMA_VERSION:
++        parsed = _LegacyContinueResearchActionParams.model_validate(params)
++        top_k = parsed.top_k
++        if top_k > _STRICT_TOP_K_CEILING:
++            logger.warning(
++                "continue_research: schema_version %s requested top_k=%d, "
++                "clamping to %d",
++                ctx.schema_version,
++                top_k,
++                _STRICT_TOP_K_CEILING,
++                extra={
++                    "action": "continue_research",
++                    "schema_version": ctx.schema_version,
++                    "reason": "top_k_above_5",
++                },
++            )
++            top_k = _STRICT_TOP_K_CEILING
++    else:
++        parsed = ContinueResearchActionParams.model_validate(params)
++        top_k = parsed.top_k
+ 
+     thread = await ctx.session.scalar(
+         select(ResearchThread).where(
+@@ -44,11 +74,11 @@ async def continue_research(ctx: ActionContext, params: dict[str, Any]) -> dict[
+ 
+     # Same recall path as the research-continuity route: an empty query recalls
+     # the thread's most recent memories (recency-ordered), matching nowing_recall.
+-    memories = await MemoryHybridSearch(ctx.session).search(
++    hits = await MemoryHybridSearch(ctx.session).search(
+         workspace_id=ctx.workspace_id,
+         query="",
+         query_embedding=None,
+-        top_k=parsed.top_k,
++        top_k=top_k,
+         research_thread_id=parsed.research_thread_id,
+     )
+ 
+@@ -58,16 +88,17 @@ async def continue_research(ctx: ActionContext, params: dict[str, Any]) -> dict[
+         "research_thread_id": parsed.research_thread_id,
+         "memories": [
+             MemorySearchHit(
+-                id=memory.id,
+-                content=memory.content,
+-                type=memory.type.value,
+-                tags=memory.tags or [],
+-                confidence=memory.confidence,
+-                source_type=memory.source_type.value,
+-                source_id=memory.source_id,
+-                score=0.0,
++                id=hit.memory.id,
++                content=hit.memory.content,
++                type=hit.memory.type.value,
++                tags=hit.memory.tags or [],
++                confidence=hit.memory.confidence,
++                source_type=hit.memory.source_type.value,
++                source_id=hit.memory.source_id,
++                score=hit.score,
++                similarity=hit.similarity,
+             ).model_dump(mode="json")
+-            for memory in memories
++            for hit in hits
+         ],
+         "citations": [citation.model_dump(mode="json") for citation in citations],
+     }
+diff --git a/nowing_backend/app/automations/actions/builtin/continue_research/params.py b/nowing_backend/app/automations/actions/builtin/continue_research/params.py
+index 2e8d826dc..df32a9c65 100644
+--- a/nowing_backend/app/automations/actions/builtin/continue_research/params.py
++++ b/nowing_backend/app/automations/actions/builtin/continue_research/params.py
+@@ -1,9 +1,18 @@
+-"""``ContinueResearchActionParams`` — params for the ``continue_research`` action."""
++"""``ContinueResearchActionParams`` — params for the ``continue_research`` action.
++
++Story 3.14 (D9) pins new (schema_version 1.1) writes to ``top_k`` 1..5. A
++persisted ``schema_version 1.0`` (or missing-version legacy) run still needs to
++honour its old 1..100 ceiling, so :class:`_LegacyContinueResearchActionParams`
++keeps that wider range for ``invoke.py`` to validate against and then clamp
++6..100 down to 5 with a warning — never used as a new-write producer.
++"""
+ 
+ from __future__ import annotations
+ 
+ from pydantic import BaseModel, ConfigDict, Field
+ 
++from app.utils.strict_fields import strict_top_k
++
+ 
+ class ContinueResearchActionParams(BaseModel):
+     """Resume a saved research thread: recall its memories + prior citations."""
+@@ -14,9 +23,20 @@ class ContinueResearchActionParams(BaseModel):
+         ...,
+         description="Id of the research thread to continue (must exist in the workspace).",
+     )
+-    top_k: int = Field(
+-        default=5,
+-        ge=1,
+-        le=100,
+-        description="Number of thread-scoped memories to recall.",
++    top_k: strict_top_k(
++        le=5, description="Number of thread-scoped memories to recall."
++    ) = 5
++
++
++class _LegacyContinueResearchActionParams(BaseModel):
++    """``schema_version 1.0``-only: same shape, wider legacy ``top_k`` ceiling."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    research_thread_id: int = Field(
++        ...,
++        description="Id of the research thread to continue (must exist in the workspace).",
+     )
++    top_k: strict_top_k(
++        le=100, description="Number of thread-scoped memories to recall."
++    ) = 5
+diff --git a/nowing_backend/app/automations/actions/types.py b/nowing_backend/app/automations/actions/types.py
+index 0273559f3..4263e9d27 100644
+--- a/nowing_backend/app/automations/actions/types.py
++++ b/nowing_backend/app/automations/actions/types.py
+@@ -26,6 +26,12 @@ class ActionContext:
+     chat_model_id: int | None = None
+     image_gen_model_id: int | None = None
+     vision_model_id: int | None = None
++    # ``AutomationDefinition.schema_version`` of the run this step belongs to
++    # (Story 3.14, D9). Defaults to the current new-write producer version so
++    # call sites that don't thread a run's definition through (unit/integration
++    # tests constructing ``ActionContext`` directly) get today's strict 1..5
++    # ``continue_research`` behaviour rather than the legacy 1..100 path.
++    schema_version: str = "1.1"
+ 
+ 
+ ActionHandler = Callable[[dict[str, Any]], Awaitable[Any]]
+diff --git a/nowing_backend/app/automations/actions/validation.py b/nowing_backend/app/automations/actions/validation.py
+new file mode 100644
+index 000000000..2f2c382df
+--- /dev/null
++++ b/nowing_backend/app/automations/actions/validation.py
+@@ -0,0 +1,115 @@
++"""Save-time validation of a plan's ``params`` against each step's action model.
++
++Story 3.14 (D9): before this module, ``AutomationService.create()``/``update()``
++validated only trigger params — a plan step with an unknown action, an unknown
++params key, a missing required field, or an out-of-range literal (e.g.
++``continue_research`` ``top_k=6``) reached a run before any error surfaced.
++
++A Jinja-templated value (``{{ ... }}``) can't be checked before the template
++context exists at run time, so it's exempted per-field rather than failing the
++whole step. When every field is static the full ``params_model`` validates at
++once (covering cross-field validators); when some are templated, only the
++non-templated fields validate — individually, via
++``FieldInfo.rebuild_annotation()`` + ``TypeAdapter`` — so a static field next to
++a templated sibling is still checked (e.g. a literal ``top_k=6`` fails even
++though ``query`` is templated).
++"""
++
++from __future__ import annotations
++
++import re
++from typing import Any
++
++from pydantic import TypeAdapter, ValidationError
++
++from app.automations.actions import get_action
++from app.automations.schemas.definition.plan_step import PlanStep
++
++_JINJA_PATTERN = re.compile(r"{{.*?}}", re.DOTALL)
++
++
++class StepValidationError(ValueError):
++    """A plan step's action or params failed save-time validation."""
++
++    def __init__(self, step_id: str, message: str) -> None:
++        super().__init__(f"step {step_id!r}: {message}")
++        self.step_id = step_id
++
++
++def validate_plan_steps(plan: list[PlanStep]) -> None:
++    """Validate every step's params against its registered action.
++
++    Raises :class:`StepValidationError` on the first failing step.
++    """
++    for step in plan:
++        _validate_step(step)
++
++
++def _validate_step(step: PlanStep) -> None:
++    action = get_action(step.action)
++    if action is None:
++        raise StepValidationError(step.step_id, f"unknown action {step.action!r}")
++
++    params = step.params or {}
++    model_fields = action.params_model.model_fields
++
++    for key in params:
++        if key not in model_fields:
++            raise StepValidationError(
++                step.step_id,
++                f"unknown params field {key!r} for action {step.action!r}",
++            )
++
++    try:
++        templated_keys = {
++            key for key, value in params.items() if _is_templated(value)
++        }
++    except ValueError as exc:
++        raise StepValidationError(step.step_id, str(exc)) from exc
++
++    if not templated_keys:
++        try:
++            action.params_model.model_validate(params)
++        except ValidationError as exc:
++            raise StepValidationError(step.step_id, str(exc)) from exc
++        return
++
++    missing = sorted(
++        name
++        for name, field in model_fields.items()
++        if field.is_required() and name not in params
++    )
++    if missing:
++        raise StepValidationError(
++            step.step_id, f"missing required field(s): {', '.join(missing)}"
++        )
++
++    for key, value in params.items():
++        if key in templated_keys:
++            continue
++        adapter = TypeAdapter(model_fields[key].rebuild_annotation())
++        try:
++            adapter.validate_python(value)
++        except ValidationError as exc:
++            raise StepValidationError(step.step_id, f"{key}: {exc}") from exc
++
++
++def _is_templated(value: Any) -> bool:
++    """Detect a Jinja template anywhere in a string, list, or dict (B12).
++
++    A string containing ``{{`` or ``}}`` without a balanced pair is treated as
++    a malformed template and raises ``ValueError`` rather than passing static
++    validation silently.
++    """
++
++    if isinstance(value, str):
++        if "{{" in value or "}}" in value:
++            if not _JINJA_PATTERN.search(value):
++                raise ValueError(f"malformed Jinja template markers in {value!r}")
++            return True
++        return False
++    if isinstance(value, list):
++        return any(_is_templated(item) for item in value)
++    if isinstance(value, dict):
++        return any(_is_templated(v) for v in value.values())
++    return False
+diff --git a/nowing_backend/app/automations/runtime/executor.py b/nowing_backend/app/automations/runtime/executor.py
+index 399685c40..e9070ff91 100644
+--- a/nowing_backend/app/automations/runtime/executor.py
++++ b/nowing_backend/app/automations/runtime/executor.py
+@@ -9,10 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
+ from app.automations.actions.types import ActionContext
+ from app.automations.persistence.enums.run_status import RunStatus
+ from app.automations.persistence.models.run import AutomationRun
+-from app.automations.schemas.definition.envelope import (
+-    AutomationDefinition,
+-    AutomationModels,
+-)
++from app.automations.schemas.definition.envelope import AutomationDefinition
+ from app.automations.schemas.definition.plan_step import PlanStep
+ from app.automations.templating import build_run_context
+ 
+@@ -61,7 +58,7 @@ async def execute_run(session: AsyncSession, run_id: int) -> None:
+ 
+         for step in definition.plan:
+             template_ctx = _build_template_ctx(run, step_outputs)
+-            action_ctx = _build_action_ctx(session, run, step, definition.models)
++            action_ctx = _build_action_ctx(session, run, step, definition)
+             result = await execute_step(
+                 step=step,
+                 template_context=template_ctx,
+@@ -141,7 +138,7 @@ async def _run_on_failure(
+         return
+     template_ctx = _build_template_ctx(run, step_outputs={})
+     for step in definition.execution.on_failure:
+-        action_ctx = _build_action_ctx(session, run, step, definition.models)
++        action_ctx = _build_action_ctx(session, run, step, definition)
+         result = await execute_step(
+             step=step,
+             template_context=template_ctx,
+@@ -179,9 +176,10 @@ def _build_action_ctx(
+     session: AsyncSession,
+     run: AutomationRun,
+     step: PlanStep,
+-    models: AutomationModels | None,
++    definition: AutomationDefinition,
+ ) -> ActionContext:
+     automation = run.automation
++    models = definition.models
+     return ActionContext(
+         session=session,
+         run_id=run.id,
+@@ -191,4 +189,5 @@ def _build_action_ctx(
+         chat_model_id=models.chat_model_id if models else None,
+         image_gen_model_id=models.image_gen_model_id if models else None,
+         vision_model_id=models.vision_model_id if models else None,
++        schema_version=definition.schema_version,
+     )
+diff --git a/nowing_backend/app/automations/runtime/step.py b/nowing_backend/app/automations/runtime/step.py
+index 6e7c9c671..406fc0b82 100644
+--- a/nowing_backend/app/automations/runtime/step.py
++++ b/nowing_backend/app/automations/runtime/step.py
+@@ -6,6 +6,8 @@ from collections.abc import Mapping
+ from datetime import UTC, datetime
+ from typing import Any
+ 
++from pydantic import ValidationError
++
+ from app.automations.actions import get_action
+ from app.automations.actions.types import ActionContext
+ from app.automations.schemas.definition.plan_step import PlanStep
+@@ -56,6 +58,16 @@ async def execute_step(
+             },
+         )
+ 
++    # B10: v1.1 runs validate the fully-rendered params against the registered
++    # model before the handler is built and before any retry loop.
++    if getattr(action_context, "schema_version", None) == "1.1":
++        try:
++            action.params_model.model_validate(resolved_params)
++        except ValidationError as exc:
++            return _result(
++                step, "failed", started_at, attempts=0, error=_error(exc, "params")
++            )
++
+     handler = action.build_handler(action_context)
+ 
+     max_retries = (
+diff --git a/nowing_backend/app/automations/schemas/definition/envelope.py b/nowing_backend/app/automations/schemas/definition/envelope.py
+index 0a59ff168..3a57f5335 100644
+--- a/nowing_backend/app/automations/schemas/definition/envelope.py
++++ b/nowing_backend/app/automations/schemas/definition/envelope.py
+@@ -2,6 +2,8 @@
+ 
+ from __future__ import annotations
+ 
++from typing import Literal
++
+ from pydantic import BaseModel, ConfigDict, Field
+ 
+ from .execution import Execution
+@@ -31,7 +33,9 @@ class AutomationDefinition(BaseModel):
+ 
+     model_config = ConfigDict(extra="forbid")
+ 
+-    schema_version: str = "1.0"
++    # B11: only 1.0 (legacy-read) and 1.1 (new-write producer) are supported.
++    # The default is the legacy parser value; create/update always overwrite to "1.1".
++    schema_version: Literal["1.0", "1.1"] = "1.0"
+     name: str = Field(..., min_length=1, max_length=200)
+     goal: str | None = None
+     inputs: Inputs | None = None
+diff --git a/nowing_backend/app/automations/services/automation.py b/nowing_backend/app/automations/services/automation.py
+index a419327bf..52e02bc5b 100644
+--- a/nowing_backend/app/automations/services/automation.py
++++ b/nowing_backend/app/automations/services/automation.py
+@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
+ from sqlalchemy.orm import selectinload
+ 
+ from app.auth.context import AuthContext
++from app.automations.actions.validation import StepValidationError, validate_plan_steps
+ from app.automations.persistence.enums.trigger_type import TriggerType
+ from app.automations.persistence.models.automation import Automation
+ from app.automations.persistence.models.trigger import AutomationTrigger
+@@ -20,6 +21,7 @@ from app.automations.schemas.api import (
+     TriggerCreate,
+ )
+ from app.automations.schemas.definition.envelope import AutomationModels
++from app.automations.schemas.definition.plan_step import PlanStep
+ from app.automations.services.model_policy import (
+     AutomationModelPolicyError,
+     assert_automation_models_billable,
+@@ -45,6 +47,15 @@ class AutomationService:
+         """Create an automation and its initial triggers in one transaction."""
+         await self._authorize(payload.workspace_id, Permission.AUTOMATIONS_CREATE.value)
+ 
++        # B8: validate both the main plan and on_failure steps at save time.
++        self._validate_plan_or_raise(payload.definition.plan)
++        self._validate_plan_or_raise(payload.definition.execution.on_failure or [])
++        # New-write producer: always persist the current schema version, even
++        # when the client omits it or still sends the legacy "1.0" (Story 3.14,
++        # D9 point 1/3) — the envelope's "1.0" default is legacy-read
++        # compatibility only, never a value a create/update call should persist.
++        payload.definition.schema_version = "1.1"
++
+         # Capture the model profile onto the definition so runs are insulated
+         # from later chat/workspace model changes. Two sources:
+         #   1. Explicit per-automation selection in ``payload.definition.models``
+@@ -129,6 +140,17 @@ class AutomationService:
+         if "status" in data:
+             automation.status = data["status"]
+         if "definition" in data:
++            # B9: `definition: null` is not a valid update payload.
++            if patch.definition is None:
++                raise HTTPException(status_code=422, detail="definition cannot be null")
++            # B8: validate both the main plan and on_failure steps at save time.
++            self._validate_plan_or_raise(patch.definition.plan)
++            self._validate_plan_or_raise(patch.definition.execution.on_failure or [])
++            # Same new-write normalization as create() — an edited definition
++            # always persists as the current schema version (Story 3.14, D9
++            # point 1/3). A patch that omits "definition" entirely never
++            # reaches this branch, so the old snapshot/version is untouched.
++            patch.definition.schema_version = "1.1"
+             new_def = patch.definition.model_dump(mode="json", by_alias=True)
+             # Model snapshot handling on edit:
+             #   * absent in the patch  -> preserve the captured snapshot
+@@ -232,6 +254,15 @@ class AutomationService:
+         except AutomationModelPolicyError as exc:
+             raise HTTPException(status_code=422, detail=str(exc)) from exc
+ 
++    def _validate_plan_or_raise(self, plan: list[PlanStep]) -> None:
++        """422 on an unknown action, unknown/missing params, or an out-of-range
++        static value (Story 3.14, D9 point 4) — never lets a broken step reach
++        a run."""
++        try:
++            validate_plan_steps(plan)
++        except StepValidationError as exc:
++            raise HTTPException(status_code=422, detail=str(exc)) from exc
++
+     async def _authorize(self, workspace_id: int, permission: str) -> None:
+         await check_permission(
+             self.session,
+diff --git a/nowing_backend/app/utils/strict_fields.py b/nowing_backend/app/utils/strict_fields.py
+new file mode 100644
+index 000000000..2544b9b86
+--- /dev/null
++++ b/nowing_backend/app/utils/strict_fields.py
+@@ -0,0 +1,37 @@
++"""Shared Pydantic field types that reject ``bool`` where an ``int`` is expected.
++
++Pydantic v2's lax-mode ``int`` validation silently coerces ``True``/``False`` to
++``1``/``0`` and does not reject a bool value even when ``ge``/``le`` constraints
++are present on a plain ``int``-typed field. A :class:`~pydantic.BeforeValidator`
++runs before that coercion, so it is the only place a bool can be turned away
++(Story 3.14, D9 — "bool is invalid everywhere").
++"""
++
++from __future__ import annotations
++
++from typing import Annotated
++
++from pydantic import BeforeValidator, Field, StrictInt
++
++
++def _reject_bool(value: object) -> object:
++    if isinstance(value, bool):
++        raise ValueError("must be an integer, not a boolean")
++    return value
++
++
++def strict_top_k(*, le: int, description: str) -> type:
++    """An ``Annotated[int, ...]`` field type: ``ge=1``, ``le=le``, bool rejected.
++
++    Usable as a class attribute annotation (``top_k: strict_top_k(le=5, ...) = 5``)
++    and, via ``FieldInfo.rebuild_annotation()`` + ``TypeAdapter``, for validating a
++    single field's value outside of a full model (see
++    ``app.automations.actions.validation``).
++    """
++    # B13: StrictInt rejects float/string coercion; BeforeValidator rejects bool
++    # (bool is a subclass of int, so StrictInt alone would still allow it).
++    return Annotated[
++        StrictInt,
++        BeforeValidator(_reject_bool),
++        Field(ge=1, le=le, description=description),
++    ]
+diff --git a/nowing_backend/tests/integration/automations/actions/builtin/continue_research/test_continue_research.py b/nowing_backend/tests/integration/automations/actions/builtin/continue_research/test_continue_research.py
+index 054409dd6..2a9dcfe2e 100644
+--- a/nowing_backend/tests/integration/automations/actions/builtin/continue_research/test_continue_research.py
++++ b/nowing_backend/tests/integration/automations/actions/builtin/continue_research/test_continue_research.py
+@@ -90,7 +90,7 @@ async def _make_research_thread(session, workspace, user, *, title="Q3 research"
+     return thread
+ 
+ 
+-def _action_context(session, workspace, user):
++def _action_context(session, workspace, user, *, schema_version="1.1"):
+     from app.automations.actions.types import ActionContext
+ 
+     return ActionContext(
+@@ -99,6 +99,7 @@ def _action_context(session, workspace, user):
+         step_id="continue",
+         workspace_id=workspace.id,
+         creator_user_id=user.id,
++        schema_version=schema_version,
+     )
+ 
+ 
+@@ -149,7 +150,7 @@ async def test_continue_research_recall_matches_hybrid_search(
+     )
+     result = await handler({"research_thread_id": thread.id, "top_k": 5})
+ 
+-    assert [m["id"] for m in result["memories"]] == [m.id for m in expected]
++    assert [m["id"] for m in result["memories"]] == [hit.memory.id for hit in expected]
+ 
+ 
+ async def test_continue_research_citations_match_thread_citations(
+@@ -313,3 +314,118 @@ async def test_continue_research_top_k_limits_recall(db_session, db_workspace, d
+     result = await handler({"research_thread_id": thread.id, "top_k": 2})
+ 
+     assert len(result["memories"]) == 2
++
++
++# --- Story 3.14 (D9): schema_version-gated top_k contract -----------------------
++
++
++async def test_continue_research_new_schema_rejects_top_k_above_five(
++    db_session, db_workspace, db_user
++):
++    """A ``schema_version 1.1`` (default/new-write) run never accepts top_k > 5."""
++    from pydantic import ValidationError
++
++    from app.automations.actions.store import get_action
++    from app.db import ResearchThread
++
++    thread = ResearchThread(
++        workspace_id=db_workspace.id, created_by_id=db_user.id, title="T"
++    )
++    db_session.add(thread)
++    await db_session.flush()
++
++    handler = get_action("continue_research").build_handler(
++        _action_context(db_session, db_workspace, db_user, schema_version="1.1")
++    )
++
++    with pytest.raises(ValidationError):
++        await handler({"research_thread_id": thread.id, "top_k": 6})
++
++
++async def test_continue_research_legacy_schema_clamps_top_k_with_warning(
++    db_session, db_workspace, db_user, caplog
++):
++    """A persisted ``schema_version 1.0`` run still accepts a legacy top_k above
++    5 (up to 100), but the recall is clamped to 5 with a warning logged."""
++    from app.automations.actions.store import get_action
++    from app.db import Memory, MemorySourceType, MemoryType, ResearchThread
++
++    thread = ResearchThread(
++        workspace_id=db_workspace.id, created_by_id=db_user.id, title="Legacy thread"
++    )
++    db_session.add(thread)
++    await db_session.flush()
++
++    for i in range(7):
++        db_session.add(
++            Memory(
++                workspace_id=db_workspace.id,
++                content=f"Legacy fact {i}.",
++                embedding=[0.1 * (i + 1)] * 384,
++                type=MemoryType.SEMANTIC,
++                source_type=MemorySourceType.MANUAL,
++                research_thread_id=thread.id,
++                created_by_id=db_user.id,
++            )
++        )
++    await db_session.flush()
++
++    handler = get_action("continue_research").build_handler(
++        _action_context(db_session, db_workspace, db_user, schema_version="1.0")
++    )
++
++    with caplog.at_level("WARNING"):
++        result = await handler({"research_thread_id": thread.id, "top_k": 50})
++
++    assert len(result["memories"]) == 5  # clamped, never the raw legacy value
++    assert "top_k" not in result  # record unmodified — clamp is recall-only
++    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
++    assert any("clamping" in r.message for r in warnings)
++
++
++async def test_continue_research_legacy_schema_rejects_above_legacy_ceiling(
++    db_session, db_workspace, db_user
++):
++    """Even the wider legacy ceiling (100) is enforced — 101 still fails clean."""
++    from pydantic import ValidationError
++
++    from app.automations.actions.store import get_action
++    from app.db import ResearchThread
++
++    thread = ResearchThread(
++        workspace_id=db_workspace.id, created_by_id=db_user.id, title="T"
++    )
++    db_session.add(thread)
++    await db_session.flush()
++
++    handler = get_action("continue_research").build_handler(
++        _action_context(db_session, db_workspace, db_user, schema_version="1.0")
++    )
++
++    with pytest.raises(ValidationError):
++        await handler({"research_thread_id": thread.id, "top_k": 101})
++
++
++async def test_continue_research_legacy_schema_within_ceiling_is_not_clamped(
++    db_session, db_workspace, db_user, caplog
++):
++    """A legacy top_k already within the strict ceiling (<=5) recalls as-is —
++    no clamp, no warning."""
++    from app.automations.actions.store import get_action
++    from app.db import ResearchThread
++
++    thread = ResearchThread(
++        workspace_id=db_workspace.id, created_by_id=db_user.id, title="T"
++    )
++    db_session.add(thread)
++    await db_session.flush()
++
++    handler = get_action("continue_research").build_handler(
++        _action_context(db_session, db_workspace, db_user, schema_version="1.0")
++    )
++
++    with caplog.at_level("WARNING"):
++        result = await handler({"research_thread_id": thread.id, "top_k": 5})
++
++    assert result["research_thread_id"] == thread.id
++    assert not any("clamping" in r.message for r in caplog.records)
+diff --git a/nowing_backend/tests/unit/agents/multi_agent_chat/test_automation_prompt.py b/nowing_backend/tests/unit/agents/multi_agent_chat/test_automation_prompt.py
+new file mode 100644
+index 000000000..af995daef
+--- /dev/null
++++ b/nowing_backend/tests/unit/agents/multi_agent_chat/test_automation_prompt.py
+@@ -0,0 +1,23 @@
++"""Story 3.14 (D9): the automation drafter must only ever emit ``schema_version``
++``1.1`` — the parser's ``"1.0"`` default is legacy-read compatibility only, not a
++new-write producer (see story Dev Notes, "Definitive touch set")."""
++
++from __future__ import annotations
++
++import pytest
++
++from app.agents.chat.multi_agent_chat.main_agent.tools.automation.prompt import (
++    build_draft_prompt,
++)
++
++pytestmark = pytest.mark.unit
++
++
++def test_rendered_prompt_emits_four_schema_version_1_1_occurrences() -> None:
++    prompt = build_draft_prompt(workspace_id=7, intent="do something useful")
++    assert prompt.count('"schema_version": "1.1"') == 4
++
++
++def test_rendered_prompt_never_emits_a_new_write_schema_version_1_0() -> None:
++    prompt = build_draft_prompt(workspace_id=7, intent="do something useful")
++    assert '"schema_version": "1.0"' not in prompt
+diff --git a/nowing_backend/tests/unit/automations/actions/builtin/continue_research/test_params.py b/nowing_backend/tests/unit/automations/actions/builtin/continue_research/test_params.py
+index 484c9e433..558dcaf3f 100644
+--- a/nowing_backend/tests/unit/automations/actions/builtin/continue_research/test_params.py
++++ b/nowing_backend/tests/unit/automations/actions/builtin/continue_research/test_params.py
+@@ -1,14 +1,13 @@
+-"""``ContinueResearchActionParams`` contract (Story 6.5, AC-3, FR-35).
++"""``ContinueResearchActionParams`` contract (Story 6.5 AC-3, FR-35; Story 3.14 D9).
+ 
+-Red-phase ATDD scaffolds. The ``continue_research`` action params model does not
+-exist yet, so app imports happen inside each test; every test is skipped until
+-``dev-story`` builds it.
+-
+-Expected surface (mirrors ``builtin/write_back_notion/params.py``):
++Surface:
+     app.automations.actions.builtin.continue_research.params.ContinueResearchActionParams
+       - research_thread_id: int   # required
+-      - top_k: int = 5
++      - top_k: int = 5, ge=1, le=5, bool rejected  # new-write producer (schema_version 1.1)
+       - model_config = ConfigDict(extra="forbid")
++
++    app.automations.actions.builtin.continue_research.params._LegacyContinueResearchActionParams
++      - same shape, top_k ge=1, le=100, bool rejected  # schema_version 1.0 reads only
+ """
+ 
+ from __future__ import annotations
+@@ -43,10 +42,10 @@ def test_accepts_research_thread_id_and_top_k() -> None:
+         ContinueResearchActionParams,
+     )
+ 
+-    params = ContinueResearchActionParams(research_thread_id=7, top_k=10)
++    params = ContinueResearchActionParams(research_thread_id=7, top_k=3)
+ 
+     assert params.research_thread_id == 7
+-    assert params.top_k == 10
++    assert params.top_k == 3
+ 
+ 
+ def test_extra_keys_are_forbidden() -> None:
+@@ -69,13 +68,13 @@ def test_top_k_rejects_zero() -> None:
+ 
+ 
+ def test_top_k_rejects_above_ceiling() -> None:
+-    """``top_k`` has a ceiling of 100 (``le=100``) to bound the recall payload."""
++    """Story 3.14 (D9): new-write ``top_k`` ceiling is 5, not the old 100."""
+     from app.automations.actions.builtin.continue_research.params import (
+         ContinueResearchActionParams,
+     )
+ 
+     with pytest.raises(ValueError):
+-        ContinueResearchActionParams(research_thread_id=1, top_k=101)
++        ContinueResearchActionParams(research_thread_id=1, top_k=6)
+ 
+ 
+ def test_top_k_accepts_inclusive_bounds() -> None:
+@@ -85,4 +84,74 @@ def test_top_k_accepts_inclusive_bounds() -> None:
+     )
+ 
+     assert ContinueResearchActionParams(research_thread_id=1, top_k=1).top_k == 1
+-    assert ContinueResearchActionParams(research_thread_id=1, top_k=100).top_k == 100
++    assert ContinueResearchActionParams(research_thread_id=1, top_k=5).top_k == 5
++
++
++def test_top_k_rejects_bool() -> None:
++    """Story 3.14 (D9): bool is invalid everywhere, even though it's an int subclass."""
++    from app.automations.actions.builtin.continue_research.params import (
++        ContinueResearchActionParams,
++    )
++
++    with pytest.raises(ValueError):
++        ContinueResearchActionParams(research_thread_id=1, top_k=True)
++
++
++# --- _LegacyContinueResearchActionParams (schema_version 1.0 reads only) ---------
++
++
++def test_legacy_top_k_defaults_to_5() -> None:
++    from app.automations.actions.builtin.continue_research.params import (
++        _LegacyContinueResearchActionParams,
++    )
++
++    params = _LegacyContinueResearchActionParams(research_thread_id=1)
++
++    assert params.top_k == 5
++
++
++def test_legacy_accepts_wider_range() -> None:
++    """The legacy model still accepts the old 1..100 range (clamping happens in invoke.py)."""
++    from app.automations.actions.builtin.continue_research.params import (
++        _LegacyContinueResearchActionParams,
++    )
++
++    params = _LegacyContinueResearchActionParams(research_thread_id=7, top_k=100)
++
++    assert params.top_k == 100
++
++
++def test_legacy_top_k_rejects_zero() -> None:
++    from app.automations.actions.builtin.continue_research.params import (
++        _LegacyContinueResearchActionParams,
++    )
++
++    with pytest.raises(ValueError):
++        _LegacyContinueResearchActionParams(research_thread_id=1, top_k=0)
++
++
++def test_legacy_top_k_rejects_above_ceiling() -> None:
++    from app.automations.actions.builtin.continue_research.params import (
++        _LegacyContinueResearchActionParams,
++    )
++
++    with pytest.raises(ValueError):
++        _LegacyContinueResearchActionParams(research_thread_id=1, top_k=101)
++
++
++def test_legacy_top_k_rejects_bool() -> None:
++    from app.automations.actions.builtin.continue_research.params import (
++        _LegacyContinueResearchActionParams,
++    )
++
++    with pytest.raises(ValueError):
++        _LegacyContinueResearchActionParams(research_thread_id=1, top_k=True)
++
++
++def test_legacy_extra_keys_are_forbidden() -> None:
++    from app.automations.actions.builtin.continue_research.params import (
++        _LegacyContinueResearchActionParams,
++    )
++
++    with pytest.raises(ValueError):
++        _LegacyContinueResearchActionParams(research_thread_id=1, typo=True)
+diff --git a/nowing_backend/tests/unit/automations/actions/test_validation.py b/nowing_backend/tests/unit/automations/actions/test_validation.py
+new file mode 100644
+index 000000000..54e97df7b
+--- /dev/null
++++ b/nowing_backend/tests/unit/automations/actions/test_validation.py
+@@ -0,0 +1,89 @@
++"""``validate_plan_steps`` registry save-time validator (Story 3.14, D9 point 4).
++
++Uses the real, self-registered ``continue_research`` action
++(``research_thread_id: int`` required, ``top_k: int = 5``, ``ge=1``, ``le=5``)
++as the fixture action — no fake registry entries needed.
++"""
++
++from __future__ import annotations
++
++import pytest
++
++from app.automations.actions.builtin import (
++    continue_research,  # noqa: F401  (self-registers)
++)
++from app.automations.actions.validation import StepValidationError, validate_plan_steps
++from app.automations.schemas.definition.plan_step import PlanStep
++
++pytestmark = pytest.mark.unit
++
++
++def _step(step_id: str = "s1", action: str = "continue_research", **params) -> PlanStep:
++    return PlanStep(step_id=step_id, action=action, params=params)
++
++
++def test_unknown_action_raises() -> None:
++    step = _step(action="does_not_exist", research_thread_id=1)
++
++    with pytest.raises(StepValidationError, match="unknown action"):
++        validate_plan_steps([step])
++
++
++def test_unknown_params_field_raises() -> None:
++    step = _step(research_thread_id=1, typo=True)
++
++    with pytest.raises(StepValidationError, match="unknown params field"):
++        validate_plan_steps([step])
++
++
++def test_all_static_valid_passes() -> None:
++    step = _step(research_thread_id=1, top_k=3)
++
++    validate_plan_steps([step])  # no raise
++
++
++def test_all_static_out_of_range_raises() -> None:
++    step = _step(research_thread_id=1, top_k=6)
++
++    with pytest.raises(StepValidationError):
++        validate_plan_steps([step])
++
++
++def test_all_static_missing_required_field_raises() -> None:
++    step = _step(top_k=3)
++
++    with pytest.raises(StepValidationError):
++        validate_plan_steps([step])
++
++
++def test_templated_field_is_deferred() -> None:
++    """A templated ``research_thread_id`` can't be checked until run time."""
++    step = _step(research_thread_id="{{ thread_id }}", top_k=5)
++
++    validate_plan_steps([step])  # no raise: static top_k=5 is valid, template deferred
++
++
++def test_templated_field_with_invalid_static_sibling_raises() -> None:
++    """The templated field is deferred, but a static ``top_k=6`` sibling still fails."""
++    step = _step(research_thread_id="{{ thread_id }}", top_k=6)
++
++    with pytest.raises(StepValidationError, match="top_k"):
++        validate_plan_steps([step])
++
++
++def test_templated_field_missing_required_raises() -> None:
++    """Templating one field doesn't excuse an entirely-omitted required field."""
++    step = _step(top_k="{{ tk }}")
++
++    with pytest.raises(StepValidationError, match="missing required field"):
++        validate_plan_steps([step])
++
++
++def test_first_failing_step_raises() -> None:
++    good = _step(step_id="s1", research_thread_id=1, top_k=5)
++    bad = _step(step_id="s2", research_thread_id=1, top_k=6)
++
++    with pytest.raises(StepValidationError) as exc:
++        validate_plan_steps([good, bad])
++
++    assert exc.value.step_id == "s2"
+diff --git a/nowing_backend/tests/unit/automations/runtime/test_executor_action_ctx.py b/nowing_backend/tests/unit/automations/runtime/test_executor_action_ctx.py
+index 646c0fcc0..a49b236a5 100644
+--- a/nowing_backend/tests/unit/automations/runtime/test_executor_action_ctx.py
++++ b/nowing_backend/tests/unit/automations/runtime/test_executor_action_ctx.py
+@@ -12,7 +12,10 @@ import pytest
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from app.automations.runtime.executor import _build_action_ctx
+-from app.automations.schemas.definition.envelope import AutomationModels
++from app.automations.schemas.definition.envelope import (
++    AutomationDefinition,
++    AutomationModels,
++)
+ from app.automations.schemas.definition.plan_step import PlanStep
+ 
+ pytestmark = pytest.mark.unit
+@@ -25,6 +28,14 @@ def _run() -> SimpleNamespace:
+     )
+ 
+ 
++def _definition(**kwargs) -> AutomationDefinition:
++    return AutomationDefinition(
++        name="A",
++        plan=[PlanStep(step_id="s1", action="agent_task")],
++        **kwargs,
++    )
++
++
+ def test_build_action_ctx_propagates_captured_models() -> None:
+     """``definition.models`` flows onto the ActionContext model fields."""
+     models = AutomationModels(
+@@ -36,7 +47,7 @@ def test_build_action_ctx_propagates_captured_models() -> None:
+         cast(AsyncSession, None),
+         _run(),
+         PlanStep(step_id="s1", action="agent_task"),
+-        models,
++        _definition(models=models),
+     )
+ 
+     assert ctx.workspace_id == 42
+@@ -51,9 +62,22 @@ def test_build_action_ctx_none_models_leaves_fields_none() -> None:
+         cast(AsyncSession, None),
+         _run(),
+         PlanStep(step_id="s1", action="agent_task"),
+-        None,
++        _definition(models=None),
+     )
+ 
+     assert ctx.chat_model_id is None
+     assert ctx.image_gen_model_id is None
+     assert ctx.vision_model_id is None
++
++
++def test_build_action_ctx_propagates_schema_version() -> None:
++    """Story 3.14 (D9): the run's definition ``schema_version`` threads onto the
++    ``ActionContext``, so an action can branch on which contract produced it."""
++    ctx = _build_action_ctx(
++        cast(AsyncSession, None),
++        _run(),
++        PlanStep(step_id="s1", action="agent_task"),
++        _definition(schema_version="1.0"),
++    )
++
++    assert ctx.schema_version == "1.0"
+diff --git a/nowing_backend/tests/unit/automations/services/test_automation_service_policy.py b/nowing_backend/tests/unit/automations/services/test_automation_service_policy.py
+index ce13512a6..638479f39 100644
+--- a/nowing_backend/tests/unit/automations/services/test_automation_service_policy.py
++++ b/nowing_backend/tests/unit/automations/services/test_automation_service_policy.py
+@@ -54,7 +54,7 @@ def _service(workspace: Any) -> AutomationService:
+ def _definition(**kwargs: Any) -> AutomationDefinition:
+     return AutomationDefinition(
+         name="A",
+-        plan=[PlanStep(step_id="s1", action="agent_task")],
++        plan=[PlanStep(step_id="s1", action="agent_task", params={"query": "hello"})],
+         **kwargs,
+     )
+ 
+diff --git a/nowing_backend/tests/unit/automations/services/test_automation_service_validation.py b/nowing_backend/tests/unit/automations/services/test_automation_service_validation.py
+new file mode 100644
+index 000000000..feaf72e03
+--- /dev/null
++++ b/nowing_backend/tests/unit/automations/services/test_automation_service_validation.py
+@@ -0,0 +1,277 @@
++"""``AutomationService.create()``/``update()`` save-time validation + schema_version
++normalization (Story 3.14, D9 points 1/3/4).
++
++Isolates the new wiring: an invalid plan step must 422 before any commit, and a
++persisted definition always carries the current schema_version ("1.1") on
++create/update, even when the client omits it or sends the legacy "1.0".
++"""
++
++from __future__ import annotations
++
++from types import SimpleNamespace
++from typing import Any
++
++import pytest
++from fastapi import HTTPException
++
++import app.automations.services.automation as automation_mod
++from app.auth.context import AuthContext
++from app.automations.actions.builtin import continue_research  # noqa: F401
++from app.automations.schemas.api import AutomationCreate, AutomationUpdate
++from app.automations.schemas.definition.envelope import AutomationDefinition
++from app.automations.schemas.definition.plan_step import PlanStep
++from app.automations.services.automation import AutomationService
++
++pytestmark = pytest.mark.unit
++
++
++class _FakeSession:
++    def __init__(self, workspace: Any = None) -> None:
++        self._workspace = workspace
++        self.added: list[Any] = []
++        self.commits = 0
++
++    async def get(self, _model: Any, _pk: int) -> Any:
++        return self._workspace
++
++    def add(self, obj: Any) -> None:
++        self.added.append(obj)
++
++    async def commit(self) -> None:
++        self.commits += 1
++
++
++def _service(session: _FakeSession) -> AutomationService:
++    return AutomationService(
++        session=session, auth=AuthContext.session(SimpleNamespace(id="u-1"))
++    )
++
++
++def _valid_definition(*, plan: list[PlanStep] | None = None, **kwargs: Any) -> AutomationDefinition:
++    return AutomationDefinition(
++        name="A",
++        plan=plan
++        or [
++            PlanStep(
++                step_id="s1",
++                action="continue_research",
++                params={"research_thread_id": 1},
++            )
++        ],
++        **kwargs,
++    )
++
++
++def _bind_billable_and_authorize(monkeypatch: pytest.MonkeyPatch) -> None:
++    monkeypatch.setattr(
++        automation_mod, "assert_automation_models_billable", lambda _ss: None
++    )
++
++    async def _noop_authorize(self, *_a, **_k):
++        return None
++
++    monkeypatch.setattr(AutomationService, "_authorize", _noop_authorize)
++
++    async def _return_added(self, _aid):
++        return self.session.added[-1]
++
++    monkeypatch.setattr(AutomationService, "_get_with_triggers_or_raise", _return_added)
++
++
++async def test_create_rejects_invalid_plan_with_422(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    """An out-of-range static ``top_k`` on a step 422s before any commit."""
++    _bind_billable_and_authorize(monkeypatch)
++
++    service = _service(
++        _FakeSession(
++            SimpleNamespace(chat_model_id=0, image_gen_model_id=0, vision_model_id=0)
++        )
++    )
++    payload = AutomationCreate(
++        workspace_id=1,
++        name="A",
++        definition=_valid_definition(
++            plan=[
++                PlanStep(
++                    step_id="s1",
++                    action="continue_research",
++                    params={"research_thread_id": 1, "top_k": 6},
++                )
++            ]
++        ),
++    )
++
++    with pytest.raises(HTTPException) as exc_info:
++        await service.create(payload)
++
++    assert exc_info.value.status_code == 422
++    assert service.session.commits == 0
++
++
++async def test_create_rejects_unknown_action_with_422(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    _bind_billable_and_authorize(monkeypatch)
++
++    service = _service(
++        _FakeSession(
++            SimpleNamespace(chat_model_id=0, image_gen_model_id=0, vision_model_id=0)
++        )
++    )
++    payload = AutomationCreate(
++        workspace_id=1,
++        name="A",
++        definition=_valid_definition(
++            plan=[PlanStep(step_id="s1", action="does_not_exist")]
++        ),
++    )
++
++    with pytest.raises(HTTPException) as exc_info:
++        await service.create(payload)
++
++    assert exc_info.value.status_code == 422
++
++
++async def test_create_normalizes_schema_version_to_current(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    """A client-omitted (default "1.0") schema_version is persisted as "1.1"."""
++    _bind_billable_and_authorize(monkeypatch)
++
++    service = _service(
++        _FakeSession(
++            SimpleNamespace(chat_model_id=0, image_gen_model_id=0, vision_model_id=0)
++        )
++    )
++    payload = AutomationCreate(workspace_id=1, name="A", definition=_valid_definition())
++
++    assert payload.definition.schema_version == "1.0"  # client default, pre-create
++
++    automation = await service.create(payload)
++
++    assert automation.definition["schema_version"] == "1.1"
++
++
++async def test_create_normalizes_explicit_legacy_schema_version(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    """Even an explicit client-sent "1.0" is normalized to "1.1" on a new write."""
++    _bind_billable_and_authorize(monkeypatch)
++
++    service = _service(
++        _FakeSession(
++            SimpleNamespace(chat_model_id=0, image_gen_model_id=0, vision_model_id=0)
++        )
++    )
++    payload = AutomationCreate(
++        workspace_id=1, name="A", definition=_valid_definition(schema_version="1.0")
++    )
++
++    automation = await service.create(payload)
++
++    assert automation.definition["schema_version"] == "1.1"
++
++
++async def test_update_rejects_invalid_plan_with_422(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    existing = SimpleNamespace(
++        workspace_id=1,
++        definition={"name": "A", "plan": [], "schema_version": "1.1"},
++        version=3,
++    )
++
++    async def _noop_authorize(self, *_a, **_k):
++        return None
++
++    async def _return_existing(self, _aid):
++        return existing
++
++    monkeypatch.setattr(AutomationService, "_authorize", _noop_authorize)
++    monkeypatch.setattr(
++        AutomationService, "_get_with_triggers_or_raise", _return_existing
++    )
++
++    service = _service(_FakeSession())
++    patch = AutomationUpdate(
++        definition=_valid_definition(
++            plan=[
++                PlanStep(
++                    step_id="s1",
++                    action="continue_research",
++                    params={"research_thread_id": 1, "top_k": 6},
++                )
++            ]
++        )
++    )
++
++    with pytest.raises(HTTPException) as exc_info:
++        await service.update(7, patch)
++
++    assert exc_info.value.status_code == 422
++    assert existing.version == 3  # untouched — no partial update on rejection
++
++
++async def test_update_normalizes_schema_version_to_current(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    """An edited definition always persists as the current schema_version, even
++    when the patch is built from a legacy "1.0" snapshot."""
++    existing = SimpleNamespace(
++        workspace_id=1,
++        definition={"name": "A", "plan": [], "schema_version": "1.0"},
++        version=3,
++    )
++
++    async def _noop_authorize(self, *_a, **_k):
++        return None
++
++    async def _return_existing(self, _aid):
++        return existing
++
++    monkeypatch.setattr(AutomationService, "_authorize", _noop_authorize)
++    monkeypatch.setattr(
++        AutomationService, "_get_with_triggers_or_raise", _return_existing
++    )
++
++    service = _service(_FakeSession())
++    patch = AutomationUpdate(definition=_valid_definition(schema_version="1.0"))
++
++    result = await service.update(7, patch)
++
++    assert result.definition["schema_version"] == "1.1"
++    assert result.version == 4
++
++
++async def test_update_without_definition_leaves_schema_version_untouched(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    """A patch that never touches ``definition`` doesn't run save-time validation
++    or normalization at all — the old snapshot is untouched."""
++    existing = SimpleNamespace(
++        workspace_id=1,
++        definition={"name": "A", "plan": [], "schema_version": "1.0"},
++        version=3,
++        name="A",
++    )
++
++    async def _noop_authorize(self, *_a, **_k):
++        return None
++
++    async def _return_existing(self, _aid):
++        return existing
++
++    monkeypatch.setattr(AutomationService, "_authorize", _noop_authorize)
++    monkeypatch.setattr(
++        AutomationService, "_get_with_triggers_or_raise", _return_existing
++    )
++
++    service = _service(_FakeSession())
++    patch = AutomationUpdate(name="Renamed")
++
++    result = await service.update(7, patch)
++
++    assert result.definition["schema_version"] == "1.0"  # untouched
++    assert result.version == 3  # no bump — no definition change
