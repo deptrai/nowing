@@ -19,6 +19,11 @@ os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("AUTH_TYPE", "LOCAL")
 os.environ.setdefault("REGISTRATION_ENABLED", "TRUE")
 
+# The ETL pipeline requires a parser provider. DOCLING is installed and used
+# across both local tests and E2E, so default to it when the operator has not
+# explicitly chosen UNSTRUCTURED / LLAMACLOUD.
+os.environ.setdefault("ETL_SERVICE", "DOCLING")
+
 # Mutation gate: avoid heavy model/library imports in each mutant process.
 # `app.config` is imported by `app.db` below and eagerly initializes embeddings,
 # chunkers, and rerankers, which adds several seconds of import overhead per
