@@ -1,7 +1,7 @@
 ---
 baseline_commit: 9f6a4c594
 story_key: 7-7-mcp-server-tool-expansion
-status: ready-for-dev
+status: done
 ---
 
 # Story 7.7 — MCP Server Tool Expansion
@@ -9,7 +9,7 @@ status: ready-for-dev
 **Story ID:** 7.7
 **Epic:** Epic 7 — Multi-surface Clients
 **Title:** MCP Server Tool Expansion
-**Status:** review
+**Status:** done
 **Priority:** P1
 **Source artifacts:**
 - PRD: `/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md` (FR-29, FR-21, FR-22, FR-23, FR-18/19/20, FR-32/33/34)
@@ -366,6 +366,26 @@ format (ExportFormat: pdf|docx|html|latex|epub|odt|plain, default pdf)
 
 ---
 
+## 10.1 Review Findings (code review 2026-08-05)
+
+3 review layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor) ran inline (no subagents). After verification, all 3 candidate patches were reclassified as false positives.
+
+### Dismissed (5 — false positive / out of scope)
+- [x] [Review][Dismiss] `stream_sse` 409 busy-detail read "deadlock on empty body" — httpx memoizes `_content` after `aread()`; `response.text` returns cached bytes. Safe.
+- [x] [Review][Dismiss] `_extract_busy_detail` fallback to `response.text` after `aread()` — same caching; no double-consume error.
+- [x] [Review][Dismiss] retry count off-by-one vs AC-8 "max 4 retries" — verified: `attempt > 4` raises on attempt 5 = exactly 4 retries. Matches spec.
+- [x] [Review][Dismiss] `request_bytes` unused by slices 4–5 — belongs to reports story (shared working tree).
+- [x] [Review][Dismiss] Mixed working-tree lines in `selfcheck.py`/`mcp_tools.py`/`client.py` — other stories' uncommitted changes, not 7.7.
+
+### Deferred (5 — pre-existing / out of scope, written to deferred-work.md)
+- [x] [Review][Defer] Double-submit: no idempotency guard on `POST /run` → 2 PENDING runs [nowing_backend/app/automations/api/run.py:13] — deferred, pre-existing
+- [x] [Review][Defer] `DispatchError` → HTTP mapping by string `"not found"` is fragile [nowing_backend/app/automations/services/run.py:86] — deferred, pre-existing
+- [x] [Review][Defer] `nowing_chat` retry loop has no jitter; thundering herd on concurrent busy [nowing_mcp/mcp_server/features/chat/__init__.py:137] — deferred, pre-existing
+- [x] [Review][Defer] AC-9 "mirror Telegram /run" — Telegram persists trigger; here trigger is transient (trigger_id=NULL) [nowing_backend/app/automations/services/run.py:72] — deferred, pre-existing
+- [x] [Review][Defer] `nowing_chat` SSE: no per-event stall timeout (only total 600s) [nowing_mcp/mcp_server/core/client.py:144] — deferred, pre-existing
+
+**Verdict:** APPROVED — 0 patches, 5 deferred, 5 dismissed. All candidate patches dissolved under verification.
+
 ## 11. Notes for Downstream Stories
 
 - **Slice 4 (chat):** đã reuse client SSE pattern của `nowing_evals/src/nowing_evals/core/clients/new_chat.py` — port `iter_sse_events` vào `core/sse.py`, `ThreadBusyError` retry vào `core/errors.py`, `stream_sse()` vào `core/client.py`. `NewChatRequest.mode` đã có speed/balanced/quality/auto.
@@ -480,3 +500,27 @@ opencode / deepseek-v4-flash-free (backfill — work được implement ad-hoc t
 - Critical findings: **0** (Q2 Slice 5 đã resolve bằng thin-wrapper reuse, đã sửa story).
 - Non-critical (Q3/Q4): 12 findings → mang vào test skeleton bước `bmad-nowing-test-first-atdd`.
 - Verdict: **Clean — proceed to test-first-atdd.**
+
+---
+
+## 13. Mutation Gate 4.10 (P0-gated)
+
+**Target:** `RunService.launch` in `app/automations/services/run.py` — touches `automations:execute` auth surface.
+
+**Config:** `nowing_backend/mutation-run-7-7.toml`
+- `module-path = "app/automations/services/run.py"`
+- `test-command = "python -m pytest tests/unit/automations/services/test_run_service_launch.py -q --no-header --tb=no"`
+- `timeout = 120.0`
+- `distributor = "local"`
+
+**Result:**
+- Total jobs: 78
+- Complete: 78 (100.00%)
+- Surviving mutants: 0 (0.00%)
+- Verdict: **PASS**
+
+**Triage (6 anti-patterns):**
+- Pattern 3/4/6 (auth/exception/comparison) on critical service: **0 survived**.
+- No P0/P1/P2 mutants to address.
+
+**Next:** Proceed to 4.11/4.12 finalize + commit.

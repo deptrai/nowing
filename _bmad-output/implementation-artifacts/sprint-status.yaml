@@ -101,7 +101,7 @@ development_status:
 
   epic-7: done  # core clients done; 7-4, 7-7 ready-for-dev expansions
   7-4: ready-for-dev
-  7-7: ready-for-dev  # MCP server tool expansion — slices 0-3 done+verified, 4-5 pending
+  7-7: done  # MCP server tool expansion — all 9 ACs done+verified, code review clean (2026-08-05)
   epic-7-retrospective: optional
 
   epic-8: done  # 8.3, 8.7-8.13 done
