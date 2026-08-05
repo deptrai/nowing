@@ -258,6 +258,69 @@ async def test_rest_async_degraded_output_text_matches_sync_and_sse_terminal(
     close.assert_called_once_with("run-ac7")
 
 
+async def test_rest_quality_downgraded_to_async_when_sync_flag_enabled(monkeypatch):
+    """NFR-9: quality/deep modes remain async-only even when sync chat-mode is on."""
+    spy = _ResearchSpy(ResearchOutput(status="engine_unavailable"))
+
+    capability = Capability(
+        name="chainlens.research",
+        description="Research.",
+        input_schema=ResearchInput,
+        output_schema=ResearchOutput,
+        executor=spy,
+        billing_unit=BillingUnit.CHAINLENS_QUERY,
+    )
+
+    app = _build_app([capability], monkeypatch)
+    start_async = AsyncMock(return_value="run-quality-async")
+    monkeypatch.setattr(rest, "start_async_run", start_async, raising=True)
+
+    async with _client(app) as client:
+        resp = await client.post(
+            "/api/v1/workspaces/7/scrapers/chainlens/research",
+            json={"query": "hello", "mode": "quality"},
+            params={"mode": "sync"},
+        )
+
+    assert resp.status_code == 202
+    assert resp.headers["X-Run-Id"] == "run_run-quality-async"
+    start_async.assert_awaited_once()
+    # payload passed to start_async_run should still carry the requested mode.
+    _, call_kwargs = start_async.call_args
+    assert call_kwargs["payload"].mode == "quality"
+
+
+async def test_rest_auto_downgraded_to_async_when_sync_flag_enabled(monkeypatch):
+    """NFR-9: auto mode is async-only because it may resolve to quality/deep."""
+    spy = _ResearchSpy(ResearchOutput(status="engine_unavailable"))
+
+    capability = Capability(
+        name="chainlens.research",
+        description="Research.",
+        input_schema=ResearchInput,
+        output_schema=ResearchOutput,
+        executor=spy,
+        billing_unit=BillingUnit.CHAINLENS_QUERY,
+    )
+
+    app = _build_app([capability], monkeypatch)
+    start_async = AsyncMock(return_value="run-auto-async")
+    monkeypatch.setattr(rest, "start_async_run", start_async, raising=True)
+
+    async with _client(app) as client:
+        resp = await client.post(
+            "/api/v1/workspaces/7/scrapers/chainlens/research",
+            json={"query": "hello", "mode": "auto"},
+            params={"mode": "sync"},
+        )
+
+    assert resp.status_code == 202
+    assert resp.headers["X-Run-Id"] == "run_run-auto-async"
+    start_async.assert_awaited_once()
+    _, call_kwargs = start_async.call_args
+    assert call_kwargs["payload"].mode == "auto"
+
+
 async def test_rest_sync_charge_failure_still_returns_degraded_status(monkeypatch):
     """FM-12: a failing charge_capability must not turn a degraded result into HTTP 500."""
     output = ResearchOutput(

@@ -167,3 +167,72 @@ async def test_agent_tool_rejects_unauthorized_workspace(isolate_agent, monkeypa
 
     # The capability executor must not run when workspace access is denied.
     assert not cap.executor.calls
+
+
+async def test_agent_tool_quality_remains_async_even_when_sync_enabled(
+    isolate_agent, monkeypatch
+):
+    """NFR-9: quality mode is async-only in chat even when DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED."""
+    output = ResearchOutput(status="engine_unavailable")
+    output.next_action = "Deep research is not available in self-host Phase 1."
+    cap = _research_capability(output)
+
+    monkeypatch.setattr(agent_mod, "_current_research_mode", lambda: "quality")
+    start_async = AsyncMock(return_value="agent-quality-run")
+    monkeypatch.setattr(agent_mod, "start_async_run", start_async, raising=True)
+
+    tools = agent_mod.build_capability_tools(
+        workspace_id=7, capabilities=[cap], user_id="u-1"
+    )
+    tool = next(t for t in tools if t.name == "chainlens_research")
+    result = await tool.ainvoke({"query": "hello"})
+
+    assert result["run_id"] == "run_agent-quality-run"
+    assert result["status"] == "running"
+    start_async.assert_awaited_once()
+
+
+async def test_agent_tool_auto_remains_async_even_when_sync_enabled(
+    isolate_agent, monkeypatch
+):
+    """NFR-9: auto mode is async-only because the engine may resolve to quality/deep."""
+    output = ResearchOutput(status="engine_unavailable")
+    output.next_action = "Deep research is not available in self-host Phase 1."
+    cap = _research_capability(output)
+
+    monkeypatch.setattr(agent_mod, "_current_research_mode", lambda: "auto")
+    start_async = AsyncMock(return_value="agent-auto-run")
+    monkeypatch.setattr(agent_mod, "start_async_run", start_async, raising=True)
+
+    tools = agent_mod.build_capability_tools(
+        workspace_id=7, capabilities=[cap], user_id="u-1"
+    )
+    tool = next(t for t in tools if t.name == "chainlens_research")
+    result = await tool.ainvoke({"query": "hello"})
+
+    assert result["run_id"] == "run_agent-auto-run"
+    assert result["status"] == "running"
+    start_async.assert_awaited_once()
+
+
+async def test_agent_tool_balanced_sync_allowed_when_sync_enabled(
+    isolate_agent, monkeypatch
+):
+    """NFR-9: balanced mode may run synchronously when the sync flag is on."""
+    output = ResearchOutput(
+        answer="inline answer",
+        sources=[{"title": "KB", "url": "nowing://documents/7/chunks/12"}],
+        status="complete",
+    )
+    cap = _research_capability(output)
+
+    monkeypatch.setattr(agent_mod, "_current_research_mode", lambda: "balanced")
+
+    tools = agent_mod.build_capability_tools(
+        workspace_id=7, capabilities=[cap], user_id="u-1"
+    )
+    tool = next(t for t in tools if t.name == "chainlens_research")
+    result = await tool.ainvoke({"query": "hello"})
+
+    assert isinstance(result, dict)
+    assert result.get("answer") == "inline answer"
