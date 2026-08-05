@@ -136,10 +136,10 @@ Reviewed by Blind Hunter + Edge Case Hunter + Acceptance Auditor on 2026-08-05.
 
 **decision-needed:** 0
 
-**patch (high):**
-- [ ] [Review][Patch] Add `EXA_MCP_CONNECTOR` to `LIVE_CONNECTOR_TYPES` in `app/services/mcp_oauth/registry.py:270` — so the index route and schedule checker treat it as a real-time/live connector and block/force-disable periodic indexing.
-- [ ] [Review][Patch] Enforce `is_indexable=False` and `periodic_indexing_enabled=False` for `EXA_MCP_CONNECTOR` in the update route (`app/routes/search_source_connectors_routes.py:518`) so a client cannot later flip indexing on.
-- [ ] [Review][Patch] Call `invalidate_mcp_tools_cache(db_connector.workspace_id)` after updating Exa `server_config` (`app/routes/search_source_connectors_routes.py:536`) so the old API-key-bound tool closures are evicted immediately.
+**patch (high) — fixed in `c78d66a71`:**
+- [x] [Review][Patch] Add `EXA_MCP_CONNECTOR` to `LIVE_CONNECTOR_TYPES` in `app/services/mcp_oauth/registry.py:270` — so the index route and schedule checker treat it as a real-time/live connector and block/force-disable periodic indexing.
+- [x] [Review][Patch] Enforce `is_indexable=False` and `periodic_indexing_enabled=False` for `EXA_MCP_CONNECTOR` in the update route (`app/routes/search_source_connectors_routes.py:518`) so a client cannot later flip indexing on.
+- [x] [Review][Patch] Call `invalidate_mcp_tools_cache(db_connector.workspace_id)` after updating Exa `server_config` (`app/routes/search_source_connectors_routes.py:536`) so the old API-key-bound tool closures are evicted immediately.
 
 **patch (medium):**
 - [ ] [Review][Patch] Add unit tests for `EXA_MCP_CONNECTOR` config validation in `tests/unit/utils/test_validators.py`.
