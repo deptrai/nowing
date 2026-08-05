@@ -523,4 +523,18 @@ opencode / deepseek-v4-flash-free (backfill — work được implement ad-hoc t
 - Pattern 3/4/6 (auth/exception/comparison) on critical service: **0 survived**.
 - No P0/P1/P2 mutants to address.
 
-**Next:** Proceed to 4.11/4.12 finalize + commit.
+---
+
+## 14. Human Review Gate 4.13
+
+**P0 areas touched:** `Authorization` — `automations:execute` on `RunService.launch`.
+
+**Reviewed:**
+- `app/automations/services/run.py:63-103` — `_authorize` + `launch`.
+- `app/automations/api/run.py:13-22` — `POST /automations/{automation_id}/run`.
+- `app/utils/rbac.py:129-174` — `check_permission` workspace/role/API gate.
+- `app/automations/dispatch/launch.py:27-68` — `launch_run` + `DispatchError`.
+
+**Human verdict:** PASS — 5 P0 review points accepted. No changes required.
+
+**Status after gate:** `done`.
