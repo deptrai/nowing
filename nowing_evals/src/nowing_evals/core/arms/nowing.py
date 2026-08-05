@@ -21,11 +21,28 @@ from __future__ import annotations
 import asyncio
 import logging
 
+import httpx
+
 from ..clients import NewChatClient
+from ..clients.new_chat import ThreadBusyError, _coerce_int
 from ..parse.answer_letter import extract_answer_letter
 from .base import Arm, ArmRequest, ArmResult
 
 logger = logging.getLogger(__name__)
+
+
+def _error_code_for(exc: BaseException) -> str:
+    """Map a client exception to a stable failure reason bucket."""
+
+    if isinstance(exc, ThreadBusyError):
+        return exc.error_code
+    if isinstance(exc, (asyncio.TimeoutError, TimeoutError, httpx.TimeoutException)):
+        return "TimeoutError"
+    if isinstance(exc, httpx.NetworkError):
+        return "NetworkError"
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"HTTP{exc.response.status_code}"
+    return type(exc).__name__
 
 
 class NowingArm(Arm):
@@ -38,11 +55,13 @@ class NowingArm(Arm):
         *,
         client: NewChatClient,
         search_space_id: int,
+        workspace_id: int | None = None,
         ephemeral_threads: bool = True,
         thread_title_prefix: str = "eval",
     ) -> None:
         self._client = client
         self._search_space_id = search_space_id
+        self._workspace_id = workspace_id
         self._ephemeral = ephemeral_threads
         self._title_prefix = thread_title_prefix
 
@@ -52,16 +71,23 @@ class NowingArm(Arm):
         ``options["delete_thread"]=True``).
         """
         reused = request.options.get("thread_id")
+        workspace_id = request.options.get("workspace_id")
+        if workspace_id is None:
+            workspace_id = self._workspace_id
+        if workspace_id is None:
+            workspace_id = self._search_space_id
         thread_id: int | None = reused
         try:
             if thread_id is None:
                 thread_id = await self._client.create_thread(
                     search_space_id=self._search_space_id,
+                    workspace_id=workspace_id,
                     title=f"{self._title_prefix}:{request.question_id}",
                 )
             answer = await self._client.ask(
                 thread_id=thread_id,
                 search_space_id=self._search_space_id,
+                workspace_id=workspace_id,
                 user_query=request.prompt,
                 mentioned_document_ids=request.mentioned_document_ids,
                 disabled_tools=request.options.get("disabled_tools"),
@@ -73,7 +99,12 @@ class NowingArm(Arm):
                 question_id=request.question_id,
                 raw_text="",
                 error=f"{type(exc).__name__}: {exc}",
-                extra={"thread_id": thread_id},
+                extra={
+                    "thread_id": thread_id,
+                    "workspace_id": workspace_id,
+                    "search_space_id": self._search_space_id,
+                    "error_code": _error_code_for(exc),
+                },
             )
         finally:
             should_delete = request.options.get("delete_thread")
@@ -95,12 +126,13 @@ class NowingArm(Arm):
             error=answer.error,
             answer_letter=letter.letter,
             citations=answer.citations,
-            input_tokens=answer.prompt_tokens,
-            output_tokens=answer.completion_tokens,
-            cost_micros=answer.cost_micros or 0,
+            input_tokens=_coerce_int(answer.prompt_tokens, 0) or 0,
+            output_tokens=_coerce_int(answer.completion_tokens, 0) or 0,
+            cost_micros=_coerce_int(answer.cost_micros, 0) or 0,
             latency_ms=answer.latency_ms,
             extra={
                 "thread_id": thread_id,
+                "workspace_id": workspace_id,
                 "search_space_id": self._search_space_id,
                 "answer_letter_strategy": letter.strategy,
                 "user_message_id": answer.user_message_id,

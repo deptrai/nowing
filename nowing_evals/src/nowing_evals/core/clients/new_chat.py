@@ -34,6 +34,30 @@ from ..parse import iter_sse_events, parse_citations
 logger = logging.getLogger(__name__)
 
 
+def _coerce_int(value: Any, current: int | None) -> int | None:
+    """Coerce an incoming token/cost value to ``int``.
+
+    Preserves explicit ``0``, rejects ``bool`` (a subclass of ``int``), and
+    falls back to ``current`` for ``None`` or unparseable values.
+    """
+
+    if isinstance(value, bool):
+        return current
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(round(value))
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            try:
+                return int(round(float(value)))
+            except (ValueError, OverflowError):
+                return current
+    return current
+
+
 @dataclass
 class StreamedAnswer:
     """Result of a single ``/new_chat`` turn."""
@@ -85,16 +109,18 @@ class NewChatClient:
         self,
         *,
         search_space_id: int,
+        workspace_id: int | None = None,
         title: str = "eval",
         archived: bool = False,
         visibility: str = "PRIVATE",
     ) -> int:
-        # ponytail: the local backend uses workspace_id in the thread body.
-        # The eval harness treats search_space_id as the workspace id for chat.
+        # The runner can pass a distinct workspace_id; when it doesn't, the
+        # search_space_id is the backward-compatible fallback.
+        effective_workspace_id = workspace_id if workspace_id is not None else search_space_id
         response = await self._http.post(
             f"{self._base}/api/v1/threads",
             json={
-                "workspace_id": search_space_id,
+                "workspace_id": effective_workspace_id,
                 "search_space_id": search_space_id,
                 "title": title,
                 "archived": archived,
@@ -124,6 +150,7 @@ class NewChatClient:
         *,
         thread_id: int,
         search_space_id: int,
+        workspace_id: int | None = None,
         user_query: str,
         mentioned_document_ids: Sequence[int] | None = None,
         disabled_tools: Sequence[str] | None = None,
@@ -142,7 +169,7 @@ class NewChatClient:
 
         body: dict[str, Any] = {
             "chat_id": thread_id,
-            "workspace_id": search_space_id,
+            "workspace_id": workspace_id if workspace_id is not None else search_space_id,
             "search_space_id": search_space_id,
             "user_query": user_query,
         }
@@ -197,6 +224,10 @@ class NewChatClient:
                     message=detail.get("message", "Thread is busy"),
                 )
             response.raise_for_status()
+            # TTFB is intentionally measured from the first SSE byte, not from
+            # the HTTP request start. This matches the 4.8a spec: first-token
+            # latency is the time from when the response stream begins to the
+            # first text-delta.
             stream_started = time.monotonic()
             answer = await self._consume_sse(response, request_start_time=stream_started)
         answer.latency_ms = int((time.monotonic() - started) * 1000)
@@ -276,6 +307,7 @@ class NewChatClient:
             ev_type = payload.get("type")
             if ev_type == "text-delta":
                 if request_start_time is not None and ttfb_ms is None:
+                    # First token after the SSE stream has started (not HTTP TTFB).
                     ttfb_ms = int((time.monotonic() - request_start_time) * 1000)
                 tid = str(payload.get("id", ""))
                 delta = payload.get("delta", "")
@@ -310,13 +342,15 @@ class NewChatClient:
             elif ev_type == "data-token-usage":
                 data_payload = payload.get("data") or {}
                 if "prompt_tokens" in data_payload:
-                    prompt_tokens = data_payload["prompt_tokens"]
+                    prompt_tokens = _coerce_int(data_payload["prompt_tokens"], prompt_tokens) or 0
                 if "completion_tokens" in data_payload:
-                    completion_tokens = data_payload["completion_tokens"]
+                    completion_tokens = (
+                        _coerce_int(data_payload["completion_tokens"], completion_tokens) or 0
+                    )
                 if "total_tokens" in data_payload:
-                    total_tokens = data_payload["total_tokens"]
+                    total_tokens = _coerce_int(data_payload["total_tokens"], total_tokens) or 0
                 if "cost_micros" in data_payload:
-                    cost_micros = data_payload["cost_micros"]
+                    cost_micros = _coerce_int(data_payload["cost_micros"], cost_micros)
                 if "call_details" in data_payload:
                     call_details = data_payload["call_details"]
                 if "usage" in data_payload:

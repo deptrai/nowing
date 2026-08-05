@@ -42,6 +42,13 @@ CITATION_REGEX = re.compile(
     rf")\s*{_ZWSP}?[\]】]"
 )
 
+# ponytail: fallback for bare ``[n]`` / ``【n】`` markers that the Nowing agent
+# emits for search_knowledge_base passages (system prompt instructs bare
+# ``[n]``). The canonical TS parser currently does not match these; this
+# fallback lets the harness count them as chunk citations. If the product
+# keeps emitting bare ``[n]``, the TS parser should be updated to match.
+_BRACKET_NUMBER_REGEX = re.compile(rf"[\[【]{_ZWSP}?(\d+){_ZWSP}?[\]】]")
+
 
 @dataclass(frozen=True)
 class ChunkCitation:
@@ -98,6 +105,12 @@ def parse_citations(text: str, *, url_map: dict[str, str] | None = None) -> list
             except ValueError:
                 continue
             out.append(ChunkCitation(chunk_id=chunk_id, is_docs_chunk=is_docs_chunk))
+    for match in _BRACKET_NUMBER_REGEX.finditer(text):
+        try:
+            chunk_id = int(match.group(1))
+        except ValueError:
+            continue
+        out.append(ChunkCitation(chunk_id=chunk_id, is_docs_chunk=False))
     return out
 
 

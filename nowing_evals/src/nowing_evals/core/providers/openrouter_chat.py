@@ -65,6 +65,7 @@ class OpenRouterChatProvider:
         prompt: str,
         system_prompt: str | None,
         max_tokens: int | None,
+        response_format: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         messages: list[dict[str, Any]] = []
         if system_prompt:
@@ -73,6 +74,8 @@ class OpenRouterChatProvider:
         body: dict[str, Any] = {"model": self._model, "messages": messages}
         if max_tokens:
             body["max_tokens"] = max_tokens
+        if response_format is not None:
+            body["response_format"] = response_format
         return body
 
     async def complete(
@@ -81,6 +84,7 @@ class OpenRouterChatProvider:
         prompt: str,
         system_prompt: str | None = None,
         max_tokens: int | None = None,
+        response_format: dict[str, Any] | None = None,
         http: httpx.AsyncClient | None = None,
     ) -> OpenRouterResponse:
         """Single chat completion. Errors are raised verbatim — caller decides retries."""
@@ -89,6 +93,7 @@ class OpenRouterChatProvider:
             prompt=prompt,
             system_prompt=system_prompt,
             max_tokens=max_tokens,
+            response_format=response_format,
         )
         headers = {
             "Authorization": f"Bearer {self._api_key}",

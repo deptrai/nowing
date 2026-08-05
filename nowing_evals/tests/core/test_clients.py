@@ -700,3 +700,186 @@ async def test_ask_token_usage_zero_overrides_previous_values(respx_mock, http):
     assert answer.total_tokens == 0
     assert answer.cost_micros == 0
     assert answer.model_breakdown == {}
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_create_thread_uses_workspace_id_when_given(respx_mock, http):
+    route = respx_mock.post("/api/v1/threads").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "id": 555,
+                "title": "eval",
+                "archived": False,
+                "visibility": "PRIVATE",
+                "search_space_id": 1,
+                "messages": [],
+                "created_at": "2026-05-11T00:00:00Z",
+                "updated_at": "2026-05-11T00:00:00Z",
+            },
+        )
+    )
+    client = NewChatClient(http, _BASE)
+    tid = await client.create_thread(search_space_id=1, workspace_id=42)
+    assert tid == 555
+    sent = json.loads(route.calls[-1].request.content)
+    assert sent["workspace_id"] == 42
+    assert sent["search_space_id"] == 1
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_create_thread_falls_back_to_search_space_id(respx_mock, http):
+    route = respx_mock.post("/api/v1/threads").mock(
+        return_value=httpx.Response(200, json={"id": 555})
+    )
+    client = NewChatClient(http, _BASE)
+    await client.create_thread(search_space_id=7)
+    sent = json.loads(route.calls[-1].request.content)
+    assert sent["workspace_id"] == 7
+    assert sent["search_space_id"] == 7
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_ask_uses_workspace_id_when_given(respx_mock, http):
+    body = _sse_body(
+        [
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "ok"},
+            {"type": "text-end", "id": "t1"},
+            {"type": "finish"},
+        ]
+    )
+    route = respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+    client = NewChatClient(http, _BASE)
+    answer = await client.ask(thread_id=1, search_space_id=2, workspace_id=42, user_query="hi")
+    assert answer.text == "ok"
+    sent = json.loads(route.calls[-1].request.content)
+    assert sent["workspace_id"] == 42
+    assert sent["search_space_id"] == 2
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_ask_coerces_string_token_usage(respx_mock, http):
+    body = _sse_body(
+        [
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "ok"},
+            {"type": "text-end", "id": "t1"},
+            {
+                "type": "data-token-usage",
+                "data": {
+                    "prompt_tokens": "10",
+                    "completion_tokens": "5.0",
+                    "total_tokens": "15",
+                    "cost_micros": "100",
+                },
+            },
+            {"type": "finish"},
+        ]
+    )
+    respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+    client = NewChatClient(http, _BASE)
+    answer = await client.ask(thread_id=1, search_space_id=2, user_query="hi")
+    assert answer.prompt_tokens == 10
+    assert answer.completion_tokens == 5
+    assert answer.total_tokens == 15
+    assert answer.cost_micros == 100
+
+
+@pytest.mark.asyncio
+async def test_nowing_arm_passes_workspace_id_from_options():
+    client = AsyncMock(spec=NewChatClient)
+    client.create_thread = AsyncMock(return_value=42)
+    client.delete_thread = AsyncMock(return_value=None)
+    client.ask = AsyncMock(
+        return_value=StreamedAnswer(
+            text="ok",
+            prompt_tokens=1,
+            completion_tokens=1,
+            total_tokens=2,
+            finished_normally=True,
+        )
+    )
+    arm = NowingArm(client=client, search_space_id=7)
+    await arm.answer(
+        ArmRequest(
+            question_id="q1",
+            prompt="hi",
+            options={"workspace_id": 42},
+        )
+    )
+    client.create_thread.assert_awaited_once_with(
+        search_space_id=7, workspace_id=42, title="eval:q1"
+    )
+    client.ask.assert_awaited_once()
+    assert client.ask.await_args.kwargs["workspace_id"] == 42
+
+
+@pytest.mark.asyncio
+async def test_nowing_arm_passes_workspace_id_from_init():
+    client = AsyncMock(spec=NewChatClient)
+    client.create_thread = AsyncMock(return_value=42)
+    client.delete_thread = AsyncMock(return_value=None)
+    client.ask = AsyncMock(return_value=StreamedAnswer(text="ok", finished_normally=True))
+    arm = NowingArm(client=client, search_space_id=7, workspace_id=99)
+    await arm.answer(ArmRequest(question_id="q1", prompt="hi"))
+    client.create_thread.assert_awaited_once_with(
+        search_space_id=7, workspace_id=99, title="eval:q1"
+    )
+
+
+@pytest.mark.asyncio
+async def test_nowing_arm_maps_http_error_to_error_code():
+    client = AsyncMock(spec=NewChatClient)
+    client.create_thread = AsyncMock(return_value=42)
+    client.delete_thread = AsyncMock(return_value=None)
+    client.ask = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "Server error",
+            request=httpx.Request("POST", "http://test"),
+            response=httpx.Response(503),
+        )
+    )
+    arm = NowingArm(client=client, search_space_id=7)
+    result = await arm.answer(ArmRequest(question_id="q1", prompt="hi"))
+    assert result.error is not None
+    assert result.extra["error_code"] == "HTTP503"
+    assert result.extra["workspace_id"] == 7
+
+
+@pytest.mark.asyncio
+async def test_nowing_arm_coerces_string_cost():
+    client = AsyncMock(spec=NewChatClient)
+    client.create_thread = AsyncMock(return_value=42)
+    client.delete_thread = AsyncMock(return_value=None)
+    client.ask = AsyncMock(
+        return_value=StreamedAnswer(
+            text="ok",
+            prompt_tokens="10",
+            completion_tokens="5",
+            total_tokens="15",
+            cost_micros="100",
+            finished_normally=True,
+        )
+    )
+    arm = NowingArm(client=client, search_space_id=7)
+    result = await arm.answer(ArmRequest(question_id="q1", prompt="hi"))
+    assert result.input_tokens == 10
+    assert result.output_tokens == 5
+    assert result.cost_micros == 100

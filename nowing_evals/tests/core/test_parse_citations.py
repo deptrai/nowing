@@ -73,6 +73,25 @@ PARITY_TABLE = [
         0,
         None,
     ),
+    (
+        # Bare bracket numbers emitted by the agent for
+        # search_knowledge_base passages (e.g. "fact [1]").
+        "Passage one [1] and passage two [2].",
+        2,
+        ChunkCitation(chunk_id=1, is_docs_chunk=False),
+    ),
+    (
+        # Fullwidth bare brackets.
+        "Chinese source 【3】.",
+        1,
+        ChunkCitation(chunk_id=3, is_docs_chunk=False),
+    ),
+    (
+        # Bare brackets should not conflict with canonical [citation:...].
+        "Mixed [citation:1] and bare [2].",
+        2,
+        ChunkCitation(chunk_id=1, is_docs_chunk=False),
+    ),
 ]
 
 

@@ -59,6 +59,48 @@ def test_run_with_valid_build_id_proceeds_to_the_normal_auth_seam(
     assert "No Nowing credentials configured" in combined
 
 
+def test_run_catches_non_value_error_from_pre_auth_hook(
+    tmp_env,
+    monkeypatch,
+    capsys,
+):
+    """C10: the pre-auth hook must catch any Exception, not just ValueError."""
+
+    class BadHookBenchmark:
+        suite = "demo-bad-hook"
+        name = "bench"
+        headline = False
+        description = "pre-auth hook raises TypeError"
+        requires_suite_setup = False
+
+        def validate_run_options(self, **_opts):
+            raise TypeError("build id must be a string")
+
+        async def ingest(self, ctx, **opts):  # pragma: no cover - unused
+            return None
+
+        async def run(self, ctx, **opts):  # pragma: no cover - unreached
+            raise NotImplementedError
+
+        def add_run_args(self, parser):
+            return None
+
+        def report_section(self, artifacts):  # pragma: no cover - unused
+            raise NotImplementedError
+
+    monkeypatch.setattr("nowing_evals.core.cli.load_config", _explode)
+    monkeypatch.setattr("nowing_evals.core.cli.acquire_token", _explode)
+
+    registry.register(BadHookBenchmark())
+    try:
+        exit_code = main(["run", "demo-bad-hook", "bench"])
+        assert exit_code == 2
+        combined = capsys.readouterr().out
+        assert "build id must be a string" in combined
+    finally:
+        registry.unregister("demo-bad-hook", "bench")
+
+
 def test_run_without_validate_run_options_hook_is_unaffected(
     tmp_env,
     capsys,  # noqa: ARG001
