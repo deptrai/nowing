@@ -100,7 +100,7 @@ development_status:
   epic-6-retrospective: optional
 
   epic-7: done  # core clients done; 7-4, 7-7 ready-for-dev expansions
-  7-4: ready-for-dev
+  7-4: done
   7-7: done  # MCP server tool expansion — all 9 ACs done, code review clean, mutation 78/78 PASS, human review PASS (2026-08-05)
   epic-7-retrospective: optional
 

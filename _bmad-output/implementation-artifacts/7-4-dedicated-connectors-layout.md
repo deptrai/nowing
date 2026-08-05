@@ -178,6 +178,19 @@ SurfSense PR #1624 (`MODSetter/SurfSense#1624`, merged 2026-07-23) replaced the 
   - Documents sidebar Import menu no longer lists Drive/OneDrive/Dropbox.
 - [ ] Playwright (if `test:e2e` configured): visit connectors page as logged-in user, assert no console `TransformFailed 401` and page renders.
 
+## Implementation Notes (2026-08-05)
+
+MVP delivered in this pass:
+- Dedicated `/dashboard/{workspace_id}/connectors` route, master-detail page, rail, overview catalog, and placeholder detail pane.
+- `groupConnectorsByType` helper with `tsx` tests.
+- Sidebar "Integrations" nav link.
+- Connector modal hidden on the connectors route so the page owns `importConnectorRequestAtom` selection without a conflicting popup.
+
+TODO deferred to next pass:
+- Composer "+" add-menu rework (desktop MCP submenu / mobile drill-in drawer).
+- Deep-link manage view routing by account count (0 → OAuth, 1 → edit, many → accounts list) inside the detail pane.
+- Remove Google Drive / OneDrive / Dropbox from `DocumentsSidebar.tsx` "Import" menu; they now live in the connector catalog.
+
 ## References
 
 - Upstream PR: `MODSetter/SurfSense#1624`

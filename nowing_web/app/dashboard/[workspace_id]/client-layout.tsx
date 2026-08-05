@@ -43,6 +43,7 @@ export function DashboardClientLayout({
 	} = useAtomValue(llmSetupStatusAtomFamily(Number(workspaceId)));
 
 	const isOnboardingPage = pathname?.includes("/onboard");
+	const isConnectorsPage = pathname?.includes("/connectors");
 	const isWorkspaceReady = activeWorkspaceId === workspaceId;
 
 	const isReady = setupStatus?.status === "ready";
@@ -169,7 +170,7 @@ export function DashboardClientLayout({
 				initialPlaygroundSidebarCollapsed={initialPlaygroundSidebarCollapsed}
 			>
 				{children}
-				<ConnectorIndicator showTrigger={false} />
+				{!isConnectorsPage && <ConnectorIndicator showTrigger={false} />}
 			</LayoutDataProvider>
 		</DocumentUploadDialogProvider>
 	);
