@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from .schemas import VnJobAggregatedListing
+from .schemas import VnJobAggregatedListing, VnJobSalary
 
 
 def _canonical_key(listing: VnJobAggregatedListing) -> tuple[str, str, str, str | None]:
@@ -18,6 +18,61 @@ def _canonical_key(listing: VnJobAggregatedListing) -> tuple[str, str, str, str 
     )
 
 
+def _merge_salary(group: list[VnJobAggregatedListing]) -> VnJobSalary:
+    """Combine salary evidence from all sources in a group."""
+    mins = [item.salary.min for item in group if item.salary.min is not None]
+    maxs = [item.salary.max for item in group if item.salary.max is not None]
+    confidences = [item.salary.confidence for item in group if item.salary.confidence > 0]
+    raws = [item.salary.raw for item in group if item.salary.raw]
+
+    merged = VnJobSalary(
+        raw=raws[0] if raws else None,
+        min=min(mins) if mins else None,
+        max=max(maxs) if maxs else None,
+        currency=group[0].salary.currency or "VND",
+        period=group[0].salary.period,
+        confidence=round(sum(confidences) / len(confidences), 2) if confidences else 0.0,
+    )
+    return merged
+
+
+def _detect_conflict(group: list[VnJobAggregatedListing]) -> tuple[bool, float]:
+    """Return (conflict, salary_consistency_score) for a deduplicated group."""
+    salaries: list[VnJobSalary] = [item.salary for item in group if item.salary.max is not None or item.salary.min is not None]
+    locations = {item.location for item in group}
+
+    # Conflict if multiple distinct locations.
+    if len(locations) > 1:
+        return True, 0.0
+
+    if not salaries:
+        return False, 0.5
+
+    mins = [s.min for s in salaries if s.min is not None]
+    maxs = [s.max for s in salaries if s.max is not None]
+
+    if not maxs and not mins:
+        return False, 0.5
+
+    all_values = [v for v in (mins + maxs) if v is not None]
+    if not all_values:
+        return False, 0.5
+
+    if len(all_values) == 1:
+        return False, 0.9
+
+    avg = sum(all_values) / len(all_values)
+    spread = max(all_values) - min(all_values)
+    if avg == 0:
+        return False, 0.5
+
+    relative_spread = spread / avg
+    if relative_spread > 0.3:
+        return True, round(max(0.0, 1.0 - relative_spread), 2)
+
+    return False, round(max(0.0, 1.0 - relative_spread / 2), 2)
+
+
 def deduplicate(listings: list[VnJobAggregatedListing]) -> list[VnJobAggregatedListing]:
     """Group listings by canonical key and merge cross-source variants."""
     groups: dict[tuple[str, str, str, str | None], list[VnJobAggregatedListing]] = defaultdict(list)
@@ -29,19 +84,15 @@ def deduplicate(listings: list[VnJobAggregatedListing]) -> list[VnJobAggregatedL
         base = group[0]
         if len(group) > 1:
             base.source = "multiple"  # type: ignore[assignment]
-            base.source_urls = list({url for item in group for url in item.source_urls})
-            base.confidence_score = min(1.0, base.confidence_score + 0.1 * (len(group) - 1))
-            # TODO: salary consistency scoring
-            base.salary_consistency_score = 0.5
-            base.conflict = _detect_conflict(group)
+            base.source_urls = [url for item in group for url in item.source_urls if url]
+            base.skills = list({skill.lower() for item in group for skill in item.skills})
+            base.salary = _merge_salary(group)
+            base.confidence_score = round(min(1.0, base.confidence_score + 0.1 * (len(group) - 1)), 2)
+
+        conflict, salary_consistency = _detect_conflict(group)
+        base.conflict = conflict
+        base.salary_consistency_score = salary_consistency
+        base.salary.confidence = round(base.salary.confidence * salary_consistency, 2)
         merged.append(base)
+
     return merged
-
-
-def _detect_conflict(group: list[VnJobAggregatedListing]) -> bool:
-    """Detect material salary or location conflicts across sources."""
-    salaries = [item.salary.max for item in group if item.salary.max is not None]
-    locations = {item.location for item in group}
-    if len(salaries) > 1 and max(salaries) - min(salaries) > 0.2 * max(salaries):
-        return True
-    return len(locations) > 1
