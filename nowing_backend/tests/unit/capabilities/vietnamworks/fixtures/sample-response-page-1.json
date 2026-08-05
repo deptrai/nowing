@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "nbHits": 2,
+    "nbPages": 1
+  },
+  "data": [
+    {
+      "jobId": 12345,
+      "jobTitle": "Senior Data Engineer",
+      "jobUrl": "https://www.vietnamworks.com/senior-data-engineer-12345",
+      "companyName": "FPT Software",
+      "companyId": 678,
+      "workingLocations": [
+        {
+          "cityId": 29,
+          "cityName": "Ha Noi",
+          "cityNameVI": "Hà Nội",
+          "districtId": null,
+          "address": "Cau Giay",
+          "geoLoc": null
+        }
+      ],
+      "salaryMin": 25000000,
+      "salaryMax": 35000000,
+      "salaryCurrency": "VND",
+      "salaryPeriodId": 1,
+      "prettySalary": "Từ 25tr ₫/tháng đến 35tr ₫/tháng",
+      "jobDescription": "<p>Build data pipelines and warehouses.</p>",
+      "jobRequirement": "<p>3+ years of Python and SQL.</p>",
+      "jobFunction": "IT - Software",
+      "yearsOfExperience": 3,
+      "createdOn": "2026-08-04T10:00:00+07:00",
+      "approvedOn": "2026-08-04T10:30:00+07:00",
+      "expiredOn": "2026-09-04T10:00:00+07:00",
+      "isActive": true,
+      "typeWorkingId": 1,
+      "skills": [
+        {"skillId": 1, "skillName": "Python", "skillWeight": 100},
+        {"skillId": 2, "skillName": "SQL", "skillWeight": 100}
+      ],
+      "benefits": ["Laptop", "Remote 2 days/week"]
+    },
+    {
+      "jobId": 12346,
+      "jobTitle": "Data Engineer",
+      "jobUrl": "https://www.vietnamworks.com/data-engineer-12346",
+      "companyName": "Techcombank",
+      "companyId": 679,
+      "workingLocations": [
+        {
+          "cityId": 24,
+          "cityName": "Ho Chi Minh",
+          "cityNameVI": "TP. Hồ Chí Minh",
+          "districtId": null,
+          "address": "District 1",
+          "geoLoc": null
+        }
+      ],
+      "salaryMin": 0,
+      "salaryMax": 0,
+      "salaryCurrency": "VND",
+      "salaryPeriodId": 1,
+      "prettySalary": "Thương lượng",
+      "jobDescription": "<p>Design and maintain data infrastructure.</p>",
+      "jobRequirement": "<p>Bachelor's degree in CS.</p>",
+      "jobFunction": "IT - Software",
+      "yearsOfExperience": 2,
+      "createdOn": "2026-08-03T09:00:00+07:00",
+      "approvedOn": "2026-08-03T09:30:00+07:00",
+      "expiredOn": "2026-09-03T09:00:00+07:00",
+      "isActive": true,
+      "typeWorkingId": 2,
+      "skills": [
+        {"skillId": 3, "skillName": "Spark", "skillWeight": 100}
+      ],
+      "benefits": []
+    }
+  ]
+}

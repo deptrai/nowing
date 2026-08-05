@@ -1,7 +1,7 @@
 ---
 title: Nowing
 created: 2026-07-21
-updated: 2026-08-04
+updated: 2026-08-05
 ---
 
 # PRD: Nowing
@@ -13,6 +13,8 @@ updated: 2026-08-04
 
 ## 0. Document Purpose
 Tài liệu này dành cho PM, stakeholders và downstream workflow (architecture, epics, implementation) để thống nhất scope, yêu cầu và các khoảng trống (gap) của Nowing. Cấu trúc: glossary, user journeys, functional/non-functional requirements được đánh số toàn cục, các giả định được gắn tag `[ASSUMPTION]` và lập chỉ mục ở §9. Tài liệu được cập nhật theo trạng thái code thực tế tại `/Users/luisphan/Documents/nowing`.
+
+> **[NOTE FOR PM] — HR/Recruitment Vertical (Vietnam) added 2026-08-05.** Pilot scope: 8-week pilot for `vn_jobs` research capability covering VietnamWorks (public API), TopCV (HTML + anti-bot), and ITviec (HTML). Source: `prfaq-hr-vertical-vietnam-2026-08-05.md`, `feature-brief-hr-vertical-vietnam-2026-08-05.md`, `pilot-plan-c-memo-2026-08-05.md`, and technical spikes. New FRs: FR-43..FR-47. New NFR: NFR-11. New OQ: OQ-8. New SM: SM-12.
 
 > **[NOTE FOR PM] — Reality-correction 2026-07-24 (đã verify code, sau PRFAQ + validate).** Trái với bản trước, **lớp memory đã được build phần lớn**: migration `177_add_research_memory_tables` tạo `memories`/`memory_versions`/`memory_relations`/`research_threads` (+ enums, `confidence`, index HNSW+GIN, quyền `memory:*`); `179` thêm `workspaces.memory_auto_extract_enabled` (default **true**); ORM `Memory` trong `app/db.py`; endpoints `memories_routes.py`; 4 MCP tools trong `nowing_mcp/.../features/memory/`. PRD gốc chụp trạng thái *trước* khi code đáp (docs đề 2026-07-21; migration 177–179 landing sau). Các FR memory dưới đây đã cập nhật `[BUILT]`/`[PARTIAL]`. **Open items thật (KHÔNG phải "build từ đầu"):** (1) **recall quality/eval gate** trên `nowing_evals` — NFR-8 → **`[DONE — implementation complete; baseline ratification pending]`**, story `3-9` = **`done`**; (2) ~~đánh giá mất dữ liệu (FR-36)~~ → **✅ RESOLVED 2026-07-25: KHÔNG mất dữ liệu** (178 chưa apply prod, alembic 174, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test đã build qua `3-10a`/`3-10b`; giữ deploy-order mig177→backfill→mig178); (3) **dedupe**: primitive đã có (cosine<0.08 + `update_on_duplicate`), cần tune/validate qua eval; (4) legal/retention (OQ-3); (5) metrics; (6) **auto-extract spend cap** — story `8-7` = **`done`** (59 tests passed; default ON, item-cap + spend cap + wallet pre-check + rate-limit). **Chính xác hoá:** đây là **cổng TRƯỚC KHI merge lên prod**, KHÔNG phải cost bleed đang chạy — migration 175–179 còn ở branch `develop`, prod = `alembic 174` (ops verify 2026-07-25). Chi tiết: `validation-report.md`, `epics.md`.
 
@@ -149,7 +151,7 @@ ChainLens không có end-user account, billing, onboarding, hay kênh phân ph�
 
 ## 4. Features
 
-> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8 (Connectors §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)**. *(ID toàn cục, không tuần tự theo section.)*
+> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8,**43,44,45,46,47** (Connectors §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)**. *(ID toàn cục, không tuần tự theo section.)*
 >
 > **⚠️ Thay đổi 2026-07-26:** **FR-41 mới** — Admin UI cho Global LLM Model Configuration (§4.8). Global model config hiện chỉ sửa được qua YAML/env + restart; chưa có UI admin.
 >
@@ -226,6 +228,65 @@ Người dùng có thể thêm MCP server bên ngoài vào workspace thông qua 
 **Consequences:**
 - `app/routes/composio_routes.py`, `/auth/mcp/{service}/connector/add`.
 - `SearchSourceConnectorType` hỗ trợ `EXA_MCP_CONNECTOR` (Story 2.10) với `server_config` trỏ đến `https://mcp.exa.ai/mcp` và `x-api-key` inject qua header; `is_indexable = false`; agent chỉ discover `web_search_exa` + `web_fetch_exa` ở chế độ `readonly`.
+
+#### FR-43: VietnamWorks Scraper (Vietnam Job Market)
+Cung cấp capability `vietnamworks.scrape` gọi `POST https://ms.vietnamworks.com/job-search/v1.0/search` (no auth) để lấy job postings từ VietnamWorks.
+
+**Consequences:**
+- Capability tự đăng ký trong registry, billing (`BillingUnit.VIETNAMWORKS_JOB`), MCP, REST routes.
+- Input: `query`, `location` (city name), `page`, `hitsPerPage` (max 100), `salaryMin/Max`, `employmentType`.
+- Output: typed `JobItem` với `jobId`, `jobTitle`, `companyName`, `workingLocations`, `salaryMin/Max`, `salaryCurrency`, `salaryPeriodId`, `jobDescription`, `jobRequirement`, `jobFunction`, `yearsOfExperience`, `createdOn`, `approvedOn`, `expiredOn`, `isActive`, `typeWorkingId`, `skills`, `benefits`.
+- Handles pagination (`page` 1-based, `hitsPerPage`), rate-limit (429), circuit-breaker, golden fixture regression tests.
+
+**Status:** `[PROPOSED]` — technical spike passed (200 OK, no CAPTCHA, 30 concurrent OK). Awaiting ToS review.
+
+#### FR-44: TopCV Scraper (Vietnam Job Market)
+Cung cấp capability `topcv.scrape` để lấy job postings từ `https://www.topcv.vn` qua HTML scraping + anti-bot.
+
+**Consequences:**
+- BSL 1.1 proprietary fetcher (`app/proprietary/platforms/topcv/`).
+- Input: `query`, `location`, `page`, `max_items`.
+- Output: `JobItem` tương thích `vn_jobs.aggregate` (title, company, location, salary, JD, requirements, skills, post date).
+- Requires anti-bot POC to pass before build (Cloudflare "Just a moment..." challenge observed).
+- Degrades gracefully if TopCV is unavailable or blocked.
+
+**Status:** `[PROPOSED]` — anti-bot POC required.
+
+#### FR-45: ITviec Scraper (Vietnam Job Market)
+Cung cấp capability `itviec.scrape` để lấy job postings từ `https://itviec.com` qua HTML server-rendered parsing.
+
+**Consequences:**
+- BSL 1.1 proprietary fetcher (`app/proprietary/platforms/itviec/`).
+- Input: `query`, `location`, `page`, `max_items`.
+- Output: `JobItem` tương thích `vn_jobs.aggregate`.
+- Selectors: `job-card ipt-2`, `h3/a`, `employer-name`, `jd-main`.
+- Salary is hidden for non-logged-in users (`Sign in to view salary`) → parse from title when possible or mark low-confidence.
+
+**Status:** `[PROPOSED]` — technical spike passed (HTML parseable, no Cloudflare).
+
+#### FR-46: Vietnam Job Market Aggregator (`vn_jobs.aggregate`)
+Cung cấp capability `vn_jobs.aggregate` để gom dữ liệu từ FR-43, FR-44, FR-45, chuẩn hóa, dedupe, tính confidence score, và phát hiện conflict (ví dụ salary mismatch giữa các nguồn).
+
+**Consequences:**
+- Apache-2.0 core service `app/services/jobs_aggregator/` (copy-modify from `bds_aggregator`).
+- Input: `query`, `location`, `sources` (default `['vietnamworks','topcv','itviec']`), `salaryMin/Max`, `employmentType`, `experienceYears`, `maxItemsPerSource`, `minConfidence`.
+- Output: `VnJobAggregateOutput` với `items` (`VnJobAggregatedListing[]`), `degraded`, `degradationReasons`, `sourceBreakdown`, `costMicros`.
+- Deduplication key: `company + title + location + postedAt`.
+- Confidence score: source trust, overlap, freshness, salary consistency.
+- Exposed via REST, MCP (`nowing_vn_jobs_aggregate`), and chat agent.
+
+**Status:** `[PROPOSED]`.
+
+#### FR-47: PII Redaction for Job Data
+Pipeline xử lý dữ liệu từ job scrapers trước khi lưu vào memory để phát hiện và loại bỏ/mask thông tin cá nhân (phone, email, names) trong `jobDescription` / `jobRequirement`.
+
+**Consequences:**
+- Regex for Vietnamese phone/email; heuristic/NER for person names.
+- Detected PII is masked or the field is dropped; raw JD is not stored in memory.
+- Audit stats logged (counts only, no values).
+- Applies to all job scrapers (FR-43, FR-44, FR-45).
+
+**Status:** `[PROPOSED]`.
 
 > **FR-24 đã chuyển sang §4.9.** ChainLens Research **không phải** một connector/scraper. Nó là Deep-Research Engine — dependency kiến trúc hạng nhất, governed by `AD-15` (không còn `AD-3`). Xem **§4.9**.
 
@@ -926,6 +987,29 @@ Mọi deploy production phải qua gate chat regression trước khi mở rộng
 - Ngưỡng cụ thể được chốt trong `gate.yaml` và chỉ có thể `baseline_ratified: true` sau 3 lần chạy liên tiếp ổn định.
 - Dữ liệu benchmark không chứa PII; self-host có thể dùng synthetic dataset.
 
+#### NFR-11: Scraping Compliance & Anti-Bot Resilience
+
+**1. ToS & Legal (Vietnam job market):**
+- Không được bắt đầu build `vietnamworks.scrape`, `topcv.scrape`, `itviec.scrape` cho đến khi ToS của từng nguồn cho phép automated access và commercial use.
+- Phải hoàn thành legal counsel opinion về employment service provider classification trước khi pilot bắt đầu.
+- Giữ vững phân biệt Nowing là **research/memory layer**, không phải job board / ATS / employment intermediary.
+
+**2. Anti-bot (TopCV/ITviec):**
+- TopCV yêu cầu anti-bot POC pass trước merge.
+- ITviec hiện chưa gặp Cloudflare, nhưng phải có rate-limit + user-agent rotation + circuit-breaker.
+- Không lưu raw challenge/CAPTCHA tokens, không bypass Cloudflare bằng exploit.
+
+**3. PII (all job sources):**
+- PII detection phải chạy trước khi lưu `jobDescription` / `jobRequirement` vào memory.
+- Không lưu phone, email, person names chưa mask; audit chỉ log counts.
+- PII detection coverage ≥95% of obvious PII.
+
+**4. Reliability:**
+- `vn_jobs.aggregate` phải trả về `degraded=true` với `degradationReasons` khi một nguồn fail.
+- Mỗi scraper có circuit-breaker, retry policy, golden fixture regression tests.
+
+**Status:** `[PROPOSED]`.
+
 ## 6. MVP Scope
 
 ### 6.1 In Scope
@@ -972,6 +1056,18 @@ Mọi deploy production phải qua gate chat regression trước khi mở rộng
 - **[GAP]** Relation graph traversal phong phú giữa memories — fast-follow (bảng `memory_relations` đã có ở 177; graph query phong phú chưa).
 
 ## 7. Success Metrics
+
+**HR Pilot-specific (added 2026-08-05)**
+- **SM-12**: Số aggregate query `vn_jobs.aggregate` thành công trong pilot (target ≥100/8 tuần).
+- **SM-12a**: Số job listings indexed/ngày từ 3 nguồn (target ≥2,000).
+- **SM-12b**: Số cross-source deduped listings/ngày (target ≥1,000).
+- **SM-12c**: Dedupe accuracy (target ≥90%).
+- **SM-12d**: Confidence score top 80% (target ≥0.6).
+- **SM-12e**: PII detection coverage of obvious PII (target ≥95%).
+- **SM-12f**: Customer discovery interviews (target ≥10).
+- **SM-12g**: Active workspaces ≥3 days/week (target ≥10).
+
+> **NOTE** SM-12 targets dùng để go/no-go pilot; không dùng làm SLA vĩnh viễn.
 
 **Primary**
 - **SM-1**: Số workspace active (≥1 chat/scraper run trong 7 ngày) — validates FR-3, FR-6.
@@ -1072,6 +1168,17 @@ ADR `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` để ngỏ ba câu hỏi mà **Nowin
 2. **Nowing suy đoán lại thứ engine đã nói rõ.** Engine gửi `{type:'partial', state:'insufficient_evidence', reason}`; Nowing lại đoán bằng heuristic *"`if not answer and not sources: if saw_done → insufficient_evidence else → timeout`"* — gộp "không tìm ra bằng chứng" với "stream chết" vào một phép đoán. → story `9.1a`.
 3. **Contract được document SAI trong tài liệu Nowing.** Docstring fixture của ChainLens ghi rõ *"NestJS `@Sse()` emits data-only frames — there is NO separate `event:` line"* và *"terminal marker là `{\"type\":\"done\"}`, KHÔNG phải `data: [DONE]`"*. PRD §4.9 FR-24, `AD-15`, SCP §3 đều mô tả `event:`/`data:` → sai. Nowing có nhánh xử lý `event:` **không bao giờ chạy**. → sửa trong story `9.1b`.
 
+#### OQ-8: HR/Recruitment Vertical in Vietnam
+
+1. ToS của VietnamWorks, TopCV, ITviec có cho phép automated access và commercial use cho research aggregator không?
+2. Nowing có bị xếp là "employment service provider" / "môi giới việc làm" theo pháp luật Việt Nam không? Cần legal counsel opinion.
+3. TopCV anti-bot POC có pass với budget chấp nhận được không? Nếu fail, có chấp nhận pilot 2 nguồn không?
+4. ITviec salary ẩn (`Sign in to view salary`) ảnh hưởng value proposition thế nào? Có nên đăng nhập ITviec để lấy salary không?
+5. Người dùng sẵn sàng trả bao nhiêu cho cross-platform job market research? Validate bằng customer interviews.
+6. PII pipeline có đủ mạnh để xử lý phone/email/names trong JD của cả 3 nguồn không?
+
+**Status:** `[OPEN]` — hard gates for P0 build.
+
 ## 9. Assumptions Index
 - `[ASSUMPTION]` Self-hosted installs tắt billing theo mặc định (cloud dùng Stripe).
 - `[SUPERSEDED 2026-07-25]` ~~MCP server không cần per-workspace tool toggle trong v1 vì workspace được chọn qua `nowing_select_workspace`.~~ → Đã build **rồi** (`workspace_mcp_tool_settings`, story `2-5` done). Assumption này bị **vượt qua**, không phải bị bác bỏ — chọn workspace và bật/tắt từng tool là hai việc khác nhau, và cái thứ hai hoá ra vẫn cần. Xem OQ-4.
@@ -1088,3 +1195,8 @@ ADR `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` để ngỏ ba câu hỏi mà **Nowin
 - `[ASSUMPTION 2026-07-25]` Giảm latency deep research **không cần owned index**. Ba đòn bẩy trên đường Epic 43 (`43-5` cache hit-rate, `43-2` planner-DAG parallel, `43-4` multi-stage rerank) + `29-5` cost routing là đủ để mở State B. "Index search" (Epic 26) là đòn bẩy thứ tư nhưng DEFERRED 0/7 gates và trùng NG-1 → **không tính vào kế hoạch**.
 - `[ASSUMPTION 2026-07-25]` `balanced` mode đủ chất lượng cho phần lớn deep-research call, `quality` chỉ cần cho deliverable/deep request (D3). **Phải validate** trên `nowing_evals` ở story 9.3; nếu hồi quy đáng kể → revert về `quality` và ghi lại.
 - `[ASSUMPTION 2026-07-25]` Nowing giữ **một** service API key cho ChainLens; ChainLens không cần biết end-user. Hạn mức/định danh end-user do Nowing quản (khớp `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` §5).
+- `[ASSUMPTION 2026-08-05]` ToS của VietnamWorks, TopCV, ITviec cho phép automated access và commercial use cho research aggregator. **Chưa xác nhận — hard gate.**
+- `[ASSUMPTION 2026-08-05]` Pilot HR vertical không khiến Nowing bị xếp là employment service provider ở Việt Nam. **Chưa xác nhận — hard gate.**
+- `[ASSUMPTION 2026-08-05]` TopCV anti-bot POC có thể pass bằng headless browser/residential proxy với cost ≤$0.05/job. **Chưa xác nhận.**
+- `[ASSUMPTION 2026-08-05]` ITviec sẽ tiếp tục phục vụ HTML server-rendered không CAPTCHA ở production scale. **Chưa xác nhận.**
+- `[ASSUMPTION 2026-08-05]` Lương từ title/salary range trên VietnamWorks đủ để tính `salary_consistency_score` mặc dù ITviec ẩn salary.

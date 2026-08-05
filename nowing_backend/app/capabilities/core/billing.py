@@ -50,6 +50,10 @@ _PLATFORM_RATE_KEYS: dict[BillingUnit, str] = {
     BillingUnit.CHOTOT_BDS_ITEM: "CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.MUABAN_BDS_ITEM: "MUABAN_BDS_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.VN_BDS_AGGREGATE_QUERY: "VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY",
+    BillingUnit.VIETNAMWORKS_JOB: "VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM",
+    BillingUnit.TOPCV_JOB: "TOPCV_SCRAPE_MICROS_PER_ITEM",
+    BillingUnit.ITVIEC_JOB: "ITVIEC_SCRAPE_MICROS_PER_ITEM",
+    BillingUnit.VN_JOBS_AGGREGATE_QUERY: "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY",
 }
 
 
@@ -77,6 +81,10 @@ _UNIT_NOUNS: dict[BillingUnit, str] = {
     BillingUnit.CHOTOT_BDS_ITEM: "listing",
     BillingUnit.MUABAN_BDS_ITEM: "listing",
     BillingUnit.VN_BDS_AGGREGATE_QUERY: "query",
+    BillingUnit.VIETNAMWORKS_JOB: "job",
+    BillingUnit.TOPCV_JOB: "job",
+    BillingUnit.ITVIEC_JOB: "job",
+    BillingUnit.VN_JOBS_AGGREGATE_QUERY: "query",
 }
 
 
@@ -133,6 +141,9 @@ async def gate_capability(
         return
     if unit is BillingUnit.VN_BDS_AGGREGATE_QUERY:
         await _gate_vn_bds_aggregate(payload, ctx)
+        return
+    if unit is BillingUnit.VN_JOBS_AGGREGATE_QUERY:
+        await _gate_vn_jobs_aggregate(payload, ctx)
         return
     await _gate_platform(payload, unit, ctx)
 
@@ -193,6 +204,9 @@ _SOURCE_BILLING_UNIT_MAP: dict[str, BillingUnit] = {
     "batdongsan": BillingUnit.BATDONGSAN_ITEM,
     "chotot_bds": BillingUnit.CHOTOT_BDS_ITEM,
     "muaban_bds": BillingUnit.MUABAN_BDS_ITEM,
+    "vietnamworks": BillingUnit.VIETNAMWORKS_JOB,
+    "topcv": BillingUnit.TOPCV_JOB,
+    "itviec": BillingUnit.ITVIEC_JOB,
 }
 
 
@@ -230,6 +244,47 @@ async def _gate_vn_bds_aggregate(
     await wallet_credit.check_balance(ctx.session, owner_user_id, required_micros)
 
 
+# Subset of _SOURCE_BILLING_UNIT_MAP for job-market sources. Kept separate
+# because BĐS and jobs aggregates may diverge in source lists and defaults.
+_JOBS_BILLING_UNIT_MAP: dict[str, BillingUnit] = {
+    "vietnamworks": BillingUnit.VIETNAMWORKS_JOB,
+    "topcv": BillingUnit.TOPCV_JOB,
+    "itviec": BillingUnit.ITVIEC_JOB,
+}
+
+
+async def _gate_vn_jobs_aggregate(
+    payload: BillableInput, ctx: CapabilityContext
+) -> None:
+    """Reserve the worst-case cost for a multi-source job aggregation.
+
+    Mirrors ``_gate_vn_bds_aggregate`` but uses the jobs source map. The real
+    charge (see ``_charge_vn_jobs_aggregate``) uses the actual child counts.
+    """
+    service = PlatformScrapeCreditService(ctx.session)
+    if not service.billing_enabled():
+        return
+    owner_user_id = await _resolve_workspace_owner(ctx.session, ctx.workspace_id)
+    if owner_user_id is None:
+        return
+
+    sources = getattr(payload, "sources", list(_JOBS_BILLING_UNIT_MAP)) or list(
+        _JOBS_BILLING_UNIT_MAP
+    )
+    max_items = getattr(payload, "max_items_per_source", 10) or 0
+
+    required_micros = int(
+        getattr(config, "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", 5000)
+    )
+    for source in sources:
+        child_unit = _JOBS_BILLING_UNIT_MAP.get(source)
+        if child_unit is None:
+            continue
+        required_micros += max_items * _platform_rate(child_unit)
+
+    await wallet_credit.check_balance(ctx.session, owner_user_id, required_micros)
+
+
 async def charge_capability(
     output: BillableOutput,
     unit: BillingUnit | None,
@@ -255,6 +310,8 @@ async def charge_capability(
         return await _charge_chainlens(output, ctx)
     if unit is BillingUnit.VN_BDS_AGGREGATE_QUERY:
         return await _charge_vn_bds_aggregate(output, ctx)
+    if unit is BillingUnit.VN_JOBS_AGGREGATE_QUERY:
+        return await _charge_vn_jobs_aggregate(output, ctx)
     return await _charge_platform(output, unit, ctx)
 
 
@@ -551,6 +608,49 @@ async def _charge_vn_bds_aggregate(
     await record_token_usage(
         ctx.session,
         usage_type=BillingUnit.VN_BDS_AGGREGATE_QUERY.value,
+        workspace_id=ctx.workspace_id,
+        user_id=owner_user_id,
+        cost_micros=cost_micros,
+        call_details=call_details,
+    )
+    await wallet_credit.apply_debit(ctx.session, owner_user_id, cost_micros)
+    return cost_micros
+
+
+async def _charge_vn_jobs_aggregate(
+    output: BillableOutput, ctx: CapabilityContext
+) -> int:
+    """Charge the actual multi-source job aggregation cost.
+
+    Mirrors ``_charge_vn_bds_aggregate`` for the VietnamWorks/TopCV/ITviec
+    vertical. The aggregate output is expected to carry ``cost_micros``,
+    ``total_items``, ``degraded``, and ``source_breakdown``.
+    """
+    service = PlatformScrapeCreditService(ctx.session)
+    if not service.billing_enabled():
+        return 0
+
+    cost_micros = int(getattr(output, "cost_micros", 0) or 0)
+    if cost_micros <= 0:
+        return 0
+
+    owner_user_id = await _resolve_workspace_owner(ctx.session, ctx.workspace_id)
+    if owner_user_id is None:
+        return 0
+
+    await wallet_credit.check_balance(ctx.session, owner_user_id, cost_micros)
+
+    call_details: dict[str, Any] = {
+        "total_items": getattr(output, "total_items", 0),
+        "degraded": getattr(output, "degraded", False),
+    }
+    source_breakdown = getattr(output, "source_breakdown", None)
+    if isinstance(source_breakdown, dict):
+        call_details["source_breakdown"] = source_breakdown
+
+    await record_token_usage(
+        ctx.session,
+        usage_type=BillingUnit.VN_JOBS_AGGREGATE_QUERY.value,
         workspace_id=ctx.workspace_id,
         user_id=owner_user_id,
         cost_micros=cost_micros,

@@ -954,6 +954,41 @@ class Config:
     VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY = int(
         os.getenv("VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY", "5000")
     )
+    # VietnamWorks is a public API-backed source; price near other API platforms.
+    VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM = int(
+        os.getenv("VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM", "3000")
+    )
+    VIETNAMWORKS_PAGE_DELAY_S = float(os.getenv("VIETNAMWORKS_PAGE_DELAY_S", "0.5"))
+    VIETNAMWORKS_TIMEOUT_S = float(os.getenv("VIETNAMWORKS_TIMEOUT_S", "30.0"))
+    VIETNAMWORKS_MAX_PAGES = int(os.getenv("VIETNAMWORKS_MAX_PAGES", "5"))
+    VIETNAMWORKS_MAX_ITEMS = int(os.getenv("VIETNAMWORKS_MAX_ITEMS", "100"))
+    # TopCV is Cloudflare-protected and uses the web crawler stack. The platform
+    # per-item rate is a pass-through; actual anti-bot cost is metered via
+    # WEB_CRAWL + WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE (see AD-23).
+    TOPCV_SCRAPE_MICROS_PER_ITEM = int(
+        os.getenv("TOPCV_SCRAPE_MICROS_PER_ITEM", "5500")
+    )
+    TOPCV_PAGE_DELAY_S = float(os.getenv("TOPCV_PAGE_DELAY_S", "1.0"))
+    TOPCV_TIMEOUT_S = float(os.getenv("TOPCV_TIMEOUT_S", "60.0"))
+    TOPCV_MAX_PAGES = int(os.getenv("TOPCV_MAX_PAGES", "3"))
+    # ITviec is server-rendered HTML; cheaper than TopCV, no anti-bot expected.
+    ITVIEC_SCRAPE_MICROS_PER_ITEM = int(os.getenv("ITVIEC_SCRAPE_MICROS_PER_ITEM", "3000"))
+    ITVIEC_PAGE_DELAY_S = float(os.getenv("ITVIEC_PAGE_DELAY_S", "0.5"))
+    ITVIEC_TIMEOUT_S = float(os.getenv("ITVIEC_TIMEOUT_S", "30.0"))
+    ITVIEC_MAX_PAGES = int(os.getenv("ITVIEC_MAX_PAGES", "5"))
+    # Multi-source job aggregation (VietnamWorks/TopCV/ITviec).
+    VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY = int(
+        os.getenv("VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", "5000")
+    )
+    VN_JOBS_AGGREGATE_MAX_ITEMS_PER_SOURCE = int(
+        os.getenv("VN_JOBS_AGGREGATE_MAX_ITEMS_PER_SOURCE", "50")
+    )
+    VN_JOBS_AGGREGATE_MAX_PAGES = int(
+        os.getenv("VN_JOBS_AGGREGATE_MAX_PAGES", "5")
+    )
+    # PII redaction confidence threshold (0-1) before treating a source as unsafe
+    # for memory extraction.
+    PII_REDACTION_MIN_CONFIDENCE = float(os.getenv("PII_REDACTION_MIN_CONFIDENCE", "0.7"))
     # Browser-driven listings make TikTok heavier per item than the API-backed
     # video meter, so it sits a touch above YouTube's video rate.
     TIKTOK_MICROS_PER_VIDEO = int(os.getenv("TIKTOK_MICROS_PER_VIDEO", "3500"))

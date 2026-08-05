@@ -1,0 +1,2519 @@
+{
+  "meta": {
+    "code": 200,
+    "message": "Success",
+    "nbHits": 11457,
+    "page": 1,
+    "nbPages": 115,
+    "hitsPerPage": 100,
+    "totalJobsText": "1.000+"
+  },
+  "samples": [
+    {
+      "jobId": 2088453,
+      "jobTitle": "Plastic Toy Product Development",
+      "jobUrl": "https://www.vietnamworks.com/plastic-toy-product-development--2088453-jv",
+      "userId": 6131966,
+      "companyLogo": "https://images.vietnamworks.com/pictureofcompany/ad/10907045.png",
+      "companyUrl": "",
+      "alias": "plastic-toy-product-development-",
+      "createdOn": "2026-07-29T17:11:28+07:00",
+      "approvedOn": "2026-07-29T17:11:59+07:00",
+      "approvedOnText": "Đăng 7 ngày trước",
+      "prettyApprovedOn": "7 ngày trước",
+      "expiredOn": "2026-08-28T23:59:59+07:00",
+      "lastUpdatedOn": "2026-07-29T17:11:59+07:00",
+      "lastSyncedOn": "2026-08-05T12:06:38+07:00",
+      "companyName": "Jazwares LLC - The Representative Officce of Jaz Toys HK Limited In Hanoi City",
+      "companyId": 320758,
+      "companySizeId": 3,
+      "contactName": "Ms. Thu and Ms. Chi",
+      "createdBy": 6131966,
+      "isOnline": true,
+      "isActive": true,
+      "isApproved": true,
+      "isUnpaidDisable": 0,
+      "isCompleted": true,
+      "isAnonymous": false,
+      "isSalaryVisible": false,
+      "isShowLogo": true,
+      "isShowLogoInSearch": false,
+      "jobLevelId": 5,
+      "languageSelectedId": 2,
+      "redirectTo": "",
+      "requiredCoverLetter": 0,
+      "salary": 0,
+      "salaryMax": 0,
+      "salaryMin": 0,
+      "typeWorkingId": 1,
+      "skills": [
+        {
+          "skillId": 725657,
+          "skillWeight": 100,
+          "skillName": "Toys Manufacturing"
+        },
+        {
+          "skillId": 100,
+          "skillWeight": 100,
+          "skillName": "English"
+        },
+        {
+          "skillId": 8,
+          "skillWeight": 100,
+          "skillName": "Project Management"
+        },
+        {
+          "skillId": 2905,
+          "skillWeight": 100,
+          "skillName": "Mechanical Engineering"
+        },
+        {
+          "skillId": 389,
+          "skillWeight": 100,
+          "skillName": "Mechanical"
+        }
+      ],
+      "benefits": [
+        {
+          "benefitId": 1,
+          "benefitIconName": "fa-dollar",
+          "benefitName": "Bonus",
+          "benefitNameVI": "Thưởng",
+          "benefitValue": "13rd month salary and Bonus"
+        },
+        {
+          "benefitId": 2,
+          "benefitIconName": "fa-user-md",
+          "benefitName": "Healthcare Plan",
+          "benefitNameVI": "Chăm sóc sức khoẻ",
+          "benefitValue": "Premium Healthcare,  Social Insurance & Annual Health Check"
+        },
+        {
+          "benefitId": 15,
+          "benefitIconName": "fa-check-square-o",
+          "benefitName": "Others",
+          "benefitNameVI": "Khác",
+          "benefitValue": "Travel opportunities, Additional Annual Leave and Holidays; Sick leave, Flexible Leave, Laptop for employees; Allowance for business trip, etc."
+        }
+      ],
+      "workingLocations": [
+        {
+          "workingLocationId": 80258,
+          "addressId": 93797,
+          "cityId": 24,
+          "districtId": 7,
+          "address": "14th floor Song Hong Park View office building, No. 165 Thai Ha street, Dong Da district, Hanoi city.",
+          "geoLoc": {
+            "lat": 21.014785,
+            "lon": 105.816812
+          },
+          "cityName": "Ha Noi",
+          "cityNameVI": "Hà Nội"
+        }
+      ],
+      "address": "14th floor Song Hong Park View office building, No. 165 Thai Ha street, Dong Da district, Hanoi city.",
+      "industries": [
+        {
+          "industryId": 0,
+          "industryName": "",
+          "industryNameVI": ""
+        }
+      ],
+      "industriesV3": [
+        {
+          "industryV3Id": 30,
+          "industryV3Name": "Manufacturing",
+          "industryV3NameVI": "Sản xuất"
+        }
+      ],
+      "jobFunction": {
+        "parentId": 27,
+        "parentName": "Manufacturing",
+        "parentNameVI": "Sản Xuất",
+        "children": [
+          {
+            "id": 153,
+            "name": "Production Operation & Planning",
+            "nameVI": "Hoạch Định & Quản Lý Sản Xuất"
+          }
+        ]
+      },
+      "jobLevel": "Experienced (non-manager)",
+      "jobLevelVI": "Nhân viên",
+      "languageId": 0,
+      "locations": null,
+      "canonical": "plastic-toy-product-development--2088453-jv",
+      "isShowContact": false,
+      "salaryRangeId": 0,
+      "requiredResume": false,
+      "companySize": "25-99",
+      "companySizeVI": "25-99",
+      "languageSelectedVI": "Tiếng Anh",
+      "languageSelected": "English",
+      "simpleServices": null,
+      "services": [
+        {
+          "serviceCode": "TPM",
+          "startOn": "2026-07-29T17:11:59+07:00",
+          "expiredOn": "2026-08-28T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "BP",
+          "startOn": "2026-07-29T17:11:59+07:00",
+          "expiredOn": "2026-08-28T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "JPMAI",
+          "startOn": "2026-07-29T17:11:59+07:00",
+          "expiredOn": "2026-08-28T23:59:59+07:00"
+        }
+      ],
+      "prettySalary": "Thương lượng",
+      "durationDays": 30,
+      "numOfApplications": 0,
+      "refreshInfo": [
+        {
+          "refreshOn": "2026-08-05T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-08-12T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-08-19T18:00:00+07:00",
+          "serviceCode": "RW"
+        }
+      ],
+      "emailAddress": "",
+      "isMobileHotJob": true,
+      "isMobileTopJob": true,
+      "isBoldAndRedJob": false,
+      "isUrgentJob": false,
+      "isUrgentJobM": false,
+      "onlineOn": "2026-08-05T18:00:00+07:00",
+      "onlineOnText": "Cập nhật hôm nay",
+      "onlineOnTextColor": "#333333",
+      "onlineOnBgColor": "#F1F2F4",
+      "prettyOnlineOn": "2 giờ trước",
+      "visibilityDisplay": true,
+      "priorityOrder": "2026-08-05T18:00:00",
+      "priorityOrderText": "Cập nhật hôm nay",
+      "nearestGeoLoc": null,
+      "profilePublishedSiteMask": 0,
+      "companyColor": "#0A215C",
+      "yearsOfExperience": 3,
+      "highestDegreeId": 0,
+      "rangeAge": "Không hiển thị",
+      "isShowAge": 0,
+      "isShowNationality": 0,
+      "isShowGender": 0,
+      "isShowMaritalStatus": 0,
+      "numberOfRecruits": 1,
+      "isShowNumberOfRecruits": 0,
+      "onlineServiceCode": "RW",
+      "salaryPeriodId": 1,
+      "salaryCurrency": "USD",
+      "isAdrLiteJob": false,
+      "isTopPriority": false,
+      "isTopPriorityM": true,
+      "summary": null,
+      "isRefreshJob": true,
+      "isReposted": false,
+      "exposureStatus": "below_target",
+      "exposureStatusUpdatedOn": "2026-08-05T19:56:45+07:00",
+      "jobDescription_len": 599,
+      "jobRequirement_len": 554
+    },
+    {
+      "jobId": 2088234,
+      "jobTitle": "Organization Development Manager",
+      "jobUrl": "https://www.vietnamworks.com/organization-development-manager-2088234-jv",
+      "userId": 5381049,
+      "companyLogo": "https://images.vietnamworks.com/pictureofcompany/46/10678633.png",
+      "companyUrl": "",
+      "alias": "organization-development-manager",
+      "createdOn": "2026-07-29T13:44:44+07:00",
+      "approvedOn": "2026-07-29T13:45:52+07:00",
+      "approvedOnText": "Đăng 7 ngày trước",
+      "prettyApprovedOn": "7 ngày trước",
+      "expiredOn": "2026-08-28T23:59:59+07:00",
+      "lastUpdatedOn": "2026-07-30T17:45:23+07:00",
+      "lastSyncedOn": "2026-08-05T12:07:02+07:00",
+      "companyName": "Công Ty TNHH Money Forward Việt Nam",
+      "companyId": 293066,
+      "companySizeId": 4,
+      "contactName": "",
+      "createdBy": 5381049,
+      "isOnline": true,
+      "isActive": true,
+      "isApproved": true,
+      "isUnpaidDisable": 0,
+      "isCompleted": true,
+      "isAnonymous": false,
+      "isSalaryVisible": false,
+      "isShowLogo": true,
+      "isShowLogoInSearch": false,
+      "jobLevelId": 7,
+      "languageSelectedId": 3,
+      "redirectTo": "",
+      "requiredCoverLetter": 0,
+      "salary": 0,
+      "salaryMax": 0,
+      "salaryMin": 0,
+      "typeWorkingId": 1,
+      "skills": [
+        {
+          "skillId": 1138372,
+          "skillWeight": 100,
+          "skillName": "Organizational Design"
+        },
+        {
+          "skillId": 77241,
+          "skillWeight": 100,
+          "skillName": "Employer Branding"
+        },
+        {
+          "skillId": 20171,
+          "skillWeight": 100,
+          "skillName": "Internal Communications"
+        },
+        {
+          "skillId": 1611493,
+          "skillWeight": 100,
+          "skillName": "Learning & Development"
+        },
+        {
+          "skillId": 1010902,
+          "skillWeight": 100,
+          "skillName": "communication"
+        }
+      ],
+      "benefits": [
+        {
+          "benefitId": 1,
+          "benefitIconName": "fa-dollar",
+          "benefitName": "Bonus",
+          "benefitNameVI": "Thưởng",
+          "benefitValue": "Bonus: 13th month salary"
+        },
+        {
+          "benefitId": 2,
+          "benefitIconName": "fa-user-md",
+          "benefitName": "Healthcare Plan",
+          "benefitNameVI": "Chăm sóc sức khoẻ",
+          "benefitValue": "Insurance: Applied from Probation period: Social Insurance, Health Insurance, Unemployment Insurance (on 100% salary), Private health insurance & accident insurance. From Managing level: extra for family members"
+        },
+        {
+          "benefitId": 3,
+          "benefitIconName": "fa-file-image-o",
+          "benefitName": "Paid Leave",
+          "benefitNameVI": "Nghỉ phép có lương",
+          "benefitValue": "16 - 24 paid days off and more\nPaternity leave: Extra 5 days"
+        },
+        {
+          "benefitId": 4,
+          "benefitIconName": "fa-graduation-cap",
+          "benefitName": "Training",
+          "benefitNameVI": "Đào tạo",
+          "benefitValue": "External & internal training courses\nSoft-skill workshops\nTech seminars\nForeign language & International technology-related certifications sponsoring"
+        },
+        {
+          "benefitId": 5,
+          "benefitIconName": "fa-trophy",
+          "benefitName": "Awards",
+          "benefitNameVI": "Giải thưởng",
+          "benefitValue": "Monthly and biannual Recognition Awards"
+        },
+        {
+          "benefitId": 10,
+          "benefitIconName": "fa-glass",
+          "benefitName": "Team Activities",
+          "benefitNameVI": "Hoạt động nhóm",
+          "benefitValue": "Annual company trip; Quarterly team building"
+        },
+        {
+          "benefitId": 15,
+          "benefitIconName": "fa-check-square-o",
+          "benefitName": "Others",
+          "benefitNameVI": "Khác",
+          "benefitValue": "Hybrid working: 2 days at the office and 3 days WFH\nWorking hour: Flexible start 8AM-9AM from Mon-Fri\nFull salary in probation\nAnnual health check\nWell-equipped facility: Macbook pro, additional monitor,..\nClear Career path\nPerformance & salary revie"
+        }
+      ],
+      "workingLocations": [
+        {
+          "workingLocationId": 229445,
+          "addressId": 139047,
+          "cityId": 29,
+          "districtId": 0,
+          "address": "21st Floor, Etown Central Building, 11 Doan Van Bo Street, Xom Chieu Ward, Ho Chi Minh City, Vietnam",
+          "geoLoc": {
+            "lat": 0,
+            "lon": 0
+          },
+          "cityName": "Ho Chi Minh",
+          "cityNameVI": "Hồ Chí Minh"
+        }
+      ],
+      "address": "Tầng 21, Toà nhà E.town Central, 11 Đoàn Văn Bơ, Phường Xóm Chiếu, Tp Hồ Chí Minh",
+      "industries": [
+        {
+          "industryId": 0,
+          "industryName": "",
+          "industryNameVI": ""
+        }
+      ],
+      "industriesV3": [
+        {
+          "industryV3Id": 25,
+          "industryV3Name": "IT Software/SaaS",
+          "industryV3NameVI": "Phần Mềm CNTT/Dịch vụ Phần mềm"
+        }
+      ],
+      "jobFunction": {
+        "parentId": 12,
+        "parentName": "Human Resources/Recruitment",
+        "parentNameVI": "Nhân Sự/Tuyển Dụng",
+        "children": [
+          {
+            "id": 71,
+            "name": "Employee Engagement",
+            "nameVI": "Gắn Kết Nhân Viên"
+          }
+        ]
+      },
+      "jobLevel": "Manager",
+      "jobLevelVI": "Trưởng phòng",
+      "languageId": 0,
+      "locations": null,
+      "canonical": "organization-development-manager-2088234-jv",
+      "isShowContact": true,
+      "salaryRangeId": 0,
+      "requiredResume": false,
+      "companySize": "100-499",
+      "companySizeVI": "100-499",
+      "languageSelectedVI": "Bất kỳ",
+      "languageSelected": "Any",
+      "simpleServices": null,
+      "services": [
+        {
+          "serviceCode": "TPM",
+          "startOn": "2026-07-29T13:45:52+07:00",
+          "expiredOn": "2026-08-28T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "JPM",
+          "startOn": "2026-07-29T13:45:52+07:00",
+          "expiredOn": "2026-08-28T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "BPM",
+          "startOn": "2026-07-30T17:39:49+07:00",
+          "expiredOn": "2026-08-28T23:59:59+07:00"
+        }
+      ],
+      "prettySalary": "Thương lượng",
+      "durationDays": 30,
+      "numOfApplications": 0,
+      "refreshInfo": [
+        {
+          "refreshOn": "2026-08-05T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-08-12T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-08-19T18:00:00+07:00",
+          "serviceCode": "RW"
+        }
+      ],
+      "emailAddress": "",
+      "isMobileHotJob": true,
+      "isMobileTopJob": true,
+      "isBoldAndRedJob": true,
+      "isUrgentJob": false,
+      "isUrgentJobM": false,
+      "onlineOn": "2026-08-05T18:00:00+07:00",
+      "onlineOnText": "Cập nhật hôm nay",
+      "onlineOnTextColor": "#333333",
+      "onlineOnBgColor": "#F1F2F4",
+      "prettyOnlineOn": "2 giờ trước",
+      "visibilityDisplay": true,
+      "priorityOrder": "2026-08-05T18:00:00",
+      "priorityOrderText": "Cập nhật hôm nay",
+      "nearestGeoLoc": null,
+      "profilePublishedSiteMask": 3,
+      "companyColor": "#5F3207",
+      "yearsOfExperience": 7,
+      "highestDegreeId": 4,
+      "rangeAge": "Không hiển thị",
+      "isShowAge": 0,
+      "isShowNationality": 0,
+      "isShowGender": 0,
+      "isShowMaritalStatus": 0,
+      "numberOfRecruits": 1,
+      "isShowNumberOfRecruits": 0,
+      "onlineServiceCode": "RW",
+      "salaryPeriodId": 1,
+      "salaryCurrency": "USD",
+      "isAdrLiteJob": false,
+      "isTopPriority": false,
+      "isTopPriorityM": true,
+      "summary": null,
+      "isRefreshJob": true,
+      "isReposted": false,
+      "exposureStatus": "below_target",
+      "exposureStatusUpdatedOn": "2026-08-05T20:01:39+07:00",
+      "jobDescription_len": 386,
+      "jobRequirement_len": 431
+    },
+    {
+      "jobId": 2082053,
+      "jobTitle": "Quality Manager",
+      "jobUrl": "https://www.vietnamworks.com/quality-manager-2082053-jv",
+      "userId": 8231684,
+      "companyLogo": "https://images.vietnamworks.com/pictureofcompany/c8/11468723.png",
+      "companyUrl": "",
+      "alias": "quality-manager",
+      "createdOn": "2026-07-15T17:00:53+07:00",
+      "approvedOn": "2026-07-15T17:01:08+07:00",
+      "approvedOnText": "Đăng 21 ngày trước",
+      "prettyApprovedOn": "21 ngày trước",
+      "expiredOn": "2026-08-14T23:59:59+07:00",
+      "lastUpdatedOn": "2026-07-21T16:48:57+07:00",
+      "lastSyncedOn": "2026-08-05T12:05:53+07:00",
+      "companyName": "CHI NHÁNH HÀ TĨNH - CÔNG TY CỔ PHẦN SẢN XUẤT VÀ KINH DOANH VINFAST",
+      "companyId": 421016,
+      "companySizeId": 8,
+      "contactName": "Phòng Tuyển dụng Nhà máy VinFast Hà Tĩnh",
+      "createdBy": 8236570,
+      "isOnline": true,
+      "isActive": true,
+      "isApproved": true,
+      "isUnpaidDisable": 0,
+      "isCompleted": true,
+      "isAnonymous": false,
+      "isSalaryVisible": false,
+      "isShowLogo": true,
+      "isShowLogoInSearch": false,
+      "jobLevelId": 5,
+      "languageSelectedId": 3,
+      "redirectTo": "",
+      "requiredCoverLetter": 0,
+      "salary": 0,
+      "salaryMax": 0,
+      "salaryMin": 0,
+      "typeWorkingId": 1,
+      "skills": [
+        {
+          "skillId": 1285682,
+          "skillWeight": 100,
+          "skillName": "6 Sigma Black Belt"
+        },
+        {
+          "skillId": 1286318,
+          "skillWeight": 100,
+          "skillName": "Lean Culture"
+        },
+        {
+          "skillId": 9,
+          "skillWeight": 100,
+          "skillName": "Quality Assurance"
+        },
+        {
+          "skillId": 182,
+          "skillWeight": 100,
+          "skillName": "Quality Control"
+        },
+        {
+          "skillId": 197,
+          "skillWeight": 100,
+          "skillName": "Risk Management"
+        }
+      ],
+      "benefits": [
+        {
+          "benefitId": 1,
+          "benefitIconName": "fa-dollar",
+          "benefitName": "Bonus",
+          "benefitNameVI": "Thưởng",
+          "benefitValue": "Annual "
+        }
+      ],
+      "workingLocations": [
+        {
+          "workingLocationId": 259310,
+          "addressId": 162333,
+          "cityId": 26,
+          "districtId": 0,
+          "address": "Lô CN4-1, CN4-2, Khu công nghiệp Trung tâm, Khu kinh tế Vũng Áng, Phường Vũng Áng, Hà Tĩnh",
+          "geoLoc": {
+            "lat": 0,
+            "lon": 0
+          },
+          "cityName": "Ha Tinh",
+          "cityNameVI": "Hà Tĩnh"
+        }
+      ],
+      "address": "Lô CN4-1, CN4-2, CN4-3, Khu công nghiệp Trung tâm, Khu kinh tế Vũng Áng, Phường Vũng Áng, Tỉnh Hà Tĩnh",
+      "industries": [
+        {
+          "industryId": 0,
+          "industryName": "",
+          "industryNameVI": ""
+        }
+      ],
+      "industriesV3": [
+        {
+          "industryV3Id": 8,
+          "industryV3Name": "Automotive",
+          "industryV3NameVI": "Ô tô"
+        }
+      ],
+      "jobFunction": {
+        "parentId": 27,
+        "parentName": "Manufacturing",
+        "parentNameVI": "Sản Xuất",
+        "children": [
+          {
+            "id": 154,
+            "name": "Quality Assurance/Quality Control/Quality Management",
+            "nameVI": "Đảm Bảo Chất Lượng/Kiểm Soát Chất Lượng/Quản Lý Chất Lượng"
+          }
+        ]
+      },
+      "jobLevel": "Experienced (non-manager)",
+      "jobLevelVI": "Nhân viên",
+      "languageId": 0,
+      "locations": null,
+      "canonical": "quality-manager-2082053-jv",
+      "isShowContact": true,
+      "salaryRangeId": 0,
+      "requiredResume": false,
+      "companySize": "10,000-19,999",
+      "companySizeVI": "10.000-19.999",
+      "languageSelectedVI": "Bất kỳ",
+      "languageSelected": "Any",
+      "simpleServices": null,
+      "services": [
+        {
+          "serviceCode": "TPM",
+          "startOn": "2026-07-15T17:01:08+07:00",
+          "expiredOn": "2026-08-14T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "JPM",
+          "startOn": "2026-07-15T17:01:08+07:00",
+          "expiredOn": "2026-08-14T23:59:59+07:00"
+        }
+      ],
+      "prettySalary": "Thương lượng",
+      "durationDays": 30,
+      "numOfApplications": 0,
+      "refreshInfo": [
+        {
+          "refreshOn": "2026-07-18T18:00:00+07:00",
+          "serviceCode": "RJF"
+        },
+        {
+          "refreshOn": "2026-07-21T18:00:00+07:00",
+          "serviceCode": "RJF"
+        },
+        {
+          "refreshOn": "2026-07-21T20:00:00+07:00",
+          "serviceCode": "RJ"
+        },
+        {
+          "refreshOn": "2026-07-23T11:34:00+07:00",
+          "serviceCode": ""
+        },
+        {
+          "refreshOn": "2026-07-24T18:00:00+07:00",
+          "serviceCode": "RJF"
+        },
+        {
+          "refreshOn": "2026-07-27T18:00:00+07:00",
+          "serviceCode": "RJF"
+        },
+        {
+          "refreshOn": "2026-07-30T18:00:00+07:00",
+          "serviceCode": "RJF"
+        },
+        {
+          "refreshOn": "2026-08-02T18:00:00+07:00",
+          "serviceCode": "RJF"
+        },
+        {
+          "refreshOn": "2026-08-05T18:00:00+07:00",
+          "serviceCode": "RJF"
+        },
+        {
+          "refreshOn": "2026-08-08T18:00:00+07:00",
+          "serviceCode": "RJF"
+        },
+        {
+          "refreshOn": "2026-08-11T18:00:00+07:00",
+          "serviceCode": "RJF"
+        }
+      ],
+      "emailAddress": "",
+      "isMobileHotJob": true,
+      "isMobileTopJob": true,
+      "isBoldAndRedJob": false,
+      "isUrgentJob": false,
+      "isUrgentJobM": false,
+      "onlineOn": "2026-08-05T18:00:00+07:00",
+      "onlineOnText": "Cập nhật hôm nay",
+      "onlineOnTextColor": "#333333",
+      "onlineOnBgColor": "#F1F2F4",
+      "prettyOnlineOn": "2 giờ trước",
+      "visibilityDisplay": false,
+      "priorityOrder": "2026-08-05T18:00:00",
+      "priorityOrderText": "Cập nhật hôm nay",
+      "nearestGeoLoc": null,
+      "profilePublishedSiteMask": 0,
+      "companyColor": "#323234",
+      "yearsOfExperience": 7,
+      "highestDegreeId": 4,
+      "ageMin": 15,
+      "ageMax": 60,
+      "rangeAge": "15-60",
+      "isShowAge": 1,
+      "nationalityId": 0,
+      "isShowNationality": 1,
+      "genderId": 0,
+      "isShowGender": 1,
+      "maritalStatusId": 0,
+      "isShowMaritalStatus": 1,
+      "numberOfRecruits": 1,
+      "isShowNumberOfRecruits": 1,
+      "onlineServiceCode": "RJF",
+      "salaryPeriodId": 1,
+      "salaryCurrency": "USD",
+      "isAdrLiteJob": false,
+      "isTopPriority": false,
+      "isTopPriorityM": true,
+      "summary": null,
+      "isRefreshJob": true,
+      "isReposted": false,
+      "exposureStatus": "conversion_problem",
+      "exposureStatusUpdatedOn": "2026-08-05T19:58:42+07:00",
+      "jobDescription_len": 482,
+      "jobRequirement_len": 427
+    },
+    {
+      "jobId": 2085430,
+      "jobTitle": "Chuyên Viên Phát Triển Thị Trường - Trung Tâm Kinh Doanh Quốc Tế",
+      "jobUrl": "https://www.vietnamworks.com/chuyen-vien-phat-trien-thi-truong-trung-tam-kinh-doanh-quoc-te-2085430-jv",
+      "userId": 6695760,
+      "companyLogo": "https://images.vietnamworks.com/pictureofcompany/af/11038528.png",
+      "companyUrl": "",
+      "alias": "chuyen-vien-phat-trien-thi-truong-trung-tam-kinh-doanh-quoc-te",
+      "createdOn": "2026-07-23T09:50:17+07:00",
+      "approvedOn": "2026-07-23T09:53:56+07:00",
+      "approvedOnText": "Đăng 13 ngày trước",
+      "prettyApprovedOn": "13 ngày trước",
+      "expiredOn": "2026-08-22T23:59:59+07:00",
+      "lastUpdatedOn": "2026-07-24T15:43:14+07:00",
+      "lastSyncedOn": "2026-08-05T12:06:19+07:00",
+      "companyName": "Tổng công ty Chuyển phát nhanh Bưu điện - Công ty cổ phần",
+      "companyId": 344671,
+      "companySizeId": 6,
+      "contactName": "HR",
+      "createdBy": 6695760,
+      "isOnline": true,
+      "isActive": true,
+      "isApproved": true,
+      "isUnpaidDisable": 0,
+      "isCompleted": true,
+      "isAnonymous": false,
+      "isSalaryVisible": false,
+      "isShowLogo": true,
+      "isShowLogoInSearch": false,
+      "jobLevelId": 5,
+      "languageSelectedId": 1,
+      "redirectTo": "",
+      "requiredCoverLetter": 0,
+      "salary": 0,
+      "salaryMax": 0,
+      "salaryMin": 0,
+      "typeWorkingId": 1,
+      "skills": [
+        {
+          "skillId": 385,
+          "skillWeight": 100,
+          "skillName": "Tiếng Trung"
+        },
+        {
+          "skillId": 1441,
+          "skillWeight": 100,
+          "skillName": "Tin Học Văn Phòng"
+        },
+        {
+          "skillId": 785,
+          "skillWeight": 100,
+          "skillName": "Nghiên Cứu Thị Trường"
+        },
+        {
+          "skillId": 1165,
+          "skillWeight": 100,
+          "skillName": "Phát Triển Thị Trường"
+        },
+        {
+          "skillId": 1012055,
+          "skillWeight": 100,
+          "skillName": "Quản trị Kinh doanh"
+        }
+      ],
+      "benefits": [
+        {
+          "benefitId": 1,
+          "benefitIconName": "fa-dollar",
+          "benefitName": "Bonus",
+          "benefitNameVI": "Thưởng",
+          "benefitValue": "Lương cứng + thưởng theo doanh số\r\nThưởng hiệu quả công tác theo quý, năm theo quy định"
+        },
+        {
+          "benefitId": 4,
+          "benefitIconName": "fa-graduation-cap",
+          "benefitName": "Training",
+          "benefitNameVI": "Đào tạo",
+          "benefitValue": "Được trau dồi kiến thức khi được tìm hiểu và tham gia các dự án lớn"
+        },
+        {
+          "benefitId": 6,
+          "benefitIconName": "fa-book",
+          "benefitName": "Library",
+          "benefitNameVI": "Thư viện",
+          "benefitValue": "Môi trường làm việc thân thiện, cởi mở, nhiều cơ hội phát triển và thăng tiến."
+        },
+        {
+          "benefitId": 9,
+          "benefitIconName": "fa-plane",
+          "benefitName": "Travel Opportunities",
+          "benefitNameVI": "Cơ hội du lịch",
+          "benefitValue": "Chính sách phúc lợi khác: du lịch hàng năm, nghỉ lễ, phép theo quy định của Tổng công ty"
+        },
+        {
+          "benefitId": 10,
+          "benefitIconName": "fa-glass",
+          "benefitName": "Team Activities",
+          "benefitNameVI": "Hoạt động nhóm",
+          "benefitValue": "Văn hóa Doanh nghiệp đặc sắc, sinh động nhiều các hoạt động hấp dẫn: Teambuilding, sinh nhật công ty"
+        },
+        {
+          "benefitId": 15,
+          "benefitIconName": "fa-check-square-o",
+          "benefitName": "Others",
+          "benefitNameVI": "Khác",
+          "benefitValue": "Nâng lương định kỳ và đột xuất theo hiệu quả công việc\r\nLàm việc trong môi trường hiện đại, trẻ trung, chuyên nghiệp và nhiều cơ hội phát triển"
+        }
+      ],
+      "workingLocations": [
+        {
+          "workingLocationId": 126713,
+          "addressId": 350,
+          "cityId": 24,
+          "districtId": 0,
+          "address": "Hà Nội, Việt Nam",
+          "geoLoc": {
+            "lat": 21.027764,
+            "lon": 105.83416
+          },
+          "cityName": "Ha Noi",
+          "cityNameVI": "Hà Nội"
+        }
+      ],
+      "address": "Tầng 8, tòa nhà The Marc 88, số 88 đường Trần Thái Tông, phường Cầu Giấy, TP.Hà Nội",
+      "industries": [
+        {
+          "industryId": 0,
+          "industryName": "",
+          "industryNameVI": ""
+        }
+      ],
+      "industriesV3": [
+        {
+          "industryV3Id": 29,
+          "industryV3Name": "Logistics/Forwarding",
+          "industryV3NameVI": "Hậu cần/Giao nhận"
+        }
+      ],
+      "jobFunction": {
+        "parentId": 21,
+        "parentName": "Sales",
+        "parentNameVI": "Kinh Doanh",
+        "children": [
+          {
+            "id": 129,
+            "name": "Sales/Business Development",
+            "nameVI": "Bán Hàng/Phát Triển Kinh Doanh"
+          }
+        ]
+      },
+      "jobLevel": "Experienced (non-manager)",
+      "jobLevelVI": "Nhân viên",
+      "languageId": 0,
+      "locations": null,
+      "canonical": "chuyen-vien-phat-trien-thi-truong-trung-tam-kinh-doanh-quoc-te-2085430-jv",
+      "isShowContact": false,
+      "salaryRangeId": 0,
+      "requiredResume": false,
+      "companySize": "1,000-4,999",
+      "companySizeVI": "1.000-4.999",
+      "languageSelectedVI": "Tiếng Việt",
+      "languageSelected": "Vietnamese",
+      "simpleServices": null,
+      "services": [
+        {
+          "serviceCode": "TPM",
+          "startOn": "2026-07-23T09:53:56+07:00",
+          "expiredOn": "2026-08-22T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "JPM",
+          "startOn": "2026-07-23T09:53:56+07:00",
+          "expiredOn": "2026-08-22T23:59:59+07:00"
+        }
+      ],
+      "prettySalary": "Thương lượng",
+      "durationDays": 30,
+      "numOfApplications": 0,
+      "refreshInfo": [
+        {
+          "refreshOn": "2026-07-25T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-26T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-27T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-28T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-29T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-30T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-31T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-31T11:34:00+07:00",
+          "serviceCode": ""
+        },
+        {
+          "refreshOn": "2026-08-01T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-02T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-03T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-04T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-05T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-06T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-07T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-08T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-09T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-10T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-11T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-12T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-13T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-14T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-15T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-16T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-17T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-18T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-19T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-20T10:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-21T18:00:00+07:00",
+          "serviceCode": "RD"
+        }
+      ],
+      "emailAddress": "",
+      "isMobileHotJob": true,
+      "isMobileTopJob": true,
+      "isBoldAndRedJob": false,
+      "isUrgentJob": false,
+      "isUrgentJobM": false,
+      "onlineOn": "2026-08-05T18:00:00+07:00",
+      "onlineOnText": "Cập nhật hôm nay",
+      "onlineOnTextColor": "#333333",
+      "onlineOnBgColor": "#F1F2F4",
+      "prettyOnlineOn": "2 giờ trước",
+      "visibilityDisplay": false,
+      "priorityOrder": "2026-08-05T18:00:00",
+      "priorityOrderText": "Cập nhật hôm nay",
+      "nearestGeoLoc": null,
+      "profilePublishedSiteMask": 3,
+      "companyColor": "#0C335A",
+      "yearsOfExperience": 0,
+      "highestDegreeId": 4,
+      "rangeAge": "Không hiển thị",
+      "isShowAge": 0,
+      "isShowNationality": 0,
+      "isShowGender": 0,
+      "isShowMaritalStatus": 0,
+      "numberOfRecruits": 1,
+      "isShowNumberOfRecruits": 0,
+      "onlineServiceCode": "RD",
+      "salaryPeriodId": 1,
+      "salaryCurrency": "USD",
+      "isAdrLiteJob": false,
+      "isTopPriority": false,
+      "isTopPriorityM": true,
+      "summary": null,
+      "isRefreshJob": true,
+      "isReposted": false,
+      "exposureStatus": "conversion_problem",
+      "exposureStatusUpdatedOn": "2026-08-05T19:17:53+07:00",
+      "jobDescription_len": 269,
+      "jobRequirement_len": 341
+    },
+    {
+      "jobId": 2081973,
+      "jobTitle": "Senior Partnership Executive",
+      "jobUrl": "https://www.vietnamworks.com/senior-partnership-executive--2081973-jv",
+      "userId": 7182381,
+      "companyLogo": "https://images.vietnamworks.com/pictureofcompany/d4/11182771.jpg",
+      "companyUrl": "",
+      "alias": "senior-partnership-executive-",
+      "createdOn": "2026-07-15T16:00:32+07:00",
+      "approvedOn": "2026-07-15T16:48:10+07:00",
+      "approvedOnText": "Đăng 21 ngày trước",
+      "prettyApprovedOn": "21 ngày trước",
+      "expiredOn": "2026-08-14T23:59:59+07:00",
+      "lastUpdatedOn": "2026-07-28T15:48:14+07:00",
+      "lastSyncedOn": "2026-08-05T12:05:53+07:00",
+      "companyName": "Công ty TNHH BlueMedia Việt Nam",
+      "companyId": 371544,
+      "companySizeId": 0,
+      "contactName": "Ms Lana",
+      "createdBy": 7182381,
+      "isOnline": true,
+      "isActive": true,
+      "isApproved": true,
+      "isUnpaidDisable": 0,
+      "isCompleted": true,
+      "isAnonymous": false,
+      "isSalaryVisible": true,
+      "isShowLogo": true,
+      "isShowLogoInSearch": false,
+      "jobLevelId": 5,
+      "languageSelectedId": 2,
+      "redirectTo": "",
+      "requiredCoverLetter": 0,
+      "salary": 35000000,
+      "salaryMax": 0,
+      "salaryMin": 35000000,
+      "typeWorkingId": 1,
+      "skills": [
+        {
+          "skillId": 1634199,
+          "skillWeight": 100,
+          "skillName": "Platform Partnerships"
+        },
+        {
+          "skillId": 1625039,
+          "skillWeight": 100,
+          "skillName": "TikTok Ads, Google Ads"
+        },
+        {
+          "skillId": 6561,
+          "skillWeight": 100,
+          "skillName": "Media Planning"
+        },
+        {
+          "skillId": 1022230,
+          "skillWeight": 100,
+          "skillName": "Meta ads"
+        },
+        {
+          "skillId": 1200586,
+          "skillWeight": 100,
+          "skillName": "Adtech"
+        }
+      ],
+      "benefits": [
+        {
+          "benefitId": 2,
+          "benefitIconName": "fa-user-md",
+          "benefitName": "Healthcare Plan",
+          "benefitNameVI": "Chăm sóc sức khoẻ",
+          "benefitValue": "•\tSalary: Negotiable with full salary on probation \r\n•\tAllowances: Laptop, Phone bill, Food,… \r\n•\tGood brand name of Blue Focus International;\r\n•\tTraining courses in China;\r\n•\tFull salary social insurance;\r\n•\tOther company activities on holiday"
+        },
+        {
+          "benefitId": 4,
+          "benefitIconName": "fa-graduation-cap",
+          "benefitName": "Training",
+          "benefitNameVI": "Đào tạo",
+          "benefitValue": "Quarterly performance reviews.\r\nPromotion review twice-a-year.\r\nRole-specific training policies."
+        },
+        {
+          "benefitId": 10,
+          "benefitIconName": "fa-glass",
+          "benefitName": "Team Activities",
+          "benefitNameVI": "Hoạt động nhóm",
+          "benefitValue": "Departmental quarterly team building activities.\r\nAnnual company-wide team building activities.\r\nCelebratory events for holidays/festivals."
+        },
+        {
+          "benefitId": 15,
+          "benefitIconName": "fa-check-square-o",
+          "benefitName": "Others",
+          "benefitNameVI": "Khác",
+          "benefitValue": "Competitive income.\r\n100% salary during probation.\r\nFull social insurance contribution.\r\nAllowance for lunch, telephone, and laptop.\r\nBirthday, marriage, and childbirth gifts.\r\nAnnual health check-ups."
+        }
+      ],
+      "workingLocations": [
+        {
+          "workingLocationId": 259334,
+          "addressId": 162351,
+          "cityId": 29,
+          "districtId": 0,
+          "address": "80 Bat Nan street, Binh Trung ward, Ho Chi Minh city",
+          "geoLoc": {
+            "lat": 10.777023,
+            "lon": 106.75046
+          },
+          "cityName": "Ho Chi Minh",
+          "cityNameVI": "Hồ Chí Minh"
+        }
+      ],
+      "address": "80 Bát Nàn, Bình Trưng Tây, Thủ Đức, Hồ Chí Minh, Vietnam",
+      "industries": [
+        {
+          "industryId": 0,
+          "industryName": "",
+          "industryNameVI": ""
+        }
+      ],
+      "industriesV3": [
+        {
+          "industryV3Id": 32,
+          "industryV3Name": "Media/Newspaper/Advertising",
+          "industryV3NameVI": "Truyền thông/Báo chí/Quảng cáo"
+        }
+      ],
+      "jobFunction": {
+        "parentId": 17,
+        "parentName": "Marketing, Advertising/Communications",
+        "parentNameVI": "Tiếp Thị, Quảng Cáo/Truyền Thông",
+        "children": [
+          {
+            "id": 105,
+            "name": "Digital Marketing",
+            "nameVI": "Tiếp Thị Trực Tuyến"
+          }
+        ]
+      },
+      "jobLevel": "Experienced (non-manager)",
+      "jobLevelVI": "Nhân viên",
+      "languageId": 0,
+      "locations": null,
+      "canonical": "senior-partnership-executive--2081973-jv",
+      "isShowContact": false,
+      "salaryRangeId": 0,
+      "requiredResume": false,
+      "companySize": "",
+      "companySizeVI": "",
+      "languageSelectedVI": "Tiếng Anh",
+      "languageSelected": "English",
+      "simpleServices": [
+        "isUrgentJobM"
+      ],
+      "services": [
+        {
+          "serviceCode": "TPM",
+          "startOn": "2026-07-15T16:48:10+07:00",
+          "expiredOn": "2026-08-14T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "JPMAI",
+          "startOn": "2026-07-15T16:48:10+07:00",
+          "expiredOn": "2026-08-14T23:59:59+07:00"
+        }
+      ],
+      "prettySalary": "Từ $ 35tr /tháng",
+      "durationDays": 30,
+      "numOfApplications": 0,
+      "refreshInfo": [
+        {
+          "refreshOn": "2026-07-22T17:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-07-22T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-07-29T17:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-07-29T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-08-05T17:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-08-05T18:00:00+07:00",
+          "serviceCode": "RW"
+        }
+      ],
+      "emailAddress": "",
+      "isMobileHotJob": true,
+      "isMobileTopJob": true,
+      "isBoldAndRedJob": false,
+      "isUrgentJob": false,
+      "isUrgentJobM": true,
+      "onlineOn": "2026-08-05T18:00:00+07:00",
+      "onlineOnText": "Cập nhật hôm nay",
+      "onlineOnTextColor": "#333333",
+      "onlineOnBgColor": "#F1F2F4",
+      "prettyOnlineOn": "2 giờ trước",
+      "visibilityDisplay": false,
+      "priorityOrder": "2026-08-05T18:00:00",
+      "priorityOrderText": "Cập nhật hôm nay",
+      "nearestGeoLoc": null,
+      "profilePublishedSiteMask": 0,
+      "companyColor": "#0E3758",
+      "yearsOfExperience": 5,
+      "highestDegreeId": 0,
+      "ageMin": 0,
+      "ageMax": 35,
+      "rangeAge": "Dưới 35 tuổi ",
+      "isShowAge": 1,
+      "isShowNationality": 0,
+      "isShowGender": 0,
+      "isShowMaritalStatus": 0,
+      "numberOfRecruits": 1,
+      "isShowNumberOfRecruits": 0,
+      "onlineServiceCode": "RW",
+      "salaryPeriodId": 1,
+      "salaryCurrency": "USD",
+      "isAdrLiteJob": false,
+      "isTopPriority": false,
+      "isTopPriorityM": true,
+      "summary": null,
+      "isRefreshJob": true,
+      "isReposted": false,
+      "exposureStatus": "below_target",
+      "exposureStatusUpdatedOn": "2026-08-05T19:11:34+07:00",
+      "jobDescription_len": 470,
+      "jobRequirement_len": 453
+    },
+    {
+      "jobId": 2072849,
+      "jobTitle": "Accounting Staff",
+      "jobUrl": "https://www.vietnamworks.com/accounting-staff--2072849-jv",
+      "userId": 3474029,
+      "companyLogo": "https://images.vietnamworks.com/pictureofcompany/6e/10188452.png",
+      "companyUrl": "",
+      "alias": "accounting-staff-",
+      "createdOn": "2026-06-24T15:37:19+07:00",
+      "approvedOn": "2026-07-29T16:16:46+07:00",
+      "approvedOnText": "Đăng lại 7 ngày trước",
+      "prettyApprovedOn": "7 ngày trước",
+      "expiredOn": "2026-08-28T23:59:59+07:00",
+      "lastUpdatedOn": "2026-07-29T16:16:46+07:00",
+      "lastSyncedOn": "2026-08-05T12:07:06+07:00",
+      "companyName": "Elite Group Ha Noi Co.,ltd.",
+      "companyId": 187871,
+      "companySizeId": 6,
+      "contactName": "Phòng nhân sư",
+      "createdBy": 3474029,
+      "isOnline": true,
+      "isActive": true,
+      "isApproved": true,
+      "isUnpaidDisable": 0,
+      "isCompleted": true,
+      "isAnonymous": false,
+      "isSalaryVisible": true,
+      "isShowLogo": true,
+      "isShowLogoInSearch": false,
+      "jobLevelId": 5,
+      "languageSelectedId": 3,
+      "redirectTo": "",
+      "requiredCoverLetter": 0,
+      "salary": 18000000,
+      "salaryMax": 18000000,
+      "salaryMin": 13000000,
+      "typeWorkingId": 1,
+      "skills": [
+        {
+          "skillId": 1652,
+          "skillWeight": 100,
+          "skillName": "Tài Chính"
+        },
+        {
+          "skillId": 160,
+          "skillWeight": 100,
+          "skillName": "Kiểm Toán"
+        },
+        {
+          "skillId": 93,
+          "skillWeight": 100,
+          "skillName": "Kế Toán Tổng Hợp"
+        },
+        {
+          "skillId": 704591,
+          "skillWeight": 100,
+          "skillName": "Kế Toán"
+        },
+        {
+          "skillId": 993061,
+          "skillWeight": 100,
+          "skillName": "MISA"
+        }
+      ],
+      "benefits": [
+        {
+          "benefitId": 1,
+          "benefitIconName": "fa-dollar",
+          "benefitName": "Bonus",
+          "benefitNameVI": "Thưởng",
+          "benefitValue": "• Thưởng vào các ngày Lễ, Tết theo quy định của công ty.\r\n• Được xem xét tăng lương định kỳ hàng năm dựa trên hiệu suất làm việc."
+        },
+        {
+          "benefitId": 6,
+          "benefitIconName": "fa-book",
+          "benefitName": "Library",
+          "benefitNameVI": "Thư viện",
+          "benefitValue": "• BHXH, BHYT, BHTN"
+        },
+        {
+          "benefitId": 10,
+          "benefitIconName": "fa-glass",
+          "benefitName": "Team Activities",
+          "benefitNameVI": "Hoạt động nhóm",
+          "benefitValue": "• Môi trường làm việc chuyên nghiệp"
+        }
+      ],
+      "workingLocations": [
+        {
+          "workingLocationId": 194982,
+          "addressId": 8070,
+          "cityId": 23,
+          "districtId": 294,
+          "address": "Khu Công nghiệp Hòa Mạc, Duy Tiên, Hà Nam, Vietnam",
+          "geoLoc": {
+            "lat": 20.650007,
+            "lon": 106.000836
+          },
+          "cityName": "Ha Nam",
+          "cityNameVI": "Hà Nam"
+        },
+        {
+          "workingLocationId": 252379,
+          "addressId": 2746,
+          "cityId": 42,
+          "districtId": 0,
+          "address": "Ninh Binh",
+          "geoLoc": {
+            "lat": 0,
+            "lon": 0
+          },
+          "cityName": "Ninh Binh",
+          "cityNameVI": "Ninh Bình"
+        }
+      ],
+      "address": "SectionD, N2 Street, Hoa Mac Industrial, Duy Tien Dist, Ha Nam Province, Viet Nam",
+      "industries": [
+        {
+          "industryId": 0,
+          "industryName": "",
+          "industryNameVI": ""
+        }
+      ],
+      "industriesV3": [
+        {
+          "industryV3Id": 30,
+          "industryV3Name": "Manufacturing",
+          "industryV3NameVI": "Sản xuất"
+        }
+      ],
+      "jobFunction": {
+        "parentId": 2,
+        "parentName": "Accounting/Auditing",
+        "parentNameVI": "Kế Toán/Kiểm Toán",
+        "children": [
+          {
+            "id": 13,
+            "name": "General Accounting",
+            "nameVI": "Kế Toán Tổng Hợp"
+          }
+        ]
+      },
+      "jobLevel": "Experienced (non-manager)",
+      "jobLevelVI": "Nhân viên",
+      "languageId": 0,
+      "locations": null,
+      "canonical": "accounting-staff--2072849-jv",
+      "isShowContact": true,
+      "salaryRangeId": 0,
+      "requiredResume": false,
+      "companySize": "1,000-4,999",
+      "companySizeVI": "1.000-4.999",
+      "languageSelectedVI": "Bất kỳ",
+      "languageSelected": "Any",
+      "simpleServices": null,
+      "services": [
+        {
+          "serviceCode": "TPM",
+          "startOn": "2026-06-24T17:21:22+07:00",
+          "expiredOn": "2026-08-28T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "JPMAI",
+          "startOn": "2026-06-24T17:21:22+07:00",
+          "expiredOn": "2026-08-28T23:59:59+07:00"
+        }
+      ],
+      "prettySalary": "13tr-18tr ₫/tháng",
+      "durationDays": 30,
+      "numOfApplications": 0,
+      "refreshInfo": [
+        {
+          "refreshOn": "2026-07-01T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-07-02T11:34:00+07:00",
+          "serviceCode": ""
+        },
+        {
+          "refreshOn": "2026-07-08T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-07-15T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-07-16T11:34:00+07:00",
+          "serviceCode": ""
+        },
+        {
+          "refreshOn": "2026-08-05T18:00:00+07:00",
+          "serviceCode": ""
+        },
+        {
+          "refreshOn": "2026-08-06T11:34:00+07:00",
+          "serviceCode": ""
+        },
+        {
+          "refreshOn": "2026-08-12T18:00:00+07:00",
+          "serviceCode": ""
+        },
+        {
+          "refreshOn": "2026-08-19T18:00:00+07:00",
+          "serviceCode": ""
+        },
+        {
+          "refreshOn": "2026-08-20T11:34:00+07:00",
+          "serviceCode": ""
+        }
+      ],
+      "emailAddress": "",
+      "isMobileHotJob": true,
+      "isMobileTopJob": true,
+      "isBoldAndRedJob": false,
+      "isUrgentJob": false,
+      "isUrgentJobM": false,
+      "onlineOn": "2026-08-05T18:00:00+07:00",
+      "onlineOnText": "Cập nhật hôm nay",
+      "onlineOnTextColor": "#333333",
+      "onlineOnBgColor": "#F1F2F4",
+      "prettyOnlineOn": "2 giờ trước",
+      "visibilityDisplay": false,
+      "priorityOrder": "2026-08-05T18:00:00",
+      "priorityOrderText": "Cập nhật hôm nay",
+      "nearestGeoLoc": null,
+      "profilePublishedSiteMask": 0,
+      "companyColor": "#552411",
+      "yearsOfExperience": 3,
+      "highestDegreeId": 4,
+      "rangeAge": "Không hiển thị",
+      "isShowAge": 0,
+      "isShowNationality": 0,
+      "isShowGender": 0,
+      "isShowMaritalStatus": 0,
+      "numberOfRecruits": 1,
+      "isShowNumberOfRecruits": 0,
+      "onlineServiceCode": "",
+      "salaryPeriodId": 1,
+      "salaryCurrency": "VND",
+      "isAdrLiteJob": false,
+      "isTopPriority": false,
+      "isTopPriorityM": true,
+      "summary": null,
+      "isRefreshJob": true,
+      "isReposted": true,
+      "exposureStatus": "conversion_problem",
+      "exposureStatusUpdatedOn": "2026-08-05T19:19:04+07:00",
+      "jobDescription_len": 269,
+      "jobRequirement_len": 283
+    },
+    {
+      "jobId": 2088425,
+      "jobTitle": "Quản Lý Dự Án Truyền Thông IMC (Account Manager Tại Media Agency)",
+      "jobUrl": "https://www.vietnamworks.com/quan-ly-du-an-truyen-thong-imc-account-manager-tai-media-agency-2088425-jv",
+      "userId": 5539380,
+      "companyLogo": "https://images.vietnamworks.com/pictureofcompany/18/11294036.png",
+      "companyUrl": "",
+      "alias": "quan-ly-du-an-truyen-thong-imc-account-manager-tai-media-agency",
+      "createdOn": "2026-07-29T16:50:33+07:00",
+      "approvedOn": "2026-07-29T17:20:32+07:00",
+      "approvedOnText": "Đăng 7 ngày trước",
+      "prettyApprovedOn": "7 ngày trước",
+      "expiredOn": "2026-08-28T23:59:59+07:00",
+      "lastUpdatedOn": "2026-07-29T17:46:46+07:00",
+      "lastSyncedOn": "2026-08-05T12:06:38+07:00",
+      "companyName": "Công Ty Cổ phần TAJ Việt Nam",
+      "companyId": 298610,
+      "companySizeId": 4,
+      "contactName": "PNS",
+      "createdBy": 5539380,
+      "isOnline": true,
+      "isActive": true,
+      "isApproved": true,
+      "isUnpaidDisable": 0,
+      "isCompleted": true,
+      "isAnonymous": false,
+      "isSalaryVisible": true,
+      "isShowLogo": true,
+      "isShowLogoInSearch": false,
+      "jobLevelId": 5,
+      "languageSelectedId": 2,
+      "redirectTo": "",
+      "requiredCoverLetter": 0,
+      "salary": 22000000,
+      "salaryMax": 22000000,
+      "salaryMin": 14000000,
+      "typeWorkingId": 1,
+      "skills": [
+        {
+          "skillId": 1521849,
+          "skillWeight": 100,
+          "skillName": "Client Partnership"
+        },
+        {
+          "skillId": 1021344,
+          "skillWeight": 100,
+          "skillName": "Data analysis"
+        },
+        {
+          "skillId": 1010725,
+          "skillWeight": 100,
+          "skillName": "Presentation skills"
+        },
+        {
+          "skillId": 1080354,
+          "skillWeight": 100,
+          "skillName": "Project scheduling"
+        },
+        {
+          "skillId": 1072974,
+          "skillWeight": 100,
+          "skillName": "IMC Campaign Management"
+        }
+      ],
+      "benefits": [
+        {
+          "benefitId": 1,
+          "benefitIconName": "fa-dollar",
+          "benefitName": "Bonus",
+          "benefitNameVI": "Thưởng",
+          "benefitValue": "Project Bonuses: Extra performance rewards equivalent to 2–3+ months of salary/year."
+        },
+        {
+          "benefitId": 2,
+          "benefitIconName": "fa-user-md",
+          "benefitName": "Healthcare Plan",
+          "benefitNameVI": "Chăm sóc sức khoẻ",
+          "benefitValue": "Premium Healthcare: Company-wide UIC insurance."
+        },
+        {
+          "benefitId": 3,
+          "benefitIconName": "fa-file-image-o",
+          "benefitName": "Paid Leave",
+          "benefitNameVI": "Nghỉ phép có lương",
+          "benefitValue": "Rejuvenation Leave: 12 annual leave days (+1 day every 5 years). Special milestone: 14-day and 30-day consecutive paid leave at the 2-year and 5-year marks."
+        },
+        {
+          "benefitId": 4,
+          "benefitIconName": "fa-graduation-cap",
+          "benefitName": "Training",
+          "benefitNameVI": "Đào tạo",
+          "benefitValue": "Training Allowance: Annual educational sponsorship up to VND 7,000,000/year."
+        },
+        {
+          "benefitId": 5,
+          "benefitIconName": "fa-trophy",
+          "benefitName": "Awards",
+          "benefitNameVI": "Giải thưởng",
+          "benefitValue": "Annual Rewards: 13th-month salary, festive bonuses, and milestone allowances."
+        },
+        {
+          "benefitId": 10,
+          "benefitIconName": "fa-glass",
+          "benefitName": "Team Activities",
+          "benefitNameVI": "Hoạt động nhóm",
+          "benefitValue": "Company Trips: Annual domestic and international travel."
+        },
+        {
+          "benefitId": 11,
+          "benefitIconName": "fa-cab",
+          "benefitName": "Transportation",
+          "benefitNameVI": "Xe đưa đón",
+          "benefitValue": "Daily Lunch: Fully covered at VND 50,000/day at the Company’s restaurant."
+        },
+        {
+          "benefitId": 15,
+          "benefitIconName": "fa-check-square-o",
+          "benefitName": "Others",
+          "benefitNameVI": "Khác",
+          "benefitValue": "Daily Perks: Free seasonal fruits, tea, and premium coffee.\r\nInspiring Culture: Creative, open workspace with a strong learning and development focus.\r\nFull Protection: Full Vietnam Labor Law compliance and annual executive health check-ups.\r\nFast-Track"
+        }
+      ],
+      "workingLocations": [
+        {
+          "workingLocationId": 32768,
+          "addressId": 100938,
+          "cityId": 24,
+          "districtId": 10,
+          "address": "Tầng 3, tòa nhà N02 – T1, khu ngoại giao đoàn Xuân Tảo, Bắc Từ Liêm, Hà Nội",
+          "geoLoc": {
+            "lat": 21.067152,
+            "lon": 105.798075
+          },
+          "cityName": "Ha Noi",
+          "cityNameVI": "Hà Nội"
+        }
+      ],
+      "address": "Tầng 3, Tòa nhà N02.T1, Khu ngoại giao đoàn, đường Xuân Tảo, phường Xuân Đỉnh, TP. Hà Nội / Tầng 7, Toà nhà Master Building, 41 - 43 đường Trần",
+      "industries": [
+        {
+          "industryId": 0,
+          "industryName": "",
+          "industryNameVI": ""
+        }
+      ],
+      "industriesV3": [
+        {
+          "industryV3Id": 32,
+          "industryV3Name": "Media/Newspaper/Advertising",
+          "industryV3NameVI": "Truyền thông/Báo chí/Quảng cáo"
+        }
+      ],
+      "jobFunction": {
+        "parentId": 21,
+        "parentName": "Sales",
+        "parentNameVI": "Kinh Doanh",
+        "children": [
+          {
+            "id": 129,
+            "name": "Sales/Business Development",
+            "nameVI": "Bán Hàng/Phát Triển Kinh Doanh"
+          }
+        ]
+      },
+      "jobLevel": "Experienced (non-manager)",
+      "jobLevelVI": "Nhân viên",
+      "languageId": 0,
+      "locations": null,
+      "canonical": "quan-ly-du-an-truyen-thong-imc-account-manager-tai-media-agency-2088425-jv",
+      "isShowContact": false,
+      "salaryRangeId": 0,
+      "requiredResume": false,
+      "companySize": "100-499",
+      "companySizeVI": "100-499",
+      "languageSelectedVI": "Tiếng Anh",
+      "languageSelected": "English",
+      "simpleServices": [
+        "isUrgentJobM"
+      ],
+      "services": [
+        {
+          "serviceCode": "TPM",
+          "startOn": "2026-07-29T17:20:32+07:00",
+          "expiredOn": "2026-08-28T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "JPM",
+          "startOn": "2026-07-29T17:20:32+07:00",
+          "expiredOn": "2026-08-28T23:59:59+07:00"
+        }
+      ],
+      "prettySalary": "14tr-22tr ₫/tháng",
+      "durationDays": 30,
+      "numOfApplications": 0,
+      "refreshInfo": [
+        {
+          "refreshOn": "2026-08-05T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-08-12T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-08-19T18:00:00+07:00",
+          "serviceCode": "RW"
+        }
+      ],
+      "emailAddress": "",
+      "isMobileHotJob": true,
+      "isMobileTopJob": true,
+      "isBoldAndRedJob": false,
+      "isUrgentJob": false,
+      "isUrgentJobM": true,
+      "onlineOn": "2026-08-05T18:00:00+07:00",
+      "onlineOnText": "Cập nhật hôm nay",
+      "onlineOnTextColor": "#333333",
+      "onlineOnBgColor": "#F1F2F4",
+      "prettyOnlineOn": "2 giờ trước",
+      "visibilityDisplay": false,
+      "priorityOrder": "2026-08-05T18:00:00",
+      "priorityOrderText": "Cập nhật hôm nay",
+      "nearestGeoLoc": null,
+      "profilePublishedSiteMask": 2,
+      "companyColor": "#005166",
+      "yearsOfExperience": 3,
+      "highestDegreeId": 0,
+      "rangeAge": "Không hiển thị",
+      "isShowAge": 0,
+      "isShowNationality": 0,
+      "isShowGender": 0,
+      "isShowMaritalStatus": 0,
+      "numberOfRecruits": 1,
+      "isShowNumberOfRecruits": 0,
+      "onlineServiceCode": "RW",
+      "salaryPeriodId": 1,
+      "salaryCurrency": "VND",
+      "isAdrLiteJob": false,
+      "isTopPriority": false,
+      "isTopPriorityM": true,
+      "summary": null,
+      "isRefreshJob": true,
+      "isReposted": false,
+      "exposureStatus": "below_target",
+      "exposureStatusUpdatedOn": "2026-08-05T19:02:48+07:00",
+      "jobDescription_len": 441,
+      "jobRequirement_len": 481
+    },
+    {
+      "jobId": 2086368,
+      "jobTitle": "Food Safety Manager (QA/QC Manager)",
+      "jobUrl": "https://www.vietnamworks.com/food-safety-manager-qaqc-manager-2086368-jv",
+      "userId": 4130405,
+      "companyLogo": "https://images.vietnamworks.com/pictureofcompany/d8/11090543.png",
+      "companyUrl": "",
+      "alias": "food-safety-manager-qaqc-manager",
+      "createdOn": "2026-07-24T15:41:41+07:00",
+      "approvedOn": "2026-07-24T17:05:33+07:00",
+      "approvedOnText": "Đăng 12 ngày trước",
+      "prettyApprovedOn": "12 ngày trước",
+      "expiredOn": "2026-08-23T23:59:59+07:00",
+      "lastUpdatedOn": "2026-07-27T09:15:29+07:00",
+      "lastSyncedOn": "2026-08-05T12:06:42+07:00",
+      "companyName": "Samsung SDS",
+      "companyId": 226921,
+      "companySizeId": 0,
+      "contactName": "HR",
+      "createdBy": 4130405,
+      "isOnline": true,
+      "isActive": true,
+      "isApproved": true,
+      "isUnpaidDisable": 0,
+      "isCompleted": true,
+      "isAnonymous": false,
+      "isSalaryVisible": false,
+      "isShowLogo": true,
+      "isShowLogoInSearch": false,
+      "jobLevelId": 7,
+      "languageSelectedId": 2,
+      "redirectTo": "",
+      "requiredCoverLetter": 0,
+      "salary": 0,
+      "salaryMax": 0,
+      "salaryMin": 0,
+      "typeWorkingId": 1,
+      "skills": [
+        {
+          "skillId": 999054,
+          "skillWeight": 100,
+          "skillName": "Food Safety"
+        }
+      ],
+      "benefits": [
+        {
+          "benefitId": 15,
+          "benefitIconName": "fa-check-square-o",
+          "benefitName": "Others",
+          "benefitNameVI": "Khác",
+          "benefitValue": "Attractive salary package based on candidates’ profile."
+        }
+      ],
+      "workingLocations": [
+        {
+          "workingLocationId": 237048,
+          "addressId": 144760,
+          "cityId": 29,
+          "districtId": 0,
+          "address": "Lot III B2 Binh Dien DC, Ward 7, Dist. 8 (old address)",
+          "geoLoc": {
+            "lat": 0,
+            "lon": 0
+          },
+          "cityName": "Ho Chi Minh",
+          "cityNameVI": "Hồ Chí Minh"
+        }
+      ],
+      "address": "6th Floor, Sacom Chip Sang Building, D1 road, Sai Gon Hi-Tech park, Tan Phu Ward, Thu Duc City, HCM City, Viet Nam",
+      "industries": [
+        {
+          "industryId": 0,
+          "industryName": "",
+          "industryNameVI": ""
+        }
+      ],
+      "industriesV3": [
+        {
+          "industryV3Id": 48,
+          "industryV3Name": "Warehouse/Freight Yard",
+          "industryV3NameVI": "Dịch vụ kho bãi"
+        }
+      ],
+      "jobFunction": {
+        "parentId": 27,
+        "parentName": "Manufacturing",
+        "parentNameVI": "Sản Xuất",
+        "children": [
+          {
+            "id": 154,
+            "name": "Quality Assurance/Quality Control/Quality Management",
+            "nameVI": "Đảm Bảo Chất Lượng/Kiểm Soát Chất Lượng/Quản Lý Chất Lượng"
+          }
+        ]
+      },
+      "jobLevel": "Manager",
+      "jobLevelVI": "Trưởng phòng",
+      "languageId": 0,
+      "locations": null,
+      "canonical": "food-safety-manager-qaqc-manager-2086368-jv",
+      "isShowContact": false,
+      "salaryRangeId": 0,
+      "requiredResume": false,
+      "companySize": "",
+      "companySizeVI": "",
+      "languageSelectedVI": "Tiếng Anh",
+      "languageSelected": "English",
+      "simpleServices": null,
+      "services": [
+        {
+          "serviceCode": "TPM",
+          "startOn": "2026-07-24T17:05:33+07:00",
+          "expiredOn": "2026-08-23T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "JPM",
+          "startOn": "2026-07-24T17:05:33+07:00",
+          "expiredOn": "2026-08-23T23:59:59+07:00"
+        }
+      ],
+      "prettySalary": "Thương lượng",
+      "durationDays": 30,
+      "numOfApplications": 0,
+      "refreshInfo": [
+        {
+          "refreshOn": "2026-07-27T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-30T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-02T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-05T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-08T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-11T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-14T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-17T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-20T18:00:00+07:00",
+          "serviceCode": "RD"
+        }
+      ],
+      "emailAddress": "",
+      "isMobileHotJob": true,
+      "isMobileTopJob": true,
+      "isBoldAndRedJob": false,
+      "isUrgentJob": false,
+      "isUrgentJobM": false,
+      "onlineOn": "2026-08-05T18:00:00+07:00",
+      "onlineOnText": "Cập nhật hôm nay",
+      "onlineOnTextColor": "#333333",
+      "onlineOnBgColor": "#F1F2F4",
+      "prettyOnlineOn": "2 giờ trước",
+      "visibilityDisplay": false,
+      "priorityOrder": "2026-08-05T18:00:00",
+      "priorityOrderText": "Cập nhật hôm nay",
+      "nearestGeoLoc": null,
+      "profilePublishedSiteMask": 0,
+      "companyColor": "#1D3149",
+      "yearsOfExperience": 8,
+      "highestDegreeId": 4,
+      "rangeAge": "Không hiển thị",
+      "isShowAge": 0,
+      "isShowNationality": 0,
+      "isShowGender": 0,
+      "isShowMaritalStatus": 0,
+      "numberOfRecruits": 1,
+      "isShowNumberOfRecruits": 0,
+      "onlineServiceCode": "RD",
+      "salaryPeriodId": 1,
+      "salaryCurrency": "USD",
+      "isAdrLiteJob": false,
+      "isTopPriority": false,
+      "isTopPriorityM": true,
+      "summary": null,
+      "isRefreshJob": true,
+      "isReposted": false,
+      "exposureStatus": "above_target",
+      "exposureStatusUpdatedOn": "2026-08-05T19:11:18+07:00",
+      "jobDescription_len": 457,
+      "jobRequirement_len": 432
+    },
+    {
+      "jobId": 2079517,
+      "jobTitle": "Recruitment Consultant",
+      "jobUrl": "https://www.vietnamworks.com/recruitment-consultant--2079517-jv",
+      "userId": 743336,
+      "companyLogo": "https://images.vietnamworks.com/pictureofcompany/6e/10922087.png",
+      "companyUrl": "",
+      "alias": "recruitment-consultant-",
+      "createdOn": "2026-07-09T17:03:25+07:00",
+      "approvedOn": "2026-07-09T17:04:04+07:00",
+      "approvedOnText": "Đăng 27 ngày trước",
+      "prettyApprovedOn": "27 ngày trước",
+      "expiredOn": "2026-08-08T23:59:59+07:00",
+      "lastUpdatedOn": "2026-07-09T17:04:04+07:00",
+      "lastSyncedOn": "2026-08-05T12:05:31+07:00",
+      "companyName": "Navigos Group",
+      "companyId": 18364,
+      "companySizeId": 5,
+      "contactName": "Talent Acquisition Team",
+      "createdBy": 743336,
+      "isOnline": true,
+      "isActive": true,
+      "isApproved": true,
+      "isUnpaidDisable": 0,
+      "isCompleted": true,
+      "isAnonymous": false,
+      "isSalaryVisible": true,
+      "isShowLogo": true,
+      "isShowLogoInSearch": false,
+      "jobLevelId": 5,
+      "languageSelectedId": 2,
+      "redirectTo": "",
+      "requiredCoverLetter": 0,
+      "salary": 700,
+      "salaryMax": 0,
+      "salaryMin": 700,
+      "typeWorkingId": 1,
+      "skills": [
+        {
+          "skillId": 543,
+          "skillWeight": 100,
+          "skillName": "Recruitment"
+        },
+        {
+          "skillId": 4475,
+          "skillWeight": 100,
+          "skillName": "Talent Acquisition"
+        },
+        {
+          "skillId": 680,
+          "skillWeight": 100,
+          "skillName": "Business Development"
+        },
+        {
+          "skillId": 987777,
+          "skillWeight": 100,
+          "skillName": "Sales"
+        },
+        {
+          "skillId": 1007509,
+          "skillWeight": 100,
+          "skillName": "Manufacturing"
+        }
+      ],
+      "benefits": [
+        {
+          "benefitId": 1,
+          "benefitIconName": "fa-dollar",
+          "benefitName": "Bonus",
+          "benefitNameVI": "Thưởng",
+          "benefitValue": "Attractive commission scheme"
+        },
+        {
+          "benefitId": 3,
+          "benefitIconName": "fa-file-image-o",
+          "benefitName": "Paid Leave",
+          "benefitNameVI": "Nghỉ phép có lương",
+          "benefitValue": "27 paid leave"
+        },
+        {
+          "benefitId": 4,
+          "benefitIconName": "fa-graduation-cap",
+          "benefitName": "Training",
+          "benefitNameVI": "Đào tạo",
+          "benefitValue": "Powerful supporting tools (Unlimited VietnamWorks.com job posting and resume searching)"
+        }
+      ],
+      "workingLocations": [
+        {
+          "workingLocationId": 190174,
+          "addressId": 110820,
+          "cityId": 24,
+          "districtId": 9,
+          "address": "V-building Hanoi",
+          "geoLoc": {
+            "lat": 21.015569,
+            "lon": 105.849442
+          },
+          "cityName": "Ha Noi",
+          "cityNameVI": "Hà Nội"
+        }
+      ],
+      "address": "HCM Office: 20th Floor, E Town Central - 11 Doan Van Bo, Ward 13, District 4; Hanoi office: 8th Floor, V Building, 125-127 Ba Trieu St, Hai Ba Trung District",
+      "industries": [
+        {
+          "industryId": 0,
+          "industryName": "",
+          "industryNameVI": ""
+        }
+      ],
+      "industriesV3": [
+        {
+          "industryV3Id": 27,
+          "industryV3Name": "Labor Supply",
+          "industryV3NameVI": "Cung cấp nhân lực"
+        }
+      ],
+      "jobFunction": {
+        "parentId": 12,
+        "parentName": "Human Resources/Recruitment",
+        "parentNameVI": "Nhân Sự/Tuyển Dụng",
+        "children": [
+          {
+            "id": 76,
+            "name": "Recruitment",
+            "nameVI": "Tuyển Dụng"
+          }
+        ]
+      },
+      "jobLevel": "Experienced (non-manager)",
+      "jobLevelVI": "Nhân viên",
+      "languageId": 0,
+      "locations": null,
+      "canonical": "recruitment-consultant--2079517-jv",
+      "isShowContact": true,
+      "salaryRangeId": 0,
+      "requiredResume": false,
+      "companySize": "500-999",
+      "companySizeVI": "500-999",
+      "languageSelectedVI": "Tiếng Anh",
+      "languageSelected": "English",
+      "simpleServices": null,
+      "services": [
+        {
+          "serviceCode": "TP",
+          "startOn": "2026-07-09T17:04:04+07:00",
+          "expiredOn": "2026-08-08T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "BP",
+          "startOn": "2026-07-09T17:04:04+07:00",
+          "expiredOn": "2026-08-08T23:59:59+07:00"
+        }
+      ],
+      "prettySalary": "Từ $ 700 /tháng",
+      "durationDays": 30,
+      "numOfApplications": 0,
+      "refreshInfo": [
+        {
+          "refreshOn": "2026-07-10T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-11T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-12T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-13T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-14T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-15T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-16T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-17T11:34:00+07:00",
+          "serviceCode": ""
+        },
+        {
+          "refreshOn": "2026-07-17T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-18T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-19T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-20T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-21T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-22T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-23T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-24T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-25T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-26T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-27T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-28T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-29T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-30T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-07-31T11:34:00+07:00",
+          "serviceCode": ""
+        },
+        {
+          "refreshOn": "2026-07-31T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-01T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-02T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-03T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-04T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-05T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-06T18:00:00+07:00",
+          "serviceCode": "RD"
+        },
+        {
+          "refreshOn": "2026-08-07T18:00:00+07:00",
+          "serviceCode": "RD"
+        }
+      ],
+      "emailAddress": "",
+      "isMobileHotJob": false,
+      "isMobileTopJob": false,
+      "isBoldAndRedJob": false,
+      "isUrgentJob": false,
+      "isUrgentJobM": false,
+      "onlineOn": "2026-08-05T18:00:00+07:00",
+      "onlineOnText": "Cập nhật hôm nay",
+      "onlineOnTextColor": "#333333",
+      "onlineOnBgColor": "#F1F2F4",
+      "prettyOnlineOn": "2 giờ trước",
+      "visibilityDisplay": true,
+      "priorityOrder": "2026-08-05T18:00:00",
+      "priorityOrderText": "Cập nhật hôm nay",
+      "nearestGeoLoc": null,
+      "profilePublishedSiteMask": 1,
+      "companyColor": "#1A354C",
+      "yearsOfExperience": 2,
+      "highestDegreeId": 4,
+      "rangeAge": "Không hiển thị",
+      "isShowAge": 0,
+      "isShowNationality": 0,
+      "isShowGender": 0,
+      "isShowMaritalStatus": 0,
+      "numberOfRecruits": 1,
+      "isShowNumberOfRecruits": 0,
+      "onlineServiceCode": "RD",
+      "salaryPeriodId": 1,
+      "salaryCurrency": "USD",
+      "isAdrLiteJob": false,
+      "isTopPriority": true,
+      "isTopPriorityM": false,
+      "summary": null,
+      "isRefreshJob": true,
+      "isReposted": false,
+      "exposureStatus": "conversion_problem",
+      "exposureStatusUpdatedOn": "2026-08-05T19:14:11+07:00",
+      "jobDescription_len": 456,
+      "jobRequirement_len": 314
+    },
+    {
+      "jobId": 2085130,
+      "jobTitle": "[Ninh Bình] Giám Đốc Đại Diện Chủ Đầu Tư Khách Sạn Quốc Tế",
+      "jobUrl": "https://www.vietnamworks.com/ninh-binh-giam-doc-dai-dien-chu-dau-tu-khach-san-quoc-te-2085130-jv",
+      "userId": 3626479,
+      "companyLogo": "https://images.vietnamworks.com/pictureofcompany/2b/11217825.png",
+      "companyUrl": "",
+      "alias": "ninh-binh-giam-doc-dai-dien-chu-dau-tu-khach-san-quoc-te",
+      "createdOn": "2026-07-22T16:03:25+07:00",
+      "approvedOn": "2026-07-22T17:16:27+07:00",
+      "approvedOnText": "Đăng 14 ngày trước",
+      "prettyApprovedOn": "14 ngày trước",
+      "expiredOn": "2026-08-21T23:59:59+07:00",
+      "lastUpdatedOn": "2026-07-28T11:18:33+07:00",
+      "lastSyncedOn": "2026-08-05T12:06:16+07:00",
+      "companyName": "Công Ty Cổ Phần Xi Măng Xuân Thành",
+      "companyId": 197646,
+      "companySizeId": 6,
+      "contactName": "HR Department",
+      "createdBy": 3626479,
+      "isOnline": true,
+      "isActive": true,
+      "isApproved": true,
+      "isUnpaidDisable": 0,
+      "isCompleted": true,
+      "isAnonymous": false,
+      "isSalaryVisible": false,
+      "isShowLogo": true,
+      "isShowLogoInSearch": false,
+      "jobLevelId": 3,
+      "languageSelectedId": 3,
+      "redirectTo": "",
+      "requiredCoverLetter": 0,
+      "salary": 0,
+      "salaryMax": 0,
+      "salaryMin": 0,
+      "typeWorkingId": 1,
+      "skills": [
+        {
+          "skillId": 5473,
+          "skillWeight": 100,
+          "skillName": "Quản Lý Tài Chính"
+        },
+        {
+          "skillId": 160759,
+          "skillWeight": 100,
+          "skillName": "Quản Lý Khách Sạn"
+        },
+        {
+          "skillId": 1024787,
+          "skillWeight": 100,
+          "skillName": "Tiếng Anh thành thạo"
+        },
+        {
+          "skillId": 31876,
+          "skillWeight": 100,
+          "skillName": "Lập Dự Án Đầu Tư"
+        },
+        {
+          "skillId": 4318,
+          "skillWeight": 100,
+          "skillName": "Quản Lý Rủi Ro"
+        }
+      ],
+      "benefits": [
+        {
+          "benefitId": 1,
+          "benefitIconName": "fa-dollar",
+          "benefitName": "Bonus",
+          "benefitNameVI": "Thưởng",
+          "benefitValue": "Được hưởng các chế độ đãi ngộ như tiền thưởng lễ, tết, sinh nhật, hiếu, hỷ… và các chế độ khác theo quy định của công ty."
+        },
+        {
+          "benefitId": 2,
+          "benefitIconName": "fa-user-md",
+          "benefitName": "Healthcare Plan",
+          "benefitNameVI": "Chăm sóc sức khoẻ",
+          "benefitValue": "Được hưởng đầy đủ các quyền lợi và các chế độ đối với người lao động theo Luật Lao động"
+        },
+        {
+          "benefitId": 11,
+          "benefitIconName": "fa-cab",
+          "benefitName": "Transportation",
+          "benefitNameVI": "Xe đưa đón",
+          "benefitValue": "Có xe đưa đón CBCNV (Tuyến TP. Ninh Bình - Nhà máy)."
+        },
+        {
+          "benefitId": 15,
+          "benefitIconName": "fa-check-square-o",
+          "benefitName": "Others",
+          "benefitNameVI": "Khác",
+          "benefitValue": "Được hưởng lương theo năng lực làm việc, thỏa thuận trong quá trình phỏng vấn.\r\nCơ hội làm việc trong môi trường chuyên nghiệp, năng động và thân thiện, có nhiều cơ hội học hỏi, thăng tiến và phát triển nghề nghiệp."
+        }
+      ],
+      "workingLocations": [
+        {
+          "workingLocationId": 257496,
+          "addressId": 160915,
+          "cityId": 42,
+          "districtId": 0,
+          "address": "Pullman Ninh Bình – Số 128, đường Lê Thái Tổ, KĐT Xuân Thành, phường Hoa Lư, Ninh Bình ",
+          "geoLoc": {
+            "lat": 0,
+            "lon": 0
+          },
+          "cityName": "Ninh Binh",
+          "cityNameVI": "Ninh Bình"
+        }
+      ],
+      "address": "Thôn Bồng Lạng, Xã Thanh Nghị, Huyện Thanh Liêm, Tỉnh Hà Nam",
+      "industries": [
+        {
+          "industryId": 0,
+          "industryName": "",
+          "industryNameVI": ""
+        }
+      ],
+      "industriesV3": [
+        {
+          "industryV3Id": 1,
+          "industryV3Name": "Accommodation/Restaurant/Hotel/Tourism",
+          "industryV3NameVI": "Dịch vụ lưu trú/Nhà hàng/Khách sạn/Du lịch"
+        }
+      ],
+      "jobFunction": {
+        "parentId": 2,
+        "parentName": "Accounting/Auditing",
+        "parentNameVI": "Kế Toán/Kiểm Toán",
+        "children": [
+          {
+            "id": 12,
+            "name": "Financial Managers & Controllers",
+            "nameVI": "Kiểm Soát Viên Tài Chính"
+          }
+        ]
+      },
+      "jobLevel": "Director and above",
+      "jobLevelVI": "Giám Đốc và Cấp Cao Hơn",
+      "languageId": 0,
+      "locations": null,
+      "canonical": "ninh-binh-giam-doc-dai-dien-chu-dau-tu-khach-san-quoc-te-2085130-jv",
+      "isShowContact": true,
+      "salaryRangeId": 0,
+      "requiredResume": false,
+      "companySize": "1,000-4,999",
+      "companySizeVI": "1.000-4.999",
+      "languageSelectedVI": "Bất kỳ",
+      "languageSelected": "Any",
+      "simpleServices": null,
+      "services": [
+        {
+          "serviceCode": "JPMAI",
+          "startOn": "2026-07-22T17:16:27+07:00",
+          "expiredOn": "2026-08-21T23:59:59+07:00"
+        },
+        {
+          "serviceCode": "TLM",
+          "startOn": "2026-07-22T17:16:27+07:00",
+          "expiredOn": "2026-08-06T23:59:59+07:00"
+        }
+      ],
+      "prettySalary": "Thương lượng",
+      "durationDays": 30,
+      "numOfApplications": 0,
+      "refreshInfo": [
+        {
+          "refreshOn": "2026-07-29T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-08-05T18:00:00+07:00",
+          "serviceCode": "RW"
+        },
+        {
+          "refreshOn": "2026-08-12T18:00:00+07:00",
+          "serviceCode": "RW"
+        }
+      ],
+      "emailAddress": "",
+      "isMobileHotJob": true,
+      "isMobileTopJob": true,
+      "isBoldAndRedJob": false,
+      "isUrgentJob": false,
+      "isUrgentJobM": false,
+      "onlineOn": "2026-08-05T18:00:00+07:00",
+      "onlineOnText": "Cập nhật hôm nay",
+      "onlineOnTextColor": "#333333",
+      "onlineOnBgColor": "#F1F2F4",
+      "prettyOnlineOn": "2 giờ trước",
+      "visibilityDisplay": false,
+      "priorityOrder": "2026-08-05T18:00:00",
+      "priorityOrderText": "Cập nhật hôm nay",
+      "nearestGeoLoc": null,
+      "profilePublishedSiteMask": 0,
+      "companyColor": "#023964",
+      "yearsOfExperience": 3,
+      "highestDegreeId": 4,
+      "rangeAge": "Không hiển thị",
+      "isShowAge": 0,
+      "isShowNationality": 0,
+      "isShowGender": 0,
+      "isShowMaritalStatus": 0,
+      "numberOfRecruits": 1,
+      "isShowNumberOfRecruits": 0,
+      "onlineServiceCode": "RW",
+      "salaryPeriodId": 1,
+      "salaryCurrency": "USD",
+      "isAdrLiteJob": false,
+      "isTopPriority": false,
+      "isTopPriorityM": true,
+      "summary": null,
+      "isRefreshJob": true,
+      "isReposted": false,
+      "exposureStatus": "above_target",
+      "exposureStatusUpdatedOn": "2026-08-05T19:02:13+07:00",
+      "jobDescription_len": 318,
+      "jobRequirement_len": 272
+    }
+  ]
+}

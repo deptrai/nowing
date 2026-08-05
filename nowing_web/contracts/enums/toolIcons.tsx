@@ -1,6 +1,7 @@
 import {
 	AlarmClock,
 	Brain,
+	Briefcase,
 	Calendar,
 	FileEdit,
 	FilePlus,
@@ -12,6 +13,7 @@ import {
 	FolderTree,
 	FolderX,
 	ImageIcon,
+	Layers,
 	ListTodo,
 	type LucideIcon,
 	Mail,
@@ -45,6 +47,11 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 	// Web / search
 	scrape_webpage: ScanLine,
 	chainlens_research: Search,
+	// Epic 12 — Vietnam Job Market
+	vietnamworks_scrape: Briefcase,
+	topcv_scrape: Briefcase,
+	itviec_scrape: Briefcase,
+	vn_jobs_aggregate: Layers,
 	// Automations
 	create_automation: AlarmClock,
 	// Memory
@@ -149,6 +156,11 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
 	// Web / search
 	scrape_webpage: "Read webpage",
 	chainlens_research: "Deep research",
+	// Epic 12 — Vietnam Job Market
+	vietnamworks_scrape: "Search VietnamWorks jobs",
+	topcv_scrape: "Search TopCV jobs",
+	itviec_scrape: "Search ITviec jobs",
+	vn_jobs_aggregate: "Aggregate Vietnam job market",
 	// Automations
 	create_automation: "Create automation",
 	// Memory

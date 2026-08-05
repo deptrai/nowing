@@ -1,4 +1,4 @@
-import { Building2, Home } from "lucide-react";
+import { Briefcase, Building2, Home } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -35,3 +35,10 @@ export const WebIcon = brandIcon("/connectors/web.svg", "Web");
 
 export const ChototIcon = Home;
 export const MuabanBdsIcon = Building2;
+
+// Epic 12 — Vietnam Job Market. Using Lucide Briefcase as a shared job-market
+// mark until dedicated brand SVGs are added to /public/connectors.
+export const VietnamworksIcon = Briefcase;
+export const TopcvIcon = Briefcase;
+export const ItviecIcon = Briefcase;
+export const VnJobsIcon = Briefcase;

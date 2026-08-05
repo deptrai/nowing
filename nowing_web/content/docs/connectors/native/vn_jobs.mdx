@@ -1,0 +1,95 @@
+---
+title: Vietnam Job Market
+description: Aggregate and research Vietnamese job postings from VietnamWorks, TopCV, and ITviec
+---
+
+The Vietnam Job Market connector aggregates public job postings from three major Vietnamese job boards: **VietnamWorks**, **TopCV**, and **ITviec**. It returns a normalized, deduplicated, confidence-scored view of the market — useful for salary benchmarking, hiring trend analysis, skill demand research, and competitive intelligence.
+
+<Callout type="info">
+This is a **research and memory layer**, not a job board or ATS. Nowing does not apply to jobs, submit CVs, or contact recruiters on your behalf.
+</Callout>
+
+## Sources
+
+| Source | Data access | Salary data | Notes |
+|---|---|---|---|
+| **VietnamWorks** | Public API (`ms.vietnamworks.com`) | Usually present; may be "Thương lượng" (negotiable) | Most reliable structured data |
+| **TopCV** | HTML + anti-bot stack | May be partial | Cloudflare-protected; anti-bot POC required |
+| **ITviec** | Server-rendered HTML | Often hidden for non-logged-in users | IT/AI-focused board |
+
+## Endpoint
+
+```bash
+POST /api/v1/workspaces/{workspace_id}/scrapers/vn_jobs/aggregate
+```
+
+For per-source searches:
+
+```bash
+POST /api/v1/workspaces/{workspace_id}/scrapers/vietnamworks/scrape
+POST /api/v1/workspaces/{workspace_id}/scrapers/topcv/scrape
+POST /api/v1/workspaces/{workspace_id}/scrapers/itviec/scrape
+```
+
+## Inputs (`vn_jobs.aggregate`)
+
+| Field | Default | Description |
+|---|---|---|
+| `keyword` | — | Job keyword, e.g. `data engineer` |
+| `location` | — | Optional city or province, e.g. `Hà Nội` |
+| `salary_min` / `salary_max` | — | Optional monthly salary range in VND |
+| `employment_type` | — | `full_time`, `contract`, `part_time`, or `intern` |
+| `experience_years` | — | Optional minimum years of experience |
+| `sources` | `["vietnamworks", "topcv", "itviec"]` | Sources to aggregate |
+| `max_items_per_source` | `50` | Max jobs per source (hard cap 100) |
+| `max_pages` | `5` | Max pages to fetch per source (hard cap 20) |
+
+## Example
+
+```bash
+curl -X POST "$BASE_URL/api/v1/workspaces/1/scrapers/vn_jobs/aggregate" \
+  -H "Authorization: Bearer $NOWING_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keyword": "data engineer",
+    "location": "Hà Nội",
+    "salary_min": 30000000,
+    "salary_max": 60000000,
+    "max_items_per_source": 20
+  }'
+```
+
+## Output
+
+The response is an aggregate object containing:
+
+- `items`: list of `VnJobAggregatedListing` with title, company, location, salary, employment type, experience, skills, posted date, source URL(s)
+- `degraded`: `true` if any source failed
+- `degradation_reasons`: plain-language reasons per source
+- `source_breakdown`: count and status per source
+- `confidence_score`: overall cross-source confidence
+- `salary_consistency_score`: how consistent salary data is across sources
+
+## PII and data handling
+
+- Phone numbers, email addresses, and personal names detected in job descriptions are **redacted** before storage.
+- Audit logs record only counts (e.g. `phones_detected`), never values.
+- Raw `Run.output_text` is retained for short-term audit; redacted text is what enters memory.
+
+## Salary caveats
+
+- Many VietnamWorks postings list salary as "Thương lượng" (negotiable).
+- ITviec hides salary for non-logged-in users; confidence is lower.
+- The aggregate exposes `salary.confidence` and `salary_consistency_score` so you know when to trust the numbers.
+
+## Pricing
+
+- `vietnamworks.scrape`, `topcv.scrape`, and `itviec.scrape` are billed per returned job.
+- `vn_jobs.aggregate` charges a flat per-query fee on top of the underlying source costs.
+- Degraded or blocked sources are not billed.
+
+## Pilot status
+
+This connector is part of an 8-week pilot (Plan C) with 20–50 workspaces. Feedback during the pilot will determine which sources stay enabled and how pricing is tuned.
+
+For the full input and output JSON schemas and generated code snippets in your language, open **API Playground → Vietnam Job Market → Aggregate** in your workspace.

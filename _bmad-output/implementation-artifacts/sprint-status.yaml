@@ -1,5 +1,5 @@
 # generated: 2026-08-04 01:00:00
-# last_updated: 2026-08-05
+# last_updated: 2026-08-05 23:59
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -47,7 +47,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-04 01:00:00"
-last_updated: "2026-08-05"
+last_updated: "2026-08-06"
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
@@ -138,6 +138,15 @@ development_status:
   11-3: done  # Telegram interactive bot & commands
   epic-11-retrospective: done
 
+  epic-12: in-progress  # HR/Recruitment Vertical — Vietnam Job Market Pilot (Plan C)
+  12-0: in-progress  # ToS & Legal Review — hard gate for all 3 sources; output legal memo
+  12-1: done  # VietnamWorks Scraper — implemented, tested, E2E/MCP verified
+  12-2: blocked  # TopCV Scraper — anti-bot POC gate, Cloudflare challenge
+  12-3: ready-for-dev  # ITviec Scraper — story file created; skeleton ready
+  12-4: ready-for-dev  # Vietnam Job Aggregator — story file created; skeleton ready
+  12-5: ready-for-dev  # PII Redaction for Job Data — story file created; redact.py + tests ready
+  epic-12-retrospective: optional
+
 # Deferred work that is out of the current sprint / not approved for MVP.
 # Kept here for visibility; re-introduce via sprint-planning if approved.
 deferred:
@@ -149,3 +158,7 @@ action_items:
   - "Epic 9 retrospective done. Epic 8 retrospective is optional."
   - "Deferred work still tracked: NFR-9 State B ratification, Redis cross-replica test, MCP async 202 handling, Story 9.5 approval. Consider creating new epic/stories via sprint-planning or correct-course when work resumes."
   - "Epic 10 retrospective done. Follow-ups: reconcile stale epics.md/story headers, harden bds_aggregator tests against live-network flakiness, add aggregator output-quality eval-gate, and enable static typecheck for app/services/bds_aggregator and app/capabilities/vn_bds. See epic-10-retrospective-2026-08-04.md."
+  - "Epic 12: ToS & legal review for VietnamWorks, TopCV, ITviec must close before any scraper code is merged (owner: Founder + Legal)."
+  - "Epic 12: TopCV anti-bot POC must pass or be explicitly disabled before 12.2 code is merged (owner: Dev + Ops)."
+  - "Epic 12: Create _bmad-output/planning-artifacts/legal/ ToS decision log and legal counsel memo."
+  - "Epic 12: Production-network rate-limit stress test for VietnamWorks."

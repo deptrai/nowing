@@ -2,7 +2,7 @@
 title: Nowing - Epic Breakdown
 description: ''
 createdAt: '2026-07-28T12:47:48.297Z'
-updatedAt: '2026-08-05T18:20:00.000Z'
+updatedAt: '2026-08-05T23:59:00.000Z'
 tags:
   - bmad
   - bmad-source-bmad-output-planning-artifacts-epics-md
@@ -17,6 +17,11 @@ inputDocuments:
   - "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-22.md (epic taxonomy)"
   - "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-22-vision-pivot.md (epic taxonomy)"
   - "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md (Epic 9 + FR-24 re-bind)"
+  - "_bmad-output/planning-artifacts/prfaq-hr-vertical-vietnam-2026-08-05.md (context)"
+  - "_bmad-output/planning-artifacts/feature-brief-hr-vertical-vietnam-2026-08-05.md (context)"
+  - "_bmad-output/planning-artifacts/pilot-plan-c-memo-2026-08-05.md (context)"
+  - "_bmad-output/planning-artifacts/research/technical-spike-vietnamworks-api-2026-08-05.md (context)"
+  - "_bmad-output/planning-artifacts/research/technical-spike-topcv-itviec-2026-08-05.md (context)"
 ---
 
 # Nowing - Epic Breakdown
@@ -34,6 +39,11 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 ### Functional Requirements
 `[DONE]` FR-1 Auth · FR-2 API/PAT · FR-3 Workspace lifecycle · FR-4 Invites/memberships · FR-10 RBAC 3 roles · FR-6 Scrapers · FR-7 OAuth connectors · FR-8 MCP connectors · FR-9 Doc upload/index · FR-11 Folders · FR-12 Hybrid search · FR-13 Citation panel · FR-14 Chat threads · FR-15 Multi-agent runtime (+auto-extract) · FR-16 Realtime chat · FR-17 Anonymous chat · **FR-42 Chat Response Benchmark** *(mới 2026-08-04 — telemetry, regression, quality, production query sampler; stories 4.8a–4.8g)* · FR-21 Reports · FR-22 Podcast/video · FR-23 Image · FR-19 Automation triggers · FR-20 Automation runs · FR-25 Web · FR-26 Desktop · FR-27 Extension · FR-28 Obsidian · FR-29 MCP server · FR-30 Token tracking · **FR-32 Memory storage/retrieval** *(dedupe primitive + recall quality gate done; baseline ratified 2026-08-04)* · FR-33 Research continuity · FR-34 Memory correction · **FR-18 Automation actions** *(cải chính 2026-07-25: registry có `agent_task` + `continue_research` + `write_back_jira/linear/notion/slack`)* · **FR-31 Credit wallet** *(dashboard `8-3` = done)* · **FR-35 Memory-driven automations** *(cải chính 2026-07-25: trigger `memory_change` + action `continue_research` + `AutomationRun.research_thread_id` đều có)* · **FR-24 Deep-research via ChainLens engine** *(E9.1b contract regression guard done; mode default handled)* · **FR-38 Research degradation & self-host independence** *(E9.1a done)* · **FR-39 Memory→scraper-run provenance & re-validation** *(E9.6 done)* · **FR-40 First-run value: research run sinh memory** *(E3.13 done)* · **FR-41 Admin UI cho Global LLM Model Configuration** *(E8.11 done)*.
 `[DONE]` **FR-37 Deep-research cost metering** (`costDollars` parser done; fallback ~$0.06; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671) → **E9.2 P0**.
+`[PROPOSED]` **FR-43 VietnamWorks scraper** → **E12.1 P0** (public API, no auth; spike passed; ToS gate).
+`[PROPOSED]` **FR-44 TopCV scraper** → **E12.2 P0** (HTML + anti-bot; Cloudflare challenge; POC required).
+`[PROPOSED]` **FR-45 ITviec scraper** → **E12.3 P0** (HTML server-rendered; salary hidden).
+`[PROPOSED]` **FR-46 `vn_jobs.aggregate`** → **E12.4 P0** (cross-source normalization, dedupe, confidence, conflict detection).
+`[PROPOSED]` **FR-47 PII redaction for job data** → **E12.5 P0** (mask/drop phone, email, names before memory).
 
 `[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
 `[RESOLVED]` FR-36 Legacy memory data-loss (2026-07-25 — không mất dữ liệu; 178 chưa apply prod, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test qua `3-10a`/`3-10b`).
@@ -42,7 +52,7 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 > **⚠️ Re-bind 2026-07-25 (SCP `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md`, ✅ ADOPTED):** **FR-24 rời Epic 2 (Connectors) sang Epic 9.** ChainLens không phải connector/scraper ngang hàng Reddit — nó là external dependency hạng nhất (`AD-15`). FR-37, FR-38, NFR-9 là mới. Story `2-4` giữ `done` làm lịch sử (nó đã ship tool thật), không revert.
 
 ### NonFunctional Requirements
-`[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = done; baseline ratified 2026-08-04)* · **NFR-9 Deep-research latency & availability budget** *(story `9-3` = done; State A async deliverable default; State B sync chat-mode gated on measured p95 `balanced` ≤30s)* · **NFR-10 Chat Response Regression Gate** *(mới 2026-08-04 — stories 4.8b/4.8e/4.8f/4.8g/4.8h done; `chat/regression` baseline ratification pending measured run)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1).
+`[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = done; baseline ratified 2026-08-04)* · **NFR-9 Deep-research latency & availability budget** *(story `9-3` = done; State A async deliverable default; State B sync chat-mode gated on measured p95 `balanced` ≤30s)* · **NFR-10 Chat Response Regression Gate** *(mới 2026-08-04 — stories 4.8b/4.8e/4.8f/4.8g/4.8h done; `chat/regression` baseline ratification pending measured run)*.  **NFR-11 Scraping compliance & anti-bot resilience (Vietnam job market)** *(mới 2026-08-05 — ToS review, legal counsel, anti-bot POC, PII pipeline)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1).
 
 ### Additional Requirements
 Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nhất trong Structural Seed: `nowing_evals/` (đã tồn tại, cần thêm memory suite).
@@ -83,6 +93,9 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết.
 - AR-1/AR-3/AR-8 → E3.9/3.11 · AR-2/AR-7 → E3.10 · AR-9 → E3.12 · AR-5 → E8.9 · AR-6 → E8.8/8.7 · RS-5→E8.10 · RS-6/8→E3.7 · RS-7→E3.9 · RS-10→E8.9
 - **NG-1/NG-2/NG-3 (§2.4 PRD Non-Goals)** → không map sang epic nào; là ràng buộc chặn phạm vi. Owned index = `AD-DEFER-7`.
 - **Defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default toggle) → backlog.
+- **OQ-8 HR/Recruitment Vertical in Vietnam** → **E12 P0** (ToS, legal classification, anti-bot, salary hidden, willingness-to-pay, PII).
+- **SM-12 HR pilot metrics** → **E12 P0** (workspace active, aggregate queries, listings indexed, dedupe, confidence, PII coverage).
+- **AR-11 HR anti-bot validation** → **E12.2 P0** (TopCV Cloudflare bypass/residential proxy feasibility).
 
 ## Epic List
 
@@ -1202,6 +1215,117 @@ So that I can take action without opening the dashboard.
 **Given** an inbound command or callback, **When** the bot resolves workspace context, **Then** it respects workspace visibility, permissions, and unpaired onboarding state.
 
 **Kỹ thuật (không phải AC):** `TelegramClient` methods `answer_callback_query`, `edit_message_reply_markup`; `TelegramAdapter.edit_message` handles `inline:` peer prefix; `inbox_processor` callback dispatch; `app/gateway/telegram/commands.py` handlers; transient `AutomationTrigger(type=MANUAL)` + `launch_run`.
+
+---
+
+## Epic 12: HR/Recruitment Vertical — Vietnam Job Market Pilot
+
+_Tạo 2026-08-05 để chạy 8-week pilot kết nối VietnamWorks, TopCV, ITviec và cung cấp `vn_jobs.aggregate` cho nghiên cứu thị trường tuyển dụng Việt Nam._
+
+**FRs:** FR-43 (`vietnamworks.scrape`), FR-44 (`topcv.scrape`), FR-45 (`itviec.scrape`), FR-46 (`vn_jobs.aggregate`), FR-47 (PII redaction). **NFRs:** NFR-11 (ToS/anti-bot/PII). **OQ-8.** **SM-12.**  
+**Stories:** 12.0 (ToS/Legal Review), 12.1–12.5.
+
+> **Pilot scope (Plan C):** P0 = cả 3 nguồn. Hard gates: ToS review cho 3 nguồn; legal counsel opinion; anti-bot POC cho TopCV; SCP về NG-1. Effort ước tính 18–24 dev-days. Go/No-Go sau 8 tuần beta 20–50 workspaces.
+
+### Story 12.0: ToS & Legal Review `[proposed P0]`
+
+As a product owner,
+I want to confirm ToS and legal classification for VietnamWorks, TopCV, and ITviec,
+So that we do not build or launch a non-compliant pilot.
+
+**Acceptance Criteria:**
+- **Given** the source list, **When** ToS review is performed, **Then** each source's automated access / commercial use status is documented in `_bmad-output/planning-artifacts/legal/`.
+- **Given** the pilot design, **When** legal counsel reviews, **Then** an opinion exists confirming Nowing is not classified as an "employment service provider" / "môi giới việc làm".
+- **Given** a source is blocked by ToS or legal, **When** the decision is made, **Then** that source is removed from the default `sources` list and the implementation plan is updated.
+- **Given** legal approval, **When** the pilot launches, **Then** public messaging clearly positions Nowing as a research/memory layer, not a job board/ATS/intermediary.
+
+_Kỹ thuật (không phải AC):_ No code. Output: legal review memo + ToS decision log.
+
+_FR-43..FR-47 · NFR-11 · OQ-8 · AD-26_
+
+### Story 12.1: VietnamWorks Scraper `[proposed P0]`
+
+As a recruiter or market researcher,
+I want to search VietnamWorks job postings via the public API,
+So that I can source live job data into my Nowing workspace.
+
+**Acceptance Criteria:**
+- **Given** a query + optional city filter, **When** `vietnamworks.scrape` runs, **Then** it calls `POST https://ms.vietnamworks.com/job-search/v1.0/search` no-auth and returns typed `JobItem`.
+- **Given** the response, **When** parsed, **Then** it maps: `jobId`, `jobTitle`, `companyName`, `workingLocations`, `salaryMin/Max`, `salaryCurrency`, `salaryPeriodId`, `jobDescription`, `jobRequirement`, `jobFunction`, `yearsOfExperience`, `createdOn`, `approvedOn`, `typeWorkingId`, `expiredOn`, `isActive`.
+- **Given** pagination, **When** `hitsPerPage` (max 100) and `page` are set, **Then** the scraper iterates correctly and respects rate-limit (429) with backoff and circuit-breaker.
+- **Given** the capability is built, **When** registered, **Then** it appears in billing (`BillingUnit.VIETNAMWORKS_JOB`), capability registry, MCP, and REST routes.
+- **Given** upstream schema changes, **When** detected, **Then** golden fixture regression tests fail before deployment.
+
+_Kỹ thuật (không phải AC):_ `app/capabilities/vietnamworks/scrape/` (Apache-2.0 executor/definition/schemas) + `app/proprietary/platforms/vietnamworks/` (BSL 1.1 fetcher nếu cần HTML fallback). ToS review là hard gate.
+
+_FR-43 · AD-3 · AD-16 · `technical-spike-vietnamworks-api-2026-08-05.md`._
+
+### Story 12.2: TopCV Scraper `[proposed P0]`
+
+As a recruiter,
+I want to search TopCV job postings,
+So that I can access the largest local Vietnamese job board.
+
+**Acceptance Criteria:**
+- **Given** a query + optional city filter, **When** `topcv.scrape` runs, **Then** it fetches TopCV search and detail pages.
+- **Given** a Cloudflare/anti-bot challenge, **When** encountered, **Then** the scraper uses warmed browser/headless/proxy and returns `degraded=true` with reason on block.
+- **Given** a successful fetch, **When** parsed, **Then** it returns typed `JobItem` with title, company, location, salary (if visible), JD, requirements, skills, post date.
+- **Given** the capability is built, **When** registered, **Then** it appears in billing (`BillingUnit.TOPCV_JOB`), capability registry, MCP, and REST routes.
+
+_Kỹ thuật (không phải AC):_ `app/proprietary/platforms/topcv/` (BSL 1.1 fetcher/parser/anti-bot) + `app/capabilities/topcv/scrape/` (Apache-2.0 capability). Anti-bot POC là hard gate; không merge trước khi POC pass.
+
+_FR-44 · AD-3 · AD-16 · AD-19 · `technical-spike-topcv-itviec-2026-08-05.md`._
+
+### Story 12.3: ITviec Scraper `[proposed P0]`
+
+As a tech recruiter,
+I want to search ITviec job postings,
+So that I can monitor IT/AI hiring trends.
+
+**Acceptance Criteria:**
+- **Given** a query, **When** `itviec.scrape` runs, **Then** it fetches `https://itviec.com/it-jobs/{query}` (server-rendered HTML, no CAPTCHA in spike).
+- **Given** the list page, **When** parsed, **Then** it extracts 20 job cards per page via selectors `job-card ipt-2`, `h3/a`, `employer-name`.
+- **Given** a detail page, **When** parsed, **Then** it extracts title, company, location, work mode, posted time, skills, job domain, JD.
+- **Given** salary is hidden, **When** displayed as `Sign in to view salary`, **Then** salary is parsed from title when possible or marked low-confidence.
+- **Given** the capability is built, **When** registered, **Then** it appears in billing (`BillingUnit.ITVIEC_JOB`), capability registry, MCP, and REST routes.
+
+_Kỹ thuật (không phải AC):_ `app/proprietary/platforms/itviec/` (BSL 1.1 fetcher/parser) + `app/capabilities/itviec/scrape/` (Apache-2.0 capability). Rate-limit + user-agent rotation + circuit-breaker.
+
+_FR-45 · AD-3 · AD-16 · `technical-spike-topcv-itviec-2026-08-05.md`._
+
+### Story 12.4: Vietnam Job Aggregator `[proposed P0]`
+
+As a research analyst,
+I want to query Vietnamese job data in one call,
+So that I get a normalized, deduped, confidence-scored view of the job market from multiple sources.
+
+**Acceptance Criteria:**
+- **Given** a query, **When** `vn_jobs.aggregate` is called, **Then** it fan-outs to `vietnamworks.scrape`, `topcv.scrape`, `itviec.scrape` (default all 3; source list configurable).
+- **Given** results from multiple sources, **When** normalized, **Then** they map to `VnJobAggregatedListing` with salary/location/employment-type/experience.
+- **Given** normalized listings, **When** deduplicated, **Then** it matches by company + title + location + posted_at across sources.
+- **Given** conflicting salary/location between sources, **When** compared, **Then** it flags conflict and computes `confidence_score` + `salary_consistency_score`.
+- **Given** a source fails, **When** aggregation completes, **Then** it returns `degraded=true` with `degradation_reasons`.
+- **Given** the aggregator is built, **When** exposed, **Then** it is available via REST, MCP (`nowing_vn_jobs_aggregate`), and chat agent.
+
+_Kỹ thuật (không phải AC):_ `app/services/jobs_aggregator/` (Apache-2.0, copy-modify from `bds_aggregator`). Location filter at aggregator level; PII redaction before memory.
+
+_FR-46 · FR-32 · FR-39 · AD-11.1 · `pilot-plan-c-memo-2026-08-05.md`._
+
+### Story 12.5: PII Redaction for Job Data `[proposed P0]`
+
+As a workspace owner,
+I want job postings to be scanned for personal information before storage,
+So that Nowing does not accidentally retain candidate PII.
+
+**Acceptance Criteria:**
+- **Given** `job_description` / `job_requirement` from any source, **When** PII redaction runs, **Then** it detects Vietnamese phone numbers and email addresses via regex.
+- **Given** person names in JD text, **When** detected, **Then** it flags via NER/heuristic and masks or drops the field.
+- **Given** detected PII, **When** logged, **Then** only counts are recorded (no values).
+- **Given** redaction runs, **When** storing to memory, **Then** the full raw JD is not stored unredacted.
+
+_Kỹ thuật (không phải AC):_ Shared PII pipeline in `app/services/pii/` or inside jobs aggregator. Unit tests for representative samples from VietnamWorks, TopCV, ITviec.
+
+_FR-47 · NFR-11 · OQ-3 · `feature-brief-hr-vertical-vietnam-2026-08-05.md`._
 
 ---
 

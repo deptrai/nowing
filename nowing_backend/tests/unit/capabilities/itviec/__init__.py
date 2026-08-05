@@ -1,0 +1,1 @@
+"""ITviec capability tests."""

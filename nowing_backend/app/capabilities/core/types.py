@@ -36,6 +36,10 @@ class BillingUnit(StrEnum):
     CHOTOT_BDS_ITEM = "chotot_bds_item"
     MUABAN_BDS_ITEM = "muaban_bds_item"
     VN_BDS_AGGREGATE_QUERY = "vn_bds_aggregate_query"
+    VIETNAMWORKS_JOB = "vietnamworks_job"
+    TOPCV_JOB = "topcv_job"
+    ITVIEC_JOB = "itviec_job"
+    VN_JOBS_AGGREGATE_QUERY = "vn_jobs_aggregate_query"
 
 
 class BillableInput(Protocol):

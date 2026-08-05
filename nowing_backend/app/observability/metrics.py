@@ -1242,6 +1242,56 @@ def record_run_event_bus_dropped(*, reason: str = "queue_full") -> None:
     _add(_run_event_bus_dropped(), 1, {"reason": reason})
 
 
+# ── Job-market / PII redaction telemetry (Epic 12) ──────────────────────────
+# Low-cardinality: source, block_type, and pii_type only. Values are never
+# emitted; only counts.
+
+
+@lru_cache(maxsize=1)
+def _vn_jobs_source_block():
+    return _get_meter().create_counter(
+        "nowing.vn_jobs.source_block",
+        description="Count of source-level blocks/degradations in the job vertical.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _vn_jobs_pii_detected():
+    return _get_meter().create_counter(
+        "nowing.vn_jobs.pii_detected",
+        description="Count of PII entities detected in job descriptions.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _vn_jobs_aggregate_degraded():
+    return _get_meter().create_counter(
+        "nowing.vn_jobs.aggregate_degraded",
+        description="Count of degraded vn_jobs.aggregate invocations.",
+    )
+
+
+def record_vn_jobs_source_block(*, source: str, reason: str) -> None:
+    """Count one source-level block in the job vertical.
+
+    ``reason`` must be a low-cardinality closed value; arbitrary messages are
+    the caller's responsibility to normalize.
+    """
+    _add(_vn_jobs_source_block(), 1, {"source": source, "reason": reason})
+
+
+def record_vn_jobs_pii_detected(*, source: str, pii_type: str, count: int) -> None:
+    """Count PII entities detected in a job listing. Values are not emitted."""
+    if count <= 0:
+        return
+    _add(_vn_jobs_pii_detected(), count, {"source": source, "pii_type": pii_type})
+
+
+def record_vn_jobs_aggregate_degraded(*, reason: str) -> None:
+    """Count one degraded vn_jobs.aggregate invocation."""
+    _add(_vn_jobs_aggregate_degraded(), 1, {"reason": reason})
+
+
 __all__ = [
     "categorize_exception",
     "parse_celery_task_label",
@@ -1280,5 +1330,8 @@ __all__ = [
     "record_subagent_invoke_outcome",
     "record_tool_call_duration",
     "record_tool_call_error",
+    "record_vn_jobs_aggregate_degraded",
+    "record_vn_jobs_pii_detected",
+    "record_vn_jobs_source_block",
     "register_runtime_observables",
 ]

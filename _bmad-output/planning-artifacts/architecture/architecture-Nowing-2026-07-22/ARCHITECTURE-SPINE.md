@@ -7,7 +7,7 @@ paradigm: 'layered modular monolith + stateless MCP server + client-server with 
 scope: 'Toàn bộ hệ sinh thái Nowing: backend FastAPI, web Next.js, desktop Electron, browser extension, Obsidian plugin, MCP server, và evals.'
 status: draft
 created: '2026-07-22'
-updated: '2026-08-04'
+updated: '2026-08-05'
 binds: []
 sources:
   - /Users/luisphan/Documents/nowing/docs/architecture-backend.md
@@ -37,6 +37,13 @@ companions:
 > - **`AD-8` amended** — `costDollars` parse từ terminal `done` frame (`done.usage.costDollars`), không phải event `usage` riêng; fallback 60k micros khi missing.
 > - **`AD-15` amended** — terminal `done` contract ghi rõ `usage.costDollars`, `resolvedMode`, `estimated`; `costDollars` là USD float toàn pipeline.
 > - **`AD-21` mới** — client tab state pointer-only, local-first, v2 storage key (Story 4.7); sửa lỗi story file ghi `Architecture: AD-17`.
+>
+> **✅ Bổ sung 2026-08-05 (đợt 5 — Epic 12 HR/Recruitment Vertical):**
+> - **`AD-22` mới** — VietnamWorks scraper: public API no-auth, BSL 1.1 fetcher nếu cần HTML fallback, Apache-2.0 capability/executor/schemas.
+> - **`AD-23` mới** — TopCV/ITviec scraper: HTML scraping trong `app/proprietary/`, anti-bot reuse `AD-19`, ITviec server-rendered, TopCV Cloudflare challenge cần headless/proxy POC.
+> - **`AD-24` mới** — `vn_jobs.aggregate`: copy-modify từ `app/services/bds_aggregator/`, fan-out 3 sources, normalize/dedupe/conflict/salary-consistency.
+> - **`AD-25` mới** — PII redaction pipeline: chạy trước khi job data vào `Memory`, regex phone/email + heuristic name, chỉ log counts.
+> - **`AD-26` mới** — ToS/legal gates: không build scraper mới cho đến khi ToS cho phép và legal counsel xác nhận không cần license môi giới việc làm.
 >
 > **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
 > - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
@@ -518,6 +525,67 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - Fallback navigation dựa trên `entityId` + `workspaceId` khi metadata chưa load.
 - **Nguồn:** SurfSense PR #1609 pattern; `nowing_web/atoms/tabs/tabs.atom.ts`, `TabBar.tsx`, `LayoutShell.tsx` cần refactor.
 
+### AD-22 — VietnamWorks Scraper (public API + BSL fallback)
+- **Binds:** FR-43, Epic 12.1
+- **Prevents:** treat VietnamWorks like a generic HTML scraper; leaking PII into memory
+- **Rule:**
+  - Primary path: call `POST https://ms.vietnamworks.com/job-search/v1.0/search` (no auth, `hitsPerPage` max 100, 1-based `page`).
+  - `app/proprietary/platforms/vietnamworks/` (BSL 1.1) owns the fetcher and low-level response parsing; `app/capabilities/vietnamworks/scrape/` (Apache-2.0) owns `Capability` registration, `definition.py`, `schemas.py`, `executor.py`, billing, and MCP exposure.
+  - Capability `vietnamworks.scrape` registers `BillingUnit.VIETNAMWORKS_JOB`.
+  - Output maps to a normalized `JobItem` schema shared with `vn_jobs.aggregate`.
+  - Golden fixture regression tests guard API contract drift in `tests/unit/capabilities/vietnamworks/`.
+  - PII redaction (`AD-25`) runs on `job_description` / `job_requirement` before memory storage.
+  - **Hard gate:** ToS review must permit automated access and commercial use before build.
+
+### AD-23 — TopCV & ITviec Scrapers (HTML + anti-bot)
+- **Binds:** FR-44, FR-45, Epic 12.2, 12.3
+- **Prevents:** anti-bot logic diverging from existing crawler stack; anti-bot bypass via exploit/CAPTCHA token storage
+- **Rule:**
+  - Both scrapers live in `app/proprietary/platforms/topcv/` and `app/proprietary/platforms/itviec/` (BSL 1.1); capabilities live in `app/capabilities/topcv/scrape/` and `app/capabilities/itviec/scrape/` (Apache-2.0).
+  - **TopCV:** initial recon shows Cloudflare "Just a moment..." challenge on `GET https://www.topcv.vn/viec-lam/{keyword}`. Anti-bot POC must pass before merge. Reuse `AD-19` stack: headless browser / stealth / residential proxy / `BlockType` classifier / rate-limit. **Cost model decision (chọn Option A):** TopCV fetcher **MUST** be metered through the existing `WEB_CRAWL` billing path (`WEB_CRAWL_MICROS_PER_SUCCESS` + `WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE`) by calling `app/proprietary/web_crawler/connector.py` (`crawl_url`) and returning a `CrawlOutcome`. This is the only existing ledger that can accurately capture anti-bot cost. Capability `topcv.scrape` may register `BillingUnit.TOPCV_JOB` as a pass-through if needed, but the actual cost accounting flows through `WEB_CRAWL`/`captcha` usage. If this is not feasible (e.g., Cloudflare blocks all `AD-19` tiers), disable gracefully and do not merge. Cost gate: total per-query anti-bot cost >$0.05 disables TopCV.
+  - **ITviec:** server-rendered HTML (`GET https://itviec.com/it-jobs/{keyword}`), no Cloudflare in initial spike. Use static HTML parser (`lxml`) + rate-limit + user-agent rotation + circuit-breaker. Selectors: `job-card ipt-2`, `h3/a`, `employer-name`, `jd-main`.
+  - Salary on ITviec is hidden (`Sign in to view salary`); parse from title when possible or mark `salary_confidence` low.
+  - Capabilities register `BillingUnit.TOPCV_JOB` and `BillingUnit.ITVIEC_JOB`.
+  - **Hard gate:** TopCV anti-bot POC; ToS review for both.
+
+### AD-24 — Vietnam Job Market Aggregator (`vn_jobs.aggregate`)
+- **Binds:** FR-46, Epic 12.4
+- **Prevents:** duplicating BĐS aggregator logic; source-specific normalization leaking into aggregator; location filtering done inside individual scrapers
+- **Rule:**
+  - `app/services/jobs_aggregator/` (Apache-2.0) is a copy-modify of `app/services/bds_aggregator/`.
+  - Orchestrator fan-outs to `vietnamworks.scrape`, `topcv.scrape`, `itviec.scrape` via `get_capability()` and the shared `Capability` registry (`AD-3`).
+  - Normalizer maps each source to `VnJobAggregatedListing` with common fields: title, company, location, salary_min/max/currency/period, employment_type, experience_years, skills, posted_at, job_description, job_requirement, source, source_url.
+  - Deduplication key: `company + title + location + posted_at` (cross-source), where `posted_at` is **normalized to a UTC date string** before being used as a key. `VnJobAggregatedListing.posted_at` is a `datetime.date | None` derived from each source (`createdOn` for VietnamWorks, parsed "Posted X ago" for ITviec, etc.).
+  - Scoring: `confidence_score` (source authority, overlap, freshness, salary consistency) and `salary_consistency_score`; flag `conflict` when salary/location differs materially across sources.
+  - Location filter is applied at aggregator level (VietnamWorks `locationId` does not filter server-side; verified by spike). To prevent runaway cost, the aggregator enforces `max_items_per_source` and `max_pages` with the same default per-source caps as the BĐS aggregator (`app/services/bds_aggregator/orchestrator.py`). If `location` is set, filtering happens after normalization, not by re-fetching.
+  - Capability `vn_jobs.aggregate` registers `BillingUnit.VN_JOBS_AGGREGATE_QUERY` and a per-query fee on top of child scraper costs.
+  - Output includes `degraded`, `degradation_reasons`, `source_breakdown`, `cost_micros`.
+  - Exposed via REST, MCP (`nowing_vn_jobs_aggregate`), and chat agent tool.
+  - **Agent/subagent wiring (UX finding U1):** A `vn_jobs` subagent package (`app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/`) is created, exposing both per-source `*.scrape` and `vn_jobs.aggregate`. This satisfies the PRFAQ promise that the agent can answer cross-source salary/job-market questions. If the existing per-source subagent pattern is reused, `vn_jobs.aggregate` must be added to the tool roster of each per-source subagent; the dedicated `vn_jobs` subagent is preferred.
+
+### AD-25 — PII Redaction Pipeline for Job Data
+- **Binds:** FR-47, NFR-11, Epic 12.5
+- **Prevents:** storing candidate PII in `Memory`; logging PII values
+- **Rule:**
+  - **Insertion point (chọn Option A):** PII redaction runs on `job_description` and `job_requirement` (and any other long-text fields from the source) **before** the text is passed to the LLM prompt in `MemoryExtractionService`. The raw `Run.output_text` remains unredacted for short-term audit (`RUNS_RETENTION_DAYS`); the redacted text is what gets embedded, extracted into facts, and stored in `Memory`.
+  - `app/services/pii/redact.py` (Apache-2.0) exposes `redact_job_pii(text: str) -> RedactedText` with `text`, `phones_detected`, `emails_detected`, `names_detected`, `has_pii`.
+  - `MemoryExtractionService` / `build_run_source_block` calls `redact_job_pii` when `run.capability` matches `*.scrape` for a job source or `vn_jobs.aggregate`.
+  - Detection: regex for Vietnamese phone numbers (`+84`, `0[3|5|7|8|9]...`, `0xx-xxx-xxxx` variants) and email addresses; heuristic/NER for person names.
+  - Mask or drop detected PII; do not store the raw unredacted JD in `Memory`.
+  - Audit logs only counts (e.g., `phones_detected`, `emails_detected`, `names_detected`), never values.
+  - Unit tests for representative VietnamWorks, TopCV, and ITviec samples.
+  - If PII cannot be reliably redacted for a source, that source must be disabled for memory extraction until the pipeline is improved.
+
+### AD-26 — ToS & Legal Gates for New Scrapers
+- **Binds:** NFR-11, OQ-8, Epic 12 P0
+- **Prevents:** building scrapers that violate source ToS or Vietnamese employment-service regulation
+- **Rule:**
+  - ToS review for VietnamWorks, TopCV, and ITviec is a hard gate before any scraper code is merged. Document the review in `_bmad-output/planning-artifacts/legal/`.
+  - Legal counsel opinion on whether the pilot classifies Nowing as an "employment service provider" / "môi giới việc làm" in Vietnam is a hard gate before pilot launch.
+  - Messaging: Nowing is a **research/memory layer**, not a job board, ATS, or employment intermediary. Do not expose apply/shortlist/candidate matching features.
+  - If ToS or legal counsel blocks a source, that source is disabled gracefully (`degraded=true`) and removed from default `sources` list; do not bypass blocks.
+  - **Observability (Dev finding D12):** Add low-cardinality counters for `pii_phones_detected`, `pii_emails_detected`, `pii_names_detected`, `vn_jobs_aggregate_degraded`, and per-source block rate. These support SM-12 and do not leak PII values.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -639,6 +707,11 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 | MCP server | `nowing_mcp/mcp_server/` | AD-7 |
 | Token usage tracking | `nowing_backend/app/services/token_tracking_service.py`, `app/db.py` (TokenUsage) | AD-2, AD-10 |
 | Credit wallet | `nowing_backend/app/services/wallet_credit.py`, `app/db.py` (User.credit_micros_balance, CreditPurchase) | AD-2, AD-8 |
+| VietnamWorks scraper | `nowing_backend/app/proprietary/platforms/vietnamworks/`, `app/capabilities/vietnamworks/scrape/` | AD-22, AD-3, AD-16, AD-25, AD-26 |
+| TopCV scraper | `nowing_backend/app/proprietary/platforms/topcv/`, `app/capabilities/topcv/scrape/` | AD-23, AD-3, AD-16, AD-19, AD-25, AD-26 |
+| ITviec scraper | `nowing_backend/app/proprietary/platforms/itviec/`, `app/capabilities/itviec/scrape/` | AD-23, AD-3, AD-16, AD-25, AD-26 |
+| Vietnam job aggregator | `nowing_backend/app/services/jobs_aggregator/`, `app/capabilities/vn_jobs/aggregate/` | AD-24, AD-3, AD-8, AD-11.1, AD-25 |
+| PII redaction (job data) | `nowing_backend/app/services/pii/` (or `jobs_aggregator/pii.py`) | AD-25, AD-11 |
 
 ## Deferred / Gaps
 
