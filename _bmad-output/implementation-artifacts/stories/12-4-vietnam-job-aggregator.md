@@ -2,7 +2,7 @@
 title: Story 12.4 — Vietnam Job Aggregator
 epic: 12
 story: 4
-status: ready-for-dev
+status: done
 priority: P0
 ---
 

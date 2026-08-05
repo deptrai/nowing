@@ -2,7 +2,7 @@
 title: Story 12.5 — PII Redaction for Job Data
 epic: 12
 story: 5
-status: ready-for-dev
+status: done
 priority: P0
 ---
 
