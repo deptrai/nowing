@@ -150,7 +150,7 @@ class FakeChatLLM(BaseChatModel):
                 or "engine_unavailable" in latest_tool_text
             )
         ):
-            return "The deep research engine is unavailable. Set CHAINLENS_API_KEY to enable deep research."
+            return "The chainlens_research tool is unavailable; the deep research engine is not configured. Set CHAINLENS_API_KEY to use the hosted engine."
 
         if (
             latest_tool_name == "read_gmail_email"

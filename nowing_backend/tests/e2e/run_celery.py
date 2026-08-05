@@ -79,6 +79,9 @@ def _load_dotenv_and_set_env_defaults() -> None:
     os.environ.setdefault("OPENAI_API_KEY", "local-deny-real-call-sentinel")
     os.environ.setdefault("ANTHROPIC_API_KEY", "local-deny-real-call-sentinel")
     os.environ.setdefault("LITELLM_API_KEY", "local-deny-real-call-sentinel")
+    # Story 9.1a: async deep research runs in Celery also degrade without a real key.
+    os.environ.setdefault("CHAINLENS_API_KEY", "")
+    os.environ.setdefault("DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED", "true")
 
     os.environ.setdefault("ATLASSIAN_CLIENT_ID", "fake-atlassian-client-id")
     os.environ.setdefault("ATLASSIAN_CLIENT_SECRET", "fake-atlassian-client-secret")
