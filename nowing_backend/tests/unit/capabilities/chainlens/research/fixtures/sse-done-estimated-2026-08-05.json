@@ -1,0 +1,30 @@
+{
+  "description": "ChainLens /api/v1/search terminal SSE 'done' frame — writer-only/partial cost (estimated: true).",
+  "frame": {
+    "type": "done",
+    "chatId": "chat-sample-estimated-0000",
+    "webUrl": "https://v2.chainlens.app/c/chat-sample-estimated-0000",
+    "requestedMode": "auto",
+    "resolvedMode": "balanced",
+    "usage": {
+      "requestedMode": "auto",
+      "resolvedMode": "balanced",
+      "promptTokens": 4273,
+      "completionTokens": 3677,
+      "totalTokens": 7950,
+      "model": "agy/gemini-3.6-flash-medium",
+      "costDollars": 0.0482,
+      "estimated": true
+    }
+  },
+  "expectedNowingParserOutput": {
+    "costDollars": 0.0482,
+    "costMicros": 48200,
+    "costBasis": "estimated",
+    "resolvedMode": "balanced",
+    "promptTokens": 4273,
+    "completionTokens": 3677,
+    "totalTokens": 7950,
+    "model": "agy/gemini-3.6-flash-medium"
+  }
+}

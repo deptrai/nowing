@@ -1,0 +1,30 @@
+{
+  "description": "ChainLens /api/v1/search terminal SSE 'done' frame — full-pipeline measured cost (estimated: false).",
+  "frame": {
+    "type": "done",
+    "chatId": "chat-sample-actual-0000",
+    "webUrl": "https://v2.chainlens.app/c/chat-sample-actual-0000",
+    "requestedMode": "auto",
+    "resolvedMode": "balanced",
+    "usage": {
+      "requestedMode": "auto",
+      "resolvedMode": "balanced",
+      "promptTokens": 14273,
+      "completionTokens": 13677,
+      "totalTokens": 27950,
+      "model": "agy/gemini-3.6-flash-medium",
+      "costDollars": 0.1421,
+      "estimated": false
+    }
+  },
+  "expectedNowingParserOutput": {
+    "costDollars": 0.1421,
+    "costMicros": 142100,
+    "costBasis": "actual",
+    "resolvedMode": "balanced",
+    "promptTokens": 14273,
+    "completionTokens": 13677,
+    "totalTokens": 27950,
+    "model": "agy/gemini-3.6-flash-medium"
+  }
+}
