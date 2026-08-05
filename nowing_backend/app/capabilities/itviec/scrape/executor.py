@@ -13,7 +13,7 @@ def build_scrape_executor() -> Executor:
     """Return an executor that calls the ITviec proprietary fetcher."""
 
     async def execute(input: ScrapeInput) -> ScrapeOutput:
-        await emit_progress("fetching", "ITviec job search")
+        emit_progress("fetching", "ITviec job search")
         raw = await scrape_itviec(input.model_dump())
         return ScrapeOutput(**raw)
 

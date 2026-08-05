@@ -13,7 +13,7 @@ def build_scrape_executor() -> Executor:
     """Return an executor that calls the TopCV proprietary fetcher."""
 
     async def execute(input: ScrapeInput) -> ScrapeOutput:
-        await emit_progress("fetching", "TopCV job search")
+        emit_progress("fetching", "TopCV job search")
         raw = await scrape_topcv(input.model_dump())
         return ScrapeOutput(**raw)
 

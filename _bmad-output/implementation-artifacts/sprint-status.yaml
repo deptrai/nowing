@@ -143,8 +143,8 @@ development_status:
   12-1: done  # VietnamWorks Scraper — implemented, tested, E2E/MCP verified
   12-2: blocked  # TopCV Scraper — anti-bot POC gate, Cloudflare challenge
   12-3: ready-for-dev  # ITviec Scraper — story file created; skeleton ready
-  12-4: ready-for-dev  # Vietnam Job Aggregator — story file created; skeleton ready
-  12-5: ready-for-dev  # PII Redaction for Job Data — story file created; redact.py + tests ready
+  12-4: done  # Vietnam Job Aggregator — normalize, dedupe, conflict scoring, orchestrator, unit tests
+  12-5: done  # PII Redaction for Job Data — redact.py + tests, wired into aggregator before storage
   epic-12-retrospective: optional
 
 # Deferred work that is out of the current sprint / not approved for MVP.
