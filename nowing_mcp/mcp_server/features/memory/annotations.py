@@ -16,6 +16,7 @@ def _reject_bool_top_k(value: object) -> object:
         raise ValueError("top_k must be an integer, not a boolean")
     return value
 
+
 READ = ToolAnnotations(
     readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False
 )

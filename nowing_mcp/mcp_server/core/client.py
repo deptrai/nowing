@@ -6,12 +6,14 @@ transport or HTTP failure into a readable ``ToolError``.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import httpx
 
 from .auth.identity import current_api_key
-from .errors import ToolError
+from .errors import ThreadBusyError, ToolError
+from .sse import iter_sse_events
 
 _FAILURE_HINTS: dict[int, str] = {
     401: "Authentication failed — the Nowing API key is invalid or expired.",
@@ -87,6 +89,113 @@ class NowingClient:
         if response.is_success:
             return self._parse_body(response)
         raise ToolError(self._explain_failure(response))
+
+    async def request_bytes(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+    ) -> tuple[bytes, str | None]:
+        """Send a request and return ``(raw bytes, content-type)``.
+
+        Used for binary responses (report exports) where ``request`` would
+        corrupt the payload by decoding it as text. Failure handling matches
+        ``request``.
+        """
+        if params is not None:
+            params = {key: value for key, value in params.items() if value is not None}
+        headers = self._auth_headers()
+        try:
+            response = await self._http.request(
+                method,
+                path,
+                params=params,
+                headers=headers,
+            )
+        except httpx.RequestError as exc:
+            raise ToolError(
+                f"Could not reach Nowing at {self._api_base}: {exc}. "
+                "Confirm the backend is running and NOWING_BASE_URL is correct."
+            ) from exc
+
+        if response.is_success:
+            return response.content, response.headers.get("content-type")
+        raise ToolError(self._explain_failure(response))
+
+    async def stream_sse(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: Any | None = None,
+        timeout_s: float = 600.0,
+    ) -> Any:
+        """Open a streaming request and yield parsed SSE events.
+
+        Used by ``nowing_chat`` to consume the ``/new_chat`` stream. Yields
+        ``SseEvent`` objects; raises ``ThreadBusyError`` on a 409 busy reply
+        (with the backend ``errorCode``) and ``ToolError`` for any other
+        failure. Kept as an async generator so the stream stays open across
+        yields, mirroring the evals ``_stream_once`` client.
+        """
+        headers = self._auth_headers()
+        headers["Accept"] = "text/event-stream"
+        timeout = httpx.Timeout(timeout_s, connect=10.0)
+        try:
+            async with self._http.stream(
+                method,
+                path,
+                json=json,
+                headers=headers,
+                timeout=timeout,
+            ) as response:
+                if response.status_code == 409:
+                    detail = await self._extract_busy_detail(response)
+                    raise ThreadBusyError(
+                        error_code=detail.get("errorCode", "THREAD_BUSY"),
+                        message=detail.get("message", "Thread is busy"),
+                    )
+                if not response.is_success:
+                    body = await response.aread()
+                    status = response.status_code
+                    hint = _FAILURE_HINTS.get(status)
+                    detail = self._extract_detail_text(body)
+                    if detail and hint:
+                        raise ToolError(f"{hint} (server said: {detail})")
+                    if detail:
+                        raise ToolError(f"Nowing returned {status}: {detail}")
+                    raise ToolError(hint or f"Nowing returned HTTP {status}.")
+                async for event in iter_sse_events(response.aiter_lines()):
+                    yield event
+        except httpx.RequestError as exc:
+            raise ToolError(
+                f"Could not reach Nowing at {self._api_base}: {exc}. "
+                "Confirm the backend is running and NOWING_BASE_URL is correct."
+            ) from exc
+
+    @staticmethod
+    async def _extract_busy_detail(response: httpx.Response) -> dict[str, Any]:
+        try:
+            payload = json.loads(await response.aread())
+        except (json.JSONDecodeError, ValueError):
+            return {"errorCode": "THREAD_BUSY", "message": response.text}
+        if isinstance(payload, dict) and isinstance(payload.get("detail"), dict):
+            return payload["detail"]
+        return payload if isinstance(payload, dict) else {}
+
+    @staticmethod
+    def _extract_detail_text(body: bytes) -> str | None:
+        try:
+            payload = json.loads(body)
+        except (json.JSONDecodeError, ValueError):
+            return body.decode("utf-8", "replace").strip() or None
+        if isinstance(payload, dict):
+            detail = payload.get("detail", payload)
+            if isinstance(detail, dict):
+                return detail.get("message") or str(detail)
+            return str(detail)
+        return str(payload)
 
     async def aclose(self) -> None:
         await self._http.aclose()

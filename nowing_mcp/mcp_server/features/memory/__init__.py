@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+import math
+from typing import Annotated, Any
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import Field
@@ -36,7 +37,10 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
     async def remember(
         content: Annotated[
             str,
-            Field(min_length=1, description="The durable fact, decision, or preference to save."),
+            Field(
+                min_length=1,
+                description="The durable fact, decision, or preference to save.",
+            ),
         ],
         type: MemoryType = "semantic",
         tags: MemoryTags = None,
@@ -89,7 +93,9 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
     async def recall(
         query: Annotated[
             str,
-            Field(min_length=1, description="What to remember, e.g. 'pricing changes'."),
+            Field(
+                min_length=1, description="What to remember, e.g. 'pricing changes'."
+            ),
         ],
         top_k: TopK = 5,
         type: Annotated[
@@ -109,13 +115,14 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         or assistant shared in earlier conversations.
         """
         resolved = await context.resolve(workspace)
-        payload = {
+        payload: dict[str, Any] = {
             "query": query,
             "top_k": top_k,
             "type": type,
             "tags": tags or [],
-            "research_thread_id": research_thread_id,
         }
+        if research_thread_id is not None:
+            payload["research_thread_id"] = research_thread_id
         hits = await client.request(
             "POST",
             f"/workspaces/{resolved.id}/memories/search",
@@ -179,7 +186,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         """
         resolved = await context.resolve(workspace)
         params = {
-            "query": query or None,
+            "query": query.strip() or None,
             "top_k": top_k,
         }
         try:
@@ -204,6 +211,71 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
             data.get("memories", []),
             data.get("citations", []),
         )
+
+    @mcp.tool(
+        name="nowing_memory_list",
+        title="List recent memories in a workspace",
+        annotations=READ,
+        structured_output=False,
+    )
+    async def memory_list(
+        limit: Annotated[
+            int, Field(ge=1, le=100, description="Maximum memories to return.")
+        ] = 20,
+        type: MemoryType = None,
+        tags: MemoryTags = None,
+        workspace: WorkspaceParam = None,
+        response_format: ResponseFormatParam = "markdown",
+    ) -> str:
+        """List the workspace's long-term memories, newest first.
+
+        Use this to inventory what is stored before deciding what to recall,
+        update, or revalidate. Returns each memory's id, type, tags,
+        confidence, and a short content excerpt.
+        Example: limit=10, type='semantic'.
+        """
+        resolved = await context.resolve(workspace)
+        params: dict[str, object] = {"limit": limit}
+        if type is not None:
+            params["type"] = type
+        if tags:
+            params["tags"] = ",".join(tags)
+        items = await client.request(
+            "GET",
+            f"/workspaces/{resolved.id}/memories",
+            params=params,
+        )
+        items = items or []
+        if response_format == "json":
+            return to_json(items)
+        return _render_memory_list(items)
+
+    @mcp.tool(
+        name="nowing_memory_revalidate",
+        title="Revalidate a memory against its source",
+        annotations=UPDATE,
+        structured_output=False,
+    )
+    async def memory_revalidate(
+        memory_id: MemoryId,
+        workspace: WorkspaceParam = None,
+        response_format: ResponseFormatParam = "markdown",
+    ) -> str:
+        """Recheck a memory's factual content against its source of origin.
+
+        Use this when a stored fact may be stale or you want to refresh a
+        run-derived memory. Returns the memory with refreshed content and
+        previous versions preserved.
+        Example: memory_id=42.
+        """
+        resolved = await context.resolve(workspace)
+        memory = await client.request(
+            "POST",
+            f"/workspaces/{resolved.id}/memories/{memory_id}/revalidate",
+        )
+        if response_format == "json":
+            return to_json(memory)
+        return _render_memory(memory, action="Revalidated")
 
 
 def _source_suffix(item: dict) -> str:
@@ -234,11 +306,28 @@ def _render_memory(memory: dict | None, action: str) -> str:
         f"- updated: {memory.get('updated_at')}",
     ]
     if memory.get("citation"):
-        lines.append(f"- source: {memory.get('source_type')} ({memory.get('citation')})")
-    lines.extend(["", clip(memory.get('content', '') or '(empty)')])
-    if memory.get('previous_versions'):
+        lines.append(
+            f"- source: {memory.get('source_type')} ({memory.get('citation')})"
+        )
+    lines.extend(["", clip(memory.get("content", "") or "(empty)")])
+    if memory.get("previous_versions"):
         lines.append("")
         lines.append("_Previous versions preserved._")
+    return "\n".join(lines).strip()
+
+
+def _render_memory_list(items: list[dict]) -> str:
+    if not items:
+        return "No memories found in this workspace."
+    lines = [f"# {len(items)} memory(ies) (newest first)", ""]
+    for index, memory in enumerate(items, start=1):
+        tags = memory.get("tags") or []
+        tag_text = f", tags: {', '.join(tags)}" if tags else ""
+        lines.append(
+            f"- **id {memory.get('id')}** ({memory.get('type')}, "
+            f"confidence {memory.get('confidence', 1.0):.2f}{tag_text}): "
+            f"{clip(memory.get('content', '') or '(empty)', 500)}"
+        )
     return "\n".join(lines).strip()
 
 
@@ -250,14 +339,25 @@ def _render_recall(query: str, items: list[dict]) -> str:
         score = hit.get("score")
         similarity = hit.get("similarity")
         if score is None and similarity is None:
-            meta = f"rank=recency, rrf=n/a, similarity=n/a"
+            meta = "rank=recency, rrf=n/a, similarity=n/a"
         else:
             try:
                 score_num = float(score)
                 sim_num = float(similarity)
-                meta = f"rrf={score_num:.6f}, similarity={sim_num:.6f}"
             except (TypeError, ValueError):
-                meta = f"rank={rank}, rrf=n/a, similarity=n/a"
+                score_num = None
+                sim_num = None
+            score_str = (
+                f"{score_num:.6f}"
+                if score_num is not None and math.isfinite(score_num)
+                else "n/a"
+            )
+            sim_str = (
+                f"{sim_num:.6f}"
+                if sim_num is not None and math.isfinite(sim_num)
+                else "n/a"
+            )
+            meta = f"rank={rank}, rrf={score_str}, similarity={sim_str}"
         lines.append(
             f"- **id {hit.get('id')}** ({hit.get('type')}, "
             f"confidence {hit.get('confidence', 1.0):.2f}, {meta}): "

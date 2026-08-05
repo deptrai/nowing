@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import time
 
 import httpx
 
@@ -21,7 +20,9 @@ async def main() -> None:
             "user_query": QUERY,
             "workspace_id": 1,
         }
-        async with client.stream("POST", "/api/v1/new_chat", headers=headers, json=payload) as resp:
+        async with client.stream(
+            "POST", "/api/v1/new_chat", headers=headers, json=payload
+        ) as resp:
             print("new_chat status:", resp.status_code)
             async for _ in resp.aiter_text():
                 pass

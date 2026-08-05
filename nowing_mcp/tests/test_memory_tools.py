@@ -23,6 +23,7 @@ from mcp.server.lowlevel.server import request_ctx as mcp_request_ctx  # noqa: E
 from mcp_server.config import Settings  # noqa: E402
 from mcp_server.core.auth import identity  # noqa: E402
 from mcp_server.core.client import ToolError  # noqa: E402
+from mcp_server.features.memory import _render_recall  # noqa: E402
 from mcp_server.server import build_server  # noqa: E402
 
 
@@ -73,12 +74,12 @@ class FakeNowingClient:
             return {
                 "id": 42,
                 "content": kwargs.get("json", {}).get("corrected_content", ""),
-                "previous_versions": [
-                    {"previous_content": "Old fact"}
-                ],
+                "previous_versions": [{"previous_content": "Old fact"}],
             }
-        if method == "GET" and "/research-threads/" in path and path.endswith(
-            "/context"
+        if (
+            method == "GET"
+            and "/research-threads/" in path
+            and path.endswith("/context")
         ):
             return {
                 "thread_id": 9,
@@ -162,17 +163,22 @@ def test_remember_calls_create_memory_endpoint(monkeypatch, settings):
 
     assert "Competitor X" in str(result)
     assert any(
-        call == ("POST", "/workspaces/1/memories", {
-            "json": {
-                "content": "Competitor X raised prices by 10%.",
-                "type": "semantic",
-                "tags": ["competitor", "pricing"],
-                "confidence": 0.95,
-                "source_type": "manual",
-                "source_id": None,
-                "research_thread_id": None,
-            }
-        })
+        call
+        == (
+            "POST",
+            "/workspaces/1/memories",
+            {
+                "json": {
+                    "content": "Competitor X raised prices by 10%.",
+                    "type": "semantic",
+                    "tags": ["competitor", "pricing"],
+                    "confidence": 0.95,
+                    "source_type": "manual",
+                    "source_id": None,
+                    "research_thread_id": None,
+                }
+            },
+        )
         for call in _client.calls
     )
 
@@ -198,8 +204,7 @@ def test_recall_calls_search_endpoint(monkeypatch, settings):
 
     assert "Competitor X" in str(result)
     assert any(
-        call[0] == "POST" and "/memories/search" in call[1]
-        for call in _client.calls
+        call[0] == "POST" and "/memories/search" in call[1] for call in _client.calls
     )
 
 
@@ -215,7 +220,10 @@ def test_update_fact_calls_patch_endpoint(monkeypatch, settings):
         result = asyncio.run(
             mcp.call_tool(
                 "nowing_update_fact",
-                {"memory_id": 42, "corrected_content": "Competitor X raised prices by 12%."},
+                {
+                    "memory_id": 42,
+                    "corrected_content": "Competitor X raised prices by 12%.",
+                },
             )
         )
     finally:
@@ -224,9 +232,12 @@ def test_update_fact_calls_patch_endpoint(monkeypatch, settings):
 
     assert "12%" in str(result)
     assert any(
-        call == ("PATCH", "/memories/42", {
-            "json": {"corrected_content": "Competitor X raised prices by 12%."}
-        })
+        call
+        == (
+            "PATCH",
+            "/memories/42",
+            {"json": {"corrected_content": "Competitor X raised prices by 12%."}},
+        )
         for call in _client.calls
     )
 
@@ -317,3 +328,88 @@ def test_disabled_memory_tool_is_hidden(monkeypatch, settings):
 
     names = {tool.name for tool in tools}
     assert "nowing_remember" not in names
+
+
+def test_render_recall_handles_non_finite_score_and_similarity():
+    """C7: NaN/Inf score or similarity must not crash and must render as n/a."""
+    items = [
+        {
+            "id": 1,
+            "type": "semantic",
+            "confidence": 0.9,
+            "content": "A",
+            "score": float("nan"),
+            "similarity": 0.95,
+        },
+        {
+            "id": 2,
+            "type": "procedural",
+            "confidence": 1.0,
+            "content": "B",
+            "score": 0.5,
+            "similarity": float("inf"),
+        },
+    ]
+    result = _render_recall("test", items)
+    assert "rrf=n/a" in result
+    assert "similarity=n/a" in result
+    assert "rank=1" in result
+    assert "rank=2" in result
+
+
+def test_recall_omits_none_research_thread_id(monkeypatch, settings):
+    """C12: nowing_recall must not send research_thread_id when it is None."""
+    monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
+
+    mcp, _client = build_server(settings)
+    token = mcp_request_ctx.set(SimpleNamespace())
+    identity_token = identity.bind_api_key("nw_pat_test")
+
+    try:
+        result = asyncio.run(
+            mcp.call_tool(
+                "nowing_recall",
+                {"query": "pricing", "top_k": 5},
+            )
+        )
+    finally:
+        identity.unbind_api_key(identity_token)
+        mcp_request_ctx.reset(token)
+
+    assert "Competitor X" in str(result)
+    search_calls = [
+        call
+        for call in _client.calls
+        if call[0] == "POST" and "/memories/search" in call[1]
+    ]
+    assert search_calls
+    payload = search_calls[0][2]["json"]
+    assert "research_thread_id" not in payload
+
+
+def test_continue_research_whitespace_query_sends_none(monkeypatch, settings):
+    """C8: a whitespace-only query must be sent as None (recency), not ranked."""
+    monkeypatch.setattr("mcp_server.server.NowingClient", FakeNowingClient)
+
+    mcp, _client = build_server(settings)
+    token = mcp_request_ctx.set(SimpleNamespace())
+    identity_token = identity.bind_api_key("nw_pat_test")
+
+    try:
+        asyncio.run(
+            mcp.call_tool(
+                "nowing_continue_research",
+                {"research_thread_id": 9, "query": "   ", "top_k": 3},
+            )
+        )
+    finally:
+        identity.unbind_api_key(identity_token)
+        mcp_request_ctx.reset(token)
+
+    context_calls = [
+        call
+        for call in _client.calls
+        if call[0] == "GET" and "/research-threads/9/context" in call[1]
+    ]
+    assert context_calls
+    assert context_calls[0][2].get("params", {}).get("query") is None

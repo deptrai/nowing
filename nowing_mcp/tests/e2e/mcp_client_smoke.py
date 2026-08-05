@@ -1,4 +1,5 @@
 """Smoke-test nowing_mcp memory tools against a running local backend."""
+
 from __future__ import annotations
 
 import os
@@ -13,7 +14,10 @@ async def main():
     base_url = os.environ.get("NOWING_BASE_URL", "http://localhost:8000")
     api_key = os.environ.get("NOWING_API_KEY")
     if not api_key:
-        print("Usage: NOWING_API_KEY=nw_pat_... python mcp_client_smoke.py", file=sys.stderr)
+        print(
+            "Usage: NOWING_API_KEY=nw_pat_... python mcp_client_smoke.py",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     params = StdioServerParameters(
@@ -35,11 +39,27 @@ async def main():
             for tool_name, args in [
                 ("nowing_select_workspace", {"workspace": "1"}),
                 ("nowing_recall", {"query": "Competitor X"}),
-                ("nowing_remember", {"content": "I drink decaf in the morning after walking the dog.", "tags": ["preference", "coffee"]}),
+                (
+                    "nowing_remember",
+                    {
+                        "content": "I drink decaf in the morning after walking the dog.",
+                        "tags": ["preference", "coffee"],
+                    },
+                ),
                 ("nowing_recall", {"query": "decaf"}),
-                ("nowing_update_fact", {"memory_id": 2, "corrected_content": "I drink decaf every morning.", "confidence": 0.99}),
+                (
+                    "nowing_update_fact",
+                    {
+                        "memory_id": 2,
+                        "corrected_content": "I drink decaf every morning.",
+                        "confidence": 0.99,
+                    },
+                ),
                 ("nowing_recall", {"query": "decaf every morning"}),
-                ("nowing_continue_research", {"thread_id": 1, "prompt": "Any updates on competitor X pricing?"}),
+                (
+                    "nowing_continue_research",
+                    {"thread_id": 1, "prompt": "Any updates on competitor X pricing?"},
+                ),
             ]:
                 result = await session.call_tool(tool_name, args)
                 print(f"\n{tool_name}({args}):")

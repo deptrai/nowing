@@ -58,8 +58,12 @@ async def test_continue_research_renders_memories_and_citations(settings):
                 "thread_id": 7,
                 "title": "Q3 research",
                 "memories": [
-                    {"id": 1, "type": "semantic", "confidence": 0.9,
-                     "content": "Competitor X raised prices by 10% in Q3."}
+                    {
+                        "id": 1,
+                        "type": "semantic",
+                        "confidence": 0.9,
+                        "content": "Competitor X raised prices by 10% in Q3.",
+                    }
                 ],
                 "citations": [
                     {"label": "pricing page", "url": "https://example.com/pricing"},

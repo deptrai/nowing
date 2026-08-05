@@ -43,8 +43,7 @@ def _render_markdown(platform: str, verb: str, workspace_name: str, result: Any)
     header = f'# {platform}.{verb} — {_describe_size(result)} from "{workspace_name}"'
     body = clip(to_json(result))
     footer = (
-        "\n\nFields shown as excerpts; use nowing_get_scraper_run for the "
-        "full output."
+        "\n\nFields shown as excerpts; use nowing_get_scraper_run for the full output."
     )
     return f"{header}\n\n```json\n{body}\n```{footer}"
 

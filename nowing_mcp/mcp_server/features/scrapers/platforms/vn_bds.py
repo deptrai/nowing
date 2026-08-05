@@ -82,7 +82,9 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         ] = 5,
         min_confidence: Annotated[
             float,
-            Field(ge=0.0, le=1.0, description="Drop listings below this confidence score."),
+            Field(
+                ge=0.0, le=1.0, description="Drop listings below this confidence score."
+            ),
         ] = 0.0,
         resolve_phones: Annotated[
             bool,

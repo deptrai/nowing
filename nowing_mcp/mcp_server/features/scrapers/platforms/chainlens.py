@@ -34,7 +34,9 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         ],
         mode: Annotated[
             Literal["speed", "balanced", "quality", "auto"],
-            Field(description="Research depth: speed (fast), balanced, or quality (thorough)."),
+            Field(
+                description="Research depth: speed (fast), balanced, or quality (thorough)."
+            ),
         ] = "quality",
         sources: Annotated[
             list[Literal["web", "discussions", "academic"]],

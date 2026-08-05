@@ -19,6 +19,11 @@ class McpToolGroup(StrEnum):
     RUN_HISTORY = "run_history"
     KNOWLEDGE_BASE = "knowledge_base"
     MEMORY = "memory"
+    TEAM_MEMORY = "team_memory"
+    IMAGE_GENERATION = "image_generation"
+    AUTOMATION = "automation"
+    REPORT = "report"
+    CHAT = "chat"
 
 
 MCP_TOOL_CATALOG: list[dict[str, str]] = [
@@ -56,6 +61,16 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
     {"name": "nowing_recall", "group": McpToolGroup.MEMORY},
     {"name": "nowing_update_fact", "group": McpToolGroup.MEMORY},
     {"name": "nowing_continue_research", "group": McpToolGroup.MEMORY},
+    {"name": "nowing_memory_list", "group": McpToolGroup.MEMORY},
+    {"name": "nowing_memory_revalidate", "group": McpToolGroup.MEMORY},
+    {"name": "nowing_workspace_memory_get", "group": McpToolGroup.TEAM_MEMORY},
+    {"name": "nowing_workspace_memory_update", "group": McpToolGroup.TEAM_MEMORY},
+    {"name": "nowing_image_generate", "group": McpToolGroup.IMAGE_GENERATION},
+    {"name": "nowing_automation_list", "group": McpToolGroup.AUTOMATION},
+    {"name": "nowing_automation_run", "group": McpToolGroup.AUTOMATION},
+    {"name": "nowing_report_list", "group": McpToolGroup.REPORT},
+    {"name": "nowing_report_export", "group": McpToolGroup.REPORT},
+    {"name": "nowing_chat", "group": McpToolGroup.CHAT},
 ]
 
 MCP_TOOL_SYSTEM_TOOLS = {"nowing_list_workspaces", "nowing_select_workspace"}

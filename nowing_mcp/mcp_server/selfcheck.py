@@ -31,6 +31,9 @@ EXPECTED_TOOLS = {
     "nowing_google_maps_reviews",
     "nowing_amazon_scrape",
     "nowing_batdongsan_scrape",
+    "nowing_chotot_bds_scrape",
+    "nowing_muaban_bds_scrape",
+    "nowing_vn_bds_aggregate",
     "nowing_instagram_scrape",
     "nowing_instagram_details",
     "nowing_list_scraper_runs",
@@ -49,6 +52,21 @@ EXPECTED_TOOLS = {
     "nowing_recall",
     "nowing_update_fact",
     "nowing_continue_research",
+    "nowing_memory_list",
+    "nowing_memory_revalidate",
+    # workspace team memory
+    "nowing_workspace_memory_get",
+    "nowing_workspace_memory_update",
+    # image generation
+    "nowing_image_generate",
+    # automations
+    "nowing_automation_list",
+    "nowing_automation_run",
+    # reports
+    "nowing_report_list",
+    "nowing_report_export",
+    # chat
+    "nowing_chat",
 }
 
 _MIN_DESCRIPTION_CHARS = 40

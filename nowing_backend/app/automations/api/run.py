@@ -1,4 +1,4 @@
-"""HTTP routes for automation run history."""
+"""HTTP routes for automation run history + manual launch."""
 
 from __future__ import annotations
 
@@ -8,6 +8,24 @@ from app.automations.schemas.api import RunDetail, RunList, RunSummary
 from app.automations.services import RunService, get_run_service
 
 router = APIRouter()
+
+
+@router.post(
+    "/automations/{automation_id}/run",
+    response_model=RunSummary,
+)
+async def run_automation(
+    automation_id: int,
+    service: RunService = Depends(get_run_service),
+) -> RunSummary:
+    """Kick off a manual run for an automation, returning the PENDING run.
+
+    Fire-and-return: the run is resolved, validated, snapshotted, persisted as
+    PENDING and enqueued for background execution; the caller does not wait.
+    Requires ``automations:execute``.
+    """
+    run = await service.launch(automation_id=automation_id)
+    return RunSummary.model_validate(run)
 
 
 @router.get(

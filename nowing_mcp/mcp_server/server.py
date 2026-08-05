@@ -17,7 +17,17 @@ from .config import Settings
 from .core.client import NowingClient
 from .core.errors import ToolError as WorkspaceToolError
 from .core.workspace_context import WorkspaceContext
-from .features import knowledge_base, memory, scrapers, workspaces
+from .features import (
+    automations,
+    chat,
+    image_generation,
+    knowledge_base,
+    memory,
+    reports,
+    scrapers,
+    team_memory,
+    workspaces,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +85,9 @@ class WorkspaceAwareFastMCP(FastMCP):
             return await super().call_tool(name, arguments)
 
         # Fail-closed: any failure to verify state results in denial.
-        workspace_reference = arguments.get("workspace") if isinstance(arguments, dict) else None
+        workspace_reference = (
+            arguments.get("workspace") if isinstance(arguments, dict) else None
+        )
         try:
             workspace = await self._workspace_context.resolve(workspace_reference)
             settings = await self._workspace_context.client.request(
@@ -139,4 +151,9 @@ def build_server(settings: Settings) -> tuple[WorkspaceAwareFastMCP, NowingClien
     scrapers.register(mcp, client, context)
     knowledge_base.register(mcp, client, context)
     memory.register(mcp, client, context)
+    team_memory.register(mcp, client, context)
+    image_generation.register(mcp, client, context)
+    automations.register(mcp, client, context)
+    reports.register(mcp, client, context)
+    chat.register(mcp, client, context)
     return mcp, client

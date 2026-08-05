@@ -32,7 +32,9 @@ from app.mcp_tools import MCP_TOOL_NAMES  # noqa: E402
 class FakeNowingClient:
     """Records calls and serves canned workspace/tool-setting responses."""
 
-    def __init__(self, *, api_base: str, timeout: float, fallback_api_key: str | None) -> None:
+    def __init__(
+        self, *, api_base: str, timeout: float, fallback_api_key: str | None
+    ) -> None:
         self.api_base = api_base
         self.timeout = timeout
         self.fallback_api_key = fallback_api_key
