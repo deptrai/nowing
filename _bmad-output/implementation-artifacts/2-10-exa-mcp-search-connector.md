@@ -129,3 +129,30 @@ uv run alembic current  # should print 190 (head)
 - `nowing_backend/tests/unit/agents/multi_agent_chat/test_mcp_discovery_migration.py`
 - `_bmad-output/planning-artifacts/epics.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings
+
+Reviewed by Blind Hunter + Edge Case Hunter + Acceptance Auditor on 2026-08-05.
+
+**decision-needed:** 0
+
+**patch (high):**
+- [ ] [Review][Patch] Add `EXA_MCP_CONNECTOR` to `LIVE_CONNECTOR_TYPES` in `app/services/mcp_oauth/registry.py:270` — so the index route and schedule checker treat it as a real-time/live connector and block/force-disable periodic indexing.
+- [ ] [Review][Patch] Enforce `is_indexable=False` and `periodic_indexing_enabled=False` for `EXA_MCP_CONNECTOR` in the update route (`app/routes/search_source_connectors_routes.py:518`) so a client cannot later flip indexing on.
+- [ ] [Review][Patch] Call `invalidate_mcp_tools_cache(db_connector.workspace_id)` after updating Exa `server_config` (`app/routes/search_source_connectors_routes.py:536`) so the old API-key-bound tool closures are evicted immediately.
+
+**patch (medium):**
+- [ ] [Review][Patch] Add unit tests for `EXA_MCP_CONNECTOR` config validation in `tests/unit/utils/test_validators.py`.
+- [ ] [Review][Patch] Add an integration/CRUD test for the Exa route-level `server_config` builder (create + update + delete).
+- [ ] [Review][Patch] Add an automated test for AC5 tool behavior (mock `mcp.exa.ai` or use a test API key).
+
+**defer:**
+- [x] [Review][Defer] Race condition on duplicate connector check (`app/routes/search_source_connectors_routes.py:208`) — pre-existing for all non-MCP connectors.
+- [x] [Review][Defer] API key stored as plaintext in `server_config.headers` — generic MCP design, not introduced by this story.
+- [x] [Review][Defer] Migration downgrade is a no-op — PostgreSQL cannot remove enum values; documented limitation.
+
+**dismissed as noise:**
+- One-per-workspace check is correct (`EXA_MCP_CONNECTOR` is not exempt; only generic `MCP_CONNECTOR` is).
+- Tool allowlist hardcoding is intentional per spec (curated list).
+- URL override is allowed by design.
+

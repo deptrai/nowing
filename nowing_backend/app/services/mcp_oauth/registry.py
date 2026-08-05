@@ -286,6 +286,7 @@ LIVE_CONNECTOR_TYPES: frozenset[SearchSourceConnectorType] = frozenset(
         # and auto-disables periodic indexing.
         SearchSourceConnectorType.NOTION_CONNECTOR,
         SearchSourceConnectorType.CONFLUENCE_CONNECTOR,
+        SearchSourceConnectorType.EXA_MCP_CONNECTOR,
     }
 )
 

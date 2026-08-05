@@ -430,6 +430,15 @@ async def update_search_source_connector(
     # Convert the sparse update data (only fields present in request) to a dict
     update_data = connector_update.model_dump(exclude_unset=True)
 
+    # Exa MCP connector is a live search tool: it is not indexable and never
+    # runs on a schedule. Force these fields to their safe values so the
+    # validation below and the final persisted state are consistent.
+    if db_connector.connector_type == SearchSourceConnectorType.EXA_MCP_CONNECTOR:
+        update_data["is_indexable"] = False
+        update_data["periodic_indexing_enabled"] = False
+        update_data["indexing_frequency_minutes"] = None
+        update_data.pop("next_scheduled_at", None)
+
     # Validate periodic indexing fields
     # Get the effective values after update
     effective_is_indexable = update_data.get("is_indexable", db_connector.is_indexable)
@@ -534,6 +543,15 @@ async def update_search_source_connector(
             server_config["headers"] = user_server_config["headers"]
         cfg["server_config"] = server_config
         update_data["config"] = cfg
+
+        # The cached MCP tools for this workspace were built with the old
+        # server_config (including the old API key). Evict them immediately so
+        # the next chat turn loads fresh tool closures.
+        from app.agents.chat.multi_agent_chat.shared.tools.mcp.tool import (
+            invalidate_mcp_tools_cache,
+        )
+
+        invalidate_mcp_tools_cache(db_connector.workspace_id)
 
     # Apply all updates (including the potentially merged config)
     for key, value in update_data.items():
@@ -789,7 +807,7 @@ async def index_connector_content(
     Index content from a KB connector to a workspace.
 
     Live connectors (Slack, Teams, Linear, Jira, ClickUp, Calendar, Airtable,
-    Gmail, Discord, Luma) use real-time agent tools instead.
+    Gmail, Discord, Luma, Notion, Confluence, Exa MCP) use real-time agent tools instead.
     """
     try:
         # Get the connector first
