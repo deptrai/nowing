@@ -1,5 +1,4 @@
 ---
-outputFile: _bmad-output/planning-artifacts/implementation-readiness-report-2026-08-05.md
 stepsCompleted:
   - step-01-document-discovery
   - step-02-prd-analysis
@@ -7,19 +6,15 @@ stepsCompleted:
   - step-04-ux-alignment
   - step-05-epic-quality-review
   - step-06-final-assessment
-includedFiles:
-  prd: _bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md
-  architecture: _bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md
-  epics: _bmad-output/planning-artifacts/epics.md
+documentsIncluded:
+  prd:
+    - _bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md
+  architecture:
+    - _bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md
+  epics:
+    - _bmad-output/planning-artifacts/epics.md
   ux:
     - _bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research.md
-  strategic_pivot:
-    - _bmad-output/planning-artifacts/vision-lock-and-this-week-2026-08-04.md
-    - _bmad-output/planning-artifacts/vertical-expansion-roadmap-2026-08-04.md
-    - _bmad-output/planning-artifacts/marketing-sprint-2weeks-bds-2026-08-04.md
-    - _bmad-output/planning-artifacts/task-list-2weeks-2026-08-04.md
-  archived:
-    - _bmad-output/planning-artifacts/archive/ux-audit-improvement-spec-2026-07-27.md (STALE, archived)
 ---
 
 # Implementation Readiness Assessment Report
@@ -29,415 +24,495 @@ includedFiles:
 
 ## Step 1: Document Discovery
 
-Bắt đầu **Document Discovery** để kiểm kê tất cả tài liệu dự án.
-
 ### PRD Files Found
+
+**Whole Documents:**
+- `prds/prd-Nowing-2026-07-22/prd.md` (108,836 bytes, 2026-08-05 10:24)
 
 **Sharded Documents:**
 - Folder: `prds/prd-Nowing-2026-07-22/`
-  - `prd.md` (108,838 bytes, modified 2026-08-05 02:40)
+  - `prd.md` (main)
   - `.memlog.md`
   - `review-prfaq-gap.md`
   - `review-rubric.md`
   - `validation-report.md`
+  - `validation-report.html`
 
 ### Architecture Files Found
 
 **Sharded Documents:**
 - Folder: `architecture/architecture-Nowing-2026-07-22/`
-  - `ARCHITECTURE-SPINE.md` (78,269 bytes, modified 2026-08-05 02:40)
+  - `ARCHITECTURE-SPINE.md` (78,269 bytes, 2026-08-05 10:24)
 
-**Supplementary Review:**
-- `epic-11-architecture-review-2026-08-03.md` (9,154 bytes, modified 2026-08-04 20:16)
+**Note:** `epic-11-architecture-review-2026-08-03.md` was found but is a review artifact, not the core architecture document.
 
 ### Epics & Stories Files Found
 
 **Whole Documents:**
-- `epics.md` (95,649 bytes, modified 2026-08-05 02:38)
+- `epics.md` (102,052 bytes, 2026-08-05 15:07)
 
-**Supplementary Review:**
-- `epic-11-architecture-review-2026-08-03.md` (9,154 bytes, modified 2026-08-04 20:16)
+**Note:** `epic-11-architecture-review-2026-08-03.md` was found but is an architecture review, not an epics document.
 
 ### UX Design Files Found
 
-**Whole Documents:**
-- `ux-audit-improvement-spec-2026-07-27.md` (14,931 bytes, modified 2026-08-04 20:16)
+**Whole / Review Documents:**
+- `archive/ux-audit-improvement-spec-2026-07-27.md` (14,931 bytes, 2026-08-05 10:24)
 
 **Sharded Documents:**
 - Folder: `ux-designs/ux-Nowing-2026-07-22/`
-  - `ux-contract-async-deep-research.md` (7,417 bytes, modified 2026-08-04 20:16)
+  - `ux-contract-async-deep-research.md` (7,417 bytes, 2026-08-04 20:16)
 
 ### Issues Found
 
-⚠️ **WARNING: Có thể có tài liệu phụ trội**
-- `epic-11-architecture-review-2026-08-03.md` xuất hiện trong cả Architecture và Epics — đây là tài liệu review, không phải bản chính.
-- Không phát hiện duplicate toàn vẹn giữa whole vs sharded cho cùng một loại tài liệu.
+- **PRD:** One whole document with companion review/validation artifacts. No duplicate in a sharded folder outside the main PRD folder.
+- **Architecture:** Only a sharded folder with `ARCHITECTURE-SPINE.md`. No whole architecture document found.
+- **Epics:** One whole `epics.md` found.
+- **UX:** One archived audit spec and one sharded UX contract for async deep research. Need user confirmation on which UX document is authoritative for the current assessment.
 
 ### Required Actions
 
-- Xác nhận tập tài liệu trên đủ để đánh giá.
-- Nếu cần thêm tài liệu khác, hãy cho biết vị trí.
+- Confirm whether `archive/ux-audit-improvement-spec-2026-07-27.md` or `ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research.md` (or both) should be used for the UX assessment.
+- Confirm whether the PRD companion files (`.memlog.md`, `review-prfaq-gap.md`, `review-rubric.md`, `validation-report.md`) should be included in the readiness assessment.
 
 **Select an Option:** [C] Continue to File Validation
 
+---
+
 ## Step 2: PRD Analysis
 
-PRD: `_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md` (108,838 bytes).
+PRD analyzed: `_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md` (whole document).
 
-### Functional Requirements Extracted
+### Functional Requirements
 
-1. **FR-1**: User Authentication — đăng ký, đăng nhập, refresh/revoke token, logout-all, Google OAuth.
-2. **FR-2**: API Access for External Clients — Desktop, browser extension, Obsidian plugin, MCP server xác thực bằng PAT/API key.
-3. **FR-3**: Workspace Lifecycle — tạo, liệt kê, xem, cập nhật, xóa workspace.
-4. **FR-4**: Workspace Invites & Memberships — mời thành viên, quản lý membership, invite có mã/hạn/số lần dùng.
-5. **FR-10**: RBAC với ba system roles — Owner, Editor, Viewer.
-6. **FR-6**: Built-in Scraper Connectors — Reddit, YouTube, Instagram, TikTok, Google Search/Maps, Amazon, web crawl.
-7. **FR-7**: External OAuth Connectors — Notion, Slack, Linear, Jira, Google Drive/Calendar/Gmail, Dropbox, v.v.
-8. **FR-8**: External MCP Connectors — thêm MCP server bên ngoài vào workspace.
-9. **FR-9**: Document Upload, Parse & Index — upload file/URL, parse, chunk, embed, hỗ trợ 50+ định dạng.
-10. **FR-11**: Folders & Document Management — tạo/thư mục, di chuyển, đổi tên, xóa documents/folders.
-11. **FR-12**: Hybrid Search over Knowledge Base — pgvector semantic + full-text + reciprocal rank fusion.
-12. **FR-13**: Citation Panel for Knowledge-base Chunks — click citation mở right panel với chunk window ±5.
-13. **FR-32**: Long-Term Research Memory — lưu facts/decisions/observations dưới dạng `Memory`, hybrid search, REST/MCP. `[BUILT/PARTIAL]`
-14. **FR-33**: Research Continuity — tiếp tục research thread, tự động recall memory/citations.
-15. **FR-34**: Memory Correction — update hoặc flag memory sai, lưu version history.
-16. **FR-36**: Legacy Memory Data-Loss Assessment & Recovery — `[RESOLVED 2026-07-25]` không mất dữ liệu.
-17. **FR-40**: First-Run Value — Research Runs Produce Memory — `[GAP]` workspace mới không seed, `MemoryExtractionService` chỉ extract từ chat turn.
-18. **FR-5**: AI File Sorting — `[REMOVED]`.
-19. **FR-14**: Chat Threads & Messages — tạo thread, gửi message, streaming response.
-20. **FR-15**: Multi-agent Runtime with Tools — main agent gọi tools, subagents, recall workspace memory.
-21. **FR-16**: Real-time Collaborative Chat — multi-user qua Zero sync, comments, mentions.
-22. **FR-17**: Anonymous Chat with Quota — chat với document upload và quota giới hạn.
-23. **FR-42**: Chat Response Benchmark — benchmark trong `nowing_evals`.
-24. **FR-21**: Report Generation & Export — report từ document/folder, export nhiều định dạng.
-25. **FR-22**: Podcast & Video Presentation — podcast 2 host dưới 20s, video presentation.
-26. **FR-23**: Image Generation — tạo ảnh từ prompt.
-27. **FR-18**: Automation Action Types — `agent_task`, direct write-back Notion/Slack/Linear/Jira, `continue_research`. `[DONE]`
-28. **FR-19**: Automation Triggers — `schedule` (cron) và `event` (webhook/connector).
-29. **FR-20**: Automation Runs & Retries — `AutomationRun` với status, error, retry policy.
-30. **FR-35**: Memory-Driven Automations — trigger khi memory thay đổi hoặc continue research. `[DONE]`
-31. **FR-25**: Web Client (Next.js) — landing, dashboard, chat, connectors, settings, docs.
-32. **FR-26**: Desktop Client (Electron) — bọc web app, global shortcut, quick assist, folder watcher.
-33. **FR-27**: Browser Extension (Plasmo) — thu thập lịch sử duyệt web.
-34. **FR-28**: Obsidian Plugin — đồng bộ vault qua REST.
-35. **FR-29**: MCP Server — expose scraper, KB, memory, research tools qua MCP. `[BUILT]`
-36. **FR-30**: Token Usage Tracking — ghi `TokenUsage` per assistant turn.
-37. **FR-31**: Credit Wallet & Purchases — `credit_micros_balance`, Stripe, auto-reload. `[GAP]` usage/credit dashboard.
-38. **FR-41**: Admin UI cho Global LLM Model Configuration — `[GAP]` quản lý global model qua UI không cần restart.
-39. **FR-24**: Deep Open-Web Research via ChainLens Engine — deep research đa nguồn có trích dẫn. `[DONE/PARTIAL]`
-40. **FR-37**: Deep-Research Cost Metering — parse `costDollars` thật từ engine, không dùng giá phẳng. `[DONE]`
-41. **FR-38**: Research Degradation & Self-Host Independence — degrade sang hybrid search khi engine unavailable. `[DONE/P0]`
-42. **FR-39**: Memory → Scraper-Run Provenance & Source Re-Validation — `[GAP]` memory lưu recipe scrape để re-validate.
+| ID | Title | Status |
+|---|---|---|
+| FR-1 | User Authentication | — |
+| FR-2 | API Access for External Clients | — |
+| FR-3 | Workspace Lifecycle | — |
+| FR-4 | Workspace Invites & Memberships | — |
+| FR-10 | RBAC với ba system roles | `[REMOVED]` |
+| FR-6 | Built-in Scraper Connectors | — |
+| FR-7 | External OAuth Connectors | — |
+| FR-8 | External MCP Connectors | — |
+| FR-9 | Document Upload, Parse & Index | — |
+| FR-11 | Folders & Document Management | — |
+| FR-12 | Hybrid Search over Knowledge Base | — |
+| FR-13 | Citation Panel for Knowledge-base Chunks | — |
+| FR-32 | Long-Term Research Memory | `[BUILT — PARTIAL]` |
+| FR-33 | Research Continuity | `[BUILT — PARTIAL]` |
+| FR-34 | Memory Correction | `[BUILT — GAP]` |
+| FR-36 | Legacy Memory Data-Loss Assessment & Recovery | `[RESOLVED 2026-07-25]` |
+| FR-40 | First-Run Value — Research Runs Produce Memory | `[GAP — HIGH]` |
+| FR-5 | AI File Sorting | `[REMOVED]` |
+| FR-14 | Chat Threads & Messages | — |
+| FR-15 | Multi-agent Runtime with Tools | `[PARTIAL]` |
+| FR-16 | Real-time Collaborative Chat | — |
+| FR-17 | Anonymous Chat with Quota | — |
+| FR-42 | Chat Response Benchmark | — |
+| FR-21 | Report Generation & Export | — |
+| FR-22 | Podcast & Video Presentation | — |
+| FR-23 | Image Generation | — |
+| FR-18 | Automation Action Types | `[DONE]` |
+| FR-19 | Automation Triggers | — |
+| FR-20 | Automation Runs & Retries | — |
+| FR-35 | Memory-Driven Automations | `[DONE]` |
+| FR-25 | Web Client (Next.js) | — |
+| FR-26 | Desktop Client (Electron) | — |
+| FR-27 | Browser Extension (Plasmo) | — |
+| FR-28 | Obsidian Plugin | — |
+| FR-29 | MCP Server | `[BUILT]` |
+| FR-30 | Token Usage Tracking | — |
+| FR-31 | Credit Wallet & Purchases | `[GAP]` |
+| FR-41 | Admin UI cho Global LLM Model Configuration | `[GAP — mới 2026-07-26]` |
+| FR-24 | Deep Open-Web Research via ChainLens Engine | `[DONE]` |
+| FR-37 | Deep-Research Cost Metering | `[DONE]` |
+| FR-38 | Research Degradation & Self-Host Independence | `[DONE — P0]` |
+| FR-39 | Memory → Scraper-Run Provenance & Source Re-Validation | `[GAP — defect schema]` |
 
 **Total FRs: 42**
 
-### Non-Functional Requirements Extracted
+### Non-Functional Requirements
 
-1. **NFR-1**: Performance — chia thành:
-   - **NFR-1a**: CRUD & scraper p95 < 500ms.
-   - **NFR-1b**: Memory injection p95 ≤ 150ms, O(top-k), ≤ 8.000 chars. `[GAP]`
-   - **NFR-1c**: Recall tool p95 ≤ 300ms, top_k ≤ 5, vượt ngưỡng similarity. `[PARTIAL]`
-   - **NFR-1d**: Auto-extract trên Celery, không chặn chat, freshness ≤ 60s.
-2. **NFR-2**: Security & Auth — JWT/cookie, PAT, permission check, secrets qua `.env`.
-3. **NFR-3**: Observability — OpenTelemetry, `Log` model, SlowAPI, Celery monitoring.
-4. **NFR-4**: Reliability — async DB I/O, Celery+Redis, retry policy.
-5. **NFR-5**: Multi-tenancy Isolation — workspace-scoped query, `api_access_enabled`.
-6. **NFR-6**: Citation Full-Editor Highlight — click citation scroll/highlight trong editor. `[DONE]`
-7. **NFR-7**: Usage & Credit Dashboard — `[GAP]` thiếu dashboard tổng hợp.
-8. **NFR-8**: Recall Quality (eval-gated) — precision@k/noise rate, cổng chặn launch. `[IN-PROGRESS]`
-9. **NFR-9**: Deep-Research Latency & Availability Budget — State A (async) mặc định, State B (sync) khi p95 đạt ngưỡng. `[PARTIAL]`
-10. **NFR-10**: Chat Response Regression Gate — mọi deploy production phải qua chat regression gate. `[NEW 2026-08-04]`
+| ID | Title | Status |
+|---|---|---|
+| NFR-1 | Performance (1a CRUD/scraper, 1b memory injection, 1c recall, 1d auto-extract) | `[GAP]` |
+| NFR-2 | Security & Auth | — |
+| NFR-3 | Observability | — |
+| NFR-4 | Reliability | — |
+| NFR-5 | Multi-tenancy Isolation | — |
+| NFR-6 | Citation Full-Editor Highlight | `[DONE]` |
+| NFR-7 | Usage & Credit Dashboard | `[GAP]` |
+| NFR-8 | Recall Quality (eval-gated) | `[IN-PROGRESS]` |
+| NFR-9 | Deep-Research Latency & Availability Budget (hai trạng thái) | `[PARTIAL]` |
+| NFR-10 | Chat Response Regression Gate | — |
 
 **Total NFRs: 10**
 
 ### Additional Requirements / Constraints
 
-- **Non-Goals (frozen tới 2026-08-24):** NG-1 (bán research data), NG-2 (parity consumer kiểu Perplexity), NG-3 (ChainLens độc lập).
-- **Open Questions:** OQ-1 (MCP marketplace), OQ-2 (agent tool default enable/disable), OQ-3 (retention/right-to-delete/pháp lý), OQ-4 (per-workspace MCP toggle — RESOLVED), OQ-5 (direct write-back architecture — RESOLVED), OQ-6 (docs sync — DONE), OQ-7 (ChainLens answers).
-- **Success Metrics:** SM-1..SM-11 với SM-10 (recall quality) và SM-11 (deep-research cost/latency/fallback) là cổng chặn.
-- **Assumptions:** self-host tắt billing, MCP per-workspace toggle, write-back via agent_task, citation highlight deferred, retention pháp lý, memory pgvector, 4 MCP tools, memory correction, migration 178 không mất data, ChainLens là engine, cost meter theo `costDollars`, deep research latency "chưa biết", `balanced` mode đủ chất lượng.
+- **Direction-correction 2026-07-25 (ADOPTED):** Nowing = sản phẩm, ChainLens = engine. FR-24 rời §4.2 Connectors → §4.9. FR-37, FR-38, NFR-9 mới.
+- **§2.4 Non-Goals:** bán research data (NG-1), parity consumer kiểu Perplexity (NG-2), ChainLens thành sản phẩm độc lập (NG-3).
+- **FR-10 Admin role** đã xóa khỏi RBAC; README/public docs vẫn còn mention cần cập nhật.
+- **FR-32 recall hit** hiện không áp dụng ngưỡng similarity (score bị bỏ, hardcode 0.0) — giao lại 3-14.
+- **FR-40** phụ thuộc 9-6a (`AD-11.1` provenance) nhưng bản tối thiểu có thể chạy độc lập.
+- **NFR-1b** memory injection chưa enforce ngân sách 8.000 chars ở đường đọc; chỉ có soft warning.
 
 ### PRD Completeness Assessment
 
-- PRD rất chi tiết, có 42 FR + 10 NFR, đánh số toàn cục, trạng thái `[BUILT]`/`[DONE]`/`[PARTIAL]`/`[GAP]` gắn với code reality.
-- Các vùng `GAP` chính: **FR-40** (first-run memory), **FR-39** (provenance/re-validation), **FR-41** (admin global model UI), **NFR-1b/c** (memory injection bounded), **NFR-7** (usage dashboard), **NFR-8** (recall quality gate đang `in-progress`).
-- **NFR-8 đã được ratified 2026-08-04** — `memory/recall/gate.yaml` `baseline_ratified: true`.
-- **FR-39 / FR-41 đã verify code** — không còn conflict.
-- **NFR-10 / Story 4.8 còn `in-progress`** — 4.8f operational metrics done, multi-turn + stress + ChainLens latency remaining; gate chưa ratified.
+- PRD có đầy đủ 42 FRs và 10 NFRs với acceptance criteria, consequences, status.
+- Có nhiều `[GAP]`, `[PARTIAL]`, `[REMOVED]` được ghi rõ → tốt cho traceability.
+- Rủi ro chính: FR-32/FR-40/NFR-1/NFR-8/NFR-9 còn mở hoặc partial; FR-41, FR-39 là gap mới; FR-10, FR-5 removed nhưng docs chưa cập nhật.
+- Khuyến nghị: cập nhật `epics.md` coverage map cho FR-41, FR-42, NFR-10 (mới 2026-08-04) và xác nhận dependency FR-40 ↔ 9-6a.
+
+---
+
+**PROCEEDING TO EPIC COVERAGE VALIDATION**
+
+**Select an Option:** [C] Continue to Epic Coverage Validation
+
+---
 
 ## Step 3: Epic Coverage Validation
 
-Epic document: `_bmad-output/planning-artifacts/epics.md` (95,649 bytes).
+Epics analyzed: `_bmad-output/planning-artifacts/epics.md`
 
 ### Epic FR Coverage Extracted
 
-Tất cả **42 FRs** và **10 NFRs** từ PRD đều xuất hiện trong `epics.md`. FR Coverage Map tổng hợp:
+| FR | Epic | Status | Note |
+|---|---|---|---|
+| FR-1 | E1 | DONE | |
+| FR-2 | E1 | DONE | |
+| FR-3 | E1 | DONE | |
+| FR-4 | E1 | DONE | |
+| FR-10 | E1 | DONE | Admin role removed, docs gap |
+| FR-6 | E2 / E10.1 | DONE / ready-for-dev | E10.1 = batdongsan scraper extension |
+| FR-7 | E2 | DONE | |
+| FR-8 | E2 | DONE | |
+| FR-9 | E3 | DONE | |
+| FR-11 | E3 | DONE | |
+| FR-12 | E3 | DONE | |
+| FR-13 | E3 | DONE | |
+| FR-32 | E3 (3.8, 3.9, 3.11) | DONE | dedupe/recall quality → 3.14 |
+| FR-33 | E4 (4.6) | DONE | |
+| FR-34 | E3/E4 | DONE | |
+| FR-36 | E3.10a/b | RESOLVED | 2026-07-25 |
+| FR-40 | E3.13 | DONE | HIGH, mới 2026-07-25 |
+| FR-14 | E4 | DONE | |
+| FR-15 | E4 | DONE | `[PARTIAL]` per PRD |
+| FR-16 | E4 | DONE | |
+| FR-17 | E4 | DONE | |
+| FR-21 | E5 | DONE | |
+| FR-22 | E5 | DONE | |
+| FR-23 | E5 | DONE | |
+| FR-18 | E6.4 | DONE | |
+| FR-19 | E6 | DONE | |
+| FR-20 | E6 | DONE | |
+| FR-35 | E6.5 | DONE | |
+| FR-25 | E7 | DONE | |
+| FR-26 | E7 | DONE | |
+| FR-27 | E7 | DONE | |
+| FR-28 | E7 | DONE | |
+| FR-29 | E7 | DONE | `[BUILT]` per PRD |
+| FR-30 | E8 | DONE | |
+| FR-31 | E8.3 | DONE | `[GAP]` per PRD |
+| FR-41 | E8.11 | GAP | mới 2026-07-26 |
+| FR-24 | E9.1b | DONE | P0 |
+| FR-37 | E9.2 | DONE | P0 |
+| FR-38 | E9.1a | DONE | P0 |
+| FR-39 | E9.6a/b | GAP | defect schema |
+| FR-5 | — | REMOVED | AI File Sorting removed |
 
-- **E1** Auth/RBAC: FR-1/2/3/4/10 — ✅ DONE
-- **E2** Connectors: FR-6/7/8 — ✅ DONE
-- **E3** KB + Long-Term Memory: FR-9/11/12/13/32/33/34/40, NFR-1b/1c/1d — 🔄 IN-PROGRESS
-- **E4** Chat & Agents: FR-14/15/16/17/42, NFR-10 — 🔄 IN-PROGRESS
-- **E5** Deliverables: FR-21/22/23 — ✅ DONE
-- **E6** Automations: FR-18/19/20/35 — ✅ DONE
-- **E7** Multi-surface Clients: FR-25/26/27/28/29 — ✅ DONE
-- **E8** Billing/Usage: FR-30/31/41, NFR-7 — ✅ DONE
-- **E9** Deep Research: FR-24/37/38/39, NFR-9 — ✅ DONE (theo header) / PARTIAL/GAP ở chi tiết
-- **E10** Connector Expansion: FR-6 mở rộng — ✅ DONE
-- **E11** Telegram Automation & Bot — ✅ DONE
+**Total FRs in epics: 41**
 
-### FR Coverage Matrix
+### Coverage Analysis
 
 | FR | PRD Requirement | Epic Coverage | Status |
 |---|---|---|---|
-| FR-1 | User Authentication | E1 | ✅ DONE |
-| FR-2 | API Access for External Clients | E1 | ✅ DONE |
-| FR-3 | Workspace Lifecycle | E1 | ✅ DONE |
-| FR-4 | Workspace Invites & Memberships | E1 | ✅ DONE |
-| FR-5 | AI File Sorting | — | ❌ REMOVED |
-| FR-6 | Built-in Scraper Connectors | E2, E10 | ✅ DONE |
-| FR-7 | External OAuth Connectors | E2 | ✅ DONE |
-| FR-8 | External MCP Connectors | E2 | ✅ DONE |
-| FR-9 | Document Upload, Parse & Index | E3 | 🔄 IN-PROGRESS |
-| FR-10 | RBAC với ba system roles | E1 | ✅ DONE |
-| FR-11 | Folders & Document Management | E3 | 🔄 IN-PROGRESS |
-| FR-12 | Hybrid Search over Knowledge Base | E3 | 🔄 IN-PROGRESS |
-| FR-13 | Citation Panel for Knowledge-base Chunks | E3 | ✅ DONE |
-| FR-14 | Chat Threads & Messages | E4 | 🔄 IN-PROGRESS |
-| FR-15 | Multi-agent Runtime with Tools | E4 | 🔄 IN-PROGRESS |
-| FR-16 | Real-time Collaborative Chat | E4 | 🔄 IN-PROGRESS |
-| FR-17 | Anonymous Chat with Quota | E4 | 🔄 IN-PROGRESS |
-| FR-18 | Automation Action Types | E6 | ✅ DONE |
-| FR-19 | Automation Triggers | E6 | ✅ DONE |
-| FR-20 | Automation Runs & Retries | E6 | ✅ DONE |
-| FR-21 | Report Generation & Export | E5 | ✅ DONE |
-| FR-22 | Podcast & Video Presentation | E5 | ✅ DONE |
-| FR-23 | Image Generation | E5 | ✅ DONE |
-| FR-24 | Deep Open-Web Research via ChainLens Engine | E9.1b | ✅ DONE |
-| FR-25 | Web Client (Next.js) | E7 | ✅ DONE |
-| FR-26 | Desktop Client (Electron) | E7 | ✅ DONE |
-| FR-27 | Browser Extension (Plasmo) | E7 | ✅ DONE |
-| FR-28 | Obsidian Plugin | E7 | ✅ DONE |
-| FR-29 | MCP Server | E7 | ✅ DONE |
-| FR-30 | Token Usage Tracking | E8 | ✅ DONE |
-| FR-31 | Credit Wallet & Purchases | E8.3 | ✅ DONE |
-| FR-32 | Long-Term Research Memory | E3 (3.8/3.9/3.11) | 🔄 PARTIAL |
-| FR-33 | Research Continuity | E4.6 | ✅ DONE |
-| FR-34 | Memory Correction | E3/E4 | ✅ DONE |
-| FR-35 | Memory-Driven Automations | E6.5 | ✅ DONE |
-| FR-36 | Legacy Memory Data-Loss Assessment & Recovery | E3.10a/b | ✅ RESOLVED |
-| FR-37 | Deep-Research Cost Metering | E9.2 | ✅ DONE |
-| FR-38 | Research Degradation & Self-Host Independence | E9.1a | ✅ DONE |
-| FR-39 | Memory → Scraper-Run Provenance & Re-Validation | E9.6a/b | ✅ DONE |
-| FR-40 | First-Run Value — Research Runs Produce Memory | E3.13 | ✅ DONE |
-| FR-41 | Admin UI cho Global LLM Model Configuration | E8.11 | ✅ DONE |
-| FR-42 | Chat Response Benchmark | E4.8 | 🔄 IN-PROGRESS |
+| FR-1 | User Authentication | E1 | ✓ |
+| FR-2 | API Access | E1 | ✓ |
+| FR-3 | Workspace Lifecycle | E1 | ✓ |
+| FR-4 | Workspace Invites | E1 | ✓ |
+| FR-6 | Built-in Scraper Connectors | E2 / E10.1 | ✓ |
+| FR-7 | External OAuth Connectors | E2 | ✓ |
+| FR-8 | External MCP Connectors | E2 | ✓ |
+| FR-9 | Document Upload, Parse & Index | E3 | ✓ |
+| FR-10 | RBAC | E1 | ✓ (role removed, docs gap) |
+| FR-11 | Folders & Document Management | E3 | ✓ |
+| FR-12 | Hybrid Search | E3 | ✓ |
+| FR-13 | Citation Panel | E3 | ✓ |
+| FR-14 | Chat Threads | E4 | ✓ |
+| FR-15 | Multi-agent Runtime | E4 | ✓ (partial per PRD) |
+| FR-16 | Real-time Collaborative Chat | E4 | ✓ |
+| FR-17 | Anonymous Chat | E4 | ✓ |
+| FR-18 | Automation Action Types | E6.4 | ✓ |
+| FR-19 | Automation Triggers | E6 | ✓ |
+| FR-20 | Automation Runs | E6 | ✓ |
+| FR-21 | Report Generation | E5 | ✓ |
+| FR-22 | Podcast & Video | E5 | ✓ |
+| FR-23 | Image Generation | E5 | ✓ |
+| FR-24 | Deep Open-Web Research | E9.1b | ✓ |
+| FR-25 | Web Client | E7 | ✓ |
+| FR-26 | Desktop Client | E7 | ✓ |
+| FR-27 | Browser Extension | E7 | ✓ |
+| FR-28 | Obsidian Plugin | E7 | ✓ |
+| FR-29 | MCP Server | E7 | ✓ |
+| FR-30 | Token Usage Tracking | E8 | ✓ |
+| FR-31 | Credit Wallet | E8.3 | ✓ (GAP per PRD) |
+| FR-32 | Long-Term Research Memory | E3 (3.8/3.9/3.11) | ✓ (partial per PRD) |
+| FR-33 | Research Continuity | E4 (4.6) | ✓ |
+| FR-34 | Memory Correction | E3/E4 | ✓ |
+| FR-35 | Memory-Driven Automations | E6.5 | ✓ |
+| FR-36 | Legacy Memory Data-Loss | E3.10a/b | ✓ |
+| FR-37 | Deep-Research Cost Metering | E9.2 | ✓ |
+| FR-38 | Research Degradation | E9.1a | ✓ |
+| FR-39 | Memory Provenance | E9.6a/b | ✓ (GAP) |
+| FR-40 | First-Run Value | E3.13 | ✓ |
+| FR-41 | Admin UI Global LLM | E8.11 | ✓ (GAP) |
+| **FR-42** | **Chat Response Benchmark** | **NOT FOUND** | ❌ **MISSING** |
+| FR-5 | AI File Sorting | — | REMOVED |
 
-### Missing / Conflict Coverage
+### Missing FR Coverage
 
-| FR | Issue | Mức độ | Khuyến nghị |
-|---|---|---|---|
-| **NFR-8** | ✅ **RESOLVED** — `sprint-status.yaml` + `epics.md` + `memory/recall/gate.yaml` đều ghi `baseline_ratified: true` (2026-08-04); PRD cập nhật `[DONE]`. | Resolved | Story 3-9 done; SM-10 ratified. |
-| **FR-39** | ✅ **RESOLVED** — `sprint-status.yaml` ghi `9-6a: done`, `9-6b: done`; code verified: migration 184/186, `revalidation_service.py`, `repository.py`, tests tồn tại. | Resolved | Close conflict. |
-| **FR-41** | ✅ **RESOLVED** — `sprint-status.yaml` ghi `8-11: done`; code verified: `admin_global_model_connections_routes.py` + schemas tồn tại. | Resolved | Close conflict. |
+#### Critical Missing FR
+
+**FR-42: Chat Response Benchmark**
+- **PRD Text:** Hệ thống cung cấp benchmark trong `nowing_evals` để đo chat response với dữ liệu thực tế hoặc curated. Hỗ trợ `chat/regression`, `chat/quality` (LLM-as-judge), và nền tảng lấy mẫu query production đã anonymize.
+- **Impact:** PRD ghi FR-42 mới 2026-08-04. `epics.md` chưa map FR-42 vào epic/story nào. NFR-10 (Chat Response Regression Gate) cũng phụ thuộc FR-42.
+- **Recommendation:** Tạo epic mới hoặc gán FR-42 vào Epic 4 (Chat) hoặc Epic 10 (Evals/Quality), với stories cho `chat/regression`, `chat/quality`, `production query sampler + anonymizer`.
 
 ### Coverage Statistics
 
-- **Total PRD FRs: 42**
-- **FRs covered in epics: 41** (FR-5 removed)
-- **Coverage percentage: 97.6%** (không tính FR-5 removed)
-- **NFRs covered: 10/10**
-- **Trạng thái epic:** E1,2,5,6,7,10,11 = DONE; E3,4 = IN-PROGRESS; E8 header DONE nhưng có story GAP; E9 header DONE nhưng có story GAP/PARTIAL.
+- Total PRD FRs: **42** (including FR-5, FR-10 removed)
+- FRs covered in epics: **41**
+- Coverage percentage: **97.6%**
+- Missing: **FR-42**
 
-### Critical Findings
+### Coverage Observations
 
-1. **Mâu thuẫn trạng thái FR-39 giữa header Epic 9 và story 9.6a/9.6b** — cần reconcile.
-2. **Mâu thuẫn trạng thái FR-41 giữa header Epic 8 và story 8.11** — cần reconcile.
-3. **NFR-8 (recall quality eval-gate) là launch gate** — PRD + `epics.md` + `sprint-status.yaml` vừa reconcile về `in-progress`, cần baseline ratified.
-4. **NFR-10 (chat regression gate)** mới 2026-08-04, map E4.8 — cần theo dõi.
-5. **E3.14 nên chạy trước E3.9** khi chốt SM-10 — đã ghi trong `epics.md` nhưng cần kiểm tra thứ tự thực tế.
+- FR-41 được map vào E8.11 với status GAP — chính xác với PRD.
+- FR-39 được map vào E9.6a/b với status GAP — chính xác.
+- FR-32 được map vào E3 với status DONE, nhưng PRD ghi `[BUILT — PARTIAL]` do dedupe/recall quality — cần align.
+- FR-15 được map vào E4 DONE, nhưng PRD ghi `[PARTIAL]` — cần align.
+- **FR-42 hoàn toàn thiếu** trong `epics.md` coverage map.
 
-## Step 4: UX Alignment
+---
+
+**PROCEEDING TO UX ALIGNMENT**
+
+**Select an Option:** [C] Continue to UX Alignment
+
+---
+
+## Step 4: UX Alignment Assessment
+
+UX documents analyzed:
+- `ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research.md`
+- `archive/ux-audit-improvement-spec-2026-07-27.md`
 
 ### UX Document Status
 
-- **`_bmad-output/planning-artifacts/archive/ux-audit-improvement-spec-2026-07-27.md`** (14,931 bytes): Draft 2026-07-27. **ĐÃ ARCHIVED vì lỗi thời** — dùng ngôn ngữ "Crypto-Native Report Layout", "Token Hero", "Nansen/CertiK/Dune/TokenInsight", "Token PAYG", "plan free@nowing.ai"; tham chiếu PRD 2026-05-01; không khớp PRD Nowing hiện tại (research memory, documents, citations, workspace). File đã được chuyển sang `archive/`.
-- **`_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research.md`** (7,417 bytes): UX contract cho async deep research, **khớp** PRD NFR-9 State A, FR-38, `AD-17`, `AD-18`.
+**Found.** UX coverage hiện tại là **mỏng và tập trung**:
+- Một contract chi tiết cho **async deep-research progress-first** (`9-3`) đã có.
+- Một audit draft rộng hơn nêu nhiều gap ở Phase 2, Epic 11, admin, onboarding, dashboard.
 
 ### UX ↔ PRD Alignment
 
-| PRD yêu cầu | UX coverage | Đánh giá |
+| PRD Requirement | UX Coverage | Alignment |
 |---|---|---|
-| UJ-1..7 (Key User Journeys) | Không có UX spec đầy đủ cho từng journey | ⚠️ Implied / partial |
-| FR-13 Citation Panel | Spec cũ (2026-04-13) bị thay thế bởi audit draft, không có spec mới rõ ràng | ⚠️ Gap |
-| NFR-9 State A async deep-research | `ux-contract-async-deep-research.md` định nghĩa 10 trạng thái UI (S1-S10) | ✅ Aligned |
-| FR-38 Degradation | Contract yêu cầu S9 phân biệt nguồn kết quả hybrid search | ✅ Aligned |
-| FR-25 Web Client | Audit chỉ ra 4 tầng bị bỏ trống, nhưng tài liệu lỗi thời | ⚠️ Needs reconciliation |
-| NFR-7 / FR-31 Usage/Credit Dashboard | UX contract ghi hoãn vì chờ `9-2` costDollars thật; `8-3` done nhưng chưa có UX spec | ⚠️ Deferred with trigger |
-| FR-40 First-Run Value | PRD gap — UI memory browser/research timeline hoãn đến sau `3-13`/`3-14` | ⚠️ Deferred |
-| FR-41 Admin UI Global LLM Model Config | Không có UX spec | ⚠️ Gap |
-| FR-42 Chat Response Benchmark | Không có UX spec | ⚠️ Gap |
+| FR-24 — Deep Open-Web Research | ✅ `ux-contract-async-deep-research.md` | Contract định nghĩa 10 trạng thái UI từ `run_id` → `done`/`error`/`cancel` | ✓ |
+| FR-38 — Research Degradation | ✅ S9 "degrade sang hybrid search nội bộ" | R2 yêu cầu ghi nhãn nguồn kết quả tường minh | ✓ |
+| NFR-9 — Deep-Research Latency State A | ✅ `AD-17` async flow, SSE delivery, no polling | U-1/U-2 resolved; 10 state contract hỗ trợ State A | ✓ |
+| FR-16 — Real-time Collaborative Chat | ⚠️ `AD-5` Zero sync | UX audit chỉ ra sync/offline indicator thiếu, zero-cache single point of failure | ⚠️ |
+| FR-41 — Admin UI Global LLM | ❌ Không có UX spec | Audit ghi Epic 11/5.6 chưa có UX | ❌ |
+| FR-42 — Chat Response Benchmark | ❌ Không có UX spec | ResearchTimeline cần UI spec | ❌ |
+| FR-31/FR-30 — Credit/Usage | ⚠️ Usage dashboard UX hoãn | Audit ghi dashboard cần sửa sau khi `9-2` có cost thật | ⚠️ |
+| FR-40 — First-Run Value | ⚠️ Memory browser/timeline hoãn | Trigger: chờ `3-14` + `3-13` | ⚠️ |
 
 ### UX ↔ Architecture Alignment
 
-- **Async deep-research progress:** `AD-17` (async door sẵn có), `run_event_bus` SSE, ring buffer 500 event, `runs` không vào Zero publication — UX contract tôn trọng đúng.
-- **Multi-replica warning:** UX contract ghi rõ progress UI không được bật trên multi-replica trước khi Redis-backed bus xong (`9-3`).
-- **Degradation labeling:** `AD-18` (bounded memory) + FR-38 yêu cầu S9 nói rõ nguồn hybrid search — cần architecture support.
-- **Missing UX for local-first/offline:** PRD §1.1 self-host/cloud split cần UI trạng thái; `ux-audit-improvement-spec` đề cập `SyncStatusChip` nhưng không có spec implementation.
+| Architecture Decision | UX Coverage | Assessment |
+|---|---|---|
+| **AD-5** — Zero sync cho real-time client state | `ux-contract-async-deep-research.md` tôn trọng: `runs` KHÔNG vào Zero publication | ✓ |
+| **AD-15** — ChainLens = external deep-research engine | S9 degradation, S5/S8 phân biệt engine vs fallback | ✓ |
+| **AD-17** — Async door sẵn có; SSE delivery | 10 state contract dùng `run_event_bus` SSE + ring buffer 500 event | ✓ |
+| **AD-18** — Bounded memory (NFR-1b) | UX hoãn memory browser/timeline cho tới khi `3-14` chốt top-k | ✓ (hoãn có chủ) |
+| **AD-21** — Client tab state pointer-only | UX audit P0-4/P2 nhắc storage guard, purge IndexedDB | ⚠️ cần chi tiết hóa |
 
 ### Warnings
 
-1. **✅ Stale UX audit document**: đã archived sang `_bmad-output/planning-artifacts/archive/ux-audit-improvement-spec-2026-07-27.md`.
-2. **⚠️ Sparse UX spec**: chỉ có 1 UX contract thực sự dùng được (`async deep research`). Nhiều story UI (FR-42 chat regression, first-run memory browser) chưa có UX spec.
-3. **⚠️ UX deferred items cần trigger rõ ràng**: UI memory browser/research timeline hoãn đến sau `3-13`/`3-14`; admin console pattern đã được `8.11` cover.
+1. **UX coverage rất hẹp:** Chỉ có một contract cho `9-3`. PRD có 42 FRs, nhiều hạng mục UI chưa có UX spec.
+2. **Phase 2 UX Overhaul thiếu spec:** `9-UX-1..4` (Live Research Lab, Crypto-Native Report, Interactive Analysis) không có tài liệu thiết kế.
+3. **Admin/Settings UX thiếu:** FR-41 (global model config), admin gift requests, settings treo spinner — chưa có UX.
+4. **First-run dashboard trống:** F3 trong audit — `/dashboard` chưa có empty state, user menu, onboarding.
+5. **Sync/offline indicator thiếu:** F6 vi phạm PRD Risk Mitigation và FR-41 pattern.
+6. **Memory browser hoãn có lý do hợp lý** (chờ `3-14` + `3-13`) nhưng cần track rõ ràng.
+7. **Usage dashboard hoãn có lý do hợp lý** (chờ `9-2` cost thật) nhưng cần track.
+
+### UX Readiness Verdict
+
+- **Async deep-research (`9-3`):** ✅ ready — có contract rõ ràng, architecture hỗ trợ.
+- **Core app UX (onboarding, dashboard, settings, sync):** ⚠️ partial — có audit findings nhưng chưa có story/UX spec đầy đủ.
+- **Phase 2 / Admin / Benchmark UX:** ❌ missing — cần bổ sung spec trước khi dev.
+
+---
+
+**PROCEEDING TO EPIC QUALITY REVIEW**
+
+**Select an Option:** [C] Continue to Epic Quality Review
+
+---
 
 ## Step 5: Epic Quality Review
 
-### Epic User Value Focus
+Epics analyzed: `_bmad-output/planning-artifacts/epics.md`
 
-| Epic | Title | User-centric? | Đánh giá |
+### Method
+
+Reviewed 11 epics and ~35 stories against create-epics-and-stories best practices: user value, independence, dependencies, story sizing, acceptance criteria (Given/When/Then), database creation timing, brownfield context, and FR traceability.
+
+### Critical Violations (🔴)
+
+| ID | Epic/Story | Issue | Remediation |
 |---|---|---|---|
-| E1 | Identity, Auth & Workspace RBAC | ✅ | User value rõ: đăng ký/đăng nhập, workspace, RBAC. |
-| E2 | Connectors | ✅ | User value: kết nối nguồn dữ liệu. |
-| E3 | Knowledge Base + Long-Term Memory | ✅ | User value: lưu trữ, truy cứu, memory. |
-| E4 | Chat & Agents | ✅ | User value: chat đa agent. |
-| E5 | Deliverables | ✅ | User value: báo cáo, podcast, video, ảnh. |
-| E6 | Automations | ✅ | User value: automation schedule/event. |
-| E7 | Multi-surface Clients | ✅ | User value: web/desktop/extension/Obsidian/MCP. |
-| E8 | Người dùng thấy và kiểm soát được chi phí | ✅ | User value: token, credit, usage. |
-| E9 | Deep Research đáng tin cậy | ✅ | User value: deep research không vỡ, không treo, tính phí đúng. |
-| E10 | Connector & Scraper Expansion | ✅ | User value: thêm nguồn scraper BĐS VN. |
-| E11 | Telegram Automation & Bot | ✅ | User value: notification, write-back, bot. |
+| 1 | **Story 3.10b** (line 258) | Forward dependency: `Dep: 3.10a (done)` | Merge 3.10a + 3.10b thành một story "Legacy Memory Data Safety" |
+| 2 | **Story 9.6b** (line 882) | Forward dependency: `Dep: 9.6a` | Merge 9.6a + 9.6b thành một story "Memory Provenance & Re-validation" |
+| 3 | **Story 6.7** (line 433) | Forward dependency: `Gate: dep 6.6; chỉ build sau pilot xanh` | Xóa gate hoặc chuyển vào deferred |
+| 4 | **Story 6.10** (line 448) | Forward dependency: `Gate: dep 6.6, 6.7, 6.9` | Tách hoặc gộp thành epic độc lập |
+| 5 | **Epic 9** (line 596) | Hard ordering constraint: `9.1a → public repo → 9.1b+9.2+8-7 → 9.3 → 9.4 → 9.6a → 9.6b` | Xem xé tách Epic 9 thành các epic nhỏ hơn (Deep Research Reliability / Cost / Latency / Provenance) |
+| 6 | **Story 3.10a** (lines 234-244) | Là spike/forensic task, không deliver user value trực tiếp | Chuyển sang engineering task hoặc merge với 3.10b |
 
-### Story Quality & Sizing
+### Major Issues (🟠)
 
-#### 🔴 Critical / Major Issues — UPDATED
+| # | Vấn đề | Ví dụ | Khuyến nghị |
+|---|---|---|---|
+| 1 | AC không đúng Given/When/Then | Stories **10.1, 10.2, 10.3, 10.4, 11.1, 11.2, 11.3** dùng bullet points | Rewrite to Given/When/Then |
+| 2 | AC không testable | Story **9.3** ghi "Deliverable tài liệu (không phải AC)" | Chuyển ngưỡng thành quy trình có thể verify hoặc vào decision record |
+| 3 | Implementation details trong AC | Stories **8.11, 9.1a, 9.1b, 9.2** liệt kê file path trong AC | Tách phần kỹ thuật ra "Technical Notes" |
+| 4 | Soft/conditional dependencies | Story **3.13** dep mềm với `9-6a`; **3.14** ordering với `3.9` | Làm rõ independent hoặc chuyển thành hard dep và merge |
+| 5 | Gate/blocking conditions | **6.6**, **6.7**, **9.5** bị block bởi pilot/cost/self-host | Chuyển sang Deferred section hoặc xóa gate |
 
-1. **✅ Epic 9 / 9.6a/9.6b resolved**
-   - `sprint-status.yaml`: `9-6a: done`, `9-6b: done`.
-   - Code verified: migrations 184/186, `app/services/memory/revalidation_service.py`, `app/services/memory/repository.py`, tests tồn tại.
-   - Epic 9 header consistent.
+### Minor Concerns (🟡)
 
-2. **✅ Epic 8 / 8.11 resolved**
-   - `sprint-status.yaml`: `8-11: done`.
-   - Code verified: `app/routes/admin_global_model_connections_routes.py`, `app/schemas/admin_global_model_connections.py`.
-   - Epic 8 header consistent.
+- Story 3.6, 3.7 AC cần cụ thể hóa error message / anonymize policy.
+- Một số story mix tiếng Việt và English (ví dụ Story 2.5).
+- Story 3.14 có scope creep từ 3.11 (expose RRF score).
+- Epic 8 header ghi note về rename/renumbering → cần single source of truth cho story numbering.
+- Một số story 9.x có nhiều context notes trước AC.
 
-3. **✅ NFR-8 / Story 3.9 resolved**
-   - `sprint-status.yaml`: `3-9: done`.
-   - `memory/recall/gate.yaml`: `baseline_ratified: true` (2026-08-04).
-   - PRD + `epics.md` updated.
+### Per-Epic Checklist Summary
 
-#### 🟠 Major Issues
+| Epic | User Value | Independence | Story Quality | AC Format | DB Creation | Brownfield | Traceability | Overall |
+|---|---|---|---|---|---|---|---|---|
+| E1: Identity/Auth | ✅ | ✅ | N/A | N/A | ✅ | ✅ | ✅ | ✅ |
+| E2: Connectors | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| E3: Knowledge Base | ✅ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ | ✅ | 🟠 |
+| E4: Chat & Agents | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| E5: Deliverables | ✅ | ✅ | N/A | N/A | ✅ | ✅ | ✅ | ✅ |
+| E6: Automations | ✅ | 🔴 | ✅ | ✅ | ✅ | ✅ | ✅ | 🔴 |
+| E7: Multi-surface | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| E8: Platform Ops | ✅ | ✅ | ✅ | ⚠️ | ✅ | ✅ | ✅ | 🟠 |
+| E9: Deep Research | ✅ | 🔴 | ✅ | ⚠️ | ✅ | ✅ | ✅ | 🔴 |
+| E10: Scraper Expansion | ✅ | ✅ | ✅ | 🔴 | ✅ | ✅ | ✅ | 🔴 |
+| E11: Telegram | ✅ | ✅ | ✅ | 🔴 | ✅ | ✅ | ✅ | 🔴 |
 
-4. **Story 3.14 quá lớn / epic-sized**
-   - AC bao gồm: bounded top-k injection, 8.000 chars limit, p95 latency, error counter, auto-extract not on critical path, expose RRF score.
-   - Mặc dù user-centric, nhưng có thể cần tách thành nhiều story (injection bounded, recall score, perf assert).
+### Quality Statistics
 
-5. **Story 4.8 Chat Response Benchmark in-progress với nhiều sub-story `ready-for-dev`**
-   - 4.8a/4.8b done; 4.8c/4.8d/4.8e ready-for-dev; CI/deploy gate chưa có.
-   - NFR-10 yêu cầu mọi deploy production phải qua gate — cần 4.8e done trước khi áp dụng.
+- **Total Epics Reviewed:** 11
+- **Total Stories Reviewed:** ~35
+- **Critical Violations:** 6
+- **Major Issues:** 5
+- **Minor Concerns:** 5
+- **Epics with Issues:** 6 / 11 (E3, E6, E8, E9, E10, E11)
 
-6. **Forward dependency 9.6b → 9.6a**
-   - Chấp nhận được vì trong cùng epic, nhưng 9.6a vẫn `[GAP]` nên 9.6b bị block.
+### Recommendations
 
-7. **Cross-epic business gating**
-   - `9.1a` phải done trước public repo (business rule).
-   - `9.2` và `8.7` phải có số thật trước khi chốt pricing.
-   - `3.14` nên chạy trước khi chốt SM-10 của `3.9`.
-   - Các ràng buộc này hợp lý nhưng cần theo dõi chặt.
+1. **Gộp các story phụ thuộc:** 3.10a+b, 9.6a+b.
+2. **Xóa/chuyển gate conditions:** 6.6, 6.7, 9.5.
+3. **Tách Epic 9** thành 4 epic nhỏ hơn, hoặc chấp nhận hard ordering là kiến trúc hạng nhất và ghi rõ.
+4. **Chuẩn hóa AC** cho 10.1-10.4, 11.1-11.3 theo Given/When/Then.
+5. **Tách implementation notes** ra khỏi AC trong 8.11, 9.1a, 9.1b, 9.2.
+6. **Làm testable** AC của 9.3.
+7. **Single source of truth** cho story numbering giữa `epics.md` và `sprint-status.yaml`.
 
-#### 🟢 Good Examples
+---
 
-- **Story 3.13** — user-centric (first-run value), rõ ràng, có M1 metric ≤15 phút.
-- **Story 9.1a** — rõ ràng, P0, user value self-host.
-- **Story 8.11** — ACs chi tiết (superuser, global model config, test connection) — dù status GAP.
+**PROCEEDING TO FINAL ASSESSMENT**
 
-### Best Practices Compliance Checklist
+**Select an Option:** [C] Continue to Final Assessment
 
-| Epic | User value | Independence | Story sizing | No forward dep | DB when needed | Clear AC | Traceability |
-|---|---|---|---|---|---|---|---|
-| E1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| E2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| E3 | ✅ | ✅ | ⚠️ 3.14 lớn | ✅ | ✅ | ✅ | ✅ |
-| E4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| E5 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| E6 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| E7 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| E8 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| E9 | ✅ | ✅ | ✅ | ⚠️ 9.6b→9.6a | ✅ | ✅ | ✅ |
-| E10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| E11 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-
-### Quality Findings Summary
-
-- **Status inconsistencies resolved**: Epic 8/9 headers và stories đã khớp sau verify code.
-- **NFR-8 / 3.9 status drift resolved** — baseline ratified 2026-08-04.
-- **Story 3.14** may need splitting before implementation.
-- **No pure technical epics found** — all epics deliver user value.
-- **Dependencies are mostly within-epic and logical**.
-- **Epic 4 remains IN-PROGRESS** vì 4.8f/4.8e chưa done.
-
-## Strategic Pivot Context (2026-08-04)
-
-> **Source:** `vision-lock-and-this-week-2026-08-04.md`, `vertical-expansion-roadmap-2026-08-04.md`, `marketing-sprint-2weeks-bds-2026-08-04.md`, `task-list-2weeks-2026-08-04.md`.
-
-Nowing đã **pivot** từ research platform độc lập sang **bdsai.vn — sàn rao vặt BĐS + AI**, với Nowing là **engine AI chạy sau lưng**.
-
-- **bdsai.vn = sản phẩm / bề mặt người dùng**: listings, search, filter, SEO, billing, kiểm duyệt, CRM workspace cho môi giới.
-- **Nowing = engine headless qua API**: multi-agent chat, memory, matching, automation, scraper, deep-research.
-- **BĐS là vertical đầu tiên** (Phase 0); sau khi thắng BĐS mới nhân sang xe, thiết bị B2B, tuyển dụng.
-- **2 tuần pilot (đang chạy):** kéo 30 môi giới Bình Thạnh qua group Zalo, đo retention tuần 2, ≥2 match, ≥3 willingness-to-pay.
-- **Guardrail:** không re-architect toàn bộ, không mobile/full CRM, không thu phí, không seed scrape trong 2 tuần pilot.
-
-**Tác động tới readiness assessment:**
-- Các epic cũ (E1–E11) vẫn là engine layer — đa số done.
-- **Epic 10 (BĐS scraper)** và **Epic 11 (Telegram)** là vertical-specific features — đã done, phục vụ pilot.
-- **NFR-10 / Story 4.8 chat regression gate** đã hoàn thiện mechanism (4.8a–g, chỉ còn 4.8d LLM judge chưa dev); `chat/regression/gate.yaml` chưa ratified baseline.
+---
 
 ## Step 6: Final Assessment
 
 ### Overall Readiness Status
 
-**🟢 READY FOR SPRINT PLANNING — WITH BASELINE GATES OUTSTANDING**
+**NEEDS WORK**
 
-Dự án Nowing đã **reconcile toàn bộ 5 critical issues**:
-1. NFR-8 / Story 3-9 ratified.
-2. FR-41 / Story 8-11 admin global model UI done.
-3. FR-39 / Story 9-6a/b memory provenance & re-validation done.
-4. Stale UX audit document archived.
-5. NFR-10 / Story 4.8 chat regression gate mechanism hoàn thiện (4.8a/4.8b/4.8c/4.8e/4.8f/4.8g done; 4.8d LLM judge còn `ready-for-dev`).
+Nowing có PRD và Epics khá đầy đủ, architecture decisions rõ ràng, và UX contract cho async deep-research đã sẵn sàng. Tuy nhiên, nhiều vấn đề nghiêm trọng về epic/story quality, FR coverage, và UX coverage khiến giai đoạn implementation chưa thể bắt đầu an toàn mà không có hành động khắc phục.
 
-**Cổng chặn cuối cùng:** `chat/regression/gate.yaml` cần measured baseline và flip `baseline_ratified: true` trước khi enforce deploy gate. `memory/recall/gate.yaml` đã ratified.
+### Critical Issues Requiring Immediate Action
 
-### Resolved Critical Issues
-
-1. **✅ NFR-8 / Story 3.9 (recall quality eval-gate)** — `baseline_ratified: true` 2026-08-04; PRD/epics/sprint-status reconciled.
-2. **✅ Epic 8 / Story 8.11 (FR-41 Admin UI Global LLM Model Config)** — code verified; status reconciled.
-3. **✅ Epic 9 / Story 9.6a/9.6b (FR-39 Memory Provenance & Re-Validation)** — code verified; status reconciled.
-4. **✅ Stale UX audit document** — archived to `_bmad-output/planning-artifacts/archive/`.
-5. **✅ NFR-10 / Story 4.8 chat regression gate** — implemented:
-   - `runner.py` now evaluates operational thresholds (scrape drop, rate limit, tool drop, turn error, engine unavailable).
-   - Added `--max-total-cost-micros` and `--fail-on-unratified` flags.
-   - Added `nowing_evals/src/nowing_evals/core/notifications.py` (Slack/Telegram) and wired into gate failure path.
-   - Added `.github/workflows/chat-regression-gate.yml`.
-   - Updated `nowing_evals/.env.example`.
-   - 4.8e/4.8f/4.8g marked `done` in sprint-status + epics.md.
-
-### Remaining Item Before Enforcing NFR-10
-
-- **`chat/regression/gate.yaml` baseline ratification** — needs a measured live run to set `baseline_ratified: true`. 4.8d (LLM judge for answer quality) remains `ready-for-dev` but is not a blocker for the deploy gate.
+1. **FR-42 hoàn toàn thiếu trong Epics coverage map** — Chat Response Benchmark (mới 2026-08-04) không được map vào epic/story nào, mặc dù NFR-10 phụ thuộc nó.
+2. **Epic 9 có hard ordering constraint** `9.1a → public repo → 9.1b+9.2+8-7 → 9.3 → 9.4 → 9.6a → 9.6b` — vi phạm nguyên tắc epic independence. Cần tách epic hoặc ghi rõ đây là kiến trúc hạng nhất.
+3. **Forward dependencies trong stories** — 3.10b→3.10a, 9.6b→9.6a, 6.7→6.6, 6.10→6.6/6.7/6.9. Cần gộp hoặc làm story độc lập.
+4. **AC không chuẩn Given/When/Then** ở stories 10.1-10.4, 11.1-11.3 — khó test và verify.
+5. **Implementation details trong AC** ở 8.11, 9.1a, 9.1b, 9.2 — ràng buộc implementation thay vì behavior.
+6. **AC không testable** ở 9.3 — deliverable tài liệu không phải AC.
+7. **Story 3.10a là spike/forensic** — không deliver user value trực tiếp.
+8. **UX coverage rất hẹp** — chỉ có contract cho 9-3; admin (FR-41), benchmark (FR-42), Phase 2 UX Overhaul, dashboard/settings/sync chưa có UX spec.
 
 ### Recommended Next Steps
 
-1. **✅ Status reconciliation** — đã xong cho 3.9, 8.11, 9.6a/b, 4.8e/4.8f/4.8g.
-2. **✅ UX audit document** — đã archived.
-3. **Chạy `chat/regression` live benchmark** để có baseline, sau đó update `gate.yaml` `baseline_ratified: true` và các thresholds theo số đo thực.
-4. **Cân nhắc `bmad-sprint-planning`** cho các epic done; E4 còn 4.7 + 4.8d là `ready-for-dev`.
-5. **Tiếp tục pilot bdsai.vn BĐS** theo `vision-lock-and-this-week-2026-08-04.md` (cầu trước, xây sau).
+1. **Bổ sung FR-42 vào epics.md** — tạo epic mới (Evals/Quality) hoặc gán vào Epic 4/10, với stories cho `chat/regression`, `chat/quality`, production query sampler.
+2. **Tách hoặc ghi rõ Epic 9 ordering** — nếu hard ordering là bắt buộc, ghi thành architecture dependency sequence; nếu không, tách thành 4 epic nhỏ.
+3. **Gộp các story phụ thuộc** — 3.10a+b, 9.6a+b thành single stories; xử lý 6.6/6.7/6.9/6.10.
+4. **Chuẩn hóa AC** — viết lại stories 10.x, 11.x theo Given/When/Then; tách technical notes ra khỏi AC của 8.11, 9.1a, 9.1b, 9.2; làm testable AC của 9.3.
+5. **Mở rộng UX specs** — viết UX cho admin global model config (FR-41), chat benchmark (FR-42), dashboard/settings, sync/offline indicator, first-run onboarding.
+6. **Align status FR-15, FR-32** giữa PRD và epics.md (PRD ghi PARTIAL, epics ghi DONE).
+7. **Thiết lập single source of truth** cho story numbering giữa `epics.md` và `sprint-status.yaml`.
+8. **Cập nhật docs công khai** loại bỏ mention FR-5 (AI File Sorting) và FR-10 Admin role đã removed.
 
 ### Final Note
 
-This assessment initially identified **5 critical issues** across **3 categories** (status reconciliation, launch gates, UX/artifact hygiene). **All 5 issues have been resolved or have an implemented mechanism**; the only remaining open item is **ratifying `chat/regression/gate.yaml` baseline** after a measured live run. Project is ready for `bmad-sprint-planning` with E4 tracked.
+Assessment này phát hiện **hơn 20 vấn đề** xuyên suốt 5 danh mục: document inventory, PRD completeness, epic coverage, UX alignment, và epic/story quality. Phần lớn là khắc phục được nhanh (viết lại AC, bổ sung coverage map, tách technical notes). Tuy nhiên, 8 vấn đề critical cần giải quyết trước khi bắt đầu Phase 4 implementation để tránh rework, scope creep, và mất traceability.
 
-**Assessor:** Devin Agent (bmad-check-implementation-readiness skill)
-**Report generated:** `_bmad-output/planning-artifacts/implementation-readiness-report-2026-08-05.md`
+Báo cáo hoàn thành ngày **2026-08-05**.
+
+---
+
+## Remediation Log (2026-08-05)
+
+All critical and recommended issues identified above have been addressed:
+
+| # | Issue | Status | Evidence |
+|---|-------|--------|----------|
+| 1 | FR-42 missing from epics.md | **FIXED** | Added to Epic 4 with stories 4.8a–4.8g; added to Functional Requirements and FR/NFR coverage map. |
+| 2 | NFR-10 missing from epics.md | **FIXED** | Added to Non-Functional Requirements and coverage map; linked to 4.8b/4.8e/4.8f/4.8g. |
+| 3 | Epic 9 hard ordering constraint | **FIXED** | Reframed as an architecture/deploy sequence (AD-15 §D5), not an epic-ordering constraint; other Epic 9 stories can dev in parallel. |
+| 4 | Forward dependencies | **FIXED** | Merged 3.10a+b → 3.10, 9.6a+b → 9.6, 6.9+6.10 → 6.9; clarified 6.7 and 6.9 are business-gated, not technically dependent. |
+| 5 | AC not Given/When/Then (10.1–10.4, 11.1–11.3) | **FIXED** | All listed stories now use Given/When/Then. |
+| 6 | AC not testable (9.3) | **FIXED** | Document deliverable moved out of AC; remaining ACs are measurable. |
+| 7 | Story 3.10a spike / no user value | **FIXED** | Reframed and merged into user-valued story 3.10. |
+| 8 | UX coverage gaps | **FIXED** | Added UX contracts for admin global model config, chat benchmark, usage dashboard, sync/offline indicator, and first-run onboarding. |
+| 9 | FR-15 / FR-32 status misalignment | **FIXED** | PRD and epics.md now both report FR-15 DONE and FR-32 PARTIAL. |
+| 10 | Single source of truth for story numbering | **FIXED** | Sprint-status header documents dot vs. dash convention and the merge rule; all numbers are consistent. |
+| 11 | Implementation details in AC (8.11, 9.1a, 9.1b, 9.2) | **FIXED** | Technical field names, file paths, service names, and env vars moved to `Implementation hints` / `Implementation context` sections outside AC; ACs now describe behavior. |
+| 12 | Public docs mention removed FR-5 / FR-10 admin role | **FIXED** | `scripts/check-docs-drift.py` PASSED; changelog entry updated to clarify AI File Sorting was shipped and later removed; no public docs assert admin role. |
+
+### Verification Performed
+
+- `python3 scripts/check-docs-drift.py` — **PASSED**.
+- Subagent review of `epics.md`, `sprint-status.yaml`, `prd.md`, and new UX contracts confirmed all 12 issues are resolved.
+
+---
+
+## Appendix: Documents Included in This Assessment
+
+- PRD: `_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md`
+- Architecture: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md`
+- Epics: `_bmad-output/planning-artifacts/epics.md`
+- UX: `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-async-deep-research.md` + `archive/ux-audit-improvement-spec-2026-07-27.md`
+
+---
+
+**Implementation Readiness Assessment Complete**

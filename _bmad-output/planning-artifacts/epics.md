@@ -2,7 +2,7 @@
 title: Nowing - Epic Breakdown
 description: ''
 createdAt: '2026-07-28T12:47:48.297Z'
-updatedAt: '2026-07-28T15:17:33.175Z'
+updatedAt: '2026-08-05T18:20:00.000Z'
 tags:
   - bmad
   - bmad-source-bmad-output-planning-artifacts-epics-md
@@ -32,23 +32,21 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 ## Requirements Inventory
 
 ### Functional Requirements
-`[DONE]` FR-1 Auth · FR-2 API/PAT · FR-3 Workspace lifecycle · FR-4 Invites/memberships · FR-10 RBAC 3 roles · FR-6 Scrapers · FR-7 OAuth connectors · FR-8 MCP connectors · FR-9 Doc upload/index · FR-11 Folders · FR-12 Hybrid search · FR-13 Citation panel · FR-14 Chat threads · FR-15 Multi-agent runtime (+auto-extract) · FR-16 Realtime chat · FR-17 Anonymous chat · FR-21 Reports · FR-22 Podcast/video · FR-23 Image · FR-19 Automation triggers · FR-20 Automation runs · FR-25 Web · FR-26 Desktop · FR-27 Extension · FR-28 Obsidian · FR-29 MCP server · FR-30 Token tracking · FR-32 Memory storage/retrieval · FR-33 Research continuity · FR-34 Memory correction · **FR-18 Automation actions** *(cải chính 2026-07-25: registry có `agent_task` + `continue_research` + `write_back_jira/linear/notion/slack`)* · **FR-31 Credit wallet** *(dashboard `8-3` = done)* · **FR-35 Memory-driven automations** *(cải chính 2026-07-25: trigger `memory_change` + action `continue_research` + `AutomationRun.research_thread_id` đều có)*.
-`[PARTIAL]` FR-32 (dedupe tune + recall-quality gap) · **FR-24 Deep-research via ChainLens engine** (đã wire + `2-4` done; thiếu contract regression guard + mode default còn `quality`) → **E9**.
+`[DONE]` FR-1 Auth · FR-2 API/PAT · FR-3 Workspace lifecycle · FR-4 Invites/memberships · FR-10 RBAC 3 roles · FR-6 Scrapers · FR-7 OAuth connectors · FR-8 MCP connectors · FR-9 Doc upload/index · FR-11 Folders · FR-12 Hybrid search · FR-13 Citation panel · FR-14 Chat threads · FR-15 Multi-agent runtime (+auto-extract) · FR-16 Realtime chat · FR-17 Anonymous chat · **FR-42 Chat Response Benchmark** *(mới 2026-08-04 — telemetry, regression, quality, production query sampler; stories 4.8a–4.8g)* · FR-21 Reports · FR-22 Podcast/video · FR-23 Image · FR-19 Automation triggers · FR-20 Automation runs · FR-25 Web · FR-26 Desktop · FR-27 Extension · FR-28 Obsidian · FR-29 MCP server · FR-30 Token tracking · **FR-32 Memory storage/retrieval** *(dedupe primitive + recall quality gate done; baseline ratified 2026-08-04)* · FR-33 Research continuity · FR-34 Memory correction · **FR-18 Automation actions** *(cải chính 2026-07-25: registry có `agent_task` + `continue_research` + `write_back_jira/linear/notion/slack`)* · **FR-31 Credit wallet** *(dashboard `8-3` = done)* · **FR-35 Memory-driven automations** *(cải chính 2026-07-25: trigger `memory_change` + action `continue_research` + `AutomationRun.research_thread_id` đều có)* · **FR-24 Deep-research via ChainLens engine** *(E9.1b contract regression guard done; mode default handled)* · **FR-38 Research degradation & self-host independence** *(E9.1a done)* · **FR-39 Memory→scraper-run provenance & re-validation** *(E9.6 done)* · **FR-40 First-run value: research run sinh memory** *(E3.13 done)* · **FR-41 Admin UI cho Global LLM Model Configuration** *(E8.11 done)*.
 `[DONE]` **FR-37 Deep-research cost metering** (`costDollars` parser done; fallback ~$0.06; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671) → **E9.2 P0**.
 
-`[GAP]` **FR-38 Research degradation & self-host independence** (chỉ raise timeout, không degrade) → **E9.1 P0, tiền đề trước public repo** · **FR-39 Memory→scraper-run provenance & re-validation** (defect schema: `Memory.source_id` Integer vs `Run.id` UUID; không có writer cho `SCRAPER_RUN`; retention 30 ngày) → **E9.6** · **FR-40 First-run value: research run sinh memory** *(mới 2026-07-25, readiness P-4/C-2 — chỉ có `extract_from_turn`, workspace mới không seed gì ⇒ `nowing_recall` session đầu **rỗng theo cấu trúc**, M1 không tồn tại)* → **E3.13 HIGH** · **FR-41 Admin UI cho Global LLM Model Configuration** *(mới 2026-07-26 — global model config hiện chỉ sửa qua YAML/`.env` + restart backend; không UI, không hot-reload)* → **E8.11**.
-`[GAP — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(mới 2026-07-25, readiness C-1/P-5 — `MemoryInjectionMiddleware` **chặn mọi lượt chat**, `SELECT` không LIMIT, bỏ qua cả HNSW + GIN index đã có; `MEMORY_HARD_LIMIT` chỉ validate 1 `content` ở đường ghi ⇒ aggregate không có chặn trên)* → **E3.14**, `AD-18`.
+`[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
 `[RESOLVED]` FR-36 Legacy memory data-loss (2026-07-25 — không mất dữ liệu; 178 chưa apply prod, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test qua `3-10a`/`3-10b`).
 `[REMOVED]` FR-5 AI File Sorting.
 
 > **⚠️ Re-bind 2026-07-25 (SCP `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md`, ✅ ADOPTED):** **FR-24 rời Epic 2 (Connectors) sang Epic 9.** ChainLens không phải connector/scraper ngang hàng Reddit — nó là external dependency hạng nhất (`AD-15`). FR-37, FR-38, NFR-9 là mới. Story `2-4` giữ `done` làm lịch sử (nó đã ship tool thật), không revert.
 
 ### NonFunctional Requirements
-`[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = **`done`**; implementation complete; baseline ratification pending)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1). `[PARTIAL]` **NFR-9 Deep-research latency & availability budget** (hai trạng thái A/B; đường async deliverable State A đã có; ChainLens benchmark 2026-08-01 p95 35s/70s/115s speed/balanced/deep — vượt target; rerun focused 2026-08-02 p95 27.5s/44.3s/43.7s — speed/deep PASS, balanced FAIL; benchmark `report-per-mode.md` 2026-08-02 (31 queries) ghi cost thực tế: research speed $0.0353 / balanced $0.0482 / quality $0.0671, avg $0.0519; full 69-query benchmark đang lên lịch; ngưỡng cổng A→B chưa đạt) → **E9.3**.
+`[DONE]` NFR-2 Security · NFR-3 Observability · NFR-4 Reliability · NFR-5 Multi-tenancy isolation · **NFR-6 Citation jump-to-source** *(cải chính 2026-07-25: `editorPanelAtom` CÓ `chunkId`; `AD-DEFER-1` đã đóng)* · **NFR-7 Usage dashboard** *(story `8-3` = done)* · **NFR-8 Recall quality eval-gate** *(story `3-9` = done; baseline ratified 2026-08-04)* · **NFR-9 Deep-research latency & availability budget** *(story `9-3` = done; State A async deliverable default; State B sync chat-mode gated on measured p95 `balanced` ≤30s)* · **NFR-10 Chat Response Regression Gate** *(mới 2026-08-04 — stories 4.8b/4.8e/4.8f/4.8g/4.8h done; `chat/regression` baseline ratification pending measured run)*. `[PARTIAL]` NFR-1 Performance (bounds mơ hồ — **và không có epic nào nhận**, xem readiness C-1).
 
 ### Additional Requirements
 Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nhất trong Structural Seed: `nowing_evals/` (đã tồn tại, cần thêm memory suite).
-- **AR-1** Thêm **suite memory-recall** vào `nowing_evals` (**DONE**: suite + dataset + oracle + metrics + gate đã có; 168 tests passed; `baseline_ratified: false` chờ baseline live measured).
+- **AR-1** Thêm **suite memory-recall** vào `nowing_evals` (**DONE**: suite + dataset + oracle + metrics + gate đã có; 168 tests passed; baseline ratified 2026-08-04).
 - **AR-2** Backfill/recovery markdown→`Memory` (mig 178 drop `memory_md`/`shared_memory_md` KHÔNG backfill; `downgrade` chỉ tạo cột rỗng → data-loss có thể đã xảy ra).
 - **AR-3** Dedupe/confidence *validation & tuning* (primitive đã có: `repository.py` cosine<0.08 + `update_on_duplicate`, đã wire vào auto-extract) — bench + tune qua eval.
 - **AR-4** Retention + right-to-delete cho `Memory`/versions/relations + scrape data (doc retention đã có mig 176; memory chưa).
@@ -62,18 +60,27 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 **Requirements signals:** RS-1 auto-extract budget (item-cap + spend-cap + wallet pre-check + rate-limit done) · RS-2 recall top_k≤5 (verify) · RS-3 beachhead agent-builder→team · RS-4 "MCP trước UI sau"/"semantic facts first" · RS-5 docs-sync bắt buộc · RS-6 right-to-delete + self-host/cloud split · RS-7 eval-gated launch + chốt số SM · RS-8 data export · RS-9 "project memory"=`ResearchThread`? · RS-10 cost/turn beta trước pricing.
 
 ### UX Design Requirements
-**N/A** — UX design contract chưa tồn tại (`ux-designs/ux-Nowing-2026-07-22/` chỉ có scaffold rỗng). Story có UI (3.6 citation jump, 8.3 dashboard) cần UX spec riêng trước khi build UI chi tiết — ghi nhận là tiền đề, không chặn backend/eval.
+UX contracts tồn tại trong `ux-designs/ux-Nowing-2026-07-22/` dưới dạng behavior contract (không layout/màu):
+- `ux-contract-async-deep-research.md` — chặn story 9.3 (NFR-9 State A)
+- `ux-contract-admin-global-model-config.md` — chặn story 8.11 (FR-41)
+- `ux-contract-chat-benchmark.md` — chặn stories 4.8a–4.8g (FR-42, NFR-10)
+- `ux-contract-usage-dashboard.md` — chặn story 8.12, bổ sung story 8.3 (FR-31, NFR-7)
+- `ux-contract-sync-offline-indicator.md` — chặn stories 9.1a, 9.3 (FR-38, NFR-9)
+- `ux-contract-first-run-onboarding.md` — chặn story 3.13 (FR-40)
+
+Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết.
 
 ### FR Coverage Map
-- FR-1/2/3/4/10 → **E1** [DONE] · FR-6/7/8 → **E2** [DONE] · **FR-6 mở rộng → E10.1** [ready-for-dev] (batdongsan scraper) · FR-9/11/12/13 → **E3** [DONE] · FR-14/15/16/17 → **E4** [DONE] · FR-21/22/23 → **E5** [DONE] · FR-19/20 → **E6** [DONE] · FR-25/26/27/28/29 → **E7** [DONE] · FR-30 → **E8** [DONE] · **FR-41 → E8.11** [GAP, mới 2026-07-26]
-- **FR-24/37/38/39 + NFR-9 → E9** (mới 2026-07-25; tách story theo readiness Q-3/Q-4): FR-38 → **E9.1a** [DONE, P0] · FR-24 → **E9.1b** [DONE, P0] · FR-37 → **E9.2** [DONE, P0, parser `done.usage.costDollars` + fallback 60k micros; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671] · NFR-9 → **E9.3** [PARTIAL, P1 — baseline ChainLens có, State B chưa đạt] · OQ-6/AR-10 (phần Nowing↔engine) → **E9.4** [DONE, P1] · D5-Phase2 → **E9.5** [deferred] · **FR-39 → E9.6a** (provenance) **+ E9.6b** (re-validate) [GAP, defect schema]
+- FR-1/2/3/4/10 → **E1** [DONE] · FR-6/7/8 → **E2** [DONE] · **FR-6 mở rộng → E10.1** [DONE] (batdongsan scraper) · FR-9/11/12/13 → **E3** [DONE] · **FR-14/15/16/17/42 → E4** [DONE] (4.8a–4.8g chat benchmark & regression gate) · FR-21/22/23 → **E5** [DONE] · FR-19/20 → **E6** [DONE] · FR-25/26/27/28/29 → **E7** [DONE] · FR-30 → **E8** [DONE] · **FR-41 → E8.11** [DONE]
+- **FR-6/7/8 + FR-8.1 → E2** [DONE] · FR-8.1 = **E2.10** Exa MCP Search Connector `[DONE 2026-08-05]`
+- **FR-24/37/38/39 + NFR-9 → E9** (mới 2026-07-25; tách story theo readiness Q-3/Q-4): FR-38 → **E9.1a** [DONE, P0] · FR-24 → **E9.1b** [DONE, P0] · FR-37 → **E9.2** [DONE, P0, parser `done.usage.costDollars` + `done.usage.estimated` + `done.resolvedMode` + canonical golden fixtures + fallback 60k micros; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671] · NFR-9 → **E9.3** [DONE] · OQ-6/AR-10 (phần Nowing↔engine) → **E9.4** [DONE, P1] · D5-Phase2 → **E9.5** [deferred] · **FR-39 → E9.6** (provenance + re-validation) [DONE]
 - FR-32 → E3 (3.8 done; quality→3.9, dedupe→3.11) · FR-33 → E4 (4.6 done) · FR-34 → E3/E4 (done)
-- FR-36 → **E3.10a/b** [RESOLVED 2026-07-25] · FR-18 → **E6.4** [DONE] · FR-31/NFR-7 → **E8.3** [DONE] · FR-35 → **E6.5** [DONE — cải chính 2026-07-25]
-- NFR-8 → **E3.9** [DONE — implementation complete; baseline ratification pending] · NFR-6 → **E3.6** [DONE] · OQ-3/AR-4 → **E3.7** [PARTIAL] · OQ-4 → **E2.5** [DONE] · **OQ-5 → E6.4 [DONE]** *(2026-07-25: `6-4` = done; 4 action type `write_back_notion/slack/linear/jira` đã có ⇒ câu hỏi "action type riêng vs `agent_task`" **code đã trả lời: action type riêng**)* · OQ-6/AR-10 → **E8.10 + E9.4** [GAP] · **OQ-7 (5 câu hỏi từ ChainLens `42-3`, ADOPTED 2026-08-05) → E9.1b/E9.2/E9.3** [DONE] · FR-5 → [REMOVED]
+- FR-36 → **E3.10** [RESOLVED 2026-07-25] · FR-18 → **E6.4** [DONE] · FR-31/NFR-7 → **E8.3** [DONE] · FR-35 → **E6.5** [DONE — cải chính 2026-07-25]
+- NFR-8 → **E3.9** [DONE — baseline ratified 2026-08-04] · NFR-6 → **E3.6** [DONE] · NFR-10 → **E4** [DONE — 4.8b/4.8e/4.8f/4.8g] · OQ-3/AR-4 → **E3.7** [PARTIAL] · OQ-4 → **E2.5** [DONE] · **OQ-5 → E6.4 [DONE]** *(2026-07-25: `6-4` = done; 4 action type `write_back_notion/slack/linear/jira` đã có ⇒ câu hỏi "action type riêng vs `agent_task`" **code đã trả lời: action type riêng**)* · OQ-6/AR-10 → **E8.10 + E9.4** [DONE] · **OQ-7 (5 câu hỏi từ ChainLens `42-3`, ADOPTED 2026-08-05) → E9.1b/E9.2/E9.3** [DONE] · FR-5 → [REMOVED]
 - **Mới 2026-07-25 (readiness Nhóm 3 — trước đây KHÔNG có FR lẫn epic):** **FR-40** (first-run value: research run sinh memory; M1; brief §9 H-4) → **E3.13** [DONE, HIGH] · **NFR-1b/1c/1d** (bound cho memory injection + recall + auto-extract; `AD-18`) → **E3.14** [DONE, đi kèm E3.13]
   - ⚠️ **NFR-1 trước đây KHÔNG map sang epic nào** (readiness C-1) và không phủ memory (P-5). Nay: **NFR-1a** (CRUD/scraper) = nền tảng, không cần story riêng · **NFR-1b/1c/1d → E3.14**.
   - ⚠️ **Ràng buộc thứ tự mới:** **E3.14 nên chạy trước khi chốt số SM-10 của E3.9** (`AD-18` rule 6) — baseline recall quality đo trên lượng inject phụ thuộc N thì không tái lập được.
-- AR-1/AR-3/AR-8 → E3.9/3.11 · AR-2/AR-7 → E3.10a/b · AR-9 → E3.12 · AR-5 → E8.9 · AR-6 → E8.8/8.7 · RS-5→E8.10 · RS-6/8→E3.7 · RS-7→E3.9 · RS-10→E8.9
+- AR-1/AR-3/AR-8 → E3.9/3.11 · AR-2/AR-7 → E3.10 · AR-9 → E3.12 · AR-5 → E8.9 · AR-6 → E8.8/8.7 · RS-5→E8.10 · RS-6/8→E3.7 · RS-7→E3.9 · RS-10→E8.9
 - **NG-1/NG-2/NG-3 (§2.4 PRD Non-Goals)** → không map sang epic nào; là ràng buộc chặn phạm vi. Owned index = `AD-DEFER-7`.
 - **Defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default toggle) → backlog.
 
@@ -82,8 +89,8 @@ Starter template: **KHÔNG — brownfield**. Component mới thật sự duy nh�
 > **⚠️ RECONCILED 2026-07-24 với `implementation-artifacts/sprint-status.yaml` (nguồn chân lý tiến độ):** một sprint đã chạy — **E1,2,5,7 = done; E3/E4/E6/E8 gần done**. Nhiều story dưới đây gắn `[GAP]` ở phiên planning này THỰC RA ĐÃ DONE (2.5, 3.6, 3.7, 6.4, 8.3, 3.11 dedupe, 3.12 security, 8.4a kill-switch, 8.5 obs) — đã retag `[DONE]`.
 > **Việc CÒN LẠI thật sự:**
 > - Từ sprint cũ: ~~4-6~~ research-continuity (done) · ~~6-5~~ memory-driven-automations (done) — cả hai đã verify code.
-> - **Đã đóng 2026-08-01:** 3.9 memory recall eval-gate (implementation done; baseline ratification pending) · 3.10a/3.10b legacy data-loss recovery · 8.7 auto-extract spend/budget cap · 8.8 kill-switch · 8.9 observability.
-> **✅ Cập nhật 2026-08-01 (ops):** memory (mig 177–179) **CHƯA lên production** (prod=`alembic 174`; 175–179 ở branch `develop`). ⇒ Các gap memory là **cổng TRƯỚC KHI merge memory lên prod**, KHÔNG phải sự cố prod đang chạy. 3.10a **done** (không mất dữ liệu) · 3.10b **done** (guard + backfill command + 5 test; deploy-order `mig177→backfill→mig178`) ⇒ **FR-36 RESOLVED**. **3.9** eval-gate (**`done`** — implementation complete; baseline ratification pending) · **8.7** spend-cap (**`done`** — 59 tests passed; cổng trước khi bật auto-extract trên prod). *(auto-extract KHÔNG đang bleed trên prod vì 179 chưa deploy.)*
+> - **Đã đóng 2026-08-01:** 3.9 memory recall eval-gate (baseline ratified 2026-08-04) · 3.10 legacy data-loss recovery · 8.7 auto-extract spend/budget cap · 8.8 kill-switch · 8.9 observability.
+> **✅ Cập nhật 2026-08-01 (ops):** memory (mig 177–179) **CHƯA lên production** (prod=`alembic 174`; 175–179 ở branch `develop`). ⇒ Các gap memory là **cổng TRƯỚC KHI merge memory lên prod**, KHÔNG phải sự cố prod đang chạy. 3.10a **done** (không mất dữ liệu) · 3.10b **done** (guard + backfill command + 5 test; deploy-order `mig177→backfill→mig178`) ⇒ **FR-36 RESOLVED**. **3.9** eval-gate (**`done`** — baseline ratified 2026-08-04) · **8.7** spend-cap (**`done`** — 59 tests passed; cổng trước khi bật auto-extract trên prod). *(auto-extract KHÔNG đang bleed trên prod vì 179 chưa deploy.)*
 >
 > **🆕 2026-07-25 — Epic 9 *(Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng)*:** SCP `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md` (✅ ADOPTED). **FR-24 rời E2 → E9.** Các việc P0/P1, đều là lỗi thương mại/kiến trúc đang chạy trong production path chứ không phải tính năng mới: **9.1a** degradation + self-host độc lập (P0, **chặn public repo**) · **9.1b** contract regression guard (P0, không chặn) · **9.2** cost metering thật — **DONE**: parser `done.usage.costDollars` + fallback 60k micros (~$0.06), cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671 (P0) · **9.3** latency budget State A/B + mode default `quality`→`balanced` (P1) · **9.4** docs (P1) · **9.6a/9.6b** provenance + re-validate. **Gate:** pricing có thể bắt đầu định hình dựa trên số thật, vẫn giữ margin 1.5–2.5× cho full-pipeline cost aggregation.
 
@@ -99,31 +106,31 @@ KB + long-term research memory. **FRs:** FR-9,11,12,13,32,33,34, **FR-40** *(m�
 > **🆕 2026-07-25 (readiness Nhóm 3):** hai story mới, cả hai đều là **gap trước đây không có FR lẫn epic**. **3.13** — `MemoryExtractionService` chỉ có `extract_from_turn` và workspace mới không seed gì ⇒ `nowing_recall` session đầu **rỗng theo cấu trúc**, **M1 (first-run value ≤15 phút) không tồn tại**. **3.14** — `MemoryInjectionMiddleware` **chặn mọi lượt chat** với `SELECT` không LIMIT, bỏ qua cả HNSW + GIN index đã có sẵn ⇒ chi phí mỗi lượt tăng tuyến tính theo mức dùng. **3.14 nên chạy trước khi chốt số SM-10 của 3.9.**
 
 ### Epic 4: Chat & Agents — ✅ DONE
-Multi-agent runtime + memory tools + research continuity. **FRs:** FR-14,15,16,17 (+4.5, 4.6). **Open:** 4.7 pointer-based tabs `[ready-for-dev]`.
+Multi-agent runtime + memory tools + research continuity. **FRs:** FR-14,15,16,17 (+4.5, 4.6). **Open:** 4.7 pointer-based tabs `[ready-for-dev]`, 4.8d chat quality LLM-as-judge `[ready-for-dev]`.
 
 ### Epic 5: Deliverables — ✅ DONE
 Report/podcast/video/image. **FRs:** FR-21,22,23.
 
 ### Epic 6: Automations — ✅ CORE DONE (4 gap mới: playbook layer)
-Schedule/event/**memory_change** trigger + `agent_task`/`continue_research`/**write_back_notion|slack|linear|jira** action. **FRs:** FR-19, FR-20, **FR-18**, **FR-35**. **Open:** 6.6/6.7/6.9/6.10 (playbook reuse + schema-driven UI + workspace vertical + library) — **gated sau pilot BĐS**.
+Schedule/event/**memory_change** trigger + `agent_task`/`continue_research`/**write_back_notion|slack|linear|jira** action. **FRs:** FR-19, FR-20, **FR-18**, **FR-35**. **Open:** 6.6/6.7/6.9 (playbook reuse + schema-driven UI + workspace vertical & library) — **gated sau pilot BĐS; không có forward dependency kỹ thuật**.
 > **⚠️ Cải chính 2026-07-25:** header trước ghi *"DONE (2 gap)"* với 6.4 `[GAP]` và 6.5 `[GAP, post-MVP]` — **cả hai đều đã DONE** (verify code; xem Story 6.4/6.5).
 > **➕ Bổ sung 2026-08-05 (pivot bdsai):** core automation đã đủ, nhưng thiếu **lớp playbook** — user hiện phải mô tả lại `intent` mỗi lần, không dùng được cho nghiệp vụ vertical lặp lại.
-> **⚠️ Cải chính kiến trúc 2026-08-05 (architect review — Winston).** Bản đầu của 6.6 ghi *"thêm parameterization"* — **SAI**: `AutomationDefinition.inputs` + `Inputs.schema_` (JSON Schema 2020-12) + `PlanStep.params` render-at-execute + Jinja sandboxed `{run, inputs, steps}` **đã tồn tại** ⇒ automation vốn đã là template có tham số. 6.6 đổi thành **"expose cơ chế đã có"** (phạm vi nhỏ hơn nhiều), **cấm thêm lớp params thứ hai**. Thêm **6.9 (workspace `vertical`)** vì khái niệm này chưa tồn tại và nó **chặn** library; story library đổi số thành **6.10**. Bổ sung vào 6.7: **`x-ui` hints** (giữ một renderer, vẫn bản địa hoá được) và **validate output LLM bằng schema** trước khi lưu.
+> **⚠️ Cải chính kiến trúc 2026-08-05 (architect review — Winston).** Bản đầu của 6.6 ghi *"thêm parameterization"* — **SAI**: `AutomationDefinition.inputs` + `Inputs.schema_` (JSON Schema 2020-12) + `PlanStep.params` render-at-execute + Jinja sandboxed `{run, inputs, steps}` **đã tồn tại** ⇒ automation vốn đã là template có tham số. 6.6 đổi thành **"expose cơ chế đã có"** (phạm vi nhỏ hơn nhiều), **cấm thêm lớp params thứ hai**. Thêm **6.9 (workspace `vertical` + playbook library)** vì khái niệm `vertical` chưa tồn tại và cần có để library lọc theo ngành. Bổ sung vào 6.7: **`x-ui` hints** (giữ một renderer, vẫn bản địa hoá được) và **validate output LLM bằng schema** trước khi lưu.
 > **ADR cần chốt:** *tool = code (subagent builtin) · nghiệp vụ = data (playbook definition)* — hiện có hai đường mở rộng song song (`registry.py` import tĩnh vs automation JSON); không chốt sẽ dẫn tới nghiệp vụ nửa code nửa data.
-> Cả bốn story **KHÔNG build trước pilot 2 tuần**.
+> Cả ba story **KHÔNG build trước pilot 2 tuần**.
 
 ### Epic 7: Multi-surface Clients — ✅ DONE
 Web/desktop/extension/Obsidian/MCP. **FRs:** FR-25,26,27,28,29. **Open:** 7.4 dedicated connectors layout `[ready-for-dev]`.
 
 ### Epic 8: Người dùng thấy và kiểm soát được chi phí — ✅ DONE (2026-08-02)
-Token tracking, ví credit, dashboard usage, guardrail chi phí, docs/vision sync, và admin UI cho global LLM model config. **FRs:** FR-30, FR-31, **FR-41** *(mới)*. 8.10 và 8.11 **done**. **Open:** 8.12 workspace limits `[ready-for-dev]`, 8.13 PostHog analytics `[ready-for-dev]`.
+Token tracking, ví credit, dashboard usage, guardrail chi phí, docs/vision sync, admin UI cho global LLM model config, workspace limits, và PostHog analytics. **FRs:** FR-30, FR-31, **FR-41** *(mới)*. 8.10, 8.11, 8.12, 8.13 **done**.
 > **⚠️ Đổi tên + đánh lại số hiệu 2026-07-25 (readiness Q-7 + C-C).** Tên trước *"Platform Operations (Billing/Usage/Token)"* là framing ops. **Và quan trọng hơn — số hiệu story đã bị xung đột với `sprint-status.yaml`:** `8.4a`/`8.5`/`8.6` trong tài liệu này nghĩa **khác** `8-4`/`8-5`/`8-6` trong sprint-status (observability-logging / security-permissions / multi-tenant-isolation). Đã đánh lại theo số **chưa dùng**: `8.4a → 8.8` · `8.5 → 8.9` · `8.6 → 8.10`. Từ giờ số hiệu ở hai tài liệu khớp 1-1.
 
-### Epic 9: Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng — ✅ DONE (2026-08-02)
-Người dùng research sâu được mà **không vỡ** khi engine chết (9.1a), **không treo** cả chat turn khi engine chậm (9.3, State A mặc định), và **trả đúng tiền** cho thứ mình dùng (9.2). **FRs:** FR-38 [DONE,P0], FR-24 [DONE,P0], FR-37 [DONE,P0, parser `done.usage.costDollars` + fallback 60k micros ≈ $0.06; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671], FR-39 [DONE, 9.6a provenance recipe + 9.6b re-validation API], NFR-9 [DONE — baseline ChainLens đo, State A làm default; State B chat-mode sync vẫn tắt cho đến khi p95 `balanced` đạt 30s]. **Deferred / Post-MVP:** **9.5** metered self-host endpoint (chưa phê duyệt). **Governed by:** `AD-15` · `AD-16` (license — cho 9.4) · **`AD-11.1`** (provenance recipe — cho 9.6a/b) · **`AD-17`** (async door — cho 9.3) · **`AD-19`** (trang khó: anti-bot ở Nowing, engine không gọi ngược inline, escalation async — cho 9.1a/9.3) · **`AD-20`** (screenshot-as-evidence, không adopt visual-RAG stack) · AD-7, AD-8 amended.
-> **✅ Cập nhật 2026-08-02:** 9.1a, 9.1b, 9.2, 9.3, 9.4, 9.6a, 9.6b **done**. 9.5 **deferred**.
+### Epic 9: Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng — ✅ DONE (2026-08-05)
+Người dùng research sâu được mà **không vỡ** khi engine chết (9.1a), **không treo** cả chat turn khi engine chậm (9.3, State A mặc định), và **trả đúng tiền** cho thứ mình dùng (9.2). **FRs:** FR-38 [DONE,P0], FR-24 [DONE,P0], FR-37 [DONE,P0, parser `done.usage.costDollars` + `done.usage.estimated` + `done.resolvedMode` (top-level canonical) + `promptTokens`/`completionTokens`/`totalTokens`/`model` + canonical golden fixtures + fallback 60k micros ≈ $0.06; cost thực tế ChainLens 2026-08-02: research speed $0.0353 / balanced $0.0482 / quality $0.0671], FR-39 [DONE — 9.6 provenance + re-validation], NFR-9 [DONE — State A async deliverable default; sync chat-mode chỉ cho `speed`/`balanced`; `quality`/`deep` async-only; State B mở khi ChainLens 34.1 full-pipeline cost + Nowing e2e p95 `balanced` ≤ 30s]. **Deferred / Post-MVP:** **9.5** metered self-host endpoint (chưa phê duyệt). **Governed by:** `AD-15` · `AD-16` (license — cho 9.4) · **`AD-11.1`** (provenance recipe — cho 9.6) · **`AD-17`** (async door — cho 9.3) · **`AD-19`** (trang khó: anti-bot ở Nowing, engine không gọi ngược inline, escalation async — cho 9.1a/9.3) · **`AD-20`** (screenshot-as-evidence, không adopt visual-RAG stack) · AD-7, AD-8 amended.
+> **✅ Cập nhật 2026-08-05:** 9.1a, 9.1b, 9.2, 9.3, 9.4, 9.6 **done**. 9.5 **deferred**.
 >
-> **🆕 2026-08-03 — Epic 10: Connector & Scraper Expansion** (Vietnam BĐS + broader scraper port). **Open:** 10.1 batdongsan `[review]`, 10.2 chotot `[done]`, 10.3 muaban `[done]`, 10.4 cross-source aggregator `[backlog]`.
+> **🆕 2026-08-03 — Epic 10: Connector & Scraper Expansion** (Vietnam BĐS + broader scraper port). **Open:** 10.1 batdongsan `[done]`, 10.2 chotot `[done]`, 10.3 muaban `[done]`, 10.4 cross-source aggregator `[done]`.
 > **⚠️ Đổi tên 2026-07-25 (readiness Q-1).** Tên trước — *"Deep-Research Engine Integration (ChainLens)"* — là **technical epic**: nó mô tả hạ tầng, không mô tả điều user làm được. Ba mệnh đề trong tên mới map thẳng vào ba story P0/P1.
 >
 > **🆕 2026-08-03 — Epic 11: Telegram Automation & Bot** (notification, write-back, inline keyboard, commands). **Open:** 11.1 notification foundation `[done]`, 11.2 write-back & builder `[done]`, 11.3 interactive bot & commands `[done]`.
@@ -189,6 +196,23 @@ So that I can fix my request without guessing.
 **And** all scrapers (web, amazon, walmart, youtube, reddit, tiktok, google maps, indeed) reuse a shared URL validator and `HttpUrlStr` type.
 _FR-6 · upstream PR #1623._
 
+### Story 2.10: Exa MCP Search Connector  `(mới 2026-08-05)`  `[DONE 2026-08-05]`
+As a workspace user,
+I want to connect the Exa AI MCP server as a first-class search connector,
+So that the agent can answer questions with up-to-date web search and full-page fetch without human-in-the-loop approval.
+
+**Acceptance Criteria:**
+**Given** the workspace has no Exa connector, **When** an owner POSTs `/search-source-connectors` with `connector_type: "EXA_MCP_CONNECTOR"` and an optional `exa_api_key`, **Then** the backend persists a connector whose `config.server_config` points to `https://mcp.exa.ai/mcp` with `x-api-key` injected as a header, and `is_indexable` is forced to `false`.
+**Given** the connector is saved, **When** the multi-agent chat loads tools, **Then** it discovers only `web_search_exa` and `web_fetch_exa` and treats them as `readonly` so no HITL prompt is shown.
+**Given** a user asks a question in chat, **When** the agent calls `web_search_exa`, **Then** it receives clean, ready-to-use text from top web results.
+**Given** a user provides a known URL, **When** the agent calls `web_fetch_exa`, **Then** it returns the page content as clean markdown.
+**And** alembic migration `190_add_exa_mcp_connector.py` is applied to the database.
+**And** the new connector type is wired into `CONNECTOR_TYPE_TO_CONNECTOR_AGENT_MAPS`, `SUBAGENT_TO_REQUIRED_CONNECTOR_MAP`, `_CONNECTOR_TYPE_TO_SEARCHABLE`, `BASE_NAME_FOR_TYPE`, and connector config validation.
+**And** `ruff check` on changed files and `pytest tests/unit/agents/multi_agent_chat/test_mcp_discovery_migration.py` pass.
+
+**Kỹ thuật:** add `EXA_MCP_CONNECTOR` to `SearchSourceConnectorType`, `MCP_SERVICES`, connector agent/searchable maps, and validation; create route-level `server_config` builder from `exa_api_key`; reuse `mcp_discovery` subagent with curated `allowed_tools` / `readonly_tools`.
+_FR-8 · FR-8.1 · OQ-4._
+
 ---
 
 ## Epic 3: Knowledge Base + Long-Term Memory
@@ -229,33 +253,22 @@ So that không ship recall rác (agent "đoán" thay vì "nhớ").
 **Given** baseline đã đo, **When** chốt **số SM-10** (precision@5 ≥ X, noise ≤ Y) — **cấm placeholder "≥X%"**, **Then** gate chặn ship nếu chưa đạt (RS-7).
 **And** MCP selfcheck CI (AR-8) chạy trong pipeline.
 _NFR-8 · AR-1 (re-scoped: extend harness, KHÔNG bootstrap) · AR-3 · AR-8 · RS-2 · SM-10._
-**Phối hợp (KHÔNG hard forward-dep):** dựng suite/harness/label dataset chạy độc lập được; chỉ **đo baseline cuối** trên corpus sau 3.10b (recovery) và sau khi 8.4a đông cứng auto-extract. 3.10a & 8.4a là **P0 theo ưu tiên** (mitigate rủi ro prod), không chặn khởi động story này.
+**Phối hợp (KHÔNG hard forward-dep):** dựng suite/harness/label dataset chạy độc lập được; chỉ **đo baseline cuối** trên corpus sau 3.10 (legacy data safety) và sau khi 8.4a đông cứng auto-extract. 3.10 & 8.4a là **P0 theo ưu tiên** (mitigate rủi ro prod), không chặn khởi động story này.
 
-### Story 3.10a: Legacy Memory Data-Safety Spike (forensic + freeze backup)  `(mới)`  `[DONE 2026-07-25]`
-As a platform engineer,
-I want xác định trạng thái mig 178 + bảo vệ cửa sổ khôi phục,
-So that ta biết memory cũ còn cứu được không TRƯỚC khi cửa sổ backup hết hạn.
+### Story 3.10: Legacy Memory Data Safety (forensic + backfill guard)  `(mới)`  `[DONE 2026-07-25]`
+As a user with existing memory data,
+I want migration 178 drop legacy `memory_md` columns safely,
+So that no user memory is lost when the new `Memory` table goes live.
+
+> **✅ KẾT QUẢ (sprint-status 2026-07-25):** 178 **CHƯA apply prod** (`alembic_version=174`; 175–179 chỉ ở branch `develop`); cột `memory_md`/`shared_memory_md` còn, nội dung **RỖNG** (0/3 users, 0/3 workspaces); bảng `memories` chưa tồn tại trên prod. Snapshot `pre-memory-remediation` (pg_dump -Fc, 18MB) đã tạo. **Kết luận: KHÔNG mất dữ liệu.** ⇒ story đổi từ *recovery* sang *prevention*.
 
 **Acceptance Criteria:**
 **Given** production DB, **When** truy vấn `alembic_version` + lịch sử deploy, **Then** ghi rõ 178 đã apply prod chưa (ops ticket **trong ngày** — time-sensitive).
 **Given** cấu hình backup/PITR, **When** kiểm tra retention, **Then** gia hạn retention phủ mốc trước-178 + chụp snapshot "pre-memory-remediation", verify restorable trên non-prod.
-**Then** ra **quyết định nhánh cho 3.10b**: "recoverable — window=[dates]" HOẶC "recovery impossible".
-**And** ràng buộc: KHÔNG deploy migration ≥178 lên env có user cho tới khi 3.10b hoàn tất.
-_FR-36 · AR-2._
-> **✅ KẾT QUẢ (ops 2026-07-25):** 178 **CHƯA apply prod** (`alembic_version=174`; 175–179 chỉ ở branch `develop`); cột `memory_md`/`shared_memory_md` còn, nội dung **RỖNG** (0/3 users, 0/3 workspaces); bảng `memories` chưa tồn tại trên prod. Snapshot `pre-memory-remediation` (pg_dump -Fc, 18MB) đã tạo. **Kết luận: KHÔNG mất dữ liệu.** ⇒ 3.10b đổi từ *recovery* sang *prevention*.
-
-### Story 3.10b: Migration 178 Data-Safe Backfill (pre-merge to production)  `(mới)`  `[DONE 2026-07-25 per sprint-status: 3-10b]`
-
-> **✅ ĐÓNG (sprint-status 2026-07-25):** G1.2 guard trong `178.upgrade()` (raise nếu legacy data chưa backfill) + G1.1 app-level command `scripts/backfill_legacy_memory.py` (embeddings không chạy được trong raw migration) + **5 integration test xanh** (backfill create / idempotent / dry-run + guard block / drop-after). **Ràng buộc còn lại: deploy-order `mig177 → backfill → mig178`.** ⇒ **FR-36 RESOLVED.** AC dưới đây giữ làm ngữ cảnh.
-As a platform engineer,
-I want `178.upgrade()` backfill `memory_md`/`shared_memory_md` → `memories` NGAY TRƯỚC khi DROP cột,
-So that khi 175–179 merge/deploy lên production, không mất memory nào (hiện 0, nhưng user có thể ghi trước lúc deploy vì feature memory_md vẫn sống ở code prod hiện tại).
-
-**Acceptance Criteria:**
 **Given** `178_drop_legacy_memory_columns.py` trên `develop`, **When** sửa `upgrade()`, **Then** thêm bước backfill: đọc `memory_md`/`shared_memory_md` non-empty → parse → insert `memories` (`source_type='manual'`) **TRƯỚC** `DROP COLUMN`, kèm verify count.
 **Given** ngay trước khi deploy 178 lên prod, **When** re-check `users_with_memory`/`workspaces_with_shared_memory`, **Then** =0 (an toàn drop) HOẶC đã được backfill cover.
 **And** gate: KHÔNG merge/deploy 178 lên production nếu `upgrade()` chưa có backfill.
-_FR-36 · AR-2. **Dep: 3.10a (done).**_
+_FR-36 · AR-2._
 
 ### Story 3.11: Memory Dedupe & Confidence Tuning  `(mới)`  `[DONE dedupe (đã wire cosine<0.08); tuning ngưỡng optional qua 3.9]`
 As a platform team,
@@ -415,7 +428,7 @@ So that tôi không phải mô tả lại toàn bộ yêu cầu nghiệp vụ m�
 _Nền tảng đã có (dùng lại, không xây mới): `AutomationDefinition.inputs` + `Inputs.schema_` · `PlanStep.params` render-at-execute · `templating/` (Jinja sandboxed, `{run, inputs, steps}`) · `ActionDefinition.params_schema` (`actions/types.py`) · `all_actions()` (`actions/store.py`) · `WorkspaceMcpToolSetting` (tiền lệ scope per-workspace)._
 _⚠️ Gate: KHÔNG build trước khi pilot BĐS 2 tuần cho tín hiệu retention — chưa biết `inputs.schema` cần field nào cho môi giới thì chưa build (xem `vision-lock-and-this-week-2026-08-04.md`)._
 
-### Story 6.7: Schema-Driven Form UI cho playbook & action  `[GAP — P1, dep: 6.6]`
+### Story 6.7: Schema-Driven Form UI cho playbook & action  `[GAP — P1, gated sau pilot BĐS]`
 
 > **Vấn đề UX cần giải một lần cho mọi vertical.** Nowing có ~17 subagent builtin + MCP tools, và sẽ thêm nữa (xe, thiết bị B2B, tuyển dụng). Nếu mỗi tool phải code UI riêng → nợ UI tăng theo số tool.
 > **Điểm mạnh kiến trúc:** cả `ActionDefinition.params_schema` (action) và `AutomationDefinition.inputs.schema` (playbook) đều là **JSON Schema draft 2020-12** ⇒ **một renderer dùng được cho cả hai**.
@@ -430,30 +443,28 @@ So that tôi dùng được mọi tool mà không cần học prompt, và tool m
 **And** **Given** user gõ yêu cầu tự nhiên (web hoặc Zalo/Telegram bot), **When** LLM parse thành inputs, **Then** inputs **BẮT BUỘC validate lại bằng schema (Pydantic) trước khi lưu** — không tin trực tiếp output LLM — rồi hiện form/xác nhận gọn để user sửa (chat → parse → **validate** → confirm).
 **And** **Given** một nghiệp vụ tần suất cao (Deal-Radar BĐS), **When** cần trải nghiệm tối ưu, **Then** cho phép override bằng filter UI chuyên biệt + nút **"Lưu tìm kiếm này thành cảnh báo"** (tái dùng thói quen filter sẵn có của môi giới, không bắt học prompt).
 **And** danh sách tool KHÔNG phơi ra dạng menu kỹ thuật: gom theo vertical + ẩn sau tên nghiệp vụ người dùng hiểu.
-_⚠️ Gate: dep 6.6; và chỉ build sau pilot xanh._
+_⚠️ Gate: business — chỉ build sau pilot BĐS retention xanh (không phụ thuộc kỹ thuật 6.6)._
 
-### Story 6.9: Workspace `vertical` — tiền đề cho playbook library  `[GAP — P2, dep: none — chặn 6.10]`
+### Story 6.9: Workspace `vertical` + Playbook Library  `[GAP — P2, gated sau pilot BĐS]`
 
-> **Phát hiện từ architect review:** khái niệm `vertical` **chưa tồn tại** trong schema. Không có nó thì không thể "gom playbook theo ngành".
-
-As a platform operator,
-I want mỗi workspace khai báo vertical của nó,
-So that playbook, tool và UI có thể lọc theo ngành thay vì phơi tất cả cho mọi user.
-
-**Acceptance Criteria:**
-**Given** một workspace, **When** tạo hoặc cập nhật, **Then** nó có thuộc tính `vertical` (ví dụ `real_estate` · `auto` · `b2b_equipment` · `general`), mặc định `general` để backward-compatible.
-**And** **Given** một playbook/tool khai `verticals[]`, **When** user duyệt, **Then** chỉ thấy item khớp vertical của workspace (hoặc `general`).
-_ADR cần chốt kèm: **tool = code (subagent builtin), nghiệp vụ = data (playbook definition)** — tránh tình trạng nghiệp vụ nửa nằm ở `registry.py` nửa nằm ở JSON._
-
-### Story 6.10: Playbook Library theo vertical  `[GAP — P2, dep: 6.6, 6.7, 6.9]`
+> **Phát hiện từ architect review:** khái niệm `vertical` **chưa tồn tại** trong schema. Không có nó thì không thể "gom playbook theo ngành". Story này gộp cả việc khai báo vertical và thư viện playbook lọc theo vertical.
 
 As a workspace user,
-I want chọn playbook làm sẵn theo ngành của tôi rồi điền biến,
-So that tôi bắt đầu ngay mà không phải tự thiết kế nghiệp vụ.
+I want my workspace to declare its industry and show only relevant playbooks,
+So that I can pick a pre-built playbook for my vertical without designing a workflow from scratch.
 
 **Acceptance Criteria:**
-**Given** workspace có `vertical` (6.9), **When** user mở thư viện playbook, **Then** chỉ thấy playbook của vertical đó (BĐS: Deal-Radar · Verify tin đa nguồn · Tìm khách khớp · Viết mô tả tin).
-**And** **Given** vertical mới cần mở, **When** thêm playbook, **Then** chỉ cần khai **definition + schema (data)**, không sửa code UI và không thêm subagent — đúng điều kiện `G6` của lộ trình nhân bản vertical.
+**Given** a workspace, **When** it is created or updated, **Then** it has a `vertical` attribute (e.g. `real_estate`, `auto`, `b2b_equipment`, `general`), defaulting to `general` for backward compatibility.
+
+**Given** a playbook or tool declares `verticals[]`, **When** a user browses the library, **Then** they only see items matching the workspace vertical (or `general`).
+
+**Given** a workspace has a configured vertical, **When** a user opens the playbook library, **Then** they only see playbooks for that vertical (e.g. real estate: Deal-Radar, Verify cross-source, Match buyers, Write listing description).
+
+**Given** a new vertical needs to be opened, **When** adding a playbook, **Then** it only requires a **definition + schema (data)**, no UI code changes and no new subagent — satisfying the G6 vertical expansion roadmap target.
+
+**Given** a playbook is selected, **When** the user runs it, **Then** they fill in inputs validated against the playbook schema and the automation runs using the existing parameterized automation engine.
+
+_ADR cần chốt kèm: **tool = code (subagent builtin), nghiệp vụ = data (playbook definition)** — tránh tình trạng nghiệp vụ nửa nằm ở `registry.py` nửa nằm ở JSON._
 _Tham chiếu: `vertical-expansion-roadmap-2026-08-04.md` (G6: mở vertical mới bằng config, ≤2-4 tuần)._
 
 ---
@@ -504,54 +515,60 @@ So that định lượng unit economics cloud trước khi pricing (SM-C2/RS-10)
 **And** aggregate cost/turn (auto-extract ON vs OFF) đo trên staging/beta → input cho pricing.
 _AR-5 · SM-C2 · RS-10._
 
-### Story 8.10: Docs / README / Vision Sync  `(mới)` `(đánh lại số từ 8.6 — C-C)`  `[GAP — optional, chưa track trong sprint]`
+### Story 8.10: Docs / README / Vision Sync  `(mới)` `(đánh lại số từ 8.6 — C-C)`  `[DONE per sprint-status: 8-10]`
 As an OSS beachhead user (agent-builder),
-I want README/docs phản ánh đúng vision research-memory + trạng thái đã ship,
-So that mở repo không thấy định vị cũ / feature đã gỡ (tránh cảm giác vaporware).
+I want README/docs to reflect the current research-memory vision and only shipped features,
+So that the repo does not look like vaporware with old positioning or removed features.
 
 **Acceptance Criteria:**
-**Given** README/`docs/`/`project-overview.md` còn pre-pivot, **When** sync, **Then** phản ánh "long-term research memory" + gỡ mô tả sai (Admin role removed mig 72, AI File Sorting removed mig 172, "NotebookLM alternative").
-**And** publish one-sentence promise + MCP quickstart; **And** **CI docs-vs-code drift check** chặn feature đã gỡ tái xuất hiện.
+**Given** public docs contain outdated positioning or descriptions of removed features
+**When** the docs are synced
+**Then** they reflect the current "long-term research memory" vision and no longer describe removed features
+**And** the one-sentence product promise and a quickstart guide are published
+**And** removed features cannot reappear in the docs.
+
+_Implementation hints (not AC):_ Keep `README.md`, `docs/`, and `project-overview.md` synced; include a CI docs-vs-code drift check to catch removed features like the Admin role or AI File Sorting.
+
 _OQ-6 · AR-10 · RS-5._
 
 ---
 
-### Story 8.11: Admin UI for Global LLM Model Configuration  `(mới 2026-07-26)`  `[GAP — backlog]`
+### Story 8.11: Admin UI for Global LLM Model Configuration  `(mới 2026-07-26)`  `[DONE per sprint-status: 8-11]`
 
-**Là** platform admin (vai trò mới, cấp toàn hệ thống — khác Workspace Owner/Editor/Viewer của FR-10),
+**Là** a platform operator with the existing `is_superuser` flag (not a new admin role; workspace RBAC in FR-10 is unchanged),
 **tôi muốn** thêm/sửa/xoá/bật-tắt global chat model (model dùng chung cho Auto mode) qua một trang settings trên web UI,
 **để** không phải decode/sửa/encode base64 YAML trong `.env` rồi restart backend mỗi lần đổi model — quy trình hiện tại chỉ có thể thao tác thủ công qua terminal.
 
-> **Vì sao story này tồn tại (phát hiện 2026-07-26, khi vận hành thực tế thêm model GLM-5.2/Gemini-3.6-Flash/GPT-5.6 cho Auto mode).** `global_llm_configs` chỉ đọc được từ file YAML (gitignored) hoặc `GLOBAL_LLM_CONFIG_B64` trong `.env`, parse **một lần lúc import** `app/config/__init__.py`. Không có UI, không hot-reload. `GET /global-model-connections` (`model_connections_routes.py`) đã cho xem, nhưng mọi endpoint viết (`POST/PUT/DELETE /model-connections*`) tường minh raise lỗi khi `scope == ConnectionScope.GLOBAL` ("GLOBAL connections are YAML-only"). Đồng thời hệ thống **chưa có khái niệm platform-admin** — chỉ có RBAC cấp workspace (FR-10). Field `User.is_superuser` đã tồn tại (fastapi-users) và đã lộ ra ở FE (`user.types.ts`, dùng cho PostHog identify) nhưng **không gate route nào**.
+> **Implementation context (not AC):** global LLM configs currently load from YAML or a base64 `.env` variable at import time, with no UI or hot-reload. The existing `/global-model-connections` endpoint is read-only, and write endpoints block global connections. The `is_superuser` user flag already exists but is not used to gate any route.
 
 **Acceptance Criteria:**
 
-**Given** một user có `is_superuser = false` (bao gồm Workspace Owner)
-**When** gọi endpoint quản lý global model config
-**Then** nhận **403** — route yêu cầu `is_superuser = true`, tách biệt hoàn toàn với RBAC workspace (FR-10 không đổi).
+**Given** a non-superuser (including any workspace role)
+**When** attempting to manage global chat models
+**Then** the request is rejected with **403** — only superusers may manage global models, independently of workspace RBAC (FR-10 workspace roles remain unchanged).
 
-**Given** một platform admin (`is_superuser = true`) mở trang admin settings
-**When** xem danh sách global model
-**Then** thấy **hợp nhất** cả hai nguồn trong một danh sách: model từ YAML/`.env` (file-backed, nguồn hiện tại) **và** model tạo qua UI (DB-backed, mới) — có nhãn phân biệt nguồn ("Managed" vs "From config file")
-**And** không có `api_key` thật nào trả về client (giữ nguyên pattern `has_api_key: boolean` đã dùng ở `ConnectionRead`).
+**Given** a superuser opens the admin settings page
+**When** they view the global models list
+**Then** they see a merged list containing both file-backed models (from existing config) and DB-backed models (created via the UI) with a source label distinguishing them
+**And** no real API key is returned to the client — only a boolean flag indicating whether a key is configured.
 
-**Given** platform admin điền form tạo global model mới (provider, model_name, api_key, api_base, cost per 1k input/output tokens, rpm/tpm)
-**When** submit
-**Then** model mới được tạo với `Connection.scope = GLOBAL` trong DB, và xuất hiện trong Auto mode pool **ngay lập tức** — không cần restart backend, không cần sửa `.env`.
+**Given** a superuser fills out the form to create a new global model
+**When** they submit the form
+**Then** the new global model is created in the DB and becomes available in the Auto mode pool immediately without requiring a backend restart or a configuration file change.
 
-**Given** một global model do UI tạo (DB-backed)
-**When** admin sửa (tên, giá, enabled) hoặc xoá
-**Then** thay đổi có hiệu lực ngay cho các chat call tiếp theo; model bị xoá không còn xuất hiện trong Auto mode pool.
+**Given** a DB-backed global model
+**When** a superuser edits its name, price, or enabled status, or deletes it
+**Then** the change takes effect for subsequent chat calls, and deleted models no longer appear in the Auto mode pool.
 
-**Given** một global model do YAML/`.env` quản lý (file-backed)
-**When** admin xem trong UI
-**Then** chỉ xem được + toggle enable/disable tạm thời — **không** sửa được field khác, **không** xoá được qua UI (giữ nguyên nguyên tắc operator-owned hiện tại cho nguồn file).
+**Given** a file-backed global model
+**When** a superuser views it in the UI
+**Then** it is read-only except for a temporary enable/disable toggle, with no field edits or delete allowed through the UI (operator-owned file config remains the source of truth).
 
-**Given** platform admin vừa nhập xong provider + api key + model_name cho một global model draft
-**When** bấm "Test connection"
-**Then** hệ thống gọi model thật một lần (tái dùng `verify_connection`/`test_model` đã có ở `model_connection_service.py`) và báo rõ thành công/lỗi trước khi cho lưu.
+**Given** a superuser has entered the provider, API key, and model name for a new global model draft
+**When** they click "Test connection"
+**Then** the system calls the provider once and reports success or failure clearly before the model can be saved.
 
-**Kỹ thuật (không phải AC, ghi để dev không phải đoán):**
+_Implementation hints (not AC — story 8.11 has no file paths in AC):_
 - Thêm dependency `require_superuser()` trong `app/users.py`, song song `require_session_context`/`get_auth_context` hiện có — kiểm tra `AuthContext.user.is_superuser`.
 - Mở endpoint mới (không sửa route cũ đang chặn `GLOBAL` cho user thường) dưới path riêng, ví dụ `/admin/global-model-connections`, dùng `require_superuser()` làm dependency; hoặc thêm nhánh rẽ trong route hiện có khi `scope == GLOBAL` **và** caller là superuser — chọn một, ghi lại trong story file.
 - Mở rộng `materialize_global_model_catalog()` (`app/services/global_model_catalog.py`) để merge thêm `Connection`/`Model` rows có `scope == GLOBAL` từ DB vào cùng `GLOBAL_CONNECTIONS`/`GLOBAL_MODELS`, bên cạnh nguồn YAML/env hiện tại.
@@ -559,9 +576,9 @@ _OQ-6 · AR-10 · RS-5._
 - Billing: field cost phải map đúng vào `litellm_params.input_cost_per_token`/`output_cost_per_token` để `pricing_registration.py` đăng ký giá cho LiteLLM (đúng cơ chế `AD-8`, không phải giá phẳng).
 - FE: trang mới, tái dùng component ở `nowing_web/components/settings/model-connections/` (provider picker, connect form) nhưng đặt ở route cấp platform (không phải `/dashboard/[workspace_id]/...`), gate bằng `user.is_superuser` phía client (defense-in-depth, không thay cho check backend).
 
-_FR-41 · AD-8 (cost registration) · AD-9 (mở rộng — không đổi 3 role cấp workspace) · `model_connections_routes.py` · `app/config/__init__.py` (`load_global_llm_configs`, `refresh_global_model_catalog`) · `app/services/global_model_catalog.py`._
+_References: FR-41 · AD-8 (cost registration) · AD-9 (mở rộng — không đổi 3 role cấp workspace) · `model_connections_routes.py` · `app/config/__init__.py` (`load_global_llm_configs`, `refresh_global_model_catalog`) · `app/services/global_model_catalog.py`._
 
-### Story 8.12: Workspace Limits  `(mới 2026-07-30)`  `[ready-for-dev]`
+### Story 8.12: Workspace Limits  `(mới 2026-07-30)`  `[DONE per sprint-status: 8-12]`
 As a platform admin,
 I want to enforce per-workspace limits (documents, members, storage, runs),
 So that I can offer tiered plans and prevent abuse on the cloud offering.
@@ -574,7 +591,7 @@ So that I can offer tiered plans and prevent abuse on the cloud offering.
 **Kỹ thuật:** add `WorkspaceLimit` / plan config, gate document upload, member invite, and run creation; expose usage/limit API; build settings UI.
 _FR-3 · FR-30 · upstream PR #1609._
 
-### Story 8.13: PostHog Product Analytics  `(mới 2026-07-30)`  `[ready-for-dev]`
+### Story 8.13: PostHog Product Analytics  `(mới 2026-07-30)`  `[DONE per sprint-status: 8-13]`
 As a product team,
 I want PostHog analytics integrated into the web app,
 So that I can understand user flows, feature adoption, and retention.
@@ -593,7 +610,11 @@ _NFR-3 · upstream PR #1622._
 > **Nguồn:** `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md` (✅ ADOPTED, D1–D4). **Governed by:** `AD-15` (+ AD-7; AD-8 amended cho cost; AD-3 amended bỏ FR-24).
 > **Đối ứng phía ChainLens:** Epic 42 (`42-1` costDollars-in-SSE *spec ready*, `42-2` contract regression-guard, `42-3` verify Nowing needs) + Epic 43 (`43-1` eval-harness GATE 0, `43-2` planner-DAG, `43-5` cache hit-rate).
 > **Gate quan trọng:** không chốt bất kỳ con số pricing/subscription nào trước khi **9.2** và **8.7** có số cost đo thật.
-> **🔒 Thứ tự cứng (D5, 2026-07-25 · cập nhật sau khi tách story):** **`9.1a`** → **public repo** → `9.1b` + `9.2` + `8-7` → `9.3` → `9.4` → *(tuỳ chọn)* `9.6a` → `9.6b`. **Chỉ `9.1a` chặn public repo** — vì lý do **mô hình kinh doanh**, không phải kỹ thuật: engine closed-source + Nowing public ⇒ **mọi self-host instance chạy ở trạng thái không có engine**; thiếu degradation thì self-host không dùng được và đường OSS/PLG sụp. `9.1b` (contract guard) là P0 nhưng **không** chặn. Nguồn: SCP §8 D5, PRD §1.1 + §4.9 FR-38, `AD-15`.
+> **⛓️ Architecture dependency sequence (D5, 2026-07-25 · không phải epic-ordering, là kiến trúc constraint):** `9.1a` (degradation) → `public repo` → `9.1b` + `9.2` + `8-7` → `9.3` → `9.4` → *(tuỳ chọn)* `9.6`.
+> - Sequence này được ghi ở **Architecture Decision Record (`AD-15` §D5)** làm ràng buộc kiến trúc, không phải vì các story trong Epic 9 phụ thuộc lẫn nhau theo nghiệp vụ.
+> - **Chỉ `9.1a` chặn public repo** — vì lý do **mô hình kinh doanh**, không phải kỹ thuật: engine closed-source + Nowing public ⇒ **mọi self-host instance chạy ở trạng thái không có engine**; thiếu degradation thì self-host không dùng được và đường OSS/PLG sụp.
+> - Các story còn lại trong Epic 9 có thể dev song song trong cùng sprint, nhưng deploy/release tuân theo sequence trên.
+> - `9.1b` (contract guard) là P0 nhưng **không** chặn public repo. Nguồn: SCP §8 D5, PRD §1.1 + §4.9 FR-38, `AD-15`.
 
 > **⚠️ Tách story 2026-07-25 (readiness Q-3).** `9.1` cũ gộp **hai concern khác nhau**: (a) contract regression test — bảo vệ Nowing khỏi việc engine đổi format; (b) degradation — bảo vệ **mô hình kinh doanh** self-host. Khác mục đích, khác rủi ro, khác file, test được độc lập. Quan trọng hơn: chỉ **(b)** mới thật sự chặn public repo; gộp lại làm public repo bị chặn oan bởi (a). ⇒ tách thành **`9.1a`** (chặn public repo) và **`9.1b`** (P0, không chặn).
 
@@ -604,34 +625,38 @@ So that tôi không cài xong mới phát hiện một tính năng vỡ, và đ�
 
 **Acceptance Criteria:**
 
-**Given** ChainLens timeout (`CHAINLENS_REQUEST_TIMEOUT_SECONDS`, default 300s) hoặc trả 5xx
-**When** request deep research
-**Then** Nowing **degrade** sang hybrid search (`app/retriever/`) và trả trạng thái tường minh `partial` (có evidence một phần) hoặc `engine_unavailable` (không có)
+**Given** the deep-research engine times out or returns a 5xx error
+**When** a deep-research request is made
+**Then** Nowing **degrades** to its hybrid-search retriever and returns an explicit `partial` (some evidence) or `engine_unavailable` (none) status
 **And** **không bịa citation**, không giả vờ là câu trả lời đầy đủ; trạng thái degrade hiển thị được cho user/agent.
 
-**Given** self-host không cấu hình ChainLens (`CHAINLENS_API_KEY` rỗng)
-**When** user dùng Nowing
-**Then** mọi tính năng khác hoạt động bình thường; deep research trả `engine_unavailable` kèm hướng dẫn cấu hình
+**Given** a self-hosted instance has the deep-research engine unconfigured
+**When** a user uses Nowing
+**Then** all other features work normally; deep research returns `engine_unavailable` with setup instructions
 **And** không có exception chưa bắt, không có 500.
 
-**Given** engine gửi tường minh `{type:'partial', state:'insufficient_evidence', reason}` và `{type:'insufficientEvidence', partial, reason}` *(verify code ChainLens `api.ts:1299-1309`)*
-**When** parse SSE
-**Then** Nowing **đọc và dùng** hai event đó cho trạng thái `partial`
-**And** **bỏ heuristic đang suy đoán lại** — hiện `executor.py` đoán bằng `if not answer and not sources: if saw_done → insufficient_evidence else → timeout`, tức **gộp "không tìm ra bằng chứng" với "stream chết giữa đường"** vào một phép đoán, trong khi engine đã phân biệt sẵn kèm `reason`
-**And** `reason` từ engine được truyền lên user/agent, không bị nuốt.
+**Given** the engine emits `partial`/`insufficientEvidence` events carrying an explicit `reason`
+**When** parsing the SSE stream
+**Then** Nowing maps those events to a `partial` state and surfaces the `reason` to the user/agent
+**And** it no longer infers the state from a heuristic that conflates "no evidence" with "broken stream".
 
-**Given** engine gửi `{type:'heartbeat'}` *(verify code ChainLens)*
-**When** stream đang chạy
-**Then** Nowing dùng heartbeat để phân biệt **"đang chạy"** vs **"đã chết"** — thay vì chỉ dựa vào timeout 300s.
+**Given** the engine emits periodic `heartbeat` events
+**When** a stream is in progress
+**Then** Nowing uses those heartbeats to distinguish "still running" from "dead", instead of relying solely on a fixed timeout.
 
-**Given** ba nhánh success / timeout-degrade / unconfigured
-**When** chạy test suite
-**Then** cả ba đều có test.
+**Given** the success, timeout-degrade, and unconfigured branches
+**When** the test suite runs
+**Then** all three branches are covered by tests.
 
-**Given** engine closed-source và Nowing public (ranh giới OSS/Cloud, D5) — nghĩa là **mọi self-host instance đều ở trạng thái không có engine**
-**When** review trước khi public repo
-**Then** story này PHẢI done trước; docs/README/`docker/`/`.env.example` ghi rõ **deep research là năng lực cloud** (Phase 1)
-**And** không để người self-host cài xong mới tự phát hiện tính năng vỡ.
+**Given** the deep-research engine is closed-source and Nowing is public (OSS/Cloud boundary, D5)
+**When** the repo is reviewed before going public
+**Then** this story is done first, and all setup docs clearly state that deep research is a cloud capability in Phase 1
+**And** self-hosters are not left to discover the feature is unavailable only after install.
+
+_Implementation hints (not AC):_
+- Timeout/degrade threshold is configured by `CHAINLENS_REQUEST_TIMEOUT_SECONDS` (default 300s) and routes to the existing hybrid-search retriever under `app/retriever/`.
+- Verify the exact `partial`/`insufficientEvidence` event shapes in ChainLens `api.ts:1299-1309`.
+- Update `README.md`, `docker/`, and `.env.example` to document deep research as a cloud-only Phase 1 capability.
 
 _FR-38 · AD-15 · D5. Files: `app/capabilities/chainlens/research/executor.py`, `app/retriever/`, `tests/unit/capabilities/chainlens/`, `docker/`, `.env.example`._
 
@@ -642,62 +667,84 @@ So that engine đổi format thì tôi biết trước khi vỡ production, ch�
 
 **Acceptance Criteria:**
 
-**Given** contract `POST /api/v1/search` SSE — request `{query, optimizationMode, sources, history, systemInstructions?, chatId?}`; response block-SSE (`type:block` / `type:updateBlock` RFC6902 patch / `data:[DONE]` / `event:error`)
-**When** CI chạy
-**Then** có **contract regression test** khoá cả request shape và SSE parse: block create/replace, RFC6902 patch trên `/data`, `[DONE]`, `event:error`, metadata `chatId`/`webUrl`
-**And** test **fail** nếu engine đổi format → biết trước khi vỡ prod.
+**Given** the research SSE contract (request and response shapes)
+**When** CI runs
+**Then** a contract regression test locks both the request shape and the SSE parse behavior (block create/replace, patch application, terminal marker, error event, metadata)
+**And** the test fails if the engine changes format, so regressions are caught before production.
 
-**Given** query dài hơn `MAX_QUERY_LENGTH` (500)
-**When** gửi request
-**Then** bị clamp trước khi gọi engine (engine tự clamp ở 500; query rỗng bị engine trả 400).
+**Given** a query longer than the configured maximum length
+**When** it is sent
+**Then** it is clamped before calling the engine.
 
-**Given** một câu trả lời có nhiều source
-**When** parse SSE
-**Then** `sources[]` giữ **nguyên thứ tự trích dẫn** để map đúng về citation UI.
+**Given** a response with multiple sources
+**When** parsing the SSE
+**Then** the `sources[]` array preserves citation order so it maps correctly to the citation UI.
 
-**Given** contract đang bị **document SAI** ở phía Nowing *(OQ-7, verify 2026-07-25)*
-**When** viết test và sửa tài liệu
-**Then** sửa PRD §4.9 FR-24 + `AD-15` + SCP §3: **KHÔNG có dòng `event:`** — NestJS `@Sse()` chỉ phát **data-only frame**, `type` nằm **bên trong** JSON; và terminal marker thật là `{"type":"done"}`, **không** phải `data: [DONE]`
-**And** gỡ (hoặc ghi rõ là defensive-only) nhánh xử lý `event:` trong `_parse_sse` — nhánh đó **không bao giờ chạy**
-**And** test phải bám format **thật**, không bám tài liệu cũ.
+**Given** the documented contract does not match the real engine format
+**When** tests are written and docs are fixed
+**Then** the contract test and all related docs reflect the real wire format, not the outdated documentation
+**And** any dead parser branch is removed or clearly marked as defensive-only
+**And** tests are driven by the real format, not the outdated docs.
 
-**Given** ChainLens `42-2` đã có `apps/api/src/search/__tests__/fixtures/nowing-sse-parser.ts` — bản **mirror parser của Nowing**, dùng **chính** `rfc6902 applyPatch` mà `session.ts updateBlock` dùng
-**When** viết contract test phía Nowing
-**Then** **tham chiếu/đồng bộ fixture đó**, không viết fixture thứ hai (hai fixture sẽ lệch dần theo thời gian)
-**And** đề xuất ChainLens export golden JSON dùng chung được.
+**Given** the upstream engine provides a shared golden SSE contract fixture
+**When** writing Nowing's contract tests
+**Then** Nowing reuses or imports that fixture instead of creating a second one
+**And** the team proposes a shared golden JSON export that both sides consume.
+
+_Implementation hints (not AC):_
+- The current query clamp limit is `MAX_QUERY_LENGTH = 500`.
+- The real SSE format is data-only frames with `type` inside JSON; terminal marker is `{"type":"done"}`; there is no `event:` or `data: [DONE]` line.
+- Patches apply RFC6902 JSON Patch to `/data` inside the block.
+- ChainLens issue `42-2` already has `apps/api/src/search/__tests__/fixtures/nowing-sse-parser.ts`, a mirror parser using `rfc6902 applyPatch`; reuse or sync with it.
+- Remove or mark as defensive-only the dead `event:` branch in `_parse_sse`.
+- Update PRD §4.9 FR-24, `AD-15`, and SCP §3 to match the real SSE format.
 
 _FR-24 · AD-15 · OQ-7(1)+(4). Files: `tests/unit/capabilities/chainlens/research/test_executor.py`, `app/capabilities/chainlens/research/executor.py` (gỡ nhánh `event:`), PRD §4.9, `AD-15`. **Đối ứng ChainLens:** `42-2`._
 
-### Story 9.2: Deep-Research Cost Metering (cost thật, không giá phẳng)  `(mới)`  `[DONE — P0, parser + fallback in place; waits ChainLens 42-1 costDollars in production]`
+### Story 9.2: Deep-Research Cost Metering (cost thật, không giá phẳng)  `(mới)`  `[DONE — P0, parser + fallback in place; waits ChainLens 34.1 full-pipeline cost, target 2026-08-19]`
 As a PO định giá cloud,
 I want cost mỗi deep-research call được ghi theo **cost thật engine báo về**, không theo hằng số env,
 So that pricing/subscription có cost basis thật thay vì phỏng đoán sai 2–3×.
 
-**Bối cảnh (verified 2026-07-25):** `CHAINLENS_QUERY_MICROS_PER_CALL = 5000` → **$0.005 phẳng/call bất kể mode** (`app/config/__init__.py:806`), trong khi `mode` default = `"quality"` (`schemas.py:38`) có target cost **$0.0105** (deep research $0.0164) → **under-meter 2.1–3.3×**. Và các số target đó tính trên DeepSeek stack **chưa vào prod** (ChainLens `DEFAULT_MODEL_POLICY` = 100% `ag/` Gemini, output đắt hơn DeepSeek ~3.5×). `grep costDollars` trong `nowing_backend/` = **0 hits**.
+_Implementation context (not AC — verified 2026-08-05):_ The current flat rate under-meters quality/deep modes by 2.1–3.3×. Nowing parser now reads `costDollars`, `estimated`, `resolvedMode` (top-level canonical, with `usage.resolvedMode` as mirror/fallback), `promptTokens`, `completionTokens`, `totalTokens`, and `model` from the terminal `done` frame. ChainLens 42-1 emits writer-only `costDollars` with `estimated: true`; ChainLens 34.1 (in-progress, target 2026-08-19) will emit full-pipeline cost with `estimated: false`. Golden fixtures `sse-done-estimated-2026-08-05.json` and `sse-done-actual-2026-08-05.json` are in `nowing_backend/tests/unit/capabilities/chainlens/research/fixtures/` and covered by contract tests.
 
 **Acceptance Criteria:**
 
-**Given** ChainLens emit `costDollars` ở SSE terminal event (dependency: ChainLens `42-1`, *spec ready*)
-**When** một deep-research call hoàn tất
-**Then** executor parse `costDollars` → ghi `TokenUsage` với `usage_type="deep_research"` + `workspace_id`/`user_id`/`thread_id`
-**And** wallet debit dùng **cost thật**.
+**Given** the engine reports a real `costDollars` value in the terminal SSE event
+**When** a deep-research call completes
+**Then** the executor records a usage entry for the call with the call scope (workspace, user, thread) and the real cost
+**And** the executor records `cost_basis`, `resolved_mode`, `model`, `tokens_total`, `tokens_prompt`, and `tokens_completion`
+**And** the wallet is debited using that real cost.
 
-**Given** engine **không** emit cost (version cũ / lỗi)
-**When** call hoàn tất
-**Then** fallback về `CHAINLENS_QUERY_MICROS_PER_CALL` **và log warning** (để đo tần suất fallback)
-**And** `BillingUnit.CHAINLENS_QUERY` không còn là nguồn chân lý.
+**Given** the engine does not emit a cost (old version or error)
+**When** the call completes
+**Then** the executor falls back to a configured flat micros-per-call rate and logs a warning
+**And** the flat billing unit is no longer treated as the source of truth.
 
-**Given** đã có dữ liệu
-**When** truy vấn aggregate
-**Then** cost thật/call **theo mode** đo được (SM-11a) + tỷ lệ fallback; nối vào dashboard NFR-7 khi có.
+**Given** real cost data exists
+**When** querying aggregate usage
+**Then** cost per call by mode and fallback rate are measurable, and the data feeds the usage dashboard when available.
 
-**Given** chưa có SM-11a
-**When** ai đó đề xuất chốt giá subscription
-**Then** **chặn** — gate: cần 9.2 + 8.7 có số thật trước.
+**Given** the engine reports `costDollars` with `estimated: true`
+**When** the call completes
+**Then** the executor records `cost_basis = "estimated"` and does not treat the number as final for pricing decisions.
+
+**Given** the engine reports `costDollars` with `estimated: false` (ChainLens 34.1)
+**When** the call completes
+**Then** the executor records `cost_basis = "actual"` and uses it for wallet debit and pricing analysis.
+
+**Given** real cost data is not yet available
+**When** someone proposes finalizing subscription pricing
+**Then** the proposal is blocked until 9.2 and 8.7 provide real numbers.
+
+_Implementation hints (not AC):_
+- The current flat rate is `CHAINLENS_QUERY_MICROS_PER_CALL = 5000` in `app/config/__init__.py`; it under-meters quality/deep modes 2.1–3.3×.
+- Fields to update: parse `costDollars` from the terminal SSE event; write `TokenUsage.usage_type="deep_research"` with `workspace_id`/`user_id`/`thread_id`; debit wallet via `app/capabilities/core/billing.py`.
+- Deprecate `BillingUnit.CHAINLENS_QUERY` as the source of truth.
 
 _FR-37 · AD-8(amended) · AD-15 · SM-11a · OQ-7(3). Files: `app/capabilities/chainlens/research/executor.py`, `app/capabilities/core/billing.py`, `app/capabilities/core/types.py`, `app/services/token_tracking_service.py`._
 
-### Story 9.3: Latency Budget & State A→B Gate  `(mới)`  `[GAP — P1]`
+### Story 9.3: Latency Budget & State A→B Gate  `(mới)`  `[DONE per sprint-status: 9-3]`
 As a product owner,
 I want đo latency deep-research **từ phía Nowing** và có đường async deliverable làm sàn,
 So that không cược vào giả định latency theo chiều nào, và biết đúng lúc nào được bật sync chat-mode.
@@ -739,9 +786,17 @@ So that không cược vào giả định latency theo chiều nào, và biết 
 **And** validate chất lượng trên `nowing_evals`; nếu hồi quy đáng kể → revert `quality` và **ghi lại lý do**
 **And** reversible qua env var.
 
-**Given** State B đủ điều kiện
-**When** bật sync chat-mode
-**Then** bật **sau feature flag**, giữ nguyên đường async.
+**Given** `DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED` is off
+**When** agent or REST requests deep research
+**Then** `chainlens.research` is forced to async mode; sync requests are rejected or downgraded.
+
+**Given** State B conditions are met
+**When** enabling sync chat-mode
+**Then** enable only behind `DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED`, keep async path intact, and allow sync only for `speed`/`balanced` modes; `quality`/`deep-research`/`deep-reasoning` remain async-only.
+
+**Given** ChainLens 34.1 full-pipeline cost telemetry (target 2026-08-19), a rerun of 29-5 with `deepseek-v3.2`, and a clean Nowing e2e benchmark
+**When** p95 `balanced` latency is ≤ 30s and cost per mode is within 2× of PRD targets or async-only is documented
+**Then** PO may ratify State B and flip the feature flag.
 
 **Deliverable tài liệu (không phải AC — sửa readiness Q-5):** story này **xuất ra** một quyết định ngưỡng p95 + định nghĩa cổng A→B, ghi vào NFR-9. Trước đây điều này bị viết thành AC (*"Then định nghĩa ngưỡng cụ thể"*) → AC tự tham chiếu, không verify được. Ngưỡng vẫn phải đặt **sau** khi có baseline đo được (kỷ luật đúng: không đặt ngưỡng trước khi đo — đó là lỗi của NFR6 phía ChainLens); nhưng nó là *sản phẩm đầu ra*, không phải *tiêu chí nghiệm thu*.
 
@@ -812,12 +867,12 @@ So that tôi không phải chuyển sang cloud chỉ vì một năng lực.
 
 _D5 · AD-15 · AD-8 · FR-37/FR-38. **Đã loại (không mở lại mà không có SCP mới):** phát hành binary/Docker closed-source của engine._
 
-> **⚠️ Tách story 2026-07-25 (readiness Q-4).** `9.6` cũ gộp **bốn việc**: (1) migration source ref · (2) writer set `SCRAPER_RUN` · (3) quyết định retention · (4) API `revalidate()`. Việc (4) là một feature riêng và **phụ thuộc** (1)+(2). Việc (3) đã được chốt ở `AD-11.1` nên không còn là việc của story. ⇒ tách **`9.6a`** (provenance recipe) → **`9.6b`** (re-validation API).
+> **✅ Gộp story 2026-08-05 (readiness fix):** `9.6a` và `9.6b` được gộp thành story 9.6 duy nhất — provenance recipe và re-validation API là hai nhóm AC trong cùng một story, không còn forward dependency.
 
-### Story 9.6a: Memory Provenance Recipe (nền của re-validation)  `(mới)`  `[GAP — defect schema, phát hiện 2026-07-25]`
+### Story 9.6: Memory Provenance & Re-Validation  `(mới)`  `[DONE per sprint-status: 9-6]`
 As an agent hoặc người dùng,
-I want một memory sinh ra từ dữ liệu scrape trỏ được về đúng lần scrape và chạy lại được truy vấn đó,
-So that hệ thống biết fact nào đã cũ thay vì trả về thông tin hết hạn kèm citation trông đáng tin.
+I want memories created from scraped data to be traceable and re-executable,
+So that the system knows when a fact is stale instead of returning outdated information with a citation.
 
 > **Đây là tiền đề của differentiator "memory có nguồn sống, tự re-validate"** — thứ phân biệt Nowing sau khi "memory có citation" thành table-stakes (5 bên ship trong 90 ngày, xem brief §4). Nền tảng đắt nhất **đã có**: `Run` lưu `capability` + `input` JSONB nên re-execute được chính xác. Chỉ bị chặn ở 3 chỗ nhỏ.
 
@@ -826,10 +881,9 @@ So that hệ thống biết fact nào đã cũ thay vì trả về thông tin h�
 2. Không có code nào ghi `MemorySourceType.SCRAPER_RUN` — enum khai báo ở `db.py:572` rồi bỏ đó
 3. `RUNS_RETENTION_DAYS = 30` (`capabilities/core/runs.py:33`) → re-validate hỏng sau một tháng
 
-**Acceptance Criteria:**
-
 > **✅ Quyết định kiến trúc đã chốt — `AD-11.1` (2026-07-25, giải readiness Q-2).** AC trước đây chứa *"chọn một trong hai, ghi lý do trong ADR"* → không testable, dev không biết verify gì. Nay đã chốt: **`Memory` tự chứa recipe**; **KHÔNG** dùng retention có điều kiện cho `runs`.
-> *Lý do:* cleanup `runs` hiện là cơ hội (~1% insert, `runs.py:33-37`) — làm nó có điều kiện biến một cleanup rẻ thành truy vấn có khoá; `runs.output_text` (JSONL) giữ vô hạn là đắt sai chỗ (cần *recipe*, không cần *payload*); và AD-11 đã nói memory là first-class persistence layer nên nó **không được** phụ thuộc lifecycle của bảng log.
+
+**Acceptance Criteria (provenance recipe):**
 
 **Given** `Memory.source_id` là Integer (`db.py:2077`) vs `Run.id` = UUID (`db.py:3155`)
 **When** thêm khả năng re-validate
@@ -850,18 +904,9 @@ So that hệ thống biết fact nào đã cũ thay vì trả về thông tin h�
 **When** ai đó muốn đổi truy vấn
 **Then** tạo memory mới, **không** mutate recipe cũ (mutate làm "re-validate" mất nghĩa).
 
-_FR-39 (phần provenance) · **`AD-11.1`** · FR-32. **Dep:** không. **Ưu tiên:** không chặn launch; là **tiền đề của 9.6b**._
+**Acceptance Criteria (re-validation API):**
 
-### Story 9.6b: Source Re-Validation API  `(mới)`  `[GAP — dep: 9.6a]`
-As an agent hoặc người dùng,
-I want hệ thống chạy lại được truy vấn gốc của một memory để biết fact còn đúng không,
-So that memory không trả về thông tin đã cũ kèm citation trông đáng tin — thứ tệ hơn là không trả gì.
-
-> Đây là phần **kể được câu chuyện** *"memory có nguồn sống, tự re-validate"* (brief §4). `9.6a` chỉ mở đường; story này mới là tính năng.
-
-**Acceptance Criteria:**
-
-**Given** một memory có `source_capability` + `source_input` (từ `9.6a`)
+**Given** một memory có `source_capability` + `source_input`
 **When** gọi `revalidate(memory_id)`
 **Then** chạy lại capability với input đó → so sánh kết quả với `content`
 **And** nếu khớp → cập nhật timestamp "last verified"; nếu lệch → hạ `confidence` **và** tạo `MemoryVersion` ghi lại thay đổi
@@ -877,15 +922,16 @@ So that memory không trả về thông tin đã cũ kèm citation trông đáng
 
 **Given** `Run` gốc đã bị xoá sau 30 ngày
 **When** gọi `revalidate`
-**Then** vẫn chạy được (recipe nằm trong `Memory` theo `AD-11.1`) — đây là AC chứng minh quyết định `AD-11.1` đúng.
+**Then** vẫn chạy được (recipe nằm trong `Memory` theo `AD-11.1`)
 
-_FR-39 (phần re-validate) · **`AD-11.1`** · FR-34 · AD-8. **Dep: 9.6a.** **Ưu tiên:** không chặn launch, nhưng **P0 nếu muốn kể câu chuyện re-validation** — xem brief §4, §8, §12 H-3._
+_FR-39 · **`AD-11.1`** · FR-34 · AD-8. **Ưu tiên:** không chặn launch, nhưng **P0 nếu muốn kể câu chuyện re-validation** — xem brief §4, §8, §12 H-3._
 
 ---
 
 ## Epic 4: Chat & Agents
 
 _Đã DONE: 4.5 MCP memory tools, 4.6 research continuity._
+_Đã DONE 2026-08-04: 4.8a–4.8g chat response benchmark & regression gate (FR-42, NFR-10)._
 
 ### Story 4.7: Pointer-Based Tabs with Live Title Resolution  `(mới 2026-07-30)`  `[ready-for-dev]`
 As a user with many open documents and chats,
@@ -899,6 +945,56 @@ So that tab state is fast to save/load and titles stay up to date without stale 
 
 **Kỹ thuật:** refactor `Tab` to pointer-only state, add `useResolvedTabs` hook, resolve document/chat title via Zero/`react-query`, render `TabBar` from resolved tabs.
 _FR-14 · upstream PR #1609._
+
+### Story 4.8a: Extend `NewChatClient` telemetry  `[done]`
+As a benchmark runner, I want `NewChatClient` capture token usage, TTFB, turn id and finish status from `/api/v1/new_chat` SSE, so that `nowing_evals` can measure chat cost, latency and outcome per turn.
+_AC:_ parse `data-token-usage`, `data-turn-info`; expose `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_micros`, `ttfb_ms`, `turn_id`; pass to `ArmResult`.
+_FR-42 · NFR-10 · `nowing_evals/core/clients/new_chat.py`._
+
+### Story 4.8b: Chat Regression Benchmark Suite  `[done/review]`
+As a release engineer, I want `nowing_evals run chat regression` over a representative query set, so that every deploy is checked for latency/cost/citation drift.
+_AC:`nowing_evals run chat regression` ingests cases, runs per-tag (memory, document, deep-research, multi-tool, creative), reports p95 latency/TTFB, error rate, finish rate, citation count, cost/turn, and flags drift against baseline.
+_FR-42 · NFR-10 · `nowing_evals/suites/chat/regression/`._
+
+### Story 4.8c: Production query sampler + anonymizer  `[done]`
+As an eval operator, I want to extract and anonymize real production queries for the benchmark dataset, so that regression tests reflect actual usage without leaking PII.
+_AC: sampler reads production logs; strips PII (phone, email, IPs); outputs `gate.yaml` compatible dataset; opt-in per environment.
+_FR-42 · NFR-10 · `market-*-production-query-sampler-research-2026-08-02.md`._
+
+### Story 4.8d: Chat quality benchmark with LLM-as-judge  `[ready-for-dev]`
+As an ML/QA engineer, I want `chat/quality` judge responses on groundedness, citation accuracy, and helpfulness, so that quality regressions are caught before deploy.
+_AC: `nowing_evals run chat quality` judges each turn; reports aggregate score + per-tag breakdown; uses judge model separate from the tested model.
+_FR-42 · `nowing_evals/suites/chat/quality/`._
+
+### Story 4.8e: CI / deploy gate for chat regression  `[done]`
+As a release engineer, I want CI block deploy if `chat/regression` drifts beyond ratified baseline, so that bad changes do not reach production.
+_AC: CI workflow runs `nowing_evals run chat regression`; fails on unratified drift; sends Slack/Telegram notification; supports `--fail-on-unratified`.
+_NFR-10 · `gate.yaml` · CI workflow._
+
+### Story 4.8f: Benchmark stability — scrape, CAPTCHA, rate-limit, multi-turn  `[done]`
+As a release engineer, I want the benchmark robust against live web variance, so that flaky external factors do not mask real regressions.
+_AC: operational metrics per run; multi-turn thread reuse; scrape drop-rate gating; error classification; CAPTCHA/rate-limit handling.
+_FR-42 · NFR-10 · `nowing_evals` runner._
+
+### Story 4.8g: Benchmark mode/tier matrix and local vs production parity  `[done]`
+As a release engineer, I want benchmark matrix cover speed/balanced/quality/auto modes and local vs prod parity, so that cost/latency claims are validated across configurations.
+_AC: per-mode aggregation (p50/p95/p99); resolved-mode bucket divergence fixed; local/prod comparison report; `one_case_per_tag` fixed.
+_FR-42 · NFR-10 · `report-per-mode.md`._
+
+### Story 4.8h: Mode-Aware Chat Policy for Latency/Cost  `(mới 2026-08-05)`  `[done]`
+As a user,
+I want `new_chat` to respect the requested `mode` (speed/balanced/quality/auto) when selecting tools, retrieval depth, and escalation to deep research,
+So that `chat/regression` passes latency, TTFB, and cost gates without losing answer quality.
+
+**Acceptance Criteria:**
+**Given** `mode=speed` and a question about an uploaded document, **When** the agent runs, **Then** it performs a minimal knowledge-base search, does not use heavy research or web tools, and answers within the speed-mode latency gate.
+**Given** `mode=balanced` with a mentioned document, **When** the agent runs, **Then** it uses a moderate number of knowledge-base calls and tool calls, does not escalate to deep research, and `chat/regression` p95 cost stays under the balanced-mode budget.
+**Given** `mode=quality` and no document is mentioned, **When** the first knowledge-base search returns no relevant hits, **Then** the agent may call deep research for web/deep research.
+**Given** `mode=auto` and a single-document question, **When** the agent has made a configured number of tool calls, **Then** a tool-call budget forces it to answer.
+**And** `chat/regression` with the large-doc dataset passes all p95 latency, TTFB, and cost gates; `chat/quality` still passes correctness/citation/completeness.
+
+_Implementation hints (not AC):_ system prompt per mode + tool availability filter + tool-call budget middleware + `search_knowledge_base` `top_k`/`max_passages` clamp. For `mode=speed`, clamp to `top_k=1, max_passages=4`, no `task`/deep research/web tools, target ≤15s. For `mode=balanced`, allow at most two KB calls and one `task`, no deep research, p95 cost ≤100k micros. For `mode=auto`, force answer after 5 tool calls. Detailed spec: `@doc/specs/2026-08-05/new-chat-mode-aware-latency-cost-policy`.
+_FR-42 · NFR-10 · `sprint-change-proposal-2026-08-05-chat-mode-policy.md`._
 
 ---
 
@@ -919,29 +1015,51 @@ So that I can search, group, view health, and connect new data sources in a focu
 **Kỹ thuật:** add `/connectors` route, build `useConnectorRows` hook, group connectors by type, add mobile drawer for adding connectors.
 _FR-25 · FR-7/8 · upstream PR #1624._
 
+### Story 7.7: MCP Server Tool Expansion  `(mới 2026-08-05)`  `[ready-for-dev]`  `[backfill]`
+
+As an AI agent builder,
+I want to drive Nowing's full backend surface — memory, team memory, image generation, BĐS platforms, automations, reports — through Nowing's own MCP server,
+So that agents can operate the research workspace end-to-end without the web UI.
+
+**Acceptance Criteria:**
+**Given** the MCP server has registered `features/memory`, **When** an agent calls `nowing_memory_list` / `nowing_memory_revalidate`, **Then** it lists workspace memories newest-first and revalidates a memory against its source, preserving previous versions.
+**Given** workspace team memory exists, **When** an agent calls `nowing_workspace_memory_get` / `nowing_workspace_memory_update`, **Then** it reads/writes `GET/PUT /workspaces/{id}/memory`.
+**Given** an agent wants an image, **When** it calls `nowing_image_generate(prompt)`, **Then** it triggers `POST /image-generations`.
+**Given** the scrapers module, **When** an agent calls `nowing_chotot_bds_scrape` / `nowing_muaban_bds_scrape`, **Then** it returns typed BĐS listings via the shared `run_scraper` capability.
+**Given** workspace automations, **When** an agent calls `nowing_automation_list`, **Then** it lists automations from `GET /automations`.
+**Given** workspace reports, **When** an agent calls `nowing_report_list` / `nowing_report_export`, **Then** it lists reports and exports in 7 formats (text decoded, binary base64 + decode hint).
+**Given** `app/mcp_tools.py` and `selfcheck.py`, **When** 11 tools are added, **Then** the catalog adds `TEAM_MEMORY`/`IMAGE_GENERATION`/`AUTOMATION`/`REPORT` groups and selfcheck reports 42 tools.
+**And** (pending Slice 4–5) `nowing_chat` (SSE buffered) and `nowing_automation_run`.
+
+**Kỹ thuật (backfill):** Slice 0–3 đã implement + verified (selfcheck 42 tools, MCP suite 83 passed, ruff clean); Slice 4–5 còn pending chờ `bmad-dev-story`. Khác biệt với FR-8 (External MCP Connectors — Nowing tiêu thụ MCP third-party): story này là MCP server của Nowing (FR-29).
+_FR-29 · FR-21/23 · FR-18/19/20 · FR-32/33/34 · AD-7 · story file `7-7-mcp-server-tool-expansion.md`._
+
 ---
 
 ## Epic 10: Connector & Scraper Expansion
 
 _Tạo 2026-08-03 để chứa các scraper/capability mới ngoài phạm vi epic cũ._
 
-### Story 10.1: Batdongsan.com.vn Scraper  `[review]`
+### Story 10.1: Batdongsan.com.vn Scraper  `[DONE per sprint-status: 10-1]`
 
 As a real-estate researcher or investor in Vietnam,  
 I want to scrape property listings from batdongsan.com.vn,  
 So that I can track market trends, prices, supply, and locations in my workspace.
 
 **Acceptance Criteria:**
-- Gọi mobile API `https://apimap.batdongsan.com.vn/api/p_sync` và giải mã response obfuscate (`gzip → base64 → nibble-swap → Latin-1 JSON`).
-- Trả về danh sách listing đã typed: `listing_id`, `title`, `price`, `area`, `location`, `district`, `city`, `post_date`, `thumbnail_url`, `detail_url`, `phone`, `phone_display`.
-- Hỗ trợ phân trang, `max_pages`/`max_items`, rate limit 0.5s/proxy.
-- Trả về `degraded=true` khi API thay đổi, rate limit, hoặc decode lỗi; không hard-fail.
-- Billing per listing qua `BATDONGSAN_ITEM`; expose qua REST, agent, MCP.
-- Mở trang chi tiết bằng `AsyncStealthySession`, thực thi XHR `DecryptPhone` trong page context để lấy `phone` đầy đủ khi có authenticated cookies.
-- Admin UI `/admin/scraper-accounts` hỗ trợ paste JSON cookies và tự động extract bearer token; `scripts/capture_batdongsan_session.py` hỗ trợ CDP / headed Playwright capture.
-- Tự động pre-warm session (ghé `/dang-nhap`) khi `con.ses.id` sắp hết hạn để duy trì phone unmask trong suốt `accessToken` lifetime.
+**Given** a valid batdongsan.com.vn mobile API request, **When** the scraper receives an obfuscated response, **Then** it decodes the response into a typed listing list with standard fields (`listing_id`, `title`, `price`, `area`, `location`, `district`, `city`, `post_date`, `thumbnail_url`, `detail_url`, `phone`, `phone_display`).
 
-**Kỹ thuật:** thêm `app/proprietary/platforms/batdongsan/` (BSL 1.1) cho fetcher/parser và `app/capabilities/batdongsan/scrape/` (Apache-2.0) cho capability/executor/definition, theo pattern `reddit.scrape`. Xem story file `10-1-batdongsan-scraper.md`.
+**Given** a listing detail page with authenticated cookies, **When** the scraper fetches the phone number, **Then** it returns the full `phone` number and keeps the session valid for the token lifetime.
+
+**Given** a scraping job, **When** pagination, `max_pages`/`max_items`, or a 0.5s/proxy rate limit is applied, **Then** the system respects those limits and returns results without hard-failing.
+
+**Given** the upstream API returns an unexpected shape, rate limit, or decode error, **When** the scraper handles it, **Then** it returns `degraded=true` with a clear reason and does not crash.
+
+**Given** a listing is successfully scraped, **When** billing is recorded, **Then** each listing is billed via the appropriate usage unit and the capability is exposed through REST, agent, and MCP interfaces.
+
+**Given** an admin user pastes JSON cookies on the scraper-accounts page, **When** the system processes them, **Then** it extracts the bearer token automatically, persists the account, and supports session renewal capture.
+
+_Implementation hints (not AC):_ Decode pipeline is `gzip → base64 → nibble-swap → Latin-1 JSON`. Phone unmask uses `AsyncStealthySession` + `DecryptPhone` XHR and pre-warms `/dang-nhap` before `con.ses.id` expires. Billing unit is `BATDONGSAN_ITEM`. Session capture can use `scripts/capture_batdongsan_session.py` with CDP or headed Playwright. Add `app/proprietary/platforms/batdongsan/` (BSL 1.1) for fetcher/parser and `app/capabilities/batdongsan/scrape/` (Apache-2.0) for capability/executor/definition, following the `reddit.scrape` pattern.
 
 _FR-6 · AD-3 · AD-16 · AD-19 · `technical-batdongsan-scraper-research-2026-08-02.md`._
 
@@ -952,14 +1070,15 @@ I want to scrape property listings from `chotot.com` (Nhà Tốt),
 So that I can cross-compare classified listings with batdongsan.com.vn and identify real market prices.
 
 **Acceptance Criteria:**
-- Scrape public listing pages from `chotot.com` mục Nhà Tốt (`nha-dat`, `ban-can-ho`, `ban-nha-rieng`, `cho-thue`).
-- Trả về danh sách listing đã typed: `listing_id`, `title`, `price`, `area`, `location`, `district`, `city`, `post_date`, `thumbnail_url`, `detail_url`, `seller_type`.
-- Xử lý JS-rendered pages và anti-bot bằng headless browser; retry với proxy rotation khi gặp block.
-- Hỗ trợ phân trang, `max_pages`/`max_items`, rate limit 1s/proxy.
-- Trả về `degraded=true` khi gặp CAPTCHA, layout thay đổi, hoặc block; không hard-fail.
-- Billing per listing qua `CHOTOT_BDS_ITEM`; expose qua REST, agent, MCP.
+**Given** a Chotot Nhà Tốt category URL (`nha-dat`, `ban-can-ho`, `ban-nha-rieng`, `cho-thue`), **When** the scraper runs, **Then** it returns a typed listing list with `listing_id`, `title`, `price`, `area`, `location`, `district`, `city`, `post_date`, `thumbnail_url`, `detail_url`, `seller_type`.
 
-**Kỹ thuật:** thêm `app/proprietary/platforms/chotot/` (BSL 1.1) cho fetcher/parser và `app/capabilities/chotot/scrape/` (Apache-2.0) cho capability/executor/definition, theo pattern `reddit.scrape`.
+**Given** a JS-rendered page or anti-bot challenge, **When** the scraper encounters it, **Then** it uses a headless browser, retries with proxy rotation on block, and returns `degraded=true` with reason on CAPTCHA or layout change without hard-failing.
+
+**Given** a scraping job with pagination settings, **When** `max_pages`/`max_items` or a 1s/proxy rate limit is configured, **Then** the system respects those limits and returns results.
+
+**Given** a listing is successfully scraped, **When** billing is recorded, **Then** each listing is billed via `CHOTOT_BDS_ITEM` and the capability is exposed through REST, agent, and MCP interfaces.
+
+**Kỹ thuật (không phải AC):** thêm `app/proprietary/platforms/chotot/` (BSL 1.1) cho fetcher/parser và `app/capabilities/chotot/scrape/` (Apache-2.0) cho capability/executor/definition, theo pattern `reddit.scrape`.
 
 _FR-6 · AD-3 · AD-16 · AD-19 · `market-vietnam-real-estate-research-data-scraping-landscape-research-2026-08-03.md`._
 
@@ -970,31 +1089,38 @@ I want to scrape property listings from `muaban.net` (mục BĐS),
 So that I can broaden cross-compare coverage beyond batdongsan and chotot.
 
 **Acceptance Criteria:**
-- Scrape public listing pages từ `muaban.net` mục `nha-dat` (bán/cho thuê, căn hộ, nhà riêng, đất).
-- Trả về danh sách listing đã typed: `listing_id`, `title`, `price`, `area`, `location`, `district`, `city`, `post_date`, `thumbnail_url`, `detail_url`, `seller_type`.
-- Xử lý phân trang dạng sub-category + region; reuse pattern anti-bot từ chotot nếu có.
-- Hỗ trợ `max_pages`/`max_items`, rate limit 1s/proxy.
-- Trả về `degraded=true` khi gặp block, layout thay đổi, hoặc decode lỗi; không hard-fail.
-- Billing per listing qua `MUABAN_BDS_ITEM`; expose qua REST, agent, MCP.
+**Given** a Muaban BĐS category URL (`nha-dat` bán/cho thuê, căn hộ, nhà riêng, đất), **When** the scraper runs, **Then** it returns a typed listing list with `listing_id`, `title`, `price`, `area`, `location`, `district`, `city`, `post_date`, `thumbnail_url`, `detail_url`, `seller_type`.
 
-**Kỹ thuật:** thêm `app/proprietary/platforms/muaban/` (BSL 1.1) cho fetcher/parser và `app/capabilities/muaban/scrape/` (Apache-2.0) cho capability/executor/definition.
+**Given** sub-category and region pagination, **When** the scraper paginates, **Then** it handles sub-category + region pages and reuses anti-bot patterns from the chotot scraper where applicable.
+
+**Given** a scraping job with pagination settings, **When** `max_pages`/`max_items` or a 1s/proxy rate limit is configured, **Then** the system respects those limits and returns results.
+
+**Given** an upstream block, layout change, or decode error, **When** the scraper handles it, **Then** it returns `degraded=true` with a clear reason and does not hard-fail.
+
+**Given** a listing is successfully scraped, **When** billing is recorded, **Then** each listing is billed via `MUABAN_BDS_ITEM` and the capability is exposed through REST, agent, and MCP interfaces.
+
+**Kỹ thuật (không phải AC):** thêm `app/proprietary/platforms/muaban/` (BSL 1.1) cho fetcher/parser và `app/capabilities/muaban/scrape/` (Apache-2.0) cho capability/executor/definition.
 
 _FR-6 · AD-3 · AD-16 · AD-19 · `market-vietnam-real-estate-research-data-scraping-landscape-research-2026-08-03.md`._
 
-### Story 10.4: Vietnam BĐS Listing Aggregator & Cross-Source Trust Score  `[backlog]`
+### Story 10.4: Vietnam BĐS Listing Aggregator & Cross-Source Trust Score  `[DONE per sprint-status: 10-4]`
 
 As a real-estate researcher,  
 I want the system to merge and score listings from multiple Vietnamese BĐS sources,  
 So that I can trust the price and detect fake/duplicate listings.
 
 **Acceptance Criteria:**
-- Normalize listings từ `batdongsan`, `chotot`, `muaban` (và tương lai P1/P2 sources) vào schema chung.
-- Tính `confidence_score` dựa trên nguồn xác thực, số nguồn trùng, `post_date`, và độ tương đồng giá.
-- Flag conflict khi cùng địa chỉ/title nhưng giá khác >20%.
-- Deduplicate theo phone, địa chỉ chuẩn hóa, hoặc image hash.
-- Expose qua REST/MCP với query theo location, price range, source filter.
+**Given** listings from `batdongsan`, `chotot`, `muaban` and future P1/P2 sources, **When** the aggregator runs, **Then** it normalizes them into a common schema.
 
-**Kỹ thuật:** thêm `app/services/bds_aggregator/` hoặc mở rộng `Memory`/`ResearchThread` để lưu aggregated listing với provenance.
+**Given** a group of normalized listings for the same property, **When** the aggregator computes `confidence_score`, **Then** the score reflects source authority, number of matching sources, `post_date`, and price similarity.
+
+**Given** two listings with the same address or title but price difference greater than 20%, **When** the aggregator compares them, **Then** it flags a conflict for review.
+
+**Given** duplicate listings across sources, **When** the aggregator deduplicates, **Then** it matches by phone, normalized address, or image hash and keeps a single merged record with provenance.
+
+**Given** aggregated listing data, **When** a user or agent queries via REST or MCP, **Then** the system supports filtering by location, price range, and source.
+
+**Kỹ thuật (không phải AC):** thêm `app/services/bds_aggregator/` hoặc mở rộng `Memory`/`ResearchThread` để lưu aggregated listing với provenance.
 
 _FR-6 · FR-32 · FR-39 · AD-11.1 · `market-vietnam-real-estate-research-data-scraping-landscape-research-2026-08-03.md`._
 
@@ -1015,17 +1141,19 @@ I want to enable or disable Telegram notifications for automation runs and recei
 So that I can control whether Nowing messages me on Telegram and quickly review results without keeping the dashboard open.
 
 **Acceptance Criteria:**
-- Toggle visible in User Settings only when the user has an active `ExternalChatBinding` for Telegram.
-- Turning the toggle on/off persists immediately; off stops future Telegram notifications but still creates an in-app notification.
-- When `AutomationRun` reaches `succeeded`/`failed`, create `Notification` type `automation_run_complete`.
-- If the user has an active Telegram binding and preference is enabled, send a Telegram message within 30 seconds.
-- If no binding or preference is off, only in-app notification is created.
-- Message chunked/truncated to fit Telegram 4096 UTF-16 units; `RetryAfter` handled; delivery failure does not fail the automation run.
-- Success messages start with `✅ Automation '<name>' finished successfully`; failure messages start with `❌ Automation '<name>' failed` and include the first error line.
-- Markdown formatting: bold automation name, status highlight, deep link to `/dashboard/{workspace_id}/automations/{automation_id}/runs/{run_id}`.
-- Long messages split into multiple parts, with summary and link in the first part.
+**Given** a user has an active `ExternalChatBinding` for Telegram, **When** they open User Settings, **Then** a Telegram notification toggle is visible.
 
-**Kỹ thuật:** Alembic migration thêm `notification_preferences` JSONB vào `User` (hoặc bảng riêng) (`AD-2`); endpoint `PATCH /api/v1/users/me/notification-preferences`; UI toggle trong `MessagingChannelsContent`; hook vào `app/automations/runtime/executor.py` sau `mark_succeeded`/`mark_failed`; dispatch gửi Telegram qua Celery task; reuse `NotificationService` + `TelegramAdapter` + `chunk_message` và rate-limit.
+**Given** the Telegram notification toggle, **When** a user turns it on or off, **Then** the preference persists immediately; off stops future Telegram notifications but still creates an in-app `Notification`.
+
+**Given** an `AutomationRun` reaches `succeeded` or `failed`, **When** the run completes, **Then** the system creates an in-app `Notification` of type `automation_run_complete`.
+
+**Given** the user has an active Telegram binding and the preference is enabled, **When** an `AutomationRun` completes, **Then** a Telegram message is sent within 30 seconds; if no binding or the preference is off, only the in-app notification is created.
+
+**Given** a Telegram completion message, **When** it is generated, **Then** success messages start with `✅ Automation '<name>' finished successfully`, failure messages start with `❌ Automation '<name>' failed` and include the first error line, the automation name is bold, the status is highlighted, and a deep link to `/dashboard/{workspace_id}/automations/{automation_id}/runs/{run_id}` is included.
+
+**Given** a long completion message, **When** it exceeds 4096 UTF-16 units, **Then** it is split into multiple parts with a summary and link in the first part, and `RetryAfter` is handled; delivery failure does not fail the automation run.
+
+**Kỹ thuật (không phải AC):** Alembic migration thêm `notification_preferences` JSONB vào `User` (hoặc bảng riêng) (`AD-2`); endpoint `PATCH /api/v1/users/me/notification-preferences`; UI toggle trong `MessagingChannelsContent`; hook vào `app/automations/runtime/executor.py` sau `mark_succeeded`/`mark_failed`; dispatch gửi Telegram qua Celery task; reuse `NotificationService` + `TelegramAdapter` + `chunk_message` và rate-limit.
 
 ### Story 11.2: Telegram Write-Back, Builder UI & Chat Resolution `[done]`
 
@@ -1034,14 +1162,19 @@ I want a "Send Telegram message" action that authors a custom message and automa
 So that I can push results or alerts to Telegram without writing JSON or looking up chat IDs.
 
 **Acceptance Criteria:**
-- Action `write_back_telegram` registered with params `text`, optional `chat_id`, `parse_mode` (default `Markdown`), `reply_markup`, `account_id`, `use_system_bot` (default `true`).
-- Resolve bot token: explicit `account_id` BYO → system bot if `use_system_bot=true` → fail otherwise.
-- Resolve default `chat_id` from the automation creator's active `ExternalChatBinding` for the resolved account; fail if absent and `chat_id` missing.
-- Invalid Markdown / malformed `reply_markup` falls back to plain text / no keyboard.
-- Missing token or chat fails the step with a clear error; run continues based on `on_failure` config.
-- Builder action list shows "Send Telegram message" with fields text, chat ID hint, parse mode; serializes as `write_back_telegram`/`writeBackParams` provider `telegram`.
+**Given** the automation builder adds a "Send Telegram message" action, **When** the action is configured, **Then** it is registered as `write_back_telegram` with params `text`, optional `chat_id`, `parse_mode` (default `Markdown`), `reply_markup`, optional `account_id`, and `use_system_bot` (default `true`).
 
-**Kỹ thuật:** package `app/automations/actions/builtin/write_back_telegram/` (`definition.py`, `params.py`, `factory.py`, `invoke.py`); reuse `TelegramAdapter`; mở rộng `nowing_web/lib/automations/builder-schema.ts` và `app/dashboard/[workspace_id]/automations/components/builder/task-item.tsx`.
+**Given** an action with `use_system_bot=true` and no `account_id`, **When** the step runs, **Then** it uses the system bot; if `use_system_bot=false` and `account_id` is missing, the step fails with a clear error.
+
+**Given** a resolved bot account, **When** the step needs a default `chat_id`, **Then** it resolves from the automation creator's active `ExternalChatBinding` for that account; it fails clearly if no binding and no explicit `chat_id` are provided.
+
+**Given** a message with invalid Markdown or malformed `reply_markup`, **When** the step sends it, **Then** it falls back to plain text or no keyboard, and the run continues based on `on_failure` config.
+
+**Given** a missing bot token or chat ID, **When** the step runs, **Then** it fails with a clear error and the automation run continues according to `on_failure`.
+
+**Given** the builder action list, **When** a user selects "Send Telegram message", **Then** the UI shows fields for text, chat ID hint, and parse mode; the action serializes as `write_back_telegram` / `writeBackParams` provider `telegram`.
+
+**Kỹ thuật (không phải AC):** package `app/automations/actions/builtin/write_back_telegram/` (`definition.py`, `params.py`, `factory.py`, `invoke.py`); reuse `TelegramAdapter`; mở rộng `nowing_web/lib/automations/builder-schema.ts` và `app/dashboard/[workspace_id]/automations/components/builder/task-item.tsx`.
 
 ### Story 11.3: Telegram Interactive Bot & Commands `[done]`
 
@@ -1050,19 +1183,25 @@ I want inline keyboards and `/status`, `/run` commands so I can view runs and tr
 So that I can take action without opening the dashboard.
 
 **Acceptance Criteria:**
-- `TelegramClient.send_message` and `edit_message` accept `reply_markup` dict with `inline_keyboard`; `url` opens URL, `callback_data` triggers `callback_query`.
-- Invalid `reply_markup` falls back to message without keyboard and logs a warning.
-- `TelegramAdapter.parse_inbound` recognizes `callback_query` and `inline_message_id`.
-- Callback persisted and dispatched by `inbox_processor`.
-- `view_run:` callback fetches run details and edits/sends message.
-- `rerun:` callback triggers automation and confirms.
-- Bot calls `answerCallbackQuery` to remove loading spinner.
-- `/status` checks `Permission.AUTOMATIONS_READ` and returns latest run or "No recent runs".
-- `/run <name>` checks `Permission.AUTOMATIONS_EXECUTE`, triggers automation, replies "Run started...".
-- Missing name lists available automations; non-existent automation replies "Automation '<name>' not found".
-- Respect workspace visibility/permissions and unpaired onboarding.
+**Given** a bot message with an `inline_keyboard` in `reply_markup`, **When** `TelegramClient.send_message` or `edit_message` is called, **Then** `url` buttons open the URL and `callback_data` buttons trigger a `callback_query`.
 
-**Kỹ thuật:** `TelegramClient` methods `answer_callback_query`, `edit_message_reply_markup`; `TelegramAdapter.edit_message` handles `inline:` peer prefix; `inbox_processor` callback dispatch; `app/gateway/telegram/commands.py` handlers; transient `AutomationTrigger(type=MANUAL)` + `launch_run`.
+**Given** a malformed `reply_markup`, **When** the bot sends or edits a message, **Then** it falls back to a message without keyboard and logs a warning.
+
+**Given** an inbound `callback_query` or `inline_message_id`, **When** `TelegramAdapter.parse_inbound` processes it, **Then** the callback is persisted and dispatched by `inbox_processor`.
+
+**Given** a `view_run:` callback, **When** it is dispatched, **Then** the bot fetches run details and edits or sends a message with the run status.
+
+**Given** a `rerun:` callback, **When** it is dispatched, **Then** the bot triggers the automation and replies with a confirmation.
+
+**Given** any callback query, **When** the bot finishes handling it, **Then** it calls `answerCallbackQuery` to remove the loading spinner.
+
+**Given** a user sends `/status`, **When** the bot checks `Permission.AUTOMATIONS_READ`, **Then** it returns the latest run or "No recent runs".
+
+**Given** a user sends `/run <name>`, **When** the bot checks `Permission.AUTOMATIONS_EXECUTE`, **Then** it triggers the automation and replies "Run started..."; if the name is missing it lists available automations; if the automation does not exist it replies "Automation '<name>' not found".
+
+**Given** an inbound command or callback, **When** the bot resolves workspace context, **Then** it respects workspace visibility, permissions, and unpaired onboarding state.
+
+**Kỹ thuật (không phải AC):** `TelegramClient` methods `answer_callback_query`, `edit_message_reply_markup`; `TelegramAdapter.edit_message` handles `inline:` peer prefix; `inbox_processor` callback dispatch; `app/gateway/telegram/commands.py` handlers; transient `AutomationTrigger(type=MANUAL)` + `launch_run`.
 
 ---
 

@@ -1,9 +1,15 @@
 # generated: 2026-08-04 01:00:00
-# last_updated: 2026-08-04
+# last_updated: 2026-08-05
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
 # story_location: _bmad-output/implementation-artifacts
+#
+# STORY NUMBERING CONVENTION (single source of truth):
+# - `epics.md` uses dot notation (3.10, 9.6, 10.1, 11.1) for human-readable planning.
+# - This file uses dash notation (3-10, 9-6, 10-1, 11-1) for YAML keys.
+# - Dot and dash keys map 1:1 by removing separators (3.10 == 3-10; 11.1 == 11-1).
+# - When a story is merged or split, both files are updated together.
 
 # STATUS DEFINITIONS:
 # ==================
@@ -41,7 +47,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-04 01:00:00"
-last_updated: "2026-08-04"
+last_updated: "2026-08-05"
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
@@ -57,23 +63,23 @@ development_status:
   2-7: ready-for-dev
   2-8: ready-for-dev
   2-9: done
+  2-10: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress  # 3-9 done, 3-15/3-16 ready-for-dev
+  epic-3: done  # P0/P1 stories done; 3-15, 3-16 ready-for-dev expansions
   3-6: done
   3-7: done
   3-9: done  # baseline ratified 2026-08-04; gate.yaml has baseline_ratified=true + baseline_source
-  3-10a: done
-  3-10b: done
+  3-10: done  # merged 3-10a (forensic) + 3-10b (backfill guard) into single story 3.10 in epics.md
   3-11: done
   3-12: done
   3-13: done
-  3-14: done
+  3-14: done  # bounded memory injection + score contract verified; tests pass
   3-15: ready-for-dev
   3-16: ready-for-dev
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done  # P0/P1 stories done; 4-7, 4-8d ready-for-dev expansions
   4-7: ready-for-dev
   4-8a: done
   4-8b: done
@@ -82,6 +88,7 @@ development_status:
   4-8e: done  # CI workflow, cost cap, --fail-on-unratified, Slack/Telegram notification wired
   4-8f: done  # benchmark stability: operational metrics, multi-turn, stress, chainlens latency
   4-8g: done  # benchmark mode/tier matrix + local vs production parity
+  4-8h: done  # mode-aware chat policy for latency/cost (sprint-change-proposal-2026-08-05)
   epic-4-retrospective: optional
 
   epic-5: done
@@ -92,8 +99,9 @@ development_status:
   6-5: done
   epic-6-retrospective: optional
 
-  epic-7: done
+  epic-7: done  # core clients done; 7-4, 7-7 ready-for-dev expansions
   7-4: ready-for-dev
+  7-7: ready-for-dev  # MCP server tool expansion — slices 0-3 done+verified, 4-5 pending
   epic-7-retrospective: optional
 
   epic-8: done  # 8.3, 8.7-8.13 done
@@ -107,15 +115,14 @@ development_status:
   8-13: done
   epic-8-retrospective: done
 
-  epic-9: done
+  epic-9: done  # all P0/P1 stories done; 9-5 deferred
   9-1a: done
   9-1b: done
-  9-2: done  # parse real `costDollars` from ChainLens SSE terminal `done.usage.costDollars` (FR-37); fallback 60k micros only when missing; OQ-7 ADOPTED 2026-08-05
-  9-3: done  # latency budget/State A-B gate fixes, epoch-ms TTFB, mode propagation, rate limit async safety, cost extraction
+  9-2: done  # parse `done.resolvedMode` (top-level canonical), `done.usage.{costDollars, estimated, promptTokens, completionTokens, totalTokens, model}` (FR-37); canonical golden fixtures in tests; fallback 60k micros only when missing; ChainLens 34.1 in-progress for full-pipeline cost (target 2026-08-19)
+  9-3: done  # State A async default; sync gated to speed/balanced; quality/deep async-only; State B ratification pending ChainLens 34.1 + Nowing e2e p95 balanced ≤30s
   9-4: done
   # 9-5 intentionally moved to deferred — see deferred section below.
-  9-6a: done
-  9-6b: done
+  9-6: done  # merged 9-6a (provenance recipe) + 9-6b (re-validation API) into 9.6; both done
   epic-9-retrospective: done
 
   epic-10: done
@@ -126,9 +133,9 @@ development_status:
   epic-10-retrospective: done
 
   epic-11: done
-  11-1-telegram-notification-foundation: done
-  11-2-telegram-write-back-and-builder: done
-  11-3-telegram-interactive-bot-and-commands: done
+  11-1: done  # Telegram notification foundation
+  11-2: done  # Telegram write-back, builder UI & chat resolution
+  11-3: done  # Telegram interactive bot & commands
   epic-11-retrospective: done
 
 # Deferred work that is out of the current sprint / not approved for MVP.

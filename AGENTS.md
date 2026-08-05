@@ -1,5 +1,29 @@
 # Agent Notes — Nowing
 
+## Story 4.8g / 4.8e / 9.2 chat regression verification commands
+
+Backend (from `nowing_backend/`):
+
+```bash
+ruff check app/schemas/new_chat.py app/routes/new_chat_routes.py app/tasks/chat/streaming/flows/new_chat/orchestrator.py app/capabilities/core/access/agent.py app/services/token_tracking_service.py
+pytest tests/unit/capabilities/access/test_agent_tools.py tests/integration/capabilities/chainlens/research/test_research_cost_metering.py -q
+```
+
+Evals (from `nowing_evals/`):
+
+```bash
+ruff check src/nowing_evals/suites/chat/regression/runner.py
+python -m pytest tests -q
+python -m nowing_evals run chat regression --search-space-id 446 --profile quick --environment local --concurrency 1
+python -m nowing_evals run chat regression --search-space-id 446 --profile full --tags deep-research --modes speed,balanced,quality,auto --timeout 600 --environment local --concurrency 1
+python -m nowing_evals report --suite chat
+```
+
+Notes:
+- Default `--timeout` is now 600s so `chat-research-001` can complete in local benchmark mode.
+- `NewChatRequest.mode` is threaded through to `chainlens.research`; the per-mode benchmark matrix should show different latency/cost.
+- Deep-research cost is added to the chat turn's `data-token-usage` SSE when `DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED=true`.
+
 ## Story 8.11 verification commands
 
 Backend (from `nowing_backend/`):

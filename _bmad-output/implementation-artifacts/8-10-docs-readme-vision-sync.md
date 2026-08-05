@@ -12,7 +12,9 @@ status: done
 **Priority:** MEDIUM — OQ-6 / AR-10 / RS-5 (docs-sync bắt buộc, chặn public repo trước khi README nói sai)  
 **Requirements:** OQ-6, AR-10, RS-5  
 **Architecture:** AD-15 (Nowing ↔ ChainLens boundary), AD-16 (dual license), AD-9 (workspace RBAC Owner/Editor/Viewer)  
-**Dependencies:** Story 9.1a (degradation) done; Story 9.4 (docs sync Nowing ↔ ChainLens) done; Story 8.11 done.  
+**Dependencies:** Story 9.1a (degradation) done; Story 9.4 (docs sync Nowing ↔ ChainLens) done; Story 8.11 done.
+
+> **Note (2026-08-05):** This is a historical dev artifact. The canonical Acceptance Criteria for Story 8.10 are in `_bmad-output/planning-artifacts/epics.md`; they were rewritten to remove implementation-specific file paths and migration numbers.  
 
 ## Story
 

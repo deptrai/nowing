@@ -1,5 +1,23 @@
 # Deferred Work
 
+## Deferred from: code review of 3-14-memory-injection-bounded-retrieval (2026-08-05)
+
+- **Finding:** Over-materialization of candidates in `search.py` — `top_k*3` bounded materialization is acceptable for current corpus sizes.
+  - **Action:** Marked `[x] [Review][Defer]` in `3-14-memory-injection-bounded-retrieval.md`.
+  - **Reason / when to revisit:** Revisit if corpus grows beyond ~1M rows or if p95 memory pressure becomes measurable in AC-3 latency evidence.
+
+- **Finding:** RRF ranking tie-break tests are missing exhaustive coverage.
+  - **Action:** Marked `[x] [Review][Defer]` in `3-14-memory-injection-bounded-retrieval.md`.
+  - **Reason / when to revisit:** Add dedicated tie-break tests once AC-3 p95 latency is stable and the search ordering contract is frozen.
+
+- **Finding:** `_is_templated` does not detect Jinja control-flow tags (`{% ... %}`).
+  - **Action:** Marked `[x] [Review][Defer]` in `3-14-memory-injection-bounded-retrieval.md`.
+  - **Reason / when to revisit:** Current automation templates use value placeholders only; upgrade when control-flow templates are used in production.
+
+- **Finding:** D10 / D5 non-automation scope matrix not addressed in chunk B.
+  - **Action:** Marked `[x] [Review][Defer]` in `3-14-memory-injection-bounded-retrieval.md`.
+  - **Reason / when to revisit:** Covered by spec and route/MCP tests; revisit if a new non-automation surface is added.
+
 ## Deferred from: code review of 8-12-workspace-limits (2026-08-04)
 
 - **Finding:** Storage sum does not reconcile deleted backend files — `workspace_limits.py:199-209`.

@@ -225,8 +225,27 @@ Người dùng có thể thêm MCP server bên ngoài vào workspace thông qua 
 
 **Consequences:**
 - `app/routes/composio_routes.py`, `/auth/mcp/{service}/connector/add`.
+- `SearchSourceConnectorType` hỗ trợ `EXA_MCP_CONNECTOR` (Story 2.10) với `server_config` trỏ đến `https://mcp.exa.ai/mcp` và `x-api-key` inject qua header; `is_indexable = false`; agent chỉ discover `web_search_exa` + `web_fetch_exa` ở chế độ `readonly`.
 
 > **FR-24 đã chuyển sang §4.9.** ChainLens Research **không phải** một connector/scraper. Nó là Deep-Research Engine — dependency kiến trúc hạng nhất, governed by `AD-15` (không còn `AD-3`). Xem **§4.9**.
+
+#### FR-8.1: Exa MCP Search Connector `[DONE 2026-08-05]`
+As a workspace user,
+I want to connect the Exa AI MCP server as a first-class search connector,
+So that the agent can answer questions with up-to-date web search and full-page fetch without human-in-the-loop approval.
+
+**Acceptance Criteria:**
+- Owner có thể POST `/search-source-connectors` với `connector_type: "EXA_MCP_CONNECTOR"` và optional `exa_api_key`; backend persist connector với `server_config` trỏ `https://mcp.exa.ai/mcp`, `x-api-key` injected as header, `is_indexable = false`.
+- Multi-agent chat discover chỉ `web_search_exa` và `web_fetch_exa`, đánh dấu `readonly` để không hiện HITL prompt.
+- `web_search_exa` trả về clean text từ top web results.
+- `web_fetch_exa` trả về page content dạng clean markdown khi user cung cấp URL.
+- Alembic migration `190_add_exa_mcp_connector.py` đã apply.
+- Connector type wired vào `CONNECTOR_TYPE_TO_CONNECTOR_AGENT_MAPS`, `SUBAGENT_TO_REQUIRED_CONNECTOR_MAP`, `_CONNECTOR_TYPE_TO_SEARCHABLE`, `BASE_NAME_FOR_TYPE`, và connector config validation.
+
+**Consequences:**
+- `app/db.py` `SearchSourceConnectorType` thêm `EXA_MCP_CONNECTOR`.
+- `app/services/connector/` maps và validation.
+- `app/services/mcp/` discovery + `readonly_tools` filter.
 
 ### 4.3 Knowledge Base
 **Description:** Workspace chứa documents, folders, versions và chunks. Upload qua REST, parse qua Docling/Unstructured/LlamaCloud, chunk + embed. Tìm kiếm hybrid semantic + full-text + reciprocal rank fusion. Trích dẫn liên kết về chunk gốc.
@@ -261,7 +280,7 @@ Click citation badge trong chat mở right panel hiển thị chunk được tr�
 - `nowing_web/components/citation-panel/citation-panel.tsx`.
 - API `/documents/by-chunk/{chunk_id}` với `chunk_window`.
 
-#### FR-32: Long-Term Research Memory  `[BUILT — schema/endpoints/tools; PARTIAL — dedupe/quality]`
+#### FR-32: Long-Term Research Memory  `[DONE — story 3-14; baseline ratified 2026-08-04]`
 Workspace lưu trữ facts, decisions, observations, và kết quả research dưới dạng `Memory`, hỗ trợ hybrid search và truy xuất qua REST/MCP. Mỗi memory có lifecycle: create → update → correct → (decay/expire: post-MVP).
 
 **Phạm vi MVP:** trọng tâm **semantic facts**; schema hỗ trợ đủ 4 memory type nhưng MVP dùng semantic. Bảng `memory_relations` đã có; graph traversal phong phú = fast-follow.
@@ -280,8 +299,7 @@ Workspace lưu trữ facts, decisions, observations, và kết quả research d�
 - ✅ Index HNSW (cosine) + GIN full-text trên `content` + GIN trên `tags`; quyền `memory:read/create/update/delete` (backfill 177).
 
 **Status:**
-- `[BUILT]` schema + endpoints + MCP tools + hybrid indexes + trường `confidence` + auto-extract (migration 177/179).
-- `[PARTIAL]` dedupe primitive đã có (cosine<0.08, `update_on_duplicate`) — cần tune/validate qua eval; recall-quality gate (NFR-8) → `[PARTIAL — in-progress]` story `3-9` (**cổng chặn launch**); `[GAP]` memory type ngoài semantic (defer). Markdown-memory cũ: **FR-36 RESOLVED 2026-07-25** — không mất dữ liệu; giữ deploy-order mig177 → backfill → mig178.
+- `[DONE]` — story `3-14` implemented bounded memory injection, recall, and auto-extract; story `3-9` recall-quality gate completed and baseline ratified 2026-08-04. Schema + endpoints + MCP tools + hybrid indexes + `confidence` + auto-extract are in place (migration 177/179). Dedupe primitive is present and wired (cosine<0.08, `update_on_duplicate`). Non-semantic memory types remain deferred.
 
 #### FR-33: Research Continuity
 Agent có thể tiếp tục một research thread đã có, tự động recall memory liên quan và citations trước đó.
@@ -332,7 +350,7 @@ Migration `177_add_research_memory_tables` tạo bảng `memories` NHƯNG **khô
 **Status:**
 - `[RESOLVED]` FR-36 (2026-07-25): 178 chưa apply prod (alembic 174), `memory_md` rỗng, snapshot đã tạo → **không mất dữ liệu**. Guard + backfill command + tests đã build (`3-10a`, `3-10b` = done). Ràng buộc còn lại: **giữ deploy-order mig177 → backfill → mig178**. Crack đỏ #1 từ PRFAQ **đã đóng**.
 
-#### FR-40: First-Run Value — Research Runs Produce Memory  `[GAP — HIGH, readiness P-4/C-2]`
+#### FR-40: First-Run Value — Research Runs Produce Memory  `[DONE — story 3-13]`
 
 > **Vấn đề, đo bằng code.** `MemoryExtractionService` chỉ có **một** hàm extract: `extract_from_turn` (`app/services/memory/extraction.py:118`). **Không có đường nào extract từ scrape run, deep research, hay document upload.** Cộng với việc workspace mới **không seed gì** (`grep seed|sample|onboarding|welcome|starter|template app/routes/workspaces_routes.py` = **rỗng**; `scripts/` không có seed script), hệ quả là:
 >
@@ -365,6 +383,9 @@ Migration `177_add_research_memory_tables` tạo bảng `memories` NHƯNG **khô
 
 **Truy vết:** brief §9 H-4 → FR-40 → story `3-13`.
 
+**Status:**
+- `[DONE]` — story `3-13` completed; first research/scrape run produces memory with `source_type = SCRAPER_RUN` and provenance, and `nowing_recall` returns non-empty results after the first run.
+
 #### FR-5: AI File Sorting (REMOVED)
 Tính năng sắp xếp file tự động bằng AI đã từng được thêm cờ `ai_file_sort_enabled` ở migration 124 nhưng đã bị gỡ bỏ hoàn toàn ở migration 172.
 
@@ -383,7 +404,7 @@ Người dùng tạo thread, gửi message, nhận streaming response. Thread c�
 - `NewChatThread`, `NewChatMessage` models.
 - `/threads` và `/threads/{id}/messages` endpoints.
 
-#### FR-15: Multi-agent Runtime with Tools
+#### FR-15: Multi-agent Runtime with Tools `[BUILT — DONE per sprint-status: core multi-agent + tools + auto-extract]`
 Main agent gọi tools (scraper, filesystem, memory, report, podcast, …); có subagents chuyên biệt (chainlens, …); recall workspace memory (agent gọi `nowing_recall`); dùng `AgentFeatureFlags` để bật/tắt middleware.
 
 **Consequences:**
@@ -549,10 +570,10 @@ Mỗi assistant turn ghi `TokenUsage` với `prompt_tokens`, `completion_tokens`
 - `app/services/wallet_credit.py`, `app/routes/stripe_routes.py`.
 - `auto_reload_service` tự động nạp khi balance thấp (nếu `AUTO_RELOAD_ENABLED`).
 
-**Gap / Removed:**
-- `[GAP]` FR-31: Không có usage/credit dashboard. `TokenUsage` và `credit_micros_balance` được lưu nhưng chưa có trang/dashboard tổng hợp cho user xem lịch sử sử dụng, chi phí theo workspace/model/thời gian. Buy-credits page chỉ hiển thị current balance.
+**Status:**
+- `[DONE]` FR-31: Credit wallet + Stripe integration implemented (story `8-2`). The usage/credit dashboard is tracked by NFR-7 / story `8-3` and is also `DONE`.
 
-#### FR-41: Admin UI cho Global LLM Model Configuration  `[GAP — mới 2026-07-26]`
+#### FR-41: Admin UI cho Global LLM Model Configuration  `[DONE — story 8-11]`
 Platform admin (không phải workspace Owner/Editor/Viewer — một vai trò mới, cấp toàn hệ thống) có thể xem, thêm, sửa, xoá, bật/tắt các **global chat model** (model dùng chung cho Auto mode/toàn platform, hiện chỉ cấu hình được qua `global_llm_config.yaml` hoặc biến môi trường `GLOBAL_LLM_CONFIG_B64`) thông qua một trang settings trên web UI, **không cần** sửa file/env và restart backend.
 
 **Vấn đề hiện tại (verified 2026-07-25/26):**
@@ -576,7 +597,7 @@ Platform admin (không phải workspace Owner/Editor/Viewer — một vai trò m
 - FE: trang settings mới tái dùng phần lớn component đã có ở `nowing_web/components/settings/model-connections/` (provider picker, connect form, model list) nhưng thêm route/guard riêng cho platform admin (không nằm trong `/dashboard/[workspace_id]/...` vì đây là cấu hình cấp platform, không thuộc một workspace).
 - Billing/cost: model tạo qua UI phải set được `cost_per_1k_input_tokens`/`cost_per_1k_output_tokens` giống YAML, để `pricing_registration.py` đăng ký đúng giá cho LiteLLM (theo đúng cơ chế `AD-8` hiện có — không phải giá phẳng).
 
-**Status:** `[GAP]` — chưa có story dev. Xem Story 8.11.
+**Status:** `[DONE]` — story `8-11` implemented; admin global model config UI and API are complete.
 
 _Trace: AD-8, AD-9 (mở rộng — không đổi 3 system role cấp workspace), `model_connections_routes.py`, `app/config/__init__.py` (`load_global_llm_configs`, `refresh_global_model_catalog`), `app/services/global_model_catalog.py`._
 
@@ -625,21 +646,28 @@ Chi phí mỗi lần gọi Deep-Research Engine phải được ghi nhận theo 
 - Nhưng `mode` default = `"quality"` (`schemas.py:38`), mà target cost cũ của ChainLens là quality $0.0105 / deep research $0.0164 (ChainLens PRD §7.1) → Nowing **under-meter 2.1×–3.3×** trước đây.
 - `grep -rn "costDollars\|cost_dollars" nowing_backend/` → **0 hits**: cost thật chưa được parse.
 
-**Cập nhật 2026-08-02 (ChainLens `report-per-mode.md`, 31 queries):**
+**Cập nhật 2026-08-05 (ChainLens phản hồi):**
 - Parser Nowing đã đọc `costDollars` từ `done.usage` (Story 9.2 done).
+- Parser Nowing đã đọc `done.usage.estimated` và `done.resolvedMode`.
 - Cost thực tế quan sát được (tiêu biểu Nowing dùng `tier=research`):
   - speed: **$0.0353**
   - balanced: **$0.0482**
   - quality: **$0.0671**
   - trung bình toàn bộ benchmark: **$0.0519 / call**.
+- Các số trên là **writer-only** từ ChainLens 42-1; Nowing đánh dấu `"estimated"` cho đến khi ChainLens 34.1 full-pipeline aggregation sẵn sàng.
+- **ChainLens cam kết:** Story 34.1 promote in-progress, target hoàn thành **2026-08-19**; canonical contract `done.resolvedMode` (top-level, source of truth) + `done.usage.{promptTokens, completionTokens, totalTokens, model, costDollars, estimated}` (mirror/fallback); `estimated: false` khi full-pipeline.
+- **Golden fixtures từ ChainLens (2026-08-05):** `sse-done-estimated-2026-08-05.json` và `sse-done-actual-2026-08-05.json` đã sao chép vào `nowing_backend/tests/unit/capabilities/chainlens/research/fixtures/`; Nowing regression guard parse đúng `costBasis`, `resolvedMode`, `promptTokens`, `completionTokens`, `totalTokens`, `model`.
 - `CHAINLENS_QUERY_MICROS_PER_CALL` fallback đã nâng từ 5,000 ($0.005) → **60,000 micros (~$0.06)** để sát với cost thực tế khi engine không emit `costDollars`.
 - `costDollars = 0` chỉ còn trong các benchmark sponsored runway cũ; production hiện nhận cost thực.
 
 **Acceptance Criteria:**
 - Executor parse `costDollars` từ SSE terminal event (ChainLens story `42-1`, *spec ready*) và ghi vào `TokenUsage` với `usage_type = "deep_research"`, kèm `workspace_id` / `user_id` / `thread_id`.
+- Executor parse `done.usage.estimated` (boolean) và set `cost_basis` tương ứng (`"estimated"` / `"actual"`).
+- Executor parse `done.resolvedMode` (canonical top-level) để biết mode thực tế engine resolve; `done.usage.resolvedMode` chỉ là mirror/fallback.
+- Executor parse `done.usage.{promptTokens, completionTokens, totalTokens, model}` để ghi token/cost breakdown đầy đủ.
 - Wallet debit dùng cost thật; flat `CHAINLENS_QUERY_MICROS_PER_CALL` **chỉ còn là fallback** khi engine không emit cost, và mỗi lần dùng fallback phải log warning (để đo tần suất).
 - Cost per deep-research call đo được theo mode, xuất hiện trong aggregate (nối vào NFR-7 dashboard khi có).
-- **Gate:** không chốt bất kỳ con số pricing/subscription nào trước khi FR-37 và story `8-7` (auto-extract spend cap) có số thật.
+- **Gate:** không chốt bất kỳ con số pricing/subscription nào trước khi FR-37 và story `8-7` (auto-extract spend cap) có số thật từ ChainLens 34.1.
 
 **Consequences:**
 - `app/capabilities/chainlens/research/executor.py` — parse usage event.
@@ -685,7 +713,7 @@ self-host Nowing  →  Nowing Cloud API (metered, key theo account)  →  engine
 
 **Đã loại (không mở lại mà không có SCP mới):** phát hành binary/Docker closed-source của engine cho self-host. Blob closed-source trong repo OSS là pattern bị ghét nhất trong cộng đồng OSS; engine gọi provider trả tiền nên self-hoster không có key của các provider đó thì chạy cũng ra rỗng; và doanh thu $0 kèm gánh nặng license enforcement.
 
-#### FR-39: Memory → Scraper-Run Provenance & Source Re-Validation  `[GAP — defect schema, phát hiện 2026-07-25]`
+#### FR-39: Memory → Scraper-Run Provenance & Source Re-Validation  `[DONE — story 9-6]`
 Một `Memory` sinh ra từ dữ liệu scrape phải trỏ được về **đúng lần scrape** đã tạo ra nó, và hệ thống phải chạy lại được truy vấn đó để kiểm fact còn đúng không.
 
 **Vì sao quan trọng:** đây là tiền đề của differentiator *"memory có nguồn sống, tự re-validate"* — thứ phân biệt Nowing với các memory layer khác sau khi "memory có citation" đã thành table-stakes (xem `briefs/brief-Nowing-2026-07-25/brief.md` §4). Chính báo cáo Mem0 (~18/07/2026) thừa nhận memory staleness + temporal abstraction là bài toán chưa ai giải. Nowing có lợi thế cấu trúc vì **sở hữu đường ingest** — nhưng lợi thế đó hiện chưa dùng được.
@@ -716,7 +744,7 @@ Một `Memory` sinh ra từ dữ liệu scrape phải trỏ được về **đú
 - `app/capabilities/core/runs.py` — **không đổi** (đây là điểm chính của quyết định).
 - Governed by **`AD-11.1`**.
 
-**Status:** `[GAP]` — không chặn launch, **nhưng là P0 nếu muốn kể câu chuyện re-validation**. Story **`9.6a`** (provenance recipe) → **`9.6b`** (re-validation API).
+**Status:** `[DONE]` — story `9-6` implemented; provenance recipe and re-validation API are complete.
 
 ## 5. Non-Functional Requirements
 
@@ -736,14 +764,14 @@ Một `Memory` sinh ra từ dữ liệu scrape phải trỏ được về **đú
 - API response p95 < 500ms cho CRUD; scraper call có thể mất vài giây nhưng streaming updates qua SSE.
 - Hybrid search trên pgvector với limit phù hợp.
 
-**NFR-1b — Memory injection (CHẶN mọi lượt chat)** `[GAP]`
+**NFR-1b — Memory injection (CHẶN mọi lượt chat)** `[DONE — story 3-14]`
 - DB time p95 **≤ 150ms**, độc lập với số memory row của workspace (⇒ **O(top-k), không O(N)**).
 - Tổng ký tự memory được inject **≤ 8.000 chars**, **enforce ở đường ĐỌC**. Hiện `MEMORY_HARD_LIMIT = 25.000` chỉ validate **một** `content` ở đường **GHI** (`validate_memory_size`), nên với N fact thì aggregate **không có chặn trên** — middleware chỉ *báo* `chars=` cho LLM và nhờ nó tự consolidate.
 - Phanh duy nhất hiện tại là `<memory_warning>` ở `MEMORY_SOFT_LIMIT = 18.000` — một vòng lặp **phụ thuộc LLM hợp tác**. Nó không thể đóng được lỗ này vì auto-extract (Celery) ghi thêm row mà LLM chưa từng consolidate.
 - Fail-soft hiện tại (`except → return None`) **được giữ**, nhưng phải phát **counter** khi rơi vào nhánh đó — hiện chỉ có `logger.exception`, nên recall vắng mặt là **im lặng**.
 - Đã có sẵn hook đo: `_perf_log.info("[memory_injection] ... db=%.3fs total=%.3fs")`. ⇒ Việc còn lại là **chốt ngân sách + assert**, không phải dựng instrumentation.
 
-**NFR-1c — Recall tool (`nowing_recall`, `/memories/search`)**
+**NFR-1c — Recall tool (`nowing_recall`, `/memories/search`)** `[DONE — story 3-14]`
 - Giữ đúng định nghĩa FR-32: top_k ≤ 5, đã rank hybrid, vượt ngưỡng similarity.
 - p95 **≤ 300ms**.
 
@@ -760,12 +788,15 @@ Một `Memory` sinh ra từ dữ liệu scrape phải trỏ được về **đú
 >
 > **Hệ quả với NFR-8, nặng hơn vẻ ngoài:** oracle `rank_only` chỉ hỏi *"có nằm trong top 5 không"*, **không** hỏi *"có thật sự đủ giống không"*. Gate có thể **PASS** với kết quả rác chỉ vì nó tình cờ rank top-5. ⇒ Đây là **lý do thứ hai** để `3-14` chạy **trước khi chốt số SM-10** của `3-9` — bên cạnh lý do O(N) ở `AD-18` rule 6. Đo baseline dưới oracle bị làm yếu thì con số chốt ra sẽ dễ hơn thực tế.
 
-**NFR-1d — Auto-extract (Celery, KHÔNG chặn lượt chat)**
+**NFR-1d — Auto-extract (Celery, KHÔNG chặn lượt chat)** `[DONE — story 3-14]`
 - **Bất biến:** auto-extract **không được** nằm trên critical path của lượt chat. Cần **regression test** khoá bất biến này (hiện đúng nhờ Celery, nhưng không có test nào giữ).
 - Freshness: memory mới khả dụng cho recall p95 **≤ 60s** sau khi lượt chat kết thúc.
 - Ngân sách chi phí do story `8-7` phủ (spend cap).
 
 **Truy vết:** NFR-1b + NFR-1c + NFR-1d → `AD-18` → story `3-14`. NFR-1b là điều kiện tiên quyết của **NFR-8** (recall quality): không thể đo chất lượng recall khi lượng inject phụ thuộc N.
+
+**Status:**
+- `[DONE]` — story `3-14` completed; bounded memory injection, recall, and auto-extract constraints implemented and asserted.
 
 #### NFR-2: Security & Auth
 - JWT/cookie từ `fastapi-users`; PAT cho external clients.
@@ -795,22 +826,20 @@ Click citation trong chat scroll/highlight được đoạn snippet tương ứn
 **Status:** `[DONE]` — story `3-6-citation-scroll-to-highlight-in-full-document-editor` = `done`.
 - `[NOTE]` giữ nguyên nhận xét cũ: đây thực chất là feature (thuộc FR-13), không phải NFR. Cân nhắc gộp vào FR-13 ở lần dọn PRD tới.
 
-#### NFR-7: Usage & Credit Dashboard (GAP)
-Dữ liệu `TokenUsage` và `credit_micros_balance` đầy đủ ở backend nhưng chưa có dashboard tổng hợp ở web.
+#### NFR-7: Usage & Credit Dashboard `[DONE]`
+Dashboard tổng hợp usage/credit theo workspace, model, connector, thời gian đã được implement ở story `8-3`.
 
-**Gap:**
-- `[GAP]` NFR-7: Thiếu trang usage/credit cho user xem chi tiết theo workspace, model, connector, thời gian.
-- `[NOTE]` Thực chất là feature-gap (không phải NFR); trùng nội dung với `[GAP]` FR-31 — cân nhắc gộp.
+**Status:**
+- `[DONE]` — story `8-3` usage & credit dashboard completed.
 
-#### NFR-8: Recall Quality (eval-gated) — điều kiện TRƯỚC-SHIP
+#### NFR-8: Recall Quality (eval-gated) `[DONE — story 3-9]`
 Chất lượng recall phải được đo và đạt ngưỡng **trước khi ship** lớp memory.
 - Dùng harness `nowing_evals` chạy trên tập truy vấn thực để đo **precision@k** và **noise rate** của `nowing_recall`.
 - Đặt ngưỡng tối thiểu (ví dụ precision@5 ≥ ngưỡng cấu hình; noise ≤ ngưỡng) — **không ship nếu chưa đạt**.
 - Ngưỡng cụ thể chốt cùng SM-10.
 
-**Gap:**
-- `[IN-PROGRESS — 2026-08-04]` NFR-8: Endpoint `/memories/search` + MCP `nowing_recall` đã có. Eval gate — story `3-9-memory-recall-eval-gate` = **`in-progress`** (story file ghi `in-progress`; `sprint-status.yaml` ghi `done` — chưa sync). Crack đỏ #2 từ PRFAQ **đã có harness + gate logic**; ngưỡng SM-10 còn chờ baseline live đo và sign-off.
-- **⚠️ Đây là cổng chặn launch.** `briefs/brief-Nowing-2026-07-25/brief.md` §11: toàn bộ định vị đứng trên chất lượng recall — recall ra nhiễu thì lời hứa "nhớ và tiếp tục được" sụp, và Nowing thành "một research workspace nữa". Không launch ồn ào trước khi gate đóng.
+**Status:**
+- `[DONE]` — story `3-9` completed; eval harness and gate logic are in place, and `sprint-status.yaml` confirms `3-9: done` with baseline ratified 2026-08-04.
 
 #### NFR-9: Deep-Research Latency & Availability Budget (hai trạng thái)
 Latency của Deep-Research Engine là **ràng buộc bên ngoài** với Nowing. NFR này không giả định latency tốt cũng không giả định latency tệ — nó buộc Nowing thiết kế cho trạng thái **chưa biết**, và định nghĩa cổng để nâng cấp khi có số đo.
@@ -875,13 +904,18 @@ Latency của Deep-Research Engine là **ràng buộc bên ngoài** với Nowing
 - Tổng trung bình toàn bộ benchmark: **$0.0519 / call**.
 - Fallback `CHAINLENS_QUERY_MICROS_PER_CALL` đã cập nhật từ 5,000 ($0.005) → **60,000 micros (~$0.06)** để sát với cost thực tế.
 
-**Quyết định ngưỡng A→B (2026-08-02):**
-- **State A vẫn là mặc định.** Không mở khóa sync chat-mode cho `chainlens.research`.
-- Ngưỡng tạm thời để vào State B: p95 ≤ target (speed/balanced ≤ 30s, deep ≤ 60s) **và** Nowing e2e benchmark xác nhận.
-- Cần full 69-query benchmark + e2e từ phía Nowing (bao gồm network + parse + charge) trước khi ratify.
+**Quyết định ngưỡng A→B (2026-08-05 — phản hồi ChainLens):**
+- **State A vẫn là mặc định.** `DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED = false`.
+- **Sync chat-mode chỉ cho `speed` và `balanced`** với target ChainLens đề xuất: ask ≤ 60s, reason ≤ 90s, research ≤ 120s; Nowing e2e benchmark phải xác nhận p95 `balanced` ≤ 30s trước khi mở.
+- **`quality` / `deep-research` / `deep-reasoning` = async-only trong chat.** `mode=auto` phải resolve rõ ràng; `resolvedMode` trong `done` frame cho Nowing biết request đã resolve thành mode nào.
+- Cần full 69-query benchmark + e2e từ phía Nowing (bao gồm network + parse + charge) + full-pipeline cost telemetry (ChainLens 34.1) trước khi ratify State B.
+- **ChainLens cam kết (2026-08-05):** Story 34.1 in-progress, target hoàn thành **2026-08-19**; rerun 29-5 với `deepseek-v3.2` sau 34.1; `DEEPSEEK_DIRECT_MODELS` default chỉ còn `deepseek-v3.2` (loại `v4-pro`, `v4-flash`).
+- **Xác nhận canonical contract:** `done.resolvedMode` là **top-level required key**; `done.usage.resolvedMode` chỉ là mirror/fallback. Nowing parser ưu tiên top-level.
+- **Model allow-list contract:** `chainlens-nowing-model-allow-list-2026-08-05.json` đã publish, liệt kê per-mode stack, sync/async gating, `deepseekDirect.defaultAllowList = ["deepseek-v3.2"]`, `excludedByDefault = ["deepseek-v4-pro", "deepseek-v4-flash"]`.
 
 **Gap:**
-- `[PARTIAL]` NFR-9: đường async deliverable đã có (State A), baseline ChainLens đã có, nhưng ngưỡng A→B chưa đạt; cần benchmark e2e từ phía Nowing + benchmark sạch hơn. Story 9.3.
+- `[DONE — implementation]` State A async deliverable, mode default `balanced`, latency metrics, feature flag.
+- `[PENDING RATIFICATION]` State B sync chat-mode: cần ChainLens 34.1 full-pipeline cost (target 2026-08-19) + rerun 29-5 + Nowing e2e chứng minh p95 `balanced` ≤ 30s. Story 9.3.
 - `[NOTE]` UX tiền đề: State A buộc pattern **async / progress-first**. `ux-designs/` hiện chỉ có scaffold rỗng — cần UX spec trước khi build UI deep-research.
 
 #### NFR-10: Chat Response Regression Gate
