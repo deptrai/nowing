@@ -27,10 +27,10 @@ on:
         required: true
         type: string
       top_k:
-        description: 'Recall window (RS-2 caps this at 5)'
+        description: 'Recall window (RS-2 caps this at 5; must be 1-5)'
         required: false
-        default: '5'
-        type: string
+        default: 5
+        type: number
       purge:
         description: 'Delete the seeded fixture memories when finished'
         required: false
@@ -55,6 +55,14 @@ jobs:
         run: |
           if [ -z "$(echo "${{ inputs.backend_build_id }}" | tr -d '[:space:]')" ]; then
             echo "::error::backend_build_id must not be blank"
+            exit 1
+          fi
+
+      - name: Validate top_k range
+        run: |
+          top_k="${{ inputs.top_k }}"
+          if ! [[ "$top_k" =~ ^[0-9]+$ ]] || [ "$top_k" -lt 1 ] || [ "$top_k" -gt 5 ]; then
+            echo "::error::top_k must be an integer between 1 and 5; got: $top_k"
             exit 1
           fi
 
@@ -88,6 +96,23 @@ jobs:
             exit 1
           fi
 
+      - name: Verify backend_build_id against /health
+        run: |
+          api_base="${NOWING_API_BASE%/}"
+          health_url="${api_base}/health"
+          echo "Probing ${health_url} ..."
+          live_build_id=$(curl -sS --max-time 30 --fail --retry 3 --retry-connrefused "$health_url" | python3 -c "import json,sys; print(json.load(sys.stdin).get('build_id',''))")
+          if [ -z "$live_build_id" ]; then
+            echo "::error::Could not read build_id from ${health_url}"
+            exit 1
+          fi
+          echo "Live build_id: ${live_build_id}"
+          expected_build_id="$(echo "${{ inputs.backend_build_id }}" | tr -d '[:space:]')"
+          if [ "$live_build_id" != "$expected_build_id" ]; then
+            echo "::error::Build ID mismatch: /health reports '${live_build_id}', expected '${expected_build_id}'"
+            exit 1
+          fi
+
       - name: Seed the labeled corpus
         working-directory: nowing_evals
         run: uv run --active python -m nowing_evals ingest memory recall
@@ -96,7 +121,7 @@ jobs:
         working-directory: nowing_evals
         run: >-
           uv run --active python -m nowing_evals run memory recall
-          --top-k ${{ inputs.top_k }}
+          --top-k "${{ inputs.top_k }}"
           --backend-build-id "${{ inputs.backend_build_id }}"
 
       - name: Ship gate
@@ -112,7 +137,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: memory-recall-run-${{ inputs.workspace_id }}
+          name: memory-recall-run-${{ inputs.workspace_id }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.EVAL_DATA_DIR }}/memory/runs/
           if-no-files-found: warn
 

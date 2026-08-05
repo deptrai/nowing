@@ -100,10 +100,12 @@ async def _verify_backend_build_id(ctx: RunContext, expected: str) -> dict[str, 
 
     A7: the build id passed on the CLI must match the build id reported by the
     live backend.  We first try the existing ``/health`` endpoint (no new
-    network dependency); if it does not expose ``build_id`` or cannot be
-    reached, we fall back to the local git HEAD.  In a container without git
-    and a ``/health`` endpoint that does not report a build id, we cannot
-    verify and raise.
+    network dependency); only a match there sets ``verified: True``.  If it
+    does not expose ``build_id`` or cannot be reached, we fall back to the
+    local git HEAD to record what we can, but that still leaves the artifact
+    unverified and the gate will reject it.  In a container without git and a
+    ``/health`` endpoint that does not report a build id, we cannot verify and
+    raise.
     """
 
     expected = expected.strip()
@@ -154,7 +156,8 @@ async def _verify_backend_build_id(ctx: RunContext, expected: str) -> dict[str, 
             f"running backend reports {actual!r} (source={source})"
         )
 
-    return {"expected": expected, "actual": actual, "source": source, "verified": True}
+    verified = source == "health_endpoint"
+    return {"expected": expected, "actual": actual, "source": source, "verified": verified}
 
 
 def _build_provenance(
@@ -175,7 +178,16 @@ def _build_provenance(
             "version": sys.version,
             "platform": _platform.platform(),
         },
-        "uv_lock_hash": _sha256_file(Path(__file__).resolve().parents[3] / "uv.lock"),
+        "uv_lock_hash": _sha256_file(
+            next(
+                (
+                    p / "uv.lock"
+                    for p in Path(__file__).resolve().parents
+                    if (p / "uv.lock").is_file()
+                ),
+                Path(__file__).resolve().parents[5] / "uv.lock",
+            )
+        ),
         "dataset_hashes": {
             "queries": _sha256_file(
                 Path(__file__).resolve().with_name("dataset") / "queries.jsonl"
@@ -195,14 +207,13 @@ def _build_provenance(
             "min_similarity": applied_min_similarity,
         },
         "raw_hash": _sha256_file(raw_path),
-        "raw_row_count": 0,
+        "raw_row_count": None,
     }
     try:
         with raw_path.open("r", encoding="utf-8") as handle:
-            for _ in handle:
-                provenance["raw_row_count"] += 1
-    except OSError:
-        pass
+            provenance["raw_row_count"] = sum(1 for _ in handle)
+    except OSError as exc:
+        raise RuntimeError(f"Could not read raw rows from {raw_path}: {exc}") from exc
     return provenance
 
 

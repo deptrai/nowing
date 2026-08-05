@@ -52,8 +52,8 @@ class AutomationService:
         self._validate_plan_or_raise(payload.definition.execution.on_failure or [])
         # New-write producer: always persist the current schema version, even
         # when the client omits it or still sends the legacy "1.0" (Story 3.14,
-        # D9 point 1/3) — the envelope's "1.0" default is legacy-read
-        # compatibility only, never a value a create/update call should persist.
+        # D9 point 1/3). The parser default is now the new-write producer too,
+        # but create/update make the version explicit before persisting.
         payload.definition.schema_version = "1.1"
 
         # Capture the model profile onto the definition so runs are insulated
@@ -148,8 +148,10 @@ class AutomationService:
             self._validate_plan_or_raise(patch.definition.execution.on_failure or [])
             # Same new-write normalization as create() — an edited definition
             # always persists as the current schema version (Story 3.14, D9
-            # point 1/3). A patch that omits "definition" entirely never
-            # reaches this branch, so the old snapshot/version is untouched.
+            # point 1/3). The parser default is now the new-write producer too,
+            # but create/update make the version explicit before persisting.
+            # A patch that omits "definition" entirely never reaches this
+            # branch, so the old snapshot/version is untouched.
             patch.definition.schema_version = "1.1"
             new_def = patch.definition.model_dump(mode="json", by_alias=True)
             # Model snapshot handling on edit:

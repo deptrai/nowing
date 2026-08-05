@@ -199,6 +199,7 @@ jobs:
           build-args: |
             ${{ matrix.image == 'backend' && format('USE_CUDA={0}', matrix.use_cuda) || '' }}
             ${{ matrix.image == 'backend' && format('CUDA_EXTRA={0}', matrix.cuda_extra) || '' }}
+            ${{ matrix.image == 'backend' && format('NOWING_GIT_SHA={0}', github.sha) || '' }}
 
       - name: Export digest
         run: |

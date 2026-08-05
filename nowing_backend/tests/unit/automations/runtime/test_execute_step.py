@@ -270,3 +270,42 @@ async def test_execute_step_renders_step_params_through_template_engine(
     )
 
     assert received == [{"message": "Hello World"}]
+
+
+@pytest.mark.parametrize(
+    "top_k",
+    [6, "6", True, 0, "abc"],
+    ids=[
+        "int_above_ceiling",
+        "rendered_string_above_ceiling",
+        "bool",
+        "zero",
+        "non_numeric",
+    ],
+)
+async def test_execute_step_v1_1_validates_continue_research_params_before_handler(
+    top_k: object,
+    isolated_action_registry: None,
+) -> None:
+    """A ``schema_version 1.1`` run validates rendered ``continue_research``
+    params against the registered model before building the handler, so an
+    out-of-range, bool, or non-numeric ``top_k`` fails the step immediately."""
+    step = PlanStep(
+        step_id="continue",
+        action="continue_research",
+        params={"research_thread_id": 1, "top_k": top_k},
+    )
+
+    result = await execute_step(
+        step=step,
+        template_context={},
+        action_context=_action_context(),
+        default_max_retries=0,
+        default_retry_backoff="none",
+        default_timeout_seconds=30,
+    )
+
+    assert result["status"] == "failed"
+    assert result["attempts"] == 0
+    assert result["error"]["type"] == "ValidationError"
+    assert "params" in result["error"]["message"]

@@ -33,9 +33,12 @@ class AutomationDefinition(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    # B11: only 1.0 (legacy-read) and 1.1 (new-write producer) are supported.
-    # The default is the legacy parser value; create/update always overwrite to "1.1".
-    schema_version: Literal["1.0", "1.1"] = "1.0"
+    # B11/B3: only 1.0 (legacy-read) and 1.1 (new-write producer) are supported.
+    # The default is the current new-write producer version so a missing
+    # schema_version is treated as today's strict contract; an explicit "1.0"
+    # in a persisted snapshot still selects the legacy contract at runtime.
+    # create/update always overwrite to "1.1" to be explicit.
+    schema_version: Literal["1.0", "1.1"] = "1.1"
     name: str = Field(..., min_length=1, max_length=200)
     goal: str | None = None
     inputs: Inputs | None = None

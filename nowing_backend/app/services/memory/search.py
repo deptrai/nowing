@@ -37,6 +37,24 @@ class ScoredMemory:
     similarity: float | None
 
 
+def _ranked_metadata_reason(score: object, similarity: object) -> str | None:
+    """Validate ranked hit metadata and return a typed reason, or ``None``.
+
+    D6/D8: missing, non-numeric, and non-finite score/similarity are all
+    skipped with a clear reason rather than misclassified as one another.
+    """
+    if score is None or similarity is None:
+        return "missing"
+    try:
+        score = float(score)
+        similarity = float(similarity)
+    except (TypeError, ValueError):
+        return "non_numeric"
+    if not (np.isfinite(score) and np.isfinite(similarity)):
+        return "non_finite"
+    return None
+
+
 class MemoryHybridSearch:
     """RRF fusion of vector similarity and full-text search over Memory."""
 
@@ -218,20 +236,16 @@ class MemoryHybridSearch:
                     exc.reason,
                 )
                 continue
-            if score is None or similarity is None:
+            metadata_reason = _ranked_metadata_reason(score, similarity)
+            if metadata_reason:
                 logger.warning(
-                    "skipping memory %s with non-finite score/similarity", memory.id
-                )
-                continue
-            score = float(score)
-            similarity = float(similarity)
-            if not (np.isfinite(score) and np.isfinite(similarity)):
-                logger.warning(
-                    "skipping memory %s with non-finite score/similarity", memory.id
+                    "skipping memory %s with %s score/similarity",
+                    memory.id,
+                    metadata_reason,
                 )
                 continue
             valid.append(
-                ScoredMemory(memory=memory, score=score, similarity=similarity)
+                ScoredMemory(memory=memory, score=float(score), similarity=float(similarity))
             )
 
         return valid

@@ -181,6 +181,23 @@ def test_build_transcript_query_returns_none_when_nothing_usable() -> None:
     assert mw_module._build_transcript_query(messages) is None
 
 
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("line1\r\nline2", "line1\nline2"),
+        ("line1\rline2", "line1\nline2"),
+        ("line1\nline2", "line1\nline2"),
+        ("line1\vline2", "line1\nline2"),
+        ("line1\fline2", "line1\nline2"),
+        ("line1\u2028line2", "line1\nline2"),
+        ("line1\u2029line2", "line1\nline2"),
+    ],
+)
+def test_build_transcript_query_normalizes_line_terminators(raw: str, expected: str) -> None:
+    query = mw_module._build_transcript_query([HumanMessage(content=raw)])
+    assert query == f"human: {expected}"
+
+
 def test_build_transcript_query_skips_protected_system_and_empty_messages() -> None:
     messages = [
         SystemMessage(content=f"{PROTECTED_SYSTEM_PREFIXES[0]}\nsome tree"),
@@ -486,3 +503,18 @@ async def test_single_message_thread_inserts_system_message_at_index_zero(
     result = await mw.abefore_agent({"messages": [HumanMessage(content="hi")]}, None)
     assert result is not None
     assert isinstance(result["messages"][0], SystemMessage)
+
+
+@pytest.mark.asyncio
+async def test_transcript_query_render_error_records_query_failure(monkeypatch) -> None:
+    failures = _install_failure_recorder(monkeypatch)
+    _install_embedding(monkeypatch)
+
+    def _boom(messages: list[Any]) -> str | None:
+        raise RuntimeError("unexpected normalization failure")
+
+    monkeypatch.setattr(mw_module, "_build_transcript_query", _boom)
+    mw = _mw()
+    result = await mw.abefore_agent({"messages": [HumanMessage(content="hi")]}, None)
+    assert result is None
+    assert failures == [{"scope": "user", "stage": "query", "reason": "render_error"}]

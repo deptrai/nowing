@@ -670,6 +670,7 @@ async def lifespan(app: FastAPI):
 
     _enable_slow_callback_logging(threshold_sec=0.5)
     init_otel(app)
+    _warn_if_build_id_unknown()
     await create_db_and_tables()
     await _sweep_stale_scraper_runs()
     await setup_checkpointer_tables()
@@ -1193,6 +1194,16 @@ def _backend_build_id() -> str:
 
     # Detached HEAD stores the SHA directly.
     return ref
+
+
+def _warn_if_build_id_unknown() -> None:
+    """Warn at startup if /health would report an unlabeled build."""
+    if _backend_build_id() == "unknown":
+        logging.getLogger(__name__).warning(
+            "[startup] NOWING_GIT_SHA is not set and no .git metadata is "
+            "available; /health will report build_id='unknown'. Set "
+            "NOWING_GIT_SHA in the container build / deployment environment."
+        )
 
 
 @app.get("/health", tags=["health"])

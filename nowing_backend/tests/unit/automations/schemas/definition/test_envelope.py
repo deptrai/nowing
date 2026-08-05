@@ -26,12 +26,39 @@ def test_automation_definition_accepts_minimal_valid_input_with_sensible_default
     )
 
     assert definition.name == "Daily digest"
-    assert definition.schema_version == "1.0"
+    assert definition.schema_version == "1.1"
     assert definition.goal is None
     assert definition.inputs is None
     assert definition.triggers == []
     # ``models`` is optional (populated server-side at create()).
     assert definition.models is None
+
+
+def test_automation_definition_default_schema_version_is_new_write_producer() -> None:
+    """An omitted ``schema_version`` defaults to the new-write producer (1.1),
+    so missing-version snapshots are validated against the strict contract."""
+    definition = AutomationDefinition(
+        name="Daily digest",
+        plan=[PlanStep(step_id="s1", action="agent_task")],
+    )
+    dumped = definition.model_dump(mode="json", by_alias=True)
+
+    assert dumped["schema_version"] == "1.1"
+    assert AutomationDefinition.model_validate(dumped).schema_version == "1.1"
+
+
+def test_automation_definition_explicit_legacy_version_round_trips() -> None:
+    """A persisted ``schema_version: "1.0"`` snapshot is still accepted and
+    threaded through unchanged, so the runtime can select the legacy contract."""
+    definition = AutomationDefinition(
+        name="Legacy",
+        schema_version="1.0",
+        plan=[PlanStep(step_id="s1", action="agent_task")],
+    )
+    dumped = definition.model_dump(mode="json", by_alias=True)
+
+    assert dumped["schema_version"] == "1.0"
+    assert AutomationDefinition.model_validate(dumped).schema_version == "1.0"
 
 
 def test_automation_definition_models_round_trip() -> None:

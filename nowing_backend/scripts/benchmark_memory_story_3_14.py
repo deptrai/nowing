@@ -42,6 +42,7 @@ import argparse
 import asyncio
 import contextlib
 import hashlib
+import html
 import json
 import logging
 import math
@@ -179,8 +180,11 @@ def _build_sentinel_manifest(manifest: CellManifest) -> dict[int, str]:
         for row_id, sentinel in pairs:
             mapping[row_id] = sentinel
     if manifest.canonical_recency:
+        # Recency rows are inserted rank 5..1, so row_ids[-5:] is
+        # [rank5_id, ..., rank1_id]. canonical_recency is rank 1..5,
+        # so reverse the id tail to align rank1_id with the rank1 sentinel.
         for row_id, sentinel in zip(
-            manifest.row_ids[-RECENCY_TAIL_ROWS:],
+            manifest.row_ids[-RECENCY_TAIL_ROWS:][::-1],
             manifest.canonical_recency,
             strict=True,
         ):
@@ -238,7 +242,7 @@ class CellManifest:
     identity: dict[str, Any]
     row_ids: list[int] = field(default_factory=list)
     canonical_by_query: dict[int, list[tuple[int, str]]] = field(default_factory=dict)
-    canonical_recency: list[tuple[int, str]] = field(default_factory=list)
+    canonical_recency: list[str] = field(default_factory=list)
     query_text_raw: dict[int, str] = field(default_factory=dict)
     query_embedding_raw: dict[int, list[float]] = field(default_factory=dict)
     query_embedding_wrapped: dict[int, list[float]] = field(default_factory=dict)
@@ -532,6 +536,7 @@ async def _make_user(session: AsyncSession, tag: str) -> User:
         is_active=True,
         is_superuser=False,
         is_verified=True,
+        display_name=f"{tag} User",
     )
     session.add(user)
     await session.flush()
@@ -635,7 +640,7 @@ async def bulk_insert_rows(
 @dataclass
 class CellTiming:
     cell: str
-    db_ms: list[float] = field(default_factory=list)
+    db_ms: list[float | None] = field(default_factory=list)
     total_ms: list[float] = field(default_factory=list)
     verification_failures: list[str] = field(default_factory=list)
     per_sample: list[dict[str, Any]] = field(default_factory=list)
@@ -686,6 +691,7 @@ def _verify_injection_payload(
     expected_sentinels: list[str],
     failures: list[str],
     is_team: bool,
+    display_name: str | None = None,
 ) -> bool:
     """B17: assert the real middleware payload is one bounded wrapper with all sentinels."""
 
@@ -703,6 +709,29 @@ def _verify_injection_payload(
             f"{label}: payload does not contain exactly one {open_tag} wrapper"
         )
         return False
+
+    if not is_team:
+        # Private cells must place the escaped first name inside <user_name>.
+        if not display_name or not display_name.strip():
+            failures.append(
+                f"{label}: personal cell missing display_name for <user_name> verification"
+            )
+            return False
+        name_open = payload.find("<user_name>")
+        name_close = payload.find("</user_name>")
+        if name_open == -1 or name_close == -1 or name_close <= name_open:
+            failures.append(
+                f"{label}: payload does not contain a valid <user_name> block"
+            )
+            return False
+        first_name = html.escape(display_name.strip().split()[0], quote=True)
+        name_content = payload[name_open + len("<user_name>") : name_close]
+        if not name_content.startswith(first_name):
+            failures.append(
+                f"{label}: expected <user_name> to start with first name {first_name!r}"
+            )
+            return False
+
     for i, sentinel in enumerate(expected_sentinels):
         # Each sentinel must appear exactly once and in canonical order.
         if payload.count(sentinel) != 1:
@@ -725,6 +754,9 @@ async def run_injection_cell(
 ) -> CellTiming:
     is_team = manifest.kind == "injection-team"
     identity = manifest.identity
+    display_name = (
+        identity["owner"].display_name if is_team else identity["user"].display_name
+    )
     timing = CellTiming(cell=manifest.cell)
     timing.sentinel_manifest = manifest.sentinel_manifest
     timing.expected = {
@@ -744,7 +776,7 @@ async def run_injection_cell(
         else ChatVisibility.PRIVATE,
     )
 
-    db_timer: dict[str, float] = {}
+    db_timer: dict[str, float | None] = {"start": None, "end": None}
     real_shielded = middleware_module.shielded_async_session
 
     @contextlib.asynccontextmanager
@@ -793,7 +825,13 @@ async def run_injection_cell(
                 ):
                     payload = msg.content
                     break
-        db_ms = (db_timer["end"] - db_timer["start"]) * 1000
+        db_start = db_timer["start"]
+        db_end = db_timer["end"]
+        db_ms = (
+            (db_end - db_start) * 1000
+            if db_start is not None and db_end is not None
+            else None
+        )
         total_ms = (total_end - total_start) * 1000
         return db_ms, total_ms, hits, payload
 
@@ -825,6 +863,7 @@ async def run_injection_cell(
             expected_sentinels=expected_sentinels,
             failures=timing.verification_failures,
             is_team=is_team,
+            display_name=display_name,
         )
         timing.per_sample.append(
             {
@@ -977,21 +1016,6 @@ async def run_thread_recency_cell(
     ws_id = identity["workspace"].id
     thread = identity["thread"]
     auth = AuthContext.session(owner)
-
-    expected_ids, expected_sentinels = (
-        _extract_expected(
-            [
-                (row_id, sentinel)
-                for row_id, sentinel in zip(
-                    manifest.row_ids[-RECENCY_TAIL_ROWS:],
-                    manifest.canonical_recency,
-                    strict=True,
-                )
-            ]
-        )
-        if False
-        else (None, None)
-    )  # placeholder overwritten below for clarity
 
     # Canonical recency IDs are simply the last RECENCY_TAIL_ROWS assigned ids,
     # in reverse insertion order (rank1 = most recent = last inserted).
@@ -1415,7 +1439,10 @@ def evaluate_gates(cell_timings: dict[str, CellTiming]) -> dict[str, Any]:
     gates: dict[str, Any] = {"absolute": {}, "ratio": {}, "delta": {}, "failures": []}
 
     def db_p95(cell: str) -> float:
-        return stats_for(cell_timings[cell].db_ms)["p95_ms"]
+        samples = [x for x in cell_timings[cell].db_ms if x is not None]
+        if not samples:
+            return 0.0
+        return stats_for(samples)["p95_ms"]
 
     def total_p95(cell: str) -> float:
         return stats_for(cell_timings[cell].total_ms)["p95_ms"]
@@ -1743,9 +1770,13 @@ async def main_async(args: argparse.Namespace) -> int:
         # B20: per-sample expected/actual evidence plus sentinel/vector audit.
         provenance["samples_stats"] = {
             cell: {
-                "db_ms": t.db_ms or None,
+                "db_ms": [x for x in t.db_ms if x is not None] or None,
                 "total_ms": t.total_ms,
-                "db_stats": stats_for(t.db_ms) if t.db_ms else None,
+                "db_stats": (
+                    stats_for([x for x in t.db_ms if x is not None])
+                    if any(x is not None for x in t.db_ms)
+                    else None
+                ),
                 "total_stats": stats_for(t.total_ms),
                 "verification_failures": t.verification_failures,
                 "expected": t.expected,

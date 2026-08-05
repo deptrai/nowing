@@ -1,4 +1,4 @@
-"""``RunService`` — read-only access to automation run history."""
+"""``RunService`` — read-only access to automation run history + manual launch."""
 
 from __future__ import annotations
 
@@ -7,15 +7,19 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
+from app.automations.dispatch.errors import DispatchError
+from app.automations.dispatch.launch import launch_run
+from app.automations.persistence.enums.trigger_type import TriggerType
 from app.automations.persistence.models.automation import Automation
 from app.automations.persistence.models.run import AutomationRun
+from app.automations.persistence.models.trigger import AutomationTrigger
 from app.db import Permission, get_async_session
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
 
 
 class RunService:
-    """Read-only access to ``AutomationRun`` history."""
+    """Access to ``AutomationRun`` history, plus manual (on-demand) launch."""
 
     def __init__(self, *, session: AsyncSession, auth: AuthContext) -> None:
         self.session = session
@@ -55,6 +59,33 @@ class RunService:
         if run is None or run.automation_id != automation_id:
             raise HTTPException(status_code=404, detail=f"run {run_id} not found")
         return run
+
+    async def launch(self, *, automation_id: int) -> AutomationRun:
+        """Kick off a manual run for an automation, returning the PENDING run.
+
+        Mirrors the Telegram ``_handle_rerun`` pattern: authorize with
+        ``AUTOMATIONS_EXECUTE``, build a transient ``MANUAL`` trigger, and
+        delegate to ``launch_run`` (resolve + validate + snapshot + enqueue).
+        Fire-and-return — the caller does not wait for execution.
+        """
+        await self._authorize(automation_id, Permission.AUTOMATIONS_EXECUTE.value)
+        trigger = AutomationTrigger(
+            automation_id=automation_id,
+            type=TriggerType.MANUAL,
+            params={},
+            static_inputs={},
+        )
+        try:
+            return await launch_run(
+                session=self.session,
+                trigger=trigger,
+                runtime_inputs={"fired_by": "mcp"},
+            )
+        except DispatchError as exc:
+            message = str(exc)
+            if "not found" in message:
+                raise HTTPException(status_code=404, detail=message) from exc
+            raise HTTPException(status_code=400, detail=message) from exc
 
     async def _authorize(self, automation_id: int, permission: str) -> Automation:
         automation = await self.session.get(Automation, automation_id)

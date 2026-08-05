@@ -97,6 +97,37 @@ def test_top_k_rejects_bool() -> None:
         ContinueResearchActionParams(research_thread_id=1, top_k=True)
 
 
+def test_top_k_accepts_rendered_numeric_string() -> None:
+    """B1: a Jinja-rendered numeric string is coerced to ``int`` and accepted."""
+    from app.automations.actions.builtin.continue_research.params import (
+        ContinueResearchActionParams,
+    )
+
+    params = ContinueResearchActionParams(research_thread_id=1, top_k="3")
+    assert params.top_k == 3
+    assert isinstance(params.top_k, int)
+
+
+def test_top_k_rejects_non_numeric_string() -> None:
+    """B1: non-numeric strings (e.g. bad Jinja output) are rejected."""
+    from app.automations.actions.builtin.continue_research.params import (
+        ContinueResearchActionParams,
+    )
+
+    with pytest.raises(ValueError):
+        ContinueResearchActionParams(research_thread_id=1, top_k="abc")
+
+
+def test_top_k_rejects_float() -> None:
+    """B1: floats are not valid ``top_k`` values (must be integer)."""
+    from app.automations.actions.builtin.continue_research.params import (
+        ContinueResearchActionParams,
+    )
+
+    with pytest.raises(ValueError):
+        ContinueResearchActionParams(research_thread_id=1, top_k=3.0)
+
+
 # --- _LegacyContinueResearchActionParams (schema_version 1.0 reads only) ---------
 
 

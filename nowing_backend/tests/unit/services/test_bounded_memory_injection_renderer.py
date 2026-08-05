@@ -296,6 +296,20 @@ def test_name_only_compose_error_when_budget_smaller_than_tag_overhead() -> None
     assert exc_info.value.reason == "compose_error"
 
 
+def test_huge_record_with_name_omits_name_and_truncates_body() -> None:
+    """A6: a single record far over budget must still render without crashing."""
+    hits = [_hit("W" * 20_000, MemoryType.SEMANTIC, "2026-07-26")]
+    result = render_bounded_memory_injection(
+        hits, scope="user", display_name="Ada", max_chars=8_000
+    )
+    assert result is not None
+    assert len(result) <= 8_000
+    assert "<user_name>" not in result
+    assert "<user_memory>" in result
+    assert "[...truncated...]" in result
+    assert "<memory_warning>" in result
+
+
 # --- _truncate_atoms primitive -----------------------------------------------
 
 

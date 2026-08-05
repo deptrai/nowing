@@ -154,6 +154,9 @@ ENV MALLOC_MMAP_MAX_=65536
 # https://docs.docker.com/reference/compose-file/build/#additional_contexts
 FROM models AS e2e
 
+ARG NOWING_GIT_SHA
+ENV NOWING_GIT_SHA=${NOWING_GIT_SHA:-unknown}
+
 # Same source copy as production. .dockerignore filters out tests/.
 COPY . .
 
@@ -180,6 +183,9 @@ CMD ["/app/scripts/docker/entrypoint.e2e.sh"]
 # ─── Stage 5: production (published ghcr.io image) ──────────────────────────
 # CI pins `target: production`; also the default for `docker build` / dev compose.
 FROM models AS production
+
+ARG NOWING_GIT_SHA
+ENV NOWING_GIT_SHA=${NOWING_GIT_SHA:-unknown}
 
 # Copy source code (tests/ excluded by .dockerignore — production never ships tests).
 COPY . .

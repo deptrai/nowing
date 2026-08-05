@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -23,7 +23,10 @@ from app.services.memory.revalidation_service import (
     RevalidationService,
 )
 from app.services.memory.search import MemoryHybridSearch
-from app.services.memory.vector import validate_single_embedding_result
+from app.services.memory.vector import (
+    VectorValidationError,
+    validate_single_embedding_result,
+)
 from app.users import get_auth_context
 from app.utils.document_converters import embed_texts
 from app.utils.rbac import check_permission
@@ -96,18 +99,29 @@ async def search_memory(
 
     query_embedding = None
     if body.query.strip():
-        embeddings = await asyncio.to_thread(embed_texts, [body.query])
+        try:
+            embeddings = await asyncio.to_thread(embed_texts, [body.query])
+        except Exception as exc:
+            raise VectorValidationError("provider_error") from exc
         query_embedding = validate_single_embedding_result(embeddings)
+
     search = MemoryHybridSearch(session)
-    results = await search.search(
-        workspace_id=workspace_id,
-        query=body.query,
-        query_embedding=query_embedding,
-        top_k=body.top_k,
-        type=body.type,
-        tags=body.tags,
-        research_thread_id=body.research_thread_id,
-    )
+    try:
+        results = await search.search(
+            workspace_id=workspace_id,
+            query=body.query,
+            query_embedding=query_embedding,
+            top_k=body.top_k,
+            type=body.type,
+            tags=body.tags,
+            research_thread_id=body.research_thread_id,
+        )
+    except VectorValidationError as exc:
+        status = 500 if exc.reason == "provider_error" else 422
+        raise HTTPException(
+            status_code=status,
+            detail={"code": exc.reason, "message": f"embedding validation failed: {exc.reason}"},
+        ) from exc
 
     return MemorySearchResponse(
         items=[
@@ -117,6 +131,36 @@ async def search_memory(
             for hit in results
         ]
     )
+
+
+@router.get(
+    "/workspaces/{workspace_id}/memories",
+    response_model=list[MemoryRead],
+)
+async def list_memories(
+    workspace_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+    limit: int = Query(default=20, ge=1, le=100),
+    type: str | None = Query(default=None),
+    tags: str | None = Query(default=None),
+):
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.MEMORY_READ.value,
+        error_message="You don't have permission to read memory in this workspace",
+    )
+
+    repo = MemoryRepository(session)
+    memories = await repo.list_memories(
+        workspace_id=workspace_id,
+        limit=limit,
+        type=type,
+        tags=tags.split(",") if tags else None,
+    )
+    return [_to_memory_read(memory) for memory in memories]
 
 
 @router.patch("/memories/{memory_id}", response_model=MemoryRead)
@@ -203,7 +247,9 @@ async def revalidate_memory(
             actor_id=auth.user.id,
         )
     except RevalidationError as exc:
-        raise HTTPException(status_code=422, detail={"code": exc.code, "message": exc.message}) from exc
+        raise HTTPException(
+            status_code=422, detail={"code": exc.code, "message": exc.message}
+        ) from exc
 
     return _to_memory_read(result.memory)
 

@@ -11,11 +11,13 @@ the thread and top-N sorts them — O(thread size). The Story 3.14 benchmark
 3.33ms at 100 rows to 30.12ms at 50,000 rows (ratio 9.05, gate <= 3.0), with
 the captured EXPLAIN showing Index Scan -> Sort -> Limit.
 
-A composite btree on ``(research_thread_id, created_at, id)`` lets the planner
-satisfy the ORDER BY via a backward index scan under the leading-column
-equality and stop at LIMIT 5 — O(log n). Partial (``research_thread_id IS NOT
-NULL``) because the recency query always binds a concrete thread id and most
-memories are not thread-scoped.
+A composite btree on ``(workspace_id, research_thread_id, created_at, id)``
+lets the planner satisfy the ORDER BY via a backward index scan under the
+leading-column equalities and stop at LIMIT 5 — O(log n). Partial
+(``research_thread_id IS NOT NULL``) because the recency query always binds a
+concrete thread id and most memories are not thread-scoped. ``workspace_id``
+leads because every recency filter is scoped to a workspace before a thread
+is appended (see ``_scope_conditions`` in ``app/services/memory/search.py``).
 
 Revision ID: 181
 Revises: 180
@@ -41,7 +43,7 @@ def upgrade() -> None:
     with op.get_context().autocommit_block():
         op.execute(
             f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {INDEX_NAME} "
-            "ON memories (research_thread_id, created_at, id) "
+            "ON memories (workspace_id, research_thread_id, created_at, id) "
             "WHERE research_thread_id IS NOT NULL"
         )
 

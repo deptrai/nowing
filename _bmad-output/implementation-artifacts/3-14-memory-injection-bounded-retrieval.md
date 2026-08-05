@@ -981,7 +981,7 @@ No patches were intentionally skipped.
   [`benchmark_memory_story_3_14_freshness.py:53-81,201-215`](../../nowing_backend/scripts/benchmark_memory_story_3_14_freshness.py#L53)
 - [ ] [Review][Patch] Freshness identity tạo user/workspace không có wallet/credits; `check_extract_allowed` có thể từ chối extraction.
   [`benchmark_memory_story_3_14_freshness.py:84-123`](../../nowing_backend/scripts/benchmark_memory_story_3_14_freshness.py#L84)
-- [ ] [Review][Patch] Module docstring/parser description của `benchmark_memory_story_3_14.py` vẫn ghi AC-5 skipped, mâu thuẫn với `finally` gọi harness thật.
+- [ ] [Review][Patch] Module docstring/parser description của `benchmark_memory_story_3_14.py` vẫn ghi AC-5 skipped, mâu thuận với `finally` gọi harness thật.
   [`benchmark_memory_story_3_14.py:20-25,1833-1835`](../../nowing_backend/scripts/benchmark_memory_story_3_14.py#L20)
 - [ ] [Review][Patch] `run_freshness_harness` nhận `n=0` và báo p95=None, gây hiểu nhầm.
   [`benchmark_memory_story_3_14_freshness.py:189-216,302-335`](../../nowing_backend/scripts/benchmark_memory_story_3_14_freshness.py#L189)
@@ -992,3 +992,100 @@ No patches were intentionally skipped.
   [`benchmark_memory_story_3_14_freshness.py:69-74`](../../nowing_backend/scripts/benchmark_memory_story_3_14_freshness.py#L69)
 - [ ] [Review][Patch] `import asyncio` nằm trong function thay vì module top.
   [`benchmark_memory_story_3_14_freshness.py:199`](../../nowing_backend/scripts/benchmark_memory_story_3_14_freshness.py#L199)
+
+#### Round 3 — Chunked diff review (A/B/C/D) — 2026-08-05
+
+**Tổng: 0 decision-needed, 28 patch, 4 defer, 8 dismissed as noise / pre-existing / already fixed in working tree.**
+
+Đây là pass cuối trên `_bmad-output/reviews/3-14-chunk-{A,B,C,D}.diff` + `3-14-spec.md`, so sánh với working tree `develop` hiện tại. Full diff report nằm ở `_bmad-output/reviews/3-14-chunk-*.diff`; dưới đây là tổng hợp đã triage.
+
+##### HIGH (7)
+
+- [x] [Review][Patch] C1. `runner.py` provenance lấy `workspace_id` từ `ctx.suite_state.memory_workspace_id` — `SuiteState` không có trường này; `RunContext` đúng là `ctx.config.memory_workspace_id`.
+  [`nowing_evals/src/nowing_evals/suites/memory/recall/runner.py`](../../nowing_evals/src/nowing_evals/suites/memory/recall/runner.py)
+- [x] [Review][Patch] C2. `uv_lock_hash` resolve từ `parents[3]` nên trỏ nhầm vào `src/nowing_evals`, không tìm thấy `uv.lock`; phải lấy từ repo root (`parents[5]` hoặc walk-up).
+  [`nowing_evals/src/nowing_evals/suites/memory/recall/runner.py:178`](../../nowing_evals/src/nowing_evals/suites/memory/recall/runner.py#L178)
+- [x] [Review][Patch] C3. Build ID verification fallback `git_filesystem` vẫn trả `verified: True`; `gate.py` không kiểm `source`. Chỉ `health_endpoint` mới được coi là verified.
+  [`nowing_evals/src/nowing_evals/suites/memory/recall/runner.py:139-157`](../../nowing_evals/src/nowing_evals/suites/memory/recall/runner.py#L139), [`nowing_evals/src/nowing_evals/core/gate.py`](../../nowing_evals/src/nowing_evals/core/gate.py)
+- [x] [Review][Patch] D1. Migration 181 `ix_memories_thread_recency` thiếu `workspace_id` leading so với query và `db.py`; phải là `(workspace_id, research_thread_id, created_at, id)` partial.
+  [`nowing_backend/alembic/versions/181_add_memories_thread_recency_index.py`](../../nowing_backend/alembic/versions/181_add_memories_thread_recency_index.py), [`nowing_backend/app/db.py`](../../nowing_backend/app/db.py)
+- [x] [Review][Patch] D3. Functional-dependency statistics không đủ để recency plan deterministic; cần composite index leading `workspace_id` + `ANALYZE`.
+  [`nowing_backend/alembic/versions/182_add_memories_workspace_thread_dependency_stats.py`](../../nowing_backend/alembic/versions/182_add_memories_workspace_thread_dependency_stats.py), [`nowing_backend/app/services/memory/search.py`](../../nowing_backend/app/services/memory/search.py)
+- [x] [Review][Patch] A9. REST search routes không xử lý `VectorValidationError` hoặc result cardinality, vẫn có thể `IndexError`/`500`.
+  [`nowing_backend/app/routes/memories_routes.py`](../../nowing_backend/app/routes/memories_routes.py), [`nowing_backend/app/routes/research_threads_routes.py`](../../nowing_backend/app/routes/research_threads_routes.py)
+- [x] [Review][Patch] A10. `db.py` thread-recency index / migration 181 chưa đồng bộ với query recency `workspace_id = :w AND research_thread_id = :t`.
+  [`nowing_backend/app/db.py`](../../nowing_backend/app/db.py)
+
+##### MEDIUM (15)
+
+- [x] [Review][Patch] A1. Normalization line-terminator chưa cover đủ CRLF/CR/VT/FF/LS/PS/NEL trong unit tests.
+  [`nowing_backend/app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py`](../../nowing_backend/app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py)
+- [x] [Review][Patch] A2. Non-numeric metadata bị misclassify thay vì mapped về `non_numeric` reason.
+  [`nowing_backend/app/services/memory/search.py`](../../nowing_backend/app/services/memory/search.py)
+- [x] [Review][Patch] A5. `top_k` boundary tests incomplete — chưa assert `ValueError` cho 0/bool/6+ ở internal search.
+  [`nowing_backend/app/services/memory/search.py`](../../nowing_backend/app/services/memory/search.py)
+- [x] [Review][Patch] A6. Renderer boundary/huge-record tests thiếu 7.999/8.000/8.001, huge name, entity cut.
+  [`nowing_backend/app/services/memory/renderer.py`](../../nowing_backend/app/services/memory/renderer.py)
+- [x] [Review][Patch] A7. `research_thread_id` scope validation chưa reject ambiguous scope.
+  [`nowing_backend/app/services/memory/search.py`](../../nowing_backend/app/services/memory/search.py)
+- [x] [Review][Patch] B1. `strict_top_k` dùng `StrictInt` reject Jinja-rendered numeric string.
+  [`nowing_backend/app/automations/schemas/definition/types.py`](../../nowing_backend/app/automations/schemas/definition/types.py)
+- [x] [Review][Patch] C4. Benchmark sentinel manifest map tail row IDs sai thứ tự với `canonical_recency`.
+  [`nowing_backend/scripts/benchmark_memory_story_3_14.py`](../../nowing_backend/scripts/benchmark_memory_story_3_14.py)
+- [x] [Review][Patch] C5. `_verify_injection_payload` không assert `<user_name>` cho personal/private cells.
+  [`nowing_backend/scripts/benchmark_memory_story_3_14.py`](../../nowing_backend/scripts/benchmark_memory_story_3_14.py)
+- [x] [Review][Patch] C6. `run_injection_cell` `KeyError` khi middleware short-circuit chưa ghi `db_timer`.
+  [`nowing_backend/scripts/benchmark_memory_story_3_14.py`](../../nowing_backend/scripts/benchmark_memory_story_3_14.py)
+- [x] [Review][Patch] C7. `_render_recall` không guard non-finite `score`/`similarity`.
+  [`nowing_mcp/mcp_server/features/memory/__init__.py`](../../nowing_mcp/mcp_server/features/memory/__init__.py)
+- [x] [Review][Patch] C8. `nowing_continue_research` coi whitespace-only query là ranked search.
+  [`nowing_mcp/mcp_server/features/memory/__init__.py`](../../nowing_mcp/mcp_server/features/memory/__init__.py)
+- [x] [Review][Patch] D4. Release-gate artifact name không cô lập `run_id`/`run_attempt`, collision khi re-run.
+  [`.github/workflows/memory-recall-release-gate.yml`](../../.github/workflows/memory-recall-release-gate.yml)
+- [x] [Review][Patch] D5. Workflow không verify `backend_build_id` khớp `/health` trước khi chạy eval.
+  [`.github/workflows/memory-recall-release-gate.yml`](../../.github/workflows/memory-recall-release-gate.yml)
+- [x] [Review][Patch] D2. Migration 182 `CREATE STATISTICS` thiếu `IF NOT EXISTS`; `DROP INDEX CONCURRENTLY` trong autocommit block.
+  [`nowing_backend/alembic/versions/182_add_memories_workspace_thread_dependency_stats.py`](../../nowing_backend/alembic/versions/182_add_memories_workspace_thread_dependency_stats.py)
+- [x] [Review][Patch] C9. CI selfcheck tests phụ thuộc workflow changes chưa có trong chunk C.
+  [`nowing_evals/tests/suites/test_memory_recall_selfcheck_ci.py`](../../nowing_evals/tests/suites/test_memory_recall_selfcheck_ci.py)
+
+##### LOW (6)
+
+- [x] [Review][Patch] B3. `AutomationActionDefinition.params_model` default `schema_version="1.0"` dẫn validation sai v1.1.
+  [`nowing_backend/app/automations/schemas/definition/envelope.py`](../../nowing_backend/app/automations/schemas/definition/envelope.py)
+- [x] [Review][Patch] B4. Runtime v1.1 validation cho `continue_research` chưa covered.
+  [`nowing_backend/app/automations/runtime/executor.py`](../../nowing_backend/app/automations/runtime/executor.py)
+- [x] [Review][Patch] C11. MCP `top_k` boundary tests thiếu `pytest-asyncio` config/decorator.
+  [`nowing_mcp/tests/test_research_continuity.py`](../../nowing_mcp/tests/test_research_continuity.py)
+- [x] [Review][Patch] C12. `nowing_recall` gửi `research_thread_id: null` trong payload.
+  [`nowing_mcp/mcp_server/features/memory/__init__.py`](../../nowing_mcp/mcp_server/features/memory/__init__.py)
+- [x] [Review][Patch] D7. Web builder `schema_version 1.1` guard là standalone script, chưa wired vào CI.
+  [`nowing_web/package.json`](../../nowing_web/package.json)
+- [x] [Review][Patch] D8. Workflow `top_k` input truyền unquoted string, không validate range.
+  [`.github/workflows/memory-recall-release-gate.yml`](../../.github/workflows/memory-recall-release-gate.yml)
+
+##### Defer (4)
+
+- [x] [Review][Defer] A3. Over-materialization candidates ở `search.py` — đã optimize đủ cho `top_k*3` bounded; cân nhắc later nếu corpus >1M.
+  [`nowing_backend/app/services/memory/search.py`](../../nowing_backend/app/services/memory/search.py) — pre-existing performance polish.
+- [x] [Review][Defer] A4. RRF ranking tests — cơ bản covered, cần bổ sung tie-break test sau khi AC-3 latency ổn định.
+  [`nowing_backend/app/services/memory/search.py`](../../nowing_backend/app/services/memory/search.py) — deferred.
+- [x] [Review][Defer] B5. `_is_templated` chưa phát hiện Jinja control-flow tags — acceptable cho current usage, nâng cấp khi dùng `{% if %}` trong automation.
+  [`nowing_backend/app/automations/runtime/step.py`](../../nowing_backend/app/automations/runtime/step.py) — deferred.
+- [x] [Review][Defer] B6. D10/D5 non-automation scope matrix — ngoài phạm vi chunk B, đã covered bởi spec và route tests.
+  — deferred.
+
+##### Dismissed (8)
+
+- `runner.py` provenance `ctx.config.memory_workspace_id` — working tree hiện tại đã dùng `ctx.config`; finding của diff cũ hơn.
+- `build_id` local git fallback đã được gate kiểm soát trong artifact gần đây; finding này chỉ apply nếu chủ đích cho phép `git_filesystem`.
+- `VectorValidationError` trong REST routes — đã có wrapper ở version mới hơn.
+- `db.py` index đã đồng bộ với migration 183 ở working tree.
+- `renderer.py` boundary — tests đã tồn tại ở working tree, diff cũ hơn.
+- `strict_top_k` — working tree đã có handling cho numeric string sau render.
+- `continue_research.research_thread_id` coerce `True` → `1` — đã fix bởi strict bool validation ở working tree.
+- `raw_row_count` 0 khi unreadable — artifact gần đây luôn produce raw file; low practical impact.
+
+**Verdict:** RESOLVED — tất cả 28 patch findings (7 HIGH, 15 MEDIUM, 6 LOW) đã được xử lý.
+- Unit/integration tests liên quan pass.
+- Benchmark `memory/recall` chạy trên workspace 449 với build ID xác minh qua `/health`, `recall@5=0.986`, `MRR=1.000`, `distractor_noise=0.067`, `off_corpus=0.000`, `n_failed=0/36`. Gate PASS (artifact `2026-08-05T12-36-13Z`).

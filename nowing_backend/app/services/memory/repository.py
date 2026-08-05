@@ -470,6 +470,29 @@ class MemoryRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list_memories(
+        self,
+        *,
+        workspace_id: int,
+        limit: int = 20,
+        type: str | None = None,
+        tags: list[str] | None = None,
+    ) -> list[Memory]:
+        """List workspace memories, newest first, with optional type/tags filters."""
+        conditions = [Memory.workspace_id == workspace_id]
+        if type is not None:
+            conditions.append(Memory.type == MemoryType(type))
+        if tags:
+            conditions.append(Memory.tags.op("&&")(tags))
+        result = await self.session.execute(
+            select(Memory)
+            .options(selectinload(Memory.versions))
+            .where(*conditions)
+            .order_by(Memory.created_at.desc(), Memory.id.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
     async def delete_memory(self, memory_id: int) -> bool:
         result = await self.session.execute(
             select(Memory).where(Memory.id == memory_id)

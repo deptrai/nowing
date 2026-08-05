@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 
-from app.automations.runtime import execute_run
 from app.celery_app import celery_app
 from app.tasks.celery_tasks import (
     get_celery_session_maker,
@@ -23,6 +22,11 @@ def automation_run_execute(self, run_id: int) -> None:
 
 
 async def _impl(run_id: int) -> None:
+    # Import the executor inside the task to avoid an import cycle at module
+    # load time: ``runtime`` is still partially initialized when this module is
+    # imported from ``app.automations.dispatch.launch``.
+    from app.automations.runtime import execute_run
+
     session_maker = get_celery_session_maker()
     async with session_maker() as session:
         try:

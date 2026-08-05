@@ -120,6 +120,11 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm exec biome check . --diagnostic-level=error
 
+      - name: Frontend automations builder schema test
+        if: needs.changes.outputs.web == 'true'
+        working-directory: nowing_web
+        run: pnpm test:automations-builder
+
   backend-unit:
     name: Backend Unit Tests (Shard ${{ matrix.shard }})
     runs-on: ubuntu-latest

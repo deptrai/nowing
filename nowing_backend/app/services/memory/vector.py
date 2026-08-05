@@ -49,6 +49,12 @@ def validate_embedding_vector(value: object, *, dimension: int) -> np.ndarray:
     wrong length -> ``invalid_dimension``; NaN/Inf element -> ``non_finite``;
     non-finite norm -> ``non_finite_norm``; zero/negative norm -> ``zero_norm``.
     """
+    if value is None:
+        raise VectorValidationError("non_numeric")
+    raw = np.asarray(value)
+    if raw.dtype == np.object_ and any(v is None for v in raw.flat):
+        raise VectorValidationError("non_numeric")
+
     try:
         array = np.asarray(value, dtype=np.float64)
     except (TypeError, ValueError, OverflowError) as exc:

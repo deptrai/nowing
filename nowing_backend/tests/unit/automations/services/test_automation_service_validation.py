@@ -139,7 +139,7 @@ async def test_create_rejects_unknown_action_with_422(
 async def test_create_normalizes_schema_version_to_current(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A client-omitted (default "1.0") schema_version is persisted as "1.1"."""
+    """A client-omitted (parser default "1.1") schema_version is persisted as "1.1"."""
     _bind_billable_and_authorize(monkeypatch)
 
     service = _service(
@@ -149,7 +149,7 @@ async def test_create_normalizes_schema_version_to_current(
     )
     payload = AutomationCreate(workspace_id=1, name="A", definition=_valid_definition())
 
-    assert payload.definition.schema_version == "1.0"  # client default, pre-create
+    assert payload.definition.schema_version == "1.1"  # parser default, pre-create
 
     automation = await service.create(payload)
 

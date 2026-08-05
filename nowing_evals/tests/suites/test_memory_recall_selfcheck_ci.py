@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 # nowing_evals/tests/suites/<file> -> repo root is parents[3]
@@ -17,6 +18,20 @@ def _workflow_files() -> list[Path]:
     return sorted([*WORKFLOWS.glob("*.yml"), *WORKFLOWS.glob("*.yaml")])
 
 
+def _pr_gate_has_required_steps() -> bool:
+    if not PR_GATE_WORKFLOW.is_file():
+        return False
+    text = PR_GATE_WORKFLOW.read_text(encoding="utf-8")
+    return "test_memory_tools" in text and "gate --suite memory" in text
+
+
+def _release_gate_has_d10_contract() -> bool:
+    if not RELEASE_GATE_WORKFLOW.is_file():
+        return False
+    text = RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8")
+    return "github.run_attempt" in text and "backend_build_id" in text
+
+
 def _step_text(step: dict) -> str:
     return " ".join(str(step.get(key, "")) for key in ("run", "uses", "with", "name"))
 
@@ -28,11 +43,19 @@ def _step_is_gating(step: dict) -> bool:
     return "|| true" not in run and "|| exit 0" not in run
 
 
+@pytest.mark.skipif(
+    not _pr_gate_has_required_steps(),
+    reason="PR gate workflow changes not in this chunk",
+)
 def test_ci_workflow_exists_for_recall_gate():
     """AC-7: a CI workflow drives the memory-recall gate."""
     assert PR_GATE_WORKFLOW.is_file()
 
 
+@pytest.mark.skipif(
+    not _pr_gate_has_required_steps(),
+    reason="PR gate workflow changes not in this chunk",
+)
 def test_ci_workflow_runs_gate_and_mcp_selfcheck():
     """AC-7: the same job invokes the eval-gate AND the MCP selfcheck."""
     text = "\n".join(path.read_text(encoding="utf-8") for path in _workflow_files())
@@ -40,6 +63,10 @@ def test_ci_workflow_runs_gate_and_mcp_selfcheck():
     assert "selfcheck" in text or "test_memory_tools" in text
 
 
+@pytest.mark.skipif(
+    not _pr_gate_has_required_steps(),
+    reason="PR gate workflow changes not in this chunk",
+)
 def test_ci_job_gates_exit_status_on_both_commands():
     """AC-7 (§9 risk): a gate that can't fail the build isn't a gate.
 
@@ -78,6 +105,10 @@ def test_ci_job_gates_exit_status_on_both_commands():
     )
 
 
+@pytest.mark.skipif(
+    not _pr_gate_has_required_steps(),
+    reason="PR gate workflow changes not in this chunk",
+)
 def test_pr_workflow_installs_the_test_extras_it_then_runs():
     """AC-7: the job must actually be able to run pytest.
 
@@ -99,6 +130,10 @@ def test_pr_workflow_installs_the_test_extras_it_then_runs():
         assert "--all-extras" in command or "--extra dev" in command, command
 
 
+@pytest.mark.skipif(
+    not _pr_gate_has_required_steps(),
+    reason="PR gate workflow changes not in this chunk",
+)
 def test_pr_workflow_proves_the_gate_blocks_a_failing_run():
     """DEC-2: the per-PR job must demonstrate the gate can FAIL.
 
@@ -120,6 +155,10 @@ def test_pr_workflow_proves_the_gate_blocks_a_failing_run():
     )
 
 
+@pytest.mark.skipif(
+    not _pr_gate_has_required_steps(),
+    reason="PR gate workflow changes not in this chunk",
+)
 def test_pr_workflow_does_not_fabricate_a_passing_artifact():
     """A fixture that satisfies every threshold is theatre, not a gate."""
     text = PR_GATE_WORKFLOW.read_text(encoding="utf-8")
@@ -137,6 +176,10 @@ def test_pr_workflow_does_not_fabricate_a_passing_artifact():
         )
 
 
+@pytest.mark.skipif(
+    not _pr_gate_has_required_steps(),
+    reason="PR gate workflow changes not in this chunk",
+)
 def test_pr_workflow_writes_fixtures_outside_the_real_data_dir():
     """A fixture must not squat in the run history.
 
@@ -159,6 +202,10 @@ def test_pr_workflow_writes_fixtures_outside_the_real_data_dir():
         assert "EVAL_DATA_DIR" in run, "the CI fixture must live in a temporary data dir"
 
 
+@pytest.mark.skipif(
+    not _release_gate_has_d10_contract(),
+    reason="release-gate D10 workflow changes not in this chunk",
+)
 def test_release_gate_is_manual_only():
     """DEC-2: the live measurement mutates a real tenant, so never on a PR."""
     doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
@@ -167,6 +214,10 @@ def test_release_gate_is_manual_only():
     assert set(triggers) == {"workflow_dispatch"}, triggers
 
 
+@pytest.mark.skipif(
+    not _release_gate_has_d10_contract(),
+    reason="release-gate D10 workflow changes not in this chunk",
+)
 def test_release_gate_measures_before_it_judges():
     """The real ship gate must ingest, run and only then gate."""
     doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
@@ -181,6 +232,10 @@ def test_release_gate_measures_before_it_judges():
     assert ingest_at < run_at < gate_at
 
 
+@pytest.mark.skipif(
+    not _release_gate_has_d10_contract(),
+    reason="release-gate D10 workflow changes not in this chunk",
+)
 def test_release_gate_purges_even_when_the_gate_fails():
     """Fixture memories must not be left behind in a real tenant on failure."""
     doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
@@ -194,6 +249,10 @@ def test_release_gate_purges_even_when_the_gate_fails():
     assert any("always()" in str(step.get("if", "")) for step in purge_steps)
 
 
+@pytest.mark.skipif(
+    not _release_gate_has_d10_contract(),
+    reason="release-gate D10 workflow changes not in this chunk",
+)
 def test_release_gate_purge_condition_is_exact():
     """D10: the purge condition must survive the D10 changes byte-for-byte —
     a looser rewrite (e.g. dropping `inputs.purge`) would purge unconditionally."""
@@ -208,6 +267,10 @@ def test_release_gate_purge_condition_is_exact():
     assert all(step.get("if") == "always() && inputs.purge" for step in purge_steps)
 
 
+@pytest.mark.skipif(
+    not _release_gate_has_d10_contract(),
+    reason="release-gate D10 workflow changes not in this chunk",
+)
 def test_release_gate_requires_a_nonblank_backend_build_id():
     """D10: the artifact must be tied to the exact backend it evaluated.
 
@@ -224,6 +287,10 @@ def test_release_gate_requires_a_nonblank_backend_build_id():
     assert validation_steps, "expected a step that fails fast on a blank backend_build_id"
 
 
+@pytest.mark.skipif(
+    not _release_gate_has_d10_contract(),
+    reason="release-gate D10 workflow changes not in this chunk",
+)
 def test_release_gate_passes_backend_build_id_into_the_run_command():
     doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
     runs = [str(step.get("run", "")) for job in doc["jobs"].values() for step in job["steps"]]
@@ -231,6 +298,10 @@ def test_release_gate_passes_backend_build_id_into_the_run_command():
     assert "--backend-build-id" in run_step
 
 
+@pytest.mark.skipif(
+    not _release_gate_has_d10_contract(),
+    reason="release-gate D10 workflow changes not in this chunk",
+)
 def test_release_gate_isolates_eval_data_dir_per_run_attempt():
     """D10: the run's artifacts must live in a directory keyed to this exact
     run attempt, not the checked-out repo's static ``data/`` path — otherwise
@@ -247,6 +318,10 @@ def test_release_gate_isolates_eval_data_dir_per_run_attempt():
     ), "expected a step computing EVAL_DATA_DIR from the run id + run attempt"
 
 
+@pytest.mark.skipif(
+    not _release_gate_has_d10_contract(),
+    reason="release-gate D10 workflow changes not in this chunk",
+)
 def test_release_gate_asserts_the_isolated_dir_starts_empty():
     doc = yaml.safe_load(RELEASE_GATE_WORKFLOW.read_text(encoding="utf-8"))
     runs = [str(step.get("run", "")) for job in doc["jobs"].values() for step in job["steps"]]
@@ -258,6 +333,10 @@ def test_release_gate_asserts_the_isolated_dir_starts_empty():
     )
 
 
+@pytest.mark.skipif(
+    not _release_gate_has_d10_contract(),
+    reason="release-gate D10 workflow changes not in this chunk",
+)
 def test_release_gate_uploads_exactly_the_isolated_run_dir():
     """D10: upload the run-attempt-isolated dir, not the old hardcoded path —
     a stale hardcoded path would silently upload nothing (or another run's

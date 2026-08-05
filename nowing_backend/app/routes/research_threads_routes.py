@@ -25,7 +25,10 @@ from app.db import Permission, ResearchThread, get_async_session
 from app.schemas.memory import MemorySearchHit, ResearchThreadContext
 from app.services.memory.search import MemoryHybridSearch
 from app.services.memory.thread_citations import collect_thread_citations
-from app.services.memory.vector import validate_single_embedding_result
+from app.services.memory.vector import (
+    VectorValidationError,
+    validate_single_embedding_result,
+)
 from app.users import get_auth_context
 from app.utils.document_converters import embed_texts
 from app.utils.rbac import check_permission
@@ -83,17 +86,27 @@ async def get_research_thread_context(
     # query; an empty query falls back to recency ordering inside the search.
     query_embedding = None
     if query.strip():
-        embeddings = await asyncio.to_thread(embed_texts, [query])
+        try:
+            embeddings = await asyncio.to_thread(embed_texts, [query])
+        except Exception as exc:
+            raise VectorValidationError("provider_error") from exc
         query_embedding = validate_single_embedding_result(embeddings)
 
     search = MemoryHybridSearch(session)
-    hits = await search.search(
-        workspace_id=workspace_id,
-        query=query,
-        query_embedding=query_embedding,
-        top_k=top_k,
-        research_thread_id=thread_id,
-    )
+    try:
+        hits = await search.search(
+            workspace_id=workspace_id,
+            query=query,
+            query_embedding=query_embedding,
+            top_k=top_k,
+            research_thread_id=thread_id,
+        )
+    except VectorValidationError as exc:
+        status = 500 if exc.reason == "provider_error" else 422
+        raise HTTPException(
+            status_code=status,
+            detail={"code": exc.reason, "message": f"embedding validation failed: {exc.reason}"},
+        ) from exc
 
     citations = await collect_thread_citations(session, thread)
 

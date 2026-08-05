@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -18,6 +19,22 @@ from nowing_evals.suites.memory.recall.oracle import (
     judge_returned_items,
     resolve_oracle_mode,
 )
+
+
+def _is_file_sync(path: Path) -> bool:
+    return path.is_file()
+
+
+def _sha256_file_sync(path: Path) -> str:
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read()).hexdigest()
+
+
+_UV_LOCK_PATH = next(
+    (p / "uv.lock" for p in Path(__file__).resolve().parents if _is_file_sync(p / "uv.lock")),
+    Path(__file__).resolve().parents[3] / "uv.lock",
+)
+_UV_LOCK_HASH = _sha256_file_sync(_UV_LOCK_PATH) if _is_file_sync(_UV_LOCK_PATH) else None
 
 # --------------------------------------------------------------------------- #
 # AC-1 — registration + CLI discovery
@@ -596,3 +613,104 @@ async def test_run_records_backend_build_id_in_artifact_extra(tmp_path, monkeypa
     )
 
     assert artifact.extra["backend_build_id"] == "sha-abc123"
+
+
+async def test_run_provenance_hashes_uv_lock_and_counts_raw_rows(tmp_path, monkeypatch):
+    """C2/C13: provenance records the uv.lock hash and exact raw row count."""
+    dataset = _fake_dataset()
+
+    class FakeMemoriesClient:
+        async def search(self, workspace_id: int, query: str, *, top_k: int) -> list[dict]:
+            return [{"id": 101, "score": 0.0}][:top_k]
+
+    monkeypatch.setattr(
+        "nowing_evals.suites.memory.recall.runner.load_dataset", lambda **_kw: dataset
+    )
+
+    artifact = await MemoryRecallBenchmark().run(
+        _fake_ctx(tmp_path, dataset, FakeMemoriesClient()),
+        top_k=5,
+        backend_build_id="sha-abc123",
+    )
+
+    provenance = artifact.extra["provenance"]
+    if _UV_LOCK_HASH is not None:
+        assert provenance["uv_lock_hash"] == _UV_LOCK_HASH
+    assert provenance["raw_row_count"] == 1
+    raw_path = artifact.raw_path
+    assert _is_file_sync(raw_path)
+    assert provenance["raw_hash"] == _sha256_file_sync(raw_path)
+
+
+async def test_verify_backend_build_id_marks_git_fallback_unverified(monkeypatch):
+    """C3: only a /health match sets verified=True; git fallback stays unverified."""
+    import httpx
+
+    from nowing_evals.suites.memory.recall.runner import (
+        _verify_backend_build_id,
+    )
+
+    class _ExplodingResponse:
+        def raise_for_status(self):
+            raise RuntimeError("no health endpoint")
+
+    async def _exploding_get(*_args, **_kwargs):
+        return _ExplodingResponse()
+
+    monkeypatch.setattr(
+        "nowing_evals.suites.memory.recall.runner._git_head_build_id",
+        lambda: "sha-git-123",
+    )
+
+    client = httpx.AsyncClient()
+    client.get = _exploding_get  # type: ignore[method-assign]
+
+    ctx = type(
+        "FakeRunContext",
+        (),
+        {
+            "config": type("C", (), {"nowing_api_base": "http://test"})(),
+            "http": client,
+        },
+    )()
+
+    result = await _verify_backend_build_id(ctx, "sha-git-123")
+    assert result["actual"] == "sha-git-123"
+    assert result["source"] == "git_filesystem"
+    assert result["verified"] is False
+    await client.aclose()
+
+
+async def test_verify_backend_build_id_marks_health_match_verified():
+    """C3: a matching /health build_id sets verified=True."""
+    import httpx
+
+    from nowing_evals.suites.memory.recall.runner import _verify_backend_build_id
+
+    class _FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"build_id": " sha-health-123 "}
+
+    async def _fake_get(*_args, **_kwargs):
+        return _FakeResponse()
+
+    client = httpx.AsyncClient()
+    client.get = _fake_get  # type: ignore[method-assign]
+
+    ctx = type(
+        "FakeRunContext",
+        (),
+        {
+            "config": type("C", (), {"nowing_api_base": "http://test"})(),
+            "http": client,
+        },
+    )()
+
+    result = await _verify_backend_build_id(ctx, "sha-health-123")
+    assert result["actual"] == "sha-health-123"
+    assert result["source"] == "health_endpoint"
+    assert result["verified"] is True
+    await client.aclose()

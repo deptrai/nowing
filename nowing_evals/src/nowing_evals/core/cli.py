@@ -127,7 +127,7 @@ async def _list_global_llm_configs(http: httpx.AsyncClient, base: str) -> list[L
     response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, list):
-        raise RuntimeError(f"Unexpected /model-connections/global payload: {payload!r}")
+        raise RuntimeError(f"Unexpected /global-model-connections payload: {payload!r}")
     entries: list[LlmConfigEntry] = []
     for connection in payload:
         provider = connection.get("provider", "")
@@ -556,7 +556,7 @@ async def _cmd_run(args: argparse.Namespace) -> int:
     if validate_run_options is not None:
         try:
             validate_run_options(**extra_kwargs)
-        except ValueError as exc:
+        except Exception as exc:
             console.print(f"[red]{exc}[/red]")
             return 2
 
@@ -740,18 +740,18 @@ async def _cmd_report(args: argparse.Namespace) -> int:
     config = load_config()
     state = get_suite_state(config, args.suite)
     benchmarks = registry.list_benchmarks(args.suite)
-    if state is None:
-        if any(not getattr(b, "requires_suite_setup", True) for b in benchmarks):
-            state = _detached_suite_state()
-        else:
-            console.print(f"[red]No setup for suite {args.suite!r}.[/red]")
-            return 2
     if benchmark_filter:
         benchmarks = [b for b in benchmarks if b.name == benchmark_filter]
         if not benchmarks:
             console.print(
                 f"[red]No registered benchmark named {benchmark_filter!r} in suite {args.suite!r}.[/red]"
             )
+            return 2
+    if state is None:
+        if any(not getattr(b, "requires_suite_setup", True) for b in benchmarks):
+            state = _detached_suite_state()
+        else:
+            console.print(f"[red]No setup for suite {args.suite!r}.[/red]")
             return 2
 
     artifacts = _collect_artifacts(config, args.suite, [b.name for b in benchmarks])
