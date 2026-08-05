@@ -2,12 +2,12 @@
 baseline_commit: 412200504
 baseline_branch: develop
 story_key: 4-8f-benchmark-stability-scrape-captcha-rate-limit
-status: done
+status: review
 ---
 
 # Story 4.8f: Benchmark stability — scrape, captcha, rate-limit, and multi-turn
 
-**Status:** done  
+**Status:** review  
 **Epic:** 4 — Chat & Agents  
 **Priority:** HIGH  
 **Requirements:** FR-42, NFR-10  
@@ -121,12 +121,16 @@ So that we can detect when external search, crawl, or tool providers degrade bef
 
 ```bash
 cd nowing_evals
-ruff check src/nowing_evals/core/clients/new_chat.py src/nowing_evals/core/arms/nowing.py src/nowing_evals/suites/chat/regression/runner.py
-ruff format ...
-python -m pytest tests/suites/chat/test_regression.py tests/suites/chat/test_operational_metrics.py -q
-python -m nowing_evals run chat regression --search-space-id 42 --concurrency 1 --dataset multi-turn-sample.jsonl
+ruff check src/nowing_evals/core/clients/new_chat.py src/nowing_evals/core/arms/nowing.py src/nowing_evals/suites/chat/regression/runner.py src/nowing_evals/suites/chat/regression/operational.py
+ruff format src/nowing_evals/core/clients/new_chat.py src/nowing_evals/core/arms/nowing.py src/nowing_evals/suites/chat/regression/runner.py src/nowing_evals/suites/chat/regression/operational.py
+python -m pytest tests/suites/chat/test_regression.py tests/suites/chat/test_operational.py -q
+python -m nowing_evals run chat regression --search-space-id 42 --concurrency 1 --timeout 600
 python -m nowing_evals report --suite chat
 ```
+
+## Code status note
+
+Implemented and merged. `NewChatClient` captures `raw_events` and `call_details` from `data-token-usage` SSE frames (`nowing_evals/src/nowing_evals/core/clients/new_chat.py:310-325`) and exposes them in `StreamedAnswer`. `NowingArm` forwards the case `mode` to `NewChatRequest.mode` and uses a 600s per-turn timeout (`arms/nowing.py:68`, `new_chat.py:132`). `operational.py` classifies tool inputs/outputs, scrape attempts, and `error`/`data-terminal-info` frames into `captcha`, `rate_limit`, `timeout`, `5xx`, `parse_error`, `engine_unavailable`, and other buckets, and extracts fallback KB hits from `call_details`. `ChatRegressionBenchmark` aggregates these into `operational` metrics and the report renders an "Operational / Stability" table. Multi-turn cases with a `turns` list reuse one thread and produce `turn_error_rate` and `context_drift_score`. High-intensity stress is supported via `--concurrency` and `--threads`, with under-load rates in the operational summary. `research/chainlens_latency` now reports `sources_partial_rate`, `engine_unavailable_rate`, `degraded_rate`, `degradation_reason_counts`, `fallback_kb_hits`, and `mean_cost_micros`. The respx-mocked high-concurrency error-rate test remains deferred.
 
 ## Gate thresholds (provisional)
 

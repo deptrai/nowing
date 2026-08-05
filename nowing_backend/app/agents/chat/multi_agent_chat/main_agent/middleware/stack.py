@@ -89,6 +89,7 @@ from .dedup_hitl import build_dedup_hitl_mw
 from .doom_loop import build_doom_loop_mw
 from .kb_persistence import build_kb_persistence_mw
 from .knowledge_tree import build_knowledge_tree_mw
+from .mode_budget import build_mode_budget_mw
 from .noop_injection import build_noop_injection_mw
 from .otel_span import build_otel_mw
 from .plugins import build_plugin_middlewares
@@ -259,6 +260,7 @@ def build_main_agent_deepagent_middleware(
             task_description=TASK_TOOL_DESCRIPTION,
             workspace_id=workspace_id,
         ),
+        build_mode_budget_mw(flags),
         resilience.model_call_limit,
         resilience.tool_call_limit,
         build_context_editing_mw(

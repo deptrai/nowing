@@ -2,12 +2,12 @@
 baseline_commit: 412200504
 baseline_branch: develop
 story_key: 4-8g-benchmark-mode-tier-matrix-local-prod
-status: done
+status: review
 ---
 
 # Story 4.8g: Benchmark mode/tier matrix and local vs production parity
 
-**Status:** `ready-for-dev`  
+**Status:** review  
 **Epic:** 4 — Chat & Agents  
 **Priority:** MEDIUM  
 **Requirements:** FR-42, NFR-9, NFR-10  
@@ -114,31 +114,47 @@ So that small changes and big updates are validated on the right surface area be
 ```bash
 cd nowing_evals
 python -m nowing_evals benchmarks list
-python -m nowing_evals run chat regression --search-space-id 42 --modes speed,balanced --profile quick --concurrency 1
-python -m nowing_evals run chat regression --search-space-id 42 --modes speed,balanced,quality,auto --profile full --concurrency 4
-python -m nowing_evals run research chainlens_latency --modes speed,balanced,quality --n 3
+python -m nowing_evals run chat regression --search-space-id 42 --modes speed,balanced --profile quick --environment local --concurrency 1 --timeout 600
+python -m nowing_evals run chat regression --search-space-id 42 --modes speed,balanced,quality,auto --profile full --environment local --concurrency 4 --timeout 600
+python -m nowing_evals run research chainlens_latency --modes speed,balanced,quality --workspace-id <WORKSPACE_ID> --n 3
 python -m nowing_evals report --suite chat
 python -m nowing_evals report --suite research --benchmark chainlens_latency
-ruff check src/nowing_evals/suites/chat/regression/ src/nowing_evals/suites/research/chainlens_latency/
-python -m pytest tests/suites/chat/test_regression.py tests/suites/chat/test_mode_matrix.py -q
+ruff check src/nowing_evals/suites/chat/regression/ src/nowing_evals/suites/research/chainlens_latency/ tests/suites/chat/test_regression.py tests/suites/chat/test_operational.py
+python -m pytest tests/suites/chat/test_regression.py tests/suites/chat/test_operational.py -q
 ```
 
 ## Gate thresholds (provisional)
+
+Current `src/nowing_evals/suites/chat/regression/gate.yaml`:
 
 ```yaml
 per_mode:
   speed:
     max_p95_e2e_ms: 15000
-    max_p95_cost_micros: 100000
+    max_p95_cost_micros: 50000
   balanced:
     max_p95_e2e_ms: 30000
-    max_p95_cost_micros: 150000
+    max_p95_cost_micros: 100000
   quality:
     max_p95_e2e_ms: 60000
-    max_p95_cost_micros: 250000
+    max_p95_cost_micros: 200000
+  auto:
+    max_p95_e2e_ms: 30000
+    max_p95_cost_micros: 100000
+per_tier:
+  short:
+    max_p95_e2e_ms: 15000
+  long_context:
+    max_p95_e2e_ms: 45000
+  multi_tool:
+    max_p95_e2e_ms: 60000
 ```
 
 `baseline_ratified: false` until measured.
+
+## Code status note
+
+Implemented and merged. `chat/regression` (`runner.py`) and `research/chainlens_latency` (`runner.py`) both accept `--modes`, `--tier`, `--environment`, and `--profile quick|full`. The `chat/regression` runner passes each requested `mode` into `NewChatRequest.mode` (`arms/nowing.py:68`) and uses a 600s per-turn timeout (`new_chat.py:132`, `runner.py:583`). For each (case, mode) pair a fresh thread is created; multi-turn `turns` reuse the same thread. Metrics are aggregated into `per_tag`, `per_mode`, `per_tier`, and `per_mode_tier` buckets, and the report renders a `local vs production parity` delta table when both environments have run artifacts. `chat/regression/gate.yaml` and `research/chainlens_latency/gate.yaml` contain provisional `per_mode` thresholds. `docs/benchmark.md` documents the matrix and parity features. `chat/quality` is listed as a planned suite but is not implemented (Story 4-8d is `ready-for-dev`).
 
 ## References
 

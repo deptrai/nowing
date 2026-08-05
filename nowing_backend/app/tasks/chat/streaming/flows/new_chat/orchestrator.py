@@ -139,6 +139,7 @@ async def stream_new_chat(
     request_id: str | None = None,
     user_image_data_urls: list[str] | None = None,
     auth_context: AuthContext | None = None,
+    mode: Literal["speed", "balanced", "quality", "auto"] | None = None,
     flow: Literal["new", "regenerate"] = "new",
 ) -> AsyncGenerator[str, None]:
     """Stream a new chat turn using the Nowing deep agent.
@@ -415,6 +416,7 @@ async def stream_new_chat(
             disabled_tools=disabled_tools,
             mentioned_document_ids=mentioned_document_ids,
             auth_context=auth_context,
+            research_mode=mode,
         )
         _perf_log.info(
             "[stream_new_chat] Agent created in %.3fs", time.perf_counter() - _t0
@@ -472,6 +474,8 @@ async def stream_new_chat(
             "request_id": request_id or "unknown",
             "turn_id": stream_result.turn_id,
         }
+        if mode:
+            configurable["research_mode"] = mode
         if checkpoint_id:
             configurable["checkpoint_id"] = checkpoint_id
 

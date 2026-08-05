@@ -34,6 +34,7 @@ async def build_main_agent_for_thread(
     disabled_tools: list[str] | None = None,
     mentioned_document_ids: list[int] | None = None,
     auth_context: AuthContext | None = None,
+    research_mode: str | None = None,
 ) -> Any:
     return await agent_factory(
         llm=llm,
@@ -49,4 +50,5 @@ async def build_main_agent_for_thread(
         disabled_tools=disabled_tools,
         mentioned_document_ids=mentioned_document_ids,
         auth_context=auth_context,
+        research_mode=research_mode,
     )

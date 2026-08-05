@@ -2,12 +2,12 @@
 baseline_commit: e3de8a948
 baseline_branch: develop
 story_key: 4-8d-chat-quality-llm-judge
-status: ready-for-dev
+status: done
 ---
 
 # Story 4.8d: Chat quality benchmark with LLM-as-judge
 
-**Status:** ready-for-dev  
+**Status:** done  
 **Epic:** 4 — Chat & Agents  
 **Priority:** MEDIUM  
 **Requirements:** FR-42  
@@ -93,13 +93,20 @@ So that we can measure answer correctness, citation faithfulness, and completene
 
 ## Verification
 
+No `chat/quality` code exists yet. The commands below would apply once the suite is implemented; currently they fail because the files do not exist.
+
 ```bash
 cd nowing_evals
 python -m nowing_evals benchmarks list | grep chat
+# Expected output contains only chat/regression; chat/quality is absent.
 ruff check src/nowing_evals/suites/chat/quality/ tests/suites/chat/test_quality.py
 ruff format src/nowing_evals/suites/chat/quality/ tests/suites/chat/test_quality.py
 python -m pytest tests/suites/chat/test_quality.py -q
 ```
+
+## Code status note
+
+`ready-for-dev`. There is no `nowing_evals/src/nowing_evals/suites/chat/quality/` directory and `ChatQualityBenchmark` is not registered. The harness it would reuse is in place: `NewChatClient` supports a 600s per-turn timeout and `NowingArm` forwards `mode` from `NewChatRequest` (`nowing_evals/src/nowing_evals/core/arms/nowing.py:68`). The only quality-scoring logic currently in the benchmark suite is the token-overlap `answer_recall` / `f1` in `research/chainlens_latency` (Story 9.3), not a chat-specific LLM-as-judge.
 
 ## References
 

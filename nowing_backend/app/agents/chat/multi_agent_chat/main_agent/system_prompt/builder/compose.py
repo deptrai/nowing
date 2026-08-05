@@ -35,6 +35,7 @@ from .sections.citations import build_citations_section
 from .sections.dynamic_context import build_dynamic_context_section
 from .sections.identity import build_identity_section
 from .sections.memory_protocol import build_memory_protocol_section
+from .sections.mode_policy import build_mode_policy_section
 from .sections.specialists import build_specialists_section
 from .sections.tools import build_tools_section
 
@@ -50,6 +51,7 @@ def build_main_agent_system_prompt(
     use_default_system_instructions: bool = True,
     citations_enabled: bool = True,
     model_name: str | None = None,
+    research_mode: str | None = None,
 ) -> str:
     resolved_today = (today or datetime.now(UTC)).astimezone(UTC).date().isoformat()
     visibility = thread_visibility or ChatVisibility.PRIVATE
@@ -84,6 +86,8 @@ def build_main_agent_system_prompt(
             disabled_tool_names=disabled_tool_names,
         )
     )
+
+    parts.append(build_mode_policy_section(research_mode=research_mode))
 
     if use_default_system_instructions:
         parts.append(build_memory_protocol_section(visibility=visibility))

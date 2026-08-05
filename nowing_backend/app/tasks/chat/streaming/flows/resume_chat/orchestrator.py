@@ -19,6 +19,7 @@ import logging
 import time
 from collections.abc import AsyncGenerator
 from functools import partial
+from typing import Any, Literal
 from uuid import UUID
 
 import anyio
@@ -103,6 +104,7 @@ async def stream_resume_chat(
     filesystem_selection: FilesystemSelection | None = None,
     request_id: str | None = None,
     disabled_tools: list[str] | None = None,
+    mode: Literal["speed", "balanced", "quality", "auto"] | None = None,
     auth_context: AuthContext | None = None,
 ) -> AsyncGenerator[str, None]:
     """Resume a paused HITL turn with the user's decisions.
@@ -348,6 +350,7 @@ async def stream_resume_chat(
             filesystem_selection=filesystem_selection,
             disabled_tools=disabled_tools,
             auth_context=auth_context,
+            research_mode=mode,
         )
         _perf_log.info(
             "[stream_resume] Agent created in %.3fs", time.perf_counter() - _t0
@@ -371,16 +374,20 @@ async def stream_resume_chat(
             agent, chat_id=chat_id, decisions=decisions
         )
 
+        configurable: dict[str, Any] = {
+            "thread_id": str(chat_id),
+            "request_id": request_id or "unknown",
+            "turn_id": stream_result.turn_id,
+            # Per-``tool_call_id`` resume slices read by
+            # ``NowingCheckpointedSubAgentMiddleware``. Parallel
+            # siblings each pop their own entry, so they never race.
+            "nowing_resume_value": routing.routed_resume_value,
+        }
+        if mode:
+            configurable["research_mode"] = mode
+
         config = {
-            "configurable": {
-                "thread_id": str(chat_id),
-                "request_id": request_id or "unknown",
-                "turn_id": stream_result.turn_id,
-                # Per-``tool_call_id`` resume slices read by
-                # ``NowingCheckpointedSubAgentMiddleware``. Parallel
-                # siblings each pop their own entry, so they never race.
-                "nowing_resume_value": routing.routed_resume_value,
-            },
+            "configurable": configurable,
             # Same rationale as ``stream_new_chat``: effectively uncapped to
             # mirror the agent default and OpenCode's session loop. Doom-loop
             # / call-limit middleware enforce the real ceiling.

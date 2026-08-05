@@ -288,6 +288,10 @@ class NewChatRequest(BaseModel):
     disabled_tools: list[str] | None = (
         None  # Optional list of tool names the user has disabled from the UI
     )
+    # ponytail: optional research depth hint for tools (e.g. chainlens.research)
+    # that support speed/balanced/quality modes. Kept minimal: a string hint
+    # the agent/tool can read; no new abstraction.
+    mode: Literal["speed", "balanced", "quality", "auto"] | None = None
     filesystem_mode: Literal["cloud", "desktop_local_folder"] = "cloud"
     client_platform: Literal["web", "desktop"] = "web"
     local_filesystem_mounts: list[LocalFilesystemMountPayload] | None = None
@@ -364,6 +368,10 @@ class RegenerateRequest(BaseModel):
         ),
     )
     disabled_tools: list[str] | None = None
+    # ponytail: optional research depth hint for tools (e.g. chainlens.research)
+    # that support speed/balanced/quality modes. Mirrors ``NewChatRequest.mode``
+    # so regenerate can preserve the original turn's research mode.
+    mode: Literal["speed", "balanced", "quality", "auto"] | None = None
     filesystem_mode: Literal["cloud", "desktop_local_folder"] = "cloud"
     client_platform: Literal["web", "desktop"] = "web"
     local_filesystem_mounts: list[LocalFilesystemMountPayload] | None = None
@@ -433,6 +441,10 @@ class ResumeRequest(BaseModel):
     # Mirrors ``NewChatRequest.disabled_tools`` so the resumed run sees the
     # same tool surface as the originating turn.
     disabled_tools: list[str] | None = None
+    # ponytail: optional research depth hint for tools (e.g. chainlens.research)
+    # that support speed/balanced/quality modes. Mirrors ``NewChatRequest.mode``
+    # so resume can preserve the original turn's research mode.
+    mode: Literal["speed", "balanced", "quality", "auto"] | None = None
     filesystem_mode: Literal["cloud", "desktop_local_folder"] = "cloud"
     client_platform: Literal["web", "desktop"] = "web"
     local_filesystem_mounts: list[LocalFilesystemMountPayload] | None = None

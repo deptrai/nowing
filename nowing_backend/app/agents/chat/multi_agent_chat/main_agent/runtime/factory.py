@@ -74,6 +74,7 @@ async def create_multi_agent_chat_deep_agent(
     filesystem_selection: FilesystemSelection | None = None,
     image_gen_model_id: int | None = None,
     auth_context: AuthContext | None = None,
+    research_mode: str | None = None,
 ):
     """Deep agent with Nowing tools/middleware; registry route subagents behind ``task`` when enabled.
 
@@ -269,6 +270,7 @@ async def create_multi_agent_chat_deep_agent(
             citations_enabled=agent_config.citations_enabled,
             model_name=_model_name or getattr(agent_config, "model_name", None),
             registry_subagent_prompt_lines=_registry_subagent_prompt_lines,
+            research_mode=research_mode,
         )
     else:
         system_prompt = build_main_agent_system_prompt(
@@ -278,6 +280,7 @@ async def create_multi_agent_chat_deep_agent(
             citations_enabled=True,
             model_name=_model_name,
             registry_subagent_prompt_lines=_registry_subagent_prompt_lines,
+            research_mode=research_mode,
         )
     _perf_log.info(
         "[create_agent] System prompt built in %.3fs", time.perf_counter() - _t0

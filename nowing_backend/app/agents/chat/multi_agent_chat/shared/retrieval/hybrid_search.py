@@ -35,6 +35,7 @@ async def search_chunks(
     query: str,
     scope: SearchScope,
     top_k: int,
+    max_passages_per_doc: int = _MAX_PASSAGES_PER_DOC,
     query_embedding: list[float] | None = None,
 ) -> list[DocumentHit]:
     """Top ``top_k`` documents for ``query`` within scope, each with its chunks.
@@ -55,6 +56,7 @@ async def search_chunks(
                 query=query,
                 scope=scope,
                 top_k=top_k,
+                max_passages_per_doc=max_passages_per_doc,
                 query_embedding=query_embedding,
             )
         finally:
@@ -79,6 +81,7 @@ async def _search(
     query: str,
     scope: SearchScope,
     top_k: int,
+    max_passages_per_doc: int,
     query_embedding: list[float] | None,
 ) -> list[DocumentHit]:
     """Fusion search itself: resolve scope, fuse the two legs, group by document."""
@@ -99,7 +102,7 @@ async def _search(
         conditions=conditions,
         candidate_pool=top_k * _CANDIDATE_MULTIPLIER,
     )
-    return _group_into_documents(rows, top_k=top_k)
+    return _group_into_documents(rows, top_k=top_k, max_passages_per_doc=max_passages_per_doc)
 
 
 def _resolve_document_types(
@@ -198,7 +201,9 @@ async def _fused_chunks(
     return result.all()
 
 
-def _group_into_documents(rows, *, top_k: int) -> list[DocumentHit]:
+def _group_into_documents(
+    rows, *, top_k: int, max_passages_per_doc: int
+) -> list[DocumentHit]:
     """Group fused chunks by document, keep the top_k best, order chunks for reading."""
     chunks_by_doc: dict[int, list[ChunkHit]] = {}
     document_by_id: dict[int, Document] = {}
@@ -228,17 +233,19 @@ def _group_into_documents(rows, *, top_k: int) -> list[DocumentHit]:
             document_type=_type_value(document_by_id[document_id]),
             metadata=document_by_id[document_id].document_metadata or {},
             score=best_score[document_id],
-            chunks=_reading_order(chunks_by_doc[document_id]),
+            chunks=_reading_order(
+                chunks_by_doc[document_id], max_passages=max_passages_per_doc
+            ),
         )
         for document_id in order[:top_k]
     ]
 
 
-def _reading_order(chunks: list[ChunkHit]) -> list[ChunkHit]:
+def _reading_order(
+    chunks: list[ChunkHit], *, max_passages: int = _MAX_PASSAGES_PER_DOC
+) -> list[ChunkHit]:
     """Keep the most relevant chunks, then present them in document order."""
-    most_relevant = sorted(chunks, key=lambda c: c.score, reverse=True)[
-        :_MAX_PASSAGES_PER_DOC
-    ]
+    most_relevant = sorted(chunks, key=lambda c: c.score, reverse=True)[:max_passages]
     return sorted(most_relevant, key=lambda c: c.position)
 
 

@@ -45,6 +45,9 @@ class AgentFeatureFlags:
     enable_tool_call_repair: bool = True
     enable_doom_loop: bool = True
 
+    # Mode policy — cap/filter tool calls and retrieval by research mode
+    enable_mode_budget: bool = True
+
     # Safety — permissions, concurrency, tool-set narrowing
     enable_permission: bool = True
     enable_busy_mutex: bool = True
@@ -105,6 +108,7 @@ class AgentFeatureFlags:
                 enable_tool_call_limit=False,
                 enable_tool_call_repair=False,
                 enable_doom_loop=False,
+                enable_mode_budget=False,
                 enable_permission=False,
                 enable_busy_mutex=False,
                 enable_llm_tool_selector=False,
@@ -130,6 +134,7 @@ class AgentFeatureFlags:
             enable_tool_call_limit=_env_bool("NOWING_ENABLE_TOOL_CALL_LIMIT", True),
             enable_tool_call_repair=_env_bool("NOWING_ENABLE_TOOL_CALL_REPAIR", True),
             enable_doom_loop=_env_bool("NOWING_ENABLE_DOOM_LOOP", True),
+            enable_mode_budget=_env_bool("NOWING_ENABLE_MODE_BUDGET", True),
             # Safety
             enable_permission=_env_bool("NOWING_ENABLE_PERMISSION", True),
             enable_busy_mutex=_env_bool("NOWING_ENABLE_BUSY_MUTEX", True),
@@ -172,6 +177,7 @@ class AgentFeatureFlags:
                 self.enable_tool_call_limit,
                 self.enable_tool_call_repair,
                 self.enable_doom_loop,
+                self.enable_mode_budget,
                 self.enable_permission,
                 self.enable_busy_mutex,
                 self.enable_llm_tool_selector,

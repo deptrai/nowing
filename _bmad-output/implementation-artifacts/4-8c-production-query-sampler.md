@@ -87,17 +87,22 @@ So that the `chat/regression` benchmark can run against realistic queries withou
 ```bash
 cd nowing_backend
 ruff check app/admin/chat_query_sampler.py scripts/sample_chat_queries.py tests/integration/admin/test_chat_query_sampler.py
-ruff format ...
+ruff format app/admin/chat_query_sampler.py scripts/sample_chat_queries.py tests/integration/admin/test_chat_query_sampler.py
 pytest tests/integration/admin/test_chat_query_sampler.py -q
 ```
 
 Usage:
 
 ```bash
-python scripts/sample_chat_queries.py --max-queries 100 --days 30 --output /tmp/sampled.jsonl
+cd nowing_backend
+python scripts/sample_chat_queries.py --pat "$QUERY_SAMPLER_PAT" --salt "$QUERY_SAMPLER_SALT" --max-queries 100 --days 30 --output /tmp/sampled.jsonl
 cd ../nowing_evals
 python -m nowing_evals ingest chat regression --dataset /tmp/sampled.jsonl
 ```
+
+## Code status note
+
+Implemented and merged. `app/admin/chat_query_sampler.py` and `scripts/sample_chat_queries.py` sample recent `NewChatMessage` rows for `role='user'`, redact PII, infer tags from `AgentActionLog` tool calls, and hash workspace names with `QUERY_SAMPLER_SALT`. Output is a JSONL that `nowing_evals ingest chat regression --dataset` accepts directly. The CLI requires an admin PAT (`QUERY_SAMPLER_PAT`) and warns when not using a local DB. `.env.example` includes both env vars. Integration tests exist at `tests/integration/admin/test_chat_query_sampler.py`.
 
 ## References
 

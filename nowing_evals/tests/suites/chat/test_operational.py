@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from nowing_evals.suites.chat.regression.operational import (
     _classify_error_text,
     _tool_output_is_error,
@@ -94,3 +96,51 @@ def test_summarize_operational_empty() -> None:
     out = summarize_operational(None, text="text")
     assert out["total_tool_attempts"] == 0
     assert out["scrape_success_rate"] is None
+
+
+def test_summarize_operational_counts_scrape_tool_set() -> None:
+    raw = [
+        {"type": "tool-input-start", "toolCallId": "t1", "toolName": "google_search"},
+        {
+            "type": "tool-output-available",
+            "toolCallId": "t1",
+            "toolName": "google_search",
+            "output": {"status": "completed", "count": 3},
+        },
+        {"type": "tool-input-start", "toolCallId": "t2", "toolName": "web_discover"},
+    ]
+    out = summarize_operational(raw, text="text")
+    assert out["scrape_attempts"] == 2
+    assert out["scrape_successes"] == 1
+    assert out["scrape_drops"] == 1
+    assert out["scrape_drop_rate"] == pytest.approx(0.5)
+
+
+def test_summarize_operational_orphan_output_not_counted() -> None:
+    # Output with no matching input and no toolName should be ignored (L17).
+    raw = [
+        {"type": "tool-output-available", "toolCallId": "t1", "output": {"status": "completed"}},
+    ]
+    out = summarize_operational(raw, text="text")
+    assert out["total_tool_attempts"] == 0
+    assert out["total_tool_drops"] == 0
+
+
+def test_summarize_operational_out_of_order_output() -> None:
+    # Output may arrive before its input; the attempt is counted when the
+    # input is seen, not as a fake "unknown" attempt (L17).
+    raw = [
+        {
+            "type": "tool-output-available",
+            "toolCallId": "t1",
+            "toolName": "web_search",
+            "output": {"status": "error", "error": "Captcha required"},
+        },
+        {"type": "tool-input-start", "toolCallId": "t1", "toolName": "web_search"},
+    ]
+    out = summarize_operational(raw, text="text")
+    assert out["total_tool_attempts"] == 1
+    assert out["total_tool_failures"] == 1
+    assert out["error_reason_counts"].get("captcha") == 1
+    assert "web_search" in out["tool_stats"]
+    assert out["tool_stats"]["web_search"]["attempts"] == 1

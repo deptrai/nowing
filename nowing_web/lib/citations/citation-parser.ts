@@ -20,6 +20,9 @@ import { FENCED_OR_INLINE_CODE } from "@/lib/markdown/code-regions";
 export const CITATION_REGEX =
 	/[[【]\u200B?citation:\s*(https?:\/\/[^\]】\u200B]+|urlcite\d+|(?:doc-)?-?\d+(?:\s*,\s*(?:doc-)?-?\d+)*)\s*\u200B?[\]】]/g;
 
+/** Normalizes bare `[n]` / `【n】` markers to the canonical `[citation:n]` form. */
+const BARE_CITATION_REGEX = /[[【]\u200B?(\d+)\u200B?[\]】]/g;
+
 /** A single parsed citation reference. */
 export type CitationToken =
 	| { kind: "url"; url: string }
@@ -82,15 +85,18 @@ export function preprocessCitationMarkdown(content: string): PreprocessedCitatio
  * can decide how to render anonymous documents.
  */
 export function parseTextWithCitations(text: string, urlMap: CitationUrlMap): ParsedSegment[] {
+	// The agent sometimes emits bare `[n]` instead of `[citation:n]`.
+	const normalizedText = text.replace(BARE_CITATION_REGEX, "[citation:$1]");
+
 	const segments: ParsedSegment[] = [];
 	let lastIndex = 0;
 	let match: RegExpExecArray | null;
 
 	CITATION_REGEX.lastIndex = 0;
-	match = CITATION_REGEX.exec(text);
+	match = CITATION_REGEX.exec(normalizedText);
 	while (match !== null) {
 		if (match.index > lastIndex) {
-			segments.push(text.substring(lastIndex, match.index));
+			segments.push(normalizedText.substring(lastIndex, match.index));
 		}
 
 		const captured = match[1];
@@ -114,11 +120,11 @@ export function parseTextWithCitations(text: string, urlMap: CitationUrlMap): Pa
 		}
 
 		lastIndex = match.index + match[0].length;
-		match = CITATION_REGEX.exec(text);
+		match = CITATION_REGEX.exec(normalizedText);
 	}
 
-	if (lastIndex < text.length) {
-		segments.push(text.substring(lastIndex));
+	if (lastIndex < normalizedText.length) {
+		segments.push(normalizedText.substring(lastIndex));
 	}
 
 	return segments.length > 0 ? segments : [text];

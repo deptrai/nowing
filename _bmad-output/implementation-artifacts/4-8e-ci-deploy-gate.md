@@ -2,12 +2,12 @@
 baseline_commit: e3de8a948
 baseline_branch: develop
 story_key: 4-8e-ci-deploy-gate
-status: done
+status: review
 ---
 
 # Story 4.8e: CI / deploy gate for chat regression
 
-**Status:** done  
+**Status:** review  
 **Epic:** 4 — Chat & Agents  
 **Priority:** HIGH  
 **Requirements:** NFR-10  
@@ -81,7 +81,8 @@ So that production chat quality/latency/cost regressions block the rollout.
 ### Docs
 
 - [x] Update `nowing_evals/.env.example` with `CHAT_EVAL_*` + notification variables.
-- [ ] Update `docs/ops/deploy-gate.md` or `README.md` with the CI step.
+- [x] Update `nowing_evals/README.md` with the CI gate and `chat/regression` usage.
+- [ ] Create `docs/ops/deploy-gate.md` with the full CI step.
 
 ### Tests
 
@@ -93,11 +94,16 @@ So that production chat quality/latency/cost regressions block the rollout.
 
 ```bash
 cd nowing_evals
-python -m nowing_evals run chat regression --search-space-id 42 --n 2 --max-total-cost-micros 500000 --dry-run
+python -m nowing_evals run chat regression --search-space-id 42 --n 2 --max-total-cost-micros 500000 --help
+python -m nowing_evals run chat regression --search-space-id 42 --n 2 --max-total-cost-micros 500000 --fail-on-unratified
 ruff check src/nowing_evals/suites/chat/regression/ src/nowing_evals/core/notifications.py
-ruff format ...
-python -m pytest tests/suites/chat/test_regression.py tests/suites/chat/test_gate.py -q
+ruff format src/nowing_evals/suites/chat/regression/ src/nowing_evals/core/notifications.py
+python -m pytest tests/suites/chat/test_regression.py -q
 ```
+
+## Code status note
+
+Implemented and merged. The `chat-regression-gate.yml` GitHub Action triggers by `workflow_dispatch`, runs the benchmark with cost cap and notification env vars, and uploads the run artifact. `ChatRegressionBenchmark` evaluates `gate.yaml` thresholds (including the new operational metrics), logs a warning when `baseline_ratified: false`, and raises `RuntimeError` on violations only when ratified or when `--fail-on-unratified` is passed. `nowing_evals/src/nowing_evals/core/notifications.py` sends Slack/Telegram with the failing thresholds and a link to `run_artifact.json`. `nowing_evals/.env.example` and `README.md` document the variables. Gaps: `docs/ops/deploy-gate.md` is not created; dedicated unit tests for the cost-cap early-exit and notification payload are missing.
 
 ## References
 

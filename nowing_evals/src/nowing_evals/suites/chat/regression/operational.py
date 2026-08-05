@@ -16,6 +16,10 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Tools that perform external search / scrape work. Keep the legacy names for
+# backwards compatibility with existing datasets and the current subagent list.
+SCRAPE_TOOLS = {"web_search", "google_search", "web_scrape", "web_discover"}
+
 
 def _tool_output_is_error(output: Any) -> bool:
     """Return True if a tool-output-available payload indicates failure."""
@@ -99,6 +103,10 @@ def summarize_operational(
     seen_tool_ids: set[str] = set()
     completed_tool_ids: set[str] = set()
     tool_name_by_id: dict[str, str] = {}
+    # Outputs can arrive before their matching input; queue them and only count
+    # the attempt when the input is seen. Orphan outputs (input never arrives)
+    # are not counted as attempts (L17).
+    pending_outputs: dict[str, tuple[str, Any]] = {}
 
     error_frames: list[dict[str, str | None]] = []
     error_reason_counts: dict[str, int] = {}
@@ -127,19 +135,38 @@ def summarize_operational(
         if ev_type in ("tool-input-start", "tool-input-available"):
             tool_name = event.get("toolName") or "unknown"
             tool_id = str(event.get("toolCallId") or "")
-            tool_attempts[tool_name] = tool_attempts.get(tool_name, 0) + 1
-            tool_name_by_id[tool_id] = tool_name
-            seen_tool_ids.add(tool_id)
+            if tool_id not in seen_tool_ids:
+                tool_attempts[tool_name] = tool_attempts.get(tool_name, 0) + 1
+                tool_name_by_id[tool_id] = tool_name
+                seen_tool_ids.add(tool_id)
+                # If an output arrived earlier for this id, process it now.
+                if tool_id in pending_outputs:
+                    _pending_name, pending_output = pending_outputs.pop(tool_id)
+                    if _tool_output_is_error(pending_output):
+                        tool_failures[tool_name] = tool_failures.get(tool_name, 0) + 1
+                        if isinstance(pending_output, dict):
+                            _record_error(
+                                pending_output.get("error") or pending_output.get("message"), None
+                            )
+                            if pending_output.get("degradation_reason"):
+                                dr = pending_output["degradation_reason"]
+                                degradation_reasons[dr] = degradation_reasons.get(dr, 0) + 1
+                    else:
+                        tool_successes[tool_name] = tool_successes.get(tool_name, 0) + 1
+                    completed_tool_ids.add(tool_id)
             continue
 
         if ev_type == "tool-output-available":
             tool_id = str(event.get("toolCallId") or "")
+            output = event.get("output")
             tool_name = tool_name_by_id.get(tool_id)
             if not tool_name:
-                # Fallback to a generic name if we never saw the input frame.
-                tool_name = "unknown"
-                tool_attempts[tool_name] = tool_attempts.get(tool_name, 0) + 1
-            output = event.get("output")
+                # No matching input yet. Use the toolName on the output if present;
+                # otherwise this is a true orphan and should not be counted.
+                output_tool_name = event.get("toolName")
+                if output_tool_name and tool_id:
+                    pending_outputs[tool_id] = (output_tool_name, output)
+                continue
             if _tool_output_is_error(output):
                 tool_failures[tool_name] = tool_failures.get(tool_name, 0) + 1
                 if isinstance(output, dict):
@@ -197,9 +224,10 @@ def summarize_operational(
     total_failures = sum(tool_failures.values())
     total_drops = sum(tool_drops.values())
 
-    scrape_attempts = tool_attempts.get("web_search", 0) + tool_attempts.get("web_scrape", 0)
-    scrape_successes = tool_successes.get("web_search", 0) + tool_successes.get("web_scrape", 0)
-    scrape_failures = tool_failures.get("web_search", 0) + tool_failures.get("web_scrape", 0)
+    scrape_attempts = sum(tool_attempts.get(name, 0) for name in SCRAPE_TOOLS)
+    scrape_successes = sum(tool_successes.get(name, 0) for name in SCRAPE_TOOLS)
+    scrape_failures = sum(tool_failures.get(name, 0) for name in SCRAPE_TOOLS)
+    scrape_drops = sum(tool_drops.get(name, 0) for name in SCRAPE_TOOLS)
 
     call_details_metrics = _extract_call_details_metrics(call_details)
 
@@ -207,7 +235,10 @@ def summarize_operational(
         "scrape_attempts": scrape_attempts,
         "scrape_successes": scrape_successes,
         "scrape_failures": scrape_failures,
+        "scrape_drops": scrape_drops,
         "scrape_success_rate": (scrape_successes / scrape_attempts if scrape_attempts else None),
+        "scrape_failure_rate": (scrape_failures / scrape_attempts if scrape_attempts else None),
+        "scrape_drop_rate": (scrape_drops / scrape_attempts if scrape_attempts else None),
         "total_tool_attempts": total_attempts,
         "total_tool_successes": total_successes,
         "total_tool_failures": total_failures,

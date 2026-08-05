@@ -14,10 +14,12 @@ from nowing_evals.core.config import Config, SuiteState
 from nowing_evals.core.registry import RunArtifact, RunContext
 from nowing_evals.suites.chat.regression.runner import (
     ChatRegressionBenchmark,
+    _aggregate_operational,
     _build_mode_matrix,
     _Case,
     _CaseResult,
     _contains_hits,
+    _evaluate_chat_gate,
     _load_cases,
     _one_case_per_tag,
 )
@@ -305,7 +307,9 @@ def test_aggregate_per_mode_tier_and_environment() -> None:
         _make_result("a", mode="balanced", tier="short", latency_ms=1000, cost_micros=50),
         _make_result("b", mode="balanced", tier="long_context", latency_ms=2000, cost_micros=150),
         _make_result("c", mode="quality", tier="short", latency_ms=3000, cost_micros=100),
-        _make_result("d", mode="quality", tier="long_context", error="boom", finished_normally=False),
+        _make_result(
+            "d", mode="quality", tier="long_context", error="boom", finished_normally=False
+        ),
     ]
 
     metrics = bench._aggregate(results)
@@ -400,9 +404,7 @@ async def test_run_executes_mode_matrix_and_tags_environment(
     bench = ChatRegressionBenchmark()
     config = replace(isolated_config, nowing_api_base=_BASE)
 
-    respx_mock.post("/api/v1/threads").mock(
-        return_value=httpx.Response(200, json={"id": 7})
-    )
+    respx_mock.post("/api/v1/threads").mock(return_value=httpx.Response(200, json={"id": 7}))
     respx_mock.delete(url__regex=r"/api/v1/threads/.*").mock(
         return_value=httpx.Response(404, json={"detail": "not found"})
     )
@@ -468,5 +470,269 @@ async def test_run_executes_mode_matrix_and_tags_environment(
         "balanced:long_context",
     }
 
-    new_chat_calls = [c for c in respx_mock.calls if c.request.method == "POST" and "/new_chat" in str(c.request.url)]
+    new_chat_calls = [
+        c
+        for c in respx_mock.calls
+        if c.request.method == "POST" and "/new_chat" in str(c.request.url)
+    ]
     assert len(new_chat_calls) == 4  # 2 cases × 2 modes
+
+
+def test_aggregate_operational_turn_error_rate_and_scrape_drops() -> None:
+    r1 = _make_result("a", tags=["memory"], finished_normally=True)
+    r1.operational = {
+        "n_turns": 2,
+        "n_failed_turns": 1,
+        "turn_error_rate": 0.5,
+        "context_drift_score": 0.1,
+        "scrape_attempts": 10,
+        "scrape_successes": 8,
+        "scrape_failures": 1,
+        "scrape_drops": 1,
+        "total_tool_attempts": 20,
+        "total_tool_successes": 18,
+        "total_tool_failures": 1,
+        "total_tool_drops": 1,
+    }
+    r2 = _make_result("b", tags=["memory"], finished_normally=True)
+    r2.operational = {
+        "n_turns": 1,
+        "n_failed_turns": 0,
+        "turn_error_rate": 0.0,
+        "context_drift_score": -0.1,
+        "scrape_attempts": 5,
+        "scrape_successes": 4,
+        "scrape_failures": 0,
+        "scrape_drops": 1,
+        "total_tool_attempts": 10,
+        "total_tool_successes": 9,
+        "total_tool_failures": 0,
+        "total_tool_drops": 1,
+    }
+
+    op = _aggregate_operational([r1, r2])
+    assert op["n_turns"] == 3
+    assert op["n_failed_turns"] == 1
+    assert op["turn_error_rate"] == pytest.approx(1 / 3)
+    assert op["context_drift_score"] == pytest.approx(0.0)
+    assert op["scrape_attempts"] == 15
+    assert op["scrape_drops"] == 2
+    assert op["scrape_drop_rate"] == pytest.approx(2 / 15)
+
+
+def test_evaluate_chat_gate_checks_error_rate_ttfb_and_scrape_drop() -> None:
+    metrics = {
+        "overall": {
+            "error_rate": 0.1,
+            "p95_ttfb_ms": 6000,
+        },
+        "operational": {
+            "scrape_drop_rate": 0.2,
+        },
+    }
+    violations = _evaluate_chat_gate(metrics)
+    assert any("error rate" in v for v in violations)
+    assert any("p95 ttfb" in v for v in violations)
+    assert any("scrape drop rate" in v for v in violations)
+
+
+def test_one_case_per_tag_selects_new_tag_cases() -> None:
+    cases = [
+        _make_case("c1", ["a", "x"]),
+        _make_case("c2", ["a", "b"]),
+        _make_case("c3", ["c"]),
+    ]
+    selected = _one_case_per_tag(cases)
+    assert [c.case_id for c in selected] == ["c1", "c2", "c3"]
+
+
+def test_contains_hits_word_boundary_avoids_substring() -> None:
+    assert _contains_hits("pineapple", ["Apple"]) == 0
+    assert _contains_hits("Apple and Samsung", ["Apple"]) == 1
+    assert _contains_hits("Q3 budget", ["Q3"]) == 1
+
+
+def test_report_section_p50_and_per_tag_operational() -> None:
+    bench = ChatRegressionBenchmark()
+    metrics = {
+        "overall": {
+            "samples": 2,
+            "n_failed": 0,
+            "error_rate": 0.0,
+            "p50_e2e_ms": 100.0,
+            "p95_e2e_ms": 120.0,
+            "p50_ttfb_ms": 5.0,
+            "p95_ttfb_ms": 10.0,
+            "p95_cost_micros": 50.0,
+            "p95_citation_count": 3.0,
+            "mean_total_tokens": 200.0,
+        },
+        "per_tag": {
+            "budget": {
+                "samples": 2,
+                "error_rate": 0.0,
+                "p50_e2e_ms": 100.0,
+                "p95_e2e_ms": 120.0,
+                "p50_ttfb_ms": 5.0,
+                "p95_ttfb_ms": 10.0,
+                "p95_cost_micros": 50.0,
+                "p95_citation_count": 3.0,
+            }
+        },
+        "per_tag_operational": {
+            "budget": {
+                "samples": 2,
+                "scrape_attempts": 4,
+                "scrape_successes": 3,
+                "scrape_success_rate": 0.75,
+                "tool_drop_rate": 0.05,
+                "engine_unavailable_rate": 0.0,
+                "error_reason_counts": {"rate_limit": 1},
+            }
+        },
+    }
+    artifact = RunArtifact(
+        suite="chat",
+        benchmark="regression",
+        run_timestamp="2026-08-04T00:00:00Z",
+        raw_path=Path("/tmp/raw.jsonl"),
+        metrics=metrics,
+    )
+    section = bench.report_section([artifact])
+    assert "p50 e2e" in section.body_md
+    assert "p50 TTFB" in section.body_md
+    assert "Operational / Stability per tag" in section.body_md
+    assert "rate_limit: 1" in section.body_md
+
+
+def test_load_cases_rejects_malformed_jsonl(tmp_path: Path) -> None:
+    dataset_path = tmp_path / "cases.jsonl"
+    dataset_path.write_text("{not valid json\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="Malformed JSONL"):
+        _load_cases(dataset_path)
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_run_multi_turn_reuses_one_thread(
+    respx_mock, http, isolated_config: Config, tmp_path: Path
+) -> None:
+    """H3: a multi-turn case must reuse one thread and only delete it once."""
+    bench = ChatRegressionBenchmark()
+    config = replace(isolated_config, nowing_api_base=_BASE)
+
+    respx_mock.post("/api/v1/threads").mock(return_value=httpx.Response(200, json={"id": 7}))
+    respx_mock.delete(url__regex=r"/api/v1/threads/.*").mock(return_value=httpx.Response(200))
+
+    body = _sse_body(
+        [
+            {"type": "start", "messageId": "m1"},
+            {"type": "text-start", "id": "t1"},
+            {"type": "text-delta", "id": "t1", "delta": "Answer"},
+            {"type": "text-end", "id": "t1"},
+            {"type": "finish"},
+        ]
+    )
+    respx_mock.post("/api/v1/new_chat").mock(
+        return_value=httpx.Response(
+            200,
+            content=body,
+            headers={"Content-Type": "text/event-stream"},
+        )
+    )
+
+    dataset_path = tmp_path / "cases.jsonl"
+    rows = [
+        {
+            "case_id": "c1",
+            "query": "first",
+            "tags": ["multi"],
+            "tier": "short",
+            "turns": [
+                {"query": "turn one", "expected_contains": ["one"]},
+                {"query": "turn two", "expected_contains": ["two"]},
+            ],
+        }
+    ]
+    with dataset_path.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row) + "\n")
+
+    suite_state = SuiteState(
+        search_space_id=0,
+        chat_model_id=0,
+        provider_model="",
+        created_at="2026-08-04T00:00:00Z",
+    )
+    ctx = RunContext(
+        suite="chat",
+        benchmark="regression",
+        config=config,
+        suite_state=suite_state,
+        http=http,
+    )
+
+    await bench.run(
+        ctx,
+        dataset=dataset_path,
+        search_space_id=1,
+        modes="balanced",
+        concurrency=1,
+    )
+
+    thread_calls = [
+        c
+        for c in respx_mock.calls
+        if c.request.method == "POST" and "/threads" in str(c.request.url)
+    ]
+    new_chat_calls = [
+        c
+        for c in respx_mock.calls
+        if c.request.method == "POST" and "/new_chat" in str(c.request.url)
+    ]
+    delete_calls = [
+        c
+        for c in respx_mock.calls
+        if c.request.method == "DELETE" and "/threads" in str(c.request.url)
+    ]
+    assert len(thread_calls) == 1
+    assert len(new_chat_calls) == 2
+    assert len(delete_calls) == 1
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_BASE)
+async def test_run_rejects_invalid_modes(
+    respx_mock, http, isolated_config: Config, tmp_path: Path
+) -> None:
+    bench = ChatRegressionBenchmark()
+    config = replace(isolated_config, nowing_api_base=_BASE)
+
+    dataset_path = tmp_path / "cases.jsonl"
+    rows = [{"case_id": "c1", "query": "q1", "tags": ["a"], "tier": "short"}]
+    with dataset_path.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row) + "\n")
+
+    suite_state = SuiteState(
+        search_space_id=0,
+        chat_model_id=0,
+        provider_model="",
+        created_at="2026-08-04T00:00:00Z",
+    )
+    ctx = RunContext(
+        suite="chat",
+        benchmark="regression",
+        config=config,
+        suite_state=suite_state,
+        http=http,
+    )
+
+    with pytest.raises(RuntimeError, match="Invalid --modes"):
+        await bench.run(
+            ctx,
+            dataset=dataset_path,
+            search_space_id=1,
+            modes="fast",
+            concurrency=1,
+        )

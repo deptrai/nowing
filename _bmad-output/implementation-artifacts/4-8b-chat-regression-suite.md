@@ -2,12 +2,12 @@
 baseline_commit: e3de8a948
 baseline_branch: develop
 story_key: 4-8b-chat-regression-suite
-status: done
+status: review
 ---
 
 # Story 4.8b: Chat Regression Benchmark Suite
 
-**Status:** done  
+**Status:** review  
 **Epic:** 4 — Chat & Agents  
 **Priority:** HIGH  
 **Requirements:** FR-42, NFR-10  
@@ -54,33 +54,38 @@ So that we can gate production deploys on chat quality drift.
 
 ### Files created
 
-- `nowing_evals/src/nowing_evals/suites/chat/__init__.py`
-- `nowing_evals/src/nowing_evals/suites/chat/regression/__init__.py`
-- `nowing_evals/src/nowing_evals/suites/chat/regression/runner.py`
-- `nowing_evals/src/nowing_evals/suites/chat/regression/gate.yaml`
+- [x] `nowing_evals/src/nowing_evals/suites/chat/__init__.py`
+- [x] `nowing_evals/src/nowing_evals/suites/chat/regression/__init__.py`
+- [x] `nowing_evals/src/nowing_evals/suites/chat/regression/runner.py`
+- [x] `nowing_evals/src/nowing_evals/suites/chat/regression/operational.py`
+- [x] `nowing_evals/src/nowing_evals/suites/chat/regression/gate.yaml`
 
 ### Runner features
 
-- `ChatRegressionBenchmark` registered with `suite="chat"`, `name="regression"`.
-- `requires_suite_setup = False`; requires `--search-space-id` at run time.
-- `add_run_args`: `--search-space-id`, `--workspace-id`, `--dataset`, `--n`, `--concurrency`, `--tags`, `--timeout`, `--backend-build-id`.
-- `ingest()`: validates dataset rows have `case_id` and `query`; writes `cases.jsonl`.
-- `run()`: loads cases, filters by `--tags`, runs via `NowingArm`, handles `TimeoutError`, writes `raw.jsonl` and `run_artifact.json`.
-- `report_section()`: markdown table per tag + overall summary.
+- [x] `ChatRegressionBenchmark` registered with `suite="chat"`, `name="regression"`.
+- [x] `requires_suite_setup = False`; requires `--search-space-id` at run time.
+- [x] `add_run_args`: `--search-space-id`, `--workspace-id`, `--dataset`, `--n`, `--concurrency`, `--threads`, `--modes`, `--tier`, `--environment`, `--profile`, `--tags`, `--timeout` (default 600s), `--backend-build-id`, `--max-total-cost-micros`, `--fail-on-unratified`.
+- [x] `ingest()`: validates dataset rows have `case_id` and `query`; writes `data/chat/regression/cases.jsonl`.
+- [x] `run()`: loads cases, filters by `--tags` and `--tier`, expands the `--modes` matrix, calls `NowingArm` with the case `mode` in `NewChatRequest`, handles `TimeoutError`, writes `raw.jsonl` and `run_artifact.json`.
+- [x] `report_section()`: markdown tables per tag, mode, tier, and mode×tier, plus overall summary and an "Operational / Stability" section.
+- [x] `--environment local|production` is written into `run_artifact.json`; the report can surface a `local vs production` delta when both are present.
 
 ### Metrics
 
-- `overall`: samples, n_failed, error_rate, p50/p95 e2e, p50/p95 ttfb, p50/p95 cost, total cost, p50/p95 citation count, mean total tokens, keyword match rate.
-- `per_tag`: same metrics grouped by `tags`.
+- [x] `overall`: samples, n_failed, error_rate, p50/p95 e2e, p50/p95 ttfb, p50/p95 cost, total cost, p50/p95 citation count, mean total tokens, keyword match rate.
+- [x] `per_tag`: same metrics grouped by `tags`.
+- [x] `per_mode`, `per_tier`, `per_mode_tier`: same metrics grouped by the requested chat `mode` and the case `tier`.
+- [x] `operational`: scrape/tool success and drop rates, failure reason counts, fallback KB hits, engine unavailable rate, plus under-load metrics.
 
 ### Dataset
 
-- Default sample 5 cases covering `memory`, `document`, `deep-research`, `multi-tool`, `creative`.
-- JSONL schema: `case_id`, `query`, `tags`, `mentioned_document_ids`, `disabled_tools`, `expected_contains`.
+- [x] Default sample 5 cases covering `memory`, `document`, `deep-research`, `multi-tool`, `creative`; each case has a `tier` and uses the requested mode matrix.
+- [x] JSONL schema: `case_id`, `query`, `tags`, `tier`, `modes`, `turns`, `mentioned_document_ids`, `disabled_tools`, `expected_contains`.
 
 ### Docs
 
-- `nowing_evals/README.md` updated with benchmark table and usage section.
+- [x] `nowing_evals/README.md` updated with benchmark table and usage section.
+- [x] `nowing_evals/docs/benchmark-stability.md` and `nowing_evals/docs/benchmark.md` reference the chat/regression runner.
 
 ## Verification
 
@@ -89,24 +94,30 @@ cd nowing_evals
 python -m nowing_evals benchmarks list
 python -m nowing_evals ingest chat regression --help
 python -m nowing_evals run chat regression --help
-ruff check src/nowing_evals/suites/chat/
-ruff format src/nowing_evals/suites/chat/
-python -m pytest tests/core/test_clients.py -q
+ruff check src/nowing_evals/core/clients/new_chat.py src/nowing_evals/core/arms/nowing.py src/nowing_evals/core/notifications.py src/nowing_evals/suites/chat/regression/ tests/suites/chat/test_regression.py tests/suites/chat/test_operational.py
+ruff format src/nowing_evals/core/clients/new_chat.py src/nowing_evals/core/arms/nowing.py src/nowing_evals/core/notifications.py src/nowing_evals/suites/chat/regression/ tests/suites/chat/test_regression.py tests/suites/chat/test_operational.py
+python -m pytest tests/core/test_clients.py tests/suites/chat/test_regression.py tests/suites/chat/test_operational.py -q
 ```
 
 To run against a real backend:
 
 ```bash
 python -m nowing_evals ingest chat regression
-python -m nowing_evals run chat regression --search-space-id <SEARCH_SPACE_ID> --concurrency 1
+python -m nowing_evals run chat regression --search-space-id <SEARCH_SPACE_ID> --profile quick --environment local --concurrency 1
+python -m nowing_evals run chat regression --search-space-id <SEARCH_SPACE_ID> --profile full --tags deep-research --modes speed,balanced,quality,auto --timeout 600 --environment local --concurrency 1
+python -m nowing_evals report --suite chat
 ```
 
 ## Known limitations / next steps
 
-- `chat/regression` uses a **synthetic default dataset** (no PII risk). Story `4-8c` will add the production query sampler + anonymizer.
-- Keyword matching (`expected_contains`) is a cheap proxy, not an LLM judge. Story `4-8d` will add `chat/quality` with LLM-as-judge.
-- No CI integration yet. Story `4-8e` adds the deploy gate step.
+- `chat/regression` uses a **synthetic default dataset** (no PII risk). The production query sampler from Story `4-8c` exists; it is not yet the default and must be ingested manually with `--dataset`.
+- Keyword matching (`expected_contains`) is a cheap proxy, not an LLM judge. Story `4-8d` (`chat/quality`) is still `ready-for-dev` and not present.
+- CI integration from Story `4-8e` is implemented (`.github/workflows/chat-regression-gate.yml`); the gate is dry-run until `gate.yaml` has `baseline_ratified: true`.
 - `NowingArm` only supports `mentioned_document_ids`; folder/connector/thread mentions are follow-up.
+
+## Code status note
+
+Implemented and merged. `ChatRegressionBenchmark` is registered, the `chat/regression` runner passes `mode` from the requested mode matrix into `NewChatRequest.mode` via `NowingArm` (`nowing_evals/src/nowing_evals/core/arms/nowing.py:68`), and the default per-turn `--timeout` is 600s (`runner.py:583`, `new_chat.py:132`). It records per-turn latency/TTFB, token/cost, citations, finish status, multi-turn `turns`, and operational stability metrics. Gate evaluation, cost-cap, notification, and `--fail-on-unratified` are wired. Unit tests (`tests/suites/chat/test_regression.py`, `tests/suites/chat/test_operational.py`) pass. Gaps: `chat/quality` (Story 4-8d) is not implemented; the default dataset remains synthetic; `baseline_ratified` is still `false`.
 
 ## References
 

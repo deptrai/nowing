@@ -37,6 +37,36 @@ _perf_log = get_perf_logger()
 _DEFAULT_TOP_K = 5
 _MAX_TOP_K = 20
 
+_MODE_SEARCH_LIMITS: dict[str, tuple[int, int]] = {
+    # mode -> (top_k, max_passages_per_doc)
+    "speed": (1, 4),
+    "balanced": (2, 4),
+    "quality": (3, 4),
+    "auto": (2, 4),
+}
+
+
+def _current_research_mode(runtime: ToolRuntime) -> str:
+    """Read ``research_mode`` from the current tool runtime config."""
+    config = getattr(runtime, "config", None) or {}
+    if not isinstance(config, dict):
+        return "auto"
+    configurable = config.get("configurable") or {}
+    mode = configurable.get("research_mode")
+    return mode if mode in _MODE_SEARCH_LIMITS else "auto"
+
+
+def _mode_search_limits(
+    runtime: ToolRuntime,
+    top_k: int,
+) -> tuple[int, int]:
+    """Clamp ``top_k`` and ``max_passages_per_doc`` by ``research_mode``."""
+    mode = _current_research_mode(runtime)
+    mode_top_k, mode_max_passages = _MODE_SEARCH_LIMITS[mode]
+    clamped_top_k = min(max(1, top_k), _MAX_TOP_K, mode_top_k)
+    return clamped_top_k, mode_max_passages
+
+
 _TOOL_DESCRIPTION = (
     "Search the user's knowledge base — their own uploaded files, documents, "
     "and notes — for passages relevant to a query, using hybrid semantic + "
@@ -135,7 +165,7 @@ def create_search_knowledge_base_tool(
         if not cleaned_query:
             return "Error: provide a non-empty search query."
 
-        clamped_top_k = min(max(1, top_k), _MAX_TOP_K)
+        clamped_top_k, max_passages_per_doc = _mode_search_limits(runtime, top_k)
         registry = load_registry(getattr(runtime, "state", None))
 
         t0 = time.perf_counter()
@@ -152,6 +182,7 @@ def create_search_knowledge_base_tool(
                 query=cleaned_query,
                 scope=scope,
                 top_k=clamped_top_k,
+                max_passages_per_doc=max_passages_per_doc,
             )
             rendered = build_context(cleaned_query, hits, registry)
 
