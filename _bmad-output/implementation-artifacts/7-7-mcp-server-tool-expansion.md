@@ -538,3 +538,26 @@ opencode / deepseek-v4-flash-free (backfill — work được implement ad-hoc t
 **Human verdict:** PASS — 5 P0 review points accepted. No changes required.
 
 **Status after gate:** `done`.
+
+---
+
+## 15. Web E2E Gate 4.14
+
+**Scope:** Story 7.7 does not add a web UI for manual runs, but the new `POST /automations/{id}/run` endpoint produces a `PENDING` run that the `AutomationRunsSection` component must display without crashing.
+
+**Generated:**
+- `nowing_web/tests/helpers/api/automations.ts` — API helper to create/delete automation and trigger manual run.
+- `nowing_web/tests/automations/automation-manual-run.spec.ts` — Playwright spec verifying the detail page shows a `Pending` run after the backend endpoint is hit.
+
+**Static checks:**
+- `pnpm tsc --noEmit` ✅
+- `pnpm exec biome check` ✅
+
+**Execution:** Chưa chạy (Docker daemon off → không thể khởi Postgres/Redis/backend). Có thể chạy bằng:
+
+```bash
+cd nowing_web
+pnpm test:e2e tests/automations/automation-manual-run.spec.ts
+```
+
+**Verdict:** `deferred-to-runtime` — script sẵn sàng, cần E2E env để chạy.
