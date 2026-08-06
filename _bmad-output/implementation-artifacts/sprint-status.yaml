@@ -1,15 +1,9 @@
-# generated: 2026-08-04 01:00:00
-# last_updated: 2026-08-06 23:59
+# generated: 2026-08-07 01:50:54
+# last_updated: 2026-08-07 01:50:54
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
 # story_location: _bmad-output/implementation-artifacts
-#
-# STORY NUMBERING CONVENTION (single source of truth):
-# - `epics.md` uses dot notation (3.10, 9.6, 10.1, 11.1) for human-readable planning.
-# - This file uses dash notation (3-10, 9-6, 10-1, 11-1) for YAML keys.
-# - Dot and dash keys map 1:1 by removing separators (3.10 == 3-10; 11.1 == 11-1).
-# - When a story is merged or split, both files are updated together.
 
 # STATUS DEFINITIONS:
 # ==================
@@ -37,116 +31,133 @@
 #   - open: Committed during a retrospective, not yet addressed
 #   - in-progress: Actively being worked on
 #   - done: Completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
-generated: "2026-08-04 01:00:00"
-last_updated: "2026-08-06 23:59"
+generated: "2026-08-07 01:50:54"
+last_updated: "2026-08-07 01:50:54"
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  # ===== EPICS 1-11: DONE =====
-  epic-1: done
-  epic-1-retrospective: optional
-
-  epic-2: done
+  epic-2: in-progress
+  2-5: done
+  2-6: ready-for-dev
+  2-7: ready-for-dev
+  2-8: ready-for-dev
+  2-9: done
+  2-10: done
   epic-2-retrospective: optional
-
-  epic-3: done
+  epic-3: in-progress
+  3-6: done
+  3-7: done
+  3-9: done
+  3-10: done
+  3-11: done
+  3-12: done
+  3-13: done
+  3-14: done
+  3-15: ready-for-dev
+  3-16: ready-for-dev
   epic-3-retrospective: optional
-
-  epic-4: done
-  epic-4-retrospective: optional
-
-  epic-5: done
-  epic-5-retrospective: optional
-
-  epic-6: done
+  epic-6: in-progress
+  6-4: done
+  6-5: done
+  6-6: backlog
+  6-7: backlog
+  6-9: backlog
   epic-6-retrospective: optional
-
-  epic-7: done
+  epic-8: in-progress
+  8-3: done
+  8-8: done
+  8-7: done
+  8-9: done
+  8-10: done
+  8-11: done
+  8-12: done
+  8-13: done
+  epic-8-retrospective: optional
+  epic-9: in-progress
+  9-2: done
+  9-3: done
+  9-4: done
+  9-5: backlog
+  9-6: done
+  epic-9-retrospective: optional
+  epic-4: backlog
+  4-7: ready-for-dev
+  epic-4-retrospective: optional
+  epic-7: backlog
+  7-4: ready-for-dev
+  7-7: ready-for-dev
   epic-7-retrospective: optional
-
-  epic-8: done
-  epic-8-retrospective: done
-
-  epic-9: done
-  epic-9-retrospective: done
-
-  epic-10: done
-  epic-10-retrospective: done
-
-  epic-11: done
-  epic-11-retrospective: done
-
-  # ===== EPIC 12: HR + BĐS (DONE + NEW STORIES) =====
-  epic-12: done
-  12-0: done  # ToS & Legal Review
-  12-1: done  # VietnamWorks Scraper
-  12-2: done  # TopCV Scraper
-  12-3: done  # ITviec Scraper
-  12-4: done  # vn_jobs.aggregate
-  12-5: done  # PII Redaction
-  12-6: backlog  # Job Market Alerts
-  12-7: backlog  # Property Price Alerts
-  12-8: backlog  # Cross-Source Entity Timeline
-  12-9: backlog  # Saved Searches
+  epic-10: in-progress
+  10-1: done
+  10-2: done
+  10-3: done
+  10-4: done
+  epic-10-retrospective: optional
+  epic-11: in-progress
+  11-1: done
+  11-2: done
+  11-3: done
+  epic-11-retrospective: optional
+  epic-12: backlog
+  12-0: backlog
+  12-1: backlog
+  12-2: backlog
+  12-3: backlog
+  12-4: backlog
+  12-5: backlog
   epic-12-retrospective: optional
-
-  # ===== EPIC 13: CANONICAL ENTITY (IN PROGRESS) =====
-  epic-13: in-progress
-  13-1: done  # Schema & Convention (migration 193, models, RLS, indexes)
-  13-2a: done  # BDS Persistence & Retry
-  13-2b: done  # Jobs Persistence & Retry
-  13-2c: done  # Merge History, Conflict Resolution & Revert
-  13-2d: done  # PII-Safe Canonicalization
-  13-2e: backlog  # Dedup Benchmark & Release Gate
-  13-3: backlog  # Unified Search API (after 13.2)
+  epic-13: backlog
+  13-1: backlog
+  13-2: backlog
+  13-3: backlog
   epic-13-retrospective: optional
-
-  # ===== EPIC 14: NEWS AGGREGATION =====
   epic-14: backlog
-  14-1: backlog  # RSS Feed Integration
-  14-2: backlog  # News Entity Extraction
-  14-3: backlog  # News Alerts & Topic Monitoring
-  14-4: backlog  # News Digest & Synthesis
+  14-1: backlog
+  14-2: backlog
   epic-14-retrospective: optional
-
-  # ===== EPIC 15: FINANCIAL DATA =====
   epic-15: backlog
-  15-1: backlog  # CafeF Financial Data Integration
-  15-2: backlog  # Vietstock Deep Financials
-  15-3: backlog  # Stock Price Alerts
-  15-4: backlog  # Financial Trend Detection
+  15-1: backlog
+  15-2: backlog
   epic-15-retrospective: optional
-
-  # ===== EPIC 16: COMPANY DIRECTORY =====
   epic-16: backlog
-  16-1: backlog  # masothue.com Company Data
-  16-2: backlog  # Official Business Registry
-  16-3: backlog  # Company Alerts
-  16-4: backlog  # Company Timeline
+  16-1: backlog
+  16-2: backlog
   epic-16-retrospective: optional
-
-  # ===== EPIC 17: E-COMMERCE VN =====
   epic-17: backlog
-  17-1: backlog  # Lazada Product Data
-  17-2: backlog  # Shopee Product Data
-  17-3: backlog  # Price Drop Alerts
-  17-4: backlog  # Competitor Tracking
+  17-1: backlog
+  17-2: backlog
   epic-17-retrospective: optional
-
-deferred:
-  - story: 9-5
-    reason: "Metered deep-research endpoint cho self-host — chưa phê duyệt, Post-MVP / P1 business."
-
-action_items:
-  - "Epic 13 Story 13.2e (Dedup Benchmark & Release Gate) — NEXT to implement."
-  - "Epic 13 Story 13.3 (Unified Search API) — after 13.2."
-  - "Epic 14 Story 14.1 (News RSS) — quickest win (1-2 days) after 13.2."
-  - "Epic 15 Story 15.1 (CafeF) — quick win (2-4 hours) after 13.2."
-  - "Epic 16 Story 16.1 (masothue) — quick win (2-3 days) after 13.2."
-  - "Pre-merge gate scripts ready and smoke-tested on local DB."
-  - "Epic 12: ToS & legal review for VietnamWorks, TopCV, ITviec must close before scraper code merged."
-  - "Epic 12: TopCV anti-bot POC must pass or be explicitly disabled."
+  epic-12: backlog
+  12-6: backlog
+  12-7: backlog
+  12-8: backlog
+  12-9: backlog
+  epic-12-retrospective: optional
+  epic-14: backlog
+  14-3: backlog
+  14-4: backlog
+  epic-14-retrospective: optional
+  epic-15: backlog
+  15-3: backlog
+  15-4: backlog
+  epic-15-retrospective: optional
+  epic-16: backlog
+  16-3: backlog
+  16-4: backlog
+  epic-16-retrospective: optional
+  epic-17: backlog
+  17-3: backlog
+  17-4: backlog
+  epic-17-retrospective: optional
