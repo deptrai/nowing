@@ -83,7 +83,11 @@ if os.environ.get("COSMIC_RAY") == "1":
 
     class APIConnectionError(_LiteLLMError): ...
 
+    class APIResponseValidationError(_LiteLLMError): ...
+
     class AuthenticationError(_LiteLLMError): ...
+
+    class BadGatewayError(_LiteLLMError): ...
 
     class BadRequestError(_LiteLLMError): ...
 
@@ -91,20 +95,31 @@ if os.environ.get("COSMIC_RAY") == "1":
 
     class InternalServerError(_LiteLLMError): ...
 
+    class NotFoundError(_LiteLLMError): ...
+
+    class PermissionDeniedError(_LiteLLMError): ...
+
     class RateLimitError(_LiteLLMError): ...
 
     class ServiceUnavailableError(_LiteLLMError): ...
 
     class Timeout(_LiteLLMError): ...  # noqa: N818
 
+    class UnprocessableEntityError(_LiteLLMError): ...
+
     _fake_litellm_exceptions.APIConnectionError = APIConnectionError
+    _fake_litellm_exceptions.APIResponseValidationError = APIResponseValidationError
     _fake_litellm_exceptions.AuthenticationError = AuthenticationError
+    _fake_litellm_exceptions.BadGatewayError = BadGatewayError
     _fake_litellm_exceptions.BadRequestError = BadRequestError
     _fake_litellm_exceptions.ContextWindowExceededError = ContextWindowExceededError
     _fake_litellm_exceptions.InternalServerError = InternalServerError
+    _fake_litellm_exceptions.NotFoundError = NotFoundError
+    _fake_litellm_exceptions.PermissionDeniedError = PermissionDeniedError
     _fake_litellm_exceptions.RateLimitError = RateLimitError
     _fake_litellm_exceptions.ServiceUnavailableError = ServiceUnavailableError
     _fake_litellm_exceptions.Timeout = Timeout
+    _fake_litellm_exceptions.UnprocessableEntityError = UnprocessableEntityError
 
     async def _no_op_async(*args, **kwargs):
         return None
