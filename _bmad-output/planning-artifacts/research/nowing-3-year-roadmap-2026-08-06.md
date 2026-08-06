@@ -42,18 +42,17 @@ Nowing's 3-year journey: **Prove the entity-centric model in Vietnam → Scale a
 | 15 | Finance (CafeF, Vietstock) | 2-4hrs + 1-2w | Investment research |
 | 16 | Company (masothue, business.gov.vn) | 2-3d | Business intelligence |
 
-### Phase 3: Expansion (Epics 17-20)
+### Phase 3: Expansion (Epic 17)
 
 | Epic | Domain | Effort | Value |
 |------|--------|--------|-------|
 | 17 | E-commerce VN (Lazada, Shopee) | 4-6w + 8-12w | Pricing intelligence |
-| 18 | Social Media (reddit, instagram, tiktok, youtube) | 1-2w | Sentiment analysis |
-| 19 | Search (google_search, google_maps) | 1-2w | Web research |
-| 20 | Global E-commerce (amazon, walmart) | 8-12w | Product research |
+
+> **Code audit 2026-08-06:** Epics 18-20 removed — YouTube, Reddit, Instagram, TikTok, Google Search, Google Maps, Amazon, Walmart scrapers already exist in codebase. No new scrapers needed for these domains.
 
 ### Year 1 End State
 
-- 7+ active domains
+- 10+ active domains (including existing 18 scrapers)
 - 500+ workspaces using entity search
 - Entity-centric model proven
 - "From data to knowing" vision demonstrated
@@ -136,7 +135,7 @@ Nowing's 3-year journey: **Prove the entity-centric model in Vietnam → Scale a
 
 | Phase | Metric | Target |
 |-------|--------|--------|
-| Y1 End | Active domains | 7+ |
+| Y1 End | Active domains | 10+ (including existing 18 scrapers) |
 | Y1 End | Workspaces using entity search | 500+ |
 | Y2 End | Countries | 4 |
 | Y2 End | Active connectors | 100+ |
