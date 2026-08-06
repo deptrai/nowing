@@ -14,6 +14,7 @@ from .google_calendar_indexer import index_google_calendar_events
 from .google_drive_indexer import index_google_drive_files
 from .google_gmail_indexer import index_google_gmail_messages
 from .notion_indexer import index_notion_pages
+from .rss_indexer import index_rss_feeds
 
 __all__ = [
     "index_bookstack_pages",
@@ -24,4 +25,5 @@ __all__ = [
     "index_google_drive_files",
     "index_google_gmail_messages",
     "index_notion_pages",
+    "index_rss_feeds",
 ]

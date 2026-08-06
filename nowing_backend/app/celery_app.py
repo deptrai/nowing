@@ -183,6 +183,7 @@ celery_app = Celery(
         "app.podcasts.tasks.render",
         "app.tasks.celery_tasks.video_presentation_tasks",
         "app.tasks.celery_tasks.connector_tasks",
+        "app.tasks.celery_tasks.rss_tasks",
         "app.tasks.celery_tasks.obsidian_tasks",
         "app.tasks.celery_tasks.schedule_checker_task",
         "app.tasks.celery_tasks.document_reindex_tasks",
@@ -253,6 +254,7 @@ celery_app.conf.update(
         "index_bookstack_pages": {"queue": CONNECTORS_QUEUE},
         "index_composio_connector": {"queue": CONNECTORS_QUEUE},
         "index_obsidian_attachment": {"queue": CONNECTORS_QUEUE},
+        "index_rss_feeds": {"queue": CONNECTORS_QUEUE},
         # Everything else (document processing, podcasts, reindexing,
         # schedule checker, cleanup) stays on the default fast queue.
         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},

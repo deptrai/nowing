@@ -525,7 +525,10 @@ async def update_search_source_connector(
         update_data["config"] = merged_config
 
     # Exa MCP connector: rebuild server_config from service URL + API key on update.
-    if db_connector.connector_type == SearchSourceConnectorType.EXA_MCP_CONNECTOR and "config" in update_data:
+    if (
+        db_connector.connector_type == SearchSourceConnectorType.EXA_MCP_CONNECTOR
+        and "config" in update_data
+    ):
         exa_svc = get_service("exa")
         exa_url = exa_svc.mcp_url if exa_svc else "https://mcp.exa.ai/mcp"
         cfg = update_data["config"]
@@ -1245,6 +1248,17 @@ async def index_connector_content(
             response_message = (
                 "Composio Google Calendar indexing started in the background."
             )
+
+        elif connector.connector_type == SearchSourceConnectorType.RSS_FEED:
+            from app.tasks.celery_tasks.rss_tasks import index_rss_feeds_task
+
+            logger.info(
+                f"Triggering RSS feed indexing for connector {connector_id} into workspace {workspace_id}"
+            )
+            index_rss_feeds_task.delay(
+                connector_id, workspace_id, str(user.id), None, None
+            )
+            response_message = "RSS feed indexing started in the background."
 
         else:
             raise HTTPException(

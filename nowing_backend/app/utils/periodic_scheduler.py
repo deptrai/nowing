@@ -23,6 +23,7 @@ CONNECTOR_TASK_MAP = {
     SearchSourceConnectorType.CONFLUENCE_CONNECTOR: "index_confluence_pages",
     SearchSourceConnectorType.ELASTICSEARCH_CONNECTOR: "index_elasticsearch_documents",
     SearchSourceConnectorType.BOOKSTACK_CONNECTOR: "index_bookstack_pages",
+    SearchSourceConnectorType.RSS_FEED: "index_rss_feeds",
 }
 
 
@@ -65,6 +66,7 @@ def create_periodic_schedule(
             index_github_repos_task,
             index_notion_pages_task,
         )
+        from app.tasks.celery_tasks.rss_tasks import index_rss_feeds_task
 
         task_map = {
             SearchSourceConnectorType.NOTION_CONNECTOR: index_notion_pages_task,
@@ -72,6 +74,7 @@ def create_periodic_schedule(
             SearchSourceConnectorType.CONFLUENCE_CONNECTOR: index_confluence_pages_task,
             SearchSourceConnectorType.ELASTICSEARCH_CONNECTOR: index_elasticsearch_documents_task,
             SearchSourceConnectorType.BOOKSTACK_CONNECTOR: index_bookstack_pages_task,
+            SearchSourceConnectorType.RSS_FEED: index_rss_feeds_task,
         }
 
         # Trigger the first run immediately

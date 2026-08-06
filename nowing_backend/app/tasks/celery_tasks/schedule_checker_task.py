@@ -55,6 +55,7 @@ async def _check_and_trigger_schedules():
                 index_google_drive_files_task,
                 index_notion_pages_task,
             )
+            from app.tasks.celery_tasks.rss_tasks import index_rss_feeds_task
 
             task_map = {
                 SearchSourceConnectorType.NOTION_CONNECTOR: index_notion_pages_task,
@@ -64,6 +65,7 @@ async def _check_and_trigger_schedules():
                 SearchSourceConnectorType.ELASTICSEARCH_CONNECTOR: index_elasticsearch_documents_task,
                 SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR: index_google_drive_files_task,
                 SearchSourceConnectorType.COMPOSIO_GOOGLE_DRIVE_CONNECTOR: index_google_drive_files_task,
+                SearchSourceConnectorType.RSS_FEED: index_rss_feeds_task,
             }
 
             from app.services.mcp_oauth.registry import (
