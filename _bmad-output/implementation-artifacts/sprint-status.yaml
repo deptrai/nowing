@@ -61,7 +61,7 @@ development_status:
   2-5: done
   2-6: done  # Indeed Scraper — implemented, tested, E2E/MCP verified
   2-7: done  # Walmart Scraper — implemented, tested, E2E/MCP verified
-  2-8: ready-for-dev
+  2-8: done  # Amazon EU Marketplaces — EU TLDs, locale/currency, Playground E2E verified
   2-9: done
   2-10: done
   epic-2-retrospective: optional
