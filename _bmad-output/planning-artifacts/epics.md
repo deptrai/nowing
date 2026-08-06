@@ -1336,6 +1336,10 @@ Hệ thống lưu trữ, dedup, index entities từ nhiều nguồn — tra cứ
 **ADs governed:** AD-27 (canonical entity convention), AD-28 (unified engine trigger), inherits AD-24, AD-14, AD-2
 
 > **Scope reduced 2026-08-06 (Party Mode review):** Was 7 stories. Reduced to 3 — existing aggregators (`bds_aggregator`, `jobs_aggregator`) already implement matching/dedupe. Epic 13 adds PERSISTENCE LAYER + CONVENTION, not a new matching engine.
+>
+> **Multi-agent review 2026-08-06:** Amelia (dev) → feasible-with-changes (split 13.2, RLS net-new, embedding async). Murat (QA) → test-strategy-needs-extension (3 overlap tiers, 9 P0 tests). John (PM) → build-after-epic12 (platform scaling, not pilot wedge).
+>
+> **Sequencing:** Epic 12 must ship first (proves WTP). Story 13.1 (schema) can parallel-run. Stories 13.2+ defer until pilot signals retention value.
 
 ### Story 13.1: Canonical Entity Schema & Convention `[P0]`
 
@@ -1344,21 +1348,26 @@ I want a canonical entity table with a defined schema and a documented conventio
 So that all domain aggregators persist merged results consistently and future domains follow the same pattern.
 
 **Acceptance Criteria:**
-- **Given** the migration runs, **When** complete, **Then** a `canonical_entities` table exists with: `id` (UUID PK), `workspace_id` (FK, RLS-enforced), `entity_type` (String: "property"/"job"/"product"/"item"), `canonical_title` (String), `canonical_data` (JSONB), `fingerprint` (String, unique per workspace+entity_type), `source_count` (Integer), `confidence_score` (Float), `conflict_flags` (String[]), `first_seen_at` (Timestamp), `last_seen_at` (Timestamp), `embedding` (Vector).
+- **Given** the migration runs, **When** complete, **Then** a `canonical_entities` table exists with: `id` (UUID PK), `workspace_id` (FK, RLS-enforced), `entity_type` (String: "property"/"job"/"product"/"item"), `canonical_title` (String), `canonical_data` (JSONB), `fingerprint` (String, unique per workspace+entity_type), `source_count` (Integer), `confidence_score` (Float), `conflict_flags` (String[]), `first_seen_at` (Timestamp), `last_seen_at` (Timestamp), `embedding` (Vector), `embedding_model_name` (String, for invalidation on model change).
 - **Given** the schema exists, **When** a domain aggregator writes, **Then** it populates `fingerprint`, `entity_type`, and `canonical_data`.
 - **Given** the convention is documented, **When** a new domain is added, **Then** it implements `fingerprint()`, `merge()`, `search_text()` with consistent signatures.
-- **Given** RLS policies are applied, **When** workspace A queries, **Then** it cannot see workspace B's canonical entities.
+- **Given** RLS is enabled at database level (`ENABLE ROW LEVEL SECURITY` + `CREATE POLICY`), **When** workspace A queries via service role with `SET LOCAL app.workspace_id`, **Then** it cannot see workspace B's canonical entities (verified by raw SQL cross-workspace test).
 - **Given** existing aggregators (BDS, Jobs), **When** they write to canonical table, **Then** they reuse their existing dedupe logic (no new matching engine).
 - **Given** convention is documented, **When** `nowing_evals` canonical convention suite runs, **Then** all domains pass fingerprint/merge/search_text signature compliance.
+- **Given** canonical row has NULL embedding, **When** Celery backfill completes, **Then** search returns the row with embedding populated.
 
 **Validation:**
 - Unit test: `test_canonical_convention_compliance.py` — all 3 methods implemented per domain
-- Integration test: `test_canonical_rls_isolation.py` — workspace isolation enforced
+- Integration test: `test_canonical_rls_isolation.py` — workspace isolation enforced at DB level
+- Integration test: `test_canonical_rls_raw_sql.py` — RLS blocks cross-workspace raw SQL
 - Migration test: `test_canonical_migration_rollback.py` — Alembic upgrade/downgrade clean
+- Celery test: `test_canonical_embedding_backfill.py` — async embedding works
 
 _AD-27 · AD-2 (pgvector) · Inherits AD-24 pattern._
 
 ### Story 13.2: Persist Aggregator Output to Canonical Table `[P0]`
+
+> **Split into 5 sub-stories per Amelia review:** BDS persist, Jobs persist, MergeHistory, PII redaction, benchmark. Each independently shippable.
 
 As a user,
 I want aggregated results persisted as canonical entities,
@@ -1367,17 +1376,22 @@ So that I can search unified results and track entity changes over time.
 **Acceptance Criteria:**
 - **Given** `bds_aggregator` completes aggregation, **When** results are ready, **Then** they are written to `canonical_entities` table (not just returned ephemerally).
 - **Given** `jobs_aggregator` completes aggregation, **When** results are ready, **Then** they are written to `canonical_entities` table.
-- **Given** a canonical entity already exists (fingerprint match), **When** new source data arrives, **Then** the existing entity is updated (not duplicated) with new source reference.
+- **Given** a canonical entity already exists (fingerprint match), **When** new source data arrives, **Then** the existing entity is updated (not duplicated) with new source reference (upsert with `ON CONFLICT (workspace_id, fingerprint) DO UPDATE`).
 - **Given** merge happens, **When** recorded, **Then** `MergeHistory` row stores: `entity_before` (snapshot), `entity_after` (snapshot), `merged_by`, `conflicts`, `method`.
 - **Given** a merge is reversible, **When** admin reverts, **Then** entity returns to pre-merge state.
 - **Given** canonical data contains PII, **Before** storage, **Then** AD-25 redaction applies (no raw PII in golden records).
-- **Given** HR pilot data (8 weeks), **When** aggregator runs on 1000+ listings, **Then** dedup precision ≥ 0.95, recall ≥ 0.90 on known-duplicate dataset.
+- **Given** canonical write fails, **When** aggregator returns, **Then** result is still returned to caller (persist is best-effort, does not block aggregation).
+- **Given** HR pilot data (8 weeks), **When** aggregator runs on 1000+ listings, **Then** dedup F1 ≥ 0.92 on known-duplicate dataset (3 overlap tiers: 15%, 30%, 70%).
 
 **Validation:**
-- Benchmark dataset: `canonical_dedup_1000.json` (seeded duplicates, ground truth known)
-- `nowing_evals/suites/canonical/test_dedup_accuracy.py` — precision/recall metrics
+- Benchmark datasets: `canonical_dedup_1000_tier15.json`, `canonical_dedup_1000_tier30.json`, `canonical_dedup_1000_tier70.json` (seeded duplicates, ground truth known)
+- `nowing_evals/suites/canonical/test_dedup_accuracy.py` — precision/recall/F1 per tier
 - `test_canonical_merge_revert.py` — merge → revert → data integrity
 - `test_canonical_pii_scan.py` — automated PII scan, 0 leaks
+- `test_canonical_transitive_match.py` — union-find correctness (A↔B, B↔C → A↔C)
+- `test_canonical_concurrent_merge.py` — race condition handling
+- `test_canonical_null_keys.py` — empty/malformed dedup keys
+- `test_canonical_partial_source_failure.py` — graceful degradation with partial source data
 - Storage report: `(raw - canonical) / raw` → target ≥ 60% reduction
 
 _AD-27 (persistence layer) · AD-24 (aggregator output) · AD-25 (PII redaction)._
@@ -1390,7 +1404,7 @@ So that I see unified results without duplicates.
 
 **Acceptance Criteria:**
 - **Given** a search query, **When** submitted, **Then** it searches both `canonical_entities` and `documents` in parallel.
-- **Given** hybrid search is enabled, **When** results fuse, **Then** ranking = 0.7 × vector_cosine + 0.3 × BM25_tsrank (tunable per workspace).
+- **Given** hybrid search is enabled, **When** results fuse, **Then** ranking = w_vector × vector_cosine + w_bm25 × BM25_tsrank (default w_vector=0.7, w_bm25=0.3, configurable per workspace).
 - **Given** a canonical entity has source URLs, **When** displayed, **Then** results show source count + "View N sources" link.
 - **Given** workspace RLS is enforced, **When** querying, **Then** only current workspace's entities and documents are searchable.
 - **Given** search latency budget, **When** p95 exceeds 500ms, **Then** alert fires (observability).
@@ -1404,6 +1418,7 @@ So that I see unified results without duplicates.
 - A/B comparison: documents-only vs documents+canonical → measure improvement
 
 _AD-27 (search_text convention) · AD-2 (pgvector hybrid search) · AD-18 (RLS)._
+
 
 ---
 

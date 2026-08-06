@@ -36,23 +36,26 @@ Validate that the canonical entity storage & indexing system (Epic 13) achieves 
 
 ### Benchmark Dataset
 
-**File:** `nowing_evals/datasets/canonical_dedup_1000.json`
+**Files:** `nowing_evals/datasets/canonical_dedup_1000_tier15.json`, `canonical_dedup_1000_tier30.json`, `canonical_dedup_1000_tier70.json`
+
+> **3 overlap tiers per Murat review:** 70% overlap overstates recall. Real-world trigger threshold is >30%, so benchmark must validate precision/recall at 15%, 30%, and 70% overlap.
 
 ```json
 {
   "metadata": {
     "total_listings": 1000,
     "unique_entities": 300,
-    "known_duplicates": 700,
-    "cross_source_overlap_pct": 70,
-    "sources": ["batdongsan", "chotot", "muaban"]
+    "known_duplicates": 300,
+    "cross_source_overlap_pct": 30,
+    "sources": ["batdongsan", "chotot", "muaban"],
+    "tier": "tier30"
   },
   "listings": [
     {
       "id": "listing_001",
       "source": "batdongsan",
       "raw_data": { ... },
-      "canonical_entity_id": "entity_001"  // ground truth
+      "canonical_entity_id": "entity_001"
     }
   ]
 }
@@ -62,7 +65,7 @@ Validate that the canonical entity storage & indexing system (Epic 13) achieves 
 
 | Test | File | Metrics | Target |
 |------|------|---------|--------|
-| Dedup accuracy | `test_dedup_accuracy.py` | Precision, Recall, F1 | P ≥ 0.95, R ≥ 0.90 |
+| Dedup accuracy | `test_dedup_accuracy.py` | Precision, Recall, F1 per overlap tier (15/30/70%) | F1 ≥ 0.92 |
 | Merge correctness | `test_canonical_merge_revert.py` | Conflict resolution accuracy | ≥ 0.85 |
 | PII compliance | `test_canonical_pii_scan.py` | PII leaks detected | 0 |
 | Storage savings | `test_canonical_storage_savings.py` | `(raw - canonical) / raw` | ≥ 0.60 |
@@ -118,6 +121,12 @@ Validate that the canonical entity storage & indexing system (Epic 13) achieves 
 | Search quality | `test_search_quality.py` | Recall@10, Precision@5 | R≥0.85, P≥0.80 |
 | Search latency | `test_canonical_search_latency.py` | p95 latency | < 500ms |
 | No duplicates | `test_canonical_no_duplicates.py` | Duplicate entity rate in results | 0 |
+| Transitive match | `test_canonical_transitive_match.py` | Union-find correctness (A↔B, B↔C → A↔C) | 100% |
+| Concurrent merge | `test_canonical_concurrent_merge.py` | Race condition handling | No lost updates |
+| Null/empty keys | `test_canonical_null_keys.py` | Empty/malformed dedup keys | Graceful handling |
+| Partial source failure | `test_canonical_partial_source_failure.py` | 1+ sources fail | Degraded results, no crash |
+| Embedding consistency | `test_canonical_embedding_consistency.py` | Post-merge embedding | Reflects merged search_text |
+| SQL RLS bypass | `test_canonical_rls_enforcement_at_sql.py` | Raw SQL cross-workspace | Blocked at DB level |
 | A/B improvement | `test_canonical_ab_search.py` | Recall improvement vs documents-only | ≥ 10% relative |
 
 ### A/B Comparison Methodology
@@ -150,6 +159,30 @@ Validate that the canonical entity storage & indexing system (Epic 13) achieves 
 | **4. Performance** | `test_canonical_search_latency.py` | p50/p95/p99 latency |
 | **5. Compliance** | `test_canonical_pii_scan.py` | PII leak count (target: 0) |
 | **6. User Impact** | Manual review | Result relevance, duplicate perception |
+
+### Test Priority (per Murat review)
+
+**P0 — Ship-blocking (must pass before release):**
+- `test_canonical_convention_compliance.py`
+- `test_canonical_rls_isolation.py`
+- `test_canonical_migration_rollback.py`
+- `test_dedup_accuracy.py` (3 tiers)
+- `test_canonical_transitive_match.py`
+- `test_canonical_pii_scan.py`
+- `test_canonical_merge_revert.py`
+- `test_canonical_no_duplicates.py`
+- `test_canonical_search_latency.py`
+
+**P1 — Quality gate (should pass before release):**
+- `test_canonical_concurrent_merge.py`
+- `test_canonical_null_keys.py`
+- `test_canonical_partial_source_failure.py`
+- `test_canonical_merge_conflict_resolution.py`
+- `test_canonical_embedding_consistency.py`
+- `test_canonical_search_fusion_ranking.py`
+- `test_canonical_storage_savings.py`
+- `test_canonical_ab_search.py`
+- `test_canonical_rls_enforcement_at_sql.py`
 
 ### Report Output
 
