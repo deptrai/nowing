@@ -15,13 +15,17 @@ function taskSummary(task: BuilderForm["tasks"][number]): string {
 	if (task.action === "agent_task") {
 		return task.query?.trim() || "No instructions yet";
 	}
-	if (task.writeBackParams) {
-		if (task.writeBackParams.provider === "slack") return `Post to ${task.writeBackParams.channel}`;
-		if (task.writeBackParams.provider === "jira") return `Jira: ${task.writeBackParams.summary}`;
-		if (task.writeBackParams.provider === "linear") return `Linear: ${task.writeBackParams.title}`;
-		if (task.writeBackParams.provider === "notion") return `Notion: ${task.writeBackParams.title}`;
-		return `Telegram: ${task.writeBackParams.text}`;
-	}
+	const p = task.params;
+	if (task.action === "write_back_slack" && typeof p?.channel === "string")
+		return `Post to ${p.channel}`;
+	if (task.action === "write_back_jira" && typeof p?.summary === "string")
+		return `Jira: ${p.summary}`;
+	if (task.action === "write_back_linear" && typeof p?.title === "string")
+		return `Linear: ${p.title}`;
+	if (task.action === "write_back_notion" && typeof p?.title === "string")
+		return `Notion: ${p.title}`;
+	if (task.action === "write_back_telegram" && typeof p?.text === "string")
+		return `Telegram: ${p.text}`;
 	return task.action.replace(/_/g, " ");
 }
 

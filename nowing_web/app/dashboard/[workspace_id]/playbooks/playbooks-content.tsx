@@ -3,17 +3,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { BookOpen, Play } from "lucide-react";
-import { useState } from "react";
-import { instantiatePlaybookMutationAtom } from "@/atoms/playbooks/playbooks-mutation.atoms";
+import { useMemo, useState } from "react";
 import { playbooksListAtom } from "@/atoms/playbooks/playbooks-query.atoms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import type { PlaybookSummary } from "@/contracts/types/playbook.types";
 import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
+import { PlaybookInstantiateDialog } from "./playbook-instantiate-dialog";
 
 interface PlaybooksContentProps {
 	workspaceId: number;
@@ -21,19 +20,34 @@ interface PlaybooksContentProps {
 
 export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 	const { data, isLoading, error } = useAtomValue(playbooksListAtom);
-	const { mutateAsync: instantiate, isPending: instantiating } = useAtomValue(
-		instantiatePlaybookMutationAtom
-	);
-	const [inputsJson, setInputsJson] = useState<Record<number, string>>({});
+	const [selectedPlaybook, setSelectedPlaybook] = useState<PlaybookSummary | null>(null);
 
 	const { data: workspace } = useQuery({
-		queryKey: cacheKeys.workspaces.detail(String(workspaceId)),
+		queryKey: [...cacheKeys.workspaces.detail(String(workspaceId))],
 		queryFn: () => workspacesApiService.getWorkspace({ id: workspaceId }),
 		enabled: !!workspaceId,
 	});
 
 	const playbooks = data?.items ?? [];
 	const workspaceVertical = workspace?.vertical ?? "general";
+
+	const grouped = useMemo(() => {
+		const map = new Map<string, PlaybookSummary[]>();
+		for (const playbook of playbooks) {
+			const groupKey =
+				playbook.verticals.find((v) => v === workspaceVertical) ??
+				playbook.verticals[0] ??
+				"general";
+			const list = map.get(groupKey) ?? [];
+			list.push(playbook);
+			map.set(groupKey, list);
+		}
+		return Array.from(map.entries()).sort(([a], [b]) => {
+			if (a === workspaceVertical) return -1;
+			if (b === workspaceVertical) return 1;
+			return a.localeCompare(b);
+		});
+	}, [playbooks, workspaceVertical]);
 
 	if (isLoading) {
 		return (
@@ -64,24 +78,8 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 		);
 	}
 
-	async function handleInstantiate(playbook: PlaybookSummary) {
-		let inputs: Record<string, unknown> = {};
-		const raw = inputsJson[playbook.id];
-		if (raw?.trim()) {
-			try {
-				inputs = JSON.parse(raw);
-			} catch {
-				// Let the backend reject invalid JSON with a clear message.
-			}
-		}
-		await instantiate({
-			playbookId: playbook.id,
-			request: { workspace_id: workspaceId, inputs },
-		});
-	}
-
 	return (
-		<div className="space-y-4">
+		<div className="space-y-6">
 			<div className="flex items-baseline gap-3">
 				<h1 className="text-xl md:text-2xl font-semibold text-foreground">Playbooks</h1>
 				<span className="text-sm text-muted-foreground">
@@ -92,56 +90,49 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 				</Badge>
 			</div>
 
-			<div className="grid grid-cols-1 gap-4">
-				{playbooks.map((playbook) => (
-					<Card key={playbook.id} className="rounded-md border-accent bg-accent/20">
-						<CardHeader className="pb-3">
-							<div className="flex items-start justify-between gap-3">
-								<CardTitle className="text-sm font-semibold">{playbook.name}</CardTitle>
-								<div className="flex flex-wrap gap-1">
-									{playbook.verticals.map((v) => (
-										<Badge key={v} variant="outline" className="text-xs capitalize">
-											{v.replace(/_/g, " ")}
-										</Badge>
-									))}
-								</div>
-							</div>
-							{playbook.description && (
-								<p className="text-xs text-muted-foreground">{playbook.description}</p>
-							)}
-						</CardHeader>
-						<CardContent className="space-y-3">
-							<div className="space-y-1">
-								<label
-									htmlFor={`inputs-${playbook.id}`}
-									className="text-xs font-medium text-muted-foreground"
-								>
-									Inputs (JSON)
-								</label>
-								<Input
-									id={`inputs-${playbook.id}`}
-									placeholder='{"query": "Hanoi apartments"}'
-									value={inputsJson[playbook.id] ?? ""}
-									onChange={(e) =>
-										setInputsJson((prev) => ({
-											...prev,
-											[playbook.id]: e.target.value,
-										}))
-									}
-								/>
-							</div>
-							<Button
-								size="sm"
-								disabled={instantiating}
-								onClick={() => handleInstantiate(playbook)}
-							>
-								<Play className="mr-1 h-4 w-4" />
-								Instantiate
-							</Button>
-						</CardContent>
-					</Card>
-				))}
-			</div>
+			{grouped.map(([vertical, items]) => (
+				<section key={vertical} className="space-y-3">
+					<h2 className="text-sm font-medium text-muted-foreground capitalize">
+						{vertical.replace(/_/g, " ")}
+					</h2>
+					<div className="grid grid-cols-1 gap-4">
+						{items.map((playbook) => (
+							<Card key={playbook.id} className="rounded-md border-accent bg-accent/20">
+								<CardHeader className="pb-3">
+									<div className="flex items-start justify-between gap-3">
+										<CardTitle className="text-sm font-semibold">{playbook.name}</CardTitle>
+										<div className="flex flex-wrap gap-1">
+											{playbook.verticals.map((v) => (
+												<Badge key={v} variant="outline" className="text-xs capitalize">
+													{v.replace(/_/g, " ")}
+												</Badge>
+											))}
+										</div>
+									</div>
+									{playbook.description && (
+										<p className="text-xs text-muted-foreground">{playbook.description}</p>
+									)}
+								</CardHeader>
+								<CardContent>
+									<Button size="sm" onClick={() => setSelectedPlaybook(playbook)}>
+										<Play className="mr-1 h-4 w-4" />
+										Instantiate
+									</Button>
+								</CardContent>
+							</Card>
+						))}
+					</div>
+				</section>
+			))}
+
+			{selectedPlaybook && (
+				<PlaybookInstantiateDialog
+					playbook={selectedPlaybook}
+					workspaceId={workspaceId}
+					open={!!selectedPlaybook}
+					onOpenChange={() => setSelectedPlaybook(null)}
+				/>
+			)}
 		</div>
 	);
 }

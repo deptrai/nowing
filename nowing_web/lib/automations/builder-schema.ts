@@ -30,81 +30,12 @@ const EXECUTION_DEFAULTS = executionContract.parse({});
 // Form model
 // ---------------------------------------------------------------------------
 
-export const writeBackActionSchema = z.enum([
-	"agent_task",
-	"write_back_notion",
-	"write_back_linear",
-	"write_back_jira",
-	"write_back_slack",
-	"write_back_telegram",
-]);
-export type WriteBackAction = z.infer<typeof writeBackActionSchema>;
-
-const notionWriteBackParamsSchema = z.object({
-	provider: z.literal("notion"),
-	title: z.string().trim().min(1, "Title is required"),
-	content: z.string().trim().nullable().default(null),
-	parent_page_id: z.string().trim().nullable().default(null),
-	connector_name: z.string().trim().nullable().default(null),
-	object_id: z.string().trim().nullable().default(null),
-});
-
-const linearWriteBackParamsSchema = z.object({
-	provider: z.literal("linear"),
-	title: z.string().trim().min(1, "Title is required"),
-	description: z.string().trim().nullable().default(null),
-	team_id: z.string().trim().nullable().default(null),
-	state: z.string().trim().nullable().default(null),
-	connector_name: z.string().trim().nullable().default(null),
-	object_id: z.string().trim().nullable().default(null),
-});
-
-const jiraWriteBackParamsSchema = z.object({
-	provider: z.literal("jira"),
-	project_key: z.string().trim().min(1, "Project key is required"),
-	summary: z.string().trim().min(1, "Summary is required"),
-	description: z.string().trim().nullable().default(null),
-	issue_type: z.string().trim().min(1, "Issue type is required").default("Task"),
-	connector_name: z.string().trim().nullable().default(null),
-	object_id: z.string().trim().nullable().default(null),
-});
-
-const slackWriteBackParamsSchema = z.object({
-	provider: z.literal("slack"),
-	channel: z.string().trim().min(1, "Channel is required"),
-	text: z.string().trim().min(1, "Message text is required"),
-	thread_ts: z.string().trim().nullable().default(null),
-	connector_name: z.string().trim().nullable().default(null),
-	object_id: z.string().trim().nullable().default(null),
-});
-
-const telegramWriteBackParamsSchema = z.object({
-	provider: z.literal("telegram"),
-	text: z.string().trim().min(1, "Message text is required"),
-	chat_id: z.string().trim().nullable().default(null),
-	parse_mode: z.enum(["Markdown", "MarkdownV2", "none"]).nullable().default("Markdown"),
-	reply_markup: z.record(z.string(), z.any()).nullable().default(null),
-	account_id: z.number().int().nullable().default(null),
-	use_system_bot: z.boolean().default(true),
-	reply_to_message_id: z.string().trim().nullable().default(null),
-	connector_name: z.string().trim().nullable().default(null),
-	object_id: z.string().trim().nullable().default(null),
-});
-
-export const writeBackParamsSchema = z.discriminatedUnion("provider", [
-	notionWriteBackParamsSchema,
-	linearWriteBackParamsSchema,
-	jiraWriteBackParamsSchema,
-	slackWriteBackParamsSchema,
-	telegramWriteBackParamsSchema,
-]);
-export type WriteBackParams = z.infer<typeof writeBackParamsSchema>;
-
 export const builderTaskSchema = z
 	.object({
 		/** Client-side identity for stable React keys across reorder; not persisted. */
 		id: z.string(),
-		action: writeBackActionSchema.default("agent_task"),
+		/** Any registered action; the form renders its params from the action catalog schema. */
+		action: z.string().min(1).default("agent_task"),
 		query: z.string().trim().optional(),
 		/**
 		 * Files / folders / connectors @-mentioned in the query. Mirrors the chat
@@ -113,24 +44,15 @@ export const builderTaskSchema = z
 		 * for each; this is the structured side-channel of IDs.
 		 */
 		mentions: z.array(z.custom<MentionedDocumentInfo>()).default([]),
-		writeBackParams: writeBackParamsSchema.nullable().default(null),
+		/** Params for the selected action, generated from the action's JSON Schema. */
+		params: z.record(z.string(), z.any()).default({}),
 		maxRetries: z.number().int().min(0).max(10).nullable(),
 		timeoutSeconds: z.number().int().positive().max(86_400).nullable(),
 	})
 	.refine((data) => data.action !== "agent_task" || !!data.query?.trim(), {
 		message: "Describe what the agent should do",
 		path: ["query"],
-	})
-	.refine(
-		(data) =>
-			data.action === "agent_task" ||
-			(data.writeBackParams !== null &&
-				`write_back_${data.writeBackParams.provider}` === data.action),
-		{
-			message: "Fill in the write-back fields",
-			path: ["writeBackParams"],
-		}
-	);
+	});
 export type BuilderTask = z.infer<typeof builderTaskSchema>;
 
 export const builderScheduleSchema = z.discriminatedUnion("mode", [
@@ -177,6 +99,8 @@ export const builderFormSchema = z.object({
 	tags: z.array(z.string()),
 	/** Carried through from an edited definition so we don't drop it. */
 	goal: z.string().nullable(),
+	/** Carried through from an edited definition (e.g. a playbook with inputs). */
+	inputs: z.record(z.string(), z.any()).nullable(),
 	/** Selected chat/image/vision models (``0`` = use the eligible default). */
 	models: builderModelsSchema,
 });
@@ -220,7 +144,7 @@ export function emptyTask(): BuilderTask {
 		action: "agent_task",
 		query: "",
 		mentions: [],
-		writeBackParams: null,
+		params: {},
 		maxRetries: null,
 		timeoutSeconds: null,
 	};
@@ -242,6 +166,7 @@ export function createEmptyForm(): BuilderForm {
 		},
 		tags: [],
 		goal: null,
+		inputs: null,
 		models: { chatModelId: 0, imageConfigId: 0, visionConfigId: 0 },
 	};
 }
@@ -295,24 +220,6 @@ function mentionParams(mentions: MentionedDocumentInfo[]): Record<string, unknow
 	return out;
 }
 
-function buildWriteBackParams(
-	action: WriteBackAction,
-	params: WriteBackParams | null
-): Record<string, unknown> {
-	if (!params) return {};
-	// Provider is only used for form discrimination; the backend action already
-	// encodes the target service.
-	const { provider: _, ...rest } = params;
-	if (
-		action === "write_back_telegram" &&
-		params.provider === "telegram" &&
-		params.parse_mode === "none"
-	) {
-		return { ...rest, parse_mode: null };
-	}
-	return rest;
-}
-
 function buildPlan(form: BuilderForm) {
 	return form.tasks.map((task, index) => {
 		const step: Record<string, unknown> = {
@@ -326,7 +233,7 @@ function buildPlan(form: BuilderForm) {
 				...mentionParams(task.mentions),
 			};
 		} else {
-			step.params = buildWriteBackParams(task.action, task.writeBackParams);
+			step.params = { ...task.params };
 		}
 		if (task.maxRetries !== null) step.max_retries = task.maxRetries;
 		if (task.timeoutSeconds !== null) step.timeout_seconds = task.timeoutSeconds;
@@ -339,6 +246,7 @@ function buildDefinition(form: BuilderForm): AutomationDefinition {
 		schema_version: "1.1",
 		name: form.name.trim(),
 		goal: form.goal,
+		inputs: form.inputs ?? undefined,
 		// Triggers are attached at the top level of the create payload, not in
 		// the definition; the in-definition list stays empty.
 		triggers: [],
@@ -502,90 +410,11 @@ function mentionsFromParams(params: Record<string, unknown>): MentionedDocumentI
  * tree can still round-trip into the form; completeness is enforced by the
  * form's own validation at submit time, not here.
  */
-function stringOrNull(raw: unknown): string | null {
-	return typeof raw === "string" ? raw : null;
+function paramsFromStep(params: Record<string, unknown>): Record<string, unknown> {
+	// All non-agent_task actions carry their own params; agent_task params are
+	// rebuilt from the query and mentions during plan creation.
+	return { ...params };
 }
-
-function writeBackParamsFromParams(
-	action: string,
-	params: Record<string, unknown>
-): WriteBackParams | null {
-	const connector_name = stringOrNull(params.connector_name);
-	const object_id = stringOrNull(params.object_id);
-	if (action === "write_back_notion") {
-		return {
-			provider: "notion",
-			title: stringOrNull(params.title) ?? "",
-			content: stringOrNull(params.content),
-			parent_page_id: stringOrNull(params.parent_page_id),
-			connector_name,
-			object_id,
-		};
-	}
-	if (action === "write_back_linear") {
-		return {
-			provider: "linear",
-			title: stringOrNull(params.title) ?? "",
-			description: stringOrNull(params.description),
-			team_id: stringOrNull(params.team_id),
-			state: stringOrNull(params.state),
-			connector_name,
-			object_id,
-		};
-	}
-	if (action === "write_back_jira") {
-		return {
-			provider: "jira",
-			project_key: stringOrNull(params.project_key) ?? "",
-			summary: stringOrNull(params.summary) ?? "",
-			description: stringOrNull(params.description),
-			issue_type: stringOrNull(params.issue_type) ?? "Task",
-			connector_name,
-			object_id,
-		};
-	}
-	if (action === "write_back_slack") {
-		return {
-			provider: "slack",
-			channel: stringOrNull(params.channel) ?? "",
-			text: stringOrNull(params.text) ?? "",
-			thread_ts: stringOrNull(params.thread_ts),
-			connector_name,
-			object_id,
-		};
-	}
-	if (action === "write_back_telegram") {
-		const rawParseMode = stringOrNull(params.parse_mode);
-		const parse_mode: "Markdown" | "MarkdownV2" | "none" | null =
-			rawParseMode === "Markdown" || rawParseMode === "MarkdownV2" || rawParseMode === "none"
-				? rawParseMode
-				: "none";
-		return {
-			provider: "telegram",
-			text: stringOrNull(params.text) ?? "",
-			chat_id: stringOrNull(params.chat_id),
-			parse_mode,
-			reply_markup:
-				typeof params.reply_markup === "object" && params.reply_markup !== null
-					? (params.reply_markup as Record<string, unknown>)
-					: null,
-			account_id: typeof params.account_id === "number" ? params.account_id : null,
-			use_system_bot: typeof params.use_system_bot === "boolean" ? params.use_system_bot : true,
-			reply_to_message_id: stringOrNull(params.reply_to_message_id),
-			connector_name,
-			object_id,
-		};
-	}
-	return null;
-}
-
-const WRITE_BACK_ACTIONS = new Set([
-	"write_back_notion",
-	"write_back_linear",
-	"write_back_jira",
-	"write_back_slack",
-	"write_back_telegram",
-]);
 
 export function hydrateForm(
 	name: string,
@@ -594,10 +423,6 @@ export function hydrateForm(
 	triggers: HydratableTrigger[]
 ): HydrateResult {
 	const d = asRecord(def);
-
-	if (d.inputs) {
-		return { formable: false, reason: "uses an inputs schema" };
-	}
 
 	const exec = asRecord(d.execution);
 	const onFailure = Array.isArray(exec.on_failure) ? exec.on_failure : [];
@@ -632,25 +457,23 @@ export function hydrateForm(
 			}
 			tasks.push({
 				id: newId(),
-				action: action as BuilderTask["action"],
+				action,
 				query,
 				mentions,
-				writeBackParams: null,
-				maxRetries: typeof step.max_retries === "number" ? step.max_retries : null,
-				timeoutSeconds: typeof step.timeout_seconds === "number" ? step.timeout_seconds : null,
-			});
-		} else if (WRITE_BACK_ACTIONS.has(action)) {
-			tasks.push({
-				id: newId(),
-				action: action as BuilderTask["action"],
-				query: "",
-				mentions: [],
-				writeBackParams: writeBackParamsFromParams(action, params) as WriteBackParams,
+				params: {},
 				maxRetries: typeof step.max_retries === "number" ? step.max_retries : null,
 				timeoutSeconds: typeof step.timeout_seconds === "number" ? step.timeout_seconds : null,
 			});
 		} else {
-			return { formable: false, reason: `uses the "${action}" action` };
+			tasks.push({
+				id: newId(),
+				action,
+				query: "",
+				mentions: [],
+				params: paramsFromStep(params),
+				maxRetries: typeof step.max_retries === "number" ? step.max_retries : null,
+				timeoutSeconds: typeof step.timeout_seconds === "number" ? step.timeout_seconds : null,
+			});
 		}
 	}
 	if (tasks.length === 0) {
@@ -706,6 +529,7 @@ export function hydrateForm(
 			},
 			tags,
 			goal: typeof d.goal === "string" ? d.goal : null,
+			inputs: d.inputs as Record<string, unknown> | null,
 			models,
 		},
 	};

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
@@ -45,6 +45,9 @@ class ActionDefinition:
     description: str
     params_model: type[BaseModel]
     build_handler: ActionHandlerFactory
+    # UI/catalog metadata.  Defaults keep existing definitions backwards-compatible.
+    verticals: list[str] = field(default_factory=lambda: ["general"])
+    business_name: str | None = None
 
     @property
     def params_schema(self) -> dict[str, Any]:

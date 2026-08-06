@@ -13,6 +13,8 @@ from app.automations.schemas.api import (
     PlaybookList,
     PlaybookSummary,
     PlaybookUpdate,
+    PlaybookValidateInputs,
+    PlaybookValidationResult,
 )
 from app.automations.services import PlaybookService, get_playbook_service
 
@@ -93,3 +95,13 @@ async def instantiate_playbook(
     """Create a new automation from a playbook, validating the supplied inputs."""
     automation = await service.instantiate(playbook_id, payload)
     return AutomationDetail.model_validate(automation)
+
+
+@router.post("/playbooks/{playbook_id}/validate-inputs", response_model=PlaybookValidationResult)
+async def validate_playbook_inputs(
+    playbook_id: int,
+    payload: PlaybookValidateInputs,
+    service: PlaybookService = Depends(get_playbook_service),
+) -> PlaybookValidationResult:
+    """Validate a playbook's inputs without creating an automation."""
+    return await service.validate_inputs(playbook_id, payload)

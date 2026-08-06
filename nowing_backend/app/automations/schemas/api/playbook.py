@@ -70,6 +70,22 @@ class PlaybookDetail(PlaybookSummary):
     source_automation_id: int | None = None
 
 
+class PlaybookValidateInputs(BaseModel):
+    """Check a playbook's inputs against its schema before instantiation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    workspace_id: int
+    inputs: dict[str, Any]
+
+
+class PlaybookValidationResult(BaseModel):
+    """Result of a pre-flight inputs validation."""
+
+    valid: bool
+    errors: list[str] = Field(default_factory=list)
+
+
 class PlaybookList(BaseModel):
     """Paginated list of playbooks."""
 

@@ -16,6 +16,8 @@ from .playbook import (
     PlaybookList,
     PlaybookSummary,
     PlaybookUpdate,
+    PlaybookValidateInputs,
+    PlaybookValidationResult,
 )
 from .run import RunDetail, RunList, RunSummary
 from .trigger import TriggerCreate, TriggerDetail, TriggerUpdate
@@ -32,6 +34,8 @@ __all__ = [
     "PlaybookList",
     "PlaybookSummary",
     "PlaybookUpdate",
+    "PlaybookValidateInputs",
+    "PlaybookValidationResult",
     "RunDetail",
     "RunList",
     "RunSummary",

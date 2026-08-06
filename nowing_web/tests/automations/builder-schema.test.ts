@@ -44,8 +44,7 @@ function testTelegramRoundTrip() {
 			action: "write_back_telegram",
 			query: "",
 			mentions: [],
-			writeBackParams: {
-				provider: "telegram",
+			params: {
 				text: "Hello from automation",
 				chat_id: "12345",
 				parse_mode: "Markdown",
@@ -70,7 +69,6 @@ function testTelegramRoundTrip() {
 	assert.deepEqual(step.params.reply_markup, {
 		inline_keyboard: [[{ text: "Open", url: "https://nowing.net" }]],
 	});
-	assert.equal(step.params.provider, undefined);
 
 	const automation: Automation = {
 		id: 1,
@@ -88,10 +86,9 @@ function testTelegramRoundTrip() {
 	const hydrated = formFromAutomation(automation);
 	assert.equal(hydrated.formable, true);
 	assert.equal(hydrated.form.tasks[0].action, "write_back_telegram");
-	assert.equal(hydrated.form.tasks[0].writeBackParams?.provider, "telegram");
-	assert.equal(hydrated.form.tasks[0].writeBackParams?.text, "Hello from automation");
-	assert.equal(hydrated.form.tasks[0].writeBackParams?.chat_id, "12345");
-	assert.equal(hydrated.form.tasks[0].writeBackParams?.parse_mode, "Markdown");
+	assert.equal(hydrated.form.tasks[0].params.text, "Hello from automation");
+	assert.equal(hydrated.form.tasks[0].params.chat_id, "12345");
+	assert.equal(hydrated.form.tasks[0].params.parse_mode, "Markdown");
 }
 
 function testTelegramNoneParseMode() {
@@ -103,8 +100,7 @@ function testTelegramNoneParseMode() {
 			action: "write_back_telegram",
 			query: "",
 			mentions: [],
-			writeBackParams: {
-				provider: "telegram",
+			params: {
 				text: "plain text",
 				chat_id: null,
 				parse_mode: null,

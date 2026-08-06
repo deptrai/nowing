@@ -24,6 +24,8 @@ from app.automations.schemas.api import (
     PlaybookCreate,
     PlaybookInstantiate,
     PlaybookUpdate,
+    PlaybookValidateInputs,
+    PlaybookValidationResult,
     TriggerCreate,
 )
 from app.automations.schemas.definition import AutomationDefinition, Inputs, Metadata
@@ -289,6 +291,19 @@ class PlaybookService:
         await self.session.commit()
 
         return await automation_service._get_with_triggers_or_raise(automation.id)
+
+    async def validate_inputs(
+        self, playbook_id: int, payload: PlaybookValidateInputs
+    ) -> PlaybookValidationResult:
+        """Pre-flight check a set of inputs against a playbook's schema."""
+        playbook = await self._get_playbook_or_raise(playbook_id)
+        await self._authorize(payload.workspace_id, Permission.AUTOMATIONS_READ.value)
+        await self._authorize_playbook_access(playbook, Permission.AUTOMATIONS_READ.value)
+        try:
+            self._validate_inputs(playbook, payload.inputs)
+        except HTTPException as exc:
+            return PlaybookValidationResult(valid=False, errors=[str(exc.detail)])
+        return PlaybookValidationResult(valid=True)
 
     def _validate_inputs(self, playbook: Playbook, inputs: dict[str, Any]) -> None:
         """Validate the supplied inputs against the playbook's ``inputs_schema``."""
