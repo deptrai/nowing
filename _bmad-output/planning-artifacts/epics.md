@@ -1055,8 +1055,8 @@ _Tạo 2026-08-03 để chứa các scraper/capability mới ngoài phạm vi ep
 
 ### Story 10.1: Batdongsan.com.vn Scraper  `[DONE per sprint-status: 10-1]`
 
-As a real-estate researcher or investor in Vietnam,  
-I want to scrape property listings from batdongsan.com.vn,  
+As a real-estate researcher or investor in Vietnam,
+I want to scrape property listings from batdongsan.com.vn,
 So that I can track market trends, prices, supply, and locations in my workspace.
 
 **Acceptance Criteria:**
@@ -1078,8 +1078,8 @@ _FR-6 · AD-3 · AD-16 · AD-19 · `technical-batdongsan-scraper-research-2026-0
 
 ### Story 10.2: Chotot.vn / Nhà Tốt Scraper  `[done]`
 
-As a real-estate researcher or investor in Vietnam,  
-I want to scrape property listings from `chotot.com` (Nhà Tốt),  
+As a real-estate researcher or investor in Vietnam,
+I want to scrape property listings from `chotot.com` (Nhà Tốt),
 So that I can cross-compare classified listings with batdongsan.com.vn and identify real market prices.
 
 **Acceptance Criteria:**
@@ -1097,8 +1097,8 @@ _FR-6 · AD-3 · AD-16 · AD-19 · `market-vietnam-real-estate-research-data-scr
 
 ### Story 10.3: Muaban.net BĐS Scraper  `[done]`
 
-As a real-estate researcher or investor in Vietnam,  
-I want to scrape property listings from `muaban.net` (mục BĐS),  
+As a real-estate researcher or investor in Vietnam,
+I want to scrape property listings from `muaban.net` (mục BĐS),
 So that I can broaden cross-compare coverage beyond batdongsan and chotot.
 
 **Acceptance Criteria:**
@@ -1118,8 +1118,8 @@ _FR-6 · AD-3 · AD-16 · AD-19 · `market-vietnam-real-estate-research-data-scr
 
 ### Story 10.4: Vietnam BĐS Listing Aggregator & Cross-Source Trust Score  `[DONE per sprint-status: 10-4]`
 
-As a real-estate researcher,  
-I want the system to merge and score listings from multiple Vietnamese BĐS sources,  
+As a real-estate researcher,
+I want the system to merge and score listings from multiple Vietnamese BĐS sources,
 So that I can trust the price and detect fake/duplicate listings.
 
 **Acceptance Criteria:**
@@ -1222,7 +1222,7 @@ So that I can take action without opening the dashboard.
 
 _Tạo 2026-08-05 để chạy 8-week pilot kết nối VietnamWorks, TopCV, ITviec và cung cấp `vn_jobs.aggregate` cho nghiên cứu thị trường tuyển dụng Việt Nam._
 
-**FRs:** FR-43 (`vietnamworks.scrape`), FR-44 (`topcv.scrape`), FR-45 (`itviec.scrape`), FR-46 (`vn_jobs.aggregate`), FR-47 (PII redaction). **NFRs:** NFR-11 (ToS/anti-bot/PII). **OQ-8.** **SM-12.**  
+**FRs:** FR-43 (`vietnamworks.scrape`), FR-44 (`topcv.scrape`), FR-45 (`itviec.scrape`), FR-46 (`vn_jobs.aggregate`), FR-47 (PII redaction). **NFRs:** NFR-11 (ToS/anti-bot/PII). **OQ-8.** **SM-12.**
 **Stories:** 12.0 (ToS/Legal Review), 12.1–12.5.
 
 > **Pilot scope (Plan C):** P0 = cả 3 nguồn. Hard gates: ToS review cho 3 nguồn; legal counsel opinion; anti-bot POC cho TopCV; SCP về NG-1. Effort ước tính 18–24 dev-days. Go/No-Go sau 8 tuần beta 20–50 workspaces.
@@ -1330,95 +1330,114 @@ _FR-47 · NFR-11 · OQ-3 · `feature-brief-hr-vertical-vietnam-2026-08-05.md`._
 
 ## Epic 13: Canonical Entity Storage & Multi-Domain Indexing
 
-Hệ thống lưu trữ, dedup, index entities từ nhiều nguồn — tra cứu nhanh, tiết kiệm storage, mở rộng cho mọi domain.
+Hệ thống lưu trữ, dedup và index entities từ nhiều nguồn — tra cứu nhanh, giữ được provenance, cô lập tenant ở tầng database và mở rộng cho nhiều domain mà chưa cần dựng matching engine chung quá sớm.
 
-**FRs covered:** FR-48 (canonical entity search & indexing), FR-46 (extend vn_jobs.aggregate)
-**ADs governed:** AD-27 (canonical entity convention), AD-28 (unified engine trigger), inherits AD-24, AD-14, AD-2
+**FRs covered:** FR-48 (canonical entity search & indexing), FR-46 (extend `vn_jobs.aggregate`)
+**ADs governed:** AD-27 (canonical entity convention), AD-28 (unified engine trigger), inherits AD-24, AD-14, AD-2, AD-25
 
-> **Scope reduced 2026-08-06 (Party Mode review):** Was 7 stories. Reduced to 3 — existing aggregators (`bds_aggregator`, `jobs_aggregator`) already implement matching/dedupe. Epic 13 adds PERSISTENCE LAYER + CONVENTION, not a new matching engine.
+> **Scope reduced 2026-08-06 (Party Mode review):** Existing aggregators (`bds_aggregator`, `jobs_aggregator`) already implement matching/dedupe. Epic 13 adds a shared persistence, lineage and search layer; it does not replace domain matching logic.
 >
-> **Multi-agent review 2026-08-06:** Amelia (dev) → feasible-with-changes (split 13.2, RLS net-new, embedding async). Murat (QA) → test-strategy-needs-extension (3 overlap tiers, 9 P0 tests). John (PM) → build-after-epic12 (platform scaling, not pilot wedge).
+> **Architect hardening 2026-08-06:** Shared canonical storage is established by Story 13.1 before the AD-28 trigger. AD-28 controls when standalone domain functions are wrapped behind one `DomainPlugin` matching engine; it does not delay the shared tables. All persistence is tenant-scoped, idempotent and retryable. Search extends the existing rank-based RRF path rather than mixing incomparable raw cosine and full-text scores.
 >
-> **Sequencing:** Epic 12 must ship first (proves WTP). Story 13.1 (schema) can parallel-run. Stories 13.2+ defer until pilot signals retention value.
+> **Sequencing:** Epic 12 must ship before Jobs persistence and the HR benchmark. Story 13.1 and BDS contract work may run in parallel. Story 13.3 starts only after source lineage and RLS gates are green.
 
-### Story 13.1: Canonical Entity Schema & Convention `[P0]`
+### Story 13.1: Canonical Persistence, Tenancy & Convention `[P0]`
 
 As a developer,
-I want a canonical entity table with a defined schema and a documented convention for domain plugins,
-So that all domain aggregators persist merged results consistently and future domains follow the same pattern.
+I want a canonical persistence contract with database-enforced tenancy and explicit source lineage,
+So that every domain can persist and search merged entities safely without inventing a new matching engine.
 
 **Acceptance Criteria:**
-- **Given** the migration runs, **When** complete, **Then** a `canonical_entities` table exists with: `id` (UUID PK), `workspace_id` (FK, RLS-enforced), `entity_type` (String: "property"/"job"/"product"/"item"), `canonical_title` (String), `canonical_data` (JSONB), `fingerprint` (String, unique per workspace+entity_type), `source_count` (Integer), `confidence_score` (Float), `conflict_flags` (String[]), `first_seen_at` (Timestamp), `last_seen_at` (Timestamp), `embedding` (Vector), `embedding_model_name` (String, for invalidation on model change).
-- **Given** the schema exists, **When** a domain aggregator writes, **Then** it populates `fingerprint`, `entity_type`, and `canonical_data`.
-- **Given** the convention is documented, **When** a new domain is added, **Then** it implements `fingerprint()`, `merge()`, `search_text()` with consistent signatures.
-- **Given** RLS is enabled at database level (`ENABLE ROW LEVEL SECURITY` + `CREATE POLICY`), **When** workspace A queries via service role with `SET LOCAL app.workspace_id`, **Then** it cannot see workspace B's canonical entities (verified by raw SQL cross-workspace test).
-- **Given** existing aggregators (BDS, Jobs), **When** they write to canonical table, **Then** they reuse their existing dedupe logic (no new matching engine).
-- **Given** convention is documented, **When** `nowing_evals` canonical convention suite runs, **Then** all domains pass fingerprint/merge/search_text signature compliance.
-- **Given** canonical row has NULL embedding, **When** Celery backfill completes, **Then** search returns the row with embedding populated.
+- **Given** the migration runs, **When** complete, **Then** it creates `canonical_entities`, `canonical_entity_sources`, `canonical_merge_history`, and `canonical_persist_outbox` with Alembic-owned indexes and downgrade support for a database that has not accepted production writes.
+- **Given** `canonical_entities`, **Then** each row stores: `id` (UUID PK), `workspace_id` (Integer FK), `entity_type` (String), `canonical_title` (String), `canonical_data` (JSONB), `fingerprint` (String), `search_text` (Text), `source_count` (Integer), `confidence_score` (Float), `conflict_flags` (JSONB), `version` (Integer), `first_seen_at`, `last_seen_at`, `embedding` (Vector), `embedding_model_name`, `embedding_content_hash`, and `embedding_status` (`pending`/`ready`/`failed`).
+- **Given** two domains can produce the same fingerprint text, **Then** the database unique constraint and every upsert target are exactly `(workspace_id, entity_type, fingerprint)`.
+- **Given** provenance is required by search, review and revert flows, **Then** `canonical_entity_sources` stores `workspace_id`, `canonical_entity_id`, `entity_type`, `source_name`, `source_record_id`, redacted source snapshot, source URL, source timestamps and source fingerprint.
+- **Given** the same source record can appear in only one active canonical entity per domain, **Then** the unique constraint on sources is exactly `(workspace_id, entity_type, source_name, source_record_id)`; `canonical_entity_id` is a FK index, not part of that uniqueness key.
+- **Given** conflicts are stored as JSONB, **Then** each flag mirrors the existing BDS `ConflictFlag` shape (`type`, `reason`, optional range/source maps) rather than free-form strings.
+- **Given** concurrent merge/revert is possible, **Then** writes use `version` for compare-and-swap or an equivalent row lock; no update may silently overwrite a later entity version.
+- **Given** the application uses pooled SQLAlchemy sessions, **Then** every API request and Celery task opens a transaction and executes `SET LOCAL app.workspace_id = :workspace_id` before canonical reads/writes; the workspace ID is passed explicitly in task payloads and never inferred from process-global state.
+- **Given** database RLS is the isolation boundary, **Then** all four tables use `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY`, and policies based on `current_setting('app.workspace_id', true)`; the application role is non-owner and `NOBYPASSRLS`, while the unset/invalid workspace context fails closed.
+- **Given** BDS currently has a context-free capability executor, **When** it becomes persistent, **Then** `vn_bds.aggregate` accepts the execution context/workspace explicitly before any write path is enabled. Jobs follows the same contract.
+- **Given** AD-27, **Then** BDS and Jobs expose `fingerprint()`, `merge()`, and `search_text()` through the documented domain module boundary while reusing their current dedupe behavior; the three functions may live as named exports from existing modules (for example `dedupe.py` / `normalize.py`) and do not require three new files on day one.
+- **Given** a canonical row is created or its `search_text` changes, **Then** commit succeeds with `embedding_status='pending'`; an idempotent Celery task keyed by `(entity_id, version, embedding_model_name)` populates the embedding only if the entity version still matches.
+- **Given** search and review latency budgets, **Then** the migration creates at least: unique btree on `canonical_entities (workspace_id, entity_type, fingerprint)`; btree on `canonical_entities (workspace_id, entity_type, last_seen_at DESC)`; GIN/`to_tsvector` on `search_text`; HNSW/`vector_cosine_ops` on `embedding` (nullable-safe); btree on `canonical_entity_sources (canonical_entity_id)` and the source uniqueness key; btree on `canonical_merge_history (canonical_entity_id, created_at)` and `canonical_persist_outbox (status, next_attempt_at)`.
+- **Given** search/review UI requires real-time state, **Then** the minimal non-PII columns for canonical entities, source links and merge history are added to `ZERO_PUBLICATION`; bulky snapshots remain REST-fetched.
 
 **Validation:**
-- Unit test: `test_canonical_convention_compliance.py` — all 3 methods implemented per domain
-- Integration test: `test_canonical_rls_isolation.py` — workspace isolation enforced at DB level
-- Integration test: `test_canonical_rls_raw_sql.py` — RLS blocks cross-workspace raw SQL
-- Migration test: `test_canonical_migration_rollback.py` — Alembic upgrade/downgrade clean
-- Celery test: `test_canonical_embedding_backfill.py` — async embedding works
+- Backend convention tests cover both domains and the exact module signatures.
+- Migration tests verify upgrade, clean downgrade-before-writes, constraints and required indexes.
+- Raw SQL tests run as the real non-owner application role and prove cross-workspace reads/writes, missing context and pooled-connection reuse fail closed.
+- Celery tests prove workspace propagation, idempotent embedding backfill and stale-version protection.
 
-_AD-27 · AD-2 (pgvector) · Inherits AD-24 pattern._
+_AD-27 · AD-28 clarified above · AD-2 (pgvector) · Inherits AD-24 pattern._
 
-### Story 13.2: Persist Aggregator Output to Canonical Table `[P0]`
-
-> **Split into 5 sub-stories per Amelia review:** BDS persist, Jobs persist, MergeHistory, PII redaction, benchmark. Each independently shippable.
+### Story 13.2: Persist Aggregator Output to Canonical Storage `[P0]`
 
 As a user,
-I want aggregated results persisted as canonical entities,
-So that I can search unified results and track entity changes over time.
+I want aggregator results persisted with provenance and reversible history,
+So that search survives the originating request and merge decisions remain auditable.
 
-**Acceptance Criteria:**
-- **Given** `bds_aggregator` completes aggregation, **When** results are ready, **Then** they are written to `canonical_entities` table (not just returned ephemerally).
-- **Given** `jobs_aggregator` completes aggregation, **When** results are ready, **Then** they are written to `canonical_entities` table.
-- **Given** a canonical entity already exists (fingerprint match), **When** new source data arrives, **Then** the existing entity is updated (not duplicated) with new source reference (upsert with `ON CONFLICT (workspace_id, fingerprint) DO UPDATE`).
-- **Given** merge happens, **When** recorded, **Then** `MergeHistory` row stores: `entity_before` (snapshot), `entity_after` (snapshot), `merged_by`, `conflicts`, `method`.
-- **Given** a merge is reversible, **When** admin reverts, **Then** entity returns to pre-merge state.
-- **Given** canonical data contains PII, **Before** storage, **Then** AD-25 redaction applies (no raw PII in golden records).
-- **Given** canonical write fails, **When** aggregator returns, **Then** result is still returned to caller (persist is best-effort, does not block aggregation).
-- **Given** HR pilot data (8 weeks), **When** aggregator runs on 1000+ listings, **Then** dedup F1 ≥ 0.92 on known-duplicate dataset (3 overlap tiers: 15%, 30%, 70%).
+> Story 13.2 is implemented as five independently shippable sub-stories. A note alone is not a split: each item below has its own dependency and acceptance gate.
 
-**Validation:**
-- Benchmark datasets: `canonical_dedup_1000_tier15.json`, `canonical_dedup_1000_tier30.json`, `canonical_dedup_1000_tier70.json` (seeded duplicates, ground truth known)
-- `nowing_evals/suites/canonical/test_dedup_accuracy.py` — precision/recall/F1 per tier
-- `test_canonical_merge_revert.py` — merge → revert → data integrity
-- `test_canonical_pii_scan.py` — automated PII scan, 0 leaks
-- `test_canonical_transitive_match.py` — union-find correctness (A↔B, B↔C → A↔C)
-- `test_canonical_concurrent_merge.py` — race condition handling
-- `test_canonical_null_keys.py` — empty/malformed dedup keys
-- `test_canonical_partial_source_failure.py` — graceful degradation with partial source data
-- Storage report: `(raw - canonical) / raw` → target ≥ 60% reduction
+#### Story 13.2a: BDS Persistence & Retry `[P0]`
 
-_AD-27 (persistence layer) · AD-24 (aggregator output) · AD-25 (PII redaction)._
+- **Dependency:** Story 13.1; may run before Epic 12.
+- **Given** `vn_bds.aggregate` completes, **When** results are returned, **Then** the capability passes `workspace_id` through its execution context and idempotently upserts `canonical_entities` on `(workspace_id, entity_type, fingerprint)`.
+- **Given** a source contributes to an entity, **Then** its redacted provenance is upserted into `canonical_entity_sources`; `source_count` is derived from distinct linked sources, not trusted from request payloads.
+- **Given** persistence fails, **Then** aggregation still returns results with additive `persistence_status` on the existing aggregate output schema (`VnBdsAggregateOutput` / equivalent), while a durable outbox/retry record preserves the workspace, idempotency key and payload reference; retries cannot create duplicate entities or source links, and terminal failure emits a metric/alert.
+
+#### Story 13.2b: Jobs Persistence & Retry `[P0]`
+
+- **Dependency:** Story 13.1 and Epic 12 aggregator output contract.
+- **Given** `vn_jobs.aggregate` completes, **Then** it uses the same tenant, idempotency, source-link and outbox contract as BDS without replacing its existing Jobs dedupe key, and extends `VnJobAggregateOutput` with the same additive `persistence_status` field.
+- **Given** partial source failure, **Then** successful source results are persisted, failed sources remain visible in degradation metadata, and later retry can add missing source links without rewriting unrelated fields.
+
+#### Story 13.2c: Merge History, Conflict Resolution & Revert `[P0]`
+
+- **Dependency:** Stories 13.2a or 13.2b can supply the first persisted entity.
+- **Given** a merge, manual resolution, split or revert occurs, **Then** `canonical_merge_history` records the entity version before/after, linked-source set before/after, operation, actor (`user_id` or `system`), conflicts, method and timestamp.
+- **Given** two writers update the same entity, **Then** exactly one expected-version write succeeds; the loser reloads/retries or surfaces a conflict, and `test_canonical_concurrent_merge.py` proves no lost update.
+- **Given** an admin reverts a historical operation, **Then** the revert is a new audited transition against an expected current version; it never overwrites changes committed after the selected history item.
+- **Given** review queue updates must be real time, **Then** Zero publishes only the fields required to render queue/list state; full snapshots are fetched through workspace-authorized REST endpoints.
+
+#### Story 13.2d: PII-Safe Canonicalization `[P0]`
+
+- **Dependency:** Story 13.1; blocks enabling either persistence path.
+- **Given** BDS or Jobs data contains PII, **Before** writing canonical data, source snapshots, outbox payloads or merge history, **Then** AD-25-compatible redaction runs for every domain.
+- **Given** BDS exposes `contact`/`phone_key` or Jobs exposes JD text, **Then** raw values never enter golden records or history; a one-way keyed digest may be retained only when required for matching.
+- **Given** logs and metrics, **Then** they contain counts/status only, never raw PII values.
+
+#### Story 13.2e: Dedup Benchmark & Release Gate `[P1]`
+
+- **Dependency:** Stories 13.2a–d; Jobs fixtures additionally depend on Epic 12 pilot data.
+- **Given** BDS and Jobs fixtures at 15%, 30% and 70% entity-level cross-source overlap, **Then** each domain/tier reports precision, recall and F1 with hard gates `precision ≥ 0.95`, `recall ≥ 0.90`, and `F1 ≥ 0.92`.
+- **Given** benchmark metadata, **Then** `overlap_rate = multi_source_ground_truth_entities / total_ground_truth_entities`; fixture counts must satisfy that equation and raw-record totals independently.
+- **Given** the Nowing eval harness, **Then** fixtures live under `nowing_evals/data/canonical/fixtures/`, benchmark packages under `nowing_evals/src/nowing_evals/suites/canonical/`, and execution uses `python -m nowing_evals ...`.
+
+_AD-27 (domain convention) · AD-24 (aggregator output) · AD-25 (PII redaction)._
 
 ### Story 13.3: Unified Search API `[P0]`
 
 As a user,
-I want to search across canonical entities and documents in a single query,
-So that I see unified results without duplicates.
+I want one ranked result set across canonical entities and documents,
+So that linked raw sources collapse under their canonical entity while unmatched documents remain discoverable.
 
 **Acceptance Criteria:**
-- **Given** a search query, **When** submitted, **Then** it searches both `canonical_entities` and `documents` in parallel.
-- **Given** hybrid search is enabled, **When** results fuse, **Then** ranking = w_vector × vector_cosine + w_bm25 × BM25_tsrank (default w_vector=0.7, w_bm25=0.3, configurable per workspace).
-- **Given** a canonical entity has source URLs, **When** displayed, **Then** results show source count + "View N sources" link.
-- **Given** workspace RLS is enforced, **When** querying, **Then** only current workspace's entities and documents are searchable.
-- **Given** search latency budget, **When** p95 exceeds 500ms, **Then** alert fires (observability).
-- **Given** canonical entities in corpus, **When** search runs hybrid (BM25 + vector), **Then** recall@10 ≥ 0.85, precision@5 ≥ 0.80, zero duplicate results.
+- **Given** a query, **When** submitted, **Then** document and canonical retrieval run in parallel with identical workspace, date, status and type filters on both vector and full-text paths.
+- **Given** the existing retriever uses Reciprocal Rank Fusion, **When** vector/full-text and document/canonical candidate lists fuse, **Then** ranking uses weighted RRF `w_vector/(k + rank_vector) + w_fts/(k + rank_fts)` with `k=60`, default weights `0.7/0.3`, non-negative workspace configuration and no direct addition of raw cosine distance to `ts_rank_cd`.
+- **Given** an entity embedding is NULL, stale or generated by another model, **Then** that row remains eligible through full-text retrieval but is excluded from vector ranking until the current-model backfill succeeds.
+- **Given** a document/source row is linked through `canonical_entity_sources`, **When** its canonical entity is present, **Then** the raw result is grouped beneath that entity rather than emitted as a second top-level hit; unmatched documents retain their own result group.
+- **Given** a canonical entity is displayed, **Then** the API supplies source count, source-link identifiers, confidence, conflict state and a workspace-authorized `View N sources` expansion contract.
+- **Given** workspace isolation, **Then** both corpora are protected by the same authenticated workspace context; canonical RLS does not substitute for existing document authorization.
+- **Given** the release benchmark, **Then** end-to-end recall@10 ≥ 0.85, precision@5 ≥ 0.80, duplicate top-level result groups = 0, and p95 < 500 ms including query embedding and fusion.
+- **Given** p95 exceeds 500 ms or embedding/outbox failures cross the configured threshold, **Then** low-cardinality metrics and alerts identify corpus, retrieval path and workspace without logging query PII.
 
 **Validation:**
-- Benchmark dataset: `canonical_search_500.json` (queries + expected entities)
-- `nowing_evals/suites/canonical/test_search_quality.py` — recall/precision metrics
-- `test_canonical_search_latency.py` — p95 < 500ms
-- `test_canonical_no_duplicates.py` — result set không chứa cùng entity 2 lần
-- A/B comparison: documents-only vs documents+canonical → measure improvement
+- Canonical eval suite measures quality and latency through the public API, not backend imports.
+- Tests cover weighted-RRF ordering, identical filter application, pending/stale embeddings, cross-corpus collapse, source expansion authorization and RLS isolation.
+- A/B comparison uses the same query set and relevance judgments for documents-only versus documents+canonical, reporting absolute metrics and relative change.
 
-_AD-27 (search_text convention) · AD-2 (pgvector hybrid search) · AD-18 (RLS)._
-
+_AD-27 (search_text convention) · AD-2 (pgvector) · workspace isolation contract in Story 13.1._
 
 ---
 
@@ -1426,11 +1445,5 @@ _AD-27 (search_text convention) · AD-2 (pgvector hybrid search) · AD-18 (RLS).
 - **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
 - **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
 - Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
-- **Epic 13** phụ thuộc Epic 12 (HR scrapers) hoàn thành để có data deduplicate — story 13.2 cần aggregator output.
-- **Epic 13 scope reduced 2026-08-06:** 7→3 stories. Existing aggregators already do matching/dedupe — Epic 13 adds persistence + convention, not new engine.
----
-
-## Ghi chú
-- **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
-- **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
-- Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
+- **Epic 13 sequencing:** Story 13.1 + BDS contract (13.2a) có thể chạy trước Epic 12. Jobs persistence (13.2b), Jobs fixtures (13.2e) và HR pilot benchmark phụ thuộc Epic 12.
+- **Epic 13 scope (2026-08-06+):** persistence/lineage/search layer over existing aggregators. Story 13.2 is five sub-stories (13.2a–e); shared tables ship in 13.1 before any AD-28 plugin-engine trigger.
