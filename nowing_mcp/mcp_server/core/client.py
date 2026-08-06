@@ -63,13 +63,17 @@ class NowingClient:
         json: Any | None = None,
         data: dict[str, Any] | None = None,
         files: Any | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Any:
-        """Send a request and return the parsed body, or raise ``ToolError``."""
+        """Send a request and return the parsed body, or raise ``ToolError``.
+
+        ``headers`` are merged with the auth headers for this call.
+        """
         # Omit unset query params: sending them empty makes the API parse ""
         # as a value (e.g. int("") on folder_id) and fail.
         if params is not None:
             params = {key: value for key, value in params.items() if value is not None}
-        headers = self._auth_headers()
+        headers = {**self._auth_headers(), **(headers or {})}
         try:
             response = await self._http.request(
                 method,

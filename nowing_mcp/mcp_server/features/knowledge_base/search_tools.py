@@ -123,11 +123,20 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         Use this after nowing_search_knowledge_base or
         nowing_list_documents to open a specific document — search results
         only include the matching passages, this returns the whole text.
+
+        The markdown form is an Open Knowledge Format (OKF) concept: a YAML
+        frontmatter block (type, title, tags, resource, timestamp) followed by
+        the document body.
         """
-        document = await client.request("GET", f"/documents/{document_id}")
         if response_format == "json":
+            document = await client.request("GET", f"/documents/{document_id}")
             return clip(to_json(document))
-        return _render_document(document)
+        concept = await client.request(
+            "GET",
+            f"/documents/{document_id}",
+            headers={"Accept": "text/markdown"},
+        )
+        return clip(concept if isinstance(concept, str) else str(concept))
 
 
 def _join(values: list[str] | None) -> str | None:

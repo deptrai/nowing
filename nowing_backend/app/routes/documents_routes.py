@@ -1,7 +1,8 @@
 # Force asyncio to use standard event loop before unstructured imports
 import asyncio
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel as PydanticBaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -34,6 +35,8 @@ from app.schemas import (
     FolderRead,
     PaginatedResponse,
 )
+from app.services.export_service import resolve_document_markdown
+from app.services.okf import document_to_concept
 from app.services.task_dispatcher import TaskDispatcher, get_task_dispatcher
 from app.services.workspace_limits import workspace_limit_service
 from app.users import get_auth_context
@@ -1317,11 +1320,15 @@ async def get_document_chunks_paginated(
 @router.get("/documents/{document_id}", response_model=DocumentRead)
 async def read_document(
     document_id: int,
+    request: Request,
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
 ):
     """
     Get a specific document by ID.
+
+    ``Accept: application/json`` returns the JSON record (default).
+    ``Accept: text/markdown`` returns the OKF concept.
     Requires DOCUMENTS_READ permission for the workspace.
     """
     try:
@@ -1346,6 +1353,16 @@ async def read_document(
             Permission.DOCUMENTS_READ.value,
             "You don't have permission to read documents in this workspace",
         )
+
+        # ponytail: substring match, not RFC 7231 q-values (OKF is the only non-JSON view).
+        if "text/markdown" in request.headers.get("accept", ""):
+            body = (
+                await resolve_document_markdown(session, document)
+                or document.content
+                or ""
+            )
+            concept = document_to_concept(document, body=body)
+            return PlainTextResponse(concept, media_type="text/markdown")
 
         raw_content = document.content or ""
         return DocumentRead(

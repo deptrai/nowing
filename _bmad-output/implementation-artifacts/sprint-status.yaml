@@ -76,7 +76,7 @@ development_status:
   3-13: done
   3-14: done  # bounded memory injection + score contract verified; tests pass
   3-15: done
-  3-16: ready-for-dev
+  3-16: done  # OKF knowledge export implemented, tested, MCP round-trip verified
   epic-3-retrospective: optional
 
   epic-4: done  # P0/P1 stories done; 4-7, 4-8d ready-for-dev expansions

@@ -5,10 +5,12 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from app.auth.context import AuthContext
-from app.db import Permission, get_async_session
+from app.db import Memory, Permission, get_async_session
 from app.services.export_service import build_export_zip
 from app.users import get_auth_context
 from app.utils.rbac import check_permission
@@ -35,6 +37,21 @@ async def export_knowledge_base(
         Permission.DOCUMENTS_READ.value,
         "You don't have permission to export documents in this workspace",
     )
+
+    # The OKF bundle may include memory facts; require memory:read when it would.
+    memory_count_result = await session.execute(
+        select(func.count())
+        .select_from(Memory)
+        .where(Memory.workspace_id == workspace_id)
+    )
+    if memory_count_result.scalar():
+        await check_permission(
+            session,
+            auth,
+            workspace_id,
+            Permission.MEMORY_READ.value,
+            "You don't have permission to export memory facts in this workspace",
+        )
 
     try:
         result = await build_export_zip(session, workspace_id, folder_id)
