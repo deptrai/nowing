@@ -47,11 +47,12 @@ companions:
 >
 > **✅ Bổ sung 2026-08-06 (đợt 6 — Canonical Entity Storage & Multi-Domain Indexing):**
 > - **`AD-27` mới** — Canonical entity convention: mỗi domain aggregator MUST implement 3 methods (`fingerprint()`, `merge()`, `search_text()`) với signature nhất quán. Inherits AD-24 pattern, prevents matching logic divergence across domains.
-> - **`AD-28` mới** — Unified canonical engine trigger: build unified matching engine khi có domain thứ 3 HOẶC cross-source overlap >30%. Trước trigger: giữ copy-modify nhưng follow AD-27 convention.
+> - **`AD-28` mới** — Unified matching-engine trigger: build DomainPlugin engine khi có domain thứ 3 HOẶC cross-source overlap >30%. Shared canonical storage (Epic 13.1) ships earlier; trước engine trigger chỉ giữ copy-modify matching + AD-27 convention.
 >
 > **✅ Amend 2026-08-06 (đợt 7 — Reviewer Gate findings):**
 > - **`AD-27` tightened:** Define `MergeResult` TypedDict inline; align Jobs fingerprint with AD-24 (add `posted_at`); mandate default merge strategies per conflict type; specify `normalize()` contract + module path convention; clarify cosine similarity notation (> 0.92).
-> - **`AD-28` tightened:** Define fingerprint match rate formula precisely (`entities with ≥2 sources / total entities`, weekly, 2 consecutive weeks); remove subjective "đáng kể" (3rd domain = trigger); add SLA (refactor within 1 sprint); acknowledge plugin ABC migration cost; specify post-trigger unified `CanonicalEntity` table.
+> - **`AD-28` tightened:** Define fingerprint match rate formula precisely (`entities with ≥2 sources / total entities`, weekly, 2 consecutive weeks); remove subjective "đáng kể" (3rd domain = trigger); add SLA (refactor within 1 sprint); acknowledge plugin ABC migration cost.
+> - **`AD-27`/`AD-28` + Epic 13 align 2026-08-06:** Shared canonical tables/source lineage ship in Story 13.1 **before** the plugin-engine trigger. AD-28 only gates DomainPlugin matching refactor. Module exports may wrap existing `dedupe.py`/`normalize.py`. Tenant RLS uses `SET LOCAL app.workspace_id` + FORCE RLS + NOBYPASSRLS.
 >
 > **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
 > - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
@@ -607,7 +608,8 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
     - Timestamp fields (price, status, availability) → `most_recent` (by `source_published_at`)
     - Numeric fields (salary, price) within 20% → `median`; >20% → flag `conflict`, `resolution = "unresolved"`
     - Source-anchored fields (address, area, legal) → `most_confident` (official registry > classified portal)
-  - **Module path convention:** Each domain lives in `app/services/<domain>_aggregator/` with `fingerprint.py`, `merge.py`, `search_text.py` exporting the 3 functions. Shared `normalize()` lives in `app/services/normalize.py` (lowercase + NFKC + collapse whitespace + strip punctuation); domains may override via local import.
+  - **Module path convention:** Each domain lives in `app/services/<domain>_aggregator/`. The three methods may be named exports from existing modules (for example `dedupe.py`, `normalize.py`, `orchestrator.py`) and do **not** require three new files on day one. Shared `normalize()` may live in `app/services/normalize.py` (lowercase + NFKC + collapse whitespace + strip punctuation) or a local domain helper until extracted.
+  - **Shared storage ships before plugin engine:** Epic 13 Story 13.1 creates the shared `canonical_entities` / source-lineage / history tables while domains still use standalone functions. AD-28 only triggers the later `DomainPlugin` wrapper around matching logic.
   - **Pre-trigger:** Implement as standalone functions (no class/plugin registry). Post-trigger: wrap into `DomainPlugin` ABC — migration is mechanical since signatures are already consistent.
   - **Inherits AD-24 pattern:** `vn_jobs.aggregate` dedup key (`company + title + location + posted_at`) IS the canonical fingerprint for Jobs domain. AD-27 makes this explicit and extends to all domains.
   - **Matching waterfall** (4-pass, từ technical research): exact fingerprint → rule-based → vector similarity (cosine similarity > 0.92, per AD-14) → LLM verification (cost-bounded, chỉ cho ambiguous cases).
@@ -625,7 +627,8 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - **Fingerprint match rate formula:** `(distinct canonical entities with ≥2 distinct sources) / (total distinct canonical entities)`, measured weekly over all records in the domain's canonical table. Computed every Monday 00:00 UTC. If result > 0.30 for 2 consecutive weeks → trigger hit.
   - **Trước trigger:** Giữ copy-modify pattern (AD-24) nhưng follow AD-27 convention (3 methods, signature nhất quán).
   - **Sau trigger:** Refactor thành unified plugin engine — 1 matching engine + `DomainPlugin` ABC. Migration cost: define ABC with `fingerprint`/`merge`/`search_text` methods; wrap each domain's existing standalone functions into plugin class. **SLA:** Refactor must begin within 1 sprint of trigger detection. New domains built after trigger must use the unified engine.
-  - **Post-trigger storage:** Unified `CanonicalEntity` table (defined in Epic 13 Story 13.1) with `entity_type` discriminator. Domain-specific tables become read-only views for backward compatibility.
+  - **Storage vs engine timing:** Shared canonical storage (`canonical_entities`, `canonical_entity_sources`, merge history, outbox) is created by Epic 13 Story 13.1 **before** this trigger. AD-28 does **not** delay those tables. After the trigger, matching logic is refactored behind one `DomainPlugin` engine on top of the already-shared tables; any leftover domain-specific read models become views only if they still exist.
+  - **Tenant isolation for canonical storage:** Every canonical table is workspace-scoped. Application transactions set `SET LOCAL app.workspace_id` from explicit request/task context; tables use `ENABLE/FORCE ROW LEVEL SECURITY` with a non-owner `NOBYPASSRLS` role. Missing context fails closed.
 
 ## Consistency Conventions
 

@@ -1351,13 +1351,16 @@ So that every domain can persist and search merged entities safely without inven
 - **Given** the migration runs, **When** complete, **Then** it creates `canonical_entities`, `canonical_entity_sources`, `canonical_merge_history`, and `canonical_persist_outbox` with Alembic-owned indexes and downgrade support for a database that has not accepted production writes.
 - **Given** `canonical_entities`, **Then** each row stores: `id` (UUID PK), `workspace_id` (Integer FK), `entity_type` (String), `canonical_title` (String), `canonical_data` (JSONB), `fingerprint` (String), `search_text` (Text), `source_count` (Integer), `confidence_score` (Float), `conflict_flags` (JSONB), `version` (Integer), `first_seen_at`, `last_seen_at`, `embedding` (Vector), `embedding_model_name`, `embedding_content_hash`, and `embedding_status` (`pending`/`ready`/`failed`).
 - **Given** two domains can produce the same fingerprint text, **Then** the database unique constraint and every upsert target are exactly `(workspace_id, entity_type, fingerprint)`.
-- **Given** provenance is required by search, review and revert flows, **Then** `canonical_entity_sources` stores `workspace_id`, `canonical_entity_id`, `source_name`, `source_record_id`, redacted source snapshot, source URL, source timestamps and source fingerprint, with a domain-safe uniqueness constraint.
+- **Given** provenance is required by search, review and revert flows, **Then** `canonical_entity_sources` stores `workspace_id`, `canonical_entity_id`, `entity_type`, `source_name`, `source_record_id`, redacted source snapshot, source URL, source timestamps and source fingerprint.
+- **Given** the same source record can appear in only one active canonical entity per domain, **Then** the unique constraint on sources is exactly `(workspace_id, entity_type, source_name, source_record_id)`; `canonical_entity_id` is a FK index, not part of that uniqueness key.
+- **Given** conflicts are stored as JSONB, **Then** each flag mirrors the existing BDS `ConflictFlag` shape (`type`, `reason`, optional range/source maps) rather than free-form strings.
 - **Given** concurrent merge/revert is possible, **Then** writes use `version` for compare-and-swap or an equivalent row lock; no update may silently overwrite a later entity version.
 - **Given** the application uses pooled SQLAlchemy sessions, **Then** every API request and Celery task opens a transaction and executes `SET LOCAL app.workspace_id = :workspace_id` before canonical reads/writes; the workspace ID is passed explicitly in task payloads and never inferred from process-global state.
 - **Given** database RLS is the isolation boundary, **Then** all four tables use `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY`, and policies based on `current_setting('app.workspace_id', true)`; the application role is non-owner and `NOBYPASSRLS`, while the unset/invalid workspace context fails closed.
 - **Given** BDS currently has a context-free capability executor, **When** it becomes persistent, **Then** `vn_bds.aggregate` accepts the execution context/workspace explicitly before any write path is enabled. Jobs follows the same contract.
-- **Given** AD-27, **Then** BDS and Jobs expose `fingerprint()`, `merge()`, and `search_text()` through the documented domain module boundary while reusing their current dedupe behavior.
+- **Given** AD-27, **Then** BDS and Jobs expose `fingerprint()`, `merge()`, and `search_text()` through the documented domain module boundary while reusing their current dedupe behavior; the three functions may live as named exports from existing modules (for example `dedupe.py` / `normalize.py`) and do not require three new files on day one.
 - **Given** a canonical row is created or its `search_text` changes, **Then** commit succeeds with `embedding_status='pending'`; an idempotent Celery task keyed by `(entity_id, version, embedding_model_name)` populates the embedding only if the entity version still matches.
+- **Given** search and review latency budgets, **Then** the migration creates at least: unique btree on `canonical_entities (workspace_id, entity_type, fingerprint)`; btree on `canonical_entities (workspace_id, entity_type, last_seen_at DESC)`; GIN/`to_tsvector` on `search_text`; HNSW/`vector_cosine_ops` on `embedding` (nullable-safe); btree on `canonical_entity_sources (canonical_entity_id)` and the source uniqueness key; btree on `canonical_merge_history (canonical_entity_id, created_at)` and `canonical_persist_outbox (status, next_attempt_at)`.
 - **Given** search/review UI requires real-time state, **Then** the minimal non-PII columns for canonical entities, source links and merge history are added to `ZERO_PUBLICATION`; bulky snapshots remain REST-fetched.
 
 **Validation:**
@@ -1381,12 +1384,12 @@ So that search survives the originating request and merge decisions remain audit
 - **Dependency:** Story 13.1; may run before Epic 12.
 - **Given** `vn_bds.aggregate` completes, **When** results are returned, **Then** the capability passes `workspace_id` through its execution context and idempotently upserts `canonical_entities` on `(workspace_id, entity_type, fingerprint)`.
 - **Given** a source contributes to an entity, **Then** its redacted provenance is upserted into `canonical_entity_sources`; `source_count` is derived from distinct linked sources, not trusted from request payloads.
-- **Given** persistence fails, **Then** aggregation still returns results with `persistence_status`, while a durable outbox/retry record preserves the workspace, idempotency key and payload reference; retries cannot create duplicate entities or source links, and terminal failure emits a metric/alert.
+- **Given** persistence fails, **Then** aggregation still returns results with additive `persistence_status` on the existing aggregate output schema (`VnBdsAggregateOutput` / equivalent), while a durable outbox/retry record preserves the workspace, idempotency key and payload reference; retries cannot create duplicate entities or source links, and terminal failure emits a metric/alert.
 
 #### Story 13.2b: Jobs Persistence & Retry `[P0]`
 
 - **Dependency:** Story 13.1 and Epic 12 aggregator output contract.
-- **Given** `vn_jobs.aggregate` completes, **Then** it uses the same tenant, idempotency, source-link and outbox contract as BDS without replacing its existing Jobs dedupe key.
+- **Given** `vn_jobs.aggregate` completes, **Then** it uses the same tenant, idempotency, source-link and outbox contract as BDS without replacing its existing Jobs dedupe key, and extends `VnJobAggregateOutput` with the same additive `persistence_status` field.
 - **Given** partial source failure, **Then** successful source results are persisted, failed sources remain visible in degradation metadata, and later retry can add missing source links without rewriting unrelated fields.
 
 #### Story 13.2c: Merge History, Conflict Resolution & Revert `[P0]`
@@ -1442,11 +1445,5 @@ _AD-27 (search_text convention) · AD-2 (pgvector) · workspace isolation contra
 - **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
 - **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
 - Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
-- **Epic 13** phụ thuộc Epic 12 (HR scrapers) hoàn thành để có data deduplicate — story 13.2 cần aggregator output.
-- **Epic 13 scope reduced 2026-08-06:** 7→3 stories. Existing aggregators already do matching/dedupe — Epic 13 adds persistence + convention, not new engine.
----
-
-## Ghi chú
-- **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
-- **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
-- Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
+- **Epic 13 sequencing:** Story 13.1 + BDS contract (13.2a) có thể chạy trước Epic 12. Jobs persistence (13.2b), Jobs fixtures (13.2e) và HR pilot benchmark phụ thuộc Epic 12.
+- **Epic 13 scope (2026-08-06+):** persistence/lineage/search layer over existing aggregators. Story 13.2 is five sub-stories (13.2a–e); shared tables ship in 13.1 before any AD-28 plugin-engine trigger.

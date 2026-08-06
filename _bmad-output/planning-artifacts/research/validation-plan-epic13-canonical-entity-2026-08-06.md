@@ -30,8 +30,10 @@ Validate that Epic 13 provides tenant-safe, idempotent canonical persistence; re
 | Schema and constraints | `nowing_backend/tests/integration/canonical/test_canonical_schema.py` | Four canonical tables exist; FK, check and unique constraints match the story |
 | Exact upsert key | `nowing_backend/tests/integration/canonical/test_canonical_upsert_key.py` | `(workspace_id, entity_type, fingerprint)` is both the unique constraint and conflict target |
 | Source lineage | `nowing_backend/tests/integration/canonical/test_canonical_source_lineage.py` | Source identity/snapshot/URL can be authorized, grouped and reverted |
+| Source uniqueness | `nowing_backend/tests/integration/canonical/test_canonical_source_unique_key.py` | Unique key is exactly `(workspace_id, entity_type, source_name, source_record_id)` |
+| Required indexes | `nowing_backend/tests/integration/canonical/test_canonical_indexes.py` | Entity, FTS, HNSW, source FK/unique, history and outbox indexes exist |
 | Migration lifecycle | `nowing_backend/tests/integration/canonical/test_canonical_migration.py` | Upgrade and clean downgrade succeed on an empty/no-production-write database; constraints and indexes are present |
-| Domain convention | `nowing_backend/tests/unit/services/test_canonical_convention_compliance.py` | BDS and Jobs expose `fingerprint`, `merge`, `search_text` with the agreed signatures |
+| Domain convention | `nowing_backend/tests/unit/services/test_canonical_convention_compliance.py` | BDS and Jobs expose `fingerprint`, `merge`, `search_text` with the agreed signatures (named exports from existing aggregator modules are allowed) |
 | BDS workspace context | `nowing_backend/tests/unit/capabilities/test_vn_bds_persistence_context.py` | Persistent BDS execution cannot run without explicit workspace context |
 | SQL RLS isolation | `nowing_backend/tests/integration/canonical/test_canonical_rls_sql.py` | Real non-owner `NOBYPASSRLS` app role cannot read/write another workspace |
 | RLS fails closed | `nowing_backend/tests/integration/canonical/test_canonical_rls_missing_context.py` | Missing/invalid `app.workspace_id` returns no rows or rejects writes; never exposes all rows |
@@ -187,7 +189,7 @@ Each case contains one query, ranked relevance judgments for canonical entities 
 
 ### P0 — Ship Blocking
 
-- Schema, exact unique/upsert key and source-lineage tests.
+- Schema, exact entity upsert key `(workspace_id, entity_type, fingerprint)`, source unique key `(workspace_id, entity_type, source_name, source_record_id)`, and required index tests.
 - Real-role RLS isolation, missing-context, pooled-connection and Celery-context tests.
 - BDS workspace-context gate before persistence is enabled.
 - Idempotent writes and durable outbox/retry for both domains.
