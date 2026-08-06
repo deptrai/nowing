@@ -172,6 +172,7 @@ class Benchmark(Protocol):
     description: str
     requires_suite_setup: bool = True
     requires_auth_for_ingest: bool = True
+    requires_auth_for_run: bool = True
 
     async def ingest(self, ctx: RunContext, **opts: Any) -> None:  # pragma: no cover - protocol
         ...

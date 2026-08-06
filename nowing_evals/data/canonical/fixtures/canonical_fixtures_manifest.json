@@ -1,0 +1,56 @@
+{
+  "bds-overlap-15.jsonl": {
+    "domain": "bds",
+    "multi_source_ground_truth_entities": 15,
+    "overlap_rate": 0.15,
+    "single_source_ground_truth_entities": 85,
+    "target_overlap": 0.15,
+    "total_ground_truth_entities": 100,
+    "total_raw_records": 115
+  },
+  "bds-overlap-30.jsonl": {
+    "domain": "bds",
+    "multi_source_ground_truth_entities": 30,
+    "overlap_rate": 0.3,
+    "single_source_ground_truth_entities": 70,
+    "target_overlap": 0.3,
+    "total_ground_truth_entities": 100,
+    "total_raw_records": 130
+  },
+  "bds-overlap-70.jsonl": {
+    "domain": "bds",
+    "multi_source_ground_truth_entities": 70,
+    "overlap_rate": 0.7,
+    "single_source_ground_truth_entities": 30,
+    "target_overlap": 0.7,
+    "total_ground_truth_entities": 100,
+    "total_raw_records": 170
+  },
+  "jobs-overlap-15.jsonl": {
+    "domain": "jobs",
+    "multi_source_ground_truth_entities": 15,
+    "overlap_rate": 0.15,
+    "single_source_ground_truth_entities": 85,
+    "target_overlap": 0.15,
+    "total_ground_truth_entities": 100,
+    "total_raw_records": 115
+  },
+  "jobs-overlap-30.jsonl": {
+    "domain": "jobs",
+    "multi_source_ground_truth_entities": 30,
+    "overlap_rate": 0.3,
+    "single_source_ground_truth_entities": 70,
+    "target_overlap": 0.3,
+    "total_ground_truth_entities": 100,
+    "total_raw_records": 130
+  },
+  "jobs-overlap-70.jsonl": {
+    "domain": "jobs",
+    "multi_source_ground_truth_entities": 70,
+    "overlap_rate": 0.7,
+    "single_source_ground_truth_entities": 30,
+    "target_overlap": 0.7,
+    "total_ground_truth_entities": 100,
+    "total_raw_records": 170
+  }
+}

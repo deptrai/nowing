@@ -564,13 +564,26 @@ async def _cmd_run(args: argparse.Namespace) -> int:
     state, code = _resolve_suite_state(config, args.suite, benchmark)
     if state is None:
         return code
-    try:
-        token = await acquire_token(config)
-    except CredentialError as exc:
-        console.print(f"[red]{exc}[/red]")
-        return 2
 
-    async with client_with_auth(config, token) as http:
+    needs_auth = getattr(benchmark, "requires_auth_for_run", True)
+    token = None
+    if needs_auth:
+        try:
+            token = await acquire_token(config)
+        except CredentialError as exc:
+            console.print(f"[red]{exc}[/red]")
+            return 2
+
+    http_ctx = (
+        client_with_auth(config, token)
+        if token is not None
+        else httpx.AsyncClient(
+            base_url=config.nowing_api_base,
+            timeout=httpx.Timeout(60.0, connect=10.0),
+        )
+    )
+
+    async with http_ctx as http:
         ctx = registry.RunContext(
             suite=args.suite,
             benchmark=args.benchmark,

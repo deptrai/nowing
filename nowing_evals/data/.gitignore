@@ -28,3 +28,10 @@
 !memory/runs/2026-07-28T16-28-54Z/recall/
 !memory/runs/2026-07-28T16-28-54Z/recall/run_artifact.json
 !memory/runs/2026-07-28T16-28-54Z/recall/raw.jsonl
+
+# Story 13.2e canonical dedup fixtures.
+!canonical/
+!canonical/fixtures/
+!canonical/fixtures/*.py
+!canonical/fixtures/*.jsonl
+!canonical/fixtures/*.json
