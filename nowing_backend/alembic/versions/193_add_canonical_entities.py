@@ -80,6 +80,8 @@ def upgrade() -> None:
             new_version INTEGER NOT NULL,
             previous_data JSONB NOT NULL DEFAULT '{}',
             new_data JSONB NOT NULL DEFAULT '{}',
+            previous_source_ids JSONB NOT NULL DEFAULT '[]',
+            new_source_ids JSONB NOT NULL DEFAULT '[]',
             operation VARCHAR(64) NOT NULL,
             actor VARCHAR(255),
             conflicts JSONB NOT NULL DEFAULT '[]',

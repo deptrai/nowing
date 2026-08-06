@@ -79,19 +79,17 @@ PODCAST_COLS = [
     "created_at",
 ]
 
-# Minimal non-PII columns for canonical search/review UI. Bulky snapshots and
-# payloads are fetched over REST (Story 13.1).
+# Minimal columns for canonical queue/list UI. Bulky snapshots, search_text,
+# fingerprint and full source payloads are fetched over workspace-authorized REST.
 CANONICAL_ENTITY_COLS = [
     "id",
     "workspace_id",
     "entity_type",
     "canonical_title",
-    "fingerprint",
-    "search_text",
     "source_count",
     "confidence_score",
+    "conflict_flags",
     "version",
-    "first_seen_at",
     "last_seen_at",
     "embedding_status",
 ]

@@ -396,6 +396,10 @@ class Permission(StrEnum):
     MEMORY_UPDATE = "memory:update"
     MEMORY_DELETE = "memory:delete"
 
+    # Canonical entities (merge history, conflict resolution, revert)
+    CANONICAL_ENTITIES_READ = "canonical_entities:read"
+    CANONICAL_ENTITIES_WRITE = "canonical_entities:write"
+
     # Full access wildcard
     FULL_ACCESS = "*"
 
@@ -460,6 +464,9 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.MEMORY_CREATE.value,
         Permission.MEMORY_READ.value,
         Permission.MEMORY_UPDATE.value,
+        # Canonical entities (no delete)
+        Permission.CANONICAL_ENTITIES_READ.value,
+        Permission.CANONICAL_ENTITIES_WRITE.value,
     ],
     "Viewer": [
         # Documents (read only)
@@ -495,6 +502,8 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.AUTOMATIONS_READ.value,
         # Memory (read only)
         Permission.MEMORY_READ.value,
+        # Canonical entities (read only)
+        Permission.CANONICAL_ENTITIES_READ.value,
     ],
 }
 
@@ -3874,6 +3883,8 @@ class CanonicalMergeHistory(Base):
     new_version = Column(Integer, nullable=False)
     previous_data = Column(JSONB, nullable=False, default=dict)
     new_data = Column(JSONB, nullable=False, default=dict)
+    previous_source_ids = Column(JSONB, nullable=False, default=list)
+    new_source_ids = Column(JSONB, nullable=False, default=list)
     operation = Column(String(64), nullable=False)
     actor = Column(String(255), nullable=True)
     conflicts = Column(JSONB, nullable=False, default=list)
