@@ -201,3 +201,37 @@ async def test_scrape_exact_match_with_tax_code_filter() -> None:
     assert out.degraded is False
     assert out.total_items == 1
     assert out.items[0].tax_code == "0314539064"
+
+
+@pytest.mark.asyncio
+async def test_scrape_zero_max_items_does_not_fetch() -> None:
+    """Boundary: max_items=0 must short-circuit and never call the search fetcher."""
+    calls: list[int] = []
+
+    async def tracking_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+        calls.append(page)
+        return SEARCH_HTML, 200
+
+    inp = MasothueSearchInput(query="vinamilk", max_items=0)
+    out = await scrape_masothue(inp, search_fetch_fn=tracking_fetch)
+
+    assert out.total_items == 0
+    assert out.degraded is False
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_scrape_zero_max_pages_does_not_fetch() -> None:
+    """Boundary: max_pages=0 must short-circuit and never call the search fetcher."""
+    calls: list[int] = []
+
+    async def tracking_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+        calls.append(page)
+        return SEARCH_HTML, 200
+
+    inp = MasothueSearchInput(query="vinamilk", max_pages=0)
+    out = await scrape_masothue(inp, search_fetch_fn=tracking_fetch)
+
+    assert out.total_items == 0
+    assert out.degraded is False
+    assert calls == []

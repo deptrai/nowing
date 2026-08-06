@@ -67,19 +67,6 @@ def _timeout() -> float:
     return max(0.0, getattr(config, "MASOTHUE_TIMEOUT_S", 30.0))
 
 
-def _outcome_to_reason(
-    page_failed: bool,
-    rate_limited_seen: bool,
-    empty: bool,
-) -> str | None:
-    if empty:
-        return "empty"
-    if rate_limited_seen:
-        return "rate_limited"
-    if page_failed:
-        return "api_error"
-    return None
-
 
 async def scrape_masothue(
     input_model: MasothueSearchInput,

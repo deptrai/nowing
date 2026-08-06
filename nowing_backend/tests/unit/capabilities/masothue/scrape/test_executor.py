@@ -69,3 +69,25 @@ async def test_executor_returns_zero_cost_when_degraded(monkeypatch: Any) -> Non
     assert out.degraded is True
     assert out.total_items == 1
     assert out.cost_micros == 0
+
+
+@pytest.mark.asyncio
+async def test_executor_cost_uses_default_rate(monkeypatch: Any) -> None:
+    """cost_micros uses MASOTHUE_SCRAPE_MICROS_PER_ITEM default (3000 micros)."""
+    # Force the fallback value so any mutation of the default constant is caught.
+    monkeypatch.delattr("app.config.config.MASOTHUE_SCRAPE_MICROS_PER_ITEM", raising=False)
+
+    async def fake_scrape(_: Any) -> dict[str, Any]:
+        return {
+            "items": [
+                _company_data("0314539064", "Công ty TNHH Vinamilk Tân Sơn"),
+            ],
+            "degraded": False,
+        }
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1))
+
+    assert out.degraded is False
+    assert out.total_items == 1
+    assert out.cost_micros == 1 * 3000
