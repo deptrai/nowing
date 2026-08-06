@@ -1,5 +1,5 @@
 # generated: 2026-08-04 01:00:00
-# last_updated: 2026-08-06 16:59
+# last_updated: 2026-08-06 23:59
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -37,178 +37,112 @@
 #   - open: Committed during a retrospective, not yet addressed
 #   - in-progress: Actively being worked on
 #   - done: Completed
-#
-# WORKFLOW NOTES:
-# ===============
-# - Epic transitions to 'in-progress' automatically when first story is created
-# - Stories can be worked in parallel if team capacity allows
-# - SM typically creates next story after previous one is 'done' to incorporate learnings
-# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
-# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-04 01:00:00"
-last_updated: "2026-08-06 16:59"
+last_updated: "2026-08-06 23:59"
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
+  # ===== EPICS 1-11: DONE =====
   epic-1: done
   epic-1-retrospective: optional
 
   epic-2: done
-  2-5: done
-  2-6: done  # Indeed Scraper — implemented, tested, E2E/MCP verified
-  2-7: done  # Walmart Scraper — implemented, tested, E2E/MCP verified
-  2-8: done  # Amazon EU Marketplaces — EU TLDs, locale/currency, Playground E2E verified
-  2-9: done
-  2-10: done
   epic-2-retrospective: optional
 
-  epic-3: done  # P0/P1 stories done
-  3-6: done
-  3-7: done
-  3-9: done  # baseline ratified 2026-08-04; gate.yaml has baseline_ratified=true + baseline_source
-  3-10: done  # merged 3-10a (forensic) + 3-10b (backfill guard) into single story 3.10 in epics.md
-  3-11: done
-  3-12: done
-  3-13: done
-  3-14: done  # bounded memory injection + score contract verified; tests pass
-  3-15: done
-  3-16: done  # OKF knowledge export implemented, tested, MCP round-trip verified
+  epic-3: done
   epic-3-retrospective: optional
 
-  epic-4: done  # P0/P1 stories done
-  4-7: done  # pointer-based tabs with live title resolution; tsc, biome, migrate tests, Playwright MCP verified
-  4-8a: done
-  4-8b: done
-  4-8c: done  # production query sampler + anonymizer implemented and verified
-  4-8d: done  # chat/quality benchmark, LLM-as-judge, prompt parsing, gate thresholds, tests
-  4-8e: done  # CI workflow, cost cap, --fail-on-unratified, Slack/Telegram notification wired
-  4-8f: done  # benchmark stability: operational metrics, multi-turn, stress, chainlens latency
-  4-8g: done  # benchmark mode/tier matrix + local vs production parity
-  4-8h: done  # mode-aware chat policy for latency/cost (sprint-change-proposal-2026-08-05)
+  epic-4: done
   epic-4-retrospective: optional
 
   epic-5: done
   epic-5-retrospective: optional
 
-  epic-6: done  # core automations and playbook gaps done
-  6-4: done
-  6-5: done
-  6-6: done  # Playbook Reuse — expose inputs.schema already present
-  6-7: done  # Schema-Driven Form UI for playbook & action
-  6-9: done  # Workspace vertical + Playbook Library
+  epic-6: done
   epic-6-retrospective: optional
 
-  epic-7: done  # core clients done; 7-4, 7-7 done
-  7-4: done
-  7-7: done  # MCP server tool expansion — all 9 ACs done, code review clean, mutation 78/78 PASS, human review PASS (2026-08-05)
+  epic-7: done
   epic-7-retrospective: optional
 
-  epic-8: done  # 8.3, 8.7-8.13 done
-  8-3: done
-  8-7: done
-  8-8: done
-  8-9: done
-  8-10: done
-  8-11: done
-  8-12: done
-  8-13: done
+  epic-8: done
   epic-8-retrospective: done
 
-  epic-9: done  # all P0/P1 stories done; 9-5 deferred
-  9-1a: done
-  9-1b: done
-  9-2: done  # parse `done.resolvedMode` (top-level canonical), `done.usage.{costDollars, estimated, promptTokens, completionTokens, totalTokens, model}` (FR-37); canonical golden fixtures in tests; fallback 60k micros only when missing; ChainLens 34.1 in-progress for full-pipeline cost (target 2026-08-19)
-  9-3: done  # State A async default; sync gated to speed/balanced; quality/deep async-only; State B ratification pending ChainLens 34.1 + Nowing e2e p95 balanced ≤30s
-  9-4: done
-  # 9-5 intentionally moved to deferred — see deferred section below.
-  9-6: done  # merged 9-6a (provenance recipe) + 9-6b (re-validation API) into 9.6; both done
+  epic-9: done
   epic-9-retrospective: done
 
   epic-10: done
-  10-1: done
-  10-2: done
-  10-3: done
-  10-4: done
   epic-10-retrospective: done
 
   epic-11: done
-  11-1: done  # Telegram notification foundation
-  11-2: done  # Telegram write-back, builder UI & chat resolution
-  11-3: done  # Telegram interactive bot & commands
   epic-11-retrospective: done
 
-  epic-12: done  # HR/Recruitment Vertical — Vietnam Job Market Pilot (Plan C)
-  12-0: done  # ToS & Legal Review — approved for all 3 sources
-  12-1: done  # VietnamWorks Scraper — implemented, tested, E2E/MCP verified
-  12-2: done  # TopCV Scraper — implemented, tested, E2E/MCP verified
-  12-3: done  # ITviec Scraper — implemented, tested, E2E/MCP verified
-  12-4: done  # Vietnam Job Aggregator — normalize, dedupe, conflict scoring, orchestrator, unit tests
-  12-5: done  # PII Redaction for Job Data — redact.py + tests, wired into aggregator before storage
+  # ===== EPIC 12: HR + BĐS (DONE + NEW STORIES) =====
+  epic-12: done
+  12-0: done  # ToS & Legal Review
+  12-1: done  # VietnamWorks Scraper
+  12-2: done  # TopCV Scraper
+  12-3: done  # ITviec Scraper
+  12-4: done  # vn_jobs.aggregate
+  12-5: done  # PII Redaction
+  12-6: backlog  # Job Market Alerts
+  12-7: backlog  # Property Price Alerts
+  12-8: backlog  # Cross-Source Entity Timeline
+  12-9: backlog  # Saved Searches
   epic-12-retrospective: optional
 
-# Deferred work that is out of the current sprint / not approved for MVP.
-# Kept here for visibility; re-introduce via sprint-planning if approved.
-
+  # ===== EPIC 13: CANONICAL ENTITY (IN PROGRESS) =====
   epic-13: in-progress
-  13-1: done  # Canonical Persistence, Tenancy & Convention — implemented, ruff/pytest pass, Playwright MCP smoke pass
-  13-2a: done  # BDS Persistence & Retry — persistence wired to vn_bds.aggregate, tests and Playwright MCP smoke pass
-  13-2b: backlog  # Jobs Persistence & Retry
-  13-2c: backlog  # Merge History, Conflict Resolution & Revert
-  13-2d: backlog  # PII-Safe Canonicalization
-  13-2e: backlog  # Dedup Benchmark & Release Gate
-  13-3: backlog  # Unified Search API
+  13-1: done  # Schema & Convention (migration 193, models, RLS, indexes)
+  13-2: backlog  # Persist Aggregator Output (NEXT)
+  13-3: backlog  # Unified Search API (after 13.2)
   epic-13-retrospective: optional
 
+  # ===== EPIC 14: NEWS AGGREGATION =====
   epic-14: backlog
   14-1: backlog  # RSS Feed Integration
   14-2: backlog  # News Entity Extraction
+  14-3: backlog  # News Alerts & Topic Monitoring
+  14-4: backlog  # News Digest & Synthesis
   epic-14-retrospective: optional
 
+  # ===== EPIC 15: FINANCIAL DATA =====
   epic-15: backlog
   15-1: backlog  # CafeF Financial Data Integration
   15-2: backlog  # Vietstock Deep Financials
+  15-3: backlog  # Stock Price Alerts
+  15-4: backlog  # Financial Trend Detection
   epic-15-retrospective: optional
 
+  # ===== EPIC 16: COMPANY DIRECTORY =====
   epic-16: backlog
   16-1: backlog  # masothue.com Company Data
   16-2: backlog  # Official Business Registry
+  16-3: backlog  # Company Alerts
+  16-4: backlog  # Company Timeline
   epic-16-retrospective: optional
 
+  # ===== EPIC 17: E-COMMERCE VN =====
   epic-17: backlog
   17-1: backlog  # Lazada Product Data
   17-2: backlog  # Shopee Product Data
+  17-3: backlog  # Price Drop Alerts
+  17-4: backlog  # Competitor Tracking
   epic-17-retrospective: optional
-
-  epic-18: backlog
-  18-1: backlog  # YouTube Data Integration
-  18-2: backlog  # Reddit Data Integration
-  18-3: backlog  # Instagram & TikTok Data
-  epic-18-retrospective: optional
-
-  epic-19: backlog
-  19-1: backlog  # Google Search Integration
-  19-2: backlog  # Google Maps / Local Business
-  epic-19-retrospective: optional
-
-  epic-20: backlog
-  20-1: backlog  # Amazon Product Data
-  20-2: backlog  # Walmart Product Data
-  epic-20-retrospective: optional
 
 deferred:
   - story: 9-5
     reason: "Metered deep-research endpoint cho self-host — chưa phê duyệt, Post-MVP / P1 business."
 
 action_items:
-  - "Pre-merge gate scripts ready and smoke-tested on local DB (run_pre_merge_gates.py, disable_auto_archive_enabled.sql). Next: execute on actual production/staging DB before deploy."
-  - "Epic 9 retrospective done. Epic 8 retrospective is optional."
-  - "Deferred work still tracked: NFR-9 State B ratification, Redis cross-replica test, MCP async 202 handling, Story 9.5 approval. Consider creating new epic/stories via sprint-planning or correct-course when work resumes."
-  - "Epic 10 retrospective done. Follow-ups: reconcile stale epics.md/story headers, harden bds_aggregator tests against live-network flakiness, add aggregator output-quality eval-gate, and enable static typecheck for app/services/bds_aggregator and app/capabilities/vn_bds. See epic-10-retrospective-2026-08-04.md."
-  - "Epic 12: ToS & legal review for VietnamWorks, TopCV, ITviec must close before any scraper code is merged (owner: Founder + Legal)."
-  - "Epic 12: TopCV anti-bot POC must pass or be explicitly disabled before 12.2 code is merged (owner: Dev + Ops)."
-  - "Epic 12: Create _bmad-output/planning-artifacts/legal/ ToS decision log and legal counsel memo."
-  - "Epic 12: Production-network rate-limit stress test for VietnamWorks."
+  - "Epic 13 Story 13.2 (Persist Aggregator Output) — NEXT to implement. Unlocks all domains."
+  - "Epic 13 Story 13.3 (Unified Search API) — after 13.2."
+  - "Epic 14 Story 14.1 (News RSS) — quickest win (1-2 days) after 13.2."
+  - "Epic 15 Story 15.1 (CafeF) — quick win (2-4 hours) after 13.2."
+  - "Epic 16 Story 16.1 (masothue) — quick win (2-3 days) after 13.2."
+  - "Pre-merge gate scripts ready and smoke-tested on local DB."
+  - "Epic 12: ToS & legal review for VietnamWorks, TopCV, ITviec must close before scraper code merged."
+  - "Epic 12: TopCV anti-bot POC must pass or be explicitly disabled."
