@@ -60,6 +60,7 @@ class ExportFormat(StrEnum):
     EPUB = "epub"
     ODT = "odt"
     PLAIN = "plain"
+    MD = "md"
 
 
 _MEDIA_TYPES: dict[ExportFormat, str] = {
@@ -70,6 +71,7 @@ _MEDIA_TYPES: dict[ExportFormat, str] = {
     ExportFormat.EPUB: "application/epub+zip",
     ExportFormat.ODT: "application/vnd.oasis.opendocument.text",
     ExportFormat.PLAIN: "text/plain; charset=utf-8",
+    ExportFormat.MD: "text/markdown; charset=utf-8",
 }
 
 _FILE_EXTENSIONS: dict[ExportFormat, str] = {
@@ -80,6 +82,7 @@ _FILE_EXTENSIONS: dict[ExportFormat, str] = {
     ExportFormat.EPUB: "epub",
     ExportFormat.ODT: "odt",
     ExportFormat.PLAIN: "txt",
+    ExportFormat.MD: "md",
 }
 
 
@@ -517,6 +520,10 @@ async def export_report(
                     extra_args=["--standalone", *meta_args],
                 )
                 return tex_str.encode("utf-8")
+
+            # -- Markdown: pass through raw report markdown --------------------
+            if format == ExportFormat.MD:
+                return markdown_content.encode("utf-8")
 
             # -- Plain text: text output -------------------------------------
             plain_str: str = pypandoc.convert_text(

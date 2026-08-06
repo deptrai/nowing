@@ -14,7 +14,7 @@ from typing import Any
 import pypandoc
 import typst
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +27,7 @@ from app.routes.reports_routes import (
     _normalize_latex_delimiters,
     _strip_wrapping_code_fences,
 )
+from app.services.okf import document_to_concept
 from app.templates.export_helpers import (
     get_html_css_path,
     get_reference_docx_path,
@@ -374,6 +375,21 @@ async def export_document(
     markdown_content = _normalize_latex_delimiters(markdown_content)
 
     doc_title = document.title or "Document"
+    safe_title = (
+        "".join(c if c.isalnum() or c in " -_" else "_" for c in doc_title).strip()[:80]
+        or "document"
+    )
+
+    # -- Markdown: return the OKF concept directly ---------------------------
+    if format == ExportFormat.MD:
+        concept = document_to_concept(document, body=markdown_content)
+        return PlainTextResponse(
+            concept,
+            media_type="text/markdown; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_title}.md"',
+            },
+        )
     formatted_date = (
         document.created_at.strftime("%B %d, %Y") if document.created_at else ""
     )
@@ -470,10 +486,6 @@ async def export_document(
         logger.exception("Document export failed")
         raise HTTPException(status_code=500, detail=f"Export failed: {e!s}") from e
 
-    safe_title = (
-        "".join(c if c.isalnum() or c in " -_" else "_" for c in doc_title).strip()[:80]
-        or "document"
-    )
     ext = _FILE_EXTENSIONS[format]
 
     return StreamingResponse(
