@@ -5,6 +5,7 @@ import {
 	ChototIcon,
 	GoogleMapsIcon,
 	GoogleSearchIcon,
+	IndeedIcon,
 	InstagramIcon,
 	ItviecIcon,
 	MuabanBdsIcon,
@@ -93,6 +94,12 @@ export const PLAYGROUND_PLATFORMS: PlaygroundPlatform[] = [
 		label: "ITviec",
 		icon: ItviecIcon,
 		verbs: [{ name: "itviec.scrape", verb: "scrape", label: "Scrape" }],
+	},
+	{
+		id: "indeed",
+		label: "Indeed",
+		icon: IndeedIcon,
+		verbs: [{ name: "indeed.scrape", verb: "scrape", label: "Scrape" }],
 	},
 	{
 		id: "vn_jobs",

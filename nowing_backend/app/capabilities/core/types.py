@@ -39,6 +39,7 @@ class BillingUnit(StrEnum):
     VIETNAMWORKS_JOB = "vietnamworks_job"
     TOPCV_JOB = "topcv_job"
     ITVIEC_JOB = "itviec_job"
+    INDEED_JOB = "indeed_job"
     VN_JOBS_AGGREGATE_QUERY = "vn_jobs_aggregate_query"
 
 

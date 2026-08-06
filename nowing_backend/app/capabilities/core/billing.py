@@ -53,6 +53,7 @@ _PLATFORM_RATE_KEYS: dict[BillingUnit, str] = {
     BillingUnit.VIETNAMWORKS_JOB: "VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.TOPCV_JOB: "TOPCV_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.ITVIEC_JOB: "ITVIEC_SCRAPE_MICROS_PER_ITEM",
+    BillingUnit.INDEED_JOB: "INDEED_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.VN_JOBS_AGGREGATE_QUERY: "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY",
 }
 
@@ -84,6 +85,7 @@ _UNIT_NOUNS: dict[BillingUnit, str] = {
     BillingUnit.VIETNAMWORKS_JOB: "job",
     BillingUnit.TOPCV_JOB: "job",
     BillingUnit.ITVIEC_JOB: "job",
+    BillingUnit.INDEED_JOB: "job",
     BillingUnit.VN_JOBS_AGGREGATE_QUERY: "query",
 }
 
@@ -250,6 +252,7 @@ _JOBS_BILLING_UNIT_MAP: dict[str, BillingUnit] = {
     "vietnamworks": BillingUnit.VIETNAMWORKS_JOB,
     "topcv": BillingUnit.TOPCV_JOB,
     "itviec": BillingUnit.ITVIEC_JOB,
+    "indeed": BillingUnit.INDEED_JOB,
 }
 
 

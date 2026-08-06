@@ -41,4 +41,5 @@ export const MuabanBdsIcon = Building2;
 export const VietnamworksIcon = Briefcase;
 export const TopcvIcon = Briefcase;
 export const ItviecIcon = Briefcase;
+export const IndeedIcon = Briefcase;
 export const VnJobsIcon = Briefcase;

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.capabilities.core.billing import _platform_rate, _JOBS_BILLING_UNIT_MAP
+from app.capabilities.core.billing import _JOBS_BILLING_UNIT_MAP, _platform_rate
 from app.capabilities.core.types import BillingUnit
 from app.config import config
 
@@ -26,4 +26,5 @@ def test_jobs_source_map_includes_all_sources():
         "vietnamworks": BillingUnit.VIETNAMWORKS_JOB,
         "topcv": BillingUnit.TOPCV_JOB,
         "itviec": BillingUnit.ITVIEC_JOB,
+        "indeed": BillingUnit.INDEED_JOB,
     }

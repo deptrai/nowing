@@ -1,0 +1,56 @@
+Working at Freudenberg: "We will wow your world!" This is our promise. As a global technology group, we not only make the world cleaner, healthier and more comfortable, but also offer our 52,000 employees a networked and diverse environment where everyone can thrive individually. Be surprised and experience your own wow moments.
+
+
+We at Freudenberg-NOK Sealing Technologies run the business operations of Freudenberg Sealing Technologies (FST) in the Americas. Being part of the global Freudenberg Group, our company is a leading producer of advanced sealing technologies for automotive and general industries. Freudenberg-NOK Sealing Technologies is a joint venture between Freudenberg and NOK Corp. in Japan, is headquartered in Plymouth, MI, operates more than 20 facilities and employs about 4,700 people across the Americas.
+
+**Some of your Benefits**
+
+**401K Match**
+
+**401K Match:** Save for retirement with the company's help.
+
+**Health Insurance**
+
+**Health Insurance:** Rely on comprehensive services whenever you need it.
+
+**Vacation**
+
+**Vacation:** We offer time off to refresh and recharge.
+
+**Paid Holidays**
+
+**Paid Holidays:** With paid-time off, local holidays are all the way more relaxing.
+
+**Personal Development**
+
+**Personal Development:** We offer a variety of trainings to ensure you can develop in your career.
+
+Hybrid Work
+
+Freudenberg-NOK General Partnership
+
+payments From $120,000 Compensation for this position will be determined by the candidate's qualifications, experience, education, and overall alignment with the role's responsibilities.
+
+You support our team as
+
+**Responsibilities**
+
+- Build scalable lakehouse pipelines on Azure Databricks using PySpark, Spark SQL, and Delta Lake.
+- Ingest and unify data from enterprise systems, APIs, databases, cloud storage, and file-based sources.
+- Deliver trusted, analytics-ready data products including curated datasets and feature-ready tables.
+- Productionize Databricks solutions (workflows, Unity Catalog, Delta tables, SQL Warehouses) with strong reliability.
+- Implement automated data quality, validation, and secure access patterns across pipelines.
+- Optimize performance and cost while modernizing legacy data flows into cloud-native architectures.
+- Partner with business, IT, and data teams to deliver high-impact, data-driven solutions.
+
+**Qualifications**
+
+- Degree in Computer Science, Data Engineering, or related field (or equivalent experience).
+- Proven experience building and running production data pipelines and data products.
+- Strong Python, PySpark, Spark SQL, and SQL skills.
+- Hands-on experience with Databricks (Delta Lake, Unity Catalog, Jobs/workflows, SQL Warehouses).
+- Familiarity with cloud data platforms (Azure preferred; ADLS, Blob, Key Vault, RBAC or similar).
+- Experience with data testing, validation, and quality frameworks.
+- Strong collaboration and communication skills with a practical, solution-oriented mindset.
+
+The Freudenberg Group is an equal opportunity employer that is committed to diversity and inclusion. Employment opportunities are available to all applicants and associates without regard to race, color, religion, creed, gender (including pregnancy, childbirth, breastfeeding, or related medical conditions), gender identity or expression, national origin, ancestry, age, mental or physical disability, genetic information, marital status, familial status, sexual orientation, protected military or veteran status, or any other characteristic protected by applicable law.

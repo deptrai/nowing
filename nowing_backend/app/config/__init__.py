@@ -976,6 +976,13 @@ class Config:
     ITVIEC_PAGE_DELAY_S = float(os.getenv("ITVIEC_PAGE_DELAY_S", "0.5"))
     ITVIEC_TIMEOUT_S = float(os.getenv("ITVIEC_TIMEOUT_S", "30.0"))
     ITVIEC_MAX_PAGES = int(os.getenv("ITVIEC_MAX_PAGES", "5"))
+    # Indeed is Cloudflare-protected and uses the browser/anti-bot stack.
+    INDEED_SCRAPE_MICROS_PER_ITEM = int(
+        os.getenv("INDEED_SCRAPE_MICROS_PER_ITEM", "5000")
+    )
+    INDEED_PAGE_DELAY_S = float(os.getenv("INDEED_PAGE_DELAY_S", "1.0"))
+    INDEED_MAX_PAGES = int(os.getenv("INDEED_MAX_PAGES", "5"))
+    INDEED_MAX_ITEMS = int(os.getenv("INDEED_MAX_ITEMS", "50"))
     # Multi-source job aggregation (VietnamWorks/TopCV/ITviec).
     VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY = int(
         os.getenv("VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", "5000")

@@ -36,6 +36,7 @@ EXPECTED_TOOLS = {
     "nowing_vietnamworks_scrape",
     "nowing_topcv_scrape",
     "nowing_itviec_scrape",
+    "nowing_indeed_scrape",
     "nowing_vn_jobs_aggregate",
     "nowing_vn_bds_aggregate",
     "nowing_instagram_scrape",
