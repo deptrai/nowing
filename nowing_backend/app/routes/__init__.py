@@ -10,6 +10,7 @@ import app.capabilities.google_maps
 import app.capabilities.google_search
 import app.capabilities.instagram
 import app.capabilities.itviec
+import app.capabilities.masothue
 import app.capabilities.muaban_bds
 import app.capabilities.reddit
 import app.capabilities.tiktok

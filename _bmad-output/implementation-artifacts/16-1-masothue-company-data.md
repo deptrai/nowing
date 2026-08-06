@@ -2,7 +2,7 @@
 baseline_commit: 69967a9edd034f98d6df2b5d0e23c3ca159f27b9
 baseline_branch: develop
 story_key: 16-1-masothue-company-data
-status: ready-for-dev
+status: done
 ---
 
 # Story 16.1: masothue.com Company Data
@@ -88,41 +88,41 @@ Thêm `masothue.scrape` thành built-in scraper capability mới. Story này l�
 
 ## 4. Tasks / Subtasks
 
-- [ ] ToS/legal review (AC ngoài code)
-  - [ ] Xác nhận scrape dữ liệu công khai từ masothue.com được phép; ghi vào `_bmad-output/planning-artifacts/legal/` hoặc đánh dấu approved.
-- [ ] Billing & config (AC #4)
-  - [ ] Thêm `BillingUnit.MASOTHUE_COMPANY` và rate config.
-  - [ ] Đăng ký micros/item trong `app/capabilities/core/billing.py`, `app/config/__init__.py`, `.env.example`.
-- [ ] Pydantic schemas (AC #1)
-  - [ ] `MasothueScrapeInput` (`query`, `search_type`, `tax_code` filter, `max_items`, `max_pages`, `resolve_detail`, `include_phone`).
-  - [ ] `MasothueCompany` và `MasothueScrapeOutput`.
-- [ ] Company canonical domain (AC #8, AD-27)
-  - [ ] Tạo `app/services/company_aggregator/__init__.py` với `fingerprint()`, `merge()`, `search_text()`, `normalize()`.
-  - [ ] `CompanyCanonical` / `MergeResult` schemas nếu cần (hoặc dùng `TypedDict`).
-- [ ] Proprietary fetcher (BSL) (AC #1, #5, #6)
-  - [ ] `nowing_backend/app/proprietary/platforms/masothue/__init__.py`.
-  - [ ] `nowing_backend/app/proprietary/platforms/masothue/schemas.py`.
-  - [ ] `nowing_backend/app/proprietary/platforms/masothue/fetch.py` — `fetch_search_page`, `fetch_detail_page`, `fetch_ajax_token`, `fetch_ajax_search`.
-  - [ ] `nowing_backend/app/proprietary/platforms/masothue/parsers.py` — parse result list, pagination, `table.table-taxinfo`.
-  - [ ] `nowing_backend/app/proprietary/platforms/masothue/scraper.py` — orchestrator, pagination, degrade, rate-limit.
-- [ ] Đăng ký capability `app/capabilities/masothue/scrape/` theo pattern `batdongsan.scrape` (AC #1, #6, #7)
-  - [ ] `app/capabilities/masothue/__init__.py`.
-  - [ ] `app/capabilities/masothue/scrape/schemas.py`.
-  - [ ] `app/capabilities/masothue/scrape/executor.py` — gọi scraper, upsert canonical, tính cost.
-  - [ ] `app/capabilities/masothue/scrape/definition.py` — `Capability(..., context_aware=True, billing_unit=BillingUnit.MASOTHUE_COMPANY)`.
-- [ ] Wire registry (AC #6, #7)
-  - [ ] `app/routes/__init__.py` import `app.capabilities.masothue`.
-  - [ ] `app/mcp_tools.py` thêm `{"name": "nowing_masothue_scrape", "group": McpToolGroup.SCRAPER}`.
-  - [ ] `nowing_mcp/mcp_server/features/scrapers/platforms/masothue.py` tool.
-  - [ ] `nowing_mcp/mcp_server/features/scrapers/__init__.py` thêm `masothue`.
-  - [ ] `nowing_mcp/mcp_server/selfcheck.py` thêm `nowing_masothue_scrape` vào `EXPECTED_TOOLS`.
-  - [ ] `nowing_web/app/(home)/mcp-server/page.tsx` thêm tool vào `TOOL_GROUPS` nếu marketing page cần cập nhật.
-- [ ] Viết tests (AC #9)
+- [x] ToS/legal review (AC ngoài code)
+  - [x] Xác nhận scrape dữ liệu công khai từ masothue.com được phép; ghi vào `_bmad-output/planning-artifacts/legal/` hoặc đánh dấu approved.
+- [x] Billing & config (AC #4)
+  - [x] Thêm `BillingUnit.MASOTHUE_COMPANY` và rate config.
+  - [x] Đăng ký micros/item trong `app/capabilities/core/billing.py`, `app/config/__init__.py`, `.env.example`.
+- [x] Pydantic schemas (AC #1)
+  - [x] `MasothueScrapeInput` (`query`, `search_type`, `tax_code` filter, `max_items`, `max_pages`, `resolve_detail`, `include_phone`).
+  - [x] `MasothueCompany` và `MasothueScrapeOutput`.
+- [x] Company canonical domain (AC #8, AD-27)
+  - [x] Tạo `app/services/company_aggregator/__init__.py` với `fingerprint()`, `merge()`, `search_text()`, `normalize()`.
+  - [x] `CompanyCanonical` / `MergeResult` schemas nếu cần (hoặc dùng `TypedDict`).
+- [x] Proprietary fetcher (BSL) (AC #1, #5, #6)
+  - [x] `nowing_backend/app/proprietary/platforms/masothue/__init__.py`.
+  - [x] `nowing_backend/app/proprietary/platforms/masothue/schemas.py`.
+  - [x] `nowing_backend/app/proprietary/platforms/masothue/fetch.py` — `fetch_search_page`, `fetch_detail_page`, `fetch_ajax_token`, `fetch_ajax_search`.
+  - [x] `nowing_backend/app/proprietary/platforms/masothue/parsers.py` — parse result list, pagination, `table.table-taxinfo`.
+  - [x] `nowing_backend/app/proprietary/platforms/masothue/scraper.py` — orchestrator, pagination, degrade, rate-limit.
+- [x] Đăng ký capability `app/capabilities/masothue/scrape/` theo pattern `batdongsan.scrape` (AC #1, #6, #7)
+  - [x] `app/capabilities/masothue/__init__.py`.
+  - [x] `app/capabilities/masothue/scrape/schemas.py`.
+  - [x] `app/capabilities/masothue/scrape/executor.py` — gọi scraper, upsert canonical, tính cost.
+  - [x] `app/capabilities/masothue/scrape/definition.py` — `Capability(..., context_aware=True, billing_unit=BillingUnit.MASOTHUE_COMPANY)`.
+- [x] Wire registry (AC #6, #7)
+  - [x] `app/routes/__init__.py` import `app.capabilities.masothue`.
+  - [x] `app/mcp_tools.py` thêm `{"name": "nowing_masothue_scrape", "group": McpToolGroup.SCRAPER}`.
+  - [x] `nowing_mcp/mcp_server/features/scrapers/platforms/masothue.py` tool.
+  - [x] `nowing_mcp/mcp_server/features/scrapers/__init__.py` thêm `masothue`.
+  - [x] `nowing_mcp/mcp_server/selfcheck.py` thêm `nowing_masothue_scrape` vào `EXPECTED_TOOLS`.
+  - [~] `nowing_web/app/(home)/mcp-server/page.tsx` thêm tool vào `TOOL_GROUPS` nếu marketing page cần cập nhật.
+- [x] Viết tests (AC #9)
   - [x] Tạo ATDD checklist test-first (`bmad-nowing-test-first-atdd`) → `_bmad-output/test-artifacts/atdd-checklist-16-1-masothue-company-data.md`
-  - [ ] Unit parser tests với fixture detail + search list.
-  - [ ] Unit capability schema/executor/billing tests.
-  - [ ] Integration test với `@pytest.mark.integration` và flag `SCRAPE_LIVE`.
-  - [ ] Canonical convention tests `test_company_fingerprint.py`, `test_company_dedup.py`.
+  - [x] Unit parser tests với fixture detail + search list.
+  - [x] Unit capability schema/executor/billing tests.
+  - [x] Integration test với `@pytest.mark.integration` và flag `SCRAPE_LIVE`.
+  - [x] Canonical convention tests `test_company_fingerprint.py`, `test_company_dedup.py`.
 
 ---
 

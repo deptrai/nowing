@@ -1008,6 +1008,14 @@ class Config:
     CAFEF_QUOTE_URL = os.getenv("CAFEF_QUOTE_URL", "")
     CAFEF_NEWS_URL = os.getenv("CAFEF_NEWS_URL", "")
     CAFEF_FINANCIAL_BASE_URL = os.getenv("CAFEF_FINANCIAL_BASE_URL", "")
+    # masothue.com company directory. Cloudflare-protected; use polite pacing.
+    MASOTHUE_SCRAPE_MICROS_PER_ITEM = int(
+        os.getenv("MASOTHUE_SCRAPE_MICROS_PER_ITEM", "3000")
+    )
+    MASOTHUE_PAGE_DELAY_S = float(os.getenv("MASOTHUE_PAGE_DELAY_S", "1.0"))
+    MASOTHUE_TIMEOUT_S = float(os.getenv("MASOTHUE_TIMEOUT_S", "30.0"))
+    MASOTHUE_MAX_PAGES = int(os.getenv("MASOTHUE_MAX_PAGES", "5"))
+    MASOTHUE_MAX_ITEMS = int(os.getenv("MASOTHUE_MAX_ITEMS", "50"))
     # Multi-source job aggregation (VietnamWorks/TopCV/ITviec).
     VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY = int(
         os.getenv("VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", "5000")

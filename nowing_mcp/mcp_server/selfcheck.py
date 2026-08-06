@@ -36,6 +36,7 @@ EXPECTED_TOOLS = {
     "nowing_vietnamworks_scrape",
     "nowing_topcv_scrape",
     "nowing_itviec_scrape",
+    "nowing_masothue_scrape",
     "nowing_indeed_scrape",
     "nowing_walmart_scrape",
     "nowing_walmart_reviews",

@@ -58,6 +58,7 @@ _PLATFORM_RATE_KEYS: dict[BillingUnit, str] = {
     BillingUnit.WALMART_PRODUCT: "WALMART_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.WALMART_REVIEW: "WALMART_REVIEW_MICROS_PER_ITEM",
     BillingUnit.CAFEF_DATA: "CAFEF_DATA_MICROS_PER_ITEM",
+    BillingUnit.MASOTHUE_COMPANY: "MASOTHUE_SCRAPE_MICROS_PER_ITEM",
 }
 
 
@@ -93,6 +94,7 @@ _UNIT_NOUNS: dict[BillingUnit, str] = {
     BillingUnit.WALMART_PRODUCT: "product",
     BillingUnit.WALMART_REVIEW: "review",
     BillingUnit.CAFEF_DATA: "query",
+    BillingUnit.MASOTHUE_COMPANY: "company",
 }
 
 
