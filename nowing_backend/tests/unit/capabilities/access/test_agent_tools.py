@@ -4,8 +4,13 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from langchain.tools import ToolRuntime
+from langgraph.types import Command
 from pydantic import BaseModel, Field
 
+from app.agents.chat.multi_agent_chat.shared.citations import (
+    CitationSourceType,
+)
 from app.capabilities.core.types import BillingUnit, Capability
 from app.services.web_crawl_credit_service import InsufficientCreditsError
 
@@ -49,6 +54,24 @@ class _FakeSessionCtx:
 
     async def __aexit__(self, *exc):
         return False
+
+
+def _make_runtime(*, tool_call_id: str = "call-1") -> ToolRuntime:
+    """Minimal stand-in for the LangGraph runtime the tool receives in a graph."""
+    return ToolRuntime(
+        state={},
+        context=None,
+        config={},
+        stream_writer=None,
+        tool_call_id=tool_call_id,
+        store=None,
+    )
+
+
+async def _invoke(tool, **kwargs):
+    """Call the raw tool coroutine with a synthetic runtime."""
+    runtime = _make_runtime()
+    return await tool.coroutine(runtime=runtime, **kwargs)
 
 
 @pytest.fixture
@@ -104,7 +127,7 @@ async def test_tool_runs_executor_and_returns_serialized_output(isolate):
     tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=[cap])
     tool = _verb_tool(tools, "web_scrape")
 
-    result = await tool.ainvoke({"text": "ping"})
+    result = await _invoke(tool, text="ping")
 
     # Fake session makes record_run fail -> no run_id key, plain serialized output.
     assert result == {"echoed": "hi there"}
@@ -117,7 +140,7 @@ async def test_tool_charges_owner(isolate):
     tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=[cap])
     tool = _verb_tool(tools, "web_scrape")
 
-    await tool.ainvoke({"text": "ping"})
+    await _invoke(tool, text="ping")
 
     isolate.charge.assert_awaited_once()
     (charged_output, unit, ctx), _ = isolate.charge.call_args
@@ -136,9 +159,53 @@ async def test_over_budget_returns_friendly_message(isolate):
     tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=[cap])
     tool = _verb_tool(tools, "web_scrape")
 
-    result = await tool.ainvoke({"text": "ping"})
+    result = await _invoke(tool, text="ping")
 
     assert isinstance(result, str)
     assert "credit" in result.lower()
     assert cap.executor.seen is None
     isolate.charge.assert_not_awaited()
+
+
+async def test_tool_registers_run_citation_when_stored(isolate, monkeypatch):
+    """A stored run returns a Command with a RUN citation and a label."""
+    from app.capabilities.core.access import agent as mod
+
+    run_id = "550e8400-e29b-41d4-a716-446655440000"
+    monkeypatch.setattr(
+        mod, "record_run", AsyncMock(return_value=run_id)
+    )
+    monkeypatch.setattr(mod, "enqueue_run_memory_extraction_after_commit", lambda _: None)
+
+    cap = _capability(name="web.scrape", output=_EchoOutput(echoed="hi"))
+    tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=[cap])
+    tool = _verb_tool(tools, "web_scrape")
+
+    runtime = _make_runtime(tool_call_id="call-run-1")
+    result = await tool.coroutine(runtime=runtime, text="ping")
+
+    assert isinstance(result, Command)
+    messages = result.update["messages"]
+    assert len(messages) == 1
+    assert "run_" + run_id in messages[0].content
+    assert "Cite this scraper run" in messages[0].content
+    assert messages[0].tool_call_id == "call-run-1"
+
+    registry = result.update["citation_registry"]
+    entry = registry.resolve(1)
+    assert entry is not None
+    assert entry.source_type == CitationSourceType.RUN
+    assert entry.locator["run_id"] == f"run_{run_id}"
+    assert entry.display["capability"] == "web.scrape"
+
+
+async def test_runtime_survives_langchain_arg_parsing():
+    """The runtime arg is injected, not exposed to the model args schema."""
+    from app.capabilities.core.access.agent import build_capability_tools
+
+    cap = _capability(name="web.scrape", output=_EchoOutput(echoed="a"))
+    tools = build_capability_tools(workspace_id=7, capabilities=[cap])
+    tool = _verb_tool(tools, "web_scrape")
+
+    parsed = tool._parse_input({"text": "ping", "runtime": "RT"}, tool_call_id="call-1")
+    assert parsed == {"text": "ping", "runtime": "RT"}

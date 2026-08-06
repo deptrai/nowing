@@ -24,6 +24,16 @@ def _registry_with_chunk(chunk_id: int = 42) -> CitationRegistry:
     return registry
 
 
+def _registry_with_run(run_uuid: str = "550e8400-e29b-41d4-a716-446655440000") -> CitationRegistry:
+    registry = CitationRegistry()
+    registry.register(
+        CitationSourceType.RUN,
+        {"run_id": f"run_{run_uuid}"},
+        {"capability": "web.scrape"},
+    )
+    return registry
+
+
 def _text(value: str) -> list[dict]:
     return [{"type": "text", "text": value}]
 
@@ -83,3 +93,12 @@ def test_non_text_parts_are_left_alone():
 
     assert payload[0]["args"]["q"] == "[1]"
     assert payload[1]["text"] == "Result [citation:5]."
+
+
+def test_run_ordinal_resolves_to_run_marker():
+    run_uuid = "550e8400-e29b-41d4-a716-446655440000"
+    payload = _resolve_citations(
+        _text("The price is 19.99 [1]."), _registry_with_run(run_uuid)
+    )
+
+    assert payload[0]["text"] == f"The price is 19.99 [citation:run_{run_uuid}]."

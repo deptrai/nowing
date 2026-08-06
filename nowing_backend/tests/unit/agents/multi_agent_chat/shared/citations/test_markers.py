@@ -47,3 +47,16 @@ def test_missing_locator_field_is_dropped() -> None:
     entry = _entry(CitationSourceType.KB_CHUNK, {})
 
     assert to_frontend_payload(entry) is None
+
+
+def test_run_maps_to_run_handle() -> None:
+    run_id = "run_550e8400-e29b-41d4-a716-446655440000"
+    entry = _entry(CitationSourceType.RUN, {"run_id": run_id})
+
+    assert to_frontend_payload(entry) == run_id
+
+
+def test_run_without_handle_is_dropped() -> None:
+    entry = _entry(CitationSourceType.RUN, {})
+
+    assert to_frontend_payload(entry) is None

@@ -75,7 +75,7 @@ development_status:
   3-12: done
   3-13: done
   3-14: done  # bounded memory injection + score contract verified; tests pass
-  3-15: ready-for-dev
+  3-15: done
   3-16: ready-for-dev
   epic-3-retrospective: optional
 

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { InlineCitation, UrlCitation } from "@/components/assistant-ui/inline-citation";
+import { RunCitation } from "@/components/citations/run-citation";
 import {
 	type CitationToken,
 	type CitationUrlMap,
@@ -20,6 +21,9 @@ import {
 export function renderCitationToken(token: CitationToken, ordinalKey: number): ReactNode {
 	if (token.kind === "url") {
 		return <UrlCitation key={`citation-url-${ordinalKey}`} url={token.url} />;
+	}
+	if (token.kind === "run") {
+		return <RunCitation key={`citation-run-${ordinalKey}`} runId={token.runId} />;
 	}
 	return (
 		<InlineCitation
@@ -55,14 +59,14 @@ export function processChildrenWithCitations(
 
 	if (Array.isArray(children)) {
 		let ordinal = 0;
-		return children.map((child, childIndex) => {
+		return children.map((child) => {
 			if (typeof child === "string") {
 				const segments = parseTextWithCitations(child, urlMap);
 				if (segments.length === 1 && typeof segments[0] === "string") {
 					return child;
 				}
 				return (
-					<span key={`citation-seg-${childIndex}`}>
+					<span key={`citation-seg-${ordinal}`}>
 						{segments.map((segment) =>
 							typeof segment === "string" ? segment : renderCitationToken(segment, ordinal++)
 						)}

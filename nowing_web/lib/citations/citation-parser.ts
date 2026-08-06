@@ -18,7 +18,7 @@ import { FENCED_OR_INLINE_CODE } from "@/lib/markdown/code-regions";
  * sometimes emit.
  */
 export const CITATION_REGEX =
-	/[[【]\u200B?citation:\s*(https?:\/\/[^\]】\u200B]+|urlcite\d+|(?:doc-)?-?\d+(?:\s*,\s*(?:doc-)?-?\d+)*)\s*\u200B?[\]】]/g;
+	/[[【]\u200B?citation:\s*(https?:\/\/[^\]】\u200B]+|urlcite\d+|run_[0-9a-fA-F-]+|(?:doc-)?-?\d+(?:\s*,\s*(?:doc-)?-?\d+)*)\s*\u200B?[\]】]/g;
 
 /** Normalizes bare `[n]` / `【n】` markers to the canonical `[citation:n]` form. */
 const BARE_CITATION_REGEX = /[[【]\u200B?(\d+)\u200B?[\]】]/g;
@@ -26,7 +26,8 @@ const BARE_CITATION_REGEX = /[[【]\u200B?(\d+)\u200B?[\]】]/g;
 /** A single parsed citation reference. */
 export type CitationToken =
 	| { kind: "url"; url: string }
-	| { kind: "chunk"; chunkId: number; isDocsChunk: boolean };
+	| { kind: "chunk"; chunkId: number; isDocsChunk: boolean }
+	| { kind: "run"; runId: string };
 
 /** Output of `parseTextWithCitations` — interleaved text + citation tokens. */
 export type ParsedSegment = string | CitationToken;
@@ -108,6 +109,8 @@ export function parseTextWithCitations(text: string, urlMap: CitationUrlMap): Pa
 			if (url) {
 				segments.push({ kind: "url", url });
 			}
+		} else if (captured.startsWith("run_")) {
+			segments.push({ kind: "run", runId: captured.trim() });
 		} else {
 			const rawIds = captured.split(",").map((s) => s.trim());
 			for (const rawId of rawIds) {

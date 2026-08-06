@@ -38,7 +38,7 @@ from typing import Any
 _ZWSP = "\u200b"
 CITATION_REGEX = re.compile(
     rf"[\[【]{_ZWSP}?citation:\s*("
-    rf"https?://[^\]】{_ZWSP}]+|urlcite\d+|(?:doc-)?-?\d+(?:\s*,\s*(?:doc-)?-?\d+)*"
+    rf"https?://[^\]】{_ZWSP}]+|urlcite\d+|run_[0-9a-fA-F-]+|(?:doc-)?-?\d+(?:\s*,\s*(?:doc-)?-?\d+)*"
     rf")\s*{_ZWSP}?[\]】]"
 )
 
@@ -71,7 +71,15 @@ class UrlCitation:
         return {"kind": "url", "url": self.url}
 
 
-CitationToken = ChunkCitation | UrlCitation
+@dataclass(frozen=True)
+class RunCitation:
+    run_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"kind": "run", "run_id": self.run_id}
+
+
+CitationToken = ChunkCitation | UrlCitation | RunCitation
 
 
 def parse_citations(text: str, *, url_map: dict[str, str] | None = None) -> list[CitationToken]:
@@ -97,6 +105,9 @@ def parse_citations(text: str, *, url_map: dict[str, str] | None = None) -> list
             if url_map and captured in url_map:
                 out.append(UrlCitation(url=url_map[captured]))
             continue
+        if captured.startswith("run_"):
+            out.append(RunCitation(run_id=captured.strip()))
+            continue
         for raw_id in (s.strip() for s in captured.split(",")):
             is_docs_chunk = raw_id.startswith("doc-")
             number_part = raw_id[4:] if is_docs_chunk else raw_id
@@ -118,6 +129,7 @@ __all__ = [
     "CITATION_REGEX",
     "ChunkCitation",
     "UrlCitation",
+    "RunCitation",
     "CitationToken",
     "parse_citations",
 ]

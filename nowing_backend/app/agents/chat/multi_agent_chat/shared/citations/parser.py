@@ -28,7 +28,7 @@ from dataclasses import dataclass
 _ZWSP = "\u200b"
 CITATION_REGEX = re.compile(
     rf"[\[【]{_ZWSP}?citation:\s*("
-    rf"https?://[^\]】{_ZWSP}]+|urlcite\d+|(?:doc-)?-?\d+(?:\s*,\s*(?:doc-)?-?\d+)*"
+    rf"https?://[^\]】{_ZWSP}]+|urlcite\d+|run_[0-9a-fA-F-]+|(?:doc-)?-?\d+(?:\s*,\s*(?:doc-)?-?\d+)*"
     rf")\s*{_ZWSP}?[\]】]"
 )
 
@@ -48,7 +48,14 @@ class ChunkCitationMarker:
     is_docs_chunk: bool
 
 
-CitationMarker = UrlCitationMarker | ChunkCitationMarker
+@dataclass(frozen=True)
+class RunCitationMarker:
+    """A citation whose payload is a scraper run handle ``run_<uuid>``."""
+
+    run_id: str
+
+
+CitationMarker = UrlCitationMarker | ChunkCitationMarker | RunCitationMarker
 
 
 def parse_citation_markers(text: str) -> list[CitationMarker]:
@@ -72,6 +79,9 @@ def parse_citation_markers(text: str) -> list[CitationMarker]:
             # Web-only placeholder; without the render-time url map we cannot
             # resolve it, so drop it rather than emit a broken citation.
             continue
+        if captured.startswith("run_"):
+            out.append(RunCitationMarker(run_id=captured.strip()))
+            continue
         for raw_id in (segment.strip() for segment in captured.split(",")):
             is_docs_chunk = raw_id.startswith("doc-")
             number_part = raw_id[4:] if is_docs_chunk else raw_id
@@ -89,6 +99,7 @@ __all__ = [
     "CITATION_REGEX",
     "ChunkCitationMarker",
     "CitationMarker",
+    "RunCitationMarker",
     "UrlCitationMarker",
     "parse_citation_markers",
 ]

@@ -22,6 +22,8 @@ def to_frontend_payload(entry: CitationEntry) -> str | None:
         case CitationSourceType.WEB_RESULT:
             url = locator.get("url")
             return url or None
+        case CitationSourceType.RUN:
+            return locator.get("run_id")
         case _:
             # Connector items and chat turns have no client-side renderer yet
             # (the frontend resolves only chunk ids and URLs), so they stay

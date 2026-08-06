@@ -1,14 +1,16 @@
 import { atom } from "jotai";
 import { rightPanelCollapsedAtom, rightPanelTabAtom } from "@/atoms/layout/right-panel.atom";
 
+export type CitationTarget = { kind: "chunk"; chunkId: number } | { kind: "run"; runId: string };
+
 interface CitationPanelState {
 	isOpen: boolean;
-	chunkId: number | null;
+	target: CitationTarget | null;
 }
 
 const initialState: CitationPanelState = {
 	isOpen: false,
-	chunkId: null,
+	target: null,
 };
 
 export const citationPanelAtom = atom<CitationPanelState>(initialState);
@@ -23,7 +25,19 @@ export const openCitationPanelAtom = atom(null, (get, set, payload: { chunkId: n
 	}
 	set(citationPanelAtom, {
 		isOpen: true,
-		chunkId: payload.chunkId,
+		target: { kind: "chunk", chunkId: payload.chunkId },
+	});
+	set(rightPanelTabAtom, "citation");
+	set(rightPanelCollapsedAtom, false);
+});
+
+export const openRunCitationPanelAtom = atom(null, (get, set, payload: { runId: string }) => {
+	if (!get(citationPanelAtom).isOpen) {
+		set(preCitationCollapsedAtom, get(rightPanelCollapsedAtom));
+	}
+	set(citationPanelAtom, {
+		isOpen: true,
+		target: { kind: "run", runId: payload.runId },
 	});
 	set(rightPanelTabAtom, "citation");
 	set(rightPanelCollapsedAtom, false);

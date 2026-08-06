@@ -13,6 +13,7 @@ import pytest
 from nowing_evals.core.parse import (
     CITATION_REGEX,
     ChunkCitation,
+    RunCitation,
     UrlCitation,
     parse_citations,
 )
@@ -44,6 +45,11 @@ PARITY_TABLE = [
         "URL form [citation:https://x.com/a].",
         1,
         UrlCitation(url="https://x.com/a"),
+    ),
+    (
+        "Run handle [citation:run_550e8400-e29b-41d4-a716-446655440000].",
+        1,
+        RunCitation(run_id="run_550e8400-e29b-41d4-a716-446655440000"),
     ),
     (
         "Chinese brackets【citation:5】.",
@@ -109,6 +115,7 @@ def test_regex_pattern_matches_ts_source():
     pattern = CITATION_REGEX.pattern
     assert "https?://" in pattern
     assert "urlcite" in pattern
+    assert "run_" in pattern
     assert "doc-" in pattern
     assert "\u200b" in pattern
     assert "【" in pattern and "】" in pattern

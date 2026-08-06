@@ -11,13 +11,18 @@ subagent can follow a truncation reference without extra wiring.
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from typing import Any
 
 from fastapi import HTTPException
+from langchain.tools import ToolRuntime
+from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool, StructuredTool
+from langgraph.types import Command
 
+from app.agents.chat.multi_agent_chat.shared.citations import load_registry
 from app.auth.context import AuthContext
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.access.rate_limit import (
@@ -26,6 +31,7 @@ from app.capabilities.core.access.rate_limit import (
     CAPABILITY_RATE_LIMIT_PER_MINUTE,
     _aincr,
 )
+from app.capabilities.core.access.run_citation import attach_run_citation
 from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.progress import progress_scope
@@ -171,7 +177,7 @@ def _capability_tool(
     executor = capability.executor
     name = capability.name
 
-    async def _run(**kwargs: object) -> dict | str:
+    async def _run(runtime: ToolRuntime, **kwargs: object) -> dict | str | Command:
         # ponytail: thread the chat request's explicit research mode through to
         # chainlens.research so benchmark/user mode selections are honored.
         if name == "chainlens.research":
@@ -312,15 +318,45 @@ def _capability_tool(
             # visible to another connection. Never raises (AC-5).
             enqueue_run_memory_extraction_after_commit(run_id)
 
+        if run_id is None:
+            # Storage failed; fall back to the legacy return shape with no citation.
+            if serialized.char_count <= RUN_OUTPUT_CHAR_CAP:
+                dump = output.model_dump(exclude_none=True)
+                if "next_action" in dump:
+                    dump.setdefault("next_step", dump["next_action"])
+                return dump
+            return _build_preview(serialized, run_id)
+
+        run_external_id = f"run_{run_id}"
         if serialized.char_count <= RUN_OUTPUT_CHAR_CAP:
             dump = output.model_dump(exclude_none=True)
             if "next_action" in dump:
                 dump.setdefault("next_step", dump["next_action"])
-            if run_id is not None:
-                dump["run_id"] = f"run_{run_id}"
-            return dump
+            dump["run_id"] = run_external_id
+            content = json.dumps(dump, ensure_ascii=False)
+        else:
+            content = _build_preview(serialized, run_id)
 
-        return _build_preview(serialized, run_id)
+        registry = load_registry(getattr(runtime, "state", None))
+        _, label = attach_run_citation(
+            registry,
+            run_external_id=run_external_id,
+            capability=name,
+        )
+
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content=content + label,
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ],
+                "citation_registry": registry,
+            }
+        )
+
+    _run.__annotations__["runtime"] = ToolRuntime
 
     return StructuredTool.from_function(
         coroutine=_run,
