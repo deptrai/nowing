@@ -1,14 +1,14 @@
 "use client";
 
-import { useAtomValue } from "jotai";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
-import { activeTabAtom, type Tab } from "@/atoms/tabs/tabs.atom";
 import { Logo } from "@/components/Logo";
 import { Spinner } from "@/components/ui/spinner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useElectronAPI } from "@/hooks/use-platform";
+import type { ResolvedTab } from "@/lib/hooks/use-resolved-tabs";
+import { useResolvedTabs } from "@/lib/hooks/use-resolved-tabs";
 import { cn } from "@/lib/utils";
 import { SidebarProvider, useSidebarState } from "../../hooks";
 import {
@@ -113,8 +113,9 @@ interface LayoutShellProps {
 	className?: string;
 	notifications?: NotificationsDropdownData;
 	isLoadingChats?: boolean;
-	onTabSwitch?: (tab: Tab) => void;
-	onTabPrefetch?: (tab: Tab) => void;
+	showTabs?: boolean;
+	onTabSwitch?: (tab: ResolvedTab) => void;
+	onTabPrefetch?: (tab: ResolvedTab) => void;
 	playgroundSidebar?: React.ReactNode;
 	initialPlaygroundSidebarCollapsed?: boolean;
 }
@@ -124,42 +125,46 @@ function MainContentPanel({
 	onTabSwitch,
 	onTabPrefetch,
 	onNewChat,
+	showTabs = true,
 	showRightPanelExpandButton = true,
 	showTopBorder = false,
 	children,
 }: {
 	isChatPage: boolean;
-	onTabSwitch?: (tab: Tab) => void;
-	onTabPrefetch?: (tab: Tab) => void;
+	onTabSwitch?: (tab: ResolvedTab) => void;
+	onTabPrefetch?: (tab: ResolvedTab) => void;
 	onNewChat?: () => void;
+	showTabs?: boolean;
 	showRightPanelExpandButton?: boolean;
 	showTopBorder?: boolean;
 	children: React.ReactNode;
 }) {
-	const activeTab = useAtomValue(activeTabAtom);
+	const { tabs: resolvedTabs, activeTab } = useResolvedTabs();
 	const isDocumentTab = activeTab?.type === "document";
 
 	return (
 		<div
 			className={cn("relative isolate flex flex-1 flex-col min-w-0", showTopBorder && "border-t")}
 		>
-			<TabBar
-				onTabSwitch={onTabSwitch}
-				onTabPrefetch={onTabPrefetch}
-				onNewChat={onNewChat}
-				rightActions={showRightPanelExpandButton ? <RightPanelExpandButton /> : null}
-				className="min-w-0"
-			/>
+			{showTabs && (
+				<TabBar
+					resolvedTabs={resolvedTabs}
+					onTabSwitch={onTabSwitch}
+					onTabPrefetch={onTabPrefetch}
+					onNewChat={onNewChat}
+					rightActions={showRightPanelExpandButton ? <RightPanelExpandButton /> : null}
+					className="min-w-0"
+				/>
+			)}
 			<div className="relative flex flex-1 flex-col bg-panel overflow-hidden min-w-0">
 				<Header />
 
-				{isDocumentTab && activeTab.documentId && activeTab.workspaceId ? (
+				{showTabs && isDocumentTab && activeTab ? (
 					<div className="flex-1 overflow-hidden">
 						<DocumentTabContent
-							key={activeTab.documentId}
-							documentId={activeTab.documentId}
-							workspaceId={activeTab.workspaceId}
-							title={activeTab.title}
+							key={activeTab.id}
+							entityId={activeTab.entityId}
+							workspaceId={String(activeTab.workspaceId)}
 						/>
 					</div>
 				) : (
@@ -215,6 +220,7 @@ export function LayoutShell({
 	className,
 	notifications,
 	isLoadingChats = false,
+	showTabs = true,
 	onTabSwitch,
 	onTabPrefetch,
 	playgroundSidebar,
@@ -451,6 +457,7 @@ export function LayoutShell({
 										onTabSwitch={onTabSwitch}
 										onTabPrefetch={onTabPrefetch}
 										onNewChat={onNewChat}
+										showTabs={showTabs}
 										showRightPanelExpandButton={!isMacDesktop}
 										showTopBorder={isMacDesktop}
 									>

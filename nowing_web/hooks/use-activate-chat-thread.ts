@@ -6,16 +6,11 @@ import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { setCurrentThreadMetadataAtom } from "@/atoms/chat/current-thread.atom";
 import { syncChatTabAtom } from "@/atoms/tabs/tabs.atom";
-import type { ChatVisibility } from "@/lib/chat/thread-persistence";
 import { prefetchThreadData } from "./use-thread-queries";
 
 interface ActivateChatThreadInput {
 	id: number | null;
-	title?: string;
-	url?: string;
 	workspaceId: number | string;
-	visibility?: ChatVisibility;
-	hasComments?: boolean;
 }
 
 function getWorkspaceId(workspaceId: number | string): number {
@@ -45,24 +40,18 @@ export function useActivateChatThread() {
 	);
 
 	const activateChatThread = useCallback(
-		({ id, title, url, workspaceId, visibility, hasComments }: ActivateChatThreadInput) => {
+		({ id, workspaceId }: ActivateChatThreadInput) => {
 			const numericWorkspaceId = getWorkspaceId(workspaceId);
-			const chatUrl = url ?? getChatUrl(workspaceId, id);
+			const chatUrl = getChatUrl(workspaceId, id);
 
 			syncChatTab({
 				chatId: id,
-				title: id ? title : (title ?? "New Chat"),
-				chatUrl,
 				workspaceId: numericWorkspaceId,
-				...(visibility !== undefined ? { visibility } : {}),
-				...(hasComments !== undefined ? { hasComments } : {}),
 			});
 
 			setCurrentThreadMetadata({
 				id,
 				workspaceId: numericWorkspaceId,
-				...(visibility !== undefined ? { visibility } : {}),
-				...(hasComments !== undefined ? { hasComments } : {}),
 			});
 
 			if (id) {

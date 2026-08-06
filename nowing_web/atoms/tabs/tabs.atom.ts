@@ -1,22 +1,16 @@
 import { atom } from "jotai";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
-import type { ChatVisibility } from "@/lib/chat/thread-persistence";
-import { migrateLegacyTabs } from "./migrate-tabs";
+import { patchThreadEverywhere } from "@/lib/chat/thread-cache";
+import { queryClient } from "@/lib/query-client/client";
+import { makeChatTabId, makeDocumentTabId, migrateLegacyTabs, type TabType } from "./migrate-tabs";
 
-export type TabType = "chat" | "document";
+export type { TabType } from "./migrate-tabs";
 
 export interface Tab {
 	id: string;
 	type: TabType;
-	title: string;
-	/** For chat tabs */
-	chatId?: number | null;
-	chatUrl?: string;
-	visibility?: ChatVisibility;
-	hasComments?: boolean;
-	/** For document tabs */
-	documentId?: number;
-	workspaceId?: number;
+	entityId: string;
+	workspaceId: number;
 }
 
 interface TabsState {
@@ -24,16 +18,8 @@ interface TabsState {
 	activeTabId: string | null;
 }
 
-const INITIAL_CHAT_TAB: Tab = {
-	id: "chat-new",
-	type: "chat",
-	title: "New Chat",
-	chatId: null,
-	chatUrl: undefined,
-};
-
 const initialState: TabsState = {
-	tabs: [INITIAL_CHAT_TAB],
+	tabs: [{ id: "chat-new", type: "chat", entityId: "new", workspaceId: 0 }],
 	activeTabId: "chat-new",
 };
 
@@ -46,14 +32,39 @@ const localStorageAdapter = createJSONStorage<TabsState>(
 	() => (typeof window !== "undefined" ? localStorage : undefined) as Storage
 );
 
-// Wrap getItem in place so the adapter keeps its original (sync) type while
-// migrating legacy persisted state on read.
+const V1_STORAGE_KEY = "nowing:tabs";
+const V2_STORAGE_KEY = "nowing:tabs:v2";
+
+// Wrap getItem so the v2 key can migrate from an existing v1 snapshot.
 const baseGetItem = localStorageAdapter.getItem.bind(localStorageAdapter);
-localStorageAdapter.getItem = (key, initialValue) =>
-	migrateLegacyTabs(baseGetItem(key, initialValue));
+localStorageAdapter.getItem = (key, initialValue) => {
+	if (key !== V2_STORAGE_KEY) {
+		return baseGetItem(key, initialValue);
+	}
+
+	const v2 = baseGetItem(V2_STORAGE_KEY, initialValue);
+	if (v2 !== initialValue) {
+		return migrateLegacyTabs(v2);
+	}
+
+	const v1 = baseGetItem(V1_STORAGE_KEY, initialValue);
+	if (v1 !== initialValue) {
+		const migrated = migrateLegacyTabs(v1);
+		if (typeof window !== "undefined") {
+			try {
+				window.localStorage.setItem(V2_STORAGE_KEY, JSON.stringify(migrated));
+			} catch {
+				// Ignore storage write failures; the in-memory state is already migrated.
+			}
+		}
+		return migrated;
+	}
+
+	return initialValue;
+};
 
 export const tabsStateAtom = atomWithStorage<TabsState>(
-	"nowing:tabs",
+	V2_STORAGE_KEY,
 	initialState,
 	localStorageAdapter,
 	{ getOnInit: true }
@@ -66,14 +77,6 @@ export const activeTabAtom = atom((get) => {
 	return state.tabs.find((t) => t.id === state.activeTabId) ?? null;
 });
 
-function makeChatTabId(chatId: number | null): string {
-	return chatId ? `chat-${chatId}` : "chat-new";
-}
-
-function makeDocumentTabId(documentId: number): string {
-	return `doc-${documentId}`;
-}
-
 /**
  * Sync the current chat from Next.js routing into the tab bar.
  * If a tab for this chat already exists, activate it.
@@ -81,31 +84,14 @@ function makeDocumentTabId(documentId: number): string {
  */
 export const syncChatTabAtom = atom(
 	null,
-	(
-		get,
-		set,
-		{
-			chatId,
-			title,
-			chatUrl,
-			workspaceId,
-			visibility,
-			hasComments,
-		}: {
-			chatId: number | null;
-			title?: string;
-			chatUrl?: string;
-			workspaceId: number;
-			visibility?: ChatVisibility;
-			hasComments?: boolean;
-		}
-	) => {
+	(get, set, { chatId, workspaceId }: { chatId: number | null; workspaceId: number }) => {
 		if (chatId && get(deletedChatIdsAtom).has(chatId)) {
 			return;
 		}
 
 		const state = get(tabsStateAtom);
-		const tabId = makeChatTabId(chatId);
+		const entityId = chatId ? String(chatId) : "new";
+		const tabId = makeChatTabId(entityId);
 		const existing = state.tabs.find((t) => t.id === tabId);
 
 		if (existing) {
@@ -113,22 +99,13 @@ export const syncChatTabAtom = atom(
 				...state,
 				activeTabId: tabId,
 				tabs: state.tabs.map((t) =>
-					t.id === tabId
-						? {
-								...t,
-								title: title || t.title,
-								chatUrl: chatUrl || t.chatUrl,
-								workspaceId: workspaceId ?? t.workspaceId,
-								...(visibility !== undefined ? { visibility } : {}),
-								...(hasComments !== undefined ? { hasComments } : {}),
-							}
-						: t
+					t.id === tabId ? { ...t, workspaceId: workspaceId ?? t.workspaceId } : t
 				),
 			});
 			return;
 		}
 
-		// If navigating to a new chat (no chatId), ensure there's a "new chat" tab
+		// If navigating to a new chat (no chatId), ensure there is a "new chat" tab
 		// scoped to the current workspace.
 		if (!chatId) {
 			const hasNewChatTab = state.tabs.some((t) => t.id === "chat-new");
@@ -136,28 +113,24 @@ export const syncChatTabAtom = atom(
 				set(tabsStateAtom, {
 					...state,
 					activeTabId: "chat-new",
-					tabs: state.tabs.map((t) => (t.id === "chat-new" ? { ...t, workspaceId, chatUrl } : t)),
+					tabs: state.tabs.map((t) => (t.id === "chat-new" ? { ...t, workspaceId } : t)),
 				});
 			} else {
 				set(tabsStateAtom, {
-					tabs: [...state.tabs, { ...INITIAL_CHAT_TAB, workspaceId, chatUrl }],
+					tabs: [...state.tabs, { id: "chat-new", type: "chat", entityId: "new", workspaceId }],
 					activeTabId: "chat-new",
 				});
 			}
 			return;
 		}
 
-		// Replace the "new chat" tab if it exists and is empty, otherwise add new tab
+		// Replace the "new chat" tab if it exists and is empty, otherwise add a new tab.
 		const newChatTabIdx = state.tabs.findIndex((t) => t.id === "chat-new");
 		const newTab: Tab = {
 			id: tabId,
 			type: "chat",
-			title: title || "New Chat",
-			chatId,
-			chatUrl,
+			entityId,
 			workspaceId,
-			...(visibility !== undefined ? { visibility } : {}),
-			...(hasComments !== undefined ? { hasComments } : {}),
 		};
 
 		let updatedTabs: Tab[];
@@ -172,58 +145,49 @@ export const syncChatTabAtom = atom(
 	}
 );
 
-/** Update the title of the current chat tab (e.g., when a chat gets its first response). */
+/**
+ * Update the live title for a chat tab.
+ * In the pointer model, titles live in the thread query cache, so this patches
+ * the cache that `useResolvedTabs` reads instead of mutating the tab itself.
+ */
 export const updateChatTabTitleAtom = atom(
 	null,
-	(get, set, { chatId, title }: { chatId: number; title: string }) => {
+	(
+		get,
+		_set,
+		{ chatId, title, workspaceId }: { chatId: number; title: string; workspaceId?: number }
+	) => {
 		const state = get(tabsStateAtom);
-		const tabId = makeChatTabId(chatId);
-		const hasExactTab = state.tabs.some((t) => t.id === tabId);
+		const tabWorkspaceId =
+			workspaceId ??
+			state.tabs.find((t) => t.type === "chat" && t.entityId === String(chatId))?.workspaceId;
 
-		// During lazy thread creation, title updates can arrive before "chat-new"
-		// is swapped to chat-{id}. In that case, promote the active "chat-new" tab.
-		if (!hasExactTab && state.activeTabId === "chat-new") {
-			set(tabsStateAtom, {
-				...state,
-				activeTabId: tabId,
-				tabs: state.tabs.map((t) => (t.id === "chat-new" ? { ...t, id: tabId, chatId, title } : t)),
-			});
+		if (tabWorkspaceId == null) {
 			return;
 		}
 
-		set(tabsStateAtom, {
-			...state,
-			tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, title } : t)),
-		});
+		patchThreadEverywhere(queryClient, tabWorkspaceId, chatId, { title });
 	}
 );
 
 /** Open a document tab. If already open, just switch to it. */
 export const openDocumentTabAtom = atom(
 	null,
-	(
-		get,
-		set,
-		{ documentId, workspaceId, title }: { documentId: number; workspaceId: number; title?: string }
-	) => {
+	(get, set, { documentId, workspaceId }: { documentId: number; workspaceId: number }) => {
 		const state = get(tabsStateAtom);
-		const tabId = makeDocumentTabId(documentId);
+		const entityId = String(documentId);
+		const tabId = makeDocumentTabId(entityId);
 		const existing = state.tabs.find((t) => t.id === tabId);
 
 		if (existing) {
-			set(tabsStateAtom, {
-				...state,
-				activeTabId: tabId,
-				tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, title: title || t.title } : t)),
-			});
+			set(tabsStateAtom, { ...state, activeTabId: tabId });
 			return;
 		}
 
 		const newTab: Tab = {
 			id: tabId,
 			type: "document",
-			title: title || `Document ${documentId}`,
-			documentId,
+			entityId,
 			workspaceId,
 		};
 
@@ -252,20 +216,17 @@ export const closeTabAtom = atom(null, (get, set, tabId: string) => {
 
 	const remaining = state.tabs.filter((t) => t.id !== tabId);
 
-	// Don't close the last tab — always keep at least one
+	// Don't close the last tab — always keep at least one.
 	if (remaining.length === 0) {
-		set(tabsStateAtom, {
-			tabs: [INITIAL_CHAT_TAB],
-			activeTabId: "chat-new",
-		});
-		return INITIAL_CHAT_TAB;
+		set(tabsStateAtom, { ...initialState });
+		return initialState.tabs[0];
 	}
 
 	let newActiveId = state.activeTabId;
 	if (state.activeTabId === tabId) {
-		// Activate the tab to the left (or right if first)
+		// Activate the tab to the left (or right if first).
 		const newIdx = Math.min(idx, remaining.length - 1);
-		newActiveId = remaining[newIdx].id;
+		newActiveId = remaining[newIdx]?.id ?? null;
 	}
 
 	set(tabsStateAtom, { tabs: remaining, activeTabId: newActiveId });
@@ -275,7 +236,7 @@ export const closeTabAtom = atom(null, (get, set, tabId: string) => {
 /** Remove a chat tab by chat ID (used when a chat is deleted). */
 export const removeChatTabAtom = atom(null, (get, set, chatId: number) => {
 	const state = get(tabsStateAtom);
-	const tabId = makeChatTabId(chatId);
+	const tabId = makeChatTabId(String(chatId));
 	const idx = state.tabs.findIndex((t) => t.id === tabId);
 	if (idx === -1) return null;
 
@@ -286,17 +247,14 @@ export const removeChatTabAtom = atom(null, (get, set, chatId: number) => {
 
 	// Always keep at least one tab available.
 	if (remaining.length === 0) {
-		set(tabsStateAtom, {
-			tabs: [INITIAL_CHAT_TAB],
-			activeTabId: "chat-new",
-		});
-		return INITIAL_CHAT_TAB;
+		set(tabsStateAtom, { ...initialState });
+		return initialState.tabs[0];
 	}
 
 	let newActiveId = state.activeTabId;
 	if (state.activeTabId === tabId) {
 		const newIdx = Math.min(idx, remaining.length - 1);
-		newActiveId = remaining[newIdx].id;
+		newActiveId = remaining[newIdx]?.id ?? null;
 	}
 
 	set(tabsStateAtom, { tabs: remaining, activeTabId: newActiveId });

@@ -47,9 +47,8 @@ function DocumentSkeleton() {
 }
 
 interface DocumentTabContentProps {
-	documentId: number;
-	workspaceId: number;
-	title?: string;
+	entityId: string;
+	workspaceId: string;
 }
 
 const EDITABLE_DOCUMENT_TYPES = new Set(["FILE", "NOTE"]);
@@ -69,7 +68,15 @@ function formatBytes(bytes: number): string {
 	return `${bytes}B`;
 }
 
-export function DocumentTabContent({ documentId, workspaceId, title }: DocumentTabContentProps) {
+function parsePointerId(value: string): number {
+	const parsed = Number.parseInt(value, 10);
+	return Number.isNaN(parsed) || parsed <= 0 ? 0 : parsed;
+}
+
+export function DocumentTabContent({ entityId, workspaceId }: DocumentTabContentProps) {
+	const documentId = parsePointerId(entityId);
+	const workspaceIdNumber = parsePointerId(workspaceId);
+
 	const [doc, setDoc] = useState<DocumentContent | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -91,6 +98,12 @@ export function DocumentTabContent({ documentId, workspaceId, title }: DocumentT
 	const isOverPlateLimit = activeMarkdownSizeBytes > plateMaxBytes;
 
 	useEffect(() => {
+		if (!documentId || !workspaceIdNumber) {
+			setError("Invalid document or workspace");
+			setIsLoading(false);
+			return;
+		}
+
 		const controller = new AbortController();
 		setIsLoading(true);
 		setError(null);
@@ -104,7 +117,7 @@ export function DocumentTabContent({ documentId, workspaceId, title }: DocumentT
 			try {
 				const response = await authenticatedFetch(
 					buildBackendUrl(
-						`/api/v1/workspaces/${workspaceId}/documents/${documentId}/editor-content`
+						`/api/v1/workspaces/${workspaceIdNumber}/documents/${documentId}/editor-content`
 					),
 					{ method: "GET" }
 				);
@@ -140,7 +153,7 @@ export function DocumentTabContent({ documentId, workspaceId, title }: DocumentT
 
 		doFetch().catch(() => {});
 		return () => controller.abort();
-	}, [documentId, workspaceId]);
+	}, [documentId, workspaceIdNumber]);
 
 	const handleMarkdownChange = useCallback((md: string) => {
 		markdownRef.current = md;
@@ -154,7 +167,7 @@ export function DocumentTabContent({ documentId, workspaceId, title }: DocumentT
 		setSaving(true);
 		try {
 			const response = await authenticatedFetch(
-				buildBackendUrl(`/api/v1/workspaces/${workspaceId}/documents/${documentId}/save`),
+				buildBackendUrl(`/api/v1/workspaces/${workspaceIdNumber}/documents/${documentId}/save`),
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -183,7 +196,7 @@ export function DocumentTabContent({ documentId, workspaceId, title }: DocumentT
 		} finally {
 			setSaving(false);
 		}
-	}, [documentId, plateMaxBytes, workspaceId]);
+	}, [documentId, plateMaxBytes, workspaceIdNumber]);
 
 	if (isLoading) return <DocumentSkeleton />;
 
@@ -226,7 +239,7 @@ export function DocumentTabContent({ documentId, workspaceId, title }: DocumentT
 			<div className="flex flex-col h-full overflow-hidden">
 				<div className="flex items-center justify-between px-6 py-3 border-b shrink-0">
 					<div className="flex-1 min-w-0">
-						<h1 className="text-base font-semibold truncate">{doc.title || title || "Untitled"}</h1>
+						<h1 className="text-base font-semibold truncate">{doc.title || "Untitled"}</h1>
 						{editedMarkdown !== null && (
 							<p className="text-xs text-muted-foreground">Unsaved changes</p>
 						)}
@@ -278,7 +291,7 @@ export function DocumentTabContent({ documentId, workspaceId, title }: DocumentT
 		<div className="flex flex-col h-full overflow-hidden">
 			<div className="flex items-center justify-between px-6 py-3 border-b shrink-0">
 				<h1 className="text-base font-semibold truncate flex-1 min-w-0">
-					{doc.title || title || "Untitled"}
+					{doc.title || "Untitled"}
 				</h1>
 				{isEditable && (
 					<Button
@@ -313,7 +326,7 @@ export function DocumentTabContent({ documentId, workspaceId, title }: DocumentT
 										try {
 											const response = await authenticatedFetch(
 												buildBackendUrl(
-													`/api/v1/workspaces/${workspaceId}/documents/${documentId}/download-markdown`
+													`/api/v1/workspaces/${workspaceIdNumber}/documents/${documentId}/download-markdown`
 												),
 												{ method: "GET" }
 											);

@@ -1,4 +1,5 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
+import type { Document } from "@/contracts/types/document.types";
 import type {
 	ThreadListItem,
 	ThreadListResponse,
@@ -247,4 +248,26 @@ export function moveThreadArchiveState(
 		if (!old || old.id !== threadId) return old;
 		return { ...old, archived };
 	});
+}
+
+function documentDetailQueryFilter(documentId: number) {
+	return {
+		predicate: ({ queryKey }: { queryKey: QueryKey }) =>
+			Array.isArray(queryKey) && queryKey[0] === "document" && Number(queryKey[1]) === documentId,
+	};
+}
+
+export function setDocumentTitle(
+	queryClient: QueryClient,
+	documentId: number,
+	title: string
+): void {
+	queryClient.setQueriesData<Document>(documentDetailQueryFilter(documentId), (old) => {
+		if (!old) return old;
+		return { ...old, title };
+	});
+}
+
+export function removeDocument(queryClient: QueryClient, documentId: number): void {
+	queryClient.removeQueries(documentDetailQueryFilter(documentId));
 }

@@ -47,8 +47,6 @@ import {
 	appendMessage,
 	createThread,
 	getRegenerateUrl,
-	type ThreadListItem,
-	type ThreadListResponse,
 	type ThreadRecord,
 } from "@/lib/chat/thread-persistence";
 import {
@@ -598,22 +596,8 @@ export async function startNewChat(ctx: EngineContext, message: AppendMessage): 
 						jotaiStore.set(updateChatTabTitleAtom, {
 							chatId: streamThreadId,
 							title: titleData.title,
+							workspaceId,
 						});
-						queryClient.setQueriesData<ThreadListResponse>(
-							{ queryKey: ["threads", String(workspaceId)] },
-							(old) => {
-								if (!old) return old;
-								const updateTitle = (list: ThreadListItem[]) =>
-									list.map((t) =>
-										t.id === titleData.threadId ? { ...t, title: titleData.title } : t
-									);
-								return {
-									...old,
-									threads: updateTitle(old.threads),
-									archived_threads: updateTitle(old.archived_threads),
-								};
-							}
-						);
 					}
 					break;
 				}

@@ -3,19 +3,16 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { Plus, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import {
-	activeTabIdAtom,
-	closeTabAtom,
-	switchTabAtom,
-	type Tab,
-	tabsAtom,
-} from "@/atoms/tabs/tabs.atom";
+import { activeTabIdAtom, closeTabAtom, switchTabAtom } from "@/atoms/tabs/tabs.atom";
 import { Button } from "@/components/ui/button";
+import type { ResolvedTab } from "@/lib/hooks/use-resolved-tabs";
+import { useResolvedTabs } from "@/lib/hooks/use-resolved-tabs";
 import { cn } from "@/lib/utils";
 
 interface TabBarProps {
-	onTabSwitch?: (tab: Tab) => void;
-	onTabPrefetch?: (tab: Tab) => void;
+	resolvedTabs?: ResolvedTab[];
+	onTabSwitch?: (tab: ResolvedTab) => void;
+	onTabPrefetch?: (tab: ResolvedTab) => void;
 	onNewChat?: () => void;
 	leftActions?: React.ReactNode;
 	rightActions?: React.ReactNode;
@@ -36,6 +33,7 @@ function nextTabListScrollLeft(input: {
 }
 
 export function TabBar({
+	resolvedTabs: resolvedTabsProp,
 	onTabSwitch,
 	onTabPrefetch,
 	onNewChat,
@@ -43,13 +41,16 @@ export function TabBar({
 	rightActions,
 	className,
 }: TabBarProps) {
-	const tabs = useAtomValue(tabsAtom);
 	const activeTabId = useAtomValue(activeTabIdAtom);
 	const switchTab = useSetAtom(switchTabAtom);
 	const closeTab = useSetAtom(closeTabAtom);
+
+	const { tabs: resolvedTabsFromHook } = useResolvedTabs();
+	const resolvedTabs = resolvedTabsProp ?? resolvedTabsFromHook;
+
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [hoveredTabIndex, setHoveredTabIndex] = useState<number | null>(null);
-	const activeTabIndex = tabs.findIndex((tab) => tab.id === activeTabId);
+	const activeTabIndex = resolvedTabs.findIndex((tab) => tab.id === activeTabId);
 
 	const shouldHideSeparator = useCallback(
 		(separatorIndex: number) => {
@@ -65,7 +66,7 @@ export function TabBar({
 	);
 
 	const handleTabClick = useCallback(
-		(tab: Tab) => {
+		(tab: ResolvedTab) => {
 			if (tab.id === activeTabId) return;
 			switchTab(tab.id);
 			onTabSwitch?.(tab);
@@ -74,7 +75,7 @@ export function TabBar({
 	);
 
 	const handleTabPrefetch = useCallback(
-		(tab: Tab) => {
+		(tab: ResolvedTab) => {
 			if (tab.type === "chat") {
 				onTabPrefetch?.(tab);
 			}
@@ -87,7 +88,7 @@ export function TabBar({
 			e.stopPropagation();
 			const fallback = closeTab(tabId);
 			if (fallback) {
-				onTabSwitch?.(fallback);
+				onTabSwitch?.(fallback as unknown as ResolvedTab);
 			}
 		},
 		[closeTab, onTabSwitch]
@@ -187,7 +188,7 @@ export function TabBar({
 				ref={scrollRef}
 				className="flex h-8 items-center flex-1 gap-0 pl-2 overflow-x-auto overflow-y-hidden scrollbar-hide [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-0"
 			>
-				{tabs.map((tab, index) => {
+				{resolvedTabs.map((tab, index) => {
 					const isActive = tab.id === activeTabId;
 
 					return (

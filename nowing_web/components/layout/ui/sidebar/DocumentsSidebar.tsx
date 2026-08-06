@@ -25,6 +25,7 @@ import { deleteDocumentMutationAtom } from "@/atoms/documents/document-mutation.
 import { expandedFolderIdsAtom } from "@/atoms/documents/folder.atoms";
 import { agentCreatedDocumentsAtom } from "@/atoms/documents/ui.atoms";
 import { openEditorPanelAtom } from "@/atoms/editor/editor-panel.atom";
+import { openDocumentTabAtom } from "@/atoms/tabs/tabs.atom";
 import { useConnectorStatus } from "@/components/assistant-ui/connector-popup/hooks/use-connector-status";
 import { useDocumentUploadDialog } from "@/components/assistant-ui/document-upload-popup";
 import { CreateFolderDialog } from "@/components/documents/CreateFolderDialog";
@@ -462,6 +463,7 @@ function AuthenticatedDocumentsSidebarBase({
 	const { etlService } = useRuntimeConfig();
 	const workspaceId = getWorkspaceIdNumber(params) ?? 0;
 	const openEditorPanel = useSetAtom(openEditorPanelAtom);
+	const openDocumentTab = useSetAtom(openDocumentTabAtom);
 
 	const [activeTypes, setActiveTypes] = useState<DocumentTypeEnum[]>([]);
 	const [watchedFolderIds, setWatchedFolderIds] = useState<Set<number>>(new Set());
@@ -1236,11 +1238,7 @@ function AuthenticatedDocumentsSidebarBase({
 					searchQuery={searchQuery}
 					onPreviewDocument={(doc) => {
 						if (openMemoryDocument(doc)) return;
-						openEditorPanel({
-							documentId: doc.id,
-							workspaceId: workspaceId,
-							title: doc.title,
-						});
+						openDocumentTab({ documentId: doc.id, workspaceId });
 					}}
 					onDeleteDocument={(doc) => handleDeleteDocument(doc.id)}
 					onMoveDocument={handleMoveDocument}

@@ -4,11 +4,13 @@ import { activeWorkspaceIdAtom } from "@/atoms/workspaces/workspace-query.atoms"
 import type {
 	CreateDocumentRequest,
 	DeleteDocumentRequest,
+	Document,
 	GetDocumentsResponse,
 	UpdateDocumentRequest,
 	UploadDocumentRequest,
 } from "@/contracts/types/document.types";
 import { documentsApiService } from "@/lib/apis/documents-api.service";
+import { removeDocument, setDocumentTitle } from "@/lib/chat/thread-cache";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
 import { queryClient } from "@/lib/query-client/client";
 import { globalDocumentsQueryParamsAtom } from "./ui.atoms";
@@ -64,8 +66,9 @@ export const updateDocumentMutationAtom = atomWithMutation((get) => {
 			return documentsApiService.updateDocument(request);
 		},
 
-		onSuccess: (_, request: UpdateDocumentRequest) => {
+		onSuccess: (result: Document, request: UpdateDocumentRequest) => {
 			toast.success("Document updated successfully");
+			setDocumentTitle(queryClient, request.id, result.title);
 			queryClient.invalidateQueries({
 				queryKey: cacheKeys.documents.globalQueryParams(documentsQueryParams),
 			});
@@ -100,6 +103,7 @@ export const deleteDocumentMutationAtom = atomWithMutation((get) => {
 					};
 				}
 			);
+			removeDocument(queryClient, request.id);
 			queryClient.invalidateQueries({
 				queryKey: cacheKeys.documents.document(String(request.id)),
 			});

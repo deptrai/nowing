@@ -80,7 +80,7 @@ development_status:
   epic-3-retrospective: optional
 
   epic-4: done  # P0/P1 stories done; 4-7, 4-8d ready-for-dev expansions
-  4-7: ready-for-dev
+  4-7: done  # pointer-based tabs with live title resolution; tsc, biome, migrate tests, Playwright MCP verified
   4-8a: done
   4-8b: done
   4-8c: done  # production query sampler + anonymizer implemented and verified

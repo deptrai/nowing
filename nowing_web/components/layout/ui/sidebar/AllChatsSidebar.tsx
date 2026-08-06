@@ -126,9 +126,7 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 		(thread: ThreadListItem) => {
 			activateChatThread({
 				id: thread.id,
-				title: thread.title || "New Chat",
 				workspaceId,
-				visibility: thread.visibility,
 			});
 		},
 		[activateChatThread, workspaceId]
@@ -144,22 +142,14 @@ function AllChatsContent({ workspaceId, className }: AllChatsContentProps) {
 
 				if (currentChatId === threadId) {
 					setTimeout(() => {
-						if (
-							fallbackTab?.type === "chat" &&
-							fallbackTab.chatUrl &&
-							fallbackTab.chatId !== undefined
-						) {
+						if (fallbackTab?.type === "chat") {
+							const fallbackChatId =
+								fallbackTab.entityId && fallbackTab.entityId !== "new"
+									? Number.parseInt(fallbackTab.entityId, 10)
+									: null;
 							activateChatThread({
-								id: fallbackTab.chatId ?? null,
-								title: fallbackTab.title,
-								url: fallbackTab.chatUrl,
+								id: fallbackChatId && !Number.isNaN(fallbackChatId) ? fallbackChatId : null,
 								workspaceId: fallbackTab.workspaceId ?? workspaceId,
-								...(fallbackTab.visibility !== undefined
-									? { visibility: fallbackTab.visibility }
-									: {}),
-								...(fallbackTab.hasComments !== undefined
-									? { hasComments: fallbackTab.hasComments }
-									: {}),
 							});
 							return;
 						}

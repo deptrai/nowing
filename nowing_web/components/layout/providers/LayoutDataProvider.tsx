@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { currentThreadAtom, resetCurrentThreadAtom } from "@/atoms/chat/current-thread.atom";
 import { statusInboxItemsAtom } from "@/atoms/inbox/status-inbox.atom";
 import { announcementsDialogAtom } from "@/atoms/layout/dialogs.atom";
-import { removeChatTabAtom, syncChatTabAtom, type Tab } from "@/atoms/tabs/tabs.atom";
+import { removeChatTabAtom, syncChatTabAtom } from "@/atoms/tabs/tabs.atom";
 import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import { deleteWorkspaceMutationAtom } from "@/atoms/workspaces/workspace-mutation.atoms";
 import { workspacesAtom } from "@/atoms/workspaces/workspace-query.atoms";
@@ -48,6 +48,7 @@ import { notificationsApiService } from "@/lib/apis/notifications-api.service";
 import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
 import { getLoginPath, logout } from "@/lib/auth-utils";
 import { fetchThreads } from "@/lib/chat/thread-persistence";
+import type { ResolvedTab } from "@/lib/hooks/use-resolved-tabs";
 import { resetUser, trackLogout } from "@/lib/posthog/events";
 import { cacheKeys } from "@/lib/query-client/cache-keys";
 import type { ChatItem, NavItem, Workspace } from "../types/layout.types";
@@ -266,19 +267,11 @@ export function LayoutDataProvider({
 	// Sync current chat route with tab state
 	useEffect(() => {
 		const chatId = currentChatId ?? null;
-		const chatUrl = chatId
-			? `/dashboard/${workspaceId}/new-chat/${chatId}`
-			: `/dashboard/${workspaceId}/new-chat`;
-		const thread = threadsData?.threads?.find((t) => t.id === chatId);
 		syncChatTab({
 			chatId,
-			// Avoid overwriting live SSE-updated tab titles with fallback values.
-			title: chatId ? (thread?.title ?? undefined) : "New Chat",
-			chatUrl,
 			workspaceId: Number(workspaceId),
-			...(thread?.visibility !== undefined ? { visibility: thread.visibility } : {}),
 		});
-	}, [currentChatId, workspaceId, threadsData?.threads, syncChatTab]);
+	}, [currentChatId, workspaceId, syncChatTab]);
 
 	const chats = useMemo(() => {
 		if (!threadsData?.threads) return [];
@@ -338,7 +331,15 @@ export function LayoutDataProvider({
 					},
 				] as (NavItem | null)[]
 			).filter((item): item is NavItem => item !== null),
-		[workspaceId, isUsageActive, isConnectorsActive, isAutomationsActive, isArtifactsActive, isPlaygroundRoute, tNav]
+		[
+			workspaceId,
+			isUsageActive,
+			isConnectorsActive,
+			isAutomationsActive,
+			isArtifactsActive,
+			isPlaygroundRoute,
+			tNav,
+		]
 	);
 
 	// Handlers
@@ -441,15 +442,13 @@ export function LayoutDataProvider({
 	}, [workspaceToLeave, refetchWorkspaces, workspaceId, router, t]);
 
 	const handleTabSwitch = useCallback(
-		(tab: Tab) => {
+		(tab: ResolvedTab) => {
 			if (tab.type === "chat") {
+				const chatId =
+					tab.entityId && tab.entityId !== "new" ? Number.parseInt(tab.entityId, 10) : null;
 				activateChatThread({
-					id: tab.chatId ?? null,
-					title: tab.title,
-					url: tab.chatUrl,
+					id: chatId && !Number.isNaN(chatId) ? chatId : null,
 					workspaceId: tab.workspaceId ?? workspaceId,
-					...(tab.visibility !== undefined ? { visibility: tab.visibility } : {}),
-					...(tab.hasComments !== undefined ? { hasComments: tab.hasComments } : {}),
 				});
 			}
 			// Document tabs are handled in-place by LayoutShell — no navigation needed
@@ -458,9 +457,12 @@ export function LayoutDataProvider({
 	);
 
 	const handleTabPrefetch = useCallback(
-		(tab: Tab) => {
-			if (tab.type === "chat") {
-				prefetchChatThread(tab.chatId);
+		(tab: ResolvedTab) => {
+			if (tab.type === "chat" && tab.entityId && tab.entityId !== "new") {
+				const chatId = Number.parseInt(tab.entityId, 10);
+				if (!Number.isNaN(chatId) && chatId > 0) {
+					prefetchChatThread(chatId);
+				}
 			}
 		},
 		[prefetchChatThread]
@@ -501,10 +503,7 @@ export function LayoutDataProvider({
 		(chat: ChatItem) => {
 			activateChatThread({
 				id: chat.id,
-				title: chat.name,
-				url: chat.url,
 				workspaceId,
-				...(chat.visibility !== undefined ? { visibility: chat.visibility } : {}),
 			});
 		},
 		[activateChatThread, workspaceId]
@@ -574,16 +573,14 @@ export function LayoutDataProvider({
 			const fallbackTab = removeChatTab(chatToDelete.id);
 			if (currentChatId === chatToDelete.id) {
 				resetCurrentThread();
-				if (fallbackTab?.type === "chat" && fallbackTab.chatUrl) {
+				if (fallbackTab?.type === "chat") {
+					const fallbackChatId =
+						fallbackTab.entityId && fallbackTab.entityId !== "new"
+							? Number.parseInt(fallbackTab.entityId, 10)
+							: null;
 					activateChatThread({
-						id: fallbackTab.chatId ?? null,
-						title: fallbackTab.title,
-						url: fallbackTab.chatUrl,
+						id: fallbackChatId && !Number.isNaN(fallbackChatId) ? fallbackChatId : null,
 						workspaceId: fallbackTab.workspaceId ?? workspaceId,
-						...(fallbackTab.visibility !== undefined ? { visibility: fallbackTab.visibility } : {}),
-						...(fallbackTab.hasComments !== undefined
-							? { hasComments: fallbackTab.hasComments }
-							: {}),
 					});
 				} else {
 					const isOutOfSync = currentThreadState.id !== null && !params?.chat_id;
@@ -646,6 +643,7 @@ export function LayoutDataProvider({
 	const isArtifactsPage = pathname?.endsWith("/artifacts") === true;
 	const isPlaygroundPage = pathname?.includes("/playground") === true;
 	const isAllChatsPage = pathname?.endsWith("/chats") === true;
+	const isNewChatRoot = pathname?.endsWith("/new-chat") === true;
 	const handleViewAllChats = useCallback(() => {
 		router.push(
 			isAllChatsPage ? `/dashboard/${workspaceId}/new-chat` : `/dashboard/${workspaceId}/chats`
@@ -662,6 +660,7 @@ export function LayoutDataProvider({
 		isArtifactsPage ||
 		isPlaygroundPage ||
 		isAllChatsPage;
+	const showTabs = !useWorkspacePanel && !isNewChatRoot;
 
 	return (
 		<>
@@ -703,6 +702,7 @@ export function LayoutDataProvider({
 				isChatPage={isChatPage}
 				isAllChatsPage={isAllChatsPage}
 				useWorkspacePanel={useWorkspacePanel}
+				showTabs={showTabs}
 				workspacePanelViewportClassName={
 					isUserSettingsPage ||
 					isWorkspaceSettingsPage ||
