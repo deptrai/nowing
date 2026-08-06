@@ -1,0 +1,32 @@
+{
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "reviews": {
+            "reviews": [
+              {
+                "reviewId": "r3",
+                "rating": 5,
+                "title": "Sturdy",
+                "reviewText": "Held up great in heavy rain.",
+                "submissionTime": "2026-07-20T12:00:00Z",
+                "author": "Backpacker",
+                "verifiedPurchase": true
+              },
+              {
+                "reviewId": "r4",
+                "rating": 3,
+                "title": "Decent",
+                "reviewText": "Good value but zippers feel cheap.",
+                "submissionTime": "2026-07-18T09:00:00Z",
+                "author": "Camper3",
+                "verifiedPurchase": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -41,6 +41,8 @@ class BillingUnit(StrEnum):
     ITVIEC_JOB = "itviec_job"
     INDEED_JOB = "indeed_job"
     VN_JOBS_AGGREGATE_QUERY = "vn_jobs_aggregate_query"
+    WALMART_PRODUCT = "walmart_product"
+    WALMART_REVIEW = "walmart_review"
 
 
 class BillableInput(Protocol):

@@ -9,6 +9,7 @@ from app.capabilities import (
     topcv as _topcv,  # noqa: F401
     vietnamworks as _vietnamworks,  # noqa: F401
     vn_jobs as _vn_jobs,  # noqa: F401
+    walmart as _walmart,  # noqa: F401
 )
 
 __all__: list[str] = []

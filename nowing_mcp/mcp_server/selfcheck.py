@@ -37,6 +37,8 @@ EXPECTED_TOOLS = {
     "nowing_topcv_scrape",
     "nowing_itviec_scrape",
     "nowing_indeed_scrape",
+    "nowing_walmart_scrape",
+    "nowing_walmart_reviews",
     "nowing_vn_jobs_aggregate",
     "nowing_vn_bds_aggregate",
     "nowing_instagram_scrape",

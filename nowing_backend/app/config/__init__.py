@@ -983,6 +983,16 @@ class Config:
     INDEED_PAGE_DELAY_S = float(os.getenv("INDEED_PAGE_DELAY_S", "1.0"))
     INDEED_MAX_PAGES = int(os.getenv("INDEED_MAX_PAGES", "5"))
     INDEED_MAX_ITEMS = int(os.getenv("INDEED_MAX_ITEMS", "50"))
+    # Walmart is a Next.js storefront; data is primarily in __NEXT_DATA__ JSON.
+    WALMART_SCRAPE_MICROS_PER_ITEM = int(
+        os.getenv("WALMART_SCRAPE_MICROS_PER_ITEM", "5000")
+    )
+    WALMART_REVIEW_MICROS_PER_ITEM = int(
+        os.getenv("WALMART_REVIEW_MICROS_PER_ITEM", "500")
+    )
+    WALMART_PAGE_DELAY_S = float(os.getenv("WALMART_PAGE_DELAY_S", "1.0"))
+    WALMART_MAX_ITEMS = int(os.getenv("WALMART_MAX_ITEMS", "50"))
+    WALMART_MAX_REVIEWS = int(os.getenv("WALMART_MAX_REVIEWS", "100"))
     # Multi-source job aggregation (VietnamWorks/TopCV/ITviec).
     VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY = int(
         os.getenv("VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", "5000")

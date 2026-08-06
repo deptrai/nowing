@@ -30,6 +30,7 @@ from .platforms import (
     vietnamworks,
     vn_bds,
     vn_jobs,
+    walmart,
     web,
     youtube,
 )
@@ -52,6 +53,7 @@ _REGISTRARS = (
     itviec,
     indeed,
     vn_jobs,
+    walmart,
     run_history,
     vn_bds,
 )

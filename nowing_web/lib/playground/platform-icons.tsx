@@ -43,3 +43,7 @@ export const TopcvIcon = Briefcase;
 export const ItviecIcon = Briefcase;
 export const IndeedIcon = Briefcase;
 export const VnJobsIcon = Briefcase;
+
+// Epic 2.7 — Walmart product + reviews scraper. Briefcase is a placeholder
+// until a dedicated Walmart brand SVG is added to /public/connectors.
+export const WalmartIcon = Briefcase;

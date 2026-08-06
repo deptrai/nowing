@@ -55,6 +55,8 @@ _PLATFORM_RATE_KEYS: dict[BillingUnit, str] = {
     BillingUnit.ITVIEC_JOB: "ITVIEC_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.INDEED_JOB: "INDEED_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.VN_JOBS_AGGREGATE_QUERY: "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY",
+    BillingUnit.WALMART_PRODUCT: "WALMART_SCRAPE_MICROS_PER_ITEM",
+    BillingUnit.WALMART_REVIEW: "WALMART_REVIEW_MICROS_PER_ITEM",
 }
 
 
@@ -87,6 +89,8 @@ _UNIT_NOUNS: dict[BillingUnit, str] = {
     BillingUnit.ITVIEC_JOB: "job",
     BillingUnit.INDEED_JOB: "job",
     BillingUnit.VN_JOBS_AGGREGATE_QUERY: "query",
+    BillingUnit.WALMART_PRODUCT: "product",
+    BillingUnit.WALMART_REVIEW: "review",
 }
 
 

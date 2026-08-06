@@ -60,7 +60,7 @@ development_status:
   epic-2: done
   2-5: done
   2-6: done  # Indeed Scraper — implemented, tested, E2E/MCP verified
-  2-7: ready-for-dev
+  2-7: done  # Walmart Scraper — implemented, tested, E2E/MCP verified
   2-8: ready-for-dev
   2-9: done
   2-10: done
