@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from app.proprietary.platforms.masothue.schemas import MasothueSearchInput
+from app.proprietary.platforms.masothue.fetch import MasothueRateLimitedError
+from app.proprietary.platforms.masothue.schemas import (
+    MasothueCompany,
+    MasothueSearchInput,
+)
 from app.proprietary.platforms.masothue.scraper import scrape_masothue
 
 pytestmark = pytest.mark.unit
@@ -272,3 +277,59 @@ async def test_degrade_reason_from_exc_maps_exception_types() -> None:
     assert _degrade_reason_from_exc(MasothueDecodeError("x")) == "decode_error"
     assert _degrade_reason_from_exc(MasothueAccessBlockedError("x")) == "access_blocked"
     assert _degrade_reason_from_exc(RuntimeError("x")) == "api_error"
+
+
+@pytest.mark.asyncio
+async def test_scrape_pagination_respects_max_pages(monkeypatch: Any) -> None:
+    """The scraper must fetch exactly max_pages pages and no more (kills Add_LShift on range)."""
+    pages_fetched: list[int] = []
+
+    async def fake_search_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+        pages_fetched.append(page)
+        return (f"<html><body>page {page}</body></html>", 200)
+
+    from app.proprietary.platforms.masothue import scraper as scraper_module
+
+    def fake_parse_search_results(html: str) -> list[MasothueCompany]:
+        return [
+            MasothueCompany(
+                name=f"Company page {html}",
+                tax_code=None,
+                detail_url=None,
+            )
+        ]
+
+    def fake_parse_pagination(html: str) -> tuple[int, int | None]:
+        # Always claim a next page so the loop relies on max_pages to stop.
+        current = int(html.split("page ")[1].split("<")[0])
+        return current, current + 1
+
+    monkeypatch.setattr(scraper_module, "parse_search_results", fake_parse_search_results)
+    monkeypatch.setattr(scraper_module, "parse_pagination", fake_parse_pagination)
+
+    inp = MasothueSearchInput(query="vinamilk", max_items=10, max_pages=2, resolve_detail=False)
+    out = await scrape_masothue(inp, search_fetch_fn=fake_search_fetch)
+
+    assert out.degraded is False
+    assert pages_fetched == [1, 2]
+
+
+@pytest.mark.asyncio
+async def test_scrape_retry_upper_bound_uses_max_retries_plus_one(monkeypatch: Any) -> None:
+    """range(_MAX_RETRIES + 1) must be used; range(_MAX_RETRIES << 1) would over-run."""
+    calls: list[int] = []
+
+    async def rate_limited_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+        calls.append(page)
+        raise MasothueRateLimitedError("429")
+
+    from app.proprietary.platforms.masothue import scraper as scraper_module
+
+    monkeypatch.setattr(scraper_module, "_MAX_RETRIES", 0)
+
+    inp = MasothueSearchInput(query="vinamilk", max_items=10, resolve_detail=False)
+    out = await scrape_masothue(inp, search_fetch_fn=rate_limited_fetch)
+
+    assert out.degraded is True
+    assert out.degradation_reason == "rate_limited"
+    assert len(calls) == 1

@@ -47,3 +47,10 @@ async def test_scrape_default_max_pages_is_five() -> None:
     assert public.resolve_detail is True
     assert proprietary.max_pages == 5
     assert proprietary.max_items == 10
+
+
+def test_masothue_scrape_context_aware() -> None:
+    """The registered masothue.scrape capability must be context-aware."""
+    from app.capabilities.masothue.scrape.definition import MASOTHUE_SCRAPE
+
+    assert MASOTHUE_SCRAPE.context_aware is True
