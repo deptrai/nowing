@@ -57,6 +57,7 @@ _PLATFORM_RATE_KEYS: dict[BillingUnit, str] = {
     BillingUnit.VN_JOBS_AGGREGATE_QUERY: "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY",
     BillingUnit.WALMART_PRODUCT: "WALMART_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.WALMART_REVIEW: "WALMART_REVIEW_MICROS_PER_ITEM",
+    BillingUnit.CAFEF_DATA: "CAFEF_DATA_MICROS_PER_ITEM",
 }
 
 
@@ -91,6 +92,7 @@ _UNIT_NOUNS: dict[BillingUnit, str] = {
     BillingUnit.VN_JOBS_AGGREGATE_QUERY: "query",
     BillingUnit.WALMART_PRODUCT: "product",
     BillingUnit.WALMART_REVIEW: "review",
+    BillingUnit.CAFEF_DATA: "query",
 }
 
 

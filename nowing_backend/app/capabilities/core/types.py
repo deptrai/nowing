@@ -43,6 +43,7 @@ class BillingUnit(StrEnum):
     VN_JOBS_AGGREGATE_QUERY = "vn_jobs_aggregate_query"
     WALMART_PRODUCT = "walmart_product"
     WALMART_REVIEW = "walmart_review"
+    CAFEF_DATA = "cafef_data"
 
 
 class BillableInput(Protocol):

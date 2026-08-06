@@ -16,6 +16,7 @@ from . import run_history
 from .platforms import (
     amazon,
     batdongsan,
+    cafef,
     chainlens,
     chotot_bds,
     google_maps,
@@ -46,6 +47,7 @@ _REGISTRARS = (
     amazon,
     chainlens,
     batdongsan,
+    cafef,
     chotot_bds,
     muaban_bds,
     vietnamworks,

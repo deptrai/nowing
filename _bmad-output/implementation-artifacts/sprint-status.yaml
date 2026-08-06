@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-07 01:50:54"
-last_updated: "2026-08-07 01:50:54"
+last_updated: "2026-08-07 02:35:00"
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
@@ -71,9 +71,9 @@ development_status:
   epic-6: in-progress
   6-4: done
   6-5: done
-  6-6: backlog
-  6-7: backlog
-  6-9: backlog
+  6-6: done
+  6-7: done
+  6-9: done
   epic-6-retrospective: optional
   epic-8: in-progress
   8-3: done
@@ -117,47 +117,38 @@ development_status:
   12-3: backlog
   12-4: backlog
   12-5: backlog
-  epic-12-retrospective: optional
-  epic-13: backlog
-  13-1: backlog
-  13-2: backlog
-  13-3: backlog
-  epic-13-retrospective: optional
-  epic-14: backlog
-  14-1: backlog
-  14-2: backlog
-  epic-14-retrospective: optional
-  epic-15: backlog
-  15-1: backlog
-  15-2: backlog
-  epic-15-retrospective: optional
-  epic-16: backlog
-  16-1: backlog
-  16-2: backlog
-  epic-16-retrospective: optional
-  epic-17: backlog
-  17-1: backlog
-  17-2: backlog
-  epic-17-retrospective: optional
-  epic-12: backlog
   12-6: backlog
   12-7: backlog
   12-8: backlog
   12-9: backlog
   epic-12-retrospective: optional
-  epic-14: backlog
+  epic-13: done
+  13-1: done
+  13-2: done
+  13-3: done
+  epic-13-retrospective: optional
+  epic-14: in-progress
+  14-1: done
+  14-2: in-progress
   14-3: backlog
   14-4: backlog
   epic-14-retrospective: optional
   epic-15: backlog
+  15-1: backlog
+  15-2: backlog
   15-3: backlog
   15-4: backlog
   epic-15-retrospective: optional
   epic-16: backlog
+  16-1: backlog
+  16-2: backlog
   16-3: backlog
   16-4: backlog
   epic-16-retrospective: optional
   epic-17: backlog
+  17-1: backlog
+  17-2: backlog
   17-3: backlog
   17-4: backlog
   epic-17-retrospective: optional
+

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 # Import verb namespaces for their registration side effects before the door builds.
 import app.capabilities.amazon
 import app.capabilities.batdongsan
+import app.capabilities.cafef
 import app.capabilities.chainlens
 import app.capabilities.chotot
 import app.capabilities.google_maps

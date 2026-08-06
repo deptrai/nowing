@@ -995,6 +995,19 @@ class Config:
     WALMART_PAGE_DELAY_S = float(os.getenv("WALMART_PAGE_DELAY_S", "1.0"))
     WALMART_MAX_ITEMS = int(os.getenv("WALMART_MAX_ITEMS", "50"))
     WALMART_MAX_REVIEWS = int(os.getenv("WALMART_MAX_REVIEWS", "100"))
+    # CafeF unofficial API. Demo mode uses stable synthetic data so the
+    # capability works in tests and demos without relying on undocumented
+    # public quote/news endpoints. Set CAFEF_DEMO_MODE=false and supply live
+    # URLs to hit the real CafeF APIs.
+    CAFEF_DATA_MICROS_PER_ITEM = int(
+        os.getenv("CAFEF_DATA_MICROS_PER_ITEM", "5000")
+    )
+    CAFEF_RATE_LIMIT_RPS = float(os.getenv("CAFEF_RATE_LIMIT_RPS", str(20 / 60)))
+    CAFEF_TIMEOUT_S = float(os.getenv("CAFEF_TIMEOUT_S", "15.0"))
+    CAFEF_DEMO_MODE = os.getenv("CAFEF_DEMO_MODE", "TRUE").upper() == "TRUE"
+    CAFEF_QUOTE_URL = os.getenv("CAFEF_QUOTE_URL", "")
+    CAFEF_NEWS_URL = os.getenv("CAFEF_NEWS_URL", "")
+    CAFEF_FINANCIAL_BASE_URL = os.getenv("CAFEF_FINANCIAL_BASE_URL", "")
     # Multi-source job aggregation (VietnamWorks/TopCV/ITviec).
     VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY = int(
         os.getenv("VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", "5000")
