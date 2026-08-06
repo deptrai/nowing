@@ -100,7 +100,7 @@ development_status:
   13-2a: done  # BDS Persistence & Retry
   13-2b: done  # Jobs Persistence & Retry
   13-2c: done  # Merge History, Conflict Resolution & Revert
-  13-2d: backlog  # PII-Safe Canonicalization
+  13-2d: done  # PII-Safe Canonicalization
   13-2e: backlog  # Dedup Benchmark & Release Gate
   13-3: backlog  # Unified Search API (after 13.2)
   epic-13-retrospective: optional
@@ -142,7 +142,7 @@ deferred:
     reason: "Metered deep-research endpoint cho self-host — chưa phê duyệt, Post-MVP / P1 business."
 
 action_items:
-  - "Epic 13 Story 13.2d (PII-Safe Canonicalization) — NEXT to implement."
+  - "Epic 13 Story 13.2e (Dedup Benchmark & Release Gate) — NEXT to implement."
   - "Epic 13 Story 13.3 (Unified Search API) — after 13.2."
   - "Epic 14 Story 14.1 (News RSS) — quickest win (1-2 days) after 13.2."
   - "Epic 15 Story 15.1 (CafeF) — quick win (2-4 hours) after 13.2."
