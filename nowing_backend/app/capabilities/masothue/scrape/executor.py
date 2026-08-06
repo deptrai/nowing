@@ -117,8 +117,9 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             else:
                 items.append(item.to_output())
 
+        # A degraded run is not billed even if partial items were returned.
         rate = getattr(config, "MASOTHUE_SCRAPE_MICROS_PER_ITEM", 3000)
-        cost = total * rate
+        cost = 0 if degraded else total * rate
 
         # Persist each company to the canonical entity store.
         if ctx is not None:

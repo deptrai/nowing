@@ -19,6 +19,7 @@ Tests that exercise the shared platform-billing SQL path use an existing
 from __future__ import annotations
 
 import hashlib
+import os
 import uuid
 from typing import Any
 
@@ -745,3 +746,40 @@ async def test_masothue_capability_is_registered():
 
     names = {capability.name for capability in all_capabilities()}
     assert "masothue.scrape" in names
+
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_masothue_scrape_registers_capability():
+    """AC-7: masothue.scrape appears in the capability registry."""
+    from app.capabilities.core.store import all_capabilities
+
+    capabilities = [c.name for c in all_capabilities()]
+    assert "masothue.scrape" in capabilities
+
+
+@pytest.mark.skipif(
+    not os.environ.get("SCRAPE_LIVE"),
+    reason="SCRAPE_LIVE not set — hits the real masothue.com",
+)
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_masothue_scrape_live_sample(
+    db_session: AsyncSession,
+    db_user: User,
+    db_workspace: Workspace,
+):
+    """Live integration smoke test against masothue.com (query a stable company)."""
+    from app.capabilities.core.types import CapabilityContext
+    from app.capabilities.masothue.scrape.executor import build_scrape_executor
+    from app.capabilities.masothue.scrape.schemas import ScrapeInput
+
+    ctx = CapabilityContext(session=db_session, workspace_id=db_workspace.id)
+    execute = build_scrape_executor()
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1), ctx=ctx)
+
+    assert out.degraded is False
+    assert out.total_items >= 1
+    assert out.items[0].tax_code is not None
+    assert out.cost_micros > 0

@@ -17,7 +17,7 @@ from .fetch import (
     fetch_detail_page,
     fetch_search_page,
 )
-from .parsers import apply_detail, parse_search_results
+from .parsers import apply_detail, parse_pagination, parse_search_results
 from .schemas import MasothueCompany, MasothueScrapeOutput, MasothueSearchInput
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ async def scrape_masothue(
     page_failed = False
 
     for page in range(1, max_pages + 1):
-        if len(items) >= cap:
+        if len(items) >= cap or rate_limited_seen or page_failed:
             break
 
         html: str | None = None
@@ -163,18 +163,22 @@ async def scrape_masothue(
             if len(items) >= cap:
                 break
 
-            if not _matches_filter(company, input_model.tax_code):
-                continue
-
             # Resolve detail page when requested.
             if input_model.resolve_detail and company.detail_url:
                 try:
+                    # Pace detail fetches to avoid tripping Cloudflare/rate limits.
+                    await asyncio.sleep(_page_delay())
                     detail_html = await detail_fetch(company.detail_url)
                     apply_detail(
                         company,
                         detail_html,
                         include_phone=input_model.include_phone,
                     )
+                except MasothueRateLimitedError:
+                    rate_limited_seen = True
+                    degraded = True
+                    degradation_reason = "rate_limited"
+                    break
                 except (MasothueAccessBlockedError, MasothueTimeoutError) as exc:
                     logger.warning(
                         "masothue detail fetch skipped for %s: %s",
@@ -207,7 +211,17 @@ async def scrape_masothue(
             company.scrapedAt = _now_iso()
             items.append(company)
 
+        if rate_limited_seen or page_failed:
+            degraded = True
+            if not degradation_reason:
+                degradation_reason = "rate_limited" if rate_limited_seen else "api_error"
+            break
+
         if len(items) >= cap:
+            break
+
+        _, next_page = parse_pagination(html)
+        if next_page is None:
             break
 
         if page < max_pages:

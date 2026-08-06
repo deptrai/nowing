@@ -31,7 +31,10 @@ _DETAIL_LABEL_MAP = {
 }
 
 _TAX_CODE_RE = re.compile(r"Mã\s+số\s+thuế[:\s]*([\d\-]{10,})", re.IGNORECASE)
-_REP_RE = re.compile(r"Người\s+đại\s+diện[:\s]*([^\n]+)", re.IGNORECASE)
+_REP_RE = re.compile(
+    r"Người\s+đại\s+diện[:\s]*(.+?)(?=\s*(?:Mã\s+số\s+thuế|Điện\s+thoại|Địa\s+chỉ(?:\s+thuế)?|Tình\s+trạng|Tên\s+quốc\s+tế|Tên\s+viết\s+tắt|Ngày\s+hoạt\s+động|Quản\s+lý\s+bởi|Loại\s+hình\s+(?:DN|doanh\s+nghiệ[mp])|Ngành\s+nghề\s+chính)|$)",
+    re.IGNORECASE,
+)
 
 
 def _normalize_key(label: str | None) -> str | None:
@@ -177,7 +180,7 @@ def parse_pagination(html: str) -> tuple[int, int | None]:
     """Return (current_page, next_page) from the page-numbers widget."""
     soup = BeautifulSoup(html, "lxml")
     current = 1
-    next_page: int | None = None
+    pages: set[int] = set()
 
     for a in soup.select(".page-numbers"):
         text = a.get_text(strip=True)
@@ -187,14 +190,10 @@ def parse_pagination(html: str) -> tuple[int, int | None]:
             continue
         if "current" in (a.get("class") or []):
             current = page
-        # The largest numbered link is treated as the next candidate.
-        if next_page is None or page > next_page:
-            next_page = page
+        pages.add(page)
 
-    # If the last numbered page is also current, there is no next page.
-    if next_page is not None and next_page <= current:
-        next_page = None
-
+    next_pages = [p for p in pages if p > current]
+    next_page = min(next_pages) if next_pages else None
     return current, next_page
 
 

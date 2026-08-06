@@ -126,11 +126,13 @@ async def fetch_search_page(
             detail_html = await fetch_detail_page(
                 urljoin(_ORIGIN, location), fetch_fn=fetch_fn
             )
-            # Wrap the single result in a minimal list-like page so the parser
-            # can produce one item.
+            # Extract the tax code from the redirect path so the parser can
+            # populate tax_code before any detail resolution or filtering.
+            mst_match = re.search(r"^/(\d+)", location)
+            tax_code = mst_match.group(1) if mst_match else ""
             return (
                 f"<div class='search-results'><h3><a href='{location}'>{query}</a></h3>"
-                f"<p>Mã số thuế: </p></div>{detail_html}",
+                f"<p>Mã số thuế: {tax_code}</p></div>{detail_html}",
                 200,
             )
         raise MasothueAccessBlockedError(

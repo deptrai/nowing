@@ -44,3 +44,28 @@ async def test_executor_returns_output_and_cost(monkeypatch: Any) -> None:
     assert out.total_items == 2
     assert out.billable_units == 2
     assert out.cost_micros == 2 * 3000
+
+
+
+@pytest.mark.asyncio
+async def test_executor_returns_zero_cost_when_degraded(monkeypatch: Any) -> None:
+    """A degraded run reports cost_micros=0 even when items were returned."""
+    monkeypatch.setattr(
+        "app.config.config.MASOTHUE_SCRAPE_MICROS_PER_ITEM", 3000, raising=False
+    )
+
+    async def fake_scrape(_: Any) -> dict[str, Any]:
+        return {
+            "items": [
+                {"tax_code": "0314539064", "name": "Công ty TNHH Vinamilk Tân Sơn"},
+            ],
+            "degraded": True,
+            "degradation_reason": "rate_limited",
+        }
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1))
+
+    assert out.degraded is True
+    assert out.total_items == 1
+    assert out.cost_micros == 0
