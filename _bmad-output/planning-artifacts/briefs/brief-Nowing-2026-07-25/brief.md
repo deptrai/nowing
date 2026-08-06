@@ -2,10 +2,10 @@
 title: "Product Brief: Nowing"
 status: final
 created: 2026-07-25
-updated: 2026-08-06
+updated: 2026-08-06 (added §13 Marketing Strategy)
 editorial: "bmad-editorial-review-structure + bmad-editorial-review-prose đã áp dụng 2026-07-25"
-purpose: "Input cho README + landing page (đối tượng đọc: developer)"
-audience: developer
+purpose: "Input cho README + landing + marketing strategy (đối tượng đọc: developer + marketing)"
+audience: developer + marketing
 output_language: "English only (README + landing) — xem §12.2"
 decisions_locked: ["12.1 câu một dòng", "12.2 chỉ tiếng Anh", "12.3 chỉ Nowing public", "12.4 hoãn số metrics", "12.5 không gọi tên đối thủ", "12.6 Phase 1 cloud-only → Phase 2 metered"]
 license_model: "BA TẦNG — Apache-2.0 core · BSL 1.1 cho nowing_backend/app/proprietary/** (crawler engine, KHÔNG phải OSS) · closed-source hosted cho deep-research engine. Xem §5.1"
@@ -413,3 +413,187 @@ Ba `[ASSUMPTION]` trước đó, nay đã kiểm chứng:
 ---
 
 *Brief by Mary (Business Analyst) — 2026-07-25; updated 2026-08-04. Mục đích: input cho README + landing. Companion: `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md`, `prd-Nowing-2026-07-22/prd.md`, `prfaq-Nowing-distillate.md`.*
+
+---
+
+## 13. Marketing Strategy
+
+> **Purpose:** Từ "kể gì ở README" (§1-12) sang "tiếp cận ai, qua kênh nào, với thông điệp gì". Section này là cầu nối giữa product brief và execution plan.
+
+### 13.1 Beachhead Expansion
+
+| Phase | Segment | Value Prop | Entry Point |
+|-------|---------|-----------|-------------|
+| **1 (now)** | AI Agent Builder | "Memory cho agent — nhớ research tuần trước, không phải paste lại" | MCP registry, GitHub, Claude/Cursor community |
+| **2 (next)** | Researcher / Analyst | "Research không duplicate, track changes theo thời gian, tự synthesize" | Academic communities, research Twitter, LinkedIn |
+| **3 (later)** | Enterprise Team | "Team knowledge bền — người rời công ty, research ở lại" | Outbound sales, partnerships, conference talks |
+
+**Thứ tự logic:** Agent-builder chịu được rough edges + tự spread (MCP/registry). Researcher cần polished UX + validation. Enterprise cần team features + SLA.
+
+### 13.2 Positioning per Segment
+
+| | Agent Builder | Researcher | Enterprise |
+|---|---|---|---|
+| **Headline** | "Give your AI agent a memory that lasts" | "Research without duplicates, track what changes" | "Your team's research memory, self-hosted" |
+| **Pain** | Agent mất context mỗi session | Research trùng lặp, khó track xu hướng | Knowledge mất khi người rời |
+| **Differentiator** | MCP-native, self-host, 50+ MCP tools | Entity dedup, cross-source timeline | RBAC, team memory, compliance |
+| **Proof** | Claude Code / Cursor integration | Citation + confidence score | Self-host + audit log |
+
+### 13.3 Go-to-Market: PLG + Community-Led
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    NOWING GTM MODEL                          │
+│                                                              │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   │
+│  │  GitHub OSS  │   │  Community   │   │  Content     │   │
+│  │  (top-of-    │   │  (middle-of- │   │  (bottom-of- │   │
+│  │   funnel)    │   │   funnel)    │   │   funnel)    │   │
+│  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘   │
+│         │                  │                  │            │
+│         ▼                  ▼                  ▼            │
+│  GitHub stars      Discord/Forum      Research reports    │
+│  HN discussions    Reddit AMAs        Comparison posts    │
+│  MCP registry      Twitter/X          Case studies        │
+│  npm installs      LinkedIn           Tutorials           │
+│         │                  │                  │            │
+│         └──────────────────┴──────────────────┘            │
+│                            │                               │
+│                            ▼                               │
+│                    Workspace signup                        │
+│                    (free self-host)                        │
+│                            │                               │
+│                            ▼                               │
+│                    Cloud conversion                        │
+│                    (deep research = wedge)                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 13.4 Marketing Channels (Prioritized)
+
+| # | Channel | Segment | Effort | Impact | Tactics |
+|---|---------|---------|--------|--------|---------|
+| 1 | **GitHub** | Agent Builder | Low | High | README + discussions + good first issues + star campaign |
+| 2 | **Hacker News** | Agent Builder | Low | High | Show HN (timing: Tue-Thu PST morning) |
+| 3 | **Reddit** | Agent Builder | Medium | High | r/selfhosted, r/MachineLearning, r/ClaudeAI — value posts, not spam |
+| 4 | **Twitter/X** | Agent Builder + Researcher | Medium | High | Research threads, product demos, engagement with AI community |
+| 5 | **LinkedIn** | Researcher + Enterprise | Medium | Medium | Thought leadership, case studies, company page |
+| 6 | **Email Outreach** | Researcher + Enterprise | High | High | Research → personalized email → gift link (see §13.6) |
+| 7 | **Content/Blog** | All | Medium | Medium | "State of X" reports, comparisons, tutorials |
+| 8 | **Partnerships** | Enterprise | High | High | AI agent platforms, research tools |
+
+### 13.5 Launch Strategy
+
+| Phase | When | Goal | Activities |
+|-------|------|------|-----------|
+| **0. Soft Launch** | Now → Beta | Build audience + feedback | GitHub README, HN Show, Discord, Reddit AMA |
+| **1. Beta** | After Epic 13 complete | Validate with real users | Invite-only, gift (free credits), collect testimonials |
+| **2. Public Launch** | After beta validation | Scale acquisition | Product Hunt, broader HN, PR, partnerships |
+| **3. Enterprise** | Post-public | Revenue | Outbound sales, conference talks, case studies |
+
+### 13.6 Growth Engine: Dogfooding Nowing
+
+> **Key insight:** Nowing's own capabilities = marketing automation. Use Nowing to market Nowing.
+
+| Marketing Activity | How Nowing Helps | Example |
+|-------------------|-----------------|---------|
+| **Prospect Research** | Use scrapers to find companies hiring researchers, using AI agents | Research "hiring data engineer" → find companies → track news |
+| **Personalized Outreach** | Auto-synthesis → personalized email per prospect | "I saw you hired 3 data engineers this quarter — here's how Nowing tracks talent trends" |
+| **Lead Tracking** | Canonical entities for prospects + timeline | Company X: funding → hiring → product launch → trigger outreach |
+| **Content Creation** | Research → synthesis → blog post/thread | "State of AI Agent Memory 2026" generated by Nowing itself |
+| **Social Automation** | Research → draft → schedule posts | Track trending topics → auto-draft Twitter threads |
+| **Gift/promo campaigns** | Track who redeemed → follow up | Send gift link → track activation → personalized follow-up |
+
+### 13.7 Email Outreach Playbook (Concrete)
+
+```
+Step 1: RESEARCH (Nowing scraper)
+├── Find companies hiring researchers/analysts
+├── Track funding news, product launches
+├── Build lead list as canonical entities
+│
+Step 2: PERSONALIZE (Nowing synthesis)
+├── Research each prospect's recent news
+├── Generate personalized email draft
+├── Include specific insight + gift link
+│
+Step 3: SEND (automation)
+├── Schedule emails (personalized timing)
+├── Track opens/clicks in workspace
+│
+Step 4: FOLLOW UP (automation)
+├── If no response in 3 days → follow-up with new insight
+├── If opened but no click → different angle
+└── If clicked but no signup → offer help
+```
+
+**Gift strategy:**
+- "Free deep research credits — no credit card"
+- "Self-host free forever + 1000 cloud credits"
+- "Enterprise pilot — free for 30 days"
+
+### 13.8 Content Strategy
+
+| Content Type | Frequency | Channel | Topic Examples |
+|-------------|-----------|---------|----------------|
+| **Research Reports** | Monthly | Blog, LinkedIn, Twitter | "State of AI Memory", "VN E-commerce Trends" |
+| **Comparison Posts** | Bi-monthly | Blog, HN, Reddit | "Nowing vs Manual Research", "Entity vs Document" |
+| **Case Studies** | Quarterly | Blog, LinkedIn | "How X company uses Nowing for Y" |
+| **Product Demos** | Weekly | Twitter, YouTube | 2-min feature demos, before/after |
+| **Tutorials** | Weekly | Blog, Docs | "Track competitor in 5 minutes", "Build research agent" |
+| **Transparency Posts** | Monthly | HN, Reddit | Open revenue, open metrics (OSS credibility) |
+
+### 13.9 Pricing/Packaging Strategy
+
+| Tier | Price | Target | Includes |
+|------|-------|--------|----------|
+| **Self-Host** | Free | Agent Builder, Privacy-focused | All features except deep research |
+| **Pro (Cloud)** | $29-49/mo | Individual researcher | + Deep research, more sources, team features |
+| **Team** | $99-199/mo | Small team (5-20) | + RBAC, shared memory, analytics |
+| **Enterprise** | Custom | Large org | + SLA, support, self-host option, compliance |
+
+**Conversion wedge:** Deep research (cloud-only in Phase 1) → self-host users who need it convert to cloud.
+
+### 13.10 Partnerships
+
+| Partner Type | Examples | Value |
+|-------------|----------|-------|
+| **AI Agent Platforms** | Claude Code, Cursor, OpenCode | Distribution via MCP/registry |
+| **Research Tools** | Zotero, Notion, Obsidian | Integration + cross-promotion |
+| **Data Providers** | Exa, Tavily, Jina | Better search + co-marketing |
+| **Communities** | AI meetups, research groups | Word-of-mouth + feedback |
+
+### 13.11 Success Metrics (Marketing)
+
+| Metric | Target (6 months) | Measurement |
+|--------|-------------------|-------------|
+| GitHub Stars | 5K+ | GitHub API |
+| Self-Host Installs | 1K+ | Docker pulls + telemetry (opt-in) |
+| Cloud Signups | 500+ | Stripe |
+| Active Workspaces | 200+ | Backend analytics |
+| Email Response Rate | 15%+ | Email tool |
+| Content Reach | 50K/month | Analytics |
+
+### 13.12 Immediate Next Actions
+
+| # | Action | Owner | Timeline |
+|---|--------|-------|----------|
+| 1 | Create marketing workspace in Nowing | Luis | Day 1 |
+| 2 | Set up prospect research (scrapers + entities) | Luis | Day 1-2 |
+| 3 | Build lead list (50 prospects) | Luis + Nowing automation | Week 1 |
+| 4 | Draft email templates + gift links | Luis | Week 1 |
+| 5 | Set up content calendar (4 weeks) | Luis | Week 1 |
+| 6 | Start GitHub community building (README, discussions) | Luis | Week 1-2 |
+| 7 | Prepare HN Show post | Luis | Week 2 |
+| 8 | Launch email outreach campaign | Luis + automation | Week 2 |
+
+---
+
+> **`[ASSUMPTION]`** segments: beachhead expansion theo thứ tự Agent Builder → Researcher → Enterprise. Có thể adjust nếu bạn prioritize khác.
+>
+> **`[ASSUMPTION]`** pricing: dựa trên competitor landscape + Nowing's value proposition. Chưa validate với users.
+>
+> **`[ASSUMPTION]`** timeline: Beta sau Epic 13 complete (~2-4 weeks). Có thể adjust.
+>
+> **`[ASSUMPTION]`** team: 1 person (Luis) + automation. Channels prioritized cho solo operator.
+
