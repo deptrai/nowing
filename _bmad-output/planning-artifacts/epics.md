@@ -1641,3 +1641,207 @@ So that I can track the dominant e-commerce platform.
 _AD-27 · Method: Third-party API (Apify/Bright Data) recommended; in-house requires 8-12w_
 
 
+
+---
+
+## Epic 12: HR/Recruitment Vertical + BĐS (Extended)
+
+> **Extended 2026-08-06:** Added cross-cutting research intelligence stories (alerts, timeline, saved searches) for Jobs and BĐS domains.
+
+### Story 12.6: Job Market Alerts `[P1]`
+
+As a job market researcher,
+I want to receive alerts when new postings match my criteria,
+So that I don't have to manually re-run searches every day.
+
+**Acceptance Criteria:**
+- **Given** a saved job search with filters (title, location, salary range), **When** a new posting matches, **Then** I receive an in-app notification.
+- **Given** an alert is triggered, **When** I click it, **Then** I see the new matching results.
+- **Given** multiple alerts, **When** viewed, **Then** they are grouped by search query with match count.
+
+**Validation:**
+- Unit test: `test_job_alert_matching.py` — new posting triggers alert
+- Integration test: `test_job_alert_notification.py` — notification delivered
+
+### Story 12.7: Property Price Alerts `[P1]`
+
+As a real estate researcher,
+I want to be notified when a tracked property's price changes,
+So that I can act on market movements immediately.
+
+**Acceptance Criteria:**
+- **Given** a canonical property entity exists, **When** a new source reports a different price, **Then** an alert is triggered with old vs new price.
+- **Given** price change exceeds threshold (e.g., 5%), **When** detected, **Then** priority alert is sent.
+
+**Validation:**
+- Unit test: `test_property_price_alert.py` — price change triggers alert
+- Integration test: `test_property_alert_notification.py`
+
+### Story 12.8: Cross-Source Entity Timeline `[P1]`
+
+As a researcher,
+I want to see all events for an entity across sources over time,
+So that I understand its trajectory and patterns.
+
+**Acceptance Criteria:**
+- **Given** a canonical entity (job or property), **When** I view its timeline, **Then** I see events from all sources: job postings, price changes, news mentions, company updates.
+- **Given** timeline events, **When** filtered by source type, **Then** only relevant events shown.
+- **Given** timeline, **When** exported, **Then** produces a chronological report.
+
+**Validation:**
+- Integration test: `test_entity_timeline.py` — timeline aggregates cross-source events
+- UI test: `test_entity_timeline_render.py` — timeline renders correctly
+
+### Story 12.9: Saved Searches `[P1]`
+
+As a researcher,
+I want to save complex search queries and auto-run them on schedule,
+So that I always have fresh results without manual work.
+
+**Acceptance Criteria:**
+- **Given** a search query with filters, **When** saved, **Then** it appears in my saved searches list.
+- **Given** a saved search with schedule (daily/weekly), **When** triggered, **Then** it runs automatically and notifies of new results.
+- **Given** saved search results, **When** viewed, **Then** shows delta (new since last run).
+
+**Validation:**
+- Unit test: `test_saved_search_crud.py` — create/update/delete saved searches
+- Integration test: `test_saved_search_schedule.py` — scheduled execution works
+- Integration test: `test_saved_search_delta.py` — delta calculation correct
+
+---
+
+## Epic 14: News Aggregation (Extended)
+
+> **Extended 2026-08-06:** Added news-specific intelligence features.
+
+### Story 14.3: News Alerts & Topic Monitoring `[P1]`
+
+As a news researcher,
+I want to monitor topics and receive alerts for new articles,
+So that I stay informed without manually checking news sites.
+
+**Acceptance Criteria:**
+- **Given** a topic query (e.g., "company X" OR "industry Y"), **When** new articles match, **Then** I receive notification.
+- **Given** topic monitoring is active, **When** daily digest is generated, **Then** it summarizes new articles with entity links.
+- **Given** alert, **When** clicked, **Then** opens article with canonical entity highlights.
+
+**Validation:**
+- Integration test: `test_news_alert_topic_matching.py`
+- Unit test: `test_news_digest_generation.py`
+
+### Story 14.4: News Digest & Synthesis `[P2]`
+
+As a researcher,
+I want daily/weekly synthesis of news across my monitored topics,
+So that I can quickly understand what happened without reading 50 articles.
+
+**Acceptance Criteria:**
+- **Given** monitored topics, **When** digest is generated, **Then** it produces a structured summary: key events, entity mentions, sentiment trend.
+- **Given** digest, **When** viewed, **Then** each claim links to source article with citation.
+
+**Validation:**
+- Integration test: `test_news_synthesis.py` — synthesis produces coherent narrative
+- Unit test: `test_news_digest_structure.py`
+
+---
+
+## Epic 15: Financial Data (Extended)
+
+> **Extended 2026-08-06:** Added financial intelligence features.
+
+### Story 15.3: Stock Price Alerts `[P1]`
+
+As an investment researcher,
+I want alerts when stock prices cross thresholds,
+So that I can act on market movements.
+
+**Acceptance Criteria:**
+- **Given** a stock symbol with alert rules (price > X, change > Y%), **When** triggered, **Then** notification sent with chart snapshot.
+- **Given** multiple alerts, **When** viewed, **Then** grouped by symbol with trigger history.
+
+**Validation:**
+- Unit test: `test_stock_price_alert_rules.py`
+- Integration test: `test_stock_alert_notification.py`
+
+### Story 15.4: Financial Trend Detection `[P2]`
+
+As an analyst,
+I want automatic detection of financial trends across my watched companies,
+So that I don't miss significant patterns.
+
+**Acceptance Criteria:**
+- **Given** financial data over time, **When** significant trend detected (revenue growth, margin change), **Then** insight is generated.
+- **Given** trend insight, **When** viewed, **Then** shows supporting data points with source links.
+
+**Validation:**
+- Unit test: `test_financial_trend_detection.py`
+- Integration test: `test_trend_insight_generation.py`
+
+---
+
+## Epic 16: Company Directory (Extended)
+
+> **Extended 2026-08-06:** Added company intelligence features.
+
+### Story 16.3: Company Alerts `[P1]`
+
+As a business researcher,
+I want alerts when tracked companies have significant events,
+So that I stay informed about competitors and partners.
+
+**Acceptance Criteria:**
+- **Given** a company entity, **When** significant event detected (news, hiring, funding), **Then** alert is triggered.
+- **Given** company alert, **When** viewed, **Then** shows event summary with source links and entity timeline.
+
+**Validation:**
+- Integration test: `test_company_event_detection.py`
+- Unit test: `test_company_alert_rules.py`
+
+### Story 16.4: Company Timeline `[P1]`
+
+As a researcher,
+I want to see a company's event history across all sources,
+So that I understand its evolution and trajectory.
+
+**Acceptance Criteria:**
+- **Given** a company entity, **When** timeline is viewed, **Then** shows: founding, funding rounds, hiring spikes, product launches, news mentions — all chronologically.
+- **Given** timeline, **When** filtered, **Then** shows only selected event types.
+
+**Validation:**
+- Integration test: `test_company_timeline.py`
+- UI test: `test_company_timeline_render.py`
+
+---
+
+## Epic 17: E-commerce Intelligence (Extended)
+
+> **Extended 2026-08-06:** Added e-commerce intelligence features.
+
+### Story 17.3: Price Drop Alerts `[P1]`
+
+As a product researcher,
+I want alerts when tracked products change price,
+So that I can identify pricing trends and opportunities.
+
+**Acceptance Criteria:**
+- **Given** a product entity, **When** price changes on any source, **Then** alert triggered with old vs new price.
+- **Given** price alert, **When** viewed, **Then** shows price history chart across sources.
+
+**Validation:**
+- Unit test: `test_product_price_alert.py`
+- Integration test: `test_price_history_tracking.py`
+
+### Story 17.4: Competitor Tracking `[P2]`
+
+As a product researcher,
+I want to track competitor products and receive change notifications,
+So that I stay aware of market movements.
+
+**Acceptance Criteria:**
+- **Given** competitor products tracked, **When** changes detected (price, availability, new variants), **Then** notification sent.
+- **Given** competitor dashboard, **When** viewed, **Then** shows side-by-side comparison with change indicators.
+
+**Validation:**
+- Integration test: `test_competitor_change_detection.py`
+- UI test: `test_competitor_dashboard.py`
+
