@@ -2,7 +2,7 @@
 title: "Product Brief: Nowing"
 status: final
 created: 2026-07-25
-updated: 2026-08-04
+updated: 2026-08-06
 editorial: "bmad-editorial-review-structure + bmad-editorial-review-prose đã áp dụng 2026-07-25"
 purpose: "Input cho README + landing page (đối tượng đọc: developer)"
 audience: developer
@@ -41,21 +41,21 @@ sources:
 
 ---
 
-## 1. Một câu  `✅ CHỐT 2026-07-25`
+## 1. Một câu  `✅ CHỐT 2026-08-06`
 
-> **Nowing là bộ nhớ nghiên cứu mã nguồn mở cho AI agent — nhớ cả dữ liệu web sống nó tự thu thập, không chỉ những gì bạn từng nói.**
+> **Nowing (now + knowing) — knowledge intelligence platform nơi raw data từ mọi nguồn biến thành kiến thức thực sự. Mọi nguồn. Một sự thật. Nhớ mãi.**
 
 **Bản tiếng Anh (dùng thật ở README/landing — ngôn ngữ duy nhất của README/landing, xem §12.2):**
 
-> **Nowing is open-source research memory for AI agents — it remembers what it went and found, not just what you told it.**
+> **Nowing (now + knowing) — where data from every source becomes knowledge. All sources. One truth. Forever.**
 
-**Vì sao câu này:** kiểm chứng 2026-07-25 cho thấy *"memory có citation"* đã thành table-stakes (§4), nhưng **live web/UGC vào memory thì chưa ai làm**. Câu này nhấn đúng chỗ còn trống.
+**Vì sao câu này:** Nowing không chỉ lưu trữ documents — nó dedup data từ nhiều nguồn thành canonical entities, track changes theo thời gian, và nhớ mọi thứ bạn đã research. Khác biệt cốt lõi: **entity-centric thay vì document-centric**.
 
 **Subtitle (khi cần nói scope, không nói wedge):**
-> *Self-hosted research workspace with long-term memory for AI agents and teams.*
+> *Knowledge intelligence platform — entity dedup, provenance, and compounding memory for researchers and AI agents.*
 
 **Dòng trả lời "khác gì X" — dùng khi bị hỏi, không gọi tên ai:**
-> *Most memory layers remember what you told them. Nowing also remembers what it went and found.*
+> *Others store documents. Nowing deduplicates data from every source into canonical entities, tracks changes over time, and remembers everything you've researched.*
 
 ---
 

@@ -1,11 +1,11 @@
 ---
 title: Nowing
 created: 2026-07-21
-updated: 2026-08-05
+updated: 2026-08-06
 ---
 
 # PRD: Nowing
-*Open-source long-term research memory cho AI agents và team — bộ lưu trữ dữ liệu nghiên cứu lâu dài với live data connectors và MCP server.*
+*Nowing (now + knowing) — knowledge intelligence platform nơi raw data từ mọi nguồn biến thành kiến thức thực sự. Mọi nguồn. Một sự thật. Nhớ mãi.*
 
 > **⛵ DIRECTION (CURRENT) 2026-07-25 — Nowing = SẢN PHẨM, ChainLens = ENGINE.** Đường đi đã chốt: **OSS/PLG-led**. Nowing là sản phẩm và bề mặt phân phối (sở hữu account, billing, credit, community); **ChainLens là engine deep-open-web-research phía sau**, gọi qua `POST /api/v1/search` (SSE, Bearer service key) — không bán riêng. Lý do người dùng trả tiền = **memory + provenance + self-host/privacy + integration depth**, KHÔNG phải "rẻ hơn". **Đóng vĩnh viễn (xem §2.4):** bán research data kiểu Exa (không có owned index); đua parity consumer kiểu Perplexity. **Nguồn chân lý:** `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md` (✅ ADOPTED, D1–D4) + đối ứng ChainLens `sprint-change-proposal-2026-07-25-v4-nowing-microservice.md` + `ADR-CHAINLENS-AS-NOWING-MICROSERVICE.md`.
 >
@@ -15,15 +15,45 @@ updated: 2026-08-05
 Tài liệu này dành cho PM, stakeholders và downstream workflow (architecture, epics, implementation) để thống nhất scope, yêu cầu và các khoảng trống (gap) của Nowing. Cấu trúc: glossary, user journeys, functional/non-functional requirements được đánh số toàn cục, các giả định được gắn tag `[ASSUMPTION]` và lập chỉ mục ở §9. Tài liệu được cập nhật theo trạng thái code thực tế tại `/Users/luisphan/Documents/nowing`.
 
 > **[NOTE FOR PM] — HR/Recruitment Vertical (Vietnam) added 2026-08-05.** Pilot scope: 8-week pilot for `vn_jobs` research capability covering VietnamWorks (public API), TopCV (HTML + anti-bot), and ITviec (HTML). Source: `prfaq-hr-vertical-vietnam-2026-08-05.md`, `feature-brief-hr-vertical-vietnam-2026-08-05.md`, `pilot-plan-c-memo-2026-08-05.md`, and technical spikes. New FRs: FR-43..FR-47. New NFR: NFR-11. New OQ: OQ-8. New SM: SM-12.
+>
+> **[NOTE FOR PM] — Domain Expansion Research + New Epics added 2026-08-06.** Research report: `research/domain-expansion-research-report-2026-08-06.md`. New FRs: FR-48..FR-55 (Epics 13-20). Product definition updated: `product-definition-nowing-2026-08-06.md`. Key insight: Nowing = Now + Knowing = Knowledge intelligence platform. Three transformations: Data → Entity → Knowledge → Memory. Data strategy: 3 layers (built-in scrapers 30-50 max, OAuth connectors unlimited, ChainLens unlimited).
 
 > **[NOTE FOR PM] — Reality-correction 2026-07-24 (đã verify code, sau PRFAQ + validate).** Trái với bản trước, **lớp memory đã được build phần lớn**: migration `177_add_research_memory_tables` tạo `memories`/`memory_versions`/`memory_relations`/`research_threads` (+ enums, `confidence`, index HNSW+GIN, quyền `memory:*`); `179` thêm `workspaces.memory_auto_extract_enabled` (default **true**); ORM `Memory` trong `app/db.py`; endpoints `memories_routes.py`; 4 MCP tools trong `nowing_mcp/.../features/memory/`. PRD gốc chụp trạng thái *trước* khi code đáp (docs đề 2026-07-21; migration 177–179 landing sau). Các FR memory dưới đây đã cập nhật `[BUILT]`/`[PARTIAL]`. **Open items thật (KHÔNG phải "build từ đầu"):** (1) **recall quality/eval gate** trên `nowing_evals` — NFR-8 → **`[DONE — implementation complete; baseline ratification pending]`**, story `3-9` = **`done`**; (2) ~~đánh giá mất dữ liệu (FR-36)~~ → **✅ RESOLVED 2026-07-25: KHÔNG mất dữ liệu** (178 chưa apply prod, alembic 174, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test đã build qua `3-10a`/`3-10b`; giữ deploy-order mig177→backfill→mig178); (3) **dedupe**: primitive đã có (cosine<0.08 + `update_on_duplicate`), cần tune/validate qua eval; (4) legal/retention (OQ-3); (5) metrics; (6) **auto-extract spend cap** — story `8-7` = **`done`** (59 tests passed; default ON, item-cap + spend cap + wallet pre-check + rate-limit). **Chính xác hoá:** đây là **cổng TRƯỚC KHI merge lên prod**, KHÔNG phải cost bleed đang chạy — migration 175–179 còn ở branch `develop`, prod = `alembic 174` (ops verify 2026-07-25). Chi tiết: `validation-report.md`, `epics.md`.
 
 > **[NOTE FOR PM] — Direction-correction 2026-07-25 (SCP `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md`, ✅ ADOPTED).** Ranh giới sản phẩm được ghi tường minh: **Nowing = sản phẩm, ChainLens = engine** (§1.1, §4.9, `AD-15`). **FR-24 rời §4.2 Connectors → §4.9** (ChainLens không còn là scraper ngang hàng Reddit). **Ba lỗi thương mại mới phát hiện ở tầng code**, đều thành FR/NFR mới: (a) **under-meter ChainLens 2.1–3.3×** — `CHAINLENS_QUERY_MICROS_PER_CALL = 5000` là giá **phẳng** $0.005/call trong khi `mode` default `quality` có target cost $0.0105 → **FR-37**; (b) **`costDollars` chưa parse** (grep = 0 hits) → không có cost basis cho pricing → FR-37 + gate: không chốt giá trước khi FR-37 và `8-7` có số thật; (c) **không có degradation** — chỉ raise `CHAINLENS_TIMEOUT` sau 300s dù Nowing đã có hybrid search → **FR-38**. Thêm **NFR-9** (latency hai trạng thái A/B). **§2.4 Non-Goals** đóng vĩnh viễn: bán research data kiểu Exa (NG-1), parity consumer kiểu Perplexity (NG-2), ChainLens thành sản phẩm độc lập (NG-3).
 
 ## 1. Vision
-Nowing là bộ nhớ nghiên cứu lâu dài (long-term research memory) mở dành cho AI agents và research teams. Thay vì mỗi phiên chat bắt đầu lại từ đầu, Nowing lưu trữ, kết nối và truy cứu dữ liệu nội bộ (tài liệu, Notion, Slack, Linear, Jira, Google Drive, …), dữ liệu web live (Reddit, YouTube, Instagram, TikTok, Google Search/Maps, Amazon, web crawl, …) và toàn bộ lịch sử research của team. Mọi thông tin đều được đánh chỉ mục hybrid (vector + keyword), liên kết bằng citations, và expose qua REST API cũng như MCP server để agents như Claude, Cursor, OpenCode hoặc chat đa agent bên trong Nowing có thể nhớ, tiếp tục và hành động.
 
-Ngoài khả năng lưu trữ và truy cứu, Nowing còn cung cấp research workspace: chat đa agent với citations Perplexity-style, deliverables (report, podcast, video presentation, image), automations theo lịch/sự kiện có thể write-back vào tool stack, và hỗ trợ đa client (web Next.js, desktop Electron, browser extension Plasmo, Obsidian plugin, MCP server). Self-hosted hoàn toàn miễn phí; cloud trả theo mức sử dụng.
+Nowing (now + knowing) là knowledge intelligence platform — nơi raw data từ mọi nguồn biến thành kiến thức thực sự.
+
+Khác biệt giữa data và kiến thức:
+- **Data** là "căn hộ Thủ Đức 3.5 tỷ trên Batdongsan"
+- **Data** là "căn hộ Thủ Đức 3.2 tỷ trên Chotot"
+- **Data** là "căn hộ Thủ Đức 4.1 tỷ trên Muaban"
+
+Ba cái data. Ba con số khác nhau. Bạn không biết tin cái nào.
+
+**Kiến thức** là: "Căn hộ Thủ Đức này đang được rao bán với giá trung bình 3.6 tỷ, trải dài từ 3.2–4.1 tỷ qua 3 nguồn, và giá đã tăng 8% trong 2 tháng qua."
+
+**Nowing biến data thành kiến thức.**
+
+### 1.0 Three Transformations
+
+1. **Data → Entity** — Mỗi nguồn nói về cùng một thứ theo cách khác nhau. Nowing nhận ra đó là cùng một entity và gộp chúng lại. Không phải "ba kết quả tìm kiếm". Là một entity với nhiều nguồn.
+2. **Entity → Knowledge** — Entity đơn lẻ chưa phải kiến thức. Kiến thức là khi bạn biết giá trị thực (dedup + confidence score), độ tin cậy (source count + provenance), cách thay đổi theo thời gian (temporal tracking), và relations.
+3. **Knowledge → Memory** — Kiến thức mất đi khi bạn quên. Nowing nhớ cho bạn — không chỉ cái bạn vừa tìm, mà cả cách nó thay đổi. Lần sau bạn cần biết, Nowing trả về delta: cái mới, cái khác, cái mất.
+
+### 1.1 Data Strategy (3 Layers)
+
+| Layer | What | Count | Maintain |
+|-------|------|-------|----------|
+| **Built-in Scrapers** | High-value structured sources | 30-50 max | Nowing team |
+| **User Connectors** | OAuth personal data | Unlimited | 0 (official APIs) |
+| **Generic Web Crawl** | ChainLens arbitrary URLs | Unlimited | 0 (ChainLens) |
+
+Nowing does NOT build scrapers for millions of websites. Expansion happens through OAuth connectors and ChainLens.
+
+Ngoài khả năng lưu trữ và truy cứu, Nowing còn cung cấp research workspace: chat đa agent với citations, deliverables (report, podcast, video presentation, image), automations theo lịch/sự kiện có thể write-back vào tool stack, và hỗ trợ đa client (web Next.js, desktop Electron, browser extension Plasmo, Obsidian plugin, MCP server). Self-hosted hoàn toàn miễn phí; cloud trả theo mức sử dụng.
 
 ### 1.1 Ranh giới sản phẩm: Nowing ↔ ChainLens
 
@@ -70,7 +100,7 @@ Hai hệ quả bắt buộc:
 ### 2.1 Jobs To Be Done
 > **[Beachhead — ưu tiên]** Primary v1 = **AI agent builder** và **team làm việc cùng nghiên cứu** (nhóm cảm nhận giá trị memory nhanh nhất, và là bề mặt MCP/cloud doanh thu). **Researcher/analyst** và **self-hoster** là secondary — hưởng lợi nhưng không phải mũi nhọn định vị. Thứ tự rollout: agent-builder (OSS/MCP) → team (cloud).
 
-- **Nhà nghiên cứu / analyst** cần thu thập ý kiến thực từ Reddit, YouTube, TikTok, Google Maps, Amazon… mà không tự viết scraper, và lưu lại kết quả để research tiếp giữa các phiên.
+- **Nhà nghiên cứu / analyst** cần thu thập ý kiến thực từ Reddit, YouTube, TikTok, Google Maps, Amazon… mà không tự viết scraper, và lưu lại kết quả để research tiếp giữa các phiên. **Họ cần entity dedup** — 3 nguồn cùng một entity → 1 golden record thay vì 3 kết quả trùng lặp.
 - **AI agent builder** cần một surface typed để agent gọi thay vì tự xử lý web; đặc biệt cần persistent memory qua MCP để agent không mất context giữa các session.
 - **Team làm việc cùng nghiên cứu** cần workspace chia sẻ, chat real-time, deliverables, phân quyền, và bộ nhớ dự án chung (project memory) thay vì mỗi người một chat riêng.
 - **Self-hoster** muốn nền tảng mở, chạy trên infra riêng với nhiều LLM/embedding model, và giữ dữ liệu research nội bộ thay vì gửi qua cloud của AI vendor.
@@ -151,7 +181,7 @@ ChainLens không có end-user account, billing, onboarding, hay kênh phân ph�
 
 ## 4. Features
 
-> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8,**43,44,45,46,47** (Connectors §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)**. *(ID toàn cục, không tuần tự theo section.)*
+> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8,**43..55** (Connectors §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)**. *(ID toàn cục, không tuần tự theo section.)*
 >
 > **⚠️ Thay đổi 2026-07-26:** **FR-41 mới** — Admin UI cho Global LLM Model Configuration (§4.8). Global model config hiện chỉ sửa được qua YAML/env + restart; chưa có UI admin.
 >
@@ -285,6 +315,96 @@ Pipeline xử lý dữ liệu từ job scrapers trước khi lưu vào memory đ
 - Detected PII is masked or the field is dropped; raw JD is not stored in memory.
 - Audit stats logged (counts only, no values).
 - Applies to all job scrapers (FR-43, FR-44, FR-45).
+
+**Status:** `[PROPOSED]`.
+
+#### FR-48: Canonical Entity Storage & Multi-Domain Indexing (Epic 13)
+As a user,
+I want data from multiple sources deduplicated into canonical entities,
+So that I see one golden record per real-world entity instead of duplicate results.
+
+**Acceptance Criteria:**
+- Given data from 3 sources about the same entity, when aggregated, then they merge into one canonical entity with confidence score.
+- Given a canonical entity, when displayed, then it shows source count, conflict flags, and merge history.
+- Given a merge, when admin reverts, then entity returns to pre-merge state.
+- Given canonical data contains PII, before storage, then AD-25 redaction applies.
+
+**Status:** `[PROPOSED]`.
+
+#### FR-49: News Aggregation (Epic 14)
+As a researcher,
+I want news from major Vietnamese portals integrated into my workspace,
+So that I can search and reference news articles alongside my research documents.
+
+**Acceptance Criteria:**
+- Given RSS feeds are configured, when polled (every 15 min), then new articles from VnExpress, Tuổi Trẻ, Dân Trí, Vietnamnet are fetched.
+- Given articles are stored, when a user searches, then news articles appear in unified search results.
+- Given duplicate articles (syndicated across portals), when detected, then they are deduplicated via FR-48.
+
+**Status:** `[PROPOSED]`.
+
+#### FR-50: Financial Data Integration (Epic 15)
+As an investment researcher,
+I want stock prices, financial statements, and market news from CafeF and Vietstock,
+So that I can analyze company fundamentals without leaving Nowing.
+
+**Acceptance Criteria:**
+- Given CafeF API is connected, when a user queries a stock symbol, then price, OHLCV, and financial statements are returned.
+- Given financial data is stored, when queried, then historical trends and ratios are available.
+
+**Status:** `[PROPOSED]`.
+
+#### FR-51: Company Data Integration (Epic 16)
+As a business researcher,
+I want access to 2M+ Vietnamese company profiles with tax codes and registration data,
+So that I can verify business partners and research market players.
+
+**Acceptance Criteria:**
+- Given masothue.com data is integrated, when a user searches by company name or tax code, then company profile is returned.
+- Given company data is stored, when merged with other sources, then matching businesses link via canonical entity (FR-48).
+
+**Status:** `[PROPOSED]`.
+
+#### FR-52: E-commerce Intelligence (Epic 17)
+As a product researcher,
+I want product data from Lazada and Shopee Vietnam,
+So that I can perform pricing analysis and competitor tracking.
+
+**Acceptance Criteria:**
+- Given e-commerce scraper is built, when a user searches by product keyword, then listings with price, seller, ratings are returned.
+- Given products from multiple platforms, when merged, then same products are deduplicated via FR-48.
+
+**Status:** `[PROPOSED]`.
+
+#### FR-53: Social Media Integration (Epic 18)
+As a social media analyst,
+I want public content data from YouTube, Reddit, Instagram, and TikTok,
+So that I can track sentiment, trends, and influencer content.
+
+**Acceptance Criteria:**
+- Given YouTube/Reddit APIs are connected, when a user searches, then video/posts data is returned.
+- Given social data is stored, when PII is detected, then AD-25 redaction applies.
+
+**Status:** `[PROPOSED]`.
+
+#### FR-54: Search Intelligence (Epic 19)
+As a researcher,
+I want Google Search and Maps data integrated,
+So that I can search the web and find local businesses within Nowing.
+
+**Acceptance Criteria:**
+- Given Google Custom Search API is configured, when a user searches, then web results are returned and crawlable.
+- Given Google Places API is configured, when a user searches by location, then business listings are returned.
+
+**Status:** `[PROPOSED]`.
+
+#### FR-55: Global E-commerce (Epic 20)
+As a product researcher,
+I want product data from Amazon and Walmart,
+So that I can perform product research on global markets.
+
+**Acceptance Criteria:**
+- Given Amazon/Walmart data sources are connected, when a user searches, then product listings with price, ratings are returned.
 
 **Status:** `[PROPOSED]`.
 
