@@ -2,7 +2,7 @@
 baseline_commit: 69967a9edd034f98d6df2b5d0e23c3ca159f27b9
 baseline_branch: develop
 story_key: 16-1-masothue-company-data
-status: done
+status: in-progress
 ---
 
 # Story 16.1: masothue.com Company Data
@@ -377,3 +377,19 @@ N/A — story file; implementation chưa thực hiện.
 - Story được tạo dựa trên template `bmad-create-story`, epic 16, architecture spine, và pattern từ 10.1 batdongsan + 15.1 cafef.
 - Cần update `stories/16-1-masothue-company-data.md` để trỏ về file canonical này.
 - Cần update `sprint-status.yaml` chuyển `16-1` thành `ready-for-dev`.
+
+### Review Findings
+
+Từ `bmad-code-review` trên commit `de5496d6e` (2026-08-07). Xem đầy đủ tại `_bmad-output/implementation-artifacts/code-reviews/16-1-masothue-code-review.md`.
+
+- [ ] [Review][must-fix] `cost_micros` không zero khi run bị degraded — `nowing_backend/app/capabilities/masothue/scrape/executor.py:120-121`
+- [ ] [Review][should-fix] Detail page 429 không trigger degraded/rate_limited — `nowing_backend/app/proprietary/platforms/masothue/scraper.py:178-195`
+- [ ] [Review][should-fix] 302 exact-match redirect + `tax_code` filter trả về empty sai — `nowing_backend/app/proprietary/platforms/masothue/fetch.py:131-133`, `scraper.py:166-167,198-199`
+- [ ] [Review][should-fix] Thiếu delay giữa các request detail page — `nowing_backend/app/proprietary/platforms/masothue/scraper.py:170-184`
+- [ ] [Review][should-fix] `parse_pagination` không được dùng, scraper fetch thêm trang rỗng — `parsers.py:176-198`
+- [ ] [Review][should-fix] Regex trích `legal_representative` có thể lấn sang trường kế tiếp — `parsers.py:109-115`
+- [ ] [Review][should-fix] Thiếu unit/integration test cho `resolve_detail=False`, `include_phone=True`, live `SCRAPE_LIVE` — `tests/unit/platforms/masothue/`, `tests/integration/capabilities/masothue/scrape/`
+- [x] [Review][watch] `fetch_ajax_token`/`fetch_ajax_search`/`fetch_all_pages` chưa được dùng (dead code/fallback chưa wire) — `fetch.py:182-290`
+- [x] [Review][watch] Canonical upsert lỗi per-item vẫn tính phí và trả về item — `executor.py:124-147`
+- [x] [Review][watch] Regex `_extract_tax_code` không xử lý khoảng trắng trong MST ở search result — `parsers.py:99-107`
+- [x] [Review][non-issue] `mcp_tools.py` insertion không theo alphabet, `nowing_web` marketing page chưa liệt kê, typo trong label map, local `import json` — không ảnh hưởng runtime
