@@ -94,11 +94,11 @@ development_status:
   epic-5: done
   epic-5-retrospective: optional
 
-  epic-6: done  # core automations done; 6-7 playbook gap tracked
+  epic-6: done  # core automations and playbook gaps done
   6-4: done
   6-5: done
   6-6: done  # Playbook Reuse — expose inputs.schema already present
-  6-7: backlog  # Schema-Driven Form UI for playbook & action
+  6-7: done  # Schema-Driven Form UI for playbook & action
   6-9: done  # Workspace vertical + Playbook Library
   epic-6-retrospective: optional
 
