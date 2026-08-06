@@ -2,10 +2,14 @@ import { z } from "zod";
 import { paginationQueryParams } from ".";
 import { llmSetupStatus } from "./model-connections.types";
 
+export const workspaceVertical = z.enum(["general", "real_estate", "auto", "b2b_equipment"]);
+export type WorkspaceVertical = z.infer<typeof workspaceVertical>;
+
 export const workspace = z.object({
 	id: z.number(),
 	name: z.string(),
 	description: z.string().nullable(),
+	vertical: workspaceVertical.default("general"),
 	created_at: z.string(),
 	user_id: z.string(),
 	citations_enabled: z.boolean(),
@@ -35,10 +39,12 @@ export const getWorkspacesResponse = z.array(workspace);
 /**
  * Create workspace
  */
-export const createWorkspaceRequest = workspace.pick({ name: true, description: true }).extend({
-	citations_enabled: z.boolean().prefault(true).optional(),
-	qna_custom_instructions: z.string().nullable().optional(),
-});
+export const createWorkspaceRequest = workspace
+	.pick({ name: true, description: true, vertical: true })
+	.extend({
+		citations_enabled: z.boolean().prefault(true).optional(),
+		qna_custom_instructions: z.string().nullable().optional(),
+	});
 
 export const createWorkspaceResponse = workspace
 	.omit({ member_count: true, is_owner: true })
@@ -60,6 +66,7 @@ export const updateWorkspaceRequest = z.object({
 		.pick({
 			name: true,
 			description: true,
+			vertical: true,
 			citations_enabled: true,
 			api_access_enabled: true,
 			qna_custom_instructions: true,

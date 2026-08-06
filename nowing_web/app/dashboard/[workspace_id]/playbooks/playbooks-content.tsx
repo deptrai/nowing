@@ -1,15 +1,19 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { BookOpen, Play } from "lucide-react";
 import { useState } from "react";
 import { instantiatePlaybookMutationAtom } from "@/atoms/playbooks/playbooks-mutation.atoms";
 import { playbooksListAtom } from "@/atoms/playbooks/playbooks-query.atoms";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import type { PlaybookSummary } from "@/contracts/types/playbook.types";
+import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
+import { cacheKeys } from "@/lib/query-client/cache-keys";
 
 interface PlaybooksContentProps {
 	workspaceId: number;
@@ -22,7 +26,14 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 	);
 	const [inputsJson, setInputsJson] = useState<Record<number, string>>({});
 
+	const { data: workspace } = useQuery({
+		queryKey: cacheKeys.workspaces.detail(String(workspaceId)),
+		queryFn: () => workspacesApiService.getWorkspace({ id: workspaceId }),
+		enabled: !!workspaceId,
+	});
+
 	const playbooks = data?.items ?? [];
+	const workspaceVertical = workspace?.vertical ?? "general";
 
 	if (isLoading) {
 		return (
@@ -76,13 +87,25 @@ export function PlaybooksContent({ workspaceId }: PlaybooksContentProps) {
 				<span className="text-sm text-muted-foreground">
 					{playbooks.length} {playbooks.length === 1 ? "playbook" : "playbooks"}
 				</span>
+				<Badge variant="secondary" className="ml-auto capitalize">
+					{workspaceVertical.replace(/_/g, " ")}
+				</Badge>
 			</div>
 
 			<div className="grid grid-cols-1 gap-4">
 				{playbooks.map((playbook) => (
 					<Card key={playbook.id} className="rounded-md border-accent bg-accent/20">
 						<CardHeader className="pb-3">
-							<CardTitle className="text-sm font-semibold">{playbook.name}</CardTitle>
+							<div className="flex items-start justify-between gap-3">
+								<CardTitle className="text-sm font-semibold">{playbook.name}</CardTitle>
+								<div className="flex flex-wrap gap-1">
+									{playbook.verticals.map((v) => (
+										<Badge key={v} variant="outline" className="text-xs capitalize">
+											{v.replace(/_/g, " ")}
+										</Badge>
+									))}
+								</div>
+							</div>
 							{playbook.description && (
 								<p className="text-xs text-muted-foreground">{playbook.description}</p>
 							)}

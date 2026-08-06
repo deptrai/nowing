@@ -1809,6 +1809,15 @@ class Workspace(BaseModel, TimestampMixin):
 
     name = Column(String(100), nullable=False, index=True)
     description = Column(String(500), nullable=True)
+
+    vertical = Column(
+        String(64),
+        nullable=False,
+        default="general",
+        server_default="general",
+        index=True,
+    )
+
     plan_tier = Column(
         String(20),
         nullable=False,

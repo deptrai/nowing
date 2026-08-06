@@ -65,6 +65,7 @@ export function CreateWorkspaceDialog({ open, onOpenChange }: CreateWorkspaceDia
 			const result = await createWorkspace({
 				name: values.name,
 				description: values.description || "",
+				vertical: "general",
 			});
 
 			trackWorkspaceCreated(result.id);

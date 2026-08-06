@@ -1,21 +1,46 @@
 "use client";
+
+import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { ArrowLeft, BookOpen, Pause, Pencil, Play, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { updateAutomationMutationAtom } from "@/atoms/automations/automations-mutation.atoms";
 import { createPlaybookMutationAtom } from "@/atoms/playbooks/playbooks-mutation.atoms";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import type { Automation } from "@/contracts/types/automation.types";
+import type { WorkspaceVertical } from "@/contracts/types/workspace.types";
+import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
+import { cacheKeys } from "@/lib/query-client/cache-keys";
 import { DeleteAutomationDialog } from "../../components/delete-automation-dialog";
+
+const PLAYBOOK_VERTICALS: WorkspaceVertical[] = ["general", "real_estate", "auto", "b2b_equipment"];
 
 interface AutomationDetailHeaderProps {
 	automation: Automation;
 	workspaceId: number;
 	canUpdate: boolean;
 	canDelete: boolean;
+}
+
+function defaultVerticals(vertical: WorkspaceVertical | undefined): WorkspaceVertical[] {
+	if (!vertical || vertical === "general") {
+		return ["general"];
+	}
+	return [vertical, "general"];
 }
 
 /**
@@ -41,6 +66,24 @@ export function AutomationDetailHeader({
 		createPlaybookMutationAtom
 	);
 	const [deleteOpen, setDeleteOpen] = useState(false);
+	const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+
+	const { data: workspace } = useQuery({
+		queryKey: cacheKeys.workspaces.detail(String(workspaceId)),
+		queryFn: () => workspacesApiService.getWorkspace({ id: workspaceId }),
+		enabled: !!workspaceId,
+	});
+
+	const workspaceVertical = workspace?.vertical;
+
+	const [playbookName, setPlaybookName] = useState(`${automation.name} (playbook)`);
+	const [playbookDescription, setPlaybookDescription] = useState(automation.description ?? "");
+	const [selectedVerticals, setSelectedVerticals] = useState<WorkspaceVertical[]>(() =>
+		defaultVerticals(workspaceVertical)
+	);
+
+	// Keep default verticals in sync once the workspace is loaded.
+	const targetDefaults = useMemo(() => defaultVerticals(workspaceVertical), [workspaceVertical]);
 
 	const canToggle = canUpdate && automation.status !== "archived";
 	const nextStatus = automation.status === "active" ? "paused" : "active";
@@ -58,15 +101,30 @@ export function AutomationDetailHeader({
 		});
 	}
 
+	function openSaveDialog() {
+		setPlaybookName(`${automation.name} (playbook)`);
+		setPlaybookDescription(automation.description ?? "");
+		setSelectedVerticals(targetDefaults);
+		setSaveDialogOpen(true);
+	}
+
+	function toggleVertical(vertical: WorkspaceVertical) {
+		setSelectedVerticals((prev) =>
+			prev.includes(vertical) ? prev.filter((v) => v !== vertical) : [...prev, vertical]
+		);
+	}
+
 	async function handleSaveAsPlaybook() {
-		const name = window.prompt("Playbook name", `${automation.name} (playbook)`);
+		const name = playbookName.trim();
 		if (!name) return;
 		await createPlaybook({
 			source_automation_id: automation.id,
 			name,
-			description: automation.description,
+			description: playbookDescription.trim() || null,
 			tool_scope: [],
+			verticals: selectedVerticals,
 		});
+		setSaveDialogOpen(false);
 	}
 
 	return (
@@ -99,7 +157,7 @@ export function AutomationDetailHeader({
 								variant="ghost"
 								size="sm"
 								disabled={savingPlaybook}
-								onClick={handleSaveAsPlaybook}
+								onClick={openSaveDialog}
 								className="justify-start rounded-md bg-muted px-3 hover:bg-accent"
 							>
 								<BookOpen className="mr-1 h-4 w-4" />
@@ -162,6 +220,77 @@ export function AutomationDetailHeader({
 					</div>
 				</div>
 			</div>
+
+			<Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Save as Playbook</DialogTitle>
+						<DialogDescription>Create a reusable template from this automation.</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4 py-2">
+						<div className="space-y-2">
+							<Label htmlFor="playbook-name">Name</Label>
+							<Input
+								id="playbook-name"
+								value={playbookName}
+								onChange={(e) => setPlaybookName(e.target.value)}
+								placeholder="Playbook name"
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="playbook-description">Description</Label>
+							<Input
+								id="playbook-description"
+								value={playbookDescription}
+								onChange={(e) => setPlaybookDescription(e.target.value)}
+								placeholder="Optional description"
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label>Verticals</Label>
+							<p className="text-xs text-muted-foreground">
+								Tag the industries this playbook applies to.
+							</p>
+							<div className="flex flex-wrap gap-3 pt-1">
+								{PLAYBOOK_VERTICALS.map((vertical) => {
+									const verticalId = `playbook-vertical-${vertical}`;
+									return (
+										<label
+											htmlFor={verticalId}
+											key={vertical}
+											className="flex items-center gap-2 text-sm"
+										>
+											<Checkbox
+												id={verticalId}
+												checked={selectedVerticals.includes(vertical)}
+												onCheckedChange={() => toggleVertical(vertical)}
+											/>
+											{vertical.replace(/_/g, " ")}
+										</label>
+									);
+								})}
+							</div>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => setSaveDialogOpen(false)}
+							disabled={savingPlaybook}
+						>
+							Cancel
+						</Button>
+						<Button
+							type="button"
+							disabled={!playbookName.trim() || savingPlaybook || selectedVerticals.length === 0}
+							onClick={handleSaveAsPlaybook}
+						>
+							{savingPlaybook ? <Spinner size="sm" /> : "Save Playbook"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
 			{canDelete && (
 				<DeleteAutomationDialog

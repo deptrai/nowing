@@ -113,6 +113,8 @@ class PlaybookService:
         tool_scope = payload.tool_scope or _extract_tool_scope(definition)
         self._validate_tool_scope(tool_scope, definition)
 
+        verticals = await self._resolve_verticals(payload.verticals, automation.workspace_id)
+
         playbook = Playbook(
             workspace_id=automation.workspace_id,
             created_by_user_id=self.user.id,
@@ -121,6 +123,7 @@ class PlaybookService:
             definition=definition.model_dump(mode="json", by_alias=True),
             inputs_schema=inputs_schema,
             tool_scope=tool_scope,
+            verticals=verticals,
             scope=PlaybookScope.WORKSPACE,
             version=1,
         )
@@ -136,14 +139,23 @@ class PlaybookService:
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[Playbook], int]:
-        """Return workspace playbooks and system playbooks a user can instantiate."""
+        """Return workspace playbooks and system playbooks a user can instantiate.
+
+        Playbooks are visible when they declare the workspace's vertical or ``general``.
+        """
         await self._authorize(workspace_id, Permission.AUTOMATIONS_READ.value)
+
+        workspace = await self._get_workspace_or_raise(workspace_id)
 
         base = select(Playbook).where(
             or_(
                 Playbook.workspace_id == workspace_id,
                 Playbook.scope == PlaybookScope.SYSTEM,
-            )
+            ),
+            or_(
+                Playbook.verticals.contains([workspace.vertical]),
+                Playbook.verticals.contains(["general"]),
+            ),
         )
         total = await self.session.scalar(
             select(func.count()).select_from(base.subquery())
@@ -203,6 +215,9 @@ class PlaybookService:
             self._validate_tool_scope(patch.tool_scope, definition)
             playbook.tool_scope = patch.tool_scope
             version_bumped = True
+
+        if "verticals" in data and patch.verticals is not None:
+            playbook.verticals = sorted(set(patch.verticals))
 
         if version_bumped:
             playbook.version += 1
@@ -333,6 +348,27 @@ class PlaybookService:
                 )
             )
         return trigger_creates
+
+    async def _resolve_verticals(
+        self,
+        requested_verticals: list[str] | None,
+        workspace_id: int,
+    ) -> list[str]:
+        """Use the requested verticals or default to the workspace vertical + ``general``."""
+        if requested_verticals:
+            return sorted(set(requested_verticals))
+        workspace = await self.session.get(Workspace, workspace_id)
+        if workspace is None:
+            return ["general"]
+        if workspace.vertical and workspace.vertical != "general":
+            return sorted({workspace.vertical, "general"})
+        return ["general"]
+
+    async def _get_workspace_or_raise(self, workspace_id: int) -> Workspace:
+        workspace = await self.session.get(Workspace, workspace_id)
+        if workspace is None:
+            raise HTTPException(status_code=404, detail=f"workspace {workspace_id} not found")
+        return workspace
 
     async def _assert_models_billable(self, workspace_id: int) -> Workspace:
         workspace = await self.session.get(Workspace, workspace_id)

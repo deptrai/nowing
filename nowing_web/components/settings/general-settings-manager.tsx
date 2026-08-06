@@ -9,7 +9,15 @@ import { updateWorkspaceMutationAtom } from "@/atoms/workspaces/workspace-mutati
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { WorkspaceVertical } from "@/contracts/types/workspace.types";
 import { workspacesApiService } from "@/lib/apis/workspaces-api.service";
 import { authenticatedFetch } from "@/lib/auth-fetch";
 import { buildBackendUrl } from "@/lib/env-config";
@@ -17,6 +25,13 @@ import { cacheKeys } from "@/lib/query-client/cache-keys";
 import { Spinner } from "../ui/spinner";
 import { WorkspaceApiAccessControl } from "./workspace-api-access-control";
 import { WorkspaceMcpToolsControl } from "./workspace-mcp-tools-control";
+
+const WORKSPACE_VERTICALS: WorkspaceVertical[] = [
+	"general",
+	"real_estate",
+	"auto",
+	"b2b_equipment",
+];
 
 interface GeneralSettingsManagerProps {
 	workspaceId: number;
@@ -42,11 +57,13 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
+	const [vertical, setVertical] = useState<WorkspaceVertical>("general");
 	const [saving, setSaving] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
 	const hasWorkspace = !!workspace;
 	const workspaceName = workspace?.name;
 	const workspaceDescription = workspace?.description;
+	const workspaceVertical = workspace?.vertical;
 
 	const handleExportKB = useCallback(async () => {
 		if (isExporting) return;
@@ -83,13 +100,16 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 		if (hasWorkspace) {
 			setName(workspaceName || "");
 			setDescription(workspaceDescription || "");
+			setVertical((workspaceVertical as WorkspaceVertical) || "general");
 		}
-	}, [hasWorkspace, workspaceName, workspaceDescription]);
+	}, [hasWorkspace, workspaceName, workspaceDescription, workspaceVertical]);
 
 	// Derive hasChanges during render
 	const hasChanges =
 		!!workspace &&
-		((workspace.name || "") !== name || (workspace.description || "") !== description);
+		((workspace.name || "") !== name ||
+			(workspace.description || "") !== description ||
+			workspace.vertical !== vertical);
 
 	const handleSave = async () => {
 		try {
@@ -100,6 +120,7 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 				data: {
 					name: name.trim(),
 					description: description.trim() || undefined,
+					vertical,
 				},
 			});
 
@@ -167,6 +188,23 @@ export function GeneralSettingsManager({ workspaceId }: GeneralSettingsManagerPr
 							onChange={(e) => setDescription(e.target.value)}
 						/>
 						<p className="text-xs text-muted-foreground">{t("general_description_description")}</p>
+					</div>
+
+					<div className="space-y-2">
+						<Label htmlFor="workspace-vertical">{t("general_vertical_label")}</Label>
+						<Select value={vertical} onValueChange={(v) => setVertical(v as WorkspaceVertical)}>
+							<SelectTrigger id="workspace-vertical" className="w-full">
+								<SelectValue placeholder={t("general_vertical_placeholder")} />
+							</SelectTrigger>
+							<SelectContent>
+								{WORKSPACE_VERTICALS.map((v) => (
+									<SelectItem key={v} value={v}>
+										{t(`general_vertical_option_${v}`)}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<p className="text-xs text-muted-foreground">{t("general_vertical_description")}</p>
 					</div>
 				</div>
 

@@ -7,10 +7,13 @@ from pydantic import BaseModel, ConfigDict, StrictBool
 from .base import IDModel, TimestampModel
 from .model_connections import LlmSetupStatusRead
 
+WorkspaceVertical = Literal["general", "real_estate", "auto", "b2b_equipment"]
+
 
 class WorkspaceBase(BaseModel):
     name: str
     description: str | None = None
+    vertical: WorkspaceVertical = "general"
 
 
 class WorkspaceCreate(WorkspaceBase):
@@ -21,6 +24,7 @@ class WorkspaceCreate(WorkspaceBase):
 class WorkspaceUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    vertical: WorkspaceVertical | None = None
     citations_enabled: bool | None = None
     qna_custom_instructions: str | None = None
     document_retention_days: int | None = None

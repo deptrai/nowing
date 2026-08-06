@@ -9,6 +9,7 @@ export const playbookCreateRequest = z.object({
 	name: z.string().min(1).max(200),
 	description: z.string().nullable().optional(),
 	tool_scope: z.array(z.string()).default([]),
+	verticals: z.array(z.string()).default([]),
 });
 export type PlaybookCreateRequest = z.infer<typeof playbookCreateRequest>;
 
@@ -17,6 +18,7 @@ export const playbookUpdateRequest = z.object({
 	description: z.string().nullable().optional(),
 	definition: automationDefinition.nullable().optional(),
 	tool_scope: z.array(z.string()).nullable().optional(),
+	verticals: z.array(z.string()).nullable().optional(),
 });
 export type PlaybookUpdateRequest = z.infer<typeof playbookUpdateRequest>;
 

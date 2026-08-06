@@ -19,6 +19,7 @@ class PlaybookCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: str | None = None
     tool_scope: list[str] = Field(default_factory=list)
+    verticals: list[str] = Field(default_factory=list)
 
 
 class PlaybookUpdate(BaseModel):
@@ -30,6 +31,7 @@ class PlaybookUpdate(BaseModel):
     description: str | None = None
     definition: AutomationDefinition | None = None
     tool_scope: list[str] | None = None
+    verticals: list[str] | None = None
 
 
 class PlaybookInstantiate(BaseModel):

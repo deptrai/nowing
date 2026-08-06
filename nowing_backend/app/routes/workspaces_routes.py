@@ -203,6 +203,7 @@ async def read_workspaces(
                     id=space.id,
                     name=space.name,
                     description=space.description,
+                    vertical=space.vertical,
                     created_at=space.created_at,
                     user_id=space.user_id,
                     citations_enabled=space.citations_enabled,

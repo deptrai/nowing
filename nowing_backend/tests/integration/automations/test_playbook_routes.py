@@ -214,3 +214,135 @@ async def test_playbook_update_bumps_version_and_keeps_instance_pinned(
     get = await client.get(f"/api/v1/automations/{automation_id}")
     assert get.status_code == 200
     assert get.json()["playbook_version"] == playbook["version"]
+
+
+async def test_create_playbook_defaults_to_workspace_vertical(
+    client: httpx.AsyncClient,
+    sample_automation: dict,
+    billable_workspace,
+):
+    """Saving a playbook without explicit verticals uses the workspace vertical + general."""
+    billable_workspace.vertical = "real_estate"
+    resp = await client.post(
+        "/api/v1/playbooks",
+        json={
+            "source_automation_id": sample_automation["id"],
+            "name": "Real estate playbook",
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert "real_estate" in data["verticals"]
+    assert "general" in data["verticals"]
+
+
+async def test_list_playbooks_filters_by_workspace_vertical(
+    client: httpx.AsyncClient,
+    sample_automation: dict,
+    billable_workspace,
+    db_session,
+    db_user,
+):
+    """Playbooks not matching the workspace vertical are excluded from the list."""
+    from app.automations.persistence.enums.playbook_scope import PlaybookScope
+    from app.automations.persistence.models.playbook import Playbook
+
+    billable_workspace.vertical = "real_estate"
+
+    # Workspace playbook tagged for real estate.
+    create_re = await client.post(
+        "/api/v1/playbooks",
+        json={
+            "source_automation_id": sample_automation["id"],
+            "name": "Matching playbook",
+            "verticals": ["real_estate"],
+        },
+    )
+    assert create_re.status_code == 201
+
+    # Workspace playbook tagged only for auto.
+    create_auto = await client.post(
+        "/api/v1/playbooks",
+        json={
+            "source_automation_id": sample_automation["id"],
+            "name": "Hidden playbook",
+            "verticals": ["auto"],
+        },
+    )
+    assert create_auto.status_code == 201
+
+    # System playbook visible to real estate.
+    system_visible = Playbook(
+        created_by_user_id=db_user.id,
+        name="System real estate",
+        description="",
+        definition=create_auto.json()["definition"],
+        inputs_schema=create_auto.json()["inputs_schema"],
+        tool_scope=["agent_task"],
+        verticals=["real_estate"],
+        scope=PlaybookScope.SYSTEM,
+        version=1,
+    )
+    db_session.add(system_visible)
+
+    # System playbook hidden from real estate.
+    system_hidden = Playbook(
+        created_by_user_id=db_user.id,
+        name="System auto",
+        description="",
+        definition=create_auto.json()["definition"],
+        inputs_schema=create_auto.json()["inputs_schema"],
+        tool_scope=["agent_task"],
+        verticals=["auto"],
+        scope=PlaybookScope.SYSTEM,
+        version=1,
+    )
+    db_session.add(system_hidden)
+    await db_session.flush()
+
+    resp = await client.get(
+        "/api/v1/playbooks",
+        params={"workspace_id": billable_workspace.id},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    names = {p["name"] for p in data["items"]}
+    assert "Matching playbook" in names
+    assert "System real estate" in names
+    assert "Hidden playbook" not in names
+    assert "System auto" not in names
+
+
+async def test_list_playbooks_switches_vertical(
+    client: httpx.AsyncClient,
+    sample_automation: dict,
+    billable_workspace,
+):
+    """Changing workspace vertical hides previously visible playbooks."""
+    billable_workspace.vertical = "real_estate"
+
+    create = await client.post(
+        "/api/v1/playbooks",
+        json={
+            "source_automation_id": sample_automation["id"],
+            "name": "Real estate only",
+            "verticals": ["real_estate"],
+        },
+    )
+    assert create.status_code == 201
+
+    resp_re = await client.get(
+        "/api/v1/playbooks",
+        params={"workspace_id": billable_workspace.id},
+    )
+    assert resp_re.status_code == 200
+    assert any(p["name"] == "Real estate only" for p in resp_re.json()["items"])
+
+    billable_workspace.vertical = "auto"
+
+    resp_auto = await client.get(
+        "/api/v1/playbooks",
+        params={"workspace_id": billable_workspace.id},
+    )
+    assert resp_auto.status_code == 200
+    assert not any(p["name"] == "Real estate only" for p in resp_auto.json()["items"])
