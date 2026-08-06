@@ -1,15 +1,32 @@
-"""``jobs_aggregator`` orchestrator: fan-out, normalize, deduplicate, score."""
+"""``jobs_aggregator`` orchestrator: fan-out, normalize, deduplicate, score, persist."""
 
 from __future__ import annotations
 
+import datetime
+import logging
 from collections.abc import Awaitable
-from typing import Any
+from typing import Any, Literal
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.canonical.services.canonical_persist_service import (
+    create_persist_outbox,
+    upsert_canonical_entity,
+)
+from app.canonical.tenant_context import set_canonical_workspace_id
+from app.observability.metrics import (
+    categorize_exception,
+    record_canonical_persist_failure,
+)
 from app.services.pii.redact import redact_job_pii
 
-from .dedupe import deduplicate
+from .dedupe import deduplicate, fingerprint, search_text
 from .normalize import normalize_listing
 from .schemas import VnJobAggregatedListing, VnJobAggregateInput, VnJobAggregateOutput
+
+logger = logging.getLogger(__name__)
+
+_JOBS_ENTITY_TYPE = "vn_job"
 
 
 def _redact_listing(listing: VnJobAggregatedListing) -> VnJobAggregatedListing:
@@ -29,7 +46,9 @@ def _score_output(items: list[VnJobAggregatedListing]) -> tuple[float, float]:
     if not items:
         return 0.0, 0.0
     avg_confidence = sum(item.confidence_score for item in items) / len(items)
-    avg_salary_consistency = sum(item.salary_consistency_score for item in items) / len(items)
+    avg_salary_consistency = sum(item.salary_consistency_score for item in items) / len(
+        items
+    )
     return round(avg_confidence, 2), round(avg_salary_consistency, 2)
 
 
@@ -64,12 +83,20 @@ async def _call_source(
     try:
         cap: Capability = get_capability(f"{source}.scrape")
     except KeyError:
-        return {"items": [], "degraded": True, "degradation_reason": f"{source}: capability_not_found"}
+        return {
+            "items": [],
+            "degraded": True,
+            "degradation_reason": f"{source}: capability_not_found",
+        }
 
     try:
         input_obj = cap.input_schema(**payload)
     except Exception as exc:
-        return {"items": [], "degraded": True, "degradation_reason": f"{source}: invalid_input ({exc})"}
+        return {
+            "items": [],
+            "degraded": True,
+            "degradation_reason": f"{source}: invalid_input ({exc})",
+        }
 
     try:
         result = await execute_with_context(cap.executor, payload=input_obj, ctx=ctx)
@@ -81,10 +108,173 @@ async def _call_source(
     return dict(result)
 
 
+def _make_json_safe(value: Any) -> Any:
+    """Recursively coerce Pydantic/date values for JSONB storage."""
+    if isinstance(value, dict):
+        return {k: _make_json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_make_json_safe(v) for v in value]
+    if isinstance(value, datetime.date) and not isinstance(value, datetime.datetime):
+        return value.isoformat()
+    return value
+
+
+def _build_canonical_data(listing: VnJobAggregatedListing) -> dict[str, Any]:
+    """Return a JSON-safe, PII-redacted copy of the listing for canonical storage."""
+    # PrivateAttrs are excluded by Pydantic; description/requirement are already
+    # redacted by _redact_listing before deduplication.
+    return _make_json_safe(listing.model_dump())
+
+
+def _build_job_source_snapshot(canonical_data: dict[str, Any]) -> dict[str, Any]:
+    """Return a source snapshot with any remaining PII removed from text fields."""
+    snapshot = dict(canonical_data)
+    for field in ("job_description", "job_requirement"):
+        value = snapshot.get(field)
+        if isinstance(value, str):
+            snapshot[field] = redact_job_pii(value).text
+    return snapshot
+
+
+def _build_conflict_flags(
+    listing: VnJobAggregatedListing,
+) -> list[dict[str, Any]]:
+    """Surface salary/location conflict metadata for canonical storage."""
+    if not listing.conflict:
+        return []
+    return [
+        {
+            "type": "salary_conflict",
+            "reason": "salary or location mismatch across sources",
+        }
+    ]
+
+
+async def _stage_jobs_persist_outbox(
+    session: AsyncSession,
+    workspace_id: int,
+    listing: VnJobAggregatedListing,
+    error: str,
+) -> None:
+    """Stage a durable outbox row so a retry worker can finish persistence."""
+    canonical_data = _build_canonical_data(listing)
+    payload = {
+        "workspace_id": workspace_id,
+        "entity_type": _JOBS_ENTITY_TYPE,
+        "fingerprint": fingerprint(listing.model_dump()),
+        "title": listing.title,
+        "data": canonical_data,
+        "search_text": search_text(listing),
+        "sources": [
+            {
+                "source_name": source_name,
+                "source_record_id": source_record_id,
+                "source_url": listing._source_url_map.get(source_name),
+            }
+            for source_name, source_record_id in listing._source_record_ids.items()
+        ],
+    }
+    await set_canonical_workspace_id(session, workspace_id)
+    await create_persist_outbox(
+        session,
+        workspace_id=workspace_id,
+        entity_type=_JOBS_ENTITY_TYPE,
+        payload=payload,
+        error=error,
+    )
+
+
+async def _persist_jobs_aggregates(
+    session: AsyncSession | None,
+    workspace_id: int | None,
+    listings: list[VnJobAggregatedListing],
+) -> tuple[Literal["ok", "partial", "failed", "not_attempted"], str | None]:
+    """Persist all listings and report ok/partial/failed/not_attempted."""
+    if not session or not isinstance(session, AsyncSession) or workspace_id is None:
+        return "not_attempted", None
+
+    overall_succeeded = False
+    overall_failed = False
+    message: str | None = None
+
+    for listing in listings:
+        canonical_data = _build_canonical_data(listing)
+        source_snapshot = _build_job_source_snapshot(canonical_data)
+        fp = fingerprint(listing.model_dump())
+        search_text_value = search_text(listing)
+        conflict_flags = _build_conflict_flags(listing)
+
+        listing_succeeded = False
+        listing_failed = False
+        listing_error: str | None = None
+
+        # ponytail: each source record is linked against the same canonical
+        # fingerprint; the unique (workspace, entity_type, source, record_id)
+        # key keeps retries idempotent.
+        for source_name, source_record_id in listing._source_record_ids.items():
+            source_url = listing._source_url_map.get(source_name)
+            try:
+                await upsert_canonical_entity(
+                    session,
+                    workspace_id=workspace_id,
+                    entity_type=_JOBS_ENTITY_TYPE,
+                    fingerprint=fp,
+                    title=listing.title,
+                    data=canonical_data,
+                    search_text=search_text_value,
+                    source_name=source_name,
+                    source_record_id=source_record_id,
+                    source_snapshot=source_snapshot,
+                    source_url=source_url,
+                    confidence_score=listing.confidence_score,
+                    conflict_flags=conflict_flags,
+                )
+                listing_succeeded = True
+                overall_succeeded = True
+            except Exception as exc:
+                listing_failed = True
+                overall_failed = True
+                listing_error = str(exc)
+                if message is None:
+                    message = listing_error
+                logger.exception(
+                    "Job listing %s source %s failed to persist",
+                    listing.id,
+                    source_name,
+                )
+                record_canonical_persist_failure(
+                    domain="vn_job",
+                    reason=categorize_exception(exc),
+                )
+
+        if listing_failed:
+            try:
+                await _stage_jobs_persist_outbox(
+                    session, workspace_id, listing, listing_error or "unknown"
+                )
+            except Exception:
+                logger.exception(
+                    "Job persist outbox for %s also failed",
+                    listing.id,
+                )
+
+        if listing_succeeded:
+            overall_succeeded = True
+
+    if overall_failed and not overall_succeeded:
+        return "failed", message
+    if overall_failed:
+        return "partial", message or "One or more job listings failed to persist"
+    return "ok", None
+
+
 async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregateOutput:
     """Run the multi-source job aggregation pipeline."""
     output = VnJobAggregateOutput()
-    output.source_breakdown = {source: {"total": 0, "degraded": False, "degradation_reason": None} for source in input.sources}
+    output.source_breakdown = {
+        source: {"total": 0, "degraded": False, "degradation_reason": None}
+        for source in input.sources
+    }
 
     all_listings: list[VnJobAggregatedListing] = []
     total_cost_micros = 0
@@ -95,7 +285,9 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
 
         source_items = raw.get("items", [])
         source_degraded = raw.get("degraded", False)
-        source_reason = raw.get("degradation_reason") or raw.get("degradation_reasons", [None])[0]
+        source_reason = (
+            raw.get("degradation_reason") or raw.get("degradation_reasons", [None])[0]
+        )
 
         output.source_breakdown[source] = {
             "total": len(source_items),
@@ -114,16 +306,31 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
             listing = _redact_listing(listing)
             all_listings.append(listing)
 
-        total_cost_micros += raw.get("cost_micros", 0) or raw.get("total_cost_micros", 0)
+        total_cost_micros += raw.get("cost_micros", 0) or raw.get(
+            "total_cost_micros", 0
+        )
 
     output.items = deduplicate(all_listings)
     output.cost_micros = total_cost_micros
-    output.confidence_score, output.salary_consistency_score = _score_output(output.items)
+    output.confidence_score, output.salary_consistency_score = _score_output(
+        output.items
+    )
 
     # Apply aggregator-level location filter if provided.
     if input.location:
         loc = input.location.lower().strip()
-        output.items = [item for item in output.items if (item.location or "").lower().strip() == loc]
+        output.items = [
+            item
+            for item in output.items
+            if (item.location or "").lower().strip() == loc
+        ]
+
+    session = getattr(ctx, "session", None)
+    workspace_id = getattr(ctx, "workspace_id", None)
+    (
+        output.persistence_status,
+        output.persistence_message,
+    ) = await _persist_jobs_aggregates(session, workspace_id, output.items)
 
     return output
 

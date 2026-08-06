@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, computed_field
 
 
 class VnJobSalary(BaseModel):
@@ -40,6 +40,9 @@ class VnJobAggregatedListing(BaseModel):
     conflict: bool = False
     pii_redacted: bool = False
 
+    _source_record_ids: dict[str, str] = PrivateAttr(default_factory=dict)
+    _source_url_map: dict[str, str] = PrivateAttr(default_factory=dict)
+
 
 class VnJobAggregateInput(BaseModel):
     """Input to the job market aggregator."""
@@ -50,7 +53,9 @@ class VnJobAggregateInput(BaseModel):
     location: str | None = None
     salary_min: int | None = None
     salary_max: int | None = None
-    employment_type: Literal["full_time", "contract", "part_time", "intern"] | None = None
+    employment_type: Literal["full_time", "contract", "part_time", "intern"] | None = (
+        None
+    )
     experience_years: int | None = None
     sources: list[Literal["vietnamworks", "topcv", "itviec"]] = Field(
         default_factory=lambda: ["vietnamworks", "topcv", "itviec"]
@@ -76,6 +81,10 @@ class VnJobAggregateOutput(BaseModel):
     source_breakdown: dict[str, Any] = Field(default_factory=dict)
     confidence_score: float = 0.0
     salary_consistency_score: float = 0.0
+    persistence_status: Literal["ok", "partial", "failed", "not_attempted"] = (
+        "not_attempted"
+    )
+    persistence_message: str | None = None
 
     @computed_field
     @property

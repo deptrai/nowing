@@ -127,7 +127,7 @@ def normalize_listing(source: str, raw: dict[str, Any]) -> VnJobAggregatedListin
     title = str(raw.get("title", "")).strip()
     company = str(raw.get("company", "")).strip()
 
-    return VnJobAggregatedListing(
+    listing = VnJobAggregatedListing(
         id=str(listing_id),
         title=title,
         company=company,
@@ -143,3 +143,9 @@ def normalize_listing(source: str, raw: dict[str, Any]) -> VnJobAggregatedListin
         source_urls=[raw.get("source_url", "")],
         confidence_score=0.6 if title and company else 0.3,
     )
+    # ponytail: PrivateAttrs carry provenance without leaking into API output.
+    listing._source_record_ids = {source: str(listing_id)}
+    source_url = raw.get("source_url")
+    if source_url:
+        listing._source_url_map = {source: source_url}
+    return listing

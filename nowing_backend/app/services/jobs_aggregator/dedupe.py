@@ -107,6 +107,14 @@ def deduplicate(listings: list[VnJobAggregatedListing]) -> list[VnJobAggregatedL
             base.confidence_score = round(
                 min(1.0, base.confidence_score + 0.1 * (len(group) - 1)), 2
             )
+            # ponytail: merge provenance from every source in the group.
+            merged_record_ids: dict[str, str] = {}
+            merged_url_map: dict[str, str] = {}
+            for item in group:
+                merged_record_ids.update(item._source_record_ids)
+                merged_url_map.update(item._source_url_map)
+            base._source_record_ids = merged_record_ids
+            base._source_url_map = merged_url_map
 
         conflict, salary_consistency = _detect_conflict(group)
         base.conflict = conflict
