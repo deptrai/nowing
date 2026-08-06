@@ -49,6 +49,10 @@ companions:
 > - **`AD-27` mới** — Canonical entity convention: mỗi domain aggregator MUST implement 3 methods (`fingerprint()`, `merge()`, `search_text()`) với signature nhất quán. Inherits AD-24 pattern, prevents matching logic divergence across domains.
 > - **`AD-28` mới** — Unified canonical engine trigger: build unified matching engine khi có domain thứ 3 HOẶC cross-source overlap >30%. Trước trigger: giữ copy-modify nhưng follow AD-27 convention.
 >
+> **✅ Amend 2026-08-06 (đợt 7 — Reviewer Gate findings):**
+> - **`AD-27` tightened:** Define `MergeResult` TypedDict inline; align Jobs fingerprint with AD-24 (add `posted_at`); mandate default merge strategies per conflict type; specify `normalize()` contract + module path convention; clarify cosine similarity notation (> 0.92).
+> - **`AD-28` tightened:** Define fingerprint match rate formula precisely (`entities with ≥2 sources / total entities`, weekly, 2 consecutive weeks); remove subjective "đáng kể" (3rd domain = trigger); add SLA (refactor within 1 sprint); acknowledge plugin ABC migration cost; specify post-trigger unified `CanonicalEntity` table.
+>
 > **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
 > - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
 > - **`AD-20` mới** — screenshot-as-evidence dùng **browser tier sẵn có** (patchright đã mở đúng trang, `page.screenshot()` là một lời gọi) + vision model **đã có** (`get_vision_llm`, `Workspace.vision_model_id`) khi extraction mỏng. **KHÔNG** adopt visual-RAG stack (PixelRAG): `AD-2` pgvector **không đổi**, không FAISS/Qdrant, không GPU cho self-host, không nhân storage 100–500×, citation `FR-13`/`NFR-6` không vỡ. Cải chính một nhầm lẫn loại: **visual RAG không phải giải pháp CAPTCHA**.
@@ -596,12 +600,18 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 - **Prevents:** Mỗi domain implement matching logic khác chuẩn → khó merge, khó tune, khó reuse
 - **Rule:**
   - Mỗi domain aggregator (BĐS, Jobs, Products, Items, ...) MUST implement 3 methods với signature nhất quán:
-    - `fingerprint(raw_data: dict) -> str` — Tạo unique key để match giữa các nguồn. VD: BĐS dùng `normalize(address) + area_m2 + project`; Jobs dùng `normalize(company) + normalize(title) + location`.
-    - `merge(canonical: dict, new_raw: dict) -> MergeResult` — Merge new scrape vào canonical entity, detect conflicts (price mismatch, salary range divergence), resolve bằng strategy (most-recent-wins, most-confident-wins, median-if-within-threshold).
+    - `fingerprint(raw_data: dict) -> str` — Tạo unique key để match giữa các nguồn. VD: BĐS dùng `normalize(address) + area_m2 + project`; Jobs dùng `normalize(company) + normalize(title) + location + posted_at)` (AD-24 compliant).
+    - `merge(canonical: dict, new_raw: dict) -> MergeResult` — Merge new scrape vào canonical entity, detect conflicts. `MergeResult` is: `TypedDict("MergeResult", {"entity": dict, "conflict": bool, "conflict_fields": list[str], "resolution": str})` where `resolution` ∈ `{"most_recent", "median", "most_confident", "unresolved"}`.
     - `search_text(canonical: dict) -> str` — Tạo text để embed + full-text search. Chuẩn hóa từ canonical data đã merge.
-  - Ban đầu implement như standalone functions (không cần class/plugin registry), nhưng giữ signature nhất quán để sau này extract thành plugin dễ dàng.
-  - **Inherits AD-24 pattern:** `vn_jobs.aggregate` đã có normalize/dedupe/conflict/salary-consistency — document lại như convention cho mọi domain.
-  - **Matching waterfall** (4-pass, từ technical research): exact fingerprint → rule-based → vector similarity → LLM verification (chỉ cho ambiguous cases).
+  - **Default merge strategies** (mandated per conflict type):
+    - Timestamp fields (price, status, availability) → `most_recent` (by `source_published_at`)
+    - Numeric fields (salary, price) within 20% → `median`; >20% → flag `conflict`, `resolution = "unresolved"`
+    - Source-anchored fields (address, area, legal) → `most_confident` (official registry > classified portal)
+  - **Module path convention:** Each domain lives in `app/services/<domain>_aggregator/` with `fingerprint.py`, `merge.py`, `search_text.py` exporting the 3 functions. Shared `normalize()` lives in `app/services/normalize.py` (lowercase + NFKC + collapse whitespace + strip punctuation); domains may override via local import.
+  - **Pre-trigger:** Implement as standalone functions (no class/plugin registry). Post-trigger: wrap into `DomainPlugin` ABC — migration is mechanical since signatures are already consistent.
+  - **Inherits AD-24 pattern:** `vn_jobs.aggregate` dedup key (`company + title + location + posted_at`) IS the canonical fingerprint for Jobs domain. AD-27 makes this explicit and extends to all domains.
+  - **Matching waterfall** (4-pass, từ technical research): exact fingerprint → rule-based → vector similarity (cosine similarity > 0.92, per AD-14) → LLM verification (cost-bounded, chỉ cho ambiguous cases).
+  - **Cosine notation:** All thresholds use **cosine similarity** (range [-1, 1], higher = more similar). Threshold > 0.92 ≈ distance < 0.08. AD-14 uses similarity; AD-27 Pass 3 uses the same convention.
   - **ADOPTED:** AD-24 đã có pattern. Đây là formalize convention, không phải engine mới.
 
 ### AD-28 — Unified Canonical Engine Trigger
@@ -610,11 +620,12 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 - **Prevents:** (a) Premature optimization — build engine khi chỉ có 2 domains; (b) Technical debt vô hạn — copy-modify không có limit
 - **Rule:**
   - **Trigger build unified engine** khi 1 trong 2 conditions xảy:
-    - **(a) Có domain thứ 3 cần aggregator** — copy-modify pattern bắt đầu duplicate code đáng kể.
-    - **(b) Cross-source overlap >30%** trong 1 domain — dedupe primitive (cosine <0.08) không đủ, cần fingerprint-based matching.
+    - **(a) Có domain thứ 3 cần aggregator** — any domain beyond BĐS and Jobs triggers. No "significantly" qualifier: the 3rd domain IS the trigger.
+    - **(b) Cross-source overlap >30%** trong 1 domain — fingerprint-based matching required.
+  - **Fingerprint match rate formula:** `(distinct canonical entities with ≥2 distinct sources) / (total distinct canonical entities)`, measured weekly over all records in the domain's canonical table. Computed every Monday 00:00 UTC. If result > 0.30 for 2 consecutive weeks → trigger hit.
   - **Trước trigger:** Giữ copy-modify pattern (AD-24) nhưng follow AD-27 convention (3 methods, signature nhất quán).
-  - **Sau trigger:** Refactor thành unified plugin engine — 1 matching engine + domain plugins. Plugin interface = AD-27 convention (fingerprint/merge/search_text).
-  - **Scale trigger measurement:** Đo cross-source overlap bằng fingerprint match rate. Nếu >30% records match qua fingerprint → trigger hit.
+  - **Sau trigger:** Refactor thành unified plugin engine — 1 matching engine + `DomainPlugin` ABC. Migration cost: define ABC with `fingerprint`/`merge`/`search_text` methods; wrap each domain's existing standalone functions into plugin class. **SLA:** Refactor must begin within 1 sprint of trigger detection. New domains built after trigger must use the unified engine.
+  - **Post-trigger storage:** Unified `CanonicalEntity` table (defined in Epic 13 Story 13.1) with `entity_type` discriminator. Domain-specific tables become read-only views for backward compatibility.
 
 ## Consistency Conventions
 
