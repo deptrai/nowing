@@ -67,3 +67,17 @@ async def test_fetch_detail_page_blocked() -> None:
 
     with pytest.raises(MasothueAccessBlockedError):
         await fetch_detail_page("https://masothue.com/031-test", fetch_fn=fake_fetch)
+
+
+
+@pytest.mark.asyncio
+async def test_fetch_search_page_default_page_not_in_url() -> None:
+    """Default page=1 must not add a page param to the search URL."""
+    called: dict[str, Any] = {}
+
+    async def fake_fetch(url: str, **kwargs: Any) -> Any:
+        called["url"] = url
+        return _make_response(200, "<html><body>ok</body></html>")
+
+    await fetch_search_page("vinamilk", fetch_fn=fake_fetch)
+    assert "&page=" not in called["url"]

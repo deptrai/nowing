@@ -235,3 +235,40 @@ async def test_scrape_zero_max_pages_does_not_fetch() -> None:
     assert out.total_items == 0
     assert out.degraded is False
     assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_scrape_retries_then_degrades_on_rate_limit() -> None:
+    """The scraper retries _MAX_RETRIES times before degrading on rate limit."""
+    calls: list[int] = []
+
+    async def rate_limited_fetch(query: str, search_type: str, page: int) -> tuple[str, int]:
+        calls.append(page)
+        raise MasothueRateLimitedError("429")
+
+    from app.proprietary.platforms.masothue.fetch import MasothueRateLimitedError
+
+    inp = MasothueSearchInput(query="vinamilk", max_items=10)
+    out = await scrape_masothue(inp, search_fetch_fn=rate_limited_fetch)
+
+    assert out.degraded is True
+    assert out.degradation_reason == "rate_limited"
+    assert len(calls) == 3  # initial + 2 retries
+
+
+@pytest.mark.asyncio
+async def test_degrade_reason_from_exc_maps_exception_types() -> None:
+    """AddNot / exception type mapping must return the right degradation reason."""
+    from app.proprietary.platforms.masothue.fetch import (
+        MasothueAccessBlockedError,
+        MasothueDecodeError,
+        MasothueRateLimitedError,
+        MasothueTimeoutError,
+    )
+    from app.proprietary.platforms.masothue.scraper import _degrade_reason_from_exc
+
+    assert _degrade_reason_from_exc(MasothueRateLimitedError("x")) == "rate_limited"
+    assert _degrade_reason_from_exc(MasothueTimeoutError("x")) == "timeout"
+    assert _degrade_reason_from_exc(MasothueDecodeError("x")) == "decode_error"
+    assert _degrade_reason_from_exc(MasothueAccessBlockedError("x")) == "access_blocked"
+    assert _degrade_reason_from_exc(RuntimeError("x")) == "api_error"

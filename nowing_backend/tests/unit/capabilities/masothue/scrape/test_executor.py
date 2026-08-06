@@ -91,3 +91,21 @@ async def test_executor_cost_uses_default_rate(monkeypatch: Any) -> None:
     assert out.degraded is False
     assert out.total_items == 1
     assert out.cost_micros == 1 * 3000
+
+
+@pytest.mark.asyncio
+async def test_executor_unwraps_none_result(monkeypatch: Any) -> None:
+    """When the scrape actor returns None, the executor returns an empty degraded result."""
+    monkeypatch.setattr(
+        "app.config.config.MASOTHUE_SCRAPE_MICROS_PER_ITEM", 3000, raising=False
+    )
+
+    async def fake_scrape(_: Any) -> None:
+        return None
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1))
+
+    assert out.degraded is True
+    assert out.total_items == 0
+    assert out.cost_micros == 0

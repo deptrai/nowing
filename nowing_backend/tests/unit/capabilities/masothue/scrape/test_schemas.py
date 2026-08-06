@@ -30,3 +30,20 @@ def test_scrape_input_rejects_invalid_search_type() -> None:
 def test_scrape_input_estimated_units() -> None:
     inp = ScrapeInput(query="vinamilk", max_items=25)
     assert inp.estimated_units == 25
+
+
+
+@pytest.mark.asyncio
+async def test_scrape_default_max_pages_is_five() -> None:
+    """ScrapeInput / MasothueSearchInput defaults must match the spec."""
+    from app.capabilities.masothue.scrape.schemas import ScrapeInput
+    from app.proprietary.platforms.masothue.schemas import MasothueSearchInput
+
+    public = ScrapeInput(query="vinamilk")
+    proprietary = MasothueSearchInput(query="vinamilk")
+
+    assert public.max_pages == 5
+    assert public.max_items == 10
+    assert public.resolve_detail is True
+    assert proprietary.max_pages == 5
+    assert proprietary.max_items == 10
