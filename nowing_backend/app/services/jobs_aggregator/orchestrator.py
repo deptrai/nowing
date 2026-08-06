@@ -13,6 +13,7 @@ from app.canonical.services.canonical_persist_service import (
     create_persist_outbox,
     upsert_canonical_entity,
 )
+from app.canonical.services.canonical_pii import redact_canonical_data
 from app.canonical.tenant_context import set_canonical_workspace_id
 from app.observability.metrics import (
     categorize_exception,
@@ -128,12 +129,9 @@ def _build_canonical_data(listing: VnJobAggregatedListing) -> dict[str, Any]:
 
 def _build_job_source_snapshot(canonical_data: dict[str, Any]) -> dict[str, Any]:
     """Return a source snapshot with any remaining PII removed from text fields."""
-    snapshot = dict(canonical_data)
-    for field in ("job_description", "job_requirement"):
-        value = snapshot.get(field)
-        if isinstance(value, str):
-            snapshot[field] = redact_job_pii(value).text
-    return snapshot
+    # ponytail: central redactor masks JD text and removes contact/email
+    # heuristics; we keep the source snapshot consistent with canonical rules.
+    return redact_canonical_data("vn_job", dict(canonical_data))
 
 
 def _build_conflict_flags(

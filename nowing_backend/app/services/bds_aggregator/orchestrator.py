@@ -14,6 +14,7 @@ from app.canonical.services.canonical_persist_service import (
     create_persist_outbox,
     upsert_canonical_entity,
 )
+from app.canonical.services.canonical_pii import redact_source_snapshot
 from app.canonical.tenant_context import set_canonical_workspace_id
 from app.capabilities.core.store import get_capability
 from app.config import config
@@ -151,7 +152,6 @@ def _filter_by_confidence(
 
 
 _BDS_ENTITY_TYPE = "bds_listing"
-_BDS_PII_FIELDS = {"contact", "phone", "phone_key", "address_key"}
 
 
 def _build_bds_data(listing: VnBdsAggregatedListing) -> dict[str, Any]:
@@ -166,11 +166,10 @@ def _build_bds_data(listing: VnBdsAggregatedListing) -> dict[str, Any]:
 
 def _redact_bds_snapshot(data: dict[str, Any]) -> dict[str, Any]:
     """Return a source snapshot with PII fields removed or masked."""
-    # ponytail: phone_key/address_key are already excluded by
-    # VnBdsAggregatedListing.model_dump (Field(exclude=True)); contact is
-    # masked but we drop it from provenance snapshots to avoid retaining any
-    # phone-derived text.
-    return {k: v for k, v in data.items() if k not in _BDS_PII_FIELDS}
+    # ponytail: source snapshots do not need matching keys, so we drop even
+    # one-way digests here. Central redaction removes owner/seller phones and
+    # any *phone* / *email* heuristic keys as a second guard.
+    return redact_source_snapshot(_BDS_ENTITY_TYPE, data)
 
 
 def _build_bds_canonical_data(

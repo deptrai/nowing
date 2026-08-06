@@ -21,6 +21,7 @@ from app.db import (
 
 from ..tasks.backfill_canonical_embedding import backfill_canonical_embedding
 from ..tenant_context import set_canonical_workspace_id
+from .canonical_pii import redact_canonical_data, redact_source_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,8 @@ async def record_merge_history(
     new_source_ids: list[dict[str, Any]] | None = None,
 ) -> CanonicalMergeHistory:
     """Record one merge/revert/resolve audit row with full provenance."""
+    redacted_previous_data = redact_canonical_data(entity.entity_type, previous_data)
+    redacted_new_data = redact_canonical_data(entity.entity_type, new_data)
     prev = (
         previous_version if previous_version is not None else max(0, entity.version - 1)
     )
@@ -88,8 +91,8 @@ async def record_merge_history(
         entity_type=entity.entity_type,
         previous_version=prev,
         new_version=nxt,
-        previous_data=previous_data,
-        new_data=new_data,
+        previous_data=redacted_previous_data,
+        new_data=redacted_new_data,
         previous_source_ids=previous_source_ids or [],
         new_source_ids=new_source_ids or [],
         operation=operation,
@@ -114,10 +117,11 @@ async def create_persist_outbox(
     next_attempt_at: datetime | None = None,
 ) -> CanonicalPersistOutbox:
     """Stage a durable outbox row for retry."""
+    redacted_payload = redact_canonical_data(entity_type, payload)
     outbox = CanonicalPersistOutbox(
         workspace_id=workspace_id,
         entity_type=entity_type,
-        payload=payload,
+        payload=redacted_payload,
         status="pending",
         retry_count=retry_count,
         next_attempt_at=next_attempt_at,
@@ -270,6 +274,9 @@ async def upsert_canonical_entity(
     """
     await set_canonical_workspace_id(session, workspace_id)
 
+    data = redact_canonical_data(entity_type, data)
+    source_snapshot = redact_source_snapshot(entity_type, source_snapshot or {})
+
     existing = await session.scalar(
         select(CanonicalEntity)
         .where(
@@ -281,7 +288,6 @@ async def upsert_canonical_entity(
     )
 
     now = _now()
-    source_snapshot = source_snapshot or {}
     conflict_flags = conflict_flags or []
 
     if existing is not None:
@@ -589,6 +595,7 @@ async def resolve_canonical_conflict(
     if field == "canonical_title":
         entity.canonical_title = value
 
+    new_data = redact_canonical_data(entity.entity_type, new_data)
     entity.canonical_data = new_data
     entity.conflict_flags = new_conflict_flags
     entity.version = new_version
