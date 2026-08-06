@@ -1640,3 +1640,162 @@ So that I can track the dominant e-commerce platform.
 
 _AD-27 · Method: Third-party API (Apify/Bright Data) recommended; in-house requires 8-12w_
 
+
+---
+
+## Epic 18: Social Media Intelligence
+
+Tích hợp dữ liệu từ mạng xã hội — cung cấp sentiment analysis, trend tracking, content research cho research agents.
+
+**FRs covered:** FR-53 (social media integration)
+**ADs governed:** AD-27 (canonical entity convention), AD-25 (PII redaction)
+**Sources:** reddit, instagram, tiktok, youtube
+**Method:** Official APIs (Reddit API, YouTube Data API), Apify scrapers (Instagram, TikTok)
+
+> **Priority P1:** YouTube + Reddit có API official (dễ), Instagram + TikTok cần third-party scraper.
+
+### Story 18.1: YouTube Data Integration `[P0]`
+
+As a researcher,
+I want YouTube video data including transcripts, metadata, and comments,
+So that I can analyze video content and track topics over time.
+
+**Acceptance Criteria:**
+- **Given** YouTube Data API is configured, **When** a user searches by keyword, **Then** video results are returned with: title, description, channel, publish date, view count, like count, comment count.
+- **Given** a video is selected, **When** fetched, **Then** transcript/captions are extracted and indexed for search.
+- **Given** video metadata is stored, **When** new videos match saved searches, **Then** they appear in workspace notifications.
+
+**Validation:**
+- Integration test: `test_youtube_api.py` — API returns video metadata
+- Unit test: `test_youtube_transcript_extraction.py` — transcripts parsed correctly
+- Search test: `test_youtube_search.py` — videos appear in unified search
+
+_AD-27 · Method: YouTube Data API (official, rate-limited)_
+
+### Story 18.2: Reddit Data Integration `[P0]`
+
+As a researcher,
+I want Reddit posts and comments from relevant subreddits,
+So that I can track discussions, sentiment, and trending topics.
+
+**Acceptance Criteria:**
+- **Given** Reddit API (PRAW) is configured, **When** a user subscribes to subreddits, **Then** new posts are fetched and indexed.
+- **Given** posts are fetched, **When** stored, **Then** they include: title, body, author, score, comment count, subreddit, permalink.
+- **Given** Reddit data is stored, **When** a user searches, **Then** relevant posts and comments appear in results.
+
+**Validation:**
+- Integration test: `test_reddit_api.py` — PRAW returns posts
+- Unit test: `test_reddit_content_parsing.py` — posts parsed correctly
+- Search test: `test_reddit_search.py` — posts appear in unified search
+
+_AD-27 · Method: Reddit API (PRAW, OAuth required)_
+
+### Story 18.3: Instagram & TikTok Data `[P1]`
+
+As a social media analyst,
+I want public content data from Instagram and TikTok,
+So that I can track influencer content, hashtag trends, and engagement.
+
+**Acceptance Criteria:**
+- **Given** Apify scrapers are configured, **When** a user searches by hashtag or profile, **Then** public posts are returned with: caption, engagement metrics, media URLs, timestamp.
+- **Given** data is fetched, **When** stored, **Then** PII (personal account data) is redacted per AD-25.
+
+**Validation:**
+- Integration test: `test_instagram_apify.py` — Apify returns post data
+- Integration test: `test_tiktok_apify.py` — Apify returns video data
+- PII test: `test_social_pii_redaction.py` — personal data masked
+
+_AD-27 · AD-25 · Method: Apify scrapers (third-party, paid)_
+
+---
+
+## Epic 19: Search Intelligence
+
+Tích hợp Google Search và Google Maps — cung cấp web research và local business intelligence.
+
+**FRs covered:** FR-54 (search engine integration)
+**ADs governed:** AD-27 (canonical entity convention), AD-2 (pgvector)
+**Sources:** google_search, google_maps
+**Method:** Google Custom Search API, Google Places API
+
+> **Priority P1:** APIs official nhưng có cost. Google Custom Search: 100 queries/day free, $5/1000 queries sau đó.
+
+### Story 19.1: Google Search Integration `[P1]`
+
+As a researcher,
+I want web search results integrated into my workspace,
+So that I can search the web and save results alongside my documents.
+
+**Acceptance Criteria:**
+- **Given** Google Custom Search API is configured, **When** a user searches, **Then** web results are returned with: title, link, snippet, domain, date.
+- **Given** web results are returned, **When** a user saves a result, **Then** the page is crawled, chunked, and indexed like a document.
+- **Given** search data is stored, **When** content changes on source page, **Then** workspace shows "content changed" indicator.
+
+**Validation:**
+- Integration test: `test_google_search_api.py` — API returns results
+- Integration test: `test_google_search_save.py` — results saved as documents
+- Crawl test: `test_google_search_crawl.py` — page crawled and indexed
+
+_AD-27 · Method: Google Custom Search API (official, paid after free tier)_
+
+### Story 19.2: Google Maps / Local Business `[P1]`
+
+As a local business researcher,
+I want Google Maps data including business profiles, reviews, and locations,
+So that I can research local markets and business competitors.
+
+**Acceptance Criteria:**
+- **Given** Google Places API is configured, **When** a user searches by location and category, **Then** business listings are returned with: name, address, phone, rating, review count, hours, website.
+- **Given** business data is stored, **When** a user views a business, **Then** reviews and key attributes are displayed.
+- **Given** business data is fetched, **When** merged with company data (Epic 16), **Then** matching businesses are linked via canonical entity.
+
+**Validation:**
+- Integration test: `test_google_places_api.py` — Places API returns business data
+- Integration test: `test_google_maps_reviews.py` — reviews accessible
+- Entity linking test: `test_maps_company_linking.py` — businesses link to company records
+
+_AD-27 · Method: Google Places API (official, paid)_
+
+---
+
+## Epic 20: Global E-commerce
+
+Tích hợp dữ liệu từ Amazon và Walmart — cung cấp product research và pricing intelligence cho global markets.
+
+**FRs covered:** FR-55 (global e-commerce integration)
+**ADs governed:** AD-27 (canonical entity convention), AD-25 (PII redaction)
+**Sources:** amazon, walmart
+**Method:** Apify scrapers, Rainforest API (Amazon), Walmart API
+
+> **Priority P2:** Amazon scraping is hard (aggressive anti-bot). Walmart has official API. Defer until VN e-commerce (Epic 17) ships.
+
+### Story 20.1: Amazon Product Data `[P2]`
+
+As a product researcher,
+I want Amazon product data including price, reviews, and rankings,
+So that I can perform product research and competitive analysis on the largest e-commerce platform.
+
+**Acceptance Criteria:**
+- **Given** Amazon data source is connected (Rainforest API or Apify), **When** a user searches by keyword or ASIN, **Then** product listings are returned with: title, price, rating, review count, BSR, seller info.
+- **Given** product data is stored, **When** price changes, **Then** workspace tracks price history.
+
+**Validation:**
+- Integration test: `test_amazon_data_source.py` — data accessible
+- Unit test: `test_amazon_price_tracking.py` — price history recorded
+
+_AD-27 · Method: Rainforest API (paid) or Apify (paid)_
+
+### Story 20.2: Walmart Product Data `[P2]`
+
+As a product researcher,
+I want Walmart product data for US market research,
+So that I can compare pricing and availability across major US retailers.
+
+**Acceptance Criteria:**
+- **Given** Walmart API is configured, **When** a user searches by keyword or UPC, **Then** product listings are returned with: title, price, availability, rating, reviews.
+
+**Validation:**
+- Integration test: `test_walmart_api.py` — API returns product data
+
+_AD-27 · Method: Walmart API (official, partner approval required)_
+
