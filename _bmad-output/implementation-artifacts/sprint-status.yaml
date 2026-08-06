@@ -139,10 +139,10 @@ development_status:
   epic-11-retrospective: done
 
   epic-12: in-progress  # HR/Recruitment Vertical — Vietnam Job Market Pilot (Plan C)
-  12-0: in-progress  # ToS & Legal Review — hard gate for all 3 sources; output legal memo
+  12-0: done  # ToS & Legal Review — approved for all 3 sources
   12-1: done  # VietnamWorks Scraper — implemented, tested, E2E/MCP verified
-  12-2: blocked  # TopCV Scraper — anti-bot POC gate, Cloudflare challenge
-  12-3: ready-for-dev  # ITviec Scraper — story file created; skeleton ready
+  12-2: in-progress  # TopCV Scraper — anti-bot POC passed; implementing parser
+  12-3: done  # ITviec Scraper — implemented, tested, E2E/MCP verified
   12-4: done  # Vietnam Job Aggregator — normalize, dedupe, conflict scoring, orchestrator, unit tests
   12-5: done  # PII Redaction for Job Data — redact.py + tests, wired into aggregator before storage
   epic-12-retrospective: optional
