@@ -434,10 +434,10 @@ Ba `[ASSUMPTION]` trước đó, nay đã kiểm chứng:
 
 | | Agent Builder | Researcher | Enterprise |
 |---|---|---|---|
-| **Headline** | "Give your AI agent a memory that lasts" | "Research without duplicates, track what changes" | "Your team's research memory, self-hosted" |
-| **Pain** | Agent mất context mỗi session | Research trùng lặp, khó track xu hướng | Knowledge mất khi người rời |
+| **Tiêu đề** | "Cho AI agent của bạn một bộ nhớ bền lâu" | "Research không trùng lặp, theo dõi thay đổi" | "Bộ nhớ research của team bạn, self-host" |
+| **Nỗi đau** | Agent mất context mỗi session | Research trùng lặp, khó track xu hướng | Knowledge mất khi người rời |
 | **Differentiator** | MCP-native, self-host, 50+ MCP tools | Entity dedup, cross-source timeline | RBAC, team memory, compliance |
-| **Proof** | Claude Code / Cursor integration | Citation + confidence score | Self-host + audit log |
+| **Bằng chứng** | Claude Code / Cursor integration | Citation + confidence score | Self-host + audit log |
 
 ### 13.3 Go-to-Market: PLG + Community-Led
 
@@ -507,30 +507,30 @@ Ba `[ASSUMPTION]` trước đó, nay đã kiểm chứng:
 ### 13.7 Email Outreach Playbook (Concrete)
 
 ```
-Step 1: RESEARCH (Nowing scraper)
+Bước 1: NGHIÊN CỨU (Nowing scraper)
 ├── Find companies hiring researchers/analysts
 ├── Track funding news, product launches
 ├── Build lead list as canonical entities
 │
-Step 2: PERSONALIZE (Nowing synthesis)
+Bước 2: CÁ NHÂN HÓA (Nowing synthesis)
 ├── Research each prospect's recent news
 ├── Generate personalized email draft
 ├── Include specific insight + gift link
 │
-Step 3: SEND (automation)
+Bước 3: GỬI (automation)
 ├── Schedule emails (personalized timing)
 ├── Track opens/clicks in workspace
 │
-Step 4: FOLLOW UP (automation)
+Bước 4: THEO DÕI (automation)
 ├── If no response in 3 days → follow-up with new insight
 ├── If opened but no click → different angle
 └── If clicked but no signup → offer help
 ```
 
-**Gift strategy:**
-- "Free deep research credits — no credit card"
-- "Self-host free forever + 1000 cloud credits"
-- "Enterprise pilot — free for 30 days"
+**Chiến lược tặng:**
+- "Tặng credits deep research — không cần thẻ tín dụng"
+- "Self-host miễn phí mãi mãi + 1000 credits cloud"
+- "Thử nghiệm Enterprise — miễn phí 30 ngày"
 
 ### 13.8 Content Strategy
 
@@ -538,9 +538,9 @@ Step 4: FOLLOW UP (automation)
 |-------------|-----------|---------|----------------|
 | **Research Reports** | Monthly | Blog, LinkedIn, Twitter | "State of AI Memory", "VN E-commerce Trends" |
 | **Comparison Posts** | Bi-monthly | Blog, HN, Reddit | "Nowing vs Manual Research", "Entity vs Document" |
-| **Case Studies** | Quarterly | Blog, LinkedIn | "How X company uses Nowing for Y" |
-| **Product Demos** | Weekly | Twitter, YouTube | 2-min feature demos, before/after |
-| **Tutorials** | Weekly | Blog, Docs | "Track competitor in 5 minutes", "Build research agent" |
+| **Case Studies** | Quarterly | Blog, LinkedIn | "Công ty X dùng Nowing cho Y như thế nào" |
+| **Product Demos** | Weekly | Twitter, YouTube | Demo tính năng 2 phút, before/after |
+| **Tutorials** | Weekly | Blog, Docs | "Theo dõi đối thủ trong 5 phút", "Xây dụng research agent" |
 | **Transparency Posts** | Monthly | HN, Reddit | Open revenue, open metrics (OSS credibility) |
 
 ### 13.9 Pricing/Packaging Strategy
@@ -552,7 +552,7 @@ Step 4: FOLLOW UP (automation)
 | **Team** | $99-199/mo | Small team (5-20) | + RBAC, shared memory, analytics |
 | **Enterprise** | Custom | Large org | + SLA, support, self-host option, compliance |
 
-**Conversion wedge:** Deep research (cloud-only in Phase 1) → self-host users who need it convert to cloud.
+**Đòn bẩy chuyển đổi:** Deep research (chỉ cloud ở Phase 1) → self-host users cần sẽ chuyển sang cloud.
 
 ### 13.10 Partnerships
 
