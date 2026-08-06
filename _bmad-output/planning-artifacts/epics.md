@@ -2,7 +2,7 @@
 title: Nowing - Epic Breakdown
 description: ''
 createdAt: '2026-07-28T12:47:48.297Z'
-updatedAt: '2026-08-05T23:59:00.000Z'
+updatedAt: '2026-08-06T00:00:00.000Z'
 tags:
   - bmad
   - bmad-source-bmad-output-planning-artifacts-epics-md
@@ -1326,7 +1326,93 @@ So that Nowing does not accidentally retain candidate PII.
 _Kỹ thuật (không phải AC):_ Shared PII pipeline in `app/services/pii/` or inside jobs aggregator. Unit tests for representative samples from VietnamWorks, TopCV, ITviec.
 
 _FR-47 · NFR-11 · OQ-3 · `feature-brief-hr-vertical-vietnam-2026-08-05.md`._
+---
 
+## Epic 13: Canonical Entity Storage & Multi-Domain Indexing
+
+Hệ thống lưu trữ, dedup, index entities từ nhiều nguồn — tra cứu nhanh, tiết kiệm storage, mở rộng cho mọi domain.
+
+**FRs covered:** FR-48 (canonical entity search & indexing), FR-46 (extend vn_jobs.aggregate)
+**ADs governed:** AD-27 (canonical entity convention), AD-28 (unified engine trigger), inherits AD-24, AD-14, AD-2
+
+> **Scope reduced 2026-08-06 (Party Mode review):** Was 7 stories. Reduced to 3 — existing aggregators (`bds_aggregator`, `jobs_aggregator`) already implement matching/dedupe. Epic 13 adds PERSISTENCE LAYER + CONVENTION, not a new matching engine.
+
+### Story 13.1: Canonical Entity Schema & Convention `[P0]`
+
+As a developer,
+I want a canonical entity table with a defined schema and a documented convention for domain plugins,
+So that all domain aggregators persist merged results consistently and future domains follow the same pattern.
+
+**Acceptance Criteria:**
+- **Given** the migration runs, **When** complete, **Then** a `canonical_entities` table exists with: `id` (UUID PK), `workspace_id` (FK, RLS-enforced), `entity_type` (String: "property"/"job"/"product"/"item"), `canonical_title` (String), `canonical_data` (JSONB), `fingerprint` (String, unique per workspace+entity_type), `source_count` (Integer), `confidence_score` (Float), `conflict_flags` (String[]), `first_seen_at` (Timestamp), `last_seen_at` (Timestamp), `embedding` (Vector).
+- **Given** the schema exists, **When** a domain aggregator writes, **Then** it populates `fingerprint`, `entity_type`, and `canonical_data`.
+- **Given** the convention is documented, **When** a new domain is added, **Then** it implements `fingerprint()`, `merge()`, `search_text()` with consistent signatures.
+- **Given** RLS policies are applied, **When** workspace A queries, **Then** it cannot see workspace B's canonical entities.
+- **Given** existing aggregators (BDS, Jobs), **When** they write to canonical table, **Then** they reuse their existing dedupe logic (no new matching engine).
+- **Given** convention is documented, **When** `nowing_evals` canonical convention suite runs, **Then** all domains pass fingerprint/merge/search_text signature compliance.
+
+**Validation:**
+- Unit test: `test_canonical_convention_compliance.py` — all 3 methods implemented per domain
+- Integration test: `test_canonical_rls_isolation.py` — workspace isolation enforced
+- Migration test: `test_canonical_migration_rollback.py` — Alembic upgrade/downgrade clean
+
+_AD-27 · AD-2 (pgvector) · Inherits AD-24 pattern._
+
+### Story 13.2: Persist Aggregator Output to Canonical Table `[P0]`
+
+As a user,
+I want aggregated results persisted as canonical entities,
+So that I can search unified results and track entity changes over time.
+
+**Acceptance Criteria:**
+- **Given** `bds_aggregator` completes aggregation, **When** results are ready, **Then** they are written to `canonical_entities` table (not just returned ephemerally).
+- **Given** `jobs_aggregator` completes aggregation, **When** results are ready, **Then** they are written to `canonical_entities` table.
+- **Given** a canonical entity already exists (fingerprint match), **When** new source data arrives, **Then** the existing entity is updated (not duplicated) with new source reference.
+- **Given** merge happens, **When** recorded, **Then** `MergeHistory` row stores: `entity_before` (snapshot), `entity_after` (snapshot), `merged_by`, `conflicts`, `method`.
+- **Given** a merge is reversible, **When** admin reverts, **Then** entity returns to pre-merge state.
+- **Given** canonical data contains PII, **Before** storage, **Then** AD-25 redaction applies (no raw PII in golden records).
+- **Given** HR pilot data (8 weeks), **When** aggregator runs on 1000+ listings, **Then** dedup precision ≥ 0.95, recall ≥ 0.90 on known-duplicate dataset.
+
+**Validation:**
+- Benchmark dataset: `canonical_dedup_1000.json` (seeded duplicates, ground truth known)
+- `nowing_evals/suites/canonical/test_dedup_accuracy.py` — precision/recall metrics
+- `test_canonical_merge_revert.py` — merge → revert → data integrity
+- `test_canonical_pii_scan.py` — automated PII scan, 0 leaks
+- Storage report: `(raw - canonical) / raw` → target ≥ 60% reduction
+
+_AD-27 (persistence layer) · AD-24 (aggregator output) · AD-25 (PII redaction)._
+
+### Story 13.3: Unified Search API `[P0]`
+
+As a user,
+I want to search across canonical entities and documents in a single query,
+So that I see unified results without duplicates.
+
+**Acceptance Criteria:**
+- **Given** a search query, **When** submitted, **Then** it searches both `canonical_entities` and `documents` in parallel.
+- **Given** hybrid search is enabled, **When** results fuse, **Then** ranking = 0.7 × vector_cosine + 0.3 × BM25_tsrank (tunable per workspace).
+- **Given** a canonical entity has source URLs, **When** displayed, **Then** results show source count + "View N sources" link.
+- **Given** workspace RLS is enforced, **When** querying, **Then** only current workspace's entities and documents are searchable.
+- **Given** search latency budget, **When** p95 exceeds 500ms, **Then** alert fires (observability).
+- **Given** canonical entities in corpus, **When** search runs hybrid (BM25 + vector), **Then** recall@10 ≥ 0.85, precision@5 ≥ 0.80, zero duplicate results.
+
+**Validation:**
+- Benchmark dataset: `canonical_search_500.json` (queries + expected entities)
+- `nowing_evals/suites/canonical/test_search_quality.py` — recall/precision metrics
+- `test_canonical_search_latency.py` — p95 < 500ms
+- `test_canonical_no_duplicates.py` — result set không chứa cùng entity 2 lần
+- A/B comparison: documents-only vs documents+canonical → measure improvement
+
+_AD-27 (search_text convention) · AD-2 (pgvector hybrid search) · AD-18 (RLS)._
+
+---
+
+## Ghi chú
+- **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
+- **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
+- Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
+- **Epic 13** phụ thuộc Epic 12 (HR scrapers) hoàn thành để có data deduplicate — story 13.2 cần aggregator output.
+- **Epic 13 scope reduced 2026-08-06:** 7→3 stories. Existing aggregators already do matching/dedupe — Epic 13 adds persistence + convention, not new engine.
 ---
 
 ## Ghi chú

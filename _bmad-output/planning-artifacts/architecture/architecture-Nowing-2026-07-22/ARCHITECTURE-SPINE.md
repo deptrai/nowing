@@ -7,7 +7,7 @@ paradigm: 'layered modular monolith + stateless MCP server + client-server with 
 scope: 'Toàn bộ hệ sinh thái Nowing: backend FastAPI, web Next.js, desktop Electron, browser extension, Obsidian plugin, MCP server, và evals.'
 status: draft
 created: '2026-07-22'
-updated: '2026-08-05'
+updated: '2026-08-06'
 binds: []
 sources:
   - /Users/luisphan/Documents/nowing/docs/architecture-backend.md
@@ -44,6 +44,10 @@ companions:
 > - **`AD-24` mới** — `vn_jobs.aggregate`: copy-modify từ `app/services/bds_aggregator/`, fan-out 3 sources, normalize/dedupe/conflict/salary-consistency.
 > - **`AD-25` mới** — PII redaction pipeline: chạy trước khi job data vào `Memory`, regex phone/email + heuristic name, chỉ log counts.
 > - **`AD-26` mới** — ToS/legal gates: không build scraper mới cho đến khi ToS cho phép và legal counsel xác nhận không cần license môi giới việc làm.
+>
+> **✅ Bổ sung 2026-08-06 (đợt 6 — Canonical Entity Storage & Multi-Domain Indexing):**
+> - **`AD-27` mới** — Canonical entity convention: mỗi domain aggregator MUST implement 3 methods (`fingerprint()`, `merge()`, `search_text()`) với signature nhất quán. Inherits AD-24 pattern, prevents matching logic divergence across domains.
+> - **`AD-28` mới** — Unified canonical engine trigger: build unified matching engine khi có domain thứ 3 HOẶC cross-source overlap >30%. Trước trigger: giữ copy-modify nhưng follow AD-27 convention.
 >
 > **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
 > - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
@@ -586,6 +590,32 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - If ToS or legal counsel blocks a source, that source is disabled gracefully (`degraded=true`) and removed from default `sources` list; do not bypass blocks.
   - **Observability (Dev finding D12):** Add low-cardinality counters for `pii_phones_detected`, `pii_emails_detected`, `pii_names_detected`, `vn_jobs_aggregate_degraded`, and per-source block rate. These support SM-12 and do not leak PII values.
 
+### AD-27 — Canonical Entity Convention (multi-domain indexing)
+
+- **Binds:** AD-24 (`vn_jobs.aggregate`), AD-22/AD-23 (scraper outputs), all future domain aggregators
+- **Prevents:** Mỗi domain implement matching logic khác chuẩn → khó merge, khó tune, khó reuse
+- **Rule:**
+  - Mỗi domain aggregator (BĐS, Jobs, Products, Items, ...) MUST implement 3 methods với signature nhất quán:
+    - `fingerprint(raw_data: dict) -> str` — Tạo unique key để match giữa các nguồn. VD: BĐS dùng `normalize(address) + area_m2 + project`; Jobs dùng `normalize(company) + normalize(title) + location`.
+    - `merge(canonical: dict, new_raw: dict) -> MergeResult` — Merge new scrape vào canonical entity, detect conflicts (price mismatch, salary range divergence), resolve bằng strategy (most-recent-wins, most-confident-wins, median-if-within-threshold).
+    - `search_text(canonical: dict) -> str` — Tạo text để embed + full-text search. Chuẩn hóa từ canonical data đã merge.
+  - Ban đầu implement như standalone functions (không cần class/plugin registry), nhưng giữ signature nhất quán để sau này extract thành plugin dễ dàng.
+  - **Inherits AD-24 pattern:** `vn_jobs.aggregate` đã có normalize/dedupe/conflict/salary-consistency — document lại như convention cho mọi domain.
+  - **Matching waterfall** (4-pass, từ technical research): exact fingerprint → rule-based → vector similarity → LLM verification (chỉ cho ambiguous cases).
+  - **ADOPTED:** AD-24 đã có pattern. Đây là formalize convention, không phải engine mới.
+
+### AD-28 — Unified Canonical Engine Trigger
+
+- **Binds:** Future domain expansion (domain thứ 3+)
+- **Prevents:** (a) Premature optimization — build engine khi chỉ có 2 domains; (b) Technical debt vô hạn — copy-modify không có limit
+- **Rule:**
+  - **Trigger build unified engine** khi 1 trong 2 conditions xảy:
+    - **(a) Có domain thứ 3 cần aggregator** — copy-modify pattern bắt đầu duplicate code đáng kể.
+    - **(b) Cross-source overlap >30%** trong 1 domain — dedupe primitive (cosine <0.08) không đủ, cần fingerprint-based matching.
+  - **Trước trigger:** Giữ copy-modify pattern (AD-24) nhưng follow AD-27 convention (3 methods, signature nhất quán).
+  - **Sau trigger:** Refactor thành unified plugin engine — 1 matching engine + domain plugins. Plugin interface = AD-27 convention (fingerprint/merge/search_text).
+  - **Scale trigger measurement:** Đo cross-source overlap bằng fingerprint match rate. Nếu >30% records match qua fingerprint → trigger hit.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -710,7 +740,8 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 | VietnamWorks scraper | `nowing_backend/app/proprietary/platforms/vietnamworks/`, `app/capabilities/vietnamworks/scrape/` | AD-22, AD-3, AD-16, AD-25, AD-26 |
 | TopCV scraper | `nowing_backend/app/proprietary/platforms/topcv/`, `app/capabilities/topcv/scrape/` | AD-23, AD-3, AD-16, AD-19, AD-25, AD-26 |
 | ITviec scraper | `nowing_backend/app/proprietary/platforms/itviec/`, `app/capabilities/itviec/scrape/` | AD-23, AD-3, AD-16, AD-25, AD-26 |
-| Vietnam job aggregator | `nowing_backend/app/services/jobs_aggregator/`, `app/capabilities/vn_jobs/aggregate/` | AD-24, AD-3, AD-8, AD-11.1, AD-25 |
+| Vietnam job aggregator | `nowing_backend/app/services/jobs_aggregator/`, `app/capabilities/vn_jobs/aggregate/` | AD-24, AD-3, AD-8, AD-11.1, AD-25, **AD-27** |
+| Canonical entity storage & indexing *(convention, chưa phải engine riêng)* | Follow AD-27 convention trong mỗi domain aggregator; sẽ refactor thành engine khi trigger AD-28 hit | **AD-27**, **AD-28**, AD-2, AD-14 |
 | PII redaction (job data) | `nowing_backend/app/services/pii/` (or `jobs_aggregator/pii.py`) | AD-25, AD-11 |
 
 ## Deferred / Gaps
