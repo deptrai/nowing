@@ -1,5 +1,5 @@
 # generated: 2026-08-04 01:00:00
-# last_updated: 2026-08-05 23:59
+# last_updated: 2026-08-06 16:59
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -47,7 +47,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-04 01:00:00"
-last_updated: "2026-08-06"
+last_updated: "2026-08-06 16:59"
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
@@ -66,7 +66,7 @@ development_status:
   2-10: done
   epic-2-retrospective: optional
 
-  epic-3: done  # P0/P1 stories done; 3-15, 3-16 ready-for-dev expansions
+  epic-3: done  # P0/P1 stories done
   3-6: done
   3-7: done
   3-9: done  # baseline ratified 2026-08-04; gate.yaml has baseline_ratified=true + baseline_source
@@ -79,7 +79,7 @@ development_status:
   3-16: done  # OKF knowledge export implemented, tested, MCP round-trip verified
   epic-3-retrospective: optional
 
-  epic-4: done  # P0/P1 stories done; 4-7, 4-8d ready-for-dev expansions
+  epic-4: done  # P0/P1 stories done
   4-7: done  # pointer-based tabs with live title resolution; tsc, biome, migrate tests, Playwright MCP verified
   4-8a: done
   4-8b: done
@@ -94,12 +94,15 @@ development_status:
   epic-5: done
   epic-5-retrospective: optional
 
-  epic-6: done
+  epic-6: done  # core automations done; 6-6/6-7/6-9 playbook gaps tracked
   6-4: done
   6-5: done
+  6-6: backlog  # Playbook Reuse — expose inputs.schema already present
+  6-7: backlog  # Schema-Driven Form UI for playbook & action
+  6-9: backlog  # Workspace vertical + Playbook Library
   epic-6-retrospective: optional
 
-  epic-7: done  # core clients done; 7-4, 7-7 ready-for-dev expansions
+  epic-7: done  # core clients done; 7-4, 7-7 done
   7-4: done
   7-7: done  # MCP server tool expansion — all 9 ACs done, code review clean, mutation 78/78 PASS, human review PASS (2026-08-05)
   epic-7-retrospective: optional
