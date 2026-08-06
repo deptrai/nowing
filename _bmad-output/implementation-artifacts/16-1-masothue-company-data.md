@@ -118,6 +118,7 @@ Thêm `masothue.scrape` thành built-in scraper capability mới. Story này l�
   - [ ] `nowing_mcp/mcp_server/selfcheck.py` thêm `nowing_masothue_scrape` vào `EXPECTED_TOOLS`.
   - [ ] `nowing_web/app/(home)/mcp-server/page.tsx` thêm tool vào `TOOL_GROUPS` nếu marketing page cần cập nhật.
 - [ ] Viết tests (AC #9)
+  - [x] Tạo ATDD checklist test-first (`bmad-nowing-test-first-atdd`) → `_bmad-output/test-artifacts/atdd-checklist-16-1-masothue-company-data.md`
   - [ ] Unit parser tests với fixture detail + search list.
   - [ ] Unit capability schema/executor/billing tests.
   - [ ] Integration test với `@pytest.mark.integration` và flag `SCRAPE_LIVE`.
