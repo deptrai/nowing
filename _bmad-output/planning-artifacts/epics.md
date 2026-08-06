@@ -1447,3 +1447,196 @@ _AD-27 (search_text convention) · AD-2 (pgvector) · workspace isolation contra
 - Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
 - **Epic 13 sequencing:** Story 13.1 + BDS contract (13.2a) có thể chạy trước Epic 12. Jobs persistence (13.2b), Jobs fixtures (13.2e) và HR pilot benchmark phụ thuộc Epic 12.
 - **Epic 13 scope (2026-08-06+):** persistence/lineage/search layer over existing aggregators. Story 13.2 is five sub-stories (13.2a–e); shared tables ship in 13.1 before any AD-28 plugin-engine trigger.
+
+---
+
+## Epic 14: News Aggregation (Vietnam)
+
+Tích hợp 4 trang tin tức lớn Việt Nam qua RSS feeds — cung cấp nguồn dữ liệu news cho research memory và chat agents.
+
+**FRs covered:** FR-49 (news aggregation & indexing)
+**ADs governed:** AD-27 (canonical entity convention), AD-2 (pgvector)
+**Sources:** VnExpress, Tuổi Trẻ, Dân Trí, Vietnamnet
+**Method:** RSS feeds (30+ category feeds, zero anti-bot)
+
+> **Priority P0:** Quick win — 1-2 days to integrate, zero anti-bot, immediate user value.
+
+### Story 14.1: RSS Feed Integration `[P0]`
+
+As a user,
+I want news from major Vietnamese portals available in my workspace,
+So that I can search and reference news articles alongside my research documents.
+
+**Acceptance Criteria:**
+- **Given** RSS feeds are configured, **When** the system polls (every 15 min), **Then** new articles from VnExpress, Tuổi Trẻ, Dân Trí, Vietnamnet are fetched and stored.
+- **Given** articles are fetched, **When** stored, **Then** each article has: title, link, description, pubDate, category, source.
+- **Given** articles are stored, **When** a user searches, **Then** news articles appear in unified search results.
+- **Given** duplicate articles (syndicated across portals), **When** detected, **Then** they are deduplicated via canonical entity convention (AD-27).
+
+**Validation:**
+- Integration test: `test_news_rss_integration.py` — all 4 portals polled
+- Unit test: `test_news_dedup.py` — syndicated articles deduplicated
+- Search test: `test_news_search.py` — articles appear in search results
+
+_AD-27 · AD-2 · Method: RSS (official feeds, no anti-bot)_
+
+### Story 14.2: News Entity Extraction `[P1]`
+
+As a researcher,
+I want key entities (people, organizations, locations) extracted from news articles,
+So that I can track mentions and trends over time.
+
+**Acceptance Criteria:**
+- **Given** a news article, **When** processed, **Then** named entities (people, organizations, locations) are extracted.
+- **Given** entities are extracted, **When** stored, **Then** they link to canonical entity records (if match) or create new ones.
+- **Given** entity tracking is active, **When** a user queries an entity, **Then** all mentioning articles are returned.
+
+**Validation:**
+- Unit test: `test_news_entity_extraction.py` — entity accuracy ≥ 0.85
+- Integration test: `test_news_entity_linking.py` — entities link to canonical records
+
+_AD-27 (entity convention) · AD-25 (PII redaction for person names)_
+
+---
+
+## Epic 15: Financial Data (Vietnam)
+
+Tích hợp dữ liệu tài chính từ CafeF và Vietstock — cung cấp stock prices, financial statements, market news cho investment research.
+
+**FRs covered:** FR-50 (financial data integration)
+**ADs governed:** AD-27 (canonical entity convention), AD-25 (PII redaction)
+**Sources:** CafeF (unofficial API), Vietstock (HTML + auth tokens)
+**Method:** CafeF unofficial API (no auth), Vietstock HTML scrape (cookie-based)
+
+> **Priority P0:** CafeF quick win (2-4 hours), Vietstock medium effort (1-2 weeks).
+
+### Story 15.1: CafeF Financial Data Integration `[P0]`
+
+As an investment researcher,
+I want stock prices, financial statements, and market news from CafeF,
+So that I can analyze company fundamentals without leaving Nowing.
+
+**Acceptance Criteria:**
+- **Given** CafeF unofficial API is connected, **When** a user queries a stock symbol, **Then** current price, OHLCV, and key ratios are returned.
+- **Given** financial statements are fetched, **When** stored, **Then** balance sheet, income statement, and cash flow are available per company.
+- **Given** market news is fetched, **When** new articles are published, **Then** they appear in workspace search.
+- **Given** data is fetched, **When** rate limit approached (20 req/min), **Then** requests are throttled gracefully.
+
+**Validation:**
+- Integration test: `test_cafef_api_connection.py` — API responds correctly
+- Unit test: `test_cafef_financial_parsing.py` — financial statements parsed accurately
+- Rate limit test: `test_cafef_throttling.py` — graceful throttling
+
+_AD-27 · Method: Unofficial public API (no auth needed)_
+
+### Story 15.2: Vietstock Deep Financials `[P1]`
+
+As a deep researcher,
+I want comprehensive financial data from Vietstock (3000+ companies, 130K+ statements),
+So that I can perform historical analysis and cross-company comparison.
+
+**Acceptance Criteria:**
+- **Given** Vietstock scraper is authenticated, **When** a company is queried, **Then** 20+ years of historical data is available.
+- **Given** financial ratios are extracted, **When** compared across companies, **Then** P/E, P/B, ROE, ROA are normalized and comparable.
+- **Given** Vietstock data conflicts with CafeF, **When** merged, **Then** conflict is flagged and both values preserved.
+
+**Validation:**
+- Integration test: `test_vietstock_auth.py` — cookie refresh works
+- Unit test: `test_vietstock_ratio_normalization.py` — ratios comparable across companies
+
+_AD-27 · AD-24 (cross-source dedup pattern)_
+
+---
+
+## Epic 16: Company Directory (Vietnam)
+
+Tích hợp dữ liệu doanh nghiệp từ masothue.com và business.gov.vn — cung cấp company profiles cho business intelligence.
+
+**FRs covered:** FR-51 (company data integration)
+**ADs governed:** AD-27 (canonical entity convention), AD-2 (pgvector)
+**Sources:** masothue.com (2M+ businesses), business.gov.vn (official registry)
+**Method:** HTML scrape (simple forms), RSS (doanhnghiep.vn)
+
+> **Priority P0:** masothue.com quick win (2-3 days), business.gov.vn medium (1 week).
+
+### Story 16.1: masothue.com Company Data `[P0]`
+
+As a business researcher,
+I want access to 2M+ Vietnamese company profiles with tax codes and registration data,
+So that I can verify business partners and research market players.
+
+**Acceptance Criteria:**
+- **Given** masothue.com scraper is built, **When** a user searches by company name or tax code, **Then** company profile is returned with: name, tax code, address, legal representative, status.
+- **Given** company data is fetched, **When** stored, **Then** it follows canonical entity convention (AD-27) with fingerprint = normalized(tax_code) or normalized(name + address).
+- **Given** a company already exists in workspace, **When** re-fetched, **Then** data is updated (not duplicated).
+
+**Validation:**
+- Integration test: `test_masothue_scrape.py` — company data extracted correctly
+- Unit test: `test_company_fingerprint.py` — tax_code or name+address fingerprint
+- Dedup test: `test_company_dedup.py` — no duplicate company records
+
+_AD-27 · Method: HTML scrape (simple, low anti-bot)_
+
+### Story 16.2: Official Business Registry `[P1]`
+
+As a compliance researcher,
+I want official company registration data from Vietnamese government portals,
+So that I can verify legal status and regulatory compliance.
+
+**Acceptance Criteria:**
+- **Given** government portal scraper is built, **When** a user queries by tax code, **Then** official registration data is returned: charter capital, business lines, ownership structure.
+- **Given** official data conflicts with masothue, **When** merged, **Then** official source wins (most_confident strategy per AD-27).
+
+**Validation:**
+- Integration test: `test_business_gov_vn.py` — official data accessible
+- Unit test: `test_official_source_priority.py` — official > masothue in conflicts
+
+_AD-27 (most_confident strategy) · AD-24 (cross-source merge)_
+
+---
+
+## Epic 17: E-commerce Intelligence (Vietnam)
+
+Tích hợp dữ liệu thương mại điện tử từ Lazada và Shopee — cung cấp pricing intelligence, product research, competitor tracking.
+
+**FRs covered:** FR-52 (e-commerce data integration)
+**ADs governed:** AD-27 (canonical entity convention), AD-25 (PII redaction)
+**Sources:** Lazada (public product pages), Shopee (login-gated, hard)
+**Method:** Lazada HTML scrape (moderate anti-bot), Shopee third-party API (Apify/Bright Data)
+
+> **Priority P1:** Lazada medium effort (4-6 weeks), Shopee hard (8-12 weeks, defer).
+
+### Story 17.1: Lazada Product Data `[P1]`
+
+As a product researcher,
+I want product data from Lazada Vietnam including price, seller, ratings, and variants,
+So that I can perform pricing analysis and competitor tracking.
+
+**Acceptance Criteria:**
+- **Given** Lazada scraper is built, **When** a user searches by product keyword, **Then** product listings are returned with: title, price, original price, discount, rating, review count, seller name, variants.
+- **Given** product data is fetched, **When** stored, **Then** it follows canonical entity convention (AD-27) with fingerprint = normalized(title) + seller_id.
+- **Given** Lazada anti-bot measures trigger, **When** detected, **Then** scraper backs off gracefully and retries with proxy rotation.
+
+**Validation:**
+- Integration test: `test_lazada_scrape.py` — product data extracted
+- Unit test: `test_lazada_fingerprint.py` — title + seller_id fingerprint
+- Anti-bot test: `test_lazada_graceful_degradation.py` — backs off on 403/CAPTCHA
+
+_AD-27 · Method: HTML scrape (moderate anti-bot, residential proxies preferred)_
+
+### Story 17.2: Shopee Product Data `[P2]`
+
+As a market intelligence analyst,
+I want product data from Shopee Vietnam (56% market share),
+So that I can track the dominant e-commerce platform.
+
+**Acceptance Criteria:**
+- **Given** Shopee data source is connected (third-party API or in-house scraper), **When** a user searches by keyword, **Then** product listings are returned.
+- **Given** Shopee data is fetched, **When** merged with Lazada data, **Then** same products across platforms are deduplicated via canonical entity (different sellers, same product).
+
+**Validation:**
+- Integration test: `test_shopee_data_source.py` — data accessible
+- Dedup test: `test_cross_platform_dedup.py` — same product across Lazada/Shopee merged
+
+_AD-27 · Method: Third-party API (Apify/Bright Data) recommended; in-house requires 8-12w_
+
