@@ -1,0 +1,1535 @@
+Vui lòng bật chia sẻ vị trí để Toppy Ai gợi ý những cơ hội việc làm phù hợp nhất dành riêng cho bạn
+
+## Tổng quan
+
+## Mô tả công việc
+
+- Develop in web application development in different areas such as: AI Machine learning / Data Learning Solution and other company solutions
+- Ensure the best possible performance, quality and responsiveness of back-end applications
+- Always keep up to date with emerging technologies
+
+## Yêu cầu ứng viên
+
+[Required]
+
+- Bachelor’s degree in information technology, or related fields.
+- More than 3 years of experience in python develop
+- Experience designing data analytics pipelines
+- Experience in using various data analysis tools
+- Experience storing data in various formats (Parquet, CSV, Iceberg, etc.)
+- Memory Optimization Experience
+- Experience in gaining visibility/traceability of data analytics pipelines
+- Experience analyzing data in Python, Spark environments
+- Experience using data analytics services such as Spark
+- Experience in developing cloud (AWS) environments
+- Experience in developing with RDBMS (MySQL) SQL
+- Experience with collaboration tools such as Git, Jira, Confluence, etc.
+- Understand and leverage CI/CD
+
+[Nice to have]
+
+- Team leading experience
+- Able to communicate in Korean
+
+## Quyền lợi ứng viên
+
+- Attractive salary and bonus will be discussed after going through CV & Interview
+- Review capacity annually and adjust salary increases according to work performance.
+- Health care: Premium health insurance, Annual health check-up
+- Young working environment
+- Good career development opportunities with interesting and challenging projects.
+- English, Korean, technical, soft skills training courses.
+- Opportunity to learn special courses from LG CNS, new technology and security.
+- Gifts on holidays (April 30th - May 1st, September 2nd, Tet, etc.)
+- Outdoor activities with company support: sports clubs, team building, happy hour parties, birthdays, travel, employee and family events, etc.
+- Working hours: 8 hours from Monday - Friday (8 hours/day)
+
+## Địa điểm và thời gian
+
+### Địa điểm làm việc
+
+**Hà Nội:**Keangnam, Phường Yên Hòa (quận Cầu Giấy cũ)
+
+### Thời gian làm việc
+
+- Thứ 2 - Thứ 6 (từ 08:00 đến 17:00)
+
+### Cách thức ứng tuyển
+
+- Ứng viên nộp hồ sơ trực tuyến bằng cách bấm
+**Ứng tuyển**ngay dưới đây.
+
+Hạn ứng tuyển: 27/08/2026
+
+[hãy phản ánh với chúng tôi.](javascript:showLoginPopup('https://www.topcv.vn/viec-lam/etl-developer-data-engineer/1599438.html?report-form=1',%20'%C4%90%C4%83ng%20nh%E1%BA%ADp%20ho%E1%BA%B7c%20%C4%90%C4%83ng%20k%C3%BD%20%C4%91%E1%BB%83%20ph%E1%BA%A3n%20%C3%A1nh%20tin%20tuy%E1%BB%83n%20d%E1%BB%A5ng%20n%C3%A0y!'))
+
+## Việc làm liên quan
+
+## Thông tin chung
+
+Dưới đây là những dấu hiệu của các tổ chức, cá nhân tuyển dụng không minh bạch:
+
+- Kiểm tra thông tin về công ty, việc làm trước khi ứng tuyển
+-
+Báo cáo tin tuyển dụng với TopCV thông qua nút
+**"Báo cáo tin tuyển dụng"**để được hỗ trợ và giúp các ứng viên khác tránh được rủi ro -
+Hoặc liên hệ với TopCV thông qua kênh hỗ trợ ứng viên của TopCV:
+
+Email:[hotro@topcv.vn](mailto:hotro@topcv.vn)
+
+Hotline:[1900 068 889 | Nhánh 2](tel:1900068889)
+
+[Báo cáo tin tuyển dụng](javascript:showLoginPopup('https://www.topcv.vn/viec-lam/etl-developer-data-engineer/1599438.html?report-form=1',%20'%C4%90%C4%83ng%20nh%E1%BA%ADp%20ho%E1%BA%B7c%20%C4%90%C4%83ng%20k%C3%BD%20%C4%91%E1%BB%83%20ph%E1%BA%A3n%20%C3%A1nh%20tin%20tuy%E1%BB%83n%20d%E1%BB%A5ng%20n%C3%A0y!'))
+
+Tìm hiểu thêm kinh nghiệm phòng tránh lừa đảo [tại đây](https://blog.topcv.vn/huong-dan-tim-viec-an-toan-trong-ky-nguyen-so/)
+
+[Developer](https://www.topcv.vn/tim-viec-lam-developer)-
+
+[Data Engineer](https://www.topcv.vn/tim-viec-lam-data-engineer)tuyển dụng bởi công ty
+
+[Công Ty TNHH LG CNS VIỆT NAM](https://www.topcv.vn/cong-ty/cong-ty-tnhh-lg-cns-viet-nam/139535.html)tại Hà Nội, Phường Yên Hòa - Hà Nội với mức lương Thoả thuận yêu cầu hình thức làm việc Toàn thời gian. Bạn có thể tham khảo thêm các vị trí tuyển dụng
+
+[Data Engineer tại Hà Nội, Phường Yên Hòa - Hà Nội](https://www.topcv.vn/tim-viec-lam-data-engineer-tai-ha-noi-kl1)khác trên kênh tuyển dụng việc làm topcv.
+
+**Cơ hội ứng tuyển việc làm với đãi ngộ hấp dẫn tại các công ty hàng đầu**
+
+Trước sự phát triển vượt bậc của nền kinh tế, rất nhiều ngành nghề trở nên khan hiếm nhân lực hoặc thiếu nhân lực giỏi. Vì vậy, hầu hết các trường Đại học đều liên kết với các công ty, doanh nghiệp, cơ quan để tạo cơ hội cho các bạn sinh viên được học tập, rèn luyện bản thân và làm quen với môi trường làm việc từ sớm. Trong [ danh sách việc làm](https://www.topcv.vn/viec-lam) trên đây, TopCV mang đến cho bạn những cơ hội việc làm tại những môi trường làm việc năng động, chuyên nghiệp.
+
+**Vậy tại sao nên tìm việc làm tại TopCV?**
+
+**Việc làm Chất lượng**
+
+- Hàng ngàn tin tuyển dụng chất lượng cao được cập nhật thường xuyên để đáp ứng nhu cầu tìm việc của ứng viên.
+- Hệ thống thông minh tự động gợi ý các công việc phù hợp theo CV của bạn.
+
+**Công cụ viết CV đẹp Miễn phí**
+
+- Nhiều mẫu CV đẹp, phù hợp nhu cầu ứng tuyển các vị trí khác nhau.
+- Tương tác trực quan, dễ dàng chỉnh sửa thông tin, tạo CV online nhanh chóng trong vòng 5 phút.
+
+**Hỗ trợ Người tìm việc**
+
+- Nhà tuyển dụng chủ động tìm kiếm và liên hệ với bạn qua hệ thống kết nối ứng viên thông minh.
+- Báo cáo chi tiết Nhà tuyển dụng đã xem CV và gửi offer tới bạn.
+
+Tại [ TopCV](https://www.topcv.vn/), bạn có thể tìm thấy những tin tuyển dụng việc làm với mức lương vô cùng hấp dẫn. Những nhà tuyển dụng kết nối với TopCV đều là những công ty lớn tại Việt Nam, nơi bạn có thể làm việc trong một môi trường chuyên nghiệp, năng động, trẻ trung. TopCV là nền tảng tuyển dụng công nghệ cao giúp các nhà tuyển dụng và ứng viên kết nối với nhau. Nhanh tay tạo CV để ứng tuyển vào các vị trí việc làm mới nhất hấp dẫn tại
+
+[,](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ha-noi-l1)
+
+**việc làm mới nhất tại Hà Nội**[ở TopCV, bạn sẽ tìm thấy những](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ho-chi-minh-l2)
+
+**việc làm mới nhất tại TP.HCM**[với mức lương tốt nhất!](https://www.topcv.vn/tim-viec-lam-moi-nhat)
+
+**việc làm mới nhất**[Việc làm Kinh doanh/Bán hàng](https://www.topcv.vn/tim-viec-lam-kinh-doanh-ban-hang-cr1)
+
+[Việc làm Marketing/PR/Quảng cáo](https://www.topcv.vn/tim-viec-lam-marketing-pr-quang-cao-cr92)
+
+[Việc làm Chăm sóc khách hàng (Customer Service)/Vận hành](https://www.topcv.vn/tim-viec-lam-cham-soc-khach-hang-customer-service-van-hanh-cr158)
+
+[Việc làm Nhân sự/Hành chính/Pháp chế](https://www.topcv.vn/tim-viec-lam-nhan-su-hanh-chinh-phap-che-cr177)
+
+[Việc làm Công nghệ Thông tin](https://www.topcv.vn/tim-viec-lam-cong-nghe-thong-tin-cr257)
+
+[Việc làm Lao động phổ thông](https://www.topcv.vn/tim-viec-lam-lao-dong-pho-thong-cr1042)
+
+[Việc làm Tài chính/Ngân hàng/Bảo hiểm](https://www.topcv.vn/tim-viec-lam-tai-chinh-ngan-hang-bao-hiem-cr206)
+
+[Việc làm Bất động sản](https://www.topcv.vn/tim-viec-lam-bat-dong-san-cr333)
+
+[Việc làm Xây dựng](https://www.topcv.vn/tim-viec-lam-xay-dung-cr1080)
+
+[Việc làm Kế toán/Kiểm toán/Thuế](https://www.topcv.vn/tim-viec-lam-ke-toan-kiem-toan-thue-cr392)
+
+[Việc làm Sản xuất](https://www.topcv.vn/tim-viec-lam-san-xuat-cr417)
+
+[Việc làm Giáo dục/Đào tạo](https://www.topcv.vn/tim-viec-lam-giao-duc-dao-tao-cr477)
+
+[Việc làm Bán lẻ/Dịch vụ đời sống](https://www.topcv.vn/tim-viec-lam-ban-le-dich-vu-doi-song-cr544)
+
+[Việc làm Phim và truyền hình/Báo chí/Xuất bản](https://www.topcv.vn/tim-viec-lam-phim-va-truyen-hinh-bao-chi-xuat-ban-cr612)
+
+[Việc làm Điện/Điện tử/Viễn thông](https://www.topcv.vn/tim-viec-lam-dien-dien-tu-vien-thong-cr644)
+
+[Việc làm Logistics/Thu mua/Kho/Vận tải](https://www.topcv.vn/tim-viec-lam-logistics-thu-mua-kho-van-tai-cr711)
+
+[Việc làm Tư vấn chuyên môn](https://www.topcv.vn/tim-viec-lam-tu-van-chuyen-mon-cr750)
+
+[Việc làm Dược/Y tế/Sức khoẻ/Công nghệ sinh học](https://www.topcv.vn/tim-viec-lam-duoc-y-te-suc-khoe-cong-nghe-sinh-hoc-cr781)
+
+[Việc làm Thiết kế](https://www.topcv.vn/tim-viec-lam-thiet-ke-cr826)
+
+[Việc làm Nhà hàng/Khách sạn/Du lịch](https://www.topcv.vn/tim-viec-lam-nha-hang-khach-san-du-lich-cr857)
+
+[Việc làm Năng lượng/Môi trường/Nông nghiệp](https://www.topcv.vn/tim-viec-lam-nang-luong-moi-truong-nong-nghiep-cr883)
+
+[Việc làm Tài xế](https://www.topcv.vn/tim-viec-lam-tai-xe-cr1010)
+
+[Việc làm Biên phiên dịch](https://www.topcv.vn/tim-viec-lam-bien-phien-dich-cr1013)
+
+[Việc làm Luật](https://www.topcv.vn/tim-viec-lam-luat-cr1014)
+
+[Việc làm Nhóm nghề khác](https://www.topcv.vn/tim-viec-lam-nhom-nghe-khac-cr899)
+
+[Việc làm tại Hà Nội](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ha-noi-l1)
+
+[Việc làm tại Hồ Chí Minh](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ho-chi-minh-l2)
+
+[Việc làm tại Bình Dương](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-binh-duong-l3)
+
+[Việc làm tại Bắc Ninh](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-bac-ninh-l4)
+
+[Việc làm tại Đồng Nai](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-dong-nai-l5)
+
+[Việc làm tại Hưng Yên](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-hung-yen-l6)
+
+[Việc làm tại Hải Dương](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-hai-duong-l7)
+
+[Việc làm tại Đà Nẵng](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-da-nang-l8)
+
+[Việc làm tại Hải Phòng](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-hai-phong-l9)
+
+[Việc làm tại An Giang](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-an-giang-l10)
+
+[Việc làm tại Bà Rịa-Vũng Tàu](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ba-ria-vung-tau-l11)
+
+[Việc làm tại Bắc Giang](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-bac-giang-l12)
+
+[Việc làm tại Bắc Kạn](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-bac-kan-l13)
+
+[Việc làm tại Bạc Liêu](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-bac-lieu-l14)
+
+[Việc làm tại Bến Tre](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ben-tre-l15)
+
+[Việc làm tại Bình Định](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-binh-dinh-l16)
+
+[Việc làm tại Bình Phước](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-binh-phuoc-l17)
+
+[Việc làm tại Bình Thuận](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-binh-thuan-l18)
+
+[Việc làm tại Cà Mau](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ca-mau-l19)
+
+[Việc làm tại Cần Thơ](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-can-tho-l20)
+
+[Việc làm tại Cao Bằng](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-cao-bang-l21)
+
+[Việc làm tại Cửu Long](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-cuu-long-l22)
+
+[Việc làm tại Đắk Lắk](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-dak-lak-l23)
+
+[Việc làm tại Đắc Nông](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-dac-nong-l24)
+
+[Việc làm tại Điện Biên](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-dien-bien-l25)
+
+[Việc làm tại Đồng Tháp](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-dong-thap-l26)
+
+[Việc làm tại Gia Lai](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-gia-lai-l27)
+
+[Việc làm tại Hà Giang](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ha-giang-l28)
+
+[Việc làm tại Hà Nam](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ha-nam-l29)
+
+[Việc làm tại Hà Tĩnh](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ha-tinh-l30)
+
+[Việc làm tại Hậu Giang](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-hau-giang-l31)
+
+[Việc làm tại Hòa Bình](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-hoa-binh-l32)
+
+[Việc làm tại Khánh Hòa](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-khanh-hoa-l33)
+
+[Việc làm tại Kiên Giang](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-kien-giang-l34)
+
+[Việc làm tại Kon Tum](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-kon-tum-l35)
+
+[Việc làm tại Lai Châu](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-lai-chau-l36)
+
+[Việc làm tại Lâm Đồng](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-lam-dong-l37)
+
+[Việc làm tại Lạng Sơn](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-lang-son-l38)
+
+[Việc làm tại Lào Cai](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-lao-cai-l39)
+
+[Việc làm tại Long An](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-long-an-l40)
+
+[Việc làm tại Miền Bắc](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-mien-bac-l41)
+
+[Việc làm tại Miền Nam](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-mien-nam-l42)
+
+[Việc làm tại Miền Trung](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-mien-trung-l43)
+
+[Việc làm tại Nam Định](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-nam-dinh-l44)
+
+[Việc làm tại Nghệ An](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-nghe-an-l45)
+
+[Việc làm tại Ninh Bình](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ninh-binh-l46)
+
+[Việc làm tại Ninh Thuận](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-ninh-thuan-l47)
+
+[Việc làm tại Phú Thọ](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-phu-tho-l48)
+
+[Việc làm tại Phú Yên](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-phu-yen-l49)
+
+[Việc làm tại Quảng Bình](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-quang-binh-l50)
+
+[Việc làm tại Quảng Nam](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-quang-nam-l51)
+
+[Việc làm tại Quảng Ngãi](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-quang-ngai-l52)
+
+[Việc làm tại Quảng Ninh](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-quang-ninh-l53)
+
+[Việc làm tại Quảng Trị](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-quang-tri-l54)
+
+[Việc làm tại Sóc Trăng](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-soc-trang-l55)
+
+[Việc làm tại Sơn La](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-son-la-l56)
+
+[Việc làm tại Tây Ninh](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-tay-ninh-l57)
+
+[Việc làm tại Thái Bình](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-thai-binh-l58)
+
+[Việc làm tại Thái Nguyên](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-thai-nguyen-l59)
+
+[Việc làm tại Thanh Hóa](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-thanh-hoa-l60)
+
+[Việc làm tại Huế](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-thua-thien-hue-l61)
+
+[Việc làm tại Tiền Giang](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-tien-giang-l62)
+
+[Việc làm tại Toàn Quốc](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-toan-quoc-l63)
+
+[Việc làm tại Trà Vinh](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-tra-vinh-l64)
+
+[Việc làm tại Tuyên Quang](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-tuyen-quang-l65)
+
+[Việc làm tại Vĩnh Long](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-vinh-long-l66)
+
+[Việc làm tại Vĩnh Phúc](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-vinh-phuc-l67)
+
+[Việc làm tại Yên Bái](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-yen-bai-l68)
+
+[Việc làm tại Nước Ngoài](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-nuoc-ngoai-l100)
+
+[Việc làm tại Đức](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-duc-l10001)
+
+[Việc làm tại Nhật Bản](https://www.topcv.vn/tim-viec-lam-moi-nhat-tai-nhat-ban-l10002)
+
+[Việc làm Digital Marketing](https://www.topcv.vn/tim-viec-lam-digital-marketing-cl106)
+
+[Việc làm Content Marketing](https://www.topcv.vn/tim-viec-lam-content-marketing-cl101)
+
+[Việc làm Tuyển dụng](https://www.topcv.vn/tim-viec-lam-tuyen-dung-cl182)
+
+[Việc làm Kế toán tổng hợp](https://www.topcv.vn/tim-viec-lam-ke-toan-tong-hop-cl396)
+
+[Việc làm Chuyên môn Kinh doanh/Bán hàng khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-kinh-doanh-ban-hang-khac-cl91)
+
+[Việc làm Sales Admin/Sales Support/Sales Associate](https://www.topcv.vn/tim-viec-lam-sales-admin-sales-support-sales-associate-cl47)
+
+[Việc làm Chuyên môn Thu mua/Mua hàng](https://www.topcv.vn/tim-viec-lam-chuyen-mon-thu-mua-mua-hang-cl728)
+
+[Việc làm Quan hệ khách hàng cá nhân/doanh nghiệp](https://www.topcv.vn/tim-viec-lam-quan-he-khach-hang-ca-nhan-doanh-nghiep-cl40)
+
+[Việc làm Photographer/Video Editor](https://www.topcv.vn/tim-viec-lam-photographer-video-editor-cl606)
+
+[Việc làm Tư vấn tuyển sinh/khoá học](https://www.topcv.vn/tim-viec-lam-tu-van-tuyen-sinh-khoa-hoc-cl31)
+
+[Việc làm Thiết kế đồ họa (Graphic Design)](https://www.topcv.vn/tim-viec-lam-thiet-ke-do-hoa-graphic-design-cl835)
+
+[Việc làm Giám sát dự án/công trình/thi công](https://www.topcv.vn/tim-viec-lam-giam-sat-du-an-cong-trinh-thi-cong-cl342)
+
+[Việc làm Kế toán trưởng](https://www.topcv.vn/tim-viec-lam-ke-toan-truong-cl410)
+
+[Việc làm Kiểm soát chất lượng (QC)](https://www.topcv.vn/tim-viec-lam-kiem-soat-chat-luong-qc-cl458)
+
+[Việc làm Kế toán thuế](https://www.topcv.vn/tim-viec-lam-ke-toan-thue-cl399)
+
+[Việc làm Chuyên môn khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-khac-cl941)
+
+[Việc làm Vận hành sàn thương mại điện tử](https://www.topcv.vn/tim-viec-lam-van-hanh-san-thuong-mai-dien-tu-cl170)
+
+[Việc làm Content Creator](https://www.topcv.vn/tim-viec-lam-content-creator-cl103)
+
+[Việc làm Kế toán nội bộ](https://www.topcv.vn/tim-viec-lam-ke-toan-noi-bo-cl397)
+
+[Việc làm Giáo viên tiếng Anh](https://www.topcv.vn/tim-viec-lam-giao-vien-tieng-anh-cl493)
+
+[Việc làm Trợ lý/Thư ký](https://www.topcv.vn/tim-viec-lam-tro-ly-thu-ky-cl199)
+
+[Việc làm Sales Manager/Trưởng phòng kinh doanh](https://www.topcv.vn/tim-viec-lam-sales-manager-truong-phong-kinh-doanh-cl83)
+
+[Việc làm Kỹ sư cơ điện](https://www.topcv.vn/tim-viec-lam-ky-su-co-dien-cl360)
+
+[Việc làm Dự toán công trình](https://www.topcv.vn/tim-viec-lam-du-toan-cong-trinh-cl341)
+
+[Việc làm Chăm sóc khách hàng](https://www.topcv.vn/tim-viec-lam-cham-soc-khach-hang-cl164)
+
+[Việc làm Sales Bán lẻ/Dịch vụ tiêu dùng khác](https://www.topcv.vn/tim-viec-lam-sales-ban-le-dich-vu-tieu-dung-khac-cl30)
+
+[Việc làm Nhân viên kho](https://www.topcv.vn/tim-viec-lam-nhan-vien-kho-cl741)
+
+[Việc làm Sales Representative/Phát triển kinh doanh](https://www.topcv.vn/tim-viec-lam-sales-representative-phat-trien-kinh-doanh-cl81)
+
+[Việc làm Hành chính nhân sự](https://www.topcv.vn/tim-viec-lam-hanh-chinh-nhan-su-cl191)
+
+[Việc làm Chuyên môn Xuất nhập khẩu/Logistics](https://www.topcv.vn/tim-viec-lam-chuyen-mon-xuat-nhap-khau-logistics-cl719)
+
+[Việc làm Chuyên môn Marketing](https://www.topcv.vn/tim-viec-lam-chuyen-mon-marketing-cl147)
+
+[Việc làm Thủ kho/Quản lý kho](https://www.topcv.vn/tim-viec-lam-thu-kho-quan-ly-kho-cl469)
+
+[Việc làm Kinh doanh phần mềm](https://www.topcv.vn/tim-viec-lam-kinh-doanh-phan-mem-cl34)
+
+[Việc làm Kỹ sư cơ khí](https://www.topcv.vn/tim-viec-lam-ky-su-co-khi-cl434)
+
+[Việc làm Kinh doanh sàn thương mại điện tử](https://www.topcv.vn/tim-viec-lam-kinh-doanh-san-thuong-mai-dien-tu-cl73)
+
+[Việc làm Kế toán khác](https://www.topcv.vn/tim-viec-lam-ke-toan-khac-cl964)
+
+[Việc làm Kỹ sư xây dựng](https://www.topcv.vn/tim-viec-lam-ky-su-xay-dung-cl358)
+
+[Việc làm Kế toán kho/nguyên vật liệu](https://www.topcv.vn/tim-viec-lam-ke-toan-kho-nguyen-vat-lieu-cl407)
+
+[Việc làm Kế toán công nợ](https://www.topcv.vn/tim-viec-lam-ke-toan-cong-no-cl398)
+
+[Việc làm Quản lý chất lượng (QA)](https://www.topcv.vn/tim-viec-lam-quan-ly-chat-luong-qa-cl457)
+
+[Việc làm Social Media](https://www.topcv.vn/tim-viec-lam-social-media-cl110)
+
+[Việc làm Kỹ sư an toàn lao động (HSE)](https://www.topcv.vn/tim-viec-lam-ky-su-an-toan-lao-dong-hse-cl473)
+
+[Việc làm Quản lý cửa hàng/Cửa hàng trưởng](https://www.topcv.vn/tim-viec-lam-quan-ly-cua-hang-cua-hang-truong-cl86)
+
+[Việc làm Sửa chữa/Bảo trì máy công nghiệp](https://www.topcv.vn/tim-viec-lam-sua-chua-bao-tri-may-cong-nghiep-cl471)
+
+[Việc làm Kế toán bán hàng](https://www.topcv.vn/tim-viec-lam-ke-toan-ban-hang-cl401)
+
+[Việc làm Thiết kế nội thất](https://www.topcv.vn/tim-viec-lam-thiet-ke-noi-that-cl356)
+
+[Việc làm Kiến trúc sư](https://www.topcv.vn/tim-viec-lam-kien-truc-su-cl357)
+
+[Việc làm Kỹ thuật điện/điện tử](https://www.topcv.vn/tim-viec-lam-ky-thuat-dien-dien-tu-cl910)
+
+[Việc làm Chuyên môn Dịch vụ khách hàng/Vận hành khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-dich-vu-khach-hang-van-hanh-khac-cl176)
+
+[Việc làm Kinh doanh thiết bị/vật liệu xây dựng](https://www.topcv.vn/tim-viec-lam-kinh-doanh-thiet-bi-vat-lieu-xay-dung-cl37)
+
+[Việc làm Kỹ sư điện](https://www.topcv.vn/tim-viec-lam-ky-su-dien-cl653)
+
+[Việc làm Marketing Manager](https://www.topcv.vn/tim-viec-lam-marketing-manager-cl1028)
+
+[Việc làm Chạy Ads](https://www.topcv.vn/tim-viec-lam-chay-ads-cl913)
+
+[Việc làm Kế toán thanh toán](https://www.topcv.vn/tim-viec-lam-ke-toan-thanh-toan-cl406)
+
+[Việc làm Chuyên môn Marketing/PR/Quảng cáo khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-marketing-pr-quang-cao-khac-cl157)
+
+[Việc làm Quản lý dự án thi công xây dựng](https://www.topcv.vn/tim-viec-lam-quan-ly-du-an-thi-cong-xay-dung-cl340)
+
+[Việc làm Sales Tour/Kinh doanh du lịch](https://www.topcv.vn/tim-viec-lam-sales-tour-kinh-doanh-du-lich-cl68)
+
+[Việc làm Host Livestream/Streamer](https://www.topcv.vn/tim-viec-lam-host-livestream-streamer-cl617)
+
+[Việc làm Bán hàng thời trang](https://www.topcv.vn/tim-viec-lam-ban-hang-thoi-trang-cl24)
+
+[Việc làm SEO](https://www.topcv.vn/tim-viec-lam-seo-cl107)
+
+[Việc làm Brand Marketing](https://www.topcv.vn/tim-viec-lam-brand-marketing-cl149)
+
+[Việc làm Y tá/Điều dưỡng](https://www.topcv.vn/tim-viec-lam-y-ta-dieu-duong-cl788)
+
+[Việc làm Đào tạo](https://www.topcv.vn/tim-viec-lam-dao-tao-cl184)
+
+[Việc làm Quản lý nhà hàng](https://www.topcv.vn/tim-viec-lam-quan-ly-nha-hang-cl872)
+
+[Việc làm Sales bất động sản/Môi giới bất động sản](https://www.topcv.vn/tim-viec-lam-sales-bat-dong-san-moi-gioi-bat-dong-san-cl36)
+
+[Việc làm Kỹ sư thiết kế cơ khí](https://www.topcv.vn/tim-viec-lam-ky-su-thiet-ke-co-khi-cl438)
+
+[Việc làm Kinh doanh nội thất](https://www.topcv.vn/tim-viec-lam-kinh-doanh-noi-that-cl38)
+
+[Việc làm KOL/KOC Manager](https://www.topcv.vn/tim-viec-lam-kol-koc-manager-cl114)
+
+[Việc làm Kinh doanh thực phẩm](https://www.topcv.vn/tim-viec-lam-kinh-doanh-thuc-pham-cl27)
+
+[Việc làm Trade Marketing](https://www.topcv.vn/tim-viec-lam-trade-marketing-cl151)
+
+[Việc làm Kỹ sư hiện trường](https://www.topcv.vn/tim-viec-lam-ky-su-hien-truong-cl348)
+
+[Việc làm Bán hàng siêu thị/cửa hàng tiện ích/tiện lợi](https://www.topcv.vn/tim-viec-lam-ban-hang-sieu-thi-cua-hang-tien-ich-tien-loi-cl21)
+
+[Việc làm Kế hoạch sản xuất](https://www.topcv.vn/tim-viec-lam-ke-hoach-san-xuat-cl468)
+
+[Việc làm Sales Dược/Y tế/Sức khoẻ/Làm đẹp khác](https://www.topcv.vn/tim-viec-lam-sales-duoc-y-te-suc-khoe-lam-dep-khac-cl932)
+
+[Việc làm Kỹ sư kết cấu công trình](https://www.topcv.vn/tim-viec-lam-ky-su-ket-cau-cong-trinh-cl354)
+
+[Việc làm Kinh doanh kênh GT](https://www.topcv.vn/tim-viec-lam-kinh-doanh-kenh-gt-cl20)
+
+[Việc làm Payroll/C&B (Lương/Thưởng/Phúc lợi)](https://www.topcv.vn/tim-viec-lam-payroll-c-b-luong-thuong-phuc-loi-cl187)
+
+[Việc làm Biên phiên dịch tiếng Trung](https://www.topcv.vn/tim-viec-lam-bien-phien-dich-tieng-trung-cl771)
+
+[Việc làm Sales Marketing](https://www.topcv.vn/tim-viec-lam-sales-marketing-cl90)
+
+[Việc làm Sales Director/Giám đốc kinh doanh](https://www.topcv.vn/tim-viec-lam-sales-director-giam-doc-kinh-doanh-cl87)
+
+[Việc làm Sales Logistics](https://www.topcv.vn/tim-viec-lam-sales-logistics-cl33)
+
+[Việc làm Bán hàng kỹ thuật cơ khí](https://www.topcv.vn/tim-viec-lam-ban-hang-ky-thuat-co-khi-cl75)
+
+[Việc làm Kỹ sư tự động hóa](https://www.topcv.vn/tim-viec-lam-ky-su-tu-dong-hoa-cl433)
+
+[Việc làm Business Analyst (Phân tích nghiệp vụ)](https://www.topcv.vn/tim-viec-lam-business-analyst-phan-tich-nghiep-vu-cl322)
+
+[Việc làm Kinh doanh ô tô/xe máy/xe điện](https://www.topcv.vn/tim-viec-lam-kinh-doanh-o-to-xe-may-xe-dien-cl51)
+
+[Việc làm Chuyên môn Công nghệ thông tin khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-cong-nghe-thong-tin-khac-cl329)
+
+[Việc làm Chuyên môn Tài chính](https://www.topcv.vn/tim-viec-lam-chuyen-mon-tai-chinh-cl214)
+
+[Việc làm Kinh doanh thiết bị/vật tư y tế](https://www.topcv.vn/tim-viec-lam-kinh-doanh-thiet-bi-vat-tu-y-te-cl53)
+
+[Việc làm Sửa chữa/Bảo trì điện tử/viễn thông](https://www.topcv.vn/tim-viec-lam-sua-chua-bao-tri-dien-tu-vien-thong-cl662)
+
+[Việc làm Nhân sự tổng hợp](https://www.topcv.vn/tim-viec-lam-nhan-su-tong-hop-cl188)
+
+[Việc làm Chuyên môn Kế toán/Kiểm toán/Thuế khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-ke-toan-kiem-toan-thue-khac-cl416)
+
+[Việc làm Trình dược viên](https://www.topcv.vn/tim-viec-lam-trinh-duoc-vien-cl54)
+
+[Việc làm Trưởng phòng nhân sự](https://www.topcv.vn/tim-viec-lam-truong-phong-nhan-su-cl189)
+
+[Việc làm Tư vấn thẩm mỹ/Spa](https://www.topcv.vn/tim-viec-lam-tu-van-tham-my-spa-cl56)
+
+[Việc làm Nhân viên hồ sơ xây dựng](https://www.topcv.vn/tim-viec-lam-nhan-vien-ho-so-xay-dung-cl344)
+
+[Việc làm Chuyên môn May mặc/Dệt may/Da khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-may-mac-det-may-da-khac-cl947)
+
+[Việc làm Hành chính tổng hợp](https://www.topcv.vn/tim-viec-lam-hanh-chinh-tong-hop-cl192)
+
+[Việc làm Lễ tân/Đón tiếp](https://www.topcv.vn/tim-viec-lam-le-tan-don-tiep-cl863)
+
+[Việc làm Bảo trì, sửa chữa khác](https://www.topcv.vn/tim-viec-lam-bao-tri-sua-chua-khac-cl922)
+
+[Việc làm Vận hành chung](https://www.topcv.vn/tim-viec-lam-van-hanh-chung-cl171)
+
+[Việc làm Kế toán chi phí/giá thành](https://www.topcv.vn/tim-viec-lam-ke-toan-chi-phi-gia-thanh-cl400)
+
+[Việc làm Pháp chế](https://www.topcv.vn/tim-viec-lam-phap-che-cl237)
+
+[Việc làm Giám sát/Điều phối vận tải](https://www.topcv.vn/tim-viec-lam-giam-sat-dieu-phoi-van-tai-cl724)
+
+[Việc làm Sales Sản xuất khác](https://www.topcv.vn/tim-viec-lam-sales-san-xuat-khac-cl919)
+
+[Việc làm Chuyên môn Giáo dục/Đào tạo khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-giao-duc-dao-tao-khac-cl543)
+
+[Việc làm Sales Supervisor/Giám sát bán hàng](https://www.topcv.vn/tim-viec-lam-sales-supervisor-giam-sat-ban-hang-cl82)
+
+[Việc làm Trưởng kho/Giám sát kho](https://www.topcv.vn/tim-viec-lam-truong-kho-giam-sat-kho-cl743)
+
+[Việc làm Kinh doanh kênh MT](https://www.topcv.vn/tim-viec-lam-kinh-doanh-kenh-mt-cl19)
+
+[Việc làm Phục vụ](https://www.topcv.vn/tim-viec-lam-phuc-vu-cl862)
+
+[Việc làm Kỹ thuật viên lắp đặt](https://www.topcv.vn/tim-viec-lam-ky-thuat-vien-lap-dat-cl472)
+
+[Việc làm ASM/Quản lý khu vực/vùng miền](https://www.topcv.vn/tim-viec-lam-asm-quan-ly-khu-vuc-vung-mien-cl85)
+
+[Việc làm Trợ lý kinh doanh](https://www.topcv.vn/tim-viec-lam-tro-ly-kinh-doanh-cl920)
+
+[Việc làm Bán hàng kỹ thuật Điện/Điện tử/Viễn thông](https://www.topcv.vn/tim-viec-lam-ban-hang-ky-thuat-dien-dien-tu-vien-thong-cl74)
+
+[Việc làm Kế toán doanh thu](https://www.topcv.vn/tim-viec-lam-ke-toan-doanh-thu-cl1041)
+
+[Việc làm Chuyên môn Dược/Y tế/Sức khoẻ/Công nghệ sinh học khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-duoc-y-te-suc-khoe-cong-nghe-sinh-hoc-khac-cl825)
+
+[Việc làm Quản lý/Vận hành lớp học](https://www.topcv.vn/tim-viec-lam-quan-ly-van-hanh-lop-hoc-cl530)
+
+[Việc làm Kinh doanh dịch vụ quảng cáo](https://www.topcv.vn/tim-viec-lam-kinh-doanh-dich-vu-quang-cao-cl58)
+
+[Việc làm Sales Giáo dục/Khoá học khác](https://www.topcv.vn/tim-viec-lam-sales-giao-duc-khoa-hoc-khac-cl934)
+
+[Việc làm Tư vấn tài chính](https://www.topcv.vn/tim-viec-lam-tu-van-tai-chinh-cl757)
+
+[Việc làm Bán hàng mỹ phẩm](https://www.topcv.vn/tim-viec-lam-ban-hang-my-pham-cl26)
+
+[Việc làm Sales Xuất nhập khẩu/Logistics khác](https://www.topcv.vn/tim-viec-lam-sales-xuat-nhap-khau-logistics-khac-cl942)
+
+[Việc làm Chuyên môn Vận hành sản xuất khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-van-hanh-san-xuat-khac-cl970)
+
+[Việc làm IT Project Manager](https://www.topcv.vn/tim-viec-lam-it-project-manager-cl305)
+
+[Việc làm Backend Developer](https://www.topcv.vn/tim-viec-lam-backend-developer-cl272)
+
+[Việc làm Chuyên môn Vận hành và bảo trì/Hỗ trợ kỹ thuật khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-van-hanh-va-bao-tri-ho-tro-ky-thuat-khac-cl984)
+
+[Việc làm Chuyên môn Xây dựng khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-xay-dung-khac-cl1084)
+
+[Việc làm Quản lý Kinh doanh khác](https://www.topcv.vn/tim-viec-lam-quan-ly-kinh-doanh-khac-cl960)
+
+[Việc làm Account Manager (Quản lý khách hàng)](https://www.topcv.vn/tim-viec-lam-account-manager-quan-ly-khach-hang-cl80)
+
+[Việc làm Thu ngân](https://www.topcv.vn/tim-viec-lam-thu-ngan-cl202)
+
+[Việc làm TikTok Content](https://www.topcv.vn/tim-viec-lam-tiktok-content-cl104)
+
+[Việc làm Thu hồi nợ](https://www.topcv.vn/tim-viec-lam-thu-hoi-no-cl241)
+
+[Việc làm Vận hành Livestream](https://www.topcv.vn/tim-viec-lam-van-hanh-livestream-cl618)
+
+[Việc làm Social Content](https://www.topcv.vn/tim-viec-lam-social-content-cl105)
+
+[Việc làm Công nhân vận hành máy](https://www.topcv.vn/tim-viec-lam-cong-nhan-van-hanh-may-cl1061)
+
+[Việc làm Nghiên cứu và phát triển (R&D) thực phẩm/đồ uống](https://www.topcv.vn/tim-viec-lam-nghien-cuu-va-phat-trien-r-d-thuc-pham-do-uong-cl444)
+
+[Việc làm Giáo viên bộ môn khác](https://www.topcv.vn/tim-viec-lam-giao-vien-bo-mon-khac-cl499)
+
+[Việc làm Đầu bếp](https://www.topcv.vn/tim-viec-lam-dau-bep-cl865)
+
+[Việc làm Chuyên môn Sản xuất khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-san-xuat-khac-cl476)
+
+[Việc làm Bán hàng điện máy](https://www.topcv.vn/tim-viec-lam-ban-hang-dien-may-cl23)
+
+[Việc làm Product Owner/Product Manager](https://www.topcv.vn/tim-viec-lam-product-owner-product-manager-cl321)
+
+[Việc làm Quản lý chất lượng công trình](https://www.topcv.vn/tim-viec-lam-quan-ly-chat-luong-cong-trinh-cl350)
+
+[Việc làm Sales Kỹ thuật khác](https://www.topcv.vn/tim-viec-lam-sales-ky-thuat-khac-cl931)
+
+[Việc làm Kỹ sư thiết kế điện](https://www.topcv.vn/tim-viec-lam-ky-su-thiet-ke-dien-cl654)
+
+[Việc làm Chuyên môn Bất động sản khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-bat-dong-san-khac-cl391)
+
+[Việc làm Kinh doanh thiết bị/linh kiện điện](https://www.topcv.vn/tim-viec-lam-kinh-doanh-thiet-bi-linh-kien-dien-cl62)
+
+[Việc làm Tài xế lái xe văn phòng](https://www.topcv.vn/tim-viec-lam-tai-xe-lai-xe-van-phong-cl198)
+
+[Việc làm Sửa chữa/Bảo trì điện nước](https://www.topcv.vn/tim-viec-lam-sua-chua-bao-tri-dien-nuoc-cl366)
+
+[Việc làm Kế toán tài chính](https://www.topcv.vn/tim-viec-lam-ke-toan-tai-chinh-cl402)
+
+[Việc làm Kiểm soát tuân thủ](https://www.topcv.vn/tim-viec-lam-kiem-soat-tuan-thu-cl235)
+
+[Việc làm Thợ cơ khí](https://www.topcv.vn/tim-viec-lam-tho-co-khi-cl429)
+
+[Việc làm Chuyên môn Thiết kế Thời trang](https://www.topcv.vn/tim-viec-lam-chuyen-mon-thiet-ke-thoi-trang-cl847)
+
+[Việc làm Software Engineer](https://www.topcv.vn/tim-viec-lam-software-engineer-cl271)
+
+[Việc làm Bảo trì tòa nhà](https://www.topcv.vn/tim-viec-lam-bao-tri-toa-nha-cl377)
+
+[Việc làm Thợ kỹ thuật khác](https://www.topcv.vn/tim-viec-lam-tho-ky-thuat-khac-cl923)
+
+[Việc làm Kỹ sư cấp thoát nước](https://www.topcv.vn/tim-viec-lam-ky-su-cap-thoat-nuoc-cl361)
+
+[Việc làm Pha chế (Barista)](https://www.topcv.vn/tim-viec-lam-pha-che-barista-cl870)
+
+[Việc làm Giáo viên tiếng Trung](https://www.topcv.vn/tim-viec-lam-giao-vien-tieng-trung-cl496)
+
+[Việc làm Chuyên môn Logistics khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-logistics-khac-cl749)
+
+[Việc làm UI/UX Design](https://www.topcv.vn/tim-viec-lam-ui-ux-design-cl317)
+
+[Việc làm Kinh doanh dịch vụ viễn thông](https://www.topcv.vn/tim-viec-lam-kinh-doanh-dich-vu-vien-thong-cl64)
+
+[Việc làm Account Executive](https://www.topcv.vn/tim-viec-lam-account-executive-cl1031)
+
+[Việc làm Phụ bếp](https://www.topcv.vn/tim-viec-lam-phu-bep-cl867)
+
+[Việc làm Xử lý hồ sơ](https://www.topcv.vn/tim-viec-lam-xu-ly-ho-so-cl1020)
+
+[Việc làm Chuyên môn Điện/Tự động hoá khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-dien-tu-dong-hoa-khac-cl978)
+
+[Việc làm Chuyên môn Nhà hàng/Khách sạn/Du lịch khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-nha-hang-khach-san-du-lich-khac-cl882)
+
+[Việc làm Chuyên môn Thiết kế khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-thiet-ke-khac-cl856)
+
+[Việc làm Chuyên môn Ngân hàng khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-ngan-hang-khac-cl957)
+
+[Việc làm Affiliate Marketing](https://www.topcv.vn/tim-viec-lam-affiliate-marketing-cl111)
+
+[Việc làm Giáo viên Toán](https://www.topcv.vn/tim-viec-lam-giao-vien-toan-cl488)
+
+[Việc làm Đấu thầu xây dựng](https://www.topcv.vn/tim-viec-lam-dau-thau-xay-dung-cl1085)
+
+[Việc làm Trưởng chuyền/Tổ trưởng sản xuất](https://www.topcv.vn/tim-viec-lam-truong-chuyen-to-truong-san-xuat-cl463)
+
+[Việc làm Truyền thông nội bộ](https://www.topcv.vn/tim-viec-lam-truyen-thong-noi-bo-cl120)
+
+[Việc làm Kế toán ngân hàng](https://www.topcv.vn/tim-viec-lam-ke-toan-ngan-hang-cl929)
+
+[Việc làm Quản lý/Trưởng phòng vận hành](https://www.topcv.vn/tim-viec-lam-quan-ly-truong-phong-van-hanh-cl173)
+
+[Việc làm Kỹ sư môi trường](https://www.topcv.vn/tim-viec-lam-ky-su-moi-truong-cl891)
+
+[Việc làm Kinh doanh thiết bị công nghiệp](https://www.topcv.vn/tim-viec-lam-kinh-doanh-thiet-bi-cong-nghiep-cl63)
+
+[Việc làm Theo dõi đơn hàng](https://www.topcv.vn/tim-viec-lam-theo-doi-don-hang-cl722)
+
+[Việc làm IT Helpdesk/IT support](https://www.topcv.vn/tim-viec-lam-it-helpdesk-it-support-cl287)
+
+[Việc làm Chứng từ xuất nhập khẩu](https://www.topcv.vn/tim-viec-lam-chung-tu-xuat-nhap-khau-cl735)
+
+[Việc làm Khai báo hải quan và kiểm dịch](https://www.topcv.vn/tim-viec-lam-khai-bao-hai-quan-va-kiem-dich-cl736)
+
+[Việc làm Chuyên môn Điện/Điện tử/Viễn thông khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-dien-dien-tu-vien-thong-khac-cl710)
+
+[Việc làm Phát triển học liệu/Thiết kế khóa học](https://www.topcv.vn/tim-viec-lam-phat-trien-hoc-lieu-thiet-ke-khoa-hoc-cl539)
+
+[Việc làm Quản đốc phân xưởng/nhà máy](https://www.topcv.vn/tim-viec-lam-quan-doc-phan-xuong-nha-may-cl462)
+
+[Việc làm Quản lý hàng hoá (Merchandiser)](https://www.topcv.vn/tim-viec-lam-quan-ly-hang-hoa-merchandiser-cl732)
+
+[Việc làm Tư vấn du học/định cư](https://www.topcv.vn/tim-viec-lam-tu-van-du-hoc-dinh-cu-cl32)
+
+[Việc làm Biên phiên dịch tiếng Hàn](https://www.topcv.vn/tim-viec-lam-bien-phien-dich-tieng-han-cl773)
+
+[Việc làm Chuyên môn chuỗi cung ứng](https://www.topcv.vn/tim-viec-lam-chuyen-mon-chuoi-cung-ung-cl745)
+
+[Việc làm Kinh doanh hoá chất](https://www.topcv.vn/tim-viec-lam-kinh-doanh-hoa-chat-cl50)
+
+[Việc làm Điều hành tour](https://www.topcv.vn/tim-viec-lam-dieu-hanh-tour-cl880)
+
+[Việc làm Product Marketing](https://www.topcv.vn/tim-viec-lam-product-marketing-cl150)
+
+[Việc làm Giám sát sản xuất](https://www.topcv.vn/tim-viec-lam-giam-sat-san-xuat-cl465)
+
+[Việc làm Kỹ sư HVAC](https://www.topcv.vn/tim-viec-lam-ky-su-hvac-cl362)
+
+[Việc làm Đối tác nhân sự (HRBP)](https://www.topcv.vn/tim-viec-lam-doi-tac-nhan-su-hrbp-cl183)
+
+[Việc làm Call Center/Trực tổng đài](https://www.topcv.vn/tim-viec-lam-call-center-truc-tong-dai-cl166)
+
+[Việc làm Quản lý tòa nhà](https://www.topcv.vn/tim-viec-lam-quan-ly-toa-nha-cl376)
+
+[Việc làm Bán hàng điện thoại](https://www.topcv.vn/tim-viec-lam-ban-hang-dien-thoai-cl22)
+
+[Việc làm Chuyên môn Hành chính khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-hanh-chinh-khac-cl955)
+
+[Việc làm Fullstack Developer](https://www.topcv.vn/tim-viec-lam-fullstack-developer-cl275)
+
+[Việc làm Chuyên môn Nhà hàng/Dịch vụ ăn uống khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-nha-hang-dich-vu-an-uong-khac-cl996)
+
+[Việc làm Kỹ thuật viên phòng thí nghiệm](https://www.topcv.vn/tim-viec-lam-ky-thuat-vien-phong-thi-nghiem-cl442)
+
+[Việc làm AI Engineer](https://www.topcv.vn/tim-viec-lam-ai-engineer-cl283)
+
+[Việc làm DevOps Engineer](https://www.topcv.vn/tim-viec-lam-devops-engineer-cl288)
+
+[Việc làm Nghiên cứu thị trường (Market Research)](https://www.topcv.vn/tim-viec-lam-nghien-cuu-thi-truong-market-research-cl139)
+
+[Việc làm Chuyên viên pháp lý](https://www.topcv.vn/tim-viec-lam-chuyen-vien-phap-ly-cl767)
+
+[Việc làm Nhân viên trắc đạc](https://www.topcv.vn/tim-viec-lam-nhan-vien-trac-dac-cl346)
+
+[Việc làm Event Marketing](https://www.topcv.vn/tim-viec-lam-event-marketing-cl152)
+
+[Việc làm Chăm sóc/Hỗ trợ học viên](https://www.topcv.vn/tim-viec-lam-cham-soc-ho-tro-hoc-vien-cl532)
+
+[Việc làm Kinh doanh dịch vụ y tế](https://www.topcv.vn/tim-viec-lam-kinh-doanh-dich-vu-y-te-cl905)
+
+[Việc làm Software Tester (Automation & Manual)](https://www.topcv.vn/tim-viec-lam-software-tester-automation-manual-cl277)
+
+[Việc làm Thiết kế rập](https://www.topcv.vn/tim-viec-lam-thiet-ke-rap-cl446)
+
+[Việc làm Giám sát/Điều phối hàng hoá và kho vận](https://www.topcv.vn/tim-viec-lam-giam-sat-dieu-phoi-hang-hoa-va-kho-van-cl723)
+
+[Việc làm Biên phiên dịch tiếng Nhật](https://www.topcv.vn/tim-viec-lam-bien-phien-dich-tieng-nhat-cl772)
+
+[Việc làm Dịch vụ khách hàng/Chăm sóc khách hàng khác](https://www.topcv.vn/tim-viec-lam-dich-vu-khach-hang-cham-soc-khach-hang-khac-cl953)
+
+[Việc làm Chuyên môn Quảng cáo/Sáng tạo khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-quang-cao-sang-tao-khac-cl951)
+
+[Việc làm Công nhân sản xuất](https://www.topcv.vn/tim-viec-lam-cong-nhan-san-xuat-cl466)
+
+[Việc làm Quản trị rủi ro](https://www.topcv.vn/tim-viec-lam-quan-tri-rui-ro-cl234)
+
+[Việc làm Kinh doanh phụ tùng ô tô/xe máy/xe điện](https://www.topcv.vn/tim-viec-lam-kinh-doanh-phu-tung-o-to-xe-may-xe-dien-cl52)
+
+[Việc làm Trợ giảng tiếng Anh](https://www.topcv.vn/tim-viec-lam-tro-giang-tieng-anh-cl523)
+
+[Việc làm Dược sĩ/Bán thuốc](https://www.topcv.vn/tim-viec-lam-duoc-si-ban-thuoc-cl55)
+
+[Việc làm Bếp trưởng](https://www.topcv.vn/tim-viec-lam-bep-truong-cl866)
+
+[Việc làm Kỹ sư PCCC](https://www.topcv.vn/tim-viec-lam-ky-su-pccc-cl364)
+
+[Việc làm Data Analyst](https://www.topcv.vn/tim-viec-lam-data-analyst-cl145)
+
+[Việc làm Chuyên viên đấu thầu](https://www.topcv.vn/tim-viec-lam-chuyen-vien-dau-thau-cl48)
+
+[Việc làm Quản lý/Giám sát mua hàng](https://www.topcv.vn/tim-viec-lam-quan-ly-giam-sat-mua-hang-cl729)
+
+[Việc làm Trưởng phòng sản xuất](https://www.topcv.vn/tim-viec-lam-truong-phong-san-xuat-cl461)
+
+[Việc làm System Engineer](https://www.topcv.vn/tim-viec-lam-system-engineer-cl290)
+
+[Việc làm Chuyên viên xử lý nợ](https://www.topcv.vn/tim-viec-lam-chuyen-vien-xu-ly-no-cl220)
+
+[Việc làm Chuyên môn Thiết kế và Kiến trúc khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-thiet-ke-va-kien-truc-khac-cl962)
+
+[Việc làm Các vị trí tư vấn khác](https://www.topcv.vn/tim-viec-lam-cac-vi-tri-tu-van-khac-cl765)
+
+[Việc làm Chuyên môn Nhân sự/Hành chính/Pháp chế khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-nhan-su-hanh-chinh-phap-che-khac-cl205)
+
+[Việc làm Kỹ thuật viên nông nghiệp/trồng trọt](https://www.topcv.vn/tim-viec-lam-ky-thuat-vien-nong-nghiep-trong-trot-cl893)
+
+[Việc làm Quản lý chất lượng khác](https://www.topcv.vn/tim-viec-lam-quan-ly-chat-luong-khac-cl969)
+
+[Việc làm Quản lý giảng dạy](https://www.topcv.vn/tim-viec-lam-quan-ly-giang-day-cl521)
+
+[Việc làm Kỹ sư hóa học](https://www.topcv.vn/tim-viec-lam-ky-su-hoa-hoc-cl443)
+
+[Việc làm Giám sát thi công nội thất](https://www.topcv.vn/tim-viec-lam-giam-sat-thi-cong-noi-that-cl352)
+
+[Việc làm System Administrator](https://www.topcv.vn/tim-viec-lam-system-administrator-cl291)
+
+[Việc làm Chuyên môn Kho vận khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-kho-van-khac-cl987)
+
+[Việc làm Chuyên môn Tài chính/Ngân hàng/Bảo hiểm khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-tai-chinh-ngan-hang-bao-hiem-khac-cl256)
+
+[Việc làm Manual Tester](https://www.topcv.vn/tim-viec-lam-manual-tester-cl279)
+
+[Việc làm Quản lý học vụ](https://www.topcv.vn/tim-viec-lam-quan-ly-hoc-vu-cl517)
+
+[Việc làm Data Engineer](https://www.topcv.vn/tim-viec-lam-data-engineer-cl285)
+
+[Việc làm Vận hành hệ thống xử lý nước thải](https://www.topcv.vn/tim-viec-lam-van-hanh-he-thong-xu-ly-nuoc-thai-cl1018)
+
+[Việc làm Sales Nhà hàng/Khách sạn/Du lịch khác](https://www.topcv.vn/tim-viec-lam-sales-nha-hang-khach-san-du-lich-khac-cl946)
+
+[Việc làm Data Labeling (Gán nhãn dữ liệu)](https://www.topcv.vn/tim-viec-lam-data-labeling-gan-nhan-du-lieu-cl172)
+
+[Việc làm Thợ điện lạnh](https://www.topcv.vn/tim-viec-lam-tho-dien-lanh-cl367)
+
+[Việc làm Giao dịch viên](https://www.topcv.vn/tim-viec-lam-giao-dich-vien-cl219)
+
+[Việc làm Kiểm soát và báo cáo tài chính](https://www.topcv.vn/tim-viec-lam-kiem-soat-va-bao-cao-tai-chinh-cl217)
+
+[Việc làm Kế toán mua hàng](https://www.topcv.vn/tim-viec-lam-ke-toan-mua-hang-cl405)
+
+[Việc làm Chuyên môn Nhân sự khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-nhan-su-khac-cl954)
+
+[Việc làm Marketing Planner](https://www.topcv.vn/tim-viec-lam-marketing-planner-cl148)
+
+[Việc làm Hành chính kho](https://www.topcv.vn/tim-viec-lam-hanh-chinh-kho-cl742)
+
+[Việc làm Kinh doanh HORECA](https://www.topcv.vn/tim-viec-lam-kinh-doanh-horeca-cl67)
+
+[Việc làm Đóng gói hàng hóa](https://www.topcv.vn/tim-viec-lam-dong-goi-hang-hoa-cl474)
+
+[Việc làm Kiểm toán nội bộ](https://www.topcv.vn/tim-viec-lam-kiem-toan-noi-bo-cl412)
+
+[Việc làm Bán hàng trang sức đá quý](https://www.topcv.vn/tim-viec-lam-ban-hang-trang-suc-da-quy-cl25)
+
+[Việc làm Sales Tài chính/Ngân hàng/Bảo hiểm khác](https://www.topcv.vn/tim-viec-lam-sales-tai-chinh-ngan-hang-bao-hiem-khac-cl933)
+
+[Việc làm Mobile Developer](https://www.topcv.vn/tim-viec-lam-mobile-developer-cl274)
+
+[Việc làm Trợ lý/Thư ký sản xuất](https://www.topcv.vn/tim-viec-lam-tro-ly-thu-ky-san-xuat-cl999)
+
+[Việc làm Phát triển tổ chức](https://www.topcv.vn/tim-viec-lam-phat-trien-to-chuc-cl186)
+
+[Việc làm Kỹ sư cầu đường](https://www.topcv.vn/tim-viec-lam-ky-su-cau-duong-cl365)
+
+[Việc làm Kế toán sản xuất](https://www.topcv.vn/tim-viec-lam-ke-toan-san-xuat-cl926)
+
+[Việc làm Thư ký công trình](https://www.topcv.vn/tim-viec-lam-thu-ky-cong-trinh-cl343)
+
+[Việc làm Sales IT Phần mềm khác](https://www.topcv.vn/tim-viec-lam-sales-it-phan-mem-khac-cl943)
+
+[Việc làm Marketing Operations](https://www.topcv.vn/tim-viec-lam-marketing-operations-cl1030)
+
+[Việc làm Game Design](https://www.topcv.vn/tim-viec-lam-game-design-cl326)
+
+[Việc làm Kỹ thuật viên Spa](https://www.topcv.vn/tim-viec-lam-ky-thuat-vien-spa-cl560)
+
+[Việc làm Marketing Admin](https://www.topcv.vn/tim-viec-lam-marketing-admin-cl1023)
+
+[Việc làm Shipper (Nhân viên giao hàng)](https://www.topcv.vn/tim-viec-lam-shipper-nhan-vien-giao-hang-cl574)
+
+[Việc làm Kỹ thuật viễn thông](https://www.topcv.vn/tim-viec-lam-ky-thuat-vien-thong-cl692)
+
+[Việc làm Sales Xây dựng khác](https://www.topcv.vn/tim-viec-lam-sales-xay-dung-khac-cl1083)
+
+[Việc làm Giáo viên mầm non](https://www.topcv.vn/tim-viec-lam-giao-vien-mam-non-cl485)
+
+[Việc làm Tư vấn đầu tư](https://www.topcv.vn/tim-viec-lam-tu-van-dau-tu-cl44)
+
+[Việc làm Quản lý dự án kỹ thuật](https://www.topcv.vn/tim-viec-lam-quan-ly-du-an-ky-thuat-cl684)
+
+[Việc làm Nhân viên vật tư](https://www.topcv.vn/tim-viec-lam-nhan-vien-vat-tu-cl345)
+
+[Việc làm Thợ điện](https://www.topcv.vn/tim-viec-lam-tho-dien-cl655)
+
+[Việc làm Quản lý chất lượng giáo dục](https://www.topcv.vn/tim-viec-lam-quan-ly-chat-luong-giao-duc-cl522)
+
+[Việc làm Quản lý dự án bất động sản](https://www.topcv.vn/tim-viec-lam-quan-ly-du-an-bat-dong-san-cl384)
+
+[Việc làm Bác sĩ da liễu](https://www.topcv.vn/tim-viec-lam-bac-si-da-lieu-cl793)
+
+[Việc làm Kỹ sư điện tử](https://www.topcv.vn/tim-viec-lam-ky-su-dien-tu-cl659)
+
+[Việc làm Kỹ sư hệ thống điện nhẹ](https://www.topcv.vn/tim-viec-lam-ky-su-he-thong-dien-nhe-cl359)
+
+[Việc làm BIM Engineer](https://www.topcv.vn/tim-viec-lam-bim-engineer-cl332)
+
+[Việc làm Vẽ AutoCAD](https://www.topcv.vn/tim-viec-lam-ve-autocad-cl841)
+
+[Việc làm Kế toán công trình](https://www.topcv.vn/tim-viec-lam-ke-toan-cong-trinh-cl925)
+
+[Việc làm Kinh doanh tiệc/sự kiện/hội nghị](https://www.topcv.vn/tim-viec-lam-kinh-doanh-tiec-su-kien-hoi-nghi-cl60)
+
+[Việc làm Văn thư](https://www.topcv.vn/tim-viec-lam-van-thu-cl196)
+
+[Việc làm Sản xuất dược phẩm](https://www.topcv.vn/tim-viec-lam-san-xuat-duoc-pham-cl817)
+
+[Việc làm Giám sát an ninh](https://www.topcv.vn/tim-viec-lam-giam-sat-an-ninh-cl582)
+
+[Việc làm Kỹ sư hạ tầng đô thị](https://www.topcv.vn/tim-viec-lam-ky-su-ha-tang-do-thi-cl388)
+
+[Việc làm Quản lý giáo dục khác](https://www.topcv.vn/tim-viec-lam-quan-ly-giao-duc-khac-cl935)
+
+[Việc làm Technical Leader](https://www.topcv.vn/tim-viec-lam-technical-leader-cl311)
+
+[Việc làm Chuyên môn R&D/Sản xuất ô tô khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-r-d-san-xuat-o-to-khac-cl924)
+
+[Việc làm Biên tập viên](https://www.topcv.vn/tim-viec-lam-bien-tap-vien-cl619)
+
+[Việc làm Quản lý sản xuất/Quản lý nguyên vật liệu (PMC)](https://www.topcv.vn/tim-viec-lam-quan-ly-san-xuat-quan-ly-nguyen-vat-lieu-pmc-cl748)
+
+[Việc làm Tư vấn thiết kế xây dựng](https://www.topcv.vn/tim-viec-lam-tu-van-thiet-ke-xay-dung-cl1087)
+
+[Việc làm Giáo viên tiếng Nhật](https://www.topcv.vn/tim-viec-lam-giao-vien-tieng-nhat-cl494)
+
+[Việc làm Tổ chức sự kiện (Event Planner)](https://www.topcv.vn/tim-viec-lam-to-chuc-su-kien-event-planner-cl906)
+
+[Việc làm Biên phiên dịch tiếng Anh](https://www.topcv.vn/tim-viec-lam-bien-phien-dich-tieng-anh-cl770)
+
+[Việc làm IT Consultant](https://www.topcv.vn/tim-viec-lam-it-consultant-cl330)
+
+[Việc làm Kiểm toán viên](https://www.topcv.vn/tim-viec-lam-kiem-toan-vien-cl411)
+
+[Việc làm Network Engineer](https://www.topcv.vn/tim-viec-lam-network-engineer-cl289)
+
+[Việc làm Kinh doanh bao bì](https://www.topcv.vn/tim-viec-lam-kinh-doanh-bao-bi-cl28)
+
+[Việc làm Sales Điện/Điện tử/Viễn thông khác](https://www.topcv.vn/tim-viec-lam-sales-dien-dien-tu-vien-thong-khac-cl930)
+
+[Việc làm Phát triển mặt bằng](https://www.topcv.vn/tim-viec-lam-phat-trien-mat-bang-cl386)
+
+[Việc làm Trưởng phòng hành chính](https://www.topcv.vn/tim-viec-lam-truong-phong-hanh-chinh-cl193)
+
+[Việc làm Quản lý trạm giao nhận/bưu cục](https://www.topcv.vn/tim-viec-lam-quan-ly-tram-giao-nhan-buu-cuc-cl740)
+
+[Việc làm Embedded Engineer/Lập trình nhúng](https://www.topcv.vn/tim-viec-lam-embedded-engineer-lap-trinh-nhung-cl304)
+
+[Việc làm Quản lý bếp](https://www.topcv.vn/tim-viec-lam-quan-ly-bep-cl868)
+
+[Việc làm Animation Design](https://www.topcv.vn/tim-viec-lam-animation-design-cl637)
+
+[Việc làm Chuyên môn Thiết kế/chế tạo máy khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-thiet-ke-che-tao-may-khac-cl967)
+
+[Việc làm Creative Planner](https://www.topcv.vn/tim-viec-lam-creative-planner-cl133)
+
+[Việc làm Kỹ sư khuôn mẫu](https://www.topcv.vn/tim-viec-lam-ky-su-khuon-mau-cl437)
+
+[Việc làm Tư vấn nha khoa](https://www.topcv.vn/tim-viec-lam-tu-van-nha-khoa-cl57)
+
+[Việc làm Điều phối giao hàng](https://www.topcv.vn/tim-viec-lam-dieu-phoi-giao-hang-cl1007)
+
+[Việc làm Kỹ sư lập trình máy](https://www.topcv.vn/tim-viec-lam-ky-su-lap-trinh-may-cl432)
+
+[Việc làm Xây dựng và bảo vệ thương hiệu](https://www.topcv.vn/tim-viec-lam-xay-dung-va-bao-ve-thuong-hieu-cl119)
+
+[Việc làm Kỹ sư điện lạnh](https://www.topcv.vn/tim-viec-lam-ky-su-dien-lanh-cl673)
+
+[Việc làm Kinh doanh Domain/Hosting/Server](https://www.topcv.vn/tim-viec-lam-kinh-doanh-domain-hosting-server-cl35)
+
+[Việc làm Nghiên cứu và phát triển (R&D) mỹ phẩm](https://www.topcv.vn/tim-viec-lam-nghien-cuu-va-phat-trien-r-d-my-pham-cl445)
+
+[Việc làm Tư vấn CNTT/IT consultant](https://www.topcv.vn/tim-viec-lam-tu-van-cntt-it-consultant-cl758)
+
+[Việc làm Quản lý/Giám sát thiết kế](https://www.topcv.vn/tim-viec-lam-quan-ly-giam-sat-thiet-ke-cl853)
+
+[Việc làm Copywriter](https://www.topcv.vn/tim-viec-lam-copywriter-cl102)
+
+[Việc làm Giám đốc nhân sự](https://www.topcv.vn/tim-viec-lam-giam-doc-nhan-su-cl190)
+
+[Việc làm Giám đốc điều hành](https://www.topcv.vn/tim-viec-lam-giam-doc-dieu-hanh-cl1037)
+
+[Việc làm Quản lý/Giám sát chuỗi cung ứng](https://www.topcv.vn/tim-viec-lam-quan-ly-giam-sat-chuoi-cung-ung-cl746)
+
+[Việc làm Kỹ sư công nghiệp (IE)](https://www.topcv.vn/tim-viec-lam-ky-su-cong-nghiep-ie-cl440)
+
+[Việc làm Lái xe cho sếp](https://www.topcv.vn/tim-viec-lam-lai-xe-cho-sep-cl1073)
+
+[Việc làm Trưởng ca](https://www.topcv.vn/tim-viec-lam-truong-ca-cl464)
+
+[Việc làm Process Quality Assurance (PQA)](https://www.topcv.vn/tim-viec-lam-process-quality-assurance-pqa-cl282)
+
+[Việc làm Phát triển cộng đồng](https://www.topcv.vn/tim-viec-lam-phat-trien-cong-dong-cl121)
+
+[Việc làm Dịch vụ ô tô/xe máy/xe điện khác](https://www.topcv.vn/tim-viec-lam-dich-vu-o-to-xe-may-xe-dien-khac-cl975)
+
+[Việc làm Kinh doanh OTA](https://www.topcv.vn/tim-viec-lam-kinh-doanh-ota-cl72)
+
+[Việc làm Tư vấn bảo hiểm](https://www.topcv.vn/tim-viec-lam-tu-van-bao-hiem-cl39)
+
+[Việc làm Buồng phòng](https://www.topcv.vn/tim-viec-lam-buong-phong-cl874)
+
+[Việc làm R&D y dược](https://www.topcv.vn/tim-viec-lam-r-d-y-duoc-cl815)
+
+[Việc làm Chuyên môn Nông/Lâm/Ngư nghiệp khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-nong-lam-ngu-nghiep-khac-cl938)
+
+[Việc làm Concept Artist](https://www.topcv.vn/tim-viec-lam-concept-artist-cl325)
+
+[Việc làm Kỹ thuật IT](https://www.topcv.vn/tim-viec-lam-ky-thuat-it-cl911)
+
+[Việc làm Kỹ thuật viên xét nghiệm](https://www.topcv.vn/tim-viec-lam-ky-thuat-vien-xet-nghiem-cl801)
+
+[Việc làm Kỹ sư điện mặt trời](https://www.topcv.vn/tim-viec-lam-ky-su-dien-mat-troi-cl889)
+
+[Việc làm Game Developer](https://www.topcv.vn/tim-viec-lam-game-developer-cl324)
+
+[Việc làm Bán hàng kỹ thuật IT](https://www.topcv.vn/tim-viec-lam-ban-hang-ky-thuat-it-cl76)
+
+[Việc làm Quản lý cơ sở vật chất](https://www.topcv.vn/tim-viec-lam-quan-ly-co-so-vat-chat-cl197)
+
+[Việc làm Phân tích dữ liệu](https://www.topcv.vn/tim-viec-lam-phan-tich-du-lieu-cl764)
+
+[Việc làm Thợ sửa xe](https://www.topcv.vn/tim-viec-lam-tho-sua-xe-cl594)
+
+[Việc làm Sales Bất động sản khác](https://www.topcv.vn/tim-viec-lam-sales-bat-dong-san-khac-cl944)
+
+[Việc làm Kinh doanh quà tặng/in ấn](https://www.topcv.vn/tim-viec-lam-kinh-doanh-qua-tang-in-an-cl1089)
+
+[Việc làm Quản lý dự án xây dựng khác](https://www.topcv.vn/tim-viec-lam-quan-ly-du-an-xay-dung-khac-cl961)
+
+[Việc làm PR Specialist](https://www.topcv.vn/tim-viec-lam-pr-specialist-cl115)
+
+[Việc làm Thiết kế cảnh quan](https://www.topcv.vn/tim-viec-lam-thiet-ke-canh-quan-cl355)
+
+[Việc làm Nhân viên môi trường](https://www.topcv.vn/tim-viec-lam-nhan-vien-moi-truong-cl892)
+
+[Việc làm Chuyên môn Năng lượng/Môi trường/Nông nghiệp khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-nang-luong-moi-truong-nong-nghiep-khac-cl898)
+
+[Việc làm Kế toán dự án](https://www.topcv.vn/tim-viec-lam-ke-toan-du-an-cl927)
+
+[Việc làm Chuyên viên thuế](https://www.topcv.vn/tim-viec-lam-chuyen-vien-thue-cl415)
+
+[Việc làm Giáo viên tiểu học](https://www.topcv.vn/tim-viec-lam-giao-vien-tieu-hoc-cl487)
+
+[Việc làm Kinh doanh nông sản](https://www.topcv.vn/tim-viec-lam-kinh-doanh-nong-san-cl89)
+
+[Việc làm Media Planner/Buyer Executive](https://www.topcv.vn/tim-viec-lam-media-planner-buyer-executive-cl131)
+
+[Việc làm Thợ làm bánh](https://www.topcv.vn/tim-viec-lam-tho-lam-banh-cl869)
+
+[Việc làm Customer Experience (Trải nghiệm khách hàng)](https://www.topcv.vn/tim-viec-lam-customer-experience-trai-nghiem-khach-hang-cl169)
+
+[Việc làm Chuyên môn Thiết bị y tế khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-thiet-bi-y-te-khac-cl991)
+
+[Việc làm Kỹ sư điện tử viễn thông](https://www.topcv.vn/tim-viec-lam-ky-su-dien-tu-vien-thong-cl691)
+
+[Việc làm Kinh doanh điện mặt trời](https://www.topcv.vn/tim-viec-lam-kinh-doanh-dien-mat-troi-cl65)
+
+[Việc làm Chuyên môn Thiết kế Nhà/Nội thất/Môi trường khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-thiet-ke-nha-noi-that-moi-truong-khac-cl993)
+
+[Việc làm Kế toán quản trị](https://www.topcv.vn/tim-viec-lam-ke-toan-quan-tri-cl409)
+
+[Việc làm Thẩm định tín dụng](https://www.topcv.vn/tim-viec-lam-tham-dinh-tin-dung-cl238)
+
+[Việc làm Bán vé máy bay (Ticketing/Booker)](https://www.topcv.vn/tim-viec-lam-ban-ve-may-bay-ticketing-booker-cl70)
+
+[Việc làm Bảo vệ](https://www.topcv.vn/tim-viec-lam-bao-ve-cl200)
+
+[Việc làm Kỹ sư quy trình](https://www.topcv.vn/tim-viec-lam-ky-su-quy-trinh-cl436)
+
+[Việc làm Thợ hàn](https://www.topcv.vn/tim-viec-lam-tho-han-cl368)
+
+[Việc làm Giáo viên tiếng Hàn](https://www.topcv.vn/tim-viec-lam-giao-vien-tieng-han-cl495)
+
+[Việc làm Quản lý khách sạn](https://www.topcv.vn/tim-viec-lam-quan-ly-khach-san-cl877)
+
+[Việc làm QA Engineer](https://www.topcv.vn/tim-viec-lam-qa-engineer-cl281)
+
+[Việc làm Chuyên môn Khách sạn/Dịch vụ cư trú khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-khach-san-dich-vu-cu-tru-khac-cl997)
+
+[Việc làm Tài xế xe tải](https://www.topcv.vn/tim-viec-lam-tai-xe-xe-tai-cl578)
+
+[Việc làm Giám đốc sản xuất](https://www.topcv.vn/tim-viec-lam-giam-doc-san-xuat-cl460)
+
+[Việc làm Kế toán tiền lương](https://www.topcv.vn/tim-viec-lam-ke-toan-tien-luong-cl408)
+
+[Việc làm Quan hệ lao động](https://www.topcv.vn/tim-viec-lam-quan-he-lao-dong-cl185)
+
+[Việc làm Giám đốc Marketing (CMO)](https://www.topcv.vn/tim-viec-lam-giam-doc-marketing-cmo-cl155)
+
+[Việc làm Quan hệ đối ngoại](https://www.topcv.vn/tim-viec-lam-quan-he-doi-ngoai-cl122)
+
+[Việc làm Growth Hacker](https://www.topcv.vn/tim-viec-lam-growth-hacker-cl113)
+
+[Việc làm Chuyên môn Nhiệt/Gió/Điều hoà (HVAC-R)](https://www.topcv.vn/tim-viec-lam-chuyen-mon-nhiet-gio-dieu-hoa-hvac-r-cl980)
+
+[Việc làm Project Administrator](https://www.topcv.vn/tim-viec-lam-project-administrator-cl1019)
+
+[Việc làm Dịch vụ vận tải khác](https://www.topcv.vn/tim-viec-lam-dich-vu-van-tai-khac-cl973)
+
+[Việc làm Thợ Gia công cơ khí khác](https://www.topcv.vn/tim-viec-lam-tho-gia-cong-co-khi-khac-cl966)
+
+[Việc làm Nhân viên visa](https://www.topcv.vn/tim-viec-lam-nhan-vien-visa-cl881)
+
+[Việc làm Bác sĩ nha khoa](https://www.topcv.vn/tim-viec-lam-bac-si-nha-khoa-cl807)
+
+[Việc làm Chuyên môn Dược phẩm/Công nghệ sinh học khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-duoc-pham-cong-nghe-sinh-hoc-khac-cl990)
+
+[Việc làm Chuyên viên kế hoạch](https://www.topcv.vn/tim-viec-lam-chuyen-vien-ke-hoach-cl1026)
+
+[Việc làm Giám đốc vận hành/COO](https://www.topcv.vn/tim-viec-lam-giam-doc-van-hanh-coo-cl174)
+
+[Việc làm Trợ giảng bộ môn khác](https://www.topcv.vn/tim-viec-lam-tro-giang-bo-mon-khac-cl529)
+
+[Việc làm 3D Modeler](https://www.topcv.vn/tim-viec-lam-3d-modeler-cl1039)
+
+[Việc làm Kỹ sư triển khai](https://www.topcv.vn/tim-viec-lam-ky-su-trien-khai-cl687)
+
+[Việc làm Giáo viên chủ nhiệm](https://www.topcv.vn/tim-viec-lam-giao-vien-chu-nhiem-cl520)
+
+[Việc làm Quản lý thiết bị sản xuất](https://www.topcv.vn/tim-viec-lam-quan-ly-thiet-bi-san-xuat-cl470)
+
+[Việc làm Luật sư](https://www.topcv.vn/tim-viec-lam-luat-su-cl766)
+
+[Việc làm Quản lý thiết bị công trình](https://www.topcv.vn/tim-viec-lam-quan-ly-thiet-bi-cong-trinh-cl1086)
+
+[Việc làm Trực page](https://www.topcv.vn/tim-viec-lam-truc-page-cl167)
+
+[Việc làm Vẽ kỹ thuật](https://www.topcv.vn/tim-viec-lam-ve-ky-thuat-cl846)
+
+[Việc làm Giáo viên Tin học](https://www.topcv.vn/tim-viec-lam-giao-vien-tin-hoc-cl490)
+
+[Việc làm Chuyên môn Quan hệ Công chúng](https://www.topcv.vn/tim-viec-lam-chuyen-mon-quan-he-cong-chung-cl950)
+
+[Việc làm Giải phóng mặt bằng](https://www.topcv.vn/tim-viec-lam-giai-phong-mat-bang-cl1025)
+
+[Việc làm Giáo viên STEAM/STEM](https://www.topcv.vn/tim-viec-lam-giao-vien-steam-stem-cl504)
+
+[Việc làm Thiết kế bao bì](https://www.topcv.vn/tim-viec-lam-thiet-ke-bao-bi-cl844)
+
+[Việc làm Frontend Developer](https://www.topcv.vn/tim-viec-lam-frontend-developer-cl273)
+
+[Việc làm Chuyên môn Chứng khoán khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-chung-khoan-khac-cl958)
+
+[Việc làm Các vị trí bác sĩ khác](https://www.topcv.vn/tim-viec-lam-cac-vi-tri-bac-si-khac-cl810)
+
+[Việc làm Kỹ sư lập trình PLC/SCADA](https://www.topcv.vn/tim-viec-lam-ky-su-lap-trinh-plc-scada-cl657)
+
+[Việc làm Chuyên môn Nghệ thuật/Hoạt hình/Game khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-nghe-thuat-hoat-hinh-game-khac-cl994)
+
+[Việc làm Kinh doanh khách sạn](https://www.topcv.vn/tim-viec-lam-kinh-doanh-khach-san-cl71)
+
+[Việc làm Cố vấn học tập](https://www.topcv.vn/tim-viec-lam-co-van-hoc-tap-cl540)
+
+[Việc làm Biên kịch](https://www.topcv.vn/tim-viec-lam-bien-kich-cl633)
+
+[Việc làm Database Administrator (DBA)](https://www.topcv.vn/tim-viec-lam-database-administrator-dba-cl292)
+
+[Việc làm Chuyên viên hồ sơ thầu](https://www.topcv.vn/tim-viec-lam-chuyen-vien-ho-so-thau-cl734)
+
+[Việc làm Chuyên môn Pháp chế khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-phap-che-khac-cl956)
+
+[Việc làm Hỗ trợ lớp học](https://www.topcv.vn/tim-viec-lam-ho-tro-lop-hoc-cl531)
+
+[Việc làm Chuyên môn Pháp lý khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-phap-ly-khac-cl988)
+
+[Việc làm Kỹ sư phần cứng](https://www.topcv.vn/tim-viec-lam-ky-su-phan-cung-cl661)
+
+[Việc làm Customer Success](https://www.topcv.vn/tim-viec-lam-customer-success-cl49)
+
+[Việc làm Corporate Communication](https://www.topcv.vn/tim-viec-lam-corporate-communication-cl118)
+
+[Việc làm Quản trị và vận hành bảo mật](https://www.topcv.vn/tim-viec-lam-quan-tri-va-van-hanh-bao-mat-cl297)
+
+[Việc làm Lắp đặt/bảo trì thang máy](https://www.topcv.vn/tim-viec-lam-lap-dat-bao-tri-thang-may-cl372)
+
+[Việc làm Chuyên môn Thiết kế Đồ hoạ/Giao diện/Trải nghiệm khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-thiet-ke-do-hoa-giao-dien-trai-nghiem-khac-cl992)
+
+[Việc làm Quản lý thiết bị y tế](https://www.topcv.vn/tim-viec-lam-quan-ly-thiet-bi-y-te-cl821)
+
+[Việc làm Sales dịch vụ Quảng cáo/Triển lãm/Sự kiện khác](https://www.topcv.vn/tim-viec-lam-sales-dich-vu-quang-cao-trien-lam-su-kien-khac-cl945)
+
+[Việc làm Hoạch định tài chính](https://www.topcv.vn/tim-viec-lam-hoach-dinh-tai-chinh-cl215)
+
+[Việc làm Huy động vốn](https://www.topcv.vn/tim-viec-lam-huy-dong-von-cl1033)
+
+[Việc làm Thợ tiện](https://www.topcv.vn/tim-viec-lam-tho-tien-cl431)
+
+[Việc làm Kế toán tài sản cố định](https://www.topcv.vn/tim-viec-lam-ke-toan-tai-san-co-dinh-cl404)
+
+[Việc làm Việc làm Bán lẻ/Dịch vụ đời sống khác](https://www.topcv.vn/tim-viec-lam-viec-lam-ban-le-dich-vu-doi-song-khac-cl611)
+
+[Việc làm Kỹ sư quản lý chất lượng nhà cung cấp (SQE)](https://www.topcv.vn/tim-viec-lam-ky-su-quan-ly-chat-luong-nha-cung-cap-sqe-cl730)
+
+[Việc làm Solution Architect](https://www.topcv.vn/tim-viec-lam-solution-architect-cl310)
+
+[Việc làm Giám sát vệ sinh](https://www.topcv.vn/tim-viec-lam-giam-sat-ve-sinh-cl571)
+
+[Việc làm Vận hành tòa nhà](https://www.topcv.vn/tim-viec-lam-van-hanh-toa-nha-cl1088)
+
+[Việc làm Nhân viên hiện trường Logistics](https://www.topcv.vn/tim-viec-lam-nhan-vien-hien-truong-logistics-cl725)
+
+[Việc làm Phân loại/Sắp xếp hàng hoá](https://www.topcv.vn/tim-viec-lam-phan-loai-sap-xep-hang-hoa-cl737)
+
+[Việc làm Đăng ký dược phẩm](https://www.topcv.vn/tim-viec-lam-dang-ky-duoc-pham-cl818)
+
+[Việc làm Chuyên viên Cyber Security](https://www.topcv.vn/tim-viec-lam-chuyen-vien-cyber-security-cl294)
+
+[Việc làm Thợ may](https://www.topcv.vn/tim-viec-lam-tho-may-cl448)
+
+[Việc làm Quy hoạch và thiết kế đô thị](https://www.topcv.vn/tim-viec-lam-quy-hoach-va-thiet-ke-do-thi-cl382)
+
+[Việc làm Công nhân lắp ráp](https://www.topcv.vn/tim-viec-lam-cong-nhan-lap-rap-cl1060)
+
+[Việc làm Kiểm thử và đánh giá bảo mật](https://www.topcv.vn/tim-viec-lam-kiem-thu-va-danh-gia-bao-mat-cl302)
+
+[Việc làm Chuyên môn Thiết kế Công nghiệp](https://www.topcv.vn/tim-viec-lam-chuyen-mon-thiet-ke-cong-nghiep-cl843)
+
+[Việc làm Giảng viên thỉnh giảng](https://www.topcv.vn/tim-viec-lam-giang-vien-thinh-giang-cl492)
+
+[Việc làm Kinh doanh nguồn vốn](https://www.topcv.vn/tim-viec-lam-kinh-doanh-nguon-von-cl222)
+
+[Việc làm Bác sĩ y học cổ truyền](https://www.topcv.vn/tim-viec-lam-bac-si-y-hoc-co-truyen-cl806)
+
+[Việc làm Chuyên môn Hàng hải](https://www.topcv.vn/tim-viec-lam-chuyen-mon-hang-hai-cl902)
+
+[Việc làm Chuyên môn Dịch vụ du lịch khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-dich-vu-du-lich-khac-cl998)
+
+[Việc làm Điều phối hàng hóa](https://www.topcv.vn/tim-viec-lam-dieu-phoi-hang-hoa-cl731)
+
+[Việc làm Định giá tài sản](https://www.topcv.vn/tim-viec-lam-dinh-gia-tai-san-cl240)
+
+[Việc làm Chuyên môn Hoá chất/Hoá mỹ phẩm khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-hoa-chat-hoa-my-pham-khac-cl948)
+
+[Việc làm Hiệu đính và nhập liệu](https://www.topcv.vn/tim-viec-lam-hieu-dinh-va-nhap-lieu-cl623)
+
+[Việc làm Giám đốc tài chính](https://www.topcv.vn/tim-viec-lam-giam-doc-tai-chinh-cl1029)
+
+[Việc làm Giáo viên Tiếng Việt/Ngữ văn](https://www.topcv.vn/tim-viec-lam-giao-vien-tieng-viet-ngu-van-cl489)
+
+[Việc làm Tích hợp hệ thống](https://www.topcv.vn/tim-viec-lam-tich-hop-he-thong-cl668)
+
+[Việc làm Thủ quỹ](https://www.topcv.vn/tim-viec-lam-thu-quy-cl1034)
+
+[Việc làm Chuyên viên hợp đồng](https://www.topcv.vn/tim-viec-lam-chuyen-vien-hop-dong-cl1035)
+
+[Việc làm Dịch vụ giao nhận khác](https://www.topcv.vn/tim-viec-lam-dich-vu-giao-nhan-khac-cl986)
+
+[Việc làm Tư vấn chiến lược](https://www.topcv.vn/tim-viec-lam-tu-van-chien-luoc-cl756)
+
+[Việc làm Trưởng nhóm kiểm toán](https://www.topcv.vn/tim-viec-lam-truong-nhom-kiem-toan-cl414)
+
+[Việc làm Chuyên môn Phim và truyền hình/Báo chí/Xuất bản khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-phim-va-truyen-hinh-bao-chi-xuat-ban-khac-cl643)
+
+[Việc làm Chuyên viên điều phối giáo viên](https://www.topcv.vn/tim-viec-lam-chuyen-vien-dieu-phoi-giao-vien-cl518)
+
+[Việc làm Quản lý dự án điện](https://www.topcv.vn/tim-viec-lam-quan-ly-du-an-dien-cl683)
+
+[Việc làm Kỹ sư robot](https://www.topcv.vn/tim-viec-lam-ky-su-robot-cl658)
+
+[Việc làm Hậu kỳ sản xuất](https://www.topcv.vn/tim-viec-lam-hau-ky-san-xuat-cl636)
+
+[Việc làm Kỹ sư thiết kế nhôm kính](https://www.topcv.vn/tim-viec-lam-ky-su-thiet-ke-nhom-kinh-cl363)
+
+[Việc làm Data Scientist](https://www.topcv.vn/tim-viec-lam-data-scientist-cl286)
+
+[Việc làm Thợ phay](https://www.topcv.vn/tim-viec-lam-tho-phay-cl430)
+
+[Việc làm Kỹ sư cầu nối BrSE](https://www.topcv.vn/tim-viec-lam-ky-su-cau-noi-brse-cl307)
+
+[Việc làm Kỹ thuật viên chẩn đoán hình ảnh](https://www.topcv.vn/tim-viec-lam-ky-thuat-vien-chan-doan-hinh-anh-cl802)
+
+[Việc làm Kinh doanh HVAC](https://www.topcv.vn/tim-viec-lam-kinh-doanh-hvac-cl66)
+
+[Việc làm Trợ lý dự án kỹ thuật](https://www.topcv.vn/tim-viec-lam-tro-ly-du-an-ky-thuat-cl685)
+
+[Việc làm Business Intelligence](https://www.topcv.vn/tim-viec-lam-business-intelligence-cl143)
+
+[Việc làm Tác nghiệp tín dụng](https://www.topcv.vn/tim-viec-lam-tac-nghiep-tin-dung-cl1040)
+
+[Việc làm Chuyên môn Market Research and Analysis khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-market-research-and-analysis-khac-cl952)
+
+[Việc làm Chuyên viên dự án kỹ thuật](https://www.topcv.vn/tim-viec-lam-chuyen-vien-du-an-ky-thuat-cl686)
+
+[Việc làm Quản lý y tế](https://www.topcv.vn/tim-viec-lam-quan-ly-y-te-cl809)
+
+[Việc làm Thợ sơn](https://www.topcv.vn/tim-viec-lam-tho-son-cl371)
+
+[Việc làm Quản lý Spa](https://www.topcv.vn/tim-viec-lam-quan-ly-spa-cl561)
+
+[Việc làm Hiệu trưởng/Phó hiệu trưởng](https://www.topcv.vn/tim-viec-lam-hieu-truong-pho-hieu-truong-cl519)
+
+[Việc làm Giáo viên tiếng Đức](https://www.topcv.vn/tim-viec-lam-giao-vien-tieng-duc-cl497)
+
+[Việc làm Phân tích đầu tư](https://www.topcv.vn/tim-viec-lam-phan-tich-dau-tu-cl244)
+
+[Việc làm Cloud Engineer](https://www.topcv.vn/tim-viec-lam-cloud-engineer-cl293)
+
+[Việc làm Kỹ sư vật liệu](https://www.topcv.vn/tim-viec-lam-ky-su-vat-lieu-cl439)
+
+[Việc làm Kỹ sư nhiệt lạnh](https://www.topcv.vn/tim-viec-lam-ky-su-nhiet-lanh-cl672)
+
+[Việc làm Giám đốc ngân hàng](https://www.topcv.vn/tim-viec-lam-giam-doc-ngan-hang-cl230)
+
+[Việc làm Quản lý tài sản](https://www.topcv.vn/tim-viec-lam-quan-ly-tai-san-cl247)
+
+[Việc làm Automation Tester](https://www.topcv.vn/tim-viec-lam-automation-tester-cl278)
+
+[Việc làm Kế toán xuất nhập khẩu](https://www.topcv.vn/tim-viec-lam-ke-toan-xuat-nhap-khau-cl928)
+
+[Việc làm Quản lý/Hỗ trợ lớp học khác](https://www.topcv.vn/tim-viec-lam-quan-ly-ho-tro-lop-hoc-khac-cl971)
+
+[Việc làm Kinh doanh khách đoàn (MICE)](https://www.topcv.vn/tim-viec-lam-kinh-doanh-khach-doan-mice-cl69)
+
+[Việc làm Chuyên môn Viễn thông khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-vien-thong-khac-cl983)
+
+[Việc làm Nghiên cứu sinh học](https://www.topcv.vn/tim-viec-lam-nghien-cuu-sinh-hoc-cl814)
+
+[Việc làm Quản lý vận hành bất động sản khác](https://www.topcv.vn/tim-viec-lam-quan-ly-van-hanh-bat-dong-san-khac-cl963)
+
+[Việc làm Nhân viên thi công](https://www.topcv.vn/tim-viec-lam-nhan-vien-thi-cong-cl1027)
+
+[Việc làm Tư vấn quản lý doanh nghiệp](https://www.topcv.vn/tim-viec-lam-tu-van-quan-ly-doanh-nghiep-cl755)
+
+[Việc làm Tư vấn nhân sự](https://www.topcv.vn/tim-viec-lam-tu-van-nhan-su-cl759)
+
+[Việc làm Kỹ sư mạng](https://www.topcv.vn/tim-viec-lam-ky-su-mang-cl706)
+
+[Việc làm Thiết kế triển lãm/trưng bày](https://www.topcv.vn/tim-viec-lam-thiet-ke-trien-lam-trung-bay-cl840)
+
+[Việc làm Giám sát bảo trì tòa nhà](https://www.topcv.vn/tim-viec-lam-giam-sat-bao-tri-toa-nha-cl378)
+
+[Việc làm Marketing Director](https://www.topcv.vn/tim-viec-lam-marketing-director-cl154)
+
+[Việc làm Bồi thường bảo hiểm](https://www.topcv.vn/tim-viec-lam-boi-thuong-bao-hiem-cl251)
+
+[Việc làm Tài xế](https://www.topcv.vn/tim-viec-lam-tai-xe-cr1042cb1049)
+
+[Việc làm Bảo vệ](https://www.topcv.vn/tim-viec-lam-bao-ve)
+
+[Việc làm Công nhân](https://www.topcv.vn/tim-viec-lam-cong-nhan-cr1042cb1045)
+
+[Việc làm Nhân viên kho](https://www.topcv.vn/tim-viec-lam-nhan-vien-kho-cl741)
+
+[Việc làm Shipper (Nhân viên giao hàng)](https://www.topcv.vn/tim-viec-lam-shipper-nhan-vien-giao-hang-cl574)
+
+[Việc làm Thu ngân](https://www.topcv.vn/tim-viec-lam-thu-ngan-cl202)
+
+[Việc làm Lễ tân/Đón tiếp](https://www.topcv.vn/tim-viec-lam-le-tan-don-tiep-cl863)
+
+[Việc làm Pha chế (Barista)](https://www.topcv.vn/tim-viec-lam-pha-che-barista-cl870)
+
+[Việc làm Trực page](https://www.topcv.vn/tim-viec-lam-truc-page-cl167)
+
+[Việc làm Thợ may](https://www.topcv.vn/tim-viec-lam-tho-may-cl448)
+
+[Việc làm Thợ cơ khí](https://www.topcv.vn/tim-viec-lam-tho-co-khi-cl429)
+
+[Việc làm Công nhân xây dựng](https://www.topcv.vn/tim-viec-lam-cong-nhan-xay-dung-cl1068)
+
+[Việc làm Công nhân thời vụ](https://www.topcv.vn/tim-viec-lam-cong-nhan-thoi-vu-cl1057)
+
+[Việc làm Bốc xếp hàng hóa](https://www.topcv.vn/tim-viec-lam-boc-xep-hang-hoa-cl475)
+
+[Việc làm Đóng gói hàng hóa](https://www.topcv.vn/tim-viec-lam-dong-goi-hang-hoa-cl474)
+
+[Việc làm Nhân viên môi trường](https://www.topcv.vn/tim-viec-lam-nhan-vien-moi-truong-cl892)
+
+[Việc làm Công nhân chăn nuôi](https://www.topcv.vn/tim-viec-lam-cong-nhan-chan-nuoi-cl895)
+
+[Việc làm Công nhân làm nước đá](https://www.topcv.vn/tim-viec-lam-cong-nhan-lam-nuoc-da-cl1066)
+
+[Việc làm Công nhân xưởng gỗ](https://www.topcv.vn/tim-viec-lam-cong-nhan-xuong-go-cl1059)
+
+[Việc làm Công nhân bao bì](https://www.topcv.vn/tim-viec-lam-cong-nhan-bao-bi-cl1064)
+
+[Việc làm Công nhân điện tử](https://www.topcv.vn/tim-viec-lam-cong-nhan-dien-tu-cl1067)
+
+[Việc làm Công nhân sản xuất](https://www.topcv.vn/tim-viec-lam-cong-nhan-san-xuat-cl466)
+
+[Việc làm Công nhân ép nhựa](https://www.topcv.vn/tim-viec-lam-cong-nhan-ep-nhua-cl1065)
+
+[Việc làm Công nhân giày da](https://www.topcv.vn/tim-viec-lam-cong-nhan-giay-da-cl1063)
+
+[Việc làm Công nhân vận hành máy](https://www.topcv.vn/tim-viec-lam-cong-nhan-van-hanh-may-cl1061)
+
+[Việc làm Công nhân khai thác than](https://www.topcv.vn/tim-viec-lam-cong-nhan-khai-thac-than-cl1058)
+
+[Việc làm Công nhân lắp ráp](https://www.topcv.vn/tim-viec-lam-cong-nhan-lap-rap-cl1060)
+
+[Việc làm Công nhân xếp quần áo](https://www.topcv.vn/tim-viec-lam-cong-nhan-xep-quan-ao-cl1062)
+
+[Việc làm Việc làm Công nhân khác](https://www.topcv.vn/tim-viec-lam-viec-lam-cong-nhan-khac-cl1069)
+
+[Việc làm Tài xế taxi](https://www.topcv.vn/tim-viec-lam-tai-xe-taxi-cl576)
+
+[Việc làm Tài xế B2](https://www.topcv.vn/tim-viec-lam-tai-xe-b2-cl1072)
+
+[Việc làm Tài xế xe tải](https://www.topcv.vn/tim-viec-lam-tai-xe-xe-tai-cl578)
+
+[Việc làm Phụ xe](https://www.topcv.vn/tim-viec-lam-phu-xe-cl726)
+
+[Việc làm Lái xe cho sếp](https://www.topcv.vn/tim-viec-lam-lai-xe-cho-sep-cl1073)
+
+[Việc làm Tài xế công nghệ](https://www.topcv.vn/tim-viec-lam-tai-xe-cong-nghe-cl1009)
+
+[Việc làm Tài xế container](https://www.topcv.vn/tim-viec-lam-tai-xe-container-cl1071)
+
+[Việc làm Tài xế lái xe văn phòng](https://www.topcv.vn/tim-viec-lam-tai-xe-lai-xe-van-phong-cl198)
+
+[Việc làm Tài xế xe khách](https://www.topcv.vn/tim-viec-lam-tai-xe-xe-khach-cl579)
+
+[Việc làm Tài xế lái xe nâng](https://www.topcv.vn/tim-viec-lam-tai-xe-lai-xe-nang-cl454)
+
+[Việc làm Tài xế lái xe đường dài](https://www.topcv.vn/tim-viec-lam-tai-xe-lai-xe-duong-dai-cl1004)
+
+[Việc làm Tài xế lái máy công trình](https://www.topcv.vn/tim-viec-lam-tai-xe-lai-may-cong-trinh-cl455)
+
+[Việc làm Tài xế lái xe thuê](https://www.topcv.vn/tim-viec-lam-tai-xe-lai-xe-thue-cl575)
+
+[Việc làm Tài xế lái xe chuyên dụng](https://www.topcv.vn/tim-viec-lam-tai-xe-lai-xe-chuyen-dung-cl1005)
+
+[Việc làm Dịch vụ đưa đón khác](https://www.topcv.vn/tim-viec-lam-dich-vu-dua-don-khac-cl1008)
+
+[Việc làm Bốc xếp hàng hóa](https://www.topcv.vn/tim-viec-lam-boc-xep-hang-hoa-cl475)
+
+[Việc làm Bưu tá](https://www.topcv.vn/tim-viec-lam-buu-ta-cl1006)
+
+[Việc làm Phân loại/Sắp xếp hàng hoá](https://www.topcv.vn/tim-viec-lam-phan-loai-sap-xep-hang-hoa-cl737)
+
+[Việc làm Đóng gói hàng hóa](https://www.topcv.vn/tim-viec-lam-dong-goi-hang-hoa-cl474)
+
+[Việc làm Sửa chữa điện thoại](https://www.topcv.vn/tim-viec-lam-sua-chua-dien-thoai-cl585)
+
+[Việc làm Bảo vệ](https://www.topcv.vn/tim-viec-lam-bao-ve-cl200)
+
+[Việc làm Sửa chữa/Bảo trì điện nước](https://www.topcv.vn/tim-viec-lam-sua-chua-bao-tri-dien-nuoc-cl366)
+
+[Việc làm Thợ sửa khoá](https://www.topcv.vn/tim-viec-lam-tho-sua-khoa-cl590)
+
+[Việc làm Thợ điện](https://www.topcv.vn/tim-viec-lam-tho-dien-cl655)
+
+[Việc làm Thợ điện lạnh](https://www.topcv.vn/tim-viec-lam-tho-dien-lanh-cl367)
+
+[Việc làm Bảo trì tòa nhà](https://www.topcv.vn/tim-viec-lam-bao-tri-toa-nha-cl377)
+
+[Việc làm Thợ sửa xe](https://www.topcv.vn/tim-viec-lam-tho-sua-xe-cl594)
+
+[Việc làm Nhân viên rửa xe](https://www.topcv.vn/tim-viec-lam-nhan-vien-rua-xe-cl595)
+
+[Việc làm Sửa chữa máy tính và máy in](https://www.topcv.vn/tim-viec-lam-sua-chua-may-tinh-va-may-in-cl586)
+
+[Việc làm Lắp đặt/bảo trì thang máy](https://www.topcv.vn/tim-viec-lam-lap-dat-bao-tri-thang-may-cl372)
+
+[Việc làm Nhân viên cảnh quan](https://www.topcv.vn/tim-viec-lam-nhan-vien-canh-quan-cl380)
+
+[Việc làm Sửa chữa thiết bị gia dụng](https://www.topcv.vn/tim-viec-lam-sua-chua-thiet-bi-gia-dung-cl584)
+
+[Việc làm Thợ độ xe ô tô/xe máy/xe điện](https://www.topcv.vn/tim-viec-lam-tho-do-xe-o-to-xe-may-xe-dien-cl596)
+
+[Việc làm Thợ kỹ thuật khác](https://www.topcv.vn/tim-viec-lam-tho-ky-thuat-khac-cl923)
+
+[Việc làm Việc làm Bảo vệ/Bảo trì/Sửa chữa khác](https://www.topcv.vn/tim-viec-lam-viec-lam-bao-ve-bao-tri-sua-chua-khac-cl1055)
+
+[Việc làm Vệ sinh/Tạp vụ](https://www.topcv.vn/tim-viec-lam-ve-sinh-tap-vu-cl201)
+
+[Việc làm Giúp việc](https://www.topcv.vn/tim-viec-lam-giup-viec-cl572)
+
+[Việc làm Bảo mẫu/Người trông trẻ](https://www.topcv.vn/tim-viec-lam-bao-mau-nguoi-trong-tre-cl591)
+
+[Việc làm Nhân viên dọn vệ sinh](https://www.topcv.vn/tim-viec-lam-nhan-vien-don-ve-sinh-cl570)
+
+[Việc làm Sắp xếp tủ quần áo và nhà cửa](https://www.topcv.vn/tim-viec-lam-sap-xep-tu-quan-ao-va-nha-cua-cl573)
+
+[Việc làm Dịch vụ vệ sinh/nhà cửa khác](https://www.topcv.vn/tim-viec-lam-dich-vu-ve-sinh-nha-cua-khac-cl972)
+
+[Việc làm Phun xăm thẩm mỹ](https://www.topcv.vn/tim-viec-lam-phun-xam-tham-my-cl563)
+
+[Việc làm Thợ xăm (Tattoo Artist)](https://www.topcv.vn/tim-viec-lam-tho-xam-tattoo-artist-cl937)
+
+[Việc làm Kỹ thuật viên Spa](https://www.topcv.vn/tim-viec-lam-ky-thuat-vien-spa-cl560)
+
+[Việc làm Thợ cắt tóc](https://www.topcv.vn/tim-viec-lam-tho-cat-toc-cl564)
+
+[Việc làm Thợ nail/mi](https://www.topcv.vn/tim-viec-lam-tho-nail-mi-cl562)
+
+[Việc làm Nhân viên massage](https://www.topcv.vn/tim-viec-lam-nhan-vien-massage-cl569)
+
+[Việc làm Dịch vụ làm đẹp khác](https://www.topcv.vn/tim-viec-lam-dich-vu-lam-dep-khac-cl917)
+
+[Việc làm Đầu bếp](https://www.topcv.vn/tim-viec-lam-dau-bep-cl865)
+
+[Việc làm Phục vụ](https://www.topcv.vn/tim-viec-lam-phuc-vu-cl862)
+
+[Việc làm Phụ bếp](https://www.topcv.vn/tim-viec-lam-phu-bep-cl867)
+
+[Việc làm Thợ làm bánh](https://www.topcv.vn/tim-viec-lam-tho-lam-banh-cl869)
+
+[Việc làm Chuyên môn Nhà hàng/Dịch vụ ăn uống khác](https://www.topcv.vn/tim-viec-lam-chuyen-mon-nha-hang-dich-vu-an-uong-khac-cl996)
+
+[Việc làm Giặt là](https://www.topcv.vn/tim-viec-lam-giat-la-cl875)
+
+[Việc làm Bellman (nhân viên hành lý)](https://www.topcv.vn/tim-viec-lam-bellman-nhan-vien-hanh-ly-cl873)
+
+[Việc làm Buồng phòng](https://www.topcv.vn/tim-viec-lam-buong-phong-cl874)
+
+[Việc làm Nhân viên đỗ xe (Valet Parking)](https://www.topcv.vn/tim-viec-lam-nhan-vien-do-xe-valet-parking-cl876)
+
+[Việc làm PG](https://www.topcv.vn/tim-viec-lam-pg-cl1077)
+
+[Việc làm Hiệu đính và nhập liệu](https://www.topcv.vn/tim-viec-lam-hieu-dinh-va-nhap-lieu-cl623)
+
+[Việc làm Nhân viên siêu thị](https://www.topcv.vn/tim-viec-lam-nhan-vien-sieu-thi-cl556)
+
+[Việc làm Bán hàng siêu thị/cửa hàng tiện ích/tiện lợi](https://www.topcv.vn/tim-viec-lam-ban-hang-sieu-thi-cua-hang-tien-ich-tien-loi-cl21)
+
+[Việc làm Nhân viên phát tờ rơi](https://www.topcv.vn/tim-viec-lam-nhan-vien-phat-to-roi-cl1076)
+
+[Việc làm Bán hàng điện thoại](https://www.topcv.vn/tim-viec-lam-ban-hang-dien-thoai-cl22)
+
+[Việc làm Nhân viên cây xăng](https://www.topcv.vn/tim-viec-lam-nhan-vien-cay-xang-cl608)
+
+[Việc làm Nhân viên rạp chiếu phim](https://www.topcv.vn/tim-viec-lam-nhan-vien-rap-chieu-phim-cl607)
+
+[Việc làm Thợ may](https://www.topcv.vn/tim-viec-lam-tho-may-cl448)
+
+[Việc làm Thợ cắm hoa](https://www.topcv.vn/tim-viec-lam-tho-cam-hoa-cl602)
+
+[Việc làm Thợ cắt vải](https://www.topcv.vn/tim-viec-lam-tho-cat-vai-cl449)
+
+[Việc làm Thợ thủ công mỹ nghệ](https://www.topcv.vn/tim-viec-lam-tho-thu-cong-my-nghe-cl1074)
+
+[Việc làm Thợ thủ công khác](https://www.topcv.vn/tim-viec-lam-tho-thu-cong-khac-cl1075)
+
+[Việc làm Thợ hàn](https://www.topcv.vn/tim-viec-lam-tho-han-cl368)
+
+[Việc làm Thợ cơ khí](https://www.topcv.vn/tim-viec-lam-tho-co-khi-cl429)
+
+[Việc làm Thợ tiện](https://www.topcv.vn/tim-viec-lam-tho-tien-cl431)
+
+[Việc làm Thợ khoan](https://www.topcv.vn/tim-viec-lam-tho-khoan-cl1078)
+
+[Việc làm Thợ mài](https://www.topcv.vn/tim-viec-lam-tho-mai-cl1079)
+
+[Việc làm Thợ phay](https://www.topcv.vn/tim-viec-lam-tho-phay-cl430)
+
+[Việc làm Thợ Gia công cơ khí khác](https://www.topcv.vn/tim-viec-lam-tho-gia-cong-co-khi-khac-cl966)
+
+[Việc làm Thợ xây/Thợ nề/Thợ hồ](https://www.topcv.vn/tim-viec-lam-tho-xay-tho-ne-tho-ho-cl373)
+
+[Việc làm Thợ mộc](https://www.topcv.vn/tim-viec-lam-tho-moc-cl369)
+
+[Việc làm Thợ sơn](https://www.topcv.vn/tim-viec-lam-tho-son-cl371)
+
+[Việc làm Thợ nhôm kính](https://www.topcv.vn/tim-viec-lam-tho-nhom-kinh-cl374)
+
+[Việc làm Thợ xây dựng khác](https://www.topcv.vn/tim-viec-lam-tho-xay-dung-khac-cl375)
