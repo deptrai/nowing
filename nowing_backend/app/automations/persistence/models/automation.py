@@ -57,6 +57,15 @@ class Automation(BaseModel, TimestampMixin):
 
     version = Column(Integer, nullable=False, default=1, server_default="1")
 
+    derived_from_playbook_id = Column(
+        Integer,
+        ForeignKey("playbooks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    playbook_version = Column(Integer, nullable=True)
+
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -67,6 +76,7 @@ class Automation(BaseModel, TimestampMixin):
 
     workspace = relationship("Workspace", back_populates="automations")
     created_by = relationship("User", back_populates="automations")
+    playbook = relationship("Playbook", back_populates="automations")
     triggers = relationship(
         "AutomationTrigger",
         back_populates="automation",

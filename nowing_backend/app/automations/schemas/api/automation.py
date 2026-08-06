@@ -51,10 +51,12 @@ class AutomationSummary(BaseModel):
 
 
 class AutomationDetail(AutomationSummary):
-    """Full automation view including definition and attached triggers."""
+    """Full automation view including definition, triggers, and playbook lineage."""
 
     definition: AutomationDefinition
     triggers: list[TriggerDetail] = Field(default_factory=list)
+    derived_from_playbook_id: int | None = None
+    playbook_version: int | None = None
 
 
 class AutomationList(BaseModel):

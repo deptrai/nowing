@@ -10,12 +10,14 @@ from .model_policy import (
     get_automation_model_eligibility,
     get_model_eligibility,
 )
+from .playbook_service import PlaybookService, get_playbook_service
 from .run import RunService, get_run_service
 from .trigger import TriggerService, get_trigger_service
 
 __all__ = [
     "AutomationModelPolicyError",
     "AutomationService",
+    "PlaybookService",
     "RunService",
     "TriggerService",
     "assert_automation_models_billable",
@@ -23,6 +25,7 @@ __all__ = [
     "get_automation_model_eligibility",
     "get_automation_service",
     "get_model_eligibility",
+    "get_playbook_service",
     "get_run_service",
     "get_trigger_service",
 ]

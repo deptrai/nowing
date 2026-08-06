@@ -134,6 +134,10 @@ export function Sidebar({
 		() => navItems.find((item) => item.url.endsWith("/automations")),
 		[navItems]
 	);
+	const playbooksItem = useMemo(
+		() => navItems.find((item) => item.url.endsWith("/playbooks")),
+		[navItems]
+	);
 	const artifactsItem = useMemo(
 		() => navItems.find((item) => item.url.endsWith("/artifacts")),
 		[navItems]
@@ -147,6 +151,7 @@ export function Sidebar({
 			navItems.filter(
 				(item) =>
 					!item.url.endsWith("/automations") &&
+					!item.url.endsWith("/playbooks") &&
 					!item.url.endsWith("/artifacts") &&
 					!item.url.endsWith("/playground")
 			),
@@ -230,6 +235,16 @@ export function Sidebar({
 							isCollapsed={isCollapsed}
 							isActive={automationsItem.isActive}
 							tooltipContent={isCollapsed ? automationsItem.title : undefined}
+						/>
+					)}
+					{playbooksItem && (
+						<SidebarButton
+							icon={playbooksItem.icon}
+							label={playbooksItem.title}
+							onClick={() => onNavItemClick?.(playbooksItem)}
+							isCollapsed={isCollapsed}
+							isActive={playbooksItem.isActive}
+							tooltipContent={isCollapsed ? playbooksItem.title : undefined}
 						/>
 					)}
 					{artifactsItem && (

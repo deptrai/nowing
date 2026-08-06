@@ -136,4 +136,9 @@ export const cacheKeys = {
 		modelEligibility: (workspaceId: number) =>
 			["automations", "model-eligibility", workspaceId] as const,
 	},
+	playbooks: {
+		list: (workspaceId: number, limit: number, offset: number) =>
+			["playbooks", "list", workspaceId, limit, offset] as const,
+		detail: (playbookId: number) => ["playbooks", "detail", playbookId] as const,
+	},
 };

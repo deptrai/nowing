@@ -1944,6 +1944,14 @@ class Workspace(BaseModel, TimestampMixin):
         passive_deletes=True,
     )
 
+    playbooks = relationship(
+        "Playbook",
+        back_populates="workspace",
+        order_by="Playbook.id",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
     # RBAC relationships
     roles = relationship(
         "WorkspaceRole",
@@ -2744,6 +2752,12 @@ if config.AUTH_TYPE == "GOOGLE":
             passive_deletes=True,
         )
 
+        playbooks = relationship(
+            "Playbook",
+            back_populates="created_by",
+            passive_deletes=True,
+        )
+
         # Incentive tasks completed by this user
         incentive_tasks = relationship(
             "UserIncentiveTask",
@@ -2895,6 +2909,12 @@ else:
         # Automations created by this user
         automations = relationship(
             "Automation",
+            back_populates="created_by",
+            passive_deletes=True,
+        )
+
+        playbooks = relationship(
+            "Playbook",
             back_populates="created_by",
             passive_deletes=True,
         )
@@ -3362,6 +3382,7 @@ from app.automations.persistence import (  # noqa: E402, F401
     Automation,
     AutomationRun,
     AutomationTrigger,
+    Playbook,
 )
 from app.etl_pipeline.cache.persistence.models import CachedParse  # noqa: E402, F401
 from app.file_storage.persistence import DocumentFile  # noqa: E402, F401

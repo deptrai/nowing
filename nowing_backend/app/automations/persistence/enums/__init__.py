@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from .automation_status import AutomationStatus
+from .playbook_scope import PlaybookScope
 from .run_status import RunStatus
 from .trigger_type import TriggerType
 
 __all__ = [
     "AutomationStatus",
+    "PlaybookScope",
     "RunStatus",
     "TriggerType",
 ]

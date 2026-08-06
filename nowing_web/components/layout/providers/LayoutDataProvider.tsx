@@ -2,7 +2,15 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
-import { AlarmClock, AlertTriangle, BarChart3, Puzzle, Shapes, SquareTerminal } from "lucide-react";
+import {
+	AlarmClock,
+	AlertTriangle,
+	BarChart3,
+	BookOpen,
+	Puzzle,
+	Shapes,
+	SquareTerminal,
+} from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
@@ -292,6 +300,7 @@ export function LayoutDataProvider({
 	// announcements live in the avatar rail/dropdown.
 	const isAutomationsActive = pathname?.includes("/automations") === true;
 	const isArtifactsActive = pathname?.endsWith("/artifacts") === true;
+	const isPlaybooksActive = pathname?.includes("/playbooks") === true;
 	const isPlaygroundRoute = pathname?.includes("/playground") === true;
 	const isUsageActive = pathname?.includes("/usage") === true;
 	const isConnectorsActive = pathname?.includes("/connectors") === true;
@@ -318,6 +327,12 @@ export function LayoutDataProvider({
 						isActive: isAutomationsActive,
 					},
 					{
+						title: "Playbooks",
+						url: `/dashboard/${workspaceId}/playbooks`,
+						icon: BookOpen,
+						isActive: isPlaybooksActive,
+					},
+					{
 						title: "Artifacts",
 						url: `/dashboard/${workspaceId}/artifacts`,
 						icon: Shapes,
@@ -339,6 +354,7 @@ export function LayoutDataProvider({
 			isArtifactsActive,
 			isPlaygroundRoute,
 			tNav,
+			isPlaybooksActive,
 		]
 	);
 

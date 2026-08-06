@@ -9,6 +9,14 @@ from .automation import (
     AutomationSummary,
     AutomationUpdate,
 )
+from .playbook import (
+    PlaybookCreate,
+    PlaybookDetail,
+    PlaybookInstantiate,
+    PlaybookList,
+    PlaybookSummary,
+    PlaybookUpdate,
+)
 from .run import RunDetail, RunList, RunSummary
 from .trigger import TriggerCreate, TriggerDetail, TriggerUpdate
 
@@ -18,6 +26,12 @@ __all__ = [
     "AutomationList",
     "AutomationSummary",
     "AutomationUpdate",
+    "PlaybookCreate",
+    "PlaybookDetail",
+    "PlaybookInstantiate",
+    "PlaybookList",
+    "PlaybookSummary",
+    "PlaybookUpdate",
     "RunDetail",
     "RunList",
     "RunSummary",

@@ -1,10 +1,11 @@
 "use client";
 import { useAtomValue } from "jotai";
-import { ArrowLeft, Pause, Pencil, Play, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Pause, Pencil, Play, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { updateAutomationMutationAtom } from "@/atoms/automations/automations-mutation.atoms";
+import { createPlaybookMutationAtom } from "@/atoms/playbooks/playbooks-mutation.atoms";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import type { Automation } from "@/contracts/types/automation.types";
@@ -36,6 +37,9 @@ export function AutomationDetailHeader({
 	const { mutateAsync: updateAutomation, isPending: updating } = useAtomValue(
 		updateAutomationMutationAtom
 	);
+	const { mutateAsync: createPlaybook, isPending: savingPlaybook } = useAtomValue(
+		createPlaybookMutationAtom
+	);
 	const [deleteOpen, setDeleteOpen] = useState(false);
 
 	const canToggle = canUpdate && automation.status !== "archived";
@@ -51,6 +55,17 @@ export function AutomationDetailHeader({
 		await updateAutomation({
 			automationId: automation.id,
 			patch: { status: nextStatus },
+		});
+	}
+
+	async function handleSaveAsPlaybook() {
+		const name = window.prompt("Playbook name", `${automation.name} (playbook)`);
+		if (!name) return;
+		await createPlaybook({
+			source_automation_id: automation.id,
+			name,
+			description: automation.description,
+			tool_scope: [],
 		});
 	}
 
@@ -78,6 +93,19 @@ export function AutomationDetailHeader({
 					</div>
 
 					<div className="flex items-center gap-2 shrink-0">
+						{canUpdate && (
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								disabled={savingPlaybook}
+								onClick={handleSaveAsPlaybook}
+								className="justify-start rounded-md bg-muted px-3 hover:bg-accent"
+							>
+								<BookOpen className="mr-1 h-4 w-4" />
+								Save as Playbook
+							</Button>
+						)}
 						{canUpdate && (
 							<Button
 								asChild
