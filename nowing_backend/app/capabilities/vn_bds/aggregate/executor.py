@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable
 
-from app.capabilities.core import Executor
+from app.capabilities.core import CapabilityContext, Executor
 from app.capabilities.core.progress import emit_progress
 from app.services.bds_aggregator.orchestrator import aggregate
 
@@ -22,7 +22,10 @@ def build_aggregate_executor(
     """Bind the executor to an aggregator function (defaults to the real engine)."""
     aggregate_fn = aggregate_fn or aggregate
 
-    async def execute(payload: VnBdsAggregateInput) -> VnBdsAggregateOutput:
+    async def execute(
+        payload: VnBdsAggregateInput,
+        ctx: CapabilityContext | None = None,
+    ) -> VnBdsAggregateOutput:
         emit_progress(
             "starting",
             f"Aggregating BĐS listings from {', '.join(payload.sources)}",
@@ -31,7 +34,14 @@ def build_aggregate_executor(
         )
 
         try:
-            output = await aggregate_fn(payload)
+            if ctx is not None:
+                output = await aggregate_fn(
+                    payload,
+                    workspace_id=ctx.workspace_id,
+                    session=ctx.session,
+                )
+            else:
+                output = await aggregate_fn(payload)
         except Exception:
             logger.exception("vn_bds.aggregate executor failed")
             return VnBdsAggregateOutput(

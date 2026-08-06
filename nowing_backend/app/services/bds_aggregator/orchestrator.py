@@ -5,14 +5,24 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.canonical.services.canonical_persist_service import (
+    create_persist_outbox,
+    upsert_canonical_entity,
+)
+from app.canonical.tenant_context import set_canonical_workspace_id
 from app.capabilities.core.store import get_capability
 from app.config import config
+from app.observability.metrics import (
+    categorize_exception,
+    record_canonical_persist_failure,
+)
 
-from .dedupe import deduplicate
+from .dedupe import deduplicate, search_text
 from .normalize import normalize_listing, to_batdongsan_city_code
 from .schemas import VnBdsAggregatedListing, VnBdsAggregateInput, VnBdsAggregateOutput
 from .scoring import score_listing
@@ -140,6 +150,166 @@ def _filter_by_confidence(
     ]
 
 
+_BDS_ENTITY_TYPE = "bds_listing"
+_BDS_PII_FIELDS = {"contact", "phone", "phone_key", "address_key"}
+
+
+def _build_bds_data(listing: VnBdsAggregatedListing) -> dict[str, Any]:
+    """Return a serializable copy of the listing, including excluded fields."""
+    data = listing.model_dump()
+    # source_prices are excluded from the API schema but kept for canonical
+    # provenance and merge history.
+    if listing.source_prices:
+        data["source_prices"] = listing.source_prices
+    return data
+
+
+def _redact_bds_snapshot(data: dict[str, Any]) -> dict[str, Any]:
+    """Return a source snapshot with PII fields removed or masked."""
+    # ponytail: phone_key/address_key are already excluded by
+    # VnBdsAggregatedListing.model_dump (Field(exclude=True)); contact is
+    # masked but we drop it from provenance snapshots to avoid retaining any
+    # phone-derived text.
+    return {k: v for k, v in data.items() if k not in _BDS_PII_FIELDS}
+
+
+def _build_bds_canonical_data(
+    listing: VnBdsAggregatedListing,
+    data: dict[str, Any],
+) -> dict[str, Any]:
+    """Build canonical data with one-way keys for matching but no raw PII."""
+    canonical_data = dict(data)
+    # source_prices are intentionally excluded from the API schema but are
+    # safe and useful for canonical provenance/price-conflict history.
+    if listing.source_prices:
+        canonical_data["source_prices"] = listing.source_prices
+    # phone_key and address_key are one-way normalized keys safe for matching.
+    if listing.phone_key:
+        canonical_data["phone_key"] = listing.phone_key
+    if listing.address_key:
+        canonical_data["address_key"] = listing.address_key
+    canonical_data.pop("contact", None)
+    return canonical_data
+
+
+async def _persist_bds_listing(
+    session: AsyncSession,
+    workspace_id: int,
+    listing: VnBdsAggregatedListing,
+) -> None:
+    """Upsert one BĐS listing and each contributing source into canonical storage."""
+    data = _build_bds_data(listing)
+    source_snapshot = _redact_bds_snapshot(data)
+    canonical_data = _build_bds_canonical_data(listing, data)
+    fingerprint = listing.canonical_id
+    search_text_value = search_text(listing)
+    conflict_flags = [flag.model_dump() for flag in listing.conflict_flags]
+
+    # ponytail: day-one implementation links each source record separately.
+    # Each call to upsert_canonical_entity is idempotent on the entity
+    # fingerprint and on the (source_name, source_record_id) provenance key.
+    for source in listing.sources:
+        raw_source_id = listing.source_ids.get(source)
+        source_record_id = str(raw_source_id if raw_source_id is not None else source)
+        source_url = listing.detail_urls.get(source)
+        await upsert_canonical_entity(
+            session,
+            workspace_id=workspace_id,
+            entity_type=_BDS_ENTITY_TYPE,
+            fingerprint=fingerprint,
+            title=listing.title,
+            data=canonical_data,
+            search_text=search_text_value,
+            source_name=source,
+            source_record_id=source_record_id,
+            source_snapshot=source_snapshot,
+            source_url=source_url,
+            confidence_score=listing.confidence_score,
+            conflict_flags=conflict_flags,
+        )
+
+
+async def _stage_bds_persist_outbox(
+    session: AsyncSession,
+    workspace_id: int,
+    listing: VnBdsAggregatedListing,
+    error: str,
+) -> None:
+    """Stage a durable outbox row so a retry worker can finish persistence."""
+    data = _build_bds_data(listing)
+    canonical_data = _build_bds_canonical_data(listing, data)
+    payload = {
+        "workspace_id": workspace_id,
+        "entity_type": _BDS_ENTITY_TYPE,
+        "fingerprint": listing.canonical_id,
+        "title": listing.title,
+        "data": canonical_data,
+        "search_text": search_text(listing),
+        "sources": [
+            {
+                "source_name": source,
+                "source_record_id": str(
+                    listing.source_ids.get(source)
+                    if listing.source_ids.get(source) is not None
+                    else source
+                ),
+                "source_url": listing.detail_urls.get(source),
+            }
+            for source in listing.sources
+        ],
+    }
+    await set_canonical_workspace_id(session, workspace_id)
+    await create_persist_outbox(
+        session,
+        workspace_id=workspace_id,
+        entity_type=_BDS_ENTITY_TYPE,
+        payload=payload,
+        error=error,
+    )
+
+
+async def _persist_bds_aggregates(
+    session: AsyncSession | None,
+    workspace_id: int | None,
+    listings: list[VnBdsAggregatedListing],
+) -> tuple[Literal["ok", "partial", "failed", "not_attempted"], str | None]:
+    """Persist all listings and report ok/partial/failed/not_attempted."""
+    if not session or workspace_id is None:
+        return "not_attempted", None
+
+    succeeded = False
+    failed = False
+    message: str | None = None
+
+    for listing in listings:
+        try:
+            await _persist_bds_listing(session, workspace_id, listing)
+            succeeded = True
+        except Exception as exc:
+            failed = True
+            message = str(exc)
+            logger.exception("BDS listing %s failed to persist", listing.canonical_id)
+            record_canonical_persist_failure(
+                domain="vn_bds",
+                reason=categorize_exception(exc),
+            )
+            try:
+                await _stage_bds_persist_outbox(
+                    session, workspace_id, listing, str(exc)
+                )
+            except Exception:
+                logger.exception(
+                    "BDS persist outbox for %s also failed",
+                    listing.canonical_id,
+                )
+
+    if failed and not succeeded:
+        return "failed", message
+    if failed:
+        return "partial", "One or more listings failed to persist"
+    return "ok", None
+
+
 async def _execute_source(
     source: str,
     payload: VnBdsAggregateInput,
@@ -180,8 +350,11 @@ async def _execute_source(
 async def aggregate(
     payload: VnBdsAggregateInput,
     source_executors: dict[str, Callable[..., Awaitable[Any]]] | None = None,
+    *,
+    workspace_id: int | None = None,
+    session: AsyncSession | None = None,
 ) -> VnBdsAggregateOutput:
-    """Fan out to selected sources, normalize, dedupe, score, and return."""
+    """Fan out to selected sources, normalize, dedupe, score, and persist."""
     selected = payload.sources
 
     coros = [_execute_source(s, payload, source_executors) for s in selected]
@@ -233,10 +406,16 @@ async def aggregate(
     )
     cost_micros = child_cost_total + aggregate_fee
 
+    persistence_status, persistence_message = await _persist_bds_aggregates(
+        session, workspace_id, filtered
+    )
+
     return VnBdsAggregateOutput(
         items=filtered,
         cost_micros=cost_micros,
         degraded=any_degraded,
         degradation_reasons=degradation_reasons,
         source_breakdown=source_breakdown,
+        persistence_status=persistence_status,
+        persistence_message=persistence_message,
     )

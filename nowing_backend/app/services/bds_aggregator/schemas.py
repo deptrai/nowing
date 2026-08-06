@@ -140,6 +140,10 @@ class VnBdsAggregateOutput(BaseModel):
     degraded: bool = False
     degradation_reasons: list[str] = Field(default_factory=list)
     source_breakdown: dict[str, Any] = Field(default_factory=dict)
+    persistence_status: Literal["ok", "partial", "failed", "not_attempted"] = (
+        "not_attempted"
+    )
+    persistence_message: str | None = None
 
     @computed_field
     @property
