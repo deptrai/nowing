@@ -138,7 +138,7 @@ development_status:
   11-3: done  # Telegram interactive bot & commands
   epic-11-retrospective: done
 
-  epic-12: in-progress  # HR/Recruitment Vertical — Vietnam Job Market Pilot (Plan C)
+  epic-12: done  # HR/Recruitment Vertical — Vietnam Job Market Pilot (Plan C)
   12-0: done  # ToS & Legal Review — approved for all 3 sources
   12-1: done  # VietnamWorks Scraper — implemented, tested, E2E/MCP verified
   12-2: done  # TopCV Scraper — implemented, tested, E2E/MCP verified
