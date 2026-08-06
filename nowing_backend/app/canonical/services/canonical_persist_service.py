@@ -1,0 +1,397 @@
+"""Canonical entity persistence service with explicit tenancy."""
+
+from __future__ import annotations
+
+import logging
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import config
+from app.db import (
+    CanonicalEntity,
+    CanonicalEntitySource,
+    CanonicalMergeHistory,
+    CanonicalPersistOutbox,
+)
+
+from ..tasks.backfill_canonical_embedding import backfill_canonical_embedding
+from ..tenant_context import set_canonical_workspace_id
+
+logger = logging.getLogger(__name__)
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _is_search_text_changed(
+    entity: CanonicalEntity, new_search_text: str | None
+) -> bool:
+    old = entity.search_text or ""
+    new = new_search_text or ""
+    return old != new
+
+
+async def _enqueue_embedding_backfill(entity: CanonicalEntity) -> None:
+    """Queue an idempotent embedding backfill keyed by (entity, version, model)."""
+    model_name = config.EMBEDDING_MODEL or "unknown"
+    # ponytail: apply_async with a small delay keeps the enqueued task from
+    # racing the same transaction that just staged the row.
+    backfill_canonical_embedding.apply_async(
+        args=[str(entity.id), entity.version, model_name],
+        countdown=1,
+    )
+
+
+async def record_merge_history(
+    session: AsyncSession,
+    *,
+    entity: CanonicalEntity,
+    previous_data: dict[str, Any],
+    new_data: dict[str, Any],
+    operation: str,
+    actor: str | None = None,
+    conflicts: list[dict[str, Any]] | None = None,
+    method: str | None = None,
+    previous_version: int | None = None,
+    new_version: int | None = None,
+) -> CanonicalMergeHistory:
+    """Record one merge/revert audit row."""
+    prev = (
+        previous_version if previous_version is not None else max(0, entity.version - 1)
+    )
+    nxt = new_version if new_version is not None else entity.version
+    history = CanonicalMergeHistory(
+        canonical_entity_id=entity.id,
+        workspace_id=entity.workspace_id,
+        entity_type=entity.entity_type,
+        previous_version=prev,
+        new_version=nxt,
+        previous_data=previous_data,
+        new_data=new_data,
+        operation=operation,
+        actor=actor,
+        conflicts=conflicts or [],
+        method=method,
+        created_at=_now(),
+    )
+    session.add(history)
+    await session.flush()
+    return history
+
+
+async def create_persist_outbox(
+    session: AsyncSession,
+    workspace_id: int,
+    entity_type: str,
+    payload: dict[str, Any],
+    *,
+    error: str | None = None,
+    retry_count: int = 0,
+    next_attempt_at: datetime | None = None,
+) -> CanonicalPersistOutbox:
+    """Stage a durable outbox row for retry."""
+    outbox = CanonicalPersistOutbox(
+        workspace_id=workspace_id,
+        entity_type=entity_type,
+        payload=payload,
+        status="pending",
+        retry_count=retry_count,
+        next_attempt_at=next_attempt_at,
+        error=error,
+        created_at=_now(),
+        updated_at=_now(),
+    )
+    session.add(outbox)
+    await session.flush()
+    return outbox
+
+
+async def _find_previous_canonical_entity_id(
+    session: AsyncSession,
+    workspace_id: int,
+    entity_type: str,
+    source_name: str,
+    source_record_id: str,
+) -> uuid.UUID | None:
+    """Return the canonical entity a source is currently linked to, if any."""
+    result = await session.scalar(
+        select(CanonicalEntitySource.canonical_entity_id).where(
+            CanonicalEntitySource.workspace_id == workspace_id,
+            CanonicalEntitySource.entity_type == entity_type,
+            CanonicalEntitySource.source_name == source_name,
+            CanonicalEntitySource.source_record_id == source_record_id,
+        )
+    )
+    return result
+
+
+async def _update_source_count(
+    session: AsyncSession, canonical_entity_id: uuid.UUID
+) -> int:
+    """Derive and return ``source_count`` for a canonical entity."""
+    count = await session.scalar(
+        select(func.count())
+        .select_from(CanonicalEntitySource)
+        .where(CanonicalEntitySource.canonical_entity_id == canonical_entity_id)
+    )
+    return count or 0
+
+
+async def _upsert_source(
+    session: AsyncSession,
+    entity: CanonicalEntity,
+    *,
+    source_name: str,
+    source_record_id: str,
+    source_snapshot: dict[str, Any],
+    source_url: str | None,
+    source_fingerprint: str | None,
+) -> uuid.UUID | None:
+    """Idempotently link a source record to a canonical entity.
+
+    Returns the previous ``canonical_entity_id`` (if the source moved) so the
+    caller can refresh both affected entities' ``source_count``.
+
+    The unique constraint on ``(workspace_id, entity_type, source_name,
+    source_record_id)`` means a source record can only belong to one active
+    canonical entity per domain.  On conflict we move the source to the
+    matching entity and update its redacted snapshot.
+    """
+    previous_id = await _find_previous_canonical_entity_id(
+        session,
+        entity.workspace_id,
+        entity.entity_type,
+        source_name,
+        source_record_id,
+    )
+
+    now = _now()
+    upsert_stmt = (
+        insert(CanonicalEntitySource)
+        .values(
+            id=uuid.uuid4(),
+            workspace_id=entity.workspace_id,
+            canonical_entity_id=entity.id,
+            entity_type=entity.entity_type,
+            source_name=source_name,
+            source_record_id=source_record_id,
+            source_snapshot=source_snapshot,
+            source_url=source_url,
+            source_fingerprint=source_fingerprint,
+            first_seen_at=now,
+            last_seen_at=now,
+            created_at=now,
+        )
+        .on_conflict_do_update(
+            index_elements=[
+                "workspace_id",
+                "entity_type",
+                "source_name",
+                "source_record_id",
+            ],
+            set_={
+                "canonical_entity_id": entity.id,
+                "source_snapshot": source_snapshot,
+                "source_url": source_url,
+                "source_fingerprint": source_fingerprint,
+                "last_seen_at": now,
+            },
+        )
+    )
+    await session.execute(upsert_stmt)
+    return previous_id if previous_id != entity.id else None
+
+
+async def upsert_canonical_entity(
+    session: AsyncSession,
+    workspace_id: int,
+    entity_type: str,
+    fingerprint: str,
+    title: str | None,
+    data: dict[str, Any],
+    search_text: str | None,
+    *,
+    source_name: str,
+    source_record_id: str,
+    source_snapshot: dict[str, Any] | None = None,
+    source_url: str | None = None,
+    source_fingerprint: str | None = None,
+    confidence_score: float = 0.0,
+    conflict_flags: list[dict[str, Any]] | None = None,
+    actor: str | None = None,
+    merge_method: str | None = None,
+) -> CanonicalEntity:
+    """Upsert a canonical entity and its source provenance.
+
+    The workspace ID is explicit; tenant context is set in the current SQL
+    transaction before any canonical read or write.
+    """
+    await set_canonical_workspace_id(session, workspace_id)
+
+    existing = await session.scalar(
+        select(CanonicalEntity)
+        .where(
+            CanonicalEntity.workspace_id == workspace_id,
+            CanonicalEntity.entity_type == entity_type,
+            CanonicalEntity.fingerprint == fingerprint,
+        )
+        .with_for_update()
+    )
+
+    now = _now()
+    source_snapshot = source_snapshot or {}
+    conflict_flags = conflict_flags or []
+
+    if existing is not None:
+        previous_data = existing.canonical_data
+        previous_version = existing.version
+        new_version = previous_version + 1
+
+        existing.canonical_title = title
+        existing.canonical_data = data
+        existing.confidence_score = confidence_score
+        existing.conflict_flags = conflict_flags
+        existing.version = new_version
+        existing.last_seen_at = now
+
+        # ponytail: simple conflict-resolution heuristic for day one — prefer
+        # longer search text and mark the embedding stale when it changes.
+        if _is_search_text_changed(existing, search_text):
+            existing.search_text = search_text
+            existing.embedding_status = "pending"
+            existing.embedding = None
+            existing.embedding_model_name = None
+            existing.embedding_content_hash = None
+
+        previous_source_entity_id = await _upsert_source(
+            session,
+            existing,
+            source_name=source_name,
+            source_record_id=source_record_id,
+            source_snapshot=source_snapshot,
+            source_url=source_url,
+            source_fingerprint=source_fingerprint,
+        )
+        existing.source_count = await _update_source_count(session, existing.id)
+        if previous_source_entity_id and previous_source_entity_id != existing.id:
+            previous_count = await _update_source_count(
+                session, previous_source_entity_id
+            )
+            previous_entity = await session.get(
+                CanonicalEntity, previous_source_entity_id
+            )
+            if previous_entity:
+                previous_entity.source_count = previous_count
+
+        await record_merge_history(
+            session,
+            entity=existing,
+            previous_data=previous_data,
+            new_data=data,
+            operation="merge",
+            actor=actor,
+            conflicts=conflict_flags,
+            method=merge_method,
+            previous_version=previous_version,
+            new_version=new_version,
+        )
+
+        # Compare-and-swap guard: only write if the row still has the version
+        # we locked above.
+        await session.execute(
+            update(CanonicalEntity)
+            .where(
+                CanonicalEntity.id == existing.id,
+                CanonicalEntity.version == new_version,
+            )
+            .values(
+                canonical_title=title,
+                canonical_data=data,
+                search_text=existing.search_text,
+                source_count=existing.source_count,
+                confidence_score=confidence_score,
+                conflict_flags=conflict_flags,
+                version=new_version,
+                last_seen_at=now,
+                embedding_status=existing.embedding_status,
+                embedding=existing.embedding,
+                embedding_model_name=existing.embedding_model_name,
+                embedding_content_hash=existing.embedding_content_hash,
+            )
+        )
+
+        await _enqueue_embedding_backfill(existing)
+        return existing
+
+    # New canonical entity.
+    entity = CanonicalEntity(
+        workspace_id=workspace_id,
+        entity_type=entity_type,
+        canonical_title=title,
+        canonical_data=data,
+        fingerprint=fingerprint,
+        search_text=search_text,
+        source_count=1,
+        confidence_score=confidence_score,
+        conflict_flags=conflict_flags,
+        version=1,
+        first_seen_at=now,
+        last_seen_at=now,
+        embedding_status="pending",
+    )
+    session.add(entity)
+    await session.flush()
+
+    previous_source_entity_id = await _upsert_source(
+        session,
+        entity,
+        source_name=source_name,
+        source_record_id=source_record_id,
+        source_snapshot=source_snapshot,
+        source_url=source_url,
+        source_fingerprint=source_fingerprint,
+    )
+    entity.source_count = await _update_source_count(session, entity.id)
+    if previous_source_entity_id and previous_source_entity_id != entity.id:
+        previous_count = await _update_source_count(session, previous_source_entity_id)
+        previous_entity = await session.get(CanonicalEntity, previous_source_entity_id)
+        if previous_entity:
+            previous_entity.source_count = previous_count
+
+    await record_merge_history(
+        session,
+        entity=entity,
+        previous_data={},
+        new_data=data,
+        operation="create",
+        actor=actor,
+        conflicts=conflict_flags,
+        method=merge_method,
+        previous_version=0,
+        new_version=1,
+    )
+
+    await _enqueue_embedding_backfill(entity)
+    return entity
+
+
+async def retry_persist_outbox(
+    session: AsyncSession, outbox_id: uuid.UUID
+) -> CanonicalPersistOutbox | None:
+    """Mark an outbox row as processing and return its payload for retry."""
+    await session.execute(
+        update(CanonicalPersistOutbox)
+        .where(CanonicalPersistOutbox.id == outbox_id)
+        .values(
+            status="processing",
+            retry_count=CanonicalPersistOutbox.retry_count + 1,
+            updated_at=_now(),
+        )
+    )
+    return await session.get(CanonicalPersistOutbox, outbox_id)

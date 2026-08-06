@@ -201,6 +201,7 @@ celery_app = Celery(
         "app.automations.triggers.builtin.schedule.selector",
         "app.automations.triggers.builtin.event.selector",
         "app.automations.triggers.builtin.memory_change.selector",
+        "app.canonical.tasks.backfill_canonical_embedding",
     ],
 )
 

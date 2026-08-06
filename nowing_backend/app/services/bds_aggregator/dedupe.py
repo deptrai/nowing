@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from statistics import mean
 from typing import Any
@@ -224,3 +226,70 @@ def deduplicate(listings: list[VnBdsAggregatedListing]) -> list[VnBdsAggregatedL
         clusters.setdefault(root, []).append(listing)
 
     return [merge_group(cluster) for cluster in clusters.values()]
+
+
+def fingerprint(raw_data: dict[str, Any]) -> str:
+    """Stable canonical fingerprint for a raw BĐS listing.
+
+    Reuses the existing canonical-id generator over the most stable source
+    identity when available, and falls back to a sorted hash of the title and
+    location for records without a usable id.
+    """
+    from .normalize import _extract_id, _normalize_address, _source_title
+
+    source_id = _extract_id(raw_data)
+    if source_id is not None:
+        return make_canonical_id({"bds": source_id})
+
+    # Fallback for raw records that have not been assigned an id yet.
+    title = (_source_title(raw_data, "bds") or "").strip().lower()
+    address = (
+        _normalize_address(
+            raw_data.get("district"),
+            raw_data.get("ward"),
+            raw_data.get("location"),
+        )
+        or ""
+    )
+    payload = json.dumps(
+        {"title": title, "address": address},
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
+
+
+def _to_aggregated_listing(raw_data: dict[str, Any]) -> VnBdsAggregatedListing:
+    """Best-effort normalization of a raw dict for merge/search_text."""
+    from .normalize import normalize_listing
+
+    return normalize_listing(raw_data.get("source", "bds"), raw_data)
+
+
+def merge(
+    canonical: VnBdsAggregatedListing | dict[str, Any],
+    new_raw: dict[str, Any],
+) -> VnBdsAggregatedListing:
+    """Merge ``new_raw`` into ``canonical`` using the existing merge logic."""
+    if isinstance(canonical, dict):
+        canonical = _to_aggregated_listing(canonical)
+    new_listing = _to_aggregated_listing(new_raw)
+    return merge_group([canonical, new_listing])
+
+
+def search_text(canonical: VnBdsAggregatedListing | dict[str, Any]) -> str:
+    """Return a single searchable text for a BĐS canonical entity."""
+    if isinstance(canonical, dict):
+        canonical = _to_aggregated_listing(canonical)
+    parts = [
+        canonical.title,
+        canonical.location,
+        canonical.district,
+        canonical.ward,
+        canonical.city,
+        canonical.project,
+        canonical.legal,
+        canonical.price,
+        canonical.area,
+    ]
+    return " ".join(p for p in parts if p).strip()

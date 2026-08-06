@@ -79,6 +79,60 @@ PODCAST_COLS = [
     "created_at",
 ]
 
+# Minimal non-PII columns for canonical search/review UI. Bulky snapshots and
+# payloads are fetched over REST (Story 13.1).
+CANONICAL_ENTITY_COLS = [
+    "id",
+    "workspace_id",
+    "entity_type",
+    "canonical_title",
+    "fingerprint",
+    "search_text",
+    "source_count",
+    "confidence_score",
+    "version",
+    "first_seen_at",
+    "last_seen_at",
+    "embedding_status",
+]
+
+CANONICAL_ENTITY_SOURCE_COLS = [
+    "id",
+    "workspace_id",
+    "canonical_entity_id",
+    "entity_type",
+    "source_name",
+    "source_record_id",
+    "source_url",
+    "first_seen_at",
+    "last_seen_at",
+]
+
+CANONICAL_MERGE_HISTORY_COLS = [
+    "id",
+    "canonical_entity_id",
+    "workspace_id",
+    "entity_type",
+    "previous_version",
+    "new_version",
+    "operation",
+    "actor",
+    "conflicts",
+    "method",
+    "created_at",
+]
+
+CANONICAL_PERSIST_OUTBOX_COLS = [
+    "id",
+    "workspace_id",
+    "entity_type",
+    "status",
+    "retry_count",
+    "next_attempt_at",
+    "created_at",
+    "updated_at",
+]
+
 ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "notifications": None,
     "documents": DOCUMENT_COLS,
@@ -92,6 +146,10 @@ ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
     "automations": AUTOMATION_COLS,
     "automation_runs": AUTOMATION_RUN_COLS,
     "podcasts": PODCAST_COLS,
+    "canonical_entities": CANONICAL_ENTITY_COLS,
+    "canonical_entity_sources": CANONICAL_ENTITY_SOURCE_COLS,
+    "canonical_merge_history": CANONICAL_MERGE_HISTORY_COLS,
+    "canonical_persist_outbox": CANONICAL_PERSIST_OUTBOX_COLS,
 }
 
 

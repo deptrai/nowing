@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .dedupe import deduplicate, fingerprint, merge, search_text
 from .orchestrator import aggregate_jobs
 from .schemas import (
     VnJobAggregatedListing,
@@ -14,4 +15,8 @@ __all__ = [
     "VnJobAggregateOutput",
     "VnJobAggregatedListing",
     "aggregate_jobs",
+    "deduplicate",
+    "fingerprint",
+    "merge",
+    "search_text",
 ]
