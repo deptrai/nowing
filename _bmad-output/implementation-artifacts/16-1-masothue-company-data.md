@@ -213,6 +213,56 @@ Thêm `masothue.scrape` thành built-in scraper capability mới. Story này l�
 - `test_billing.py`: verify `BillingUnit.MASOTHUE_COMPANY` tính đúng micros.
 - Integration: `tests/integration/capabilities/masothue/scrape/test_masothue_scrape.py`, chạy thật nếu `SCRAPE_LIVE=1`, ngược lại dùng fixture.
 
+### Challenge Log (grill-me)
+
+#### Q1 — Already implemented?
+- **Partial pattern duplicate**: Proposed `company_aggregator` module duplicates the structure of existing `bds_aggregator` and `jobs_aggregator`. **Action**: Model `app/services/company_aggregator/dedupe.py` EXACTLY after `bds_aggregator/dedupe.py` (fingerprint, merge, search_text, deduplicate functions). New module is correct (different domain), but reuse the established pattern.
+
+#### Q2 — Simpler alternative?
+- No simpler alternative found. Masothue requires custom HTML parsing, Cloudflare anti-bot handling, AJAX token flow, and exact-match redirect handling. Vietnamworks (JSON API), cafef (simple HTML), and batdongsan (mobile API) cannot be reused.
+
+#### Q3 — Edge cases spec misses (Pattern 3)
+- **Boundary**:
+  - [ ] `max_pages=0` or `max_items=0` → return empty list without degrading
+  - [ ] Clarify if `max_pages=20` is hard limit or can be increased
+  - [ ] Clarify if `max_items=100` is hard limit or can be increased
+- **Null/empty**:
+  - [ ] `query=""` or `query=None` → specify behavior (empty results vs degraded)
+  - [ ] Invalid `search_type` value → specify error handling
+  - [ ] Detail page missing `table.table-taxinfo` → clarify if this degrades whole run or just skips item
+  - [ ] Tax code missing AND name+address missing → specify fingerprint behavior
+- **Concurrent**:
+  - [ ] Concurrent upsert of same company → executor should catch `ConcurrentUpdateError` and retry
+  - [ ] Re-fetch same company → document merge behavior for conflicting fields
+- **Data quality**:
+  - [ ] Unicode normalization for non-Vietnamese characters
+  - [ ] Tax code normalization rules (dashes vs no dashes)
+
+#### Q4 — Failure modes unspecified (Pattern 2, 4)
+- **Service down**:
+  - [ ] `scrapling.AsyncFetcher` unavailable → specify fallback or hard degrade
+  - [ ] Postgres down during canonical upsert → executor should catch and not charge
+  - [ ] Embedding service down → clarify if this affects scrape response (backfill is async)
+- **Timeout**:
+  - [ ] Clarify if `MASOTHUE_TIMEOUT_S` is per-request or total
+  - [ ] AJAX token request timeout → specify fallback to GET search HTML
+- **Money/cost (Pattern 4)**:
+  - [ ] Degraded run with partial items → clarify if successful page items are charged
+  - [ ] Cost calculation timing → specify if charge happens before or after canonical upsert
+- **Cloudflare/anti-bot**:
+  - [ ] Cloudflare JS challenge detection logic
+  - [ ] IP ban cooldown and user notification
+- **Canonical dedup**:
+  - [ ] Document V1 limitation: pass-through merge (no conflict resolution)
+  - [ ] Fingerprint collision handling (extremely rare but possible)
+- **Workspace isolation**:
+  - [ ] Executor should verify workspace isolation before canonical upsert
+- **Rate limiting**:
+  - [ ] Consider adaptive backoff if masothue rate limit detected
+  - [ ] V1 doesn't need platform account rotation (unlike batdongsan), document this
+
+**Triage:** CLEAN — PROCEED with test additions for edge cases and failure modes. No critical blockers found.
+
 ---
 
 ## 6. File List
