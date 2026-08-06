@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -14,6 +16,9 @@ from app.canonical.services.canonical_persist_service import upsert_canonical_en
 from app.db import (
     CanonicalEntity,
     CanonicalMergeHistory,
+    Chunk,
+    Document,
+    DocumentType,
     User,
     Workspace,
 )
@@ -32,6 +37,21 @@ def _patch_backfill(monkeypatch):
     monkeypatch.setattr(
         "app.canonical.services.canonical_persist_service.backfill_canonical_embedding.apply_async",
         _no_op_apply_async,
+    )
+
+
+@pytest.fixture(autouse=True)
+def _patch_unified_search_embedding(monkeypatch):
+    """Stub the unified search embedding call so route tests stay fast."""
+    from app.canonical.services import unified_search_service
+    from app.config import config as app_config
+
+    dim = app_config.embedding_model_instance.dimension
+    dummy = [0.1] * dim
+    monkeypatch.setattr(
+        unified_search_service.config.embedding_model_instance,
+        "embed",
+        lambda _text: dummy,
     )
 
 
@@ -219,3 +239,80 @@ async def test_resolve_conflict(
     assert body["canonical_data"]["price_value"] == 5_150_000_000
     assert body["conflict_flags"] == []
     assert body["latest_history"]["operation"] == "resolve"
+
+
+@pytest_asyncio.fixture
+async def _loaded_unified_workspace(
+    db_session: AsyncSession,
+    db_user: User,
+) -> Workspace:
+    """Workspace with one canonical entity and one document for unified search."""
+    from app.config import config as app_config
+
+    space = Workspace(name="Unified Search Route Space", user_id=db_user.id)
+    db_session.add(space)
+    await db_session.flush()
+    await create_default_roles_and_membership(db_session, space.id, db_user.id)
+
+    await upsert_canonical_entity(
+        db_session,
+        workspace_id=space.id,
+        entity_type="vn_bds.listing",
+        fingerprint="route-unified-f1",
+        title="Nhà phố Quận 7",
+        data={"price_value": 5_000_000_000, "area_value": 100.0},
+        search_text="nha pho quan 7",
+        source_name="batdongsan",
+        source_record_id="route-unified-1",
+        source_snapshot={"title": "Nhà phố Quận 7"},
+        conflict_flags=[],
+    )
+
+    dim = app_config.embedding_model_instance.dimension
+    dummy = [0.1] * dim
+    doc = Document(
+        title="Nhà phố giá rẻ",
+        document_type=DocumentType.FILE,
+        content="nha pho gia re quan 7",
+        source_markdown="nha pho gia re quan 7",
+        content_hash=f"content-{uuid.uuid4().hex[:12]}",
+        unique_identifier_hash=f"uid-{uuid.uuid4().hex[:12]}",
+        embedding=dummy,
+        workspace_id=space.id,
+        created_by_id=db_user.id,
+        updated_at=datetime.now(UTC),
+        status={"state": "ready"},
+    )
+    db_session.add(doc)
+    await db_session.flush()
+
+    chunk = Chunk(
+        content="nha pho gia re quan 7",
+        document_id=doc.id,
+        embedding=dummy,
+    )
+    db_session.add(chunk)
+    await db_session.flush()
+
+    return space
+
+
+async def test_unified_search_route(
+    client_as_regular_user: httpx.AsyncClient,
+    _loaded_unified_workspace: Workspace,
+):
+    """POST /canonical-search returns both canonical and document results."""
+    resp = await client_as_regular_user.post(
+        "/api/v1/canonical-search",
+        json={
+            "query": "nha pho",
+            "workspace_id": _loaded_unified_workspace.id,
+            "top_k": 10,
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] > 0
+    types = {item["type"] for item in body["items"]}
+    assert "canonical_entity" in types
+    assert "document" in types

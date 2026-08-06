@@ -972,7 +972,9 @@ class Config:
     TOPCV_TIMEOUT_S = float(os.getenv("TOPCV_TIMEOUT_S", "60.0"))
     TOPCV_MAX_PAGES = int(os.getenv("TOPCV_MAX_PAGES", "3"))
     # ITviec is server-rendered HTML; cheaper than TopCV, no anti-bot expected.
-    ITVIEC_SCRAPE_MICROS_PER_ITEM = int(os.getenv("ITVIEC_SCRAPE_MICROS_PER_ITEM", "3000"))
+    ITVIEC_SCRAPE_MICROS_PER_ITEM = int(
+        os.getenv("ITVIEC_SCRAPE_MICROS_PER_ITEM", "3000")
+    )
     ITVIEC_PAGE_DELAY_S = float(os.getenv("ITVIEC_PAGE_DELAY_S", "0.5"))
     ITVIEC_TIMEOUT_S = float(os.getenv("ITVIEC_TIMEOUT_S", "30.0"))
     ITVIEC_MAX_PAGES = int(os.getenv("ITVIEC_MAX_PAGES", "5"))
@@ -1000,12 +1002,12 @@ class Config:
     VN_JOBS_AGGREGATE_MAX_ITEMS_PER_SOURCE = int(
         os.getenv("VN_JOBS_AGGREGATE_MAX_ITEMS_PER_SOURCE", "50")
     )
-    VN_JOBS_AGGREGATE_MAX_PAGES = int(
-        os.getenv("VN_JOBS_AGGREGATE_MAX_PAGES", "5")
-    )
+    VN_JOBS_AGGREGATE_MAX_PAGES = int(os.getenv("VN_JOBS_AGGREGATE_MAX_PAGES", "5"))
     # PII redaction confidence threshold (0-1) before treating a source as unsafe
     # for memory extraction.
-    PII_REDACTION_MIN_CONFIDENCE = float(os.getenv("PII_REDACTION_MIN_CONFIDENCE", "0.7"))
+    PII_REDACTION_MIN_CONFIDENCE = float(
+        os.getenv("PII_REDACTION_MIN_CONFIDENCE", "0.7")
+    )
     # Browser-driven listings make TikTok heavier per item than the API-backed
     # video meter, so it sits a touch above YouTube's video rate.
     TIKTOK_MICROS_PER_VIDEO = int(os.getenv("TIKTOK_MICROS_PER_VIDEO", "3500"))
@@ -1507,6 +1509,11 @@ class Config:
     VIDEO_PRESENTATION_FPS = int(os.getenv("VIDEO_PRESENTATION_FPS", "30"))
     VIDEO_PRESENTATION_DEFAULT_DURATION_IN_FRAMES = int(
         os.getenv("VIDEO_PRESENTATION_DEFAULT_DURATION_IN_FRAMES", "300")
+    )
+
+    # Canonical entity settings
+    CANONICAL_EMBEDDING_OUTBOX_FAILURE_THRESHOLD = _env_int(
+        "CANONICAL_EMBEDDING_OUTBOX_FAILURE_THRESHOLD", 5
     )
 
     # Validation Checks

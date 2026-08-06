@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -19,11 +19,13 @@ from app.canonical.services.canonical_persist_service import (
     resolve_canonical_conflict,
     revert_canonical_entity,
 )
+from app.canonical.services.unified_search_service import UnifiedSearchService
 from app.canonical.tenant_context import set_canonical_workspace_id
 from app.db import (
     CanonicalEntity,
     CanonicalEntitySource,
     CanonicalMergeHistory,
+    DocumentType,
     Permission,
     get_async_session,
 )
@@ -377,3 +379,153 @@ async def resolve_canonical_conflict_route(
     )
     latest = entity.merge_history[0] if entity.merge_history else None
     return _build_entity_read(entity, latest)
+
+
+# ---------------------------------------------------------------------------
+# Unified search (Story 13.3)
+# ---------------------------------------------------------------------------
+
+
+class ViewSourcesContract(BaseModel):
+    href: str
+    count: int
+
+
+class UnifiedSearchEntity(BaseModel):
+    id: uuid.UUID
+    entity_type: str
+    canonical_title: str | None
+    source_count: int
+    source_ids: list[uuid.UUID]
+    confidence_score: float
+    conflict_flags: list[Any]
+    version: int
+    last_seen_at: datetime
+    embedding_status: str
+    view_sources: ViewSourcesContract
+    linked_documents: list[int]
+
+
+class UnifiedSearchDocument(BaseModel):
+    document_id: int
+    document: dict[str, Any]
+    chunks: list[dict[str, Any]]
+    score: float
+    content: str = ""
+    matched_chunk_ids: list[int] = []
+    source: str | None = None
+
+    model_config = ConfigDict(extra="allow")
+
+
+class UnifiedSearchResult(BaseModel):
+    type: str
+    score: float
+    entity: UnifiedSearchEntity | None = None
+    document: UnifiedSearchDocument | None = None
+
+
+class UnifiedSearchResponse(BaseModel):
+    items: list[UnifiedSearchResult]
+    total: int
+
+
+class UnifiedSearchRequest(BaseModel):
+    query: str = Field(min_length=1)
+    workspace_id: int
+    top_k: int = Field(default=10, ge=1, le=50)
+    entity_types: list[str] | None = None
+    document_types: list[str] | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    embedding_status: str | None = None
+    statuses: list[str] | None = None
+    w_vector: float = Field(default=0.7, ge=0.0)
+    w_fts: float = Field(default=0.3, ge=0.0)
+
+
+@router.post("/canonical-search", response_model=UnifiedSearchResponse)
+async def search_canonical_and_documents(
+    body: UnifiedSearchRequest,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_session_context),
+):
+    """Search canonical entities and documents, collapsing linked sources.
+
+    Requires both ``documents:read`` and ``canonical_entities:read`` permissions
+    because the result set spans both corpora.
+    """
+    await check_permission(
+        session,
+        auth,
+        body.workspace_id,
+        Permission.DOCUMENTS_READ.value,
+        "You don't have permission to read documents in this workspace",
+    )
+    await check_permission(
+        session,
+        auth,
+        body.workspace_id,
+        Permission.CANONICAL_ENTITIES_READ.value,
+        "You don't have permission to read canonical entities in this workspace",
+    )
+    await set_canonical_workspace_id(session, body.workspace_id)
+
+    service = UnifiedSearchService(session)
+    try:
+        items = await service.search(
+            workspace_id=body.workspace_id,
+            query_text=body.query,
+            top_k=body.top_k,
+            entity_types=body.entity_types,
+            document_types=body.document_types,
+            start_date=body.start_date,
+            end_date=body.end_date,
+            embedding_status=body.embedding_status,
+            statuses=body.statuses,
+            w_vector=body.w_vector,
+            w_fts=body.w_fts,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+    return UnifiedSearchResponse(items=items, total=len(items))
+
+
+@router.get("/canonical-search/supported-filters")
+async def supported_canonical_search_filters(
+    workspace_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_session_context),
+):
+    """Return the supported canonical entity and document type filters."""
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.DOCUMENTS_READ.value,
+        "You don't have permission to read documents in this workspace",
+    )
+    await check_permission(
+        session,
+        auth,
+        workspace_id,
+        Permission.CANONICAL_ENTITIES_READ.value,
+        "You don't have permission to read canonical entities in this workspace",
+    )
+    await set_canonical_workspace_id(session, workspace_id)
+
+    entity_types = (
+        await session.scalars(
+            select(func.distinct(CanonicalEntity.entity_type)).where(
+                CanonicalEntity.workspace_id == workspace_id
+            )
+        )
+    ).all()
+
+    return {
+        "entity_types": sorted(entity_types),
+        "document_types": sorted([dt.value for dt in DocumentType]),
+    }

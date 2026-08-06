@@ -195,6 +195,9 @@ class DocumentHybridSearchRetriever:
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         query_embedding: list | None = None,
+        w_vector: float = 0.7,
+        w_fts: float = 0.3,
+        statuses: list[str] | None = None,
     ) -> list:
         """
         Hybrid search that returns **documents** (not individual chunks).
@@ -266,6 +269,12 @@ class DocumentHybridSearchRetriever:
         if end_date is not None:
             base_conditions.append(Document.updated_at <= end_date)
 
+        # Optional status-state filter (e.g. ["ready"]) applied to both paths.
+        if statuses:
+            base_conditions.append(
+                func.coalesce(Document.status["state"].astext, "ready").in_(statuses)
+            )
+
         # CTE for semantic search filtered by workspace
         semantic_search_cte = select(
             Document.id,
@@ -303,8 +312,9 @@ class DocumentHybridSearchRetriever:
             select(
                 Document,
                 (
-                    func.coalesce(1.0 / (k + semantic_search_cte.c.rank), 0.0)
-                    + func.coalesce(1.0 / (k + keyword_search_cte.c.rank), 0.0)
+                    w_vector
+                    * func.coalesce(1.0 / (k + semantic_search_cte.c.rank), 0.0)
+                    + w_fts * func.coalesce(1.0 / (k + keyword_search_cte.c.rank), 0.0)
                 ).label("score"),
             )
             .select_from(
@@ -323,6 +333,10 @@ class DocumentHybridSearchRetriever:
             .order_by(text("score DESC"))
             .limit(top_k)
         )
+
+        # ponytail: weights are non-negative runtime configuration; defaults follow
+        # the canonical search RRF contract (0.7 vector / 0.3 full-text) while
+        # preserving the existing unweighted behaviour when both are set to 1.0.
 
         # Execute the query
         result = await self.db_session.execute(final_query)
