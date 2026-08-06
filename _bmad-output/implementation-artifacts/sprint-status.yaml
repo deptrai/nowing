@@ -152,6 +152,53 @@ development_status:
 
 # Deferred work that is out of the current sprint / not approved for MVP.
 # Kept here for visibility; re-introduce via sprint-planning if approved.
+
+  epic-13: in-progress
+  13-1: done  # Canonical Persistence, Tenancy & Convention — implemented, ruff/pytest pass, Playwright MCP smoke pass
+  13-2a: backlog  # BDS Persistence & Retry
+  13-2b: backlog  # Jobs Persistence & Retry
+  13-2c: backlog  # Merge History, Conflict Resolution & Revert
+  13-2d: backlog  # PII-Safe Canonicalization
+  13-2e: backlog  # Dedup Benchmark & Release Gate
+  13-3: backlog  # Unified Search API
+  epic-13-retrospective: optional
+
+  epic-14: backlog
+  14-1: backlog  # RSS Feed Integration
+  14-2: backlog  # News Entity Extraction
+  epic-14-retrospective: optional
+
+  epic-15: backlog
+  15-1: backlog  # CafeF Financial Data Integration
+  15-2: backlog  # Vietstock Deep Financials
+  epic-15-retrospective: optional
+
+  epic-16: backlog
+  16-1: backlog  # masothue.com Company Data
+  16-2: backlog  # Official Business Registry
+  epic-16-retrospective: optional
+
+  epic-17: backlog
+  17-1: backlog  # Lazada Product Data
+  17-2: backlog  # Shopee Product Data
+  epic-17-retrospective: optional
+
+  epic-18: backlog
+  18-1: backlog  # YouTube Data Integration
+  18-2: backlog  # Reddit Data Integration
+  18-3: backlog  # Instagram & TikTok Data
+  epic-18-retrospective: optional
+
+  epic-19: backlog
+  19-1: backlog  # Google Search Integration
+  19-2: backlog  # Google Maps / Local Business
+  epic-19-retrospective: optional
+
+  epic-20: backlog
+  20-1: backlog  # Amazon Product Data
+  20-2: backlog  # Walmart Product Data
+  epic-20-retrospective: optional
+
 deferred:
   - story: 9-5
     reason: "Metered deep-research endpoint cho self-host — chưa phê duyệt, Post-MVP / P1 business."
