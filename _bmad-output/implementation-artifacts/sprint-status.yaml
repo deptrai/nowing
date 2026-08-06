@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-07 01:50:54"
-last_updated: "2026-08-07 04:17:51"
+last_updated: "2026-08-07 04:38:40"
 # ponytail: Story 13.1 BMAD validation completed 2026-08-07; canonical story + validation report added.
 project: Nowing
 project_key: NOKEY
@@ -141,7 +141,7 @@ development_status:
   15-4: backlog
   epic-15-retrospective: optional
   epic-16: in-progress
-  16-1: in-progress
+  16-1: done
   16-2: backlog
   16-3: backlog
   16-4: backlog
