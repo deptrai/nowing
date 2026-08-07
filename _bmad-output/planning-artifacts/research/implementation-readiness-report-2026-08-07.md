@@ -1,255 +1,103 @@
 # Implementation Readiness Assessment Report
 
-**Date:** 2026-08-08
+**Date:** 2026-08-07 (correct-course supersedes 2026-08-08 18/18 claim)
 **Project:** Nowing
-**Scope:** Epic 13 (Canonical Entity Storage & Multi-Domain Indexing + Public Agent-Chat API)
+**Assessor:** Winston (Architect) correct-course after review of commit `24ea83b`
 
 ---
 
-## 1. Document Discovery
+## Scope Split (mandatory)
 
-### PRD
-- `prds/prd-Nowing-2026-07-22/prd.md` (1356 lines, primary)
+| Epic | Scope | Status |
+|------|-------|--------|
+| **Epic 13** | FR-48 canonical entity persistence, lineage, unified search (13.1–13.3 / 13.2a–e) | **In progress / review** — P0 code-review findings still open |
+| **Epic 18** | FR-56/FR-57 public agent-chat, Agent Registry, vertical `client_id` tenancy, cost attribution, rate limits (18.1–18.8) | **Backlog** — blocked on AD-29/30/31 + E13 P0 closure |
 
-### Architecture
-- `architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` (primary)
-
-### Epics & Stories
-- `epics.md` (primary — whole document)
-
-### UX Contracts (9 files)
-- `ux-contract-canonical-entity.md`
-- `ux-contract-agent-registry.md` (mới 2026-08-08)
-- `ux-contract-async-deep-research.md`
-- `ux-contract-usage-dashboard.md`
-- `ux-contract-first-run-onboarding.md`
-- `ux-contract-admin-global-model-config.md`
-- `ux-contract-chat-benchmark.md`
-- `ux-contract-sync-offline-indicator.md`
-- `ux-contract-vn-jobs-copy.md`
-
-### Issues
-- ✅ No duplicates
-- ✅ No missing documents
+Do **not** treat public chat as part of Epic 13 readiness.
 
 ---
 
-## 2. PRD Analysis
+## Document Discovery
 
-### Functional Requirements (FRs) — 54 total
-
-| Section | FRs | Status |
-|---------|-----|--------|
-| §4.1 Auth/RBAC | FR-1, 2, 3, 4, 10 | ✅ |
-| §4.2 Connectors | FR-6, 7, 8, 43-55, **56, 57**, 8.1 | ✅ |
-| §4.3 Knowledge Base | FR-9, 11, 12, 13, 32, 33, 34, 36, 40, 5(REMOVED) | ✅ |
-| §4.4 Chat & Agents | FR-14, 15, 16, 17, 42 | ✅ |
-| §4.5 Deliverables | FR-21, 22, 23 | ✅ |
-| §4.6 Automations | FR-18, 19, 20, 35 | ✅ |
-| §4.7 Clients | FR-25, 26, 27, 28, 29 | ✅ |
-| §4.8 Billing | FR-30, 31, 41 | ✅ |
-| §4.9 Deep-Research | FR-24, 37, 38, 39 | ✅ |
-
-### Epic 13 Relevant FRs
-
-| FR | Description | Story |
-|----|-------------|-------|
-| **FR-48** | Canonical Entity Storage & Multi-Domain Indexing | 13.1, 13.2, 13.3 |
-| **FR-56** | Public Agent-Chat API for Vertical Clients | 13.4, 13.5 |
-| **FR-57** | Agent Registry | 13.6, 13.7 |
-| **FR-46** | Vietnam Job Market Aggregator | 13.2b |
-| **FR-37** | Deep-Research Cost Metering | 13.10 |
-| **FR-38** | Research Degradation & Self-Host | 13.11 |
-
-### Non-Functional Requirements — 12 total
-
-| NFR | Description | Story |
-|-----|-------------|-------|
-| NFR-1 | Performance | — |
-| NFR-2 | Security & Auth | — |
-| NFR-3 | Observability | — |
-| NFR-4 | Reliability | — |
-| NFR-5 | Multi-tenancy Isolation | 13.1 |
-| **NFR-MULTI-1** | Tenant Isolation for Vertical Clients | 13.9, 13.11 |
-| NFR-6 | Citation Editor Highlight | DONE |
-| NFR-7 | Usage & Credit Dashboard | DONE |
-| NFR-8 | Recall Quality | DONE |
-| NFR-9 | Deep-Research Latency | DONE |
-| NFR-10 | Chat Response Regression | — |
-| NFR-11 | Scraping Compliance | — |
-
-### PRD Completeness
-
-| Area | Status |
-|------|--------|
-| Public chat API | ✅ FR-56 defined |
-| Agent Registry | ✅ FR-57 defined |
-| Memory tagging | ✅ FR-57 + NFR-MULTI-1 |
-| Cost traceability | ✅ FR-37 |
-| Tenant isolation | ✅ NFR-MULTI-1 |
-| Rate limiting | ✅ Story 13.11 |
+| Doc | Status |
+|-----|--------|
+| PRD | Present — FR-56/57/NFR-MULTI-1 retargeted to Epic 18 |
+| Architecture Spine | AD-13 amended; **AD-29/30/31 added** (2026-08-07) |
+| Epics | Epic 13 FR-48-only; Epic 18 holds former 13.4–13.11 |
+| UX agent registry | Present; story refs → 18.3/18.4 |
+| Sprint status | E13 stories in `review`; E18 backlog |
 
 ---
 
-## 3. Epic Coverage Validation
+## Epic 13 Readiness (canonical only)
 
-### Coverage Matrix
+### Open blockers (from validation_reports)
 
-| FR | Epic Coverage | Status |
-|----|---------------|--------|
-| FR-48 | 13.1, 13.2a-e, 13.3 | ✅ |
-| FR-56 | 13.4, 13.5 | ✅ |
-| FR-57 | 13.6, 13.7 | ✅ |
-| FR-46 | 13.2b | ✅ |
-| FR-37 | 13.10 | ✅ |
-| FR-38 | 13.11 | ✅ |
-| NFR-MULTI-1 | 13.9, 13.11 | ✅ |
+| Story | Verdict | P0 themes |
+|-------|---------|-----------|
+| 13.1 | CHANGES_REQUESTED | Celery RLS context, version CAS, outbox/workspace contract |
+| 13.2 | CHANGES_REQUESTED | outbox worker missing, CAS WHERE bug, source_record_id collision, phone_key hashing |
+| 13.3 | CHANGES_REQUESTED | dead `view_sources` href, FTS config mismatch |
 
-### Statistics
-- Total relevant FRs: 7
-- Covered: 7
-- **Coverage: 100%**
+### Score (Epic 13 only)
 
----
+| Dimension | Score | Max | Notes |
+|-----------|-------|-----|-------|
+| Document discovery | 4 | 4 | OK |
+| FR-48 coverage | 5 | 5 | 13.1–13.3 cover FR-48 |
+| UX canonical | 4 | 4 | contract exists |
+| Implementation quality gate | **1** | 5 | P0 reviews open |
+| **Total** | **14** | **18** | **NOT READY to call done** |
 
-## 4. UX Alignment Assessment
-
-### Document Status: ✅ Found (8 contracts)
-
-### Alignment
-
-| UX Contract | FR | Alignment |
-|-------------|-----|-----------|
-| `ux-contract-canonical-entity.md` | FR-48 | ✅ |
-| `ux-contract-usage-dashboard.md` | FR-30/31/37 | ✅ |
-| `ux-contract-admin-global-model-config.md` | FR-41 | ✅ |
-
-### Gaps
-
-| Story | Gap | Blocking? |
-|-------|-----|-----------|
-| 13.6 Agent Registry Admin UI | ✅ UX contract created | ✅ Resolved |
+**Overall Epic 13:** ⚠️ **CONTINUE IMPLEMENTATION / FIX P0** — not "READY to close".
 
 ---
 
-## 5. Epic Quality Review
+## Epic 18 Readiness (vertical client platform)
 
-### Story Quality (15 stories: 13.1-13.3, 13.4-13.11)
+### Entry criteria (all required)
 
-| Story | User Value | Independent | No Forward Dep | Sized | AC |
-|-------|-----------|-------------|----------------|-------|-----|
-| 13.1 | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| 13.2a | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.2b | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.2c | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.2d | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.2e | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.3 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.4 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.5 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.6 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.7 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.8 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.9 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.10 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 13.11 | ✅ | ✅ | ✅ | ✅ | ✅ |
+1. [ ] Epic 13 P0 code-review items closed or explicitly waived by owner
+2. [ ] AD-29, AD-30, AD-31 accepted (now drafted on Spine — need human confirm)
+3. [ ] PAT scope model written (workspace / client / agent)
+4. [ ] Composite RLS test plan (workspace + client, pool reuse, fail closed)
+5. [ ] Threat model: prompt injection, tool exfiltration, metadata abuse
 
-### Compliance
+### Score (Epic 18)
 
-- ✅ User value focus
-- ✅ No forward dependencies
-- ✅ Tables created when needed
-- ✅ Given/When/Then AC format
-- ✅ FR traceability
-- ✅ Backward compatibility
+| Dimension | Score | Max | Notes |
+|-----------|-------|-----|-------|
+| Product need | 4 | 4 | BDS vertical client is real |
+| Architecture decisions | 3 | 5 | ADs drafted; tenancy details still open questions |
+| Story quality | 3 | 5 | ACs exist; security ACs still thin |
+| Effort honesty | 2 | 5 | Prior 4.5-day estimate rejected |
+| **Total** | **12** | **19** | **NOT READY to start coding** |
 
-### Violations
-
-| Severity | Issue | Status |
-|----------|-------|--------|
-| 🔴 Critical | None | ✅ |
-| 🟠 Major | None | ✅ |
-| 🟡 Minor | No UX for Agent Registry Admin UI | ⚠️ |
+**Overall Epic 18:** 🛑 **NOT READY** until entry criteria pass.
 
 ---
 
-## 6. Final Assessment
+## Prior Overclaim (retracted)
 
-### Readiness Score
+The 2026-08-08 report claimed **18/18 READY** and **Blockers: None** while:
 
-| Dimension | Score | Max |
-|-----------|-------|-----|
-| Document Discovery | 4 | 4 |
-| FR Coverage | 5 | 5 |
-| UX Alignment | 4 | 4 |
-| Epic Quality | 5 | 5 |
-| **Total** | **18** | **18** |
+- binding public chat to AD-27/AD-28 (incorrect)
+- marking 13.1–13.3 done despite CHANGES_REQUESTED
+- omitting Spine amendments
+- estimating ~4.5 days for a multi-tenant public API
 
-## Vision Alignment (updated 2026-08-08)
-
-| Category | FRs | Status |
-|----------|-----|--------|
-| Done + Aligned | 48 | ✅ |
-| Proposed + Aligned | 5 | ✅ |
-| Covered by existing | 2 | ✅ FR-53, FR-55 |
-| Deferred (non-blocking) | 1 | ⚠️ FR-54 |
-| **Total** | **56** | **100% aligned** |
-
-### Implementation Order
-
-```
-Phase 1 (Foundation — parallel):
-  13.1 (Canonical Persistence) + 13.6 (Agent Registry)
-
-Phase 2 (Core — parallel):
-  13.5 (NewChatRequest) + 13.7 (Prompt Injection) + 13.2a (BDS Persistence)
-
-Phase 3 (Public API):
-  13.4 (Public Endpoints) → 13.8 (ResearchThread Link)
-
-Phase 4 (Hardening):
-  13.9 (Memory Tags) → 13.10 (Cost Trace) → 13.11 (Rate Limiting)
-  13.2b/c/d/e + 13.3 (after 13.2a)
-```
-
-### Blockers: None
-
-### Warnings
-
-1. **Rate limiting** — not explicit in PRD; added via story 13.11
-
-### Artifacts Updated
-
-| Artifact | Change |
-|----------|--------|
-| `prd.md` | +FR-56, FR-57, NFR-MULTI-1 |
-| `epics.md` | +Stories 13.4-13.11, fixed FR refs |
-| `sprint-status.yaml` | epic-13 → in-progress, +13.4-13.11 |
+Those claims are **retracted** by this correct-course.
 
 ---
 
-## 7. Summary and Recommendations
+## Recommended Next Steps
 
-### Overall Readiness Status: ✅ READY
+1. **Close Epic 13 P0 reviews** (13.1 → 13.2 → 13.3) before any Epic 18 code.
+2. **Human-accept AD-29/30/31** (or amend further).
+3. Only then create story files for 18.1–18.8 and implement in order:
+   `18.3 → 18.2 → 18.4 → 18.1 → 18.5 → 18.6 → 18.7 → 18.8`
+4. Keep Epics 14–17 Phase 2 unless already in flight; do not let them silently outrank E13 P0 fixes.
 
-Epic 13 is ready to begin implementation. All FRs have story coverage, stories have clear acceptance criteria, and dependencies are well-defined.
+---
 
-### Critical Issues Requiring Immediate Action
-
-None.
-
-### Recommended Next Steps
-
-1. **Start Phase 1** — Begin Story 13.1 (Canonical Persistence) + Story 13.6 (Agent Registry) in parallel
-2. **After Phase 1** — Kick off 13.5, 13.7, 13.2a in parallel
-3. **After Phase 2** — Implement 13.4 (Public Endpoints) → 13.8 (ResearchThread Link)
-4. **Phase 4** — Harden with 13.9, 13.10, 13.11
-5. **UX Contract** — Create Agent Registry Admin UX contract when ready for Phase 2 UI
-
-### Final Note
-
-This assessment validated 7 FRs across 15 stories in Epic 13. All FRs have 100% story coverage. Stories follow best practices (user value focus, Given/When/Then ACs, no forward dependencies). Two minor warnings (no UX contract for Agent Registry Admin UI; rate limiting not explicit in PRD) are non-blocking.
-
-**Report:** `implementation-readiness-report-2026-08-07.md`
-**Date:** 2026-08-08
-**Assessor:** PM Agent (Implementation Readiness Skill)
+**Report status:** Correct-course assessment — replaces readiness claims in commit `24ea83b`.

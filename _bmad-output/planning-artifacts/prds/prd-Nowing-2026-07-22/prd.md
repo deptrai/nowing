@@ -1,7 +1,7 @@
 ---
 title: Nowing
 created: 2026-07-21
-updated: 2026-08-06
+updated: 2026-08-07
 ---
 
 # PRD: Nowing
@@ -389,7 +389,6 @@ So that I can track sentiment, trends, and influencer content.
 - Given YouTube/Reddit APIs are connected, when a user searches, then video/posts data is returned.
 - Given social data is stored, when PII is detected, then AD-25 redaction applies.
 
-**Status:** `[PROPOSED]`.
 
 #### FR-54: Search Intelligence (Epic 19 — REMOVED, feature covered by ChainLens)
 As a researcher,
@@ -428,7 +427,7 @@ So that I can integrate Nowing chat into my application.
 - Given a `client_id` in the request, when the chat processes, then all data access is filtered by `client_id` (NFR-MULTI-1).
 - Given rate limit is exceeded, when the endpoint is called, then 429 is returned with `Retry-After` header.
 
-**Status:** `[PROPOSED]` — Epic 13 expansion (2026-08-08).
+**Status:** `[PROPOSED]` — Epic 18 (Vertical Client Platform). Correct-course 2026-08-07: split from Epic 13.
 
 #### FR-57: Agent Registry
 As a platform administrator,
@@ -440,7 +439,7 @@ So that different vertical clients can have specialized chat agents.
 - Given an `agent_id` is provided in a chat request, when processed, then the system loads the corresponding `AgentConfig` or returns 404 if not found.
 - Given a chat request with `agent_id`, when the chat flow starts, then `AgentConfig.system_instructions` is prepended to the default system prompt.
 
-**Status:** `[PROPOSED]` — Epic 13 expansion (2026-08-08).
+**Status:** `[PROPOSED]` — Epic 18 (Vertical Client Platform). Correct-course 2026-08-07: split from Epic 13.
 
 > **FR-24 đã chuyển sang §4.9.** ChainLens Research **không phải** một connector/scraper. Nó là Deep-Research Engine — dependency kiến trúc hạng nhất, governed by `AD-15` (không còn `AD-3`). Xem **§4.9**.
 
@@ -1037,7 +1036,7 @@ Một `Memory` sinh ra từ dữ liệu scrape phải trỏ được về **đú
 - `client_id` được set qua PostgreSQL RLS context (`SET LOCAL app.current_client_id`).
 - Áp dụng cho: Memory, TokenUsage, Run, ResearchThread.
 
-**Status:** `[PROPOSED]` — BDS AI co-evolution yêu cầu isolation giữa vertical clients.
+**Status:** `[PROPOSED]` — Epic 18 / AD-31. Orthogonal to workspace RLS (`workspace_id`). Hard filter, not boost. Design required before memory migrations.
 
 #### NFR-6: Citation Full-Editor Highlight  `[DONE — cải chính 2026-07-25]`
 Click citation trong chat scroll/highlight được đoạn snippet tương ứng trong full document editor.

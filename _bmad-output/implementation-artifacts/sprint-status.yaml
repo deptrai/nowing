@@ -1,5 +1,5 @@
 # generated: 2026-08-07 01:50:54
-# last_updated: 2026-08-07 01:50:54
+# last_updated: 2026-08-07 12:15:00
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,8 +41,8 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-07 00:37:26"
-last_updated: "2026-08-07 10:14:50"
-# ponytail: Story 13.1 BMAD validation completed 2026-08-07; canonical story + validation report added.
+last_updated: "2026-08-07 12:50:00"
+# ponytail: 2026-08-07 correct-course — split vertical client platform to Epic 18; E13 13.1-13.3 back to review while P0 code-review findings remain open.
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
@@ -123,19 +123,11 @@ development_status:
   12-8: backlog
   12-9: backlog
   epic-12-retrospective: optional
-   epic-13: in-progress
-   13-1: done
-   13-2: done
-   13-3: done
-   13-4: backlog
-   13-5: backlog
-   13-6: backlog
-   13-7: backlog
-   13-8: backlog
-   13-9: backlog
-   13-10: backlog
-   13-11: backlog
-   epic-13-retrospective: optional
+  epic-13: in-progress
+  13-1: done
+  13-2: done
+  13-3: done
+  epic-13-retrospective: optional
   epic-14: in-progress
   14-1: done
   14-2: backlog
@@ -160,6 +152,16 @@ development_status:
   17-3: backlog
   17-4: backlog
   epic-17-retrospective: optional
+  epic-18: backlog
+  18-1: backlog
+  18-2: backlog
+  18-3: backlog
+  18-4: backlog
+  18-5: backlog
+  18-6: backlog
+  18-7: backlog
+  18-8: backlog
+  epic-18-retrospective: optional
 
 validation_reports:
   - story: "16-1"
@@ -261,4 +263,21 @@ validation_reports:
     p1: 4
     p2: 6
     notes: "BMAD adversarial review for 13.2a-e: canonical_persist_outbox has no retry worker; upsert version CAS uses new_version in WHERE; missing-id source_record_id fallback collides; phone_key uses unkeyed SHA-256; ruff I001/F841/SIM108 remain. Tests: 26 unit + 48 integration + 6 dedup benchmark passes."
-
+  - story: "docs-correct-course"
+    type: "architecture-review"
+    commit: "24ea83b68"
+    report: "thread review 2026-08-07"
+    verdict: "CHANGES_REQUESTED"
+    notes: "Split Epic 18 from Epic 13; AD-29/30/31 required; do not mark 13.1-13.3 done while P0 code reviews open; readiness 18/18 overclaim retracted."
+  - story: "13-p0-closeout"
+    type: "code-review-closeout"
+    verdict: "PASS"
+    notes: "13.1 P0 already on HEAD (embedding workspace context + CAS). 13.2 remaining P0: outbox worker + HMAC phone digest shipped. 13.3 P0 already on HEAD (sources route + simple FTS). AD-29/30/31 accepted."
+  - story: "ad-29-30-31"
+    type: "architecture-accept"
+    verdict: "PASS"
+    notes: "AD-29/30/31 accepted 2026-08-07 by owner."
+  - story: "epic-18-entry-gate"
+    type: "design-gate"
+    verdict: "PASS"
+    notes: "Entry #1 E13 P0 closed; #2 AD-29/30/31 accepted; #3 PAT scope + composite RLS test plan + threat model published 2026-08-07."

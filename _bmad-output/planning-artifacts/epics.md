@@ -2,7 +2,7 @@
 title: Nowing - Epic Breakdown
 description: ''
 createdAt: '2026-07-28T12:47:48.297Z'
-updatedAt: '2026-08-06T00:00:00.000Z'
+updatedAt: '2026-08-07T00:00:00.000Z'
 tags:
   - bmad
   - bmad-source-bmad-output-planning-artifacts-epics-md
@@ -1332,7 +1332,7 @@ _FR-47 · NFR-11 · OQ-3 · `feature-brief-hr-vertical-vietnam-2026-08-05.md`._
 
 Hệ thống lưu trữ, dedup và index entities từ nhiều nguồn — tra cứu nhanh, giữ được provenance, cô lập tenant ở tầng database và mở rộng cho nhiều domain mà chưa cần dựng matching engine chung quá sớm.
 
-**FRs covered:** FR-48 (canonical entity storage), FR-56 (public agent-chat API), FR-57 (Agent Registry), FR-46 (extend `vn_jobs.aggregate`), FR-37 (cost traceability), FR-38 (degradation), NFR-MULTI-1 (tenant isolation)
+**FRs covered:** FR-48 (canonical entity storage & indexing), FR-46 (extend `vn_jobs.aggregate`)
 **ADs governed:** AD-27 (canonical entity convention), AD-28 (unified engine trigger), inherits AD-24, AD-14, AD-2, AD-25
 
 > **Scope reduced 2026-08-06 (Party Mode review):** Existing aggregators (`bds_aggregator`, `jobs_aggregator`) already implement matching/dedupe. Epic 13 adds a shared persistence, lineage and search layer; it does not replace domain matching logic.
@@ -1441,7 +1441,23 @@ _AD-27 (search_text convention) · AD-2 (pgvector) · workspace isolation contra
 
 ---
 
-### Story 13.4: Public Agent-Chat Endpoints `[P0]`
+## Epic 18: Vertical Client Platform (Public Agent-Chat)
+
+Public API surface so external vertical clients (first: BDS AI) can run specialized agents against a Nowing workspace with PAT auth, hard tenant isolation, cost attribution and rate limits.
+
+**FRs covered:** FR-56 (public agent-chat API), FR-57 (Agent Registry), NFR-MULTI-1 (vertical client isolation); reuses FR-37 metering patterns
+**ADs governed:** **AD-29** (public agent-chat surface), **AD-30** (AgentConfig registry), **AD-31** (vertical `client_id` tenancy), **AD-13** (ResearchThread linkage)
+
+> **Correct-course 2026-08-07:** Originally drafted as Epic 13.4–13.11. Split out of Epic 13 so canonical storage (FR-48) stays a closed architecture boundary. Do **not** bind these stories to AD-27/AD-28.
+>
+> **Entry criteria (all required before coding):**
+> 1. Epic 13 stories 13.1–13.3 P0 code-review findings closed (or explicitly waived). ✅ 2026-08-07
+> 2. AD-29, AD-30, AD-31 accepted on Architecture Spine. ✅ 2026-08-07
+> 3. PAT scope model and composite RLS (`workspace_id` + `client_id`) designed and test-planned. ✅ 2026-08-07 — see `architecture-Nowing-2026-07-22/epic-18-pat-scope-rls-threat-model.md`
+>
+> **Effort:** multi-week platform work (not ~4.5 days). Security review required before public enablement.
+
+### Story 18.1: Public Agent-Chat Endpoints `[P0]`
 
 As a vertical client,
 I want to create chat threads and send messages via public API,
@@ -1453,12 +1469,14 @@ So that I can integrate Nowing chat into my application.
 - **Given** an invalid PAT or non-member, **When** any public endpoint is called, **Then** 401/403 is returned.
 - **Given** a `client_id` in the request, **When** the chat processes, **Then** all data access is filtered by `client_id`.
 - **Given** rate limit is exceeded, **When** the endpoint is called, **Then** 429 is returned with `Retry-After` header.
+- **Given** a PAT is presented, **When** authorized, **Then** the token's allowed `workspace_id` (and optional `client_id`/`agent_id` scopes from AD-29) are enforced server-side; client-supplied IDs cannot escalate scope.
+- **Given** every public call, **When** completed or rejected, **Then** an audit log records actor, workspace, client, agent, route, status and run id without storing message PII bodies by default.
 
-_Kỹ thuật: `app/routes/agent_chat_routes.py`, PAT auth middleware, rate limiter. AD-13 (amended 2026-08-08)._
+_Kỹ thuật: `app/routes/agent_chat_routes.py`, PAT auth middleware, rate limiter. **AD-29** (public agent-chat surface). Depends on AD-13 ResearchThread linkage._
 
 ---
 
-### Story 13.5: NewChatRequest Extension `[P0]`
+### Story 18.2: NewChatRequest Extension `[P0]`
 
 As a chat system,
 I want to accept `agent_id`, `client_id`, and `platform_metadata` in chat requests,
@@ -1470,11 +1488,11 @@ So that agents can be configured per vertical client and context can be forwarde
 - **Given** `platform_metadata` in the request, **When** processed, **Then** the metadata is forwarded to the chat prompt context.
 - **Given** no `agent_id`, **When** processed, **Then** the default Nowing chat agent is used (backward compatible).
 
-_Kỹ thuật: Extend `NewChatRequest` schema in `app/schemas/new_chat.py`. AD-13._
+_Kỹ thuật: Extend `NewChatRequest` schema in `app/schemas/new_chat.py`. **AD-29** + **AD-30**._
 
 ---
 
-### Story 13.6: Agent Registry `[P0]`
+### Story 18.3: Agent Registry `[P0]`
 
 As a platform administrator,
 I want to register agents with custom system prompts and tool configurations,
@@ -1486,11 +1504,11 @@ So that different vertical clients can have specialized chat agents.
 - **Given** an `agent_id` is provided in a chat request, **When** processed, **Then** the system loads the corresponding `AgentConfig` or returns 404 if not found.
 - **Given** `AgentConfig` is global (not workspace-scoped), **When** same agent is used across workspaces, **Then** the same config applies.
 
-_Kỹ thuật: `app/db.py` (AgentConfig model), migration `194_add_agent_configs.py`, seed script. AD-27. UX: `ux-contract-agent-registry.md`._
+_Kỹ thuật: `app/db.py` (AgentConfig model), Alembic migration (number assigned at implement time), seed script. **AD-30**. UX: `ux-contract-agent-registry.md`._
 
 ---
 
-### Story 13.7: AgentConfig Prompt Injection `[P0]`
+### Story 18.4: AgentConfig Prompt Injection `[P0]`
 
 As a chat system,
 I want to inject agent-specific system instructions into the chat prompt,
@@ -1501,11 +1519,11 @@ So that each vertical client gets a specialized agent experience.
 - **Given** an `agent_id` with `enabled_tools`, **When** the chat agent selects tools, **Then** only tools in the allowlist are available.
 - **Given** no `agent_id`, **When** processed, **Then** the default Nowing chat agent is used (backward compatible).
 
-_Kỹ thuật: `app/tasks/chat/streaming/flows/new_chat/orchestrator.py` — load config, inject prompt, filter tools. AD-27._
+_Kỹ thuật: chat orchestrator — load config, inject prompt, filter tools. **AD-30**._
 
 ---
 
-### Story 13.8: ResearchThread Auto-Linkage `[P0]`
+### Story 18.5: ResearchThread Auto-Linkage `[P0]`
 
 As a vertical client,
 I want chat threads to be automatically linked to ResearchThreads,
@@ -1516,11 +1534,11 @@ So that memory is properly isolated and contextual across sessions.
 - **Given** the ResearchThread is created, **When** the API response is returned, **Then** it includes `research_thread_id`.
 - **Given** memories are extracted from the chat, **When** stored, **Then** they are tagged with `research_thread_id`.
 
-_Kỹ thuật: `app/routes/agent_chat_routes.py` — auto-create ResearchThread, update response schema. AD-13._
+_Kỹ thuật: `app/routes/agent_chat_routes.py` — auto-create ResearchThread, update response schema. **AD-13** + **AD-29**._
 
 ---
 
-### Story 13.9: Memory Tagging + RAG Filter `[P1]`
+### Story 18.6: Memory Tagging + RAG Filter `[P1]`
 
 As a platform,
 I want memories tagged with `client_id`/`agent_id` and RAG recall to hard-filter by tenant,
@@ -1531,11 +1549,11 @@ So that one client's data never leaks into another client's chat.
 - **Given** a recall query with `client_id`, **When** the RAG system searches, **Then** only memories with matching `client_id` are returned (hard filter, not boost).
 - **Given** a recall query without `client_id`, **When** processed, **Then** only memories with `client_id = NULL` (Nowing-internal) are returned.
 
-_Kỹ thuật: Migration `195_add_memory_tenant_tags.py`, update `app/retriever/`. AD-27, NFR-MULTI-1._
+_Kỹ thuật: Alembic migration for memory tenant tags, update `app/retriever/`. **AD-31**, NFR-MULTI-1. Blocked until AD-31 tenancy design is accepted._
 
 ---
 
-### Story 13.10: Cost Traceability `[P1]`
+### Story 18.7: Cost Traceability `[P1]`
 
 As a vertical client,
 I want to attribute costs to my users and listings,
@@ -1546,11 +1564,11 @@ So that I can track and bill for Nowing usage.
 - **Given** a `client_id`, **When** querying TokenUsage, **Then** cost reports can be generated per client per day.
 - **Given** an `X-Run-Id` header in the response, **When** the client receives it, **Then** they can correlate costs with their internal records.
 
-_Kỹ thuật: Migration `196_add_token_usage_metadata.py`, update `app/services/token_tracking_service.py`. AD-28, FR-37._
+_Kỹ thuật: Alembic migration for TokenUsage/Run external_metadata, update `app/services/token_tracking_service.py`. **AD-29** cost attribution; FR-37 patterns reused. Not AD-28._
 
 ---
 
-### Story 13.11: Rate Limiting + Tenant Isolation `[P1]`
+### Story 18.8: Rate Limiting + Tenant Isolation `[P1]`
 
 As a platform,
 I want to enforce rate limits per workspace and per client,
@@ -1561,20 +1579,21 @@ So that no single client can degrade service for others.
 - **Given** a PAT is validated, **When** the request is processed, **Then** PostgreSQL RLS context is set (`SET LOCAL app.current_client_id`).
 - **Given** RLS is active, **When** any query runs, **Then** rows are filtered by `client_id` automatically.
 
-_Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter with Redis. AD-13, NFR-MULTI-1._
+_Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter with Redis. **AD-29** + **AD-31**, NFR-MULTI-1. Composite RLS (`workspace_id` + `client_id`) must be designed before implementation._
 
 ---
+
 
 ## Ghi chú
 - **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
 - **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
 - Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
 - **Epic 13 sequencing:** Story 13.1 + BDS contract (13.2a) có thể chạy trước Epic 12. Jobs persistence (13.2b), Jobs fixtures (13.2e) và HR pilot benchmark phụ thuộc Epic 12.
-- **Epic 13 scope (2026-08-06+):** persistence/lineage/search layer over existing aggregators. Story 13.2 is five sub-stories (13.2a–e); shared tables ship in 13.1 before any AD-28 plugin-engine trigger.
-- **Epic 13 expansion (2026-08-08):** Stories 13.4-13.11 added for public agent-chat API, Agent Registry, memory tagging, cost traceability, and rate limiting (BDS AI co-evolution — first vertical client).
-- **Epic structure:** Epics 12-17 mỗi epic có 2 sections (Original + Extended). Extended sections chứa stories bổ sung. Sprint-status.yaml track tất cả stories trong single epic.
-- **Vision alignment:** 3 FRs marked DONE (FR-53, FR-55 covered by existing features), 1 FR deferred (FR-54 covered by ChainLens). Remaining epics 14-17 scoped for Phase 2.
-- **OAuth Connectors (Layer 2):** 18+ connectors đã built (Gmail, Drive, Slack, GitHub, Discord, Teams, Linear, Airtable, Notion, Dropbox...)
+- **Epic 13 scope:** FR-48 only — canonical persistence, lineage and unified search (stories 13.1–13.3 / 13.2a–e). Shared tables ship in 13.1 before any AD-28 plugin-engine trigger.
+- **Epic 13 status gate:** 13.1–13.3 remain in `review` until open P0 code-review findings are closed. Do not mark done while CHANGES_REQUESTED.
+- **Epic 18 (2026-08-07 correct-course):** Public agent-chat API, Agent Registry, vertical `client_id` tenancy, cost attribution and rate limiting live in **Epic 18**, not Epic 13. Governed by AD-29/AD-30/AD-31. Blocked on: (1) close E13 P0 reviews, (2) accept AD-29–31 on Architecture Spine.
+- **Epic structure:** Epics 12–17 may have Original + Extended sections. Sprint-status tracks all stories under one epic key.
+- **Vision notes:** FR-53/FR-55 covered by existing scrapers; FR-54 deferred (ChainLens). Epics 14–17 are Phase 2 priority unless already in flight.
 
 ---
 
