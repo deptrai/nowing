@@ -153,3 +153,17 @@ development_status:
   17-4: backlog
   epic-17-retrospective: optional
 
+validation_reports:
+  - story: "16-1"
+    type: "mutation-gate"
+    commit: "bf599358c"
+    report: "_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T001124Z.json"
+    session: "_bmad-output/test-artifacts/mutation-nowing-masothue-filtered-20260806T234648Z.sqlite"
+    verdict: "FAIL"
+    mutation_score: 55.01
+    killed: 324
+    survived: 265
+    p0: 0
+    p1: 265
+    p2: 0
+
