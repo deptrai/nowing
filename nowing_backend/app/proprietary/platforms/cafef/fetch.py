@@ -29,6 +29,17 @@ _BALANCE_ENDPOINT = "{base}/v2/BCTC/GetReportCDKT"
 _INCOME_ENDPOINT = "{base}/v1/BCTC/GetReportDetail"
 _CASH_ENDPOINT = "{base}/v1/BCTC/GetReportLCTT"
 
+# Bounded retry/backoff for transient 429 responses.
+_MAX_429_RETRIES = 2
+_BACKOFF_BASE_S = 1.0
+
+# Headers that help avoid WAF/Cloudflare blocks on CafeF endpoints.
+_CAFEF_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; Nowing/1.0)",
+    "Accept": "application/json",
+    "Referer": "https://cafef.vn/",
+}
+
 # Process-local rate-limit state. 20 req/min -> 1 request every 3 s.
 _throttle_lock = asyncio.Lock()
 _last_request_at: float | None = None
@@ -206,29 +217,61 @@ def _demo_news(symbol: str, max_news: int) -> list[dict[str, Any]]:
 
 
 async def _do_get(url: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Make one throttled GET and return the decoded JSON envelope."""
-    await _throttle()
-    async with httpx.AsyncClient(timeout=_timeout()) as client:
+    """Make one throttled GET and return the decoded JSON envelope.
+
+    Follows redirects, sends browser-like headers, and performs bounded
+    exponential backoff on 429. HTML challenge pages (e.g. Cloudflare)
+    are surfaced as access-blocked errors so the caller can degrade
+    gracefully instead of paying for empty JSON.
+    """
+    for attempt in range(_MAX_429_RETRIES + 1):
+        await _throttle()
+        async with httpx.AsyncClient(
+            timeout=_timeout(),
+            headers=_CAFEF_HEADERS,
+            follow_redirects=True,
+        ) as client:
+            try:
+                resp = await client.get(url, params=params)
+            except httpx.TimeoutException as exc:
+                raise CafeFAccessBlockedError(f"timeout for {url}") from exc
+            except httpx.ConnectError as exc:
+                raise CafeFAccessBlockedError(f"cannot connect to {url}") from exc
+
+        if resp.status_code == 429:
+            if attempt < _MAX_429_RETRIES:
+                backoff = _BACKOFF_BASE_S * (2 ** attempt)
+                logger.warning(
+                    "cafef %s returned 429, backing off %.1fs before retry %d/%d",
+                    url,
+                    backoff,
+                    attempt + 1,
+                    _MAX_429_RETRIES,
+                )
+                await asyncio.sleep(backoff)
+                continue
+            raise CafeFRateLimitedError(f"{url} returned 429")
+
+        if resp.status_code in (403, 451):
+            raise CafeFAccessBlockedError(f"{url} returned {resp.status_code}")
+        if resp.status_code >= 500:
+            raise CafeFAccessBlockedError(f"{url} returned {resp.status_code}")
+        if resp.status_code != 200:
+            raise CafeFAccessBlockedError(f"{url} returned {resp.status_code}")
+
+        # Cloudflare/WAF may return a 200 HTML challenge page. Do not try to
+        # parse it as JSON; treat it the same as an access-blocked response.
+        resp_headers = getattr(resp, "headers", None)
+        content_type = ""
+        if resp_headers is not None:
+            content_type = resp_headers.get("content-type", "")
+        if "html" in content_type.lower():
+            raise CafeFAccessBlockedError(f"cloudflare/html response from {url}")
+
         try:
-            resp = await client.get(url, params=params)
-        except httpx.TimeoutException as exc:
-            raise CafeFAccessBlockedError(f"timeout for {url}") from exc
-        except httpx.ConnectError as exc:
-            raise CafeFAccessBlockedError(f"cannot connect to {url}") from exc
-
-    if resp.status_code == 429:
-        raise CafeFRateLimitedError(f"{url} returned 429")
-    if resp.status_code in (403, 451):
-        raise CafeFAccessBlockedError(f"{url} returned {resp.status_code}")
-    if resp.status_code >= 500:
-        raise CafeFAccessBlockedError(f"{url} returned {resp.status_code}")
-    if resp.status_code != 200:
-        raise CafeFAccessBlockedError(f"{url} returned {resp.status_code}")
-
-    try:
-        return resp.json()
-    except json.JSONDecodeError as exc:
-        raise CafeFDecodeError(f"cannot decode response from {url}") from exc
+            return resp.json()
+        except json.JSONDecodeError as exc:
+            raise CafeFDecodeError(f"cannot decode response from {url}") from exc
 
 
 async def fetch_quote(symbol: str) -> dict[str, Any]:

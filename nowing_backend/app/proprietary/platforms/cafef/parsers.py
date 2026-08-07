@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .fetch import CafeFDecodeError
+from .fetch import CafeFAccessBlockedError, CafeFDecodeError
 from .schemas import (
     CafeFFinancialLineItem,
     CafeFFinancialReport,
@@ -127,9 +127,17 @@ def parse_financials(raw: dict[str, Any] | None, symbol: str) -> CafeFFinancials
         if isinstance(payload, dict) and "periods" in payload:
             return CafeFFinancialReport(**payload)
 
-        # Live CafeF envelope: ``{"isSuccess": true, "value": {...}}``.
-        if isinstance(payload, dict) and "value" in payload:
-            payload = payload.get("value") or {}
+        # Live CafeF envelope: ``{"isSuccess": bool, "value": {...}}``.
+        if isinstance(payload, dict) and "isSuccess" in payload:
+            if payload.get("isSuccess") is False:
+                errors = payload.get("errors")
+                raise CafeFAccessBlockedError(f"CafeF {name} API error: {errors}")
+            value = payload.get("value")
+            if not isinstance(value, dict) or not value:
+                raise CafeFAccessBlockedError(
+                    f"CafeF {name} returned an empty value"
+                )
+            payload = value
 
         if not isinstance(payload, dict):
             raise CafeFDecodeError(f"unexpected {name} payload type")
@@ -172,8 +180,16 @@ def parse_quote(raw: dict[str, Any] | None, symbol: str) -> CafeFQuote:
         raise CafeFDecodeError("quote response is None")
 
     # Live envelope, unwrap if present.
-    if isinstance(raw, dict) and raw.get("isSuccess") and "value" in raw:
-        raw = raw.get("value") or {}
+    if isinstance(raw, dict) and "isSuccess" in raw:
+        if raw.get("isSuccess") is False:
+            errors = raw.get("errors")
+            raise CafeFAccessBlockedError(f"CafeF quote API error: {errors}")
+        value = raw.get("value")
+        if not isinstance(value, dict) or not value:
+            raise CafeFAccessBlockedError(
+                f"CafeF quote returned an empty value for {symbol}"
+            )
+        raw = value
 
     def _get(*keys: str) -> Any:
         for key in keys:
