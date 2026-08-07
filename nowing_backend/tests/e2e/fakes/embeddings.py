@@ -62,6 +62,9 @@ def install(patches: list[Any]) -> None:
             "app.indexing_pipeline.cache.cached_indexing.embed_texts",
             fake_embed_texts,
         ),
+        # Memory service binding sites imported before fakes are installed.
+        ("app.services.memory.repository.embed_texts", fake_embed_texts),
+        ("app.routes.memories_routes.embed_texts", fake_embed_texts),
     ]
     for target, replacement in targets:
         try:
