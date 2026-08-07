@@ -7,7 +7,7 @@ paradigm: 'layered modular monolith + stateless MCP server + client-server with 
 scope: 'Toàn bộ hệ sinh thái Nowing: backend FastAPI, web Next.js, desktop Electron, browser extension, Obsidian plugin, MCP server, và evals.'
 status: draft
 created: '2026-07-22'
-updated: '2026-08-06'
+updated: '2026-08-07'
 binds: []
 sources:
   - /Users/luisphan/Documents/nowing/docs/architecture-backend.md
@@ -53,6 +53,12 @@ companions:
 > - **`AD-27` tightened:** Define `MergeResult` TypedDict inline; align Jobs fingerprint with AD-24 (add `posted_at`); mandate default merge strategies per conflict type; specify `normalize()` contract + module path convention; clarify cosine similarity notation (> 0.92).
 > - **`AD-28` tightened:** Define fingerprint match rate formula precisely (`entities with ≥2 sources / total entities`, weekly, 2 consecutive weeks); remove subjective "đáng kể" (3rd domain = trigger); add SLA (refactor within 1 sprint); acknowledge plugin ABC migration cost.
 > - **`AD-27`/`AD-28` + Epic 13 align 2026-08-06:** Shared canonical tables/source lineage ship in Story 13.1 **before** the plugin-engine trigger. AD-28 only gates DomainPlugin matching refactor. Module exports may wrap existing `dedupe.py`/`normalize.py`. Tenant RLS uses `SET LOCAL app.workspace_id` + FORCE RLS + NOBYPASSRLS.
+>
+> **✅ Correct-course 2026-08-07 — Vertical Client Platform split:**
+> - Public agent-chat / Agent Registry / vertical `client_id` tenancy moved from Epic 13 drafts into **Epic 18**.
+> - **`AD-13` amended** — ResearchThread remains continuation context; public agent-chat is allowed only under AD-29 guardrails.
+> - **`AD-29`/`AD-30`/`AD-31` added** — public agent-chat surface, AgentConfig registry, vertical client tenancy (orthogonal to workspace RLS).
+> - Do **not** bind Agent Registry or public chat to AD-27/AD-28.
 >
 > **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
 > - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
@@ -185,13 +191,14 @@ Không có parent spine; đây là spine cao nhất.
   - `nowing_continue_research` load `ResearchThread` context và `Memory` liên quan trước khi trả lời.
 
 ### AD-13 — Research Thread là continuation context
-- **Binds:** Story 4.6, Story 6.5
-- **Prevents:** mỗi chat là một island, mất lịch sử research
+- **Binds:** Story 4.6, Story 6.5, Epic 18 (ResearchThread auto-linkage for vertical clients)
+- **Prevents:** mỗi chat là một island, mất lịch sử research; public clients tạo chat không có memory continuity
 - **Rule:**
   - `ResearchThread` liên kết 1-n `ChatThread` (`new_chat_threads.research_thread_id` nullable FK).
   - `ResearchThread` workspace-wide, optional link với `Memory` qua `Memory.research_thread_id` (MVP).
   - Agent loop load `ResearchThread` context qua `nowing_recall` với `research_thread_id` trước khi trả lời.
   - `AutomationRun` có thể reference `research_thread_id` (post-MVP cho memory-driven automations).
+  - **Amendment 2026-08-07:** Public/vertical agent-chat may create and link `ResearchThread` instances, but only through the AD-29 public surface. AD-13 does **not** by itself authorize public HTTP exposure, PAT auth, or `client_id` tenancy — those are AD-29/AD-31.
 
 ### AD-14 — Auto-extract memory từ chat turn
 - **Binds:** Story 4.5, FR-32
@@ -629,6 +636,45 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - **Sau trigger:** Refactor thành unified plugin engine — 1 matching engine + `DomainPlugin` ABC. Migration cost: define ABC with `fingerprint`/`merge`/`search_text` methods; wrap each domain's existing standalone functions into plugin class. **SLA:** Refactor must begin within 1 sprint of trigger detection. New domains built after trigger must use the unified engine.
   - **Storage vs engine timing:** Shared canonical storage (`canonical_entities`, `canonical_entity_sources`, merge history, outbox) is created by Epic 13 Story 13.1 **before** this trigger. AD-28 does **not** delay those tables. After the trigger, matching logic is refactored behind one `DomainPlugin` engine on top of the already-shared tables; any leftover domain-specific read models become views only if they still exist.
   - **Tenant isolation for canonical storage:** Every canonical table is workspace-scoped. Application transactions set `SET LOCAL app.workspace_id` from explicit request/task context; tables use `ENABLE/FORCE ROW LEVEL SECURITY` with a non-owner `NOBYPASSRLS` role. Missing context fails closed.
+
+
+### AD-29 — Public Agent-Chat Surface (vertical clients)
+
+- **Binds:** Epic 18 / FR-56; PAT auth; rate limiting; cost attribution headers
+- **Prevents:** ad-hoc public chat routes without authz, audit, or tenant scope; confusing internal web chat with partner API
+- **Rule:**
+  - Public routes live under a dedicated prefix (e.g. `/api/v1/workspaces/{workspace_id}/agent-chat/...`) and are **explicitly allowlisted**. Internal web chat routes stay internal.
+  - Auth is **PAT (or equivalent machine credential)** with server-enforced scopes: at minimum `workspace_id`; optional `client_id` and `agent_id`. Client-supplied IDs cannot escalate beyond token scope.
+  - Every request sets transaction-local DB context for workspace (existing `app.workspace_id`) and, when present, vertical client (`app.current_client_id` per AD-31) **before** any business query.
+  - Rate limit per workspace and per client; exceed → `429` + `Retry-After`. Emit low-cardinality metrics; do not log full message bodies by default.
+  - Responses carry correlation ids (e.g. `X-Run-Id`) for cost/audit. `external_metadata` on TokenUsage/Run is additive and untrusted for authorization.
+  - Security review required before enabling in production. Prompt-injection and tool-exfiltration risks from partner-supplied context must be threat-modeled with AD-30.
+
+### AD-30 — AgentConfig Registry
+
+- **Binds:** Epic 18 / FR-57; UX `ux-contract-agent-registry.md`
+- **Prevents:** hard-coded per-vertical prompts in app code; tool allowlists drifting per deploy
+- **Rule:**
+  - `agent_configs` stores named agents: identity, `system_instructions`, tool allow/deny lists, model preference, citations flag, active flag.
+  - **Ownership model (MVP):** platform-superuser managed registry (not end-user workspace CRUD). Whether rows are global or platform-tenant-scoped is decided with AD-31; default recommendation is **platform-scoped with `client_id`**, readable by authorized runtimes, writable only by superuser/admin tools.
+  - Missing/inactive `agent_id` → fail closed (`404`), never silently fall through to a more powerful agent.
+  - Tool allowlists are **explicit**. New connectors do not auto-enable on existing agents.
+  - Prompt injection: `system_instructions` are trusted admin content; still subject to length limits, audit, and no raw secret interpolation from client metadata.
+
+### AD-31 — Vertical Client Tenancy (`client_id`)
+
+- **Binds:** Epic 18 / NFR-MULTI-1; memory recall; TokenUsage/Run attribution
+- **Prevents:** cross-vertical-client memory/data leakage inside one workspace; treating `client_id` as a soft ranking boost
+- **Rule:**
+  - `client_id` is a **hard isolation key orthogonal to `workspace_id`**. Workspace membership alone is insufficient for vertical-client data.
+  - Define `client_id` representation before migrations (stable string vs FK to `clients` table). Prefer a first-class `clients` (or `vertical_clients`) table if more than one partner will land.
+  - Tables that carry vertical-client data (at least Memory; likely Run/TokenUsage/ResearchThread as needed) gain nullable `client_id` (NULL = Nowing-internal / web app).
+  - Recall and list paths **hard-filter**:
+    - request with `client_id=X` → only rows with `client_id=X`
+    - request without `client_id` → only rows with `client_id IS NULL` (or explicit internal scope)
+  - Never use `client_id` as a ranking boost. Application bugs must not be the only barrier — prefer DB policy (`current_setting('app.current_client_id')`) composed with workspace RLS.
+  - Composite policy order: authenticate → authorize workspace → set workspace RLS context → authorize client scope → set client RLS context → run query.
+  - **Blocked:** implementing Stories 18.6/18.8 before this AD is accepted and test-planned (including pooled-connection context reset).
 
 ## Consistency Conventions
 

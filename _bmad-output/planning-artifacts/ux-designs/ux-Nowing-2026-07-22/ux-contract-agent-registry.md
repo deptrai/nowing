@@ -1,8 +1,8 @@
 # UX Contract — Agent Registry: Admin CRUD for Vertical Client Agents
 
-**Ngày:** 2026-08-08
-**Phạm vi:** UX cho trang `/admin/agent-registry` — quản lý agents (FR-57, Story 13.6, 13.7).
-**Bám vào:** FR-57 · NFR-MULTI-1 · AD-13 (amended) · Story 13.6 · Story 13.7
+**Ngày:** 2026-08-08 (amended 2026-08-07 correct-course)
+**Phạm vi:** UX cho trang `/admin/agent-registry` — quản lý agents (FR-57, Epic 18 Stories 18.3–18.4).
+**Bám vào:** FR-57 · NFR-MULTI-1 · **AD-30** (AgentConfig registry) · **AD-29** (public surface) · **AD-31** (client tenancy) · AD-13 (ResearchThread linkage only)
 **Loại tài liệu:** *contract* — định nghĩa trạng thái UI phải biểu diễn được, không định layout/màu.
 
 ---
@@ -15,7 +15,7 @@ Nowing mở rộng thành multi-vertical AI engine. Mỗi vertical client (bdsai
 - **Model/model config** riêng (tùy vertical có thể dùng model khác)
 
 Admin cần UI để:
-- Xem tất cả agents đang có (global, không workspace-scoped)
+- Xem tất cả agents đang có (platform registry — not end-user workspace CRUD)
 - Tạo agent mới cho vertical client
 - Chỉnh sửa system instructions, tools, model
 - Bật/tắt agent (soft delete = `is_active=false`)
@@ -24,7 +24,7 @@ Admin cần UI để:
 Hệ quả UX:
 - Admin phải hiểu rõ **agent → client** mapping để không config nhầm tools cho vertical sai.
 - System instructions editor phải hỗ trợ preview — admin thấy ngay prompt sẽ được inject vào chat.
-- Tool allowlist phải rõ ràng: tool nào **enabled**, nào **disabled**, nào **not available** (không phải của workspace).
+- Tool allowlist phải rõ ràng: tool nào **enabled**, nào **disabled**, nào **not available**.
 
 ---
 
@@ -36,7 +36,7 @@ Hệ quả UX:
 |---|-----------|----------|
 | A1 | **Agent table** — Danh sách agents dạng table, cột: Name, Client ID, Model, Tools count, Status (active/inactive), Last updated | ✅ |
 | A2 | **Active/Inactive badge** — Visual indicator: green "Active" / gray "Inactive" | ✅ |
-| **A3** | **Seed indicator** — Agent mặc định (`bdsai-listing-assistant`) có nhãn "Seeded" để admin biết không nên xóa | ✅ |
+| A3 | **Seed indicator** — Agent mặc định (`bdsai-listing-assistant`) có nhãn "Seeded" để admin biết không nên xóa | ✅ |
 | A4 | **Empty state** — "No agents registered. Create your first agent for a vertical client." + CTA "Create Agent" | ✅ |
 | A5 | **Search/filter** — Filter theo client_id, status (all/active/inactive) | ✅ |
 
@@ -51,7 +51,7 @@ Hệ quả UX:
 | B5 | **System instructions preview** — Toggle "Preview" hiển thị rendered markdown + injected vào default prompt pattern | ✅ |
 | B6 | **Model selector** — Dropdown từ Global Model Catalog (AD-8). Mặc định = workspace default | ✅ |
 | B7 | **Citations toggle** — Switch bật/tắt `citations_enabled` | ✅ |
-| B8 | **Tool allowlist** — Multi-select hoặc toggle list từ available tools của workspace. Section: "Enabled Tools" vs "Disabled Tools" | ✅ |
+| B8 | **Tool allowlist** — Multi-select hoặc toggle list. Section: "Enabled Tools" vs "Disabled Tools" | ✅ |
 | B9 | **Tool group by category** — Tools nhóm theo: Scrapers, Search, Research, Memory, Other | ✅ |
 | B10 | **Form validation** — Required fields rõ ràng, submit disabled khi invalid, inline error messages | ✅ |
 | B11 | **Cancel / Create actions** — Cancel quay về list, Create lưu và navigate đến agent detail | ✅ |
@@ -74,23 +74,23 @@ Hệ quả UX:
 
 | # | Trạng thái | Bắt buộc |
 |---|-----------|----------|
-| D1 | **Tool list** — Checkbox list tất cả tools available trong workspace | ✅ |
-| D2 | **Tool description** — Mỗi tool có short description (1 dòng) để admin hiểu tool làm gì | ✅ |
+| D1 | **Tool list** — Checkbox list tools available for configuration | ✅ |
+| D2 | **Tool description** — Mỗi tool có short description (1 dòng) | ✅ |
 | D3 | **Select all / Clear all** — Buttons nhanh để toggle all tools | ✅ |
 | D4 | **Selected count** — "N/M tools enabled" indicator | ✅ |
-| D5 | **Unavailable tools** — Tools không có trong workspace hiển thị grayed-out với tooltip "Not available in this workspace" | ✅ |
+| D5 | **Unavailable tools** — Tools không available hiển thị grayed-out với tooltip | ✅ |
 
 ---
 
 ## 3. Ràng buộc kỹ thuật UX
 
-- **Route:** `/admin/agent-registry` — platform-level route, yêu cầu `is_superuser` (giống Global Model Config).
-- **Global scope:** Agent configs là global (không workspace-scoped). Admin ở bất kỳ workspace nào cũng thấy danh sách agents giống nhau.
-- **RLS bypass:** Agent configs table không cần RLS (global read/write cho superuser).
+- **Route:** `/admin/agent-registry` — platform-level route, yêu cầu `is_superuser` (giống Global Model Config) unless AD-30 chooses a narrower admin role.
+- **Registry scope:** Superuser-managed platform registry (AD-30). Not end-user workspace settings.
+- **Tenancy:** Agent rows carry `client_id` (AD-31). Runtime authorization still composes workspace + client scopes (AD-29).
 - **Zero sync:** Không cần real-time sync cho agent list (low frequency changes).
-- **Reuses:** Pattern từ `ux-contract-admin-global-model-config.md` (admin table, create/edit form, delete confirmation).
-- **Accessibility:** Form keyboard navigable, tool list có ARIA labels, color không phải signal duy nhất (icon + text).
-- **i18n:** Tool descriptions localize nếu tool name có tiếng Việt.
+- **Reuses:** Pattern từ `ux-contract-admin-global-model-config.md`.
+- **Accessibility:** Form keyboard navigable, tool list có ARIA labels, color không phải signal duy nhất.
+- **i18n:** Tool descriptions localize nếu cần.
 
 ---
 
@@ -100,42 +100,36 @@ Hệ quả UX:
 1. Admin vào `/admin/agent-registry`
 2. Thấy seeded agent `bdsai-listing-assistant` trong list
 3. Click "Edit" để chỉnh sửa system instructions
-4. Xem tool allowlist: `batdongsan_scrape`, `chotot_bds_scrape`, `muaban_bds_scrape` đã enabled
-5. Admin chỉnh sửa system instructions → Preview rendered prompt → Save
-6. BDS AI chat agent giờ dùng custom prompt
+4. Xem tool allowlist BĐS scrapers đã enabled
+5. Admin chỉnh sửa system instructions → Preview → Save
+6. BDS AI chat agent dùng custom prompt qua public API (Epic 18)
 
 ### Flow 2: Admin tạo agent mới cho vertical HR
 1. Admin vào `/admin/agent-registry`
 2. Click "Create Agent"
-3. Điền: Name=`hr-career-advisor`, Client ID=`hrsystem.vn`, Display Name=`HR Career Advisor`
-4. Paste system instructions cho HR domain
-5. Chọn tools: enable `vn_jobs_aggregate`, `cafef_scrape`; disable `batdongsan_scrape`
-6. Chọn model: `claude-sonnet-4-20250514`
-7. Enable citations
-8. Click "Create" → navigate đến agent detail
+3. Điền name/client/display name + system instructions
+4. Chọn tools + model + citations
+5. Create → agent detail
 
 ### Flow 3: Admin deactivate agent
-1. Admin vào agent detail của `old-client-agent`
-2. Click "Delete"
-3. Confirmation dialog hiện consequences
-4. Admin confirm → agent `is_active=false`
-5. Agent quay về list với badge "Inactive"
-6. Vertical client gọi API với `agent_id` đó → nhận 404 (fail closed)
+1. Admin vào agent detail
+2. Delete → confirm consequences
+3. `is_active=false`; public API with that `agent_id` → 404 fail closed
 
 ---
 
 ## 5. Truy vết
 
-- Chặn: Story 13.6 (FR-57), Story 13.7 (FR-57 + prompt injection)
-- Phụ thuộc: AD-13 amended (public endpoints), AD-8 (Global Model Catalog), NFR-MULTI-1 (tenant isolation)
-- Reuses: `ux-contract-admin-global-model-config.md` (admin UI patterns)
-- Related: `ux-contract-canonical-entity.md` (admin review queue pattern)
+- Chặn: Story **18.3** (FR-57), Story **18.4** (prompt injection)
+- Phụ thuộc: **AD-30**, **AD-29**, **AD-31**, AD-8 (Global Model Catalog), NFR-MULTI-1
+- Reuses: `ux-contract-admin-global-model-config.md`
+- Related: `ux-contract-canonical-entity.md` (admin patterns only — different epic)
 
 ---
 
 ## 6. Open Questions
 
-1. **System instructions versioning** — Có nên lưu history của system instructions để revert? (Gợi ý: Phase 2 — Phase 1 chỉ có current version)
-2. **Agent testing** — Có nên có "Test Agent" button để admin test chat với agent config trước khi activate? (Gợi ý: Phase 2)
-3. **Tool auto-discovery** — Khi workspace thêm connector mới, có nên auto-enable tool cho agents của workspace đó? (Gợi ý: Không, explicit allowlist only)
-4. **Agent ↔ Workspace** — Agent global, nhưng tools available phụ thuộc workspace. Admin ở workspace A edit agent → thấy tools khác workspace B? (Gợi ý: Có — tools list theo workspace context)
+1. **System instructions versioning** — Phase 2; MVP = current version only.
+2. **Agent testing** — "Test Agent" button = Phase 2.
+3. **Tool auto-discovery** — No; explicit allowlist only (AD-30).
+4. **Agent ↔ Workspace tools** — Tool catalog for the admin UI must not silently imply every workspace has every tool. Prefer platform catalog + runtime enforcement of workspace-enabled tools.
