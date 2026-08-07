@@ -37,9 +37,9 @@ export function UsageTransactions({ transactions, isLoading }: UsageTransactions
 					<p className="text-sm text-muted-foreground">{t("no_transactions")}</p>
 				) : (
 					<ul className="divide-y">
-						{transactions.map((tx, index) => (
+						{transactions.map((tx) => (
 							<li
-								key={`${tx.type}-${tx.created_at}-${tx.description ?? ""}-${tx.status ?? ""}-${index}`}
+								key={`${tx.type}-${tx.created_at}-${tx.description ?? ""}-${tx.status ?? ""}`}
 								data-testid="transaction-row"
 								className="flex items-center justify-between py-3"
 							>
