@@ -8,7 +8,7 @@ import logging
 import uuid
 
 from celery.exceptions import MaxRetriesExceededError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.celery_app import celery_app
@@ -24,10 +24,13 @@ logger = logging.getLogger(__name__)
 async def _backfill_canonical_embedding_with_session(
     session,
     entity_uuid: uuid.UUID,
+    workspace_id: int,
     expected_version: int,
     embedding_model_name: str,
 ) -> None:
     """Load the entity, verify version, embed ``search_text``, and update."""
+    await set_canonical_workspace_id(session, workspace_id)
+
     result = await session.execute(
         select(CanonicalEntity).where(CanonicalEntity.id == entity_uuid)
     )
@@ -46,14 +49,14 @@ async def _backfill_canonical_embedding_with_session(
         )
         return
 
-    await set_canonical_workspace_id(session, entity.workspace_id)
-
     search_text = entity.search_text or ""
     if not search_text:
-        entity.embedding_status = "failed"
-        entity.embedding = None
-        entity.embedding_content_hash = None
-        await session.commit()
+        await _set_embedding_status(
+            session,
+            entity_uuid,
+            expected_version,
+            status="failed",
+        )
         return
 
     try:
@@ -62,29 +65,84 @@ async def _backfill_canonical_embedding_with_session(
         vectors = await asyncio.to_thread(embed_texts, [search_text])
     except Exception as exc:
         logger.warning("Embedding failed for %s: %s", entity_uuid, exc)
-        entity.embedding_status = "failed"
-        await session.commit()
+        await _set_embedding_status(
+            session,
+            entity_uuid,
+            expected_version,
+            status="failed",
+        )
         return
 
     if not vectors:
-        entity.embedding_status = "failed"
-        await session.commit()
+        await _set_embedding_status(
+            session,
+            entity_uuid,
+            expected_version,
+            status="failed",
+        )
         return
 
     vector = vectors[0]
     content_hash = hashlib.sha256(search_text.encode("utf-8")).hexdigest()
 
-    entity.embedding = vector
-    entity.embedding_model_name = embedding_model_name
-    entity.embedding_content_hash = content_hash
-    entity.embedding_status = "ready"
+    result = await session.execute(
+        update(CanonicalEntity)
+        .where(
+            CanonicalEntity.id == entity_uuid,
+            CanonicalEntity.version == expected_version,
+        )
+        .values(
+            embedding=vector,
+            embedding_model_name=embedding_model_name,
+            embedding_content_hash=content_hash,
+            embedding_status="ready",
+        )
+    )
+    if result.rowcount != 1:
+        logger.info(
+            "Canonical entity %s version changed during embedding; skipping",
+            entity_uuid,
+        )
+        return
 
     await session.commit()
     logger.debug("Embedding ready for %s model=%s", entity_uuid, embedding_model_name)
 
 
+async def _set_embedding_status(
+    session,
+    entity_uuid: uuid.UUID,
+    expected_version: int,
+    *,
+    status: str,
+) -> None:
+    """Update ``embedding_status`` only if the row still has ``expected_version``."""
+    result = await session.execute(
+        update(CanonicalEntity)
+        .where(
+            CanonicalEntity.id == entity_uuid,
+            CanonicalEntity.version == expected_version,
+        )
+        .values(
+            embedding=None,
+            embedding_model_name=None,
+            embedding_content_hash=None,
+            embedding_status=status,
+        )
+    )
+    if result.rowcount != 1:
+        logger.info(
+            "Canonical entity %s version changed before embedding status update; "
+            "skipping",
+            entity_uuid,
+        )
+        return
+    await session.commit()
+
+
 async def _backfill_canonical_embedding(
     entity_id: str,
+    workspace_id: int,
     expected_version: int,
     embedding_model_name: str,
     session=None,
@@ -94,14 +152,14 @@ async def _backfill_canonical_embedding(
 
     if session is not None:
         await _backfill_canonical_embedding_with_session(
-            session, entity_uuid, expected_version, embedding_model_name
+            session, entity_uuid, workspace_id, expected_version, embedding_model_name
         )
         return
 
     session_maker = get_celery_session_maker()
     async with session_maker() as session:
         await _backfill_canonical_embedding_with_session(
-            session, entity_uuid, expected_version, embedding_model_name
+            session, entity_uuid, workspace_id, expected_version, embedding_model_name
         )
 
 
@@ -113,16 +171,20 @@ async def _backfill_canonical_embedding(
     retry_kwargs={"max_retries": 3},
 )
 def backfill_canonical_embedding(
-    self, entity_id: str, expected_version: int, embedding_model_name: str
+    self,
+    entity_id: str,
+    workspace_id: int,
+    expected_version: int,
+    embedding_model_name: str,
 ) -> None:
     """Best-effort embedding backfill for a canonical entity.
 
-    Idempotency key: (entity_id, expected_version, embedding_model_name).
+    Idempotency key: (entity_id, workspace_id, expected_version, embedding_model_name).
     """
     try:
         return run_async_celery_task(
             lambda: _backfill_canonical_embedding(
-                entity_id, expected_version, embedding_model_name
+                entity_id, workspace_id, expected_version, embedding_model_name
             )
         )
     except (MaxRetriesExceededError, SQLAlchemyError):

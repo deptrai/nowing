@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any, Literal
@@ -191,6 +193,35 @@ def _build_bds_canonical_data(
     return canonical_data
 
 
+def _bds_source_record_id(source: str, listing: VnBdsAggregatedListing) -> str:
+    """Return a stable source record id, falling back to a keyed digest."""
+    raw_source_id = listing.source_ids.get(source)
+    if raw_source_id is not None:
+        return str(raw_source_id)
+
+    # ponytail: when a scraper does not expose a per-listing id, derive a
+    # deterministic, source-prefixed digest from stable identity fields so
+    # the same physical listing always links to the same source_record_id.
+    identity = {
+        "source": source,
+        "canonical_id": listing.canonical_id,
+        "title": listing.title,
+        "location": listing.location,
+        "district": listing.district,
+        "ward": listing.ward,
+        "city": listing.city,
+        "price": listing.price,
+        "area": listing.area,
+        "source_url": listing.detail_urls.get(source),
+    }
+    text = json.dumps(
+        {k: v for k, v in identity.items() if v is not None},
+        sort_keys=True,
+        default=str,
+    )
+    return f"{source}:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
+
+
 async def _persist_bds_listing(
     session: AsyncSession,
     workspace_id: int,
@@ -208,8 +239,7 @@ async def _persist_bds_listing(
     # Each call to upsert_canonical_entity is idempotent on the entity
     # fingerprint and on the (source_name, source_record_id) provenance key.
     for source in listing.sources:
-        raw_source_id = listing.source_ids.get(source)
-        source_record_id = str(raw_source_id if raw_source_id is not None else source)
+        source_record_id = _bds_source_record_id(source, listing)
         source_url = listing.detail_urls.get(source)
         await upsert_canonical_entity(
             session,
@@ -247,11 +277,7 @@ async def _stage_bds_persist_outbox(
         "sources": [
             {
                 "source_name": source,
-                "source_record_id": str(
-                    listing.source_ids.get(source)
-                    if listing.source_ids.get(source) is not None
-                    else source
-                ),
+                "source_record_id": _bds_source_record_id(source, listing),
                 "source_url": listing.detail_urls.get(source),
             }
             for source in listing.sources

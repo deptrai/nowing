@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
+import json
 import re
 from typing import Any
 
@@ -118,11 +120,39 @@ def _normalize_text(value: Any) -> str | None:
     return text or None
 
 
+def _derive_source_record_id(source: str, raw: dict[str, Any]) -> str:
+    """Return a stable source record id, prefixing a keyed digest when ``id`` is missing."""
+    raw_id = raw.get("id")
+    if raw_id is not None:
+        return str(raw_id)
+
+    # ponytail: fallback uses a deterministic hash of source identity fields
+    # so the same raw record always maps to the same provenance key, and
+    # distinct records from the same source do not collide.
+    identity = {
+        "source": source,
+        "title": raw.get("title"),
+        "company": raw.get("company"),
+        "location": raw.get("location"),
+        "employment_type": raw.get("employment_type"),
+        "posted_at": raw.get("posted_at"),
+        "salary_min": raw.get("salary_min"),
+        "salary_max": raw.get("salary_max"),
+        "salary_currency": raw.get("salary_currency"),
+        "salary_period_id": raw.get("salary_period_id"),
+        "source_url": raw.get("source_url"),
+    }
+    text = json.dumps(
+        {k: v for k, v in identity.items() if v is not None},
+        sort_keys=True,
+        default=str,
+    )
+    return f"{source}:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
+
+
 def normalize_listing(source: str, raw: dict[str, Any]) -> VnJobAggregatedListing:
     """Convert a raw source listing into the common aggregator schema."""
-    listing_id = raw.get("id")
-    if listing_id is None:
-        listing_id = f"{source}:unknown"
+    listing_id = _derive_source_record_id(source, raw)
 
     title = str(raw.get("title", "")).strip()
     company = str(raw.get("company", "")).strip()

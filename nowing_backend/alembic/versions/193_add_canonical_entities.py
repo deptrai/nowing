@@ -131,10 +131,10 @@ def upgrade() -> None:
             CREATE POLICY {table}_tenant_isolation_policy ON {table}
             FOR ALL
             USING (
-                workspace_id = (NULLIF(current_setting('app.workspace_id', true), '')::integer)
+                workspace_id::text = NULLIF(current_setting('app.workspace_id', true), '')
             )
             WITH CHECK (
-                workspace_id = (NULLIF(current_setting('app.workspace_id', true), '')::integer)
+                workspace_id::text = NULLIF(current_setting('app.workspace_id', true), '')
             );
             """,
         )

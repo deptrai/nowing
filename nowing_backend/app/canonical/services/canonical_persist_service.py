@@ -58,7 +58,7 @@ async def _enqueue_embedding_backfill(entity: CanonicalEntity) -> None:
     # ponytail: apply_async with a small delay keeps the enqueued task from
     # racing the same transaction that just staged the row.
     backfill_canonical_embedding.apply_async(
-        args=[str(entity.id), entity.version, model_name],
+        args=[str(entity.id), entity.workspace_id, entity.version, model_name],
         countdown=1,
     )
 
@@ -117,6 +117,7 @@ async def create_persist_outbox(
     next_attempt_at: datetime | None = None,
 ) -> CanonicalPersistOutbox:
     """Stage a durable outbox row for retry."""
+    await set_canonical_workspace_id(session, workspace_id)
     redacted_payload = redact_canonical_data(entity_type, payload)
     outbox = CanonicalPersistOutbox(
         workspace_id=workspace_id,
@@ -353,29 +354,12 @@ async def upsert_canonical_entity(
             new_source_ids=new_source_ids,
         )
 
-        # Compare-and-swap guard: only write if the row still has the version
-        # we locked above.
-        await session.execute(
-            update(CanonicalEntity)
-            .where(
-                CanonicalEntity.id == existing.id,
-                CanonicalEntity.version == new_version,
-            )
-            .values(
-                canonical_title=title,
-                canonical_data=data,
-                search_text=existing.search_text,
-                source_count=existing.source_count,
-                confidence_score=confidence_score,
-                conflict_flags=conflict_flags,
-                version=new_version,
-                last_seen_at=now,
-                embedding_status=existing.embedding_status,
-                embedding=existing.embedding,
-                embedding_model_name=existing.embedding_model_name,
-                embedding_content_hash=existing.embedding_content_hash,
-            )
-        )
+        # The version was locked with ``with_for_update`` and the caller
+        # passed ``expected_version`` to guard against a concurrent merge that
+        # happened while waiting for the lock.  The ORM flush inside
+        # ``record_merge_history`` writes the row, so the explicit extra UPDATE
+        # is not needed and was actively wrong (it matched ``new_version``, not
+        # the locked version).
 
         await _enqueue_embedding_backfill(existing)
         return existing
@@ -626,9 +610,12 @@ async def resolve_canonical_conflict(
 
 
 async def retry_persist_outbox(
-    session: AsyncSession, outbox_id: uuid.UUID
+    session: AsyncSession,
+    outbox_id: uuid.UUID,
+    workspace_id: int,
 ) -> CanonicalPersistOutbox | None:
     """Mark an outbox row as processing and return its payload for retry."""
+    await set_canonical_workspace_id(session, workspace_id)
     await session.execute(
         update(CanonicalPersistOutbox)
         .where(CanonicalPersistOutbox.id == outbox_id)

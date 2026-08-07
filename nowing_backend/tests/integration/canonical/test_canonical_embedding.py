@@ -45,8 +45,10 @@ async def test_upsert_sets_embedding_pending_and_queues_task(
 
     assert entity.embedding_status == "pending"
     assert len(sent) == 1
+    assert len(sent[0]) == 4
     assert sent[0][0] == str(entity.id)
-    assert sent[0][1] == entity.version
+    assert sent[0][1] == db_workspace.id
+    assert sent[0][2] == entity.version
 
 
 async def test_embedding_backfill_populates_vector(
@@ -78,6 +80,7 @@ async def test_embedding_backfill_populates_vector(
 
     await _backfill_canonical_embedding(
         str(entity.id),
+        db_workspace.id,
         entity.version,
         config.EMBEDDING_MODEL or "test",
         session=db_session,
@@ -128,6 +131,8 @@ async def test_embedding_backfill_skips_stale_version(
         "app.canonical.tasks.backfill_canonical_embedding.embed_texts", _fake_embed
     )
 
-    await _backfill_canonical_embedding(str(entity.id), 1, "test", session=db_session)
+    await _backfill_canonical_embedding(
+        str(entity.id), db_workspace.id, 1, "test", session=db_session
+    )
 
     assert calls == []  # stale version, no embedding call
