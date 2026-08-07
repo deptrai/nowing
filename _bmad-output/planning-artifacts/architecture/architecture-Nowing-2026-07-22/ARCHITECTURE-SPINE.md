@@ -60,6 +60,7 @@ companions:
 > - **`AD-29`/`AD-30`/`AD-31` added** — public agent-chat surface, AgentConfig registry, vertical client tenancy (orthogonal to workspace RLS).
 > - Do **not** bind Agent Registry or public chat to AD-27/AD-28.
 > - **`AD-29`/`AD-30`/`AD-31` ✅ ACCEPTED 2026-08-07** (owner accept).
+> - **Epic 18 entry #3 ✅ 2026-08-07** — PAT scope + composite RLS test plan + threat model: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/epic-18-pat-scope-rls-threat-model.md`.
 >
 > **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
 > - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
@@ -676,6 +677,7 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - Never use `client_id` as a ranking boost. Application bugs must not be the only barrier — prefer DB policy (`current_setting('app.current_client_id')`) composed with workspace RLS.
   - Composite policy order: authenticate → authorize workspace → set workspace RLS context → authorize client scope → set client RLS context → run query.
   - **Blocked:** implementing Stories 18.6/18.8 before this AD is accepted and test-planned (including pooled-connection context reset).
+  - **Test plan:** `epic-18-pat-scope-rls-threat-model.md` §4 (L0–L5) — design accepted 2026-08-07.
 
 ## Consistency Conventions
 

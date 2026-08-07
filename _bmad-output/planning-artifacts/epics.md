@@ -1451,9 +1451,9 @@ Public API surface so external vertical clients (first: BDS AI) can run speciali
 > **Correct-course 2026-08-07:** Originally drafted as Epic 13.4–13.11. Split out of Epic 13 so canonical storage (FR-48) stays a closed architecture boundary. Do **not** bind these stories to AD-27/AD-28.
 >
 > **Entry criteria (all required before coding):**
-> 1. Epic 13 stories 13.1–13.3 P0 code-review findings closed (or explicitly waived).
-> 2. AD-29, AD-30, AD-31 accepted on Architecture Spine.
-> 3. PAT scope model and composite RLS (`workspace_id` + `client_id`) designed and test-planned.
+> 1. Epic 13 stories 13.1–13.3 P0 code-review findings closed (or explicitly waived). ✅ 2026-08-07
+> 2. AD-29, AD-30, AD-31 accepted on Architecture Spine. ✅ 2026-08-07
+> 3. PAT scope model and composite RLS (`workspace_id` + `client_id`) designed and test-planned. ✅ 2026-08-07 — see `architecture-Nowing-2026-07-22/epic-18-pat-scope-rls-threat-model.md`
 >
 > **Effort:** multi-week platform work (not ~4.5 days). Security review required before public enablement.
 

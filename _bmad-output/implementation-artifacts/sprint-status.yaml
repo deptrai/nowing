@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-07 00:37:26"
-last_updated: "2026-08-07 12:45:00"
+last_updated: "2026-08-07 12:50:00"
 # ponytail: 2026-08-07 correct-course — split vertical client platform to Epic 18; E13 13.1-13.3 back to review while P0 code-review findings remain open.
 project: Nowing
 project_key: NOKEY
@@ -277,3 +277,7 @@ validation_reports:
     type: "architecture-accept"
     verdict: "PASS"
     notes: "AD-29/30/31 accepted 2026-08-07 by owner."
+  - story: "epic-18-entry-gate"
+    type: "design-gate"
+    verdict: "PASS"
+    notes: "Entry #1 E13 P0 closed; #2 AD-29/30/31 accepted; #3 PAT scope + composite RLS test plan + threat model published 2026-08-07."
