@@ -107,16 +107,16 @@ def _jobs_record(entity_index: int, source: str, source_index: int, multi: bool)
 def _generate_fixture(domain: str, overlap: float, sources: tuple[str, ...]) -> list[dict]:
     """Return the raw-record list for a single domain/overlap tier."""
     multi_count = round(overlap * N_ENTITIES)
-    single_count = N_ENTITIES - multi_count
     record_builder = _bds_record if domain == "bds" else _jobs_record
 
     records: list[dict] = []
     for entity_index in range(N_ENTITIES):
         is_multi = entity_index < multi_count
-        if is_multi:
-            chosen_sources = list(sources[:2])
-        else:
-            chosen_sources = [sources[entity_index % len(sources)]]
+        chosen_sources = (
+            list(sources[:2])
+            if is_multi
+            else [sources[entity_index % len(sources)]]
+        )
         random.shuffle(chosen_sources)
         for source_index, source in enumerate(chosen_sources):
             records.append(record_builder(entity_index, source, source_index, is_multi))

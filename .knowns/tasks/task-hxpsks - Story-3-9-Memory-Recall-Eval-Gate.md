@@ -1,14 +1,15 @@
 ---
 id: hxpsks
 title: Story 3.9 — Memory Recall Eval-Gate
-status: in-progress
+status: done
 priority: medium
 labels:
   - bmad
   - bmad-key-3-9-memory-recall-eval-gate
   - epic-3
 createdAt: '2026-07-28T15:10:18.408Z'
-updatedAt: '2026-07-28T15:19:57.287Z'
+updatedAt: '2026-08-07T05:34:24.707Z'
+completedAt: '2026-08-07T05:34:24.707Z'
 timeSpent: 0
 parent: i5cw4u
 spec: stories/story-3-9-memory-recall-eval-gate
@@ -24,4 +25,10 @@ code review 2026-07-25: 4 decisions + 43 patches applied (ship-gate moved off un
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-08-07: re-ran memory-recall hermetic tests (171 passed) and SM-10 release gate against baseline artifact at _bmad-output/implementation-artifacts/evidence/3-14-eval-20260728T230000Z; gate PASS (recall@5=0.986, mrr=1.000, distractor_noise=0.067, off_corpus=0.033, n_queries=36).
+<!-- SECTION:NOTES:END -->
 
