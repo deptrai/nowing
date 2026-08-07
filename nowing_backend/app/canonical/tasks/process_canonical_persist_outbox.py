@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from celery.exceptions import MaxRetriesExceededError
@@ -34,7 +34,7 @@ _BASE_BACKOFF_SECONDS = 30
 
 
 def _now() -> datetime:
-    return datetime.now(UTC)
+    return datetime.now(timezone.utc)
 
 
 def _backoff_seconds(retry_count: int) -> int:
