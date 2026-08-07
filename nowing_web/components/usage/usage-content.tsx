@@ -16,10 +16,14 @@ import { UsageTransactions } from "./usage-transactions";
 
 function formatUsd(micros: number): string {
 	const dollars = micros / 1_000_000;
-	if (dollars === 0) return "$0.00";
-	if (Math.abs(dollars) >= 100) return `$${dollars.toFixed(0)}`;
-	if (Math.abs(dollars) >= 1) return `$${dollars.toFixed(2)}`;
-	return `$${dollars.toFixed(3)}`;
+	const isNegative = dollars < 0;
+	const absDollars = Math.abs(dollars);
+	let formatted: string;
+	if (absDollars === 0) formatted = "0.00";
+	else if (absDollars >= 100) formatted = absDollars.toFixed(0);
+	else if (absDollars >= 1) formatted = absDollars.toFixed(2);
+	else formatted = absDollars.toFixed(3);
+	return `${isNegative ? "-" : ""}$${formatted}`;
 }
 
 function formatNumber(value: number): string {
@@ -31,8 +35,8 @@ type Granularity = "day" | "week" | "month";
 export function UsageContent() {
 	const t = useTranslations("usage");
 	const params = useParams();
-	const rawWorkspaceId = Number(params.workspace_id);
-	const workspaceId = Number.isFinite(rawWorkspaceId) && rawWorkspaceId > 0 ? rawWorkspaceId : 0;
+	const rawWorkspaceId = Number.parseInt(String(params.workspace_id), 10);
+	const workspaceId = !Number.isNaN(rawWorkspaceId) && rawWorkspaceId > 0 ? rawWorkspaceId : 0;
 
 	const [range, setRange] = useState<UsageDateRange>(() => {
 		const end = new Date().toISOString();
@@ -54,8 +58,9 @@ export function UsageContent() {
 	});
 
 	const { data: transactions, isLoading: isTransactionsLoading } = useQuery({
-		queryKey: ["usage", "transactions"],
+		queryKey: ["usage", "transactions", workspaceId],
 		queryFn: () => usageApiService.getTransactions(),
+		enabled: workspaceId > 0,
 	});
 
 	const hasUsage = useMemo(

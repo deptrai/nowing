@@ -551,3 +551,27 @@ File gợi ý: `nowing_backend/tests/integration/usage/test_usage_dashboard.py`
 
 - **7/30/90-day date presets phải ở backend** — AC4 là UI requirement; backend chỉ cần custom range + default 30 ngày. Frontend `date-range-picker.tsx` xử lý presets.
 - **Provider fallback dùng `elem.key` khi missing `provider`** — by design theo Dev Notes "Model breakdown keys... hiển thị raw keys". Không cần normalize thêm.
+
+### Frontend re-review findings (2026-08-08)
+
+#### patch
+
+- [x] [Review][Patch] **`package.json` `dev` script bị đổi từ `--turbopack` sang `--webpack`** [`nowing_web/package.json:8`] — revert về `--turbopack`; `dev:turbo` đã tồn tại.
+- [x] [Review][Patch] **`UsageContent` parse `workspace_id` bằng `Number()` có thể nhận decimal** [`nowing_web/components/usage/usage-content.tsx:38-39`] — đổi sang `Number.parseInt(..., 10)` + kiểm tra `isNaN`.
+- [x] [Review][Patch] **`UsageTransactions` query không `enabled` theo `workspaceId`** [`nowing_web/components/usage/usage-content.tsx:60-64`] — thêm `enabled: workspaceId > 0` và `workspaceId` vào query key.
+- [x] [Review][Patch] **`formatUsd` trong `usage-content.tsx` không xử lý negative balance** [`nowing_web/components/usage/usage-content.tsx:17-27`] — refactor dùng `Math.abs` và prefix `-` khi cần, tránh `$-X.XX`.
+- [x] [Review][Patch] **Date range picker cho phép end < start** [`nowing_web/components/usage/date-range-picker.tsx:89-101`] — thêm guard `if (draftRange.from > draftRange.to) return`.
+
+#### defer
+
+- [x] [Review][Defer] **Extract shared `formatUsdMicros` utility** — bị duplicate 4 components; spec Dev Notes ghi "copy hàm, refactor ở story cleanup".
+- [x] [Review][Defer] **Add `UsageDashboard` error state + retry UI** — useQuery chưa có error boundary/loading retry.
+- [x] [Review][Defer] **Enable Playwright E2E tests** — `tests/usage/usage-dashboard.spec.ts` còn `test.skip()`; cần E2E environment.
+- [x] [Review][Defer] **Date/number formatting locale dùng i18n** — hiện dùng `toLocaleDateString()` / `Intl.NumberFormat()` mặc định.
+
+#### dismissed
+
+- **Transactions cần workspace filter / date range** — backend `GET /usage/transactions` là user-scoped, không nhận workspace/date; AC 2 không yêu cầu date filter cho transactions.
+- **`getTransactions()` gọi mà không truyền `workspaceId`** — endpoint user-scoped, không cần workspace; `workspaceId` trong query key chỉ để invalidate khi đổi workspace.
+- **Transaction key dùng fields có thể trùng** — đã bỏ index; backend không trả `id`; dùng `type-created_at-description-status` là đủ trong practice.
+- **Empty state chỉ check `summary`** — nếu `timeSeries` có data thì `summary.total_tokens/total_cost_micros` cũng > 0; logic chính xác.

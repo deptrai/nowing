@@ -88,6 +88,10 @@ export function UsageDateRangePicker({ value, onChange }: UsageDateRangePickerPr
 
 	const handleApply = () => {
 		if (draftRange?.from && draftRange?.to) {
+			if (draftRange.from > draftRange.to) {
+				// Ignore invalid ranges where the end date is before the start date.
+				return;
+			}
 			onChange({
 				start: isoStartOfDayUtc(draftRange.from),
 				end: isoEndOfDayUtc(draftRange.to),
