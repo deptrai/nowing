@@ -1,0 +1,2161 @@
+diff --git a/nowing_backend/alembic/versions/193_add_canonical_entities.py b/nowing_backend/alembic/versions/193_add_canonical_entities.py
+new file mode 100644
+index 000000000..82c0026d0
+--- /dev/null
++++ b/nowing_backend/alembic/versions/193_add_canonical_entities.py
+@@ -0,0 +1,153 @@
++"""add canonical entity storage with tenancy and provenance
++
++Revision ID: 193
++Revises: 192
++"""
++
++from __future__ import annotations
++
++from collections.abc import Sequence
++
++from alembic import op
++from app.config import config
++from app.zero_publication import apply_publication
++
++revision: str = "193"
++down_revision: str | None = "192"
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++EMBEDDING_DIM = config.embedding_model_instance.dimension
++
++
++def _exec_statements(*statements: str) -> None:
++    for stmt in statements:
++        op.execute(stmt)
++
++
++def upgrade() -> None:
++    # ponytail: raw SQL for vector/GIN/HNSW/RLS so the migration is explicit and
++    # mirrors the existing memory-table pattern (migration 177).  Functional
++    # indexes are easier to review as plain DDL.
++    _exec_statements(
++        f"""
++        CREATE TABLE canonical_entities (
++            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
++            workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
++            entity_type VARCHAR(64) NOT NULL,
++            canonical_title VARCHAR(500),
++            canonical_data JSONB NOT NULL DEFAULT '{{}}',
++            fingerprint VARCHAR(255) NOT NULL,
++            search_text TEXT,
++            source_count INTEGER NOT NULL DEFAULT 0,
++            confidence_score REAL NOT NULL DEFAULT 0.0,
++            conflict_flags JSONB NOT NULL DEFAULT '[]',
++            version INTEGER NOT NULL DEFAULT 1,
++            first_seen_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
++            last_seen_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
++            embedding vector({EMBEDDING_DIM}),
++            embedding_model_name VARCHAR(255),
++            embedding_content_hash VARCHAR(64),
++            embedding_status VARCHAR(16) NOT NULL DEFAULT 'pending'
++                CHECK (embedding_status IN ('pending', 'ready', 'failed')),
++            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
++            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
++        );
++        """,
++        """
++        CREATE TABLE canonical_entity_sources (
++            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
++            workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
++            canonical_entity_id UUID NOT NULL REFERENCES canonical_entities(id) ON DELETE CASCADE,
++            entity_type VARCHAR(64) NOT NULL,
++            source_name VARCHAR(64) NOT NULL,
++            source_record_id VARCHAR(255) NOT NULL,
++            source_snapshot JSONB NOT NULL DEFAULT '{}',
++            source_url TEXT,
++            source_fingerprint VARCHAR(255),
++            first_seen_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
++            last_seen_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
++            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
++        );
++        """,
++        """
++        CREATE TABLE canonical_merge_history (
++            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
++            canonical_entity_id UUID NOT NULL REFERENCES canonical_entities(id) ON DELETE CASCADE,
++            workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
++            entity_type VARCHAR(64) NOT NULL,
++            previous_version INTEGER NOT NULL,
++            new_version INTEGER NOT NULL,
++            previous_data JSONB NOT NULL DEFAULT '{}',
++            new_data JSONB NOT NULL DEFAULT '{}',
++            operation VARCHAR(64) NOT NULL,
++            actor VARCHAR(255),
++            conflicts JSONB NOT NULL DEFAULT '[]',
++            method VARCHAR(64),
++            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
++        );
++        """,
++        """
++        CREATE TABLE canonical_persist_outbox (
++            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
++            workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
++            entity_type VARCHAR(64) NOT NULL,
++            payload JSONB NOT NULL DEFAULT '{}',
++            status VARCHAR(16) NOT NULL DEFAULT 'pending'
++                CHECK (status IN ('pending', 'processing', 'failed', 'done')),
++            retry_count INTEGER NOT NULL DEFAULT 0,
++            next_attempt_at TIMESTAMP WITH TIME ZONE,
++            error TEXT,
++            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
++            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
++        );
++        """,
++    )
++
++    _exec_statements(
++        "CREATE UNIQUE INDEX uq_canonical_entities_workspace_type_fingerprint ON canonical_entities (workspace_id, entity_type, fingerprint);",
++        "CREATE INDEX ix_canonical_entities_workspace_type_last_seen ON canonical_entities (workspace_id, entity_type, last_seen_at DESC);",
++        "CREATE INDEX ix_canonical_entities_search_text ON canonical_entities USING gin (to_tsvector('english', search_text));",
++        "CREATE INDEX ix_canonical_entities_embedding ON canonical_entities USING hnsw (embedding public.vector_cosine_ops) WHERE embedding IS NOT NULL;",
++        "CREATE INDEX ix_canonical_entity_sources_canonical_entity_id ON canonical_entity_sources (canonical_entity_id);",
++        "CREATE UNIQUE INDEX uq_canonical_entity_sources_workspace_type_source_record ON canonical_entity_sources (workspace_id, entity_type, source_name, source_record_id);",
++        "CREATE INDEX ix_canonical_merge_history_entity_created ON canonical_merge_history (canonical_entity_id, created_at);",
++        "CREATE INDEX ix_canonical_persist_outbox_status_next_attempt ON canonical_persist_outbox (status, next_attempt_at);",
++    )
++
++    # RLS: every canonical table is tenant-scoped to app.workspace_id.
++    for table in (
++        "canonical_entities",
++        "canonical_entity_sources",
++        "canonical_merge_history",
++        "canonical_persist_outbox",
++    ):
++        _exec_statements(
++            f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;",
++            f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;",
++            f"""
++            CREATE POLICY {table}_tenant_isolation_policy ON {table}
++            FOR ALL
++            USING (
++                workspace_id = (NULLIF(current_setting('app.workspace_id', true), '')::integer)
++            )
++            WITH CHECK (
++                workspace_id = (NULLIF(current_setting('app.workspace_id', true), '')::integer)
++            );
++            """,
++        )
++
++    # Reconcile zero_publication with the new canonical tables.
++    apply_publication(op.get_bind())
++
++
++def downgrade() -> None:
++    # Downgrade is safe for a database that has not accepted production writes:
++    # drop the tables (and their policies/indexes/constraints) in dependency order.
++    _exec_statements(
++        "DROP TABLE IF EXISTS canonical_persist_outbox CASCADE;",
++        "DROP TABLE IF EXISTS canonical_merge_history CASCADE;",
++        "DROP TABLE IF EXISTS canonical_entity_sources CASCADE;",
++        "DROP TABLE IF EXISTS canonical_entities CASCADE;",
++    )
++    apply_publication(op.get_bind())
+diff --git a/nowing_backend/app/canonical/__init__.py b/nowing_backend/app/canonical/__init__.py
+new file mode 100644
+index 000000000..25f3ec840
+--- /dev/null
++++ b/nowing_backend/app/canonical/__init__.py
+@@ -0,0 +1,3 @@
++"""Canonical entity persistence package."""
++
++from __future__ import annotations
+diff --git a/nowing_backend/app/canonical/services/__init__.py b/nowing_backend/app/canonical/services/__init__.py
+new file mode 100644
+index 000000000..e8f0f4fcc
+--- /dev/null
++++ b/nowing_backend/app/canonical/services/__init__.py
+@@ -0,0 +1,3 @@
++"""Canonical persistence services."""
++
++from __future__ import annotations
+diff --git a/nowing_backend/app/canonical/services/canonical_persist_service.py b/nowing_backend/app/canonical/services/canonical_persist_service.py
+new file mode 100644
+index 000000000..ed8907ca1
+--- /dev/null
++++ b/nowing_backend/app/canonical/services/canonical_persist_service.py
+@@ -0,0 +1,397 @@
++"""Canonical entity persistence service with explicit tenancy."""
++
++from __future__ import annotations
++
++import logging
++import uuid
++from datetime import UTC, datetime
++from typing import Any
++
++from sqlalchemy import func, select, update
++from sqlalchemy.dialects.postgresql import insert
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.config import config
++from app.db import (
++    CanonicalEntity,
++    CanonicalEntitySource,
++    CanonicalMergeHistory,
++    CanonicalPersistOutbox,
++)
++
++from ..tasks.backfill_canonical_embedding import backfill_canonical_embedding
++from ..tenant_context import set_canonical_workspace_id
++
++logger = logging.getLogger(__name__)
++
++
++def _now() -> datetime:
++    return datetime.now(UTC)
++
++
++def _is_search_text_changed(
++    entity: CanonicalEntity, new_search_text: str | None
++) -> bool:
++    old = entity.search_text or ""
++    new = new_search_text or ""
++    return old != new
++
++
++async def _enqueue_embedding_backfill(entity: CanonicalEntity) -> None:
++    """Queue an idempotent embedding backfill keyed by (entity, version, model)."""
++    model_name = config.EMBEDDING_MODEL or "unknown"
++    # ponytail: apply_async with a small delay keeps the enqueued task from
++    # racing the same transaction that just staged the row.
++    backfill_canonical_embedding.apply_async(
++        args=[str(entity.id), entity.version, model_name],
++        countdown=1,
++    )
++
++
++async def record_merge_history(
++    session: AsyncSession,
++    *,
++    entity: CanonicalEntity,
++    previous_data: dict[str, Any],
++    new_data: dict[str, Any],
++    operation: str,
++    actor: str | None = None,
++    conflicts: list[dict[str, Any]] | None = None,
++    method: str | None = None,
++    previous_version: int | None = None,
++    new_version: int | None = None,
++) -> CanonicalMergeHistory:
++    """Record one merge/revert audit row."""
++    prev = (
++        previous_version if previous_version is not None else max(0, entity.version - 1)
++    )
++    nxt = new_version if new_version is not None else entity.version
++    history = CanonicalMergeHistory(
++        canonical_entity_id=entity.id,
++        workspace_id=entity.workspace_id,
++        entity_type=entity.entity_type,
++        previous_version=prev,
++        new_version=nxt,
++        previous_data=previous_data,
++        new_data=new_data,
++        operation=operation,
++        actor=actor,
++        conflicts=conflicts or [],
++        method=method,
++        created_at=_now(),
++    )
++    session.add(history)
++    await session.flush()
++    return history
++
++
++async def create_persist_outbox(
++    session: AsyncSession,
++    workspace_id: int,
++    entity_type: str,
++    payload: dict[str, Any],
++    *,
++    error: str | None = None,
++    retry_count: int = 0,
++    next_attempt_at: datetime | None = None,
++) -> CanonicalPersistOutbox:
++    """Stage a durable outbox row for retry."""
++    outbox = CanonicalPersistOutbox(
++        workspace_id=workspace_id,
++        entity_type=entity_type,
++        payload=payload,
++        status="pending",
++        retry_count=retry_count,
++        next_attempt_at=next_attempt_at,
++        error=error,
++        created_at=_now(),
++        updated_at=_now(),
++    )
++    session.add(outbox)
++    await session.flush()
++    return outbox
++
++
++async def _find_previous_canonical_entity_id(
++    session: AsyncSession,
++    workspace_id: int,
++    entity_type: str,
++    source_name: str,
++    source_record_id: str,
++) -> uuid.UUID | None:
++    """Return the canonical entity a source is currently linked to, if any."""
++    result = await session.scalar(
++        select(CanonicalEntitySource.canonical_entity_id).where(
++            CanonicalEntitySource.workspace_id == workspace_id,
++            CanonicalEntitySource.entity_type == entity_type,
++            CanonicalEntitySource.source_name == source_name,
++            CanonicalEntitySource.source_record_id == source_record_id,
++        )
++    )
++    return result
++
++
++async def _update_source_count(
++    session: AsyncSession, canonical_entity_id: uuid.UUID
++) -> int:
++    """Derive and return ``source_count`` for a canonical entity."""
++    count = await session.scalar(
++        select(func.count())
++        .select_from(CanonicalEntitySource)
++        .where(CanonicalEntitySource.canonical_entity_id == canonical_entity_id)
++    )
++    return count or 0
++
++
++async def _upsert_source(
++    session: AsyncSession,
++    entity: CanonicalEntity,
++    *,
++    source_name: str,
++    source_record_id: str,
++    source_snapshot: dict[str, Any],
++    source_url: str | None,
++    source_fingerprint: str | None,
++) -> uuid.UUID | None:
++    """Idempotently link a source record to a canonical entity.
++
++    Returns the previous ``canonical_entity_id`` (if the source moved) so the
++    caller can refresh both affected entities' ``source_count``.
++
++    The unique constraint on ``(workspace_id, entity_type, source_name,
++    source_record_id)`` means a source record can only belong to one active
++    canonical entity per domain.  On conflict we move the source to the
++    matching entity and update its redacted snapshot.
++    """
++    previous_id = await _find_previous_canonical_entity_id(
++        session,
++        entity.workspace_id,
++        entity.entity_type,
++        source_name,
++        source_record_id,
++    )
++
++    now = _now()
++    upsert_stmt = (
++        insert(CanonicalEntitySource)
++        .values(
++            id=uuid.uuid4(),
++            workspace_id=entity.workspace_id,
++            canonical_entity_id=entity.id,
++            entity_type=entity.entity_type,
++            source_name=source_name,
++            source_record_id=source_record_id,
++            source_snapshot=source_snapshot,
++            source_url=source_url,
++            source_fingerprint=source_fingerprint,
++            first_seen_at=now,
++            last_seen_at=now,
++            created_at=now,
++        )
++        .on_conflict_do_update(
++            index_elements=[
++                "workspace_id",
++                "entity_type",
++                "source_name",
++                "source_record_id",
++            ],
++            set_={
++                "canonical_entity_id": entity.id,
++                "source_snapshot": source_snapshot,
++                "source_url": source_url,
++                "source_fingerprint": source_fingerprint,
++                "last_seen_at": now,
++            },
++        )
++    )
++    await session.execute(upsert_stmt)
++    return previous_id if previous_id != entity.id else None
++
++
++async def upsert_canonical_entity(
++    session: AsyncSession,
++    workspace_id: int,
++    entity_type: str,
++    fingerprint: str,
++    title: str | None,
++    data: dict[str, Any],
++    search_text: str | None,
++    *,
++    source_name: str,
++    source_record_id: str,
++    source_snapshot: dict[str, Any] | None = None,
++    source_url: str | None = None,
++    source_fingerprint: str | None = None,
++    confidence_score: float = 0.0,
++    conflict_flags: list[dict[str, Any]] | None = None,
++    actor: str | None = None,
++    merge_method: str | None = None,
++) -> CanonicalEntity:
++    """Upsert a canonical entity and its source provenance.
++
++    The workspace ID is explicit; tenant context is set in the current SQL
++    transaction before any canonical read or write.
++    """
++    await set_canonical_workspace_id(session, workspace_id)
++
++    existing = await session.scalar(
++        select(CanonicalEntity)
++        .where(
++            CanonicalEntity.workspace_id == workspace_id,
++            CanonicalEntity.entity_type == entity_type,
++            CanonicalEntity.fingerprint == fingerprint,
++        )
++        .with_for_update()
++    )
++
++    now = _now()
++    source_snapshot = source_snapshot or {}
++    conflict_flags = conflict_flags or []
++
++    if existing is not None:
++        previous_data = existing.canonical_data
++        previous_version = existing.version
++        new_version = previous_version + 1
++
++        existing.canonical_title = title
++        existing.canonical_data = data
++        existing.confidence_score = confidence_score
++        existing.conflict_flags = conflict_flags
++        existing.version = new_version
++        existing.last_seen_at = now
++
++        # ponytail: simple conflict-resolution heuristic for day one — prefer
++        # longer search text and mark the embedding stale when it changes.
++        if _is_search_text_changed(existing, search_text):
++            existing.search_text = search_text
++            existing.embedding_status = "pending"
++            existing.embedding = None
++            existing.embedding_model_name = None
++            existing.embedding_content_hash = None
++
++        previous_source_entity_id = await _upsert_source(
++            session,
++            existing,
++            source_name=source_name,
++            source_record_id=source_record_id,
++            source_snapshot=source_snapshot,
++            source_url=source_url,
++            source_fingerprint=source_fingerprint,
++        )
++        existing.source_count = await _update_source_count(session, existing.id)
++        if previous_source_entity_id and previous_source_entity_id != existing.id:
++            previous_count = await _update_source_count(
++                session, previous_source_entity_id
++            )
++            previous_entity = await session.get(
++                CanonicalEntity, previous_source_entity_id
++            )
++            if previous_entity:
++                previous_entity.source_count = previous_count
++
++        await record_merge_history(
++            session,
++            entity=existing,
++            previous_data=previous_data,
++            new_data=data,
++            operation="merge",
++            actor=actor,
++            conflicts=conflict_flags,
++            method=merge_method,
++            previous_version=previous_version,
++            new_version=new_version,
++        )
++
++        # Compare-and-swap guard: only write if the row still has the version
++        # we locked above.
++        await session.execute(
++            update(CanonicalEntity)
++            .where(
++                CanonicalEntity.id == existing.id,
++                CanonicalEntity.version == new_version,
++            )
++            .values(
++                canonical_title=title,
++                canonical_data=data,
++                search_text=existing.search_text,
++                source_count=existing.source_count,
++                confidence_score=confidence_score,
++                conflict_flags=conflict_flags,
++                version=new_version,
++                last_seen_at=now,
++                embedding_status=existing.embedding_status,
++                embedding=existing.embedding,
++                embedding_model_name=existing.embedding_model_name,
++                embedding_content_hash=existing.embedding_content_hash,
++            )
++        )
++
++        await _enqueue_embedding_backfill(existing)
++        return existing
++
++    # New canonical entity.
++    entity = CanonicalEntity(
++        workspace_id=workspace_id,
++        entity_type=entity_type,
++        canonical_title=title,
++        canonical_data=data,
++        fingerprint=fingerprint,
++        search_text=search_text,
++        source_count=1,
++        confidence_score=confidence_score,
++        conflict_flags=conflict_flags,
++        version=1,
++        first_seen_at=now,
++        last_seen_at=now,
++        embedding_status="pending",
++    )
++    session.add(entity)
++    await session.flush()
++
++    previous_source_entity_id = await _upsert_source(
++        session,
++        entity,
++        source_name=source_name,
++        source_record_id=source_record_id,
++        source_snapshot=source_snapshot,
++        source_url=source_url,
++        source_fingerprint=source_fingerprint,
++    )
++    entity.source_count = await _update_source_count(session, entity.id)
++    if previous_source_entity_id and previous_source_entity_id != entity.id:
++        previous_count = await _update_source_count(session, previous_source_entity_id)
++        previous_entity = await session.get(CanonicalEntity, previous_source_entity_id)
++        if previous_entity:
++            previous_entity.source_count = previous_count
++
++    await record_merge_history(
++        session,
++        entity=entity,
++        previous_data={},
++        new_data=data,
++        operation="create",
++        actor=actor,
++        conflicts=conflict_flags,
++        method=merge_method,
++        previous_version=0,
++        new_version=1,
++    )
++
++    await _enqueue_embedding_backfill(entity)
++    return entity
++
++
++async def retry_persist_outbox(
++    session: AsyncSession, outbox_id: uuid.UUID
++) -> CanonicalPersistOutbox | None:
++    """Mark an outbox row as processing and return its payload for retry."""
++    await session.execute(
++        update(CanonicalPersistOutbox)
++        .where(CanonicalPersistOutbox.id == outbox_id)
++        .values(
++            status="processing",
++            retry_count=CanonicalPersistOutbox.retry_count + 1,
++            updated_at=_now(),
++        )
++    )
++    return await session.get(CanonicalPersistOutbox, outbox_id)
+diff --git a/nowing_backend/app/canonical/tasks/__init__.py b/nowing_backend/app/canonical/tasks/__init__.py
+new file mode 100644
+index 000000000..45d2f14b0
+--- /dev/null
++++ b/nowing_backend/app/canonical/tasks/__init__.py
+@@ -0,0 +1,3 @@
++"""Canonical entity background tasks."""
++
++from __future__ import annotations
+diff --git a/nowing_backend/app/canonical/tasks/backfill_canonical_embedding.py b/nowing_backend/app/canonical/tasks/backfill_canonical_embedding.py
+new file mode 100644
+index 000000000..6a07d2d58
+--- /dev/null
++++ b/nowing_backend/app/canonical/tasks/backfill_canonical_embedding.py
+@@ -0,0 +1,129 @@
++"""Celery task that backfills embeddings for canonical entities."""
++
++from __future__ import annotations
++
++import asyncio
++import hashlib
++import logging
++import uuid
++
++from celery.exceptions import MaxRetriesExceededError
++from sqlalchemy import select
++from sqlalchemy.exc import SQLAlchemyError
++
++from app.celery_app import celery_app
++from app.db import CanonicalEntity
++from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
++from app.utils.document_converters import embed_texts
++
++from ..tenant_context import set_canonical_workspace_id
++
++logger = logging.getLogger(__name__)
++
++
++async def _backfill_canonical_embedding_with_session(
++    session,
++    entity_uuid: uuid.UUID,
++    expected_version: int,
++    embedding_model_name: str,
++) -> None:
++    """Load the entity, verify version, embed ``search_text``, and update."""
++    result = await session.execute(
++        select(CanonicalEntity).where(CanonicalEntity.id == entity_uuid)
++    )
++    entity = result.scalar_one_or_none()
++    if entity is None:
++        logger.info("Canonical entity %s not found; skipping embedding", entity_uuid)
++        return
++
++    if entity.version != expected_version:
++        logger.info(
++            "Canonical entity %s version mismatch (expected %s, got %s); "
++            "skipping stale embedding job",
++            entity_uuid,
++            expected_version,
++            entity.version,
++        )
++        return
++
++    await set_canonical_workspace_id(session, entity.workspace_id)
++
++    search_text = entity.search_text or ""
++    if not search_text:
++        entity.embedding_status = "failed"
++        entity.embedding = None
++        entity.embedding_content_hash = None
++        await session.commit()
++        return
++
++    try:
++        # ponytail: sync embed in a thread for local models; API models are
++        # also wrapped by embed_texts and run fine in asyncio.to_thread.
++        vectors = await asyncio.to_thread(embed_texts, [search_text])
++    except Exception as exc:
++        logger.warning("Embedding failed for %s: %s", entity_uuid, exc)
++        entity.embedding_status = "failed"
++        await session.commit()
++        return
++
++    if not vectors:
++        entity.embedding_status = "failed"
++        await session.commit()
++        return
++
++    vector = vectors[0]
++    content_hash = hashlib.sha256(search_text.encode("utf-8")).hexdigest()
++
++    entity.embedding = vector
++    entity.embedding_model_name = embedding_model_name
++    entity.embedding_content_hash = content_hash
++    entity.embedding_status = "ready"
++
++    await session.commit()
++    logger.debug("Embedding ready for %s model=%s", entity_uuid, embedding_model_name)
++
++
++async def _backfill_canonical_embedding(
++    entity_id: str,
++    expected_version: int,
++    embedding_model_name: str,
++    session=None,
++) -> None:
++    """Load the entity, verify version, embed ``search_text``, and update."""
++    entity_uuid = uuid.UUID(entity_id)
++
++    if session is not None:
++        await _backfill_canonical_embedding_with_session(
++            session, entity_uuid, expected_version, embedding_model_name
++        )
++        return
++
++    session_maker = get_celery_session_maker()
++    async with session_maker() as session:
++        await _backfill_canonical_embedding_with_session(
++            session, entity_uuid, expected_version, embedding_model_name
++        )
++
++
++@celery_app.task(
++    name="backfill_canonical_embedding",
++    bind=True,
++    autoretry_for=(SQLAlchemyError,),
++    retry_backoff=True,
++    retry_kwargs={"max_retries": 3},
++)
++def backfill_canonical_embedding(
++    self, entity_id: str, expected_version: int, embedding_model_name: str
++) -> None:
++    """Best-effort embedding backfill for a canonical entity.
++
++    Idempotency key: (entity_id, expected_version, embedding_model_name).
++    """
++    try:
++        return run_async_celery_task(
++            lambda: _backfill_canonical_embedding(
++                entity_id, expected_version, embedding_model_name
++            )
++        )
++    except (MaxRetriesExceededError, SQLAlchemyError):
++        raise
+diff --git a/nowing_backend/app/canonical/tenant_context.py b/nowing_backend/app/canonical/tenant_context.py
+new file mode 100644
+index 000000000..f0623a9f5
+--- /dev/null
++++ b/nowing_backend/app/canonical/tenant_context.py
+@@ -0,0 +1,48 @@
++"""Explicit, fail-closed tenant context for canonical tables.
++
++The workspace ID is always passed as a function argument; there is no thread-local
++or process-global fallback.
++"""
++
++from __future__ import annotations
++
++from collections.abc import AsyncGenerator
++from contextlib import asynccontextmanager
++from typing import Any
++
++from sqlalchemy import text
++from sqlalchemy.ext.asyncio import AsyncSession
++
++
++async def set_canonical_workspace_id(session: AsyncSession, workspace_id: int) -> None:
++    """Set the tenant workspace for the current transaction only.
++
++    ``SET LOCAL`` means the value is scoped to the current SQL transaction and
++    is cleared on commit/rollback, so a pooled connection can never leak the
++    context to the next caller.
++    """
++    # ponytail: set_config() is the parameter-safe equivalent of SET LOCAL.
++    await session.execute(
++        text("SELECT set_config('app.workspace_id', :wid, true)"),
++        {"wid": str(workspace_id)},
++    )
++    # Keep a matching marker on the session so higher-level code can assert the
++    # context is explicit before touching canonical rows.
++    session.info["canonical_workspace_id"] = workspace_id
++
++
++@asynccontextmanager
++async def canonical_workspace_context(
++    session: AsyncSession, workspace_id: int
++) -> AsyncGenerator[AsyncSession, Any]:
++    """Context manager that sets and clears the canonical workspace context."""
++    await set_canonical_workspace_id(session, workspace_id)
++    try:
++        yield session
++    finally:
++        session.info.pop("canonical_workspace_id", None)
++
++
++def get_canonical_workspace_id(session: AsyncSession) -> int | None:
++    """Return the workspace ID explicitly bound to this session, if any."""
++    return session.info.get("canonical_workspace_id")
+diff --git a/nowing_backend/app/celery_app.py b/nowing_backend/app/celery_app.py
+index 1030c606a..15dd5dbec 100644
+--- a/nowing_backend/app/celery_app.py
++++ b/nowing_backend/app/celery_app.py
+@@ -201,6 +201,7 @@ celery_app = Celery(
+         "app.automations.triggers.builtin.schedule.selector",
+         "app.automations.triggers.builtin.event.selector",
+         "app.automations.triggers.builtin.memory_change.selector",
++        "app.canonical.tasks.backfill_canonical_embedding",
+     ],
+ )
+ 
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index 6800cc37c..f7c879f4c 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -3698,3 +3698,227 @@ def get_default_roles_config() -> list[dict]:
+             "is_system_role": True,
+         },
+     ]
++
++
++# ============================================================================
++# Canonical entity persistence (Story 13.1)
++# ============================================================================
++
++
++class EmbeddingStatus(StrEnum):
++    PENDING = "pending"
++    READY = "ready"
++    FAILED = "failed"
++
++
++class PersistOutboxStatus(StrEnum):
++    PENDING = "pending"
++    PROCESSING = "processing"
++    FAILED = "failed"
++    DONE = "done"
++
++
++class CanonicalEntity(Base, TimestampMixin):
++    """Merged, tenant-scoped canonical entity with provenance and embedding."""
++
++    __tablename__ = "canonical_entities"
++    __allow_unmapped__ = True
++
++    __table_args__ = (
++        UniqueConstraint(
++            "workspace_id",
++            "entity_type",
++            "fingerprint",
++            name="uq_canonical_entities_workspace_type_fingerprint",
++        ),
++        Index(
++            "ix_canonical_entities_workspace_type_last_seen",
++            "workspace_id",
++            "entity_type",
++            "last_seen_at",
++            postgresql_using="btree",
++        ),
++        Index(
++            "ix_canonical_entities_search_text",
++            text("to_tsvector('english', search_text)"),
++            postgresql_using="gin",
++        ),
++        Index(
++            "ix_canonical_entities_embedding",
++            "embedding",
++            postgresql_using="hnsw",
++            postgresql_ops={"embedding": "vector_cosine_ops"},
++            postgresql_where=text("embedding IS NOT NULL"),
++        ),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    entity_type = Column(String(64), nullable=False)
++    canonical_title = Column(String(500), nullable=True)
++    canonical_data = Column(JSONB, nullable=False, default=dict)
++    fingerprint = Column(String(255), nullable=False)
++    search_text = Column(Text, nullable=True)
++    source_count = Column(Integer, nullable=False, default=0)
++    confidence_score = Column(Float, nullable=False, default=0.0)
++    conflict_flags = Column(JSONB, nullable=False, default=list)
++    version = Column(Integer, nullable=False, default=1)
++    first_seen_at = Column(
++        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
++    )
++    last_seen_at = Column(
++        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
++    )
++    embedding = Column(Vector(config.embedding_model_instance.dimension), nullable=True)
++    embedding_model_name = Column(String(255), nullable=True)
++    embedding_content_hash = Column(String(64), nullable=True)
++    embedding_status = Column(
++        String(16),
++        nullable=False,
++        default=EmbeddingStatus.PENDING.value,
++        server_default=EmbeddingStatus.PENDING.value,
++    )
++
++    sources = relationship(
++        "CanonicalEntitySource",
++        back_populates="canonical_entity",
++        cascade="all, delete-orphan",
++        order_by="CanonicalEntitySource.last_seen_at.desc()",
++    )
++    merge_history = relationship(
++        "CanonicalMergeHistory",
++        back_populates="canonical_entity",
++        cascade="all, delete-orphan",
++        order_by="CanonicalMergeHistory.created_at.desc()",
++    )
++
++
++class CanonicalEntitySource(Base, TimestampMixin):
++    """One source record contributing to a canonical entity."""
++
++    __tablename__ = "canonical_entity_sources"
++    __allow_unmapped__ = True
++
++    __table_args__ = (
++        UniqueConstraint(
++            "workspace_id",
++            "entity_type",
++            "source_name",
++            "source_record_id",
++            name="uq_canonical_entity_sources_workspace_type_source_record",
++        ),
++        Index(
++            "ix_canonical_entity_sources_canonical_entity_id",
++            "canonical_entity_id",
++        ),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    canonical_entity_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("canonical_entities.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    entity_type = Column(String(64), nullable=False)
++    source_name = Column(String(64), nullable=False)
++    source_record_id = Column(String(255), nullable=False)
++    source_snapshot = Column(JSONB, nullable=False, default=dict)
++    source_url = Column(Text, nullable=True)
++    source_fingerprint = Column(String(255), nullable=True)
++    first_seen_at = Column(
++        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
++    )
++    last_seen_at = Column(
++        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
++    )
++
++    canonical_entity = relationship("CanonicalEntity", back_populates="sources")
++
++
++class CanonicalMergeHistory(Base):
++    """Audit trail of canonical entity merges and reverts."""
++
++    __tablename__ = "canonical_merge_history"
++    __allow_unmapped__ = True
++
++    __table_args__ = (
++        Index(
++            "ix_canonical_merge_history_entity_created",
++            "canonical_entity_id",
++            "created_at",
++        ),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    canonical_entity_id = Column(
++        UUID(as_uuid=True),
++        ForeignKey("canonical_entities.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    entity_type = Column(String(64), nullable=False)
++    previous_version = Column(Integer, nullable=False)
++    new_version = Column(Integer, nullable=False)
++    previous_data = Column(JSONB, nullable=False, default=dict)
++    new_data = Column(JSONB, nullable=False, default=dict)
++    operation = Column(String(64), nullable=False)
++    actor = Column(String(255), nullable=True)
++    conflicts = Column(JSONB, nullable=False, default=list)
++    method = Column(String(64), nullable=True)
++    created_at = Column(
++        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
++    )
++
++    canonical_entity = relationship("CanonicalEntity", back_populates="merge_history")
++
++
++class CanonicalPersistOutbox(Base):
++    """Durable outbox for canonical persistence retries."""
++
++    __tablename__ = "canonical_persist_outbox"
++    __allow_unmapped__ = True
++
++    __table_args__ = (
++        Index(
++            "ix_canonical_persist_outbox_status_next_attempt",
++            "status",
++            "next_attempt_at",
++        ),
++    )
++
++    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
++    workspace_id = Column(
++        Integer,
++        ForeignKey("workspaces.id", ondelete="CASCADE"),
++        nullable=False,
++    )
++    entity_type = Column(String(64), nullable=False)
++    payload = Column(JSONB, nullable=False, default=dict)
++    status = Column(
++        String(16),
++        nullable=False,
++        default=PersistOutboxStatus.PENDING.value,
++        server_default=PersistOutboxStatus.PENDING.value,
++    )
++    retry_count = Column(Integer, nullable=False, default=0)
++    next_attempt_at = Column(TIMESTAMP(timezone=True), nullable=True)
++    error = Column(Text, nullable=True)
++    created_at = Column(
++        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
++    )
++    updated_at = Column(
++        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
++    )
+diff --git a/nowing_backend/app/services/bds_aggregator/__init__.py b/nowing_backend/app/services/bds_aggregator/__init__.py
+index e0d4d4bfe..ce3531e3d 100644
+--- a/nowing_backend/app/services/bds_aggregator/__init__.py
++++ b/nowing_backend/app/services/bds_aggregator/__init__.py
+@@ -1,3 +1,7 @@
+ """Vietnam BĐS cross-source aggregator (Apache-2.0)."""
+ 
+ from __future__ import annotations
++
++from .dedupe import deduplicate, fingerprint, merge, merge_group, search_text
++
++__all__ = ["deduplicate", "fingerprint", "merge", "merge_group", "search_text"]
+diff --git a/nowing_backend/app/services/bds_aggregator/dedupe.py b/nowing_backend/app/services/bds_aggregator/dedupe.py
+index 4710cc495..16327f177 100644
+--- a/nowing_backend/app/services/bds_aggregator/dedupe.py
++++ b/nowing_backend/app/services/bds_aggregator/dedupe.py
+@@ -2,6 +2,8 @@
+ 
+ from __future__ import annotations
+ 
++import hashlib
++import json
+ import logging
+ from statistics import mean
+ from typing import Any
+@@ -224,3 +226,70 @@ def deduplicate(listings: list[VnBdsAggregatedListing]) -> list[VnBdsAggregatedL
+         clusters.setdefault(root, []).append(listing)
+ 
+     return [merge_group(cluster) for cluster in clusters.values()]
++
++
++def fingerprint(raw_data: dict[str, Any]) -> str:
++    """Stable canonical fingerprint for a raw BĐS listing.
++
++    Reuses the existing canonical-id generator over the most stable source
++    identity when available, and falls back to a sorted hash of the title and
++    location for records without a usable id.
++    """
++    from .normalize import _extract_id, _normalize_address, _source_title
++
++    source_id = _extract_id(raw_data)
++    if source_id is not None:
++        return make_canonical_id({"bds": source_id})
++
++    # Fallback for raw records that have not been assigned an id yet.
++    title = (_source_title(raw_data, "bds") or "").strip().lower()
++    address = (
++        _normalize_address(
++            raw_data.get("district"),
++            raw_data.get("ward"),
++            raw_data.get("location"),
++        )
++        or ""
++    )
++    payload = json.dumps(
++        {"title": title, "address": address},
++        sort_keys=True,
++        ensure_ascii=False,
++    )
++    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
++
++
++def _to_aggregated_listing(raw_data: dict[str, Any]) -> VnBdsAggregatedListing:
++    """Best-effort normalization of a raw dict for merge/search_text."""
++    from .normalize import normalize_listing
++
++    return normalize_listing(raw_data.get("source", "bds"), raw_data)
++
++
++def merge(
++    canonical: VnBdsAggregatedListing | dict[str, Any],
++    new_raw: dict[str, Any],
++) -> VnBdsAggregatedListing:
++    """Merge ``new_raw`` into ``canonical`` using the existing merge logic."""
++    if isinstance(canonical, dict):
++        canonical = _to_aggregated_listing(canonical)
++    new_listing = _to_aggregated_listing(new_raw)
++    return merge_group([canonical, new_listing])
++
++
++def search_text(canonical: VnBdsAggregatedListing | dict[str, Any]) -> str:
++    """Return a single searchable text for a BĐS canonical entity."""
++    if isinstance(canonical, dict):
++        canonical = _to_aggregated_listing(canonical)
++    parts = [
++        canonical.title,
++        canonical.location,
++        canonical.district,
++        canonical.ward,
++        canonical.city,
++        canonical.project,
++        canonical.legal,
++        canonical.price,
++        canonical.area,
++    ]
++    return " ".join(p for p in parts if p).strip()
+diff --git a/nowing_backend/app/services/jobs_aggregator/__init__.py b/nowing_backend/app/services/jobs_aggregator/__init__.py
+index 24a3f427c..91e40eb76 100644
+--- a/nowing_backend/app/services/jobs_aggregator/__init__.py
++++ b/nowing_backend/app/services/jobs_aggregator/__init__.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ 
++from .dedupe import deduplicate, fingerprint, merge, search_text
+ from .orchestrator import aggregate_jobs
+ from .schemas import (
+     VnJobAggregatedListing,
+@@ -14,4 +15,8 @@ __all__ = [
+     "VnJobAggregateOutput",
+     "VnJobAggregatedListing",
+     "aggregate_jobs",
++    "deduplicate",
++    "fingerprint",
++    "merge",
++    "search_text",
+ ]
+diff --git a/nowing_backend/app/services/jobs_aggregator/dedupe.py b/nowing_backend/app/services/jobs_aggregator/dedupe.py
+index 4db518544..fb95c558b 100644
+--- a/nowing_backend/app/services/jobs_aggregator/dedupe.py
++++ b/nowing_backend/app/services/jobs_aggregator/dedupe.py
+@@ -2,7 +2,10 @@
+ 
+ from __future__ import annotations
+ 
++import hashlib
++import json
+ from collections import defaultdict
++from typing import Any
+ 
+ from .schemas import VnJobAggregatedListing, VnJobSalary
+ 
+@@ -22,7 +25,9 @@ def _merge_salary(group: list[VnJobAggregatedListing]) -> VnJobSalary:
+     """Combine salary evidence from all sources in a group."""
+     mins = [item.salary.min for item in group if item.salary.min is not None]
+     maxs = [item.salary.max for item in group if item.salary.max is not None]
+-    confidences = [item.salary.confidence for item in group if item.salary.confidence > 0]
++    confidences = [
++        item.salary.confidence for item in group if item.salary.confidence > 0
++    ]
+     raws = [item.salary.raw for item in group if item.salary.raw]
+ 
+     merged = VnJobSalary(
+@@ -31,14 +36,20 @@ def _merge_salary(group: list[VnJobAggregatedListing]) -> VnJobSalary:
+         max=max(maxs) if maxs else None,
+         currency=group[0].salary.currency or "VND",
+         period=group[0].salary.period,
+-        confidence=round(sum(confidences) / len(confidences), 2) if confidences else 0.0,
++        confidence=round(sum(confidences) / len(confidences), 2)
++        if confidences
++        else 0.0,
+     )
+     return merged
+ 
+ 
+ def _detect_conflict(group: list[VnJobAggregatedListing]) -> tuple[bool, float]:
+     """Return (conflict, salary_consistency_score) for a deduplicated group."""
+-    salaries: list[VnJobSalary] = [item.salary for item in group if item.salary.max is not None or item.salary.min is not None]
++    salaries: list[VnJobSalary] = [
++        item.salary
++        for item in group
++        if item.salary.max is not None or item.salary.min is not None
++    ]
+     locations = {item.location for item in group}
+ 
+     # Conflict if multiple distinct locations.
+@@ -75,7 +86,9 @@ def _detect_conflict(group: list[VnJobAggregatedListing]) -> tuple[bool, float]:
+ 
+ def deduplicate(listings: list[VnJobAggregatedListing]) -> list[VnJobAggregatedListing]:
+     """Group listings by canonical key and merge cross-source variants."""
+-    groups: dict[tuple[str, str, str, str | None], list[VnJobAggregatedListing]] = defaultdict(list)
++    groups: dict[tuple[str, str, str, str | None], list[VnJobAggregatedListing]] = (
++        defaultdict(list)
++    )
+     for listing in listings:
+         groups[_canonical_key(listing)].append(listing)
+ 
+@@ -84,10 +97,16 @@ def deduplicate(listings: list[VnJobAggregatedListing]) -> list[VnJobAggregatedL
+         base = group[0]
+         if len(group) > 1:
+             base.source = "multiple"  # type: ignore[assignment]
+-            base.source_urls = [url for item in group for url in item.source_urls if url]
+-            base.skills = list({skill.lower() for item in group for skill in item.skills})
++            base.source_urls = [
++                url for item in group for url in item.source_urls if url
++            ]
++            base.skills = list(
++                {skill.lower() for item in group for skill in item.skills}
++            )
+             base.salary = _merge_salary(group)
+-            base.confidence_score = round(min(1.0, base.confidence_score + 0.1 * (len(group) - 1)), 2)
++            base.confidence_score = round(
++                min(1.0, base.confidence_score + 0.1 * (len(group) - 1)), 2
++            )
+ 
+         conflict, salary_consistency = _detect_conflict(group)
+         base.conflict = conflict
+@@ -96,3 +115,55 @@ def deduplicate(listings: list[VnJobAggregatedListing]) -> list[VnJobAggregatedL
+         merged.append(base)
+ 
+     return merged
++
++
++def _raw_to_listing(raw: dict[str, Any]) -> VnJobAggregatedListing:
++    """Best-effort normalization for a raw dict."""
++    from .normalize import normalize_listing
++
++    source = raw.get("source")
++    if source not in ("vietnamworks", "topcv", "itviec"):
++        source = "topcv"
++    return normalize_listing(source, raw)
++
++
++def fingerprint(raw_data: dict[str, Any]) -> str:
++    """Stable canonical fingerprint for a raw job listing."""
++    listing = _raw_to_listing(raw_data)
++    key = _canonical_key(listing)
++    payload = json.dumps(
++        {i: v for i, v in enumerate(key) if v is not None},
++        sort_keys=True,
++        ensure_ascii=False,
++    )
++    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
++
++
++def merge(
++    canonical: VnJobAggregatedListing | dict[str, Any],
++    new_raw: dict[str, Any],
++) -> VnJobAggregatedListing:
++    """Merge ``new_raw`` into ``canonical`` using the existing group logic."""
++    if isinstance(canonical, dict):
++        canonical = _raw_to_listing(canonical)
++    new_listing = _raw_to_listing(new_raw)
++    # Deduplicate resolves to one item when the canonical keys match.
++    result = deduplicate([canonical, new_listing])
++    return result[0] if result else canonical
++
++
++def search_text(canonical: VnJobAggregatedListing | dict[str, Any]) -> str:
++    """Return a single searchable text for a Jobs canonical entity."""
++    if isinstance(canonical, dict):
++        canonical = _raw_to_listing(canonical)
++    parts = [
++        canonical.title,
++        canonical.company,
++        canonical.location,
++        ", ".join(canonical.skills),
++        canonical.employment_type,
++        canonical.job_description,
++        canonical.job_requirement,
++        canonical.salary.raw,
++    ]
++    return " ".join(p for p in parts if p).strip()
+diff --git a/nowing_backend/app/zero_publication.py b/nowing_backend/app/zero_publication.py
+index 7d7e3ec46..7c3251fcd 100644
+--- a/nowing_backend/app/zero_publication.py
++++ b/nowing_backend/app/zero_publication.py
+@@ -79,6 +79,60 @@ PODCAST_COLS = [
+     "created_at",
+ ]
+ 
++# Minimal non-PII columns for canonical search/review UI. Bulky snapshots and
++# payloads are fetched over REST (Story 13.1).
++CANONICAL_ENTITY_COLS = [
++    "id",
++    "workspace_id",
++    "entity_type",
++    "canonical_title",
++    "fingerprint",
++    "search_text",
++    "source_count",
++    "confidence_score",
++    "version",
++    "first_seen_at",
++    "last_seen_at",
++    "embedding_status",
++]
++
++CANONICAL_ENTITY_SOURCE_COLS = [
++    "id",
++    "workspace_id",
++    "canonical_entity_id",
++    "entity_type",
++    "source_name",
++    "source_record_id",
++    "source_url",
++    "first_seen_at",
++    "last_seen_at",
++]
++
++CANONICAL_MERGE_HISTORY_COLS = [
++    "id",
++    "canonical_entity_id",
++    "workspace_id",
++    "entity_type",
++    "previous_version",
++    "new_version",
++    "operation",
++    "actor",
++    "conflicts",
++    "method",
++    "created_at",
++]
++
++CANONICAL_PERSIST_OUTBOX_COLS = [
++    "id",
++    "workspace_id",
++    "entity_type",
++    "status",
++    "retry_count",
++    "next_attempt_at",
++    "created_at",
++    "updated_at",
++]
++
+ ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
+     "notifications": None,
+     "documents": DOCUMENT_COLS,
+@@ -92,6 +146,10 @@ ZERO_PUBLICATION: Mapping[str, Sequence[str] | None] = {
+     "automations": AUTOMATION_COLS,
+     "automation_runs": AUTOMATION_RUN_COLS,
+     "podcasts": PODCAST_COLS,
++    "canonical_entities": CANONICAL_ENTITY_COLS,
++    "canonical_entity_sources": CANONICAL_ENTITY_SOURCE_COLS,
++    "canonical_merge_history": CANONICAL_MERGE_HISTORY_COLS,
++    "canonical_persist_outbox": CANONICAL_PERSIST_OUTBOX_COLS,
+ }
+ 
+ 
+diff --git a/nowing_backend/pyproject.toml b/nowing_backend/pyproject.toml
+index 11c68075d..6a7194577 100644
+--- a/nowing_backend/pyproject.toml
++++ b/nowing_backend/pyproject.toml
+@@ -243,6 +243,7 @@ markers = [
+     "integration: tests that require a real PostgreSQL database",
+     "memory: tests for the memory subsystem",
+     "test_id: test identifier marker",
++    "canonical: tests for the canonical entity persistence subsystem",
+ ]
+ filterwarnings = [
+     "ignore::UserWarning:chonkie",
+diff --git a/nowing_backend/tests/integration/canonical/__init__.py b/nowing_backend/tests/integration/canonical/__init__.py
+new file mode 100644
+index 000000000..8af0aa9e3
+--- /dev/null
++++ b/nowing_backend/tests/integration/canonical/__init__.py
+@@ -0,0 +1 @@
++"""Canonical entity integration tests."""
+diff --git a/nowing_backend/tests/integration/canonical/test_canonical_embedding.py b/nowing_backend/tests/integration/canonical/test_canonical_embedding.py
+new file mode 100644
+index 000000000..620062bd9
+--- /dev/null
++++ b/nowing_backend/tests/integration/canonical/test_canonical_embedding.py
+@@ -0,0 +1,133 @@
++"""Integration tests for canonical embedding backfill."""
++
++from __future__ import annotations
++
++import pytest
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.canonical.services.canonical_persist_service import upsert_canonical_entity
++from app.canonical.tasks.backfill_canonical_embedding import (
++    _backfill_canonical_embedding,
++)
++from app.db import CanonicalEntity, Workspace
++
++pytestmark = [pytest.mark.integration, pytest.mark.canonical]
++
++
++async def test_upsert_sets_embedding_pending_and_queues_task(
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++    monkeypatch,
++):
++    """Creating a canonical row leaves embedding_status='pending' and enqueues."""
++    sent = []
++
++    def _capture_apply_async(*, args, **kwargs):
++        sent.append(args)
++
++    monkeypatch.setattr(
++        "app.canonical.services.canonical_persist_service.backfill_canonical_embedding.apply_async",
++        _capture_apply_async,
++    )
++
++    entity = await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="embed-f1",
++        title="E",
++        data={},
++        search_text="e",
++        source_name="batdongsan",
++        source_record_id="e1",
++    )
++
++    assert entity.embedding_status == "pending"
++    assert len(sent) == 1
++    assert sent[0][0] == str(entity.id)
++    assert sent[0][1] == entity.version
++
++
++async def test_embedding_backfill_populates_vector(
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++    monkeypatch,
++):
++    """The backfill task embeds search_text and marks the row ready."""
++    from app.config import config
++
++    dim = config.embedding_model_instance.dimension
++    monkeypatch.setattr(
++        "app.canonical.tasks.backfill_canonical_embedding.embed_texts",
++        lambda texts: [[0.2] * dim for _ in texts],
++    )
++
++    entity = await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="embed-f2",
++        title="E2",
++        data={},
++        search_text="test content for embedding",
++        source_name="batdongsan",
++        source_record_id="e2",
++    )
++    await db_session.commit()
++
++    await _backfill_canonical_embedding(
++        str(entity.id),
++        entity.version,
++        config.EMBEDDING_MODEL or "test",
++        session=db_session,
++    )
++
++    result = await db_session.scalar(
++        select(CanonicalEntity).where(CanonicalEntity.id == entity.id)
++    )
++    assert result is not None
++    assert result.embedding_status == "ready"
++    assert result.embedding is not None
++    assert len(result.embedding) == dim
++    assert result.embedding_content_hash is not None
++    assert result.embedding_model_name == (config.EMBEDDING_MODEL or "test")
++
++
++async def test_embedding_backfill_skips_stale_version(
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++    monkeypatch,
++):
++    """The backfill task is idempotent: it skips if the version has moved on."""
++    entity = await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="embed-f3",
++        title="E3",
++        data={},
++        search_text="original",
++        source_name="batdongsan",
++        source_record_id="e3",
++    )
++
++    # Simulate a concurrent merge bumping the version before the task runs.
++    entity.version = 2
++    entity.search_text = "updated"
++    entity.embedding_status = "pending"
++    await db_session.commit()
++
++    calls = []
++
++    def _fake_embed(texts):
++        calls.append(texts)
++        return [[0.1] * 384]
++
++    monkeypatch.setattr(
++        "app.canonical.tasks.backfill_canonical_embedding.embed_texts", _fake_embed
++    )
++
++    await _backfill_canonical_embedding(str(entity.id), 1, "test", session=db_session)
++
++    assert calls == []  # stale version, no embedding call
+diff --git a/nowing_backend/tests/integration/canonical/test_canonical_persistence.py b/nowing_backend/tests/integration/canonical/test_canonical_persistence.py
+new file mode 100644
+index 000000000..4fe6a54f6
+--- /dev/null
++++ b/nowing_backend/tests/integration/canonical/test_canonical_persistence.py
+@@ -0,0 +1,483 @@
++"""Integration tests for canonical persistence, tenancy and provenance."""
++
++from __future__ import annotations
++
++import importlib.util
++from datetime import UTC, datetime, timedelta
++from pathlib import Path
++
++import pytest
++from sqlalchemy import select, text
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.canonical.services.canonical_persist_service import (
++    create_persist_outbox,
++    upsert_canonical_entity,
++)
++from app.canonical.tenant_context import set_canonical_workspace_id
++from app.db import (
++    CanonicalEntitySource,
++    CanonicalMergeHistory,
++    CanonicalPersistOutbox,
++    User,
++    Workspace,
++)
++
++pytestmark = [pytest.mark.integration, pytest.mark.canonical]
++
++_MIGRATION_193_PATH = (
++    Path(__file__).resolve().parents[3]
++    / "alembic"
++    / "versions"
++    / "193_add_canonical_entities.py"
++)
++
++
++def _load_migration_193():
++    spec = importlib.util.spec_from_file_location("_migration_193", _MIGRATION_193_PATH)
++    assert spec and spec.loader, "could not load migration 193 spec"
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    return module
++
++
++def _run_migration_upgrade(sync_conn, module) -> None:
++    from alembic.operations import Operations
++    from alembic.runtime.migration import MigrationContext
++
++    ctx = MigrationContext.configure(connection=sync_conn)
++    with Operations.context(ctx):
++        module.upgrade()
++
++
++def _run_migration_downgrade(sync_conn, module) -> None:
++    from alembic.operations import Operations
++    from alembic.runtime.migration import MigrationContext
++
++    ctx = MigrationContext.configure(connection=sync_conn)
++    with Operations.context(ctx):
++        module.downgrade()
++
++
++async def _table_exists(session: AsyncSession, table: str) -> bool:
++    result = await session.execute(text("SELECT to_regclass(:t)"), {"t": table})
++    return result.scalar() is not None
++
++
++async def _index_exists(session: AsyncSession, table: str, index: str) -> bool:
++    result = await session.execute(
++        text("SELECT 1 FROM pg_indexes WHERE tablename = :t AND indexname = :i"),
++        {"t": table, "i": index},
++    )
++    return result.scalar() == 1
++
++
++async def _rls_enabled(session: AsyncSession, table: str) -> bool:
++    result = await session.execute(
++        text(
++            "SELECT relrowsecurity, relforcerowsecurity "
++            "FROM pg_class WHERE relname = :t"
++        ),
++        {"t": table},
++    )
++    row = result.first()
++    return bool(row and row[0]) and bool(row and row[1])
++
++
++async def _drop_canonical_tables(session: AsyncSession) -> None:
++    for table in (
++        "canonical_persist_outbox",
++        "canonical_merge_history",
++        "canonical_entity_sources",
++        "canonical_entities",
++    ):
++        await session.execute(text(f"DROP TABLE IF EXISTS {table} CASCADE"))
++    await session.flush()
++
++
++@pytest.fixture
++async def another_workspace(db_session: AsyncSession, db_user: User) -> Workspace:
++    space = Workspace(name="Other Space", user_id=db_user.id)
++    db_session.add(space)
++    await db_session.flush()
++    return space
++
++
++async def test_migration_upgrade_and_downgrade(db_session: AsyncSession):
++    """Migration 193 creates tables, indexes and RLS; downgrade removes them."""
++    module = _load_migration_193()
++    await _drop_canonical_tables(db_session)
++
++    conn = await db_session.connection()
++    await conn.run_sync(lambda sc: _run_migration_upgrade(sc, module))
++
++    for table in (
++        "canonical_entities",
++        "canonical_entity_sources",
++        "canonical_merge_history",
++        "canonical_persist_outbox",
++    ):
++        assert await _table_exists(db_session, table)
++
++    assert await _index_exists(
++        db_session,
++        "canonical_entities",
++        "uq_canonical_entities_workspace_type_fingerprint",
++    )
++    assert await _index_exists(
++        db_session,
++        "canonical_entities",
++        "ix_canonical_entities_workspace_type_last_seen",
++    )
++    assert await _index_exists(
++        db_session, "canonical_entities", "ix_canonical_entities_search_text"
++    )
++    assert await _index_exists(
++        db_session, "canonical_entities", "ix_canonical_entities_embedding"
++    )
++    assert await _index_exists(
++        db_session,
++        "canonical_entity_sources",
++        "uq_canonical_entity_sources_workspace_type_source_record",
++    )
++    assert await _index_exists(
++        db_session,
++        "canonical_merge_history",
++        "ix_canonical_merge_history_entity_created",
++    )
++    assert await _index_exists(
++        db_session,
++        "canonical_persist_outbox",
++        "ix_canonical_persist_outbox_status_next_attempt",
++    )
++
++    for table in (
++        "canonical_entities",
++        "canonical_entity_sources",
++        "canonical_merge_history",
++        "canonical_persist_outbox",
++    ):
++        assert await _rls_enabled(db_session, table)
++
++    await conn.run_sync(lambda sc: _run_migration_downgrade(sc, module))
++
++    for table in (
++        "canonical_persist_outbox",
++        "canonical_merge_history",
++        "canonical_entity_sources",
++        "canonical_entities",
++    ):
++        assert not await _table_exists(db_session, table)
++
++
++async def test_upsert_and_version_merge(
++    db_session: AsyncSession, db_workspace: Workspace
++):
++    """Upsert creates a canonical entity and merges on repeated fingerprint."""
++    entity = await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="f1",
++        title="Nhà phố Quận 7",
++        data={"price_value": 5_000_000_000, "area_value": 100.0},
++        search_text="nha pho quan 7 5 ty 100m2",
++        source_name="batdongsan",
++        source_record_id="12345",
++        source_snapshot={"title": "Nhà phố Quận 7"},
++        source_url="https://example.com/1",
++        source_fingerprint="src-f1",
++        confidence_score=0.85,
++        conflict_flags=[{"type": "price_conflict", "reason": "ok"}],
++    )
++
++    assert entity.version == 1
++    assert entity.source_count == 1
++    assert entity.embedding_status == "pending"
++
++    history = await db_session.scalar(
++        select(CanonicalMergeHistory).where(
++            CanonicalMergeHistory.canonical_entity_id == entity.id
++        )
++    )
++    assert history is not None
++    assert history.operation == "create"
++    assert history.previous_version == 0
++    assert history.new_version == 1
++
++    # Second upsert with same fingerprint merges and bumps version.
++    merged = await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="f1",
++        title="Nhà phố Quận 7 - mới",
++        data={"price_value": 5_200_000_000, "area_value": 100.0},
++        search_text="nha pho quan 7 5.2 ty 100m2",
++        source_name="muaban",
++        source_record_id="67890",
++        source_snapshot={"title": "Nhà phố Quận 7"},
++        source_url="https://example.com/2",
++        source_fingerprint="src-f2",
++        confidence_score=0.9,
++        conflict_flags=[],
++    )
++
++    assert merged.id == entity.id
++    assert merged.version == 2
++    assert merged.source_count == 2
++    assert merged.embedding_status == "pending"
++
++    history_rows = (
++        await db_session.scalars(
++            select(CanonicalMergeHistory)
++            .where(CanonicalMergeHistory.canonical_entity_id == entity.id)
++            .order_by(CanonicalMergeHistory.created_at)
++        )
++    ).all()
++    assert len(history_rows) == 2
++    assert history_rows[1].operation == "merge"
++    assert history_rows[1].previous_version == 1
++    assert history_rows[1].new_version == 2
++
++
++async def test_source_uniqueness_constraint(
++    db_session: AsyncSession, db_workspace: Workspace
++):
++    """The same source record cannot back two entities in the same workspace/domain."""
++    await set_canonical_workspace_id(db_session, db_workspace.id)
++
++    e1 = await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="f2",
++        title="A",
++        data={},
++        search_text="a",
++        source_name="batdongsan",
++        source_record_id="same-id",
++    )
++
++    # Same source record, new fingerprint: the source row moves to the new entity.
++    e2 = await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="f3",
++        title="B",
++        data={},
++        search_text="b",
++        source_name="batdongsan",
++        source_record_id="same-id",
++    )
++
++    source = await db_session.scalar(
++        select(CanonicalEntitySource).where(
++            CanonicalEntitySource.source_record_id == "same-id"
++        )
++    )
++    assert source is not None
++    assert source.canonical_entity_id == e2.id
++
++    # e1 lost its only source.
++    await db_session.refresh(e1)
++    assert e1.source_count == 0
++
++
++async def test_persist_outbox(db_session: AsyncSession, db_workspace: Workspace):
++    """Outbox rows are tenant-scoped and retrievable by status/attempt index."""
++    outbox = await create_persist_outbox(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        payload={"fingerprint": "f4", "title": "X"},
++        error="retryable",
++        next_attempt_at=datetime.now(UTC) + timedelta(minutes=1),
++    )
++
++    assert outbox.status == "pending"
++    assert outbox.retry_count == 0
++
++    row = await db_session.scalar(
++        select(CanonicalPersistOutbox).where(
++            CanonicalPersistOutbox.status == "pending",
++            CanonicalPersistOutbox.workspace_id == db_workspace.id,
++        )
++    )
++    assert row is not None
++    assert row.id == outbox.id
++
++
++async def test_rls_fails_closed_across_workspaces(
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++    another_workspace: Workspace,
++):
++    """A non-owner role with one workspace context cannot read another workspace."""
++    # create_all-bootstrapped tables do not include RLS, so replay the migration.
++    module = _load_migration_193()
++    await _drop_canonical_tables(db_session)
++    conn = await db_session.connection()
++    await conn.run_sync(lambda sc: _run_migration_upgrade(sc, module))
++
++    await set_canonical_workspace_id(db_session, db_workspace.id)
++
++    _ = await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="rls-f1",
++        title="Workspace A",
++        data={},
++        search_text="a",
++        source_name="batdongsan",
++        source_record_id="100",
++    )
++
++    # Create a second entity in another workspace.
++    await set_canonical_workspace_id(db_session, another_workspace.id)
++    _ = await upsert_canonical_entity(
++        db_session,
++        workspace_id=another_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="rls-f1",
++        title="Workspace B",
++        data={},
++        search_text="b",
++        source_name="batdongsan",
++        source_record_id="100",
++    )
++
++    # Use raw SQL as a non-owner app role.
++    await db_session.execute(
++        text(
++            "DO $$\n"
++            "BEGIN\n"
++            "  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'test_app_user') THEN\n"
++            "    CREATE ROLE test_app_user NOLOGIN NOBYPASSRLS;\n"
++            "  END IF;\n"
++            "END\n"
++            "$$;"
++        )
++    )
++    await db_session.execute(text("GRANT USAGE ON SCHEMA public TO test_app_user"))
++    for table in (
++        "canonical_entities",
++        "canonical_entity_sources",
++        "canonical_merge_history",
++        "canonical_persist_outbox",
++    ):
++        await db_session.execute(
++            text(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO test_app_user")
++        )
++    await db_session.execute(text("SET LOCAL ROLE test_app_user"))
++
++    # With workspace A context, the app role sees only workspace A rows.
++    await db_session.execute(
++        text("SELECT set_config('app.workspace_id', :wid, true)"),
++        {"wid": str(db_workspace.id)},
++    )
++    rows = (
++        await db_session.execute(
++            text(
++                "SELECT canonical_title FROM canonical_entities WHERE entity_type = 'vn_bds.listing'"
++            )
++        )
++    ).fetchall()
++    assert [r[0] for r in rows] == ["Workspace A"]
++
++    # Switch to workspace B context and cross-check using the same connection.
++    await db_session.execute(
++        text("SELECT set_config('app.workspace_id', :wid, true)"),
++        {"wid": str(another_workspace.id)},
++    )
++    rows = (
++        await db_session.execute(
++            text(
++                "SELECT canonical_title FROM canonical_entities WHERE entity_type = 'vn_bds.listing'"
++            )
++        )
++    ).fetchall()
++    assert [r[0] for r in rows] == ["Workspace B"]
++
++    # No workspace context at all should fail closed (zero rows).
++    await db_session.execute(text("SELECT set_config('app.workspace_id', '', true)"))
++    rows = (
++        await db_session.execute(
++            text(
++                "SELECT canonical_title FROM canonical_entities WHERE entity_type = 'vn_bds.listing'"
++            )
++        )
++    ).fetchall()
++    assert rows == []
++
++    # Reset role so the rest of the test transaction can clean up.
++    await db_session.execute(text("SET LOCAL ROLE NONE"))
++
++
++async def test_unique_constraint_on_entity_fingerprint(
++    db_session: AsyncSession, db_workspace: Workspace
++):
++    """Two entities in the same workspace and type must have different fingerprints."""
++    await set_canonical_workspace_id(db_session, db_workspace.id)
++
++    await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="uq-f1",
++        title="One",
++        data={},
++        search_text="one",
++        source_name="batdongsan",
++        source_record_id="u1",
++    )
++
++    # A different domain with the same fingerprint is allowed.
++    job = await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_jobs.listing",
++        fingerprint="uq-f1",
++        title="One job",
++        data={},
++        search_text="one job",
++        source_name="topcv",
++        source_record_id="j1",
++    )
++    assert job is not None
++    assert job.entity_type == "vn_jobs.listing"
++
++
++async def test_merge_history_conflicts_shape(
++    db_session: AsyncSession, db_workspace: Workspace
++):
++    """Merge history stores ConflictFlag-shaped JSONB, not free-form strings."""
++    conflict = {
++        "type": "price_conflict",
++        "reason": "Source prices differ by 25%",
++        "price_range": {"min": 1_000_000_000, "max": 1_250_000_000},
++        "price_sources": {"a": 1_000_000_000, "b": 1_250_000_000},
++    }
++
++    entity = await upsert_canonical_entity(
++        db_session,
++        workspace_id=db_workspace.id,
++        entity_type="vn_bds.listing",
++        fingerprint="conflict-f1",
++        title="C",
++        data={},
++        search_text="c",
++        source_name="batdongsan",
++        source_record_id="c1",
++        conflict_flags=[conflict],
++    )
++
++    history = await db_session.scalar(
++        select(CanonicalMergeHistory).where(
++            CanonicalMergeHistory.canonical_entity_id == entity.id
++        )
++    )
++    assert history is not None
++    assert history.conflicts == [conflict]
+diff --git a/nowing_backend/tests/unit/canonical/__init__.py b/nowing_backend/tests/unit/canonical/__init__.py
+new file mode 100644
+index 000000000..0cbaa73d7
+--- /dev/null
++++ b/nowing_backend/tests/unit/canonical/__init__.py
+@@ -0,0 +1 @@
++"""Canonical entity unit tests."""
+diff --git a/nowing_backend/tests/unit/canonical/test_canonical_conventions.py b/nowing_backend/tests/unit/canonical/test_canonical_conventions.py
+new file mode 100644
+index 000000000..5bda3ab54
+--- /dev/null
++++ b/nowing_backend/tests/unit/canonical/test_canonical_conventions.py
+@@ -0,0 +1,150 @@
++"""Unit tests for BDS and Jobs canonical conventions (AD-27)."""
++
++from __future__ import annotations
++
++import pytest
++
++from app.services.bds_aggregator import fingerprint, merge, search_text
++from app.services.bds_aggregator.schemas import VnBdsAggregatedListing
++from app.services.jobs_aggregator import (
++    fingerprint as job_fingerprint,
++    merge as job_merge,
++    search_text as job_search_text,
++)
++from app.services.jobs_aggregator.schemas import VnJobAggregatedListing
++
++pytestmark = [pytest.mark.unit]
++
++
++class TestBdsConvention:
++    """BDS exposes stable ``fingerprint``, ``merge`` and ``search_text`` exports."""
++
++    def test_fingerprint_signature_and_stability(self):
++        raw = {
++            "listing_id": "123",
++            "title": "Nhà phố Quận 7",
++            "district": "Quận 7",
++            "location": "Hồ Chí Minh",
++        }
++        fp1 = fingerprint(raw)
++        fp2 = fingerprint(raw)
++        assert isinstance(fp1, str)
++        assert fp1 == fp2
++        assert len(fp1) >= 16
++
++    def test_fingerprint_changes_with_identity(self):
++        raw1 = {"listing_id": "123", "title": "A"}
++        raw2 = {"listing_id": "124", "title": "A"}
++        assert fingerprint(raw1) != fingerprint(raw2)
++
++    def test_merge_signature_and_behavior(self):
++        canonical = {
++            "source": "batdongsan",
++            "title": "Nhà phố",
++            "price_value": 1_000_000_000,
++            "area_value": 50.0,
++            "district": "Quận 7",
++        }
++        new_raw = {
++            "source": "muaban",
++            "title": "Nhà phố Quận 7",
++            "price_value": 1_100_000_000,
++            "area_value": 50.0,
++            "district": "Quận 7",
++            "ward": "Tân Phong",
++        }
++        merged = merge(canonical, new_raw)
++        assert isinstance(merged, VnBdsAggregatedListing)
++        # The merged listing should pick up the longer title and ward from the new raw.
++        assert merged.title == "Nhà phố Quận 7"
++        assert merged.ward == "Tân Phong"
++        assert "batdongsan" in merged.sources and "muaban" in merged.sources
++
++    def test_search_text_signature(self):
++        canonical = VnBdsAggregatedListing(
++            canonical_id="c1",
++            title="Nhà phố Quận 7",
++            location="Hồ Chí Minh",
++            district="Quận 7",
++            ward="Tân Phong",
++            city="Hồ Chí Minh",
++            project="Sunrise City",
++            price="5 tỷ",
++            area="100 m2",
++            sources=["batdongsan"],
++            confidence_score=0.8,
++        )
++        text = search_text(canonical)
++        assert isinstance(text, str)
++        for token in ["Nhà phố Quận 7", "Quận 7", "Tân Phong", "Sunrise City", "5 tỷ"]:
++            assert token in text
++
++
++class TestJobsConvention:
++    """Jobs exposes stable ``fingerprint``, ``merge`` and ``search_text`` exports."""
++
++    def test_fingerprint_signature_and_stability(self):
++        raw = {
++            "id": "job-123",
++            "title": "Senior Python Engineer",
++            "company": "ACME",
++            "location": "Hồ Chí Minh",
++            "posted_at": "2026-08-01",
++        }
++        fp1 = job_fingerprint(raw)
++        fp2 = job_fingerprint(raw)
++        assert isinstance(fp1, str)
++        assert fp1 == fp2
++        assert len(fp1) >= 16
++
++    def test_fingerprint_changes_with_identity(self):
++        raw1 = {"id": "job-123", "title": "Engineer", "company": "A", "location": "HCM"}
++        raw2 = {
++            "id": "job-124",
++            "title": "Engineer",
++            "company": "A",
++            "location": "HN",
++        }
++        assert job_fingerprint(raw1) != job_fingerprint(raw2)
++
++    def test_merge_signature_and_behavior(self):
++        canonical = VnJobAggregatedListing(
++            id="job-1",
++            title="Engineer",
++            company="ACME",
++            location="Hồ Chí Minh",
++            skills=["python"],
++            source="topcv",
++        )
++        new_raw = {
++            "source": "vietnamworks",
++            "title": "Engineer",
++            "company": "ACME",
++            "location": "Hồ Chí Minh",
++            "skills": ["python", "django"],
++        }
++        merged = job_merge(canonical, new_raw)
++        assert isinstance(merged, VnJobAggregatedListing)
++        assert merged.source == "multiple"
++        assert "django" in merged.skills
++
++    def test_search_text_signature(self):
++        listing = VnJobAggregatedListing(
++            id="job-1",
++            title="Senior Python Engineer",
++            company="ACME",
++            location="Hồ Chí Minh",
++            skills=["python", "django"],
++            employment_type="full_time",
++            source="topcv",
++        )
++        text = job_search_text(listing)
++        assert isinstance(text, str)
++        for token in [
++            "Senior Python Engineer",
++            "ACME",
++            "python",
++            "django",
++            "full_time",
++        ]:
++            assert token in text

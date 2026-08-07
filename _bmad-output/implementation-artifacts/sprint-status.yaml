@@ -210,6 +210,13 @@ validation_reports:
       - "Token tracking / quota / credit"
     reviewed_by: "human"
     notes: "P0 credit surface touched via MASOTHUE_COMPANY billing unit and cost_micros calculation."
+  - story: "13-3"
+    type: "code-review"
+    commit: "eda4fcd76"
+    report: "_bmad-output/implementation-artifacts/code-reviews/13-3-unified-search-code-review.md"
+    verdict: "CHANGES_REQUESTED"
+    reviewed_by: "bmad-code-review"
+    notes: "2 must-fix (view_sources dead href; FTS index english/simple mismatch), 5 should-fix (pagination, document collapse, filter validation, canonical_data preview, date column mismatch, RRF zero weights), 3 watch. Tests: ruff pass, 34 pytest pass."
   - story: "14-1"
     type: "code-review"
     commit: "6b7169380"
@@ -217,6 +224,22 @@ validation_reports:
     verdict: "PASS_WITH_WARNINGS"
     p0: 2
     p1: 5
+  - story: "15-1"
+    type: "code-review"
+    commit: "09f8c8c24"
+    report: "_bmad-output/implementation-artifacts/code-reviews/15-1-cafef-financial-data-code-review.md"
+    verdict: "CHANGES_REQUESTED"
+    p0: 2
+    p1: 5
     p2: 2
     notes: "BMAD adversarial review: functional for default RSS 2.0 feeds, but P0 SSRF/feed_url validation and Atom/RSS 1.0 namespace parsing gaps need attention."
+  - story: "13-1"
+    type: "code-review"
+    commit: "72806b18d"
+    report: "_bmad-output/implementation-artifacts/code-reviews/13-1-canonical-persistence-tenancy-convention-code-review.md"
+    verdict: "CHANGES_REQUESTED"
+    p0: 2
+    p1: 5
+    p2: 4
+    notes: "BMAD adversarial review: RLS context missing in Celery embedding backfill; version CAS guard is incorrect; outbox and aggregator workspace_id contract gaps."
 
