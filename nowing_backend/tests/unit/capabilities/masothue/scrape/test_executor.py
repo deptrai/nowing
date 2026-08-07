@@ -8,6 +8,12 @@ import pytest
 
 from app.capabilities.masothue.scrape.executor import build_scrape_executor
 from app.capabilities.masothue.scrape.schemas import ScrapeInput, ScrapeOutput
+from app.proprietary.platforms.masothue import (
+    MasothueAccessBlockedError,
+    MasothueDecodeError,
+    MasothueRateLimitedError,
+    MasothueTimeoutError,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -109,3 +115,171 @@ async def test_executor_unwraps_none_result(monkeypatch: Any) -> None:
     assert out.degraded is True
     assert out.total_items == 0
     assert out.cost_micros == 0
+
+
+@pytest.mark.asyncio
+async def test_executor_returns_degraded_for_rate_limit() -> None:
+    """A MasothueRateLimitedError must return a degraded ScrapeOutput."""
+
+    async def fake_scrape(_: Any) -> None:
+        raise MasothueRateLimitedError("429")
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1))
+
+    assert out.degraded is True
+    assert out.degradation_reason == "rate_limited"
+    assert out.total_items == 0
+    assert out.cost_micros == 0
+
+
+@pytest.mark.asyncio
+async def test_executor_returns_degraded_for_decode_error() -> None:
+    """A MasothueDecodeError must return a degraded ScrapeOutput."""
+
+    async def fake_scrape(_: Any) -> None:
+        raise MasothueDecodeError("bad html")
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1))
+
+    assert out.degraded is True
+    assert out.degradation_reason == "decode_error"
+
+
+@pytest.mark.asyncio
+async def test_executor_returns_degraded_for_timeout() -> None:
+    """A MasothueTimeoutError must return a degraded ScrapeOutput."""
+
+    async def fake_scrape(_: Any) -> None:
+        raise MasothueTimeoutError("timeout")
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1))
+
+    assert out.degraded is True
+    assert out.degradation_reason == "timeout"
+
+
+@pytest.mark.asyncio
+async def test_executor_returns_degraded_for_access_blocked() -> None:
+    """A MasothueAccessBlockedError must return a degraded ScrapeOutput."""
+
+    async def fake_scrape(_: Any) -> None:
+        raise MasothueAccessBlockedError("blocked")
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1))
+
+    assert out.degraded is True
+    assert out.degradation_reason == "api_error"
+
+
+@pytest.mark.asyncio
+async def test_executor_returns_degraded_for_unexpected_exception() -> None:
+    """A generic exception must return a degraded ScrapeOutput with reason api_error."""
+
+    async def fake_scrape(_: Any) -> None:
+        raise RuntimeError("boom")
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1))
+
+    assert out.degraded is True
+    assert out.degradation_reason == "api_error"
+
+
+@pytest.mark.asyncio
+async def test_executor_persists_with_context(monkeypatch: Any) -> None:
+    """When a CapabilityContext is provided, each item is upserted to the canonical store."""
+    from app.capabilities.core.types import CapabilityContext
+
+    calls: list[dict[str, Any]] = []
+
+    async def fake_upsert(session: Any, **kwargs: Any) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(
+        "app.capabilities.masothue.scrape.executor.upsert_canonical_entity",
+        fake_upsert,
+    )
+    monkeypatch.setattr(
+        "app.capabilities.masothue.scrape.executor.fingerprint",
+        lambda item: f"fp-{item.get('tax_code')}",
+    )
+    monkeypatch.setattr(
+        "app.capabilities.masothue.scrape.executor.search_text",
+        lambda item: f"text-{item.get('name')}",
+    )
+
+    async def fake_scrape(_: Any) -> dict[str, Any]:
+        return {
+            "items": [
+                _company_data("0314539064", "Vinamilk"),
+            ],
+            "degraded": False,
+        }
+
+    class FakeSession:
+        pass
+
+    ctx = CapabilityContext(session=FakeSession(), workspace_id=42)
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(
+        ScrapeInput(query="vinamilk", max_items=1, max_pages=1),
+        ctx=ctx,
+    )
+
+    assert out.degraded is False
+    assert out.total_items == 1
+    assert len(calls) == 1
+    assert calls[0]["title"] == "Vinamilk"
+    assert calls[0]["source_record_id"] == "0314539064"
+    assert calls[0]["workspace_id"] == 42
+
+
+@pytest.mark.asyncio
+async def test_executor_persists_uses_fingerprint_when_tax_code_missing(monkeypatch: Any) -> None:
+    """If the company has no tax_code, source_record_id falls back to the fingerprint."""
+    from app.capabilities.core.types import CapabilityContext
+
+    calls: list[dict[str, Any]] = []
+
+    async def fake_upsert(session: Any, **kwargs: Any) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(
+        "app.capabilities.masothue.scrape.executor.upsert_canonical_entity",
+        fake_upsert,
+    )
+    monkeypatch.setattr(
+        "app.capabilities.masothue.scrape.executor.fingerprint",
+        lambda item: "fp-no-tax",
+    )
+    monkeypatch.setattr(
+        "app.capabilities.masothue.scrape.executor.search_text",
+        lambda item: f"text-{item.get('name')}",
+    )
+
+    async def fake_scrape(_: Any) -> dict[str, Any]:
+        return {
+            "items": [
+                {"name": "No Tax Co"},
+            ],
+            "degraded": False,
+        }
+
+    class FakeSession:
+        pass
+
+    ctx = CapabilityContext(session=FakeSession(), workspace_id=7)
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(
+        ScrapeInput(query="vinamilk", max_items=1, max_pages=1),
+        ctx=ctx,
+    )
+
+    assert out.degraded is False
+    assert len(calls) == 1
+    assert calls[0]["title"] == "No Tax Co"
+    assert calls[0]["source_record_id"] == "fp-no-tax"
