@@ -94,6 +94,36 @@ async def client_as_other(
 
 
 @pytest_asyncio.fixture
+async def client_as_pat(
+    db_session: AsyncSession,
+    db_user: User,
+) -> AsyncGenerator[httpx.AsyncClient, None]:
+    """Authenticated via a personal access token (not an interactive session)."""
+
+    async def override_session() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+
+    async def override_auth() -> AuthContext:
+        return AuthContext(user=db_user, method="pat")
+
+    previous_overrides = app.dependency_overrides.copy()
+    app.dependency_overrides[get_async_session] = override_session
+    app.dependency_overrides[get_auth_context] = override_auth
+
+    try:
+        async with httpx.AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            timeout=30.0,
+            follow_redirects=False,
+        ) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(previous_overrides)
+
+
+@pytest_asyncio.fixture
 async def db_other_user(db_session: AsyncSession) -> User:
     """A user who is not a member of db_workspace."""
     user = User(
@@ -117,6 +147,8 @@ async def seed_token_usage(
 ):
     """Factory to create TokenUsage rows for the test workspace."""
 
+    _unset_model_breakdown = object()
+
     async def _make(
         *,
         usage_type: str = "chat",
@@ -124,11 +156,11 @@ async def seed_token_usage(
         completion_tokens: int = 20,
         total_tokens: int = 30,
         cost_micros: int = 1000,
-        model_breakdown: dict | None = None,
+        model_breakdown: dict | None | object = _unset_model_breakdown,
         call_details: dict | None = None,
         created_at: datetime | None = None,
     ) -> TokenUsage:
-        if model_breakdown is None:
+        if model_breakdown is _unset_model_breakdown:
             model_breakdown = {
                 "openai/gpt-4": {
                     "model": "openai/gpt-4",

@@ -524,3 +524,30 @@ File gợi ý: `nowing_backend/tests/integration/usage/test_usage_dashboard.py`
 - **Credit balance trả về từ workspace-scoped endpoint** — by design, `User.credit_*` là per-user fields, workspace chỉ dùng để gating.
 - **Test auth override `get_auth_context` vs `require_session_context`** — `require_session_context` sử dụng `get_auth_context` internally; tests pass.
 - **`INCENTIVE_TASKS_CONFIG` import từ `app.db`** — by design, config được định nghĩa cùng `db.py`.
+
+### Re-review findings (2026-08-07) — backend chunk
+
+#### decision-needed
+
+- [x] [Review][Decision] **Thêm composite index `(workspace_id, created_at)` trên `token_usage` ngay bây giờ?** — `yes` → tạo migration `196_add_token_usage_workspace_created_at_index.py`.
+- [x] [Review][Decision] **Time-series `week` dùng ISO week (`IYYY-IW`) có ổn không?** — dùng calendar week `YYYY-WW`.
+- [x] [Review][Decision] **Fix `get_transactions` tải toàn bộ history vào memory?** — `fix` → refactor sang UNION query + DB `ORDER BY ... LIMIT ... OFFSET`.
+
+#### patch
+
+- [x] [Review][Patch] **Thiếu authz test cho `/time-series` và `/transactions`** — thêm `test_non_member_cannot_access_time_series` và `test_usage_routes_reject_pat`.
+- [x] [Review][Patch] **Thiếu empty-state tests** — thêm empty-state tests cho summary, time-series, transactions.
+- [x] [Review][Patch] **Thiếu test cho `model_breakdown` NULL/empty/malformed** — thêm tests null/empty/malformed, fix SQL để handle cả `null` JSON.
+- [x] [Review][Patch] **Thiếu boundary tests cho date/workspace/auth** — thêm tests start=end, future dates, workspace_id=0, pagination offset, week/month format.
+
+#### defer
+
+- [x] [Review][Defer] **Composite index trên `credit_purchases`, `page_purchases`, `user_incentive_tasks` cho `(user_id, created_at/completed_at)`** — scale concern, chưa gặp vấn đề hiện tại.
+- [x] [Review][Defer] **Time-series không fill gaps cho period không có data** — frontend có thể xử lý, hoặc thêm khi cần.
+- [x] [Review][Defer] **Negative credit balance/reserved rendering** — không phải normal state.
+- [x] [Review][Defer] **Currency format helper duplicated 3 components** — cleanup story.
+
+#### dismissed
+
+- **7/30/90-day date presets phải ở backend** — AC4 là UI requirement; backend chỉ cần custom range + default 30 ngày. Frontend `date-range-picker.tsx` xử lý presets.
+- **Provider fallback dùng `elem.key` khi missing `provider`** — by design theo Dev Notes "Model breakdown keys... hiển thị raw keys". Không cần normalize thêm.

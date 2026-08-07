@@ -8,11 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import (
     INCENTIVE_TASKS_CONFIG,
-    CreditPurchase,
-    PagePurchase,
+    IncentiveTaskType,
     TokenUsage,
     User,
-    UserIncentiveTask,
 )
 from app.schemas.usage import (
     UsageBreakdownItem,
@@ -159,7 +157,10 @@ class UsageService:
                 ), 0) AS cost_micros
             FROM token_usage,
             LATERAL jsonb_each(
-                COALESCE(NULLIF(token_usage.model_breakdown, '{}'::jsonb), '{}'::jsonb)
+                COALESCE(
+                    NULLIF(NULLIF(token_usage.model_breakdown, 'null'::jsonb), '{}'::jsonb),
+                    '{}'::jsonb
+                )
             ) AS elem
             WHERE token_usage.workspace_id = :workspace_id
               AND token_usage.created_at >= :start_date
@@ -209,7 +210,10 @@ class UsageService:
                 ), 0) AS cost_micros
             FROM token_usage,
             LATERAL jsonb_each(
-                COALESCE(NULLIF(token_usage.model_breakdown, '{}'::jsonb), '{}'::jsonb)
+                COALESCE(
+                    NULLIF(NULLIF(token_usage.model_breakdown, 'null'::jsonb), '{}'::jsonb),
+                    '{}'::jsonb
+                )
             ) AS elem
             WHERE token_usage.workspace_id = :workspace_id
               AND token_usage.created_at >= :start_date
@@ -251,7 +255,7 @@ class UsageService:
                 func.timezone("UTC", TokenUsage.created_at), "YYYY-MM-DD"
             ),
             "week": func.to_char(
-                func.timezone("UTC", TokenUsage.created_at), "IYYY-IW"
+                func.timezone("UTC", TokenUsage.created_at), "YYYY-WW"
             ),
             "month": func.to_char(
                 func.timezone("UTC", TokenUsage.created_at), "YYYY-MM"
@@ -289,87 +293,82 @@ class UsageService:
     async def get_transactions(
         self, limit: int, offset: int
     ) -> UsageTransactionsResponse:
-        """Return a unified, paginated list of credit/page purchases and incentives."""
-        credit_purchases = (
-            (
-                await self.session.execute(
-                    select(CreditPurchase)
-                    .where(CreditPurchase.user_id == self.user.id)
-                    .order_by(CreditPurchase.created_at.desc())
-                )
-            )
-            .scalars()
-            .all()
+        """Return a unified, paginated list of credit/page purchases and incentives.
+
+        Uses a UNION ALL query with DB-level sorting and pagination so
+        transaction history is not loaded entirely into memory.
+        """
+        unified = text(
+            """
+            SELECT
+                'credit_purchase' AS type,
+                credit_micros_granted AS amount_micros,
+                concat(quantity::text, ' credit packs (', source, ')') AS description,
+                status::text AS status,
+                coalesce(completed_at, created_at) AS created_at
+            FROM credit_purchases
+            WHERE user_id = :user_id
+
+            UNION ALL
+
+            SELECT
+                'page_purchase' AS type,
+                coalesce(amount_total, 0)::bigint * 10000 AS amount_micros,
+                concat('Legacy ', pages_granted::text, ' page pack') AS description,
+                status::text AS status,
+                coalesce(completed_at, created_at) AS created_at
+            FROM page_purchases
+            WHERE user_id = :user_id
+
+            UNION ALL
+
+            SELECT
+                'incentive' AS type,
+                credit_micros_awarded AS amount_micros,
+                task_type::text AS description,
+                'completed' AS status,
+                completed_at AS created_at
+            FROM user_incentive_tasks
+            WHERE user_id = :user_id
+            """
         )
 
-        page_purchases = (
-            (
-                await self.session.execute(
-                    select(PagePurchase)
-                    .where(PagePurchase.user_id == self.user.id)
-                    .order_by(PagePurchase.created_at.desc())
-                )
-            )
-            .scalars()
-            .all()
+        total_result = await self.session.execute(
+            text(f"SELECT count(*) FROM ({unified.text}) AS unified"),
+            {"user_id": self.user.id},
         )
+        total = int(total_result.scalar_one())
 
-        incentives = (
-            (
-                await self.session.execute(
-                    select(UserIncentiveTask)
-                    .where(UserIncentiveTask.user_id == self.user.id)
-                    .order_by(UserIncentiveTask.completed_at.desc())
-                )
-            )
-            .scalars()
-            .all()
+        rows_result = await self.session.execute(
+            text(f"{unified.text} ORDER BY created_at DESC LIMIT :limit OFFSET :offset"),
+            {
+                "user_id": self.user.id,
+                "limit": limit,
+                "offset": offset,
+            },
         )
+        rows = rows_result.mappings().all()
 
         transactions: list[UsageTransactionItem] = []
+        for row in rows:
+            description: str = row.description
+            if row.type == "incentive":
+                try:
+                    task_type = IncentiveTaskType(description)
+                    config = INCENTIVE_TASKS_CONFIG.get(task_type, {})
+                    title = config.get("title", description)
+                except ValueError:
+                    title = description
+                description = f"Earned credit: {title}"
 
-        for cp in credit_purchases:
-            # Use completed_at when available; fallback to created_at.
-            created_at = cp.completed_at or cp.created_at
             transactions.append(
                 UsageTransactionItem(
-                    type="credit_purchase",
-                    amount_micros=cp.credit_micros_granted,
-                    description=f"{cp.quantity} credit packs ({cp.source})",
-                    status=cp.status.value if cp.status else None,
-                    created_at=created_at,
+                    type=row.type,
+                    amount_micros=int(row.amount_micros),
+                    description=description,
+                    status=row.status,
+                    created_at=row.created_at,
                 )
             )
 
-        for pp in page_purchases:
-            created_at = pp.completed_at or pp.created_at
-            # amount_total is in Stripe's smallest currency unit (cents); convert to micros.
-            amount_micros = (pp.amount_total or 0) * 10_000
-            transactions.append(
-                UsageTransactionItem(
-                    type="page_purchase",
-                    amount_micros=amount_micros,
-                    description=f"Legacy {pp.pages_granted} page pack",
-                    status=pp.status.value if pp.status else None,
-                    created_at=created_at,
-                )
-            )
-
-        for it in incentives:
-            config = INCENTIVE_TASKS_CONFIG.get(it.task_type, {})
-            title = config.get("title", it.task_type)
-            transactions.append(
-                UsageTransactionItem(
-                    type="incentive",
-                    amount_micros=it.credit_micros_awarded,
-                    description=f"Earned credit: {title}",
-                    status="completed",
-                    created_at=it.completed_at,
-                )
-            )
-
-        transactions.sort(key=lambda t: t.created_at, reverse=True)
-        total = len(transactions)
-        paginated = transactions[offset : offset + limit]
-
-        return UsageTransactionsResponse(transactions=paginated, total=total)
+        return UsageTransactionsResponse(transactions=transactions, total=total)
