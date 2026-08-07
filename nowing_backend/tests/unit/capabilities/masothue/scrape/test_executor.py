@@ -145,6 +145,7 @@ async def test_executor_returns_degraded_for_decode_error() -> None:
 
     assert out.degraded is True
     assert out.degradation_reason == "decode_error"
+    assert out.cost_micros == 0
 
 
 @pytest.mark.asyncio
@@ -159,6 +160,7 @@ async def test_executor_returns_degraded_for_timeout() -> None:
 
     assert out.degraded is True
     assert out.degradation_reason == "timeout"
+    assert out.cost_micros == 0
 
 
 @pytest.mark.asyncio
@@ -173,6 +175,7 @@ async def test_executor_returns_degraded_for_access_blocked() -> None:
 
     assert out.degraded is True
     assert out.degradation_reason == "api_error"
+    assert out.cost_micros == 0
 
 
 @pytest.mark.asyncio
@@ -187,6 +190,7 @@ async def test_executor_returns_degraded_for_unexpected_exception() -> None:
 
     assert out.degraded is True
     assert out.degradation_reason == "api_error"
+    assert out.cost_micros == 0
 
 
 @pytest.mark.asyncio
@@ -389,3 +393,15 @@ async def test_executor_swallows_upsert_exception(monkeypatch: Any) -> None:
 
     assert out.degraded is False
     assert out.total_items == 1
+
+
+@pytest.mark.asyncio
+async def test_unwrap_result_none() -> None:
+    """_unwrap_result(None) returns an empty, degraded dict with total_items=0."""
+    from app.capabilities.masothue.scrape.executor import _unwrap_result
+
+    result = _unwrap_result(None)
+    assert result["items"] == []
+    assert result["total_items"] == 0
+    assert result["degraded"] is True
+    assert result["degradation_reason"] == "unknown"
