@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-07 00:37:26"
-last_updated: "2026-08-07 09:30:00"
+last_updated: "2026-08-07 10:14:50"
 # ponytail: Story 13.1 BMAD validation completed 2026-08-07; canonical story + validation report added.
 project: Nowing
 project_key: NOKEY
@@ -224,6 +224,8 @@ validation_reports:
     verdict: "PASS_WITH_WARNINGS"
     p0: 2
     p1: 5
+    p2: 2
+    notes: "BMAD adversarial review: functional for default RSS 2.0 feeds, but P0 SSRF/feed_url validation and Atom/RSS 1.0 namespace parsing gaps need attention."
   - story: "15-1"
     type: "code-review"
     commit: "09f8c8c24"
@@ -231,8 +233,8 @@ validation_reports:
     verdict: "CHANGES_REQUESTED"
     p0: 2
     p1: 5
-    p2: 2
-    notes: "BMAD adversarial review: functional for default RSS 2.0 feeds, but P0 SSRF/feed_url validation and Atom/RSS 1.0 namespace parsing gaps need attention."
+    p2: 3
+    notes: "BMAD adversarial review: quote/news live endpoints 404; parser does not reject isSuccess:false; missing headers/redirects/cloudflare handling; process-local rate throttle without 429 retry."
   - story: "13-1"
     type: "code-review"
     commit: "72806b18d"
