@@ -5,7 +5,7 @@ purpose: build-substrate
 altitude: feature
 paradigm: 'layered modular monolith + stateless MCP server + client-server with Zero sync'
 scope: 'Toàn bộ hệ sinh thái Nowing: backend FastAPI, web Next.js, desktop Electron, browser extension, Obsidian plugin, MCP server, và evals.'
-status: draft
+status: active
 created: '2026-07-22'
 updated: '2026-08-07'
 binds: []
@@ -59,6 +59,7 @@ companions:
 > - **`AD-13` amended** — ResearchThread remains continuation context; public agent-chat is allowed only under AD-29 guardrails.
 > - **`AD-29`/`AD-30`/`AD-31` added** — public agent-chat surface, AgentConfig registry, vertical client tenancy (orthogonal to workspace RLS).
 > - Do **not** bind Agent Registry or public chat to AD-27/AD-28.
+> - **`AD-29`/`AD-30`/`AD-31` ✅ ACCEPTED 2026-08-07** (owner accept).
 >
 > **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
 > - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
@@ -638,7 +639,7 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - **Tenant isolation for canonical storage:** Every canonical table is workspace-scoped. Application transactions set `SET LOCAL app.workspace_id` from explicit request/task context; tables use `ENABLE/FORCE ROW LEVEL SECURITY` with a non-owner `NOBYPASSRLS` role. Missing context fails closed.
 
 
-### AD-29 — Public Agent-Chat Surface (vertical clients)
+### AD-29 — Public Agent-Chat Surface (vertical clients) ✅ ACCEPTED 2026-08-07
 
 - **Binds:** Epic 18 / FR-56; PAT auth; rate limiting; cost attribution headers
 - **Prevents:** ad-hoc public chat routes without authz, audit, or tenant scope; confusing internal web chat with partner API
@@ -650,7 +651,7 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - Responses carry correlation ids (e.g. `X-Run-Id`) for cost/audit. `external_metadata` on TokenUsage/Run is additive and untrusted for authorization.
   - Security review required before enabling in production. Prompt-injection and tool-exfiltration risks from partner-supplied context must be threat-modeled with AD-30.
 
-### AD-30 — AgentConfig Registry
+### AD-30 — AgentConfig Registry ✅ ACCEPTED 2026-08-07
 
 - **Binds:** Epic 18 / FR-57; UX `ux-contract-agent-registry.md`
 - **Prevents:** hard-coded per-vertical prompts in app code; tool allowlists drifting per deploy
@@ -661,7 +662,7 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - Tool allowlists are **explicit**. New connectors do not auto-enable on existing agents.
   - Prompt injection: `system_instructions` are trusted admin content; still subject to length limits, audit, and no raw secret interpolation from client metadata.
 
-### AD-31 — Vertical Client Tenancy (`client_id`)
+### AD-31 — Vertical Client Tenancy (`client_id`) ✅ ACCEPTED 2026-08-07
 
 - **Binds:** Epic 18 / NFR-MULTI-1; memory recall; TokenUsage/Run attribution
 - **Prevents:** cross-vertical-client memory/data leakage inside one workspace; treating `client_id` as a soft ranking boost

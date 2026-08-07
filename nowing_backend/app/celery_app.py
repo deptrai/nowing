@@ -203,6 +203,7 @@ celery_app = Celery(
         "app.automations.triggers.builtin.event.selector",
         "app.automations.triggers.builtin.memory_change.selector",
         "app.canonical.tasks.backfill_canonical_embedding",
+        "app.canonical.tasks.process_canonical_persist_outbox",
     ],
 )
 
@@ -335,6 +336,12 @@ celery_app.conf.beat_schedule = {
         "task": "evict_embedding_cache",
         "schedule": crontab(hour="4", minute="30"),
         "options": {"expires": 600},
+    },
+    # Drain canonical persist outbox (BDS/Jobs best-effort retries).
+    "process-canonical-persist-outbox": {
+        "task": "process_canonical_persist_outbox",
+        "schedule": crontab(minute="*/2"),
+        "options": {"expires": 90},
     },
     # Fire due automation schedule triggers (Beat entry owned by the schedule
     # trigger; see app.automations.triggers.builtin.schedule.source).

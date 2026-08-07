@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-07 00:37:26"
-last_updated: "2026-08-07 12:15:00"
+last_updated: "2026-08-07 12:45:00"
 # ponytail: 2026-08-07 correct-course — split vertical client platform to Epic 18; E13 13.1-13.3 back to review while P0 code-review findings remain open.
 project: Nowing
 project_key: NOKEY
@@ -124,9 +124,9 @@ development_status:
   12-9: backlog
   epic-12-retrospective: optional
   epic-13: in-progress
-  13-1: review
-  13-2: review
-  13-3: review
+  13-1: done
+  13-2: done
+  13-3: done
   epic-13-retrospective: optional
   epic-14: in-progress
   14-1: done
@@ -269,3 +269,11 @@ validation_reports:
     report: "thread review 2026-08-07"
     verdict: "CHANGES_REQUESTED"
     notes: "Split Epic 18 from Epic 13; AD-29/30/31 required; do not mark 13.1-13.3 done while P0 code reviews open; readiness 18/18 overclaim retracted."
+  - story: "13-p0-closeout"
+    type: "code-review-closeout"
+    verdict: "PASS"
+    notes: "13.1 P0 already on HEAD (embedding workspace context + CAS). 13.2 remaining P0: outbox worker + HMAC phone digest shipped. 13.3 P0 already on HEAD (sources route + simple FTS). AD-29/30/31 accepted."
+  - story: "ad-29-30-31"
+    type: "architecture-accept"
+    verdict: "PASS"
+    notes: "AD-29/30/31 accepted 2026-08-07 by owner."

@@ -9,8 +9,10 @@ persistence path ends up PII-free regardless of caller.
 from __future__ import annotations
 
 import hashlib
+import hmac
 from typing import Any
 
+from app.config import config
 from app.services.pii.redact import redact_job_pii
 
 # Domain-specific PII keys that must not be stored verbatim.
@@ -58,14 +60,18 @@ def _looks_like_digest(value: str) -> bool:
 
 
 def _one_way_digest(value: str) -> str:
-    """Return a one-way digest of ``value``.
+    """Return a keyed one-way digest of ``value`` (HMAC-SHA256).
 
-    ponytail: plain sha256 keeps tests deterministic without adding a secret.
-    If the value is already a sha256 hex string, keep it.
+    Uses ``CANONICAL_PII_DIGEST_KEY`` when set; falls back to a deterministic
+    dev key so tests stay stable. Already-hex digests are left unchanged so
+    re-redaction is idempotent.
     """
     if _looks_like_digest(value):
         return value
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+    key = (getattr(config, "CANONICAL_PII_DIGEST_KEY", None) or "nowing-dev-canonical-pii").encode(
+        "utf-8"
+    )
+    return hmac.new(key, value.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def _redact_text_value(value: Any, entity_type: str, key: str) -> Any:
@@ -117,7 +123,7 @@ def redact_canonical_data(entity_type: str, data: dict[str, Any]) -> dict[str, A
     """Return a PII-redacted copy of ``data`` for canonical storage.
 
     For ``bds_listing`` structured PII fields are removed; ``phone_key`` is
-    converted to a one-way digest because it is still required for matching.
+    converted to a one-way keyed digest because it is still required for matching.
     For ``vn_job`` ``job_description`` / ``job_requirement`` are masked using
     the AD-25 redactor; ``contact`` / ``email`` fields are removed.
     """
