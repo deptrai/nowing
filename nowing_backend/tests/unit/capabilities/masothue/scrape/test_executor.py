@@ -283,3 +283,109 @@ async def test_executor_persists_uses_fingerprint_when_tax_code_missing(monkeypa
     assert len(calls) == 1
     assert calls[0]["title"] == "No Tax Co"
     assert calls[0]["source_record_id"] == "fp-no-tax"
+
+
+@pytest.mark.asyncio
+async def test_executor_unwraps_masothue_scrape_output() -> None:
+    """The executor can also accept a MasothueScrapeOutput object from the actor."""
+    from app.proprietary.platforms.masothue.schemas import (
+        MasothueCompany,
+        MasothueScrapeOutput,
+    )
+
+    async def fake_scrape(_: Any) -> MasothueScrapeOutput:
+        return MasothueScrapeOutput(
+            items=[MasothueCompany(name="Vinamilk", tax_code="0314539064")],
+        )
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1))
+
+    assert out.degraded is False
+    assert out.total_items == 1
+    assert out.items[0].name == "Vinamilk"
+
+
+@pytest.mark.asyncio
+async def test_executor_uses_exclude_unset() -> None:
+    """Only the fields the caller explicitly set are forwarded to MasothueSearchInput."""
+    captured: dict[str, Any] = {}
+    from app.proprietary.platforms.masothue.schemas import MasothueSearchInput
+
+    original_init = MasothueSearchInput.__init__
+
+    def tracking_init(self: Any, **kwargs: Any) -> None:
+        captured.update(kwargs)
+        original_init(self, **kwargs)
+
+    async def fake_scrape(actor_input: MasothueSearchInput) -> dict[str, Any]:
+        return {"items": []}
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+
+    from unittest.mock import patch
+
+    with patch.object(MasothueSearchInput, "__init__", tracking_init):
+        await execute(ScrapeInput(query="vinamilk"))
+
+    assert "query" in captured
+    assert captured["query"] == "vinamilk"
+    # If exclude_unset was False, all default fields would also be present.
+    assert "max_items" not in captured
+
+
+@pytest.mark.asyncio
+async def test_executor_default_degraded_is_false_when_result_omits_key() -> None:
+    """result.get('degraded', False) must default to False, not True."""
+
+    async def fake_scrape(_: Any) -> dict[str, Any]:
+        return {
+            "items": [_company_data("0314539064", "Vinamilk")],
+        }
+
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(ScrapeInput(query="vinamilk", max_items=1, max_pages=1))
+
+    assert out.degraded is False
+    assert out.total_items == 1
+
+
+@pytest.mark.asyncio
+async def test_executor_swallows_upsert_exception(monkeypatch: Any) -> None:
+    """An exception during canonical upsert must be logged and swallowed."""
+    from app.capabilities.core.types import CapabilityContext
+
+    async def fake_upsert(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("upsert boom")
+
+    monkeypatch.setattr(
+        "app.capabilities.masothue.scrape.executor.upsert_canonical_entity",
+        fake_upsert,
+    )
+    monkeypatch.setattr(
+        "app.capabilities.masothue.scrape.executor.fingerprint",
+        lambda item: "fp",
+    )
+    monkeypatch.setattr(
+        "app.capabilities.masothue.scrape.executor.search_text",
+        lambda item: "text",
+    )
+
+    async def fake_scrape(_: Any) -> dict[str, Any]:
+        return {
+            "items": [_company_data("0314539064", "Vinamilk")],
+            "degraded": False,
+        }
+
+    class FakeSession:
+        pass
+
+    ctx = CapabilityContext(session=FakeSession(), workspace_id=42)
+    execute = build_scrape_executor(scrape_fn=fake_scrape)
+    out = await execute(
+        ScrapeInput(query="vinamilk", max_items=1, max_pages=1),
+        ctx=ctx,
+    )
+
+    assert out.degraded is False
+    assert out.total_items == 1
