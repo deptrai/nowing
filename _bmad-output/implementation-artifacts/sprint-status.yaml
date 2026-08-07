@@ -244,4 +244,13 @@ validation_reports:
     p1: 5
     p2: 4
     notes: "BMAD adversarial review: RLS context missing in Celery embedding backfill; version CAS guard is incorrect; outbox and aggregator workspace_id contract gaps."
+  - story: "13-2"
+    type: "code-review"
+    commit: "7f964ca4a"
+    report: "_bmad-output/implementation-artifacts/code-reviews/13-2-canonical-persistence-code-review.md"
+    verdict: "CHANGES_REQUESTED"
+    p0: 3
+    p1: 4
+    p2: 6
+    notes: "BMAD adversarial review for 13.2a-e: canonical_persist_outbox has no retry worker; upsert version CAS uses new_version in WHERE; missing-id source_record_id fallback collides; phone_key uses unkeyed SHA-256; ruff I001/F841/SIM108 remain. Tests: 26 unit + 48 integration + 6 dedup benchmark passes."
 
