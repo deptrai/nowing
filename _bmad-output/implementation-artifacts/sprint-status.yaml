@@ -178,4 +178,16 @@ validation_reports:
     p0: 0
     p1: 240
     p2: 0
+  - story: "16-1"
+    type: "mutation-gate"
+    commit: "51211b0bc"
+    report: "_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T010212Z.json"
+    session: "_bmad-output/test-artifacts/mutation-nowing-masothue-final.sqlite"
+    verdict: "FAIL"
+    mutation_score: 59.76
+    killed: 352
+    survived: 237
+    p0: 0
+    p1: 237
+    p2: 0
 
