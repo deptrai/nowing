@@ -210,4 +210,13 @@ validation_reports:
       - "Token tracking / quota / credit"
     reviewed_by: "human"
     notes: "P0 credit surface touched via MASOTHUE_COMPANY billing unit and cost_micros calculation."
+  - story: "14-1"
+    type: "code-review"
+    commit: "6b7169380"
+    report: "_bmad-output/implementation-artifacts/code-reviews/14-1-rss-feed-integration-code-review.md"
+    verdict: "PASS_WITH_WARNINGS"
+    p0: 2
+    p1: 5
+    p2: 2
+    notes: "BMAD adversarial review: functional for default RSS 2.0 feeds, but P0 SSRF/feed_url validation and Atom/RSS 1.0 namespace parsing gaps need attention."
 

@@ -1,0 +1,1286 @@
+diff --git a/nowing_backend/alembic/versions/195_add_rss_news_connector_enums.py b/nowing_backend/alembic/versions/195_add_rss_news_connector_enums.py
+new file mode 100644
+index 000000000..a58334276
+--- /dev/null
++++ b/nowing_backend/alembic/versions/195_add_rss_news_connector_enums.py
+@@ -0,0 +1,54 @@
++"""Add RSS feed connector types to SearchSourceConnectorType and DocumentType enums.
++
++Revision ID: 195
++Revises: 194
++
++This migration adds the RSS feed connector enum values to both:
++- searchsourceconnectortype (for connector type tracking)
++- documenttype (for news article document type tracking)
++"""
++
++from collections.abc import Sequence
++
++from alembic import op
++
++# revision identifiers, used by Alembic.
++revision: str = "195"
++down_revision: str | None = "194"
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++CONNECTOR_ENUM = "searchsourceconnectortype"
++CONNECTOR_NEW_VALUES = ["RSS_FEED"]
++DOCUMENT_ENUM = "documenttype"
++DOCUMENT_NEW_VALUES = ["NEWS_CONNECTOR"]
++
++
++def _add_enum_values(enum_name: str, values: list[str]) -> None:
++    """Safely add values to an existing PostgreSQL enum type."""
++    for value in values:
++        op.execute(
++            f"""
++            DO $$
++            BEGIN
++                IF NOT EXISTS (
++                    SELECT 1 FROM pg_enum e
++                    JOIN pg_type t ON e.enumtypid = t.oid
++                    WHERE t.typname = '{enum_name}' AND e.enumlabel = '{value}'
++                ) THEN
++                    ALTER TYPE {enum_name} ADD VALUE '{value}';
++                END IF;
++            END$$;
++            """
++        )
++
++
++def upgrade() -> None:
++    """Upgrade schema - add RSS feed connector types to connector and document enums."""
++    _add_enum_values(CONNECTOR_ENUM, CONNECTOR_NEW_VALUES)
++    _add_enum_values(DOCUMENT_ENUM, DOCUMENT_NEW_VALUES)
++
++
++def downgrade() -> None:
++    """Downgrade schema - removing enum values is complex and left as no-op."""
++    pass
+diff --git a/nowing_backend/app/celery_app.py b/nowing_backend/app/celery_app.py
+index 15dd5dbec..92ef639e2 100644
+--- a/nowing_backend/app/celery_app.py
++++ b/nowing_backend/app/celery_app.py
+@@ -183,6 +183,7 @@ celery_app = Celery(
+         "app.podcasts.tasks.render",
+         "app.tasks.celery_tasks.video_presentation_tasks",
+         "app.tasks.celery_tasks.connector_tasks",
++        "app.tasks.celery_tasks.rss_tasks",
+         "app.tasks.celery_tasks.obsidian_tasks",
+         "app.tasks.celery_tasks.schedule_checker_task",
+         "app.tasks.celery_tasks.document_reindex_tasks",
+@@ -253,6 +254,7 @@ celery_app.conf.update(
+         "index_bookstack_pages": {"queue": CONNECTORS_QUEUE},
+         "index_composio_connector": {"queue": CONNECTORS_QUEUE},
+         "index_obsidian_attachment": {"queue": CONNECTORS_QUEUE},
++        "index_rss_feeds": {"queue": CONNECTORS_QUEUE},
+         # Everything else (document processing, podcasts, reindexing,
+         # schedule checker, cleanup) stays on the default fast queue.
+         "gateway.reconcile_inbox": {"queue": f"{CELERY_TASK_DEFAULT_QUEUE}.gateway"},
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index 2c1bef4f2..f8f0ce258 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -71,6 +71,7 @@ class DocumentType(StrEnum):
+     COMPOSIO_GMAIL_CONNECTOR = "COMPOSIO_GMAIL_CONNECTOR"
+     COMPOSIO_GOOGLE_CALENDAR_CONNECTOR = "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR"
+     LOCAL_FOLDER_FILE = "LOCAL_FOLDER_FILE"
++    NEWS_CONNECTOR = "NEWS_CONNECTOR"
+ 
+ 
+ # Native Google document types → their legacy Composio equivalents.
+@@ -117,6 +118,7 @@ class SearchSourceConnectorType(StrEnum):
+     COMPOSIO_GOOGLE_DRIVE_CONNECTOR = "COMPOSIO_GOOGLE_DRIVE_CONNECTOR"
+     COMPOSIO_GMAIL_CONNECTOR = "COMPOSIO_GMAIL_CONNECTOR"
+     COMPOSIO_GOOGLE_CALENDAR_CONNECTOR = "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR"
++    RSS_FEED = "RSS_FEED"
+ 
+ 
+ class VideoPresentationStatus(StrEnum):
+diff --git a/nowing_backend/app/routes/search_source_connectors_routes.py b/nowing_backend/app/routes/search_source_connectors_routes.py
+index b8a772d6f..c32371258 100644
+--- a/nowing_backend/app/routes/search_source_connectors_routes.py
++++ b/nowing_backend/app/routes/search_source_connectors_routes.py
+@@ -525,7 +525,10 @@ async def update_search_source_connector(
+         update_data["config"] = merged_config
+ 
+     # Exa MCP connector: rebuild server_config from service URL + API key on update.
+-    if db_connector.connector_type == SearchSourceConnectorType.EXA_MCP_CONNECTOR and "config" in update_data:
++    if (
++        db_connector.connector_type == SearchSourceConnectorType.EXA_MCP_CONNECTOR
++        and "config" in update_data
++    ):
+         exa_svc = get_service("exa")
+         exa_url = exa_svc.mcp_url if exa_svc else "https://mcp.exa.ai/mcp"
+         cfg = update_data["config"]
+@@ -1246,6 +1249,17 @@ async def index_connector_content(
+                 "Composio Google Calendar indexing started in the background."
+             )
+ 
++        elif connector.connector_type == SearchSourceConnectorType.RSS_FEED:
++            from app.tasks.celery_tasks.rss_tasks import index_rss_feeds_task
++
++            logger.info(
++                f"Triggering RSS feed indexing for connector {connector_id} into workspace {workspace_id}"
++            )
++            index_rss_feeds_task.delay(
++                connector_id, workspace_id, str(user.id), None, None
++            )
++            response_message = "RSS feed indexing started in the background."
++
+         else:
+             raise HTTPException(
+                 status_code=400,
+diff --git a/nowing_backend/app/services/news/__init__.py b/nowing_backend/app/services/news/__init__.py
+new file mode 100644
+index 000000000..5f3f5bdf7
+--- /dev/null
++++ b/nowing_backend/app/services/news/__init__.py
+@@ -0,0 +1,11 @@
++"""RSS news feed support for workspace knowledge bases."""
++
++from .rss_config import DEFAULT_VIETNAMESE_FEEDS, get_feeds_for_workspace
++from .rss_fetcher import NewsArticle, fetch_feed
++
++__all__ = [
++    "DEFAULT_VIETNAMESE_FEEDS",
++    "NewsArticle",
++    "fetch_feed",
++    "get_feeds_for_workspace",
++]
+diff --git a/nowing_backend/app/services/news/rss_config.py b/nowing_backend/app/services/news/rss_config.py
+new file mode 100644
+index 000000000..bbb6aef89
+--- /dev/null
++++ b/nowing_backend/app/services/news/rss_config.py
+@@ -0,0 +1,27 @@
++"""Default Vietnamese RSS feed configuration and per-workspace override support."""
++
++from urllib.parse import urlparse
++
++# ponytail: hardcoded default Vietnamese news feeds for the first release.
++# Admins can override via the connector's `config.feed_urls` JSON field.
++DEFAULT_VIETNAMESE_FEEDS: list[str] = [
++    "https://vnexpress.net/rss/tin-moi-nhat.rss",
++    "https://tuoitre.vn/rss/thoi-su.rss",
++    "https://dantri.com.vn/rss/tin-moi-nhat.rss",
++    "https://vietnamnet.vn/rss/tin-moi-nhat.rss",
++]
++
++
++def get_feeds_for_workspace(connector_config: dict | None) -> list[str]:
++    """Return feed URLs for a workspace, honouring optional connector overrides."""
++    if connector_config and connector_config.get("feed_urls"):
++        return list(connector_config["feed_urls"])
++    return list(DEFAULT_VIETNAMESE_FEEDS)
++
++
++def source_name_from_url(url: str, channel_title: str | None = None) -> str:
++    """Derive a short source name from the feed URL domain or channel title."""
++    if channel_title:
++        return channel_title.strip()
++    parsed = urlparse(url)
++    return (parsed.hostname or "unknown").replace("www.", "")
+diff --git a/nowing_backend/app/services/news/rss_fetcher.py b/nowing_backend/app/services/news/rss_fetcher.py
+new file mode 100644
+index 000000000..f5c901557
+--- /dev/null
++++ b/nowing_backend/app/services/news/rss_fetcher.py
+@@ -0,0 +1,147 @@
++"""RSS feed fetcher and parser for Vietnamese news portals."""
++
++from __future__ import annotations
++
++import html
++import logging
++import re
++from dataclasses import dataclass
++from datetime import UTC, datetime
++from email.utils import parsedate_to_datetime
++from typing import Any
++
++import httpx
++
++logger = logging.getLogger(__name__)
++
++# Short timeout so a slow portal does not block the whole polling cycle.
++_FEED_TIMEOUT = 10.0
++
++
++def _strip_html(raw: str) -> str:
++    """Remove HTML tags and collapse whitespace."""
++    text = re.sub(r"<[^>]+>", " ", raw)
++    text = html.unescape(text)
++    return re.sub(r"\s+", " ", text).strip()
++
++
++def _parse_pub_date(raw: str | None) -> str:
++    """Parse an RFC 822-ish pubDate and return an ISO 8601 UTC string."""
++    if not raw:
++        return datetime.now(UTC).isoformat()
++    try:
++        dt = parsedate_to_datetime(raw.strip())
++        if dt.tzinfo is None:
++            dt = dt.replace(tzinfo=UTC)
++        return dt.astimezone(UTC).isoformat()
++    except (TypeError, ValueError):
++        logger.debug("Could not parse pubDate %r; using now", raw)
++        return datetime.now(UTC).isoformat()
++
++
++def _first_text(parent: Any, *tags: str) -> str | None:
++    """Return text from the first matching child element."""
++    for tag in tags:
++        child = parent.find(tag)
++        if child is not None and child.text:
++            return child.text.strip()
++    return None
++
++
++@dataclass
++class NewsArticle:
++    """One parsed RSS news item."""
++
++    title: str
++    link: str
++    description: str
++    pub_date: str
++    category: str | None
++    source: str
++
++
++async def fetch_feed(url: str) -> list[NewsArticle]:
++    """Fetch and parse a single RSS feed URL.
++
++    Returns an empty list on network or parse failures so that one bad
++    feed does not abort the entire poll.
++    """
++    try:
++        async with httpx.AsyncClient(
++            timeout=_FEED_TIMEOUT, follow_redirects=True
++        ) as client:
++            response = await client.get(url)
++            response.raise_for_status()
++            body = response.text
++    except httpx.HTTPStatusError as exc:
++        logger.warning("RSS feed %s returned %s", url, exc.response.status_code)
++        return []
++    except httpx.RequestError as exc:
++        logger.warning("RSS feed %s request error: %s", url, exc)
++        return []
++
++    try:
++        # XML parsers can be picky; use the standard library and recover from
++        # minor feed quirks rather than introducing a new dependency.
++        import xml.etree.ElementTree as ET
++
++        root = ET.fromstring(body)
++    except ET.ParseError as exc:
++        logger.warning("RSS feed %s parse error: %s", url, exc)
++        return []
++
++    channel = root.find("channel")
++    if channel is None:
++        # Some feeds (e.g. Atom-style) use <feed> as the root; try first item.
++        channel = root
++
++    channel_title = _first_text(channel, "title")
++    from .rss_config import source_name_from_url
++
++    source_name = source_name_from_url(url, channel_title)
++
++    # RSS 2.0 <item>; Atom uses <entry>. Both are fine for a broad search.
++    items = (
++        channel.findall("item")
++        or channel.findall("entry")
++        or root.findall(".//item")
++        or root.findall(".//entry")
++    )
++
++    articles: list[NewsArticle] = []
++    for item in items:
++        title = _first_text(item, "title") or "Untitled"
++        link = _first_text(item, "link") or ""
++        if not link:
++            # Atom often places the href in a <link href="..."/> attribute.
++            link_el = item.find("link")
++            if link_el is not None:
++                link = link_el.get("href") or ""
++
++        description = _strip_html(
++            _first_text(item, "description") or _first_text(item, "summary") or ""
++        )
++        if not description:
++            # Fall back to the title as searchable text rather than leaving empty.
++            description = title
++
++        pub_date = _parse_pub_date(
++            _first_text(item, "pubDate")
++            or _first_text(item, "published")
++            or _first_text(item, "updated")
++        )
++        category = _first_text(item, "category")
++
++        articles.append(
++            NewsArticle(
++                title=title,
++                link=link,
++                description=description,
++                pub_date=pub_date,
++                category=category,
++                source=source_name,
++            )
++        )
++
++    logger.info("Fetched %d articles from %s", len(articles), url)
++    return articles
+diff --git a/nowing_backend/app/tasks/celery_tasks/rss_tasks.py b/nowing_backend/app/tasks/celery_tasks/rss_tasks.py
+new file mode 100644
+index 000000000..60457857b
+--- /dev/null
++++ b/nowing_backend/app/tasks/celery_tasks/rss_tasks.py
+@@ -0,0 +1,31 @@
++"""Celery task for polling RSS news feeds."""
++
++from app.celery_app import celery_app
++from app.tasks.celery_tasks import (
++    get_celery_session_maker,
++    run_async_celery_task as _run_async_celery_task,
++)
++from app.tasks.connector_indexers.rss_indexer import index_rss_feeds
++
++
++@celery_app.task(name="index_rss_feeds", bind=True)
++def index_rss_feeds_task(
++    self,
++    connector_id: int,
++    workspace_id: int,
++    user_id: str,
++    start_date: str | None = None,
++    end_date: str | None = None,
++):
++    """Celery task to fetch and index RSS news articles for a connector.
++
++    ``start_date`` and ``end_date`` are ignored; RSS is a rolling feed.
++    They are kept in the signature so the meta-scheduler can dispatch this
++    task with the same positional arguments as other connector tasks.
++    """
++
++    async def _run():
++        async with get_celery_session_maker()() as session:
++            await index_rss_feeds(session, connector_id, workspace_id, user_id)
++
++    return _run_async_celery_task(_run)
+diff --git a/nowing_backend/app/tasks/celery_tasks/schedule_checker_task.py b/nowing_backend/app/tasks/celery_tasks/schedule_checker_task.py
+index 7debd60c9..f040fa10b 100644
+--- a/nowing_backend/app/tasks/celery_tasks/schedule_checker_task.py
++++ b/nowing_backend/app/tasks/celery_tasks/schedule_checker_task.py
+@@ -55,6 +55,7 @@ async def _check_and_trigger_schedules():
+                 index_google_drive_files_task,
+                 index_notion_pages_task,
+             )
++            from app.tasks.celery_tasks.rss_tasks import index_rss_feeds_task
+ 
+             task_map = {
+                 SearchSourceConnectorType.NOTION_CONNECTOR: index_notion_pages_task,
+@@ -64,6 +65,7 @@ async def _check_and_trigger_schedules():
+                 SearchSourceConnectorType.ELASTICSEARCH_CONNECTOR: index_elasticsearch_documents_task,
+                 SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR: index_google_drive_files_task,
+                 SearchSourceConnectorType.COMPOSIO_GOOGLE_DRIVE_CONNECTOR: index_google_drive_files_task,
++                SearchSourceConnectorType.RSS_FEED: index_rss_feeds_task,
+             }
+ 
+             from app.services.mcp_oauth.registry import (
+diff --git a/nowing_backend/app/tasks/connector_indexers/__init__.py b/nowing_backend/app/tasks/connector_indexers/__init__.py
+index 0f867bdcf..294bc5300 100644
+--- a/nowing_backend/app/tasks/connector_indexers/__init__.py
++++ b/nowing_backend/app/tasks/connector_indexers/__init__.py
+@@ -14,6 +14,7 @@ from .google_calendar_indexer import index_google_calendar_events
+ from .google_drive_indexer import index_google_drive_files
+ from .google_gmail_indexer import index_google_gmail_messages
+ from .notion_indexer import index_notion_pages
++from .rss_indexer import index_rss_feeds
+ 
+ __all__ = [
+     "index_bookstack_pages",
+@@ -24,4 +25,5 @@ __all__ = [
+     "index_google_drive_files",
+     "index_google_gmail_messages",
+     "index_notion_pages",
++    "index_rss_feeds",
+ ]
+diff --git a/nowing_backend/app/tasks/connector_indexers/rss_indexer.py b/nowing_backend/app/tasks/connector_indexers/rss_indexer.py
+new file mode 100644
+index 000000000..a5be411d1
+--- /dev/null
++++ b/nowing_backend/app/tasks/connector_indexers/rss_indexer.py
+@@ -0,0 +1,300 @@
++"""RSS news connector indexer."""
++
++from __future__ import annotations
++
++import hashlib
++from collections.abc import Awaitable, Callable
++
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.canonical.services.canonical_persist_service import upsert_canonical_entity
++from app.db import DocumentStatus, DocumentType, SearchSourceConnectorType
++from app.indexing_pipeline.connector_document import ConnectorDocument
++from app.indexing_pipeline.indexing_pipeline_service import (
++    IndexingPipelineService,
++    PlaceholderInfo,
++)
++from app.services.news.rss_config import get_feeds_for_workspace
++from app.services.news.rss_fetcher import NewsArticle, fetch_feed
++from app.services.task_logging_service import TaskLoggingService
++
++from .base import get_connector_by_id, logger, update_connector_last_indexed
++
++HeartbeatCallbackType = Callable[[int], Awaitable[None]]
++HEARTBEAT_INTERVAL_SECONDS = 30
++
++
++def _build_source_markdown(article: NewsArticle) -> str:
++    """Create clean markdown content for indexing and search."""
++    parts = [f"# {article.title}", ""]
++    parts.append(f"**Source:** {article.source}")
++    if article.category:
++        parts.append(f"**Category:** {article.category}")
++    parts.append(f"**Published:** {article.pub_date}")
++    parts.append("")
++    parts.append(article.description)
++    parts.append("")
++    parts.append(f"**Link:** {article.link}")
++    return "\n".join(parts)
++
++
++def _build_connector_doc(
++    article: NewsArticle,
++    *,
++    connector_id: int,
++    workspace_id: int,
++    user_id: str,
++) -> ConnectorDocument:
++    """Map a parsed news article to a ConnectorDocument."""
++    metadata = {
++        "title": article.title,
++        "link": article.link,
++        "description": article.description,
++        "pubDate": article.pub_date,
++        "category": article.category,
++        "source": article.source,
++        "connector_id": connector_id,
++        "document_type": "News Article",
++        "connector_type": "RSS Feed",
++    }
++
++    return ConnectorDocument(
++        title=article.title,
++        source_markdown=_build_source_markdown(article),
++        unique_id=article.link,
++        document_type=DocumentType.NEWS_CONNECTOR,
++        workspace_id=workspace_id,
++        connector_id=connector_id,
++        created_by_id=user_id,
++        metadata=metadata,
++    )
++
++
++def _news_fingerprint(article: NewsArticle) -> str:
++    """Stable fingerprint for cross-portal deduplication.
++
++    Normalised title plus the first 80 characters of the description is
++    enough to catch syndicated articles while still distinguishing genuine
++    follow-up stories.
++    """
++    normalised_title = article.title.strip().lower()
++    description_seed = article.description.strip().lower()[:80]
++    combined = f"{normalised_title}|{description_seed}"
++    return hashlib.sha256(combined.encode("utf-8")).hexdigest()
++
++
++def _source_name_for_canonical(article: NewsArticle) -> str:
++    """Use the article's source domain as the canonical source name."""
++    return article.source
++
++
++async def _persist_canonical_articles(
++    session: AsyncSession,
++    workspace_id: int,
++    articles: list[NewsArticle],
++    connector_id: int,
++) -> None:
++    """Upsert canonical entities so syndicated articles merge across portals."""
++    for article in articles:
++        fingerprint = _news_fingerprint(article)
++        search_text = f"{article.title} {article.description}"
++        if article.category:
++            search_text = f"{search_text} {article.category}"
++
++        data = {
++            "title": article.title,
++            "link": article.link,
++            "description": article.description,
++            "pubDate": article.pub_date,
++            "category": article.category,
++            "source": article.source,
++        }
++
++        await upsert_canonical_entity(
++            session,
++            workspace_id=workspace_id,
++            entity_type="news_article",
++            fingerprint=fingerprint,
++            title=article.title,
++            data=data,
++            search_text=search_text,
++            source_name=_source_name_for_canonical(article),
++            source_record_id=article.link,
++            source_url=article.link,
++            source_snapshot=data,
++            source_fingerprint=fingerprint,
++            confidence_score=0.9,
++            actor=f"rss-connector:{connector_id}",
++            merge_method="rss_fingerprint",
++        )
++
++
++async def index_rss_feeds(
++    session: AsyncSession,
++    connector_id: int,
++    workspace_id: int,
++    user_id: str,
++    feed_urls: list[str] | None = None,
++    update_last_indexed: bool = True,
++    on_heartbeat_callback: HeartbeatCallbackType | None = None,
++) -> tuple[int, int, str | None]:
++    """Fetch configured RSS feeds and index the articles.
++
++    Args:
++        session: Database session.
++        connector_id: RSS connector ID.
++        workspace_id: Target workspace.
++        user_id: User ID as a string.
++        feed_urls: Optional explicit feed list; falls back to connector config.
++        update_last_indexed: Whether to refresh last_indexed_at.
++        on_heartbeat_callback: Optional progress callback.
++
++    Returns:
++        (indexed, skipped, warning_or_error)
++    """
++    task_logger = TaskLoggingService(session, workspace_id)
++    log_entry = await task_logger.log_task_start(
++        task_name="rss_feeds_indexing",
++        source="connector_indexing_task",
++        message=f"Starting RSS feed indexing for connector {connector_id}",
++        metadata={
++            "connector_id": connector_id,
++            "user_id": str(user_id),
++            "feed_urls": feed_urls,
++        },
++    )
++
++    try:
++        connector = await get_connector_by_id(
++            session, connector_id, SearchSourceConnectorType.RSS_FEED
++        )
++        if not connector:
++            await task_logger.log_task_failure(
++                log_entry,
++                f"Connector with ID {connector_id} not found",
++                "Connector not found",
++                {"error_type": "ConnectorNotFound"},
++            )
++            return 0, 0, f"Connector with ID {connector_id} not found"
++
++        feed_urls = feed_urls or get_feeds_for_workspace(connector.config)
++        if not feed_urls:
++            logger.info("No feed URLs configured for RSS connector %s", connector_id)
++            await update_connector_last_indexed(session, connector, update_last_indexed)
++            await task_logger.log_task_success(
++                log_entry,
++                "No RSS feed URLs configured; nothing to index",
++                {"documents_indexed": 0},
++            )
++            return 0, 0, None
++
++        all_articles: list[NewsArticle] = []
++        fetch_errors: list[str] = []
++
++        for url in feed_urls:
++            try:
++                articles = await fetch_feed(url)
++                all_articles.extend(articles)
++            except Exception as exc:
++                logger.warning("Failed to fetch feed %s: %s", url, exc, exc_info=True)
++                fetch_errors.append(f"{url}: {exc}")
++
++        if not all_articles:
++            logger.info(
++                "No articles returned from RSS feeds for connector %s", connector_id
++            )
++            await update_connector_last_indexed(session, connector, update_last_indexed)
++            await task_logger.log_task_success(
++                log_entry,
++                "No articles found in RSS feeds",
++                {"documents_indexed": 0},
++            )
++            return 0, 0, None
++
++        # Deduplicate by article link within this poll so the same link from
++        # different feeds does not create duplicate documents.
++        seen_links: set[str] = set()
++        unique_articles: list[NewsArticle] = []
++        for article in all_articles:
++            if not article.link or not article.title:
++                continue
++            if article.link in seen_links:
++                continue
++            seen_links.add(article.link)
++            unique_articles.append(article)
++
++        # Placeholders give instant UI feedback before slow embedding/chunking.
++        pipeline = IndexingPipelineService(session)
++        connector_docs = [
++            _build_connector_doc(
++                article,
++                connector_id=connector_id,
++                workspace_id=workspace_id,
++                user_id=user_id,
++            )
++            for article in unique_articles
++        ]
++        await pipeline.create_placeholder_documents(
++            [
++                PlaceholderInfo(
++                    title=doc.title,
++                    document_type=doc.document_type,
++                    unique_id=doc.unique_id,
++                    workspace_id=doc.workspace_id,
++                    connector_id=doc.connector_id,
++                    created_by_id=doc.created_by_id,
++                    metadata={
++                        "link": doc.unique_id,
++                        "connector_id": connector_id,
++                        "connector_type": "RSS Feed",
++                    },
++                )
++                for doc in connector_docs
++            ]
++        )
++
++        results = await pipeline.index_batch(connector_docs)
++
++        indexed = sum(
++            1
++            for doc in results
++            if DocumentStatus.is_state(doc.status, DocumentStatus.READY)
++        )
++
++        # Canonical upsert provides cross-portal deduplication (AD-27).
++        await _persist_canonical_articles(
++            session, workspace_id, unique_articles, connector_id
++        )
++
++        await update_connector_last_indexed(session, connector, update_last_indexed)
++
++        warning = None
++        if fetch_errors:
++            warning = f"{len(fetch_errors)} feed(s) failed to fetch"
++
++        await task_logger.log_task_success(
++            log_entry,
++            f"Completed RSS indexing for connector {connector_id}",
++            {
++                "documents_indexed": indexed,
++                "documents_skipped": len(unique_articles) - indexed,
++                "feed_count": len(feed_urls),
++                "fetch_errors": len(fetch_errors),
++            },
++        )
++
++        if on_heartbeat_callback:
++            await on_heartbeat_callback(indexed)
++
++        return indexed, len(unique_articles) - indexed, warning
++
++    except Exception as exc:
++        logger.error("Failed to index RSS feeds: %s", exc, exc_info=True)
++        await session.rollback()
++        await task_logger.log_task_failure(
++            log_entry,
++            f"Failed to index RSS feeds for connector {connector_id}",
++            str(exc),
++            {"error_type": type(exc).__name__},
++        )
++        return 0, 0, f"Failed to index RSS feeds: {exc}"
+diff --git a/nowing_backend/app/utils/periodic_scheduler.py b/nowing_backend/app/utils/periodic_scheduler.py
+index 992f5038f..6e0e78fe0 100644
+--- a/nowing_backend/app/utils/periodic_scheduler.py
++++ b/nowing_backend/app/utils/periodic_scheduler.py
+@@ -23,6 +23,7 @@ CONNECTOR_TASK_MAP = {
+     SearchSourceConnectorType.CONFLUENCE_CONNECTOR: "index_confluence_pages",
+     SearchSourceConnectorType.ELASTICSEARCH_CONNECTOR: "index_elasticsearch_documents",
+     SearchSourceConnectorType.BOOKSTACK_CONNECTOR: "index_bookstack_pages",
++    SearchSourceConnectorType.RSS_FEED: "index_rss_feeds",
+ }
+ 
+ 
+@@ -65,6 +66,7 @@ def create_periodic_schedule(
+             index_github_repos_task,
+             index_notion_pages_task,
+         )
++        from app.tasks.celery_tasks.rss_tasks import index_rss_feeds_task
+ 
+         task_map = {
+             SearchSourceConnectorType.NOTION_CONNECTOR: index_notion_pages_task,
+@@ -72,6 +74,7 @@ def create_periodic_schedule(
+             SearchSourceConnectorType.CONFLUENCE_CONNECTOR: index_confluence_pages_task,
+             SearchSourceConnectorType.ELASTICSEARCH_CONNECTOR: index_elasticsearch_documents_task,
+             SearchSourceConnectorType.BOOKSTACK_CONNECTOR: index_bookstack_pages_task,
++            SearchSourceConnectorType.RSS_FEED: index_rss_feeds_task,
+         }
+ 
+         # Trigger the first run immediately
+diff --git a/nowing_backend/tests/integration/news/__init__.py b/nowing_backend/tests/integration/news/__init__.py
+new file mode 100644
+index 000000000..b2c4110e6
+--- /dev/null
++++ b/nowing_backend/tests/integration/news/__init__.py
+@@ -0,0 +1 @@
++"""Integration tests for RSS news indexing and search."""
+diff --git a/nowing_backend/tests/integration/news/conftest.py b/nowing_backend/tests/integration/news/conftest.py
+new file mode 100644
+index 000000000..6c99a21ae
+--- /dev/null
++++ b/nowing_backend/tests/integration/news/conftest.py
+@@ -0,0 +1,55 @@
++"""Fixtures for RSS news integration tests."""
++
++from __future__ import annotations
++
++from datetime import UTC, datetime
++
++import pytest
++import pytest_asyncio
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.db import SearchSourceConnector, SearchSourceConnectorType, User, Workspace
++from app.services.news.rss_fetcher import NewsArticle
++
++
++@pytest_asyncio.fixture
++async def db_rss_connector(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++) -> SearchSourceConnector:
++    """Create an RSS feed connector for the test workspace."""
++    connector = SearchSourceConnector(
++        name="Test RSS",
++        connector_type=SearchSourceConnectorType.RSS_FEED,
++        is_indexable=True,
++        config={},
++        workspace_id=db_workspace.id,
++        user_id=db_user.id,
++    )
++    db_session.add(connector)
++    await db_session.flush()
++    return connector
++
++
++@pytest.fixture
++def fake_rss_articles():
++    """Return a small list of sample parsed articles."""
++    return [
++        NewsArticle(
++            title="Flood warnings issued in northern Vietnam",
++            link="https://vnexpress.net/article/flood-warnings",
++            description="Authorities issued warnings as heavy rain flooded streets.",
++            pub_date=datetime.now(UTC).isoformat(),
++            category="Weather",
++            source="vnexpress.net",
++        ),
++        NewsArticle(
++            title="Vietnam economy grows 6.5%",
++            link="https://tuoitre.vn/article/economy-grows",
++            description="GDP expansion beat expectations in the second quarter.",
++            pub_date=datetime.now(UTC).isoformat(),
++            category="Economy",
++            source="tuoitre.vn",
++        ),
++    ]
+diff --git a/nowing_backend/tests/integration/news/test_news_dedup.py b/nowing_backend/tests/integration/news/test_news_dedup.py
+new file mode 100644
+index 000000000..24ad3afe1
+--- /dev/null
++++ b/nowing_backend/tests/integration/news/test_news_dedup.py
+@@ -0,0 +1,90 @@
++"""Integration tests for canonical deduplication across news portals."""
++
++from __future__ import annotations
++
++import pytest
++from sqlalchemy import func, select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.db import (
++    CanonicalEntity,
++    CanonicalEntitySource,
++    Document,
++    DocumentType,
++)
++from app.services.news.rss_fetcher import NewsArticle
++from app.tasks.connector_indexers.rss_indexer import index_rss_feeds
++
++pytestmark = [pytest.mark.integration]
++
++
++@pytest.mark.usefixtures("patched_embed_texts", "patched_chunk_text")
++async def test_canonical_dedup_for_syndicated_article(
++    db_session: AsyncSession,
++    db_workspace,
++    db_user,
++    db_rss_connector,
++    monkeypatch,
++):
++    """The same story syndicated on two portals merges into one canonical entity."""
++    articles = [
++        NewsArticle(
++            title="Vietnam economy grows 6.5%",
++            link="https://vnexpress.net/article/1",
++            description="GDP expansion beat expectations, officials said.",
++            pub_date="2024-08-06T00:00:00+00:00",
++            category="Economy",
++            source="vnexpress.net",
++        ),
++        NewsArticle(
++            title="Vietnam economy grows 6.5%",
++            link="https://tuoitre.vn/article/1",
++            description="GDP expansion beat expectations, officials said.",
++            pub_date="2024-08-06T00:00:00+00:00",
++            category="Economy",
++            source="tuoitre.vn",
++        ),
++    ]
++
++    async def _fake_fetch(_url):
++        return articles
++
++    monkeypatch.setattr(
++        "app.tasks.connector_indexers.rss_indexer.fetch_feed", _fake_fetch
++    )
++
++    await index_rss_feeds(
++        db_session,
++        db_rss_connector.id,
++        db_workspace.id,
++        str(db_user.id),
++    )
++
++    # Two distinct documents because the links differ.
++    result = await db_session.execute(
++        select(func.count())
++        .select_from(Document)
++        .where(Document.workspace_id == db_workspace.id)
++        .where(Document.document_type == DocumentType.NEWS_CONNECTOR)
++    )
++    assert result.scalar() == 2
++
++    # One canonical entity with two source portals.
++    result = await db_session.execute(
++        select(CanonicalEntity)
++        .where(CanonicalEntity.workspace_id == db_workspace.id)
++        .where(CanonicalEntity.entity_type == "news_article")
++    )
++    entity = result.scalars().first()
++    assert entity is not None
++    assert entity.source_count == 2
++
++    result = await db_session.execute(
++        select(CanonicalEntitySource).where(
++            CanonicalEntitySource.canonical_entity_id == entity.id
++        )
++    )
++    sources = result.scalars().all()
++    assert len(sources) == 2
++    source_names = {s.source_name for s in sources}
++    assert source_names == {"vnexpress.net", "tuoitre.vn"}
+diff --git a/nowing_backend/tests/integration/news/test_news_rss_integration.py b/nowing_backend/tests/integration/news/test_news_rss_integration.py
+new file mode 100644
+index 000000000..37cd99acb
+--- /dev/null
++++ b/nowing_backend/tests/integration/news/test_news_rss_integration.py
+@@ -0,0 +1,149 @@
++"""Integration tests for the RSS news indexer."""
++
++from __future__ import annotations
++
++import pytest
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.db import Document, DocumentType, SearchSourceConnector
++from app.services.news.rss_fetcher import NewsArticle
++from app.tasks.connector_indexers.rss_indexer import index_rss_feeds
++
++pytestmark = [pytest.mark.integration]
++
++
++@pytest.mark.usefixtures("patched_embed_texts", "patched_chunk_text")
++async def test_index_rss_feeds_creates_news_documents(
++    db_session: AsyncSession,
++    db_workspace,
++    db_user,
++    db_rss_connector: SearchSourceConnector,
++    fake_rss_articles,
++    monkeypatch,
++):
++    """The RSS indexer persists documents of type NEWS_CONNECTOR."""
++
++    async def _fake_fetch(_url):
++        return fake_rss_articles
++
++    monkeypatch.setattr(
++        "app.tasks.connector_indexers.rss_indexer.fetch_feed", _fake_fetch
++    )
++
++    indexed, skipped, error = await index_rss_feeds(
++        db_session,
++        db_rss_connector.id,
++        db_workspace.id,
++        str(db_user.id),
++    )
++
++    assert error is None
++    assert indexed == 2
++    assert skipped == 0
++
++    result = await db_session.execute(
++        select(Document)
++        .where(Document.workspace_id == db_workspace.id)
++        .where(Document.document_type == DocumentType.NEWS_CONNECTOR)
++    )
++    docs = result.scalars().all()
++    assert len(docs) == 2
++
++    titles = {doc.title for doc in docs}
++    assert titles == {
++        "Flood warnings issued in northern Vietnam",
++        "Vietnam economy grows 6.5%",
++    }
++
++    for doc in docs:
++        assert doc.status == {"state": "ready"}
++        assert doc.document_metadata["link"]
++        assert doc.document_metadata["source"]
++        assert doc.source_markdown
++
++
++@pytest.mark.usefixtures("patched_embed_texts", "patched_chunk_text")
++async def test_index_rss_feeds_uses_workspace_config_feeds(
++    db_session: AsyncSession,
++    db_workspace,
++    db_user,
++    db_rss_connector: SearchSourceConnector,
++    fake_rss_articles,
++    monkeypatch,
++):
++    """Per-connector feed URL overrides are honoured."""
++    db_rss_connector.config = {
++        "feed_urls": ["https://custom.example/rss.xml"],
++    }
++    await db_session.flush()
++
++    fetched_urls: list[str] = []
++
++    async def _fake_fetch(url):
++        fetched_urls.append(url)
++        return fake_rss_articles
++
++    monkeypatch.setattr(
++        "app.tasks.connector_indexers.rss_indexer.fetch_feed", _fake_fetch
++    )
++
++    await index_rss_feeds(
++        db_session,
++        db_rss_connector.id,
++        db_workspace.id,
++        str(db_user.id),
++    )
++
++    assert fetched_urls == ["https://custom.example/rss.xml"]
++
++
++@pytest.mark.usefixtures("patched_embed_texts", "patched_chunk_text")
++async def test_index_rss_feeds_dedup_by_article_link(
++    db_session: AsyncSession,
++    db_workspace,
++    db_user,
++    db_rss_connector: SearchSourceConnector,
++    monkeypatch,
++):
++    """The same article link from two feeds is only stored once."""
++    duplicated = [
++        NewsArticle(
++            title="Same story",
++            link="https://vnexpress.net/article/same",
++            description="Description",
++            pub_date="2024-08-06T00:00:00+00:00",
++            category="News",
++            source="vnexpress.net",
++        ),
++        NewsArticle(
++            title="Same story",
++            link="https://vnexpress.net/article/same",
++            description="Description",
++            pub_date="2024-08-06T00:00:00+00:00",
++            category="News",
++            source="vnexpress.net",
++        ),
++    ]
++
++    async def _fake_fetch(_url):
++        return duplicated
++
++    monkeypatch.setattr(
++        "app.tasks.connector_indexers.rss_indexer.fetch_feed", _fake_fetch
++    )
++
++    await index_rss_feeds(
++        db_session,
++        db_rss_connector.id,
++        db_workspace.id,
++        str(db_user.id),
++    )
++
++    result = await db_session.execute(
++        select(Document)
++        .where(Document.workspace_id == db_workspace.id)
++        .where(Document.document_type == DocumentType.NEWS_CONNECTOR)
++    )
++    docs = result.scalars().all()
++    assert len(docs) == 1
+diff --git a/nowing_backend/tests/integration/news/test_news_search.py b/nowing_backend/tests/integration/news/test_news_search.py
+new file mode 100644
+index 000000000..b592f36a9
+--- /dev/null
++++ b/nowing_backend/tests/integration/news/test_news_search.py
+@@ -0,0 +1,79 @@
++"""Integration tests for searching indexed news articles."""
++
++from __future__ import annotations
++
++import pytest
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.canonical.services.unified_search_service import UnifiedSearchService
++from app.db import Document, DocumentType
++from app.services.news.rss_fetcher import NewsArticle
++from app.tasks.connector_indexers.rss_indexer import index_rss_feeds
++
++pytestmark = [pytest.mark.integration]
++
++
++@pytest.mark.usefixtures("patched_embed_texts", "patched_chunk_text")
++async def test_unified_search_finds_news_documents(
++    db_session: AsyncSession,
++    db_workspace,
++    db_user,
++    db_rss_connector,
++    monkeypatch,
++):
++    """News articles appear in unified search results filtered by document type."""
++    articles = [
++        NewsArticle(
++            title="Flooding in Hanoi after heavy rain",
++            link="https://vnexpress.net/flooding-hanoi",
++            description="Streets were submerged after a night of heavy rain.",
++            pub_date="2024-08-06T00:00:00+00:00",
++            category="Weather",
++            source="vnexpress.net",
++        ),
++    ]
++
++    async def _fake_fetch(_url):
++        return articles
++
++    monkeypatch.setattr(
++        "app.tasks.connector_indexers.rss_indexer.fetch_feed", _fake_fetch
++    )
++
++    await index_rss_feeds(
++        db_session,
++        db_rss_connector.id,
++        db_workspace.id,
++        str(db_user.id),
++    )
++
++    # Ensure the document is ready and content is searchable.
++    result = await db_session.execute(
++        select(Document)
++        .where(Document.workspace_id == db_workspace.id)
++        .where(Document.document_type == DocumentType.NEWS_CONNECTOR)
++    )
++    doc = result.scalar_one()
++    assert doc.content and "Flooding" in doc.content
++
++    monkeypatch.setattr(
++        "app.canonical.services.unified_search_service.config.embedding_model_instance.embed",
++        lambda _text: [0.1] * 384,
++    )
++
++    service = UnifiedSearchService(db_session)
++    results = await service.search(
++        workspace_id=db_workspace.id,
++        query_text="Flooding Hanoi",
++        top_k=10,
++        document_types=["NEWS_CONNECTOR"],
++    )
++
++    assert results
++    document_results = [r for r in results if r["type"] == "document"]
++    assert any(
++        document_results
++        and r["document"]["document"]["document_type"] == "NEWS_CONNECTOR"
++        for r in document_results
++    )
+diff --git a/nowing_backend/tests/unit/services/news/__init__.py b/nowing_backend/tests/unit/services/news/__init__.py
+new file mode 100644
+index 000000000..f69842cd0
+--- /dev/null
++++ b/nowing_backend/tests/unit/services/news/__init__.py
+@@ -0,0 +1 @@
++"""Unit tests for the RSS news service."""
+diff --git a/nowing_backend/tests/unit/services/news/test_rss_fetcher.py b/nowing_backend/tests/unit/services/news/test_rss_fetcher.py
+new file mode 100644
+index 000000000..e276795a7
+--- /dev/null
++++ b/nowing_backend/tests/unit/services/news/test_rss_fetcher.py
+@@ -0,0 +1,123 @@
++"""Unit tests for the RSS feed fetcher/parser."""
++
++from __future__ import annotations
++
++import pytest
++
++from app.services.news.rss_fetcher import NewsArticle, fetch_feed
++
++SAMPLE_RSS = """<?xml version="1.0" encoding="UTF-8"?>
++<rss version="2.0">
++  <channel>
++    <title>VnExpress</title>
++    <link>https://vnexpress.net</link>
++    <description>VnExpress tin tức</description>
++    <item>
++      <title>Heavy rain causes flooding in Hanoi</title>
++      <link>https://vnexpress.net/article/1</link>
++      <description>&lt;p&gt;Authorities issued warnings as streets flooded.&lt;/p&gt;</description>
++      <pubDate>Mon, 05 Aug 2024 14:30:00 GMT</pubDate>
++      <category>Weather</category>
++    </item>
++    <item>
++      <title> Vietnam economy grows 6.5% in 2024</title>
++      <link>https://vnexpress.net/article/2</link>
++      <description>&lt;p&gt;GDP expansion beat expectations, officials said.&lt;/p&gt;</description>
++      <pubDate>Tue, 06 Aug 2024 08:00:00 GMT</pubDate>
++      <category>Economy</category>
++    </item>
++  </channel>
++</rss>
++"""
++
++
++class _FakeResponse:
++    def __init__(self, text: str, status_code: int = 200):
++        self.text = text
++        self.status_code = status_code
++
++    def raise_for_status(self):
++        if self.status_code >= 400:
++            raise Exception(f"HTTP {self.status_code}")
++
++
++@pytest.mark.unit
++async def test_fetch_feed_parses_required_fields(monkeypatch):
++    """Each item is parsed into a NewsArticle with title, link, description, pubDate, category and source."""
++
++    async def _fake_get(self, url):
++        return _FakeResponse(SAMPLE_RSS)
++
++    monkeypatch.setattr(
++        "app.services.news.rss_fetcher.httpx.AsyncClient.get", _fake_get
++    )
++
++    articles = await fetch_feed("https://vnexpress.net/rss/tin-moi-nhat.rss")
++
++    assert len(articles) == 2
++    first = articles[0]
++    assert first.title == "Heavy rain causes flooding in Hanoi"
++    assert first.link == "https://vnexpress.net/article/1"
++    assert "flood" in first.description.lower()
++    assert first.description == "Authorities issued warnings as streets flooded."
++    assert first.category == "Weather"
++    assert first.source == "VnExpress"
++    assert first.pub_date.endswith("+00:00")
++
++    second = articles[1]
++    assert second.title == "Vietnam economy grows 6.5% in 2024"
++    assert second.link == "https://vnexpress.net/article/2"
++    assert second.category == "Economy"
++
++
++@pytest.mark.unit
++async def test_fetch_feed_empty_items(monkeypatch):
++    """Empty RSS feeds return an empty article list."""
++    empty_rss = """<?xml version="1.0"?>
++<rss version="2.0"><channel><title>Empty</title></channel></rss>
++"""
++
++    async def _fake_get(self, url):
++        return _FakeResponse(empty_rss)
++
++    monkeypatch.setattr(
++        "app.services.news.rss_fetcher.httpx.AsyncClient.get", _fake_get
++    )
++    articles = await fetch_feed("https://empty.example/feed.rss")
++    assert articles == []
++
++
++@pytest.mark.unit
++async def test_fetch_feed_http_error(monkeypatch):
++    """HTTP errors are handled gracefully and return an empty list."""
++    import httpx
++
++    async def _fake_get(self, url):
++        raise httpx.RequestError(
++            "Server error",
++            request=httpx.Request("GET", "https://bad.example/feed.rss"),
++        )
++
++    monkeypatch.setattr(
++        "app.services.news.rss_fetcher.httpx.AsyncClient.get", _fake_get
++    )
++    articles = await fetch_feed("https://bad.example/feed.rss")
++    assert articles == []
++
++
++@pytest.mark.unit
++async def test_news_article_dataclass():
++    """NewsArticle stores the expected fields."""
++    article = NewsArticle(
++        title="T",
++        link="https://example.com/a",
++        description="D",
++        pub_date="2024-08-06T00:00:00+00:00",
++        category="C",
++        source="S",
++    )
++    assert article.title == "T"
++    assert article.link == "https://example.com/a"
++    assert article.description == "D"
++    assert article.category == "C"
++    assert article.source == "S"
