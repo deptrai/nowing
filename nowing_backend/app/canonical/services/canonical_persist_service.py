@@ -19,11 +19,31 @@ from app.db import (
     CanonicalPersistOutbox,
 )
 
-from ..tasks.backfill_canonical_embedding import backfill_canonical_embedding
 from ..tenant_context import set_canonical_workspace_id
 from .canonical_pii import redact_canonical_data, redact_source_snapshot
 
 logger = logging.getLogger(__name__)
+
+
+class _LazyBackfillTask:
+    """Proxy for the Celery backfill task that defers import until first use.
+
+    Importing ``app.canonical.tasks.backfill_canonical_embedding`` at module
+    load would create a circular import with
+    ``app.canonical.tasks.process_canonical_persist_outbox``, which imports this
+    service. The proxy breaks the cycle: the real task is resolved on the first
+    attribute access, while tests can still monkeypatch
+    ``backfill_canonical_embedding.apply_async`` because the proxy stores any
+    attributes set on it.
+    """
+
+    def __getattr__(self, name: str) -> Any:
+        from ..tasks.backfill_canonical_embedding import backfill_canonical_embedding
+
+        return getattr(backfill_canonical_embedding, name)
+
+
+backfill_canonical_embedding = _LazyBackfillTask()
 
 
 class ConcurrentUpdateError(Exception):

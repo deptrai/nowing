@@ -177,7 +177,7 @@ def _capability_tool(
     executor = capability.executor
     name = capability.name
 
-    async def _run(runtime: ToolRuntime, **kwargs: object) -> dict | str | Command:
+    async def _run(runtime: ToolRuntime | None = None, **kwargs: object) -> dict | str | Command:
         # ponytail: thread the chat request's explicit research mode through to
         # chainlens.research so benchmark/user mode selections are honored.
         if name == "chainlens.research":
@@ -333,9 +333,18 @@ def _capability_tool(
             if "next_action" in dump:
                 dump.setdefault("next_step", dump["next_action"])
             dump["run_id"] = run_external_id
-            content = json.dumps(dump, ensure_ascii=False)
         else:
-            content = _build_preview(serialized, run_id)
+            dump = None
+
+        # Unit tests and direct ainvoke call paths do not supply a ToolRuntime.
+        # Return the structured output directly so the tool is usable outside
+        # a LangGraph ToolNode; citation rendering is reserved for the runtime.
+        if runtime is None:
+            if dump is not None:
+                return dump
+            return _build_preview(serialized, run_id)
+
+        content = json.dumps(dump, ensure_ascii=False) if dump is not None else _build_preview(serialized, run_id)
 
         registry = load_registry(getattr(runtime, "state", None))
         _, label = attach_run_citation(
