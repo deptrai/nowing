@@ -3751,7 +3751,7 @@ class CanonicalEntity(Base, TimestampMixin):
         ),
         Index(
             "ix_canonical_entities_search_text",
-            text("to_tsvector('english', search_text)"),
+            text("to_tsvector('simple', search_text)"),
             postgresql_using="gin",
         ),
         Index(

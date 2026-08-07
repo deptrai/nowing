@@ -437,7 +437,7 @@ class UnifiedSearchService:
                         "last_seen_at": entity["last_seen_at"],
                         "embedding_status": entity["embedding_status"],
                         "view_sources": {
-                            "href": f"/canonical-entities/{entity['id']}/sources",
+                            "href": f"/api/v1/canonical-entities/{entity['id']}/sources",
                             "count": max(
                                 entity["source_count"], len(entity["source_ids"])
                             ),

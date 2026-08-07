@@ -269,6 +269,28 @@ async def get_canonical_entity(
 
 
 @router.get(
+    "/canonical-entities/{entity_id}/sources", response_model=list[CanonicalEntitySourceRead]
+)
+async def get_canonical_entity_sources(
+    entity_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(require_session_context),
+):
+    """Get the source links for a canonical entity."""
+    entity = await _load_entity_with_sources_and_history(session, entity_id)
+    await check_permission(
+        session,
+        auth,
+        entity.workspace_id,
+        Permission.CANONICAL_ENTITIES_READ.value,
+        "You don't have permission to view this canonical entity's sources",
+    )
+    await set_canonical_workspace_id(session, entity.workspace_id)
+
+    return [_map_source(s) for s in entity.sources]
+
+
+@router.get(
     "/canonical-entities/{entity_id}/history",
     response_model=list[CanonicalMergeHistoryRead],
 )

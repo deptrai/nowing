@@ -109,7 +109,7 @@ def upgrade() -> None:
     _exec_statements(
         "CREATE UNIQUE INDEX uq_canonical_entities_workspace_type_fingerprint ON canonical_entities (workspace_id, entity_type, fingerprint);",
         "CREATE INDEX ix_canonical_entities_workspace_type_last_seen ON canonical_entities (workspace_id, entity_type, last_seen_at DESC);",
-        "CREATE INDEX ix_canonical_entities_search_text ON canonical_entities USING gin (to_tsvector('english', search_text));",
+        "CREATE INDEX ix_canonical_entities_search_text ON canonical_entities USING gin (to_tsvector('simple', search_text));",
         "CREATE INDEX ix_canonical_entities_embedding ON canonical_entities USING hnsw (embedding public.vector_cosine_ops) WHERE embedding IS NOT NULL;",
         "CREATE INDEX ix_canonical_entity_sources_canonical_entity_id ON canonical_entity_sources (canonical_entity_id);",
         "CREATE UNIQUE INDEX uq_canonical_entity_sources_workspace_type_source_record ON canonical_entity_sources (workspace_id, entity_type, source_name, source_record_id);",
