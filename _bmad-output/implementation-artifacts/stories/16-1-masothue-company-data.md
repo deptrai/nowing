@@ -1,6 +1,6 @@
 # Story 16.1: masothue.com Company Data
 
-**Status:** pending-human-review  
+**Status:** done  
 **Epic:** Epic 16 — Company Directory (Vietnam)  
 **Priority:** P0
 

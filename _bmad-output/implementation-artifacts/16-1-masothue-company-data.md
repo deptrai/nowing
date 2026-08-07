@@ -10,7 +10,7 @@ status: done
 **Story ID:** 16.1  
 **Epic:** 16 — Company Directory (Vietnam)  
 **Title:** masothue.com Company Data  
-**Status:** pending-human-review  
+**Status:** done  
 **Priority:** P0  
 **Requirements:** FR-51 (company data integration)  
 **Architecture:** AD-3 (capability tự đăng ký route), AD-16 (ranh giới license Apache/BSL), AD-19 (anti-bot thuộc Nowing, degrade thay vì hard-fail), AD-27 (canonical entity convention), AD-25 (PII redaction), AD-26 (ToS/legal gate)  

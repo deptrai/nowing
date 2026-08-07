@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-07 00:37:26"
-last_updated: "2026-08-07 08:51:48"
+last_updated: "2026-08-07 09:30:00"
 # ponytail: Story 13.1 BMAD validation completed 2026-08-07; canonical story + validation report added.
 project: Nowing
 project_key: NOKEY
@@ -202,4 +202,12 @@ validation_reports:
     p0: 0
     p1: 229
     p2: 0
+  - story: "16-1"
+    type: "human-review-gate"
+    commit: "25db348b2"
+    verdict: "PASS"
+    p0_areas_touched:
+      - "Token tracking / quota / credit"
+    reviewed_by: "human"
+    notes: "P0 credit surface touched via MASOTHUE_COMPANY billing unit and cost_micros calculation."
 
