@@ -1332,7 +1332,7 @@ _FR-47 · NFR-11 · OQ-3 · `feature-brief-hr-vertical-vietnam-2026-08-05.md`._
 
 Hệ thống lưu trữ, dedup và index entities từ nhiều nguồn — tra cứu nhanh, giữ được provenance, cô lập tenant ở tầng database và mở rộng cho nhiều domain mà chưa cần dựng matching engine chung quá sớm.
 
-**FRs covered:** FR-48 (canonical entity search & indexing), FR-46 (extend `vn_jobs.aggregate`)
+**FRs covered:** FR-48 (canonical entity storage), FR-56 (public agent-chat API), FR-57 (Agent Registry), FR-46 (extend `vn_jobs.aggregate`), FR-37 (cost traceability), FR-38 (degradation), NFR-MULTI-1 (tenant isolation)
 **ADs governed:** AD-27 (canonical entity convention), AD-28 (unified engine trigger), inherits AD-24, AD-14, AD-2, AD-25
 
 > **Scope reduced 2026-08-06 (Party Mode review):** Existing aggregators (`bds_aggregator`, `jobs_aggregator`) already implement matching/dedupe. Epic 13 adds a shared persistence, lineage and search layer; it does not replace domain matching logic.
@@ -1441,16 +1441,146 @@ _AD-27 (search_text convention) · AD-2 (pgvector) · workspace isolation contra
 
 ---
 
+### Story 13.4: Public Agent-Chat Endpoints `[P0]`
+
+As a vertical client,
+I want to create chat threads and send messages via public API,
+So that I can integrate Nowing chat into my application.
+
+**Acceptance Criteria:**
+- **Given** a valid PAT and workspace membership, **When** `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads` is called, **Then** a chat thread is created and returned with `thread_id` and `research_thread_id`.
+- **Given** a valid PAT, **When** `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads/{thread_id}/messages` is called, **Then** the message is processed by the chat agent and a response is returned.
+- **Given** an invalid PAT or non-member, **When** any public endpoint is called, **Then** 401/403 is returned.
+- **Given** a `client_id` in the request, **When** the chat processes, **Then** all data access is filtered by `client_id`.
+- **Given** rate limit is exceeded, **When** the endpoint is called, **Then** 429 is returned with `Retry-After` header.
+
+_Kỹ thuật: `app/routes/agent_chat_routes.py`, PAT auth middleware, rate limiter. AD-13 (amended 2026-08-08)._
+
+---
+
+### Story 13.5: NewChatRequest Extension `[P0]`
+
+As a chat system,
+I want to accept `agent_id`, `client_id`, and `platform_metadata` in chat requests,
+So that agents can be configured per vertical client and context can be forwarded.
+
+**Acceptance Criteria:**
+- **Given** a chat request with `agent_id`, **When** processed, **Then** the system loads the corresponding `AgentConfig` and injects `system_instructions` into the prompt.
+- **Given** a chat request with `client_id`, **When** processed, **Then** all memory recall and storage is tagged with `client_id`.
+- **Given** `platform_metadata` in the request, **When** processed, **Then** the metadata is forwarded to the chat prompt context.
+- **Given** no `agent_id`, **When** processed, **Then** the default Nowing chat agent is used (backward compatible).
+
+_Kỹ thuật: Extend `NewChatRequest` schema in `app/schemas/new_chat.py`. AD-13._
+
+---
+
+### Story 13.6: Agent Registry `[P0]`
+
+As a platform administrator,
+I want to register agents with custom system prompts and tool configurations,
+So that different vertical clients can have specialized chat agents.
+
+**Acceptance Criteria:**
+- **Given** the migration runs, **When** complete, **Then** an `agent_configs` table exists with fields: `id`, `client_id`, `name`, `system_instructions`, `enabled_tools`, `disabled_tools`, `model_name`, `citations_enabled`, `is_active`.
+- **Given** the seed script runs, **When** complete, **Then** `bdsai-listing-assistant` is seeded as the first agent.
+- **Given** an `agent_id` is provided in a chat request, **When** processed, **Then** the system loads the corresponding `AgentConfig` or returns 404 if not found.
+- **Given** `AgentConfig` is global (not workspace-scoped), **When** same agent is used across workspaces, **Then** the same config applies.
+
+_Kỹ thuật: `app/db.py` (AgentConfig model), migration `194_add_agent_configs.py`, seed script. AD-27. UX: `ux-contract-agent-registry.md`._
+
+---
+
+### Story 13.7: AgentConfig Prompt Injection `[P0]`
+
+As a chat system,
+I want to inject agent-specific system instructions into the chat prompt,
+So that each vertical client gets a specialized agent experience.
+
+**Acceptance Criteria:**
+- **Given** a chat request with `agent_id`, **When** the chat flow starts, **Then** `AgentConfig.system_instructions` is prepended to the default system prompt.
+- **Given** an `agent_id` with `enabled_tools`, **When** the chat agent selects tools, **Then** only tools in the allowlist are available.
+- **Given** no `agent_id`, **When** processed, **Then** the default Nowing chat agent is used (backward compatible).
+
+_Kỹ thuật: `app/tasks/chat/streaming/flows/new_chat/orchestrator.py` — load config, inject prompt, filter tools. AD-27._
+
+---
+
+### Story 13.8: ResearchThread Auto-Linkage `[P0]`
+
+As a vertical client,
+I want chat threads to be automatically linked to ResearchThreads,
+So that memory is properly isolated and contextual across sessions.
+
+**Acceptance Criteria:**
+- **Given** a chat thread is created with `agent_id`, **When** the thread is created, **Then** a new `ResearchThread` is auto-created and linked.
+- **Given** the ResearchThread is created, **When** the API response is returned, **Then** it includes `research_thread_id`.
+- **Given** memories are extracted from the chat, **When** stored, **Then** they are tagged with `research_thread_id`.
+
+_Kỹ thuật: `app/routes/agent_chat_routes.py` — auto-create ResearchThread, update response schema. AD-13._
+
+---
+
+### Story 13.9: Memory Tagging + RAG Filter `[P1]`
+
+As a platform,
+I want memories tagged with `client_id`/`agent_id` and RAG recall to hard-filter by tenant,
+So that one client's data never leaks into another client's chat.
+
+**Acceptance Criteria:**
+- **Given** a memory is created from a chat with `client_id`, **When** stored, **Then** the memory row has `client_id` set.
+- **Given** a recall query with `client_id`, **When** the RAG system searches, **Then** only memories with matching `client_id` are returned (hard filter, not boost).
+- **Given** a recall query without `client_id`, **When** processed, **Then** only memories with `client_id = NULL` (Nowing-internal) are returned.
+
+_Kỹ thuật: Migration `195_add_memory_tenant_tags.py`, update `app/retriever/`. AD-27, NFR-MULTI-1._
+
+---
+
+### Story 13.10: Cost Traceability `[P1]`
+
+As a vertical client,
+I want to attribute costs to my users and listings,
+So that I can track and bill for Nowing usage.
+
+**Acceptance Criteria:**
+- **Given** a chat request with `external_metadata` (listing_id, broker_id, user_id), **When** processed, **Then** the `TokenUsage` row stores the metadata.
+- **Given** a `client_id`, **When** querying TokenUsage, **Then** cost reports can be generated per client per day.
+- **Given** an `X-Run-Id` header in the response, **When** the client receives it, **Then** they can correlate costs with their internal records.
+
+_Kỹ thuật: Migration `196_add_token_usage_metadata.py`, update `app/services/token_tracking_service.py`. AD-28, FR-37._
+
+---
+
+### Story 13.11: Rate Limiting + Tenant Isolation `[P1]`
+
+As a platform,
+I want to enforce rate limits per workspace and per client,
+So that no single client can degrade service for others.
+
+**Acceptance Criteria:**
+- **Given** a public chat endpoint is called, **When** rate limit is exceeded, **Then** 429 is returned with `Retry-After` header.
+- **Given** a PAT is validated, **When** the request is processed, **Then** PostgreSQL RLS context is set (`SET LOCAL app.current_client_id`).
+- **Given** RLS is active, **When** any query runs, **Then** rows are filtered by `client_id` automatically.
+
+_Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter with Redis. AD-13, NFR-MULTI-1._
+
+---
+
 ## Ghi chú
 - **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
 - **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
 - Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
 - **Epic 13 sequencing:** Story 13.1 + BDS contract (13.2a) có thể chạy trước Epic 12. Jobs persistence (13.2b), Jobs fixtures (13.2e) và HR pilot benchmark phụ thuộc Epic 12.
 - **Epic 13 scope (2026-08-06+):** persistence/lineage/search layer over existing aggregators. Story 13.2 is five sub-stories (13.2a–e); shared tables ship in 13.1 before any AD-28 plugin-engine trigger.
+- **Epic 13 expansion (2026-08-08):** Stories 13.4-13.11 added for public agent-chat API, Agent Registry, memory tagging, cost traceability, and rate limiting (BDS AI co-evolution — first vertical client).
+- **Epic structure:** Epics 12-17 mỗi epic có 2 sections (Original + Extended). Extended sections chứa stories bổ sung. Sprint-status.yaml track tất cả stories trong single epic.
+- **Vision alignment:** 3 FRs marked DONE (FR-53, FR-55 covered by existing features), 1 FR deferred (FR-54 covered by ChainLens). Remaining epics 14-17 scoped for Phase 2.
+- **OAuth Connectors (Layer 2):** 18+ connectors đã built (Gmail, Drive, Slack, GitHub, Discord, Teams, Linear, Airtable, Notion, Dropbox...)
 
 ---
 
 ## Epic 14: News Aggregation (Vietnam)
+
+> **⚠️ Priority: P2 — Defer to Phase 2.** Epic 14-17 (News/Finance/Company/E-com) = 24 stories backlog. Team solo nên focus E13 (platform) trước. Có thể dùng ChainLens generic crawl thay vì build RSS scrapers riêng.
 
 Tích hợp 4 trang tin tức lớn Việt Nam qua RSS feeds — cung cấp nguồn dữ liệu news cho research memory và chat agents.
 
@@ -1646,6 +1776,10 @@ _AD-27 · Method: Third-party API (Apify/Bright Data) recommended; in-house requ
 
 ## Epic 12: HR/Recruitment Vertical + BĐS (Extended)
 
+> **📎 EXTENSION của Epic 12 (line 1221).** Stories 12.6-12.9 bổ sung cho stories 12.0-12.5 ở trên. Sprint-status.yaml track tất cả dưới `epic-12`.
+
+> **🔴 BLOCKER — ToS & Legal Review (Story 12.0).** Epic 12 yêu cầu legal review trước khi build scrapers cho VietnamWorks, TopCV, ITviec. Story 12.0 phải complete trước 12.1-12.9. **Nguồn:** AD-26 (ToS & Legal Gates).
+
 > **Extended 2026-08-06:** Added cross-cutting research intelligence stories (alerts, timeline, saved searches) for Jobs and BĐS domains.
 
 ### Story 12.6: Job Market Alerts `[P1]`
@@ -1712,6 +1846,8 @@ So that I always have fresh results without manual work.
 
 ## Epic 14: News Aggregation (Extended)
 
+> **📎 EXTENSION của Epic 14 (line 1578).** Stories 14.3-14.4 bổ sung cho stories 14.1-14.2 ở trên. Sprint-status.yaml track tất cả dưới `epic-14`.
+
 > **Extended 2026-08-06:** Added news-specific intelligence features.
 
 ### Story 14.3: News Alerts & Topic Monitoring `[P1]`
@@ -1747,6 +1883,8 @@ So that I can quickly understand what happened without reading 50 articles.
 
 ## Epic 15: Financial Data (Extended)
 
+> **📎 EXTENSION của Epic 15 (line 1629).** Stories 15.2-15.4 bổ sung cho story 15.1 ở trên. Sprint-status.yaml track tất cả dưới `epic-15`.
+
 > **Extended 2026-08-06:** Added financial intelligence features.
 
 ### Story 15.3: Stock Price Alerts `[P1]`
@@ -1781,6 +1919,8 @@ So that I don't miss significant patterns.
 
 ## Epic 16: Company Directory (Extended)
 
+> **📎 EXTENSION của Epic 16 (line 1678).** Stories 16.2-16.4 bổ sung cho story 16.1 ở trên. Sprint-status.yaml track tất cả dưới `epic-16`.
+
 > **Extended 2026-08-06:** Added company intelligence features.
 
 ### Story 16.3: Company Alerts `[P1]`
@@ -1814,6 +1954,8 @@ So that I understand its evolution and trajectory.
 ---
 
 ## Epic 17: E-commerce Intelligence (Extended)
+
+> **📎 EXTENSION của Epic 17 (line 1725).** Stories 17.2-17.4 bổ sung cho story 17.1 ở trên. Sprint-status.yaml track tất cả dưới `epic-17`.
 
 > **Extended 2026-08-06:** Added e-commerce intelligence features.
 

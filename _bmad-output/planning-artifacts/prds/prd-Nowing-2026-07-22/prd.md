@@ -376,10 +376,14 @@ So that I can perform pricing analysis and competitor tracking.
 
 **Status:** `[PROPOSED]`.
 
-#### FR-53: Social Media Integration (Epic 18)
+#### FR-53: Social Media Integration (Epic 18 — REMOVED, feature covered by E10)
 As a social media analyst,
 I want public content data from YouTube, Reddit, Instagram, and TikTok,
 So that I can track sentiment, trends, and influencer content.
+
+**Status:** `[DONE — covered by Epic 10 existing scrapers]`.
+
+> **⚠️ Epic 18 removed (2026-08-06) — duplicate with existing scrapers.** YouTube, Reddit, Instagram, TikTok scrapers already built in Epic 10 (Connector & Scraper Expansion). FR-53 covered by FR-6 (Built-in Scrapers).
 
 **Acceptance Criteria:**
 - Given YouTube/Reddit APIs are connected, when a user searches, then video/posts data is returned.
@@ -387,7 +391,7 @@ So that I can track sentiment, trends, and influencer content.
 
 **Status:** `[PROPOSED]`.
 
-#### FR-54: Search Intelligence (Epic 19)
+#### FR-54: Search Intelligence (Epic 19 — REMOVED, feature covered by ChainLens)
 As a researcher,
 I want Google Search and Maps data integrated,
 So that I can search the web and find local businesses within Nowing.
@@ -396,9 +400,11 @@ So that I can search the web and find local businesses within Nowing.
 - Given Google Custom Search API is configured, when a user searches, then web results are returned and crawlable.
 - Given Google Places API is configured, when a user searches by location, then business listings are returned.
 
-**Status:** `[PROPOSED]`.
+**Status:** `[DEFERRED — covered by ChainLens generic crawl for web search]`.
 
-#### FR-55: Global E-commerce (Epic 20)
+> **⚠️ Epic 19 removed (2026-08-06) — duplicate with existing scrapers.** Google Custom Search trùng với ChainLens generic web crawl (FR-24, already built). Google Places data có thể complement BĐS data nhưng cần scope rõ ràng. **Potential conflict:** AD-DEFER-7 (no owned web index). Xem xét sau khi platform (E13) ship — nên dùng ChainLens thay vì build scraper riêng.
+
+#### FR-55: Global E-commerce (Epic 20 — REMOVED, feature covered by E2)
 As a product researcher,
 I want product data from Amazon and Walmart,
 So that I can perform product research on global markets.
@@ -406,7 +412,35 @@ So that I can perform product research on global markets.
 **Acceptance Criteria:**
 - Given Amazon/Walmart data sources are connected, when a user searches, then product listings with price, ratings are returned.
 
-**Status:** `[PROPOSED]`.
+**Status:** `[DONE — covered by Stories 2.6 (Walmart) + 2.7 (Amazon)]`.
+
+> **⚠️ Epic 20 removed (2026-08-06) — duplicate with existing scrapers.** Walmart (Story 2.6) and Amazon (Story 2.7) already built as part of Epic 2 (Connectors).
+
+#### FR-56: Public Agent-Chat API for Vertical Clients
+As a vertical client,
+I want to create chat threads and send messages via public API with PAT authentication,
+So that I can integrate Nowing chat into my application.
+
+**Acceptance Criteria:**
+- Given a valid PAT and workspace membership, when `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads` is called, then a chat thread is created and returned with `thread_id` and `research_thread_id`.
+- Given a valid PAT, when `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads/{thread_id}/messages` is called, then the message is processed by the chat agent and a response is returned.
+- Given an invalid PAT or non-member, when any public endpoint is called, then 401/403 is returned.
+- Given a `client_id` in the request, when the chat processes, then all data access is filtered by `client_id` (NFR-MULTI-1).
+- Given rate limit is exceeded, when the endpoint is called, then 429 is returned with `Retry-After` header.
+
+**Status:** `[PROPOSED]` — Epic 13 expansion (2026-08-08).
+
+#### FR-57: Agent Registry
+As a platform administrator,
+I want to register agents with custom system prompts and tool configurations,
+So that different vertical clients can have specialized chat agents.
+
+**Acceptance Criteria:**
+- Given the migration runs, when complete, then an `agent_configs` table exists with fields: `id`, `client_id`, `name`, `system_instructions`, `enabled_tools`, `disabled_tools`, `model_name`, `citations_enabled`, `is_active`.
+- Given an `agent_id` is provided in a chat request, when processed, then the system loads the corresponding `AgentConfig` or returns 404 if not found.
+- Given a chat request with `agent_id`, when the chat flow starts, then `AgentConfig.system_instructions` is prepended to the default system prompt.
+
+**Status:** `[PROPOSED]` — Epic 13 expansion (2026-08-08).
 
 > **FR-24 đã chuyển sang §4.9.** ChainLens Research **không phải** một connector/scraper. Nó là Deep-Research Engine — dependency kiến trúc hạng nhất, governed by `AD-15` (không còn `AD-3`). Xem **§4.9**.
 
@@ -996,6 +1030,14 @@ Một `Memory` sinh ra từ dữ liệu scrape phải trỏ được về **đú
 #### NFR-5: Multi-tenancy Isolation
 - Mọi workspace-scoped query lọc theo `workspace_id`.
 - `Workspace.api_access_enabled` kiểm soát truy cập API theo workspace.
+
+#### NFR-MULTI-1: Tenant Isolation for Vertical Clients
+- Mọi memory/recall query từ public agent-chat API **bắt buộc** lọc theo `client_id` (hard filter, không phải soft boost).
+- Một client không bao giờ thấy data của client khác.
+- `client_id` được set qua PostgreSQL RLS context (`SET LOCAL app.current_client_id`).
+- Áp dụng cho: Memory, TokenUsage, Run, ResearchThread.
+
+**Status:** `[PROPOSED]` — BDS AI co-evolution yêu cầu isolation giữa vertical clients.
 
 #### NFR-6: Citation Full-Editor Highlight  `[DONE — cải chính 2026-07-25]`
 Click citation trong chat scroll/highlight được đoạn snippet tương ứng trong full document editor.
