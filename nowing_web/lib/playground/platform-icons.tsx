@@ -1,4 +1,4 @@
-import { Briefcase, Building2, Home } from "lucide-react";
+import { Briefcase, Building2, Home, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -47,3 +47,7 @@ export const VnJobsIcon = Briefcase;
 // Epic 2.7 — Walmart product + reviews scraper. Briefcase is a placeholder
 // until a dedicated Walmart brand SVG is added to /public/connectors.
 export const WalmartIcon = Briefcase;
+
+// Epic 15.1 — CafeF stock / financial data. TrendingUp is a placeholder
+// until a dedicated CafeF brand SVG is added to /public/connectors.
+export const CafeFIcon = TrendingUp;
