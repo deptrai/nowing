@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.news.rss_fetcher import NewsArticle, fetch_feed
+from app.services.news.rss_fetcher import NewsArticle, _parse_pub_date, fetch_feed
 
 SAMPLE_RSS = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -105,6 +105,19 @@ async def test_fetch_feed_http_error(monkeypatch):
     assert articles == []
 
 
+ATOM_FEED = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example Atom</title>
+  <entry>
+    <title>Atom Entry</title>
+    <link href="https://example.com/article/1"/>
+    <summary>Atom summary</summary>
+    <updated>2024-08-06T00:00:00Z</updated>
+  </entry>
+</feed>
+"""
+
+
 @pytest.mark.unit
 async def test_news_article_dataclass():
     """NewsArticle stores the expected fields."""
@@ -121,3 +134,35 @@ async def test_news_article_dataclass():
     assert article.description == "D"
     assert article.category == "C"
     assert article.source == "S"
+
+
+@pytest.mark.unit
+async def test_fetch_feed_parses_atom_with_namespace(monkeypatch):
+    """Atom feeds with a default namespace are found and parsed."""
+
+    async def _fake_get(self, url):
+        return _FakeResponse(ATOM_FEED)
+
+    monkeypatch.setattr(
+        "app.services.news.rss_fetcher.httpx.AsyncClient.get", _fake_get
+    )
+    articles = await fetch_feed("https://example.com/feed.atom")
+
+    assert len(articles) == 1
+    assert articles[0].title == "Atom Entry"
+    assert articles[0].link == "https://example.com/article/1"
+    assert articles[0].pub_date.endswith("+00:00")
+
+
+@pytest.mark.unit
+async def test_fetch_feed_rejects_private_ip():
+    """Private/internal feed URLs are rejected before any network call."""
+    articles = await fetch_feed("http://192.168.1.1/feed.rss")
+    assert articles == []
+
+
+@pytest.mark.unit
+async def test_parse_pub_date_invalid_uses_epoch():
+    """Unparseable pubDate falls back to a deterministic epoch sentinel."""
+    assert _parse_pub_date("not a date") == "1970-01-01T00:00:00+00:00"
+    assert _parse_pub_date(None) == "1970-01-01T00:00:00+00:00"

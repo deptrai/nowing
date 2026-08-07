@@ -6,8 +6,10 @@ different modules. It leverages the pyvalidators library where applicable
 to avoid rewriting common validation logic.
 """
 
+import ipaddress
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 import validators
 from fastapi import HTTPException
@@ -455,6 +457,47 @@ def validate_url(url: str) -> str:
     return url
 
 
+def validate_rss_feed_url(url: str) -> str:
+    """
+    Validate a public RSS feed URL.
+
+    Only http:// or https:// URLs with a non-private, non-local host are
+    accepted. This prevents SSRF via file://, localhost, loopback, link-local,
+    and private IP ranges.
+    """
+    if not url or not url.strip():
+        raise ValueError("RSS feed URL is required")
+
+    url = url.strip()
+    if not validators.url(url):
+        raise ValueError("Invalid RSS feed URL format")
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("RSS feed URL scheme must be http or https")
+    if not parsed.hostname:
+        raise ValueError("RSS feed URL must have a host")
+
+    hostname = parsed.hostname.lower()
+    if hostname == "localhost" or hostname.endswith(".localhost"):
+        raise ValueError("localhost is not allowed for RSS feed URLs")
+    if hostname.endswith(".local"):
+        raise ValueError(".local hosts are not allowed for RSS feed URLs")
+
+    try:
+        ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        # hostname is not an IP address; public DNS name accepted
+        pass
+    else:
+        if not ip.is_global:
+            raise ValueError(
+                "Non-public IP addresses are not allowed for RSS feed URLs"
+            )
+
+    return url
+
+
 def validate_uuid(uuid_string: str) -> str:
     """
     Validate UUID using pyvalidators library.
@@ -518,6 +561,20 @@ def validate_connector_config(
         value = config.get(key)
         if not isinstance(value, list) or not value:
             raise ValueError(f"{field_name} must be a non-empty list of strings")
+
+    def _validate_rss_feed_urls() -> None:
+        feed_urls = config.get("feed_urls")
+        if feed_urls is None:
+            return
+        if not isinstance(feed_urls, list) or not feed_urls:
+            raise ValueError("feed_urls must be a non-empty list of strings")
+        for i, url in enumerate(feed_urls):
+            if not isinstance(url, str) or not url.strip():
+                raise ValueError(f"feed_urls[{i}] must be a non-empty string")
+            try:
+                validate_rss_feed_url(url.strip())
+            except ValueError as exc:
+                raise ValueError(f"feed_urls[{i}] {exc}") from exc
 
     # Lookup table for connector validation rules
     connector_rules = {
@@ -608,6 +665,11 @@ def validate_connector_config(
             "required": [],
             "optional": ["exa_api_key", "server_config"],
             "validators": {},
+        },
+        "RSS_FEED": {
+            "required": [],
+            "optional": ["feed_urls"],
+            "validators": {"feed_urls": _validate_rss_feed_urls},
         },
     }
 

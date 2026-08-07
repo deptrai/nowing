@@ -12,10 +12,15 @@ from typing import Any
 
 import httpx
 
+from app.utils.validators import validate_rss_feed_url
+
 logger = logging.getLogger(__name__)
 
 # Short timeout so a slow portal does not block the whole polling cycle.
 _FEED_TIMEOUT = 10.0
+
+# Deterministic sentinel for items without a usable publication date.
+_MISSING_PUB_DATE = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 def _strip_html(raw: str) -> str:
@@ -28,21 +33,21 @@ def _strip_html(raw: str) -> str:
 def _parse_pub_date(raw: str | None) -> str:
     """Parse an RFC 822-ish pubDate and return an ISO 8601 UTC string."""
     if not raw:
-        return datetime.now(UTC).isoformat()
+        return _MISSING_PUB_DATE.isoformat()
     try:
         dt = parsedate_to_datetime(raw.strip())
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=UTC)
         return dt.astimezone(UTC).isoformat()
     except (TypeError, ValueError):
-        logger.debug("Could not parse pubDate %r; using now", raw)
-        return datetime.now(UTC).isoformat()
+        logger.debug("Could not parse pubDate %r; using epoch sentinel", raw)
+        return _MISSING_PUB_DATE.isoformat()
 
 
 def _first_text(parent: Any, *tags: str) -> str | None:
-    """Return text from the first matching child element."""
+    """Return text from the first matching child element (ignores XML namespaces)."""
     for tag in tags:
-        child = parent.find(tag)
+        child = parent.find(f"{{*}}{tag}")
         if child is not None and child.text:
             return child.text.strip()
     return None
@@ -60,15 +65,28 @@ class NewsArticle:
     source: str
 
 
+async def _validate_rss_request(request: httpx.Request) -> None:
+    """Reject private/internal URLs before any request (including redirects)."""
+    validate_rss_feed_url(str(request.url))
+
+
 async def fetch_feed(url: str) -> list[NewsArticle]:
     """Fetch and parse a single RSS feed URL.
 
-    Returns an empty list on network or parse failures so that one bad
-    feed does not abort the entire poll.
+    Returns an empty list on network, parse, or validation failures so that
+    one bad feed does not abort the entire poll.
     """
     try:
+        validate_rss_feed_url(url)
+    except ValueError as exc:
+        logger.warning("RSS feed URL %s rejected: %s", url, exc)
+        return []
+
+    try:
         async with httpx.AsyncClient(
-            timeout=_FEED_TIMEOUT, follow_redirects=True
+            timeout=_FEED_TIMEOUT,
+            follow_redirects=True,
+            event_hooks={"request": [_validate_rss_request]},
         ) as client:
             response = await client.get(url)
             response.raise_for_status()
@@ -78,6 +96,9 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
         return []
     except httpx.RequestError as exc:
         logger.warning("RSS feed %s request error: %s", url, exc)
+        return []
+    except ValueError as exc:
+        logger.warning("RSS feed URL %s rejected during request: %s", url, exc)
         return []
 
     try:
@@ -90,7 +111,7 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
         logger.warning("RSS feed %s parse error: %s", url, exc)
         return []
 
-    channel = root.find("channel")
+    channel = root.find("{*}channel")
     if channel is None:
         # Some feeds (e.g. Atom-style) use <feed> as the root; try first item.
         channel = root
@@ -100,12 +121,13 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
 
     source_name = source_name_from_url(url, channel_title)
 
-    # RSS 2.0 <item>; Atom uses <entry>. Both are fine for a broad search.
+    # RSS 2.0 <item>; Atom uses <entry>. {*}
+    # ignores default/prefixed namespaces so all feed variants are found.
     items = (
-        channel.findall("item")
-        or channel.findall("entry")
-        or root.findall(".//item")
-        or root.findall(".//entry")
+        channel.findall("{*}item")
+        or channel.findall("{*}entry")
+        or root.findall(".//{*}item")
+        or root.findall(".//{*}entry")
     )
 
     articles: list[NewsArticle] = []
@@ -114,7 +136,7 @@ async def fetch_feed(url: str) -> list[NewsArticle]:
         link = _first_text(item, "link") or ""
         if not link:
             # Atom often places the href in a <link href="..."/> attribute.
-            link_el = item.find("link")
+            link_el = item.find("{*}link")
             if link_el is not None:
                 link = link_el.get("href") or ""
 
