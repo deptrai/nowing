@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-07 00:37:26"
-last_updated: "2026-08-07 00:37:26"
+last_updated: "2026-08-07 08:51:48"
 # ponytail: Story 13.1 BMAD validation completed 2026-08-07; canonical story + validation report added.
 project: Nowing
 project_key: NOKEY
@@ -189,5 +189,17 @@ validation_reports:
     survived: 237
     p0: 0
     p1: 237
+    p2: 0
+  - story: "16-1"
+    type: "mutation-gate"
+    commit: "1aa5ba32a"
+    report: "_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T015148Z.json"
+    session: "_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T081500Z.sqlite"
+    verdict: "PASS_WITH_WARNINGS"
+    mutation_score: 61.12
+    killed: 360
+    survived: 229
+    p0: 0
+    p1: 229
     p2: 0
 

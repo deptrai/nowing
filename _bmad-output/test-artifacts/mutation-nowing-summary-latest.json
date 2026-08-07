@@ -1,109 +1,19 @@
 {
   "dimension": "mutation",
-  "runAt": "2026-08-07T01:02:12.064370+00:00",
+  "runAt": "2026-08-07T01:51:48.065711+00:00",
   "services": [
     {
       "service": "masothue",
       "total": 589,
-      "killed": 352,
-      "survived": 237,
+      "killed": 360,
+      "survived": 229,
       "timeout": 0,
       "noTests": 0,
-      "mutationScore": 59.76,
-      "verdict": "FAIL",
+      "mutationScore": 61.12,
+      "verdict": "PASS_WITH_WARNINGS",
       "triage": {
         "P0": [],
         "P1": [
-          {
-            "file": "app/capabilities/masothue/scrape/executor.py",
-            "line": 40,
-            "col": 27,
-            "operator": "core/NumberReplacer",
-            "pattern": "4-arithmetic-not-asserted",
-            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -37,7 +37,7 @@\n     if result is None:\n         return {\n             \"items\": [],\n-            \"total_items\": 0,\n+            \"total_items\": 1,\n             \"degraded\": True,\n             \"degradation_reason\": \"unknown\",\n         }",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:40 (4-arithmetic-not-asserted)."
-          },
-          {
-            "file": "app/capabilities/masothue/scrape/executor.py",
-            "line": 40,
-            "col": 27,
-            "operator": "core/NumberReplacer",
-            "pattern": "4-arithmetic-not-asserted",
-            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -37,7 +37,7 @@\n     if result is None:\n         return {\n             \"items\": [],\n-            \"total_items\": 0,\n+            \"total_items\": -1,\n             \"degraded\": True,\n             \"degradation_reason\": \"unknown\",\n         }",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:40 (4-arithmetic-not-asserted)."
-          },
-          {
-            "file": "app/capabilities/masothue/scrape/executor.py",
-            "line": 85,
-            "col": 28,
-            "operator": "core/NumberReplacer",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -82,7 +82,7 @@\n             logger.exception(\"masothue.scrape decode error\")\n             return ScrapeOutput(\n                 items=[],\n-                cost_micros=0,\n+                cost_micros= 1,\n                 degraded=True,\n                 degradation_reason=\"decode_error\",\n             )",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:85 (3-happy-path-only)."
-          },
-          {
-            "file": "app/capabilities/masothue/scrape/executor.py",
-            "line": 85,
-            "col": 28,
-            "operator": "core/NumberReplacer",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -82,7 +82,7 @@\n             logger.exception(\"masothue.scrape decode error\")\n             return ScrapeOutput(\n                 items=[],\n-                cost_micros=0,\n+                cost_micros= -1,\n                 degraded=True,\n                 degradation_reason=\"decode_error\",\n             )",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:85 (3-happy-path-only)."
-          },
-          {
-            "file": "app/capabilities/masothue/scrape/executor.py",
-            "line": 93,
-            "col": 28,
-            "operator": "core/NumberReplacer",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -90,7 +90,7 @@\n             logger.exception(\"masothue.scrape timeout\")\n             return ScrapeOutput(\n                 items=[],\n-                cost_micros=0,\n+                cost_micros= 1,\n                 degraded=True,\n                 degradation_reason=\"timeout\",\n             )",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:93 (3-happy-path-only)."
-          },
-          {
-            "file": "app/capabilities/masothue/scrape/executor.py",
-            "line": 93,
-            "col": 28,
-            "operator": "core/NumberReplacer",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -90,7 +90,7 @@\n             logger.exception(\"masothue.scrape timeout\")\n             return ScrapeOutput(\n                 items=[],\n-                cost_micros=0,\n+                cost_micros= -1,\n                 degraded=True,\n                 degradation_reason=\"timeout\",\n             )",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:93 (3-happy-path-only)."
-          },
-          {
-            "file": "app/capabilities/masothue/scrape/executor.py",
-            "line": 101,
-            "col": 28,
-            "operator": "core/NumberReplacer",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -98,7 +98,7 @@\n             logger.exception(\"masothue.scrape actor failed: %s\", exc)\n             return ScrapeOutput(\n                 items=[],\n-                cost_micros=0,\n+                cost_micros= 1,\n                 degraded=True,\n                 degradation_reason=\"api_error\",\n             )",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:101 (3-happy-path-only)."
-          },
-          {
-            "file": "app/capabilities/masothue/scrape/executor.py",
-            "line": 101,
-            "col": 28,
-            "operator": "core/NumberReplacer",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -98,7 +98,7 @@\n             logger.exception(\"masothue.scrape actor failed: %s\", exc)\n             return ScrapeOutput(\n                 items=[],\n-                cost_micros=0,\n+                cost_micros= -1,\n                 degraded=True,\n                 degradation_reason=\"api_error\",\n             )",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:101 (3-happy-path-only)."
-          },
-          {
-            "file": "app/capabilities/masothue/scrape/executor.py",
-            "line": 121,
-            "col": 66,
-            "operator": "core/NumberReplacer",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -118,7 +118,7 @@\n                 items.append(item.to_output())\n \n         # A degraded run is not billed even if partial items were returned.\n-        rate = getattr(config, \"MASOTHUE_SCRAPE_MICROS_PER_ITEM\", 3000)\n+        rate = getattr(config, \"MASOTHUE_SCRAPE_MICROS_PER_ITEM\", 3001)\n         cost = 0 if degraded else total * rate\n \n         # Persist each company to the canonical entity store.",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:121 (3-happy-path-only)."
-          },
-          {
-            "file": "app/capabilities/masothue/scrape/executor.py",
-            "line": 121,
-            "col": 66,
-            "operator": "core/NumberReplacer",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -118,7 +118,7 @@\n                 items.append(item.to_output())\n \n         # A degraded run is not billed even if partial items were returned.\n-        rate = getattr(config, \"MASOTHUE_SCRAPE_MICROS_PER_ITEM\", 3000)\n+        rate = getattr(config, \"MASOTHUE_SCRAPE_MICROS_PER_ITEM\", 2999)\n         cost = 0 if degraded else total * rate\n \n         # Persist each company to the canonical entity store.",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:121 (3-happy-path-only)."
-          },
           {
             "file": "app/proprietary/platforms/masothue/scraper.py",
             "line": 100,
@@ -969,6 +879,393 @@
             "recommendedTest": "Add a test that kills core/NumberReplacer at app/proprietary/platforms/masothue/scraper.py:100 (3-happy-path-only)."
           },
           {
+            "file": "app/capabilities/masothue/scrape/executor.py",
+            "line": 121,
+            "col": 66,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -118,7 +118,7 @@\n                 items.append(item.to_output())\n \n         # A degraded run is not billed even if partial items were returned.\n-        rate = getattr(config, \"MASOTHUE_SCRAPE_MICROS_PER_ITEM\", 3000)\n+        rate = getattr(config, \"MASOTHUE_SCRAPE_MICROS_PER_ITEM\", 3001)\n         cost = 0 if degraded else total * rate\n \n         # Persist each company to the canonical entity store.",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:121 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/masothue/scrape/executor.py",
+            "line": 121,
+            "col": 66,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/masothue/scrape/executor.py\n+++ bapp/capabilities/masothue/scrape/executor.py\n@@ -118,7 +118,7 @@\n                 items.append(item.to_output())\n \n         # A degraded run is not billed even if partial items were returned.\n-        rate = getattr(config, \"MASOTHUE_SCRAPE_MICROS_PER_ITEM\", 3000)\n+        rate = getattr(config, \"MASOTHUE_SCRAPE_MICROS_PER_ITEM\", 2999)\n         cost = 0 if degraded else total * rate\n \n         # Persist each company to the canonical entity store.",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/masothue/scrape/executor.py:121 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 203,
+            "col": 4,
+            "operator": "core/ReplaceBinaryOperator_Mul_Div",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -200,7 +200,7 @@\n def apply_detail(\n     company: MasothueCompany,\n     detail_html: str,\n-    *,\n+    /,\n     include_phone: bool = False,\n ) -> MasothueCompany:\n     \"\"\"Enhance a search-result company with parsed detail-page data.\"\"\"",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_Div at app/proprietary/platforms/masothue/parsers.py:203 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 93,
+            "col": 15,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -90,7 +90,7 @@\n         if \"nếu bạn có đề xuất\" in value.lower():\n             continue\n \n-        if key == \"phone\" and not include_phone:\n+        if key >= \"phone\" and not include_phone:\n             continue\n \n         data[key] = value",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/proprietary/platforms/masothue/parsers.py:93 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 93,
+            "col": 15,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -90,7 +90,7 @@\n         if \"nếu bạn có đề xuất\" in value.lower():\n             continue\n \n-        if key == \"phone\" and not include_phone:\n+        if key is \"phone\" and not include_phone:\n             continue\n \n         data[key] = value",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/proprietary/platforms/masothue/parsers.py:93 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 195,
+            "col": 40,
+            "operator": "core/ReplaceComparisonOperator_Gt_Eq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p == current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_Eq at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 195,
+            "col": 40,
+            "operator": "core/ReplaceComparisonOperator_Gt_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p != current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_NotEq at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 195,
+            "col": 40,
+            "operator": "core/ReplaceComparisonOperator_Gt_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p < current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_Lt at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 195,
+            "col": 40,
+            "operator": "core/ReplaceComparisonOperator_Gt_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p <= current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_LtE at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 195,
+            "col": 40,
+            "operator": "core/ReplaceComparisonOperator_Gt_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p >= current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_GtE at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 195,
+            "col": 40,
+            "operator": "core/ReplaceComparisonOperator_Gt_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p is current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_Is at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 195,
+            "col": 40,
+            "operator": "core/ReplaceComparisonOperator_Gt_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p is not current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_IsNot at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 218,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Is_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -215,7 +215,7 @@\n             setattr(company, key, value)\n \n     # Detail URL from the path if the company has none.\n-    if company.detail_url is None and company.tax_code and company.name:\n+    if company.detail_url is not None and company.tax_code and company.name:\n         slug = re.sub(r\"\\s+\", \"-\", company.name.strip().lower())\n         slug = re.sub(r\"[^\\w\\-]\", \"\", slug)\n         company.detail_url = f\"{_ORIGIN}/{company.tax_code}-{slug}\"",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Is_IsNot at app/proprietary/platforms/masothue/parsers.py:218 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 191,
+            "col": 11,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -188,7 +188,7 @@\n             page = int(text)\n         except ValueError:\n             continue\n-        if \"current\" in (a.get(\"class\") or []):\n+        if not \"current\" in (a.get(\"class\") or []):\n             current = page\n         pages.add(page)\n ",
+            "recommendedTest": "Add a test that kills core/AddNot at app/proprietary/platforms/masothue/parsers.py:191 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 196,
+            "col": 35,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -193,7 +193,7 @@\n         pages.add(page)\n \n     next_pages = [p for p in pages if p > current]\n-    next_page = min(next_pages) if next_pages else None\n+    next_page = min(next_pages) if not next_pages else None\n     return current, next_page\n \n ",
+            "recommendedTest": "Add a test that kills core/AddNot at app/proprietary/platforms/masothue/parsers.py:196 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 218,
+            "col": 7,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -215,7 +215,7 @@\n             setattr(company, key, value)\n \n     # Detail URL from the path if the company has none.\n-    if company.detail_url is None and company.tax_code and company.name:\n+    if not company.detail_url is None and company.tax_code and company.name:\n         slug = re.sub(r\"\\s+\", \"-\", company.name.strip().lower())\n         slug = re.sub(r\"[^\\w\\-]\", \"\", slug)\n         company.detail_url = f\"{_ORIGIN}/{company.tax_code}-{slug}\"",
+            "recommendedTest": "Add a test that kills core/AddNot at app/proprietary/platforms/masothue/parsers.py:218 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 79,
+            "col": 47,
+            "operator": "core/ReplaceTrueWithFalse",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -76,7 +76,7 @@\n         if not th or not td:\n             continue\n \n-        key = _normalize_key(th.get_text(strip=True))\n+        key = _normalize_key(th.get_text(strip=False))\n         if key is None:\n             continue\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/proprietary/platforms/masothue/parsers.py:79 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 83,
+            "col": 51,
+            "operator": "core/ReplaceTrueWithFalse",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -80,7 +80,7 @@\n         if key is None:\n             continue\n \n-        value = _clean_text(td.get_text(\" \", strip=True))\n+        value = _clean_text(td.get_text(\" \", strip=False))\n         if value is None:\n             continue\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/proprietary/platforms/masothue/parsers.py:83 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 130,
+            "col": 40,
+            "operator": "core/ReplaceTrueWithFalse",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -127,7 +127,7 @@\n     if not a:\n         return None\n \n-    name = _clean_text(a.get_text(strip=True))\n+    name = _clean_text(a.get_text(strip=False))\n     detail_path = a.get(\"href\")\n     detail_url = _absolute_url(detail_path)\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/proprietary/platforms/masothue/parsers.py:130 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 138,
+            "col": 51,
+            "operator": "core/ReplaceTrueWithFalse",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -135,7 +135,7 @@\n         return None\n \n     # Tax code and representative are in the text following the title.\n-    siblings_text = \" \".join(p.get_text(\" \", strip=True) for p in card.find_all([\"p\", \"div\"]))\n+    siblings_text = \" \".join(p.get_text(\" \", strip=False) for p in card.find_all([\"p\", \"div\"]))\n     tax_code = _extract_tax_code(siblings_text)\n     legal_representative = _extract_representative(siblings_text)\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/proprietary/platforms/masothue/parsers.py:138 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 186,
+            "col": 32,
+            "operator": "core/ReplaceTrueWithFalse",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -183,7 +183,7 @@\n     pages: set[int] = set()\n \n     for a in soup.select(\".page-numbers\"):\n-        text = a.get_text(strip=True)\n+        text = a.get_text(strip=False)\n         try:\n             page = int(text)\n         except ValueError:",
+            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/proprietary/platforms/masothue/parsers.py:186 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 65,
+            "col": 56,
+            "operator": "core/ReplaceFalseWithTrue",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -62,7 +62,7 @@\n     return urljoin(_ORIGIN, href)\n \n \n-def parse_detail_table(html: str, include_phone: bool = False) -> dict[str, Any]:\n+def parse_detail_table(html: str, include_phone: bool = True) -> dict[str, Any]:\n     \"\"\"Parse ``table.table-taxinfo`` from a masothue detail page.\"\"\"\n     soup = BeautifulSoup(html, \"lxml\")\n     table = soup.select_one(\"table.table-taxinfo\")",
+            "recommendedTest": "Add a test that kills core/ReplaceFalseWithTrue at app/proprietary/platforms/masothue/parsers.py:65 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 204,
+            "col": 26,
+            "operator": "core/ReplaceFalseWithTrue",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -201,7 +201,7 @@\n     company: MasothueCompany,\n     detail_html: str,\n     *,\n-    include_phone: bool = False,\n+    include_phone: bool = True,\n ) -> MasothueCompany:\n     \"\"\"Enhance a search-result company with parsed detail-page data.\"\"\"\n     data = parse_detail_table(detail_html, include_phone=include_phone)",
+            "recommendedTest": "Add a test that kills core/ReplaceFalseWithTrue at app/proprietary/platforms/masothue/parsers.py:204 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 218,
+            "col": 34,
+            "operator": "core/ReplaceAndWithOr",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -215,7 +215,7 @@\n             setattr(company, key, value)\n \n     # Detail URL from the path if the company has none.\n-    if company.detail_url is None and company.tax_code and company.name:\n+    if company.detail_url is None or company.tax_code and company.name:\n         slug = re.sub(r\"\\s+\", \"-\", company.name.strip().lower())\n         slug = re.sub(r\"[^\\w\\-]\", \"\", slug)\n         company.detail_url = f\"{_ORIGIN}/{company.tax_code}-{slug}\"",
+            "recommendedTest": "Add a test that kills core/ReplaceAndWithOr at app/proprietary/platforms/masothue/parsers.py:218 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 218,
+            "col": 55,
+            "operator": "core/ReplaceAndWithOr",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -215,7 +215,7 @@\n             setattr(company, key, value)\n \n     # Detail URL from the path if the company has none.\n-    if company.detail_url is None and company.tax_code and company.name:\n+    if company.detail_url is None and company.tax_code or company.name:\n         slug = re.sub(r\"\\s+\", \"-\", company.name.strip().lower())\n         slug = re.sub(r\"[^\\w\\-]\", \"\", slug)\n         company.detail_url = f\"{_ORIGIN}/{company.tax_code}-{slug}\"",
+            "recommendedTest": "Add a test that kills core/ReplaceAndWithOr at app/proprietary/platforms/masothue/parsers.py:218 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 76,
+            "col": 18,
+            "operator": "core/ReplaceOrWithAnd",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -73,7 +73,7 @@\n     for row in table.find_all(\"tr\"):\n         th = row.find(\"th\")\n         td = row.find(\"td\")\n-        if not th or not td:\n+        if not th and not td:\n             continue\n \n         key = _normalize_key(th.get_text(strip=True))",
+            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:76 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 167,
+            "col": 27,
+            "operator": "core/ReplaceOrWithAnd",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -164,7 +164,7 @@\n     seen: set[str] = set()\n     for card in cards:\n         company = _parse_search_result_card(card)\n-        if company is None or company.name is None:\n+        if company is None and company.name is None:\n             continue\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n         key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"",
+            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:167 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 170,
+            "col": 30,
+            "operator": "core/ReplaceOrWithAnd",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -167,7 +167,7 @@\n         if company is None or company.name is None:\n             continue\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n-        key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n+        key = f\"{company.name and ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n         if key in seen:\n             continue\n         seen.add(key)",
+            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:170 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 170,
+            "col": 55,
+            "operator": "core/ReplaceOrWithAnd",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -167,7 +167,7 @@\n         if company is None or company.name is None:\n             continue\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n-        key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n+        key = f\"{company.name or ''}|{company.tax_code and ''}|{company.detail_url or ''}\"\n         if key in seen:\n             continue\n         seen.add(key)",
+            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:170 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 170,
+            "col": 82,
+            "operator": "core/ReplaceOrWithAnd",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -167,7 +167,7 @@\n         if company is None or company.name is None:\n             continue\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n-        key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n+        key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url and ''}\"\n         if key in seen:\n             continue\n         seen.add(key)",
+            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:170 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 191,
+            "col": 40,
+            "operator": "core/ReplaceOrWithAnd",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -188,7 +188,7 @@\n             page = int(text)\n         except ValueError:\n             continue\n-        if \"current\" in (a.get(\"class\") or []):\n+        if \"current\" in (a.get(\"class\") and []):\n             current = page\n         pages.add(page)\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:191 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 77,
+            "col": 12,
+            "operator": "core/ReplaceContinueWithBreak",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -74,7 +74,7 @@\n         th = row.find(\"th\")\n         td = row.find(\"td\")\n         if not th or not td:\n-            continue\n+            break\n \n         key = _normalize_key(th.get_text(strip=True))\n         if key is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:77 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 81,
+            "col": 12,
+            "operator": "core/ReplaceContinueWithBreak",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -78,7 +78,7 @@\n \n         key = _normalize_key(th.get_text(strip=True))\n         if key is None:\n-            continue\n+            break\n \n         value = _clean_text(td.get_text(\" \", strip=True))\n         if value is None:",
+            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:81 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 85,
+            "col": 12,
+            "operator": "core/ReplaceContinueWithBreak",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -82,7 +82,7 @@\n \n         value = _clean_text(td.get_text(\" \", strip=True))\n         if value is None:\n-            continue\n+            break\n \n         # Drop ad/upsell rows masquerading as data.\n         if \"cập nhật mã số thuế\" in value.lower():",
+            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:85 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 89,
+            "col": 12,
+            "operator": "core/ReplaceContinueWithBreak",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -86,7 +86,7 @@\n \n         # Drop ad/upsell rows masquerading as data.\n         if \"cập nhật mã số thuế\" in value.lower():\n-            continue\n+            break\n         if \"nếu bạn có đề xuất\" in value.lower():\n             continue\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:89 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 91,
+            "col": 12,
+            "operator": "core/ReplaceContinueWithBreak",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -88,7 +88,7 @@\n         if \"cập nhật mã số thuế\" in value.lower():\n             continue\n         if \"nếu bạn có đề xuất\" in value.lower():\n-            continue\n+            break\n \n         if key == \"phone\" and not include_phone:\n             continue",
+            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:91 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 168,
+            "col": 12,
+            "operator": "core/ReplaceContinueWithBreak",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -165,7 +165,7 @@\n     for card in cards:\n         company = _parse_search_result_card(card)\n         if company is None or company.name is None:\n-            continue\n+            break\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n         key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n         if key in seen:",
+            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:168 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 172,
+            "col": 12,
+            "operator": "core/ReplaceContinueWithBreak",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -169,7 +169,7 @@\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n         key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n         if key in seen:\n-            continue\n+            break\n         seen.add(key)\n         results.append(company)\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:172 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 190,
+            "col": 12,
+            "operator": "core/ReplaceContinueWithBreak",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -187,7 +187,7 @@\n         try:\n             page = int(text)\n         except ValueError:\n-            continue\n+            break\n         if \"current\" in (a.get(\"class\") or []):\n             current = page\n         pages.add(page)",
+            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:190 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 189,
+            "col": 15,
+            "operator": "core/ExceptionReplacer",
+            "pattern": "5-error-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -186,7 +186,7 @@\n         text = a.get_text(strip=True)\n         try:\n             page = int(text)\n-        except ValueError:\n+        except CosmicRayTestingException:\n             continue\n         if \"current\" in (a.get(\"class\") or []):\n             current = page",
+            "recommendedTest": "Add a test that kills core/ExceptionReplacer at app/proprietary/platforms/masothue/parsers.py:189 (5-error-not-asserted)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 182,
+            "col": 14,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -179,7 +179,7 @@\n def parse_pagination(html: str) -> tuple[int, int | None]:\n     \"\"\"Return (current_page, next_page) from the page-numbers widget.\"\"\"\n     soup = BeautifulSoup(html, \"lxml\")\n-    current = 1\n+    current = 2\n     pages: set[int] = set()\n \n     for a in soup.select(\".page-numbers\"):",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/proprietary/platforms/masothue/parsers.py:182 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 182,
+            "col": 14,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -179,7 +179,7 @@\n def parse_pagination(html: str) -> tuple[int, int | None]:\n     \"\"\"Return (current_page, next_page) from the page-numbers widget.\"\"\"\n     soup = BeautifulSoup(html, \"lxml\")\n-    current = 1\n+    current = 0\n     pages: set[int] = set()\n \n     for a in soup.select(\".page-numbers\"):",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/proprietary/platforms/masothue/parsers.py:182 (3-happy-path-only)."
+          },
+          {
+            "file": "app/proprietary/platforms/masothue/parsers.py",
+            "line": 185,
+            "col": 13,
+            "operator": "core/ZeroIterationForLoop",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -182,7 +182,7 @@\n     current = 1\n     pages: set[int] = set()\n \n-    for a in soup.select(\".page-numbers\"):\n+    for a in []:\n         text = a.get_text(strip=True)\n         try:\n             page = int(text)",
+            "recommendedTest": "Add a test that kills core/ZeroIterationForLoop at app/proprietary/platforms/masothue/parsers.py:185 (3-happy-path-only)."
+          },
+          {
             "file": "app/proprietary/platforms/masothue/fetch.py",
             "line": 89,
             "col": 4,
@@ -1743,375 +2040,6 @@
             "recommendedTest": "Add a test that kills core/RemoveDecorator at app/capabilities/masothue/scrape/schemas.py:58 (3-happy-path-only)."
           },
           {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 203,
-            "col": 4,
-            "operator": "core/ReplaceBinaryOperator_Mul_Div",
-            "pattern": "4-arithmetic-not-asserted",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -200,7 +200,7 @@\n def apply_detail(\n     company: MasothueCompany,\n     detail_html: str,\n-    *,\n+    /,\n     include_phone: bool = False,\n ) -> MasothueCompany:\n     \"\"\"Enhance a search-result company with parsed detail-page data.\"\"\"",
-            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Mul_Div at app/proprietary/platforms/masothue/parsers.py:203 (4-arithmetic-not-asserted)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 93,
-            "col": 15,
-            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -90,7 +90,7 @@\n         if \"nếu bạn có đề xuất\" in value.lower():\n             continue\n \n-        if key == \"phone\" and not include_phone:\n+        if key >= \"phone\" and not include_phone:\n             continue\n \n         data[key] = value",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/proprietary/platforms/masothue/parsers.py:93 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 93,
-            "col": 15,
-            "operator": "core/ReplaceComparisonOperator_Eq_Is",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -90,7 +90,7 @@\n         if \"nếu bạn có đề xuất\" in value.lower():\n             continue\n \n-        if key == \"phone\" and not include_phone:\n+        if key is \"phone\" and not include_phone:\n             continue\n \n         data[key] = value",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/proprietary/platforms/masothue/parsers.py:93 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 195,
-            "col": 40,
-            "operator": "core/ReplaceComparisonOperator_Gt_Eq",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p == current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_Eq at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 195,
-            "col": 40,
-            "operator": "core/ReplaceComparisonOperator_Gt_NotEq",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p != current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_NotEq at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 195,
-            "col": 40,
-            "operator": "core/ReplaceComparisonOperator_Gt_Lt",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p < current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_Lt at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 195,
-            "col": 40,
-            "operator": "core/ReplaceComparisonOperator_Gt_LtE",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p <= current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_LtE at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 195,
-            "col": 40,
-            "operator": "core/ReplaceComparisonOperator_Gt_GtE",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p >= current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_GtE at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 195,
-            "col": 40,
-            "operator": "core/ReplaceComparisonOperator_Gt_Is",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p is current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_Is at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 195,
-            "col": 40,
-            "operator": "core/ReplaceComparisonOperator_Gt_IsNot",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -192,7 +192,7 @@\n             current = page\n         pages.add(page)\n \n-    next_pages = [p for p in pages if p > current]\n+    next_pages = [p for p in pages if p is not current]\n     next_page = min(next_pages) if next_pages else None\n     return current, next_page\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Gt_IsNot at app/proprietary/platforms/masothue/parsers.py:195 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 218,
-            "col": 26,
-            "operator": "core/ReplaceComparisonOperator_Is_IsNot",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -215,7 +215,7 @@\n             setattr(company, key, value)\n \n     # Detail URL from the path if the company has none.\n-    if company.detail_url is None and company.tax_code and company.name:\n+    if company.detail_url is not None and company.tax_code and company.name:\n         slug = re.sub(r\"\\s+\", \"-\", company.name.strip().lower())\n         slug = re.sub(r\"[^\\w\\-]\", \"\", slug)\n         company.detail_url = f\"{_ORIGIN}/{company.tax_code}-{slug}\"",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Is_IsNot at app/proprietary/platforms/masothue/parsers.py:218 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 191,
-            "col": 11,
-            "operator": "core/AddNot",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -188,7 +188,7 @@\n             page = int(text)\n         except ValueError:\n             continue\n-        if \"current\" in (a.get(\"class\") or []):\n+        if not \"current\" in (a.get(\"class\") or []):\n             current = page\n         pages.add(page)\n ",
-            "recommendedTest": "Add a test that kills core/AddNot at app/proprietary/platforms/masothue/parsers.py:191 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 196,
-            "col": 35,
-            "operator": "core/AddNot",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -193,7 +193,7 @@\n         pages.add(page)\n \n     next_pages = [p for p in pages if p > current]\n-    next_page = min(next_pages) if next_pages else None\n+    next_page = min(next_pages) if not next_pages else None\n     return current, next_page\n \n ",
-            "recommendedTest": "Add a test that kills core/AddNot at app/proprietary/platforms/masothue/parsers.py:196 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 218,
-            "col": 7,
-            "operator": "core/AddNot",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -215,7 +215,7 @@\n             setattr(company, key, value)\n \n     # Detail URL from the path if the company has none.\n-    if company.detail_url is None and company.tax_code and company.name:\n+    if not company.detail_url is None and company.tax_code and company.name:\n         slug = re.sub(r\"\\s+\", \"-\", company.name.strip().lower())\n         slug = re.sub(r\"[^\\w\\-]\", \"\", slug)\n         company.detail_url = f\"{_ORIGIN}/{company.tax_code}-{slug}\"",
-            "recommendedTest": "Add a test that kills core/AddNot at app/proprietary/platforms/masothue/parsers.py:218 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 79,
-            "col": 47,
-            "operator": "core/ReplaceTrueWithFalse",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -76,7 +76,7 @@\n         if not th or not td:\n             continue\n \n-        key = _normalize_key(th.get_text(strip=True))\n+        key = _normalize_key(th.get_text(strip=False))\n         if key is None:\n             continue\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/proprietary/platforms/masothue/parsers.py:79 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 83,
-            "col": 51,
-            "operator": "core/ReplaceTrueWithFalse",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -80,7 +80,7 @@\n         if key is None:\n             continue\n \n-        value = _clean_text(td.get_text(\" \", strip=True))\n+        value = _clean_text(td.get_text(\" \", strip=False))\n         if value is None:\n             continue\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/proprietary/platforms/masothue/parsers.py:83 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 130,
-            "col": 40,
-            "operator": "core/ReplaceTrueWithFalse",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -127,7 +127,7 @@\n     if not a:\n         return None\n \n-    name = _clean_text(a.get_text(strip=True))\n+    name = _clean_text(a.get_text(strip=False))\n     detail_path = a.get(\"href\")\n     detail_url = _absolute_url(detail_path)\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/proprietary/platforms/masothue/parsers.py:130 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 138,
-            "col": 51,
-            "operator": "core/ReplaceTrueWithFalse",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -135,7 +135,7 @@\n         return None\n \n     # Tax code and representative are in the text following the title.\n-    siblings_text = \" \".join(p.get_text(\" \", strip=True) for p in card.find_all([\"p\", \"div\"]))\n+    siblings_text = \" \".join(p.get_text(\" \", strip=False) for p in card.find_all([\"p\", \"div\"]))\n     tax_code = _extract_tax_code(siblings_text)\n     legal_representative = _extract_representative(siblings_text)\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/proprietary/platforms/masothue/parsers.py:138 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 186,
-            "col": 32,
-            "operator": "core/ReplaceTrueWithFalse",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -183,7 +183,7 @@\n     pages: set[int] = set()\n \n     for a in soup.select(\".page-numbers\"):\n-        text = a.get_text(strip=True)\n+        text = a.get_text(strip=False)\n         try:\n             page = int(text)\n         except ValueError:",
-            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/proprietary/platforms/masothue/parsers.py:186 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 65,
-            "col": 56,
-            "operator": "core/ReplaceFalseWithTrue",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -62,7 +62,7 @@\n     return urljoin(_ORIGIN, href)\n \n \n-def parse_detail_table(html: str, include_phone: bool = False) -> dict[str, Any]:\n+def parse_detail_table(html: str, include_phone: bool = True) -> dict[str, Any]:\n     \"\"\"Parse ``table.table-taxinfo`` from a masothue detail page.\"\"\"\n     soup = BeautifulSoup(html, \"lxml\")\n     table = soup.select_one(\"table.table-taxinfo\")",
-            "recommendedTest": "Add a test that kills core/ReplaceFalseWithTrue at app/proprietary/platforms/masothue/parsers.py:65 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 204,
-            "col": 26,
-            "operator": "core/ReplaceFalseWithTrue",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -201,7 +201,7 @@\n     company: MasothueCompany,\n     detail_html: str,\n     *,\n-    include_phone: bool = False,\n+    include_phone: bool = True,\n ) -> MasothueCompany:\n     \"\"\"Enhance a search-result company with parsed detail-page data.\"\"\"\n     data = parse_detail_table(detail_html, include_phone=include_phone)",
-            "recommendedTest": "Add a test that kills core/ReplaceFalseWithTrue at app/proprietary/platforms/masothue/parsers.py:204 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 218,
-            "col": 34,
-            "operator": "core/ReplaceAndWithOr",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -215,7 +215,7 @@\n             setattr(company, key, value)\n \n     # Detail URL from the path if the company has none.\n-    if company.detail_url is None and company.tax_code and company.name:\n+    if company.detail_url is None or company.tax_code and company.name:\n         slug = re.sub(r\"\\s+\", \"-\", company.name.strip().lower())\n         slug = re.sub(r\"[^\\w\\-]\", \"\", slug)\n         company.detail_url = f\"{_ORIGIN}/{company.tax_code}-{slug}\"",
-            "recommendedTest": "Add a test that kills core/ReplaceAndWithOr at app/proprietary/platforms/masothue/parsers.py:218 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 218,
-            "col": 55,
-            "operator": "core/ReplaceAndWithOr",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -215,7 +215,7 @@\n             setattr(company, key, value)\n \n     # Detail URL from the path if the company has none.\n-    if company.detail_url is None and company.tax_code and company.name:\n+    if company.detail_url is None and company.tax_code or company.name:\n         slug = re.sub(r\"\\s+\", \"-\", company.name.strip().lower())\n         slug = re.sub(r\"[^\\w\\-]\", \"\", slug)\n         company.detail_url = f\"{_ORIGIN}/{company.tax_code}-{slug}\"",
-            "recommendedTest": "Add a test that kills core/ReplaceAndWithOr at app/proprietary/platforms/masothue/parsers.py:218 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 76,
-            "col": 18,
-            "operator": "core/ReplaceOrWithAnd",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -73,7 +73,7 @@\n     for row in table.find_all(\"tr\"):\n         th = row.find(\"th\")\n         td = row.find(\"td\")\n-        if not th or not td:\n+        if not th and not td:\n             continue\n \n         key = _normalize_key(th.get_text(strip=True))",
-            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:76 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 167,
-            "col": 27,
-            "operator": "core/ReplaceOrWithAnd",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -164,7 +164,7 @@\n     seen: set[str] = set()\n     for card in cards:\n         company = _parse_search_result_card(card)\n-        if company is None or company.name is None:\n+        if company is None and company.name is None:\n             continue\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n         key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"",
-            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:167 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 170,
-            "col": 30,
-            "operator": "core/ReplaceOrWithAnd",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -167,7 +167,7 @@\n         if company is None or company.name is None:\n             continue\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n-        key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n+        key = f\"{company.name and ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n         if key in seen:\n             continue\n         seen.add(key)",
-            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:170 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 170,
-            "col": 55,
-            "operator": "core/ReplaceOrWithAnd",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -167,7 +167,7 @@\n         if company is None or company.name is None:\n             continue\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n-        key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n+        key = f\"{company.name or ''}|{company.tax_code and ''}|{company.detail_url or ''}\"\n         if key in seen:\n             continue\n         seen.add(key)",
-            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:170 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 170,
-            "col": 82,
-            "operator": "core/ReplaceOrWithAnd",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -167,7 +167,7 @@\n         if company is None or company.name is None:\n             continue\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n-        key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n+        key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url and ''}\"\n         if key in seen:\n             continue\n         seen.add(key)",
-            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:170 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 191,
-            "col": 40,
-            "operator": "core/ReplaceOrWithAnd",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -188,7 +188,7 @@\n             page = int(text)\n         except ValueError:\n             continue\n-        if \"current\" in (a.get(\"class\") or []):\n+        if \"current\" in (a.get(\"class\") and []):\n             current = page\n         pages.add(page)\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/proprietary/platforms/masothue/parsers.py:191 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 77,
-            "col": 12,
-            "operator": "core/ReplaceContinueWithBreak",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -74,7 +74,7 @@\n         th = row.find(\"th\")\n         td = row.find(\"td\")\n         if not th or not td:\n-            continue\n+            break\n \n         key = _normalize_key(th.get_text(strip=True))\n         if key is None:",
-            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:77 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 81,
-            "col": 12,
-            "operator": "core/ReplaceContinueWithBreak",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -78,7 +78,7 @@\n \n         key = _normalize_key(th.get_text(strip=True))\n         if key is None:\n-            continue\n+            break\n \n         value = _clean_text(td.get_text(\" \", strip=True))\n         if value is None:",
-            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:81 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 85,
-            "col": 12,
-            "operator": "core/ReplaceContinueWithBreak",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -82,7 +82,7 @@\n \n         value = _clean_text(td.get_text(\" \", strip=True))\n         if value is None:\n-            continue\n+            break\n \n         # Drop ad/upsell rows masquerading as data.\n         if \"cập nhật mã số thuế\" in value.lower():",
-            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:85 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 89,
-            "col": 12,
-            "operator": "core/ReplaceContinueWithBreak",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -86,7 +86,7 @@\n \n         # Drop ad/upsell rows masquerading as data.\n         if \"cập nhật mã số thuế\" in value.lower():\n-            continue\n+            break\n         if \"nếu bạn có đề xuất\" in value.lower():\n             continue\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:89 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 91,
-            "col": 12,
-            "operator": "core/ReplaceContinueWithBreak",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -88,7 +88,7 @@\n         if \"cập nhật mã số thuế\" in value.lower():\n             continue\n         if \"nếu bạn có đề xuất\" in value.lower():\n-            continue\n+            break\n \n         if key == \"phone\" and not include_phone:\n             continue",
-            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:91 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 168,
-            "col": 12,
-            "operator": "core/ReplaceContinueWithBreak",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -165,7 +165,7 @@\n     for card in cards:\n         company = _parse_search_result_card(card)\n         if company is None or company.name is None:\n-            continue\n+            break\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n         key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n         if key in seen:",
-            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:168 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 172,
-            "col": 12,
-            "operator": "core/ReplaceContinueWithBreak",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -169,7 +169,7 @@\n         # Dedupe within the page by (name, tax_code) or by detail URL.\n         key = f\"{company.name or ''}|{company.tax_code or ''}|{company.detail_url or ''}\"\n         if key in seen:\n-            continue\n+            break\n         seen.add(key)\n         results.append(company)\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:172 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 190,
-            "col": 12,
-            "operator": "core/ReplaceContinueWithBreak",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -187,7 +187,7 @@\n         try:\n             page = int(text)\n         except ValueError:\n-            continue\n+            break\n         if \"current\" in (a.get(\"class\") or []):\n             current = page\n         pages.add(page)",
-            "recommendedTest": "Add a test that kills core/ReplaceContinueWithBreak at app/proprietary/platforms/masothue/parsers.py:190 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 189,
-            "col": 15,
-            "operator": "core/ExceptionReplacer",
-            "pattern": "5-error-not-asserted",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -186,7 +186,7 @@\n         text = a.get_text(strip=True)\n         try:\n             page = int(text)\n-        except ValueError:\n+        except CosmicRayTestingException:\n             continue\n         if \"current\" in (a.get(\"class\") or []):\n             current = page",
-            "recommendedTest": "Add a test that kills core/ExceptionReplacer at app/proprietary/platforms/masothue/parsers.py:189 (5-error-not-asserted)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 182,
-            "col": 14,
-            "operator": "core/NumberReplacer",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -179,7 +179,7 @@\n def parse_pagination(html: str) -> tuple[int, int | None]:\n     \"\"\"Return (current_page, next_page) from the page-numbers widget.\"\"\"\n     soup = BeautifulSoup(html, \"lxml\")\n-    current = 1\n+    current = 2\n     pages: set[int] = set()\n \n     for a in soup.select(\".page-numbers\"):",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/proprietary/platforms/masothue/parsers.py:182 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 182,
-            "col": 14,
-            "operator": "core/NumberReplacer",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -179,7 +179,7 @@\n def parse_pagination(html: str) -> tuple[int, int | None]:\n     \"\"\"Return (current_page, next_page) from the page-numbers widget.\"\"\"\n     soup = BeautifulSoup(html, \"lxml\")\n-    current = 1\n+    current = 0\n     pages: set[int] = set()\n \n     for a in soup.select(\".page-numbers\"):",
-            "recommendedTest": "Add a test that kills core/NumberReplacer at app/proprietary/platforms/masothue/parsers.py:182 (3-happy-path-only)."
-          },
-          {
-            "file": "app/proprietary/platforms/masothue/parsers.py",
-            "line": 185,
-            "col": 13,
-            "operator": "core/ZeroIterationForLoop",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/proprietary/platforms/masothue/parsers.py\n+++ bapp/proprietary/platforms/masothue/parsers.py\n@@ -182,7 +182,7 @@\n     current = 1\n     pages: set[int] = set()\n \n-    for a in soup.select(\".page-numbers\"):\n+    for a in []:\n         text = a.get_text(strip=True)\n         try:\n             page = int(text)",
-            "recommendedTest": "Add a test that kills core/ZeroIterationForLoop at app/proprietary/platforms/masothue/parsers.py:185 (3-happy-path-only)."
-          },
-          {
             "file": "app/services/company_aggregator/dedupe.py",
             "line": 68,
             "col": 7,
@@ -2149,10 +2077,7 @@
           }
         ],
         "P2": []
-      },
-      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-masothue-20260807T010212Z.json",
-      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-masothue-final.sqlite",
-      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-nowing-masothue-final.toml"
+      }
     }
   ]
 }
