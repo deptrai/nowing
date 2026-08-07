@@ -23,11 +23,15 @@ class _FakeSession:
 
     def __init__(self) -> None:
         self.added: list[Any] = []
+        self.info: dict[str, Any] = {}
 
     def add(self, obj: Any) -> None:
         self.added.append(obj)
 
     async def flush(self) -> None:
+        return None
+
+    async def execute(self, *args: Any, **kwargs: Any) -> Any:
         return None
 
 
