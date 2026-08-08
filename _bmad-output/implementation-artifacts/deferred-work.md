@@ -162,4 +162,15 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
 - **Source:** 11-1 code review defer
 - **Issue:** Concurrent `PATCH /users/me/notification-preferences` updates can lose keys because `_merge_notification_preferences` reads the user row, merges in memory, and overwrites the whole JSONB column.
 - **Fix:** Use `SELECT FOR UPDATE` on the user row, or optimistic lock on `updated_at`, or PostgreSQL `jsonb_set` for atomic merge.
-- **Priority:** P2 — real correctness issue but low concurrency currently.
+
+### td-5: title_gen.py lacks timeout/retry on litellm.acompletion
+- **Source:** code review of fix-model-test-infinite-save (2026-08-08)
+- **Issue:** `app/tasks/chat/streaming/flows/new_chat/title_gen.py` calls `litellm.acompletion()` without explicit `timeout` or `num_retries`, using LiteLLM defaults (60s+ timeout, 2 retries). Same class of bug as the infinite-save fix — can hang chat title generation for 120s+ on slow/flaky models.
+- **Fix:** Add `timeout=15.0, num_retries=1` to the `acompletion` call.
+- **Priority:** P1 — affects chat UX on slow models.
+
+### td-6: verify_chat_image_capability.py lacks num_retries
+- **Source:** code review of fix-model-test-infinite-save (2026-08-08)
+- **Issue:** `scripts/verify_chat_image_capability.py` calls `litellm.acompletion` and `litellm.aimage_generation` with explicit timeouts (60s, 120s) but no `num_retries`, using LiteLLM default 2 retries. Diagnostic script could hang in CI.
+- **Fix:** Add `num_retries=1` to both calls.
+- **Priority:** P3 — diagnostic script, not production code.

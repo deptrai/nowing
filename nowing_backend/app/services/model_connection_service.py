@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 VERIFY_TIMEOUT_SECONDS = 8.0
 DISCOVERY_TIMEOUT_SECONDS = 15.0
-TEST_TIMEOUT_SECONDS = 30.0
+TEST_TIMEOUT_SECONDS = 15.0
 
 
 @dataclass(frozen=True)
@@ -484,6 +484,7 @@ async def test_model(conn: Connection, model: Model) -> VerifyResult:
             model=model_string,
             messages=[{"role": "user", "content": "Hello"}],
             timeout=TEST_TIMEOUT_SECONDS,
+            num_retries=0,
             **kwargs,
         )
     except Exception as exc:
