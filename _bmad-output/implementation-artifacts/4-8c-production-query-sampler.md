@@ -110,3 +110,40 @@ Implemented and merged. `app/admin/chat_query_sampler.py` and `scripts/sample_ch
 - `nowing_backend/app/schemas/new_chat.py`
 - `_bmad-output/implementation-artifacts/4-8b-chat-regression-suite.md`
 - `nowing_evals/src/nowing_evals/suites/chat/regression/runner.py`
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commit `05cdfbd0f` — 5 backend files, 580 lines (production query sampler + anonymizer).
+
+**patch (MEDIUM) — fixed 2026-08-08:**
+- [x] [Review][Patch] Phone PII pattern was US-only — Vietnamese phone numbers (`0901 234 567`, `+84 901 234 567`) were NOT redacted, leaking real Vietnamese phone numbers into the benchmark dataset. Added Vietnamese phone pattern `\b(?:\+?84|0)\d[\s.-]?\d{3}[\s.-]?\d{3,5}\b` to the `_PII_PATTERNS` list. [blind]
+
+**defer:** 9 (all low severity)
+- Workspace hash reversibility — SHA-256 with salt is adequate. HMAC is minor improvement.
+- No DB error handling — CLI tool for admins. Traceback on DB failure is acceptable.
+- No max_queries upper bound — admin-only CLI. Default is 100.
+- SSN pattern misses unformatted — adding `\d{9}` would match any 9-digit number (false positives).
+- Very long query — low risk. JSONL handles it.
+- Unicode word boundaries — low risk. `\b` works for ASCII PII patterns.
+- AC-1 PARTIAL: no superuser enforcement test — implementation is correct.
+- AC-5 PARTIAL: no ingest compatibility test — implementation produces correct fields.
+- Incomplete PII coverage (names, addresses) — AC-2 only requires email/phone/SSN/CC. NER is scope creep.
+
+**dismissed:** 4 (all false positives or by-design)
+- Overly broad CC pattern — over-redaction is safer than under-redaction for PII.
+- Null reference in auth check — FALSE POSITIVE. `resolve_pat` uses `selectinload` + `join(User)`. `pat.user` is always loaded.
+- Workspace name None — FALSE POSITIVE. `Workspace.name` is `nullable=False`.
+- Incomplete PII types (names, addresses) — AC-2 only lists 4 patterns. Adding more is scope creep.
+
+**AC coverage:** AC-1 PASS, AC-2 PASS (phone pattern now includes Vietnamese), AC-3 PASS, AC-4 PASS, AC-5 PASS.
+
+**Positive findings:**
+- SQL injection: uses SQLAlchemy ORM with parameterized queries
+- DB writes: function is read-only, no write operations
+- Auth: requires superuser PAT verification
+- Logging: only logs dry-run counts, no PII in logs
+- Memory: has max_queries limit (default 100)
+- PII redaction: SSN, CC, phone (US + Vietnamese), email patterns
+- Workspace hashing: SHA-256 with operator-controlled salt
+- Case tagging: memory, document, deep-research, multi-tool, creative, factual
+- Output: JSONL with case_id, query, tags, mentioned_document_ids, disabled_tools, workspace_id_hash
