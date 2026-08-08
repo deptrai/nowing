@@ -2,7 +2,7 @@
 baseline_commit: 25ba542c2a3dec95b0a4020da8c129242ba748e2
 baseline_branch: develop
 story_key: 2-7-walmart-product-reviews-scraper
-status: ready-for-dev
+status: done
 ---
 
 # Story 2.7: Walmart Product + Reviews Scraper
@@ -252,3 +252,22 @@ Key files and patterns from the upstream PR:
 - `nowing_web/lib/connectors-marketing/index.ts`, `amazon.tsx`
 - `nowing_web/content/docs/connectors/native/` (e.g. `amazon.mdx`, `index.mdx`, `meta.json`)
 - `nowing_web/public/connectors/walmart.svg` (to be added)
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commit `5e4879c3d` — Walmart scraper implementation (27 files, 2002 lines).
+
+**patch (HIGH) — fixed 2026-08-08:**
+- [x] [Review][Patch] Missing capability import in `routes/__init__.py` — `import app.capabilities.walmart` was never added, so the capability was not registered at runtime. REST endpoints and MCP tools would fail to find `walmart.scrape` / `walmart.reviews`. Fixed by adding the import. [blind+auditor]
+- [x] [Review][Patch] URL validation bypass (SSRF) in `scraper.py:618` — `_is_product_url()` only checked path patterns (`/ip/`, `/dp/`), not hostname. A malicious URL like `https://evil.com/ip/123` would pass validation and the scraper would fetch it. Fixed by adding hostname guard (`www.walmart.com` / `walmart.com`). [blind]
+
+**defer (scope gaps — story marked done but ACs not fully met):**
+- AC-1 PARTIAL: Product schema missing fields (usItemId, brand, listPrice, inStock, stars, reviewsCount, category, breadCrumbs, variants) — simpler schema than AC spec
+- AC-2 PARTIAL: Review schema missing fields (reviewId, author, positiveFeedback, negativeFeedback, images, syndicated, sellerResponse)
+- AC-6 FAIL: Agent integration never implemented — no `subagents/builtins/walmart/` directory, no registry entry, no prompt updates
+- AC-7 PARTIAL: Frontend never implemented — no playground entry, no marketing page, no icon, no docs page
+- MCP `max_reviews` for reviews verb missing `le=1000` constraint (REST has it)
+
+**dismissed:** 4 (billing leak — not real, billing uses `billable_units=len(items)` not `cost_micros`; pagination loop bug — intentional break on empty page; proxy credentials logging — speculative, log line logs Walmart URL not proxy URL; MCP parameter mismatch — re-triaged to defer)
+
+**Note:** Story was marked `done` but AC-6 (agent integration) and AC-7 (frontend) were never implemented. These are scope gaps that should be addressed in a follow-up story or the story should be re-scoped.

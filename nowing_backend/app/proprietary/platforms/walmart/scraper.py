@@ -616,7 +616,13 @@ async def _scrape_search(
 
 
 def _is_product_url(url: str) -> bool:
-    return "/ip/" in url or "/dp/" in url
+    """True only for Walmart product URLs — hostname guard prevents SSRF."""
+    from urllib.parse import urlsplit
+
+    parsed = urlsplit(url)
+    if parsed.hostname not in ("www.walmart.com", "walmart.com"):
+        return False
+    return "/ip/" in parsed.path or "/dp/" in parsed.path
 
 
 async def scrape_walmart(params: dict[str, Any]) -> dict[str, Any]:

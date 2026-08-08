@@ -8,6 +8,7 @@ import app.capabilities.chainlens
 import app.capabilities.chotot
 import app.capabilities.google_maps
 import app.capabilities.google_search
+import app.capabilities.indeed
 import app.capabilities.instagram
 import app.capabilities.itviec
 import app.capabilities.masothue
@@ -18,6 +19,7 @@ import app.capabilities.topcv
 import app.capabilities.vietnamworks
 import app.capabilities.vn_bds
 import app.capabilities.vn_jobs
+import app.capabilities.walmart
 import app.capabilities.web
 import app.capabilities.youtube  # noqa: F401
 from app.automations.api import router as automations_router
