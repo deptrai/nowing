@@ -422,6 +422,27 @@ async def update_global_model_connection(
     conn = await _load_managed_connection(session, connection_id)
 
     update_data = data.model_dump(exclude_unset=True)
+
+    new_provider = update_data.get("provider")
+    if new_provider is not None and new_provider != conn.provider:
+        from sqlalchemy import select as sa_select
+
+        from app.db import Model
+
+        model_count = (
+            await session.execute(
+                sa_select(Model.id)
+                .where(Model.connection_id == connection_id)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if model_count is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot change provider on a connection with existing models. "
+                "Delete or reconfigure models first.",
+            )
+
     if "api_key" in update_data and update_data["api_key"] is None:
         # Empty string normalises to None for an explicit clear.
         conn.api_key = None
@@ -429,7 +450,7 @@ async def update_global_model_connection(
 
     for key, value in update_data.items():
         if key == "api_key" and value is not None:
-            value = value or None
+            value = (value or "").strip() or None
         if value is not None:
             setattr(conn, key, value)
 
