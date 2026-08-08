@@ -666,6 +666,11 @@ def validate_connector_config(
             "optional": ["exa_api_key", "server_config"],
             "validators": {},
         },
+        "MCP_CONNECTOR": {
+            "required": [],
+            "optional": ["server_config", "command", "args", "env"],
+            "validators": {},
+        },
         "RSS_FEED": {
             "required": [],
             "optional": ["feed_urls"],
