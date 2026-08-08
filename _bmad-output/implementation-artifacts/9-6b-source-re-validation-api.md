@@ -248,3 +248,35 @@ SWE-1.7 Max (Devin)
 - `nowing_backend/tests/integration/memory/test_memory_revalidation.py` (NEW)
 - `_bmad-output/test-artifacts/atdd-checklist-9-6b.md` (NEW)
 
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commit `500dccbde` — 13 backend files, 1361 insertions. Core: revalidation_service.py (256 lines) + memories_routes.py (52 lines) + tests (419 lines).
+
+**patch (HIGH) — fixed 2026-08-08:**
+- [x] [Review][Patch] Unbilled capability execution on charge failure — if `charge_capability` raises, the exception was caught and only logged, allowing the revalidation to succeed without billing. Fixed by raising `RevalidationError("charge_failed", ...)` so the operation fails when billing fails. [blind]
+
+**defer:** 8 (all low/medium severity)
+- Race condition: concurrent revalidations can corrupt confidence — user-initiated action, low concurrency. Last-write-wins acceptable.
+- No DB CHECK constraint on confidence — app code clamps to [0.1, 1.0].
+- Capability returns None — `str(None)` = `"None"` is reasonable fallback.
+- Large capability output — low risk.
+- Empty string output — low risk.
+- AC-5 PARTIAL: no auth boundary tests (non-member 403, cross-workspace 403) — implementation is correct.
+- AC-6 minor: no test for capability execution failure returning "failed" status — implementation handles it.
+
+**dismissed:** 2
+- Memory content is None — FALSE POSITIVE. `Memory.content` is `Text, nullable=False`.
+- Confusing auth logic — FALSE POSITIVE. Workspace memories check workspace permission, personal memories check ownership. Logic is correct.
+
+**AC coverage:** AC-1 PASS, AC-2 PASS, AC-3 PASS, AC-4 PASS, AC-5 PARTIAL (no auth boundary tests), AC-6 PASS.
+
+**Positive findings:**
+- Auth: workspace memories check MEMORY_UPDATE permission, personal memories check ownership
+- Input validation: source_input validated via Pydantic model_validate
+- Error handling: capability failures return "failed" status, not 500
+- Typed errors: not_revalidatable, capability_not_found, invalid_recipe, gate_failed
+- Cost metering: gate_capability + charge_capability called like normal capability
+- Confidence clamping: min(1.0, ...) for increase, max(0.1, ...) for decrease
+- MemoryVersion created on mismatch with previous_content and corrected_content
+- 8 integration tests covering match, mismatch, not_revalidatable, route, cost

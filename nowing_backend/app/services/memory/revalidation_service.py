@@ -197,6 +197,10 @@ class RevalidationService:
             cost_micros = await charge_capability(output, capability.billing_unit, ctx)
         except Exception:
             logger.exception("charge failed for re-validation %s", memory_id)
+            raise RevalidationError(
+                "charge_failed",
+                "Failed to charge for re-validation. The capability was executed but billing failed.",
+            ) from None
 
         if isinstance(output, BaseModel):
             try:
