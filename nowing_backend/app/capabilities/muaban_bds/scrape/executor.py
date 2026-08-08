@@ -26,6 +26,19 @@ logger = logging.getLogger(__name__)
 
 ScrapeFn = Callable[..., Awaitable[MuabanBdsScrapeOutput | dict[str, Any]]]
 
+_BOT_DEGRADATION_REASONS = {
+    "bot_detected",
+    "rate_limited",
+    "anti_bot_block",
+    "access_blocked",
+}
+
+
+def _next_action(degradation_reason: str | None) -> str | None:
+    if degradation_reason in _BOT_DEGRADATION_REASONS:
+        return "Escalated to human review; retry after credentials/proxy rotation"
+    return None
+
 
 def _unwrap_result(
     result: MuabanBdsScrapeOutput | dict[str, Any] | None,
@@ -69,6 +82,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                 cost_micros=0,
                 degraded=True,
                 degradation_reason="rate_limited",
+                next_action=_next_action("rate_limited"),
             )
         except MuabanBdsDecodeError:
             logger.exception("muaban_bds.scrape decode error")
@@ -78,7 +92,16 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
                 degraded=True,
                 degradation_reason="decode_error",
             )
-        except (MuabanBdsAccessBlockedError, Exception) as exc:
+        except MuabanBdsAccessBlockedError:
+            logger.exception("muaban_bds.scrape access blocked")
+            return ScrapeOutput(
+                items=[],
+                cost_micros=0,
+                degraded=True,
+                degradation_reason="bot_detected",
+                next_action=_next_action("bot_detected"),
+            )
+        except Exception as exc:
             logger.exception("muaban_bds.scrape actor failed: %s", exc)
             return ScrapeOutput(
                 items=[],
@@ -109,6 +132,8 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
             cost_micros=cost,
             degraded=degraded,
             degradation_reason=result.get("degradation_reason"),
+            next_action=result.get("next_action")
+            or _next_action(result.get("degradation_reason")),
         )
 
     return execute

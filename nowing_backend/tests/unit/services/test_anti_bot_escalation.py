@@ -77,6 +77,7 @@ async def test_create_or_update_escalation_creates_new_when_none(
 ) -> None:
     """A fresh block with no open row creates a new escalation."""
     session = AsyncMock()
+    session.add = MagicMock()
     result_mock = MagicMock()
     result_mock.scalar_one_or_none.return_value = None
     session.execute.return_value = result_mock
