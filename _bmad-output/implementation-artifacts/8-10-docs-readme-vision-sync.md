@@ -266,3 +266,23 @@ Devin (SWE-1.7 Max) — story creation via `bmad-create-story` workflow.
   - `docker/scripts/install.sh`, `docker/scripts/install.ps1`
   - `.github/workflows/code-quality.yml` (hoặc file workflow mới)
   - `AGENTS.md`
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commit `0b3846b60` — 55 files, 800 insertions, 714 deletions. Mostly docs/content/README sync. Only code file: `scripts/check-docs-drift.py` (156 lines).
+
+**patch:** 0
+
+**defer:** 0
+
+**dismissed:** 0 (no findings — drift check script is clean, rest is docs content)
+
+**AC coverage:** All ACs PASS (docs aligned with research-memory vision, drift gate script added).
+
+**Positive findings:**
+- Drift check script: well-structured, precompiled regex, case-insensitive matching
+- Forbidden phrases: NotebookLM positioning, AI file sorting, Admin role, "for people", open-source NotebookLM alternative
+- Required phrases: "open-source research memory for AI agents", "long-term research memory", "hosted deep-research engine"
+- Skip dirs: .git, node_modules, .venv, .next, .turbo, .knowns
+- Encoding: uses utf-8 explicitly
+- No path traversal risk (hardcoded scan list)
