@@ -102,3 +102,37 @@ Thêm `muaban_bds.scrape` thành built-in scraper capability mới. Scrape publi
 - Thêm trang admin `/admin/scraper-accounts` để superuser thêm/sửa/xóa cookie hoặc token.
 - `muaban_bds` sử dụng cookie/token từ tài khoản default khi mở `AsyncStealthySession` và khi gọi phone API.
 - Nếu không có tài khoản hoặc API vẫn 403, scraper fallback về `phone_display` (số bị mask) thay vì hard-fail.
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commits `0eba86e9e`..`96b8aefcc` — 26 files, 6776 lines (muaban.net BĐS scraper).
+
+**patch:** 0
+
+**defer:** 2
+- AC-5: Degradation reason names don't match AC spec exactly (`api_error` vs `bot_detected`, `decode_error` vs `layout_changed`). Functional behavior is correct — all error paths return degraded with typed reason and zero cost. Naming alignment is minor.
+- AC-7: No integration test (end-to-end via REST/MCP). Unit tests are comprehensive with real HTML/JSON fixtures (15 tests, 4 fixture files). Integration test would be nice but not critical.
+
+**dismissed:** 11 (all false positives or by-design)
+- URL validation missing (SSRF) — FALSE POSITIVE. Input schema has no URL field. URLs built from `BASE_ORIGIN` + controlled slugs (`listing_type`, `property_type`, `city_slug`).
+- Proxy credentials logged — FALSE POSITIVE. Log line logs target URL (muaban.net), not proxy URL.
+- XSS risk — FALSE POSITIVE. Data from `__NEXT_DATA__` JSON, not raw HTML. Frontend escapes.
+- Billing config fallback 5500 — Defensive `getattr` fallback. Config attr exists.
+- Missing timeout handling — Caught by outer `except Exception` at scraper.py:350, returns degraded.
+- District path traversal — District query becomes a slug on muaban.net path. Harmless.
+- detail_url protocol validation — Safe by construction. `javascript:` → `https://muaban.netjavascript:...` (invalid, not executable).
+- Long title — Not a real concern for a scraper.
+- Price format parsing — Relies on API numeric value, correct approach.
+- Thumbnail relative URL — FALSE POSITIVE. Confirmed covers are always absolute URLs (`https://cloud.muaban.net/...`).
+- AC-6 no MCP tool — FALSE POSITIVE. `nowing_muaban_bds_scrape` exists at `nowing_mcp/mcp_server/features/scrapers/platforms/muaban_bds.py:24`.
+
+**AC coverage:** AC-1 PASS, AC-2 PASS, AC-3 PASS, AC-4 PASS, AC-5 PASS (reason names differ but functional), AC-6 PASS, AC-7 PASS (unit tests comprehensive).
+
+**Positive findings:**
+- Block detection: 403/429/5xx raise typed exceptions, degrade gracefully
+- Pagination: max_pages capped at 20, breaks on empty results
+- Billing: degraded runs return cost_micros=0, error items not billed
+- Capability registration: import present in routes/__init__.py
+- Non-UTF8 handling: `decode("utf-8", errors="replace")`
+- Price/area parsing: safe type conversion with _to_int/_to_float
+- Real fixtures: 2810-line and 2647-line JSON fixtures from actual muaban.net pages
