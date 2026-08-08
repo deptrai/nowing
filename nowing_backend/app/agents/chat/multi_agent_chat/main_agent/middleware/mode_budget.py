@@ -88,6 +88,7 @@ def _config_from_runtime(runtime: Runtime[Any] | None) -> dict[str, Any]:
     try:
         cfg = get_config() or {}
     except Exception:
+        logger.debug("get_config() failed, falling back to runtime.config", exc_info=True)
         cfg = getattr(runtime, "config", None) or {}
     if not isinstance(cfg, dict):
         return {}
@@ -98,7 +99,14 @@ def _get_mode_from_config(runtime: Runtime[Any] | None = None) -> str:
     """Read ``research_mode`` from the active LangGraph RunnableConfig."""
     cfg = _config_from_runtime(runtime)
     mode = (cfg.get("configurable") or {}).get("research_mode")
-    return mode if mode in _MODE_BUDGETS else "auto"
+    if mode is None:
+        return "auto"
+    if isinstance(mode, str):
+        mode = mode.lower()
+    if mode not in _MODE_BUDGETS:
+        logger.warning("Unknown research_mode %r, falling back to auto", mode)
+        return "auto"
+    return mode
 
 
 def _call_key_from_config(runtime: Runtime[Any] | None = None) -> str:
@@ -167,6 +175,8 @@ def _breakdown_tool_call(tool_call: dict[str, Any]) -> _CallBreakdown:
             items: list[_CallItem] = []
             for t in tasks:
                 subagent = (t or {}).get("subagent_type")
+                if subagent is None:
+                    logger.debug("task tool call missing subagent_type, treating as non_kb")
                 if subagent in _KB_SUBAGENTS:
                     items.append(_CallItem("kb", subagent))
                 else:

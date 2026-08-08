@@ -164,7 +164,7 @@ async def sample_chat_queries(
         .order_by(func.random())
     )
     if max_queries:
-        stmt = stmt.limit(max_queries)
+        stmt = stmt.limit(min(max_queries, 10000))
 
     rows = (await session.execute(stmt)).all()
 

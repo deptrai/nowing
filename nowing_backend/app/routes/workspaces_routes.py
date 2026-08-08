@@ -295,6 +295,11 @@ async def update_workspace(
                     status_code=400,
                     detail="document_retention_days must be a positive integer when auto_archive_enabled is true",
                 )
+            if days > 36500:
+                raise HTTPException(
+                    status_code=400,
+                    detail="document_retention_days must not exceed 36500 (100 years)",
+                )
 
         for key, value in update_data.items():
             setattr(db_workspace, key, value)
