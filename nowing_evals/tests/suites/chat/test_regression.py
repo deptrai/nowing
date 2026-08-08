@@ -536,6 +536,85 @@ def test_evaluate_chat_gate_checks_error_rate_ttfb_and_scrape_drop() -> None:
     assert any("scrape drop rate" in v for v in violations)
 
 
+def _gate_thresholds() -> dict[str, float]:
+    """Read the live regression gate.yaml thresholds so assertions track the config."""
+    from nowing_evals.suites.chat.regression.runner import _load_chat_gate
+
+    _top, thresholds = _load_chat_gate()
+    return thresholds
+
+
+def test_gate_p95_e2e_threshold_enforced() -> None:
+    """AC-5: p95 e2e latency over gate.yaml max_p95_e2e_ms is flagged."""
+    thresholds = _gate_thresholds()
+    max_e2e = thresholds["max_p95_e2e_ms"]
+
+    # Just under threshold → no e2e violation.
+    ok = _evaluate_chat_gate({"overall": {"p95_e2e_ms": max_e2e - 1}})
+    assert not any("p95 e2e" in v for v in ok)
+
+    # Over threshold → violation naming the threshold value.
+    over = _evaluate_chat_gate({"overall": {"p95_e2e_ms": max_e2e + 1}})
+    assert any("p95 e2e" in v and f"max {max_e2e:.3f}" in v for v in over)
+
+
+def test_gate_p95_ttfb_threshold_enforced() -> None:
+    """AC-5: p95 TTFB over gate.yaml max_p95_ttfb_ms is flagged."""
+    thresholds = _gate_thresholds()
+    max_ttfb = thresholds["max_p95_ttfb_ms"]
+
+    ok = _evaluate_chat_gate({"overall": {"p95_ttfb_ms": max_ttfb - 1}})
+    assert not any("p95 ttfb" in v for v in ok)
+
+    over = _evaluate_chat_gate({"overall": {"p95_ttfb_ms": max_ttfb + 1}})
+    assert any("p95 ttfb" in v and f"max {max_ttfb:.3f}" in v for v in over)
+
+
+def test_gate_p95_cost_threshold_enforced() -> None:
+    """AC-5: p95 cost over gate.yaml max_p95_cost_micros is flagged."""
+    thresholds = _gate_thresholds()
+    max_cost = thresholds["max_p95_cost_micros"]
+
+    ok = _evaluate_chat_gate({"overall": {"p95_cost_micros": max_cost - 1}})
+    assert not any("p95 cost" in v for v in ok)
+
+    over = _evaluate_chat_gate({"overall": {"p95_cost_micros": max_cost + 1}})
+    assert any("p95 cost" in v and f"max {max_cost:.3f}" in v for v in over)
+
+
+def test_gate_clean_metrics_have_no_violations() -> None:
+    """AC-5: metrics within every gate.yaml threshold produce zero violations."""
+    thresholds = _gate_thresholds()
+    metrics = {
+        "overall": {
+            "error_rate": 0.0,
+            "p95_e2e_ms": thresholds["max_p95_e2e_ms"] - 1,
+            "p95_ttfb_ms": thresholds["max_p95_ttfb_ms"] - 1,
+            "p95_cost_micros": thresholds["max_p95_cost_micros"] - 1,
+            "contains_match_rate": thresholds["min_contains_match_rate"] + 0.01,
+        },
+        "per_mode": {
+            mode: {
+                "p95_e2e_ms": t["max_p95_e2e_ms"] - 1,
+                "p95_cost_micros": t["max_p95_cost_micros"] - 1,
+            }
+            for mode, t in thresholds["per_mode"].items()
+        },
+        "per_tier": {
+            tier: {"p95_e2e_ms": t["max_p95_e2e_ms"] - 1}
+            for tier, t in thresholds["per_tier"].items()
+        },
+        "operational": {
+            "scrape_drop_rate": 0.0,
+            "rate_limited_rate": 0.0,
+            "tool_drop_rate": 0.0,
+            "turn_error_rate": 0.0,
+            "engine_unavailable_rate": 0.0,
+        },
+    }
+    assert _evaluate_chat_gate(metrics) == []
+
+
 def test_one_case_per_tag_selects_new_tag_cases() -> None:
     cases = [
         _make_case("c1", ["a", "x"]),

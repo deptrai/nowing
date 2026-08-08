@@ -154,4 +154,94 @@ test.describe("Data retention workspace settings", () => {
 
 		await deleteWorkspace(request, ownerToken, workspaceId);
 	});
+
+	test("owner entering 0 retention days shows a validation error", async ({ page, request }) => {
+		const ownerToken = await acquireTestToken(request);
+		const workspace = await createWorkspace(
+			request,
+			ownerToken,
+			`ATDD Data Retention 0 ${Date.now()}`
+		);
+		const workspaceId = workspace.id;
+
+		await page.goto(`/dashboard/${workspaceId}/workspace-settings/data-retention`);
+
+		const autoArchiveSwitch = page.getByRole("switch", { name: /auto.*archive/i });
+		const daysInput = page.getByRole("spinbutton", { name: /retention days/i });
+		const saveButton = page.getByRole("button", { name: /save/i });
+
+		// Validation only fires when auto-archive is enabled (see data-retention-manager).
+		await autoArchiveSwitch.check();
+		await daysInput.fill("0");
+		await saveButton.click();
+
+		// AC-1: 0 days is not a positive integer → toast error shown, no save.
+		await expect(page.getByText(/retention days must be a positive integer/i)).toBeVisible({
+			timeout: 10_000,
+		});
+
+		await deleteWorkspace(request, ownerToken, workspaceId);
+	});
+
+	test("owner entering negative retention days shows a validation error", async ({
+		page,
+		request,
+	}) => {
+		const ownerToken = await acquireTestToken(request);
+		const workspace = await createWorkspace(
+			request,
+			ownerToken,
+			`ATDD Data Retention Neg ${Date.now()}`
+		);
+		const workspaceId = workspace.id;
+
+		await page.goto(`/dashboard/${workspaceId}/workspace-settings/data-retention`);
+
+		const autoArchiveSwitch = page.getByRole("switch", { name: /auto.*archive/i });
+		const daysInput = page.getByRole("spinbutton", { name: /retention days/i });
+		const saveButton = page.getByRole("button", { name: /save/i });
+
+		await autoArchiveSwitch.check();
+		await daysInput.fill("-5");
+		await saveButton.click();
+
+		// AC-1: negative days is not a positive integer → toast error shown, no save.
+		await expect(page.getByText(/retention days must be a positive integer/i)).toBeVisible({
+			timeout: 10_000,
+		});
+
+		await deleteWorkspace(request, ownerToken, workspaceId);
+	});
+
+	test("action select only exposes valid retention actions (archive/delete)", async ({
+		page,
+		request,
+	}) => {
+		const ownerToken = await acquireTestToken(request);
+		const workspace = await createWorkspace(
+			request,
+			ownerToken,
+			`ATDD Data Retention Action ${Date.now()}`
+		);
+		const workspaceId = workspace.id;
+
+		await page.goto(`/dashboard/${workspaceId}/workspace-settings/data-retention`);
+
+		const strategySelect = page.getByRole("combobox", { name: /strategy|action/i });
+
+		// The action <select> is constrained to the two valid options, so an
+		// invalid action cannot be submitted through the UI — this IS the
+		// validation. Selecting each valid option must succeed.
+		const options = await strategySelect.locator("option").allTextContents();
+		expect(options).toEqual(expect.arrayContaining(["archive", "delete"]));
+		// No invalid action option is exposed.
+		expect(options.every((o) => o === "archive" || o === "delete")).toBe(true);
+
+		await strategySelect.selectOption("delete");
+		await expect(strategySelect).toHaveValue("delete");
+		await strategySelect.selectOption("archive");
+		await expect(strategySelect).toHaveValue("archive");
+
+		await deleteWorkspace(request, ownerToken, workspaceId);
+	});
 });

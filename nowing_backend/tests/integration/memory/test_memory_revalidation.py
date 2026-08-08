@@ -411,3 +411,71 @@ async def test_revalidate_route_rejects_non_revalidatable_memory(
     assert resp.status_code == 422
     body = resp.json()
     assert body["detail"]["code"] == "not_revalidatable"
+
+
+@pytest.mark.asyncio
+async def test_revalidate_route_rejects_non_workspace_member(
+    client_as_other, db_session, db_workspace, db_user, scraper_run, _patch_embed
+):
+    """AC-5: A non-workspace-member gets 403 on POST /memories/{id}/revalidate."""
+    from app.db import MemorySourceType
+    from app.services.memory.repository import MemoryRepository
+
+    repo = MemoryRepository(db_session)
+    memory = await repo.create_memory(
+        workspace_id=db_workspace.id,
+        content="Widget costs 19.99 USD",
+        source_type=MemorySourceType.SCRAPER_RUN,
+        source_run_id=scraper_run.id,
+        source_capability=scraper_run.capability,
+        source_input=scraper_run.input,
+        created_by_id=db_user.id,
+        embedding=[0.1] * _EMBEDDING_DIM,
+        confidence=0.85,
+    )
+
+    resp = await client_as_other.post(
+        f"/api/v1/workspaces/{db_workspace.id}/memories/{memory.id}/revalidate"
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_revalidate_capability_failure_returns_failed_not_500(
+    db_session, db_workspace, db_user, scraper_run, _patch_embed
+):
+    """AC-6: When the capability executor raises, result.status='failed' (not 500)."""
+    from app.db import MemorySourceType
+    from app.services.memory.repository import MemoryRepository
+    from app.services.memory.revalidation_service import RevalidationService
+
+    repo = MemoryRepository(db_session)
+    memory = await repo.create_memory(
+        workspace_id=db_workspace.id,
+        content="Widget costs 19.99 USD",
+        source_type=MemorySourceType.SCRAPER_RUN,
+        source_run_id=scraper_run.id,
+        source_capability=scraper_run.capability,
+        source_input=scraper_run.input,
+        created_by_id=db_user.id,
+        embedding=[0.1] * _EMBEDDING_DIM,
+        confidence=0.85,
+    )
+
+    cap = _FakeCapability()
+    cap.executor = AsyncMock(side_effect=RuntimeError("upstream blew up"))
+
+    with patch(
+        "app.services.memory.revalidation_service.get_capability",
+        return_value=cap,
+    ), patch(
+        "app.services.memory.revalidation_service.gate_capability",
+        new=AsyncMock(return_value=None),
+    ):
+        service = RevalidationService(db_session)
+        result = await service.revalidate(memory.id, workspace_id=db_workspace.id)
+
+    assert result.status == "failed"
+    assert result.memory_id == memory.id
+    assert result.reason is not None
+    assert "upstream blew up" in result.reason

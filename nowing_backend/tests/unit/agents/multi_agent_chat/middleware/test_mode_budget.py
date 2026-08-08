@@ -229,3 +229,77 @@ class TestModeBudgetAfterModel:
             ],
         )
         assert result is not None
+
+    # ------------------------------------------------------------------
+    # Quality mode: budget (3 KB, 2 non-KB, 5 total)
+    # ------------------------------------------------------------------
+
+    def test_quality_allows_three_kb_calls(self, mw: ModeBudgetMiddleware) -> None:
+        for i in range(3):
+            result = self._run(
+                mw, "quality", [_tool_call("ask_knowledge_base", {"query": f"q{i}"})]
+            )
+            assert result is None
+
+    def test_quality_allows_two_non_kb_calls(self, mw: ModeBudgetMiddleware) -> None:
+        for i in range(2):
+            result = self._run(
+                mw,
+                "quality",
+                [
+                    _tool_call(
+                        "task",
+                        {"subagent_type": "google_search", "description": f"s{i}"},
+                    )
+                ],
+            )
+            assert result is None
+
+    def test_quality_blocks_sixth_call_with_jump_to_end(
+        self, mw: ModeBudgetMiddleware
+    ) -> None:
+        # 3 KB + 2 non-KB = 5 total (the cap). 6th call is blocked.
+        for i in range(3):
+            self._run(
+                mw, "quality", [_tool_call("ask_knowledge_base", {"query": f"q{i}"})]
+            )
+        for i in range(2):
+            self._run(
+                mw,
+                "quality",
+                [
+                    _tool_call(
+                        "task",
+                        {"subagent_type": "google_search", "description": f"s{i}"},
+                    )
+                ],
+            )
+        result = self._run(
+            mw,
+            "quality",
+            [_tool_call("ask_knowledge_base", {"query": "q3"})],
+        )
+        assert result is not None
+        assert result.get("jump_to") == "end"
+
+    def test_quality_allows_chainlens(self, mw: ModeBudgetMiddleware) -> None:
+        """ChainLens is allowed in quality mode (unlike speed/balanced)."""
+        result = self._run(
+            mw,
+            "quality",
+            [_tool_call("task", {"subagent_type": "chainlens", "description": "x"})],
+        )
+        assert result is None
+
+    def test_quality_allows_web_research(self, mw: ModeBudgetMiddleware) -> None:
+        """Web/deep-research tools are allowed in quality mode (unlike speed)."""
+        result = self._run(
+            mw,
+            "quality",
+            [
+                _tool_call(
+                    "task", {"subagent_type": "google_search", "description": "x"}
+                )
+            ],
+        )
+        assert result is None

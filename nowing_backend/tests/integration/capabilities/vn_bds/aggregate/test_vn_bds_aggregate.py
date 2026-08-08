@@ -126,3 +126,29 @@ async def test_executor_provenance_in_listing():
     assert output.items[0].provenance.source_capability == "vn_bds.aggregate"
     assert output.items[0].provenance.source_input is not None
     assert output.items[0].provenance.source_input["city"] == "Hà Nội"
+
+
+def test_vn_bds_aggregate_rest_endpoint_auto_exposed():
+    """AC-6: Registering the vn_bds.aggregate capability auto-exposes a REST POST route."""
+    from app.capabilities.core.access.rest import build_capabilities_router
+    from app.capabilities.vn_bds.aggregate.definition import VN_BDS_AGGREGATE
+
+    router = build_capabilities_router([VN_BDS_AGGREGATE])
+    paths = {r.path for r in router.routes}
+    assert "/workspaces/{workspace_id}/scrapers/vn_bds/aggregate" in paths
+
+
+def test_vn_bds_aggregate_in_global_registry_auto_exposed():
+    """The global registry (all_capabilities) includes vn_bds.aggregate so the
+    production REST door auto-exposes it without manual wiring."""
+    from app.capabilities.core.access.rest import build_capabilities_router
+    from app.capabilities.core.store import all_capabilities
+
+    caps = all_capabilities()
+    assert any(c.name == "vn_bds.aggregate" for c in caps), (
+        "vn_bds.aggregate must be registered in the global capability store"
+    )
+
+    router = build_capabilities_router(caps)
+    paths = {r.path for r in router.routes}
+    assert "/workspaces/{workspace_id}/scrapers/vn_bds/aggregate" in paths

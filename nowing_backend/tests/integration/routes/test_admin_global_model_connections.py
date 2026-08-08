@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import pytest
@@ -386,3 +387,154 @@ async def test_admin_managed_global_model_pricing_normalized(
     )
     assert catalog.get("input_cost_per_token") == 2e-6
     assert catalog.get("output_cost_per_token") == 8e-6
+
+
+# ---------------------------------------------------------------------------
+# AC-5: Non-superuser 403 on all write routes
+# ---------------------------------------------------------------------------
+
+_BASE_PAYLOAD = {
+    "provider": "openai",
+    "base_url": "http://localhost:1234",
+    "api_key": "sk-test",
+    "enabled": True,
+    "models": [
+        {
+            "model_id": "gpt-4o-mini",
+            "display_name": "GPT-4o Mini",
+            "supports_chat": True,
+            "enabled": True,
+            "billing_tier": "free",
+        }
+    ],
+}
+
+
+async def test_non_superuser_403_on_create(client_as_regular_user):
+    resp = await client_as_regular_user.post(
+        "/api/v1/admin/global-model-connections", json=_BASE_PAYLOAD
+    )
+    assert resp.status_code == 403
+
+
+async def test_non_superuser_403_on_update(client_as_regular_user):
+    resp = await client_as_regular_user.put(
+        "/api/v1/admin/global-model-connections/1",
+        json={"base_url": "http://localhost:5678"},
+    )
+    assert resp.status_code == 403
+
+
+async def test_non_superuser_403_on_delete(client_as_regular_user):
+    resp = await client_as_regular_user.delete(
+        "/api/v1/admin/global-model-connections/1"
+    )
+    assert resp.status_code == 403
+
+
+async def test_non_superuser_403_on_discover_preview(client_as_regular_user):
+    resp = await client_as_regular_user.post(
+        "/api/v1/admin/global-model-connections/discover-preview",
+        json=_BASE_PAYLOAD,
+    )
+    assert resp.status_code == 403
+
+
+async def test_non_superuser_403_on_test_preview(client_as_regular_user):
+    resp = await client_as_regular_user.post(
+        "/api/v1/admin/global-model-connections/test-preview",
+        json={**_BASE_PAYLOAD, "model_id": "gpt-4o-mini"},
+    )
+    assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# AC-11: _log_admin_action audit log entries
+# ---------------------------------------------------------------------------
+
+
+def _assert_admin_log_entry(record: logging.LogRecord, action: str) -> None:
+    """Assert a log record from _log_admin_action has the required fields."""
+    msg = record.getMessage()
+    assert "actor=" in msg
+    assert f"action={action}" in msg
+    assert "source=managed" in msg
+    assert "success=" in msg
+
+
+async def test_audit_log_on_create(
+    admin_client, _patched_admin_model_service, _clean_catalog, caplog
+):
+    caplog.set_level(
+        logging.INFO,
+        logger=admin_global_model_connections_routes.logger.name,
+    )
+    resp = await admin_client.post(
+        "/api/v1/admin/global-model-connections", json=_BASE_PAYLOAD
+    )
+    assert resp.status_code == 201
+    create_records = [
+        r
+        for r in caplog.records
+        if r.name == admin_global_model_connections_routes.logger.name
+        and "action=create" in r.getMessage()
+    ]
+    assert len(create_records) == 1
+    _assert_admin_log_entry(create_records[0], "create")
+
+
+async def test_audit_log_on_update(
+    admin_client, _patched_admin_model_service, _clean_catalog, caplog
+):
+    create_resp = await admin_client.post(
+        "/api/v1/admin/global-model-connections", json=_BASE_PAYLOAD
+    )
+    assert create_resp.status_code == 201
+    connection_id = create_resp.json()["id"]
+
+    caplog.clear()
+    caplog.set_level(
+        logging.INFO,
+        logger=admin_global_model_connections_routes.logger.name,
+    )
+    resp = await admin_client.put(
+        f"/api/v1/admin/global-model-connections/{connection_id}",
+        json={"base_url": "http://localhost:5678"},
+    )
+    assert resp.status_code == 200
+    update_records = [
+        r
+        for r in caplog.records
+        if r.name == admin_global_model_connections_routes.logger.name
+        and "action=update" in r.getMessage()
+    ]
+    assert len(update_records) == 1
+    _assert_admin_log_entry(update_records[0], "update")
+
+
+async def test_audit_log_on_delete(
+    admin_client, _patched_admin_model_service, _clean_catalog, caplog
+):
+    create_resp = await admin_client.post(
+        "/api/v1/admin/global-model-connections", json=_BASE_PAYLOAD
+    )
+    assert create_resp.status_code == 201
+    connection_id = create_resp.json()["id"]
+
+    caplog.clear()
+    caplog.set_level(
+        logging.INFO,
+        logger=admin_global_model_connections_routes.logger.name,
+    )
+    resp = await admin_client.delete(
+        f"/api/v1/admin/global-model-connections/{connection_id}"
+    )
+    assert resp.status_code == 204
+    delete_records = [
+        r
+        for r in caplog.records
+        if r.name == admin_global_model_connections_routes.logger.name
+        and "action=delete" in r.getMessage()
+    ]
+    assert len(delete_records) == 1
+    _assert_admin_log_entry(delete_records[0], "delete")

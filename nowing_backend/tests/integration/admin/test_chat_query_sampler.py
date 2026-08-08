@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -199,3 +201,43 @@ async def test_sample_chat_queries_filters_by_days(
 
     rows = await sample_chat_queries(db_session, days=30, max_queries=10, salt="salty")
     assert all(row["query"] != "Old question." for row in rows)
+
+
+@pytest.mark.asyncio
+async def test_sampler_rejects_non_superuser_pat_with_exit_code_1(
+    db_session, db_user, capsys
+) -> None:
+    """AC-1: A non-superuser PAT must be rejected with exit code 1."""
+    import scripts.sample_chat_queries as sampler
+
+    # db_user is a regular (non-superuser) user.
+    fake_pat = SimpleNamespace(user=db_user)
+
+    args = SimpleNamespace(
+        pat="nw_pat_test_token",
+        salt="salty",
+        days=30,
+        max_queries=10,
+        output=None,
+        dry_run=True,
+    )
+
+    # The script uses `async with async_session_maker() as session:` — provide a
+    # CM that yields the test session.
+    class _SessionCM:
+        async def __aenter__(self):
+            return db_session
+
+        async def __aexit__(self, *args):
+            return None
+
+    with (
+        patch.object(sampler, "async_session_maker", return_value=_SessionCM()),
+        patch.object(sampler, "resolve_pat", new=AsyncMock(return_value=fake_pat)),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        await sampler._main(args)
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "platform admin" in captured.err.lower()

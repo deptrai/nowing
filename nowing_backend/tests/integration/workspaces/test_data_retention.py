@@ -472,3 +472,50 @@ async def test_delete_strategy_dispatches_delete_document_task(
 
     delete_mock.delay.assert_called_once_with(old_doc.id)
     assert old_doc.status == {"state": "deleting"}
+
+
+# ---------------------------------------------------------------------------
+# AC-3: Archived documents excluded from citation / hybrid search
+# ---------------------------------------------------------------------------
+
+
+async def test_archived_document_excluded_from_hybrid_search(
+    client, db_workspace, db_user, db_session
+):
+    """Archived documents must not appear in chunk hybrid search (citation) results."""
+    from app.retriever.chunks_hybrid_search import ChucksHybridSearchRetriever
+
+    user_id = str(db_user.id)
+    visible = _make_document(
+        title="Active report",
+        content="quarterly revenue growth",
+        workspace_id=db_workspace.id,
+        created_by_id=user_id,
+    )
+    archived = _make_document(
+        title="Archived report",
+        content="quarterly revenue growth",
+        workspace_id=db_workspace.id,
+        created_by_id=user_id,
+        archived_at=datetime.now(UTC),
+    )
+    db_session.add_all([visible, archived])
+    await db_session.flush()
+
+    db_session.add_all([
+        _make_chunk(content="quarterly revenue growth", document_id=visible.id),
+        _make_chunk(content="quarterly revenue growth", document_id=archived.id),
+    ])
+    await db_session.flush()
+
+    retriever = ChucksHybridSearchRetriever(db_session)
+    results = await retriever.hybrid_search(
+        query_text="quarterly revenue growth",
+        top_k=10,
+        workspace_id=db_workspace.id,
+        query_embedding=DUMMY_EMBEDDING,
+    )
+
+    doc_ids = {r["document"]["id"] for r in results}
+    assert visible.id in doc_ids
+    assert archived.id not in doc_ids
