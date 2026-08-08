@@ -44,7 +44,10 @@ import {
 	clearPremiumAlertForThreadAtom,
 	premiumAlertByThreadAtom,
 } from "@/atoms/chat/premium-alert.atom";
-import { connectorDialogOpenAtom } from "@/atoms/connector-dialog/connector-dialog.atoms";
+import {
+	connectorDialogOpenAtom,
+	importConnectorRequestAtom,
+} from "@/atoms/connector-dialog/connector-dialog.atoms";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
 import { membersAtom } from "@/atoms/members/members-query.atoms";
 import { llmSetupStatusAtomFamily } from "@/atoms/model-connections/model-connections-query.atoms";
@@ -81,6 +84,7 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuPortal,
+	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
@@ -97,6 +101,7 @@ import {
 	getToolDisplayName,
 	getToolIcon,
 } from "@/contracts/enums/toolIcons";
+import type { SearchSourceConnector } from "@/contracts/types/connector.types";
 import { useBatchCommentsPreload } from "@/hooks/use-comments";
 import { useCommentsSync } from "@/hooks/use-comments-sync";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -104,6 +109,7 @@ import { useElectronAPI } from "@/hooks/use-platform";
 import { useScraperCapabilities } from "@/hooks/use-scraper-capabilities";
 import { captureDisplayToPngDataUrl } from "@/lib/chat/display-media-capture";
 import { getMentionDocKey } from "@/lib/chat/mention-doc-key";
+import { groupConnectorsByType } from "@/lib/connectors/group-connectors-by-type";
 import { slideoutOpenedTickAtom } from "@/lib/layout-events";
 import { findPlatform, type PlaygroundPlatform } from "@/lib/playground/catalog";
 import { getWorkspaceIdNumber } from "@/lib/route-params";
@@ -1098,6 +1104,8 @@ const ComposerAction: FC<ComposerActionProps> = ({
 }) => {
 	const mentionedDocuments = useAtomValue(mentionedDocumentsAtom);
 	const setConnectorDialogOpen = useSetAtom(connectorDialogOpenAtom);
+	const setImportRequest = useSetAtom(importConnectorRequestAtom);
+	const router = useRouter();
 	const [toolsPopoverOpen, setToolsPopoverOpen] = useState(false);
 	const [openConnectorSubmenu, setOpenConnectorSubmenu] = useState<string | null>(null);
 	const [expandedConnectorGroups, setExpandedConnectorGroups] = useState<Set<string>>(
@@ -1234,10 +1242,43 @@ const ComposerAction: FC<ComposerActionProps> = ({
 									<Upload className="size-4" />
 									Upload Files
 								</DropdownMenuItem>
-								<DropdownMenuItem onSelect={() => setConnectorDialogOpen(true)}>
-									<Unplug className="size-4" />
-									MCP Connectors
-								</DropdownMenuItem>
+								<DropdownMenuSub>
+									<DropdownMenuSubTrigger>
+										<Unplug className="size-4" />
+										MCP Connectors
+									</DropdownMenuSubTrigger>
+									<DropdownMenuPortal>
+										<DropdownMenuSubContent className="w-56 max-h-64 overflow-y-auto">
+											{groupConnectorsByType((connectors ?? []) as SearchSourceConnector[]).map(
+												(group) => (
+													<DropdownMenuItem
+														key={group.connectorType}
+														onSelect={() =>
+															setImportRequest({ connectorType: group.connectorType, mode: "auto" })
+														}
+													>
+														{getConnectorIcon(group.connectorType, "size-4 shrink-0")}
+														<span className="flex-1 truncate">{group.title}</span>
+														{group.connectors.length > 1 && (
+															<span className="text-xs text-muted-foreground">
+																{group.connectors.length}
+															</span>
+														)}
+													</DropdownMenuItem>
+												)
+											)}
+											<DropdownMenuSeparator />
+											<DropdownMenuItem
+												onSelect={() => {
+													if (workspaceId) router.push(`/dashboard/${workspaceId}/connectors`);
+												}}
+											>
+												<Plus className="size-4" />
+												Browse all integrations
+											</DropdownMenuItem>
+										</DropdownMenuSubContent>
+									</DropdownMenuPortal>
+								</DropdownMenuSub>
 								<DropdownMenuItem onSelect={() => setToolsPopoverOpen(true)}>
 									<Settings2 className="size-4" />
 									Manage Tools
@@ -1454,10 +1495,43 @@ const ComposerAction: FC<ComposerActionProps> = ({
 								<Camera className="h-4 w-4" />
 								Take a screenshot
 							</DropdownMenuItem>
-							<DropdownMenuItem onSelect={() => setConnectorDialogOpen(true)}>
-								<Unplug className="h-4 w-4" />
-								MCP Connectors
-							</DropdownMenuItem>
+							<DropdownMenuSub>
+								<DropdownMenuSubTrigger>
+									<Unplug className="h-4 w-4" />
+									MCP Connectors
+								</DropdownMenuSubTrigger>
+								<DropdownMenuPortal>
+									<DropdownMenuSubContent className="w-56 max-h-64 overflow-y-auto">
+										{groupConnectorsByType((connectors ?? []) as SearchSourceConnector[]).map(
+											(group) => (
+												<DropdownMenuItem
+													key={group.connectorType}
+													onSelect={() =>
+														setImportRequest({ connectorType: group.connectorType, mode: "auto" })
+													}
+												>
+													{getConnectorIcon(group.connectorType, "size-4 shrink-0")}
+													<span className="flex-1 truncate">{group.title}</span>
+													{group.connectors.length > 1 && (
+														<span className="text-xs text-muted-foreground">
+															{group.connectors.length}
+														</span>
+													)}
+												</DropdownMenuItem>
+											)
+										)}
+										<DropdownMenuSeparator />
+										<DropdownMenuItem
+											onSelect={() => {
+												if (workspaceId) router.push(`/dashboard/${workspaceId}/connectors`);
+											}}
+										>
+											<Plus className="size-4" />
+											Browse all integrations
+										</DropdownMenuItem>
+									</DropdownMenuSubContent>
+								</DropdownMenuPortal>
+							</DropdownMenuSub>
 							<DropdownMenuSub
 								open={toolsPopoverOpen}
 								onOpenChange={(open) => {

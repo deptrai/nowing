@@ -64,7 +64,6 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { useAnonymousMode, useIsAnonymous } from "@/contexts/anonymous-mode";
 import { useLoginGate } from "@/contexts/login-gate";
@@ -245,6 +244,11 @@ export function EmbeddedDocumentsMenu({
  * `importConnectorRequestAtom`, which the connector dialog consumes to run
  * OAuth or open the existing account's config. In anonymous mode, `gate`
  * intercepts every item to trigger the login flow.
+ *
+ * NOTE (Story 7-4): Cloud-drive connectors (Google Drive / OneDrive / Dropbox)
+ * have been moved to the dedicated connectors catalog at
+ * `/dashboard/{workspace_id}/connectors`. The Import menu now only offers
+ * local file upload and folder watch.
  */
 export function EmbeddedImportMenu({
 	gate,
@@ -254,29 +258,12 @@ export function EmbeddedImportMenu({
 	onFolderWatched?: () => void;
 }) {
 	const { openDialog } = useDocumentUploadDialog();
-	const setImportRequest = useSetAtom(importConnectorRequestAtom);
-	// Provider is absent on anonymous /free pages, where every item is login-gated
-	// anyway — defaulting to hosted (Composio) there is cosmetic.
-	const selfHosted = useOptionalRuntimeConfig()?.deploymentMode === "self-hosted";
-	const { isConnectorEnabled, getConnectorStatusMessage } = useConnectorStatus();
-	const { data: connectors } = useAtomValue(connectorsAtom);
 
 	// Watch Local Folder is a desktop-app feature (needs the Electron folder watcher).
 	const { isDesktop } = usePlatform();
 	const params = useParams();
 	const workspaceId = getWorkspaceIdNumber(params) ?? 0;
 	const [folderWatchOpen, setFolderWatchOpen] = useState(false);
-
-	// Native Google Drive connector self-hosted only; hosted deployments use Composio.
-	const driveType = selfHosted
-		? EnumConnectorName.GOOGLE_DRIVE_CONNECTOR
-		: EnumConnectorName.COMPOSIO_GOOGLE_DRIVE_CONNECTOR;
-
-	const cloudItems = [
-		{ type: driveType, label: "Google Drive" },
-		{ type: EnumConnectorName.ONEDRIVE_CONNECTOR, label: "OneDrive" },
-		{ type: EnumConnectorName.DROPBOX_CONNECTOR, label: "Dropbox" },
-	];
 
 	return (
 		<DropdownMenu>
@@ -304,79 +291,6 @@ export function EmbeddedImportMenu({
 						Watch Local Folder
 					</DropdownMenuItem>
 				)}
-				<DropdownMenuSeparator />
-				{cloudItems.map((item) => {
-					const enabled = gate ? true : isConnectorEnabled(item.type);
-					const statusMessage = enabled ? null : getConnectorStatusMessage(item.type);
-					const icon = getConnectorIcon(item.type, "h-4 w-4");
-					// gate = anonymous mode; treat every connector as unconnected so items
-					// route through the login gate rather than reading workspace connectors.
-					const accountCount = gate
-						? 0
-						: (connectors ?? []).filter(
-								(c: SearchSourceConnector) => c.connector_type === item.type
-							).length;
-
-					// Unavailable (e.g. maintenance): non-actionable item explaining why.
-					if (!enabled) {
-						return (
-							<DropdownMenuItem key={item.type} disabled title={statusMessage ?? undefined}>
-								{icon}
-								{item.label}
-							</DropdownMenuItem>
-						);
-					}
-
-					// Connected: manage the existing account(s) or add another.
-					if (accountCount > 0) {
-						return (
-							<DropdownMenuSub key={item.type}>
-								<DropdownMenuSubTrigger>
-									{icon}
-									<span className="min-w-0 flex-1 truncate">{item.label}</span>
-									<span className="ml-auto text-xs text-muted-foreground">{accountCount}</span>
-								</DropdownMenuSubTrigger>
-								<DropdownMenuSubContent className="w-48">
-									<DropdownMenuItem
-										onSelect={() =>
-											gate
-												? gate("manage import connectors")
-												: setImportRequest({ connectorType: item.type, mode: "auto" })
-										}
-									>
-										<Settings2 className="h-4 w-4" />
-										{accountCount > 1 ? "Manage accounts" : "Manage"}
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onSelect={() =>
-											gate
-												? gate("import from cloud storage")
-												: setImportRequest({ connectorType: item.type, mode: "connect" })
-										}
-									>
-										<Plus className="h-4 w-4" />
-										Add another account
-									</DropdownMenuItem>
-								</DropdownMenuSubContent>
-							</DropdownMenuSub>
-						);
-					}
-
-					// Not connected: single click starts the first OAuth connect.
-					return (
-						<DropdownMenuItem
-							key={item.type}
-							onSelect={() =>
-								gate
-									? gate("import from cloud storage")
-									: setImportRequest({ connectorType: item.type, mode: "auto" })
-							}
-						>
-							{icon}
-							{item.label}
-						</DropdownMenuItem>
-					);
-				})}
 			</DropdownMenuContent>
 			{isDesktop && !gate && (
 				<FolderWatchDialog
@@ -387,32 +301,6 @@ export function EmbeddedImportMenu({
 				/>
 			)}
 		</DropdownMenu>
-	);
-}
-
-function CloudDocumentsSkeleton() {
-	const rows = [
-		{ id: "row-1", widthClass: "w-44" },
-		{ id: "row-2", widthClass: "w-32" },
-		{ id: "row-3", widthClass: "w-32" },
-		{ id: "row-4", widthClass: "w-44" },
-		{ id: "row-5", widthClass: "w-32" },
-		{ id: "row-6", widthClass: "w-32" },
-		{ id: "row-7", widthClass: "w-44" },
-		{ id: "row-8", widthClass: "w-32" },
-	];
-
-	return (
-		<div className="px-2 py-1">
-			<div className="space-y-1">
-				{rows.map((row) => (
-					<div key={row.id} className="flex h-8 items-center gap-2 px-2">
-						<Skeleton className="h-4 w-4 rounded-sm" />
-						<Skeleton className={`h-4 ${row.widthClass}`} />
-					</div>
-				))}
-			</div>
-		</div>
 	);
 }
 
@@ -547,6 +435,8 @@ function AuthenticatedDocumentsSidebarBase({
 	const [zeroAllDocs, zeroAllDocsResult] = useQuery(
 		queries.documents.bySpace({ workspaceId: workspaceId })
 	);
+	const isCloudLoading =
+		zeroFoldersResult.type === "unknown" || zeroAllDocsResult.type === "unknown";
 	const [agentCreatedDocs, setAgentCreatedDocs] = useAtom(agentCreatedDocumentsAtom);
 
 	const treeFolders: FolderDisplay[] = useMemo(
@@ -1191,9 +1081,6 @@ function AuthenticatedDocumentsSidebarBase({
 		[deleteDocumentMutation, t, setSidebarDocs]
 	);
 
-	const showCloudSkeleton =
-		zeroFoldersResult.type !== "complete" || zeroAllDocsResult.type !== "complete";
-
 	const renderDocumentTree = ({
 		documents = treeDocumentsWithMemory,
 		activeTypesForTree = activeTypes,
@@ -1220,40 +1107,36 @@ function AuthenticatedDocumentsSidebarBase({
 				</div>
 			)}
 
-			{showCloudSkeleton ? (
-				<CloudDocumentsSkeleton />
-			) : (
-				<FolderTreeView
-					folders={treeFolders}
-					documents={documents}
-					expandedIds={expandedIds}
-					onToggleExpand={toggleFolderExpand}
-					mentionedDocKeys={mentionedDocKeys}
-					onToggleChatMention={handleToggleChatMention}
-					onToggleFolderSelect={handleToggleFolderSelect}
-					onRenameFolder={handleRenameFolder}
-					onDeleteFolder={handleDeleteFolder}
-					onMoveFolder={handleMoveFolder}
-					onCreateFolder={handleCreateFolder}
-					searchQuery={searchQuery}
-					onPreviewDocument={(doc) => {
-						if (openMemoryDocument(doc)) return;
-						openDocumentTab({ documentId: doc.id, workspaceId });
-					}}
-					onDeleteDocument={(doc) => handleDeleteDocument(doc.id)}
-					onMoveDocument={handleMoveDocument}
-					onResetDocument={handleResetMemoryDocument}
-					onExportDocument={handleExportDocument}
-					onVersionHistory={(doc) => setVersionDocId(doc.id)}
-					activeTypes={activeTypesForTree}
-					onDropIntoFolder={handleDropIntoFolder}
-					onReorderFolder={handleReorderFolder}
-					watchedFolderIds={watchedFolderIds}
-					onRescanFolder={handleRescanFolder}
-					onStopWatchingFolder={handleStopWatching}
-					onExportFolder={handleExportFolder}
-				/>
-			)}
+			<FolderTreeView
+				folders={treeFolders}
+				documents={documents}
+				expandedIds={expandedIds}
+				onToggleExpand={toggleFolderExpand}
+				mentionedDocKeys={mentionedDocKeys}
+				onToggleChatMention={handleToggleChatMention}
+				onToggleFolderSelect={handleToggleFolderSelect}
+				onRenameFolder={handleRenameFolder}
+				onDeleteFolder={handleDeleteFolder}
+				onMoveFolder={handleMoveFolder}
+				onCreateFolder={handleCreateFolder}
+				searchQuery={searchQuery}
+				onPreviewDocument={(doc) => {
+					if (openMemoryDocument(doc)) return;
+					openDocumentTab({ documentId: doc.id, workspaceId });
+				}}
+				onDeleteDocument={(doc) => handleDeleteDocument(doc.id)}
+				onMoveDocument={handleMoveDocument}
+				onResetDocument={handleResetMemoryDocument}
+				onExportDocument={handleExportDocument}
+				onVersionHistory={(doc) => setVersionDocId(doc.id)}
+				activeTypes={activeTypesForTree}
+				onDropIntoFolder={handleDropIntoFolder}
+				onReorderFolder={handleReorderFolder}
+				watchedFolderIds={watchedFolderIds}
+				onRescanFolder={handleRescanFolder}
+				onStopWatchingFolder={handleStopWatching}
+				onExportFolder={handleExportFolder}
+			/>
 		</div>
 	);
 
@@ -1266,6 +1149,7 @@ function AuthenticatedDocumentsSidebarBase({
 					contentClassName="px-0"
 					persistentAction={
 						<div className="flex items-center gap-1.5">
+							{isCloudLoading && <Spinner size="xs" className="text-muted-foreground" />}
 							<EmbeddedImportMenu onFolderWatched={refreshWatchedIds} />
 							<EmbeddedDocumentsMenu
 								typeCounts={typeCounts}

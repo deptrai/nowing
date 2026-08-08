@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-08"  # 9-3 done; 4-7 done (code review patches: P1 tests + P2 cast fix)
+last_updated: "2026-08-08"  # Winston backlog audit: AD-32/AD-33 ACCEPTED, 7-7 catalog sync fix + review, 12-8/16-4 blocked, 6 followups → deferred, 12-9 → AD-33 template, 14-1 status sync
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
@@ -70,7 +70,8 @@ development_status:
   epic-3: done
   3-6: done
   3-7: done
-  3-7-followup: backlog
+  # ponytail: 2026-08-08 followup deferred items are tracked in parent story file (defer section). No separate story file needed.
+  3-7-followup: deferred
   3-9: done
   3-10: done
   3-11: done
@@ -90,14 +91,17 @@ development_status:
   4-8a: done
   4-8b: done
   4-8c: done
-  4-8c-followup: backlog
-  4-8d: ready-for-dev
-  4-8d-followup: backlog
+  # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
+  4-8c-followup: deferred
+  4-8d: done
+  # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
+  4-8d-followup: deferred
   4-8e: done
   4-8f: done
   4-8g: done
   4-8h: done
-  4-8h-followup: backlog
+  # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
+  4-8h-followup: deferred
   epic-4-retrospective: optional
 
   # === Epic 5: Deliverables (DONE — brownfield, no individual stories) ===
@@ -115,8 +119,9 @@ development_status:
 
   # === Epic 7: Multi-surface Clients ===
   epic-7: in-progress
-  7-4: ready-for-dev
-  7-7: ready-for-dev
+  7-4: review
+  # ponytail: 2026-08-08 verified — 53 tools registered, catalog sync test passes. Moved to review.
+  7-7: review
   epic-7-retrospective: optional
 
   # === Epic 8: Platform Operations (Billing / Usage / Token) ===
@@ -127,7 +132,8 @@ development_status:
   8-9: done
   8-10: done
   8-11: done
-  8-11-followup: backlog
+  # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
+  8-11-followup: deferred
   8-12: done
   8-13: done
   epic-8-retrospective: optional
@@ -142,7 +148,8 @@ development_status:
   9-4: done
   9-5: backlog
   9-6: done
-  9-6-followup: backlog
+  # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
+  9-6-followup: deferred
   epic-9-retrospective: optional
 
   # === Epic 10: Connector & Scraper Expansion ===
@@ -170,7 +177,11 @@ development_status:
   12-5: ready-for-dev
   12-6: backlog
   12-7: backlog
-  12-8: backlog
+  # ponytail: 2026-08-08 BLOCKED — 12-8 (Cross-Source Entity Timeline) must wait for Epic 13 review to close.
+  # Epic 13 is the canonical entity storage boundary; timeline view must build on canonical tables, not parallel query path.
+  12-8: blocked
+  # ponytail: 2026-08-08 AD-33 — 12-9 (Saved Searches) must be an Automation template type, NOT a standalone scheduler.
+  # Reuse Epic 6 scheduler + RunService. Build AlertRule template, don't write cron/diff/notification from scratch.
   12-9: backlog
   epic-12-retrospective: optional
 
@@ -207,7 +218,9 @@ development_status:
   16-1: done
   16-2: backlog
   16-3: backlog
-  16-4: backlog
+  # ponytail: 2026-08-08 BLOCKED — 16-4 (Company Timeline) must wait for Epic 13 review to close.
+  # Same rationale as 12-8: timeline view must build on canonical entity storage (AD-27), not parallel query.
+  16-4: blocked
   epic-16-retrospective: optional
 
   # === Epic 17: E-commerce Intelligence (Vietnam) ===
@@ -229,6 +242,16 @@ development_status:
   18-7: backlog
   18-8: backlog
   epic-18-retrospective: optional
+
+  # === Tech Debt (from code review deferred items) ===
+  # ponytail: 2026-08-08 Winston backlog audit — 4 critical deferred items from code reviews that need dedicated stories.
+  # Each is a real correctness/robustness issue, not a nice-to-have. See deferred-work.md for evidence.
+  tech-debt: in-progress
+  td-1: backlog  # Idempotency key for POST /automations/{id}/run (7-7 defer: double-submit, no dedup lock)
+  td-2: backlog  # Redis event bus subscribe failure state leak (9-3 defer: channel stays in subscribers on timeout)
+  td-3: backlog  # Storage sum does not reconcile deleted backend files (8-12 defer: workspace_limits.py:199-209)
+  td-4: backlog  # Concurrent notification preference merge race condition (11-1 defer: _merge_notification_preferences read-merge-overwrite)
+  tech-debt-retrospective: optional
 
 validation_reports:
   - story: "16-1"

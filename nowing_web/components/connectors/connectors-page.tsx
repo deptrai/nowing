@@ -1,13 +1,12 @@
 "use client";
 
 import { useAtom, useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { importConnectorRequestAtom } from "@/atoms/connector-dialog/connector-dialog.atoms";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
 import { statusInboxItemsAtom } from "@/atoms/inbox/status-inbox.atom";
 import { useIndexingConnectors } from "@/components/assistant-ui/connector-popup/hooks/use-indexing-connectors";
 import { Spinner } from "@/components/ui/spinner";
-import { isConnectorIndexingMetadata } from "@/contracts/types/inbox.types";
 import type { SearchSourceConnector } from "@/contracts/types/connector.types";
 import { useConnectorsSync } from "@/hooks/use-connectors-sync";
 import { cn } from "@/lib/utils";
@@ -20,7 +19,10 @@ interface ConnectorsPageProps {
 }
 
 export function ConnectorsPage({ workspaceId }: ConnectorsPageProps) {
-	const [importRequest, setImportRequest] = useAtom(importConnectorRequestAtom);
+	// Local selection state — independent of importConnectorRequestAtom so the
+	// detail pane stays mounted while the hook processes the request internally.
+	const [selectedType, setSelectedType] = useState<string | null>(null);
+	const [, setImportRequest] = useAtom(importConnectorRequestAtom);
 
 	const { data: queryConnectors, isPending: queryPending } = useAtomValue(connectorsAtom);
 	const { connectors: syncConnectors, loading: syncLoading } = useConnectorsSync(workspaceId);
@@ -35,24 +37,14 @@ export function ConnectorsPage({ workspaceId }: ConnectorsPageProps) {
 
 	const { indexingConnectorIds } = useIndexingConnectors(connectors, statusInboxItems);
 
-	const failedConnectorIds = useMemo(() => {
-		const failed = new Set<number>();
-		for (const item of statusInboxItems) {
-			if (item.type !== "connector_indexing") continue;
-			const metadata = isConnectorIndexingMetadata(item.metadata) ? item.metadata : null;
-			if (!metadata) continue;
-			if (metadata.status === "failed" || metadata.error_message) {
-				failed.add(metadata.connector_id);
-			}
-		}
-		return failed;
-	}, [statusInboxItems]);
-
 	const handleSelect = (connectorType: string) => {
+		setSelectedType(connectorType);
+		// Trigger the hook's auto-routing (0→connect, 1→edit, many→accounts)
 		setImportRequest({ connectorType, mode: "auto" });
 	};
 
 	const handleBack = () => {
+		setSelectedType(null);
 		setImportRequest(null);
 	};
 
@@ -69,18 +61,16 @@ export function ConnectorsPage({ workspaceId }: ConnectorsPageProps) {
 			<div className="w-full md:w-64 shrink-0 border-b md:border-b-0 md:border-r">
 				<ConnectorRail
 					workspaceId={workspaceId}
-					selectedType={importRequest?.connectorType}
+					selectedType={selectedType}
 					isLoading={isLoading}
 					onSelect={handleSelect}
 				/>
 			</div>
 			<div className="flex-1 min-w-0 overflow-hidden">
-				{importRequest ? (
+				{selectedType ? (
 					<ConnectorDetailPane
-						request={importRequest}
-						connectors={connectors}
-						indexingConnectorIds={indexingConnectorIds}
-						failedConnectorIds={failedConnectorIds}
+						connectorType={selectedType}
+						workspaceId={workspaceId}
 						onBack={handleBack}
 					/>
 				) : (

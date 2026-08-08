@@ -135,3 +135,31 @@
 - source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
   summary: Platform billing changes (VN_BDS) outside story scope — billing.py includes VN_BDS_AGGREGATE_QUERY, BATDONGSAN_ITEM, CHOTOT_BDS_ITEM, MUABAN_BDS_ITEM changes that belong to Story 10.x.
   evidence: Acceptance Auditor AA-8. Scope creep but not harmful.
+
+## Tech Debt Stories (created 2026-08-08 — Winston backlog audit)
+
+The following 4 deferred items have been promoted to dedicated tech-debt stories in `sprint-status.yaml` under the `tech-debt` epic. Story files to be created when promoted to `ready-for-dev`.
+
+### td-1: Idempotency key for POST /automations/{id}/run
+- **Source:** 7-7 code review defer
+- **Issue:** Double-submit on `POST /automations/{id}/run` — no idempotency key; two concurrent POSTs create two PENDING runs. Pre-existing pattern (Telegram `/run` has same gap).
+- **Fix:** Add idempotency key or dedup lock (Redis SETNX or DB unique constraint on `(automation_id, idempotency_key)`).
+- **Priority:** P2 — low probability but creates duplicate runs.
+
+### td-2: Redis event bus subscribe failure state leak
+- **Source:** 9-3 code review defer
+- **Issue:** On subscribe timeout, channel stays in `subscribers` dict but Redis subscription failed. Cross-replica delivery fails silently.
+- **Fix:** Remove channel from `subscribers` on subscribe failure; add retry with exponential backoff.
+- **Priority:** P2 — pre-existing v1 pattern in `events_redis.py`.
+
+### td-3: Storage sum does not reconcile deleted backend files
+- **Source:** 8-12 code review defer
+- **Issue:** `sum_storage_bytes` sums `DocumentFile.size_bytes` from DB rows. If a storage backend file is deleted without deleting the `DocumentFile` row (or vice versa), the metric drifts.
+- **Fix:** Add reconciliation job that compares DB rows vs storage backend; or add `ON DELETE CASCADE` + storage backend webhook.
+- **Priority:** P2 — storage limits are soft/exploratory in Story 8.12.
+
+### td-4: Concurrent notification preference merge race condition
+- **Source:** 11-1 code review defer
+- **Issue:** Concurrent `PATCH /users/me/notification-preferences` updates can lose keys because `_merge_notification_preferences` reads the user row, merges in memory, and overwrites the whole JSONB column.
+- **Fix:** Use `SELECT FOR UPDATE` on the user row, or optimistic lock on `updated_at`, or PostgreSQL `jsonb_set` for atomic merge.
+- **Priority:** P2 — real correctness issue but low concurrency currently.

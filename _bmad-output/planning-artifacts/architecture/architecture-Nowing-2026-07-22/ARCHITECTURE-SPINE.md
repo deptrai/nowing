@@ -7,7 +7,7 @@ paradigm: 'layered modular monolith + stateless MCP server + client-server with 
 scope: 'Toàn bộ hệ sinh thái Nowing: backend FastAPI, web Next.js, desktop Electron, browser extension, Obsidian plugin, MCP server, và evals.'
 status: active
 created: '2026-07-22'
-updated: '2026-08-07'
+updated: '2026-08-08'
 binds: []
 sources:
   - /Users/luisphan/Documents/nowing/docs/architecture-backend.md
@@ -862,3 +862,64 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
 - **Linked PRD:** §2.4 NG-1 / §6.2 / NFR-9
 
 *(`AD-REMOVED — AI File Sorting` đã chuyển về `## Invariants & Rules` để không trùng lặp — 2026-07-25.)*
+
+---
+
+### AD-32 — Connector management: dedicated page là canonical, modal deprecated  `✅ ACCEPTED 2026-08-08`
+
+- **Binds:** Story 7-4 (dedicated connectors layout), Story 7-7 (MCP tool expansion), mọi future connector management UI
+- **Prevents:** Hai surface quản lý connector song song (modal + page) → maintenance gấp đôi, UX không nhất quán, hook chạy 2 lần
+- **Context (verified 2026-08-08):**
+  - Story 7-4 đã ship `/dashboard/{workspace_id}/connectors` — dedicated page với rail + detail pane.
+  - `connector-popup.tsx` (modal, 388 dòng) vẫn render trên mọi page khác qua `ConnectorIndicator` trong `client-layout.tsx`.
+  - Composer "+" (Story 7-4 pass 2) dùng `importConnectorRequestAtom` → vẫn mở modal cho connector cụ thể, nhưng "Browse all" → navigate đến page.
+  - `ConnectorDetailPane` reuse `useConnectorDialog` hook — hook consume atom, set `isOpen=true`. Trên `/connectors` page, modal bị ẩn (`!isConnectorsPage`) nhưng hook vẫn chạy.
+  - Kết quả: 2 UX khác nhau (edit trong modal vs edit trong page), hook chạy kép, maintenance gấp đôi.
+- **Rule:**
+  - **Dedicated page (`/connectors`) là canonical surface** cho connector management — connect, edit, accounts, indexing config, periodic sync, vision LLM.
+  - **Modal deprecated theo 3 phase:**
+    - **Phase 1 (ngay, Story 7-4 pass 3):** Composer "+" MCP submenu → `setImportRequest` chỉ navigate đến `/connectors?type={connectorType}`, không mở modal. `importConnectorRequestAtom` trở thành deep-link trigger cho page, không còn trigger cho modal.
+    - **Phase 2 (next sprint):** `ConnectorIndicator` chỉ render trigger button (badge/indicator), click → navigate đến `/connectors`. Modal content (`connector-popup.tsx` view routing section) gỡ bỏ.
+    - **Phase 3 (cleanup):** `useConnectorDialog` hook tách thành `useConnectorOperations` (mutations: create/update/delete/index) + `useConnectorRouting` (view state). Page dùng cả hai; modal code xóa hoàn toàn.
+  - **`importConnectorRequestAtom` giữ nguyên** — nó là deep-link contract (`{connectorType, mode}`), page consume nó để auto-route (0→connect, 1→edit, many→accounts).
+  - **Composer "+" submenu** giữ flat connector list + "Browse all integrations" — nhưng click connector → navigate, không mở modal.
+- **Trade-offs:**
+  - **(A) Deprecate modal hoàn toàn (chọn):** Mọi connector management → page. UX nhất quán, maintenance giảm. Trade-off: mất "quick connect" inline trong chat — user phải rời chat page để connect. Acceptable vì connector connect là rare action, không phải frequent.
+  - **(B) Giữ modal làm "quick connect":** Modal chỉ cho connect mới, edit/manage → page. Trade-off: vẫn 2 surface, hook vẫn chạy kép, phải tách logic. Phức tạp hơn (A).
+- **Migration path:** `ConnectorDetailPane` đã reuse `useConnectorDialog` hook → Phase 1 chỉ cần thay `setImportRequest` handler trong composer "+" từ "mở modal" sang "navigate to page". Mechanical change.
+- **Linked PRD:** FR-6, FR-7, FR-8 · Story `7-4` = `review` · Story `7-7` = `review`
+
+### AD-33 — Generic Alert Engine: một scheduler cho tất cả domain alerts  `✅ ACCEPTED 2026-08-08`
+
+- **Binds:** Story 12-6 (job alerts), 12-7 (property price alerts), 14-3 (news alerts), 15-3 (stock alerts), 15-4 (financial trend), 16-3 (company alerts), 17-3 (price drop alerts), 17-4 (competitor tracking)
+- **Prevents:** 8 stories × independent scheduler + diff logic + notification dispatch = 8 implementation trùng lặp, 8 cron jobs, 8 notification path
+- **Context (verified 2026-08-08):**
+  - Epic 6 đã có Automation infrastructure: scheduler (cron-based), RunService, capability execution, notification dispatch (in-app + Telegram).
+  - 8 stories backlog đều là cùng 1 pattern: "query định kỳ → so sánh delta → notify nếu thay đổi."
+  - Nếu build độc lập → 8 scheduler, 8 diff logic, 8 notification path, 8 user preference schema.
+- **Rule:**
+  - **Alert Engine là một Automation template type**, không phải service mới. Dùng Epic 6 scheduler + RunService + notification dispatch.
+  - **`AlertRule` là data, không phải code:**
+    ```python
+    AlertRule = {
+      source: str,              # capability_id (e.g. "vn_jobs.aggregate", "bds_aggregator")
+      query: dict,              # structured query cho capability
+      schedule: str,            # cron expr (e.g. "0 9 * * 1" = every Monday 9am)
+      diff_strategy: str,       # "new_items" | "price_change" | "threshold_cross" | "trend_detect"
+      threshold: dict | None,   # cho threshold_cross: {"field": "price", "op": "<", "value": 1000}
+      notification_channels: list[str],  # ["in_app", "telegram"]
+    }
+    ```
+  - **3 diff strategies builtin** (không thêm nữa trừ khi Rule of Three):
+    - `new_items`: query → so sánh với last snapshot → notify items mới. Dùng cho 12-6 (job alerts), 14-3 (news alerts).
+    - `price_change`: query → so sánh price field với last snapshot → notify nếu delta > threshold. Dùng cho 12-7 (property), 15-3 (stock), 17-3 (price drop).
+    - `threshold_cross`: query → so sánh field với threshold → notify nếu cross. Dùng cho 15-4 (trend), 16-3 (company events).
+  - **Mỗi story 12-6/12-7/14-3/15-3/15-4/16-3/17-3/17-4 chỉ đăng ký một `AlertRule` template** — không viết scheduler riêng, không viết notification dispatch riêng.
+  - **User preferences:** một table `alert_subscriptions` (user_id, alert_rule_template_id, channels, enabled). Không 8 table riêng.
+  - **Snapshot storage:** `alert_snapshots` (alert_rule_id, snapshot_json, created_at). Diff logic đọc last snapshot, compare, notify, write new snapshot.
+- **Trade-offs:**
+  - **(A) Generic Alert Engine (chọn):** 1 scheduler, 1 diff framework, 1 notification path. 8 stories = 8 AlertRule templates (data). Trade-off: upfront cost xây engine (~2-3 days) trước khi story đầu tiên có thể dev. Nhưng save 8× implementation sau.
+  - **(B) Build độc lập từng story:** Nhanh cho story đầu tiên, nhưng story thứ 2+ phải duplicate. Tech debt tích lũy. Không chọn.
+- **Dependency:** Cần Epic 6 scheduler đã stable (✅ done). Alert Engine là extension của Automation, không phải rewrite.
+- **Migration path:** Story 12-6 (job alerts) là first consumer — build Alert Engine cùng lúc với 12-6. Stories sau chỉ đăng ký template.
+- **Linked PRD:** FR-44 (job alerts), FR-49 (news alerts), FR-50 (stock alerts), FR-51 (company alerts), FR-52 (price alerts) · Epic 6 (Automations) = `done` · Epic 12 stories 12-6→12-9 = `backlog`

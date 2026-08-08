@@ -1,7 +1,7 @@
 ---
 baseline_commit: 9f6a4c594
 story_key: 7-7-mcp-server-tool-expansion
-status: done
+status: review
 ---
 
 # Story 7.7 — MCP Server Tool Expansion
@@ -9,7 +9,7 @@ status: done
 **Story ID:** 7.7
 **Epic:** Epic 7 — Multi-surface Clients
 **Title:** MCP Server Tool Expansion
-**Status:** done
+**Status:** review
 **Priority:** P1
 **Source artifacts:**
 - PRD: `/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md` (FR-29, FR-21, FR-22, FR-23, FR-18/19/20, FR-32/33/34)

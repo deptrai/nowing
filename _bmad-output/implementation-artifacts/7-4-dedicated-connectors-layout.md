@@ -2,12 +2,12 @@
 baseline_commit: 25ba542c2a3dec95b0a4020da8c129242ba748e2
 baseline_branch: develop
 story_key: 7-4-dedicated-connectors-layout
-status: ready-for-dev
+status: review
 ---
 
 # Story 7.4: Dedicated Connectors Layout (replace connector modal with a full-page dashboard)
 
-**Status:** ready-for-dev
+**Status:** review
 **Epic:** 7 — Integrations: Native + MCP
 **Priority:** HIGH
 **Requirements:** FR-25, FR-7, FR-8
@@ -186,10 +186,12 @@ MVP delivered in this pass:
 - Sidebar "Integrations" nav link.
 - Connector modal hidden on the connectors route so the page owns `importConnectorRequestAtom` selection without a conflicting popup.
 
-TODO deferred to next pass:
-- Composer "+" add-menu rework (desktop MCP submenu / mobile drill-in drawer).
-- Deep-link manage view routing by account count (0 → OAuth, 1 → edit, many → accounts list) inside the detail pane.
-- Remove Google Drive / OneDrive / Dropbox from `DocumentsSidebar.tsx` "Import" menu; they now live in the connector catalog.
+## Implementation Notes (2026-08-08 — Pass 2)
+
+Completed deferred TODOs:
+- **Deep-link manage view routing**: `ConnectorDetailPane` now reuses `useConnectorDialog` hook to render connect/edit/accounts views inline (no dialog). Page uses local `selectedType` state independent of `importConnectorRequestAtom` so the pane stays mounted during hook processing.
+- **Composer "+" add-menu rework**: Both desktop and mobile "MCP Connectors" replaced with `DropdownMenuSub` showing flat connector list (via `groupConnectorsByType`) + "Browse all integrations" link to `/connectors` page.
+- **DocumentsSidebar Import menu cleanup**: Removed Google Drive / OneDrive / Dropbox entries. Import menu now only offers "Upload Files" and "Watch Local Folder" (desktop). Cloud-drive connectors are managed via the connector catalog.
 
 ## References
 

@@ -1912,6 +1912,10 @@ _AD-27 · Method: Third-party API (Apify/Bright Data) recommended; in-house requ
 
 > **Extended 2026-08-06:** Added cross-cutting research intelligence stories (alerts, timeline, saved searches) for Jobs and BĐS domains.
 
+> **🏗️ AD-33 (2026-08-08):** Stories 12.6, 12.7, 12.9 (alerts + saved searches) MUST be implemented as `AlertRule` templates on the Generic Alert Engine (AD-33), NOT as standalone schedulers. Reuse Epic 6 Automation infrastructure (scheduler + RunService + notification dispatch). Story 12.6 is the first consumer — Alert Engine builds alongside it. Stories 12.7 and 12.9 only register new `AlertRule` templates.
+
+> **🏗️ AD-27 (2026-08-08):** Story 12.8 (Cross-Source Entity Timeline) is **BLOCKED** until Epic 13 review closes. Timeline view must build on canonical entity storage tables (`canonical_entities`, source-lineage, history), not a parallel query path. Same block applies to Story 16.4 (Company Timeline).
+
 ### Story 12.6: Job Market Alerts `[P1]`
 
 As a job market researcher,
