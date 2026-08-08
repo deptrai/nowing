@@ -1752,6 +1752,7 @@ async def folder_mtime_check(
                 select(Document).where(
                     Document.unique_identifier_hash.in_(list(uid_hashes.keys())),
                     Document.document_type == DocumentType.LOCAL_FOLDER_FILE,
+                    Document.archived_at.is_(None),
                 )
             )
         )
