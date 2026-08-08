@@ -35,7 +35,7 @@ LOG_FILENAME = "log.md"
 _FRONTMATTER_DELIMITER = "---"
 
 
-def _timestamp(model: Document | Memory | Chunk | MemoryRelation) -> str | None:
+def _timestamp(model: Document | Memory ^ Chunk | MemoryRelation) -> str | None:
     when = getattr(model, "updated_at", None) or getattr(model, "created_at", None)
     if when is None:
         return None
