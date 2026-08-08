@@ -110,8 +110,8 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết.
 ### Epic 1: Identity, Auth & Workspace RBAC — ✅ DONE
 Đăng ký/đăng nhập/OAuth/PAT + workspace RBAC Owner/Editor/Viewer. **FRs:** FR-1,2,3,4,10.
 
-### Epic 2: Connectors — ✅ DONE
-Built-in scrapers + OAuth connectors + external MCP connectors; connectors là memory ingestion source. **FRs:** FR-6,7,8. **Open:** 2.6 Indeed `[ready-for-dev]`, 2.7 Walmart `[ready-for-dev]`, 2.8 Amazon EU `[ready-for-dev]`, 2.9 input validation `[DONE]`.
+### Epic 2: Connectors — ✅ DONE (retrospective 2026-08-08)
+Built-in scrapers + OAuth connectors + external MCP connectors; connectors là memory ingestion source. **FRs:** FR-6,7,8. **All 6 stories done:** 2.5 MCP toggle, 2.6 Indeed, 2.7 Walmart, 2.8 Amazon EU, 2.9 input validation, 2.10 Exa MCP (with citation ACs).
 > **⚠️ 2026-07-25: FR-24 (ChainLens) đã rời Epic 2 → Epic 9.** ChainLens không phải connector. Story `2-4-chainlens-research-mcp-tool` giữ `done` làm lịch sử — nó đã ship tool thật; việc còn lại thuộc Epic 9.
 
 ### Epic 3: Knowledge Base + Long-Term Memory — ✅ DONE
@@ -226,6 +226,17 @@ So that the agent can answer questions with up-to-date web search and full-page 
 **Kỹ thuật:** add `EXA_MCP_CONNECTOR` to `SearchSourceConnectorType`, `MCP_SERVICES`, connector agent/searchable maps, and validation; create route-level `server_config` builder from `exa_api_key`; reuse `mcp_discovery` subagent with curated `allowed_tools` / `readonly_tools`.
 _FR-8 · FR-8.1 · OQ-4._
 
+> **🆕 Extend 2026-08-08 (SCP `sprint-change-proposal-2026-08-08.md`):** `web_search_exa`/`web_fetch_exa` là MCP tools return text trực tiếp — không qua `_capability_tool` hay citation registry. Agent nhận search results nhưng không có `[n]` labels để cite. Append ACs dưới đây.
+
+**Acceptance Criteria (appended 2026-08-08 — Exa MCP citation registration):**
+
+**Given** the agent calls `web_search_exa` and receives results with URLs, **When** the tool returns, **Then** each result URL is registered as a `WEB_RESULT` citation in the `CitationRegistry`.
+**Given** the agent calls `web_fetch_exa` for a specific URL, **When** the tool returns, **Then** the fetched URL is registered as a `WEB_RESULT` citation.
+**Given** the registry contains Exa `WEB_RESULT` entries, **When** the model emits `[n]` labels referencing them, **Then** URL citation chips render in chat.
+**And** existing MCP tool behavior (readonly, no HITL) is unchanged.
+
+**Kỹ thuật (appended):** hook vào MCP tool wrapper hoặc post-processing step — extract URLs from `web_search_exa` results, register URL directly for `web_fetch_exa`. Reuse `register_web_citations()` helper from Story 3.15 extension.
+
 ---
 
 ## Epic 3: Knowledge Base + Long-Term Memory
@@ -303,6 +314,19 @@ So that recall không rò rỉ cross-tenant và mọi memory write có vết.
 **Given** 2 workspace/user khác nhau, **When** recall/search, **Then** không trả memory cross-tenant (test isolation, NFR-5).
 **And** mọi memory write (create/correct/delete) ghi **audit log** (hiện chỉ `logger.warning`).
 _AR-9 · NFR-2/NFR-5 (memory-scoped)._
+
+### Story 3.7-followup: Retention Hardening  `(tech debt)`  `[backlog]`
+As a platform engineer,
+I want retention settings có DB-level guards + concurrent safety + test robustness,
+So that retention không corrupt dưới concurrent access và tests không pass for wrong reasons.
+
+**Acceptance Criteria:**
+**Given** concurrent retention update trên cùng workspace, **When** 2 requests update document_retention_days cùng lúc, **Then** dùng SELECT FOR UPDATE tránh last-write-wins.
+**Given** test_archived_document_excluded_from_hybrid_search, **When** chạy, **Then** có negative assertion verify cả 2 chunks tồn tại trong DB trước khi assert search filter.
+**Given** test-archived-sync.spec.ts, **When** backend không chạy, **Then** test skip với clear message thay vì fail.
+**Given** data-retention.spec.ts, **When** test fail mid-execution, **Then** workspace cleanup chạy trong finally block.
+
+_Source: code review defer items từ 3-7. Priority: P2. Effort: 1-2 days. Trigger: khi có concurrent retention updates._
 
 ---
 
@@ -383,6 +407,19 @@ So that I can trace claims back to the exact run that produced them.
 
 **Kỹ thuật:** add `RUN` to citation source enum, mint run citation from capability tool, parse `run_<uuid>` tokens in chat, render citation chip, open run in citation panel.
 _FR-13 · FR-39 · upstream PR #1619._
+
+> **🆕 Extend 2026-08-08 (SCP `sprint-change-proposal-2026-08-08.md`):** Story 3.15 cover sync `RUN` citations cho scraper runs. Gap phát hiện post-implementation: ChainLens Research `ResearchOutput.sources[]` (URL list) không được register as `WEB_RESULT` citation — `CitationSourceType.WEB_RESULT` enum có, `markers.py` render được, nhưng **0 code call `registry.register(WEB_RESULT, ...)`**. FR-24 yêu cầu "câu trả lời tổng hợp **có trích dẫn**" + "sources[] giữ nguyên thứ tự trích dẫn để map về citation UI" — **VIOLATED** cho ChainLens. Append ACs dưới đây để đóng gap.
+
+**Acceptance Criteria (appended 2026-08-08 — WEB_RESULT citations for ChainLens sources):**
+
+**Given** a sync ChainLens research call completes with `ResearchOutput.sources[]`, **When** the capability tool finalizes, **Then** each source URL is registered as a `WEB_RESULT` citation in the `CitationRegistry` with its title and URL.
+**Given** the registry contains `WEB_RESULT` entries, **When** `normalize_citations()` resolves `[n]` ordinals, **Then** they are rewritten to `[citation:https://...]` markers.
+**Given** an assistant message contains `[citation:https://...]`, **When** rendered in chat, **Then** the `UrlCitation` chip displays with domain name + favicon, and clicking opens the URL in a new tab.
+**Given** a ChainLens answer with 5 sources, **When** the model emits `[1][3][5]` labels, **Then** exactly 3 URL chips render, each linking to the correct source URL.
+**And** existing `RUN` and `KB_CHUNK` citations continue to work unchanged.
+**And** the `RUN` citation (run panel) and `WEB_RESULT` citations (URL chips) coexist — run chip shows "Source" opening run panel, URL chips show domain opening external link.
+
+**Kỹ thuật (appended):** add `register_web_citations(registry, sources: list[Source])` helper; call in `agent.py` sync ChainLens path after executor returns, before `attach_run_citation()`. Frontend: no changes — `citation-parser.ts` already handles `kind: "url"`, `UrlCitation` component already renders.
 
 ### Story 3.16: Open Knowledge Format (OKF) Export  `(mới 2026-07-30)`  `[ready-for-dev]`
 As a data owner or integrator,
@@ -616,6 +653,17 @@ So that I can understand user flows, feature adoption, and retention.
 **Kỹ thuật:** add `@posthog-js` (if not already), initialize in layout, wrap key events, keep server-side observability separate.
 _NFR-3 · upstream PR #1622._
 
+### Story 8.11-followup: Admin Model Config Hardening  `(tech debt)`  `[backlog]`
+As a platform operator,
+I want admin model config có provider validation + pagination,
+So that config không corrupt và list không chậm khi scale.
+
+**Acceptance Criteria:**
+**Given** provider name, **When** create/update connection, **Then** validate against known provider list (enum).
+**Given** >1000 connections, **When** list, **Then** hỗ trợ pagination (limit/offset).
+
+_Source: code review defer items từ 8-11. Priority: P3. Effort: 1 day. Trigger: khi connections > 1000. API key trim + provider change block đã patched._
+
 ---
 
 ## Epic 9: Deep Research đáng tin cậy — không vỡ, không treo, tính phí đúng  `(mới 2026-07-25)`
@@ -821,6 +869,19 @@ So that không cược vào giả định latency theo chiều nào, và biết 
 **And** UX progress-first có nội dung thật để hiển thị, không phải *"Researching…"* rồi đứng im vài phút
 **And** `firstFactualChunkAt` dùng làm mốc TTFB đo được cho SM-11b.
 
+> **🆕 Extend 2026-08-08 (SCP `sprint-change-proposal-2026-08-08.md`):** Story 9.3 built async door + notification nhưng **result + citations không flow back to chat thread**. `run.finished` event chỉ chứa metadata (`run_id`, `status`, `item_count`) — không chứa output hay `sources[]`. Chat streaming flow (`event_relay.py`) **không subscribe `run_event_bus`**. Khi async research hoàn tất (57-198s), user phải navigate runs page để xem result — FR-24 "câu trả lời tổng hợp có trích dẫn" **VIOLATED** cho async mode. Append ACs dưới đây.
+
+**Acceptance Criteria (appended 2026-08-08 — Async research result + citation delivery to chat):**
+
+**Given** an async ChainLens research run completes successfully, **When** `run.finished` fires, **Then** the research answer + sources[] are delivered back to the originating chat thread as a new assistant message with `[citation:url]` markers.
+**Given** the async run was initiated from a chat turn, **When** it completes, **Then** the user sees the synthesized answer with clickable URL citation chips in the chat thread (not just the notifications bell).
+**Given** the async run fails or degrades, **When** `run.finished` fires with `status=error`, **Then** a message appears in the chat thread explaining the failure with the `next_action` guidance.
+**Given** the user has closed the chat tab, **When** the async run completes, **Then** the notification (existing `notifications` table) includes `run_id` + `thread_id` so the user can navigate to the result.
+**And** the existing async door (`?mode=async` → 202 + SSE `runs/{id}/events`) continues to work unchanged for REST API callers.
+**And** `WEB_RESULT` citations are registered from `ResearchOutput.sources[]` when the result is delivered (reuse `register_web_citations()` from Story 3.15 extension).
+
+**Kỹ thuật (appended):** design decision needed — 3 options: (A) chat streaming subscribes to `run_event_bus` for run_ids started during the turn; (B) notification → frontend fetches run detail → renders inline (recommended — robust when tab closed, reuses notification infra); (C) agent "resume" turn when run completes (best UX but extra LLM call). AD-17 amendment needed: add piece (c) to "Three Missing Pieces" — deliver result + WEB_RESULT citations back to chat thread.
+
 **Given** parser hiện bỏ im lặng mọi `type` không biết
 **When** thêm mapping
 **Then** giữ nguyên tính **forgiving** — `type` lạ vẫn bỏ qua, không raise (để ChainLens ship event mới mà không làm vỡ Nowing).
@@ -939,6 +1000,19 @@ So that the system knows when a fact is stale instead of returning outdated info
 
 _FR-39 · **`AD-11.1`** · FR-34 · AD-8. **Ưu tiên:** không chặn launch, nhưng **P0 nếu muốn kể câu chuyện re-validation** — xem brief §4, §8, §12 H-3._
 
+### Story 9.6-followup: Re-Validation Hardening  `(tech debt)`  `[backlog]`
+As a platform engineer,
+I want revalidation có DB constraint + concurrent safety + output limits + test robustness,
+So that confidence không corrupt và revalidation robust dưới load.
+
+**Acceptance Criteria:**
+**Given** Memory.confidence, **When** set value, **Then** DB CHECK constraint đảm bảo [0.1, 1.0] (Alembic migration).
+**Given** concurrent revalidation trên cùng memory, **When** 2 requests chạy cùng lúc, **Then** dùng SELECT FOR UPDATE tránh race.
+**Given** capability output > 100KB, **When** revalidate, **Then** truncate text trước khi compare (tránh OOM).
+**Given** test_memory_revalidation.py, **When** test failure path, **Then** assert mock executor call_count > 0.
+
+_Source: code review defer items từ 9-6b. Priority: P2. Effort: 2-3 days. Trigger: khi có automated revalidation._
+
 ---
 
 ## Epic 4: Chat & Agents
@@ -1008,6 +1082,41 @@ So that `chat/regression` passes latency, TTFB, and cost gates without losing an
 
 _Implementation hints (not AC):_ system prompt per mode + tool availability filter + tool-call budget middleware + `search_knowledge_base` `top_k`/`max_passages` clamp. For `mode=speed`, clamp to `top_k=1, max_passages=4`, no `task`/deep research/web tools, target ≤15s. For `mode=balanced`, allow at most two KB calls and one `task`, no deep research, p95 cost ≤100k micros. For `mode=auto`, force answer after 5 tool calls. Detailed spec: `@doc/specs/2026-08-05/new-chat-mode-aware-latency-cost-policy`.
 _FR-42 · NFR-10 · `sprint-change-proposal-2026-08-05-chat-mode-policy.md`._
+
+### Story 4.8c-followup: Sampler Hardening  `(tech debt)`  `[backlog]`
+As an eval operator,
+I want sampler có HMAC hash + DB error handling + test cleanup,
+So that sampler robust khi trở thành automated job.
+
+**Acceptance Criteria:**
+**Given** workspace hash, **When** generate, **Then** dùng HMAC thay vì plain SHA256 (defense-in-depth).
+**Given** DB query fail, **When** sampler chạy, **Then** log error rõ ràng thay vì crash silently.
+**Given** test_chat_query_sampler.py session context manager, **When** test fail, **Then** __aexit__ rollback transaction.
+
+_Source: code review defer items từ 4-8c. Priority: P3. Effort: 1 day. Trigger: khi sampler trở thành automated job._
+
+### Story 4.8d-followup: Quality Benchmark Test Robustness  `(tech debt)`  `[backlog]`
+As an ML/QA engineer,
+I want quality benchmark tests handle missing gate.yaml gracefully,
+So that tests không fail trong CI nếu file missing.
+
+**Acceptance Criteria:**
+**Given** gate.yaml missing, **When** test chạy, **Then** skip với clear message thay vì crash.
+
+_Source: code review defer item từ 4-8d. Priority: P3. Effort: 0.5 day. Trigger: làm trước — rủi ro thấp nhất._
+
+### Story 4.8h-followup: Mode-Aware Chat Policy Hardening  `(tech debt)`  `[backlog]`
+As a platform engineer,
+I want mode budget có concurrent safety + ChainLens conditional gating,
+So that budget counter không race và ChainLens chỉ trigger khi cần.
+
+**Acceptance Criteria:**
+**Given** concurrent tool calls trong 1 turn, **When** budget counter update, **Then** dùng atomic update tránh race.
+**Given** mode=quality và mentioned_document_ids không rỗng, **When** agent chạy, **Then** KHÔNG trigger ChainLens (user đã scope document).
+**Given** mode=quality, no mentioned_docs, AND first KB search trả hits, **When** agent chạy, **Then** KHÔNG trigger ChainLens.
+**Given** mode=quality, no mentioned_docs, AND first KB search trả empty, **When** agent chạy, **Then** ChainLens được phép trigger.
+
+_Source: code review defer items từ 4-8h. Priority: P2. Effort: 2-3 days. Trigger: khi ChainLens cost là pain point._
 
 ---
 
@@ -1227,7 +1336,7 @@ _Tạo 2026-08-05 để chạy 8-week pilot kết nối VietnamWorks, TopCV, ITv
 
 > **Pilot scope (Plan C):** P0 = cả 3 nguồn. Hard gates: ToS review cho 3 nguồn; legal counsel opinion; anti-bot POC cho TopCV; SCP về NG-1. Effort ước tính 18–24 dev-days. Go/No-Go sau 8 tuần beta 20–50 workspaces.
 
-### Story 12.0: ToS & Legal Review `[proposed P0]`
+### Story 12.0: ToS & Legal Review `[DONE — approved by legal counsel 2026-08-08]`
 
 As a product owner,
 I want to confirm ToS and legal classification for VietnamWorks, TopCV, and ITviec,
@@ -1240,6 +1349,8 @@ So that we do not build or launch a non-compliant pilot.
 - **Given** legal approval, **When** the pilot launches, **Then** public messaging clearly positions Nowing as a research/memory layer, not a job board/ATS/intermediary.
 
 _Kỹ thuật (không phải AC):_ No code. Output: legal review memo + ToS decision log.
+
+> ✅ **Completed 2026-08-08.** Legal counsel approved all 3 sources (VietnamWorks, TopCV, ITviec). Nowing confirmed not classified as employment service provider. See `legal/tos-legal-epic-12-hr-vertical-2026-08-05.md` (closed) and `legal/tos-review-memo-epic-12-2026-08-08.md` (analysis). Epic 12 P0 unblocked — Stories 12.1-12.5 may proceed.
 
 _FR-43..FR-47 · NFR-11 · OQ-8 · AD-26_
 

@@ -70,6 +70,7 @@ development_status:
   epic-3: done
   3-6: done
   3-7: done
+  3-7-followup: backlog
   3-9: done
   3-10: done
   3-11: done
@@ -89,11 +90,14 @@ development_status:
   4-8a: done
   4-8b: done
   4-8c: done
+  4-8c-followup: backlog
   4-8d: ready-for-dev
+  4-8d-followup: backlog
   4-8e: done
   4-8f: done
   4-8g: done
   4-8h: done
+  4-8h-followup: backlog
   epic-4-retrospective: optional
 
   # === Epic 5: Deliverables (DONE — brownfield, no individual stories) ===
@@ -123,6 +127,7 @@ development_status:
   8-9: done
   8-10: done
   8-11: done
+  8-11-followup: backlog
   8-12: done
   8-13: done
   epic-8-retrospective: optional
@@ -137,6 +142,7 @@ development_status:
   9-4: done
   9-5: backlog
   9-6: done
+  9-6-followup: backlog
   epic-9-retrospective: optional
 
   # === Epic 10: Connector & Scraper Expansion ===
