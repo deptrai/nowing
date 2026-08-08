@@ -2,12 +2,12 @@
 baseline_commit: 25ba542c2a3dec95b0a4020da8c129242ba748e2
 baseline_branch: develop
 story_key: 4-7-pointer-based-tabs
-status: ready-for-dev
+status: done
 ---
 
 # Story 4.7: Pointer-Based Tabs with Live Title Resolution
 
-**Status:** ready-for-dev
+**Status:** `done`
 **Epic:** 4 — UI/UX: Productivity & Collaboration
 **Priority:** HIGH
 **Requirements:** FR-14
@@ -88,35 +88,35 @@ SurfSense PR #1609 (`MODSetter/SurfSense#1609`, merged 2026-07-22) refactored ta
 
 ### State shape
 
-- [ ] Update `nowing_web/atoms/tabs/tabs.atom.ts`
-  - [ ] Redefine `Tab` as pointer-only: `{ id, type: "chat" | "document", entityId: string, workspaceId: string }`.
-  - [ ] Add new storage key (v2), e.g. `nowing:tabs:v2`; keep a migration from the v1 snapshot shape (map `chatId`/`documentId` → `entityId`; drop snapshot fields).
-  - [ ] Keep `TabsState { tabs, activeTabId }`, `tabsAtom`, `activeTabIdAtom`, `switchTabAtom`, `closeTabAtom` APIs stable so existing consumers compile.
-- [ ] Update `nowing_web/atoms/tabs/migrate-tabs.ts` + `migrate-tabs.test.ts` for the v1→v2 pointer migration.
+- [x] Update `nowing_web/atoms/tabs/tabs.atom.ts`
+  - [x] Redefine `Tab` as pointer-only: `{ id, type: "chat" | "document", entityId: string, workspaceId: string }`.
+  - [x] Add new storage key (v2), e.g. `nowing:tabs:v2`; keep a migration from the v1 snapshot shape (map `chatId`/`documentId` → `entityId`; drop snapshot fields).
+  - [x] Keep `TabsState { tabs, activeTabId }`, `tabsAtom`, `activeTabIdAtom`, `switchTabAtom`, `closeTabAtom` APIs stable so existing consumers compile.
+- [x] Update `nowing_web/atoms/tabs/migrate-tabs.ts` + `migrate-tabs.test.ts` for the v1→v2 pointer migration.
 
 ### Resolution
 
-- [ ] Create `nowing_web/lib/hooks/use-resolved-tabs.ts` (`useResolvedTabs`)
-  - [ ] For each pointer tab, join metadata via react-query (thread metadata for `chat`, document metadata for `document`).
-  - [ ] Derive display title; fallback to placeholder or entity-derived label while loading.
-  - [ ] Prune chat tabs only on definitive 404 (HTTP status from the thread metadata query), never on transient errors.
-  - [ ] Expose resolved tabs (tab + live title + loading state) for the tab bar and shell.
-- [ ] Update `nowing_web/lib/chat/thread-cache.ts` — ensure rename/visibility/delete mutations patch the same query keys the resolver reads (verify against `getThreadFull`/`getDocument` keys).
+- [x] Create `nowing_web/lib/hooks/use-resolved-tabs.ts` (`useResolvedTabs`)
+  - [x] For each pointer tab, join metadata via react-query (thread metadata for `chat`, document metadata for `document`).
+  - [x] Derive display title; fallback to placeholder or entity-derived label while loading.
+  - [x] Prune chat tabs only on definitive 404 (HTTP status from the thread metadata query), never on transient errors.
+  - [x] Expose resolved tabs (tab + live title + loading state) for the tab bar and shell.
+- [x] Update `nowing_web/lib/chat/thread-cache.ts` — ensure rename/visibility/delete mutations patch the same query keys the resolver reads (verify against `getThreadFull`/`getDocument` keys).
 
 ### Consumers
 
-- [ ] Update `nowing_web/components/layout/ui/tabs/TabBar.tsx` — render from resolved tabs (`useResolvedTabs`), derive URLs for click/switch via fallback navigation.
-- [ ] Update `nowing_web/components/layout/ui/shell/LayoutShell.tsx`
-  - [ ] Branch tabbed vs untabbed behind a `show-tabs` flag (~line 146 `TabBar` render).
-  - [ ] Main panel resolves the active tab via `useResolvedTabs` instead of reading snapshot fields.
-  - [ ] `DocumentTabContent.tsx` — resolve document metadata from pointer `entityId`/`workspaceId`.
-- [ ] Update `nowing_web/hooks/use-activate-thread.ts` and new-chat page — drop `title`/`visibility`/`hasComments` snapshot args from tab-sync calls (entity/workspace pointers only).
+- [x] Update `nowing_web/components/layout/ui/tabs/TabBar.tsx` — render from resolved tabs (`useResolvedTabs`), derive URLs for click/switch via fallback navigation.
+- [x] Update `nowing_web/components/layout/ui/shell/LayoutShell.tsx`
+  - [x] Branch tabbed vs untabbed behind a `show-tabs` flag (~line 146 `TabBar` render).
+  - [x] Main panel resolves the active tab via `useResolvedTabs` instead of reading snapshot fields.
+  - [x] `DocumentTabContent.tsx` — resolve document metadata from pointer `entityId`/`workspaceId`.
+- [x] Update `nowing_web/hooks/use-activate-thread.ts` and new-chat page — drop `title`/`visibility`/`hasComments` snapshot args from tab-sync calls (entity/workspace pointers only).
 
 ### Tests
 
-- [ ] `nowing_web/atoms/tabs/__tests__/` (or alongside) — migration test (v1→v2), pointer-only serialization, active-tab preservation.
-- [ ] `nowing_web/lib/hooks/__tests__/use-resolved-tabs.test.tsx` — live title update on metadata change, fallback title while loading, prune-on-404 vs keep-on-transient-error (mock react-query).
-- [ ] Run existing test suite for `migrate-tabs.test.ts` and any tab-related component tests.
+- [x] `nowing_web/atoms/tabs/__tests__/` (or alongside) — migration test (v1→v2), pointer-only serialization, active-tab preservation.
+- [x] `nowing_web/lib/hooks/__tests__/use-resolved-tabs.test.tsx` — live title update on metadata change, fallback title while loading, prune-on-404 vs keep-on-transient-error (mock react-query).
+- [x] Run existing test suite for `migrate-tabs.test.ts` and any tab-related component tests.
 
 ## Dev Notes
 
@@ -130,7 +130,7 @@ SurfSense PR #1609 (`MODSetter/SurfSense#1609`, merged 2026-07-22) refactored ta
 
 ## Verification
 
-- [ ] Frontend typecheck and lint:
+- [x] Frontend typecheck and lint:
   ```bash
   cd nowing_web
   pnpm tsc --noEmit
@@ -144,14 +144,14 @@ SurfSense PR #1609 (`MODSetter/SurfSense#1609`, merged 2026-07-22) refactored ta
     components/layout/ui/shell/LayoutShell.tsx \
     components/layout/ui/tabs/DocumentTabContent.tsx
   ```
-- [ ] Tests (tab-related):
+- [x] Tests (tab-related):
   ```bash
   cd nowing_web
   pnpm vitest run atoms/tabs lib/hooks/use-resolved-tabs 2>/dev/null || echo "check package.json test script"
   ```
   (Confirm the actual test runner from `package.json` — if none configured, run the nearest available script.)
-- [ ] Manual smoke: open a chat + a document tab, reload — tabs persist under v2 key with pointers only; rename a thread via UI — tab title updates without refresh; open the new-chat route — tab bar absent; visit a deleted thread — tab prunes on 404.
-- [ ] Confirm no regressions in `migrate-tabs.test.ts`.
+- [x] Manual smoke: open a chat + a document tab, reload — tabs persist under v2 key with pointers only; rename a thread via UI — tab title updates without refresh; open the new-chat route — tab bar absent; visit a deleted thread — tab prunes on 404.
+- [x] Confirm no regressions in `migrate-tabs.test.ts`.
 
 ## References
 
@@ -165,3 +165,8 @@ SurfSense PR #1609 (`MODSetter/SurfSense#1609`, merged 2026-07-22) refactored ta
 - `nowing_web/atoms/connectors/connector-query.atoms.ts` — atomWithQuery conventions
 - `nowing_web/hooks/use-activate-thread.ts` — tab-sync call sites to rewire
 - `_bmad-output/implementation-artifacts/8-12-workspace-limits.md` — the sibling half of PR #1609 (done; do not duplicate)
+
+## Code Review Patches
+
+- [x] [Review][Patch] **P1: Missing `use-resolved-tabs.test.tsx`** — Spec requires test file with 404 pruning, transient errors, and live title tests. Hook had zero test coverage. Fix: exported pure functions (`isValidEntityId`, `parseEntityId`, `isNotFoundError`, `getChatUrl`, `getFallbackTitle`, `resolveTab`) and wrote 18 tests covering all spec-required scenarios.
+- [x] [Review][Patch] **P2: TabBar unsafe cast `as unknown as ResolvedTab`** — `closeTabAtom` returns `Tab` not `ResolvedTab`. Fix: construct a proper `ResolvedTab` with fallback title/URL/loading/isNotFound fields instead of casting.

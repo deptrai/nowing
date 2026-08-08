@@ -6,7 +6,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { activeTabIdAtom, closeTabAtom, switchTabAtom } from "@/atoms/tabs/tabs.atom";
 import { Button } from "@/components/ui/button";
 import type { ResolvedTab } from "@/lib/hooks/use-resolved-tabs";
-import { useResolvedTabs } from "@/lib/hooks/use-resolved-tabs";
+import { getChatUrl, getFallbackTitle, useResolvedTabs } from "@/lib/hooks/use-resolved-tabs";
 import { cn } from "@/lib/utils";
 
 interface TabBarProps {
@@ -88,7 +88,16 @@ export function TabBar({
 			e.stopPropagation();
 			const fallback = closeTab(tabId);
 			if (fallback) {
-				onTabSwitch?.(fallback as unknown as ResolvedTab);
+				onTabSwitch?.({
+					...fallback,
+					title: getFallbackTitle(fallback),
+					url:
+						fallback.type === "chat"
+							? getChatUrl(fallback.workspaceId, fallback.entityId)
+							: undefined,
+					isLoading: false,
+					isNotFound: false,
+				});
 			}
 		},
 		[closeTab, onTabSwitch]

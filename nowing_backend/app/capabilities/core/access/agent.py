@@ -32,6 +32,7 @@ from app.capabilities.core.access.rate_limit import (
     _aincr,
 )
 from app.capabilities.core.access.run_citation import attach_run_citation
+from app.capabilities.core.access.web_citation import register_web_citations
 from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.progress import progress_scope
@@ -127,7 +128,7 @@ def _is_sync_chat_mode_allowed(mode: str | None) -> bool:
     """
     if mode == "auto":
         return False
-    if mode is None:
+    if not mode:
         mode = config.DEFAULT_RESEARCH_MODE
     return mode in _SYNC_CHAT_ALLOWED_MODES
 
@@ -352,6 +353,13 @@ def _capability_tool(
             run_external_id=run_external_id,
             capability=name,
         )
+
+        # Register WEB_RESULT citations for structured outputs that carry
+        # web sources (e.g. chainlens.research ResearchOutput.sources[]).
+        # Each URL becomes a citable [n] label rendered as a UrlCitation chip.
+        sources = getattr(output, "sources", None)
+        if sources:
+            register_web_citations(registry, sources)
 
         return Command(
             update={

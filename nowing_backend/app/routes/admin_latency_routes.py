@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,8 @@ from app.users import require_superuser
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/metrics")
+
+_ALLOWED_MODES = {"speed", "balanced", "quality", "auto"}
 
 
 class LatencyPercentile(BaseModel):
@@ -51,6 +53,11 @@ async def deep_research_latency(
     p: float | None = Query(default=None, ge=0.0, le=1.0),
 ) -> DeepResearchLatencyResponse:
     """Return p50/p95 latency per research mode for the last ``window_days`` days."""
+    if mode and mode not in _ALLOWED_MODES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid mode. Allowed: {sorted(_ALLOWED_MODES)}",
+        )
     field = "e2e_ms" if metric == "e2e" else "ttfb_ms"
     column = TokenUsage.e2e_ms if metric == "e2e" else TokenUsage.ttfb_ms
     cutoff = datetime.now(UTC) - timedelta(days=window_days)
@@ -98,15 +105,10 @@ async def deep_research_latency(
 
     rows = (await session.execute(stmt.group_by(mode_expr).order_by(mode_expr))).all()
 
-    p_target = p
     percentiles = []
     for row in rows:
         p50 = float(row.p50) if row.p50 is not None and row.samples > 0 else None
         p95 = float(row.p95) if row.p95 is not None and row.samples > 0 else None
-        if p_target == 0.5:
-            p95 = p50
-        elif p_target == 0.95:
-            p50 = p95
         percentiles.append(
             LatencyPercentile(
                 mode=row.mode,

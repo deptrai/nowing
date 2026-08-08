@@ -228,9 +228,14 @@ class _SSEParser:
         ):
             self.saw_engine_first_token = True
             self.saw_first_token = True
-            self.first_token_time_ms = max(
-                0, self.first_factual_chunk_at - self.request_accepted_at
-            )
+            _diff_ms = self.first_factual_chunk_at - self.request_accepted_at
+            if _diff_ms < 0:
+                logger.warning(
+                    "Engine timestamps out of order: firstFactualChunkAt=%d < requestAcceptedAt=%d",
+                    self.first_factual_chunk_at,
+                    self.request_accepted_at,
+                )
+            self.first_token_time_ms = max(0, _diff_ms)
             emit_progress(
                 "first_token",
                 message="First token received",
@@ -897,8 +902,8 @@ async def execute_with_context(
                 kb_fallback_search_cost_micros=0,
             )
         finally:
-            kb_fallback_duration_ms = int(
-                (time.perf_counter() - kb_fallback_started) * 1000
+            kb_fallback_duration_ms = max(
+                0, int((time.perf_counter() - kb_fallback_started) * 1000)
             )
             # Record duration even on empty or failed fallback so telemetry
             # shows the attempt cost.

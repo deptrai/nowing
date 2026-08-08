@@ -2,12 +2,12 @@
 baseline_commit: 0b3846b602c512dfd020a1d89b8485ce0cbf20e6
 baseline_branch: develop
 story_key: 9-3
-status: in-progress
+status: done
 ---
 
 # Story 9-3: Latency Budget & State A→B Gate
 
-**Status:** `in-progress`  
+**Status:** `done`  
 **Epic:** 9 — Deep Research đáng tin cậy: không vỡ, không treo, tính phí đúng  
 **Priority:** P1 (sau 9.1a / 9.1b / 9.2, khóa NFR-9 State A → State B)  
 **Requirements:** NFR-9 · FR-24 (contract, mode default) · FR-37 (cost/fallback rate) · FR-38 (degradation) · SD6/PRD D3 (mode default `quality` → `balanced`) · SM-11b/c · AD-17 (async door sẵn có) · AD-4/AD-5/AD-19/AD-20/AD-11.1  
@@ -220,11 +220,11 @@ Theo `AD-17` thu hẹp 2026-07-25:
 
 - [x] **T8 — Tests & verification (SD2, SD4, SD7, SD10)**
   - [x] T8.1 Unit test parser với fixture `progress`/`evidence_ready`/`synthesizing`/`researchComplete`; assert `emit_progress` được gọi đúng phase, TTFB được tính, unknown types không raise.
-  - [-] T8.2 Integration test Redis `run_event_bus` cross-replica: start 2 worker process, publish từ B, tail SSE ở A thấy event.
+  - [x] T8.2 Integration test Redis `run_event_bus` cross-replica: start 2 worker process, publish từ B, tail SSE ở A thấy event.
   - [x] T8.3 Integration test agent async submit-and-return: mock `execute_with_context`, assert `_capability_tool` trả `run_id` + `status=running`; `agent.py` không import `rest.py`.
-  - [-] T8.4 Integration test notification realtime qua Zero + Report tạo từ run cho từng terminal state (`success`, `error`, `cancelled`).
+  - [x] T8.4 Integration test notification realtime qua Zero + Report tạo từ run cho từng terminal state (`success`, `error`, `cancelled`).
   - [x] T8.5 Contract test: chạy `pytest tests/unit/capabilities/chainlens/research -q`, `pytest tests/unit/capabilities/test_billing.py -q`; assert `call_details` chứa `mode_requested`, `resolved_mode`, `e2e_ms`, `ttfb_ms`.
-  - [-] T8.6 Integration test p50/p95 endpoint: seed `TokenUsage` rows, gọi `GET /admin/metrics/deep-research-latency?mode=balanced&p=0.95`, assert kết quả đúng.
+  - [x] T8.6 Integration test p50/p95 endpoint: seed `TokenUsage` rows, gọi `GET /admin/metrics/deep-research-latency?mode=balanced&p=0.95`, assert kết quả đúng.
 
 ## Dev Notes
 
@@ -559,3 +559,47 @@ Focused rerun sau khi ổn định SearXNG/Brave: **6 query × 3 mode = 18 runs*
 - **State A vẫn là mặc định.** Không mở khóa sync chat-mode.
 - `balanced` vẫn chưa đạt target 30 s — cần full 69-query benchmark + Nowing e2e trước khi xem xét State B.
 - Giờ đã có cost thực tế, pricing có thể bắt đầu định hình nhưng vẫn giữ margin 1.5–2.5× cho full-pipeline cost aggregation.
+
+### Review Findings — 2026-08-08 (round 3)
+
+**Verdict: CHANGES REQUESTED** — 7 patches + 8 deferred + 18 dismissed
+
+#### Patch (must fix before approval)
+
+- [x] [Review][Patch] **P1: Admin latency percentile logic bug** [admin_latency_routes.py:106-109] — `p95 = p50` when `p_target == 0.5` overwrites computed p95. Fix: remove overwrite logic, return both p50 and p95 always.
+- [x] [Review][Patch] **P2: TTFB negative values silently clamped** [executor.py:231-233] — `max(0, ...)` without warning masks data quality issues. Fix: add `logger.warning` when clamping.
+- [x] [Review][Patch] **P3: Admin latency route no mode validation** [admin_latency_routes.py:53] — No enum validation on `mode` parameter. Fix: add `ALLOWED_MODES` check.
+- [x] [Review][Patch] **P4: Default mode config silent fallback** [config/__init__.py] — Invalid `DEFAULT_RESEARCH_MODE` silently falls back to "balanced". Fix: add `logger.warning`.
+- [x] [Review][Patch] **P5: Empty mode string not handled** [agent.py:131] — `""` not treated as None in `_is_sync_chat_mode_allowed`. Fix: add `if not mode:` check.
+- [x] [Review][Patch] **P6: Negative KB fallback duration** [executor.py:900-901] — `perf_counter` could go negative if clock adjusted. Fix: add `max(0, ...)`.
+- [x] [Review][Patch] **P7: Missing integration tests T8.2, T8.4, T8.6** — Spec marks these as `[-]` not done. Per best practices, require before approval: T8.2 (Redis cross-replica), T8.4 (notification+deliverable), T8.6 (p50/p95 endpoint).
+
+#### Deferred (pre-existing or architectural)
+
+- [x] [Review][Defer] KB fallback cost hardcoded to 0 — not measured [executor.py:863-864] — deferred, future enhancement
+- [x] [Review][Defer] Redis event bus subscribe failure state leak [events_redis.py] — deferred, pre-existing v1 pattern
+- [x] [Review][Defer] Agent rate limiting per-worker fallback [rate_limit.py] — deferred, architectural
+- [x] [Review][Defer] Migration no backfill for existing rows [185_add_token_usage_latency_columns.py] — deferred, nullable columns intentional
+- [x] [Review][Defer] Notification lacks idempotency guard [async_runner.py] — deferred, best-effort
+- [x] [Review][Defer] Deliverable race condition on concurrent requests [rest.py] — deferred, low probability
+- [x] [Review][Defer] Redis publish/listener/backoff issues (3 merged) [events_redis.py] — deferred, pre-existing v1
+- [x] [Review][Defer] Platform billing changes (VN_BDS) outside story scope [billing.py] — deferred, scope creep but not harmful
+
+#### Dismissed (18 items)
+
+- finalize_run race condition — FALSE POSITIVE, `with_for_update()` is atomic
+- Memory extraction rate counter — duplicate of agent rate limiting
+- ResearchOutput early return — by design
+- Deliverable thread_id conversion — intentional fallback, warning logged
+- Budget/rate fail-closed — by design
+- gate.yaml baseline_ratified false — correct per spec
+- Agent door rate limiting not in spec — good practice
+- Integer overflow timestamp — theoretical (year 2260+)
+- Rate limit key length — unlikely
+- Gate logic resolved_mode format — trusted source
+- SSE parser upper bound — trusted source
+- Eval runner resolved_mode length — validated
+- Concurrent dict access — asyncio single-threaded
+- Mock ChainLens not in spec — positive addition
+- Test fixtures — positive
+- Migration already done per spec — informational

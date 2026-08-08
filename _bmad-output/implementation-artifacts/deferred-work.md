@@ -101,3 +101,37 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-review-test-gaps.md`
   summary: Revalidation failure test doesn't assert mock executor was called — test passes even if code path doesn't reach executor
   evidence: Edge Case EC-15. AsyncMock with side_effect but no call_count assertion.
+
+## Deferred from: code review of 9-3-latency-budget-state-a-b-gate (2026-08-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
+  summary: KB fallback cost hardcoded to 0 — executor.py:863-864 hardcodes kb_fallback_embedding_cost_micros=0 and kb_fallback_search_cost_micros=0. No actual billing impact (0+0=0) but KB fallback costs are never measured.
+  evidence: Blind Hunter BH-3. Future enhancement to measure KB embedding/search costs.
+
+- source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
+  summary: Redis event bus subscribe failure state leak — on subscribe timeout, channel stays in subscribers but Redis subscription failed. Cross-replica delivery fails silently.
+  evidence: Blind Hunter BH-4. Pre-existing v1 pattern in events_redis.py.
+
+- source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
+  summary: Agent rate limiting per-worker in-memory fallback without coordination — when Redis down, each worker maintains own counter. Defense-in-depth, not primary security.
+  evidence: Blind Hunter BH-5. Architectural, not introduced by this story.
+
+- source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
+  summary: Migration 185 no backfill for existing rows — new columns (e2e_ms, ttfb_ms, resolved_mode, mode_requested) are nullable, existing rows have NULL. Admin route handles via COALESCE.
+  evidence: Blind Hunter BH-10 + Edge EC-14. Nullable columns intentional.
+
+- source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
+  summary: Notification lacks idempotency guard — _notify_terminal could create duplicate notifications if called multiple times. Best-effort notification, not critical.
+  evidence: Blind Hunter BH-11. Best-effort path.
+
+- source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
+  summary: Deliverable race condition on concurrent requests — two concurrent POST /deliverable could both pass existing is None check. Low probability, JSONB query.
+  evidence: Blind Hunter BH-12. Low probability edge case.
+
+- source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
+  summary: Redis publish/listener/backoff issues (3 merged) — publish failure silently drops cross-replica events; 1-second backoff window loses events; no exponential backoff on connection failures.
+  evidence: Edge Case EC-4, EC-5, EC-11. Pre-existing v1 pattern in events_redis.py.
+
+- source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
+  summary: Platform billing changes (VN_BDS) outside story scope — billing.py includes VN_BDS_AGGREGATE_QUERY, BATDONGSAN_ITEM, CHOTOT_BDS_ITEM, MUABAN_BDS_ITEM changes that belong to Story 10.x.
+  evidence: Acceptance Auditor AA-8. Scope creep but not harmful.

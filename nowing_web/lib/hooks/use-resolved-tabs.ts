@@ -20,26 +20,26 @@ export interface ResolvedTab extends Tab {
 	isNotFound: boolean;
 }
 
-function isValidEntityId(entityId: string): boolean {
+export function isValidEntityId(entityId: string): boolean {
 	return entityId !== "" && entityId !== "new";
 }
 
-function parseEntityId(entityId: string): number {
+export function parseEntityId(entityId: string): number {
 	const parsed = Number.parseInt(entityId, 10);
 	return Number.isNaN(parsed) || parsed <= 0 ? 0 : parsed;
 }
 
-function isNotFoundError(error: unknown): boolean {
+export function isNotFoundError(error: unknown): boolean {
 	return error instanceof NotFoundError;
 }
 
-function getChatUrl(workspaceId: number, entityId: string): string {
+export function getChatUrl(workspaceId: number, entityId: string): string {
 	return isValidEntityId(entityId)
 		? `/dashboard/${workspaceId}/new-chat/${parseEntityId(entityId)}`
 		: `/dashboard/${workspaceId}/new-chat`;
 }
 
-function getFallbackTitle(tab: Tab): string {
+export function getFallbackTitle(tab: Tab): string {
 	if (tab.type === "chat") {
 		return isValidEntityId(tab.entityId) ? `Chat ${tab.entityId}` : "New Chat";
 	}
@@ -75,7 +75,7 @@ function getQueryOptions(tab: Tab): UseQueryOptions<unknown, Error, unknown> {
 	};
 }
 
-function resolveTab(tab: Tab, result: UseQueryResult<unknown, Error>): ResolvedTab {
+export function resolveTab(tab: Tab, result: UseQueryResult<unknown, Error>): ResolvedTab {
 	const isNotFound = isNotFoundError(result.error);
 	let title = getFallbackTitle(tab);
 	let url: string | undefined;
