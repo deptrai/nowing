@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-08"  # Readiness audit: Epic 12→13→18 dependency chain documented, 12.9 reordered P0 before 12.6, 6.6/6.7/6.9 business-gated, 12.0 prerequisite, 9.5 approval criteria, Epic 14-17 priority clarification
+last_updated: "2026-08-08"  # Correct Course: AD references added to 15 stories (AD-22/23/24/27/33), td-5/6/7 added to tech-debt epic
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
@@ -256,6 +256,9 @@ development_status:
   td-2: backlog  # Redis event bus subscribe failure state leak (9-3 defer: channel stays in subscribers on timeout)
   td-3: backlog  # Storage sum does not reconcile deleted backend files (8-12 defer: workspace_limits.py:199-209)
   td-4: backlog  # Concurrent notification preference merge race condition (11-1 defer: _merge_notification_preferences read-merge-overwrite)
+  td-5: backlog  # title_gen.py lacks timeout/retry on litellm.acompletion (P1, affects chat UX)
+  td-6: backlog  # verify_chat_image_capability.py lacks num_retries (P3, diagnostic script)
+  td-7: backlog  # No unit test coverage for test_model function (P2, integration tests mock it)
   tech-debt-retrospective: optional
 
 validation_reports:

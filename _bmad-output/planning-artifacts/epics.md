@@ -1375,7 +1375,7 @@ So that I can source live job data into my Nowing workspace.
 
 _Kỹ thuật (không phải AC):_ `app/capabilities/vietnamworks/scrape/` (Apache-2.0 executor/definition/schemas) + `app/proprietary/platforms/vietnamworks/` (BSL 1.1 fetcher nếu cần HTML fallback). ToS review là hard gate.
 
-_FR-43 · AD-3 · AD-16 · `technical-spike-vietnamworks-api-2026-08-05.md`._
+_FR-43 · AD-3 · AD-16 · AD-22 · `technical-spike-vietnamworks-api-2026-08-05.md`._
 
 ### Story 12.2: TopCV Scraper `[proposed P0]`
 
@@ -1391,7 +1391,7 @@ So that I can access the largest local Vietnamese job board.
 
 _Kỹ thuật (không phải AC):_ `app/proprietary/platforms/topcv/` (BSL 1.1 fetcher/parser/anti-bot) + `app/capabilities/topcv/scrape/` (Apache-2.0 capability). Anti-bot POC là hard gate; không merge trước khi POC pass.
 
-_FR-44 · AD-3 · AD-16 · AD-19 · `technical-spike-topcv-itviec-2026-08-05.md`._
+_FR-44 · AD-3 · AD-16 · AD-19 · AD-23 · `technical-spike-topcv-itviec-2026-08-05.md`._
 
 ### Story 12.3: ITviec Scraper `[proposed P0]`
 
@@ -1408,7 +1408,7 @@ So that I can monitor IT/AI hiring trends.
 
 _Kỹ thuật (không phải AC):_ `app/proprietary/platforms/itviec/` (BSL 1.1 fetcher/parser) + `app/capabilities/itviec/scrape/` (Apache-2.0 capability). Rate-limit + user-agent rotation + circuit-breaker.
 
-_FR-45 · AD-3 · AD-16 · `technical-spike-topcv-itviec-2026-08-05.md`._
+_FR-45 · AD-3 · AD-16 · AD-23 · `technical-spike-topcv-itviec-2026-08-05.md`._
 
 ### Story 12.4: Vietnam Job Aggregator `[proposed P0]`
 
@@ -1426,7 +1426,7 @@ So that I get a normalized, deduped, confidence-scored view of the job market fr
 
 _Kỹ thuật (không phải AC):_ `app/services/jobs_aggregator/` (Apache-2.0, copy-modify from `bds_aggregator`). Location filter at aggregator level; PII redaction before memory.
 
-_FR-46 · FR-32 · FR-39 · AD-11.1 · `pilot-plan-c-memo-2026-08-05.md`._
+_FR-46 · FR-32 · FR-39 · AD-11.1 · AD-24 · AD-27 · `pilot-plan-c-memo-2026-08-05.md`._
 
 ### Story 12.5: PII Redaction for Job Data `[proposed P0]`
 
@@ -1950,6 +1950,8 @@ So that I always have fresh results without manual work.
 - Integration test: `test_saved_search_schedule.py` — scheduled execution works
 - Integration test: `test_saved_search_delta.py` — delta calculation correct
 
+_AD-33 (Generic Alert Engine — Saved Search AlertRule template)._
+
 ### Story 12.6: Job Market Alerts `[P1 — depends on 12.9]`
 
 As a job market researcher,
@@ -1967,6 +1969,8 @@ So that I don't have to manually re-run searches every day.
 - Unit test: `test_job_alert_matching.py` — new posting triggers alert
 - Integration test: `test_job_alert_notification.py` — notification delivered
 
+_AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy)._
+
 ### Story 12.7: Property Price Alerts `[P1 — depends on Epic 13]`
 
 As a real estate researcher,
@@ -1982,6 +1986,8 @@ So that I can act on market movements immediately.
 **Validation:**
 - Unit test: `test_property_price_alert.py` — price change triggers alert
 - Integration test: `test_property_alert_notification.py`
+
+_AD-27 (canonical entity convention) · AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy)._
 
 ### Story 12.8: Cross-Source Entity Timeline `[P1 — BLOCKED on Epic 13]`
 
@@ -1999,6 +2005,8 @@ So that I understand its trajectory and patterns.
 **Validation:**
 - Integration test: `test_entity_timeline.py` — timeline aggregates cross-source events
 - UI test: `test_entity_timeline_render.py` — timeline renders correctly
+
+_AD-27 (canonical entity convention — BLOCKED until Epic 13 review closes)._
 
 ---
 
@@ -2022,6 +2030,8 @@ So that I stay informed without manually checking news sites.
 **Validation:**
 - Integration test: `test_news_alert_topic_matching.py`
 - Unit test: `test_news_digest_generation.py`
+
+_AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy)._
 
 ### Story 14.4: News Digest & Synthesis `[P2]`
 
@@ -2059,6 +2069,8 @@ So that I can act on market movements.
 - Unit test: `test_stock_price_alert_rules.py`
 - Integration test: `test_stock_alert_notification.py`
 
+_AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy)._
+
 ### Story 15.4: Financial Trend Detection `[P2]`
 
 As an analyst,
@@ -2072,6 +2084,8 @@ So that I don't miss significant patterns.
 **Validation:**
 - Unit test: `test_financial_trend_detection.py`
 - Integration test: `test_trend_insight_generation.py`
+
+_AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff strategy)._
 
 ---
 
@@ -2095,6 +2109,8 @@ So that I stay informed about competitors and partners.
 - Integration test: `test_company_event_detection.py`
 - Unit test: `test_company_alert_rules.py`
 
+_AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff strategy)._
+
 ### Story 16.4: Company Timeline `[P1]`
 
 As a researcher,
@@ -2108,6 +2124,8 @@ So that I understand its evolution and trajectory.
 **Validation:**
 - Integration test: `test_company_timeline.py`
 - UI test: `test_company_timeline_render.py`
+
+_AD-27 (canonical entity convention — BLOCKED until Epic 13 review closes)._
 
 ---
 
@@ -2131,6 +2149,8 @@ So that I can identify pricing trends and opportunities.
 - Unit test: `test_product_price_alert.py`
 - Integration test: `test_price_history_tracking.py`
 
+_AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy)._
+
 ### Story 17.4: Competitor Tracking `[P2]`
 
 As a product researcher,
@@ -2144,4 +2164,6 @@ So that I stay aware of market movements.
 **Validation:**
 - Integration test: `test_competitor_change_detection.py`
 - UI test: `test_competitor_dashboard.py`
+
+_AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy)._
 
