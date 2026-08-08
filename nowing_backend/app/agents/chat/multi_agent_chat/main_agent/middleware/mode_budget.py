@@ -298,6 +298,9 @@ class ModeBudgetMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
         for tool_call in last.tool_calls:
             is_allowed, reason = self._evaluate_call(tool_call, counter, mode)
             if is_allowed:
+                # Increment immediately so subsequent calls in the same
+                # batch are evaluated against the updated counter.
+                self._apply_call(tool_call, counter)
                 allowed.append(tool_call)
             else:
                 name = tool_call.get("name")
@@ -313,10 +316,6 @@ class ModeBudgetMiddleware(AgentMiddleware[AgentState[ResponseT], ContextT, Resp
                     reason,
                 )
                 blocked_messages.append(self._tool_message(tool_call, reason))
-
-        # Increment counters for the calls we are going to let through.
-        for tool_call in allowed:
-            self._apply_call(tool_call, counter)
 
         if not allowed and blocked_messages:
             # Budget is fully exhausted: force the agent to answer.

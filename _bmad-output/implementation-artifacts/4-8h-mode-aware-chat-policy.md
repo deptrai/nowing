@@ -191,3 +191,38 @@ nowing_evals run chat quality
 2. Add mode budget middleware before system prompt/tool filtering to avoid two conflicting enforcement layers.
 3. Run `chat/quality` after every layer to catch regressions early.
 4. Do not change `chainlens.research` contract on ChainLens side — only gate calls from Nowing.
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commit `9cce2967d` — 2 implementation files (399 lines) + 1 test file (231 lines).
+
+**patch (HIGH) — fixed 2026-08-08:**
+- [x] [Review][Patch] Batch tool call budget bypass — counter was incremented AFTER all evaluations, so if LLM returned 2 KB calls in one AIMessage, both were evaluated against `counter.kb=0` and both passed (budget=1), then counter became 2. Fixed by incrementing counter immediately when a call is allowed, so subsequent calls in the same batch are evaluated against the updated counter. [edge]
+
+**defer:** 9 (all low/medium severity)
+- Silent mode fallback (invalid mode → "auto") — safe default, no warning logged.
+- No actual cost tracking (call count ≠ cost) — AC specifies call count budgets, not cost.
+- Missing subagent_type treated as non_kb — malformed tool calls are edge case.
+- Exception swallowing in config retrieval — fallback to runtime config is reasonable.
+- Case sensitivity ("SPEED" → "auto") — API schema validates mode is lowercase.
+- AC-1 PARTIAL: top_k/max_passages_per_doc clamping not in this diff (may be in retrieval layer).
+- AC-3 PARTIAL: quality mode allows ChainLens by design (budget 3,2,5).
+- AC-5/AC-6: benchmark tests are in nowing_evals, not backend.
+- AC-7 PARTIAL: tests cover speed/balanced/auto modes, missing quality mode specific tests.
+
+**dismissed:** 5 (all false positives)
+- Race condition in counter updates — FALSE POSITIVE. LangGraph agent loop is sequential within a turn. Single asyncio event loop. No concurrent after_model calls for same turn.
+- Counter key collision — FALSE POSITIVE. thread_id and turn_id always set in configurable (orchestrator line 473-474). turn_id is timestamp-based, always unique.
+- Non-atomic check-and-set (TOCTOU) — FALSE POSITIVE. Same as race condition. Sequential execution.
+- Duplicate tool calls counted separately — FALSE POSITIVE. Each tool call has unique ID from LLM.
+- Counter persistence (turn_id reuse) — FALSE POSITIVE. turn_id is `f"{chat_id}:{int(time.time() * 1000)}"`, always unique.
+
+**AC coverage:** AC-1 PARTIAL (top_k clamping not in diff), AC-2 PASS, AC-3 PARTIAL (quality allows ChainLens by design), AC-4 PASS, AC-5/AC-6 defer (benchmark tests in nowing_evals), AC-7 PARTIAL (missing quality mode tests).
+
+**Positive findings:**
+- Mode budgets correctly defined: speed (1,0,1), balanced (2,1,3), quality (3,2,5), auto (2,5,5)
+- Speed mode blocks web/deep-research tools
+- Budget exhaustion forces synthesis (jump_to="end")
+- Counter is per-turn (thread_id::turn_id key)
+- aafter_model delegates to after_model (no duplicate logic)
+- 16 unit tests covering all modes and batch counting
