@@ -265,3 +265,36 @@ Tại baseline `fd64d84f46ce4fb37566c50b032d60891299c88e`:
 4. ✅ Run `bmad-nowing-integration-test` — **5 integration tests đỏ** (Pattern 6 SQL) với Postgres thật.
 5. ✅ Run `bmad-dev-story` để implement — tất cả unit (82) + integration (15) tests xanh, ruff xanh.
 6. Run `bmad-code-review` → `bmad-nowing-mutation-gate` → `bmad-nowing-human-review-gate`.
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commits `fd64d84f4`..`0ba407e10` — 8 files, 1186 lines (deep-research cost metering, P0 surface).
+
+**decision-needed:** 0
+
+**patch:** 0
+
+**defer:** 0
+
+**dismissed:** 8 (all findings false positives or by-design)
+- Missing pre-flight gate for CHAINLENS_QUERY — FALSE POSITIVE. CHAINLENS_QUERY falls through to `_gate_platform` which calls `check_balance` with flat-rate. Two-phase design: pre-flight reserves flat-rate, post-charge uses real cost. D9 explicitly describes this.
+- Wrong billing gate (PLATFORM_SCRAPE_BILLING_ENABLED) — FALSE POSITIVE. Story spec D8 explicitly says "tôn trọng PLATFORM_SCRAPE_BILLING_ENABLED". By design.
+- Inconsistent NaN check (raw_cost != raw_cost) — FALSE POSITIVE. Current code uses `math.isfinite()` at executor.py:490. Blind Hunter looked at old diff.
+- Cost race condition (first valid wins) — FALSE POSITIVE. Current code uses `cost_source == "done"` at executor.py:472. Done overwrites usage.
+- AC-5 FAIL (no margin-based gate) — DISMISS. AC-5 is a process gate for PO decision-making, not code. Cost data IS available via TokenUsage.call_details.resolved_mode.
+- Large costDollars no upper bound — DISMISS. `check_balance` catches over-limit costs.
+- Config change mid-request — DISMISS. Fail-safe (billing disabled = no debit).
+- Multiple usage events — DISMISS. First usage wins, done overwrites. Correct behavior.
+
+**AC coverage:** AC-1 PASS, AC-2 PASS, AC-3 PASS, AC-4 PASS, AC-5 PASS (process gate, cost data available).
+
+**Note:** Blind Hunter's 2 HIGH + 2 MEDIUM were all false positives — it reviewed an old diff snapshot, not the current code. The current code has `math.isfinite()` and `cost_source == "done"` which fix MEDIUM-1 and MEDIUM-2. HIGH-1 and HIGH-2 are by-design behavior documented in the story spec.
+
+**Positive findings (correctly implemented):**
+- Float precision: `Decimal(str(cost_dollars)) * Decimal("1000000")` with `ROUND_HALF_UP`
+- Malformed input: non-numeric, negative, NaN, infinity all handled
+- Billing gate: checked before debit, records usage even when disabled
+- Engine unavailable: no-debit path correct
+- Token usage: always recorded with `usage_type="deep_research"`
+- Fallback: flat-rate with warning when no costDollars
+- Post-charge balance check: fail-closed with `InsufficientCreditsError`
