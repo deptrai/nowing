@@ -209,3 +209,73 @@ async def test_runtime_survives_langchain_arg_parsing():
 
     parsed = tool._parse_input({"text": "ping", "runtime": "RT"}, tool_call_id="call-1")
     assert parsed == {"text": "ping", "runtime": "RT"}
+    # The model must never see "runtime" as an input field.
+    assert tool.args_schema is not None
+    assert "runtime" not in tool.args_schema.model_fields
+
+
+class _WebSource(BaseModel):
+    """Minimal source shape matching ``ResearchOutput.sources[]``."""
+
+    url: str = Field(min_length=1)
+    title: str = ""
+
+
+class _ResearchOutput(BaseModel):
+    """Output shape with ``sources`` for WEB_RESULT citation registration."""
+
+    answer: str = ""
+    sources: list[_WebSource] = Field(default_factory=list)
+
+    @property
+    def billable_units(self) -> int:
+        return 1
+
+
+async def test_tool_registers_web_result_citations_when_output_has_sources(
+    isolate, monkeypatch
+):
+    """Output with ``sources`` → Command carries WEB_RESULT entries + RUN citation."""
+    from app.capabilities.core.access import agent as mod
+
+    run_id = "660e8400-e29b-41d4-a716-446655440001"
+    monkeypatch.setattr(mod, "record_run", AsyncMock(return_value=run_id))
+    monkeypatch.setattr(mod, "enqueue_run_memory_extraction_after_commit", lambda _: None)
+
+    output = _ResearchOutput(
+        answer="Synthesis text",
+        sources=[
+            _WebSource(url="https://example.com/a", title="Source A"),
+            _WebSource(url="https://example.com/b", title="Source B"),
+        ],
+    )
+    cap = _capability(name="chainlens.research", output=output)
+    tools = mod.build_capability_tools(workspace_id=7, capabilities=[cap])
+    tool = _verb_tool(tools, "chainlens_research")
+
+    runtime = _make_runtime(tool_call_id="call-web-1")
+    result = await tool.coroutine(runtime=runtime, text="query")
+
+    assert isinstance(result, Command)
+    registry = result.update["citation_registry"]
+
+    # RUN citation gets ordinal 1 (attach_run_citation is called first).
+    run_entry = registry.resolve(1)
+    assert run_entry is not None
+    assert run_entry.source_type == CitationSourceType.RUN
+
+    # WEB_RESULT citations get ordinals 2 and 3.
+    web_a = registry.resolve(2)
+    assert web_a is not None
+    assert web_a.source_type == CitationSourceType.WEB_RESULT
+    assert web_a.locator["url"] == "https://example.com/a"
+    assert web_a.display["title"] == "Source A"
+
+    web_b = registry.resolve(3)
+    assert web_b is not None
+    assert web_b.source_type == CitationSourceType.WEB_RESULT
+    assert web_b.locator["url"] == "https://example.com/b"
+
+    # ToolMessage content includes the run citation label.
+    messages = result.update["messages"]
+    assert "Cite this scraper run" in messages[0].content

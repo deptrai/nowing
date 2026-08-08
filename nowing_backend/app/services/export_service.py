@@ -53,7 +53,9 @@ _OKF_CITATION_DIR = ".okf/citations"
 
 
 def _sanitize_filename(title: str) -> str:
-    safe = "".join(c if c.isalnum() or c in " -_." else "_" for c in title).strip()
+    # ponytail: dots excluded to prevent ZIP-slip (".." in folder names).
+    # File extensions (.md) are appended separately by _unique_file_path.
+    safe = "".join(c if c.isalnum() or c in " -_" else "_" for c in title).strip()
     return safe[:80] or "concept"
 
 

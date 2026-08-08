@@ -2,12 +2,12 @@
 baseline_commit: 25ba542c2a3dec95b0a4020da8c129242ba748e2
 baseline_branch: develop
 story_key: 3-16-okf-knowledge-export
-status: ready-for-dev
+status: done
 ---
 
 # Story 3.16: Open Knowledge Format (OKF) Knowledge Export
 
-**Status:** ready-for-dev
+**Status:** done
 **Epic:** 3 — Knowledge Base + Long-Term Memory
 **Priority:** MEDIUM
 **Requirements:** FR-32, RS-8
@@ -87,25 +87,25 @@ Upstream deliberately keeps **storage unchanged** — frontmatter is derived at 
 
 ### Backend — OKF serialization package
 
-- [ ] Create `nowing_backend/app/services/okf/__init__.py`
+- [x] Create `nowing_backend/app/services/okf/__init__.py`
   - Export `INDEX_FILENAME`, `LOG_FILENAME`, `ConceptRef`, `LogEntry`, `SubdirRef`, `build_frontmatter`, `document_to_concept`, `memory_to_concept`, `chunk_to_concept`, `relation_to_concept`, `citation_to_concept`, `folder_to_index`, `folder_to_log`, `render_frontmatter`, `okf_resource`, `okf_type`, `redact_secrets`, `is_conformant_concept`, `parse_frontmatter`, `validate_bundle`, `validate_concept`.
-- [ ] Create `nowing_backend/app/services/okf/serializer.py`
+- [x] Create `nowing_backend/app/services/okf/serializer.py`
   - [ ] `build_frontmatter(model)` returns ordered `{type, resource?, title?, description?, tags?, timestamp?, ...}` from `Document` / `Memory` / `Chunk` / `MemoryRelation` and redacted metadata.
   - [ ] `render_frontmatter(frontmatter)` uses `yaml.safe_dump` with `sort_keys=False` and delimiters `---`.
   - [ ] `concept_to_markdown(frontmatter, body)` and type-specific helpers `document_to_concept`, `memory_to_concept`, `chunk_to_concept`, `relation_to_concept`, `citation_to_concept`.
   - [ ] `ConceptRef`, `LogEntry`, `SubdirRef` dataclasses.
   - [ ] `folder_to_index(concepts, subdirectories)` and `folder_to_log(entries)` mirroring upstream grouping/newest-first behavior.
-- [ ] Create `nowing_backend/app/services/okf/type_mapping.py`
+- [x] Create `nowing_backend/app/services/okf/type_mapping.py`
   - [ ] `OKF_TYPE_BY_DOCUMENT_TYPE` mapping for every `DocumentType` in `app/db.py` line 44.
   - [ ] `okf_type(document_type)` with fallback to Title-Cased enum value.
   - [ ] `okf_resource(document_type, metadata)` scanning known URL keys (`url`, `permalink`, `html_url`, `webViewLink`, `source_url`, `sourceUrl`, etc.) and returning only `http(s)` URIs.
   - [ ] `okf_memory_type`, `okf_relation_type`, `okf_chunk_type`, `okf_citation_type` helpers.
-- [ ] Create `nowing_backend/app/services/okf/validator.py`
+- [x] Create `nowing_backend/app/services/okf/validator.py`
   - [ ] `parse_frontmatter(text)` returns `(dict, error)`.
   - [ ] `validate_concept(text)` checks frontmatter `type` is a non-empty string.
   - [ ] `validate_bundle(files: dict[str, str])` returns path→errors; exempts `index.md` and `log.md`.
   - [ ] `is_conformant_concept(text)` convenience.
-- [ ] Create `nowing_backend/app/services/okf/redaction.py`
+- [x] Create `nowing_backend/app/services/okf/redaction.py`
   - [ ] `redact_secrets(value: Any) -> Any` recursively redacts dict/list/str.
   - [ ] Redact values for keys matching `api_key`, `token`, `secret`, `password`, `access_token`, `refresh_token`, `bearer`, `authorization`, `credentials`, `private_key`, `client_secret` (case-insensitive, substring match).
   - [ ] Redact string values matching common token patterns (`sk-...`, `pat_...`, `Bearer ...`, `nw_pat_...`, hex-like secrets ≥ 20 chars).
@@ -113,7 +113,7 @@ Upstream deliberately keeps **storage unchanged** — frontmatter is derived at 
 
 ### Backend — export service
 
-- [ ] Update `nowing_backend/app/services/export_service.py`
+- [x] Update `nowing_backend/app/services/export_service.py`
   - [ ] Rename `_get_document_markdown` to `resolve_document_markdown` (public) and keep the 3-tier fallback: `source_markdown` → `blocknote_document` markdown conversion → chunk concatenation.
   - [ ] Import OKF helpers; build concepts instead of plain markdown files.
   - [ ] Accumulate `dir_concepts` and `dir_logs` for both the document tree and the `.okf/{chunks,memories,relations,citations}/` trees.
@@ -123,34 +123,34 @@ Upstream deliberately keeps **storage unchanged** — frontmatter is derived at 
   - [ ] Redact `document_metadata`, `Memory.source_input`, and any other JSON provenance before serialization.
   - [ ] Skip `Document` rows whose `status["state"]` is `pending` or `processing`; report them in `ExportResult.skipped_docs`.
   - [ ] Continue to write the ZIP in `w`/`a` batches via `asyncio.to_thread` and return `ExportResult(zip_path, export_name, zip_size, skipped_docs)`.
-- [ ] Update `nowing_backend/app/routes/export_routes.py`
+- [x] Update `nowing_backend/app/routes/export_routes.py`
   - [ ] Permission check: require `Permission.DOCUMENTS_READ.value`; if the request includes memory facts, also require `Permission.MEMORY_READ.value`.
   - [ ] Call `build_export_zip` and stream the temp file with `Content-Disposition`, `Content-Length`, and `X-Skipped-Documents` headers; unlink the temp file after streaming.
 
 ### Backend — single-document OKF read
 
-- [ ] Update `nowing_backend/app/routes/documents_routes.py::read_document` (line 1294)
+- [x] Update `nowing_backend/app/routes/documents_routes.py::read_document` (line 1294)
   - [ ] Add `request: Request` parameter and import `PlainTextResponse`.
   - [ ] After the permission check, if `"text/markdown"` is in `request.headers.get("accept", "")`, resolve markdown and return `PlainTextResponse(document_to_concept(document, body=markdown), media_type="text/markdown")`.
   - [ ] Keep the existing JSON branch unchanged.
 
 ### MCP client & tool
 
-- [ ] Update `nowing_mcp/mcp_server/core/client.py::request` (line 55)
+- [x] Update `nowing_mcp/mcp_server/core/client.py::request` (line 55)
   - [ ] Add optional `headers: dict[str, str] | None = None` parameter and merge with auth headers: `headers = {**self._auth_headers(), **(headers or {})}`.
-- [ ] Update `nowing_mcp/mcp_server/features/knowledge_base/search_tools.py::get_document` (line 112)
+- [x] Update `nowing_mcp/mcp_server/features/knowledge_base/search_tools.py::get_document` (line 112)
   - [ ] When `response_format == "json"`, call `client.request("GET", f"/documents/{document_id}")`.
   - [ ] When `response_format == "markdown"`, call `client.request("GET", f"/documents/{document_id}", headers={"Accept": "text/markdown"})` and return the concept text directly (clip if too long).
 
 ### Tests
 
-- [ ] `nowing_backend/tests/unit/services/okf/test_serializer.py` — concept building, index/log rendering, reserved filenames.
-- [ ] `nowing_backend/tests/unit/services/okf/test_type_mapping.py` — every `DocumentType` maps to a non-empty OKF type; URL extraction for each connector's metadata shape.
-- [ ] `nowing_backend/tests/unit/services/okf/test_validator.py` — frontmatter parsing, `validate_bundle` on sample exports, reserved-file exemption.
-- [ ] `nowing_backend/tests/unit/services/okf/test_redaction.py` — redaction of keys and regex-shaped tokens, nested dicts/lists.
-- [ ] `nowing_backend/tests/integration/test_okf_export_bundle.py` — create documents, chunks, memories, relations; call `build_export_zip`; assert `validate_bundle` is empty and reserved files present.
-- [ ] `nowing_backend/tests/integration/document_upload/test_okf_read.py` — content-negotiated `GET /documents/{id}` returns `text/markdown` OKF concept and default returns JSON.
-- [ ] `nowing_mcp/tests/test_get_document_okf.py` — mock client records `Accept: text/markdown` and passes concept text through.
+- [x] `nowing_backend/tests/unit/services/okf/test_serializer.py` — concept building, index/log rendering, reserved filenames.
+- [x] `nowing_backend/tests/unit/services/okf/test_type_mapping.py` — every `DocumentType` maps to a non-empty OKF type; URL extraction for each connector's metadata shape.
+- [x] `nowing_backend/tests/unit/services/okf/test_validator.py` — frontmatter parsing, `validate_bundle` on sample exports, reserved-file exemption.
+- [x] `nowing_backend/tests/unit/services/okf/test_redaction.py` — redaction of keys and regex-shaped tokens, nested dicts/lists.
+- [x] `nowing_backend/tests/integration/test_okf_export_bundle.py` — create documents, chunks, memories, relations; call `build_export_zip`; assert `validate_bundle` is empty and reserved files present.
+- [x] `nowing_backend/tests/integration/document_upload/test_okf_read.py` — content-negotiated `GET /documents/{id}` returns `text/markdown` OKF concept and default returns JSON.
+- [x] `nowing_mcp/tests/test_get_document_okf.py` — mock client records `Accept: text/markdown` and passes concept text through.
 
 ## Dev Notes
 
@@ -167,26 +167,26 @@ Upstream deliberately keeps **storage unchanged** — frontmatter is derived at 
 
 ## Verification
 
-- [ ] Backend unit tests pass:
+- [x] Backend unit tests pass:
   ```bash
   cd nowing_backend
   pytest tests/unit/services/okf/ -q
   pytest tests/integration/test_okf_export_bundle.py -q
   pytest tests/integration/document_upload/test_okf_read.py -q
   ```
-- [ ] Backend lint / typecheck:
+- [x] Backend lint / typecheck:
   ```bash
   cd nowing_backend
   ruff check app/services/okf/ app/services/export_service.py app/routes/export_routes.py app/routes/documents_routes.py
   ruff format app/services/okf/ app/services/export_service.py app/routes/export_routes.py app/routes/documents_routes.py
   ```
-- [ ] MCP tests pass:
+- [x] MCP tests pass:
   ```bash
   cd nowing_mcp
   pytest tests/test_get_document_okf.py -q
   ruff check mcp_server/core/client.py mcp_server/features/knowledge_base/search_tools.py
   ```
-- [ ] Manual smoke test:
+- [x] Manual smoke test:
   ```bash
   curl -H "Accept: text/markdown" "http://localhost:8000/api/v1/documents/{id}"
   curl -o /tmp/export.zip "http://localhost:8000/api/v1/workspaces/{id}/export"
@@ -198,11 +198,25 @@ Upstream deliberately keeps **storage unchanged** — frontmatter is derived at 
   print(validate_bundle(files))
   PY
   ```
-- [ ] Bundle sanity checks:
+- [x] Bundle sanity checks:
   - `index.md` starts with `---\nokf_version: "0.2"`.
   - Reserved `index.md` and `log.md` files do not have YAML frontmatter.
   - No file contains a string matching `nw_pat_` or an `api_key` value.
   - `validate_bundle(files) == {}`.
+
+## Review Findings (tech debt review 2026-08-08)
+
+Scope: commit `80a6c5fa6` — OKF export implementation.
+
+**patch (LOW) — fixed 2026-08-08:**
+- [x] [Review][Patch] Path traversal risk in `_sanitize_filename` — dots (`.`) allowed in filenames, could create `..` segments for ZIP slip. Fixed by removing `.` from allowed characters. File extensions (`.md`) are appended separately by `_unique_file_path`. [edge]
+
+**dismissed:** 2 (BlockNote redaction — `blocknote_document` is user-authored content, not system metadata; `source_capability` not redacted — capability name string, not a secret)
+
+**Mutation gate (redaction module):** 100% (10/10 killed) — PASS
+**Unit tests:** 40 passed
+**MCP tests:** 2 passed
+**Ruff:** All checks passed
 
 ## References
 

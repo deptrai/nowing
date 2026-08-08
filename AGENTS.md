@@ -1,5 +1,50 @@
 # Agent Notes — Nowing
 
+## Integration test setup (local)
+
+Integration tests (`@pytest.mark.integration`) require a real PostgreSQL database with pgvector.
+
+```bash
+# 1. Start Postgres + Redis (from repo root)
+docker compose -f docker/docker-compose.deps-only.yml up -d db redis
+
+# 2. Run migrations (from nowing_backend/)
+cd nowing_backend
+uv run alembic upgrade head
+
+# 3. Run integration tests
+uv run pytest tests/integration/ -m integration -q
+
+# Or specific test file:
+uv run pytest tests/integration/test_okf_export_bundle.py -q
+uv run pytest tests/integration/document_upload/test_okf_read.py -q
+```
+
+The test database defaults to `postgresql+asyncpg://postgres:postgres@localhost:5432/nowing_test`.
+Override with `TEST_DATABASE_URL=...` if needed.
+
+Unit tests (`@pytest.mark.unit`) do NOT require a database and run anywhere:
+```bash
+cd nowing_backend
+uv run pytest tests/unit/ -m unit -q
+```
+
+## Mutation gate (cosmic-ray)
+
+Run mutation testing on a service module:
+```bash
+# Standard service (app/services/{name}.py)
+python scripts/mutation-gate.py --services token_quota --project-root . --timeout 120.0
+
+# Deep module path (e.g. app/capabilities/core/access/web_citation.py)
+python scripts/mutation-gate.py --services capabilities/core/access/web_citation --project-root . --timeout 120.0
+
+# Multiple modules (comma-separated)
+python scripts/mutation-gate.py --services services/okf/redaction,services/okf/validator --project-root . --timeout 60.0
+```
+
+Output: `_bmad-output/test-artifacts/mutation-nowing-{service}-{timestamp}.json`
+
 ## Story 4.8g / 4.8e / 9.2 chat regression verification commands
 
 Backend (from `nowing_backend/`):

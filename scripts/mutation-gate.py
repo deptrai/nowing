@@ -202,7 +202,7 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
     module = backend / "app" / "services" / f"{service}.py"
     if not module.exists():
         # Try package directory in services, then top-level app packages,
-        # then capabilities package layout.
+        # then capabilities package layout, then full app/ subpath.
         pkg = backend / "app" / "services" / service
         if pkg.is_dir():
             module = pkg
@@ -215,8 +215,15 @@ def generate_toml(backend: Path, service: str, project_root: Path, timeout: floa
                 if pkg.is_dir():
                     module = pkg
                 else:
-                    print(f"[warn] module for {service} not found at {module}; using file path anyway")
-                    module = backend / "app" / "services" / f"{service}.py"
+                    # Full subpath under app/ (e.g. "capabilities/core/access/web_citation").
+                    full = backend / "app" / service
+                    if full.with_suffix(".py").exists():
+                        module = full.with_suffix(".py")
+                    elif full.is_dir():
+                        module = full
+                    else:
+                        print(f"[warn] module for {service} not found at {module}; using file path anyway")
+                        module = backend / "app" / "services" / f"{service}.py"
 
     test_files = discover_tests(backend, service)
     test_cmd = f'bash -c "COSMIC_RAY=1 .venv/bin/python -m pytest {" ".join(test_files)} -m \\"unit or not integration\\" -x 2>&1"'

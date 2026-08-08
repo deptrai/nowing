@@ -1,5 +1,5 @@
-# generated: 2026-08-07 01:50:54
-# last_updated: 2026-08-07 12:15:00
+# generated: 2026-08-08
+# last_updated: 2026-08-08
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -40,24 +40,34 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
-generated: "2026-08-07 00:37:26"
-last_updated: "2026-08-07 12:50:00"
-# ponytail: 2026-08-07 correct-course — split vertical client platform to Epic 18; E13 13.1-13.3 back to review while P0 code-review findings remain open.
+generated: "2026-08-08"
+last_updated: "2026-08-08"
+# ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
+# ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  epic-2: in-progress
+  # === Epic 1: Identity, Auth & Workspace RBAC (DONE — brownfield, no individual stories) ===
+  epic-1: done
+  epic-1-retrospective: optional
+
+  # === Epic 2: Connectors (DONE — retrospective 2026-08-08) ===
+  epic-2: done
   2-5: done
-  2-6: ready-for-dev
-  2-7: ready-for-dev
-  2-8: ready-for-dev
+  2-6: done
+  2-7: done
+  2-8: done
   2-9: done
   2-10: done
-  epic-2-retrospective: optional
-  epic-3: in-progress
+  # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended Exa MCP citation ACs
+  # ponytail: 2026-08-08 code-review round 2 — 3 patches fixed (web_fetch_exa integration test, title metadata, rstrip !?), 1 defer, 16 dismissed. AC1-4 PASS.
+  epic-2-retrospective: done
+
+  # === Epic 3: Knowledge Base + Long-Term Memory ===
+  epic-3: done
   3-6: done
   3-7: done
   3-9: done
@@ -66,9 +76,31 @@ development_status:
   3-12: done
   3-13: done
   3-14: done
-  3-15: ready-for-dev
-  3-16: ready-for-dev
-  epic-3-retrospective: optional
+  3-15: done
+  # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended WEB_RESULT citation ACs for ChainLens sources
+  # ponytail: 2026-08-08 code-review round 2 — 2 patches fixed (WEB_RESULT integration test, merge tests), 0 defer, 14 dismissed. AC1-6 PASS.
+  3-16: done
+  # ponytail: 2026-08-08 verified implementation (commit 80a6c5fa6, 2026-08-06) — 40 unit tests + 2 MCP tests pass, ruff clean. Integration tests require DB (deferred to CI).
+  epic-3-retrospective: done
+
+  # === Epic 4: Chat & Agents ===
+  epic-4: in-progress
+  4-7: ready-for-dev
+  4-8a: done
+  4-8b: done
+  4-8c: done
+  4-8d: ready-for-dev
+  4-8e: done
+  4-8f: done
+  4-8g: done
+  4-8h: done
+  epic-4-retrospective: optional
+
+  # === Epic 5: Deliverables (DONE — brownfield, no individual stories) ===
+  epic-5: done
+  epic-5-retrospective: optional
+
+  # === Epic 6: Automations ===
   epic-6: in-progress
   6-4: done
   6-5: done
@@ -76,82 +108,111 @@ development_status:
   6-7: done
   6-9: done
   epic-6-retrospective: optional
+
+  # === Epic 7: Multi-surface Clients ===
+  epic-7: in-progress
+  7-4: ready-for-dev
+  7-7: ready-for-dev
+  epic-7-retrospective: optional
+
+  # === Epic 8: Platform Operations (Billing / Usage / Token) ===
   epic-8: in-progress
   8-3: done
-  8-8: done
   8-7: done
+  8-8: done
   8-9: done
   8-10: done
   8-11: done
   8-12: done
   8-13: done
   epic-8-retrospective: optional
+
+  # === Epic 9: Deep Research đáng tin cậy ===
   epic-9: in-progress
+  9-1a: done
+  9-1b: done
   9-2: done
-  9-3: done
+  9-3: review
+  # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended async citation delivery ACs
   9-4: done
   9-5: backlog
   9-6: done
   epic-9-retrospective: optional
-  epic-4: backlog
-  4-7: ready-for-dev
-  epic-4-retrospective: optional
-  epic-7: backlog
-  7-4: ready-for-dev
-  7-7: ready-for-dev
-  epic-7-retrospective: optional
+
+  # === Epic 10: Connector & Scraper Expansion ===
   epic-10: in-progress
   10-1: done
   10-2: done
   10-3: done
   10-4: done
   epic-10-retrospective: optional
+
+  # === Epic 11: Telegram Automation & Bot ===
   epic-11: in-progress
   11-1: done
   11-2: done
   11-3: done
   epic-11-retrospective: optional
-  epic-12: backlog
-  12-0: backlog
-  12-1: backlog
-  12-2: backlog
-  12-3: backlog
-  12-4: backlog
-  12-5: backlog
+
+  # === Epic 12: HR/Recruitment Vertical — Vietnam Job Market Pilot ===
+  epic-12: in-progress
+  12-0: done
+  12-1: ready-for-dev
+  12-2: ready-for-dev
+  12-3: ready-for-dev
+  12-4: ready-for-dev
+  12-5: ready-for-dev
   12-6: backlog
   12-7: backlog
   12-8: backlog
   12-9: backlog
   epic-12-retrospective: optional
+
+  # === Epic 13: Canonical Entity Storage & Multi-Domain Indexing ===
   epic-13: in-progress
   13-1: done
   13-2: done
+  13-2a: done
+  13-2b: done
+  13-2c: done
+  13-2d: done
+  13-2e: done
   13-3: done
   epic-13-retrospective: optional
+
+  # === Epic 14: News Aggregation (Vietnam) ===
   epic-14: in-progress
   14-1: done
   14-2: backlog
   14-3: backlog
   14-4: backlog
   epic-14-retrospective: optional
+
+  # === Epic 15: Financial Data (Vietnam) ===
   epic-15: in-progress
   15-1: done
   15-2: backlog
   15-3: backlog
   15-4: backlog
   epic-15-retrospective: optional
+
+  # === Epic 16: Company Directory (Vietnam) ===
   epic-16: in-progress
   16-1: done
   16-2: backlog
   16-3: backlog
   16-4: backlog
   epic-16-retrospective: optional
+
+  # === Epic 17: E-commerce Intelligence (Vietnam) ===
   epic-17: backlog
   17-1: backlog
   17-2: backlog
   17-3: backlog
   17-4: backlog
   epic-17-retrospective: optional
+
+  # === Epic 18: Vertical Client Platform (Public Agent-Chat) ===
   epic-18: backlog
   18-1: backlog
   18-2: backlog

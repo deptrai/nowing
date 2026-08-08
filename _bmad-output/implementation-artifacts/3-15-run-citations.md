@@ -2,12 +2,12 @@
 baseline_commit: 25ba542c2a3dec95b0a4020da8c129242ba748e2
 baseline_branch: develop
 story_key: 3-15-run-citations
-status: ready-for-dev
+status: done
 ---
 
 # Story 3.15: Run Citations as Verifiable Sources
 
-**Status:** ready-for-dev  
+**Status:** done
 **Epic:** 3 — Knowledge Base + Long-Term Memory  
 **Priority:** HIGH  
 **Requirements:** FR-13, FR-39  
@@ -81,104 +81,124 @@ SurfSense PR #1619 (`MODSetter/SurfSense#1619`) already implemented the pattern 
 
 ### Backend
 
-- [ ] `nowing_backend/app/agents/chat/multi_agent_chat/shared/citations/models.py`
-  - [ ] Add `RUN = "run"` to `CitationSourceType`.
+- [x] `nowing_backend/app/agents/chat/multi_agent_chat/shared/citations/models.py`
+  - [x] Add `RUN = "run"` to `CitationSourceType`.
 
-- [ ] `nowing_backend/app/agents/chat/multi_agent_chat/shared/citations/markers.py`
-  - [ ] Add `case CitationSourceType.RUN:` returning `locator.get("run_id")`.
+- [x] `nowing_backend/app/agents/chat/multi_agent_chat/shared/citations/markers.py`
+  - [x] Add `case CitationSourceType.RUN:` returning `locator.get("run_id")`.
 
-- [ ] `nowing_backend/app/capabilities/core/access/run_citation.py` (new)
-  - [ ] Define `attach_run_citation(registry, *, run_external_id: str, capability: str) -> tuple[int, str]`.
-  - [ ] Register `CitationSourceType.RUN` with `locator={"run_id": run_external_id}` and `display={"capability": capability}`.
-  - [ ] Return `(n, f"\n\nCite this scraper run as [{n}] after any claim drawn from its data.")`.
+- [x] `nowing_backend/app/capabilities/core/access/run_citation.py` (new)
+  - [x] Define `attach_run_citation(registry, *, run_external_id: str, capability: str) -> tuple[int, str]`.
+  - [x] Register `CitationSourceType.RUN` with `locator={"run_id": run_external_id}` and `display={"capability": capability}`.
+  - [x] Return `(n, f"\n\nCite this scraper run as [{n}] after any claim drawn from its data.")`.
 
-- [ ] `nowing_backend/app/capabilities/core/access/agent.py`
-  - [ ] Import `json`, `ToolRuntime`, `ToolMessage`, `Command`.
-  - [ ] Change `_run` signature to `async def _run(runtime: ToolRuntime, **kwargs: object) -> dict | str | Command`.
-  - [ ] Annotate `_run.__annotations__["runtime"] = ToolRuntime` so `StructuredTool.from_function` injects `runtime` while keeping `args_schema=input_model`.
-  - [ ] If `run_id` is `None`, keep the legacy return shape and skip citation.
-  - [ ] Build `run_external_id = f"run_{run_id}"`; if output fits `RUN_OUTPUT_CHAR_CAP`, JSON-dump the model dump, otherwise use `_build_preview(serialized, run_id)`.
-  - [ ] Load registry via `load_registry(getattr(runtime, "state", None))`.
-  - [ ] Call `attach_run_citation` and return `Command(update={"messages": [ToolMessage(content=content + label, tool_call_id=runtime.tool_call_id)], "citation_registry": registry})`.
-  - [ ] Leave the `chainlens.research` async branch unchanged — it returns an in-flight `run_id`, not a completed result, so no citation is minted there.
+- [x] `nowing_backend/app/capabilities/core/access/agent.py`
+  - [x] Import `json`, `ToolRuntime`, `ToolMessage`, `Command`.
+  - [x] Change `_run` signature to `async def _run(runtime: ToolRuntime, **kwargs: object) -> dict | str | Command`.
+  - [x] Annotate `_run.__annotations__["runtime"] = ToolRuntime` so `StructuredTool.from_function` injects `runtime` while keeping `args_schema=input_model`.
+  - [x] If `run_id` is `None`, keep the legacy return shape and skip citation.
+  - [x] Build `run_external_id = f"run_{run_id}"`; if output fits `RUN_OUTPUT_CHAR_CAP`, JSON-dump the model dump, otherwise use `_build_preview(serialized, run_id)`.
+  - [x] Load registry via `load_registry(getattr(runtime, "state", None))`.
+  - [x] Call `attach_run_citation` and return `Command(update={"messages": [ToolMessage(content=content + label, tool_call_id=runtime.tool_call_id)], "citation_registry": registry})`.
+  - [x] Leave the `chainlens.research` async branch unchanged — it returns an in-flight `run_id`, not a completed result, so no citation is minted there.
 
-- [ ] `nowing_backend/app/agents/chat/multi_agent_chat/subagents/middleware_stack.py`
-  - [ ] Import `build_citation_state_mw` from `...shared.middleware.citation_state`.
-  - [ ] Add `"citation": build_citation_state_mw()` to the returned dict.
+- [x] `nowing_backend/app/agents/chat/multi_agent_chat/subagents/middleware_stack.py`
+  - [x] Import `build_citation_state_mw` from `...shared.middleware.citation_state`.
+  - [x] Add `"citation": build_citation_state_mw()` to the returned dict.
 
-- [ ] `nowing_backend/app/agents/chat/multi_agent_chat/subagents/shared/snippets/output_contract_base.md`
-  - [ ] Append: "When a finding is drawn from a scraper run, append that run's `[n]` (the tool result states `Cite this scraper run as [n]`) to the finding text so the citation survives into the final answer. Copy the label exactly; never invent one."
+- [x] `nowing_backend/app/agents/chat/multi_agent_chat/subagents/shared/snippets/output_contract_base.md`
+  - [x] Append: "When a finding is drawn from a scraper run, append that run's `[n]` (the tool result states `Cite this scraper run as [n]`) to the finding text so the citation survives into the final answer. Copy the label exactly; never invent one."
 
-- [ ] `nowing_backend/app/agents/chat/multi_agent_chat/main_agent/system_prompt/prompts/citations/on.md`
-  - [ ] Update the citable-results sentence to include "and scraper specialists' run-backed findings".
+- [x] `nowing_backend/app/agents/chat/multi_agent_chat/main_agent/system_prompt/prompts/citations/on.md`
+  - [x] Update the citable-results sentence to include "and scraper specialists' run-backed findings".
 
-- [ ] `nowing_backend/app/agents/chat/multi_agent_chat/shared/citations/parser.py`
-  - [ ] Extend `CITATION_REGEX` and `parse_citation_markers` to recognize `run_<uuid>` payloads.
-  - [ ] Add `RunCitationMarker` dataclass and include it in the `CitationMarker` union.
-  - [ ] Keep the regex byte-for-byte identical to the frontend `CITATION_REGEX`.
+- [x] `nowing_backend/app/agents/chat/multi_agent_chat/shared/citations/parser.py`
+  - [x] Extend `CITATION_REGEX` and `parse_citation_markers` to recognize `run_<uuid>` payloads.
+  - [x] Add `RunCitationMarker` dataclass and include it in the `CitationMarker` union.
+  - [x] Keep the regex byte-for-byte identical to the frontend `CITATION_REGEX`.
 
 ### Frontend
 
-- [ ] `nowing_web/lib/citations/citation-parser.ts`
-  - [ ] Update `CITATION_REGEX` to include a `run_[0-9a-fA-F-]+` alternative.
-  - [ ] Add `run` kind to the `CitationToken` union.
-  - [ ] Parse `run_` prefixed payloads into `{ kind: "run", runId: captured.trim() }`.
-  - [ ] Add `nowing_web/lib/citations/citation-parser.test.ts` with at least:
+- [x] `nowing_web/lib/citations/citation-parser.ts`
+  - [x] Update `CITATION_REGEX` to include a `run_[0-9a-fA-F-]+` alternative.
+  - [x] Add `run` kind to the `CitationToken` union.
+  - [x] Parse `run_` prefixed payloads into `{ kind: "run", runId: captured.trim() }`.
+  - [x] Add `nowing_web/lib/citations/citation-parser.test.ts` with at least:
     - `run_<uuid>` parses to a run token.
     - `run_` handles do not collide with numeric chunk citations.
 
-- [ ] `nowing_web/components/citations/citation-renderer.tsx`
-  - [ ] Import `RunCitation`.
-  - [ ] Add branch `if (token.kind === "run")` returning `<RunCitation key={...} runId={token.runId} />`.
+- [x] `nowing_web/components/citations/citation-renderer.tsx`
+  - [x] Import `RunCitation`.
+  - [x] Add branch `if (token.kind === "run")` returning `<RunCitation key={...} runId={token.runId} />`.
 
-- [ ] `nowing_web/components/citations/run-citation.tsx` (new)
-  - [ ] Inline chip with a `Database` icon and tooltip text "See where this came from".
-  - [ ] On click, call `openRunCitationPanelAtom({ runId })`.
+- [x] `nowing_web/components/citations/run-citation.tsx` (new)
+  - [x] Inline chip with a `Database` icon and tooltip text "See where this came from".
+  - [x] On click, call `openRunCitationPanelAtom({ runId })`.
 
-- [ ] `nowing_web/components/citations/run-citation-panel.tsx` (new)
-  - [ ] Header "Scraper run" with close button.
-  - [ ] Extract `scraperRunId = runId.replace(/^run_/, "")`.
-  - [ ] Read `workspaceId` from `useParams` and render `<RunDetail workspaceId={workspaceId} runId={scraperRunId} />`.
-  - [ ] Show "Open a workspace to view this run." when `workspaceId` is not finite.
+- [x] `nowing_web/components/citations/run-citation-panel.tsx` (new)
+  - [x] Header "Scraper run" with close button.
+  - [x] Extract `scraperRunId = runId.replace(/^run_/, "")`.
+  - [x] Read `workspaceId` from `useParams` and render `<RunDetail workspaceId={workspaceId} runId={scraperRunId} />`.
+  - [x] Show "Open a workspace to view this run." when `workspaceId` is not finite.
 
-- [ ] `nowing_web/atoms/citation/citation-panel.atom.ts`
-  - [ ] Replace `chunkId: number | null` with `target: CitationTarget | null` where `CitationTarget = { kind: "chunk"; chunkId: number } | { kind: "run"; runId: string }`.
-  - [ ] Keep `openCitationPanelAtom` opening chunk targets.
-  - [ ] Add `openRunCitationPanelAtom` opening run targets.
-  - [ ] Update `closeCitationPanelAtom` to reset to `initialState`.
+- [x] `nowing_web/atoms/citation/citation-panel.atom.ts`
+  - [x] Replace `chunkId: number | null` with `target: CitationTarget | null` where `CitationTarget = { kind: "chunk"; chunkId: number } | { kind: "run"; runId: string }`.
+  - [x] Keep `openCitationPanelAtom` opening chunk targets.
+  - [x] Add `openRunCitationPanelAtom` opening run targets.
+  - [x] Update `closeCitationPanelAtom` to reset to `initialState`.
 
-- [ ] `nowing_web/components/layout/ui/right-panel/RightPanel.tsx`
-  - [ ] Dynamic import `RunCitationPanelContent`.
-  - [ ] Update `citationOpen` checks to `citationState.isOpen && citationState.target != null`.
-  - [ ] In the citation tab render, branch on `citationState.target.kind`:
+- [x] `nowing_web/components/layout/ui/right-panel/RightPanel.tsx`
+  - [x] Dynamic import `RunCitationPanelContent`.
+  - [x] Update `citationOpen` checks to `citationState.isOpen && citationState.target != null`.
+  - [x] In the citation tab render, branch on `citationState.target.kind`:
     - `run` → `<RunCitationPanelContent runId={...} onClose={closeCitation} />`
     - `chunk` → `<CitationPanelContent chunkId={...} onClose={closeCitation} />`
 
 ### Evals / parity
 
-- [ ] `nowing_evals/src/nowing_evals/core/parse/citations.py`
-  - [ ] Update `CITATION_REGEX` to the same pattern as `nowing_web/lib/citations/citation-parser.ts`.
-  - [ ] Add a `RunCitation` dataclass and include it in the `CitationToken` union.
-  - [ ] Add handling in `parse_citations` for `run_` payloads.
-  - [ ] Update `nowing_evals/tests/core/test_parse_citations.py` parity table to include a `run_<uuid>` case.
+- [x] `nowing_evals/src/nowing_evals/core/parse/citations.py`
+  - [x] Update `CITATION_REGEX` to the same pattern as `nowing_web/lib/citations/citation-parser.ts`.
+  - [x] Add a `RunCitation` dataclass and include it in the `CitationToken` union.
+  - [x] Add handling in `parse_citations` for `run_` payloads.
+  - [x] Update `nowing_evals/tests/core/test_parse_citations.py` parity table to include a `run_<uuid>` case.
 
 ### Tests
 
-- [ ] `nowing_backend/tests/unit/agents/multi_agent_chat/shared/citations/test_markers.py`
-  - [ ] Add `test_run_maps_to_run_handle` and `test_run_without_handle_is_dropped`.
+- [x] `nowing_backend/tests/unit/agents/multi_agent_chat/shared/citations/test_markers.py`
+  - [x] Add `test_run_maps_to_run_handle` and `test_run_without_handle_is_dropped`.
 
-- [ ] `nowing_backend/tests/unit/capabilities/access/test_run_citation.py` (new)
-  - [ ] `test_attaches_run_and_returns_label_with_ordinal`.
-  - [ ] `test_same_run_dedups_to_one_label`.
+- [x] `nowing_backend/tests/unit/capabilities/access/test_run_citation.py` (new)
+  - [x] `test_attaches_run_and_returns_label_with_ordinal`.
+  - [x] `test_same_run_dedups_to_one_label`.
 
-- [ ] `nowing_backend/tests/unit/capabilities/access/test_agent_tools.py`
-  - [ ] Add `_invoke` helper that calls the raw coroutine with a stand-in `ToolRuntime`.
-  - [ ] Update existing `ainvoke` calls to use `_invoke`.
-  - [ ] Add `test_tool_registers_run_citation_when_stored` asserting the returned `Command` carries a `citation_registry` with a `RUN` entry and the label in the message content.
-  - [ ] Add `test_runtime_survives_langchain_arg_parsing` asserting `tool._parse_input({..., "runtime": "RT"}, ...)` keeps `runtime`.
+- [x] `nowing_backend/tests/unit/capabilities/access/test_agent_tools.py`
+  - [x] Add `_invoke` helper that calls the raw coroutine with a stand-in `ToolRuntime`.
+  - [x] Update existing `ainvoke` calls to use `_invoke`.
+  - [x] Add `test_tool_registers_run_citation_when_stored` asserting the returned `Command` carries a `citation_registry` with a `RUN` entry and the label in the message content.
+  - [x] Add `test_runtime_survives_langchain_arg_parsing` asserting `tool._parse_input({..., "runtime": "RT"}, ...)` keeps `runtime`.
 
-- [ ] `nowing_backend/tests/unit/tasks/chat/streaming/flows/shared/test_assistant_finalize_citations.py`
-  - [ ] Add `test_run_ordinal_resolves_to_run_marker` asserting `[1]` with a `RUN` registry becomes `[citation:run_<uuid>]`.
+- [x] `nowing_backend/tests/unit/tasks/chat/streaming/flows/shared/test_assistant_finalize_citations.py`
+  - [x] Add `test_run_ordinal_resolves_to_run_marker` asserting `[1]` with a `RUN` registry becomes `[citation:run_<uuid>]`.
+
+### Review Findings
+
+- [x] [Review][Patch] Runtime annotation test doesn't verify `args_schema` excludes `runtime` — `test_runtime_survives_langchain_arg_parsing` proves the runtime arg passes through `_parse_input`, but does not assert `tool.args_schema` excludes the `runtime` field. Add `assert "runtime" not in tool.args_schema.model_fields`. [blind]
+- [x] [Review][Patch] No test for citation_state middleware in subagent stack — `build_subagent_middleware_stack` includes `"citation": build_citation_state_mw()` but no test verifies the slot is present. Add a test asserting `"citation" in stack` and the middleware is non-None. [blind]
+- [x] [Review][Patch] CitationRegistry.merge() not tested for RUN citations — `test_same_run_dedups_to_one_label` tests dedup within one registry, but `merge()` across subagent branches is untested for RUN entries. Add a merge test with two registries each holding a RUN citation. [blind]
+
+### Review Findings (round 2 — SCP 2026-08-08 WEB_RESULT citation ACs)
+
+Scope: uncommitted WEB_RESULT citation registration changes (`web_citation.py`, `agent.py`, `test_web_citation.py`, `test_run_citation.py`).
+
+**decision-needed:** 0
+
+**patch (medium) — fixed 2026-08-08:**
+- [x] [Review][Patch] Missing integration test for WEB_RESULT registration in agent tool — AC1 PARTIAL: `register_web_citations` is unit-tested in `test_web_citation.py`, but `test_agent_tools.py` fixture `_EchoOutput` has no `sources` attribute, so the `agent.py:360-362` path (`getattr(output, "sources", None)` → `register_web_citations`) is never exercised end-to-end. Added `test_tool_registers_web_result_citations_when_output_has_sources` with `_ResearchOutput` fixture carrying `sources`, verifying RUN gets ordinal 1, WEB_RESULT gets ordinals 2-3, and `Command` carries both in `citation_registry`. [auditor]
+
+**patch (low) — fixed 2026-08-08:**
+- [x] [Review][Patch] No merge test for WEB_RESULT citations — `test_run_citation.py` has merge tests for RUN entries (`test_merge_preserves_run_citations_from_both_branches`, `test_merge_dedups_same_run_across_branches`) but no equivalent for WEB_RESULT. Added `test_merge_preserves_web_results_from_both_branches` and `test_merge_dedups_same_url_across_branches` to `test_web_citation.py`. [blind+edge]
+
+**dismissed:** 14 (race condition false positive — LangGraph state merge is sequential via reducer; None/non-string URL not reachable — Pydantic validates `Source.url: str (min_length=1)`; URL normalization — upstream responsibility; display dict inconsistency — intentional; empty list comment — prose not code; URL format validation — not reachable; very long URLs — noise; unicode URLs — noise; order dependency — deterministic and intentional; locator key validation — guarded upstream; empty string URL — guarded upstream; cross-type merge collision — merge logic is type-agnostic; to_frontend_payload empty URL — guarded upstream)
 
 ## Dev Notes
 
@@ -194,7 +214,7 @@ SurfSense PR #1619 (`MODSetter/SurfSense#1619`) already implemented the pattern 
 
 ## Verification
 
-- [ ] Backend unit tests pass:
+- [x] Backend unit tests pass:
   ```bash
   cd nowing_backend
   pytest tests/unit/agents/multi_agent_chat/shared/citations/test_markers.py \
@@ -204,13 +224,13 @@ SurfSense PR #1619 (`MODSetter/SurfSense#1619`) already implemented the pattern 
          tests/unit/services/test_memory_run_citation.py -q
   ```
 
-- [ ] Evals parity test passes:
+- [x] Evals parity test passes:
   ```bash
   cd nowing_evals
   pytest tests/core/test_parse_citations.py -q
   ```
 
-- [ ] Web typecheck and lint:
+- [x] Web typecheck and lint:
   ```bash
   cd nowing_web
   pnpm tsc --noEmit
