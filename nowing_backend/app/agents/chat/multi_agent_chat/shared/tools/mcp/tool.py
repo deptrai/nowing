@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
@@ -25,7 +26,10 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from app.utils.oauth_security import TokenEncryption
 
+from langchain.tools import ToolRuntime
+from langchain_core.messages import ToolMessage
 from langchain_core.tools import StructuredTool
+from langgraph.types import Command
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 from pydantic import BaseModel, ConfigDict, Field, create_model
@@ -33,6 +37,8 @@ from sqlalchemy import cast, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.chat.multi_agent_chat.shared.citations import load_registry
+from app.agents.chat.multi_agent_chat.shared.citations.models import CitationSourceType
 from app.agents.chat.multi_agent_chat.shared.middleware.dedup_tool_calls import (
     dedup_key_full_args,
 )
@@ -60,6 +66,59 @@ _TOOL_CALL_RETRY_DELAY = 1.5  # seconds, doubles per attempt
 # multi-agent paths cannot share tool closures with different HITL wiring.
 _MCPCacheKey = tuple[int, bool]
 _mcp_tools_cache: dict[_MCPCacheKey, tuple[float, list[StructuredTool]]] = {}
+
+# ponytail: URL extraction for MCP tools that return web results (e.g. Exa).
+# Matches http(s) URLs in plain text; capped at 20 to avoid runaway extraction
+# on tools that dump large link lists.
+_URL_RE = re.compile(r"https?://[^\s<>'\"`,)\]]+")
+_MAX_EXTRACTED_URLS = 20
+
+# ponytail: Exa search results follow "Title: <title>\nURL: <url>" format.
+# This regex pairs them; unmatched URLs get None title.
+_TITLE_URL_RE = re.compile(r"Title:\s*(.+?)\s*\n+URL:\s*(https?://\S+)", re.IGNORECASE)
+
+# Tool names that produce citable web results. ``web_fetch_exa`` takes a URL
+# as input (so we cite the input, not the output); ``web_search_exa`` returns
+# URLs in its result text.
+_CITABLE_MCP_TOOLS = frozenset({"web_search_exa", "web_fetch_exa"})
+
+
+def _extract_citable_urls(
+    tool_name: str,
+    result_text: str,
+    call_kwargs: dict[str, Any],
+) -> list[tuple[str, str | None]]:
+    """Extract (url, title) pairs to cite from an MCP tool's result or input args.
+
+    For ``web_fetch_exa`` the URL is the input arg (title is None); for
+    ``web_search_exa`` URLs and titles are parsed from the result text.
+    Other tools return empty.
+    """
+    if tool_name not in _CITABLE_MCP_TOOLS:
+        return []
+    if tool_name == "web_fetch_exa":
+        url = (call_kwargs.get("url") or "").strip()
+        return [(url, None)] if url else []
+    # web_search_exa: first try structured "Title: ...\nURL: ..." pairs.
+    pairs: list[tuple[str, str | None]] = []
+    seen: set[str] = set()
+    for m in _TITLE_URL_RE.finditer(result_text):
+        title = m.group(1).strip()
+        url = m.group(2).rstrip(".,;:!?")
+        if url not in seen:
+            seen.add(url)
+            pairs.append((url, title or None))
+            if len(pairs) >= _MAX_EXTRACTED_URLS:
+                return pairs
+    # Fallback: extract bare URLs without titles.
+    for m in _URL_RE.finditer(result_text):
+        url = m.group(0).rstrip(".,;:!?")
+        if url not in seen:
+            seen.add(url)
+            pairs.append((url, None))
+            if len(pairs) >= _MAX_EXTRACTED_URLS:
+                break
+    return pairs
 
 
 def _evict_expired_mcp_cache() -> None:
@@ -341,8 +400,17 @@ async def _create_mcp_tool_from_definition_http(
         )
         return payload
 
-    async def mcp_http_tool_call(**kwargs) -> str:
-        """Execute the MCP tool call via HTTP transport."""
+    async def mcp_http_tool_call(
+        runtime: ToolRuntime | None = None, **kwargs
+    ) -> str | Command:
+        """Execute the MCP tool call via HTTP transport.
+
+        When ``runtime`` is available and the tool produces citable web URLs
+        (e.g. ``web_search_exa``, ``web_fetch_exa``), each URL is registered
+        as a ``WEB_RESULT`` citation and the result is returned as a
+        ``Command`` with the updated registry — mirroring how capability
+        tools in ``access/agent.py`` mint citations.
+        """
         logger.debug("MCP HTTP tool '%s' called", exposed_name)
 
         if is_readonly or bypass_internal_hitl:
@@ -368,12 +436,38 @@ async def _create_mcp_tool_from_definition_http(
                 {k: v for k, v in hitl_result.params.items() if v is not None}
             )
 
+        def _with_citations(result_str: str) -> str | Command:
+            """Register WEB_RESULT citations for citable MCP tools, or return as-is."""
+            if runtime is None:
+                return result_str
+            pairs = _extract_citable_urls(original_tool_name, result_str, call_kwargs)
+            if not pairs:
+                return result_str
+            registry = load_registry(getattr(runtime, "state", None))
+            for url, title in pairs:
+                registry.register(
+                    CitationSourceType.WEB_RESULT,
+                    {"url": url},
+                    {"title": title} if title else {},
+                )
+            return Command(
+                update={
+                    "messages": [
+                        ToolMessage(
+                            content=result_str,
+                            tool_call_id=runtime.tool_call_id,
+                        )
+                    ],
+                    "citation_registry": registry,
+                }
+            )
+
         try:
             result_str = await _do_mcp_call(headers, call_kwargs)
             logger.debug(
                 "MCP HTTP tool '%s' succeeded (len=%d)", exposed_name, len(result_str)
             )
-            return result_str
+            return _with_citations(result_str)
 
         except Exception as first_err:
             if not _is_auth_error(first_err) or connector_id is None:
@@ -401,7 +495,7 @@ async def _create_mcp_tool_from_definition_http(
                     "MCP HTTP tool '%s' succeeded after 401 recovery",
                     exposed_name,
                 )
-                return result_str
+                return _with_citations(result_str)
             except Exception as retry_err:
                 logger.exception(
                     "MCP HTTP tool '%s' still failing after token refresh: %s",
@@ -415,6 +509,8 @@ async def _create_mcp_tool_from_definition_http(
                         "Please re-authenticate the connector in your settings."
                     )
                 return f"Error: MCP HTTP tool '{exposed_name}' execution failed: {retry_err!s}"
+
+    mcp_http_tool_call.__annotations__["runtime"] = ToolRuntime
 
     tool = StructuredTool(
         name=exposed_name,

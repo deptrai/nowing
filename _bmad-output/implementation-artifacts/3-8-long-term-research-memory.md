@@ -569,3 +569,15 @@ Response `200`:
 - **API/Integration tests:** `nowing_backend/tests/integration/workspaces/test_memory_routes.py` — unskipped, 11/11 passed.
 - **Unit tests:** `nowing_backend/tests/unit/services/test_memory.py` — unskipped and refactored, plus `test_memory_service.py` updated.
 - **E2E tests:** `nowing_web/tests/memory/memory-editor.spec.ts` — not present in this repo.
+
+### Review Findings (2026-08-08)
+
+- [x] [Review][Resolved] `DocumentsSidebar.tsx` loading-state — Brought back `zeroFoldersResult`/`zeroAllDocsResult` and added a small non-blocking `Spinner` in the `Documents` section header while `result.type === "unknown"`, keeping `FolderTreeView` (and `MEMORY.md` / `TEAM_MEMORY.md` rows) visible.
+
+- [x] [Review][Applied] `memory-editor.spec.ts:196-200` — Wrapped search `request.post` in a `try/catch` inside the polling loop so a slow search response does not break the test.
+
+- [x] [Review][Applied] `memory-editor.spec.ts:212` — Added a custom message to `expect(found).toBe(true)`.
+
+- [x] [Review][Applied] `memory-editor.spec.ts:52-57` (and 91-96, 134-139) — Replaced `.catch(() => {})` with a `closeEditorPanelIfOpen(page)` helper that uses `count() > 0` before clicking.
+
+- [ ] [Review][Open] `memory-editor.spec.ts` — The `[P1] should save team memory...` test is still flaky; the save flow does not reliably open the editor / show the `Edit document` button after clicking `TEAM_MEMORY.md` (see latest Playwright trace). Needs another debugging pass or a more robust document-open helper.
