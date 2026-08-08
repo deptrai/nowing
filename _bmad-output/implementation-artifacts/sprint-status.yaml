@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-08"  # Winston backlog audit: AD-32/AD-33 ACCEPTED, 7-7 catalog sync fix + review, 12-8/16-4 blocked, 6 followups → deferred, 12-9 → AD-33 template, 14-1 status sync
+last_updated: "2026-08-08"  # Readiness audit: Epic 12→13→18 dependency chain documented, 12.9 reordered P0 before 12.6, 6.6/6.7/6.9 business-gated, 12.0 prerequisite, 9.5 approval criteria, Epic 14-17 priority clarification
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
@@ -115,6 +115,11 @@ development_status:
   6-6: done
   6-7: done
   6-9: done
+  # ponytail: 2026-08-08 readiness audit — epics.md Story 6.6/6.7/6.9 (Playbook Reuse, Schema-Driven Form, Workspace vertical)
+  # are BUSINESS-GATED (gated sau pilot BĐS), not technically blocked. Track separately:
+  6-6a-playbook-reuse: business-gated  # epics.md Story 6.6 — gated sau pilot BĐS retention
+  6-7a-schema-form-ui: business-gated  # epics.md Story 6.7 — gated sau pilot BĐS retention
+  6-9a-workspace-vertical: business-gated  # epics.md Story 6.9 — gated sau pilot BĐS retention
   epic-6-retrospective: optional
 
   # === Epic 7: Multi-surface Clients ===
@@ -180,9 +185,9 @@ development_status:
   # ponytail: 2026-08-08 BLOCKED — 12-8 (Cross-Source Entity Timeline) must wait for Epic 13 review to close.
   # Epic 13 is the canonical entity storage boundary; timeline view must build on canonical tables, not parallel query path.
   12-8: blocked
-  # ponytail: 2026-08-08 AD-33 — 12-9 (Saved Searches) must be an Automation template type, NOT a standalone scheduler.
-  # Reuse Epic 6 scheduler + RunService. Build AlertRule template, don't write cron/diff/notification from scratch.
-  12-9: backlog
+  # ponytail: 2026-08-08 readiness audit — 12-9 (Saved Searches) reordered to P0, must ship before 12-6 (Job Alerts).
+  # 12-6 depends on saved search infrastructure. AD-33: must be Automation template, NOT standalone scheduler.
+  12-9: backlog  # P0 priority — readiness audit reorder
   epic-12-retrospective: optional
 
   # === Epic 13: Canonical Entity Storage & Multi-Domain Indexing ===

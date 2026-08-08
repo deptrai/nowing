@@ -99,6 +99,8 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết.
 
 ## Epic List
 
+> **📋 Language convention (readiness audit 2026-08-08):** Epic descriptions and context notes may use Vietnamese (project context). Acceptance Criteria (ACs) MUST use English with Given/When/Then format for testability and automated test conversion. Story titles use English. This is a documentation standard — existing mixed-language content is accepted as brownfield.
+
 > **⚠️ RECONCILED 2026-07-24 với `implementation-artifacts/sprint-status.yaml` (nguồn chân lý tiến độ):** một sprint đã chạy — **E1,2,5,7 = done; E3/E4/E6/E8 gần done**. Nhiều story dưới đây gắn `[GAP]` ở phiên planning này THỰC RA ĐÃ DONE (2.5, 3.6, 3.7, 6.4, 8.3, 3.11 dedupe, 3.12 security, 8.4a kill-switch, 8.5 obs) — đã retag `[DONE]`.
 > **Việc CÒN LẠI thật sự:**
 > - Từ sprint cũ: ~~4-6~~ research-continuity (done) · ~~6-5~~ memory-driven-automations (done) — cả hai đã verify code.
@@ -109,6 +111,7 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết.
 
 ### Epic 1: Identity, Auth & Workspace RBAC — ✅ DONE
 Đăng ký/đăng nhập/OAuth/PAT + workspace RBAC Owner/Editor/Viewer. **FRs:** FR-1,2,3,4,10.
+> **Brownfield note (readiness audit 2026-08-08):** Implemented prior to epic breakdown. No individual story files — functionality verified through code review and production usage.
 
 ### Epic 2: Connectors — ✅ DONE (retrospective 2026-08-08)
 Built-in scrapers + OAuth connectors + external MCP connectors; connectors là memory ingestion source. **FRs:** FR-6,7,8. **All 6 stories done:** 2.5 MCP toggle, 2.6 Indeed, 2.7 Walmart, 2.8 Amazon EU, 2.9 input validation, 2.10 Exa MCP (with citation ACs).
@@ -123,6 +126,7 @@ Multi-agent runtime + memory tools + research continuity. **FRs:** FR-14,15,16,1
 
 ### Epic 5: Deliverables — ✅ DONE
 Report/podcast/video/image. **FRs:** FR-21,22,23.
+> **Brownfield note (readiness audit 2026-08-08):** Implemented prior to epic breakdown. No individual story files — functionality verified through code review and production usage.
 
 ### Epic 6: Automations — ✅ CORE DONE (4 gap mới: playbook layer)
 Schedule/event/**memory_change** trigger + `agent_task`/`continue_research`/**write_back_notion|slack|linear|jira** action. **FRs:** FR-19, FR-20, **FR-18**, **FR-35**. **Open:** 6.6/6.7/6.9 (playbook reuse + schema-driven UI + workspace vertical & library) — **gated sau pilot BĐS; không có forward dependency kỹ thuật**.
@@ -926,6 +930,8 @@ I want trả tiền theo call để dùng deep research trên bản self-host,
 So that tôi không phải chuyển sang cloud chỉ vì một năng lực.
 
 > **Trạng thái: deferred.** Đây là **Phase 2** của D5. Mở khi (a) có số self-host thật, và (b) story `9.2` cho số cost để định giá. Không build trước hai điều đó.
+>
+> **Approval criteria (readiness audit 2026-08-08):** Story 9.5 requires a new SCP before dev can start. SCP must address: (1) self-host demand evidence (≥5 self-host instances requesting deep research), (2) pricing model (metered per-call vs subscription), (3) abuse prevention design, (4) revenue attribution to Nowing Cloud vs engine. Without SCP approval, this story remains deferred indefinitely.
 
 **Acceptance Criteria (nháp — cần SCP phê duyệt trước khi dev):**
 
@@ -1336,7 +1342,7 @@ _Tạo 2026-08-05 để chạy 8-week pilot kết nối VietnamWorks, TopCV, ITv
 
 > **Pilot scope (Plan C):** P0 = cả 3 nguồn. Hard gates: ToS review cho 3 nguồn; legal counsel opinion; anti-bot POC cho TopCV; SCP về NG-1. Effort ước tính 18–24 dev-days. Go/No-Go sau 8 tuần beta 20–50 workspaces.
 
-### Story 12.0: ToS & Legal Review `[DONE — approved by legal counsel 2026-08-08]`
+### Story 12.0: ToS & Legal Review `[PREREQUISITE — approved by legal counsel 2026-08-08]`
 
 As a product owner,
 I want to confirm ToS and legal classification for VietnamWorks, TopCV, and ITviec,
@@ -1451,6 +1457,8 @@ Hệ thống lưu trữ, dedup và index entities từ nhiều nguồn — tra c
 > **Architect hardening 2026-08-06:** Shared canonical storage is established by Story 13.1 before the AD-28 trigger. AD-28 controls when standalone domain functions are wrapped behind one `DomainPlugin` matching engine; it does not delay the shared tables. All persistence is tenant-scoped, idempotent and retryable. Search extends the existing rank-based RRF path rather than mixing incomparable raw cosine and full-text scores.
 >
 > **Sequencing:** Epic 12 must ship before Jobs persistence and the HR benchmark. Story 13.1 and BDS contract work may run in parallel. Story 13.3 starts only after source lineage and RLS gates are green.
+>
+> **🏗️ Intentional Phase 2 Dependency Chain (documented 2026-08-08, readiness audit):** Epic 12 → Epic 13 → Epic 18 is an **intentional sequential dependency**, not a violation. Rationale: canonical entity storage (Epic 13) is the shared persistence foundation; vertical client platform (Epic 18) requires both canonical storage AND RLS isolation to be production-ready. Stories 13.2b and 13.2e depend on Epic 12's `vn_jobs.aggregate` output contract — this is by design because Jobs persistence needs real aggregator output to test against. This chain is accepted as Phase 2 sequencing.
 
 ### Story 13.1: Canonical Persistence, Tenancy & Convention `[P0]`
 
@@ -1560,6 +1568,8 @@ Public API surface so external vertical clients (first: BDS AI) can run speciali
 **ADs governed:** **AD-29** (public agent-chat surface), **AD-30** (AgentConfig registry), **AD-31** (vertical `client_id` tenancy), **AD-13** (ResearchThread linkage)
 
 > **Correct-course 2026-08-07:** Originally drafted as Epic 13.4–13.11. Split out of Epic 13 so canonical storage (FR-48) stays a closed architecture boundary. Do **not** bind these stories to AD-27/AD-28.
+>
+> **🏗️ Intentional Phase 2 Dependency (documented 2026-08-08, readiness audit):** Epic 18 depends on Epic 13 by design. This is NOT a forward dependency violation — it is an intentional Phase 2 sequencing. Vertical client platform requires canonical storage + RLS isolation to be production-ready. Entry criteria below enforce this.
 >
 > **Entry criteria (all required before coding):**
 > 1. Epic 13 stories 13.1–13.3 P0 code-review findings closed (or explicitly waived). ✅ 2026-08-07
@@ -1711,6 +1721,8 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 ## Epic 14: News Aggregation (Vietnam)
 
 > **⚠️ Priority: P2 — Defer to Phase 2.** Epic 14-17 (News/Finance/Company/E-com) = 24 stories backlog. Team solo nên focus E13 (platform) trước. Có thể dùng ChainLens generic crawl thay vì build RSS scrapers riêng.
+>
+> **📋 Priority clarification (readiness audit 2026-08-08):** Epic-level P2 means the epic is NOT in the active sprint. However, individual stories marked P0 within these epics are "quick wins" (1-3 days) that CAN be pulled into active sprint if capacity allows — they do not require the full epic to be activated. The P0 story label indicates low effort + high value, NOT sprint commitment. Epic activation requires SCP approval.
 
 Tích hợp 4 trang tin tức lớn Việt Nam qua RSS feeds — cung cấp nguồn dữ liệu news cho research memory và chat agents.
 
@@ -1915,52 +1927,14 @@ _AD-27 · Method: Third-party API (Apify/Bright Data) recommended; in-house requ
 > **🏗️ AD-33 (2026-08-08):** Stories 12.6, 12.7, 12.9 (alerts + saved searches) MUST be implemented as `AlertRule` templates on the Generic Alert Engine (AD-33), NOT as standalone schedulers. Reuse Epic 6 Automation infrastructure (scheduler + RunService + notification dispatch). Story 12.6 is the first consumer — Alert Engine builds alongside it. Stories 12.7 and 12.9 only register new `AlertRule` templates.
 
 > **🏗️ AD-27 (2026-08-08):** Story 12.8 (Cross-Source Entity Timeline) is **BLOCKED** until Epic 13 review closes. Timeline view must build on canonical entity storage tables (`canonical_entities`, source-lineage, history), not a parallel query path. Same block applies to Story 16.4 (Company Timeline).
+>
+> **📋 Dependency ordering (readiness audit 2026-08-08):** Stories 12.6-12.9 have internal dependencies that require specific ordering:
+> - **12.9 (Saved Searches) → P0** — must ship first; 12.6 depends on saved search infrastructure
+> - **12.6 (Job Market Alerts) → P1** — depends on 12.9 (saved searches) + AD-33 Alert Engine
+> - **12.7 (Property Price Alerts) → P1** — depends on Epic 13 canonical entities (cross-epic, intentional)
+> - **12.8 (Cross-Source Entity Timeline) → BLOCKED** — depends on Epic 13 canonical storage
 
-### Story 12.6: Job Market Alerts `[P1]`
-
-As a job market researcher,
-I want to receive alerts when new postings match my criteria,
-So that I don't have to manually re-run searches every day.
-
-**Acceptance Criteria:**
-- **Given** a saved job search with filters (title, location, salary range), **When** a new posting matches, **Then** I receive an in-app notification.
-- **Given** an alert is triggered, **When** I click it, **Then** I see the new matching results.
-- **Given** multiple alerts, **When** viewed, **Then** they are grouped by search query with match count.
-
-**Validation:**
-- Unit test: `test_job_alert_matching.py` — new posting triggers alert
-- Integration test: `test_job_alert_notification.py` — notification delivered
-
-### Story 12.7: Property Price Alerts `[P1]`
-
-As a real estate researcher,
-I want to be notified when a tracked property's price changes,
-So that I can act on market movements immediately.
-
-**Acceptance Criteria:**
-- **Given** a canonical property entity exists, **When** a new source reports a different price, **Then** an alert is triggered with old vs new price.
-- **Given** price change exceeds threshold (e.g., 5%), **When** detected, **Then** priority alert is sent.
-
-**Validation:**
-- Unit test: `test_property_price_alert.py` — price change triggers alert
-- Integration test: `test_property_alert_notification.py`
-
-### Story 12.8: Cross-Source Entity Timeline `[P1]`
-
-As a researcher,
-I want to see all events for an entity across sources over time,
-So that I understand its trajectory and patterns.
-
-**Acceptance Criteria:**
-- **Given** a canonical entity (job or property), **When** I view its timeline, **Then** I see events from all sources: job postings, price changes, news mentions, company updates.
-- **Given** timeline events, **When** filtered by source type, **Then** only relevant events shown.
-- **Given** timeline, **When** exported, **Then** produces a chronological report.
-
-**Validation:**
-- Integration test: `test_entity_timeline.py` — timeline aggregates cross-source events
-- UI test: `test_entity_timeline_render.py` — timeline renders correctly
-
-### Story 12.9: Saved Searches `[P1]`
+### Story 12.9: Saved Searches `[P0 — reordered: must ship before 12.6]`
 
 As a researcher,
 I want to save complex search queries and auto-run them on schedule,
@@ -1975,6 +1949,56 @@ So that I always have fresh results without manual work.
 - Unit test: `test_saved_search_crud.py` — create/update/delete saved searches
 - Integration test: `test_saved_search_schedule.py` — scheduled execution works
 - Integration test: `test_saved_search_delta.py` — delta calculation correct
+
+### Story 12.6: Job Market Alerts `[P1 — depends on 12.9]`
+
+As a job market researcher,
+I want to receive alerts when new postings match my criteria,
+So that I don't have to manually re-run searches every day.
+
+> **Dependency:** Story 12.9 (Saved Searches) must ship first — alerts use saved search infrastructure.
+
+**Acceptance Criteria:**
+- **Given** a saved job search with filters (title, location, salary range), **When** a new posting matches, **Then** I receive an in-app notification.
+- **Given** an alert is triggered, **When** I click it, **Then** I see the new matching results.
+- **Given** multiple alerts, **When** viewed, **Then** they are grouped by search query with match count.
+
+**Validation:**
+- Unit test: `test_job_alert_matching.py` — new posting triggers alert
+- Integration test: `test_job_alert_notification.py` — notification delivered
+
+### Story 12.7: Property Price Alerts `[P1 — depends on Epic 13]`
+
+As a real estate researcher,
+I want to be notified when a tracked property's price changes,
+So that I can act on market movements immediately.
+
+> **Dependency:** Epic 13 canonical property entities must exist — this is an intentional cross-epic dependency (canonical storage is the shared foundation).
+
+**Acceptance Criteria:**
+- **Given** a canonical property entity exists, **When** a new source reports a different price, **Then** an alert is triggered with old vs new price.
+- **Given** price change exceeds threshold (e.g., 5%), **When** detected, **Then** priority alert is sent.
+
+**Validation:**
+- Unit test: `test_property_price_alert.py` — price change triggers alert
+- Integration test: `test_property_alert_notification.py`
+
+### Story 12.8: Cross-Source Entity Timeline `[P1 — BLOCKED on Epic 13]`
+
+As a researcher,
+I want to see all events for an entity across sources over time,
+So that I understand its trajectory and patterns.
+
+> **BLOCKED:** Epic 13 canonical entity storage must be review-closed before this story can start. Already marked `blocked` in sprint-status.yaml.
+
+**Acceptance Criteria:**
+- **Given** a canonical entity (job or property), **When** I view its timeline, **Then** I see events from all sources: job postings, price changes, news mentions, company updates.
+- **Given** timeline events, **When** filtered by source type, **Then** only relevant events shown.
+- **Given** timeline, **When** exported, **Then** produces a chronological report.
+
+**Validation:**
+- Integration test: `test_entity_timeline.py` — timeline aggregates cross-source events
+- UI test: `test_entity_timeline_render.py` — timeline renders correctly
 
 ---
 
