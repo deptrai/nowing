@@ -45,3 +45,33 @@ def test_error_items_are_not_billable():
 def test_rejects_malformed_urls():
     with pytest.raises(ValidationError):
         ScrapeInput(urls=["not-a-url", "https://www.amazon.com/dp/B09V3KXJPB"])
+
+
+def test_accepts_eu_marketplace_domains():
+    # AC #5: the domain regex accepts all verified EU marketplace domains.
+    for domain in (
+        "www.amazon.co.uk",
+        "www.amazon.de",
+        "www.amazon.fr",
+        "www.amazon.it",
+        "www.amazon.es",
+        "amazon.de",
+    ):
+        payload = ScrapeInput(search_terms=["keyboard"], domain=domain)
+        assert payload.domain == domain
+
+
+def test_rejects_non_amazon_domain():
+    with pytest.raises(ValidationError):
+        ScrapeInput(search_terms=["keyboard"], domain="www.ebay.com")
+
+
+def test_accepts_eu_urls():
+    # AC #5: EU marketplace URLs pass HttpUrlStr validation and are accepted.
+    payload = ScrapeInput(
+        urls=[
+            "https://www.amazon.de/dp/B09V3KXJPB",
+            "https://www.amazon.co.uk/s?k=usb+cable",
+        ]
+    )
+    assert len(payload.urls) == 2

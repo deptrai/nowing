@@ -4,7 +4,7 @@ baseline_commit: 9f6a4c5942c20a5a6c72144ba03d0d8737cc75a9
 
 # Story 2.10: Exa MCP Search Connector
 
-**Status:** done  
+**Status:** done
 **Epic:** 2 — Connectors  
 **Source:** <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/epics.md" />  
 **Related PRD:** FR-8 MCP connectors in <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md" />  
@@ -155,4 +155,32 @@ Reviewed by Blind Hunter + Edge Case Hunter + Acceptance Auditor on 2026-08-05.
 - One-per-workspace check is correct (`EXA_MCP_CONNECTOR` is not exempt; only generic `MCP_CONNECTOR` is).
 - Tool allowlist hardcoding is intentional per spec (curated list).
 - URL override is allowed by design.
+
+### Review Findings — Round 2 (citation ACs, 2026-08-08)
+
+Reviewed by Blind Hunter + Edge Case Hunter + Acceptance Auditor on 2026-08-08.
+Scope: uncommitted citation registration changes (`mcp/tool.py`, `web_citation.py`, `test_web_citation.py`, `test_agent_tools.py`).
+
+**decision-needed:** 0
+
+**patch (medium) — fixed 2026-08-08:**
+- [x] [Review][Patch] Add integration test for `web_fetch_exa` citation registration — AC2 PARTIAL: `_extract_citable_urls` unit-tested for `web_fetch_exa` but no integration test verifies full flow (Command return with updated registry). Mirror `test_mcp_http_tool_registers_citations_for_web_search_exa` for `web_fetch_exa` [`tests/unit/agents/multi_agent_chat/shared/tools/mcp/test_mcp_citations.py`]
+
+**patch (low) — fixed 2026-08-08:**
+- [x] [Review][Patch] MCP citation registration uses empty `display` dict — inconsistent with capability path (`web_citation.py`) which includes `title` when available. Align by extracting titles from Exa result text, or document the difference [`app/agents/chat/multi_agent_chat/shared/tools/mcp/tool.py:434`]
+- [x] [Review][Patch] `rstrip(".,;:")` misses trailing `!` and `?` — URLs like `https://example.com/page!` keep the `!`. Add `!?` to rstrip chars [`app/agents/chat/multi_agent_chat/shared/tools/mcp/tool.py:101`]
+
+**defer:**
+- [x] [Review][Defer] Registry shared across concurrent tool calls — pre-existing pattern from capability tools; LangGraph state merge handles reconciliation. Not introduced by this diff.
+
+**dismissed as noise (16):**
+- `call_kwargs["url"]` non-string / `call_kwargs` None / `result_text` None / `result_text` non-string — not reachable: `_do_mcp_call` always returns `str`, `call_kwargs` always a dict from `_unpack_synthetic_input_data`, MCP input_schema validated by LangChain/pydantic before tool call.
+- `src.url` non-string / `src.url` None / `registry` None in `register_web_citations` — out of 2-10 scope (agent.py path); Pydantic validates `sources[]` types; `(src.url or "").strip()` handles None; `registry` always loaded via `load_registry`.
+- `runtime.state` not a Mapping / `runtime.tool_call_id` None — LangGraph state is always Mapping; `ToolRuntime` always has `tool_call_id`.
+- MCP tool returns error string — error paths (lines 459, 470-472, 493) return strings directly WITHOUT calling `_with_citations`; error strings never reach citation extraction.
+- MCP tool returns empty string — already handled (no URLs extracted, returns plain string).
+- Regex misses URLs with parens/brackets — deliberate ponytail tradeoff, documented in code.
+- No URL validation — regex is strict enough; citation system gracefully handles bad citations.
+- Registry mutation without Command return — no intervening code between `_with_citations` call and return statement.
+- IDN domains — regex matches unicode characters.
 

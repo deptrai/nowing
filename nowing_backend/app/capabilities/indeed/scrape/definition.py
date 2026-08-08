@@ -17,7 +17,7 @@ INDEED_SCRAPE = Capability(
     output_schema=ScrapeOutput,
     executor=build_scrape_executor(),
     billing_unit=BillingUnit.INDEED_JOB,
-    docs_url="/docs/connectors/native/vn_jobs",
+    docs_url="/docs/connectors/native/indeed",
 )
 
 register_capability(INDEED_SCRAPE)

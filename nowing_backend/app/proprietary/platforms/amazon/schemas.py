@@ -201,6 +201,7 @@ class ProductItem(BaseModel):
     locationText: str | None = None
     unNormalizedProductUrl: str | None = None
     loadedCountryCode: str | None = None
+    marketplace: str | None = None
     categoryPageData: dict | None = None
     bestsellerPageData: dict | None = None
     input: str | None = None

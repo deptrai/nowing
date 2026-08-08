@@ -2,7 +2,7 @@
 baseline_commit: 25ba542c2a3dec95b0a4020da8c129242ba748e2
 baseline_branch: develop
 story_key: 2-6-indeed-jobs-scraper
-status: ready-for-dev
+status: done
 ---
 
 # Story 2.6: Indeed Jobs Scraper
@@ -210,6 +210,22 @@ Key files and patterns from the upstream PR:
   python scripts/e2e_indeed_scraper.py --query "software engineer" --location "remote"
   ```
 - [ ] Playground and MCP list `indeed.scrape` after registration.
+
+### Review Findings
+
+- [x] [Review][Patch] Docs/marketing use `query` but API uses `keyword` — fixed docs to use `keyword`. [blind+auditor]
+- [x] [Review][Patch] Docs promise `scrape_job_details` and `urls` fields that don't exist — removed from docs. [auditor]
+- [x] [Review][Patch] No deduplication across pages — added `seen_jk` set guard in `_scrape`. [blind+edge+auditor]
+- [x] [Review][Patch] Docs promise `sort` values `salary` and `rating` not in schema — fixed docs to `relevance, date`. [auditor]
+- [x] [Review][Patch] `cost_micros` estimate in scraper is misleading — removed per-page 3x charge, now only counts per item. [blind]
+- [x] [Review][Patch] `apply_url` always None but docs promise it — removed from docs. [blind+edge]
+- [x] [Review][Patch] EEO regex too greedy with `re.DOTALL` — removed `re.DOTALL`, anchored to end of string. [blind]
+- [x] [Review][Patch] Hardcoded pagination `start += 15` — changed to `start += len(cards)`. [blind+edge]
+- [x] [Review][Patch] Docs say `max_items` default 10, actual default 50 — fixed docs. [blind]
+- [x] [Review][Patch] Skills and benefits are identical — set `skills` to empty list, updated test to check `benefits`. [blind]
+- [x] [Review][Defer] No timeout on detail page fetch — `scraper.py:590-622` calls `WebCrawlerConnector.crawl_url()` and `StealthyFetcher.fetch()` without explicit timeout. Would need architectural change to thread timeout through connector. Deferred, pre-existing pattern. [blind+edge]
+- [x] [Review][Defer] No test for multi-page pagination — `test_scraper.py` tests `max_items=2` but doesn't test `max_pages > 1`. Test gap, not a code bug. [blind]
+- [x] [Review][Defer] Billing rate 5000 vs spec's recommended 3500 — `INDEED_SCRAPE_MICROS_PER_ITEM` defaults to 5000, spec recommends ~3500. Business decision, not a code bug. [auditor]
 
 ## References
 

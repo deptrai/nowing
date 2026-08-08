@@ -52,6 +52,7 @@ curl -X POST "$BASE_URL/api/v1/workspaces/1/scrapers/amazon/scrape" \
   "urls": [
     "https://www.amazon.co.uk/s?k=usb+c+cable",
     "https://www.amazon.de/s?k=mechanische+tastatur",
+    "https://www.amazon.fr/s?k=clavier+mécanique",
     "https://www.amazon.it/s?k=cavo+usb+c",
     "https://www.amazon.es/s?k=cable+usb+c"
   ],
@@ -60,7 +61,7 @@ curl -X POST "$BASE_URL/api/v1/workspaces/1/scrapers/amazon/scrape" \
 }
 ```
 
-For `search_terms`, set `domain` to the marketplace you want to search. For direct URLs, the scraper infers the marketplace from each URL.
+For `search_terms`, set `domain` to the marketplace you want to search. For direct URLs, the scraper infers the marketplace from each URL. Each returned item carries a `marketplace` field (e.g. `de`, `co.uk`, `fr`) so consumers know which region the data came from.
 
 The response is `{ "items": [...] }` — one item per product, plus structured error items for any input that could not be resolved. Billing is per returned product; error items are never billed.
 

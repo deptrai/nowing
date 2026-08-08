@@ -36,12 +36,13 @@ export const WebIcon = brandIcon("/connectors/web.svg", "Web");
 export const ChototIcon = Home;
 export const MuabanBdsIcon = Building2;
 
+export const IndeedIcon = brandIcon("/connectors/indeed.svg", "Indeed");
+
 // Epic 12 — Vietnam Job Market. Using Lucide Briefcase as a shared job-market
 // mark until dedicated brand SVGs are added to /public/connectors.
 export const VietnamworksIcon = Briefcase;
 export const TopcvIcon = Briefcase;
 export const ItviecIcon = Briefcase;
-export const IndeedIcon = Briefcase;
 export const VnJobsIcon = Briefcase;
 
 // Epic 2.7 — Walmart product + reviews scraper. Briefcase is a placeholder

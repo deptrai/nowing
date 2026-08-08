@@ -16,7 +16,9 @@ class ScrapeInput(BaseModel):
     location: str | None = Field(default="")
     salary_min: int | None = None
     salary_max: int | None = None
-    employment_type: Literal["full_time", "contract", "part_time", "intern"] | None = None
+    employment_type: Literal["full_time", "contract", "part_time", "intern"] | None = (
+        None
+    )
     radius: int = Field(default=25, ge=0, le=100)
     sort: Literal["relevance", "date"] = Field(default="relevance")
     max_pages: int = Field(default=3, ge=0, le=5)

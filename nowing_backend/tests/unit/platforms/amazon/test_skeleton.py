@@ -81,6 +81,7 @@ def test_output_item_serializes_full_shape():
     # Unsourced scalars are still present as None (consumers never KeyError).
     assert item["title"] is None
     assert item["monthlyPurchaseVolume"] is None
+    assert item["marketplace"] is None
     # List fields default to [].
     assert item["features"] == []
     assert item["offers"] == []
@@ -88,6 +89,12 @@ def test_output_item_serializes_full_shape():
     # Typed-but-unset nested objects are None.
     assert item["price"] is None
     assert item["seller"] is None
+
+
+def test_output_item_carries_marketplace_field():
+    # AC #4: ProductItem carries an explicit marketplace field for region provenance.
+    item = ProductItem(asin="B0EXAMPLE1", marketplace="de").to_output()
+    assert item["marketplace"] == "de"
 
 
 def test_stars_breakdown_round_trips_digit_keys():
@@ -150,6 +157,46 @@ def test_resolve_url_rejects_non_amazon_and_unrecognized():
     assert resolve_url("https://example.com/dp/B08EXAMPLE1") is None
     # An Amazon host but an unrecognized path (e.g. the homepage) is unrecognized.
     assert resolve_url("https://www.amazon.com/") is None
+
+
+def test_resolve_url_handles_eu_tlds():
+    # AC #1: EU product, search, and bestsellers URLs resolve with correct marketplace.
+    de_product = resolve_url("https://www.amazon.de/dp/B0EXAMPLE1")
+    assert de_product is not None
+    assert de_product.kind == "product"
+    assert de_product.marketplace == "de"
+
+    fr_search = resolve_url("https://www.amazon.fr/s?k=clavier")
+    assert fr_search is not None
+    assert fr_search.kind == "search"
+    assert fr_search.marketplace == "fr"
+
+    uk_bestsellers = resolve_url(
+        "https://www.amazon.co.uk/Best-Sellers-Electronics/zgbs/electronics"
+    )
+    assert uk_bestsellers is not None
+    assert uk_bestsellers.kind == "bestsellers"
+    assert uk_bestsellers.marketplace == "co.uk"
+
+
+def test_resolve_url_handles_multi_segment_tlds():
+    # co.uk and co.jp are multi-segment TLDs; the marketplace is the full suffix.
+    assert resolve_url("https://www.amazon.co.uk/dp/B0EXAMPLE1").marketplace == "co.uk"
+
+
+def test_resolve_url_handles_amzn_eu_short_link():
+    # amzn.eu is a valid short-link host alongside a.co and amzn.to.
+    short = resolve_url("https://amzn.eu/d/abcd123")
+    assert short is not None
+    assert short.kind == "shortened"
+
+
+def test_resolve_url_unmapped_eu_tld_still_resolves():
+    # An unmapped EU TLD (e.g. amazon.nl) still classifies; locale falls back later.
+    nl = resolve_url("https://www.amazon.nl/dp/B0EXAMPLE1")
+    assert nl is not None
+    assert nl.kind == "product"
+    assert nl.marketplace == "nl"
 
 
 async def test_iter_products_unrecognized_yields_error():

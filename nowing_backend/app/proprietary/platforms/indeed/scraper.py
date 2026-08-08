@@ -59,7 +59,6 @@ _MAJOR_SECTION_KEYWORDS = (
 )
 
 
-
 def _degraded(reason: str, *, cost_micros: int = 0) -> dict[str, Any]:
     return {
         "items": [],
@@ -111,13 +110,18 @@ def _clean_url(url: str) -> str:
     return f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
 
 
-def _extract_salary_numbers(text: str) -> tuple[int | None, int | None, str, str | None]:
+def _extract_salary_numbers(
+    text: str,
+) -> tuple[int | None, int | None, str, str | None]:
     """Parse a free-form Indeed salary string into (min, max, currency, period_tag)."""
     if not text:
         return None, None, "USD", None
 
     lower = text.lower()
-    if any(k in lower for k in ("negotiable", "competitive", "depends on experience", "doe")):
+    if any(
+        k in lower
+        for k in ("negotiable", "competitive", "depends on experience", "doe")
+    ):
         return 0, 0, "USD", "negotiable"
 
     currency = "USD"
@@ -274,7 +278,11 @@ def _parse_detail_markdown(content: str, metadata: dict[str, Any]) -> dict[str, 
         if match and _is_major_heading(match.group(1) or match.group(0)):
             if current_heading is not None or current_body:
                 sections.append((current_heading, current_body))
-            current_heading = match.group(1).strip().rstrip(":") if match.group(1) else match.group(0).strip()
+            current_heading = (
+                match.group(1).strip().rstrip(":")
+                if match.group(1)
+                else match.group(0).strip()
+            )
             current_body = []
         else:
             current_body.append(line)
@@ -298,9 +306,27 @@ def _parse_detail_markdown(content: str, metadata: dict[str, Any]) -> dict[str, 
 
         h_lower = heading.lower()
 
-        if any(k in h_lower for k in ("responsibilities", "about the job", "job description", "the role", "what you'll do")):
+        if any(
+            k in h_lower
+            for k in (
+                "responsibilities",
+                "about the job",
+                "job description",
+                "the role",
+                "what you'll do",
+            )
+        ):
             job_description = _clean_markdown_section("\n".join(body))
-        elif any(k in h_lower for k in ("qualifications", "requirements", "what you bring", "what you need", "what we're looking for")):
+        elif any(
+            k in h_lower
+            for k in (
+                "qualifications",
+                "requirements",
+                "what you bring",
+                "what you need",
+                "what we're looking for",
+            )
+        ):
             job_requirement = _clean_markdown_section("\n".join(body))
         elif "some of your benefits" in h_lower or h_lower in ("benefits", "perks"):
             benefits = _extract_benefit_items(body)
@@ -309,8 +335,12 @@ def _parse_detail_markdown(content: str, metadata: dict[str, Any]) -> dict[str, 
                 salary_raw = "\n".join(body).strip()
         elif "location" in h_lower or "work location" in h_lower:
             location = _clean_markdown_section("\n".join(body))
-        elif any(k in h_lower for k in ("employment type", "job type", "work schedule")):
-            employment_type = _map_employment_type(_clean_markdown_section("\n".join(body)))
+        elif any(
+            k in h_lower for k in ("employment type", "job type", "work schedule")
+        ):
+            employment_type = _map_employment_type(
+                _clean_markdown_section("\n".join(body))
+            )
 
     # If no explicit salary section, fall back to any line that looks like pay.
     if not salary_raw:
@@ -320,7 +350,10 @@ def _parse_detail_markdown(content: str, metadata: dict[str, Any]) -> dict[str, 
                 break
 
     # Strip the common equal-opportunity footer that bleeds into the last section.
-    eeo_re = re.compile(r"\s*The\s+.+?\s+is\s+an\s+equal\s+opportunity\s+employer.*", re.IGNORECASE | re.DOTALL)
+    eeo_re = re.compile(
+        r"\s*The\s+.+?\s+is\s+an\s+equal\s+opportunity\s+employer.*$",
+        re.IGNORECASE,
+    )
     job_description = eeo_re.sub("", job_description).strip()
     job_requirement = eeo_re.sub("", job_requirement).strip()
 
@@ -363,7 +396,9 @@ def _parse_detail_html(html: str) -> dict[str, Any]:
 
     section_div = root.xpath('//div[@id="jobDescriptionText"]')
     if not section_div:
-        section_div = root.xpath('//div[contains(@class,"jobsearch-JobComponent-description")]')
+        section_div = root.xpath(
+            '//div[contains(@class,"jobsearch-JobComponent-description")]'
+        )
     if not section_div:
         return {}
 
@@ -402,7 +437,10 @@ def _apply_detail(item: dict[str, Any], detail: dict[str, Any]) -> None:
     salary_raw = detail.get("salary_raw") or item.get("salary_raw") or ""
     if salary_raw:
         item["salary_raw"] = salary_raw
-        if any(k in salary_raw.lower() for k in ("negotiable", "competitive", "depends on experience", "doe")):
+        if any(
+            k in salary_raw.lower()
+            for k in ("negotiable", "competitive", "depends on experience", "doe")
+        ):
             item["salary_min"] = 0
             item["salary_max"] = 0
             item["salary_currency"] = "USD"
@@ -450,7 +488,9 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
             title = a.get("title") or ""
         if not title:
             title = a.get("aria-label") or ""
-            title = re.sub(r"\bfull details of\s+", "", title, flags=re.IGNORECASE).strip()
+            title = re.sub(
+                r"\bfull details of\s+", "", title, flags=re.IGNORECASE
+            ).strip()
 
         company = ""
         company_els = card.xpath('.//span[@data-testid="company-name"]')
@@ -463,7 +503,9 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
             location = _safe_text(loc_els[0])
 
         summary_tags: list[str] = []
-        for tag in card.xpath('.//div[contains(@class,"jobMetaDataGroup")]//span/text()'):
+        for tag in card.xpath(
+            './/div[contains(@class,"jobMetaDataGroup")]//span/text()'
+        ):
             t = tag.strip()
             if t and len(t) > 1 and t not in summary_tags:
                 summary_tags.append(t)
@@ -486,27 +528,29 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
 
         source_url = f"{_BASE_URL}/viewjob?jk={jk}"
 
-        results.append({
-            "id": f"indeed:{jk}",
-            "title": title,
-            "company": company,
-            "location": location,
-            "source_url": source_url,
-            "salary_raw": salary_raw,
-            "salary_min": None,
-            "salary_max": None,
-            "salary_currency": None,
-            "salary_period_id": None,
-            "employment_type": None,
-            "experience_years": None,
-            "job_description": "",
-            "job_requirement": "",
-            "benefits": summary_tags,
-            "skills": summary_tags,
-            "posted_at": posted,
-            "is_active": True,
-            "source": "indeed",
-        })
+        results.append(
+            {
+                "id": f"indeed:{jk}",
+                "title": title,
+                "company": company,
+                "location": location,
+                "source_url": source_url,
+                "salary_raw": salary_raw,
+                "salary_min": None,
+                "salary_max": None,
+                "salary_currency": None,
+                "salary_period_id": None,
+                "employment_type": None,
+                "experience_years": None,
+                "job_description": "",
+                "job_requirement": "",
+                "benefits": summary_tags,
+                "skills": [],
+                "posted_at": posted,
+                "is_active": True,
+                "source": "indeed",
+            }
+        )
 
     return results
 
@@ -519,8 +563,11 @@ async def _fetch_search_page(
     start: int,
 ) -> str:
     # Local imports avoid an indeed <-> web_crawler circular import on startup.
-    from app.proprietary.web_crawler.stealth import build_stealthy_kwargs, get_stealth_config  # noqa: I001
     from app.proprietary.web_crawler.connector import scroll_to_bottom
+    from app.proprietary.web_crawler.stealth import (
+        build_stealthy_kwargs,
+        get_stealth_config,
+    )
 
     url = _search_url(keyword, location, radius, sort, start)
     kwargs: dict[str, Any] = {
@@ -593,6 +640,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
     radius = int(params.get("radius", 25) or 0)
     sort = params.get("sort", "relevance")
     items: list[dict[str, Any]] = []
+    seen_jk: set[str] = set()
     cost_micros = 0
     start = 0
 
@@ -603,13 +651,17 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
                 break
 
             html = await _fetch_search_page(keyword, location, radius, sort, start)
-            cost_micros += config.INDEED_SCRAPE_MICROS_PER_ITEM * 3
 
             cards = _parse_search_page(html)
             if not cards:
                 break
 
             for card in cards[:remaining]:
+                jk = card["id"]
+                if jk in seen_jk:
+                    continue
+                seen_jk.add(jk)
+
                 detail = await _fetch_detail_page(card["source_url"])
                 _apply_detail(card, detail)
                 cost_micros += config.INDEED_SCRAPE_MICROS_PER_ITEM
@@ -623,7 +675,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
             if len(items) >= max_items:
                 break
 
-            start += 15
+            start += len(cards)
             await asyncio.sleep(config.INDEED_PAGE_DELAY_S)
 
     except Exception as exc:

@@ -1,0 +1,44 @@
+---
+title: Indeed
+description: Scrape job listings and job details from Indeed
+---
+
+The Indeed scraper pulls structured job data from Indeed (US market). Give it a keyword and optional location, radius, or sort, and it returns job cards with title, company, location, salary text, posting date, and full job description (fetched automatically per listing).
+
+## Endpoint
+
+```bash
+POST /api/v1/workspaces/{workspace_id}/scrapers/indeed/scrape
+```
+
+## Inputs
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `keyword` | `"data engineer"` | Job keyword or title |
+| `location` | — | City, state, region, or "Remote" |
+| `radius` | `25` | Search radius in miles (0-100) |
+| `sort` | `relevance` | `relevance` or `date` |
+| `salary_min` | — | Optional minimum annual salary in USD |
+| `salary_max` | — | Optional maximum annual salary in USD |
+| `employment_type` | — | `full_time`, `contract`, `part_time`, or `intern` |
+| `max_pages` | `3` | Max result pages to fetch (0-5) |
+| `max_items` | `50` | Max total items returned (hard cap 100) |
+
+## Example
+
+```bash
+curl -X POST "$BASE_URL/api/v1/workspaces/1/scrapers/indeed/scrape" \
+  -H "Authorization: Bearer $NOWING_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keyword": "data engineer",
+    "location": "Remote",
+    "sort": "date",
+    "max_items": 25
+  }'
+```
+
+The response is `{ "items": [...] }` — one item per distinct job. Billing is per returned job card; degraded and error runs are not billed.
+
+For the full input and output JSON schemas and generated code snippets in your language, open **API Playground → Indeed → Scrape** in your workspace.

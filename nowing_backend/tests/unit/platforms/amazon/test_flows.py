@@ -89,6 +89,77 @@ async def test_search_flow_threads_marketplace_locale_to_fetch(monkeypatch):
     assert len(items) == 1
     assert calls[0]["country"] == "gb"
     assert calls[0]["accept_language"] == "en-GB"
+    # AC #4: card-only search items carry the marketplace field.
+    assert items[0]["marketplace"] == "co.uk"
+
+
+async def test_product_flow_de_sets_german_locale_and_marketplace(monkeypatch):
+    # AC #1, #2, #4: a german product URL threads de-DE locale and sets marketplace.
+    calls: list[dict[str, object]] = []
+
+    async def fetch_page(url: str, **kwargs):
+        calls.append({"url": url, **kwargs})
+        return _response(url, _fixture("product.html"))
+
+    monkeypatch.setattr(scraper, "fetch_page", fetch_page)
+    items = await scrape_products(
+        AmazonScrapeInput(
+            categoryOrProductUrls=[{"url": "https://www.amazon.de/dp/B09V3KXJPB"}],
+        )
+    )
+
+    assert len(items) == 1
+    assert items[0]["asin"] == "B09V3KXJPB"
+    assert items[0]["marketplace"] == "de"
+    assert calls[0]["country"] == "de"
+    assert calls[0]["accept_language"] == "de-DE"
+
+
+async def test_bestsellers_flow_sets_marketplace_on_card_only(monkeypatch):
+    # AC #4: bestsellers card-only items carry the marketplace field.
+    async def fetch_page(url: str, **_kwargs):
+        return _response(url, _fixture("bestsellers.html"))
+
+    monkeypatch.setattr(scraper, "fetch_page", fetch_page)
+    items = await scrape_products(
+        AmazonScrapeInput(
+            categoryOrProductUrls=[
+                {
+                    "url": (
+                        "https://www.amazon.co.uk/Best-Sellers-Electronics/"
+                        "zgbs/electronics"
+                    )
+                }
+            ],
+            maxItemsPerStartUrl=2,
+            scrapeProductDetails=False,
+        )
+    )
+
+    assert [item["bestsellerPageData"]["rank"] for item in items] == [1, 2]
+    assert all(item["marketplace"] == "co.uk" for item in items)
+
+
+async def test_search_flow_with_details_propagates_marketplace(monkeypatch):
+    # AC #4: when scrapeProductDetails=True (default), search delegates to
+    # _product_flow which sets marketplace from the product URL.
+    async def fetch_page(url: str, **_kwargs):
+        if "/s?" in url:
+            return _response(url, _fixture("search.html"))
+        return _response(url, _fixture("product.html"))
+
+    monkeypatch.setattr(scraper, "fetch_page", fetch_page)
+    items = await scrape_products(
+        AmazonScrapeInput(
+            categoryOrProductUrls=[{"url": "https://www.amazon.de/s?k=headphones"}],
+            maxItemsPerStartUrl=1,
+            scrapeProductDetails=True,
+        )
+    )
+
+    assert len(items) == 1
+    assert items[0]["asin"] == "B09V3KXJPB"
+    assert items[0]["marketplace"] == "de"
 
 
 async def test_search_flow_returns_no_results_error(monkeypatch):

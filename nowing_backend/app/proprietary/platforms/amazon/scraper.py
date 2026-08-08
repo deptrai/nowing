@@ -176,6 +176,7 @@ async def _product_flow(
     fields["unNormalizedProductUrl"] = resolved.url
     fields["locationText"] = location_text
     fields["loadedCountryCode"] = loaded_country
+    fields["marketplace"] = resolved.marketplace
 
     if input_model.maxOffers > 0:
         offer_cookies, offer_proxy, _, _ = await _location_context(
@@ -355,6 +356,7 @@ async def _search_flow(
         if input_model.scrapeProductDetails is False:
             for card in cards:
                 card["input"] = resolved.url
+                card["marketplace"] = resolved.marketplace
                 yield ProductItem(**card).to_output()
                 emitted += 1
         else:
@@ -439,6 +441,7 @@ async def _bestsellers_flow(
         if input_model.scrapeProductDetails is False:
             for card in cards:
                 card["input"] = resolved.url
+                card["marketplace"] = resolved.marketplace
                 yield ProductItem(**card).to_output()
                 emitted += 1
         else:

@@ -51,9 +51,9 @@ class TestSearchPageParser:
 
     def test_filters_benefit_tags(self):
         cards = _parse_search_page(_search_html())
-        summary = cards[0]["skills"]
-        assert "Health insurance" in summary
-        assert "401(k) matching" in summary
+        benefits = cards[0]["benefits"]
+        assert "Health insurance" in benefits
+        assert "401(k) matching" in benefits
 
 
 class TestDetailParser:

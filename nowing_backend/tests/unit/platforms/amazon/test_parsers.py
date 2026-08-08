@@ -45,6 +45,24 @@ def test_product_parser_extracts_core_public_fields():
     assert item["productPageReviews"][0]["id"] == "R1"
 
 
+def test_product_parser_extracts_eu_price_and_currency():
+    # AC #3: EU product page with € price and 1.234,56 decimal format.
+    item = parse_product(
+        _fixture("product_eu.html"),
+        asin="B09V3KXJPB",
+        url="https://www.amazon.de/dp/B09V3KXJPB",
+    )
+
+    assert item["title"] == "Beispiel Kabellose Kopfhörer"
+    assert item["price"] == {"value": 49.99, "currency": "EUR"}
+    assert item["listPrice"] == {"value": 79.99, "currency": "EUR"}
+    # EU decimal: 4,6 → 4.6
+    assert item["stars"] == 4.6
+    # EU thousand separator: 1.234 → 1234
+    assert item["reviewsCount"] == 1234
+    assert item["inStock"] is True
+
+
 def test_block_detection_handles_status_and_markup():
     blocked = _fixture("blocked.html")
     assert is_blocked(blocked, 200)
@@ -71,6 +89,17 @@ def test_float_handles_us_and_eu_price_formats():
     assert _float("12,99 €") == 12.99
     assert _float("$1,234.56") == 1234.56
     assert _float("1234") == 1234.0
+
+
+def test_price_extracts_currency_from_symbol():
+    from app.proprietary.platforms.amazon.parsers import _price
+
+    assert _price("£12.99") == {"value": 12.99, "currency": "GBP"}
+    assert _price("49,99 €") == {"value": 49.99, "currency": "EUR"}
+    assert _price("$1,234.56") == {"value": 1234.56, "currency": "USD"}
+    assert _price("EUR 99,95") == {"value": 99.95, "currency": "EUR"}
+    # GBP without £ symbol — regex fallback for explicit currency code.
+    assert _price("12.99 GBP") == {"value": 12.99, "currency": "GBP"}
 
 
 def test_block_retry_proxy_uses_fresh_country_session(monkeypatch):
