@@ -250,7 +250,10 @@ async def build_export_zip(
 
     batch_size = 100
 
-    base_doc_query = select(Document).where(Document.workspace_id == workspace_id)
+    base_doc_query = select(Document).where(
+        Document.workspace_id == workspace_id,
+        Document.archived_at.is_(None),
+    )
     if target_folder_ids is not None:
         base_doc_query = base_doc_query.where(Document.folder_id.in_(target_folder_ids))
     base_doc_query = base_doc_query.order_by(Document.id)

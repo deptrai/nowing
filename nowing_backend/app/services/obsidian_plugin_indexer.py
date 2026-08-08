@@ -264,7 +264,10 @@ async def _find_existing_document(
         workspace_id,
     )
     result = await session.execute(
-        select(Document).where(Document.unique_identifier_hash == uid_hash)
+        select(Document).where(
+            Document.unique_identifier_hash == uid_hash,
+            Document.archived_at.is_(None),
+        )
     )
     return result.scalars().first()
 

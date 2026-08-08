@@ -132,6 +132,7 @@ class NotionToolMetadataService:
                 and_(
                     Document.workspace_id == workspace_id,
                     Document.document_type == DocumentType.NOTION_CONNECTOR,
+                    Document.archived_at.is_(None),
                     func.lower(Document.title) == func.lower(page_title),
                     SearchSourceConnector.user_id == user_id,
                 )

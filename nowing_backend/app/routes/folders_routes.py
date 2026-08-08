@@ -446,7 +446,10 @@ async def move_document(
     """Move a document to a folder (or root). Requires DOCUMENTS_UPDATE permission."""
     try:
         result = await session.execute(
-            select(Document).filter(Document.id == document_id)
+            select(Document).filter(
+                Document.id == document_id,
+                Document.archived_at.is_(None),
+            )
         )
         document = result.scalars().first()
         if not document:
@@ -495,7 +498,10 @@ async def bulk_move_documents(
             raise HTTPException(status_code=400, detail="No document IDs provided")
 
         result = await session.execute(
-            select(Document).filter(Document.id.in_(request.document_ids))
+            select(Document).filter(
+                Document.id.in_(request.document_ids),
+                Document.archived_at.is_(None),
+            )
         )
         documents = result.scalars().all()
 

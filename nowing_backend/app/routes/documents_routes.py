@@ -1270,7 +1270,10 @@ async def get_document_chunks_paginated(
         from sqlalchemy import func
 
         doc_result = await session.execute(
-            select(Document).filter(Document.id == document_id)
+            select(Document).filter(
+                Document.id == document_id,
+                Document.archived_at.is_(None),
+            )
         )
         document = doc_result.scalars().first()
 
@@ -1401,7 +1404,10 @@ async def update_document(
     """
     try:
         result = await session.execute(
-            select(Document).filter(Document.id == document_id)
+            select(Document).filter(
+                Document.id == document_id,
+                Document.archived_at.is_(None),
+            )
         )
         db_document = result.scalars().first()
 
@@ -1464,7 +1470,10 @@ async def delete_document(
     """
     try:
         result = await session.execute(
-            select(Document).filter(Document.id == document_id)
+            select(Document).filter(
+                Document.id == document_id,
+                Document.archived_at.is_(None),
+            )
         )
         document = result.scalars().first()
 
@@ -1537,7 +1546,12 @@ async def list_document_versions(
     user = auth.user
     """List all versions for a document, ordered by version_number descending."""
     document = (
-        await session.execute(select(Document).where(Document.id == document_id))
+        await session.execute(
+            select(Document).where(
+                Document.id == document_id,
+                Document.archived_at.is_(None),
+            )
+        )
     ).scalar_one_or_none()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1579,7 +1593,12 @@ async def get_document_version(
     user = auth.user
     """Get full version content including source_markdown."""
     document = (
-        await session.execute(select(Document).where(Document.id == document_id))
+        await session.execute(
+            select(Document).where(
+                Document.id == document_id,
+                Document.archived_at.is_(None),
+            )
+        )
     ).scalar_one_or_none()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1618,7 +1637,12 @@ async def restore_document_version(
     user = auth.user
     """Restore a previous version: snapshot current state, then overwrite document content."""
     document = (
-        await session.execute(select(Document).where(Document.id == document_id))
+        await session.execute(
+            select(Document).where(
+                Document.id == document_id,
+                Document.archived_at.is_(None),
+            )
+        )
     ).scalar_one_or_none()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
