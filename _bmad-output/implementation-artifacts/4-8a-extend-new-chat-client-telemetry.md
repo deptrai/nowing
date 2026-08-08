@@ -126,3 +126,23 @@ ruff format src/nowing_evals/core/clients/new_chat.py src/nowing_evals/core/arms
 - `nowing_backend/app/schemas/new_chat.py` (`TokenUsageSummary`)
 - `nowing_web/lib/chat/streaming-state.ts` (SSE event types)
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-04-chat-response-benchmark.md`
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commit `41f88e0f5` — 2 core files (175 lines) + 1 test file (73 lines).
+
+**patch:** 0
+
+**defer:** 0
+
+**dismissed:** 0 (no findings — diff is minimal and correct)
+
+**AC coverage:** All ACs PASS (telemetry fields captured, parsed, and passed to ArmResult).
+
+**Positive findings:**
+- All telemetry fields default to safe values (0/None)
+- `cost_micros or 0` in nowing.py handles None
+- `_str_id` helper handles None/non-string message IDs
+- Event type matching handles both `data-*` and bare `*` variants
+- TTFB only set once (first text-delta)
+- Test covers all new fields: turn_id, user_message_id, assistant_message_id, prompt_tokens, completion_tokens, total_tokens, cost_micros, ttfb_ms, model_breakdown
