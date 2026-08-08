@@ -16,7 +16,9 @@ class ScrapeInput(BaseModel):
     location: str | None = None
     salary_min: int | None = None
     salary_max: int | None = None
-    employment_type: Literal["full_time", "contract", "part_time", "intern"] | None = None
+    employment_type: Literal["full_time", "contract", "part_time", "intern"] | None = (
+        None
+    )
     max_pages: int = Field(default=1, ge=0, le=20)
     max_items: int = Field(default=50, ge=0, le=100)
 
@@ -35,6 +37,7 @@ class ScrapeOutput(BaseModel):
     cost_micros: int = 0
     degraded: bool = False
     degradation_reason: str | None = None
+    next_action: str | None = None
 
     @computed_field
     @property

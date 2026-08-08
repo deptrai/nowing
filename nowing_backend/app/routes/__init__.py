@@ -29,6 +29,9 @@ from app.gateway import require_gateway_enabled
 from app.notifications.api import router as notifications_router
 from app.podcasts.api import router as podcasts_router
 
+from .admin_anti_bot_escalation_routes import (
+    router as admin_anti_bot_escalation_router,
+)
 from .admin_global_model_connections_routes import (
     router as admin_global_model_connections_router,
 )
@@ -164,6 +167,9 @@ router.include_router(
 router.include_router(
     admin_scraper_platform_accounts_router
 )  # Admin scraper platform credentials
+router.include_router(
+    admin_anti_bot_escalation_router
+)  # Admin anti-bot / CAPTCHA escalations
 router.include_router(model_connections_router)  # Connection-centric model catalog
 router.include_router(model_list_router)  # Dynamic model catalogue from OpenRouter
 router.include_router(logs_router)

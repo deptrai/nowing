@@ -26,6 +26,19 @@ logger = logging.getLogger(__name__)
 
 ScrapeFn = Callable[..., Awaitable[BatdongsanScrapeOutput | dict[str, Any]]]
 
+_BOT_DEGRADATION_REASONS = {
+    "bot_detected",
+    "rate_limited",
+    "anti_bot_block",
+    "access_blocked",
+}
+
+
+def _next_action(degradation_reason: str | None) -> str | None:
+    if degradation_reason in _BOT_DEGRADATION_REASONS:
+        return "Escalated to human review; retry after credentials/proxy rotation"
+    return None
+
 
 def _unwrap_result(
     result: BatdongsanScrapeOutput | dict[str, Any] | None,
@@ -43,6 +56,7 @@ def _unwrap_result(
             "total_items": result.total_items,
             "degraded": result.degraded,
             "degradation_reason": result.degradation_reason,
+            "next_action": getattr(result, "next_action", None),
         }
     return result
 
@@ -79,6 +93,7 @@ def build_scrape_executor(
                 cost_micros=0,
                 degraded=True,
                 degradation_reason="rate_limited",
+                next_action="Escalated to human review; retry after credentials/proxy rotation",
             )
         except BatdongsanDecodeError:
             logger.exception("batdongsan.scrape decode error")
@@ -88,7 +103,16 @@ def build_scrape_executor(
                 degraded=True,
                 degradation_reason="decode_error",
             )
-        except (BatdongsanAccessBlockedError, Exception) as exc:
+        except BatdongsanAccessBlockedError as exc:
+            logger.exception("batdongsan.scrape access blocked: %s", exc)
+            return ScrapeOutput(
+                items=[],
+                cost_micros=0,
+                degraded=True,
+                degradation_reason="bot_detected",
+                next_action="Escalated to human review; retry after credentials/proxy rotation",
+            )
+        except Exception as exc:
             logger.exception("batdongsan.scrape actor failed: %s", exc)
             return ScrapeOutput(
                 items=[],
@@ -119,6 +143,8 @@ def build_scrape_executor(
             cost_micros=cost,
             degraded=degraded,
             degradation_reason=result.get("degradation_reason"),
+            next_action=result.get("next_action")
+            or _next_action(result.get("degradation_reason")),
         )
 
     return execute

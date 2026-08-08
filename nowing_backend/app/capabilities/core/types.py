@@ -67,6 +67,7 @@ class CapabilityContext:
 
     session: AsyncSession
     workspace_id: int
+    run_id: str | None = None
 
 
 Executor = Callable[[Any], Awaitable[Any]]

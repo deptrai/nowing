@@ -37,6 +37,7 @@ from scrapling.engines.toolbelt import is_proxy_error
 from scrapling.fetchers import AsyncFetcher, DynamicFetcher, StealthyFetcher
 
 from app.proprietary.web_crawler.captcha import build_captcha_page_action
+from app.proprietary.web_crawler.screenshot import maybe_capture_screenshot
 from app.proprietary.web_crawler.stealth import (
     build_stealthy_kwargs,
     get_stealth_config,
@@ -188,6 +189,10 @@ class CrawlOutcome:
     labels the last fetched page (Cloudflare / captcha / DataDome / rate-limited
     / ...) for tuning + future escalation routing. It does NOT influence the
     billable ``SUCCESS`` predicate above.
+
+    Phase 10.5 ``screenshot_png`` is captured by the browser tier when an
+    anti-bot/CAPTTCHA challenge is detected, so the executor can escalate it for
+    human review. It is ``None`` on normal pages or when capture fails.
     """
 
     status: CrawlOutcomeStatus
@@ -197,6 +202,7 @@ class CrawlOutcome:
     captcha_attempts: int = 0
     captcha_solved: bool = False
     block_type: BlockType = BlockType.UNKNOWN
+    screenshot_png: bytes | None = None
 
 
 class WebCrawlerConnector:
@@ -232,13 +238,18 @@ class WebCrawlerConnector:
         # crawl_url stamps it onto every outcome. Additive only — never gates
         # SUCCESS. Per-call (not on ``self``) => concurrency-safe.
         block_state: dict[str, Any] = {"block_type": BlockType.UNKNOWN}
+        # Per-call screenshot state (10.5). Browser tiers may capture a PNG when
+        # an anti-bot challenge is detected. Only the last browser tier's
+        # screenshot is kept.
+        screenshot_state: dict[str, Any] = {"png": None}
         try:
             if not validators.url(url):
                 return CrawlOutcome(
                     status=CrawlOutcomeStatus.FAILED,
                     error=f"Invalid URL: {url}",
                     block_type=block_state["block_type"],
-                )
+                        screenshot_png=screenshot_state["png"],
+                    )
 
             errors: list[str] = []
             # True once any tier fetched the page but extraction yielded nothing
@@ -276,7 +287,8 @@ class WebCrawlerConnector:
                         result=result,
                         tier="scrapling-static",
                         block_type=block_state["block_type"],
-                    )
+                            screenshot_png=screenshot_state["png"],
+                        )
                 else:
                     reached_without_content = True
                     errors.append("Scrapling static: empty extraction")
@@ -293,9 +305,12 @@ class WebCrawlerConnector:
                 logger.info(f"[webcrawler] Using Scrapling DynamicFetcher for: {url}")
                 result = await self._run_tier_with_proxy_retry(
                     "scrapling-dynamic",
-                    lambda: self._crawl_with_dynamic(url, block_state),
+                    lambda: self._crawl_with_dynamic(
+                        url, block_state, screenshot_state
+                    ),
                 )
                 if result:
+                    screenshot_png = result.pop("__screenshot_png", None)
                     self._log_tier_outcome(
                         "scrapling-dynamic", url, tier_start, "success"
                     )
@@ -305,10 +320,16 @@ class WebCrawlerConnector:
                         result=result,
                         tier="scrapling-dynamic",
                         block_type=block_state["block_type"],
+                        screenshot_png=screenshot_png,
                     )
-                reached_without_content = True
-                errors.append("Scrapling dynamic: empty extraction")
-                self._log_tier_outcome("scrapling-dynamic", url, tier_start, "empty")
+                # Browser tier returned no content, but may still have left a
+                # screenshot in the shared state before the page closed.
+                if screenshot_state["png"] is not None:
+                    reached_without_content = True
+                    errors.append("Scrapling dynamic: empty extraction")
+                    self._log_tier_outcome(
+                        "scrapling-dynamic", url, tier_start, "empty"
+                    )
             except NotImplementedError:
                 errors.append(
                     "Scrapling dynamic: event loop does not support subprocesses "
@@ -329,9 +350,12 @@ class WebCrawlerConnector:
                 logger.info(f"[webcrawler] Using Scrapling StealthyFetcher for: {url}")
                 result = await self._run_tier_with_proxy_retry(
                     "scrapling-stealthy",
-                    lambda: self._crawl_with_stealthy(url, captcha_state, block_state),
+                    lambda: self._crawl_with_stealthy(
+                        url, captcha_state, block_state, screenshot_state
+                    ),
                 )
                 if result:
+                    screenshot_png = result.pop("__screenshot_png", None)
                     self._log_tier_outcome(
                         "scrapling-stealthy", url, tier_start, "success"
                     )
@@ -343,6 +367,7 @@ class WebCrawlerConnector:
                         captcha_attempts=captcha_state["attempts"],
                         captcha_solved=captcha_state["solved"],
                         block_type=block_state["block_type"],
+                        screenshot_png=screenshot_png,
                     )
                 reached_without_content = True
                 errors.append("Scrapling stealthy: empty extraction")
@@ -372,7 +397,8 @@ class WebCrawlerConnector:
                     captcha_attempts=captcha_state["attempts"],
                     captcha_solved=captcha_state["solved"],
                     block_type=block_state["block_type"],
-                )
+                        screenshot_png=screenshot_state["png"],
+                    )
 
             self._log_total(url, "none", total_start)
             if reached_without_content:
@@ -382,14 +408,16 @@ class WebCrawlerConnector:
                     captcha_attempts=captcha_state["attempts"],
                     captcha_solved=captcha_state["solved"],
                     block_type=block_state["block_type"],
-                )
+                        screenshot_png=screenshot_state["png"],
+                    )
             return CrawlOutcome(
                 status=CrawlOutcomeStatus.FAILED,
                 error=f"All crawl methods failed for {url}. {'; '.join(errors)}",
                 captcha_attempts=captcha_state["attempts"],
                 captcha_solved=captcha_state["solved"],
                 block_type=block_state["block_type"],
-            )
+                    screenshot_png=screenshot_state["png"],
+                )
 
         except Exception as e:
             self._log_total(url, "error", total_start)
@@ -399,7 +427,8 @@ class WebCrawlerConnector:
                 captcha_attempts=captcha_state["attempts"],
                 captcha_solved=captcha_state["solved"],
                 block_type=block_state["block_type"],
-            )
+                    screenshot_png=screenshot_state["png"],
+                )
 
     async def _run_tier_with_proxy_retry(
         self,
@@ -537,7 +566,10 @@ class WebCrawlerConnector:
         return result
 
     async def _crawl_with_dynamic(
-        self, url: str, block_state: dict[str, Any] | None = None
+        self,
+        url: str,
+        block_state: dict[str, Any] | None = None,
+        screenshot_state: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """
         Crawl URL using Scrapling's DynamicFetcher (full browser) + Trafilatura.
@@ -545,12 +577,34 @@ class WebCrawlerConnector:
         Runs the sync fetch in a worker thread so it works on any event loop,
         including Windows ``SelectorEventLoop`` which cannot spawn subprocesses.
         """
-        return await asyncio.to_thread(self._crawl_with_dynamic_sync, url, block_state)
+        return await asyncio.to_thread(
+            self._crawl_with_dynamic_sync, url, block_state, screenshot_state
+        )
 
     def _crawl_with_dynamic_sync(
-        self, url: str, block_state: dict[str, Any] | None = None
+        self,
+        url: str,
+        block_state: dict[str, Any] | None = None,
+        screenshot_state: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Synchronous DynamicFetcher crawl executed in a worker thread."""
+        screenshot_state = screenshot_state or {"png": None}
+
+        def _page_action(page: Any) -> Any:
+            page = scroll_to_bottom(page)
+            try:
+                html = page.content()
+            except Exception:
+                html = None
+            if html and classify_block(None, html) not in (
+                BlockType.OK,
+                BlockType.EMPTY,
+            ):
+                png = maybe_capture_screenshot(page, status=None, html=html)
+                if png is not None:
+                    screenshot_state["png"] = png
+            return page
+
         fetch_start = time.perf_counter()
         page = DynamicFetcher.fetch(
             url,
@@ -558,10 +612,10 @@ class WebCrawlerConnector:
             network_idle=True,
             timeout=30000,
             proxy=get_proxy_url(),
-            page_action=scroll_to_bottom,
+            page_action=_page_action,
         )
         fetch_ms = (time.perf_counter() - fetch_start) * 1000
-        return self._build_result(
+        result = self._build_result(
             page.html_content,
             url,
             "scrapling-dynamic",
@@ -570,12 +624,16 @@ class WebCrawlerConnector:
             status=getattr(page, "status", None),
             block_state=block_state,
         )
+        if result is not None and screenshot_state["png"] is not None:
+            result["__screenshot_png"] = screenshot_state["png"]
+        return result
 
     async def _crawl_with_stealthy(
         self,
         url: str,
         captcha_state: dict[str, Any] | None = None,
         block_state: dict[str, Any] | None = None,
+        screenshot_state: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """
         Crawl URL using Scrapling's StealthyFetcher (patchright-Chromium) + Trafilatura.
@@ -588,9 +646,15 @@ class WebCrawlerConnector:
         (attempts/solved) so ``crawl_url`` can surface it on the outcome.
         ``block_state`` (03e) is populated by ``_build_result`` with the block
         classification of the fetched page.
+        ``screenshot_state`` (10.5) may receive a PNG if an anti-bot page is
+        encountered.
         """
         return await asyncio.to_thread(
-            self._crawl_with_stealthy_sync, url, captcha_state, block_state
+            self._crawl_with_stealthy_sync,
+            url,
+            captcha_state,
+            block_state,
+            screenshot_state,
         )
 
     def _crawl_with_stealthy_sync(
@@ -598,8 +662,10 @@ class WebCrawlerConnector:
         url: str,
         captcha_state: dict[str, Any] | None = None,
         block_state: dict[str, Any] | None = None,
+        screenshot_state: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Synchronous StealthyFetcher crawl executed in a worker thread."""
+        screenshot_state = screenshot_state or {"png": None}
         fetch_start = time.perf_counter()
         # Capture the proxy endpoint ONCE so the captcha solver egresses from the
         # SAME IP as this fetch (tokens are IP-bound). Re-calling get_proxy_url()
@@ -617,10 +683,22 @@ class WebCrawlerConnector:
                 captcha_state, proxy, get_captcha_config()
             )
 
-        def page_action(page: Any) -> Any:
+        def _page_action(page: Any) -> Any:
             if captcha_action is not None:
                 page = captcha_action(page)
-            return scroll_to_bottom(page)
+            page = scroll_to_bottom(page)
+            try:
+                html = page.content()
+            except Exception:
+                html = None
+            if html and classify_block(None, html) not in (
+                BlockType.OK,
+                BlockType.EMPTY,
+            ):
+                png = maybe_capture_screenshot(page, status=None, html=html)
+                if png is not None:
+                    screenshot_state["png"] = png
+            return page
 
         # ``solve_cloudflare=True`` runs the full Turnstile/Interstitial challenge
         # loop; scoped to this last-resort tier only (it spins up the browser).
@@ -638,10 +716,10 @@ class WebCrawlerConnector:
         # Keys never collide with the core kwargs above; defaults preserve
         # today's behavior and add no crawl-speed regression.
         fetch_kwargs.update(build_stealthy_kwargs(get_stealth_config()))
-        fetch_kwargs["page_action"] = page_action
+        fetch_kwargs["page_action"] = _page_action
         page = StealthyFetcher.fetch(url, **fetch_kwargs)
         fetch_ms = (time.perf_counter() - fetch_start) * 1000
-        return self._build_result(
+        result = self._build_result(
             page.html_content,
             url,
             "scrapling-stealthy",
@@ -650,6 +728,9 @@ class WebCrawlerConnector:
             status=getattr(page, "status", None),
             block_state=block_state,
         )
+        if result is not None and screenshot_state["png"] is not None:
+            result["__screenshot_png"] = screenshot_state["png"]
+        return result
 
     def _build_result(
         self,

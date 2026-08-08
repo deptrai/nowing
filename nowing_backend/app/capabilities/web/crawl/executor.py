@@ -8,8 +8,11 @@ the captcha telemetry the billing seam reads).
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
+from app.capabilities.core.types import CapabilityContext
 from app.capabilities.web.crawl.schemas import (
     ContactRef,
     Contacts,
@@ -26,6 +29,11 @@ from app.proprietary.web_crawler import (
     WebCrawlerConnector,
     crawl_site,
 )
+from app.proprietary.web_crawler.url_policy import host_of
+from app.services.anti_bot_escalation import (
+    create_or_update_escalation,
+    upload_screenshot,
+)
 
 _STATUS_LABEL: dict[CrawlOutcomeStatus, str] = {
     CrawlOutcomeStatus.SUCCESS: "success",
@@ -38,7 +46,9 @@ def build_crawl_executor(engine: WebCrawlerConnector | None = None) -> Executor:
     """Build the ``web.crawl`` executor, optionally over an injected engine (tests)."""
     crawler = engine or WebCrawlerConnector()
 
-    async def execute(payload: CrawlInput) -> CrawlOutput:
+    async def execute(
+        payload: CrawlInput, ctx: CapabilityContext | None = None
+    ) -> CrawlOutput:
         emit_progress(
             "starting",
             f"Crawling {len(payload.startUrls)} seed URL(s)",
@@ -59,6 +69,32 @@ def build_crawl_executor(engine: WebCrawlerConnector | None = None) -> Executor:
             current=len(pages),
             unit="page",
         )
+
+        # Story 10.5: escalate anti-bot screenshots for async runs that have a
+        # durable run id. The crawl output is still returned immediately; we
+        # upload + persist before mapping items so a slow storage backend does
+        # not block the response.
+        if ctx is not None and ctx.run_id is not None:
+            for page in pages:
+                if page.screenshot_png is None:
+                    continue
+                run_uuid = UUID(ctx.run_id)
+                screenshot_url = await upload_screenshot(
+                    ctx.session,
+                    page.screenshot_png,
+                    ctx.workspace_id,
+                    run_uuid,
+                )
+                await create_or_update_escalation(
+                    ctx.session,
+                    run_id=run_uuid,
+                    workspace_id=ctx.workspace_id,
+                    capability="web.crawl",
+                    domain=host_of(page.url),
+                    block_type=page.block_type or "UNKNOWN",
+                    screenshot_url=screenshot_url,
+                )
+
         items = [_to_item(page, payload.maxLength) for page in pages]
         emit_progress(
             "done", f"Crawled {len(items)} page(s)", current=len(items), unit="page"

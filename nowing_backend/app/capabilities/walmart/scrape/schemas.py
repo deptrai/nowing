@@ -54,6 +54,7 @@ class ScrapeOutput(BaseModel):
     cost_micros: int = 0
     degraded: bool = False
     degradation_reason: str | None = None
+    next_action: str | None = None
 
     @property
     def total_items(self) -> int:

@@ -55,6 +55,8 @@ class CrawlPage:
     error: str | None = None
     captcha_attempts: int = 0
     captcha_solved: bool = False
+    block_type: str | None = None
+    screenshot_png: bytes | None = None
 
 
 # HTTP status the fake Response reports per outcome. Only used for Scrapling's
@@ -213,6 +215,8 @@ def _to_page(
             links=result.get("link_records"),
             captcha_attempts=outcome.captcha_attempts,
             captcha_solved=outcome.captcha_solved,
+            block_type=outcome.block_type.value,
+            screenshot_png=outcome.screenshot_png,
         )
     return CrawlPage(
         url=url,
@@ -222,6 +226,8 @@ def _to_page(
         error=outcome.error,
         captcha_attempts=outcome.captcha_attempts,
         captcha_solved=outcome.captcha_solved,
+        block_type=outcome.block_type.value,
+        screenshot_png=outcome.screenshot_png,
     )
 
 

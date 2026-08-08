@@ -1137,6 +1137,34 @@ def _blocked_url_coverage():
     )
 
 
+@lru_cache(maxsize=1)
+def _anti_bot_detection_total():
+    return _get_meter().create_counter(
+        "nowing.anti_bot.detection_total",
+        description="Count of anti-bot/CAPTCHA detections by capability, block type, and domain.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _anti_bot_screenshot_failure():
+    return _get_meter().create_counter(
+        "nowing.anti_bot.screenshot_failure",
+        description="Count of anti-bot screenshot capture or upload failures.",
+    )
+
+
+def record_anti_bot_detection(*, capability: str, block_type: str, domain: str) -> None:
+    _add(
+        _anti_bot_detection_total(),
+        1,
+        {"capability": capability, "block_type": block_type, "domain": domain},
+    )
+
+
+def record_anti_bot_screenshot_failure(*, reason: str) -> None:
+    _add(_anti_bot_screenshot_failure(), 1, {"reason": reason})
+
+
 def _redact_engine_reason(engine_reason: str | None) -> str | None:
     """Return a low-cardinality engine reason or ``None`` if missing.
 
@@ -1308,6 +1336,8 @@ def record_canonical_persist_failure(*, domain: str, reason: str) -> None:
 __all__ = [
     "categorize_exception",
     "parse_celery_task_label",
+    "record_anti_bot_detection",
+    "record_anti_bot_screenshot_failure",
     "record_auth_failure",
     "record_blocked_url_coverage",
     "record_canonical_persist_failure",

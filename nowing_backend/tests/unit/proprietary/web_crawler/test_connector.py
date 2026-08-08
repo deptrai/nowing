@@ -377,7 +377,7 @@ async def test_block_type_surfaced_onto_outcome(
         return None
 
     async def _stealthy_blocked(
-        _url: str, _captcha_state: dict, block_state: dict
+        _url: str, _captcha_state: dict, block_state: dict, *_args
     ) -> None:
         # Simulate _build_result having classified a Cloudflare interstitial.
         block_state["block_type"] = BlockType.CLOUDFLARE

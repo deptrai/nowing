@@ -125,7 +125,9 @@ async def _execute_async_run(
         ctx: CapabilityContext | None = None
         try:
             async with async_session_maker() as session:
-                ctx = CapabilityContext(session=session, workspace_id=workspace_id)
+                ctx = CapabilityContext(
+                    session=session, workspace_id=workspace_id, run_id=run_id
+                )
                 output = await execute_with_context(executor, payload=payload, ctx=ctx)
                 duration_ms = int((time.perf_counter() - started) * 1000)
                 try:

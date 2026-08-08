@@ -3370,6 +3370,65 @@ class Run(Base, TimestampMixin):
     memory_extraction_skip_reason = Column(String(64), nullable=True)
 
 
+class AntiBotEscalation(BaseModel, TimestampMixin):
+    """Admin-escalation row for an anti-bot / CAPTCHA block.
+
+    Tracks which workspace and capability hit a block, how many times the same
+    (workspace, domain, capability) tripped while open, and the screenshot
+    evidence. Open rows are grouped by (workspace_id, domain, capability) so
+    repeated blocks increment ``detection_count`` rather than creating noise.
+    """
+
+    __tablename__ = "anti_bot_escalations"
+
+    __table_args__ = (
+        Index(
+            "ix_anti_bot_escalations_workspace_domain_cap_status",
+            "workspace_id",
+            "domain",
+            "capability",
+            "status",
+        ),
+        Index(
+            "ix_anti_bot_escalations_status_created_at",
+            "status",
+            "created_at",
+        ),
+    )
+
+    run_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    capability = Column(String(100), nullable=False)
+    domain = Column(String(500), nullable=False)
+    block_type = Column(String(50), nullable=False)
+    screenshot_url = Column(String(2048), nullable=True)
+    status = Column(String(16), nullable=False, default="open", server_default="open")
+    detection_count = Column(Integer, nullable=False, default=1, server_default="1")
+    last_seen_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+    # ``metadata`` is a reserved name on ``Base``, so the Python attribute is
+    # ``escalation_metadata`` while the database column keeps the requested
+    # ``metadata`` name.
+    escalation_metadata = Column("metadata", JSONB, nullable=True)
+    resolved_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    run = relationship("Run")
+    workspace = relationship("Workspace")
+
+
 class ToolOutputSpill(Base, TimestampMixin):
     """Internal scratch store for main-agent context-editing spills.
 

@@ -115,7 +115,7 @@ async def test_decode_error_actor_degrades_with_decode_error_reason():
 
 
 @pytest.mark.asyncio
-async def test_blocked_actor_degrades_with_api_error_reason():
+async def test_blocked_actor_degrades_with_bot_detected_reason():
     async def blocked_scraper(
         actor_input: BatdongsanScrapeInput, *, limit: int | None = None, **kwargs: Any
     ) -> dict[str, Any]:
@@ -126,7 +126,9 @@ async def test_blocked_actor_degrades_with_api_error_reason():
     out = await execute(ScrapeInput(city="HN", max_items=5))
 
     assert out.degraded is True
-    assert out.degradation_reason == "api_error"
+    assert out.degradation_reason == "bot_detected"
+    assert out.next_action is not None
+    assert "human review" in out.next_action.lower()
     assert out.cost_micros == 0
 
 
