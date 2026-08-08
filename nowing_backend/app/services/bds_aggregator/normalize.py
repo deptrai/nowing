@@ -199,7 +199,7 @@ def _mask_phone(phone: str | None) -> str | None:
     core = _normalize_phone(phone)
     if core and len(core) >= 7:
         return f"0{core[:3]}xxx{core[-2:]}"
-    return phone
+    return None
 
 
 def _parse_price(text: str | None) -> tuple[int | None, float | None, bool]:

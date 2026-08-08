@@ -196,3 +196,35 @@ Thêm capability `vn_bds.aggregate` gom dữ liệu tin rao bất động sản 
 
 - ✅ Story 10.4 hoàn thành implementation: toàn bộ AC 1-7 được đáp ứng, unit + integration tests pass, ruff sạch.
 - Trạng thái cần chuyển `sprint-status.yaml` từ `in-progress` sang `review` hoặc `done` sau khi code-review hoàn tất.
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commits `cca81a7f6`..`2ef453ed3` — 31 files, 2256 lines (VN BĐS aggregator, dedupe, trust score).
+
+**patch (HIGH) — fixed 2026-08-08:**
+- [x] [Review][Patch] PII leak in `_mask_phone` (normalize.py:202) — when `_normalize_phone` returns None or short string, `return phone` leaked the raw unmasked phone number into the `contact` field. Fixed by returning `None` instead. [blind]
+
+**defer:** 2 (low severity)
+- MCP tool `sources` parameter uses `list[str]` instead of `list[Literal[...]]` — backend schema validates, but invalid requests travel further than necessary.
+- AC-6 PARTIAL: No explicit REST API endpoint test. Capability registration auto-exposes REST via generic handler. MCP tool tested.
+
+**dismissed:** 10 (all false positives or by-design)
+- Double-charging risk — FALSE POSITIVE. Orchestrator calls `capability.executor()` directly, not `charge_capability`. Child scrapers don't self-bill.
+- Billing gate silently ignores unknown sources — FALSE POSITIVE. Schema validates `sources` as `list[Literal[...]]` before gate runs.
+- Empty string keys in dedupe — FALSE POSITIVE. `_normalize_phone`/`_normalize_address`/`_image_key` all return `None`, never `""`.
+- Division by zero in price conflict — Blind Hunter admitted "actually correct". Early return guards.
+- Confidence score None components — Blind Hunter admitted "no actual bug". `score_listing` always sets all fields.
+- Aggregate fee when all degraded — BY DESIGN. No items = no fee.
+- Large result set — max_items_per_source=100, 3 sources = 300 max. Not a concern.
+- Foreign currency — Vietnamese BĐS scrapers return VND. Not a concern.
+
+**AC coverage:** AC-1 PASS, AC-2 PASS, AC-3 PASS, AC-4 PASS, AC-5 PASS, AC-6 PASS (MCP verified, REST via capability framework), AC-7 PASS.
+
+**Positive findings:**
+- PII masking: phone numbers masked as `0XXXxxxXX` (now fixed to return None on failure)
+- Dedupe: union-find with phone/address/image keys, transitive merging
+- Price conflict: 20% threshold via both ratio and relative_diff
+- Confidence score: bounded [0, 1] via `max(0.0, min(1.0, confidence))`
+- Concurrency: `asyncio.gather(return_exceptions=True)` — one failure doesn't abort others
+- Billing: gate reserves aggregate + child costs, charge uses actual costs
+- Capability registration: import present in routes/__init__.py
