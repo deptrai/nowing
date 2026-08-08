@@ -342,6 +342,21 @@ Not started
 
 Not started
 
+## Review Findings (code review 2026-08-08)
+
+Scope: commits `d8dd83ebb`..`4abc80437` — 16 files, 2225 lines (memory provenance pipeline).
+
+**decision-needed:** 0
+
+**patch (medium) — fixed 2026-08-08:**
+- [x] [Review][Patch] Missing workspace causes stuck `pending` status — `run_extraction.py:274-281` returned `[]` without terminal marker when workspace is None. CAS already set `pending`, so redelivery fails CAS and run is stuck forever. Fix: write `STATUS_SKIPPED` with reason `"missing_workspace"` before returning. [edge]
+
+**defer:** 2 (text() anti-pattern in search.py — pre-existing, not introduced by this diff; REST/MCP endpoint integration tests — Pydantic model tests verify the contract)
+
+**dismissed:** 15 (CAS not implemented — FALSE POSITIVE, CAS IS in task file; terminal marker not atomic — FALSE POSITIVE, marker is in same transaction; idempotency race — FALSE POSITIVE, CAS handles concurrency; context window terminal — intentional design, deterministic prompt; _mark_terminal atomicity — only one worker reaches it after CAS; source truncation non-deterministic — not reachable, run.input is always JSON; token usage failure — handled by task's `except Exception` handler; unserializable input — not reachable; AC-1 PARTIAL — FALSE, `test_run_extraction_creates_memory_with_run_provenance` covers it; AC-2 FAIL — FALSE, pipeline is capability-agnostic, no ChainLens-only code exists; AC-4 PARTIAL — FALSE, `test_run_memory_gates.py` covers all gate conditions; AC-5 PARTIAL — FALSE, `test_run_extraction_is_all_or_nothing_on_second_fact_failure` + `test_persistence_failure_leaves_no_partial_batch` cover it; AC-6 FAIL — FALSE, `test_two_concurrent_workers_make_exactly_one_llm_call` + `test_redelivery_after_completion_makes_no_llm_call` cover it; AC-9 PARTIAL — FALSE, counters tested at `test_run_memory_telemetry.py:105-106`)
+
+**Note:** Acceptance Auditor only looked at the diff (unit tests) and missed the existing integration test suite (`tests/integration/memory/test_run_memory_*.py` — 34 tests across 6 files). The integration suite covers AC-1, AC-4, AC-5, AC-6 comprehensively.
+
 ## Change Log
 
 - 2026-07-27: Validation hardening added explicit agent attribution, executable after-commit seam, durable concurrent idempotency state, atomic run-batch semantics, complete recall citation contract, combined source bounds, concrete telemetry/tests, dependency gates and per-file current-state notes.

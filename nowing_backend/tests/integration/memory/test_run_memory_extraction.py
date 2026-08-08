@@ -390,3 +390,26 @@ async def test_run_extraction_skips_non_success_run(db_session, scraper_run):
 
     assert created == []
     assert llm.ainvoke.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_run_extraction_skips_when_workspace_deleted(db_session, scraper_run):
+    """Edge: workspace deleted before extraction -> terminal skip, not stuck pending."""
+    from app.services.memory.run_extraction import RunMemoryExtractionService
+
+    # Simulate missing workspace by deleting it
+    await db_session.delete(scraper_run.workspace)
+    await db_session.flush()
+
+    llm = _llm_returning(FACTS_JSON)
+    with patch(
+        "app.services.memory.run_extraction.get_agent_llm",
+        AsyncMock(return_value=llm),
+    ):
+        service = RunMemoryExtractionService(session=db_session)
+        created = await service.extract_from_run(scraper_run.id)
+
+    assert created == []
+    assert llm.ainvoke.await_count == 0
+    assert scraper_run.memory_extraction_status == "skipped"
+    assert scraper_run.memory_extraction_skip_reason == "missing_workspace"

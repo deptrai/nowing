@@ -274,10 +274,14 @@ class RunMemoryExtractionService:
         workspace = await self.session.get(Workspace, run.workspace_id)
         if workspace is None:
             logger.error(
-                "Workspace %s not found for run %s; skipping extraction",
+                "run_memory_extract_skip reason=missing_workspace workspace_id=%s run_id=%s",
                 run.workspace_id,
                 run_id,
             )
+            # ponytail: terminal marker prevents redelivery from looping on the
+            # same missing workspace. CAS already set `pending`, so without this
+            # the run would be stuck in `pending` forever.
+            await self._mark_terminal(run, STATUS_SKIPPED, "missing_workspace")
             return []
 
         if (
