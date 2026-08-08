@@ -387,3 +387,41 @@ Frontend:
 | Date | Change |
 |---|---|
 | 2026-07-27 | Created implementation-ready Story 8.11 from verified planning docs and code inspection at baseline `25ba542c2a3dec95b0a4020da8c129242ba748e2`. |
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commits `25ba542c2`..`7a7b0fe31` — backend routes (752 lines) + schemas (130 lines) + frontend page (1257 lines) + tests (388 lines).
+
+**patch:** 0
+
+**defer:** 11 (all low severity)
+- Provider validation on create/update — `spec_for()` has fallback for unknown providers. Won't crash.
+- API key requirement validation — some providers (Ollama) don't need keys. `spec_for` fallback handles it.
+- Race conditions on concurrent admin edits — admin UI with few users. Last-write-wins acceptable.
+- Empty API key `""` — route converts falsy to None via `value or None`.
+- API key whitespace not trimmed — provider will reject with auth error.
+- Change provider on connection with models — admin action, admins aware of consequences.
+- No pagination on list endpoint — few global connections (10-20). Not a concern.
+- AC-11 PARTIAL: audit logging works but tests don't assert log output.
+
+**dismissed:** 8 (all false positives or by-design)
+- Mass assignment connection update — FALSE POSITIVE. `model_dump(exclude_unset=True)` only contains schema fields. Pydantic ignores extra fields by default. `workspace_id`/`user_id`/`scope` can never appear.
+- Mass assignment model update — FALSE POSITIVE. Same as above.
+- Duplicate model_id silently skipped — BY DESIGN. Dedup is intentional.
+- Delete pinned model — BY DESIGN. CASCADE + auto-pin service repairs.
+- Very long API key — PostgreSQL TEXT handles it. Provider keys are short.
+- Provider/model special characters — SQLAlchemy parameterizes. litellm handles.
+- Disable all models — BY DESIGN. Admin can disable all.
+- Bulk operation limits — Schema limits to 1000.
+
+**AC coverage:** AC-1 PASS, AC-2 PASS, AC-3 PASS, AC-4 PASS, AC-5 PASS, AC-6 PASS, AC-7 PASS, AC-8 PASS, AC-9 PASS, AC-10 PASS, AC-11 PARTIAL (logging works, no test assertions).
+
+**Positive findings:**
+- Auth: ALL 8 routes use `Depends(require_superuser)` — correctly protected
+- API key handling: keys never returned in responses (explicitly set to None, `has_api_key` bool only)
+- SQL injection: all queries use SQLAlchemy ORM with parameterized queries
+- Error handling: DB errors caught, rolled back, logged via `_log_admin_action`
+- Frontend: API keys masked with `type="password"`, loading states, error toasts
+- Pricing: per-1k to per-token conversion correctly implemented
+- Catalog refresh: `refresh_global_model_catalog(rebuild_routers=True)` after every mutation
+- Process-local lock serializes concurrent refreshes
