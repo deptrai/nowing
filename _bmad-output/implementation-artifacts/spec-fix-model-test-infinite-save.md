@@ -18,3 +18,9 @@ route: 'one-shot'
 
 1. [Changed: test_model() retry + timeout](nowing_backend/app/services/model_connection_service.py) — the 2-line fix
 2. [Deferred: title_gen.py same-class bug](_bmad-output/implementation-artifacts/deferred-work.md) — td-5, pre-existing
+
+### Review Findings
+
+- [x] [Review][Patch] kwargs override — TypeError if extra.litellm_params contains num_retries/timeout [model_connection_service.py:482-483] — fixed in commit 622bab8d7
+- [x] [Review][Defer] No unit test coverage for test_model function [tests/unit/services/test_model_connections.py] — deferred, pre-existing
+- [x] [Review][Defer] Other direct LiteLLM calls lack timeout/retry (title_gen, verify scripts) — deferred, already tracked as td-5/td-6

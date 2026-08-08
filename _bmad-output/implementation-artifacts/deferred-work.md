@@ -174,3 +174,9 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
 - **Issue:** `scripts/verify_chat_image_capability.py` calls `litellm.acompletion` and `litellm.aimage_generation` with explicit timeouts (60s, 120s) but no `num_retries`, using LiteLLM default 2 retries. Diagnostic script could hang in CI.
 - **Fix:** Add `num_retries=1` to both calls.
 - **Priority:** P3 — diagnostic script, not production code.
+
+### td-7: No unit test coverage for test_model function
+- **Source:** code review of fix-model-test-infinite-save (2026-08-08)
+- **Issue:** `tests/unit/services/test_model_connections.py` only tests resolver functions (`to_litellm`, `strip_version_suffix`), not `test_model()` itself. Integration tests mock `test_model` entirely. The timeout/retry parameters passed to `litellm.acompletion` are never verified.
+- **Fix:** Add a unit test that mocks `litellm.acompletion` and asserts `num_retries=0` and `timeout=TEST_TIMEOUT_SECONDS` are passed correctly.
+- **Priority:** P2 — test gap for P0-adjacent function (model routing).
