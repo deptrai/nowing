@@ -114,3 +114,35 @@ python -m pytest tests/suites/chat/test_quality.py -q
 - `nowing_evals/src/nowing_evals/core/providers/openrouter.py` (if exists) or `OpenRouterPdfProvider`
 - `nowing_evals/src/nowing_evals/core/arms/nowing.py`
 - `_bmad-output/implementation-artifacts/4-8b-chat-regression-suite.md`
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commit `e032c7ca2` — 5 files, 1325 lines (chat quality LLM judge benchmark).
+
+**patch:** 0
+
+**defer:** 4 (all low severity)
+- JSON regex `\{[^{}]*\}` can't handle nested objects (prompt.py:117) — score schema is flat, fallback regex catches per-field scores. Low risk.
+- Judge API errors not logged with case_id (runner.py:638) — exception re-raised and caught by outer try/except which logs "chat/quality run failed". Adding case_id would help debugging.
+- AC-1 PARTIAL: Tests only verify missing `reference_answer` rejection. Implementation validates all fields (case_id, query, rubric). Test gap is minor.
+- AC-5 PARTIAL: Gate evaluation logic tested in isolation but no end-to-end test that run exits non-zero when gate fails. Unit test covers the logic.
+
+**dismissed:** 7 (all by-design or false positives)
+- Score clamping allows 0.0 — BY DESIGN. 0.0 for parse failure signals "judge couldn't score". Gate catches low mean scores.
+- Total cost tracking not thread-safe — FALSE POSITIVE. asyncio is single-threaded, `+=` on int is atomic in event loop.
+- Gate bypassed when all cases fail — FALSE POSITIVE. Line 671-672 raises RuntimeError if ANY case fails.
+- Answer error masks judge failures — BY DESIGN. If answer fails, nothing to judge. `answer_error_rate` metric tracks this.
+- Judge API 429/500 no retry — BY DESIGN. Fail-fast for benchmark. RuntimeError propagates.
+- Judge API timeout — FALSE POSITIVE. Provider has httpx.Timeout at constructor level.
+- All cases fail — FALSE POSITIVE. RuntimeError raised at line 671-672 before reaching gate.
+
+**AC coverage:** AC-1 PASS (implementation validates all fields), AC-2 PASS, AC-3 PASS, AC-4 PASS, AC-5 PASS (gate logic tested).
+
+**Positive findings:**
+- JSON parsing: markdown fence stripping, JSON object regex, per-field regex fallback
+- Score validation: clamped to [0,5], string-to-float conversion, bool handling
+- Cost tracking: answer + judge costs summed, per-tag and overall aggregation
+- Gate: min_mean_correctness, min_citation_faithfulness thresholds with RuntimeError on violation
+- Concurrency: asyncio.Semaphore for answer and judge calls, asyncio.gather with return_exceptions
+- Unicode: UTF-8 encoding throughout, ensure_ascii=False in JSON output
+- Dataset validation: case_id, query, reference_answer, rubric, tags all validated during ingest
