@@ -47,3 +47,21 @@ tôi muốn README, docs, `.env.example` nói rõ **Nowing = sản phẩm / Chai
 ## Tác dụng này chưa làm
 
 - README translations (`README.es.md`, `README.pt-BR.md`, `README.hi.md`, `README.zh-CN.md`) chưa cập nhật — có thể sync sau hoặc dùng ghi chú "For latest license/positioning, see README.md".
+
+## Review Findings (code review 2026-08-08)
+
+Scope: Story 9-4 is a pure docs sync story — README, docs/index.md, docs/project-overview.md, .env.example updates. No code changes.
+
+**patch:** 0
+
+**defer:** 0
+
+**dismissed:** 0 (no code to review — docs only)
+
+**AC coverage:** All ACs PASS (docs aligned with Nowing=product/ChainLens=engine boundary, license 3-tier clarified).
+
+**Positive findings:**
+- README title updated to "AI Research Workspace with Open-Source Core + Hosted Deep-Research Engine"
+- License clarification: Apache 2.0 (core) / BSL 1.1 (engine) / hosted (cloud-only)
+- .env.example CHAINLENS_API_KEY comment clarified
+- docs/index.md and docs/project-overview.md updated with engine boundary
