@@ -41,6 +41,9 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         limit: Annotated[
             int, Field(ge=1, le=100, description="Maximum reports to return.")
         ] = 20,
+        offset: Annotated[
+            int, Field(ge=0, description="Number of reports to skip.")
+        ] = 0,
         workspace: WorkspaceParam = None,
         response_format: ResponseFormatParam = "markdown",
     ) -> str:
@@ -54,7 +57,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         reports = await client.request(
             "GET",
             "/reports",
-            params={"workspace_id": resolved.id, "limit": limit},
+            params={"workspace_id": resolved.id, "limit": limit, "skip": offset},
         )
         reports = reports or []
         if response_format == "json":
@@ -148,8 +151,21 @@ def _render_binary_export(
         f"# Exported report {report_id} ({format}, {content_type or 'binary'}, "
         f"{size_bytes} bytes)"
     )
+    if len(encoded) > 50000:
+        # Base64 is decodable only when the length is a multiple of 4; clip
+        # to the largest safe multiple and put the truncation marker outside
+        # the code block so the payload stays valid.
+        safe = (50000 // 4) * 4
+        return (
+            f"{header}\n\nDecode this base64 payload to reproduce the file "
+            f"(e.g. `echo <payload> | base64 -d > report.{extension}`). "
+            f"Payload is truncated from {size_bytes} bytes:\n\n"
+            f"```text\n{encoded[:safe]}\n```\n\n"
+            f"… [{len(encoded) - safe} more base64 characters truncated; "
+            f"use `response_format='json'` for the full base64 payload.]"
+        )
     return (
         f"{header}\n\nDecode this base64 payload to reproduce the file "
         f"(e.g. `echo <payload> | base64 -d > report.{extension}`):\n\n"
-        f"```text\n{clip(encoded, 50000)}\n```"
+        f"```text\n{encoded}\n```"
     )

@@ -35,7 +35,16 @@ MemoryId = Annotated[
 MemoryType = Annotated[
     str,
     Field(
+        pattern=r"^(semantic|episodic|procedural|working)$",
         description="Memory type: semantic, episodic, procedural, or working.",
+    ),
+]
+
+OptionalMemoryType = Annotated[
+    str | None,
+    Field(
+        pattern=r"^(semantic|episodic|procedural|working)$",
+        description="Memory type: semantic, episodic, procedural, or working. Omit for all types.",
     ),
 ]
 

@@ -194,7 +194,7 @@ def test_report_list_calls_endpoint(monkeypatch, settings):
     assert "Q1 market review" in text
     assert "Competitor deep dive" in text
     assert any(
-        call == ("GET", "/reports", {"params": {"workspace_id": 1, "limit": 10}})
+        call == ("GET", "/reports", {"params": {"workspace_id": 1, "limit": 10, "skip": 0}})
         for call in _client.calls
     )
 
@@ -311,7 +311,7 @@ def test_automation_run_calls_endpoint(monkeypatch, settings):
         == (
             "POST",
             "/automations/11/run",
-            {"json": {"workspace_id": 1}},
+            {},
         )
         for call in _client.calls
     )

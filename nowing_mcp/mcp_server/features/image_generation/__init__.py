@@ -43,6 +43,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         size: Annotated[
             str | None,
             Field(
+                max_length=50,
                 description="Output size, e.g. '1024x1024'. Omit to use the "
                 "workspace's configured default.",
             ),
@@ -50,6 +51,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         quality: Annotated[
             str | None,
             Field(
+                max_length=50,
                 description="Quality level, e.g. 'standard' or 'hd'. Omit to "
                 "use the workspace's configured default.",
             ),
@@ -57,6 +59,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         style: Annotated[
             str | None,
             Field(
+                max_length=50,
                 description="Style override, e.g. 'vivid' or 'natural'. Omit "
                 "to use the workspace's configured default.",
             ),
@@ -64,6 +67,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         model: Annotated[
             str | None,
             Field(
+                max_length=200,
                 description="Explicit provider model id, e.g. 'gpt-image-1'. "
                 "Omit to use the workspace's configured image model.",
             ),
@@ -100,7 +104,19 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
 def _render_generation(generation: dict | None) -> str:
     if not generation:
         return "Image generation returned an empty response."
-    lines = [f"# Image generation (id {generation.get('id')})"]
+    status = generation.get("status")
+    if not status:
+        status = (
+            "failed"
+            if generation.get("error_message")
+            else "success"
+            if generation.get("response_data")
+            else "pending"
+        )
+    lines = [
+        f"# Image generation (id {generation.get('id')})",
+        f"- status: {status}",
+    ]
     if generation.get("model"):
         lines.append(f"- model: {generation['model']}")
     if generation.get("size"):

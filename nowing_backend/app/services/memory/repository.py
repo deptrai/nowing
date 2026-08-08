@@ -475,13 +475,21 @@ class MemoryRepository:
         *,
         workspace_id: int,
         limit: int = 20,
-        type: str | None = None,
+        type: str | MemoryType | None = None,
         tags: list[str] | None = None,
     ) -> list[Memory]:
         """List workspace memories, newest first, with optional type/tags filters."""
         conditions = [Memory.workspace_id == workspace_id]
         if type is not None:
-            conditions.append(Memory.type == MemoryType(type))
+            if isinstance(type, MemoryType):
+                conditions.append(Memory.type == type.value)
+            elif isinstance(type, str):
+                try:
+                    conditions.append(Memory.type == MemoryType(type).value)
+                except ValueError as exc:
+                    raise ValueError(f"invalid memory type {type!r}") from exc
+            else:
+                raise ValueError(f"invalid memory type {type!r}")
         if tags:
             conditions.append(Memory.tags.op("&&")(tags))
         result = await self.session.execute(

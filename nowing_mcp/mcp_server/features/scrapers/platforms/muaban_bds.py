@@ -29,8 +29,11 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
     async def muaban_bds_scrape(
         city: Annotated[
             str,
-            Field(description="City name or slug (e.g. ho-chi-minh, ha-noi)."),
-        ] = "ho-chi-minh",
+            Field(
+                min_length=1,
+                description="City name or slug (e.g. ho-chi-minh, ha-noi).",
+            ),
+        ],
         listing_type: Annotated[
             MuabanListingType,
             Field(description="'buy' for sale listings, 'rent' for lease listings."),
@@ -41,7 +44,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         ] = "all",
         district: Annotated[
             str | None,
-            Field(description="Optional district name or slug."),
+            Field(min_length=1, description="Optional district name or slug."),
         ] = None,
         min_price: Annotated[
             int | None,
@@ -75,6 +78,10 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         with title, price, area, location, and detail URL.
         Example: city='ha-noi', listing_type='buy', max_items=20.
         """
+        if (min_price is not None and max_price is not None and min_price > max_price) or (
+            min_area is not None and max_area is not None and min_area > max_area
+        ):
+            raise ValueError("min value cannot exceed max value")
         return await run_scraper(
             client,
             context,

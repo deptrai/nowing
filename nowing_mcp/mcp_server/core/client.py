@@ -7,13 +7,14 @@ transport or HTTP failure into a readable ``ToolError``.
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
 
 from .auth.identity import current_api_key
 from .errors import ThreadBusyError, ToolError
-from .sse import iter_sse_events
+from .sse import SseEvent, iter_sse_events
 
 _FAILURE_HINTS: dict[int, str] = {
     401: "Authentication failed — the Nowing API key is invalid or expired.",
@@ -134,7 +135,7 @@ class NowingClient:
         *,
         json: Any | None = None,
         timeout_s: float = 600.0,
-    ) -> Any:
+    ) -> AsyncIterator[SseEvent]:
         """Open a streaming request and yield parsed SSE events.
 
         Used by ``nowing_chat`` to consume the ``/new_chat`` stream. Yields

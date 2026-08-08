@@ -77,6 +77,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         resolved = await context.resolve(workspace)
 
         # Create a fresh thread when the caller didn't pin one.
+        created_thread = False
         if chat_id is None:
             thread = await client.request(
                 "POST",
@@ -88,14 +89,27 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
                 },
             )
             chat_id = _thread_id(thread)
+            created_thread = True
 
-        answer = await _ask_turn(
-            client=client,
-            chat_id=chat_id,
-            workspace_id=resolved.id,
-            user_query=query,
-            mode=mode,
-        )
+        try:
+            answer = await _ask_turn(
+                client=client,
+                chat_id=chat_id,
+                workspace_id=resolved.id,
+                user_query=query,
+                mode=mode,
+            )
+        except Exception as exc:
+            if created_thread:
+                try:
+                    await client.request("DELETE", f"/threads/{chat_id}")
+                except Exception as cleanup_exc:
+                    logger.debug(
+                        "Could not clean up empty chat thread %s: %s",
+                        chat_id,
+                        cleanup_exc,
+                    )
+            raise exc
 
         if response_format == "json":
             return to_json({"chat_id": chat_id, "text": answer})
@@ -172,8 +186,17 @@ async def _consume_once(
             if isinstance(data, dict) and data.get("chat_turn_id"):
                 turn_id = str(data["chat_turn_id"])
         elif ev_type == "error":
-            message = payload.get("message") or payload.get("detail") or "agent error"
+            detail = payload.get("detail")
+            message = (
+                detail.get("message")
+                if isinstance(detail, dict) and "message" in detail
+                else detail
+                if isinstance(detail, str)
+                else None
+            ) or payload.get("message") or "agent error"
             raise ToolError(f"The agent reported an error: {message}")
+        else:
+            logger.debug("Ignoring unhandled SSE event type %r: %r", ev_type, payload)
 
     parts = ["".join(buffers[tid]) for tid in ordered_ids]
     return "".join(parts), turn_id

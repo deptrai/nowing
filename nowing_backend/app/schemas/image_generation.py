@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 # =============================================================================
 # ImageGeneration (request/result) Schemas
@@ -65,6 +65,16 @@ class ImageGenerationRead(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def status(self) -> str:
+        """Derived status: success when response_data exists, failed on error, else pending."""
+        if self.error_message:
+            return "failed"
+        if self.response_data:
+            return "success"
+        return "pending"
 
 
 class ImageGenerationListRead(BaseModel):

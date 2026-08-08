@@ -72,11 +72,13 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         history later to see the outcome.
         Example: automation_id=3.
         """
-        resolved = await context.resolve(workspace)
+        # Resolve the active workspace for context/auth even though the
+        # backend automation run endpoint derives the workspace from the
+        # automation_id itself.
+        await context.resolve(workspace)
         return await _run_automation(
             client=client,
             automation_id=automation_id,
-            resolved_workspace_id=resolved.id,
             response_format=response_format,
         )
 
@@ -109,18 +111,22 @@ async def _run_automation(
     *,
     client: NowingClient,
     automation_id: int,
-    resolved_workspace_id: int,
     response_format: str,
 ) -> str:
+    # The backend resolves the workspace from the authenticated automation, so
+    # do not send a workspace_id body that the endpoint does not consume.
     try:
         run = await client.request(
             "POST",
             f"/automations/{automation_id}/run",
-            json={"workspace_id": resolved_workspace_id},
         )
     except ToolError as exc:
         raise ToolError(f"Could not start automation {automation_id}: {exc}") from exc
     run = run or {}
+    if not isinstance(run, dict) or not isinstance(run.get("id"), int):
+        raise ToolError(
+            f"Backend did not return a valid run for automation {automation_id}."
+        )
     if response_format == "json":
         return to_json(
             {"run_id": run.get("id"), "status": run.get("status") or "pending"}

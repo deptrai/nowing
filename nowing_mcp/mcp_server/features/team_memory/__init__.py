@@ -89,7 +89,10 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
 
 def _render_memory(memory: dict | None, workspace_name: str) -> str:
     if not memory:
-        return f"Team memory for '{workspace_name}' is empty."
+        return (
+            f"Team memory for '{workspace_name}' is empty. "
+            "Set it with `nowing_workspace_memory_update`."
+        )
     content = memory.get("memory_md") or "(empty)"
     limits = memory.get("limits") or {}
     soft = limits.get("soft")

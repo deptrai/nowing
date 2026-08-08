@@ -19,6 +19,7 @@ from .annotations import (
     MemoryId,
     MemoryTags,
     MemoryType,
+    OptionalMemoryType,
     OptionalResearchThreadId,
     ResearchThreadId,
     TopK,
@@ -98,12 +99,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
             ),
         ],
         top_k: TopK = 5,
-        type: Annotated[
-            str | None,
-            Field(
-                description="Memory type: semantic, episodic, procedural, or working. Omit for all types."
-            ),
-        ] = None,
+        type: OptionalMemoryType = None,
         tags: MemoryTags = None,
         research_thread_id: OptionalResearchThreadId = None,
         workspace: WorkspaceParam = None,
@@ -222,7 +218,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         limit: Annotated[
             int, Field(ge=1, le=100, description="Maximum memories to return.")
         ] = 20,
-        type: MemoryType = None,
+        type: OptionalMemoryType = None,
         tags: MemoryTags = None,
         workspace: WorkspaceParam = None,
         response_format: ResponseFormatParam = "markdown",

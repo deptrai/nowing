@@ -32,7 +32,7 @@ async def iter_sse_events(lines: AsyncIterator[str]) -> AsyncIterator[SseEvent]:
         if raw is None:
             continue
         line = raw.rstrip("\r")
-        if line == "":
+        if line == "" or line.strip() == "":
             if buffer:
                 yield SseEvent(data="\n".join(buffer))
                 buffer.clear()

@@ -30,7 +30,8 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         city: Annotated[
             str,
             Field(
-                description="City name or slug, e.g. 'hanoi', 'ho chi minh', 'da nang'."
+                min_length=1,
+                description="City name or slug, e.g. 'hanoi', 'ho chi minh', 'da nang'.",
             ),
         ],
         listing_type: Annotated[
@@ -43,7 +44,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         ] = "all",
         district: Annotated[
             str | None,
-            Field(description="Optional district name or slug."),
+            Field(min_length=1, description="Optional district name or slug."),
         ] = None,
         district_id: Annotated[
             int | None,
@@ -81,6 +82,10 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
         with title, price, area, location, and detail URL.
         Example: city='hanoi', listing_type='buy', max_items=20.
         """
+        if (min_price is not None and max_price is not None and min_price > max_price) or (
+            min_area is not None and max_area is not None and min_area > max_area
+        ):
+            raise ValueError("min value cannot exceed max value")
         return await run_scraper(
             client,
             context,

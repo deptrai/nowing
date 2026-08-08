@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
-from app.db import Memory, Permission, get_async_session
+from app.db import Memory, MemoryType, Permission, get_async_session
 from app.schemas.memory import (
     MemoryCreate,
     MemoryRead,
@@ -142,7 +142,7 @@ async def list_memories(
     session: AsyncSession = Depends(get_async_session),
     auth: AuthContext = Depends(get_auth_context),
     limit: int = Query(default=20, ge=1, le=100),
-    type: str | None = Query(default=None),
+    type: MemoryType | None = Query(default=None),
     tags: str | None = Query(default=None),
 ):
     await check_permission(
