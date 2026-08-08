@@ -431,3 +431,37 @@ No `project-context.md` files were found in the repository, so this story is bui
 - `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` — AD-DEFER-4 (retention/soft-delete/Zero sync deferred decision) and AD-2/AD-5/AD-9 invariants.
 - Previous implementation story files (`2-5-workspace-mcp-tool-toggle.md`, `3-6-citation-scroll-to-highlight-in-full-document-editor-new-gap.md`) for workspace settings UI patterns, migration naming, schema exposure, and test structure.
 - Direct source code reads of `nowing_backend/app/db.py`, `nowing_backend/app/routes/workspaces_routes.py`, `nowing_backend/app/routes/documents_routes.py`, `nowing_backend/app/retriever/*.py`, `nowing_backend/app/celery_app.py`, `nowing_backend/app/tasks/celery_tasks/*.py`, `nowing_web/components/settings/*.tsx`, `nowing_web/contracts/types/*.ts`, `nowing_web/zero/schema/documents.ts`, and `app/zero_publication.py`.
+
+## Review Findings (code review 2026-08-08)
+
+Scope: commits `92ba8f83e`..`1bd12a1d4` — migration (79 lines) + task (48 lines) + routes + schemas + tests (636 lines).
+
+**patch (HIGH) — fixed 2026-08-08:**
+- [x] [Review][Patch] Missing `archived_at.is_(None)` filter in user-facing read queries — archived documents remained accessible through notes list (`notes_routes.py:122`), single note fetch (`notes_routes.py:214`), and editor read (`editor_routes.py:72,196,270,347`). Added `Document.archived_at.is_(None)` to all 6 queries. [blind]
+- [x] [Review][Patch] No error handling around `delete_document_task.delay()` in retention task (`document_retention_task.py:47`) — if Celery broker is down, document is stuck in "deleting" state forever. Added try/except that reverts status to "ready" and logs the error. [blind]
+
+**defer:** 8 (low/medium severity)
+- Missing `archived_at` filter in admin operations (documents_routes.py:1273,1404,1467,1540,1582,1621) — operations on specific doc by ID. Less critical, user already knows doc ID.
+- Missing `archived_at` filter in internal operations (documents_routes.py:1728,1948,2011, folders_routes.py:449,498, export_service.py:253, obsidian_plugin_indexer.py:267, notion/tool_metadata_service.py:127) — system operations, lowest priority.
+- No CHECK constraint on `document_retention_action` — Pydantic validates at API layer. Direct DB manipulation is admin-only.
+- Negative `document_retention_days` when `auto_archive_enabled=false` — validation catches when auto_archive is enabled.
+- No upper bound on `document_retention_days` — low risk.
+- Race condition: document archived while actively edited — task filters out pending/processing/deleting. Rare edge case.
+- AC-1 PARTIAL: No UI tests (frontend E2E test exists separately).
+- AC-3 PARTIAL: No citation filtering test (hybrid search updated per spec).
+
+**dismissed:** 3
+- Migration no backfill for `document_retention_days` — BY DESIGN. Task skips workspaces with `document_retention_days=None`.
+- Task not idempotent — FALSE POSITIVE. Task filters `archived_at.is_(None)`, so already-archived docs are skipped.
+- AC-6 PARTIAL: No frontend real-time test — backend publication verified, frontend uses Zero sync.
+
+**AC coverage:** AC-1 PASS, AC-2 PASS, AC-3 PASS, AC-4 PASS, AC-5 PASS (user-facing queries now filtered), AC-6 PASS, AC-7 PASS.
+
+**Positive findings:**
+- Migration: `auto_archive_enabled` defaults to false, `document_retention_action` defaults to "archive"
+- Task: filters by workspace_id, created_at < cutoff, archived_at.is_(None), status not in pending states
+- Multi-tenancy: task only touches documents in workspace with auto_archive_enabled=true
+- Validation: rejects 0/negative days when auto_archive enabled, rejects invalid action values
+- Permission: non-owner gets 403
+- Zero publication: includes archived_at for real-time sync
+- Tests: comprehensive integration tests for archive/delete/multi-tenancy/visibility

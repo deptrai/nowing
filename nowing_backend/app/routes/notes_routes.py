@@ -122,6 +122,7 @@ async def list_notes(
     query = select(Document).where(
         Document.workspace_id == workspace_id,
         Document.document_type == DocumentType.NOTE,
+        Document.archived_at.is_(None),
     )
 
     # Get total count
@@ -130,6 +131,7 @@ async def list_notes(
         .where(
             Document.workspace_id == workspace_id,
             Document.document_type == DocumentType.NOTE,
+            Document.archived_at.is_(None),
         )
         .subquery()
     )
@@ -215,6 +217,7 @@ async def delete_note(
             Document.id == note_id,
             Document.workspace_id == workspace_id,
             Document.document_type == DocumentType.NOTE,
+            Document.archived_at.is_(None),
         )
     )
     document = result.scalars().first()

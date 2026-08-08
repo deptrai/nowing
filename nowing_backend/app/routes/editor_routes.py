@@ -72,6 +72,7 @@ async def get_editor_content(
         select(Document).filter(
             Document.id == document_id,
             Document.workspace_id == workspace_id,
+            Document.archived_at.is_(None),
         )
     )
     document = result.scalars().first()
@@ -196,6 +197,7 @@ async def download_document_markdown(
         select(Document).filter(
             Document.id == document_id,
             Document.workspace_id == workspace_id,
+            Document.archived_at.is_(None),
         )
     )
     document = result.scalars().first()
@@ -270,6 +272,7 @@ async def save_document(
         select(Document).filter(
             Document.id == document_id,
             Document.workspace_id == workspace_id,
+            Document.archived_at.is_(None),
         )
     )
     document = result.scalars().first()
@@ -347,6 +350,7 @@ async def export_document(
         select(Document).filter(
             Document.id == document_id,
             Document.workspace_id == workspace_id,
+            Document.archived_at.is_(None),
         )
     )
     document = result.scalars().first()

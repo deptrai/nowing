@@ -5,6 +5,7 @@ when the workspace strategy is ``delete``, dispatches the existing per-document
 ``delete_document_task`` to perform the hard cleanup.
 """
 
+import logging
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.future import select
@@ -13,6 +14,8 @@ from app.celery_app import celery_app
 from app.db import Document, DocumentRetentionAction, Workspace
 from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
 from app.tasks.celery_tasks.document_tasks import delete_document_task
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(name="apply_document_retention_policies")
@@ -44,5 +47,13 @@ async def _apply_retention() -> None:
                 doc.archived_at = now
                 if ws.document_retention_action == DocumentRetentionAction.DELETE:
                     doc.status = {"state": "deleting"}
-                    delete_document_task.delay(doc.id)
+                    try:
+                        delete_document_task.delay(doc.id)
+                    except Exception:
+                        logger.exception(
+                            "Failed to dispatch delete_document_task for doc %s; "
+                            "reverting status to ready",
+                            doc.id,
+                        )
+                        doc.status = {"state": "ready"}
         await session.commit()
