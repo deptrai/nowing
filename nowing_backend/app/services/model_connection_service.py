@@ -479,6 +479,8 @@ async def discover_models(conn: Connection) -> list[dict[str, Any]]:
 
 async def test_model(conn: Connection, model: Model) -> VerifyResult:
     model_string, kwargs = to_litellm(conn, model.model_id)
+    kwargs.pop("timeout", None)
+    kwargs.pop("num_retries", None)
     try:
         await litellm.acompletion(
             model=model_string,
