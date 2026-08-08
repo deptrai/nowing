@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import types
 from typing import Any
 
@@ -13,6 +12,7 @@ from app.canonical.services.canonical_persist_service import (
     record_merge_history,
 )
 from app.canonical.services.canonical_pii import (
+    _one_way_digest,
     redact_canonical_data,
     redact_source_snapshot,
 )
@@ -72,9 +72,7 @@ def test_bds_canonical_data_no_contact() -> None:
     assert "email_contact" not in redacted
     assert redacted["address_key"] == data["address_key"]
     assert redacted["price_value"] == data["price_value"]
-    assert redacted["phone_key"] == hashlib.sha256(
-        phone_key.encode("utf-8")
-    ).hexdigest()
+    assert redacted["phone_key"] == _one_way_digest(phone_key)
 
 
 def test_bds_source_snapshot_drops_matching_keys() -> None:
@@ -138,12 +136,8 @@ async def test_merge_history_no_pii() -> None:
     )
 
     assert "contact" not in history.new_data
-    assert history.new_data["phone_key"] == hashlib.sha256(
-        b"901234567"
-    ).hexdigest()
-    assert history.previous_data["phone_key"] == hashlib.sha256(
-        b"901234567"
-    ).hexdigest()
+    assert history.new_data["phone_key"] == _one_way_digest("901234567")
+    assert history.previous_data["phone_key"] == _one_way_digest("901234567")
 
 
 @pytest.mark.asyncio
@@ -168,8 +162,6 @@ async def test_outbox_no_pii() -> None:
         payload=payload,
     )
 
-    assert outbox.payload["data"]["phone_key"] == hashlib.sha256(
-        b"901234567"
-    ).hexdigest()
+    assert outbox.payload["data"]["phone_key"] == _one_way_digest("901234567")
     assert "contact" not in outbox.payload["data"]
     assert outbox.payload["data"]["title"] == "Nhà"

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +10,7 @@ from app.canonical.services.canonical_persist_service import (
     create_persist_outbox,
     upsert_canonical_entity,
 )
+from app.canonical.services.canonical_pii import _one_way_digest
 from app.db import (
     CanonicalEntitySource,
     CanonicalMergeHistory,
@@ -74,9 +73,7 @@ async def test_bds_canonical_data_no_contact(
     assert "seller_phone" not in canonical
     assert "seller_name" not in canonical
     assert "owner_name" not in canonical
-    assert canonical["phone_key"] == hashlib.sha256(
-        phone_key.encode("utf-8")
-    ).hexdigest()
+    assert canonical["phone_key"] == _one_way_digest(phone_key)
     assert canonical["address_key"] == data["address_key"]
 
     # Source snapshot must not retain any PII-derived matching keys.
@@ -210,9 +207,7 @@ async def test_merge_history_no_pii(
         for data in (history.previous_data, history.new_data):
             assert "contact" not in data
             if data.get("phone_key"):
-                assert data["phone_key"] == hashlib.sha256(
-                    phone_key.encode("utf-8")
-                ).hexdigest()
+                assert data["phone_key"] == _one_way_digest(phone_key)
 
 
 async def test_outbox_no_pii(
@@ -249,7 +244,5 @@ async def test_outbox_no_pii(
     assert "contact" not in payload_data
     assert "phone" not in payload_data
     assert "seller_name" not in payload_data
-    assert payload_data["phone_key"] == hashlib.sha256(
-        phone_key.encode("utf-8")
-    ).hexdigest()
+    assert payload_data["phone_key"] == _one_way_digest(phone_key)
     assert payload_data["title"] == "Nhà"

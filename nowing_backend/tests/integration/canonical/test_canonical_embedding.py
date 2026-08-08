@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.canonical.services.canonical_persist_service import upsert_canonical_entity
 from app.canonical.tasks.backfill_canonical_embedding import (
     _backfill_canonical_embedding,
+)
+
+_backfill_module = importlib.import_module(
+    "app.canonical.tasks.backfill_canonical_embedding"
 )
 from app.db import CanonicalEntity, Workspace
 
@@ -61,7 +67,8 @@ async def test_embedding_backfill_populates_vector(
 
     dim = config.embedding_model_instance.dimension
     monkeypatch.setattr(
-        "app.canonical.tasks.backfill_canonical_embedding.embed_texts",
+        _backfill_module,
+        "embed_texts",
         lambda texts: [[0.2] * dim for _ in texts],
     )
 
@@ -127,9 +134,7 @@ async def test_embedding_backfill_skips_stale_version(
         calls.append(texts)
         return [[0.1] * 384]
 
-    monkeypatch.setattr(
-        "app.canonical.tasks.backfill_canonical_embedding.embed_texts", _fake_embed
-    )
+    monkeypatch.setattr(_backfill_module, "embed_texts", _fake_embed)
 
     await _backfill_canonical_embedding(
         str(entity.id), db_workspace.id, 1, "test", session=db_session
