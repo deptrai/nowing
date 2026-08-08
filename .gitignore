@@ -37,3 +37,7 @@ project-context.md
 
 # Local mutation-run artifacts
 nowing_backend/mutation-*
+
+# Python cache
+**/__pycache__/
+*.py[cod]
