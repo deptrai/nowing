@@ -4,24 +4,33 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import re
+import time
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 from lxml import html as lxml_html
 from scrapling.fetchers import StealthyFetcher
 
 from app.config import config
+from app.utils.crawl import BlockType, classify_block
 
 logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://www.topcv.vn"
 
+# Circuit-breaker state (module-level; thread-safe because asyncio is single-threaded).
+_consecutive_failures = 0
+_circuit_open_until = 0.0
+
 _SALARY_PERIOD_RE = re.compile(r"\b(tháng|month|năm|year|giờ|hour|ngày|day)\b", re.IGNORECASE)
+_SALARY_NUMBER_RE = re.compile(r"[\d\.,]+\s*(?:tr(?:iệu)?|k|m|b|t)?", re.IGNORECASE)
 _AGE_RE = re.compile(
     r"(?:đăng\s+)?(\d+)\s+(phút|giờ|ngày|tuần|tháng|năm)\s+trước",
     re.IGNORECASE,
 )
+_NEGOTIATION_KEYWORDS = ("thoả thuận", "thương lượng", "negotiable", "thỏa thuận")
 
 
 def _degraded(reason: str, *, cost_micros: int = 0) -> dict[str, Any]:
@@ -43,9 +52,15 @@ def _safe_text(element: Any) -> str | None:
 
 def _normalize_keyword(value: str) -> str:
     """Convert a Vietnamese search phrase into a TopCV URL slug."""
-    text = re.sub(r"[^a-z0-9\s-]", "", value.lower())
+    text = re.sub(r"[^a-z0-9\s+-]", "", value.lower())
     text = re.sub(r"\s+", "-", text.strip())
-    return text.strip("-") or "viec-lam"
+    text = re.sub(r"-+", "-", text)
+    slug = text.strip("-")
+    if not slug:
+        return "viec-lam"
+    # ponytail: `+` is a valid path sub-delimiter; `#` is the fragment character
+    # and is stripped above rather than percent-encoded.
+    return quote(slug, safe="/+-")
 
 
 def _topcv_search_url(keyword: str, page: int) -> str:
@@ -60,20 +75,23 @@ def _clean_url(url: str) -> str:
     if not url:
         return ""
     parsed = urlparse(url)
-    return f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+    scheme = parsed.scheme or "https"
+    query = f"?{parsed.query}" if parsed.query else ""
+    return f"{scheme}://{parsed.netloc}{parsed.path}{query}"
 
 
-def _extract_salary_numbers(text: str) -> tuple[int | None, int | None, str, str | None]:
+def _extract_salary_numbers(
+    text: str,
+) -> tuple[int | None, int | None, str, str | None, bool, str]:
+    """Return (min, max, currency, period, salary_hidden, salary_confidence)."""
     if not text:
-        return None, None, "VND", None
+        return 0, 0, "VND", "month", True, "low"
 
     lower = text.lower()
-    if any(k in lower for k in ("thoả thuận", "thương lượng", "negotiable", "thỏa thuận")):
-        return 0, 0, "VND", "negotiable"
+    if any(k in lower for k in _NEGOTIATION_KEYWORDS):
+        return 0, 0, "VND", "negotiable", True, "low"
 
-    currency = "VND"
-    if any(c in text for c in ("$", "usd")):
-        currency = "USD"
+    currency = "USD" if "$" in text or "usd" in lower else "VND"
 
     period_tag: str | None = None
     pm = _SALARY_PERIOD_RE.search(text)
@@ -89,28 +107,61 @@ def _extract_salary_numbers(text: str) -> tuple[int | None, int | None, str, str
             period_tag = "day"
 
     numbers: list[float] = []
-    for token in re.findall(r"[\d\.,]+\s*[kKmMbBtT]?", text):
-        token = token.strip().replace(",", "")
+    units: list[float] = []
+    for raw_token in re.findall(_SALARY_NUMBER_RE, text):
+        token = raw_token.strip()
+        if not token:
+            continue
+
+        # Vietnamese: dot = thousands, comma = decimal. English: comma = thousands, dot = decimal.
+        if currency == "VND":
+            token = re.sub(r"\.(?=\d{3}(?:\D|$))", "", token).replace(",", ".")
+        else:
+            token = token.replace(",", "")
+
+        lower_token = token.lower()
         unit = 1.0
-        if token[-1:].lower() in ("k", "tr", "m", "triệu"):
-            unit = 1_000 if token[-1:].lower() == "k" else 1_000_000
+        if lower_token.endswith("tr") or lower_token.endswith("triệu") or lower_token.endswith("m"):
+            unit = 1_000_000
+            token = re.sub(r"(?i)(tr(?:iệu)?|m)$", "", token).strip()
+        elif lower_token.endswith("k"):
+            unit = 1_000
             token = token[:-1].strip()
+        elif lower_token.endswith("b"):
+            unit = 1_000_000_000
+            token = token[:-1].strip()
+        elif lower_token.endswith("t"):
+            unit = 1_000_000_000_000
+            token = token[:-1].strip()
+
         try:
-            numbers.append(float(token) * unit)
+            numbers.append(float(token))
+            units.append(unit)
         except ValueError:
             continue
 
     if not numbers:
-        return 0, 0, currency, period_tag or "month"
+        return 0, 0, currency, period_tag or "month", True, "low"
+
+    # Normalize unit-less numbers to the shared magnitude found elsewhere in the text.
+    shared_unit = next((u for u in units if u > 1), 1.0)
+    if shared_unit > 1:
+        numbers = [n * (shared_unit if u == 1 else u) for n, u in zip(numbers, units, strict=True)]
+    else:
+        numbers = [n * u for n, u in zip(numbers, units, strict=True)]
 
     min_v: int | None = int(numbers[0])
     max_v: int | None = int(numbers[-1]) if len(numbers) > 1 else None
-    if "tới" in lower or "up to" in lower:
+    has_from = "từ" in lower or "from" in lower
+    has_to = "tới" in lower or "up to" in lower or "đến" in lower
+    if has_from and has_to:
+        min_v, max_v = int(numbers[0]), int(numbers[-1]) if len(numbers) > 1 else int(numbers[0])
+    elif has_to:
         min_v, max_v = 0, int(numbers[0])
-    elif "từ" in lower or "from" in lower:
+    elif has_from:
         min_v = int(numbers[0])
-        max_v = None
-    return min_v, max_v, currency, period_tag or "month"
+        max_v = int(numbers[-1]) if len(numbers) > 1 else None
+    return min_v, max_v, currency, period_tag or "month", False, "medium"
 
 
 def _parse_posted(text: str | None) -> str | None:
@@ -317,6 +368,8 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
         if salary_els:
             salary_raw = _safe_text(salary_els[0]) or ""
 
+        min_v, max_v, currency, period, salary_hidden, salary_confidence = _extract_salary_numbers(salary_raw)
+
         experience = None
         exp_els = card.xpath('.//label[contains(@class,"exp")]//span')
         if exp_els:
@@ -352,10 +405,12 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
             "location": location,
             "source_url": source_url,
             "salary_raw": salary_raw,
-            "salary_min": None,
-            "salary_max": None,
-            "salary_currency": None,
-            "salary_period_id": None,
+            "salary_min": min_v,
+            "salary_max": max_v,
+            "salary_currency": currency,
+            "salary_period_id": period,
+            "salary_hidden": salary_hidden,
+            "salary_confidence": salary_confidence,
             "employment_type": None,
             "experience_years": experience,
             "job_description": "",
@@ -386,17 +441,82 @@ def _apply_detail(item: dict[str, Any], detail: dict[str, Any]) -> None:
     salary_raw = detail.get("salary_raw") or item.get("salary_raw") or ""
     if salary_raw:
         item["salary_raw"] = salary_raw
-    if salary_raw and any(k in salary_raw.lower() for k in ("thoả thuận", "thương lượng", "negotiable")):
-        item["salary_min"] = 0
-        item["salary_max"] = 0
-        item["salary_currency"] = "VND"
-        item["salary_period_id"] = "negotiable"
-    else:
-        min_v, max_v, currency, period = _extract_salary_numbers(salary_raw)
-        item["salary_min"] = min_v
-        item["salary_max"] = max_v
-        item["salary_currency"] = currency
-        item["salary_period_id"] = period
+    (
+        item["salary_min"],
+        item["salary_max"],
+        item["salary_currency"],
+        item["salary_period_id"],
+        item["salary_hidden"],
+        item["salary_confidence"],
+    ) = _extract_salary_numbers(salary_raw)
+
+
+def _degradation_reason_from_exception(exc: BaseException) -> str:
+    msg = str(exc).lower()
+    if "rate" in msg or "circuit open" in msg or "429" in msg:
+        return "rate_limited"
+    if isinstance(exc, TimeoutError):
+        return "timeout"
+    return "bot_detected"
+
+
+def _looks_like_rate_limit(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return "rate" in msg or "429" in msg or "circuit open" in msg
+
+
+def _record_failure() -> None:
+    global _consecutive_failures, _circuit_open_until
+    _consecutive_failures += 1
+    if _consecutive_failures >= config.TOPCV_CIRCUIT_BREAKER_THRESHOLD:
+        _circuit_open_until = time.monotonic() + config.TOPCV_CIRCUIT_BREAKER_TIMEOUT_S
+
+
+def _user_agent_for_attempt(attempt: int) -> str | None:
+    """Return a rotated User-Agent for retry attempts."""
+    uas: list[str] = []
+    if config.VIETNAMWORKS_USER_AGENT:
+        uas.append(config.VIETNAMWORKS_USER_AGENT)
+    uas.append(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+    )
+    if not uas:
+        return None
+    return uas[(attempt - 1) % len(uas)]
+
+
+def _backoff_seconds(attempt: int) -> float:
+    return min(config.TOPCV_RETRY_BACKOFF_BASE_S * (2 ** attempt), 30.0) + random.uniform(0, 0.5)
+
+
+def _validate_search_page(page: Any) -> None:
+    """Raise a descriptive ValueError if the search page is blocked or empty."""
+    html = getattr(page, "html_content", "") or ""
+    status = getattr(page, "status", 0) or 0
+
+    if not html.strip():
+        raise ValueError("empty search page")
+
+    if status == 429:
+        raise ValueError("rate limited")
+    if status == 403:
+        raise ValueError("anti-bot challenge")
+    if status >= 400:
+        raise ValueError(f"search page error: status={status}")
+
+    title = ""
+    title_nodes = page.css("title")
+    if title_nodes and title_nodes[0].text:
+        title = str(title_nodes[0].text)
+    if "just a moment..." in title.lower():
+        raise ValueError("anti-bot challenge")
+
+    block = classify_block(status, html)
+    if block == BlockType.RATE_LIMITED:
+        raise ValueError("rate limited")
+    if block != BlockType.OK:
+        raise ValueError("anti-bot challenge")
 
 
 async def _fetch_search_page(keyword: str, page: int) -> str:
@@ -404,39 +524,112 @@ async def _fetch_search_page(keyword: str, page: int) -> str:
     from app.proprietary.web_crawler.stealth import build_stealthy_kwargs, get_stealth_config  # noqa: I001
     from app.proprietary.web_crawler.connector import scroll_to_bottom
 
+    if _circuit_open_until > time.monotonic():
+        raise ValueError("circuit open")
+
     url = _topcv_search_url(keyword, page)
-    kwargs: dict[str, Any] = {
+    base_kwargs: dict[str, Any] = {
         "headless": True,
         "network_idle": True,
         "block_ads": True,
         "solve_cloudflare": True,
         "proxy": None,
+        "timeout": int(config.TOPCV_TIMEOUT_S * 1000),
     }
-    kwargs.update(build_stealthy_kwargs(get_stealth_config()))
-    kwargs["page_action"] = scroll_to_bottom
+    base_kwargs.update(build_stealthy_kwargs(get_stealth_config()))
+    base_kwargs["page_action"] = scroll_to_bottom
 
-    page = await asyncio.to_thread(StealthyFetcher.fetch, url, **kwargs)
-    html = getattr(page, "html_content", "")
-    if not html:
-        raise ValueError("empty search page")
-    return html
+    attempts = max(0, config.TOPCV_RETRY_ATTEMPTS)
+    last_exc: BaseException | None = None
+
+    for attempt in range(attempts + 1):
+        kwargs = dict(base_kwargs)
+        if attempt > 0:
+            ua = _user_agent_for_attempt(attempt)
+            if ua:
+                # ponytail: Scrapling accepts a `useragent` string; extra headers
+                # are not needed here. If the fetcher is refactored to a connector,
+                # UA rotation must move to the connector kwargs.
+                kwargs["useragent"] = ua
+
+        try:
+            page_obj = await asyncio.wait_for(
+                asyncio.to_thread(StealthyFetcher.fetch, url, **kwargs),
+                timeout=config.TOPCV_TIMEOUT_S,
+            )
+            _validate_search_page(page_obj)
+            global _consecutive_failures
+            _consecutive_failures = 0
+            return page_obj.html_content
+        except Exception as exc:
+            last_exc = exc
+            if attempt == attempts:
+                _record_failure()
+                if _looks_like_rate_limit(exc):
+                    raise ValueError("rate_limited") from exc
+                raise
+            await asyncio.sleep(_backoff_seconds(attempt))
+
+    # Defensive fallback; the loop always either returns or raises.
+    raise last_exc or ValueError("search page failed")
 
 
 async def _fetch_detail_page(url: str) -> dict[str, Any]:
     from app.proprietary.web_crawler.connector import WebCrawlerConnector
 
+    if _circuit_open_until > time.monotonic():
+        raise ValueError("rate_limited")
+
     connector = WebCrawlerConnector()
-    outcome = await connector.crawl_url(url)
-    if outcome.status != "success" or not outcome.result:
-        return {}
-    content = outcome.result.get("content") or ""
-    metadata = outcome.result.get("metadata") or {}
-    return _parse_detail_markdown(content, metadata)
+    attempts = max(0, config.TOPCV_RETRY_ATTEMPTS)
+
+    for attempt in range(attempts + 1):
+        try:
+            outcome = await asyncio.wait_for(
+                connector.crawl_url(url),
+                timeout=config.TOPCV_TIMEOUT_S,
+            )
+            if outcome.status == "success" and outcome.result:
+                global _consecutive_failures
+                _consecutive_failures = 0
+                content = outcome.result.get("content") or ""
+                metadata = outcome.result.get("metadata") or {}
+                return _parse_detail_markdown(content, metadata)
+
+            # Non-success outcome: classify and decide whether to retry or give up.
+            if outcome.block_type == BlockType.RATE_LIMITED:
+                raise ValueError("rate limited")
+            if outcome.block_type not in (BlockType.OK, BlockType.UNKNOWN):
+                raise ValueError("anti-bot challenge")
+            if attempt == attempts:
+                # ponytail: detail fetch returned empty/failed after all retries;
+                # return an empty dict so the scrape loop can continue with the
+                # search-card data rather than aborting the whole run.
+                _record_failure()
+                return {}
+            raise ValueError("detail fetch failed")
+        except Exception as exc:
+            if attempt == attempts:
+                _record_failure()
+                if _looks_like_rate_limit(exc):
+                    raise ValueError("rate_limited") from exc
+                # Non-rate-limit detail failures are swallowed after retries.
+                return {}
+            await asyncio.sleep(_backoff_seconds(attempt))
+
+    return {}
 
 
 async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
-    max_items = int(params.get("max_items", 50) or 0)
-    max_pages = int(params.get("max_pages", 1) or 0)
+    if not config.TOPCV_ENABLED:
+        return _degraded("legal_blocked")
+
+    max_items = max(0, int(params.get("max_items", 50) or 0))
+    max_pages = min(
+        max(0, int(params.get("max_pages", 1) or 0)),
+        config.TOPCV_MAX_PAGES,
+    )
+    start_page = max(1, int(params.get("page", 1) or 1))
 
     if max_items == 0 or max_pages == 0:
         return {
@@ -447,27 +640,34 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
             "total_items": 0,
         }
 
-    keyword = params.get("keyword", "data engineer")
+    keyword = str(params.get("keyword", "viec-lam") or "").strip()
+    if not keyword:
+        logger.warning("topcv.scrape received empty keyword; defaulting to 'viec-lam'")
+        keyword = "viec-lam"
+
     items: list[dict[str, Any]] = []
     cost_micros = 0
 
     try:
-        for page in range(1, max_pages + 1):
+        end_page = start_page + max_pages - 1
+        for page in range(start_page, end_page + 1):
             remaining = max(0, max_items - len(items))
             if remaining == 0:
                 break
 
             html = await _fetch_search_page(keyword, page)
-            cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM * 3  # search is heavier
-
             cards = _parse_search_page(html)
             if not cards:
                 break
 
+            # Charge the heavier search fetch only after cards are successfully parsed.
+            cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM * 3
+
             for card in cards[:remaining]:
                 detail = await _fetch_detail_page(card["source_url"])
-                _apply_detail(card, detail)
-                cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM
+                if detail:
+                    _apply_detail(card, detail)
+                    cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM
                 items.append(card)
 
                 if len(items) >= max_items:
@@ -481,11 +681,16 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
 
     except Exception as exc:
         logger.warning("topcv.scrape failed: %s", exc)
+        reason = _degradation_reason_from_exception(exc)
         if not items:
-            return _degraded("anti_bot_block", cost_micros=cost_micros)
-
-    if not items:
-        return _degraded("anti_bot_block", cost_micros=cost_micros)
+            return _degraded(reason, cost_micros=cost_micros)
+        return {
+            "items": items,
+            "cost_micros": cost_micros,
+            "degraded": True,
+            "degradation_reason": reason,
+            "total_items": len(items),
+        }
 
     return {
         "items": items,
@@ -498,10 +703,12 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
 
 async def scrape_topcv(params: dict[str, Any]) -> dict[str, Any]:
     """Fetch and parse TopCV job search + detail pages."""
+    if not config.TOPCV_ENABLED:
+        return _degraded("legal_blocked")
     try:
         return await _scrape(params)
     except TimeoutError:
         return _degraded("timeout")
     except Exception as exc:
         logger.warning("topcv.scrape failed: %s", exc)
-        return _degraded("anti_bot_block")
+        return _degraded("bot_detected")

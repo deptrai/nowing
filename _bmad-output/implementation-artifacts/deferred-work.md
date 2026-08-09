@@ -1,4 +1,52 @@
+## Deferred from: code review of 12-2-topcv-scraper (2026-08-10)
+
+- **Finding:** PII redaction tại scraper (AC-7).
+  - **Action:** Marked `[x] [Review][Defer]` in `12-2-topcv-scraper.md`.
+  - **Reason / when to revisit:** PII pipeline chưa tồn tại; xử lý tại Story 12.5 / Epic 20.1 (`to_chunks` + redactor) hoặc `app/services/jobs_aggregator/orchestrator.py`.
+
+- **Finding:** `to_chunks()` helper (AC-8).
+  - **Action:** Marked `[x] [Review][Defer]` in `12-2-topcv-scraper.md`.
+  - **Reason / when to revisit:** `app/services/scraper_chunks/` chưa có; thuộc Epic 20.1 / AD-34.
+
+- **Finding:** Capability registration MCP/REST/Billing (AC-9).
+  - **Action:** Marked `[x] [Review][Defer]` in `12-2-topcv-scraper.md`.
+  - **Reason / when to revisit:** Đã có sẵn trong skeleton (`definition.py`, `BillingUnit.TOPCV_JOB`, `app/capabilities/__init__.py`); không thuộc diff chunk 1.
+
+- **Finding:** Location filter `location` (AC-1).
+  - **Action:** Marked `[x] [Review][Defer]` in `12-2-topcv-scraper.md`.
+  - **Reason / when to revisit:** TopCV dùng city IDs (`?locations=l1_l8`) và slug path `tim-viec-lam-<keyword>-tai-<city>-kl<id>`; cần mapping city→ID. Cần thu thập thêm từ TopCV hoặc product trước khi implement.
+
 # Deferred Work
+
+## Deferred from: code review of 12-1-vietnamworks-scraper (2026-08-10)
+
+- **Finding:** `posted_at` full-ISO datetime không tương thích với `app/services/jobs_aggregator/normalize.py`.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Reason / when to revisit:** Cần cập nhật normalizer để parse full ISO datetime hoặc đổi scraper trả `datetime`; thuộc scope aggregator story 12.4.
+
+- **Finding:** `salary_period_id:1` của VietnamWorks bị `normalize.py` map thành "hour" thay vì "month".
+  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Reason / when to revisit:** `_SALARY_PERIOD_MAP` chung cho nhiều nguồn, cần map theo nguồn hoặc sửa semantics; thuộc 12.4.
+
+- **Finding:** Aggregate billing gate reserve base fee `VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY` nhưng charge path không cộng base fee.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Reason / when to revisit:** Base fee chưa được cộng vào `cost_micros`; cần sửa orchestrator hoặc `_charge_vn_jobs_aggregate`; thuộc 12.4/12.5.
+
+- **Finding:** `vn_jobs` subagent `load_tools` không validate `workspace_id` có thể `None`.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Reason / when to revisit:** Thêm guard `workspace_id` hoặc fail fast khi build subagent; thuộc 12.4.
+
+- **Finding:** `_gate_vn_jobs_aggregate` under-reserve cho child sources bill per page, `sources=[]` mặc định all sources, fallback `max_items_per_source=10` khác schema default 50.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Reason / when to revisit:** Cần điều chỉnh gating logic cho aggregate job; thuộc 12.4/12.5.
+
+- **Finding:** `_charge_vn_jobs_aggregate` có thể charge khi child output `degraded`.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Reason / when to revisit:** Bổ sung kiểm tra `output.degraded` trước khi debit; thuộc 12.4/12.5.
+
+- **Finding:** `PII_REDACTION_MIN_CONFIDENCE` config tồn tại nhưng chưa có logic sử dụng.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-1-vietnamworks-scraper.md`.
+  - **Reason / when to revisit:** Gắn với PII redaction pipeline khi implement 12.5.
 
 ## Deferred from: code review of 10-5-anti-bot-captcha-screenshot-escalation (2026-08-09)
 
@@ -248,3 +296,33 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - **Finding:** Celery `apply_async` failure after `launch_run` commits leaves a run stuck PENDING forever.
   - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
   - **Reason / when to revisit:** Pre-existing `launch_run` commit-before-enqueue pattern; fix by rolling back or retrying enqueue.
+
+## Deferred from: quick-dev review of 12-2-topcv-scraper (2026-08-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: Detail-page anti-bot blocks are swallowed without per-run degradation threshold.
+  evidence: `_fetch_detail_page` returns `{}` after all retries when it sees a non-`RATE_LIMITED` block; the scrape loop keeps requesting detail pages from a blocked domain. A threshold (e.g., N consecutive detail anti-bot failures) is needed before whole-run degradation.
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: Partial degraded runs return items but the billing service may not charge.
+  evidence: `_scrape` can return `degraded=True` with `items` and a non-zero `cost_micros`, but `_charge_platform_meter` debits zero when `degraded=True`. The cost-vs-degraded contract needs cross-story billing alignment.
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: No unit tests for retry, exponential backoff, circuit breaker, or anti-bot detection paths.
+  evidence: `tests/unit/proprietary/platforms/topcv/test_scraper.py` covers happy-path and one fake `ValueError`; the new `_fetch_search_page` retry/circuit logic and `_validate_search_page` branches are untested.
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: User-Agent rotation is not wired to detail-page fetches.
+  evidence: `_fetch_detail_page` calls `WebCrawlerConnector.crawl_url()`, which does not accept a `useragent` kwarg. Refactor of the connector or extra-headers support is needed to pass a rotated UA to detail requests.
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: Anti-bot screenshot escalation is gated on `ctx.run_id`, which is `None` in sync REST/agent paths.
+  evidence: `app/capabilities/topcv/scrape/executor.py` only triggers `capture_platform_anti_bot_screenshot_task` when `ctx.run_id` is set; sync capability callers create `CapabilityContext` without a `run_id`. This is a pre-existing executor pattern also seen in `itviec`.
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: Module-level circuit-breaker globals are shared across concurrent `topcv.scrape` calls.
+  evidence: `_consecutive_failures` and `_circuit_open_until` are mutated by every concurrent coroutine; while `asyncio` is single-threaded, interleaving can cause false circuit trips or suppress real ones. A per-domain/per-call circuit instance is the eventual fix.
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: Legal/ToS block decision is a static config flag, not a runtime legal-service hook.
+  evidence: `TOPCV_ENABLED` is read from env and checked at call time; there is no runtime integration with a legal/TOS service because Story 12.0 produced a manual decision and no service exists to consume it.

@@ -57,6 +57,12 @@ class TestSearchPageParser:
         assert item["location"] == "Hà Nội"
         assert "topcv.vn" in item["source_url"]
         assert item["salary_raw"] == "Thoả thuận"
+        assert item["salary_hidden"] is True
+        assert item["salary_confidence"] == "low"
+        assert item["salary_min"] == 0
+        assert item["salary_max"] == 0
+        assert item["salary_currency"] == "VND"
+        assert item["salary_period_id"] == "negotiable"
         assert item["experience_years"] == 3
         assert item["source"] == "topcv"
 
@@ -155,4 +161,4 @@ class TestScraperFailureModes:
         out = await scrape_topcv({"keyword": "data engineer", "max_items": 1, "max_pages": 1})
 
         assert out["degraded"] is True
-        assert out["degradation_reason"] == "anti_bot_block"
+        assert out["degradation_reason"] == "bot_detected"

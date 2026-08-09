@@ -962,15 +962,36 @@ class Config:
     VIETNAMWORKS_TIMEOUT_S = float(os.getenv("VIETNAMWORKS_TIMEOUT_S", "30.0"))
     VIETNAMWORKS_MAX_PAGES = int(os.getenv("VIETNAMWORKS_MAX_PAGES", "5"))
     VIETNAMWORKS_MAX_ITEMS = int(os.getenv("VIETNAMWORKS_MAX_ITEMS", "100"))
+    VIETNAMWORKS_RETRY_ATTEMPTS = int(os.getenv("VIETNAMWORKS_RETRY_ATTEMPTS", "2"))
+    VIETNAMWORKS_RETRY_BACKOFF_BASE_S = float(
+        os.getenv("VIETNAMWORKS_RETRY_BACKOFF_BASE_S", "0.5")
+    )
+    VIETNAMWORKS_USER_AGENT = os.getenv(
+        "VIETNAMWORKS_USER_AGENT",
+        (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/126.0.0.0 Safari/537.36"
+        ),
+    )
     # TopCV is Cloudflare-protected and uses the web crawler stack. The platform
     # per-item rate is a pass-through; actual anti-bot cost is metered via
     # WEB_CRAWL + WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE (see AD-23).
+    TOPCV_ENABLED = os.getenv("TOPCV_ENABLED", "TRUE").upper() == "TRUE"
     TOPCV_SCRAPE_MICROS_PER_ITEM = int(
         os.getenv("TOPCV_SCRAPE_MICROS_PER_ITEM", "5500")
     )
     TOPCV_PAGE_DELAY_S = float(os.getenv("TOPCV_PAGE_DELAY_S", "1.0"))
     TOPCV_TIMEOUT_S = float(os.getenv("TOPCV_TIMEOUT_S", "60.0"))
     TOPCV_MAX_PAGES = int(os.getenv("TOPCV_MAX_PAGES", "3"))
+    TOPCV_RETRY_ATTEMPTS = int(os.getenv("TOPCV_RETRY_ATTEMPTS", "2"))
+    TOPCV_RETRY_BACKOFF_BASE_S = float(os.getenv("TOPCV_RETRY_BACKOFF_BASE_S", "2.0"))
+    TOPCV_CIRCUIT_BREAKER_THRESHOLD = int(
+        os.getenv("TOPCV_CIRCUIT_BREAKER_THRESHOLD", "3")
+    )
+    TOPCV_CIRCUIT_BREAKER_TIMEOUT_S = float(
+        os.getenv("TOPCV_CIRCUIT_BREAKER_TIMEOUT_S", "60.0")
+    )
     # ITviec is server-rendered HTML; cheaper than TopCV, no anti-bot expected.
     ITVIEC_SCRAPE_MICROS_PER_ITEM = int(
         os.getenv("ITVIEC_SCRAPE_MICROS_PER_ITEM", "3000")

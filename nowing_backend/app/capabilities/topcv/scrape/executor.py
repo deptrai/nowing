@@ -17,7 +17,6 @@ _DOMAIN = "topcv.vn"
 _BOT_DEGRADATION_REASONS = {
     "bot_detected",
     "rate_limited",
-    "anti_bot_block",
     "access_blocked",
 }
 

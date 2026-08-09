@@ -19,6 +19,7 @@ class ScrapeInput(BaseModel):
     employment_type: Literal["full_time", "contract", "part_time", "intern"] | None = (
         None
     )
+    page: int = Field(default=1, ge=1, le=1000)
     max_pages: int = Field(default=1, ge=0, le=20)
     max_items: int = Field(default=50, ge=0, le=100)
 
