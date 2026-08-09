@@ -325,6 +325,58 @@ TBD
 
 ### File List
 
+## Challenge Log (grill-me)
+
+### Q1 — Already implemented?
+
+Partial / reusable pieces exist; no full end-to-end implementation.
+
+- `app/db.py` already has the `AgentConfig` registry table with `client_id`, `slug`, `system_instructions`, `enabled_tools`, `disabled_tools`, `is_active` (Story 18.1 / migration `78f7a9b1e85f`).
+- `app/auth/agent_chat.py:_resolve_agent_config(session, client_id, agent_id)` already loads registry `AgentConfig` fail-closed (404 if missing/inactive). **Reuse this helper instead of writing a second loader.**
+- `app/agents/chat/multi_agent_chat/main_agent/runtime/factory.py:create_multi_agent_chat_deep_agent` already accepts `enabled_tools`, `disabled_tools`, and `agent_config` with `system_instructions`, `use_default_system_instructions`, `citations_enabled`, `model_name`.
+- `app/agents/chat/multi_agent_chat/main_agent/system_prompt/builder/compose.py:build_main_agent_system_prompt` already supports `custom_system_instructions`.
+- `app/tasks/chat/streaming/flows/new_chat/orchestrator.py:stream_new_chat` already accepts `client_id` and `agent_id` and calls `set_request_tenant_context`.
+- `NewChatThread` already has `client_id` (Story 18.1); `agent_id` is missing.
+- Public `agent_chat_routes.py` already passes `client_id` and `agent_id` to `NewChatThread` and `stream_new_chat`; `platform_metadata` is not passed.
+
+**Verdict:** Not a duplicate, but **must reuse** `_resolve_agent_config`, runtime `AgentConfig`, and `build_main_agent_system_prompt` instead of inventing new prompt-assembly code.
+
+### Q2 — Simpler alternative?
+
+- Instead of adding a new `agent_config_override` parameter to `stream_new_chat`, the orchestrator can load the registry `AgentConfig` directly and then mutate/copy the runtime `AgentConfig` returned by `load_llm_bundle` (it is a dataclass with the needed fields: `system_instructions`, `use_default_system_instructions`, `citations_enabled`, `model_name`). This avoids a parallel `agent_config` object model.
+- Extend `build_main_agent_for_thread` (or pass through the orchestrator) to forward `enabled_tools`/`disabled_tools` from the registry to `create_multi_agent_chat_deep_agent`; the factory already accepts them.
+- `platform_metadata` can be rendered as a plain XML/JSON context block inside `build_new_chat_input_state` rather than a dedicated `prompt.py` file (no such file exists in the new-chat flow).
+
+**Verdict:** No HALT; prefer reusing existing runtime `AgentConfig` and existing `build_main_agent_for_thread` parameter surface.
+
+### Q3 — Edge cases the spec misses (Pattern 3)
+
+- [ ] Boundary: `platform_metadata` max size (keys, nested depth, total JSON size) — add schema bound or 422.
+- [ ] Boundary: `agent_id`/`client_id` length/pattern (slug) — reuse `^[a-z0-9][a-z0-9-._]*$` from `AgentChatThreadCreate`.
+- [ ] Null/empty: `agent_id` set but `client_id` omitted in `NewChatRequest` for internal web — reject or default to the agent's `client_id`.
+- [ ] Null/empty: `client_id`/`agent_id` set in a web/desktop `NewChatRequest` (untrusted for internal) — ignore or reject; internal users cannot claim a vertical client.
+- [ ] Consistency: `NewChatRequest.client_id`/`agent_id` differs from the `NewChatThread` the user is messaging — reject (cannot switch tenant/agent mid-thread) or intersect.
+- [ ] Consistency: `RegenerateRequest` without the three new fields must inherit from the thread row.
+- [ ] Concurrent: two simultaneous `POST /threads` with same `client_id`/`agent_id` — idempotent via unique constraints, not a race.
+- [ ] Default agent: `client_id` present (public PAT scope) but `agent_id` absent — AC says default Nowing agent; consider whether a client-scoped default agent is needed later.
+
+### Q4 — Failure modes unspecified (Pattern 2, 4)
+
+- [ ] `AgentConfig` registry query throws DB error → 503 or 500 with request_id; must not leak SQL.
+- [ ] `AgentConfig` found but `is_active=False` → 404 (fail-closed per AD-30).
+- [ ] `agent_id` not a valid slug → 422.
+- [ ] `load_llm_bundle` returns an error after AgentConfig is loaded → surface existing SSE error frame.
+- [ ] `platform_metadata` contains `{`/`}` and `system_instructions` uses `.format()` → risk of format string crash or secret interpolation. **Mitigation:** escape or avoid `.format()` for `custom_system_instructions` until Story 18.4 hardens it.
+- [ ] `client_id` in `NewChatRequest` does not match `NewChatThread.client_id` → 403/400; do not silently continue.
+- [ ] RLS GUC `app.current_client_id` not reset before first DB query in `stream_new_chat` → cross-tenant memory recall. **Mitigation:** call `set_request_tenant_context` immediately after opening the session (already done, but verify for resume/regenerate).
+- [ ] `MemoryExtractionService` does not accept `client_id` yet → extracted memories will not be tagged in 18.2; must be addressed by 18.6.
+
+### Triage
+
+- No critical duplicate found; continue with test-first ATDD.
+- Two **non-critical** spec gaps to add to test skeleton: web-vs-public authority for `client_id`/`agent_id`, and `platform_metadata` bounds.
+- One **future-critical** security item: secret interpolation in `system_instructions` is tracked in Story 18.4; 18.2 must not make it worse.
+
 ## Story Completion Status
 
 - [x] Epic and story context analyzed
