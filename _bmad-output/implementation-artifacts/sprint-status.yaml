@@ -195,7 +195,7 @@ development_status:
   epic-12: in-progress
   12-0: done
   12-1: done
-  12-2: review  # TopCV Scraper — quick-dev implementation complete, ready for code review
+  12-2: done  # TopCV Scraper — bmad-code-review passed, patches applied
   12-3: ready-for-dev
   12-4: ready-for-dev
   12-5: ready-for-dev

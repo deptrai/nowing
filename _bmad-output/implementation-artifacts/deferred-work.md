@@ -326,3 +326,21 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: Legal/ToS block decision is a static config flag, not a runtime legal-service hook.
   evidence: `TOPCV_ENABLED` is read from env and checked at call time; there is no runtime integration with a legal/TOS service because Story 12.0 produced a manual decision and no service exists to consume it.
+
+## Deferred from: code review of 12-2-topcv-scraper — bmad-code-review (2026-08-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: Partial degraded billing may not charge when `degraded=True`.
+  evidence: `_scrape` can return `degraded=True` with `items` and a non-zero `cost_micros`, but the billing path may skip debit on degraded output. The cost-vs-degraded contract needs cross-story billing alignment.
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: User-Agent rotation is not wired to detail-page fetches.
+  evidence: `_fetch_detail_page` calls `WebCrawlerConnector.crawl_url()`, which does not accept a `useragent` kwarg. Refactor of the connector or extra-headers support is needed to pass a rotated UA to detail requests.
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: Anti-bot screenshot escalation is gated on `ctx.run_id`, which is `None` in sync REST/agent paths.
+  evidence: `app/capabilities/topcv/scrape/executor.py` only triggers `capture_platform_anti_bot_screenshot_task` when `ctx.run_id` is set; sync capability callers create `CapabilityContext` without a `run_id`. This is a pre-existing executor pattern also seen in `itviec`.
+
+- source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
+  summary: Legal/ToS block decision is a static config flag, not a runtime legal-service hook.
+  evidence: `TOPCV_ENABLED` is read from env and checked at call time; there is no runtime integration with a legal/TOS service because Story 12.0 produced a manual decision and no service exists to consume it.

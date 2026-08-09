@@ -974,6 +974,14 @@ class Config:
             "Chrome/126.0.0.0 Safari/537.36"
         ),
     )
+    TOPCV_USER_AGENT = os.getenv(
+        "TOPCV_USER_AGENT",
+        (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/126.0.0.0 Safari/537.36"
+        ),
+    )
     # TopCV is Cloudflare-protected and uses the web crawler stack. The platform
     # per-item rate is a pass-through; actual anti-bot cost is metered via
     # WEB_CRAWL + WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE (see AD-23).

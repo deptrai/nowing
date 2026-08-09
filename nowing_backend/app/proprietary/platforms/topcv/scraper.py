@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://www.topcv.vn"
 
-# Circuit-breaker state (module-level; thread-safe because asyncio is single-threaded).
+# Circuit-breaker state (module-level; guarded by asyncio lock).
 _consecutive_failures = 0
 _circuit_open_until = 0.0
+_circuit_lock = asyncio.Lock()
 
 _SALARY_PERIOD_RE = re.compile(r"\b(tháng|month|năm|year|giờ|hour|ngày|day)\b", re.IGNORECASE)
 _SALARY_NUMBER_RE = re.compile(r"[\d\.,]+\s*(?:tr(?:iệu)?|k|m|b|t)?", re.IGNORECASE)
@@ -75,6 +76,10 @@ def _clean_url(url: str) -> str:
     if not url:
         return ""
     parsed = urlparse(url)
+    if not parsed.netloc:
+        # ponytail: relative or protocol-less URLs should resolve against the
+        # platform root; ``urljoin`` keeps queries/fragments correctly.
+        return urljoin(_BASE_URL, url)
     scheme = parsed.scheme or "https"
     query = f"?{parsed.query}" if parsed.query else ""
     return f"{scheme}://{parsed.netloc}{parsed.path}{query}"
@@ -336,8 +341,16 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
     cards = root.xpath('//div[contains(@class,"job-item-search-result")]')
     results: list[dict[str, Any]] = []
 
+    warned_empty_job_id = False
+    warned_empty_source_url = False
+
     for card in cards:
         job_id = card.get("data-job-id", "")
+        if not job_id:
+            if not warned_empty_job_id:
+                logger.warning("topcv search card missing job id; skipping")
+                warned_empty_job_id = True
+            continue
 
         title = ""
         title_link = card.xpath('.//h3[contains(@class,"title")]//a/@href')
@@ -350,8 +363,17 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
                 title = _safe_text(title_el[0]) or ""
 
         source_url = ""
-        if title_link:
-            source_url = _clean_url(_abs_url(title_link[0]))
+        if not title_link:
+            if not warned_empty_source_url:
+                logger.warning("topcv search card missing detail url; skipping")
+                warned_empty_source_url = True
+            continue
+        source_url = _clean_url(_abs_url(title_link[0]))
+        if not source_url:
+            if not warned_empty_source_url:
+                logger.warning("topcv search card has empty detail url; skipping")
+                warned_empty_source_url = True
+            continue
 
         company = ""
         company_el = card.xpath('.//a[contains(@class,"company")]//span[contains(@class,"company-name")]')
@@ -465,18 +487,19 @@ def _looks_like_rate_limit(exc: BaseException) -> bool:
     return "rate" in msg or "429" in msg or "circuit open" in msg
 
 
-def _record_failure() -> None:
+async def _record_failure() -> None:
     global _consecutive_failures, _circuit_open_until
-    _consecutive_failures += 1
-    if _consecutive_failures >= config.TOPCV_CIRCUIT_BREAKER_THRESHOLD:
-        _circuit_open_until = time.monotonic() + config.TOPCV_CIRCUIT_BREAKER_TIMEOUT_S
+    async with _circuit_lock:
+        _consecutive_failures += 1
+        if _consecutive_failures >= config.TOPCV_CIRCUIT_BREAKER_THRESHOLD:
+            _circuit_open_until = time.monotonic() + config.TOPCV_CIRCUIT_BREAKER_TIMEOUT_S
 
 
 def _user_agent_for_attempt(attempt: int) -> str | None:
     """Return a rotated User-Agent for retry attempts."""
     uas: list[str] = []
-    if config.VIETNAMWORKS_USER_AGENT:
-        uas.append(config.VIETNAMWORKS_USER_AGENT)
+    if config.TOPCV_USER_AGENT:
+        uas.append(config.TOPCV_USER_AGENT)
     uas.append(
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
@@ -520,12 +543,14 @@ def _validate_search_page(page: Any) -> None:
 
 
 async def _fetch_search_page(keyword: str, page: int) -> str:
+    global _consecutive_failures, _circuit_open_until
     # Local imports avoid a topcv <-> web_crawler circular import on startup.
     from app.proprietary.web_crawler.stealth import build_stealthy_kwargs, get_stealth_config  # noqa: I001
     from app.proprietary.web_crawler.connector import scroll_to_bottom
 
-    if _circuit_open_until > time.monotonic():
-        raise ValueError("circuit open")
+    async with _circuit_lock:
+        if _circuit_open_until > time.monotonic():
+            raise ValueError("circuit open")
 
     url = _topcv_search_url(keyword, page)
     base_kwargs: dict[str, Any] = {
@@ -558,13 +583,13 @@ async def _fetch_search_page(keyword: str, page: int) -> str:
                 timeout=config.TOPCV_TIMEOUT_S,
             )
             _validate_search_page(page_obj)
-            global _consecutive_failures
-            _consecutive_failures = 0
+            async with _circuit_lock:
+                _consecutive_failures = 0
             return page_obj.html_content
         except Exception as exc:
             last_exc = exc
             if attempt == attempts:
-                _record_failure()
+                await _record_failure()
                 if _looks_like_rate_limit(exc):
                     raise ValueError("rate_limited") from exc
                 raise
@@ -574,24 +599,27 @@ async def _fetch_search_page(keyword: str, page: int) -> str:
     raise last_exc or ValueError("search page failed")
 
 
-async def _fetch_detail_page(url: str) -> dict[str, Any]:
+async def _fetch_detail_page(url: str) -> dict[str, Any] | None:
+    global _consecutive_failures, _circuit_open_until
     from app.proprietary.web_crawler.connector import WebCrawlerConnector
 
-    if _circuit_open_until > time.monotonic():
-        raise ValueError("rate_limited")
+    async with _circuit_lock:
+        if _circuit_open_until > time.monotonic():
+            raise ValueError("rate_limited")
 
     connector = WebCrawlerConnector()
     attempts = max(0, config.TOPCV_RETRY_ATTEMPTS)
 
     for attempt in range(attempts + 1):
+        outcome = None
         try:
             outcome = await asyncio.wait_for(
                 connector.crawl_url(url),
                 timeout=config.TOPCV_TIMEOUT_S,
             )
             if outcome.status == "success" and outcome.result:
-                global _consecutive_failures
-                _consecutive_failures = 0
+                async with _circuit_lock:
+                    _consecutive_failures = 0
                 content = outcome.result.get("content") or ""
                 metadata = outcome.result.get("metadata") or {}
                 return _parse_detail_markdown(content, metadata)
@@ -602,21 +630,27 @@ async def _fetch_detail_page(url: str) -> dict[str, Any]:
             if outcome.block_type not in (BlockType.OK, BlockType.UNKNOWN):
                 raise ValueError("anti-bot challenge")
             if attempt == attempts:
-                # ponytail: detail fetch returned empty/failed after all retries;
-                # return an empty dict so the scrape loop can continue with the
-                # search-card data rather than aborting the whole run.
-                _record_failure()
+                # Generic detail fetch failure (empty/failed after all retries).
+                await _record_failure()
                 return {}
             raise ValueError("detail fetch failed")
         except Exception as exc:
             if attempt == attempts:
-                _record_failure()
+                await _record_failure()
                 if _looks_like_rate_limit(exc):
                     raise ValueError("rate_limited") from exc
-                # Non-rate-limit detail failures are swallowed after retries.
+                if (
+                    "anti-bot challenge" in str(exc).lower()
+                    or (outcome is not None and outcome.block_type not in (BlockType.OK, BlockType.UNKNOWN))
+                ):
+                    # Signal an anti-bot block so the scrape loop can count it
+                    # before deciding whether to degrade.
+                    return None
+                # Non-rate-limit, non-anti-bot detail failures are swallowed after retries.
                 return {}
             await asyncio.sleep(_backoff_seconds(attempt))
 
+    # ponytail: unreachable in practice; the loop always returns or raises.
     return {}
 
 
@@ -650,6 +684,7 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
 
     try:
         end_page = start_page + max_pages - 1
+        detail_anti_bot_count = 0
         for page in range(start_page, end_page + 1):
             remaining = max(0, max_items - len(items))
             if remaining == 0:
@@ -665,6 +700,12 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
 
             for card in cards[:remaining]:
                 detail = await _fetch_detail_page(card["source_url"])
+                if detail is None:
+                    detail_anti_bot_count += 1
+                    if detail_anti_bot_count >= config.TOPCV_CIRCUIT_BREAKER_THRESHOLD:
+                        raise ValueError("anti-bot challenge")
+                    continue
+                detail_anti_bot_count = 0
                 if detail:
                     _apply_detail(card, detail)
                     cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM

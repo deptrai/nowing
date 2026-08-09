@@ -135,3 +135,24 @@ _(Đã giải quyết — xem bên dưới)_
 
 - Golden fixtures exercise search parsing and salary extraction.
   [`test_topcv_golden_fixtures.py:51`](../../../nowing_backend/tests/unit/proprietary/platforms/topcv/test_topcv_golden_fixtures.py#L51)
+
+### Review Findings (bmad-code-review — 2026-08-10)
+
+#### Decision Needed
+
+- [x] [Review][Decision] Xử lý detail-page anti-bot khi bị block — `_fetch_detail_page` đang nuốt anti-bot block và trả `{}` để tiếp tục. Cần quyết định: (a) degrade toàn bộ ngay khi 1 detail bị block, (b) có ngưỡng N lần liên tiếp, hay (c) giữ nguyên `swallow` vì lý do resilience. `[scraper.py:577-617]` — giải quyết: dùng ngưỡng 3 detail anti-bot liên tiếp.
+
+#### Patch
+
+- [x] [Review][Patch] Module-level circuit breaker dùng `asyncio.Lock` — `_consecutive_failures`/`_circuit_open_until` bị chia sẻ giữa các coroutine đồng thời, có thể reset/sập circuit sai. `[scraper.py:24-25,468-472,527-528,580-581]`
+- [x] [Review][Patch] Dùng config `TOPCV_USER_AGENT` thay vì `VIETNAMWORKS_USER_AGENT` trong `_user_agent_for_attempt`. `[scraper.py:475-479]`
+- [x] [Review][Patch] Bỏ qua job card khi thiếu `data-job-id` hoặc `source_url` để tránh `id: "topcv:"` và URL rỗng. `[scraper.py:340,352-354]`
+- [x] [Review][Patch] `_clean_url` xử lý đúng URL tương đối / thiếu netloc để không tạo `https:///path`. `[scraper.py:74-80]`
+- [x] [Review][Patch] Thêm unit test cho retry, backoff, circuit breaker, và `_validate_search_page`. `[tests/unit/proprietary/platforms/topcv/test_scraper.py]`
+
+#### Defer
+
+- [x] [Review][Defer] Partial degraded billing — `_scrape` trả `degraded=True` kèm `cost_micros`, nhưng billing service có thể không charge. Cần align ở story billing/orchestrator. `[scraper.py:682-696]`
+- [x] [Review][Defer] UA rotation trên detail fetch — `WebCrawlerConnector.crawl_url()` không nhận `useragent`. `[scraper.py:588-590]`
+- [x] [Review][Defer] Anti-bot screenshot escalation bị gating bởi `ctx.run_id` (None trong sync path). `[executor.py:40-53]`
+- [x] [Review][Defer] Legal block là static env flag, chưa hook runtime legal service. `[scraper.py:624-625,706-707]`
