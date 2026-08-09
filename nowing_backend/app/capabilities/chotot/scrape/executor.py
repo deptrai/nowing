@@ -22,7 +22,7 @@ from app.proprietary.platforms.chotot.fetch import (
 )
 from app.proprietary.platforms.chotot.schemas import ChototBdsScrapeInput
 from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
-    persist_anti_bot_escalation_task,
+    capture_platform_anti_bot_screenshot_task,
 )
 
 from .schemas import ScrapeInput, ScrapeOutput
@@ -50,11 +50,12 @@ def _next_action(degradation_reason: str | None) -> str | None:
 def _maybe_escalate(
     ctx: CapabilityContext | None,
     block_type: str,
+    url: str | None = None,
 ) -> None:
     if ctx is None or ctx.run_id is None:
         return
-    persist_anti_bot_escalation_task.delay(
-        screenshot_png_b64=None,
+    capture_platform_anti_bot_screenshot_task.delay(
+        url=url or f"https://{_DOMAIN}",
         run_id=ctx.run_id,
         workspace_id=ctx.workspace_id,
         capability="chotot.scrape",

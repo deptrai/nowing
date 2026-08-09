@@ -12,31 +12,44 @@ import {
 	type AntiBotEscalation,
 	antiBotEscalationsApiService,
 } from "@/lib/apis/anti-bot-escalations-api.service";
+import { BACKEND_URL } from "@/lib/env-config";
+
+function isAccessError(error: unknown): boolean {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"status" in error &&
+		(error as { status?: number }).status === 403
+	);
+}
 
 export default function AntiBotEscalationsAdminPage() {
-	const [{ data: user, isLoading: userLoading }] = useAtom(currentUserAtom);
+	const [{ isLoading: userLoading }] = useAtom(currentUserAtom);
 	const [escalations, setEscalations] = useState<AntiBotEscalation[]>([]);
 	const [loading, setLoading] = useState(true);
 
-	const isSuperuser = user?.is_superuser ?? false;
+	const [accessDenied, setAccessDenied] = useState(false);
 
 	const load = useCallback(async () => {
 		setLoading(true);
+		setAccessDenied(false);
 		try {
 			const data = await antiBotEscalationsApiService.list();
 			setEscalations(data);
-		} catch {
-			toast.error("Failed to load anti-bot escalations");
+		} catch (error) {
+			if (isAccessError(error)) {
+				setAccessDenied(true);
+			} else {
+				toast.error("Failed to load anti-bot escalations");
+			}
 		} finally {
 			setLoading(false);
 		}
 	}, []);
 
 	useEffect(() => {
-		if (isSuperuser) {
-			void load();
-		}
-	}, [isSuperuser, load]);
+		void load();
+	}, [load]);
 
 	async function handleResolve(id: number) {
 		try {
@@ -66,11 +79,13 @@ export default function AntiBotEscalationsAdminPage() {
 		);
 	}
 
-	if (!isSuperuser) {
+	if (accessDenied) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6">
 				<h1 className="text-2xl font-semibold">Access denied</h1>
-				<p className="text-muted-foreground">You must be a superuser to view this page.</p>
+				<p className="text-muted-foreground">
+					You must be a workspace Owner, Editor, or superuser to view this page.
+				</p>
 			</div>
 		);
 	}
@@ -132,7 +147,7 @@ export default function AntiBotEscalationsAdminPage() {
 								{escalation.screenshot_url && (
 									<Image
 										unoptimized
-										src={escalation.screenshot_url}
+										src={`${BACKEND_URL}${escalation.screenshot_url}`}
 										alt={`Screenshot for ${escalation.domain}`}
 										width={800}
 										height={400}

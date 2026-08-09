@@ -9,12 +9,13 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.app import app
@@ -84,18 +85,19 @@ async def workspace_editor_client(
         is_superuser=False,
         is_verified=True,
     )
-    role = WorkspaceRole(
-        workspace_id=db_workspace.id,
-        name="Editor",
-        permissions=["documents:read"],
-        is_system_role=True,
+    result = await db_session.execute(
+        select(WorkspaceRole).where(
+            WorkspaceRole.workspace_id == db_workspace.id,
+            WorkspaceRole.name == "Editor",
+        )
     )
+    role = result.scalar_one()
     membership = WorkspaceMembership(
         user_id=user.id,
         workspace_id=db_workspace.id,
         role=role,
     )
-    db_session.add_all([user, role, membership])
+    db_session.add_all([user, membership])
     await db_session.flush()
 
     async def override_session() -> AsyncGenerator[AsyncSession, None]:
@@ -133,7 +135,7 @@ async def _seed_escalation(
         capability="batdongsan.scrape",
         origin="agent",
         status="success",
-        input={"city": "hanoi"},
+        input={"city": "HN"},
     )
     db_session.add(run)
     await db_session.flush()
@@ -148,6 +150,7 @@ async def _seed_escalation(
         status="open",
         detection_count=1,
         last_seen_at=datetime.now(UTC),
+        escalation_metadata={"storage_key": "anti_bot_screenshots/1/test.png"},
     )
     db_session.add(escalation)
     await db_session.flush()
@@ -184,13 +187,16 @@ async def test_workspace_editor_can_filter_own_workspace(
 
 
 @pytest.mark.asyncio
-async def test_workspace_editor_cannot_list_all_workspaces(
+async def test_workspace_editor_can_list_all_within_admin_workspaces(
     workspace_editor_client, db_session, db_user, db_workspace
 ):
     await _seed_escalation(db_session, db_workspace, db_user)
 
     resp = await workspace_editor_client.get("/api/v1/admin/anti-bot-escalations")
-    assert resp.status_code == 403
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert len(body["items"]) == 1
+    assert body["total"] == 1
 
 
 @pytest.mark.asyncio
@@ -222,3 +228,23 @@ async def test_retry_escalation(admin_client, db_session, db_user, db_workspace)
     body = resp.json()
     assert body["status"] == "retry"
     assert body["retry_run_id"] == "retry-run-id"
+
+
+@pytest.mark.asyncio
+async def test_get_screenshot_stream(admin_client, db_session, db_user, db_workspace):
+    """The screenshot endpoint streams PNG bytes for admins."""
+    escalation = await _seed_escalation(db_session, db_workspace, db_user)
+
+    async def _chunks():
+        yield b"png-bytes"
+
+    with patch(
+        "app.routes.admin_anti_bot_escalation_routes.get_storage_backend"
+    ) as mock_backend:
+        mock_backend.return_value.open_stream = MagicMock(return_value=_chunks())
+        resp = await admin_client.get(
+            f"/api/v1/admin/anti-bot-escalations/{escalation.id}/screenshot"
+        )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"] == "image/png"

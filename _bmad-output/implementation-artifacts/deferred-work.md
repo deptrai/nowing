@@ -1,5 +1,31 @@
 # Deferred Work
 
+## Deferred from: code review of 10-5-anti-bot-captcha-screenshot-escalation (2026-08-09)
+
+- **Finding:** Billing tracking cho screenshot storage — cần quyết định PM/Architect về billing unit; chưa có trong token_tracking_service.
+  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Reason / when to revisit:** Defer sang epic cost tracking hoặc khi product yêu cầu charge storage.
+
+- **Finding:** Hardcoded TTL 30 giây và SHA256 cache key cho anti-bot cache.
+  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Reason / when to revisit:** Chuyển vào config hoặc dùng hash đơn giản hơn nếu cache hit/miss metrics cho thấy overhead đáng kể.
+
+- **Finding:** Inconsistent `next_action` pattern giữa platform executors (batdongsan/chotot/muaban inline string, itviec/topcv dùng helper).
+  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Reason / when to revisit:** Style cleanup khi refactor executor base.
+
+- **Finding:** Missing rate limiting trên admin anti-bot escalation endpoints.
+  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Reason / when to revisit:** Apply platform-wide rate limiting policy, không riêng story này.
+
+- **Finding:** Workspace/Run cascade delete không xóa screenshot trong storage.
+  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Reason / when to revisit:** Cần trigger hoặc cleanup job chung cho storage lifecycle.
+
+- **Finding:** `escalation_metadata` alias `metadata` gây confusion giữa model, schema và DB column.
+  - **Action:** Marked `[x] [Review][Defer]` in `10-5-anti-bot-captcha-screenshot-escalation.md`.
+  - **Reason / when to revisit:** Naming cleanup khi refactor schema/model.
+
 ## Deferred from: code review of 3-14-memory-injection-bounded-retrieval (2026-08-05)
 
 - **Finding:** Over-materialization of candidates in `search.py` — `top_k*3` bounded materialization is acceptable for current corpus sizes.

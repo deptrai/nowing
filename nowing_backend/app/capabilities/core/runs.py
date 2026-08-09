@@ -139,6 +139,7 @@ async def create_pending_run(
     input: dict | None = None,
     user_id: Any | None = None,
     thread_id: str | None = None,
+    parent_run_id: Any | None = None,
 ) -> str | None:
     """Insert a ``running`` run row up front and return its id (best-effort).
 
@@ -149,6 +150,7 @@ async def create_pending_run(
     try:
         run = Run(
             workspace_id=workspace_id,
+            parent_run_id=parent_run_id,
             user_id=user_id,
             thread_id=thread_id,
             capability=capability,

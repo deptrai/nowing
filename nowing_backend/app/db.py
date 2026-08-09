@@ -27,7 +27,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ENUM, JSONB, UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, backref, declared_attr, relationship
 
@@ -3326,6 +3326,12 @@ class Run(Base, TimestampMixin):
     __table_args__ = (Index("ix_runs_workspace_created", "workspace_id", "created_at"),)
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    parent_run_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("runs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     workspace_id = Column(
         Integer,
         ForeignKey("workspaces.id", ondelete="CASCADE"),
@@ -3383,11 +3389,12 @@ class AntiBotEscalation(BaseModel, TimestampMixin):
 
     __table_args__ = (
         Index(
-            "ix_anti_bot_escalations_workspace_domain_cap_status",
+            "ix_anti_bot_escalations_grouping_open_unique",
             "workspace_id",
             "domain",
             "capability",
-            "status",
+            unique=True,
+            postgresql_where=text("status = 'open'"),
         ),
         Index(
             "ix_anti_bot_escalations_status_created_at",
@@ -3412,7 +3419,12 @@ class AntiBotEscalation(BaseModel, TimestampMixin):
     domain = Column(String(500), nullable=False)
     block_type = Column(String(50), nullable=False)
     screenshot_url = Column(String(2048), nullable=True)
-    status = Column(String(16), nullable=False, default="open", server_default="open")
+    status = Column(
+        ENUM("open", "resolved", "retry", name="anti_bot_escalation_status"),
+        nullable=False,
+        default="open",
+        server_default="open",
+    )
     detection_count = Column(Integer, nullable=False, default=1, server_default="1")
     last_seen_at = Column(
         TIMESTAMP(timezone=True),

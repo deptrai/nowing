@@ -9,6 +9,7 @@ the captcha telemetry the billing seam reads).
 from __future__ import annotations
 
 import base64
+import hashlib
 
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
@@ -76,13 +77,19 @@ def build_crawl_executor(engine: WebCrawlerConnector | None = None) -> Executor:
             for page in pages:
                 if page.screenshot_png is None:
                     continue
+                try:
+                    domain = host_of(page.url)
+                except Exception:
+                    domain = "UNKNOWN"
+                screenshot_id = hashlib.sha256(page.url.encode()).hexdigest()[:16]
                 persist_anti_bot_escalation_task.delay(
                     screenshot_png_b64=base64.b64encode(page.screenshot_png).decode(),
                     run_id=ctx.run_id,
                     workspace_id=ctx.workspace_id,
                     capability="web.crawl",
-                    domain=host_of(page.url),
+                    domain=domain,
                     block_type=page.block_type or "UNKNOWN",
+                    screenshot_id=screenshot_id,
                 )
 
         items = [_to_item(page, payload.maxLength) for page in pages]

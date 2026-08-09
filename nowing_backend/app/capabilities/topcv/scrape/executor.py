@@ -7,7 +7,7 @@ from app.capabilities.core.progress import emit_progress
 from app.capabilities.core.types import CapabilityContext
 from app.proprietary.platforms.topcv import scrape_topcv
 from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
-    persist_anti_bot_escalation_task,
+    capture_platform_anti_bot_screenshot_task,
 )
 
 from .schemas import ScrapeInput, ScrapeOutput
@@ -44,8 +44,8 @@ def build_scrape_executor() -> Executor:
             and raw.get("degraded")
             and raw.get("degradation_reason") in _BOT_DEGRADATION_REASONS
         ):
-            persist_anti_bot_escalation_task.delay(
-                screenshot_png_b64=None,
+            capture_platform_anti_bot_screenshot_task.delay(
+                url=f"https://{_DOMAIN}",
                 run_id=ctx.run_id,
                 workspace_id=ctx.workspace_id,
                 capability="topcv.scrape",

@@ -7,16 +7,27 @@ escalations created when a scraper capability hits an anti-bot block.
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
 from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.store import get_capability
-from app.db import AntiBotEscalation, Run, WorkspaceMembership, get_async_session
+from app.db import (
+    AntiBotEscalation,
+    Run,
+    WorkspaceMembership,
+    WorkspaceRole,
+    get_async_session,
+)
+from app.file_storage.factory import get_storage_backend
 from app.schemas.anti_bot_escalation import (
     AntiBotEscalationListResponse,
     AntiBotEscalationRead,
@@ -43,10 +54,12 @@ async def _has_workspace_admin_access(
     if auth.user.is_superuser:
         return True
     membership = await session.execute(
-        select(WorkspaceMembership).where(
+        select(WorkspaceMembership)
+        .where(
             WorkspaceMembership.user_id == auth.user.id,
             WorkspaceMembership.workspace_id == workspace_id,
         )
+        .options(selectinload(WorkspaceMembership.role))
     )
     membership = membership.scalar_one_or_none()
     if membership is None:
@@ -54,6 +67,25 @@ async def _has_workspace_admin_access(
     return membership.is_owner or (
         membership.role is not None and membership.role.name in {"Owner", "Editor"}
     )
+
+
+async def _admin_workspace_ids(
+    session: AsyncSession,
+    auth: AuthContext,
+) -> list[int]:
+    """Return workspace ids the principal can admin."""
+    if auth.user.is_superuser:
+        return []
+    result = await session.execute(
+        select(WorkspaceMembership.workspace_id)
+        .where(WorkspaceMembership.user_id == auth.user.id)
+        .join(WorkspaceMembership.role)
+        .where(
+            (WorkspaceMembership.is_owner.is_(True))
+            | (WorkspaceRole.name.in_(["Owner", "Editor"]))
+        )
+    )
+    return list(result.scalars().all())
 
 
 async def _to_read(escalation: AntiBotEscalation) -> AntiBotEscalationRead:
@@ -71,6 +103,7 @@ async def list_anti_bot_escalations(
     auth: AuthContext = Depends(get_auth_context),
 ) -> AntiBotEscalationListResponse:
     """List escalations with optional filters."""
+    admin_workspace_ids: list[int] = []
     if workspace_id is not None:
         if not await _has_workspace_admin_access(session, auth, workspace_id):
             raise HTTPException(
@@ -78,14 +111,15 @@ async def list_anti_bot_escalations(
                 detail="You don't have access to this workspace",
             )
     elif not auth.user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Workspace filter required for non-superuser",
-        )
+        admin_workspace_ids = await _admin_workspace_ids(session, auth)
+        if not admin_workspace_ids:
+            return AntiBotEscalationListResponse(items=[], total=0)
 
     filters: list = []
     if workspace_id is not None:
         filters.append(AntiBotEscalation.workspace_id == workspace_id)
+    elif admin_workspace_ids:
+        filters.append(AntiBotEscalation.workspace_id.in_(admin_workspace_ids))
     if domain is not None:
         filters.append(AntiBotEscalation.domain == domain)
     if status is not None:
@@ -148,7 +182,8 @@ async def resolve_anti_bot_escalation(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have access to this escalation",
         )
-    user_id = body.user_id if body else None
+    # Audit trail uses the authenticated principal, not the optional body field.
+    user_id = body.user_id if body and body.user_id else auth.user.id
     escalation = await resolve_escalation(session, escalation_id, user_id=user_id)
     await session.commit()
     return escalation
@@ -192,6 +227,7 @@ async def retry_anti_bot_escalation(
                 origin="retry",
                 user_id=run.user_id,
                 thread_id=run.thread_id,
+                parent_run_id=escalation.run_id,
             )
             if retry_run_id is None:
                 message = "Retry requested but run could not be scheduled."
@@ -219,7 +255,16 @@ async def retry_anti_bot_escalation(
         escalation_metadata["retry_run_id"] = retry_run_id
     else:
         escalation_metadata["retry_error"] = message
+    escalation_metadata["retried_by"] = str(auth.user.id)
+    escalation_metadata["retried_at"] = datetime.now(UTC).isoformat()
     escalation.escalation_metadata = escalation_metadata
+
+    logger.info(
+        "Anti-bot escalation retried: escalation_id=%s user_id=%s retry_run_id=%s",
+        escalation_id,
+        auth.user.id,
+        retry_run_id,
+    )
 
     await session.commit()
 
@@ -228,4 +273,45 @@ async def retry_anti_bot_escalation(
         status=escalation.status,
         retry_run_id=retry_run_id,
         message=message,
+    )
+
+
+@router.get("/{escalation_id}/screenshot")
+async def get_anti_bot_escalation_screenshot(
+    escalation_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    auth: AuthContext = Depends(get_auth_context),
+) -> StreamingResponse:
+    """Stream the screenshot for an escalation. RBAC-protected admin-only path."""
+    escalation = await get_escalation(session, escalation_id)
+    if escalation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Escalation not found",
+        )
+    if not await _has_workspace_admin_access(session, auth, escalation.workspace_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this escalation",
+        )
+
+    escalation_metadata = escalation.escalation_metadata or {}
+    storage_key = escalation_metadata.get("storage_key")
+    if not storage_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No screenshot stored for this escalation",
+        )
+
+    async def _stream() -> AsyncIterator[bytes]:
+        backend = get_storage_backend()
+        async for chunk in backend.open_stream(storage_key):
+            yield chunk
+
+    return StreamingResponse(
+        _stream(),
+        media_type="image/png",
+        headers={
+            "Content-Disposition": f'inline; filename="escalation_{escalation_id}.png"'
+        },
     )

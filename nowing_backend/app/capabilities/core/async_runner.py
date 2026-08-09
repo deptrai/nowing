@@ -15,6 +15,7 @@ from typing import Any
 
 from fastapi import HTTPException
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.core import execute_with_context
@@ -29,8 +30,9 @@ from app.capabilities.core.runs import (
     serialize_output,
 )
 from app.capabilities.core.types import Capability, CapabilityContext
-from app.db import async_session_maker
+from app.db import Run, async_session_maker
 from app.exceptions import NowingError
+from app.services.anti_bot_escalation import open_escalation_after_retry
 from app.services.memory.run_enqueue import (
     enqueue_run_memory_extraction_after_commit,
 )
@@ -51,6 +53,7 @@ async def start_async_run(
     origin: str,
     user_id: Any | None = None,
     thread_id: str | None = None,
+    parent_run_id: Any | None = None,
 ) -> str | None:
     """Insert a ``running`` row and spawn the background scrape.
 
@@ -66,6 +69,7 @@ async def start_async_run(
         input=input_dump,
         user_id=user_id,
         thread_id=thread_id,
+        parent_run_id=parent_run_id,
     )
     if run_id is None:
         return None
@@ -186,6 +190,19 @@ async def _finalize_async(
             cost_micros=cost_micros,
             progress=progress,
         )
+
+        # Story 10.5: if a retry run completes successfully, re-open the parent
+        # escalation so the admin can inspect the result.
+        if finalized and status == "success":
+            raw = run_id[len("run_") :] if run_id.startswith("run_") else run_id
+            parsed_id = _uuid.UUID(raw)
+            result = await session.execute(
+                select(Run).where(Run.id == parsed_id)
+            )
+            run = result.scalar_one_or_none()
+            if run is not None and run.parent_run_id is not None:
+                await open_escalation_after_retry(session, run.parent_run_id)
+                await session.commit()
 
     # Story 3.13 (T4/D1): the async door's single completion point, so all three
     # `_finalize_async` call sites are covered here rather than individually.

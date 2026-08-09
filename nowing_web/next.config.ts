@@ -23,6 +23,23 @@ const nextConfig: NextConfig = {
 	typescript: {
 		ignoreBuildErrors: true,
 	},
+	async headers() {
+		return [
+			// Story 10.5: allow the anti-bot evidence screenshot to be displayed
+			// on the admin page. The storage backend domain may differ per
+			// deployment, so we allow any HTTPS origin for img-src on this path.
+			{
+				source: "/admin/anti-bot-escalations",
+				headers: [
+					{
+						key: "Content-Security-Policy",
+						value:
+							"default-src 'self'; img-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';",
+					},
+				],
+			},
+		];
+	},
 	images: {
 		remotePatterns: [
 			{

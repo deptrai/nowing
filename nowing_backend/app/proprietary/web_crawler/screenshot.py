@@ -10,9 +10,13 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.observability import metrics
 from app.utils.crawl import BlockType, classify_block
 
 logger = logging.getLogger(__name__)
+
+# ponytail: broker/storage guard for anti-bot screenshot evidence.
+_MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024
 
 
 def maybe_capture_screenshot(
@@ -31,7 +35,18 @@ def maybe_capture_screenshot(
 
     try:
         # Playwright / patchright page.screenshot supports ``type="png"``.
-        return page.screenshot(type="png")
+        data: bytes = page.screenshot(type="png")
     except Exception as exc:
         logger.warning("[webcrawler] screenshot capture failed: %s", exc)
+        metrics.record_anti_bot_screenshot_failure(reason="capture")
         return None
+
+    if len(data) > _MAX_SCREENSHOT_BYTES:
+        logger.warning(
+            "[webcrawler] screenshot too large (%s bytes), dropping evidence",
+            len(data),
+        )
+        metrics.record_anti_bot_screenshot_failure(reason="size")
+        return None
+
+    return data

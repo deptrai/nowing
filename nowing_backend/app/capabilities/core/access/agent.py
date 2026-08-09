@@ -11,6 +11,7 @@ subagent can follow a truncation reference without extra wiring.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -124,7 +125,22 @@ _ANTI_BOT_DEGRADED_REASONS = {
     "access_blocked",
 }
 _ANTI_BOT_BLOCK_TTL_SECONDS = 30
+_ANTI_BOT_BLOCK_MAX_SIZE = 1000
 _anti_bot_blocks: dict[str, tuple[float, Any]] = {}
+_anti_bot_blocks_lock = asyncio.Lock()
+
+
+async def _cleanup_anti_bot_blocks() -> None:
+    """Evict expired entries and enforce a size ceiling on the anti-bot cache."""
+    now = time.monotonic()
+    expired = [k for k, (ts, _) in _anti_bot_blocks.items() if now - ts >= _ANTI_BOT_BLOCK_TTL_SECONDS]
+    for k in expired:
+        _anti_bot_blocks.pop(k, None)
+    if len(_anti_bot_blocks) > _ANTI_BOT_BLOCK_MAX_SIZE:
+        # Evict oldest entries by timestamp.
+        sorted_items = sorted(_anti_bot_blocks.items(), key=lambda item: item[1][0])
+        for k, _ in sorted_items[: len(sorted_items) - _ANTI_BOT_BLOCK_MAX_SIZE]:
+            _anti_bot_blocks.pop(k, None)
 
 
 def _anti_bot_input_key(
@@ -147,18 +163,22 @@ def _is_anti_bot_degraded_result(result: dict[str, Any]) -> bool:
     return "Escalated to human review" in next_action
 
 
-def _get_cached_blocked_result(key: str) -> Any | None:
-    now = time.monotonic()
-    if key in _anti_bot_blocks:
-        ts, result = _anti_bot_blocks[key]
-        if now - ts < _ANTI_BOT_BLOCK_TTL_SECONDS:
-            return result
-        del _anti_bot_blocks[key]
-    return None
+async def _get_cached_blocked_result(key: str) -> Any | None:
+    async with _anti_bot_blocks_lock:
+        await _cleanup_anti_bot_blocks()
+        now = time.monotonic()
+        if key in _anti_bot_blocks:
+            ts, result = _anti_bot_blocks[key]
+            if now - ts < _ANTI_BOT_BLOCK_TTL_SECONDS:
+                return result
+            del _anti_bot_blocks[key]
+        return None
 
 
-def _cache_blocked_result(key: str, result: Any) -> None:
-    _anti_bot_blocks[key] = (time.monotonic(), result)
+async def _cache_blocked_result(key: str, result: Any) -> None:
+    async with _anti_bot_blocks_lock:
+        await _cleanup_anti_bot_blocks()
+        _anti_bot_blocks[key] = (time.monotonic(), result)
 
 
 def _build_cached_anti_bot_command(
@@ -276,7 +296,7 @@ def _capability_tool(
         # in this thread, return the same guidance instead of re-executing.
         anti_bot_key = _anti_bot_input_key(thread_id, name, input_dump)
         if anti_bot_key is not None:
-            cached = _get_cached_blocked_result(anti_bot_key)
+            cached = await _get_cached_blocked_result(anti_bot_key)
             if cached is not None:
                 if runtime is None:
                     return cached
@@ -421,7 +441,7 @@ def _capability_tool(
                 if "next_action" in dump:
                     dump.setdefault("next_step", dump["next_action"])
                 if anti_bot_key is not None and _is_anti_bot_degraded_result(dump):
-                    _cache_blocked_result(anti_bot_key, dump)
+                    await _cache_blocked_result(anti_bot_key, dump)
                 return dump
             return _build_preview(serialized, run_id)
 
@@ -432,7 +452,7 @@ def _capability_tool(
                 dump.setdefault("next_step", dump["next_action"])
             dump["run_id"] = run_external_id
             if anti_bot_key is not None and _is_anti_bot_degraded_result(dump):
-                _cache_blocked_result(anti_bot_key, dump)
+                await _cache_blocked_result(anti_bot_key, dump)
         else:
             dump = None
 

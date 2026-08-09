@@ -157,6 +157,43 @@ so that we can audit blocks and decide whether to rotate credentials, proxy, or 
 - [Source: `nowing_backend/app/capabilities/batdongsan/scrape/executor.py` §build_scrape_executor]
 - [Source: `nowing_backend/app/capabilities/batdongsan/scrape/schemas.py` §ScrapeOutput]
 
+### Review Findings (Code Review 2026-08-09)
+
+#### decision_needed
+
+- [x] [Review][Patch] ~~Có cần capture screenshot cho platform scrapers không?~~ — Quyết định: thêm screenshot cho platform scrapers (batdongsan/chotot/muaban_bds/itviec/topcv). `nowing_backend/app/capabilities/batdongsan/scrape/executor.py:388`
+- [x] [Review][Patch] ~~Làm thế nào để screenshot URL thực sự admin-only?~~ — Quyết định: dùng signed URL. `nowing_backend/app/services/anti_bot_escalation.py:35`
+- [x] [Review][Patch] ~~Trạng thái `retry` nghĩa là gì trong state machine?~~ — Quyết định: khi retry run hoàn thành, tự động chuyển escalation về `open`. `nowing_backend/app/routes/admin_anti_bot_escalation_routes.py:175`
+- [x] [Review][Defer] ~~Có thêm billing unit cho screenshot storage ngay không?~~ — Quyết định: defer sang epic cost tracking / PM-Architect. `nowing_backend/app/services/token_tracking_service.py`
+
+#### patch
+
+- [ ] [Review][Patch] Migration thiếu partial unique index và CHECK status — Cần unique index trên `(workspace_id, domain, capability) WHERE status='open'` và `CHECK (status IN ('open','resolved','retry'))`. Hiện tại chỉ có index thường trên 4 cột. `nowing_backend/alembic/versions/197_anti_bot_escalations.py:90-95`
+- [ ] [Review][Patch] Race condition trong `create_or_update_escalation` — SELECT rồi INSERT, không `FOR UPDATE` hay unique constraint. Concurrent call có thể tạo duplicate. `nowing_backend/app/services/anti_bot_escalation.py:101-113`
+- [ ] [Review][Patch] `_anti_bot_blocks` cache không thread-safe và không dọn dẹp — Dict global không lock, async concurrent có thể corrupt; TTL chỉ dọn khi access, gây leak. Cần `asyncio.Lock` và periodic cleanup/size limit. `nowing_backend/app/capabilities/core/access/agent.py:127`
+- [ ] [Review][Patch] Screenshot qua Celery broker không validate size — Base64 PNG có thể vài MB, vượt broker message limit. Cần kiểm tra kích thước trước khi encode/gửi và khi decode. `nowing_backend/app/tasks/celery_tasks/anti_bot_escalation_tasks.py:74-76`
+- [ ] [Review][Patch] Retention task xóa screenshot nhưng không đổi status resolved — AC #6 yêu cầu record đánh dấu resolved sau 30 ngày. Hiện tại chỉ set `screenshot_url=None`. `nowing_backend/app/tasks/celery_tasks/anti_bot_escalation_tasks.py:132`
+- [ ] [Review][Patch] Frontend admin page chỉ cho superuser — AC #8 yêu cầu Owner/Editor/superuser. Page check `isSuperuser` và từ chối workspace owner/editor. `nowing_web/app/admin/anti-bot-escalations/page.tsx:36`
+- [ ] [Review][Patch] Thiếu `Run.parent_run_id` cho retry billing — Spec yêu cầu retry run reference `parent_run_id` để tránh duplicate billing. Cần thêm column và truyền vào `start_async_run`. `nowing_backend/app/db.py:3306`, `nowing_backend/app/routes/admin_anti_bot_escalation_routes.py:187-195`
+- [ ] [Review][Patch] Thiếu audit logging resolve/retry — Spec yêu cầu log who/when/escalation id. Hiện chỉ lưu `resolved_by` trong metadata. `nowing_backend/app/routes/admin_anti_bot_escalation_routes.py:152, 218-221`
+- [ ] [Review][Patch] CSP `img-src` chưa cấu hình cho storage domain — Admin page hiển thị screenshot URL nhưng `next.config.ts`/middleware không cho phép storage domain trong `img-src`. `nowing_web/next.config.ts:45`
+- [ ] [Review][Patch] Retention task load tất cả rows vào memory — Query không pagination, có thể OOM. Cần batch/limit. `nowing_backend/app/tasks/celery_tasks/anti_bot_escalation_tasks.py:108-114`
+- [ ] [Review][Patch] Update screenshot mới không xóa file cũ — `create_or_update_escalation` ghi đè `screenshot_url` nhưng không `backend.delete(storage_key)` cũ, gây orphan storage. `nowing_backend/app/services/anti_bot_escalation.py:119-120`
+- [ ] [Review][Patch] Key screenshot collision khi một run có nhiều blocked pages — `_screenshot_key` chỉ dùng `workspace_id/run_id`, nếu `web.crawl` gặp nhiều page anti-bot thì ghi đè. Cần thêm URL hash/sequence. `nowing_backend/app/services/anti_bot_escalation.py:31`
+- [ ] [Review][Patch] Thiếu validate input length và domain extraction — `capability` max 100, `domain` max 500, `host_of` có thể empty; base64 decode có thể fail. Cần guard. `nowing_backend/app/services/anti_bot_escalation.py:83`, `nowing_backend/app/capabilities/web/crawl/executor.py:219`, `nowing_backend/app/proprietary/web_crawler/url_policy.py:162`
+- [ ] [Review][Patch] Thiếu tests bắt buộc — Thiếu unit test `classify_block`, `capture_screenshot`, integration test storage-failure, agent degraded response. `tests/unit/utils/crawl/test_classifier.py`, `tests/unit/proprietary/web_crawler/test_screenshot.py`, `tests/integration/capabilities/test_scraper_anti_bot.py`
+- [ ] [Review][Patch] `_maybe_escalate` guard không nhất quán giữa các executor — batdongsan chỉ check `run_id`, itviec/topcv check cả `ctx` và `run_id`. Cần standardize. `nowing_backend/app/capabilities/batdongsan/scrape/executor.py:53-62`
+- [ ] [Review][Patch] Screenshot capture failure không phân biệt với "không cần screenshot" — `maybe_capture_screenshot` trả None trong cả hai trường hợp, không emit `anti_bot_screenshot_failure` khi exception. `nowing_backend/app/proprietary/web_crawler/screenshot.py`
+
+#### defer
+
+- [x] [Review][Defer] Billing tracking cho screenshot storage — Cần quyết định PM/Architect về billing unit; chưa có trong token_tracking_service. `nowing_backend/app/services/token_tracking_service.py` — deferred, cần epic cost tracking
+- [x] [Review][Defer] Hardcoded TTL 30 giây và SHA256 cache key — Có thể chuyển vào config hoặc dùng hash đơn giản hơn, nhưng không gây lỗi chức năng. `nowing_backend/app/capabilities/core/access/agent.py:126` — deferred, optimization
+- [x] [Review][Defer] Inconsistent `next_action` pattern giữa platform executors — batdongsan/chotot/muaban inline string, itviec/topcv dùng helper. Không ảnh hưởng runtime. `nowing_backend/app/capabilities/batdongsan/scrape/executor.py:377` — deferred, style cleanup
+- [x] [Review][Defer] Missing rate limiting trên admin endpoints — Pre-existing pattern, không riêng story này. `nowing_backend/app/routes/admin_anti_bot_escalation_routes.py` — deferred, platform-wide
+- [x] [Review][Defer] Workspace/Run cascade delete không xóa screenshot — Pre-existing; cần trigger/cleanup chung. `nowing_backend/alembic/versions/197_anti_bot_escalations.py:30` — deferred, storage lifecycle
+- [x] [Review][Defer] `escalation_metadata` alias `metadata` gây confusion — Schema dùng alias, model dùng `escalation_metadata`. Hoạt động đúng nhưng khó đọc. `nowing_backend/app/schemas/anti_bot_escalation.py` — deferred, naming cleanup
+
 ## Dev Agent Record
 
 ### Agent Model Used
