@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import inspect
 import logging
 import time
 from collections.abc import AsyncGenerator
@@ -28,6 +29,8 @@ from functools import partial
 from typing import Any, Literal
 
 import anyio
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.chat.multi_agent_chat import create_multi_agent_chat_deep_agent
 from app.agents.chat.multi_agent_chat.main_agent.middleware.busy_mutex import end_turn
@@ -35,9 +38,14 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
     FilesystemMode,
     FilesystemSelection,
 )
+from app.agents.chat.runtime.llm_config import AgentConfig as RuntimeAgentConfig
 from app.auth.context import AuthContext
 from app.canonical.tenant_context import set_request_tenant_context
-from app.db import ChatVisibility, async_session_maker
+from app.db import (
+    AgentConfig as RegistryAgentConfig,
+    ChatVisibility,
+    async_session_maker,
+)
 from app.observability import otel as ot
 from app.services.new_streaming_service import VercelStreamingService
 from app.tasks.chat.content_builder import AssistantContentBuilder
@@ -119,6 +127,53 @@ _perf_log = get_perf_logger()
 _background_tasks: set[asyncio.Task] = set()
 
 
+class _AgentNotFoundError(Exception):
+    """Raised when a requested agent_id cannot be resolved from the registry."""
+
+    def __init__(self, message: str, error_code: str = "AGENT_NOT_FOUND") -> None:
+        self.message = message
+        self.error_code = error_code
+        self.error_kind = "user_error"
+        super().__init__(message)
+
+
+async def _merge_registry_agent_config(
+    session: AsyncSession,
+    *,
+    agent_config: RuntimeAgentConfig,
+    agent_config_override: RegistryAgentConfig | None,
+    client_id: str | None,
+    agent_id: str | None,
+) -> RuntimeAgentConfig:
+    """Load and merge the registry AgentConfig into the runtime config.
+
+    If ``agent_config_override`` is provided it is used directly; otherwise the
+    registry is queried by ``client_id`` and ``agent_id``. Missing or inactive
+    agents raise ``_AgentNotFoundError``.
+    """
+    registry = agent_config_override
+    if registry is None and agent_id and client_id:
+        result = await session.execute(
+            select(RegistryAgentConfig).where(
+                RegistryAgentConfig.client_id == client_id,
+                RegistryAgentConfig.slug == agent_id,
+                RegistryAgentConfig.is_active.is_(True),
+            )
+        )
+        registry = result.scalars().first()
+    if agent_id and not registry:
+        raise _AgentNotFoundError("agent not found or inactive")
+    if registry:
+        if registry.system_instructions is not None:
+            agent_config.system_instructions = registry.system_instructions
+            agent_config.use_default_system_instructions = False
+        if registry.citations_enabled is not None:
+            agent_config.citations_enabled = registry.citations_enabled
+        if registry.model_name:
+            agent_config.model_name = registry.model_name
+    return agent_config
+
+
 async def stream_new_chat(
     user_query: str,
     workspace_id: int,
@@ -142,6 +197,10 @@ async def stream_new_chat(
     auth_context: AuthContext | None = None,
     client_id: str | None = None,
     agent_id: str | None = None,
+    platform_metadata: dict[str, Any] | None = None,
+    llm: Any | None = None,
+    agent_config: RuntimeAgentConfig | None = None,
+    agent_config_override: RegistryAgentConfig | None = None,
     mode: Literal["speed", "balanced", "quality", "auto"] | None = None,
     flow: Literal["new", "regenerate"] = "new",
 ) -> AsyncGenerator[str, None]:
@@ -202,9 +261,18 @@ async def stream_new_chat(
         user_id=user_id,
     )
 
-    session = async_session_maker()
+    _maybe_session = async_session_maker()
+    if inspect.isawaitable(_maybe_session):
+        session = await _maybe_session
+    else:
+        session = _maybe_session
     # Propagate tenant GUCs so any query inside the stream respects client RLS.
-    await set_request_tenant_context(session, workspace_id, client_id, agent_id)
+    await set_request_tenant_context(
+        session,
+        workspace_id=workspace_id,
+        client_id=client_id,
+        agent_id=agent_id,
+    )
 
     # Declared at function scope so SSE-yield join points and the finally
     # clause see them on every exit path.
@@ -239,22 +307,23 @@ async def stream_new_chat(
             return
         llm_config_id = pin_result.llm_config_id  # type: ignore[assignment]
 
-        llm, agent_config, llm_load_error = await load_llm_bundle(
-            session, config_id=llm_config_id, workspace_id=workspace_id
-        )
-        if llm_load_error:
-            yield emit_stream_error(
-                message=llm_load_error,
-                error_kind="server_error",
-                error_code="SERVER_ERROR",
+        if llm is None or agent_config is None:
+            llm, agent_config, llm_load_error = await load_llm_bundle(
+                session, config_id=llm_config_id, workspace_id=workspace_id
             )
-            yield streaming_service.format_done()
-            return
-        _perf_log.info(
-            "[stream_new_chat] LLM config loaded in %.3fs (config_id=%s)",
-            time.perf_counter() - _t0,
-            llm_config_id,
-        )
+            if llm_load_error:
+                yield emit_stream_error(
+                    message=llm_load_error,
+                    error_kind="server_error",
+                    error_code="SERVER_ERROR",
+                )
+                yield streaming_service.format_done()
+                return
+            _perf_log.info(
+                "[stream_new_chat] LLM config loaded in %.3fs (config_id=%s)",
+                time.perf_counter() - _t0,
+                llm_config_id,
+            )
 
         capability_error = check_image_input_capability(
             user_image_data_urls=user_image_data_urls, agent_config=agent_config
@@ -361,6 +430,24 @@ async def stream_new_chat(
                     yield streaming_service.format_done()
                     return
 
+        # --- Block 1b: AgentConfig merge ---
+        try:
+            agent_config = await _merge_registry_agent_config(
+                session,
+                agent_config=agent_config,
+                agent_config_override=agent_config_override,
+                client_id=client_id,
+                agent_id=agent_id,
+            )
+        except _AgentNotFoundError as exc:
+            yield emit_stream_error(
+                message=exc.message,
+                error_kind=exc.error_kind,
+                error_code=exc.error_code,
+            )
+            yield streaming_service.format_done()
+            return
+
         if not llm:
             yield emit_stream_error(
                 message="Failed to create LLM instance",
@@ -449,6 +536,8 @@ async def stream_new_chat(
             filesystem_mode=fs_mode,
             request_id=request_id,
             turn_id=stream_result.turn_id,
+            client_id=client_id,
+            platform_metadata=platform_metadata,
         )
         input_state = assembled.input_state
         accepted_folder_ids = assembled.accepted_folder_ids

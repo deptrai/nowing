@@ -122,6 +122,8 @@ async def create_thread(
     chat_thread = NewChatThread(
         workspace_id=workspace_id,
         client_id=client_id,
+        agent_id=agent_id,
+        platform_metadata=body.platform_metadata,
         title="New Chat",
         created_by_id=auth.user.id,
         source="agent_chat_public",
@@ -168,6 +170,7 @@ async def _stream_response(
     client_id: str,
     agent_id: str,
     run_id: uuid.UUID,
+    platform_metadata: dict[str, Any] | None = None,
 ) -> StreamingResponse:
     """Wrap stream_new_chat and handle TimeoutError gracefully."""
 
@@ -181,6 +184,7 @@ async def _stream_response(
                 auth_context=auth,
                 client_id=client_id,
                 agent_id=agent_id,
+                platform_metadata=platform_metadata,
                 request_id=str(run_id),
             ):
                 yield chunk
@@ -267,6 +271,7 @@ async def send_message(
         client_id=client_id,
         agent_id=agent_id,
         run_id=run_id,
+        platform_metadata=body.platform_metadata,
     )
 
     # Audit is a background task so the stream is not blocked.

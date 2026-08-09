@@ -6,6 +6,7 @@ These schemas follow the assistant-ui ThreadHistoryAdapter pattern:
 - MessageRecord: id, threadId, role, content, createdAt
 """
 
+import json
 from datetime import datetime
 from typing import Any, Literal, Self
 from uuid import UUID
@@ -88,6 +89,25 @@ class NewChatThreadCreate(NewChatThreadBase):
     workspace_id: int
     # Visibility defaults to PRIVATE, but can be set on creation
     visibility: ChatVisibility = ChatVisibility.PRIVATE
+    client_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=63,
+        pattern=r"^[a-z0-9][a-z0-9-._]*$",
+        description="Vertical client this thread belongs to.",
+    )
+    agent_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=63,
+        pattern=r"^[a-z0-9][a-z0-9-._]*$",
+        description="Agent slug bound to this thread.",
+    )
+
+    @field_validator("client_id", "agent_id")
+    @classmethod
+    def _strip_whitespace(cls, v: str | None) -> str | None:
+        return v.strip() if v else v
 
 
 class NewChatThreadUpdate(BaseModel):
@@ -113,6 +133,8 @@ class NewChatThreadRead(NewChatThreadBase, IDModel):
     created_by_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
+    client_id: str | None = None
+    agent_id: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -182,6 +204,56 @@ class LocalFilesystemMountPayload(BaseModel):
 
 MAX_NEW_CHAT_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_NEW_CHAT_IMAGES = 4
+
+MAX_PLATFORM_METADATA_KEYS = 32
+MAX_PLATFORM_METADATA_STRING = 1024
+MAX_PLATFORM_METADATA_DEPTH = 4
+
+
+def _bounded_chat_metadata(v: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Clamp platform_metadata to a safe, JSON-serializable shape.
+
+    Allows nested dicts/lists up to a bounded depth, caps string length,
+    and rejects non-serializable values such as sets/tuples.
+    """
+    if v is None:
+        return None
+    if not isinstance(v, dict):
+        raise ValueError("platform_metadata must be a JSON object")
+
+    def _check(obj: Any, depth: int) -> Any:
+        if depth > MAX_PLATFORM_METADATA_DEPTH:
+            raise ValueError("platform_metadata exceeds maximum nesting depth")
+        if isinstance(obj, str):
+            if len(obj) > MAX_PLATFORM_METADATA_STRING:
+                raise ValueError("platform_metadata string value too long")
+            return obj
+        if isinstance(obj, (int, float, bool, type(None))):
+            return obj
+        if isinstance(obj, list):
+            return [_check(item, depth + 1) for item in obj]
+        if isinstance(obj, dict):
+            if len(obj) > MAX_PLATFORM_METADATA_KEYS:
+                raise ValueError(
+                    f"platform_metadata may contain at most {MAX_PLATFORM_METADATA_KEYS} keys"
+                )
+            for key, val in obj.items():
+                if not isinstance(key, str) or len(key) > 64:
+                    raise ValueError(
+                        "platform_metadata keys must be strings <= 64 characters"
+                    )
+                _check(val, depth + 1)
+            return obj
+        raise ValueError(
+            "platform_metadata values must be JSON-serializable primitives"
+        )
+
+    _check(v, 0)
+    try:
+        json.dumps(v)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("platform_metadata must be JSON-serializable") from exc
+    return v
 
 
 class NewChatUserImagePart(BaseModel):
@@ -299,6 +371,36 @@ class NewChatRequest(BaseModel):
         default=None,
         description="Optional images for this user turn",
     )
+    agent_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=63,
+        pattern=r"^[a-z0-9][a-z0-9-._]*$",
+        description="Agent slug to bind this turn to.",
+    )
+    client_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=63,
+        pattern=r"^[a-z0-9][a-z0-9-._]*$",
+        description="Vertical client this turn belongs to.",
+    )
+    platform_metadata: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional metadata from the calling platform.",
+    )
+
+    @field_validator("platform_metadata")
+    @classmethod
+    def _validate_platform_metadata(
+        cls, v: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        return _bounded_chat_metadata(v)
+
+    @field_validator("agent_id", "client_id")
+    @classmethod
+    def _strip_whitespace(cls, v: str | None) -> str | None:
+        return v.strip() if v else v
 
     @model_validator(mode="after")
     def _require_text_or_images(self) -> Self:
@@ -308,6 +410,8 @@ class NewChatRequest(BaseModel):
             raise ValueError("Provide non-empty user_query and/or user_images")
         if self.user_images is not None and len(self.user_images) > MAX_NEW_CHAT_IMAGES:
             raise ValueError(f"At most {MAX_NEW_CHAT_IMAGES} images allowed")
+        if self.agent_id is not None and not self.client_id:
+            raise ValueError("client_id is required when agent_id is set")
         return self
 
 
@@ -379,6 +483,37 @@ class RegenerateRequest(BaseModel):
         default=None,
         description="If set, use these images for the regenerated turn (edit); overrides checkpoint/DB",
     )
+    agent_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=63,
+        pattern=r"^[a-z0-9][a-z0-9-._]*$",
+        description="Agent slug to bind this turn to.",
+    )
+    client_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=63,
+        pattern=r"^[a-z0-9][a-z0-9-._]*$",
+        description="Vertical client this turn belongs to.",
+    )
+    platform_metadata: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional metadata from the calling platform.",
+    )
+
+    @field_validator("platform_metadata")
+    @classmethod
+    def _validate_platform_metadata(
+        cls, v: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        return _bounded_chat_metadata(v)
+
+    @field_validator("agent_id", "client_id")
+    @classmethod
+    def _strip_whitespace(cls, v: str | None) -> str | None:
+        return v.strip() if v else v
+
     from_message_id: int | None = Field(
         default=None,
         description=(
@@ -414,6 +549,8 @@ class RegenerateRequest(BaseModel):
             raise ValueError(
                 "revert_actions requires from_message_id; specify which message to rewind to"
             )
+        if self.agent_id is not None and not self.client_id:
+            raise ValueError("client_id is required when agent_id is set")
         return self
 
 

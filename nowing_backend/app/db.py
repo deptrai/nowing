@@ -715,6 +715,8 @@ class NewChatThread(BaseModel, TimestampMixin):
     # Zero publishes all chat-message sources; the UI can decide which surfaces to render.
     source = Column(Text, nullable=False, default="nowing", server_default="nowing")
     client_id = Column(Text, nullable=True, index=True)
+    agent_id = Column(Text, nullable=True, index=True)
+    platform_metadata = Column(JSONB, nullable=True)
     external_chat_binding_id = Column(
         BigInteger,
         ForeignKey("external_chat_bindings.id", ondelete="SET NULL"),

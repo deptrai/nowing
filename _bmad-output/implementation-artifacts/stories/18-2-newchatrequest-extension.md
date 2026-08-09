@@ -1,6 +1,6 @@
 ---
 baseline_commit: "a247f8448"
-status: ready-for-dev
+status: review
 ---
 
 # Story 18.2: NewChatRequest Extension
@@ -317,13 +317,48 @@ Add/update tests:
 
 ### Agent Model Used
 
-TBD
+Devin (SWE-1.7 Max)
 
 ### Debug Log References
 
+- `tests/unit/schemas/test_new_chat.py` — 24 schema/validator tests green.
+- `tests/unit/tasks/chat/test_new_chat_orchestrator.py` — 5 orchestrator tests green (red-phase scaffolds were patched to use a shared fake session and string-typed error frames).
+- `tests/unit/routes/test_agent_chat_routes_18_2.py` — 5 route unit tests green.
+- `tests/integration/routes/test_new_chat_routes.py` — 4 integration tests green (requires `nowing_test` Postgres DB).
+- Full `tests/unit/` run: 4868 passed, 3 pre-existing failures in `tests/unit/capabilities/access/test_rest_degraded.py` unrelated to this story.
+
 ### Completion Notes List
 
+- Implemented Story 18.2 "NewChatRequest Extension" end-to-end.
+- Added `agent_id`, `client_id`, `platform_metadata` to `NewChatRequest`, `RegenerateRequest`, `NewChatThreadCreate`, `NewChatThreadRead`, and `NewChatThreadWithMessages` schemas with slug and metadata validators.
+- Added `platform_metadata` to `AgentChatThreadCreate` and `AgentChatMessageCreate`.
+- Added `agent_id` and `platform_metadata` columns to `NewChatThread` (DB and Alembic migration `f55f32bc02ed`).
+- Updated `stream_new_chat` to accept `platform_metadata`, `llm`, `agent_config`, and `agent_config_override`; load/merge registry `AgentConfig` fail-closed; pass `client_id`/`platform_metadata` to `build_new_chat_input_state`.
+- Updated `build_new_chat_input_state` to render a safe, non-interpolated `<platform_metadata>` XML/JSON context block.
+- Updated `handle_new_chat` to resolve the LLM bundle before streaming, validate per-turn `client_id`/`agent_id` against the thread, merge registry `AgentConfig`, and forward all new fields to `stream_new_chat`.
+- Updated `agent_chat_routes.py` to persist `agent_id`/`platform_metadata` on public thread creation and forward `platform_metadata` on message sends.
+- All 38 red-phase ATDD + integration tests now pass. `ruff check` and `ruff format` pass on changed files.
+
 ### File List
+
+#### Modified
+
+- `nowing_backend/app/db.py`
+- `nowing_backend/app/schemas/agent_chat.py`
+- `nowing_backend/app/schemas/new_chat.py`
+- `nowing_backend/app/routes/new_chat_routes.py`
+- `nowing_backend/app/routes/agent_chat_routes.py`
+- `nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py`
+- `nowing_backend/app/tasks/chat/streaming/flows/new_chat/input_state.py`
+- `nowing_backend/tests/unit/tasks/chat/test_new_chat_orchestrator.py`
+
+#### Created
+
+- `nowing_backend/alembic/versions/f55f32bc02ed_new_chat_thread_agent_and_metadata.py`
+
+## Change Log
+
+- 2026-08-10: Story 18.2 implementation complete. Added `agent_id`, `client_id`, `platform_metadata` fields to chat schemas, DB model, orchestrator, and public routes. Added migration and tests. All 38 targeted tests green; `ruff check`/`ruff format` pass. Status moved from `ready-for-dev` to `review`.
 
 ## Challenge Log (grill-me)
 
@@ -385,9 +420,9 @@ Partial / reusable pieces exist; no full end-to-end implementation.
 - [x] Dependencies and implementation order documented
 - [x] Open decisions resolved with defaults
 - [x] Comprehensive developer context and guardrails captured
-- [ ] Implementation pending
-- [ ] Tests pending
+- [x] Implementation completed
+- [x] Tests completed
 
-**Status:** ready-for-dev
+**Status:** review
 
 **Ultimate context engine analysis completed - comprehensive developer guide created.**

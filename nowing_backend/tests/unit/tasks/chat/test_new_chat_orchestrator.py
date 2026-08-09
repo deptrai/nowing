@@ -120,10 +120,14 @@ def _patch_orchestrator_deps(monkeypatch: pytest.MonkeyPatch):
     import app.services.token_tracking_service as _tts
     import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
 
+    # The orchestrator calls ``async_session_maker()`` once per turn and uses
+    # that same session for registry lookup. A single shared fake session lets
+    # tests pre-seed ``registry_agent`` before consuming the generator.
+    _shared_fake_session = _FakeSession()
+    _shared_fake_session.registry_agent = _registry_agent()
+
     async def _fake_session_maker(*_args: Any, **_kwargs: Any) -> _FakeSession:
-        # The test will attach ``registry_agent`` to this session before
-        # consuming the generator if it wants to simulate a DB AgentConfig row.
-        return _FakeSession()
+        return _shared_fake_session
 
     monkeypatch.setattr(_orchestrator, "async_session_maker", _fake_session_maker)
     monkeypatch.setattr(_orchestrator, "set_request_tenant_context", AsyncMock())
@@ -185,7 +189,7 @@ def _patch_orchestrator_deps(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(_tts, "start_turn", lambda: MagicMock(name="accumulator"))
 
 
-def _run_first_yield(gen: AsyncGenerator[bytes, None]) -> bytes:
+def _run_first_yield(gen: AsyncGenerator[str, None]) -> str:
     """Advance ``stream_new_chat`` to its first yield, then close it.
 
     This is enough to exercise the validation + auto-pin + LLM bundle +
@@ -195,7 +199,7 @@ def _run_first_yield(gen: AsyncGenerator[bytes, None]) -> bytes:
     return asyncio.get_event_loop().run_until_complete(_first_yield_then_close(gen))
 
 
-async def _first_yield_then_close(gen: AsyncGenerator[bytes, None]) -> bytes:
+async def _first_yield_then_close(gen: AsyncGenerator[str, None]) -> str:
     try:
         chunk = await anext(gen)
     finally:
@@ -351,8 +355,8 @@ class TestStreamNewChatAgentAndMetadata:
         )
         session.registry_agent = None  # No agent found
 
-        async def _collect(gen: AsyncGenerator[bytes, None]) -> list[bytes]:
-            chunks: list[bytes] = []
+        async def _collect(gen: AsyncGenerator[str, None]) -> list[str]:
+            chunks: list[str] = []
             async for chunk in gen:
                 chunks.append(chunk)
             return chunks
@@ -369,5 +373,5 @@ class TestStreamNewChatAgentAndMetadata:
 
         chunks = asyncio.get_event_loop().run_until_complete(_collect(gen))
         assert chunks, "expected at least an error SSE frame and done marker"
-        payload = b"".join(chunks).decode()
+        payload = "".join(chunks)
         assert "AGENT_NOT_FOUND" in payload or "agent not found" in payload.lower()

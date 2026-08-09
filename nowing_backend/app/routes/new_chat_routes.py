@@ -36,9 +36,11 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
     FilesystemSelection,
     LocalFilesystemMount,
 )
+from app.auth.agent_chat import _resolve_agent_config
 from app.auth.context import AuthContext
 from app.config import config
 from app.db import (
+    AgentConfig,
     ChatComment,
     ChatVisibility,
     NewChatMessage,
@@ -76,6 +78,8 @@ from app.tasks.chat.streaming.flows import (
     stream_new_chat,
     stream_resume_chat,
 )
+from app.tasks.chat.streaming.flows.new_chat.auto_pin import resolve_initial_auto_pin
+from app.tasks.chat.streaming.flows.shared.llm_bundle import load_llm_bundle
 from app.users import get_auth_context
 from app.utils.perf import get_perf_logger
 from app.utils.rbac import check_permission
@@ -819,6 +823,8 @@ async def create_thread(
             workspace_id=thread.workspace_id,
             created_by_id=user.id,
             updated_at=now,
+            client_id=thread.client_id,
+            agent_id=thread.agent_id,
         )
         session.add(db_thread)
         await session.commit()
@@ -1754,6 +1760,69 @@ async def handle_new_chat(
             workspace.chat_model_id if workspace.chat_model_id is not None else 0
         )
 
+        # Resolve per-turn client/agent scope and merge registry AgentConfig.
+        # This must happen before closing the route session because the
+        # resolution queries the workspace-scoped agent registry.
+        if (
+            request.client_id is not None
+            and thread.client_id is not None
+            and request.client_id != thread.client_id
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="client_id does not match the thread",
+            )
+        if (
+            request.agent_id is not None
+            and thread.agent_id is not None
+            and request.agent_id != thread.agent_id
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="agent_id does not match the thread",
+            )
+
+        # Resolve the concrete LLM config id before loading the bundle. Auto
+        # (0 or null) may repin to a concrete model based on workspace settings.
+        pin_result = await resolve_initial_auto_pin(
+            session,
+            chat_id=thread.id,
+            workspace_id=workspace.id,
+            user_id=str(user.id),
+            selected_llm_config_id=llm_config_id,
+            requires_image_input=bool(request.user_images),
+            requested_llm_config_id=llm_config_id,
+        )
+        if pin_result.error is not None:
+            message, _error_code, _error_kind = pin_result.error
+            raise HTTPException(status_code=500, detail=message)
+        resolved_llm_config_id = pin_result.llm_config_id
+
+        llm, agent_config, llm_load_error = await load_llm_bundle(
+            session,
+            config_id=resolved_llm_config_id,
+            workspace_id=workspace.id,
+        )
+        if llm_load_error:
+            raise HTTPException(status_code=500, detail=llm_load_error)
+
+        agent_config_override: AgentConfig | None = None
+        if request.agent_id:
+            agent_config_override = await _resolve_agent_config(
+                session,
+                client_id=request.client_id,  # type: ignore[arg-type]
+                agent_id=request.agent_id,
+            )
+            if agent_config_override.system_instructions is not None:
+                agent_config.system_instructions = (
+                    agent_config_override.system_instructions
+                )
+                agent_config.use_default_system_instructions = False
+            if agent_config_override.citations_enabled is not None:
+                agent_config.citations_enabled = agent_config_override.citations_enabled
+            if agent_config_override.model_name:
+                agent_config.model_name = agent_config_override.model_name
+
         # Release the read-transaction so we don't hold ACCESS SHARE locks
         # on workspaces/documents for the entire duration of the stream.
         # expire_on_commit=False keeps loaded ORM attrs usable.
@@ -1788,7 +1857,7 @@ async def handle_new_chat(
                 workspace_id=request.workspace_id,
                 chat_id=request.chat_id,
                 user_id=str(user.id),
-                llm_config_id=llm_config_id,
+                llm_config_id=resolved_llm_config_id,
                 mentioned_document_ids=request.mentioned_document_ids,
                 mentioned_folder_ids=request.mentioned_folder_ids,
                 mentioned_connector_ids=request.mentioned_connector_ids,
@@ -1804,6 +1873,12 @@ async def handle_new_chat(
                 request_id=getattr(http_request.state, "request_id", "unknown"),
                 user_image_data_urls=image_urls,
                 auth_context=auth,
+                client_id=request.client_id,
+                agent_id=request.agent_id,
+                platform_metadata=request.platform_metadata,
+                llm=llm,
+                agent_config=agent_config,
+                agent_config_override=agent_config_override,
             ),
             media_type="text/event-stream",
             headers={
