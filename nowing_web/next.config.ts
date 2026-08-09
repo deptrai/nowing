@@ -27,14 +27,15 @@ const nextConfig: NextConfig = {
 		return [
 			// Story 10.5: allow the anti-bot evidence screenshot to be displayed
 			// on the admin page. The storage backend domain may differ per
-			// deployment, so we allow any HTTPS origin for img-src on this path.
+			// deployment, so we allow any HTTPS origin for img-src on this path,
+			// and permit API calls to the configured backend.
 			{
 				source: "/admin/anti-bot-escalations",
 				headers: [
 					{
 						key: "Content-Security-Policy",
 						value:
-							"default-src 'self'; img-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';",
+							"default-src 'self'; img-src 'self' http://localhost:* http://127.0.0.1:* https: data:; connect-src 'self' http://localhost:* http://127.0.0.1:* https: ws://localhost:* ws://127.0.0.1:*; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';",
 					},
 				],
 			},

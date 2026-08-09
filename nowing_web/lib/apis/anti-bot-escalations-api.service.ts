@@ -17,9 +17,13 @@ export const antiBotEscalation = z.object({
 	resolved_at: z.string().nullable(),
 });
 
-export const antiBotEscalationList = z.array(antiBotEscalation);
+export const antiBotEscalationList = z.object({
+	items: z.array(antiBotEscalation),
+	total: z.number(),
+});
 
 export type AntiBotEscalation = z.infer<typeof antiBotEscalation>;
+export type AntiBotEscalationList = z.infer<typeof antiBotEscalationList>;
 
 export const antiBotEscalationRetry = z.object({
 	id: z.number(),
@@ -45,7 +49,11 @@ class AntiBotEscalationsApiService {
 		if (filters.domain) qs.set("domain", filters.domain);
 		if (filters.status) qs.set("status", filters.status);
 		const query = qs.toString();
-		return baseApiService.get(`${this.base}${query ? `?${query}` : ""}`, antiBotEscalationList);
+		const response = await baseApiService.get(
+			`${this.base}${query ? `?${query}` : ""}`,
+			antiBotEscalationList
+		);
+		return response.items;
 	};
 
 	get = async (id: number) => {
