@@ -29,6 +29,9 @@ from app.gateway import require_gateway_enabled
 from app.notifications.api import router as notifications_router
 from app.podcasts.api import router as podcasts_router
 
+from .admin_agent_registry_routes import (
+    router as admin_agent_registry_router,
+)
 from .admin_anti_bot_escalation_routes import (
     router as admin_anti_bot_escalation_router,
 )
@@ -40,10 +43,10 @@ from .admin_scraper_platform_accounts_routes import (
     router as admin_scraper_platform_accounts_router,
 )
 from .agent_action_log_route import router as agent_action_log_router
+from .agent_chat_routes import router as agent_chat_router
 from .agent_flags_route import router as agent_flags_router
 from .agent_permissions_route import router as agent_permissions_router
 from .agent_revert_route import router as agent_revert_router
-from .agent_chat_routes import router as agent_chat_router
 from .airtable_add_connector_route import (
     router as airtable_add_connector_router,
 )
@@ -160,6 +163,7 @@ router.include_router(jira_add_connector_router)
 router.include_router(confluence_add_connector_router)
 router.include_router(clickup_add_connector_router)
 router.include_router(dropbox_add_connector_router)
+router.include_router(admin_agent_registry_router)  # Platform admin agent registry
 router.include_router(
     admin_global_model_connections_router
 )  # Platform admin global models

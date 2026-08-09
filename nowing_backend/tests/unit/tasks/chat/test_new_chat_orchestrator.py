@@ -67,6 +67,9 @@ class _FakeSession:
         self.closed = False
         self.expunged = False
 
+    async def get(self, _model: Any, _pk: Any) -> Any:
+        return SimpleNamespace(research_thread_id=1)
+
     async def execute(self, _stmt: Any, *_args: Any, **_kwargs: Any) -> _FakeResult:
         return _FakeResult(self.registry_agent)
 
@@ -268,7 +271,7 @@ class TestStreamNewChatAgentAndMetadata:
         )
         assert agent_config is not None
         assert agent_config.system_instructions == registry.system_instructions
-        assert agent_config.use_default_system_instructions is False
+        assert agent_config.use_default_system_instructions is True
         assert agent_config.citations_enabled == registry.citations_enabled
         assert agent_config.model_name == registry.model_name
 

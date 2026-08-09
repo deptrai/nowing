@@ -142,6 +142,7 @@ class NewChatThreadRead(NewChatThreadBase, IDModel):
     updated_at: datetime
     client_id: str | None = None
     agent_id: str | None = None
+    research_thread_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

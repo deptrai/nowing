@@ -1,6 +1,8 @@
 # Story 18.4: `AgentConfig` Prompt Injection
 
-Status: ready-for-dev
+Status: done
+
+Baseline commit: 1e5f46b86
 
 ## Story
 

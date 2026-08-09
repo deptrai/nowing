@@ -164,10 +164,14 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
         user_id: str | UUID | None,
         workspace_id: int,
         thread_visibility: ChatVisibility | None = None,
+        research_thread_id: int | None = None,
+        client_id: str | None = None,
     ) -> None:
         self.user_id = UUID(user_id) if isinstance(user_id, str) else user_id
         self.workspace_id = workspace_id
         self.visibility = thread_visibility or ChatVisibility.PRIVATE
+        self.research_thread_id = research_thread_id
+        self.client_id = client_id
 
     async def abefore_agent(  # type: ignore[override]
         self,
@@ -325,12 +329,16 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
                 query=query,
                 query_embedding=embedding,
                 top_k=_MEMORY_INJECTION_TOP_K,
+                research_thread_id=self.research_thread_id,
+                client_id=self.client_id,
             )
         return await search.search(
             user_id=self.user_id,
             query=query,
             query_embedding=embedding,
             top_k=_MEMORY_INJECTION_TOP_K,
+            research_thread_id=self.research_thread_id,
+            client_id=self.client_id,
         )
 
     async def _lookup_display_name(self, session: AsyncSession) -> str | None:

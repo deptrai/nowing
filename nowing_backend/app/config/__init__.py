@@ -690,6 +690,10 @@ class Config:
     AGENT_CHAT_PUBLIC_ENABLED = (
         os.getenv("AGENT_CHAT_PUBLIC_ENABLED", "false").strip().upper() == "TRUE"
     )
+    AGENT_CHAT_RATE_LIMIT_RPM = _env_int("AGENT_CHAT_RATE_LIMIT_RPM", 30)
+    AGENT_CHAT_WORKSPACE_RATE_LIMIT_RPM = _env_int(
+        "AGENT_CHAT_WORKSPACE_RATE_LIMIT_RPM", 100
+    )
 
     # Agent cache (in-process LRU+TTL cache for built agents)
     AGENT_CACHE_MAXSIZE = int(os.getenv("NOWING_AGENT_CACHE_MAXSIZE", "256"))

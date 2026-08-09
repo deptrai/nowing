@@ -75,6 +75,8 @@ async def create_multi_agent_chat_deep_agent(
     image_gen_model_id: int | None = None,
     auth_context: AuthContext | None = None,
     research_mode: str | None = None,
+    research_thread_id: int | None = None,
+    client_id: str | None = None,
 ):
     """Deep agent with Nowing tools/middleware; registry route subagents behind ``task`` when enabled.
 
@@ -313,6 +315,8 @@ async def create_multi_agent_chat_deep_agent(
         disabled_tools=disabled_tools,
         config_id=config_id,
         image_gen_model_id_override=image_gen_model_id,
+        research_thread_id=research_thread_id,
+        client_id=client_id,
     )
     _perf_log.info(
         "[create_agent] Middleware stack + graph compiled in %.3fs",

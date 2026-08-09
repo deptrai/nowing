@@ -560,6 +560,9 @@ async def record_token_usage(
     mode_requested: str | None = None,
     e2e_ms: int | None = None,
     ttfb_ms: int | None = None,
+    client_id: str | None = None,
+    external_metadata: dict[str, Any] | None = None,
+    run_id: UUID | None = None,
 ) -> TokenUsage | None:
     """Persist a single ``TokenUsage`` row.
 
@@ -584,6 +587,9 @@ async def record_token_usage(
             message_id=message_id,
             workspace_id=workspace_id,
             user_id=user_id,
+            client_id=client_id,
+            external_metadata=external_metadata or {},
+            run_id=run_id,
         )
         session.add(record)
         logger.debug(

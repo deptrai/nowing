@@ -36,6 +36,8 @@ async def build_main_agent_for_thread(
     mentioned_document_ids: list[int] | None = None,
     auth_context: AuthContext | None = None,
     research_mode: str | None = None,
+    research_thread_id: int | None = None,
+    client_id: str | None = None,
 ) -> Any:
     return await agent_factory(
         llm=llm,
@@ -53,4 +55,6 @@ async def build_main_agent_for_thread(
         mentioned_document_ids=mentioned_document_ids,
         auth_context=auth_context,
         research_mode=research_mode,
+        research_thread_id=research_thread_id,
+        client_id=client_id,
     )

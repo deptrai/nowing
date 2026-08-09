@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -73,3 +74,23 @@ class AgentChatThreadCreated(BaseModel):
     thread_id: int
     research_thread_id: int
     run_id: str
+
+
+class CostReportItem(BaseModel):
+    """One daily bucket of cost attribution for a vertical client."""
+
+    day: date
+    client_id: str | None = None
+    usage_type: str
+    total_cost_micros: int
+    total_tokens: int
+
+
+class CostReport(BaseModel):
+    """Workspace-scoped cost report for public agent-chat usage."""
+
+    workspace_id: int
+    client_id: str | None = None
+    start_date: date
+    end_date: date
+    items: list[CostReportItem]

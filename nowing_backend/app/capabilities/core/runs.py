@@ -91,6 +91,8 @@ async def record_run(
     duration_ms: int | None = None,
     cost_micros: int | None = None,
     progress: list[dict[str, Any]] | None = None,
+    client_id: str | None = None,
+    external_metadata: dict[str, Any] | None = None,
 ) -> str | None:
     """Persist a run row and return its id, or ``None`` on failure (best-effort).
 
@@ -114,6 +116,8 @@ async def record_run(
             duration_ms=duration_ms,
             cost_micros=cost_micros,
             progress=progress or None,
+            client_id=client_id,
+            external_metadata=external_metadata or None,
         )
         session.add(run)
         await session.flush()
@@ -140,6 +144,8 @@ async def create_pending_run(
     user_id: Any | None = None,
     thread_id: str | None = None,
     parent_run_id: Any | None = None,
+    client_id: str | None = None,
+    external_metadata: dict[str, Any] | None = None,
 ) -> str | None:
     """Insert a ``running`` run row up front and return its id (best-effort).
 
@@ -157,6 +163,8 @@ async def create_pending_run(
             origin=origin,
             status="running",
             input=input,
+            client_id=client_id,
+            external_metadata=external_metadata or None,
         )
         session.add(run)
         await session.flush()

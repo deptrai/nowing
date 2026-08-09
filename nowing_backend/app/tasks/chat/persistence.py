@@ -417,6 +417,9 @@ async def finalize_assistant_turn(
     turn_id: str,
     content: list[dict[str, Any]],
     accumulator: TurnTokenAccumulator | None,
+    client_id: str | None = None,
+    external_metadata: dict[str, Any] | None = None,
+    run_id: UUID | None = None,
 ) -> None:
     """Finalize the assistant row and write its token_usage.
 
@@ -519,6 +522,9 @@ async def finalize_assistant_turn(
                             message_id=message_id,
                             workspace_id=workspace_id,
                             user_id=user_uuid,
+                            client_id=client_id,
+                            external_metadata=external_metadata or {},
+                            run_id=run_id,
                         )
                         .on_conflict_do_nothing(
                             index_elements=["message_id"],

@@ -104,26 +104,20 @@ async def _resolve_agent_config(
     client_id: str,
     agent_id: str,
 ) -> AgentConfig:
-    result = await session.execute(
-        select(AgentConfig).where(
-            AgentConfig.client_id == client_id,
-            AgentConfig.slug == agent_id,
-            AgentConfig.is_active.is_(True),
-        )
-    )
-    config = result.scalars().first()
-    if config is None or not config.is_active:
+    """Fail-closed chat-runtime lookup of an active AgentConfig (AD-30).
+
+    Delegates to the Agent Registry service so all call sites share one
+    404/inactive rule.
+    """
+    from app.services.agent_registry import AgentConfigNotFoundError, get_agent_config
+
+    try:
+        return await get_agent_config(session, client_id=client_id, agent_id=agent_id)
+    except AgentConfigNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="agent not found or inactive",
-        )
-    if config.client_id != client_id:
-        # Fail closed: do not reveal that the agent exists under another client.
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="agent not found or inactive",
-        )
-    return config
+            detail=exc.message,
+        ) from exc
 
 
 def _route_label(request: Request) -> str:

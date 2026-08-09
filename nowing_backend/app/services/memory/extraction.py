@@ -226,7 +226,8 @@ class MemoryExtractionService:
                         created_by_id=created_by_id,
                         update_on_duplicate=True,
                         commit=False,
-                        client_id=self.client_id,
+                        client_id=thread.client_id,
+                        agent_id=thread.agent_id,
                     )
                 except Exception as exc:
                     logger.warning(
@@ -254,6 +255,7 @@ class MemoryExtractionService:
             completion_tokens=acc.total_completion_tokens,
             total_tokens=acc.grand_total,
             cost_micros=acc.total_cost_micros,
+            client_id=thread.client_id,
         )
 
         # Commit the extracted memories (created with commit=False) and the

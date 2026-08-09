@@ -1207,6 +1207,13 @@ class TokenUsage(BaseModel, TimestampMixin):
                 "usage_type = 'deep_research' AND resolved_mode IS NOT NULL"
             ),
         ),
+        # AC-18.7: daily cost rollups by workspace + client.
+        Index(
+            "ix_token_usage_workspace_client_created_at",
+            "workspace_id",
+            "client_id",
+            "created_at",
+        ),
     )
 
     prompt_tokens = Column(Integer, nullable=False, default=0)
@@ -1244,6 +1251,13 @@ class TokenUsage(BaseModel, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("user.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    client_id = Column(Text, nullable=True, index=True)
+    external_metadata = Column(JSONB, nullable=True, default=dict)
+    run_id = Column(
+        UUID(as_uuid=True),
+        nullable=True,
         index=True,
     )
 
@@ -2099,6 +2113,13 @@ class ResearchThread(BaseModel, TimestampMixin):
     """Container for a chain of related chat sessions that share memory."""
 
     __tablename__ = "research_threads"
+    __table_args__ = (
+        Index(
+            "ix_research_threads_workspace_id_client_id",
+            "workspace_id",
+            "client_id",
+        ),
+    )
 
     workspace_id = Column(
         Integer,
@@ -2227,6 +2248,12 @@ class Memory(BaseModel, TimestampMixin):
             "id",
             postgresql_where=text("research_thread_id IS NOT NULL"),
         ),
+        # AC-18.6: hard tenant filter for vertical-client memories.
+        Index(
+            "ix_memories_workspace_id_client_id",
+            "workspace_id",
+            "client_id",
+        ),
     )
 
     workspace_id = Column(
@@ -2253,6 +2280,8 @@ class Memory(BaseModel, TimestampMixin):
         # Migration 182 drops the single-column ix_memories_research_thread_id
         # that index=True used to create here — keep this Column in sync with it.
     )
+    client_id = Column(Text, nullable=True, index=True)
+    agent_id = Column(Text, nullable=True)
     type = Column(
         SQLAlchemyEnum(
             MemoryType,
@@ -3425,7 +3454,11 @@ class Run(Base, TimestampMixin):
     __tablename__ = "runs"
     __allow_unmapped__ = True
 
-    __table_args__ = (Index("ix_runs_workspace_created", "workspace_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_runs_workspace_created", "workspace_id", "created_at"),
+        # AC-18.7: vertical-client run attribution and daily rollups.
+        Index("ix_runs_workspace_client_created", "workspace_id", "client_id", "created_at"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     parent_run_id = Column(
@@ -3457,6 +3490,8 @@ class Run(Base, TimestampMixin):
     char_count = Column(Integer, nullable=False, default=0)
     duration_ms = Column(Integer, nullable=True)
     cost_micros = Column(BigInteger, nullable=True)
+    client_id = Column(Text, nullable=True, index=True)
+    external_metadata = Column(JSONB, nullable=True, default=dict)
     # Coarse progress log (list of throttled events) captured during the run;
     # the live fine-grained stream is ephemeral (bus/SSE only).
     progress = Column(JSONB, nullable=True)

@@ -1,6 +1,8 @@
 # Story 18.7: Cost Traceability
 
-Status: ready-for-dev
+Status: done
+
+Baseline commit: 1e5f46b86
 
 ## Story
 

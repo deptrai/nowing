@@ -112,13 +112,17 @@ async def read_memory(
             select(Memory).where(
                 Memory.workspace_id.is_(None),
                 Memory.created_by_id == user_id,
+                Memory.client_id.is_(None),
             )
         )
         memories = result.scalars().all()
         return render_memory_markdown(list(memories), scope="user")
 
     result = await session.execute(
-        select(Memory).where(Memory.workspace_id == int(target_id))
+        select(Memory).where(
+            Memory.workspace_id == int(target_id),
+            Memory.client_id.is_(None),
+        )
     )
     memories = result.scalars().all()
     return render_memory_markdown(list(memories), scope="team")
@@ -200,6 +204,7 @@ async def save_memory(
             delete(Memory).where(
                 Memory.workspace_id.is_(None),
                 Memory.created_by_id == user_id,
+                Memory.client_id.is_(None),
             )
         )
         for fact in facts:
@@ -214,7 +219,12 @@ async def save_memory(
     else:
         workspace_id = int(target_id)
         # Delete existing workspace team memory facts before rewriting.
-        await session.execute(delete(Memory).where(Memory.workspace_id == workspace_id))
+        await session.execute(
+            delete(Memory).where(
+                Memory.workspace_id == workspace_id,
+                Memory.client_id.is_(None),
+            )
+        )
         for fact in facts:
             await repo.create_memory(
                 workspace_id=workspace_id,
@@ -264,11 +274,17 @@ async def reset_memory(
             delete(Memory).where(
                 Memory.workspace_id.is_(None),
                 Memory.created_by_id == user_id,
+                Memory.client_id.is_(None),
             )
         )
     else:
         workspace_id = int(target_id)
-        await session.execute(delete(Memory).where(Memory.workspace_id == workspace_id))
+        await session.execute(
+            delete(Memory).where(
+                Memory.workspace_id == workspace_id,
+                Memory.client_id.is_(None),
+            )
+        )
     await session.commit()
     return SaveResult(
         status="saved",

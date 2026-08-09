@@ -68,6 +68,8 @@ async def create_memory(
         tags=body.tags,
         confidence=body.confidence,
         research_thread_id=body.research_thread_id,
+        client_id=body.client_id,
+        agent_id=body.agent_id,
         created_by_id=auth.user.id,
         # Loop guard (Story 6.5, AC-5): a cross-process automation write (an
         # external MCP server calling this endpoint) threads its origin via the
@@ -115,6 +117,7 @@ async def search_memory(
             type=body.type,
             tags=body.tags,
             research_thread_id=body.research_thread_id,
+            client_id=body.client_id,
         )
     except VectorValidationError as exc:
         status = 500 if exc.reason == "provider_error" else 422
@@ -144,6 +147,7 @@ async def list_memories(
     limit: int = Query(default=20, ge=1, le=100),
     type: MemoryType | None = Query(default=None),
     tags: str | None = Query(default=None),
+    client_id: str | None = Query(default=None),
 ):
     await check_permission(
         session,
@@ -159,6 +163,7 @@ async def list_memories(
         limit=limit,
         type=type,
         tags=tags.split(",") if tags else None,
+        client_id=client_id,
     )
     return [_to_memory_read(memory) for memory in memories]
 
@@ -195,6 +200,8 @@ async def update_memory(
         memory_id=memory_id,
         corrected_content=body.corrected_content,
         corrected_by_id=auth.user.id,
+        client_id=body.client_id,
+        agent_id=body.agent_id,
         skip_version_if_unchanged=True,
         # See create_memory: cross-process automation origin via header (AC-5).
         automation_run_id=x_automation_run_id,

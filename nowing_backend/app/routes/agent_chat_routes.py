@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Any
 
 from fastapi import (
@@ -10,12 +11,13 @@ from fastapi import (
     Body,
     Depends,
     HTTPException,
+    Query,
     Request,
     Response,
     status,
 )
 from fastapi.responses import StreamingResponse
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 
@@ -26,12 +28,14 @@ from app.auth.agent_chat import (
 )
 from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
-from app.db import NewChatThread, ResearchThread, get_async_session
+from app.db import NewChatThread, ResearchThread, TokenUsage, get_async_session
 from app.rate_limiter import check_agent_chat_limits, hit_agent_chat_limits
 from app.schemas.agent_chat import (
     AgentChatMessageCreate,
     AgentChatThreadCreate,
     AgentChatThreadCreated,
+    CostReport,
+    CostReportItem,
 )
 from app.services.agent_chat.audit import log_public_call as audit
 from app.tasks.chat.streaming.flows.new_chat.orchestrator import stream_new_chat
@@ -176,6 +180,7 @@ async def _stream_response(
     agent_id: str,
     run_id: uuid.UUID,
     platform_metadata: dict[str, Any] | None = None,
+    external_metadata: dict[str, Any] | None = None,
     agent_config_override: Any | None = None,
 ) -> StreamingResponse:
     """Wrap stream_new_chat and handle TimeoutError gracefully."""
@@ -191,6 +196,8 @@ async def _stream_response(
                 client_id=client_id,
                 agent_id=agent_id,
                 platform_metadata=platform_metadata,
+                external_metadata=external_metadata,
+                run_id=run_id,
                 request_id=str(run_id),
                 agent_config_override=agent_config_override,
             ):
@@ -302,6 +309,7 @@ async def send_message(
         agent_id=agent_id,
         run_id=run_id,
         platform_metadata=body.platform_metadata,
+        external_metadata=body.external_metadata,
         agent_config_override=agent_config_override,
     )
 
@@ -320,3 +328,90 @@ async def send_message(
 
     response.background = BackgroundTask(_audit_after)
     return response
+
+
+@router.get("/costs", response_model=CostReport)
+async def get_cost_report(
+    request: Request,
+    workspace_id: int,
+    auth: AgentChatContext = Depends(require_agent_chat_pat),
+    session: AsyncSession = Depends(get_async_session),
+    client_id: str | None = Query(default=None),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+) -> CostReport:
+    if not AGENT_CHAT_PUBLIC_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="agent_chat public surface disabled",
+        )
+
+    effective_client_id = _client_id(auth)
+    agent_id = _agent_id(auth)
+
+    # Optional query filter must not widen beyond the PAT scope.
+    if client_id is not None and client_id != effective_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="client_id outside PAT scope",
+        )
+    client_id = client_id or effective_client_id
+
+    await set_request_tenant_context(session, workspace_id, client_id, agent_id)
+
+    conditions = [TokenUsage.workspace_id == workspace_id]
+    if client_id is not None:
+        conditions.append(TokenUsage.client_id == client_id)
+    if start_date is not None:
+        conditions.append(func.date(TokenUsage.created_at) >= start_date)
+    if end_date is not None:
+        conditions.append(func.date(TokenUsage.created_at) <= end_date)
+
+    stmt = (
+        select(
+            func.date(TokenUsage.created_at).label("day"),
+            TokenUsage.client_id,
+            TokenUsage.usage_type,
+            func.sum(TokenUsage.cost_micros).label("total_cost_micros"),
+            func.sum(TokenUsage.total_tokens).label("total_tokens"),
+        )
+        .where(*conditions)
+        .group_by(
+            func.date(TokenUsage.created_at),
+            TokenUsage.client_id,
+            TokenUsage.usage_type,
+        )
+        .order_by(func.date(TokenUsage.created_at).desc())
+    )
+
+    result = await session.execute(stmt)
+    items = [
+        CostReportItem(
+            day=row.day,
+            client_id=row.client_id,
+            usage_type=row.usage_type,
+            total_cost_micros=row.total_cost_micros or 0,
+            total_tokens=row.total_tokens or 0,
+        )
+        for row in result.all()
+    ]
+
+    start = start_date
+    end = end_date
+    if items:
+        if start is None:
+            start = items[-1].day
+        if end is None:
+            end = items[0].day
+    if start is None:
+        start = date.today()
+    if end is None:
+        end = date.today()
+
+    return CostReport(
+        workspace_id=workspace_id,
+        client_id=client_id,
+        start_date=start,
+        end_date=end,
+        items=items,
+    )

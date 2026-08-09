@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 from app.agents.chat.multi_agent_chat.shared.citations import (
     CitationRegistry,
@@ -77,6 +78,8 @@ async def finalize_assistant_message(
     accumulator: TokenAccumulator,
     log_prefix: str,
     client_id: str | None = None,
+    external_metadata: dict[str, Any] | None = None,
+    run_id: UUID | None = None,
 ) -> None:
     """Snapshot the content builder and persist the final assistant payload.
 
@@ -148,6 +151,9 @@ async def finalize_assistant_message(
         turn_id=stream_result.turn_id,
         content=content_payload,
         accumulator=accumulator,
+        client_id=client_id,
+        external_metadata=external_metadata,
+        run_id=run_id,
     )
 
     # Best-effort: enqueue memory extraction for this assistant turn.

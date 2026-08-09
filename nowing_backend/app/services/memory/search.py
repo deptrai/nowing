@@ -67,6 +67,7 @@ class MemoryHybridSearch:
         workspace_id: int | None,
         user_id: UUID | None,
         research_thread_id: int | None,
+        client_id: str | None = None,
     ) -> list[Any]:
         """Canonical scope per D5: exactly one of workspace/user, never both.
 
@@ -82,8 +83,18 @@ class MemoryHybridSearch:
         if research_thread_id is not None and not has_workspace:
             raise ValueError("research_thread_id requires workspace scope")
         if has_workspace:
-            return [Memory.workspace_id == workspace_id]
-        return [Memory.workspace_id.is_(None), Memory.created_by_id == user_id]
+            conditions = [Memory.workspace_id == workspace_id]
+        else:
+            conditions = [Memory.workspace_id.is_(None), Memory.created_by_id == user_id]
+
+        # AC-18.6: hard tenant filter.  A request with a vertical client only
+        # sees rows with matching client_id; an internal request only sees
+        # client_id IS NULL.
+        if client_id is not None:
+            conditions.append(Memory.client_id == client_id)
+        else:
+            conditions.append(Memory.client_id.is_(None))
+        return conditions
 
     async def search(
         self,
@@ -96,11 +107,13 @@ class MemoryHybridSearch:
         type: str | None = None,
         tags: list[str] | None = None,
         research_thread_id: int | None = None,
+        client_id: str | None = None,
     ) -> list[ScoredMemory]:
         base_conditions = self._scope_conditions(
             workspace_id=workspace_id,
             user_id=user_id,
             research_thread_id=research_thread_id,
+            client_id=client_id,
         )
         if type is not None:
             base_conditions.append(Memory.type == MemoryType(type))

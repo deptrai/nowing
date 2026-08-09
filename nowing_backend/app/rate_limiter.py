@@ -10,6 +10,7 @@ from limits.storage import MemoryStorage
 from slowapi import Limiter
 
 from app.config import config
+from app.observability.metrics import record_rate_limit_rejection
 
 
 def get_real_client_ip(request: Request) -> str:
@@ -38,8 +39,10 @@ limiter = Limiter(
 )
 
 # Public agent-chat rate limits (Epic 18, AC-9 / AD-29).
-AGENT_CHAT_CLIENT_LIMIT = RateLimitItemPerMinute(30)
-AGENT_CHAT_WORKSPACE_LIMIT = RateLimitItemPerMinute(100)
+AGENT_CHAT_CLIENT_LIMIT = RateLimitItemPerMinute(config.AGENT_CHAT_RATE_LIMIT_RPM)
+AGENT_CHAT_WORKSPACE_LIMIT = RateLimitItemPerMinute(
+    config.AGENT_CHAT_WORKSPACE_RATE_LIMIT_RPM
+)
 
 
 def _agent_chat_limit_keys(client_id: str, workspace_id: int) -> tuple[str, str]:
@@ -62,6 +65,7 @@ def check_agent_chat_limits(client_id: str, workspace_id: int) -> None:
     client_key, workspace_key = _agent_chat_limit_keys(client_id, workspace_id)
 
     if not limiter.limiter.test(AGENT_CHAT_CLIENT_LIMIT, client_key):
+        record_rate_limit_rejection(scope="agent_chat:client")
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="rate limit exceeded for client",
@@ -71,6 +75,7 @@ def check_agent_chat_limits(client_id: str, workspace_id: int) -> None:
         )
 
     if not limiter.limiter.test(AGENT_CHAT_WORKSPACE_LIMIT, workspace_key):
+        record_rate_limit_rejection(scope="agent_chat:workspace")
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="rate limit exceeded for workspace",

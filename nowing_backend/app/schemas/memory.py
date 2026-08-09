@@ -45,6 +45,8 @@ class MemoryRead(BaseModel):
     workspace_id: int | None = None
     created_by_id: Any | None = None
     research_thread_id: int | None = None
+    client_id: str | None = None
+    agent_id: str | None = None
     type: str
     content: str
     source_type: str
@@ -96,6 +98,8 @@ class MemoryCreate(BaseModel):
     tags: list[str] = Field(default_factory=list)
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     research_thread_id: int | None = None
+    client_id: str | None = None
+    agent_id: str | None = None
 
     @field_validator("type", "source_type", mode="before")
     @classmethod
@@ -112,6 +116,8 @@ class MemoryCreate(BaseModel):
 
 class MemoryUpdate(BaseModel):
     corrected_content: Annotated[str, Field(min_length=1)]
+    client_id: str | None = None
+    agent_id: str | None = None
 
 
 class MemorySearchRequest(BaseModel):
@@ -122,6 +128,7 @@ class MemorySearchRequest(BaseModel):
     type: str | None = None
     tags: list[str] = Field(default_factory=list)
     research_thread_id: int | None = None
+    client_id: str | None = None
 
     @field_validator("type", mode="before")
     @classmethod
@@ -147,6 +154,8 @@ class MemorySearchHit(BaseModel):
     id: int
     content: str
     type: str
+    client_id: str | None = None
+    agent_id: str | None = None
     tags: list[str] = Field(default_factory=list)
     confidence: float = 1.0
     source_type: str
@@ -193,6 +202,8 @@ class MemorySearchHit(BaseModel):
             id=memory.id,
             content=memory.content,
             type=memory.type.value,
+            client_id=memory.client_id,
+            agent_id=memory.agent_id,
             tags=memory.tags or [],
             confidence=memory.confidence,
             source_type=memory.source_type.value,

@@ -27,6 +27,7 @@ import time
 from collections.abc import AsyncGenerator
 from functools import partial
 from typing import Any, Literal
+from uuid import UUID
 
 import anyio
 from fastapi import HTTPException
@@ -45,6 +46,7 @@ from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     AgentConfig as RegistryAgentConfig,
     ChatVisibility,
+    NewChatThread,
     async_session_maker,
 )
 from app.observability import otel as ot
@@ -169,14 +171,16 @@ async def _merge_registry_agent_config(
     )
 
     if registry:
+        # AC-18.4: AgentConfig.system_instructions is *prepended* to the default
+        # system prompt; the additive prompt builder keeps the default body.
         if registry.system_instructions is not None:
             agent_config.system_instructions = registry.system_instructions
-            agent_config.use_default_system_instructions = False
         if registry.citations_enabled is not None:
             agent_config.citations_enabled = registry.citations_enabled
         if registry.model_name:
             agent_config.model_name = registry.model_name
 
+        # Non-empty enabled_tools is the allowlist; empty means no restriction.
         if registry.enabled_tools:
             effective_enabled = list(registry.enabled_tools)
         if registry.disabled_tools:
@@ -211,6 +215,8 @@ async def stream_new_chat(
     client_id: str | None = None,
     agent_id: str | None = None,
     platform_metadata: dict[str, Any] | None = None,
+    external_metadata: dict[str, Any] | None = None,
+    run_id: UUID | None = None,
     llm: Any | None = None,
     agent_config: RuntimeAgentConfig | None = None,
     agent_config_override: RegistryAgentConfig | None = None,
@@ -285,6 +291,13 @@ async def stream_new_chat(
         workspace_id=workspace_id,
         client_id=client_id,
         agent_id=agent_id,
+    )
+
+    # Load the chat thread once so downstream layers can scope memory recall
+    # to the linked ResearchThread (Story 18.5 AC-3).
+    chat_thread = await session.get(NewChatThread, chat_id)
+    research_thread_id = (
+        chat_thread.research_thread_id if chat_thread is not None else None
     )
 
     # Declared at function scope so SSE-yield join points and the finally
@@ -529,6 +542,8 @@ async def stream_new_chat(
             mentioned_document_ids=mentioned_document_ids,
             auth_context=auth_context,
             research_mode=mode,
+            research_thread_id=research_thread_id,
+            client_id=client_id,
         )
         _perf_log.info(
             "[stream_new_chat] Agent created in %.3fs", time.perf_counter() - _t0
@@ -804,6 +819,8 @@ async def stream_new_chat(
                 disabled_tools=effective_disabled_tools,
                 mentioned_document_ids=mentioned_document_ids,
                 auth_context=auth_context,
+                research_thread_id=research_thread_id,
+                client_id=client_id,
             )
             _perf_log.info(
                 "[stream_new_chat] Runtime rate-limit recovery repinned "
@@ -964,6 +981,8 @@ async def stream_new_chat(
                 accumulator=accumulator,
                 log_prefix="stream_new_chat",
                 client_id=client_id,
+                external_metadata=external_metadata,
+                run_id=run_id,
             )
 
         # Persist any sandbox-produced files to local storage so they remain

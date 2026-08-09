@@ -250,6 +250,7 @@ class MemoryRepository:
         commit: bool = True,
         automation_run_id: int | None = None,
         client_id: str | None = None,
+        agent_id: str | None = None,
     ) -> Memory:
         if isinstance(type, str):
             type = MemoryType(type)
@@ -326,10 +327,14 @@ class MemoryRepository:
                     existing.source_input = source_input
                 existing.tags = tags or []
                 existing.confidence = confidence
-                # Only overwrite the thread association when a new one is given,
-                # so re-creating a duplicate doesn't silently wipe it.
+                # Only overwrite the thread/tenant association when a new one is
+                # given, so re-creating a duplicate doesn't silently wipe it.
                 if research_thread_id is not None:
                     existing.research_thread_id = research_thread_id
+                if client_id is not None:
+                    existing.client_id = client_id
+                if agent_id is not None:
+                    existing.agent_id = agent_id
                 existing.updated_at = datetime.now(UTC)
                 self.session.add(existing)
                 await self._persist(commit=commit)
@@ -360,6 +365,8 @@ class MemoryRepository:
             confidence=confidence,
             research_thread_id=research_thread_id,
             created_by_id=created_by_id,
+            client_id=client_id,
+            agent_id=agent_id,
         )
         self.session.add(memory)
         await self._persist(commit=commit)
@@ -392,6 +399,8 @@ class MemoryRepository:
         skip_version_if_unchanged: bool = False,
         commit: bool = True,
         automation_run_id: int | None = None,
+        client_id: str | None = None,
+        agent_id: str | None = None,
     ) -> Memory | None:
         result = await self.session.execute(
             select(Memory).where(Memory.id == memory_id)
@@ -438,6 +447,10 @@ class MemoryRepository:
             memory.research_thread_id = research_thread_id
         if created_by_id is not None:
             memory.created_by_id = created_by_id
+        if client_id is not None:
+            memory.client_id = client_id
+        if agent_id is not None:
+            memory.agent_id = agent_id
 
         # Re-embed when content changes, unless an embedding is provided.
         if embedding is not None:
@@ -482,9 +495,14 @@ class MemoryRepository:
         limit: int = 20,
         type: str | MemoryType | None = None,
         tags: list[str] | None = None,
+        client_id: str | None = None,
     ) -> list[Memory]:
         """List workspace memories, newest first, with optional type/tags filters."""
         conditions = [Memory.workspace_id == workspace_id]
+        if client_id is not None:
+            conditions.append(Memory.client_id == client_id)
+        else:
+            conditions.append(Memory.client_id.is_(None))
         if type is not None:
             if isinstance(type, MemoryType):
                 conditions.append(Memory.type == type.value)
