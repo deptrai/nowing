@@ -2,7 +2,7 @@
 title: Story 12.1 — VietnamWorks Scraper
 epic: 12
 story: 1
-status: implemented
+status: done
 priority: P0
 ---
 
@@ -396,3 +396,44 @@ SWE-1.7 Max / Devin
 - `tests/integration/capabilities/vietnamworks/scrape/test_vietnamworks_scrape.py`
 - `tests/unit/capabilities/vietnamworks/fixtures/sample-response-page-1.json`
 - `_bmad-output/test-artifacts/atdd-checklist-12-1-vietnamworks-scraper.md`
+
+### Review Findings (Code Review 2026-08-10)
+
+> Review dựa trên diff `15df5c9e1..2e2e293ac` và cross-check với current HEAD. Một số finding liên quan đến `app/services/jobs_aggregator/` hoặc `vn_jobs` aggregate được xếp sang story 12.4/12.5 vì nằm ngoài phạm vi 12.1.
+
+#### decision_needed
+
+- [x] [Review][Patch] ~~Xử lý 429 theo spec có mâu thuẫn~~ — Quyết định: implement retry với exponential backoff/circuit-breaker theo pattern `batdongsan` (`_MAX_RETRIES=2`, delay `VIETNAMWORKS_RETRY_BACKOFF_BASE_S`), trả partial items khi vẫn bị 429. `nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py:208-209`
+- [x] [Review][Dismiss] ~~Location filter~~ — Quyết định: giữ nguyên. `locationId` không filter server-side theo spike; `orchestrator.py:68` ghi "The aggregator filters by location after normalization". Không cần thay đổi 12.1. `nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py:130-132`, `nowing_backend/app/capabilities/vietnamworks/scrape/executor.py:28-30`
+
+#### patch
+
+- [x] [Review][Patch] `nbPages` early-stop trong executor vô hiệu — `scrape_vietnamworks` không trả `meta`, nên `raw.get("meta", {}).get("nbPages")` luôn `None`, gây fetch thừa ít nhất 1 trang. `nowing_backend/app/capabilities/vietnamworks/scrape/executor.py:56-59`
+- [x] [Review][Patch] Thiếu retry/backoff/circuit-breaker cho 429 — Cần thêm `VIETNAMWORKS_RETRY_ATTEMPTS`/`VIETNAMWORKS_RETRY_BACKOFF_BASE_S` vào config và retry loop trên 429, sau đó mới degrade. `nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py:208-209`
+- [x] [Review][Patch] `_degraded()` luôn trả `items: []` — khi gặp 429/403/5xx ở trang > 1, dữ liệu các trang trước bị mất. Nên trả `items` đã fetch kèm `degraded=true` hoặc giữ partial result. `nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py:25-32`, `scraper.py:208-219`
+- [x] [Review][Patch] `_extract_items` dừng cả trang khi một job lỗi — `_normalize_job` gọi `_normalize_salary` (`int()` không guard), `_first_location`, `_parse_date`; một job lỗi làm mất cả trang. Cần try/except per-item để chỉ loại job lỗi. `nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py:159-165`
+- [x] [Review][Patch] `_normalize_salary` crash trên chuỗi định dạng — API có thể trả `"25,000,000"` hoặc `"25.5"`, `int()` raise. `nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py:63-64`
+- [x] [Review][Patch] `_parse_date` yếu — không xử lý timestamp dạng string/float, threshold ms/s (`> 1e10`) quá lỏng cho giá trị future-seconds, và trả ISO string full datetime mà `app/services/jobs_aggregator/normalize.py` chưa parse được. `nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py:42-53`
+- [x] [Review][Patch] `ScrapeInput` thiếu validation — `keyword` rỗng/khoảng trắng không bị từ chối, `salary_min`/`salary_max`/`experience_years` có thể âm, không kiểm `salary_max >= salary_min`. `nowing_backend/app/capabilities/vietnamworks/scrape/schemas.py:17-24`
+- [x] [Review][Patch] `ScrapeInput.max_pages` mặc định 1, trong khi config/MCP/reference dùng 5 — gây mặc định không nhất quán. `nowing_backend/app/capabilities/vietnamworks/scrape/schemas.py:23`
+- [x] [Review][Patch] `max_pages=0` và `hitsPerPage=0` bị ép thành 1/100 — `int(params.get(...) or default)` coi `0` là falsy. Người gọi không thể yêu cầu 0 trang. `nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py:189-190`
+- [x] [Review][Patch] Executor over-fetch trang cuối — `_scrape` nhận `max_items` gốc mỗi trang nên `remaining` tính theo 0 item trong call, gây yêu cầu `hitsPerPage` đầy đủ dù chỉ cần vài item. `nowing_backend/app/capabilities/vietnamworks/scrape/executor.py:28-36`, `nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py:199-203`
+- [x] [Review][Patch] Executor exception handling không đầy đủ — chỉ bắt `httpx.TimeoutException` và `RuntimeError("429")`; `httpx.HTTPStatusError`, `ValueError`, `TypeError` từ `scrape_fn` propagate. `nowing_backend/app/capabilities/vietnamworks/scrape/executor.py:61-81`
+- [x] [Review][Patch] Executor thiếu `CapabilityContext`, `next_action`, `done` progress — so với topcv/itviec, degraded runs không có hướng dẫn human-review và progress stream không được đóng. `nowing_backend/app/capabilities/vietnamworks/scrape/executor.py:23-90`
+- [x] [Review][Patch] Golden regression tests không ép buộc các trường AC 2 — `test_scraper.py:127-141` chỉ assert một phần trường; nhiều trường dùng `.get(..., default)` nên schema drift có thể pass âm thầm. `nowing_backend/tests/unit/proprietary/platforms/vietnamworks/test_scraper.py:127-141`
+- [x] [Review][Patch] Integration test fake bypass `_normalize_job` — fake trả `envelope["data"]` raw, sau đó assert `item["title"]`/`item["company"]` mà raw items không có. `nowing_backend/tests/integration/capabilities/vietnamworks/scrape/test_vietnamworks_scrape.py:37-49`
+
+#### defer
+
+- [x] [Review][Defer] `posted_at` full-ISO datetime không tương thích với aggregator `normalize.py` — `normalize.py` chỉ parse `%Y-%m-%d`, cần cập nhật để chấp nhận full ISO hoặc `datetime`. Deferred đến story 12.4 (aggregator). `nowing_backend/app/services/jobs_aggregator/normalize.py:54-57`
+- [x] [Review][Defer] `salary_period_id:1` bị aggregator map thành "hour" thay vì "month" — `_SALARY_PERIOD_MAP` chung nhưng các nguồn có semantics khác nhau. Deferred đến story 12.4. `nowing_backend/app/services/jobs_aggregator/normalize.py:13-23`
+- [x] [Review][Defer] Aggregate billing base fee không được charge — `_gate_vn_jobs_aggregate` reserve `VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY` nhưng `_charge_vn_jobs_aggregate` chỉ charge `cost_micros` con. Deferred đến 12.4/12.5. `nowing_backend/app/capabilities/core/billing.py:287-294`, `billing.py:631-671`
+- [x] [Review][Defer] `vn_jobs` subagent `load_tools` không validate `workspace_id` — có thể `None`, gây crash. Deferred đến 12.4. `nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/tools/index.py:28-36`
+- [x] [Review][Defer] `_gate_vn_jobs_aggregate` under-reserve, empty sources = all sources, fallback `max_items_per_source=10` khác schema default 50 — Deferred đến 12.4/12.5. `nowing_backend/app/capabilities/core/billing.py:267-296`
+- [x] [Review][Defer] `_charge_vn_jobs_aggregate` có thể charge khi degraded — kiểm tra `cost_micros <= 0` nhưng không kiểm `degraded`. Deferred đến 12.4/12.5. `nowing_backend/app/capabilities/core/billing.py:631-671`
+- [x] [Review][Defer] `PII_REDACTION_MIN_CONFIDENCE` chưa được dùng — config tồn tại nhưng chưa có logic. Deferred đến 12.5. `nowing_backend/app/config/__init__.py:1025-1029`
+
+#### dismissed
+
+- [Review][Dismiss] Diff `2e2e293ac` stale so với current HEAD — bỏ `INDEED_JOB` trong diff nhưng HEAD vẫn giữ, và chứa stub của 12.2-12.5. Đây là artifact review trên historical commit, không phải defect của 12.1.
+- [Review][Dismiss] "Diff chứa ngoài phạm vi TopCV/ITviec/vn_jobs" — các issue riêng lẻ đã được gán cho story 12.2-12.5; không cần action cho 12.1.

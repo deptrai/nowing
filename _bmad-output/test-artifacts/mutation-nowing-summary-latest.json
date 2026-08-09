@@ -1,24 +1,526 @@
 {
   "dimension": "mutation",
-  "runAt": "2026-08-08T06:03:25.384302+00:00",
+  "runAt": "2026-08-09T09:17:05.960474+00:00",
   "services": [
     {
-      "service": "services/okf/redaction",
-      "total": 10,
-      "killed": 10,
-      "survived": 0,
+      "service": "vietnamworks/scrape/executor",
+      "total": 147,
+      "killed": 91,
+      "survived": 56,
       "timeout": 0,
       "noTests": 0,
-      "mutationScore": 100.0,
-      "verdict": "PASS",
+      "mutationScore": 61.9,
+      "verdict": "PASS_WITH_WARNINGS",
       "triage": {
         "P0": [],
-        "P1": [],
+        "P1": [
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 52,
+            "col": 44,
+            "operator": "core/ReplaceBinaryOperator_Sub_Add",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -49,7 +49,7 @@\n \n         try:\n             for page in range(1, input.max_pages + 1):\n-                remaining = input.max_items - len(items)\n+                remaining = input.max_items + len(items)\n                 if remaining <= 0:\n                     break\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Sub_Add at app/capabilities/vietnamworks/scrape/executor.py:52 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 52,
+            "col": 44,
+            "operator": "core/ReplaceBinaryOperator_Sub_LShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -49,7 +49,7 @@\n \n         try:\n             for page in range(1, input.max_pages + 1):\n-                remaining = input.max_items - len(items)\n+                remaining = input.max_items << len(items)\n                 if remaining <= 0:\n                     break\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Sub_LShift at app/capabilities/vietnamworks/scrape/executor.py:52 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 52,
+            "col": 44,
+            "operator": "core/ReplaceBinaryOperator_Sub_BitOr",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -49,7 +49,7 @@\n \n         try:\n             for page in range(1, input.max_pages + 1):\n-                remaining = input.max_items - len(items)\n+                remaining = input.max_items | len(items)\n                 if remaining <= 0:\n                     break\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Sub_BitOr at app/capabilities/vietnamworks/scrape/executor.py:52 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 52,
+            "col": 44,
+            "operator": "core/ReplaceBinaryOperator_Sub_BitXor",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -49,7 +49,7 @@\n \n         try:\n             for page in range(1, input.max_pages + 1):\n-                remaining = input.max_items - len(items)\n+                remaining = input.max_items ^ len(items)\n                 if remaining <= 0:\n                     break\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_Sub_BitXor at app/capabilities/vietnamworks/scrape/executor.py:52 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Add",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str + None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Add at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Add",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str + None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Add at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Add",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext + None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Add at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Sub",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str - None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Sub at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Sub",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str - None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Sub at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Sub",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext - None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Sub at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Mul",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str * None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Mul at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Mul",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str * None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Mul at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Mul",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext * None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Mul at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Div",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str / None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Div at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Div",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str / None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Div at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Div",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext / None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Div at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_FloorDiv",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str // None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_FloorDiv at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_FloorDiv",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str // None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_FloorDiv at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_FloorDiv",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext // None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_FloorDiv at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Mod",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str % None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Mod at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Mod",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str % None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Mod at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Mod",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext % None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Mod at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Pow",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str ** None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Pow at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Pow",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str ** None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Pow at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_Pow",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext ** None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_Pow at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_RShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str >> None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_RShift at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_RShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str >> None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_RShift at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_RShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext >> None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_RShift at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_LShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str << None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_LShift at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_LShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str << None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_LShift at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_LShift",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext << None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_LShift at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_BitAnd",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str & None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_BitAnd at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_BitAnd",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str & None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_BitAnd at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_BitAnd",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext & None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_BitAnd at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 41,
+            "operator": "core/ReplaceBinaryOperator_BitOr_BitXor",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str ^ None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_BitXor at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 28,
+            "col": 56,
+            "operator": "core/ReplaceBinaryOperator_BitOr_BitXor",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -25,7 +25,7 @@\n }\n \n \n-def _next_action(degradation_reason: str | None) -> str | None:\n+def _next_action(degradation_reason: str | None) -> str ^ None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_BitXor at app/capabilities/vietnamworks/scrape/executor.py:28 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 42,
+            "col": 51,
+            "operator": "core/ReplaceBinaryOperator_BitOr_BitXor",
+            "pattern": "4-arithmetic-not-asserted",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -39,7 +39,7 @@\n     _scrape = scrape_fn or scrape_vietnamworks\n \n     async def execute(\n-        input: ScrapeInput, ctx: CapabilityContext | None = None\n+        input: ScrapeInput, ctx: CapabilityContext ^ None = None\n     ) -> ScrapeOutput:\n         emit_progress(\"fetching\", \"VietnamWorks job search\")\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceBinaryOperator_BitOr_BitXor at app/capabilities/vietnamworks/scrape/executor.py:42 (4-arithmetic-not-asserted)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 31,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Eq_NotEq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -28,7 +28,7 @@\n def _next_action(degradation_reason: str | None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n-    if degradation_reason == \"access_blocked\":\n+    if degradation_reason != \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"\n     return None\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_NotEq at app/capabilities/vietnamworks/scrape/executor.py:31 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 31,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Eq_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -28,7 +28,7 @@\n def _next_action(degradation_reason: str | None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n-    if degradation_reason == \"access_blocked\":\n+    if degradation_reason < \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"\n     return None\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Lt at app/capabilities/vietnamworks/scrape/executor.py:31 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 29,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -26,7 +26,7 @@\n \n \n def _next_action(degradation_reason: str | None) -> str | None:\n-    if degradation_reason == \"rate_limited\":\n+    if degradation_reason <= \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/capabilities/vietnamworks/scrape/executor.py:29 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 31,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -28,7 +28,7 @@\n def _next_action(degradation_reason: str | None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n-    if degradation_reason == \"access_blocked\":\n+    if degradation_reason <= \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"\n     return None\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/capabilities/vietnamworks/scrape/executor.py:31 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 31,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Eq_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -28,7 +28,7 @@\n def _next_action(degradation_reason: str | None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n-    if degradation_reason == \"access_blocked\":\n+    if degradation_reason > \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"\n     return None\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Gt at app/capabilities/vietnamworks/scrape/executor.py:31 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 29,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -26,7 +26,7 @@\n \n \n def _next_action(degradation_reason: str | None) -> str | None:\n-    if degradation_reason == \"rate_limited\":\n+    if degradation_reason >= \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/capabilities/vietnamworks/scrape/executor.py:29 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 31,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -28,7 +28,7 @@\n def _next_action(degradation_reason: str | None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n-    if degradation_reason == \"access_blocked\":\n+    if degradation_reason >= \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"\n     return None\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/capabilities/vietnamworks/scrape/executor.py:31 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 29,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -26,7 +26,7 @@\n \n \n def _next_action(degradation_reason: str | None) -> str | None:\n-    if degradation_reason == \"rate_limited\":\n+    if degradation_reason is \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n     if degradation_reason == \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/capabilities/vietnamworks/scrape/executor.py:29 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 31,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Eq_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -28,7 +28,7 @@\n def _next_action(degradation_reason: str | None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n-    if degradation_reason == \"access_blocked\":\n+    if degradation_reason is \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"\n     return None\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/capabilities/vietnamworks/scrape/executor.py:31 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 31,
+            "col": 26,
+            "operator": "core/ReplaceComparisonOperator_Eq_IsNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -28,7 +28,7 @@\n def _next_action(degradation_reason: str | None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n-    if degradation_reason == \"access_blocked\":\n+    if degradation_reason is not \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"\n     return None\n ",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_IsNot at app/capabilities/vietnamworks/scrape/executor.py:31 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 53,
+            "col": 29,
+            "operator": "core/ReplaceComparisonOperator_LtE_Eq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -50,7 +50,7 @@\n         try:\n             for page in range(1, input.max_pages + 1):\n                 remaining = input.max_items - len(items)\n-                if remaining <= 0:\n+                if remaining == 0:\n                     break\n \n                 hits_per_page = min(remaining, config.VIETNAMWORKS_MAX_ITEMS)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_LtE_Eq at app/capabilities/vietnamworks/scrape/executor.py:53 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 53,
+            "col": 29,
+            "operator": "core/ReplaceComparisonOperator_LtE_Lt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -50,7 +50,7 @@\n         try:\n             for page in range(1, input.max_pages + 1):\n                 remaining = input.max_items - len(items)\n-                if remaining <= 0:\n+                if remaining < 0:\n                     break\n \n                 hits_per_page = min(remaining, config.VIETNAMWORKS_MAX_ITEMS)",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_LtE_Lt at app/capabilities/vietnamworks/scrape/executor.py:53 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 80,
+            "col": 30,
+            "operator": "core/ReplaceComparisonOperator_GtE_Eq",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -77,7 +77,7 @@\n                     break\n \n                 items.extend(page_items)\n-                if len(items) >= input.max_items:\n+                if len(items) == input.max_items:\n                     break\n \n                 # If the scraper already reached the end of the result set, stop early.",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_GtE_Eq at app/capabilities/vietnamworks/scrape/executor.py:80 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 80,
+            "col": 30,
+            "operator": "core/ReplaceComparisonOperator_GtE_Gt",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -77,7 +77,7 @@\n                     break\n \n                 items.extend(page_items)\n-                if len(items) >= input.max_items:\n+                if len(items) > input.max_items:\n                     break\n \n                 # If the scraper already reached the end of the result set, stop early.",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_GtE_Gt at app/capabilities/vietnamworks/scrape/executor.py:80 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 80,
+            "col": 30,
+            "operator": "core/ReplaceComparisonOperator_GtE_Is",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -77,7 +77,7 @@\n                     break\n \n                 items.extend(page_items)\n-                if len(items) >= input.max_items:\n+                if len(items) is input.max_items:\n                     break\n \n                 # If the scraper already reached the end of the result set, stop early.",
+            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_GtE_Is at app/capabilities/vietnamworks/scrape/executor.py:80 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 31,
+            "col": 7,
+            "operator": "core/AddNot",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -28,7 +28,7 @@\n def _next_action(degradation_reason: str | None) -> str | None:\n     if degradation_reason == \"rate_limited\":\n         return \"Retry after reducing request rate or rotating egress.\"\n-    if degradation_reason == \"access_blocked\":\n+    if not degradation_reason == \"access_blocked\":\n         return \"Access blocked by VietnamWorks; escalate to human review.\"\n     return None\n ",
+            "recommendedTest": "Add a test that kills core/AddNot at app/capabilities/vietnamworks/scrape/executor.py:31 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 54,
+            "col": 20,
+            "operator": "core/ReplaceBreakWithContinue",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -51,7 +51,7 @@\n             for page in range(1, input.max_pages + 1):\n                 remaining = input.max_items - len(items)\n                 if remaining <= 0:\n-                    break\n+                    continue\n \n                 hits_per_page = min(remaining, config.VIETNAMWORKS_MAX_ITEMS)\n                 page_params = {",
+            "recommendedTest": "Add a test that kills core/ReplaceBreakWithContinue at app/capabilities/vietnamworks/scrape/executor.py:54 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 81,
+            "col": 20,
+            "operator": "core/ReplaceBreakWithContinue",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -78,7 +78,7 @@\n \n                 items.extend(page_items)\n                 if len(items) >= input.max_items:\n-                    break\n+                    continue\n \n                 # If the scraper already reached the end of the result set, stop early.\n                 if raw.get(\"meta\", {}).get(\"nbPages\") is not None and page >= int(",
+            "recommendedTest": "Add a test that kills core/ReplaceBreakWithContinue at app/capabilities/vietnamworks/scrape/executor.py:81 (3-happy-path-only)."
+          },
+          {
+            "file": "app/capabilities/vietnamworks/scrape/executor.py",
+            "line": 53,
+            "col": 32,
+            "operator": "core/NumberReplacer",
+            "pattern": "3-happy-path-only",
+            "diff": "--- mutation diff ---\n--- aapp/capabilities/vietnamworks/scrape/executor.py\n+++ bapp/capabilities/vietnamworks/scrape/executor.py\n@@ -50,7 +50,7 @@\n         try:\n             for page in range(1, input.max_pages + 1):\n                 remaining = input.max_items - len(items)\n-                if remaining <= 0:\n+                if remaining <= -1:\n                     break\n \n                 hits_per_page = min(remaining, config.VIETNAMWORKS_MAX_ITEMS)",
+            "recommendedTest": "Add a test that kills core/NumberReplacer at app/capabilities/vietnamworks/scrape/executor.py:53 (3-happy-path-only)."
+          }
+        ],
         "P2": []
-      },
-      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-services-okf-redaction-20260808T060325Z.json",
-      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-services-okf-redaction-20260808T060022Z.sqlite",
-      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-nowing-services-okf-redaction-20260808T060022Z.toml"
+      }
     }
   ]
 }

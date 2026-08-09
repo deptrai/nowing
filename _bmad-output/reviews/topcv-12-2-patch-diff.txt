@@ -1,0 +1,683 @@
+diff --git a/nowing_backend/app/capabilities/topcv/scrape/executor.py b/nowing_backend/app/capabilities/topcv/scrape/executor.py
+index 14b35e15a..1dc15f340 100644
+--- a/nowing_backend/app/capabilities/topcv/scrape/executor.py
++++ b/nowing_backend/app/capabilities/topcv/scrape/executor.py
+@@ -17,7 +17,6 @@ _DOMAIN = "topcv.vn"
+ _BOT_DEGRADATION_REASONS = {
+     "bot_detected",
+     "rate_limited",
+-    "anti_bot_block",
+     "access_blocked",
+ }
+ 
+diff --git a/nowing_backend/app/config/__init__.py b/nowing_backend/app/config/__init__.py
+index aae2291b4..9ef92e80b 100644
+--- a/nowing_backend/app/config/__init__.py
++++ b/nowing_backend/app/config/__init__.py
+@@ -962,15 +962,36 @@ class Config:
+     VIETNAMWORKS_TIMEOUT_S = float(os.getenv("VIETNAMWORKS_TIMEOUT_S", "30.0"))
+     VIETNAMWORKS_MAX_PAGES = int(os.getenv("VIETNAMWORKS_MAX_PAGES", "5"))
+     VIETNAMWORKS_MAX_ITEMS = int(os.getenv("VIETNAMWORKS_MAX_ITEMS", "100"))
++    VIETNAMWORKS_RETRY_ATTEMPTS = int(os.getenv("VIETNAMWORKS_RETRY_ATTEMPTS", "2"))
++    VIETNAMWORKS_RETRY_BACKOFF_BASE_S = float(
++        os.getenv("VIETNAMWORKS_RETRY_BACKOFF_BASE_S", "0.5")
++    )
++    VIETNAMWORKS_USER_AGENT = os.getenv(
++        "VIETNAMWORKS_USER_AGENT",
++        (
++            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
++            "AppleWebKit/537.36 (KHTML, like Gecko) "
++            "Chrome/126.0.0.0 Safari/537.36"
++        ),
++    )
+     # TopCV is Cloudflare-protected and uses the web crawler stack. The platform
+     # per-item rate is a pass-through; actual anti-bot cost is metered via
+     # WEB_CRAWL + WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE (see AD-23).
++    TOPCV_ENABLED = os.getenv("TOPCV_ENABLED", "TRUE").upper() == "TRUE"
+     TOPCV_SCRAPE_MICROS_PER_ITEM = int(
+         os.getenv("TOPCV_SCRAPE_MICROS_PER_ITEM", "5500")
+     )
+     TOPCV_PAGE_DELAY_S = float(os.getenv("TOPCV_PAGE_DELAY_S", "1.0"))
+     TOPCV_TIMEOUT_S = float(os.getenv("TOPCV_TIMEOUT_S", "60.0"))
+     TOPCV_MAX_PAGES = int(os.getenv("TOPCV_MAX_PAGES", "3"))
++    TOPCV_RETRY_ATTEMPTS = int(os.getenv("TOPCV_RETRY_ATTEMPTS", "2"))
++    TOPCV_RETRY_BACKOFF_BASE_S = float(os.getenv("TOPCV_RETRY_BACKOFF_BASE_S", "2.0"))
++    TOPCV_CIRCUIT_BREAKER_THRESHOLD = int(
++        os.getenv("TOPCV_CIRCUIT_BREAKER_THRESHOLD", "3")
++    )
++    TOPCV_CIRCUIT_BREAKER_TIMEOUT_S = float(
++        os.getenv("TOPCV_CIRCUIT_BREAKER_TIMEOUT_S", "60.0")
++    )
+     # ITviec is server-rendered HTML; cheaper than TopCV, no anti-bot expected.
+     ITVIEC_SCRAPE_MICROS_PER_ITEM = int(
+         os.getenv("ITVIEC_SCRAPE_MICROS_PER_ITEM", "3000")
+diff --git a/nowing_backend/app/proprietary/platforms/topcv/scraper.py b/nowing_backend/app/proprietary/platforms/topcv/scraper.py
+index 39c465dd3..33fc3982a 100644
+--- a/nowing_backend/app/proprietary/platforms/topcv/scraper.py
++++ b/nowing_backend/app/proprietary/platforms/topcv/scraper.py
+@@ -4,24 +4,33 @@ from __future__ import annotations
+ 
+ import asyncio
+ import logging
++import random
+ import re
++import time
+ from typing import Any
+-from urllib.parse import urljoin, urlparse
++from urllib.parse import quote, urljoin, urlparse
+ 
+ from lxml import html as lxml_html
+ from scrapling.fetchers import StealthyFetcher
+ 
+ from app.config import config
++from app.utils.crawl import BlockType, classify_block
+ 
+ logger = logging.getLogger(__name__)
+ 
+ _BASE_URL = "https://www.topcv.vn"
+ 
++# Circuit-breaker state (module-level; thread-safe because asyncio is single-threaded).
++_consecutive_failures = 0
++_circuit_open_until = 0.0
++
+ _SALARY_PERIOD_RE = re.compile(r"\b(tháng|month|năm|year|giờ|hour|ngày|day)\b", re.IGNORECASE)
++_SALARY_NUMBER_RE = re.compile(r"[\d\.,]+\s*(?:tr(?:iệu)?|k|m|b|t)?", re.IGNORECASE)
+ _AGE_RE = re.compile(
+     r"(?:đăng\s+)?(\d+)\s+(phút|giờ|ngày|tuần|tháng|năm)\s+trước",
+     re.IGNORECASE,
+ )
++_NEGOTIATION_KEYWORDS = ("thoả thuận", "thương lượng", "negotiable", "thỏa thuận")
+ 
+ 
+ def _degraded(reason: str, *, cost_micros: int = 0) -> dict[str, Any]:
+@@ -43,9 +52,13 @@ def _safe_text(element: Any) -> str | None:
+ 
+ def _normalize_keyword(value: str) -> str:
+     """Convert a Vietnamese search phrase into a TopCV URL slug."""
+-    text = re.sub(r"[^a-z0-9\s-]", "", value.lower())
++    text = re.sub(r"[^a-z0-9\s+#-]", "", value.lower())
+     text = re.sub(r"\s+", "-", text.strip())
+-    return text.strip("-") or "viec-lam"
++    text = re.sub(r"-+", "-", text)
++    slug = text.strip("-")
++    if not slug:
++        return "viec-lam"
++    return quote(slug, safe="/-")
+ 
+ 
+ def _topcv_search_url(keyword: str, page: int) -> str:
+@@ -60,16 +73,21 @@ def _clean_url(url: str) -> str:
+     if not url:
+         return ""
+     parsed = urlparse(url)
+-    return f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
++    scheme = parsed.scheme or "https"
++    query = f"?{parsed.query}" if parsed.query else ""
++    return f"{scheme}://{parsed.netloc}{parsed.path}{query}"
+ 
+ 
+-def _extract_salary_numbers(text: str) -> tuple[int | None, int | None, str, str | None]:
++def _extract_salary_numbers(
++    text: str,
++) -> tuple[int | None, int | None, str, str | None, bool, str]:
++    """Return (min, max, currency, period, salary_hidden, salary_confidence)."""
+     if not text:
+-        return None, None, "VND", None
++        return 0, 0, "VND", "month", True, "low"
+ 
+     lower = text.lower()
+-    if any(k in lower for k in ("thoả thuận", "thương lượng", "negotiable", "thỏa thuận")):
+-        return 0, 0, "VND", "negotiable"
++    if any(k in lower for k in _NEGOTIATION_KEYWORDS):
++        return 0, 0, "VND", "negotiable", True, "low"
+ 
+     currency = "VND"
+     if any(c in text for c in ("$", "usd")):
+@@ -89,11 +107,23 @@ def _extract_salary_numbers(text: str) -> tuple[int | None, int | None, str, str
+             period_tag = "day"
+ 
+     numbers: list[float] = []
+-    for token in re.findall(r"[\d\.,]+\s*[kKmMbBtT]?", text):
+-        token = token.strip().replace(",", "")
++    for raw_token in re.findall(_SALARY_NUMBER_RE, text):
++        token = raw_token.strip().replace(",", "")
++        if not token:
++            continue
++        lower_token = token.lower()
+         unit = 1.0
+-        if token[-1:].lower() in ("k", "tr", "m", "triệu"):
+-            unit = 1_000 if token[-1:].lower() == "k" else 1_000_000
++        if lower_token.endswith("tr") or lower_token.endswith("triệu") or lower_token.endswith("m"):
++            unit = 1_000_000
++            token = re.sub(r"(?i)(tr(?:iệu)?|m)$", "", token).strip()
++        elif lower_token.endswith("k"):
++            unit = 1_000
++            token = token[:-1].strip()
++        elif lower_token.endswith("b"):
++            unit = 1_000_000_000
++            token = token[:-1].strip()
++        elif lower_token.endswith("t"):
++            unit = 1_000_000_000_000
+             token = token[:-1].strip()
+         try:
+             numbers.append(float(token) * unit)
+@@ -101,16 +131,16 @@ def _extract_salary_numbers(text: str) -> tuple[int | None, int | None, str, str
+             continue
+ 
+     if not numbers:
+-        return 0, 0, currency, period_tag or "month"
++        return 0, 0, currency, period_tag or "month", True, "low"
+ 
+     min_v: int | None = int(numbers[0])
+     max_v: int | None = int(numbers[-1]) if len(numbers) > 1 else None
+     if "tới" in lower or "up to" in lower:
+         min_v, max_v = 0, int(numbers[0])
+-    elif "từ" in lower or "from" in lower:
++    elif ("từ" in lower or "from" in lower) and not re.search(r"(đến|\\bto\\b)", lower):
+         min_v = int(numbers[0])
+         max_v = None
+-    return min_v, max_v, currency, period_tag or "month"
++    return min_v, max_v, currency, period_tag or "month", False, "medium"
+ 
+ 
+ def _parse_posted(text: str | None) -> str | None:
+@@ -317,6 +347,8 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
+         if salary_els:
+             salary_raw = _safe_text(salary_els[0]) or ""
+ 
++        min_v, max_v, currency, period, salary_hidden, salary_confidence = _extract_salary_numbers(salary_raw)
++
+         experience = None
+         exp_els = card.xpath('.//label[contains(@class,"exp")]//span')
+         if exp_els:
+@@ -352,10 +384,12 @@ def _parse_search_page(html: str) -> list[dict[str, Any]]:
+             "location": location,
+             "source_url": source_url,
+             "salary_raw": salary_raw,
+-            "salary_min": None,
+-            "salary_max": None,
+-            "salary_currency": None,
+-            "salary_period_id": None,
++            "salary_min": min_v,
++            "salary_max": max_v,
++            "salary_currency": currency,
++            "salary_period_id": period,
++            "salary_hidden": salary_hidden,
++            "salary_confidence": salary_confidence,
+             "employment_type": None,
+             "experience_years": experience,
+             "job_description": "",
+@@ -386,17 +420,82 @@ def _apply_detail(item: dict[str, Any], detail: dict[str, Any]) -> None:
+     salary_raw = detail.get("salary_raw") or item.get("salary_raw") or ""
+     if salary_raw:
+         item["salary_raw"] = salary_raw
+-    if salary_raw and any(k in salary_raw.lower() for k in ("thoả thuận", "thương lượng", "negotiable")):
+-        item["salary_min"] = 0
+-        item["salary_max"] = 0
+-        item["salary_currency"] = "VND"
+-        item["salary_period_id"] = "negotiable"
+-    else:
+-        min_v, max_v, currency, period = _extract_salary_numbers(salary_raw)
+-        item["salary_min"] = min_v
+-        item["salary_max"] = max_v
+-        item["salary_currency"] = currency
+-        item["salary_period_id"] = period
++    (
++        item["salary_min"],
++        item["salary_max"],
++        item["salary_currency"],
++        item["salary_period_id"],
++        item["salary_hidden"],
++        item["salary_confidence"],
++    ) = _extract_salary_numbers(salary_raw)
++
++
++def _degradation_reason_from_exception(exc: BaseException) -> str:
++    msg = str(exc).lower()
++    if "rate" in msg or "circuit open" in msg or "429" in msg:
++        return "rate_limited"
++    if isinstance(exc, TimeoutError):
++        return "timeout"
++    return "bot_detected"
++
++
++def _looks_like_rate_limit(exc: BaseException) -> bool:
++    msg = str(exc).lower()
++    return "rate" in msg or "429" in msg or "circuit open" in msg
++
++
++def _record_rate_limit_failure() -> None:
++    global _consecutive_failures, _circuit_open_until
++    _consecutive_failures += 1
++    if _consecutive_failures >= config.TOPCV_CIRCUIT_BREAKER_THRESHOLD:
++        _circuit_open_until = time.time() + config.TOPCV_CIRCUIT_BREAKER_TIMEOUT_S
++
++
++def _user_agent_for_attempt(attempt: int) -> str | None:
++    """Return a rotated User-Agent for retry attempts."""
++    uas: list[str] = []
++    if config.VIETNAMWORKS_USER_AGENT:
++        uas.append(config.VIETNAMWORKS_USER_AGENT)
++    uas.append(
++        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
++        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
++    )
++    if not uas:
++        return None
++    return uas[(attempt - 1) % len(uas)]
++
++
++def _backoff_seconds(attempt: int) -> float:
++    return min(config.TOPCV_RETRY_BACKOFF_BASE_S * (2 ** attempt), 30.0) + random.uniform(0, 0.5)
++
++
++def _validate_search_page(page: Any) -> None:
++    """Raise a descriptive ValueError if the search page is blocked or empty."""
++    html = getattr(page, "html_content", "") or ""
++    status = getattr(page, "status", 0) or 0
++
++    if not html.strip():
++        raise ValueError("empty search page")
++
++    if status == 429:
++        raise ValueError("rate limited")
++    if status == 403:
++        raise ValueError("anti-bot challenge")
++    if status >= 400:
++        raise ValueError(f"search page error: status={status}")
++
++    title = ""
++    title_nodes = page.css("title")
++    if title_nodes and title_nodes[0].text:
++        title = str(title_nodes[0].text)
++    if "just a moment..." in title.lower():
++        raise ValueError("anti-bot challenge")
++
++    block = classify_block(status, html)
++    if block == BlockType.RATE_LIMITED:
++        raise ValueError("rate limited")
++    if block != BlockType.OK:
++        raise ValueError("anti-bot challenge")
+ 
+ 
+ async def _fetch_search_page(keyword: str, page: int) -> str:
+@@ -404,39 +503,113 @@ async def _fetch_search_page(keyword: str, page: int) -> str:
+     from app.proprietary.web_crawler.stealth import build_stealthy_kwargs, get_stealth_config  # noqa: I001
+     from app.proprietary.web_crawler.connector import scroll_to_bottom
+ 
++    if _circuit_open_until > time.time():
++        raise ValueError("circuit open")
++
+     url = _topcv_search_url(keyword, page)
+-    kwargs: dict[str, Any] = {
++    base_kwargs: dict[str, Any] = {
+         "headless": True,
+         "network_idle": True,
+         "block_ads": True,
+         "solve_cloudflare": True,
+         "proxy": None,
+     }
+-    kwargs.update(build_stealthy_kwargs(get_stealth_config()))
+-    kwargs["page_action"] = scroll_to_bottom
++    base_kwargs.update(build_stealthy_kwargs(get_stealth_config()))
++    base_kwargs["page_action"] = scroll_to_bottom
++
++    attempts = max(0, config.TOPCV_RETRY_ATTEMPTS)
++    last_exc: BaseException | None = None
++
++    for attempt in range(attempts + 1):
++        kwargs = dict(base_kwargs)
++        if attempt > 0:
++            ua = _user_agent_for_attempt(attempt)
++            if ua:
++                # ponytail: Scrapling accepts a `useragent` string; extra headers
++                # are not needed here. If the fetcher is refactored to a connector,
++                # UA rotation must move to the connector kwargs.
++                kwargs["useragent"] = ua
+ 
+-    page = await asyncio.to_thread(StealthyFetcher.fetch, url, **kwargs)
+-    html = getattr(page, "html_content", "")
+-    if not html:
+-        raise ValueError("empty search page")
+-    return html
++        try:
++            page_obj = await asyncio.wait_for(
++                asyncio.to_thread(StealthyFetcher.fetch, url, **kwargs),
++                timeout=config.TOPCV_TIMEOUT_S,
++            )
++            _validate_search_page(page_obj)
++            global _consecutive_failures
++            _consecutive_failures = 0
++            return page_obj.html_content
++        except Exception as exc:
++            last_exc = exc
++            if attempt == attempts:
++                if _looks_like_rate_limit(exc):
++                    _record_rate_limit_failure()
++                    raise ValueError("rate_limited") from exc
++                raise
++            if _looks_like_rate_limit(exc):
++                # ponytail: we only count the final page failure toward the circuit
++                # breaker, not each individual retry attempt.
++                pass
++            await asyncio.sleep(_backoff_seconds(attempt))
++
++    # Defensive fallback; the loop always either returns or raises.
++    raise last_exc or ValueError("search page failed")
+ 
+ 
+ async def _fetch_detail_page(url: str) -> dict[str, Any]:
+     from app.proprietary.web_crawler.connector import WebCrawlerConnector
+ 
++    if _circuit_open_until > time.time():
++        raise ValueError("rate_limited")
++
+     connector = WebCrawlerConnector()
+-    outcome = await connector.crawl_url(url)
+-    if outcome.status != "success" or not outcome.result:
+-        return {}
+-    content = outcome.result.get("content") or ""
+-    metadata = outcome.result.get("metadata") or {}
+-    return _parse_detail_markdown(content, metadata)
++    attempts = max(0, config.TOPCV_RETRY_ATTEMPTS)
++
++    for attempt in range(attempts + 1):
++        try:
++            outcome = await asyncio.wait_for(
++                connector.crawl_url(url),
++                timeout=config.TOPCV_TIMEOUT_S,
++            )
++            if outcome.status == "success" and outcome.result:
++                global _consecutive_failures
++                _consecutive_failures = 0
++                content = outcome.result.get("content") or ""
++                metadata = outcome.result.get("metadata") or {}
++                return _parse_detail_markdown(content, metadata)
++
++            # Non-success outcome: classify and decide whether to retry or give up.
++            if outcome.block_type == BlockType.RATE_LIMITED:
++                raise ValueError("rate limited")
++            if outcome.block_type not in (BlockType.OK, BlockType.UNKNOWN):
++                raise ValueError("anti-bot challenge")
++            if attempt == attempts:
++                # ponytail: detail fetch returned empty/failed after all retries;
++                # return an empty dict so the scrape loop can continue with the
++                # search-card data rather than aborting the whole run.
++                return {}
++            raise ValueError("detail fetch failed")
++        except Exception as exc:
++            if attempt == attempts:
++                if _looks_like_rate_limit(exc):
++                    _record_rate_limit_failure()
++                    raise ValueError("rate_limited") from exc
++                # Non-rate-limit detail failures are swallowed after retries.
++                return {}
++            if _looks_like_rate_limit(exc):
++                # ponytail: only the final page failure is counted by _record_rate_limit_failure.
++                pass
++            await asyncio.sleep(_backoff_seconds(attempt))
++
++    return {}
+ 
+ 
+ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
+-    max_items = int(params.get("max_items", 50) or 0)
+-    max_pages = int(params.get("max_pages", 1) or 0)
++    if not config.TOPCV_ENABLED:
++        return _degraded("legal_blocked")
++
++    max_items = max(0, int(params.get("max_items", 50) or 0))
++    max_pages = max(0, int(params.get("max_pages", 1) or 0))
+ 
+     if max_items == 0 or max_pages == 0:
+         return {
+@@ -447,7 +620,11 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
+             "total_items": 0,
+         }
+ 
+-    keyword = params.get("keyword", "data engineer")
++    keyword = str(params.get("keyword", "viec-lam") or "").strip()
++    if not keyword:
++        logger.warning("topcv.scrape received empty keyword; defaulting to 'viec-lam'")
++        keyword = "viec-lam"
++
+     items: list[dict[str, Any]] = []
+     cost_micros = 0
+ 
+@@ -458,16 +635,18 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
+                 break
+ 
+             html = await _fetch_search_page(keyword, page)
+-            cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM * 3  # search is heavier
+-
+             cards = _parse_search_page(html)
+             if not cards:
+                 break
+ 
++            # Charge the heavier search fetch only after cards are successfully parsed.
++            cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM * 3
++
+             for card in cards[:remaining]:
+                 detail = await _fetch_detail_page(card["source_url"])
+-                _apply_detail(card, detail)
+-                cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM
++                if detail:
++                    _apply_detail(card, detail)
++                    cost_micros += config.TOPCV_SCRAPE_MICROS_PER_ITEM
+                 items.append(card)
+ 
+                 if len(items) >= max_items:
+@@ -481,11 +660,19 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
+ 
+     except Exception as exc:
+         logger.warning("topcv.scrape failed: %s", exc)
++        reason = _degradation_reason_from_exception(exc)
+         if not items:
+-            return _degraded("anti_bot_block", cost_micros=cost_micros)
++            return _degraded(reason, cost_micros=cost_micros)
++        return {
++            "items": items,
++            "cost_micros": cost_micros,
++            "degraded": True,
++            "degradation_reason": reason,
++            "total_items": len(items),
++        }
+ 
+     if not items:
+-        return _degraded("anti_bot_block", cost_micros=cost_micros)
++        return _degraded("bot_detected")
+ 
+     return {
+         "items": items,
+@@ -498,10 +685,12 @@ async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
+ 
+ async def scrape_topcv(params: dict[str, Any]) -> dict[str, Any]:
+     """Fetch and parse TopCV job search + detail pages."""
++    if not config.TOPCV_ENABLED:
++        return _degraded("legal_blocked")
+     try:
+         return await _scrape(params)
+     except TimeoutError:
+         return _degraded("timeout")
+     except Exception as exc:
+         logger.warning("topcv.scrape failed: %s", exc)
+-        return _degraded("anti_bot_block")
++        return _degraded("bot_detected")
+diff --git a/nowing_backend/tests/unit/proprietary/platforms/topcv/test_scraper.py b/nowing_backend/tests/unit/proprietary/platforms/topcv/test_scraper.py
+index 5bbfeb40c..91d58dad2 100644
+--- a/nowing_backend/tests/unit/proprietary/platforms/topcv/test_scraper.py
++++ b/nowing_backend/tests/unit/proprietary/platforms/topcv/test_scraper.py
+@@ -57,6 +57,12 @@ class TestSearchPageParser:
+         assert item["location"] == "Hà Nội"
+         assert "topcv.vn" in item["source_url"]
+         assert item["salary_raw"] == "Thoả thuận"
++        assert item["salary_hidden"] is True
++        assert item["salary_confidence"] == "low"
++        assert item["salary_min"] == 0
++        assert item["salary_max"] == 0
++        assert item["salary_currency"] == "VND"
++        assert item["salary_period_id"] == "negotiable"
+         assert item["experience_years"] == 3
+         assert item["source"] == "topcv"
+ 
+@@ -155,4 +161,4 @@ class TestScraperFailureModes:
+         out = await scrape_topcv({"keyword": "data engineer", "max_items": 1, "max_pages": 1})
+ 
+         assert out["degraded"] is True
+-        assert out["degradation_reason"] == "anti_bot_block"
++        assert out["degradation_reason"] == "bot_detected"
+diff --git a/nowing_backend/tests/unit/proprietary/platforms/topcv/test_topcv_golden_fixtures.py b/nowing_backend/tests/unit/proprietary/platforms/topcv/test_topcv_golden_fixtures.py
+new file mode 100644
+index 000000000..7096e2d75
+--- /dev/null
++++ b/nowing_backend/tests/unit/proprietary/platforms/topcv/test_topcv_golden_fixtures.py
+@@ -0,0 +1,149 @@
++"""Golden fixture regression tests for the TopCV scraper (AC-10).
++
++These tests fail if the upstream HTML/markdown selectors drift from the
++committed fixture files, catching structural changes before deployment.
++"""
++
++from __future__ import annotations
++
++from pathlib import Path
++from typing import Any
++
++import pytest
++
++from app.proprietary.platforms.topcv.scraper import (
++    _extract_salary_numbers,
++    _parse_detail_markdown,
++    _parse_search_page,
++)
++
++pytestmark = pytest.mark.unit
++
++_FIXTURES = Path(__file__).resolve().parent / "fixtures"
++
++
++def _load(name: str) -> str:
++    return (_FIXTURES / name).read_text(encoding="utf-8")
++
++
++def _search_html() -> str:
++    return _load("search-page.html")
++
++
++def _detail_markdown() -> str:
++    return _load("detail-markdown.txt")
++
++
++def _detail_metadata() -> dict[str, Any]:
++    return {
++        "description": (
++            "Công ty Công Ty TNHH LG CNS VIỆT NAM tuyển ETL Developer - Data Engineer "
++            "tại Cầu Giấy - Hà Nội, lương Thoả thuận, kinh nghiệm 3 năm, "
++            "kỹ năng SQL, Phân tích dữ liệu, Python Hoặc Java, "
++            "Thiết Kế Cơ Sở Dữ Liệu, Kiến Trúc Etl"
++        )
++    }
++
++
++class TestGoldenSearchPage:
++    """AC-10: search-page.html selectors must keep returning the expected cards."""
++
++    def test_extracts_expected_number_of_job_cards(self):
++        cards = _parse_search_page(_search_html())
++        assert len(cards) == 50
++
++    def test_first_card_has_required_fields(self):
++        cards = _parse_search_page(_search_html())
++        assert cards
++        item = cards[0]
++
++        assert item["id"] == "topcv:1599438"
++        assert item["title"] == "ETL Developer - Data Engineer"
++        assert item["company"] == "Công Ty TNHH LG CNS VIỆT NAM"
++        assert item["location"] == "Hà Nội"
++        assert "topcv.vn" in item["source_url"]
++        assert "etl-developer-data-engineer/1599438.html" in item["source_url"]
++        assert item["salary_raw"] == "Thoả thuận"
++        assert item["salary_hidden"] is True
++        assert item["salary_confidence"] == "low"
++        assert item["salary_min"] == 0
++        assert item["salary_max"] == 0
++        assert item["salary_currency"] == "VND"
++        assert item["salary_period_id"] == "negotiable"
++        assert item["experience_years"] == 3
++        assert item["source"] == "topcv"
++        assert item["is_active"] is True
++
++    def test_search_page_salary_parsing(self):
++        """Salary confidence/hidden fields are populated for every card."""
++        cards = _parse_search_page(_search_html())
++        for card in cards:
++            assert "salary_hidden" in card
++            assert "salary_confidence" in card
++            assert "salary_min" in card
++            assert "salary_max" in card
++            assert "salary_currency" in card
++            assert "salary_period_id" in card
++
++
++class TestGoldenDetailMarkdown:
++    """AC-10: detail-markdown.txt must keep yielding the expected detail fields."""
++
++    def test_extracts_description_requirements_and_location(self):
++        detail = _parse_detail_markdown(_detail_markdown(), _detail_metadata())
++        assert detail["job_description"]
++        assert "Develop in web application" in detail["job_description"]
++        assert detail["job_requirement"]
++        assert "Bachelor" in detail["job_requirement"]
++        assert detail["location"]
++        assert "Hà Nội" in detail["location"]
++
++    def test_extracts_employment_type_and_skills(self):
++        detail = _parse_detail_markdown(_detail_markdown(), _detail_metadata())
++        assert detail["employment_type"] == "full_time"
++        assert "SQL" in detail["skills"]
++        assert detail["experience_years"] == 3
++
++
++class TestSalaryNumberExtraction:
++    """AC-4: salary parser must expose hidden/confidence and common Vietnamese units."""
++
++    def test_hidden_when_negotiation_keyword(self):
++        assert _extract_salary_numbers("Thoả thuận") == (
++            0,
++            0,
++            "VND",
++            "negotiable",
++            True,
++            "low",
++        )
++
++    def test_parses_vietnamese_million_range(self):
++        assert _extract_salary_numbers("25tr - 35tr / tháng") == (
++            25_000_000,
++            35_000_000,
++            "VND",
++            "month",
++            False,
++            "medium",
++        )
++
++    def test_parses_triệu(self):
++        assert _extract_salary_numbers("15 triệu - 20 triệu") == (
++            15_000_000,
++            20_000_000,
++            "VND",
++            "month",
++            False,
++            "medium",
++        )
++
++    def test_low_confidence_when_no_numbers(self):
++        assert _extract_salary_numbers("Competitive") == (
++            0,
++            0,
++            "VND",
++            "month",
++            True,
++            "low",
++        )

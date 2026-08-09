@@ -1,0 +1,1272 @@
+diff --git a/_bmad-output/implementation-artifacts/stories/10-5-anti-bot-captcha-screenshot-escalation.md b/_bmad-output/implementation-artifacts/stories/10-5-anti-bot-captcha-screenshot-escalation.md
+index 8f1a4310b..84cf4732a 100644
+--- a/_bmad-output/implementation-artifacts/stories/10-5-anti-bot-captcha-screenshot-escalation.md
++++ b/_bmad-output/implementation-artifacts/stories/10-5-anti-bot-captcha-screenshot-escalation.md
+@@ -1,10 +1,10 @@
+ ---
+-baseline_commit: 37a336aaf61125f621b7ae91528b9f4dba6b10f8
++baseline_commit: 071a129dc65c8167e1d23205cf7b8ad51a6d644e
+ ---
+ 
+ # Story 10.5: Anti-Bot / CAPTCHA Screenshot Escalation
+ 
+-Status: in-review
++Status: review
+ 
+ ## Story
+ 
+diff --git a/nowing_backend/app/capabilities/batdongsan/scrape/executor.py b/nowing_backend/app/capabilities/batdongsan/scrape/executor.py
+index 8d6b231fa..b453f84cd 100644
+--- a/nowing_backend/app/capabilities/batdongsan/scrape/executor.py
++++ b/nowing_backend/app/capabilities/batdongsan/scrape/executor.py
+@@ -8,6 +8,7 @@ from typing import Any
+ 
+ from app.capabilities.core import Executor
+ from app.capabilities.core.progress import emit_progress
++from app.capabilities.core.types import CapabilityContext
+ from app.config import config
+ from app.proprietary.platforms.batdongsan import (
+     BatdongsanScrapeOutput,
+@@ -19,6 +20,9 @@ from app.proprietary.platforms.batdongsan.fetch import (
+     BatdongsanRateLimitedError,
+ )
+ from app.proprietary.platforms.batdongsan.schemas import BatdongsanScrapeInput
++from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
++    persist_anti_bot_escalation_task,
++)
+ 
+ from .schemas import ScrapeInput, ScrapeOutput
+ 
+@@ -33,6 +37,8 @@ _BOT_DEGRADATION_REASONS = {
+     "access_blocked",
+ }
+ 
++_DOMAIN = "batdongsan.com.vn"
++
+ 
+ def _next_action(degradation_reason: str | None) -> str | None:
+     if degradation_reason in _BOT_DEGRADATION_REASONS:
+@@ -40,6 +46,22 @@ def _next_action(degradation_reason: str | None) -> str | None:
+     return None
+ 
+ 
++def _maybe_escalate(
++    ctx: CapabilityContext | None,
++    block_type: str,
++) -> None:
++    if ctx is None or ctx.run_id is None:
++        return
++    persist_anti_bot_escalation_task.delay(
++        screenshot_png_b64=None,
++        run_id=ctx.run_id,
++        workspace_id=ctx.workspace_id,
++        capability="batdongsan.scrape",
++        domain=_DOMAIN,
++        block_type=block_type,
++    )
++
++
+ def _unwrap_result(
+     result: BatdongsanScrapeOutput | dict[str, Any] | None,
+ ) -> dict[str, Any]:
+@@ -69,7 +91,9 @@ def build_scrape_executor(
+     scrape_fn = scrape_fn or scrape_batdongsan
+     web_fetch_fn = web_fetch_fn
+ 
+-    async def execute(payload: ScrapeInput) -> ScrapeOutput:
++    async def execute(
++        payload: ScrapeInput, ctx: CapabilityContext | None = None
++    ) -> ScrapeOutput:
+         actor_input = BatdongsanScrapeInput(**payload.model_dump(exclude_unset=True))
+ 
+         emit_progress(
+@@ -88,6 +112,7 @@ def build_scrape_executor(
+             raw = await scrape_fn(actor_input, **kwargs)
+         except BatdongsanRateLimitedError:
+             logger.exception("batdongsan.scrape rate limited")
++            _maybe_escalate(ctx, "rate_limited")
+             return ScrapeOutput(
+                 items=[],
+                 cost_micros=0,
+@@ -105,6 +130,7 @@ def build_scrape_executor(
+             )
+         except BatdongsanAccessBlockedError as exc:
+             logger.exception("batdongsan.scrape access blocked: %s", exc)
++            _maybe_escalate(ctx, "bot_detected")
+             return ScrapeOutput(
+                 items=[],
+                 cost_micros=0,
+@@ -127,6 +153,7 @@ def build_scrape_executor(
+         total = int(total_raw) if total_raw is not None else 0
+         degraded = bool(result.get("degraded", False))
+         if degraded:
++            _maybe_escalate(ctx, result.get("degradation_reason") or "UNKNOWN")
+             cost = 0
+         else:
+             cost = total * getattr(config, "BATDONGSAN_SCRAPE_MICROS_PER_ITEM", 3500)
+diff --git a/nowing_backend/app/capabilities/chotot/scrape/executor.py b/nowing_backend/app/capabilities/chotot/scrape/executor.py
+index 1c379e9d0..5f06b4524 100644
+--- a/nowing_backend/app/capabilities/chotot/scrape/executor.py
++++ b/nowing_backend/app/capabilities/chotot/scrape/executor.py
+@@ -8,6 +8,7 @@ from typing import Any
+ 
+ from app.capabilities.core import Executor
+ from app.capabilities.core.progress import emit_progress
++from app.capabilities.core.types import CapabilityContext
+ from app.config import config
+ from app.proprietary.platforms.chotot import (
+     ChototBdsScrapeOutput,
+@@ -20,6 +21,9 @@ from app.proprietary.platforms.chotot.fetch import (
+     ChototBdsRateLimitedError,
+ )
+ from app.proprietary.platforms.chotot.schemas import ChototBdsScrapeInput
++from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
++    persist_anti_bot_escalation_task,
++)
+ 
+ from .schemas import ScrapeInput, ScrapeOutput
+ 
+@@ -34,6 +38,8 @@ _BOT_DEGRADATION_REASONS = {
+     "access_blocked",
+ }
+ 
++_DOMAIN = "chotot.com"
++
+ 
+ def _next_action(degradation_reason: str | None) -> str | None:
+     if degradation_reason in _BOT_DEGRADATION_REASONS:
+@@ -41,6 +47,22 @@ def _next_action(degradation_reason: str | None) -> str | None:
+     return None
+ 
+ 
++def _maybe_escalate(
++    ctx: CapabilityContext | None,
++    block_type: str,
++) -> None:
++    if ctx is None or ctx.run_id is None:
++        return
++    persist_anti_bot_escalation_task.delay(
++        screenshot_png_b64=None,
++        run_id=ctx.run_id,
++        workspace_id=ctx.workspace_id,
++        capability="chotot.scrape",
++        domain=_DOMAIN,
++        block_type=block_type,
++    )
++
++
+ def _unwrap_result(
+     result: ChototBdsScrapeOutput | dict[str, Any] | None,
+ ) -> dict[str, Any]:
+@@ -65,7 +87,9 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
+     """Bind the executor to a scraper fn (defaults to the proprietary actor)."""
+     scrape_fn = scrape_fn or scrape_chotot_bds
+ 
+-    async def execute(payload: ScrapeInput) -> ScrapeOutput:
++    async def execute(
++        payload: ScrapeInput, ctx: CapabilityContext | None = None
++    ) -> ScrapeOutput:
+         actor_input = ChototBdsScrapeInput(**payload.model_dump(exclude_unset=True))
+ 
+         emit_progress(
+@@ -78,6 +102,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
+             raw = await scrape_fn(actor_input, limit=payload.max_items)
+         except ChototBdsRateLimitedError:
+             logger.exception("chotot_bds.scrape rate limited")
++            _maybe_escalate(ctx, "rate_limited")
+             return ScrapeOutput(
+                 items=[],
+                 cost_micros=0,
+@@ -95,6 +120,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
+             )
+         except ChototBdsBotDetectedError:
+             logger.exception("chotot_bds.scrape bot detected")
++            _maybe_escalate(ctx, "bot_detected")
+             return ScrapeOutput(
+                 items=[],
+                 cost_micros=0,
+@@ -104,6 +130,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
+             )
+         except ChototBdsAccessBlockedError:
+             logger.exception("chotot_bds.scrape access blocked")
++            _maybe_escalate(ctx, "bot_detected")
+             return ScrapeOutput(
+                 items=[],
+                 cost_micros=0,
+@@ -126,6 +153,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
+         total = int(total_raw) if total_raw is not None else 0
+         degraded = bool(result.get("degraded", False))
+         if degraded:
++            _maybe_escalate(ctx, result.get("degradation_reason") or "UNKNOWN")
+             cost = 0
+         else:
+             cost = total * getattr(config, "CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM", 3500)
+diff --git a/nowing_backend/app/capabilities/core/access/agent.py b/nowing_backend/app/capabilities/core/access/agent.py
+index 53f3cbc91..6a964cc5f 100644
+--- a/nowing_backend/app/capabilities/core/access/agent.py
++++ b/nowing_backend/app/capabilities/core/access/agent.py
+@@ -11,6 +11,7 @@ subagent can follow a truncation reference without extra wiring.
+ 
+ from __future__ import annotations
+ 
++import hashlib
+ import json
+ import logging
+ import time
+@@ -113,6 +114,86 @@ def _current_research_mode() -> str | None:
+         return None
+ 
+ 
++# Story 10.5: avoid multiple identical capability calls against a blocked URL
++# in the same chat turn. We cache degraded anti-bot results for a short TTL so
++# the agent gets the same guidance without re-executing the tool.
++_ANTI_BOT_DEGRADED_REASONS = {
++    "bot_detected",
++    "rate_limited",
++    "anti_bot_block",
++    "access_blocked",
++}
++_ANTI_BOT_BLOCK_TTL_SECONDS = 30
++_anti_bot_blocks: dict[str, tuple[float, Any]] = {}
++
++
++def _anti_bot_input_key(
++    thread_id: str | None, capability_name: str, input_dump: dict[str, Any]
++) -> str | None:
++    if thread_id is None:
++        return None
++    payload = json.dumps(input_dump, sort_keys=True, default=str)
++    digest = hashlib.sha256(payload.encode()).hexdigest()
++    return f"{thread_id}:{capability_name}:{digest}"
++
++
++def _is_anti_bot_degraded_result(result: dict[str, Any]) -> bool:
++    if (
++        result.get("degraded")
++        and result.get("degradation_reason") in _ANTI_BOT_DEGRADED_REASONS
++    ):
++        return True
++    next_action = result.get("next_action") or ""
++    return "Escalated to human review" in next_action
++
++
++def _get_cached_blocked_result(key: str) -> Any | None:
++    now = time.monotonic()
++    if key in _anti_bot_blocks:
++        ts, result = _anti_bot_blocks[key]
++        if now - ts < _ANTI_BOT_BLOCK_TTL_SECONDS:
++            return result
++        del _anti_bot_blocks[key]
++    return None
++
++
++def _cache_blocked_result(key: str, result: Any) -> None:
++    _anti_bot_blocks[key] = (time.monotonic(), result)
++
++
++def _build_cached_anti_bot_command(
++    cached_dump: dict[str, Any], *, runtime: ToolRuntime, capability_name: str
++) -> Command:
++    """Rebuild a ToolNode Command for a cached anti-bot result.
++
++    The ``tool_call_id`` must come from the current runtime, but the run
++    citation and content can be replayed safely because anti-bot outputs carry
++    no web citations.
++    """
++    content = json.dumps(cached_dump, ensure_ascii=False)
++    run_external_id = cached_dump.get("run_id")
++    registry = load_registry(getattr(runtime, "state", None))
++    if run_external_id:
++        _, label = attach_run_citation(
++            registry,
++            run_external_id=run_external_id,
++            capability=capability_name,
++        )
++    else:
++        label = ""
++    return Command(
++        update={
++            "messages": [
++                ToolMessage(
++                    content=content + label,
++                    tool_call_id=runtime.tool_call_id,
++                )
++            ],
++            "citation_registry": registry,
++        }
++    )
++
++
+ # NFR-9 State B: only speed/balanced may run synchronously in chat.
+ # quality, deep-research, deep-reasoning, and auto (which may resolve to those)
+ # are async-only until cost/latency targets are ratified.
+@@ -178,7 +259,9 @@ def _capability_tool(
+     executor = capability.executor
+     name = capability.name
+ 
+-    async def _run(runtime: ToolRuntime | None = None, **kwargs: object) -> dict | str | Command:
++    async def _run(
++        runtime: ToolRuntime | None = None, **kwargs: object
++    ) -> dict | str | Command:
+         # ponytail: thread the chat request's explicit research mode through to
+         # chainlens.research so benchmark/user mode selections are honored.
+         if name == "chainlens.research":
+@@ -189,6 +272,18 @@ def _capability_tool(
+         input_dump = payload.model_dump(exclude_none=True)
+         thread_id = _current_thread_id()
+ 
++        # Story 10.5: if the same capability+input just returned an anti-bot block
++        # in this thread, return the same guidance instead of re-executing.
++        anti_bot_key = _anti_bot_input_key(thread_id, name, input_dump)
++        if anti_bot_key is not None:
++            cached = _get_cached_blocked_result(anti_bot_key)
++            if cached is not None:
++                if runtime is None:
++                    return cached
++                return _build_cached_anti_bot_command(
++                    cached, runtime=runtime, capability_name=name
++                )
++
+         # NFR-9 State A vs State B for deep research in chat.
+         #
+         # State A (launch default): DEEP_RESEARCH_SYNC_CHAT_MODE_ENABLED is False.
+@@ -325,6 +420,8 @@ def _capability_tool(
+                 dump = output.model_dump(exclude_none=True)
+                 if "next_action" in dump:
+                     dump.setdefault("next_step", dump["next_action"])
++                if anti_bot_key is not None and _is_anti_bot_degraded_result(dump):
++                    _cache_blocked_result(anti_bot_key, dump)
+                 return dump
+             return _build_preview(serialized, run_id)
+ 
+@@ -334,6 +431,8 @@ def _capability_tool(
+             if "next_action" in dump:
+                 dump.setdefault("next_step", dump["next_action"])
+             dump["run_id"] = run_external_id
++            if anti_bot_key is not None and _is_anti_bot_degraded_result(dump):
++                _cache_blocked_result(anti_bot_key, dump)
+         else:
+             dump = None
+ 
+@@ -345,7 +444,11 @@ def _capability_tool(
+                 return dump
+             return _build_preview(serialized, run_id)
+ 
+-        content = json.dumps(dump, ensure_ascii=False) if dump is not None else _build_preview(serialized, run_id)
++        content = (
++            json.dumps(dump, ensure_ascii=False)
++            if dump is not None
++            else _build_preview(serialized, run_id)
++        )
+ 
+         registry = load_registry(getattr(runtime, "state", None))
+         _, label = attach_run_citation(
+diff --git a/nowing_backend/app/capabilities/itviec/scrape/executor.py b/nowing_backend/app/capabilities/itviec/scrape/executor.py
+index e869f75ea..aca54fcca 100644
+--- a/nowing_backend/app/capabilities/itviec/scrape/executor.py
++++ b/nowing_backend/app/capabilities/itviec/scrape/executor.py
+@@ -4,10 +4,16 @@ from __future__ import annotations
+ 
+ from app.capabilities.core import Executor
+ from app.capabilities.core.progress import emit_progress
++from app.capabilities.core.types import CapabilityContext
+ from app.proprietary.platforms.itviec import scrape_itviec
++from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
++    persist_anti_bot_escalation_task,
++)
+ 
+ from .schemas import ScrapeInput, ScrapeOutput
+ 
++_DOMAIN = "itviec.com"
++
+ _BOT_DEGRADATION_REASONS = {
+     "bot_detected",
+     "rate_limited",
+@@ -25,11 +31,27 @@ def _next_action(degradation_reason: str | None) -> str | None:
+ def build_scrape_executor() -> Executor:
+     """Return an executor that calls the ITviec proprietary fetcher."""
+ 
+-    async def execute(input: ScrapeInput) -> ScrapeOutput:
++    async def execute(
++        input: ScrapeInput, ctx: CapabilityContext | None = None
++    ) -> ScrapeOutput:
+         emit_progress("fetching", "ITviec job search")
+         raw = await scrape_itviec(input.model_dump())
+         if not raw.get("next_action") and raw.get("degraded"):
+             raw["next_action"] = _next_action(raw.get("degradation_reason"))
++        if (
++            ctx is not None
++            and ctx.run_id is not None
++            and raw.get("degraded")
++            and raw.get("degradation_reason") in _BOT_DEGRADATION_REASONS
++        ):
++            persist_anti_bot_escalation_task.delay(
++                screenshot_png_b64=None,
++                run_id=ctx.run_id,
++                workspace_id=ctx.workspace_id,
++                capability="itviec.scrape",
++                domain=_DOMAIN,
++                block_type=raw.get("degradation_reason") or "UNKNOWN",
++            )
+         return ScrapeOutput(**raw)
+ 
+     return execute
+diff --git a/nowing_backend/app/capabilities/muaban_bds/scrape/executor.py b/nowing_backend/app/capabilities/muaban_bds/scrape/executor.py
+index 82ebf27e2..ff48da386 100644
+--- a/nowing_backend/app/capabilities/muaban_bds/scrape/executor.py
++++ b/nowing_backend/app/capabilities/muaban_bds/scrape/executor.py
+@@ -8,6 +8,7 @@ from typing import Any
+ 
+ from app.capabilities.core import Executor
+ from app.capabilities.core.progress import emit_progress
++from app.capabilities.core.types import CapabilityContext
+ from app.config import config
+ from app.proprietary.platforms.muaban_bds import (
+     MuabanBdsScrapeOutput,
+@@ -19,6 +20,9 @@ from app.proprietary.platforms.muaban_bds.fetch import (
+     MuabanBdsRateLimitedError,
+ )
+ from app.proprietary.platforms.muaban_bds.schemas import MuabanBdsScrapeInput
++from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
++    persist_anti_bot_escalation_task,
++)
+ 
+ from .schemas import ScrapeInput, ScrapeOutput
+ 
+@@ -33,6 +37,8 @@ _BOT_DEGRADATION_REASONS = {
+     "access_blocked",
+ }
+ 
++_DOMAIN = "muaban.net"
++
+ 
+ def _next_action(degradation_reason: str | None) -> str | None:
+     if degradation_reason in _BOT_DEGRADATION_REASONS:
+@@ -40,6 +46,22 @@ def _next_action(degradation_reason: str | None) -> str | None:
+     return None
+ 
+ 
++def _maybe_escalate(
++    ctx: CapabilityContext | None,
++    block_type: str,
++) -> None:
++    if ctx is None or ctx.run_id is None:
++        return
++    persist_anti_bot_escalation_task.delay(
++        screenshot_png_b64=None,
++        run_id=ctx.run_id,
++        workspace_id=ctx.workspace_id,
++        capability="muaban_bds.scrape",
++        domain=_DOMAIN,
++        block_type=block_type,
++    )
++
++
+ def _unwrap_result(
+     result: MuabanBdsScrapeOutput | dict[str, Any] | None,
+ ) -> dict[str, Any]:
+@@ -64,7 +86,9 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
+     """Bind the executor to a scraper fn (defaults to the proprietary actor)."""
+     scrape_fn = scrape_fn or scrape_muaban_bds
+ 
+-    async def execute(payload: ScrapeInput) -> ScrapeOutput:
++    async def execute(
++        payload: ScrapeInput, ctx: CapabilityContext | None = None
++    ) -> ScrapeOutput:
+         actor_input = MuabanBdsScrapeInput(**payload.model_dump(exclude_unset=True))
+ 
+         emit_progress(
+@@ -77,6 +101,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
+             raw = await scrape_fn(actor_input, limit=payload.max_items)
+         except MuabanBdsRateLimitedError:
+             logger.exception("muaban_bds.scrape rate limited")
++            _maybe_escalate(ctx, "rate_limited")
+             return ScrapeOutput(
+                 items=[],
+                 cost_micros=0,
+@@ -94,6 +119,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
+             )
+         except MuabanBdsAccessBlockedError:
+             logger.exception("muaban_bds.scrape access blocked")
++            _maybe_escalate(ctx, "bot_detected")
+             return ScrapeOutput(
+                 items=[],
+                 cost_micros=0,
+@@ -116,6 +142,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
+         total = int(total_raw) if total_raw is not None else 0
+         degraded = bool(result.get("degraded", False))
+         if degraded:
++            _maybe_escalate(ctx, result.get("degradation_reason") or "UNKNOWN")
+             cost = 0
+         else:
+             cost = total * getattr(config, "MUABAN_BDS_SCRAPE_MICROS_PER_ITEM", 5500)
+diff --git a/nowing_backend/app/capabilities/topcv/scrape/executor.py b/nowing_backend/app/capabilities/topcv/scrape/executor.py
+index ddccb4fe0..900b03cc4 100644
+--- a/nowing_backend/app/capabilities/topcv/scrape/executor.py
++++ b/nowing_backend/app/capabilities/topcv/scrape/executor.py
+@@ -4,10 +4,16 @@ from __future__ import annotations
+ 
+ from app.capabilities.core import Executor
+ from app.capabilities.core.progress import emit_progress
++from app.capabilities.core.types import CapabilityContext
+ from app.proprietary.platforms.topcv import scrape_topcv
++from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
++    persist_anti_bot_escalation_task,
++)
+ 
+ from .schemas import ScrapeInput, ScrapeOutput
+ 
++_DOMAIN = "topcv.vn"
++
+ _BOT_DEGRADATION_REASONS = {
+     "bot_detected",
+     "rate_limited",
+@@ -25,11 +31,27 @@ def _next_action(degradation_reason: str | None) -> str | None:
+ def build_scrape_executor() -> Executor:
+     """Return an executor that calls the TopCV proprietary fetcher."""
+ 
+-    async def execute(input: ScrapeInput) -> ScrapeOutput:
++    async def execute(
++        input: ScrapeInput, ctx: CapabilityContext | None = None
++    ) -> ScrapeOutput:
+         emit_progress("fetching", "TopCV job search")
+         raw = await scrape_topcv(input.model_dump())
+         if not raw.get("next_action") and raw.get("degraded"):
+             raw["next_action"] = _next_action(raw.get("degradation_reason"))
++        if (
++            ctx is not None
++            and ctx.run_id is not None
++            and raw.get("degraded")
++            and raw.get("degradation_reason") in _BOT_DEGRADATION_REASONS
++        ):
++            persist_anti_bot_escalation_task.delay(
++                screenshot_png_b64=None,
++                run_id=ctx.run_id,
++                workspace_id=ctx.workspace_id,
++                capability="topcv.scrape",
++                domain=_DOMAIN,
++                block_type=raw.get("degradation_reason") or "UNKNOWN",
++            )
+         return ScrapeOutput(**raw)
+ 
+     return execute
+diff --git a/nowing_backend/app/capabilities/web/crawl/executor.py b/nowing_backend/app/capabilities/web/crawl/executor.py
+index 421dd7620..386c2fa12 100644
+--- a/nowing_backend/app/capabilities/web/crawl/executor.py
++++ b/nowing_backend/app/capabilities/web/crawl/executor.py
+@@ -8,7 +8,7 @@ the captcha telemetry the billing seam reads).
+ 
+ from __future__ import annotations
+ 
+-from uuid import UUID
++import base64
+ 
+ from app.capabilities.core import Executor
+ from app.capabilities.core.progress import emit_progress
+@@ -30,9 +30,8 @@ from app.proprietary.web_crawler import (
+     crawl_site,
+ )
+ from app.proprietary.web_crawler.url_policy import host_of
+-from app.services.anti_bot_escalation import (
+-    create_or_update_escalation,
+-    upload_screenshot,
++from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
++    persist_anti_bot_escalation_task,
+ )
+ 
+ _STATUS_LABEL: dict[CrawlOutcomeStatus, str] = {
+@@ -70,29 +69,20 @@ def build_crawl_executor(engine: WebCrawlerConnector | None = None) -> Executor:
+             unit="page",
+         )
+ 
+-        # Story 10.5: escalate anti-bot screenshots for async runs that have a
+-        # durable run id. The crawl output is still returned immediately; we
+-        # upload + persist before mapping items so a slow storage backend does
+-        # not block the response.
++        # Story 10.5: escalate anti-bot screenshots out-of-band so the crawl
++        # output is returned immediately (AD-19). The Celery task uploads the
++        # screenshot and creates/updates the escalation row.
+         if ctx is not None and ctx.run_id is not None:
+             for page in pages:
+                 if page.screenshot_png is None:
+                     continue
+-                run_uuid = UUID(ctx.run_id)
+-                screenshot_url = await upload_screenshot(
+-                    ctx.session,
+-                    page.screenshot_png,
+-                    ctx.workspace_id,
+-                    run_uuid,
+-                )
+-                await create_or_update_escalation(
+-                    ctx.session,
+-                    run_id=run_uuid,
++                persist_anti_bot_escalation_task.delay(
++                    screenshot_png_b64=base64.b64encode(page.screenshot_png).decode(),
++                    run_id=ctx.run_id,
+                     workspace_id=ctx.workspace_id,
+                     capability="web.crawl",
+                     domain=host_of(page.url),
+                     block_type=page.block_type or "UNKNOWN",
+-                    screenshot_url=screenshot_url,
+                 )
+ 
+         items = [_to_item(page, payload.maxLength) for page in pages]
+diff --git a/nowing_backend/app/celery_app.py b/nowing_backend/app/celery_app.py
+index ed6dbe08c..16cd84870 100644
+--- a/nowing_backend/app/celery_app.py
++++ b/nowing_backend/app/celery_app.py
+@@ -320,6 +320,11 @@ celery_app.conf.beat_schedule = {
+         "schedule": crontab(hour="3", minute="0"),
+         "options": {"expires": 600},
+     },
++    "apply-anti-bot-screenshot-retention": {
++        "task": "apply_anti_bot_screenshot_retention",
++        "schedule": crontab(hour="3", minute="30"),
++        "options": {"expires": 600},
++    },
+     "purge-refresh-tokens": {
+         "task": "purge_refresh_tokens",
+         "schedule": crontab(hour="3", minute="41"),
+diff --git a/nowing_backend/app/routes/admin_anti_bot_escalation_routes.py b/nowing_backend/app/routes/admin_anti_bot_escalation_routes.py
+index 113703e7a..c83d0c7c0 100644
+--- a/nowing_backend/app/routes/admin_anti_bot_escalation_routes.py
++++ b/nowing_backend/app/routes/admin_anti_bot_escalation_routes.py
+@@ -13,9 +13,10 @@ from pydantic import ValidationError
+ from sqlalchemy import func, select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
++from app.auth.context import AuthContext
+ from app.capabilities.core.async_runner import start_async_run
+ from app.capabilities.core.store import get_capability
+-from app.db import AntiBotEscalation, Run, get_async_session
++from app.db import AntiBotEscalation, Run, WorkspaceMembership, get_async_session
+ from app.schemas.anti_bot_escalation import (
+     AntiBotEscalationListResponse,
+     AntiBotEscalationRead,
+@@ -27,12 +28,34 @@ from app.services.anti_bot_escalation import (
+     list_escalations,
+     resolve_escalation,
+ )
+-from app.users import require_superuser
++from app.users import get_auth_context
+ 
+ router = APIRouter(prefix="/admin/anti-bot-escalations")
+ logger = logging.getLogger(__name__)
+ 
+ 
++async def _has_workspace_admin_access(
++    session: AsyncSession,
++    auth: AuthContext,
++    workspace_id: int,
++) -> bool:
++    """Return True if the principal is superuser, workspace owner, or editor."""
++    if auth.user.is_superuser:
++        return True
++    membership = await session.execute(
++        select(WorkspaceMembership).where(
++            WorkspaceMembership.user_id == auth.user.id,
++            WorkspaceMembership.workspace_id == workspace_id,
++        )
++    )
++    membership = membership.scalar_one_or_none()
++    if membership is None:
++        return False
++    return membership.is_owner or (
++        membership.role is not None and membership.role.name in {"Owner", "Editor"}
++    )
++
++
+ async def _to_read(escalation: AntiBotEscalation) -> AntiBotEscalationRead:
+     return AntiBotEscalationRead.model_validate(escalation)
+ 
+@@ -45,9 +68,21 @@ async def list_anti_bot_escalations(
+     limit: int = Query(50, ge=1, le=100),
+     offset: int = Query(0, ge=0),
+     session: AsyncSession = Depends(get_async_session),
+-    _auth=Depends(require_superuser),
++    auth: AuthContext = Depends(get_auth_context),
+ ) -> AntiBotEscalationListResponse:
+     """List escalations with optional filters."""
++    if workspace_id is not None:
++        if not await _has_workspace_admin_access(session, auth, workspace_id):
++            raise HTTPException(
++                status_code=status.HTTP_403_FORBIDDEN,
++                detail="You don't have access to this workspace",
++            )
++    elif not auth.user.is_superuser:
++        raise HTTPException(
++            status_code=status.HTTP_403_FORBIDDEN,
++            detail="Workspace filter required for non-superuser",
++        )
++
+     filters: list = []
+     if workspace_id is not None:
+         filters.append(AntiBotEscalation.workspace_id == workspace_id)
+@@ -79,7 +114,7 @@ async def list_anti_bot_escalations(
+ async def get_anti_bot_escalation(
+     escalation_id: int,
+     session: AsyncSession = Depends(get_async_session),
+-    _auth=Depends(require_superuser),
++    auth: AuthContext = Depends(get_auth_context),
+ ) -> AntiBotEscalation:
+     escalation = await get_escalation(session, escalation_id)
+     if escalation is None:
+@@ -87,6 +122,11 @@ async def get_anti_bot_escalation(
+             status_code=status.HTTP_404_NOT_FOUND,
+             detail="Escalation not found",
+         )
++    if not await _has_workspace_admin_access(session, auth, escalation.workspace_id):
++        raise HTTPException(
++            status_code=status.HTTP_403_FORBIDDEN,
++            detail="You don't have access to this escalation",
++        )
+     return escalation
+ 
+ 
+@@ -95,15 +135,21 @@ async def resolve_anti_bot_escalation(
+     escalation_id: int,
+     body: AntiBotEscalationResolveRequest | None = None,
+     session: AsyncSession = Depends(get_async_session),
+-    _auth=Depends(require_superuser),
++    auth: AuthContext = Depends(get_auth_context),
+ ) -> AntiBotEscalation:
+-    user_id = body.user_id if body else None
+-    escalation = await resolve_escalation(session, escalation_id, user_id=user_id)
++    escalation = await get_escalation(session, escalation_id)
+     if escalation is None:
+         raise HTTPException(
+             status_code=status.HTTP_404_NOT_FOUND,
+             detail="Escalation not found",
+         )
++    if not await _has_workspace_admin_access(session, auth, escalation.workspace_id):
++        raise HTTPException(
++            status_code=status.HTTP_403_FORBIDDEN,
++            detail="You don't have access to this escalation",
++        )
++    user_id = body.user_id if body else None
++    escalation = await resolve_escalation(session, escalation_id, user_id=user_id)
+     await session.commit()
+     return escalation
+ 
+@@ -112,7 +158,7 @@ async def resolve_anti_bot_escalation(
+ async def retry_anti_bot_escalation(
+     escalation_id: int,
+     session: AsyncSession = Depends(get_async_session),
+-    _auth=Depends(require_superuser),
++    auth: AuthContext = Depends(get_auth_context),
+ ) -> AntiBotEscalationRetryResponse:
+     escalation = await get_escalation(session, escalation_id)
+     if escalation is None:
+@@ -120,6 +166,11 @@ async def retry_anti_bot_escalation(
+             status_code=status.HTTP_404_NOT_FOUND,
+             detail="Escalation not found",
+         )
++    if not await _has_workspace_admin_access(session, auth, escalation.workspace_id):
++        raise HTTPException(
++            status_code=status.HTTP_403_FORBIDDEN,
++            detail="You don't have access to this escalation",
++        )
+ 
+     escalation.status = "retry"
+     retry_run_id: str | None = None
+diff --git a/nowing_backend/app/services/anti_bot_escalation.py b/nowing_backend/app/services/anti_bot_escalation.py
+index 2b3c8eb32..cec596264 100644
+--- a/nowing_backend/app/services/anti_bot_escalation.py
++++ b/nowing_backend/app/services/anti_bot_escalation.py
+@@ -7,7 +7,7 @@ screenshot storage/retention.
+ from __future__ import annotations
+ 
+ import logging
+-from datetime import UTC, datetime
++from datetime import UTC, datetime, timedelta
+ from uuid import UUID
+ 
+ from sqlalchemy import select
+@@ -96,6 +96,8 @@ async def create_or_update_escalation(
+         capability=capability, block_type=block_type, domain=domain
+     )
+ 
++    now = datetime.now(UTC)
++    grouping_window = now - timedelta(hours=1)
+     result = await session.execute(
+         select(AntiBotEscalation)
+         .where(
+@@ -103,13 +105,14 @@ async def create_or_update_escalation(
+             AntiBotEscalation.domain == domain,
+             AntiBotEscalation.capability == capability,
+             AntiBotEscalation.status == "open",
++            AntiBotEscalation.last_seen_at >= grouping_window,
+         )
+-        .order_by(AntiBotEscalation.created_at.desc())
++        .order_by(AntiBotEscalation.last_seen_at.desc())
+         .limit(1)
+     )
+     existing: AntiBotEscalation | None = result.scalar_one_or_none()
+ 
+-    now = datetime.now(UTC)
++
+     if existing is not None:
+         existing.detection_count += 1
+         existing.last_seen_at = now
+diff --git a/nowing_backend/app/tasks/celery_tasks/anti_bot_escalation_tasks.py b/nowing_backend/app/tasks/celery_tasks/anti_bot_escalation_tasks.py
+new file mode 100644
+index 000000000..ae93f0920
+--- /dev/null
++++ b/nowing_backend/app/tasks/celery_tasks/anti_bot_escalation_tasks.py
+@@ -0,0 +1,140 @@
++"""Celery tasks for anti-bot / CAPTCHA screenshot escalation.
++
++These tasks run out-of-band so that the capability executor can return a
++`degraded` response immediately (AD-17 / AD-19).
++"""
++
++from __future__ import annotations
++
++import base64
++import logging
++from datetime import UTC, datetime, timedelta
++from uuid import UUID
++
++from sqlalchemy import select
++
++from app.celery_app import celery_app
++from app.db import AntiBotEscalation
++from app.file_storage.factory import get_storage_backend
++from app.observability import metrics
++from app.services.anti_bot_escalation import (
++    _public_url,
++    _screenshot_key,
++    _updated_metadata,
++    create_or_update_escalation,
++)
++from app.tasks.celery_tasks import get_celery_session_maker, run_async_celery_task
++
++logger = logging.getLogger(__name__)
++
++
++@celery_app.task(name="persist_anti_bot_escalation")
++def persist_anti_bot_escalation_task(
++    screenshot_png_b64: str | None,
++    run_id: str,
++    workspace_id: int,
++    capability: str,
++    domain: str,
++    block_type: str,
++    metadata: dict | None = None,
++) -> None:
++    """Upload a screenshot and create/update an escalation in the background.
++
++    The screenshot bytes are base64-encoded because the Celery broker is
++    configured for JSON. For a typical anti-bot challenge page the PNG is a few
++    hundred KB, which is acceptable for the broker. If it becomes a bottleneck,
++    the caller can write to a temporary file on shared storage and pass the
++    path instead.
++    """
++    return run_async_celery_task(
++        lambda: _persist_anti_bot_escalation(
++            screenshot_png_b64,
++            run_id,
++            workspace_id,
++            capability,
++            domain,
++            block_type,
++            metadata,
++        )
++    )
++
++
++async def _persist_anti_bot_escalation(
++    screenshot_png_b64: str | None,
++    run_id: str,
++    workspace_id: int,
++    capability: str,
++    domain: str,
++    block_type: str,
++    metadata: dict | None,
++) -> None:
++    screenshot_url: str | None = None
++    run_uuid = UUID(run_id)
++
++    if screenshot_png_b64 is not None:
++        try:
++            data = base64.b64decode(screenshot_png_b64)
++            key = _screenshot_key(workspace_id, run_uuid)
++            backend = get_storage_backend()
++            await backend.put(key, data, content_type="image/png")
++            screenshot_url = _public_url(key)
++        except Exception as exc:
++            logger.warning("Failed to upload anti-bot screenshot: %s", exc)
++            metrics.record_anti_bot_screenshot_failure(reason="upload")
++
++    async with get_celery_session_maker()() as session:
++        await create_or_update_escalation(
++            session,
++            run_id=run_uuid,
++            workspace_id=workspace_id,
++            capability=capability,
++            domain=domain,
++            block_type=block_type,
++            screenshot_url=screenshot_url,
++            metadata=metadata,
++        )
++        await session.commit()
++
++
++@celery_app.task(name="apply_anti_bot_screenshot_retention")
++def apply_anti_bot_screenshot_retention_task() -> None:
++    """Delete screenshot files for escalations older than 30 days."""
++    return run_async_celery_task(_apply_anti_bot_screenshot_retention)
++
++
++async def _apply_anti_bot_screenshot_retention() -> None:
++    cutoff = datetime.now(UTC) - timedelta(days=30)
++    async with get_celery_session_maker()() as session:
++        result = await session.execute(
++            select(AntiBotEscalation).where(
++                AntiBotEscalation.created_at < cutoff,
++                AntiBotEscalation.screenshot_url.is_not(None),
++            )
++        )
++        for escalation in result.scalars():
++            meta = (
++                dict(escalation.escalation_metadata)
++                if escalation.escalation_metadata
++                else {}
++            )
++            storage_key = meta.get("storage_key")
++            if storage_key:
++                try:
++                    backend = get_storage_backend()
++                    await backend.delete(storage_key)
++                except Exception as exc:
++                    logger.warning(
++                        "Failed to delete old screenshot for escalation %s: %s",
++                        escalation.id,
++                        exc,
++                    )
++                    continue
++            escalation.screenshot_url = None
++            escalation.escalation_metadata = _updated_metadata(
++                meta, escalation.workspace_id, escalation.run_id
++            )
++            escalation.escalation_metadata["retention_deleted_at"] = datetime.now(
++                UTC
++            ).isoformat()
++
++        await session.commit()
+diff --git a/nowing_backend/tests/integration/routes/test_admin_anti_bot_escalation_routes.py b/nowing_backend/tests/integration/routes/test_admin_anti_bot_escalation_routes.py
+new file mode 100644
+index 000000000..9b61c12ac
+--- /dev/null
++++ b/nowing_backend/tests/integration/routes/test_admin_anti_bot_escalation_routes.py
+@@ -0,0 +1,224 @@
++"""Integration tests for the admin anti-bot escalation routes.
++
++Covers list, get, resolve, and retry endpoints with superuser and
++workspace-member RBAC.
++"""
++
++from __future__ import annotations
++
++import uuid
++from collections.abc import AsyncGenerator
++from datetime import UTC, datetime
++from unittest.mock import AsyncMock, patch
++
++import httpx
++import pytest
++import pytest_asyncio
++from httpx import ASGITransport
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.app import app
++from app.auth.context import AuthContext
++from app.db import (
++    AntiBotEscalation,
++    Run,
++    User,
++    Workspace,
++    WorkspaceMembership,
++    WorkspaceRole,
++    get_async_session,
++)
++from app.users import get_auth_context
++
++pytestmark = [pytest.mark.integration]
++
++
++@pytest_asyncio.fixture
++async def admin_client(
++    db_session: AsyncSession,
++) -> AsyncGenerator[httpx.AsyncClient, None]:
++    admin = User(
++        id=uuid.uuid4(),
++        email="admin@nowing.net",
++        hashed_password="hashed",
++        is_active=True,
++        is_superuser=True,
++        is_verified=True,
++    )
++    db_session.add(admin)
++    await db_session.flush()
++
++    async def override_session() -> AsyncGenerator[AsyncSession, None]:
++        yield db_session
++
++    async def override_auth() -> AuthContext:
++        return AuthContext.session(admin)
++
++    previous_overrides = app.dependency_overrides.copy()
++    app.dependency_overrides[get_async_session] = override_session
++    app.dependency_overrides[get_auth_context] = override_auth
++
++    try:
++        async with httpx.AsyncClient(
++            transport=ASGITransport(app=app),
++            base_url="http://test",
++            timeout=30.0,
++            follow_redirects=False,
++        ) as test_client:
++            yield test_client
++    finally:
++        app.dependency_overrides.clear()
++        app.dependency_overrides.update(previous_overrides)
++
++
++@pytest_asyncio.fixture
++async def workspace_editor_client(
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++) -> AsyncGenerator[httpx.AsyncClient, None]:
++    user = User(
++        id=uuid.uuid4(),
++        email="editor@nowing.net",
++        hashed_password="hashed",
++        is_active=True,
++        is_superuser=False,
++        is_verified=True,
++    )
++    role = WorkspaceRole(
++        workspace_id=db_workspace.id,
++        name="Editor",
++        permissions=["documents:read"],
++        is_system_role=True,
++    )
++    membership = WorkspaceMembership(
++        user_id=user.id,
++        workspace_id=db_workspace.id,
++        role=role,
++    )
++    db_session.add_all([user, role, membership])
++    await db_session.flush()
++
++    async def override_session() -> AsyncGenerator[AsyncSession, None]:
++        yield db_session
++
++    async def override_auth() -> AuthContext:
++        return AuthContext.session(user)
++
++    previous_overrides = app.dependency_overrides.copy()
++    app.dependency_overrides[get_async_session] = override_session
++    app.dependency_overrides[get_auth_context] = override_auth
++
++    try:
++        async with httpx.AsyncClient(
++            transport=ASGITransport(app=app),
++            base_url="http://test",
++            timeout=30.0,
++            follow_redirects=False,
++        ) as test_client:
++            yield test_client
++    finally:
++        app.dependency_overrides.clear()
++        app.dependency_overrides.update(previous_overrides)
++
++
++async def _seed_escalation(
++    db_session: AsyncSession,
++    workspace: Workspace,
++    user: User,
++) -> AntiBotEscalation:
++    run = Run(
++        id=uuid.uuid4(),
++        workspace_id=workspace.id,
++        user_id=user.id,
++        capability="batdongsan.scrape",
++        origin="agent",
++        status="success",
++        input={"city": "hanoi"},
++    )
++    db_session.add(run)
++    await db_session.flush()
++
++    escalation = AntiBotEscalation(
++        run_id=run.id,
++        workspace_id=workspace.id,
++        capability="batdongsan.scrape",
++        domain="batdongsan.com.vn",
++        block_type="bot_detected",
++        screenshot_url="https://example.com/screenshot.png",
++        status="open",
++        detection_count=1,
++        last_seen_at=datetime.now(UTC),
++    )
++    db_session.add(escalation)
++    await db_session.flush()
++    return escalation
++
++
++@pytest.mark.asyncio
++async def test_superuser_lists_escalations(
++    admin_client, db_session, db_user, db_workspace
++):
++    await _seed_escalation(db_session, db_workspace, db_user)
++
++    resp = await admin_client.get("/api/v1/admin/anti-bot-escalations")
++    assert resp.status_code == 200, resp.text
++    body = resp.json()
++    assert len(body["items"]) == 1
++    assert body["total"] == 1
++    assert body["items"][0]["domain"] == "batdongsan.com.vn"
++
++
++@pytest.mark.asyncio
++async def test_workspace_editor_can_filter_own_workspace(
++    workspace_editor_client, db_session, db_user, db_workspace
++):
++    await _seed_escalation(db_session, db_workspace, db_user)
++
++    resp = await workspace_editor_client.get(
++        "/api/v1/admin/anti-bot-escalations",
++        params={"workspace_id": db_workspace.id},
++    )
++    assert resp.status_code == 200, resp.text
++    body = resp.json()
++    assert len(body["items"]) == 1
++
++
++@pytest.mark.asyncio
++async def test_workspace_editor_cannot_list_all_workspaces(
++    workspace_editor_client, db_session, db_user, db_workspace
++):
++    await _seed_escalation(db_session, db_workspace, db_user)
++
++    resp = await workspace_editor_client.get("/api/v1/admin/anti-bot-escalations")
++    assert resp.status_code == 403
++
++
++@pytest.mark.asyncio
++async def test_resolve_escalation(admin_client, db_session, db_user, db_workspace):
++    escalation = await _seed_escalation(db_session, db_workspace, db_user)
++
++    resp = await admin_client.post(
++        f"/api/v1/admin/anti-bot-escalations/{escalation.id}/resolve"
++    )
++    assert resp.status_code == 200, resp.text
++    body = resp.json()
++    assert body["status"] == "resolved"
++    assert body["resolved_at"] is not None
++
++
++@pytest.mark.asyncio
++async def test_retry_escalation(admin_client, db_session, db_user, db_workspace):
++    escalation = await _seed_escalation(db_session, db_workspace, db_user)
++
++    with patch(
++        "app.routes.admin_anti_bot_escalation_routes.start_async_run",
++        new_callable=AsyncMock,
++    ) as mock_run:
++        mock_run.return_value = "retry-run-id"
++        resp = await admin_client.post(
++            f"/api/v1/admin/anti-bot-escalations/{escalation.id}/retry"
++        )
++    assert resp.status_code == 200, resp.text
++    body = resp.json()
++    assert body["status"] == "retry"
++    assert body["retry_run_id"] == "retry-run-id"
+diff --git a/nowing_backend/tests/unit/capabilities/access/test_agent_tools.py b/nowing_backend/tests/unit/capabilities/access/test_agent_tools.py
+index 48850718e..1a84482d3 100644
+--- a/nowing_backend/tests/unit/capabilities/access/test_agent_tools.py
++++ b/nowing_backend/tests/unit/capabilities/access/test_agent_tools.py
+@@ -122,6 +122,21 @@ async def test_input_field_docs_reach_the_model(isolate):
+     assert tool.args["text"]["description"] == "The text to echo back."
+ 
+ 
++class _AntiBotOutput(BaseModel):
++    """Output shape that looks like a degraded scraper result."""
++
++    degraded: bool = True
++    degradation_reason: str = "bot_detected"
++    next_action: str = (
++        "Escalated to human review; retry after credentials/proxy rotation"
++    )
++    items: list = Field(default_factory=list)
++
++    @property
++    def billable_units(self) -> int:
++        return 0
++
++
+ async def test_tool_runs_executor_and_returns_serialized_output(isolate):
+     cap = _capability(name="web.scrape", output=_EchoOutput(echoed="hi there"))
+     tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=[cap])
+@@ -134,6 +149,35 @@ async def test_tool_runs_executor_and_returns_serialized_output(isolate):
+     assert cap.executor.seen.text == "ping"
+ 
+ 
++async def test_repeated_anti_bot_tool_call_uses_cache(isolate, monkeypatch):
++    """A second identical call in the same thread must not re-execute the tool."""
++    from app.capabilities.core.access import agent as mod
++
++    cap = _capability(name="web.scrape", output=_AntiBotOutput())
++    tools = mod.build_capability_tools(workspace_id=7, capabilities=[cap])
++    tool = _verb_tool(tools, "web_scrape")
++
++    monkeypatch.setattr(mod, "_current_thread_id", lambda: "thread-10-5")
++    run_id = "550e8400-e29b-41d4-a716-446655440999"
++    monkeypatch.setattr(mod, "record_run", AsyncMock(return_value=run_id))
++    monkeypatch.setattr(
++        mod, "enqueue_run_memory_extraction_after_commit", lambda _: None
++    )
++
++    first = await _invoke(tool, text="https://example.com/blocked")
++    assert first.update["messages"][0].tool_call_id == "call-1"
++    first_content = first.update["messages"][0].content
++    assert '"degraded": true' in first_content
++    assert '"next_step"' in first_content
++    assert cap.executor.seen.text == "https://example.com/blocked"
++
++    cap.executor.seen = None
++    second = await _invoke(tool, text="https://example.com/blocked")
++    assert cap.executor.seen is None  # executor was not invoked again
++    second_content = second.update["messages"][0].content
++    assert second_content == first_content
++
++
+ async def test_tool_charges_owner(isolate):
+     output = _EchoOutput(echoed="hi")
+     cap = _capability(name="web.scrape", output=output)
+@@ -172,10 +216,10 @@ async def test_tool_registers_run_citation_when_stored(isolate, monkeypatch):
+     from app.capabilities.core.access import agent as mod
+ 
+     run_id = "550e8400-e29b-41d4-a716-446655440000"
++    monkeypatch.setattr(mod, "record_run", AsyncMock(return_value=run_id))
+     monkeypatch.setattr(
+-        mod, "record_run", AsyncMock(return_value=run_id)
++        mod, "enqueue_run_memory_extraction_after_commit", lambda _: None
+     )
+-    monkeypatch.setattr(mod, "enqueue_run_memory_extraction_after_commit", lambda _: None)
+ 
+     cap = _capability(name="web.scrape", output=_EchoOutput(echoed="hi"))
+     tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=[cap])
+@@ -240,7 +284,9 @@ async def test_tool_registers_web_result_citations_when_output_has_sources(
+ 
+     run_id = "660e8400-e29b-41d4-a716-446655440001"
+     monkeypatch.setattr(mod, "record_run", AsyncMock(return_value=run_id))
+-    monkeypatch.setattr(mod, "enqueue_run_memory_extraction_after_commit", lambda _: None)
++    monkeypatch.setattr(
++        mod, "enqueue_run_memory_extraction_after_commit", lambda _: None
++    )
+ 
+     output = _ResearchOutput(
+         answer="Synthesis text",

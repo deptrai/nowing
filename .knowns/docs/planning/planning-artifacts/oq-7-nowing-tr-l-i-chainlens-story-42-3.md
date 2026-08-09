@@ -2,7 +2,7 @@
 title: 'OQ-7 — Nowing trả lời ChainLens (story `42-3`)'
 description: ''
 createdAt: '2026-07-28T12:47:48.233Z'
-updatedAt: '2026-08-04T14:53:26.339Z'
+updatedAt: '2026-08-09T11:23:13.245Z'
 tags:
   - oq-7
   - chainlens
@@ -52,6 +52,13 @@ Nowing UX modes: `speed`, `balanced`, `quality`, `auto`.
 - Nowing: `PRD` FR-37/NFR-9, `epics.md` E9.2, `9-2-deep-research-cost-metering.md`.
 
 ## Action items
-- [ ] Sửa story `42-3-verify-nowing-endpoint-needs.md` dòng "flat billing" thành "real costDollars parsing".
-- [ ] Đồng bộ `chainlens-research/_bmad-output/sprint-status.yaml` reason dòng 42-3.
-- [ ] Xác nhận `apps/api/src/search/__tests__/fixtures/nowing-sse-parser.ts` parse `costDollars` theo FR-37.
+- [x] Sửa story `42-3-verify-nowing-endpoint-needs.md` dòng "flat billing" thành "real costDollars parsing". **Đã xác minh:** file `_bmad-output/implementation-artifacts/stories/42-3-verify-nowing-endpoint-needs.md` trong repo `chainlens-research` đã ghi đúng "real `costDollars`" từ terminal `done` frame (FR-37/Epic 9.2), fallback 60k micros chỉ khi missing. Không còn dòng "flat billing" nào trong file.
+- [x] Đồng bộ `chainlens-research/_bmad-output/sprint-status.yaml` reason dòng 42-3. **Đã xác minh:** cả hai file sprint-status (`_bmad-output/sprint-status.yaml` và `_bmad-output/implementation-artifacts/sprint-status.yaml`) đều có reason dòng 42-3 mô tả real `costDollars` parsing, 60k micros fallback, `resolvedMode`/`estimated`, geo deferred, API key auth, mode mapping.
+- [x] Xác nhận `apps/api/src/search/__tests__/fixtures/nowing-sse-parser.ts` parse `costDollars` theo FR-37. **Đã xác minh:** fixture `nowing-sse-parser.ts` có `extractCostDollars`/`dollarsToMicros` với `MICROS_PER_USD = 1_000_000`, parse `done.usage.costDollars` và top-level `done.costDollars`, kiểm tra `Number.isFinite` và non-negative. Test suite `pnpm test search-contract` trong `apps/api` pass 115/115 tests.
+
+### Evidence tổng hợp (2026-08-09)
+- ChainLens `nowing-sse-parser.ts` <ref_snippet file="/Users/luisphan/Documents/chainlens-research/apps/api/src/search/__tests__/fixtures/nowing-sse-parser.ts" lines="76-124" />: `MICROS_PER_USD = 1_000_000`, `extractCostDollars` từ `done.usage.costDollars`, `dollarsToMicros` bằng `Math.round(dollars * MICROS_PER_USD)`.
+- ChainLens `search-contract.spec.ts` + `search-contract.service.spec.ts` pass 115 tests: `pnpm test search-contract` trong `apps/api`.
+- Nowing `_SSEParser._extract_cost` <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/capabilities/chainlens/research/executor.py" lines="468-543" />: parse `done.usage.costDollars`, defensive với malformed/negative/NaN.
+- Nowing `_cost_micros` <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/capabilities/chainlens/research/executor.py" lines="545-552" />: chuyển đổi bằng `Decimal` + `ROUND_HALF_UP`.
+- Nowing `pytest tests/unit/capabilities/chainlens/research/test_cost_metering.py -q` pass 18/18; `ruff check` sạch.

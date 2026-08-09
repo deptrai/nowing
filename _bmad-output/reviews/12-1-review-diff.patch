@@ -1,0 +1,1473 @@
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/__init__.py b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/__init__.py
+new file mode 100644
+index 000000000..65a2a1087
+--- /dev/null
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/__init__.py
+@@ -0,0 +1 @@
++"""``vn_jobs`` builtin subagent: Vietnamese job market research."""
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/agent.py b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/agent.py
+new file mode 100644
+index 000000000..c325be332
+--- /dev/null
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/agent.py
+@@ -0,0 +1,43 @@
++"""``vn_jobs`` route: ``NowingSubagentSpec`` builder for deepagents."""
++
++from __future__ import annotations
++
++from typing import Any
++
++from langchain_core.language_models import BaseChatModel
++from langchain_core.tools import BaseTool
++
++from app.agents.chat.multi_agent_chat.subagents.shared.md_file_reader import (
++    read_md_file,
++)
++from app.agents.chat.multi_agent_chat.subagents.shared.spec import NowingSubagentSpec
++from app.agents.chat.multi_agent_chat.subagents.shared.subagent_builder import (
++    pack_subagent,
++)
++
++from .tools.index import NAME, RULESET, load_tools
++
++
++def build_subagent(
++    *,
++    dependencies: dict[str, Any],
++    model: BaseChatModel | None = None,
++    middleware_stack: dict[str, Any] | None = None,
++    mcp_tools: list[BaseTool] | None = None,
++) -> NowingSubagentSpec:
++    tools = [*load_tools(dependencies=dependencies), *(mcp_tools or [])]
++    description = (
++        read_md_file(__package__, "description").strip()
++        or "Research the Vietnamese job market across VietnamWorks, TopCV, and ITviec."
++    )
++    system_prompt = read_md_file(__package__, "system_prompt").strip()
++    return pack_subagent(
++        name=NAME,
++        description=description,
++        system_prompt=system_prompt,
++        tools=tools,
++        ruleset=RULESET,
++        dependencies=dependencies,
++        model=model,
++        middleware_stack=middleware_stack,
++    )
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/description.md b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/description.md
+new file mode 100644
+index 000000000..e11598d25
+--- /dev/null
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/description.md
+@@ -0,0 +1 @@
++Vietnamese job market specialist: pulls and aggregates job postings from VietnamWorks, TopCV, and ITviec. Returns normalized listings with title, company, location, salary range, employment type, experience, skills, post date, and source. Cross-source deduplication and salary-conflict scoring let the user compare how the same job is described on different boards. Use whenever the task is to research Vietnamese job markets, salary benchmarks, hiring trends, skill demand, or compare job postings across VietnamWorks, TopCV, and ITviec. Triggers include "data engineer jobs in Hanoi", "compare salaries on VietnamWorks vs TopCV", "how many senior Python jobs in HCMC", and similar job-market questions. Not a job application tool — do not apply, submit CVs, or contact recruiters on the user's behalf.
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/system_prompt.md b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/system_prompt.md
+new file mode 100644
+index 000000000..5c9eb526a
+--- /dev/null
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/system_prompt.md
+@@ -0,0 +1,71 @@
++You are the Nowing Vietnamese job market sub-agent.
++You receive delegated instructions from a supervisor agent and return structured results for supervisor synthesis.
++
++<goal>
++Answer the delegated question from live VietnamWorks, TopCV, and ITviec job data gathered with your verbs, comparing against earlier results already in this conversation when the task calls for it.
++</goal>
++
++<available_tools>
++- `vietnamworks_scrape`
++- `topcv_scrape`
++- `itviec_scrape`
++- `vn_jobs_aggregate`
++- `read_run` / `search_run` (free readers for stored scrape output)
++</available_tools>
++
++<playbook>
++- Cross-source comparison: prefer `vn_jobs_aggregate` with `keyword` and `location`; it normalizes, deduplicates, and scores consistency across VietnamWorks, TopCV, and ITviec.
++- Single-source deep dive: use `vietnamworks_scrape`, `topcv_scrape`, or `itviec_scrape` directly.
++- Salary questions: pass `salary_min` / `salary_max` (monthly VND) when known; otherwise rely on the returned salary ranges and report `salary_confidence`.
++- Location scoping: pass `location` as a city or province name, e.g. 'Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng'. The aggregator applies post-fetch location filtering because some sources do not filter server-side.
++- Employment type and experience: use `employment_type` (`full_time`, `contract`, `part_time`, `intern`) and `experience_years` when relevant.
++- Controlling volume: use `max_items_per_source` / `max_items` for the total cap and `max_pages` for how many listing pages to scan.
++- Requested counts: when the task asks for N jobs, set `max_items` or `max_items_per_source` above N (with headroom) so the cap never blocks the target.
++- Under-delivery: if the first call returns fewer on-topic results than requested, broaden it yourself — wider `max_pages`, no `location`, wider or no salary bounds — before settling. Return `status=partial` only after the broadened attempt.
++- Salary caveats: many VietnamWorks salaries are marked "Thương lượng"; ITviec hides salary for non-logged-in users. Report confidence scores explicitly.
++- Degraded sources: if a tool returns `degraded=true`, say which source failed, why, and summarize what is still available.
++- PII redaction: Nowing removes phone numbers, emails, and personal names from job descriptions before storage. Do not attempt to extract or surface contact info.
++</playbook>
++
++<tool_policy>
++- Use only tools in `<available_tools>`.
++- Report only results present in the tool output. Never invent titles, salaries, companies, or URLs.
++- Never frame the result as an application or recommendation to apply.
++</tool_policy>
++
++<out_of_scope>
++- This is a research/memory layer, NOT a job board or ATS.
++- Do not help users apply to jobs, submit CVs, or contact recruiters.
++- Other countries' job portals and non-Vietnamese sources are out of scope.
++</out_of_scope>
++
++<safety>
++- Report uncertainty explicitly when evidence is incomplete or conflicting.
++- Never present unverified claims as facts.
++</safety>
++
++<failure_policy>
++- Underspecified request — no usable `keyword` — return `status=blocked` with the missing fields.
++- Tool failure: return `status=error` with a concise recovery `next_step`.
++- No useful evidence: return `status=blocked` with the scope you still need.
++</failure_policy>
++
++<output_contract>
++Return **only** one JSON object (no markdown/prose):
++{
++  "status": "success" | "partial" | "blocked" | "error",
++  "action_summary": string,
++  "evidence": {
++    "findings": string[],
++    "sources": string[],
++    "confidence": "high" | "medium" | "low"
++  },
++  "next_step": string | null,
++  "missing_fields": string[] | null,
++  "assumptions": string[] | null
++}
++<include snippet="output_contract_base"/>
++Route-specific rules:
++- `evidence.findings`: one entry per distinct job or delta — a single sentence each (title, company, location, salary range, source confidence). Max 10 entries, unless the delegated task asks for N items.
++- `evidence.sources`: list the source(s) for each finding (VietnamWorks, TopCV, ITviec, or aggregate URL). Keep the same cap as findings.
++</output_contract>
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/tools/__init__.py b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/tools/__init__.py
+new file mode 100644
+index 000000000..3a6c361f5
+--- /dev/null
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/tools/__init__.py
+@@ -0,0 +1,3 @@
++"""``vn_jobs`` subagent tools package."""
++
++from __future__ import annotations
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/tools/index.py b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/tools/index.py
+new file mode 100644
+index 000000000..121c0f93f
+--- /dev/null
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/tools/index.py
+@@ -0,0 +1,36 @@
++"""``vn_jobs`` sub-agent tools: per-source scrapes and aggregate."""
++
++from __future__ import annotations
++
++from typing import Any
++
++from langchain_core.tools import BaseTool
++
++from app.agents.chat.multi_agent_chat.shared.permissions import Ruleset
++from app.capabilities.core.access.agent import build_capability_tools
++from app.capabilities.itviec.scrape.definition import ITVIEC_SCRAPE
++from app.capabilities.topcv.scrape.definition import TOPCV_SCRAPE
++from app.capabilities.vietnamworks.scrape.definition import VIETNAMWORKS_SCRAPE
++from app.capabilities.vn_jobs.aggregate.definition import VN_JOBS_AGGREGATE
++
++NAME = "vn_jobs"
++
++RULESET = Ruleset(origin=NAME, rules=[])
++
++_CI_VERBS = [
++    VIETNAMWORKS_SCRAPE,
++    TOPCV_SCRAPE,
++    ITVIEC_SCRAPE,
++    VN_JOBS_AGGREGATE,
++]
++
++
++def load_tools(
++    *, dependencies: dict[str, Any] | None = None, **kwargs: Any
++) -> list[BaseTool]:
++    d = {**(dependencies or {}), **kwargs}
++    return build_capability_tools(
++        workspace_id=d.get("workspace_id"),
++        capabilities=_CI_VERBS,
++        user_id=d.get("user_id"),
++    )
+diff --git a/nowing_backend/app/capabilities/__init__.py b/nowing_backend/app/capabilities/__init__.py
+index 9c97ef59a..69660f355 100644
+--- a/nowing_backend/app/capabilities/__init__.py
++++ b/nowing_backend/app/capabilities/__init__.py
+@@ -3,5 +3,9 @@
+ from __future__ import annotations
+ 
+ from app.capabilities import amazon as _amazon  # noqa: F401
++from app.capabilities import itviec as _itviec  # noqa: F401
++from app.capabilities import topcv as _topcv  # noqa: F401
++from app.capabilities import vietnamworks as _vietnamworks  # noqa: F401
++from app.capabilities import vn_jobs as _vn_jobs  # noqa: F401
+ 
+ __all__: list[str] = []
+diff --git a/nowing_backend/app/capabilities/core/billing.py b/nowing_backend/app/capabilities/core/billing.py
+index f70ba8b9b..3e8100755 100644
+--- a/nowing_backend/app/capabilities/core/billing.py
++++ b/nowing_backend/app/capabilities/core/billing.py
+@@ -50,6 +50,10 @@ _PLATFORM_RATE_KEYS: dict[BillingUnit, str] = {
+     BillingUnit.CHOTOT_BDS_ITEM: "CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM",
+     BillingUnit.MUABAN_BDS_ITEM: "MUABAN_BDS_SCRAPE_MICROS_PER_ITEM",
+     BillingUnit.VN_BDS_AGGREGATE_QUERY: "VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY",
++    BillingUnit.VIETNAMWORKS_JOB: "VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM",
++    BillingUnit.TOPCV_JOB: "TOPCV_SCRAPE_MICROS_PER_ITEM",
++    BillingUnit.ITVIEC_JOB: "ITVIEC_SCRAPE_MICROS_PER_ITEM",
++    BillingUnit.VN_JOBS_AGGREGATE_QUERY: "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY",
+ }
+ 
+ 
+@@ -77,6 +81,10 @@ _UNIT_NOUNS: dict[BillingUnit, str] = {
+     BillingUnit.CHOTOT_BDS_ITEM: "listing",
+     BillingUnit.MUABAN_BDS_ITEM: "listing",
+     BillingUnit.VN_BDS_AGGREGATE_QUERY: "query",
++    BillingUnit.VIETNAMWORKS_JOB: "job",
++    BillingUnit.TOPCV_JOB: "job",
++    BillingUnit.ITVIEC_JOB: "job",
++    BillingUnit.VN_JOBS_AGGREGATE_QUERY: "query",
+ }
+ 
+ 
+@@ -134,6 +142,9 @@ async def gate_capability(
+     if unit is BillingUnit.VN_BDS_AGGREGATE_QUERY:
+         await _gate_vn_bds_aggregate(payload, ctx)
+         return
++    if unit is BillingUnit.VN_JOBS_AGGREGATE_QUERY:
++        await _gate_vn_jobs_aggregate(payload, ctx)
++        return
+     await _gate_platform(payload, unit, ctx)
+ 
+ 
+@@ -193,6 +204,9 @@ _SOURCE_BILLING_UNIT_MAP: dict[str, BillingUnit] = {
+     "batdongsan": BillingUnit.BATDONGSAN_ITEM,
+     "chotot_bds": BillingUnit.CHOTOT_BDS_ITEM,
+     "muaban_bds": BillingUnit.MUABAN_BDS_ITEM,
++    "vietnamworks": BillingUnit.VIETNAMWORKS_JOB,
++    "topcv": BillingUnit.TOPCV_JOB,
++    "itviec": BillingUnit.ITVIEC_JOB,
+ }
+ 
+ 
+@@ -230,6 +244,47 @@ async def _gate_vn_bds_aggregate(
+     await wallet_credit.check_balance(ctx.session, owner_user_id, required_micros)
+ 
+ 
++# Subset of _SOURCE_BILLING_UNIT_MAP for job-market sources. Kept separate
++# because BĐS and jobs aggregates may diverge in source lists and defaults.
++_JOBS_BILLING_UNIT_MAP: dict[str, BillingUnit] = {
++    "vietnamworks": BillingUnit.VIETNAMWORKS_JOB,
++    "topcv": BillingUnit.TOPCV_JOB,
++    "itviec": BillingUnit.ITVIEC_JOB,
++}
++
++
++async def _gate_vn_jobs_aggregate(
++    payload: BillableInput, ctx: CapabilityContext
++) -> None:
++    """Reserve the worst-case cost for a multi-source job aggregation.
++
++    Mirrors ``_gate_vn_bds_aggregate`` but uses the jobs source map. The real
++    charge (see ``_charge_vn_jobs_aggregate``) uses the actual child counts.
++    """
++    service = PlatformScrapeCreditService(ctx.session)
++    if not service.billing_enabled():
++        return
++    owner_user_id = await _resolve_workspace_owner(ctx.session, ctx.workspace_id)
++    if owner_user_id is None:
++        return
++
++    sources = getattr(payload, "sources", list(_JOBS_BILLING_UNIT_MAP)) or list(
++        _JOBS_BILLING_UNIT_MAP
++    )
++    max_items = getattr(payload, "max_items_per_source", 10) or 0
++
++    required_micros = int(
++        getattr(config, "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", 5000)
++    )
++    for source in sources:
++        child_unit = _JOBS_BILLING_UNIT_MAP.get(source)
++        if child_unit is None:
++            continue
++        required_micros += max_items * _platform_rate(child_unit)
++
++    await wallet_credit.check_balance(ctx.session, owner_user_id, required_micros)
++
++
+ async def charge_capability(
+     output: BillableOutput,
+     unit: BillingUnit | None,
+@@ -255,6 +310,8 @@ async def charge_capability(
+         return await _charge_chainlens(output, ctx)
+     if unit is BillingUnit.VN_BDS_AGGREGATE_QUERY:
+         return await _charge_vn_bds_aggregate(output, ctx)
++    if unit is BillingUnit.VN_JOBS_AGGREGATE_QUERY:
++        return await _charge_vn_jobs_aggregate(output, ctx)
+     return await _charge_platform(output, unit, ctx)
+ 
+ 
+@@ -560,6 +617,49 @@ async def _charge_vn_bds_aggregate(
+     return cost_micros
+ 
+ 
++async def _charge_vn_jobs_aggregate(
++    output: BillableOutput, ctx: CapabilityContext
++) -> int:
++    """Charge the actual multi-source job aggregation cost.
++
++    Mirrors ``_charge_vn_bds_aggregate`` for the VietnamWorks/TopCV/ITviec
++    vertical. The aggregate output is expected to carry ``cost_micros``,
++    ``total_items``, ``degraded``, and ``source_breakdown``.
++    """
++    service = PlatformScrapeCreditService(ctx.session)
++    if not service.billing_enabled():
++        return 0
++
++    cost_micros = int(getattr(output, "cost_micros", 0) or 0)
++    if cost_micros <= 0:
++        return 0
++
++    owner_user_id = await _resolve_workspace_owner(ctx.session, ctx.workspace_id)
++    if owner_user_id is None:
++        return 0
++
++    await wallet_credit.check_balance(ctx.session, owner_user_id, cost_micros)
++
++    call_details: dict[str, Any] = {
++        "total_items": getattr(output, "total_items", 0),
++        "degraded": getattr(output, "degraded", False),
++    }
++    source_breakdown = getattr(output, "source_breakdown", None)
++    if isinstance(source_breakdown, dict):
++        call_details["source_breakdown"] = source_breakdown
++
++    await record_token_usage(
++        ctx.session,
++        usage_type=BillingUnit.VN_JOBS_AGGREGATE_QUERY.value,
++        workspace_id=ctx.workspace_id,
++        user_id=owner_user_id,
++        cost_micros=cost_micros,
++        call_details=call_details,
++    )
++    await wallet_credit.apply_debit(ctx.session, owner_user_id, cost_micros)
++    return cost_micros
++
++
+ async def _resolve_workspace_owner(
+     session: AsyncSession, workspace_id: int
+ ) -> UUID | None:  # pragma: no mutate
+diff --git a/nowing_backend/app/capabilities/core/types.py b/nowing_backend/app/capabilities/core/types.py
+index 377bd56c5..7c473dc9b 100644
+--- a/nowing_backend/app/capabilities/core/types.py
++++ b/nowing_backend/app/capabilities/core/types.py
+@@ -36,6 +36,10 @@ class BillingUnit(StrEnum):
+     CHOTOT_BDS_ITEM = "chotot_bds_item"
+     MUABAN_BDS_ITEM = "muaban_bds_item"
+     VN_BDS_AGGREGATE_QUERY = "vn_bds_aggregate_query"
++    VIETNAMWORKS_JOB = "vietnamworks_job"
++    TOPCV_JOB = "topcv_job"
++    ITVIEC_JOB = "itviec_job"
++    VN_JOBS_AGGREGATE_QUERY = "vn_jobs_aggregate_query"
+ 
+ 
+ class BillableInput(Protocol):
+diff --git a/nowing_backend/app/capabilities/vietnamworks/__init__.py b/nowing_backend/app/capabilities/vietnamworks/__init__.py
+new file mode 100644
+index 000000000..1a104e220
+--- /dev/null
++++ b/nowing_backend/app/capabilities/vietnamworks/__init__.py
+@@ -0,0 +1,5 @@
++"""``vietnamworks.*`` capability namespace."""
++
++from __future__ import annotations
++
++from .scrape import definition as _scrape  # noqa: F401
+diff --git a/nowing_backend/app/capabilities/vietnamworks/scrape/__init__.py b/nowing_backend/app/capabilities/vietnamworks/scrape/__init__.py
+new file mode 100644
+index 000000000..816c12e00
+--- /dev/null
++++ b/nowing_backend/app/capabilities/vietnamworks/scrape/__init__.py
+@@ -0,0 +1,3 @@
++"""``vietnamworks.scrape`` capability."""
++
++from __future__ import annotations
+diff --git a/nowing_backend/app/capabilities/vietnamworks/scrape/definition.py b/nowing_backend/app/capabilities/vietnamworks/scrape/definition.py
+new file mode 100644
+index 000000000..317ca438f
+--- /dev/null
++++ b/nowing_backend/app/capabilities/vietnamworks/scrape/definition.py
+@@ -0,0 +1,24 @@
++"""``vietnamworks.scrape`` capability registration (billed per job)."""
++
++from __future__ import annotations
++
++from app.capabilities.core import BillingUnit, Capability, register_capability
++
++from .executor import build_scrape_executor
++from .schemas import ScrapeInput, ScrapeOutput
++
++VIETNAMWORKS_SCRAPE = Capability(
++    name="vietnamworks.scrape",
++    description=(
++        "Search public VietnamWorks job postings by keyword, location, salary, "
++        "and employment type. Returns typed job listings. Does not apply or "
++        "submit CVs."
++    ),
++    input_schema=ScrapeInput,
++    output_schema=ScrapeOutput,
++    executor=build_scrape_executor(),
++    billing_unit=BillingUnit.VIETNAMWORKS_JOB,
++    docs_url="/docs/connectors/native/vn_jobs",
++)
++
++register_capability(VIETNAMWORKS_SCRAPE)
+diff --git a/nowing_backend/app/capabilities/vietnamworks/scrape/executor.py b/nowing_backend/app/capabilities/vietnamworks/scrape/executor.py
+new file mode 100644
+index 000000000..1d2f157c7
+--- /dev/null
++++ b/nowing_backend/app/capabilities/vietnamworks/scrape/executor.py
+@@ -0,0 +1,92 @@
++"""``vietnamworks.scrape`` executor: verb input → API fetcher → job listings."""
++
++from __future__ import annotations
++
++from collections.abc import Awaitable, Callable
++from typing import Any, Optional
++
++from app.capabilities.core import Executor
++from app.capabilities.core.progress import emit_progress
++from app.config import config
++from app.proprietary.platforms.vietnamworks import scrape_vietnamworks
++
++from .schemas import ScrapeInput, ScrapeOutput
++
++ScrapeFn = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
++
++
++def build_scrape_executor(scrape_fn: Optional[ScrapeFn] = None) -> Executor:  # noqa: UP045
++    """Return an executor that calls the VietnamWorks proprietary fetcher."""
++
++    _scrape = scrape_fn or scrape_vietnamworks
++
++    async def execute(input: ScrapeInput) -> ScrapeOutput:
++        import httpx
++
++        emit_progress("fetching", "VietnamWorks job search")
++
++        params = input.model_dump(exclude_none=True)
++        params["max_items"] = input.max_items
++        params["hitsPerPage"] = min(input.max_items, config.VIETNAMWORKS_MAX_ITEMS)
++
++        items: list[dict[str, Any]] = []
++
++        try:
++            for page in range(1, input.max_pages + 1):
++                page_params = {**params, "page": page, "max_pages": 1}
++                raw = await _scrape(page_params)
++
++                if raw.get("degraded"):
++                    return ScrapeOutput(
++                        items=items,
++                        cost_micros=0,
++                        degraded=True,
++                        degradation_reason=raw.get("degradation_reason"),
++                    )
++
++                page_items = raw.get("items", [])
++                if not page_items:
++                    break
++
++                items.extend(page_items)
++                if len(items) >= input.max_items:
++                    break
++
++                # If the scraper already reached the end of the result set, stop early.
++                if raw.get("meta", {}).get("nbPages") is not None and page >= int(
++                    raw["meta"]["nbPages"]
++                ):
++                    break
++
++        except httpx.TimeoutException:
++            return ScrapeOutput(
++                items=items,
++                cost_micros=0,
++                degraded=True,
++                degradation_reason="timeout",
++            )
++        except RuntimeError as exc:
++            if "429" in str(exc):
++                return ScrapeOutput(
++                    items=items,
++                    cost_micros=0,
++                    degraded=True,
++                    degradation_reason="rate_limited",
++                )
++            return ScrapeOutput(
++                items=items,
++                cost_micros=0,
++                degraded=True,
++                degradation_reason="api_error",
++            )
++
++        items = items[: input.max_items]
++        cost_micros = len(items) * config.VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM
++        return ScrapeOutput(
++            items=items,
++            cost_micros=cost_micros,
++            degraded=False,
++            degradation_reason=None,
++        )
++
++    return execute
+diff --git a/nowing_backend/app/capabilities/vietnamworks/scrape/schemas.py b/nowing_backend/app/capabilities/vietnamworks/scrape/schemas.py
+new file mode 100644
+index 000000000..f3d11a628
+--- /dev/null
++++ b/nowing_backend/app/capabilities/vietnamworks/scrape/schemas.py
+@@ -0,0 +1,61 @@
++"""``vietnamworks.scrape`` I/O contracts."""
++
++from __future__ import annotations
++
++from typing import Any, Literal
++
++from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
++
++from app.config import config
++
++
++class ScrapeInput(BaseModel):
++    """MCP/agent-friendly surface for ``vietnamworks.scrape``."""
++
++    model_config = ConfigDict(extra="allow")
++
++    keyword: str
++    location: str | None = None
++    salary_min: int | None = None
++    salary_max: int | None = None
++    employment_type: Literal["full_time", "contract", "part_time", "intern"] | None = None
++    experience_years: int | None = None
++    max_pages: int = Field(default=1, ge=0)
++    max_items: int = Field(default=50, ge=0)
++
++    @field_validator("max_items", mode="after")
++    @classmethod
++    def _clamp_max_items(cls, v: int) -> int:
++        ceiling = getattr(config, "VIETNAMWORKS_MAX_ITEMS", 100)
++        return min(v, ceiling)
++
++    @field_validator("max_pages", mode="after")
++    @classmethod
++    def _clamp_max_pages(cls, v: int) -> int:
++        ceiling = getattr(config, "VIETNAMWORKS_MAX_PAGES", 5)
++        return min(v, ceiling)
++
++    @property
++    def estimated_units(self) -> int:
++        """Worst-case billable items for the pre-flight gate."""
++        return self.max_items
++
++
++class ScrapeOutput(BaseModel):
++    """Capability-level output for VietnamWorks job listings."""
++
++    model_config = ConfigDict(extra="allow")
++
++    items: list[dict[str, Any]] = Field(default_factory=list)
++    cost_micros: int = 0
++    degraded: bool = False
++    degradation_reason: str | None = None
++
++    @computed_field
++    @property
++    def total_items(self) -> int:
++        return len(self.items)
++
++    @property
++    def billable_units(self) -> int:
++        return len(self.items)
+diff --git a/nowing_backend/app/config/__init__.py b/nowing_backend/app/config/__init__.py
+index 2d480b808..ddc351641 100644
+--- a/nowing_backend/app/config/__init__.py
++++ b/nowing_backend/app/config/__init__.py
+@@ -954,6 +954,41 @@ class Config:
+     VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY = int(
+         os.getenv("VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY", "5000")
+     )
++    # VietnamWorks is a public API-backed source; price near other API platforms.
++    VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM = int(
++        os.getenv("VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM", "3000")
++    )
++    VIETNAMWORKS_PAGE_DELAY_S = float(os.getenv("VIETNAMWORKS_PAGE_DELAY_S", "0.5"))
++    VIETNAMWORKS_TIMEOUT_S = float(os.getenv("VIETNAMWORKS_TIMEOUT_S", "30.0"))
++    VIETNAMWORKS_MAX_PAGES = int(os.getenv("VIETNAMWORKS_MAX_PAGES", "5"))
++    VIETNAMWORKS_MAX_ITEMS = int(os.getenv("VIETNAMWORKS_MAX_ITEMS", "100"))
++    # TopCV is Cloudflare-protected and uses the web crawler stack. The platform
++    # per-item rate is a pass-through; actual anti-bot cost is metered via
++    # WEB_CRAWL + WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE (see AD-23).
++    TOPCV_SCRAPE_MICROS_PER_ITEM = int(
++        os.getenv("TOPCV_SCRAPE_MICROS_PER_ITEM", "5500")
++    )
++    TOPCV_PAGE_DELAY_S = float(os.getenv("TOPCV_PAGE_DELAY_S", "1.0"))
++    TOPCV_TIMEOUT_S = float(os.getenv("TOPCV_TIMEOUT_S", "60.0"))
++    TOPCV_MAX_PAGES = int(os.getenv("TOPCV_MAX_PAGES", "3"))
++    # ITviec is server-rendered HTML; cheaper than TopCV, no anti-bot expected.
++    ITVIEC_SCRAPE_MICROS_PER_ITEM = int(os.getenv("ITVIEC_SCRAPE_MICROS_PER_ITEM", "3000"))
++    ITVIEC_PAGE_DELAY_S = float(os.getenv("ITVIEC_PAGE_DELAY_S", "0.5"))
++    ITVIEC_TIMEOUT_S = float(os.getenv("ITVIEC_TIMEOUT_S", "30.0"))
++    ITVIEC_MAX_PAGES = int(os.getenv("ITVIEC_MAX_PAGES", "5"))
++    # Multi-source job aggregation (VietnamWorks/TopCV/ITviec).
++    VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY = int(
++        os.getenv("VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", "5000")
++    )
++    VN_JOBS_AGGREGATE_MAX_ITEMS_PER_SOURCE = int(
++        os.getenv("VN_JOBS_AGGREGATE_MAX_ITEMS_PER_SOURCE", "50")
++    )
++    VN_JOBS_AGGREGATE_MAX_PAGES = int(
++        os.getenv("VN_JOBS_AGGREGATE_MAX_PAGES", "5")
++    )
++    # PII redaction confidence threshold (0-1) before treating a source as unsafe
++    # for memory extraction.
++    PII_REDACTION_MIN_CONFIDENCE = float(os.getenv("PII_REDACTION_MIN_CONFIDENCE", "0.7"))
+     # Browser-driven listings make TikTok heavier per item than the API-backed
+     # video meter, so it sits a touch above YouTube's video rate.
+     TIKTOK_MICROS_PER_VIDEO = int(os.getenv("TIKTOK_MICROS_PER_VIDEO", "3500"))
+diff --git a/nowing_backend/app/mcp_tools.py b/nowing_backend/app/mcp_tools.py
+index 2f9430f8c..d70ac252d 100644
+--- a/nowing_backend/app/mcp_tools.py
++++ b/nowing_backend/app/mcp_tools.py
+@@ -33,6 +33,10 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
+     {"name": "nowing_batdongsan_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_chotot_bds_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_muaban_bds_scrape", "group": McpToolGroup.SCRAPER},
++    {"name": "nowing_vietnamworks_scrape", "group": McpToolGroup.SCRAPER},
++    {"name": "nowing_topcv_scrape", "group": McpToolGroup.SCRAPER},
++    {"name": "nowing_itviec_scrape", "group": McpToolGroup.SCRAPER},
++    {"name": "nowing_vn_jobs_aggregate", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_chainlens_research", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_google_maps_reviews", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_google_maps_scrape", "group": McpToolGroup.SCRAPER},
+diff --git a/nowing_backend/app/proprietary/platforms/vietnamworks/__init__.py b/nowing_backend/app/proprietary/platforms/vietnamworks/__init__.py
+new file mode 100644
+index 000000000..bb6eecc55
+--- /dev/null
++++ b/nowing_backend/app/proprietary/platforms/vietnamworks/__init__.py
+@@ -0,0 +1,7 @@
++"""VietnamWorks platform fetcher."""
++
++from __future__ import annotations
++
++from .scraper import scrape_vietnamworks
++
++__all__ = ["scrape_vietnamworks"]
+diff --git a/nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py b/nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py
+new file mode 100644
+index 000000000..68cc395cf
+--- /dev/null
++++ b/nowing_backend/app/proprietary/platforms/vietnamworks/scraper.py
+@@ -0,0 +1,274 @@
++"""VietnamWorks public API fetcher."""
++
++from __future__ import annotations
++
++import asyncio
++import logging
++from typing import Any
++
++import httpx
++
++from app.config import config
++
++logger = logging.getLogger(__name__)
++
++_API_URL = "https://ms.vietnamworks.com/job-search/v1.0/search"
++
++_TYPE_WORKING_MAP = {
++    1: "full_time",
++    2: "part_time",
++    3: "contract",
++    4: "intern",
++}
++
++
++def _degraded(reason: str) -> dict[str, Any]:
++    return {
++        "items": [],
++        "cost_micros": 0,
++        "degraded": True,
++        "degradation_reason": reason,
++        "total_items": 0,
++    }
++
++
++def _first_location(locations: list[dict[str, Any]]) -> str | None:
++    if not locations:
++        return None
++    loc = locations[0]
++    return loc.get("cityNameVI") or loc.get("cityName") or loc.get("address") or None
++
++
++def _parse_date(value: Any) -> str | None:
++    if value is None:
++        return None
++    if isinstance(value, str):
++        return value or None
++    if isinstance(value, int) and value > 0:
++        # VietnamWorks sometimes returns Unix timestamps in milliseconds.
++        from datetime import UTC, datetime
++
++        ts_s = value / 1000 if value > 1e10 else value
++        return datetime.fromtimestamp(ts_s, tz=UTC).isoformat()
++    return None
++
++
++def _normalize_salary(min_val: Any, max_val: Any, raw: str | None) -> tuple[int | None, int | None]:
++    """Return (salary_min, salary_max).
++
++    - 0/0 means negotiable -> keep both as 0.
++    - min > 0, max == 0 means "From X" -> max is None.
++    - min > 0, max > 0 means range -> keep both.
++    """
++    min_v = int(min_val) if min_val is not None else 0
++    max_v = int(max_val) if max_val is not None else 0
++
++    if min_v == 0 and max_v == 0:
++        return 0, 0
++    if min_v > 0 and max_v == 0:
++        return min_v, None
++    return min_v, max_v
++
++
++def _normalize_job(job: dict[str, Any]) -> dict[str, Any]:
++    if not isinstance(job, dict):
++        raise ValueError("job entry is not a dict")
++    job_id = job.get("jobId")
++    if job_id is None:
++        raise ValueError("missing jobId in job entry")
++    working_locations = job.get("workingLocations") or []
++    salary_min, salary_max = _normalize_salary(
++        job.get("salaryMin"), job.get("salaryMax"), job.get("prettySalary")
++    )
++
++    type_working_id = job.get("typeWorkingId")
++    employment_type = _TYPE_WORKING_MAP.get(type_working_id) if type_working_id is not None else None
++
++    skills = []
++    for skill in job.get("skills") or []:
++        name = skill.get("skillName") if isinstance(skill, dict) else None
++        if name:
++            skills.append(name)
++
++    benefits = job.get("benefits") or []
++    if not isinstance(benefits, list):
++        benefits = []
++
++    return {
++        "id": f"vw:{job_id}" if job_id is not None else "vw:unknown",
++        "title": job.get("jobTitle", ""),
++        "company": job.get("companyName", ""),
++        "location": _first_location(working_locations),
++        "source_url": job.get("jobUrl", ""),
++        "salary_raw": job.get("prettySalary", ""),
++        "salary_min": salary_min,
++        "salary_max": salary_max,
++        "salary_currency": job.get("salaryCurrency") or None,
++        "salary_period_id": job.get("salaryPeriodId"),
++        "employment_type": employment_type,
++        "experience_years": job.get("yearsOfExperience"),
++        "job_description": job.get("jobDescription", ""),
++        "job_requirement": job.get("jobRequirement", ""),
++        "job_function": job.get("jobFunction") or None,
++        "skills": skills,
++        "benefits": benefits,
++        "posted_at": _parse_date(job.get("createdOn")),
++        "approved_at": _parse_date(job.get("approvedOn")),
++        "expired_at": _parse_date(job.get("expiredOn")),
++        "is_active": bool(job.get("isActive", True)),
++        "source": "vietnamworks",
++    }
++
++
++def _build_request_body(params: dict[str, Any], page: int, hits_per_page: int) -> dict[str, Any]:
++    body: dict[str, Any] = {
++        "keyword": params.get("keyword", ""),
++        "page": page,
++        "hitsPerPage": hits_per_page,
++    }
++
++    location_id = params.get("locationId")
++    if location_id is not None:
++        body["locationId"] = location_id
++
++    salary_min = params.get("salary_min")
++    if salary_min is not None:
++        body["salaryMin"] = salary_min
++
++    salary_max = params.get("salary_max")
++    if salary_max is not None:
++        body["salaryMax"] = salary_max
++
++    experience_years = params.get("experience_years")
++    if experience_years is not None:
++        body["yearsOfExperience"] = experience_years
++
++    employment_type = params.get("employment_type")
++    if employment_type == "full_time":
++        body["typeWorkingId"] = 1
++    elif employment_type == "part_time":
++        body["typeWorkingId"] = 2
++    elif employment_type == "contract":
++        body["typeWorkingId"] = 3
++    elif employment_type == "intern":
++        body["typeWorkingId"] = 4
++
++    return body
++
++
++def _extract_items(envelope: dict[str, Any]) -> list[dict[str, Any]]:
++    if "data" not in envelope:
++        raise ValueError("missing 'data' field in response envelope")
++    data = envelope["data"]
++    if not isinstance(data, list):
++        raise ValueError("'data' field is not a list")
++    return [_normalize_job(job) for job in data]
++
++
++def _headers() -> dict[str, str]:
++    return {
++        "Content-Type": "application/json",
++        "User-Agent": (
++            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
++            "AppleWebKit/537.36 (KHTML, like Gecko) "
++            "Chrome/126.0.0.0 Safari/537.36"
++        ),
++        "Accept": "application/json",
++    }
++
++
++async def _do_request(client: httpx.AsyncClient, body: dict[str, Any]) -> httpx.Response:
++    return await client.post(_API_URL, json=body, headers=_headers(), timeout=config.VIETNAMWORKS_TIMEOUT_S)
++
++
++async def _scrape(params: dict[str, Any]) -> dict[str, Any]:
++    max_items = int(params.get("max_items", 50) or 0)
++    starting_page = int(params.get("page", 1) or 1)
++    # If the caller explicitly passes a page, default to fetching just that page.
++    default_max_pages = 1 if "page" in params else config.VIETNAMWORKS_MAX_PAGES
++    max_pages = int(params.get("max_pages", default_max_pages) or 1)
++    hits_per_page = min(int(params.get("hitsPerPage", 100) or 100), config.VIETNAMWORKS_MAX_ITEMS)
++
++    if max_items == 0 or max_pages == 0:
++        return {"items": [], "cost_micros": 0, "degraded": False, "degradation_reason": None}
++
++    items: list[dict[str, Any]] = []
++
++    async with httpx.AsyncClient() as client:
++        for page in range(starting_page, starting_page + max_pages):
++            # Limit the page size so we don't over-fetch on the last page.
++            remaining = max(0, max_items - len(items))
++            if remaining == 0:
++                break
++            page_size = min(hits_per_page, remaining)
++
++            body = _build_request_body(params, page, page_size)
++            resp = await _do_request(client, body)
++
++            if resp.status_code == 429:
++                return _degraded("rate_limited")
++            if resp.status_code in (403, 451):
++                return _degraded("access_blocked")
++            if resp.status_code >= 500:
++                return _degraded("api_error")
++            resp.raise_for_status()
++
++            try:
++                envelope = resp.json()
++            except Exception:
++                return _degraded("decode_error")
++
++            if not isinstance(envelope, dict):
++                return _degraded("decode_error")
++
++            page_items = _extract_items(envelope)
++            if not page_items:
++                break
++
++            items.extend(page_items)
++
++            meta = envelope.get("meta") or {}
++            nb_pages = meta.get("nbPages")
++            if nb_pages is not None and page >= int(nb_pages):
++                break
++
++            if len(items) >= max_items:
++                break
++
++            await asyncio.sleep(config.VIETNAMWORKS_PAGE_DELAY_S)
++
++    # Clamp to max_items if the API returned more than requested.
++    items = items[:max_items]
++
++    return {
++        "items": items,
++        "cost_micros": 0,
++        "degraded": False,
++        "degradation_reason": None,
++        "total_items": len(items),
++    }
++
++
++async def scrape_vietnamworks(params: dict[str, Any]) -> dict[str, Any]:
++    """Call VietnamWorks ``POST /job-search/v1.0/search`` and return normalized items."""
++    try:
++        return await _scrape(params)
++    except httpx.TimeoutException:
++        return _degraded("timeout")
++    except httpx.ConnectError:
++        return _degraded("api_error")
++    except httpx.HTTPStatusError as e:
++        code = e.response.status_code
++        if code == 429:
++            return _degraded("rate_limited")
++        if code in (403, 451):
++            return _degraded("access_blocked")
++        if code >= 500:
++            return _degraded("api_error")
++        return _degraded("api_error")
++    except ValueError as exc:
++        logger.warning("vietnamworks response schema drift: %s", exc)
++        return _degraded("schema_drift")
++    except Exception as exc:
++        logger.warning("vietnamworks.scrape failed: %s", exc)
++        return _degraded("api_error")
+diff --git a/nowing_backend/app/routes/__init__.py b/nowing_backend/app/routes/__init__.py
+index 7adf00c41..497b124c2 100644
+--- a/nowing_backend/app/routes/__init__.py
++++ b/nowing_backend/app/routes/__init__.py
+@@ -8,10 +8,14 @@ import app.capabilities.chotot
+ import app.capabilities.google_maps
+ import app.capabilities.google_search
+ import app.capabilities.instagram
++import app.capabilities.itviec
+ import app.capabilities.muaban_bds
+ import app.capabilities.reddit
+ import app.capabilities.tiktok
++import app.capabilities.topcv
++import app.capabilities.vietnamworks
+ import app.capabilities.vn_bds
++import app.capabilities.vn_jobs
+ import app.capabilities.web
+ import app.capabilities.youtube  # noqa: F401
+ from app.automations.api import router as automations_router
+diff --git a/nowing_backend/tests/unit/proprietary/platforms/vietnamworks/test_scraper.py b/nowing_backend/tests/unit/proprietary/platforms/vietnamworks/test_scraper.py
+new file mode 100644
+index 000000000..2782d9e38
+--- /dev/null
++++ b/nowing_backend/tests/unit/proprietary/platforms/vietnamworks/test_scraper.py
+@@ -0,0 +1,506 @@
++"""Unit tests for ``app.proprietary.platforms.vietnamworks`` fetcher (Story 12.1)."""
++
++from __future__ import annotations
++
++import json
++from pathlib import Path
++from typing import Any
++from unittest.mock import AsyncMock
++
++import httpx
++import pytest
++
++from app.proprietary.platforms.vietnamworks.scraper import scrape_vietnamworks
++
++pytestmark = pytest.mark.unit
++
++_FIXTURE = (
++    Path(__file__).resolve().parents[5]
++    / "tests/unit/capabilities/vietnamworks/fixtures/sample-response-page-1.json"
++)
++
++
++def _load_fixture() -> dict[str, Any]:
++    return json.loads(_FIXTURE.read_text(encoding="utf-8"))
++
++
++def _build_response(payload: dict[str, Any], status: int = 200) -> httpx.Response:
++    return httpx.Response(
++        status_code=status,
++        json=payload,
++        request=httpx.Request("POST", "https://ms.vietnamworks.com/job-search/v1.0/search"),
++    )
++
++
++class TestScraperApiCall:
++    """AC-1: calls VietnamWorks public API."""
++
++    @pytest.mark.asyncio
++    async def test_posts_to_ms_vietnamworks_job_search(self, monkeypatch):
++        mock_post = AsyncMock(return_value=_build_response(_load_fixture()))
++
++        class _FakeClient:
++            async def post(self, url: str, **kwargs: Any) -> httpx.Response:
++                await mock_post(url, **kwargs)
++                return _build_response(_load_fixture())
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        await scrape_vietnamworks({"keyword": "data engineer", "hitsPerPage": 50, "page": 1})
++
++        assert mock_post.called
++        args, kwargs = mock_post.call_args
++        assert args[0] == "https://ms.vietnamworks.com/job-search/v1.0/search"
++        assert kwargs["json"]["keyword"] == "data engineer"
++        assert "Content-Type" in kwargs.get("headers", {})
++        assert "User-Agent" in kwargs.get("headers", {})
++
++    @pytest.mark.asyncio
++    async def test_sends_no_auth(self, monkeypatch):
++        captured: dict[str, Any] = {}
++
++        class _FakeClient:
++            async def post(self, url: str, **kwargs: Any) -> httpx.Response:
++                captured["headers"] = kwargs.get("headers", {})
++                return _build_response(_load_fixture())
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        await scrape_vietnamworks({"keyword": "data engineer"})
++
++        assert "Authorization" not in captured.get("headers", {})
++
++    @pytest.mark.asyncio
++    async def test_sends_hits_per_page_and_page(self, monkeypatch):
++        captured: dict[str, Any] = {}
++
++        class _FakeClient:
++            async def post(self, url: str, **kwargs: Any) -> httpx.Response:
++                captured["json"] = kwargs.get("json", {})
++                return _build_response(_load_fixture())
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        await scrape_vietnamworks({"keyword": "data engineer", "hitsPerPage": 50, "page": 2})
++
++        assert captured["json"]["hitsPerPage"] == 50
++        assert captured["json"]["page"] == 2
++
++
++class TestScraperFieldMapping:
++    """AC-2: maps API fields to normalized JobItem."""
++
++    @pytest.mark.asyncio
++    async def test_maps_all_required_fields(self, monkeypatch):
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return _build_response(_load_fixture())
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data engineer", "hitsPerPage": 50, "page": 1})
++
++        assert out["degraded"] is False
++        assert len(out["items"]) == 2
++        first = out["items"][0]
++        assert first["id"] == "vw:12345"
++        assert first["title"] == "Senior Data Engineer"
++        assert first["company"] == "FPT Software"
++        assert first["location"] == "Hà Nội"
++        assert first["salary_raw"] == "Từ 25tr ₫/tháng đến 35tr ₫/tháng"
++        assert first["salary_min"] == 25_000_000
++        assert first["salary_max"] == 35_000_000
++        assert first["salary_currency"] == "VND"
++        assert first["salary_period_id"] == 1
++        assert first["employment_type"] == "full_time"
++        assert first["experience_years"] == 3
++        assert first["is_active"] is True
++
++    @pytest.mark.asyncio
++    async def test_handles_missing_optional_fields(self, monkeypatch):
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return _build_response({
++                    "meta": {"nbHits": 1, "nbPages": 1},
++                    "data": [
++                        {
++                            "jobId": 999,
++                            "jobTitle": "Minimal Job",
++                            "companyName": "ACB",
++                            "workingLocations": [],
++                            "salaryMin": 0,
++                            "salaryMax": 0,
++                            "salaryCurrency": "VND",
++                            "salaryPeriodId": 1,
++                            "prettySalary": "Thương lượng",
++                            "isActive": True,
++                        }
++                    ],
++                })
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "minimal"})
++
++        first = out["items"][0]
++        assert first["location"] is None
++        assert first["job_description"] == ""
++        assert first["skills"] == []
++        assert first["benefits"] == []
++
++    @pytest.mark.asyncio
++    async def test_parses_working_locations(self, monkeypatch):
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return _build_response({
++                    "meta": {"nbHits": 1, "nbPages": 1},
++                    "data": [
++                        {
++                            "jobId": 1,
++                            "jobTitle": "Test",
++                            "companyName": "C",
++                            "workingLocations": [
++                                {"cityNameVI": "Hà Nội", "cityName": "Ha Noi"},
++                                {"cityNameVI": "TP. Hồ Chí Minh", "cityName": "Ho Chi Minh"},
++                            ],
++                            "salaryMin": 0,
++                            "salaryMax": 0,
++                            "salaryCurrency": "VND",
++                            "salaryPeriodId": 1,
++                            "prettySalary": "Thương lượng",
++                            "isActive": True,
++                        }
++                    ],
++                })
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "test"})
++
++        assert out["items"][0]["location"] == "Hà Nội"
++
++    @pytest.mark.asyncio
++    async def test_parses_salary_min_max_currency_period(self, monkeypatch):
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return _build_response({
++                    "meta": {"nbHits": 1, "nbPages": 1},
++                    "data": [
++                        {
++                            "jobId": 2,
++                            "jobTitle": "Test",
++                            "companyName": "C",
++                            "workingLocations": [],
++                            "salaryMin": 5000,
++                            "salaryMax": 0,
++                            "salaryCurrency": "USD",
++                            "salaryPeriodId": 1,
++                            "prettySalary": "$ 5,000 /tháng",
++                            "isActive": True,
++                        }
++                    ],
++                })
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "test"})
++
++        item = out["items"][0]
++        assert item["salary_min"] == 5000
++        assert item["salary_max"] is None
++        assert item["salary_currency"] == "USD"
++        assert item["salary_period_id"] == 1
++
++
++class TestScraperPagination:
++    """AC-3: pagination behavior."""
++
++    @pytest.mark.asyncio
++    async def test_iterates_multiple_pages(self, monkeypatch):
++        class _FakeClient:
++            call_count = 0
++
++            async def post(self, _url: str, **kwargs: Any) -> httpx.Response:
++                type(self).call_count += 1
++                page = kwargs["json"]["page"]
++                if page == 1:
++                    return _build_response({
++                        "meta": {"nbHits": 150, "nbPages": 2},
++                        "data": [{"jobId": 1, "jobTitle": "A", "companyName": "C", "workingLocations": [], "salaryMin": 0, "salaryMax": 0, "salaryCurrency": "VND", "salaryPeriodId": 1, "prettySalary": "Thương lượng", "isActive": True} for _ in range(100)],
++                    })
++                return _build_response({
++                    "meta": {"nbHits": 150, "nbPages": 2},
++                    "data": [{"jobId": 2, "jobTitle": "B", "companyName": "C", "workingLocations": [], "salaryMin": 0, "salaryMax": 0, "salaryCurrency": "VND", "salaryPeriodId": 1, "prettySalary": "Thương lượng", "isActive": True} for _ in range(50)],
++                })
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data", "hitsPerPage": 100, "max_items": 150, "max_pages": 5})
++
++        assert _FakeClient.call_count == 2
++        assert out["total_items"] == 150
++
++    @pytest.mark.asyncio
++    async def test_stops_at_max_pages(self, monkeypatch):
++        class _FakeClient:
++            call_count = 0
++
++            async def post(self, _url: str, **kwargs: Any) -> httpx.Response:
++                type(self).call_count += 1
++                return _build_response({
++                    "meta": {"nbHits": 300, "nbPages": 10},
++                    "data": [{"jobId": 1, "jobTitle": "A", "companyName": "C", "workingLocations": [], "salaryMin": 0, "salaryMax": 0, "salaryCurrency": "VND", "salaryPeriodId": 1, "prettySalary": "Thương lượng", "isActive": True} for _ in range(100)],
++                })
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        await scrape_vietnamworks({"keyword": "data", "hitsPerPage": 100, "max_items": 1000, "max_pages": 2})
++
++        assert _FakeClient.call_count == 2
++
++    @pytest.mark.asyncio
++    async def test_stops_when_data_empty(self, monkeypatch):
++        class _FakeClient:
++            call_count = 0
++
++            async def post(self, _url: str, **kwargs: Any) -> httpx.Response:
++                type(self).call_count += 1
++                return _build_response({
++                    "meta": {"nbHits": 0, "nbPages": 0},
++                    "data": [],
++                })
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data"})
++
++        assert _FakeClient.call_count == 1
++        assert out["items"] == []
++
++
++class TestScraperFailureModes:
++    """Failure handling from grill-me."""
++
++    @pytest.mark.asyncio
++    async def test_degrades_on_429(self, monkeypatch):
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return _build_response({"detail": "rate limited"}, status=429)
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data"})
++
++        assert out["degraded"] is True
++        assert out["degradation_reason"] == "rate_limited"
++
++    @pytest.mark.asyncio
++    async def test_degrades_on_5xx(self, monkeypatch):
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return _build_response({"detail": "error"}, status=503)
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data"})
++
++        assert out["degraded"] is True
++        assert out["degradation_reason"] == "api_error"
++
++    @pytest.mark.asyncio
++    async def test_degrades_on_403_451(self, monkeypatch):
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return _build_response({"detail": "blocked"}, status=403)
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data"})
++
++        assert out["degraded"] is True
++        assert out["degradation_reason"] == "access_blocked"
++
++    @pytest.mark.asyncio
++    async def test_degrades_on_timeout(self, monkeypatch):
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                raise httpx.TimeoutException("timed out")
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data"})
++
++        assert out["degraded"] is True
++        assert out["degradation_reason"] == "timeout"
++
++    @pytest.mark.asyncio
++    async def test_degrades_on_invalid_json(self, monkeypatch):
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return httpx.Response(
++                    200,
++                    text="not json",
++                    request=httpx.Request("POST", "https://ms.vietnamworks.com/job-search/v1.0/search"),
++                )
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data"})
++
++        assert out["degraded"] is True
++        assert out["degradation_reason"] == "decode_error"
++
++    @pytest.mark.asyncio
++    async def test_degrades_on_missing_data_field(self, monkeypatch):
++        """Schema drift: upstream removes the 'data' envelope field."""
++
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return _build_response({"meta": {"nbHits": 1, "nbPages": 1}})
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data"})
++
++        assert out["degraded"] is True
++        assert out["degradation_reason"] == "schema_drift"
++
++    @pytest.mark.asyncio
++    async def test_degrades_on_missing_job_id(self, monkeypatch):
++        """Schema drift: a job entry loses its jobId."""
++        fixture = _load_fixture()
++        fixture["data"][0].pop("jobId", None)
++
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return _build_response(fixture)
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data"})
++
++        assert out["degraded"] is True
++        assert out["degradation_reason"] == "schema_drift"
++
++    @pytest.mark.asyncio
++    async def test_degrades_on_data_not_a_list(self, monkeypatch):
++        """Schema drift: 'data' becomes an object instead of a list."""
++
++        class _FakeClient:
++            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
++                return _build_response({"meta": {"nbHits": 1, "nbPages": 1}, "data": {"unexpected": True}})
++
++            async def __aenter__(self):
++                return self
++
++            async def __aexit__(self, *exc: Any):
++                return None
++
++        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
++
++        out = await scrape_vietnamworks({"keyword": "data"})
++
++        assert out["degraded"] is True
++        assert out["degradation_reason"] == "schema_drift"
