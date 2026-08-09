@@ -107,7 +107,7 @@ async def _resolve_agent_config(
     result = await session.execute(
         select(AgentConfig).where(
             AgentConfig.client_id == client_id,
-            AgentConfig.slug > agent_id,
+            AgentConfig.slug == agent_id,
             AgentConfig.is_active.is_(True),
         )
     )
@@ -200,7 +200,7 @@ async def require_agent_chat_pat(
     """FastAPI dependency: resolve and scope a public agent-chat PAT request."""
     workspace_id_raw = request.path_params.get("workspace_id")
 
-    if not getattr(config, "AGENT_CHAT_PUBLIC_ENABLED", True):
+    if not getattr(config, "AGENT_CHAT_PUBLIC_ENABLED", False):
         await _audit_rejection(
             request,
             session,
