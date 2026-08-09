@@ -259,7 +259,7 @@ development_status:
 
   # === Epic 18: Vertical Client Platform (Public Agent-Chat) ===
   epic-18: in-progress
-  18-1: done
+  18-1: pending-human-review
   18-2: ready-for-dev
   18-3: ready-for-dev
   18-4: ready-for-dev
