@@ -87,6 +87,9 @@ def _load_dotenv_and_set_env_defaults() -> None:
     os.environ.setdefault("ETL_SERVICE", "DOCLING")
     os.environ.setdefault("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     os.environ.setdefault("NEXT_FRONTEND_URL", "http://localhost:3000")
+    # Local E2E is almost always cross-port (frontend on random/3000, backend on 8001).
+    # Allow any loopback origin so CSRF does not block logins during local testing.
+    os.environ.setdefault("CSRF_ALLOW_LOOPBACK", "true")
 
     # Sentinel keys — fakes never read them; turns leaked real calls into 401s.
     os.environ.setdefault("COMPOSIO_API_KEY", "local-deny-real-call-sentinel")

@@ -1,8 +1,10 @@
 "use client";
 
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Loader2, TriangleAlert } from "lucide-react";
-import { useMemo } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo } from "react";
+import { connectorDialogOpenAtom } from "@/atoms/connector-dialog/connector-dialog.atoms";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
 import { statusInboxItemsAtom } from "@/atoms/inbox/status-inbox.atom";
 import { ConnectorConnectView } from "@/components/assistant-ui/connector-popup/connector-configs/views/connector-connect-view";
@@ -30,6 +32,82 @@ interface ConnectorDetailPaneProps {
 	onBack: () => void;
 }
 
+interface LiveConnectorManageViewProps {
+	connectorType: string;
+	title: string;
+	connectors: SearchSourceConnector[];
+	indexingConnectorIds: Set<number>;
+	failedConnectorIds: Set<number>;
+	onBack: () => void;
+	onAddAccount: () => void;
+	onManage: (connector: SearchSourceConnector) => void;
+}
+
+function LiveConnectorManageView({
+	connectorType,
+	title,
+	connectors,
+	indexingConnectorIds,
+	failedConnectorIds,
+	onBack,
+	onAddAccount,
+	onManage,
+}: LiveConnectorManageViewProps) {
+	const groupConnectors = connectors.filter((c) => c.connector_type === connectorType);
+
+	// No accounts: prompt for OAuth / connection.
+	if (groupConnectors.length === 0) {
+		return (
+			<div className="mt-8 flex flex-col items-center gap-4">
+				<p className="text-sm text-muted-foreground">
+					This connector requires OAuth authentication.
+				</p>
+				<Button onClick={onAddAccount}>Connect {title}</Button>
+			</div>
+		);
+	}
+
+	// Single account: a simple read-only card that hides indexing controls.
+	if (groupConnectors.length === 1) {
+		const account = groupConnectors[0];
+		const isSyncing = indexingConnectorIds.has(account.id);
+		const isFailed = failedConnectorIds.has(account.id);
+		const statusLabel = isFailed ? "Failed" : isSyncing ? "Syncing" : "Connected";
+
+		return (
+			<div className="mt-8 flex flex-col items-center gap-4">
+				<div className="w-full max-w-sm rounded-xl border bg-slate-400/5 p-4 dark:bg-white/5">
+					<div className="flex items-center gap-3">
+						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-slate-400/5 dark:bg-white/5">
+							{getConnectorIcon(connectorType, "size-5")}
+						</div>
+						<div className="min-w-0 flex-1">
+							<p className="text-sm font-medium truncate">{account.name}</p>
+							<p className="text-xs text-muted-foreground">{statusLabel}</p>
+						</div>
+						<Button size="sm" variant="secondary" onClick={() => onManage(account)}>
+							Manage
+						</Button>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Many accounts: reuse the existing accounts list view.
+	return (
+		<ConnectorAccountsListView
+			connectorType={connectorType}
+			connectorTitle={title}
+			connectors={connectors}
+			indexingConnectorIds={indexingConnectorIds}
+			onBack={onBack}
+			onManage={onManage}
+			onAddAccount={onAddAccount}
+		/>
+	);
+}
+
 export function ConnectorDetailPane({
 	connectorType,
 	workspaceId,
@@ -40,6 +118,17 @@ export function ConnectorDetailPane({
 	// the connectors page (client-layout.tsx: `!isConnectorsPage`), so
 	// `isOpen` being true has no visible effect.
 	const hook = useConnectorDialog();
+	const setConnectorDialogOpen = useSetAtom(connectorDialogOpenAtom);
+	const pathname = usePathname();
+
+	// The connectors page owns the import request; the modal dialog itself is
+	// hidden here (client-layout: `!isConnectorsPage`), so `isOpen` must not leak
+	// to `ConnectorIndicator` if the user navigates away from this route.
+	useEffect(() => {
+		if (hook.isOpen && pathname?.endsWith("/connectors")) {
+			setConnectorDialogOpen(false);
+		}
+	}, [hook.isOpen, pathname, setConnectorDialogOpen]);
 
 	const { data: queryConnectors } = useAtomValue(connectorsAtom);
 	const { connectors: syncConnectors } = useConnectorsSync(workspaceId);
@@ -61,7 +150,7 @@ export function ConnectorDetailPane({
 
 	const accountCount = groupConnectors.length;
 	const title = getConnectorTypeDisplay(connectorType);
-	const isFailed = useMemo(() => {
+	const failedConnectorIds = useMemo(() => {
 		const failed = new Set<number>();
 		for (const item of statusInboxItems) {
 			if (item.type !== "connector_indexing") continue;
@@ -71,8 +160,9 @@ export function ConnectorDetailPane({
 				failed.add(metadata.connector_id);
 			}
 		}
-		return groupConnectors.some((c) => failed.has(c.id));
-	}, [statusInboxItems, groupConnectors]);
+		return failed;
+	}, [statusInboxItems]);
+	const isFailed = groupConnectors.some((c) => failedConnectorIds.has(c.id));
 	const isSyncing = groupConnectors.some((c) => indexingConnectorIds.has(c.id));
 
 	// Derive the active view from hook state — same priority as connector-popup.tsx
@@ -153,15 +243,37 @@ export function ConnectorDetailPane({
 			);
 		}
 
-		// Default: show connector header + connect CTA (0 accounts) or accounts summary
+		// Default: live connectors get a dedicated manage view; others get connect/edit.
+		if (LIVE_CONNECTOR_TYPES.has(connectorType)) {
+			return (
+				<LiveConnectorManageView
+					connectorType={connectorType}
+					title={title}
+					connectors={connectors}
+					indexingConnectorIds={indexingConnectorIds}
+					failedConnectorIds={failedConnectorIds}
+					onBack={onBack}
+					onAddAccount={() => {
+						const def =
+							OAUTH_CONNECTORS.find((c) => c.connectorType === connectorType) ||
+							COMPOSIO_CONNECTORS.find((c) => c.connectorType === connectorType);
+						if (def) {
+							hook.handleConnectOAuth(def);
+						} else {
+							hook.handleConnectNonOAuth(connectorType);
+						}
+					}}
+					onManage={(connector) => hook.handleStartEdit(connector)}
+				/>
+			);
+		}
+
 		return (
 			<div className="mt-8 flex flex-col items-center gap-4">
 				{accountCount === 0 ? (
 					<>
 						<p className="text-sm text-muted-foreground">
-							{LIVE_CONNECTOR_TYPES.has(connectorType as never)
-								? "This connector requires OAuth authentication."
-								: "Configure this connector to start importing data."}
+							{"Configure this connector to start importing data."}
 						</p>
 						<Button
 							onClick={() => {

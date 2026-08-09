@@ -999,9 +999,7 @@ class Config:
     # capability works in tests and demos without relying on undocumented
     # public quote/news endpoints. Set CAFEF_DEMO_MODE=false and supply live
     # URLs to hit the real CafeF APIs.
-    CAFEF_DATA_MICROS_PER_ITEM = int(
-        os.getenv("CAFEF_DATA_MICROS_PER_ITEM", "5000")
-    )
+    CAFEF_DATA_MICROS_PER_ITEM = int(os.getenv("CAFEF_DATA_MICROS_PER_ITEM", "5000"))
     CAFEF_RATE_LIMIT_RPS = float(os.getenv("CAFEF_RATE_LIMIT_RPS", str(20 / 60)))
     CAFEF_TIMEOUT_S = float(os.getenv("CAFEF_TIMEOUT_S", "15.0"))
     CAFEF_DEMO_MODE = os.getenv("CAFEF_DEMO_MODE", "TRUE").upper() == "TRUE"
@@ -1380,6 +1378,8 @@ class Config:
         for origin in os.getenv("CSRF_ALLOWED_ORIGINS", "").split(",")
         if origin.strip()
     ]
+    _CSRF_ALLOW_LOOPBACK = os.getenv("CSRF_ALLOW_LOOPBACK", "").strip().lower()
+    CSRF_ALLOW_LOOPBACK = _CSRF_ALLOW_LOOPBACK in {"1", "true", "yes"}
     _PAT_MAX_EXPIRY_DAYS = os.getenv("PAT_MAX_EXPIRY_DAYS", "").strip()
     PAT_MAX_EXPIRY_DAYS = int(_PAT_MAX_EXPIRY_DAYS) if _PAT_MAX_EXPIRY_DAYS else None
 

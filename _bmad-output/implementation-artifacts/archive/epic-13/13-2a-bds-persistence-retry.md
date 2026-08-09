@@ -1,6 +1,8 @@
-# Story 13.2a: BDS Persistence & Retry
+# Story 13.2a: BDS Persistence & Retry `[DROPPED 2026-08-08]`
 
-**Status:** done
+> **DROPPED per SCP 2026-08-08.** Nowing no longer builds `canonical_entities` tables, multi-domain index, or unified search corpus. `chainlens-research` owns the canonical index. This story file is retained for reference only.
+
+**Status:** dropped
 **Epic:** Epic 13 — Canonical Entity Storage & Multi-Domain Indexing
 **Priority:** P0
 

@@ -437,6 +437,32 @@ So that I can move, archive, or integrate Nowing knowledge with other tools.
 **Kỹ thuật:** build an export job over workspace-scoped `Document`, `Chunk`, `Memory`, `MemoryRelation`; serialize to OKF JSON; stream/limit size for large KBs.
 _FR-32 · RS-8 · upstream PR #1617._
 
+### Story 3.17: Memory Injection Bounded-Retrieval Performance Gate  `(mới 2026-08-08)`  `[ready-for-dev]`
+
+As a platform engineer,
+I want a performance + regression gate proving `MemoryInjectionMiddleware` stays O(top-k),
+So that `AD-18` is not silently regressed as the product accumulates memories.
+
+**Acceptance Criteria:**
+
+**Given** a workspace with 10,000 memory rows,
+**When** `MemoryInjectionMiddleware.abefore_agent` runs,
+**Then** the DB query uses the `ix_memories_embedding` (HNSW) or `ix_memories_content_search` (GIN) indexes with a `top_k`/`LIMIT` bound; a full-scan `SELECT ... ORDER BY created_at` without `LIMIT` is not present in the query plan.
+
+**Given** the same 10,000-row workspace,
+**When** measured over 100 turns,
+**Then** p95 DB time ≤ 150ms and p95 total time ≤ 300ms.
+
+**Given** the raw memory content for a single turn would exceed 8,000 chars,
+**When** `render_bounded_memory_injection` is called,
+**Then** it truncates/renders at most 8,000 chars and emits a `memory_injection_truncated` counter.
+
+**Given** the middleware hits an exception,
+**When** it falls back to `None`,
+**Then** a `memory_injection_failure` counter is incremented (not just `logger.exception`).
+
+_Governed by `AD-18`, NFR-1b._
+
 ---
 
 ## Epic 6: Automations
@@ -1019,6 +1045,32 @@ So that confidence không corrupt và revalidation robust dưới load.
 
 _Source: code review defer items từ 9-6b. Priority: P2. Effort: 2-3 days. Trigger: khi có automated revalidation._
 
+### Story 9.6c: Memory Provenance End-to-End Revalidation Gate  `(mới 2026-08-08)`  `[ready-for-dev]`
+
+As a platform engineer,
+I want an E2E gate proving every scraper-derived memory carries a self-contained recipe and can be re-validated after its source `Run` is gone,
+So that `AD-11.1` / `FR-39` is not silently regressed.
+
+**Acceptance Criteria:**
+
+**Given** a scraper run produces a memory,
+**When** the memory is created,
+**Then** `source_type = SCRAPER_RUN`, `source_run_id`, `source_capability`, and `source_input` are populated from the `Run`.
+
+**Given** a memory created from a run 31 days ago whose `Run` row has been cleaned up,
+**When** `POST /workspaces/{id}/memories/{memory_id}/revalidate` is called,
+**Then** the capability re-executes using only `source_capability` + `source_input`; the call succeeds and updates `confidence` or creates a `MemoryVersion`.
+
+**Given** a memory with `source_type` other than `SCRAPER_RUN` and no recipe,
+**When** revalidate is called,
+**Then** it returns `not_revalidatable` with 422, not 500.
+
+**Given** a re-validate call completes,
+**When** metering is checked,
+**Then** it is charged as a normal capability call via `charge_capability` (`AD-8`).
+
+_Governed by `AD-11.1`, `FR-39`, `AD-8`._
+
 ---
 
 ## Epic 4: Chat & Agents
@@ -1246,11 +1298,39 @@ So that I can trust the price and detect fake/duplicate listings.
 
 **Given** duplicate listings across sources, **When** the aggregator deduplicates, **Then** it matches by phone, normalized address, or image hash and keeps a single merged record with provenance.
 
-**Given** aggregated listing data, **When** a user or agent queries via REST or MCP, **Then** the system supports filtering by location, price range, and source.
+**Given** `N` listings are scraped and normalized to `Chunk[]`, **When** the batch is ready, **Then** Nowing calls `POST /v1/ingest/scraper` on `chainlens-research` with `source: 'nowing_scraper'` and returns `ingestJobId` to the user/run.
 
-**Kỹ thuật (không phải AC):** thêm `app/services/bds_aggregator/` hoặc mở rộng `Memory`/`ResearchThread` để lưu aggregated listing với provenance.
+**Given** duplicate listings and confidence scores, **When** the aggregator sends normalized `Chunk[]` to `chainlens-research`, **Then** deduplication and confidence metadata (`source_count`, `confidence_score`, `conflict_flags`) are returned as chunk metadata and are not stored in Nowing `Memory`/`ResearchThread` as a search corpus.
 
-_FR-6 · FR-32 · FR-39 · AD-11.1 · `market-vietnam-real-estate-research-data-scraping-landscape-research-2026-08-03.md`._
+**Kỹ thuật (không phải AC):** thêm `app/services/bds_aggregator/` để normalize/dedupe listings rồi gửi `Chunk[]` tới `chainlens-research` qua `POST /v1/ingest/scraper`; không mở rộng `Memory`/`ResearchThread` để lưu aggregated listing làm search corpus.
+
+_FR-6 · FR-32 · FR-39 · AD-11.1 · `market-vietnam-real-estate-data-scraping-landscape-research-2026-08-03.md`._
+
+### Story 10.5: Anti-Bot / CAPTCHA Screenshot Escalation  `(mới 2026-08-08)`  `[ready-for-dev]`
+
+As a scraper operator,
+I want CAPTCHA or anti-bot blocks to be captured as a screenshot and surfaced in the Inbox for human review,
+So that we can audit blocks and decide whether to rotate credentials, proxy, or rate-limit.
+
+**Acceptance Criteria:**
+
+**Given** a scraper fetcher detects a CAPTCHA/anti-bot challenge (HTTP 403/429 with challenge page, HTML containing "captcha", "robot check", or known anti-bot markers),
+**When** the capability executor handles the failure,
+**Then** it captures a screenshot of the page, uploads it to durable storage, and creates an `InboxItem` with kind `anti_bot_escalation`, linking the run id, capability, and screenshot URL.
+
+**Given** the `InboxItem` is created,
+**When** an admin opens the Inbox,
+**Then** they see the item with metadata (domain, capability, timestamp, screenshot thumbnail, run id) and can mark it resolved/retry.
+
+**Given** a scraper hits an anti-bot escalation,
+**When** the capability returns to the user/agent,
+**Then** it returns `degraded=true` with a clear `reason` and `next_action` guidance, and does not crash or silently return empty.
+
+**Given** the screenshot storage is unavailable,
+**When** the escalation occurs,
+**Then** the Inbox item is still created without the screenshot, and a counter `anti_bot_screenshot_failure` is emitted.
+
+_Governed by `AD-19`, `AD-3`, `AD-16`._
 
 ---
 
@@ -1360,7 +1440,7 @@ _Kỹ thuật (không phải AC):_ No code. Output: legal review memo + ToS deci
 
 _FR-43..FR-47 · NFR-11 · OQ-8 · AD-26_
 
-### Story 12.1: VietnamWorks Scraper `[proposed P0]`
+### Story 12.1: VietnamWorks Scraper `[ready-for-dev P0]`
 
 As a recruiter or market researcher,
 I want to search VietnamWorks job postings via the public API,
@@ -1377,7 +1457,7 @@ _Kỹ thuật (không phải AC):_ `app/capabilities/vietnamworks/scrape/` (Apac
 
 _FR-43 · AD-3 · AD-16 · AD-22 · `technical-spike-vietnamworks-api-2026-08-05.md`._
 
-### Story 12.2: TopCV Scraper `[proposed P0]`
+### Story 12.2: TopCV Scraper `[ready-for-dev P0]`
 
 As a recruiter,
 I want to search TopCV job postings,
@@ -1393,7 +1473,7 @@ _Kỹ thuật (không phải AC):_ `app/proprietary/platforms/topcv/` (BSL 1.1 f
 
 _FR-44 · AD-3 · AD-16 · AD-19 · AD-23 · `technical-spike-topcv-itviec-2026-08-05.md`._
 
-### Story 12.3: ITviec Scraper `[proposed P0]`
+### Story 12.3: ITviec Scraper `[ready-for-dev P0]`
 
 As a tech recruiter,
 I want to search ITviec job postings,
@@ -1410,25 +1490,30 @@ _Kỹ thuật (không phải AC):_ `app/proprietary/platforms/itviec/` (BSL 1.1 
 
 _FR-45 · AD-3 · AD-16 · AD-23 · `technical-spike-topcv-itviec-2026-08-05.md`._
 
-### Story 12.4: Vietnam Job Aggregator `[proposed P0]`
+### Story 12.4: Vietnam Job Aggregator `[ready-for-dev P0]`
 
 As a research analyst,
-I want to query Vietnamese job data in one call,
-So that I get a normalized, deduped, confidence-scored view of the job market from multiple sources.
+I want the Vietnamese job market data scraped, normalized, and indexed by `chainlens-research`,
+So that the Nowing chat agent can answer job market questions with fresh, cited, cross-source results.
 
 **Acceptance Criteria:**
-- **Given** a query, **When** `vn_jobs.aggregate` is called, **Then** it fan-outs to `vietnamworks.scrape`, `topcv.scrape`, `itviec.scrape` (default all 3; source list configurable).
-- **Given** results from multiple sources, **When** normalized, **Then** they map to `VnJobAggregatedListing` with salary/location/employment-type/experience.
-- **Given** normalized listings, **When** deduplicated, **Then** it matches by company + title + location + posted_at across sources.
-- **Given** conflicting salary/location between sources, **When** compared, **Then** it flags conflict and computes `confidence_score` + `salary_consistency_score`.
-- **Given** a source fails, **When** aggregation completes, **Then** it returns `degraded=true` with `degradation_reasons`.
-- **Given** the aggregator is built, **When** exposed, **Then** it is available via REST, MCP (`nowing_vn_jobs_aggregate`), and chat agent.
+- **Given** a query and optional filters (`location`, `salaryMin/Max`, `employmentType`, `experienceYears`), **When** `vn_jobs.aggregate` is called, **Then** it fan-outs to `vietnamworks.scrape`, `topcv.scrape`, `itviec.scrape` (default all 3; source list configurable; `maxItemsPerSource` and `maxPages` caps enforced).
+- **Given** results from multiple sources, **When** normalized, **Then** they map to `VnJobAggregatedListing` with `salary`, `location`, `employment_type`, `experience`, `posted_at`, and `source` fields.
+- **Given** normalized listings, **When** deduplicated, **Then** it matches by `company` + `title` + `location` + `posted_at` (±3 days) across sources; fuzzy title matching uses Jaro-Winkler ≥ 0.85 and location normalization uses `app/services/location_normalize/`.
+- **Given** two listings matched with salary difference ≤ 10%, **When** compared, **Then** `confidence_score ≥ 0.8` and `salary_consistency_score = stable`; the aggregated record is kept as a single `Chunk` with `metadata.source_count` and `metadata.confidence_score`.
+- **Given** two listings matched with salary difference > 20% or location mismatch, **When** compared, **Then** it sets `conflict_flag = SALARY_MISMATCH` or `LOCATION_MISMATCH`, lowers `confidence_score` to 0.5–0.7, and preserves both source `Chunk[]` so `chainlens-research` can display conflict metadata.
+- **Given** PII (phone, email, person names) is found in `job_description` or `job_requirement`, **When** chunks are built, **Then** AD-25 redaction is applied before any data is sent to `chainlens-research` or stored in `Memory`.
+- **Given** a source fails or is blocked by anti-bot, **When** aggregation completes, **Then** it returns `degraded=true` with `degradation_reasons` drawn from `{SOURCE_FAILED, ANTI_BOT, RATE_LIMIT, PARTIAL_DATA}` and `degraded_source_ids`; successful source chunks are still ingested.
+- **Given** the aggregator has normalized listings, **When** `to_chunks()` is called, **Then** each listing becomes a `Chunk` with `metadata.source: 'nowing_scraper'`, `sourceId` (stable: `sha256(company|title|location|posted_at)`), `domain`, `fetchedAt`, `contentType: 'job'`, `salary`, `confidence_score`, `salary_consistency_score`, and `conflict_flags`.
+- **Given** a `Chunk[]` batch, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` on `chainlens-research` with service auth, `workspace_id`, and the batch; it returns `ingestJobId` and stores the job mapping in Nowing Postgres.
+- **Given** `chainlens-research` returns `5xx` or times out, **When** `NowingIngestService.ingest()` is called, **Then** it retries with exponential backoff (max 3 attempts) and stores the failed batch in a dead-letter queue; after max retries it marks the job `failed` and emits a `chainlens_ingest_failed` counter.
+- **Given** the aggregator is exposed, **When** called via REST, MCP (`nowing_vn_jobs_aggregate`), or chat agent, **Then** it returns `VnJobAggregateOutput { items: VnJobAggregatedListing[], degraded, degradationReasons, sourceBreakdown, costMicros, ingestJobId }`; it does not query a local Nowing search corpus.
 
-_Kỹ thuật (không phải AC):_ `app/services/jobs_aggregator/` (Apache-2.0, copy-modify from `bds_aggregator`). Location filter at aggregator level; PII redaction before memory.
+_Kỹ thuật (không phải AC):_ `app/services/jobs_aggregator/` (Apache-2.0, copy-modify from `bds_aggregator`). Normalize/dedupe listings, apply PII redaction, then call `to_chunks()` + `NowingIngestService.ingest()` per AD-34; no local search corpus or `Memory`/`ResearchThread` expansion for job search.
 
-_FR-46 · FR-32 · FR-39 · AD-11.1 · AD-24 · AD-27 · `pilot-plan-c-memo-2026-08-05.md`._
+_FR-46 · FR-47 · FR-32 · FR-39 · AD-11.1 · AD-24 · AD-25 · AD-34 · AD-35 · `pilot-plan-c-memo-2026-08-05.md`._
 
-### Story 12.5: PII Redaction for Job Data `[proposed P0]`
+### Story 12.5: PII Redaction for Job Data `[ready-for-dev P0]`
 
 As a workspace owner,
 I want job postings to be scanned for personal information before storage,
@@ -1445,20 +1530,14 @@ _Kỹ thuật (không phải AC):_ Shared PII pipeline in `app/services/pii/` or
 _FR-47 · NFR-11 · OQ-3 · `feature-brief-hr-vertical-vietnam-2026-08-05.md`._
 ---
 
-## Epic 13: Canonical Entity Storage & Multi-Domain Indexing
+## Epic 13: Canonical Entity Storage & Multi-Domain Indexing `[DROPPED 2026-08-08]`
 
-Hệ thống lưu trữ, dedup và index entities từ nhiều nguồn — tra cứu nhanh, giữ được provenance, cô lập tenant ở tầng database và mở rộng cho nhiều domain mà chưa cần dựng matching engine chung quá sớm.
+> **⚠️ DROPPED per SCP `sprint-change-proposal-2026-08-08-remove-duplicate-index.md` (ADOPTED).**
+> `chainlens-research` owns the single canonical index for public web + shared vertical data. Nowing no longer builds `canonical_entities` tables, multi-domain index, or unified search corpus. Domain scrapers and aggregators feed `chainlens-research` via `POST /v1/ingest/scraper` (see Epic 20).
+> **Action:** This epic is retained for reference only. Do not implement. Stories 12.7, 12.8, 16.4 and any other story depending on Epic 13 are dropped or re-scoped.
 
-**FRs covered:** FR-48 (canonical entity storage & indexing), FR-46 (extend `vn_jobs.aggregate`)
-**ADs governed:** AD-27 (canonical entity convention), AD-28 (unified engine trigger), inherits AD-24, AD-14, AD-2, AD-25
-
-> **Scope reduced 2026-08-06 (Party Mode review):** Existing aggregators (`bds_aggregator`, `jobs_aggregator`) already implement matching/dedupe. Epic 13 adds a shared persistence, lineage and search layer; it does not replace domain matching logic.
->
-> **Architect hardening 2026-08-06:** Shared canonical storage is established by Story 13.1 before the AD-28 trigger. AD-28 controls when standalone domain functions are wrapped behind one `DomainPlugin` matching engine; it does not delay the shared tables. All persistence is tenant-scoped, idempotent and retryable. Search extends the existing rank-based RRF path rather than mixing incomparable raw cosine and full-text scores.
->
-> **Sequencing:** Epic 12 must ship before Jobs persistence and the HR benchmark. Story 13.1 and BDS contract work may run in parallel. Story 13.3 starts only after source lineage and RLS gates are green.
->
-> **🏗️ Intentional Phase 2 Dependency Chain (documented 2026-08-08, readiness audit):** Epic 12 → Epic 13 → Epic 18 is an **intentional sequential dependency**, not a violation. Rationale: canonical entity storage (Epic 13) is the shared persistence foundation; vertical client platform (Epic 18) requires both canonical storage AND RLS isolation to be production-ready. Stories 13.2b and 13.2e depend on Epic 12's `vn_jobs.aggregate` output contract — this is by design because Jobs persistence needs real aggregator output to test against. This chain is accepted as Phase 2 sequencing.
+**FRs covered:** ~~FR-48 (canonical entity storage & indexing)~~, ~~FR-46 (extend `vn_jobs.aggregate`)~~
+**ADs governed:** ~~AD-27~~, ~~AD-28~~ — re-scoped: AD-27/28 now belong to `chainlens-research`.
 
 ### Story 13.1: Canonical Persistence, Tenancy & Convention `[P0]`
 
@@ -1567,14 +1646,11 @@ Public API surface so external vertical clients (first: BDS AI) can run speciali
 **FRs covered:** FR-56 (public agent-chat API), FR-57 (Agent Registry), NFR-MULTI-1 (vertical client isolation); reuses FR-37 metering patterns
 **ADs governed:** **AD-29** (public agent-chat surface), **AD-30** (AgentConfig registry), **AD-31** (vertical `client_id` tenancy), **AD-13** (ResearchThread linkage)
 
-> **Correct-course 2026-08-07:** Originally drafted as Epic 13.4–13.11. Split out of Epic 13 so canonical storage (FR-48) stays a closed architecture boundary. Do **not** bind these stories to AD-27/AD-28.
->
-> **🏗️ Intentional Phase 2 Dependency (documented 2026-08-08, readiness audit):** Epic 18 depends on Epic 13 by design. This is NOT a forward dependency violation — it is an intentional Phase 2 sequencing. Vertical client platform requires canonical storage + RLS isolation to be production-ready. Entry criteria below enforce this.
+> **Correct-course 2026-08-08:** Originally split from Epic 13. After SCP 2026-08-08, Epic 13 canonical storage is **dropped**; Epic 18 is now an independent platform epic. It does **not** require canonical entities. Tenant isolation is enforced via `client_id` tags on existing `Memory`/`ResearchThread` tables per AD-31, not canonical storage.
 >
 > **Entry criteria (all required before coding):**
-> 1. Epic 13 stories 13.1–13.3 P0 code-review findings closed (or explicitly waived). ✅ 2026-08-07
-> 2. AD-29, AD-30, AD-31 accepted on Architecture Spine. ✅ 2026-08-07
-> 3. PAT scope model and composite RLS (`workspace_id` + `client_id`) designed and test-planned. ✅ 2026-08-07 — see `architecture-Nowing-2026-07-22/epic-18-pat-scope-rls-threat-model.md`
+> 1. AD-29, AD-30, AD-31 accepted on Architecture Spine. ✅ 2026-08-07
+> 2. PAT scope model and composite RLS (`workspace_id` + `client_id`) designed and test-planned. ✅ 2026-08-07 — see `architecture-Nowing-2026-07-22/epic-18-pat-scope-rls-threat-model.md`
 >
 > **Effort:** multi-week platform work (not ~4.5 days). Security review required before public enablement.
 
@@ -1588,6 +1664,10 @@ So that I can integrate Nowing chat into my application.
 - **Given** a valid PAT and workspace membership, **When** `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads` is called, **Then** a chat thread is created and returned with `thread_id` and `research_thread_id`.
 - **Given** a valid PAT, **When** `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads/{thread_id}/messages` is called, **Then** the message is processed by the chat agent and a response is returned.
 - **Given** an invalid PAT or non-member, **When** any public endpoint is called, **Then** 401/403 is returned.
+- **Given** a request with a malformed JSON body or missing required fields (`workspace_id`, `message`), **When** processed, **Then** 422 is returned with field-level errors.
+- **Given** an invalid `agent_id` or a valid `agent_id` not allowed for this `client_id`, **When** processed, **Then** 404 is returned with a clear error message.
+- **Given** an invalid `client_id` (not in PAT scope or not registered for this workspace), **When** processed, **Then** 400 is returned.
+- **Given** a valid PAT, **When** `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads/{thread_id}/messages` is called and the chat service times out or is unavailable, **Then** 503 is returned with `Retry-After` or a `partial` status frame, not 500.
 - **Given** a `client_id` in the request, **When** the chat processes, **Then** all data access is filtered by `client_id`.
 - **Given** rate limit is exceeded, **When** the endpoint is called, **Then** 429 is returned with `Retry-After` header.
 - **Given** a PAT is presented, **When** authorized, **Then** the token's allowed `workspace_id` (and optional `client_id`/`agent_id` scopes from AD-29) are enforced server-side; client-supplied IDs cannot escalate scope.
@@ -1709,10 +1789,8 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 - **Mồ côi/defer có chủ đích:** OQ-1 (MCP marketplace), OQ-2 (agent-tool default enable/disable) → backlog.
 - **RS-9** ("project memory" của team = `ResearchThread`?) → resolve trong scope 3.9/3.7.
 - Story `[DONE]` không liệt kê AC (đã implement); chỉ story `[GAP]`/`(mới)` có AC để dev thực thi.
-- **Epic 13 sequencing:** Story 13.1 + BDS contract (13.2a) có thể chạy trước Epic 12. Jobs persistence (13.2b), Jobs fixtures (13.2e) và HR pilot benchmark phụ thuộc Epic 12.
-- **Epic 13 scope:** FR-48 only — canonical persistence, lineage and unified search (stories 13.1–13.3 / 13.2a–e). Shared tables ship in 13.1 before any AD-28 plugin-engine trigger.
-- **Epic 13 status gate:** 13.1–13.3 remain in `review` until open P0 code-review findings are closed. Do not mark done while CHANGES_REQUESTED.
-- **Epic 18 (2026-08-07 correct-course):** Public agent-chat API, Agent Registry, vertical `client_id` tenancy, cost attribution and rate limiting live in **Epic 18**, not Epic 13. Governed by AD-29/AD-30/AD-31. Blocked on: (1) close E13 P0 reviews, (2) accept AD-29–31 on Architecture Spine.
+- **Epic 13 (DROPPED 2026-08-08):** Canonical entity storage / multi-domain indexing moved to `chainlens-research`. Nowing scrapers feed `chainlens-research` via `POST /v1/ingest/scraper` (Epic 20).
+- **Epic 18 (2026-08-08 correct-course):** Public agent-chat API, Agent Registry, vertical `client_id` tenancy, cost attribution and rate limiting live in **Epic 18**. Governed by AD-29/AD-30/AD-31. Entry criteria: AD-29–31 accepted; PAT/RLS threat model reviewed.
 - **Epic structure:** Epics 12–17 may have Original + Extended sections. Sprint-status tracks all stories under one epic key.
 - **Vision notes:** FR-53/FR-55 covered by existing scrapers; FR-54 deferred (ChainLens). Epics 14–17 are Phase 2 priority unless already in flight.
 
@@ -1720,16 +1798,16 @@ _Kỹ thuật: Middleware in `app/middleware/tenant_context.py`, rate limiter wi
 
 ## Epic 14: News Aggregation (Vietnam)
 
-> **⚠️ Priority: P2 — Defer to Phase 2.** Epic 14-17 (News/Finance/Company/E-com) = 24 stories backlog. Team solo nên focus E13 (platform) trước. Có thể dùng ChainLens generic crawl thay vì build RSS scrapers riêng.
+> **⚠️ Priority: P2 — Defer to Phase 2.** Epic 14-17 (News/Finance/Company/E-com) are vertical data feeders. They are NOT in the active sprint unless a P0/P1 quick win is explicitly activated by SCP.
 >
-> **📋 Priority clarification (readiness audit 2026-08-08):** Epic-level P2 means the epic is NOT in the active sprint. However, individual stories marked P0 within these epics are "quick wins" (1-3 days) that CAN be pulled into active sprint if capacity allows — they do not require the full epic to be activated. The P0 story label indicates low effort + high value, NOT sprint commitment. Epic activation requires SCP approval.
+> **📋 Re-scope 2026-08-08:** This epic no longer builds a local news index or canonical entity storage in Nowing. All scraped data is normalized to `Chunk[]` and fed to `chainlens-research` via `POST /v1/ingest/scraper`. User-facing search and citation are served by `chainlens-research`.
 
-Tích hợp 4 trang tin tức lớn Việt Nam qua RSS feeds — cung cấp nguồn dữ liệu news cho research memory và chat agents.
+Tích hợp 4 trang tin tức lớn Việt Nam qua RSS feeds — cung cấp nguồn dữ liệu news cho `chainlens-research` và chat agents.
 
-**FRs covered:** FR-49 (news aggregation & indexing)
-**ADs governed:** AD-27 (canonical entity convention), AD-2 (pgvector)
+**FRs covered:** FR-49 (news aggregation & feed to `chainlens-research`)
+**ADs governed:** AD-34 (Nowing scrapers feed `chainlens-research`), AD-35 (Nowing does not build public/vertical search corpus), AD-25 (PII redaction)
 **Sources:** VnExpress, Tuổi Trẻ, Dân Trí, Vietnamnet
-**Method:** RSS feeds (30+ category feeds, zero anti-bot)
+**Method:** RSS feeds (30+ category feeds, zero anti-bot); output normalized to `Chunk[]` and pushed to `chainlens-research`
 
 > **Priority P0:** Quick win — 1-2 days to integrate, zero anti-bot, immediate user value.
 
@@ -1737,48 +1815,56 @@ Tích hợp 4 trang tin tức lớn Việt Nam qua RSS feeds — cung cấp ngu�
 
 As a user,
 I want news from major Vietnamese portals available in my workspace,
-So that I can search and reference news articles alongside my research documents.
+So that I can search and reference news articles via the Nowing chat agent.
 
 **Acceptance Criteria:**
-- **Given** RSS feeds are configured, **When** the system polls (every 15 min), **Then** new articles from VnExpress, Tuổi Trẻ, Dân Trí, Vietnamnet are fetched and stored.
-- **Given** articles are fetched, **When** stored, **Then** each article has: title, link, description, pubDate, category, source.
-- **Given** articles are stored, **When** a user searches, **Then** news articles appear in unified search results.
-- **Given** duplicate articles (syndicated across portals), **When** detected, **Then** they are deduplicated via canonical entity convention (AD-27).
+- **Given** RSS feeds are configured, **When** the system polls (every 15 min), **Then** new articles from VnExpress, Tuổi Trẻ, Dân Trí, Vietnamnet are fetched and parsed.
+- **Given** an article is parsed, **When** it is normalized to a `Chunk`, **Then** `metadata` contains: `source: 'nowing_scraper'`, `sourceId` (stable URL hash), `domain` (e.g. `vnexpress.net`), `fetchedAt`, `contentType: 'news'`, `title`, `link`, `category`, `pubDate`, and `source` (portal name).
+- **Given** a batch of news `Chunk[]`, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` on `chainlens-research` with service auth, `workspace_id`, and the batch; it returns `ingestJobId` and stores the job mapping in Nowing Postgres.
+- **Given** a batch larger than 1,000 chunks, **When** ingesting, **Then** the service paginates the batch and tracks a parent `ingestJobId` plus child job IDs.
+- **Given** `chainlens-research` returns `409` for a duplicate `sourceId`, **When** handling the response, **Then** the duplicate is mapped to `noop` status and the rest of the batch continues.
+- **Given** `chainlens-research` returns `5xx` or times out, **When** `NowingIngestService.ingest()` is called, **Then** it retries with exponential backoff (max 3 attempts), stores the failed batch in a dead-letter queue, and after max retries marks the job `failed` and emits a `chainlens_ingest_failed` counter.
+- **Given** the user searches for news, **When** the chat agent queries `chainlens-research` `POST /api/v1/search`, **Then** it returns indexed news articles with citations; Nowing does not search a local news corpus.
 
 **Validation:**
 - Integration test: `test_news_rss_integration.py` — all 4 portals polled
-- Unit test: `test_news_dedup.py` — syndicated articles deduplicated
-- Search test: `test_news_search.py` — articles appear in search results
+- Unit test: `test_news_to_chunks.py` — chunk metadata is complete and stable
+- Integration test: `test_news_ingest_service.py` — `POST /v1/ingest/scraper` called with correct auth and batch; 409 and 5xx handled
+- Integration test: `test_news_search_via_chainlens.py` — user query returns results from `chainlens-research`
 
-_AD-27 · AD-2 · Method: RSS (official feeds, no anti-bot)_
+_AD-34 · AD-35 · AD-25 · Method: RSS (official feeds, no anti-bot)_
 
-### Story 14.2: News Entity Extraction `[P1]`
+### Story 14.2: News Entity Enrichment `[P1]`
 
 As a researcher,
-I want key entities (people, organizations, locations) extracted from news articles,
-So that I can track mentions and trends over time.
+I want key entities (people, organizations, locations) attached to news chunks before they are indexed,
+So that I can track mentions and trends via `chainlens-research` entity search.
 
 **Acceptance Criteria:**
-- **Given** a news article, **When** processed, **Then** named entities (people, organizations, locations) are extracted.
-- **Given** entities are extracted, **When** stored, **Then** they link to canonical entity records (if match) or create new ones.
-- **Given** entity tracking is active, **When** a user queries an entity, **Then** all mentioning articles are returned.
+- **Given** a news article is parsed, **When** entity extraction runs, **Then** named entities (people, organizations, locations) are extracted with confidence scores.
+- **Given** extracted entities, **When** the article is normalized to a `Chunk`, **Then** `metadata.entities` contains the entity mentions, types, and surface forms.
+- **Given** a `Chunk` with `metadata.entities`, **When** it is ingested into `chainlens-research`, **Then** the canonical index stores and indexes the entity metadata; `chainlens-research` handles entity linking and disambiguation.
+- **Given** entity tracking is active, **When** a user queries an entity in chat, **Then** the agent calls `chainlens-research` and returns mentioning articles with citations; no local entity table is built in Nowing.
 
 **Validation:**
 - Unit test: `test_news_entity_extraction.py` — entity accuracy ≥ 0.85
-- Integration test: `test_news_entity_linking.py` — entities link to canonical records
+- Integration test: `test_news_entity_chunk_metadata.py` — entities attached to chunk metadata
+- Integration test: `test_news_entity_search_chainlens.py` — entity query returns indexed articles
 
-_AD-27 (entity convention) · AD-25 (PII redaction for person names)_
+_AD-34 · AD-35 · AD-25 (PII redaction for person names)_
 
 ---
 
 ## Epic 15: Financial Data (Vietnam)
 
-Tích hợp dữ liệu tài chính từ CafeF và Vietstock — cung cấp stock prices, financial statements, market news cho investment research.
+> **⚠️ Priority: P2 — Defer to Phase 2.** Re-scoped 2026-08-08: no local financial index in Nowing; data is fed to `chainlens-research`.
+
+Tích hợp dữ liệu tài chính từ CafeF và Vietstock — cung cấp stock prices, financial statements, market news cho `chainlens-research` và investment research.
 
 **FRs covered:** FR-50 (financial data integration)
-**ADs governed:** AD-27 (canonical entity convention), AD-25 (PII redaction)
+**ADs governed:** AD-34, AD-35, AD-25
 **Sources:** CafeF (unofficial API), Vietstock (HTML + auth tokens)
-**Method:** CafeF unofficial API (no auth), Vietstock HTML scrape (cookie-based)
+**Method:** CafeF unofficial API (no auth), Vietstock HTML scrape (cookie-based); output `Chunk[]` to `chainlens-research`
 
 > **Priority P0:** CafeF quick win (2-4 hours), Vietstock medium effort (1-2 weeks).
 
@@ -1786,20 +1872,23 @@ Tích hợp dữ liệu tài chính từ CafeF và Vietstock — cung cấp stoc
 
 As an investment researcher,
 I want stock prices, financial statements, and market news from CafeF,
-So that I can analyze company fundamentals without leaving Nowing.
+So that I can analyze company fundamentals via the Nowing chat agent.
 
 **Acceptance Criteria:**
-- **Given** CafeF unofficial API is connected, **When** a user queries a stock symbol, **Then** current price, OHLCV, and key ratios are returned.
-- **Given** financial statements are fetched, **When** stored, **Then** balance sheet, income statement, and cash flow are available per company.
-- **Given** market news is fetched, **When** new articles are published, **Then** they appear in workspace search.
-- **Given** data is fetched, **When** rate limit approached (20 req/min), **Then** requests are throttled gracefully.
+- **Given** CafeF unofficial API is connected, **When** a user queries a stock symbol, **Then** current price, OHLCV, and key ratios are fetched.
+- **Given** financial statements are fetched, **When** normalized to `Chunk[]`, **Then** each chunk has `metadata.source: 'nowing_scraper'`, `sourceId` (stable per symbol + statement type + period), `domain: 'cafef.vn'`, `fetchedAt`, `contentType`, and the statement data (balance sheet, income statement, cash flow).
+- **Given** market news is fetched, **When** the batch is ready, **Then** it is ingested into `chainlens-research` via `NowingIngestService`.
+- **Given** the user queries financial data, **When** the chat agent calls `chainlens-research` `POST /api/v1/search`, **Then** it returns indexed CafeF data with citations.
+- **Given** data is fetched, **When** rate limit approached (20 req/min), **Then** requests are throttled gracefully and a `degraded` flag is set if throttling exceeds a configurable timeout.
+- **Given** `chainlens-research` is unavailable, **When** `NowingIngestService.ingest()` is called, **Then** it retries and, after max retries, stores the batch in a dead-letter queue and returns `ingestJobId: null` with `degraded=true`.
 
 **Validation:**
 - Integration test: `test_cafef_api_connection.py` — API responds correctly
 - Unit test: `test_cafef_financial_parsing.py` — financial statements parsed accurately
 - Rate limit test: `test_cafef_throttling.py` — graceful throttling
+- Integration test: `test_cafef_to_chainlens.py` — `POST /v1/ingest/scraper` called
 
-_AD-27 · Method: Unofficial public API (no auth needed)_
+_AD-34 · AD-35 · Method: Unofficial public API (no auth needed)_
 
 ### Story 15.2: Vietstock Deep Financials `[P1]`
 
@@ -1808,26 +1897,31 @@ I want comprehensive financial data from Vietstock (3000+ companies, 130K+ state
 So that I can perform historical analysis and cross-company comparison.
 
 **Acceptance Criteria:**
-- **Given** Vietstock scraper is authenticated, **When** a company is queried, **Then** 20+ years of historical data is available.
-- **Given** financial ratios are extracted, **When** compared across companies, **Then** P/E, P/B, ROE, ROA are normalized and comparable.
-- **Given** Vietstock data conflicts with CafeF, **When** merged, **Then** conflict is flagged and both values preserved.
+- **Given** Vietstock scraper is authenticated, **When** a company is queried, **Then** 20+ years of historical data are fetched.
+- **Given** financial ratios are extracted, **When** normalized to `Chunk[]`, **Then** P/E, P/B, ROE, ROA are stored as comparable numeric values in `content` and `metadata.ratios`.
+- **Given** Vietstock data conflicts with CafeF for the same symbol and period, **When** both source `Chunk[]` are produced, **Then** each chunk is sent with the same canonical `sourceId` (e.g. normalized `symbol + statement + period`) and `metadata.conflict_flags` and `metadata.source_count` so `chainlens-research` canonical index handles cross-source merge; Nowing does not merge them locally.
+- **Given** a batch of Vietstock `Chunk[]`, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
+- **Given** the cookie-based session expires, **When** the scraper detects `401/403`, **Then** it refreshes the cookie and retries once; if refresh fails, it marks `degraded=true` with `degradation_reason: AUTH_REFRESH_FAILED`.
 
 **Validation:**
 - Integration test: `test_vietstock_auth.py` — cookie refresh works
 - Unit test: `test_vietstock_ratio_normalization.py` — ratios comparable across companies
+- Integration test: `test_vietstock_chainlens_feed.py` — chunks sent to `chainlens-research`
 
-_AD-27 · AD-24 (cross-source dedup pattern)_
+_AD-34 · AD-35 · AD-24 (cross-source sourceId convention)_
 
 ---
 
 ## Epic 16: Company Directory (Vietnam)
 
-Tích hợp dữ liệu doanh nghiệp từ masothue.com và business.gov.vn — cung cấp company profiles cho business intelligence.
+> **⚠️ Priority: P2 — Defer to Phase 2.** Re-scoped 2026-08-08: no local company index in Nowing; data is fed to `chainlens-research`.
+
+Tích hợp dữ liệu doanh nghiệp từ masothue.com và business.gov.vn — cung cấp company profiles cho `chainlens-research` và business intelligence.
 
 **FRs covered:** FR-51 (company data integration)
-**ADs governed:** AD-27 (canonical entity convention), AD-2 (pgvector)
+**ADs governed:** AD-34, AD-35, AD-25
 **Sources:** masothue.com (2M+ businesses), business.gov.vn (official registry)
-**Method:** HTML scrape (simple forms), RSS (doanhnghiep.vn)
+**Method:** HTML scrape (simple forms), RSS (doanhnghiep.vn); output `Chunk[]` to `chainlens-research`
 
 > **Priority P0:** masothue.com quick win (2-3 days), business.gov.vn medium (1 week).
 
@@ -1835,19 +1929,22 @@ Tích hợp dữ liệu doanh nghiệp từ masothue.com và business.gov.vn —
 
 As a business researcher,
 I want access to 2M+ Vietnamese company profiles with tax codes and registration data,
-So that I can verify business partners and research market players.
+So that I can verify business partners and research market players via the Nowing chat agent.
 
 **Acceptance Criteria:**
 - **Given** masothue.com scraper is built, **When** a user searches by company name or tax code, **Then** company profile is returned with: name, tax code, address, legal representative, status.
-- **Given** company data is fetched, **When** stored, **Then** it follows canonical entity convention (AD-27) with fingerprint = normalized(tax_code) or normalized(name + address).
-- **Given** a company already exists in workspace, **When** re-fetched, **Then** data is updated (not duplicated).
+- **Given** company data is fetched, **When** normalized to `Chunk[]`, **Then** `metadata.source: 'nowing_scraper'`, `sourceId` (stable: normalized `tax_code` or normalized `name + address`), `domain: 'masothue.com'`, `fetchedAt`, and `contentType: 'company'` are set.
+- **Given** PII such as personal phone numbers or emails appears in the raw profile, **When** chunks are built, **Then** AD-25 redaction is applied before any data is sent to `chainlens-research`.
+- **Given** a `Chunk[]` batch, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
+- **Given** the user searches by tax code, **When** the agent queries `chainlens-research`, **Then** the indexed company profile is returned with citations.
 
 **Validation:**
 - Integration test: `test_masothue_scrape.py` — company data extracted correctly
-- Unit test: `test_company_fingerprint.py` — tax_code or name+address fingerprint
-- Dedup test: `test_company_dedup.py` — no duplicate company records
+- Unit test: `test_company_to_chunks.py` — chunk metadata and stable `sourceId`
+- PII redaction test: `test_company_pii_redaction.py` — phone/email/names masked before ingest
+- Integration test: `test_company_ingest_chainlens.py` — `POST /v1/ingest/scraper` called
 
-_AD-27 · Method: HTML scrape (simple, low anti-bot)_
+_AD-34 · AD-35 · AD-25 · Method: HTML scrape (simple, low anti-bot)_
 
 ### Story 16.2: Official Business Registry `[P1]`
 
@@ -1857,24 +1954,29 @@ So that I can verify legal status and regulatory compliance.
 
 **Acceptance Criteria:**
 - **Given** government portal scraper is built, **When** a user queries by tax code, **Then** official registration data is returned: charter capital, business lines, ownership structure.
-- **Given** official data conflicts with masothue, **When** merged, **Then** official source wins (most_confident strategy per AD-27).
+- **Given** official data is fetched, **When** normalized to `Chunk[]`, **Then** it uses the same canonical `sourceId` as the masothue record when the tax code matches, and `metadata.source_count` and `metadata.conflict_flags` are set for `chainlens-research` to apply the `most_confident` strategy.
+- **Given** official data contains PII, **When** chunks are built, **Then** AD-25 redaction is applied before ingest.
+- **Given** a batch of official registry `Chunk[]`, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
 
 **Validation:**
 - Integration test: `test_business_gov_vn.py` — official data accessible
-- Unit test: `test_official_source_priority.py` — official > masothue in conflicts
+- Unit test: `test_official_source_chunk_metadata.py` — `sourceId` matches masothue and `conflict_flags` present
+- Integration test: `test_business_gov_ingest_chainlens.py` — chunks sent to `chainlens-research`
 
-_AD-27 (most_confident strategy) · AD-24 (cross-source merge)_
+_AD-34 · AD-35 · AD-24 (cross-source sourceId convention)_
 
 ---
 
 ## Epic 17: E-commerce Intelligence (Vietnam)
 
-Tích hợp dữ liệu thương mại điện tử từ Lazada và Shopee — cung cấp pricing intelligence, product research, competitor tracking.
+> **⚠️ Priority: P2 — Defer to Phase 2.** Re-scoped 2026-08-08: no local product index in Nowing; product data is fed to `chainlens-research`.
+
+Tích hợp dữ liệu thương mại điện tử từ Lazada và Shopee — cung cấp pricing intelligence, product research, competitor tracking qua `chainlens-research`.
 
 **FRs covered:** FR-52 (e-commerce data integration)
-**ADs governed:** AD-27 (canonical entity convention), AD-25 (PII redaction)
+**ADs governed:** AD-34, AD-35, AD-25
 **Sources:** Lazada (public product pages), Shopee (login-gated, hard)
-**Method:** Lazada HTML scrape (moderate anti-bot), Shopee third-party API (Apify/Bright Data)
+**Method:** Lazada HTML scrape (moderate anti-bot), Shopee third-party API (Apify/Bright Data); output `Chunk[]` to `chainlens-research`
 
 > **Priority P1:** Lazada medium effort (4-6 weeks), Shopee hard (8-12 weeks, defer).
 
@@ -1886,15 +1988,18 @@ So that I can perform pricing analysis and competitor tracking.
 
 **Acceptance Criteria:**
 - **Given** Lazada scraper is built, **When** a user searches by product keyword, **Then** product listings are returned with: title, price, original price, discount, rating, review count, seller name, variants.
-- **Given** product data is fetched, **When** stored, **Then** it follows canonical entity convention (AD-27) with fingerprint = normalized(title) + seller_id.
-- **Given** Lazada anti-bot measures trigger, **When** detected, **Then** scraper backs off gracefully and retries with proxy rotation.
+- **Given** product data is fetched, **When** normalized to `Chunk[]`, **Then** `metadata.source: 'nowing_scraper'`, `sourceId` (stable: normalized `title` + `seller_id` + `sku` if available), `domain: 'lazada.vn'`, `fetchedAt`, `contentType: 'product'` are set.
+- **Given** Lazada anti-bot measures trigger, **When** detected, **Then** the scraper backs off gracefully and retries with proxy rotation; after max retries it returns `degraded=true` with `degradation_reason: ANTI_BOT`.
+- **Given** a `Chunk[]` batch, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
+- **Given** the user queries product data, **When** the agent calls `chainlens-research` `POST /api/v1/search`, **Then** indexed results are returned with citations.
 
 **Validation:**
 - Integration test: `test_lazada_scrape.py` — product data extracted
-- Unit test: `test_lazada_fingerprint.py` — title + seller_id fingerprint
+- Unit test: `test_lazada_to_chunks.py` — `sourceId` stable
 - Anti-bot test: `test_lazada_graceful_degradation.py` — backs off on 403/CAPTCHA
+- Integration test: `test_lazada_ingest_chainlens.py` — chunks sent to `chainlens-research`
 
-_AD-27 · Method: HTML scrape (moderate anti-bot, residential proxies preferred)_
+_AD-34 · AD-35 · Method: HTML scrape (moderate anti-bot, residential proxies preferred)_
 
 ### Story 17.2: Shopee Product Data `[P2]`
 
@@ -1904,13 +2009,17 @@ So that I can track the dominant e-commerce platform.
 
 **Acceptance Criteria:**
 - **Given** Shopee data source is connected (third-party API or in-house scraper), **When** a user searches by keyword, **Then** product listings are returned.
-- **Given** Shopee data is fetched, **When** merged with Lazada data, **Then** same products across platforms are deduplicated via canonical entity (different sellers, same product).
+- **Given** product data is fetched, **When** normalized to `Chunk[]`, **Then** `metadata.source: 'nowing_scraper'`, `sourceId` (stable per product + platform), `domain: 'shopee.vn'`, `fetchedAt`, `contentType: 'product'` are set.
+- **Given** Shopee data is fetched, **When** the batch is ingested, **Then** `NowingIngestService` calls `POST /v1/ingest/scraper` with the same canonical `sourceId` pattern as Lazada for cross-platform deduplication.
+- **Given** the same product appears on Lazada and Shopee, **When** `chainlens-research` indexes both, **Then** the `chainlens-research` canonical index handles cross-platform deduplication; Nowing does not merge them locally.
 
 **Validation:**
 - Integration test: `test_shopee_data_source.py` — data accessible
-- Dedup test: `test_cross_platform_dedup.py` — same product across Lazada/Shopee merged
+- Unit test: `test_shopee_to_chunks.py` — `sourceId` matches cross-platform convention
+- Integration test: `test_shopee_ingest_chainlens.py` — chunks sent to `chainlens-research`
+- Integration test: `test_cross_platform_dedup_chainlens.py` — `chainlens-research` returns merged product
 
-_AD-27 · Method: Third-party API (Apify/Bright Data) recommended; in-house requires 8-12w_
+_AD-34 · AD-35 · Method: Third-party API (Apify/Bright Data) recommended; in-house requires 8-12w_
 
 
 
@@ -1926,13 +2035,13 @@ _AD-27 · Method: Third-party API (Apify/Bright Data) recommended; in-house requ
 
 > **🏗️ AD-33 (2026-08-08):** Stories 12.6, 12.7, 12.9 (alerts + saved searches) MUST be implemented as `AlertRule` templates on the Generic Alert Engine (AD-33), NOT as standalone schedulers. Reuse Epic 6 Automation infrastructure (scheduler + RunService + notification dispatch). Story 12.6 is the first consumer — Alert Engine builds alongside it. Stories 12.7 and 12.9 only register new `AlertRule` templates.
 
-> **🏗️ AD-27 (2026-08-08):** Story 12.8 (Cross-Source Entity Timeline) is **BLOCKED** until Epic 13 review closes. Timeline view must build on canonical entity storage tables (`canonical_entities`, source-lineage, history), not a parallel query path. Same block applies to Story 16.4 (Company Timeline).
+> **🏗️ AD-27 (2026-08-08):** ~~Story 12.8 (Cross-Source Entity Timeline) is BLOCKED until Epic 13 review closes.~~ DROPPED — canonical index moved to `chainlens-research`. Timeline views (if needed) will use `chainlens-research` indexed timeline API.
 >
 > **📋 Dependency ordering (readiness audit 2026-08-08):** Stories 12.6-12.9 have internal dependencies that require specific ordering:
 > - **12.9 (Saved Searches) → P0** — must ship first; 12.6 depends on saved search infrastructure
 > - **12.6 (Job Market Alerts) → P1** — depends on 12.9 (saved searches) + AD-33 Alert Engine
-> - **12.7 (Property Price Alerts) → P1** — depends on Epic 13 canonical entities (cross-epic, intentional)
-> - **12.8 (Cross-Source Entity Timeline) → BLOCKED** — depends on Epic 13 canonical storage
+> - **~~12.7 (Property Price Alerts) → P1~~** — **DROPPED** with Epic 13 (canonical property entities no longer built in Nowing)
+> - **~~12.8 (Cross-Source Entity Timeline) → BLOCKED~~** — **DROPPED** with Epic 13
 
 ### Story 12.9: Saved Searches `[P0 — reordered: must ship before 12.6]`
 
@@ -1941,9 +2050,11 @@ I want to save complex search queries and auto-run them on schedule,
 So that I always have fresh results without manual work.
 
 **Acceptance Criteria:**
-- **Given** a search query with filters, **When** saved, **Then** it appears in my saved searches list.
-- **Given** a saved search with schedule (daily/weekly), **When** triggered, **Then** it runs automatically and notifies of new results.
-- **Given** saved search results, **When** viewed, **Then** shows delta (new since last run).
+- **Given** a search query with filters, **When** saved, **Then** it persists with `schedule: 'daily' | 'weekly' | 'none'`, `timezone`, and `enabled` flag; it appears in my saved searches list.
+- **Given** a saved search with `schedule='daily'`, **When** the automation scheduler triggers at the configured time (default 00:00 UTC), **Then** it runs as an Epic 6 automation via `RunService` and emits a run record.
+- **Given** run N and run N+1 complete, **When** delta is computed, **Then** `new_items = source_ids in run N+1 not present in run N` (by `sourceId`); `removed_items` and `changed_items` are also tagged.
+- **Given** `new_items > 0`, **When** the run completes, **Then** a notification is delivered via the configured channel (in-app, email, Telegram) with a link to the saved search and a summary count.
+- **Given** the saved search run fails or returns `degraded=true`, **When** it completes, **Then** the notification states the failure/degraded state and `degradation_reasons`, and the next scheduled run still fires unless `enabled=false`.
 
 **Validation:**
 - Unit test: `test_saved_search_crud.py` — create/update/delete saved searches
@@ -1971,42 +2082,17 @@ So that I don't have to manually re-run searches every day.
 
 _AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy)._
 
-### Story 12.7: Property Price Alerts `[P1 — depends on Epic 13]`
+### Story 12.7: Property Price Alerts `[DROPPED 2026-08-08]`
 
-As a real estate researcher,
-I want to be notified when a tracked property's price changes,
-So that I can act on market movements immediately.
+> **DROPPED per SCP 2026-08-08.** Nowing does not build canonical property entities. Property price alerting may be implemented on `chainlens-research` index data in a future Phase 2.
 
-> **Dependency:** Epic 13 canonical property entities must exist — this is an intentional cross-epic dependency (canonical storage is the shared foundation).
+_As originally scoped, this alert required `canonical_entities` storage which is no longer built in Nowing._
 
-**Acceptance Criteria:**
-- **Given** a canonical property entity exists, **When** a new source reports a different price, **Then** an alert is triggered with old vs new price.
-- **Given** price change exceeds threshold (e.g., 5%), **When** detected, **Then** priority alert is sent.
+### Story 12.8: Cross-Source Entity Timeline `[DROPPED 2026-08-08]`
 
-**Validation:**
-- Unit test: `test_property_price_alert.py` — price change triggers alert
-- Integration test: `test_property_alert_notification.py`
+> **DROPPED per SCP 2026-08-08.** Nowing does not build canonical entity storage. Cross-source entity timelines (if needed) will be provided by `chainlens-research` as a product feature, not built as a Nowing index.
 
-_AD-27 (canonical entity convention) · AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy)._
-
-### Story 12.8: Cross-Source Entity Timeline `[P1 — BLOCKED on Epic 13]`
-
-As a researcher,
-I want to see all events for an entity across sources over time,
-So that I understand its trajectory and patterns.
-
-> **BLOCKED:** Epic 13 canonical entity storage must be review-closed before this story can start. Already marked `blocked` in sprint-status.yaml.
-
-**Acceptance Criteria:**
-- **Given** a canonical entity (job or property), **When** I view its timeline, **Then** I see events from all sources: job postings, price changes, news mentions, company updates.
-- **Given** timeline events, **When** filtered by source type, **Then** only relevant events shown.
-- **Given** timeline, **When** exported, **Then** produces a chronological report.
-
-**Validation:**
-- Integration test: `test_entity_timeline.py` — timeline aggregates cross-source events
-- UI test: `test_entity_timeline_render.py` — timeline renders correctly
-
-_AD-27 (canonical entity convention — BLOCKED until Epic 13 review closes)._
+_As originally scoped, this timeline required `canonical_entities`, source-lineage and merge-history tables which are no longer built in Nowing._
 
 ---
 
@@ -2015,6 +2101,7 @@ _AD-27 (canonical entity convention — BLOCKED until Epic 13 review closes)._
 > **📎 EXTENSION của Epic 14 (line 1578).** Stories 14.3-14.4 bổ sung cho stories 14.1-14.2 ở trên. Sprint-status.yaml track tất cả dưới `epic-14`.
 
 > **Extended 2026-08-06:** Added news-specific intelligence features.
+> **Re-scope 2026-08-08:** News intelligence features use data indexed by `chainlens-research`; Nowing does not build a local news search corpus or canonical entity index.
 
 ### Story 14.3: News Alerts & Topic Monitoring `[P1]`
 
@@ -2023,15 +2110,17 @@ I want to monitor topics and receive alerts for new articles,
 So that I stay informed without manually checking news sites.
 
 **Acceptance Criteria:**
-- **Given** a topic query (e.g., "company X" OR "industry Y"), **When** new articles match, **Then** I receive notification.
-- **Given** topic monitoring is active, **When** daily digest is generated, **Then** it summarizes new articles with entity links.
-- **Given** alert, **When** clicked, **Then** opens article with canonical entity highlights.
+- **Given** a saved topic query (e.g., `"company X" OR "industry Y"`), **When** the scheduler triggers (daily default), **Then** the alert rule re-runs the RSS fetch, normalizes new articles to `Chunk[]`, and calls `NowingIngestService.ingest()` to send them to `chainlens-research`.
+- **Given** the new run completes, **When** `chainlens-research` reports `ingestJobId` success, **Then** `new_items` are computed as `sourceId`s present in the latest run but absent from the previous successful run.
+- **Given** `new_items > 0`, **When** the alert fires, **Then** a notification is delivered via the configured channel (in-app, email, Telegram) with a link to the topic and a summary count.
+- **Given** an alert is triggered, **When** a user clicks it, **Then** the chat agent queries `chainlens-research` for the topic and displays the indexed articles with citations.
 
 **Validation:**
-- Integration test: `test_news_alert_topic_matching.py`
-- Unit test: `test_news_digest_generation.py`
+- Integration test: `test_news_alert_topic_matching.py` — new articles trigger alert
+- Integration test: `test_news_alert_ingest.py` — `NowingIngestService` called on alert run
+- Integration test: `test_news_alert_notification.py` — notification delivered
 
-_AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy)._
+_AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy) · AD-34 · AD-35_
 
 ### Story 14.4: News Digest & Synthesis `[P2]`
 
@@ -2040,12 +2129,17 @@ I want daily/weekly synthesis of news across my monitored topics,
 So that I can quickly understand what happened without reading 50 articles.
 
 **Acceptance Criteria:**
-- **Given** monitored topics, **When** digest is generated, **Then** it produces a structured summary: key events, entity mentions, sentiment trend.
-- **Given** digest, **When** viewed, **Then** each claim links to source article with citation.
+- **Given** monitored topics, **When** the digest scheduler triggers, **Then** the automation queries `chainlens-research` `POST /api/v1/search` for each topic, fetches indexed articles, and prompts an LLM to produce a structured summary.
+- **Given** the summary is generated, **When** it references a claim, **Then** each claim includes the source article link and `sourceId` so the UI can render citations.
+- **Given** the digest is viewed, **When** a user clicks a citation, **Then** the source article opens; long-press opens a provenance drawer if `chainlens-research` returns multiple sources for the same entity.
+- **Given** the digest run fails (e.g., `chainlens-research` unavailable), **When** it completes, **Then** the user sees a degraded state with `degradation_reasons` and a retry action.
 
 **Validation:**
 - Integration test: `test_news_synthesis.py` — synthesis produces coherent narrative
-- Unit test: `test_news_digest_structure.py`
+- Unit test: `test_news_digest_structure.py` — structured summary contains key events, entity mentions, sentiment
+- Integration test: `test_news_digest_citations.py` — each claim links to indexed source
+
+_AD-34 · AD-35 · Reuses `ux-contract-ecosystem-search` (citation model) · AD-33 (scheduler)_
 
 ---
 
@@ -2054,6 +2148,7 @@ So that I can quickly understand what happened without reading 50 articles.
 > **📎 EXTENSION của Epic 15 (line 1629).** Stories 15.2-15.4 bổ sung cho story 15.1 ở trên. Sprint-status.yaml track tất cả dưới `epic-15`.
 
 > **Extended 2026-08-06:** Added financial intelligence features.
+> **Re-scope 2026-08-08:** Financial intelligence features use `chainlens-research` indexed data; Nowing does not build a local financial search corpus.
 
 ### Story 15.3: Stock Price Alerts `[P1]`
 
@@ -2062,14 +2157,17 @@ I want alerts when stock prices cross thresholds,
 So that I can act on market movements.
 
 **Acceptance Criteria:**
-- **Given** a stock symbol with alert rules (price > X, change > Y%), **When** triggered, **Then** notification sent with chart snapshot.
-- **Given** multiple alerts, **When** viewed, **Then** grouped by symbol with trigger history.
+- **Given** a saved stock symbol with alert rules (price > X, change > Y%), **When** the scheduler triggers, **Then** the alert rule fetches fresh data from CafeF/Vietstock, normalizes it to `Chunk[]`, and calls `NowingIngestService.ingest()` to update `chainlens-research`.
+- **Given** the new price is ingested, **When** `chainlens-research` returns the latest indexed value, **Then** the rule compares it to the previous indexed value and triggers the alert if a threshold is crossed.
+- **Given** an alert is triggered, **When** the user receives the notification, **Then** it includes a chart snapshot and the trigger reason.
+- **Given** multiple alerts, **When** viewed, **Then** they are grouped by symbol with trigger history.
 
 **Validation:**
-- Unit test: `test_stock_price_alert_rules.py`
-- Integration test: `test_stock_alert_notification.py`
+- Unit test: `test_stock_price_alert_rules.py` — threshold logic correct
+- Integration test: `test_stock_ingest_on_alert.py` — `NowingIngestService` called on alert run
+- Integration test: `test_stock_alert_notification.py` — notification delivered with chart
 
-_AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy)._
+_AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy) · AD-34 · AD-35_
 
 ### Story 15.4: Financial Trend Detection `[P2]`
 
@@ -2078,14 +2176,16 @@ I want automatic detection of financial trends across my watched companies,
 So that I don't miss significant patterns.
 
 **Acceptance Criteria:**
-- **Given** financial data over time, **When** significant trend detected (revenue growth, margin change), **Then** insight is generated.
-- **Given** trend insight, **When** viewed, **Then** shows supporting data points with source links.
+- **Given** financial data is indexed in `chainlens-research` over time, **When** the trend detection job runs, **Then** it queries `chainlens-research` for historical financial `Chunk[]` and computes trends (revenue growth, margin change, etc.).
+- **Given** a significant trend is detected, **When** the insight is generated, **Then** it includes supporting data points with `sourceId` links to `chainlens-research` results.
+- **Given** the insight is viewed, **When** a user clicks a supporting data point, **Then** the source financial statement opens with citation.
 
 **Validation:**
-- Unit test: `test_financial_trend_detection.py`
-- Integration test: `test_trend_insight_generation.py`
+- Unit test: `test_financial_trend_detection.py` — trend detection logic
+- Integration test: `test_trend_chainlens_query.py` — queries `chainlens-research` for historical data
+- Integration test: `test_trend_insight_generation.py` — insight generated with source links
 
-_AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff strategy)._
+_AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff strategy) · AD-34 · AD-35_
 
 ---
 
@@ -2094,6 +2194,7 @@ _AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff stra
 > **📎 EXTENSION của Epic 16 (line 1678).** Stories 16.2-16.4 bổ sung cho story 16.1 ở trên. Sprint-status.yaml track tất cả dưới `epic-16`.
 
 > **Extended 2026-08-06:** Added company intelligence features.
+> **Re-scope 2026-08-08:** Company intelligence features use `chainlens-research` indexed data; 16.4 Company Timeline is served by the `chainlens-research` timeline API instead of a local canonical entity table.
 
 ### Story 16.3: Company Alerts `[P1]`
 
@@ -2102,14 +2203,17 @@ I want alerts when tracked companies have significant events,
 So that I stay informed about competitors and partners.
 
 **Acceptance Criteria:**
-- **Given** a company entity, **When** significant event detected (news, hiring, funding), **Then** alert is triggered.
-- **Given** company alert, **When** viewed, **Then** shows event summary with source links and entity timeline.
+- **Given** a tracked company (by tax code or canonical `sourceId`), **When** the scheduler triggers, **Then** the alert rule runs the masothue/business.gov.vn scrapers, normalizes new data to `Chunk[]`, and calls `NowingIngestService.ingest()` to update `chainlens-research`.
+- **Given** the new run is ingested, **When** `chainlens-research` returns indexed company data, **Then** the rule detects significant changes (e.g., legal representative change, status change, new business lines) compared to the previous indexed version.
+- **Given** a significant change is detected, **When** the alert fires, **Then** a notification is delivered with an event summary and source links.
+- **Given** a company alert is viewed, **When** the user opens it, **Then** the agent queries `chainlens-research` for the company profile and renders source links; no local entity timeline is required.
 
 **Validation:**
-- Integration test: `test_company_event_detection.py`
-- Unit test: `test_company_alert_rules.py`
+- Integration test: `test_company_event_detection.py` — change detection triggers alert
+- Unit test: `test_company_alert_rules.py` — rule logic
+- Integration test: `test_company_ingest_on_alert.py` — `NowingIngestService` called on alert run
 
-_AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff strategy)._
+_AD-33 (Generic Alert Engine — AlertRule template, `threshold_cross` diff strategy) · AD-34 · AD-35_
 
 ### Story 16.4: Company Timeline `[P1]`
 
@@ -2118,14 +2222,17 @@ I want to see a company's event history across all sources,
 So that I understand its evolution and trajectory.
 
 **Acceptance Criteria:**
-- **Given** a company entity, **When** timeline is viewed, **Then** shows: founding, funding rounds, hiring spikes, product launches, news mentions — all chronologically.
-- **Given** timeline, **When** filtered, **Then** shows only selected event types.
+- **Given** a company is indexed in `chainlens-research`, **When** the user requests a timeline, **Then** Nowing calls the `chainlens-research` timeline API (or `POST /api/v1/search` with timeline filters) and renders the events chronologically.
+- **Given** the timeline response, **When** it contains events from masothue, business.gov.vn, news, and hiring sources, **Then** the UI shows: founding, funding rounds, hiring spikes, product launches, news mentions — all chronologically with source badges.
+- **Given** the timeline, **When** the user filters by event type, **Then** only selected event types are displayed.
+- **Given** the `chainlens-research` timeline API is unavailable, **When** the user requests a timeline, **Then** the UI degrades to a plain search result list with a banner explaining the timeline is temporarily unavailable.
 
 **Validation:**
-- Integration test: `test_company_timeline.py`
-- UI test: `test_company_timeline_render.py`
+- Integration test: `test_company_timeline_chainlens.py` — timeline API called and results rendered
+- UI test: `test_company_timeline_render.py` — UI shows events and filters
+- Integration test: `test_company_timeline_degradation.py` — graceful degradation when API unavailable
 
-_AD-27 (canonical entity convention — BLOCKED until Epic 13 review closes)._
+_AD-34 · AD-35 · Timeline data owned by `chainlens-research`_
 
 ---
 
@@ -2134,6 +2241,7 @@ _AD-27 (canonical entity convention — BLOCKED until Epic 13 review closes)._
 > **📎 EXTENSION của Epic 17 (line 1725).** Stories 17.2-17.4 bổ sung cho story 17.1 ở trên. Sprint-status.yaml track tất cả dưới `epic-17`.
 
 > **Extended 2026-08-06:** Added e-commerce intelligence features.
+> **Re-scope 2026-08-08:** E-commerce intelligence features use `chainlens-research` indexed product data.
 
 ### Story 17.3: Price Drop Alerts `[P1]`
 
@@ -2142,14 +2250,17 @@ I want alerts when tracked products change price,
 So that I can identify pricing trends and opportunities.
 
 **Acceptance Criteria:**
-- **Given** a product entity, **When** price changes on any source, **Then** alert triggered with old vs new price.
-- **Given** price alert, **When** viewed, **Then** shows price history chart across sources.
+- **Given** a tracked product (by canonical `sourceId` or keyword), **When** the scheduler triggers, **Then** the alert rule re-runs the Lazada/Shopee scrapers, normalizes product data to `Chunk[]`, and calls `NowingIngestService.ingest()` to update `chainlens-research`.
+- **Given** the new price is indexed, **When** `chainlens-research` returns the latest product `Chunk[]`, **Then** the rule compares price to the previous indexed value and triggers an alert if the price dropped or crossed a threshold.
+- **Given** a price alert is triggered, **When** it is viewed, **Then** it shows old vs new price and a link to the indexed product in `chainlens-research`.
+- **Given** a price alert is viewed, **When** historical prices are requested, **Then** the UI queries `chainlens-research` for historical `Chunk[]` with the same `sourceId` and renders a price history chart.
 
 **Validation:**
-- Unit test: `test_product_price_alert.py`
-- Integration test: `test_price_history_tracking.py`
+- Unit test: `test_product_price_alert.py` — price drop detection
+- Integration test: `test_price_ingest_on_alert.py` — `NowingIngestService` called on alert run
+- Integration test: `test_price_history_tracking.py` — historical prices queried from `chainlens-research`
 
-_AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy)._
+_AD-33 (Generic Alert Engine — AlertRule template, `price_change` diff strategy) · AD-34 · AD-35_
 
 ### Story 17.4: Competitor Tracking `[P2]`
 
@@ -2158,12 +2269,158 @@ I want to track competitor products and receive change notifications,
 So that I stay aware of market movements.
 
 **Acceptance Criteria:**
-- **Given** competitor products tracked, **When** changes detected (price, availability, new variants), **Then** notification sent.
-- **Given** competitor dashboard, **When** viewed, **Then** shows side-by-side comparison with change indicators.
+- **Given** competitor products are tracked (by keyword, seller, or product family), **When** the scheduler triggers, **Then** the alert rule refreshes Lazada/Shopee data, normalizes to `Chunk[]`, and calls `NowingIngestService.ingest()` to update `chainlens-research`.
+- **Given** new product `Chunk[]` are indexed, **When** the rule compares them to the previous run, **Then** changes (price, availability, new variants) are detected and a notification is sent.
+- **Given** the competitor dashboard is viewed, **When** the user opens it, **Then** the UI queries `chainlens-research` for tracked products and renders a side-by-side comparison with change indicators and source badges.
 
 **Validation:**
-- Integration test: `test_competitor_change_detection.py`
-- UI test: `test_competitor_dashboard.py`
+- Integration test: `test_competitor_change_detection.py` — changes detected after ingest
+- UI test: `test_competitor_dashboard.py` — side-by-side comparison renders
+- Integration test: `test_competitor_ingest_chainlens.py` — `NowingIngestService` called on refresh
 
-_AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy)._
+_AD-33 (Generic Alert Engine — AlertRule template, `new_items` diff strategy) · AD-34 · AD-35_
+
+---
+
+## Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research
+
+As a Nowing user,
+I want my chat agent to leverage a shared research index and on-demand private data without Nowing building its own public search corpus,
+So that the agent can answer "I don't know" questions by indexing fresh web/vertical data and still keep my private data inside Nowing.
+
+> **Mối quan hệ với `chainlens-research`:** `Epic 47` bên `chainlens-research` định nghĩa các endpoint tiếp nhận (`POST /v1/ingest/scraper`, `/v1/gap-fill`, `/v1/private-data/search`). Epic 20 này định nghĩa phía Nowing: scraper phải `to_chunks()` thế nào, ai gọi `chainlens-research`, và `NowingPrivateProvider` trả về kết quả thế nào. Technical implementation is captured in the acceptance criteria and `Kỹ thuật` notes below; the user value is broader, fresher research answers with private data safely isolated.
+
+**FRs:** FR-58 (Scraper Feed), FR-59 (Gap-Fill), FR-60 (Private Provider), FR-61 (Cross-Project Auth), FR-62 (Chunk Schema).
+
+**ADs:** `AD-3`, `AD-4`, `AD-5`, `AD-15`, `AD-34`, `AD-35`.
+
+### Story 20.1: Nowing Scraper `to_chunks()` + `NowingIngestService`  `(mới 2026-08-08)`  `[ready-for-dev]`
+
+As a Nowing user / chat user,
+I want my scraper data to be searchable through chainlens,
+so that the agent can answer with fresh data.
+
+**Acceptance Criteria:**
+
+**Given** a scraper result (e.g. `batdongsan` listings, `vn_jobs.aggregate` entities),
+**When** `to_chunks()` is called,
+**Then** it returns `Chunk[]` with `metadata` containing: `source: 'nowing_scraper'`, `sourceId` (stable fingerprint), `domain`, `fetchedAt`, `contentType`, and `canonicalEntityId` if applicable.
+
+**Given** `Chunk[]` from any scraper,
+**When** `NowingIngestService.ingest(scraper_id, chunks)` is called,
+**Then** it calls `POST /v1/ingest/scraper` on `chainlens-research` with service auth, `workspace_id`, `source: 'nowing_scraper'`, and the chunk batch; it returns `ingestJobId` and stores the job mapping in `Nowing` Postgres.
+
+**Given** a batch larger than 1,000 chunks,
+**When** ingesting,
+**Then** `NowingIngestService` paginates the batch and tracks a parent `ingestJobId` plus child job IDs.
+
+**Given** `chainlens-research` returns `409` for duplicate `sourceId`,
+**When** handling the response,
+**Then** `NowingIngestService` maps duplicates to `noop` status and continues the rest of the batch.
+
+**Given** a scraper result is missing required fields (`title`, `company`, `location` for jobs; equivalent for other domains),
+**When** `to_chunks()` is called,
+**Then** it raises `ChunkValidationError` with field details and the batch is not sent.
+
+**Given** `chainlens-research` returns `5xx` or times out,
+**When** `NowingIngestService.ingest()` is called,
+**Then** it retries with exponential backoff (max 3 attempts) and stores the failed batch in a dead-letter queue; after max retries it marks the job `failed` and emits a `chainlens_ingest_failed` counter.
+
+**Given** a chunk has `content` larger than 8,000 tokens,
+**When** `to_chunks()` is called,
+**Then** it splits into multiple `Chunk` objects with sequential `metadata.chunkIndex` / `metadata.chunkTotal` and stable `sourceId` suffixes.
+
+**Given** `to_chunks()` produces a `Chunk[]`,
+**When** the batch is sent to `chainlens-research`,
+**Then** each `Chunk` conforms to the canonical schema and `source` enum defined in `chainlens-research` Story 47-1 (FR-62, AD-35); if `chainlens-research` rejects a chunk for schema violation, `NowingIngestService` logs the first failing chunk and fails the batch.
+
+**Kỹ thuật (không phải AC):** Tách `to_chunks()` thành mixin hoặc helper trong `app/services/scraper_chunks/`; `NowingIngestService` nằm ở `app/services/chainlens/ingest.py`. Auth qua `ChainLensServiceAuth` (`Story 20.4`).
+
+_Governed by `AD-34`, `AD-35`, FR-58, FR-62._
+
+### Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)  `(mới 2026-08-08)`  `[ready-for-dev]`
+
+As a chat user,
+I want the agent to ask `chainlens-research` to index missing data on demand,
+So that the answer does not say "I don't know" when the data is available on the public web or via a Nowing scraper.
+
+**Acceptance Criteria:**
+
+**Given** a user query in chat,
+**When** `chainlens-research` `POST /api/v1/search` returns a `gap-fill-needed` signal (or empty result with `suggested_domains`),
+**Then** the chat orchestrator calls `POST /v1/gap-fill` with `{ query, domains?, source?, priority }` and `workspace_id`.
+
+**Given** a gap-fill request,
+**When** `chainlens-research` decides the gap is in a domain owned by Nowing (e.g. `batdongsan`, `vn_jobs`),
+**Then** `chainlens-research` calls `POST /v1/scraper/{scraper_id}/run` on Nowing (internal), Nowing runs the scraper, and the result is pushed back to `chainlens-research` via `Story 20.1`.
+
+**Given** the final `SSE done` frame,
+**When** `costDollars` is reported,
+**Then** Nowing bills the user once for the total (search + gap-fill + scraper usage), and internal cost allocation is recorded separately for Nowing scraper infra vs `chainlens-research` indexing.
+
+**Given** gap-fill takes longer than 60s,
+**When** the chat orchestrator waits,
+**Then** it uses the async research door (`AD-17`, `?mode=async`) and returns a `run_id` to the user; the result arrives via SSE `run_event_bus`.
+
+_Governed by `AD-4`, FR-59, `AD-8`._
+
+### Story 20.3: `NowingPrivateProvider` for `POST /v1/private-data/search`  `(mới 2026-08-08)`  `[ready-for-dev]`
+
+As a Nowing user,
+I want my private data to stay in Nowing while still being used for answers,
+so that privacy is preserved.
+
+**Acceptance Criteria:**
+
+**Given** `chainlens-research` calls `POST /v1/private-data/search` with `{ query, userId, workspaceId, connectorId?, sources? }`,
+**When** the request arrives,
+**Then** Nowing validates the service auth token and `workspaceId` RLS, then runs the search against the user's private data sources.
+
+**Given** private search executes,
+**When** results are collected,
+**Then** it returns `SearchProviderResult { chunks: Chunk[], costDollars? }` with `metadata.source = 'private_provider'` and `sourceId` scoped per document/connector.
+
+**Given** a `connectorId` is provided,
+**When** searching,
+**Then** only data from that connector is returned, and OAuth tokens are fetched from `Nowing` Postgres (never sent to `chainlens-research`).
+
+**Given** the request has no matching data,
+**When** complete,
+**Then** it returns `chunks: []` and `costDollars: 0`, not 404.
+
+_Governed by `AD-5`, FR-60, `AD-16`._
+
+### Story 20.4: Service-to-Service Auth + Cost Ledger Sync  `(mới 2026-08-08)`  `[ready-for-dev]`
+
+As a platform engineer,
+I want secure service-to-service auth and a shared cost envelope between Nowing and `chainlens-research`,
+So that `chainlens-research` can meter usage and Nowing can bill the user.
+
+**Acceptance Criteria:**
+
+**Given** any `chainlens-research` internal endpoint call,
+**When** the request leaves Nowing,
+**Then** it carries a Bearer service token + `X-Correlation-Id` + `X-Workspace-Id` headers.
+
+**Given** `chainlens-research` receives the request,
+**When** validating,
+**Then** it checks the service token against a shared secret; it rejects with `401` if missing/invalid.
+
+**Given** a search/gap-fill/ingest call completes,
+**When** `chainlens-research` reports `costDollars`,
+**Then** Nowing writes a `TokenUsage` record with `usage_type` mapped from the operation (e.g. `chainlens_search`, `chainlens_gap_fill`, `chainlens_ingest`), linked to `workspace_id` and `run_id`.
+
+**Given** a `costDollars` value,
+**When** converting to credits,
+**Then** Nowing applies the same `costDollars → micros` rate as external provider calls (`AD-8`).
+
+**Given** the service token is within 30 days of expiration or `chainlens-research` returns `401` due to token expiry,
+**When** the next outbound request is made,
+**Then** `ChainLensServiceAuth` rotates the token from a secure secret store and updates the stored token without dropping the in-flight request.
+
+**Given** token rotation fails,
+**When** `NowingIngestService` / gap-fill / private-provider calls need auth,
+**Then** the request fails open with `service_auth_unavailable` and a `chainlens_auth_failed` counter is emitted; no user data is sent with an invalid token.
+
+_Governed by `AD-3`, `AD-4`, `AD-5`, FR-61, `AD-8`._
 

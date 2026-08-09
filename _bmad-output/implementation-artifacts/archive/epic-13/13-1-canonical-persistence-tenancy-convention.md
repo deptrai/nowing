@@ -1,6 +1,8 @@
-# Story 13.1: Canonical Persistence, Tenancy & Convention
+# Story 13.1: Canonical Persistence, Tenancy & Convention `[DROPPED 2026-08-08]`
 
-**Status:** done  
+> **DROPPED per SCP 2026-08-08.** Nowing no longer builds `canonical_entities` tables, multi-domain index, or unified search corpus. `chainlens-research` owns the canonical index. This story file is retained for reference only.
+
+**Status:** dropped  
 **Epic:** Epic 13 — Canonical Entity Storage & Multi-Domain Indexing  
 **Priority:** P0  
 **Baseline commit:** `72806b18de0df53071d7f310c1c3f7706cb12f96`  
@@ -193,5 +195,5 @@ Not recorded in baseline commit.
 - PRD / Epic: `_bmad-output/planning-artifacts/epics.md` (Epic 13, lines 1331-1449)
 - Architecture: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` (AD-2, AD-27, AD-28)
 - Implementation readiness: `_bmad-output/planning-artifacts/implementation-readiness-report-2026-08-06.md`
-- UX contract: `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-canonical-entity.md`
+- UX contract: `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/archive/ux-contract-canonical-entity.md` (archived 2026-08-08)
 - Validation report: `_bmad-output/implementation-artifacts/validation-reports/13-1-validation-report.md`

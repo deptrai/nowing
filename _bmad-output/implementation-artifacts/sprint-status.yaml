@@ -172,7 +172,7 @@ development_status:
   epic-10-retrospective: optional
 
   # === Epic 20: Nowing Ecosystem Integration (Nowing side of chainlens-research Epic 47) ===
-  # Cross-project implementation order: 47-5 (Chunk schema) → 47-4 + 20.4 (auth) + 20.1 (ingest) parallel → 47-1 + 20.2 (gap-fill) → 47-2 → 47-3 + 20.3
+  # Cross-project implementation order: 47-1 (Chunk schema) → 47-2 (service auth/cost) → 47-3 (ingest) + 20.1 (ingest client) parallel → 47-4 (gap-fill) + 20.2 (gap-fill caller) parallel → 47-5 (private provider) + 20.3 (NowingPrivateProvider) parallel → 20.4 (cost ledger sync) → 47-IT1
   epic-20: in-progress
   20-1: ready-for-dev
   # ponytail: 2026-08-08 architecture-review — Nowing to_chunks() + NowingIngestService.

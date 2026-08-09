@@ -457,6 +457,11 @@ export function LayoutDataProvider({
 		}
 	}, [workspaceToLeave, refetchWorkspaces, workspaceId, router, t]);
 
+	// Switches a tab from the resolved tab model. The signature changed from `Tab`
+	// to `ResolvedTab` because the shell now resolves entity IDs into the workspace
+	// id and a typed `entityId` before any tab action. `entityId` is parsed with
+	// `Number.parseInt` and guarded with `Number.isNaN` so chat-ids from URLs or
+	// the "new" placeholder never produce an invalid id.
 	const handleTabSwitch = useCallback(
 		(tab: ResolvedTab) => {
 			if (tab.type === "chat") {

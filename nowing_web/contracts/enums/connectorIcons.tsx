@@ -11,6 +11,7 @@ import {
 	Webhook,
 } from "lucide-react";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 import { EnumConnectorName } from "./connector";
 
 export const getConnectorIcon = (connectorType: EnumConnectorName | string, className?: string) => {
@@ -74,7 +75,16 @@ export const getConnectorIcon = (connectorType: EnumConnectorName | string, clas
 		case EnumConnectorName.CIRCLEBACK_CONNECTOR:
 			return <Image src="/connectors/circleback.svg" alt="Circleback" {...imgProps} />;
 		case EnumConnectorName.MCP_CONNECTOR:
-			return <Image src="/connectors/modelcontextprotocol.svg" alt="MCP" {...imgProps} />;
+			return (
+				<span
+					aria-hidden="true"
+					className={cn("shrink-0 bg-current", className || "size-5")}
+					style={{
+						mask: "url('/connectors/modelcontextprotocol.svg') center / contain no-repeat",
+						WebkitMask: "url('/connectors/modelcontextprotocol.svg') center / contain no-repeat",
+					}}
+				/>
+			);
 		case EnumConnectorName.OBSIDIAN_CONNECTOR:
 			return <Image src="/connectors/obsidian.svg" alt="Obsidian" {...imgProps} />;
 		case EnumConnectorName.COMPOSIO_GOOGLE_DRIVE_CONNECTOR:

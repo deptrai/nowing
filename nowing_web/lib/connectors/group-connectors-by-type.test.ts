@@ -36,14 +36,12 @@ const notDeprecated = new Set<string>();
 	assert.strictEqual(groups[0].connectors.length, 1);
 	assert.strictEqual(groups[1].connectorType, "SLACK_CONNECTOR");
 	assert.strictEqual(groups[1].connectors.length, 2);
-	console.log("✓ groups connectors by type with sorted titles");
 }
 
 // Test 2: empty input
 {
 	const groups = groupConnectorsByType([], { deprecatedTypes: notDeprecated });
 	assert.deepStrictEqual(groups, []);
-	console.log("✓ returns empty array for no connectors");
 }
 
 // Test 3: include display types
@@ -56,7 +54,6 @@ const notDeprecated = new Set<string>();
 	const slack = groups.find((g) => g.connectorType === "SLACK_CONNECTOR");
 	assert.ok(slack);
 	assert.strictEqual(slack?.connectors.length, 0);
-	console.log("✓ includes display types even when not connected");
 }
 
 // Test 4: deprecated hidden unless connected
@@ -76,7 +73,13 @@ const notDeprecated = new Set<string>();
 	});
 	assert.strictEqual(groupsNotConnected.length, 1); // Only Notion
 	assert.strictEqual(groupsNotConnected[0].connectorType, "NOTION_CONNECTOR");
-	console.log("✓ deprecated types hidden unless connected");
 }
 
-console.log("All group-connectors-by-type tests passed.");
+// Test 5: malformed rows with no connector_type are skipped
+{
+	const malformed = { ...makeConnector("SLACK_CONNECTOR", 1), connector_type: "" };
+	const connectors = [malformed as SearchSourceConnector, makeConnector("NOTION_CONNECTOR", 2)];
+	const groups = groupConnectorsByType(connectors, { deprecatedTypes: notDeprecated });
+	assert.strictEqual(groups.length, 1);
+	assert.strictEqual(groups[0].connectorType, "NOTION_CONNECTOR");
+}

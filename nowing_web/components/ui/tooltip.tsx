@@ -2,7 +2,7 @@
 
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import type * as React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -37,18 +37,33 @@ function TooltipProvider({
 }
 
 function Tooltip({
-	open,
-	onOpenChange,
+	open: openProp,
+	onOpenChange: onOpenChangeProp,
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
 	const canHover = useCanHover();
+	const isControlled = openProp !== undefined;
+	const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+
+	const open = isControlled ? (canHover ? openProp : false) : canHover ? uncontrolledOpen : false;
+	const onOpenChange = useCallback(
+		(value: boolean) => {
+			if (!canHover) return;
+			if (isControlled) {
+				onOpenChangeProp?.(value);
+			} else {
+				setUncontrolledOpen(value);
+			}
+		},
+		[canHover, isControlled, onOpenChangeProp]
+	);
 
 	return (
 		<TooltipProvider>
 			<TooltipPrimitive.Root
 				data-slot="tooltip"
-				open={canHover ? open : false}
-				onOpenChange={canHover ? onOpenChange : undefined}
+				open={open}
+				onOpenChange={onOpenChange}
 				{...props}
 			/>
 		</TooltipProvider>

@@ -123,7 +123,7 @@ Hệ quả UX:
 - Chặn: Story **18.3** (FR-57), Story **18.4** (prompt injection)
 - Phụ thuộc: **AD-30**, **AD-29**, **AD-31**, AD-8 (Global Model Catalog), NFR-MULTI-1
 - Reuses: `ux-contract-admin-global-model-config.md`
-- Related: `ux-contract-canonical-entity.md` (admin patterns only — different epic)
+- Related: `archive/ux-contract-canonical-entity.md` (admin patterns only — different epic; archived 2026-08-08)
 
 ---
 

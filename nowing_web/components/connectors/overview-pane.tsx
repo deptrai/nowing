@@ -7,10 +7,10 @@ import {
 	CONNECTOR_DISPLAY_DEFINITIONS,
 	DEPRECATED_CONNECTOR_TYPES,
 } from "@/components/assistant-ui/connector-popup/constants/connector-constants";
+import { getDocumentCountForConnector } from "@/components/assistant-ui/connector-popup/utils/connector-document-mapping";
 import { useIsSelfHosted } from "@/components/providers/runtime-config";
 import { Input } from "@/components/ui/input";
 import type { SearchSourceConnector } from "@/contracts/types/connector.types";
-import { getDocumentCountForConnector } from "@/components/assistant-ui/connector-popup/utils/connector-document-mapping";
 import { usePlatform } from "@/hooks/use-platform";
 import { useZeroDocumentTypeCounts } from "@/hooks/use-zero-document-type-counts";
 import { groupConnectorsByType } from "@/lib/connectors/group-connectors-by-type";
@@ -31,7 +31,12 @@ type DeploymentFilterableConnector = {
 	readonly desktopOnly?: boolean;
 };
 
-export function OverviewPane({ workspaceId, connectors, indexingConnectorIds, onSelect }: OverviewPaneProps) {
+export function OverviewPane({
+	workspaceId,
+	connectors,
+	indexingConnectorIds,
+	onSelect,
+}: OverviewPaneProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const selfHosted = useIsSelfHosted();
 	const { isDesktop } = usePlatform();
@@ -43,23 +48,24 @@ export function OverviewPane({ workspaceId, connectors, indexingConnectorIds, on
 	);
 
 	const groups = useMemo(
-		() => groupConnectorsByType(connectors, { displayTypes: undefined, deprecatedTypes: DEPRECATED_CONNECTOR_TYPES }),
+		() =>
+			groupConnectorsByType(connectors, {
+				displayTypes: undefined,
+				deprecatedTypes: DEPRECATED_CONNECTOR_TYPES,
+			}),
 		[connectors]
 	);
-	const groupsByType = useMemo(
-		() => new Map(groups.map((g) => [g.connectorType, g])),
-		[groups]
-	);
-
-	const matchesSearch = (title: string, description: string) =>
-		searchQuery.length === 0 ||
-		title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-		description.toLowerCase().includes(searchQuery.toLowerCase());
-
-	const passesDeploymentFilter = (c: DeploymentFilterableConnector) =>
-		(!c.selfHostedOnly || selfHosted) && (!c.desktopOnly || isDesktop);
+	const groupsByType = useMemo(() => new Map(groups.map((g) => [g.connectorType, g])), [groups]);
 
 	const visibleDefinitions = useMemo(() => {
+		const matchesSearch = (title: string, description: string) =>
+			searchQuery.length === 0 ||
+			title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			description.toLowerCase().includes(searchQuery.toLowerCase());
+
+		const passesDeploymentFilter = (c: DeploymentFilterableConnector) =>
+			(!c.selfHostedOnly || selfHosted) && (!c.desktopOnly || isDesktop);
+
 		return CONNECTOR_DISPLAY_DEFINITIONS.filter((c) => {
 			if (!matchesSearch(c.title, c.description)) return false;
 			if (!passesDeploymentFilter(c)) return false;
@@ -130,12 +136,8 @@ export function OverviewPane({ workspaceId, connectors, indexingConnectorIds, on
 										!!definition.connectorType &&
 										DEPRECATED_CONNECTOR_TYPES.has(definition.connectorType)
 									}
-									onConnect={() =>
-										definition.connectorType && onSelect(definition.connectorType)
-									}
-									onManage={() =>
-										definition.connectorType && onSelect(definition.connectorType)
-									}
+									onConnect={() => definition.connectorType && onSelect(definition.connectorType)}
+									onManage={() => definition.connectorType && onSelect(definition.connectorType)}
 								/>
 							);
 						})}

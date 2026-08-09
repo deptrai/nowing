@@ -51,3 +51,18 @@ class AzureBlobBackend(StorageBackend):
         async with self._service() as service:
             blob = service.get_blob_client(self._container, key)
             return await blob.exists()
+
+    def public_url(self, key: str) -> str:
+        """Return the direct blob URL for a public or signed container."""
+        settings = {
+            item.split("=", 1)[0]: item.split("=", 1)[1]
+            for item in self._connection_string.split(";")
+            if "=" in item
+        }
+        account = settings.get("AccountName", "")
+        endpoint_suffix = settings.get("EndpointSuffix", "core.windows.net")
+        protocol = settings.get("DefaultEndpointsProtocol", "https")
+        blob_endpoint = settings.get("BlobEndpoint")
+        if blob_endpoint:
+            return f"{blob_endpoint.rstrip('/')}/{self._container}/{key}"
+        return f"{protocol}://{account}.blob.{endpoint_suffix}/{self._container}/{key}"

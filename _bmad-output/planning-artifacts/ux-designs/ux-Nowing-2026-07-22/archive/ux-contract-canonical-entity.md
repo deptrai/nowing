@@ -1,4 +1,6 @@
-# UX Contract — Canonical Entity: Search, Review & Resolution
+# UX Contract — Canonical Entity: Search, Review & Resolution `[DROPPED 2026-08-08]`
+
+> **DROPPED per SCP 2026-08-08.** Epic 13 (`canonical_entities` table, multi-domain indexing, unified search) was removed from Nowing. Canonical entity UX now lives in `chainlens-research`. For the Nowing-side UX, see `ux-contract-ecosystem-search.md` and `ux-contract-private-data-provider.md`. This contract is retained for reference only.
 
 **Ngày:** 2026-08-06
 **Phạm vi:** UX cho 4 surfaces của Epic 13 — search results, admin review queue, entity detail & history, conflict resolution.

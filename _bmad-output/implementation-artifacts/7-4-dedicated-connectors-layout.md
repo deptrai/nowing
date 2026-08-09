@@ -2,12 +2,12 @@
 baseline_commit: 25ba542c2a3dec95b0a4020da8c129242ba748e2
 baseline_branch: develop
 story_key: 7-4-dedicated-connectors-layout
-status: review
+status: done
 ---
 
 # Story 7.4: Dedicated Connectors Layout (replace connector modal with a full-page dashboard)
 
-**Status:** review
+**Status:** done
 **Epic:** 7 — Integrations: Native + MCP
 **Priority:** HIGH
 **Requirements:** FR-25, FR-7, FR-8
@@ -141,6 +141,20 @@ SurfSense PR #1624 (`MODSetter/SurfSense#1624`, merged 2026-07-23) replaced the 
 - [ ] Unit test `groupConnectorsByType` (grouping, empty list, deprecated-hidden-if-not-connected).
 - [ ] Component/integration test for the rail health states (syncing vs failed vs connected) using mocked `connectorsAtom` data.
 - [ ] Navigation test: `/dashboard/{workspace_id}/connectors` renders page + rail + overview; tapping a connector switches detail pane by account-count routing.
+
+### Review Findings
+
+- [x] [Review][Patch] Thiếu fallback manage view cho live non-MCP connectors — `connector-detail-pane.tsx:124-187`
+- [x] [Review][Patch] Thiếu test cho rail health states và navigation `/connectors` — thêm Playwright E2E + component test
+- [x] [Review][Patch] Composer add-menu trên mobile chưa triển khai vaul drawer (AC5) — `thread.tsx:1114, 1226-1287, 1498-1534`
+- [x] [Review][Patch] Trạng thái mở của hộp thoại connector bị leak khi ở trang `/connectors` — `connector-detail-pane.tsx:38-41`, `use-connector-dialog.ts:1384-1409`, `client-layout.tsx:173`
+- [x] [Review][Patch] Phát hiện trang connectors bằng `pathname.includes` gây false positive — `client-layout.tsx:46`
+- [x] [Review][Patch] `groupConnectorsByType` chưa validate `connector_type`, có thể throw — `group-connectors-by-type.ts:33, 64`
+- [x] [Review][Patch] MCP icon không dùng `mask: currentColor` ở rail và composer menu — `connectorIcons.tsx:76-77`, `connector-card.tsx:105-112`
+- [x] [Review][Patch] `messages/en.json` vẫn dùng từ “Connectors” thay vì “Integrations” — `messages/en.json:138, 206, 297-304, 327, 752-753`
+- [x] [Review][Patch] Unit test `groupConnectorsByType` không được chạy trong CI — `group-connectors-by-type.test.ts`, `package.json`
+- [x] [Review][Patch] Thay đổi signature `handleTabSwitch` không có giải thích — `LayoutDataProvider.tsx:460-473`
+- [x] [Review][Defer] Thay đổi mở document thành tab trong `DocumentsSidebar` chưa có test — `DocumentsSidebar.tsx:354, 1123-1126` — deferred, pre-existing
 
 ## Dev Notes
 

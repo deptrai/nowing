@@ -32,6 +32,9 @@ def _allowed_origins() -> set[str]:
     return origins
 
 
+LOCAL_LOOPBACK_HOSTS = {"localhost", "127.0.0.1"}
+
+
 # Lets self-hosted deployments work from any address (LAN IP, custom domain)
 # without pre-configuring the static allowlist on .env.
 def _is_same_origin(origin: str | None, host: str | None) -> bool:
@@ -39,6 +42,25 @@ def _is_same_origin(origin: str | None, host: str | None) -> bool:
         return False
     parsed_origin = urlparse(origin)
     return parsed_origin.netloc == host
+
+
+def _is_loopback_origin(origin: str | None, host: str | None) -> bool:
+    """True when both the origin and the host are a local loopback address.
+
+    Used in development/self-host scenarios where the frontend is served from
+    a different port than the backend (e.g. 127.0.0.1:3000 -> 127.0.0.1:8001).
+    """
+    if not origin or not host:
+        return False
+    parsed_origin = urlparse(origin)
+    try:
+        parsed_host = urlparse(f"http://{host}")
+    except ValueError:
+        return False
+    return (
+        parsed_origin.hostname in LOCAL_LOOPBACK_HOSTS
+        and parsed_host.hostname in LOCAL_LOOPBACK_HOSTS
+    )
 
 
 class CsrfOriginMiddleware(BaseHTTPMiddleware):
@@ -64,6 +86,11 @@ class CsrfOriginMiddleware(BaseHTTPMiddleware):
         host = request.headers.get("Host")
 
         if _is_same_origin(origin, host):
+            return await call_next(request)
+
+        # In dev/self-host, allow any loopback cross-port origin so tests and
+        # local UIs don't need a hardcoded port list in CSRF_ALLOWED_ORIGINS.
+        if config.CSRF_ALLOW_LOOPBACK and _is_loopback_origin(origin, host):
             return await call_next(request)
 
         if origin not in _allowed_origins():

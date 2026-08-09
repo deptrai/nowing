@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export const Logo = ({
 	className,
 	disableLink = false,
-	priority = false,
+	priority = true,
 }: {
 	className?: string;
 	disableLink?: boolean;

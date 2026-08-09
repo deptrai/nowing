@@ -27,6 +27,8 @@
 		"test:e2e:debug": "playwright test --debug",
 		"test:e2e:report": "playwright show-report",
 		"test:e2e:install": "playwright install --with-deps chromium",
+		"test:connectors": "tsx lib/connectors/group-connectors-by-type.test.ts",
+		"test:connectors-rail": "tsx tests/connectors/connector-rail-health.test.ts",
 		"test:automations-builder": "tsx tests/automations/builder-schema.test.ts"
 	},
 	"dependencies": {

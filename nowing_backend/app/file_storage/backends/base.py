@@ -29,3 +29,15 @@ class StorageBackend(ABC):
     @abstractmethod
     async def exists(self, key: str) -> bool:
         """Return whether an object is stored at ``key``."""
+
+    def public_url(self, key: str) -> str:
+        """Return a public URL for ``key``.
+
+        ponytail: The default assumes files are served under ``NOWING_PUBLIC_URL``
+        with the storage key as the path. Backends with native public URLs
+        (Azure, S3, CDN) should override this.
+        """
+        from app.config import config
+
+        base = (config.NOWING_PUBLIC_URL or "").rstrip("/")
+        return f"{base}/{key}" if base else f"/{key}"

@@ -16,8 +16,10 @@ sources:
   - /Users/luisphan/Documents/nowing/docs/api-contracts-backend.md
   - /Users/luisphan/Documents/nowing/docs/api-contracts-mcp.md
   - /Users/luisphan/Documents/nowing/docs/integration-architecture.md
+  - /Users/luisphan/Documents/chainlens-research/_bmad-output/planning-artifacts/architecture/architecture-chainlens-research-2026-08-08/ARCHITECTURE-SPINE.md
 companions:
   - /Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md
+  - /Users/luisphan/Documents/chainlens-research/_bmad-output/planning-artifacts/architecture/architecture-chainlens-research-2026-08-08/ARCHITECTURE-SPINE.md
   - /Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/epics.md
   - /Users/luisphan/Documents/nowing/_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md
   - /Users/luisphan/Documents/chainlens-research/_bmad-output/planning-artifacts/architecture/ADR-CHAINLENS-AS-NOWING-MICROSERVICE.md
@@ -54,6 +56,12 @@ companions:
 > - **`AD-28` tightened:** Define fingerprint match rate formula precisely (`entities with ≥2 sources / total entities`, weekly, 2 consecutive weeks); remove subjective "đáng kể" (3rd domain = trigger); add SLA (refactor within 1 sprint); acknowledge plugin ABC migration cost.
 > - **`AD-27`/`AD-28` + Epic 13 align 2026-08-06:** Shared canonical tables/source lineage ship in Story 13.1 **before** the plugin-engine trigger. AD-28 only gates DomainPlugin matching refactor. Module exports may wrap existing `dedupe.py`/`normalize.py`. Tenant RLS uses `SET LOCAL app.workspace_id` + FORCE RLS + NOBYPASSRLS.
 >
+> **✅ Bổ sung 2026-08-08 (đợt 8 — Ecosystem alignment with chainlens-research):**
+> - **`AD-27` RE-SCOPED** — từ *"canonical entity convention/multi-domain indexing trong Nowing"* → *"Nowing scraper output feeds `chainlens-research`"*. Nowing không giữ canonical index.
+> - **`AD-28` RE-SCOPED** — từ *"unified engine trigger trong Nowing"* → *"unified domain engine thuộc `chainlens-research`"*.
+> - **`AD-34` mới** — scraper feed contract: `Chunk[]` schema + `POST /v1/ingest/scraper`.
+> - **`AD-35` mới** — `Nowing` không build public/vertical search corpus; `Memory`/`ResearchThread` chỉ cho private user memory + product state.
+>
 > **✅ Correct-course 2026-08-07 — Vertical Client Platform split:**
 > - Public agent-chat / Agent Registry / vertical `client_id` tenancy moved from Epic 13 drafts into **Epic 18**.
 > - **`AD-13` amended** — ResearchThread remains continuation context; public agent-chat is allowed only under AD-29 guardrails.
@@ -65,6 +73,76 @@ companions:
 > **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
 > - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
 > - **`AD-20` mới** — screenshot-as-evidence dùng **browser tier sẵn có** (patchright đã mở đúng trang, `page.screenshot()` là một lời gọi) + vision model **đã có** (`get_vision_llm`, `Workspace.vision_model_id`) khi extraction mỏng. **KHÔNG** adopt visual-RAG stack (PixelRAG): `AD-2` pgvector **không đổi**, không FAISS/Qdrant, không GPU cho self-host, không nhân storage 100–500×, citation `FR-13`/`NFR-6` không vỡ. Cải chính một nhầm lẫn loại: **visual RAG không phải giải pháp CAPTCHA**.
+
+## Architecture Diagram
+
+```mermaid
+flowchart TB
+    subgraph Client["Client Layer"]
+        Web["nowing_web<br/>Next.js"]
+        Desktop["nowing_desktop<br/>Electron"]
+        MCP["MCP Client"]
+        Ext["Browser Extension"]
+    end
+
+    subgraph APIGW["API / Gateway"]
+        NJS["Next.js Server Proxy"]
+        API["FastAPI Monolith<br/>nowing_backend"]
+    end
+
+    subgraph Core["Nowing Core Modules"]
+        Chat["Chat & Agents"]
+        Mem["Memory Service<br/>HNSW + GIN"]
+        Scrapers["Domain Scrapers<br/>app/proprietary/platforms/"]
+        CapReg["Capability Registry"]
+        Auto["Automations"]
+        Bill["Billing / Usage"]
+        Conn["Connectors / OAuth"]
+        Admin["Admin / RBAC"]
+        PDP["NowingPrivateProvider"]
+    end
+
+    subgraph Data["Data Layer"]
+        PG["(PostgreSQL<br/>pgvector + Alembic)"]
+        Redis["(Redis<br/>Celery + events)"]
+        S3["(S3 / MinIO<br/>screenshots)"]
+    end
+
+    subgraph External["External"]
+        CL["chainlens-research<br/>POST /api/v1/search SSE"]
+        LLM["LLM Providers"]
+        Stripe["Stripe"]
+        OAuth["OAuth Providers"]
+    end
+
+    Web -->|/api/*| NJS
+    MCP -->|MCP over stdio/sse| API
+    Ext -->|native| Desktop --> Web
+    NJS -->|HTTP| API
+
+    API --> Chat
+    Chat --> Mem
+    Chat --> CapReg
+    Chat -->|deep research| CL
+    CapReg --> Scrapers
+    CapReg --> Auto
+    Scrapers -->|to_chunks()| PG
+    Scrapers -->|POST /v1/ingest/scraper| CL
+    Chat -->|POST /v1/gap-fill| CL
+    CL -->|POST /v1/private-data/search| PDP
+    PDP -->|query docs| PG
+    PDP --> Conn
+    CapReg -->|async jobs| Redis
+    API --> Bill
+    Bill -->|charge| Stripe
+    API -->|auth| OAuth
+    API --> Admin
+    Admin --> PG
+    Mem --> PG
+    Auto --> Redis
+    Conn -->|tokens| PG
+    Chat -->|screenshot on anti-bot| S3
+```
 
 ## Design Paradigm
 
@@ -170,6 +248,7 @@ Không có parent spine; đây là spine cao nhất.
   - `app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py` load user/team memory từ `Memory` table thay vì `User.memory_md`/`Workspace.shared_memory_md`.
   - Structured endpoints: `POST /workspaces/{id}/memories`, `POST /workspaces/{id}/memories/search`, `PATCH /memories/{id}`, `DELETE /memories/{id}`. Legacy bridge endpoints (`GET/PUT /workspaces/{id}/memory`, `GET/PUT /users/me/memory`) vẫn hoạt động nhưng backed by `Memory` table.
   - `TokenUsage.usage_type` mở rộng thêm `memory_create` (và `memory_recall` nếu recall có bước summarization) để theo dõi chi phí extraction/embedding.
+  - **Memory search is for private workspace memory only.** `POST /workspaces/{id}/memories/search` searches user docs and extracted facts, not BĐS/jobs/news/finance/company listings. Public/vertical search queries route through `chainlens-research` (`POST /api/v1/search`) and are governed by AD-34/AD-35.
   - **Provenance phải nối được về nguồn có thể chạy lại (bổ sung 2026-07-25, FR-39).** `source_type`/`source_id` không chỉ để hiển thị citation — với nguồn `scraper_run`, `Memory` phải giữ đủ thông tin để **chạy lại đúng truy vấn cũ** và kiểm fact còn đúng không. Đây là nền của khả năng re-validate.
   - **🔒 AD-11.1 — Memory tự chứa recipe, KHÔNG phụ thuộc retention của `Run`** *(quyết định chốt 2026-07-25; giải readiness **Q-2**)*
     - **Quyết định:** khi tạo memory từ dữ liệu scrape, `Memory` **sao chép** `capability` (ví dụ `reddit.scrape`) và `input` (JSONB) từ `Run` vào chính nó, cộng thêm một **soft reference** tới `run_id` để truy vết.
@@ -604,40 +683,45 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - If ToS or legal counsel blocks a source, that source is disabled gracefully (`degraded=true`) and removed from default `sources` list; do not bypass blocks.
   - **Observability (Dev finding D12):** Add low-cardinality counters for `pii_phones_detected`, `pii_emails_detected`, `pii_names_detected`, `vn_jobs_aggregate_degraded`, and per-source block rate. These support SM-12 and do not leak PII values.
 
-### AD-27 — Canonical Entity Convention (multi-domain indexing)
+### AD-27 — Nowing Domain Scraper Output Feeds chainlens-research (RE-SCOPED 2026-08-08)
 
-- **Binds:** AD-24 (`vn_jobs.aggregate`), AD-22/AD-23 (scraper outputs), all future domain aggregators
-- **Prevents:** Mỗi domain implement matching logic khác chuẩn → khó merge, khó tune, khó reuse
+- **Binds:** AD-22/AD-23/AD-24 (scraper/aggregator outputs), all future domain scrapers
+- **Prevents:** `Nowing` building its own searchable canonical index; `chainlens-research` missing domain-specific data
 - **Rule:**
-  - Mỗi domain aggregator (BĐS, Jobs, Products, Items, ...) MUST implement 3 methods với signature nhất quán:
-    - `fingerprint(raw_data: dict) -> str` — Tạo unique key để match giữa các nguồn. VD: BĐS dùng `normalize(address) + area_m2 + project`; Jobs dùng `normalize(company) + normalize(title) + location + posted_at)` (AD-24 compliant).
-    - `merge(canonical: dict, new_raw: dict) -> MergeResult` — Merge new scrape vào canonical entity, detect conflicts. `MergeResult` is: `TypedDict("MergeResult", {"entity": dict, "conflict": bool, "conflict_fields": list[str], "resolution": str})` where `resolution` ∈ `{"most_recent", "median", "most_confident", "unresolved"}`.
-    - `search_text(canonical: dict) -> str` — Tạo text để embed + full-text search. Chuẩn hóa từ canonical data đã merge.
-  - **Default merge strategies** (mandated per conflict type):
-    - Timestamp fields (price, status, availability) → `most_recent` (by `source_published_at`)
-    - Numeric fields (salary, price) within 20% → `median`; >20% → flag `conflict`, `resolution = "unresolved"`
-    - Source-anchored fields (address, area, legal) → `most_confident` (official registry > classified portal)
-  - **Module path convention:** Each domain lives in `app/services/<domain>_aggregator/`. The three methods may be named exports from existing modules (for example `dedupe.py`, `normalize.py`, `orchestrator.py`) and do **not** require three new files on day one. Shared `normalize()` may live in `app/services/normalize.py` (lowercase + NFKC + collapse whitespace + strip punctuation) or a local domain helper until extracted.
-  - **Shared storage ships before plugin engine:** Epic 13 Story 13.1 creates the shared `canonical_entities` / source-lineage / history tables while domains still use standalone functions. AD-28 only triggers the later `DomainPlugin` wrapper around matching logic.
-  - **Pre-trigger:** Implement as standalone functions (no class/plugin registry). Post-trigger: wrap into `DomainPlugin` ABC — migration is mechanical since signatures are already consistent.
-  - **Inherits AD-24 pattern:** `vn_jobs.aggregate` dedup key (`company + title + location + posted_at`) IS the canonical fingerprint for Jobs domain. AD-27 makes this explicit and extends to all domains.
-  - **Matching waterfall** (4-pass, từ technical research): exact fingerprint → rule-based → vector similarity (cosine similarity > 0.92, per AD-14) → LLM verification (cost-bounded, chỉ cho ambiguous cases).
-  - **Cosine notation:** All thresholds use **cosine similarity** (range [-1, 1], higher = more similar). Threshold > 0.92 ≈ distance < 0.08. AD-14 uses similarity; AD-27 Pass 3 uses the same convention.
-  - **ADOPTED:** AD-24 đã có pattern. Đây là formalize convention, không phải engine mới.
+  - `Nowing` owns domain-specific scrapers and aggregators (anti-bot, business-specific logic, PII redaction).
+  - Scraper/aggregator output **must** be normalized to `Chunk[]` with `source: 'nowing_scraper'` and `metadata.domain`/`metadata.sourceId`/`metadata.fetchedAt`/`metadata.contentType`.
+  - `Nowing` sends the `Chunk[]` batch to `chainlens-research` via `POST /v1/ingest/scraper` (service-to-service Bearer) and receives `ingestJobId`.
+  - Deduplication, embedding, full-text/vector indexing, and search happen in `chainlens-research`. `Nowing` does **not** create a `pgvector` index or full-text search corpus for this vertical data.
+  - Matching/dedup logic may run in `Nowing` for immediate aggregation output (e.g., `confidence_score`, conflict flags) but the merged result is sent as `Chunk[]` to `chainlens-research`; it is **not** stored in a Nowing `canonical_entities` table.
 
-### AD-28 — Unified Canonical Engine Trigger
+### AD-28 — Unified Domain Engine Belongs in chainlens-research (RE-SCOPED 2026-08-08)
 
 - **Binds:** Future domain expansion (domain thứ 3+)
-- **Prevents:** (a) Premature optimization — build engine khi chỉ có 2 domains; (b) Technical debt vô hạn — copy-modify không có limit
+- **Prevents:** `Nowing` owning canonical entity storage, shared indexing, or unified cross-domain search
 - **Rule:**
-  - **Trigger build unified engine** khi 1 trong 2 conditions xảy:
-    - **(a) Có domain thứ 3 cần aggregator** — any domain beyond BĐS and Jobs triggers. No "significantly" qualifier: the 3rd domain IS the trigger.
-    - **(b) Cross-source overlap >30%** trong 1 domain — fingerprint-based matching required.
-  - **Fingerprint match rate formula:** `(distinct canonical entities with ≥2 distinct sources) / (total distinct canonical entities)`, measured weekly over all records in the domain's canonical table. Computed every Monday 00:00 UTC. If result > 0.30 for 2 consecutive weeks → trigger hit.
-  - **Trước trigger:** Giữ copy-modify pattern (AD-24) nhưng follow AD-27 convention (3 methods, signature nhất quán).
-  - **Sau trigger:** Refactor thành unified plugin engine — 1 matching engine + `DomainPlugin` ABC. Migration cost: define ABC with `fingerprint`/`merge`/`search_text` methods; wrap each domain's existing standalone functions into plugin class. **SLA:** Refactor must begin within 1 sprint of trigger detection. New domains built after trigger must use the unified engine.
-  - **Storage vs engine timing:** Shared canonical storage (`canonical_entities`, `canonical_entity_sources`, merge history, outbox) is created by Epic 13 Story 13.1 **before** this trigger. AD-28 does **not** delay those tables. After the trigger, matching logic is refactored behind one `DomainPlugin` engine on top of the already-shared tables; any leftover domain-specific read models become views only if they still exist.
-  - **Tenant isolation for canonical storage:** Every canonical table is workspace-scoped. Application transactions set `SET LOCAL app.workspace_id` from explicit request/task context; tables use `ENABLE/FORCE ROW LEVEL SECURITY` with a non-owner `NOBYPASSRLS` role. Missing context fails closed.
+  - Any future unified matching engine, canonical entity storage, or cross-domain search index is owned by `chainlens-research`, not `Nowing`.
+  - `Nowing` may keep product state (raw scraper logs, billing records, automation runs) and private user `Memory`, but these are **not** the canonical search index.
+  - `Nowing` triggers gap-fill in `chainlens-research` (`POST /v1/gap-fill`) when a query misses data; `chainlens-research` either crawls the public web or invokes the relevant `Nowing` scraper.
+
+### AD-34 — Nowing Scraper Feed Contract (NEW 2026-08-08)
+
+- **Binds:** All `Nowing` scraper and aggregator capabilities
+- **Prevents:** Ingestion protocol divergence between `Nowing` and `chainlens-research`
+- **Rule:**
+  - Each `Nowing` scraper/aggregator implements a `to_chunks()` step that returns `Chunk[]`.
+  - `Chunk` uses the canonical schema from `@chainlens/types`: `content` (string) + `metadata` (strict) with required `source`, `sourceId`, `domain`, `fetchedAt`, `contentType`.
+  - `source` enum is owned by `chainlens-research`: `public_crawl`, `nowing_scraper`, `brave`, `searxng`, `jina`, `exa`, `tavily`, `perplexity`, `private_provider`. `Nowing` scrapers set `source: 'nowing_scraper'` and `domain` to the vertical domain (e.g. `bds`, `vn_jobs`, `news`, `finance`, `company`, `ecommerce`).
+  - `Nowing` calls `POST /v1/ingest/scraper` on `chainlens-research` with service auth. Batches are idempotent keyed by `sourceId`.
+  - On success `chainlens-research` returns `ingestJobId`; `Nowing` may surface this in `Run`/`ResearchThread` provenance.
+
+### AD-35 — Nowing Does Not Build Public/Vertical Search Corpus (NEW 2026-08-08)
+
+- **Binds:** `Nowing` `Memory`, `ResearchThread`, aggregators, and any product state
+- **Prevents:** `Nowing` duplicating `chainlens-research` index; chat/agent queries bypassing the canonical engine
+- **Rule:**
+  - `Nowing` may keep `Memory` rows for private user facts, chat context, and extracted semantic memories (`source_type` = `document`, `chat_message`, `scraper_run_fact`). These live in `Nowing` and are exposed via `NowingPrivateProvider` on demand.
+  - `Nowing` may keep raw scraper run logs and aggregation provenance for product state/billing.
+  - `Nowing` does **not** expose a search/filter API over BĐS, jobs, news, finance, or company listings from its own index. All user-facing search for public/vertical data goes through `chainlens-research`.
 
 
 ### AD-29 — Public Agent-Chat Surface (vertical clients) ✅ ACCEPTED 2026-08-07
@@ -923,3 +1007,29 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
 - **Dependency:** Cần Epic 6 scheduler đã stable (✅ done). Alert Engine là extension của Automation, không phải rewrite.
 - **Migration path:** Story 12-6 (job alerts) là first consumer — build Alert Engine cùng lúc với 12-6. Stories sau chỉ đăng ký template.
 - **Linked PRD:** FR-44 (job alerts), FR-49 (news alerts), FR-50 (stock alerts), FR-51 (company alerts), FR-52 (price alerts) · Epic 6 (Automations) = `done` · Epic 12 stories 12-6→12-9 = `backlog`
+
+---
+
+## Implementation Readiness
+
+**Status:** 🟡 Ready to start cross-project implementation **after** the following are closed.
+
+| # | Gate | State | Story / Artifact |
+|---|---|---|---|
+| 1 | AD-34 — scraper feed contract (`to_chunks()` + `POST /v1/ingest/scraper`) | Spec complete; needs Nowing-side story assignment | `Epic 20` (created) · `Story 20.1` |
+| 2 | AD-4 — gap-fill caller (Nowing side) | Spec complete | `Story 20.2` |
+| 3 | AD-5 — `NowingPrivateProvider` | Spec complete | `Story 20.3` |
+| 4 | AD-19 — anti-bot screenshot escalation | Open | `Story 10.5` (P0) |
+| 5 | AD-18 — bounded memory injection | Verified implemented; needs perf regression gate | `Story 3.17` |
+| 6 | AD-11.1 — memory provenance re-validation | Verified implemented; needs E2E gate | `Story 9.6c` |
+| 7 | Epic 13 deprecated code with P0 defects | Dropped; do not merge until cleaned | `deferred-work.md` |
+
+**Recommended start order:**
+1. `Story 47-1` (chainlens-research canonical `Chunk` schema + `source` enum) — foundation; no blocker.
+2. `Story 47-2` (chainlens-research service auth + cost allocation) — trust boundary for all cross-project calls.
+3. `Story 20.4` (Nowing service auth + cost ledger sync) — parallel with `47-2`; shared secret + `TokenUsage` mapping.
+4. `Story 47-3` (chainlens-research `POST /v1/ingest/scraper`) + `Story 20.1` (Nowing `to_chunks()` + `NowingIngestService`) — parallel; `20.1` consumes `47-1` schema and `47-2`/`20.4` auth.
+5. `Story 47-4` (chainlens-research `POST /v1/gap-fill`) + `Story 20.2` (Nowing gap-fill caller) — after `47-3`/`20.1`.
+6. `Story 47-5` (chainlens-research `NowingPrivateProvider`) + `Story 20.3` (Nowing private provider client) — after `47-4`/`20.2`.
+7. `Story 47-IT1` (cross-project integration test gate) — after `47-1`..`47-5` and `20.1`..`20.4`.
+8. `Story 10.5` (AD-19 anti-bot screenshot escalation) — P0 for HR/BĐS vertical; can run in parallel with Epic 20.

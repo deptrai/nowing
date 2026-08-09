@@ -1,7 +1,7 @@
 ---
 title: Nowing
 created: 2026-07-21
-updated: 2026-08-07
+updated: 2026-08-08
 ---
 
 # PRD: Nowing
@@ -17,6 +17,8 @@ Tài liệu này dành cho PM, stakeholders và downstream workflow (architectur
 > **[NOTE FOR PM] — HR/Recruitment Vertical (Vietnam) added 2026-08-05.** Pilot scope: 8-week pilot for `vn_jobs` research capability covering VietnamWorks (public API), TopCV (HTML + anti-bot), and ITviec (HTML). Source: `prfaq-hr-vertical-vietnam-2026-08-05.md`, `feature-brief-hr-vertical-vietnam-2026-08-05.md`, `pilot-plan-c-memo-2026-08-05.md`, and technical spikes. New FRs: FR-43..FR-47. New NFR: NFR-11. New OQ: OQ-8. New SM: SM-12.
 >
 > **[NOTE FOR PM] — Domain Expansion Research + New Epics added 2026-08-06.** Research report: `research/domain-expansion-research-report-2026-08-06.md`. New FRs: FR-48..FR-55 (Epics 13-20). Product definition updated: `product-definition-nowing-2026-08-06.md`. Key insight: Nowing = Now + Knowing = Knowledge intelligence platform. Three transformations: Data → Entity → Knowledge → Memory. Data strategy: 3 layers (built-in scrapers 30-50 max, OAuth connectors unlimited, ChainLens unlimited).
+>
+> **[NOTE FOR PM] — Ecosystem Alignment 2026-08-08 (SCP `sprint-change-proposal-2026-08-08-remove-duplicate-index.md`, ✅ ADOPTED).** `chainlens-research` owns the single canonical index for public web + shared vertical data. Nowing no longer builds `canonical_entities` / multi-domain indexing / vertical search corpus (Epic 13 `[REMOVED]`). Domain scrapers/aggregators (BĐS, jobs, news, finance, company, e-commerce) output `Chunk[]` and feed `chainlens-research` via `POST /v1/ingest/scraper`. FR-48 `[REMOVED]`; FR-46/49/50/51/52 `[RE-SCOPED]`; FR-47 updated to redact before ingest.
 
 > **[NOTE FOR PM] — Reality-correction 2026-07-24 (đã verify code, sau PRFAQ + validate).** Trái với bản trước, **lớp memory đã được build phần lớn**: migration `177_add_research_memory_tables` tạo `memories`/`memory_versions`/`memory_relations`/`research_threads` (+ enums, `confidence`, index HNSW+GIN, quyền `memory:*`); `179` thêm `workspaces.memory_auto_extract_enabled` (default **true**); ORM `Memory` trong `app/db.py`; endpoints `memories_routes.py`; 4 MCP tools trong `nowing_mcp/.../features/memory/`. PRD gốc chụp trạng thái *trước* khi code đáp (docs đề 2026-07-21; migration 177–179 landing sau). Các FR memory dưới đây đã cập nhật `[BUILT]`/`[PARTIAL]`. **Open items thật (KHÔNG phải "build từ đầu"):** (1) **recall quality/eval gate** trên `nowing_evals` — NFR-8 → **`[DONE — implementation complete; baseline ratification pending]`**, story `3-9` = **`done`**; (2) ~~đánh giá mất dữ liệu (FR-36)~~ → **✅ RESOLVED 2026-07-25: KHÔNG mất dữ liệu** (178 chưa apply prod, alembic 174, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test đã build qua `3-10a`/`3-10b`; giữ deploy-order mig177→backfill→mig178); (3) **dedupe**: primitive đã có (cosine<0.08 + `update_on_duplicate`), cần tune/validate qua eval; (4) legal/retention (OQ-3); (5) metrics; (6) **auto-extract spend cap** — story `8-7` = **`done`** (59 tests passed; default ON, item-cap + spend cap + wallet pre-check + rate-limit). **Chính xác hoá:** đây là **cổng TRƯỚC KHI merge lên prod**, KHÔNG phải cost bleed đang chạy — migration 175–179 còn ở branch `develop`, prod = `alembic 174` (ops verify 2026-07-25). Chi tiết: `validation-report.md`, `epics.md`.
 
@@ -160,12 +162,18 @@ ChainLens không có end-user account, billing, onboarding, hay kênh phân ph�
 
 #### NG-4 (giữ nguyên từ §2.2): công cụ duyệt web thủ công · SLA/compliance doanh nghiệp · native mobile app
 
+#### NG-5: Nowing does NOT build a public/vertical canonical index or search corpus
+Nowing **không** xây `canonical_entities` table, `pgvector` index, `to_tsvector` corpus, hay unified search API cho BĐS/jobs/news/finance/company data trong chính mình.
+- **Lý do cấu trúc:** `chainlens-research` là chỗ duy nhất own canonical index cho public web + shared vertical data. Nowing là scraper + product state + private workspace `Memory`. Duplicate indexing = duplicate storage + phân mảnh canonical source + maintenance gấp đôi.
+- **Ràng buộc kiến trúc:** `AD-27` [RE-SCOPED 2026-08-08] — Nowing scraper output feeds `chainlens-research`; `AD-28` [RE-SCOPED 2026-08-08] — unified domain engine belongs in `chainlens-research`; `AD-34` (scraper feed contract); `AD-35` (Nowing does not build public/vertical search corpus). Xem SCP `sprint-change-proposal-2026-08-08-remove-duplicate-index.md`.
+- **Phạm vi:** Các aggregator (BĐS, jobs) vẫn chạy normalize/dedupe/conflict detection trong Nowing, nhưng output cuối là `Chunk[]` gửi `chainlens-research` qua `POST /v1/ingest/scraper`; Nowing không expose REST/MCP search endpoint riêng cho aggregated listings.
+
 ## 3. Glossary
 - **Workspace** — không gian nghiên cứu; trước đây gọi `searchspace`, migration 170 đổi tên. Chứa documents, chats, connectors, automations, members.
 - **Connector** — nguồn dữ liệu hoặc công cụ bên ngoài: built-in scrapers (Reddit, YouTube, …), OAuth connectors (Google Drive, Notion, Slack, Linear, Jira, …), external MCP connectors.
 - **Capability** — module scraper backend trong `app/capabilities/<platform>/` đăng ký route động qua `build_capabilities_router()`.
 - **MCP server** — Model Context Protocol server (`nowing_mcp`) expose tools cho Claude/Cursor/any MCP client, gọi backend qua REST.
-- **Chunk** — đoạn văn bản được chunk từ document, có embedding và vị trí (`position`) để retrieve.
+- **Chunk** — đơn vị nội dung canonical gửi giữa Nowing và `chainlens-research`. Mỗi `Chunk` có `content` (string) + `metadata` (bắt buộc: `source`, `sourceId`, `domain`, `fetchedAt`, `contentType`). Nowing scraper/aggregator output `Chunk[]` và gọi `POST /v1/ingest/scraper` trên `chainlens-research`.
 - **Citation** — badge số trong câu trả lời chat liên kết đến chunk gốc. Panel hiển thị chunk window (±N chunk) với chunk được trích dẫn highlight.
 - **Automation** — workflow gồm trigger + action; action hiện chỉ có `agent_task`.
 - **Credit (micros)** — ví tín dụng thống nhất, 1_000_000 micros = $1. `user.credit_micros_balance` và `TokenUsage.cost_micros` theo dõi chi phí.
@@ -181,7 +189,7 @@ ChainLens không có end-user account, billing, onboarding, hay kênh phân ph�
 
 ## 4. Features
 
-> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8,**43..55** (Connectors §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)**. *(ID toàn cục, không tuần tự theo section.)*
+> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8,**43..47,49..52,58..62** (Connectors / Ecosystem §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)** · **FR-56,57 (Vertical Client Platform)**. *(ID toàn cục, không tuần tự theo section.)*
 >
 > **⚠️ Thay đổi 2026-07-26:** **FR-41 mới** — Admin UI cho Global LLM Model Configuration (§4.8). Global model config hiện chỉ sửa được qua YAML/env + restart; chưa có UI admin.
 >
@@ -295,86 +303,89 @@ Cung cấp capability `itviec.scrape` để lấy job postings từ `https://itv
 **Status:** `[PROPOSED]` — technical spike passed (HTML parseable, no Cloudflare).
 
 #### FR-46: Vietnam Job Market Aggregator (`vn_jobs.aggregate`)
-Cung cấp capability `vn_jobs.aggregate` để gom dữ liệu từ FR-43, FR-44, FR-45, chuẩn hóa, dedupe, tính confidence score, và phát hiện conflict (ví dụ salary mismatch giữa các nguồn).
+Cung cấp capability `vn_jobs.aggregate` để gom dữ liệu từ FR-43, FR-44, FR-45, chuẩn hóa, dedupe, tính confidence score, phát hiện conflict, rồi **gửi `Chunk[]` tới `chainlens-research` qua `POST /v1/ingest/scraper`** để indexing và search. Nowing không giữ local search corpus.
 
 **Consequences:**
 - Apache-2.0 core service `app/services/jobs_aggregator/` (copy-modify from `bds_aggregator`).
 - Input: `query`, `location`, `sources` (default `['vietnamworks','topcv','itviec']`), `salaryMin/Max`, `employmentType`, `experienceYears`, `maxItemsPerSource`, `minConfidence`.
-- Output: `VnJobAggregateOutput` với `items` (`VnJobAggregatedListing[]`), `degraded`, `degradationReasons`, `sourceBreakdown`, `costMicros`.
+- Output: `VnJobAggregateOutput` với `items` (`VnJobAggregatedListing[]`), `degraded`, `degradationReasons`, `sourceBreakdown`, `costMicros`, `ingestJobId`.
 - Deduplication key: `company + title + location + postedAt`.
-- Confidence score: source trust, overlap, freshness, salary consistency.
-- Exposed via REST, MCP (`nowing_vn_jobs_aggregate`), and chat agent.
+- Confidence score, source count, conflict flags: returned as `Chunk.metadata` to `chainlens-research`.
+- PII redaction (FR-47) chạy trước khi gửi `Chunk[]`.
+- Exposed via REST, MCP (`nowing_vn_jobs_aggregate`), and chat agent as a research-run that feeds the canonical index.
 
 **Status:** `[PROPOSED]`.
 
 #### FR-47: PII Redaction for Job Data
-Pipeline xử lý dữ liệu từ job scrapers trước khi lưu vào memory để phát hiện và loại bỏ/mask thông tin cá nhân (phone, email, names) trong `jobDescription` / `jobRequirement`.
+Pipeline xử lý dữ liệu từ job scrapers **trước khi gửi `Chunk[]` tới `chainlens-research`** (hoặc lưu vào private `Memory`) để phát hiện và loại bỏ/mask thông tin cá nhân (phone, email, names) trong `jobDescription` / `jobRequirement`.
 
 **Consequences:**
 - Regex for Vietnamese phone/email; heuristic/NER for person names.
-- Detected PII is masked or the field is dropped; raw JD is not stored in memory.
+- Detected PII is masked or the field is dropped; raw JD is not stored in memory or in chunks sent to `chainlens-research`.
 - Audit stats logged (counts only, no values).
-- Applies to all job scrapers (FR-43, FR-44, FR-45).
+- Applies to all job scrapers (FR-43, FR-44, FR-45) and the aggregator (FR-46) before ingest.
 
 **Status:** `[PROPOSED]`.
 
-#### FR-48: Canonical Entity Storage & Multi-Domain Indexing (Epic 13)
-As a user,
-I want data from multiple sources deduplicated into canonical entities,
-So that I see one golden record per real-world entity instead of duplicate results.
+#### FR-48: Canonical Entity Storage & Multi-Domain Indexing (Epic 13) `[REMOVED 2026-08-08 — moved to chainlens-research]`
+Canonical entity storage, multi-domain indexing, and unified search now belong to `chainlens-research`, not Nowing. Nowing domain scrapers/aggregators output `Chunk[]` to `chainlens-research` via `POST /v1/ingest/scraper`; `chainlens-research` handles deduplication, embedding, full-text/vector search, and merge history.
 
 **Acceptance Criteria:**
-- Given data from 3 sources about the same entity, when aggregated, then they merge into one canonical entity with confidence score.
-- Given a canonical entity, when displayed, then it shows source count, conflict flags, and merge history.
-- Given a merge, when admin reverts, then entity returns to pre-merge state.
-- Given canonical data contains PII, before storage, then AD-25 redaction applies.
+- ~~Given data from 3 sources about the same entity, when aggregated in Nowing, then they merge into one canonical entity with confidence score.~~ → `chainlens-research` canonical index.
+- ~~Given a canonical entity, when displayed, then it shows source count, conflict flags, and merge history.~~ → `chainlens-research` response.
+- ~~Given a merge, when admin reverts, then entity returns to pre-merge state.~~ → `chainlens-research` merge history.
+- Given canonical data contains PII, before indexing, then AD-25 redaction applies (in Nowing before ingest).
 
-**Status:** `[PROPOSED]`.
+**Status:** `[REMOVED 2026-08-08 — moved to chainlens-research; Epic 13 dropped]`.
 
-#### FR-49: News Aggregation (Epic 14)
+#### FR-49: News Aggregation (Epic 14) `[RE-SCOPED 2026-08-08 — feed to chainlens-research]`
 As a researcher,
-I want news from major Vietnamese portals integrated into my workspace,
-So that I can search and reference news articles alongside my research documents.
+I want news from major Vietnamese portals available in my workspace,
+So that I can search and reference news articles via the Nowing chat agent.
 
 **Acceptance Criteria:**
 - Given RSS feeds are configured, when polled (every 15 min), then new articles from VnExpress, Tuổi Trẻ, Dân Trí, Vietnamnet are fetched.
-- Given articles are stored, when a user searches, then news articles appear in unified search results.
-- Given duplicate articles (syndicated across portals), when detected, then they are deduplicated via FR-48.
+- Given articles are fetched, when normalized to `Chunk[]`, then `POST /v1/ingest/scraper` on `chainlens-research` is called with `source: 'nowing_scraper'` and a stable `sourceId`.
+- Given a user searches for news, when the query is submitted, then `chainlens-research` `POST /api/v1/search` returns indexed news articles with citations.
+- Given duplicate articles (syndicated across portals), when detected, then `chainlens-research` canonical index handles deduplication.
 
-**Status:** `[PROPOSED]`.
+**Status:** `[PROPOSED] — re-scoped to feed chainlens-research; no local Nowing news index.`
 
-#### FR-50: Financial Data Integration (Epic 15)
+#### FR-50: Financial Data Integration (Epic 15) `[RE-SCOPED 2026-08-08 — feed to chainlens-research]`
 As an investment researcher,
 I want stock prices, financial statements, and market news from CafeF and Vietstock,
-So that I can analyze company fundamentals without leaving Nowing.
+So that I can analyze company fundamentals via the Nowing chat agent.
 
 **Acceptance Criteria:**
-- Given CafeF API is connected, when a user queries a stock symbol, then price, OHLCV, and financial statements are returned.
-- Given financial data is stored, when queried, then historical trends and ratios are available.
+- Given CafeF API is connected, when a user queries a stock symbol, then price, OHLCV, and financial statements are fetched.
+- Given financial data is fetched, when normalized to `Chunk[]`, then `POST /v1/ingest/scraper` on `chainlens-research` is called with `source: 'nowing_scraper'` and a stable `sourceId`.
+- Given financial data is indexed, when a user queries, then `chainlens-research` `POST /api/v1/search` returns results with citations.
 
-**Status:** `[PROPOSED]`.
+**Status:** `[PROPOSED] — re-scoped to feed chainlens-research; no local Nowing financial index.`
 
-#### FR-51: Company Data Integration (Epic 16)
+#### FR-51: Company Data Integration (Epic 16) `[RE-SCOPED 2026-08-08 — feed to chainlens-research]`
 As a business researcher,
 I want access to 2M+ Vietnamese company profiles with tax codes and registration data,
-So that I can verify business partners and research market players.
+So that I can verify business partners and research market players via the Nowing chat agent.
 
 **Acceptance Criteria:**
-- Given masothue.com data is integrated, when a user searches by company name or tax code, then company profile is returned.
-- Given company data is stored, when merged with other sources, then matching businesses link via canonical entity (FR-48).
+- Given masothue.com data is integrated, when fetched, then company profiles are normalized to `Chunk[]` and sent to `chainlens-research` via `POST /v1/ingest/scraper`.
+- Given a user searches by company name or tax code, when the query is submitted, then `chainlens-research` `POST /api/v1/search` returns the company profile.
+- Given company data contains PII, before ingest, then AD-25 redaction applies.
 
-**Status:** `[PROPOSED]`.
+**Status:** `[PROPOSED] — re-scoped to feed chainlens-research; no local Nowing company index.`
 
-#### FR-52: E-commerce Intelligence (Epic 17)
+#### FR-52: E-commerce Intelligence (Epic 17) `[RE-SCOPED 2026-08-08 — feed to chainlens-research]`
 As a product researcher,
 I want product data from Lazada and Shopee Vietnam,
-So that I can perform pricing analysis and competitor tracking.
+So that I can perform pricing analysis and competitor tracking via the Nowing chat agent.
 
 **Acceptance Criteria:**
-- Given e-commerce scraper is built, when a user searches by product keyword, then listings with price, seller, ratings are returned.
-- Given products from multiple platforms, when merged, then same products are deduplicated via FR-48.
+- Given e-commerce scraper is built, when a user searches by product keyword, then product listings are fetched and normalized to `Chunk[]`.
+- Given product `Chunk[]` are produced, when the batch is ready, then `POST /v1/ingest/scraper` on `chainlens-research` is called with `source: 'nowing_scraper'` and a stable `sourceId`.
+- Given products from multiple platforms, when indexed, then `chainlens-research` canonical index handles deduplication.
 
-**Status:** `[PROPOSED]`.
+**Status:** `[PROPOSED] — re-scoped to feed chainlens-research; no local Nowing product index.`
 
 #### FR-53: Social Media Integration (Epic 18 — REMOVED, feature covered by E10)
 As a social media analyst,
@@ -440,6 +451,70 @@ So that different vertical clients can have specialized chat agents.
 - Given a chat request with `agent_id`, when the chat flow starts, then `AgentConfig.system_instructions` is prepended to the default system prompt.
 
 **Status:** `[PROPOSED]` — Epic 18 (Vertical Client Platform). Correct-course 2026-08-07: split from Epic 13.
+
+#### FR-58: Scraper Feed to chainlens-research (Ecosystem Integration)
+As a platform engineer,
+I want every Nowing domain scraper and aggregator to feed `chainlens-research` via a canonical ingest endpoint,
+So that public/vertical search data is indexed in a single canonical index owned by the research engine.
+
+**Acceptance Criteria:**
+- Given scraper output (BĐS, jobs, news, finance, company, e-commerce), when normalized to `Chunk[]`, then `POST /v1/ingest/scraper` on `chainlens-research` is called with service-to-service auth.
+- Given a `Chunk[]` batch, when sent, then the request is idempotent keyed by `sourceId` and returns `ingestJobId`.
+- Given PII in the batch, before ingest, then AD-25 redaction is applied.
+
+**Consequences:**
+- New `NowingIngestService` / adapter in `app/services/chainlens_ingest/`.
+- All scrapers/aggregators implement `to_chunks()` conforming to `AD-34`.
+
+**Status:** `[PROPOSED]` — depends on `chainlens-research` `POST /v1/ingest/scraper` (Epic 47).
+
+#### FR-59: Gap-Fill Trigger via chainlens-research
+As a workspace user,
+I want the chat agent to trigger a gap-fill research run when the canonical index lacks data for my query,
+So that the system can fetch missing data on-demand without building a local search corpus.
+
+**Acceptance Criteria:**
+- Given a chat query with public/vertical scope, when `chainlens-research` search returns low coverage, then `POST /v1/gap-fill` is triggered.
+- Given a gap-fill request, when `chainlens-research` decides a Nowing scraper is needed, then it calls the registered Nowing scraper and ingests the result.
+- Given gap-fill completion, when results are indexed, then the chat agent resumes with the updated corpus.
+
+**Status:** `[PROPOSED]` — depends on `chainlens-research` gap-fill engine (Epic 47).
+
+#### FR-60: Private Data Provider (NowingPrivateProvider)
+As a workspace user,
+I want my private documents and connectors to be searchable by the chat agent without being pre-indexed in `chainlens-research`,
+So that private data stays in Nowing but can still answer cross-corpus queries.
+
+**Acceptance Criteria:**
+- Given a chat query classified as private scope, when `chainlens-research` calls `POST /v1/private-data/search` on Nowing, then Nowing returns `Chunk[]` filtered by workspace RBAC.
+- Given a `NowingPrivateProvider` call, when the user does not have access to a document, then it is not returned.
+- Given private chunks, when returned, then `chainlens-research` merges them into its ranked result set without storing them.
+
+**Status:** `[PROPOSED]` — governed by `AD-15`, `AD-35`.
+
+#### FR-61: Cross-Project Service Auth & Cost Allocation
+As a platform operator,
+I want service-to-service calls between Nowing and `chainlens-research` to be authenticated and metered,
+So that cost and usage can be attributed correctly and the services cannot be spoofed.
+
+**Acceptance Criteria:**
+- Given a `chainlens-research` request to Nowing (`POST /v1/private-data/search`, scraper invocation), when received, then Nowing validates a service Bearer token and maps it to a workspace.
+- Given a Nowing request to `chainlens-research`, when sent, then Nowing includes a workspace-scoped Bearer token and correlation id.
+- Given a cross-project call, when completed, then `TokenUsage` records the cost with `usage_type` and workspace attribution.
+
+**Status:** `[PROPOSED]` — Epic 47.
+
+#### FR-62: Canonical Chunk Metadata Schema (`source` enum)
+As a platform engineer,
+I want a strict `Chunk.metadata` schema and `source` enum shared between Nowing and `chainlens-research`,
+So that ingestion, search, and citation are consistent across the ecosystem.
+
+**Acceptance Criteria:**
+- Given any `Chunk` sent to `chainlens-research`, then `metadata` contains `source`, `sourceId`, `domain`, `fetchedAt`, `contentType` (required) and optional `confidence_score`, `source_count`, `conflict_flags`.
+- Given a `source` value, when validated, then it matches the canonical enum defined in `chainlens-research`: `public_crawl`, `nowing_scraper`, `brave`, `searxng`, `jina`, `exa`, `tavily`, `perplexity`, `private_provider`.
+- Given missing required fields, when validated, then the request is rejected with a typed error.
+
+**Status:** `[PROPOSED]` — governed by `AD-34`.
 
 > **FR-24 đã chuyển sang §4.9.** ChainLens Research **không phải** một connector/scraper. Nó là Deep-Research Engine — dependency kiến trúc hạng nhất, governed by `AD-15` (không còn `AD-3`). Xem **§4.9**.
 

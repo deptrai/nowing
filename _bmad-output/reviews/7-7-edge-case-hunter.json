@@ -1,0 +1,56 @@
+[
+  {
+    "location": "nowing_mcp/mcp_server/features/memory/__init__.py:225",
+    "trigger_condition": "memory_list receives an invalid memory type string",
+    "guard_snippet": "type: Annotated[str | None, Field(pattern=r'^(semantic|episodic|procedural|working)$', description='Memory type: semantic, episodic, procedural, or working.')] = None",
+    "potential_consequence": "backend MemoryType constructor raises, causing 500/422"
+  },
+  {
+    "location": "nowing_mcp/mcp_server/features/chat/__init__.py:174-176",
+    "trigger_condition": "chat SSE error event contains detail as dict",
+    "guard_snippet": "detail = payload.get('detail'); message = (detail.get('message') if isinstance(detail, dict) else detail) or payload.get('message') or 'agent error'",
+    "potential_consequence": "message becomes stringified dict, error unreadable"
+  },
+  {
+    "location": "nowing_mcp/mcp_server/features/automations/__init__.py:123",
+    "trigger_condition": "backend returns empty or invalid run response",
+    "guard_snippet": "if not isinstance(run, dict) or run.get('id') is None: raise ToolError(f'Backend did not return a valid run for automation {automation_id}')",
+    "potential_consequence": "output renders 'Run started: **#None**'"
+  },
+  {
+    "location": "nowing_mcp/mcp_server/features/scrapers/platforms/chotot_bds.py:30-47",
+    "trigger_condition": "empty city or district string is provided",
+    "guard_snippet": "city: Annotated[str, Field(min_length=1, description='City name or slug...')]; district: Annotated[str | None, Field(min_length=1, description='Optional district name or slug.')] = None",
+    "potential_consequence": "scraper runs with empty location and fails or returns wrong data"
+  },
+  {
+    "location": "nowing_mcp/mcp_server/features/scrapers/platforms/muaban_bds.py:30-45",
+    "trigger_condition": "empty city or district string is provided",
+    "guard_snippet": "city: Annotated[str, Field(min_length=1, description='City name or slug...')] = 'ho-chi-minh'; district: Annotated[str | None, Field(min_length=1, description='Optional district name or slug.')] = None",
+    "potential_consequence": "default city is overridden or scraper fails"
+  },
+  {
+    "location": "nowing_mcp/mcp_server/features/scrapers/platforms/muaban_bds.py:78-97",
+    "trigger_condition": "min_price or min_area exceeds the corresponding max",
+    "guard_snippet": "if (min_price is not None and max_price is not None and min_price > max_price) or (min_area is not None and max_area is not None and min_area > max_area): raise ValueError('min value cannot exceed max value')",
+    "potential_consequence": "muaban backend accepts invalid range, returns wrong results"
+  },
+  {
+    "location": "nowing_mcp/mcp_server/features/image_generation/__init__.py:43-70",
+    "trigger_condition": "size, quality, style, or model string is too long",
+    "guard_snippet": "size: Annotated[str | None, Field(max_length=50, description=...)]; quality: Annotated[str | None, Field(max_length=50, description=...)]; style: Annotated[str | None, Field(max_length=50, description=...)]; model: Annotated[str | None, Field(max_length=200, description=...)]",
+    "potential_consequence": "backend rejects with 422 for oversized fields"
+  },
+  {
+    "location": "nowing_mcp/mcp_server/core/client.py:148",
+    "trigger_condition": "SSE stream stalls between events",
+    "guard_snippet": "timeout = httpx.Timeout(timeout_s, connect=10.0, read=60.0)",
+    "potential_consequence": "tool hangs up to 600s before failing"
+  },
+  {
+    "location": "nowing_mcp/mcp_server/core/sse.py:35-38",
+    "trigger_condition": "SSE terminator line contains only whitespace",
+    "guard_snippet": "if line == '' or line.strip() == '': if buffer: yield SseEvent(data='\\n'.join(buffer)); buffer.clear(); continue",
+    "potential_consequence": "buffer not flushed, events concatenated across frames"
+  }
+]

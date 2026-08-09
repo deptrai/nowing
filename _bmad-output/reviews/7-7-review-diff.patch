@@ -1,0 +1,2265 @@
+commit 118bcb61c380c0f28668749215366712a518df57
+Author: Vonic <phanquochoipt@gmail.com>
+Date:   Sat Aug 8 19:15:08 2026 +0700
+
+    arch(backlog-audit): AD-32/AD-33 accepted, 7-4 pass 2, 7-7 catalog sync
+    
+    Backlog audit (Winston):
+    - AD-32 ACCEPTED: connector modal deprecated, dedicated /connectors page is canonical
+    - AD-33 ACCEPTED: Generic Alert Engine for 8 domain alert stories (12-6,12-7,14-3,15-3,15-4,16-3,17-3,17-4)
+    - Block 12-8, 16-4 (timeline views) until Epic 13 canonical storage review closes
+    - 6 followup placeholders → deferred (tracked in parent story files)
+    - 4 tech-debt stories created (td-1..td-4) from code review deferred items
+    - 12-9 spec note: must be Automation template per AD-33, not standalone scheduler
+    
+    Story 7-4 pass 2 (dedicated connectors layout):
+    - Detail pane reuses useConnectorDialog hook for inline view routing
+    - Composer "+" MCP submenu with flat connector list + "Browse all" link
+    - DocumentsSidebar Import menu: removed Drive/OneDrive/Dropbox (moved to catalog)
+    
+    Story 7-7 catalog sync:
+    - Add 3 missing tools to backend MCP_TOOL_CATALOG (cafef_scrape, walmart_scrape, walmart_reviews)
+    - Catalog sync test now passes: 53 = 53
+    - Status reconciled: sprint-status ready-for-dev → review (story file was done)
+    
+    Story 14-1 status sync:
+    - Story file in-progress → done (code review PASS_WITH_WARNINGS)
+
+diff --git a/nowing_backend/app/mcp_tools.py b/nowing_backend/app/mcp_tools.py
+index 10bd2f21b..ea7459fab 100644
+--- a/nowing_backend/app/mcp_tools.py
++++ b/nowing_backend/app/mcp_tools.py
+@@ -31,11 +31,13 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
+     {"name": "nowing_select_workspace", "group": McpToolGroup.WORKSPACE},
+     {"name": "nowing_amazon_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_batdongsan_scrape", "group": McpToolGroup.SCRAPER},
++    {"name": "nowing_cafef_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_chotot_bds_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_muaban_bds_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_vietnamworks_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_topcv_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_itviec_scrape", "group": McpToolGroup.SCRAPER},
++    {"name": "nowing_indeed_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_masothue_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_vn_jobs_aggregate", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_chainlens_research", "group": McpToolGroup.SCRAPER},
+@@ -50,6 +52,8 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
+     {"name": "nowing_tiktok_trending", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_tiktok_user_search", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_vn_bds_aggregate", "group": McpToolGroup.SCRAPER},
++    {"name": "nowing_walmart_reviews", "group": McpToolGroup.SCRAPER},
++    {"name": "nowing_walmart_scrape", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_web_crawl", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_youtube_comments", "group": McpToolGroup.SCRAPER},
+     {"name": "nowing_youtube_scrape", "group": McpToolGroup.SCRAPER},
+
+commit 272c6c806d0fbf00475f9e5a57b3331d165e13bf
+Author: Vonic <phanquochoipt@gmail.com>
+Date:   Wed Aug 5 21:12:51 2026 +0700
+
+    test(7.7): add Playwright E2E for automation manual run
+    
+    - Add tests/helpers/api/automations.ts to create/delete automations and
+      trigger the new POST /automations/{id}/run endpoint from E2E setup.
+    - Add tests/automations/automation-manual-run.spec.ts verifying the
+      automation detail page displays a new PENDING run without crashing.
+    - pnpm tsc --noEmit and biome check pass.
+    - Record 4.14 web E2E gate in story file; execution deferred until
+      Docker/Postgres/Redis/backend env is available.
+
+diff --git a/nowing_web/tests/automations/automation-manual-run.spec.ts b/nowing_web/tests/automations/automation-manual-run.spec.ts
+new file mode 100644
+index 000000000..64d328c6f
+--- /dev/null
++++ b/nowing_web/tests/automations/automation-manual-run.spec.ts
+@@ -0,0 +1,50 @@
++import { expect, test } from "@playwright/test";
++import { acquireTestToken } from "../helpers/api/auth";
++import { createAutomation, deleteAutomation, runAutomation } from "../helpers/api/automations";
++import { createWorkspace, deleteWorkspace } from "../helpers/api/workspaces";
++
++test.describe("Automation manual run — web handles new backend run", () => {
++	let workspaceId: number;
++	let automationId: number;
++	let ownerToken: string;
++
++	test.beforeEach(async ({ request }) => {
++		ownerToken = await acquireTestToken(request);
++		const workspace = await createWorkspace(request, ownerToken, `E2E Manual Run ${Date.now()}`);
++		workspaceId = workspace.id;
++		const automation = await createAutomation(
++			request,
++			ownerToken,
++			workspaceId,
++			"E2E manual-run automation"
++		);
++		automationId = automation.id;
++	});
++
++	test.afterEach(async ({ request }) => {
++		await deleteAutomation(request, ownerToken, automationId);
++		await deleteWorkspace(request, ownerToken, workspaceId);
++	});
++
++	test("should display a PENDING run after manual run without crashing", async ({
++		request,
++		page,
++	}) => {
++		// Trigger the new Story 7.7 endpoint directly; the web UI will
++		// receive it via Zero sync on the automation detail page.
++		const run = await runAutomation(request, ownerToken, automationId);
++		expect(run.status).toBe("pending");
++
++		await page.goto(`/dashboard/${workspaceId}/automations/${automationId}`);
++
++		// Wait for the detail page header and runs section to render.
++		await expect(page.getByRole("heading", { name: /automation/i })).toBeVisible();
++		await expect(page.getByText("Recent runs")).toBeVisible();
++
++		// The PENDING run should appear in the list.
++		await expect(page.getByText("Pending").first()).toBeVisible();
++
++		// No Next.js error overlay.
++		await expect(page.getByText(/application error|failed to compile/i)).toHaveCount(0);
++	});
++});
+diff --git a/nowing_web/tests/helpers/api/automations.ts b/nowing_web/tests/helpers/api/automations.ts
+new file mode 100644
+index 000000000..b3e421e9e
+--- /dev/null
++++ b/nowing_web/tests/helpers/api/automations.ts
+@@ -0,0 +1,76 @@
++import type { APIRequestContext } from "@playwright/test";
++import { authHeaders, BACKEND_URL } from "./auth";
++
++export type AutomationRow = {
++	id: number;
++	workspace_id: number;
++	name: string;
++	status: string;
++};
++
++export type RunRow = {
++	id: number;
++	automation_id: number;
++	status: string;
++};
++
++export async function createAutomation(
++	request: APIRequestContext,
++	token: string,
++	workspaceId: number,
++	name: string
++): Promise<AutomationRow> {
++	const response = await request.post(`${BACKEND_URL}/api/v1/automations`, {
++		headers: authHeaders(token),
++		data: {
++			workspace_id: workspaceId,
++			name,
++			definition: {
++				schema_version: "1.1",
++				name,
++				plan: [
++					{
++						step_id: "s1",
++						action: "agent_task",
++						params: { query: "noop" },
++					},
++				],
++			},
++		},
++	});
++	if (!response.ok()) {
++		throw new Error(`createAutomation failed (${response.status()}): ${await response.text()}`);
++	}
++	return (await response.json()) as AutomationRow;
++}
++
++export async function deleteAutomation(
++	request: APIRequestContext,
++	token: string,
++	automationId: number
++): Promise<void> {
++	const response = await request.delete(`${BACKEND_URL}/api/v1/automations/${automationId}`, {
++		headers: authHeaders(token),
++	});
++	if (!response.ok() && response.status() !== 404) {
++		throw new Error(
++			`deleteAutomation(${automationId}) failed (${response.status()}): ${await response.text()}`
++		);
++	}
++}
++
++export async function runAutomation(
++	request: APIRequestContext,
++	token: string,
++	automationId: number
++): Promise<RunRow> {
++	const response = await request.post(`${BACKEND_URL}/api/v1/automations/${automationId}/run`, {
++		headers: authHeaders(token),
++	});
++	if (!response.ok()) {
++		throw new Error(
++			`runAutomation(${automationId}) failed (${response.status()}): ${await response.text()}`
++		);
++	}
++	return (await response.json()) as RunRow;
++}
+
+commit fd11d923c48fd402068edefecf40fbc67292e961
+Author: Vonic <phanquochoipt@gmail.com>
+Date:   Wed Aug 5 19:50:22 2026 +0700
+
+    feat(7.7): expand MCP server tool surface
+    
+    Adds MCP tools for automations, chat, image generation, reports,
+    team memory, BĐS scrapers (chotot/muaban), SSE core, and matching
+    tests. Includes the 7.7 story file and manual run endpoint tests.
+
+diff --git a/nowing_backend/tests/integration/automations/api/test_run_endpoint.py b/nowing_backend/tests/integration/automations/api/test_run_endpoint.py
+new file mode 100644
+index 000000000..e2c56656b
+--- /dev/null
++++ b/nowing_backend/tests/integration/automations/api/test_run_endpoint.py
+@@ -0,0 +1,183 @@
++"""ATDD acceptance tests for the manual run endpoint (Story 7.7).
++
++Verifies the ``POST /automations/{id}/run`` API against a real Postgres:
++
++  * a manual run is created as PENDING and a real ``AutomationRun`` row
++    persists, with a transient ``MANUAL`` trigger (Pattern 6 — real SQL);
++  * the permission gate rejects a user without ``automations:execute``;
++  * an inactive (paused) automation is rejected with HTTP 400;
++  * a missing automation id maps to HTTP 404.
++
++Assumptions (matching ``test_memory_change_trigger``): the test DB schema is
++built from the ORM models; the ``enqueue_spy`` fixture patches
++``automation_run_execute.apply_async`` so no Redis broker is needed.
++"""
++
++from __future__ import annotations
++
++import uuid
++from collections.abc import AsyncGenerator
++
++import httpx
++import pytest
++import pytest_asyncio
++from sqlalchemy import select
++
++from app.automations.persistence.enums.automation_status import AutomationStatus
++from app.automations.persistence.enums.trigger_type import TriggerType
++from app.automations.persistence.models.automation import Automation
++from app.automations.persistence.models.trigger import AutomationTrigger
++from app.automations.schemas.definition.envelope import AutomationDefinition
++from app.automations.schemas.definition.plan_step import PlanStep
++from app.db import User, WorkspaceMembership, WorkspaceRole
++
++pytestmark = pytest.mark.integration
++
++
++@pytest_asyncio.fixture
++async def db_viewer(db_session, db_workspace) -> User:
++    """A workspace Viewer member — no automations:execute permission."""
++    viewer = User(
++        id=uuid.uuid4(),
++        email="viewer@nowing.net",
++        hashed_password="hashed",
++        is_active=True,
++        is_superuser=False,
++        is_verified=True,
++    )
++    db_session.add(viewer)
++    await db_session.flush()
++
++    role = (
++        (
++            await db_session.execute(
++                select(WorkspaceRole).where(
++                    WorkspaceRole.workspace_id == db_workspace.id,
++                    WorkspaceRole.name == "Viewer",
++                )
++            )
++        )
++        .scalars()
++        .one()
++    )
++    db_session.add(
++        WorkspaceMembership(
++            user_id=viewer.id,
++            workspace_id=db_workspace.id,
++            role_id=role.id,
++            is_owner=False,
++        )
++    )
++    await db_session.flush()
++    return viewer
++
++
++@pytest_asyncio.fixture
++async def viewer_client(db_session, db_viewer) -> AsyncGenerator[httpx.AsyncClient, None]:
++    """An ASGI client authenticated as a Viewer (no automations:execute)."""
++    from app.app import app
++    from app.auth.context import AuthContext
++    from app.db import get_async_session
++    from app.users import get_auth_context
++
++    async def override_session() -> AsyncGenerator:
++        yield db_session
++
++    async def override_auth() -> AuthContext:
++        return AuthContext.session(db_viewer)
++
++    previous = app.dependency_overrides.copy()
++    app.dependency_overrides[get_async_session] = override_session
++    app.dependency_overrides[get_auth_context] = override_auth
++    try:
++        async with httpx.AsyncClient(
++            transport=httpx.ASGITransport(app=app),
++            base_url="http://test",
++            timeout=30.0,
++        ) as c:
++            yield c
++    finally:
++        app.dependency_overrides.clear()
++        app.dependency_overrides.update(previous)
++
++
++async def _make_automation(session, workspace, user, *, status=AutomationStatus.ACTIVE):
++    definition = AutomationDefinition(
++        name="manual-run automation",
++        plan=[PlanStep(step_id="s1", action="agent_task")],
++    )
++    automation = Automation(
++        workspace_id=workspace.id,
++        created_by_user_id=user.id,
++        name="manual-run automation",
++        status=status,
++        definition=definition.model_dump(mode="json", by_alias=True),
++    )
++    session.add(automation)
++    await session.flush()
++
++    trigger = AutomationTrigger(
++        automation_id=automation.id,
++        type=TriggerType.MANUAL,
++        params={},
++        static_inputs={},
++        enabled=True,
++    )
++    session.add(trigger)
++    await session.flush()
++    return automation
++
++
++async def test_manual_run_endpoint_creates_pending_run(client, db_session, db_user, db_workspace, enqueue_spy):
++    """POST /automations/{id}/run returns a PENDING run and persists a row."""
++    automation = await _make_automation(db_session, db_workspace, db_user)
++
++    resp = await client.post(f"/api/v1/automations/{automation.id}/run")
++
++    assert resp.status_code == 200, resp.text
++    payload = resp.json()
++    assert payload["automation_id"] == automation.id
++    assert payload["status"] == "pending"
++
++    from app.automations.persistence.models.run import AutomationRun
++
++    row = await db_session.get(AutomationRun, payload["id"])
++    assert row is not None
++    assert row.automation_id == automation.id
++    assert row.status.value == "pending"
++    assert row.inputs.get("fired_by") == "mcp"
++
++    assert len(enqueue_spy) == 1
++    assert enqueue_spy[0]["kwargs"]["args"] == [payload["id"]]
++
++
++async def test_manual_run_paused_automation_rejected(client, db_session, db_user, db_workspace, enqueue_spy):
++    """A paused automation returns HTTP 400 with a readable message."""
++    automation = await _make_automation(
++        db_session, db_workspace, db_user, status=AutomationStatus.PAUSED
++    )
++
++    resp = await client.post(f"/api/v1/automations/{automation.id}/run")
++
++    assert resp.status_code == 400, resp.text
++    assert "not active" in resp.json()["detail"]
++    assert enqueue_spy == []
++
++
++async def test_manual_run_missing_automation_404(client, enqueue_spy):
++    """An unknown automation id returns HTTP 404."""
++    resp = await client.post("/api/v1/automations/999999/run")
++    assert resp.status_code == 404, resp.text
++    assert enqueue_spy == []
++
++
++async def test_manual_run_requires_execute_permission(
++    viewer_client, db_session, db_workspace, db_user, enqueue_spy
++):
++    """A Viewer (no automations:execute) gets HTTP 403, no run created."""
++    automation = await _make_automation(db_session, db_workspace, db_user)
++
++    resp = await viewer_client.post(f"/api/v1/automations/{automation.id}/run")
++
++    assert resp.status_code == 403, resp.text
++    assert enqueue_spy == []
+diff --git a/nowing_backend/tests/unit/automations/services/test_run_service_launch.py b/nowing_backend/tests/unit/automations/services/test_run_service_launch.py
+new file mode 100644
+index 000000000..32d6d4e91
+--- /dev/null
++++ b/nowing_backend/tests/unit/automations/services/test_run_service_launch.py
+@@ -0,0 +1,128 @@
++"""Unit tests for ``RunService.launch`` (manual run, no DB).
++
++Isolates the thin-wrapper behaviour: permission gate, transient MANUAL
++trigger, ``launch_run`` delegation, and ``DispatchError`` → HTTP mapping.
++Pattern 6 (real SQL) is covered by the integration tests.
++"""
++
++from __future__ import annotations
++
++from types import SimpleNamespace
++from typing import Any
++
++import pytest
++from fastapi import HTTPException
++
++from app.automations.dispatch.errors import DispatchError
++from app.automations.persistence.enums.run_status import RunStatus
++from app.automations.persistence.enums.trigger_type import TriggerType
++from app.automations.services.run import RunService
++from app.db import Permission
++
++pytestmark = pytest.mark.unit
++
++
++class _FakeSession:
++    def __init__(self, automation: Any | None) -> None:
++        self._automation = automation
++
++    async def get(self, _model: Any, pk: int) -> Any:
++        return self._automation
++
++
++class _FakeAuth:
++    pass
++
++
++def _automation(status: str = "active") -> SimpleNamespace:
++    return SimpleNamespace(id=7, workspace_id=1, status=status)
++
++
++def _service(automation: Any | None) -> RunService:
++    return RunService(session=_FakeSession(automation), auth=_FakeAuth())
++
++
++async def _launch(monkeypatch: Any, *, automation: Any | None, error: Exception | None = None) -> Any:
++    """Run ``service.launch`` with ``check_permission`` / ``launch_run`` patched out."""
++    captured: dict[str, Any] = {}
++    seen_permissions: list[str] = []
++
++    async def _check(_session: Any, _auth: Any, _workspace_id: int, permission: str, _message: str) -> None:
++        seen_permissions.append(permission)
++
++    async def _launch_run(**kwargs: Any) -> Any:
++        captured["trigger_type"] = kwargs["trigger"].type
++        captured["inputs"] = kwargs["runtime_inputs"]
++        if error is not None:
++            raise error
++        return SimpleNamespace(id=99, status=RunStatus.PENDING, automation_id=7)
++
++    import app.automations.services.run as run_mod
++
++    monkeypatch.setattr(run_mod, "check_permission", _check)
++    monkeypatch.setattr(run_mod, "launch_run", _launch_run)
++
++    service = _service(automation)
++    try:
++        result = await service.launch(automation_id=7)
++        captured["result"] = result
++    except HTTPException as exc:
++        captured["http_exc"] = exc
++
++    captured["seen_permissions"] = seen_permissions
++    return captured
++
++
++async def test_launch_checks_execute_permission(monkeypatch):
++    """launch requires automations:execute before dispatching."""
++    captured = await _launch(monkeypatch, automation=_automation())
++    assert captured["seen_permissions"] == [Permission.AUTOMATIONS_EXECUTE.value]
++    assert captured["trigger_type"] == TriggerType.MANUAL
++    assert captured["inputs"] == {"fired_by": "mcp"}
++
++
++async def test_launch_returns_pending_run(monkeypatch):
++    """The returned run carries the PENDING status from launch_run."""
++    captured = await _launch(monkeypatch, automation=_automation())
++    assert captured["result"].status == RunStatus.PENDING
++    assert captured["result"].id == 99
++
++
++async def test_launch_not_active_raises_400(monkeypatch):
++    """A paused/archived automation maps to HTTP 400 with a readable message."""
++    captured = await _launch(
++        monkeypatch,
++        automation=_automation(status="paused"),
++        error=DispatchError("automation 7 is paused, not active"),
++    )
++    assert captured["http_exc"].status_code == 400
++    assert "not active" in captured["http_exc"].detail
++
++
++async def test_launch_missing_automation_raises_404(monkeypatch):
++    """A missing automation (no row) maps to HTTP 404 from authorization."""
++    captured = await _launch(monkeypatch, automation=None)
++    assert captured["http_exc"].status_code == 404
++    assert "not found" in captured["http_exc"].detail
++
++
++async def test_launch_dispatch_not_found_raises_404(monkeypatch):
++    """A dispatch 'not found' failure maps to HTTP 404."""
++    captured = await _launch(
++        monkeypatch,
++        automation=_automation(),
++        error=DispatchError("automation 7 not found for trigger None"),
++    )
++    assert captured["http_exc"].status_code == 404
++    assert "not found" in captured["http_exc"].detail
++
++
++async def test_launch_invalid_definition_raises_400(monkeypatch):
++    """An invalid automation definition maps to HTTP 400 (not 500)."""
++    captured = await _launch(
++        monkeypatch,
++        automation=_automation(),
++        error=DispatchError("invalid automation definition: boom"),
++    )
++    assert captured["http_exc"].status_code == 400
++    assert "definition" in captured["http_exc"].detail
+diff --git a/nowing_mcp/mcp_server/core/sse.py b/nowing_mcp/mcp_server/core/sse.py
+new file mode 100644
+index 000000000..ea25eb705
+--- /dev/null
++++ b/nowing_mcp/mcp_server/core/sse.py
+@@ -0,0 +1,54 @@
++"""Minimal SSE consumer compatible with Nowing's wire format.
++
++Port of the evals client's parser (``nowing_evals/core/parse/sse.py``) so the
++MCP server can stream ``POST /new_chat`` without depending on the evals
++package. The backend frames events as ``data: <json-or-text>\\n\\n`` with a
++literal ``data: [DONE]`` terminator and no ``event:``/``id:``/``retry:`` lines.
++"""
++
++from __future__ import annotations
++
++from collections.abc import AsyncIterator
++from dataclasses import dataclass
++
++
++@dataclass(frozen=True)
++class SseEvent:
++    """A parsed SSE event. Only the ``data`` field is populated."""
++
++    data: str
++
++
++async def iter_sse_events(lines: AsyncIterator[str]) -> AsyncIterator[SseEvent]:
++    """Yield one ``SseEvent`` per blank-line-terminated frame.
++
++    Empty/whitespace lines flush the buffer; ``data:`` lines accumulate into
++    it; everything else is ignored (lenient browser EventSource behaviour).
++    Multi-line payloads are joined with ``\\n``.
++    """
++
++    buffer: list[str] = []
++    async for raw in lines:
++        if raw is None:
++            continue
++        line = raw.rstrip("\r")
++        if line == "":
++            if buffer:
++                yield SseEvent(data="\n".join(buffer))
++                buffer.clear()
++            continue
++        if line.startswith(":"):
++            continue
++        if line.startswith("data:"):
++            payload = line[5:]
++            if payload.startswith(" "):
++                payload = payload[1:]
++            buffer.append(payload)
++            continue
++        continue
++
++    if buffer:
++        yield SseEvent(data="\n".join(buffer))
++
++
++__all__ = ["SseEvent", "iter_sse_events"]
+diff --git a/nowing_mcp/mcp_server/features/automations/__init__.py b/nowing_mcp/mcp_server/features/automations/__init__.py
+new file mode 100644
+index 000000000..da04ac04d
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/automations/__init__.py
+@@ -0,0 +1,128 @@
++"""Automation tools: list automations and their run history."""
++
++from __future__ import annotations
++
++from typing import Annotated
++
++from mcp.server.fastmcp import FastMCP
++from pydantic import Field
++
++from ...core.client import NowingClient
++from ...core.errors import ToolError
++from ...core.rendering import ResponseFormatParam, clip, to_json
++from ...core.workspace_context import WorkspaceContext, WorkspaceParam
++from .annotations import READ, WRITE
++
++
++def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> None:
++    """Register automation tools on the MCP server."""
++
++    @mcp.tool(
++        name="nowing_automation_list",
++        title="List automations in a workspace",
++        annotations=READ,
++        structured_output=False,
++    )
++    async def automation_list(
++        limit: Annotated[
++            int, Field(ge=1, le=200, description="Maximum automations to return.")
++        ] = 50,
++        offset: Annotated[
++            int, Field(ge=0, description="Number of automations to skip.")
++        ] = 0,
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """List the workspace's automations, with id, name, status, and version.
++
++        Use this to inventory which automations exist before inspecting a
++        specific one or triggering a run.
++        Example: limit=20.
++        """
++        resolved = await context.resolve(workspace)
++        data = await client.request(
++            "GET",
++            "/automations",
++            params={"workspace_id": resolved.id, "limit": limit, "offset": offset},
++        )
++        data = data or {}
++        items = data.get("items", [])
++        total = data.get("total", len(items))
++        if response_format == "json":
++            return to_json(items)
++        return _render_automation_list(items, total)
++
++    @mcp.tool(
++        name="nowing_automation_run",
++        title="Start an automation run on demand",
++        annotations=WRITE,
++        structured_output=False,
++    )
++    async def automation_run(
++        automation_id: Annotated[
++            int, Field(ge=1, description="Id of the automation to run.")
++        ],
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """Kick off a manual run of an automation and return the run id/status.
++
++        Fire-and-return: the run is queued as ``pending`` and executes in the
++        background; this tool does not wait for it to finish. Check the run
++        history later to see the outcome.
++        Example: automation_id=3.
++        """
++        resolved = await context.resolve(workspace)
++        return await _run_automation(
++            client=client,
++            automation_id=automation_id,
++            resolved_workspace_id=resolved.id,
++            response_format=response_format,
++        )
++
++
++def _render_automation_list(items: list[dict], total: int) -> str:
++    if not items:
++        return "No automations found in this workspace."
++    lines = [f"# {total} automation(s)", ""]
++    for automation in items:
++        name = automation.get("name") or f"(id {automation.get('id')})"
++        description = automation.get("description")
++        suffix = f" — {clip(description, 120)}" if description else ""
++        lines.append(
++            f"- **{automation.get('id')}**: {name} "
++            f"[{automation.get('status')}, v{automation.get('version')}]{suffix}"
++        )
++    return "\n".join(lines).strip()
++
++
++def _render_run_started(run: dict) -> str:
++    run_id = run.get("id")
++    status = run.get("status") or "pending"
++    return (
++        f"Run started: **#{run_id}** (status: {status}). "
++        "Track it via the automation run history."
++    )
++
++
++async def _run_automation(
++    *,
++    client: NowingClient,
++    automation_id: int,
++    resolved_workspace_id: int,
++    response_format: str,
++) -> str:
++    try:
++        run = await client.request(
++            "POST",
++            f"/automations/{automation_id}/run",
++            json={"workspace_id": resolved_workspace_id},
++        )
++    except ToolError as exc:
++        raise ToolError(f"Could not start automation {automation_id}: {exc}") from exc
++    run = run or {}
++    if response_format == "json":
++        return to_json(
++            {"run_id": run.get("id"), "status": run.get("status") or "pending"}
++        )
++    return _render_run_started(run)
+diff --git a/nowing_mcp/mcp_server/features/automations/annotations.py b/nowing_mcp/mcp_server/features/automations/annotations.py
+new file mode 100644
+index 000000000..253aa2fa5
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/automations/annotations.py
+@@ -0,0 +1,16 @@
++"""Tool-call policy hints and shared parameter types for automation tools."""
++
++from __future__ import annotations
++
++from mcp.types import ToolAnnotations
++
++READ = ToolAnnotations(
++    readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False
++)
++
++WRITE = ToolAnnotations(
++    readOnlyHint=False,
++    destructiveHint=False,
++    idempotentHint=False,
++    openWorldHint=False,
++)
+diff --git a/nowing_mcp/mcp_server/features/chat/__init__.py b/nowing_mcp/mcp_server/features/chat/__init__.py
+new file mode 100644
+index 000000000..b0af6d8ea
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/chat/__init__.py
+@@ -0,0 +1,199 @@
++"""Chat tool: stream a turn over ``POST /new_chat`` SSE and return the answer.
++
++Buffers the whole SSE stream (Hướng A) so the model gets one complete answer,
++not a firehose of raw events. Optionally creates a thread first when no
++``chat_id`` is supplied, and threads ``mode`` through to the backend
++(``speed|balanced|quality|auto``).
++"""
++
++from __future__ import annotations
++
++import asyncio
++import json
++import logging
++from typing import Annotated, Any, Literal
++
++from mcp.server.fastmcp import FastMCP
++from pydantic import Field
++
++from ...core.client import NowingClient
++from ...core.errors import ThreadBusyError, ToolError
++from ...core.rendering import ResponseFormatParam, clip, to_json
++from ...core.sse import SseEvent
++from ...core.workspace_context import WorkspaceContext, WorkspaceParam
++from .annotations import WRITE
++
++logger = logging.getLogger(__name__)
++
++ChatMode = Literal["speed", "balanced", "quality", "auto"]
++
++_MAX_BUSY_RETRIES = 4
++_BUSY_CAP_SECONDS = 30.0
++
++
++def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> None:
++    """Register the ``nowing_chat`` tool on the MCP server."""
++
++    @mcp.tool(
++        name="nowing_chat",
++        title="Ask the Nowing deep agent and get a full answer",
++        annotations=WRITE,
++        structured_output=False,
++    )
++    async def nowing_chat(
++        user_query: Annotated[
++            str,
++            Field(description="The question or instruction for the agent."),
++        ],
++        chat_id: Annotated[
++            int | None,
++            Field(
++                description="Optional existing chat thread id to continue. "
++                "Omit to create a fresh thread for this turn."
++            ),
++        ] = None,
++        mode: Annotated[
++            ChatMode | None,
++            Field(
++                description="Research depth hint: speed, balanced, quality, or auto."
++            ),
++        ] = None,
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """Ask the Nowing deep agent a question and stream back the full answer.
++
++        Use this for open-ended questions that benefit from the agent's
++        research and tool use. The tool waits for the whole answer, so long
++        research questions may take a while. Returns the complete text.
++        Example: user_query="Summarize the state of RAG in 2026".
++        """
++        query = user_query.strip() if user_query else ""
++        if not query:
++            raise ToolError(
++                "user_query is empty. Provide a question or instruction to chat about."
++            )
++
++        resolved = await context.resolve(workspace)
++
++        # Create a fresh thread when the caller didn't pin one.
++        if chat_id is None:
++            thread = await client.request(
++                "POST",
++                "/threads",
++                json={
++                    "workspace_id": resolved.id,
++                    "title": clip(query, 80),
++                    "visibility": "PRIVATE",
++                },
++            )
++            chat_id = _thread_id(thread)
++
++        answer = await _ask_turn(
++            client=client,
++            chat_id=chat_id,
++            workspace_id=resolved.id,
++            user_query=query,
++            mode=mode,
++        )
++
++        if response_format == "json":
++            return to_json({"chat_id": chat_id, "text": answer})
++        return answer
++
++
++async def _ask_turn(
++    *,
++    client: NowingClient,
++    chat_id: int,
++    workspace_id: int,
++    user_query: str,
++    mode: ChatMode | None,
++) -> str:
++    body: dict[str, Any] = {
++        "chat_id": chat_id,
++        "workspace_id": workspace_id,
++        "user_query": user_query,
++    }
++    if mode is not None:
++        body["mode"] = mode
++
++    attempt = 0
++    while True:
++        try:
++            text, turn_id = await _consume_once(client=client, body=body)
++        except ThreadBusyError as exc:
++            if exc.error_code == "TURN_CANCELLING":
++                raise ToolError(
++                    "The turn on this thread is being cancelled by another "
++                    "request; wait for it to settle, then try again."
++                ) from exc
++            attempt += 1
++            if attempt > _MAX_BUSY_RETRIES:
++                raise ToolError(
++                    f"Thread {chat_id} stayed busy after {_MAX_BUSY_RETRIES} "
++                    "retries. Wait a moment, then try again."
++                ) from exc
++            await asyncio.sleep(min(_BUSY_CAP_SECONDS, 0.5 * (2**attempt)))
++            continue
++        break
++
++    if not text.strip():
++        return "No content returned by the agent for this turn."
++    if turn_id:
++        return f"{text}\n\n_(chat_turn: {turn_id})_"
++    return text
++
++
++async def _consume_once(
++    *, client: NowingClient, body: dict[str, Any]
++) -> tuple[str, str | None]:
++    ordered_ids: list[str] = []
++    buffers: dict[str, list[str]] = {}
++    turn_id: str | None = None
++    async for event in client.stream_sse("POST", "/new_chat", json=body):
++        if event.data == "[DONE]":
++            continue
++        payload = _parse_event(event)
++        if not isinstance(payload, dict):
++            continue
++        ev_type = payload.get("type")
++        if ev_type == "text-delta":
++            delta = payload.get("delta")
++            if not isinstance(delta, str):
++                continue
++            tid = str(payload.get("id", ""))
++            if tid not in buffers:
++                buffers[tid] = []
++                ordered_ids.append(tid)
++            buffers[tid].append(delta)
++        elif ev_type == "data-turn-info":
++            data = payload.get("data")
++            if isinstance(data, dict) and data.get("chat_turn_id"):
++                turn_id = str(data["chat_turn_id"])
++        elif ev_type == "error":
++            message = payload.get("message") or payload.get("detail") or "agent error"
++            raise ToolError(f"The agent reported an error: {message}")
++
++    parts = ["".join(buffers[tid]) for tid in ordered_ids]
++    return "".join(parts), turn_id
++
++
++def _parse_event(event: SseEvent) -> Any:
++    if event.data == "[DONE]":
++        return "[DONE]"
++    try:
++        return json.loads(event.data)
++    except (json.JSONDecodeError, ValueError):
++        logger.debug("Skipping non-JSON SSE payload: %r", event.data[:120])
++        return None
++
++
++def _thread_id(thread: Any) -> int:
++    if isinstance(thread, dict):
++        value = thread.get("id")
++        if isinstance(value, int):
++            return value
++        if isinstance(value, str) and value.isdigit():
++            return int(value)
++    raise ToolError("Could not create the chat thread: no thread id returned.")
+diff --git a/nowing_mcp/mcp_server/features/chat/annotations.py b/nowing_mcp/mcp_server/features/chat/annotations.py
+new file mode 100644
+index 000000000..cff13cde6
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/chat/annotations.py
+@@ -0,0 +1,12 @@
++"""Tool-call policy hints for chat tools."""
++
++from __future__ import annotations
++
++from mcp.types import ToolAnnotations
++
++WRITE = ToolAnnotations(
++    readOnlyHint=False,
++    destructiveHint=False,
++    idempotentHint=False,
++    openWorldHint=False,
++)
+diff --git a/nowing_mcp/mcp_server/features/image_generation/__init__.py b/nowing_mcp/mcp_server/features/image_generation/__init__.py
+new file mode 100644
+index 000000000..8c35964e5
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/image_generation/__init__.py
+@@ -0,0 +1,137 @@
++"""Image-generation tool: create and execute an image generation request.
++
++Backed by the workspace's configured image model. The call blocks until the
++provider returns (or fails); the result includes the stored generation id and
++any produced image URLs. Out-of-credit is surfaced by the client as a 402 hint.
++"""
++
++from __future__ import annotations
++
++from typing import Annotated
++
++from mcp.server.fastmcp import FastMCP
++from pydantic import Field
++
++from ...core.client import NowingClient
++from ...core.rendering import ResponseFormatParam, to_json
++from ...core.workspace_context import WorkspaceContext, WorkspaceParam
++from .annotations import WRITE
++
++
++def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> None:
++    """Register the image-generation tool."""
++
++    @mcp.tool(
++        name="nowing_image_generate",
++        title="Generate images",
++        annotations=WRITE,
++        structured_output=False,
++    )
++    async def image_generate(
++        prompt: Annotated[
++            str,
++            Field(
++                min_length=1,
++                max_length=4000,
++                description="A text description of the desired image(s).",
++            ),
++        ],
++        n: Annotated[
++            int | None,
++            Field(ge=1, le=10, description="Number of images to generate (1-10)."),
++        ] = None,
++        size: Annotated[
++            str | None,
++            Field(
++                description="Output size, e.g. '1024x1024'. Omit to use the "
++                "workspace's configured default.",
++            ),
++        ] = None,
++        quality: Annotated[
++            str | None,
++            Field(
++                description="Quality level, e.g. 'standard' or 'hd'. Omit to "
++                "use the workspace's configured default.",
++            ),
++        ] = None,
++        style: Annotated[
++            str | None,
++            Field(
++                description="Style override, e.g. 'vivid' or 'natural'. Omit "
++                "to use the workspace's configured default.",
++            ),
++        ] = None,
++        model: Annotated[
++            str | None,
++            Field(
++                description="Explicit provider model id, e.g. 'gpt-image-1'. "
++                "Omit to use the workspace's configured image model.",
++            ),
++        ] = None,
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """Generate one or more images from a text prompt.
++
++        Use this to produce images — illustrations, mockups, banners — with the
++        workspace's configured image model. The call waits for the provider and
++        returns the generation id plus any image URLs produced. If the request
++        fails (e.g. out of credits or a provider error) the result reports it.
++        """
++        resolved = await context.resolve(workspace)
++        generation = await client.request(
++            "POST",
++            "/image-generations",
++            json={
++                "prompt": prompt,
++                "workspace_id": resolved.id,
++                "model": model,
++                "n": n,
++                "quality": quality,
++                "size": size,
++                "style": style,
++            },
++        )
++        if response_format == "json":
++            return to_json(generation)
++        return _render_generation(generation)
++
++
++def _render_generation(generation: dict | None) -> str:
++    if not generation:
++        return "Image generation returned an empty response."
++    lines = [f"# Image generation (id {generation.get('id')})"]
++    if generation.get("model"):
++        lines.append(f"- model: {generation['model']}")
++    if generation.get("size"):
++        lines.append(f"- size: {generation['size']}")
++    if generation.get("created_at"):
++        lines.append(f"- created: {generation['created_at']}")
++    error = generation.get("error_message")
++    if error:
++        lines.append(f"- error: {error}")
++        return "\n".join(lines).strip()
++    images = _extract_images(generation.get("response_data"))
++    if not images:
++        lines.append("- no image urls in response")
++        return "\n".join(lines).strip()
++    lines.append(f"- {len(images)} image(s):")
++    for url in images:
++        lines.append(f"  - {url}")
++    return "\n".join(lines).strip()
++
++
++def _extract_images(response_data: dict | None) -> list[str]:
++    if not response_data or not isinstance(response_data, dict):
++        return []
++    data = response_data.get("data")
++    if not isinstance(data, list):
++        return []
++    urls = []
++    for image in data:
++        if not isinstance(image, dict):
++            continue
++        url = image.get("url") or image.get("b64_json")
++        if url:
++            urls.append(str(url))
++    return urls
+diff --git a/nowing_mcp/mcp_server/features/image_generation/annotations.py b/nowing_mcp/mcp_server/features/image_generation/annotations.py
+new file mode 100644
+index 000000000..b06c0bc05
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/image_generation/annotations.py
+@@ -0,0 +1,9 @@
++"""Tool-call policy hints for image-generation tools."""
++
++from __future__ import annotations
++
++from mcp.types import ToolAnnotations
++
++WRITE = ToolAnnotations(
++    readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False
++)
+diff --git a/nowing_mcp/mcp_server/features/reports/__init__.py b/nowing_mcp/mcp_server/features/reports/__init__.py
+new file mode 100644
+index 000000000..dfc520e53
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/reports/__init__.py
+@@ -0,0 +1,155 @@
++"""Report tools: list reports and export their content."""
++
++from __future__ import annotations
++
++import base64
++
++from typing import Annotated, Literal
++
++from mcp.server.fastmcp import FastMCP
++from pydantic import Field
++
++from ...core.client import NowingClient
++from ...core.rendering import ResponseFormatParam, clip, to_json
++from ...core.workspace_context import WorkspaceContext, WorkspaceParam
++from .annotations import READ
++
++ExportFormat = Literal["pdf", "docx", "html", "latex", "epub", "odt", "plain"]
++
++_TEXT_FORMATS = {"html", "latex", "plain"}
++_BINARY_EXTENSIONS = {
++    "pdf": "pdf",
++    "docx": "docx",
++    "html": "html",
++    "latex": "tex",
++    "epub": "epub",
++    "odt": "odt",
++    "plain": "txt",
++}
++
++
++def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> None:
++    """Register report tools on the MCP server."""
++
++    @mcp.tool(
++        name="nowing_report_list",
++        title="List reports in a workspace",
++        annotations=READ,
++        structured_output=False,
++    )
++    async def report_list(
++        limit: Annotated[
++            int, Field(ge=1, le=100, description="Maximum reports to return.")
++        ] = 20,
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """List reports the user has access to, newest first.
++
++        Use this to find report ids and titles before exporting a report.
++        Returns each report's id, title, style, and creation date.
++        Example: limit=10.
++        """
++        resolved = await context.resolve(workspace)
++        reports = await client.request(
++            "GET",
++            "/reports",
++            params={"workspace_id": resolved.id, "limit": limit},
++        )
++        reports = reports or []
++        if response_format == "json":
++            return to_json(reports)
++        return _render_report_list(reports)
++
++    @mcp.tool(
++        name="nowing_report_export",
++        title="Export a report in a chosen format",
++        annotations=READ,
++        structured_output=False,
++    )
++    async def report_export(
++        report_id: Annotated[
++            int, Field(description="Report id from nowing_report_list.")
++        ],
++        format: Annotated[
++            ExportFormat,
++            Field(
++                description="Export format: pdf, docx, html, latex, epub, odt, or plain."
++            ),
++        ] = "pdf",
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """Export a report (default PDF) and return its content.
++
++        Text formats (plain, latex, html) come back readable as text. Binary
++        formats (pdf, docx, epub, odt) are returned base64-encoded so they can
++        be reconstructed byte-for-byte; the payload is shown here in a code
++        block, and a long export is excerpted.
++        Example: report_id=5, format='pdf'.
++        """
++        data, content_type = await client.request_bytes(
++            "GET",
++            f"/reports/{report_id}/export",
++            params={"format": format},
++        )
++        if format in _TEXT_FORMATS:
++            text = data.decode("utf-8", errors="replace")
++            if response_format == "json":
++                return to_json(
++                    {"report_id": report_id, "format": format, "content": text}
++                )
++            return _render_text_export(report_id, format, content_type, text)
++        encoded = base64.b64encode(data).decode("ascii")
++        if response_format == "json":
++            return to_json(
++                {
++                    "report_id": report_id,
++                    "format": format,
++                    "content_type": content_type,
++                    "size_bytes": len(data),
++                    "base64": encoded,
++                }
++            )
++        return _render_binary_export(
++            report_id, format, content_type, encoded, len(data)
++        )
++
++
++def _render_report_list(reports: list[dict]) -> str:
++    if not reports:
++        return "No reports found in this workspace."
++    lines = [f"# {len(reports)} report(s) (newest first)", ""]
++    for report in reports:
++        style = report.get("report_style")
++        style_text = f" [{style}]" if style else ""
++        lines.append(
++            f"- **{report.get('id')}**: {clip(report.get('title') or '(untitled)', 160)}"
++            f"{style_text} — {report.get('created_at')}"
++        )
++    return "\n".join(lines).strip()
++
++
++def _render_text_export(
++    report_id: int, format: str, content_type: str | None, text: str
++) -> str:
++    header = f"# Exported report {report_id} ({format}, {content_type or 'text'})"
++    return f"{header}\n\n```\n{clip(text, 20000)}\n```"
++
++
++def _render_binary_export(
++    report_id: int,
++    format: str,
++    content_type: str | None,
++    encoded: str,
++    size_bytes: int,
++) -> str:
++    extension = _BINARY_EXTENSIONS.get(format, format)
++    header = (
++        f"# Exported report {report_id} ({format}, {content_type or 'binary'}, "
++        f"{size_bytes} bytes)"
++    )
++    return (
++        f"{header}\n\nDecode this base64 payload to reproduce the file "
++        f"(e.g. `echo <payload> | base64 -d > report.{extension}`):\n\n"
++        f"```text\n{clip(encoded, 50000)}\n```"
++    )
+diff --git a/nowing_mcp/mcp_server/features/reports/annotations.py b/nowing_mcp/mcp_server/features/reports/annotations.py
+new file mode 100644
+index 000000000..1266ec85e
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/reports/annotations.py
+@@ -0,0 +1,9 @@
++"""Tool-call policy hints and shared parameter types for report tools."""
++
++from __future__ import annotations
++
++from mcp.types import ToolAnnotations
++
++READ = ToolAnnotations(
++    readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False
++)
+diff --git a/nowing_mcp/mcp_server/features/scrapers/platforms/chotot_bds.py b/nowing_mcp/mcp_server/features/scrapers/platforms/chotot_bds.py
+new file mode 100644
+index 000000000..5cf6914b3
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/scrapers/platforms/chotot_bds.py
+@@ -0,0 +1,104 @@
++"""Chotot BĐS (Chợ Tốt Nhà) scraper tool."""
++
++from __future__ import annotations
++
++from typing import Annotated, Literal
++
++from mcp.server.fastmcp import FastMCP
++from pydantic import Field
++
++from ....core.client import NowingClient
++from ....core.rendering import ResponseFormatParam
++from ....core.workspace_context import WorkspaceContext, WorkspaceParam
++from ..annotations import SCRAPE
++from ..capability import run_scraper
++
++ChototListingType = Literal["buy", "rent"]
++ChototPropertyType = Literal["apartment", "house", "land", "office", "all"]
++
++
++def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> None:
++    """Register the Chotot BĐS scraper tool."""
++
++    @mcp.tool(
++        name="nowing_chotot_bds_scrape",
++        title="Scrape Vietnamese real-estate listings from Chotot (Chợ Tốt Nhà)",
++        annotations=SCRAPE,
++        structured_output=False,
++    )
++    async def chotot_bds_scrape(
++        city: Annotated[
++            str,
++            Field(
++                description="City name or slug, e.g. 'hanoi', 'ho chi minh', 'da nang'."
++            ),
++        ],
++        listing_type: Annotated[
++            ChototListingType,
++            Field(description="'buy' for sale listings, 'rent' for lease listings."),
++        ] = "buy",
++        property_type: Annotated[
++            ChototPropertyType,
++            Field(description="Property type to filter by."),
++        ] = "all",
++        district: Annotated[
++            str | None,
++            Field(description="Optional district name or slug."),
++        ] = None,
++        district_id: Annotated[
++            int | None,
++            Field(ge=0, description="Optional district ID to restrict the search."),
++        ] = None,
++        min_price: Annotated[
++            int | None,
++            Field(ge=0, description="Minimum price in VND."),
++        ] = None,
++        max_price: Annotated[
++            int | None,
++            Field(ge=0, description="Maximum price in VND."),
++        ] = None,
++        min_area: Annotated[
++            int | None,
++            Field(ge=0, description="Minimum area in square meters."),
++        ] = None,
++        max_area: Annotated[
++            int | None,
++            Field(ge=0, description="Maximum area in square meters."),
++        ] = None,
++        max_pages: Annotated[
++            int, Field(ge=1, le=20, description="Maximum result pages to fetch.")
++        ] = 5,
++        max_items: Annotated[
++            int, Field(ge=1, le=100, description="Maximum listings to return.")
++        ] = 10,
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """Scrape property listings from nha.chotot.com.
++
++        Use this for Vietnamese real-estate research on Chợ Tốt Nhà: tracking
++        market trends, prices, supply, or locations. Returns typed listings
++        with title, price, area, location, and detail URL.
++        Example: city='hanoi', listing_type='buy', max_items=20.
++        """
++        return await run_scraper(
++            client,
++            context,
++            platform="chotot_bds",
++            verb="scrape",
++            payload={
++                "city": city,
++                "listing_type": listing_type,
++                "property_type": property_type,
++                "district": district,
++                "district_id": district_id,
++                "min_price": min_price,
++                "max_price": max_price,
++                "min_area": min_area,
++                "max_area": max_area,
++                "max_pages": max_pages,
++                "max_items": max_items,
++            },
++            workspace=workspace,
++            response_format=response_format,
++        )
+diff --git a/nowing_mcp/mcp_server/features/scrapers/platforms/muaban_bds.py b/nowing_mcp/mcp_server/features/scrapers/platforms/muaban_bds.py
+new file mode 100644
+index 000000000..94be5ffb0
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/scrapers/platforms/muaban_bds.py
+@@ -0,0 +1,97 @@
++"""Muaban.net BĐS scraper tool."""
++
++from __future__ import annotations
++
++from typing import Annotated, Literal
++
++from mcp.server.fastmcp import FastMCP
++from pydantic import Field
++
++from ....core.client import NowingClient
++from ....core.rendering import ResponseFormatParam
++from ....core.workspace_context import WorkspaceContext, WorkspaceParam
++from ..annotations import SCRAPE
++from ..capability import run_scraper
++
++MuabanListingType = Literal["buy", "rent"]
++MuabanPropertyType = Literal["apartment", "house", "land", "office", "all"]
++
++
++def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> None:
++    """Register the Muaban.net BĐS scraper tool."""
++
++    @mcp.tool(
++        name="nowing_muaban_bds_scrape",
++        title="Scrape Vietnamese real-estate listings from Muaban.net",
++        annotations=SCRAPE,
++        structured_output=False,
++    )
++    async def muaban_bds_scrape(
++        city: Annotated[
++            str,
++            Field(description="City name or slug (e.g. ho-chi-minh, ha-noi)."),
++        ] = "ho-chi-minh",
++        listing_type: Annotated[
++            MuabanListingType,
++            Field(description="'buy' for sale listings, 'rent' for lease listings."),
++        ] = "buy",
++        property_type: Annotated[
++            MuabanPropertyType,
++            Field(description="Property type to filter by."),
++        ] = "all",
++        district: Annotated[
++            str | None,
++            Field(description="Optional district name or slug."),
++        ] = None,
++        min_price: Annotated[
++            int | None,
++            Field(ge=0, description="Minimum price in VND."),
++        ] = None,
++        max_price: Annotated[
++            int | None,
++            Field(ge=0, description="Maximum price in VND."),
++        ] = None,
++        min_area: Annotated[
++            int | None,
++            Field(ge=0, description="Minimum area in square meters."),
++        ] = None,
++        max_area: Annotated[
++            int | None,
++            Field(ge=0, description="Maximum area in square meters."),
++        ] = None,
++        max_pages: Annotated[
++            int, Field(ge=1, le=20, description="Maximum result pages to fetch.")
++        ] = 5,
++        max_items: Annotated[
++            int, Field(ge=1, le=100, description="Maximum listings to return.")
++        ] = 10,
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """Scrape property listings from muaban.net.
++
++        Use this for Vietnamese real-estate research on Muaban.net: tracking
++        market trends, prices, supply, or locations. Returns typed listings
++        with title, price, area, location, and detail URL.
++        Example: city='ha-noi', listing_type='buy', max_items=20.
++        """
++        return await run_scraper(
++            client,
++            context,
++            platform="muaban_bds",
++            verb="scrape",
++            payload={
++                "city": city,
++                "listing_type": listing_type,
++                "property_type": property_type,
++                "district": district,
++                "min_price": min_price,
++                "max_price": max_price,
++                "min_area": min_area,
++                "max_area": max_area,
++                "max_pages": max_pages,
++                "max_items": max_items,
++            },
++            workspace=workspace,
++            response_format=response_format,
++        )
+diff --git a/nowing_mcp/mcp_server/features/team_memory/__init__.py b/nowing_mcp/mcp_server/features/team_memory/__init__.py
+new file mode 100644
+index 000000000..9827ab176
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/team_memory/__init__.py
+@@ -0,0 +1,102 @@
++"""Workspace team-memory tools: read and overwrite the shared markdown brief.
++
++Distinct from the long-term ``nowing_remember``/``nowing_recall`` tools — those
++are the semantic fact store. Team memory is one editable markdown document that
++sets context for every member of the workspace. ``PUT`` overwrites the whole
++document, so the update tool requires read-before-write by convention.
++"""
++
++from __future__ import annotations
++
++from typing import Annotated
++
++from mcp.server.fastmcp import FastMCP
++from pydantic import Field
++
++from ...core.client import NowingClient
++from ...core.rendering import ResponseFormatParam, clip, to_json
++from ...core.workspace_context import WorkspaceContext, WorkspaceParam
++from .annotations import DESTRUCTIVE, READ
++
++
++def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> None:
++    """Register the workspace team-memory tools."""
++
++    @mcp.tool(
++        name="nowing_workspace_memory_get",
++        title="Read workspace team memory",
++        annotations=READ,
++        structured_output=False,
++    )
++    async def workspace_memory_get(
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """Read the workspace's team memory (one shared markdown brief).
++
++        Use this to load the team's standing context — goals, conventions,
++        decisions — that every member and agent of the workspace shares.
++        This is the collaborative brief, NOT the personal long-term memory
++        (that is nowing_recall). Returns the full markdown and the document
++        size limits.
++        """
++        resolved = await context.resolve(workspace)
++        memory = await client.request(
++            "GET",
++            f"/workspaces/{resolved.id}/memory",
++        )
++        if response_format == "json":
++            return to_json(memory)
++        return _render_memory(memory, resolved.name)
++
++    @mcp.tool(
++        name="nowing_workspace_memory_update",
++        title="Overwrite workspace team memory",
++        annotations=DESTRUCTIVE,
++        structured_output=False,
++    )
++    async def workspace_memory_update(
++        memory_md: Annotated[
++            str,
++            Field(
++                min_length=1,
++                description="The complete new team-memory markdown. This "
++                "REPLACES the entire document — read the current memory with "
++                "nowing_workspace_memory_get first, then pass the full "
++                "combined text.",
++            ),
++        ],
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """Overwrite the workspace's team memory with the given markdown.
++
++        Use this to persist shared context every member should see. DESTRUCTIVE:
++        the current document is replaced entirely — always read first with
++        nowing_workspace_memory_get, edit the returned text, then pass the full
++        new content. Returns the stored memory and its size limits.
++        """
++        resolved = await context.resolve(workspace)
++        memory = await client.request(
++            "PUT",
++            f"/workspaces/{resolved.id}/memory",
++            json={"memory_md": memory_md},
++        )
++        if response_format == "json":
++            return to_json(memory)
++        return _render_memory(memory, resolved.name)
++
++
++def _render_memory(memory: dict | None, workspace_name: str) -> str:
++    if not memory:
++        return f"Team memory for '{workspace_name}' is empty."
++    content = memory.get("memory_md") or "(empty)"
++    limits = memory.get("limits") or {}
++    soft = limits.get("soft")
++    hard = limits.get("hard")
++    lines = [f"# Team memory — {workspace_name}"]
++    if soft is not None and hard is not None:
++        lines.append(f"- size limits: {soft} soft / {hard} hard")
++    lines.append("")
++    lines.append(clip(content))
++    return "\n".join(lines).strip()
+diff --git a/nowing_mcp/mcp_server/features/team_memory/annotations.py b/nowing_mcp/mcp_server/features/team_memory/annotations.py
+new file mode 100644
+index 000000000..c5b810b98
+--- /dev/null
++++ b/nowing_mcp/mcp_server/features/team_memory/annotations.py
+@@ -0,0 +1,12 @@
++"""Tool-call policy hints for workspace team-memory tools."""
++
++from __future__ import annotations
++
++from mcp.types import ToolAnnotations
++
++READ = ToolAnnotations(
++    readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False
++)
++DESTRUCTIVE = ToolAnnotations(
++    readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False
++)
+
+commit 62f78045fa93ad54bfcb4992f8b8fabd8c9bfc70
+Author: Vonic <phanquochoipt@gmail.com>
+Date:   Wed Aug 5 19:56:39 2026 +0700
+
+    feat(7.7): expand MCP server tool catalog and client
+    
+    - MCP tool groups (team_memory, image_generation, automation, report, chat).
+    
+    - Manual automation run endpoint, MCP client, error mapping, selfcheck.
+    
+    - Scraper platform capability (amazon, chainlens, vn_bds), uv.lock update.
+
+diff --git a/nowing_backend/app/automations/api/run.py b/nowing_backend/app/automations/api/run.py
+index b662a5943..1bdd922e6 100644
+--- a/nowing_backend/app/automations/api/run.py
++++ b/nowing_backend/app/automations/api/run.py
+@@ -1,4 +1,4 @@
+-"""HTTP routes for automation run history."""
++"""HTTP routes for automation run history + manual launch."""
+ 
+ from __future__ import annotations
+ 
+@@ -10,6 +10,24 @@ from app.automations.services import RunService, get_run_service
+ router = APIRouter()
+ 
+ 
++@router.post(
++    "/automations/{automation_id}/run",
++    response_model=RunSummary,
++)
++async def run_automation(
++    automation_id: int,
++    service: RunService = Depends(get_run_service),
++) -> RunSummary:
++    """Kick off a manual run for an automation, returning the PENDING run.
++
++    Fire-and-return: the run is resolved, validated, snapshotted, persisted as
++    PENDING and enqueued for background execution; the caller does not wait.
++    Requires ``automations:execute``.
++    """
++    run = await service.launch(automation_id=automation_id)
++    return RunSummary.model_validate(run)
++
++
+ @router.get(
+     "/automations/{automation_id}/runs",
+     response_model=RunList,
+diff --git a/nowing_backend/app/mcp_tools.py b/nowing_backend/app/mcp_tools.py
+index aa0f4f3a0..2f9430f8c 100644
+--- a/nowing_backend/app/mcp_tools.py
++++ b/nowing_backend/app/mcp_tools.py
+@@ -19,6 +19,11 @@ class McpToolGroup(StrEnum):
+     RUN_HISTORY = "run_history"
+     KNOWLEDGE_BASE = "knowledge_base"
+     MEMORY = "memory"
++    TEAM_MEMORY = "team_memory"
++    IMAGE_GENERATION = "image_generation"
++    AUTOMATION = "automation"
++    REPORT = "report"
++    CHAT = "chat"
+ 
+ 
+ MCP_TOOL_CATALOG: list[dict[str, str]] = [
+@@ -56,6 +61,16 @@ MCP_TOOL_CATALOG: list[dict[str, str]] = [
+     {"name": "nowing_recall", "group": McpToolGroup.MEMORY},
+     {"name": "nowing_update_fact", "group": McpToolGroup.MEMORY},
+     {"name": "nowing_continue_research", "group": McpToolGroup.MEMORY},
++    {"name": "nowing_memory_list", "group": McpToolGroup.MEMORY},
++    {"name": "nowing_memory_revalidate", "group": McpToolGroup.MEMORY},
++    {"name": "nowing_workspace_memory_get", "group": McpToolGroup.TEAM_MEMORY},
++    {"name": "nowing_workspace_memory_update", "group": McpToolGroup.TEAM_MEMORY},
++    {"name": "nowing_image_generate", "group": McpToolGroup.IMAGE_GENERATION},
++    {"name": "nowing_automation_list", "group": McpToolGroup.AUTOMATION},
++    {"name": "nowing_automation_run", "group": McpToolGroup.AUTOMATION},
++    {"name": "nowing_report_list", "group": McpToolGroup.REPORT},
++    {"name": "nowing_report_export", "group": McpToolGroup.REPORT},
++    {"name": "nowing_chat", "group": McpToolGroup.CHAT},
+ ]
+ 
+ MCP_TOOL_SYSTEM_TOOLS = {"nowing_list_workspaces", "nowing_select_workspace"}
+diff --git a/nowing_mcp/mcp_server/core/client.py b/nowing_mcp/mcp_server/core/client.py
+index cb4c10b42..a4dc152aa 100644
+--- a/nowing_mcp/mcp_server/core/client.py
++++ b/nowing_mcp/mcp_server/core/client.py
+@@ -6,12 +6,14 @@ transport or HTTP failure into a readable ``ToolError``.
+ 
+ from __future__ import annotations
+ 
++import json
+ from typing import Any
+ 
+ import httpx
+ 
+ from .auth.identity import current_api_key
+-from .errors import ToolError
++from .errors import ThreadBusyError, ToolError
++from .sse import iter_sse_events
+ 
+ _FAILURE_HINTS: dict[int, str] = {
+     401: "Authentication failed — the Nowing API key is invalid or expired.",
+@@ -88,6 +90,113 @@ class NowingClient:
+             return self._parse_body(response)
+         raise ToolError(self._explain_failure(response))
+ 
++    async def request_bytes(
++        self,
++        method: str,
++        path: str,
++        *,
++        params: dict[str, Any] | None = None,
++    ) -> tuple[bytes, str | None]:
++        """Send a request and return ``(raw bytes, content-type)``.
++
++        Used for binary responses (report exports) where ``request`` would
++        corrupt the payload by decoding it as text. Failure handling matches
++        ``request``.
++        """
++        if params is not None:
++            params = {key: value for key, value in params.items() if value is not None}
++        headers = self._auth_headers()
++        try:
++            response = await self._http.request(
++                method,
++                path,
++                params=params,
++                headers=headers,
++            )
++        except httpx.RequestError as exc:
++            raise ToolError(
++                f"Could not reach Nowing at {self._api_base}: {exc}. "
++                "Confirm the backend is running and NOWING_BASE_URL is correct."
++            ) from exc
++
++        if response.is_success:
++            return response.content, response.headers.get("content-type")
++        raise ToolError(self._explain_failure(response))
++
++    async def stream_sse(
++        self,
++        method: str,
++        path: str,
++        *,
++        json: Any | None = None,
++        timeout_s: float = 600.0,
++    ) -> Any:
++        """Open a streaming request and yield parsed SSE events.
++
++        Used by ``nowing_chat`` to consume the ``/new_chat`` stream. Yields
++        ``SseEvent`` objects; raises ``ThreadBusyError`` on a 409 busy reply
++        (with the backend ``errorCode``) and ``ToolError`` for any other
++        failure. Kept as an async generator so the stream stays open across
++        yields, mirroring the evals ``_stream_once`` client.
++        """
++        headers = self._auth_headers()
++        headers["Accept"] = "text/event-stream"
++        timeout = httpx.Timeout(timeout_s, connect=10.0)
++        try:
++            async with self._http.stream(
++                method,
++                path,
++                json=json,
++                headers=headers,
++                timeout=timeout,
++            ) as response:
++                if response.status_code == 409:
++                    detail = await self._extract_busy_detail(response)
++                    raise ThreadBusyError(
++                        error_code=detail.get("errorCode", "THREAD_BUSY"),
++                        message=detail.get("message", "Thread is busy"),
++                    )
++                if not response.is_success:
++                    body = await response.aread()
++                    status = response.status_code
++                    hint = _FAILURE_HINTS.get(status)
++                    detail = self._extract_detail_text(body)
++                    if detail and hint:
++                        raise ToolError(f"{hint} (server said: {detail})")
++                    if detail:
++                        raise ToolError(f"Nowing returned {status}: {detail}")
++                    raise ToolError(hint or f"Nowing returned HTTP {status}.")
++                async for event in iter_sse_events(response.aiter_lines()):
++                    yield event
++        except httpx.RequestError as exc:
++            raise ToolError(
++                f"Could not reach Nowing at {self._api_base}: {exc}. "
++                "Confirm the backend is running and NOWING_BASE_URL is correct."
++            ) from exc
++
++    @staticmethod
++    async def _extract_busy_detail(response: httpx.Response) -> dict[str, Any]:
++        try:
++            payload = json.loads(await response.aread())
++        except (json.JSONDecodeError, ValueError):
++            return {"errorCode": "THREAD_BUSY", "message": response.text}
++        if isinstance(payload, dict) and isinstance(payload.get("detail"), dict):
++            return payload["detail"]
++        return payload if isinstance(payload, dict) else {}
++
++    @staticmethod
++    def _extract_detail_text(body: bytes) -> str | None:
++        try:
++            payload = json.loads(body)
++        except (json.JSONDecodeError, ValueError):
++            return body.decode("utf-8", "replace").strip() or None
++        if isinstance(payload, dict):
++            detail = payload.get("detail", payload)
++            if isinstance(detail, dict):
++                return detail.get("message") or str(detail)
++            return str(detail)
++        return str(payload)
++
+     async def aclose(self) -> None:
+         await self._http.aclose()
+ 
+diff --git a/nowing_mcp/mcp_server/core/errors.py b/nowing_mcp/mcp_server/core/errors.py
+index 428def846..0907a886e 100644
+--- a/nowing_mcp/mcp_server/core/errors.py
++++ b/nowing_mcp/mcp_server/core/errors.py
+@@ -10,3 +10,15 @@ from __future__ import annotations
+ 
+ class ToolError(Exception):
+     """A user-actionable failure whose message is meant for the model to read."""
++
++
++class ThreadBusyError(ToolError):
++    """The chat thread is busy (``409 THREAD_BUSY`` / ``TURN_CANCELLING``).
++
++    Carries the backend error code so the caller can decide whether a retry is
++    sensible (``THREAD_BUSY``) or the turn is being cancelled (``TURN_CANCELLING``).
++    """
++
++    def __init__(self, error_code: str, message: str) -> None:
++        super().__init__(f"{error_code}: {message}")
++        self.error_code = error_code
+diff --git a/nowing_mcp/mcp_server/features/memory/__init__.py b/nowing_mcp/mcp_server/features/memory/__init__.py
+index 2664e1588..864de97eb 100644
+--- a/nowing_mcp/mcp_server/features/memory/__init__.py
++++ b/nowing_mcp/mcp_server/features/memory/__init__.py
+@@ -2,7 +2,8 @@
+ 
+ from __future__ import annotations
+ 
+-from typing import Annotated
++import math
++from typing import Annotated, Any
+ 
+ from mcp.server.fastmcp import FastMCP
+ from pydantic import Field
+@@ -36,7 +37,10 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
+     async def remember(
+         content: Annotated[
+             str,
+-            Field(min_length=1, description="The durable fact, decision, or preference to save."),
++            Field(
++                min_length=1,
++                description="The durable fact, decision, or preference to save.",
++            ),
+         ],
+         type: MemoryType = "semantic",
+         tags: MemoryTags = None,
+@@ -89,7 +93,9 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
+     async def recall(
+         query: Annotated[
+             str,
+-            Field(min_length=1, description="What to remember, e.g. 'pricing changes'."),
++            Field(
++                min_length=1, description="What to remember, e.g. 'pricing changes'."
++            ),
+         ],
+         top_k: TopK = 5,
+         type: Annotated[
+@@ -109,13 +115,14 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
+         or assistant shared in earlier conversations.
+         """
+         resolved = await context.resolve(workspace)
+-        payload = {
++        payload: dict[str, Any] = {
+             "query": query,
+             "top_k": top_k,
+             "type": type,
+             "tags": tags or [],
+-            "research_thread_id": research_thread_id,
+         }
++        if research_thread_id is not None:
++            payload["research_thread_id"] = research_thread_id
+         hits = await client.request(
+             "POST",
+             f"/workspaces/{resolved.id}/memories/search",
+@@ -179,7 +186,7 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
+         """
+         resolved = await context.resolve(workspace)
+         params = {
+-            "query": query or None,
++            "query": query.strip() or None,
+             "top_k": top_k,
+         }
+         try:
+@@ -205,6 +212,71 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
+             data.get("citations", []),
+         )
+ 
++    @mcp.tool(
++        name="nowing_memory_list",
++        title="List recent memories in a workspace",
++        annotations=READ,
++        structured_output=False,
++    )
++    async def memory_list(
++        limit: Annotated[
++            int, Field(ge=1, le=100, description="Maximum memories to return.")
++        ] = 20,
++        type: MemoryType = None,
++        tags: MemoryTags = None,
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """List the workspace's long-term memories, newest first.
++
++        Use this to inventory what is stored before deciding what to recall,
++        update, or revalidate. Returns each memory's id, type, tags,
++        confidence, and a short content excerpt.
++        Example: limit=10, type='semantic'.
++        """
++        resolved = await context.resolve(workspace)
++        params: dict[str, object] = {"limit": limit}
++        if type is not None:
++            params["type"] = type
++        if tags:
++            params["tags"] = ",".join(tags)
++        items = await client.request(
++            "GET",
++            f"/workspaces/{resolved.id}/memories",
++            params=params,
++        )
++        items = items or []
++        if response_format == "json":
++            return to_json(items)
++        return _render_memory_list(items)
++
++    @mcp.tool(
++        name="nowing_memory_revalidate",
++        title="Revalidate a memory against its source",
++        annotations=UPDATE,
++        structured_output=False,
++    )
++    async def memory_revalidate(
++        memory_id: MemoryId,
++        workspace: WorkspaceParam = None,
++        response_format: ResponseFormatParam = "markdown",
++    ) -> str:
++        """Recheck a memory's factual content against its source of origin.
++
++        Use this when a stored fact may be stale or you want to refresh a
++        run-derived memory. Returns the memory with refreshed content and
++        previous versions preserved.
++        Example: memory_id=42.
++        """
++        resolved = await context.resolve(workspace)
++        memory = await client.request(
++            "POST",
++            f"/workspaces/{resolved.id}/memories/{memory_id}/revalidate",
++        )
++        if response_format == "json":
++            return to_json(memory)
++        return _render_memory(memory, action="Revalidated")
++
+ 
+ def _source_suffix(item: dict) -> str:
+     """Render run provenance as a markdown suffix, or "" when there is none.
+@@ -234,14 +306,31 @@ def _render_memory(memory: dict | None, action: str) -> str:
+         f"- updated: {memory.get('updated_at')}",
+     ]
+     if memory.get("citation"):
+-        lines.append(f"- source: {memory.get('source_type')} ({memory.get('citation')})")
+-    lines.extend(["", clip(memory.get('content', '') or '(empty)')])
+-    if memory.get('previous_versions'):
++        lines.append(
++            f"- source: {memory.get('source_type')} ({memory.get('citation')})"
++        )
++    lines.extend(["", clip(memory.get("content", "") or "(empty)")])
++    if memory.get("previous_versions"):
+         lines.append("")
+         lines.append("_Previous versions preserved._")
+     return "\n".join(lines).strip()
+ 
+ 
++def _render_memory_list(items: list[dict]) -> str:
++    if not items:
++        return "No memories found in this workspace."
++    lines = [f"# {len(items)} memory(ies) (newest first)", ""]
++    for index, memory in enumerate(items, start=1):
++        tags = memory.get("tags") or []
++        tag_text = f", tags: {', '.join(tags)}" if tags else ""
++        lines.append(
++            f"- **id {memory.get('id')}** ({memory.get('type')}, "
++            f"confidence {memory.get('confidence', 1.0):.2f}{tag_text}): "
++            f"{clip(memory.get('content', '') or '(empty)', 500)}"
++        )
++    return "\n".join(lines).strip()
++
++
+ def _render_recall(query: str, items: list[dict]) -> str:
+     if not items:
+         return f'No memories found for "{query}".'
+@@ -250,14 +339,25 @@ def _render_recall(query: str, items: list[dict]) -> str:
+         score = hit.get("score")
+         similarity = hit.get("similarity")
+         if score is None and similarity is None:
+-            meta = f"rank=recency, rrf=n/a, similarity=n/a"
++            meta = "rank=recency, rrf=n/a, similarity=n/a"
+         else:
+             try:
+                 score_num = float(score)
+                 sim_num = float(similarity)
+-                meta = f"rrf={score_num:.6f}, similarity={sim_num:.6f}"
+             except (TypeError, ValueError):
+-                meta = f"rank={rank}, rrf=n/a, similarity=n/a"
++                score_num = None
++                sim_num = None
++            score_str = (
++                f"{score_num:.6f}"
++                if score_num is not None and math.isfinite(score_num)
++                else "n/a"
++            )
++            sim_str = (
++                f"{sim_num:.6f}"
++                if sim_num is not None and math.isfinite(sim_num)
++                else "n/a"
++            )
++            meta = f"rank={rank}, rrf={score_str}, similarity={sim_str}"
+         lines.append(
+             f"- **id {hit.get('id')}** ({hit.get('type')}, "
+             f"confidence {hit.get('confidence', 1.0):.2f}, {meta}): "
+diff --git a/nowing_mcp/mcp_server/features/memory/annotations.py b/nowing_mcp/mcp_server/features/memory/annotations.py
+index f1628f84c..3dae573ab 100644
+--- a/nowing_mcp/mcp_server/features/memory/annotations.py
++++ b/nowing_mcp/mcp_server/features/memory/annotations.py
+@@ -16,6 +16,7 @@ def _reject_bool_top_k(value: object) -> object:
+         raise ValueError("top_k must be an integer, not a boolean")
+     return value
+ 
++
+ READ = ToolAnnotations(
+     readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False
+ )
+diff --git a/nowing_mcp/mcp_server/features/scrapers/__init__.py b/nowing_mcp/mcp_server/features/scrapers/__init__.py
+index 7e98fdb3d..648c350d4 100644
+--- a/nowing_mcp/mcp_server/features/scrapers/__init__.py
++++ b/nowing_mcp/mcp_server/features/scrapers/__init__.py
+@@ -17,9 +17,11 @@ from .platforms import (
+     amazon,
+     batdongsan,
+     chainlens,
++    chotot_bds,
+     google_maps,
+     google_search,
+     instagram,
++    muaban_bds,
+     reddit,
+     tiktok,
+     vn_bds,
+@@ -38,6 +40,8 @@ _REGISTRARS = (
+     amazon,
+     chainlens,
+     batdongsan,
++    chotot_bds,
++    muaban_bds,
+     run_history,
+     vn_bds,
+ )
+diff --git a/nowing_mcp/mcp_server/features/scrapers/capability.py b/nowing_mcp/mcp_server/features/scrapers/capability.py
+index c40aaf6db..821c60eeb 100644
+--- a/nowing_mcp/mcp_server/features/scrapers/capability.py
++++ b/nowing_mcp/mcp_server/features/scrapers/capability.py
+@@ -43,8 +43,7 @@ def _render_markdown(platform: str, verb: str, workspace_name: str, result: Any)
+     header = f'# {platform}.{verb} — {_describe_size(result)} from "{workspace_name}"'
+     body = clip(to_json(result))
+     footer = (
+-        "\n\nFields shown as excerpts; use nowing_get_scraper_run for the "
+-        "full output."
++        "\n\nFields shown as excerpts; use nowing_get_scraper_run for the full output."
+     )
+     return f"{header}\n\n```json\n{body}\n```{footer}"
+ 
+diff --git a/nowing_mcp/mcp_server/features/scrapers/platforms/amazon.py b/nowing_mcp/mcp_server/features/scrapers/platforms/amazon.py
+index d23ec3914..65b613ea5 100644
+--- a/nowing_mcp/mcp_server/features/scrapers/platforms/amazon.py
++++ b/nowing_mcp/mcp_server/features/scrapers/platforms/amazon.py
+@@ -93,8 +93,10 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
+         ] = False,
+         country_code: Annotated[
+             str | None,
+-            Field(description="Two-letter delivery country for localized pricing, "
+-            "e.g. 'us'."),
++            Field(
++                description="Two-letter delivery country for localized pricing, "
++                "e.g. 'us'."
++            ),
+         ] = None,
+         zip_code: Annotated[
+             str | None,
+diff --git a/nowing_mcp/mcp_server/features/scrapers/platforms/chainlens.py b/nowing_mcp/mcp_server/features/scrapers/platforms/chainlens.py
+index c4ef2efa1..e3d7f7b00 100644
+--- a/nowing_mcp/mcp_server/features/scrapers/platforms/chainlens.py
++++ b/nowing_mcp/mcp_server/features/scrapers/platforms/chainlens.py
+@@ -34,7 +34,9 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
+         ],
+         mode: Annotated[
+             Literal["speed", "balanced", "quality", "auto"],
+-            Field(description="Research depth: speed (fast), balanced, or quality (thorough)."),
++            Field(
++                description="Research depth: speed (fast), balanced, or quality (thorough)."
++            ),
+         ] = "quality",
+         sources: Annotated[
+             list[Literal["web", "discussions", "academic"]],
+diff --git a/nowing_mcp/mcp_server/features/scrapers/platforms/vn_bds.py b/nowing_mcp/mcp_server/features/scrapers/platforms/vn_bds.py
+index 4ef73616e..baa33a869 100644
+--- a/nowing_mcp/mcp_server/features/scrapers/platforms/vn_bds.py
++++ b/nowing_mcp/mcp_server/features/scrapers/platforms/vn_bds.py
+@@ -82,7 +82,9 @@ def register(mcp: FastMCP, client: NowingClient, context: WorkspaceContext) -> N
+         ] = 5,
+         min_confidence: Annotated[
+             float,
+-            Field(ge=0.0, le=1.0, description="Drop listings below this confidence score."),
++            Field(
++                ge=0.0, le=1.0, description="Drop listings below this confidence score."
++            ),
+         ] = 0.0,
+         resolve_phones: Annotated[
+             bool,
+diff --git a/nowing_mcp/mcp_server/selfcheck.py b/nowing_mcp/mcp_server/selfcheck.py
+index 69dabb596..a7cf0a65f 100644
+--- a/nowing_mcp/mcp_server/selfcheck.py
++++ b/nowing_mcp/mcp_server/selfcheck.py
+@@ -31,6 +31,9 @@ EXPECTED_TOOLS = {
+     "nowing_google_maps_reviews",
+     "nowing_amazon_scrape",
+     "nowing_batdongsan_scrape",
++    "nowing_chotot_bds_scrape",
++    "nowing_muaban_bds_scrape",
++    "nowing_vn_bds_aggregate",
+     "nowing_instagram_scrape",
+     "nowing_instagram_details",
+     "nowing_list_scraper_runs",
+@@ -49,6 +52,21 @@ EXPECTED_TOOLS = {
+     "nowing_recall",
+     "nowing_update_fact",
+     "nowing_continue_research",
++    "nowing_memory_list",
++    "nowing_memory_revalidate",
++    # workspace team memory
++    "nowing_workspace_memory_get",
++    "nowing_workspace_memory_update",
++    # image generation
++    "nowing_image_generate",
++    # automations
++    "nowing_automation_list",
++    "nowing_automation_run",
++    # reports
++    "nowing_report_list",
++    "nowing_report_export",
++    # chat
++    "nowing_chat",
+ }
+ 
+ _MIN_DESCRIPTION_CHARS = 40
+diff --git a/nowing_mcp/mcp_server/server.py b/nowing_mcp/mcp_server/server.py
+index a3a16e213..3dbe0cf09 100644
+--- a/nowing_mcp/mcp_server/server.py
++++ b/nowing_mcp/mcp_server/server.py
+@@ -17,7 +17,17 @@ from .config import Settings
+ from .core.client import NowingClient
+ from .core.errors import ToolError as WorkspaceToolError
+ from .core.workspace_context import WorkspaceContext
+-from .features import knowledge_base, memory, scrapers, workspaces
++from .features import (
++    automations,
++    chat,
++    image_generation,
++    knowledge_base,
++    memory,
++    reports,
++    scrapers,
++    team_memory,
++    workspaces,
++)
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -75,7 +85,9 @@ class WorkspaceAwareFastMCP(FastMCP):
+             return await super().call_tool(name, arguments)
+ 
+         # Fail-closed: any failure to verify state results in denial.
+-        workspace_reference = arguments.get("workspace") if isinstance(arguments, dict) else None
++        workspace_reference = (
++            arguments.get("workspace") if isinstance(arguments, dict) else None
++        )
+         try:
+             workspace = await self._workspace_context.resolve(workspace_reference)
+             settings = await self._workspace_context.client.request(
+@@ -139,4 +151,9 @@ def build_server(settings: Settings) -> tuple[WorkspaceAwareFastMCP, NowingClien
+     scrapers.register(mcp, client, context)
+     knowledge_base.register(mcp, client, context)
+     memory.register(mcp, client, context)
++    team_memory.register(mcp, client, context)
++    image_generation.register(mcp, client, context)
++    automations.register(mcp, client, context)
++    reports.register(mcp, client, context)
++    chat.register(mcp, client, context)
+     return mcp, client

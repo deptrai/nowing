@@ -8,8 +8,6 @@ import {
 	FolderPlus,
 	FolderSync,
 	ListFilter,
-	Plus,
-	Settings2,
 	SlidersVertical,
 	Trash2,
 	Upload,
@@ -19,14 +17,11 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { makeFolderMention, mentionedDocumentsAtom } from "@/atoms/chat/mentioned-documents.atom";
-import { importConnectorRequestAtom } from "@/atoms/connector-dialog/connector-dialog.atoms";
-import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
 import { deleteDocumentMutationAtom } from "@/atoms/documents/document-mutation.atoms";
 import { expandedFolderIdsAtom } from "@/atoms/documents/folder.atoms";
 import { agentCreatedDocumentsAtom } from "@/atoms/documents/ui.atoms";
 import { openEditorPanelAtom } from "@/atoms/editor/editor-panel.atom";
 import { openDocumentTabAtom } from "@/atoms/tabs/tabs.atom";
-import { useConnectorStatus } from "@/components/assistant-ui/connector-popup/hooks/use-connector-status";
 import { useDocumentUploadDialog } from "@/components/assistant-ui/document-upload-popup";
 import { CreateFolderDialog } from "@/components/documents/CreateFolderDialog";
 import type { DocumentNodeDoc } from "@/components/documents/DocumentNode";
@@ -35,7 +30,7 @@ import type { FolderDisplay } from "@/components/documents/FolderNode";
 import { FolderPickerDialog } from "@/components/documents/FolderPickerDialog";
 import { FolderTreeView } from "@/components/documents/FolderTreeView";
 import { VersionHistoryDialog } from "@/components/documents/version-history";
-import { useOptionalRuntimeConfig, useRuntimeConfig } from "@/components/providers/runtime-config";
+import { useRuntimeConfig } from "@/components/providers/runtime-config";
 import { EXPORT_FILE_EXTENSIONS } from "@/components/shared/ExportMenuItems";
 import {
 	DEFAULT_EXCLUDE_PATTERNS,
@@ -58,7 +53,6 @@ import {
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
@@ -67,9 +61,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { useAnonymousMode, useIsAnonymous } from "@/contexts/anonymous-mode";
 import { useLoginGate } from "@/contexts/login-gate";
-import { EnumConnectorName } from "@/contracts/enums/connector";
-import { getConnectorIcon } from "@/contracts/enums/connectorIcons";
-import type { SearchSourceConnector } from "@/contracts/types/connector.types";
 import type { DocumentTypeEnum } from "@/contracts/types/document.types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useElectronAPI, usePlatform } from "@/hooks/use-platform";

@@ -31,6 +31,9 @@ export function groupConnectorsByType(
 	const groups = new Map<string, SearchSourceConnector[]>();
 
 	for (const connector of connectors) {
+		// Skip malformed connector rows that are missing a type, which would
+		// otherwise create an "undefined" group and break downstream rendering.
+		if (!connector.connector_type) continue;
 		const list = groups.get(connector.connector_type);
 		if (list) {
 			list.push(connector);
@@ -61,5 +64,7 @@ export function groupConnectorsByType(
 			title: getConnectorTypeDisplay(connectorType),
 			connectors,
 		}))
-		.sort((a, b) => a.title.localeCompare(b.title));
+		.sort((a, b) =>
+			String(a.title || a.connectorType).localeCompare(String(b.title || b.connectorType))
+		);
 }

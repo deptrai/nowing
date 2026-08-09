@@ -3,6 +3,12 @@ interface JsonLdProps {
 }
 
 export function JsonLd({ data }: JsonLdProps) {
+	// JSON-LD is only meaningful for SEO/crawlers; skip in development to avoid
+	// the dev-mode hydration noise from next/script and head rendering.
+	if (process.env.NODE_ENV === "development") {
+		return null;
+	}
+
 	return (
 		// biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data requires dangerouslySetInnerHTML for script injection
 		<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />

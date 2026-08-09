@@ -1,12 +1,14 @@
-# Story 13.1: Canonical Persistence, Tenancy & Convention
+# Story 13.1: Canonical Persistence, Tenancy & Convention `[DROPPED 2026-08-08]`
 
-**Status:** done  
+> **DROPPED per SCP 2026-08-08.** Nowing no longer builds `canonical_entities` tables, multi-domain index, or unified search corpus. `chainlens-research` owns the canonical index. This story file is retained for reference only.
+
+**Status:** dropped  
 **Epic:** Epic 13 — Canonical Entity Storage & Multi-Domain Indexing  
 **Priority:** P0
 
-> **Note:** This story has been validated and the canonical, comprehensive BMAD story file now lives at:
+> **Note:** This quick-reference story has been archived. The canonical, comprehensive BMAD story file now lives at:
 >
-> `_bmad-output/implementation-artifacts/13-1-canonical-persistence-tenancy-convention.md`
+> `_bmad-output/implementation-artifacts/archive/epic-13/13-1-canonical-persistence-tenancy-convention.md`
 >
 > The validation report is at:
 >

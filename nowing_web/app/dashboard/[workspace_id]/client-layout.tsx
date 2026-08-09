@@ -43,7 +43,8 @@ export function DashboardClientLayout({
 	} = useAtomValue(llmSetupStatusAtomFamily(Number(workspaceId)));
 
 	const isOnboardingPage = pathname?.includes("/onboard");
-	const isConnectorsPage = pathname?.includes("/connectors");
+	// Match only the dedicated connectors dashboard, not sub-routes like /connectors/callback.
+	const isConnectorsPage = pathname === `/dashboard/${workspaceId}/connectors`;
 	const isWorkspaceReady = activeWorkspaceId === workspaceId;
 
 	const isReady = setupStatus?.status === "ready";

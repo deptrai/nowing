@@ -18,7 +18,7 @@ verdict: changes_requested
   - API thiếu pagination, `total` chỉ là số item trả về (`≤ top_k`), không phải tổng match.
 - **Kiểm thử:** `ruff` pass; 34 test liên quan pass; fixture quality đạt recall@10 ≥ 0.85 và precision@5 ≥ 0.80.
 
-> **Lưu ý quy trình:** File story `13-3-unified-canonical-document-search-api.md` không tồn tại dưới `_bmad-output/implementation-artifacts/stories/`. Review dựa trên AC tại `_bmad-output/planning-artifacts/epics.md:1419-1440` và UX contract tại `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-canonical-entity.md:24-32`.
+> **Lưu ý quy trình:** File story `13-3-unified-canonical-document-search-api.md` không tồn tại dưới `_bmad-output/implementation-artifacts/stories/`. Review dựa trên AC tại `_bmad-output/planning-artifacts/epics.md:1419-1440` và UX contract (archived 2026-08-08) tại `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/archive/ux-contract-canonical-entity.md:24-32`.
 
 ## Diff phạm vi
 

@@ -180,3 +180,45 @@ The following 4 deferred items have been promoted to dedicated tech-debt stories
 - **Issue:** `tests/unit/services/test_model_connections.py` only tests resolver functions (`to_litellm`, `strip_version_suffix`), not `test_model()` itself. Integration tests mock `test_model` entirely. The timeout/retry parameters passed to `litellm.acompletion` are never verified.
 - **Fix:** Add a unit test that mocks `litellm.acompletion` and asserts `num_retries=0` and `timeout=TEST_TIMEOUT_SECONDS` are passed correctly.
 - **Priority:** P2 — test gap for P0-adjacent function (model routing).
+
+## Deferred from: code review of 7-4-dedicated-connectors-layout (2026-08-08)
+
+- **Finding:** Thay đổi mở document thành tab trong `DocumentsSidebar` chưa có test — `DocumentsSidebar.tsx:354, 1123-1126`.
+- **Action:** Marked `[x] [Review][Defer]` in `7-4-dedicated-connectors-layout.md`.
+- **Reason / when to revisit:** Behavior change từ `openEditorPanel` sang `openDocumentTab` nằm ngoài scope rõ ràng của Story 7.4; cần xử lý khi test khung tab/document được triển khai hoặc khi refactor DocumentsSidebar.
+
+## Tech-debt: Epic 13 code deprecation (2026-08-08)
+
+- **Source:** SCP `sprint-change-proposal-2026-08-08-remove-duplicate-index.md` adopted.
+- **Issue:** `canonical_entities` tables, migrations, merge logic, and search surfaces (Stories 13.1–13.3, Epic 13) are now out of scope because `chainlens-research` owns the canonical index. Keeping the code in `develop` risks future features coupling to a deprecated local index.
+- **Fix:** Schedule a cleanup story to:
+  1. Identify all Epic 13 tables/columns/migrations (`canonical_entities`, merge history, `pgvector`/`to_tsvector` corpus if any).
+  2. Mark them deprecated with runtime warnings.
+  3. Remove unused REST/MCP endpoints and UI routes.
+  4. Drop tables after all dependent code is removed.
+- **Priority:** P2 — not blocking integration work, but should run before Phase 1 GA to avoid data-migration pain.
+- **When to revisit:** After `NowingIngestService` and `chainlens-research` `POST /v1/ingest/scraper` are in production and no live call path touches Epic 13 tables.
+
+## Deferred from: code review of 7-7-mcp-server-tool-expansion (2026-08-09)
+
+Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full rationale. These remain pre-existing/cross-cutting and are not introduced by 7.7.
+
+- **Finding:** `RunService.launch` maps `DispatchError` to HTTP 404/400 by substring `"not found"`.
+  - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
+  - **Reason / when to revisit:** Fragile classification; replace with error-kind dispatch or an exception class hierarchy when `app/automations/dispatch` is refactored.
+
+- **Finding:** `nowing_chat` busy-retry uses deterministic exponential backoff without jitter.
+  - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
+  - **Reason / when to revisit:** Thundering-herd risk when multiple callers hit a busy thread; add jitter and/or circuit-breaker in a chat robustness pass.
+
+- **Finding:** `NowingClient.stream_sse()` has only a 600s total timeout, no per-event/idle timeout.
+  - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
+  - **Reason / when to revisit:** A stalled SSE stream hangs for up to 600s; introduce `httpx.Timeout(..., read=60.0)` and/or application-level idle timer.
+
+- **Finding:** `POST /automations/{id}/run` has no idempotency key, so two concurrent POSTs create two PENDING runs.
+  - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
+  - **Reason / when to revisit:** Same pattern as Telegram `/run`; add idempotency key or workspace+automation dedup lock when manual-run endpoint is hardened.
+
+- **Finding:** Celery `apply_async` failure after `launch_run` commits leaves a run stuck PENDING forever.
+  - **Action:** Marked `[x] [Review][Defer]` in `7-7-mcp-server-tool-expansion.md`.
+  - **Reason / when to revisit:** Pre-existing `launch_run` commit-before-enqueue pattern; fix by rolling back or retrying enqueue.

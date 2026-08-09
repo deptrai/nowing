@@ -9,6 +9,7 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
 	AlertCircle,
+	ArrowLeft,
 	ArrowUpIcon,
 	Camera,
 	ChevronDown,
@@ -74,6 +75,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
 	Drawer,
+	DrawerClose,
 	DrawerContent,
 	DrawerHandle,
 	DrawerHeader,
@@ -1103,10 +1105,10 @@ const ComposerAction: FC<ComposerActionProps> = ({
 	onChatModelSelected,
 }) => {
 	const mentionedDocuments = useAtomValue(mentionedDocumentsAtom);
-	const setConnectorDialogOpen = useSetAtom(connectorDialogOpenAtom);
 	const setImportRequest = useSetAtom(importConnectorRequestAtom);
 	const router = useRouter();
 	const [toolsPopoverOpen, setToolsPopoverOpen] = useState(false);
+	const [mcpDrawerOpen, setMcpDrawerOpen] = useState(false);
 	const [openConnectorSubmenu, setOpenConnectorSubmenu] = useState<string | null>(null);
 	const [expandedConnectorGroups, setExpandedConnectorGroups] = useState<Set<string>>(
 		() => new Set()
@@ -1242,43 +1244,10 @@ const ComposerAction: FC<ComposerActionProps> = ({
 									<Upload className="size-4" />
 									Upload Files
 								</DropdownMenuItem>
-								<DropdownMenuSub>
-									<DropdownMenuSubTrigger>
-										<Unplug className="size-4" />
-										MCP Connectors
-									</DropdownMenuSubTrigger>
-									<DropdownMenuPortal>
-										<DropdownMenuSubContent className="w-56 max-h-64 overflow-y-auto">
-											{groupConnectorsByType((connectors ?? []) as SearchSourceConnector[]).map(
-												(group) => (
-													<DropdownMenuItem
-														key={group.connectorType}
-														onSelect={() =>
-															setImportRequest({ connectorType: group.connectorType, mode: "auto" })
-														}
-													>
-														{getConnectorIcon(group.connectorType, "size-4 shrink-0")}
-														<span className="flex-1 truncate">{group.title}</span>
-														{group.connectors.length > 1 && (
-															<span className="text-xs text-muted-foreground">
-																{group.connectors.length}
-															</span>
-														)}
-													</DropdownMenuItem>
-												)
-											)}
-											<DropdownMenuSeparator />
-											<DropdownMenuItem
-												onSelect={() => {
-													if (workspaceId) router.push(`/dashboard/${workspaceId}/connectors`);
-												}}
-											>
-												<Plus className="size-4" />
-												Browse all integrations
-											</DropdownMenuItem>
-										</DropdownMenuSubContent>
-									</DropdownMenuPortal>
-								</DropdownMenuSub>
+								<DropdownMenuItem onSelect={() => setMcpDrawerOpen(true)}>
+									<Unplug className="size-4" />
+									MCP Connectors
+								</DropdownMenuItem>
 								<DropdownMenuItem onSelect={() => setToolsPopoverOpen(true)}>
 									<Settings2 className="size-4" />
 									Manage Tools
@@ -1453,6 +1422,67 @@ const ComposerAction: FC<ComposerActionProps> = ({
 											))}
 										</div>
 									)}
+								</div>
+							</DrawerContent>
+						</Drawer>
+						<Drawer
+							open={mcpDrawerOpen}
+							onOpenChange={setMcpDrawerOpen}
+							shouldScaleBackground={false}
+						>
+							<DrawerContent className="h-[85vh] max-h-[85vh] z-80" overlayClassName="z-80">
+								<DrawerHandle />
+								<DrawerHeader className="relative px-4 pb-3 pt-2">
+									<DrawerClose asChild>
+										<Button
+											variant="ghost"
+											size="icon"
+											className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8"
+											aria-label="Back"
+										>
+											<ArrowLeft className="size-5" />
+										</Button>
+									</DrawerClose>
+									<DrawerTitle className="flex items-center justify-center gap-2 text-base font-semibold">
+										MCP Connectors
+									</DrawerTitle>
+								</DrawerHeader>
+								<div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin pb-6">
+									{groupConnectorsByType((connectors ?? []) as SearchSourceConnector[]).map(
+										(group) => (
+											<Button
+												key={group.connectorType}
+												variant="ghost"
+												className="flex w-full items-center justify-start gap-3 px-4 py-3 h-auto font-normal"
+												onClick={() => {
+													setImportRequest({ connectorType: group.connectorType, mode: "auto" });
+													setMcpDrawerOpen(false);
+												}}
+											>
+												{getConnectorIcon(group.connectorType, "size-5 shrink-0")}
+												<span className="flex-1 truncate text-left text-sm">{group.title}</span>
+												{group.connectors.length > 1 && (
+													<span className="text-xs text-muted-foreground">
+														{group.connectors.length}
+													</span>
+												)}
+											</Button>
+										)
+									)}
+									<div className="mx-4 my-2 h-px bg-border" />
+									<Button
+										variant="ghost"
+										className="flex w-full items-center justify-start gap-3 px-4 py-3 h-auto font-normal"
+										onClick={() => {
+											if (workspaceId) router.push(`/dashboard/${workspaceId}/connectors`);
+											setMcpDrawerOpen(false);
+										}}
+									>
+										<Plus className="size-5 shrink-0" />
+										<span className="flex-1 truncate text-left text-sm">
+											Browse all integrations
+										</span>
+									</Button>
 								</div>
 							</DrawerContent>
 						</Drawer>

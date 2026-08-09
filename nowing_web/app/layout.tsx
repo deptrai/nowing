@@ -119,7 +119,7 @@ export default function RootLayout({
 			suppressHydrationWarning
 		>
 			<head>
-				<Script id="nowing-runtime-auth-init" strategy="beforeInteractive">
+				<Script id="nowing-runtime-auth-init" strategy="afterInteractive" suppressHydrationWarning>
 					{getRuntimeAuthInitScript(BUILD_TIME_AUTH_TYPE)}
 				</Script>
 				<link rel="preconnect" href="https://api.github.com" />

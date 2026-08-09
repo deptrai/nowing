@@ -3,16 +3,19 @@
 import { useAtomValue } from "jotai";
 import { Loader2, TriangleAlert } from "lucide-react";
 import { useMemo } from "react";
-import { statusInboxItemsAtom } from "@/atoms/inbox/status-inbox.atom";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
+import { statusInboxItemsAtom } from "@/atoms/inbox/status-inbox.atom";
 import { useIndexingConnectors } from "@/components/assistant-ui/connector-popup/hooks/use-indexing-connectors";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { getConnectorIcon } from "@/contracts/enums/connectorIcons";
-import { isConnectorIndexingMetadata } from "@/contracts/types/inbox.types";
 import type { SearchSourceConnector } from "@/contracts/types/connector.types";
+import { isConnectorIndexingMetadata } from "@/contracts/types/inbox.types";
 import { useConnectorsSync } from "@/hooks/use-connectors-sync";
-import { groupConnectorsByType, type ConnectorGroup } from "@/lib/connectors/group-connectors-by-type";
+import {
+	type ConnectorGroup,
+	groupConnectorsByType,
+} from "@/lib/connectors/group-connectors-by-type";
 import { cn } from "@/lib/utils";
 
 interface ConnectorRailProps {
@@ -24,7 +27,7 @@ interface ConnectorRailProps {
 
 function useLiveConnectors(workspaceId: string) {
 	const { data: queryConnectors } = useAtomValue(connectorsAtom);
-	const { connectors: syncConnectors, loading: syncLoading } = useConnectorsSync(workspaceId);
+	const { connectors: syncConnectors } = useConnectorsSync(workspaceId);
 
 	return useMemo<SearchSourceConnector[]>(() => {
 		if (syncConnectors.length > 0) return syncConnectors;
@@ -52,22 +55,31 @@ function useConnectorHealth(connectors: SearchSourceConnector[]) {
 	return { indexingConnectorIds, failedConnectorIds };
 }
 
-export function ConnectorRail({ workspaceId, selectedType, isLoading, onSelect }: ConnectorRailProps) {
+export function getConnectorGroupHealth(
+	group: ConnectorGroup,
+	indexingConnectorIds: Set<number>,
+	failedConnectorIds: Set<number>
+): "syncing" | "failed" | "ok" {
+	const ids = new Set(group.connectors.map((c) => c.id));
+	for (const id of ids) {
+		if (failedConnectorIds.has(id)) return "failed";
+	}
+	for (const id of ids) {
+		if (indexingConnectorIds.has(id)) return "syncing";
+	}
+	return "ok";
+}
+
+export function ConnectorRail({
+	workspaceId,
+	selectedType,
+	isLoading,
+	onSelect,
+}: ConnectorRailProps) {
 	const connectors = useLiveConnectors(workspaceId);
 	const { indexingConnectorIds, failedConnectorIds } = useConnectorHealth(connectors);
 
 	const groups = useMemo(() => groupConnectorsByType(connectors), [connectors]);
-
-	const getHealth = (group: ConnectorGroup): "syncing" | "failed" | "ok" => {
-		const ids = new Set(group.connectors.map((c) => c.id));
-		for (const id of ids) {
-			if (failedConnectorIds.has(id)) return "failed";
-		}
-		for (const id of ids) {
-			if (indexingConnectorIds.has(id)) return "syncing";
-		}
-		return "ok";
-	};
 
 	if (isLoading && !connectors.length) {
 		return (
@@ -91,7 +103,11 @@ export function ConnectorRail({ workspaceId, selectedType, isLoading, onSelect }
 				) : (
 					<div className="space-y-0.5">
 						{groups.map((group) => {
-							const health = getHealth(group);
+							const health = getConnectorGroupHealth(
+								group,
+								indexingConnectorIds,
+								failedConnectorIds
+							);
 							const isSelected = selectedType === group.connectorType;
 							return (
 								<Button
