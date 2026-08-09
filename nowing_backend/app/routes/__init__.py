@@ -43,6 +43,7 @@ from .agent_action_log_route import router as agent_action_log_router
 from .agent_flags_route import router as agent_flags_router
 from .agent_permissions_route import router as agent_permissions_router
 from .agent_revert_route import router as agent_revert_router
+from .agent_chat_routes import router as agent_chat_router
 from .airtable_add_connector_route import (
     router as airtable_add_connector_router,
 )
@@ -132,6 +133,7 @@ router.include_router(
     agent_permissions_router
 )  # CRUD for /workspaces/{id}/agent/permissions/rules
 router.include_router(agent_flags_router)  # GET /agent/flags
+router.include_router(agent_chat_router)  # Public agent-chat endpoints
 router.include_router(sandbox_router)  # Sandbox file downloads (Daytona)
 router.include_router(chat_comments_router)
 router.include_router(podcasts_router)  # Podcast task status and audio

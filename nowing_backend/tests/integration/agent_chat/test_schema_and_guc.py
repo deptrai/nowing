@@ -105,64 +105,74 @@ async def test_pat_check_constraints_exist(db_session):
     """personal_access_tokens has the agent_chat scope check constraints."""
     constraints = await _constraints_on(db_session, "personal_access_tokens")
     # The exact conname may vary by migration; we assert by substring.
-    assert any(
-        "agent_chat" in c or "token_kind" in c for c in constraints
-    ), "missing token_kind=agent_chat check constraint"
-    assert any(
-        "agent_id" in c or "client_id" in c for c in constraints
-    ), "missing agent_id requires client_id check constraint"
+    assert any("agent_chat" in c or "token_kind" in c for c in constraints), (
+        "missing token_kind=agent_chat check constraint"
+    )
+    assert any("agent_id" in c or "client_id" in c for c in constraints), (
+        "missing agent_id requires client_id check constraint"
+    )
 
 
 @pytest.mark.asyncio
 async def test_pat_agent_chat_requires_workspace_client_and_scopes(db_session, db_user):
     """Inserting token_kind='agent_chat' without workspace_id/client_id/scopes fails."""
     columns = await _columns_of(db_session, "personal_access_tokens")
-    missing = {"workspace_id", "client_id", "agent_id", "scopes", "token_kind"} - columns
+    missing = {
+        "workspace_id",
+        "client_id",
+        "agent_id",
+        "scopes",
+        "token_kind",
+    } - columns
     assert not missing, f"personal_access_tokens missing columns: {missing}"
 
     token = generate_pat()
-    await db_session.execute(
-        text(
-            "INSERT INTO personal_access_tokens (user_id, token_hash, token_prefix, "
-            "label, expires_at, token_kind, workspace_id, client_id, agent_id, scopes) "
-            "VALUES (:user_id, :token_hash, :token_prefix, :label, NULL, "
-            "'agent_chat', NULL, NULL, NULL, '[]')"
-        ),
-        {
-            "user_id": db_user.id,
-            "token_hash": hash_pat(token),
-            "token_prefix": token_prefix(token),
-            "label": "scope-incomplete-pat",
-        },
-    )
     with pytest.raises(IntegrityError):
-        await db_session.flush()
+        await db_session.execute(
+            text(
+                "INSERT INTO personal_access_tokens (user_id, token_hash, token_prefix, "
+                "label, expires_at, token_kind, workspace_id, client_id, agent_id, scopes) "
+                "VALUES (:user_id, :token_hash, :token_prefix, :label, NULL, "
+                "'agent_chat', NULL, NULL, NULL, '[]')"
+            ),
+            {
+                "user_id": db_user.id,
+                "token_hash": hash_pat(token),
+                "token_prefix": token_prefix(token),
+                "label": "scope-incomplete-pat",
+            },
+        )
 
 
 @pytest.mark.asyncio
 async def test_pat_agent_requires_client_id(db_session, db_user):
     """Inserting agent_id without client_id fails the check constraint."""
     columns = await _columns_of(db_session, "personal_access_tokens")
-    missing = {"workspace_id", "client_id", "agent_id", "scopes", "token_kind"} - columns
+    missing = {
+        "workspace_id",
+        "client_id",
+        "agent_id",
+        "scopes",
+        "token_kind",
+    } - columns
     assert not missing, f"personal_access_tokens missing columns: {missing}"
 
     token = generate_pat()
-    await db_session.execute(
-        text(
-            "INSERT INTO personal_access_tokens (user_id, token_hash, token_prefix, "
-            "label, expires_at, token_kind, workspace_id, client_id, agent_id, scopes) "
-            "VALUES (:user_id, :token_hash, :token_prefix, :label, NULL, "
-            "'agent_chat', 1, NULL, 'bdsai-listing-assistant', '[\"agent_chat:thread:create\"]')"
-        ),
-        {
-            "user_id": db_user.id,
-            "token_hash": hash_pat(token),
-            "token_prefix": token_prefix(token),
-            "label": "agent-without-client",
-        },
-    )
     with pytest.raises(IntegrityError):
-        await db_session.flush()
+        await db_session.execute(
+            text(
+                "INSERT INTO personal_access_tokens (user_id, token_hash, token_prefix, "
+                "label, expires_at, token_kind, workspace_id, client_id, agent_id, scopes) "
+                "VALUES (:user_id, :token_hash, :token_prefix, :label, NULL, "
+                "'agent_chat', 1, NULL, 'bdsai-listing-assistant', '[\"agent_chat:thread:create\"]')"
+            ),
+            {
+                "user_id": db_user.id,
+                "token_hash": hash_pat(token),
+                "token_prefix": token_prefix(token),
+                "label": "agent-without-client",
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -294,9 +304,7 @@ async def test_app_current_client_id_cleared_on_rollback(db_session):
 @pytest.mark.asyncio
 async def test_app_workspace_id_cleared_on_rollback(db_session):
     """Existing app.workspace_id GUC also clears on rollback (pool safety)."""
-    await db_session.execute(
-        text("SELECT set_config('app.workspace_id', '42', true)")
-    )
+    await db_session.execute(text("SELECT set_config('app.workspace_id', '42', true)"))
     await db_session.rollback()
     result = await db_session.execute(
         text("SELECT current_setting('app.workspace_id', true)")

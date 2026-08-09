@@ -521,6 +521,7 @@ class TimestampMixin:
             TIMESTAMP(timezone=True),
             nullable=False,
             default=lambda: datetime.now(UTC),
+            server_default=text("now()"),
             index=True,
         )
 
@@ -713,6 +714,7 @@ class NewChatThread(BaseModel, TimestampMixin):
     # Surface metadata for first-party Nowing and external chat threads.
     # Zero publishes all chat-message sources; the UI can decide which surfaces to render.
     source = Column(Text, nullable=False, default="nowing", server_default="nowing")
+    client_id = Column(Text, nullable=True, index=True)
     external_chat_binding_id = Column(
         BigInteger,
         ForeignKey("external_chat_bindings.id", ondelete="SET NULL"),
@@ -2104,6 +2106,7 @@ class ResearchThread(BaseModel, TimestampMixin):
         index=True,
     )
     title = Column(String(500), nullable=True)
+    client_id = Column(Text, nullable=True, index=True)
     current_chat_thread_id = Column(
         Integer,
         ForeignKey("new_chat_threads.id", ondelete="SET NULL"),
@@ -2134,6 +2137,45 @@ class ResearchThread(BaseModel, TimestampMixin):
         back_populates="research_thread",
         cascade="all, delete-orphan",
     )
+
+
+class VerticalClient(Base, TimestampMixin):
+    """Registered vertical client / partner tenant (e.g. BDS AI)."""
+
+    __tablename__ = "vertical_clients"
+    __table_args__ = (
+        UniqueConstraint("client_id", name="unique_vertical_clients_client_id"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_id = Column(Text, nullable=False, unique=True)
+    display_name = Column(Text, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+
+
+class AgentConfig(BaseModel, TimestampMixin):
+    """Registry of agents available to vertical clients (AD-30)."""
+
+    __tablename__ = "agent_configs"
+    __table_args__ = (
+        UniqueConstraint("client_id", "slug", name="unique_agent_configs_client_slug"),
+    )
+
+    client_id = Column(Text, nullable=False, index=True)
+    name = Column(Text, nullable=False)
+    slug = Column(Text, nullable=False)
+    system_instructions = Column(Text, nullable=True)
+    enabled_tools = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    disabled_tools = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    model_name = Column(Text, nullable=True)
+    citations_enabled = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
 
 
 class Memory(BaseModel, TimestampMixin):
@@ -3277,9 +3319,26 @@ class PersonalAccessToken(BaseModel, TimestampMixin):
     """
     Stores hashed Personal Access Tokens for programmatic API access.
     Plaintext tokens are shown once on creation and are never persisted.
+
+    Scoped PATs (token_kind='agent_chat') bind to exactly one workspace
+    and one vertical client. Client-supplied IDs are intersected with the
+    token scope at runtime; the schema enforces a minimum scope for
+    agent_chat tokens.
     """
 
     __tablename__ = "personal_access_tokens"
+
+    __table_args__ = (
+        CheckConstraint(
+            "(token_kind != 'agent_chat') OR "
+            "(workspace_id IS NOT NULL AND client_id IS NOT NULL AND scopes != '[]'::jsonb)",
+            name="chk_pat_agent_chat_requires_scope",
+        ),
+        CheckConstraint(
+            "(agent_id IS NULL) OR (client_id IS NOT NULL)",
+            name="chk_pat_agent_id_requires_client_id",
+        ),
+    )
 
     user_id = Column(
         UUID(as_uuid=True),
@@ -3293,6 +3352,28 @@ class PersonalAccessToken(BaseModel, TimestampMixin):
     label = Column(String, nullable=False)
     expires_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     last_used_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    # PAT scope fields (Epic 18)
+    workspace_id = Column(
+        Integer,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    client_id = Column(Text, nullable=True, index=True)
+    agent_id = Column(Text, nullable=True, index=True)
+    scopes = Column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+    )
+    token_kind = Column(
+        Text,
+        nullable=False,
+        default="legacy",
+        server_default="legacy",
+    )
 
     @property
     def is_expired(self) -> bool:

@@ -3,21 +3,19 @@
 from __future__ import annotations
 
 import logging
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
 pytestmark = pytest.mark.unit
 
 
-def _patch_metric_recorder(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
+def _patch_metric_recorder(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Replace the public-call metrics recorder with a spy."""
     from app.observability import metrics
 
-    spy = AsyncMock()
-    monkeypatch.setattr(
-        metrics, "record_agent_chat_public_call", spy, raising=False
-    )
+    spy = MagicMock()
+    monkeypatch.setattr(metrics, "record_agent_chat_public_call", spy, raising=False)
     return spy
 
 
@@ -100,7 +98,9 @@ async def test_log_public_call_emits_metrics_with_bounded_labels(
     assert labels["client_id"] == ""
     assert labels["agent_id"] == ""
     assert labels["workspace_id"] in (7, "7")
-    assert labels["route"] == "POST /api/v1/workspaces/7/agent-chat/threads/123/messages"
+    assert (
+        labels["route"] == "POST /api/v1/workspaces/7/agent-chat/threads/123/messages"
+    )
     assert labels["status"] in (503, "503")
     assert "content" not in labels
 

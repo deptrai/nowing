@@ -260,6 +260,14 @@ def _chat_request_outcome():
 
 
 @lru_cache(maxsize=1)
+def _agent_chat_public_call():
+    return _get_meter().create_counter(
+        "nowing.agent_chat.public_call",
+        description="Count of public agent-chat API calls.",
+    )
+
+
+@lru_cache(maxsize=1)
 def _subagent_invoke_duration():
     return _get_meter().create_histogram(
         "nowing.subagent.invoke.duration",
@@ -678,6 +686,29 @@ def record_chat_request_duration(
         _chat_request_duration(),
         duration_ms,
         {"chat.flow": flow, "outcome": outcome, "agent.mode": agent_mode},
+    )
+
+
+def record_agent_chat_public_call(
+    *,
+    workspace_id: int | str,
+    client_id: str | None,
+    agent_id: str | None,
+    route: str,
+    status: int,
+) -> None:
+    _add(
+        _agent_chat_public_call(),
+        1,
+        _clean_attrs(
+            {
+                "workspace.id": workspace_id,
+                "client.id": client_id,
+                "agent.id": agent_id,
+                "route": route,
+                "status": status,
+            }
+        ),
     )
 
 

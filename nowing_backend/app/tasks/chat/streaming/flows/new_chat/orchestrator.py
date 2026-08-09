@@ -139,6 +139,8 @@ async def stream_new_chat(
     request_id: str | None = None,
     user_image_data_urls: list[str] | None = None,
     auth_context: AuthContext | None = None,
+    client_id: str | None = None,
+    agent_id: str | None = None,
     mode: Literal["speed", "balanced", "quality", "auto"] | None = None,
     flow: Literal["new", "regenerate"] = "new",
 ) -> AsyncGenerator[str, None]:

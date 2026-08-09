@@ -1,6 +1,9 @@
-# Story 18.1: Public Agent-Chat Endpoints
+---
+baseline_commit: "470b5a95c"
+status: review
+---
 
-Status: ready-for-dev
+# Story 18.1: Public Agent-Chat Endpoints
 
 ## Story
 

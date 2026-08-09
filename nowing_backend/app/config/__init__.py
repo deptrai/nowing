@@ -685,6 +685,11 @@ class Config:
     DAYTONA_SNAPSHOT_ID = os.getenv("DAYTONA_SNAPSHOT_ID") or None
     SANDBOX_FILES_DIR = os.getenv("SANDBOX_FILES_DIR", "sandbox_files")
 
+    # Agent chat public API surface (Epic 18)
+    AGENT_CHAT_PUBLIC_ENABLED = (
+        os.getenv("AGENT_CHAT_PUBLIC_ENABLED", "true").strip().lower() == "true"
+    )
+
     # Agent cache (in-process LRU+TTL cache for built agents)
     AGENT_CACHE_MAXSIZE = int(os.getenv("NOWING_AGENT_CACHE_MAXSIZE", "256"))
     AGENT_CACHE_TTL_SECONDS = float(os.getenv("NOWING_AGENT_CACHE_TTL_SECONDS", "1800"))
