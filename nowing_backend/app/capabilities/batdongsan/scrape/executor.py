@@ -8,6 +8,7 @@ from typing import Any
 
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
+from app.capabilities.core.types import CapabilityContext
 from app.config import config
 from app.proprietary.platforms.batdongsan import (
     BatdongsanScrapeOutput,
@@ -19,6 +20,9 @@ from app.proprietary.platforms.batdongsan.fetch import (
     BatdongsanRateLimitedError,
 )
 from app.proprietary.platforms.batdongsan.schemas import BatdongsanScrapeInput
+from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
+    persist_anti_bot_escalation_task,
+)
 
 from .schemas import ScrapeInput, ScrapeOutput
 
@@ -33,11 +37,29 @@ _BOT_DEGRADATION_REASONS = {
     "access_blocked",
 }
 
+_DOMAIN = "batdongsan.com.vn"
+
 
 def _next_action(degradation_reason: str | None) -> str | None:
     if degradation_reason in _BOT_DEGRADATION_REASONS:
         return "Escalated to human review; retry after credentials/proxy rotation"
     return None
+
+
+def _maybe_escalate(
+    ctx: CapabilityContext | None,
+    block_type: str,
+) -> None:
+    if ctx is None or ctx.run_id is None:
+        return
+    persist_anti_bot_escalation_task.delay(
+        screenshot_png_b64=None,
+        run_id=ctx.run_id,
+        workspace_id=ctx.workspace_id,
+        capability="batdongsan.scrape",
+        domain=_DOMAIN,
+        block_type=block_type,
+    )
 
 
 def _unwrap_result(
@@ -69,7 +91,9 @@ def build_scrape_executor(
     scrape_fn = scrape_fn or scrape_batdongsan
     web_fetch_fn = web_fetch_fn
 
-    async def execute(payload: ScrapeInput) -> ScrapeOutput:
+    async def execute(
+        payload: ScrapeInput, ctx: CapabilityContext | None = None
+    ) -> ScrapeOutput:
         actor_input = BatdongsanScrapeInput(**payload.model_dump(exclude_unset=True))
 
         emit_progress(
@@ -88,6 +112,7 @@ def build_scrape_executor(
             raw = await scrape_fn(actor_input, **kwargs)
         except BatdongsanRateLimitedError:
             logger.exception("batdongsan.scrape rate limited")
+            _maybe_escalate(ctx, "rate_limited")
             return ScrapeOutput(
                 items=[],
                 cost_micros=0,
@@ -105,6 +130,7 @@ def build_scrape_executor(
             )
         except BatdongsanAccessBlockedError as exc:
             logger.exception("batdongsan.scrape access blocked: %s", exc)
+            _maybe_escalate(ctx, "bot_detected")
             return ScrapeOutput(
                 items=[],
                 cost_micros=0,
@@ -127,6 +153,9 @@ def build_scrape_executor(
         total = int(total_raw) if total_raw is not None else 0
         degraded = bool(result.get("degraded", False))
         if degraded:
+            _maybe_escalate(
+                ctx, result.get("degradation_reason") or "UNKNOWN"
+            )
             cost = 0
         else:
             cost = total * getattr(config, "BATDONGSAN_SCRAPE_MICROS_PER_ITEM", 3500)

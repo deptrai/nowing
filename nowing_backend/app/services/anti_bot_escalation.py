@@ -7,7 +7,7 @@ screenshot storage/retention.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
@@ -96,6 +96,8 @@ async def create_or_update_escalation(
         capability=capability, block_type=block_type, domain=domain
     )
 
+    now = datetime.now(UTC)
+    grouping_window = now - timedelta(hours=1)
     result = await session.execute(
         select(AntiBotEscalation)
         .where(
@@ -103,13 +105,14 @@ async def create_or_update_escalation(
             AntiBotEscalation.domain == domain,
             AntiBotEscalation.capability == capability,
             AntiBotEscalation.status == "open",
+            AntiBotEscalation.last_seen_at >= grouping_window,
         )
-        .order_by(AntiBotEscalation.created_at.desc())
+        .order_by(AntiBotEscalation.last_seen_at.desc())
         .limit(1)
     )
     existing: AntiBotEscalation | None = result.scalar_one_or_none()
 
-    now = datetime.now(UTC)
+
     if existing is not None:
         existing.detection_count += 1
         existing.last_seen_at = now

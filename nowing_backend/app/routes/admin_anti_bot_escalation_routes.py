@@ -13,9 +13,10 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.context import AuthContext
 from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.store import get_capability
-from app.db import AntiBotEscalation, Run, get_async_session
+from app.db import AntiBotEscalation, Run, WorkspaceMembership, get_async_session
 from app.schemas.anti_bot_escalation import (
     AntiBotEscalationListResponse,
     AntiBotEscalationRead,
@@ -27,10 +28,33 @@ from app.services.anti_bot_escalation import (
     list_escalations,
     resolve_escalation,
 )
-from app.users import require_superuser
+from app.users import get_auth_context
 
 router = APIRouter(prefix="/admin/anti-bot-escalations")
 logger = logging.getLogger(__name__)
+
+
+async def _has_workspace_admin_access(
+    session: AsyncSession,
+    auth: AuthContext,
+    workspace_id: int,
+) -> bool:
+    """Return True if the principal is superuser, workspace owner, or editor."""
+    if auth.user.is_superuser:
+        return True
+    membership = await session.execute(
+        select(WorkspaceMembership).where(
+            WorkspaceMembership.user_id == auth.user.id,
+            WorkspaceMembership.workspace_id == workspace_id,
+        )
+    )
+    membership = membership.scalar_one_or_none()
+    if membership is None:
+        return False
+    return (
+        membership.is_owner
+        or (membership.role is not None and membership.role.name in {"Owner", "Editor"})
+    )
 
 
 async def _to_read(escalation: AntiBotEscalation) -> AntiBotEscalationRead:
@@ -45,9 +69,21 @@ async def list_anti_bot_escalations(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_async_session),
-    _auth=Depends(require_superuser),
+    auth: AuthContext = Depends(get_auth_context),
 ) -> AntiBotEscalationListResponse:
     """List escalations with optional filters."""
+    if workspace_id is not None:
+        if not await _has_workspace_admin_access(session, auth, workspace_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have access to this workspace",
+            )
+    elif not auth.user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workspace filter required for non-superuser",
+        )
+
     filters: list = []
     if workspace_id is not None:
         filters.append(AntiBotEscalation.workspace_id == workspace_id)
@@ -79,13 +115,18 @@ async def list_anti_bot_escalations(
 async def get_anti_bot_escalation(
     escalation_id: int,
     session: AsyncSession = Depends(get_async_session),
-    _auth=Depends(require_superuser),
+    auth: AuthContext = Depends(get_auth_context),
 ) -> AntiBotEscalation:
     escalation = await get_escalation(session, escalation_id)
     if escalation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Escalation not found",
+        )
+    if not await _has_workspace_admin_access(session, auth, escalation.workspace_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this escalation",
         )
     return escalation
 
@@ -95,15 +136,21 @@ async def resolve_anti_bot_escalation(
     escalation_id: int,
     body: AntiBotEscalationResolveRequest | None = None,
     session: AsyncSession = Depends(get_async_session),
-    _auth=Depends(require_superuser),
+    auth: AuthContext = Depends(get_auth_context),
 ) -> AntiBotEscalation:
-    user_id = body.user_id if body else None
-    escalation = await resolve_escalation(session, escalation_id, user_id=user_id)
+    escalation = await get_escalation(session, escalation_id)
     if escalation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Escalation not found",
         )
+    if not await _has_workspace_admin_access(session, auth, escalation.workspace_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this escalation",
+        )
+    user_id = body.user_id if body else None
+    escalation = await resolve_escalation(session, escalation_id, user_id=user_id)
     await session.commit()
     return escalation
 
@@ -112,13 +159,18 @@ async def resolve_anti_bot_escalation(
 async def retry_anti_bot_escalation(
     escalation_id: int,
     session: AsyncSession = Depends(get_async_session),
-    _auth=Depends(require_superuser),
+    auth: AuthContext = Depends(get_auth_context),
 ) -> AntiBotEscalationRetryResponse:
     escalation = await get_escalation(session, escalation_id)
     if escalation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Escalation not found",
+        )
+    if not await _has_workspace_admin_access(session, auth, escalation.workspace_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this escalation",
         )
 
     escalation.status = "retry"

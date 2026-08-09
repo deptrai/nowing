@@ -122,6 +122,19 @@ async def test_input_field_docs_reach_the_model(isolate):
     assert tool.args["text"]["description"] == "The text to echo back."
 
 
+class _AntiBotOutput(BaseModel):
+    """Output shape that looks like a degraded scraper result."""
+
+    degraded: bool = True
+    degradation_reason: str = "bot_detected"
+    next_action: str = "Escalated to human review; retry after credentials/proxy rotation"
+    items: list = Field(default_factory=list)
+
+    @property
+    def billable_units(self) -> int:
+        return 0
+
+
 async def test_tool_runs_executor_and_returns_serialized_output(isolate):
     cap = _capability(name="web.scrape", output=_EchoOutput(echoed="hi there"))
     tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=[cap])
@@ -132,6 +145,35 @@ async def test_tool_runs_executor_and_returns_serialized_output(isolate):
     # Fake session makes record_run fail -> no run_id key, plain serialized output.
     assert result == {"echoed": "hi there"}
     assert cap.executor.seen.text == "ping"
+
+
+async def test_repeated_anti_bot_tool_call_uses_cache(isolate, monkeypatch):
+    """A second identical call in the same thread must not re-execute the tool."""
+    from app.capabilities.core.access import agent as mod
+
+    cap = _capability(name="web.scrape", output=_AntiBotOutput())
+    tools = mod.build_capability_tools(workspace_id=7, capabilities=[cap])
+    tool = _verb_tool(tools, "web_scrape")
+
+    monkeypatch.setattr(mod, "_current_thread_id", lambda: "thread-10-5")
+    run_id = "550e8400-e29b-41d4-a716-446655440999"
+    monkeypatch.setattr(mod, "record_run", AsyncMock(return_value=run_id))
+    monkeypatch.setattr(
+        mod, "enqueue_run_memory_extraction_after_commit", lambda _: None
+    )
+
+    first = await _invoke(tool, text="https://example.com/blocked")
+    assert first.update["messages"][0].tool_call_id == "call-1"
+    first_content = first.update["messages"][0].content
+    assert '"degraded": true' in first_content
+    assert '"next_step"' in first_content
+    assert cap.executor.seen.text == "https://example.com/blocked"
+
+    cap.executor.seen = None
+    second = await _invoke(tool, text="https://example.com/blocked")
+    assert cap.executor.seen is None  # executor was not invoked again
+    second_content = second.update["messages"][0].content
+    assert second_content == first_content
 
 
 async def test_tool_charges_owner(isolate):

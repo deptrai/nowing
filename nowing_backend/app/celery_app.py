@@ -320,6 +320,11 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour="3", minute="0"),
         "options": {"expires": 600},
     },
+    "apply-anti-bot-screenshot-retention": {
+        "task": "apply_anti_bot_screenshot_retention",
+        "schedule": crontab(hour="3", minute="30"),
+        "options": {"expires": 600},
+    },
     "purge-refresh-tokens": {
         "task": "purge_refresh_tokens",
         "schedule": crontab(hour="3", minute="41"),

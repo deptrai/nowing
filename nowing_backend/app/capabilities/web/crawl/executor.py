@@ -8,7 +8,7 @@ the captcha telemetry the billing seam reads).
 
 from __future__ import annotations
 
-from uuid import UUID
+import base64
 
 from app.capabilities.core import Executor
 from app.capabilities.core.progress import emit_progress
@@ -30,9 +30,8 @@ from app.proprietary.web_crawler import (
     crawl_site,
 )
 from app.proprietary.web_crawler.url_policy import host_of
-from app.services.anti_bot_escalation import (
-    create_or_update_escalation,
-    upload_screenshot,
+from app.tasks.celery_tasks.anti_bot_escalation_tasks import (
+    persist_anti_bot_escalation_task,
 )
 
 _STATUS_LABEL: dict[CrawlOutcomeStatus, str] = {
@@ -70,29 +69,20 @@ def build_crawl_executor(engine: WebCrawlerConnector | None = None) -> Executor:
             unit="page",
         )
 
-        # Story 10.5: escalate anti-bot screenshots for async runs that have a
-        # durable run id. The crawl output is still returned immediately; we
-        # upload + persist before mapping items so a slow storage backend does
-        # not block the response.
+        # Story 10.5: escalate anti-bot screenshots out-of-band so the crawl
+        # output is returned immediately (AD-19). The Celery task uploads the
+        # screenshot and creates/updates the escalation row.
         if ctx is not None and ctx.run_id is not None:
             for page in pages:
                 if page.screenshot_png is None:
                     continue
-                run_uuid = UUID(ctx.run_id)
-                screenshot_url = await upload_screenshot(
-                    ctx.session,
-                    page.screenshot_png,
-                    ctx.workspace_id,
-                    run_uuid,
-                )
-                await create_or_update_escalation(
-                    ctx.session,
-                    run_id=run_uuid,
+                persist_anti_bot_escalation_task.delay(
+                    screenshot_png_b64=base64.b64encode(page.screenshot_png).decode(),
+                    run_id=ctx.run_id,
                     workspace_id=ctx.workspace_id,
                     capability="web.crawl",
                     domain=host_of(page.url),
                     block_type=page.block_type or "UNKNOWN",
-                    screenshot_url=screenshot_url,
                 )
 
         items = [_to_item(page, payload.maxLength) for page in pages]

@@ -1,10 +1,10 @@
 ---
-baseline_commit: 37a336aaf61125f621b7ae91528b9f4dba6b10f8
+baseline_commit: 50f6c70204560c47de634f0d32a01687ec0b69f2
 ---
 
 # Story 10.5: Anti-Bot / CAPTCHA Screenshot Escalation
 
-Status: in-review
+Status: review
 
 ## Story
 

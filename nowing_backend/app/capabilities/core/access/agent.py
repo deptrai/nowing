@@ -11,6 +11,7 @@ subagent can follow a truncation reference without extra wiring.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import time
@@ -113,6 +114,86 @@ def _current_research_mode() -> str | None:
         return None
 
 
+# Story 10.5: avoid multiple identical capability calls against a blocked URL
+# in the same chat turn. We cache degraded anti-bot results for a short TTL so
+# the agent gets the same guidance without re-executing the tool.
+_ANTI_BOT_DEGRADED_REASONS = {
+    "bot_detected",
+    "rate_limited",
+    "anti_bot_block",
+    "access_blocked",
+}
+_ANTI_BOT_BLOCK_TTL_SECONDS = 30
+_anti_bot_blocks: dict[str, tuple[float, Any]] = {}
+
+
+def _anti_bot_input_key(
+    thread_id: str | None, capability_name: str, input_dump: dict[str, Any]
+) -> str | None:
+    if thread_id is None:
+        return None
+    payload = json.dumps(input_dump, sort_keys=True, default=str)
+    digest = hashlib.sha256(payload.encode()).hexdigest()
+    return f"{thread_id}:{capability_name}:{digest}"
+
+
+def _is_anti_bot_degraded_result(result: dict[str, Any]) -> bool:
+    if (
+        result.get("degraded")
+        and result.get("degradation_reason") in _ANTI_BOT_DEGRADED_REASONS
+    ):
+        return True
+    next_action = result.get("next_action") or ""
+    return "Escalated to human review" in next_action
+
+
+def _get_cached_blocked_result(key: str) -> Any | None:
+    now = time.monotonic()
+    if key in _anti_bot_blocks:
+        ts, result = _anti_bot_blocks[key]
+        if now - ts < _ANTI_BOT_BLOCK_TTL_SECONDS:
+            return result
+        del _anti_bot_blocks[key]
+    return None
+
+
+def _cache_blocked_result(key: str, result: Any) -> None:
+    _anti_bot_blocks[key] = (time.monotonic(), result)
+
+
+def _build_cached_anti_bot_command(
+    cached_dump: dict[str, Any], *, runtime: ToolRuntime, capability_name: str
+) -> Command:
+    """Rebuild a ToolNode Command for a cached anti-bot result.
+
+    The ``tool_call_id`` must come from the current runtime, but the run
+    citation and content can be replayed safely because anti-bot outputs carry
+    no web citations.
+    """
+    content = json.dumps(cached_dump, ensure_ascii=False)
+    run_external_id = cached_dump.get("run_id")
+    registry = load_registry(getattr(runtime, "state", None))
+    if run_external_id:
+        _, label = attach_run_citation(
+            registry,
+            run_external_id=run_external_id,
+            capability=capability_name,
+        )
+    else:
+        label = ""
+    return Command(
+        update={
+            "messages": [
+                ToolMessage(
+                    content=content + label,
+                    tool_call_id=runtime.tool_call_id,
+                )
+            ],
+            "citation_registry": registry,
+        }
+    )
+
+
 # NFR-9 State B: only speed/balanced may run synchronously in chat.
 # quality, deep-research, deep-reasoning, and auto (which may resolve to those)
 # are async-only until cost/latency targets are ratified.
@@ -188,6 +269,18 @@ def _capability_tool(
         payload = input_model(**kwargs)
         input_dump = payload.model_dump(exclude_none=True)
         thread_id = _current_thread_id()
+
+        # Story 10.5: if the same capability+input just returned an anti-bot block
+        # in this thread, return the same guidance instead of re-executing.
+        anti_bot_key = _anti_bot_input_key(thread_id, name, input_dump)
+        if anti_bot_key is not None:
+            cached = _get_cached_blocked_result(anti_bot_key)
+            if cached is not None:
+                if runtime is None:
+                    return cached
+                return _build_cached_anti_bot_command(
+                    cached, runtime=runtime, capability_name=name
+                )
 
         # NFR-9 State A vs State B for deep research in chat.
         #
@@ -325,6 +418,8 @@ def _capability_tool(
                 dump = output.model_dump(exclude_none=True)
                 if "next_action" in dump:
                     dump.setdefault("next_step", dump["next_action"])
+                if anti_bot_key is not None and _is_anti_bot_degraded_result(dump):
+                    _cache_blocked_result(anti_bot_key, dump)
                 return dump
             return _build_preview(serialized, run_id)
 
@@ -334,6 +429,8 @@ def _capability_tool(
             if "next_action" in dump:
                 dump.setdefault("next_step", dump["next_action"])
             dump["run_id"] = run_external_id
+            if anti_bot_key is not None and _is_anti_bot_degraded_result(dump):
+                _cache_blocked_result(anti_bot_key, dump)
         else:
             dump = None
 
