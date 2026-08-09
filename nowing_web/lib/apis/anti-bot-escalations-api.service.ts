@@ -21,6 +21,15 @@ export const antiBotEscalationList = z.array(antiBotEscalation);
 
 export type AntiBotEscalation = z.infer<typeof antiBotEscalation>;
 
+export const antiBotEscalationRetry = z.object({
+	id: z.number(),
+	status: z.string(),
+	retry_run_id: z.string().nullable(),
+	message: z.string(),
+});
+
+export type AntiBotEscalationRetry = z.infer<typeof antiBotEscalationRetry>;
+
 export interface AntiBotEscalationFilters {
 	workspace_id?: number;
 	domain?: string;
@@ -52,9 +61,9 @@ class AntiBotEscalationsApiService {
 	};
 
 	retry = async (id: number) => {
-		return baseApiService.post<AntiBotEscalation>(
+		return baseApiService.post<AntiBotEscalationRetry>(
 			`${this.base}/${id}/retry`,
-			antiBotEscalation,
+			antiBotEscalationRetry,
 			{}
 		);
 	};

@@ -248,8 +248,8 @@ class WebCrawlerConnector:
                     status=CrawlOutcomeStatus.FAILED,
                     error=f"Invalid URL: {url}",
                     block_type=block_state["block_type"],
-                        screenshot_png=screenshot_state["png"],
-                    )
+                    screenshot_png=screenshot_state["png"],
+                )
 
             errors: list[str] = []
             # True once any tier fetched the page but extraction yielded nothing
@@ -287,8 +287,8 @@ class WebCrawlerConnector:
                         result=result,
                         tier="scrapling-static",
                         block_type=block_state["block_type"],
-                            screenshot_png=screenshot_state["png"],
-                        )
+                        screenshot_png=screenshot_state["png"],
+                    )
                 else:
                     reached_without_content = True
                     errors.append("Scrapling static: empty extraction")
@@ -397,8 +397,8 @@ class WebCrawlerConnector:
                     captcha_attempts=captcha_state["attempts"],
                     captcha_solved=captcha_state["solved"],
                     block_type=block_state["block_type"],
-                        screenshot_png=screenshot_state["png"],
-                    )
+                    screenshot_png=screenshot_state["png"],
+                )
 
             self._log_total(url, "none", total_start)
             if reached_without_content:
@@ -408,16 +408,16 @@ class WebCrawlerConnector:
                     captcha_attempts=captcha_state["attempts"],
                     captcha_solved=captcha_state["solved"],
                     block_type=block_state["block_type"],
-                        screenshot_png=screenshot_state["png"],
-                    )
+                    screenshot_png=screenshot_state["png"],
+                )
             return CrawlOutcome(
                 status=CrawlOutcomeStatus.FAILED,
                 error=f"All crawl methods failed for {url}. {'; '.join(errors)}",
                 captcha_attempts=captcha_state["attempts"],
                 captcha_solved=captcha_state["solved"],
                 block_type=block_state["block_type"],
-                    screenshot_png=screenshot_state["png"],
-                )
+                screenshot_png=screenshot_state["png"],
+            )
 
         except Exception as e:
             self._log_total(url, "error", total_start)
@@ -427,8 +427,8 @@ class WebCrawlerConnector:
                 captcha_attempts=captcha_state["attempts"],
                 captcha_solved=captcha_state["solved"],
                 block_type=block_state["block_type"],
-                    screenshot_png=screenshot_state["png"],
-                )
+                screenshot_png=screenshot_state["png"],
+            )
 
     async def _run_tier_with_proxy_retry(
         self,
