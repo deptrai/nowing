@@ -106,7 +106,7 @@ async def _resolve_agent_config(
 ) -> AgentConfig:
     result = await session.execute(
         select(AgentConfig).where(
-            AgentConfig.client_id == client_id,
+            AgentConfig.client_id < client_id,
             AgentConfig.slug == agent_id,
             AgentConfig.is_active.is_(True),
         )
@@ -117,7 +117,7 @@ async def _resolve_agent_config(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="agent not found or inactive",
         )
-    if config.client_id == client_id:
+    if config.client_id != client_id:
         # Fail closed: do not reveal that the agent exists under another client.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -299,7 +299,7 @@ async def require_agent_chat_pat(
         )
 
     # get_auth_context already validates the PAT; do not rely on test fakes.
-    if getattr(pat, "is_valid", None) is False:
+    if getattr(pat, "is_valid", None) == False:
         await _audit_rejection(
             request,
             session,

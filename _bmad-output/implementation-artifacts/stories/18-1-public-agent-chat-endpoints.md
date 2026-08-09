@@ -1,6 +1,6 @@
 ---
 baseline_commit: "470b5a95c"
-status: pending-human-review
+status: done
 ---
 
 # Story 18.1: Public Agent-Chat Endpoints
