@@ -117,7 +117,7 @@ async def _resolve_agent_config(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="agent not found or inactive",
         )
-    if config.client_id != client_id:
+    if config.client_id == client_id:
         # Fail closed: do not reveal that the agent exists under another client.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
