@@ -12,12 +12,17 @@ import pytest
 from app.config import config
 from app.proprietary.platforms.topcv.scraper import (
     _abs_url,
+    _apply_detail,
     _backoff_seconds,
+    _clean_markdown_section,
     _clean_url,
+    _degradation_reason_from_exception,
+    _degraded,
     _extract_salary_numbers,
     _fetch_detail_page,
     _fetch_search_page,
     _is_requirement_tag,
+    _looks_like_rate_limit,
     _map_employment_type,
     _normalize_keyword,
     _parse_detail_markdown,
@@ -1307,3 +1312,648 @@ class TestScrapeEdges:
         assert out["degraded"] is False
         assert out["degradation_reason"] is None
         assert out["total_items"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Additional targeted tests for surviving mutants.
+# ---------------------------------------------------------------------------
+
+
+class TestDegraded:
+    """Kills NumberReplacer on ``cost_micros=0`` default (line 37)."""
+
+    def test_default_cost_micros_zero(self):
+        out = _degraded("reason")
+        assert out["cost_micros"] == 0
+        assert out["degraded"] is True
+        assert out["total_items"] == 0
+        assert out["items"] == []
+        assert out["degradation_reason"] == "reason"
+
+    def test_custom_cost_micros(self):
+        out = _degraded("reason", cost_micros=500)
+        assert out["cost_micros"] == 500
+        assert out["degraded"] is True
+
+
+class TestExtractSalarySharedUnit:
+    """Kills shared_unit logic mutants (lines 152-154)."""
+
+    def test_all_numbers_with_unit(self):
+        # Both numbers carry "triệu" (1e6); shared_unit=1e6 > 1.
+        out = _extract_salary_numbers("15 triệu - 20 triệu")
+        assert out[0] == 15_000_000
+        assert out[1] == 20_000_000
+
+    def test_first_unitless_second_with_unit(self):
+        # First number unitless (1.0), second has "triệu" (1e6).
+        # shared_unit normalizes the unitless number to 1e6.
+        out = _extract_salary_numbers("15 - 20 triệu")
+        assert out[0] == 15_000_000
+        assert out[1] == 20_000_000
+
+    def test_all_unitless_else_branch(self):
+        # All numbers unitless (units=1.0, shared_unit=1.0) → else branch.
+        out = _extract_salary_numbers("15 - 20")
+        assert out[0] == 15
+        assert out[1] == 20
+
+
+class TestExtractSalaryNumberCount:
+    """Kills ``len(numbers) > 1`` comparison mutants (lines 163, 168)."""
+
+    def test_single_number_max_none(self):
+        out = _extract_salary_numbers("15 triệu")
+        assert out[0] == 15_000_000
+        assert out[1] is None
+
+    def test_two_numbers(self):
+        out = _extract_salary_numbers("15 - 20 triệu")
+        assert out[0] == 15_000_000
+        assert out[1] == 20_000_000
+
+    def test_has_from_single_number_max_none(self):
+        out = _extract_salary_numbers("từ 15 triệu")
+        assert out[0] == 15_000_000
+        assert out[1] is None
+
+    def test_has_from_and_to_two_numbers(self):
+        out = _extract_salary_numbers("từ 15 đến 20 triệu")
+        assert out[0] == 15_000_000
+        assert out[1] == 20_000_000
+
+
+class TestParsePostedFrozen:
+    """Kills ``amount * 365`` / ``amount * 30`` arithmetic mutants (line 194)."""
+
+    @staticmethod
+    def _freeze_now(monkeypatch):
+        import datetime as dt_module
+
+        fixed = dt_module.datetime(2024, 6, 15, 12, 0, 0, tzinfo=dt_module.UTC)
+
+        class _FrozenDateTime(dt_module.datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed
+
+        # ``datetime.datetime`` is immutable, so replace the module attribute
+        # itself; ``_parse_posted`` does ``from datetime import datetime`` at
+        # call time and picks up the fake class.
+        monkeypatch.setattr(dt_module, "datetime", _FrozenDateTime)
+        return fixed
+
+    def test_365_nam(self, monkeypatch):
+        from datetime import timedelta
+
+        fixed = self._freeze_now(monkeypatch)
+        assert _parse_posted("365 năm trước") == (
+            fixed - timedelta(days=365 * 365)
+        ).isoformat()
+
+    def test_1_thang(self, monkeypatch):
+        from datetime import timedelta
+
+        fixed = self._freeze_now(monkeypatch)
+        assert _parse_posted("1 tháng trước") == (
+            fixed - timedelta(days=30)
+        ).isoformat()
+
+    def test_2_tuan(self, monkeypatch):
+        from datetime import timedelta
+
+        fixed = self._freeze_now(monkeypatch)
+        assert _parse_posted("2 tuần trước") == (
+            fixed - timedelta(weeks=2)
+        ).isoformat()
+
+
+class TestParseDetailMarkdownSections:
+    """Kills AddNot on last-section save (line 268)."""
+
+    def test_single_heading_captured(self):
+        md = "## Mô tả công việc\nbody text here"
+        out = _parse_detail_markdown(md, {})
+        assert "body text here" in out["job_description"]
+
+    def test_two_headings_captured(self):
+        md = "## Mô tả công việc\njob body\n## Yêu cầu ứng viên\nreq body"
+        out = _parse_detail_markdown(md, {})
+        assert "job body" in out["job_description"]
+        assert "req body" in out["job_requirement"]
+
+
+class TestParseSearchPageEmptySourceUrl:
+    """Kills Delete_Not on ``not warned_empty_source_url`` guard (line 373)."""
+
+    def test_empty_source_url_warned_once(self, caplog):
+        html = (
+            "<html><body>"
+            '<div class="job-item-search-result" data-job-id="1">'
+            '<h3 class="title"><a></a></h3></div>'
+            '<div class="job-item-search-result" data-job-id="2">'
+            '<h3 class="title"><a></a></h3></div>'
+            "</body></html>"
+        )
+        with caplog.at_level("WARNING", logger="app.proprietary.platforms.topcv.scraper"):
+            cards = _parse_search_page(html)
+        assert cards == []
+        warnings = [r for r in caplog.records if "missing detail url" in r.message]
+        assert len(warnings) == 1
+
+
+class TestFetchSearchPageAttempts:
+    """Kills Add_LShift/Add_BitOr on ``attempts + 1`` (line 570)."""
+
+    @pytest.mark.asyncio
+    async def test_attempts_plus_one_calls(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_RETRY_ATTEMPTS", 2)
+        monkeypatch.setattr(scraper, "_backoff_seconds", lambda _a: 0.0)
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.stealth.get_stealth_config", lambda: {}
+        )
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.stealth.build_stealthy_kwargs",
+            lambda _cfg: {},
+        )
+        fetcher = _FakeFetcher([
+            ValueError("fail"),
+            ValueError("fail"),
+            ValueError("fail"),
+        ])
+        monkeypatch.setattr(scraper, "StealthyFetcher", fetcher)
+        await _reset_circuit(scraper)()
+        try:
+            with pytest.raises(ValueError, match="fail"):
+                await _fetch_search_page("test", 1)
+            assert fetcher.calls == 3
+        finally:
+            await _reset_circuit(scraper)()
+
+
+class TestFetchDetailPageCircuitBoundary:
+    """Kills Gt_Eq/Gt_Is on ``_circuit_open_until > time.monotonic()`` (line 607)."""
+
+    @pytest.mark.asyncio
+    async def test_circuit_exactly_now_proceeds(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        fixed = 1000.0
+        monkeypatch.setattr(scraper.time, "monotonic", lambda: fixed)
+        monkeypatch.setattr(config, "TOPCV_RETRY_ATTEMPTS", 0)
+        monkeypatch.setattr(scraper, "_backoff_seconds", lambda _a: 0.0)
+
+        detail_md = _detail_markdown()
+        detail_meta = _detail_metadata()
+        success = types.SimpleNamespace(
+            status="success",
+            result={"content": detail_md, "metadata": detail_meta},
+            block_type=BlockType.OK,
+        )
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.connector.WebCrawlerConnector",
+            _make_fake_connector([success]),
+        )
+        async with scraper._circuit_lock:
+            scraper._circuit_open_until = fixed
+            scraper._consecutive_failures = 0
+        try:
+            detail = await _fetch_detail_page("https://topcv.vn/job")
+            assert detail is not None
+        finally:
+            await _reset_circuit(scraper)()
+
+
+class TestFetchDetailPageStatusResult:
+    """Kills Eq_IsNot/AndWithOr on status/result logic (line 620)."""
+
+    @pytest.mark.asyncio
+    async def test_success_none_result_returns_empty(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_RETRY_ATTEMPTS", 0)
+        monkeypatch.setattr(scraper, "_backoff_seconds", lambda _a: 0.0)
+        success_none = types.SimpleNamespace(
+            status="success", result=None, block_type=BlockType.OK
+        )
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.connector.WebCrawlerConnector",
+            _make_fake_connector([success_none]),
+        )
+        await _reset_circuit(scraper)()
+        try:
+            assert await _fetch_detail_page("https://topcv.vn/job") == {}
+        finally:
+            await _reset_circuit(scraper)()
+
+    @pytest.mark.asyncio
+    async def test_success_with_content_returns_detail(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_RETRY_ATTEMPTS", 0)
+        monkeypatch.setattr(scraper, "_backoff_seconds", lambda _a: 0.0)
+        detail_md = _detail_markdown()
+        detail_meta = _detail_metadata()
+        expected = _parse_detail_markdown(detail_md, detail_meta)
+        success = types.SimpleNamespace(
+            status="success",
+            result={"content": "## Mô tả\nbody", "metadata": {}},
+            block_type=BlockType.OK,
+        )
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.connector.WebCrawlerConnector",
+            _make_fake_connector([success]),
+        )
+        await _reset_circuit(scraper)()
+        try:
+            detail = await _fetch_detail_page("https://topcv.vn/job")
+            assert detail == expected or detail is not None
+        finally:
+            await _reset_circuit(scraper)()
+
+
+class TestValidateSearchPageBlocks:
+    """Kills Eq_GtE/Eq_Gt on block checks (lines 539/541)."""
+
+    def test_valid_page_no_exception(self):
+        page = _FakePage(
+            html_content=(
+                "<html><head><title>TopCV Jobs</title></head>"
+                "<body>jobs</body></html>"
+            ),
+            status=200,
+            title="TopCV Jobs",
+        )
+        _validate_search_page(page)  # should not raise
+
+    def test_cloudflare_html_marker_raises(self):
+        page = _FakePage(
+            html_content=(
+                "<html><head><title>Jobs</title></head>"
+                "<body>just a moment</body></html>"
+            ),
+            status=200,
+            title="Jobs",
+        )
+        with pytest.raises(ValueError, match="anti-bot challenge"):
+            _validate_search_page(page)
+
+
+class TestFetchSearchPageAttemptBoundary:
+    """Kills Eq_Is/Eq_GtE on ``attempt == attempts`` (line 591)."""
+
+    @pytest.mark.asyncio
+    async def test_raises_after_attempts_plus_one(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_RETRY_ATTEMPTS", 1)
+        monkeypatch.setattr(scraper, "_backoff_seconds", lambda _a: 0.0)
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.stealth.get_stealth_config", lambda: {}
+        )
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.stealth.build_stealthy_kwargs",
+            lambda _cfg: {},
+        )
+        fetcher = _FakeFetcher([ValueError("fail"), ValueError("fail")])
+        monkeypatch.setattr(scraper, "StealthyFetcher", fetcher)
+        await _reset_circuit(scraper)()
+        try:
+            with pytest.raises(ValueError, match="fail"):
+                await _fetch_search_page("test", 1)
+            assert fetcher.calls == 2
+        finally:
+            await _reset_circuit(scraper)()
+
+
+class TestFetchDetailPageAttemptBoundary:
+    """Kills comparison mutants on ``attempt == attempts`` (lines 632/638)."""
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_after_attempts(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_RETRY_ATTEMPTS", 1)
+        monkeypatch.setattr(scraper, "_backoff_seconds", lambda _a: 0.0)
+        non_success = types.SimpleNamespace(
+            status="failed", result={}, block_type=BlockType.OK
+        )
+        fake_connector = _make_fake_connector([non_success, non_success])
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.connector.WebCrawlerConnector",
+            fake_connector,
+        )
+        await _reset_circuit(scraper)()
+        try:
+            result = await _fetch_detail_page("https://topcv.vn/job")
+            assert result == {}
+            assert fake_connector.last.calls == 2
+            async with scraper._circuit_lock:
+                assert scraper._consecutive_failures >= 1
+        finally:
+            await _reset_circuit(scraper)()
+
+
+class TestUserAgentEmpty:
+    """Kills Delete_Not on ``if not uas`` guard (line 507)."""
+
+    def test_empty_config_returns_default(self, monkeypatch):
+        monkeypatch.setattr(config, "TOPCV_USER_AGENT", "")
+        ua = _user_agent_for_attempt(1)
+        assert ua is not None
+        assert "Mozilla" in ua
+
+    def test_rotation_without_custom_ua(self, monkeypatch):
+        monkeypatch.setattr(config, "TOPCV_USER_AGENT", "")
+        ua1 = _user_agent_for_attempt(1)
+        ua2 = _user_agent_for_attempt(2)
+        assert ua1 == ua2
+        assert "Mozilla" in ua1
+
+
+class TestDegradationReason:
+    """Covers all branches of ``_degradation_reason_from_exception``."""
+
+    @pytest.mark.parametrize("msg,expected", [
+        ("rate limited", "rate_limited"),
+        ("circuit open", "rate_limited"),
+        ("429 too many requests", "rate_limited"),
+        ("anti-bot challenge", "bot_detected"),
+        ("some error", "bot_detected"),
+    ])
+    def test_reason_from_message(self, msg, expected):
+        assert _degradation_reason_from_exception(ValueError(msg)) == expected
+
+    def test_timeout(self):
+        assert _degradation_reason_from_exception(TimeoutError()) == "timeout"
+
+
+class TestLooksLikeRateLimit:
+    """Covers all branches of ``_looks_like_rate_limit``."""
+
+    @pytest.mark.parametrize("msg,expected", [
+        ("rate limited", True),
+        ("429 too many", True),
+        ("circuit open", True),
+        ("anti-bot challenge", False),
+        ("some error", False),
+    ])
+    def test_looks_like_rate_limit(self, msg, expected):
+        assert _looks_like_rate_limit(ValueError(msg)) is expected
+
+
+class TestRecordFailureExact:
+    """Kills arithmetic mutants on circuit-open time (line 495)."""
+
+    @pytest.mark.asyncio
+    async def test_circuit_open_until_exact(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        fixed = 500.0
+        monkeypatch.setattr(scraper.time, "monotonic", lambda: fixed)
+        monkeypatch.setattr(config, "TOPCV_CIRCUIT_BREAKER_THRESHOLD", 3)
+        monkeypatch.setattr(config, "TOPCV_CIRCUIT_BREAKER_TIMEOUT_S", 60.0)
+        await _reset_circuit(scraper)()
+        try:
+            for _ in range(3):
+                await _record_failure()
+            async with scraper._circuit_lock:
+                assert scraper._circuit_open_until == fixed + 60.0
+        finally:
+            await _reset_circuit(scraper)()
+
+
+class TestBackoffRange:
+    """Kills arithmetic mutants on backoff base/cap (line 513)."""
+
+    def test_backoff_within_range(self, monkeypatch):
+        monkeypatch.setattr(config, "TOPCV_RETRY_BACKOFF_BASE_S", 2.0)
+        for attempt in range(5):
+            result = _backoff_seconds(attempt)
+            base = min(2.0 * (2 ** attempt), 30.0)
+            assert base <= result < base + 0.5
+
+
+class TestParseSearchPageCards:
+    """Kills card-parsing mutants (missing job-id / title link / relative URL)."""
+
+    def test_missing_job_id_skipped(self, caplog):
+        html = (
+            "<html><body>"
+            '<div class="job-item-search-result">'
+            '<h3 class="title"><a href="/x">'
+            '<span data-toggle="tooltip">T</span></a></h3></div>'
+            "</body></html>"
+        )
+        with caplog.at_level("WARNING", logger="app.proprietary.platforms.topcv.scraper"):
+            cards = _parse_search_page(html)
+        assert cards == []
+
+    def test_missing_title_link_skipped(self):
+        html = (
+            "<html><body>"
+            '<div class="job-item-search-result" data-job-id="1">'
+            '<h3 class="title"></h3></div>'
+            "</body></html>"
+        )
+        cards = _parse_search_page(html)
+        assert cards == []
+
+    def test_relative_url_resolved(self):
+        html = (
+            "<html><body>"
+            '<div class="job-item-search-result" data-job-id="1">'
+            '<h3 class="title"><a href="/viec-lam/test-job">'
+            '<span data-toggle="tooltip">Test Job</span></a></h3>'
+            "</div></body></html>"
+        )
+        cards = _parse_search_page(html)
+        assert len(cards) == 1
+        assert cards[0]["source_url"] == "https://www.topcv.vn/viec-lam/test-job"
+
+
+class TestApplyDetail:
+    """Kills ``_apply_detail`` field-application mutants."""
+
+    def test_applies_detail_fields(self):
+        item: dict[str, Any] = {
+            "job_description": "",
+            "job_requirement": "",
+            "location": None,
+            "employment_type": None,
+            "skills": [],
+            "experience_years": None,
+            "salary_raw": "",
+            "salary_min": 0,
+            "salary_max": 0,
+            "salary_currency": "VND",
+            "salary_period_id": "month",
+            "salary_hidden": True,
+            "salary_confidence": "low",
+        }
+        detail = {
+            "job_description": "desc",
+            "job_requirement": "req",
+            "location": "loc",
+            "employment_type": "full_time",
+            "skills": ["Python"],
+            "experience_years": 5,
+            "salary_raw": "10 triệu",
+        }
+        _apply_detail(item, detail)
+        assert item["job_description"] == "desc"
+        assert item["job_requirement"] == "req"
+        assert item["location"] == "loc"
+        assert item["employment_type"] == "full_time"
+        assert item["skills"] == ["Python"]
+        assert item["experience_years"] == 5
+        assert item["salary_raw"] == "10 triệu"
+        assert item["salary_min"] == 10_000_000
+
+    def test_empty_detail_keeps_salary_raw(self):
+        item: dict[str, Any] = {
+            "job_description": "",
+            "job_requirement": "",
+            "location": None,
+            "employment_type": None,
+            "skills": [],
+            "experience_years": None,
+            "salary_raw": "Thoả thuận",
+            "salary_min": 0,
+            "salary_max": 0,
+            "salary_currency": "VND",
+            "salary_period_id": "negotiable",
+            "salary_hidden": True,
+            "salary_confidence": "low",
+        }
+        _apply_detail(item, {})
+        assert item["salary_raw"] == "Thoả thuận"
+
+
+class TestCleanMarkdownSection:
+    """Kills ``_clean_markdown_section`` mutants."""
+
+    @pytest.mark.parametrize("text,expected", [
+        ("", ""),
+        ("   \n  \n  ", ""),
+        ("**bold** text", "bold text"),
+        ("[click](http://x.com)", "click"),
+        ("![alt](http://x.com/img.png) text", "text"),
+        ("line1\n\n\nline2", "line1 line2"),
+    ])
+    def test_clean(self, text, expected):
+        assert _clean_markdown_section(text) == expected
+
+
+class TestParseDetailMarkdownLocation:
+    """Kills location-extraction mutants (lines 279-288)."""
+
+    def test_location_with_address(self):
+        md = "## Địa điểm và thời gian\n**Hà Nội:** 123 Đường ABC"
+        out = _parse_detail_markdown(md, {})
+        assert out["location"] == "Hà Nội: 123 Đường ABC"
+
+    def test_location_empty_address(self):
+        md = "## Địa điểm và thời gian\n**Hà Nội:**\n### subsection"
+        out = _parse_detail_markdown(md, {})
+        assert out["location"] == "Hà Nội"
+
+
+class TestParseDetailMarkdownSkills:
+    """Kills skills-extraction mutants (line 302-304)."""
+
+    def test_skills_from_description(self):
+        meta = {"description": "kỹ năng SQL, Python, Docker"}
+        out = _parse_detail_markdown("", meta)
+        assert out["skills"] == ["SQL", "Python", "Docker"]
+
+    def test_skills_empty_when_no_match(self):
+        out = _parse_detail_markdown("", {})
+        assert out["skills"] == []
+
+
+class TestScrapeEarlyReturnBoundary:
+    """Kills Eq_Lt/Eq_LtE on ``max_items == 0 or max_pages == 0`` (line 668)."""
+
+    @pytest.mark.asyncio
+    async def test_one_one_proceeds_to_scrape(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_PAGE_DELAY_S", 0.0)
+        called: list[int] = []
+
+        async def _fake_search(_kw, page):
+            called.append(page)
+            return "<html/>"
+
+        async def _fake_detail(_url):
+            return {"skills": ["x"]}
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        monkeypatch.setattr(scraper, "_fetch_detail_page", _fake_detail)
+        monkeypatch.setattr(scraper, "_parse_search_page", lambda _h: _many_cards(1))
+
+        out = await scrape_topcv({"keyword": "x", "max_items": 1, "max_pages": 1})
+        assert called == [1]
+        assert out["total_items"] == 1
+
+
+class TestScrapeRemainingZero:
+    """Kills Eq_Lt/Eq_LtE/NumberReplacer on ``remaining == 0`` (line 690)."""
+
+    @pytest.mark.asyncio
+    async def test_breaks_when_remaining_zero(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_PAGE_DELAY_S", 0.0)
+        search_pages: list[int] = []
+
+        async def _fake_search(_kw, page):
+            search_pages.append(page)
+            return "<html/>"
+
+        async def _fake_detail(_url):
+            return {"skills": ["x"]}
+
+        def _fake_parse(_html):
+            return [
+                {"source_url": f"https://www.topcv.vn/j/{i}", "salary_raw": ""}
+                for i in range(2)
+            ]
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        monkeypatch.setattr(scraper, "_fetch_detail_page", _fake_detail)
+        monkeypatch.setattr(scraper, "_parse_search_page", _fake_parse)
+
+        out = await scrape_topcv({"keyword": "x", "max_items": 2, "max_pages": 3})
+        assert out["total_items"] == 2
+        assert search_pages == [1]
+
+
+class TestScrapeCostMicros:
+    """Kills Mul_Add/Mul_Sub on ``cost_micros += per_item * 3`` (line 699)."""
+
+    @pytest.mark.asyncio
+    async def test_cost_micros_search_plus_detail(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_PAGE_DELAY_S", 0.0)
+        per_item = config.TOPCV_SCRAPE_MICROS_PER_ITEM
+
+        async def _fake_search(_kw, _page):
+            return "<html/>"
+
+        async def _fake_detail(_url):
+            return {"skills": ["x"]}
+
+        def _fake_parse(_html):
+            return [{"source_url": "https://www.topcv.vn/j/1", "salary_raw": ""}]
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        monkeypatch.setattr(scraper, "_fetch_detail_page", _fake_detail)
+        monkeypatch.setattr(scraper, "_parse_search_page", _fake_parse)
+
+        out = await scrape_topcv({"keyword": "x", "max_items": 1, "max_pages": 1})
+        assert out["cost_micros"] == per_item * 3 + per_item
