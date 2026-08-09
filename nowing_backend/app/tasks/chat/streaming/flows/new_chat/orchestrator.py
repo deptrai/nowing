@@ -36,6 +36,7 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
     FilesystemSelection,
 )
 from app.auth.context import AuthContext
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import ChatVisibility, async_session_maker
 from app.observability import otel as ot
 from app.services.new_streaming_service import VercelStreamingService
@@ -202,6 +203,9 @@ async def stream_new_chat(
     )
 
     session = async_session_maker()
+    # Propagate tenant GUCs so any query inside the stream respects client RLS.
+    await set_request_tenant_context(session, workspace_id, client_id, agent_id)
+
     # Declared at function scope so SSE-yield join points and the finally
     # clause see them on every exit path.
     persist_user_task: asyncio.Task[int | None] | None = None

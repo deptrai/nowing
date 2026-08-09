@@ -18,7 +18,7 @@ from app.db import (
 from app.schemas.pat import PATCreate, PATCreated, PATRead
 from app.users import require_session_context
 from app.utils.pat import generate_pat, hash_pat, token_prefix
-from app.utils.rbac import get_user_membership
+from app.utils.rbac import is_workspace_owner
 
 router = APIRouter()
 
@@ -70,10 +70,9 @@ async def create_personal_access_token(
         if agent_id:
             agent_id = _validate_slug(agent_id, "agent_id")
 
-        membership = await get_user_membership(session, auth.user.id, workspace_id)
-        if membership is None:
+        if not await is_workspace_owner(session, auth.user.id, workspace_id):
             raise HTTPException(
-                status_code=403, detail="You don't have access to this workspace"
+                status_code=403, detail="PAT mint requires workspace owner"
             )
 
         # Set tenant GUCs so RLS policies can see the targeted client/agent rows.

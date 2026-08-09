@@ -107,7 +107,7 @@ async def _resolve_agent_config(
     result = await session.execute(
         select(AgentConfig).where(
             AgentConfig.client_id == client_id,
-            AgentConfig.slug == agent_id,
+            AgentConfig.slug > agent_id,
             AgentConfig.is_active.is_(True),
         )
     )
