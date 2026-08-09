@@ -76,6 +76,7 @@ async def finalize_assistant_message(
     user_id: str | None,
     accumulator: TokenAccumulator,
     log_prefix: str,
+    client_id: str | None = None,
 ) -> None:
     """Snapshot the content builder and persist the final assistant payload.
 
@@ -218,7 +219,10 @@ async def finalize_assistant_message(
             extract_memory_after_chat_turn,
         )
 
-        extract_memory_after_chat_turn.delay(stream_result.assistant_message_id)
+        extract_memory_after_chat_turn.delay(
+            stream_result.assistant_message_id,
+            client_id=client_id,
+        )
     except Exception:
         logger.exception(
             "Failed to enqueue memory extraction for message %s",

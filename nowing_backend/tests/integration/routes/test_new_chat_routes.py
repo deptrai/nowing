@@ -61,6 +61,7 @@ async def db_client_thread(
         created_by_id=db_user.id,
         visibility=ChatVisibility.PRIVATE,
         client_id="bdsai.vn",
+        agent_id=None,
     )
     db_session.add(thread)
     await db_session.flush()
@@ -205,8 +206,9 @@ class TestNewChat:
         db_client_thread: NewChatThread,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """AC-4: POST /new_chat without agent_id/client_id still works and uses
-        the default Nowing agent."""
+        """AC-4: POST /new_chat without agent_id/client_id falls back to the
+        thread row values and uses the default Nowing agent when no agent_id
+        is supplied."""
         calls: list[tuple[tuple, dict]] = []
 
         async def _fake_stream(
@@ -239,7 +241,7 @@ class TestNewChat:
         assert "platform_metadata" in kwargs, (
             "platform_metadata must be explicitly passed to stream_new_chat"
         )
-        assert kwargs.get("client_id") is None
+        assert kwargs.get("client_id") == db_client_thread.client_id
         assert kwargs.get("agent_id") is None
         assert kwargs.get("platform_metadata") is None
 

@@ -64,10 +64,12 @@ class MemoryExtractionService:
         session: AsyncSession,
         workspace_id: int | None = None,
         user_id: Any | None = None,
+        client_id: str | None = None,
     ) -> None:
         self.session = session
         self.workspace_id = workspace_id
         self.user_id = user_id
+        self.client_id = client_id
 
     # Kept as a static method on the service: the name was public-by-use before
     # the shared pipeline existed. The body now lives in ``pipeline.py`` so the
@@ -224,6 +226,7 @@ class MemoryExtractionService:
                         created_by_id=created_by_id,
                         update_on_duplicate=True,
                         commit=False,
+                        client_id=self.client_id,
                     )
                 except Exception as exc:
                     logger.warning(

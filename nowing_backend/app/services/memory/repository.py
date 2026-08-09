@@ -249,11 +249,16 @@ class MemoryRepository:
         update_on_duplicate: bool = False,
         commit: bool = True,
         automation_run_id: int | None = None,
+        client_id: str | None = None,
     ) -> Memory:
         if isinstance(type, str):
             type = MemoryType(type)
         if isinstance(source_type, str):
             source_type = MemorySourceType(source_type)
+
+        if client_id:
+            tags = list(tags or [])
+            tags.append(f"client:{client_id}")
 
         if embedding is None:
             embedding = await self._embed(

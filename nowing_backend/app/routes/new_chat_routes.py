@@ -38,6 +38,7 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
 )
 from app.auth.agent_chat import _resolve_agent_config
 from app.auth.context import AuthContext
+from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import (
     AgentConfig,
@@ -813,6 +814,15 @@ async def create_thread(
             thread.workspace_id,
             Permission.CHATS_CREATE.value,
             "You don't have permission to create chats in this workspace",
+        )
+
+        # Set tenant GUCs before the insert so the 18.1 RLS WITH CHECK clause
+        # on new_chat_threads allows client-scoped rows.
+        await set_request_tenant_context(
+            session,
+            thread.workspace_id,
+            thread.client_id,
+            thread.agent_id,
         )
 
         now = datetime.now(UTC)
@@ -1718,6 +1728,28 @@ async def handle_new_chat(
     Requires CHATS_CREATE permission.
     """
     try:
+        # Get workspace first so we can set the transaction-local tenant context
+        # (workspace + client + agent GUCs) before any business query.
+        workspace_result = await session.execute(
+            select(Workspace).filter(Workspace.id == request.workspace_id)
+        )
+        workspace = workspace_result.scalars().first()
+
+        if not workspace:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+
+        # Set the tenant GUCs as early as possible.  This ensures the 18.1 RLS
+        # policies see the right client_id before we touch new_chat_threads or
+        # agent_configs.  ``request.client_id``/``request.agent_id`` may be None
+        # for legacy web chat; in that case the GUC is left unset and the RLS
+        # IS NULL branch matches legacy (client_id IS NULL) rows.
+        await set_request_tenant_context(
+            session,
+            workspace.id,
+            request.client_id,
+            request.agent_id,
+        )
+
         # Verify thread exists and user has permission
         result = await session.execute(
             select(NewChatThread).filter(NewChatThread.id == request.chat_id)
@@ -1744,15 +1776,6 @@ async def handle_new_chat(
             local_mounts=request.local_filesystem_mounts,
         )
 
-        # Get workspace to check LLM config preferences
-        workspace_result = await session.execute(
-            select(Workspace).filter(Workspace.id == request.workspace_id)
-        )
-        workspace = workspace_result.scalars().first()
-
-        if not workspace:
-            raise HTTPException(status_code=404, detail="Workspace not found")
-
         # Use the converged model-connections role for chat operations.
         # Positive IDs load Model + Connection rows; negative IDs load
         # virtual GLOBAL models; 0 means Auto.
@@ -1760,9 +1783,17 @@ async def handle_new_chat(
             workspace.chat_model_id if workspace.chat_model_id is not None else 0
         )
 
-        # Resolve per-turn client/agent scope and merge registry AgentConfig.
-        # This must happen before closing the route session because the
-        # resolution queries the workspace-scoped agent registry.
+        # Resolve per-turn client/agent scope.  The request is authoritative
+        # when it provides values; otherwise we fall back to the thread row so
+        # a bound thread keeps its tenant/agent context across turns.  If the
+        # thread already has a value, the request must match it (or be absent).
+        effective_client_id = (
+            request.client_id if request.client_id is not None else thread.client_id
+        )
+        effective_agent_id = (
+            request.agent_id if request.agent_id is not None else thread.agent_id
+        )
+
         if (
             request.client_id is not None
             and thread.client_id is not None
@@ -1781,6 +1812,16 @@ async def handle_new_chat(
                 status_code=403,
                 detail="agent_id does not match the thread",
             )
+
+        # Re-apply tenant GUCs with the resolved (possibly thread-derived)
+        # client/agent so subsequent queries against agent_configs see the
+        # correct scope.
+        await set_request_tenant_context(
+            session,
+            workspace.id,
+            effective_client_id,
+            effective_agent_id,
+        )
 
         # Resolve the concrete LLM config id before loading the bundle. Auto
         # (0 or null) may repin to a concrete model based on workspace settings.
@@ -1806,22 +1847,16 @@ async def handle_new_chat(
         if llm_load_error:
             raise HTTPException(status_code=500, detail=llm_load_error)
 
+        # Fail-fast resolution of the registry AgentConfig.  The actual merge
+        # into the runtime config happens inside ``stream_new_chat`` so the
+        # streaming session can re-merge after a mid-turn rate-limit recovery.
         agent_config_override: AgentConfig | None = None
-        if request.agent_id:
+        if effective_agent_id:
             agent_config_override = await _resolve_agent_config(
                 session,
-                client_id=request.client_id,  # type: ignore[arg-type]
-                agent_id=request.agent_id,
+                client_id=effective_client_id,  # type: ignore[arg-type]
+                agent_id=effective_agent_id,
             )
-            if agent_config_override.system_instructions is not None:
-                agent_config.system_instructions = (
-                    agent_config_override.system_instructions
-                )
-                agent_config.use_default_system_instructions = False
-            if agent_config_override.citations_enabled is not None:
-                agent_config.citations_enabled = agent_config_override.citations_enabled
-            if agent_config_override.model_name:
-                agent_config.model_name = agent_config_override.model_name
 
         # Release the read-transaction so we don't hold ACCESS SHARE locks
         # on workspaces/documents for the entire duration of the stream.
@@ -1873,8 +1908,8 @@ async def handle_new_chat(
                 request_id=getattr(http_request.state, "request_id", "unknown"),
                 user_image_data_urls=image_urls,
                 auth_context=auth,
-                client_id=request.client_id,
-                agent_id=request.agent_id,
+                client_id=effective_client_id,
+                agent_id=effective_agent_id,
                 platform_metadata=request.platform_metadata,
                 llm=llm,
                 agent_config=agent_config,
@@ -2048,6 +2083,42 @@ async def regenerate_response(
             client_platform=request.client_platform,
             local_mounts=request.local_filesystem_mounts,
         )
+
+        # Resolve per-turn client/agent scope for regenerate.
+        effective_client_id = (
+            request.client_id if request.client_id is not None else thread.client_id
+        )
+        effective_agent_id = (
+            request.agent_id if request.agent_id is not None else thread.agent_id
+        )
+
+        if effective_client_id != thread.client_id:
+            raise HTTPException(
+                status_code=403,
+                detail="client_id does not match the thread",
+            )
+        if effective_agent_id != thread.agent_id:
+            raise HTTPException(
+                status_code=403,
+                detail="agent_id does not match the thread",
+            )
+
+        # Set tenant GUCs so RLS-protected agent registry queries see the right scope.
+        await set_request_tenant_context(
+            session,
+            thread.workspace_id,
+            effective_client_id,
+            effective_agent_id,
+        )
+
+        # Fail-fast resolution of the registry AgentConfig for regenerate.
+        agent_config_override: AgentConfig | None = None
+        if effective_agent_id:
+            agent_config_override = await _resolve_agent_config(
+                session,
+                client_id=effective_client_id,  # type: ignore[arg-type]
+                agent_id=effective_agent_id,
+            )
 
         # Get the checkpointer and state history
         checkpointer = await get_checkpointer()
@@ -2378,6 +2449,10 @@ async def regenerate_response(
                     request_id=getattr(http_request.state, "request_id", "unknown"),
                     user_image_data_urls=regenerate_image_urls or None,
                     auth_context=auth,
+                    client_id=effective_client_id,
+                    agent_id=effective_agent_id,
+                    platform_metadata=request.platform_metadata,
+                    agent_config_override=agent_config_override,
                     flow="regenerate",
                 ):
                     yield chunk
@@ -2488,6 +2563,27 @@ async def resume_chat(
 
         decisions = [d.model_dump() for d in request.decisions]
 
+        # Resolve per-turn client/agent scope from the thread.
+        effective_client_id = thread.client_id
+        effective_agent_id = thread.agent_id
+
+        # Set tenant GUCs so RLS-protected agent registry queries see the right scope.
+        await set_request_tenant_context(
+            session,
+            thread.workspace_id,
+            effective_client_id,
+            effective_agent_id,
+        )
+
+        # Fail-fast resolution of the registry AgentConfig for resume.
+        agent_config_override = None
+        if effective_agent_id:
+            agent_config_override = await _resolve_agent_config(
+                session,
+                client_id=effective_client_id,  # type: ignore[arg-type]
+                agent_id=effective_agent_id,
+            )
+
         # Release the read-transaction so we don't hold ACCESS SHARE locks
         # on workspaces/documents for the entire duration of the stream.
         await session.commit()
@@ -2506,6 +2602,9 @@ async def resume_chat(
                 disabled_tools=request.disabled_tools,
                 mode=request.mode,
                 auth_context=auth,
+                client_id=effective_client_id,
+                agent_id=effective_agent_id,
+                agent_config_override=agent_config_override,
             ),
             media_type="text/event-stream",
             headers={

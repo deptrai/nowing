@@ -108,6 +108,7 @@ def _registry_agent() -> RegistryAgentConfig:
         citations_enabled=False,
         enabled_tools=["search_knowledge_base", "ls"],
         disabled_tools=["deep_research"],
+        is_active=True,
     )
 
 

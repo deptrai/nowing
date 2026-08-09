@@ -7,6 +7,7 @@ These schemas follow the assistant-ui ThreadHistoryAdapter pattern:
 """
 
 import json
+import math
 from datetime import datetime
 from typing import Any, Literal, Self
 from uuid import UUID
@@ -104,10 +105,16 @@ class NewChatThreadCreate(NewChatThreadBase):
         description="Agent slug bound to this thread.",
     )
 
-    @field_validator("client_id", "agent_id")
+    @field_validator("client_id", "agent_id", mode="before")
     @classmethod
     def _strip_whitespace(cls, v: str | None) -> str | None:
-        return v.strip() if v else v
+        return v.strip() if isinstance(v, str) else v
+
+    @model_validator(mode="after")
+    def _require_client_for_agent(self) -> Self:
+        if self.agent_id is not None and not self.client_id:
+            raise ValueError("client_id is required when agent_id is set")
+        return self
 
 
 class NewChatThreadUpdate(BaseModel):
@@ -206,8 +213,10 @@ MAX_NEW_CHAT_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_NEW_CHAT_IMAGES = 4
 
 MAX_PLATFORM_METADATA_KEYS = 32
+MAX_PLATFORM_METADATA_TOTAL_KEYS = 128
 MAX_PLATFORM_METADATA_STRING = 1024
 MAX_PLATFORM_METADATA_DEPTH = 4
+MAX_PLATFORM_METADATA_BYTES = 64 * 1024
 
 
 def _bounded_chat_metadata(v: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -221,14 +230,28 @@ def _bounded_chat_metadata(v: dict[str, Any] | None) -> dict[str, Any] | None:
     if not isinstance(v, dict):
         raise ValueError("platform_metadata must be a JSON object")
 
+    total_keys = [0]
+    total_bytes = [0]
+
     def _check(obj: Any, depth: int) -> Any:
         if depth > MAX_PLATFORM_METADATA_DEPTH:
             raise ValueError("platform_metadata exceeds maximum nesting depth")
         if isinstance(obj, str):
             if len(obj) > MAX_PLATFORM_METADATA_STRING:
                 raise ValueError("platform_metadata string value too long")
+            total_bytes[0] += len(obj.encode("utf-8"))
+            if total_bytes[0] > MAX_PLATFORM_METADATA_BYTES:
+                raise ValueError("platform_metadata exceeds maximum payload size")
             return obj
-        if isinstance(obj, (int, float, bool, type(None))):
+        if isinstance(obj, bool):
+            return obj
+        if isinstance(obj, (int,)):
+            return obj
+        if obj is None:
+            return obj
+        if isinstance(obj, float):
+            if not math.isfinite(obj):
+                raise ValueError("platform_metadata floats must be finite")
             return obj
         if isinstance(obj, list):
             return [_check(item, depth + 1) for item in obj]
@@ -237,6 +260,9 @@ def _bounded_chat_metadata(v: dict[str, Any] | None) -> dict[str, Any] | None:
                 raise ValueError(
                     f"platform_metadata may contain at most {MAX_PLATFORM_METADATA_KEYS} keys"
                 )
+            total_keys[0] += len(obj)
+            if total_keys[0] > MAX_PLATFORM_METADATA_TOTAL_KEYS:
+                raise ValueError("platform_metadata exceeds total key budget")
             for key, val in obj.items():
                 if not isinstance(key, str) or len(key) > 64:
                     raise ValueError(
@@ -397,10 +423,10 @@ class NewChatRequest(BaseModel):
     ) -> dict[str, Any] | None:
         return _bounded_chat_metadata(v)
 
-    @field_validator("agent_id", "client_id")
+    @field_validator("agent_id", "client_id", mode="before")
     @classmethod
     def _strip_whitespace(cls, v: str | None) -> str | None:
-        return v.strip() if v else v
+        return v.strip() if isinstance(v, str) else v
 
     @model_validator(mode="after")
     def _require_text_or_images(self) -> Self:
@@ -509,10 +535,10 @@ class RegenerateRequest(BaseModel):
     ) -> dict[str, Any] | None:
         return _bounded_chat_metadata(v)
 
-    @field_validator("agent_id", "client_id")
+    @field_validator("agent_id", "client_id", mode="before")
     @classmethod
     def _strip_whitespace(cls, v: str | None) -> str | None:
-        return v.strip() if v else v
+        return v.strip() if isinstance(v, str) else v
 
     from_message_id: int | None = Field(
         default=None,

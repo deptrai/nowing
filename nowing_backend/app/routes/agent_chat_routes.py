@@ -21,6 +21,7 @@ from starlette.background import BackgroundTask
 
 from app.auth.agent_chat import (
     AgentChatContext,
+    _resolve_agent_config,
     require_agent_chat_pat as _require_agent_chat_pat,
 )
 from app.canonical.tenant_context import set_request_tenant_context
@@ -105,6 +106,10 @@ async def create_thread(
             detail="client_id or agent_id outside PAT scope",
         )
 
+    # Fail-fast: verify the agent is active in the registry before committing
+    # any rows. This keeps the 18.2 surface fail-closed for invalid agents.
+    await _resolve_agent_config(session, client_id, agent_id)
+
     check_agent_chat_limits(client_id, workspace_id)
 
     await set_request_tenant_context(session, workspace_id, client_id, agent_id)
@@ -171,6 +176,7 @@ async def _stream_response(
     agent_id: str,
     run_id: uuid.UUID,
     platform_metadata: dict[str, Any] | None = None,
+    agent_config_override: Any | None = None,
 ) -> StreamingResponse:
     """Wrap stream_new_chat and handle TimeoutError gracefully."""
 
@@ -186,6 +192,7 @@ async def _stream_response(
                 agent_id=agent_id,
                 platform_metadata=platform_metadata,
                 request_id=str(run_id),
+                agent_config_override=agent_config_override,
             ):
                 yield chunk
         except TimeoutError:
@@ -256,6 +263,29 @@ async def send_message(
         )
         raise HTTPException(status_code=status_code, detail="thread not found")
 
+    if getattr(thread, "agent_id", None) is not None and thread.agent_id != agent_id:
+        await audit(
+            actor_user_id=_actor_user_id(auth),
+            pat_id=_pat_id(auth),
+            workspace_id=workspace_id,
+            client_id=client_id,
+            agent_id=agent_id,
+            route=_route_label(request),
+            status=status.HTTP_403_FORBIDDEN,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="agent_id does not match the thread",
+        )
+
+    # Fail-fast resolution of the registry AgentConfig; the streaming layer
+    # will re-merge it but this ensures a clean 404 before the stream starts.
+    agent_config_override = await _resolve_agent_config(
+        session,
+        client_id=client_id,
+        agent_id=agent_id,
+    )
+
     check_agent_chat_limits(client_id, workspace_id)
 
     run_id = uuid.uuid4()
@@ -272,6 +302,7 @@ async def send_message(
         agent_id=agent_id,
         run_id=run_id,
         platform_metadata=body.platform_metadata,
+        agent_config_override=agent_config_override,
     )
 
     # Audit is a background task so the stream is not blocked.

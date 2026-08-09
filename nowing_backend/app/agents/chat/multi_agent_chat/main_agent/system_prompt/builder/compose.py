@@ -63,11 +63,13 @@ def build_main_agent_system_prompt(
     )
 
     if custom_system_instructions and custom_system_instructions.strip():
-        parts.append(
-            "\n"
-            + custom_system_instructions.format(resolved_today=resolved_today)
-            + "\n"
+        # Only substitute the single documented ``{resolved_today}`` placeholder.
+        # Registry instructions are admin-supplied and may contain literal ``{``
+        # characters, so ``str.format()`` would raise ``KeyError``.
+        normalized = custom_system_instructions.replace(
+            "{resolved_today}", resolved_today
         )
+        parts.append("\n" + normalized + "\n")
 
     if use_default_system_instructions:
         parts.append(_wrap(read_prompt_md("core_behavior.md")))

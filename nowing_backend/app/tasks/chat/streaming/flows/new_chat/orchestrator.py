@@ -29,7 +29,7 @@ from functools import partial
 from typing import Any, Literal
 
 import anyio
-from sqlalchemy import select
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.chat.multi_agent_chat import create_multi_agent_chat_deep_agent
@@ -39,6 +39,7 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
     FilesystemSelection,
 )
 from app.agents.chat.runtime.llm_config import AgentConfig as RuntimeAgentConfig
+from app.auth.agent_chat import _resolve_agent_config
 from app.auth.context import AuthContext
 from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
@@ -144,25 +145,29 @@ async def _merge_registry_agent_config(
     agent_config_override: RegistryAgentConfig | None,
     client_id: str | None,
     agent_id: str | None,
-) -> RuntimeAgentConfig:
+    disabled_tools: list[str] | None = None,
+) -> tuple[RuntimeAgentConfig, list[str] | None, list[str] | None]:
     """Load and merge the registry AgentConfig into the runtime config.
 
     If ``agent_config_override`` is provided it is used directly; otherwise the
-    registry is queried by ``client_id`` and ``agent_id``. Missing or inactive
-    agents raise ``_AgentNotFoundError``.
+    existing ``_resolve_agent_config`` helper is reused for fail-closed 404.
+    Returns the merged runtime config plus the effective ``enabled_tools`` and
+    ``disabled_tools`` lists for this turn.
     """
     registry = agent_config_override
     if registry is None and agent_id and client_id:
-        result = await session.execute(
-            select(RegistryAgentConfig).where(
-                RegistryAgentConfig.client_id == client_id,
-                RegistryAgentConfig.slug == agent_id,
-                RegistryAgentConfig.is_active.is_(True),
-            )
-        )
-        registry = result.scalars().first()
+        try:
+            registry = await _resolve_agent_config(session, client_id, agent_id)
+        except HTTPException as exc:
+            raise _AgentNotFoundError(exc.detail) from exc
     if agent_id and not registry:
         raise _AgentNotFoundError("agent not found or inactive")
+
+    effective_enabled: list[str] | None = None
+    effective_disabled: list[str] | None = (
+        list(disabled_tools) if disabled_tools else None
+    )
+
     if registry:
         if registry.system_instructions is not None:
             agent_config.system_instructions = registry.system_instructions
@@ -171,7 +176,15 @@ async def _merge_registry_agent_config(
             agent_config.citations_enabled = registry.citations_enabled
         if registry.model_name:
             agent_config.model_name = registry.model_name
-    return agent_config
+
+        if registry.enabled_tools:
+            effective_enabled = list(registry.enabled_tools)
+        if registry.disabled_tools:
+            if effective_disabled is None:
+                effective_disabled = []
+            effective_disabled.extend(registry.disabled_tools)
+
+    return agent_config, effective_enabled, effective_disabled
 
 
 async def stream_new_chat(
@@ -432,12 +445,17 @@ async def stream_new_chat(
 
         # --- Block 1b: AgentConfig merge ---
         try:
-            agent_config = await _merge_registry_agent_config(
+            (
+                agent_config,
+                effective_enabled_tools,
+                effective_disabled_tools,
+            ) = await _merge_registry_agent_config(
                 session,
                 agent_config=agent_config,
                 agent_config_override=agent_config_override,
                 client_id=client_id,
                 agent_id=agent_id,
+                disabled_tools=disabled_tools,
             )
         except _AgentNotFoundError as exc:
             yield emit_stream_error(
@@ -506,7 +524,8 @@ async def stream_new_chat(
             agent_config=agent_config,
             thread_visibility=visibility,
             filesystem_selection=filesystem_selection,
-            disabled_tools=disabled_tools,
+            enabled_tools=effective_enabled_tools,
+            disabled_tools=effective_disabled_tools,
             mentioned_document_ids=mentioned_document_ids,
             auth_context=auth_context,
             research_mode=mode,
@@ -537,6 +556,7 @@ async def stream_new_chat(
             request_id=request_id,
             turn_id=stream_result.turn_id,
             client_id=client_id,
+            agent_id=agent_id,
             platform_metadata=platform_metadata,
         )
         input_state = assembled.input_state
@@ -716,7 +736,7 @@ async def stream_new_chat(
 
         async def _recover(exc: BaseException, first_event_seen: bool):
             nonlocal llm_config_id, llm, agent_config, runtime_rate_limit_recovered
-            nonlocal title_task
+            nonlocal title_task, effective_enabled_tools, effective_disabled_tools
             if not can_recover_provider_rate_limit(
                 exc,
                 first_event_seen=first_event_seen,
@@ -745,6 +765,21 @@ async def stream_new_chat(
             llm = new_llm
             agent_config = new_agent_config
 
+            # Re-apply the registry AgentConfig to the new LLM bundle so
+            # custom system instructions/tool allowlists survive the repin.
+            (
+                agent_config,
+                effective_enabled_tools,
+                effective_disabled_tools,
+            ) = await _merge_registry_agent_config(
+                session,
+                agent_config=agent_config,
+                agent_config_override=agent_config_override,
+                client_id=client_id,
+                agent_id=agent_id,
+                disabled_tools=disabled_tools,
+            )
+
             # Title gen used the initial llm object. After a runtime repin we
             # keep the stream focused on response recovery and skip title gen
             # for this turn.
@@ -765,7 +800,8 @@ async def stream_new_chat(
                 agent_config=agent_config,
                 thread_visibility=visibility,
                 filesystem_selection=filesystem_selection,
-                disabled_tools=disabled_tools,
+                enabled_tools=effective_enabled_tools,
+                disabled_tools=effective_disabled_tools,
                 mentioned_document_ids=mentioned_document_ids,
                 auth_context=auth_context,
             )
@@ -927,6 +963,7 @@ async def stream_new_chat(
                 user_id=user_id,
                 accumulator=accumulator,
                 log_prefix="stream_new_chat",
+                client_id=client_id,
             )
 
         # Persist any sandbox-produced files to local storage so they remain

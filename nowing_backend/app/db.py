@@ -645,6 +645,11 @@ class NewChatThread(BaseModel, TimestampMixin):
     """
 
     __tablename__ = "new_chat_threads"
+    __table_args__ = (
+        Index(
+            "ix_new_chat_threads_workspace_id_client_id", "workspace_id", "client_id"
+        ),
+    )
 
     title = Column(String(500), nullable=False, default="New Chat", index=True)
     archived = Column(Boolean, nullable=False, default=False)

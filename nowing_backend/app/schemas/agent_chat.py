@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.schemas.new_chat import _bounded_chat_metadata
 
 
 class AgentChatThreadCreate(BaseModel):
@@ -29,7 +31,18 @@ class AgentChatThreadCreate(BaseModel):
     @field_validator("platform_metadata")
     @classmethod
     def _validate_platform_metadata(cls, v):
-        return _bounded_metadata(v)
+        return _bounded_chat_metadata(v)
+
+    @field_validator("client_id", "agent_id", mode="before")
+    @classmethod
+    def _strip_whitespace(cls, v: str | None) -> str | None:
+        return v.strip() if isinstance(v, str) else v
+
+    @model_validator(mode="after")
+    def _require_client_for_agent(self) -> Self:
+        if self.agent_id is not None and not self.client_id:
+            raise ValueError("client_id is required when agent_id is set")
+        return self
 
 
 class AgentChatMessageCreate(BaseModel):
@@ -51,7 +64,7 @@ class AgentChatMessageCreate(BaseModel):
     @field_validator("external_metadata", "platform_metadata")
     @classmethod
     def _validate_external_metadata(cls, v):
-        return _bounded_metadata(v)
+        return _bounded_chat_metadata(v)
 
 
 class AgentChatThreadCreated(BaseModel):
@@ -60,22 +73,3 @@ class AgentChatThreadCreated(BaseModel):
     thread_id: int
     research_thread_id: int
     run_id: str
-
-
-def _bounded_metadata(v: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Clamp metadata to small, primitive values to prevent payload abuse."""
-    if v is None:
-        return None
-    if not isinstance(v, dict):
-        raise ValueError("metadata must be a flat JSON object")
-    if len(v) > 32:
-        raise ValueError("metadata may contain at most 32 keys")
-    for key, val in v.items():
-        if not isinstance(key, str) or len(key) > 64:
-            raise ValueError("metadata keys must be strings <= 64 characters")
-        if isinstance(val, str):
-            if len(val) > 1024:
-                raise ValueError("metadata string values must be <= 1024 characters")
-        elif not isinstance(val, (int, float, bool, type(None))):
-            raise ValueError("metadata values must be primitive")
-    return v

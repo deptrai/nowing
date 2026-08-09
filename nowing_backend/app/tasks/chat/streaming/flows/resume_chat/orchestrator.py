@@ -31,6 +31,7 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
     FilesystemSelection,
 )
 from app.auth.context import AuthContext
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import ChatVisibility, async_session_maker
 from app.observability import otel as ot
 from app.services.chat_session_state_service import set_ai_responding
@@ -39,6 +40,10 @@ from app.tasks.chat.content_builder import AssistantContentBuilder
 from app.tasks.chat.streaming.agent.builder import build_main_agent_for_thread
 from app.tasks.chat.streaming.contract.file_contract import log_file_contract
 from app.tasks.chat.streaming.errors.emitter import emit_stream_terminal_error
+from app.tasks.chat.streaming.flows.new_chat.orchestrator import (
+    _AgentNotFoundError,
+    _merge_registry_agent_config,
+)
 from app.tasks.chat.streaming.flows.resume_chat.assistant_shell import (
     persist_resume_assistant_shell,
 )
@@ -106,6 +111,10 @@ async def stream_resume_chat(
     disabled_tools: list[str] | None = None,
     mode: Literal["speed", "balanced", "quality", "auto"] | None = None,
     auth_context: AuthContext | None = None,
+    client_id: str | None = None,
+    agent_id: str | None = None,
+    platform_metadata: dict[str, Any] | None = None,
+    agent_config_override: Any | None = None,
 ) -> AsyncGenerator[str, None]:
     """Resume a paused HITL turn with the user's decisions.
 
@@ -163,6 +172,9 @@ async def stream_resume_chat(
 
     session = async_session_maker()
     try:
+        # Set RLS tenant context before any registry query.
+        await set_request_tenant_context(session, workspace_id, client_id, agent_id)
+
         if user_id:
             await set_ai_responding(session, chat_id, UUID(user_id))
 
@@ -215,6 +227,29 @@ async def stream_resume_chat(
         _perf_log.info(
             "[stream_resume] LLM config loaded in %.3fs", time.perf_counter() - _t0
         )
+
+        # --- AgentConfig merge ---
+        try:
+            (
+                agent_config,
+                effective_enabled_tools,
+                effective_disabled_tools,
+            ) = await _merge_registry_agent_config(
+                session,
+                agent_config=agent_config,
+                agent_config_override=agent_config_override,
+                client_id=client_id,
+                agent_id=agent_id,
+                disabled_tools=disabled_tools,
+            )
+        except _AgentNotFoundError as exc:
+            yield emit_stream_error(
+                message=exc.message,
+                error_kind=exc.error_kind,
+                error_code=exc.error_code,
+            )
+            yield streaming_service.format_done()
+            return
 
         if needs_credit_quota(agent_config, user_id):
             premium_reservation = await reserve_credit(
@@ -348,7 +383,8 @@ async def stream_resume_chat(
             agent_config=agent_config,
             thread_visibility=visibility,
             filesystem_selection=filesystem_selection,
-            disabled_tools=disabled_tools,
+            enabled_tools=effective_enabled_tools,
+            disabled_tools=effective_disabled_tools,
             auth_context=auth_context,
             research_mode=mode,
         )

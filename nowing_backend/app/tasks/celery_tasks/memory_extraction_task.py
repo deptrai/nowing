@@ -20,7 +20,10 @@ from app.tasks.celery_tasks import run_async_celery_task
 logger = logging.getLogger(__name__)
 
 
-async def _extract_memory_after_chat_turn(message_id: int) -> None:
+async def _extract_memory_after_chat_turn(
+    message_id: int,
+    client_id: str | None = None,
+) -> None:
     """Load the assistant message and trigger memory extraction."""
     from sqlalchemy.orm import selectinload
 
@@ -39,7 +42,10 @@ async def _extract_memory_after_chat_turn(message_id: int) -> None:
             logger.warning("Assistant message %s not found for extraction", message_id)
             return
 
-        service = MemoryExtractionService(session=session)
+        service = MemoryExtractionService(
+            session=session,
+            client_id=client_id,
+        )
         await service.extract_from_turn(
             thread_id=message.thread_id,
             turn_id=message.turn_id,
@@ -61,6 +67,12 @@ async def _extract_memory_after_chat_turn(message_id: int) -> None:
     retry_backoff=True,
     retry_kwargs={"max_retries": 3},
 )
-def extract_memory_after_chat_turn(self, message_id: int) -> None:
+def extract_memory_after_chat_turn(
+    self,
+    message_id: int,
+    client_id: str | None = None,
+) -> None:
     """Best-effort memory extraction after an assistant turn is finalized."""
-    return run_async_celery_task(lambda: _extract_memory_after_chat_turn(message_id))
+    return run_async_celery_task(
+        lambda: _extract_memory_after_chat_turn(message_id, client_id=client_id)
+    )

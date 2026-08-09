@@ -211,6 +211,20 @@ def client(acr, fake_session, pat_auth, monkeypatch):
     monkeypatch.setattr(acr, "set_request_tenant_context", AsyncMock())
     monkeypatch.setattr(acr, "audit", AsyncMock())
     monkeypatch.setattr(acr, "stream_new_chat", _default_stream)
+    monkeypatch.setattr(
+        acr,
+        "_resolve_agent_config",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                client_id="bdsai.vn",
+                slug="bdsai-listing-assistant",
+                system_instructions=None,
+                citations_enabled=True,
+                model_name=None,
+                is_active=True,
+            )
+        ),
+    )
 
     return TestClient(app, raise_server_exceptions=False)
 

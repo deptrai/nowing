@@ -1,6 +1,6 @@
 ---
 baseline_commit: "a247f8448"
-status: review
+status: done
 ---
 
 # Story 18.2: NewChatRequest Extension
@@ -423,6 +423,36 @@ Partial / reusable pieces exist; no full end-to-end implementation.
 - [x] Implementation completed
 - [x] Tests completed
 
-**Status:** review
+**Status:** done
 
 **Ultimate context engine analysis completed - comprehensive developer guide created.**
+
+## Review Findings (AI)
+
+> **Layers run:** Acceptance Auditor, Edge Case Hunter. **Blind Hunter:** timed out / did not return before triage cutoff.
+
+### Resolved findings
+
+- [x] [Review][Resolved] `handle_new_chat` now sets tenant GUCs before querying `agent_configs`/`new_chat_threads` and falls back to thread row values when the request omits `client_id`/`agent_id`.
+- [x] [Review][Resolved] `set_request_tenant_context` skips setting GUCs when `client_id`/`agent_id` is `None`.
+- [x] [Review][Resolved] Rate-limit recovery re-applies the registry `AgentConfig` (system instructions and tool lists) after reloading the LLM bundle.
+- [x] [Review][Resolved] `_merge_registry_agent_config` now reuses `app.auth.agent_chat:_resolve_agent_config` for fail-closed 404 handling.
+- [x] [Review][Resolved] `regenerate_response` forwards `client_id`/`agent_id`/`platform_metadata` to `stream_new_chat` and resolves `agent_config_override`.
+- [x] [Review][Resolved] `send_message` in public agent-chat validates `thread.agent_id` against the PAT-scoped `agent_id` and resolves the registry `AgentConfig` before streaming.
+- [x] [Review][Resolved] Tool allowlists (`AgentConfig.enabled_tools`/`disabled_tools`) are merged and forwarded to `build_main_agent_for_thread`.
+- [x] [Review][Resolved] `MemoryExtractionService` now accepts `client_id` and threads it through to `repo.create_memory` as a `client:` tag.
+- [x] [Review][Resolved] `build_main_agent_system_prompt` no longer uses `str.format()` on registry `system_instructions`; only the explicit `{resolved_today}` placeholder is substituted.
+- [x] [Review][Resolved] Alembic migration now uses `postgresql.JSONB()` for `platform_metadata` and adds the `(workspace_id, client_id)` composite index; the model also declares it.
+- [x] [Review][Resolved] `NewChatThreadCreate` and `AgentChatThreadCreate` have a cross-field `agent_id requires client_id` validator.
+- [x] [Review][Resolved] `_strip_whitespace` validators run in `before` mode, and `_bounded_chat_metadata` rejects `NaN`/`Infinity` floats and enforces total key/payload budgets.
+- [x] [Review][Resolved] `AgentChatThreadCreate`/`AgentChatMessageCreate` now reuse the same `_bounded_chat_metadata` as `NewChatRequest`/`RegenerateRequest`.
+- [x] [Review][Resolved] `_render_platform_metadata` now includes `agent_id` and defangs `</platform_metadata>` in user-supplied strings.
+- [x] [Review][Resolved] `resume_chat` flow now accepts `client_id`/`agent_id`/`agent_config_override` and sets tenant GUCs / merges registry AgentConfig.
+
+### Patch findings
+
+### Deferred findings
+
+### Dismissed findings
+
+- [x] [Review][Dismiss] Internal `POST /threads` persists `client_id`/`agent_id` from the request body without additional scope check [app/routes/new_chat_routes.py:819–827] — internal web auth is outside the PAT scope model; integration tests expect this behavior and the threat model focuses on the public surface.

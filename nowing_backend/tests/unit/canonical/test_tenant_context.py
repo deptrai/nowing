@@ -74,8 +74,8 @@ async def test_set_request_tenant_context_uses_is_local_true():
         assert is_local is True
 
 
-async def test_set_request_tenant_context_handles_none_client_id_as_empty_string():
-    """A missing ``client_id`` must be written as an empty GUC value, not NULL."""
+async def test_set_request_tenant_context_skips_none_client_id_guc():
+    """A missing ``client_id`` should not set the GUC, so ``current_setting`` returns NULL."""
     from app.canonical.tenant_context import set_request_tenant_context
 
     session = AsyncMock()
@@ -89,12 +89,12 @@ async def test_set_request_tenant_context_handles_none_client_id_as_empty_string
         gucs[name] = value
 
     assert gucs["app.workspace_id"] == "42"
-    assert gucs["app.current_client_id"] == ""
+    assert "app.current_client_id" not in gucs
     assert gucs["app.current_agent_id"] == "agent-1"
 
 
-async def test_set_request_tenant_context_uses_empty_string_for_none_agent_id():
-    """A missing ``agent_id`` should also be written as an empty string."""
+async def test_set_request_tenant_context_skips_none_agent_id_guc():
+    """A missing ``agent_id`` should not set the GUC, so ``current_setting`` returns NULL."""
     from app.canonical.tenant_context import set_request_tenant_context
 
     session = AsyncMock()
@@ -109,7 +109,7 @@ async def test_set_request_tenant_context_uses_empty_string_for_none_agent_id():
 
     assert gucs["app.workspace_id"] == "42"
     assert gucs["app.current_client_id"] == "client-1"
-    assert gucs["app.current_agent_id"] == ""
+    assert "app.current_agent_id" not in gucs
 
 
 class _RollbackSession:

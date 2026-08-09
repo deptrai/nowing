@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -33,14 +34,24 @@ def upgrade() -> None:
         ["agent_id"],
         unique=False,
     )
+    op.create_index(
+        op.f("ix_new_chat_threads_workspace_id_client_id"),
+        "new_chat_threads",
+        ["workspace_id", "client_id"],
+        unique=False,
+    )
     op.add_column(
         "new_chat_threads",
-        sa.Column("platform_metadata", sa.JSON(), nullable=True),
+        sa.Column("platform_metadata", postgresql.JSONB(), nullable=True),
     )
 
 
 def downgrade() -> None:
     """Remove agent_id and platform_metadata from new_chat_threads."""
     op.drop_column("new_chat_threads", "platform_metadata")
+    op.drop_index(
+        op.f("ix_new_chat_threads_workspace_id_client_id"),
+        table_name="new_chat_threads",
+    )
     op.drop_index(op.f("ix_new_chat_threads_agent_id"), table_name="new_chat_threads")
     op.drop_column("new_chat_threads", "agent_id")

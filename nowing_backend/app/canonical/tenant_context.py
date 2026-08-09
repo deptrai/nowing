@@ -60,18 +60,22 @@ async def set_request_tenant_context(
     connection cannot leak tenant context to the next request.
     """
     # ponytail: set_config() is the parameter-safe equivalent of SET LOCAL.
+    # Skip client/agent GUCs when the value is None so ``current_setting(..., true)
+    # returns NULL and the RLS ``client_id IS NULL`` branch works for legacy rows.
     await session.execute(
         text("SELECT set_config('app.workspace_id', :wid, true)"),
         {"wid": str(workspace_id)},
     )
-    await session.execute(
-        text("SELECT set_config('app.current_client_id', :cid, true)"),
-        {"cid": client_id or ""},
-    )
-    await session.execute(
-        text("SELECT set_config('app.current_agent_id', :aid, true)"),
-        {"aid": agent_id or ""},
-    )
+    if client_id is not None:
+        await session.execute(
+            text("SELECT set_config('app.current_client_id', :cid, true)"),
+            {"cid": client_id},
+        )
+    if agent_id is not None:
+        await session.execute(
+            text("SELECT set_config('app.current_agent_id', :aid, true)"),
+            {"aid": agent_id},
+        )
     session.info["canonical_workspace_id"] = workspace_id
     session.info["current_client_id"] = client_id
     session.info["current_agent_id"] = agent_id
