@@ -194,9 +194,7 @@ async def test_workspace_editor_cannot_list_all_workspaces(
 
 
 @pytest.mark.asyncio
-async def test_resolve_escalation(
-    admin_client, db_session, db_user, db_workspace
-):
+async def test_resolve_escalation(admin_client, db_session, db_user, db_workspace):
     escalation = await _seed_escalation(db_session, db_workspace, db_user)
 
     resp = await admin_client.post(
@@ -209,12 +207,13 @@ async def test_resolve_escalation(
 
 
 @pytest.mark.asyncio
-async def test_retry_escalation(
-    admin_client, db_session, db_user, db_workspace
-):
+async def test_retry_escalation(admin_client, db_session, db_user, db_workspace):
     escalation = await _seed_escalation(db_session, db_workspace, db_user)
 
-    with patch("app.routes.admin_anti_bot_escalation_routes.start_async_run", new_callable=AsyncMock) as mock_run:
+    with patch(
+        "app.routes.admin_anti_bot_escalation_routes.start_async_run",
+        new_callable=AsyncMock,
+    ) as mock_run:
         mock_run.return_value = "retry-run-id"
         resp = await admin_client.post(
             f"/api/v1/admin/anti-bot-escalations/{escalation.id}/retry"

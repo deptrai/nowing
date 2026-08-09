@@ -259,7 +259,9 @@ def _capability_tool(
     executor = capability.executor
     name = capability.name
 
-    async def _run(runtime: ToolRuntime | None = None, **kwargs: object) -> dict | str | Command:
+    async def _run(
+        runtime: ToolRuntime | None = None, **kwargs: object
+    ) -> dict | str | Command:
         # ponytail: thread the chat request's explicit research mode through to
         # chainlens.research so benchmark/user mode selections are honored.
         if name == "chainlens.research":
@@ -442,7 +444,11 @@ def _capability_tool(
                 return dump
             return _build_preview(serialized, run_id)
 
-        content = json.dumps(dump, ensure_ascii=False) if dump is not None else _build_preview(serialized, run_id)
+        content = (
+            json.dumps(dump, ensure_ascii=False)
+            if dump is not None
+            else _build_preview(serialized, run_id)
+        )
 
         registry = load_registry(getattr(runtime, "state", None))
         _, label = attach_run_citation(

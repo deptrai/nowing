@@ -51,9 +51,8 @@ async def _has_workspace_admin_access(
     membership = membership.scalar_one_or_none()
     if membership is None:
         return False
-    return (
-        membership.is_owner
-        or (membership.role is not None and membership.role.name in {"Owner", "Editor"})
+    return membership.is_owner or (
+        membership.role is not None and membership.role.name in {"Owner", "Editor"}
     )
 
 

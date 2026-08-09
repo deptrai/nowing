@@ -127,7 +127,9 @@ class _AntiBotOutput(BaseModel):
 
     degraded: bool = True
     degradation_reason: str = "bot_detected"
-    next_action: str = "Escalated to human review; retry after credentials/proxy rotation"
+    next_action: str = (
+        "Escalated to human review; retry after credentials/proxy rotation"
+    )
     items: list = Field(default_factory=list)
 
     @property
@@ -214,10 +216,10 @@ async def test_tool_registers_run_citation_when_stored(isolate, monkeypatch):
     from app.capabilities.core.access import agent as mod
 
     run_id = "550e8400-e29b-41d4-a716-446655440000"
+    monkeypatch.setattr(mod, "record_run", AsyncMock(return_value=run_id))
     monkeypatch.setattr(
-        mod, "record_run", AsyncMock(return_value=run_id)
+        mod, "enqueue_run_memory_extraction_after_commit", lambda _: None
     )
-    monkeypatch.setattr(mod, "enqueue_run_memory_extraction_after_commit", lambda _: None)
 
     cap = _capability(name="web.scrape", output=_EchoOutput(echoed="hi"))
     tools = isolate.module.build_capability_tools(workspace_id=7, capabilities=[cap])
@@ -282,7 +284,9 @@ async def test_tool_registers_web_result_citations_when_output_has_sources(
 
     run_id = "660e8400-e29b-41d4-a716-446655440001"
     monkeypatch.setattr(mod, "record_run", AsyncMock(return_value=run_id))
-    monkeypatch.setattr(mod, "enqueue_run_memory_extraction_after_commit", lambda _: None)
+    monkeypatch.setattr(
+        mod, "enqueue_run_memory_extraction_after_commit", lambda _: None
+    )
 
     output = _ResearchOutput(
         answer="Synthesis text",

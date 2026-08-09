@@ -153,9 +153,7 @@ def build_scrape_executor(scrape_fn: ScrapeFn | None = None) -> Executor:
         total = int(total_raw) if total_raw is not None else 0
         degraded = bool(result.get("degraded", False))
         if degraded:
-            _maybe_escalate(
-                ctx, result.get("degradation_reason") or "UNKNOWN"
-            )
+            _maybe_escalate(ctx, result.get("degradation_reason") or "UNKNOWN")
             cost = 0
         else:
             cost = total * getattr(config, "CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM", 3500)
