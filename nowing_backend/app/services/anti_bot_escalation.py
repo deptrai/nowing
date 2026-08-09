@@ -112,7 +112,6 @@ async def create_or_update_escalation(
     )
     existing: AntiBotEscalation | None = result.scalar_one_or_none()
 
-
     if existing is not None:
         existing.detection_count += 1
         existing.last_seen_at = now
