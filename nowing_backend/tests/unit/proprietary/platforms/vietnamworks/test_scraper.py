@@ -104,6 +104,39 @@ class TestScraperApiCall:
         assert captured["json"]["hitsPerPage"] == 50
         assert captured["json"]["page"] == 2
 
+    @pytest.mark.asyncio
+    async def test_sends_filters_in_request_body(self, monkeypatch):
+        captured: dict[str, Any] = {}
+
+        class _FakeClient:
+            async def post(self, url: str, **kwargs: Any) -> httpx.Response:
+                captured["json"] = kwargs.get("json", {})
+                return _build_response({"meta": {"nbHits": 0, "nbPages": 0}, "data": []})
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc: Any):
+                return None
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
+
+        await scrape_vietnamworks({
+            "keyword": "data engineer",
+            "locationId": 24,
+            "salary_min": 10_000_000,
+            "salary_max": 50_000_000,
+            "experience_years": 3,
+            "employment_type": "full_time",
+        })
+
+        assert captured["json"]["keyword"] == "data engineer"
+        assert captured["json"]["locationId"] == 24
+        assert captured["json"]["salaryMin"] == 10_000_000
+        assert captured["json"]["salaryMax"] == 50_000_000
+        assert captured["json"]["yearsOfExperience"] == 3
+        assert captured["json"]["typeWorkingId"] == 1
+
 
 class TestScraperFieldMapping:
     """AC-2: maps API fields to normalized JobItem."""
@@ -127,10 +160,39 @@ class TestScraperFieldMapping:
         assert out["degraded"] is False
         assert len(out["items"]) == 2
         first = out["items"][0]
+
+        required_fields = {
+            "id",
+            "title",
+            "company",
+            "location",
+            "source_url",
+            "salary_raw",
+            "salary_min",
+            "salary_max",
+            "salary_currency",
+            "salary_period_id",
+            "employment_type",
+            "experience_years",
+            "job_description",
+            "job_requirement",
+            "job_function",
+            "skills",
+            "benefits",
+            "posted_at",
+            "approved_at",
+            "expired_at",
+            "is_active",
+            "source",
+        }
+        missing = required_fields - set(first.keys())
+        assert not missing, f"missing fields: {missing}"
+
         assert first["id"] == "vw:12345"
         assert first["title"] == "Senior Data Engineer"
         assert first["company"] == "FPT Software"
         assert first["location"] == "Hà Nội"
+        assert first["source_url"] == "https://www.vietnamworks.com/senior-data-engineer-12345"
         assert first["salary_raw"] == "Từ 25tr ₫/tháng đến 35tr ₫/tháng"
         assert first["salary_min"] == 25_000_000
         assert first["salary_max"] == 35_000_000
@@ -462,8 +524,8 @@ class TestScraperFailureModes:
         assert out["degradation_reason"] == "schema_drift"
 
     @pytest.mark.asyncio
-    async def test_degrades_on_missing_job_id(self, monkeypatch):
-        """Schema drift: a job entry loses its jobId."""
+    async def test_skips_missing_job_id(self, monkeypatch):
+        """Schema drift: a job entry loses its jobId; the rest of the page is kept."""
         fixture = _load_fixture()
         fixture["data"][0].pop("jobId", None)
 
@@ -481,8 +543,9 @@ class TestScraperFailureModes:
 
         out = await scrape_vietnamworks({"keyword": "data"})
 
-        assert out["degraded"] is True
-        assert out["degradation_reason"] == "schema_drift"
+        assert out["degraded"] is False
+        assert out["total_items"] == 1
+        assert out["items"][0]["id"] == "vw:12346"
 
     @pytest.mark.asyncio
     async def test_degrades_on_data_not_a_list(self, monkeypatch):
@@ -504,3 +567,223 @@ class TestScraperFailureModes:
 
         assert out["degraded"] is True
         assert out["degradation_reason"] == "schema_drift"
+
+
+class TestScraperEdgeCases:
+    """Boundary and zero-value behaviour for the fetcher."""
+
+    @pytest.mark.asyncio
+    async def test_short_circuits_on_max_pages_zero(self, monkeypatch):
+        calls: list[Any] = []
+
+        class _FakeClient:
+            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
+                calls.append(_kwargs)
+                return _build_response({"meta": {"nbHits": 1, "nbPages": 1}, "data": []})
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc: Any):
+                return None
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
+
+        out = await scrape_vietnamworks({"keyword": "data", "max_pages": 0})
+
+        assert out["degraded"] is False
+        assert out["items"] == []
+        assert out["total_items"] == 0
+        assert calls == []
+
+    @pytest.mark.asyncio
+    async def test_short_circuits_on_max_items_zero(self, monkeypatch):
+        calls: list[Any] = []
+
+        class _FakeClient:
+            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
+                calls.append(_kwargs)
+                return _build_response({"meta": {"nbHits": 1, "nbPages": 1}, "data": []})
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc: Any):
+                return None
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
+
+        out = await scrape_vietnamworks({"keyword": "data", "max_items": 0})
+
+        assert out["degraded"] is False
+        assert out["items"] == []
+        assert out["total_items"] == 0
+        assert calls == []
+
+    @pytest.mark.asyncio
+    async def test_short_circuits_on_hits_per_page_zero(self, monkeypatch):
+        calls: list[Any] = []
+
+        class _FakeClient:
+            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
+                calls.append(_kwargs)
+                return _build_response({"meta": {"nbHits": 1, "nbPages": 1}, "data": []})
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc: Any):
+                return None
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
+
+        out = await scrape_vietnamworks({"keyword": "data", "hitsPerPage": 0})
+
+        assert out["degraded"] is False
+        assert out["items"] == []
+        assert out["total_items"] == 0
+        assert calls == []
+
+    @pytest.mark.asyncio
+    async def test_retries_429_then_succeeds(self, monkeypatch):
+        attempts: list[int] = []
+
+        class _FakeClient:
+            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
+                attempts.append(len(attempts) + 1)
+                if len(attempts) == 1:
+                    return _build_response({"meta": {"nbHits": 1, "nbPages": 1}, "data": []}, status=429)
+                return _build_response(_load_fixture())
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc: Any):
+                return None
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
+        monkeypatch.setattr("asyncio.sleep", AsyncMock())
+
+        out = await scrape_vietnamworks({"keyword": "data", "max_items": 1})
+
+        assert out["degraded"] is False
+        assert out["total_items"] == 1
+        assert len(attempts) == 2
+
+    @pytest.mark.asyncio
+    async def test_degrades_rate_limited_after_retries_exhausted(self, monkeypatch):
+        attempts: list[int] = []
+
+        class _FakeClient:
+            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
+                attempts.append(len(attempts) + 1)
+                return _build_response({"meta": {"nbHits": 1, "nbPages": 1}, "data": []}, status=429)
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc: Any):
+                return None
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
+        monkeypatch.setattr("asyncio.sleep", AsyncMock())
+
+        out = await scrape_vietnamworks({"keyword": "data", "max_items": 1})
+
+        assert out["degraded"] is True
+        assert out["degradation_reason"] == "rate_limited"
+        assert len(attempts) == 3  # default retry attempts + 1
+
+    @pytest.mark.asyncio
+    async def test_degrades_on_connect_error(self, monkeypatch):
+        class _FakeClient:
+            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
+                raise httpx.ConnectError("connection refused")
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc: Any):
+                return None
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
+
+        out = await scrape_vietnamworks({"keyword": "data"})
+
+        assert out["degraded"] is True
+        assert out["degradation_reason"] == "api_error"
+
+    @pytest.mark.asyncio
+    async def test_degrades_on_4xx_other_than_403_451(self, monkeypatch):
+        class _FakeClient:
+            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
+                return _build_response({"error": "bad request"}, status=400)
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc: Any):
+                return None
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
+
+        out = await scrape_vietnamworks({"keyword": "data"})
+
+        assert out["degraded"] is True
+        assert out["degradation_reason"] == "api_error"
+
+    @pytest.mark.asyncio
+    async def test_degrades_on_non_dict_json_response(self, monkeypatch):
+        class _FakeClient:
+            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
+                return httpx.Response(
+                    status_code=200,
+                    json=["unexpected list"],
+                    request=httpx.Request("POST", "https://ms.vietnamworks.com/job-search/v1.0/search"),
+                )
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc: Any):
+                return None
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
+
+        out = await scrape_vietnamworks({"keyword": "data"})
+
+        assert out["degraded"] is True
+        assert out["degradation_reason"] == "decode_error"
+
+
+class TestScraperGoldenRegression:
+    """Golden fixture regression for the parser."""
+
+    @pytest.mark.asyncio
+    async def test_golden_fixture_parses_exactly(self, monkeypatch):
+        class _FakeClient:
+            async def post(self, _url: str, **_kwargs: Any) -> httpx.Response:
+                return _build_response(_load_fixture())
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc: Any):
+                return None
+
+        monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: _FakeClient())
+
+        out = await scrape_vietnamworks({"keyword": "data engineer", "max_items": 2, "max_pages": 1})
+
+        assert out["degraded"] is False
+        assert out["total_items"] == 2
+        first, second = out["items"]
+        assert first["id"] == "vw:12345"
+        assert first["title"] == "Senior Data Engineer"
+        assert first["salary_min"] == 25_000_000
+        assert first["salary_max"] == 35_000_000
+        assert first["posted_at"] == "2026-08-04"
+        assert second["id"] == "vw:12346"
+        assert second["salary_min"] == 0
+        assert second["salary_max"] == 0
+        assert second["posted_at"] == "2026-08-03"

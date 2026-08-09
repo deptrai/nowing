@@ -91,3 +91,23 @@ class TestScrapeOutputShape:
         out = ScrapeOutput(degraded=True, degradation_reason="rate_limited")
         assert out.degraded is True
         assert out.degradation_reason == "rate_limited"
+
+    def test_rejects_empty_keyword(self):
+        with pytest.raises(ValidationError):
+            ScrapeInput(keyword="")
+
+    def test_rejects_whitespace_only_keyword(self):
+        with pytest.raises(ValidationError):
+            ScrapeInput(keyword="   ")
+
+    def test_rejects_negative_salary_min(self):
+        with pytest.raises(ValidationError):
+            ScrapeInput(keyword="data", salary_min=-1)
+
+    def test_rejects_salary_max_below_salary_min(self):
+        with pytest.raises(ValidationError):
+            ScrapeInput(keyword="data", salary_min=10_000_000, salary_max=5_000_000)
+
+    def test_max_pages_defaults_to_five(self):
+        inp = ScrapeInput(keyword="data")
+        assert inp.max_pages == 5

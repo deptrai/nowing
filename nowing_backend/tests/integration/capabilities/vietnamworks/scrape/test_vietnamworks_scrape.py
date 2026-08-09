@@ -35,18 +35,16 @@ def _load_fixture() -> dict[str, Any]:
 
 
 async def _fake_vietnamworks_fetcher(params: dict[str, Any]) -> dict[str, Any]:
-    """Replay the recorded page-1 envelope; no pagination.
+    """Replay the normalized page-1 items; no pagination.
 
-    Returns the ``items`` shape the executor expects.
+    The fake returns the normalized ``items`` shape the executor already
+    expects, so this test focuses on executor/registration wiring without
+    duplicating parser coverage.
     """
     page = params.get("page", 1)
     if page > 1:
-        return {"items": [], "degraded": False}
-    envelope = _load_fixture()
-    return {
-        "items": envelope["data"],
-        "degraded": False,
-    }
+        return {"items": [], "degraded": False, "meta": {"nbPages": 1}}
+    return {"items": _parsed_items(), "degraded": False, "meta": {"nbPages": 1}}
 
 
 def _parsed_items() -> list[dict[str, Any]]:
@@ -69,9 +67,9 @@ def _parsed_items() -> list[dict[str, Any]]:
             "job_requirement": "<p>3+ years of Python and SQL.</p>",
             "skills": ["Python", "SQL"],
             "benefits": ["Laptop", "Remote 2 days/week"],
-            "posted_at": "2026-08-04T10:00:00+07:00",
-            "approved_at": "2026-08-04T10:30:00+07:00",
-            "expired_at": "2026-09-04T10:00:00+07:00",
+            "posted_at": "2026-08-04",
+            "approved_at": "2026-08-04",
+            "expired_at": "2026-09-04",
             "is_active": True,
             "source": "vietnamworks",
         },
@@ -92,9 +90,9 @@ def _parsed_items() -> list[dict[str, Any]]:
             "job_requirement": "<p>Bachelor's degree in CS.</p>",
             "skills": ["Spark"],
             "benefits": [],
-            "posted_at": "2026-08-03T09:00:00+07:00",
-            "approved_at": "2026-08-03T09:30:00+07:00",
-            "expired_at": "2026-09-03T09:00:00+07:00",
+            "posted_at": "2026-08-03",
+            "approved_at": "2026-08-03",
+            "expired_at": "2026-09-03",
             "is_active": True,
             "source": "vietnamworks",
         },
@@ -117,11 +115,12 @@ async def test_vietnamworks_scrape_executor_with_fake_fetcher(monkeypatch):
     assert len(out.items) == 2
     assert out.degraded is False
 
-    # Once the parser is implemented, each item should be a normalized dict
-    # matching the contract in the story file (id, title, company, salary_raw, ...).
+    # Each item should be a normalized dict with the expected surface.
     for item in out.items:
-        assert isinstance(item, dict)
-        assert "jobId" in item or "id" in item
+        assert item["id"].startswith("vw:")
+        assert item["title"]
+        assert item["company"]
+        assert item["source"] == "vietnamworks"
 
 
 @pytest.mark.asyncio

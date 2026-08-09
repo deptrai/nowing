@@ -1,3 +1,0 @@
-[cosmic-ray]
-[cosmic-ray.filters.operators-filter]
-exclude-operators = ["ReplaceBinaryOperator_BitOr"]

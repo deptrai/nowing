@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 from app.config import config
 
@@ -14,14 +21,29 @@ class ScrapeInput(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    keyword: str
+    keyword: str = Field(min_length=1)
     location: str | None = None
-    salary_min: int | None = None
-    salary_max: int | None = None
+    salary_min: int | None = Field(default=None, ge=0)
+    salary_max: int | None = Field(default=None, ge=0)
     employment_type: Literal["full_time", "contract", "part_time", "intern"] | None = None
-    experience_years: int | None = None
-    max_pages: int = Field(default=1, ge=0)
+    experience_years: int | None = Field(default=None, ge=0)
+    max_pages: int = Field(default=5, ge=0)
     max_items: int = Field(default=50, ge=0)
+
+    @field_validator("keyword", mode="after")
+    @classmethod
+    def _strip_keyword(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("keyword must not be empty or whitespace")
+        return v
+
+    @field_validator("salary_min", "salary_max", "experience_years", mode="after")
+    @classmethod
+    def _non_negative(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("must be non-negative")
+        return v
 
     @field_validator("max_items", mode="after")
     @classmethod
@@ -34,6 +56,16 @@ class ScrapeInput(BaseModel):
     def _clamp_max_pages(cls, v: int) -> int:
         ceiling = getattr(config, "VIETNAMWORKS_MAX_PAGES", 5)
         return min(v, ceiling)
+
+    @model_validator(mode="after")
+    def _check_salary_range(self) -> ScrapeInput:
+        if (
+            self.salary_min is not None
+            and self.salary_max is not None
+            and self.salary_max < self.salary_min
+        ):
+            raise ValueError("salary_max must be >= salary_min")
+        return self
 
     @property
     def estimated_units(self) -> int:

@@ -31,9 +31,9 @@ _PARSED_ITEM = {
     "job_requirement": "<p>3+ years of Python and SQL.</p>",
     "skills": ["Python", "SQL"],
     "benefits": ["Laptop", "Remote 2 days/week"],
-    "posted_at": "2026-08-04T10:00:00+07:00",
-    "approved_at": "2026-08-04T10:30:00+07:00",
-    "expired_at": "2026-09-04T10:00:00+07:00",
+    "posted_at": "2026-08-04",
+    "approved_at": "2026-08-04",
+    "expired_at": "2026-09-04",
     "is_active": True,
     "source": "vietnamworks",
 }
@@ -50,6 +50,7 @@ def _make_fake_fetcher(
             "cost_micros": 0,
             "degraded": degraded,
             "degradation_reason": reason,
+            "meta": {"nbPages": 1},
         }
 
     return fake
@@ -197,7 +198,7 @@ class TestExecutorPaginationAndRateLimit:
             assert "salary_min" not in params
             assert "salary_max" not in params
             assert "location" not in params
-            return {"items": [{"id": "vw:1"}], "degraded": False}
+            return {"items": [{"id": "vw:1"}], "meta": {"nbPages": 1}, "degraded": False}
 
         execute = build_scrape_executor(scrape_fn=fake)
         out = await execute(ScrapeInput(keyword="data engineer"))
@@ -256,13 +257,18 @@ class TestExecutorPaginationAndRateLimit:
     async def test_degrades_on_429_with_rate_limited_reason(self):
         class _FakeFetcher:
             async def __call__(self, _params: dict[str, Any]) -> dict[str, Any]:
-                raise RuntimeError("429 Too Many Requests")
+                return {
+                    "items": [],
+                    "degraded": True,
+                    "degradation_reason": "rate_limited",
+                }
 
         execute = build_scrape_executor(scrape_fn=_FakeFetcher())
         out = await execute(ScrapeInput(keyword="data engineer"))
 
         assert out.degraded is True
         assert out.degradation_reason == "rate_limited"
+        assert out.next_action is not None
         assert out.cost_micros == 0
 
     @pytest.mark.asyncio
