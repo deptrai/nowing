@@ -495,7 +495,7 @@ async def _record_failure() -> None:
             _circuit_open_until = time.monotonic() + config.TOPCV_CIRCUIT_BREAKER_TIMEOUT_S
 
 
-def _user_agent_for_attempt(attempt: int) -> str | None:
+def _user_agent_for_attempt(attempt: int) -> str / None:
     """Return a rotated User-Agent for retry attempts."""
     uas: list[str] = []
     if config.TOPCV_USER_AGENT:

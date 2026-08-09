@@ -12,13 +12,16 @@ import pytest
 from app.config import config
 from app.proprietary.platforms.topcv.scraper import (
     _backoff_seconds,
+    _fetch_detail_page,
     _fetch_search_page,
     _parse_detail_markdown,
     _parse_search_page,
     _record_failure,
+    _user_agent_for_attempt,
     _validate_search_page,
     scrape_topcv,
 )
+from app.utils.crawl import BlockType
 
 pytestmark = pytest.mark.unit
 
@@ -372,3 +375,500 @@ class TestFetchSearchPage:
             async with scraper._circuit_lock:
                 scraper._consecutive_failures = 0
                 scraper._circuit_open_until = 0.0
+
+
+def _make_fake_connector(outcomes: list[Any]) -> type:
+    class _FakeConnector:
+        last: Any = None
+
+        def __init__(self) -> None:
+            self.outcomes = outcomes
+            self.calls = 0
+            _FakeConnector.last = self
+
+        async def crawl_url(self, url: str) -> Any:
+            if self.calls >= len(self.outcomes):
+                raise ValueError("exhausted")
+            outcome = self.outcomes[self.calls]
+            self.calls += 1
+            if isinstance(outcome, BaseException):
+                raise outcome
+            return outcome
+
+    return _FakeConnector
+
+
+class _RecordingFetcher:
+    def __init__(self, page: _FakePage):
+        self.page = page
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    def fetch(self, url: str, **kwargs: Any) -> _FakePage:
+        self.calls.append((url, kwargs))
+        return self.page
+
+
+def _single_card_with_remaining() -> str:
+    return (
+        '<html><body>'
+        '<div class="job-item-search-result" data-job-id="12345">'
+        '<h3 class="title">'
+        '<a href="/viec-lam/test-job">'
+        '<span data-toggle="tooltip">Python Developer</span>'
+        '</a></h3>'
+        '<a class="company"><span class="company-name">ACME</span></a>'
+        '<label class="address"><span class="city-text">Hà Nội</span></label>'
+        '<label class="salary"><span>Thoả thuận</span></label>'
+        '<label class="exp"><span>2 năm</span></label>'
+        '<label class="label-update">2 ngày trước</label>'
+        '<div class="tag">'
+        '<a class="item-tag">Python</a>'
+        '<span class="remaining-items" data-original-title="'
+        'SQL, Docker, Agile">+3</span>'
+        '</div></div></body></html>'
+    )
+
+
+def _many_cards(count: int) -> list[dict[str, Any]]:
+    return [
+        {
+            "source_url": f"https://www.topcv.vn/job/{i}",
+            "salary_raw": "Thoả thuận",
+        }
+        for i in range(count)
+    ]
+
+
+class TestSearchPageTags:
+    def test_remaining_items_tooltip_adds_skills(self):
+        cards = _parse_search_page(_single_card_with_remaining())
+        assert len(cards) == 1
+        assert cards[0]["skills"] == ["Python", "SQL", "Docker", "Agile"]
+
+
+class TestUserAgent:
+    def test_rotates_user_agent_per_attempt(self, monkeypatch):
+        custom = "Custom-Agent/1.0"
+        monkeypatch.setattr(config, "TOPCV_USER_AGENT", custom)
+        assert _user_agent_for_attempt(1) == custom
+        default = _user_agent_for_attempt(2)
+        assert default != custom
+        assert "Mozilla" in default
+        assert _user_agent_for_attempt(3) == custom
+
+
+class TestValidateSearchPageErrors:
+    def test_raises_on_400(self):
+        with pytest.raises(ValueError, match="search page error"):
+            _validate_search_page(
+                _FakePage(html_content="error", status=400)
+            )
+
+    def test_raises_on_500(self):
+        with pytest.raises(ValueError, match="search page error"):
+            _validate_search_page(
+                _FakePage(html_content="error", status=500)
+            )
+
+
+class TestFetchSearchPageTimeout:
+    @pytest.mark.asyncio
+    async def test_passes_timeout_kwarg(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.stealth.get_stealth_config",
+            lambda: {},
+        )
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.stealth.build_stealthy_kwargs",
+            lambda _cfg: {},
+        )
+        monkeypatch.setattr(config, "TOPCV_TIMEOUT_S", 12.34)
+
+        valid_page = _FakePage(
+            html_content="jobs", status=200, title="TopCV"
+        )
+        fetcher = _RecordingFetcher(valid_page)
+        monkeypatch.setattr(scraper, "StealthyFetcher", fetcher)
+
+        async with scraper._circuit_lock:
+            scraper._consecutive_failures = 0
+            scraper._circuit_open_until = 0.0
+
+        html = await _fetch_search_page("data engineer", 1)
+        assert html == valid_page.html_content
+        assert fetcher.calls
+        assert fetcher.calls[0][1]["timeout"] == 12340
+
+
+class TestCircuitReset:
+    @pytest.mark.asyncio
+    async def test_search_success_resets_failures(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.stealth.get_stealth_config",
+            lambda: {},
+        )
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.stealth.build_stealthy_kwargs",
+            lambda _cfg: {},
+        )
+
+        valid_page = _FakePage(
+            html_content="jobs", status=200, title="TopCV"
+        )
+        fetcher = _FakeFetcher([valid_page])
+        monkeypatch.setattr(scraper, "StealthyFetcher", fetcher)
+
+        async with scraper._circuit_lock:
+            scraper._consecutive_failures = 5
+            scraper._circuit_open_until = 0.0
+
+        try:
+            html = await _fetch_search_page("data engineer", 1)
+            assert html == valid_page.html_content
+
+            async with scraper._circuit_lock:
+                assert scraper._consecutive_failures == 0
+
+            for _ in range(config.TOPCV_CIRCUIT_BREAKER_THRESHOLD):
+                await _record_failure()
+
+            async with scraper._circuit_lock:
+                assert scraper._consecutive_failures == 3
+                assert scraper._circuit_open_until > time.monotonic()
+        finally:
+            async with scraper._circuit_lock:
+                scraper._consecutive_failures = 0
+                scraper._circuit_open_until = 0.0
+
+
+class TestFetchDetailPageRetry:
+    @pytest.mark.asyncio
+    async def test_negative_retry_attempts_clamped(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_RETRY_ATTEMPTS", -1)
+        monkeypatch.setattr(scraper, "_backoff_seconds", lambda _a: 0.0)
+
+        detail_md = _detail_markdown()
+        detail_meta = _detail_metadata()
+        expected = _parse_detail_markdown(detail_md, detail_meta)
+
+        success = types.SimpleNamespace(
+            status="success".upper().lower(),
+            result={"content": detail_md, "metadata": detail_meta},
+            block_type=BlockType.OK,
+        )
+        fake_connector = _make_fake_connector([success])
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.connector.WebCrawlerConnector",
+            fake_connector,
+        )
+
+        async with scraper._circuit_lock:
+            scraper._consecutive_failures = 0
+            scraper._circuit_open_until = 0.0
+
+        try:
+            detail = await _fetch_detail_page("https://topcv.vn/job")
+            assert detail == expected
+            assert fake_connector.last.calls == 1
+        finally:
+            async with scraper._circuit_lock:
+                scraper._consecutive_failures = 0
+                scraper._circuit_open_until = 0.0
+
+    @pytest.mark.asyncio
+    async def test_success_detail_returns_and_resets(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_RETRY_ATTEMPTS", 0)
+        monkeypatch.setattr(scraper, "_backoff_seconds", lambda _a: 0.0)
+
+        detail_md = _detail_markdown()
+        detail_meta = _detail_metadata()
+        expected = _parse_detail_markdown(detail_md, detail_meta)
+
+        success = types.SimpleNamespace(
+            status="success".upper().lower(),
+            result={"content": detail_md, "metadata": detail_meta},
+            block_type=BlockType.OK,
+        )
+        fake_connector = _make_fake_connector([success])
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.connector.WebCrawlerConnector",
+            fake_connector,
+        )
+
+        async with scraper._circuit_lock:
+            scraper._consecutive_failures = 5
+            scraper._circuit_open_until = 0.0
+
+        try:
+            detail = await _fetch_detail_page("https://topcv.vn/job")
+            assert detail == expected
+            assert fake_connector.last.calls == 1
+            async with scraper._circuit_lock:
+                assert scraper._consecutive_failures == 0
+        finally:
+            async with scraper._circuit_lock:
+                scraper._consecutive_failures = 0
+                scraper._circuit_open_until = 0.0
+
+    @pytest.mark.asyncio
+    async def test_retries_after_exception_then_succeeds(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_RETRY_ATTEMPTS", 1)
+        monkeypatch.setattr(scraper, "_backoff_seconds", lambda _a: 0.0)
+
+        detail_md = _detail_markdown()
+        detail_meta = _detail_metadata()
+        expected = _parse_detail_markdown(detail_md, detail_meta)
+
+        success = types.SimpleNamespace(
+            status="success".upper().lower(),
+            result={"content": detail_md, "metadata": detail_meta},
+            block_type=BlockType.OK,
+        )
+        fake_connector = _make_fake_connector([
+            ValueError("transient"),
+            success,
+        ])
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.connector.WebCrawlerConnector",
+            fake_connector,
+        )
+
+        async with scraper._circuit_lock:
+            scraper._consecutive_failures = 5
+            scraper._circuit_open_until = 0.0
+
+        try:
+            detail = await _fetch_detail_page("https://topcv.vn/job")
+            assert detail == expected
+            assert fake_connector.last.calls == 2
+            async with scraper._circuit_lock:
+                assert scraper._consecutive_failures == 0
+        finally:
+            async with scraper._circuit_lock:
+                scraper._consecutive_failures = 0
+                scraper._circuit_open_until = 0.0
+
+    @pytest.mark.asyncio
+    async def test_retries_after_non_success_then_succeeds(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_RETRY_ATTEMPTS", 1)
+        monkeypatch.setattr(scraper, "_backoff_seconds", lambda _a: 0.0)
+
+        detail_md = _detail_markdown()
+        detail_meta = _detail_metadata()
+        expected = _parse_detail_markdown(detail_md, detail_meta)
+
+        non_success = types.SimpleNamespace(
+            status="empty".upper().lower(),
+            result={},
+            block_type=BlockType.OK,
+        )
+        success = types.SimpleNamespace(
+            status="success".upper().lower(),
+            result={"content": detail_md, "metadata": detail_meta},
+            block_type=BlockType.OK,
+        )
+        fake_connector = _make_fake_connector([non_success, success])
+        monkeypatch.setattr(
+            "app.proprietary.web_crawler.connector.WebCrawlerConnector",
+            fake_connector,
+        )
+
+        async with scraper._circuit_lock:
+            scraper._consecutive_failures = 0
+            scraper._circuit_open_until = 0.0
+
+        try:
+            detail = await _fetch_detail_page("https://topcv.vn/job")
+            assert detail == expected
+            assert fake_connector.last.calls == 2
+        finally:
+            async with scraper._circuit_lock:
+                scraper._consecutive_failures = 0
+                scraper._circuit_open_until = 0.0
+
+
+class TestScrapeDefaults:
+    @pytest.mark.asyncio
+    async def test_empty_params_use_defaults(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_PAGE_DELAY_S", 0.0)
+        monkeypatch.setattr(
+            config, "TOPCV_SCRAPE_MICROS_PER_ITEM", 1000
+        )
+
+        search_calls = []
+
+        async def _fake_search(keyword, page):
+            search_calls.append((keyword, page))
+            return "<html/>"
+
+        async def _fake_detail(_url):
+            return {}
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        monkeypatch.setattr(scraper, "_fetch_detail_page", _fake_detail)
+        monkeypatch.setattr(
+            scraper,
+            "_parse_search_page",
+            lambda _html: _many_cards(51),
+        )
+
+        out = await scrape_topcv({})
+        assert search_calls == [("viec-lam", 1)]
+        assert out["total_items"] == 50
+        assert out["cost_micros"] == 3000
+        assert out["degraded"] is False
+
+    @pytest.mark.asyncio
+    async def test_zero_max_items_returns_empty(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        calls = []
+
+        async def _fake_search(*args):
+            calls.append(args)
+            return "<html/>"
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        out = await scrape_topcv(
+            {"keyword": "data engineer", "max_items": 0, "max_pages": 1}
+        )
+        assert not calls
+        assert out == {
+            "items": [],
+            "cost_micros": 0,
+            "degraded": False,
+            "degradation_reason": None,
+            "total_items": 0,
+        }
+
+    @pytest.mark.asyncio
+    async def test_zero_max_pages_returns_empty(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        calls = []
+
+        async def _fake_search(*args):
+            calls.append(args)
+            return "<html/>"
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        out = await scrape_topcv(
+            {"keyword": "data engineer", "max_items": 1, "max_pages": 0}
+        )
+        assert not calls
+        assert out == {
+            "items": [],
+            "cost_micros": 0,
+            "degraded": False,
+            "degradation_reason": None,
+            "total_items": 0,
+        }
+
+    @pytest.mark.asyncio
+    async def test_page_zero_and_negative_clamp_to_one(self, monkeypatch):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        search_calls = []
+
+        async def _fake_search(keyword, page):
+            search_calls.append(page)
+            return "<html/>"
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        monkeypatch.setattr(
+            scraper, "_parse_search_page", lambda _html: []
+        )
+        monkeypatch.setattr(config, "TOPCV_PAGE_DELAY_S", 0.0)
+
+        for page_param in (0, -1):
+            search_calls.clear()
+            out = await scrape_topcv(
+                {
+                    "keyword": "data engineer",
+                    "page": page_param,
+                    "max_items": 1,
+                    "max_pages": 1,
+                }
+            )
+            assert search_calls == [1]
+            assert out["total_items"] == 0
+            assert out["degraded"] is False
+
+
+class TestScrapePagination:
+    @pytest.mark.parametrize(
+        "page,max_pages,expected_pages,expected_items",
+        [
+            (1, 1, [1], 2),
+            (1, 2, [1, 2], 4),
+            (2, 3, [2, 3, 4], 6),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_iterates_expected_pages(
+        self,
+        monkeypatch,
+        page,
+        max_pages,
+        expected_pages,
+        expected_items,
+    ):
+        import app.proprietary.platforms.topcv.scraper as scraper
+
+        monkeypatch.setattr(config, "TOPCV_PAGE_DELAY_S", 0.0)
+        monkeypatch.setattr(
+            config, "TOPCV_SCRAPE_MICROS_PER_ITEM", 1000
+        )
+        monkeypatch.setattr(config, "TOPCV_MAX_PAGES", 10)
+
+        search_calls = []
+
+        async def _fake_search(keyword, p):
+            search_calls.append((keyword, p))
+            return "<html/>"
+
+        async def _fake_detail(_url):
+            return {"skills": ["Python"], "salary_raw": ""}
+
+        def _fake_parse(_html):
+            return [
+                {
+                    "source_url": f"https://www.topcv.vn/job/{i}",
+                    "salary_raw": "Thoả thuận",
+                }
+                for i in range(2)
+            ]
+
+        monkeypatch.setattr(scraper, "_fetch_search_page", _fake_search)
+        monkeypatch.setattr(scraper, "_fetch_detail_page", _fake_detail)
+        monkeypatch.setattr(scraper, "_parse_search_page", _fake_parse)
+
+        out = await scrape_topcv(
+            {
+                "keyword": "data engineer",
+                "page": page,
+                "max_pages": max_pages,
+                "max_items": 10,
+            }
+        )
+        assert search_calls == [
+            ("data engineer", p) for p in expected_pages
+        ]
+        assert out["total_items"] == expected_items
+        assert out["degraded"] is False
+        expected_cost = (3 * len(expected_pages) + expected_items) * 1000
+        assert out["cost_micros"] == expected_cost
