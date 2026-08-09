@@ -1,6 +1,6 @@
 ---
 baseline_commit: "470b5a95c"
-status: review
+status: done
 ---
 
 # Story 18.1: Public Agent-Chat Endpoints
@@ -353,6 +353,45 @@ New FastAPI dependency `require_agent_chat_pat`:
 - Legacy unscoped PATs continue to work on existing allowlisted non-public PAT routes.
 - Legacy unscoped PATs on `/agent-chat/*` must return 403 with `pat_scope_required`.
 
+### Review Findings (2026-08-09)
+
+#### Patch
+
+- [x] [Review][Patch] Schema type for `agent_configs` / `vertical_clients` should match spec (CITEXT/UUID) instead of Text/Integer — `alembic/versions/78f7a9b1e85f_public_agent_chat_scope.py`, `app/db.py`
+  - Spec calls for `vertical_clients.client_id CITEXT UNIQUE` and `agent_configs.id UUID PK`, `agent_configs.client_id CITEXT`. Migration and ORM currently use `Text` / `Integer` (via `BaseModel.id`).
+- [x] [Review][Patch] Add tenant isolation at DB layer (RLS composite policy for `client_id`) — `alembic/versions/78f7a9b1e85f_public_agent_chat_scope.py`
+  - AD-31 requires hard client_id filtering. Current code filters at the application layer; no `CREATE POLICY` / `ENABLE ROW LEVEL SECURITY` in migration.
+- [x] [Review][Patch] HTTP status for "agent exists but not for this client" should be 404 (not 403) to match AC-5 — `app/auth/agent_chat.py:84-87`
+  - AC-5 says "404 ... for valid agent_id not allowed for this client_id". Code returns 403; 403 reveals the agent exists.
+- [x] [Review][Patch] Add and validate `agent_chat:*` scope catalog when minting PAT — `app/auth/agent_chat.py:188-193`, `app/routes/personal_access_tokens_routes.py`
+  - Current code only checks `required_scope in pat.scopes`. If a PAT can be minted/inserted with arbitrary strings, it bypasses intent.
+- [x] [Review][Patch] Feature flag defaults to enabled (`"true"`) instead of `False` until security review is green — `app/config/__init__.py:689-691`
+- [x] [Review][Patch] Rate limiting is not implemented; routes have no per-workspace/per-client 429 + Retry-After — `app/routes/agent_chat_routes.py`, `app/rate_limiter.py`
+  - AC-9 / AD-29 require this. Only a unit test fakes a 429 response.
+- [x] [Review][Patch] PAT schema and mint endpoint not extended for `token_kind`, `workspace_id`, `client_id`, `agent_id`, `scopes` — `app/schemas/pat.py`, `app/routes/personal_access_tokens_routes.py`
+  - Technical Requirement §2 is unimplemented. Scoped PATs cannot be created through the API.
+- [x] [Review][Patch] `AgentChatThreadCreate.agent_id` / `client_id` should be optional and fall back to PAT scope — `app/schemas/agent_chat.py:11-16`
+  - Spec says optional; schema marks them required. Body values are still intersected with PAT scope, so making them optional is safe and matches intent.
+- [x] [Review][Patch] `send_message` thread lookup should include `workspace_id` and `client_id` in the `WHERE` clause — `app/routes/agent_chat_routes.py:213-215`
+  - Defense in depth; current code filters after the fetch and relies on a second comparison.
+- [x] [Review][Patch] `stream_new_chat` generator only catches `TimeoutError`; other exceptions return 500 instead of 503/partial frame — `app/routes/agent_chat_routes.py:163-179`
+  - AC-7 / Technical Requirement §4 require graceful handling of timeout or unavailability, not 500.
+- [x] [Review][Patch] Error detail `f"invalid credentials: {exc}"` can leak internal exception text — `app/auth/agent_chat.py:136-139`
+  - Replace with a generic message and log the exception server-side.
+- [x] [Review][Patch] Audit does not cover auth/dependency-level rejections (403/429/401/503) — `app/auth/agent_chat.py`, `app/routes/agent_chat_routes.py`
+  - AC-11 says every public call must be audited. Dependency failures currently bypass `log_public_call`.
+- [x] [Review][Patch] Metric route label is high-cardinality (`request.url.path` contains `thread_id`) — `app/routes/agent_chat_routes.py:135`, `app/observability/metrics.py`
+  - Use a route template to avoid cardinality explosion.
+- [x] [Review][Patch] `workspace_id` fallback to `request.query_params` is unnecessary and ambiguous — `app/auth/agent_chat.py:155-157`
+  - Path parameter is always present for these routes; remove query fallback.
+- [x] [Review][Patch] Add format/length validation for `client_id` and `agent_id` (slug-like) and bound `platform_metadata`/`external_metadata` — `app/schemas/agent_chat.py`, `app/auth/agent_chat.py`
+  - Prevents oversized payloads and malformed identifiers reaching SQL/LLM layers.
+
+#### Defer
+
+- [x] [Review][Defer] `GET /threads/{thread_id}` / `agent_chat:thread:read` endpoint — `app/routes/agent_chat_routes.py`
+  - Not in 18.1 ACs; permission vocabulary hints at future scope. Defer to 18.4+.
+
 ## File Structure
 
 ### Files to Create
@@ -564,6 +603,6 @@ TBD
 - [ ] Implementation pending
 - [ ] Tests pending
 
-**Status:** ready-for-dev
+**Status:** done
 
 **Ultimate context engine analysis completed - comprehensive developer guide created.**

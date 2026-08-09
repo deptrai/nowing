@@ -27,7 +27,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import ENUM, JSONB, UUID
+from sqlalchemy.dialects.postgresql import CITEXT, ENUM, JSONB, UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, backref, declared_attr, relationship
 
@@ -2148,9 +2148,15 @@ class VerticalClient(Base, TimestampMixin):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    client_id = Column(Text, nullable=False, unique=True)
+    client_id = Column(CITEXT, nullable=False, unique=True)
     display_name = Column(Text, nullable=False)
     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
 
 
 class AgentConfig(BaseModel, TimestampMixin):
@@ -2161,7 +2167,9 @@ class AgentConfig(BaseModel, TimestampMixin):
         UniqueConstraint("client_id", "slug", name="unique_agent_configs_client_slug"),
     )
 
-    client_id = Column(Text, nullable=False, index=True)
+    # Override BaseModel's Integer id with UUID as required by AD-30.
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_id = Column(CITEXT, nullable=False, index=True)
     name = Column(Text, nullable=False)
     slug = Column(Text, nullable=False)
     system_instructions = Column(Text, nullable=True)
@@ -2176,6 +2184,12 @@ class AgentConfig(BaseModel, TimestampMixin):
         Boolean, nullable=False, default=False, server_default="false"
     )
     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+    )
 
 
 class Memory(BaseModel, TimestampMixin):

@@ -339,10 +339,10 @@ def test_send_message_nonexistent_thread_returns_404(acr, client, fake_session):
     _assert_audit_no_body(acr.audit, 404)
 
 
-def test_send_message_thread_from_other_workspace_returns_403(
+def test_send_message_thread_from_other_workspace_returns_404(
     acr, client, fake_session
 ):
-    """AC-2/AC-10: thread row belonging to a different workspace returns 403."""
+    """AC-2/AC-10: thread row belonging to a different workspace is not found (404)."""
     fake_session._first = SimpleNamespace(
         id=123,
         workspace_id=999,
@@ -350,9 +350,9 @@ def test_send_message_thread_from_other_workspace_returns_403(
         research_thread_id=1001,
     )
     resp = client.post(_messages_url(42, 123), json={"content": "Hello"})
-    assert resp.status_code == 403
+    assert resp.status_code == 404
     acr.audit.assert_called()
-    _assert_audit_no_body(acr.audit, 403)
+    _assert_audit_no_body(acr.audit, 404)
 
 
 def test_create_thread_feature_flag_disabled_returns_503(acr, client, monkeypatch):

@@ -25,6 +25,9 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     """Add PAT scope, vertical client, and agent registry schema for Epic 18."""
 
+    # Enable case-insensitive text type used by client_id columns.
+    op.execute("CREATE EXTENSION IF NOT EXISTS citext")
+
     # 1. personal_access_tokens — PAT scope fields
     op.add_column(
         "personal_access_tokens",
@@ -112,7 +115,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("gen_random_uuid()"),
         ),
-        sa.Column("client_id", sa.Text(), nullable=False),
+        sa.Column("client_id", postgresql.CITEXT(), nullable=False),
         sa.Column("display_name", sa.Text(), nullable=False),
         sa.Column(
             "is_active",
@@ -126,6 +129,12 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
+        sa.Column(
+            "updated_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_vertical_clients")),
         sa.UniqueConstraint(
             "client_id", name=op.f("unique_vertical_clients_client_id")
@@ -135,8 +144,13 @@ def upgrade() -> None:
     # 3. agent_configs — agent registry (AD-30)
     op.create_table(
         "agent_configs",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("client_id", sa.Text(), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
+        sa.Column("client_id", postgresql.CITEXT(), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("slug", sa.Text(), nullable=False),
         sa.Column("system_instructions", sa.Text(), nullable=True),
@@ -167,6 +181,12 @@ def upgrade() -> None:
         ),
         sa.Column(
             "created_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
             sa.TIMESTAMP(timezone=True),
             nullable=False,
             server_default=sa.text("now()"),
@@ -208,9 +228,47 @@ def upgrade() -> None:
         unique=False,
     )
 
+    # 5. Row-level security (AD-31) — hard client_id isolation for tenant tables.
+    # The application sets app.current_client_id with SET LOCAL before queries.
+    for table in (
+        "new_chat_threads",
+        "research_threads",
+        "vertical_clients",
+        "agent_configs",
+    ):
+        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
+        op.execute(
+            f"""
+            CREATE POLICY {table}_client_isolation_policy
+            ON {table}
+            FOR ALL
+            TO PUBLIC
+            USING (
+                client_id = current_setting('app.current_client_id', true)
+                OR (
+                    current_setting('app.current_client_id', true) IS NULL
+                    AND client_id IS NULL
+                )
+            )
+            WITH CHECK (
+                client_id = current_setting('app.current_client_id', true)
+                OR current_setting('app.current_client_id', true) IS NULL
+            )
+        """
+        )
+
 
 def downgrade() -> None:
     """Rollback Epic 18 schema additions."""
+    for table in (
+        "new_chat_threads",
+        "research_threads",
+        "vertical_clients",
+        "agent_configs",
+    ):
+        op.execute(f"DROP POLICY IF EXISTS {table}_client_isolation_policy ON {table}")
+        op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")
+
     op.drop_index(op.f("ix_research_threads_client_id"), table_name="research_threads")
     op.drop_column("research_threads", "client_id")
 

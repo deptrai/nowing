@@ -16,6 +16,12 @@
   - **Action:** Marked `[x] [Review][Defer]` in `12-2-topcv-scraper.md`.
   - **Reason / when to revisit:** TopCV dùng city IDs (`?locations=l1_l8`) và slug path `tim-viec-lam-<keyword>-tai-<city>-kl<id>`; cần mapping city→ID. Cần thu thập thêm từ TopCV hoặc product trước khi implement.
 
+## Deferred from: code review of 18-1-public-agent-chat-endpoints (2026-08-09)
+
+- **Finding:** `GET /threads/{thread_id}` / `agent_chat:thread:read` endpoint.
+  - **Action:** Marked `[x] [Review][Defer]` in `18-1-public-agent-chat-endpoints.md`.
+  - **Reason / when to revisit:** Not in 18.1 ACs; permission vocabulary `agent_chat:thread:read` hints at future scope. Revisit in Story 18.4+ when read surface is defined.
+
 # Deferred Work
 
 ## Deferred from: code review of 12-1-vietnamworks-scraper (2026-08-10)

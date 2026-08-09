@@ -15,7 +15,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 
@@ -26,6 +26,7 @@ from app.auth.agent_chat import (
 from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import NewChatThread, ResearchThread, get_async_session
+from app.rate_limiter import check_agent_chat_limits, hit_agent_chat_limits
 from app.schemas.agent_chat import (
     AgentChatMessageCreate,
     AgentChatThreadCreate,
@@ -37,6 +38,14 @@ from app.tasks.chat.streaming.flows.new_chat.orchestrator import stream_new_chat
 AGENT_CHAT_PUBLIC_ENABLED: bool = config.AGENT_CHAT_PUBLIC_ENABLED
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/agent-chat")
+
+
+def _route_label(request: Request) -> str:
+    """Return a low-cardinality route template for audit/metrics."""
+    route = request.scope.get("route")
+    if route is not None:
+        return f"{request.method} {route.path}"
+    return f"{request.method} {request.url.path}"
 
 
 def _client_id(auth: AgentChatContext | Any) -> str:
@@ -66,11 +75,7 @@ async def require_agent_chat_pat(
     session: AsyncSession = Depends(get_async_session),
 ) -> AgentChatContext:
     """FastAPI dependency wrapper around the scoped PAT auth function."""
-    if not AGENT_CHAT_PUBLIC_ENABLED:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="agent_chat public surface disabled",
-        )
+    # Feature flag check lives in _require_agent_chat_pat to avoid duplication.
     return await _require_agent_chat_pat(request, session, None)
 
 
@@ -91,12 +96,16 @@ async def create_thread(
     client_id = _client_id(auth)
     agent_id = _agent_id(auth)
 
-    # The body must not widen beyond the PAT scope.
-    if body.client_id != client_id or body.agent_id != agent_id:
+    # The body must not widen beyond the PAT scope. Optional fields default to PAT scope.
+    if (body.client_id is not None and body.client_id != client_id) or (
+        body.agent_id is not None and body.agent_id != agent_id
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="client_id or agent_id outside PAT scope",
         )
+
+    check_agent_chat_limits(client_id, workspace_id)
 
     await set_request_tenant_context(session, workspace_id, client_id, agent_id)
 
@@ -126,13 +135,15 @@ async def create_thread(
     chat_thread.research_thread_id = research_thread.id
     await session.commit()
 
+    hit_agent_chat_limits(client_id, workspace_id)
+
     await audit(
         actor_user_id=_actor_user_id(auth),
         pat_id=_pat_id(auth),
         workspace_id=workspace_id,
         client_id=client_id,
         agent_id=agent_id,
-        route=f"POST {request.url.path}",
+        route=_route_label(request),
         status=201,
         run_id=run_id,
     )
@@ -174,8 +185,12 @@ async def _stream_response(
             ):
                 yield chunk
         except TimeoutError:
-            # ponytail: emit a single degraded SSE frame so clients get a
-            # partial, parseable response instead of a connection drop.
+            # AC-7: emit a single degraded SSE frame so clients get a partial,
+            # parseable response instead of a connection drop.
+            yield b'data: {"type":"error","degraded":true}\n\n'
+        except Exception:
+            # AC-7: any other chat-runtime failure is also treated as degraded;
+            # do not return a 500 mid-stream.
             yield b'data: {"type":"error","degraded":true}\n\n'
 
     return StreamingResponse(
@@ -211,10 +226,20 @@ async def send_message(
     await set_request_tenant_context(session, workspace_id, client_id, agent_id)
 
     result = await session.execute(
-        select(NewChatThread).where(NewChatThread.id == thread_id)
+        select(NewChatThread).where(
+            and_(
+                NewChatThread.id == thread_id,
+                NewChatThread.workspace_id == workspace_id,
+                NewChatThread.client_id == client_id,
+            )
+        )
     )
     thread = result.scalars().first()
-    if thread is None:
+    if (
+        thread is None
+        or thread.workspace_id != workspace_id
+        or thread.client_id != client_id
+    ):
         status_code = status.HTTP_404_NOT_FOUND
         await audit(
             actor_user_id=_actor_user_id(auth),
@@ -222,28 +247,17 @@ async def send_message(
             workspace_id=workspace_id,
             client_id=client_id,
             agent_id=agent_id,
-            route=f"POST {request.url.path}",
+            route=_route_label(request),
             status=status_code,
         )
         raise HTTPException(status_code=status_code, detail="thread not found")
 
-    if thread.workspace_id != workspace_id or thread.client_id != client_id:
-        status_code = status.HTTP_403_FORBIDDEN
-        await audit(
-            actor_user_id=_actor_user_id(auth),
-            pat_id=_pat_id(auth),
-            workspace_id=workspace_id,
-            client_id=client_id,
-            agent_id=agent_id,
-            route=f"POST {request.url.path}",
-            status=status_code,
-        )
-        raise HTTPException(
-            status_code=status_code,
-            detail="thread does not belong to this workspace or client",
-        )
+    check_agent_chat_limits(client_id, workspace_id)
 
     run_id = uuid.uuid4()
+    route_label = _route_label(request)
+
+    hit_agent_chat_limits(client_id, workspace_id)
 
     response = await _stream_response(
         user_query=body.content,
@@ -263,7 +277,7 @@ async def send_message(
             workspace_id=workspace_id,
             client_id=client_id,
             agent_id=agent_id,
-            route=f"POST {request.url.path}",
+            route=route_label,
             status=200,
             run_id=run_id,
         )

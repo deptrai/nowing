@@ -686,8 +686,9 @@ class Config:
     SANDBOX_FILES_DIR = os.getenv("SANDBOX_FILES_DIR", "sandbox_files")
 
     # Agent chat public API surface (Epic 18)
+    # Default FALSE until the security review checklist is green.
     AGENT_CHAT_PUBLIC_ENABLED = (
-        os.getenv("AGENT_CHAT_PUBLIC_ENABLED", "true").strip().lower() == "true"
+        os.getenv("AGENT_CHAT_PUBLIC_ENABLED", "false").strip().upper() == "TRUE"
     )
 
     # Agent cache (in-process LRU+TTL cache for built agents)
