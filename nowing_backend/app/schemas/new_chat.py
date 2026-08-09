@@ -215,6 +215,7 @@ MAX_NEW_CHAT_IMAGES = 4
 
 MAX_PLATFORM_METADATA_KEYS = 32
 MAX_PLATFORM_METADATA_TOTAL_KEYS = 128
+MAX_PLATFORM_METADATA_LIST_LENGTH = 128
 MAX_PLATFORM_METADATA_STRING = 1024
 MAX_PLATFORM_METADATA_DEPTH = 4
 MAX_PLATFORM_METADATA_BYTES = 64 * 1024
@@ -255,6 +256,10 @@ def _bounded_chat_metadata(v: dict[str, Any] | None) -> dict[str, Any] | None:
                 raise ValueError("platform_metadata floats must be finite")
             return obj
         if isinstance(obj, list):
+            if len(obj) > MAX_PLATFORM_METADATA_LIST_LENGTH:
+                raise ValueError(
+                    f"platform_metadata list may contain at most {MAX_PLATFORM_METADATA_LIST_LENGTH} items"
+                )
             return [_check(item, depth + 1) for item in obj]
         if isinstance(obj, dict):
             if len(obj) > MAX_PLATFORM_METADATA_KEYS:

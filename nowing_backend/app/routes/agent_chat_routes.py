@@ -26,6 +26,7 @@ from app.auth.agent_chat import (
     _resolve_agent_config,
     require_agent_chat_pat as _require_agent_chat_pat,
 )
+from app.auth.context import AuthContext
 from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import NewChatThread, ResearchThread, TokenUsage, get_async_session
@@ -187,12 +188,15 @@ async def _stream_response(
 
     async def _generator():
         try:
+            # The streaming runtime expects a canonical AuthContext, not the
+            # route-scoped AgentChatContext wrapper.
+            auth_context = AuthContext.pat_auth(user=auth.user, pat=auth.pat)
             async for chunk in stream_new_chat(
                 user_query=user_query,
                 workspace_id=workspace_id,
                 chat_id=chat_id,
                 user_id=_actor_user_id(auth),
-                auth_context=auth,
+                auth_context=auth_context,
                 client_id=client_id,
                 agent_id=agent_id,
                 platform_metadata=platform_metadata,
@@ -243,6 +247,10 @@ async def send_message(
 
     await set_request_tenant_context(session, workspace_id, client_id, agent_id)
 
+    # The agent bound to the thread is authoritative when set; otherwise we
+    # fall back to the PAT scope for legacy/unscoped threads.
+    effective_agent_id = agent_id
+
     result = await session.execute(
         select(NewChatThread).where(
             and_(
@@ -270,27 +278,29 @@ async def send_message(
         )
         raise HTTPException(status_code=status_code, detail="thread not found")
 
-    if getattr(thread, "agent_id", None) is not None and thread.agent_id != agent_id:
-        await audit(
-            actor_user_id=_actor_user_id(auth),
-            pat_id=_pat_id(auth),
-            workspace_id=workspace_id,
-            client_id=client_id,
-            agent_id=agent_id,
-            route=_route_label(request),
-            status=status.HTTP_403_FORBIDDEN,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="agent_id does not match the thread",
-        )
+    if getattr(thread, "agent_id", None) is not None:
+        if thread.agent_id != agent_id:
+            await audit(
+                actor_user_id=_actor_user_id(auth),
+                pat_id=_pat_id(auth),
+                workspace_id=workspace_id,
+                client_id=client_id,
+                agent_id=agent_id,
+                route=_route_label(request),
+                status=status.HTTP_403_FORBIDDEN,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="agent_id does not match the thread",
+            )
+        effective_agent_id = thread.agent_id
 
     # Fail-fast resolution of the registry AgentConfig; the streaming layer
     # will re-merge it but this ensures a clean 404 before the stream starts.
     agent_config_override = await _resolve_agent_config(
         session,
         client_id=client_id,
-        agent_id=agent_id,
+        agent_id=effective_agent_id,
     )
 
     check_agent_chat_limits(client_id, workspace_id)
@@ -306,7 +316,7 @@ async def send_message(
         chat_id=thread_id,
         auth=auth,
         client_id=client_id,
-        agent_id=agent_id,
+        agent_id=effective_agent_id,
         run_id=run_id,
         platform_metadata=body.platform_metadata,
         external_metadata=body.external_metadata,

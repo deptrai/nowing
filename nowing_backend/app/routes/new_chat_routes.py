@@ -1794,20 +1794,12 @@ async def handle_new_chat(
             request.agent_id if request.agent_id is not None else thread.agent_id
         )
 
-        if (
-            request.client_id is not None
-            and thread.client_id is not None
-            and request.client_id != thread.client_id
-        ):
+        if effective_client_id != thread.client_id:
             raise HTTPException(
                 status_code=403,
                 detail="client_id does not match the thread",
             )
-        if (
-            request.agent_id is not None
-            and thread.agent_id is not None
-            and request.agent_id != thread.agent_id
-        ):
+        if effective_agent_id != thread.agent_id:
             raise HTTPException(
                 status_code=403,
                 detail="agent_id does not match the thread",
