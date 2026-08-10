@@ -27,11 +27,11 @@ web_research_enabled: true
 source_verification: true
 ---
 
-# Market Research Report: Nowing — Open-Source Research Memory for AI Agents
+# Market Research Report: Nowing — Open-Core Research Memory for AI Agents
 
 **Date:** 2026-08-04  
 **Author:** bmad-market-research (autonomous run)  
-**Research Topic:** Market for open-source long-term research memory / AI agent memory / research workspace — with live web data and provenance.
+**Research Topic:** Market for open-core long-term research memory / AI agent memory / research workspace — with live web data and provenance.
 
 ---
 

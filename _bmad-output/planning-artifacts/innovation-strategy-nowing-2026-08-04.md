@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04 (updated 2026-08-10)
 **Strategist:** Luisphan
-**Strategic Focus:** Business model, pricing, and GTM execution for open-source lead intelligence + knowledge intelligence
+**Strategic Focus:** Business model, pricing, and GTM execution for open-core lead intelligence + knowledge intelligence
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### Current Situation
 
-Nowing is an open-source **lead intelligence + knowledge intelligence** platform for AI agents, research teams, and sales teams. Its positioning is anchored in a single sentence: *“Nowing is open-source lead intelligence + knowledge intelligence — it turns data from every source into leads and actionable knowledge.”* The product differentiates from existing memory layers (Mem0, Zep, Cognee, Supermemory), research workspaces (Onyx, OpenWebUI, LibreChat, Perplexity), and lead-gen tools (Apollo, ZoomInfo, Clay) by combining five rarely co-existing capabilities:
+Nowing is an open-core **lead intelligence + knowledge intelligence** platform for AI agents, research teams, and sales teams. Its positioning is anchored in a single sentence: *“Nowing is open-core lead intelligence + knowledge intelligence — it turns data from every source into leads and actionable knowledge.”* The product differentiates from existing memory layers (Mem0, Zep, Cognee, Supermemory), research workspaces (Onyx, OpenWebUI, LibreChat, Perplexity), and lead-gen tools (Apollo, ZoomInfo, Clay) by combining five rarely co-existing capabilities:
 
 1. **Live web / UGC ingestion into long-term memory** — Reddit, YouTube, TikTok, Instagram, Google Search/Maps, Amazon, and generic web crawl.
 2. **Provenance-aware memory** — facts carry citations and source links.
@@ -24,7 +24,7 @@ The **core beachhead** is the **AI agent builder + research team** segment, dist
 
 ### Strategic Challenge
 
-The challenge is to convert this open-source, engineering-first foundation into a **sustainable cloud revenue model** while:
+The challenge is to convert this open-core, engineering-first foundation into a **sustainable cloud revenue model** while:
 
 - Avoiding the red-ocean consumer search trap that Perplexity, OpenWebUI, and others dominate.
 - Not building a costly owned web index or selling raw research corpus — both are explicit non-goals. Structured lead-enrichment deliverables for B2B sales in Vietnam are an approved exception under SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`, subject to legal basis, consent, and audit.
@@ -32,9 +32,9 @@ The challenge is to convert this open-source, engineering-first foundation into 
 - Pricing the deep-research capability using real cost data and a defensible margin model.
 - Passing hard quality gates (recall evaluation, research degradation, cost metering, spend caps) before public launch.
 
-In short, Nowing must prove that **open-source research memory can become a paid cloud workspace** without becoming either a free memory utility or a thin wrapper around an LLM.
+In short, Nowing must prove that **open-core research memory can become a paid cloud workspace** without becoming either a free memory utility or a thin wrapper around an LLM.
 
-> **Tóm tắt tiếng Việt:** Nowing là bộ nhớ nghiên cứu mã nguồn mở, khác biệt ở việc đưa dữ liệu web sống (Reddit, YouTube, Maps, Amazon…) vào bộ nhớ có nguồn (citations), hỗ trợ self-host, và tích hợp sâu qua nhiều client. Thách thức là chuyển đổi từ mô hình OSS sang doanh thu cloud mà không rơi vào cạnh tranh với Perplexity, không bán dữ liệu, không xây owned index, và giữ niềm tin cộng đồng.
+> **Tóm tắt tiếng Việt:** Nowing là nền tảng nghiên cứu open-core — core Apache-2.0 + crawler engine BSL 1.1 — khác biệt ở việc đưa dữ liệu web sống (Reddit, YouTube, Maps, Amazon…) vào bộ nhớ có nguồn (citations), hỗ trợ self-host, và tích hợp sâu qua nhiều client. Thách thức là chuyển đổi từ mô hình OSS sang doanh thu cloud mà không rơi vào cạnh tranh với Perplexity, không bán dữ liệu, không xây owned index, và giữ niềm tin cộng đồng.
 
 ---
 
@@ -44,7 +44,7 @@ In short, Nowing must prove that **open-source research memory can become a paid
 
 - **TAM / SAM / SOM Analysis** (`innovation-frameworks.csv` line 12) — for sizing the opportunity in AI agent memory and research workspaces.
 - **Five Forces Analysis** (`innovation-frameworks.csv` line 13) — for understanding competitive pressure, supplier power, and substitution threats.
-- **Market Timing Assessment** (`innovation-frameworks.csv` line 15) — for evaluating whether the market is ready for an open-source research-memory workspace.
+- **Market Timing Assessment** (`innovation-frameworks.csv` line 15) — for evaluating whether the market is ready for an open-core research-memory workspace.
 - **Competitive Positioning Map** (`innovation-frameworks.csv` line 16) — for identifying the whitespace between memory APIs, consumer research, and self-host enterprise search.
 
 ### Market Landscape
@@ -210,7 +210,7 @@ The customer jobs are also clear:
 
 ### Disruption Vectors
 
-1. **Open-source + self-host as a wedge into privacy-sensitive and regulated teams** that closed SaaS (Perplexity, OpenAI, Google) cannot serve.
+1. **Open-core + self-host as a wedge into privacy-sensitive and regulated teams** that closed SaaS (Perplexity, OpenAI, Google) cannot serve.
 2. **MCP as a new distribution channel.** Coding agents (Claude Code, Cursor, OpenCode) need persistent memory; Nowing can become the default memory layer via `nowing_mcp`.
 3. **Live web data into memory at low cost** by orchestrating search providers instead of building an owned index. This is hard to copy because the cost is operational, not architectural.
 4. **Async deep research as a deliverable**, not a chat turn. This lowers latency expectations and opens new use cases: scheduled reports, competitor monitoring, research podcasts, automations.
@@ -235,7 +235,7 @@ The customer jobs are also clear:
 - **MCP ecosystem** — coding agents are the beachhead and Nowing has four memory tools exposed via MCP.
 - **Postgres + pgvector** — hybrid search, HNSW, and full-text are sufficient; no graph DB required.
 - **ChainLens deep-research engine** — multi-step open-web research without an owned index.
-- **Open-source distribution** — Docker Compose self-host, GitHub, and community reduce CAC.
+- **Open-core distribution** — Docker Compose self-host, GitHub, and community reduce CAC.
 - **Async run infrastructure** — `?mode=async` + SSE run events + ring buffer replay already exists (PRD NFR-9, lines 797-867).
 
 ### Strategic White Space
@@ -317,7 +317,7 @@ Cost-routing across search providers (ChainLens `29-5`) is a key value-chain opt
 **Pros:**
 - Matches the team’s dev-strong / GTM-thin reality.
 - Low customer acquisition cost via PLG and OSS virality.
-- Authentic open-source positioning builds trust.
+- Authentic open-core positioning builds trust.
 - BSL 1.1 protects against SaaS resellers while allowing self-host production use.
 - Deep research is a clean, honest cloud-only conversion lever.
 - Scalable without a sales team.
@@ -331,7 +331,7 @@ Cost-routing across search providers (ChainLens `29-5`) is a key value-chain opt
 
 ### Option B: Cloud-First Team Workspace with Freemium Trial
 
-**Description:** Launch cloud-first with a free tier limited by credits. Self-host open-source release happens later or is de-prioritized. Pricing is subscription-based per seat plus overage for deep research. Marketing targets research teams directly with a Perplexity-like workspace narrative, but avoids consumer parity.
+**Description:** Launch cloud-first with a free tier limited by credits. Self-host open-core release happens later or is de-prioritized. Pricing is subscription-based per seat plus overage for deep research. Marketing targets research teams directly with a research-workspace narrative, but avoids consumer parity.
 
 **Pros:**
 - Faster path to recurring revenue.
@@ -601,7 +601,7 @@ These measure business outcomes.
 
 ## 🧭 Final Strategic Narrative
 
-Nowing’s best path is to become the **default open-source research memory for AI agents**, monetized through a **metered cloud layer** that captures the most expensive and valuable workload: deep multi-step open-web research. The open-source core and self-host option build trust and distribution; the cloud option captures usage and funds further development. Honesty about licenses, strict gate-based quality, and a relentless focus on the live-source / provenance / re-validation differentiator are the only durable moats. Everything else — consumer search, raw data sales, a separate engine product — is a trap that the strategy explicitly avoids.
+Nowing’s best path is to become the **default open-core research memory for AI agents**, monetized through a **metered cloud layer** that captures the most expensive and valuable workload: deep multi-step open-web research. The open-source core and self-host option build trust and distribution; the cloud option captures usage and funds further development. Honesty about licenses, strict gate-based quality, and a relentless focus on the live-source / provenance / re-validation differentiator are the only durable moats. Everything else — consumer search, raw data sales, a separate engine product — is a trap that the strategy explicitly avoids.
 
 > **Tóm tắt cuối cùng (tiếng Việt):** Chiến lược đề xuất là đi theo mô hình open-core PLG: core Apache-2.0 self-host miễn phí, cloud trả theo dùng với deep-research là đòn bẩy conversion. Giá căn cứ trên `costDollars` thật và margin 1.5–2.5×. Không bán dữ liệu, không đua Perplexity, không tách ChainLens thành sản phẩm. Cần đóng các cổng chất lượng (recall, degradation, cost metering, spend cap) trước khi public, rồi mở metered cho self-host và subscription team ở Phase 2, scale ở Phase 3.
 

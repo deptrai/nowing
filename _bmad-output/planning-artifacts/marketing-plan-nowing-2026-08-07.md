@@ -147,7 +147,7 @@ status: final
 
 #### Hacker News
 - [ ] **Show HN:** Launch on Tuesday-Thursday 8-10 AM PST
-- [ ] Title: "Nowing: Open-source entity dedup for AI agents (self-hosted)"
+- [ ] Title: "Nowing: Open-core entity dedup for AI agents (self-hosted)"
 - [ ] Engage comments actively for first 4 hours
 - [ ] Follow-up: "Thank you HN" post with community feedback
 
@@ -477,15 +477,15 @@ Every week (automated):
 
 ### Elevator Pitch (30 seconds)
 
-> "Nowing is open-source research memory for AI agents. It deduplicates data from every source into canonical entities, tracks changes over time, and lets agents remember across sessions. Self-hosted, MCP-native, 50+ connectors. We help researchers, analysts, and sales teams stop wasting 4-7 hours/week on manual cross-referencing."
+> "Nowing is open-core research memory for AI agents. It deduplicates data from every source into canonical entities, tracks changes over time, and lets agents remember across sessions. Self-hosted, MCP-native, 50+ connectors. We help researchers, analysts, and sales teams stop wasting 4-7 hours/week on manual cross-referencing."
 
 ### One-Liner for Social Bio
 
-> "Nowing — from data to knowing. Entity dedup + provenance + team memory for researchers and AI agents. Self-hosted, OSS."
+> "Nowing — from data to knowing. Entity dedup + provenance + team memory for researchers and AI agents. Self-hosted, open-core."
 
 ### Launch Hashtags
 
-`#opensource` `#aiagents` `#mcp` `#selfhosted` `#entityresolution` `#researchmemory` `#deduplication`
+`#open-core` `#aiagents` `#mcp` `#selfhosted` `#entityresolution` `#researchmemory` `#deduplication`
 
 ### Key URLs
 

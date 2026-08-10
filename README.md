@@ -138,7 +138,7 @@ The long-term research memory workspace that made Nowing a unique home for agent
 **Knowledge base**
 
 - Upload PDFs, Office docs, images, and audio, or sync **Google Drive, OneDrive, and Dropbox**. 50+ file formats supported.
-- Hybrid semantic and full-text search with cited, Perplexity-style answers.
+- Hybrid semantic and full-text search with cited, source-backed answers.
 
 <p align="center"><img src="nowing_web/public/homepage/hero_tutorial/BQnaGif_compressed.gif" alt="Chat With Your PDFs and Docs" /></p>
 

@@ -339,7 +339,7 @@ Một người rời công ty; hiểu biết họ tích luỹ vẫn tra được
 
 Đó là chỗ "nguồn sống" đi từ tính năng thành đặc tính: memory không chỉ nhớ, nó **tự biết mình đã cũ**. Với nghiên cứu về thị trường, đối thủ, sản phẩm — thứ thay đổi mỗi tuần — đây là khác biệt giữa một bộ nhớ và một nhà kho.
 
-Và vì nó mã nguồn mở, self-host được: những team quan tâm nhất đến việc này — team dữ liệu nhạy cảm, team làm nghiên cứu là sản phẩm — là những team dùng được nó mà không phải xin phép ai.
+Và vì nó open-core (core Apache-2.0 + crawler engine BSL 1.1), self-host được: những team quan tâm nhất đến việc này — team dữ liệu nhạy cảm, team làm nghiên cứu là sản phẩm — là những team dùng được nó mà không phải xin phép ai.
 
 ---
 
@@ -366,7 +366,7 @@ Hệ quả: cần **một cheap experiment thật** (landing + checkout + đo co
 
 | # | Việc | Quyết định |
 |---|---|---|
-| **12.1** | Câu một dòng | **Phương án A** — *"Open-source research memory for AI agents — it remembers what it went and found, not just what you told it."* Xem §1 cho subtitle + dòng trả lời "khác gì X" |
+| **12.1** | Câu một dòng | **Phương án A** — *"Open-core research memory for AI agents — it remembers what it went and found, not just what you told it."* Xem §1 cho subtitle + dòng trả lời "khác gì X" |
 | **12.2** | Ngôn ngữ README/landing | **Chỉ tiếng Anh. Không cần bản tiếng Việt.** ⇒ Hệ quả: **VN-localization / Momo / VNPay KHÔNG thuộc câu chuyện Nowing** (nó là chuyện của phía engine, và cũng chưa từng có trong PRD Nowing). Đã ghi thành luật copy ở §7 |
 | **12.3** | ChainLens public? | **Không. Chỉ Nowing public.** Engine deep-research closed-source, cloud-only. ⇒ Sinh ra §5.1 mới: ranh giới OSS/Cloud + 3 ràng buộc khi kể |
 | **12.4** | Số cho success criteria | **Hoãn có chủ đích** — đợi version cuối của engine deep-research (Epic 43). Hai gate cứng ghi ở §9 |

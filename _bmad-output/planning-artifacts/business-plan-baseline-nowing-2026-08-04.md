@@ -18,7 +18,7 @@ source_artifacts:
 ## 1. Vision & Positioning (updated 2026-08-10 per SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`)
 
 **One-liner:**
-> *Nowing is an open-source lead intelligence + knowledge intelligence platform — it turns raw data from every source into actionable knowledge with transparent provenance.*
+> *Nowing is an open-core lead intelligence + knowledge intelligence platform — it turns raw data from every source into actionable knowledge with transparent provenance.*
 
 **Subtitle:**
 > *Self-hosted research memory and lead intelligence workspace for AI agents, teams, and sales teams.*

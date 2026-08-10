@@ -40,7 +40,7 @@ Vietnamese employers and recruiters face a structural hiring gap:
 - Data is fragmented across **VietnamWorks, TopCV, ITviec, CareerLink, Glints, JobHopin, LinkedIn, and Facebook/Zalo groups**.
 - Existing job boards and AI matching tools are **proprietary silos** with no cross-platform market intelligence, no long-term research memory, and no citations.
 
-For Nowing, this is the same pattern already observed in real estate: multiple listing platforms, no aggregation, low trust, and a clear opportunity for an open-source, citation-first research layer.
+For Nowing, this is the same pattern already observed in real estate: multiple listing platforms, no aggregation, low trust, and a clear opportunity for an open-core, citation-first research layer.
 
 **However, the problem statement above is based on secondary research, not validated customer interviews.** The pilot must answer: *do HR managers and recruiters actually need cross-platform research, and will they pay for it?*
 
@@ -54,7 +54,7 @@ For Nowing, this is the same pattern already observed in real estate: multiple l
 | **Aggregator pattern (`vn_bds.aggregate`)** | `vn_jobs.aggregate` — normalize/dedupe/score job postings from 3 sources |
 | **Long-term research memory** | Track hiring trends, salary pressure, skill demand over time (if pilot passes) |
 | **Citations / provenance** | Every data point links back to the original job board URL and timestamp |
-| **Self-host / open-source** | Recruiters and SMBs can run on their own infra, keeping proprietary searches private |
+| **Self-host / open-core** | Recruiters and SMBs can run on their own infra, keeping proprietary searches private |
 | **MCP / agent integration** | Agents can ask "có bao nhiêu việc Data Engineer ở Hà Nội lương trên 30 triệu? So sánh VietnamWorks, TopCV, ITviec." and get structured, cited results |
 | **Automations / playbooks** | Schedule weekly market briefs on a skill, company, or location (P1) |
 

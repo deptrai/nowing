@@ -38,7 +38,7 @@ source_verification: true
 
 This market research analyzes the competitive landscape of Vietnamese real estate (*batdongsan*), data scraping, and broader local research services for Vietnamese users. The study was conducted using the `bmad-market-research` methodology: web search verification across current Vietnamese and English sources, parallel data collection on customer behavior, pain points, decision processes, and competitive intelligence, followed by strategic synthesis.
 
-Key findings: (1) Vietnam's real estate digital platform market is fragmented but growing (~USD 1.2B), with Batdongsan.com.vn leading but facing transparency and data-access gaps; (2) adjacent verticals—e-commerce pricing intelligence, social listening, job market data, and AI data collection—are expanding rapidly and share the same customer pain points (data fragmentation, trust, compliance); (3) Nowing can differentiate by combining open-source long-term research memory, citations/provenance, cross-vertical connectors, and self-hosting—positioning it as a trust-first, agent-compatible research layer for the Vietnamese market.
+Key findings: (1) Vietnam's real estate digital platform market is fragmented but growing (~USD 1.2B), with Batdongsan.com.vn leading but facing transparency and data-access gaps; (2) adjacent verticals—e-commerce pricing intelligence, social listening, job market data, and AI data collection—are expanding rapidly and share the same customer pain points (data fragmentation, trust, compliance); (3) Nowing can differentiate by combining open-core long-term research memory, citations/provenance, cross-vertical connectors, and self-hosting—positioning it as a trust-first, agent-compatible research layer for the Vietnamese market.
 
 Methodology: All claims cite live web sources (industry reports, company websites, market-research firms, and legal analyses). Confidence is high for data points supported by multiple independent sources (e.g., Batdongsan market position, Shopee/TikTok GMV split, legal framework on data and IP); lower for market-share estimates from single paid-report previews, which are flagged as estimates.
 
@@ -697,7 +697,7 @@ _Source:_
 - **ReqoData:** Nền tảng thu thập dữ liệu bằng AI, natural language query, real-time collection, xuất CSV/Excel/JSON/API/webhook, hỗ trợ company data, product data, jobs, real estate.
 - **Easy Data, KitData:** Cung cấp scraping-as-a-service và data APIs.
 
-**Nowing (potential entrant):** Open-source long-term research memory for AI agents & teams, với cross-vertical connectors, citations/provenance, workspace collaboration, MCP server, và self-host.
+**Nowing (potential entrant):** Open-core long-term research memory for AI agents & teams, với cross-vertical connectors, citations/provenance, workspace collaboration, MCP server, và self-host.
 
 _Source:_
 - https://www.kenresearch.com/vietnam-real-estate-digital-platforms-market
@@ -758,7 +758,7 @@ _Source:_
 - **ReqoData — “AI data collection generalist”:** Multi-domain, NL query, API/webhook, hướng đến data analyst và researcher.
 - **KitData — “Enterprise data infrastructure”:** API-first, one schema, multi-region, SLA cao, nhắm enterprise.
 - **VietnamWorks/TopCV — “Recruitment platforms”:** Mạnh về sourcing và matching, đang bổ sung AI/screening.
-- **Nowing — “Open-source long-term research memory”:** Cross-vertical, citations, self-host, MCP, agentic team — khác biệt ở open source + memory + research provenance.
+- **Nowing — “Open-core long-term research memory”:** Cross-vertical, citations, self-host, MCP, agentic team — khác biệt ở open-core + memory + research provenance.
 
 _Source:_
 - https://vars.com.vn/tin-tuc/batdongsancomvn-va-hanh-trinh-tro-thanh-nen-tang-so-1-n2108
@@ -902,7 +902,7 @@ _Source:_
 
 Thị trường nghiên cứu & dữ liệu tại Việt Nam đang trải qua giai đoạn tăng trưởng nhanh và phân mảnh. Thị trường nền tảng BĐS số đạt ~USD 1,2 tỷ với hơn 100 nền tảng; thương mại điện tử đạt GMV ~458 nghìn tỷ VND năm 2025; thị trường phân tích dữ liệu đạt USD 325,6 triệu. Tuy nhiên, tất cả các vertical đều gặp chung một số pain point: dữ liệu phân tán, thiếu minh bạch, khó xác thực nguồn, rủi ro pháp lý khi scrape, và thiếu công cụ tổng hợp cross-vertical.
 
-Nowing có cơ hội rõ ràng để định vị như **“open-source long-term research memory for AI agents and teams”** tại Việt Nam — tập trung vào citations/provenance, cross-vertical connectors, self-host, và MCP ecosystem. Điểm khác biệt then chốt là **mọi fact đều có nguồn trích dẫn, có thể re-validate, và có thể tự host** — điều chưa có đối thủ nào trên thị trường VN làm tốt.
+Nowing có cơ hội rõ ràng để định vị như **“open-core long-term research memory for AI agents and teams”** tại Việt Nam — tập trung vào citations/provenance, cross-vertical connectors, self-host, và MCP ecosystem. Điểm khác biệt then chốt là **mọi fact đều có nguồn trích dẫn, có thể re-validate, và có thể tự host** — điều chưa có đối thủ nào trên thị trường VN làm tốt.
 
 _Source:_
 - https://www.kenresearch.com/vietnam-real-estate-digital-platforms-market
@@ -966,7 +966,7 @@ _Source:_
 | AI data collection | ReqoData, Easy Data | Thiếu brand awareness, không open-source, không cross-vertical |
 | Job data | VietnamWorks, TopCV, open-source | Không tổng hợp cross-platform, thiếu real-time skill analytics |
 
-**Nowing's unique value proposition:** open-source, long-term memory, citations, cross-vertical, self-host, MCP. Đây là sự kết hợp chưa có trên thị trường.
+**Nowing's unique value proposition:** open-core, long-term memory, citations, cross-vertical, self-host, MCP. Đây là sự kết hợp chưa có trên thị trường.
 
 _Source:_
 - Phần Competitive Landscape ở trên.
@@ -1088,7 +1088,7 @@ _Long-term (5+ năm):_
 
 ### Conclusion
 
-Thị trường nghiên cứu và dữ liệu tại Việt Nam đang trong giai đoạn chuyển đổi: từ các nền tảng classified/portal đơn lẻ sang hệ sinh thái dữ liệu tích hợp. Nowing có lợi thế tiên phong nếu định vị đúng là **open-source research memory với citations và cross-vertical connectors**. Chiến lược tối ưu là bắt đầu với vertical đau đớn nhất (BĐS), mở rộng nhanh sang TMĐT và jobs, xây dựng cộng đồng open-source, và sau đó monetize qua cloud SaaS và enterprise self-host. Tuân thủ pháp lý, minh bạch nguồn dữ liệu, và mobile-first UX là các yếu tố then chốt để thành công.
+Thị trường nghiên cứu và dữ liệu tại Việt Nam đang trong giai đoạn chuyển đổi: từ các nền tảng classified/portal đơn lẻ sang hệ sinh thái dữ liệu tích hợp. Nowing có lợi thế tiên phong nếu định vị đúng là **open-core research memory với citations và cross-vertical connectors**. Chiến lược tối ưu là bắt đầu với vertical đau đớn nhất (BĐS), mở rộng nhanh sang TMĐT và jobs, xây dựng cộng đồng open-source, và sau đó monetize qua cloud SaaS và enterprise self-host. Tuân thủ pháp lý, minh bạch nguồn dữ liệu, và mobile-first UX là các yếu tố then chốt để thành công.
 
 ---
 

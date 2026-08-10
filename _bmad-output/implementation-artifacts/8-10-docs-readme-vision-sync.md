@@ -35,7 +35,7 @@ So that mở repo không thấy định vị cũ / feature đã gỡ (tránh c�
 Nguồn chân lý cho README/landing là `briefs/brief-Nowing-2026-07-25/brief.md` §1, §5.1, §7, §8, §12 (final 2026-07-25), được propagate sang PRD §1.1, §2.4, §4.9 và `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md`.
 
 - **One-sentence promise (English, dùng thật):**
-  > "Nowing is open-source research memory for AI agents — it remembers what it went and found, not just what you told it."
+  > "Nowing is open-core research memory for AI agents — it remembers what it went and found, not just what you told it."
 - **Subtitle:**
   > "Self-hosted research workspace with long-term memory for AI agents and teams."
 - **Differentiator trả lời "khác gì X":**
@@ -106,7 +106,7 @@ Hiện không có CI nào chặn các cụm `NotebookLM`, `AI file sorting`, `Ad
 ### D1 — One-sentence promise là fixed copy
 
 Dùng chính xác:
-> "Nowing is open-source research memory for AI agents — it remembers what it went and found, not just what you told it."
+> "Nowing is open-core research memory for AI agents — it remembers what it went and found, not just what you told it."
 
 Không sửa từ, không thêm biến thể mới ngoài subtitle ("Self-hosted research workspace with long-term memory for AI agents and teams.") và dòng trả lời "khác gì X". Source: `brief.md` §1, §12.1.
 

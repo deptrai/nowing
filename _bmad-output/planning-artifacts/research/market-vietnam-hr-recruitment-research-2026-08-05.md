@@ -40,7 +40,7 @@ source_verification: true
 
 ## Research Overview
 
-This market research analyzes the Vietnamese recruitment and HR market with a focus on **candidate sourcing, employer hiring demand, and job-board data intelligence**. The goal is to identify how Nowing can extend its open-source long-term research memory into the HR vertical, starting with Vietnam.
+This market research analyzes the Vietnamese recruitment and HR market with a focus on **candidate sourcing, employer hiring demand, and job-board data intelligence**. The goal is to identify how Nowing can extend its open-core long-term research memory into the HR vertical, starting with Vietnam.
 
 **Key findings:**
 
@@ -287,7 +287,7 @@ Nowing is less likely to compete directly for job seekers at launch; value is pr
 | HR-tech AI matching | HireX, UpNow, LinkTalent, Talenten | Proprietary, siloed, no long-term memory or citations |
 | Open-source job crawlers | epsi10nvn/vn-job-data-crawler, goodjobs, vn-jobs-data-pipeline | Need technical skill, maintenance, anti-bot, no UI/memory |
 
-**Nowing's unique value proposition for HR:** open-source long-term research memory + citations + multi-source aggregation + self-host — applied to live job market data. This combination does not exist in Vietnam today.
+**Nowing's unique value proposition for HR:** open-core long-term research memory + citations + multi-source aggregation + self-host — applied to live job market data. This combination does not exist in Vietnam today.
 
 ---
 

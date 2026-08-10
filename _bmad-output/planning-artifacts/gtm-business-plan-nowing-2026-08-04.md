@@ -18,7 +18,7 @@ merged_from:
 
 ## 1. Executive Summary
 
-Nowing is **open-source lead intelligence + knowledge intelligence for AI agents — it remembers what it went and found, and turns it into actionable leads, not just answers.**
+Nowing is **open-core lead intelligence + knowledge intelligence for AI agents — it remembers what it went and found, and turns it into actionable leads, not just answers.**
 
 The go-to-market is **open-core PLG** plus a Vietnam-first **lead-intelligence pilot** (Epic 21). The Apache-2.0 core + BSL 1.1 crawler engine is free to self-host; the cloud is pay-as-you-go with outcome-based credits for lead enrichment and meetings booked. The primary conversion lever is **deep multi-step open-web research** and **lead intelligence with provenance-aware signal detection** — cloud-only in Phase 1, metered for self-host in Phase 2. The business model depends on converting self-hosters, agent builders, and sales teams to cloud usage, not on selling raw research data or competing with Perplexity in consumer search.
 
@@ -41,7 +41,7 @@ The go-to-market is **open-core PLG** plus a Vietnam-first **lead-intelligence p
 
 ### 2.1 One-liner
 
-> *Nowing is open-source lead intelligence + knowledge intelligence — it turns data from every source into leads with transparent provenance.*
+> *Nowing is open-core lead intelligence + knowledge intelligence — it turns data from every source into leads with transparent provenance.*
 
 ### 2.2 Why it is different
 
