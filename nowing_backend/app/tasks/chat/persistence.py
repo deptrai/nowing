@@ -59,6 +59,7 @@ from sqlalchemy import text as sa_text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.future import select
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     NewChatMessage,
     NewChatMessageRole,
@@ -476,6 +477,14 @@ async def finalize_assistant_turn(
     )
     try:
         async with shielded_async_session() as ws:
+            # AC-18.8: set tenant GUCs on the shielded session before the
+            # token_usage RLS-protected INSERT.
+            await set_request_tenant_context(
+                ws,
+                workspace_id=workspace_id,
+                client_id=client_id,
+                agent_id=None,
+            )
             assistant_row = await ws.get(NewChatMessage, message_id)
             if assistant_row is None:
                 logger.warning(

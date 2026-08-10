@@ -27,6 +27,7 @@ import litellm
 from litellm.integrations.custom_logger import CustomLogger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import TokenUsage
 
 logger = logging.getLogger(__name__)
@@ -571,6 +572,14 @@ async def record_token_usage(
     wrap this in try/except).
     """
     try:
+        # AC-18.8: set tenant GUCs so RLS-protected token_usage writes
+        # do not fail when FORCE ROW LEVEL SECURITY is enabled.
+        await set_request_tenant_context(
+            session,
+            workspace_id=workspace_id,
+            client_id=client_id,
+            agent_id=None,
+        )
         record = TokenUsage(
             usage_type=usage_type,
             prompt_tokens=prompt_tokens,

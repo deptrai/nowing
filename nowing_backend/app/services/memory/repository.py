@@ -58,6 +58,7 @@ class MemoryRepository:
         content: str,
         workspace_id: int | None,
         user_id: UUID | None,
+        client_id: str | None = None,
     ) -> np.ndarray:
         try:
             embeddings = await asyncio.to_thread(embed_texts, [content])
@@ -80,6 +81,7 @@ class MemoryRepository:
                 completion_tokens=0,
                 total_tokens=estimated_tokens,
                 cost_micros=0,
+                client_id=client_id,
             )
         return embedding
 
@@ -263,7 +265,10 @@ class MemoryRepository:
 
         if embedding is None:
             embedding = await self._embed(
-                content, workspace_id=workspace_id, user_id=created_by_id
+                content,
+                workspace_id=workspace_id,
+                user_id=created_by_id,
+                client_id=client_id,
             )
         else:
             embedding = _validate_vector(embedding)
@@ -460,6 +465,7 @@ class MemoryRepository:
                 corrected_content,
                 workspace_id=memory.workspace_id,
                 user_id=corrected_by_id,
+                client_id=memory.client_id,
             )
             memory.embedding = new_embedding
 
