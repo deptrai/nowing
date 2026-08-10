@@ -11,6 +11,7 @@ import numpy as np
 from sqlalchemy import Float, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import Memory, MemoryType
 from app.services.memory.vector import VectorValidationError, validate_embedding_vector
@@ -85,7 +86,10 @@ class MemoryHybridSearch:
         if has_workspace:
             conditions = [Memory.workspace_id == workspace_id]
         else:
-            conditions = [Memory.workspace_id.is_(None), Memory.created_by_id == user_id]
+            conditions = [
+                Memory.workspace_id.is_(None),
+                Memory.created_by_id == user_id,
+            ]
 
         # AC-18.6: hard tenant filter.  A request with a vertical client only
         # sees rows with matching client_id; an internal request only sees
@@ -109,10 +113,21 @@ class MemoryHybridSearch:
         research_thread_id: int | None = None,
         client_id: str | None = None,
     ) -> list[ScoredMemory]:
+        # AC-18.8: an empty client_id string is treated the same as NULL so the
+        # filter and the RLS NULLIF wrapper stay consistent.
+        client_id = client_id or None
         base_conditions = self._scope_conditions(
             workspace_id=workspace_id,
             user_id=user_id,
             research_thread_id=research_thread_id,
+            client_id=client_id,
+        )
+        # AC-18.8: set tenant GUCs so RLS policies (workspace + client) do not
+        # hide the rows we are about to query.  User-scoped memory uses
+        # workspace_id=None, which the helper writes as an empty string.
+        await set_request_tenant_context(
+            self.session,
+            workspace_id=workspace_id,
             client_id=client_id,
         )
         if type is not None:
@@ -258,7 +273,9 @@ class MemoryHybridSearch:
                 )
                 continue
             valid.append(
-                ScoredMemory(memory=memory, score=float(score), similarity=float(similarity))
+                ScoredMemory(
+                    memory=memory, score=float(score), similarity=float(similarity)
+                )
             )
 
         return valid

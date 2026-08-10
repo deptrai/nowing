@@ -16,6 +16,7 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import Memory, User
 from app.services.memory.document import parse_memory_document, render_memory_document
 from app.services.memory.parser import parse_memory_markdown_to_facts
@@ -108,6 +109,10 @@ async def read_memory(
     normalized = _normalize_scope(scope)
     if normalized is MemoryScope.USER:
         user_id = _normalize_user_id(target_id)
+        # User-scoped memories have workspace_id=NULL and client_id=NULL; the
+        # helper writes None as an empty string and the RLS NULLIF wrapper
+        # treats it as SQL NULL.
+        await set_request_tenant_context(session, workspace_id=None, client_id=None)
         result = await session.execute(
             select(Memory).where(
                 Memory.workspace_id.is_(None),
@@ -118,9 +123,11 @@ async def read_memory(
         memories = result.scalars().all()
         return render_memory_markdown(list(memories), scope="user")
 
+    workspace_id = int(target_id)
+    await set_request_tenant_context(session, workspace_id=workspace_id, client_id=None)
     result = await session.execute(
         select(Memory).where(
-            Memory.workspace_id == int(target_id),
+            Memory.workspace_id == workspace_id,
             Memory.client_id.is_(None),
         )
     )
@@ -270,6 +277,7 @@ async def reset_memory(
     normalized = _normalize_scope(scope)
     if normalized is MemoryScope.USER:
         user_id = _normalize_user_id(target_id)
+        await set_request_tenant_context(session, workspace_id=None, client_id=None)
         await session.execute(
             delete(Memory).where(
                 Memory.workspace_id.is_(None),
@@ -279,6 +287,9 @@ async def reset_memory(
         )
     else:
         workspace_id = int(target_id)
+        await set_request_tenant_context(
+            session, workspace_id=workspace_id, client_id=None
+        )
         await session.execute(
             delete(Memory).where(
                 Memory.workspace_id == workspace_id,

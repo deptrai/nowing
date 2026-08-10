@@ -368,7 +368,8 @@ class RunMemoryExtractionService:
         # D4: only a real, loaded root chat thread may attach the memory to a
         # research thread. ``Run.thread_id`` is a free-form string (subagent ids
         # look like ``2099::task:call_x``) and is never copied.
-        research_thread_id = await self._resolve_research_thread_id(run)
+        source_thread = await self._resolve_research_thread_id(run)
+        research_thread_id = source_thread.id if source_thread is not None else None
 
         repo = MemoryRepository(session=self.session)
         created_memories: list[Memory] = []
@@ -403,6 +404,10 @@ class RunMemoryExtractionService:
                     created_by_id=created_by_id,
                     update_on_duplicate=True,
                     commit=False,
+                    client_id=run.client_id,
+                    agent_id=source_thread.agent_id
+                    if source_thread is not None
+                    else None,
                 )
                 created_memories.append(memory)
 
@@ -441,7 +446,7 @@ class RunMemoryExtractionService:
 
         return created_memories
 
-    async def _resolve_research_thread_id(self, run: Run) -> int | None:
+    async def _resolve_research_thread_id(self, run: Run) -> NewChatThread | None:
         """Map ``Run.thread_id`` to a validated root chat thread, or ``None``.
 
         Only an all-digit ``thread_id`` that resolves to a ``NewChatThread`` in
@@ -456,7 +461,7 @@ class RunMemoryExtractionService:
         thread = await self.session.get(NewChatThread, int(raw))
         if thread is None or thread.workspace_id != run.workspace_id:
             return None
-        return thread.id
+        return thread
 
 
 __all__ = [

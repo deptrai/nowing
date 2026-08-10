@@ -19,6 +19,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.runs import record_run, serialize_output
@@ -67,8 +68,15 @@ def _extract_text(output: Any, capability_name: str) -> str:
         dump = output.model_dump(exclude_none=True)
         if isinstance(dump, dict) and "answer" in dump:
             return str(dump["answer"])
-        if isinstance(dump, dict) and "items" in dump and isinstance(dump["items"], list):
-            return "\n".join(json.dumps(item, default=str, ensure_ascii=False) for item in dump["items"])
+        if (
+            isinstance(dump, dict)
+            and "items" in dump
+            and isinstance(dump["items"], list)
+        ):
+            return "\n".join(
+                json.dumps(item, default=str, ensure_ascii=False)
+                for item in dump["items"]
+            )
         return json.dumps(dump, default=str, ensure_ascii=False)
 
     # Plain objects used in tests may also expose ``model_dump``.
@@ -77,9 +85,14 @@ def _extract_text(output: Any, capability_name: str) -> str:
             dump = output.model_dump()
             if isinstance(dump, dict) and "answer" in dump:
                 return str(dump["answer"])
-            if isinstance(dump, dict) and "items" in dump and isinstance(dump["items"], list):
+            if (
+                isinstance(dump, dict)
+                and "items" in dump
+                and isinstance(dump["items"], list)
+            ):
                 return "\n".join(
-                    json.dumps(item, default=str, ensure_ascii=False) for item in dump["items"]
+                    json.dumps(item, default=str, ensure_ascii=False)
+                    for item in dump["items"]
                 )
             return json.dumps(dump, default=str, ensure_ascii=False)
         except Exception:
@@ -90,7 +103,8 @@ def _extract_text(output: Any, capability_name: str) -> str:
             return str(output["answer"])
         if "items" in output and isinstance(output["items"], list):
             return "\n".join(
-                json.dumps(item, default=str, ensure_ascii=False) for item in output["items"]
+                json.dumps(item, default=str, ensure_ascii=False)
+                for item in output["items"]
             )
         return json.dumps(output, default=str, ensure_ascii=False)
 
@@ -120,9 +134,18 @@ class RevalidationService:
         ``source_capability`` and ``source_input`` are read from ``Memory``
         itself, so the original ``Run`` may already have been cleaned up.
         """
+        # AC-18.8: load the memory by id-token, then enforce its tenant scope
+        # for the rest of the re-validation writes.
+        await set_request_tenant_context(self.session, memory_id=memory_id)
         memory = (
             await self.session.execute(select(Memory).where(Memory.id == memory_id))
         ).scalar_one_or_none()
+        if memory is not None:
+            await set_request_tenant_context(
+                self.session,
+                workspace_id=memory.workspace_id,
+                client_id=memory.client_id,
+            )
 
         if memory is None:
             raise RevalidationError("memory_not_found", "Memory not found.")

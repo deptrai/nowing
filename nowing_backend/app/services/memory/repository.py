@@ -13,6 +13,7 @@ from sqlalchemy import Float, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import (
     Memory,
@@ -120,6 +121,14 @@ class MemoryRepository:
         return None
 
     async def _load_with_versions(self, memory: Memory) -> Memory:
+        # AC-18.8: ensure the version reload respects the memory's tenant scope;
+        # the id-token is a safety net for the row we just wrote.
+        await set_request_tenant_context(
+            self.session,
+            workspace_id=memory.workspace_id,
+            client_id=memory.client_id,
+            memory_id=memory.id,
+        )
         result = await self.session.execute(
             select(Memory)
             .options(selectinload(Memory.versions))
@@ -258,6 +267,19 @@ class MemoryRepository:
             type = MemoryType(type)
         if isinstance(source_type, str):
             source_type = MemorySourceType(source_type)
+
+        # AC-18.8: an empty client_id string is treated the same as NULL so the
+        # RLS NULLIF wrapper and the stored value are consistent.
+        client_id = client_id or None
+
+        # AC-18.8: set tenant GUCs before any Memory query/insert so FORCE RLS
+        # allows the workspace/client rows we are about to touch.
+        await set_request_tenant_context(
+            self.session,
+            workspace_id=workspace_id,
+            client_id=client_id,
+            agent_id=agent_id,
+        )
 
         if client_id:
             tags = list(tags or [])
@@ -407,12 +429,28 @@ class MemoryRepository:
         client_id: str | None = None,
         agent_id: str | None = None,
     ) -> Memory | None:
+        # AC-18.8: an empty client_id string is treated the same as NULL so the
+        # RLS NULLIF wrapper and the stored value are consistent.
+        client_id = client_id or None
+
+        # AC-18.8: load by id-token, then switch to the row's tenant GUCs so
+        # the UPDATE/INSERT flush passes the ALL-policy WITH CHECK clause.
+        await set_request_tenant_context(self.session, memory_id=memory_id)
         result = await self.session.execute(
             select(Memory).where(Memory.id == memory_id)
         )
         memory = result.scalar_one_or_none()
         if memory is None:
             return None
+        # AC-18.8: use the caller's client_id when provided so a workspace user
+        # cannot edit another client's row; fall back to the row's own client
+        # for internal callers that do not pass a client scope.
+        await set_request_tenant_context(
+            self.session,
+            workspace_id=memory.workspace_id,
+            client_id=client_id or memory.client_id,
+            agent_id=agent_id or memory.agent_id,
+        )
 
         content_changed = memory.content != corrected_content
         if not (skip_version_if_unchanged and not content_changed):
@@ -487,6 +525,9 @@ class MemoryRepository:
         return loaded
 
     async def get_memory(self, memory_id: int) -> Memory | None:
+        # AC-18.8: id-token read allows an un-scoped caller (e.g. a route that
+        # only knows the id) to load the row before setting its tenant GUC.
+        await set_request_tenant_context(self.session, memory_id=memory_id)
         result = await self.session.execute(
             select(Memory)
             .options(selectinload(Memory.versions))
@@ -504,6 +545,17 @@ class MemoryRepository:
         client_id: str | None = None,
     ) -> list[Memory]:
         """List workspace memories, newest first, with optional type/tags filters."""
+        # AC-18.8: an empty client_id string is treated the same as NULL so the
+        # filter and the RLS NULLIF wrapper stay consistent.
+        client_id = client_id or None
+
+        # AC-18.8: set tenant GUCs before the list query so FORCE RLS returns
+        # only rows in the workspace/client scope.
+        await set_request_tenant_context(
+            self.session,
+            workspace_id=workspace_id,
+            client_id=client_id,
+        )
         conditions = [Memory.workspace_id == workspace_id]
         if client_id is not None:
             conditions.append(Memory.client_id == client_id)
@@ -530,13 +582,22 @@ class MemoryRepository:
         )
         return list(result.scalars().all())
 
-    async def delete_memory(self, memory_id: int) -> bool:
+    async def delete_memory(self, memory_id: int, client_id: str | None = None) -> bool:
+        # AC-18.8: load by id-token, then switch to the caller's tenant GUCs so
+        # a workspace user cannot delete another client's row.  Fall back to the
+        # row's own client for internal callers that omit a client scope.
+        await set_request_tenant_context(self.session, memory_id=memory_id)
         result = await self.session.execute(
             select(Memory).where(Memory.id == memory_id)
         )
         memory = result.scalar_one_or_none()
         if memory is None:
             return False
+        await set_request_tenant_context(
+            self.session,
+            workspace_id=memory.workspace_id,
+            client_id=client_id or memory.client_id,
+        )
         await self.session.delete(memory)
         await self.session.commit()
         return True

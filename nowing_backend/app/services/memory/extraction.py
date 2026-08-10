@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import (
     Memory,
@@ -122,6 +123,16 @@ class MemoryExtractionService:
             )
             return []
 
+        # AC-18.8: set the tenant GUCs for this thread before any Memory query
+        # so the FORCE RLS policy does not hide rows from the same workspace.
+        effective_client_id = self.client_id or thread.client_id
+        await set_request_tenant_context(
+            self.session,
+            workspace_id=workspace.id,
+            client_id=effective_client_id,
+            agent_id=thread.agent_id,
+        )
+
         # Idempotency guard: extracted memories carry source_id == the assistant
         # message id, so if any already exist this turn was processed before.
         # Skip to avoid duplicate LLM calls, token rows, and version churn on
@@ -226,7 +237,7 @@ class MemoryExtractionService:
                         created_by_id=created_by_id,
                         update_on_duplicate=True,
                         commit=False,
-                        client_id=thread.client_id,
+                        client_id=effective_client_id,
                         agent_id=thread.agent_id,
                     )
                 except Exception as exc:

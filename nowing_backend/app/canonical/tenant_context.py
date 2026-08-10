@@ -50,39 +50,50 @@ def get_canonical_workspace_id(session: AsyncSession) -> int | None:
 
 async def set_request_tenant_context(
     session: AsyncSession,
-    workspace_id: int,
+    workspace_id: int | None = None,
     client_id: str | None = None,
     agent_id: str | None = None,
     run_id: str | None = None,
+    memory_id: int | None = None,
 ) -> None:
     """Set workspace + client + agent GUCs for the current transaction only.
 
     ``SET LOCAL`` scopes the values to the SQL transaction, so a pooled
     connection cannot leak tenant context to the next request.
+
+    ``None`` is written as an empty string so a prior GUC is cleared.  The
+    memory RLS policy uses ``NULLIF(..., '')`` on ``app.workspace_id`` and
+    ``app.current_client_id`` to treat the empty string as SQL ``NULL``, which
+    matches user-scoped / unscoped rows with ``IS NOT DISTINCT FROM``.
     """
     # ponytail: set_config() is the parameter-safe equivalent of SET LOCAL.
-    # Skip client/agent GUCs when the value is None so ``current_setting(..., true)
-    # returns NULL and the RLS ``client_id IS NULL`` branch works for legacy rows.
+    # Write an empty string for ``None`` so a prior value is cleared; the RLS
+    # ``NULLIF`` wrapper converts it back to SQL NULL for IS NOT DISTINCT FROM.
     await session.execute(
         text("SELECT set_config('app.workspace_id', :wid, true)"),
-        {"wid": str(workspace_id)},
+        {"wid": "" if workspace_id is None else str(workspace_id)},
     )
-    if client_id is not None:
-        await session.execute(
-            text("SELECT set_config('app.current_client_id', :cid, true)"),
-            {"cid": client_id},
-        )
-    if agent_id is not None:
-        await session.execute(
-            text("SELECT set_config('app.current_agent_id', :aid, true)"),
-            {"aid": agent_id},
-        )
-    if run_id is not None:
-        await session.execute(
-            text("SELECT set_config('app.run_id', :rid, true)"),
-            {"rid": run_id},
-        )
-    session.info["canonical_workspace_id"] = workspace_id
-    session.info["current_client_id"] = client_id
-    session.info["current_agent_id"] = agent_id
-    session.info["current_run_id"] = run_id
+    await session.execute(
+        text("SELECT set_config('app.current_client_id', :cid, true)"),
+        {"cid": client_id or ""},
+    )
+    await session.execute(
+        text("SELECT set_config('app.current_agent_id', :aid, true)"),
+        {"aid": agent_id or ""},
+    )
+    await session.execute(
+        text("SELECT set_config('app.run_id', :rid, true)"),
+        {"rid": run_id or ""},
+    )
+    await session.execute(
+        text("SELECT set_config('app.memory_id', :mid, true)"),
+        {"mid": "" if memory_id is None else str(memory_id)},
+    )
+    # Tests sometimes pass a fake session without .info; the GUCs are the
+    # source of truth for RLS anyway, so tolerate the missing attribute.
+    if hasattr(session, "info"):
+        session.info["canonical_workspace_id"] = workspace_id
+        session.info["current_client_id"] = client_id
+        session.info["current_agent_id"] = agent_id
+        session.info["current_run_id"] = run_id
+        session.info["current_memory_id"] = memory_id

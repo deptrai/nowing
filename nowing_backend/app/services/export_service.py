@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import (
     Chunk,
     Document,
@@ -401,6 +402,9 @@ async def build_export_zip(
         # ------------------------------------------------------------------
         # Memories + citations
         # ------------------------------------------------------------------
+        # AC-18.8: exports are workspace-internal by default; the route's
+        # permission check already guarantees workspace membership.
+        await set_request_tenant_context(session, workspace_id=workspace_id)
         memory_query = (
             select(Memory)
             .where(Memory.workspace_id == workspace_id)
