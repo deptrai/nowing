@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,6 +17,7 @@ pytestmark = pytest.mark.unit
 
 
 def _fake_tool(name: str) -> BaseTool:
+    """Return a fake ``BaseTool`` with the requested ``name`` attribute."""
     tool = MagicMock(spec=BaseTool)
     tool.name = name
     return tool
@@ -24,7 +26,7 @@ def _fake_tool(name: str) -> BaseTool:
 @pytest.fixture
 def _fake_factories(monkeypatch: pytest.MonkeyPatch) -> None:
     """Replace the real factories with cheap fakes so tests only exercise filtering."""
-    fake_factories = {
+    fake_factories: dict[str, tuple[Any, tuple[Any, ...]]] = {
         "create_automation": (lambda _deps: _fake_tool("create_automation"), ()),
         "update_memory": (lambda _deps: _fake_tool("update_memory"), ()),
     }
@@ -60,7 +62,7 @@ def test_build_main_agent_tools_disabled_overrides_enabled(_fake_factories) -> N
 
 
 def test_build_main_agent_tools_unknown_names_are_ignored_and_logged(
-    _fake_factories, caplog
+    _fake_factories: None, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Dev notes: unknown tool names in lists are ignored with a warning."""
     with caplog.at_level("WARNING"):

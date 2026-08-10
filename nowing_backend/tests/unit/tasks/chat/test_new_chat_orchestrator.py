@@ -1,7 +1,7 @@
-"""Red-phase unit tests for Story 18.2 ``stream_new_chat`` orchestrator.
+"""Unit tests for ``stream_new_chat`` orchestrator (Stories 18.2 and 18.4).
 
-These tests drive the not-yet-extended orchestrator with heavy
-monkeypatching of DB, LLM, and streaming seams.  They assert that:
+These tests drive the orchestrator with heavy monkeypatching of DB, LLM,
+and streaming seams. They assert that:
 
 * ``set_request_tenant_context`` is called with workspace + client_id + agent_id.
 * An ``agent_id`` triggers loading of the registry ``AgentConfig`` and the
@@ -9,9 +9,8 @@ monkeypatching of DB, LLM, and streaming seams.  They assert that:
   carries the registry's ``system_instructions``.
 * ``platform_metadata`` is forwarded into ``build_new_chat_input_state``.
 * When ``agent_id`` is absent the default Nowing agent config is used.
-
-The tests will fail until 18.2 adds the ``platform_metadata``,
-``agent_config_override`` parameters and the AgentConfig merge logic.
+* Admin-injected ``system_instructions`` are clamped and sanitized.
+* An explicit empty ``enabled_tools`` list is fail-closed.
 """
 
 from __future__ import annotations
@@ -31,13 +30,24 @@ from app.tasks.chat.streaming.flows.new_chat.input_state import (
     NewChatInputState,
 )
 from app.tasks.chat.streaming.flows.new_chat.orchestrator import (
+    _MAX_INSTRUCTIONS_LEN,
     stream_new_chat,
 )
 
 pytestmark = pytest.mark.unit
 
+_TEST_CLIENT_ID = "bdsai.vn"
+_TEST_AGENT_SLUG = "bdsai-listing-assistant"
+_TEST_AGENT_NAME = "BDS Listing Assistant"
+_TEST_USER_ID = "user-1"
+_TEST_LISTING_ID = 42
+_TEST_PLATFORM_METADATA = {"source": "bdsai", "listing_id": _TEST_LISTING_ID}
+_OVERSIZE_INSTRUCTIONS_LEN = _MAX_INSTRUCTIONS_LEN + 1_000
+
 
 class _FakeScalarResult:
+    """Fake ``sqlalchemy.engine.Result.scalars()`` return."""
+
     def __init__(self, first: Any, all_rows: list[Any] | None = None) -> None:
         self._first = first
         self._all = all_rows or []
@@ -50,6 +60,8 @@ class _FakeScalarResult:
 
 
 class _FakeResult:
+    """Fake ``sqlalchemy.engine.Result``."""
+
     def __init__(self, first: Any, all_rows: list[Any] | None = None) -> None:
         self._first = first
         self._all = all_rows or []
@@ -103,9 +115,9 @@ def _default_runtime_config() -> RuntimeAgentConfig:
 
 def _registry_agent() -> RegistryAgentConfig:
     return RegistryAgentConfig(
-        client_id="bdsai.vn",
-        slug="bdsai-listing-assistant",
-        name="BDS Listing Assistant",
+        client_id=_TEST_CLIENT_ID,
+        slug=_TEST_AGENT_SLUG,
+        name=_TEST_AGENT_NAME,
         system_instructions="You are a BDS listing assistant.",
         model_name="gpt-4o",
         citations_enabled=False,
@@ -115,25 +127,46 @@ def _registry_agent() -> RegistryAgentConfig:
     )
 
 
-@pytest.fixture
-def _patch_orchestrator_deps(monkeypatch: pytest.MonkeyPatch):
-    """Patch the orchestrator's production dependencies so we can run just far
-    enough to capture the key call sites: tenant context, AgentConfig merge,
-    and input-state assembly."""
+def _run_sync(coro: Any) -> Any:
+    """Run an async coroutine from a synchronous test."""
+    return asyncio.run(coro)
 
-    import app.services.token_tracking_service as _tts
+
+def _run_first_yield(gen: AsyncGenerator[str, None]) -> str:
+    """Advance ``stream_new_chat`` to its first yield, then close it.
+
+    This is enough to exercise the validation + auto-pin + LLM bundle +
+    agent build + input-state assembly blocks without needing a full
+    streaming run.
+    """
+    return _run_sync(_first_yield_then_close(gen))
+
+
+async def _first_yield_then_close(gen: AsyncGenerator[str, None]) -> str:
+    try:
+        chunk = await anext(gen)
+    finally:
+        await gen.aclose()
+    return chunk
+
+
+def _patch_session_maker(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_session: _FakeSession,
+) -> None:
+    """Patch the orchestrator's async session factory to return ``fake_session``."""
     import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
 
-    # The orchestrator calls ``async_session_maker()`` once per turn and uses
-    # that same session for registry lookup. A single shared fake session lets
-    # tests pre-seed ``registry_agent`` before consuming the generator.
-    _shared_fake_session = _FakeSession()
-    _shared_fake_session.registry_agent = _registry_agent()
-
     async def _fake_session_maker(*_args: Any, **_kwargs: Any) -> _FakeSession:
-        return _shared_fake_session
+        return fake_session
 
     monkeypatch.setattr(_orchestrator, "async_session_maker", _fake_session_maker)
+
+
+def _patch_tenant_and_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch tenant context and LLM bundle helpers."""
+    import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
+
     monkeypatch.setattr(_orchestrator, "set_request_tenant_context", AsyncMock())
     monkeypatch.setattr(
         _orchestrator,
@@ -157,6 +190,12 @@ def _patch_orchestrator_deps(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         _orchestrator, "get_chat_checkpointer", AsyncMock(return_value=MagicMock())
     )
+
+
+def _patch_agent_build_and_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch agent build and input-state assembly."""
+    import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
+
     monkeypatch.setattr(_orchestrator, "build_main_agent_for_thread", AsyncMock())
     monkeypatch.setattr(
         _orchestrator,
@@ -167,6 +206,12 @@ def _patch_orchestrator_deps(monkeypatch: pytest.MonkeyPatch):
             )
         ),
     )
+
+
+def _patch_streaming_and_logging(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch streaming frame and background task helpers."""
+    import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
+
     monkeypatch.setattr(
         _orchestrator,
         "iter_initial_frames",
@@ -190,64 +235,67 @@ def _patch_orchestrator_deps(monkeypatch: pytest.MonkeyPatch):
     )
     monkeypatch.setattr(_orchestrator, "_perf_log", MagicMock())
     monkeypatch.setattr(_orchestrator, "ot", MagicMock())
+
+
+def _patch_token_tracking(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch token tracking service."""
+    import app.services.token_tracking_service as _tts
+
     monkeypatch.setattr(_tts, "start_turn", lambda: MagicMock(name="accumulator"))
 
 
-def _run_first_yield(gen: AsyncGenerator[str, None]) -> str:
-    """Advance ``stream_new_chat`` to its first yield, then close it.
+@pytest.fixture
+def _patch_orchestrator_deps(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch the orchestrator's production dependencies for unit tests.
 
-    This is enough to exercise the validation + auto-pin + LLM bundle +
-    agent build + input-state assembly blocks without needing a full
-    streaming run.
+    Each test gets its own fake session so shared mutable state does not leak
+    between tests.
     """
-    return asyncio.get_event_loop().run_until_complete(_first_yield_then_close(gen))
-
-
-async def _first_yield_then_close(gen: AsyncGenerator[str, None]) -> str:
-    try:
-        chunk = await anext(gen)
-    finally:
-        await gen.aclose()
-    return chunk
+    fake_session = _FakeSession(registry_agent=_registry_agent())
+    _patch_session_maker(monkeypatch, fake_session)
+    _patch_tenant_and_llm(monkeypatch)
+    _patch_agent_build_and_input(monkeypatch)
+    _patch_streaming_and_logging(monkeypatch)
+    _patch_token_tracking(monkeypatch)
 
 
 class TestStreamNewChatAgentAndMetadata:
     def test_forwards_platform_metadata_to_input_state(
-        self, _patch_orchestrator_deps, monkeypatch
+        self,
+        _patch_orchestrator_deps,
     ) -> None:
         """AC-3: platform_metadata reaches build_new_chat_input_state."""
         import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
-
-        platform_metadata = {"source": "bdsai", "listing_id": 42}
 
         gen = stream_new_chat(
             user_query="hello",
             workspace_id=1,
             chat_id=101,
-            user_id="user-1",
-            client_id="bdsai.vn",
-            agent_id="bdsai-listing-assistant",
-            platform_metadata=platform_metadata,
+            user_id=_TEST_USER_ID,
+            client_id=_TEST_CLIENT_ID,
+            agent_id=_TEST_AGENT_SLUG,
+            platform_metadata=_TEST_PLATFORM_METADATA,
         )
 
         _run_first_yield(gen)
 
         _orchestrator.set_request_tenant_context.assert_called_once()
         _call = _orchestrator.set_request_tenant_context.call_args
-        assert _call.kwargs.get("client_id") == "bdsai.vn"
-        assert _call.kwargs.get("agent_id") == "bdsai-listing-assistant"
+        assert _call.kwargs.get("client_id") == _TEST_CLIENT_ID
+        assert _call.kwargs.get("agent_id") == _TEST_AGENT_SLUG
 
         _orchestrator.build_new_chat_input_state.assert_called_once()
         input_kwargs = _orchestrator.build_new_chat_input_state.call_args.kwargs
-        assert input_kwargs.get("platform_metadata") == platform_metadata
-        assert input_kwargs.get("client_id") == "bdsai.vn"
+        assert input_kwargs.get("platform_metadata") == _TEST_PLATFORM_METADATA
+        assert input_kwargs.get("client_id") == _TEST_CLIENT_ID
 
     def test_merges_registry_agent_config_override(
         self, _patch_orchestrator_deps
     ) -> None:
         """AC-1: a pre-resolved registry AgentConfig is merged into the runtime
         AgentConfig so build_main_agent_for_thread sees the custom system
-        instructions and registry model/citations settings."""
+        instructions and registry model/citations settings.
+        """
         import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
 
         registry = _registry_agent()
@@ -256,9 +304,9 @@ class TestStreamNewChatAgentAndMetadata:
             user_query="hello",
             workspace_id=1,
             chat_id=101,
-            user_id="user-1",
-            client_id="bdsai.vn",
-            agent_id="bdsai-listing-assistant",
+            user_id=_TEST_USER_ID,
+            client_id=_TEST_CLIENT_ID,
+            agent_id=_TEST_AGENT_SLUG,
             platform_metadata={"source": "bdsai"},
             agent_config_override=registry,
         )
@@ -283,25 +331,23 @@ class TestStreamNewChatAgentAndMetadata:
         self, _patch_orchestrator_deps
     ) -> None:
         """AC-1: when no override is supplied, stream_new_chat queries the
-        agent_configs registry by client_id + agent_id and merges the row."""
+        agent_configs registry by client_id + agent_id and merges the row.
+        """
         import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
 
         registry = _registry_agent()
 
         # Make the fake session return the registry row on any execute(...).
-        # The 18.2 implementation will issue ``select(AgentConfig).where(...)``.
-        session = asyncio.get_event_loop().run_until_complete(
-            _orchestrator.async_session_maker()
-        )
+        session = _run_sync(_orchestrator.async_session_maker())
         session.registry_agent = registry
 
         gen = stream_new_chat(
             user_query="hello",
             workspace_id=1,
             chat_id=102,
-            user_id="user-1",
-            client_id="bdsai.vn",
-            agent_id="bdsai-listing-assistant",
+            user_id=_TEST_USER_ID,
+            client_id=_TEST_CLIENT_ID,
+            agent_id=_TEST_AGENT_SLUG,
             platform_metadata={"source": "bdsai"},
         )
 
@@ -324,14 +370,15 @@ class TestStreamNewChatAgentAndMetadata:
     ) -> None:
         """AC-4: with no agent_id/client_id the default Nowing chat agent is
         preserved and platform_metadata/client_id default to None in the
-        input state."""
+        input state.
+        """
         import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
 
         gen = stream_new_chat(
             user_query="hello",
             workspace_id=1,
             chat_id=103,
-            user_id="user-1",
+            user_id=_TEST_USER_ID,
             platform_metadata=None,
         )
 
@@ -359,12 +406,11 @@ class TestStreamNewChatAgentAndMetadata:
         self, _patch_orchestrator_deps
     ) -> None:
         """AC-1/AC-5: an agent_id with no active registry row emits a 404-style
-        SSE error frame and done marker."""
+        SSE error frame and done marker.
+        """
         import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
 
-        session = asyncio.get_event_loop().run_until_complete(
-            _orchestrator.async_session_maker()
-        )
+        session = _run_sync(_orchestrator.async_session_maker())
         session.registry_agent = None  # No agent found
 
         async def _collect(gen: AsyncGenerator[str, None]) -> list[str]:
@@ -377,13 +423,13 @@ class TestStreamNewChatAgentAndMetadata:
             user_query="hello",
             workspace_id=1,
             chat_id=104,
-            user_id="user-1",
-            client_id="bdsai.vn",
+            user_id=_TEST_USER_ID,
+            client_id=_TEST_CLIENT_ID,
             agent_id="missing-agent",
             platform_metadata={"source": "bdsai"},
         )
 
-        chunks = asyncio.get_event_loop().run_until_complete(_collect(gen))
+        chunks = _run_sync(_collect(gen))
         assert chunks, "expected at least an error SSE frame and done marker"
         payload = "".join(chunks)
         assert "AGENT_NOT_FOUND" in payload or "agent not found" in payload.lower()
@@ -400,9 +446,9 @@ class TestStreamNewChatAgentAndMetadata:
             user_query="hello",
             workspace_id=1,
             chat_id=105,
-            user_id="user-1",
-            client_id="bdsai.vn",
-            agent_id="bdsai-listing-assistant",
+            user_id=_TEST_USER_ID,
+            client_id=_TEST_CLIENT_ID,
+            agent_id=_TEST_AGENT_SLUG,
             platform_metadata={"source": "bdsai"},
             agent_config_override=registry,
         )
@@ -416,21 +462,24 @@ class TestStreamNewChatAgentAndMetadata:
     def test_system_instructions_are_clamped_and_sanitized(
         self, _patch_orchestrator_deps
     ) -> None:
-        """AC-1/AC-4: instructions are capped at 8k and Jinja-like markers are stripped."""
+        """AC-1/AC-4: instructions are capped at _MAX_INSTRUCTIONS_LEN and
+        Jinja-like markers are stripped.
+        """
         import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
 
         registry = _registry_agent()
         registry.system_instructions = (
-            "Use {{secret}}. Today is {resolved_today}. " + "x" * 20_000
+            "Use {{secret}}. Today is {resolved_today}. "
+            + "x" * _OVERSIZE_INSTRUCTIONS_LEN
         )
 
         gen = stream_new_chat(
             user_query="hello",
             workspace_id=1,
             chat_id=106,
-            user_id="user-1",
-            client_id="bdsai.vn",
-            agent_id="bdsai-listing-assistant",
+            user_id=_TEST_USER_ID,
+            client_id=_TEST_CLIENT_ID,
+            agent_id=_TEST_AGENT_SLUG,
             agent_config_override=registry,
         )
 
@@ -440,7 +489,7 @@ class TestStreamNewChatAgentAndMetadata:
             "agent_config"
         )
         assert agent_config is not None
-        assert len(agent_config.system_instructions) <= 8_000
+        assert len(agent_config.system_instructions) <= _MAX_INSTRUCTIONS_LEN
         assert "{{secret}}" not in agent_config.system_instructions
         assert (
             "{" not in agent_config.system_instructions

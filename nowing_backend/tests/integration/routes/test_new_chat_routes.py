@@ -1,4 +1,4 @@
-"""Integration tests for Story 18.2 in the internal new-chat routes.
+"""Integration tests for Story 18.2/18.4 in the internal new-chat routes.
 
 These tests run against a real Postgres database and the full FastAPI app.
 The streaming ``POST /new_chat`` tests monkeypatch ``stream_new_chat`` so they
@@ -29,23 +29,29 @@ from app.routes import new_chat_routes
 
 pytestmark = pytest.mark.integration
 
+_TEST_CLIENT_ID = "bdsai.vn"
+_TEST_AGENT_SLUG = "bdsai-listing-assistant"
+_TEST_AGENT_NAME = "BDS Listing Assistant"
+_TEST_LISTING_ID = 42
+_TEST_PLATFORM_METADATA = {"source": "bdsai", "listing_id": _TEST_LISTING_ID}
+
 
 @pytest_asyncio.fixture
 async def db_agent_config(db_session: AsyncSession) -> AgentConfig:
     """A vertical-client agent config with custom system instructions."""
     db_session.add(
         VerticalClient(
-            client_id="bdsai.vn",
+            client_id=_TEST_CLIENT_ID,
             display_name="BDS AI",
             is_active=True,
         )
     )
     await db_session.flush()
     config = AgentConfig(
-        client_id="bdsai.vn",
-        slug="bdsai-listing-assistant",
-        name="BDS Listing Assistant",
-        display_name="BDS Listing Assistant",
+        client_id=_TEST_CLIENT_ID,
+        slug=_TEST_AGENT_SLUG,
+        name=_TEST_AGENT_NAME,
+        display_name=_TEST_AGENT_NAME,
         system_instructions="You are a BDS listing assistant. Always cite sources.",
         model_name="gpt-4o",
         citations_enabled=False,
@@ -70,7 +76,7 @@ async def db_client_thread(
         workspace_id=db_workspace.id,
         created_by_id=db_user.id,
         visibility=ChatVisibility.PRIVATE,
-        client_id="bdsai.vn",
+        client_id=_TEST_CLIENT_ID,
         agent_id=None,
     )
     db_session.add(thread)
@@ -90,8 +96,8 @@ class TestCreateThread:
             "title": "Tagged Thread",
             "archived": False,
             "workspace_id": db_workspace.id,
-            "client_id": "bdsai.vn",
-            "agent_id": "bdsai-listing-assistant",
+            "client_id": _TEST_CLIENT_ID,
+            "agent_id": _TEST_AGENT_SLUG,
         }
 
         response = await client_as_regular_user.post("/api/v1/threads", json=payload)
@@ -104,7 +110,8 @@ class TestCreateThread:
         db_workspace: Workspace,
     ) -> None:
         """AC-4: a legacy thread create without client_id/agent_id is accepted
-        and leaves both columns NULL."""
+        and leaves both columns NULL.
+        """
         payload = {
             "title": "Legacy Thread",
             "archived": False,
@@ -153,16 +160,15 @@ class TestNewChat:
 
         monkeypatch.setattr(new_chat_routes, "stream_new_chat", _fake_stream)
 
-        platform_metadata = {"source": "bdsai", "listing_id": 42}
         response = await client_as_regular_user.post(
             "/api/v1/new_chat",
             json={
                 "chat_id": db_client_thread.id,
                 "user_query": "List nearby properties",
                 "workspace_id": db_workspace.id,
-                "agent_id": "bdsai-listing-assistant",
-                "client_id": "bdsai.vn",
-                "platform_metadata": platform_metadata,
+                "agent_id": _TEST_AGENT_SLUG,
+                "client_id": _TEST_CLIENT_ID,
+                "platform_metadata": _TEST_PLATFORM_METADATA,
             },
         )
         assert response.status_code == 200, response.text
@@ -179,9 +185,9 @@ class TestNewChat:
         assert "platform_metadata" in kwargs, (
             "platform_metadata must be explicitly passed to stream_new_chat"
         )
-        assert kwargs.get("client_id") == "bdsai.vn"
-        assert kwargs.get("agent_id") == "bdsai-listing-assistant"
-        assert kwargs.get("platform_metadata") == platform_metadata
+        assert kwargs.get("client_id") == _TEST_CLIENT_ID
+        assert kwargs.get("agent_id") == _TEST_AGENT_SLUG
+        assert kwargs.get("platform_metadata") == _TEST_PLATFORM_METADATA
 
         agent_config_override = kwargs.get("agent_config_override")
         assert agent_config_override is not None
@@ -206,7 +212,8 @@ class TestNewChat:
     ) -> None:
         """AC-4: POST /new_chat without agent_id/client_id falls back to the
         thread row values and uses the default Nowing agent when no agent_id
-        is supplied."""
+        is supplied.
+        """
         calls: list[tuple[tuple, dict]] = []
 
         async def _fake_stream(
@@ -262,7 +269,7 @@ class TestNewChat:
                 "chat_id": db_client_thread.id,
                 "user_query": "Hello",
                 "workspace_id": db_workspace.id,
-                "client_id": "bdsai.vn",
+                "client_id": _TEST_CLIENT_ID,
                 "agent_id": "unknown-agent",
             },
         )
