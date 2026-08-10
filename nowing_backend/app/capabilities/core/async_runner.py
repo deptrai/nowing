@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.billing import charge_capability
 from app.capabilities.core.events import run_event_bus
@@ -196,6 +197,11 @@ async def _finalize_async(
         if finalized and status == "success":
             raw = run_id[len("run_") :] if run_id.startswith("run_") else run_id
             parsed_id = _uuid.UUID(raw)
+            # AC-18.8: re-set the run-id token; finalize_run committed and
+            # cleared the transaction-scoped GUCs.
+            await set_request_tenant_context(
+                session, workspace_id=0, run_id=str(parsed_id)
+            )
             result = await session.execute(
                 select(Run).where(Run.id == parsed_id)
             )
@@ -228,7 +234,12 @@ async def _notify_terminal(run_id: str, status: str) -> None:
         from app.notifications.service.facade import NotificationService
 
         async with async_session_maker() as notify_session:
-            run = await notify_session.get(Run, _uuid.UUID(run_id))
+            # AC-18.8: set the run-id token for the RLS-protected Run read.
+            bare_run_id = run_id[len("run_") :] if run_id.startswith("run_") else run_id
+            await set_request_tenant_context(
+                notify_session, workspace_id=0, run_id=bare_run_id
+            )
+            run = await notify_session.get(Run, _uuid.UUID(bare_run_id))
             if run is None or run.capability != "chainlens.research":
                 return
 

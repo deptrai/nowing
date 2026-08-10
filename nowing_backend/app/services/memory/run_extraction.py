@@ -33,6 +33,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import Memory, MemorySourceType, NewChatThread, Run, Workspace
 from app.observability.metrics import (
@@ -247,7 +248,19 @@ class RunMemoryExtractionService:
         embedding or persistence failure so the Celery caller can retry — and,
         for the persistence case, so nothing partial survives (AC-5).
         """
+        # AC-18.8: use the run-id token to read the row, then set its
+        # workspace/client GUCs for the extraction writes.
+        await set_request_tenant_context(
+            self.session, workspace_id=0, run_id=str(run_id)
+        )
         run = await self.session.get(Run, run_id)
+        if run is not None:
+            await set_request_tenant_context(
+                self.session,
+                workspace_id=run.workspace_id,
+                client_id=run.client_id,
+                run_id=str(run.id),
+            )
         if run is None:
             logger.warning("Run %s not found; skipping memory extraction", run_id)
             return []

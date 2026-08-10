@@ -27,6 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
+from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.chainlens.research.schemas import ResearchOutput, Source
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.access.rate_limit import enforce_capability_rate_limit
@@ -344,6 +345,10 @@ def _parse_run_uuid(run_id: str) -> uuid.UUID:
 async def _load_run(
     session: AsyncSession, workspace_id: int, parsed_id: uuid.UUID
 ) -> Run:
+    # AC-18.8: set workspace/run GUCs before the RLS-protected Run lookup.
+    await set_request_tenant_context(
+        session, workspace_id=workspace_id, run_id=str(parsed_id)
+    )
     row = (
         await session.execute(
             select(Run).where(Run.id == parsed_id, Run.workspace_id == workspace_id)
@@ -369,6 +374,8 @@ def _register_run_history(router: APIRouter) -> None:
         run_status: str | None = Query(default=None, alias="status"),
     ) -> list[RunSummary]:
         await check_workspace_access(session, auth, workspace_id)
+        # AC-18.8: set workspace GUC so the RLS-protected run list succeeds.
+        await set_request_tenant_context(session, workspace_id=workspace_id)
         stmt = select(Run).where(Run.workspace_id == workspace_id)
         if capability:
             stmt = stmt.where(Run.capability == capability)
@@ -418,6 +425,12 @@ def _register_run_history(router: APIRouter) -> None:
                 # a sync run, or a run owned by another worker), snapshot it and
                 # close. Otherwise wait for the live event stream.
                 async with async_session_maker() as snap_session:
+                    # AC-18.8: set tenant GUCs for the snapshot Run read.
+                    await set_request_tenant_context(
+                        snap_session,
+                        workspace_id=workspace_id,
+                        run_id=str(parsed_id),
+                    )
                     row = (
                         await snap_session.execute(
                             select(Run).where(

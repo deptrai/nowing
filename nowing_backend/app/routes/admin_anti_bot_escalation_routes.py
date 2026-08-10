@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
+from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.store import get_capability
 from app.db import (
@@ -211,6 +212,12 @@ async def retry_anti_bot_escalation(
     retry_run_id: str | None = None
     message = "Retry requested; run will be re-enqueued."
 
+    # AC-18.8: set tenant context so the RLS-protected Run read succeeds.
+    await set_request_tenant_context(
+        session,
+        workspace_id=escalation.workspace_id,
+        run_id=str(escalation.run_id),
+    )
     run = await session.get(Run, escalation.run_id)
     if run is None:
         message = "Retry requested but original run not found."

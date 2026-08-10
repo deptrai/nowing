@@ -27,8 +27,9 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.celery_app import celery_app
 from app.observability.metrics import (
     record_run_memory_failed,
@@ -45,6 +46,31 @@ from app.tasks.celery_tasks import run_async_celery_task
 logger = logging.getLogger(__name__)
 
 
+async def _ensure_run_tenant_context(session, run_id) -> bool:
+    """Set workspace/client GUCs from the run row before an UPDATE.
+
+    Returns ``True`` if the run exists and the GUCs were set.
+    """
+    from app.db import Run
+
+    await set_request_tenant_context(
+        session, workspace_id=0, run_id=str(run_id)
+    )
+    result = await session.execute(
+        select(Run.workspace_id, Run.client_id).where(Run.id == run_id)
+    )
+    row = result.one_or_none()
+    if row is None:
+        return False
+    await set_request_tenant_context(
+        session,
+        workspace_id=row.workspace_id,
+        client_id=row.client_id,
+        run_id=str(run_id),
+    )
+    return True
+
+
 async def _claim_run(session, run_id) -> bool:
     """CAS ``NULL -> pending`` for ``run_id``; ``True`` if this worker won.
 
@@ -55,6 +81,8 @@ async def _claim_run(session, run_id) -> bool:
     block on the row lock until the LLM call finished, instead of returning at
     once.
     """
+    if not await _ensure_run_tenant_context(session, run_id):
+        return False
     from app.db import Run
 
     result = await session.execute(
@@ -72,6 +100,8 @@ async def _claim_run(session, run_id) -> bool:
 
 async def _release_claim(session, run_id) -> None:
     """Return a ``pending`` claim to ``NULL`` so an autoretry can re-claim it."""
+    if not await _ensure_run_tenant_context(session, run_id):
+        return
     from app.db import Run
 
     await session.execute(
@@ -86,6 +116,8 @@ async def _mark_failed(session, run_id) -> None:
     """Terminal ``failed`` marker: the retry budget is exhausted."""
     from datetime import UTC, datetime
 
+    if not await _ensure_run_tenant_context(session, run_id):
+        return
     from app.db import Run
 
     await session.execute(

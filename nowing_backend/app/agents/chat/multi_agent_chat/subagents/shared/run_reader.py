@@ -24,6 +24,7 @@ from uuid import UUID
 from langchain_core.tools import BaseTool, StructuredTool
 from sqlalchemy import select
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.capabilities.core.runs import RUN_OUTPUT_CHAR_CAP
 from app.db import Run, ToolOutputSpill, shielded_async_session
 
@@ -66,7 +67,13 @@ async def _load_body(ref: str, workspace_id: int) -> tuple[str, str] | str:
         )
     kind, ref_id = parsed
     async with shielded_async_session() as session:
+        # AC-18.8: set workspace/run GUCs before the RLS-protected Run lookup.
         if kind == "run":
+            await set_request_tenant_context(
+                session,
+                workspace_id=workspace_id,
+                run_id=str(ref_id),
+            )
             row = (
                 await session.execute(
                     select(Run.output_text).where(

@@ -16,6 +16,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.config import config
 from app.db import (
     Document,
@@ -246,6 +247,9 @@ class WorkspaceLimitService:
 
     @staticmethod
     async def count_runs(session: AsyncSession, workspace_id: int, hours: int) -> int:
+        # AC-18.8: set the workspace GUC so the RLS-protected run count
+        # returns rows for this workspace.
+        await set_request_tenant_context(session, workspace_id=workspace_id)
         since = datetime.now(UTC) - timedelta(hours=hours)
         result = await session.execute(
             select(func.count(Run.id)).where(

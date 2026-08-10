@@ -267,6 +267,11 @@ async def fail_stale_running_runs(session: AsyncSession) -> int:
     such rows would stay ``running`` forever.
     """
     try:
+        # AC-18.8: this is an internal startup sweep, not a tenant request.
+        # Activate the internal-service bypass for the RLS-protected update.
+        await session.execute(
+            text("SELECT set_config('app.internal_service', 'true', true)")
+        )
         result = await session.execute(
             text(
                 "UPDATE runs SET status = 'error', "
