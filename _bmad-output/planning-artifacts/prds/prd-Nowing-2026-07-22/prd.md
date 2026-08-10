@@ -1,22 +1,26 @@
 ---
 title: Nowing
 created: 2026-07-21
-updated: 2026-08-08
+updated: 2026-08-10
 ---
 
 # PRD: Nowing
-*Nowing (now + knowing) — knowledge intelligence platform nơi raw data từ mọi nguồn biến thành kiến thức thực sự. Mọi nguồn. Một sự thật. Nhớ mãi.*
+*Nowing (now + knowing) — lead intelligence + knowledge intelligence platform nơi raw data từ mọi nguồn biến thành kiến thức thực sự, và kiến thức biến thành pipeline. Mọi nguồn. Một sự thật. Nhớ mãi.*
 
-> **⛵ DIRECTION (CURRENT) 2026-07-25 — Nowing = SẢN PHẨM, ChainLens = ENGINE.** Đường đi đã chốt: **OSS/PLG-led**. Nowing là sản phẩm và bề mặt phân phối (sở hữu account, billing, credit, community); **ChainLens là engine deep-open-web-research phía sau**, gọi qua `POST /api/v1/search` (SSE, Bearer service key) — không bán riêng. Lý do người dùng trả tiền = **memory + provenance + self-host/privacy + integration depth**, KHÔNG phải "rẻ hơn". **Đóng vĩnh viễn (xem §2.4):** bán research data kiểu Exa (không có owned index); đua parity consumer kiểu Perplexity. **Nguồn chân lý:** `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md` (✅ ADOPTED, D1–D4) + đối ứng ChainLens `sprint-change-proposal-2026-07-25-v4-nowing-microservice.md` + `ADR-CHAINLENS-AS-NOWING-MICROSERVICE.md`.
+> **⛵ DIRECTION (CURRENT) 2026-07-25 — Nowing = SẢN PHẨM, ChainLens = ENGINE.** Đường đi đã chốt: **OSS/PLG-led**. Nowing là sản phẩm và bề mặt phân phối (sở hữu account, billing, credit, community); **ChainLens là engine deep-open-web-research phía sau**, gọi qua `POST /api/v1/search` (SSE, Bearer service key) — không bán riêng. Lý do người dùng trả tiền = **memory + provenance + self-host/privacy + integration depth + lead intelligence**, KHÔNG phải "rẻ hơn". **Đóng vĩnh viễn (xem §2.4):** bán raw research corpus kiểu Exa (không có owned index); đua parity consumer kiểu Perplexity. **Ngoại lệ NG-1 (xem §2.4):** bán structured lead-enrichment deliverables cho B2B sales tại Vietnam qua FR-65/FR-69, với điều kiện legal basis, consent, và audit. **Nguồn chân lý:** `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md` (✅ ADOPTED, D1–D4) + đối ứng ChainLens `sprint-change-proposal-2026-07-25-v4-nowing-microservice.md` + `ADR-CHAINLENS-AS-NOWING-MICROSERVICE.md`.
 >
-> **🔒 FREEZE POSITIONING tới 2026-08-24 (D4):** §1 Vision · §2 Target User · §2.4 Non-Goals · §6 MVP Scope — đổi phải qua SCP mới. **Không freeze** engine/integration work (Epic 9, Epic 43 phía ChainLens, Epic 3/4/6/8 đang chạy).
+> **Positioning freeze lifted 2026-08-10** per SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`. Sections §1 Vision, §2 Target User, §2.4 Non-Goals, and §6 MVP Scope have been updated to reflect the lead-intelligence direction. Original freeze (2026-08-24) superseded by the SCP.
 
 ## 0. Document Purpose
 Tài liệu này dành cho PM, stakeholders và downstream workflow (architecture, epics, implementation) để thống nhất scope, yêu cầu và các khoảng trống (gap) của Nowing. Cấu trúc: glossary, user journeys, functional/non-functional requirements được đánh số toàn cục, các giả định được gắn tag `[ASSUMPTION]` và lập chỉ mục ở §9. Tài liệu được cập nhật theo trạng thái code thực tế tại `/Users/luisphan/Documents/nowing`.
 
+> **[NOTE FOR PM] — Market Research + Lead Intelligence Positioning added 2026-08-10.** Research report: `_bmad-output/planning-artifacts/research/market-ai-lead-generation-market-research-2026-08-10.md`. New positioning: "lead intelligence + knowledge intelligence platform". New beachhead: Sales team / SDR (primary beachhead for the Epic 21 lead-gen pilot). New FRs: FR-63..FR-69 (Epic 21: Lead Gen Intelligence). New pricing: outcome-based option (pay per meeting / lead). Vietnam market prioritized (white space — no AI-native lead gen player). Key insight: Nowing is unintentionally building an AI Lead Gen platform; memory + provenance + real-time research + compliance-by-design = 3 competitive advantages global players (Apollo, ZoomInfo, Clay) don't have.
+>
+> **Governance:** Approved via SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md` (ADOPTED 2026-08-10). Positioning freeze and NG-1 exception updated accordingly.
+>
 > **[NOTE FOR PM] — HR/Recruitment Vertical (Vietnam) added 2026-08-05.** Pilot scope: 8-week pilot for `vn_jobs` research capability covering VietnamWorks (public API), TopCV (HTML + anti-bot), and ITviec (HTML). Source: `prfaq-hr-vertical-vietnam-2026-08-05.md`, `feature-brief-hr-vertical-vietnam-2026-08-05.md`, `pilot-plan-c-memo-2026-08-05.md`, and technical spikes. New FRs: FR-43..FR-47. New NFR: NFR-11. New OQ: OQ-8. New SM: SM-12.
 >
-> **[NOTE FOR PM] — Domain Expansion Research + New Epics added 2026-08-06.** Research report: `research/domain-expansion-research-report-2026-08-06.md`. New FRs: FR-48..FR-55 (Epics 13-20). Product definition updated: `product-definition-nowing-2026-08-06.md`. Key insight: Nowing = Now + Knowing = Knowledge intelligence platform. Three transformations: Data → Entity → Knowledge → Memory. Data strategy: 3 layers (built-in scrapers 30-50 max, OAuth connectors unlimited, ChainLens unlimited).
+> **[NOTE FOR PM] — Domain Expansion Research + New Epics added 2026-08-06.** Research report: `research/domain-expansion-research-report-2026-08-06.md`. New FRs: FR-49..FR-55 (Epics 14-20; Epic 13 `[REMOVED]` — moved to chainlens-research). Product definition updated: `product-definition-nowing-2026-08-06.md`. Key insight: Nowing = Now + Knowing = Knowledge intelligence platform. Three transformations: Data → Entity → Knowledge → Memory. Data strategy: 3 layers (built-in scrapers 30-50 max, OAuth connectors unlimited, ChainLens unlimited).
 >
 > **[NOTE FOR PM] — Ecosystem Alignment 2026-08-08 (SCP `sprint-change-proposal-2026-08-08-remove-duplicate-index.md`, ✅ ADOPTED).** `chainlens-research` owns the single canonical index for public web + shared vertical data. Nowing no longer builds `canonical_entities` / multi-domain indexing / vertical search corpus (Epic 13 `[REMOVED]`). Domain scrapers/aggregators (BĐS, jobs, news, finance, company, e-commerce) output `Chunk[]` and feed `chainlens-research` via `POST /v1/ingest/scraper`. FR-48 `[REMOVED]`; FR-46/49/50/51/52 `[RE-SCOPED]`; FR-47 updated to redact before ingest.
 
@@ -26,7 +30,20 @@ Tài liệu này dành cho PM, stakeholders và downstream workflow (architectur
 
 ## 1. Vision
 
-Nowing (now + knowing) là knowledge intelligence platform — nơi raw data từ mọi nguồn biến thành kiến thức thực sự.
+Nowing (now + knowing) là **lead intelligence + knowledge intelligence platform** — nơi raw data từ mọi nguồn biến thành kiến thức thực sự, và kiến thức biến thành pipeline.
+
+### 1.0 Lead Intelligence (mới 2026-08-10)
+
+Trong thị trường AI Lead Generation ($5.88B global, CAGR 8.4-32.9%), Nowing chiếm vị trí **độc nhất**: không chỉ tìm lead — mà nhớ lead, hiểu lead, và chăm sóc lead theo thời gian thực.
+
+**Ba competitive advantages:**
+1. **Memory + Provenance** — Memory gắn citations + live web data, khác static DB của Apollo/ZoomInfo
+2. **Real-time web research** — ChainLens deep research, khác batch-refreshed DB
+3. **Compliance-by-design** — Decree 356 (VN) + GDPR ready, competitive moat so với global players
+
+**Target market:** Vietnam trước (white space — không có AI-native lead gen player), sau đó SEA.
+
+### 1.0.1 Knowledge Intelligence (original)
 
 Khác biệt giữa data và kiến thức:
 - **Data** là "căn hộ Thủ Đức 3.5 tỷ trên Batdongsan"
@@ -100,11 +117,16 @@ Hai hệ quả bắt buộc:
 ## 2. Target User
 
 ### 2.1 Jobs To Be Done
-> **[Beachhead — ưu tiên]** Primary v1 = **AI agent builder** và **team làm việc cùng nghiên cứu** (nhóm cảm nhận giá trị memory nhanh nhất, và là bề mặt MCP/cloud doanh thu). **Researcher/analyst** và **self-hoster** là secondary — hưởng lợi nhưng không phải mũi nhọn định vị. Thứ tự rollout: agent-builder (OSS/MCP) → team (cloud).
+> **[Beachhead — core product]** Primary v1 = **AI agent builder** và **team làm việc cùng nghiên cứu** (nhóm cảm nhận giá trị memory nhanh nhất, và là bề mặt MCP/cloud doanh thu). **Researcher/analyst** và **self-hoster** là secondary.
+>
+> **[Beachhead — Epic 21 Lead Intelligence]** For the Vietnam lead-gen pilot, **Sales team / SDR** (B2B SaaS, IT outsourcing, agency, local business) is the primary beachhead. The core OSS/PLG rollout order remains agent-builder (OSS/MCP) → team (cloud); the lead-intelligence pilot runs in parallel on cloud.
+>
+> **Sales team / SDR** cần tìm leads mới, hiểu intent signals (funding, hiring, tech stack), và chăm sóc leads theo thời gian thực. **Họ cần lead scoring + intent detection + automated outreach** — thay vì manual research trên Apollo/ZoomInfo.
 
 - **Nhà nghiên cứu / analyst** cần thu thập ý kiến thực từ Reddit, YouTube, TikTok, Google Maps, Amazon… mà không tự viết scraper, và lưu lại kết quả để research tiếp giữa các phiên. **Họ cần entity dedup** — 3 nguồn cùng một entity → 1 golden record thay vì 3 kết quả trùng lặp.
 - **AI agent builder** cần một surface typed để agent gọi thay vì tự xử lý web; đặc biệt cần persistent memory qua MCP để agent không mất context giữa các session.
 - **Team làm việc cùng nghiên cứu** cần workspace chia sẻ, chat real-time, deliverables, phân quyền, và bộ nhớ dự án chung (project memory) thay vì mỗi người một chat riêng.
+- **Sales team / SDR** (mới 2026-08-10) cần tìm leads mới, hiểu intent signals (funding, hiring, tech stack), và chăm sóc leads theo thời gian thực. **Họ cần lead scoring + intent detection + automated outreach** — thay vì manual research trên Apollo/ZoomInfo. Beachhead segment: B2B SaaS, IT outsourcing, agency, local business (HVAC, plumbing, dịch vụ).
 - **Self-hoster** muốn nền tảng mở, chạy trên infra riêng với nhiều LLM/embedding model, và giữ dữ liệu research nội bộ thay vì gửi qua cloud của AI vendor.
 
 ### 2.2 Non-Users (v1)
@@ -139,16 +161,20 @@ Hai hệ quả bắt buộc:
   - Chọn một thread, agent tự động recall các facts/quyết định/citations liên quan.
   - Team tiếp tục hỏi, agent trả lời dựa trên memory + internal docs + live data.
 
-### 2.4 Non-Goals (đóng vĩnh viễn — 🔒 frozen tới 2026-08-24)
+### 2.4 Non-Goals (đóng vĩnh viễn — positioning freeze lifted 2026-08-10 per SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`; NG-1 updated with exception)
 
 Các hướng dưới đây **đã được soi bằng evidence và loại**. Ghi tường minh để không phải tranh luận lại; muốn mở lại phải qua SCP mới.
 
-#### NG-1: Không bán research data (kiểu Exa / data-as-a-product)
+#### NG-1: Không bán raw research corpus / data-as-a-product (NG-1 core)
 Nowing **không** bán raw web index hay research corpus như một sản phẩm dữ liệu.
 - **Lý do cấu trúc:** mô hình của Exa *là* owned web index. Nowing/ChainLens là **orchestrator mua từ provider** (Brave, Jina, Exa, Tavily, Perplexity Sonar, SearXNG). Bán lại thứ đang mua, ở giá đã commoditize (~$7/1k), đấu specialist có vốn (Tavily→Nebius $400M, 2/2026) = arbitrage âm biên.
 - **Evidence:** ChainLens `epic-26-gate-tracking.md` — owned index **DEFERRED, 0/7 gates passing**; Gate 3 & 6 *"infrastructure doesn't exist"*. `chainlens-direction-decision-brief-2026-07-24.md` §11 — corpus moat không đáng xây (Stack Overflow pay-per-crawl 2/2026 với rủi ro retroactive; a16z *"Empty Promise of Data Moats"*).
 - **Ràng buộc kiến trúc:** `AD-DEFER-7` — owned web index / crawl-at-scale OUT of scope Nowing.
-- **Biến thể duy nhất còn mở (chưa phê duyệt):** bán **research output/deliverable đã cấu trúc** cho một vertical cụ thể — không phải raw index. Vướng **OQ-3** (ToS/bản quyền/PII), phải chốt trước GA cloud.
+- **Biến thể đã phê duyệt (SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`):** bán **research output/deliverable đã cấu trúc** cho vertical B2B sales / lead intelligence tại Vietnam thông qua FR-65 (Enriched Contact Data) và FR-69 (Outcome-Based Pricing), với điều kiện:
+  - Không bán raw web index hay research corpus (NG-1 core vẫn hiệu lực).
+  - Chỉ bán verified contacts khi có legal basis, consent mechanism, và audit log.
+  - PII pipeline cho lead data phân tách với HR/job data (FR-47/AD-25).
+  - ToS/legal review cho Zalo OA, LinkedIn, và enrichment providers phải pass trước GA cloud.
 
 #### NG-2: Không đua parity consumer kiểu Perplexity
 Nowing **không** định vị là "Perplexity nhưng của tôi", và không lấy "rẻ hơn Perplexity/Exa" làm lý do trả tiền.
@@ -189,13 +215,13 @@ Nowing **không** xây `canonical_entities` table, `pgvector` index, `to_tsvecto
 
 ## 4. Features
 
-> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8,**43..47,49..52,58..62** (Connectors / Ecosystem §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)** · **FR-56,57 (Vertical Client Platform)**. *(ID toàn cục, không tuần tự theo section.)*
+> **Chỉ mục FR (theo số):** FR-1..4, FR-10 (Auth/RBAC §4.1) · FR-6,7,8,**43..47,49..52,58..62** (Connectors / Ecosystem §4.2) · FR-9,11,12,13,32,33,34,36,5 (Knowledge Base & Memory §4.3) · FR-14,15,16,17,42 (Chat §4.4) · FR-21,22,23 (Deliverables §4.5) · FR-18,19,20,35 (Automations §4.6) · FR-25,26,27,28,29 (Clients §4.7) · FR-30,31,**41,69** (Billing §4.8) · **FR-24,37,38,39 (Deep-Research Engine & Provenance §4.9)** · **FR-56,57 (Vertical Client Platform)** · **FR-63..68 (Lead Gen Intelligence §4.10)**. *(ID toàn cục, không tuần tự theo section.)*
 >
 > **⚠️ Thay đổi 2026-07-26:** **FR-41 mới** — Admin UI cho Global LLM Model Configuration (§4.8). Global model config hiện chỉ sửa được qua YAML/env + restart; chưa có UI admin.
 >
 > **⚠️ Thay đổi 2026-07-25:** **FR-24 đã rời §4.2 Connectors sang §4.9 Deep-Research Engine Integration.** ChainLens không còn được coi là một connector/scraper ngang hàng Reddit — nó là dependency kiến trúc hạng nhất (`AD-15`). FR-37 và FR-38 là mới.
 >
-> **⚠️ Thay đổi 2026-08-04:** **FR-42 mới** — Chat Response Benchmark (§4.4) · **NFR-10 mới** — Chat Response Regression Gate (§5). Nguồn chân lý tiến độ cho epics là `sprint-status.yaml`; `epics.md` đang lỗi thời ở status Epic 4 (`in-progress`, không phải `done`) và Epic 8 (`done`, không còn open 8.12/8.13).
+> **⚠️ Thay đổi 2026-08-04:** **FR-42 mới** — Chat Response Benchmark (§4.4) · **NFR-10 mới** — Chat Response Regression Gate (§5). Nguồn chân lý tiến độ cho epics là `sprint-status.yaml`; Epic 4 = `done` (bao gồm 4.8a–4.8g chat benchmark & regression gate), Epic 8 = `done` (8.12 workspace limits + 8.13 PostHog analytics đã hoàn thành).
 
 ### 4.1 Identity, Auth & Workspace RBAC
 **Description:** Người dùng đăng ký/đăng nhập qua email/password hoặc Google OAuth (`fastapi-users`). Mỗi workspace có Owner và các system roles; quyền kiểm tra qua `WorkspaceRole.permissions` và `has_permission`. Hỗ trợ custom roles do Owner/admin role tạo.
@@ -438,7 +464,7 @@ So that I can integrate Nowing chat into my application.
 - Given a `client_id` in the request, when the chat processes, then all data access is filtered by `client_id` (NFR-MULTI-1).
 - Given rate limit is exceeded, when the endpoint is called, then 429 is returned with `Retry-After` header.
 
-**Status:** `[PROPOSED]` — Epic 18 (Vertical Client Platform). Correct-course 2026-08-07: split from Epic 13.
+**Status:** `[PROPOSED]` — Epic 18 (Vertical Client Platform).
 
 #### FR-57: Agent Registry
 As a platform administrator,
@@ -450,7 +476,7 @@ So that different vertical clients can have specialized chat agents.
 - Given an `agent_id` is provided in a chat request, when processed, then the system loads the corresponding `AgentConfig` or returns 404 if not found.
 - Given a chat request with `agent_id`, when the chat flow starts, then `AgentConfig.system_instructions` is prepended to the default system prompt.
 
-**Status:** `[PROPOSED]` — Epic 18 (Vertical Client Platform). Correct-course 2026-08-07: split from Epic 13.
+**Status:** `[PROPOSED]` — Epic 18 (Vertical Client Platform).
 
 #### FR-58: Scraper Feed to chainlens-research (Ecosystem Integration)
 As a platform engineer,
@@ -515,6 +541,78 @@ So that ingestion, search, and citation are consistent across the ecosystem.
 - Given missing required fields, when validated, then the request is rejected with a typed error.
 
 **Status:** `[PROPOSED]` — governed by `AD-34`.
+
+### 4.10 Lead Gen Intelligence (mới 2026-08-10)
+
+**Description:** Nowing cung cấp lead intelligence capabilities cho sales team / SDR — bao gồm intent signal detection, lead scoring, enriched contact data, và automated outreach. Đây là vertical expansion dựa trên market research (AI Lead Generation market $5.88B, Vietnam white space).
+
+**Epic:** Epic 21 — Lead Gen Intelligence
+
+**Functional Requirements:**
+
+#### FR-63: Intent Signal Detection `[PROPOSED]`
+As a salesperson, I want to detect buying signals from companies (funding, hiring, tech stack changes, executive moves), so that I can reach out at the right moment.
+
+**Acceptance Criteria:**
+- Given a company in workspace, when signals are monitored, then funding events, job postings, tech stack changes, and executive moves are detected and surfaced.
+- Given a signal is detected, when displayed, then it includes signal type, confidence score, source URL, and timestamp.
+- Given multiple signals for the same company, when aggregated, then a composite lead score is calculated.
+- Signals are sourced from: Crunchbase, LinkedIn, company websites, job boards, news.
+
+**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+
+#### FR-64: Lead Scoring & Prioritization `[PROPOSED]`
+As a sales manager, I want leads scored and ranked by conversion likelihood, so that my team focuses on the highest-value prospects.
+
+**Acceptance Criteria:**
+- Given a set of leads, when scored, then each lead receives a composite score based on fit (firmographics, technographics) and intent (signal strength, recency).
+- Given a lead score, when displayed, then it shows score breakdown (fit vs intent), trend (improving/declining), and comparison to similar converted leads.
+- Given ICP criteria, when updated, then lead scores are recalculated for all leads in workspace.
+
+**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+
+#### FR-65: Enriched Contact Data `[PROPOSED]`
+As an SDR, I want verified contact data (email, phone) for my target accounts, so that I can reach out to the right decision-makers.
+
+**Acceptance Criteria:**
+- Given a company, when contact enrichment is requested, then decision-maker names, titles, emails, and phone numbers are returned.
+- Given contact data, when verified, then email is validated via waterfall (5+ providers) and phone via real-time validation (9+ providers).
+- Given enrichment results, when displayed, then data source, verification status, and confidence are shown.
+- Zero-bounce validation for emails; real-time validation for phones.
+
+**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+
+#### FR-66: Outbound Prospecting Automation `[PROPOSED]`
+As a sales team, I want to automate personalized outreach across channels, so that I can scale outbound without sacrificing quality.
+
+**Acceptance Criteria:**
+- Given a lead list, when outreach is triggered, then personalized messages are generated using lead context + ICP + intent signals.
+- Given outreach sequences, when configured, then multi-channel sequences (email, LinkedIn, Zalo for VN) are supported.
+- Given a sequence step, when executed, then the system personalizes content, tracks delivery, and logs responses.
+- Given response detection, when a lead replies, then the sequence pauses and alerts the assigned rep.
+
+**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+
+#### FR-67: CRM Integration & Write-Back `[PROPOSED]`
+As a sales operations manager, I want lead intelligence data synced with our CRM, so that reps work from a single source of truth.
+
+**Acceptance Criteria:**
+- Given a CRM connection (Salesforce, HubSpot, Pipedrive), when lead data changes, then it syncs bidirectionally, phased per AD-40: Phase 1 read-only dedup, Phase 2 write-back, Phase 3 bidirectional sync.
+- Given a lead score or signal, when detected in Phase 2/3, then it writes to the corresponding CRM record.
+- Given CRM data, when imported, then it enriches Nowing's lead profiles.
+
+**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
+
+#### FR-68: Zalo Integration (Vietnam Market) `[PROPOSED]`
+As a Vietnamese salesperson, I want to communicate with leads via Zalo, because 81% of Vietnamese professionals use Zalo as their primary messaging platform.
+
+**Acceptance Criteria:**
+- Given a Zalo OA connection, when configured, then outreach sequences can include Zalo messages.
+- Given a lead with Zalo contact, when outreach is triggered, then personalized Zalo messages are sent.
+- Given a Zalo reply, when received, then it's logged in the lead's activity timeline.
+- Comply with Zalo's business messaging policies and Decree 356.
+
+**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence).
 
 > **FR-24 đã chuyển sang §4.9.** ChainLens Research **không phải** một connector/scraper. Nó là Deep-Research Engine — dependency kiến trúc hạng nhất, governed by `AD-15` (không còn `AD-3`). Xem **§4.9**.
 
@@ -889,6 +987,25 @@ Platform admin (không phải workspace Owner/Editor/Viewer — một vai trò m
 **Status:** `[DONE]` — story `8-11` implemented; admin global model config UI and API are complete.
 
 _Trace: AD-8, AD-9 (mở rộng — không đổi 3 system role cấp workspace), `model_connections_routes.py`, `app/config/__init__.py` (`load_global_llm_configs`, `refresh_global_model_catalog`), `app/services/global_model_catalog.py`._
+
+#### FR-69: Outcome-Based Pricing Option `[PROPOSED]` (mới 2026-08-10)
+As a sales team, I want to pay per qualified meeting booked (not just per seat), so that cost is tied to actual pipeline value delivered.
+
+**Acceptance Criteria:**
+- Given a pricing plan, when selected, then outcome-based option is available: pay per qualified meeting booked OR pay per lead enriched.
+- Given a meeting is booked via Nowing outreach, when confirmed, then the cost is attributed to the workspace.
+- Given a lead is enriched, when data is delivered, then per-lead pricing is applied.
+- Given usage, when tracked, then the dashboard shows cost-per-meeting and cost-per-lead metrics.
+- Outcome pricing works alongside existing seat-based pricing (users can choose).
+
+**Pricing Tiers (proposed):**
+| Model | Entry | Growth | Enterprise |
+|-------|-------|--------|------------|
+| **Seat-based** | $29/mo (5 users) | $99/mo (unlimited) | Custom |
+| **Outcome-based** | $50/meeting booked | $30/meeting (volume) | Custom |
+| **Lead enrichment** | $0.50/lead | $0.20/lead (volume) | Custom |
+
+**Status:** `[PROPOSED]` — Epic 21 (Lead Gen Intelligence). Depends on FR-66 (outbound automation).
 
 ### 4.9 Deep-Research Engine Integration (ChainLens)
 
@@ -1265,8 +1382,9 @@ Mọi deploy production phải qua gate chat regression trước khi mở rộng
 ### 6.2 Out of Scope for MVP
 
 **Non-goals vĩnh viễn (không phải "hoãn" — xem §2.4):**
-- **[NON-GOAL NG-1]** Bán research data / data-as-a-product kiểu Exa. Không có owned index (ChainLens Epic 26: **0/7 gates**), và Nowing/ChainLens *mua* từ Exa/Tavily/Brave. Ràng buộc kiến trúc: `AD-DEFER-7`.
-- **[NON-GOAL NG-1]** Owned web index / crawl-at-scale trong Nowing.
+- **[NON-GOAL NG-1 core]** Bán raw research corpus / data-as-a-product kiểu Exa. Không có owned index (ChainLens Epic 26: **0/7 gates**), và Nowing/ChainLens *mua* từ Exa/Tavily/Brave. Ràng buộc kiến trúc: `AD-DEFER-7`.
+- **[NG-1 exception (SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`)]** Bán structured lead-enrichment deliverables cho B2B sales tại Vietnam qua FR-65/FR-69, với điều kiện legal basis, consent mechanism, audit log, và PII pipeline tách biệt với HR/job data.
+- **[NON-GOAL NG-1b]** Owned web index / crawl-at-scale trong Nowing.
 - **[NON-GOAL NG-2]** Định vị parity consumer kiểu Perplexity, và "rẻ hơn Perplexity/Exa" làm lý do trả tiền. *(UI chat có citations vẫn là tính năng — FR-13/14. NG-2 loại cách **định vị và bán**, không loại tính năng.)*
 - **[NON-GOAL NG-3]** ChainLens thành sản phẩm độc lập (end-user account/billing/onboarding/distribution riêng).
 
@@ -1274,6 +1392,8 @@ Mọi deploy production phải qua gate chat regression trước khi mở rộng
 - **[STATE B]** Deep research như **chat turn đồng bộ**. Mở khoá khi ChainLens `43-1`→`43-2`+`43-5` land và story `9.3` xác nhận p95 vượt ngưỡng. MVP xây State A (async deliverable) làm sàn. Xem NFR-9.
 - **[PHASE 2]** Deep research cho **self-host** qua endpoint có metering (self-host → Nowing Cloud API → engine). Mở khi có số self-host thật + `9.2` cho số cost. MVP là Phase 1 (cloud-only). Xem §1.1 + §4.9 FR-38.
 - **[LOẠI]** Binary/Docker closed-source của engine cho self-host — đã loại, không mở lại mà không có SCP mới (§4.9 FR-38).
+- **[SCRAPER BUDGET GATE]** Mọi built-in scraper mới (bao gồm TopCV / các nguồn lead gen) phải qua scraper budget gate (cap 30–50 built-in scrapers) và anti-bot/ToS/cost POC trước khi đưa vào P0. Ưu tiên dùng API/feed/waterfall thay vì built-in scraper cho Epic 21.
+- **[TOPCV ANTI-BOT POC]** `topcv.scrape` P0 bị chặn cho đến khi anti-bot POC đạt ≥90% success với cost ≤$0.05/query equivalent; nếu không, drop TopCV khỏi P0 (xem `technical-spike-topcv-itviec-2026-08-05.md`).
 
 **✅ Đã ra khỏi danh sách out-of-scope (cải chính 2026-07-25 — readiness check C-A/C-B/U-4):**
 - ~~**[GAP]** Direct Notion/Slack/Linear/Jira write-back actions~~ → **DONE**, registry có 4 action riêng (FR-18)

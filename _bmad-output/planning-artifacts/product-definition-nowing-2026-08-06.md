@@ -16,7 +16,7 @@ status: final
 
 ## What is Nowing?
 
-**Nowing** (now + knowing) là knowledge intelligence platform — nơi raw data từ mọi nguồn biến thành kiến thức thực sự.
+**Nowing** (now + knowing) là **lead intelligence + knowledge intelligence platform** — nơi raw data từ mọi nguồn biến thành kiến thức thực sự, và kiến thức biến thành pipeline.
 
 Khác biệt giữa data và kiến thức:
 
@@ -85,6 +85,7 @@ Không phải "tìm kiếm" (search). Không phải "lưu trữ" (storage). Là 
 | **Product Researcher** | So sánh giá sản phẩm trên Lazada/Shopee, track competitor |
 | **Nhà nghiên cứu** | Tổng hợp dữ liệu từ news + finance + company data, không duplicate |
 | **AI Agent Builder** | Gọi MCP tools để research thay vì tự scrape web |
+| **Sales team / SDR** (Epic 21) | Tìm leads, detect intent signals, enrich contacts, và automate outbound cho B2B sales tại Vietnam |
 
 ---
 
@@ -106,11 +107,14 @@ Không phải "tìm kiếm" (search). Không phải "lưu trữ" (storage). Là 
 
 | Layer | What | Count | Maintain |
 |-------|------|-------|----------|
-| **Built-in Scrapers** | High-value structured sources | 30-50 max | Nowing team |
+| **Built-in Scrapers** | High-value structured sources (Reddit, YouTube, TikTok, Maps, Amazon, web crawl, plus 2–3 Vietnam job boards in HR pilot) | 30-50 max | Nowing team |
 | **User Connectors** | OAuth personal data | Unlimited | 0 (official APIs) |
 | **Generic Web Crawl** | ChainLens arbitrary URLs | Unlimited | 0 (ChainLens) |
+| **Lead-Gen Signal Sources** | Crunchbase, LinkedIn, company sites, job boards, news feeds, email/phone waterfall APIs (Cleanlist/BetterContact) | Unlimited via APIs/bought feeds; 0 new built-in scrapers unless approved by scraper budget gate | Nowing team for configuration only |
 
-**Nowing does NOT build scrapers for millions of websites.** Expansion happens through OAuth connectors and ChainLens, not more built-in scrapers.
+**Nowing does NOT build scrapers for millions of websites.** Expansion happens through OAuth connectors, ChainLens, and external data APIs/bought feeds, not more built-in scrapers.
+
+**Scraper budget gate for Epic 21:** Any new lead-gen source that would add a built-in scraper must pass the scraper budget gate (current cap 30–50; each new built-in scraper consumes 1 slot; preferred pattern is API/feed/waterfall).
 
 ---
 

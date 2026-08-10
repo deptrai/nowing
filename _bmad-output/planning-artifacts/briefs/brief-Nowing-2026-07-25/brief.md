@@ -2,7 +2,7 @@
 title: "Product Brief: Nowing"
 status: final
 created: 2026-07-25
-updated: 2026-08-06 (added §13 Marketing Strategy)
+updated: 2026-08-10 (updated for Epic 21 lead intelligence per SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`)
 editorial: "bmad-editorial-review-structure + bmad-editorial-review-prose đã áp dụng 2026-07-25"
 purpose: "Input cho README + landing + marketing strategy (đối tượng đọc: developer + marketing)"
 audience: developer + marketing
@@ -30,7 +30,7 @@ sources:
 
 > **Mục đích tài liệu này:** nguồn để viết README + landing. Nó **không** phải PRD. PRD trả lời *"xây gì"*; brief này trả lời *"kể gì, và không được kể gì"*.
 >
-> **Nền tảng quyết định:** `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md` (✅ ADOPTED, D1–D4). Positioning đang **frozen tới 2026-08-24**.
+> **Nền tảng quyết định:** `sprint-change-proposal-2026-07-25-chainlens-engine-boundary.md` (✅ ADOPTED, D1–D4) + `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md` (✅ ADOPTED, lifts positioning freeze and adds Epic 21 lead intelligence).
 
 > ## 🛑 Hai điều kiện trước khi công bố bất cứ gì
 >
@@ -43,31 +43,31 @@ sources:
 
 ## 1. Một câu  `✅ CHỐT 2026-08-06`
 
-> **Nowing (now + knowing) — knowledge intelligence platform nơi raw data từ mọi nguồn biến thành kiến thức thực sự. Mọi nguồn. Một sự thật. Nhớ mãi.**
+> **Nowing (now + knowing) — lead intelligence + knowledge intelligence platform nơi raw data từ mọi nguồn biến thành kiến thức thực sự, và kiến thức biến thành pipeline. Mọi nguồn. Một sự thật. Nhớ mãi.**
 
 **Bản tiếng Anh (dùng thật ở README/landing — ngôn ngữ duy nhất của README/landing, xem §12.2):**
 
-> **Nowing (now + knowing) — where data from every source becomes knowledge. All sources. One truth. Forever.**
+> **Nowing (now + knowing) — where data from every source becomes leads and knowledge. All sources. One truth. Forever.**
 
 **Vì sao câu này:** Nowing không chỉ lưu trữ documents — nó dedup data từ nhiều nguồn thành canonical entities, track changes theo thời gian, và nhớ mọi thứ bạn đã research. Khác biệt cốt lõi: **entity-centric thay vì document-centric**.
 
 **Subtitle (khi cần nói scope, không nói wedge):**
-> *Knowledge intelligence platform — entity dedup, provenance, and compounding memory for researchers and AI agents.*
+> *Lead intelligence + knowledge intelligence platform — entity dedup, provenance, compounding memory, and signal-based outreach for researchers, AI agents, and sales teams.*
 
 **Dòng trả lời "khác gì X" — dùng khi bị hỏi, không gọi tên ai:**
-> *Others store documents. Nowing deduplicates data from every source into canonical entities, tracks changes over time, and remembers everything you've researched.*
+> *Others store documents. Nowing deduplicates data from every source into canonical entities, tracks changes over time, remembers everything you've researched, and turns that knowledge into actionable leads with verified contacts and multi-channel outreach.*
 
 ---
 
 ## 2. Executive Summary
 
-AI agent hôm nay mất trí nhớ mỗi lần mở session mới. Cách chống đỡ phổ biến — nhồi `CLAUDE.md`, đọc lại toàn bộ repo, copy-paste ngữ cảnh — tốn token, không chia sẻ được cho đồng đội, và không có nguồn để kiểm lại. Nowing biến nghiên cứu thành **tài sản bền**: mọi fact, quyết định và kết quả research được lưu lâu dài, gắn nguồn, và gọi lại được qua REST hoặc MCP từ bất kỳ agent nào — Claude Code, Cursor, OpenCode.
+AI agent hôm nay mất trí nhớ mỗi lần mở session mới. Cách chống đỡ phổ biến — nhồi `CLAUDE.md`, đọc lại toàn bộ repo, copy-paste ngữ cảnh — tốn token, không chia sẻ được cho đồng đội, và không có nguồn để kiểm lại. Nowing biến nghiên cứu thành **tài sản bền**: mọi fact, quyết định và kết quả research được lưu lâu dài, gắn nguồn, và gọi lại được qua REST hoặc MCP từ bất kỳ agent nào — Claude Code, Cursor, OpenCode. Với sales team, kiến thức đó biến thành **pipeline**: real-time signals, verified contacts, và multi-channel outreach trên nền provenance-aware memory.
 
 Điểm khác biệt nằm ở **memory nhớ cái gì**. Các memory layer hiện có nhớ hội thoại, tài liệu và SaaS nội bộ. Nowing nhớ thêm **dữ liệu web sống mà nó tự thu thập**: Reddit, YouTube, TikTok, Instagram, Google Search/Maps, Amazon, web crawl — cộng deep multi-step open-web research. Nghiên cứu về một đối thủ làm hôm nay không biến mất khi bạn đóng tab; nó thành thứ agent của bạn tra được tháng sau, kèm link nguồn.
 
 **Vì sao là lúc này.** Memory đang trở thành tiện ích miễn phí của mọi platform lớn — OpenAI, Anthropic, Google, AWS, Oracle, Databricks đều đã ship memory managed trong nửa đầu 2026. Nghĩa là *bán memory như một API* không còn là mô hình kinh doanh. Nhưng không platform nào trong số đó đưa **dữ liệu web sống** vào memory, và không cái nào cho **self-host**. Đồng thời doanh thu đã kiểm chứng của category này nằm ở tầng **workspace nghiên cứu**, không ở tầng memory API (bằng chứng ở §11). Nowing đứng đúng chỗ đó — một workspace mở, tự host được, với bộ nhớ có nguồn sống.
 
-**Mô hình.** Self-host miễn phí hoàn toàn. Cloud trả theo mức dùng. Phân phối bằng open-source + MCP registry, không bằng đội sales.
+**Mô hình.** Self-host miễn phí hoàn toàn. Cloud trả theo mức dùng. Phân phối core bằng open-source + MCP registry; lead-intelligence pilot (Epic 21) dùng targeted outbound + Zalo/Facebook B2B groups + LinkedIn cho sales/SDR tại Vietnam.
 
 ---
 
@@ -78,6 +78,8 @@ AI agent hôm nay mất trí nhớ mỗi lần mở session mới. Cách chống
 **Với team nghiên cứu cùng nhau.** Mỗi người một chat riêng. Không ai thấy được đồng đội đã tìm ra gì, đã loại phương án nào, vì sao loại. Hai người research trùng nhau và không ai biết. Khi một fact hoá ra sai, không có cách nào sửa nó ở nơi nó được dùng.
 
 **Với ai cần dữ liệu thật.** Muốn biết người dùng thật nói gì về một sản phẩm thì phải đọc Reddit, comment YouTube, review Amazon và Google Maps. Tự viết scraper cho từng nguồn, tự chống bot, tự bảo trì khi DOM đổi. Xong rồi kết quả nằm trong một file JSON không ai tra lại được.
+
+**Với sales team / SDR ở Vietnam.** Cần tìm buyer đúng lúc, nhưng dữ liệu lead tĩnh (Apollo/ZoomInfo) thiếu real-time signals, không có nguồn gốc rõ ràng, và không tích hợp Zalo — kênh 81% professionals dùng. Manual prospecting qua LinkedIn/Zalo/email tốn thời gian, khó đo ROI, và dễ vi phạm ToS/Decree 356.
 
 **Với ai không được gửi dữ liệu ra ngoài.** Nghiên cứu nội bộ, tài liệu khách hàng, phân tích đối thủ — nhiều team đơn giản là không được phép đẩy những thứ đó qua cloud của một AI vendor.
 

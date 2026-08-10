@@ -14,11 +14,11 @@ status: draft
 
 ## Executive Summary
 
-Nowing's 3-year journey: **Prove the entity-centric model in Vietnam → Scale across SEA → Lead in Asia with AI-native knowledge intelligence.**
+Nowing's 3-year journey: **Prove the lead intelligence + knowledge intelligence model in Vietnam → Scale across SEA → Lead in Asia with AI-native knowledge intelligence.**
 
 | Year | Focus | Key Result |
 |------|-------|-----------|
-| **Y1** | Prove (Vietnam) | Entity-centric model works, 7 domains |
+| **Y1** | Prove (Vietnam) | Entity-centric model works, lead-intelligence pilot live, 7+ domains |
 | **Y2** | Scale (SEA) | 4 countries, domain depth, platform maturity |
 | **Y3** | Lead (Asia) | AI agents, knowledge graph, industry verticals |
 
@@ -26,11 +26,11 @@ Nowing's 3-year journey: **Prove the entity-centric model in Vietnam → Scale a
 
 ## Year 1: PROVE (Vietnam)
 
-### Phase 1: Infrastructure (Epic 13)
+### Phase 1: Infrastructure (chainlens-research + shared conventions)
 
 | What | Why | Success Criteria |
 |------|-----|------------------|
-| Canonical Entity system | Transform from document storage to knowledge platform | Dedup F1 ≥ 0.92, Search recall ≥ 0.85 |
+| Canonical entity indexing (chainlens-research) | Transform from document storage to knowledge platform | Dedup F1 ≥ 0.92, Search recall ≥ 0.85 |
 | AD-27 Convention | fingerprint/merge/search_text pattern for all domains | All domains follow convention |
 | RLS at DB level | Workspace isolation | 0 cross-tenant incidents |
 
@@ -52,10 +52,12 @@ Nowing's 3-year journey: **Prove the entity-centric model in Vietnam → Scale a
 
 ### Year 1 End State
 
-- 10+ active domains (including existing 18 scrapers)
+- 10+ active domains (including existing 18 scrapers + lead-gen signal sources)
+- Epic 21 lead-intelligence pilot launched in Vietnam (sales/SDR beachhead, Zalo/LinkedIn outreach, outcome-based pricing)
 - 500+ workspaces using entity search
 - Entity-centric model proven
-- "From data to knowing" vision demonstrated
+- "From data to leads" vision demonstrated
+- Legal/ToS + PII/consent gates for lead gen closed
 
 ---
 
@@ -69,7 +71,7 @@ Nowing's 3-year journey: **Prove the entity-centric model in Vietnam → Scale a
 | **Indonesia** | P1 | Kaskus, Tokopedia, IDX | 6-8 weeks |
 | **Philippines** | P2 | Reddit PH, Shopee PH, PSE | 4-6 weeks |
 
-**Key insight:** Epic 13's convention makes geographic expansion mechanical — new country = new scraper plugins, same infrastructure.
+**Key insight:** chainlens-research + AD-27 convention makes geographic expansion mechanical — new country = new scraper plugins, same infrastructure. Lead-intelligence expansion reuses the same signal-detection and enrichment pipeline.
 
 ### Phase 5: Domain Depth (Y2 Q2-Q3)
 
@@ -121,6 +123,7 @@ Nowing's 3-year journey: **Prove the entity-centric model in Vietnam → Scale a
 | **Finance** | Stock screening, portfolio tracking, earnings analysis | Investment professionals |
 | **Legal** | Case law, regulatory tracking, compliance | Legal researchers |
 | **Healthcare** | Clinical trials, drug data, practitioner directories | Medical researchers |
+| **Sales / Lead Intelligence** | Signal detection, contact enrichment, multi-channel outreach, CRM sync | Sales teams and SDRs |
 
 ### Year 3 End State
 
@@ -135,7 +138,7 @@ Nowing's 3-year journey: **Prove the entity-centric model in Vietnam → Scale a
 
 | Phase | Metric | Target |
 |-------|--------|--------|
-| Y1 End | Active domains | 10+ (including existing 18 scrapers) |
+| Y1 End | Active domains | 10+ (including existing 18 scrapers + lead-gen signal sources) |
 | Y1 End | Workspaces using entity search | 500+ |
 | Y2 End | Countries | 4 |
 | Y2 End | Active connectors | 100+ |
@@ -147,10 +150,12 @@ Nowing's 3-year journey: **Prove the entity-centric model in Vietnam → Scale a
 ## Strategic Principles
 
 1. **Entity-first, not document-centric** — Every feature builds on canonical entities
-2. **Infrastructure before scale** — Epic 13 enables everything
-3. **Quick wins before hard targets** — Prove model with News/Finance/Company first
-4. **Convention over configuration** — AD-27 pattern makes new domains mechanical
-5. **AI-native from day one** — MCP tools for agents, not just human UI
+2. **Lead intelligence + knowledge intelligence** — Lead gen is a first-class vertical, not a bolt-on
+3. **Infrastructure before scale** — chainlens-research + Epic 21 data pipelines enable everything
+4. **Quick wins before hard targets** — Prove model with News/Finance/Company + Vietnam lead-gen pilot first
+5. **Convention over configuration** — AD-27 pattern makes new domains mechanical
+6. **AI-native from day one** — MCP tools for agents and sales workflows, not just human UI
+7. **Compliance-by-design** — Separate PII/consent pipelines for research and lead data
 
 ---
 

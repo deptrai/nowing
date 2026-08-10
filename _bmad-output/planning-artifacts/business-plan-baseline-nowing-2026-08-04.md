@@ -15,30 +15,35 @@ source_artifacts:
 
 > Tài liệu này là baseline để chạy `bmad-market-research` và `bmad-cis-innovation-strategy`. Không phải kế hoạch cuối cùng.
 
-## 1. Vision & Positioning (đã chốt, freeze tới 2026-08-24)
+## 1. Vision & Positioning (updated 2026-08-10 per SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`)
 
 **One-liner:**
-> *Nowing is open-source research memory for AI agents — it remembers what it went and found, not just what you told it.*
+> *Nowing is an open-source lead intelligence + knowledge intelligence platform — it turns raw data from every source into actionable knowledge with transparent provenance.*
 
 **Subtitle:**
-> *Self-hosted research workspace with long-term memory for AI agents and teams.*
+> *Self-hosted research memory and lead intelligence workspace for AI agents, teams, and sales teams.*
 
 **Differentiator thật:**
-- Memory gắn **provenance (citations)** và gồm **live web data** (Reddit, YouTube, TikTok, Instagram, Google Search/Maps, Amazon, web crawl).
+- **Lead intelligence + knowledge intelligence** — real-time signal detection, lead scoring, contact enrichment, multi-channel outreach, and CRM sync built on top of provenance-aware memory.
+- Memory gắn **provenance (citations)** và gồm **live web data** (Reddit, YouTube, TikTok, Instagram, Google Search/Maps, Amazon, web crawl, job boards, company websites, funding news).
 - Khác với memory layer hiện có chỉ nhớ hội thoại/tài liệu (Mem0, Zep, Cognee, Supermemory).
-- Khác với Perplexity/consumer research app (KHÔNG đua parity consumer, KHÔNG bán data).
+- Khác với Apollo/ZoomInfo/Clay: memory + provenance + real-time web research + Vietnam-native channels (Zalo) + compliance-by-design.
+- Khác với Perplexity/consumer research app (KHÔNG đua parity consumer, KHÔNG bán raw research data).
 
 **Lý do trả tiền:**
 1. **Memory có provenance** — memory gắn citations, bao gồm live web data.
-2. **Self-host / privacy** — data-sensitive team giữ dữ liệu research trên infra riêng.
-3. **Integration depth** — connectors → citations → memory → deliverables → multi-client trong một vòng khép kín.
+2. **Lead intelligence** — signal detection, lead scoring, verified contact enrichment, and multi-channel outreach (email/LinkedIn/Zalo) with transparent provenance.
+3. **Outcome-based pricing** — pay per qualified meeting / lead enriched, aligned to pipeline value (FR-69).
+4. **Self-host / privacy** — data-sensitive team giữ dữ liệu research trên infra riêng.
+5. **Integration depth** — connectors → citations → memory → deliverables → CRM → multi-client trong một vòng khép kín.
 
-**Không phải lý do trả tiền:** rẻ hơn, bán research data, Perplexity-parity.
+**Không phải lý do trả tiền:** rẻ hơn, bán raw research corpus, Perplexity-parity.
 
 ## 2. Target User & Beachhead
 
-**Primary v1:** AI agent builder + team làm việc cùng nghiên cứu.
-**Secondary:** researcher/analyst, self-hoster.
+**Primary v1 (core product):** AI agent builder + team làm việc cùng nghiên cứu.
+**Primary v1 (Epic 21 lead-gen pilot):** Sales team / SDR tại B2B SaaS, IT outsourcing, agency, và local business ở Vietnam.
+**Secondary:** researcher/analyst, self-hoster, HR analyst.
 
 **Jobs to be Done:**
 - Researcher/analyst: thu thập ý kiến thực từ Reddit/YouTube/TikTok/Maps/Amazon, lưu kết quả để research tiếp giữa các phiên.
@@ -55,7 +60,7 @@ source_artifacts:
 ## 3. Business Model
 
 **Self-host:** miễn phí, Apache-2.0 core.
-**Cloud:** pay-as-you-go theo token LLM + embedding + lưu trữ + deep-research call.
+**Cloud:** pay-as-you-go theo token LLM + embedding + lưu trữ + deep-research call + **outcome-based lead-gen credits** (`$0.50/lead enriched`, `$50/meeting booked` per FR-69).
 **Distribution:** OSS + MCP registry + self-host, KHÔNG push-GTM.
 
 **License ba tầng:**
@@ -84,8 +89,9 @@ source_artifacts:
 
 ## 5. GTM Motion
 
-**Beachhead:** agent-builder (OSS/MCP) → team (cloud).
-**Channels:** GitHub, Hacker News, MCP registry, community OSS.
+**Beachhead (core):** agent-builder (OSS/MCP) → team (cloud).
+**Beachhead (lead-gen pilot):** Sales team / SDR Vietnam → expand to SEA.
+**Channels:** GitHub, Hacker News, MCP registry, community OSS, Zalo/Facebook B2B groups, LinkedIn, sales-led outreach (pilot).
 **Language:** README/landing chỉ tiếng Anh. Không VN-localization.
 **Messaging:**
 - ✅ Nói: "Memory nhớ cả dữ liệu web sống nó tự thu thập", "Self-host miễn phí", "Apache-2.0 core + BSL 1.1 crawler engine", "Research workspace có bộ nhớ".
@@ -127,10 +133,11 @@ source_artifacts:
 2. **Story 9.1a:** research degradation — điều kiện tiên quyết trước khi public repo.
 3. **Story 9.2:** cost metering thật — gate cho pricing.
 4. **Story 8.7:** auto-extract spend cap — gate trước khi bật auto-extract trên prod.
+5. **Epic 21:** legal/ToS review cho Zalo OA, LinkedIn, Crunchbase, Cleanlist/BetterContact, và PII/consent pipeline trước khi GA cloud.
 
 ## 8. Non-Goals (đóng vĩnh viễn)
 
-- NG-1: không bán research data kiểu Exa (không có owned index).
+- NG-1: không bán raw research data / research corpus kiểu Exa (không có owned index). **Exception approved (SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`):** bán structured lead-enrichment deliverables cho vertical B2B sales tại Vietnam qua FR-65/FR-69, với điều kiện legal basis, consent mechanism, audit log, và PII pipeline tách biệt với HR/job data.
 - NG-2: không đua parity consumer kiểu Perplexity, không lấy "rẻ hơn" làm lý do trả tiền.
 - NG-3: ChainLens không thành sản phẩm độc lập.
 
@@ -139,12 +146,14 @@ source_artifacts:
 **Memory layer:** Mem0 ($24M), Zep, Cognee ($7.5M), Supermemory ($2.6M).
 **Research workspace:** Onyx (MIT, 40+ connector, 29K★, 1,000+ enterprise) — **không có memory**.
 **Consumer research:** Perplexity (Comet FREE), OpenWebUI (136K★), LibreChat (36K★), Perplexica/Vane.
+**Lead intelligence:** Apollo.io, ZoomInfo, Clay, Cognism, Lusha, Origami (Vietnam). Nowing differentiates with provenance-aware memory, real-time web research, and Vietnam-native channels (Zalo).
 
-**Moat thật:** head start + integration depth + OSS/self-host. KHÔNG phải công nghệ độc quyền.
+**Moat thật:** head start + integration depth + OSS/self-host + lead intelligence with compliance-by-design. KHÔNG phải công nghệ độc quyền.
 
 ## 10. Open Items
 
 - OQ-3: retention + right-to-delete cho memory, tách self-host vs cloud.
+- Epic 21: legal/ToS/PII/consent cho lead enrichment; vendor contracts (Cleanlist/BetterContact); Zalo OA business verification.
 - Legal: ToS/bản quyền/PII khi lưu dài hạn dữ liệu scrape.
 - SM targets còn placeholder — cần chốt số.
 - 9.5 metered self-host endpoint deferred.

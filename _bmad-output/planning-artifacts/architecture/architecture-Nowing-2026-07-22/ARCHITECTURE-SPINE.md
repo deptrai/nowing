@@ -1010,6 +1010,156 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
 
 ---
 
+### AD-36 — Waterfall enrichment: buy via API, không build 14+ provider integrations `[ADOPTED 2026-08-10 — validation required before dev]`
+
+- **Binds:** FR-65 (Enriched Contact Data), Epic 21
+- **Prevents:** Build và maintain 14+ email/phone provider integrations trong `app/proprietary/`
+- **Rule:**
+  - Enrichment requests gọi external waterfall API (Cleanlist/BetterContact) qua Celery async tasks
+  - Pay-per-result pricing: chỉ trả khi verified data returned
+  - Cache verification results (TTL: 30 days) trong Redis để tránh re-query
+  - Fallback: nếu primary API down, dùng basic verification (MX check + pattern matching)
+- **Data flow:**
+  ```
+  Lead discovered → Celery task → Waterfall API → Verified? → Cache + Store in Memory
+                                                       ↓ No
+                                                  Next provider → ... → Exhausted → Flag low confidence
+  ```
+- **New models:**
+  - `EnrichmentRequest` (id, lead_id, status, provider_results, cost_micros)
+  - `VerifiedContact` (id, lead_id, email, phone, verification_status, confidence, source_provider)
+- **TokenUsage.usage_type mở rộng:** thêm `contact_enrichment`
+
+---
+
+### AD-37 — Signal detection framework: hybrid build + buy data feeds `[ADOPTED 2026-08-10 — validation required before dev]`
+
+- **Binds:** FR-63 (Intent Signal Detection), Epic 21
+- **Prevents:** Build 8+ independent scheduler/notification paths (giống AD-33 Anti-Pattern)
+- **Rule:**
+  - **Signal Engine là một AlertRule template type** (governed by AD-33), không phải service mới
+  - **Signal types:**
+    - `funding` — Crunchbase/TechCrunch feeds (buy) + web scraping (build)
+    - `hiring` — Job board monitoring (build on existing scrapers)
+    - `tech_stack` — Website change detection (build)
+    - `executive_move` — LinkedIn monitoring (build on existing scrapers)
+    - `news` — News API (buy) + RSS feeds (build)
+  - **Signal storage:** `SignalEvent` (id, workspace_id, company_name, signal_type, source_url, confidence, detected_at, processed)
+  - **Signal → Lead Score:** High-confidence signals boost lead scoring (governed by AD-38)
+  - **Notification:** Reuse AD-33 notification dispatch (in-app + Telegram)
+  - **Monitoring frequency:** Daily scan + real-time webhooks for funding events
+- **New models:**
+  - `SignalEvent` (id, workspace_id, company_name, signal_type, source_url, confidence, detected_at, processed)
+  - `SignalSubscription` (id, workspace_id, signal_types, notification_channels)
+- **Ghi chú:** Reuse AD-33 Alert Engine infrastructure — không build scheduler riêng
+
+---
+
+### AD-38 — Lead scoring engine: composite fit + intent scoring `[ADOPTED 2026-08-10 — validation required before dev]`
+
+- **Binds:** FR-64 (Lead Scoring & Prioritization), Epic 21
+- **Prevents:** Rule-based scoring không capture non-obvious signals
+- **Rule:**
+  - **Composite score = Fit (50%) + Intent (50%)**
+  - **Fit score:** Firmographics (company size, industry, location, tech stack) + ICP match
+  - **Intent score:** Signal strength (funding, hiring, tech stack changes) + recency
+  - **Scoring method:**
+    - Weighted scoring system (configurable per workspace)
+    - RAG-based similarity matching against converted leads
+    - AI reasoning + rule fallback
+  - **Output:** Hot / Warm / Cold classification + numeric score (0-100)
+  - **Storage:** `LeadScore` (id, workspace_id, company_name, score, fit_score, intent_score, factors_json, computed_at)
+- **Integration with Memory:** Lead scores stored as `Memory` rows with type `semantic` + tags `lead_score`
+- **TokenUsage.usage_type mở rộng:** thêm `lead_scoring`
+
+---
+
+### AD-39 — Sequencer: multi-channel outreach (email, LinkedIn, Zalo) `[ADOPTED 2026-08-10 — validation required before dev]`
+
+- **Binds:** FR-66 (Outbound Prospecting Automation), Epic 21
+- **Prevents:** Build separate outreach tools per channel
+- **Rule:**
+  - **Sequence builder:** Multi-step sequences (trigger → wait → action → condition → action)
+  - **Channels:**
+    - Email (SMTP/SES) — reuse existing email infrastructure
+    - LinkedIn (via API or automation)
+    - Zalo (Zalo OA API) — Vietnam market
+  - **Personalization:** AI-generated messages using lead context + ICP + intent signals
+  - **Tracking:** Delivery, open, reply, meeting booked → feedback loop to lead scoring
+  - **Compliance:** Unsubscribe handling, rate limiting, Decree 356 compliance
+- **New models:**
+  - `Sequence` (id, workspace_id, name, trigger_type, status)
+  - `SequenceStep` (id, sequence_id, step_order, channel, template, wait_duration, condition)
+  - `SequenceEnrollment` (id, sequence_id, lead_id, status, current_step, enrolled_at)
+  - `SequenceEvent` (id, enrollment_id, event_type, channel, metadata, created_at)
+- **Ghi chú:** Start với email-only, sau đó add LinkedIn + Zalo
+
+---
+
+### AD-40 — CRM integration: bidirectional sync, read-first pattern `[ADOPTED 2026-08-10 — validation required before dev]`
+
+- **Binds:** FR-67 (CRM Integration & Write-Back), Epic 21
+- **Prevents:** CRM sync failures gây data inconsistency
+- **Rule:**
+  - **Phase 1: Read-only dedup** (giống Origami)
+    - Match incoming leads against existing CRM contacts by email, domain
+    - Flag duplicates before they reach CRM
+    - Generate CRM context document for agent understanding
+  - **Phase 2: Write-back**
+    - Push verified leads to CRM (Salesforce, HubSpot)
+    - Map Nowing fields to CRM properties (configurable)
+    - Support lead assignment rules
+  - **Phase 3: Bidirectional sync**
+    - CRM updates → Nowing (contact changes, deal stages)
+    - Nowing updates → CRM (lead scores, signals, enrichment)
+  - **Conflict resolution:** Last-write-wins with audit log
+- **Integration pattern:** OAuth 2.0 + webhooks for real-time sync
+- **New models:**
+  - `CrmConnection` (id, workspace_id, provider, credentials_encrypted, sync_config, last_sync_at)
+  - `CrmSyncLog` (id, connection_id, direction, entity_type, entity_id, status, error_message, synced_at)
+- **Ghi chú:** Reuse existing OAuth connector infrastructure (AD-3, FR-7)
+
+---
+
+### AD-41 — Zalo integration: Vietnam market via Zalo OA `[ADOPTED 2026-08-10 — validation required before dev]`
+
+- **Binds:** FR-68 (Zalo Integration), Epic 21
+- **Prevents:** Miss Vietnam market opportunity (81% professionals use Zalo)
+- **Rule:**
+  - **Zalo OA (Official Account) là primary channel** cho Vietnam market
+  - **Capabilities:**
+    - Send personalized Zalo messages to leads
+    - Receive replies → log in lead activity timeline
+    - Zalo OA authentication (OAuth flow)
+  - **Compliance:** Zalo business messaging policies + Decree 356
+  - **Fallback:** Nếu lead không có Zalo → dùng email hoặc LinkedIn
+- **New models:**
+  - `ZaloConnection` (id, workspace_id, oa_id, access_token_encrypted, refresh_token_encrypted)
+  - `ZaloMessage` (id, lead_id, direction, content, status, sent_at, delivered_at, read_at)
+- **Ghi chú:** Zalo OA API cần business verification (team action required)
+
+---
+
+### AD-42 — Outcome-based pricing: pay per meeting/lead support `[ADOPTED 2026-08-10 — validation required before dev]`
+
+- **Binds:** FR-69 (Outcome-Based Pricing Option), Epic 21
+- **Prevents:** Pricing model không align với customer value
+- **Rule:**
+  - **Dual pricing model:**
+    - Seat-based (existing): $29/mo (Starter), $99/mo (Pro), Custom (Enterprise)
+    - Outcome-based (new): $50/meeting booked, $0.50/lead enriched
+  - **Tracking:**
+    - Meeting booked = calendar event created from Nowing outreach
+    - Lead enriched = verified contact data delivered
+  - **Billing:** Reuse existing credit wallet (AD-8) + Stripe integration
+  - **Attribution:** First-touch attribution (sequence that started the journey)
+- **New models:**
+  - `OutcomeEvent` (id, workspace_id, event_type, lead_id, sequence_id, attribution, cost_micros, created_at)
+  - `PricingPlan` (id, workspace_id, plan_type, seat_price, outcome_rates_json, billing_period)
+- **Ghi chú:** Đây là pricing strategy, không phải technical architecture — nhưng cần infrastructure support
+
+---
+
 ## Implementation Readiness
 
 **Status:** 🟡 Ready to start cross-project implementation **after** the following are closed.

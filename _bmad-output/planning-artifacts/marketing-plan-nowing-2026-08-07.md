@@ -29,9 +29,11 @@ status: final
 
 ## 1. Executive Summary
 
-**Vision:** Nowing = "From data to knowing" — the knowledge intelligence platform where raw data from every source becomes knowledge.
+**Vision:** Nowing = "From data to leads" — the lead intelligence + knowledge intelligence platform where raw data from every source becomes leads and actionable knowledge.
 
-**Beachhead:** AI Agent Builders (MCP-native, self-host, 50+ tools) → expand to BDS professionals → market researchers → enterprise teams.
+**Beachhead (core):** AI Agent Builders (MCP-native, self-host, 50+ tools) → expand to BDS professionals → market researchers → enterprise teams.
+
+**Beachhead (lead-gen pilot):** Sales team / SDR (Vietnam B2B SaaS, IT outsourcing, agency, local business) via Zalo/LinkedIn/B2B communities → expand to SEA.
 
 **Goal:** 500 active workspaces + 5,000 GitHub stars in 6 months.
 
@@ -78,7 +80,7 @@ status: final
 ## 3. Positioning & Messaging
 
 ### One-Sentence Promise
-> **Nowing (now + knowing) — where data from every source becomes knowledge. All sources. One truth. Forever.**
+> **Nowing (now + knowing) — where data from every source becomes leads and knowledge. All sources. One truth. Forever.**
 
 ### Tagline Options
 | Option | Tagline |
@@ -93,15 +95,17 @@ status: final
 |---------|----------|-----------|
 | Agent Builder | "Give your AI agent a memory that lasts" | "Stop rebuilding context every session" |
 | BDS Sales | "Track every listing. Never miss a deal." | "3 sources → 1 golden record" |
+| Sales / SDR (Epic 21) | "Know your next buyer before they know you" | "Real-time signals, verified contacts, and Zalo/LinkedIn outreach in one loop" |
 | Researcher | "Research without duplicates" | "4-7 hours/week wasted on manual cross-referencing" |
 | Enterprise | "Your team's research memory, self-hosted" | "People leave. Knowledge shouldn't." |
 
 ### Key Messages
-1. **Entity-Centric:** "Others store documents. Nowing deduplicates data from every source into canonical entities."
-2. **Provenance Built-In:** "Every fact links to source URL — verify in one click."
-3. **Temporal Tracking:** "See price changes, hiring trends, news sentiment over time."
-4. **Self-Host / OSS:** "Apache-2.0 core. Your data never leaves your infrastructure."
-5. **MCP-Native:** "50+ tools for AI agents. Works with Claude Code, Cursor, OpenCode."
+1. **Lead Intelligence:** "Find the right buyer at the right moment — real-time signals, verified contacts, and CRM sync."
+2. **Entity-Centric:** "Others store documents. Nowing deduplicates data from every source into canonical entities."
+3. **Provenance Built-In:** "Every fact links to source URL — verify in one click."
+4. **Temporal Tracking:** "See price changes, hiring trends, news sentiment, and buyer intent over time."
+5. **Self-Host / OSS:** "Apache-2.0 core. Your data never leaves your infrastructure."
+6. **MCP-Native:** "50+ tools for AI agents. Works with Claude Code, Cursor, OpenCode."
 
 ### "Khác gì X" (Competitive Response)
 
@@ -127,8 +131,10 @@ status: final
 | **5** | LinkedIn | Researcher + Enterprise | Medium | Medium | Thought leadership, case studies |
 | **6** | Email Outreach | BDS + Researcher + Enterprise | High | High | Personalized research → email → gift link |
 | **7** | Zalo/Facebook Groups | BDS | Medium | Medium | Group participation, value-add posts |
-| **8** | Content/Blog | All | Medium | Medium | SEO-optimized tutorials, comparisons |
-| **9** | Partnerships | Enterprise | High | High | AI agent platforms, research tools |
+| **8** | Zalo/Facebook B2B Groups | Sales / SDR | Medium | High | Value-add posts, signal alerts, pitch decks in local communities |
+| **9** | LinkedIn | Sales / SDR + Researcher + Enterprise | Medium | High | Case studies, signal notifications, SDR outreach templates |
+| **10** | Content/Blog | All | Medium | Medium | SEO-optimized tutorials, comparisons, Vietnam lead-gen playbooks |
+| **11** | Partnerships | Enterprise | High | High | AI agent platforms, research tools, sales/CRM partners |
 
 ### Channel-Specific Tactics
 

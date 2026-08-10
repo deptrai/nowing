@@ -60,6 +60,8 @@ For Nowing, this is the same pattern already observed in real estate: multiple l
 
 This is a **pilot use case for the same product**, not a new product line or pivot. It tests whether the agent-builder / research-team beachhead can expand into HR domain.
 
+> **Boundary (2026-08-10):** HR pilot data is research/job-market data with PII redaction per FR-47/AD-25. It is **not** a source for Epic 21 lead-enrichment contact data. Lead gen uses separate sources and a separate PII/consent policy (SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`).
+
 ---
 
 ## 4. Proposed Solution
@@ -69,8 +71,8 @@ This is a **pilot use case for the same product**, not a new product line or piv
 | Capability | Source | P0/P1/P2 | Notes |
 |---|---|---|---|
 | `vietnamworks.scrape` | VietnamWorks public API | **P0** | No-auth POST API; requires ToS review |
-| `topcv.scrape` | TopCV website | **P0** | Anti-bot, HTML/JSON parsing; anti-bot POC is a hard gate |
-| `itviec.scrape` | ITviec website | **P0** | Strong tech niche; anti-bot POC is a hard gate |
+| `topcv.scrape` | TopCV website | **P0** pending anti-bot POC | Anti-bot, HTML/JSON parsing; POC plan and pass/fail criteria in `technical-spike-topcv-itviec-2026-08-05.md` §2.3; if fail, drop from P0 |
+| `itviec.scrape` | ITviec website | **P0** | HTML, no challenge observed; salary hidden for non-logged-in users — mark low-confidence and fallback to VietnamWorks/TopCV for salary |
 | `vn_jobs.aggregate` | All 3 job scrapers | **P0** | Reuse `vn_bds.aggregate` pattern: normalize, dedupe, confidence, conflict |
 | `pii_detection.redact` | Job description text | **P0** | Regex + NER for phone, email, names; drop or mask PII before memory |
 | `vn_jobs.market_brief` | Derived from aggregate | **P1** | Research deliverable: skill-demand, salary trend, competitor hiring |

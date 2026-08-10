@@ -1,5 +1,7 @@
 ## Functional Requirements Extracted
 
+> **STALE — 2026-08-10:** This extracted list reflects the PRD as of 2026-08-08 and does not include the 7 new lead-intelligence FRs (FR-63..FR-69) added by Epic 21 on 2026-08-10. For the canonical requirement set, see `prds/prd-Nowing-2026-07-22/prd.md` §4.10 and `epics.md` Epic 21.
+
 #### FR-1: User Authentication
 Người dùng có thể đăng ký, đăng nhập, refresh/revoke token, logout-all, và dùng Google OAuth. Desktop có endpoint session riêng.
 

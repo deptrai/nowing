@@ -1,8 +1,8 @@
 # Innovation Strategy: Nowing
 
-**Date:** 2026-08-04
+**Date:** 2026-08-04 (updated 2026-08-10)
 **Strategist:** Luisphan
-**Strategic Focus:** Business model, pricing, and GTM execution for open-source research memory
+**Strategic Focus:** Business model, pricing, and GTM execution for open-source lead intelligence + knowledge intelligence
 
 ---
 
@@ -10,23 +10,24 @@
 
 ### Current Situation
 
-Nowing is an open-source **research memory** platform for AI agents and research teams. Its positioning is anchored in a single sentence: *“Nowing is open-source research memory for AI agents — it remembers what it went and found, not just what you told it.”* (brief §1, lines 43-55). The product differentiates from existing memory layers (Mem0, Zep, Cognee, Supermemory) and research workspaces (Onyx, OpenWebUI, LibreChat, Perplexity) by combining four rarely co-existing capabilities:
+Nowing is an open-source **lead intelligence + knowledge intelligence** platform for AI agents, research teams, and sales teams. Its positioning is anchored in a single sentence: *“Nowing is open-source lead intelligence + knowledge intelligence — it turns data from every source into leads and actionable knowledge.”* The product differentiates from existing memory layers (Mem0, Zep, Cognee, Supermemory), research workspaces (Onyx, OpenWebUI, LibreChat, Perplexity), and lead-gen tools (Apollo, ZoomInfo, Clay) by combining five rarely co-existing capabilities:
 
 1. **Live web / UGC ingestion into long-term memory** — Reddit, YouTube, TikTok, Instagram, Google Search/Maps, Amazon, and generic web crawl.
 2. **Provenance-aware memory** — facts carry citations and source links.
 3. **Self-hostability** — Apache-2.0 core with an optional BSL 1.1 crawler engine, keeping research data inside the user’s infrastructure.
-4. **Integration depth** — connectors → citations → memory → chat → deliverables → multi-client surfaces (web, desktop, extension, Obsidian, MCP) in one closed loop.
+4. **Integration depth** — connectors → citations → memory → chat → deliverables → CRM → multi-client surfaces (web, desktop, extension, Obsidian, MCP) in one closed loop.
+5. **Lead intelligence and signal-based outbound** — real-time signal detection, lead scoring, verified contact enrichment, multi-channel outreach (email, LinkedIn, Zalo), and CRM write-back.
 
 The architecture is a deliberate **three-tier license model**: the `nowing_backend` core is Apache-2.0, the crawler engine in `app/proprietary/**` is Business Source License 1.1 (not OSS but free for self-host production use), and the deep-research engine is closed-source, hosted cloud-only in Phase 1, with a metered Phase 2 endpoint (brief §5.1, lines 180-215; PRD §1.1, lines 39-65).
 
-The beachhead is the **AI agent builder + research team** segment. Distribution is intentionally OSS + MCP registry + self-host, with no push-GTM or sales team. The team is dev-strong and GTM-thin, so the strategy must leverage product-led growth rather than outbound muscle (baseline §5, lines 85-93; PRD §1.1, lines 37-38).
+The **core beachhead** is the **AI agent builder + research team** segment, distributed via OSS + MCP registry + self-host. The **lead-intelligence beachhead** (Epic 21) is **sales teams / SDRs in Vietnam B2B SaaS, IT outsourcing, agencies, and local businesses**, distributed via Zalo/Facebook B2B groups, LinkedIn, and sales-led outreach. The team is dev-strong and GTM-thin, so the core strategy must leverage product-led growth, while the lead-intelligence pilot can use targeted outbound and community-led growth.
 
 ### Strategic Challenge
 
 The challenge is to convert this open-source, engineering-first foundation into a **sustainable cloud revenue model** while:
 
 - Avoiding the red-ocean consumer search trap that Perplexity, OpenWebUI, and others dominate.
-- Not building a costly owned web index or selling raw research data — both are explicit non-goals.
+- Not building a costly owned web index or selling raw research corpus — both are explicit non-goals. Structured lead-enrichment deliverables for B2B sales in Vietnam are an approved exception under SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`, subject to legal basis, consent, and audit.
 - Maintaining the authenticity and trust of the open-source community, especially around the Apache-2.0 / BSL 1.1 boundary.
 - Pricing the deep-research capability using real cost data and a defensible margin model.
 - Passing hard quality gates (recall evaluation, research degradation, cost metering, spend caps) before public launch.
@@ -118,17 +119,20 @@ Nowing operates an **open-core, product-led-growth (PLG)** business model with a
 *(baseline §3, lines 57-71; PRD §1.1, lines 43-49; brief §5.1, lines 180-189).*
 
 **Customer segments:**
-- AI agent builders (primary beachhead).
+- AI agent builders (core primary beachhead).
 - Research/analyst teams.
 - Self-hosters / data-sensitive teams.
+- Sales team / SDR (lead-intelligence primary beachhead for Vietnam pilot).
 
-**Channels:** GitHub, Hacker News, MCP registry, community OSS, word-of-mouth among agent builders.
+**Channels (core):** GitHub, Hacker News, MCP registry, community OSS, word-of-mouth among agent builders.
+**Channels (lead-intelligence pilot):** Zalo/Facebook B2B groups, LinkedIn, sales-led outreach, Vietnam SaaS communities.
 
 **Revenue model (cloud):** Pay-as-you-go credit wallet (`credit_micros_balance`) for:
 - LLM token usage.
 - Embedding token usage.
 - Storage.
 - Deep-research calls.
+- Outcome-based lead-gen credits (`$0.50/lead enriched`, `$50/meeting booked` per FR-69).
 
 Top-ups are purchased via Stripe; auto-reload is supported (PRD §4.8, lines 515-535; baseline §3, lines 57-60).
 
@@ -136,9 +140,10 @@ Top-ups are purchased via Stripe; auto-reload is supported (PRD §4.8, lines 515
 
 The three reasons to pay are well validated:
 
-1. **Memory with provenance** — long-term memory that includes citations and live web data.
-2. **Self-host / privacy** — data-sensitive teams keep research data on their own infrastructure.
-3. **Integration depth** — connectors → citations → memory → deliverables → multi-client in one loop.
+1. **Lead intelligence** — real-time signal detection, verified contact enrichment, multi-channel outreach, and CRM sync with transparent provenance.
+2. **Memory with provenance** — long-term memory that includes citations and live web data.
+3. **Self-host / privacy** — data-sensitive teams keep research data on their own infrastructure.
+4. **Integration depth** — connectors → citations → memory → deliverables → CRM → multi-client in one loop.
 
 These are *not* “cheaper than Perplexity” or “selling research data” — both are explicit non-goals (baseline §1, lines 31-36; brief §2, lines 63-69).
 
@@ -148,6 +153,7 @@ The customer jobs are also clear:
 |---|---|
 | AI agent builder | Persistent memory across sessions so agents don’t lose context; reduce context-window stuffing. |
 | Researcher / analyst | Gather real-world opinions from Reddit/YouTube/Amazon/Maps without writing one-off scrapers; continue research across sessions. |
+| Sales / SDR (Epic 21) | Find the right buyer at the right moment; real-time signals, verified contacts, and multi-channel outreach. |
 | Team | Share a workspace, see what teammates found, avoid duplicate research, correct facts once. |
 | Self-hoster | Run an open platform on own infra with own LLM/embedding model, data never leaves. |
 
@@ -157,9 +163,10 @@ The customer jobs are also clear:
 
 **Revenue streams:**
 1. Cloud credit purchases (Stripe).
-2. Auto-reload of credit wallets.
-3. Future: metered deep-research calls for self-host (Phase 2).
-4. Future: optional team/enterprise subscription tiers (post-MVP).
+2. Outcome-based lead-gen credits (FR-69): `$0.50/lead enriched`, `$50/meeting booked`.
+3. Auto-reload of credit wallets.
+4. Future: metered deep-research calls for self-host (Phase 2).
+5. Future: optional team/enterprise subscription tiers (post-MVP).
 
 **Cost basis (deep-research engine, 2026-08-02):**
 
@@ -186,9 +193,9 @@ The customer jobs are also clear:
 2. **Usage-based revenue only.** No recurring subscription cushion; revenue is volatile and tied to active usage.
 3. **Cost and margin volatility.** Deep-research cost varies by mode and by provider reliability (SearXNG CAPTCHA, rate limits, proxy costs). Pricing must be tolerant of spikes.
 4. **Trust / license messaging risk.** If public messaging overstates “open source,” the HN/Reddit community will react negatively.
-5. **Legal exposure for long-term scrape data.** Reddit/YouTube/Amazon/Maps data retained as memory raises ToS, copyright, and PII questions; retention and right-to-delete are not fully defined (PRD OQ-3, lines 963-966).
+5. **Legal exposure for long-term scrape data and lead enrichment.** Reddit/YouTube/Amazon/Maps data retained as memory raises ToS, copyright, and PII questions; lead-enrichment contact data raises consent and Decree 356 questions. Retention, right-to-delete, and consent models are not fully defined (PRD OQ-3; SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`).
 6. **Recall quality is existential.** If `nowing_recall` returns noise, the entire positioning collapses. This is a ship gate, not a nice-to-have (PRD NFR-8, lines 787-795; brief §11, lines 348-352).
-7. **GTM-thin.** No sales team, no marketing budget. Growth depends on OSS virality, MCP adoption, and product quality.
+7. **GTM-thin.** No full sales/marketing team. Core growth depends on OSS virality, MCP adoption, and product quality; lead-intelligence pilot requires targeted outbound and Zalo/LinkedIn community engagement.
 
 ---
 
@@ -207,7 +214,8 @@ The customer jobs are also clear:
 2. **MCP as a new distribution channel.** Coding agents (Claude Code, Cursor, OpenCode) need persistent memory; Nowing can become the default memory layer via `nowing_mcp`.
 3. **Live web data into memory at low cost** by orchestrating search providers instead of building an owned index. This is hard to copy because the cost is operational, not architectural.
 4. **Async deep research as a deliverable**, not a chat turn. This lowers latency expectations and opens new use cases: scheduled reports, competitor monitoring, research podcasts, automations.
-5. **“Good enough” for agent builders and small research teams** before they need enterprise Glean/Onyx.
+5. **Lead intelligence on top of provenance-aware memory** — signal detection, scoring, enrichment, and outreach for B2B sales, especially in Vietnam where no AI-native lead-gen player exists.
+6. **“Good enough” for agent builders and small research teams** before they need enterprise Glean/Onyx.
 
 ### Unmet Customer Jobs
 
@@ -217,6 +225,7 @@ The customer jobs are also clear:
 | Research team: avoid duplicate research | Each person in their own chat, no shared memory | Workspace with `ResearchThread` and shared memory |
 | Analyst: capture real user opinions | Write one-off scrapers, results in a JSON file | Built-in scrapers + automatic memory extraction |
 | Data-sensitive user: keep data in-house | Cloud AI vendors cannot be used | Self-host Apache-2.0 core + BSL crawler |
+| Sales / SDR: find buyers with intent | Manual lead research on Apollo/ZoomInfo/LinkedIn, low reply rates | Real-time signals + verified contacts + Zalo/LinkedIn sequencer + CRM sync |
 | Researcher: continue a line of inquiry | Search history lost in chat logs | `nowing_continue_research` and research threads |
 
 *(brief §3, lines 75-84; baseline §2, lines 43-48; PRD §2.1, lines 68-75).*
@@ -231,12 +240,13 @@ The customer jobs are also clear:
 
 ### Strategic White Space
 
-The intersection of **open-source core + self-host + BSL crawler + live-web ingestion + provenance + persistent memory + multi-client workspace** is not currently occupied by any single competitor. The closest shapes:
+The intersection of **open-source core + self-host + BSL crawler + live-web ingestion + provenance + persistent memory + multi-client workspace + lead intelligence** is not currently occupied by any single competitor. The closest shapes:
 
 - **Onyx** — MIT, 40+ connectors, citations, 29K★, 1,000+ enterprise — but **no memory** (brief §4, lines 130-144).
 - **Zep / Mem0** — memory, but **no live web/UGC connectors** (brief §4, lines 93-97).
 - **Perplexity** — live web + citations, but **no self-host or OSS**, and consumer-focused.
 - **Supermemory** — generic web crawler, but not the specific UGC connectors or self-host breadth.
+- **Apollo / ZoomInfo / Clay** — lead data and sequencer, but **no provenance-aware memory, no Vietnam-native channels (Zalo), and no real-time web research**.
 
 This whitespace is defensible by **integration depth and operational data-acquisition capability**, not by a single proprietary algorithm (brief §4, lines 145-160).
 
@@ -263,8 +273,9 @@ This whitespace is defensible by **integration depth and operational data-acquis
 | 6 | **Auto-extract + spend-cap guardrails** | H1 — Core | Technology | Ship first-run value safely; prevent cost bleed. |
 | 7 | **Usage & credit dashboard (NFR-7 / FR-31)** | H1 — Core | Technology | Build trust and transparency for pay-as-you-go users. |
 | 8 | **Research deliverables as premium outputs** | H2 — Adjacent | Value chain | Monetize reports, podcasts, video, and scheduled automations. |
-| 9 | **Enterprise managed self-host / support tier** | H2 — Adjacent | Business model | Sell deployment support and BSL compliance to regulated teams. |
-| 10 | **Cost-routing and provider diversity for deep research** | H1 — Core | Value chain | Improve reliability, reduce cost, and avoid single-provider lock-in. |
+| 9 | **Lead intelligence pilot (Epic 21) for Vietnam B2B sales** | H1 — Adjacent | Business model | New revenue stream via outcome-based credits and a Vietnam-native wedge. |
+| 10 | **Enterprise managed self-host / support tier** | H2 — Adjacent | Business model | Sell deployment support and BSL compliance to regulated teams. |
+| 11 | **Cost-routing and provider diversity for deep research** | H1 — Core | Value chain | Improve reliability, reduce cost, and avoid single-provider lock-in. |
 
 ### Business Model Innovation
 
@@ -357,11 +368,12 @@ Cost-routing across search providers (ChainLens `29-5`) is a key value-chain opt
 
 ### Strategic Direction
 
-**Adopt Option A — Open-Core PLG with Usage-Based Cloud — with three refinements:**
+**Adopt Option A — Open-Core PLG with Usage-Based Cloud — with four refinements:**
 
-1. **Add a small team/enterprise subscription anchor** once the cost basis is ratified. The subscription includes a per-seat fee plus a usage credit allowance, with overage charged at usage rates. This stabilizes revenue without abandoning the OSS/PLG motion.
-2. **Make provenance and source re-validation a P0 narrative project** (FR-39). This is the only durable differentiator after “citations” became table stakes.
-3. **Execute a strict gate-based launch sequence**: recall eval → degradation → cost metering → spend cap → public repo → cloud soft launch → Phase 2 metered self-host.
+1. **Add a Vietnam-first lead-intelligence pilot (Epic 21)** as a parallel cloud-only SKU while keeping core OSS/PLG unchanged. Use outcome-based credits (`$0.50/lead enriched`, `$50/meeting booked`) and targeted Zalo/LinkedIn/B2B community distribution.
+2. **Add a small team/enterprise subscription anchor** once the cost basis is ratified. The subscription includes a per-seat fee plus a usage credit allowance, with overage charged at usage rates. This stabilizes revenue without abandoning the OSS/PLG motion.
+3. **Make provenance and source re-validation a P0 narrative project** (FR-39). This is the only durable differentiator after “citations” became table stakes.
+4. **Execute a strict gate-based launch sequence**: recall eval → degradation → cost metering → spend cap → public repo → cloud soft launch → Epic 21 legal/ToS + PII/consent validation → Phase 2 metered self-host.
 
 This direction is recommended because it is the only one that simultaneously:
 
@@ -369,7 +381,8 @@ This direction is recommended because it is the only one that simultaneously:
 - Preserves the self-host/privacy differentiator.
 - Avoids the red-ocean consumer search market.
 - Uses deep research as a clean, honest conversion lever.
-- Can scale without a sales team.
+- Opens a Vietnam-native lead-intelligence revenue stream with low competitive pressure.
+- Can scale the core without a sales team; the lead-intelligence pilot uses targeted outbound and community-led growth.
 
 ### Key Hypotheses to Validate
 
@@ -378,6 +391,8 @@ This direction is recommended because it is the only one that simultaneously:
 3. **The `balanced` deep-research mode is “good enough” for most queries at a lower cost than `quality`.** (PRD §4.9, lines 585-588)
 4. **Recall quality (precision@k and noise rate) is good enough that users trust `nowing_recall` for research continuation.** (PRD NFR-8, lines 787-795)
 5. **Legal retention and right-to-delete can be implemented for memory before GA cloud without breaking the product.** (PRD OQ-3, lines 963-966)
+6. **Vietnam B2B sales teams will pay for outcome-based lead intelligence ($0.50/lead, $50/meeting) if verified contacts and Zalo/LinkedIn outreach deliver measurable pipeline value.** (Epic 21, FR-69)
+7. **Legal/ToS and PII/consent models can be closed for lead enrichment without blocking the core product.** (SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`)
 
 ### Critical Success Factors
 
@@ -388,6 +403,7 @@ This direction is recommended because it is the only one that simultaneously:
 - **MCP distribution must land in Claude Code / Cursor / OpenCode example workflows.**
 - **A usage/credit dashboard must be live before cloud pricing is public.**
 - **Provenance re-validation (FR-39) must ship before the “live source” story is marketed aggressively.**
+- **Epic 21 legal/ToS, vendor contracts, Zalo OA verification, and PII/consent pipeline must close before lead-intelligence GA or public messaging.**
 
 > **Tóm tắt đề xuất:** Chọn mô hình open-core PLG + cloud trả theo dùng, bổ sung gói subscription cho team khi có số cost ổn định. Cửa hàng conversion chính là deep-research — năng lực duy nhất self-host không có ở Phase 1, và trả tiền theo call ở Phase 2. Mọi quyết định giá phải dựa trên `costDollars` thật và mục tiêu margin 1.5–2.5×. Không launch ồn ào trước khi eval recall, degradation, và cost metering đóng.
 
@@ -411,6 +427,7 @@ The roadmap is **gate-driven**, not calendar-driven. Each phase advances only wh
 - List `nowing_mcp` in MCP registries and publish Claude Code / Cursor / OpenCode example prompts.
 - Soft-launch cloud with a pay-as-you-go credit wallet; no public subscription pricing yet.
 - Add the **usage & credit dashboard** (NFR-7 / FR-31) so users can see costs.
+- **Do not** launch Epic 21 lead-intelligence pilot in Phase 1; keep it as a gated, cloud-only SKU requiring legal/ToS + PII/consent + vendor validation.
 
 **Hard gates before public repo:**
 1. NFR-8 recall quality gate.
@@ -432,6 +449,7 @@ The roadmap is **gate-driven**, not calendar-driven. Each phase advances only wh
   - Deep-research calls per mode (speed / balanced / quality), marked up from engine cost.
 - Add **team workspace subscription tier** (per-seat fee + usage credit allowance) to reduce revenue volatility and unlock collaboration features.
 - **Open Phase 2 metered deep research for self-host** via Nowing Cloud API only — never direct engine access.
+- **Run Epic 21 lead-intelligence pilot** as a cloud-only SKU with outcome-based credits, after legal/ToS + PII/consent + vendor validation gates close.
 - Validate `balanced` mode as default through `nowing_evals` and Nowing-side e2e benchmarks.
 - Stay in **NFR-9 State A** (async deliverable) until p50/p95 targets are consistently met.
 - Ship **FR-39 provenance re-validation** so memory can recall and re-execute the source query.
@@ -454,6 +472,7 @@ The roadmap is **gate-driven**, not calendar-driven. Each phase advances only wh
 - Add **vertical research packs** (competitive intelligence, product research, academic reviews) as premium deliverable templates.
 - Launch **automated monitoring / agent loop products** (e.g., “track this competitor and update my workspace memory weekly”).
 - Expand **connector ecosystem** through community and partner integrations.
+- **Scale Epic 21 lead intelligence** from Vietnam pilot to SEA, adding country-specific signal sources and outreach channels.
 - Offer **enterprise managed self-host** — support, BSL compliance guidance, and optional managed infrastructure for regulated customers.
 - Optimize deep-research cost through provider routing, semantic caching (ChainLens `43-5`), and planner parallelization (ChainLens `43-2`).
 - Open **State B** (sync chat-mode) only after p95 targets are hit and ratified by Nowing e2e benchmarks.

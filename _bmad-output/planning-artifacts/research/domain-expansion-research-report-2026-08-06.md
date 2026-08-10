@@ -41,9 +41,9 @@ Nowing currently covers 14 platforms across BĐS, Jobs, Social, Search, and Web.
 - **Quick wins (2-3 weeks):** News RSS (1 day), CafeF Finance (2-4 hours), masothue.com Company Data (2-3 days)
 - **Medium effort (1-2 weeks each):** Lazada E-commerce, Forums, Coursera/edX
 - **Hard targets (defer):** Shopee (8-12w), TikTok Shop (12-16w), Vietstock (1-2w)
-- **Avoid:** Facebook, Zalo, LinkedIn (high anti-bot + legal risk)
+- **Avoid for generic scraper expansion:** Facebook, Zalo, LinkedIn (high anti-bot + legal risk) — but these are approved as lead-intelligence signal/outreach channels under Epic 21 with legal/ToS review and provider contracts (see SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`).
 
-**Recommendation:** Start Phase 1 (News + Finance + Company) in parallel — all can ship within 2-3 weeks with existing infrastructure.
+**Recommendation:** Start Phase 1 (News + Finance + Company) in parallel. Run Epic 21 lead-gen signal/outreach channels (Zalo/LinkedIn) as a separate legal-gated workstream, not as general scraper expansion.
 
 ---
 
@@ -64,7 +64,7 @@ Nowing currently covers 14 platforms across BĐS, Jobs, Social, Search, and Web.
 ### Infrastructure Ready
 
 - **AD-27 Convention:** fingerprint/merge/search_text pattern for new domains
-- **Epic 13 Canonical Entity:** persistence layer for cross-source dedup
+- **chainlens-research canonical index:** persistence layer for cross-source dedup (Epic 13 dropped, canonical storage moved to chainlens-research per SCP 2026-08-08)
 - **RLS:** workspace isolation at DB level
 - **Celery:** async task pipeline for embedding backfill
 - **nowing_evals:** test harness for benchmark validation

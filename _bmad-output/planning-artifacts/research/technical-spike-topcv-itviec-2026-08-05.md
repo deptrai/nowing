@@ -3,7 +3,7 @@ title: Technical Spike — TopCV & ITviec Scrapers
 project: Nowing
 date: 2026-08-05
 author: Mary (Business Analyst) for Luisphan
-status: done  # initial recon done; TopCV anti-bot POC still pending
+status: recon done 2026-08-05; TopCV anti-bot POC pending; ITviec salary strategy pending
 ---
 
 # Technical Spike: TopCV & ITviec Scrapers
@@ -39,11 +39,18 @@ Xác nhận khả năng crawl TopCV và ITviec trước khi đưa vào P0:
 - Residential proxy + warmed browser profile.
 - Cloudflare bypass service (e.g., `cloudscraper`, `scrapingbee`, `zenrows`).
 
-### 2.3 Next Steps
+### 2.3 Required Anti-Bot POC Plan (hard gate before P0 build)
 
-- Run Playwright/Selenium headless POC to determine if Cloudflare challenge can be solved.
-- Test residential proxy rotation.
-- If headless fails, evaluate Cloudflare bypass service (cost/risk).
+| Step | Goal | Acceptance | Owner | Timebox |
+|------|------|------------|-------|---------|
+| 1 | Headless browser POC | `GET` TopCV search + detail returns 200 with real job content (not challenge page) | Engineering | 2 days |
+| 2 | Stealth plugin validation | Same test with `playwright-stealth` / `puppeteer-extra-stealth` across 5 sessions, 0 challenge pages | Engineering | 1 day |
+| 3 | Residential proxy rotation | Run 20 requests over 24h with residential proxy; <10% block rate | Engineering | 3 days |
+| 4 | Cost/risk gate | If step 1–3 fails or cost >$0.05/query equivalent, drop TopCV from P0 and use VietnamWorks + ITviec only | Product | 1 day |
+
+**Pass criteria for P0 build:** TopCV returns real HTML reliably (≥90% success) with a method whose fully-loaded cost fits the scraper budget (see §8).
+
+**Fail criteria:** Challenge page persists, headless detection blocks, or proxy cost exceeds budget.
 
 ## 3. ITviec — Initial Recon
 
@@ -140,9 +147,10 @@ Xác nhận khả năng crawl TopCV và ITviec trước khi đưa vào P0:
 ### ITviec
 
 **Proceed with HTML scraper** but address:
-- Salary hidden issue: parse `prettySalary` / salary range if sign-in not required; otherwise consider salary extraction low-confidence.
-- Implement golden fixture tests for selectors.
-- Add PII redaction.
+- Salary hidden issue: parse `prettySalary` / salary range if sign-in not required; otherwise mark `salary` as `null` with `confidence=low` and flag `salary_hidden=true`.
+- If >50% of sampled detail pages hide salary, downgrade salary from P0 field to P1 enrichment and rely on VietnamWorks/TopCV (if TopCV POC passes) for salary data.
+- Implement golden fixture tests for selectors and add DOM-change alert.
+- Add PII redaction (FR-47 / AD-25).
 
 ### TopCV
 
@@ -163,8 +171,18 @@ Xác nhận khả năng crawl TopCV và ITviec trước khi đưa vào P0:
 - ITviec salary data is almost entirely hidden and degrades value.
 - ToS prohibits scraping either source.
 
+## 8. Scraper Budget Gate (P0)
+
+To avoid exceeding the 30–50 built-in scraper cap and keep cost predictable:
+
+- VietnamWorks (public API) and ITviec (HTML) each count as **1 built-in scraper** toward the cap.
+- TopCV counts as **1 built-in scraper only if the anti-bot POC passes and the fully-loaded cost (proxy/headless/bypass service) is ≤$0.05/query equivalent**.
+- If TopCV fails the cost gate, it is **deferred or delegated to an OAuth/connector model** rather than a built-in scraper.
+- Total new HR vertical scrapers added in P0: **2–3**, depending on TopCV POC outcome.
+
 ## 7. Status
 
 - **Planned:** 2026-08-05
 - **Execution:** 2026-08-05
+- **Updated:** 2026-08-10 — added TopCV anti-bot POC hard gate, ITviec salary strategy, and scraper budget gate.
 - **Report:** 2026-08-05
