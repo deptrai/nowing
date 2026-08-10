@@ -45,6 +45,14 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[PROPOSED]` **FR-46 `vn_jobs.aggregate`** → **E12.4 P0** (cross-source normalization, dedupe, confidence, conflict detection).
 `[PROPOSED]` **FR-47 PII redaction for job data** → **E12.5 P0** (mask/drop phone, email, names before memory).
 
+`[PROPOSED]` **FR-63 Intent Signal Detection** → **E21.1** (buying signals: funding, hiring, tech stack, executive moves).
+`[PROPOSED]` **FR-64 Lead Scoring & Prioritization** → **E21.2** (composite score: fit + intent).
+`[PROPOSED]` **FR-65 Enriched Contact Data** → **E21.3** (verified email/phone via waterfall).
+`[PROPOSED]` **FR-66 Outbound Prospecting Automation** → **E21.4** (multi-channel: email, LinkedIn, Zalo).
+`[PROPOSED]` **FR-67 CRM Integration & Write-Back** → **E21.5** (Salesforce, HubSpot, Pipedrive).
+`[PROPOSED]` **FR-68 Zalo Integration (Vietnam)** → **E21.6** (Zalo OA, 81% VN professionals).
+`[PROPOSED]` **FR-69 Outcome-Based Pricing** → **E21.7** (pay per meeting / lead).
+
 `[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
 `[RESOLVED]` FR-36 Legacy memory data-loss (2026-07-25 — không mất dữ liệu; 178 chưa apply prod, `memory_md` rỗng, snapshot đã tạo; guard + backfill + 5 test qua `3-10a`/`3-10b`).
 `[REMOVED]` FR-5 AI File Sorting.
@@ -96,6 +104,7 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết.
 - **OQ-8 HR/Recruitment Vertical in Vietnam** → **E12 P0** (ToS, legal classification, anti-bot, salary hidden, willingness-to-pay, PII).
 - **SM-12 HR pilot metrics** → **E12 P0** (workspace active, aggregate queries, listings indexed, dedupe, confidence, PII coverage).
 - **AR-11 HR anti-bot validation** → **E12.2 P0** (TopCV Cloudflare bypass/residential proxy feasibility).
+- **Mới 2026-08-10 (Market Research → Lead Intelligence):** FR-63 (Intent Signals) → **E21.1** `[PROPOSED]` · FR-64 (Lead Scoring) → **E21.2** `[PROPOSED]` · FR-65 (Contact Enrichment) → **E21.3** `[PROPOSED]` · FR-66 (Outbound Automation) → **E21.4** `[PROPOSED]` · FR-67 (CRM Integration) → **E21.5** `[PROPOSED]` · FR-68 (Zalo Integration) → **E21.6** `[PROPOSED]` · FR-69 (Outcome Pricing) → **E21.7** `[PROPOSED]`.
 
 ## Epic List
 
@@ -356,7 +365,6 @@ _Source: code review defer items từ 3-7. Priority: P2. Effort: 1-2 days. Trigg
 - ⚠️ **`Memory.source_id` là `Integer` (`app/db.py:2077`) còn `Run.id` là `UUID` (`app/db.py:3155`)** ⇒ **không dùng `source_id` cho run**; đi qua `source_run_id` của `AD-11.1`.
 - ⚠️ `RUNS_RETENTION_DAYS = 30` (`app/capabilities/core/runs.py:33`) ⇒ memory phải **tự chứa** ngữ cảnh; `Run` gốc sẽ biến mất.
 - **Dep mềm với `9-6a`:** provenance đầy đủ (`source_capability` + `source_input`) cần `9-6a`. Bản tối thiểu (`source_type` + `source_run_id`) chạy độc lập ⇒ **không chờ**.
-
 _FR-40 · M1 · brief §9 H-4 · `AD-11.1`._
 
 ---
@@ -384,7 +392,6 @@ _FR-40 · M1 · brief §9 H-4 · `AD-11.1`._
 **And** metric + tài liệu **tách tên** `memory_injection` ≠ `memory_recall`.
 
 **Given** `/memories/search` và `nowing_recall`, **When** trả kết quả, **Then** **expose RRF score thật** thay cho `score=0.0` hardcode — để vế *"vượt ngưỡng similarity"* của FR-32 / NFR-1c **áp được**. `[thêm 2026-07-25 — nhận việc treo]`
-
 > **Vì sao việc này ở đây.** `search.py:97` **có** tính RRF score và `order_by(text("score DESC"))`, nhưng cùng file `return [row[0] for row in rows]` bỏ score đi, và `memories_routes.py:117` hardcode `score=0.0`. Không client nào thấy similarity. `nowing_evals/.../memory/recall/gate.yaml` buộc phải đặt `required_oracle_mode: rank_only`.
 >
 > **Việc này từng bị hoãn sang `3-11`, nhưng `3-11` đã `done` mà không làm** (*"dedupe đã wire; tuning ngưỡng optional qua 3-9"*). Hai note trỏ vòng vào nhau ⇒ mất chủ. Nhận về `3-14` vì `3-14` đã sửa đúng `search.py` và `AD-18` rule 1 (bounded top-k) **buộc** phải làm việc với score.
@@ -583,7 +590,7 @@ So that chi phí dự đoán được khi auto-extract bật.
 **Acceptance Criteria:**
 **Given** một workspace, **When** vượt **spend budget cap** trong kỳ HOẶC ví không đủ (wallet pre-check **TRƯỚC** khi enqueue LLM call phụ), **Then** extraction bị skip + log, không âm thầm đốt credit.
 **And** rate-limit theo thời gian (ngoài `MAX_ITEMS=3` sẵn có); **And** edge anonymous-chat (FR-17) attribution rõ ràng.
-_AR-6 · RS-1. **Dep: 8.4a** (kill-switch/flags đã có)._
+_AR-6 · RS-1. **Dep: 8.8** (kill-switch/flags đã có)._
 
 ### Story 8.9: Memory Cost/Turn Observability  `(mới)` `(đánh lại số từ 8.5 — C-C)`  `[DONE — code-complete qua sprint story 8-4 observability-logging]`
 As a team,
@@ -608,7 +615,6 @@ So that the repo does not look like vaporware with old positioning or removed fe
 **And** removed features cannot reappear in the docs.
 
 _Implementation hints (not AC):_ Keep `README.md`, `docs/`, and `project-overview.md` synced; include a CI docs-vs-code drift check to catch removed features like the Admin role or AI File Sorting.
-
 _OQ-6 · AR-10 · RS-5._
 
 ---
@@ -1070,7 +1076,6 @@ So that `AD-11.1` / `FR-39` is not silently regressed.
 **Then** it is charged as a normal capability call via `charge_capability` (`AD-8`).
 
 _Governed by `AD-11.1`, `FR-39`, `AD-8`._
-
 ---
 
 ## Epic 4: Chat & Agents
@@ -1108,7 +1113,31 @@ _FR-42 · NFR-10 · `market-*-production-query-sampler-research-2026-08-02.md`._
 
 ### Story 4.8d: Chat quality benchmark with LLM-as-judge  `[ready-for-dev]`
 As an ML/QA engineer, I want `chat/quality` judge responses on groundedness, citation accuracy, and helpfulness, so that quality regressions are caught before deploy.
-_AC: `nowing_evals run chat quality` judges each turn; reports aggregate score + per-tag breakdown; uses judge model separate from the tested model.
+
+**Acceptance Criteria:**
+
+**Given** the `chat/quality` suite is configured with a judge model distinct from the tested model and a representative dataset with tags (memory, document, deep-research, multi-tool, creative),
+**When** `nowing_evals run chat quality` executes,
+**Then** it judges every turn for groundedness, citation accuracy, and helpfulness; reports an aggregate score and per-tag breakdown; and writes a `gate.yaml`-compatible report with p50/p95 per metric.
+
+**Given** a turn contains no citations but the metric requires citation scoring,
+**When** the judge evaluates,
+**Then** citation accuracy for that turn is recorded as `0` (not `null` or `NaN`) and included in the aggregate denominator.
+
+**Given** the judge model is unavailable, returns malformed JSON, or returns scores outside the configured rubric range,
+**When** the suite runs,
+**Then** it logs the failing turn with `turn_id` and `judge_error`, skips scoring for that turn, exits with a non-zero status, and does not publish partial/invalid results.
+
+**Given** the dataset is empty, smaller than the configured minimum-sample threshold, or missing required tags,
+**When** the suite starts,
+**Then** it raises `QualityBenchmarkConfigError` with a clear validation message before any judge calls are made.
+
+**Validation:**
+- Unit test: `test_chat_quality_judge_scoring.py` — mock judge returns deterministic groundedness/citation/helpfulness scores; assert aggregate and per-tag breakdown.
+- Unit test: `test_chat_quality_missing_config.py` — missing `judge_model` or dataset path raises `QualityBenchmarkConfigError`.
+- Unit test: `test_chat_quality_invalid_judge_response.py` — malformed JSON / out-of-range scores are logged and the run fails closed.
+- Integration test: `test_chat_quality_end_to_end.py` — run on a 10-turn labeled dataset and verify output schema and metric bounds.
+
 _FR-42 · `nowing_evals/suites/chat/quality/`._
 
 ### Story 4.8e: CI / deploy gate for chat regression  `[done]`
@@ -1303,7 +1332,6 @@ So that I can trust the price and detect fake/duplicate listings.
 **Given** duplicate listings and confidence scores, **When** the aggregator sends normalized `Chunk[]` to `chainlens-research`, **Then** deduplication and confidence metadata (`source_count`, `confidence_score`, `conflict_flags`) are returned as chunk metadata and are not stored in Nowing `Memory`/`ResearchThread` as a search corpus.
 
 **Kỹ thuật (không phải AC):** thêm `app/services/bds_aggregator/` để normalize/dedupe listings rồi gửi `Chunk[]` tới `chainlens-research` qua `POST /v1/ingest/scraper`; không mở rộng `Memory`/`ResearchThread` để lưu aggregated listing làm search corpus.
-
 _FR-6 · FR-32 · FR-39 · AD-11.1 · `market-vietnam-real-estate-data-scraping-landscape-research-2026-08-03.md`._
 
 ### Story 10.5: Anti-Bot / CAPTCHA Screenshot Escalation  `(mới 2026-08-08)`  `[ready-for-dev]`
@@ -1487,7 +1515,6 @@ So that I can monitor IT/AI hiring trends.
 - **Given** the capability is built, **When** registered, **Then** it appears in billing (`BillingUnit.ITVIEC_JOB`), capability registry, MCP, and REST routes.
 
 _Kỹ thuật (không phải AC):_ `app/proprietary/platforms/itviec/` (BSL 1.1 fetcher/parser) + `app/capabilities/itviec/scrape/` (Apache-2.0 capability). Rate-limit + user-agent rotation + circuit-breaker.
-
 _FR-45 · AD-3 · AD-16 · AD-23 · `technical-spike-topcv-itviec-2026-08-05.md`._
 
 ### Story 12.4: Vietnam Job Aggregator `[ready-for-dev P0]`
@@ -1526,116 +1553,20 @@ So that Nowing does not accidentally retain candidate PII.
 - **Given** redaction runs, **When** storing to memory, **Then** the full raw JD is not stored unredacted.
 
 _Kỹ thuật (không phải AC):_ Shared PII pipeline in `app/services/pii/` or inside jobs aggregator. Unit tests for representative samples from VietnamWorks, TopCV, ITviec.
-
 _FR-47 · NFR-11 · OQ-3 · `feature-brief-hr-vertical-vietnam-2026-08-05.md`._
+
+> **Boundary note (2026-08-10):** Epic 12 outputs are research/job-market data with PII redaction. They are not reused as lead-enrichment contact data for Epic 21. Lead gen uses separate data sources and a separate PII/consent policy (SCP `sprint-change-proposal-nowing-ai-gen-lead-positioning-2026-08-10.md`).
+
 ---
 
-## Epic 13: Canonical Entity Storage & Multi-Domain Indexing `[DROPPED 2026-08-08]`
+## Epic 13: Canonical Entity Storage & Multi-Domain Indexing `[DROPPED 2026-08-08 — ARCHIVED]`
 
 > **⚠️ DROPPED per SCP `sprint-change-proposal-2026-08-08-remove-duplicate-index.md` (ADOPTED).**
 > `chainlens-research` owns the single canonical index for public web + shared vertical data. Nowing no longer builds `canonical_entities` tables, multi-domain index, or unified search corpus. Domain scrapers and aggregators feed `chainlens-research` via `POST /v1/ingest/scraper` (see Epic 20).
-> **Action:** This epic is retained for reference only. Do not implement. Stories 12.7, 12.8, 16.4 and any other story depending on Epic 13 are dropped or re-scoped.
+> **Action:** This epic is archived. The detailed stories below have been removed to prevent accidental implementation. See SCP `sprint-change-proposal-2026-08-08-remove-duplicate-index.md` and `architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` AD-27/AD-28 for the current `chainlens-research` contract.
 
-**FRs covered:** ~~FR-48 (canonical entity storage & indexing)~~, ~~FR-46 (extend `vn_jobs.aggregate`)~~
-**ADs governed:** ~~AD-27~~, ~~AD-28~~ — re-scoped: AD-27/28 now belong to `chainlens-research`.
-
-### Story 13.1: Canonical Persistence, Tenancy & Convention `[P0]`
-
-As a developer,
-I want a canonical persistence contract with database-enforced tenancy and explicit source lineage,
-So that every domain can persist and search merged entities safely without inventing a new matching engine.
-
-**Acceptance Criteria:**
-- **Given** the migration runs, **When** complete, **Then** it creates `canonical_entities`, `canonical_entity_sources`, `canonical_merge_history`, and `canonical_persist_outbox` with Alembic-owned indexes and downgrade support for a database that has not accepted production writes.
-- **Given** `canonical_entities`, **Then** each row stores: `id` (UUID PK), `workspace_id` (Integer FK), `entity_type` (String), `canonical_title` (String), `canonical_data` (JSONB), `fingerprint` (String), `search_text` (Text), `source_count` (Integer), `confidence_score` (Float), `conflict_flags` (JSONB), `version` (Integer), `first_seen_at`, `last_seen_at`, `embedding` (Vector), `embedding_model_name`, `embedding_content_hash`, and `embedding_status` (`pending`/`ready`/`failed`).
-- **Given** two domains can produce the same fingerprint text, **Then** the database unique constraint and every upsert target are exactly `(workspace_id, entity_type, fingerprint)`.
-- **Given** provenance is required by search, review and revert flows, **Then** `canonical_entity_sources` stores `workspace_id`, `canonical_entity_id`, `entity_type`, `source_name`, `source_record_id`, redacted source snapshot, source URL, source timestamps and source fingerprint.
-- **Given** the same source record can appear in only one active canonical entity per domain, **Then** the unique constraint on sources is exactly `(workspace_id, entity_type, source_name, source_record_id)`; `canonical_entity_id` is a FK index, not part of that uniqueness key.
-- **Given** conflicts are stored as JSONB, **Then** each flag mirrors the existing BDS `ConflictFlag` shape (`type`, `reason`, optional range/source maps) rather than free-form strings.
-- **Given** concurrent merge/revert is possible, **Then** writes use `version` for compare-and-swap or an equivalent row lock; no update may silently overwrite a later entity version.
-- **Given** the application uses pooled SQLAlchemy sessions, **Then** every API request and Celery task opens a transaction and executes `SET LOCAL app.workspace_id = :workspace_id` before canonical reads/writes; the workspace ID is passed explicitly in task payloads and never inferred from process-global state.
-- **Given** database RLS is the isolation boundary, **Then** all four tables use `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL SECURITY`, and policies based on `current_setting('app.workspace_id', true)`; the application role is non-owner and `NOBYPASSRLS`, while the unset/invalid workspace context fails closed.
-- **Given** BDS currently has a context-free capability executor, **When** it becomes persistent, **Then** `vn_bds.aggregate` accepts the execution context/workspace explicitly before any write path is enabled. Jobs follows the same contract.
-- **Given** AD-27, **Then** BDS and Jobs expose `fingerprint()`, `merge()`, and `search_text()` through the documented domain module boundary while reusing their current dedupe behavior; the three functions may live as named exports from existing modules (for example `dedupe.py` / `normalize.py`) and do not require three new files on day one.
-- **Given** a canonical row is created or its `search_text` changes, **Then** commit succeeds with `embedding_status='pending'`; an idempotent Celery task keyed by `(entity_id, version, embedding_model_name)` populates the embedding only if the entity version still matches.
-- **Given** search and review latency budgets, **Then** the migration creates at least: unique btree on `canonical_entities (workspace_id, entity_type, fingerprint)`; btree on `canonical_entities (workspace_id, entity_type, last_seen_at DESC)`; GIN/`to_tsvector` on `search_text`; HNSW/`vector_cosine_ops` on `embedding` (nullable-safe); btree on `canonical_entity_sources (canonical_entity_id)` and the source uniqueness key; btree on `canonical_merge_history (canonical_entity_id, created_at)` and `canonical_persist_outbox (status, next_attempt_at)`.
-- **Given** search/review UI requires real-time state, **Then** the minimal non-PII columns for canonical entities, source links and merge history are added to `ZERO_PUBLICATION`; bulky snapshots remain REST-fetched.
-
-**Validation:**
-- Backend convention tests cover both domains and the exact module signatures.
-- Migration tests verify upgrade, clean downgrade-before-writes, constraints and required indexes.
-- Raw SQL tests run as the real non-owner application role and prove cross-workspace reads/writes, missing context and pooled-connection reuse fail closed.
-- Celery tests prove workspace propagation, idempotent embedding backfill and stale-version protection.
-
-_AD-27 · AD-28 clarified above · AD-2 (pgvector) · Inherits AD-24 pattern._
-
-### Story 13.2: Persist Aggregator Output to Canonical Storage `[P0]`
-
-As a user,
-I want aggregator results persisted with provenance and reversible history,
-So that search survives the originating request and merge decisions remain auditable.
-
-> Story 13.2 is implemented as five independently shippable sub-stories. A note alone is not a split: each item below has its own dependency and acceptance gate.
-
-#### Story 13.2a: BDS Persistence & Retry `[P0]`
-
-- **Dependency:** Story 13.1; may run before Epic 12.
-- **Given** `vn_bds.aggregate` completes, **When** results are returned, **Then** the capability passes `workspace_id` through its execution context and idempotently upserts `canonical_entities` on `(workspace_id, entity_type, fingerprint)`.
-- **Given** a source contributes to an entity, **Then** its redacted provenance is upserted into `canonical_entity_sources`; `source_count` is derived from distinct linked sources, not trusted from request payloads.
-- **Given** persistence fails, **Then** aggregation still returns results with additive `persistence_status` on the existing aggregate output schema (`VnBdsAggregateOutput` / equivalent), while a durable outbox/retry record preserves the workspace, idempotency key and payload reference; retries cannot create duplicate entities or source links, and terminal failure emits a metric/alert.
-
-#### Story 13.2b: Jobs Persistence & Retry `[P0]`
-
-- **Dependency:** Story 13.1 and Epic 12 aggregator output contract.
-- **Given** `vn_jobs.aggregate` completes, **Then** it uses the same tenant, idempotency, source-link and outbox contract as BDS without replacing its existing Jobs dedupe key, and extends `VnJobAggregateOutput` with the same additive `persistence_status` field.
-- **Given** partial source failure, **Then** successful source results are persisted, failed sources remain visible in degradation metadata, and later retry can add missing source links without rewriting unrelated fields.
-
-#### Story 13.2c: Merge History, Conflict Resolution & Revert `[P0]`
-
-- **Dependency:** Stories 13.2a or 13.2b can supply the first persisted entity.
-- **Given** a merge, manual resolution, split or revert occurs, **Then** `canonical_merge_history` records the entity version before/after, linked-source set before/after, operation, actor (`user_id` or `system`), conflicts, method and timestamp.
-- **Given** two writers update the same entity, **Then** exactly one expected-version write succeeds; the loser reloads/retries or surfaces a conflict, and `test_canonical_concurrent_merge.py` proves no lost update.
-- **Given** an admin reverts a historical operation, **Then** the revert is a new audited transition against an expected current version; it never overwrites changes committed after the selected history item.
-- **Given** review queue updates must be real time, **Then** Zero publishes only the fields required to render queue/list state; full snapshots are fetched through workspace-authorized REST endpoints.
-
-#### Story 13.2d: PII-Safe Canonicalization `[P0]`
-
-- **Dependency:** Story 13.1; blocks enabling either persistence path.
-- **Given** BDS or Jobs data contains PII, **Before** writing canonical data, source snapshots, outbox payloads or merge history, **Then** AD-25-compatible redaction runs for every domain.
-- **Given** BDS exposes `contact`/`phone_key` or Jobs exposes JD text, **Then** raw values never enter golden records or history; a one-way keyed digest may be retained only when required for matching.
-- **Given** logs and metrics, **Then** they contain counts/status only, never raw PII values.
-
-#### Story 13.2e: Dedup Benchmark & Release Gate `[P1]`
-
-- **Dependency:** Stories 13.2a–d; Jobs fixtures additionally depend on Epic 12 pilot data.
-- **Given** BDS and Jobs fixtures at 15%, 30% and 70% entity-level cross-source overlap, **Then** each domain/tier reports precision, recall and F1 with hard gates `precision ≥ 0.95`, `recall ≥ 0.90`, and `F1 ≥ 0.92`.
-- **Given** benchmark metadata, **Then** `overlap_rate = multi_source_ground_truth_entities / total_ground_truth_entities`; fixture counts must satisfy that equation and raw-record totals independently.
-- **Given** the Nowing eval harness, **Then** fixtures live under `nowing_evals/data/canonical/fixtures/`, benchmark packages under `nowing_evals/src/nowing_evals/suites/canonical/`, and execution uses `python -m nowing_evals ...`.
-
-_AD-27 (domain convention) · AD-24 (aggregator output) · AD-25 (PII redaction)._
-
-### Story 13.3: Unified Search API `[P1 — AFTER 13.2]`
-
-As a user,
-I want one ranked result set across canonical entities and documents,
-So that linked raw sources collapse under their canonical entity while unmatched documents remain discoverable.
-
-**Acceptance Criteria:**
-- **Given** a query, **When** submitted, **Then** document and canonical retrieval run in parallel with identical workspace, date, status and type filters on both vector and full-text paths.
-- **Given** the existing retriever uses Reciprocal Rank Fusion, **When** vector/full-text and document/canonical candidate lists fuse, **Then** ranking uses weighted RRF `w_vector/(k + rank_vector) + w_fts/(k + rank_fts)` with `k=60`, default weights `0.7/0.3`, non-negative workspace configuration and no direct addition of raw cosine distance to `ts_rank_cd`.
-- **Given** an entity embedding is NULL, stale or generated by another model, **Then** that row remains eligible through full-text retrieval but is excluded from vector ranking until the current-model backfill succeeds.
-- **Given** a document/source row is linked through `canonical_entity_sources`, **When** its canonical entity is present, **Then** the raw result is grouped beneath that entity rather than emitted as a second top-level hit; unmatched documents retain their own result group.
-- **Given** a canonical entity is displayed, **Then** the API supplies source count, source-link identifiers, confidence, conflict state and a workspace-authorized `View N sources` expansion contract.
-- **Given** workspace isolation, **Then** both corpora are protected by the same authenticated workspace context; canonical RLS does not substitute for existing document authorization.
-- **Given** the release benchmark, **Then** end-to-end recall@10 ≥ 0.85, precision@5 ≥ 0.80, duplicate top-level result groups = 0, and p95 < 500 ms including query embedding and fusion.
-- **Given** p95 exceeds 500 ms or embedding/outbox failures cross the configured threshold, **Then** low-cardinality metrics and alerts identify corpus, retrieval path and workspace without logging query PII.
-
-**Validation:**
-- Canonical eval suite measures quality and latency through the public API, not backend imports.
-- Tests cover weighted-RRF ordering, identical filter application, pending/stale embeddings, cross-corpus collapse, source expansion authorization and RLS isolation.
-- A/B comparison uses the same query set and relevance judgments for documents-only versus documents+canonical, reporting absolute metrics and relative change.
-
-_AD-27 (search_text convention) · AD-2 (pgvector) · workspace isolation contract in Story 13.1._
+**FRs covered:** ~~FR-48 (canonical entity storage & indexing)~~, ~~FR-46 (local canonical storage in `vn_jobs.aggregate`)~~ — re-scoped to feed `chainlens-research` via `POST /v1/ingest/scraper`.
+**ADs governed:** ~~AD-27~~, ~~AD-28~~ — re-scoped to `chainlens-research`.
 
 ---
 
@@ -1690,7 +1621,6 @@ So that agents can be configured per vertical client and context can be forwarde
 - **Given** no `agent_id`, **When** processed, **Then** the default Nowing chat agent is used (backward compatible).
 
 _Kỹ thuật: Extend `NewChatRequest` schema in `app/schemas/new_chat.py`. **AD-29** + **AD-30**._
-
 ---
 
 ### Story 18.3: Agent Registry `[P0]`
@@ -1721,7 +1651,6 @@ So that each vertical client gets a specialized agent experience.
 - **Given** no `agent_id`, **When** processed, **Then** the default Nowing chat agent is used (backward compatible).
 
 _Kỹ thuật: chat orchestrator — load config, inject prompt, filter tools. **AD-30**._
-
 ---
 
 ### Story 18.5: ResearchThread Auto-Linkage `[P0]`
@@ -1736,7 +1665,6 @@ So that memory is properly isolated and contextual across sessions.
 - **Given** memories are extracted from the chat, **When** stored, **Then** they are tagged with `research_thread_id`.
 
 _Kỹ thuật: `app/routes/agent_chat_routes.py` — auto-create ResearchThread, update response schema. **AD-13** + **AD-29**._
-
 ---
 
 ### Story 18.6: Memory Tagging + RAG Filter `[P1]`
@@ -1751,7 +1679,6 @@ So that one client's data never leaks into another client's chat.
 - **Given** a recall query without `client_id`, **When** processed, **Then** only memories with `client_id = NULL` (Nowing-internal) are returned.
 
 _Kỹ thuật: Alembic migration for memory tenant tags, update `app/retriever/`. **AD-31**, NFR-MULTI-1. Blocked until AD-31 tenancy design is accepted._
-
 ---
 
 ### Story 18.7: Cost Traceability `[P1]`
@@ -1766,7 +1693,6 @@ So that I can track and bill for Nowing usage.
 - **Given** an `X-Run-Id` header in the response, **When** the client receives it, **Then** they can correlate costs with their internal records.
 
 _Kỹ thuật: Alembic migration for TokenUsage/Run external_metadata, update `app/services/token_tracking_service.py`. **AD-29** cost attribution; FR-37 patterns reused. Not AD-28._
-
 ---
 
 ### Story 18.8: Rate Limiting + Tenant Isolation `[P1]`
@@ -1845,7 +1771,6 @@ So that I can track mentions and trends via `chainlens-research` entity search.
 - **Given** extracted entities, **When** the article is normalized to a `Chunk`, **Then** `metadata.entities` contains the entity mentions, types, and surface forms.
 - **Given** a `Chunk` with `metadata.entities`, **When** it is ingested into `chainlens-research`, **Then** the canonical index stores and indexes the entity metadata; `chainlens-research` handles entity linking and disambiguation.
 - **Given** entity tracking is active, **When** a user queries an entity in chat, **Then** the agent calls `chainlens-research` and returns mentioning articles with citations; no local entity table is built in Nowing.
-
 **Validation:**
 - Unit test: `test_news_entity_extraction.py` — entity accuracy ≥ 0.85
 - Integration test: `test_news_entity_chunk_metadata.py` — entities attached to chunk metadata
@@ -1937,7 +1862,6 @@ So that I can verify business partners and research market players via the Nowin
 - **Given** PII such as personal phone numbers or emails appears in the raw profile, **When** chunks are built, **Then** AD-25 redaction is applied before any data is sent to `chainlens-research`.
 - **Given** a `Chunk[]` batch, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
 - **Given** the user searches by tax code, **When** the agent queries `chainlens-research`, **Then** the indexed company profile is returned with citations.
-
 **Validation:**
 - Integration test: `test_masothue_scrape.py` — company data extracted correctly
 - Unit test: `test_company_to_chunks.py` — chunk metadata and stable `sourceId`
@@ -1957,7 +1881,6 @@ So that I can verify legal status and regulatory compliance.
 - **Given** official data is fetched, **When** normalized to `Chunk[]`, **Then** it uses the same canonical `sourceId` as the masothue record when the tax code matches, and `metadata.source_count` and `metadata.conflict_flags` are set for `chainlens-research` to apply the `most_confident` strategy.
 - **Given** official data contains PII, **When** chunks are built, **Then** AD-25 redaction is applied before ingest.
 - **Given** a batch of official registry `Chunk[]`, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
-
 **Validation:**
 - Integration test: `test_business_gov_vn.py` — official data accessible
 - Unit test: `test_official_source_chunk_metadata.py` — `sourceId` matches masothue and `conflict_flags` present
@@ -2012,7 +1935,6 @@ So that I can track the dominant e-commerce platform.
 - **Given** product data is fetched, **When** normalized to `Chunk[]`, **Then** `metadata.source: 'nowing_scraper'`, `sourceId` (stable per product + platform), `domain: 'shopee.vn'`, `fetchedAt`, `contentType: 'product'` are set.
 - **Given** Shopee data is fetched, **When** the batch is ingested, **Then** `NowingIngestService` calls `POST /v1/ingest/scraper` with the same canonical `sourceId` pattern as Lazada for cross-platform deduplication.
 - **Given** the same product appears on Lazada and Shopee, **When** `chainlens-research` indexes both, **Then** the `chainlens-research` canonical index handles cross-platform deduplication; Nowing does not merge them locally.
-
 **Validation:**
 - Integration test: `test_shopee_data_source.py` — data accessible
 - Unit test: `test_shopee_to_chunks.py` — `sourceId` matches cross-platform convention
@@ -2038,12 +1960,12 @@ _AD-34 · AD-35 · Method: Third-party API (Apify/Bright Data) recommended; in-h
 > **🏗️ AD-27 (2026-08-08):** ~~Story 12.8 (Cross-Source Entity Timeline) is BLOCKED until Epic 13 review closes.~~ DROPPED — canonical index moved to `chainlens-research`. Timeline views (if needed) will use `chainlens-research` indexed timeline API.
 >
 > **📋 Dependency ordering (readiness audit 2026-08-08):** Stories 12.6-12.9 have internal dependencies that require specific ordering:
-> - **12.9 (Saved Searches) → P0** — must ship first; 12.6 depends on saved search infrastructure
-> - **12.6 (Job Market Alerts) → P1** — depends on 12.9 (saved searches) + AD-33 Alert Engine
+> - **12.6 (Saved Searches) → P0** — must ship first; builds the saved-search infrastructure + AD-33 Alert Engine
+> - **12.9 (Job Market Alerts) → P1** — depends on 12.6 (saved searches) + AD-33 Alert Engine
 > - **~~12.7 (Property Price Alerts) → P1~~** — **DROPPED** with Epic 13 (canonical property entities no longer built in Nowing)
 > - **~~12.8 (Cross-Source Entity Timeline) → BLOCKED~~** — **DROPPED** with Epic 13
 
-### Story 12.9: Saved Searches `[P0 — reordered: must ship before 12.6]`
+### Story 12.6: Saved Searches `[P0 — must ship before 12.9]`
 
 As a researcher,
 I want to save complex search queries and auto-run them on schedule,
@@ -2063,19 +1985,18 @@ So that I always have fresh results without manual work.
 
 _AD-33 (Generic Alert Engine — Saved Search AlertRule template)._
 
-### Story 12.6: Job Market Alerts `[P1 — depends on 12.9]`
+### Story 12.9: Job Market Alerts `[P1 — depends on 12.6]`
 
 As a job market researcher,
 I want to receive alerts when new postings match my criteria,
 So that I don't have to manually re-run searches every day.
 
-> **Dependency:** Story 12.9 (Saved Searches) must ship first — alerts use saved search infrastructure.
+> **Dependency:** Story 12.6 (Saved Searches) must ship first — alerts use saved search infrastructure.
 
 **Acceptance Criteria:**
 - **Given** a saved job search with filters (title, location, salary range), **When** a new posting matches, **Then** I receive an in-app notification.
 - **Given** an alert is triggered, **When** I click it, **Then** I see the new matching results.
 - **Given** multiple alerts, **When** viewed, **Then** they are grouped by search query with match count.
-
 **Validation:**
 - Unit test: `test_job_alert_matching.py` — new posting triggers alert
 - Integration test: `test_job_alert_notification.py` — notification delivered
@@ -2114,7 +2035,6 @@ So that I stay informed without manually checking news sites.
 - **Given** the new run completes, **When** `chainlens-research` reports `ingestJobId` success, **Then** `new_items` are computed as `sourceId`s present in the latest run but absent from the previous successful run.
 - **Given** `new_items > 0`, **When** the alert fires, **Then** a notification is delivered via the configured channel (in-app, email, Telegram) with a link to the topic and a summary count.
 - **Given** an alert is triggered, **When** a user clicks it, **Then** the chat agent queries `chainlens-research` for the topic and displays the indexed articles with citations.
-
 **Validation:**
 - Integration test: `test_news_alert_topic_matching.py` — new articles trigger alert
 - Integration test: `test_news_alert_ingest.py` — `NowingIngestService` called on alert run
@@ -2161,7 +2081,6 @@ So that I can act on market movements.
 - **Given** the new price is ingested, **When** `chainlens-research` returns the latest indexed value, **Then** the rule compares it to the previous indexed value and triggers the alert if a threshold is crossed.
 - **Given** an alert is triggered, **When** the user receives the notification, **Then** it includes a chart snapshot and the trigger reason.
 - **Given** multiple alerts, **When** viewed, **Then** they are grouped by symbol with trigger history.
-
 **Validation:**
 - Unit test: `test_stock_price_alert_rules.py` — threshold logic correct
 - Integration test: `test_stock_ingest_on_alert.py` — `NowingIngestService` called on alert run
@@ -2179,7 +2098,6 @@ So that I don't miss significant patterns.
 - **Given** financial data is indexed in `chainlens-research` over time, **When** the trend detection job runs, **Then** it queries `chainlens-research` for historical financial `Chunk[]` and computes trends (revenue growth, margin change, etc.).
 - **Given** a significant trend is detected, **When** the insight is generated, **Then** it includes supporting data points with `sourceId` links to `chainlens-research` results.
 - **Given** the insight is viewed, **When** a user clicks a supporting data point, **Then** the source financial statement opens with citation.
-
 **Validation:**
 - Unit test: `test_financial_trend_detection.py` — trend detection logic
 - Integration test: `test_trend_chainlens_query.py` — queries `chainlens-research` for historical data
@@ -2207,7 +2125,6 @@ So that I stay informed about competitors and partners.
 - **Given** the new run is ingested, **When** `chainlens-research` returns indexed company data, **Then** the rule detects significant changes (e.g., legal representative change, status change, new business lines) compared to the previous indexed version.
 - **Given** a significant change is detected, **When** the alert fires, **Then** a notification is delivered with an event summary and source links.
 - **Given** a company alert is viewed, **When** the user opens it, **Then** the agent queries `chainlens-research` for the company profile and renders source links; no local entity timeline is required.
-
 **Validation:**
 - Integration test: `test_company_event_detection.py` — change detection triggers alert
 - Unit test: `test_company_alert_rules.py` — rule logic
@@ -2254,7 +2171,6 @@ So that I can identify pricing trends and opportunities.
 - **Given** the new price is indexed, **When** `chainlens-research` returns the latest product `Chunk[]`, **Then** the rule compares price to the previous indexed value and triggers an alert if the price dropped or crossed a threshold.
 - **Given** a price alert is triggered, **When** it is viewed, **Then** it shows old vs new price and a link to the indexed product in `chainlens-research`.
 - **Given** a price alert is viewed, **When** historical prices are requested, **Then** the UI queries `chainlens-research` for historical `Chunk[]` with the same `sourceId` and renders a price history chart.
-
 **Validation:**
 - Unit test: `test_product_price_alert.py` — price drop detection
 - Integration test: `test_price_ingest_on_alert.py` — `NowingIngestService` called on alert run
@@ -2272,7 +2188,6 @@ So that I stay aware of market movements.
 - **Given** competitor products are tracked (by keyword, seller, or product family), **When** the scheduler triggers, **Then** the alert rule refreshes Lazada/Shopee data, normalizes to `Chunk[]`, and calls `NowingIngestService.ingest()` to update `chainlens-research`.
 - **Given** new product `Chunk[]` are indexed, **When** the rule compares them to the previous run, **Then** changes (price, availability, new variants) are detected and a notification is sent.
 - **Given** the competitor dashboard is viewed, **When** the user opens it, **Then** the UI queries `chainlens-research` for tracked products and renders a side-by-side comparison with change indicators and source badges.
-
 **Validation:**
 - Integration test: `test_competitor_change_detection.py` — changes detected after ingest
 - UI test: `test_competitor_dashboard.py` — side-by-side comparison renders
@@ -2294,7 +2209,43 @@ So that the agent can answer "I don't know" questions by indexing fresh web/vert
 
 **ADs:** `AD-3`, `AD-4`, `AD-5`, `AD-15`, `AD-34`, `AD-35`.
 
-### Story 20.1: Nowing Scraper `to_chunks()` + `NowingIngestService`  `(mới 2026-08-08)`  `[ready-for-dev]`
+> **Cross-cutting prerequisite note:** Stories in Epics 12, 14, 15, 16, and 17 that call `NowingIngestService` or rely on `ChainLensServiceAuth` must treat the stories below as hard prerequisites. See the **Cross-Cutting Dependency Mapping** at the end of this file for the full matrix.
+
+### Story 20.1: Service-to-Service Auth + Cost Ledger Sync  `(mới 2026-08-08)`  `[ready-for-dev]`
+
+As a platform engineer,
+I want secure service-to-service auth and a shared cost envelope between Nowing and `chainlens-research`,
+So that `chainlens-research` can meter usage and Nowing can bill the user.
+
+**Acceptance Criteria:**
+
+**Given** any `chainlens-research` internal endpoint call,
+**When** the request leaves Nowing,
+**Then** it carries a Bearer service token + `X-Correlation-Id` + `X-Workspace-Id` headers.
+
+**Given** `chainlens-research` receives the request,
+**When** validating,
+**Then** it checks the service token against a shared secret; it rejects with `401` if missing/invalid.
+
+**Given** a search/gap-fill/ingest call completes,
+**When** `chainlens-research` reports `costDollars`,
+**Then** Nowing writes a `TokenUsage` record with `usage_type` mapped from the operation (e.g. `chainlens_search`, `chainlens_gap_fill`, `chainlens_ingest`), linked to `workspace_id` and `run_id`.
+
+**Given** a `costDollars` value,
+**When** converting to credits,
+**Then** Nowing applies the same `costDollars → micros` rate as external provider calls (`AD-8`).
+
+**Given** the service token is within 30 days of expiration or `chainlens-research` returns `401` due to token expiry,
+**When** the next outbound request is made,
+**Then** `ChainLensServiceAuth` rotates the token from a secure secret store and updates the stored token without dropping the in-flight request.
+
+**Given** token rotation fails,
+**When** `NowingIngestService` / gap-fill / private-provider calls need auth,
+**Then** the request fails open with `service_auth_unavailable` and a `chainlens_auth_failed` counter is emitted; no user data is sent with an invalid token.
+
+_Governed by `AD-3`, `AD-4`, `AD-5`, FR-61, `AD-8`._
+
+### Story 20.2: Nowing Scraper `to_chunks()` + `NowingIngestService`  `(mới 2026-08-08)`  `[ready-for-dev]`
 
 As a Nowing user / chat user,
 I want my scraper data to be searchable through chainlens,
@@ -2334,11 +2285,12 @@ so that the agent can answer with fresh data.
 **When** the batch is sent to `chainlens-research`,
 **Then** each `Chunk` conforms to the canonical schema and `source` enum defined in `chainlens-research` Story 47-1 (FR-62, AD-35); if `chainlens-research` rejects a chunk for schema violation, `NowingIngestService` logs the first failing chunk and fails the batch.
 
-**Kỹ thuật (không phải AC):** Tách `to_chunks()` thành mixin hoặc helper trong `app/services/scraper_chunks/`; `NowingIngestService` nằm ở `app/services/chainlens/ingest.py`. Auth qua `ChainLensServiceAuth` (`Story 20.4`).
+**Kỹ thuật (không phải AC):** Tách `to_chunks()` thành mixin hoặc helper trong `app/services/scraper_chunks/`; `NowingIngestService` nằm ở `app/services/chainlens/ingest.py`. Auth qua `ChainLensServiceAuth` (`Story 20.1`).
 
 _Governed by `AD-34`, `AD-35`, FR-58, FR-62._
 
-### Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)  `(mới 2026-08-08)`  `[ready-for-dev]`
+
+### Story 20.3: Gap-Fill Caller + Cost Allocation (Nowing side)  `(mới 2026-08-08)`  `[ready-for-dev]`
 
 As a chat user,
 I want the agent to ask `chainlens-research` to index missing data on demand,
@@ -2352,7 +2304,7 @@ So that the answer does not say "I don't know" when the data is available on the
 
 **Given** a gap-fill request,
 **When** `chainlens-research` decides the gap is in a domain owned by Nowing (e.g. `batdongsan`, `vn_jobs`),
-**Then** `chainlens-research` calls `POST /v1/scraper/{scraper_id}/run` on Nowing (internal), Nowing runs the scraper, and the result is pushed back to `chainlens-research` via `Story 20.1`.
+**Then** `chainlens-research` calls `POST /v1/scraper/{scraper_id}/run` on Nowing (internal), Nowing runs the scraper, and the result is pushed back to `chainlens-research` via `Story 20.2`.
 
 **Given** the final `SSE done` frame,
 **When** `costDollars` is reported,
@@ -2364,7 +2316,8 @@ So that the answer does not say "I don't know" when the data is available on the
 
 _Governed by `AD-4`, FR-59, `AD-8`._
 
-### Story 20.3: `NowingPrivateProvider` for `POST /v1/private-data/search`  `(mới 2026-08-08)`  `[ready-for-dev]`
+
+### Story 20.4: `NowingPrivateProvider` for `POST /v1/private-data/search`  `(mới 2026-08-08)`  `[ready-for-dev]`
 
 As a Nowing user,
 I want my private data to stay in Nowing while still being used for answers,
@@ -2389,38 +2342,134 @@ so that privacy is preserved.
 **Then** it returns `chunks: []` and `costDollars: 0`, not 404.
 
 _Governed by `AD-5`, FR-60, `AD-16`._
+---
+## Epic 21: Lead Gen Intelligence `[PROPOSED]` (mới 2026-08-10)
 
-### Story 20.4: Service-to-Service Auth + Cost Ledger Sync  `(mới 2026-08-08)`  `[ready-for-dev]`
+_Tạo 2026-08-10 dựa trên market research (AI Lead Generation market $5.88B, Vietnam white space — không có AI-native lead gen player). Nowing chuyển từ "research tool" sang "lead intelligence platform" với 3 competitive advantages: Memory + Provenance, Real-time web research, Compliance-by-design._
 
-As a platform engineer,
-I want secure service-to-service auth and a shared cost envelope between Nowing and `chainlens-research`,
-So that `chainlens-research` can meter usage and Nowing can bill the user.
+**FRs:** FR-63 (Intent Signal Detection), FR-64 (Lead Scoring), FR-65 (Enriched Contact Data), FR-66 (Outbound Prospecting Automation), FR-67 (CRM Integration), FR-68 (Zalo Integration), FR-69 (Outcome-Based Pricing). **Beachhead:** Sales team / SDR (B2B SaaS, IT outsourcing, agency, local business).
+
+> **Market validation:**
+> - 81% sales teams use AI; signal-based selling rising
+> - Data quality is #1 pain point → Nowing's dedup + confidence = solution
+> - Vietnam: 93% SME AI adoption, $40.9M SFA market, no native player
+> - Zalo = 77.6M users (81% VN professionals) → distribution channel global players don't have
+> - Compliance-by-design (Decree 356) = competitive moat
+>
+> **⚠️ Epic 21 is `PROPOSED` and cannot be moved to `ready-for-dev` until the governance gates below close. Each story below must be rewritten with concrete user role, measurable metrics, explicit error-path acceptance criteria, and PII/consent gating before scheduling.**
+>
+> **Governance gates before scheduling:**
+> - Legal / ToS review for LinkedIn automation, Zalo OA business messaging, and email outreach.
+> - Vendor contracts and data-quality POC for waterfall contact-enrichment providers (Cleanlist / BetterContact).
+> - Zalo OA business verification and Decree 356 compliance sign-off.
+> - PII pipeline design: separate `consent_status` / `legal_basis` fields and redaction rules for lead-enrichment data.
+> - CRM sync scope: confirm read-first, then write-back phased sync and conflict-resolution policy.
+
+### Story 21.1: Intent Signal Detection `[PROPOSED]`
+
+As a salesperson,
+I want to detect buying signals from companies (funding, hiring, tech stack, executive moves),
+So that I can reach out at the right moment.
 
 **Acceptance Criteria:**
+**Given** a company in workspace, **When** signals are monitored, **Then** funding events, job postings, tech stack changes, and executive moves are detected and surfaced with signal type, confidence, source URL, and timestamp.
+**Given** multiple signals for the same company, **When** aggregated, **Then** a composite lead score is calculated.
+_Sources: Crunchbase, LinkedIn, company websites, job boards, news. FR-63._
 
-**Given** any `chainlens-research` internal endpoint call,
-**When** the request leaves Nowing,
-**Then** it carries a Bearer service token + `X-Correlation-Id` + `X-Workspace-Id` headers.
+### Story 21.2: Lead Scoring & Prioritization `[PROPOSED]`
 
-**Given** `chainlens-research` receives the request,
-**When** validating,
-**Then** it checks the service token against a shared secret; it rejects with `401` if missing/invalid.
+As a sales manager,
+I want leads scored and ranked by conversion likelihood,
+So that my team focuses on the highest-value prospects.
 
-**Given** a search/gap-fill/ingest call completes,
-**When** `chainlens-research` reports `costDollars`,
-**Then** Nowing writes a `TokenUsage` record with `usage_type` mapped from the operation (e.g. `chainlens_search`, `chainlens_gap_fill`, `chainlens_ingest`), linked to `workspace_id` and `run_id`.
+**Acceptance Criteria:**
+**Given** a set of leads, **When** scored, **Then** each lead receives a composite score based on fit (firmographics, technographics) and intent (signal strength, recency).
+**Given** a lead score, **When** displayed, **Then** it shows score breakdown (fit vs intent), trend, and comparison to similar converted leads.
+_FR-64._
 
-**Given** a `costDollars` value,
-**When** converting to credits,
-**Then** Nowing applies the same `costDollars → micros` rate as external provider calls (`AD-8`).
+### Story 21.3: Enriched Contact Data `[PROPOSED]`
 
-**Given** the service token is within 30 days of expiration or `chainlens-research` returns `401` due to token expiry,
-**When** the next outbound request is made,
-**Then** `ChainLensServiceAuth` rotates the token from a secure secret store and updates the stored token without dropping the in-flight request.
+As an SDR,
+I want verified contact data (email, phone) for my target accounts,
+So that I can reach out to the right decision-makers.
 
-**Given** token rotation fails,
-**When** `NowingIngestService` / gap-fill / private-provider calls need auth,
-**Then** the request fails open with `service_auth_unavailable` and a `chainlens_auth_failed` counter is emitted; no user data is sent with an invalid token.
+**Acceptance Criteria:**
+**Given** a company, **When** contact enrichment is requested, **Then** decision-maker names, titles, emails, and phone numbers are returned with verification status.
+**Given** contact data, **When** verified, **Then** email is validated via waterfall (5+ providers) and phone via real-time validation (9+ providers).
+_FR-65._
 
-_Governed by `AD-3`, `AD-4`, `AD-5`, FR-61, `AD-8`._
+### Story 21.4: Outbound Prospecting Automation `[PROPOSED]`
 
+As a sales team,
+I want to automate personalized outreach across channels,
+So that I can scale outbound without sacrificing quality.
+
+**Acceptance Criteria:**
+**Given** a lead list, **When** outreach is triggered, **Then** personalized messages are generated using lead context + ICP + intent signals.
+**Given** outreach sequences, **When** configured, **Then** multi-channel sequences (email, LinkedIn, Zalo for VN) are supported.
+_FR-66._
+
+### Story 21.5: CRM Integration & Write-Back `[PROPOSED]`
+
+As a sales operations manager,
+I want lead intelligence data synced with our CRM,
+So that reps work from a single source of truth.
+
+**Acceptance Criteria:**
+**Given** a CRM connection (Salesforce, HubSpot, Pipedrive), **When** lead data changes, **Then** it syncs bidirectionally.
+_FR-67._
+
+### Story 21.6: Zalo Integration (Vietnam Market) `[PROPOSED]`
+
+As a Vietnamese salesperson,
+I want to communicate with leads via Zalo,
+Because 81% of Vietnamese professionals use Zalo as their primary messaging platform.
+
+**Acceptance Criteria:**
+**Given** a Zalo OA connection, **When** configured, **Then** outreach sequences can include Zalo messages.
+**Given** a lead with Zalo contact, **When** outreach is triggered, **Then** personalized Zalo messages are sent.
+**Given** a Zalo reply, **When** received, **Then** it's logged in the lead's activity timeline.
+**Comply** with Zalo's business messaging policies and Decree 356.
+_FR-68._
+
+### Story 21.7: Outcome-Based Pricing `[PROPOSED]`
+
+As a sales team,
+I want to pay per qualified meeting booked (not just per seat),
+So that cost is tied to actual pipeline value delivered.
+
+**Acceptance Criteria:**
+**Given** a pricing plan, **When** selected, **Then** outcome-based option is available: pay per qualified meeting booked OR pay per lead enriched.
+**Given** usage, **When** tracked, **Then** the dashboard shows cost-per-meeting and cost-per-lead metrics.
+_FR-69._
+
+---
+
+## Cross-Cutting Dependency Mapping
+
+The following stories rely on shared building blocks introduced in **Epic 20** and on the **AD-33 Generic Alert Engine**. They must not be scheduled before their prerequisite is complete.
+
+| Story | Prerequisite | Why |
+|---|---|---|
+| 12.4 Vietnam Job Aggregator | Story 20.2 (`NowingIngestService`) | sends normalized job listings to `chainlens-research` |
+| 14.1 RSS Feed Integration | Story 20.2 (`NowingIngestService`) | sends RSS articles to `chainlens-research` |
+| 15.1 CafeF Financial Data Integration | Story 20.2 (`NowingIngestService`) | sends CafeF financial chunks to `chainlens-research` |
+| 15.2 Vietstock Deep Financials | Story 20.2 (`NowingIngestService`) | sends Vietstock chunks to `chainlens-research` |
+| 16.1 masothue.com Company Data | Story 20.2 (`NowingIngestService`) | sends company chunks to `chainlens-research` |
+| 16.2 Official Business Registry | Story 20.2 (`NowingIngestService`) | sends registry chunks to `chainlens-research` |
+| 17.1 Lazada Product Data | Story 20.2 (`NowingIngestService`) | sends Lazada product chunks to `chainlens-research` |
+| 17.2 Shopee Product Data | Story 20.2 (`NowingIngestService`), AD-33 | sends Shopee product chunks + alert template |
+| 12.6 Saved Searches | AD-33 (Generic Alert Engine) | saved-search `AlertRule` template |
+| 12.9 Job Market Alerts | AD-33 (Generic Alert Engine), Story 12.6 | job-market `AlertRule` template on top of saved searches |
+| 14.3 News Alerts & Topic Monitoring | Story 20.2 (`NowingIngestService`), AD-33 | news alert fetch/ingest + `AlertRule` |
+| 14.4 News Digest & Synthesis | AD-33 (Generic Alert Engine) | news digest `AlertRule` template |
+| 15.3 Stock Price Alerts | Story 20.2 (`NowingIngestService`), AD-33 | stock price `AlertRule` |
+| 15.4 Financial Trend Detection | AD-33 (Generic Alert Engine) | financial trend `AlertRule` |
+| 16.3 Company Alerts | Story 20.2 (`NowingIngestService`), AD-33 | company `AlertRule` |
+| 17.3 Price Drop Alerts | Story 20.2 (`NowingIngestService`), AD-33 | price-drop `AlertRule` |
+| 17.4 Competitor Tracking | Story 20.2 (`NowingIngestService`), AD-33 | competitor `AlertRule` |
+
+> **Prerequisite definitions:**
+> - **Story 20.1** = `ChainLensServiceAuth` + cost ledger sync.
+> - **Story 20.2** = `NowingIngestService.to_chunks()` + `POST /v1/ingest/scraper` contract.
+> - **AD-33** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch). If no dedicated implementation story exists, treat it as a prerequisite work package before any alert story is scheduled.
