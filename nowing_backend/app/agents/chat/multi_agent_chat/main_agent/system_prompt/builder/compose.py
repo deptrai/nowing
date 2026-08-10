@@ -26,6 +26,7 @@ sections but keeps all the always-on platform sections.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 
 from app.db import ChatVisibility
@@ -38,6 +39,17 @@ from .sections.memory_protocol import build_memory_protocol_section
 from .sections.mode_policy import build_mode_policy_section
 from .sections.specialists import build_specialists_section
 from .sections.tools import build_tools_section
+
+# AC-18.4: hard ceiling for admin-injected system instructions.
+_MAX_INSTRUCTIONS_LEN = 8_000
+
+
+def _sanitize_agent_instructions(instructions: str) -> str:
+    """Strip any Jinja-like markers except the documented ``{resolved_today}`` placeholder."""
+    placeholder = "\x00resolved_today\x00"
+    s = instructions.replace("{resolved_today}", placeholder)
+    s = re.sub(r"[{}]", "", s)
+    return s.replace(placeholder, "{resolved_today}")
 
 
 def build_main_agent_system_prompt(
@@ -66,7 +78,9 @@ def build_main_agent_system_prompt(
         # Only substitute the single documented ``{resolved_today}`` placeholder.
         # Registry instructions are admin-supplied and may contain literal ``{``
         # characters, so ``str.format()`` would raise ``KeyError``.
-        normalized = custom_system_instructions.replace(
+        # AC-18.4: cap length and strip any Jinja-like markers before rendering.
+        clamped = custom_system_instructions[:_MAX_INSTRUCTIONS_LEN]
+        normalized = _sanitize_agent_instructions(clamped).replace(
             "{resolved_today}", resolved_today
         )
         parts.append("\n" + normalized + "\n")

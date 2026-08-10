@@ -23,6 +23,7 @@ import asyncio
 import contextlib
 import inspect
 import logging
+import re
 import time
 from collections.abc import AsyncGenerator
 from functools import partial
@@ -124,6 +125,9 @@ from app.utils.perf import get_perf_logger, log_system_snapshot
 logger = logging.getLogger(__name__)
 _perf_log = get_perf_logger()
 
+# AC-18.4: runtime guard for admin-injected system instructions.
+_MAX_INSTRUCTIONS_LEN = 8_000
+
 # Holds spawned background tasks (set_ai_responding, persist_user, persist_asst)
 # so the GC doesn't drop them before they finish. Kept at module level so it
 # survives across turns within one process.
@@ -138,6 +142,22 @@ class _AgentNotFoundError(Exception):
         self.error_code = error_code
         self.error_kind = "user_error"
         super().__init__(message)
+
+
+def _clamp_agent_instructions(instructions: str | None) -> str | None:
+    """Enforce AC-18.4 guards: max 8k chars and no Jinja-like markers.
+
+    Only the documented ``{resolved_today}`` placeholder is allowed. Any other
+    ``{`` or ``}`` characters are stripped to prevent secret interpolation.
+    """
+    if instructions is None:
+        return None
+    s = instructions[:_MAX_INSTRUCTIONS_LEN]
+    # Escape literal braces except the documented placeholder.
+    placeholder = "\x00resolved_today\x00"
+    s = s.replace("{resolved_today}", placeholder)
+    s = re.sub(r"[{}]", "", s)
+    return s.replace(placeholder, "{resolved_today}")
 
 
 async def _merge_registry_agent_config(
@@ -174,19 +194,33 @@ async def _merge_registry_agent_config(
         # AC-18.4: AgentConfig.system_instructions is *prepended* to the default
         # system prompt; the additive prompt builder keeps the default body.
         if registry.system_instructions is not None:
-            agent_config.system_instructions = registry.system_instructions
+            agent_config.system_instructions = _clamp_agent_instructions(
+                registry.system_instructions
+            )
         if registry.citations_enabled is not None:
             agent_config.citations_enabled = registry.citations_enabled
         if registry.model_name:
             agent_config.model_name = registry.model_name
 
-        # Non-empty enabled_tools is the allowlist; empty means no restriction.
-        if registry.enabled_tools:
+        # Fail-closed: an explicit empty list means "no tools", while None or
+        # a missing registry means "no restriction". This matches AD-30's
+        # deny-by-default stance for new connectors.
+        if registry.enabled_tools is not None:
             effective_enabled = list(registry.enabled_tools)
-        if registry.disabled_tools:
+        if registry.disabled_tools is not None:
             if effective_disabled is None:
                 effective_disabled = []
             effective_disabled.extend(registry.disabled_tools)
+
+        logger.info(
+            "agent-config merged for client_id=%s agent_id=%s "
+            "instructions_len=%d enabled_tools=%s disabled_tools=%s",
+            registry.client_id,
+            registry.slug,
+            len(agent_config.system_instructions or ""),
+            effective_enabled,
+            effective_disabled,
+        )
 
     return agent_config, effective_enabled, effective_disabled
 

@@ -275,6 +275,10 @@ class TestStreamNewChatAgentAndMetadata:
         assert agent_config.citations_enabled == registry.citations_enabled
         assert agent_config.model_name == registry.model_name
 
+        kwargs = _orchestrator.build_main_agent_for_thread.call_args.kwargs
+        assert kwargs.get("enabled_tools") == registry.enabled_tools
+        assert kwargs.get("disabled_tools") == registry.disabled_tools
+
     def test_loads_registry_agent_config_from_db(
         self, _patch_orchestrator_deps
     ) -> None:
@@ -310,6 +314,10 @@ class TestStreamNewChatAgentAndMetadata:
         assert agent_config is not None
         assert agent_config.system_instructions == registry.system_instructions
         assert agent_config.model_name == registry.model_name
+
+        kwargs = _orchestrator.build_main_agent_for_thread.call_args.kwargs
+        assert kwargs.get("enabled_tools") == registry.enabled_tools
+        assert kwargs.get("disabled_tools") == registry.disabled_tools
 
     def test_falls_back_to_default_agent_when_agent_id_is_absent(
         self, _patch_orchestrator_deps
@@ -379,3 +387,62 @@ class TestStreamNewChatAgentAndMetadata:
         assert chunks, "expected at least an error SSE frame and done marker"
         payload = "".join(chunks)
         assert "AGENT_NOT_FOUND" in payload or "agent not found" in payload.lower()
+
+    def test_empty_enabled_tools_is_fail_closed(self, _patch_orchestrator_deps) -> None:
+        """AC-2: an explicit empty enabled_tools list means no tools."""
+        import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
+
+        registry = _registry_agent()
+        registry.enabled_tools = []
+        registry.disabled_tools = []
+
+        gen = stream_new_chat(
+            user_query="hello",
+            workspace_id=1,
+            chat_id=105,
+            user_id="user-1",
+            client_id="bdsai.vn",
+            agent_id="bdsai-listing-assistant",
+            platform_metadata={"source": "bdsai"},
+            agent_config_override=registry,
+        )
+
+        _run_first_yield(gen)
+
+        kwargs = _orchestrator.build_main_agent_for_thread.call_args.kwargs
+        assert kwargs.get("enabled_tools") == []
+        assert kwargs.get("disabled_tools") == []
+
+    def test_system_instructions_are_clamped_and_sanitized(
+        self, _patch_orchestrator_deps
+    ) -> None:
+        """AC-1/AC-4: instructions are capped at 8k and Jinja-like markers are stripped."""
+        import app.tasks.chat.streaming.flows.new_chat.orchestrator as _orchestrator
+
+        registry = _registry_agent()
+        registry.system_instructions = (
+            "Use {{secret}}. Today is {resolved_today}. " + "x" * 20_000
+        )
+
+        gen = stream_new_chat(
+            user_query="hello",
+            workspace_id=1,
+            chat_id=106,
+            user_id="user-1",
+            client_id="bdsai.vn",
+            agent_id="bdsai-listing-assistant",
+            agent_config_override=registry,
+        )
+
+        _run_first_yield(gen)
+
+        agent_config = _orchestrator.build_main_agent_for_thread.call_args.kwargs.get(
+            "agent_config"
+        )
+        assert agent_config is not None
+        assert len(agent_config.system_instructions) <= 8_000
+        assert "{{secret}}" not in agent_config.system_instructions
+        assert (
+            "{" not in agent_config.system_instructions
+            or "{resolved_today}" in agent_config.system_instructions
+        )

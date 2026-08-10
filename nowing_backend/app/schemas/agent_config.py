@@ -58,12 +58,26 @@ class AgentConfigCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=256)
     display_name: str = Field(..., min_length=1, max_length=256)
     slug: str | None = Field(default=None, max_length=64)
-    system_instructions: str | None = Field(default=None, max_length=100_000)
+    system_instructions: str | None = Field(default=None, max_length=8_000)
     enabled_tools: list[str] = Field(default_factory=list, max_length=256)
     disabled_tools: list[str] = Field(default_factory=list, max_length=256)
     model_name: str | None = Field(default=None, max_length=256)
     citations_enabled: bool = True
     is_active: bool = True
+
+    @field_validator("system_instructions")
+    @classmethod
+    def _validate_system_instructions(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        # AC-18.4: only the documented {resolved_today} placeholder is allowed.
+        placeholder = "\x00resolved_today\x00"
+        temp = v.replace("{resolved_today}", placeholder)
+        if "{" in temp or "}" in temp:
+            raise ValueError(
+                "system_instructions may only contain the {resolved_today} placeholder; other {/} markers are not allowed"
+            )
+        return v
 
     @field_validator("client_id", mode="before")
     @classmethod
@@ -101,12 +115,25 @@ class AgentConfigUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=256)
     display_name: str | None = Field(default=None, min_length=1, max_length=256)
     slug: str | None = Field(default=None, max_length=64)
-    system_instructions: str | None = Field(default=None, max_length=100_000)
+    system_instructions: str | None = Field(default=None, max_length=8_000)
     enabled_tools: list[str] | None = Field(default=None, max_length=256)
     disabled_tools: list[str] | None = Field(default=None, max_length=256)
     model_name: str | None = Field(default=None, max_length=256)
     citations_enabled: bool | None = None
     is_active: bool | None = None
+
+    @field_validator("system_instructions")
+    @classmethod
+    def _validate_system_instructions(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        placeholder = "\x00resolved_today\x00"
+        temp = v.replace("{resolved_today}", placeholder)
+        if "{" in temp or "}" in temp:
+            raise ValueError(
+                "system_instructions may only contain the {resolved_today} placeholder; other {/} markers are not allowed"
+            )
+        return v
 
     @field_validator("slug", mode="before")
     @classmethod

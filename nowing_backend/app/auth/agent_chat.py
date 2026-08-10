@@ -99,6 +99,38 @@ async def _resolve_vertical_client(
     return client
 
 
+async def _resolve_default_agent_id(
+    session: AsyncSession,
+    client_id: str,
+    user_id: str,
+) -> str:
+    """Resolve the single active agent for a client when no agent_id is supplied.
+
+    Raises HTTPException(400) when the client has zero or multiple active agents.
+    """
+    await _tenant_context.set_request_tenant_context(
+        session, None, client_id, None, user_id=user_id
+    )
+    result = await session.execute(
+        select(AgentConfig.slug).where(
+            AgentConfig.client_id == client_id,
+            AgentConfig.is_active.is_(True),
+        )
+    )
+    agent_ids = result.scalars().all()
+    if len(agent_ids) == 1:
+        return agent_ids[0]
+    if not agent_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="client has no default agent; agent_id is required",
+        )
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="client has multiple active agents; agent_id is required",
+    )
+
+
 async def _resolve_agent_config(
     session: AsyncSession,
     client_id: str,
@@ -347,25 +379,33 @@ async def require_agent_chat_pat(
     if effective_agent_id:
         _validate_slug(effective_agent_id, "agent_id")
 
-    if not effective_agent_id:
-        await _audit_rejection(
-            request,
-            session,
-            status.HTTP_404_NOT_FOUND,
-            actor_user_id=str(auth_ctx.user.id),
-            pat_id=getattr(pat, "id", ""),
-            workspace_id=workspace_id,
-            client_id=effective_client_id,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="agent_id required",
-        )
-
     # Set tenant GUCs before any lookup that may be protected by RLS.
     await _tenant_context.set_request_tenant_context(
-        session, workspace_id, effective_client_id, effective_agent_id
+        session,
+        workspace_id,
+        effective_client_id,
+        effective_agent_id,
+        user_id=str(auth_ctx.user.id),
     )
+
+    if not effective_agent_id:
+        try:
+            effective_agent_id = await _resolve_default_agent_id(
+                session,
+                effective_client_id,
+                user_id=str(auth_ctx.user.id),
+            )
+        except HTTPException as exc:
+            await _audit_rejection(
+                request,
+                session,
+                exc.status_code,
+                actor_user_id=str(auth_ctx.user.id),
+                pat_id=getattr(pat, "id", ""),
+                workspace_id=workspace_id,
+                client_id=effective_client_id,
+            )
+            raise
 
     try:
         await _resolve_vertical_client(session, effective_client_id)

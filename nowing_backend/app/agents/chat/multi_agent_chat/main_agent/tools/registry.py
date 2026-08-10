@@ -16,6 +16,7 @@ the main agent actually builds and binds.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import Any
 
@@ -73,6 +74,8 @@ _MAIN_AGENT_TOOL_FACTORIES: dict[
     ),
 }
 
+_logger = logging.getLogger(__name__)
+
 
 def build_main_agent_tools(
     dependencies: dict[str, Any],
@@ -99,10 +102,22 @@ def build_main_agent_tools(
     else:
         wanted = set(enabled_tools)
         names = [n for n in _MAIN_AGENT_TOOL_FACTORIES if n in wanted]
+        unknown = wanted - set(_MAIN_AGENT_TOOL_FACTORIES)
+        if unknown:
+            _logger.warning(
+                "tool allowlist contains unknown tool names (ignored): %s",
+                sorted(unknown),
+            )
 
     if disabled_tools:
         disabled = set(disabled_tools)
         names = [n for n in names if n not in disabled]
+        unknown_disabled = disabled - set(_MAIN_AGENT_TOOL_FACTORIES)
+        if unknown_disabled:
+            _logger.warning(
+                "tool denylist contains unknown tool names (ignored): %s",
+                sorted(unknown_disabled),
+            )
 
     tools: list[BaseTool] = []
     for name in names:

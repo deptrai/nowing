@@ -96,3 +96,32 @@ TBD
 ### Completion Notes List
 
 ### File List
+
+### Review Findings (code review — 2026-08-10)
+
+**Review layers completed:** Blind Hunter, Edge Case Hunter, Acceptance Auditor.  
+**Triage summary:** 0 `decision-needed`, 6 `patch` applied, 5 `defer`, 4 dismissed.
+
+#### `patch` (applied)
+
+- [x] [Review][Patch] `enabled_tools` empty list is now fail-closed (empty = no tools, None = no restriction); `_merge_registry_agent_config` preserves `[]` and logs the effective tool set — `app/tasks/chat/streaming/flows/new_chat/orchestrator.py:163-220`.
+- [x] [Review][Patch] Admin-injected `system_instructions` are clamped to 8,000 chars and sanitized so only the documented `{resolved_today}` placeholder remains; Jinja-like `{`/`}` markers are stripped at both schema and runtime — `app/schemas/agent_config.py:68-78,123-132`, `app/agents/chat/multi_agent_chat/main_agent/system_prompt/builder/compose.py:43-86`, `app/tasks/chat/streaming/flows/new_chat/orchestrator.py:147-160`.
+- [x] [Review][Patch] `build_main_agent_tools` now warns when `enabled_tools` / `disabled_tools` contain unknown tool names instead of silently ignoring them — `app/agents/chat/multi_agent_chat/main_agent/tools/registry.py:77-120`.
+- [x] [Review][Patch] `GET /agent/tools` now accepts optional `client_id` + `agent_id` query params and filters the tool catalog by the agent's allowlist/denylist; unscoped calls still return the full catalog — `app/routes/new_chat_routes.py:1692-1740`.
+- [x] [Review][Patch] `platform_metadata` in `_render_platform_metadata` now HTML-escapes the entire untrusted JSON payload instead of only defanging `</platform_metadata>` — `app/tasks/chat/streaming/flows/new_chat/input_state.py:281-300`.
+- [x] [Review][Patch] PAT agent-chat auth now resolves a default `agent_id` when the PAT/client has exactly one active `AgentConfig`; zero or multiple active agents raise 400 — `app/auth/agent_chat.py:102-132,392-409`.
+
+#### `defer`
+
+- [x] [Review][Defer] OpenTelemetry metrics for agent prompt/tool filter usage are not added; audit logs now cover the merge event, so telemetry can be added later — `app/observability/metrics.py`.
+- [x] [Review][Defer] `enabled_tools` / `disabled_tools` overlap and duplicate-name validation is not enforced; schema currently allows duplicates and overlapping entries — `app/schemas/agent_config.py:78-93,141-153`.
+- [x] [Review][Defer] Thread `platform_metadata` persistence does not log changes or serialize concurrent updates; current behavior is acceptable for the admin surface — `app/tasks/chat/streaming/flows/new_chat/orchestrator.py:298-301`.
+- [x] [Review][Defer] No dedicated `tests/integration/api/test_agent_chat_pat_matrix.py` was created; the existing `test_new_chat_routes.py` + unit tests cover the critical paths — `tests/integration/api/`.
+- [x] [Review][Defer] Prompt render-time size check for `platform_metadata` wrapper is not explicit; the request-time 64KB schema limit is the current boundary — `app/schemas/new_chat.py`.
+
+#### `dismiss`
+
+- [x] [Review][Dismiss] System-instruction Python guard in `get_agent_config` is defense-in-depth and was kept — `app/services/agent_registry.py`.
+- [x] [Review][Dismiss] Tool catalog / runtime mismatch is accepted: the main agent only builds `MAIN_AGENT_NOWING_TOOL_NAMES`; catalog entries are for subagent/MCP dispatch and are filtered by name at build time — `app/agents/chat/multi_agent_chat/main_agent/tools/registry.py:97-105`.
+- [x] [Review][Dismiss] "Concurrent PATCH last-write-wins" and "thread metadata not atomic" are generic issues not introduced by this change.
+- [x] [Review][Dismiss] Whitespace-only slug/name is caught by schema `min_length=1` or `_derive_slug` fallback.

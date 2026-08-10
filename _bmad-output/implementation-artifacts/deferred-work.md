@@ -412,3 +412,11 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - UI for soft-deleted/inactive agents and a system-instructions character counter are not aligned with the (missing) `ux-contract-agent-registry.md`.
 - Max-length boundary tests and tests for enabled/disabled tool overlap are out of scope for this chunk.
 - `enabled_tools` / `disabled_tools` are not validated as disjoint and are not de-duplicated; currently harmless.
+
+## Deferred from: code review of 18-4-agentconfig-prompt-injection (2026-08-10)
+
+- OpenTelemetry metrics for agent prompt/tool filter usage are not added; audit logs cover the merge event.
+- `enabled_tools` / `disabled_tools` overlap and duplicate-name validation is not enforced in the schema.
+- Thread `platform_metadata` persistence does not log changes or serialize concurrent updates.
+- No dedicated `tests/integration/api/test_agent_chat_pat_matrix.py` was created; existing tests cover critical paths.
+- Prompt render-time size check for the `platform_metadata` wrapper is not explicit.

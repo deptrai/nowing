@@ -20,6 +20,7 @@ orchestrator needs downstream (``accepted_folder_ids`` for runtime context).
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 from dataclasses import dataclass
@@ -286,10 +287,9 @@ def _render_platform_metadata(
     """Render untrusted platform metadata as a labeled, non-secret prompt block."""
     if not platform_metadata:
         return None
-    payload = json.dumps(platform_metadata, ensure_ascii=False)
-    # Defang any literal ``</platform_metadata>`` inside user-supplied strings
-    # so a malicious metadata value cannot prematurely close the context block.
-    payload = payload.replace("</platform_metadata>", "<\\/platform_metadata>")
+    # AC-18.4: escape all HTML/XML special characters in untrusted metadata so
+    # a malicious value cannot inject prompt tags or close the context block.
+    payload = html.escape(json.dumps(platform_metadata, ensure_ascii=False))
     return (
         "<platform_metadata>\n"
         "The following metadata was supplied by the calling platform. "
