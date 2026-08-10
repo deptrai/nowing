@@ -2184,6 +2184,7 @@ class VerticalClient(Base, TimestampMixin):
         nullable=False,
         default=lambda: datetime.now(UTC),
         server_default=text("now()"),
+        onupdate=lambda: datetime.now(UTC),
     )
 
 
@@ -2193,12 +2194,14 @@ class AgentConfig(BaseModel, TimestampMixin):
     __tablename__ = "agent_configs"
     __table_args__ = (
         UniqueConstraint("client_id", "slug", name="unique_agent_configs_client_slug"),
+        UniqueConstraint("client_id", "name", name="unique_agent_configs_client_name"),
     )
 
     # Override BaseModel's Integer id with UUID as required by AD-30.
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     client_id = Column(CITEXT, nullable=False, index=True)
     name = Column(Text, nullable=False)
+    display_name = Column(Text, nullable=False)
     slug = Column(Text, nullable=False)
     system_instructions = Column(Text, nullable=True)
     enabled_tools = Column(
@@ -2209,7 +2212,7 @@ class AgentConfig(BaseModel, TimestampMixin):
     )
     model_name = Column(Text, nullable=True)
     citations_enabled = Column(
-        Boolean, nullable=False, default=False, server_default="false"
+        Boolean, nullable=False, default=True, server_default="true"
     )
     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
     updated_at = Column(
@@ -2217,6 +2220,7 @@ class AgentConfig(BaseModel, TimestampMixin):
         nullable=False,
         default=lambda: datetime.now(UTC),
         server_default=text("now()"),
+        onupdate=lambda: datetime.now(UTC),
     )
 
 
@@ -3457,7 +3461,12 @@ class Run(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_runs_workspace_created", "workspace_id", "created_at"),
         # AC-18.7: vertical-client run attribution and daily rollups.
-        Index("ix_runs_workspace_client_created", "workspace_id", "client_id", "created_at"),
+        Index(
+            "ix_runs_workspace_client_created",
+            "workspace_id",
+            "client_id",
+            "created_at",
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

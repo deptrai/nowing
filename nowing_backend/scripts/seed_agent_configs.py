@@ -30,15 +30,15 @@ logging.basicConfig(level=logging.INFO)
 
 DEFAULT_CLIENT_ID = "bdsai.vn"
 DEFAULT_AGENT_SLUG = "bdsai-listing-assistant"
-DEFAULT_NAME = "BDS AI Listing Assistant"
+DEFAULT_NAME = "bdsai-listing-assistant"
+DEFAULT_DISPLAY_NAME = "BDS AI Listing Assistant"
 
-# Default tool allowlist for the BDS AI vertical (property listing, broker research).
+# Default main-agent tool allowlist for the BDS AI vertical.
+# The main-agent runtime only builds `update_memory` and `create_automation`;
+# connector-specific work is delegated to task subagents via system prompt.
 DEFAULT_ENABLED_TOOLS = [
-    "web_search",
-    "batdongsan_scrape",
-    "muaban_bds_scrape",
-    "vn_bds_scrape",
-    "google_maps_search",
+    "update_memory",
+    "create_automation",
 ]
 
 DEFAULT_SYSTEM_INSTRUCTIONS = (
@@ -49,7 +49,7 @@ DEFAULT_SYSTEM_INSTRUCTIONS = (
 
 
 def _require_dev_environment() -> None:
-    env = os.getenv("ENVIRONMENT", "development").lower()
+    env = os.getenv("ENVIRONMENT", "").lower()
     safe = {"development", "dev", "test", "testing", "local"}
     if env not in safe:
         raise RuntimeError(
@@ -76,6 +76,7 @@ async def seed(
     client_id: str = DEFAULT_CLIENT_ID,
     slug: str = DEFAULT_AGENT_SLUG,
     name: str = DEFAULT_NAME,
+    display_name: str = DEFAULT_DISPLAY_NAME,
     force: bool = False,
 ) -> AgentConfig:
     if not force:
@@ -96,6 +97,7 @@ async def seed(
             agent = AgentConfig(
                 client_id=client_id,
                 name=name,
+                display_name=display_name,
                 slug=slug,
                 system_instructions=DEFAULT_SYSTEM_INSTRUCTIONS,
                 enabled_tools=DEFAULT_ENABLED_TOOLS,
@@ -107,11 +109,14 @@ async def seed(
             session.add(agent)
             logger.info("Created agent config %s/%s", client_id, slug)
         else:
-            agent.system_instructions = (
-                agent.system_instructions or DEFAULT_SYSTEM_INSTRUCTIONS
-            )
-            agent.enabled_tools = agent.enabled_tools or DEFAULT_ENABLED_TOOLS
-            agent.is_active = True
+            # Backfill fields that are missing on an existing row without
+            # clobbering values an admin may have intentionally changed.
+            if not agent.display_name:
+                agent.display_name = display_name
+            if agent.system_instructions is None:
+                agent.system_instructions = DEFAULT_SYSTEM_INSTRUCTIONS
+            if agent.enabled_tools is None:
+                agent.enabled_tools = DEFAULT_ENABLED_TOOLS
             logger.info("Updated agent config %s/%s", client_id, slug)
 
         await session.commit()
@@ -126,6 +131,7 @@ def main() -> None:
     parser.add_argument("--client-id", default=DEFAULT_CLIENT_ID)
     parser.add_argument("--slug", default=DEFAULT_AGENT_SLUG)
     parser.add_argument("--name", default=DEFAULT_NAME)
+    parser.add_argument("--display-name", default=DEFAULT_DISPLAY_NAME)
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     agent = asyncio.run(
@@ -133,6 +139,7 @@ def main() -> None:
             client_id=args.client_id,
             slug=args.slug,
             name=args.name,
+            display_name=args.display_name,
             force=args.force,
         )
     )

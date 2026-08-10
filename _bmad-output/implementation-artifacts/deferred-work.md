@@ -1,3 +1,25 @@
+## Deferred from: code review of 18-3-agent-registry (2026-08-10)
+
+- **Finding:** Frontend admin agent-registry UI page (`nowing_web/app/admin/agent-registry`) is not implemented.
+  - **Action:** Marked `[x] [Review][Defer]` in `18-3-agent-registry.md`.
+  - **Reason / when to revisit:** UI implementation is a separate frontend story / UX contract pass for `ux-contract-agent-registry.md`.
+
+- **Finding:** README / ops runbook seed command documentation missing.
+  - **Action:** Marked `[x] [Review][Defer]` in `18-3-agent-registry.md`.
+  - **Reason / when to revisit:** Documentation sprint for `nowing_backend/README.md` and ops runbook.
+
+- **Finding:** Test coverage shallow — missing PATCH, uniqueness, RLS non-owner, and invalid-agent chat 404 cases.
+  - **Action:** Marked `[x] [Review][Defer]` in `18-3-agent-registry.md`.
+  - **Reason / when to revisit:** Test sprint / next chunk review.
+
+- **Finding:** `AgentConfig` tool lists should be reconciled with the full tool catalog (`shared/tools/catalog.py`) once the runtime supports more than the SRP main-agent tool surface.
+  - **Action:** Marked `[x] [Review][Defer]` in `18-3-agent-registry.md`.
+  - **Reason / when to revisit:** Tool-catalog unification across main-agent, subagents, and MCP.
+
+- **Finding:** `agent_configs.client_id` lacks a foreign-key constraint to `vertical_clients.client_id`.
+  - **Action:** Marked `[x] [Review][Defer]` in `18-3-agent-registry.md`.
+  - **Reason / when to revisit:** Vertical-client lifecycle hardening; admin create already verifies existence in the patch set.
+
 ## Deferred from: code review of 18-2-newchatrequest-extension (2026-08-10)
 
 - **Finding:** `_bounded_chat_metadata` list cap missing in reviewed diff but `MAX_PLATFORM_METADATA_LIST_LENGTH` already in HEAD (`37b3fe505`).

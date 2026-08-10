@@ -39,7 +39,11 @@ async def get_agent_config(
         )
     )
     config = result.scalars().first()
-    if config is None or not config.is_active or config.client_id != client_id:
+    if (
+        config is None
+        or not config.is_active
+        or (config.client_id or "").lower() != client_id.lower()
+    ):
         raise AgentConfigNotFoundError()
     return config
 
@@ -49,6 +53,8 @@ async def list_agents(
     client_id: str | None = None,
 ) -> list[AgentConfig]:
     """List agent configs, optionally filtered to a single client."""
+    if client_id is not None:
+        client_id = client_id.strip() or None
     stmt = select(AgentConfig)
     if client_id is not None:
         stmt = stmt.where(AgentConfig.client_id == client_id)
@@ -76,6 +82,7 @@ async def upsert_agent_config(
     )
     config = result.scalars().first()
     if config is None:
+        fields.setdefault("display_name", fields.get("name") or slug)
         config = AgentConfig(client_id=client_id, slug=slug, **fields)
         session.add(config)
     else:

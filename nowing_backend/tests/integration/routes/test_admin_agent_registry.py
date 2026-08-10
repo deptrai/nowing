@@ -2,6 +2,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db import VerticalClient
+
 pytestmark = pytest.mark.integration
 
 
@@ -11,12 +13,22 @@ class TestAdminAgentRegistry:
         admin_client: AsyncClient,
         db_session: AsyncSession,
     ):
+        db_session.add(
+            VerticalClient(
+                client_id="bdsai.vn",
+                display_name="BDS AI",
+                is_active=True,
+            )
+        )
+        await db_session.flush()
+
         payload = {
             "client_id": "bdsai.vn",
-            "name": "BDS AI Listing Assistant",
+            "name": "bdsai-listing-assistant",
+            "display_name": "BDS AI Listing Assistant",
             "slug": "bdsai-listing-assistant",
             "system_instructions": "You are helpful.",
-            "enabled_tools": ["web_search"],
+            "enabled_tools": ["update_memory", "create_automation"],
             "disabled_tools": [],
             "citations_enabled": True,
             "is_active": True,
@@ -37,8 +49,14 @@ class TestAdminAgentRegistry:
     ):
         payload = {
             "client_id": "bdsai.vn",
-            "name": "BDS AI Listing Assistant",
+            "name": "bdsai-listing-assistant",
+            "display_name": "BDS AI Listing Assistant",
             "slug": "bdsai-listing-assistant",
+            "system_instructions": "You are helpful.",
+            "enabled_tools": [],
+            "disabled_tools": [],
+            "citations_enabled": True,
+            "is_active": True,
         }
         resp = await client_as_regular_user.post(
             "/api/v1/admin/agent-registry", json=payload

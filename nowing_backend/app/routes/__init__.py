@@ -163,10 +163,10 @@ router.include_router(jira_add_connector_router)
 router.include_router(confluence_add_connector_router)
 router.include_router(clickup_add_connector_router)
 router.include_router(dropbox_add_connector_router)
-router.include_router(admin_agent_registry_router)  # Platform admin agent registry
 router.include_router(
     admin_global_model_connections_router
 )  # Platform admin global models
+router.include_router(admin_agent_registry_router)  # Platform admin agent registry
 router.include_router(
     admin_latency_router
 )  # Platform admin ChainLens latency percentiles

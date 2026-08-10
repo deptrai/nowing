@@ -36,10 +36,11 @@ async def db_agent_config(db_session: AsyncSession) -> AgentConfig:
         client_id="bdsai.vn",
         slug="bdsai-listing-assistant",
         name="BDS Listing Assistant",
+        display_name="BDS Listing Assistant",
         system_instructions="You are a BDS listing assistant. Always cite sources.",
         model_name="gpt-4o",
         citations_enabled=False,
-        enabled_tools=["search_knowledge_base", "ls"],
+        enabled_tools=["update_memory", "create_automation"],
         disabled_tools=["deep_research"],
         is_active=True,
     )

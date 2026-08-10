@@ -1,0 +1,820 @@
+diff --git a/nowing_backend/app/auth/agent_chat.py b/nowing_backend/app/auth/agent_chat.py
+index 2ad808545..188c54763 100644
+--- a/nowing_backend/app/auth/agent_chat.py
++++ b/nowing_backend/app/auth/agent_chat.py
+@@ -104,26 +104,20 @@ async def _resolve_agent_config(
+     client_id: str,
+     agent_id: str,
+ ) -> AgentConfig:
+-    result = await session.execute(
+-        select(AgentConfig).where(
+-            AgentConfig.client_id == client_id,
+-            AgentConfig.slug == agent_id,
+-            AgentConfig.is_active.is_(True),
+-        )
+-    )
+-    config = result.scalars().first()
+-    if config is None or not config.is_active:
+-        raise HTTPException(
+-            status_code=status.HTTP_404_NOT_FOUND,
+-            detail="agent not found or inactive",
+-        )
+-    if config.client_id != client_id:
+-        # Fail closed: do not reveal that the agent exists under another client.
++    """Fail-closed chat-runtime lookup of an active AgentConfig (AD-30).
++
++    Delegates to the Agent Registry service so all call sites share one
++    404/inactive rule.
++    """
++    from app.services.agent_registry import AgentConfigNotFoundError, get_agent_config
++
++    try:
++        return await get_agent_config(session, client_id=client_id, agent_id=agent_id)
++    except AgentConfigNotFoundError as exc:
+         raise HTTPException(
+             status_code=status.HTTP_404_NOT_FOUND,
+-            detail="agent not found or inactive",
+-        )
+-    return config
++            detail=exc.message,
++        ) from exc
+ 
+ 
+ def _route_label(request: Request) -> str:
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index 5a5a0edd2..156ba1b91 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -1207,6 +1207,13 @@ class TokenUsage(BaseModel, TimestampMixin):
+                 "usage_type = 'deep_research' AND resolved_mode IS NOT NULL"
+             ),
+         ),
++        # AC-18.7: daily cost rollups by workspace + client.
++        Index(
++            "ix_token_usage_workspace_client_created_at",
++            "workspace_id",
++            "client_id",
++            "created_at",
++        ),
+     )
+ 
+     prompt_tokens = Column(Integer, nullable=False, default=0)
+@@ -1246,6 +1253,13 @@ class TokenUsage(BaseModel, TimestampMixin):
+         nullable=False,
+         index=True,
+     )
++    client_id = Column(Text, nullable=True, index=True)
++    external_metadata = Column(JSONB, nullable=True, default=dict)
++    run_id = Column(
++        UUID(as_uuid=True),
++        nullable=True,
++        index=True,
++    )
+ 
+     # Relationships
+     thread = relationship("NewChatThread", back_populates="token_usages")
+@@ -2099,6 +2113,13 @@ class ResearchThread(BaseModel, TimestampMixin):
+     """Container for a chain of related chat sessions that share memory."""
+ 
+     __tablename__ = "research_threads"
++    __table_args__ = (
++        Index(
++            "ix_research_threads_workspace_id_client_id",
++            "workspace_id",
++            "client_id",
++        ),
++    )
+ 
+     workspace_id = Column(
+         Integer,
+@@ -2227,6 +2248,12 @@ class Memory(BaseModel, TimestampMixin):
+             "id",
+             postgresql_where=text("research_thread_id IS NOT NULL"),
+         ),
++        # AC-18.6: hard tenant filter for vertical-client memories.
++        Index(
++            "ix_memories_workspace_id_client_id",
++            "workspace_id",
++            "client_id",
++        ),
+     )
+ 
+     workspace_id = Column(
+@@ -2253,6 +2280,8 @@ class Memory(BaseModel, TimestampMixin):
+         # Migration 182 drops the single-column ix_memories_research_thread_id
+         # that index=True used to create here — keep this Column in sync with it.
+     )
++    client_id = Column(Text, nullable=True, index=True)
++    agent_id = Column(Text, nullable=True)
+     type = Column(
+         SQLAlchemyEnum(
+             MemoryType,
+@@ -3425,7 +3454,11 @@ class Run(Base, TimestampMixin):
+     __tablename__ = "runs"
+     __allow_unmapped__ = True
+ 
+-    __table_args__ = (Index("ix_runs_workspace_created", "workspace_id", "created_at"),)
++    __table_args__ = (
++        Index("ix_runs_workspace_created", "workspace_id", "created_at"),
++        # AC-18.7: vertical-client run attribution and daily rollups.
++        Index("ix_runs_workspace_client_created", "workspace_id", "client_id", "created_at"),
++    )
+ 
+     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+     parent_run_id = Column(
+@@ -3457,6 +3490,8 @@ class Run(Base, TimestampMixin):
+     char_count = Column(Integer, nullable=False, default=0)
+     duration_ms = Column(Integer, nullable=True)
+     cost_micros = Column(BigInteger, nullable=True)
++    client_id = Column(Text, nullable=True, index=True)
++    external_metadata = Column(JSONB, nullable=True, default=dict)
+     # Coarse progress log (list of throttled events) captured during the run;
+     # the live fine-grained stream is ephemeral (bus/SSE only).
+     progress = Column(JSONB, nullable=True)
+diff --git a/nowing_backend/app/routes/__init__.py b/nowing_backend/app/routes/__init__.py
+index 136b703df..c75f04372 100644
+--- a/nowing_backend/app/routes/__init__.py
++++ b/nowing_backend/app/routes/__init__.py
+@@ -29,6 +29,9 @@ from app.gateway import require_gateway_enabled
+ from app.notifications.api import router as notifications_router
+ from app.podcasts.api import router as podcasts_router
+ 
++from .admin_agent_registry_routes import (
++    router as admin_agent_registry_router,
++)
+ from .admin_anti_bot_escalation_routes import (
+     router as admin_anti_bot_escalation_router,
+ )
+@@ -40,10 +43,10 @@ from .admin_scraper_platform_accounts_routes import (
+     router as admin_scraper_platform_accounts_router,
+ )
+ from .agent_action_log_route import router as agent_action_log_router
++from .agent_chat_routes import router as agent_chat_router
+ from .agent_flags_route import router as agent_flags_router
+ from .agent_permissions_route import router as agent_permissions_router
+ from .agent_revert_route import router as agent_revert_router
+-from .agent_chat_routes import router as agent_chat_router
+ from .airtable_add_connector_route import (
+     router as airtable_add_connector_router,
+ )
+@@ -160,6 +163,7 @@ router.include_router(jira_add_connector_router)
+ router.include_router(confluence_add_connector_router)
+ router.include_router(clickup_add_connector_router)
+ router.include_router(dropbox_add_connector_router)
++router.include_router(admin_agent_registry_router)  # Platform admin agent registry
+ router.include_router(
+     admin_global_model_connections_router
+ )  # Platform admin global models
+diff --git a/nowing_backend/app/routes/admin_agent_registry_routes.py b/nowing_backend/app/routes/admin_agent_registry_routes.py
+new file mode 100644
+index 000000000..d85fa9587
+--- /dev/null
++++ b/nowing_backend/app/routes/admin_agent_registry_routes.py
+@@ -0,0 +1,168 @@
++"""Platform-superuser routes for managing the AgentConfig registry (AD-30)."""
++
++from __future__ import annotations
++
++import logging
++from uuid import UUID
++
++from fastapi import APIRouter, Depends, HTTPException, status
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.auth.context import AuthContext
++from app.db import AgentConfig, get_async_session
++from app.schemas.agent_config import (
++    AgentConfigCreate,
++    AgentConfigRead,
++    AgentConfigUpdate,
++)
++from app.services.agent_registry import list_agents
++from app.users import require_superuser
++
++router = APIRouter(prefix="/admin/agent-registry")
++logger = logging.getLogger(__name__)
++
++
++def _read(config: AgentConfig) -> AgentConfigRead:
++    return AgentConfigRead(
++        id=config.id,
++        client_id=config.client_id,
++        name=config.name,
++        slug=config.slug,
++        system_instructions=config.system_instructions,
++        enabled_tools=list(config.enabled_tools or []),
++        disabled_tools=list(config.disabled_tools or []),
++        model_name=config.model_name,
++        citations_enabled=config.citations_enabled,
++        is_active=config.is_active,
++    )
++
++
++@router.get("", response_model=list[AgentConfigRead])
++async def list_agent_configs(
++    client_id: str | None = None,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_superuser),
++):
++    """List all agent configs.  Optional ``client_id`` filter."""
++    configs = await list_agents(session, client_id=client_id)
++    return [_read(c) for c in configs]
++
++
++@router.post("", response_model=AgentConfigRead, status_code=status.HTTP_201_CREATED)
++async def create_agent_config(
++    data: AgentConfigCreate,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_superuser),
++):
++    """Create a new agent config."""
++    slug = data.slug or data.name.strip().lower().replace(" ", "-")
++    existing = await session.execute(
++        select(AgentConfig).where(
++            AgentConfig.client_id == data.client_id,
++            AgentConfig.slug == slug,
++        )
++    )
++    if existing.scalars().first() is not None:
++        raise HTTPException(
++            status_code=status.HTTP_409_CONFLICT,
++            detail="agent with this client_id and slug already exists",
++        )
++
++    config = AgentConfig(
++        client_id=data.client_id,
++        name=data.name,
++        slug=slug,
++        system_instructions=data.system_instructions,
++        enabled_tools=list(data.enabled_tools),
++        disabled_tools=list(data.disabled_tools),
++        model_name=data.model_name,
++        citations_enabled=data.citations_enabled,
++        is_active=data.is_active,
++    )
++    session.add(config)
++    await session.commit()
++    await session.refresh(config)
++    logger.info(
++        "[admin-agent-registry] created id=%s client=%s slug=%s",
++        config.id,
++        config.client_id,
++        config.slug,
++    )
++    return _read(config)
++
++
++async def _load_config(session: AsyncSession, config_id: UUID) -> AgentConfig:
++    result = await session.execute(
++        select(AgentConfig).where(AgentConfig.id == config_id)
++    )
++    config = result.scalars().first()
++    if config is None:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail="agent config not found",
++        )
++    return config
++
++
++@router.get("/{config_id}", response_model=AgentConfigRead)
++async def get_agent_config(
++    config_id: UUID,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_superuser),
++):
++    """Get a single agent config by id."""
++    config = await _load_config(session, config_id)
++    return _read(config)
++
++
++@router.patch("/{config_id}", response_model=AgentConfigRead)
++async def update_agent_config(
++    config_id: UUID,
++    data: AgentConfigUpdate,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_superuser),
++):
++    """Update an agent config."""
++    config = await _load_config(session, config_id)
++
++    for field, value in data.model_dump(exclude_unset=True).items():
++        if field == "slug" and not value:
++            continue
++        if value is not None:
++            setattr(config, field, value)
++
++    # Re-coerce JSONB lists if present.
++    if data.enabled_tools is not None:
++        config.enabled_tools = list(data.enabled_tools)
++    if data.disabled_tools is not None:
++        config.disabled_tools = list(data.disabled_tools)
++
++    await session.commit()
++    await session.refresh(config)
++    logger.info(
++        "[admin-agent-registry] updated id=%s client=%s slug=%s",
++        config.id,
++        config.client_id,
++        config.slug,
++    )
++    return _read(config)
++
++
++@router.delete("/{config_id}", status_code=status.HTTP_204_NO_CONTENT)
++async def delete_agent_config(
++    config_id: UUID,
++    session: AsyncSession = Depends(get_async_session),
++    auth: AuthContext = Depends(require_superuser),
++):
++    """Soft-delete by setting ``is_active=False``."""
++    config = await _load_config(session, config_id)
++    config.is_active = False
++    await session.commit()
++    logger.info(
++        "[admin-agent-registry] deactivated id=%s client=%s slug=%s",
++        config.id,
++        config.client_id,
++        config.slug,
++    )
++    return None
+diff --git a/nowing_backend/app/schemas/agent_config.py b/nowing_backend/app/schemas/agent_config.py
+new file mode 100644
+index 000000000..ef0c02489
+--- /dev/null
++++ b/nowing_backend/app/schemas/agent_config.py
+@@ -0,0 +1,67 @@
++"""Schemas for the platform admin Agent Registry (AD-30)."""
++
++from __future__ import annotations
++
++from uuid import UUID
++
++from pydantic import BaseModel, ConfigDict, Field, field_validator
++
++
++class AgentConfigCreate(BaseModel):
++    client_id: str = Field(..., min_length=1, max_length=128)
++    name: str = Field(..., min_length=1, max_length=256)
++    slug: str | None = Field(default=None, max_length=256)
++    system_instructions: str | None = Field(default=None, max_length=100_000)
++    enabled_tools: list[str] = Field(default_factory=list, max_length=256)
++    disabled_tools: list[str] = Field(default_factory=list, max_length=256)
++    model_name: str | None = Field(default=None, max_length=256)
++    citations_enabled: bool = False
++    is_active: bool = True
++
++    @field_validator("slug", mode="before")
++    @classmethod
++    def _default_slug(cls, v, info):
++        if v is None or v == "":
++            return info.data.get("name", "").strip().lower().replace(" ", "-")
++        return v
++
++    @field_validator("enabled_tools", "disabled_tools", mode="before")
++    @classmethod
++    def _coerce_tool_list(cls, v):
++        if v is None:
++            return []
++        return list(v)
++
++
++class AgentConfigUpdate(BaseModel):
++    client_id: str | None = Field(default=None, min_length=1, max_length=128)
++    name: str | None = Field(default=None, min_length=1, max_length=256)
++    slug: str | None = Field(default=None, max_length=256)
++    system_instructions: str | None = Field(default=None, max_length=100_000)
++    enabled_tools: list[str] | None = Field(default=None, max_length=256)
++    disabled_tools: list[str] | None = Field(default=None, max_length=256)
++    model_name: str | None = Field(default=None, max_length=256)
++    citations_enabled: bool | None = None
++    is_active: bool | None = None
++
++    @field_validator("enabled_tools", "disabled_tools", mode="before")
++    @classmethod
++    def _coerce_tool_list(cls, v):
++        if v is None:
++            return None
++        return list(v)
++
++
++class AgentConfigRead(BaseModel):
++    model_config = ConfigDict(from_attributes=True)
++
++    id: UUID
++    client_id: str
++    name: str
++    slug: str
++    system_instructions: str | None
++    enabled_tools: list[str]
++    disabled_tools: list[str]
++    model_name: str | None
++    citations_enabled: bool
++    is_active: bool
+diff --git a/nowing_backend/app/services/agent_registry.py b/nowing_backend/app/services/agent_registry.py
+new file mode 100644
+index 000000000..61977d932
+--- /dev/null
++++ b/nowing_backend/app/services/agent_registry.py
+@@ -0,0 +1,86 @@
++"""Agent Registry service (AD-30).
++
++The registry is the authoritative lookup for per-vertical-client agent
++configurations.  It is intentionally platform-scoped, not workspace-scoped.
++"""
++
++from __future__ import annotations
++
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.db import AgentConfig
++
++
++class AgentConfigNotFoundError(Exception):
++    """Raised when the requested agent is missing or inactive."""
++
++    def __init__(self, message: str = "agent not found or inactive") -> None:
++        self.message = message
++        super().__init__(message)
++
++
++async def get_agent_config(
++    session: AsyncSession,
++    client_id: str,
++    agent_id: str,
++) -> AgentConfig:
++    """Fail-closed lookup of an active agent by client and slug.
++
++    Returns the active ``AgentConfig`` or raises ``AgentConfigNotFoundError``.
++    The client_id check is duplicated in the query and as an explicit guard
++    so cross-client slugs are not leaked.
++    """
++    result = await session.execute(
++        select(AgentConfig).where(
++            AgentConfig.client_id == client_id,
++            AgentConfig.slug == agent_id,
++            AgentConfig.is_active.is_(True),
++        )
++    )
++    config = result.scalars().first()
++    if config is None or not config.is_active or config.client_id != client_id:
++        raise AgentConfigNotFoundError()
++    return config
++
++
++async def list_agents(
++    session: AsyncSession,
++    client_id: str | None = None,
++) -> list[AgentConfig]:
++    """List agent configs, optionally filtered to a single client."""
++    stmt = select(AgentConfig)
++    if client_id is not None:
++        stmt = stmt.where(AgentConfig.client_id == client_id)
++    stmt = stmt.order_by(AgentConfig.client_id, AgentConfig.name)
++    result = await session.execute(stmt)
++    return list(result.scalars().all())
++
++
++async def upsert_agent_config(
++    session: AsyncSession,
++    client_id: str,
++    slug: str,
++    **fields,
++) -> AgentConfig:
++    """Idempotent upsert used by seed scripts and admin tooling.
++
++    ``fields`` may include any AgentConfig column.  If the row does not exist,
++    it is created; otherwise it is updated in place.
++    """
++    result = await session.execute(
++        select(AgentConfig).where(
++            AgentConfig.client_id == client_id,
++            AgentConfig.slug == slug,
++        )
++    )
++    config = result.scalars().first()
++    if config is None:
++        config = AgentConfig(client_id=client_id, slug=slug, **fields)
++        session.add(config)
++    else:
++        for key, value in fields.items():
++            if value is not None or key in ("system_instructions", "model_name"):
++                setattr(config, key, value)
++    await session.flush()
++    return config
+diff --git a/nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py b/nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py
+index ec6738366..fd6a2e2e4 100644
+--- a/nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py
++++ b/nowing_backend/app/tasks/chat/streaming/flows/new_chat/orchestrator.py
+@@ -27,6 +27,7 @@ import time
+ from collections.abc import AsyncGenerator
+ from functools import partial
+ from typing import Any, Literal
++from uuid import UUID
+ 
+ import anyio
+ from fastapi import HTTPException
+@@ -45,6 +46,7 @@ from app.canonical.tenant_context import set_request_tenant_context
+ from app.db import (
+     AgentConfig as RegistryAgentConfig,
+     ChatVisibility,
++    NewChatThread,
+     async_session_maker,
+ )
+ from app.observability import otel as ot
+@@ -169,14 +171,16 @@ async def _merge_registry_agent_config(
+     )
+ 
+     if registry:
++        # AC-18.4: AgentConfig.system_instructions is *prepended* to the default
++        # system prompt; the additive prompt builder keeps the default body.
+         if registry.system_instructions is not None:
+             agent_config.system_instructions = registry.system_instructions
+-            agent_config.use_default_system_instructions = False
+         if registry.citations_enabled is not None:
+             agent_config.citations_enabled = registry.citations_enabled
+         if registry.model_name:
+             agent_config.model_name = registry.model_name
+ 
++        # Non-empty enabled_tools is the allowlist; empty means no restriction.
+         if registry.enabled_tools:
+             effective_enabled = list(registry.enabled_tools)
+         if registry.disabled_tools:
+@@ -211,6 +215,8 @@ async def stream_new_chat(
+     client_id: str | None = None,
+     agent_id: str | None = None,
+     platform_metadata: dict[str, Any] | None = None,
++    external_metadata: dict[str, Any] | None = None,
++    run_id: UUID | None = None,
+     llm: Any | None = None,
+     agent_config: RuntimeAgentConfig | None = None,
+     agent_config_override: RegistryAgentConfig | None = None,
+@@ -287,6 +293,16 @@ async def stream_new_chat(
+         agent_id=agent_id,
+     )
+ 
++    # Load the chat thread once so downstream layers can scope memory recall
++    # to the linked ResearchThread (Story 18.5 AC-3). Mirror the turn's
++    # platform_metadata on the thread for last-turn context (P-METADATA-PERSIST).
++    chat_thread = await session.get(NewChatThread, chat_id)
++    if chat_thread is not None:
++        chat_thread.platform_metadata = platform_metadata
++    research_thread_id = (
++        chat_thread.research_thread_id if chat_thread is not None else None
++    )
++
+     # Declared at function scope so SSE-yield join points and the finally
+     # clause see them on every exit path.
+     persist_user_task: asyncio.Task[int | None] | None = None
+@@ -485,6 +501,7 @@ async def stream_new_chat(
+             user_image_data_urls=user_image_data_urls,
+             mentioned_documents=mentioned_documents,
+             background_tasks=_background_tasks,
++            platform_metadata=platform_metadata,
+         )
+ 
+         _t0 = time.perf_counter()
+@@ -529,6 +546,8 @@ async def stream_new_chat(
+             mentioned_document_ids=mentioned_document_ids,
+             auth_context=auth_context,
+             research_mode=mode,
++            research_thread_id=research_thread_id,
++            client_id=client_id,
+         )
+         _perf_log.info(
+             "[stream_new_chat] Agent created in %.3fs", time.perf_counter() - _t0
+@@ -648,6 +667,7 @@ async def stream_new_chat(
+             user_id=user_id,
+             turn_id=stream_result.turn_id,
+             background_tasks=_background_tasks,
++            platform_metadata=platform_metadata,
+         )
+         assistant_message_id = await await_persist_task(
+             persist_asst_task,
+@@ -804,6 +824,8 @@ async def stream_new_chat(
+                 disabled_tools=effective_disabled_tools,
+                 mentioned_document_ids=mentioned_document_ids,
+                 auth_context=auth_context,
++                research_thread_id=research_thread_id,
++                client_id=client_id,
+             )
+             _perf_log.info(
+                 "[stream_new_chat] Runtime rate-limit recovery repinned "
+@@ -964,6 +986,9 @@ async def stream_new_chat(
+                 accumulator=accumulator,
+                 log_prefix="stream_new_chat",
+                 client_id=client_id,
++                external_metadata=external_metadata,
++                run_id=run_id,
++                platform_metadata=platform_metadata,
+             )
+ 
+         # Persist any sandbox-produced files to local storage so they remain
+diff --git a/nowing_backend/tests/integration/routes/test_admin_agent_registry.py b/nowing_backend/tests/integration/routes/test_admin_agent_registry.py
+new file mode 100644
+index 000000000..405ff1dee
+--- /dev/null
++++ b/nowing_backend/tests/integration/routes/test_admin_agent_registry.py
+@@ -0,0 +1,55 @@
++import pytest
++from httpx import AsyncClient
++from sqlalchemy.ext.asyncio import AsyncSession
++
++pytestmark = pytest.mark.integration
++
++
++class TestAdminAgentRegistry:
++    async def test_superuser_can_create_and_list_agent_config(
++        self,
++        admin_client: AsyncClient,
++        db_session: AsyncSession,
++    ):
++        payload = {
++            "client_id": "bdsai.vn",
++            "name": "BDS AI Listing Assistant",
++            "slug": "bdsai-listing-assistant",
++            "system_instructions": "You are helpful.",
++            "enabled_tools": ["web_search"],
++            "disabled_tools": [],
++            "citations_enabled": True,
++            "is_active": True,
++        }
++        resp = await admin_client.post("/api/v1/admin/agent-registry", json=payload)
++        assert resp.status_code == 201, resp.text
++        data = resp.json()
++        assert data["client_id"] == "bdsai.vn"
++        assert data["slug"] == "bdsai-listing-assistant"
++
++        resp = await admin_client.get("/api/v1/admin/agent-registry")
++        assert resp.status_code == 200, resp.text
++        assert any(a["slug"] == "bdsai-listing-assistant" for a in resp.json())
++
++    async def test_regular_user_cannot_create_agent_config(
++        self,
++        client_as_regular_user: AsyncClient,
++    ):
++        payload = {
++            "client_id": "bdsai.vn",
++            "name": "BDS AI Listing Assistant",
++            "slug": "bdsai-listing-assistant",
++        }
++        resp = await client_as_regular_user.post(
++            "/api/v1/admin/agent-registry", json=payload
++        )
++        assert resp.status_code in (401, 403), resp.text
++
++    async def test_fail_closed_for_invalid_agent_id(
++        self,
++        admin_client: AsyncClient,
++    ):
++        resp = await admin_client.get(
++            "/api/v1/admin/agent-registry/550e8400-e29b-41d4-a716-446655440000"
++        )
++        assert resp.status_code == 404, resp.text
+diff --git a/nowing_backend/tests/unit/services/test_agent_registry.py b/nowing_backend/tests/unit/services/test_agent_registry.py
+new file mode 100644
+index 000000000..1a6da5b6b
+--- /dev/null
++++ b/nowing_backend/tests/unit/services/test_agent_registry.py
+@@ -0,0 +1,139 @@
++from types import SimpleNamespace
++
++import pytest
++from pytest_mock import MockerFixture
++
++from app.services.agent_registry import (
++    AgentConfigNotFoundError,
++    get_agent_config,
++    list_agents,
++    upsert_agent_config,
++)
++
++pytestmark = pytest.mark.unit
++
++
++def _make_config(**kwargs):
++    defaults = {
++        "id": "550e8400-e29b-41d4-a716-446655440000",
++        "client_id": "bdsai.vn",
++        "name": "BDS AI Listing Assistant",
++        "slug": "bdsai-listing-assistant",
++        "system_instructions": "You are helpful.",
++        "enabled_tools": ["web_search"],
++        "disabled_tools": [],
++        "model_name": None,
++        "citations_enabled": True,
++        "is_active": True,
++    }
++    defaults.update(kwargs)
++    return SimpleNamespace(**defaults)
++
++
++def _result(config=None, all_configs=None):
++    if all_configs is None:
++        all_configs = [config] if config else []
++    return SimpleNamespace(
++        scalars=lambda: SimpleNamespace(
++            first=lambda: config,
++            all=lambda: all_configs,
++        ),
++        scalar_one_or_none=lambda: config,
++        unique=lambda: SimpleNamespace(scalar_one_or_none=lambda: config),
++    )
++
++
++@pytest.fixture
++def session(mocker: MockerFixture):
++    session = mocker.AsyncMock()
++    # ``session.add`` is a synchronous call on the real AsyncSession.
++    session.add = mocker.MagicMock()
++    return session
++
++
++@pytest.mark.anyio
++async def test_get_agent_config_returns_active_config(session):
++    config = _make_config()
++    session.execute.return_value = _result(config)
++
++    result = await get_agent_config(session, "bdsai.vn", "bdsai-listing-assistant")
++    assert result.id == config.id
++    assert result.name == config.name
++
++
++@pytest.mark.anyio
++async def test_get_agent_config_fails_closed_on_missing(session):
++    session.execute.return_value = _result(None)
++    with pytest.raises(AgentConfigNotFoundError):
++        await get_agent_config(session, "bdsai.vn", "nonexistent")
++
++
++@pytest.mark.anyio
++async def test_get_agent_config_fails_closed_on_inactive(session):
++    config = _make_config(is_active=False)
++    session.execute.return_value = _result(config)
++    with pytest.raises(AgentConfigNotFoundError):
++        await get_agent_config(session, "bdsai.vn", "bdsai-listing-assistant")
++
++
++@pytest.mark.anyio
++async def test_get_agent_config_fails_closed_for_other_client(session):
++    config = _make_config(client_id="other.vn")
++    session.execute.return_value = _result(config)
++    with pytest.raises(AgentConfigNotFoundError):
++        await get_agent_config(session, "bdsai.vn", "bdsai-listing-assistant")
++
++
++@pytest.mark.anyio
++async def test_list_agents_is_global_not_workspace_scoped(session):
++    a = _make_config(client_id="bdsai.vn")
++    b = _make_config(client_id="other.vn", slug="other-agent", name="Other")
++    session.execute.return_value = _result(None, [a, b])
++
++    configs = await list_agents(session)
++    client_ids = {c.client_id for c in configs}
++    assert client_ids == {"bdsai.vn", "other.vn"}
++
++
++@pytest.mark.anyio
++async def test_list_agents_filters_by_client(session):
++    a = _make_config()
++    _ = _make_config(client_id="other.vn", slug="other-agent", name="Other")
++    session.execute.return_value = _result(None, [a])
++
++    configs = await list_agents(session, client_id="bdsai.vn")
++    assert len(configs) == 1
++    assert configs[0].slug == "bdsai-listing-assistant"
++
++
++@pytest.mark.anyio
++async def test_upsert_agent_config_is_idempotent_existing(session):
++    config = _make_config()
++    session.execute.return_value = _result(config)
++
++    result = await upsert_agent_config(
++        session,
++        client_id="bdsai.vn",
++        slug="bdsai-listing-assistant",
++        name="BDS AI Listing Assistant",
++        system_instructions="Updated.",
++    )
++    assert result.id == config.id
++    assert result.system_instructions == "Updated."
++    session.flush.assert_awaited_once()
++
++
++@pytest.mark.anyio
++async def test_upsert_agent_config_is_idempotent_new(session):
++    session.execute.return_value = _result(None)
++
++    result = await upsert_agent_config(
++        session,
++        client_id="bdsai.vn",
++        slug="new-agent",
++        name="New Agent",
++        is_active=True,
++    )
++    assert result.slug == "new-agent"
++    assert result.client_id == "bdsai.vn"
++    session.add.assert_called_once()
