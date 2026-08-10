@@ -1,3 +1,25 @@
+## Deferred from: code review of 18-2-newchatrequest-extension (2026-08-10)
+
+- **Finding:** `_bounded_chat_metadata` list cap missing in reviewed diff but `MAX_PLATFORM_METADATA_LIST_LENGTH` already in HEAD (`37b3fe505`).
+  - **Action:** Marked `[x] [Review][Defer]` in `18-2-newchatrequest-extension.md`.
+  - **Reason / when to revisit:** The reviewed diff is not the final code; the list cap was added in a later review fix. No action needed unless a future review resets to the older diff.
+
+- **Finding:** `regenerate`/`resume` session close — diff-only concern.
+  - **Action:** Marked `[x] [Review][Defer]` in `18-2-newchatrequest-extension.md`.
+  - **Reason / when to revisit:** Current code now commits/closes before streaming; verify in the next chunk review (orchestrator/input_state).
+
+- **Finding:** Whitespace-only `client_id`/`agent_id` produces overlapping field/model errors.
+  - **Action:** Marked `[x] [Review][Defer]` in `18-2-newchatrequest-extension.md`.
+  - **Reason / when to revisit:** Cosmetic; the field-level `pattern`/`min_length` error is authoritative. Revisit if UX feedback says the double error is confusing.
+
+- **Finding:** `AgentChatMessageCreate` conflates `external_metadata` and `platform_metadata` validators.
+  - **Action:** Marked `[x] [Review][Defer]` in `18-2-newchatrequest-extension.md`.
+  - **Reason / when to revisit:** Defer until product confirms whether `external_metadata` must stay flat for `TokenUsage`/`NewChatMessage` consumers or can adopt the nested `_bounded_chat_metadata` shape.
+
+- **Finding:** `platform_metadata` persistence / `ResumeRequest` field gaps are tracked as decision-needed items.
+  - **Action:** Resolved in `18-2-newchatrequest-extension.md` patch findings P-RESUME-FIELDS / P-METADATA-PERSIST.
+  - **Reason / when to revisit:** `ResumeRequest` now exposes `client_id`/`agent_id`/`platform_metadata`; `platform_metadata` is persisted on `NewChatThread` (last-turn mirror) and `NewChatMessage` rows.
+
 ## Deferred from: code review of 18-8-rate-limiting-tenant-isolation (2026-08-10)
 
 - **Finding:** Thiếu L2/L3/L5 tests theo threat model.

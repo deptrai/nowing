@@ -1,0 +1,682 @@
+diff --git a/nowing_backend/app/routes/agent_chat_routes.py b/nowing_backend/app/routes/agent_chat_routes.py
+index 45019a221..160359cc3 100644
+--- a/nowing_backend/app/routes/agent_chat_routes.py
++++ b/nowing_backend/app/routes/agent_chat_routes.py
+@@ -21,6 +21,7 @@ from starlette.background import BackgroundTask
+ 
+ from app.auth.agent_chat import (
+     AgentChatContext,
++    _resolve_agent_config,
+     require_agent_chat_pat as _require_agent_chat_pat,
+ )
+ from app.canonical.tenant_context import set_request_tenant_context
+@@ -105,6 +106,10 @@ async def create_thread(
+             detail="client_id or agent_id outside PAT scope",
+         )
+ 
++    # Fail-fast: verify the agent is active in the registry before committing
++    # any rows. This keeps the 18.2 surface fail-closed for invalid agents.
++    await _resolve_agent_config(session, client_id, agent_id)
++
+     check_agent_chat_limits(client_id, workspace_id)
+ 
+     await set_request_tenant_context(session, workspace_id, client_id, agent_id)
+@@ -122,6 +127,8 @@ async def create_thread(
+     chat_thread = NewChatThread(
+         workspace_id=workspace_id,
+         client_id=client_id,
++        agent_id=agent_id,
++        platform_metadata=body.platform_metadata,
+         title="New Chat",
+         created_by_id=auth.user.id,
+         source="agent_chat_public",
+@@ -168,6 +175,8 @@ async def _stream_response(
+     client_id: str,
+     agent_id: str,
+     run_id: uuid.UUID,
++    platform_metadata: dict[str, Any] | None = None,
++    agent_config_override: Any | None = None,
+ ) -> StreamingResponse:
+     """Wrap stream_new_chat and handle TimeoutError gracefully."""
+ 
+@@ -181,7 +190,9 @@ async def _stream_response(
+                 auth_context=auth,
+                 client_id=client_id,
+                 agent_id=agent_id,
++                platform_metadata=platform_metadata,
+                 request_id=str(run_id),
++                agent_config_override=agent_config_override,
+             ):
+                 yield chunk
+         except TimeoutError:
+@@ -252,6 +263,29 @@ async def send_message(
+         )
+         raise HTTPException(status_code=status_code, detail="thread not found")
+ 
++    if getattr(thread, "agent_id", None) is not None and thread.agent_id != agent_id:
++        await audit(
++            actor_user_id=_actor_user_id(auth),
++            pat_id=_pat_id(auth),
++            workspace_id=workspace_id,
++            client_id=client_id,
++            agent_id=agent_id,
++            route=_route_label(request),
++            status=status.HTTP_403_FORBIDDEN,
++        )
++        raise HTTPException(
++            status_code=status.HTTP_403_FORBIDDEN,
++            detail="agent_id does not match the thread",
++        )
++
++    # Fail-fast resolution of the registry AgentConfig; the streaming layer
++    # will re-merge it but this ensures a clean 404 before the stream starts.
++    agent_config_override = await _resolve_agent_config(
++        session,
++        client_id=client_id,
++        agent_id=agent_id,
++    )
++
+     check_agent_chat_limits(client_id, workspace_id)
+ 
+     run_id = uuid.uuid4()
+@@ -267,6 +301,8 @@ async def send_message(
+         client_id=client_id,
+         agent_id=agent_id,
+         run_id=run_id,
++        platform_metadata=body.platform_metadata,
++        agent_config_override=agent_config_override,
+     )
+ 
+     # Audit is a background task so the stream is not blocked.
+diff --git a/nowing_backend/app/routes/new_chat_routes.py b/nowing_backend/app/routes/new_chat_routes.py
+index 9823e5cfa..7ab92cb9d 100644
+--- a/nowing_backend/app/routes/new_chat_routes.py
++++ b/nowing_backend/app/routes/new_chat_routes.py
+@@ -36,9 +36,12 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
+     FilesystemSelection,
+     LocalFilesystemMount,
+ )
++from app.auth.agent_chat import _resolve_agent_config
+ from app.auth.context import AuthContext
++from app.canonical.tenant_context import set_request_tenant_context
+ from app.config import config
+ from app.db import (
++    AgentConfig,
+     ChatComment,
+     ChatVisibility,
+     NewChatMessage,
+@@ -76,6 +79,8 @@ from app.tasks.chat.streaming.flows import (
+     stream_new_chat,
+     stream_resume_chat,
+ )
++from app.tasks.chat.streaming.flows.new_chat.auto_pin import resolve_initial_auto_pin
++from app.tasks.chat.streaming.flows.shared.llm_bundle import load_llm_bundle
+ from app.users import get_auth_context
+ from app.utils.perf import get_perf_logger
+ from app.utils.rbac import check_permission
+@@ -811,6 +816,15 @@ async def create_thread(
+             "You don't have permission to create chats in this workspace",
+         )
+ 
++        # Set tenant GUCs before the insert so the 18.1 RLS WITH CHECK clause
++        # on new_chat_threads allows client-scoped rows.
++        await set_request_tenant_context(
++            session,
++            thread.workspace_id,
++            thread.client_id,
++            thread.agent_id,
++        )
++
+         now = datetime.now(UTC)
+         db_thread = NewChatThread(
+             title=thread.title,
+@@ -819,6 +833,8 @@ async def create_thread(
+             workspace_id=thread.workspace_id,
+             created_by_id=user.id,
+             updated_at=now,
++            client_id=thread.client_id,
++            agent_id=thread.agent_id,
+         )
+         session.add(db_thread)
+         await session.commit()
+@@ -1712,6 +1728,28 @@ async def handle_new_chat(
+     Requires CHATS_CREATE permission.
+     """
+     try:
++        # Get workspace first so we can set the transaction-local tenant context
++        # (workspace + client + agent GUCs) before any business query.
++        workspace_result = await session.execute(
++            select(Workspace).filter(Workspace.id == request.workspace_id)
++        )
++        workspace = workspace_result.scalars().first()
++
++        if not workspace:
++            raise HTTPException(status_code=404, detail="Workspace not found")
++
++        # Set the tenant GUCs as early as possible.  This ensures the 18.1 RLS
++        # policies see the right client_id before we touch new_chat_threads or
++        # agent_configs.  ``request.client_id``/``request.agent_id`` may be None
++        # for legacy web chat; in that case the GUC is left unset and the RLS
++        # IS NULL branch matches legacy (client_id IS NULL) rows.
++        await set_request_tenant_context(
++            session,
++            workspace.id,
++            request.client_id,
++            request.agent_id,
++        )
++
+         # Verify thread exists and user has permission
+         result = await session.execute(
+             select(NewChatThread).filter(NewChatThread.id == request.chat_id)
+@@ -1738,15 +1776,6 @@ async def handle_new_chat(
+             local_mounts=request.local_filesystem_mounts,
+         )
+ 
+-        # Get workspace to check LLM config preferences
+-        workspace_result = await session.execute(
+-            select(Workspace).filter(Workspace.id == request.workspace_id)
+-        )
+-        workspace = workspace_result.scalars().first()
+-
+-        if not workspace:
+-            raise HTTPException(status_code=404, detail="Workspace not found")
+-
+         # Use the converged model-connections role for chat operations.
+         # Positive IDs load Model + Connection rows; negative IDs load
+         # virtual GLOBAL models; 0 means Auto.
+@@ -1754,6 +1783,81 @@ async def handle_new_chat(
+             workspace.chat_model_id if workspace.chat_model_id is not None else 0
+         )
+ 
++        # Resolve per-turn client/agent scope.  The request is authoritative
++        # when it provides values; otherwise we fall back to the thread row so
++        # a bound thread keeps its tenant/agent context across turns.  If the
++        # thread already has a value, the request must match it (or be absent).
++        effective_client_id = (
++            request.client_id if request.client_id is not None else thread.client_id
++        )
++        effective_agent_id = (
++            request.agent_id if request.agent_id is not None else thread.agent_id
++        )
++
++        if (
++            request.client_id is not None
++            and thread.client_id is not None
++            and request.client_id != thread.client_id
++        ):
++            raise HTTPException(
++                status_code=403,
++                detail="client_id does not match the thread",
++            )
++        if (
++            request.agent_id is not None
++            and thread.agent_id is not None
++            and request.agent_id != thread.agent_id
++        ):
++            raise HTTPException(
++                status_code=403,
++                detail="agent_id does not match the thread",
++            )
++
++        # Re-apply tenant GUCs with the resolved (possibly thread-derived)
++        # client/agent so subsequent queries against agent_configs see the
++        # correct scope.
++        await set_request_tenant_context(
++            session,
++            workspace.id,
++            effective_client_id,
++            effective_agent_id,
++        )
++
++        # Resolve the concrete LLM config id before loading the bundle. Auto
++        # (0 or null) may repin to a concrete model based on workspace settings.
++        pin_result = await resolve_initial_auto_pin(
++            session,
++            chat_id=thread.id,
++            workspace_id=workspace.id,
++            user_id=str(user.id),
++            selected_llm_config_id=llm_config_id,
++            requires_image_input=bool(request.user_images),
++            requested_llm_config_id=llm_config_id,
++        )
++        if pin_result.error is not None:
++            message, _error_code, _error_kind = pin_result.error
++            raise HTTPException(status_code=500, detail=message)
++        resolved_llm_config_id = pin_result.llm_config_id
++
++        llm, agent_config, llm_load_error = await load_llm_bundle(
++            session,
++            config_id=resolved_llm_config_id,
++            workspace_id=workspace.id,
++        )
++        if llm_load_error:
++            raise HTTPException(status_code=500, detail=llm_load_error)
++
++        # Fail-fast resolution of the registry AgentConfig.  The actual merge
++        # into the runtime config happens inside ``stream_new_chat`` so the
++        # streaming session can re-merge after a mid-turn rate-limit recovery.
++        agent_config_override: AgentConfig | None = None
++        if effective_agent_id:
++            agent_config_override = await _resolve_agent_config(
++                session,
++                client_id=effective_client_id,  # type: ignore[arg-type]
++                agent_id=effective_agent_id,
++            )
++
+         # Release the read-transaction so we don't hold ACCESS SHARE locks
+         # on workspaces/documents for the entire duration of the stream.
+         # expire_on_commit=False keeps loaded ORM attrs usable.
+@@ -1788,7 +1892,7 @@ async def handle_new_chat(
+                 workspace_id=request.workspace_id,
+                 chat_id=request.chat_id,
+                 user_id=str(user.id),
+-                llm_config_id=llm_config_id,
++                llm_config_id=resolved_llm_config_id,
+                 mentioned_document_ids=request.mentioned_document_ids,
+                 mentioned_folder_ids=request.mentioned_folder_ids,
+                 mentioned_connector_ids=request.mentioned_connector_ids,
+@@ -1804,6 +1908,12 @@ async def handle_new_chat(
+                 request_id=getattr(http_request.state, "request_id", "unknown"),
+                 user_image_data_urls=image_urls,
+                 auth_context=auth,
++                client_id=effective_client_id,
++                agent_id=effective_agent_id,
++                platform_metadata=request.platform_metadata,
++                llm=llm,
++                agent_config=agent_config,
++                agent_config_override=agent_config_override,
+             ),
+             media_type="text/event-stream",
+             headers={
+@@ -1974,6 +2084,42 @@ async def regenerate_response(
+             local_mounts=request.local_filesystem_mounts,
+         )
+ 
++        # Resolve per-turn client/agent scope for regenerate.
++        effective_client_id = (
++            request.client_id if request.client_id is not None else thread.client_id
++        )
++        effective_agent_id = (
++            request.agent_id if request.agent_id is not None else thread.agent_id
++        )
++
++        if effective_client_id != thread.client_id:
++            raise HTTPException(
++                status_code=403,
++                detail="client_id does not match the thread",
++            )
++        if effective_agent_id != thread.agent_id:
++            raise HTTPException(
++                status_code=403,
++                detail="agent_id does not match the thread",
++            )
++
++        # Set tenant GUCs so RLS-protected agent registry queries see the right scope.
++        await set_request_tenant_context(
++            session,
++            thread.workspace_id,
++            effective_client_id,
++            effective_agent_id,
++        )
++
++        # Fail-fast resolution of the registry AgentConfig for regenerate.
++        agent_config_override: AgentConfig | None = None
++        if effective_agent_id:
++            agent_config_override = await _resolve_agent_config(
++                session,
++                client_id=effective_client_id,  # type: ignore[arg-type]
++                agent_id=effective_agent_id,
++            )
++
+         # Get the checkpointer and state history
+         checkpointer = await get_checkpointer()
+ 
+@@ -2303,6 +2449,10 @@ async def regenerate_response(
+                     request_id=getattr(http_request.state, "request_id", "unknown"),
+                     user_image_data_urls=regenerate_image_urls or None,
+                     auth_context=auth,
++                    client_id=effective_client_id,
++                    agent_id=effective_agent_id,
++                    platform_metadata=request.platform_metadata,
++                    agent_config_override=agent_config_override,
+                     flow="regenerate",
+                 ):
+                     yield chunk
+@@ -2413,6 +2563,27 @@ async def resume_chat(
+ 
+         decisions = [d.model_dump() for d in request.decisions]
+ 
++        # Resolve per-turn client/agent scope from the thread.
++        effective_client_id = thread.client_id
++        effective_agent_id = thread.agent_id
++
++        # Set tenant GUCs so RLS-protected agent registry queries see the right scope.
++        await set_request_tenant_context(
++            session,
++            thread.workspace_id,
++            effective_client_id,
++            effective_agent_id,
++        )
++
++        # Fail-fast resolution of the registry AgentConfig for resume.
++        agent_config_override = None
++        if effective_agent_id:
++            agent_config_override = await _resolve_agent_config(
++                session,
++                client_id=effective_client_id,  # type: ignore[arg-type]
++                agent_id=effective_agent_id,
++            )
++
+         # Release the read-transaction so we don't hold ACCESS SHARE locks
+         # on workspaces/documents for the entire duration of the stream.
+         await session.commit()
+@@ -2431,6 +2602,9 @@ async def resume_chat(
+                 disabled_tools=request.disabled_tools,
+                 mode=request.mode,
+                 auth_context=auth,
++                client_id=effective_client_id,
++                agent_id=effective_agent_id,
++                agent_config_override=agent_config_override,
+             ),
+             media_type="text/event-stream",
+             headers={
+diff --git a/nowing_backend/app/schemas/agent_chat.py b/nowing_backend/app/schemas/agent_chat.py
+index b43972811..a2b88355d 100644
+--- a/nowing_backend/app/schemas/agent_chat.py
++++ b/nowing_backend/app/schemas/agent_chat.py
+@@ -1,8 +1,10 @@
+ from __future__ import annotations
+ 
+-from typing import Any
++from typing import Any, Self
+ 
+-from pydantic import BaseModel, Field, field_validator
++from pydantic import BaseModel, Field, field_validator, model_validator
++
++from app.schemas.new_chat import _bounded_chat_metadata
+ 
+ 
+ class AgentChatThreadCreate(BaseModel):
+@@ -29,7 +31,18 @@ class AgentChatThreadCreate(BaseModel):
+     @field_validator("platform_metadata")
+     @classmethod
+     def _validate_platform_metadata(cls, v):
+-        return _bounded_metadata(v)
++        return _bounded_chat_metadata(v)
++
++    @field_validator("client_id", "agent_id", mode="before")
++    @classmethod
++    def _strip_whitespace(cls, v: str | None) -> str | None:
++        return v.strip() if isinstance(v, str) else v
++
++    @model_validator(mode="after")
++    def _require_client_for_agent(self) -> Self:
++        if self.agent_id is not None and not self.client_id:
++            raise ValueError("client_id is required when agent_id is set")
++        return self
+ 
+ 
+ class AgentChatMessageCreate(BaseModel):
+@@ -44,11 +57,14 @@ class AgentChatMessageCreate(BaseModel):
+     external_metadata: dict[str, Any] | None = Field(
+         default=None, description="Optional external platform metadata."
+     )
++    platform_metadata: dict[str, Any] | None = Field(
++        default=None, description="Optional platform metadata for this turn."
++    )
+ 
+-    @field_validator("external_metadata")
++    @field_validator("external_metadata", "platform_metadata")
+     @classmethod
+     def _validate_external_metadata(cls, v):
+-        return _bounded_metadata(v)
++        return _bounded_chat_metadata(v)
+ 
+ 
+ class AgentChatThreadCreated(BaseModel):
+@@ -57,22 +73,3 @@ class AgentChatThreadCreated(BaseModel):
+     thread_id: int
+     research_thread_id: int
+     run_id: str
+-
+-
+-def _bounded_metadata(v: dict[str, Any] | None) -> dict[str, Any] | None:
+-    """Clamp metadata to small, primitive values to prevent payload abuse."""
+-    if v is None:
+-        return None
+-    if not isinstance(v, dict):
+-        raise ValueError("metadata must be a flat JSON object")
+-    if len(v) > 32:
+-        raise ValueError("metadata may contain at most 32 keys")
+-    for key, val in v.items():
+-        if not isinstance(key, str) or len(key) > 64:
+-            raise ValueError("metadata keys must be strings <= 64 characters")
+-        if isinstance(val, str):
+-            if len(val) > 1024:
+-                raise ValueError("metadata string values must be <= 1024 characters")
+-        elif not isinstance(val, (int, float, bool, type(None))):
+-            raise ValueError("metadata values must be primitive")
+-    return v
+diff --git a/nowing_backend/app/schemas/new_chat.py b/nowing_backend/app/schemas/new_chat.py
+index 8fce0421b..149a5c263 100644
+--- a/nowing_backend/app/schemas/new_chat.py
++++ b/nowing_backend/app/schemas/new_chat.py
+@@ -6,6 +6,8 @@ These schemas follow the assistant-ui ThreadHistoryAdapter pattern:
+ - MessageRecord: id, threadId, role, content, createdAt
+ """
+ 
++import json
++import math
+ from datetime import datetime
+ from typing import Any, Literal, Self
+ from uuid import UUID
+@@ -88,6 +90,31 @@ class NewChatThreadCreate(NewChatThreadBase):
+     workspace_id: int
+     # Visibility defaults to PRIVATE, but can be set on creation
+     visibility: ChatVisibility = ChatVisibility.PRIVATE
++    client_id: str | None = Field(
++        default=None,
++        min_length=1,
++        max_length=63,
++        pattern=r"^[a-z0-9][a-z0-9-._]*$",
++        description="Vertical client this thread belongs to.",
++    )
++    agent_id: str | None = Field(
++        default=None,
++        min_length=1,
++        max_length=63,
++        pattern=r"^[a-z0-9][a-z0-9-._]*$",
++        description="Agent slug bound to this thread.",
++    )
++
++    @field_validator("client_id", "agent_id", mode="before")
++    @classmethod
++    def _strip_whitespace(cls, v: str | None) -> str | None:
++        return v.strip() if isinstance(v, str) else v
++
++    @model_validator(mode="after")
++    def _require_client_for_agent(self) -> Self:
++        if self.agent_id is not None and not self.client_id:
++            raise ValueError("client_id is required when agent_id is set")
++        return self
+ 
+ 
+ class NewChatThreadUpdate(BaseModel):
+@@ -113,6 +140,8 @@ class NewChatThreadRead(NewChatThreadBase, IDModel):
+     created_by_id: UUID | None = None
+     created_at: datetime
+     updated_at: datetime
++    client_id: str | None = None
++    agent_id: str | None = None
+ 
+     model_config = ConfigDict(from_attributes=True)
+ 
+@@ -183,6 +212,75 @@ class LocalFilesystemMountPayload(BaseModel):
+ MAX_NEW_CHAT_IMAGE_BYTES = 8 * 1024 * 1024
+ MAX_NEW_CHAT_IMAGES = 4
+ 
++MAX_PLATFORM_METADATA_KEYS = 32
++MAX_PLATFORM_METADATA_TOTAL_KEYS = 128
++MAX_PLATFORM_METADATA_STRING = 1024
++MAX_PLATFORM_METADATA_DEPTH = 4
++MAX_PLATFORM_METADATA_BYTES = 64 * 1024
++
++
++def _bounded_chat_metadata(v: dict[str, Any] | None) -> dict[str, Any] | None:
++    """Clamp platform_metadata to a safe, JSON-serializable shape.
++
++    Allows nested dicts/lists up to a bounded depth, caps string length,
++    and rejects non-serializable values such as sets/tuples.
++    """
++    if v is None:
++        return None
++    if not isinstance(v, dict):
++        raise ValueError("platform_metadata must be a JSON object")
++
++    total_keys = [0]
++    total_bytes = [0]
++
++    def _check(obj: Any, depth: int) -> Any:
++        if depth > MAX_PLATFORM_METADATA_DEPTH:
++            raise ValueError("platform_metadata exceeds maximum nesting depth")
++        if isinstance(obj, str):
++            if len(obj) > MAX_PLATFORM_METADATA_STRING:
++                raise ValueError("platform_metadata string value too long")
++            total_bytes[0] += len(obj.encode("utf-8"))
++            if total_bytes[0] > MAX_PLATFORM_METADATA_BYTES:
++                raise ValueError("platform_metadata exceeds maximum payload size")
++            return obj
++        if isinstance(obj, bool):
++            return obj
++        if isinstance(obj, (int,)):
++            return obj
++        if obj is None:
++            return obj
++        if isinstance(obj, float):
++            if not math.isfinite(obj):
++                raise ValueError("platform_metadata floats must be finite")
++            return obj
++        if isinstance(obj, list):
++            return [_check(item, depth + 1) for item in obj]
++        if isinstance(obj, dict):
++            if len(obj) > MAX_PLATFORM_METADATA_KEYS:
++                raise ValueError(
++                    f"platform_metadata may contain at most {MAX_PLATFORM_METADATA_KEYS} keys"
++                )
++            total_keys[0] += len(obj)
++            if total_keys[0] > MAX_PLATFORM_METADATA_TOTAL_KEYS:
++                raise ValueError("platform_metadata exceeds total key budget")
++            for key, val in obj.items():
++                if not isinstance(key, str) or len(key) > 64:
++                    raise ValueError(
++                        "platform_metadata keys must be strings <= 64 characters"
++                    )
++                _check(val, depth + 1)
++            return obj
++        raise ValueError(
++            "platform_metadata values must be JSON-serializable primitives"
++        )
++
++    _check(v, 0)
++    try:
++        json.dumps(v)
++    except (TypeError, ValueError) as exc:
++        raise ValueError("platform_metadata must be JSON-serializable") from exc
++    return v
++
+ 
+ class NewChatUserImagePart(BaseModel):
+     """One inline image for a user turn (raw base64 body, no data: URL prefix)."""
+@@ -299,6 +397,36 @@ class NewChatRequest(BaseModel):
+         default=None,
+         description="Optional images for this user turn",
+     )
++    agent_id: str | None = Field(
++        default=None,
++        min_length=1,
++        max_length=63,
++        pattern=r"^[a-z0-9][a-z0-9-._]*$",
++        description="Agent slug to bind this turn to.",
++    )
++    client_id: str | None = Field(
++        default=None,
++        min_length=1,
++        max_length=63,
++        pattern=r"^[a-z0-9][a-z0-9-._]*$",
++        description="Vertical client this turn belongs to.",
++    )
++    platform_metadata: dict[str, Any] | None = Field(
++        default=None,
++        description="Optional metadata from the calling platform.",
++    )
++
++    @field_validator("platform_metadata")
++    @classmethod
++    def _validate_platform_metadata(
++        cls, v: dict[str, Any] | None
++    ) -> dict[str, Any] | None:
++        return _bounded_chat_metadata(v)
++
++    @field_validator("agent_id", "client_id", mode="before")
++    @classmethod
++    def _strip_whitespace(cls, v: str | None) -> str | None:
++        return v.strip() if isinstance(v, str) else v
+ 
+     @model_validator(mode="after")
+     def _require_text_or_images(self) -> Self:
+@@ -308,6 +436,8 @@ class NewChatRequest(BaseModel):
+             raise ValueError("Provide non-empty user_query and/or user_images")
+         if self.user_images is not None and len(self.user_images) > MAX_NEW_CHAT_IMAGES:
+             raise ValueError(f"At most {MAX_NEW_CHAT_IMAGES} images allowed")
++        if self.agent_id is not None and not self.client_id:
++            raise ValueError("client_id is required when agent_id is set")
+         return self
+ 
+ 
+@@ -379,6 +509,37 @@ class RegenerateRequest(BaseModel):
+         default=None,
+         description="If set, use these images for the regenerated turn (edit); overrides checkpoint/DB",
+     )
++    agent_id: str | None = Field(
++        default=None,
++        min_length=1,
++        max_length=63,
++        pattern=r"^[a-z0-9][a-z0-9-._]*$",
++        description="Agent slug to bind this turn to.",
++    )
++    client_id: str | None = Field(
++        default=None,
++        min_length=1,
++        max_length=63,
++        pattern=r"^[a-z0-9][a-z0-9-._]*$",
++        description="Vertical client this turn belongs to.",
++    )
++    platform_metadata: dict[str, Any] | None = Field(
++        default=None,
++        description="Optional metadata from the calling platform.",
++    )
++
++    @field_validator("platform_metadata")
++    @classmethod
++    def _validate_platform_metadata(
++        cls, v: dict[str, Any] | None
++    ) -> dict[str, Any] | None:
++        return _bounded_chat_metadata(v)
++
++    @field_validator("agent_id", "client_id", mode="before")
++    @classmethod
++    def _strip_whitespace(cls, v: str | None) -> str | None:
++        return v.strip() if isinstance(v, str) else v
++
+     from_message_id: int | None = Field(
+         default=None,
+         description=(
+@@ -414,6 +575,8 @@ class RegenerateRequest(BaseModel):
+             raise ValueError(
+                 "revert_actions requires from_message_id; specify which message to rewind to"
+             )
++        if self.agent_id is not None and not self.client_id:
++            raise ValueError("client_id is required when agent_id is set")
+         return self
+ 
+ 

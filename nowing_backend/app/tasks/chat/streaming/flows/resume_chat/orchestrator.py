@@ -32,7 +32,7 @@ from app.agents.chat.multi_agent_chat.shared.filesystem_selection import (
 )
 from app.auth.context import AuthContext
 from app.canonical.tenant_context import set_request_tenant_context
-from app.db import ChatVisibility, async_session_maker
+from app.db import ChatVisibility, NewChatThread, async_session_maker
 from app.observability import otel as ot
 from app.services.chat_session_state_service import set_ai_responding
 from app.services.new_streaming_service import VercelStreamingService
@@ -174,6 +174,11 @@ async def stream_resume_chat(
     try:
         # Set RLS tenant context before any registry query.
         await set_request_tenant_context(session, workspace_id, client_id, agent_id)
+
+        # Mirror the resumed turn's platform_metadata on the thread.
+        chat_thread = await session.get(NewChatThread, chat_id)
+        if chat_thread is not None:
+            chat_thread.platform_metadata = platform_metadata
 
         if user_id:
             await set_ai_responding(session, chat_id, UUID(user_id))
@@ -443,6 +448,7 @@ async def stream_resume_chat(
             chat_id=chat_id,
             user_id=user_id,
             turn_id=stream_result.turn_id,
+            platform_metadata=platform_metadata,
         )
         if assistant_message_id is None:
             yield emit_stream_error(
@@ -640,6 +646,8 @@ async def stream_resume_chat(
                 user_id=user_id,
                 accumulator=accumulator,
                 log_prefix="stream_resume",
+                client_id=client_id,
+                platform_metadata=platform_metadata,
             )
 
         # Release the lock from the original interrupted turn or any

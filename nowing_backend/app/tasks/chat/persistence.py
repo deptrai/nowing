@@ -174,6 +174,7 @@ async def persist_user_turn(
     user_query: str,
     user_image_data_urls: list[str] | None = None,
     mentioned_documents: list[dict[str, Any]] | None = None,
+    platform_metadata: dict[str, Any] | None = None,
 ) -> int | None:
     """Persist the user-side row for a chat turn and return its ``id``.
 
@@ -238,6 +239,7 @@ async def persist_user_turn(
                     content=content_payload,
                     author_id=author_uuid,
                     turn_id=turn_id,
+                    platform_metadata=platform_metadata,
                 )
                 .on_conflict_do_nothing(
                     index_elements=["thread_id", "turn_id", "role"],
@@ -311,6 +313,7 @@ async def persist_assistant_shell(
     chat_id: int,
     user_id: str | None,
     turn_id: str,
+    platform_metadata: dict[str, Any] | None = None,
 ) -> int | None:
     """Pre-write an empty assistant row for the turn and return its id.
 
@@ -349,6 +352,7 @@ async def persist_assistant_shell(
                     content=_EMPTY_SHELL_CONTENT,
                     author_id=None,
                     turn_id=turn_id,
+                    platform_metadata=platform_metadata,
                 )
                 .on_conflict_do_nothing(
                     index_elements=["thread_id", "turn_id", "role"],
@@ -421,6 +425,7 @@ async def finalize_assistant_turn(
     client_id: str | None = None,
     external_metadata: dict[str, Any] | None = None,
     run_id: UUID | None = None,
+    platform_metadata: dict[str, Any] | None = None,
 ) -> None:
     """Finalize the assistant row and write its token_usage.
 
@@ -499,6 +504,8 @@ async def finalize_assistant_turn(
 
             assistant_row.content = payload
             assistant_row.updated_at = datetime.now(UTC)
+            if platform_metadata is not None:
+                assistant_row.platform_metadata = platform_metadata
 
             # Token usage. ``record_token_usage`` (used elsewhere) does
             # SELECT-then-INSERT in two statements which races with

@@ -80,6 +80,7 @@ async def finalize_assistant_message(
     client_id: str | None = None,
     external_metadata: dict[str, Any] | None = None,
     run_id: UUID | None = None,
+    platform_metadata: dict[str, Any] | None = None,
 ) -> None:
     """Snapshot the content builder and persist the final assistant payload.
 
@@ -154,6 +155,7 @@ async def finalize_assistant_message(
         client_id=client_id,
         external_metadata=external_metadata,
         run_id=run_id,
+        platform_metadata=platform_metadata,
     )
 
     # Best-effort: enqueue memory extraction for this assistant turn.

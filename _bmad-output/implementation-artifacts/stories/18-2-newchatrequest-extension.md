@@ -434,7 +434,7 @@ Partial / reusable pieces exist; no full end-to-end implementation.
 ### Resolved findings
 
 - [x] [Review][Resolved] `handle_new_chat` now sets tenant GUCs before querying `agent_configs`/`new_chat_threads` and falls back to thread row values when the request omits `client_id`/`agent_id`.
-- [x] [Review][Resolved] `set_request_tenant_context` skips setting GUCs when `client_id`/`agent_id` is `None`.
+- [x] [Review][Resolved] `set_request_tenant_context` clears prior GUCs by writing an empty string for `None` values; RLS policies use `NULLIF` to treat the empty string as SQL `NULL`.
 - [x] [Review][Resolved] Rate-limit recovery re-applies the registry `AgentConfig` (system instructions and tool lists) after reloading the LLM bundle.
 - [x] [Review][Resolved] `_merge_registry_agent_config` now reuses `app.auth.agent_chat:_resolve_agent_config` for fail-closed 404 handling.
 - [x] [Review][Resolved] `regenerate_response` forwards `client_id`/`agent_id`/`platform_metadata` to `stream_new_chat` and resolves `agent_config_override`.
@@ -449,9 +449,32 @@ Partial / reusable pieces exist; no full end-to-end implementation.
 - [x] [Review][Resolved] `_render_platform_metadata` now includes `agent_id` and defangs `</platform_metadata>` in user-supplied strings.
 - [x] [Review][Resolved] `resume_chat` flow now accepts `client_id`/`agent_id`/`agent_config_override` and sets tenant GUCs / merges registry AgentConfig.
 
+### Decision-needed findings
+
+- [x] [Review][Decision] Internal `create_thread`/`handle_new_chat` allow request body to attach `client_id`/`agent_id` to an unscoped legacy thread — **resolved: fail-closed; an unscoped legacy web thread cannot be bound to a vertical client/agent on a normal chat turn.** Converted to `patch` P-INT-SCOPE below. [new_chat_routes.py:836-837, 1790-1795] (AD-29/AD-31, AC1)
+- [x] [Review][Decision] `platform_metadata` is only consumed by the prompt and not persisted on `NewChatThread`/`NewChatMessage` — **resolved: persist bounded `platform_metadata` on the message row (and thread row as last-turn mirror) for history, analytics, and replay.** Converted to `patch` P-METADATA-PERSIST below. [new_chat_routes.py:1913, input_state.py] (AD-29, API symmetry)
+- [x] [Review][Decision] `ResumeRequest` does not expose `client_id`/`agent_id`/`platform_metadata` — **resolved: extend `ResumeRequest` with the same optional fields as `NewChatRequest`/`RegenerateRequest`, but request values must still match the thread scope.** Converted to `patch` P-RESUME-FIELDS below. [new_chat.py:607-640] (AC1-AC3, API symmetry)
+
 ### Patch findings
 
+- [x] [Review][Patch] **P-INT-SCOPE:** Internal `create_thread` rejects `client_id`/`agent_id` in the request body; `handle_new_chat`/`regenerate_response`/`resume_chat` require request body values to match an already-bound thread, preventing unscoped legacy threads from being pivoted to a vertical client. [new_chat_routes.py:819-835, 1807-1832, 2124-2149, 2609-2634] (AD-31, high)
+- [x] [Review][Patch] **P-GUC-ORDER:** `handle_new_chat` loads and authorizes the workspace, sets a workspace + client GUC for the RLS-protected `NewChatThread` lookup, then re-sets verified `effective_client_id`/`effective_agent_id` before agent/registry queries. [new_chat_routes.py:1740-1780, 1837-1851] (AD-31 policy order, high)
+- [x] [Review][Patch] `regenerate_response` and `resume_chat` now authorize the workspace and set the tenant GUC before the first RLS-protected `NewChatThread` query, then re-set with the verified thread scope. [new_chat_routes.py:2060-2092, 2564-2594] (AD-29, high)
+- [x] [Review][Patch] `agent_chat_routes.create_thread` sets tenant GUCs before resolving the registry `AgentConfig`, and the route-level PAT-scope check rejects body values outside the PAT scope. [agent_chat_routes.py:114-119, 104-112] (AD-29, high)
+- [x] [Review][Patch] `AgentChatThreadCreate` no longer enforces a schema-level `client_id` requirement; the public route checks the body client/agent against the PAT scope and resolves the registry row after GUCs are set. [agent_chat.py:42-45, agent_chat_routes.py:104-112] (Technical Requirement #2, medium)
+- [x] [Review][Patch] `_bounded_chat_metadata` enforces key count, list length, nesting depth, string length, and a total JSON-byte budget (after `json.dumps`). [new_chat.py:215-290] (AD-29 DoS, high)
+- [x] [Review][Patch] **P-RESUME-FIELDS:** `ResumeRequest` exposes `client_id`/`agent_id`/`platform_metadata` with the same optional fields and validators as `NewChatRequest`/`RegenerateRequest`; `resume_chat` validates request body values against the thread and forwards them to `stream_resume_chat`. [new_chat.py:642-675, new_chat_routes.py:2564-2678] (AC1-AC3, medium)
+- [x] [Review][Patch] `handle_new_chat` passes the original `llm_config_id` (`0` for Auto) to `stream_new_chat`, preserving the in-stream auto-pin and provider rate-limit recovery branches. [new_chat_routes.py:1898-1905, orchestrator.py:313-347, 367-415] (medium-high)
+- [x] [Review][Patch] **P-METADATA-PERSIST:** `platform_metadata` is persisted on `NewChatThread` (last-turn mirror) in `stream_new_chat`/`stream_resume_chat` and on user/assistant `NewChatMessage` rows via `persist_user_turn`/`persist_assistant_shell`/`finalize_assistant_turn`. [new_chat_routes.py:1918-1928, persistence.py:169-248, 309-358, 415-509, orchestrator.py:299-301, 496-504, 665-670, resume_chat/orchestrator.py:178-181, 447-452, 642-650] (AD-29, medium)
+- [x] [Review][Patch] Internal `NewChatThread` queries in `handle_new_chat`/`regenerate_response`/`resume_chat` now include explicit `workspace_id`/`client_id` filters in addition to RLS; `NewChatThreadCreate` and `NewChatThreadRead` include `platform_metadata` and the schema validator clamps it. [new_chat_routes.py:1757-1770, 2077-2092, 2588-2596, new_chat.py:87-126, 133-158] (AD-31, high)
+
 ### Deferred findings
+
+- [x] [Review][Defer] `_bounded_chat_metadata` list cap missing in diff but `MAX_PLATFORM_METADATA_LIST_LENGTH` is already in HEAD (`37b3fe505`); the reviewed diff is not the final code. [new_chat.py:218] (low, already fixed)
+- [x] [Review][Defer] `regenerate`/`resume` session close — current code now commits/closes before streaming; diff-only concern. [new_chat_routes.py:2392-2395, 2587-2590] (low, already fixed)
+- [x] [Review][Defer] `Whitespace-only client_id/agent_id` produces overlapping field/model errors; cosmetic, the field-level pattern is the authoritative error. [new_chat.py:492-501, 113-117] (low)
+- [x] [Review][Defer] `AgentChatMessageCreate` conflates `external_metadata` and `platform_metadata` validators; defer if downstream `TokenUsage`/`NewChatMessage` consumers can tolerate nested `external_metadata` or if a dedicated flat validator is restored. [agent_chat.py:65-68] (low-medium)
+- [x] [Review][Defer] `platform_metadata` persistence / `ResumeRequest` field gaps are tracked as decision-needed items above; can be addressed in a follow-up story if product decides to persist or extend resume. (low)
 
 ### Dismissed findings
 

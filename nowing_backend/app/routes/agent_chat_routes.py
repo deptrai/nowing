@@ -111,13 +111,14 @@ async def create_thread(
             detail="client_id or agent_id outside PAT scope",
         )
 
+    # Set tenant GUCs before the RLS-protected registry lookup (AD-29).
+    await set_request_tenant_context(session, workspace_id, client_id, agent_id)
+
     # Fail-fast: verify the agent is active in the registry before committing
     # any rows. This keeps the 18.2 surface fail-closed for invalid agents.
     await _resolve_agent_config(session, client_id, agent_id)
 
     check_agent_chat_limits(client_id, workspace_id)
-
-    await set_request_tenant_context(session, workspace_id, client_id, agent_id)
 
     run_id = uuid.uuid4()
 

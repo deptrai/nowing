@@ -69,13 +69,13 @@ async def db_client_thread(
 
 
 class TestCreateThread:
-    async def test_post_threads_persists_client_id_and_agent_id(
+    async def test_post_threads_rejects_client_id_and_agent_id(
         self,
         client_as_regular_user: Any,
         db_session: AsyncSession,
         db_workspace: Workspace,
     ) -> None:
-        """AC-1/AC-2: POST /threads stores client_id and agent_id on the row."""
+        """P-INT-SCOPE: internal web threads cannot bind client_id/agent_id from body."""
         payload = {
             "title": "Tagged Thread",
             "archived": False,
@@ -85,19 +85,7 @@ class TestCreateThread:
         }
 
         response = await client_as_regular_user.post("/api/v1/threads", json=payload)
-        assert response.status_code == 200, response.text
-
-        body = response.json()
-        assert body.get("client_id") == "bdsai.vn"
-        assert body.get("agent_id") == "bdsai-listing-assistant"
-
-        row = (
-            await db_session.execute(
-                select(NewChatThread).where(NewChatThread.id == body["id"])
-            )
-        ).scalar_one()
-        assert row.client_id == "bdsai.vn"
-        assert getattr(row, "agent_id", None) == "bdsai-listing-assistant"
+        assert response.status_code == 403, response.text
 
     async def test_post_threads_legacy_body_still_works(
         self,

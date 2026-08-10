@@ -294,8 +294,11 @@ async def stream_new_chat(
     )
 
     # Load the chat thread once so downstream layers can scope memory recall
-    # to the linked ResearchThread (Story 18.5 AC-3).
+    # to the linked ResearchThread (Story 18.5 AC-3). Mirror the turn's
+    # platform_metadata on the thread for last-turn context (P-METADATA-PERSIST).
     chat_thread = await session.get(NewChatThread, chat_id)
+    if chat_thread is not None:
+        chat_thread.platform_metadata = platform_metadata
     research_thread_id = (
         chat_thread.research_thread_id if chat_thread is not None else None
     )
@@ -498,6 +501,7 @@ async def stream_new_chat(
             user_image_data_urls=user_image_data_urls,
             mentioned_documents=mentioned_documents,
             background_tasks=_background_tasks,
+            platform_metadata=platform_metadata,
         )
 
         _t0 = time.perf_counter()
@@ -663,6 +667,7 @@ async def stream_new_chat(
             user_id=user_id,
             turn_id=stream_result.turn_id,
             background_tasks=_background_tasks,
+            platform_metadata=platform_metadata,
         )
         assistant_message_id = await await_persist_task(
             persist_asst_task,
@@ -983,6 +988,7 @@ async def stream_new_chat(
                 client_id=client_id,
                 external_metadata=external_metadata,
                 run_id=run_id,
+                platform_metadata=platform_metadata,
             )
 
         # Persist any sandbox-produced files to local storage so they remain

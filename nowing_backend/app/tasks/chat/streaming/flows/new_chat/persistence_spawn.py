@@ -66,6 +66,7 @@ def spawn_persist_user_task(
     user_image_data_urls: list[str] | None,
     mentioned_documents: list[dict[str, Any]] | None,
     background_tasks: set[asyncio.Task[Any]],
+    platform_metadata: dict[str, Any] | None = None,
 ) -> asyncio.Task[int | None]:
     """Spawn the user-row INSERT; await at the user-message-id yield site."""
     task = asyncio.create_task(
@@ -76,6 +77,7 @@ def spawn_persist_user_task(
             user_query=user_query,
             user_image_data_urls=user_image_data_urls,
             mentioned_documents=mentioned_documents,
+            platform_metadata=platform_metadata,
         )
     )
     background_tasks.add(task)
@@ -89,6 +91,7 @@ def spawn_persist_assistant_shell_task(
     user_id: str | None,
     turn_id: str,
     background_tasks: set[asyncio.Task[Any]],
+    platform_metadata: dict[str, Any] | None = None,
 ) -> asyncio.Task[int | None]:
     """Spawn the assistant-shell INSERT; await at the assistant-message-id yield site."""
     task = asyncio.create_task(
@@ -96,6 +99,7 @@ def spawn_persist_assistant_shell_task(
             chat_id=chat_id,
             user_id=user_id,
             turn_id=turn_id,
+            platform_metadata=platform_metadata,
         )
     )
     background_tasks.add(task)

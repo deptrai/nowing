@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Self
+from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.new_chat import _bounded_chat_metadata
 
@@ -39,11 +39,9 @@ class AgentChatThreadCreate(BaseModel):
     def _strip_whitespace(cls, v: str | None) -> str | None:
         return v.strip() if isinstance(v, str) else v
 
-    @model_validator(mode="after")
-    def _require_client_for_agent(self) -> Self:
-        if self.agent_id is not None and not self.client_id:
-            raise ValueError("client_id is required when agent_id is set")
-        return self
+    # ponytail: client_id is supplied by the PAT scope; route-level checks
+    # enforce that any body client_id/agent_id is a subset of that scope.
+    # Requiring body client_id here would reject valid PAT-only creation.
 
 
 class AgentChatMessageCreate(BaseModel):

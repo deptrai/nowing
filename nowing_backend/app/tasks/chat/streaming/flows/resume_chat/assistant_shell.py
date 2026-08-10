@@ -15,6 +15,8 @@ here. See B5 in the ``sse-based_message_id_handshake`` plan.
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.tasks.chat.persistence import persist_assistant_shell
 
 
@@ -23,9 +25,11 @@ async def persist_resume_assistant_shell(
     chat_id: int,
     user_id: str | None,
     turn_id: str,
+    platform_metadata: dict[str, Any] | None = None,
 ) -> int | None:
     return await persist_assistant_shell(
         chat_id=chat_id,
         user_id=user_id,
         turn_id=turn_id,
+        platform_metadata=platform_metadata,
     )

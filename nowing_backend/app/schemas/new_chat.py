@@ -59,6 +59,7 @@ class NewChatMessageRead(NewChatMessageBase, IDModel, TimestampModel):
     # legacy rows predate the column; clients should treat NULL as
     # "edit-from-this-message is unavailable".
     turn_id: str | None = None
+    platform_metadata: dict[str, Any] | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -104,11 +105,22 @@ class NewChatThreadCreate(NewChatThreadBase):
         pattern=r"^[a-z0-9][a-z0-9-._]*$",
         description="Agent slug bound to this thread.",
     )
+    platform_metadata: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional metadata from the calling platform.",
+    )
 
     @field_validator("client_id", "agent_id", mode="before")
     @classmethod
     def _strip_whitespace(cls, v: str | None) -> str | None:
         return v.strip() if isinstance(v, str) else v
+
+    @field_validator("platform_metadata")
+    @classmethod
+    def _validate_platform_metadata(
+        cls, v: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        return _bounded_chat_metadata(v)
 
     @model_validator(mode="after")
     def _require_client_for_agent(self) -> Self:
@@ -142,6 +154,7 @@ class NewChatThreadRead(NewChatThreadBase, IDModel):
     updated_at: datetime
     client_id: str | None = None
     agent_id: str | None = None
+    platform_metadata: dict[str, Any] | None = None
     research_thread_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -282,9 +295,11 @@ def _bounded_chat_metadata(v: dict[str, Any] | None) -> dict[str, Any] | None:
 
     _check(v, 0)
     try:
-        json.dumps(v)
+        payload = json.dumps(v)
     except (TypeError, ValueError) as exc:
         raise ValueError("platform_metadata must be JSON-serializable") from exc
+    if len(payload.encode("utf-8")) > MAX_PLATFORM_METADATA_BYTES:
+        raise ValueError("platform_metadata exceeds maximum JSON payload size")
     return v
 
 
@@ -637,6 +652,40 @@ class ResumeRequest(BaseModel):
             "uniform across new-message, regenerate, and resume stream routes."
         ),
     )
+    agent_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=63,
+        pattern=r"^[a-z0-9][a-z0-9-._]*$",
+        description="Agent slug to bind this resume turn to. Defaults to the thread's agent.",
+    )
+    client_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=63,
+        pattern=r"^[a-z0-9][a-z0-9-._]*$",
+        description="Vertical client this resume turn belongs to. Defaults to the thread's client.",
+    )
+    platform_metadata: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional metadata from the calling platform.",
+    )
+
+    @field_validator("platform_metadata")
+    @classmethod
+    def _validate_platform_metadata(cls, v):
+        return _bounded_chat_metadata(v)
+
+    @field_validator("agent_id", "client_id", mode="before")
+    @classmethod
+    def _strip_whitespace(cls, v: str | None) -> str | None:
+        return v.strip() if isinstance(v, str) else v
+
+    @model_validator(mode="after")
+    def _validate_resume_client_agent(self) -> Self:
+        if self.agent_id is not None and not self.client_id:
+            raise ValueError("client_id is required when agent_id is set")
+        return self
 
 
 class CancelActiveTurnResponse(BaseModel):

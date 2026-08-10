@@ -816,13 +816,22 @@ async def create_thread(
             "You don't have permission to create chats in this workspace",
         )
 
+        # Internal web threads are unscoped; reject any body attempt to claim a
+        # vertical client or agent.  PAT-scoped public thread creation is the
+        # only path that may bind client_id/agent_id.
+        if thread.client_id is not None or thread.agent_id is not None:
+            raise HTTPException(
+                status_code=403,
+                detail="client_id and agent_id are not accepted on internal threads",
+            )
+
         # Set tenant GUCs before the insert so the 18.1 RLS WITH CHECK clause
-        # on new_chat_threads allows client-scoped rows.
+        # on new_chat_threads allows client-scoped rows (here: unscoped/NULL).
         await set_request_tenant_context(
             session,
             thread.workspace_id,
-            thread.client_id,
-            thread.agent_id,
+            None,
+            None,
         )
 
         now = datetime.now(UTC)
@@ -832,9 +841,8 @@ async def create_thread(
             visibility=thread.visibility,
             workspace_id=thread.workspace_id,
             created_by_id=user.id,
+            platform_metadata=thread.platform_metadata,
             updated_at=now,
-            client_id=thread.client_id,
-            agent_id=thread.agent_id,
         )
         session.add(db_thread)
         await session.commit()
@@ -1728,8 +1736,8 @@ async def handle_new_chat(
     Requires CHATS_CREATE permission.
     """
     try:
-        # Get workspace first so we can set the transaction-local tenant context
-        # (workspace + client + agent GUCs) before any business query.
+        # Get workspace first; workspace is not RLS-protected, so it can be
+        # loaded before any tenant GUC is set.
         workspace_result = await session.execute(
             select(Workspace).filter(Workspace.id == request.workspace_id)
         )
@@ -1738,34 +1746,40 @@ async def handle_new_chat(
         if not workspace:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-        # Set the tenant GUCs as early as possible.  This ensures the 18.1 RLS
-        # policies see the right client_id before we touch new_chat_threads or
-        # agent_configs.  ``request.client_id``/``request.agent_id`` may be None
-        # for legacy web chat; in that case the GUC is left unset and the RLS
-        # IS NULL branch matches legacy (client_id IS NULL) rows.
+        # Authorize the workspace before we set request-derived tenant scope.
+        await check_permission(
+            session,
+            auth,
+            workspace.id,
+            Permission.CHATS_CREATE.value,
+            "You don't have permission to chat in this workspace",
+        )
+
+        # Set workspace + user GUC for the thread lookup.  client_id is *not*
+        # set before the thread is verified (AD-29/AD-31 ordering).  The user
+        # GUC lets the owner see their own client-scoped rows even when the
+        # body omits client_id.
         await set_request_tenant_context(
             session,
             workspace.id,
-            request.client_id,
-            request.agent_id,
+            None,
+            None,
+            user_id=str(user.id),
         )
 
-        # Verify thread exists and user has permission
+        # Verify thread exists in the workspace.  The explicit workspace filter
+        # prevents cross-workspace existence probing; the client/user RLS policy
+        # restricts visibility to the owner or the claimed client scope.
         result = await session.execute(
-            select(NewChatThread).filter(NewChatThread.id == request.chat_id)
+            select(NewChatThread).filter(
+                NewChatThread.id == request.chat_id,
+                NewChatThread.workspace_id == request.workspace_id,
+            )
         )
         thread = result.scalars().first()
 
         if not thread:
             raise HTTPException(status_code=404, detail="Thread not found")
-
-        await check_permission(
-            session,
-            auth,
-            thread.workspace_id,
-            Permission.CHATS_CREATE.value,
-            "You don't have permission to chat in this workspace",
-        )
 
         # Check thread-level access based on visibility
         await check_thread_access(session, thread, user)
@@ -1783,44 +1797,41 @@ async def handle_new_chat(
             workspace.chat_model_id if workspace.chat_model_id is not None else 0
         )
 
-        # Resolve per-turn client/agent scope.  The request is authoritative
-        # when it provides values; otherwise we fall back to the thread row so
-        # a bound thread keeps its tenant/agent context across turns.  If the
-        # thread already has a value, the request must match it (or be absent).
-        effective_client_id = (
-            request.client_id if request.client_id is not None else thread.client_id
-        )
-        effective_agent_id = (
-            request.agent_id if request.agent_id is not None else thread.agent_id
-        )
-
-        if (
-            request.client_id is not None
-            and thread.client_id is not None
-            and request.client_id != thread.client_id
+        # Fail-closed pivot checks (AD-31).  An unscoped legacy thread cannot
+        # be claimed by body client_id/agent_id.  A client-scoped thread may
+        # accept a matching client_id or an agent_id that belongs to that
+        # client, but only after the registry resolves it.
+        if thread.client_id is None and (
+            request.client_id is not None or request.agent_id is not None
         ):
+            raise HTTPException(
+                status_code=403,
+                detail="client_id and agent_id are not accepted on legacy threads",
+            )
+        if request.client_id is not None and request.client_id != thread.client_id:
             raise HTTPException(
                 status_code=403,
                 detail="client_id does not match the thread",
             )
-        if (
-            request.agent_id is not None
-            and thread.agent_id is not None
-            and request.agent_id != thread.agent_id
-        ):
-            raise HTTPException(
-                status_code=403,
-                detail="agent_id does not match the thread",
-            )
 
-        # Re-apply tenant GUCs with the resolved (possibly thread-derived)
-        # client/agent so subsequent queries against agent_configs see the
-        # correct scope.
+        effective_client_id = (
+            request.client_id if request.client_id is not None else thread.client_id
+        )
+        # If the body supplies an agent_id for a client-scoped thread, use it
+        # and let the registry fail-closed lookup below validate it.
+        effective_agent_id = (
+            request.agent_id
+            if thread.client_id is not None and request.agent_id is not None
+            else thread.agent_id
+        )
+
+        # Re-apply tenant GUCs with the resolved client/agent scope.
         await set_request_tenant_context(
             session,
             workspace.id,
             effective_client_id,
             effective_agent_id,
+            user_id=str(user.id),
         )
 
         # Resolve the concrete LLM config id before loading the bundle. Auto
@@ -1892,7 +1903,7 @@ async def handle_new_chat(
                 workspace_id=request.workspace_id,
                 chat_id=request.chat_id,
                 user_id=str(user.id),
-                llm_config_id=resolved_llm_config_id,
+                llm_config_id=llm_config_id,
                 mentioned_document_ids=request.mentioned_document_ids,
                 mentioned_folder_ids=request.mentioned_folder_ids,
                 mentioned_connector_ids=request.mentioned_connector_ids,
@@ -2058,22 +2069,38 @@ async def regenerate_response(
     from app.agents.chat.runtime.checkpointer import get_checkpointer
 
     try:
-        # Verify thread exists and user has permission
+        # Authorize the workspace before any tenant-scoped query.
+        await check_permission(
+            session,
+            auth,
+            request.workspace_id,
+            Permission.CHATS_UPDATE.value,
+            "You don't have permission to update chats in this workspace",
+        )
+
+        # Set workspace + user GUC before the RLS-protected thread lookup.
+        # client_id/agent_id are not trusted before the thread is verified.
+        await set_request_tenant_context(
+            session,
+            request.workspace_id,
+            None,
+            None,
+            user_id=str(user.id),
+        )
+
+        # Verify thread exists in the workspace.  The explicit workspace filter
+        # prevents cross-workspace existence probing; the client/user RLS policy
+        # restricts visibility to the owner or the claimed client scope.
         result = await session.execute(
-            select(NewChatThread).filter(NewChatThread.id == thread_id)
+            select(NewChatThread).filter(
+                NewChatThread.id == thread_id,
+                NewChatThread.workspace_id == request.workspace_id,
+            )
         )
         thread = result.scalars().first()
 
         if not thread:
             raise HTTPException(status_code=404, detail="Thread not found")
-
-        await check_permission(
-            session,
-            auth,
-            thread.workspace_id,
-            Permission.CHATS_UPDATE.value,
-            "You don't have permission to update chats in this workspace",
-        )
 
         # Check thread-level access based on visibility
         await check_thread_access(session, thread, user)
@@ -2084,31 +2111,38 @@ async def regenerate_response(
             local_mounts=request.local_filesystem_mounts,
         )
 
-        # Resolve per-turn client/agent scope for regenerate.
-        effective_client_id = (
-            request.client_id if request.client_id is not None else thread.client_id
-        )
-        effective_agent_id = (
-            request.agent_id if request.agent_id is not None else thread.agent_id
-        )
-
-        if effective_client_id != thread.client_id:
+        # Fail-closed pivot checks (AD-31).  Legacy threads cannot be claimed;
+        # client-scoped threads may accept a matching client_id or an agent_id
+        # that belongs to that client.
+        if thread.client_id is None and (
+            request.client_id is not None or request.agent_id is not None
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="client_id and agent_id are not accepted on legacy threads",
+            )
+        if request.client_id is not None and request.client_id != thread.client_id:
             raise HTTPException(
                 status_code=403,
                 detail="client_id does not match the thread",
             )
-        if effective_agent_id != thread.agent_id:
-            raise HTTPException(
-                status_code=403,
-                detail="agent_id does not match the thread",
-            )
 
-        # Set tenant GUCs so RLS-protected agent registry queries see the right scope.
+        effective_client_id = (
+            request.client_id if request.client_id is not None else thread.client_id
+        )
+        effective_agent_id = (
+            request.agent_id
+            if thread.client_id is not None and request.agent_id is not None
+            else thread.agent_id
+        )
+
+        # Re-apply tenant GUCs with the verified thread scope.
         await set_request_tenant_context(
             session,
             thread.workspace_id,
             effective_client_id,
             effective_agent_id,
+            user_id=str(user.id),
         )
 
         # Fail-fast resolution of the registry AgentConfig for regenerate.
@@ -2525,21 +2559,43 @@ async def resume_chat(
 ):
     user = auth.user
     try:
+        # Load workspace and authorize before the RLS-protected thread lookup.
+        workspace_result = await session.execute(
+            select(Workspace).filter(Workspace.id == request.workspace_id)
+        )
+        workspace = workspace_result.scalars().first()
+
+        if not workspace:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+
+        await check_permission(
+            session,
+            auth,
+            workspace.id,
+            Permission.CHATS_CREATE.value,
+            "You don't have permission to chat in this workspace",
+        )
+
+        # Set workspace + user GUC before the RLS-protected thread lookup.
+        # client_id is not trusted before the thread is verified.
+        await set_request_tenant_context(
+            session,
+            workspace.id,
+            None,
+            None,
+            user_id=str(user.id),
+        )
+
         result = await session.execute(
-            select(NewChatThread).filter(NewChatThread.id == thread_id)
+            select(NewChatThread).filter(
+                NewChatThread.id == thread_id,
+                NewChatThread.workspace_id == request.workspace_id,
+            )
         )
         thread = result.scalars().first()
 
         if not thread:
             raise HTTPException(status_code=404, detail="Thread not found")
-
-        await check_permission(
-            session,
-            auth,
-            thread.workspace_id,
-            Permission.CHATS_CREATE.value,
-            "You don't have permission to chat in this workspace",
-        )
 
         await check_thread_access(session, thread, user)
         _raise_if_thread_busy_for_start(thread_id)
@@ -2549,23 +2605,36 @@ async def resume_chat(
             local_mounts=request.local_filesystem_mounts,
         )
 
-        workspace_result = await session.execute(
-            select(Workspace).filter(Workspace.id == request.workspace_id)
-        )
-        workspace = workspace_result.scalars().first()
-
-        if not workspace:
-            raise HTTPException(status_code=404, detail="Workspace not found")
-
         llm_config_id = (
             workspace.chat_model_id if workspace.chat_model_id is not None else 0
         )
 
         decisions = [d.model_dump() for d in request.decisions]
 
-        # Resolve per-turn client/agent scope from the thread.
-        effective_client_id = thread.client_id
-        effective_agent_id = thread.agent_id
+        # Fail-closed pivot checks (AD-31).  Legacy threads cannot be claimed;
+        # client-scoped threads may accept a matching client_id or an agent_id
+        # that belongs to that client.
+        if thread.client_id is None and (
+            request.client_id is not None or request.agent_id is not None
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="client_id and agent_id are not accepted on legacy threads",
+            )
+        if request.client_id is not None and request.client_id != thread.client_id:
+            raise HTTPException(
+                status_code=403,
+                detail="client_id does not match the thread",
+            )
+
+        effective_client_id = (
+            request.client_id if request.client_id is not None else thread.client_id
+        )
+        effective_agent_id = (
+            request.agent_id
+            if thread.client_id is not None and request.agent_id is not None
+            else thread.agent_id
+        )
 
         # Set tenant GUCs so RLS-protected agent registry queries see the right scope.
         await set_request_tenant_context(
@@ -2573,6 +2642,7 @@ async def resume_chat(
             thread.workspace_id,
             effective_client_id,
             effective_agent_id,
+            user_id=str(user.id),
         )
 
         # Fail-fast resolution of the registry AgentConfig for resume.
@@ -2604,6 +2674,7 @@ async def resume_chat(
                 auth_context=auth,
                 client_id=effective_client_id,
                 agent_id=effective_agent_id,
+                platform_metadata=request.platform_metadata,
                 agent_config_override=agent_config_override,
             ),
             media_type="text/event-stream",

@@ -1,4 +1,4 @@
-"""Red-phase unit tests for ``set_request_tenant_context`` (Story 18.1, AD-31)."""
+"""Unit tests for ``set_request_tenant_context`` (Stories 18.1/18.8)."""
 
 from __future__ import annotations
 
@@ -37,8 +37,18 @@ def _parse_set_config_call(call) -> tuple[str, str, bool]:
     return name, str(params.get(param_key, "")), local.lower() == "true"
 
 
-async def test_set_request_tenant_context_sets_workspace_client_and_agent():
-    """``set_request_tenant_context`` must set all three GUCs with the right values."""
+_ALL_GUC_KEYS = {
+    "app.workspace_id",
+    "app.current_client_id",
+    "app.current_agent_id",
+    "app.run_id",
+    "app.memory_id",
+    "app.current_user_id",
+}
+
+
+async def test_set_request_tenant_context_sets_all_gucs():
+    """``set_request_tenant_context`` sets the full tenant GUC set."""
     from app.canonical.tenant_context import set_request_tenant_context
 
     session = AsyncMock()
@@ -46,7 +56,7 @@ async def test_set_request_tenant_context_sets_workspace_client_and_agent():
 
     await set_request_tenant_context(session, 42, "bdsai.vn", "bdsai-listing-assistant")
 
-    assert len(session.execute.call_args_list) == 3
+    assert len(session.execute.call_args_list) == 6
     gucs = {}
     for call in session.execute.call_args_list:
         name, value, is_local = _parse_set_config_call(call)
@@ -57,6 +67,9 @@ async def test_set_request_tenant_context_sets_workspace_client_and_agent():
         "app.workspace_id": "42",
         "app.current_client_id": "bdsai.vn",
         "app.current_agent_id": "bdsai-listing-assistant",
+        "app.run_id": "",
+        "app.memory_id": "",
+        "app.current_user_id": "",
     }
 
 
@@ -74,8 +87,8 @@ async def test_set_request_tenant_context_uses_is_local_true():
         assert is_local is True
 
 
-async def test_set_request_tenant_context_skips_none_client_id_guc():
-    """A missing ``client_id`` should not set the GUC, so ``current_setting`` returns NULL."""
+async def test_set_request_tenant_context_writes_empty_string_for_none_client_id():
+    """A missing ``client_id`` clears the GUC by writing an empty string."""
     from app.canonical.tenant_context import set_request_tenant_context
 
     session = AsyncMock()
@@ -89,12 +102,12 @@ async def test_set_request_tenant_context_skips_none_client_id_guc():
         gucs[name] = value
 
     assert gucs["app.workspace_id"] == "42"
-    assert "app.current_client_id" not in gucs
+    assert gucs["app.current_client_id"] == ""
     assert gucs["app.current_agent_id"] == "agent-1"
 
 
-async def test_set_request_tenant_context_skips_none_agent_id_guc():
-    """A missing ``agent_id`` should not set the GUC, so ``current_setting`` returns NULL."""
+async def test_set_request_tenant_context_writes_empty_string_for_none_agent_id():
+    """A missing ``agent_id`` clears the GUC by writing an empty string."""
     from app.canonical.tenant_context import set_request_tenant_context
 
     session = AsyncMock()
@@ -109,7 +122,7 @@ async def test_set_request_tenant_context_skips_none_agent_id_guc():
 
     assert gucs["app.workspace_id"] == "42"
     assert gucs["app.current_client_id"] == "client-1"
-    assert "app.current_agent_id" not in gucs
+    assert gucs["app.current_agent_id"] == ""
 
 
 class _RollbackSession:
@@ -143,11 +156,15 @@ async def test_set_request_tenant_context_resets_on_rollback():
 
     await set_request_tenant_context(session, 7, "client-x", "agent-y")
 
-    assert len(session.calls) == 3
+    assert len(session.calls) == 6
+    assert set(session.gucs.keys()) == _ALL_GUC_KEYS
     assert session.gucs == {
         "app.workspace_id": "7",
         "app.current_client_id": "client-x",
         "app.current_agent_id": "agent-y",
+        "app.run_id": "",
+        "app.memory_id": "",
+        "app.current_user_id": "",
     }
 
     await session.rollback()
