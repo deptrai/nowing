@@ -780,7 +780,7 @@ async def test_finalize_enqueues_when_gate_allows(
     """8.7-INT-013 - P1/AC7: no caps -> the Celery task IS enqueued exactly once."""
     assistant = await _run_finalize(db_workspace, db_user, chat_turn)
 
-    celery_delay.assert_called_once_with(assistant.id)
+    celery_delay.assert_called_once_with(assistant.id, client_id=None)
 
 
 async def test_finalize_enqueues_when_owner_wallet_is_empty(
@@ -797,7 +797,7 @@ async def test_finalize_enqueues_when_owner_wallet_is_empty(
     """
     assistant = await _run_finalize(db_workspace, db_user, chat_turn)
 
-    celery_delay.assert_called_once_with(assistant.id)
+    celery_delay.assert_called_once_with(assistant.id, client_id=None)
 
 
 async def test_finalize_enqueues_when_the_precheck_itself_errors(
@@ -826,7 +826,7 @@ async def test_finalize_enqueues_when_the_precheck_itself_errors(
 
     assistant = await _run_finalize(db_workspace, db_user, chat_turn)
 
-    celery_delay.assert_called_once_with(assistant.id)
+    celery_delay.assert_called_once_with(assistant.id, client_id=None)
 
 
 async def test_finalize_skips_enqueue_when_disabled(
