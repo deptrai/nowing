@@ -11,9 +11,16 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.agents.chat.multi_agent_chat.main_agent.tools.index import (
     MAIN_AGENT_NOWING_TOOL_NAMES,
 )
+from app.agents.chat.multi_agent_chat.shared.tools.catalog import TOOL_CATALOG
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-._]{0,62}$")
 _MAX_DISPLAY_NAME_LEN = 256
+
+# Main-agent runtime tools plus the public catalog of subagent / connector tools.
+# The catalog may include tools not yet loaded by the main runtime (subagent
+# dispatch is environment-driven), but storing them lets the admin UI describe
+# and allow-list them ahead of runtime support.
+_VALID_TOOL_NAMES = MAIN_AGENT_NOWING_TOOL_NAMES | {tool.name for tool in TOOL_CATALOG}
 
 
 def _validate_slug(value: str | None, field: str) -> str:
@@ -77,7 +84,7 @@ class AgentConfigCreate(BaseModel):
     def _validate_tool_names(cls, v):
         if not v:
             return v
-        unknown = [n for n in v if n not in MAIN_AGENT_NOWING_TOOL_NAMES]
+        unknown = [n for n in v if n not in _VALID_TOOL_NAMES]
         if unknown:
             raise ValueError(f"unknown tool names: {unknown}")
         return v
@@ -113,7 +120,7 @@ class AgentConfigUpdate(BaseModel):
     def _validate_tool_names(cls, v):
         if not v:
             return v
-        unknown = [n for n in v if n not in MAIN_AGENT_NOWING_TOOL_NAMES]
+        unknown = [n for n in v if n not in _VALID_TOOL_NAMES]
         if unknown:
             raise ValueError(f"unknown tool names: {unknown}")
         return v

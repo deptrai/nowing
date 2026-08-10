@@ -22,6 +22,7 @@ from app.db import (
     ChatVisibility,
     NewChatThread,
     User,
+    VerticalClient,
     Workspace,
 )
 from app.routes import new_chat_routes
@@ -32,6 +33,14 @@ pytestmark = pytest.mark.integration
 @pytest_asyncio.fixture
 async def db_agent_config(db_session: AsyncSession) -> AgentConfig:
     """A vertical-client agent config with custom system instructions."""
+    db_session.add(
+        VerticalClient(
+            client_id="bdsai.vn",
+            display_name="BDS AI",
+            is_active=True,
+        )
+    )
+    await db_session.flush()
     config = AgentConfig(
         client_id="bdsai.vn",
         slug="bdsai-listing-assistant",
@@ -238,3 +247,23 @@ class TestNewChat:
         assert agent_config is not None
         assert agent_config.system_instructions is None
         assert agent_config.use_default_system_instructions is True
+
+    async def test_post_new_chat_unknown_agent_returns_404(
+        self,
+        client_as_regular_user: Any,
+        db_workspace: Workspace,
+        db_client_thread: NewChatThread,
+        db_agent_config: AgentConfig,
+    ) -> None:
+        """AC-5: POST /new_chat with a client_id but unknown agent_id fails 404."""
+        response = await client_as_regular_user.post(
+            "/api/v1/new_chat",
+            json={
+                "chat_id": db_client_thread.id,
+                "user_query": "Hello",
+                "workspace_id": db_workspace.id,
+                "client_id": "bdsai.vn",
+                "agent_id": "unknown-agent",
+            },
+        )
+        assert response.status_code == 404, response.text

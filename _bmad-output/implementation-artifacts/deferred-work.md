@@ -1,24 +1,23 @@
-## Deferred from: code review of 18-3-agent-registry (2026-08-10)
+## Resolved from: code review of 18-3-agent-registry (2026-08-10)
 
-- **Finding:** Frontend admin agent-registry UI page (`nowing_web/app/admin/agent-registry`) is not implemented.
-  - **Action:** Marked `[x] [Review][Defer]` in `18-3-agent-registry.md`.
-  - **Reason / when to revisit:** UI implementation is a separate frontend story / UX contract pass for `ux-contract-agent-registry.md`.
+- **[x] Frontend admin agent-registry UI page**
+  - Implemented `nowing_web/app/admin/agent-registry/page.tsx` with list, create, edit, delete, and client filter.
+  - Added `contracts/types/admin-agent-registry.types.ts` and `lib/apis/admin-agent-registry-api.service.ts`.
 
-- **Finding:** README / ops runbook seed command documentation missing.
-  - **Action:** Marked `[x] [Review][Defer]` in `18-3-agent-registry.md`.
-  - **Reason / when to revisit:** Documentation sprint for `nowing_backend/README.md` and ops runbook.
+- **[x] README / ops runbook seed command documentation**
+  - Added `nowing_backend/README.md` with dev setup, test commands, seed instructions, and admin API table.
+  - Added `_bmad-output/operations-artifacts/runbooks/agent-registry.md` ops runbook.
 
-- **Finding:** Test coverage shallow — missing PATCH, uniqueness, RLS non-owner, and invalid-agent chat 404 cases.
-  - **Action:** Marked `[x] [Review][Defer]` in `18-3-agent-registry.md`.
-  - **Reason / when to revisit:** Test sprint / next chunk review.
+- **[x] Test coverage expansion**
+  - Added PATCH, duplicate slug/name 409, unknown tool, unregistered client, soft-delete, list filter, and invalid-agent chat 404 tests.
 
-- **Finding:** `AgentConfig` tool lists should be reconciled with the full tool catalog (`shared/tools/catalog.py`) once the runtime supports more than the SRP main-agent tool surface.
-  - **Action:** Marked `[x] [Review][Defer]` in `18-3-agent-registry.md`.
-  - **Reason / when to revisit:** Tool-catalog unification across main-agent, subagents, and MCP.
+- **[x] AgentConfig tool list catalog reconciliation**
+  - Write-time validation now accepts the union of `MAIN_AGENT_NOWING_TOOL_NAMES` and `TOOL_CATALOG`.
+  - The main chat runtime continues to build only main-agent tools; subagent/MCP dispatch is still environment-driven.
 
-- **Finding:** `agent_configs.client_id` lacks a foreign-key constraint to `vertical_clients.client_id`.
-  - **Action:** Marked `[x] [Review][Defer]` in `18-3-agent-registry.md`.
-  - **Reason / when to revisit:** Vertical-client lifecycle hardening; admin create already verifies existence in the patch set.
+- **[x] Foreign key `agent_configs.client_id -> vertical_clients.client_id`**
+  - Added `ForeignKey` on `AgentConfig.client_id` in `app/db.py`.
+  - Added migration `2c422d15105e_add_agent_configs_client_id_fk.py`.
 
 ## Deferred from: code review of 18-2-newchatrequest-extension (2026-08-10)
 
