@@ -16,7 +16,7 @@ import logging
 import os
 import sys
 
-from sqlalchemy import select
+from sqlalchemy import insert, select, text
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
@@ -57,19 +57,29 @@ def _require_dev_environment() -> None:
         )
 
 
-async def _ensure_vertical_client(session, client_id: str) -> None:
-    result = await session.execute(
-        select(VerticalClient).where(VerticalClient.client_id == client_id)
+async def _set_internal_context(session) -> None:
+    """Set GUCs so the seed script can read/write RLS-protected tables."""
+    await session.execute(
+        text("SELECT set_config('app.internal_service', 'true', true)")
     )
-    if result.scalar_one_or_none() is None:
-        session.add(
-            VerticalClient(
-                client_id=client_id,
-                display_name=f"{client_id} (seeded)",
-                is_active=True,
-            )
+    await session.execute(text("SELECT set_config('app.current_client_id', '', true)"))
+
+
+async def _ensure_vertical_client(session, client_id: str) -> None:
+    """Idempotently ensure the vertical client row exists.
+
+    Uses INSERT ... ON CONFLICT DO NOTHING to avoid races between concurrent
+    seed runs.
+    """
+    await session.execute(
+        insert(VerticalClient)
+        .values(
+            client_id=client_id,
+            display_name=f"{client_id} (seeded)",
+            is_active=True,
         )
-        await session.flush()
+        .on_conflict_do_nothing(index_elements=["client_id"])
+    )
 
 
 async def seed(
@@ -83,6 +93,7 @@ async def seed(
         _require_dev_environment()
 
     async with async_session_maker() as session:
+        await _set_internal_context(session)
         await _ensure_vertical_client(session, client_id)
 
         result = await session.execute(

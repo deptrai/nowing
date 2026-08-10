@@ -2200,7 +2200,10 @@ class AgentConfig(BaseModel, TimestampMixin):
     # Override BaseModel's Integer id with UUID as required by AD-30.
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     client_id = Column(
-        CITEXT, ForeignKey("vertical_clients.client_id"), nullable=False, index=True
+        CITEXT,
+        ForeignKey("vertical_clients.client_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     name = Column(Text, nullable=False)
     display_name = Column(Text, nullable=False)

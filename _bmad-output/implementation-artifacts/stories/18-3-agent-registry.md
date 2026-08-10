@@ -139,3 +139,29 @@ TBD
 ### Completion Notes List
 
 ### File List
+
+### Review Findings (deferred resolution review — 2026-08-10)
+
+**Review layers completed:** Blind Hunter, Edge Case Hunter, Acceptance Auditor.  
+**Triage summary:** 0 `decision-needed`, 5 `patch` applied, 6 `defer`, 7 dismissed.
+
+#### `decision-needed`
+
+- [x] [Review][Decision] FK `agent_configs.client_id -> vertical_clients.client_id` — resolved: drain orphan rows with `DELETE FROM agent_configs WHERE client_id NOT IN (SELECT client_id FROM vertical_clients)` and use `ON DELETE CASCADE` (matches codebase pattern, and `client_id` is NOT NULL). Applied in `2c422d15105e` migration and `app/db.py`.
+
+#### `patch`
+
+- [x] [Review][Patch] Seed script `scripts/seed_agent_configs.py` should set `app.internal_service` (and optionally `app.current_client_id`) GUCs before inserting into RLS-protected `vertical_clients` and `agent_configs` tables — `nowing_backend/scripts/seed_agent_configs.py:60-122`.
+- [x] [Review][Patch] Admin `PATCH /admin/agent-registry/{id}` should explicitly reject `client_id` in the request payload by setting `AgentConfigUpdate.model_config = ConfigDict(extra="forbid")` — `nowing_backend/app/schemas/agent_config.py:93-96`.
+- [x] [Review][Patch] `_derive_slug` should produce a clearer error message when the provided name cannot yield a valid slug — `nowing_backend/app/schemas/agent_config.py:48-52`.
+- [x] [Review][Patch] `_ensure_vertical_client` in the seed script is not atomic; concurrent seed runs may hit unique-constraint violations on `vertical_clients.client_id` — `nowing_backend/scripts/seed_agent_configs.py:70-84`.
+- [x] [Review][Dismiss] `get_agent_config` Python-level guard is redundant in normal operation because the CITEXT query already enforces case-insensitive `client_id` matching, but it is kept as defense-in-depth — `nowing_backend/app/services/agent_registry.py:42-46`.
+
+#### `defer`
+
+- [x] [Review][Defer] Tool catalog tools may be stored but ignored by the main-agent runtime; subagent/MCP dispatch is still environment-driven and is accepted for now — `nowing_backend/app/schemas/agent_config.py:19-23`.
+- [x] [Review][Defer] Admin `PATCH` has no optimistic locking (`updated_at` comparison); last-write-wins is acceptable in the current admin tool surface — `nowing_backend/app/routes/admin_agent_registry_routes.py:187-229`.
+- [x] [Review][Defer] Frontend does not pre-validate `client_id` against `vertical_clients` before submit; improves UX but API already returns 400 — `nowing_web/app/admin/agent-registry/page.tsx:286-297`.
+- [x] [Review][Defer] UI for soft-deleted/inactive agents and system-instructions length counter are not aligned with the (missing) `ux-contract-agent-registry.md`; surface is functional but needs a UX pass — `nowing_web/app/admin/agent-registry/page.tsx:235-239`, `page.tsx:343-356`.
+- [x] [Review][Defer] Max-length boundary tests and tests for enabled/disabled tool overlap are not in scope for this chunk; add during a test hardening pass — `nowing_backend/tests/integration/routes/test_admin_agent_registry.py`.
+- [x] [Review][Defer] No validation that `enabled_tools` and `disabled_tools` are disjoint and no de-duplication of tool names; behavior is currently harmless but should be cleaned up later — `nowing_backend/app/schemas/agent_config.py:75-90`, `nowing_web/app/admin/agent-registry/page.tsx:43-48`.

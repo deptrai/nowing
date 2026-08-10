@@ -403,3 +403,12 @@ Reconfirmed in fresh 3-layer review; see 2026-08-05 section above for full ratio
 - source_spec: `_bmad-output/implementation-artifacts/stories/12-2-topcv-scraper.md`
   summary: Legal/ToS block decision is a static config flag, not a runtime legal-service hook.
   evidence: `TOPCV_ENABLED` is read from env and checked at call time; there is no runtime integration with a legal/TOS service because Story 12.0 produced a manual decision and no service exists to consume it.
+
+## Deferred from: code review of 18-3-agent-registry deferred resolution (2026-08-10)
+
+- Tool catalog tools stored in `AgentConfig` may still be ignored by the main-agent runtime because subagent/MCP dispatch is environment-driven.
+- Admin `PATCH` has no optimistic locking (`updated_at` comparison) — acceptable last-write-wins for the current admin surface.
+- Frontend does not pre-validate `client_id` against `vertical_clients` before submit; API already fails fast, but a UX pass should add a dropdown or pre-check.
+- UI for soft-deleted/inactive agents and a system-instructions character counter are not aligned with the (missing) `ux-contract-agent-registry.md`.
+- Max-length boundary tests and tests for enabled/disabled tool overlap are out of scope for this chunk.
+- `enabled_tools` / `disabled_tools` are not validated as disjoint and are not de-duplicated; currently harmless.

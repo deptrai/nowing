@@ -28,8 +28,8 @@ async def get_agent_config(
     """Fail-closed lookup of an active agent by client and slug.
 
     Returns the active ``AgentConfig`` or raises ``AgentConfigNotFoundError``.
-    The client_id check is duplicated in the query and as an explicit guard
-    so cross-client slugs are not leaked.
+    The query uses the CITEXT column for a case-insensitive client_id match;
+    the Python-level guard is defense-in-depth against query misconfiguration.
     """
     result = await session.execute(
         select(AgentConfig).where(
@@ -42,7 +42,7 @@ async def get_agent_config(
     if (
         config is None
         or not config.is_active
-        or (config.client_id or "").lower() != client_id.lower()
+        or (config.client_id or "").lower() != (client_id or "").lower()
     ):
         raise AgentConfigNotFoundError()
     return config

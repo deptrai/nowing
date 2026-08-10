@@ -46,7 +46,10 @@ def _derive_slug(name: str | None, explicit_slug: str | None) -> str:
     s = re.sub(r"[^a-z0-9-._]+", "-", name.strip().lower())
     s = re.sub(r"[-]+", "-", s).strip("-.")
     if not _SLUG_RE.fullmatch(s):
-        raise ValueError("slug derived from name is not a valid slug")
+        raise ValueError(
+            "name must contain at least one letter, digit, '-', '.', or '_' "
+            "to form a valid slug"
+        )
     return s
 
 
@@ -91,6 +94,10 @@ class AgentConfigCreate(BaseModel):
 
 
 class AgentConfigUpdate(BaseModel):
+    # Reject `client_id` (and any other unknown field) explicitly at the API
+    # boundary instead of relying on the field being omitted from the schema.
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, min_length=1, max_length=256)
     display_name: str | None = Field(default=None, min_length=1, max_length=256)
     slug: str | None = Field(default=None, max_length=64)
