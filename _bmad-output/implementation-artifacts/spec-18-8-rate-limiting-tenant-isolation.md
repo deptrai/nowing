@@ -87,6 +87,15 @@ INSERT/UPDATE/DELETE: workspace_id = app.workspace_id AND client_id = app.curren
 
 Khi `current_client_id` unset (`NULL`), `IS NOT DISTINCT FROM NULL` sẽ match `client_id IS NULL` (Nowing internal). Các public chat routes phải set `client_id` từ PAT scope.
 
+### Review Findings
+
+- [x] [Review][Decision] RLS `NULLIF` pattern khác biệt so với `token_usage`/`runs` — resolved. `memories` cần `NULLIF(..., '')::int` vì có user-scoped rows (`workspace_id` NULL). `token_usage` và `runs` không cần vì workspace luôn non-NULL. Giữ deviation.
+- [x] [Review][Decision] `export_service` chỉ set `workspace_id` GUC, không set `client_id` — resolved. Export là workspace-internal theo mặc định; chỉ bao gồm `client_id` NULL. Nếu sau này cần export client-scoped, mở rộng riêng.
+- [x] [Review][Patch] `save_memory` xóa facts cũ bằng `session.execute(delete(Memory))` trước khi set tenant GUC — fixed. Đã thêm `set_request_tenant_context` trước cả hai nhánh delete trong `app/services/memory/service.py`.
+- [x] [Review][Patch] `update_memory` cho phép chuyển `client_id` sang client khác — fixed. Đã khóa `client_id`/`agent_id` là immutable trên update trong `app/services/memory/repository.py`; GUC dùng `memory.client_id`/`memory.agent_id`.
+- [x] [Review][Defer] Thiếu L2/L3/L5 tests theo threat model — `tests/integration/rls/test_composite_client_rls.py` chỉ có L1. Threat model yêu cầu L1+L2+L3 cho CI gate và L4/L5 trước production. Đây là test gap ngoài scope story.
+- [x] [Review][Defer] `memory_relations` và `memory_versions` chưa có RLS/GUC — `app/services/memory/repository.py:605`, `app/db.py:2352`. Các bảng phụ thuộc `memories` nhưng không có tenant isolation; nằm ngoài scope story và cần epic-level quyết định.
+
 ## Verification
 
 **Commands:**

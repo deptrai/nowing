@@ -1,3 +1,13 @@
+## Deferred from: code review of 18-8-rate-limiting-tenant-isolation (2026-08-10)
+
+- **Finding:** Thiếu L2/L3/L5 tests theo threat model.
+  - **Action:** Marked `[x] [Review][Defer]` in `spec-18-8-rate-limiting-tenant-isolation.md`.
+  - **Reason / when to revisit:** Threat model §4.1 yêu cầu L1+L2+L3 cho CI gate và L4/L5 trước production; chỉ L1 được implement trong story. Bổ sung khi Epic 18 đạt production-readiness.
+
+- **Finding:** `memory_relations` và `memory_versions` chưa có RLS/GUC.
+  - **Action:** Marked `[x] [Review][Defer]` in `spec-18-8-rate-limiting-tenant-isolation.md`.
+  - **Reason / when to revisit:** Các bảng phụ thuộc `memories` nhưng không có cột `client_id`/`workspace_id` và chưa có policy. Cần epic-level quyết định về tenant inheritance hoặc thêm RLS riêng khi mở rộng scope.
+
 ## Deferred from: code review of 12-2-topcv-scraper (2026-08-10)
 
 - **Finding:** PII redaction tại scraper (AC-7).

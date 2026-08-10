@@ -206,6 +206,10 @@ async def save_memory(
 
     if normalized is MemoryScope.USER:
         user_id = _normalize_user_id(target_id)
+        # AC-18.8: set the tenant GUC before the DELETE so FORCE RLS does not
+        # hide the rows we are about to remove.  User-scoped memory uses
+        # workspace_id=NULL and client_id=NULL.
+        await set_request_tenant_context(session, workspace_id=None, client_id=None)
         # Delete existing user-scoped personal memory facts before rewriting.
         await session.execute(
             delete(Memory).where(
@@ -225,6 +229,11 @@ async def save_memory(
             )
     else:
         workspace_id = int(target_id)
+        # AC-18.8: set the tenant GUC before the DELETE so FORCE RLS does not
+        # hide the rows we are about to remove.  Team memory is client-less.
+        await set_request_tenant_context(
+            session, workspace_id=workspace_id, client_id=None
+        )
         # Delete existing workspace team memory facts before rewriting.
         await session.execute(
             delete(Memory).where(

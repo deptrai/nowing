@@ -429,10 +429,6 @@ class MemoryRepository:
         client_id: str | None = None,
         agent_id: str | None = None,
     ) -> Memory | None:
-        # AC-18.8: an empty client_id string is treated the same as NULL so the
-        # RLS NULLIF wrapper and the stored value are consistent.
-        client_id = client_id or None
-
         # AC-18.8: load by id-token, then switch to the row's tenant GUCs so
         # the UPDATE/INSERT flush passes the ALL-policy WITH CHECK clause.
         await set_request_tenant_context(self.session, memory_id=memory_id)
@@ -442,9 +438,15 @@ class MemoryRepository:
         memory = result.scalar_one_or_none()
         if memory is None:
             return None
-        # AC-18.8: use the caller's client_id when provided so a workspace user
-        # cannot edit another client's row; fall back to the row's own client
-        # for internal callers that do not pass a client scope.
+
+        # AC-18.8: client_id and agent_id are immutable tenant attributes on
+        # update.  Using the row's own scope for the GUC prevents a caller from
+        # moving a memory across clients by passing a different client_id.
+        # Callers that need re-scope should create a new memory.
+        if client_id is not None and client_id != memory.client_id:
+            client_id = memory.client_id
+        if agent_id is not None and agent_id != memory.agent_id:
+            agent_id = memory.agent_id
         await set_request_tenant_context(
             self.session,
             workspace_id=memory.workspace_id,
@@ -490,10 +492,8 @@ class MemoryRepository:
             memory.research_thread_id = research_thread_id
         if created_by_id is not None:
             memory.created_by_id = created_by_id
-        if client_id is not None:
-            memory.client_id = client_id
-        if agent_id is not None:
-            memory.agent_id = agent_id
+        # AC-18.8: client_id and agent_id are immutable on update; the GUC
+        # above already uses the row's own tenant scope.
 
         # Re-embed when content changes, unless an embedding is provided.
         if embedding is not None:

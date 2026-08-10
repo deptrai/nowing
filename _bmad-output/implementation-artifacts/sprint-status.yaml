@@ -404,3 +404,7 @@ validation_reports:
     type: "test"
     verdict: "PASS"
     notes: "ruff clean; alembic upgrade head + downgrade -1 pass; pytest tests/integration/rls/test_composite_client_rls.py 8/8 pass; pytest memory integration suites (changed_event, provenance_recipe, memory_routes, extraction, run_extraction) 56+ pass with 1 skip."
+  - story: "18-8"
+    type: "code-review"
+    verdict: "PASS-with-changes"
+    notes: "3-layer review found 2 high findings (save_memory GUC, update_memory client transfer) and 2 decisions (NULLIF pattern, export scope). All resolved in commit 3c0902c19; 2 items deferred to epic (L2/L3/L5 tests, memory_relations/versions RLS)."
