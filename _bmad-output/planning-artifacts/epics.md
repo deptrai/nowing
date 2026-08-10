@@ -197,6 +197,7 @@ So that I can monitor competitor pricing, ratings, and customer feedback.
 **Given** a product search or product page URL, **When** I call the Walmart scraper, **Then** it returns product title, price, rating, seller, availability, and review summary.
 **Given** a product with reviews, **When** I request reviews, **Then** it returns paginated review text, rating, date, and verified status.
 **And** the capability is exposed via REST, agent subagent (`walmart` specialist), and MCP tool.
+**Given** the Walmart product page payload is missing `__NEXT_DATA__`, returns malformed JSON, or the requested product variant is out of stock, **When** the scraper parses the response, **Then** it returns `degraded=true` with `degradation_reason: parse_error` or `not_found` and does not crash.
 
 **Kỹ thuật:** parse `__NEXT_DATA__`, rotate proxies on block, add `walmart.scrape` + `walmart.reviews` verbs, register billing units.
 _FR-6 · upstream PR #1614._
@@ -209,6 +210,7 @@ So that I can track prices and listings across regions.
 **Acceptance Criteria:**
 **Given** an Amazon product URL on an EU domain, **When** I scrape it, **Then** it returns localized product metadata, price, currency, and availability.
 **And** URL validator accepts EU TLDs; **And** region/currency are exposed in output schema.
+**Given** an Amazon EU product URL points to an unsupported TLD, returns a 404/403, or the page is blocked by a bot challenge, **When** the scraper runs, **Then** it rejects the invalid input or returns `degraded=true` with `degradation_reason` and does not retry indefinitely.
 _FR-6 · upstream PR #1628._
 
 ### Story 2.9: Scraper API Input Validation & Error Handling  `(mới 2026-07-30)`  `[done]`
@@ -235,6 +237,7 @@ So that the agent can answer questions with up-to-date web search and full-page 
 **And** alembic migration `190_add_exa_mcp_connector.py` is applied to the database.
 **And** the new connector type is wired into `CONNECTOR_TYPE_TO_CONNECTOR_AGENT_MAPS`, `SUBAGENT_TO_REQUIRED_CONNECTOR_MAP`, `_CONNECTOR_TYPE_TO_SEARCHABLE`, `BASE_NAME_FOR_TYPE`, and connector config validation.
 **And** `ruff check` on changed files and `pytest tests/unit/agents/multi_agent_chat/test_mcp_discovery_migration.py` pass.
+**Given** the Exa MCP server returns a 401/403, 429 rate-limit, or times out during `web_search_exa`/`web_fetch_exa`, **When** the tool is invoked, **Then** the capability returns `degraded=true` with `degradation_reason` and does not crash the chat turn.
 
 **Kỹ thuật:** add `EXA_MCP_CONNECTOR` to `SearchSourceConnectorType`, `MCP_SERVICES`, connector agent/searchable maps, and validation; create route-level `server_config` builder from `exa_api_key`; reuse `mcp_discovery` subagent with curated `allowed_tools` / `readonly_tools`.
 _FR-8 · FR-8.1 · OQ-4._
@@ -265,6 +268,7 @@ So that tôi lần ngược câu trả lời về nguồn chính xác.
 **Acceptance Criteria:**
 **Given** một citation trong chat, **When** bấm "Open" mở full editor, **Then** editor scroll tới + highlight đúng chunk (truyền `chunkId`, không chỉ `documentId`).
 **And** `editorPanelAtom` có trường `chunkId` + highlight state; **And** không có chunk match thì fallback về đầu document + thông báo.
+**Given** `chunkId` trong citation không tồn tại (chunk not found) hoặc document đã bị re-index, **When** editor mở, **Then** editor fallback về đầu document và hiển thị error thay vì crash.
 **UX Notes (nhẹ, brownfield):** bám component `nowing_web/components/citation-panel/citation-panel.tsx` (đã có scroll/highlight chunk) + editor hiện có — chỉ mở rộng state, KHÔNG thiết kế mới. Cần contract đầy đủ → `bmad-ux`.
 _NFR-6 · AD-DEFER-1._
 
@@ -277,6 +281,7 @@ So that Nowing đáp ứng ToS/bản quyền/PII và người dùng kiểm soát
 **Given** một `Memory` có `memory_versions`/`memory_relations`/embedding, **When** thực hiện right-to-delete (erasure), **Then** memory + versions + relations + embedding bị purge (hoặc anonymize theo policy) — test e2e: create→correct→cite→erase→assert sạch mọi bảng.
 **Given** dữ liệu phái sinh từ scrape, **When** có ToS takedown theo nguồn, **Then** bulk-delete theo `source_type`/`source_id` (cần provenance tag).
 **And** policy tách rõ **self-host vs cloud** (RS-6); **And** data export (RS-8); **And** doc retention (mig 176) được nối vào cùng policy.
+**Given** `source_type`/`source_id` dùng cho ToS takedown bị thiếu hoặc không hợp lệ, **When** thực hiện bulk-delete, **Then** hệ thống trả `invalid_source` và không xóa memory không liên quan.
 _OQ-3 · AR-4 · AD-DEFER-4._
 
 ### Story 3.9: Memory Recall Eval-Gate  `(mới)`  `[DONE — SHIP-GATE implementation complete; baseline ratification pending]`
@@ -289,6 +294,7 @@ So that không ship recall rác (agent "đoán" thay vì "nhớ").
 **Given** cần đo chất lượng, **When** định nghĩa oracle "recall hit" (top_k≤5 + ngưỡng similarity, verify RS-2) + thêm metric **noise-rate**, **Then** đo được precision@5 và noise với Wilson CI.
 **Given** baseline đã đo, **When** chốt **số SM-10** (precision@5 ≥ X, noise ≤ Y) — **cấm placeholder "≥X%"**, **Then** gate chặn ship nếu chưa đạt (RS-7).
 **And** MCP selfcheck CI (AR-8) chạy trong pipeline.
+**Given** dataset của `memory-recall` eval bị rỗng hoặc `gate.yaml` thiếu `judge_model`/`oracle`, **When** `nowing_evals run memory recall` khởi động, **Then** nó raise `QualityBenchmarkConfigError` với validation message rõ ràng và không gọi judge.
 _NFR-8 · AR-1 (re-scoped: extend harness, KHÔNG bootstrap) · AR-3 · AR-8 · RS-2 · SM-10._
 **Phối hợp (KHÔNG hard forward-dep):** dựng suite/harness/label dataset chạy độc lập được; chỉ **đo baseline cuối** trên corpus sau 3.10 (legacy data safety) và sau khi 8.4a đông cứng auto-extract. 3.10 & 8.4a là **P0 theo ưu tiên** (mitigate rủi ro prod), không chặn khởi động story này.
 
@@ -315,6 +321,7 @@ So that memory không thành "bãi rác" (nhớ trùng/nhiễu) mà cũng không
 **Acceptance Criteria:**
 **Given** dedupe primitive đã có (`repository.py` cosine<0.08 + `update_on_duplicate`, đã wire auto-extract `extraction.py`), **When** chạy bench dedupe precision/recall trên `nowing_evals`, **Then** đo được tỷ lệ merge đúng/sai.
 **And** tune ngưỡng cosine + confidence default (0.7) dựa trên số đo; **And** phủ cả path auto-extract lẫn manual create.
+**Given** một memory row có embedding rỗng hoặc malformed trong bench dedupe, **When** tính cosine similarity, **Then** hệ thống log `invalid_embedding`, bỏ qua row đó, và tiếp tục tuning ngưỡng.
 _AR-3 · gắn với 3.9._
 
 ### Story 3.12: Memory Security — RBAC Enforcement, Isolation & Audit  `(mới)`  `[DONE — sprint 8-5 security + IDOR fix (deferred-work 4.5)]`
@@ -326,6 +333,7 @@ So that recall không rò rỉ cross-tenant và mọi memory write có vết.
 **Given** quyền `memory:*` đã backfill (mig 177), **When** gọi mọi memory endpoint + MCP tool, **Then** permission được enforce (test khẳng định, không chỉ tin backfill).
 **Given** 2 workspace/user khác nhau, **When** recall/search, **Then** không trả memory cross-tenant (test isolation, NFR-5).
 **And** mọi memory write (create/correct/delete) ghi **audit log** (hiện chỉ `logger.warning`).
+**Given** một user không có quyền `memory:read` hoặc thuộc workspace khác, **When** gọi memory endpoint/MCP tool, **Then** request bị denied với 403 và ghi `unauthorized_memory_access` vào audit log.
 _AR-9 · NFR-2/NFR-5 (memory-scoped)._
 
 ### Story 3.7-followup: Retention Hardening  `(tech debt)`  `[backlog]`
@@ -359,6 +367,7 @@ _Source: code review defer items từ 3-7. Priority: P2. Effort: 1-2 days. Trigg
 **Given** người dùng mới hoàn toàn, **When** đo signup → run đầu → recall có nội dung, **Then** **≤ 15 phút** (M1).
 **And** tôn trọng kill-switch `MEMORY_AUTO_EXTRACT_ENABLED` + `workspaces.memory_auto_extract_enabled` (`8-8` done) và spend cap (`8-7`).
 **And** memory sinh ra đếm vào ngân sách 8.000 chars của **NFR-1b** — đây là ràng buộc, không phải ghi chú.
+**Given** research run đầu tiên của người dùng mới trả về kết quả rỗng hoặc auto-extract pipeline lỗi (ví dụ kill-switch OFF hoặc vượt spend cap), **When** `nowing_recall` được gọi, **Then** nó trả `empty`/`error` status với message rõ ràng thay vì trả về rỗng im lặng.
 
 **Ghi chú kỹ thuật:**
 - Story này chính là **writer còn thiếu** cho `MemorySourceType.SCRAPER_RUN` (khai báo `app/db.py:572`, **hiện không ai ghi**).
@@ -392,6 +401,7 @@ _FR-40 · M1 · brief §9 H-4 · `AD-11.1`._
 **And** metric + tài liệu **tách tên** `memory_injection` ≠ `memory_recall`.
 
 **Given** `/memories/search` và `nowing_recall`, **When** trả kết quả, **Then** **expose RRF score thật** thay cho `score=0.0` hardcode — để vế *"vượt ngưỡng similarity"* của FR-32 / NFR-1c **áp được**. `[thêm 2026-07-25 — nhận việc treo]`
+**Given** truy vấn memory injection bị timeout hoặc embedding index unavailable, **When** middleware rơi vào fallback, **Then** nó tăng counter `memory_injection_timeout`/`unavailable` và trả `None` mà không block lượt chat.
 > **Vì sao việc này ở đây.** `search.py:97` **có** tính RRF score và `order_by(text("score DESC"))`, nhưng cùng file `return [row[0] for row in rows]` bỏ score đi, và `memories_routes.py:117` hardcode `score=0.0`. Không client nào thấy similarity. `nowing_evals/.../memory/recall/gate.yaml` buộc phải đặt `required_oracle_mode: rank_only`.
 >
 > **Việc này từng bị hoãn sang `3-11`, nhưng `3-11` đã `done` mà không làm** (*"dedupe đã wire; tuning ngưỡng optional qua 3-9"*). Hai note trỏ vòng vào nhau ⇒ mất chủ. Nhận về `3-14` vì `3-14` đã sửa đúng `search.py` và `AD-18` rule 1 (bounded top-k) **buộc** phải làm việc với score.
@@ -415,6 +425,7 @@ So that I can trace claims back to the exact run that produced them.
 **Given** a chat answer that references data from a scraper run, **When** the model emits a citation, **Then** the citation points to the `Run` record (run id + capability + input snapshot) and renders as `run_<uuid>`.
 **Given** a run citation in the UI, **When** I click it, **Then** it opens the run detail / citation panel showing the run output.
 **And** citations carry a new `source_type = RUN` with structured fields; **And** the `RUN` source type is supported by citation renderers and the citation panel.
+**Given** `Run` record được citation trỏ tới bị thiếu (missing) hoặc đã bị cleanup sau `RUNS_RETENTION_DAYS`, **When** citation render, **Then** UI hiển thị `run not found` với input snapshot thay vì link hỏng.
 
 **Kỹ thuật:** add `RUN` to citation source enum, mint run citation from capability tool, parse `run_<uuid>` tokens in chat, render citation chip, open run in citation panel.
 _FR-13 · FR-39 · upstream PR #1619._
@@ -440,6 +451,7 @@ So that I can move, archive, or integrate Nowing knowledge with other tools.
 **Acceptance Criteria:**
 **Given** a workspace with documents, memories, and source provenance, **When** I request an OKF export, **Then** it produces a valid OKF bundle (documents, chunks, facts, relations, citations) that can be validated against the OKF schema.
 **Given** the export, **When** inspected, **Then** it does not leak data from other workspaces and redacts API keys / secrets.
+**Given** workspace không có documents, memories hoặc source provenance nào, **When** yêu cầu OKF export, **Then** nó trả `empty` bundle hợp lệ với `item_count=0` thay vì lỗi 500.
 
 **Kỹ thuật:** build an export job over workspace-scoped `Document`, `Chunk`, `Memory`, `MemoryRelation`; serialize to OKF JSON; stream/limit size for large KBs.
 _FR-32 · RS-8 · upstream PR #1617._
@@ -484,6 +496,7 @@ So that workflow không phải đi vòng qua `agent_task`.
 **Acceptance Criteria:**
 **Given** automation definition, **When** thêm action type write-back (Notion/Slack/Linear/Jira), **Then** chạy được với retry + audit + **compensating action / best-effort undo** (KHÔNG phải true rollback — không un-send Slack được; nêu rõ giới hạn).
 **And** quyết định kiến trúc OQ-5 (action type riêng vs agent_task tool) được ghi lại.
+**Given** API Notion/Slack/Linear/Jira trả về 401/403/429 hoặc OAuth token đã expired, **When** write-back action chạy, **Then** nó fail với `provider_error` typed, trigger `on_failure`, và không retry vô hạn.
 _FR-18 · OQ-5 · AD-DEFER-2. Lưu ý: agent_task đã cho phép write-back → đây là nâng cấp, không chặn beachhead._
 
 ### Story 6.5: Memory-Driven Automations  `[DONE per sprint-status: 6-5 — cải chính 2026-07-25]`
@@ -495,6 +508,7 @@ So that workflow nghiên cứu chạy liên tục không cần prompt tay.
 
 **Acceptance Criteria:**
 **Given** automation có trigger `memory_change` hoặc schedule, **When** memory mới match query/tags **OR** cron đến hạn, **Then** `AutomationRun` chạy với `research_thread_id` + memory context; action `continue_research`/`agent_task` write-back kết quả.
+**Given** trigger `memory_change` query trả về empty hoặc `AutomationRun` vượt timeout, **When** automation thực thi, **Then** nó log `trigger_empty`/`timeout` và không enqueue run mới.
 _FR-35 · AD-DEFER-6._
 
 ### Story 6.6: Playbook Reuse — expose `inputs.schema` đã có  `[GAP — P1, gated sau pilot BĐS]`
@@ -568,6 +582,7 @@ So that tôi hiểu mình tiêu gì (dữ liệu `TokenUsage`/`credit_micros_bal
 **Acceptance Criteria:**
 **Given** `TokenUsage` đã ghi, **When** mở usage dashboard, **Then** hiển thị aggregate theo workspace/model/`usage_type`/thời gian (gồm `memory_create`).
 **And** buy-credits page hiển thị lịch sử, không chỉ current balance.
+**Given** `TokenUsage` rỗng cho workspace/model/time range chọn hoặc credit wallet bị thiếu, **When** dashboard load, **Then** UI hiển thị `no_data`/`missing_wallet` state thay vì màn hình trắng.
 **UX Notes (nhẹ, brownfield):** bám pattern settings/buy-credits page hiện có trong `nowing_web/`; dashboard = bảng + biểu đồ aggregate theo workspace/model/thời gian. Cần contract đầy đủ → `bmad-ux`.
 _NFR-7 · FR-31 · AD-DEFER-5._
 
@@ -580,6 +595,7 @@ So that chi phí per-turn không kiểm soát dừng ngay lập tức.
 **Given** `MEMORY_AUTO_EXTRACT_ENABLED` + `workspaces.memory_auto_extract_enabled`, **When** đặt global kill-switch OFF, **Then** không task extraction nào enqueue ở bất kỳ turn (verify `assistant_finalize`); không cần redeploy; có test.
 **Given** một workspace, **When** owner tắt riêng, **Then** extraction dừng cho workspace đó, không ảnh hưởng khác.
 **Given** default an toàn, **When** tạo workspace mới, **Then** `memory_auto_extract_enabled` default phản ánh policy đã chốt (OFF tới khi gates ship).
+**Given** flag `MEMORY_AUTO_EXTRACT_ENABLED` bị thiếu trong config hoặc `workspaces.memory_auto_extract_enabled` là `NULL`, **When** đánh giá auto-extract, **Then** mặc định là `OFF` và log `missing_flag` để extraction không chạy bất ngờ.
 _AR-6 · FR-15. **Dep: none** (P0)._
 
 ### Story 8.7: Auto-Extract Spend/Budget Cap, Wallet Pre-Check & Rate-Limit  `(mới)`  `[DONE — 59 tests passed; gate before auto-extract goes to prod]`
@@ -590,6 +606,7 @@ So that chi phí dự đoán được khi auto-extract bật.
 **Acceptance Criteria:**
 **Given** một workspace, **When** vượt **spend budget cap** trong kỳ HOẶC ví không đủ (wallet pre-check **TRƯỚC** khi enqueue LLM call phụ), **Then** extraction bị skip + log, không âm thầm đốt credit.
 **And** rate-limit theo thời gian (ngoài `MAX_ITEMS=3` sẵn có); **And** edge anonymous-chat (FR-17) attribution rõ ràng.
+**Given** ví credit rỗng hoặc rate-limit window bị vượt, **When** yêu cầu auto-extract, **Then** extraction bị skip và emit counter `wallet_empty`/`rate_limited` thay vì âm thầm đốt credit.
 _AR-6 · RS-1. **Dep: 8.8** (kill-switch/flags đã có)._
 
 ### Story 8.9: Memory Cost/Turn Observability  `(mới)` `(đánh lại số từ 8.5 — C-C)`  `[DONE — code-complete qua sprint story 8-4 observability-logging]`
@@ -600,6 +617,7 @@ So that định lượng unit economics cloud trước khi pricing (SM-C2/RS-10)
 **Acceptance Criteria:**
 **Given** turn có extraction/recall, **When** hoàn tất, **Then** ghi span + cost với `usage_type="memory_create"`, attribute workspace+user.
 **And** aggregate cost/turn (auto-extract ON vs OFF) đo trên staging/beta → input cho pricing.
+**Given** extraction/recall span thiếu `workspace_id`/`user_id` hoặc cost là `null`, **When** observability aggregate chạy, **Then** row được tag `invalid` và route đến dead-letter table thay vì làm corrupt dashboard.
 _AR-5 · SM-C2 · RS-10._
 
 ### Story 8.10: Docs / README / Vision Sync  `(mới)` `(đánh lại số từ 8.6 — C-C)`  `[DONE per sprint-status: 8-10]`
@@ -613,6 +631,7 @@ So that the repo does not look like vaporware with old positioning or removed fe
 **Then** they reflect the current "long-term research memory" vision and no longer describe removed features
 **And** the one-sentence product promise and a quickstart guide are published
 **And** removed features cannot reappear in the docs.
+**Given** docs sync phát hiện placeholder token hoặc tên feature đã bị removed, **When** CI docs-drift check chạy, **Then** build fail với `docs_drift_detected` và chỉ đến file vi phạm.
 
 _Implementation hints (not AC):_ Keep `README.md`, `docs/`, and `project-overview.md` synced; include a CI docs-vs-code drift check to catch removed features like the Admin role or AI File Sorting.
 _OQ-6 · AR-10 · RS-5._
@@ -673,6 +692,7 @@ So that I can offer tiered plans and prevent abuse on the cloud offering.
 **Given** a workspace on a free/team/enterprise plan, **When** it reaches a limit, **Then** subsequent operations are blocked with a clear upgrade message.
 **Given** the workspace settings, **When** an admin opens it, **Then** they see current usage vs limits and an upgrade CTA.
 **And** limits are enforced backend-side (not just UI); **And** anonymous/self-host defaults keep existing behavior.
+**Given** workspace chưa có plan cấu hình hoặc metadata limit bị thiếu, **When** operation bị gate, **Then** nó bị denied với `plan_missing` và message rõ ràng yêu cầu admin cấu hình.
 
 **Kỹ thuật:** add `WorkspaceLimit` / plan config, gate document upload, member invite, and run creation; expose usage/limit API; build settings UI.
 _FR-3 · FR-30 · upstream PR #1609._
@@ -685,6 +705,7 @@ So that I can understand user flows, feature adoption, and retention.
 **Acceptance Criteria:**
 **Given** `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` are configured, **When** the web app loads, **Then** PostHog is initialized and captures pageviews and key events.
 **Given** a superuser, **When** viewing analytics, **Then** identifiable data is hashed/anonymized and no API keys or workspace content is sent.
+**Given** `NEXT_PUBLIC_POSTHOG_KEY` bị thiếu hoặc PostHog unavailable (network error/5xx), **When** web app load, **Then** analytics initialization fail gracefully, pageviews vẫn hoạt động, và log `posthog_unavailable`.
 
 **Kỹ thuật:** add `@posthog-js` (if not already), initialize in layout, wrap key events, keep server-side observability separate.
 _NFR-3 · upstream PR #1622._
@@ -1074,6 +1095,7 @@ So that `AD-11.1` / `FR-39` is not silently regressed.
 **Given** a re-validate call completes,
 **When** metering is checked,
 **Then** it is charged as a normal capability call via `charge_capability` (`AD-8`).
+**Given** `Run` source bị thiếu và `source_capability`/`source_input` rỗng hoặc invalid, **When** `POST /workspaces/{id}/memories/{memory_id}/revalidate` được gọi, **Then** nó trả `not_revalidatable` với 422, không 500.
 
 _Governed by `AD-11.1`, `FR-39`, `AD-8`._
 ---
@@ -1092,6 +1114,7 @@ So that tab state is fast to save/load and titles stay up to date without stale 
 **Given** a workspace with documents and chats open in tabs, **When** a document/chat title changes, **Then** the tab bar reflects the new title without a full refresh.
 **Given** many tabs, **When** the app loads, **Then** tab state is small (pointer: entity id + kind) and titles are fetched via `useResolvedTabs`.
 **And** tab state uses the v2 storage key; **And** fallback navigation works for pointer tabs.
+**Given** tab pointer trỏ đến document/chat đã bị xóa hoặc `useResolvedTabs` fetch trả về 404 not found, **When** tab bar render, **Then** nó hiển thị placeholder, xóa pointer cũ, và không crash.
 
 **Kỹ thuật:** refactor `Tab` to pointer-only state, add `useResolvedTabs` hook, resolve document/chat title via Zero/`react-query`, render `TabBar` from resolved tabs.
 _FR-14 · upstream PR #1609._
@@ -1220,6 +1243,7 @@ So that I can search, group, view health, and connect new data sources in a focu
 **Given** I open workspace settings, **When** I click "Connectors", **Then** I navigate to a dedicated route with a sidebar panel and a searchable grid/list of connectors.
 **Given** the connectors page, **When** I view a connector, **Then** I see its type, health, indexing state, and grouped rows by category.
 **And** the layout supports live connectors without a saved config; **And** the MCP icon masks `currentColor`.
+**Given** connectors backend trả về 5xx hoặc connector health endpoint timeout, **When** connectors page load, **Then** UI hiển thị `degraded` state với cached data và nút retry thay vì màn hình trắng.
 
 **Kỹ thuật:** add `/connectors` route, build `useConnectorRows` hook, group connectors by type, add mobile drawer for adding connectors.
 _FR-25 · FR-7/8 · upstream PR #1624._
@@ -1239,6 +1263,7 @@ So that agents can operate the research workspace end-to-end without the web UI.
 **Given** workspace reports, **When** an agent calls `nowing_report_list` / `nowing_report_export`, **Then** it lists reports and exports in 7 formats (text decoded, binary base64 + decode hint).
 **Given** `app/mcp_tools.py` and `selfcheck.py`, **When** 11 tools are added, **Then** the catalog adds `TEAM_MEMORY`/`IMAGE_GENERATION`/`AUTOMATION`/`REPORT` groups and selfcheck reports 42 tools.
 **And** (pending Slice 4–5) `nowing_chat` (SSE buffered) and `nowing_automation_run`.
+**Given** agent gọi tool mà capability backing bị disabled hoặc MCP server trả về invalid response, **When** `nowing_memory_list`/`nowing_image_generate`/etc. thực thi, **Then** nó trả `capability_unavailable`/`invalid_response` error và không crash agent.
 
 **Kỹ thuật (backfill):** Slice 0–3 đã implement + verified (selfcheck 42 tools, MCP suite 83 passed, ruff clean); Slice 4–5 còn pending chờ `bmad-dev-story`. Khác biệt với FR-8 (External MCP Connectors — Nowing tiêu thụ MCP third-party): story này là MCP server của Nowing (FR-29).
 _FR-29 · FR-21/23 · FR-18/19/20 · FR-32/33/34 · AD-7 · story file `7-7-mcp-server-tool-expansion.md`._
@@ -1330,6 +1355,7 @@ So that I can trust the price and detect fake/duplicate listings.
 **Given** `N` listings are scraped and normalized to `Chunk[]`, **When** the batch is ready, **Then** Nowing calls `POST /v1/ingest/scraper` on `chainlens-research` with `source: 'nowing_scraper'` and returns `ingestJobId` to the user/run.
 
 **Given** duplicate listings and confidence scores, **When** the aggregator sends normalized `Chunk[]` to `chainlens-research`, **Then** deduplication and confidence metadata (`source_count`, `confidence_score`, `conflict_flags`) are returned as chunk metadata and are not stored in Nowing `Memory`/`ResearchThread` as a search corpus.
+**Given** một nguồn (`batdongsan`, `chotot`, `muaban`) trả về 403/429/5xx hoặc listing set rỗng, **When** aggregator chạy, **Then** kết quả `degraded=true` với `degradation_reasons` và các source còn lại vẫn được ingest.
 
 **Kỹ thuật (không phải AC):** thêm `app/services/bds_aggregator/` để normalize/dedupe listings rồi gửi `Chunk[]` tới `chainlens-research` qua `POST /v1/ingest/scraper`; không mở rộng `Memory`/`ResearchThread` để lưu aggregated listing làm search corpus.
 _FR-6 · FR-32 · FR-39 · AD-11.1 · `market-vietnam-real-estate-data-scraping-landscape-research-2026-08-03.md`._
@@ -1513,6 +1539,7 @@ So that I can monitor IT/AI hiring trends.
 - **Given** a detail page, **When** parsed, **Then** it extracts title, company, location, work mode, posted time, skills, job domain, JD.
 - **Given** salary is hidden, **When** displayed as `Sign in to view salary`, **Then** salary is parsed from title when possible or marked low-confidence.
 - **Given** the capability is built, **When** registered, **Then** it appears in billing (`BillingUnit.ITVIEC_JOB`), capability registry, MCP, and REST routes.
+- **Given** ITviec server trả về 403 anti-bot challenge, 5xx error, hoặc detail page selectors không còn match, **When** scraper chạy, **Then** nó trả `degraded=true` với `degradation_reason: anti_bot`/`parse_failed` và không retry vô hạn.
 
 _Kỹ thuật (không phải AC):_ `app/proprietary/platforms/itviec/` (BSL 1.1 fetcher/parser) + `app/capabilities/itviec/scrape/` (Apache-2.0 capability). Rate-limit + user-agent rotation + circuit-breaker.
 _FR-45 · AD-3 · AD-16 · AD-23 · `technical-spike-topcv-itviec-2026-08-05.md`._
@@ -1551,6 +1578,7 @@ So that Nowing does not accidentally retain candidate PII.
 - **Given** person names in JD text, **When** detected, **Then** it flags via NER/heuristic and masks or drops the field.
 - **Given** detected PII, **When** logged, **Then** only counts are recorded (no values).
 - **Given** redaction runs, **When** storing to memory, **Then** the full raw JD is not stored unredacted.
+- **Given** redaction regex thiếu pattern số điện thoại Việt Nam hoặc input JD rỗng, **When** PII redaction chạy, **Then** nó trả `invalid`/`empty` và raw JD không được lưu unredacted.
 
 _Kỹ thuật (không phải AC):_ Shared PII pipeline in `app/services/pii/` or inside jobs aggregator. Unit tests for representative samples from VietnamWorks, TopCV, ITviec.
 _FR-47 · NFR-11 · OQ-3 · `feature-brief-hr-vertical-vietnam-2026-08-05.md`._
@@ -1619,6 +1647,7 @@ So that agents can be configured per vertical client and context can be forwarde
 - **Given** a chat request with `client_id`, **When** processed, **Then** all memory recall and storage is tagged with `client_id`.
 - **Given** `platform_metadata` in the request, **When** processed, **Then** the metadata is forwarded to the chat prompt context.
 - **Given** no `agent_id`, **When** processed, **Then** the default Nowing chat agent is used (backward compatible).
+- **Given** `agent_id` hoặc `client_id` bị thiếu trong `AgentConfig` hoặc request chứa `platform_metadata` invalid, **When** chat request được xử lý, **Then** nó trả 400/404 với field error rõ ràng và chỉ fallback về default agent khi `agent_id` absent.
 
 _Kỹ thuật: Extend `NewChatRequest` schema in `app/schemas/new_chat.py`. **AD-29** + **AD-30**._
 ---
@@ -1649,6 +1678,7 @@ So that each vertical client gets a specialized agent experience.
 - **Given** a chat request with `agent_id`, **When** the chat flow starts, **Then** `AgentConfig.system_instructions` is prepended to the default system prompt.
 - **Given** an `agent_id` with `enabled_tools`, **When** the chat agent selects tools, **Then** only tools in the allowlist are available.
 - **Given** no `agent_id`, **When** processed, **Then** the default Nowing chat agent is used (backward compatible).
+- **Given** `agent_id` trỏ đến `AgentConfig` bị disabled hoặc không tồn tại (not found), **When** chat flow bắt đầu, **Then** nó trả 404 `agent_not_found` error và sử dụng default Nowing chat agent.
 
 _Kỹ thuật: chat orchestrator — load config, inject prompt, filter tools. **AD-30**._
 ---
@@ -1663,6 +1693,7 @@ So that memory is properly isolated and contextual across sessions.
 - **Given** a chat thread is created with `agent_id`, **When** the thread is created, **Then** a new `ResearchThread` is auto-created and linked.
 - **Given** the ResearchThread is created, **When** the API response is returned, **Then** it includes `research_thread_id`.
 - **Given** memories are extracted from the chat, **When** stored, **Then** they are tagged with `research_thread_id`.
+- **Given** chat thread creation thất bại vì `agent_id` invalid hoặc workspace không có quyền, **When** API xử lý request, **Then** nó trả 400/403 error phù hợp và không tạo orphan `ResearchThread`.
 
 _Kỹ thuật: `app/routes/agent_chat_routes.py` — auto-create ResearchThread, update response schema. **AD-13** + **AD-29**._
 ---
@@ -1677,6 +1708,7 @@ So that one client's data never leaks into another client's chat.
 - **Given** a memory is created from a chat with `client_id`, **When** stored, **Then** the memory row has `client_id` set.
 - **Given** a recall query with `client_id`, **When** the RAG system searches, **Then** only memories with matching `client_id` are returned (hard filter, not boost).
 - **Given** a recall query without `client_id`, **When** processed, **Then** only memories with `client_id = NULL` (Nowing-internal) are returned.
+- **Given** `client_id` bị thiếu trong request hoặc tenant RLS context không được set, **When** RAG recall chạy, **Then** nó trả empty result set và log `tenant_filter_missing` thay vì leak memory cross-tenant.
 
 _Kỹ thuật: Alembic migration for memory tenant tags, update `app/retriever/`. **AD-31**, NFR-MULTI-1. Blocked until AD-31 tenancy design is accepted._
 ---
@@ -1691,6 +1723,7 @@ So that I can track and bill for Nowing usage.
 - **Given** a chat request with `external_metadata` (listing_id, broker_id, user_id), **When** processed, **Then** the `TokenUsage` row stores the metadata.
 - **Given** a `client_id`, **When** querying TokenUsage, **Then** cost reports can be generated per client per day.
 - **Given** an `X-Run-Id` header in the response, **When** the client receives it, **Then** they can correlate costs with their internal records.
+- **Given** `external_metadata` thiếu các trường bắt buộc (`listing_id`, `broker_id`, `user_id`) hoặc `TokenUsage` cost là `null`, **When** chat request hoàn tất, **Then** row được đánh dấu `invalid` và xếp hàng để reconcile thủ công.
 
 _Kỹ thuật: Alembic migration for TokenUsage/Run external_metadata, update `app/services/token_tracking_service.py`. **AD-29** cost attribution; FR-37 patterns reused. Not AD-28._
 ---
@@ -1771,6 +1804,7 @@ So that I can track mentions and trends via `chainlens-research` entity search.
 - **Given** extracted entities, **When** the article is normalized to a `Chunk`, **Then** `metadata.entities` contains the entity mentions, types, and surface forms.
 - **Given** a `Chunk` with `metadata.entities`, **When** it is ingested into `chainlens-research`, **Then** the canonical index stores and indexes the entity metadata; `chainlens-research` handles entity linking and disambiguation.
 - **Given** entity tracking is active, **When** a user queries an entity in chat, **Then** the agent calls `chainlens-research` and returns mentioning articles with citations; no local entity table is built in Nowing.
+- **Given** entity extraction model trả về empty entity list hoặc malformed JSON, **When** entity enrichment chạy, **Then** nó fallback về `metadata.entities` rỗng và article vẫn được indexed.
 **Validation:**
 - Unit test: `test_news_entity_extraction.py` — entity accuracy ≥ 0.85
 - Integration test: `test_news_entity_chunk_metadata.py` — entities attached to chunk metadata
@@ -1862,6 +1896,7 @@ So that I can verify business partners and research market players via the Nowin
 - **Given** PII such as personal phone numbers or emails appears in the raw profile, **When** chunks are built, **Then** AD-25 redaction is applied before any data is sent to `chainlens-research`.
 - **Given** a `Chunk[]` batch, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
 - **Given** the user searches by tax code, **When** the agent queries `chainlens-research`, **Then** the indexed company profile is returned with citations.
+- **Given** masothue.com HTML structure thay đổi hoặc search trả về zero results cho một tax code, **When** scraper chạy, **Then** nó trả `degraded=true` với `not_found` và không sinh company data giả.
 **Validation:**
 - Integration test: `test_masothue_scrape.py` — company data extracted correctly
 - Unit test: `test_company_to_chunks.py` — chunk metadata and stable `sourceId`
@@ -1881,6 +1916,7 @@ So that I can verify legal status and regulatory compliance.
 - **Given** official data is fetched, **When** normalized to `Chunk[]`, **Then** it uses the same canonical `sourceId` as the masothue record when the tax code matches, and `metadata.source_count` and `metadata.conflict_flags` are set for `chainlens-research` to apply the `most_confident` strategy.
 - **Given** official data contains PII, **When** chunks are built, **Then** AD-25 redaction is applied before ingest.
 - **Given** a batch of official registry `Chunk[]`, **When** `NowingIngestService.ingest()` is called, **Then** it calls `POST /v1/ingest/scraper` and returns `ingestJobId`.
+- **Given** government portal trả về 403/401 do auth expired hoặc tax code không tìm thấy, **When** scraper chạy, **Then** nó trả `degraded=true` với `degradation_reason: auth_expired`/`not_found` và giữ link masothue.
 **Validation:**
 - Integration test: `test_business_gov_vn.py` — official data accessible
 - Unit test: `test_official_source_chunk_metadata.py` — `sourceId` matches masothue and `conflict_flags` present
@@ -1935,6 +1971,7 @@ So that I can track the dominant e-commerce platform.
 - **Given** product data is fetched, **When** normalized to `Chunk[]`, **Then** `metadata.source: 'nowing_scraper'`, `sourceId` (stable per product + platform), `domain: 'shopee.vn'`, `fetchedAt`, `contentType: 'product'` are set.
 - **Given** Shopee data is fetched, **When** the batch is ingested, **Then** `NowingIngestService` calls `POST /v1/ingest/scraper` with the same canonical `sourceId` pattern as Lazada for cross-platform deduplication.
 - **Given** the same product appears on Lazada and Shopee, **When** `chainlens-research` indexes both, **Then** the `chainlens-research` canonical index handles cross-platform deduplication; Nowing does not merge them locally.
+- **Given** third-party Shopee data source unavailable, trả về 5xx, hoặc API quota exhausted (429), **When** scraper chạy, **Then** nó trả `degraded=true` với `degradation_reason` và không block Lazada data ingestion.
 **Validation:**
 - Integration test: `test_shopee_data_source.py` — data accessible
 - Unit test: `test_shopee_to_chunks.py` — `sourceId` matches cross-platform convention
@@ -1997,6 +2034,7 @@ So that I don't have to manually re-run searches every day.
 - **Given** a saved job search with filters (title, location, salary range), **When** a new posting matches, **Then** I receive an in-app notification.
 - **Given** an alert is triggered, **When** I click it, **Then** I see the new matching results.
 - **Given** multiple alerts, **When** viewed, **Then** they are grouped by search query with match count.
+- **Given** saved job search bị xóa hoặc source scraper trả về `degraded=true` với không có posting mới, **When** alert job chạy, **Then** nó skip alert, log `search_missing`/`degraded_source`, và scheduler tiếp tục.
 **Validation:**
 - Unit test: `test_job_alert_matching.py` — new posting triggers alert
 - Integration test: `test_job_alert_notification.py` — notification delivered
@@ -2035,6 +2073,7 @@ So that I stay informed without manually checking news sites.
 - **Given** the new run completes, **When** `chainlens-research` reports `ingestJobId` success, **Then** `new_items` are computed as `sourceId`s present in the latest run but absent from the previous successful run.
 - **Given** `new_items > 0`, **When** the alert fires, **Then** a notification is delivered via the configured channel (in-app, email, Telegram) with a link to the topic and a summary count.
 - **Given** an alert is triggered, **When** a user clicks it, **Then** the chat agent queries `chainlens-research` for the topic and displays the indexed articles with citations.
+- **Given** RSS feed unavailable, trả về 5xx, hoặc tất cả articles đều là duplicate (409 từ chainlens ingest), **When** alert scheduler trigger, **Then** nó log `feed_unavailable`/`5xx`/`duplicate` và không spam notifications.
 **Validation:**
 - Integration test: `test_news_alert_topic_matching.py` — new articles trigger alert
 - Integration test: `test_news_alert_ingest.py` — `NowingIngestService` called on alert run
@@ -2081,6 +2120,7 @@ So that I can act on market movements.
 - **Given** the new price is ingested, **When** `chainlens-research` returns the latest indexed value, **Then** the rule compares it to the previous indexed value and triggers the alert if a threshold is crossed.
 - **Given** an alert is triggered, **When** the user receives the notification, **Then** it includes a chart snapshot and the trigger reason.
 - **Given** multiple alerts, **When** viewed, **Then** they are grouped by symbol with trigger history.
+- **Given** CafeF/Vietstock data source trả về 5xx, 429 rate limit, hoặc symbol không tìm thấy, **When** alert rule fetch fresh data, **Then** nó đánh dấu run `degraded` với `degradation_reasons` và không fire false alert.
 **Validation:**
 - Unit test: `test_stock_price_alert_rules.py` — threshold logic correct
 - Integration test: `test_stock_ingest_on_alert.py` — `NowingIngestService` called on alert run
@@ -2098,6 +2138,7 @@ So that I don't miss significant patterns.
 - **Given** financial data is indexed in `chainlens-research` over time, **When** the trend detection job runs, **Then** it queries `chainlens-research` for historical financial `Chunk[]` and computes trends (revenue growth, margin change, etc.).
 - **Given** a significant trend is detected, **When** the insight is generated, **Then** it includes supporting data points with `sourceId` links to `chainlens-research` results.
 - **Given** the insight is viewed, **When** a user clicks a supporting data point, **Then** the source financial statement opens with citation.
+- **Given** `chainlens-research` historical data query trả về empty hoặc LLM synthesis fail với `judge_error`, **When** digest job chạy, **Then** nó trả `degraded=true` với `empty_dataset`/`synthesis_failed` và một retry action.
 **Validation:**
 - Unit test: `test_financial_trend_detection.py` — trend detection logic
 - Integration test: `test_trend_chainlens_query.py` — queries `chainlens-research` for historical data
@@ -2125,6 +2166,7 @@ So that I stay informed about competitors and partners.
 - **Given** the new run is ingested, **When** `chainlens-research` returns indexed company data, **Then** the rule detects significant changes (e.g., legal representative change, status change, new business lines) compared to the previous indexed version.
 - **Given** a significant change is detected, **When** the alert fires, **Then** a notification is delivered with an event summary and source links.
 - **Given** a company alert is viewed, **When** the user opens it, **Then** the agent queries `chainlens-research` for the company profile and renders source links; no local entity timeline is required.
+- **Given** masothue/business.gov.vn scraper trả về `degraded=true` hoặc company tax code không tìm thấy, **When** alert rule chạy, **Then** nó skip change detection, log `source_degraded`/`not_found`, và lên lịch run tiếp theo.
 **Validation:**
 - Integration test: `test_company_event_detection.py` — change detection triggers alert
 - Unit test: `test_company_alert_rules.py` — rule logic
@@ -2171,6 +2213,7 @@ So that I can identify pricing trends and opportunities.
 - **Given** the new price is indexed, **When** `chainlens-research` returns the latest product `Chunk[]`, **Then** the rule compares price to the previous indexed value and triggers an alert if the price dropped or crossed a threshold.
 - **Given** a price alert is triggered, **When** it is viewed, **Then** it shows old vs new price and a link to the indexed product in `chainlens-research`.
 - **Given** a price alert is viewed, **When** historical prices are requested, **Then** the UI queries `chainlens-research` for historical `Chunk[]` with the same `sourceId` and renders a price history chart.
+- **Given** tracked product `sourceId` bị thiếu trong `chainlens-research` hoặc price history query trả về empty dataset, **When** alert rule so sánh giá, **Then** nó trả `no_history`/`not_indexed` và không fire false price drop alert.
 **Validation:**
 - Unit test: `test_product_price_alert.py` — price drop detection
 - Integration test: `test_price_ingest_on_alert.py` — `NowingIngestService` called on alert run
@@ -2188,6 +2231,7 @@ So that I stay aware of market movements.
 - **Given** competitor products are tracked (by keyword, seller, or product family), **When** the scheduler triggers, **Then** the alert rule refreshes Lazada/Shopee data, normalizes to `Chunk[]`, and calls `NowingIngestService.ingest()` to update `chainlens-research`.
 - **Given** new product `Chunk[]` are indexed, **When** the rule compares them to the previous run, **Then** changes (price, availability, new variants) are detected and a notification is sent.
 - **Given** the competitor dashboard is viewed, **When** the user opens it, **Then** the UI queries `chainlens-research` for tracked products and renders a side-by-side comparison with change indicators and source badges.
+- **Given** competitor product source trả về 403/429/5xx hoặc `chainlens-research` comparison query timeout, **When** dashboard refresh, **Then** nó hiển thị `degraded` banner với cached data và retry action.
 **Validation:**
 - Integration test: `test_competitor_change_detection.py` — changes detected after ingest
 - UI test: `test_competitor_dashboard.py` — side-by-side comparison renders
@@ -2340,6 +2384,7 @@ so that privacy is preserved.
 **Given** the request has no matching data,
 **When** complete,
 **Then** it returns `chunks: []` and `costDollars: 0`, not 404.
+**Given** service auth token bị thiếu/invalid hoặc workspace RLS check fail, **When** `POST /v1/private-data/search` được gọi, **Then** nó trả 401/403 và không leak private chunks.
 
 _Governed by `AD-5`, FR-60, `AD-16`._
 ---

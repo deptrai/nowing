@@ -28,10 +28,9 @@ Scripted checks run on `epics.md`:
 - `Story 4.8d`: contains a formal `**Acceptance Criteria:**` block.
 - `Story 8.7`: no longer references `8.4a`.
 - `## Cross-Cutting Dependency Mapping`: present.
-- **Remaining gap:** 45 active stories still lack an explicit error-path acceptance-criteria line. These need a domain-specific manual pass rather than boilerplate insertion.
+- **Error-path ACs:** all 45 active stories now contain an explicit error/failure-path `**Given** ... **When** ... **Then**` acceptance-criteria line.
 
 ## Remaining work to reach READY
 
-1. Add explicit error-path G/W/T ACs to the 45 active stories identified by the re-check.
-2. Close Epic 21 governance gates (legal/ToS, vendor POC, Zalo OA, PII pipeline, CRM sync scope).
-3. Re-run the full implementation-readiness workflow and update the readiness report.
+1. Close Epic 21 governance gates (legal/ToS, vendor POC, Zalo OA, PII pipeline, CRM sync scope).
+2. Re-run the full implementation-readiness workflow and update the readiness report.
