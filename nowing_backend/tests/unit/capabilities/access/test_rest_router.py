@@ -330,7 +330,7 @@ def _build_app_with_rows(monkeypatch, rows):
             return rows[0] if rows else None
 
     class _Session:
-        async def execute(self, stmt):
+        async def execute(self, stmt, *args, **kwargs):
             return _Result()
 
     class _SessionContext:

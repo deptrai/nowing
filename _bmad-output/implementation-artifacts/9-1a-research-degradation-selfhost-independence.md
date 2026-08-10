@@ -545,11 +545,32 @@ The dev agent must leave reviewer-readable evidence that public repo gate 1 is s
 
 ### Agent Model Used
 
+Devin / SWE-1.7 Max — verification and test-fix pass.
+
 ### Debug Log References
+
+- Unit test run: `360 passed, 1 skipped` (targeted suite).
+- Integration fallback test run: `10 passed`.
+- Initial `test_rest_router.py` failure: fake `_Session.execute()` rejected the `("SELECT set_config(...)", {"workspace_id": ...})` call from `set_request_tenant_context()`.
 
 ### Completion Notes List
 
+- Story 9.1a implementation was already present in the working tree (commits after baseline `25ba542c`).
+- Verified schema/executor/parser/fallback/access changes against acceptance criteria.
+- Fixed one unit-test mock so the RLS GUC parameter binding is accepted.
+- Ran targeted unit tests, integration fallback tests, and `ruff check/format` successfully.
+- Generated public-repo gate evidence: `_bmad-output/implementation-artifacts/evidence/9-1a-test-evidence-2026-08-10.md`.
+
 ### File List
+
+- `nowing_backend/app/capabilities/chainlens/research/executor.py` — parser, failure taxonomy, KB fallback.
+- `nowing_backend/app/capabilities/chainlens/research/schemas.py` — `ResearchOutput` degraded state fields.
+- `nowing_backend/app/capabilities/chainlens/research/definition.py` — capability registration with `context_aware=True`.
+- `nowing_backend/app/capabilities/core/access/rest.py` — REST sync/async context-aware invocation.
+- `nowing_backend/app/capabilities/core/access/agent.py` — agent door context handling.
+- `nowing_backend/tests/unit/capabilities/access/test_rest_router.py` — test mock fix for GUC bindings.
+- `nowing_backend/tests/integration/capabilities/chainlens/research/test_research_fallback.py` — tenant-isolated fallback integration tests.
+- `_bmad-output/implementation-artifacts/evidence/9-1a-test-evidence-2026-08-10.md` — gate evidence.
 
 ## Change Log
 
@@ -557,6 +578,7 @@ The dev agent must leave reviewer-readable evidence that public repo gate 1 is s
 |---|---:|---|---|
 | 2026-07-27 | 0.1 | Created implementation-ready Story 9.1a from verified planning artifacts and backend pipeline reality. | Codex Story Architect |
 | 2026-07-29 | 0.2 | BMad `bmad-create-story` re-run: added Dev Notes (architecture/technical/file structure/testing), previous story, git, latest tech, project context, completion status; updated sprint status. | bmad-create-story |
+| 2026-08-10 | 0.3 | Devin verification pass: fixed `test_rest_router.py` mock, ran targeted unit/integration tests and ruff, added public-repo gate evidence. | Devin |
 
 ## Challenge Log (grill-me)
 
