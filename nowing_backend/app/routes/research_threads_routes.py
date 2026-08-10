@@ -100,6 +100,7 @@ async def get_research_thread_context(
             query_embedding=query_embedding,
             top_k=top_k,
             research_thread_id=thread_id,
+            client_id=thread.client_id,
         )
     except VectorValidationError as exc:
         status = 500 if exc.reason == "provider_error" else 422

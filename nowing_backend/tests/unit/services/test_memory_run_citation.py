@@ -30,6 +30,8 @@ def _memory_row(
     source_id=None,
     source_capability=None,
     source_input=None,
+    client_id=None,
+    agent_id=None,
 ):
     """A duck-typed stand-in for an ORM ``Memory`` row."""
     return SimpleNamespace(
@@ -43,6 +45,8 @@ def _memory_row(
         source_run_id=source_run_id,
         source_capability=source_capability,
         source_input=source_input,
+        client_id=client_id,
+        agent_id=agent_id,
     )
 
 

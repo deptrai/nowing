@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.auth.context import AuthContext
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import Memory, Permission, get_async_session
 from app.services.export_service import build_export_zip
 from app.users import get_auth_context
@@ -39,6 +40,9 @@ async def export_knowledge_base(
     )
 
     # The OKF bundle may include memory facts; require memory:read when it would.
+    # AC-18.8: set workspace GUC so FORCE RLS counts only memories the caller
+    # is allowed to see (internal / client-scoped depending on caller scope).
+    await set_request_tenant_context(session, workspace_id=workspace_id)
     memory_count_result = await session.execute(
         select(func.count())
         .select_from(Memory)
