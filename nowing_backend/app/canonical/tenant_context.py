@@ -53,6 +53,7 @@ async def set_request_tenant_context(
     workspace_id: int,
     client_id: str | None = None,
     agent_id: str | None = None,
+    run_id: str | None = None,
 ) -> None:
     """Set workspace + client + agent GUCs for the current transaction only.
 
@@ -76,6 +77,12 @@ async def set_request_tenant_context(
             text("SELECT set_config('app.current_agent_id', :aid, true)"),
             {"aid": agent_id},
         )
+    if run_id is not None:
+        await session.execute(
+            text("SELECT set_config('app.run_id', :rid, true)"),
+            {"rid": run_id},
+        )
     session.info["canonical_workspace_id"] = workspace_id
     session.info["current_client_id"] = client_id
     session.info["current_agent_id"] = agent_id
+    session.info["current_run_id"] = run_id

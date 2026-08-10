@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel
 from sqlalchemy import select, text
 
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import Run, ToolOutputSpill
 
 if TYPE_CHECKING:
@@ -101,6 +102,10 @@ async def record_run(
     and survives an executor error that leaves the request session unusable.
     """
     try:
+        # AC-18.8: set tenant GUCs so the runs RLS write policy allows the INSERT.
+        await set_request_tenant_context(
+            session, workspace_id=workspace_id, client_id=client_id
+        )
         run = Run(
             workspace_id=workspace_id,
             user_id=user_id,
@@ -154,6 +159,10 @@ async def create_pending_run(
     later flips it to a terminal status.
     """
     try:
+        # AC-18.8: set tenant GUCs so the runs RLS write policy allows the INSERT.
+        await set_request_tenant_context(
+            session, workspace_id=workspace_id, client_id=client_id
+        )
         run = Run(
             workspace_id=workspace_id,
             parent_run_id=parent_run_id,
@@ -201,6 +210,13 @@ async def finalize_run(
     try:
         raw = run_id[len("run_") :] if run_id.startswith("run_") else run_id
         parsed_id = _uuid.UUID(raw)
+        # AC-18.8: the runs table has RLS; we only know the run id at first.
+        # Use the run-id token to read the row, then switch to the row's
+        # workspace/client GUCs for the UPDATE.
+        await session.execute(
+            text("SELECT set_config('app.run_id', :rid, true)"),
+            {"rid": str(parsed_id)},
+        )
         result = await session.execute(
             select(Run).where(Run.id == parsed_id).with_for_update()
         )
@@ -208,6 +224,12 @@ async def finalize_run(
         if run is None:
             logger.warning("finalize_run: run %s not found", run_id)
             return False
+        await set_request_tenant_context(
+            session,
+            workspace_id=run.workspace_id,
+            client_id=run.client_id,
+            run_id=str(run.id),
+        )
         # ponytail: once a user cancels a run, never overwrite the row. A worker
         # on another replica may still be finalizing; the guard keeps the user
         # decision authoritative.
