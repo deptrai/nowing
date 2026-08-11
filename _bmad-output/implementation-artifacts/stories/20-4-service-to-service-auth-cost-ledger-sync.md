@@ -2,7 +2,7 @@
 baseline_commit: 6bb512cc5
 baseline_branch: develop
 story_key: 20-4-service-to-service-auth-cost-ledger-sync
-status: review
+status: done
 ---
 
 # Story 20.4: Service-to-Service Auth + Cost Ledger Sync
