@@ -17,6 +17,7 @@ from app.db import (
     Document,
     DocumentType,
     SearchSourceConnector,
+    SearchSourceConnectorType,
     TokenUsage,
     User,
     Workspace,
@@ -569,3 +570,74 @@ async def test_scraper_run_callback_accepts_lowercase_bearer(chainlens_auth_clie
         },
     )
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_rejects_connector_id_and_sources(
+    chainlens_internal_client,
+    db_workspace: Workspace,
+):
+    """``connectorId`` and ``sources`` are mutually exclusive."""
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={
+            "query": "query",
+            "workspaceId": db_workspace.id,
+            "connectorId": 1,
+            "sources": ["FILE"],
+        },
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_maps_connector_type_to_document_type(
+    chainlens_internal_client,
+    db_session: AsyncSession,
+    db_user,
+    db_workspace: Workspace,
+):
+    """A connector whose type name does not match a ``DocumentType`` is mapped."""
+    connector = SearchSourceConnector(
+        name="Google Drive",
+        connector_type=SearchSourceConnectorType.GOOGLE_DRIVE_CONNECTOR,
+        config={},
+        workspace_id=db_workspace.id,
+        user_id=db_user.id,
+    )
+    db_session.add(connector)
+    await db_session.flush()
+
+    document = Document(
+        title="Google Drive Doc",
+        document_type=DocumentType.GOOGLE_DRIVE_FILE,
+        content="gdrive content",
+        content_hash="hash-gd",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+        connector_id=connector.id,
+    )
+    db_session.add(document)
+    await db_session.flush()
+
+    chunk = Chunk(
+        content="gdrive matching chunk",
+        position=0,
+        document_id=document.id,
+    )
+    db_session.add(chunk)
+    await db_session.flush()
+
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={
+            "query": "matching chunk",
+            "workspaceId": db_workspace.id,
+            "connectorId": connector.id,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["chunks"]) == 1
+    assert "connectors/" in body["chunks"][0]["metadata"]["sourceId"]
+    assert body["chunks"][0]["metadata"]["connector_id"] == connector.id

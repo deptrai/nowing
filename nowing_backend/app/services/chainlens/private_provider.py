@@ -30,10 +30,52 @@ from app.services.token_tracking_service import UsageType, record_token_usage
 
 logger = logging.getLogger(__name__)
 
+# Maps ``SearchSourceConnectorType`` enum values to the searchable ``DocumentType``
+# values that retrievers understand.  Keep in sync with
+# ``app/agents/chat/multi_agent_chat/main_agent/runtime/connector_searchable_types.py``.
+_CONNECTOR_TYPE_TO_SEARCHABLE: dict[str, str] = {
+    "SLACK_CONNECTOR": "SLACK_CONNECTOR",
+    "TEAMS_CONNECTOR": "TEAMS_CONNECTOR",
+    "NOTION_CONNECTOR": "NOTION_CONNECTOR",
+    "GITHUB_CONNECTOR": "GITHUB_CONNECTOR",
+    "LINEAR_CONNECTOR": "LINEAR_CONNECTOR",
+    "DISCORD_CONNECTOR": "DISCORD_CONNECTOR",
+    "JIRA_CONNECTOR": "JIRA_CONNECTOR",
+    "CONFLUENCE_CONNECTOR": "CONFLUENCE_CONNECTOR",
+    "CLICKUP_CONNECTOR": "CLICKUP_CONNECTOR",
+    "GOOGLE_CALENDAR_CONNECTOR": "GOOGLE_CALENDAR_CONNECTOR",
+    "GOOGLE_GMAIL_CONNECTOR": "GOOGLE_GMAIL_CONNECTOR",
+    "GOOGLE_DRIVE_CONNECTOR": "GOOGLE_DRIVE_FILE",
+    "AIRTABLE_CONNECTOR": "AIRTABLE_CONNECTOR",
+    "LUMA_CONNECTOR": "LUMA_CONNECTOR",
+    "ELASTICSEARCH_CONNECTOR": "ELASTICSEARCH_CONNECTOR",
+    "BOOKSTACK_CONNECTOR": "BOOKSTACK_CONNECTOR",
+    "CIRCLEBACK_CONNECTOR": "CIRCLEBACK",
+    "OBSIDIAN_CONNECTOR": "OBSIDIAN_CONNECTOR",
+    "DROPBOX_CONNECTOR": "DROPBOX_FILE",
+    "ONEDRIVE_CONNECTOR": "ONEDRIVE_FILE",
+    "MCP_CONNECTOR": "MCP_CONNECTOR",
+    "EXA_MCP_CONNECTOR": "EXA_MCP_CONNECTOR",
+    "COMPOSIO_GOOGLE_DRIVE_CONNECTOR": "GOOGLE_DRIVE_FILE",
+    "COMPOSIO_GMAIL_CONNECTOR": "GOOGLE_GMAIL_CONNECTOR",
+    "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR": "GOOGLE_CALENDAR_CONNECTOR",
+}
+
 # Small, fixed fallback top-k so private search stays cheap and bounded.
 _MAX_DOC_RESULTS = 5
 _MAX_CHUNK_RESULTS_PER_DOC = 3
 _MAX_MEMORY_RESULTS = 3
+
+
+def _map_source_to_document_type(source: str) -> str | None:
+    """Map a connector-type or document-type name to a searchable document type.
+
+    If ``source`` is a known ``SearchSourceConnectorType`` enum value, translate
+    it to the matching ``DocumentType`` (e.g. ``GOOGLE_DRIVE_CONNECTOR`` →
+    ``GOOGLE_DRIVE_FILE``).  Otherwise return the original string so the caller
+    can try ``DocumentType[source]``.
+    """
+    return _CONNECTOR_TYPE_TO_SEARCHABLE.get(source, source)
 
 
 class PrivateProviderService:
@@ -71,12 +113,22 @@ class PrivateProviderService:
         )
 
         # Resolve document type filter from ``sources``/``connectorId``.
-        document_type = await self._resolve_document_type(request)
+        document_type = await self._resolve_document_type(request, workspace_id)
 
         # Compute a shared query embedding once for both retrievers.
         query_embedding = await asyncio.to_thread(
             config.embedding_model_instance.embed, request.query
         )
+
+        # Connector-scoped search with a non-existent connector is a safe empty.
+        if document_type == [] and request.connectorId is not None:
+            await self._record_usage(
+                workspace_id=workspace_id,
+                user_id=effective_user_id,
+                request=request,
+                correlation_id=correlation_id,
+            )
+            return PrivateDataSearchResponse(chunks=[], costDollars=0.0)
 
         # Search documents and chunks in parallel, both scoped by workspace.
         chunk_results, doc_results = await self._run_retrievers(
@@ -89,12 +141,17 @@ class PrivateProviderService:
 
         # Search workspace memory as a primary source; optionally add the
         # requested user's personal memory if the user is a workspace member.
-        memory_results = await self._search_memory(
-            query=request.query,
-            workspace_id=workspace_id,
-            query_embedding=query_embedding,
-            user_id=effective_user_id if request.userId == effective_user_id else None,
-        )
+        # Memory is not connector-scoped, so skip it when a connectorId is given.
+        memory_results: list[ScoredMemory] = []
+        if request.connectorId is None:
+            memory_results = await self._search_memory(
+                query=request.query,
+                workspace_id=workspace_id,
+                query_embedding=query_embedding,
+                user_id=effective_user_id
+                if request.userId == effective_user_id
+                else None,
+            )
 
         # Ensure tenant context is restored for batched document metadata load.
         await set_request_tenant_context(
@@ -115,7 +172,7 @@ class PrivateProviderService:
             doc_results=doc_results,
             memory_results=memory_results,
             workspace=workspace,
-            connector_id=request.connectorId,
+            request_connector_id=request.connectorId,
             doc_meta=doc_meta,
         )
 
@@ -123,11 +180,29 @@ class PrivateProviderService:
         if len(chunks) > request.topK:
             chunks = chunks[: request.topK]
 
+        await self._record_usage(
+            workspace_id=workspace_id,
+            user_id=effective_user_id,
+            request=request,
+            correlation_id=correlation_id,
+        )
+
+        return PrivateDataSearchResponse(chunks=chunks, costDollars=0.0)
+
+    async def _record_usage(
+        self,
+        *,
+        workspace_id: int,
+        user_id: UUID,
+        request: PrivateDataSearchRequest,
+        correlation_id: str | None,
+    ) -> None:
+        """Persist a zero-cost ``TokenUsage`` row for the search."""
         await record_token_usage(
             self.session,
             usage_type=UsageType.CHAINLENS_PRIVATE_SEARCH,
             workspace_id=workspace_id,
-            user_id=effective_user_id,
+            user_id=user_id,
             prompt_tokens=0,
             completion_tokens=0,
             total_tokens=0,
@@ -140,8 +215,6 @@ class PrivateProviderService:
                 "requested_user_id": str(request.userId) if request.userId else None,
             },
         )
-
-        return PrivateDataSearchResponse(chunks=chunks, costDollars=0.0)
 
     async def _is_workspace_member(
         self, user_id: UUID | None, workspace_id: int
@@ -160,24 +233,25 @@ class PrivateProviderService:
         return result.scalar() is not None
 
     async def _resolve_document_type(
-        self, request: PrivateDataSearchRequest
+        self,
+        request: PrivateDataSearchRequest,
+        workspace_id: int,
     ) -> str | list[str] | None:
         """Map ``sources`` or ``connectorId`` to a ``DocumentType`` filter."""
         if request.connectorId is not None:
-            connector = await self.session.execute(
-                select(SearchSourceConnector).where(
+            connector_type = await self.session.scalar(
+                select(SearchSourceConnector.connector_type).where(
                     SearchSourceConnector.id == request.connectorId,
-                    SearchSourceConnector.workspace_id == request.workspaceId,
+                    SearchSourceConnector.workspace_id == workspace_id,
                 )
             )
-            connector = connector.scalars().first()
-            if connector is not None:
-                return connector.connector_type.value
+            if connector_type is not None:
+                return _map_source_to_document_type(connector_type.value)
             # Connector requested but not found: empty result is the safe default.
             logger.warning(
                 "connector_id=%d not found in workspace %d; private search will return empty",
                 request.connectorId,
-                request.workspaceId,
+                workspace_id,
             )
             return []
 
@@ -190,6 +264,7 @@ class PrivateProviderService:
                 source = source.strip().upper()
                 if not source:
                     continue
+                source = _map_source_to_document_type(source)
                 try:
                     mapped.append(DocumentType[source].value)
                 except KeyError:
@@ -269,10 +344,14 @@ class PrivateProviderService:
                 )
                 user_results = []
 
-            seen = {scored.memory.id for scored in results}
-            for scored in user_results:
-                if scored.memory.id not in seen:
-                    results.append(scored)
+            results.extend(
+                scored
+                for scored in user_results
+                if scored.memory.id not in {m.memory.id for m in results}
+            )
+
+            if len(results) > _MAX_MEMORY_RESULTS:
+                results = results[:_MAX_MEMORY_RESULTS]
 
         return results
 
@@ -317,11 +396,11 @@ class PrivateProviderService:
         doc_results: list[dict],
         memory_results: list[ScoredMemory],
         workspace: Workspace,
-        connector_id: int | None,
+        request_connector_id: int | None,
         doc_meta: dict[int, dict],
     ) -> list[PrivateProviderChunk]:
         """Merge retriever outputs and map them to the response chunk schema."""
-        seen: set[int] = set()
+        seen: set[tuple[str, int]] = set()
         chunks: list[PrivateProviderChunk] = []
 
         def add_doc_chunks(doc_group: dict) -> None:
@@ -330,16 +409,18 @@ class PrivateProviderService:
             if doc_id is None:
                 return
 
+            extra_meta = doc_meta.get(doc_id, {})
+            doc_connector_id = extra_meta.get("connector_id")
+
             # Connector-scoped search: exact connector_id match wins.
             if (
-                connector_id is not None
-                and doc_meta.get(doc_id, {}).get("connector_id") != connector_id
+                request_connector_id is not None
+                and doc_connector_id != request_connector_id
             ):
                 return
 
             doc_title = doc_info.get("title") or "Untitled Document"
             doc_type = doc_info.get("document_type") or "private_provider"
-            extra_meta = doc_meta.get(doc_id, {})
             fetched_at = self._format_ts(
                 extra_meta.get("updated_at"), extra_meta.get("created_at")
             )
@@ -348,10 +429,10 @@ class PrivateProviderService:
                 if len(chunks) >= request.topK:
                     return
                 chunk_id = chunk.get("chunk_id")
-                if chunk_id is None or chunk_id in seen:
+                if chunk_id is None or ("chunk", chunk_id) in seen:
                     continue
-                seen.add(chunk_id)
-                content = chunk.get("content", "")
+                seen.add(("chunk", chunk_id))
+                content = chunk.get("content") or ""
                 if not content.strip():
                     continue
                 chunks.append(
@@ -363,7 +444,7 @@ class PrivateProviderService:
                         doc_type=doc_type,
                         fetched_at=fetched_at,
                         workspace_id=workspace.id,
-                        connector_id=connector_id,
+                        connector_id=doc_connector_id,
                     )
                 )
 
@@ -380,37 +461,39 @@ class PrivateProviderService:
             add_doc_chunks(doc_group)
 
         # Finally add memory results if still under topK.
-        for scored in memory_results:
-            if len(chunks) >= request.topK:
-                break
-            memory = scored.memory
-            if not (memory.content or "").strip():
-                continue
-            memory_id = memory.id
-            if memory_id in seen:
-                continue
-            seen.add(memory_id)
-            source_id = f"nowing://workspaces/{workspace.id}/memories/{memory.id}"
-            chunks.append(
-                PrivateProviderChunk(
-                    content=memory.content,
-                    metadata=PrivateProviderChunkMetadata(
-                        source="private_provider",
-                        sourceId=source_id,
-                        domain="nowing",
-                        fetchedAt=self._format_ts(
-                            memory.updated_at or memory.created_at
+        # Memory is not a connector-backed document, so skip when connectorId is set.
+        if request_connector_id is None:
+            for scored in memory_results:
+                if len(chunks) >= request.topK:
+                    break
+                memory = scored.memory
+                if not (memory.content or "").strip():
+                    continue
+                memory_id = memory.id
+                if ("memory", memory_id) in seen:
+                    continue
+                seen.add(("memory", memory_id))
+                source_id = f"nowing://workspaces/{workspace.id}/memories/{memory.id}"
+                chunks.append(
+                    PrivateProviderChunk(
+                        content=memory.content,
+                        metadata=PrivateProviderChunkMetadata(
+                            source="private_provider",
+                            sourceId=source_id,
+                            domain="nowing",
+                            fetchedAt=self._format_ts(
+                                memory.updated_at or memory.created_at
+                            ),
+                            contentType=memory.type.value if memory.type else "memory",
+                            title="Memory",
+                            url=source_id,
+                            document_id=None,
+                            chunk_id=memory.id,
+                            connector_id=None,
+                            workspace_id=workspace.id,
                         ),
-                        contentType=memory.type.value if memory.type else "memory",
-                        title="Memory",
-                        url=source_id,
-                        document_id=None,
-                        chunk_id=memory.id,
-                        connector_id=None,
-                        workspace_id=workspace.id,
-                    ),
+                    )
                 )
-            )
 
         return chunks
 

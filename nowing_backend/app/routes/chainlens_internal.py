@@ -10,13 +10,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
 from app.db import Workspace, get_async_session
 from app.observability import metrics as ot_metrics
 from app.rate_limiter import limiter
@@ -58,14 +57,16 @@ async def run_scraper_for_chainlens(
 @limiter.limit("100/minute")
 async def private_data_search_for_chainlens(
     request: Request,
-    body: PrivateDataSearchRequest,
     context: ChainLensAuthContext = Depends(chainlens_auth_dependency),
+    body: PrivateDataSearchRequest = Body(...),
     session: AsyncSession = Depends(get_async_session),
 ) -> PrivateDataSearchResponse:
     """Search Nowing private data on behalf of chainlens-research.
 
-    Validates the service token, checks workspace access, sets the tenant
-    context, and delegates to ``PrivateProviderService``.
+    Validates the service token, checks workspace access, and delegates to
+    ``PrivateProviderService``. The service sets the tenant context and persists
+    a zero-cost ``TokenUsage`` row; the route commits the transaction before
+    returning.
     """
     if body.workspaceId != context.workspace_id:
         ot_metrics.record_chainlens_auth_failed(
@@ -97,13 +98,6 @@ async def private_data_search_for_chainlens(
     auth = AuthContext.system(user=workspace.user, source="chainlens")
     await check_workspace_access(session, auth, context.workspace_id)
 
-    await set_request_tenant_context(
-        session,
-        workspace_id=context.workspace_id,
-        client_id=None,
-        user_id=None,
-    )
-
     service = PrivateProviderService(session)
     response = await service.search(
         body,
@@ -116,5 +110,7 @@ async def private_data_search_for_chainlens(
         result="ok" if response.chunks else "empty",
         hit_count=len(response.chunks),
     )
+
+    await session.commit()
 
     return response

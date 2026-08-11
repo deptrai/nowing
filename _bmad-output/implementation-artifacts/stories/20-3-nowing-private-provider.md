@@ -440,6 +440,24 @@ SWE-1.7 Max
 - [x] [Review][Defer] Typo `ChucksHybridSearchRetriever` — lỗi đặt tên có sẵn trong `app/retriever/chunks_hybrid_search.py`, không do diff này gây ra. (private_provider.py:331)
 - [x] [Review][Defer] Race condition workspace access check — mẫu lấy workspace rồi gọi `check_workspace_access` không atomic, tồn tại ở nhiều route khác. (chainlens_internal.py:229-243)
 
+#### Re-run 2026-08-12
+
+- [x] [Review][Decision] Cả `connectorId` và `sources` cùng được cung cấp — chọn: trả 422 (mutual exclusion), thêm `@model_validator` trong `PrivateDataSearchRequest`. (schemas.py)
+- [x] [Review][Patch] TokenUsage row staged nhưng không được commit ở production — thêm `await session.commit()` trong route. (chainlens_internal.py, critical)
+- [x] [Review][Patch] Connector type chưa map sang `DocumentType` — nhúng `_CONNECTOR_TYPE_TO_SEARCHABLE` trong `private_provider.py`, tránh import gây circular. (private_provider.py, high)
+- [x] [Review][Patch] Truy vấn `SearchSourceConnector` load cả cột `config` chứa OAuth — chuyển sang `select(SearchSourceConnector.connector_type)` và `session.scalar()`. (private_provider.py, medium)
+- [x] [Review][Patch] `sourceId`, `url`, `metadata.connector_id` dùng `request.connectorId` thay vì `Document.connector_id` từ `doc_meta` — `_build_chunks` và `_make_chunk` dùng `doc_meta` connector_id, request_connector_id chỉ để lọc. (private_provider.py, medium)
+- [x] [Review][Patch] Memory kết quả không bị lọc theo `connectorId` và vẫn trả về khi connector không tồn tại — skip `_search_memory` khi `connectorId` set, short-circuit khi connector không tìm thấy. (private_provider.py, medium)
+- [x] [Review][Patch] `chunk_id` và `memory.id` dùng chung `seen: set[int]` — dùng `set[tuple[str, int]]` với namespace. (private_provider.py, medium)
+- [x] [Review][Patch] `chunk["content"]` có thể `None` — dùng `chunk.get("content") or ""`. (private_provider.py, medium)
+- [x] [Review][Patch] `_resolve_document_type` dùng `request.workspaceId` thay vì `workspace.id` — truyền `workspace_id` vào service. (private_provider.py, low)
+- [x] [Review][Patch] User-scoped memory search có thể trả tổng > `_MAX_MEMORY_RESULTS` — cắt `results` sau merge. (private_provider.py, low)
+- [x] [Review][Patch] Route param order `body` trước `context` — đổi thành `context` trước `body`. (chainlens_internal.py, low)
+- [x] [Review][Patch] Unit test tenant context chỉ monkeypatch `private_provider.set_request_tenant_context` — vẫn giữ test hiện tại nhưng integration test đã cover real flow; không cần thêm unit. (test_private_provider.py, low)
+- [x] [Review][Patch] `set_request_tenant_context` được gọi 2 lần (route + service) — route đã bỏ call thừa. (chainlens_internal.py, low)
+- [x] [Review][Defer] Race condition workspace access — pre-existing pattern, đã defer từ review trước. (chainlens_internal.py:77-98)
+- [x] [Review][Defer] Typo `ChucksHybridSearchRetriever` — pre-existing, đã defer từ review trước. (private_provider.py:20)
+
 ## Verification Commands
 
 ```bash

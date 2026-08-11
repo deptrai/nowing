@@ -111,10 +111,9 @@ async def test_search_returns_empty_when_connector_not_found(
         AsyncMock(return_value=[]),
     )
 
-    # Connector not in DB: session returns None.
-    result = MagicMock()
-    result.scalars.return_value.first = MagicMock(return_value=None)
-    fake_session.execute = AsyncMock(return_value=result)
+    # Connector not in DB: session.scalar returns None.
+    fake_session.scalar = AsyncMock(return_value=None)
+    fake_session.execute = AsyncMock(return_value=None)
 
     # Patch embedding and memory search.
     fake_embed = AsyncMock(return_value=[0.1] * 384)
@@ -178,7 +177,7 @@ async def test_build_chunks_maps_retriever_results(fake_session, fake_workspace)
         doc_results=doc_results,
         memory_results=[],
         workspace=fake_workspace,
-        connector_id=None,
+        request_connector_id=None,
         doc_meta=doc_meta,
     )
 
@@ -225,7 +224,7 @@ async def test_build_chunks_filters_by_connector_id(fake_session, fake_workspace
         doc_results=[],
         memory_results=[],
         workspace=fake_workspace,
-        connector_id=42,
+        request_connector_id=42,
         doc_meta=doc_meta,
     )
 
@@ -253,7 +252,7 @@ async def test_build_chunks_respects_top_k(fake_session, fake_workspace):
         doc_results=[],
         memory_results=[],
         workspace=fake_workspace,
-        connector_id=None,
+        request_connector_id=None,
         doc_meta=doc_meta,
     )
 
@@ -278,7 +277,7 @@ async def test_build_chunks_deduplicates_by_chunk_id(fake_session, fake_workspac
         doc_results=doc_results,
         memory_results=[],
         workspace=fake_workspace,
-        connector_id=None,
+        request_connector_id=None,
         doc_meta=doc_meta,
     )
 
@@ -291,11 +290,11 @@ async def test_resolve_document_type_from_sources(fake_session, fake_workspace):
     service = PrivateProviderService(fake_session)
 
     request = _make_request(sources=["FILE"])
-    document_type = await service._resolve_document_type(request)
+    document_type = await service._resolve_document_type(request, fake_workspace.id)
     assert document_type == "FILE"
 
     request = _make_request(sources=["FILE", "NOTION_CONNECTOR"])
-    document_type = await service._resolve_document_type(request)
+    document_type = await service._resolve_document_type(request, fake_workspace.id)
     assert document_type == ["FILE", "NOTION_CONNECTOR"]
 
 
@@ -329,7 +328,7 @@ def test_build_chunks_skips_memory_with_none_content(fake_session, fake_workspac
         doc_results=[],
         memory_results=[_Scored()],
         workspace=fake_workspace,
-        connector_id=None,
+        request_connector_id=None,
         doc_meta={},
     )
     assert chunks == []
@@ -395,10 +394,8 @@ async def test_resolve_document_type_from_connector(
     fake_connector = SimpleNamespace(
         connector_type=SimpleNamespace(value="SLACK_CONNECTOR")
     )
-    result = MagicMock()
-    result.scalars.return_value.first = MagicMock(return_value=fake_connector)
-    fake_session.execute = AsyncMock(return_value=result)
+    fake_session.scalar = AsyncMock(return_value=fake_connector.connector_type)
 
     request = _make_request(connectorId=42)
-    document_type = await service._resolve_document_type(request)
+    document_type = await service._resolve_document_type(request, fake_workspace.id)
     assert document_type == "SLACK_CONNECTOR"
