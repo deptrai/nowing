@@ -604,10 +604,10 @@ async def _record_chainlens_cost_allocation(
     ttfb_ms: int | None = None,
 ) -> None:
     """Record search, gap-fill and scraper TokenUsage rows; debit only once."""
-    total_cost_micros = chainlens_cost_micros + kb_fallback_cost_micros
-    allocation = _split_chainlens_cost(output, total_cost_micros)
-
-    # KB-fallback overhead is a search-side cost.
+    # Split the ChainLens total first, then fold KB-fallback overhead into the
+    # search bucket so the ledger still sums to the single debit without
+    # double-counting the fallback cost.
+    allocation = _split_chainlens_cost(output, chainlens_cost_micros)
     allocation["search_micros"] += kb_fallback_cost_micros
 
     base_details = dict(call_details)

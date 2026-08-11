@@ -34,6 +34,7 @@ from app.capabilities.core.types import Capability, CapabilityContext
 from app.db import Run, async_session_maker
 from app.exceptions import NowingError
 from app.services.anti_bot_escalation import open_escalation_after_retry
+from app.services.chainlens.gap_fill import GapFillRequest, GapFillService
 from app.services.memory.run_enqueue import (
     enqueue_run_memory_extraction_after_commit,
 )
@@ -142,6 +143,35 @@ async def _execute_async_run(
                         cost_micros = await charge_capability(output, unit, ctx)
                 except Exception:
                     logger.exception("charge failed for async run %s", run_id)
+
+                # Story 20.2: async research runs that request gap-fill indexing
+                # should start that work in the background too.
+                if capability == "chainlens.research" and getattr(
+                    output, "gap_fill_needed", False
+                ):
+                    try:
+                        gap_response = await GapFillService().start_async(
+                            GapFillRequest(
+                                query=getattr(payload, "query", ""),
+                                workspace_id=workspace_id,
+                                domains=getattr(output, "suggested_domains", None) or [],
+                                source="chainlens.research",
+                                mode="async",
+                                correlation_id=run_id,
+                            )
+                        )
+                        run_event_bus.publish(
+                            run_id,
+                            {
+                                "type": "run.gap_fill",
+                                "run_id": prefixed,
+                                "gap_fill_run_id": gap_response.run_id,
+                                "status": gap_response.status,
+                                "ts": _now_ms(),
+                            },
+                        )
+                    except Exception:
+                        logger.exception("gap-fill trigger failed for async run %s", run_id)
 
                 serialized = serialize_output(output)
                 final_status = "success"
@@ -333,6 +363,7 @@ async def record_and_publish_sync_run(
     cost_micros: int | None = None,
     progress: list[dict] | None = None,
     client_id: str | None = None,
+    run_id: str | None = None,
 ) -> str | None:
     """Record a synchronous capability run and return its id (best-effort).
 
@@ -341,7 +372,7 @@ async def record_and_publish_sync_run(
     """
     input_dump = payload.model_dump(exclude_none=True)
     serialized = serialize_output(output)
-    run_id = await record_run(
+    recorded_run_id = await record_run(
         session,
         workspace_id=workspace_id,
         capability=capability,
@@ -355,15 +386,16 @@ async def record_and_publish_sync_run(
         cost_micros=cost_micros,
         progress=progress,
         client_id=client_id,
+        run_id=run_id,
     )
-    if run_id is not None:
+    if recorded_run_id is not None:
         # Story 3.13 (T4/D1): the sync door also enqueues memory extraction at
         # a single point after the row is durable.
-        enqueue_run_memory_extraction_after_commit(run_id)
+        enqueue_run_memory_extraction_after_commit(recorded_run_id)
         await _publish_finished(
-            run_id, "success", serialized=serialized, error=None
+            recorded_run_id, "success", serialized=serialized, error=None
         )
-    return run_id
+    return recorded_run_id
 
 
 async def record_and_publish_sync_run_error(
@@ -379,10 +411,11 @@ async def record_and_publish_sync_run_error(
     duration_ms: int | None = None,
     progress: list[dict] | None = None,
     client_id: str | None = None,
+    run_id: str | None = None,
 ) -> str | None:
     """Record a failed synchronous run and return its id (best-effort)."""
     input_dump = payload.model_dump(exclude_none=True)
-    run_id = await record_run(
+    recorded_run_id = await record_run(
         session,
         workspace_id=workspace_id,
         capability=capability,
@@ -395,10 +428,11 @@ async def record_and_publish_sync_run_error(
         duration_ms=duration_ms,
         progress=progress,
         client_id=client_id,
+        run_id=run_id,
     )
-    if run_id is not None:
-        await _publish_finished(run_id, "error", error=error)
-    return run_id
+    if recorded_run_id is not None:
+        await _publish_finished(recorded_run_id, "error", error=error)
+    return recorded_run_id
 
 
 async def finalize_cancelled_run(

@@ -49,6 +49,7 @@ from app.capabilities.core.types import Capability, CapabilityContext
 from app.config import config
 from app.db import Report, Run, async_session_maker, get_async_session
 from app.exceptions import ExternalServiceError, NowingError
+from app.services.chainlens.gap_fill import GapFillRequest, GapFillService
 from app.services.web_crawl_credit_service import InsufficientCreditsError
 from app.services.workspace_limits import workspace_limit_service
 from app.users import get_auth_context
@@ -223,7 +224,12 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
         ):
             mode = "async"
 
-        ctx = CapabilityContext(session=session, workspace_id=workspace_id)
+        sync_run_id = str(uuid.uuid4()) if name == "chainlens.research" else None
+        ctx = CapabilityContext(
+            session=session,
+            workspace_id=workspace_id,
+            run_id=sync_run_id,
+        )
         try:
             await gate_capability(payload, unit, ctx)
         except InsufficientCreditsError as exc:
@@ -280,6 +286,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                     error=str(exc),
                     duration_ms=int((time.perf_counter() - started) * 1000),
                     progress=reporter.coarse,
+                    run_id=sync_run_id,
                 )
                 if run_id is not None:
                     response.headers["X-Run-Id"] = f"run_{run_id}"
@@ -296,6 +303,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                     error=str(exc),
                     duration_ms=int((time.perf_counter() - started) * 1000),
                     progress=reporter.coarse,
+                    run_id=sync_run_id,
                 )
                 if run_id is not None:
                     response.headers["X-Run-Id"] = f"run_{run_id}"
@@ -311,6 +319,21 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
             except Exception:
                 logger.exception("charge failed for sync run")
 
+            # Story 20.2: trigger on-demand gap-fill indexing for research results.
+            if name == "chainlens.research" and getattr(output, "gap_fill_needed", False):
+                try:
+                    await GapFillService().request_sync_or_async(
+                        GapFillRequest(
+                            query=getattr(payload, "query", ""),
+                            workspace_id=workspace_id,
+                            domains=getattr(output, "suggested_domains", None) or [],
+                            source="chainlens.research",
+                            correlation_id=sync_run_id,
+                        )
+                    )
+                except Exception:
+                    logger.exception("gap-fill trigger failed for sync research run")
+
             run_id = await record_and_publish_sync_run(
                 session=session,
                 workspace_id=workspace_id,
@@ -323,6 +346,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                 duration_ms=duration_ms,
                 cost_micros=cost_micros,
                 progress=reporter.coarse,
+                run_id=sync_run_id,
             )
         if run_id is not None:
             response.headers["X-Run-Id"] = f"run_{run_id}"

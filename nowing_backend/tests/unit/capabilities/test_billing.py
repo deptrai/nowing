@@ -568,6 +568,41 @@ async def test_engine_unavailable_no_content_does_not_record_token_usage(
     assert user.credit_micros_balance == 100_000
 
 
+async def test_chainlens_kb_fallback_not_double_counted(
+    monkeypatch, record_usage
+):
+    """KB-fallback cost is folded into search once, not double-counted in the split."""
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=1_000_000)
+
+    output = ResearchOutput(
+        status="partial",
+        answer="some answer",
+        cost_micros=100_000,
+        kb_fallback_search_cost_micros=10_000,
+        gap_fill_needed=True,
+        suggested_domains=["example.com"],
+    )
+
+    charged = await charge_capability(
+        output, BillingUnit.CHAINLENS_QUERY, _ctx(session)
+    )
+
+    assert charged == 110_000
+    assert user.credit_micros_balance == 1_000_000 - 110_000
+    assert record_usage.await_count == 3
+    costs = {
+        c.kwargs["usage_type"]: c.kwargs["cost_micros"]
+        for c in record_usage.await_args_list
+    }
+    assert costs["deep_research"] == 60_000
+    assert costs["chainlens_gap_fill"] == 30_000
+    assert costs["chainlens_ingest"] == 20_000
+    assert sum(costs.values()) == 110_000
+
+
 async def test_chainlens_charge_does_not_leak_secrets_in_call_details(
     monkeypatch, record_usage
 ):

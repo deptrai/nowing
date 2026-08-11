@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import random
+import uuid as _uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -94,6 +95,7 @@ async def record_run(
     progress: list[dict[str, Any]] | None = None,
     client_id: str | None = None,
     external_metadata: dict[str, Any] | None = None,
+    run_id: str | None = None,
 ) -> str | None:
     """Persist a run row and return its id, or ``None`` on failure (best-effort).
 
@@ -106,24 +108,31 @@ async def record_run(
         await set_request_tenant_context(
             session, workspace_id=workspace_id, client_id=client_id
         )
-        run = Run(
-            workspace_id=workspace_id,
-            user_id=user_id,
-            thread_id=thread_id,
-            capability=capability,
-            origin=origin,
-            status=status,
-            error=error,
-            input=input,
-            output_text=serialized.text if serialized else None,
-            item_count=serialized.item_count if serialized else 0,
-            char_count=serialized.char_count if serialized else 0,
-            duration_ms=duration_ms,
-            cost_micros=cost_micros,
-            progress=progress or None,
-            client_id=client_id,
-            external_metadata=external_metadata or None,
-        )
+        run_kwargs: dict[str, Any] = {
+            "workspace_id": workspace_id,
+            "user_id": user_id,
+            "thread_id": thread_id,
+            "capability": capability,
+            "origin": origin,
+            "status": status,
+            "error": error,
+            "input": input,
+            "output_text": serialized.text if serialized else None,
+            "item_count": serialized.item_count if serialized else 0,
+            "char_count": serialized.char_count if serialized else 0,
+            "duration_ms": duration_ms,
+            "cost_micros": cost_micros,
+            "progress": progress or None,
+            "client_id": client_id,
+            "external_metadata": external_metadata or None,
+        }
+        if run_id is not None:
+            raw = run_id[len("run_"):] if run_id.startswith("run_") else run_id
+            try:
+                run_kwargs["id"] = _uuid.UUID(raw)
+            except ValueError:
+                logger.warning("Ignoring invalid pre-allocated run_id: %s", run_id)
+        run = Run(**run_kwargs)
         session.add(run)
         await session.flush()
         run_id = str(run.id)

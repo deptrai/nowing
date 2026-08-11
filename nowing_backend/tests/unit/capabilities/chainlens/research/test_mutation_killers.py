@@ -753,6 +753,30 @@ def test_finalize_heartbeat_without_data_is_engine_unavailable():
     assert output.status == "engine_unavailable"
 
 
+def test_finalize_rounds_non_integer_micros_in_cost_breakdown():
+    parser = _SSEParser()
+    parser.feed_line(
+        _sse_line(
+            {
+                "type": "done",
+                "costDollars": 0.025,
+                "costBreakdown": {
+                    "searchCostMicros": 12345.6,
+                    "gapFillCostMicros": 7000.0,
+                    "scraperCostMicros": 5000,
+                    "scraperId": "batdongsan",
+                },
+            }
+        )
+    )
+    output = parser.finalize()
+    assert output.cost_breakdown is not None
+    assert output.cost_breakdown["search_micros"] == 12346
+    assert output.cost_breakdown["gap_fill_micros"] == 7000
+    assert output.cost_breakdown["scraper_micros"] == 5000
+    assert output.cost_breakdown["scraper_id"] == "batdongsan"
+
+
 # ---------------------------------------------------------------------------
 # executor.py: _parse_sse source dispatch
 # ---------------------------------------------------------------------------

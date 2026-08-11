@@ -211,11 +211,13 @@ async def test_gap_fill_request_sync_or_async_falls_back_on_timeout(monkeypatch)
     # Make the sync request take longer than the tiny sync timeout.
     original_request = service.request
 
-    async def slow_request(payload: GapFillRequest) -> GapFillResponse:
+    async def slow_request(
+        payload: GapFillRequest, **kwargs: Any
+    ) -> GapFillResponse:
         import asyncio
 
         await asyncio.sleep(0.05)
-        return await original_request(payload)
+        return await original_request(payload, **kwargs)
 
     monkeypatch.setattr(service, "request", slow_request)
 

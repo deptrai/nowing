@@ -582,7 +582,7 @@ async def record_token_usage(
     ttfb_ms: int | None = None,
     client_id: str | None = None,
     external_metadata: dict[str, Any] | None = None,
-    run_id: UUID | None = None,
+    run_id: UUID | str | None = None,
 ) -> TokenUsage | None:
     """Persist a single ``TokenUsage`` row.
 
@@ -596,6 +596,11 @@ async def record_token_usage(
         # Coerce client_id to a string so the GUC and the row match (RLS uses
         # IS NOT DISTINCT FROM, which treats NULL and '' differently).
         client_id = client_id or ""
+        if isinstance(run_id, str):
+            try:
+                run_id = UUID(run_id)
+            except ValueError:
+                run_id = None
         await set_request_tenant_context(
             session,
             workspace_id=workspace_id,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
@@ -14,7 +15,9 @@ class _FakeAuth:
     configured = True
 
     def validate_inbound_token(self, request: Any) -> Any:
-        return {"workspace_id": 42, "token": "valid"}
+        return SimpleNamespace(
+            workspace_id=42, token="valid", correlation_id="corr-123"
+        )
 
 
 class _FakeOutput:
@@ -119,3 +122,18 @@ async def test_run_scraper_success(client):
     assert body["ingest_job_id"] == "job-123"
     assert body["status"] == "ok"
     assert body["ingested_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_run_scraper_ignores_untrusted_workspace_id_in_body(client):
+    """The route must trust the auth context, not the request body's workspace_id."""
+    response = client.post(
+        "/v1/scraper/batdongsan/run",
+        json={
+            # The auth context says workspace 42, so this malicious value must not
+            # be used for billing/scraper execution.
+            "workspace_id": 999,
+            "params": {"city": "HN", "listing_type": "buy", "max_items": 2},
+        },
+    )
+    assert response.status_code == 200

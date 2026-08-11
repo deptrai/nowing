@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.store import get_capability
 from app.capabilities.core.types import CapabilityContext
-from app.db import ChainLensIngestJob, get_async_session
+from app.db import get_async_session
 from app.services.chainlens.auth import ChainLensServiceAuth
 from app.services.chainlens.ingest import NowingIngestService
 from app.services.scraper_chunks.schemas import Chunk
@@ -90,7 +90,9 @@ async def run_scraper_for_chainlens(
             detail="Invalid or missing ChainLens service token",
         )
 
-    workspace_id = body.workspace_id
+    # Trust the authenticated service context, not the request body.
+    workspace_id = auth_ctx.workspace_id
+    correlation_id = auth_ctx.correlation_id
     capability_name = _resolve_scraper_id(scraper_id)
     try:
         capability = get_capability(capability_name)
@@ -177,25 +179,8 @@ async def run_scraper_for_chainlens(
         chunks=chunks,
         workspace_id=workspace_id,
         session=session,
+        correlation_id=correlation_id,
     )
-
-    # Persist a mapping row so the gap-fill billing/audit trail can link
-    # scraper usage back to this callback.
-    if result.ingest_job_id or result.parent_ingest_job_id:
-        job = ChainLensIngestJob(
-            scraper_id=scraper_id,
-            parent_ingest_job_id=result.ingest_job_id or result.parent_ingest_job_id,
-            child_ingest_job_ids=result.child_ingest_job_ids or [],
-            ingested_source_ids=result.ingested_source_ids or [],
-            noop_source_ids=result.noop_source_ids or [],
-            workspace_id=workspace_id,
-            status=result.status,
-        )
-        session.add(job)
-        try:
-            await session.commit()
-        except Exception:
-            await session.rollback()
 
     return _ScraperRunResponse(
         scraper_id=scraper_id,

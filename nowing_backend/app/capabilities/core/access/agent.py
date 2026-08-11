@@ -16,6 +16,7 @@ import hashlib
 import json
 import logging
 import time
+import uuid
 from typing import Any
 
 from fastapi import HTTPException
@@ -254,6 +255,7 @@ async def _maybe_trigger_gap_fill(
     output: Any,
     workspace_id: int,
     query: str,
+    correlation_id: str | None = None,
 ) -> dict[str, Any] | None:
     """If research signals a gap-fill, call chainlens-research and surface status.
 
@@ -280,6 +282,7 @@ async def _maybe_trigger_gap_fill(
         workspace_id=workspace_id,
         domains=suggested_domains,
         source="chainlens.research",
+        correlation_id=correlation_id,
     )
     response = await service.request_sync_or_async(request)
 
@@ -431,7 +434,12 @@ def _capability_tool(
         # ``scraper_progress`` custom events that surface on the chat thinking step.
         with progress_scope() as reporter:
             async with async_session_maker() as session:
-                ctx = CapabilityContext(session=session, workspace_id=workspace_id)
+                sync_run_id = str(uuid.uuid4()) if name == "chainlens.research" else None
+                ctx = CapabilityContext(
+                    session=session,
+                    workspace_id=workspace_id,
+                    run_id=sync_run_id,
+                )
                 try:
                     if auth_context is not None:
                         await _verify_workspace_access(
@@ -467,6 +475,7 @@ def _capability_tool(
                             duration_ms=duration_ms,
                             progress=reporter.coarse,
                             client_id=client_id,
+                            run_id=sync_run_id,
                         )
                     raise
 
@@ -493,6 +502,7 @@ def _capability_tool(
                         output,
                         workspace_id=workspace_id,
                         query=payload.query,
+                        correlation_id=sync_run_id,
                     )
                 except Exception:
                     logger.exception("gap-fill trigger failed for agent run")
@@ -513,6 +523,7 @@ def _capability_tool(
                     cost_micros=cost_micros,
                     progress=reporter.coarse,
                     client_id=client_id,
+                    run_id=sync_run_id,
                 )
 
             # T4/D1: the recorder owns its own session and has committed by the

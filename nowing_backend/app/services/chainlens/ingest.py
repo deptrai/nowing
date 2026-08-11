@@ -136,6 +136,7 @@ async def _post_batch_core(
     workspace_id: int,
     batch: list[Any],
     config_obj: Any,
+    correlation_id: str | None = None,
 ) -> dict[str, Any]:
     """POST one batch and map the HTTP status to a retry-aware exception.
 
@@ -165,7 +166,9 @@ async def _post_batch_core(
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         headers = auth.get_outbound_headers(
-            workspace_id, content_type="application/json"
+            workspace_id,
+            correlation_id=correlation_id,
+            content_type="application/json",
         )
         response = await client.post(
             url,
@@ -177,7 +180,9 @@ async def _post_batch_core(
             rotated = auth.rotate(workspace_id=workspace_id, reason="401_response")
             if rotated:
                 headers = auth.get_outbound_headers(
-                    workspace_id, content_type="application/json"
+                    workspace_id,
+                    correlation_id=correlation_id,
+                    content_type="application/json",
                 )
                 response = await client.post(
                     url,
@@ -236,6 +241,7 @@ async def _post_batch(
     workspace_id: int,
     batch: list[Any],
     config_obj: Any,
+    correlation_id: str | None = None,
 ) -> dict[str, Any]:
     """POST one batch with retries on 5xx, 504, 429, network/timeout errors."""
     max_attempts = _positive_int(
@@ -250,7 +256,7 @@ async def _post_batch(
         service="chainlens_ingest",
         initial_delay=initial_delay,
         max_delay=60.0,
-    )(_post_batch_core)(scraper_id, workspace_id, batch, config_obj)
+    )(_post_batch_core)(scraper_id, workspace_id, batch, config_obj, correlation_id)
 
 
 class NowingIngestService:
@@ -263,6 +269,7 @@ class NowingIngestService:
         workspace_id: int,
         session: AsyncSession | None = None,
         run_id: str | None = None,
+        correlation_id: str | None = None,
     ) -> IngestResult:
         """Ingest ``chunks`` and return a stable ``IngestResult``.
 
@@ -312,6 +319,7 @@ class NowingIngestService:
                     workspace_id,
                     batch,
                     config,
+                    correlation_id,
                 )
                 job_id = _extract_job_id(body)
                 if job_id:

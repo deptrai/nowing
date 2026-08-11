@@ -14,6 +14,7 @@ import math
 import time
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
 import httpx
@@ -590,8 +591,10 @@ class _SSEParser:
 
         A terminal ``done`` frame may carry ``status: insufficient_evidence``
         and ``suggested_domains``; treat that as a gap-fill trigger per AC-1.
-        If the engine supplies a ``costBreakdown`` map, keep it for later
-        cost allocation (search / gap-fill / scraper).
+        ``insufficient_evidence_flag`` is set only when the engine itself
+        reports ``insufficient_evidence``, not when only ``suggested_domains``
+        are present.  If the engine supplies a ``costBreakdown`` map, keep it
+        for later cost allocation (search / gap-fill / scraper).
         """
         event_status = event.get("status")
         if event_status == "insufficient_evidence":
@@ -604,14 +607,9 @@ class _SSEParser:
                 str(d) for d in domains if isinstance(d, str) and d
             ]
             self.gap_fill_needed = True
-            self.insufficient_evidence_flag = True
 
         if event_status == "insufficient_evidence" or self.suggested_domains:
             self.gap_fill_needed = True
-            if self.insufficient_evidence_flag is None:
-                self.insufficient_evidence_flag = (
-                    event_status == "insufficient_evidence"
-                )
 
         breakdown = event.get("costBreakdown") or event.get("cost_breakdown")
         self.cost_breakdown = self._normalize_cost_breakdown(breakdown or event)
@@ -643,11 +641,15 @@ class _SSEParser:
                 micros_int = _to_int(micros_raw)
                 if micros_int is not None:
                     return micros_int
+                # Non-integer micros (e.g. float 12345.6) round half-up.
+                try:
+                    return int(
+                        (Decimal(str(micros_raw))).to_integral_value(ROUND_HALF_UP)
+                    )
+                except Exception:
+                    pass
             dollars_raw = data.get(key_dollars)
             if dollars_raw is not None:
-                dollars_int = _to_int(dollars_raw)
-                if dollars_int is not None:
-                    return dollars_int
                 try:
                     return ChainLensServiceAuth.cost_dollars_to_micros(
                         float(dollars_raw)

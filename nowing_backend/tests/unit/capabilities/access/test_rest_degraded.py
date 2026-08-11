@@ -258,6 +258,58 @@ async def test_rest_async_degraded_output_text_matches_sync_and_sse_terminal(
     close.assert_called_once_with("run-ac7")
 
 
+async def test_rest_async_triggers_gap_fill_when_needed(monkeypatch):
+    """Story 20.2: async research runs that request gap-fill start it."""
+    from app.capabilities.core.events import run_event_bus
+
+    output = ResearchOutput(
+        status="insufficient_evidence",
+        gap_fill_needed=True,
+        suggested_domains=["batdongsan"],
+    )
+    spy = _ResearchSpy(output)
+    publish = Mock()
+    monkeypatch.setattr(run_event_bus, "publish", publish)
+    monkeypatch.setattr(run_event_bus, "close", Mock())
+
+    start_async = AsyncMock(
+        return_value=SimpleNamespace(run_id="run_gf_1", status="running")
+    )
+    monkeypatch.setattr(
+        async_runner,
+        "GapFillService",
+        Mock(return_value=SimpleNamespace(start_async=start_async)),
+    )
+
+    _stub_async_runner(
+        monkeypatch,
+        finalize=AsyncMock(return_value=True),
+        charge=AsyncMock(return_value=0),
+    )
+
+    await async_runner._execute_async_run(
+        run_id="run-1",
+        workspace_id=7,
+        capability="chainlens.research",
+        unit=BillingUnit.CHAINLENS_QUERY,
+        executor=spy,
+        payload=ResearchInput(query="latest houses in Hanoi"),
+    )
+
+    start_async.assert_awaited_once()
+    (call_arg,), _ = start_async.call_args
+    assert call_arg.workspace_id == 7
+    assert call_arg.query == "latest houses in Hanoi"
+    assert "batdongsan" in call_arg.domains
+    gap_fill_event = [
+        call
+        for call in publish.call_args_list
+        if len(call.args) > 1 and call.args[1].get("type") == "run.gap_fill"
+    ]
+    assert len(gap_fill_event) == 1
+    assert gap_fill_event[0].args[1]["gap_fill_run_id"] == "run_gf_1"
+
+
 async def test_rest_quality_downgraded_to_async_when_sync_flag_enabled(monkeypatch):
     """NFR-9: quality/deep modes remain async-only even when sync chat-mode is on."""
     spy = _ResearchSpy(ResearchOutput(status="engine_unavailable"))

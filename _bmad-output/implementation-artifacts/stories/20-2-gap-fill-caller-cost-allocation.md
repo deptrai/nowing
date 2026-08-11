@@ -7,7 +7,7 @@ status: review
 
 # Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)
 
-Status: review
+Status: implementation-complete
 
 ## Story
 
@@ -60,20 +60,20 @@ so that the answer does not say "I don't know" when the data is available on the
 
 ### Review Findings
 
-- [ ] [Review][Patch] Async research path does not trigger gap-fill (`app/capabilities/core/async_runner.py:142`)
-- [ ] [Review][Patch] `TokenUsage.run_id` missing in sync research paths (`app/capabilities/core/access/agent.py:434`, `app/capabilities/core/access/rest.py:310-329`)
-- [ ] [Review][Patch] Scraper callback trusts `body.workspace_id` over auth context (`app/routes/chainlens_internal.py:85-93`)
-- [ ] [Review][Patch] Duplicate `ChainLensIngestJob` created on scraper callback (`app/routes/chainlens_internal.py:174-195`)
-- [ ] [Review][Patch] `insufficient_evidence_flag` set when only `suggested_domains` present (`app/capabilities/chainlens/research/executor.py:588-614`)
-- [ ] [Review][Patch] Sync gap-fill timeout starts a second upstream request (`app/services/chainlens/gap_fill.py:216-243`)
-- [ ] [Review][Patch] Gap-fill service cost not recorded/debited (`app/services/chainlens/gap_fill.py:88-104, 186-214`)
-- [ ] [Review][Patch] KB-fallback cost double-counted in cost allocation (`app/capabilities/core/billing.py:535-579, 611`)
-- [ ] [Review][Patch] REST sync path does not trigger gap-fill (`app/capabilities/core/access/rest.py:309-329`)
-- [ ] [Review][Patch] Background task list never cleaned (`app/services/chainlens/gap_fill.py:76, 207-209`)
-- [ ] [Review][Patch] `_normalize_cost_breakdown` drops non-integer micros (`app/capabilities/chainlens/research/executor.py:619-671`)
-- [ ] [Review][Patch] Inbound correlation id not forwarded to ingest (`app/routes/chainlens_internal.py:85-86, 174-180`)
-- [ ] [Review][Patch] Gap-fill does not rotate service token on 401 (`app/services/chainlens/gap_fill.py:160-163`)
-- [ ] [Review][Patch] Missing end-to-end async gap-fill integration test (`tests/integration/capabilities/chainlens/research/test_gap_fill_cost_allocation.py`)
+- [x] [Review][Patch] Async research path does not trigger gap-fill (`app/capabilities/core/async_runner.py:142`)
+- [x] [Review][Patch] `TokenUsage.run_id` missing in sync research paths (`app/capabilities/core/access/agent.py:434`, `app/capabilities/core/access/rest.py:310-329`)
+- [x] [Review][Patch] Scraper callback trusts `body.workspace_id` over auth context (`app/routes/chainlens_internal.py:85-93`)
+- [x] [Review][Patch] Duplicate `ChainLensIngestJob` created on scraper callback (`app/routes/chainlens_internal.py:174-195`)
+- [x] [Review][Patch] `insufficient_evidence_flag` set when only `suggested_domains` present (`app/capabilities/chainlens/research/executor.py:588-614`)
+- [x] [Review][Patch] Sync gap-fill timeout starts a second upstream request (`app/services/chainlens/gap_fill.py:216-243`)
+- [x] [Review][Patch] Gap-fill service cost not recorded/debited (`app/services/chainlens/gap_fill.py:88-104, 186-214`)
+- [x] [Review][Patch] KB-fallback cost double-counted in cost allocation (`app/capabilities/core/billing.py:535-579, 611`)
+- [x] [Review][Patch] REST sync path does not trigger gap-fill (`app/capabilities/core/access/rest.py:309-329`)
+- [x] [Review][Patch] Background task list never cleaned (`app/services/chainlens/gap_fill.py:76, 207-209`)
+- [x] [Review][Patch] `_normalize_cost_breakdown` drops non-integer micros (`app/capabilities/chainlens/research/executor.py:619-671`)
+- [x] [Review][Patch] Inbound correlation id not forwarded to ingest (`app/routes/chainlens_internal.py:85-86, 174-180`)
+- [x] [Review][Patch] Gap-fill does not rotate service token on 401 (`app/services/chainlens/gap_fill.py:160-163`)
+- [x] [Review][Patch] Missing end-to-end async gap-fill integration test (`tests/integration/capabilities/chainlens/research/test_gap_fill_cost_allocation.py`)
 - [ ] [Review][Defer] Usage type for search bucket is `DEEP_RESEARCH` instead of `chainlens_search` per AC (`app/capabilities/core/billing.py:618-624`)
 
 ## Dev Notes
@@ -152,6 +152,17 @@ so that the answer does not say "I don't know" when the data is available on the
 
 ## Dev Agent Record
 
+### Change Log
+
+- 2026-08-11: Threaded `run_id`/`correlation_id` through sync (REST / agent) and async (`async_runner`) research paths.
+- 2026-08-11: `GapFillService` now authenticates to `chainlens-research` with `ChainLensServiceAuth` headers and rotates tokens on `401`.
+- 2026-08-11: Sync gap-fill uses a local background worker + `asyncio.wait_for` so a timeout does not restart the upstream request.
+- 2026-08-11: `GapFillService` records `chainlens_gap_fill` and `chainlens_ingest` `TokenUsage` rows and debits the workspace owner once.
+- 2026-08-11: `chainlens.research` cost is split into search / gap-fill / scraper `TokenUsage` rows; KB-fallback cost is folded into the search bucket to avoid double-counting.
+- 2026-08-11: `chainlens_internal` scraper callback trusts the auth context workspace, forwards `correlation_id` to `NowingIngestService`, and no longer creates duplicate `ChainLensIngestJob` rows.
+- 2026-08-11: `_SSEParser._normalize_cost_breakdown` rounds non-integer micros with half-up `Decimal` conversion.
+- 2026-08-11: Added/updated tests covering cost allocation, non-integer micros, workspace auth override, async gap-fill trigger, and end-to-end async gap-fill completion.
+
 ### Agent Model Used
 
 Devin / SWE-1.7 Max
@@ -164,24 +175,33 @@ Devin / SWE-1.7 Max
 
 ### Completion Notes List
 
-- Implemented `GapFillService` with sync, async, and 60s fallback-to-async paths.
-- Extended `_SSEParser` to detect `gap-fill-needed` frames and `suggested_domains`.
+- Threaded `run_id`/`correlation_id` through sync REST, sync agent, and async research paths.
+- Implemented `GapFillService` with sync, async, and local background worker timeout handling; added service auth headers, 401 token rotation, and cost recording.
+- Extended `_SSEParser` to detect `gap-fill-needed` frames and `suggested_domains`; `_normalize_cost_breakdown` rounds non-integer micros.
 - Added `gap_fill_needed`, `suggested_domains`, `insufficient_evidence`, and `cost_breakdown` to `ResearchOutput`.
-- Added `POST /v1/scraper/{scraper_id}/run` internal callback that resolves domain slugs, runs the scraper, normalizes output to `Chunk[]`, and pushes through `NowingIngestService`.
-- Extended `app/capabilities/core/billing.py` to record `UsageType.DEEP_RESEARCH`, `UsageType.CHAINLENS_GAP_FILL`, and `UsageType.CHAINLENS_INGEST` rows while debiting once.
-- Integrated gap-fill trigger into `app/capabilities/core/access/agent.py` with progress events and fallback `run_id` handling.
-- Added unit and integration tests; all targeted test suites pass.
+- Added `POST /v1/scraper/{scraper_id}/run` internal callback that trusts auth-context workspace, forwards `correlation_id`, runs the scraper, normalizes output to `Chunk[]`, and pushes through `NowingIngestService`.
+- Extended `app/capabilities/core/billing.py` to split `chainlens.research` cost into `DEEP_RESEARCH`, `CHAINLENS_GAP_FILL`, and `CHAINLENS_INGEST` rows while debiting once; KB-fallback cost folded into search bucket.
+- Integrated gap-fill trigger into `app/capabilities/core/access/agent.py`, `app/capabilities/core/access/rest.py`, and `app/capabilities/core/async_runner.py`.
+- Added/updated unit and integration tests; all targeted test suites and ruff checks pass.
 
 ### File List
 
 - `app/capabilities/chainlens/research/executor.py`
 - `app/capabilities/chainlens/research/schemas.py`
 - `app/capabilities/core/billing.py`
+- `app/capabilities/core/runs.py`
 - `app/capabilities/core/access/agent.py`
+- `app/capabilities/core/access/rest.py`
+- `app/capabilities/core/async_runner.py`
 - `app/services/chainlens/gap_fill.py`
+- `app/services/chainlens/ingest.py`
+- `app/services/token_tracking_service.py`
 - `app/routes/chainlens_internal.py`
 - `app/routes/__init__.py`
 - `tests/unit/capabilities/chainlens/research/test_gap_fill_sse.py`
+- `tests/unit/capabilities/chainlens/research/test_mutation_killers.py`
 - `tests/unit/services/chainlens/test_gap_fill.py`
 - `tests/unit/routes/test_chainlens_internal.py`
+- `tests/unit/capabilities/test_billing.py`
+- `tests/unit/capabilities/access/test_rest_degraded.py`
 - `tests/integration/capabilities/chainlens/research/test_gap_fill_cost_allocation.py`
