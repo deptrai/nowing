@@ -229,14 +229,13 @@ development_status:
   12-4d: ready-for-dev  # chunk ingest to chainlens
   12-4e: ready-for-dev  # REST/MCP/chat exposure
   12-5: in-progress
-  12-6: backlog
+  12-6: ready-for-dev  # Saved Searches (P0) — must ship before 12.9 (Job Market Alerts)
   # DROPPED 2026-08-08: property price alerts depend on Nowing canonical entities (Epic 13 dropped).
   12-7: dropped
   # DROPPED 2026-08-08: cross-source entity timeline depends on Nowing canonical entities (Epic 13 dropped).
   12-8: dropped
-  # ponytail: 2026-08-08 readiness audit — 12-9 (Saved Searches) reordered to P0, must ship before 12-6 (Job Alerts).
-  # 12-6 depends on saved search infrastructure. AD-33: must be Automation template, NOT standalone scheduler.
-  12-9: ready-for-dev  # P0 priority — readiness audit reorder
+  # 12.9 depends on 12.6 (Saved Searches). AD-33: must be Automation template, NOT standalone scheduler.
+  12-9: backlog  # Job Market Alerts (P1) — unblocked only when 12-6 and 6-8 are done
   epic-12-retrospective: optional
 
   # === Epic 13: Canonical Entity Storage & Multi-Domain Indexing ===
@@ -256,7 +255,9 @@ development_status:
 
   # === Epic 14: News Aggregation (Vietnam) ===
   epic-14: in-progress
-  14-1: done
+  # 14-1 depends on 20.2 (NowingIngestService) and 6.8 (Generic Alert Engine).
+  # Code-review verdict: PASS_WITH_WARNINGS (P0 SSRF/Atom/RSS 1.0 gaps). Keep in progress until P0 closed.
+  14-1: in-progress
   14-2: backlog
   14-3: backlog
   14-4: backlog
@@ -264,7 +265,9 @@ development_status:
 
   # === Epic 15: Financial Data (Vietnam) ===
   epic-15: in-progress
-  15-1: done
+  # 15-1 depends on 20.2 (NowingIngestService). Code-review: CHANGES_REQUESTED (P0 404/rate-limit/header gaps).
+  # Do not move to done until P0 findings closed.
+  15-1: in-progress
   15-2: backlog
   15-3: backlog
   15-4: backlog
@@ -272,7 +275,9 @@ development_status:
 
   # === Epic 16: Company Directory (Vietnam) ===
   epic-16: in-progress
-  16-1: done
+  # 16-1 depends on 20.2 (NowingIngestService). Mutation-gate: FAIL (P1 240+ survived mutants).
+  # Remains in progress until P1 findings closed and 20.2 stable.
+  16-1: in-progress
   16-2: backlog
   16-3: backlog
   # RE-SCOPED 2026-08-08: 16-4 no longer blocked on Nowing Epic 13 (dropped). Company timeline builds on chainlens-research canonical index.

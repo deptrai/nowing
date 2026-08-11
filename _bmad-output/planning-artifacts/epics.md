@@ -161,6 +161,39 @@ Người dùng research sâu được mà **không vỡ** khi engine chết (9.1
 >
 > **🆕 2026-08-03 — Epic 11: Telegram Automation & Bot** (notification, write-back, inline keyboard, commands). **Open:** 11.1 notification foundation `[done]`, 11.2 write-back & builder `[done]`, 11.3 interactive bot & commands `[done]`.
 
+### Epic 10: Connector & Scraper Expansion — ✅ DONE
+Vietnam BĐS (batdongsan, chotot, muaban) + broader scraper port. **FRs:** FR-6 variants. **All core stories done:** 10.1–10.4.
+
+### Epic 11: Telegram Automation & Bot — ✅ DONE
+Notification, write-back, builder UI, inline keyboard, commands. **FRs:** FR-20 variants. **All done.**
+
+### Epic 12: HR/Recruitment Vertical — Vietnam Job Market Pilot — 🔄 IN PROGRESS
+VietnamWorks, TopCV, ITviec scrapers; job listing normalization/dedup/PII/ingest; saved searches + job market alerts. **Open:** 12.1–12.5, 12.4a–e, 12.6, 12.9.
+
+### Epic 13: Canonical Entity Storage & Multi-Domain Indexing — 🗑️ DROPPED 2026-08-08
+Canonical index moved to `chainlens-research`; Nowing scrapers feed via `POST /v1/ingest/scraper`.
+
+### Epic 14: News Aggregation (Vietnam) — 📋 BACKLOG
+RSS feed integration, entity enrichment, alerts, digest/synthesis. **Open:** 14.1–14.4.
+
+### Epic 15: Financial Data (Vietnam) — 📋 BACKLOG
+CafeF / Vietstock data, stock price alerts, financial trend detection. **Open:** 15.1–15.4.
+
+### Epic 16: Company Directory (Vietnam) — 📋 BACKLOG
+masothue.com company data, official business registry, company alerts, timeline. **Open:** 16.1–16.4.
+
+### Epic 17: E-commerce Intelligence (Vietnam) — 📋 BACKLOG
+Lazada/Shopee product data, price-drop alerts, competitor tracking. **Open:** 17.1–17.4.
+
+### Epic 18: Vertical Client Platform (Public Agent-Chat) — 🔄 IN PROGRESS
+Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost traceability, rate limiting + RLS. **Open:** 18.1–18.8.
+
+### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — 🔄 IN PROGRESS
+Service-to-service auth, `NowingIngestService`, gap-fill caller, `NowingPrivateProvider`. **Open:** 20.1–20.4.
+
+### Epic 21: Lead Gen Intelligence — ⏸️ PROPOSED
+Intent signals, lead scoring, contact enrichment, outbound sequences, CRM sync, Zalo deferred, outcome pricing. **Gated:** legal/ToS, vendor POC, PII, CRM, outcome pricing. Full scope in `epic21-proposal-2026-08-11.md`.
+
 ---
 
 ## Epic 2: Connectors
@@ -659,13 +692,11 @@ I want `new_chat` to respect the requested `mode` (speed/balanced/quality/auto) 
 So that `chat/regression` passes latency, TTFB, and cost gates without losing answer quality.
 
 **Acceptance Criteria:**
-**Given** `mode=speed` and a question about an uploaded document, **When** the agent runs, **Then** it performs a minimal knowledge-base search, does not use heavy research or web tools, and answers within the speed-mode latency gate.
-**Given** `mode=balanced` with a mentioned document, **When** the agent runs, **Then** it uses a moderate number of knowledge-base calls and tool calls, does not escalate to deep research, and `chat/regression` p95 cost stays under the balanced-mode budget.
+**Given** `mode=speed` and a question about an uploaded document, **When** the agent runs, **Then** it performs a minimal knowledge-base search (`top_k=1`, `max_passages=4`), does not use `task`/deep research/web tools, and answers within the speed-mode latency gate of **≤15 seconds**.
+**Given** `mode=balanced` with a mentioned document, **When** the agent runs, **Then** it uses at most two knowledge-base calls and one `task`, does not escalate to deep research, and `chat/regression` p95 cost stays under the balanced-mode budget of **≤100,000 micros** (~$0.10).
 **Given** `mode=quality` and no document is mentioned, **When** the first knowledge-base search returns no relevant hits, **Then** the agent may call deep research for web/deep research.
-**Given** `mode=auto` and a single-document question, **When** the agent has made a configured number of tool calls, **Then** a tool-call budget forces it to answer.
-**And** `chat/regression` with the large-doc dataset passes all p95 latency, TTFB, and cost gates; `chat/quality` still passes correctness/citation/completeness.
-
-_Implementation hints (not AC):_ system prompt per mode + tool availability filter + tool-call budget middleware + `search_knowledge_base` `top_k`/`max_passages` clamp. For `mode=speed`, clamp to `top_k=1, max_passages=4`, no `task`/deep research/web tools, target ≤15s. For `mode=balanced`, allow at most two KB calls and one `task`, no deep research, p95 cost ≤100k micros. For `mode=auto`, force answer after 5 tool calls. Detailed spec: `@doc/specs/2026-08-05/new-chat-mode-aware-latency-cost-policy`.
+**Given** `mode=auto` and a single-document question, **When** the agent has made **5 tool calls**, **Then** a tool-call budget forces it to answer.
+**And** `chat/regression` with the large-doc dataset passes all p95 latency, TTFB, and cost gates; `chat/quality` still passes correctness/citation/completeness. Detailed spec: `@doc/specs/2026-08-05/new-chat-mode-aware-latency-cost-policy`.
 _FR-42 · NFR-10 · `sprint-change-proposal-2026-08-05-chat-mode-policy.md`._
 
 ### Story 4.8h-followup: Mode-Aware Chat Policy Hardening  `(tech debt)`  `[backlog]`
