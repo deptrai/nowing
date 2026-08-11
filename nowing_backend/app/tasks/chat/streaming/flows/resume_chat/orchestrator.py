@@ -179,6 +179,9 @@ async def stream_resume_chat(
         chat_thread = await session.get(NewChatThread, chat_id)
         if chat_thread is not None:
             chat_thread.platform_metadata = platform_metadata
+        research_thread_id = (
+            chat_thread.research_thread_id if chat_thread is not None else None
+        )
 
         if user_id:
             await set_ai_responding(session, chat_id, UUID(user_id))
@@ -392,6 +395,7 @@ async def stream_resume_chat(
             disabled_tools=effective_disabled_tools,
             auth_context=auth_context,
             research_mode=mode,
+            research_thread_id=research_thread_id,
         )
         _perf_log.info(
             "[stream_resume] Agent created in %.3fs", time.perf_counter() - _t0
@@ -532,6 +536,7 @@ async def stream_resume_chat(
                 filesystem_selection=filesystem_selection,
                 disabled_tools=disabled_tools,
                 auth_context=auth_context,
+                research_thread_id=research_thread_id,
             )
             _perf_log.info(
                 "[stream_resume] Runtime rate-limit recovery repinned "
@@ -648,6 +653,7 @@ async def stream_resume_chat(
                 log_prefix="stream_resume",
                 client_id=client_id,
                 platform_metadata=platform_metadata,
+                research_thread_id=research_thread_id,
             )
 
         # Release the lock from the original interrupted turn or any

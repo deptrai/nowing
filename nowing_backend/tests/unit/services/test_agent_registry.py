@@ -138,3 +138,78 @@ async def test_upsert_agent_config_is_idempotent_new(session):
     assert result.slug == "new-agent"
     assert result.client_id == "bdsai.vn"
     session.add.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_upsert_new_uses_name_for_display_name(session):
+    session.execute.return_value = _result(None)
+
+    result = await upsert_agent_config(
+        session,
+        client_id="bdsai.vn",
+        slug="new-agent",
+        name="Named Agent",
+    )
+    assert result.display_name == "Named Agent"
+
+
+@pytest.mark.anyio
+async def test_upsert_new_uses_slug_when_name_missing(session):
+    session.execute.return_value = _result(None)
+
+    result = await upsert_agent_config(
+        session,
+        client_id="bdsai.vn",
+        slug="new-agent",
+    )
+    assert result.display_name == "new-agent"
+
+
+@pytest.mark.anyio
+async def test_get_agent_config_guard_rejects_case_normalized_mismatch_less(session):
+    """A client_id lexicographically less than the request must still raise."""
+    config = _make_config(client_id="a-client.vn")
+    session.execute.return_value = _result(config)
+
+    with pytest.raises(AgentConfigNotFoundError):
+        await get_agent_config(session, "z-client.vn", "bdsai-listing-assistant")
+
+
+@pytest.mark.anyio
+async def test_get_agent_config_guard_accepts_case_different_match(session):
+    """Guard compares normalized values, so case-only differences succeed."""
+    config = _make_config(client_id="BDSai.vn")
+    session.execute.return_value = _result(config)
+
+    result = await get_agent_config(session, "bdsai.vn", "bdsai-listing-assistant")
+    assert result.id == config.id
+
+
+@pytest.mark.anyio
+async def test_upsert_existing_sets_model_name_to_none(session):
+    """model_name=None is applied because the key is in the always-update tuple."""
+    config = _make_config(model_name="gpt-4")
+    session.execute.return_value = _result(config)
+
+    result = await upsert_agent_config(
+        session,
+        client_id="bdsai.vn",
+        slug="bdsai-listing-assistant",
+        model_name=None,
+    )
+    assert result.model_name is None
+
+
+@pytest.mark.anyio
+async def test_upsert_existing_ignores_none_for_non_special_fields(session):
+    """None values for keys outside the special tuple must not overwrite data."""
+    config = _make_config(enabled_tools=["update_memory"])
+    session.execute.return_value = _result(config)
+
+    result = await upsert_agent_config(
+        session,
+        client_id="bdsai.vn",
+        slug="bdsai-listing-assistant",
+        enabled_tools=None,
+    )
+    assert result.enabled_tools == ["update_memory"]

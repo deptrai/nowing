@@ -1023,6 +1023,7 @@ async def stream_new_chat(
                 external_metadata=external_metadata,
                 run_id=run_id,
                 platform_metadata=platform_metadata,
+                research_thread_id=research_thread_id,
             )
 
         # Persist any sandbox-produced files to local storage so they remain

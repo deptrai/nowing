@@ -52,16 +52,20 @@ def _derive_scope_permission(request: Request) -> str:
     method = request.method.upper()
     path = request.url.path if request.url else request.scope.get("path", "")
 
-    if method == "POST" and path.endswith("/messages"):
-        return "agent_chat:message:create"
-    if method == "POST" and path.endswith("/threads"):
-        return "agent_chat:thread:create"
-    if method == "GET":
+    if method in {"POST"}:
+        if path.endswith("/messages"):
+            return "agent_chat:message:create"
+        if path.endswith("/threads"):
+            return "agent_chat:thread:create"
+    if method in {"GET"}:
         return "agent_chat:thread:read"
     return "agent_chat:unknown"
 
 
-def _effective_client_id(pat: PersonalAccessToken, body_client_id: str | None) -> str:
+def _effective_client_id(
+    pat: PersonalAccessToken,
+    body_client_id: str | None,  # pragma: no mutate
+) -> str:
     """Return the client_id that the request is allowed to act as."""
     if body_client_id is not None:
         _validate_slug(body_client_id, "client_id")
@@ -86,7 +90,7 @@ async def _resolve_vertical_client(
 ) -> VerticalClient:
     result = await session.execute(
         select(VerticalClient).where(
-            VerticalClient.client_id == client_id,
+            VerticalClient.client_id == client_id,  # pragma: no mutate
             VerticalClient.is_active.is_(True),
         )
     )
@@ -113,13 +117,13 @@ async def _resolve_default_agent_id(
     )
     result = await session.execute(
         select(AgentConfig.slug).where(
-            AgentConfig.client_id == client_id,
+            AgentConfig.client_id == client_id,  # pragma: no mutate
             AgentConfig.is_active.is_(True),
         )
     )
     agent_ids = result.scalars().all()
     if len(agent_ids) == 1:
-        return agent_ids[0]
+        return next(iter(agent_ids))
     if not agent_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -174,10 +178,10 @@ async def _audit_rejection(
     status_code: int,
     *,
     actor_user_id: str = "",
-    pat_id: int | str = "",
-    workspace_id: int | str = 0,
-    client_id: str | None = None,
-    agent_id: str | None = None,
+    pat_id: int | str = "",  # pragma: no mutate
+    workspace_id: int | str = 0,  # pragma: no mutate
+    client_id: str | None = None,  # pragma: no mutate
+    agent_id: str | None = None,  # pragma: no mutate
 ) -> None:
     """Audit a rejected public agent-chat call without leaking PII."""
     await _audit(

@@ -69,8 +69,7 @@ class _FakeSession:
     def add(self, obj: Any) -> None:
         self.added.append(obj)
 
-    async def commit(self) -> None:
-        self.committed = True
+    def _assign_ids(self) -> None:
         research = next((o for o in self.added if isinstance(o, ResearchThread)), None)
         chat = next((o for o in self.added if isinstance(o, NewChatThread)), None)
         if research and research.id is None:
@@ -79,6 +78,13 @@ class _FakeSession:
             chat.id = 2001
         if research and chat and chat.research_thread_id is None:
             chat.research_thread_id = research.id
+
+    async def flush(self) -> None:
+        self._assign_ids()
+
+    async def commit(self) -> None:
+        self.committed = True
+        self._assign_ids()
 
     async def rollback(self) -> None:
         self.rolled_back = True

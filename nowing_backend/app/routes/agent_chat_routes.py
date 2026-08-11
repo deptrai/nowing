@@ -35,6 +35,7 @@ from app.schemas.agent_chat import (
     AgentChatMessageCreate,
     AgentChatThreadCreate,
     AgentChatThreadCreated,
+    AgentChatThreadRead,
     CostReport,
     CostReportItem,
 )
@@ -121,31 +122,35 @@ async def create_thread(
     check_agent_chat_limits(client_id, workspace_id)
 
     run_id = uuid.uuid4()
+    thread_title = body.title or "New Chat"
 
-    research_thread = ResearchThread(
-        workspace_id=workspace_id,
-        client_id=client_id,
-        title="New Chat",
-        created_by_id=auth.user.id,
-    )
-    session.add(research_thread)
+    research_thread_id: int | None = None
+    research_thread: ResearchThread | None = None
+    if agent_id is not None:
+        research_thread = ResearchThread(
+            workspace_id=workspace_id,
+            client_id=client_id,
+            title=thread_title,
+            created_by_id=auth.user.id,
+        )
+        session.add(research_thread)
 
     chat_thread = NewChatThread(
         workspace_id=workspace_id,
         client_id=client_id,
         agent_id=agent_id,
         platform_metadata=body.platform_metadata,
-        title="New Chat",
+        title=thread_title,
         created_by_id=auth.user.id,
         source="agent_chat_public",
+        research_thread_id=research_thread_id,
     )
     session.add(chat_thread)
 
-    await session.commit()
-    await session.refresh(research_thread)
-    await session.refresh(chat_thread)
-
-    chat_thread.research_thread_id = research_thread.id
+    await session.flush()
+    if research_thread is not None:
+        await session.refresh(research_thread)
+        chat_thread.research_thread_id = research_thread.id
     await session.commit()
 
     hit_agent_chat_limits(client_id, workspace_id)
@@ -164,12 +169,85 @@ async def create_thread(
     return Response(
         content=AgentChatThreadCreated(
             thread_id=chat_thread.id,
-            research_thread_id=research_thread.id,
+            research_thread_id=research_thread.id if research_thread is not None else None,
             run_id=str(run_id),
         ).model_dump_json(),
         media_type="application/json",
         status_code=status.HTTP_201_CREATED,
         headers={"X-Run-Id": str(run_id)},
+    )
+
+
+@router.get("/threads/{thread_id}", response_model=AgentChatThreadRead)
+async def get_thread(
+    request: Request,
+    workspace_id: int,
+    thread_id: int,
+    auth: AgentChatContext = Depends(require_agent_chat_pat),
+    session: AsyncSession = Depends(get_async_session),
+) -> AgentChatThreadRead:
+    if not AGENT_CHAT_PUBLIC_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="agent_chat public surface disabled",
+        )
+
+    client_id = _client_id(auth)
+    agent_id = _agent_id(auth)
+
+    # Optional query filter must not widen beyond the PAT scope.
+    if client_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="client_id required",
+        )
+
+    await set_request_tenant_context(session, workspace_id, client_id, agent_id)
+
+    conditions = [
+        NewChatThread.id == thread_id,
+        NewChatThread.workspace_id == workspace_id,
+        NewChatThread.client_id == client_id,
+    ]
+    if agent_id is not None:
+        conditions.append(NewChatThread.agent_id == agent_id)
+    result = await session.execute(select(NewChatThread).where(*conditions))
+    thread = result.scalars().first()
+    if thread is None:
+        await audit(
+            actor_user_id=_actor_user_id(auth),
+            pat_id=_pat_id(auth),
+            workspace_id=workspace_id,
+            client_id=client_id,
+            agent_id=agent_id,
+            route=_route_label(request),
+            status=status.HTTP_404_NOT_FOUND,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="thread not found"
+        )
+
+    await audit(
+        actor_user_id=_actor_user_id(auth),
+        pat_id=_pat_id(auth),
+        workspace_id=workspace_id,
+        client_id=client_id,
+        agent_id=agent_id,
+        route=_route_label(request),
+        status=200,
+    )
+
+    return AgentChatThreadRead(
+        thread_id=thread.id,
+        workspace_id=thread.workspace_id,
+        client_id=thread.client_id,
+        agent_id=thread.agent_id,
+        title=thread.title,
+        research_thread_id=thread.research_thread_id,
+        created_at=thread.created_at,
+        updated_at=thread.updated_at,
+        archived=thread.archived,
+        platform_metadata=thread.platform_metadata,
     )
 
 

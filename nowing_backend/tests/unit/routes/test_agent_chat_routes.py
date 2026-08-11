@@ -21,6 +21,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
@@ -98,8 +99,7 @@ class _FakeSession:
     def add(self, obj: Any) -> None:
         self.added.append(obj)
 
-    async def commit(self) -> None:
-        self.committed = True
+    def _assign_ids(self) -> None:
         # Simulate Postgres assigning ids so the route can build a response.
         research = next((o for o in self.added if isinstance(o, ResearchThread)), None)
         chat = next((o for o in self.added if isinstance(o, NewChatThread)), None)
@@ -109,6 +109,13 @@ class _FakeSession:
             chat.id = 2001
         if research and chat and chat.research_thread_id is None:
             chat.research_thread_id = research.id
+
+    async def flush(self) -> None:
+        self._assign_ids()
+
+    async def commit(self) -> None:
+        self.committed = True
+        self._assign_ids()
 
     async def rollback(self) -> None:
         self.rolled_back = True
@@ -237,6 +244,8 @@ def client(acr, fake_session, pat_auth, monkeypatch):
             )
         ),
     )
+    monkeypatch.setattr(acr, "check_agent_chat_limits", lambda *args, **kwargs: None)
+    monkeypatch.setattr(acr, "hit_agent_chat_limits", lambda *args, **kwargs: None)
 
     return TestClient(app, raise_server_exceptions=False)
 
@@ -292,7 +301,7 @@ def test_create_thread_workspace_mismatch_returns_403(client, pat_auth):
 def test_send_message_returns_sse_stream_with_run_id(
     acr, client, fake_session, pat_auth, monkeypatch
 ):
-    """AC-2: send message returns a text/event-stream with X-Run-Id."""
+    """18.5-UNIT-001 - P1/AC3: send message returns a text/event-stream and passes the linked thread."""
     fake_session._first = SimpleNamespace(
         id=123,
         workspace_id=42,
@@ -426,3 +435,87 @@ def test_send_message_chat_timeout_returns_503_or_partial(
         )
     else:
         pytest.fail(f"Expected 503 or partial 200 on timeout, got {resp.status_code}")
+
+
+def test_create_thread_uses_provided_title(acr, client, fake_session, pat_auth):
+    """18.5-UNIT-002 - P1/AC1: thread title is persisted on both ResearchThread and NewChatThread."""
+    resp = client.post(
+        _threads_url(42),
+        json={
+            "agent_id": "bdsai-listing-assistant",
+            "client_id": "bdsai.vn",
+            "title": "My custom title",
+        },
+    )
+    assert resp.status_code in (200, 201), resp.text
+    body = resp.json()
+    assert body["thread_id"] == 2001
+    assert body["research_thread_id"] == 1001
+
+    research = next(
+        (o for o in fake_session.added if isinstance(o, ResearchThread)), None
+    )
+    chat = next((o for o in fake_session.added if isinstance(o, NewChatThread)), None)
+    assert research is not None
+    assert chat is not None
+    assert research.title == "My custom title"
+    assert chat.title == "My custom title"
+
+
+def test_create_thread_empty_title_defaults_to_new_chat(acr, client, fake_session):
+    """18.5-UNIT-003 - P1/AC1: omitted or whitespace-only title falls back to 'New Chat'."""
+    for provided_title in (None, "", "   "):
+        fake_session.added = []
+        json_body = {
+            "agent_id": "bdsai-listing-assistant",
+            "client_id": "bdsai.vn",
+        }
+        if provided_title is not None:
+            json_body["title"] = provided_title
+        resp = client.post(_threads_url(42), json=json_body)
+        assert resp.status_code in (200, 201), resp.text
+
+        research = next(
+            (o for o in fake_session.added if isinstance(o, ResearchThread)), None
+        )
+        chat = next(
+            (o for o in fake_session.added if isinstance(o, NewChatThread)), None
+        )
+        assert research is not None and chat is not None
+        assert research.title == "New Chat"
+        assert chat.title == "New Chat"
+
+
+def test_get_thread_returns_research_thread_id(acr, client, fake_session):
+    """18.5-UNIT-004 - P1/AC2: GET thread returns research_thread_id and thread metadata."""
+    fake_thread = SimpleNamespace(
+        id=123,
+        workspace_id=42,
+        client_id="bdsai.vn",
+        agent_id="bdsai-listing-assistant",
+        title="Test thread",
+        research_thread_id=1001,
+        created_at=datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC),
+        archived=False,
+        platform_metadata={"source": "api"},
+    )
+    fake_session._first = fake_thread
+
+    resp = client.get(f"{_threads_url(42)}/123")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["thread_id"] == 123
+    assert body["workspace_id"] == 42
+    assert body["client_id"] == "bdsai.vn"
+    assert body["agent_id"] == "bdsai-listing-assistant"
+    assert body["title"] == "Test thread"
+    assert body["research_thread_id"] == 1001
+
+
+def test_get_thread_not_found_returns_404(acr, client, fake_session):
+    """Story 18.5 AC-2: GET a missing thread returns 404."""
+    fake_session._first = None
+    resp = client.get(f"{_threads_url(42)}/999")
+    assert resp.status_code == 404
+    _assert_audit_no_body(acr.audit, 404)
