@@ -1456,3 +1456,366 @@ async def test_pricing_meters_youtube_video_is_single_meter(monkeypatch):
     meters = pricing_meters(BillingUnit.YOUTUBE_VIDEO)
     assert len(meters) == 1
     assert meters[0]["unit"] == "video"
+
+
+def test_pricing_meters_google_maps_is_dual_meter(monkeypatch):
+    """Google maps place must show both place and review meters."""
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_PLACE", 5000)
+    monkeypatch.setattr(config, "GOOGLE_MAPS_MICROS_PER_REVIEW", 2000)
+
+    from app.capabilities.core.billing import pricing_meters
+
+    meters = pricing_meters(BillingUnit.GOOGLE_MAPS_PLACE)
+    assert len(meters) == 2
+    units = {m["unit"] for m in meters}
+    assert units == {"place", "review"}
+
+
+def test_pricing_meters_web_crawl_billing_disabled_is_empty(monkeypatch):
+    """Web crawl billing off means the meter list is empty."""
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", False)
+
+    from app.capabilities.core.billing import pricing_meters
+
+    assert pricing_meters(BillingUnit.WEB_CRAWL) == []
+
+
+# ===================================================================
+# Story 20.2 mutation-killing tests
+# ===================================================================
+
+
+def test_to_nonneg_int_boundary_and_type_handling():
+    from app.capabilities.core.billing import _to_nonneg_int
+
+    assert _to_nonneg_int(5) == 5
+    assert _to_nonneg_int("5") == 5
+    assert _to_nonneg_int(-1) is None
+    assert _to_nonneg_int("x") is None
+    assert _to_nonneg_int(None) is None
+    assert _to_nonneg_int(5.7) == 5
+
+
+async def test_gate_vn_bds_aggregate_reserves_exact_worst_case(monkeypatch):
+    from app.capabilities.core.billing import _gate_vn_bds_aggregate
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY", 1234)
+    monkeypatch.setattr(config, "BATDONGSAN_SCRAPE_MICROS_PER_ITEM", 1000)
+    monkeypatch.setattr(config, "CHOTOT_SCRAPE_MICROS_PER_ITEM", 1000)
+    monkeypatch.setattr(config, "CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM", 1000)
+    monkeypatch.setattr(config, "MUABAN_BDS_SCRAPE_MICROS_PER_ITEM", 1000)
+    monkeypatch.setattr(config, "VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM", 1000)
+    monkeypatch.setattr(config, "TOPCV_SCRAPE_MICROS_PER_ITEM", 1000)
+    monkeypatch.setattr(config, "ITVIEC_SCRAPE_MICROS_PER_ITEM", 1000)
+
+    session = _gate_session(_OWNER, balance_micros=1_000_000)
+    mock_check = AsyncMock()
+    monkeypatch.setattr(billing.wallet_credit, "check_balance", mock_check)
+
+    payload = SimpleNamespace(sources=None, max_items_per_source=5)
+    await _gate_vn_bds_aggregate(payload, _ctx(session))
+
+    # query fee + 7 sources * 5 items * 1000 micros = 1234 + 35000
+    mock_check.assert_awaited_once()
+    assert mock_check.await_args.args[2] == 36_234
+
+
+async def test_gate_vn_bds_aggregate_skips_unknown_sources_and_defaults(monkeypatch):
+    from app.capabilities.core.billing import _gate_vn_bds_aggregate
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY", 1000)
+    monkeypatch.setattr(config, "BATDONGSAN_SCRAPE_MICROS_PER_ITEM", 1000)
+
+    session = _gate_session(_OWNER, balance_micros=1_000_000)
+    mock_check = AsyncMock()
+    monkeypatch.setattr(billing.wallet_credit, "check_balance", mock_check)
+
+    # Unknown source first should be skipped; batdongsan second should still count.
+    payload = SimpleNamespace(
+        sources=["no_such_source", "batdongsan"],
+        max_items_per_source=7,
+    )
+    await _gate_vn_bds_aggregate(payload, _ctx(session))
+
+    assert mock_check.await_args.args[2] == 1000 + 7 * 1000
+
+
+async def test_gate_vn_bds_aggregate_no_max_items_uses_zero(monkeypatch):
+    from app.capabilities.core.billing import _gate_vn_bds_aggregate
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY", 500)
+    monkeypatch.setattr(config, "BATDONGSAN_SCRAPE_MICROS_PER_ITEM", 1000)
+
+    session = _gate_session(_OWNER, balance_micros=1_000_000)
+    mock_check = AsyncMock()
+    monkeypatch.setattr(billing.wallet_credit, "check_balance", mock_check)
+
+    payload = SimpleNamespace(sources=["batdongsan"], max_items_per_source=None)
+    await _gate_vn_bds_aggregate(payload, _ctx(session))
+
+    assert mock_check.await_args.args[2] == 500
+
+
+async def test_gate_vn_jobs_aggregate_reserves_exact_worst_case(monkeypatch):
+    from app.capabilities.core.billing import _gate_vn_jobs_aggregate
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "VN_JOBS_AGGREGATE_QUERY_MICROS_PER_QUERY", 1111)
+    monkeypatch.setattr(config, "VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM", 1000)
+    monkeypatch.setattr(config, "TOPCV_SCRAPE_MICROS_PER_ITEM", 1000)
+    monkeypatch.setattr(config, "ITVIEC_SCRAPE_MICROS_PER_ITEM", 1000)
+    monkeypatch.setattr(config, "INDEED_SCRAPE_MICROS_PER_ITEM", 1000)
+
+    session = _gate_session(_OWNER, balance_micros=1_000_000)
+    mock_check = AsyncMock()
+    monkeypatch.setattr(billing.wallet_credit, "check_balance", mock_check)
+
+    payload = SimpleNamespace(sources=None, max_items_per_source=4)
+    await _gate_vn_jobs_aggregate(payload, _ctx(session))
+
+    # query fee + 4 sources * 4 items * 1000
+    assert mock_check.await_args.args[2] == 1111 + 16_000
+
+
+async def test_charge_vn_bds_aggregate_records_and_debits_exact_cost(monkeypatch, record_usage):
+    from app.capabilities.core.billing import _charge_vn_bds_aggregate
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        cost_micros=12_345,
+        total_items=7,
+        degraded=False,
+        source_breakdown={"batdongsan": 7},
+    )
+
+    charged = await _charge_vn_bds_aggregate(output, _ctx(session))
+
+    assert charged == 12_345
+    assert user.credit_micros_balance == 100_000 - 12_345
+    record_usage.assert_awaited_once()
+    kwargs = record_usage.await_args.kwargs
+    assert kwargs["cost_micros"] == 12_345
+    assert kwargs["call_details"]["total_items"] == 7
+    assert kwargs["call_details"]["source_breakdown"] == {"batdongsan": 7}
+
+
+async def test_charge_vn_bds_aggregate_negative_cost_is_free(monkeypatch, record_usage):
+    from app.capabilities.core.billing import _charge_vn_bds_aggregate
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(cost_micros=-1, total_items=0, source_breakdown=None)
+
+    charged = await _charge_vn_bds_aggregate(output, _ctx(session))
+
+    assert charged == 0
+    assert user.credit_micros_balance == 100_000
+    record_usage.assert_not_awaited()
+
+
+async def test_charge_vn_jobs_aggregate_records_and_debits_exact_cost(monkeypatch, record_usage):
+    from app.capabilities.core.billing import _charge_vn_jobs_aggregate
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, user = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        cost_micros=9_999,
+        total_items=5,
+        degraded=False,
+        source_breakdown=None,
+    )
+
+    charged = await _charge_vn_jobs_aggregate(output, _ctx(session))
+
+    assert charged == 9_999
+    assert user.credit_micros_balance == 100_000 - 9_999
+    record_usage.assert_awaited_once()
+    assert record_usage.await_args.kwargs["cost_micros"] == 9_999
+
+
+async def test_split_chainlens_cost_uses_breakdown_verbatim(monkeypatch):
+    from app.capabilities.core.billing import _split_chainlens_cost
+
+    output = SimpleNamespace(
+        cost_breakdown={
+            "search_micros": 10_000,
+            "gap_fill_micros": 6_000,
+            "scraper_micros": 4_000,
+            "scraper_id": "batdongsan",
+        }
+    )
+    allocation = _split_chainlens_cost(output, 20_000)
+
+    assert allocation["search_micros"] == 10_000
+    assert allocation["gap_fill_micros"] == 6_000
+    assert allocation["scraper_micros"] == 4_000
+    assert allocation["scraper_id"] == "batdongsan"
+
+
+async def test_split_chainlens_cost_splits_and_absorbs_rounding_drift(monkeypatch):
+    from app.capabilities.core.billing import _split_chainlens_cost
+
+    output = SimpleNamespace(gap_fill_needed=True, suggested_domains=["example.com"])
+    allocation = _split_chainlens_cost(output, 101)
+
+    # 50.5 -> 50, 30.3 -> 30, 20.2 -> 20; drift of 1 goes to search.
+    assert allocation["search_micros"] == 51
+    assert allocation["gap_fill_micros"] == 30
+    assert allocation["scraper_micros"] == 20
+    assert allocation["scraper_id"] is None
+    assert allocation["search_micros"] + allocation["gap_fill_micros"] + allocation["scraper_micros"] == 101
+
+
+async def test_split_chainlens_cost_no_gap_fill_is_all_search(monkeypatch):
+    from app.capabilities.core.billing import _split_chainlens_cost
+
+    output = SimpleNamespace(gap_fill_needed=False, suggested_domains=[])
+    allocation = _split_chainlens_cost(output, 50_000)
+
+    assert allocation["search_micros"] == 50_000
+    assert allocation["gap_fill_micros"] == 0
+    assert allocation["scraper_micros"] == 0
+
+
+async def test_split_chainlens_cost_non_dict_breakdown_uses_heuristic(monkeypatch):
+    from app.capabilities.core.billing import _split_chainlens_cost
+
+    output = SimpleNamespace(cost_breakdown="not-a-dict", gap_fill_needed=True)
+    allocation = _split_chainlens_cost(output, 1000)
+
+    assert allocation["search_micros"] == 500
+    assert allocation["gap_fill_micros"] == 300
+    assert allocation["scraper_micros"] == 200
+
+
+async def test_chainlens_kb_fallback_cost_computed_exactly(monkeypatch, record_usage):
+    from app.capabilities.core.billing import _charge_chainlens
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        answer="answer",
+        status="complete",
+        cost_micros=10_000,
+        cost_basis="actual",
+        kb_fallback_embedding_cost_micros=3_000,
+        kb_fallback_search_cost_micros=2_000,
+    )
+
+    charged = await _charge_chainlens(output, _ctx(session))
+
+    assert charged == 15_000
+    record_usage.assert_awaited_once()
+    details = record_usage.await_args.kwargs["call_details"]
+    assert details["kb_fallback_cost_micros"] == 5_000
+    assert details["total_cost_micros"] == 15_000
+    assert details["cost_dollars"] == 0.015
+
+
+async def test_chainlens_call_details_defaults_for_non_degraded_output(monkeypatch, record_usage):
+    from app.capabilities.core.billing import _charge_chainlens
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        answer="answer",
+        status="complete",
+        cost_micros=5_000,
+        cost_basis="actual",
+    )
+
+    await _charge_chainlens(output, _ctx(session))
+
+    record_usage.assert_awaited_once()
+    details = record_usage.await_args.kwargs["call_details"]
+    assert details["gap_fill_needed"] is False
+    assert details["suggested_domains"] == []
+    assert details["insufficient_evidence"] is None
+    assert "degradation_reason" not in details
+    assert "final_status" not in details
+
+
+async def test_chainlens_zero_cost_still_records_deep_research_usage(monkeypatch, record_usage):
+    from app.capabilities.core.billing import _charge_chainlens
+
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+
+    output = SimpleNamespace(
+        answer="answer",
+        status="complete",
+        cost_micros=0,
+        cost_basis="actual",
+        gap_fill_needed=True,
+    )
+
+    charged = await _charge_chainlens(output, _ctx(session))
+
+    assert charged == 0
+    record_usage.assert_awaited_once()
+    assert record_usage.await_args.kwargs["usage_type"] == "deep_research"
+    assert record_usage.await_args.kwargs["cost_micros"] == 0
+
+
+async def test_record_deep_research_token_usage_is_fail_open(monkeypatch, record_usage):
+    from app.capabilities.core.billing import _record_deep_research_token_usage
+
+    record_usage.side_effect = RuntimeError("audit down")
+    session = _make_session(_OWNER, balance_micros=100_000)[0]
+
+    # Should not raise despite record_token_usage failing.
+    await _record_deep_research_token_usage(
+        _ctx(session),
+        _OWNER,
+        1234,
+        {"x": 1},
+        resolved_mode="balanced",
+    )
+
+    record_usage.assert_awaited_once()
+
+
+async def test_platform_charge_negative_items_is_free(monkeypatch, record_usage):
+    monkeypatch.setattr(config, "PLATFORM_SCRAPE_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "REDDIT_SCRAPE_MICROS_PER_ITEM", 3500)
+    session, user = _make_session(_OWNER, balance_micros=1_000_000)
+
+    charged = await charge_capability(
+        _FakePlatformOutput(items=-1),
+        BillingUnit.REDDIT_ITEM,
+        _ctx(session),
+    )
+
+    assert charged == 0
+    assert user.credit_micros_balance == 1_000_000
+    record_usage.assert_not_awaited()
+
+
+async def test_crawl_captcha_attempts_default_to_zero(monkeypatch):
+    monkeypatch.setattr(config, "WEB_CRAWL_CREDIT_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_MICROS_PER_SUCCESS", 1000)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_BILLING_ENABLED", True)
+    monkeypatch.setattr(config, "WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE", 3000)
+    monkeypatch.setattr(billing, "captcha_enabled", lambda: True)
+
+    session, _ = _make_session(_OWNER, balance_micros=100_000)
+    mock_captcha = AsyncMock(return_value=0)
+    monkeypatch.setattr(billing, "_charge_captcha", mock_captcha)
+
+    # Use a plain namespace with no ``captcha_attempts`` attribute so the
+    # ``getattr(..., 0)`` default is actually exercised.
+    output = SimpleNamespace(billable_units=1)
+    await charge_capability(output, BillingUnit.WEB_CRAWL, _ctx(session))
+
+    mock_captcha.assert_awaited_once()
+    assert mock_captcha.await_args.args[1] == 0
