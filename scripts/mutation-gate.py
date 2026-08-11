@@ -258,6 +258,16 @@ def run_cosmic_ray(backend: Path, config: Path, session: Path) -> None:
             print(result.stderr, file=sys.stderr)
             raise RuntimeError(f"cosmic-ray {step} failed for {config.name}")
 
+        # Skip mutants on lines marked with `# pragma: no mutate` after init so
+        # non-runtime type annotations don't unfairly lower the score.
+        if step == "init":
+            print(f"[mutation] cr-filter-pragma {session.name}")
+            run(
+                ["uv", "run", "--no-sync", "cr-filter-pragma", str(session)],
+                cwd=backend,
+                timeout=60,
+            )
+
 
 def _dump_from_sqlite(session: Path) -> list[dict]:
     """Fallback parser for cosmic-ray sessions that contain SKIPPED work items.
