@@ -1,6 +1,13 @@
+---
+baseline_commit: 6bb512cc5
+baseline_branch: develop
+story_key: 20-4-service-to-service-auth-cost-ledger-sync
+status: in-progress
+---
+
 # Story 20.4: Service-to-Service Auth + Cost Ledger Sync
 
-Status: ready-for-dev
+Status: in-progress
 
 ## Story
 
@@ -61,7 +68,9 @@ so that `chainlens-research` can meter usage and Nowing can bill the user.
   - `AD-4` (multi-agent chat runtime) requires the auth/cost ledger to integrate with `AgentActionLog`, `PermissionMiddleware`, and the tool registry.
   - `AD-5` (Zero sync for real-time client state) — workspace/correlation headers are the trust boundary for cross-project calls; keep them out of the Zero payload.
   - `AD-8` (unified credit wallet) — `costDollars` from `chainlens-research` is the source of truth. Convert to micros with `Decimal(cost_dollars) * 1_000_000` half-up, matching `app/capabilities/chainlens/research/executor.py` `_cost_micros`. The `CHAINLENS_QUERY_MICROS_PER_CALL` env rate is only a fallback and must log a warning when used.
+  - `AD-10` / `AD-42` (TokenUsage LLM-only, BillingEvent for non-LLM business events) — new ChainLens operation costs *should* use `BillingEvent`; however, PRD `FR-61` and the existing `deep_research` implementation use `TokenUsage`. Resolve this tension before adding `chainlens_gap_fill`/`chainlens_ingest` cost types.
   - `AD-15` (ChainLens is external) — the service token is a single Nowing-to-ChainLens credential, not a per-user token. Nowing maps the call to the user/workspace for billing.
+  - `AD-31` (`client_id` tenancy) — vertical client isolation is orthogonal to `workspace_id`; include `client_id` in headers/cost records if the inbound request originates from a vertical client.
   - `AD-34` / `AD-35` (scraper feed contract, no public corpus) — all outbound/inbound traffic for vertical data goes through service-auth-protected `chainlens-research` endpoints.
   - `FR-61` (Cross-Project Service Auth & Cost Allocation) is the product requirement.
 
@@ -76,10 +85,10 @@ so that `chainlens-research` can meter usage and Nowing can bill the user.
   - `nowing_backend/app/capabilities/core/types.py` — `BillingUnit`/`TokenUsage.usage_type` mapping
   - `nowing_backend/app/services/token_tracking_service.py` — `record_token_usage` for operation types
   - `nowing_backend/app/services/wallet_credit.py` — `apply_debit`
-  - `nowing_backend/app/db.py` — `TokenUsage` (add `run_id` or use `call_details`), new `ChainLensServiceToken` table if stored in Postgres
+  - `nowing_backend/app/db.py` — `TokenUsage.run_id` already exists; new `ChainLensServiceToken` table only if token storage moves from env to Postgres
   - `nowing_backend/app/routes/chainlens_internal.py` — inbound routes
   - `nowing_backend/app/routes/__init__.py` — router registration
-  - `nowing_backend/app/config/__init__.py` — `CHAINLENS_SERVICE_TOKEN`, `CHAINLENS_SERVICE_SECRET`, rotation env
+  - `nowing_backend/app/config/__init__.py` — `CHAINLENS_SERVICE_TOKEN` (shared service-to-service secret), `CHAINLENS_API_KEY` legacy alias, rotation env
   - `nowing_backend/app/observability/metrics.py` — `chainlens_auth_failed` counter
   - `alembic/versions/` — migration for new token/cost schema if `ChainLensServiceToken` or `TokenUsage.run_id` is added
 
@@ -89,7 +98,7 @@ so that `chainlens-research` can meter usage and Nowing can bill the user.
   - Integration tests for cost ledger in `tests/integration/capabilities/chainlens/research/test_research_cost_metering.py`
   - Assert `X-Correlation-Id` and `X-Workspace-Id` headers on mocked `httpx`/`respx` calls
   - Assert `401` on missing/invalid inbound tokens
-  - Assert `TokenUsage` rows for `chainlens_search`, `chainlens_gap_fill`, `chainlens_ingest` include `workspace_id`, `run_id` (or `call_details.run_id`), and correct `cost_micros`
+  - Assert `TokenUsage` rows for `chainlens_search`, `chainlens_gap_fill`, `chainlens_ingest` include `workspace_id`, `run_id` (nullable FK already exists), and correct `cost_micros`
 
 ### Project Structure Notes
 
@@ -99,11 +108,13 @@ so that `chainlens-research` can meter usage and Nowing can bill the user.
   - Token storage can live in `app/db.py` (new table) or be bootstrapped from a secret store (env). For local/self-host, a `ChainLensServiceToken` table with `secure_config` backend is the simplest operational model; cloud can use the same table with KMS-encrypted values.
 
 - Detected conflicts or variances
-  - `TokenUsage` does not have a `run_id` column; AC #3 requires linking to `run_id`. The short-term path is `call_details["run_id"] = ...`; the cleaner long-term path is an Alembic migration adding `TokenUsage.run_id` as a nullable FK to `Run.id`.
-  - `PersonalAccessToken` (`app/db.py`) exists for user PATs but is not suitable for service-to-service tokens (no workspace scope, different lifecycle). Do not overload it; create a dedicated `ChainLensServiceToken` or secret-store path.
+  - `TokenUsage.run_id` already exists (`app/db.py`) as a nullable UUID FK; no migration is needed for `run_id` attribution. The short-term `call_details["run_id"]` workaround is unnecessary.
+  - `PersonalAccessToken` (`app/db.py`) exists for user PATs but is not suitable for service-to-service tokens (no workspace scope, different lifecycle). Do not overload it; create a dedicated `ChainLensServiceToken` table only if env-based `CHAINLENS_SERVICE_TOKEN` is insufficient for rotation/persistence.
   - `app/capabilities/chainlens/research/executor.py` currently uses a single `CHAINLENS_API_KEY` env. It must be refactored to call `ChainLensServiceAuth` for token management.
   - `metrics.py` does not yet define `chainlens_auth_failed`; add a new counter.
-  - The `costDollars -> micros` conversion already exists in the executor but is not exposed as a shared helper. Consider moving it to `app/services/chainlens/auth.py` or a shared `money.py` utility.
+  - The `costDollars -> micros` conversion already exists in the executor (`_SSEParser._cost_micros`) but is not exposed as a shared helper. Consider moving it to `app/services/chainlens/auth.py` or a shared `money.py` utility.
+  - `AD-31` `client_id` tenancy (CITEXT natural key, orthogonal to `workspace_id`) is not yet reflected in this story. If `TokenUsage` / `BillingEvent` attribution must include vertical `client_id`, add it to headers/cost records.
+  - `AD-10`/`AD-42` mandate that `TokenUsage` stays LLM-only and new non-LLM business events use `BillingEvent`. However, PRD `FR-61` AC explicitly writes ChainLens costs to `TokenUsage` with `usage_type`, and the current `deep_research` implementation already does so. Resolve before adding new `chainlens_gap_fill`/`chainlens_ingest` usage types: either grandfather them under `TokenUsage` or introduce `BillingEvent` (new table + migration) per AD-42.
 
 ### References
 
@@ -112,17 +123,21 @@ so that `chainlens-research` can meter usage and Nowing can bill the user.
 - [Source: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` §AD-4]
 - [Source: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` §AD-5]
 - [Source: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` §AD-8]
+- [Source: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` §AD-10]
 - [Source: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` §AD-15]
+- [Source: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` §AD-31]
 - [Source: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` §AD-34]
 - [Source: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` §AD-35]
+- [Source: `_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` §AD-42]
 - [Source: `_bmad-output/planning-artifacts/prds/prd-Nowing-2026-07-22/prd.md` §FR-61]
 - [Source: `_bmad-output/planning-artifacts/ux-designs/ux-Nowing-2026-07-22/ux-contract-private-data-provider.md` §3 Private source list / RBAC]
+- [Source: `nowing_backend/app/services/chainlens/auth_stub.py` §temporary `get_chainlens_auth_header`]
 - [Source: `nowing_backend/app/capabilities/chainlens/research/executor.py` §`_cost_micros`]
 - [Source: `nowing_backend/app/services/token_tracking_service.py` §`record_token_usage`]
 - [Source: `nowing_backend/app/services/wallet_credit.py` §`apply_debit`]
 - [Source: `nowing_backend/app/db.py` §`TokenUsage`, `PersonalAccessToken`]
 - [Source: `nowing_backend/app/capabilities/core/billing.py` §`_charge_chainlens`]
-- [Source: `nowing_backend/app/config/__init__.py` §`CHAINLENS_API_KEY` / `CHAINLENS_QUERY_MICROS_PER_CALL`]
+- [Source: `nowing_backend/app/config/__init__.py` §`CHAINLENS_SERVICE_TOKEN` / `CHAINLENS_API_KEY` / `CHAINLENS_QUERY_MICROS_PER_CALL`]
 - [Source: `nowing_backend/app/observability/metrics.py` §existing `chainlens_*` counters]
 
 ## Dev Agent Record
