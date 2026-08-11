@@ -103,6 +103,16 @@ def _extract_job_id(body: dict[str, Any]) -> str | None:
     return body.get("ingestJobId") or body.get("ingest_job_id")
 
 
+def _noop_source_ids(body: dict[str, Any]) -> list[str]:
+    """Read noop source ids from a ChainLens response (camel or snake case)."""
+    return body.get("noopSourceIds") or body.get("noop_source_ids") or []
+
+
+def _ingested_source_ids(body: dict[str, Any]) -> list[str]:
+    """Read ingested source ids from a ChainLens response (camel or snake case)."""
+    return body.get("ingestedSourceIds") or body.get("ingested_source_ids") or []
+
+
 def _source_ids_from_batch(batch: list[Any]) -> list[str]:
     """Extract sourceId values from a batch of chunks for bookkeeping."""
     source_ids: list[str] = []
@@ -129,9 +139,10 @@ async def _post_batch_core(
 ) -> dict[str, Any]:
     """POST one batch and map the HTTP status to a retry-aware exception.
 
-    200 returns the parsed body. 409, 429, 401/403, 5xx and 504 are mapped to
-    ``ConnectorError`` subclasses so ``app/utils/async_retry`` can decide which
-    ones to retry.
+    200/202 return the parsed body. 400, 401/403 are non-retryable client errors.
+    429, 5xx and 504 are retryable. 409 is not expected by the current ChainLens
+    contract (duplicates are handled idempotently via 200/202), but is mapped
+    to a non-retryable error defensively.
     """
     url = _ingest_url(config_obj)
     auth_header = get_chainlens_auth_header(config_obj)
@@ -140,9 +151,9 @@ async def _post_batch_core(
     )
 
     body: dict[str, Any] = {
-        "scraper_id": scraper_id,
-        "workspace_id": workspace_id,
         "source": "nowing_scraper",
+        "scraperId": scraper_id,
+        "workspaceId": workspace_id,
         "chunks": [_chunk_to_dict(chunk) for chunk in batch],
     }
 
@@ -155,7 +166,7 @@ async def _post_batch_core(
 
     parsed = _coerce_response_json(response)
 
-    if response.status_code == 200:
+    if response.status_code in (200, 202):
         return parsed
     if response.status_code == 409:
         raise ConnectorAPIError(
@@ -235,8 +246,9 @@ class NowingIngestService:
         """Ingest ``chunks`` and return a stable ``IngestResult``.
 
         Batches larger than ``CHAINLENS_INGEST_MAX_BATCH_SIZE`` are paginated.
-        ``409`` duplicate sourceIds are mapped to ``noop`` and the remaining
-        batch continues. ``5xx`` / network / timeout errors are retried with
+        ``200`` (idempotent duplicate) and ``202`` (accepted) responses carry
+        ``ingestedSourceIds`` / ``noopSourceIds`` that drive the result status.
+        ``429`` / ``5xx`` / network / timeout errors are retried with
         exponential backoff up to ``CHAINLENS_INGEST_RETRY_MAX_ATTEMPTS``.
         """
         if not chunks:
@@ -249,12 +261,14 @@ class NowingIngestService:
         if len(scraper_id) > 100:
             raise ValueError("scraper_id exceeds 100 character limit")
 
-        api_key = _cfg(config, "CHAINLENS_API_KEY", "")
+        api_key = _cfg(config, "CHAINLENS_SERVICE_TOKEN", "") or _cfg(
+            config, "CHAINLENS_API_KEY", ""
+        )
         if not api_key:
             return IngestResult(
                 ingest_job_id=None,
                 status="service_auth_unavailable",
-                error="CHAINLENS_API_KEY not configured",
+                error="CHAINLENS_SERVICE_TOKEN not configured",
             )
 
         batch_size = _positive_int(
@@ -283,7 +297,13 @@ class NowingIngestService:
                 job_id = _extract_job_id(body)
                 if job_id:
                     child_job_ids.append(job_id)
-                ingested_source_ids.extend(_source_ids_from_batch(batch))
+                batch_ingested = _ingested_source_ids(body)
+                batch_noop = _noop_source_ids(body)
+                if not batch_ingested and not batch_noop:
+                    # Fallback for older/noisy responses that omit source id lists.
+                    batch_ingested = _source_ids_from_batch(batch)
+                ingested_source_ids.extend(batch_ingested)
+                noop_source_ids.extend(batch_noop)
             except ConnectorAuthError as exc:
                 overall_status = "service_auth_unavailable"
                 failed_batches.append(
@@ -296,14 +316,14 @@ class NowingIngestService:
                 break
             except ConnectorAPIError as exc:
                 if exc.status_code == 409:
+                    # Defensive: current ChainLens contract handles duplicates
+                    # idempotently via 200/202, but support 409 if it appears.
                     job_id = _extract_job_id(exc.response_body or {})
                     if job_id:
                         child_job_ids.append(job_id)
-                    noop_source_ids.extend(
-                        (exc.response_body or {}).get("noop_source_ids") or []
-                    )
+                    noop_source_ids.extend(_noop_source_ids(exc.response_body or {}))
                     ingested_source_ids.extend(
-                        (exc.response_body or {}).get("ingested_source_ids") or []
+                        _ingested_source_ids(exc.response_body or {})
                     )
                     continue
 
@@ -354,7 +374,7 @@ class NowingIngestService:
                     },
                 )
 
-        has_success = bool(child_job_ids) or bool(ingested_source_ids)
+        has_success = bool(ingested_source_ids)
 
         if overall_status == "ok":
             if noop_source_ids and not has_success:

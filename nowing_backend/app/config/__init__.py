@@ -1082,12 +1082,13 @@ class Config:
     # proxy, where every retry re-hits the same exit.
     TIKTOK_LISTING_MAX_ATTEMPTS = int(os.getenv("TIKTOK_LISTING_MAX_ATTEMPTS", "3"))
 
-    # ChainLens Research integration (https://research-api.chainlens.net or local).
-    # One API key is enough: the ChainLens API resolves the key to a user and
-    # enforces its own rate limit / quota.
+    # ChainLens Research / Ingest integration (https://research-api.chainlens.net or local).
+    # CHAINLENS_SERVICE_TOKEN is the preferred service-to-service token for ingest.
+    # CHAINLENS_API_KEY is kept as a legacy alias for deep-research calls.
     CHAINLENS_API_URL = os.getenv("CHAINLENS_API_URL", "http://localhost:3001").rstrip(
         "/"
     )
+    CHAINLENS_SERVICE_TOKEN = os.getenv("CHAINLENS_SERVICE_TOKEN", "")
     CHAINLENS_API_KEY = os.getenv("CHAINLENS_API_KEY", "")
     CHAINLENS_REQUEST_TIMEOUT_SECONDS = float(
         os.getenv("CHAINLENS_REQUEST_TIMEOUT_SECONDS", "300")

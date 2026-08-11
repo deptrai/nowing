@@ -105,8 +105,8 @@ async def test_ingest_calls_post_ingest_scraper_with_auth_and_workspace(
     assert call["url"] == "https://chainlens.test/v1/ingest/scraper"
     assert call["kwargs"]["headers"]["Authorization"] == "Bearer secret"
     body = call["kwargs"]["json"]
-    assert body["scraper_id"] == "batdongsan"
-    assert body["workspace_id"] == 42
+    assert body["scraperId"] == "batdongsan"
+    assert body["workspaceId"] == 42
     assert body["source"] == "nowing_scraper"
     assert len(body["chunks"]) == 2
     assert result.ingest_job_id == "job-123"
@@ -167,8 +167,8 @@ async def test_ingest_paginates_batches_larger_than_1000(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_ingest_maps_409_duplicate_source_id_to_noop(monkeypatch):
-    """A 409 response maps duplicate sourceIds to noop and ingests the rest."""
+async def test_ingest_maps_duplicate_source_ids_to_noop(monkeypatch):
+    """Duplicate sourceIds are returned as noop and the rest as ingested."""
     import app.services.chainlens.ingest as ingest_mod
     from app.services.chainlens.ingest import NowingIngestService
 
@@ -177,10 +177,11 @@ async def test_ingest_maps_409_duplicate_source_id_to_noop(monkeypatch):
     calls: list[dict[str, Any]] = []
     responses = [
         (
-            409,
+            200,
             {
-                "noop_source_ids": ["chunk:0001"],
-                "ingested_source_ids": ["chunk:0002"],
+                "ingestJobId": "job-noop",
+                "noopSourceIds": ["chunk:0001"],
+                "ingestedSourceIds": ["chunk:0002"],
             },
         )
     ]
@@ -195,6 +196,28 @@ async def test_ingest_maps_409_duplicate_source_id_to_noop(monkeypatch):
 
     assert "chunk:0001" in result.noop_source_ids
     assert "chunk:0002" in result.ingested_source_ids
+
+
+@pytest.mark.asyncio
+async def test_ingest_accepts_202_accepted(monkeypatch):
+    """A 202 Accepted response is treated as success."""
+    import app.services.chainlens.ingest as ingest_mod
+    from app.services.chainlens.ingest import NowingIngestService
+
+    monkeypatch.setattr(ingest_mod, "config", _fake_config())
+
+    calls: list[dict[str, Any]] = []
+    responses = [(202, {"ingestJobId": "job-202"})]
+    monkeypatch.setattr(httpx, "AsyncClient", _httpx_client_class(calls, responses))
+
+    service = NowingIngestService()
+    result = await service.ingest(
+        scraper_id="batdongsan",
+        chunks=_make_chunks(1),
+        workspace_id=1,
+    )
+
+    assert result.ingest_job_id == "job-202"
 
 
 @pytest.mark.asyncio
