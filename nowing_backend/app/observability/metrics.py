@@ -1159,11 +1159,45 @@ def _chainlens_ingest_failed():
     )
 
 
+def _fallback_hit_bucket(count: int) -> str:
+    if count == 0:
+        return "0"
+    if count <= 5:
+        return "1-5"
+    return "6+"
+
+
 @lru_cache(maxsize=1)
 def _chainlens_auth_failed():
     return _get_meter().create_counter(
         "nowing.chainlens.auth_failed",
         description="Count of chainlens-research service-to-service auth failures.",
+    )
+
+
+@lru_cache(maxsize=1)
+def _chainlens_private_search():
+    return _get_meter().create_counter(
+        "nowing.chainlens.private_search",
+        description="Count of chainlens-research private data searches.",
+    )
+
+
+def record_chainlens_private_search(
+    *,
+    workspace_id: int,
+    result: str,
+    hit_count: int,
+) -> None:
+    """Count one chainlens-research private data search."""
+    _add(
+        _chainlens_private_search(),
+        1,
+        {
+            "workspace_id": str(workspace_id),
+            "result": result,
+            "hit_bucket": _fallback_hit_bucket(hit_count),
+        },
     )
 
 
@@ -1294,14 +1328,6 @@ def record_chainlens_degradation(
             "engine_reason": _redact_engine_reason(engine_reason) or "none",
         },
     )
-
-
-def _fallback_hit_bucket(count: int) -> str:
-    if count == 0:
-        return "0"
-    if count <= 5:
-        return "1-5"
-    return "6+"
 
 
 def record_kb_fallback_hit_count(fallback_hit_count: int) -> None:
@@ -1454,6 +1480,7 @@ __all__ = [
     "record_chainlens_degradation",
     "record_chainlens_ingest_failed",
     "record_chainlens_latency",
+    "record_chainlens_private_search",
     "record_chat_request_duration",
     "record_chat_request_outcome",
     "record_chunk_reconcile",

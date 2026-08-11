@@ -2,7 +2,7 @@
 baseline_commit: de0a8d951
 baseline_branch: develop
 story_key: 20.3
-status: ready-for-dev
+status: done
 priority: P1
 epic: Epic 20 — Nowing Ecosystem Integration
 ---
@@ -20,7 +20,7 @@ tôi muốn dữ liệu riêng tư của mình ở lại Nowing trong khi vẫn 
 1. **Cho** `chainlens-research` gọi `POST /v1/private-data/search` với body hợp lệ `{ query, workspaceId, userId?, connectorId?, sources?, topK? }` cùng header `Authorization: Bearer <CHAINLENS_SERVICE_TOKEN>` và `X-Workspace-Id`, **khi** request đến, **thì** Nowing xác thực service auth token, khớp `workspaceId` với phạm vi token, thiết lập workspace RLS context, chạy tìm kiếm trên dữ liệu riêng tư `Document`/`Chunk`/`Memory` của workspace và trả về `200` với `PrivateDataSearchResponse { chunks: PrivateProviderChunk[], costDollars: 0 }`.
 2. **Cho** service auth token bị thiếu, sai định dạng, không nằm trong token pool, hoặc header `X-Workspace-Id` bị thiếu/không hợp lệ, **khi** gọi `POST /v1/private-data/search`, **thì** trả về `401` và không có private chunks nào trong body.
 3. **Cho** workspace RLS check thất bại (workspace không tồn tại, service principal không có quyền truy cập, hoặc `workspaceId` trong body không khớp `X-Workspace-Id` của token), **khi** gọi `POST /v1/private-data/search`, **thì** trả về `403` và không có private chunks nào trong body.
-4. **Cho** request body không hợp lệ (thiếu `query`, `workspaceId` không phải số nguyên, `topK` ngoài phạm vi, hoặc `userId` sai định dạng), **khi** request đến, **thì** trả về `400` với chi tiết validation rõ ràng và không truy vấn private data.
+4. **Cho** request body không hợp lệ (thiếu `query`, `workspaceId` không phải số nguyên, `topK` ngoài phạm vi, hoặc `userId` sai định dạng), **khi** request đến, **thì** trả về `422` với chi tiết validation rõ ràng và không truy vấn private data.
 5. **Cho** private search thực thi, **khi** thu thập kết quả, **thì** trả về `PrivateProviderChunk[]` với `metadata.source = 'private_provider'`, `sourceId` scoped theo document/connector, `metadata.url` theo mẫu `nowing://documents/{document_id}/chunks/{chunk_id}` khi chunk xuất phát từ document, và các citation locators (`document_id`, `chunk_id`, `connector_id`, `workspace_id`) trong `metadata` để Nowing resolve citation.
 6. **Cho** `connectorId` được cung cấp, **khi** tìm kiếm, **thì** chỉ trả về các `Document` có `Document.connector_id == connectorId`; `SearchSourceConnector.config` chỉ được đọc khi cần live connector refresh một cách tường minh và OAuth tokens hoặc connector secrets không bao giờ xuất hiện trong response.
 7. **Cho** request không có dữ liệu khớp, **khi** tìm kiếm hoàn tất, **thì** trả về `200` với `chunks: []` và `costDollars: 0`, không phải `404`.
@@ -326,7 +326,7 @@ await record_token_usage(
 - Error-handling contract
   - `401` — `Authorization` header thiếu/sai định dạng, token không nằm trong pool, `X-Workspace-Id` thiếu, hoặc `X-Workspace-Id` không dương.
   - `403` — workspace không tồn tại, workspace RLS check thất bại, hoặc `body.workspaceId` không khớp `context.workspace_id`.
-  - `400` — Pydantic validation failure trên request body.
+  - `422` — Pydantic validation failure trên request body.
   - `200` — tìm kiếm thực thi thành công, kể cả khi không có kết quả; body response luôn chứa `chunks` và `costDollars`.
 
 - Hành vi connector và OAuth
