@@ -2,12 +2,12 @@
 baseline_commit: fa204db7a08eda76db4645d5d2b43af76d34a091
 baseline_branch: develop
 story_key: 20-2-gap-fill-caller-cost-allocation
-status: review
+status: done
 ---
 
 # Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)
 
-Status: review
+Status: done
 
 ## Story
 
