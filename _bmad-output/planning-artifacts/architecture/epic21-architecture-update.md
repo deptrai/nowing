@@ -1,8 +1,8 @@
 # Epic 21 — Lead Intelligence Architecture Update
 
-> **Status:** REVIEWED and MERGED into `ARCHITECTURE-SPINE.md` as AD-36..AD-42 `[ADOPTED 2026-08-10]`.
+> **Status:** REVIEWED and MERGED into `ARCHITECTURE-SPINE.md` as AD-36..AD-42. **AD-39 and AD-41 revised 2026-08-11** to reflect refined scope: Email-only outbound in MVP, Zalo/LinkedIn deferred, multi-source lead ingestion from all FR-6 scrapers/ connectors.
 >
-> ADs below are the pre-merge source; the canonical versions live in `ARCHITECTURE-SPINE.md`. Assumptions that still require validation before implementation are marked `[VALIDATION REQUIRED]` and tracked in `implementation-readiness/implementation-readiness-report-final-2026-08-10.md`.
+> ⚠️ **Superseded 2026-08-11:** The ADs below are the pre-merge source. The canonical, conflict-resolved versions live in `ARCHITECTURE-SPINE.md` (AD-31, AD-33, AD-36–AD-42). In particular, `AD-39` is now a separate bounded context (not an `Automation` subtype), business events use `BillingEvent` (not `TokenUsage`), all Epic 21 models include `client_id`/`UUID id`, and `AlertRule` uses `capability_id`/`sequence_enrollment` for signal-to-sequence triggers. Do not implement from this file.
 
 ---
 
@@ -13,9 +13,9 @@
 | AD-36 | Waterfall enrichment: buy via API | Origami analysis | `[ADOPTED 2026-08-10 — validation: vendor contract/POC]` |
 | AD-37 | Signal detection: hybrid build + buy | Market research | `[ADOPTED 2026-08-10 — validation: Crunchbase/LinkedIn ToS + feed feasibility]` |
 | AD-38 | Lead scoring: composite fit + intent | Technical research | `[ADOPTED 2026-08-10 — validation: benchmark on pilot workspaces]` |
-| AD-39 | Sequencer: multi-channel outreach | Origami analysis | `[ADOPTED 2026-08-10 — validation: email-first legal/ToS]` |
+| AD-39 | Sequencer: email-first outreach; multi-source lead ingestion | Origami analysis | `[REVISED 2026-08-11 — validation: email-outreach legal/ToS; lead-source registry]` |
 | AD-40 | CRM integration: bidirectional sync | Origami analysis | `[ADOPTED 2026-08-10 — FR-67 aligned to phased read-first]` |
-| AD-41 | Zalo integration: Vietnam market | Market research | `[ADOPTED 2026-08-10 — validation: Zalo OA business verification]` |
+| AD-41 | Zalo integration: Vietnam market | Market research | `[DEFERRED 2026-08-11 — Zalo/LinkedIn disabled in MVP]` |
 | AD-42 | Outcome-based pricing support | Market research | `[ADOPTED 2026-08-10 — validation: first-touch attribution model]` |
 
 ---
@@ -41,6 +41,7 @@
   - `EnrichmentRequest` (id, lead_id, status, provider_results, cost_micros)
   - `VerifiedContact` (id, lead_id, email, phone, verification_status, confidence, source_provider)
 - **TokenUsage.usage_type mở rộng:** thêm `contact_enrichment`
+- **Enforcement:** Before any verified contact data is embedded or stored, `EnrichmentService` **must** call `app/services/pii/redact.py` (`context="lead_enrichment"`) per **AD-25**. Do not create a separate lead PII redaction module.
 - **Ghi chú:** Đây là build-vs-buy decision. Mua nhanh hơn, build cheaper ở scale lớn. `[ASSUMPTION: mua trước, build sau nếu scale > X leads/tháng]`
 
 ---
@@ -48,7 +49,7 @@
 ### AD-37 — Signal detection framework: hybrid build + buy data feeds
 
 - **Binds:** FR-63 (Intent Signal Detection), Epic 21
-- **Prevents:** Build 8+ independent scheduler/notification paths (giống AD-33 Anti-Pattern)
+- **Prevents:** Build 8+ independent scheduler/notification paths (giống AD-33 Anti-Pattern); building a separate bespoke knowledge graph for signals
 - **Rule:**
   - **Signal Engine là một AlertRule template type** (governed by AD-33), không phải service mới
   - **Signal types:**
@@ -57,14 +58,17 @@
     - `tech_stack` — Website change detection (build)
     - `executive_move` — LinkedIn monitoring (build on existing scrapers)
     - `news` — News API (buy) + RSS feeds (build)
-  - **Signal storage:** `SignalEvent` (id, workspace_id, company_name, signal_type, source_url, confidence, detected_at, processed)
+  - **Signal storage:** `SignalEvent` (id, workspace_id, company_name, signal_type, source_url, confidence, detected_at, processed) **with a `Memory` row of type `semantic` and tag `lead_signal`** so signals participate in the same provenance, search, and RAG pipeline as other workspace memory.
   - **Signal → Lead Score:** High-confidence signals boost lead scoring (governed by AD-38)
   - **Notification:** Reuse AD-33 notification dispatch (in-app + Telegram)
 - **Monitoring frequency:** `[ASSUMPTION: daily扫描, real-time qua webhooks cho funding events]`
 - **New models:**
   - `SignalEvent` (id, workspace_id, company_name, signal_type, source_url, confidence, detected_at, processed)
   - `SignalSubscription` (id, workspace_id, signal_types, notification_channels)
-- **Ghi chú:** Reuse AD-33 Alert Engine infrastructure — không build scheduler riêng
+- **Enforcement:**
+  - Signal scheduler, diff, and notification dispatch **must** use AD-33 `AlertRule` and `Automation` runtime.
+  - Signal ingestion **must** write a `Memory` row; no separate `signals` search index or vector store.
+  - Signal jobs **must** be registered as `CapabilityRegistry` capabilities so they are metered and billed like any other capability.
 
 ---
 
@@ -87,25 +91,34 @@
 
 ---
 
-### AD-39 — Sequencer: multi-channel outreach (email, LinkedIn, Zalo)
+### AD-39 — Sequencer: email-first outreach; multi-source lead ingestion
 
 - **Binds:** FR-66 (Outbound Prospecting Automation), Epic 21
-- **Prevents:** Build separate outreach tools per channel
+- **Prevents:** Build separate outreach tools per channel; hard-coding lead sources
 - **Rule:**
   - **Sequence builder:** Multi-step sequences (trigger → wait → action → condition → action)
-  - **Channels:**
-    - Email (SMTP/SES) — `[ASSUMPTION: dùng existing email infrastructure]`
-    - LinkedIn (via API or automation) — `[ASSUMPTION: LinkedIn API hay browser automation?]`
-    - Zalo (Zalo OA API) — Vietnam market
+  - **Outbound channel (MVP):** Email only (SMTP/SES, reuse existing email infrastructure)
+  - **Deferred channels:** LinkedIn and Zalo are **disabled in MVP** until legal/ToS and sender setup gates close.
+  - **Lead source:** Leads can be generated from **any scraper/connector** in the workspace capability registry (FR-6 sources: Reddit, YouTube, Instagram, TikTok, Google Search, Google Maps, Amazon, web crawl; plus Exa, Indeed, Walmart, BĐS, VietnamWorks, TopCV, ITviec, etc.).
+  - **Lead source discovery:** UI queries `CapabilityRegistry` for sources that have emitted `Lead` records for the workspace.
+  - **Lead ingestion:** Scrapers/ connectors produce `Chunk[]`/typed records; lead extractor normalizes to `Lead` rows with `source`, `source_url`, `confidence`, `provider`.
   - **Personalization:** AI-generated messages using lead context + ICP + intent signals
   - **Tracking:** Delivery, open, reply, meeting booked → feedback loop to lead scoring
-  - **Compliance:** Unsubscribe handling, rate limiting, Decree 356 compliance
+  - **Compliance:** Unsubscribe handling, rate limiting, email outreach legal/ToS
 - **New models:**
+  - `Lead` (id, workspace_id, source, source_url, company_name, domain, industry, fit_score, intent_score, status, enriched, created_at)
+  - `LeadSource` (workspace_id, provider, enabled_for_leads, last_ingest_at, lead_count) — cache/aggregate per source
   - `Sequence` (id, workspace_id, name, trigger_type, status)
-  - `SequenceStep` (id, sequence_id, step_order, channel, template, wait_duration, condition)
+  - `SequenceStep` (id, sequence_id, step_order, channel, template, wait_duration, condition) — `channel` enum includes `email`, with `linkedin`/`zalo` reserved but disabled
   - `SequenceEnrollment` (id, sequence_id, lead_id, status, current_step, enrolled_at)
   - `SequenceEvent` (id, enrollment_id, event_type, channel, metadata, created_at)
-- **Ghi chú:** Đây là complex feature — nên start với email-only, sau đó add LinkedIn + Zalo
+- **Enforcement (cross-epic reuse):**
+  - `Sequence` and `SequenceStep` **must** reuse the existing `Automation`/`AutomationRun` schema from Epic 6 where possible. A sales sequence is an `Automation` with `trigger_type = 'lead_enrollment'`; a step is an `AutomationAction` of type `send_email` or `wait`.
+  - Sequencer scheduling, execution, and retry **must** use Epic 6 `RunService` and Celery task infrastructure.
+  - Positive-reply detection and delivery notifications **must** reuse Story 11.1 Telegram notification foundation (add `email_reply` channel type).
+  - Lead source discovery **must** query `CapabilityRegistry`; do not hard-code a source list in the sequencer or UI.
+  - Signal-driven sequence triggers **must** be implemented as AD-33 `AlertRule` templates, not a separate trigger scheduler.
+- **Ghi chú:** Start email-only. LinkedIn/Zalo may be added later behind feature/ToS gates.
 
 ---
 
@@ -134,22 +147,21 @@
 
 ---
 
-### AD-41 — Zalo integration: Vietnam market via Zalo OA
+### AD-41 — Zalo integration: Vietnam market via Zalo OA `[DEFERRED]`
 
 - **Binds:** FR-68 (Zalo Integration), Epic 21
-- **Prevents:** Miss Vietnam market opportunity (81% professionals use Zalo)
+- **Prevents:** Premature build of a channel that lacks legal/ToS/business verification gates
 - **Rule:**
-  - **Zalo OA (Official Account) là primary channel** cho Vietnam market
-  - **Capabilities:**
-    - Send personalized Zalo messages to leads
-    - Receive replies → log in lead activity timeline
-    - Zalo OA authentication (OAuth flow)
-  - **Compliance:** Zalo business messaging policies + Decree 356
-  - **Fallback:** Nếu lead không có Zalo → dùng email hoặc LinkedIn
-- **New models:**
+  - **Zalo/LinkedIn are disabled in MVP.**
+  - AD-39 `channel` enum reserves `zalo` and `linkedin` values, but UI/ sequencer rejects them with a clear "deferred" message until this AD is re-activated.
+  - **Future activation conditions:**
+    - Zalo OA business verification complete
+    - Zalo business messaging ToS review + Decree 356 compliance sign-off
+    - LinkedIn automation legal/ToS review (API vs browser automation)
+- **Design-once model (do not build now):**
   - `ZaloConnection` (id, workspace_id, oa_id, access_token_encrypted, refresh_token_encrypted)
   - `ZaloMessage` (id, lead_id, direction, content, status, sent_at, delivered_at, read_at)
-- **Ghi chú:** Zalo OA API cần business verification — `[ASSUMPTION: team đã có Zalo OA chưa?]`
+- **Ghi chú:** Do not build Zalo/LinkedIn senders in MVP. Keep UI extensible so they can be enabled via feature flag later.
 
 ---
 
@@ -166,6 +178,8 @@
     - Lead enriched = verified contact data delivered
   - **Billing:** Reuse existing credit wallet (AD-8) + Stripe integration
   - **Attribution:** Sequence → lead → meeting (multi-touch attribution) `[ASSUMPTION: first-touch hay last-touch?]`
+  - **TokenUsage.usage_type mở rộng:** thêm `outcome_meeting_booked` và `outcome_lead_enriched`; `TokenUsage` rows **must** reuse the existing wallet/usage tracking tables from AD-8 and AD-10.
+  - **Enforcement:** Outcome pricing does not create a new billing ledger. It extends `TokenUsage` and `User.credit_micros_balance` with event types and an outcome dashboard that reuses the usage/credit UI from Story 8.3.
 - **New models:**
   - `OutcomeEvent` (id, workspace_id, event_type, lead_id, sequence_id, attribution, cost_micros, created_at)
   - `PricingPlan` (id, workspace_id, plan_type, seat_price, outcome_rates_json, billing_period)
@@ -205,9 +219,10 @@ flowchart TB
         Enrich["Waterfall Enrichment<br/>External API"]
         Signals["Signal Detection<br/>AlertRule templates"]
         Scoring["Lead Scoring<br/>Fit + Intent"]
-        Sequencer["Sequencer<br/>Email + LinkedIn + Zalo"]
+        LeadSrc["Multi-Source Lead Ingestion<br/>FR-6 scrapers/ connectors"]
+        Sequencer["Sequencer<br/>Email (MVP); LinkedIn/Zalo deferred"]
         CRM["CRM Sync<br/>Salesforce + HubSpot"]
-        Zalo["Zalo OA<br/>Vietnam"]
+        Zalo["Zalo OA<br/>Vietnam — deferred"]
     end
 
     subgraph Data["Data Layer"]
@@ -268,11 +283,14 @@ flowchart TB
     Scoring -->|read signals| Signals
     Scoring -->|store| Mem
 
+    CapReg -->|capabilities with leads| LeadSrc
+    LeadSrc -->|normalize| Mem
+    LeadSrc -->|source metadata| Scoring
+
     Chat --> Sequencer
     Sequencer -->|email| External
-    Sequencer -->|LinkedIn| External
-    Sequencer --> Zalo
-    Zalo -->|OAuth + send| ZaloAPI
+    Sequencer -.->|deferred| Zalo
+    Zalo -.->|deferred| ZaloAPI
 
     Chat --> CRM
     CRM -->|OAuth + sync| CrmAPI
@@ -286,25 +304,25 @@ flowchart TB
 
 ## Implementation Readiness
 
-**Status:** ⛔ Implementation blocked until validation workstream closes (vendor contracts, legal/ToS for Zalo/LinkedIn/Crunchbase, Zalo OA business verification, PII/consent pipeline).
+**Status:** ⛔ Implementation blocked until validation workstream closes (vendor contracts, legal/ToS for **email outreach**, Crunchbase/LinkedIn **signal feeds only**, PII/consent pipeline, CRM sync scope, outcome-pricing attribution). **Zalo/LinkedIn outreach deferred.**
 
 | # | Gate | State | Story / Artifact |
 |---|------|-------|------------------|
 | 1 | AD-36 — Waterfall enrichment API selection | `[ADOPTED — vendor contract/POC required]` | `Story 21.3` |
 | 2 | AD-37 — Signal detection data feeds | `[ADOPTED — Crunchbase/LinkedIn ToS + feed feasibility]` | `Story 21.1` |
 | 3 | AD-38 — Lead scoring weights | `[ADOPTED — benchmark on pilot workspaces]` | `Story 21.2` |
-| 4 | AD-39 — Sequencer channel priority | `[ADOPTED — email-first, legal/ToS for LinkedIn/Zalo]` | `Story 21.4` |
+| 4 | AD-39 — Sequencer email-first + multi-source lead ingestion | `[REVISED 2026-08-11 — validation: email-outreach legal/ToS; lead-source registry]` | `Story 21.4` |
 | 5 | AD-40 — CRM integration order | `[ADOPTED — read-first per FR-67 update]` | `Story 21.5` |
-| 6 | AD-41 — Zalo OA availability | `[ADOPTED — business verification required]` | `Story 21.6` |
+| 6 | AD-41 — Zalo/LinkedIn | `[DEFERRED 2026-08-11 — disabled in MVP; UI uses feature-flag]` | `Story 21.6` |
 | 7 | AD-42 — Outcome pricing attribution | `[ADOPTED — first-touch, audit model required]` | `Story 21.7` |
 
-**Recommended start order:**
-1. `Story 21.1` (Signal Detection) — foundation, reuse AD-33
-2. `Story 21.2` (Lead Scoring) — depends on signals
-3. `Story 21.3` (Waterfall Enrichment) — independent, buy via API
-4. `Story 21.4` (Sequencer) — depends on scoring + enrichment
-5. `Story 21.5` (CRM Sync) — independent
-6. `Story 21.6` (Zalo) — Vietnam market, independent
+**Recommended start order (revised 2026-08-11):**
+1. `Story 21.4` (Sequencer foundation) — email-only sender + multi-source lead ingestion; lowest dependency
+2. `Story 21.1` (Signal Detection) — reuse AD-33 alert engine
+3. `Story 21.2` (Lead Scoring) — depends on signals
+4. `Story 21.3` (Waterfall Enrichment) — independent, buy via API
+5. `Story 21.5` (CRM Sync) — independent, read-first
+6. `Story 21.6` (Zalo/LinkedIn) — **deferred**
 7. `Story 21.7` (Outcome Pricing) — depends on sequencer tracking
 
 ---
@@ -316,10 +334,11 @@ flowchart TB
 | 1 | Dùng Cleanlist/BetterContact API cho waterfall | Wrong vendor = rework | Test both APIs with sample data |
 | 2 | Signal monitoring frequency = daily | Too frequent = cost, too rare = miss signals | Interview sales teams |
 | 3 | Lead scoring weights: 50% fit + 50% intent | Wrong weights = poor scoring | A/B test with historical data |
-| 4 | Sequencer: email-first, then LinkedIn + Zalo | Wrong channel priority = low adoption | Survey target users |
+| 4 | Sequencer: email-only in MVP; LinkedIn + Zalo deferred | Wrong channel priority = low adoption; legal risk | Survey target users + legal/ToS review |
 | 5 | CRM: read-first, then write-back | Write-first = data quality issues | Follow Origami pattern |
-| 6 | Zalo OA: chưa có, cần setup | Delay Vietnam market | Check with team |
-| 7 | Outcome pricing: first-touch attribution | Wrong attribution = pricing disputes | Review industry standard |
+| 6 | Zalo OA / LinkedIn: deferred out of MVP | Scope creep if re-enabled early | Feature flag + governance gate |
+| 7 | Multi-source lead ingestion: dynamic source registry | Hard-coded source list = maintenance burden | Reuse `CapabilityRegistry` |
+| 8 | Outcome pricing: first-touch attribution | Wrong attribution = pricing disputes | Review industry standard |
 
 ---
 

@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-10"  # Story 18.5 re-review: 1 decision, 4 patch findings
+last_updated: "2026-08-11"  # bmad-architecture validate passed. AD-22/AD-23 promoted to ADOPTED. Epic 21 architecture FIT; remains backlog awaiting governance gates.
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
@@ -83,7 +83,8 @@ development_status:
   # ponytail: 2026-08-08 code-review round 2 — 2 patches fixed (WEB_RESULT integration test, merge tests), 0 defer, 14 dismissed. AC1-6 PASS.
   3-16: done
   # ponytail: 2026-08-08 verified implementation (commit 80a6c5fa6, 2026-08-06) — 40 unit tests + 2 MCP tests pass, ruff clean. Integration tests require DB (deferred to CI).
-  3-17: ready-for-dev
+  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+  3-17: in-progress
   # ponytail: 2026-08-08 architecture-review — verify AD-18 bounded memory injection with perf gate.
   epic-3-retrospective: done
 
@@ -157,7 +158,8 @@ development_status:
   9-6: done
   # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
   9-6-followup: deferred
-  9-6c: ready-for-dev
+  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+  9-6c: in-progress
   # ponytail: 2026-08-08 architecture-review — verify AD-11.1 memory provenance / revalidation end-to-end.
   epic-9-retrospective: optional
 
@@ -174,15 +176,34 @@ development_status:
   # === Epic 20: Nowing Ecosystem Integration (Nowing side of chainlens-research Epic 47) ===
   # Cross-project implementation order: 47-1 (Chunk schema) → 47-2 (service auth/cost) → 47-3 (ingest) + 20.1 (ingest client) parallel → 47-4 (gap-fill) + 20.2 (gap-fill caller) parallel → 47-5 (private provider) + 20.3 (NowingPrivateProvider) parallel → 20.4 (cost ledger sync) → 47-IT1
   epic-20: in-progress
-  20-1: ready-for-dev
+  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+  20-1: in-progress
   # ponytail: 2026-08-08 architecture-review — Nowing to_chunks() + NowingIngestService.
-  20-2: ready-for-dev
+  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+  20-2: in-progress
   # ponytail: 2026-08-08 architecture-review — gap-fill caller + cost allocation.
-  20-3: ready-for-dev
+  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+  20-3: in-progress
   # ponytail: 2026-08-08 architecture-review — NowingPrivateProvider.
-  20-4: ready-for-dev
+  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+  20-4: in-progress
   # ponytail: 2026-08-08 architecture-review — service auth + cost ledger sync.
   epic-20-retrospective: optional
+
+  # === Epic 21: Lead Gen Intelligence (PROPOSED → architecture validated) ===
+  # UX contracts created 2026-08-11; outbound scope: Email only (Zalo/LinkedIn disabled); lead sources = all FR-6 scrapers.
+  # 2026-08-11: bmad-architecture validate passed. `ARCHITECTURE-SPINE.md` is FIT for implementation.
+  # Remaining governance gates before moving to ready-for-dev: email outreach legal/ToS, enrichment vendor POC, PII pipeline, CRM sync scope, outcome-pricing display.
+  epic-21: backlog
+  21-1: backlog
+  21-2: backlog
+  21-3: backlog
+  21-4: backlog
+  21-5: backlog
+  # ponytail: Zalo deferred out of MVP (legal/ToS gate) — keep disabled until governance closes.
+  21-6: deferred
+  21-7: backlog
+  epic-21-retrospective: optional
 
   # === Epic 11: Telegram Automation & Bot ===
   epic-11: in-progress
@@ -196,9 +217,12 @@ development_status:
   12-0: done
   12-1: done
   12-2: done  # TopCV Scraper — bmad-code-review passed, patches applied
-  12-3: ready-for-dev
-  12-4: ready-for-dev
-  12-5: ready-for-dev
+  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+  12-3: in-progress
+  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+  12-4: in-progress
+  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+  12-5: in-progress
   12-6: backlog
   # DROPPED 2026-08-08: property price alerts depend on Nowing canonical entities (Epic 13 dropped).
   12-7: dropped
@@ -263,7 +287,7 @@ development_status:
   18-2: done
   18-3: done
   18-4: done
-  18-5: in-progress
+  18-5: done
   18-6: done
   18-7: done
   18-8: done

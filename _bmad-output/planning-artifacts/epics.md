@@ -48,9 +48,9 @@ Phân rã epic/story cho Nowing từ PRD (reality-corrected 2026-07-24), Archite
 `[PROPOSED]` **FR-63 Intent Signal Detection** → **E21.1** (buying signals: funding, hiring, tech stack, executive moves).
 `[PROPOSED]` **FR-64 Lead Scoring & Prioritization** → **E21.2** (composite score: fit + intent).
 `[PROPOSED]` **FR-65 Enriched Contact Data** → **E21.3** (verified email/phone via waterfall).
-`[PROPOSED]` **FR-66 Outbound Prospecting Automation** → **E21.4** (multi-channel: email, LinkedIn, Zalo).
+`[PROPOSED]` **FR-66 Outbound Prospecting Automation** → **E21.4** (email in MVP; LinkedIn/Zalo deferred; multi-source lead generation from all FR-6 scrapers).
 `[PROPOSED]` **FR-67 CRM Integration & Write-Back** → **E21.5** (Salesforce, HubSpot, Pipedrive).
-`[PROPOSED]` **FR-68 Zalo Integration (Vietnam)** → **E21.6** (Zalo OA, 81% VN professionals).
+`[DEFERRED]` **FR-68 Zalo Integration (Vietnam)** → **E21.6** (Zalo OA, 81% VN professionals; disabled in MVP).
 `[PROPOSED]` **FR-69 Outcome-Based Pricing** → **E21.7** (pay per meeting / lead).
 
 `[DONE — NFR]` **NFR-1b/1c/1d Memory latency & injection bound** *(E3.14 done, AD-18)*.
@@ -104,7 +104,7 @@ Các story có UI vẫn cần UX spec riêng trước khi build UI chi tiết.
 - **OQ-8 HR/Recruitment Vertical in Vietnam** → **E12 P0** (ToS, legal classification, anti-bot, salary hidden, willingness-to-pay, PII).
 - **SM-12 HR pilot metrics** → **E12 P0** (workspace active, aggregate queries, listings indexed, dedupe, confidence, PII coverage).
 - **AR-11 HR anti-bot validation** → **E12.2 P0** (TopCV Cloudflare bypass/residential proxy feasibility).
-- **Mới 2026-08-10 (Market Research → Lead Intelligence):** FR-63 (Intent Signals) → **E21.1** `[PROPOSED]` · FR-64 (Lead Scoring) → **E21.2** `[PROPOSED]` · FR-65 (Contact Enrichment) → **E21.3** `[PROPOSED]` · FR-66 (Outbound Automation) → **E21.4** `[PROPOSED]` · FR-67 (CRM Integration) → **E21.5** `[PROPOSED]` · FR-68 (Zalo Integration) → **E21.6** `[PROPOSED]` · FR-69 (Outcome Pricing) → **E21.7** `[PROPOSED]`.
+- **Mới 2026-08-10 (Market Research → Lead Intelligence):** FR-63 (Intent Signals) → **E21.1** `[PROPOSED]` · FR-64 (Lead Scoring) → **E21.2** `[PROPOSED]` · FR-65 (Contact Enrichment) → **E21.3** `[PROPOSED]` · FR-66 (Outbound Automation) → **E21.4** `[PROPOSED]` (Email in MVP; LinkedIn/Zalo deferred) · FR-67 (CRM Integration) → **E21.5** `[PROPOSED]` · FR-68 (Zalo Integration) → **E21.6** `[DEFERRED]` · FR-69 (Outcome Pricing) → **E21.7** `[PROPOSED]`.
 
 ## Epic List
 
@@ -2392,7 +2392,7 @@ _Governed by `AD-5`, FR-60, `AD-16`._
 
 _Tạo 2026-08-10 dựa trên market research (AI Lead Generation market $5.88B, Vietnam white space — không có AI-native lead gen player). Nowing chuyển từ "research tool" sang "lead intelligence platform" với 3 competitive advantages: Memory + Provenance, Real-time web research, Compliance-by-design._
 
-**FRs:** FR-63 (Intent Signal Detection), FR-64 (Lead Scoring), FR-65 (Enriched Contact Data), FR-66 (Outbound Prospecting Automation), FR-67 (CRM Integration), FR-68 (Zalo Integration), FR-69 (Outcome-Based Pricing). **Beachhead:** Sales team / SDR (B2B SaaS, IT outsourcing, agency, local business).
+**FRs:** FR-63 (Intent Signal Detection), FR-64 (Lead Scoring), FR-65 (Enriched Contact Data), FR-66 (Outbound Prospecting Automation — Email in MVP), FR-67 (CRM Integration), FR-68 (Zalo Integration — `DEFERRED` out of MVP), FR-69 (Outcome-Based Pricing). **Beachhead:** Sales team / SDR (B2B SaaS, IT outsourcing, agency, local business).
 
 > **Market validation:**
 > - 81% sales teams use AI; signal-based selling rising
@@ -2404,9 +2404,9 @@ _Tạo 2026-08-10 dựa trên market research (AI Lead Generation market $5.88B,
 > **⚠️ Epic 21 is `PROPOSED` and cannot be moved to `ready-for-dev` until the governance gates below close. Each story below must be rewritten with concrete user role, measurable metrics, explicit error-path acceptance criteria, and PII/consent gating before scheduling.**
 >
 > **Governance gates before scheduling:**
-> - Legal / ToS review for LinkedIn automation, Zalo OA business messaging, and email outreach.
+> - Legal / ToS review for **email outreach**. LinkedIn automation and Zalo OA business messaging are **deferred** out of MVP.
 > - Vendor contracts and data-quality POC for waterfall contact-enrichment providers (Cleanlist / BetterContact).
-> - Zalo OA business verification and Decree 356 compliance sign-off.
+> - **Zalo OA business verification and Decree 356 compliance sign-off — deferred**; UI keeps Zalo disabled until this gate closes.
 > - PII pipeline design: separate `consent_status` / `legal_basis` fields and redaction rules for lead-enrichment data.
 > - CRM sync scope: confirm read-first, then write-back phased sync and conflict-resolution policy.
 
@@ -2419,7 +2419,10 @@ So that I can reach out at the right moment.
 **Acceptance Criteria:**
 **Given** a company in workspace, **When** signals are monitored, **Then** funding events, job postings, tech stack changes, and executive moves are detected and surfaced with signal type, confidence, source URL, and timestamp.
 **Given** multiple signals for the same company, **When** aggregated, **Then** a composite lead score is calculated.
-_Sources: Crunchbase, LinkedIn, company websites, job boards, news. FR-63._
+**Given** a signal is detected, **When** it is stored, **Then** it writes a `SignalEvent` row (with `client_id`, `workspace_id`) and a redacted `Memory` row of type `semantic` with tag `lead_signal`. The `Memory` row stores a summary with `source_input` pointing to the original `chunk_id`/`capability`/`input`; it does not duplicate the full public document (AD-27/AD-35).
+**Given** a signal trigger is configured, **When** it fires, **Then** it uses an AD-33 `AlertRule` template with `capability_id` set to a registered signal capability (e.g. `funding.signal`, `hiring.signal`) and `notification_channels` from the allowed set (`in_app`, `telegram`, `email`, `sequence_enrollment`). `sequence_enrollment` triggers the AD-39 sequencer with `target.sequence_id`.
+**Given** a signal source is a scraper/connector, **When** it runs, **Then** it is registered as a `CapabilityRegistry` capability with `emits_signals=true` and `signal_types=[...]`. Metering: any LLM/token cost goes to `TokenUsage`; the signal-scan business event goes to `BillingEvent` with `usage_type = "signal_scan"`.
+_Sources: Crunchbase, LinkedIn, company websites, job boards, news. FR-63. Governed by AD-31 (`client_id`), AD-33 (AlertRule engine), AD-37 (signal detection framework), AD-39 (signal-to-sequence triggers)._
 
 ### Story 21.2: Lead Scoring & Prioritization `[PROPOSED]`
 
@@ -2430,7 +2433,10 @@ So that my team focuses on the highest-value prospects.
 **Acceptance Criteria:**
 **Given** a set of leads, **When** scored, **Then** each lead receives a composite score based on fit (firmographics, technographics) and intent (signal strength, recency).
 **Given** a lead score, **When** displayed, **Then** it shows score breakdown (fit vs intent), trend, and comparison to similar converted leads.
-_FR-64._
+**Given** a lead score is computed, **When** it is stored, **Then** it writes a `LeadScore` row (with `client_id`, `workspace_id`, `id: UUID`) and a redacted `Memory` row of type `semantic` with tag `lead_score` (reuse `Memory` infrastructure; no separate lead-score vector store).
+**Given** a lead score uses intent signals, **When** it reads signal data, **Then** it queries `SignalEvent` and `Memory` from Story 21.1 (AD-37), not a separate signal store.
+**Given** a lead score is computed, **When** it incurs cost (e.g. LLM reasoning), **Then** the business event is recorded in `BillingEvent` with `usage_type = "lead_scoring"`; LLM token cost, if any, goes to `TokenUsage`.
+_FR-64. Governed by AD-31 (`client_id`), AD-38 (lead scoring), AD-11 (Memory as first-class persistence), AD-37 (signal data)._
 
 ### Story 21.3: Enriched Contact Data `[PROPOSED]`
 
@@ -2441,18 +2447,27 @@ So that I can reach out to the right decision-makers.
 **Acceptance Criteria:**
 **Given** a company, **When** contact enrichment is requested, **Then** decision-maker names, titles, emails, and phone numbers are returned with verification status.
 **Given** contact data, **When** verified, **Then** email is validated via waterfall (5+ providers) and phone via real-time validation (9+ providers).
-_FR-65._
+**Given** verified contact data, **When** it is embedded or stored, **Then** it is passed through `app/services/pii/redact.py` with `context="lead_enrichment"` (per AD-25) and consent/legal basis fields are captured before persistence.
+**Given** enrichment is successful, **When** a cost event is recorded, **Then** it writes a `BillingEvent` row with `usage_type = "contact_enrichment"` and debits `User.credit_micros_balance` via the existing wallet service (AD-8, AD-10, AD-42). `TokenUsage` is only used if an LLM/token step is involved.
+**Given** enriched data is stored, **When** it is persisted, **Then** it writes `EnrichmentRequest` and `VerifiedContact` rows with `client_id`, `workspace_id`, and `id: UUID` (AD-31, AD-36).
+_FR-65. Governed by AD-25, AD-31 (`client_id`), AD-36, AD-42 (`BillingEvent`)._
 
 ### Story 21.4: Outbound Prospecting Automation `[PROPOSED]`
 
 As a sales team,
-I want to automate personalized outreach across channels,
+I want to automate personalized email outreach from any scraper source,
 So that I can scale outbound without sacrificing quality.
 
 **Acceptance Criteria:**
 **Given** a lead list, **When** outreach is triggered, **Then** personalized messages are generated using lead context + ICP + intent signals.
-**Given** outreach sequences, **When** configured, **Then** multi-channel sequences (email, LinkedIn, Zalo for VN) are supported.
-_FR-66._
+**Given** outreach sequences, **When** configured, **Then** email sequences are supported in MVP. **LinkedIn and Zalo are deferred** until legal/sender setup gates close.
+**Given** a workspace with connected scrapers/ connectors, **When** the user creates a lead list, **Then** leads can be sourced from any available scraper/connector that registers with `emits_leads=true` (FR-6 sources + Exa/Indeed/Walmart/BĐS/HR verticals as applicable).
+**Given** a sales sequence is created, **When** it is persisted, **Then** it uses first-class `Sequence`, `SequenceStep`, `SequenceEnrollment`, `SequenceEvent`, and `SequenceRun` tables with `client_id`, `workspace_id`, and UUID `id` (AD-31, AD-39). `Sequence` is **not** an `Automation` subtype; only the Epic 6 scheduler/Celery pattern and notification dispatcher are reused.
+**Given** an email is sent, delivered, bounced, or replied, **When** a notification is needed, **Then** it is dispatched through the Story 11.1 notification service with `NotificationChannel` extended to include `email_reply`, `email_delivered`, `email_bounced`; an inbound email handler (SES webhook or IMAP idle) is implemented as a capability.
+**Given** a sequence trigger is based on a signal (e.g. funding event), **When** it fires, **Then** it uses an AD-33 `AlertRule` template with `capability_id` = the signal capability and `notification_channels` containing `sequence_enrollment` (with `target.sequence_id` and optional `target.step_id`).
+**Given** lead sources are displayed, **When** the user creates a lead list, **Then** the source list comes from `CapabilityRegistry` metadata (`emits_leads=true`), not a hard-coded list.
+**Given** a sequence step is executed, **When** it incurs cost (e.g. email send, LLM personalization), **Then** it writes a `BillingEvent` row with the appropriate `usage_type`; LLM token cost, if any, goes to `TokenUsage`.
+_FR-66. Governed by AD-31 (`client_id`), AD-33 (AlertRule), AD-39 (sequencer), AD-42 (`BillingEvent`)._
 
 ### Story 21.5: CRM Integration & Write-Back `[PROPOSED]`
 
@@ -2462,15 +2477,20 @@ So that reps work from a single source of truth.
 
 **Acceptance Criteria:**
 **Given** a CRM connection (Salesforce, HubSpot, Pipedrive), **When** lead data changes, **Then** it syncs bidirectionally.
-_FR-67._
+**Given** a CRM provider is configured, **When** the user authorizes it, **Then** it reuses the existing `Connection` / OAuth model from FR-7 (AD-3); no new auth table is created.
+**Given** a CRM sync runs, **When** it reads or writes data, **Then** it uses the `CrmConnection`/`CrmSyncLog` models with `client_id`, `workspace_id`, and UUID `id`, and the conflict-resolution audit log from AD-40.
+**Given** lead scores or signals are pushed to CRM, **When** data is written, **Then** it writes through the shared `Memory`/`LeadScore` layer, not a separate CRM-only cache.
+_FR-67. Governed by AD-3, AD-31 (`client_id`), AD-40._
 
-### Story 21.6: Zalo Integration (Vietnam Market) `[PROPOSED]`
+### Story 21.6: Zalo Integration (Vietnam Market) `[DEFERRED]`
 
 As a Vietnamese salesperson,
 I want to communicate with leads via Zalo,
 Because 81% of Vietnamese professionals use Zalo as their primary messaging platform.
 
-**Acceptance Criteria:**
+**Status:** Deferred out of MVP per **AD-41**. UX and contracts keep Zalo disabled until legal/ToS/business messaging gates close.
+
+**Acceptance Criteria (future):**
 **Given** a Zalo OA connection, **When** configured, **Then** outreach sequences can include Zalo messages.
 **Given** a lead with Zalo contact, **When** outreach is triggered, **Then** personalized Zalo messages are sent.
 **Given** a Zalo reply, **When** received, **Then** it's logged in the lead's activity timeline.
@@ -2486,7 +2506,35 @@ So that cost is tied to actual pipeline value delivered.
 **Acceptance Criteria:**
 **Given** a pricing plan, **When** selected, **Then** outcome-based option is available: pay per qualified meeting booked OR pay per lead enriched.
 **Given** usage, **When** tracked, **Then** the dashboard shows cost-per-meeting and cost-per-lead metrics.
-_FR-69._
+**Given** a meeting is booked or a lead is enriched, **When** an outcome event is recorded, **Then** it writes an `OutcomeEvent` row (with `client_id`, `workspace_id`, `billing_event_id`) and a `BillingEvent` row with `usage_type` of `outcome_meeting_booked` or `outcome_lead_enriched`, debiting `User.credit_micros_balance` via the existing wallet service (AD-8, AD-10, AD-42). `TokenUsage` is not used for business outcomes.
+**Given** a pricing plan is configured, **When** it is persisted, **Then** it uses `PricingPlan` with `client_id`, `workspace_id`, and UUID `id` (AD-31, AD-42).
+**Given** outcome pricing is enabled, **When** the user views the dashboard, **Then** the dashboard reuses or extends the usage/credit dashboard from Story 8.3 (AD-10).
+_FR-69. Governed by AD-8, AD-10, AD-31 (`client_id`), AD-42._
+
+---
+
+## Epic 21 UX Contract Traceability (2026-08-11 refresh)
+
+Tám pattern mới từ audit Origami đã được đưa vào UX contracts. Mapping dưới đây liên kết các pattern này với FRs, stories, và canonical contracts.
+
+| ID | UX Pattern | FR / Story | Canonical Contract | Priority | Status |
+|---|---|---|---|---|---|
+| N1 | Sidebar onboarding checklist | Story 21.4 (SDR activation) | `ux-contract-sidebar-onboarding.md` | P1 | Contracted |
+| N2 | Workspace mode switch (Outbound / Research / Content) | FR-66 / Story 21.4 | `ux-contract-workspace-mode-switch.md` | P1 | Contracted |
+| N3 | Tables directory / lead lists library | FR-63 / Story 21.1 | `ux-contract-tables-directory.md` | P2 | Contracted |
+| N4 | Inbox empty state + Email only; lead source from all scrapers | FR-66 / Story 21.4 | `ux-contract-lead-intelligence-panel.md` §8 | P0 | Contracted |
+| N5 | Positive-reply notifications (email/Telegram only; Zalo disabled) | FR-66 / Story 21.4 | `ux-contract-positive-reply-notifications.md` | P1 | Contracted |
+| N6 | Per-lead projected cost inline | FR-69 / Story 21.7 | `ux-contract-lead-intelligence-panel.md` §7 | P1 | Contracted |
+| N7 | Source-specific table tabs (dynamic, all scraper/connector sources) | FR-63 / Story 21.1 | `ux-contract-lead-intelligence-panel.md` §2.1 | P2 | Contracted |
+| N8 | “Connect a campaign” status chip | FR-66 / Story 21.4 | `ux-contract-lead-intelligence-panel.md` §5 | P1 | Contracted |
+
+**Evidence:** `ux-research-origami-final-2026-08-11.md` + `../evidence/origami-*-2026-08-11.*`.
+
+**Hand-off:** `implementation-artifacts/epic21-ux-handoff-2026-08-11.md`.
+
+**Wireframes:** `ux-design/epic21-ux-wireframes-2026-08-11.md`.
+
+**Open governance:** Zalo OA setup UI và LinkedIn automation **deferred** out of MVP; email outreach legal/ToS, vendor enrichment POC, PII pipeline, CRM sync scope, và outcome-pricing display vẫn pending trước khi chuyển sang implementation.
 
 ---
 

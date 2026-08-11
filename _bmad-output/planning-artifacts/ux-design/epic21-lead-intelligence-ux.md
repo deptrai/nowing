@@ -585,7 +585,46 @@ CampaignSection
 
 ---
 
-**Draft Date:** 2026-08-10
+## 10. Refresh 2026-08-11 — Additional Patterns from Deeper Origami Navigation
+
+### 10.1 New Screens Observed
+
+Full research with evidence: `ux-research-origami-final-2026-08-11.md`. Screenshots: `../evidence/origami-*-2026-08-11.*`.
+
+| Screen | URL | Key Patterns | Evidence |
+|---|---|---|---|
+| Tables list | `/tables` | Lead lists library, search, sort, source tags, last-updated | `origami-tables-full-2026-08-11.jpg` |
+| Inbox empty | `/sequences/inbox` | “Start your first outreach campaign”, Email/LinkedIn CTA | `origami-inbox-empty-2026-08-11.png` |
+| Data panel | `/chat?table=...` | Fit score, filter chips, campaign chip, projected cost | `origami-data-panel-2026-08-11.png` |
+| Chat panel | `/chat?table=...` | Suggested next actions | `origami-chat-panel-2026-08-11.png` |
+| Settings | `/settings` | Profile, browser notifications, show credit balance, keep sidebar expanded, email positive replies | (not captured) |
+| Chats list | `/chats` | Sort, tags, actions menu, create chat | (not captured) |
+| Mode switch | Sidebar top tabs | **Outbound** / **Content** project modes | `origami-tables-full-2026-08-11.jpg` |
+
+### 10.2 Additional UX Proposals (N1–N8)
+
+Canonical contracts merged/created from `ux-contract-epic21-addendum-2026-08-11.md`:
+
+| ID | Proposal | Priority | Contract / Status |
+|---|---|---|---|
+| N1 | Onboarding checklist in sidebar (5 steps) | P1 | `ux-contract-sidebar-onboarding.md` |
+| N2 | Workspace mode switch (Outbound / Research / Content) | P1 | `ux-contract-workspace-mode-switch.md` |
+| N3 | Tables directory / lead lists library | P2 | `ux-contract-tables-directory.md` |
+| N4 | Inbox empty state + **Email** only; lead source chọn từ tất cả scraper | P0 | Merged into `ux-contract-lead-intelligence-panel.md` §8 |
+| N5 | Positive-reply notifications (email/Telegram only; Zalo disabled) | P1 | `ux-contract-positive-reply-notifications.md` |
+| N6 | Per-lead projected cost inline | P1 | Merged into `ux-contract-lead-intelligence-panel.md` §7 |
+| N7 | Source-specific table tabs (động, tất cả scraper/connector) | P2 | Merged into `ux-contract-lead-intelligence-panel.md` §2.1 |
+| N8 | “Connect a campaign” status chip in lead table | P1 | Merged into `ux-contract-lead-intelligence-panel.md` §5 |
+
+### 10.3 Duplicate Check
+
+- **Already covered in canonical contracts:** 2-panel layout, data table, fit score badge, filter chips, suggested actions, row actions (star/enrich/sequence/remove), campaign/sequence integration, credit/usage dashboard.
+- **New patterns now in contracts:** N1–N8 (see table above).
+- **Already in Nowing (no need to copy):** Telegram notifications foundation (Story 11.1); credit balance display in usage dashboard (`ux-contract-usage-dashboard.md`).
+
+---
+
+**Draft Date:** 2026-08-10 (refreshed 2026-08-11)
 **Author:** Sally (UX Designer)
-**Status:** Merged into canonical UX contracts — Zalo/outcome-pricing screens require validation
-**Next Step:** Validate Zalo OA setup + outcome-pricing UX with legal/business; then create final UX contract updates
+**Status:** Merged into canonical UX contracts — Zalo/outcome-pricing screens require validation — **Addendum 2026-08-11 merged/contracted** (see `ux-contract-epic21-addendum-2026-08-11.md`)
+**Next Step:** PO validate N4 Zalo flow and N5 notification permissions; then hand off `ux-contract-lead-intelligence-panel.md` §8 and `ux-contract-positive-reply-notifications.md` to implementation

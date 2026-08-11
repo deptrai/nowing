@@ -4,7 +4,7 @@
 **Phạm vi:** Epic 21 — Lead Intelligence 2-panel layout
 **Bám vào:** FR-63..FR-69, Story 21.1-21.7, AD-36..AD-42
 **Loại tài liệu:** *contract* — định nghĩa UI phải biểu diễn được những trạng thái nào.
-**Ghi chú:** Zalo OA connection setup UI và outcome-pricing display screens còn pending validation sau khi legal/ToS và business verification đóng.
+**Ghi chú:** Merged N4/N6/N7/N8 từ `ux-contract-epic21-addendum-2026-08-11.md` (Origami refresh 2026-08-11). Zalo OA connection setup UI và outcome-pricing display screens còn pending validation sau khi legal/ToS và business verification đóng.
 
 ---
 
@@ -35,6 +35,21 @@ Chat panel (trái) + Data panel (phải), collapsible.
 | Leads | Lead list với fit score, company, website | FR-64, FR-65 |
 | Signals | Intent signals (funding, hiring, tech stack) | FR-63 |
 | Sequences | Outreach sequences & progress | FR-66 |
+| Sources | Lead list by source (tất cả scraper/connector đã dùng) | N7 / multi-source |
+
+### Lead Source Tabs (N7)
+
+Khi workspace có leads từ nhiều nguồn, tab **Sources** hiển thị sub-tabs. Các tab được sinh động từ registry các scraper/connector đã tạo lead cho workspace, không hard-code.
+
+| Tab | Source | Badge | Ví dụ |
+|---|---|---|---|
+| All | Tất cả nguồn | tổng lead count | — |
+| <source_id> | Nguồn cụ thể | count từ nguồn đó | X, Instagram, TikTok, Reddit, YouTube, Google Search, Google Maps, Amazon, web crawl, Exa, Indeed, Walmart, batdongsan, chotot, muaban, VietnamWorks, TopCV, ITviec, … |
+
+- Sub-tab chỉ hiển thị khi nguồn đó có ít nhất 1 lead trong workspace.
+- Tên/tab label lấy từ `provider` hoặc `source` metadata của lead.
+- Chuyển tab không reset filter/sort.
+- Cho phép cross-reference cùng một lead giữa các nguồn.
 
 ### Table Columns (Leads Tab)
 | Column | Width | Sortable | Filterable |
@@ -109,6 +124,15 @@ Inline data refinement.
 | Active | "Active: Sequence Name" + progress |
 | Paused | "Paused: Sequence Name" |
 
+### Campaign Chip Behavior (N8)
+
+- Hiển thị ở cột **Campaign** của lead row hoặc trong **Sequences** tab.
+- Trạng thái `Not connected` dùng màu xám/yellow subtle; `Active` màu xanh; `Paused` màu cam.
+- Click chip `Not connected` → dropdown chọn sequence hoặc "Create new sequence".
+- Click chip `Active`/`Paused` → mở sequence detail.
+- Nút "Send & export" disabled hoặc warning nếu lead chưa gắn sequence.
+- Gắn sequence → lead được thêm vào sequence steps, chip chuyển sang `Active`.
+
 ### Sequence Progress
 ```
 Step 1: ✅ Sent    Step 2: ⏳ Waiting    Step 3: ○ Pending
@@ -126,16 +150,65 @@ Step 1: ✅ Sent    Step 2: ⏳ Waiting    Step 3: ○ Pending
 
 ---
 
-## 7. Credits Display
+## 7. Credits & Projected Cost Display
 
 Hiển thị cost-per-action transparency.
 
 | Context | Display |
 |---------|---------|
-| Enrich button | "2.5 credits ($0.036) per lead" |
+| Enrich button (row) | "2.5 credits ($0.036) per lead" |
 | Sequence start | "Est. 5-10 credits per sequence" |
 | Header | Total credits remaining: "$5.03" |
+| Pre-enrich row (N6) | "X credits ($Y) per lead" hoặc "estimated" nếu chưa xác định |
+| Bulk action (N6) | "Projected cost: X credits ($Y) for Z leads" cập nhật theo filter/selection |
+| Total projected (N6) | "Total projected: X credits ($Y)" trước khi enrich hoặc gửi |
+
+### Projected Cost Behavior
+- Tính toán dựa trên FR-69 / Story 21.7.
+- Cập nhật real-time khi user thay đổi filter, sort, hoặc chọn leads.
+- Nếu cost không xác định → hiển thị "estimated" với tooltip giải thích.
 
 ---
 
-_Trace: epic21-lead-intelligence-ux.md → AD-36..AD-42 → FR-63..FR-69_
+## 8. Inbox Empty State & Channel CTAs (N4)
+
+Khi inbox/runs tab chưa có campaign nào, hiển thị empty state tập trung outbound.
+
+| Element | Content | Bắt buộc |
+|---|---|---|
+| Heading | "Start your first outreach campaign" | ✅ |
+| Subtext | "Build a lead list from any scraper, then connect an email sequence" | ✅ |
+| Primary CTA | "Start a campaign" | ✅ |
+| Outbound channel | **Email** | ✅ |
+| Lead source prompt | "Choose a lead source" (hiển thị sau khi click Start) | ✅ |
+
+### Channel CTA Behavior
+- **Email** là outbound channel duy nhất cho MVP.
+- **LinkedIn** và **Zalo** bị **tắt / ẩn**; không hiển thị trong empty state cho đến khi legal/ToS và sender setup được chốt (nếu có).
+- Click "Start a campaign" → mở flow 2 bước:
+  1. **Chọn lead source:** dropdown/list các scraper/connector đã kết nối trong workspace (ví dụ: X, Instagram, TikTok, Reddit, YouTube, Google Search, Google Maps, Amazon, web crawl, Exa, Indeed, Walmart, batdongsan, chotot, muaban, VietnamWorks, TopCV, ITviec). Có thể chọn nhiều nguồn.
+  2. **Chọn email sender** và **tạo sequence**.
+- Kênh Email chưa có sender/connection → disabled với tooltip "Connect an email sender first".
+- Lead source chưa có kết nối → disabled với tooltip "Connect [source] connector first".
+
+---
+
+## 11. Architecture Enforcement Notes
+
+To prevent rebuilding existing infrastructure, the UI must rely on these shared backend components:
+
+| UI Surface | Shared backend / AD | Constraint |
+|---|---|---|
+| Lead source list | `CapabilityRegistry` metadata (`emits_leads=true`) (AD-3, AD-39, FR-6) | The source dropdown must be populated from `CapabilityRegistry`/`LeadSource` APIs, not a hard-coded list. Lead sources are capabilities that declare `emits_leads=true`. |
+| Source-specific tabs | `CapabilityRegistry` + `Lead` table (N7) | Tabs are rendered from the workspace's actual lead sources, filtered by `client_id` (AD-31); no hard-coded source menu. |
+| Enrichment cost | `BillingEvent` (`usage_type = "contact_enrichment"`) + `User.credit_micros_balance` (AD-8, AD-10, AD-36, AD-42) | Cost indicator must read from wallet/`BillingEvent` endpoints; `TokenUsage` is only for LLM token steps. |
+| Per-lead projected cost | `BillingEvent` + `credit_micros_balance` (AD-42) | Projected cost uses the existing cost estimator/usage dashboard; dashboard reuses Story 8.3. |
+| Sequence creation | New `Sequence`/`SequenceStep` tables, reusing Epic 6 scheduler/Celery/notification (AD-39) | Sequence builder UI persists to first-class `Sequence` schema, not `Automation`/`AutomationRun`. `Sequence` has `client_id` and UUID `id` (AD-31). |
+| Sequence triggers from signals | AD-33 `AlertRule` with `capability_id`, `notification_channels` containing `sequence_enrollment`, and `target.sequence_id` (AD-37, AD-39) | Signal-to-sequence triggers are configured as alert rules tied to a signal capability; no separate trigger UI. |
+| Positive-reply / delivery / bounce notifications | Story 11.1 notification service extended with `email_reply`, `email_delivered`, `email_bounced` (AD-39) | Notification preferences UI extends existing notification settings; inbound email handler (SES webhook/IMAP idle) is a capability. |
+| CRM connection | `Connection` / OAuth model (AD-3, AD-40) | CRM setup UI reuses the existing connector management flow. `CrmConnection`/`CrmSyncLog` include `client_id` (AD-31). |
+| Outcome-pricing display | `BillingEvent` + usage/credit dashboard from Story 8.3 (AD-10, AD-42) | Outcome-pricing metrics reuse the same usage/credit UI; `TokenUsage` is not used for business outcomes. |
+| PII in lead/contact display | `app/services/pii/redact.py` (AD-25) | UI never surfaces raw unredacted PII; redacted values come from the backend. `source_input` (raw recipe) is never shown in UI. |
+| Multi-vertical client isolation | `client_id` on all Epic 21 tables (AD-31) | UI filters lead lists, sequences, and outcomes by the active `client_id`; cross-client leakage is a hard failure. |
+
+_Trace: epic21-lead-intelligence-ux.md → AD-25, AD-33, AD-36..AD-42 → FR-63..FR-69_

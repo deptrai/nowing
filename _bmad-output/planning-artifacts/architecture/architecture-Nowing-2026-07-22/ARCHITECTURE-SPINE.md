@@ -33,7 +33,7 @@ companions:
 >
 > **✅ Bổ sung 2026-07-25 (đợt 2) — hai AD giải nốt readiness Q-2 / U-1 / U-2:**
 > - **`AD-11.1`** (trong AD-11) — **chốt:** `Memory` **tự chứa recipe** (`source_capability` + `source_input` + soft `source_run_id`), **không** dùng retention có điều kiện cho `runs`. Story **`9.6a`/`9.6b`** giờ có AC xác định.
-> - **`AD-17` mới** — deep research chạy trên **async door SẴN CÓ** của capability. **Cải chính readiness U-1:** hạ tầng async đã build end-to-end (`?mode=async` → 202, SSE `runs/{id}/events`, ring buffer replay 500 event, cancel, history) và **web đã có typed client**; `chainlens.research` đã nằm sau nó. **U-2 chốt:** đi SSE, **không** thêm `runs` vào `ZERO_PUBLICATION`. ⇒ Story `9.3` **thu hẹp** còn 3 việc thật: **Redis-backed bus** (bus hiện *single-process*, nhiều replica sẽ im lặng mất event), **async agent door** (agent door đang sync — đây mới là chỗ block chat turn), **notification + deliverable persistence**.
+> - **`AD-17` mới** — deep research chạy trên **async door SẴN CÓ** của capability. **Cải chính readiness U-1:** hạ tầng async đã build end-to-end (`?mode=async` → 202, SSE `runs/<id>/events`, ring buffer replay 500 event, cancel, history) và **web đã có typed client**; `chainlens.research` đã nằm sau nó. **U-2 chốt:** đi SSE, **không** thêm `runs` vào `ZERO_PUBLICATION`. ⇒ Story `9.3` **thu hẹp** còn 3 việc thật: **Redis-backed bus** (bus hiện *single-process*, nhiều replica sẽ im lặng mất event), **async agent door** (agent door đang sync — đây mới là chỗ block chat turn), **notification + deliverable persistence**.
 >
 > **✅ Bổ sung 2026-08-04 (đợt 4 — docs sync sau reconcile):**
 > - **`AD-8` amended** — `costDollars` parse từ terminal `done` frame (`done.usage.costDollars`), không phải event `usage` riêng; fallback 60k micros khi missing.
@@ -218,7 +218,7 @@ Không có parent spine; đây là spine cao nhất.
 ### AD-8 — Unified credit wallet
 - **Binds:** FR-31, FR-30, **FR-37** *(amended 2026-07-25)*
 - **Prevents:** nhiều loại credit/token khác nhau; **và (mới) cost basis phỏng đoán làm nguồn chân lý**
-- **Rule:** `User.credit_micros_balance` là ví duy nhất. `TokenUsage.cost_micros` ghi chi phí. `CreditPurchase`/`PagePurchase`/`UserIncentiveTask` cộng vào balance. ETL/premium model calls trừ qua `wallet_credit.py`.
+- **Rule:** `User.credit_micros_balance` là ví duy nhất. `TokenUsage.cost_micros` ghi chi phí **LLM/token**. `BillingEvent.cost_micros` ghi chi phí **business event không phải LLM** (enrichment, scoring, outcomes, signals, email). Cả hai đều debit cùng một ví qua `wallet_credit.py`.
 - **⚠️ Amendment 2026-07-25 (SCP chainlens-engine-boundary, A3) — cost thật, không giá phẳng:**
   - Chi phí của external service phải lấy từ **cost do service báo về**, không từ hằng số env. Với ChainLens: parse `costDollars` từ **SSE terminal `done` frame** (`done.usage.costDollars`) → `TokenUsage` với `usage_type = "deep_research"` → wallet debit.
   - `CHAINLENS_QUERY_MICROS_PER_CALL` (`app/config/__init__.py:806`) và `BillingUnit.CHAINLENS_QUERY` **xuống hạng fallback**, chỉ dùng khi engine không emit cost, và **mỗi lần dùng phải log warning** để đo tần suất.
@@ -233,7 +233,7 @@ Không có parent spine; đây là spine cao nhất.
 ### AD-10 — Token usage tracking per message/workspace/user
 - **Binds:** FR-30
 - **Prevents:** mất dấu vết chi phí
-- **Rule:** `TokenUsage` row được tạo qua `record_token_usage()` trong `app/services/token_tracking_service.py`. `message_id` unique khi not null. `usage_type` cho phép mở rộng (chat, indexing, image, podcast).
+- **Rule:** `TokenUsage` row được tạo qua `record_token_usage()` trong `app/services/token_tracking_service.py` cho **LLM token consumption** (prompt/completion/total tokens). `message_id` unique khi not null. `usage_type` cho phép mở rộng trong nhóm LLM (chat, indexing, image, podcast, deep_research). **Business events không phải LLM (enrichment, scoring, outcomes, signals, email)** phải dùng `BillingEvent` (AD-8, AD-42), không `TokenUsage`.
 
 ### AD-11 — Long-term research memory là first-class persistence layer (unified)
 - **Binds:** FR-32, Story 3.8, Story 4.5
@@ -246,9 +246,9 @@ Không có parent spine; đây là spine cao nhất.
   - `MemoryRelation` lưu edges giữa memories/documents/chats/scraper runs bằng adjacency list trong Postgres; không dùng graph DB riêng cho MVP.
   - `app/services/memory/` trở thành canonical memory package: `repository.py` (CRUD/search), `renderer.py` (render `Memory` rows ra markdown cho agent prompt), `parser.py` (parse markdown từ old PUT endpoints thành facts), `service.py` (markdown-compatible public API cho routes và `MemoryInjectionMiddleware` cũ).
   - `app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py` load user/team memory từ `Memory` table thay vì `User.memory_md`/`Workspace.shared_memory_md`.
-  - Structured endpoints: `POST /workspaces/{id}/memories`, `POST /workspaces/{id}/memories/search`, `PATCH /memories/{id}`, `DELETE /memories/{id}`. Legacy bridge endpoints (`GET/PUT /workspaces/{id}/memory`, `GET/PUT /users/me/memory`) vẫn hoạt động nhưng backed by `Memory` table.
+  - Structured endpoints: `POST /workspaces/<id>/memories`, `POST /workspaces/<id>/memories/search`, `PATCH /memories/<id>`, `DELETE /memories/<id>`. Legacy bridge endpoints (`GET/PUT /workspaces/<id>/memory`, `GET/PUT /users/me/memory`) vẫn hoạt động nhưng backed by `Memory` table.
   - `TokenUsage.usage_type` mở rộng thêm `memory_create` (và `memory_recall` nếu recall có bước summarization) để theo dõi chi phí extraction/embedding.
-  - **Memory search is for private workspace memory only.** `POST /workspaces/{id}/memories/search` searches user docs and extracted facts, not BĐS/jobs/news/finance/company listings. Public/vertical search queries route through `chainlens-research` (`POST /api/v1/search`) and are governed by AD-34/AD-35.
+  - **Memory search is for private workspace memory only.** `POST /workspaces/<id>/memories/search` searches user docs and extracted facts, not BĐS/jobs/news/finance/company listings. Public/vertical search queries route through `chainlens-research` (`POST /api/v1/search`) and are governed by AD-34/AD-35.
   - **Provenance phải nối được về nguồn có thể chạy lại (bổ sung 2026-07-25, FR-39).** `source_type`/`source_id` không chỉ để hiển thị citation — với nguồn `scraper_run`, `Memory` phải giữ đủ thông tin để **chạy lại đúng truy vấn cũ** và kiểm fact còn đúng không. Đây là nền của khả năng re-validate.
   - **🔒 AD-11.1 — Memory tự chứa recipe, KHÔNG phụ thuộc retention của `Run`** *(quyết định chốt 2026-07-25; giải readiness **Q-2**)*
     - **Quyết định:** khi tạo memory từ dữ liệu scrape, `Memory` **sao chép** `capability` (ví dụ `reddit.scrape`) và `input` (JSONB) từ `Run` vào chính nó, cộng thêm một **soft reference** tới `run_id` để truy vết.
@@ -257,6 +257,7 @@ Không có parent spine; đây là spine cao nhất.
     - **Rule cụ thể:** `Memory` thêm `source_capability` (String) + `source_input` (JSONB) + `source_run_id` (UUID, nullable, **không** FK cứng — `Run` được phép biến mất). `Memory.source_id` (Integer) **giữ nguyên** cho nguồn `document`/`chat_message`; **không** đổi kiểu cột đó (chống hồi quy).
     - **Re-validate:** `revalidate(memory_id)` đọc `source_capability` + `source_input` → gọi lại capability → so sánh → cập nhật `confidence` hoặc tạo `MemoryVersion`. **Không** xoá cứng memory cũ (giữ kỷ luật FR-34).
     - **Ràng buộc:** `source_input` là **snapshot bất biến** — không sửa sau khi tạo. Nếu cần đổi truy vấn thì tạo memory mới, không mutate recipe cũ (nếu không thì "re-validate" mất nghĩa).
+    - **Quan hệ với AD-25 (PII):** `source_input` chứa **raw `Run.input` JSONB** (recipe) và **không bị redact**. `Memory.content` / `Memory.embedding` là bản redact theo `AD-25`; `source_input` không được embedded, không gửi engine, không hiển thị UI.
     - **Áp dụng cho:** Story **`9.6a`** (provenance recipe) và **`9.6b`** (re-validation API) — AC giờ **xác định**, không còn "chọn một trong hai".
     - **⚠️ Hiện trạng vi phạm rule này (defect, verified 2026-07-25):** `Memory.source_id` là `Integer` (`app/db.py:2077`) nhưng `Run.id` là `UUID` (`app/db.py:3155`) → không lưu được link; **không có code nào ghi** `MemorySourceType.SCRAPER_RUN` (enum khai báo ở `app/db.py:572` rồi bỏ đó); và chưa có `source_capability`/`source_input`.
 
@@ -266,7 +267,7 @@ Không có parent spine; đây là spine cao nhất.
 - **Rule:**
   - `app/mcp_tools.py` thêm `McpToolGroup.MEMORY` và catalog entries cho `nowing_remember`, `nowing_recall`, `nowing_update_fact`, `nowing_continue_research`.
   - `nowing_mcp/mcp_server/features/memory.py` đăng ký 4 memory tools.
-  - Các tool gọi backend `MemoryService` qua `NowingClient` tại structured endpoints (`/workspaces/{id}/memories/*`).
+  - Các tool gọi backend `MemoryService` qua `NowingClient` tại structured endpoints (`/workspaces/<id>/memories/*`).
   - `nowing_remember` có thể được gọi bởi agent **hoặc** bởi backend auto-extraction sau mỗi chat turn.
   - `nowing_recall` trả về compact string, `top_k` mặc định thấp (≤5), có thể filter `type`/`tags` để tiết kiệm context window.
   - `nowing_continue_research` load `ResearchThread` context và `Memory` liên quan trước khi trả lời.
@@ -392,7 +393,7 @@ Và: **không có `NOTICE`** (upstream cũng không có), **README không credit
 ### AD-17 — Deep research chạy trên async door SẴN CÓ của capability; không phát minh flow mới
 - **Binds:** NFR-9 State A, FR-24, FR-38; Story `9.3`
 - **Prevents:** story `9.3` tự thiết kế một cơ chế job/progress/notify riêng cho deep research trong khi hạ tầng đó **đã tồn tại và đã có typed client ở web**
-- **Giải:** readiness **U-1** (không có AD cho async flow) + **U-2** (quyết định delivery)
+- **Rule:** Story `9.3` **PHẢI** dùng async capability door đã có (`POST .../chainlens/research?mode=async` → 202 + `X-Run-Id`, SSE progress, cancel, history). Không tạo bảng job mới, không tạo endpoint progress mới, không thêm `runs` vào `ZERO_PUBLICATION`.
 
 #### 🔎 Cải chính U-1 — hạ tầng async ĐÃ CÓ end-to-end (verified 2026-07-25)
 
@@ -400,12 +401,12 @@ Readiness report ghi *"không AD nào định nghĩa flow này"* và ngụ ý ph
 
 | Mảnh | Đã có ở đâu |
 |---|---|
-Submit fire-and-forget | `POST /workspaces/{id}/scrapers/chainlens/research?mode=async` → insert `Run` status `running`, spawn background task, trả **202** + `X-Run-Id` (`app/capabilities/core/access/rest.py:312-330`) |
-Progress live | `GET .../runs/{run_id}/events` — SSE (`rest.py:493`), nguồn từ `emit_progress` qua `progress_scope` |
+Submit fire-and-forget | `POST /workspaces/<id>/scrapers/chainlens/research?mode=async` → insert `Run` status `running`, spawn background task, trả **202** + `X-Run-Id` (`app/capabilities/core/access/rest.py:312-330`) |
+Progress live | `GET .../runs/<run_id>/events` — SSE (`rest.py:493`), nguồn từ `emit_progress` qua `progress_scope` |
 Replay khi reconnect | `run_event_bus` giữ **ring buffer 500 event** per run (`app/capabilities/core/events.py`) |
 Terminal | event `run.finished`; client kết nối muộn đọc snapshot cuối từ hàng `runs` |
-Cancel | `POST .../runs/{run_id}/cancel` (`rest.py:559`) — bus giữ luôn `asyncio.Task` để với tới |
-History | `GET .../runs` + `GET .../runs/{run_id}` (`rest.py:463`, `482`) |
+Cancel | `POST .../runs/<run_id>/cancel` (`rest.py:559`) — bus giữ luôn `asyncio.Task` để với tới |
+History | `GET .../runs` + `GET .../runs/<run_id>` (`rest.py:463`, `482`) |
 **Typed client ở web** | `nowing_web/lib/apis/scrapers-api.service.ts:68` đã build `?mode=async`; `contracts/types/scraper.types.ts:56` type response 202 |
 
 ⇒ **Rule: Story `9.3` PHẢI dùng đường này.** Không tạo bảng job mới, không tạo endpoint progress mới, không thêm `runs` vào `ZERO_PUBLICATION`.
@@ -433,7 +434,7 @@ Progress hiện chỉ có **2 event** cho deep research — `emit_progress("star
 ### AD-18 — Memory injection dùng retrieval CÓ CHẶN TRÊN; hai đường recall phải tách tên
 - **Binds:** NFR-1b, NFR-1c, NFR-1d, NFR-8, FR-32, FR-40; Story `3-14`
 - **Prevents:** prompt size và DB cost của **mọi lượt chat** tăng tuyến tính theo số memory của workspace — im lặng, không lỗi, và tệ dần đúng theo mức độ người dùng dùng sản phẩm nhiều
-- **Giải:** readiness **C-1** + **P-5**
+- **Rule:** Memory injection **PHẢI** dùng retrieval có chặn trên (HNSW/GIN đã có, top-k bounded), tổng ký tự inject ≤ 8.000, fail-soft phải phát counter, và hai đường `memory_injection` / `memory_recall` phải tách tên trong mọi tài liệu + metric. `NFR-8` không đo trước khi rule này xong.
 
 #### 🔎 Phát hiện — có HAI đường recall, PRD chỉ mô tả một (verified 2026-07-25)
 
@@ -472,13 +473,14 @@ rồi `render_memory_markdown(...)` toàn bộ vào prompt. Docstring của mode
 
 ### AD-19 — Năng lực vượt tường (anti-bot / CAPTCHA) thuộc Nowing; engine KHÔNG có stack riêng và KHÔNG gọi ngược inline
 - **Binds:** FR-38, FR-24, NFR-9, FR-39; Story `9-1a`, `9-3`, `9-6b`
-- **Liên quan:** `AD-15` (biên engine — **không** amend), `AD-16`/`AD-16.1` (biên BSL + cổng pháp lý), `AD-17` (async door), `AD-8` (cost), `AD-DEFER-7`/NG-1 (không owned index)
 - **Prevents:**
   - Dựng lại stack anti-bot thứ hai trong ChainLens (TypeScript) — hai bộ credential proxy, hai account solver, hai stack bypass phải bảo trì, cho **một** use case.
   - Cắm thang stealth vào **critical path** của deep research → làm `NFR-9` State B không bao giờ mở được.
   - Tạo phụ thuộc **hai chiều** Nowing ↔ engine, phá phát biểu một chiều của `AD-15`.
   - Đục lỗ vào `FR-37`: chi phí proxy/CAPTCHA phát sinh bên Nowing nhưng bị hiểu là thiếu trong `costDollars` → tái diễn under-meter từ hướng khác.
   - Coi "vượt CAPTCHA" là một tính năng có trạng thái hoàn thành.
+- **Rule:** Anti-bot/captcha/crawler bypass logic chỉ thuộc Nowing (`app/proprietary/**` BSL, `app/utils/{captcha,proxy,crawl}/` Apache-2.0); engine không có anti-bot stack và không gọi ngược Nowing crawler inline. URL bị chặn trở thành capability run async trên door đã có (`AD-17`). Chi phí Nowing (proxy/CAPTCHA) ghi trên ledger riêng, không nằm trong `costDollars` của engine.
+- **Liên quan:** `AD-15` (biên engine — **không** amend), `AD-16`/`AD-16.1` (biên BSL + cổng pháp lý), `AD-17` (async door), `AD-8` (cost), `AD-DEFER-7`/NG-1 (không owned index).
 
 #### 🔎 Trạng thái thật (verified 2026-07-26 — đọc code cả hai repo)
 
@@ -514,7 +516,7 @@ Thang stealth chạy tuần tự: browser launch + `solve_cloudflare` + `CAPTCHA
 
 `NFR-9` latency đang là **"chưa biết"** và đang bị gate State A→B. Cắm thang stealth vào critical path là tự tay đóng State B.
 
-⇒ Blocked URL trở thành **capability run async** trên door **đã có** (`?mode=async` → 202 + `X-Run-Id`, SSE `runs/{id}/events` — `AD-17`), bổ sung nguồn *sau*. Không tạo bảng job mới, không endpoint progress mới, không thêm `runs` vào `ZERO_PUBLICATION` (`AD-5` giữ nguyên).
+⇒ Blocked URL trở thành **capability run async** trên door **đã có** (`?mode=async` → 202 + `X-Run-Id`, SSE `runs/<id>/events` — `AD-17`), bổ sung nguồn *sau*. Không tạo bảng job mới, không endpoint progress mới, không thêm `runs` vào `ZERO_PUBLICATION` (`AD-5` giữ nguyên).
 
 **Lợi ích kép:** đây **đúng là** hạ tầng `FR-39`/`9-6b` (re-validation) cần — không phải việc phát sinh thêm.
 
@@ -554,12 +556,13 @@ BSL Additional Use Grant cấm bán Licensed Work — **hoặc sản phẩm mà 
 
 ### AD-20 — Screenshot-as-evidence dùng browser tier SẴN CÓ; KHÔNG adopt visual-RAG stack
 - **Binds:** FR-9, FR-12, FR-13, FR-39; NFR-6
-- **Liên quan:** `AD-2` (pgvector — **không** đổi), `AD-19` (browser tier), `AD-11.1` (provenance recipe), `AD-DEFER-7`/NG-1
 - **Prevents:**
   - Kéo một hệ retrieval thứ hai (FAISS/Qdrant + pipeline embed riêng + lifecycle index riêng) vào repo cho **một** use case.
   - Thêm một class hạ tầng mới (GPU cho VL embedding) vào một sản phẩm self-hostable.
   - Nhân storage lên hai bậc độ lớn trong lúc `OQ-3` retention còn chưa đóng.
   - Nhầm "visual RAG" là giải pháp CAPTCHA — **nó không phải** (xem dưới).
+- **Rule:** Screenshot/structured visual evidence chỉ dùng browser tier sẵn có (`DynamicFetcher`/`StealthyFetcher`/`app/proprietary/web_crawler/`). Không adopt visual-RAG stack mới (FAISS/Qdrant/VL embedding/GPU), không tạo pipeline embed/index lifecycle riêng.
+- **Liên quan:** `AD-2` (pgvector — **không** đổi), `AD-19` (browser tier), `AD-11.1` (provenance recipe), `AD-DEFER-7`/NG-1.
 
 #### 🔎 Bài toán có thật, và code của chính Nowing đã khai báo nó
 
@@ -622,7 +625,7 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - Fallback navigation dựa trên `entityId` + `workspaceId` khi metadata chưa load.
 - **Nguồn:** SurfSense PR #1609 pattern; `nowing_web/atoms/tabs/tabs.atom.ts`, `TabBar.tsx`, `LayoutShell.tsx` cần refactor.
 
-### AD-22 — VietnamWorks Scraper (public API + BSL fallback)
+### AD-22 — VietnamWorks Scraper (public API + BSL fallback) `[ADOPTED 2026-08-11 — code verified: unit tests pass; ToS approved]`
 - **Binds:** FR-43, Epic 12.1
 - **Prevents:** treat VietnamWorks like a generic HTML scraper; leaking PII into memory
 - **Rule:**
@@ -634,13 +637,13 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - PII redaction (`AD-25`) runs on `job_description` / `job_requirement` before memory storage.
   - **Hard gate:** ToS review must permit automated access and commercial use before build.
 
-### AD-23 — TopCV & ITviec Scrapers (HTML + anti-bot)
+### AD-23 — TopCV & ITviec Scrapers (HTML + anti-bot) `[ADOPTED 2026-08-11 — code verified: unit tests pass; ToS approved; TopCV anti-bot POC remains hard gate]`
 - **Binds:** FR-44, FR-45, Epic 12.2, 12.3
 - **Prevents:** anti-bot logic diverging from existing crawler stack; anti-bot bypass via exploit/CAPTCHA token storage
 - **Rule:**
   - Both scrapers live in `app/proprietary/platforms/topcv/` and `app/proprietary/platforms/itviec/` (BSL 1.1); capabilities live in `app/capabilities/topcv/scrape/` and `app/capabilities/itviec/scrape/` (Apache-2.0).
-  - **TopCV:** initial recon shows Cloudflare "Just a moment..." challenge on `GET https://www.topcv.vn/viec-lam/{keyword}`. Anti-bot POC must pass before merge. Reuse `AD-19` stack: headless browser / stealth / residential proxy / `BlockType` classifier / rate-limit. **Cost model decision (chọn Option A):** TopCV fetcher **MUST** be metered through the existing `WEB_CRAWL` billing path (`WEB_CRAWL_MICROS_PER_SUCCESS` + `WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE`) by calling `app/proprietary/web_crawler/connector.py` (`crawl_url`) and returning a `CrawlOutcome`. This is the only existing ledger that can accurately capture anti-bot cost. Capability `topcv.scrape` may register `BillingUnit.TOPCV_JOB` as a pass-through if needed, but the actual cost accounting flows through `WEB_CRAWL`/`captcha` usage. If this is not feasible (e.g., Cloudflare blocks all `AD-19` tiers), disable gracefully and do not merge. Cost gate: total per-query anti-bot cost >$0.05 disables TopCV.
-  - **ITviec:** server-rendered HTML (`GET https://itviec.com/it-jobs/{keyword}`), no Cloudflare in initial spike. Use static HTML parser (`lxml`) + rate-limit + user-agent rotation + circuit-breaker. Selectors: `job-card ipt-2`, `h3/a`, `employer-name`, `jd-main`.
+  - **TopCV:** initial recon shows Cloudflare "Just a moment..." challenge on `GET https://www.topcv.vn/viec-lam/<keyword>`. Anti-bot POC must pass before merge. Reuse `AD-19` stack: headless browser / stealth / residential proxy / `BlockType` classifier / rate-limit. **Cost model decision (chọn Option A):** TopCV fetcher **MUST** be metered through the existing `WEB_CRAWL` billing path (`WEB_CRAWL_MICROS_PER_SUCCESS` + `WEB_CRAWL_CAPTCHA_MICROS_PER_SOLVE`) by calling `app/proprietary/web_crawler/connector.py` (`crawl_url`) and returning a `CrawlOutcome`. This is the only existing ledger that can accurately capture anti-bot cost. Capability `topcv.scrape` may register `BillingUnit.TOPCV_JOB` as a pass-through if needed, but the actual cost accounting flows through `WEB_CRAWL`/`captcha` usage. If this is not feasible (e.g., Cloudflare blocks all `AD-19` tiers), disable gracefully and do not merge. Cost gate: total per-query anti-bot cost >$0.05 disables TopCV.
+  - **ITviec:** server-rendered HTML (`GET https://itviec.com/it-jobs/<keyword>`), no Cloudflare in initial spike. Use static HTML parser (`lxml`) + rate-limit + user-agent rotation + circuit-breaker. Selectors: `job-card ipt-2`, `h3/a`, `employer-name`, `jd-main`.
   - Salary on ITviec is hidden (`Sign in to view salary`); parse from title when possible or mark `salary_confidence` low.
   - Capabilities register `BillingUnit.TOPCV_JOB` and `BillingUnit.ITVIEC_JOB`.
   - **Hard gate:** TopCV anti-bot POC; ToS review for both.
@@ -660,18 +663,23 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - Exposed via REST, MCP (`nowing_vn_jobs_aggregate`), and chat agent tool.
   - **Agent/subagent wiring (UX finding U1):** A `vn_jobs` subagent package (`app/agents/chat/multi_agent_chat/subagents/builtins/vn_jobs/`) is created, exposing both per-source `*.scrape` and `vn_jobs.aggregate`. This satisfies the PRFAQ promise that the agent can answer cross-source salary/job-market questions. If the existing per-source subagent pattern is reused, `vn_jobs.aggregate` must be added to the tool roster of each per-source subagent; the dedicated `vn_jobs` subagent is preferred.
 
-### AD-25 — PII Redaction Pipeline for Job Data
-- **Binds:** FR-47, NFR-11, Epic 12.5
-- **Prevents:** storing candidate PII in `Memory`; logging PII values
+### AD-25 — Unified PII Redaction Pipeline (cross-vertical)
+- **Binds:** FR-47, NFR-11, Epic 12.5, **Epic 21.3** (lead enrichment)
+- **Prevents:** storing candidate/lead PII in `Memory`; logging PII values; rebuilding redaction per vertical
 - **Rule:**
-  - **Insertion point (chọn Option A):** PII redaction runs on `job_description` and `job_requirement` (and any other long-text fields from the source) **before** the text is passed to the LLM prompt in `MemoryExtractionService`. The raw `Run.output_text` remains unredacted for short-term audit (`RUNS_RETENTION_DAYS`); the redacted text is what gets embedded, extracted into facts, and stored in `Memory`.
-  - `app/services/pii/redact.py` (Apache-2.0) exposes `redact_job_pii(text: str) -> RedactedText` with `text`, `phones_detected`, `emails_detected`, `names_detected`, `has_pii`.
-  - `MemoryExtractionService` / `build_run_source_block` calls `redact_job_pii` when `run.capability` matches `*.scrape` for a job source or `vn_jobs.aggregate`.
-  - Detection: regex for Vietnamese phone numbers (`+84`, `0[3|5|7|8|9]...`, `0xx-xxx-xxxx` variants) and email addresses; heuristic/NER for person names.
-  - Mask or drop detected PII; do not store the raw unredacted JD in `Memory`.
+  - **Insertion point:** PII redaction runs on long-text / enriched fields **before** they are embedded, extracted into facts, sent to `chainlens-research`, or returned to a user-facing surface. The raw `Run.output_text` remains unredacted for short-term audit (`RUNS_RETENTION_DAYS`).
+  - **Immutable recipe vs. redacted content are separate objects:** `Memory.source_input` (raw `Run.input` JSONB) and `Memory.source_capability` are the **immutable re-validation recipe** (AD-11.1) and **must not** be redacted. The redacted text is stored in `Memory.content` / `Memory.embedding` and in `Chunk[]` sent to the engine. `Memory.source_input` is never embedded, never sent to the engine, and never shown in UI.
+  - `app/services/pii/redact.py` (Apache-2.0) exposes a single entry point: `redact_pii(text: str, context: str) -> RedactedText` with `text`, `phones_detected`, `emails_detected`, `names_detected`, `has_pii`.
+    - `context` selects the rule set: `job_data` (E12.5), `lead_enrichment` (E21.3), or `default`.
+    - `redact_job_pii()` is kept as a thin alias for backward compatibility.
+  - `MemoryExtractionService` / `build_run_source_block` calls `redact_pii(..., context="job_data")` when `run.capability` matches a job source or `vn_jobs.aggregate`.
+  - `EnrichmentService` (E21.3) calls `redact_pii(..., context="lead_enrichment")` after waterfall enrichment and before storing verified contact data or generating chunks.
+  - Detection: regex for Vietnamese and international phone numbers, email addresses; heuristic/NER for person names. Configurable per context.
+  - Mask or drop detected PII; do not store raw unredacted values in `Memory`.
   - Audit logs only counts (e.g., `phones_detected`, `emails_detected`, `names_detected`), never values.
-  - Unit tests for representative VietnamWorks, TopCV, and ITviec samples.
-  - If PII cannot be reliably redacted for a source, that source must be disabled for memory extraction until the pipeline is improved.
+  - Unit tests for representative VietnamWorks/TopCV/ITviec (job) and Cleanlist/BetterContact sample (lead) outputs.
+  - If PII cannot be reliably redacted for a source, that source must be disabled until the pipeline is improved.
+- **Enforcement:** E12.5 and E21.3 **must** use the same `app/services/pii/redact.py`; do not create separate `redact_lead_pii()` or `redact_candidate_pii()` modules.
 
 ### AD-26 — ToS & Legal Gates for New Scrapers
 - **Binds:** NFR-11, OQ-8, Epic 12 P0
@@ -703,33 +711,12 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
   - `Nowing` may keep product state (raw scraper logs, billing records, automation runs) and private user `Memory`, but these are **not** the canonical search index.
   - `Nowing` triggers gap-fill in `chainlens-research` (`POST /v1/gap-fill`) when a query misses data; `chainlens-research` either crawls the public web or invokes the relevant `Nowing` scraper.
 
-### AD-34 — Nowing Scraper Feed Contract (NEW 2026-08-08)
-
-- **Binds:** All `Nowing` scraper and aggregator capabilities
-- **Prevents:** Ingestion protocol divergence between `Nowing` and `chainlens-research`
-- **Rule:**
-  - Each `Nowing` scraper/aggregator implements a `to_chunks()` step that returns `Chunk[]`.
-  - `Chunk` uses the canonical schema from `@chainlens/types`: `content` (string) + `metadata` (strict) with required `source`, `sourceId`, `domain`, `fetchedAt`, `contentType`.
-  - `source` enum is owned by `chainlens-research`: `public_crawl`, `nowing_scraper`, `brave`, `searxng`, `jina`, `exa`, `tavily`, `perplexity`, `private_provider`. `Nowing` scrapers set `source: 'nowing_scraper'` and `domain` to the vertical domain (e.g. `bds`, `vn_jobs`, `news`, `finance`, `company`, `ecommerce`).
-  - `Nowing` calls `POST /v1/ingest/scraper` on `chainlens-research` with service auth. Batches are idempotent keyed by `sourceId`.
-  - On success `chainlens-research` returns `ingestJobId`; `Nowing` may surface this in `Run`/`ResearchThread` provenance.
-
-### AD-35 — Nowing Does Not Build Public/Vertical Search Corpus (NEW 2026-08-08)
-
-- **Binds:** `Nowing` `Memory`, `ResearchThread`, aggregators, and any product state
-- **Prevents:** `Nowing` duplicating `chainlens-research` index; chat/agent queries bypassing the canonical engine
-- **Rule:**
-  - `Nowing` may keep `Memory` rows for private user facts, chat context, and extracted semantic memories (`source_type` = `document`, `chat_message`, `scraper_run_fact`). These live in `Nowing` and are exposed via `NowingPrivateProvider` on demand.
-  - `Nowing` may keep raw scraper run logs and aggregation provenance for product state/billing.
-  - `Nowing` does **not** expose a search/filter API over BĐS, jobs, news, finance, or company listings from its own index. All user-facing search for public/vertical data goes through `chainlens-research`.
-
-
 ### AD-29 — Public Agent-Chat Surface (vertical clients) ✅ ACCEPTED 2026-08-07
 
 - **Binds:** Epic 18 / FR-56; PAT auth; rate limiting; cost attribution headers
 - **Prevents:** ad-hoc public chat routes without authz, audit, or tenant scope; confusing internal web chat with partner API
 - **Rule:**
-  - Public routes live under a dedicated prefix (e.g. `/api/v1/workspaces/{workspace_id}/agent-chat/...`) and are **explicitly allowlisted**. Internal web chat routes stay internal.
+  - Public routes live under a dedicated prefix (e.g. `/api/v1/workspaces/<workspace_id>/agent-chat/...`) and are **explicitly allowlisted**. Internal web chat routes stay internal.
   - Auth is **PAT (or equivalent machine credential)** with server-enforced scopes: at minimum `workspace_id`; optional `client_id` and `agent_id`. Client-supplied IDs cannot escalate beyond token scope.
   - Every request sets transaction-local DB context for workspace (existing `app.workspace_id`) and, when present, vertical client (`app.current_client_id` per AD-31) **before** any business query.
   - Rate limit per workspace and per client; exceed → `429` + `Retry-After`. Emit low-cardinality metrics; do not log full message bodies by default.
@@ -754,7 +741,7 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 - **Rule:**
   - `client_id` is a **hard isolation key orthogonal to `workspace_id`**. Workspace membership alone is insufficient for vertical-client data.
   - Define `client_id` representation before migrations (stable string vs FK to `clients` table). Prefer a first-class `clients` (or `vertical_clients`) table if more than one partner will land.
-  - Tables that carry vertical-client data (at least Memory; likely Run/TokenUsage/ResearchThread as needed) gain nullable `client_id` (NULL = Nowing-internal / web app).
+  - Tables that carry vertical-client data gain nullable `client_id` (NULL = Nowing-internal / web app). The list includes, at minimum: `Memory`, `Run`, `TokenUsage`, `ResearchThread`, `BillingEvent`, plus every Epic 21 table: `Lead`, `LeadSource`, `EnrichmentRequest`, `VerifiedContact`, `SignalEvent`, `SignalSubscription`, `LeadScore`, `Sequence`, `SequenceStep`, `SequenceEnrollment`, `SequenceEvent`, `SequenceRun`, `CrmConnection`, `CrmSyncLog`, `OutcomeEvent`, `PricingPlan`.
   - Recall and list paths **hard-filter**:
     - request with `client_id=X` → only rows with `client_id=X`
     - request without `client_id` → only rows with `client_id IS NULL` (or explicit internal scope)
@@ -777,29 +764,32 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 
 ## Stack
 
-| Name | Version |
-|---|---|
-| Python | 3.12 |
-| FastAPI | latest stable (Pydantic v2) |
-| SQLAlchemy | 2.x async |
-| Alembic | latest |
-| PostgreSQL | 15+ với pgvector extension |
-| Redis | 7+ (cache + Celery broker) |
-| Celery | latest |
-| LiteLLM | latest |
-| LangChain / LangGraph | latest |
-| OpenTelemetry | latest |
-| Node.js | 20+ |
-| Next.js | 16 |
-| React | 19 |
-| Tailwind CSS | v4 |
-| Jotai / Zustand | latest |
-| Tanstack Query | latest |
-| Plate.js | latest |
-| Electron | 42 |
-| Plasmo | latest |
-| Obsidian API | latest |
-| MCP SDK Python | latest |
+Pin actual versions from `pyproject.toml` / `package.json`; do not use "latest".
+
+| Name | Version | Source |
+|---|---|---|
+| Python | 3.12 | `nowing_backend/pyproject.toml` |
+| FastAPI | `>=0.115.8` (current pin) | `nowing_backend/pyproject.toml` |
+| SQLAlchemy | 2.x async (requires `psycopg[binary,pool]>=3.3.2`) | `nowing_backend/pyproject.toml` |
+| Alembic | `>=1.13.0` | `nowing_backend/pyproject.toml` |
+| PostgreSQL | 17+ với pgvector extension | `docker/docker-compose.deps-only.yml: pgvector/pgvector:pg17` |
+| Redis | 8+ (cache + Celery broker) | `docker/docker-compose.deps-only.yml: redis:8-alpine` |
+| Celery | `>=5.5.3` | `nowing_backend/pyproject.toml` |
+| LiteLLM | `>=1.83.7` | `nowing_backend/pyproject.toml` |
+| LangChain / LangGraph | `langchain>=1.2.13`, `langgraph>=1.1.3` | `nowing_backend/pyproject.toml` |
+| OpenTelemetry | API/SDK/Exporter `>=1.40.0`, semantic-conventions `>=0.61b0` | `nowing_backend/pyproject.toml` |
+| Node.js | 20+ (web/desktop); `>=18.0.0 <23.0.0` (browser extension) | `nowing_web/package.json`, `nowing_browser_extension/package.json` |
+| Next.js | `^16.1.0` | `nowing_web/package.json` |
+| React | `^19.2.3` (web), `18.2.0` (browser extension) | `nowing_web/package.json`, `nowing_browser_extension/package.json` |
+| Tailwind CSS | `^4.1.11` | `nowing_web/package.json` |
+| Jotai | `^2.15.1` | `nowing_web/package.json` |
+| Zustand | `^5.0.9` | `nowing_web/package.json` |
+| Tanstack Query | `^5.90.7` | `nowing_web/package.json` |
+| Plate.js | `^52.0.17` | `nowing_web/package.json` |
+| Electron | `^42.4.0` | `nowing_desktop/package.json` |
+| Plasmo | `0.90.5` | `nowing_browser_extension/package.json` |
+| Obsidian API | `latest` (plugin API, intentional) | `nowing_obsidian/package.json` |
+| MCP SDK Python | `>=1.25.0` | `nowing_backend/pyproject.toml` |
 
 ## Structural Seed
 
@@ -860,7 +850,7 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 | Escalation trang bị chắn → enrichment async *(còn thiếu)* | sẽ chạy trên door `?mode=async` sẵn có; tín hiệu từ engine (`partial` / `insufficientEvidence`) | **AD-19**, AD-17, AD-15 |
 | **Screenshot-as-evidence + vision fallback** *(còn thiếu — `grep screenshot app/**/*.py` = 0 hit)* | sẽ chụp tại tier StealthyFetcher (`page_action` đã nhận `page`); đọc bằng `get_vision_llm` đã có; key namespace ảnh **chưa quyết** (`app/file_storage/` hiện document-scoped) | **AD-20**, AD-8, AD-11.1 |
 | Memory → scraper-run provenance & re-validation | `nowing_backend/app/services/memory/`, `app/db.py` (Memory.source_capability/source_input/source_run_id) | **AD-11.1** (FR-39 — hiện có defect) |
-| **Async capability door** (submit/SSE/replay/cancel/history) — deep research chạy trên đây | `nowing_backend/app/capabilities/core/access/rest.py` (`?mode=async`, `runs/{id}/events`, `cancel`), `core/events.py` (`run_event_bus` + ring buffer 500), `core/progress.py`; client `nowing_web/lib/apis/scrapers-api.service.ts` | **AD-17**, AD-3 |
+| **Async capability door** (submit/SSE/replay/cancel/history) — deep research chạy trên đây | `nowing_backend/app/capabilities/core/access/rest.py` (`?mode=async`, `runs/<id>/events`, `cancel`), `core/events.py` (`run_event_bus` + ring buffer 500), `core/progress.py`; client `nowing_web/lib/apis/scrapers-api.service.ts` | **AD-17**, AD-3 |
 | Multi-replica bus cho async run *(còn thiếu)* | sẽ đặt Redis pub/sub sau interface `run_event_bus` | **AD-17**, AD-4 |
 | Research degradation → hybrid search | `nowing_backend/app/capabilities/chainlens/research/executor.py`, `app/retriever/` | AD-15 |
 | External OAuth connectors | `nowing_backend/app/routes/*_add_connector_route.py`, `app/connectors/` | AD-1 |
@@ -954,7 +944,7 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
 - **Binds:** Story 7-4 (dedicated connectors layout), Story 7-7 (MCP tool expansion), mọi future connector management UI
 - **Prevents:** Hai surface quản lý connector song song (modal + page) → maintenance gấp đôi, UX không nhất quán, hook chạy 2 lần
 - **Context (verified 2026-08-08):**
-  - Story 7-4 đã ship `/dashboard/{workspace_id}/connectors` — dedicated page với rail + detail pane.
+  - Story 7-4 đã ship `/dashboard/<workspace_id>/connectors` — dedicated page với rail + detail pane.
   - `connector-popup.tsx` (modal, 388 dòng) vẫn render trên mọi page khác qua `ConnectorIndicator` trong `client-layout.tsx`.
   - Composer "+" (Story 7-4 pass 2) dùng `importConnectorRequestAtom` → vẫn mở modal cho connector cụ thể, nhưng "Browse all" → navigate đến page.
   - `ConnectorDetailPane` reuse `useConnectorDialog` hook — hook consume atom, set `isOpen=true`. Trên `/connectors` page, modal bị ẩn (`!isConnectorsPage`) nhưng hook vẫn chạy.
@@ -975,7 +965,7 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
 
 ### AD-33 — Generic Alert Engine: một scheduler cho tất cả domain alerts  `✅ ACCEPTED 2026-08-08`
 
-- **Binds:** Story 12-6 (job alerts), 12-7 (property price alerts), 14-3 (news alerts), 15-3 (stock alerts), 15-4 (financial trend), 16-3 (company alerts), 17-3 (price drop alerts), 17-4 (competitor tracking)
+- **Binds:** Story 12-6 (job alerts), 12-7 (property price alerts), 14-3 (news alerts), 15-3 (stock alerts), 15-4 (financial trend), 16-3 (company alerts), 17-3 (price drop alerts), 17-4 (competitor tracking), **Story 21.1 (intent signal detection)**, **Story 21.4 (signal-driven sequence triggers)**
 - **Prevents:** 8 stories × independent scheduler + diff logic + notification dispatch = 8 implementation trùng lặp, 8 cron jobs, 8 notification path
 - **Context (verified 2026-08-08):**
   - Epic 6 đã có Automation infrastructure: scheduler (cron-based), RunService, capability execution, notification dispatch (in-app + Telegram).
@@ -986,15 +976,18 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
   - **`AlertRule` là data, không phải code:**
     ```python
     AlertRule = {
-      source: str,              # capability_id (e.g. "vn_jobs.aggregate", "bds_aggregator")
+      capability_id: str,       # registered Capability ID (e.g. "vn_jobs.aggregate", "bds_aggregator", "funding.signal"). Must exist in CapabilityRegistry.
       query: dict,              # structured query cho capability
       schedule: str,            # cron expr (e.g. "0 9 * * 1" = every Monday 9am)
       diff_strategy: str,       # "new_items" | "price_change" | "threshold_cross" | "trend_detect"
       threshold: dict | None,   # cho threshold_cross: {"field": "price", "op": "<", "value": 1000}
-      notification_channels: list[str],  # ["in_app", "telegram"]
+      notification_channels: list[str],  # ["in_app", "telegram", "email", "sequence_enrollment"]
+      target: dict | None,      # for "sequence_enrollment": {"sequence_id": uuid, "step_id": uuid | None}
     }
     ```
-  - **3 diff strategies builtin** (không thêm nữa trừ khi Rule of Three):
+  - **Capability registration required:** `capability_id` must match a registered capability. Signal capabilities register `emits_signals=true` (AD-37); lead-source capabilities register `emits_leads=true` (AD-39).
+  - **Notification channels:** `in_app`, `telegram`, `email` (subject to legal gate), `sequence_enrollment` (triggers AD-39 sequencer). Do not invent new channels per story.
+  - **4 diff strategies builtin** (không thêm nữa trừ khi Rule of Three):
     - `new_items`: query → so sánh với last snapshot → notify items mới. Dùng cho 12-6 (job alerts), 14-3 (news alerts).
     - `price_change`: query → so sánh price field với last snapshot → notify nếu delta > threshold. Dùng cho 12-7 (property), 15-3 (stock), 17-3 (price drop).
     - `threshold_cross`: query → so sánh field với threshold → notify nếu cross. Dùng cho 15-4 (trend), 16-3 (company events).
@@ -1009,6 +1002,29 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
 - **Linked PRD:** FR-44 (job alerts), FR-49 (news alerts), FR-50 (stock alerts), FR-51 (company alerts), FR-52 (price alerts) · Epic 6 (Automations) = `done` · Epic 12 stories 12-6→12-9 = `backlog`
 
 ---
+
+
+### AD-34 — Nowing Scraper Feed Contract (NEW 2026-08-08)
+
+- **Binds:** All `Nowing` scraper and aggregator capabilities
+- **Prevents:** Ingestion protocol divergence between `Nowing` and `chainlens-research`
+- **Rule:**
+  - Each `Nowing` scraper/aggregator implements a `to_chunks()` step that returns `Chunk[]`.
+  - `Chunk` uses the canonical schema from `@chainlens/types`: `content` (string) + `metadata` (strict) with required `source`, `sourceId`, `domain`, `fetchedAt`, `contentType`.
+  - `source` enum is owned by `chainlens-research`: `public_crawl`, `nowing_scraper`, `brave`, `searxng`, `jina`, `exa`, `tavily`, `perplexity`, `private_provider`. `Nowing` scrapers set `source: 'nowing_scraper'` and `domain` to the vertical domain (e.g. `bds`, `vn_jobs`, `news`, `finance`, `company`, `ecommerce`).
+  - `Nowing` calls `POST /v1/ingest/scraper` on `chainlens-research` with service auth. Batches are idempotent keyed by `sourceId`.
+  - On success `chainlens-research` returns `ingestJobId`; `Nowing` may surface this in `Run`/`ResearchThread` provenance.
+
+
+### AD-35 — Nowing Does Not Build Public/Vertical Search Corpus (NEW 2026-08-08)
+
+- **Binds:** `Nowing` `Memory`, `ResearchThread`, aggregators, and any product state
+- **Prevents:** `Nowing` duplicating `chainlens-research` index; chat/agent queries bypassing the canonical engine
+- **Rule:**
+  - `Nowing` may keep `Memory` rows for private user facts, chat context, and extracted semantic memories (`source_type` = `document`, `chat_message`, `scraper_run_fact`). These live in `Nowing` and are exposed via `NowingPrivateProvider` on demand.
+  - `Nowing` may keep raw scraper run logs and aggregation provenance for product state/billing.
+  - `Nowing` does **not** expose a search/filter API over BĐS, jobs, news, finance, or company listings from its own index. All user-facing search for public/vertical data goes through `chainlens-research`.
+
 
 ### AD-36 — Waterfall enrichment: buy via API, không build 14+ provider integrations `[ADOPTED 2026-08-10 — validation required before dev]`
 
@@ -1026,32 +1042,38 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
                                                   Next provider → ... → Exhausted → Flag low confidence
   ```
 - **New models:**
-  - `EnrichmentRequest` (id, lead_id, status, provider_results, cost_micros)
-  - `VerifiedContact` (id, lead_id, email, phone, verification_status, confidence, source_provider)
-- **TokenUsage.usage_type mở rộng:** thêm `contact_enrichment`
+  - `EnrichmentRequest` (id: UUID, workspace_id, client_id, lead_id, status, provider_results, cost_micros)
+  - `VerifiedContact` (id: UUID, workspace_id, client_id, lead_id, email, phone, verification_status, confidence, source_provider)
+- **BillingEvent.usage_type mở rộng:** thêm `contact_enrichment` (do not put business events in `TokenUsage`).
+- **Enforcement:** Before any verified contact data is embedded or stored, `EnrichmentService` **must** call `app/services/pii/redact.py` (`context="lead_enrichment"`) per **AD-25**. Do not create a separate lead PII redaction module.
 
 ---
 
 ### AD-37 — Signal detection framework: hybrid build + buy data feeds `[ADOPTED 2026-08-10 — validation required before dev]`
 
 - **Binds:** FR-63 (Intent Signal Detection), Epic 21
-- **Prevents:** Build 8+ independent scheduler/notification paths (giống AD-33 Anti-Pattern)
+- **Prevents:** Build 8+ independent scheduler/notification paths (giống AD-33 Anti-Pattern); building a separate bespoke knowledge graph for signals
 - **Rule:**
-  - **Signal Engine là một AlertRule template type** (governed by AD-33), không phải service mới
-  - **Signal types:**
-    - `funding` — Crunchbase/TechCrunch feeds (buy) + web scraping (build)
-    - `hiring` — Job board monitoring (build on existing scrapers)
-    - `tech_stack` — Website change detection (build)
-    - `executive_move` — LinkedIn monitoring (build on existing scrapers)
-    - `news` — News API (buy) + RSS feeds (build)
-  - **Signal storage:** `SignalEvent` (id, workspace_id, company_name, signal_type, source_url, confidence, detected_at, processed)
-  - **Signal → Lead Score:** High-confidence signals boost lead scoring (governed by AD-38)
-  - **Notification:** Reuse AD-33 notification dispatch (in-app + Telegram)
-  - **Monitoring frequency:** Daily scan + real-time webhooks for funding events
+  - **Signal Engine là một AlertRule template type** (governed by AD-33), không phải service mới.
+  - **Signal types → capability_id mapping:** Each signal type is produced by one registered capability:
+    - `funding` → `funding.signal` (Crunchbase/TechCrunch feeds + web scrape)
+    - `hiring` → `hiring.signal` (consumes `vn_jobs.aggregate` or other job scraper `Chunk[]`)
+    - `tech_stack` → `tech_stack.signal` (website change detection)
+    - `executive_move` → `executive_move.signal` (LinkedIn monitoring)
+    - `news` → `news.signal` (News API + RSS)
+  - **Signal capabilities register themselves** in `CapabilityRegistry` with `emits_signals=true` and `signal_types=[...]`. `AlertRule.source` is the `capability_id` (e.g. `hiring.signal`).
+  - **Signal storage:** `SignalEvent` is the canonical signal table. It stores a **pointer** (`chunk_id`/`source_url`) to the public/vertical data in `chainlens-research` (AD-27/AD-35), plus derived metadata (company, signal_type, confidence, detected_at). It does **not** duplicate the full public document into a second Nowing-owned corpus.
+  - **Memory row:** A `Memory` row of type `semantic` + tag `lead_signal` is created from a **redacted summary** of the signal (per AD-25) with `source_input` pointing to the original `chunk_id`/`capability`/`input`, so it participates in workspace RAG without becoming a public search index.
+  - **Signal → Lead Score:** High-confidence signals boost lead scoring (governed by AD-38).
+  - **Notification:** Reuse AD-33 notification dispatch. `AlertRule.notification_channels` may include `in_app`, `telegram`, `sequence_enrollment` (AD-39), `email` (subject to legal gate).
+  - **Monitoring frequency:** Daily scan + real-time webhooks for funding events.
 - **New models:**
-  - `SignalEvent` (id, workspace_id, company_name, signal_type, source_url, confidence, detected_at, processed)
-  - `SignalSubscription` (id, workspace_id, signal_types, notification_channels)
-- **Ghi chú:** Reuse AD-33 Alert Engine infrastructure — không build scheduler riêng
+  - `SignalEvent` (id: UUID, workspace_id, client_id, company_name, signal_type, source_url, chunk_id, confidence, detected_at, processed)
+  - `SignalSubscription` (id: UUID, workspace_id, client_id, signal_types, notification_channels)
+- **Enforcement:**
+  - Signal scheduler, diff, and notification dispatch **must** use AD-33 `AlertRule` and `Automation` runtime.
+  - Signal ingestion **must** write a `SignalEvent` and a redacted `Memory` row; no separate `signals` search index or vector store.
+  - Signal jobs **must** be registered as `CapabilityRegistry` capabilities with `emits_signals=true` so they are metered and billed like any other capability.
 
 ---
 
@@ -1068,31 +1090,40 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
     - RAG-based similarity matching against converted leads
     - AI reasoning + rule fallback
   - **Output:** Hot / Warm / Cold classification + numeric score (0-100)
-  - **Storage:** `LeadScore` (id, workspace_id, company_name, score, fit_score, intent_score, factors_json, computed_at)
-- **Integration with Memory:** Lead scores stored as `Memory` rows with type `semantic` + tags `lead_score`
-- **TokenUsage.usage_type mở rộng:** thêm `lead_scoring`
+  - **Storage:** `LeadScore` (id: UUID, workspace_id, client_id, company_name, score, fit_score, intent_score, factors_json, computed_at)
+- **Integration with Memory:** Lead scores stored as `Memory` rows with type `semantic` + tags `lead_score` (redacted summary of factors, per AD-25).
+- **BillingEvent.usage_type mở rộng:** thêm `lead_scoring` (do not put business events in `TokenUsage`).
 
 ---
 
-### AD-39 — Sequencer: multi-channel outreach (email, LinkedIn, Zalo) `[ADOPTED 2026-08-10 — validation required before dev]`
+### AD-39 — Sequencer: email-first outreach; multi-source lead ingestion `[REVISED 2026-08-11 — validation: email-outreach legal/ToS; lead-source registry]`
 
 - **Binds:** FR-66 (Outbound Prospecting Automation), Epic 21
-- **Prevents:** Build separate outreach tools per channel
+- **Prevents:** Build separate outreach tools per channel; hard-coding lead sources
 - **Rule:**
-  - **Sequence builder:** Multi-step sequences (trigger → wait → action → condition → action)
-  - **Channels:**
-    - Email (SMTP/SES) — reuse existing email infrastructure
-    - LinkedIn (via API or automation)
-    - Zalo (Zalo OA API) — Vietnam market
-  - **Personalization:** AI-generated messages using lead context + ICP + intent signals
-  - **Tracking:** Delivery, open, reply, meeting booked → feedback loop to lead scoring
-  - **Compliance:** Unsubscribe handling, rate limiting, Decree 356 compliance
-- **New models:**
-  - `Sequence` (id, workspace_id, name, trigger_type, status)
-  - `SequenceStep` (id, sequence_id, step_order, channel, template, wait_duration, condition)
-  - `SequenceEnrollment` (id, sequence_id, lead_id, status, current_step, enrolled_at)
-  - `SequenceEvent` (id, enrollment_id, event_type, channel, metadata, created_at)
-- **Ghi chú:** Start với email-only, sau đó add LinkedIn + Zalo
+  - **Sequence is a new bounded context, not an `Automation` subtype.** `Sequence`, `SequenceStep`, `SequenceEnrollment`, `SequenceEvent`, `SequenceRun` are first-class tables. The **only** reuse from Epic 6 is the scheduler/Celery execution pattern and the notification dispatcher; the data schema is **not** shared with `Automation`/`AutomationRun`.
+  - **Sequence builder:** Multi-step sequences (trigger → wait → action → condition → action). A step is one of: `send_email`, `wait`, `condition`, `update_lead_score`, `update_crm`, `tag`.
+  - **Outbound channel (MVP):** Email only (SMTP/SES, reuse existing email infrastructure). `linkedin`/`zalo` reserved in enum but **disabled in MVP**.
+  - **Lead source:** Leads can be generated from any workspace capability that emits `Lead` records. A lead-source capability **registers itself** in `CapabilityRegistry` with `emits_leads=true`; `LeadSource` is a **derived cache** (not a separate source of truth) updated by the ingestion pipeline.
+  - **Lead ingestion:** A single `lead_extractor` capability consumes `Chunk[]`/typed records from scrapers and normalizes to `Lead` rows. It is the **only** writer of `Lead` and `LeadSource`.
+  - **Personalization:** AI-generated messages using lead context + ICP + intent signals.
+  - **Tracking:** Delivery, open, reply, meeting booked → feedback loop to lead scoring. Each event is a `SequenceEvent` AND a `BillingEvent` (AD-42).
+  - **Compliance:** Unsubscribe handling, rate limiting, email outreach legal/ToS. Email sending disabled until legal gate closes.
+- **New models** (all with `workspace_id`; see AD-31 for `client_id`):
+  - `Lead` (id: UUID, workspace_id, client_id, source, source_url, company_name, domain, industry, fit_score, intent_score, status, enriched, created_at)
+  - `LeadSource` (id, workspace_id, client_id, provider, enabled_for_leads, last_ingest_at, lead_count)
+  - `Sequence` (id: UUID, workspace_id, client_id, name, trigger_type, status)
+  - `SequenceStep` (id: UUID, sequence_id, step_order, step_type, channel, template, wait_duration, condition)
+  - `SequenceEnrollment` (id: UUID, sequence_id, lead_id, status, current_step, enrolled_at)
+  - `SequenceEvent` (id: UUID, enrollment_id, event_type, channel, metadata, created_at)
+  - `SequenceRun` (id: UUID, workspace_id, client_id, sequence_id, enrollment_id, status, started_at, completed_at) — used for cost/audit, **not** `AutomationRun`.
+- **Enforcement (cross-epic reuse):**
+  - `Sequence`/`SequenceStep` use **new tables**; do not reuse `Automation`/`AutomationRun` schema literally. `AutomationRun.id` is `int` and `TokenUsage.run_id` is UUID — these are incompatible for cost attribution.
+  - Sequencer scheduling/execution/retry **must** use the Epic 6 pattern (Celery task, `RunService`-style executor, idempotency, retry) but **on the `SequenceRun` model**, not `AutomationRun`.
+  - Positive-reply/delivery/delivery-failure notifications **must** reuse the Story 11.1 notification dispatcher by adding `email_reply`, `email_delivered`, `email_bounced` to `NotificationChannel` and implementing an inbound email handler (SES webhook or IMAP idle) as a capability.
+  - Lead source discovery **must** query `CapabilityRegistry` metadata (`emits_leads`); do not hard-code a source list.
+  - Signal-driven sequence triggers **must** be implemented as AD-33 `AlertRule` templates with `notification_channels` containing `sequence_enrollment` (AD-33).
+- **Ghi chú:** Start email-only. LinkedIn/Zalo may be added later behind feature/ToS gates.
 
 ---
 
@@ -1115,28 +1146,27 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
   - **Conflict resolution:** Last-write-wins with audit log
 - **Integration pattern:** OAuth 2.0 + webhooks for real-time sync
 - **New models:**
-  - `CrmConnection` (id, workspace_id, provider, credentials_encrypted, sync_config, last_sync_at)
-  - `CrmSyncLog` (id, connection_id, direction, entity_type, entity_id, status, error_message, synced_at)
+  - `CrmConnection` (id: UUID, workspace_id, client_id, provider, credentials_encrypted, sync_config, last_sync_at)
+  - `CrmSyncLog` (id: UUID, workspace_id, client_id, connection_id, direction, entity_type, entity_id, status, error_message, synced_at)
 - **Ghi chú:** Reuse existing OAuth connector infrastructure (AD-3, FR-7)
 
 ---
 
-### AD-41 — Zalo integration: Vietnam market via Zalo OA `[ADOPTED 2026-08-10 — validation required before dev]`
+### AD-41 — Zalo/LinkedIn channels: deferred out of MVP `[DEFERRED 2026-08-11]`
 
 - **Binds:** FR-68 (Zalo Integration), Epic 21
-- **Prevents:** Miss Vietnam market opportunity (81% professionals use Zalo)
+- **Prevents:** Premature build of channels that lack legal/ToS/business verification gates
 - **Rule:**
-  - **Zalo OA (Official Account) là primary channel** cho Vietnam market
-  - **Capabilities:**
-    - Send personalized Zalo messages to leads
-    - Receive replies → log in lead activity timeline
-    - Zalo OA authentication (OAuth flow)
-  - **Compliance:** Zalo business messaging policies + Decree 356
-  - **Fallback:** Nếu lead không có Zalo → dùng email hoặc LinkedIn
-- **New models:**
-  - `ZaloConnection` (id, workspace_id, oa_id, access_token_encrypted, refresh_token_encrypted)
-  - `ZaloMessage` (id, lead_id, direction, content, status, sent_at, delivered_at, read_at)
-- **Ghi chú:** Zalo OA API cần business verification (team action required)
+  - **Zalo/LinkedIn are disabled in MVP.**
+  - AD-39 `channel` enum reserves `zalo` and `linkedin` values, but UI/ sequencer rejects them with a clear "deferred" message until this AD is re-activated.
+  - **Future activation conditions:**
+    - Zalo OA business verification complete
+    - Zalo business messaging ToS review + Decree 356 compliance sign-off
+    - LinkedIn automation legal/ToS review (API vs browser automation)
+- **New models (design only; do not build in MVP):**
+  - `ZaloConnection` (id: UUID, workspace_id, client_id, oa_id, access_token_encrypted, refresh_token_encrypted)
+  - `ZaloMessage` (id: UUID, workspace_id, client_id, lead_id, direction, content, status, sent_at, delivered_at, read_at)
+- **Ghi chú:** Do not build Zalo/LinkedIn senders in MVP. Keep UI extensible so they can be enabled via feature flag later.
 
 ---
 
@@ -1151,11 +1181,14 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
   - **Tracking:**
     - Meeting booked = calendar event created from Nowing outreach
     - Lead enriched = verified contact data delivered
-  - **Billing:** Reuse existing credit wallet (AD-8) + Stripe integration
-  - **Attribution:** First-touch attribution (sequence that started the journey)
+  - **Billing:** Reuse existing credit wallet (`User.credit_micros_balance` per AD-8) + Stripe integration.
+  - **Attribution:** First-touch attribution (sequence that started the journey).
+  - **Business-event ledger (new):** `BillingEvent` is the canonical ledger for non-LLM business events (`contact_enrichment`, `lead_scoring`, `outcome_meeting_booked`, `outcome_lead_enriched`, `signal_scan`). `BillingEvent` debits `User.credit_micros_balance` via the same wallet service (AD-8). `TokenUsage` remains strictly for LLM token consumption (prompt/completion tokens) and is not overloaded.
+  - **Enforcement:** `BillingEvent` is a new table (see New models), but it **reuses the existing wallet and attribution pattern** from AD-8. Outcome dashboard reuses the usage/credit UI from Story 8.3.
 - **New models:**
-  - `OutcomeEvent` (id, workspace_id, event_type, lead_id, sequence_id, attribution, cost_micros, created_at)
-  - `PricingPlan` (id, workspace_id, plan_type, seat_price, outcome_rates_json, billing_period)
+  - `BillingEvent` (id: UUID, workspace_id, client_id, user_id, event_id: UUID, event_type: `contact_enrichment` | `lead_scoring` | `outcome_meeting_booked` | `outcome_lead_enriched` | `signal_scan` | `email_send`, cost_micros, currency, cost_basis, created_at) — the single ledger for non-LLM business events. Links to `User.credit_micros_balance` (AD-8).
+  - `OutcomeEvent` (id: UUID, workspace_id, client_id, event_type, lead_id, sequence_id, billing_event_id, attribution, cost_micros, created_at)
+  - `PricingPlan` (id: UUID, workspace_id, client_id, plan_type, seat_price, outcome_rates_json, billing_period)
 - **Ghi chú:** Đây là pricing strategy, không phải technical architecture — nhưng cần infrastructure support
 
 ---
