@@ -1,10 +1,11 @@
 {
   "repository_type": "monorepo",
+  "scan_date": "2026-08-11",
   "parts": [
     {
       "part_id": "backend",
       "part_name": "Nowing Backend",
-      "root_path": "/Users/luisphan/Documents/Nowing/nowing_backend",
+      "root_path": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend",
       "project_type_id": "backend",
       "display_name": "Backend",
       "primary_tech": "Python 3.12 / FastAPI"
@@ -12,7 +13,7 @@
     {
       "part_id": "web",
       "part_name": "Nowing Web",
-      "root_path": "/Users/luisphan/Documents/Nowing/nowing_web",
+      "root_path": "/Users/luisphan/Documents/GitHub/nowing/nowing_web",
       "project_type_id": "web",
       "display_name": "Web",
       "primary_tech": "Next.js 16 / React 19"
@@ -20,7 +21,7 @@
     {
       "part_id": "browser_extension",
       "part_name": "Nowing Browser Extension",
-      "root_path": "/Users/luisphan/Documents/Nowing/nowing_browser_extension",
+      "root_path": "/Users/luisphan/Documents/GitHub/nowing/nowing_browser_extension",
       "project_type_id": "extension",
       "display_name": "Browser Extension",
       "primary_tech": "Plasmo / React 18"
@@ -28,7 +29,7 @@
     {
       "part_id": "desktop",
       "part_name": "Nowing Desktop",
-      "root_path": "/Users/luisphan/Documents/Nowing/nowing_desktop",
+      "root_path": "/Users/luisphan/Documents/GitHub/nowing/nowing_desktop",
       "project_type_id": "desktop",
       "display_name": "Desktop",
       "primary_tech": "Electron 42 / TypeScript"
@@ -36,7 +37,7 @@
     {
       "part_id": "obsidian",
       "part_name": "Nowing Obsidian Plugin",
-      "root_path": "/Users/luisphan/Documents/Nowing/nowing_obsidian",
+      "root_path": "/Users/luisphan/Documents/GitHub/nowing/nowing_obsidian",
       "project_type_id": "extension",
       "display_name": "Obsidian Plugin",
       "primary_tech": "TypeScript / esbuild / Obsidian API"
@@ -44,7 +45,7 @@
     {
       "part_id": "mcp",
       "part_name": "Nowing MCP Server",
-      "root_path": "/Users/luisphan/Documents/Nowing/nowing_mcp",
+      "root_path": "/Users/luisphan/Documents/GitHub/nowing/nowing_mcp",
       "project_type_id": "backend",
       "display_name": "MCP Server",
       "primary_tech": "Python 3.11 / MCP SDK / Starlette"
@@ -52,7 +53,7 @@
     {
       "part_id": "evals",
       "part_name": "Nowing Evals",
-      "root_path": "/Users/luisphan/Documents/Nowing/nowing_evals",
+      "root_path": "/Users/luisphan/Documents/GitHub/nowing/nowing_evals",
       "project_type_id": "data",
       "display_name": "Evals",
       "primary_tech": "Python 3.12 / CLI"
@@ -93,19 +94,37 @@
       "from": "obsidian",
       "to": "backend",
       "type": "REST",
-      "details": "api-client.ts g\u1ecdi /obsidian/*"
+      "details": "api-client.ts gọi /obsidian/*"
     },
     {
       "from": "mcp",
       "to": "backend",
       "type": "REST",
-      "details": "mcp_server/core/client.py g\u1ecdi backend"
+      "details": "mcp_server/core/client.py gọi backend"
     },
     {
       "from": "evals",
       "to": "backend",
       "type": "REST",
-      "details": "nowing_evals core clients g\u1ecdi /api/v1/*"
+      "details": "nowing_evals core clients gọi /api/v1/*"
+    },
+    {
+      "from": "backend",
+      "to": "chainlens-research",
+      "type": "HTTP SSE",
+      "details": "POST /api/v1/search; deep-research via SSE; costDollars from terminal done frame"
+    },
+    {
+      "from": "backend",
+      "to": "chainlens-research",
+      "type": "HTTP POST",
+      "details": "POST /v1/ingest/scraper — scraper output feed contract (AD-34)"
+    },
+    {
+      "from": "backend",
+      "to": "stripe",
+      "type": "HTTP API",
+      "details": "Billing and credit wallet charges"
     }
   ]
 }

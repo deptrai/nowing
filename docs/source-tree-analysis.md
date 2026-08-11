@@ -1,6 +1,9 @@
 # Nowing - Phân tích cây thư mục
 
-**Ngày tạo:** 2026-07-21 16:59:34
+**Ngày tạo:** 2026-07-21 16:59:34  
+**Cập nhật quét:** 2026-08-11
+
+> **Lưu ý:** Tài liệu này được quét toàn bộ cây thư mục trong đợt scan trước và vẫn giữ giá trị tham chiếu. Để biết trạng thái hiện tại, epic và cổng mở, xem [project-overview.md](./project-overview.md) và [planning-to-product.md](./planning-to-product.md).
 
 ## Tổng quan
 

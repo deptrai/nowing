@@ -70,6 +70,23 @@ Xem chi tiết trong [api-contracts-backend.md](./api-contracts-backend.md) và 
 - `docker/` chứa `docker-compose` và script cài đặt (`install.sh`/`install.ps1`).
 - `.env.example` liệt kê tất cả biến môi trường cần thiết.
 
+## Cập nhật 2026-08-11
+
+Các module mới / thay đổi kể từ đợt scan trước:
+
+- `app/canonical/` — canonical entity persistence (E13 kế thừa, E20).
+- `app/event_bus/` — Redis-backed event bus cho async runs (E9.3).
+- `app/notifications/` — real-time notifications qua Zero (E11.1).
+- `app/observability/` — OpenTelemetry spans/metrics (E8.9).
+- `app/gateway/` — Discord, Telegram, Slack, WhatsApp messaging gateway.
+- `app/automations/` — automation engine với `RunService`, scheduler, playbook (E6).
+- AD-15/AD-17 — `chainlens.research` dùng async door sẵn có; cost parse từ `done.usage.costDollars`.
+- AD-27/AD-28 re-scoped — scraper output feeds `chainlens-research`; Nowing không giữ canonical index.
+- AD-29/AD-30/AD-31 — public/vertical agent-chat, `client_id` tenancy.
+- AD-32/AD-33 — connector dedicated page, Generic Alert Engine dùng Automation runtime.
+
+Xem chi tiết tại [project-overview.md](./project-overview.md) và [planning-to-product.md](./planning-to-product.md).
+
 ---
 
 _Tài liệu được tạo bởi BMAD Method `document-project` workflow_

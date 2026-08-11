@@ -62,6 +62,15 @@ Nowing là hệ thống multi-part; các phần giao tiếp chủ yếu qua HTTP
 - Browser extension và Obsidian dùng API key cá nhân (`nw_pat_...`).
 - MCP server dùng `Authorization: Bearer <NOWING_API_KEY>`.
 
+## Cập nhật 2026-08-11
+
+- Thêm tích hợp `backend → chainlens-research` qua SSE `POST /api/v1/search` (deep-research, AD-15).
+- Thêm `backend → chainlens-research` qua `POST /v1/ingest/scraper` (scraper feed contract AD-34).
+- Thêm `backend → Stripe` cho billing/credit wallet (AD-8).
+- Web → Backend cookie domain: production cần `COOKIE_DOMAIN=nowing.net` để Zero sync trên subdomain không bị 401.
+
+Xem chi tiết tại [project-overview.md](./project-overview.md) và [planning-to-product.md](./planning-to-product.md).
+
 ---
 
 _Tài liệu được tạo bởi BMAD Method `document-project` workflow_
