@@ -1,4 +1,4 @@
-"""``chotot_bds.scrape`` I/O contracts."""
+"""``chotot.scrape`` and ``chotot_bds.scrape`` I/O contracts."""
 
 from __future__ import annotations
 
@@ -8,11 +8,12 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validat
 
 
 class ScrapeInput(BaseModel):
-    """MCP/agent-friendly surface for ``chotot_bds.scrape``."""
+    """MCP/agent-friendly surface for ``chotot.scrape``."""
 
     model_config = ConfigDict(extra="allow")
 
-    listing_type: Literal["buy", "rent"] = "buy"
+    category: str = "bds"
+    listing_type: Literal["buy", "rent", "sell", "want_to_buy"] = "buy"
     property_type: Literal["apartment", "house", "land", "office", "all"] = "all"
     city: str
     district: str | None = None
@@ -56,6 +57,7 @@ class ScrapeOutput(BaseModel):
     degraded: bool = False
     degradation_reason: str | None = None
     next_action: str | None = None
+    category: str | None = None
 
     @computed_field
     @property

@@ -1,4 +1,4 @@
-"""Fetch Chợ Tốt Nhà BĐS listings from the public gateway API."""
+"""Fetch Chợ Tốt listings from the public gateway API across categories."""
 
 from __future__ import annotations
 
@@ -39,8 +39,7 @@ _USER_AGENT_POOL = (
     "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",
 )
 
-# Chợ Tốt Nhà public RSA key used to encrypt list_id before the phone API call.
-# Extracted from the web bundle's RSAPublicKey.production value.
+# Chợ Tốt public RSA key used to encrypt list_id before the phone API call.
 _CHOTOT_RSA_PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
 MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAxnvPjlA/K/adq6mA6+uU
 tlyBBxFaKeK+WD2FypOeCAP0qtucmaDrIbxirykrxQjRpGxl2HKRBwGd2h/hDuk9
@@ -55,6 +54,95 @@ ZoL/kQo100XccufpHESrits0mEuoyza4CCFM04F3pDOXAgMBAAE=
 
 _PHONE_URL = "https://gateway.chotot.com/v1/public/ad-listing/phone"
 
+# Mapping from stable consumer-facing slugs to the public gateway category group
+# (``cg``) and public detail-page origin.  Most verticals share the generic
+# ``chotot.com`` domain; vehicles and jobs have dedicated subdomains; BĐS uses
+# the Nhà Tốt branded domain.  ``st`` is chosen per ``listing_type`` below.
+# Values discovered 2026-08-11 from live ``ad-listing`` calls.
+_CATEGORY_CONFIG: dict[str, dict[str, Any]] = {
+    "bds": {
+        "cg": 1000,
+        "detail_origin": "https://www.nhatot.com",
+        "supported_listing_types": {"sell": "s", "rent": "u", "want_to_buy": "s"},
+        "default_listing_type": "sell",
+    },
+    "cars": {
+        "cg": 2010,
+        "detail_origin": "https://xe.chotot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+    "motorbikes": {
+        "cg": 2020,
+        "detail_origin": "https://xe.chotot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+    "electronics": {
+        "cg": 5000,
+        "detail_origin": "https://www.chotot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+    "jobs": {
+        "cg": 13000,
+        "detail_origin": "https://vieclamtot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+    "pets": {
+        "cg": 12000,
+        "detail_origin": "https://www.chotot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+    "fashion": {
+        "cg": 3000,
+        "detail_origin": "https://www.chotot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+    # Composite / ambiguous verticals.  Chợ Tốt splits "home goods" across
+    # several category groups; we expose them as individual slugs now and
+    # allow the user to pass a raw ``cg`` if needed.
+    "home_goods": {
+        "cg": 8000,
+        "detail_origin": "https://www.chotot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+    "home_appliances": {
+        "cg": 9000,
+        "detail_origin": "https://www.chotot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+    "kitchen": {
+        "cg": 14000,
+        "detail_origin": "https://www.chotot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+    "services": {
+        "cg": 6000,
+        "detail_origin": "https://www.chotot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+    "home_services": {
+        "cg": 15000,
+        "detail_origin": "https://www.chotot.com",
+        "supported_listing_types": {"sell": "s"},
+        "default_listing_type": "sell",
+    },
+}
+
+_SUPPORTED_CATEGORY_SLUGS = frozenset(_CATEGORY_CONFIG.keys())
+
+
+class CategoryConfigError(ValueError):
+    """Raised when a category slug or listing_type is not supported."""
+
 
 class ChototBdsAccessBlockedError(RuntimeError):
     """Raised when Chợ Tốt blocks anonymous access (5xx / non-200)."""
@@ -65,7 +153,7 @@ class ChototBdsBotDetectedError(ChototBdsAccessBlockedError):
 
 
 class ChototBdsRateLimitedError(RuntimeError):
-    """Raised when Chợ Tốt returns 429."""
+    """Raised when Chotot returns 429."""
 
 
 class ChototBdsDecodeError(ValueError):
@@ -90,11 +178,47 @@ def _timeout() -> float:
     return max(5.0, getattr(config, "CHOTOT_BDS_TIMEOUT_S", 30.0))
 
 
+def get_category_config(category: str) -> dict[str, Any]:
+    """Return the gateway config for a supported category slug.
+
+    ``category`` can also be a raw numeric ``cg`` string, in which case it is
+    treated as an ad-hoc category with a generic chotot.com detail origin.
+    """
+    if category in _CATEGORY_CONFIG:
+        return _CATEGORY_CONFIG[category]
+    # Allow raw cg codes for forward-compatibility / research use cases.
+    if category.isdigit():
+        return {
+            "cg": int(category),
+            "detail_origin": "https://www.chotot.com",
+            "supported_listing_types": {"sell": "s"},
+            "default_listing_type": "sell",
+        }
+    raise CategoryConfigError(f"category_not_supported: {category}")
+
+
+def _resolve_st(category: str, listing_type: str) -> str:
+    """Map a consumer listing_type to the gateway ``st`` parameter."""
+    cfg = get_category_config(category)
+    mapping = cfg.get("supported_listing_types", {})
+    if listing_type in mapping:
+        return mapping[listing_type]
+    # Fall back to the default for the vertical and warn.
+    default = cfg.get("default_listing_type", "sell")
+    logger.warning(
+        "listing_type=%r not supported for category=%r; falling back to %r",
+        listing_type,
+        category,
+        default,
+    )
+    return mapping.get(default, "s")
+
+
 def _build_listing_params(
     *,
     region_v2: int,
     area_v2: int | None,
-    cg: int,
+    category: str,
     listing_type: str,
     page: int,
     page_size: int,
@@ -102,15 +226,28 @@ def _build_listing_params(
     max_price: int | None,
     min_area: int | None,
     max_area: int | None,
+    property_type: str = "all",
 ) -> dict[str, Any]:
-    st = "s" if listing_type == "buy" else "u"
+    cfg = get_category_config(category)
+    cg = cfg["cg"]
+    # BĐS subcategories are fetched via their own cg code while keeping the
+    # category slug "bds" for parsing.
+    if category == "bds" and property_type != "all":
+        property_cg = {
+            "apartment": 1010,
+            "house": 1020,
+            "office": 1030,
+            "land": 1040,
+        }.get(property_type)
+        if property_cg:
+            cg = property_cg
     params: dict[str, Any] = {
         "region_v2": region_v2,
         "cg": cg,
         "limit": page_size,
         "o": (page - 1) * page_size,
         "w": 1,
-        "st": st,
+        "st": _resolve_st(category, listing_type),
     }
     if area_v2 is not None:
         params["area_v2"] = area_v2
@@ -155,7 +292,7 @@ async def fetch_listings(
     *,
     region_v2: int,
     area_v2: int | None,
-    cg: int,
+    category: str,
     listing_type: str,
     page: int,
     page_size: int = 20,
@@ -163,12 +300,13 @@ async def fetch_listings(
     max_price: int | None = None,
     min_area: int | None = None,
     max_area: int | None = None,
+    property_type: str = "all",
 ) -> dict[str, Any]:
     """GET the gateway ad-listing endpoint and return the decoded JSON."""
     params = _build_listing_params(
         region_v2=region_v2,
         area_v2=area_v2,
-        cg=cg,
+        category=category,
         listing_type=listing_type,
         page=page,
         page_size=page_size,
@@ -176,6 +314,7 @@ async def fetch_listings(
         max_price=max_price,
         min_area=min_area,
         max_area=max_area,
+        property_type=property_type,
     )
     url = LISTING_URL
 
@@ -194,7 +333,7 @@ async def fetch_listings(
             )
             fetch_ms = (time.perf_counter() - started) * 1000
             logger.info(
-                "[chotot_bds][perf] url=%s status=%s fetch_ms=%.1f",
+                "[chotot][perf] url=%s status=%s fetch_ms=%.1f",
                 url,
                 page_obj.status,
                 fetch_ms,
@@ -214,7 +353,7 @@ async def fetch_listings(
         except ChototBdsAccessBlockedError:
             if attempt < _MAX_ROTATIONS:
                 logger.warning(
-                    "Chotot BĐS block on %s, rotating proxy (attempt %s/%s)",
+                    "Chotot block on %s, rotating proxy (attempt %s/%s)",
                     url,
                     attempt + 1,
                     _MAX_ROTATIONS,
@@ -223,7 +362,7 @@ async def fetch_listings(
                 continue
             raise
         except Exception as exc:
-            logger.warning("Chotot BĐS GET %s failed: %s", url, exc)
+            logger.warning("Chotot GET %s failed: %s", url, exc)
             if attempt >= _MAX_ROTATIONS:
                 raise ChototBdsAccessBlockedError(
                     f"{url} failed after {_MAX_ROTATIONS} attempts"
@@ -231,6 +370,7 @@ async def fetch_listings(
             await asyncio.sleep(_retry_delay(attempt))
 
     raise ChototBdsAccessBlockedError(f"{url} exhausted all retries")
+
 
 async def fetch_phone(list_id: int) -> str | None:
     """Fetch the public phone number for a Chợ Tốt listing.
@@ -248,7 +388,7 @@ async def fetch_phone(list_id: int) -> str | None:
         # The HTTP client URL-encodes query parameters, so pass the raw base64.
         e = base64.b64encode(ciphertext).decode()
     except Exception as exc:
-        logger.warning("Chotot BĐS phone encryption failed for %s: %s", list_id, exc)
+        logger.warning("Chotot phone encryption failed for %s: %s", list_id, exc)
         return None
 
     for attempt in range(_MAX_ROTATIONS + 1):
@@ -272,23 +412,23 @@ async def fetch_phone(list_id: int) -> str | None:
 
             _raise_for_status(page.status, _PHONE_URL)
         except ChototBdsDecodeError:
-            logger.warning("Chotot BĐS phone response decode failed for %s", list_id)
+            logger.warning("Chotot phone response decode failed for %s", list_id)
             return None
         except ChototBdsRateLimitedError:
             if attempt < _MAX_ROTATIONS:
                 await asyncio.sleep(_retry_delay(attempt))
                 continue
-            logger.warning("Chotot BĐS phone fetch rate limited for %s", list_id)
+            logger.warning("Chotot phone fetch rate limited for %s", list_id)
             return None
         except ChototBdsAccessBlockedError as exc:
             if attempt < _MAX_ROTATIONS:
-                logger.warning("Chotot BĐS phone fetch blocked for %s: %s", list_id, exc)
+                logger.warning("Chotot phone fetch blocked for %s: %s", list_id, exc)
                 await asyncio.sleep(_retry_delay(attempt))
                 continue
-            logger.warning("Chotot BĐS phone fetch exhausted for %s: %s", list_id, exc)
+            logger.warning("Chotot phone fetch exhausted for %s: %s", list_id, exc)
             return None
         except Exception as exc:
-            logger.warning("Chotot BĐS phone fetch failed for %s: %s", list_id, exc)
+            logger.warning("Chotot phone fetch failed for %s: %s", list_id, exc)
             if attempt >= _MAX_ROTATIONS:
                 return None
             await asyncio.sleep(_retry_delay(attempt))

@@ -55,7 +55,8 @@ async def test_fetch_listings_returns_data(mocker):
     result = await fetch_listings(
         region_v2=13000,
         area_v2=None,
-        cg=1020,
+        category="bds",
+        property_type="house",
         listing_type="buy",
         page=1,
     )
@@ -82,7 +83,8 @@ async def test_fetch_listings_429_raises_rate_limited(mocker):
         await fetch_listings(
             region_v2=13000,
             area_v2=None,
-            cg=1020,
+            category="bds",
+            property_type="house",
             listing_type="buy",
             page=1,
         )
@@ -104,7 +106,8 @@ async def test_fetch_listings_403_raises_blocked(mocker):
         await fetch_listings(
             region_v2=13000,
             area_v2=None,
-            cg=1020,
+            category="bds",
+            property_type="house",
             listing_type="buy",
             page=1,
         )

@@ -1,4 +1,4 @@
-"""``chotot_bds.scrape`` capability registration (billed per item)."""
+"""Chợ Tốt scraper capability registration (billed per item)."""
 
 from __future__ import annotations
 
@@ -7,18 +7,35 @@ from app.capabilities.core import BillingUnit, Capability, register_capability
 from .executor import build_scrape_executor
 from .schemas import ScrapeInput, ScrapeOutput
 
+CHOTOT_SCRAPE = Capability(
+    name="chotot.scrape",
+    description=(
+        "Scrape listings from Chợ Tốt (chotot.com, nhatot.com, xe.chotot.com, "
+        "vieclamtot.com) across categories: bds, cars, motorbikes, electronics, "
+        "jobs, pets, fashion, home_goods, home_appliances, kitchen, services, "
+        "home_services, or a raw numeric gateway category code (cg). "
+        "Use listing_type sell/rent/want_to_buy and property_type for BĐS."
+    ),
+    input_schema=ScrapeInput,
+    output_schema=ScrapeOutput,
+    executor=build_scrape_executor(),
+    billing_unit=BillingUnit.CHOTOT_ITEM,
+    docs_url="/docs/connectors/native/chotot",
+)
+
+# Deprecated alias; kept for backward compatibility.
 CHOTOT_BDS_SCRAPE = Capability(
     name="chotot_bds.scrape",
     description=(
-        "Scrape real-estate listings from Chợ Tốt Nhà (nha.chotot.com). "
-        "Use buy/rent listing_type, property_type (apartment/house/land/office/all), "
-        "city (e.g. 'hanoi', 'ho chi minh', 'da nang'), and optional district/area_v2."
+        "Deprecated alias for chotot.scrape with category=\"bds\". "
+        "Use chotot.scrape instead."
     ),
     input_schema=ScrapeInput,
     output_schema=ScrapeOutput,
     executor=build_scrape_executor(),
     billing_unit=BillingUnit.CHOTOT_BDS_ITEM,
-    docs_url="/docs/connectors/native/chotot_bds",
+    docs_url="/docs/connectors/native/chotot",
 )
 
+register_capability(CHOTOT_SCRAPE)
 register_capability(CHOTOT_BDS_SCRAPE)

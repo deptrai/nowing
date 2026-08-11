@@ -1,4 +1,4 @@
-"""Orchestrator for the Chợ Tốt Nhà BĐS scraper."""
+"""Orchestrator for the multi-category Chợ Tốt scraper."""
 
 from __future__ import annotations
 
@@ -12,16 +12,23 @@ from typing import Any
 from app.config import config
 
 from .fetch import (
+    CategoryConfigError,
     ChototBdsAccessBlockedError,
     ChototBdsBotDetectedError,
     ChototBdsDecodeError,
     ChototBdsRateLimitedError,
     fetch_listings,
     fetch_phone,
+    get_category_config,
     load_regions,
 )
 from .parsers import parse_listings
-from .schemas import ChototBdsListing, ChototBdsScrapeInput, ChototBdsScrapeOutput
+from .schemas import (
+    ChototBdsScrapeInput,
+    ChototBdsScrapeOutput,
+    ChototScrapeInput,
+    ChototScrapeOutput,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +37,6 @@ RegionsFn = Callable[[], Awaitable[dict[str, Any]]]
 
 _MAX_RETRIES = 2
 _PAGE_SIZE = 20
-
-_PROPERTY_TYPE_TO_CG: dict[str, int] = {
-    "all": 1000,
-    "apartment": 1010,
-    "house": 1020,
-    "office": 1030,
-    "land": 1040,
-}
 
 _CITY_ALIASES: dict[str, str] = {
     "hn": "hà nội",
@@ -158,18 +157,18 @@ def _page_delay() -> float:
 
 
 def _build_page_payload(
-    input_model: ChototBdsScrapeInput,
+    input_model: ChototScrapeInput,
     *,
     page: int,
     region_v2: int,
     area_v2: int | None,
 ) -> dict[str, Any]:
-    cg = _PROPERTY_TYPE_TO_CG.get(input_model.property_type, 1000)
     return {
         "region_v2": region_v2,
         "area_v2": area_v2,
-        "cg": cg,
+        "category": input_model.category,
         "listing_type": input_model.listing_type,
+        "property_type": input_model.property_type,
         "page": page,
         "page_size": _PAGE_SIZE,
         "min_price": input_model.min_price,
@@ -179,16 +178,26 @@ def _build_page_payload(
     }
 
 
-async def scrape_chotot_bds(
-    input_model: ChototBdsScrapeInput,
+async def scrape_chotot(
+    input_model: ChototScrapeInput,
     *,
     limit: int | None = None,
     fetch_fn: FetchFn | None = None,
     regions_fn: RegionsFn | None = None,
-) -> ChototBdsScrapeOutput:
-    """Collect BĐS listings across pages, honoring caps and degradation."""
+) -> ChototScrapeOutput:
+    """Collect Chợ Tốt listings for any supported vertical."""
     fetch = fetch_fn or fetch_listings
     load = regions_fn or load_regions
+
+    try:
+        get_category_config(input_model.category)
+    except CategoryConfigError as exc:
+        return ChototScrapeOutput(
+            items=[],
+            total_items=0,
+            degraded=True,
+            degradation_reason=f"invalid_input: {exc}",
+        )
 
     try:
         regions_payload = await load()
@@ -199,7 +208,7 @@ async def scrape_chotot_bds(
     ):
         raise
     except Exception:
-        return ChototBdsScrapeOutput(
+        return ChototScrapeOutput(
             items=[],
             total_items=0,
             degraded=True,
@@ -216,17 +225,18 @@ async def scrape_chotot_bds(
             regions,
         )
     except ValueError as exc:
-        return ChototBdsScrapeOutput(
+        return ChototScrapeOutput(
             items=[],
             total_items=0,
             degraded=True,
             degradation_reason=f"invalid_input: {exc}",
         )
 
+    effective_input = input_model
     cap = max(0, limit if limit is not None else input_model.max_items)
     max_pages = input_model.max_pages
 
-    items: list[ChototBdsListing] = []
+    items: list[Any] = []
     seen_ids: set[int] = set()
     degraded = False
     degradation_reason: str | None = None
@@ -236,7 +246,7 @@ async def scrape_chotot_bds(
             break
 
         payload = _build_page_payload(
-            input_model,
+            effective_input,
             page=page,
             region_v2=region_v2,
             area_v2=area_v2,
@@ -293,7 +303,8 @@ async def scrape_chotot_bds(
             degradation_reason = "empty"
             break
 
-        for listing in parse_listings(page_data):
+        category = effective_input.category
+        for listing in parse_listings(page_data, category=category):
             if len(items) >= cap:
                 break
             if listing.listing_id is not None:
@@ -319,7 +330,7 @@ async def scrape_chotot_bds(
     if items:
         _phone_semaphore = asyncio.Semaphore(3)
 
-        async def _resolve_phone(item: ChototBdsListing) -> None:
+        async def _resolve_phone(item: Any) -> None:
             if not item.listing_id:
                 return
             try:
@@ -331,9 +342,25 @@ async def scrape_chotot_bds(
 
         await asyncio.gather(*(_resolve_phone(item) for item in items))
 
-    return ChototBdsScrapeOutput(
+    return ChototScrapeOutput(
         items=items,
         total_items=len(items),
         degraded=degraded,
         degradation_reason=degradation_reason,
     )
+
+
+async def scrape_chotot_bds(
+    input_model: ChototBdsScrapeInput,
+    *,
+    limit: int | None = None,
+    fetch_fn: FetchFn | None = None,
+    regions_fn: RegionsFn | None = None,
+) -> ChototBdsScrapeOutput:
+    """Legacy BĐS scraper entry point; now a thin wrapper around ``scrape_chotot``.
+
+    Deprecated: use ``scrape_chotot`` with ``category="bds"``.
+    """
+    # The input model already sets ``category="bds"`` and maps listing_type.
+    result = await scrape_chotot(input_model, limit=limit, fetch_fn=fetch_fn, regions_fn=regions_fn)
+    return ChototBdsScrapeOutput(**result.model_dump())
