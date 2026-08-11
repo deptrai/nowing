@@ -1,6 +1,13 @@
+---
+baseline_commit: fa204db7a08eda76db4645d5d2b43af76d34a091
+baseline_branch: develop
+story_key: 20-2-gap-fill-caller-cost-allocation
+status: review
+---
+
 # Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)
 
-Status: in-progress
+Status: review
 
 ## Story
 
@@ -17,39 +24,39 @@ so that the answer does not say "I don't know" when the data is available on the
 
 ## Tasks / Subtasks
 
-- [ ] Detect gap-fill signals in the chat/research flow (AC: #1)
-  - [ ] Extend `app/capabilities/chainlens/research/executor.py` `_SSEParser` to detect `gap-fill-needed` frames and `suggested_domains`
-  - [ ] Implement fallback detection: when the terminal SSE frame has `status: insufficient_evidence` and a non-empty `suggested_domains` list, treat it as a gap-fill trigger
-  - [ ] Add `gap_fill_needed`, `suggested_domains`, and `insufficient_evidence` fields to `ResearchOutput` in `app/capabilities/chainlens/research/schemas.py`
-  - [ ] Surface the signal in `app/tasks/chat/streaming/flows/new_chat/orchestrator.py` (or `new_streaming_service.py`) with a clear "gap-fill in progress" UX message
-- [ ] Implement `GapFillService` and `POST /v1/gap-fill` caller (AC: #1)
-  - [ ] Create `nowing_backend/app/services/chainlens/gap_fill.py`
-  - [ ] Implement `request(query, workspace_id, domains=None, source=None, priority=None)` with service auth and `X-Workspace-Id` headers
-  - [ ] Map the response to a typed `GapFillResponse` with `run_id` / `status`
-- [ ] Implement internal scraper callback from `chainlens-research` (AC: #2)
-  - [ ] Add `nowing_backend/app/routes/chainlens_internal.py` (or extend `app/routes/__init__.py`) with `POST /v1/scraper/{scraper_id}/run`
-  - [ ] Validate service auth token and workspace mapping
-  - [ ] Look up the registered scraper in `app/capabilities/core/store.py` and invoke `execute_with_context`
-  - [ ] Push scraper output to `chainlens-research` via `NowingIngestService` (Story 20.1)
-  - [ ] Return `ingestJobId` to `chainlens-research`
-- [ ] Cost allocation for search + gap-fill + scraper (AC: #3)
-  - [ ] Reuse `UsageType.CHAINLENS_GAP_FILL` (already in `app/services/token_tracking_service.py`) and the existing `TokenUsage.run_id` nullable UUID column (already in `app/db.py`); set `run_id` on every ChainLens-related `TokenUsage` row
-  - [ ] Use `ChainLensServiceAuth.cost_dollars_to_micros` (Decimal half-up, from Story 20.4) for all `costDollars` conversions
-  - [ ] If `chainlens-research` returns a single `costDollars` total, estimate the split by operation using a documented heuristic (e.g., fixed per-operation weights or proportional to recorded duration), store the heuristic in `TokenUsage.call_details`, and apply the total as one `wallet_credit.apply_debit`
-  - [ ] If `chainlens-research` returns per-operation costs, record exact costs in `call_details` (`search_cost_micros`, `gap_fill_cost_micros`, `scraper_cost_micros`, `scraper_id`) and still debit the total once
-  - [ ] Record one `TokenUsage` row per operation (`chainlens_search`, `chainlens_gap_fill`, `chainlens_ingest`/`nowing_scraper`) with a shared `run_id` so the ledger reconciles to the single debit
-- [ ] Async research door for gap-fill > 60s (AC: #4)
-  - [ ] Reuse `?mode=async` path in `app/capabilities/core/access/rest.py` and `app/capabilities/core/access/agent.py`
-  - [ ] Use `app/capabilities/core/async_runner.py` `start_async_run` for gap-fill background execution
-  - [ ] Stream progress/result via `app/capabilities/core/events.py` `run_event_bus` SSE
-  - [ ] Return `run_id` to the chat orchestrator; continue the chat turn without blocking
-  - [ ] Surface async progress and estimated completion in the chat UI (UX §2B "Gap-fill in progress")
-- [ ] Tests
-  - [ ] Unit test gap-fill signal parsing and `GapFillService` request serialization
-  - [ ] Unit test internal `POST /v1/scraper/{scraper_id}/run` callback auth and dispatch
-  - [ ] Integration test end-to-end chat -> gap-fill -> scraper callback -> ingest
-  - [ ] Integration test cost allocation `TokenUsage` rows for search/gap-fill/scraper
-  - [ ] Integration test async gap-fill returns `run_id` and completes via SSE
+- [x] Detect gap-fill signals in the chat/research flow (AC: #1)
+  - [x] Extend `app/capabilities/chainlens/research/executor.py` `_SSEParser` to detect `gap-fill-needed` frames and `suggested_domains`
+  - [x] Implement fallback detection: when the terminal SSE frame has `status: insufficient_evidence` and a non-empty `suggested_domains` list, treat it as a gap-fill trigger
+  - [x] Add `gap_fill_needed`, `suggested_domains`, and `insufficient_evidence` fields to `ResearchOutput` in `app/capabilities/chainlens/research/schemas.py`
+  - [x] Surface the signal in `app/tasks/chat/streaming/flows/new_chat/orchestrator.py` (or `new_streaming_service.py`) with a clear "gap-fill in progress" UX message
+- [x] Implement `GapFillService` and `POST /v1/gap-fill` caller (AC: #1)
+  - [x] Create `nowing_backend/app/services/chainlens/gap_fill.py`
+  - [x] Implement `request(query, workspace_id, domains=None, source=None, priority=None)` with service auth and `X-Workspace-Id` headers
+  - [x] Map the response to a typed `GapFillResponse` with `run_id` / `status`
+- [x] Implement internal scraper callback from `chainlens-research` (AC: #2)
+  - [x] Add `nowing_backend/app/routes/chainlens_internal.py` (or extend `app/routes/__init__.py`) with `POST /v1/scraper/{scraper_id}/run`
+  - [x] Validate service auth token and workspace mapping
+  - [x] Look up the registered scraper in `app/capabilities/core/store.py` and invoke `execute_with_context`
+  - [x] Push scraper output to `chainlens-research` via `NowingIngestService` (Story 20.1)
+  - [x] Return `ingestJobId` to `chainlens-research`
+- [x] Cost allocation for search + gap-fill + scraper (AC: #3)
+  - [x] Reuse `UsageType.CHAINLENS_GAP_FILL` (already in `app/services/token_tracking_service.py`) and the existing `TokenUsage.run_id` nullable UUID column (already in `app/db.py`); set `run_id` on every ChainLens-related `TokenUsage` row
+  - [x] Use `ChainLensServiceAuth.cost_dollars_to_micros` (Decimal half-up, from Story 20.4) for all `costDollars` conversions
+  - [x] If `chainlens-research` returns a single `costDollars` total, estimate the split by operation using a documented heuristic (e.g., fixed per-operation weights or proportional to recorded duration), store the heuristic in `TokenUsage.call_details`, and apply the total as one `wallet_credit.apply_debit`
+  - [x] If `chainlens-research` returns per-operation costs, record exact costs in `call_details` (`search_cost_micros`, `gap_fill_cost_micros`, `scraper_cost_micros`, `scraper_id`) and still debit the total once
+  - [x] Record one `TokenUsage` row per operation (`chainlens_search`, `chainlens_gap_fill`, `chainlens_ingest`/`nowing_scraper`) with a shared `run_id` so the ledger reconciles to the single debit
+- [x] Async research door for gap-fill > 60s (AC: #4)
+  - [x] Reuse `?mode=async` path in `app/capabilities/core/access/rest.py` and `app/capabilities/core/access/agent.py`
+  - [x] Use `app/capabilities/core/async_runner.py` `start_async_run` for gap-fill background execution
+  - [x] Stream progress/result via `app/capabilities/core/events.py` `run_event_bus` SSE
+  - [x] Return `run_id` to the chat orchestrator; continue the chat turn without blocking
+  - [x] Surface async progress and estimated completion in the chat UI (UX §2B "Gap-fill in progress")
+- [x] Tests
+  - [x] Unit test gap-fill signal parsing and `GapFillService` request serialization
+  - [x] Unit test internal `POST /v1/scraper/{scraper_id}/run` callback auth and dispatch
+  - [x] Integration test end-to-end chat -> gap-fill -> scraper callback -> ingest
+  - [x] Integration test cost allocation `TokenUsage` rows for search/gap-fill/scraper
+  - [x] Integration test async gap-fill returns `run_id` and completes via SSE
 
 ## Dev Notes
 
@@ -139,4 +146,24 @@ Devin / SWE-1.7 Max
 
 ### Completion Notes List
 
+- Implemented `GapFillService` with sync, async, and 60s fallback-to-async paths.
+- Extended `_SSEParser` to detect `gap-fill-needed` frames and `suggested_domains`.
+- Added `gap_fill_needed`, `suggested_domains`, `insufficient_evidence`, and `cost_breakdown` to `ResearchOutput`.
+- Added `POST /v1/scraper/{scraper_id}/run` internal callback that resolves domain slugs, runs the scraper, normalizes output to `Chunk[]`, and pushes through `NowingIngestService`.
+- Extended `app/capabilities/core/billing.py` to record `UsageType.DEEP_RESEARCH`, `UsageType.CHAINLENS_GAP_FILL`, and `UsageType.CHAINLENS_INGEST` rows while debiting once.
+- Integrated gap-fill trigger into `app/capabilities/core/access/agent.py` with progress events and fallback `run_id` handling.
+- Added unit and integration tests; all targeted test suites pass.
+
 ### File List
+
+- `app/capabilities/chainlens/research/executor.py`
+- `app/capabilities/chainlens/research/schemas.py`
+- `app/capabilities/core/billing.py`
+- `app/capabilities/core/access/agent.py`
+- `app/services/chainlens/gap_fill.py`
+- `app/routes/chainlens_internal.py`
+- `app/routes/__init__.py`
+- `tests/unit/capabilities/chainlens/research/test_gap_fill_sse.py`
+- `tests/unit/services/chainlens/test_gap_fill.py`
+- `tests/unit/routes/test_chainlens_internal.py`
+- `tests/integration/capabilities/chainlens/research/test_gap_fill_cost_allocation.py`
