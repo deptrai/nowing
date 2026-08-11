@@ -7,7 +7,7 @@ status: review
 
 # Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)
 
-Status: implementation-complete
+Status: review
 
 ## Story
 
