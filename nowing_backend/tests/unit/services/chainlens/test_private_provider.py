@@ -291,7 +291,7 @@ async def test_resolve_document_type_from_sources(fake_session, fake_workspace):
 
     request = _make_request(sources=["FILE"])
     document_type = await service._resolve_document_type(request, fake_workspace.id)
-    assert document_type == "FILE"
+    assert document_type == ["FILE"]
 
     request = _make_request(sources=["FILE", "NOTION_CONNECTOR"])
     document_type = await service._resolve_document_type(request, fake_workspace.id)
@@ -398,4 +398,4 @@ async def test_resolve_document_type_from_connector(
 
     request = _make_request(connectorId=42)
     document_type = await service._resolve_document_type(request, fake_workspace.id)
-    assert document_type == "SLACK_CONNECTOR"
+    assert document_type == ["SLACK_CONNECTOR"]

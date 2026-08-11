@@ -593,10 +593,14 @@ async def record_token_usage(
     try:
         # AC-18.8: set tenant GUCs so RLS-protected token_usage writes
         # do not fail when FORCE ROW LEVEL SECURITY is enabled.
+        # Coerce client_id to a string so the GUC and the row match (RLS uses
+        # IS NOT DISTINCT FROM, which treats NULL and '' differently).
+        client_id = client_id or ""
         await set_request_tenant_context(
             session,
             workspace_id=workspace_id,
             client_id=client_id,
+            user_id=str(user_id) if user_id else None,
             agent_id=None,
         )
         record = TokenUsage(

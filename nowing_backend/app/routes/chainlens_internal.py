@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.context import AuthContext
+from app.canonical.tenant_context import set_request_tenant_context
 from app.db import Workspace, get_async_session
 from app.observability import metrics as ot_metrics
 from app.rate_limiter import limiter
@@ -74,6 +75,14 @@ async def private_data_search_for_chainlens(
             reason="workspace_id_mismatch",
         )
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Establish tenant context before querying workspace/membership rows.
+    await set_request_tenant_context(
+        session,
+        workspace_id=context.workspace_id,
+        client_id=None,
+        user_id=None,
+    )
 
     result = await session.execute(
         select(Workspace)
