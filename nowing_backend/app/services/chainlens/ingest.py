@@ -174,7 +174,7 @@ async def _post_batch_core(
         )
         # On 401, rotate token once and retry the same request in-flight.
         if response.status_code == 401:
-            rotated = auth.rotate()
+            rotated = auth.rotate(workspace_id=workspace_id, reason="401_response")
             if rotated:
                 headers = auth.get_outbound_headers(
                     workspace_id, content_type="application/json"
@@ -325,6 +325,15 @@ class NowingIngestService:
                 noop_source_ids.extend(batch_noop)
             except ConnectorAuthError as exc:
                 overall_status = "service_auth_unavailable"
+                auth_reason = (
+                    "not_configured"
+                    if "not configured" in str(exc).lower()
+                    else "invalid_token"
+                )
+                metrics.record_chainlens_auth_failed(
+                    workspace_id=workspace_id,
+                    reason=auth_reason,
+                )
                 failed_batches.append(
                     {
                         "batch": [_chunk_to_dict(chunk) for chunk in batch],

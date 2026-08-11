@@ -544,7 +544,13 @@ class _SSEParser:
         """Convert stored ``cost_dollars`` to micro-USD with half-up rounding."""
         if self.cost_dollars is None:
             return None
-        return ChainLensServiceAuth.cost_dollars_to_micros(self.cost_dollars)
+        try:
+            return ChainLensServiceAuth.cost_dollars_to_micros(self.cost_dollars)
+        except ValueError as exc:
+            logger.warning(
+                "Ignoring unusable costDollars %r: %s", self.cost_dollars, exc
+            )
+            return None
 
     def finalize(self) -> ResearchOutput:
         """Return the parsed research output after all lines have been fed."""
@@ -693,14 +699,19 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
                 json=body,
             ) as response:
                 if response.status_code == 401 and attempt == 0:
-                    rotated = auth.rotate()
+                    rotated = auth.rotate(
+                        workspace_id=workspace_id, reason="401_response"
+                    )
                     if rotated:
                         continue
 
                 if response.status_code in (401, 403):
+                    failure_reason = (
+                        "rotation_failed" if attempt > 0 else "invalid_token"
+                    )
                     metrics.record_chainlens_auth_failed(
                         workspace_id=workspace_id,
-                        reason="invalid_token",
+                        reason=failure_reason,
                     )
                     return _engine_unavailable("auth_failed")
                 if response.status_code == 429:

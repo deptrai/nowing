@@ -51,7 +51,6 @@ from .airtable_add_connector_route import (
     router as airtable_add_connector_router,
 )
 from .canonical_entities_routes import router as canonical_entities_router
-from .chainlens_internal import router as chainlens_internal_router
 from .chat_comments_routes import router as chat_comments_router
 from .circleback_webhook_route import router as circleback_webhook_router
 from .clickup_add_connector_route import router as clickup_add_connector_router
@@ -200,7 +199,4 @@ router.include_router(memory_router)  # User personal memory (memory.md style)
 router.include_router(team_memory_router)  # Workspace team memory
 router.include_router(automations_router)  # Automations CRUD + run history
 router.include_router(file_storage_router)  # Original file metadata + download
-router.include_router(
-    chainlens_internal_router
-)  # Service-to-service chainlens callbacks (20.4)
 router.include_router(build_capabilities_router())  # Scraper-API capability doors (05)

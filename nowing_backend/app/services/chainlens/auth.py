@@ -20,6 +20,8 @@ import base64
 import binascii
 import json
 import logging
+import math
+import threading
 import time
 import uuid
 from collections.abc import Sequence
@@ -27,16 +29,19 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
 
-from fastapi import HTTPException, Request
-from starlette.status import HTTP_401_UNAUTHORIZED
+from fastapi import HTTPException, Request, status
 
 from app.config import config
+from app.observability import metrics
 
 logger = logging.getLogger(__name__)
 
 # 30 days in seconds; used for JWT exp pre-emptive rotation.
 _ROTATION_THRESHOLD_SECONDS = 30 * 24 * 60 * 60
 _AUTHORIZATION_BEARER_PREFIX = "Bearer "
+
+# Guard against obviously bogus cost values; does not limit legitimate billing.
+_MAX_REASONABLE_COST_DOLLARS = 1_000_000.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +73,7 @@ class ChainLensServiceAuth:
                 seen.add(token)
                 self._tokens.append(token)
         self._index = 0
+        self._lock = threading.Lock()
 
     @staticmethod
     def _load_tokens(config_obj: Any | None = None) -> list[str]:
@@ -99,9 +105,10 @@ class ChainLensServiceAuth:
         this into a fail-open ``service_auth_unavailable`` response instead of
         exposing an internal error.
         """
-        if not self._tokens:
-            raise ValueError("No chainlens service token configured")
-        return self._tokens[self._index % len(self._tokens)]
+        with self._lock:
+            if not self._tokens:
+                raise ValueError("No chainlens service token configured")
+            return self._tokens[self._index % len(self._tokens)]
 
     def _token_expiry(self, token: str) -> float | None:
         """Best-effort JWT ``exp`` extraction. Returns None for opaque secrets."""
@@ -123,7 +130,7 @@ class ChainLensServiceAuth:
             return float(exp)
         return None
 
-    def rotate(self) -> str | None:
+    def rotate(self, *, workspace_id: int = 0, reason: str = "expiry") -> str | None:
         """Move to the next configured token and return it.
 
         Returns ``None`` if no additional token is available.
@@ -133,8 +140,13 @@ class ChainLensServiceAuth:
                 "ChainLens service token rotation requested but only one token configured"
             )
             return None
-        self._index = (self._index + 1) % len(self._tokens)
-        token = self.current_token
+        with self._lock:
+            self._index = (self._index + 1) % len(self._tokens)
+            token = self._tokens[self._index % len(self._tokens)]
+        metrics.record_chainlens_token_rotated(
+            workspace_id=workspace_id,
+            reason=reason,
+        )
         logger.info(
             "Rotated chainlens service token (index %d of %d)",
             self._index,
@@ -142,7 +154,7 @@ class ChainLensServiceAuth:
         )
         return token
 
-    def rotate_if_expiring(self) -> str | None:
+    def rotate_if_expiring(self, *, workspace_id: int = 0) -> str | None:
         """Pre-emptively rotate when the current token's JWT exp is within 30d.
 
         Returns the new token if rotated, otherwise None.
@@ -152,8 +164,20 @@ class ChainLensServiceAuth:
         exp = self._token_expiry(self.current_token)
         if exp is None:
             return None
+        if exp < time.time():
+            # Current token is already expired; try to find a non-expired one.
+            for _ in range(len(self._tokens) - 1):
+                rotated = self.rotate(workspace_id=workspace_id, reason="expired")
+                if rotated is None:
+                    break
+                if (self._token_expiry(rotated) or 0) > time.time():
+                    return rotated
+            logger.error(
+                "All configured chainlens service tokens appear expired; continuing with current token"
+            )
+            return None
         if exp - time.time() < _ROTATION_THRESHOLD_SECONDS:
-            return self.rotate()
+            return self.rotate(workspace_id=workspace_id, reason="preemptive")
         return None
 
     def get_outbound_headers(
@@ -168,16 +192,15 @@ class ChainLensServiceAuth:
         The bearer token comes from ``current_token``. ``X-Correlation-Id`` is
         generated if not supplied so every request is traceable.
         """
-        self.rotate_if_expiring()
+        self.rotate_if_expiring(workspace_id=workspace_id)
         token = self.current_token
         headers: dict[str, str] = {
             "Authorization": f"{_AUTHORIZATION_BEARER_PREFIX}{token}",
             "X-Workspace-Id": str(workspace_id),
         }
-        if correlation_id:
-            headers["X-Correlation-Id"] = correlation_id
-        else:
-            headers["X-Correlation-Id"] = str(uuid.uuid4())
+        headers["X-Correlation-Id"] = (
+            correlation_id if correlation_id else str(uuid.uuid4())
+        )
         if content_type:
             headers["Content-Type"] = content_type
         return headers
@@ -189,36 +212,57 @@ class ChainLensServiceAuth:
         pool and extracts ``X-Workspace-Id`` / ``X-Correlation-Id``. Raises
         ``HTTPException(401)`` on missing/invalid token.
         """
-        auth_header = request.headers.get("authorization", "")
-        if not auth_header.startswith(_AUTHORIZATION_BEARER_PREFIX):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.lower().startswith(_AUTHORIZATION_BEARER_PREFIX.lower()):
+            logger.warning(
+                "ChainLens inbound auth failed: missing or malformed Authorization header"
+            )
             raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="Missing or invalid Authorization header",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Unauthorized",
             )
         token = auth_header[len(_AUTHORIZATION_BEARER_PREFIX) :].strip()
         if token not in self._tokens:
+            logger.warning(
+                "ChainLens inbound auth failed: token not in configured pool"
+            )
             raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="Invalid chainlens service token",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Unauthorized",
             )
 
-        workspace_id_str = request.headers.get("x-workspace-id", "")
+        workspace_id_str = request.headers.get("X-Workspace-Id", "")
         if not workspace_id_str:
+            logger.warning(
+                "ChainLens inbound auth failed: missing X-Workspace-Id header"
+            )
             raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="Missing X-Workspace-Id header",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Unauthorized",
             )
         try:
             workspace_id = int(workspace_id_str)
+            if workspace_id <= 0:
+                raise ValueError("workspace_id must be positive")
         except ValueError as exc:
+            logger.warning(
+                "ChainLens inbound auth failed: invalid X-Workspace-Id %r",
+                workspace_id_str,
+            )
             raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="Invalid X-Workspace-Id header",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Unauthorized",
             ) from exc
 
+        correlation_id = request.headers.get("X-Correlation-Id")
+        logger.info(
+            "ChainLens inbound auth accepted (workspace_id=%d, correlation_id=%s)",
+            workspace_id,
+            correlation_id,
+        )
         return ChainLensAuthContext(
             workspace_id=workspace_id,
-            correlation_id=request.headers.get("x-correlation-id"),
+            correlation_id=correlation_id,
             token=token,
         )
 
@@ -229,6 +273,15 @@ class ChainLensServiceAuth:
         Matches the conversion used in ``chainlens.research.executor``.
         """
         from decimal import ROUND_HALF_UP, Decimal
+
+        if not math.isfinite(cost_dollars):
+            raise ValueError("cost_dollars must be a finite number")
+        if cost_dollars < 0:
+            raise ValueError("cost_dollars must be non-negative")
+        if cost_dollars > _MAX_REASONABLE_COST_DOLLARS:
+            raise ValueError(
+                f"cost_dollars {cost_dollars} exceeds maximum reasonable value"
+            )
 
         micros = (Decimal(str(cost_dollars)) * Decimal("1000000")).to_integral_value(
             ROUND_HALF_UP
@@ -254,5 +307,6 @@ def get_chainlens_auth_header(config: Any | None = None) -> dict[str, str]:
     if not auth.configured:
         return {}
     # Back-compat: no workspace id available, so use 0 as placeholder.
+    # Workspace 0 is not generated by auto-increment; treat it as a sentinel.
     headers = auth.get_outbound_headers(workspace_id=0, correlation_id=None)
     return {"Authorization": headers["Authorization"]}

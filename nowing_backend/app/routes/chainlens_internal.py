@@ -16,6 +16,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 
+from app.rate_limiter import limiter
 from app.services.chainlens.auth import (
     ChainLensAuthContext,
     get_chainlens_auth,
@@ -24,20 +25,15 @@ from app.services.chainlens.auth import (
 router = APIRouter()
 
 
-def _chainlens_auth_dependency(request: Request) -> ChainLensAuthContext:
+def chainlens_auth_dependency(request: Request) -> ChainLensAuthContext:
     """FastAPI dependency that validates an inbound chainlens-research request."""
     return get_chainlens_auth().validate_inbound_token(request)
 
 
-async def chainlens_auth_dependency(
-    request: Request,
-) -> ChainLensAuthContext:
-    """Async wrapper for FastAPI Depends."""
-    return _chainlens_auth_dependency(request)
-
-
 @router.post("/scraper/{scraper_id}/run")
+@limiter.limit("100/minute")
 async def run_scraper_for_chainlens(
+    request: Request,
     scraper_id: str,
     context: ChainLensAuthContext = Depends(chainlens_auth_dependency),
 ) -> dict[str, Any]:
@@ -55,7 +51,9 @@ async def run_scraper_for_chainlens(
 
 
 @router.post("/private-data/search")
+@limiter.limit("100/minute")
 async def private_data_search_for_chainlens(
+    request: Request,
     context: ChainLensAuthContext = Depends(chainlens_auth_dependency),
 ) -> dict[str, Any]:
     """Search Nowing private data on behalf of chainlens-research.

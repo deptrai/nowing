@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import types
 from collections.abc import AsyncGenerator
 
 import httpx
@@ -43,15 +42,21 @@ async def chainlens_internal_client() -> AsyncGenerator[httpx.AsyncClient, None]
 
 
 @pytest_asyncio.fixture
-async def chainlens_auth_client() -> AsyncGenerator[httpx.AsyncClient, None]:
+async def chainlens_auth_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncGenerator[httpx.AsyncClient, None]:
     """Client that exercises the real service-token auth dependency."""
     import app.services.chainlens.auth as auth_mod
 
-    real_config = auth_mod.config
-    auth_mod.config = types.SimpleNamespace(
-        CHAINLENS_SERVICE_TOKEN="valid-token",
-        CHAINLENS_API_KEY="",
-    )
+    fake_config = type(
+        "Config",
+        (),
+        {
+            "CHAINLENS_SERVICE_TOKEN": "valid-token",
+            "CHAINLENS_API_KEY": "",
+        },
+    )()
+    monkeypatch.setattr(auth_mod, "config", fake_config)
     get_chainlens_auth.cache_clear()
 
     previous_overrides = app.dependency_overrides.copy()
@@ -64,7 +69,6 @@ async def chainlens_auth_client() -> AsyncGenerator[httpx.AsyncClient, None]:
         ) as client:
             yield client
     finally:
-        auth_mod.config = real_config
         get_chainlens_auth.cache_clear()
         app.dependency_overrides.clear()
         app.dependency_overrides.update(previous_overrides)
@@ -72,7 +76,7 @@ async def chainlens_auth_client() -> AsyncGenerator[httpx.AsyncClient, None]:
 
 @pytest.mark.asyncio
 async def test_scraper_run_callback_returns_accepted(chainlens_internal_client):
-    response = await chainlens_internal_client.post("/api/v1/scraper/batdongsan/run")
+    response = await chainlens_internal_client.post("/v1/scraper/batdongsan/run")
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "accepted"
@@ -82,7 +86,7 @@ async def test_scraper_run_callback_returns_accepted(chainlens_internal_client):
 
 @pytest.mark.asyncio
 async def test_private_data_search_callback_returns_accepted(chainlens_internal_client):
-    response = await chainlens_internal_client.post("/api/v1/private-data/search")
+    response = await chainlens_internal_client.post("/v1/private-data/search")
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "accepted"
@@ -94,7 +98,7 @@ async def test_scraper_run_callback_rejects_invalid_service_token(
     chainlens_auth_client,
 ):
     response = await chainlens_auth_client.post(
-        "/api/v1/scraper/batdongsan/run",
+        "/v1/scraper/batdongsan/run",
         headers={"Authorization": "Bearer wrong-token", "X-Workspace-Id": "7"},
     )
     assert response.status_code == 401
@@ -103,10 +107,39 @@ async def test_scraper_run_callback_rejects_invalid_service_token(
 @pytest.mark.asyncio
 async def test_scraper_run_callback_accepts_valid_service_token(chainlens_auth_client):
     response = await chainlens_auth_client.post(
-        "/api/v1/scraper/batdongsan/run",
+        "/v1/scraper/batdongsan/run",
         headers={"Authorization": "Bearer valid-token", "X-Workspace-Id": "7"},
     )
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "accepted"
     assert body["workspace_id"] == 7
+
+
+@pytest.mark.asyncio
+async def test_scraper_run_callback_rejects_missing_workspace_id(chainlens_auth_client):
+    response = await chainlens_auth_client.post(
+        "/v1/scraper/batdongsan/run",
+        headers={"Authorization": "Bearer valid-token"},
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_scraper_run_callback_rejects_negative_workspace_id(
+    chainlens_auth_client,
+):
+    response = await chainlens_auth_client.post(
+        "/v1/scraper/batdongsan/run",
+        headers={"Authorization": "Bearer valid-token", "X-Workspace-Id": "-1"},
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_scraper_run_callback_accepts_lowercase_bearer(chainlens_auth_client):
+    response = await chainlens_auth_client.post(
+        "/v1/scraper/batdongsan/run",
+        headers={"authorization": "bearer valid-token", "x-workspace-id": "7"},
+    )
+    assert response.status_code == 200

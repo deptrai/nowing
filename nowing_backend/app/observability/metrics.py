@@ -1184,6 +1184,30 @@ def record_chainlens_auth_failed(
 
 
 @lru_cache(maxsize=1)
+def _chainlens_token_rotated():
+    return _get_meter().create_counter(
+        "nowing.chainlens.token_rotated",
+        description="Count of chainlens-research service token rotations.",
+    )
+
+
+def record_chainlens_token_rotated(
+    *,
+    workspace_id: int,
+    reason: str,
+) -> None:
+    """Count one chainlens-research service token rotation."""
+    _add(
+        _chainlens_token_rotated(),
+        1,
+        {
+            "workspace_id": str(workspace_id),
+            "reason": reason,
+        },
+    )
+
+
+@lru_cache(maxsize=1)
 def _kb_fallback_hit_count():
     return _get_meter().create_histogram(
         "nowing.chainlens.fallback_kb_hits",

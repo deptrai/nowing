@@ -180,3 +180,35 @@ Devin / SWE-1.7 Max
 - `nowing_backend/tests/unit/services/chainlens/test_auth.py` (new)
 - `nowing_backend/tests/integration/routes/test_chainlens_internal.py` (new)
 - `nowing_backend/tests/unit/capabilities/chainlens/research/test_executor.py` (updated header contract assertion)
+
+### Review Findings
+
+#### decision-needed
+
+- [x] [Review][Decision] **Inbound callback route path: `/api/v1` vs spec `/v1`** — The PRD/UX contract (`ux-contract-ecosystem-search.md`, `architecture-Nowing-2026-07-22`) specifies `POST /v1/scraper/{scraper_id}/run` and `POST /v1/private-data/search`. The implementation currently mounts the routes under `/api/v1` because `chainlens_internal_router` is included in the `crud_router` that has prefix `/api/v1`. The integration tests also use `/api/v1/...` paths. Decision: mount the router at `/v1` directly in `app.app`, or update the spec to `/api/v1/...` (breaks cross-project contract).
+
+#### patch
+
+- [x] [Review][Patch] **Validate `workspace_id > 0` in inbound token validation** [`auth.py:212`] — `ChainLensServiceAuth.validate_inbound_token` converts `X-Workspace-Id` to int but accepts `0` and negative values. A negative workspace ID would propagate into billing/DB queries.
+- [x] [Review][Patch] **Validate `cost_dollars` in `cost_dollars_to_micros`** [`auth.py:226`] — The converter accepts negative, NaN, infinity and extremely large floats. Negative costs would produce invalid billing; overflow can break `Decimal`/`int` conversion.
+- [x] [Review][Patch] **Add rate limiting to inbound service-auth endpoints** [`chainlens_internal.py:39,57`] — `POST /v1/scraper/{scraper_id}/run` and `POST /v1/private-data/search` have no `@limiter.limit(...)`, leaving them open to brute-force token guessing.
+- [x] [Review][Patch] **Use generic 401 error details** [`auth.py:193-217`] — `HTTPException` detail strings distinguish "Missing or invalid Authorization header", "Invalid chainlens service token", "Missing X-Workspace-Id header", etc. This leaks validation logic to attackers.
+- [x] [Review][Patch] **Make Bearer prefix check case-insensitive** [`auth.py:193`] — `auth_header.startswith("Bearer ")` rejects `bearer token`, which is valid per RFC 7235 scheme case-insensitivity.
+- [x] [Review][Patch] **Add locking around token rotation index** [`auth.py:126-143`] — `ChainLensServiceAuth` is exposed as a cached singleton (`get_chainlens_auth`) and `rotate()` mutates `self._index`. Even in asyncio, concurrent callers can race on the shared mutable state.
+- [x] [Review][Patch] **Emit `chainlens_token_rotated` metric and richer failure reason** [`auth.py:138`, `executor.py:700`, `ingest.py:177`, `metrics.py:1162`] — Rotation is only logged; there is no metric. When 401 recurs after rotation, the `chainlens_auth_failed` counter uses a generic `reason`; add `reason="rotation_failed"`.
+- [x] [Review][Patch] **Handle all tokens expired in `rotate_if_expiring`** [`auth.py:145-157`] — If every token is already expired, `rotate_if_expiring` rotates once to the next expired token and uses it. Should fail open or at least warn when the whole pool is expired.
+- [x] [Review][Patch] **Remove unnecessary async wrapper for sync dependency** [`chainlens_internal.py:32-36`] — `chainlens_auth_dependency` wraps `_chainlens_auth_dependency` in `async def` for no benefit; FastAPI accepts sync `Depends`.
+- [x] [Review][Patch] **Use `fastapi.status` instead of `starlette.status`** [`auth.py:31`] — Project convention uses `from fastapi import status`.
+- [x] [Review][Patch] **Use Title-Case header keys when reading request headers** [`auth.py:192-221`] — Reads `"authorization"` / `"x-workspace-id"` / `"x-correlation-id"` in lowercase while outbound uses `"Authorization"` / `"X-Workspace-Id"` / `"X-Correlation-Id"`. Starlette is case-insensitive, but consistency reduces confusion.
+- [x] [Review][Patch] **Remove deprecated `auth_stub.py` or migrate callers** [`auth_stub.py`] — No callers remain; the re-export is dead code and technical debt.
+- [x] [Review][Patch] **Add audit logging for auth failures** [`auth.py:185-223`] — Failed validations raise `HTTPException` but are not logged with `workspace_id`/`correlation_id`, hindering incident response.
+- [x] [Review][Patch] **Improve integration test fixture isolation** [`test_chainlens_internal.py:45-70`] — The `chainlens_auth_client` fixture mutates `auth_mod.config` and clears `get_chainlens_auth` cache; use `monkeypatch.setattr` with `addfinalizer` to guarantee cleanup.
+- [x] [Review][Patch] **Add missing auth unit test cases** [`test_auth.py`] — Negative workspace_id, missing correlation_id, whitespace-stripped tokens, duplicate token deduplication, `CHAINLENS_API_KEY` fallback, and lowercase `bearer` are not covered.
+
+#### defer
+
+- [x] [Review][Defer] **CHOTOT_ITEM billing mapping in `billing.py`** [`billing.py:51,88,217`] — Not part of Story 20.4 scope; it is a pre-existing mapping needed by `app/capabilities/chotot/scrape/definition.py` but was committed in the 20.4 diff. Defer to a `chotot` billing cleanup commit/story.
+- [x] [Review][Defer] **Distributed lock for token rotation in multi-instance deployments** [`auth.py:126-157`, `ingest.py:177`, `executor.py:696`] — In-process locking is patchable; cross-instance rotation consistency requires a shared store/lock and is explicitly deferred (`ponytail:`).
+- [x] [Review][Defer] **JWT signature validation in `_token_expiry`** [`auth.py:106-124`] — The helper only extracts `exp` from locally-configured tokens for proactive rotation. Token trust is enforced by matching against the configured pool, not by JWT signature. Far-future `exp` and malformed JWT silently return `None`; acceptable for best-effort rotation.
+- [x] [Review][Defer] **TokenUsage `usage_type` constants for future ChainLens operations** [`token_tracking_service.py`] — The implementation passes `usage_type` as a string (`deep_research`). Centralized constants can be added when Stories 20.2/20.3 introduce `chainlens_gap_fill`/`chainlens_ingest`/`chainlens_private_search`.
+- [x] [Review][Defer] **Integration test asserting `cost_dollars_to_micros` is used end-to-end** [`test_research_cost_metering.py`] — Existing integration tests exercise the full research flow and produce `TokenUsage` rows; a dedicated assertion that `_SSEParser` calls the new static method is low priority.

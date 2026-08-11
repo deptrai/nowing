@@ -64,6 +64,7 @@ from app.routes.auth_routes import (
     router as auth_router,
     session_router,
 )
+from app.routes.chainlens_internal import router as chainlens_internal_router
 from app.routes.users_routes import router as users_router
 from app.routes.zero_context_routes import router as zero_context_router
 from app.schemas import UserCreate, UserRead
@@ -1160,6 +1161,10 @@ from app.routes.anonymous_chat_routes import (  # noqa: E402
 )
 
 app.include_router(anonymous_chat_router)
+
+# Internal chainlens-research callbacks are mounted at /v1 per the
+# cross-project contract (Epic 47 / Story 20.4).
+app.include_router(chainlens_internal_router, prefix="/v1")
 
 app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
 

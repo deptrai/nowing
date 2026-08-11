@@ -11,6 +11,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException, Request
+from starlette.datastructures import Headers
 
 from app.services.chainlens.auth import (
     ChainLensAuthContext,
@@ -50,11 +51,13 @@ def test_get_outbound_headers_generates_correlation_id():
 async def test_validate_inbound_token_accepts_valid_token_and_workspace():
     auth = ChainLensServiceAuth(config_obj=_config())
     request = MagicMock(spec=Request)
-    request.headers = {
-        "authorization": "Bearer service-token",
-        "x-workspace-id": "7",
-        "x-correlation-id": "corr-2",
-    }
+    request.headers = Headers(
+        headers={
+            "authorization": "Bearer service-token",
+            "x-workspace-id": "7",
+            "x-correlation-id": "corr-2",
+        }
+    )
 
     ctx = auth.validate_inbound_token(request)
     assert ctx == ChainLensAuthContext(
@@ -68,7 +71,7 @@ async def test_validate_inbound_token_accepts_valid_token_and_workspace():
 async def test_validate_inbound_token_rejects_missing_bearer():
     auth = ChainLensServiceAuth(config_obj=_config())
     request = MagicMock(spec=Request)
-    request.headers = {"x-workspace-id": "7"}
+    request.headers = Headers(headers={"x-workspace-id": "7"})
 
     with pytest.raises(HTTPException) as exc_info:
         auth.validate_inbound_token(request)
@@ -79,10 +82,12 @@ async def test_validate_inbound_token_rejects_missing_bearer():
 async def test_validate_inbound_token_rejects_invalid_token():
     auth = ChainLensServiceAuth(config_obj=_config())
     request = MagicMock(spec=Request)
-    request.headers = {
-        "authorization": "Bearer wrong-token",
-        "x-workspace-id": "7",
-    }
+    request.headers = Headers(
+        headers={
+            "authorization": "Bearer wrong-token",
+            "x-workspace-id": "7",
+        }
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         auth.validate_inbound_token(request)
@@ -93,7 +98,7 @@ async def test_validate_inbound_token_rejects_invalid_token():
 async def test_validate_inbound_token_rejects_missing_workspace():
     auth = ChainLensServiceAuth(config_obj=_config())
     request = MagicMock(spec=Request)
-    request.headers = {"authorization": "Bearer service-token"}
+    request.headers = Headers(headers={"authorization": "Bearer service-token"})
 
     with pytest.raises(HTTPException) as exc_info:
         auth.validate_inbound_token(request)
@@ -104,10 +109,12 @@ async def test_validate_inbound_token_rejects_missing_workspace():
 async def test_validate_inbound_token_rejects_non_numeric_workspace():
     auth = ChainLensServiceAuth(config_obj=_config())
     request = MagicMock(spec=Request)
-    request.headers = {
-        "authorization": "Bearer service-token",
-        "x-workspace-id": "not-a-number",
-    }
+    request.headers = Headers(
+        headers={
+            "authorization": "Bearer service-token",
+            "x-workspace-id": "not-a-number",
+        }
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         auth.validate_inbound_token(request)
@@ -163,3 +170,91 @@ def test_preemptive_rotation_when_jwt_expires_within_30_days():
     rotated = auth.rotate_if_expiring()
     assert rotated == "second"
     assert auth.current_token == "second"
+
+
+@pytest.mark.asyncio
+async def test_validate_inbound_token_rejects_zero_workspace():
+    auth = ChainLensServiceAuth(config_obj=_config())
+    request = MagicMock(spec=Request)
+    request.headers = Headers(
+        headers={
+            "Authorization": "Bearer service-token",
+            "X-Workspace-Id": "0",
+        }
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        auth.validate_inbound_token(request)
+    assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_validate_inbound_token_rejects_negative_workspace():
+    auth = ChainLensServiceAuth(config_obj=_config())
+    request = MagicMock(spec=Request)
+    request.headers = Headers(
+        headers={
+            "Authorization": "Bearer service-token",
+            "X-Workspace-Id": "-7",
+        }
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        auth.validate_inbound_token(request)
+    assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_validate_inbound_token_accepts_missing_correlation_id():
+    auth = ChainLensServiceAuth(config_obj=_config())
+    request = MagicMock(spec=Request)
+    request.headers = Headers(
+        headers={
+            "Authorization": "Bearer service-token",
+            "X-Workspace-Id": "7",
+        }
+    )
+
+    ctx = auth.validate_inbound_token(request)
+    assert ctx.correlation_id is None
+    assert ctx.workspace_id == 7
+
+
+@pytest.mark.asyncio
+async def test_validate_inbound_token_accepts_lowercase_bearer():
+    auth = ChainLensServiceAuth(config_obj=_config())
+    request = MagicMock(spec=Request)
+    request.headers = Headers(
+        headers={
+            "authorization": "bearer service-token",
+            "x-workspace-id": "7",
+        }
+    )
+
+    ctx = auth.validate_inbound_token(request)
+    assert ctx.token == "service-token"
+
+
+def test_load_tokens_strips_whitespace_and_deduplicates():
+    auth = ChainLensServiceAuth(config_obj=_config(token=" token1 , token1 , token2 "))
+    assert auth._tokens == ["token1", "token2"]
+
+
+def test_load_tokens_falls_back_to_api_key():
+    auth = ChainLensServiceAuth(config_obj=_config(token="", api_key="legacy-key"))
+    assert auth._tokens == ["legacy-key"]
+
+
+def test_cost_dollars_to_micros_rejects_negative():
+    with pytest.raises(ValueError, match="non-negative"):
+        ChainLensServiceAuth.cost_dollars_to_micros(-0.01)
+
+
+def test_cost_dollars_to_micros_rejects_non_finite():
+    with pytest.raises(ValueError, match="finite"):
+        ChainLensServiceAuth.cost_dollars_to_micros(float("nan"))
+
+
+def test_cost_dollars_to_micros_rejects_unreasonable_value():
+    with pytest.raises(ValueError, match="reasonable"):
+        ChainLensServiceAuth.cost_dollars_to_micros(1_000_001.0)
