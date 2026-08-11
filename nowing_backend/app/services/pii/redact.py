@@ -1,4 +1,13 @@
-"""PII redaction for Vietnamese job descriptions."""
+"""PII redaction for Vietnamese job descriptions and lead enrichment.
+
+Contexts:
+- ``job_data`` (E12.5): redact phone, email, person names from scraped job text.
+- ``lead_enrichment`` (E21.3): redact phone, email, person names from
+  ``Memory.content``, ``Chunk[]``, audit logs, and non-privileged UI surfaces.
+  ``VerifiedContact`` stores raw values encrypted at rest and is the
+  authoritative source for outreach; it is never passed through this function.
+- ``default``: generic redaction.
+"""
 
 from __future__ import annotations
 
@@ -32,11 +41,8 @@ _NAME_PATTERN = re.compile(
     r"\b(?:Nguyễn|Trần|Lê|Phạm|Hoàng|Huỳnh|Vũ|Võ|Phan|Trương|Bùi|Đặng|Đỗ|Ngô|Hồ|Dương|Đinh)\s+[A-ZÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶEÈÉẺẼẸÊỀẾỂỄỆIÌÍỈĨỊOÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢUÙÚỦŨỤƯỪỨỬỮỰYỲÝỶỸỴ][a-zàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]*(?:\s+[A-ZÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶEÈÉẺẼẸÊỀẾỂỄỆIÌÍỈĨỊOÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢUÙÚỦŨỤƯỪỨỬỮỰYỲÝỶỸỴ][a-zàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]*)?")
 
 
-def redact_job_pii(text: str | None) -> RedactedText:
-    """Mask or drop phone numbers, emails, and person names from job text."""
-    if not text:
-        return RedactedText(text="")
-
+def _apply_redaction(text: str) -> RedactedText:
+    """Apply phone, email, and name redaction; return counts."""
     redacted = text
     phones = 0
     emails = 0
@@ -59,3 +65,29 @@ def redact_job_pii(text: str | None) -> RedactedText:
         emails_detected=emails,
         names_detected=names,
     )
+
+
+def redact_pii(text: str | None, context: str = "default") -> RedactedText:
+    """Mask or drop phone numbers, emails, and person names.
+
+    Args:
+        text: Input text that may contain PII. ``VerifiedContact`` raw values
+            are never passed through this function; they are stored encrypted
+            at rest and read directly by authorized send/personalization paths.
+        context: Rule set selector. Supported: ``job_data`` (E12.5),
+            ``lead_enrichment`` (E21.3), and ``default``. All three currently
+            use the same detection patterns; selectors are explicit so future
+            per-context rules can diverge without call-site churn.
+    """
+    if not text:
+        return RedactedText(text="")
+
+    if context not in {"job_data", "lead_enrichment", "default"}:
+        raise ValueError(f"Unknown redaction context: {context}")
+
+    return _apply_redaction(text)
+
+
+def redact_job_pii(text: str | None) -> RedactedText:
+    """Backward-compatible alias for ``redact_pii(..., context='job_data')``."""
+    return redact_pii(text, context="job_data")

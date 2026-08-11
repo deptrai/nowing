@@ -34,6 +34,7 @@ class BillingUnit(StrEnum):
     CHAINLENS_QUERY = "chainlens_query"
     BATDONGSAN_ITEM = "batdongsan_item"
     CHOTOT_BDS_ITEM = "chotot_bds_item"
+    CHOTOT_ITEM = "chotot_item"
     MUABAN_BDS_ITEM = "muaban_bds_item"
     VN_BDS_AGGREGATE_QUERY = "vn_bds_aggregate_query"
     VIETNAMWORKS_JOB = "vietnamworks_job"
@@ -86,3 +87,4 @@ class Capability:
     docs_url: str | None = None
     context_aware: bool = False
     namespace: str | None = None
+    metadata: dict[str, Any] | None = None

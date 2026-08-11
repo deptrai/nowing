@@ -23,7 +23,7 @@ Sản phẩm cuối cùng là một nền tảng **research-memory mở lõi**, 
 - **18+ Epics** được định nghĩa, trong đó nền tảng cốt lõi (E1–E9, E11, E18) phần lớn **DONE**.
 - **Epic 12 (HR Việt Nam)** đang in-progress; 12-1, 12-2 done; 12-3/12-4/12-5 in-progress; 12-9 ready-for-dev.
 - **Epic 20 (Ecosystem / ChainLens integration)** đang in-progress với 4 story 20-1→20-4 in-progress.
-- **Epic 21 (Lead Intelligence)** ở trạng thái **backlog**; `bmad-architecture` validate **PASS** (architecture FIT for implementation), nhưng còn các governance gate pháp lý/kỹ thuật chưa đóng.
+- **Epic 21 (Lead Intelligence)** ở trạng thái **backlog**; `bmad-architecture` validate **PASS with implementation conditions** (Epic 21 architecture and UX contracts FIT once Alembic migration conditions close), nhưng còn các governance gate pháp lý/kỹ thuật chưa đóng.
 - **Migration 175–179 (memory layer)** chưa lên production tính đến 2026-08-01 (prod đang ở alembic 174).
 - **Cổng public repo** bị chặn bởi vấn đề attribution/license kế thừa từ upstream SurfSense (AD-16.1) cần luật sư xem xét.
 

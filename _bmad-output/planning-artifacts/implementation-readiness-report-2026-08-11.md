@@ -280,10 +280,42 @@ A final `bmad-architecture` validate was run after resolving the AD conflicts.
 - AD-39 vs `Automation`/`AutomationRun` — `Sequence` is a new bounded context; only scheduler/Celery/notification reused.
 - Epic 21 `client_id` — AD-31 lists all tables; AD-36–AD-42 models include `client_id` and UUID `id`.
 - `TokenUsage` overload — `BillingEvent` introduced for non-LLM business events; `TokenUsage` stays LLM-only.
-- AD-33/AD-37/AD-39 signal ambiguity — `AlertRule.capability_id`, `sequence_enrollment` channel, `target.sequence_id`; signal types map to capabilities with `emits_signals=true`.
+- AD-33/AD-37/AD-39 signal ambiguity — `AlertRule.capability_id`, `sequence_enrollment` channel, `target_sequence_id`; signal types map to capabilities with `emits_signals=true`.
 - AD-22/AD-23 status mismatch — code verified (300 unit tests passed), promoted to `ADOPTED`.
 
 **Epic 21 readiness:** Architecture is **FIT for implementation**. Governance gates still pending before `ready-for-dev`.
 
 **Steps completed:** step-01-document-discovery, step-02-prd-analysis, step-03-epic-coverage-validation, step-04-ux-alignment, step-05-epic-quality-review (duplicate/overlap focus), step-06-architecture-alignment, step-07-readiness-decision, step-08-architecture-enforcement-recheck, step-09-architecture-validation.
+
+---
+
+## Step 10 — Post-Seam-Close Re-validation (2026-08-11)
+
+A third pass was run after closing the five residual literal-but-incompatible seams found in the second adversarial review.
+
+|| Gate | Result |
+|---|---|---|
+|| `lint_spine.py` | ✅ **0 findings** |
+|| Reality-check review | ✅ **CONDITIONAL PASS** |
+|| Adversarial review | ✅ **PASS with implementation conditions** |
+
+**Closed in this pass:**
+- `AlertRule.target` → split into `target_sequence_id` (FK) and `target_step_id` real columns.
+- `AlertRule.client_id` → `CITEXT`.
+- `Sequence`/`SequenceRun`/`SequenceEnrollment` client-scope ownership → `client_id` always the matched `Lead.client_id`; `triggering_lead_id` / `triggering_alert_rule_id` added.
+- `Capability` identifier/metadata → `Capability.name` canonical; `CapabilityRegistry.query_metadata(key)` and `query_metadata_for(name, key)` canonical.
+- `Memory` provenance → `source_uuid` + `source_entity_type` authoritative; `MemorySourceType` extended.
+- `VerifiedContact` redaction/consent → `VerifiedContact.consent_status`/`legal_basis` authoritative for first outreach.
+- Lead-source picker UX contract aligned to `LeadSource` cache populated by `lead_extractor`.
+- Code updated: `Capability.metadata` field, `CapabilityRegistry`, `Memory.source_uuid`/`source_entity_type` columns, `redact_pii(..., context='lead_enrichment')`.
+
+**Residual conditions before dev starts:**
+1. Create Alembic migrations for `Memory.source_uuid`/`source_entity_type` and `MemorySourceType` extension.
+2. Create Alembic migration for existing `client_id: Text` → `CITEXT` on `Memory`, `Run`, `TokenUsage`, `ResearchThread`, `PersonalAccessToken`, `NewChatThread` per AD-45.
+3. Wire `MemoryRepository.create_memory` / `update_memory` to accept `source_uuid`/`source_entity_type`.
+4. Close business/legal gates (email ToS, enrichment vendor POC, CRM scope, outcome-pricing, anti-bot).
+
+**Epic 21 readiness:** Architecture and UX contracts are **FIT for implementation** once the two migration conditions are satisfied and governance gates close.
+
+**Steps completed:** step-01-document-discovery, step-02-prd-analysis, step-03-epic-coverage-validation, step-04-ux-alignment, step-05-epic-quality-review (duplicate/overlap focus), step-06-architecture-alignment, step-07-readiness-decision, step-08-architecture-enforcement-recheck, step-09-architecture-validation, step-10-seam-close-revalidation.
 

@@ -7,7 +7,7 @@ paradigm: 'layered modular monolith + stateless MCP server + client-server with 
 scope: 'Toàn bộ hệ sinh thái Nowing: backend FastAPI, web Next.js, desktop Electron, browser extension, Obsidian plugin, MCP server, và evals.'
 status: active
 created: '2026-07-22'
-updated: '2026-08-08'
+updated: '2026-08-11'
 binds: []
 sources:
   - /Users/luisphan/Documents/nowing/docs/architecture-backend.md
@@ -73,6 +73,21 @@ companions:
 > **✅ Bổ sung 2026-07-26 (đợt 3) — hai AD về trích xuất trang khó (verified code cả hai repo):**
 > - **`AD-19` mới** — năng lực anti-bot/CAPTCHA **thuộc Nowing** (đã tồn tại 100%: thang 3 tầng + `solve_cloudflare` + detect/inject CAPTCHA + proxy geo/sticky + `BlockType` classifier); **engine có 0%** (`deepExtractor.ts` race Crawl4AI/Jina, 403 → `null` → về snippet SearXNG, không có playwright/proxy/captcha trong deps). Chốt: engine **không** dựng stack riêng, **không** gọi ngược inline (`AD-15` giữ một chiều), escalation chạy **async/enrichment** qua door `AD-17` để không đánh `NFR-9`. Cost trên ledger Nowing (`WEB_CRAWL_*` đã có) và `SM-11a` phải nói rõ điều đó. **Gated trên số đo tỷ lệ 403/CAPTCHA** — chưa đo thì chưa build. Cộng cổng pháp lý `AD-16.1`.
 > - **`AD-20` mới** — screenshot-as-evidence dùng **browser tier sẵn có** (patchright đã mở đúng trang, `page.screenshot()` là một lời gọi) + vision model **đã có** (`get_vision_llm`, `Workspace.vision_model_id`) khi extraction mỏng. **KHÔNG** adopt visual-RAG stack (PixelRAG): `AD-2` pgvector **không đổi**, không FAISS/Qdrant, không GPU cho self-host, không nhân storage 100–500×, citation `FR-13`/`NFR-6` không vỡ. Cải chính một nhầm lẫn loại: **visual RAG không phải giải pháp CAPTCHA**.
+>
+> **✅ Bổ sung 2026-08-11 (đợt 9 — Epic 21 Lead Intelligence adversarial review):**
+> - **`AD-25` tightened** — `redact_pii(text, context)` is the canonical API, `VerifiedContact` is the access-controlled PII vault, and `Lead`/`VerifiedContact` carry `consent_status` + `legal_basis` before enrichment or outreach. `lead_enrichment` context preserves raw values in `VerifiedContact` and redacts `Memory`, `Chunk[]`, logs, and non-privileged UI.
+> - **`AD-31` tightened** — `workspace_id` is `Integer` (`ForeignKey workspaces.id`) everywhere; `client_id` is the CITEXT natural key of `vertical_clients.client_id` (not the UUID `id`). Epic 21 tables use `client_id: CITEXT` from the start; existing `client_id: Text` columns migrate to `CITEXT` with a `CheckConstraint` or `ForeignKey` to `vertical_clients.client_id`.
+> - **`AD-33` tightened** — `AlertRule` is a first-class table; `sequence_enrollment` is an action, not a notification channel; signal-driven enrollments create a `SequenceRun`, never an `AutomationRun`.
+> - **`AD-37`/`AD-39` updated** — reference `CapabilityRegistry` runtime vs `LeadSource` cache and `Memory.source_uuid` + `source_entity_type` for Epic 21 UUID entities.
+> - **`AD-42` tightened** — `TokenUsage` stays LLM-only; `BillingEvent` gains `event_entity_type` + `event_type`; `BillingEvent.user_id` nullable; `OutcomeEvent.billing_event_id` removed; `BillingEvent.cost_basis` ∈ {`actual`, `estimated`, `refunded`}; billable `SequenceEvent` matrix pinned.
+> - **`AD-43` mới** — `AlertRule` first-class table and `sequence_enrollment` as `EnrollmentRequested` action.
+> - **`AD-44` mới** — `CapabilityRegistry` runtime registry vs `LeadSource` derived cache; `Memory.source_uuid` for UUID entities; `lead_extractor` sole writer of `Lead`/`LeadSource`.
+> - **`AD-45` mới** — `client_id` identity: CITEXT natural key of `vertical_clients.client_id`, not the UUID `id`; existing `Text` columns migrate to `CITEXT` + `CheckConstraint`/`ForeignKey`; Epic 21 tables use `client_id: CITEXT`; the future `clients` table is `vertical_clients`.
+> - **`AD-46` mới** — `AlertRule.target_sequence_id` is a foreign key to `Sequence.id`; the rule's `client_id` must match the target `Sequence.client_id` (or both `NULL`); `Sequence` is client-scoped by default and may be workspace-global only when `shared = true` and `client_id IS NULL`.
+> - **`AD-47` mới** — `Capability` dataclass gains optional `metadata: dict`; `CapabilityRegistry.query_metadata(key)` is the canonical read path; `Memory` gains `source_uuid` + `source_entity_type`; `MemorySourceType` extended for Epic 21 entities.
+> - **`AD-48` mới** — `SequenceEvent` vs `OutcomeEvent` billing matrix: only `sent` creates a `BillingEvent` with `event_entity_type='sequence_event'`/`event_type='email_send'`; `meeting_booked` creates an `OutcomeEvent` + `BillingEvent` `outcome_event`/`outcome_meeting_booked`.
+> - **`AD-49` mới** — `VerifiedContact` stores raw email/phone encrypted at rest; `redact_pii(..., context='lead_enrichment')` runs on `Memory.content`, `Chunk[]`, audit logs, and UI surfaces, not on `VerifiedContact`.
+> - **`AD-50` mới (đổi số từ AD-45)** — Chợ Tốt Multi-Category Scraper & Capability.
 
 ## Architecture Diagram
 
@@ -222,7 +237,7 @@ Không có parent spine; đây là spine cao nhất.
 - **⚠️ Amendment 2026-07-25 (SCP chainlens-engine-boundary, A3) — cost thật, không giá phẳng:**
   - Chi phí của external service phải lấy từ **cost do service báo về**, không từ hằng số env. Với ChainLens: parse `costDollars` từ **SSE terminal `done` frame** (`done.usage.costDollars`) → `TokenUsage` với `usage_type = "deep_research"` → wallet debit.
   - `CHAINLENS_QUERY_MICROS_PER_CALL` (`app/config/__init__.py:806`) và `BillingUnit.CHAINLENS_QUERY` **xuống hạng fallback**, chỉ dùng khi engine không emit cost, và **mỗi lần dùng phải log warning** để đo tần suất.
-  - **Lý do (verified 2026-07-25):** giá phẳng $0.005/call trong khi `mode` default là `quality` (target cost $0.0105; deep research $0.0164) → **under-meter 2.1–3.3×**. Tệ hơn: các số target đó tính trên DeepSeek stack chưa vào prod (ChainLens `DEFAULT_MODEL_POLICY` = 100% `ag/` Gemini, output đắt hơn DeepSeek ~3.5×).
+  - **Lý do (verified 2026-07-25):** giá phẳng $0.005/call trong khi `mode` default là `quality` (target cost $0.0105; deep research $0.0164) → **under-meter 2.1–3.3×**. Tệ hơn: các số target đó tính trên DeepSeek stack chưa vào prod (ChainLens `DEFAULT_MODEL_POLICY` = 100% `agy/` antigravity reasoning models trước DeepSeek gate, output đắt hơn DeepSeek ~3.5×).
   - **Gate:** không chốt con số pricing/subscription nào trước khi FR-37 và story `8-7` (auto-extract spend cap) có số đo thật.
 
 ### AD-9 — RBAC chỉ ba system roles
@@ -254,7 +269,7 @@ Không có parent spine; đây là spine cao nhất.
     - **Quyết định:** khi tạo memory từ dữ liệu scrape, `Memory` **sao chép** `capability` (ví dụ `reddit.scrape`) và `input` (JSONB) từ `Run` vào chính nó, cộng thêm một **soft reference** tới `run_id` để truy vết.
     - **Loại bỏ:** retention có điều kiện cho `runs` (giữ `Run` nào đang được `Memory` tham chiếu). **Không** làm cách này.
     - **Vì sao:** (a) `RUNS_RETENTION_DAYS = 30` với cleanup **cơ hội** (`_maybe_cleanup` chạy trên ~1% insert, `app/capabilities/core/runs.py:33-37`) — làm nó có điều kiện nghĩa là mỗi lần xoá phải join sang `memories`, biến một cleanup rẻ thành truy vấn có khoá; (b) `runs.output_text` có thể rất lớn (JSONL) nên giữ vô hạn vì memory là **đắt sai chỗ** — cái cần giữ chỉ là *recipe*, không phải *payload*; (c) memory là first-class persistence layer theo chính AD-11 này, nên nó **không được** phụ thuộc lifecycle của bảng log; (d) một `Memory` sống 2 năm vẫn re-validate được dù `Run` đã bị xoá 23 tháng trước.
-    - **Rule cụ thể:** `Memory` thêm `source_capability` (String) + `source_input` (JSONB) + `source_run_id` (UUID, nullable, **không** FK cứng — `Run` được phép biến mất). `Memory.source_id` (Integer) **giữ nguyên** cho nguồn `document`/`chat_message`; **không** đổi kiểu cột đó (chống hồi quy).
+    - **Rule cụ thể:** `Memory` thêm `source_capability` (String) + `source_input` (JSONB) + `source_run_id` (UUID, nullable, **không** FK cứng — `Run` được phép biến mất) + `source_uuid` (UUID, nullable, AD-44). `Memory.source_id` (Integer) **giữ nguyên** cho nguồn `document`/`chat_message`; `source_uuid` is used for Epic 21 UUID entities (`SignalEvent`, `LeadScore`, `Lead`, etc.). **Không** đổi kiểu cột `source_id` hay ép UUID vào đó (chống hồi quy).
     - **Re-validate:** `revalidate(memory_id)` đọc `source_capability` + `source_input` → gọi lại capability → so sánh → cập nhật `confidence` hoặc tạo `MemoryVersion`. **Không** xoá cứng memory cũ (giữ kỷ luật FR-34).
     - **Ràng buộc:** `source_input` là **snapshot bất biến** — không sửa sau khi tạo. Nếu cần đổi truy vấn thì tạo memory mới, không mutate recipe cũ (nếu không thì "re-validate" mất nghĩa).
     - **Quan hệ với AD-25 (PII):** `source_input` chứa **raw `Run.input` JSONB** (recipe) và **không bị redact**. `Memory.content` / `Memory.embedding` là bản redact theo `AD-25`; `source_input` không được embedded, không gửi engine, không hiển thị UI.
@@ -669,11 +684,14 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 - **Rule:**
   - **Insertion point:** PII redaction runs on long-text / enriched fields **before** they are embedded, extracted into facts, sent to `chainlens-research`, or returned to a user-facing surface. The raw `Run.output_text` remains unredacted for short-term audit (`RUNS_RETENTION_DAYS`).
   - **Immutable recipe vs. redacted content are separate objects:** `Memory.source_input` (raw `Run.input` JSONB) and `Memory.source_capability` are the **immutable re-validation recipe** (AD-11.1) and **must not** be redacted. The redacted text is stored in `Memory.content` / `Memory.embedding` and in `Chunk[]` sent to the engine. `Memory.source_input` is never embedded, never sent to the engine, and never shown in UI.
-  - `app/services/pii/redact.py` (Apache-2.0) exposes a single entry point: `redact_pii(text: str, context: str) -> RedactedText` with `text`, `phones_detected`, `emails_detected`, `names_detected`, `has_pii`.
+  - `Memory`, `Chunk[]`, audit logs, and any non-privileged UI surface always use redacted text. Raw PII never appears in search indexes, embeddings, agent prompts, or notification bodies.
+  - `app/services/pii/redact.py` (Apache-2.0) exposes `redact_pii(text: str, context: str) -> RedactedText` with `text`, `phones_detected`, `emails_detected`, `names_detected`, `has_pii`.
     - `context` selects the rule set: `job_data` (E12.5), `lead_enrichment` (E21.3), or `default`.
     - `redact_job_pii()` is kept as a thin alias for backward compatibility.
   - `MemoryExtractionService` / `build_run_source_block` calls `redact_pii(..., context="job_data")` when `run.capability` matches a job source or `vn_jobs.aggregate`.
-  - `EnrichmentService` (E21.3) calls `redact_pii(..., context="lead_enrichment")` after waterfall enrichment and before storing verified contact data or generating chunks.
+  - `EnrichmentService` (E21.3) writes the raw waterfall result to `VerifiedContact` and **then** calls `redact_pii(..., context="lead_enrichment")` for `Memory.content`, `Chunk[]`, audit logs, and non-privileged UI surfaces only (AD-49).
+  - **VerifiedContact is the access-controlled PII vault:** raw email/phone values are stored at rest (encrypted) in `VerifiedContact` and are exempt from redaction while at rest. `VerifiedContact` is the authoritative source for outreach. Redaction is applied before display, embedding, export, or logging. Access is gated by explicit permission/role checks and logged.
+  - **Consent and legal basis gate:** `Lead` and `VerifiedContact` carry `consent_status` and `legal_basis` **before** any enrichment or outreach. Examples: `consent_status` (`explicit`, `legitimate_interest`, `none`), `legal_basis` (`consent`, `legitimate_interest`, `contract`, `legal_obligation`). No enrichment or sequence enrollment is permitted for rows with `consent_status = none` or a missing legal basis.
   - Detection: regex for Vietnamese and international phone numbers, email addresses; heuristic/NER for person names. Configurable per context.
   - Mask or drop detected PII; do not store raw unredacted values in `Memory`.
   - Audit logs only counts (e.g., `phones_detected`, `emails_detected`, `names_detected`), never values.
@@ -740,7 +758,11 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 - **Prevents:** cross-vertical-client memory/data leakage inside one workspace; treating `client_id` as a soft ranking boost
 - **Rule:**
   - `client_id` is a **hard isolation key orthogonal to `workspace_id`**. Workspace membership alone is insufficient for vertical-client data.
-  - Define `client_id` representation before migrations (stable string vs FK to `clients` table). Prefer a first-class `clients` (or `vertical_clients`) table if more than one partner will land.
+  - `workspace_id` is `Integer` (`ForeignKey workspaces.id`) in **all** tables, existing and new (Epic 21). Do **not** use `UUID` for `workspace_id`; `app/db.py` already defines it as `Integer` for `Memory`, `Run`, `TokenUsage`, and all workspace-scoped models.
+  - `client_id` is the **CITEXT natural key** of `vertical_clients.client_id` (`app/db.py`), not the UUID `vertical_clients.id`. It is nullable in all tables and represents the partner/vertical client. **Do not use UUID for `client_id`.**
+  - Existing tables that declare `client_id` as `Text` (`Memory`, `Run`, `TokenUsage`, `ResearchThread`, `PersonalAccessToken`, ...) require an Alembic migration that changes the column type to `CITEXT` and adds a `CheckConstraint` or `ForeignKey` to `vertical_clients.client_id`. The migration runs before any Epic 21 table is enabled.
+  - Epic 21 tables use `client_id: CITEXT` from the start: `Lead`, `LeadSource`, `EnrichmentRequest`, `VerifiedContact`, `SignalEvent`, `SignalSubscription`, `LeadScore`, `Sequence`, `SequenceStep`, `SequenceEnrollment`, `SequenceEvent`, `SequenceRun`, `CrmConnection`, `CrmSyncLog`, `OutcomeEvent`, `PricingPlan`, `AlertRule`, `BillingEvent`.
+  - The future `clients` table is the already-existing `vertical_clients` table; its natural CITEXT key is the canonical `client_id`. A UUID `client_id` surrogate is not planned.
   - Tables that carry vertical-client data gain nullable `client_id` (NULL = Nowing-internal / web app). The list includes, at minimum: `Memory`, `Run`, `TokenUsage`, `ResearchThread`, `BillingEvent`, plus every Epic 21 table: `Lead`, `LeadSource`, `EnrichmentRequest`, `VerifiedContact`, `SignalEvent`, `SignalSubscription`, `LeadScore`, `Sequence`, `SequenceStep`, `SequenceEnrollment`, `SequenceEvent`, `SequenceRun`, `CrmConnection`, `CrmSyncLog`, `OutcomeEvent`, `PricingPlan`.
   - Recall and list paths **hard-filter**:
     - request with `client_id=X` → only rows with `client_id=X`
@@ -763,6 +785,8 @@ Artifact nổi nhất của PixelRAG là **index Wikipedia 8.28M trang dựng s�
 | Config | Biến môi trường tập trung trong `app/config/__init__.py` (backend) và `.env.local` (web). Không hardcode secrets. |
 
 ## Stack
+
+This table shows the **declared spec pin** from `pyproject.toml` / `package.json`. The **authoritative locked versions** are the resolved versions in `uv.lock` (Python) and `pnpm-lock.yaml` / `bun.lock` (Node). Do not treat this table as a current version registry; treat it as a policy that the lock files must satisfy.
 
 Pin actual versions from `pyproject.toml` / `package.json`; do not use "latest".
 
@@ -789,7 +813,9 @@ Pin actual versions from `pyproject.toml` / `package.json`; do not use "latest".
 | Electron | `^42.4.0` | `nowing_desktop/package.json` |
 | Plasmo | `0.90.5` | `nowing_browser_extension/package.json` |
 | Obsidian API | `latest` (plugin API, intentional) | `nowing_obsidian/package.json` |
-| MCP SDK Python | `>=1.25.0` | `nowing_backend/pyproject.toml` |
+| MCP SDK Python | `>=1.25.0,<2` (`nowing_mcp` `>=1.26.0,<2`) | `nowing_backend/pyproject.toml`, `nowing_mcp/pyproject.toml` |
+
+> **Known tooling drift (non-blocking):** `nowing_web/package.json` still carries `eslint-config-next: 15.2.0` and a `"lint": "next lint"` script. Next.js 16 no longer exposes `next lint`; the project already uses Biome. Clean up in a separate tooling pass.
 
 ## Structural Seed
 
@@ -972,21 +998,10 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
   - 8 stories backlog đều là cùng 1 pattern: "query định kỳ → so sánh delta → notify nếu thay đổi."
   - Nếu build độc lập → 8 scheduler, 8 diff logic, 8 notification path, 8 user preference schema.
 - **Rule:**
-  - **Alert Engine là một Automation template type**, không phải service mới. Dùng Epic 6 scheduler + RunService + notification dispatch.
-  - **`AlertRule` là data, không phải code:**
-    ```python
-    AlertRule = {
-      capability_id: str,       # registered Capability ID (e.g. "vn_jobs.aggregate", "bds_aggregator", "funding.signal"). Must exist in CapabilityRegistry.
-      query: dict,              # structured query cho capability
-      schedule: str,            # cron expr (e.g. "0 9 * * 1" = every Monday 9am)
-      diff_strategy: str,       # "new_items" | "price_change" | "threshold_cross" | "trend_detect"
-      threshold: dict | None,   # cho threshold_cross: {"field": "price", "op": "<", "value": 1000}
-      notification_channels: list[str],  # ["in_app", "telegram", "email", "sequence_enrollment"]
-      target: dict | None,      # for "sequence_enrollment": {"sequence_id": uuid, "step_id": uuid | None}
-    }
-    ```
-  - **Capability registration required:** `capability_id` must match a registered capability. Signal capabilities register `emits_signals=true` (AD-37); lead-source capabilities register `emits_leads=true` (AD-39).
-  - **Notification channels:** `in_app`, `telegram`, `email` (subject to legal gate), `sequence_enrollment` (triggers AD-39 sequencer). Do not invent new channels per story.
+  - **Alert Engine là một Automation template type**, không phải service mới. It reuses the Epic 6 **scheduler + Celery pattern + notification dispatch**; the `AlertRule` and sequence-enrollment data schema are **not** shared with `Automation` / `AutomationRun` (see AD-43).
+  - **`AlertRule` là first-class table**, không phải JSON template nằm trong `Automation.definition`. Columns: `id` (UUID), `workspace_id` (Integer), `client_id` (CITEXT | null), `capability_id` (str — `Capability.name`), `query` (JSONB), `schedule` (str), `diff_strategy` (str), `threshold` (JSONB | null), `notification_channels` (list[str]), `target_sequence_id` (UUID | null, FK to `Sequence.id`), `target_step_id` (UUID | null, FK to `SequenceStep.id`), `enabled` (bool). The full sequence-enrollment contract is in AD-43.
+  - **Capability registration required:** `capability_id` must match a capability registered in the in-process `CapabilityRegistry` (AD-44). Signal capabilities may advertise `emits_signals=true`; lead-source capabilities may advertise `emits_leads=true`.
+  - **Notification channels (genuine notifications only):** `in_app`, `telegram`, `email` (subject to legal gate). `sequence_enrollment` is **not** a notification channel; it is an action that emits an `EnrollmentRequested` domain event / Celery task to the Sequence bounded context (AD-43, AD-39). Do not invent new channels per story.
   - **4 diff strategies builtin** (không thêm nữa trừ khi Rule of Three):
     - `new_items`: query → so sánh với last snapshot → notify items mới. Dùng cho 12-6 (job alerts), 14-3 (news alerts).
     - `price_change`: query → so sánh price field với last snapshot → notify nếu delta > threshold. Dùng cho 12-7 (property), 15-3 (stock), 17-3 (price drop).
@@ -1042,10 +1057,10 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
                                                   Next provider → ... → Exhausted → Flag low confidence
   ```
 - **New models:**
-  - `EnrichmentRequest` (id: UUID, workspace_id, client_id, lead_id, status, provider_results, cost_micros)
-  - `VerifiedContact` (id: UUID, workspace_id, client_id, lead_id, email, phone, verification_status, confidence, source_provider)
-- **BillingEvent.usage_type mở rộng:** thêm `contact_enrichment` (do not put business events in `TokenUsage`).
-- **Enforcement:** Before any verified contact data is embedded or stored, `EnrichmentService` **must** call `app/services/pii/redact.py` (`context="lead_enrichment"`) per **AD-25**. Do not create a separate lead PII redaction module.
+  - `EnrichmentRequest` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, lead_id: UUID, status: str, provider_results: JSONB, cost_micros: int)
+  - `VerifiedContact` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, lead_id: UUID, email: str | None, phone: str | None, verification_status: str, confidence: float, source_provider: str, consent_status: str | None, legal_basis: str | None) — access-controlled PII vault; raw email/phone stored encrypted at rest, redacted before display/embedding.
+- **BillingEvent:** Write `event_entity_type='enrichment_request'`, `event_type='contact_enrichment'` (do not put business events in `TokenUsage`).
+- **Enforcement:** `EnrichmentService` stores raw email/phone values in `VerifiedContact` (the encrypted-at-rest PII vault), then calls `app/services/pii/redact.py` (`context="lead_enrichment"`) on `Memory.content`, `Chunk[]`, audit logs, and non-privileged UI surfaces **only**. Do not redact the authoritative `VerifiedContact` row. Do not create a separate lead PII redaction module.
 
 ---
 
@@ -1061,19 +1076,19 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
     - `tech_stack` → `tech_stack.signal` (website change detection)
     - `executive_move` → `executive_move.signal` (LinkedIn monitoring)
     - `news` → `news.signal` (News API + RSS)
-  - **Signal capabilities register themselves** in `CapabilityRegistry` with `emits_signals=true` and `signal_types=[...]`. `AlertRule.source` is the `capability_id` (e.g. `hiring.signal`).
+  - **Capability metadata:** A capability may advertise `emits_signals`, `emits_leads`, `signal_types`, `lead_extractor`, or `requires_pii_redaction_context` in an optional `metadata: dict` field. The in-process `CapabilityRegistry` (the `_REGISTRY` dict in `app/capabilities/core/store.py`) is a **runtime registry of executable verbs**; `CapabilityRegistry.query_metadata(key)` is the canonical read path for these keys. Lead-source metadata is derived into the `LeadSource` table (AD-44); the runtime registry must not be treated as a workspace-scoped persisted catalog.
   - **Signal storage:** `SignalEvent` is the canonical signal table. It stores a **pointer** (`chunk_id`/`source_url`) to the public/vertical data in `chainlens-research` (AD-27/AD-35), plus derived metadata (company, signal_type, confidence, detected_at). It does **not** duplicate the full public document into a second Nowing-owned corpus.
-  - **Memory row:** A `Memory` row of type `semantic` + tag `lead_signal` is created from a **redacted summary** of the signal (per AD-25) with `source_input` pointing to the original `chunk_id`/`capability`/`input`, so it participates in workspace RAG without becoming a public search index.
+  - **Memory row:** A `Memory` row of type `semantic` + tag `lead_signal` is created from a **redacted summary** of the signal (per AD-25). `source_input` stores the recipe/capability/input. For Epic 21 UUID entities (`SignalEvent`, `LeadScore`, `Lead`, `EnrichmentRequest`, `SequenceEvent`, `OutcomeEvent`) set `Memory.source_uuid` (UUID) **and** `Memory.source_entity_type` (e.g. `signal_event`, `lead_score`, `lead`, `enrichment_request`, `sequence_event`, `outcome_event`). Use `source_run_id` only when the source is a `Run`. `Memory.source_id` remains `Integer` for chat messages and documents. Do **not** coerce UUIDs into `source_id` (Integer). `MemorySourceType` is extended with `SIGNAL`, `LEAD`, `LEAD_SCORE`, `ENRICHMENT`, `SEQUENCE_EVENT`, `OUTCOME_EVENT`.
   - **Signal → Lead Score:** High-confidence signals boost lead scoring (governed by AD-38).
-  - **Notification:** Reuse AD-33 notification dispatch. `AlertRule.notification_channels` may include `in_app`, `telegram`, `sequence_enrollment` (AD-39), `email` (subject to legal gate).
+  - **Notification:** Reuse AD-33 notification dispatch. `AlertRule.notification_channels` may include `in_app`, `telegram`, `email` (subject to legal gate). Signal-driven sequence enrollment is an `EnrollmentRequested` action, not a notification channel; see AD-43 and AD-39.
   - **Monitoring frequency:** Daily scan + real-time webhooks for funding events.
 - **New models:**
-  - `SignalEvent` (id: UUID, workspace_id, client_id, company_name, signal_type, source_url, chunk_id, confidence, detected_at, processed)
-  - `SignalSubscription` (id: UUID, workspace_id, client_id, signal_types, notification_channels)
+  - `SignalEvent` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, company_name, signal_type, source_url, chunk_id, confidence, detected_at, processed)
+  - `SignalSubscription` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, signal_types, notification_channels)
 - **Enforcement:**
   - Signal scheduler, diff, and notification dispatch **must** use AD-33 `AlertRule` and `Automation` runtime.
   - Signal ingestion **must** write a `SignalEvent` and a redacted `Memory` row; no separate `signals` search index or vector store.
-  - Signal jobs **must** be registered as `CapabilityRegistry` capabilities with `emits_signals=true` so they are metered and billed like any other capability.
+  - Signal jobs **must** be registered as capabilities with `emits_signals=true` metadata so they are metered and billed like any other capability (AD-44).
 
 ---
 
@@ -1090,9 +1105,9 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
     - RAG-based similarity matching against converted leads
     - AI reasoning + rule fallback
   - **Output:** Hot / Warm / Cold classification + numeric score (0-100)
-  - **Storage:** `LeadScore` (id: UUID, workspace_id, client_id, company_name, score, fit_score, intent_score, factors_json, computed_at)
-- **Integration with Memory:** Lead scores stored as `Memory` rows with type `semantic` + tags `lead_score` (redacted summary of factors, per AD-25).
-- **BillingEvent.usage_type mở rộng:** thêm `lead_scoring` (do not put business events in `TokenUsage`).
+  - **Storage:** `LeadScore` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, lead_id: UUID, company_name: str, score: float, fit_score: float, intent_score: float, factors_json: JSONB, computed_at: datetime)
+- **Integration with Memory:** Lead scores stored as `Memory` rows with type `semantic` + tags `lead_score` (redacted summary of factors, per AD-25), `Memory.source_uuid` pointing to `LeadScore.id`, and `Memory.source_entity_type = 'lead_score'` (AD-44).
+- **BillingEvent:** Write `event_entity_type='lead_score'`, `event_type='lead_scoring'` (do not put business events in `TokenUsage`).
 
 ---
 
@@ -1104,25 +1119,30 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
   - **Sequence is a new bounded context, not an `Automation` subtype.** `Sequence`, `SequenceStep`, `SequenceEnrollment`, `SequenceEvent`, `SequenceRun` are first-class tables. The **only** reuse from Epic 6 is the scheduler/Celery execution pattern and the notification dispatcher; the data schema is **not** shared with `Automation`/`AutomationRun`.
   - **Sequence builder:** Multi-step sequences (trigger → wait → action → condition → action). A step is one of: `send_email`, `wait`, `condition`, `update_lead_score`, `update_crm`, `tag`.
   - **Outbound channel (MVP):** Email only (SMTP/SES, reuse existing email infrastructure). `linkedin`/`zalo` reserved in enum but **disabled in MVP**.
-  - **Lead source:** Leads can be generated from any workspace capability that emits `Lead` records. A lead-source capability **registers itself** in `CapabilityRegistry` with `emits_leads=true`; `LeadSource` is a **derived cache** (not a separate source of truth) updated by the ingestion pipeline.
+  - **Lead source:** Leads can be generated from any workspace capability that emits `Lead` records. A lead-source capability may advertise `emits_leads=true` in its `Capability.metadata` (AD-44/AD-47). `LeadSource` is a **derived cache** (not a separate source of truth) updated by the ingestion pipeline. The in-process `CapabilityRegistry` is the runtime verb registry; use `CapabilityRegistry.query_metadata(key)` to read capability metadata.
   - **Lead ingestion:** A single `lead_extractor` capability consumes `Chunk[]`/typed records from scrapers and normalizes to `Lead` rows. It is the **only** writer of `Lead` and `LeadSource`.
-  - **Personalization:** AI-generated messages using lead context + ICP + intent signals.
-  - **Tracking:** Delivery, open, reply, meeting booked → feedback loop to lead scoring. Each event is a `SequenceEvent` AND a `BillingEvent` (AD-42).
+  - **Consent and PII gate (AD-25/AD-49):** `Lead` and `VerifiedContact` carry `consent_status` and `legal_basis` **before** any enrichment or outreach. No `SequenceEnrollment` is permitted for a `Lead` with `consent_status = none` or missing `legal_basis`. `VerifiedContact` stores raw email/phone encrypted at rest and is the authoritative source for outreach. Redaction (`context='lead_enrichment'`) applies to `Memory`, `Chunk[]`, audit logs, and non-privileged UI surfaces; authorized personalization and send paths read raw values directly from `VerifiedContact`.
+  - **Memory provenance:** When a `Memory` row references a `Lead`, `SignalEvent`, `LeadScore`, `EnrichmentRequest`, `SequenceEvent`, `OutcomeEvent`, or other Epic 21 UUID entity, set `Memory.source_uuid` (UUID) **and** `Memory.source_entity_type` (e.g. `lead`, `signal_event`, `lead_score`, `enrichment_request`, `sequence_event`, `outcome_event`); use `source_run_id` only when the source is a `Run`. `Memory.source_id` remains `Integer` for chat messages and documents. Do **not** coerce UUIDs into `source_id` (Integer) (AD-44/AD-47).
+  - **Personalization:** AI-generated messages using lead context + ICP + intent signals; any contact values rendered from `VerifiedContact` are redacted in logs and non-privileged surfaces.
+  - **Tracking / billing matrix (AD-48):** `sent`, `delivered`, `opened`, `replied`, `bounced`, and `meeting_booked` are all stored as `SequenceEvent`s and feed lead scoring. Only billable sequence events create a `BillingEvent`:
+    - `SequenceEvent.event_type == 'sent'` → `BillingEvent` with `event_entity_type='sequence_event'`, `event_type='email_send'`.
+    - `SequenceEvent.event_type == 'meeting_booked'` → create an `OutcomeEvent` and a `BillingEvent` with `event_entity_type='outcome_event'`, `event_type='outcome_meeting_booked'`.
+    - `SequenceEvent.event_type` in `{delivered, opened, replied, bounced}` → update `SequenceEnrollment` status and emit notifications; do **not** create a `BillingEvent` by default.
   - **Compliance:** Unsubscribe handling, rate limiting, email outreach legal/ToS. Email sending disabled until legal gate closes.
-- **New models** (all with `workspace_id`; see AD-31 for `client_id`):
-  - `Lead` (id: UUID, workspace_id, client_id, source, source_url, company_name, domain, industry, fit_score, intent_score, status, enriched, created_at)
-  - `LeadSource` (id, workspace_id, client_id, provider, enabled_for_leads, last_ingest_at, lead_count)
-  - `Sequence` (id: UUID, workspace_id, client_id, name, trigger_type, status)
-  - `SequenceStep` (id: UUID, sequence_id, step_order, step_type, channel, template, wait_duration, condition)
-  - `SequenceEnrollment` (id: UUID, sequence_id, lead_id, status, current_step, enrolled_at)
-  - `SequenceEvent` (id: UUID, enrollment_id, event_type, channel, metadata, created_at)
-  - `SequenceRun` (id: UUID, workspace_id, client_id, sequence_id, enrollment_id, status, started_at, completed_at) — used for cost/audit, **not** `AutomationRun`.
+- **New models** (all with `workspace_id: Integer, client_id: CITEXT | None`; see AD-31):
+  - `Lead` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, source: str, source_url: str | None, source_chunk_id: UUID | None, company_name: str, domain: str | None, industry: str | None, fit_score: float | None, intent_score: float | None, composite_score: float | None, status: str, enriched: bool, consent_status: str | None, legal_basis: str | None, created_at: datetime)
+  - `LeadSource` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, capability_id: str, provider: str, enabled_for_leads: bool, last_ingest_at: datetime | None, lead_count: int)
+  - `Sequence` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, name: str, trigger_type: str, status: str, channel: str, shared: bool)
+  - `SequenceStep` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, sequence_id: UUID, step_order: int, channel: str, template: str, wait_duration: int, condition: JSONB | None)
+  - `SequenceEnrollment` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, sequence_id: UUID, lead_id: UUID, triggering_lead_id: UUID, triggering_alert_rule_id: UUID | None, status: str, current_step: int, enrolled_at: datetime)
+  - `SequenceEvent` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, enrollment_id: UUID, event_type: str, channel: str, metadata: JSONB, created_at: datetime)
+  - `SequenceRun` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, sequence_id: UUID, triggering_lead_id: UUID, triggering_alert_rule_id: UUID | None, status: str, started_at: datetime, finished_at: datetime | None) — used for cost/audit, **not** `AutomationRun`.
 - **Enforcement (cross-epic reuse):**
   - `Sequence`/`SequenceStep` use **new tables**; do not reuse `Automation`/`AutomationRun` schema literally. `AutomationRun.id` is `int` and `TokenUsage.run_id` is UUID — these are incompatible for cost attribution.
   - Sequencer scheduling/execution/retry **must** use the Epic 6 pattern (Celery task, `RunService`-style executor, idempotency, retry) but **on the `SequenceRun` model**, not `AutomationRun`.
   - Positive-reply/delivery/delivery-failure notifications **must** reuse the Story 11.1 notification dispatcher by adding `email_reply`, `email_delivered`, `email_bounced` to `NotificationChannel` and implementing an inbound email handler (SES webhook or IMAP idle) as a capability.
-  - Lead source discovery **must** query `CapabilityRegistry` metadata (`emits_leads`); do not hard-code a source list.
-  - Signal-driven sequence triggers **must** be implemented as AD-33 `AlertRule` templates with `notification_channels` containing `sequence_enrollment` (AD-33).
+  - Lead source discovery **must** query `LeadSource` (workspace-scoped cache) and capability metadata; do not hard-code a source list. The runtime registry is `CapabilityRegistry` (AD-44).
+  - Signal-driven sequence triggers **must** be implemented as AD-33 `AlertRule` templates with the `EnrollmentRequested` action (AD-43). The alert engine creates a `SequenceRun` (UUID) via `SequencerService`; it never creates an `AutomationRun` for signal-driven enrollments.
 - **Ghi chú:** Start email-only. LinkedIn/Zalo may be added later behind feature/ToS gates.
 
 ---
@@ -1146,8 +1166,8 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
   - **Conflict resolution:** Last-write-wins with audit log
 - **Integration pattern:** OAuth 2.0 + webhooks for real-time sync
 - **New models:**
-  - `CrmConnection` (id: UUID, workspace_id, client_id, provider, credentials_encrypted, sync_config, last_sync_at)
-  - `CrmSyncLog` (id: UUID, workspace_id, client_id, connection_id, direction, entity_type, entity_id, status, error_message, synced_at)
+  - `CrmConnection` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, provider: str, credentials_encrypted: str, sync_config: JSONB, last_sync_at: datetime | None)
+  - `CrmSyncLog` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, connection_id: UUID, direction: str, entity_type: str, entity_id: UUID, status: str, error_message: str | None, synced_at: datetime)
 - **Ghi chú:** Reuse existing OAuth connector infrastructure (AD-3, FR-7)
 
 ---
@@ -1164,8 +1184,8 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
     - Zalo business messaging ToS review + Decree 356 compliance sign-off
     - LinkedIn automation legal/ToS review (API vs browser automation)
 - **New models (design only; do not build in MVP):**
-  - `ZaloConnection` (id: UUID, workspace_id, client_id, oa_id, access_token_encrypted, refresh_token_encrypted)
-  - `ZaloMessage` (id: UUID, workspace_id, client_id, lead_id, direction, content, status, sent_at, delivered_at, read_at)
+  - `ZaloConnection` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, oa_id: str, access_token_encrypted: str, refresh_token_encrypted: str)
+  - `ZaloMessage` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, lead_id: UUID, direction: str, content: str, status: str, sent_at: datetime, delivered_at: datetime | None, read_at: datetime | None)
 - **Ghi chú:** Do not build Zalo/LinkedIn senders in MVP. Keep UI extensible so they can be enabled via feature flag later.
 
 ---
@@ -1183,13 +1203,176 @@ Các quyết định kiến trúc được cố ý hoãn lại hoặc chưa có:
     - Lead enriched = verified contact data delivered
   - **Billing:** Reuse existing credit wallet (`User.credit_micros_balance` per AD-8) + Stripe integration.
   - **Attribution:** First-touch attribution (sequence that started the journey).
-  - **Business-event ledger (new):** `BillingEvent` is the canonical ledger for non-LLM business events (`contact_enrichment`, `lead_scoring`, `outcome_meeting_booked`, `outcome_lead_enriched`, `signal_scan`). `BillingEvent` debits `User.credit_micros_balance` via the same wallet service (AD-8). `TokenUsage` remains strictly for LLM token consumption (prompt/completion tokens) and is not overloaded.
+  - **TokenUsage stays LLM-only:** `TokenUsage` remains for **LLM token consumption** (`prompt_tokens > 0` or `completion_tokens > 0`). Existing non-LLM `TokenUsage` rows (`usage_type` such as `web_crawl`, `batdongsan_item`, etc.) are **grandfathered** and may be migrated later; do **not** add new business event types to `TokenUsage`.
+  - **Business-event ledger (new):** `BillingEvent` is the canonical ledger for **new non-LLM business events**. It debits `User.credit_micros_balance` via the same wallet service (AD-8). `BillingEvent` has two typed columns:
+    - `event_entity_type: str` — enum: `signal_event`, `enrichment_request`, `lead_score`, `sequence_event`, `outcome_event`.
+    - `event_type: str` — the specific business event.
+    - **Allowed matrix** (only these pairings are valid):
+      - `signal_event` → `signal_scan`
+      - `enrichment_request` → `contact_enrichment`
+      - `lead_score` → `lead_scoring`
+      - `sequence_event` → `email_send` (only for `SequenceEvent.event_type == 'sent'`)
+      - `outcome_event` → `outcome_meeting_booked` (from `meeting_booked` only), `outcome_lead_enriched`
+  - **BillingEvent actor:** `BillingEvent.user_id` is nullable. For events triggered by an authenticated user, set `user_id`; for automated events (alerts, scheduled sequences) it defaults to the workspace owner.
+  - **OutcomeEvent / BillingEvent reference:** `BillingEvent.event_id` points to the source row. For `outcome_event` entity types, `BillingEvent.event_id` points to `OutcomeEvent.id`. **Remove** `OutcomeEvent.billing_event_id`; one `OutcomeEvent` maps to one `BillingEvent` via a unique constraint on `BillingEvent.event_id` for `outcome_event` rows (partial unique index on `event_id` where `event_entity_type = 'outcome_event'`).
+  - **Cost basis:** `BillingEvent.cost_basis` values are `actual` | `estimated` | `refunded`. Use `estimated` when upstream cost is not yet final; flip to `actual` on reconciliation; `refunded` for credits/reversals.
   - **Enforcement:** `BillingEvent` is a new table (see New models), but it **reuses the existing wallet and attribution pattern** from AD-8. Outcome dashboard reuses the usage/credit UI from Story 8.3.
 - **New models:**
-  - `BillingEvent` (id: UUID, workspace_id, client_id, user_id, event_id: UUID, event_type: `contact_enrichment` | `lead_scoring` | `outcome_meeting_booked` | `outcome_lead_enriched` | `signal_scan` | `email_send`, cost_micros, currency, cost_basis, created_at) — the single ledger for non-LLM business events. Links to `User.credit_micros_balance` (AD-8).
-  - `OutcomeEvent` (id: UUID, workspace_id, client_id, event_type, lead_id, sequence_id, billing_event_id, attribution, cost_micros, created_at)
-  - `PricingPlan` (id: UUID, workspace_id, client_id, plan_type, seat_price, outcome_rates_json, billing_period)
+  - `BillingEvent` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, user_id: UUID | None, event_entity_type: str, event_type: str, event_id: UUID, cost_micros: int, currency: str, cost_basis: str, created_at: datetime) — the single ledger for new non-LLM business events. Links to `User.credit_micros_balance` (AD-8). `cost_basis` ∈ {`actual`, `estimated`, `refunded`}.
+  - `OutcomeEvent` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, event_type: str, lead_id: UUID, sequence_id: UUID | None, attribution: str, cost_micros: int, created_at: datetime) — no `billing_event_id`; the billing row is found by `BillingEvent.event_id`.
+  - `PricingPlan` (id: UUID, workspace_id: Integer, client_id: CITEXT | None, plan_type: str, seat_price: int | None, outcome_rates_json: JSONB, billing_period: str | None)
 - **Ghi chú:** Đây là pricing strategy, không phải technical architecture — nhưng cần infrastructure support
+
+---
+
+### AD-43 — Alert-driven sequence enrollment: `AlertRule` as first-class table `[ADOPTED 2026-08-11 — closes AD-33/AD-39 ambiguity]`
+
+- **Binds:** AD-33 (Generic Alert Engine), AD-39 (Sequencer), Story 21.4 (signal-driven sequence triggers)
+- **Prevents:** `AlertRule` buried as a JSON template inside `Automation.definition`; `sequence_enrollment` masquerading as a notification channel; the alert engine creating `AutomationRun` rows for sequence enrollments
+- **Rule:**
+  - **`AlertRule` is a first-class table**, not a JSON document inside `Automation.definition`. Columns (all with `workspace_id: Integer`, `client_id: CITEXT | None` per AD-31):
+    - `id` (UUID, PK)
+    - `capability_id` (str) — registered capability `Capability.name`, e.g. `funding.signal`, `vn_jobs.aggregate`
+    - `query` (JSONB) — structured query passed to the capability
+    - `schedule` (str) — cron expression
+    - `diff_strategy` (str) — `new_items` | `price_change` | `threshold_cross` | `trend_detect`
+    - `threshold` (JSONB | null)
+    - `notification_channels` (list[str]) — genuine notification channels only: `in_app`, `telegram`, `email`
+    - `target_sequence_id` (UUID | null) — foreign key to `Sequence.id` for signal-driven enrollments; null only when the rule is notification-only.
+    - `target_step_id` (UUID | null) — foreign key to `SequenceStep.id` (optional step inside the target sequence); null means start at the first step.
+    - `enabled` (bool)
+  - **`sequence_enrollment` is not a notification channel.** It is an action that the Alert Engine executes by emitting an `EnrollmentRequested` domain event / Celery task to the Sequence bounded context.
+  - **Alert engine never creates an `AutomationRun` for signal-driven enrollments.** When `target_sequence_id` is present, the Alert Engine calls `SequencerService` to create a `SequenceRun` (UUID) and enroll the matched lead(s). The `SequenceRun` is owned by the Sequence bounded context and uses the `SequenceRun` table, not `AutomationRun`.
+  - **Reuse from Epic 6 is bounded:** The Alert Engine may reuse the **scheduler/Celery pattern** and the **notification dispatch** infrastructure from Epic 6. It does **not** reuse the `Automation` / `AutomationRun` data schema for `AlertRule`, signal diff, or sequence enrollment.
+  - **Snapshot and subscription tables:** `alert_snapshots` (`alert_rule_id`, `snapshot_json`, `created_at`) and `alert_subscriptions` (`user_id`, `alert_rule_id`, `channels`, `enabled`) remain first-class tables; they are not nested inside `Automation.definition`.
+- **Enforcement:**
+  - `AlertRule` must be a SQLAlchemy model with its own Alembic migration; do not store it inside `Automation.definition`.
+  - `notification_channels` must reject `sequence_enrollment`; signal-driven enrollment is handled by `target_sequence_id` (and optional `target_step_id`) + `EnrollmentRequested`.
+  - `AutomationRun` must not be created by the signal → sequence path; `SequenceRun` is the only run artifact.
+
+---
+
+### AD-44 — `CapabilityRegistry` runtime vs lead-source metadata and `Memory` UUID references `[ADOPTED 2026-08-11 — closes AD-37/AD-39/AD-11 ambiguity]`
+
+- **Binds:** AD-11 (Memory provenance), AD-37 (Signal detection), AD-39 (Sequencer / lead ingestion)
+- **Prevents:** Conflating the in-process capability dict with a persisted workspace-scoped registry; coercing UUID entity references into `Memory.source_id` (Integer); multiple writers creating `Lead` and `LeadSource` rows
+- **Rule:**
+  - **`CapabilityRegistry` is the runtime verb registry.** `app/capabilities/core/store.py` defines `_REGISTRY: dict[str, Capability]` and is populated at import by each verb's `definition.py`. It is an **in-process registry of executable verbs**, not a workspace-scoped catalog of lead sources. The `Capability` dataclass (`app/capabilities/core/types.py`) gains an optional `metadata: dict[str, Any] | None = None` field. `CapabilityRegistry.query_metadata(key)` returns `{capability_name: metadata_value}` and `query_metadata_for(name, key)` returns a single value; these are the **canonical read paths** for capability metadata. Known metadata keys include `emits_leads: bool`, `emits_signals: bool`, `signal_types: list[str]`, `lead_extractor: bool`, and `requires_pii_redaction_context: str`.
+  - **Workspace-scoped lead-source metadata lives in `LeadSource`.** `LeadSource` is a **derived cache** (not a source of truth) updated by the `lead_extractor` pipeline per AD-39. The lead-source picker queries `LeadSource` and may cross-check the runtime `CapabilityRegistry` for display names; it does not treat the in-process dict as a workspace-persisted table.
+  - **If a persisted `capability_registry` table is added later**, it must remain a **platform/global catalog** and must not be confused with the in-process `_REGISTRY` dict or the workspace-scoped `LeadSource` cache.
+  - **Lead and `LeadSource` writer is `lead_extractor`.** A capability may advertise `emits_leads=true` or `emits_signals=true` in its `Capability.metadata`, but the `lead_extractor` capability is the **sole writer** of `Lead` and `LeadSource` rows and its metadata must carry `lead_extractor: true`. No other capability, scraper, or automation writes these tables directly.
+  - **`Memory` UUID references:** Epic 21 introduces UUID-keyed entities (`SignalEvent`, `LeadScore`, `Lead`, `EnrichmentRequest`, `SequenceEvent`, `OutcomeEvent`) that `Memory` rows may reference. Add `source_uuid` (UUID, nullable) and `source_entity_type` (str, nullable) to `Memory`. Set both `source_uuid` and `source_entity_type` (e.g. `signal_event`, `lead_score`, `lead`, `enrichment_request`, `sequence_event`, `outcome_event`) when the source is an Epic 21 UUID entity. Use `source_run_id` **only** when the source is a `Run`. `Memory.source_id` remains `Integer` for chat messages and documents. Do **not** coerce UUIDs into `Memory.source_id` (Integer). `source_input` continues to store the immutable recipe.
+  - **Provenance consistency:** `Memory.source_type` still describes the semantic source (e.g. `scraper_run`, `chat_message`, `manual`). For Epic 21 UUID entities, set `source_type` to the appropriate value and populate `source_uuid` + `source_entity_type`; do not set `source_id` to a cast/left-padded UUID. `MemorySourceType` is extended with `SIGNAL`, `LEAD`, `LEAD_SCORE`, `ENRICHMENT`, `SEQUENCE_EVENT`, `OUTCOME_EVENT`.
+- **Enforcement:**
+  - Verify `app/capabilities/core/types.py:Capability` exposes an optional `metadata: dict` field and `app/capabilities/core/store.py` exposes `CapabilityRegistry.query_metadata` / `query_metadata_for` as the canonical read paths; `emits_leads`/`emits_signals` must not be fields on `Capability` outside `metadata`.
+  - Migrations for Epic 21 must add `Memory.source_uuid` (UUID, nullable, indexed), `Memory.source_entity_type` (str, nullable), extend `MemorySourceType` with `SIGNAL`, `LEAD`, `LEAD_SCORE`, `ENRICHMENT`, `SEQUENCE_EVENT`, `OUTCOME_EVENT`, and preserve `Memory.source_id` as Integer.
+  - `Lead`/`LeadSource` write paths must be gated behind the `lead_extractor` service; other capabilities produce `Chunk[]`/typed records consumed by `lead_extractor`.
+
+---
+
+### AD-45 — `client_id` Identity: CITEXT Natural Key of `vertical_clients.client_id` `[NEW 2026-08-11 — closes AD-31 ambiguity]`
+
+- **Binds:** AD-31 (vertical client tenancy), all Epic 21 tables, existing `Memory`/`Run`/`TokenUsage`/`ResearchThread`/`PersonalAccessToken`
+- **Prevents:** `client_id` having two live identity shapes (UUID `vertical_clients.id` vs CITEXT `vertical_clients.client_id`); two implementation units producing incompatible rows
+- **Rule:**
+  - `client_id` is the **CITEXT natural key** of `vertical_clients.client_id` (`app/db.py`), not the UUID `vertical_clients.id`. `client_id` is a hard isolation key and is nullable in all tables (`NULL` = Nowing-internal / web app).
+  - Epic 21 tables define `client_id: CITEXT` from the start: `Lead`, `LeadSource`, `EnrichmentRequest`, `VerifiedContact`, `SignalEvent`, `SignalSubscription`, `LeadScore`, `Sequence`, `SequenceStep`, `SequenceEnrollment`, `SequenceEvent`, `SequenceRun`, `CrmConnection`, `CrmSyncLog`, `OutcomeEvent`, `PricingPlan`, `AlertRule`, `BillingEvent`.
+  - Existing tables that currently declare `client_id: Text` (`Memory`, `Run`, `TokenUsage`, `ResearchThread`, `PersonalAccessToken`, ...) require an Alembic migration that changes the column type to `CITEXT` and adds a `CheckConstraint` or `ForeignKey` to `vertical_clients.client_id`. The migration must run before any Epic 21 table is enabled.
+  - The future first-class `clients` table is the already-existing `vertical_clients` table. Do **not** introduce a UUID `client_id` surrogate or a separate `clients` table.
+- **Enforcement:**
+  - All Epic 21 migrations must use `client_id: CITEXT`; no `client_id: UUID` or `client_id: Text` in new code.
+  - RLS policies must filter on the CITEXT `client_id`, never on `vertical_clients.id`.
+
+---
+
+### AD-46 — `AlertRule.target` and `Sequence` Client Scope `[NEW 2026-08-11 — closes AD-43/AD-39/AD-31 cross-client targeting]`
+
+- **Binds:** AD-43 (`AlertRule` first-class table), AD-39 (Sequencer), AD-31 (client tenancy)
+- **Prevents:** `AlertRule` targeting a `Sequence` across client boundaries; `Sequence` ownership model being workspace-global vs client-scoped by accident
+- **Rule:**
+  - `AlertRule.target_sequence_id` is a **foreign key** to `Sequence.id`. `target_step_id` is a foreign key to `SequenceStep.id` (nullable).
+  - `AlertRule.client_id` must match the target `Sequence.client_id` **unless** the `Sequence` is shared (`shared = true` and `client_id IS NULL`), in which case a rule with any `client_id` (including a specific vertical client or `NULL`) may target it. In all cases, the matched `Lead.client_id` must equal the rule's `client_id` (or the rule is workspace-global with `client_id IS NULL`).
+  - `Sequence` is **client-scoped by default** (`client_id` is `NOT NULL`). A `Sequence` with `client_id` belongs to that vertical client and may only be targeted by `AlertRule`s with the same `client_id`.
+  - A `Sequence` may be **workspace-global** only if it has `shared: bool = true` **and** `client_id IS NULL`. Shared sequences are owned by the workspace and may be targeted by any `AlertRule`, but the `SequenceRun`/`SequenceEnrollment` `client_id` is always the matched `Lead.client_id`.
+  - `SequenceRun` and `SequenceEnrollment` include `triggering_lead_id` (FK to `Lead.id`) and `triggering_alert_rule_id` (FK to `AlertRule.id`, nullable). `client_id` is always the matched `Lead.client_id` (which equals the rule's `client_id` for client-scoped rules, and the lead's own `client_id` for workspace-global rules).
+- **Enforcement:**
+  - Add a migration column `Sequence.shared` (bool, default `false`, not null) and a DB check ensuring `(shared = true AND client_id IS NULL) OR (shared = false AND client_id IS NOT NULL)`.
+  - Add migrations for `SequenceRun.triggering_lead_id` and `SequenceRun.triggering_alert_rule_id`; same columns on `SequenceEnrollment`.
+  - `SequencerService` must reject any `AlertRule` whose `target_sequence_id` points to a client-scoped `Sequence` with a different `client_id`; it must verify the matched `Lead.client_id` equals the rule's `client_id` (or the rule is workspace-global).
+
+---
+
+### AD-47 — `Capability` Metadata and `Memory` UUID Provenance `[NEW 2026-08-11 — closes AD-44/AD-37/AD-39 contract gaps]`
+
+- **Binds:** AD-44 (registry vs lead-source cache), AD-37 (signals), AD-39 (lead ingestion / Memory), AD-11 (Memory provenance)
+- **Prevents:** Two units choosing different `Capability` metadata shapes; `Memory` rows splitting between `source_run_id` and `source_uuid` for the same entity
+- **Rule:**
+  - `Capability` dataclass (`app/capabilities/core/types.py`) gains a `metadata: dict[str, Any] | None = None` field. `Capability.name` is the **canonical identifier**; `LeadSource.capability_id`, `AlertRule.capability_id`, and all references use `Capability.name`. There is no separate `id` field on `Capability`.
+  - `CapabilityRegistry` in `app/capabilities/core/store.py` is the canonical in-process registry. It provides `query_metadata(key: str) -> dict[str, Any]` (returns `{capability_name: metadata_value}`) and `query_metadata_for(name: str, key: str) -> Any | None`. There is no parallel `_METADATA` dict.
+  - Canonical `Capability` metadata keys for Epic 21 include:
+    - `emits_leads: bool`
+    - `emits_signals: bool`
+    - `signal_types: list[str]`
+    - `lead_extractor: bool`
+    - `requires_pii_redaction_context: str`
+  - `Memory` table gains `source_uuid: UUID | None` and `source_entity_type: str | None`. `Memory.source_id` stays `Integer` for `document`/`chat_message`. `Memory.source_run_id` is set **only** when the source is a `Run` and may be set alongside `source_uuid` for audit context. For Epic 21 UUID entities (`SignalEvent`, `LeadScore`, `Lead`, `EnrichmentRequest`, `SequenceEvent`, `OutcomeEvent`), `source_uuid` + `source_entity_type` is the **authoritative source pointer**; `source_run_id` is optional contextual run. Re-validation and provenance display use `source_uuid`/`source_entity_type` when present.
+  - `MemorySourceType` is extended with `SIGNAL`, `LEAD`, `LEAD_SCORE`, `ENRICHMENT`, `SEQUENCE_EVENT`, `OUTCOME_EVENT`.
+  - `lead_extractor` is the sole writer of `Lead`/`LeadSource`; its `Capability.metadata` carries `lead_extractor: true`. No other capability writes `Lead` or `LeadSource` directly.
+- **Enforcement:**
+  - Verify `CapabilityRegistry.query_metadata` and `query_metadata_for` are implemented and used by the lead-source picker and alert engine.
+  - Epic 21 migrations must add `Memory.source_uuid` (UUID, nullable, indexed), `Memory.source_entity_type` (str, nullable), and extend `MemorySourceType` with the Epic 21 values. `Memory.source_id` must remain `Integer`.
+
+---
+
+### AD-48 — `SequenceEvent` vs `OutcomeEvent` Billing Matrix `[NEW 2026-08-11 — closes AD-42/AD-39 overlap]`
+
+- **Binds:** AD-42 (BillingEvent ledger), AD-39 (Sequencer tracking)
+- **Prevents:** `meeting_booked` having two ledger homes; delivery/open/reply inconsistently debiting the wallet
+- **Rule:**
+  - Only `SequenceEvent.event_type == 'sent'` creates a `BillingEvent` with `event_entity_type='sequence_event'`, `event_type='email_send'`.
+  - `SequenceEvent.event_type == 'meeting_booked'` creates an `OutcomeEvent` **and** a `BillingEvent` with `event_entity_type='outcome_event'`, `event_type='outcome_meeting_booked'`.
+  - `SequenceEvent.event_type` in `{delivered, opened, replied, bounced}` does **not** create a `BillingEvent` by default. These events create notifications and update `SequenceEnrollment` status.
+  - Re-statement of AD-39: "billable sequence events create a `BillingEvent`" — not "each event is a `SequenceEvent` AND a `BillingEvent`".
+- **Enforcement:**
+  - `BillingEvent` allowed matrix rejects any `sequence_event`/`meeting_booked` or `outcome_event`/`email_send` pairing.
+  - Sequencer code paths must not create a `BillingEvent` for delivery/open/reply/bounce.
+
+---
+
+### AD-49 — `VerifiedContact` Redaction Boundary `[NEW 2026-08-11 — closes AD-25/AD-39 PII order ambiguity]`
+
+- **Binds:** AD-25 (PII redaction), AD-36 (waterfall enrichment), AD-39 (outreach personalization)
+- **Prevents:** `VerifiedContact` holding redacted placeholders instead of sendable raw values; raw PII leaking into `Memory`, `Chunk[]`, logs, or UI
+- **Rule:**
+  - `VerifiedContact` stores raw email/phone **encrypted at rest** and is the **authoritative source for outreach**. Raw values are exempt from redaction while at rest.
+  - `EnrichmentService` writes the raw waterfall result to `VerifiedContact` and **then** calls `redact_pii(..., context='lead_enrichment')` only for `Memory.content`, `Chunk[]`, audit logs, and UI surfaces.
+  - `lead_enrichment` context rule: **preserve raw in `VerifiedContact`**; redact logs, embedded text, and non-privileged surfaces.
+  - Authorized send/personalization paths read raw values directly from `VerifiedContact`; logs and non-privileged displays use the redacted copy or `<EMAIL>`/`<PHONE>` tokens.
+  - **Consent authority for outreach:** `VerifiedContact.consent_status` and `VerifiedContact.legal_basis` are the authoritative gate for a `Lead`'s first outreach. `Lead.consent_status`/`legal_basis` are cached UI summaries; `SequenceEnrollment` and the sequencer must check `VerifiedContact.consent_status` before the first send.
+- **Enforcement:**
+  - No code path may call `redact_pii` on `VerifiedContact.email`/`phone` before writing them; redaction happens at `Memory`/`Chunk`/display boundaries.
+  - Audit logs only count PII detections, never values.
+  - `SequenceEnrollment` creation and the first `SequenceEvent` of type `sent` must gate on `VerifiedContact.consent_status` in `{explicit, legitimate_interest}`.
+
+---
+
+### AD-50 — Chợ Tốt Multi-Category Scraper & Capability `[ADOPTED 2026-08-11; renumbered from AD-45]`
+
+- **Binds:** FR-6 (scraper expansion), Epic 10 stories 10.6/10.7, AD-3 (capability self-register), AD-16 (license boundary), AD-19 (anti-bot), AD-25/AD-26 (PII/ToS)
+- **Prevents:** Capability explosion (`chotot_xe.scrape`, `chotot_viec_lam.scrape`, ...); per-category `BillingUnit` enum bloat; hardcoded `nhatot.com` detail URLs; `ChototBdsListing` schema leaking BĐS-only fields into vehicles/jobs/electronics
+- **Rule:**
+  - **Single generic scraper actor:** `app/proprietary/platforms/chotot/scraper.py` exposes `scrape_chotot(category, ...)` and a stable-slug → `cg` config table. The same public gateway `gateway.chotot.com/v1/public/ad-listing` is used for all supported verticals; only `cg` and `st` change.
+  - **Single generic capability:** `app/capabilities/chotot/scrape/definition.py` registers one `chotot.scrape` verb with `category` as a required input. `chotot_bds.scrape` is kept as a deprecated alias calling `chotot.scrape(category="bds")`.
+  - **Generic billing unit:** `BillingUnit.CHOTOT_ITEM` bills per returned listing. Vertical granularity is captured in `TokenUsage.call_details["category"]`, not a per-vertical `BillingUnit`.
+  - **Generic listing schema:** `ChototListing` contains common fields (`title`, `price`, `location`, etc.) plus an `attributes: dict[str, Any]` bag for vertical-specific data. `ChototBdsListing` is deprecated and either aliased to `ChototListing(category="bds")` or removed after consumers migrate.
+  - **Detail URL origins:** `detail_url` is built from the vertical's canonical public origin (`nhatot.com` for BĐS, `xe.chotot.com` for vehicles, `vieclamtot.com` for jobs, `www.chotot.com` for general goods). `/<list_id>.htm` is the best-effort canonical path; the platform may redirect to a slug URL.
+  - **Parser dispatch:** A lightweight `CATEGORY_PARSERS` dict routes by leaf `category` code. Unknown leaf codes fall back to `parse_generic`, which copies top-level scalar fields into `attributes`. Fallback listings are marked `degraded` and are not billed.
+  - **`st` semantics:** For supported verticals the default is `st=s` (sell/want-to-sell). Only BĐS currently supports `st=u` (rent). The capability input uses `listing_type: sell | rent | want_to_buy` and the fetcher maps to the appropriate `st` if the vertical supports it; unsupported `st` values for a vertical fall back to `s` and log a warning.
+  - **Phone fetch:** Reuse the existing RSA-encrypted `_PHONE_URL` for all verticals. `fetch_phone` returns `None` if the endpoint returns non-200 or the vertical does not expose a public phone.
+  - **ToS/PII:** Phone numbers are PII. Downstream `Memory`/ingestion must apply `AD-25` redaction. New verticals added after BĐS must pass `AD-26` ToS/legal review.
+- **Enforcement:**
+  - Unit tests cover mapping, `st` resolution, detail URL per origin, and parser dispatch for BĐS + vehicles + jobs + electronics.
+  - Integration tests (gated) run live `ad-listing` calls for at least one non-BĐS vertical.
 
 ---
 

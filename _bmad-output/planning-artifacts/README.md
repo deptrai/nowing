@@ -37,7 +37,8 @@ planning-artifacts/
 
 - **AD-8 / AD-10 / AD-42** — `BillingEvent` là ledger cho business events không phải LLM; `TokenUsage` chỉ cho token consumption.
 - **AD-31** — `client_id` tenancy trên tất cả bảng Epic 21 (và `Memory`, `Run`, `TokenUsage`, `ResearchThread`, `BillingEvent`).
-- **AD-33** — `AlertRule.capability_id`, `notification_channels` gồm `sequence_enrollment`, `target.sequence_id`.
+- **AD-33** — `AlertRule.capability_id`, `notification_channels` gồm `in_app`, `telegram`, `email`; signal-driven enrollment dùng `target_sequence_id` / `target_step_id` (FK thật).
+- **AD-44 / AD-45 / AD-47** — `Capability.name` là canonical id + `CapabilityRegistry.query_metadata`; `client_id` là CITEXT natural key; `Memory.source_uuid` + `source_entity_type` là authoritative provenance.
 - **AD-36–AD-42** — Lead intelligence architecture (enrichment, signals, scoring, sequencer, CRM, Zalo/LinkedIn deferred, outcome pricing).
 - **AD-39** — `Sequence` là bounded context mới, không phải `Automation` subtype.
 - **AD-22 / AD-23** — VietnamWorks / TopCV / ITviec scrapers: `ADOPTED` sau khi 300 unit tests pass.

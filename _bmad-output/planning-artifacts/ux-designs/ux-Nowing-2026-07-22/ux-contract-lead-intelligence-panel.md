@@ -199,12 +199,12 @@ To prevent rebuilding existing infrastructure, the UI must rely on these shared 
 
 | UI Surface | Shared backend / AD | Constraint |
 |---|---|---|
-| Lead source list | `CapabilityRegistry` metadata (`emits_leads=true`) (AD-3, AD-39, FR-6) | The source dropdown must be populated from `CapabilityRegistry`/`LeadSource` APIs, not a hard-coded list. Lead sources are capabilities that declare `emits_leads=true`. |
-| Source-specific tabs | `CapabilityRegistry` + `Lead` table (N7) | Tabs are rendered from the workspace's actual lead sources, filtered by `client_id` (AD-31); no hard-coded source menu. |
+| Lead source list | `LeadSource` cache (populated by `lead_extractor` from `CapabilityRegistry` metadata `emits_leads=true`) (AD-3, AD-39, AD-44, FR-6) | The source dropdown must be populated from the workspace-scoped `LeadSource` API, not a hard-coded list. `CapabilityRegistry` is the runtime verb registry; `LeadSource` is the derived cache.
+| Source-specific tabs | `LeadSource` cache + `Lead` table (N7) | Tabs are rendered from the workspace's actual lead sources (workspace-scoped `LeadSource` cache), filtered by `client_id` (AD-31); no hard-coded source menu.
 | Enrichment cost | `BillingEvent` (`usage_type = "contact_enrichment"`) + `User.credit_micros_balance` (AD-8, AD-10, AD-36, AD-42) | Cost indicator must read from wallet/`BillingEvent` endpoints; `TokenUsage` is only for LLM token steps. |
 | Per-lead projected cost | `BillingEvent` + `credit_micros_balance` (AD-42) | Projected cost uses the existing cost estimator/usage dashboard; dashboard reuses Story 8.3. |
 | Sequence creation | New `Sequence`/`SequenceStep` tables, reusing Epic 6 scheduler/Celery/notification (AD-39) | Sequence builder UI persists to first-class `Sequence` schema, not `Automation`/`AutomationRun`. `Sequence` has `client_id` and UUID `id` (AD-31). |
-| Sequence triggers from signals | AD-33 `AlertRule` with `capability_id`, `notification_channels` containing `sequence_enrollment`, and `target.sequence_id` (AD-37, AD-39) | Signal-to-sequence triggers are configured as alert rules tied to a signal capability; no separate trigger UI. |
+| Sequence triggers from signals | AD-33 `AlertRule` with `capability_id`, `notification_channels` from the allowed set (`in_app`, `telegram`, `email`), and `target_sequence_id` (AD-37, AD-39) | Signal-to-sequence triggers are configured as alert rules tied to a signal capability; no separate trigger UI. |
 | Positive-reply / delivery / bounce notifications | Story 11.1 notification service extended with `email_reply`, `email_delivered`, `email_bounced` (AD-39) | Notification preferences UI extends existing notification settings; inbound email handler (SES webhook/IMAP idle) is a capability. |
 | CRM connection | `Connection` / OAuth model (AD-3, AD-40) | CRM setup UI reuses the existing connector management flow. `CrmConnection`/`CrmSyncLog` include `client_id` (AD-31). |
 | Outcome-pricing display | `BillingEvent` + usage/credit dashboard from Story 8.3 (AD-10, AD-42) | Outcome-pricing metrics reuse the same usage/credit UI; `TokenUsage` is not used for business outcomes. |

@@ -39,7 +39,7 @@ E21:  Lead Intelligence    ─────────────── backlog
 | E14–E16 | 🔄 in-progress | News, finance, company directory VN |
 | E18 | 🔄 in-progress | Public agent-chat, AgentConfig, client tenancy |
 | E20 | 🔄 in-progress | Ingest, gap-fill, private provider, cost sync |
-| E21 | ⏸️ backlog | `bmad-architecture` PASS — FIT; governance/legal gates chưa đóng |
+| E21 | ⏸️ backlog | `bmad-architecture` PASS with implementation conditions; governance/legal gates chưa đóng |
 | Tech Debt | 🔄 in-progress | 7 deferred issues cần story |
 
 ### Các story đang in-progress (2026-08-11)

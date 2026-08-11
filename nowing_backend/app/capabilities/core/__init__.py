@@ -8,6 +8,7 @@ from typing import Any
 
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.store import (
+    CapabilityRegistry,
     all_capabilities,
     get_capability,
     register_capability,
@@ -29,6 +30,7 @@ __all__ = [
     "BillingUnit",
     "Capability",
     "CapabilityContext",
+    "CapabilityRegistry",
     "Executor",
     "all_capabilities",
     "charge_capability",

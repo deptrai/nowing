@@ -48,7 +48,7 @@ The following are non-negotiable from `ARCHITECTURE-SPINE.md` and `epics.md`:
 - Signal sources are `CapabilityRegistry` capabilities with `emits_signals=true` and `signal_types=[...]` (AD-37).
 
 ### Signal → sequence triggers
-- Use AD-33 `AlertRule` with `capability_id` (signal capability), `notification_channels` containing `sequence_enrollment`, and `target.sequence_id` / `target.step_id` (AD-33, AD-37, AD-39).
+- Use AD-33 `AlertRule` with `capability_id` (signal capability), optional `notification_channels`, and `target_sequence_id` / `target_step_id` for signal-driven enrollment. `sequence_enrollment` is an action, not a notification channel (AD-43).
 
 ### Notifications
 - Reuse Story 11.1 notification service. New channels: `email_reply`, `email_delivered`, `email_bounced`. `SequenceEvent` is the canonical event source (AD-39).

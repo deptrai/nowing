@@ -585,6 +585,12 @@ class MemorySourceType(StrEnum):
     SCRAPER_RUN = "scraper_run"
     MANUAL = "manual"
     UNKNOWN = "unknown"
+    SIGNAL = "signal"
+    LEAD = "lead"
+    LEAD_SCORE = "lead_score"
+    ENRICHMENT = "enrichment"
+    SEQUENCE_EVENT = "sequence_event"
+    OUTCOME_EVENT = "outcome_event"
 
 
 class MemoryRelationType(StrEnum):
@@ -2324,6 +2330,11 @@ class Memory(BaseModel, TimestampMixin):
     # the cleanup. ``source_id`` stays an integer (chat message ids); the run's
     # UUID lives here instead of being coerced into it.
     source_run_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    # Authoritative source pointer for Epic 21 UUID-keyed entities (AD-44 / AD-47).
+    # ``source_run_id`` may be set alongside these for audit context, but
+    # ``source_uuid`` + ``source_entity_type`` are the canonical provenance.
+    source_uuid = Column(UUID(as_uuid=True), nullable=True, index=True)
+    source_entity_type = Column(String(100), nullable=True)
     # Source recipe for re-validation (Story 9.6a, AD-11.1).
     # A soft copy of Run.capability and Run.input, not a live reference, so the
     # memory remains re-executable after the run log is cleaned up.

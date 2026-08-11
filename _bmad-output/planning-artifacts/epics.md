@@ -1272,7 +1272,7 @@ _FR-29 · FR-21/23 · FR-18/19/20 · FR-32/33/34 · AD-7 · story file `7-7-mcp-
 
 ## Epic 10: Connector & Scraper Expansion
 
-_Tạo 2026-08-03 để chứa các scraper/capability mới ngoài phạm vi epic cũ._
+_Tạo 2026-08-03 để chứa các scraper/capability mới ngoài phạm vi epic cũ. Mở rộng 2026-08-11: thêm story 10.6–10.8 để mở rộng scraper Chợ Tốt từ bất động sản sang tất cả các danh mục tin đăng lớn._
 
 ### Story 10.1: Batdongsan.com.vn Scraper  `[DONE per sprint-status: 10-1]`
 
@@ -1385,6 +1385,92 @@ So that we can audit blocks and decide whether to rotate credentials, proxy, or 
 **Then** the Inbox item is still created without the screenshot, and a counter `anti_bot_screenshot_failure` is emitted.
 
 _Governed by `AD-19`, `AD-3`, `AD-16`._
+
+### Story 10.6: Chợ Tốt Multi-Category Scraper `[ready-for-dev]`
+
+As a researcher using the Chợ Tốt scraper,
+I want to scrape listings from any major vertical (`xe cộ`, `điện tử`, `việc làm`, `đồ gia dụng`, `vật nuôi`, `dịch vụ`, `thời trang`, v.v.) in addition to real estate,
+So that one scraper foundation returns typed, useful data for each category instead of a BĐS-shaped record full of nulls.
+
+**Acceptance Criteria:**
+**Given** the existing Chợ Tốt BĐS scraper uses `gateway.chotot.com/v1/public/ad-listing` with `cg` and `st` parameters,
+**When** Story 10.6 is complete,
+**Then** the fetcher supports a `category` input that maps to the correct `cg`, `st`, and detail URL origin for each vertical, and the BĐS `property_type` mapping keeps working.
+
+**Given** public `cg` codes for each vertical (`2010/2020` BĐS, `4010/4020` vehicles, `5000` electronics, `7000` home goods, `9000` fashion, v.v.),
+**When** the mapping module is loaded,
+**Then** it exposes a deterministic lookup from stable slugs (`cars`, `motorbikes`, `electronics`, `jobs`, `home_goods`, `pets`, `fashion`, `services`) to `cg` and per-vertical `listing_type` default.
+
+**Given** an unsupported category slug,
+**When** the scraper runs,
+**Then** it fails fast with `category_not_supported` and does not silently fall back to BĐS.
+
+**Given** a listing is parsed,
+**When** `detail_url` is built,
+**Then** it uses the vertical's canonical origin (`nhatot.com`, `xe.chotot.com`, `vieclamtot.com`, `www.chotot.com`, v.v.) and `list_id` as `/{list_id}.htm` (best-effort; redirect acceptable), not hardcoded to `nhatot.com`.
+
+**Given** the public `loadRegions` endpoint returns the shared region/area tree,
+**When** the scraper resolves `city`/`district` for any supported category,
+**Then** it reuses the existing `_resolve_region_v2` / `_resolve_area_v2` logic. A per-vertical region loader is added only if a real category proves the tree differs.
+
+**Given** the current `ChototBdsListing` schema with BĐS-only fields (`area`, `rooms`, `floors`, `toilets`, `property_type`),
+**When** Story 10.6 is complete,
+**Then** there is a generic `ChototListing` schema with common fields plus a per-category `attributes: dict[str, Any]` bag for vertical-specific fields.
+
+**Given** a vehicle ad from `xe.chotot.com`,
+**When** it is parsed,
+**Then** `attributes` includes `make`, `model`, `year`, `mileage`, `fuel_type`, `transmission`, `condition`, `vehicle_type` where present.
+
+**Given** a job ad from `vieclamtot.com`,
+**When** it is parsed,
+**Then** `attributes` includes `salary_min`, `salary_max`, `salary_string`, `job_type`, `company_name`, `experience`, `education`, `benefits` where present.
+
+**Given** an electronics / home goods / fashion ad,
+**When** it is parsed,
+**Then** `attributes` includes `brand`, `condition`, `warranty`, `accessories` where present; no BĐS-only fields are emitted as null.
+
+**Given** the gateway returns an unmapped `cg`,
+**When** the listing is parsed,
+**Then** `parse_generic` captures fields into `attributes`, sets `category="unknown"`, and the executor marks the run `degraded` and does not bill the listing.
+
+**Kỹ thuật (không phải AC):** Spike `cg`/`st`/region/detail URL/phone behavior; replace `_PROPERTY_TYPE_TO_CG` with `_CATEGORY_CONFIG` dict; refactor `scraper.py` to `scrape_chotot`; move `_build_detail_url`; update `schemas.py` with `ChototListing` and mark `ChototBdsListing` deprecated; implement lightweight parser dispatch (`parse_vehicle`, `parse_job`, `parse_general_goods`, `parse_generic`). Tests for mapping, parsers, and one live integration.
+
+_See full story file: `implementation-artifacts/stories/10-6-chotot-multi-category-scraper.md`._
+
+### Story 10.7: Chợ Tốt Multi-Category Capability and Billing `[ready-for-dev]`
+
+As a workspace owner,
+I want a single `chotot.scrape` capability that accepts any supported category and bills per returned listing on the correct meter,
+So that users can research Chợ Tốt vehicles, jobs, electronics, and goods without separate capabilities or mis-billed BĐS rates.
+
+**Acceptance Criteria:**
+**Given** the existing `chotot_bds.scrape` capability is registered with `BillingUnit.CHOTOT_BDS_ITEM`,
+**When** Story 10.7 is complete,
+**Then** a single `chotot.scrape` capability is registered with `category` as required input, and `chotot_bds.scrape` is kept as a deprecated alias.
+
+**Given** `chotot.scrape` runs with `category=cars` and returns 12 listings,
+**When** billing is recorded,
+**Then** `TokenUsage.usage_type="chotot_item"`, `cost_micros = 12 × CHOTOT_SCRAPE_MICROS_PER_ITEM`, and `call_details` includes `category="cars"`.
+
+**Given** `chotot.scrape` runs with `category=electronics` and returns 0 listings due to a block,
+**When** the output is `degraded=true`,
+**Then** `cost_micros=0` and `degradation_reason` is preserved.
+
+**Given** `chotot.scrape` returns a listing with `category="unknown"`,
+**When** billing is computed,
+**Then** that listing is not counted and `degradation_reason="unknown_category"` is returned.
+
+**Given** the pre-flight wallet gate `gate_capability`,
+**When** `chotot.scrape` is called with `max_items=20` and `category=jobs`,
+**Then** the gate reserves `20 × CHOTOT_SCRAPE_MICROS_PER_ITEM` micros.
+
+**Given** existing `chotot_bds.scrape` consumers,
+**When** the new capability is live,
+**Then** `chotot_bds.scrape` keeps working for at least one release as an alias, with a deprecation note in the docs.
+
+**Kỹ thuật (không phải AC):** Architecture decision recorded for single `chotot.scrape`; add `BillingUnit.CHOTOT_ITEM` and `CHOTOT_SCRAPE_MICROS_PER_ITEM` config; update `app/capabilities/core/billing.py`; register/alias in `definition.py`, `executor.py`, `schemas.py`; add docs and `.env.example`. Unit + integration + regression tests.
+
+_See full story file: `implementation-artifacts/stories/10-7-chotot-multi-category-capability.md`._
 
 ---
 
@@ -2420,7 +2506,7 @@ So that I can reach out at the right moment.
 **Given** a company in workspace, **When** signals are monitored, **Then** funding events, job postings, tech stack changes, and executive moves are detected and surfaced with signal type, confidence, source URL, and timestamp.
 **Given** multiple signals for the same company, **When** aggregated, **Then** a composite lead score is calculated.
 **Given** a signal is detected, **When** it is stored, **Then** it writes a `SignalEvent` row (with `client_id`, `workspace_id`) and a redacted `Memory` row of type `semantic` with tag `lead_signal`. The `Memory` row stores a summary with `source_input` pointing to the original `chunk_id`/`capability`/`input`; it does not duplicate the full public document (AD-27/AD-35).
-**Given** a signal trigger is configured, **When** it fires, **Then** it uses an AD-33 `AlertRule` template with `capability_id` set to a registered signal capability (e.g. `funding.signal`, `hiring.signal`) and `notification_channels` from the allowed set (`in_app`, `telegram`, `email`, `sequence_enrollment`). `sequence_enrollment` triggers the AD-39 sequencer with `target.sequence_id`.
+**Given** a signal trigger is configured, **When** it fires, **Then** it uses an AD-33 `AlertRule` template with `capability_id` set to a registered signal capability (e.g. `funding.signal`, `hiring.signal`) and `notification_channels` from the allowed set (`in_app`, `telegram`, `email`). Signal-driven enrollment uses `target_sequence_id` and optional `target_step_id`; `sequence_enrollment` is not a notification channel.
 **Given** a signal source is a scraper/connector, **When** it runs, **Then** it is registered as a `CapabilityRegistry` capability with `emits_signals=true` and `signal_types=[...]`. Metering: any LLM/token cost goes to `TokenUsage`; the signal-scan business event goes to `BillingEvent` with `usage_type = "signal_scan"`.
 _Sources: Crunchbase, LinkedIn, company websites, job boards, news. FR-63. Governed by AD-31 (`client_id`), AD-33 (AlertRule engine), AD-37 (signal detection framework), AD-39 (signal-to-sequence triggers)._
 
@@ -2464,7 +2550,7 @@ So that I can scale outbound without sacrificing quality.
 **Given** a workspace with connected scrapers/ connectors, **When** the user creates a lead list, **Then** leads can be sourced from any available scraper/connector that registers with `emits_leads=true` (FR-6 sources + Exa/Indeed/Walmart/BĐS/HR verticals as applicable).
 **Given** a sales sequence is created, **When** it is persisted, **Then** it uses first-class `Sequence`, `SequenceStep`, `SequenceEnrollment`, `SequenceEvent`, and `SequenceRun` tables with `client_id`, `workspace_id`, and UUID `id` (AD-31, AD-39). `Sequence` is **not** an `Automation` subtype; only the Epic 6 scheduler/Celery pattern and notification dispatcher are reused.
 **Given** an email is sent, delivered, bounced, or replied, **When** a notification is needed, **Then** it is dispatched through the Story 11.1 notification service with `NotificationChannel` extended to include `email_reply`, `email_delivered`, `email_bounced`; an inbound email handler (SES webhook or IMAP idle) is implemented as a capability.
-**Given** a sequence trigger is based on a signal (e.g. funding event), **When** it fires, **Then** it uses an AD-33 `AlertRule` template with `capability_id` = the signal capability and `notification_channels` containing `sequence_enrollment` (with `target.sequence_id` and optional `target.step_id`).
+**Given** a sequence trigger is based on a signal (e.g. funding event), **When** it fires, **Then** it uses an AD-33 `AlertRule` template with `capability_id` = the signal capability and `notification_channels` from the allowed set (`in_app`, `telegram`, `email`). Signal-driven enrollment uses `target_sequence_id` and optional `target_step_id`; `sequence_enrollment` is not a notification channel.
 **Given** lead sources are displayed, **When** the user creates a lead list, **Then** the source list comes from `CapabilityRegistry` metadata (`emits_leads=true`), not a hard-coded list.
 **Given** a sequence step is executed, **When** it incurs cost (e.g. email send, LLM personalization), **Then** it writes a `BillingEvent` row with the appropriate `usage_type`; LLM token cost, if any, goes to `TokenUsage`.
 _FR-66. Governed by AD-31 (`client_id`), AD-33 (AlertRule), AD-39 (sequencer), AD-42 (`BillingEvent`)._

@@ -3,16 +3,16 @@
 **Date:** 2026-08-11
 **Skill:** `bmad-architecture` (Validate intent)
 **Artifact:** `ARCHITECTURE-SPINE.md` in `architecture-Nowing-2026-07-22/`
-**Status:** ⚠️ **CONDITIONAL PASS / FAIL with conditions**
+**Status:** ⚠️ **CONDITIONAL PASS with conditions**
 **offer_to_update:** true
 
 ---
 
 ## Executive Verdict
 
-`ARCHITECTURE-SPINE.md` is a strong architecture contract for the brownfield core (E1–E11) but **has material gaps in the Epic 21 lead-intelligence ADs** and in the **Stack section version drift**. The new ADs reuse existing infrastructure (AD-3, AD-8, AD-10, AD-11, AD-33) in spirit, but literal implementation conflicts exist in data types, table boundaries, and source-of-truth ownership.
+`ARCHITECTURE-SPINE.md` is a strong architecture contract for the brownfield core (E1–E11). After multiple review rounds the Epic 21 lead-intelligence ADs are now internally consistent: `AlertRule` uses real FK columns (`target_sequence_id` / `target_step_id`), `Sequence` client scope is unambiguous, `Capability.name` and `CapabilityRegistry.query_metadata` are canonical, `Memory.source_uuid`/`source_entity_type` are the authoritative provenance pointer, and `VerifiedContact` redaction/consent boundaries are pinned.
 
-**Do not build Epic 21 against the current spine until these conflicts are resolved.**
+**Epic 21 can be sliced after two final conditions are met:** (1) the `client_id: CITEXT` migration for existing tables and `Memory.source_uuid`/`source_entity_type` Alembic migration are created before enabling Epic 21 tables, and (2) remaining governance gates (legal/ToS, enrichment vendor POC, anti-bot) close.
 
 ---
 
@@ -148,3 +148,33 @@ Cross-AD adversarial re-check: **all 5 top conflicts RESOLVED**.
   - Only remaining conflict was **AD-22/AD-23 status mismatch** → resolved by verifying code: 300 unit tests passed, status promoted to `ADOPTED`.
 
 **Final overall status:** ✅ **FIT for implementation** — all critical conflicts resolved, lint clean, cross-AD and UX consistency verified.
+
+---
+
+## 10. Third validation pass (post-seam-close, 2026-08-11)
+
+A focused pass was run after closing the five literal-but-incompatible seams found in the second adversarial review.
+
+| Gate | Result |
+|---|---|
+| `lint_spine.py` | ✅ **0 findings** |
+| Reality-check review | ⚠️ **CONDITIONAL PASS** |
+| Adversarial review | ✅ **PASS with implementation conditions** |
+
+**Closed in this pass:**
+- `AlertRule.target` → split into `target_sequence_id` (FK) and `target_step_id` real columns.
+- `AlertRule.client_id` → `CITEXT` in AD-33.
+- `Sequence`/`SequenceRun`/`SequenceEnrollment` client-scope ownership → `client_id` always the matched `Lead.client_id`; `triggering_lead_id` / `triggering_alert_rule_id` added.
+- `Capability` canonical identifier → `Capability.name`; `CapabilityRegistry.query_metadata(key)` and `query_metadata_for(name, key)` canonical.
+- `Memory` provenance → `source_uuid` + `source_entity_type` authoritative; `MemorySourceType` extended.
+- `VerifiedContact` redaction/consent → `VerifiedContact.consent_status`/`legal_basis` authoritative for first outreach.
+- Lead-source picker UX contract aligned to `LeadSource` cache populated by `lead_extractor`.
+- Code updated: `Capability.metadata` field, `CapabilityRegistry`, `Memory.source_uuid`/`source_entity_type` columns, `redact_pii(..., context='lead_enrichment')`.
+
+**Residual conditions (implementation, not redesign):**
+1. Create Alembic migrations for `Memory.source_uuid`/`source_entity_type` and `MemorySourceType` enum extension.
+2. Create Alembic migration for existing `client_id: Text` → `CITEXT` on `Memory`, `Run`, `TokenUsage`, `ResearchThread`, `PersonalAccessToken`, `NewChatThread` per AD-45.
+3. Wire `MemoryRepository.create_memory` / `update_memory` to accept `source_uuid`/`source_entity_type`.
+4. Build Epic 21 tables/lead pipeline and `lead_extractor` capability; close business/legal gates.
+
+**Overall architecture verdict:** `ARCHITECTURE-SPINE.md` is **fit for Epic 21 implementation** once the two migration conditions above are satisfied.

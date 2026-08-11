@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.pii.redact import redact_job_pii
+from app.services.pii.redact import redact_job_pii, redact_pii
 
 pytestmark = pytest.mark.unit
 
@@ -38,3 +38,21 @@ def test_redacts_person_name():
     assert "<NAME>" in result.text
     assert result.names_detected == 1
     assert result.has_pii
+
+
+def test_lead_enrichment_context_redacts_pii():
+    text = "Reach Nguyễn Văn A at hr@example.com or 0987654321."
+    result = redact_pii(text, context="lead_enrichment")
+
+    assert "hr@example.com" not in result.text
+    assert "0987654321" not in result.text
+    assert "Nguyễn Văn A" not in result.text
+    assert "<EMAIL>" in result.text
+    assert "<PHONE>" in result.text
+    assert "<NAME>" in result.text
+    assert result.has_pii
+
+
+def test_unknown_context_raises():
+    with pytest.raises(ValueError):
+        redact_pii("text", context="unknown")
