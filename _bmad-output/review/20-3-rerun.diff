@@ -1,0 +1,698 @@
+diff --git a/_bmad-output/implementation-artifacts/deferred-work.md b/_bmad-output/implementation-artifacts/deferred-work.md
+index 7f98b90d1..ba9528886 100644
+--- a/_bmad-output/implementation-artifacts/deferred-work.md
++++ b/_bmad-output/implementation-artifacts/deferred-work.md
+@@ -1,3 +1,13 @@
++## Deferred from: code review of 20-3-nowing-private-provider (2026-08-11)
++
++- **Finding:** Typo `ChucksHybridSearchRetriever` in `app/retriever/chunks_hybrid_search.py` propagated to `private_provider.py`.
++  - **Action:** Marked `[x] [Review][Defer]` in `20-3-nowing-private-provider.md`.
++  - **Reason / when to revisit:** Pre-existing class name; rename the retriever itself if a refactor pass touches it.
++
++- **Finding:** Workspace access check fetches workspace then calls `check_workspace_access` non-atomically.
++  - **Action:** Marked `[x] [Review][Defer]` in `20-3-nowing-private-provider.md`.
++  - **Reason / when to revisit:** Same pattern used across many routes; revisit with a broader `get_workspace_with_membership` helper or row-level advisory lock.
++
+ ## Resolved from: code review of 18-3-agent-registry (2026-08-10)
+ 
+ - **[x] Frontend admin agent-registry UI page**
+@@ -235,6 +245,14 @@
+   summary: Revalidation failure test doesn't assert mock executor was called — test passes even if code path doesn't reach executor
+   evidence: Edge Case EC-15. AsyncMock with side_effect but no call_count assertion.
+ 
++## Deferred from: code review of 18-6-memory-tagging-rag-filter (2026-08-11)
++
++- ~~**Finding:** `MemoryRelation` has no `client_id` and `MemoryRepository.add_relation` does not set tenant GUCs, so a workspace member could create a relation that spans clients.~~
++  - **Resolution (2026-08-11):** Added `client_id` to `MemoryRelation`, composite index, RLS policies in migration `b8b3fae31175`, and hardened `MemoryRepository.add_relation` to derive scope from the source memory, set tenant GUCs, and reject cross-workspace/cross-client targets.
++
++- ~~**Finding:** `Memory.source_uuid` and `Memory.source_entity_type` exist in `app/db.py` but no migration adds them, and the Postgres `memory_source_type` enum has not been updated.~~
++  - **Resolution (2026-08-11):** Added migration `e5b50d5e687e` to create `source_uuid` and `source_entity_type` columns with the required index.
++
+ ## Deferred from: code review of 9-3-latency-budget-state-a-b-gate (2026-08-08)
+ 
+ - source_spec: `_bmad-output/implementation-artifacts/9-3-latency-budget-state-a-b-gate.md`
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 714fc950b..4fc9fb26b 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -186,7 +186,7 @@ development_status:
+   20-2: in-progress
+   # ponytail: 2026-08-08 architecture-review — gap-fill caller + cost allocation.
+   # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+-  20-3: done
++  20-3: done  # code review findings applied
+   # ponytail: 2026-08-08 architecture-review — NowingPrivateProvider.
+   # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+   20-4: done  # code-review patches and deferred items applied; integration tests pass
+diff --git a/_bmad-output/implementation-artifacts/stories/20-3-nowing-private-provider.md b/_bmad-output/implementation-artifacts/stories/20-3-nowing-private-provider.md
+index 9b21a16e6..4e5319cf3 100644
+--- a/_bmad-output/implementation-artifacts/stories/20-3-nowing-private-provider.md
++++ b/_bmad-output/implementation-artifacts/stories/20-3-nowing-private-provider.md
+@@ -422,6 +422,24 @@ SWE-1.7 Max
+ - Added concrete subtasks with exact files/functions.
+ - Added verification commands section.
+ 
++### Review Findings
++
++- [x] [Review][Decision] Xử lý `sources` không hợp lệ — giữ im lặng bỏ qua (permissive filtering); đã để lại log debug. (private_provider.py)
++- [x] [Review][Decision] Swallow tất cả exception trong `_search_memory` — giữ degrade im lặng; đây là tính năng phụ, không làm fail request. (private_provider.py)
++- [x] [Review][Decision] Timestamp fallback cho `fetchedAt` khi `Document.updated_at` là None — dùng `created_at` làm fallback; giữ `datetime.now(UTC)` nếu cả hai đều None. (private_provider.py)
++- [x] [Review][Patch] `userId` hợp lệ không được dùng cho `MemoryHybridSearch` — `_search_memory` giờ gọi thêm một lần với `user_id` khi requested user là thành viên workspace. (private_provider.py)
++- [x] [Review][Patch] `TokenUsage.user_id` luôn là chủ workspace — `record_token_usage` được chuyển vào service và dùng `effective_user_id`. (private_provider.py, chainlens_internal.py)
++- [x] [Review][Patch] Thiếu assertion `TokenUsage` row trong integration tests — đã thêm `test_private_data_search_callback_records_token_usage`. (test_chainlens_internal.py)
++- [x] [Review][Patch] Thiếu test cho `userId` logic — đã thêm `test_private_data_search_callback_uses_requested_user_id_for_token_usage` và unit test ghi TokenUsage với owner. (test_chainlens_internal.py, test_private_provider.py)
++- [x] [Review][Patch] Thiếu test `sources` filter trong integration suite — đã thêm `test_private_data_search_callback_filters_by_sources`. (test_chainlens_internal.py)
++- [x] [Review][Patch] Thiếu test cho invalid `userId` format / empty `sources` / validation detail — đã thêm `test_private_data_search_callback_rejects_malformed_user_id` và `test_private_data_search_callback_returns_validation_details`. (test_chainlens_internal.py)
++- [x] [Review][Patch] Thiếu test cross-workspace data leakage — đã thêm `test_private_data_search_callback_is_isolated_between_workspaces`. (test_chainlens_internal.py)
++- [x] [Review][Patch] `memory.content` có thể `None` — đã thêm guard `(memory.content or "").strip()`. (private_provider.py)
++- [x] [Review][Patch] `workspace.user` có thể `None` — đã thêm guard trước `AuthContext.system`. (chainlens_internal.py)
++- [x] [Review][Patch] Thiếu tenant context verification test — đã thêm `test_search_sets_tenant_context_for_owner_and_records_usage` và `test_build_chunks_skips_memory_with_none_content`. (test_private_provider.py)
++- [x] [Review][Defer] Typo `ChucksHybridSearchRetriever` — lỗi đặt tên có sẵn trong `app/retriever/chunks_hybrid_search.py`, không do diff này gây ra. (private_provider.py:331)
++- [x] [Review][Defer] Race condition workspace access check — mẫu lấy workspace rồi gọi `check_workspace_access` không atomic, tồn tại ở nhiều route khác. (chainlens_internal.py:229-243)
++
+ ## Verification Commands
+ 
+ ```bash
+diff --git a/nowing_backend/app/routes/chainlens_internal.py b/nowing_backend/app/routes/chainlens_internal.py
+index 282c83dfe..d5472a3db 100644
+--- a/nowing_backend/app/routes/chainlens_internal.py
++++ b/nowing_backend/app/routes/chainlens_internal.py
+@@ -29,7 +29,6 @@ from app.services.chainlens.schemas import (
+     PrivateDataSearchRequest,
+     PrivateDataSearchResponse,
+ )
+-from app.services.token_tracking_service import UsageType, record_token_usage
+ from app.utils.rbac import check_workspace_access
+ 
+ router = APIRouter()
+@@ -88,6 +87,13 @@ async def private_data_search_for_chainlens(
+         )
+         raise HTTPException(status_code=403, detail="Forbidden")
+ 
++    if workspace.user is None:
++        ot_metrics.record_chainlens_auth_failed(
++            workspace_id=context.workspace_id,
++            reason="workspace_owner_missing",
++        )
++        raise HTTPException(status_code=403, detail="Forbidden")
++
+     auth = AuthContext.system(user=workspace.user, source="chainlens")
+     await check_workspace_access(session, auth, context.workspace_id)
+ 
+@@ -99,7 +105,11 @@ async def private_data_search_for_chainlens(
+     )
+ 
+     service = PrivateProviderService(session)
+-    response = await service.search(body, workspace)
++    response = await service.search(
++        body,
++        workspace,
++        correlation_id=context.correlation_id,
++    )
+ 
+     ot_metrics.record_chainlens_private_search(
+         workspace_id=context.workspace_id,
+@@ -107,22 +117,4 @@ async def private_data_search_for_chainlens(
+         hit_count=len(response.chunks),
+     )
+ 
+-    await record_token_usage(
+-        session,
+-        usage_type=UsageType.CHAINLENS_PRIVATE_SEARCH,
+-        workspace_id=context.workspace_id,
+-        user_id=workspace.user_id,
+-        prompt_tokens=0,
+-        completion_tokens=0,
+-        total_tokens=0,
+-        cost_micros=0,
+-        call_details={
+-            "correlation_id": context.correlation_id,
+-            "query": body.query,
+-            "connector_id": body.connectorId,
+-            "sources": body.sources,
+-            "requested_user_id": str(body.userId) if body.userId else None,
+-        },
+-    )
+-
+     return response
+diff --git a/nowing_backend/app/services/chainlens/private_provider.py b/nowing_backend/app/services/chainlens/private_provider.py
+index 066ecc1ee..dd53978f4 100644
+--- a/nowing_backend/app/services/chainlens/private_provider.py
++++ b/nowing_backend/app/services/chainlens/private_provider.py
+@@ -25,7 +25,8 @@ from app.services.chainlens.schemas import (
+     PrivateProviderChunk,
+     PrivateProviderChunkMetadata,
+ )
+-from app.services.memory.search import MemoryHybridSearch
++from app.services.memory.search import MemoryHybridSearch, ScoredMemory
++from app.services.token_tracking_service import UsageType, record_token_usage
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -47,6 +48,8 @@ class PrivateProviderService:
+         self,
+         request: PrivateDataSearchRequest,
+         workspace: Workspace,
++        *,
++        correlation_id: str | None = None,
+     ) -> PrivateDataSearchResponse:
+         """Run a private search and return a typed, cost-attributed response."""
+         workspace_id = workspace.id
+@@ -84,11 +87,21 @@ class PrivateProviderService:
+             query_embedding=query_embedding,
+         )
+ 
+-        # Search workspace memory as a secondary source.
++        # Search workspace memory as a primary source; optionally add the
++        # requested user's personal memory if the user is a workspace member.
+         memory_results = await self._search_memory(
+             query=request.query,
+             workspace_id=workspace_id,
+             query_embedding=query_embedding,
++            user_id=effective_user_id if request.userId == effective_user_id else None,
++        )
++
++        # Ensure tenant context is restored for batched document metadata load.
++        await set_request_tenant_context(
++            self.session,
++            workspace_id=workspace_id,
++            client_id=None,
++            user_id=str(effective_user_id) if effective_user_id else None,
+         )
+ 
+         # Retrievers don't return connector_id or updated_at, so load them
+@@ -110,6 +123,24 @@ class PrivateProviderService:
+         if len(chunks) > request.topK:
+             chunks = chunks[: request.topK]
+ 
++        await record_token_usage(
++            self.session,
++            usage_type=UsageType.CHAINLENS_PRIVATE_SEARCH,
++            workspace_id=workspace_id,
++            user_id=effective_user_id,
++            prompt_tokens=0,
++            completion_tokens=0,
++            total_tokens=0,
++            cost_micros=0,
++            call_details={
++                "correlation_id": correlation_id,
++                "query": request.query,
++                "connector_id": request.connectorId,
++                "sources": request.sources,
++                "requested_user_id": str(request.userId) if request.userId else None,
++            },
++        )
++
+         return PrivateDataSearchResponse(chunks=chunks, costDollars=0.0)
+ 
+     async def _is_workspace_member(
+@@ -202,11 +233,12 @@ class PrivateProviderService:
+         query: str,
+         workspace_id: int,
+         query_embedding: list[float],
+-    ) -> list:
+-        """Search workspace-scoped memory."""
++        user_id: UUID | None,
++    ) -> list[ScoredMemory]:
++        """Search workspace memory and, for a valid member, their personal memory."""
+         search = MemoryHybridSearch(self.session)
+         try:
+-            return await search.search(
++            results: list[ScoredMemory] = await search.search(
+                 workspace_id=workspace_id,
+                 user_id=None,
+                 query=query,
+@@ -217,14 +249,39 @@ class PrivateProviderService:
+             logger.warning(
+                 "Memory search failed for workspace %d", workspace_id, exc_info=True
+             )
+-            return []
++            results = []
++
++        if user_id is not None:
++            try:
++                user_results = await search.search(
++                    workspace_id=None,
++                    user_id=user_id,
++                    query=query,
++                    query_embedding=query_embedding,
++                    top_k=_MAX_MEMORY_RESULTS,
++                )
++            except Exception:
++                logger.warning(
++                    "User-scoped memory search failed for user %s in workspace %d",
++                    user_id,
++                    workspace_id,
++                    exc_info=True,
++                )
++                user_results = []
++
++            seen = {scored.memory.id for scored in results}
++            for scored in user_results:
++                if scored.memory.id not in seen:
++                    results.append(scored)
++
++        return results
+ 
+     async def _load_document_meta(
+         self,
+         chunk_results: list[dict],
+         doc_results: list[dict],
+     ) -> dict[int, dict]:
+-        """Load connector_id and updated_at for all candidate documents."""
++        """Load connector_id and timestamps for all candidate documents."""
+         doc_ids: set[int] = set()
+         for doc_group in chunk_results + doc_results:
+             doc_info = doc_group.get("document") or {}
+@@ -236,12 +293,19 @@ class PrivateProviderService:
+             return {}
+ 
+         rows = await self.session.execute(
+-            select(Document.id, Document.connector_id, Document.updated_at).where(
+-                Document.id.in_(doc_ids)
+-            )
++            select(
++                Document.id,
++                Document.connector_id,
++                Document.updated_at,
++                Document.created_at,
++            ).where(Document.id.in_(doc_ids))
+         )
+         return {
+-            row.id: {"connector_id": row.connector_id, "updated_at": row.updated_at}
++            row.id: {
++                "connector_id": row.connector_id,
++                "updated_at": row.updated_at,
++                "created_at": row.created_at,
++            }
+             for row in rows
+         }
+ 
+@@ -251,7 +315,7 @@ class PrivateProviderService:
+         request: PrivateDataSearchRequest,
+         chunk_results: list[dict],
+         doc_results: list[dict],
+-        memory_results: list,
++        memory_results: list[ScoredMemory],
+         workspace: Workspace,
+         connector_id: int | None,
+         doc_meta: dict[int, dict],
+@@ -276,7 +340,9 @@ class PrivateProviderService:
+             doc_title = doc_info.get("title") or "Untitled Document"
+             doc_type = doc_info.get("document_type") or "private_provider"
+             extra_meta = doc_meta.get(doc_id, {})
+-            fetched_at = self._format_ts(extra_meta.get("updated_at"))
++            fetched_at = self._format_ts(
++                extra_meta.get("updated_at"), extra_meta.get("created_at")
++            )
+ 
+             for chunk in (doc_group.get("chunks") or [])[:_MAX_CHUNK_RESULTS_PER_DOC]:
+                 if len(chunks) >= request.topK:
+@@ -318,7 +384,7 @@ class PrivateProviderService:
+             if len(chunks) >= request.topK:
+                 break
+             memory = scored.memory
+-            if not memory.content.strip():
++            if not (memory.content or "").strip():
+                 continue
+             memory_id = memory.id
+             if memory_id in seen:
+@@ -384,8 +450,14 @@ class PrivateProviderService:
+         )
+ 
+     @staticmethod
+-    def _format_ts(value) -> str:
+-        """Return an ISO 8601 string for a datetime value."""
++    def _format_ts(value, fallback=None) -> str:
++        """Return an ISO 8601 string for a datetime value.
++
++        If ``value`` is missing and a ``fallback`` is provided, use it;
++        otherwise use the current UTC time as a last-resort default.
++        """
++        if value is None:
++            value = fallback
+         if value is None:
+             return datetime.now(UTC).isoformat()
+         if isinstance(value, datetime):
+diff --git a/nowing_backend/tests/integration/routes/test_chainlens_internal.py b/nowing_backend/tests/integration/routes/test_chainlens_internal.py
+index 1aa92b333..f4df69faf 100644
+--- a/nowing_backend/tests/integration/routes/test_chainlens_internal.py
++++ b/nowing_backend/tests/integration/routes/test_chainlens_internal.py
+@@ -8,6 +8,7 @@ import httpx
+ import pytest
+ import pytest_asyncio
+ from httpx import ASGITransport
++from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from app.app import app, limiter
+@@ -16,7 +17,10 @@ from app.db import (
+     Document,
+     DocumentType,
+     SearchSourceConnector,
++    TokenUsage,
++    User,
+     Workspace,
++    WorkspaceMembership,
+     get_async_session,
+ )
+ from app.routes.chainlens_internal import chainlens_auth_dependency
+@@ -265,6 +269,241 @@ async def test_private_data_search_callback_filters_by_connector(
+     assert body["chunks"][0]["metadata"]["connector_id"] == db_connector.id
+ 
+ 
++@pytest.mark.asyncio
++async def test_private_data_search_callback_records_token_usage(
++    chainlens_internal_client,
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++):
++    """A successful private search writes a TokenUsage row with cost_micros=0."""
++    response = await chainlens_internal_client.post(
++        "/v1/private-data/search",
++        json={"query": "irrelevant", "workspaceId": db_workspace.id},
++    )
++    assert response.status_code == 200
++
++    result = await db_session.execute(
++        select(TokenUsage)
++        .where(
++            TokenUsage.workspace_id == db_workspace.id,
++            TokenUsage.usage_type == "chainlens_private_search",
++        )
++        .order_by(TokenUsage.id.desc())
++        .limit(1)
++    )
++    record = result.scalar_one_or_none()
++    assert record is not None
++    assert record.cost_micros == 0
++    assert record.user_id == db_workspace.user_id
++
++
++@pytest.mark.asyncio
++async def test_private_data_search_callback_uses_requested_user_id_for_token_usage(
++    chainlens_internal_client,
++    db_session: AsyncSession,
++    db_workspace: Workspace,
++):
++    """When userId is a workspace member, TokenUsage uses it instead of the owner."""
++    from uuid import uuid4
++
++    member = User(
++        id=uuid4(),
++        email="member@nowing.net",
++        hashed_password="hashed",
++        is_active=True,
++        is_superuser=False,
++        is_verified=True,
++    )
++    db_session.add(member)
++    await db_session.flush()
++
++    # Add the user as a workspace member; role can be None for this test.
++    membership = WorkspaceMembership(
++        user_id=member.id,
++        workspace_id=db_workspace.id,
++    )
++    db_session.add(membership)
++    await db_session.flush()
++
++    response = await chainlens_internal_client.post(
++        "/v1/private-data/search",
++        json={
++            "query": "irrelevant",
++            "workspaceId": db_workspace.id,
++            "userId": str(member.id),
++        },
++    )
++    assert response.status_code == 200
++
++    result = await db_session.execute(
++        select(TokenUsage)
++        .where(
++            TokenUsage.workspace_id == db_workspace.id,
++            TokenUsage.usage_type == "chainlens_private_search",
++        )
++        .order_by(TokenUsage.id.desc())
++        .limit(1)
++    )
++    record = result.scalar_one_or_none()
++    assert record is not None
++    assert record.user_id == member.id
++
++
++@pytest.mark.asyncio
++async def test_private_data_search_callback_is_isolated_between_workspaces(
++    chainlens_internal_client,
++    db_session: AsyncSession,
++    db_user,
++    db_workspace: Workspace,
++):
++    """Results never include documents from a different workspace."""
++    from uuid import uuid4
++
++    from app.routes.workspaces_routes import create_default_roles_and_membership
++
++    other_user = User(
++        id=uuid4(),
++        email="other@nowing.net",
++        hashed_password="hashed",
++        is_active=True,
++        is_superuser=False,
++        is_verified=True,
++    )
++    db_session.add(other_user)
++    await db_session.flush()
++
++    other_workspace = Workspace(name="Other Space", user_id=other_user.id)
++    db_session.add(other_workspace)
++    await db_session.flush()
++    await create_default_roles_and_membership(
++        db_session, other_workspace.id, other_user.id
++    )
++
++    own_doc = Document(
++        title="Own Doc",
++        document_type=DocumentType.FILE,
++        content="shared content",
++        content_hash="hash-own",
++        workspace_id=db_workspace.id,
++        created_by_id=db_user.id,
++    )
++    other_doc = Document(
++        title="Other Doc",
++        document_type=DocumentType.FILE,
++        content="shared content",
++        content_hash="hash-other",
++        workspace_id=other_workspace.id,
++        created_by_id=other_user.id,
++    )
++    db_session.add(own_doc)
++    db_session.add(other_doc)
++    await db_session.flush()
++
++    own_chunk = Chunk(
++        content="shared content chunk", position=0, document_id=own_doc.id
++    )
++    other_chunk = Chunk(
++        content="shared content chunk", position=0, document_id=other_doc.id
++    )
++    db_session.add(own_chunk)
++    db_session.add(other_chunk)
++    await db_session.flush()
++
++    response = await chainlens_internal_client.post(
++        "/v1/private-data/search",
++        json={
++            "query": "shared content",
++            "workspaceId": db_workspace.id,
++        },
++    )
++    assert response.status_code == 200
++    body = response.json()
++    assert len(body["chunks"]) == 1
++    assert body["chunks"][0]["metadata"]["document_id"] == own_doc.id
++
++
++@pytest.mark.asyncio
++async def test_private_data_search_callback_rejects_malformed_user_id(
++    chainlens_internal_client,
++    db_workspace: Workspace,
++):
++    response = await chainlens_internal_client.post(
++        "/v1/private-data/search",
++        json={
++            "query": "irrelevant",
++            "workspaceId": db_workspace.id,
++            "userId": "not-a-uuid",
++        },
++    )
++    assert response.status_code == 422
++
++
++@pytest.mark.asyncio
++async def test_private_data_search_callback_returns_validation_details(
++    chainlens_internal_client,
++    db_workspace: Workspace,
++):
++    response = await chainlens_internal_client.post(
++        "/v1/private-data/search",
++        json={
++            "query": "",
++            "workspaceId": db_workspace.id,
++        },
++    )
++    assert response.status_code == 422
++    body = response.json()
++    assert "error" in body
++    assert any(err.get("loc", []) == ["query"] for err in body["error"]["fields"])
++
++
++@pytest.mark.asyncio
++async def test_private_data_search_callback_filters_by_sources(
++    chainlens_internal_client,
++    db_session: AsyncSession,
++    db_user,
++    db_workspace: Workspace,
++):
++    """The ``sources`` list maps to DocumentType and filters results."""
++    file_doc = Document(
++        title="File Doc",
++        document_type=DocumentType.FILE,
++        content="file content",
++        content_hash="hash-file",
++        workspace_id=db_workspace.id,
++        created_by_id=db_user.id,
++    )
++    note_doc = Document(
++        title="Note Doc",
++        document_type=DocumentType.NOTE,
++        content="note content",
++        content_hash="hash-note",
++        workspace_id=db_workspace.id,
++        created_by_id=db_user.id,
++    )
++    db_session.add(file_doc)
++    db_session.add(note_doc)
++    await db_session.flush()
++
++    file_chunk = Chunk(content="file chunk", position=0, document_id=file_doc.id)
++    note_chunk = Chunk(content="note chunk", position=0, document_id=note_doc.id)
++    db_session.add(file_chunk)
++    db_session.add(note_chunk)
++    await db_session.flush()
++
++    response = await chainlens_internal_client.post(
++        "/v1/private-data/search",
++        json={
++            "query": "chunk",
++            "workspaceId": db_workspace.id,
++            "sources": ["FILE"],
++        },
++    )
++    assert response.status_code == 200
++    body = response.json()
++    assert len(body["chunks"]) == 1
++    assert body["chunks"][0]["metadata"]["document_id"] == file_doc.id
++
++
+ @pytest.mark.asyncio
+ async def test_scraper_run_callback_rejects_invalid_service_token(
+     chainlens_auth_client,
+diff --git a/nowing_backend/tests/unit/services/chainlens/test_private_provider.py b/nowing_backend/tests/unit/services/chainlens/test_private_provider.py
+index 3340a800b..24faa6dbb 100644
+--- a/nowing_backend/tests/unit/services/chainlens/test_private_provider.py
++++ b/nowing_backend/tests/unit/services/chainlens/test_private_provider.py
+@@ -299,6 +299,92 @@ async def test_resolve_document_type_from_sources(fake_session, fake_workspace):
+     assert document_type == ["FILE", "NOTION_CONNECTOR"]
+ 
+ 
++def test_format_ts_uses_created_at_fallback():
++    """Missing updated_at falls back to created_at before current time."""
++    from datetime import UTC, datetime
++
++    created = datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC)
++    assert (
++        PrivateProviderService._format_ts(None, fallback=created) == created.isoformat()
++    )
++
++
++def test_build_chunks_skips_memory_with_none_content(fake_session, fake_workspace):
++    """A memory with ``None`` content does not crash the builder."""
++    service = PrivateProviderService(fake_session)
++
++    class _Mem:
++        id = 99
++        content = None
++        updated_at = None
++        created_at = None
++        type = None
++
++    class _Scored:
++        memory = _Mem()
++
++    chunks = service._build_chunks(
++        request=_make_request(topK=10),
++        chunk_results=[],
++        doc_results=[],
++        memory_results=[_Scored()],
++        workspace=fake_workspace,
++        connector_id=None,
++        doc_meta={},
++    )
++    assert chunks == []
++
++
++@pytest.mark.asyncio
++async def test_search_sets_tenant_context_for_owner_and_records_usage(
++    fake_session, fake_workspace, monkeypatch
++):
++    """Service sets tenant context and records TokenUsage for workspace owner."""
++    service = PrivateProviderService(fake_session)
++    tenant_spy = AsyncMock(return_value=None)
++    monkeypatch.setattr(
++        "app.services.chainlens.private_provider.set_request_tenant_context",
++        tenant_spy,
++    )
++
++    monkeypatch.setattr(service, "_is_workspace_member", AsyncMock(return_value=False))
++    monkeypatch.setattr(service, "_resolve_document_type", AsyncMock(return_value=None))
++    monkeypatch.setattr(
++        service,
++        "_run_retrievers",
++        AsyncMock(return_value=([], [])),
++    )
++    monkeypatch.setattr(service, "_search_memory", AsyncMock(return_value=[]))
++    monkeypatch.setattr(
++        service,
++        "_load_document_meta",
++        AsyncMock(return_value={}),
++    )
++
++    fake_embed = AsyncMock(return_value=[0.1] * 384)
++    monkeypatch.setattr(
++        "app.services.chainlens.private_provider.config.embedding_model_instance.embed",
++        fake_embed,
++    )
++
++    record_spy = AsyncMock(return_value=None)
++    monkeypatch.setattr(
++        "app.services.chainlens.private_provider.record_token_usage",
++        record_spy,
++    )
++
++    await service.search(_make_request(), fake_workspace)
++
++    assert tenant_spy.await_count == 2
++    # First and last set_request_tenant_context calls use workspace + owner.
++    first_call = tenant_spy.await_args_list[0].kwargs
++    assert first_call["workspace_id"] == fake_workspace.id
++    assert first_call["user_id"] == str(fake_workspace.user_id)
++    assert record_spy.await_count == 1
++    assert record_spy.await_args.kwargs["workspace_id"] == fake_workspace.id
++    assert record_spy.await_args.kwargs["user_id"] == fake_workspace.user_id
++
++
+ @pytest.mark.asyncio
+ async def test_resolve_document_type_from_connector(
+     fake_session, fake_workspace, monkeypatch

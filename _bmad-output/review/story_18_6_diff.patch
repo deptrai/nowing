@@ -1,0 +1,1346 @@
+diff --git a/nowing_backend/alembic/versions/10127c164b44_add_memories_client_agent_columns_and_.py b/nowing_backend/alembic/versions/10127c164b44_add_memories_client_agent_columns_and_.py
+new file mode 100644
+index 000000000..865a585e4
+--- /dev/null
++++ b/nowing_backend/alembic/versions/10127c164b44_add_memories_client_agent_columns_and_.py
+@@ -0,0 +1,56 @@
++"""add memories client agent columns and rls
++
++Revision ID: 10127c164b44
++Revises: f0ae468377f4
++Create Date: 2026-08-10 04:30:14.313359
++
++"""
++from typing import Sequence, Union
++
++from alembic import op
++import sqlalchemy as sa
++
++
++# revision identifiers, used by Alembic.
++revision: str = '10127c164b44'
++down_revision: Union[str, None] = 'f0ae468377f4'
++branch_labels: Union[str, Sequence[str], None] = None
++depends_on: Union[str, Sequence[str], None] = None
++
++
++def upgrade() -> None:
++    """Add client_id/agent_id to memories for vertical-tenant tagging."""
++    op.add_column("memories", sa.Column("client_id", sa.Text(), nullable=True))
++    op.add_column("memories", sa.Column("agent_id", sa.Text(), nullable=True))
++
++    op.create_index(
++        op.f("ix_memories_client_id"),
++        "memories",
++        ["client_id"],
++        unique=False,
++    )
++    op.create_index(
++        op.f("ix_memories_agent_id"),
++        "memories",
++        ["agent_id"],
++        unique=False,
++    )
++    op.create_index(
++        op.f("ix_memories_workspace_id_client_id"),
++        "memories",
++        ["workspace_id", "client_id"],
++        unique=False,
++    )
++
++
++def downgrade() -> None:
++    """Drop client_id/agent_id columns and indexes."""
++    op.drop_index(
++        op.f("ix_memories_workspace_id_client_id"),
++        table_name="memories",
++    )
++    op.drop_index(op.f("ix_memories_agent_id"), table_name="memories")
++    op.drop_index(op.f("ix_memories_client_id"), table_name="memories")
++
++    op.drop_column("memories", "agent_id")
++    op.drop_column("memories", "client_id")
+diff --git a/nowing_backend/alembic/versions/da595e4c316a_add_memories_rls_policies.py b/nowing_backend/alembic/versions/da595e4c316a_add_memories_rls_policies.py
+new file mode 100644
+index 000000000..75a7e1df5
+--- /dev/null
++++ b/nowing_backend/alembic/versions/da595e4c316a_add_memories_rls_policies.py
+@@ -0,0 +1,97 @@
++"""add memories rls policies
++
++Revision ID: da595e4c316a
++Revises: 7c4fc2d307b2
++Create Date: 2026-08-10 11:30:00.000000
++
++"""
++from collections.abc import Sequence
++
++from alembic import op
++
++# revision identifiers, used by Alembic.
++revision: str = 'da595e4c316a'
++down_revision: str | None = '7c4fc2d307b2'
++branch_labels: str | Sequence[str] | None = None
++depends_on: str | Sequence[str] | None = None
++
++
++def _tenant_predicate(table: str) -> str:
++    """Composite workspace + client predicate."""
++    return f"""
++        {table}.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
++        AND {table}.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
++    """
++
++
++def _memory_id_predicate(table: str) -> str:
++    """Row-capability token: a session that knows a memory id can read it."""
++    return f"{table}.id::text = current_setting('app.memory_id', true)"
++
++
++def _internal_service_predicate(_table: str) -> str:
++    return "current_setting('app.internal_service', true) = 'true'"
++
++
++def _drop_policies(table: str) -> None:
++    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_read_policy ON {table};")
++    op.execute(f"DROP POLICY IF EXISTS {table}_tenant_write_policy ON {table};")
++    op.execute(f"DROP POLICY IF EXISTS {table}_internal_service_policy ON {table};")
++    op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
++
++
++def _create_rls(table: str) -> None:
++    _drop_policies(table)
++    op.execute(f"""
++        CREATE POLICY {table}_tenant_read_policy ON {table}
++            AS PERMISSIVE
++            FOR SELECT
++            TO PUBLIC
++            USING (
++                {_tenant_predicate(table)}
++                OR {_memory_id_predicate(table)}
++                OR {_internal_service_predicate(table)}
++            );
++    """)
++    op.execute(f"""
++        CREATE POLICY {table}_tenant_write_policy ON {table}
++            AS PERMISSIVE
++            FOR ALL
++            TO PUBLIC
++            USING ({_tenant_predicate(table)})
++            WITH CHECK ({_tenant_predicate(table)});
++    """)
++    op.execute(f"""
++        CREATE POLICY {table}_internal_service_policy ON {table}
++            AS PERMISSIVE
++            FOR ALL
++            TO PUBLIC
++            USING ({_internal_service_predicate(table)})
++            WITH CHECK ({_internal_service_predicate(table)});
++    """)
++    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
++    op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
++
++    # The L1 RLS suite runs under a dedicated application role that must not
++    # bypass RLS and must be able to touch this table.
++    op.execute("""
++        DO $$
++        BEGIN
++            CREATE ROLE nowing_app NOLOGIN NOBYPASSRLS;
++        EXCEPTION WHEN duplicate_object THEN
++            NULL;
++        END
++        $$;
++    """)
++    op.execute("GRANT USAGE ON SCHEMA public TO nowing_app;")
++    op.execute(f"GRANT ALL ON {table} TO nowing_app;")
++
++
++def upgrade() -> None:
++    """Enable workspace/client RLS on memories."""
++    _create_rls("memories")
++
++
++def downgrade() -> None:
++    """Remove RLS policies."""
++    _drop_policies("memories")
+diff --git a/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py b/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py
+index 5cdf2be67..9c632517f 100644
+--- a/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py
++++ b/nowing_backend/app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py
+@@ -164,10 +164,14 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
+         user_id: str | UUID | None,
+         workspace_id: int,
+         thread_visibility: ChatVisibility | None = None,
++        research_thread_id: int | None = None,
++        client_id: str | None = None,
+     ) -> None:
+         self.user_id = UUID(user_id) if isinstance(user_id, str) else user_id
+         self.workspace_id = workspace_id
+         self.visibility = thread_visibility or ChatVisibility.PRIVATE
++        self.research_thread_id = research_thread_id
++        self.client_id = client_id
+ 
+     async def abefore_agent(  # type: ignore[override]
+         self,
+@@ -325,12 +329,16 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
+                 query=query,
+                 query_embedding=embedding,
+                 top_k=_MEMORY_INJECTION_TOP_K,
++                research_thread_id=self.research_thread_id,
++                client_id=self.client_id,
+             )
+         return await search.search(
+             user_id=self.user_id,
+             query=query,
+             query_embedding=embedding,
+             top_k=_MEMORY_INJECTION_TOP_K,
++            research_thread_id=self.research_thread_id,
++            client_id=self.client_id,
+         )
+ 
+     async def _lookup_display_name(self, session: AsyncSession) -> str | None:
+diff --git a/nowing_backend/app/canonical/tenant_context.py b/nowing_backend/app/canonical/tenant_context.py
+index 547234660..759c7cc4f 100644
+--- a/nowing_backend/app/canonical/tenant_context.py
++++ b/nowing_backend/app/canonical/tenant_context.py
+@@ -50,32 +50,56 @@ def get_canonical_workspace_id(session: AsyncSession) -> int | None:
+ 
+ async def set_request_tenant_context(
+     session: AsyncSession,
+-    workspace_id: int,
++    workspace_id: int | None = None,
+     client_id: str | None = None,
+     agent_id: str | None = None,
++    run_id: str | None = None,
++    memory_id: int | None = None,
++    user_id: str | None = None,
+ ) -> None:
+     """Set workspace + client + agent GUCs for the current transaction only.
+ 
+     ``SET LOCAL`` scopes the values to the SQL transaction, so a pooled
+     connection cannot leak tenant context to the next request.
++
++    ``None`` is written as an empty string so a prior GUC is cleared.  The
++    memory RLS policy uses ``NULLIF(..., '')`` on ``app.workspace_id`` and
++    ``app.current_client_id`` to treat the empty string as SQL ``NULL``, which
++    matches user-scoped / unscoped rows with ``IS NOT DISTINCT FROM``.
+     """
+     # ponytail: set_config() is the parameter-safe equivalent of SET LOCAL.
+-    # Skip client/agent GUCs when the value is None so ``current_setting(..., true)
+-    # returns NULL and the RLS ``client_id IS NULL`` branch works for legacy rows.
++    # Write an empty string for ``None`` so a prior value is cleared; the RLS
++    # ``NULLIF`` wrapper converts it back to SQL NULL for IS NOT DISTINCT FROM.
+     await session.execute(
+         text("SELECT set_config('app.workspace_id', :wid, true)"),
+-        {"wid": str(workspace_id)},
++        {"wid": "" if workspace_id is None else str(workspace_id)},
+     )
+-    if client_id is not None:
+-        await session.execute(
+-            text("SELECT set_config('app.current_client_id', :cid, true)"),
+-            {"cid": client_id},
+-        )
+-    if agent_id is not None:
+-        await session.execute(
+-            text("SELECT set_config('app.current_agent_id', :aid, true)"),
+-            {"aid": agent_id},
+-        )
+-    session.info["canonical_workspace_id"] = workspace_id
+-    session.info["current_client_id"] = client_id
+-    session.info["current_agent_id"] = agent_id
++    await session.execute(
++        text("SELECT set_config('app.current_client_id', :cid, true)"),
++        {"cid": client_id or ""},
++    )
++    await session.execute(
++        text("SELECT set_config('app.current_agent_id', :aid, true)"),
++        {"aid": agent_id or ""},
++    )
++    await session.execute(
++        text("SELECT set_config('app.run_id', :rid, true)"),
++        {"rid": run_id or ""},
++    )
++    await session.execute(
++        text("SELECT set_config('app.memory_id', :mid, true)"),
++        {"mid": "" if memory_id is None else str(memory_id)},
++    )
++    await session.execute(
++        text("SELECT set_config('app.current_user_id', :uid, true)"),
++        {"uid": user_id or ""},
++    )
++    # Tests sometimes pass a fake session without .info; the GUCs are the
++    # source of truth for RLS anyway, so tolerate the missing attribute.
++    if hasattr(session, "info"):
++        session.info["canonical_workspace_id"] = workspace_id
++        session.info["current_client_id"] = client_id
++        session.info["current_agent_id"] = agent_id
++        session.info["current_run_id"] = run_id
++        session.info["current_memory_id"] = memory_id
++        session.info["current_user_id"] = user_id
+diff --git a/nowing_backend/app/db.py b/nowing_backend/app/db.py
+index 5a5a0edd2..cdd3b2a4b 100644
+--- a/nowing_backend/app/db.py
++++ b/nowing_backend/app/db.py
+@@ -585,6 +585,12 @@ class MemorySourceType(StrEnum):
+     SCRAPER_RUN = "scraper_run"
+     MANUAL = "manual"
+     UNKNOWN = "unknown"
++    SIGNAL = "signal"
++    LEAD = "lead"
++    LEAD_SCORE = "lead_score"
++    ENRICHMENT = "enrichment"
++    SEQUENCE_EVENT = "sequence_event"
++    OUTCOME_EVENT = "outcome_event"
+ 
+ 
+ class MemoryRelationType(StrEnum):
+@@ -1207,6 +1213,13 @@ class TokenUsage(BaseModel, TimestampMixin):
+                 "usage_type = 'deep_research' AND resolved_mode IS NOT NULL"
+             ),
+         ),
++        # AC-18.7: daily cost rollups by workspace + client.
++        Index(
++            "ix_token_usage_workspace_client_created_at",
++            "workspace_id",
++            "client_id",
++            "created_at",
++        ),
+     )
+ 
+     prompt_tokens = Column(Integer, nullable=False, default=0)
+@@ -1246,6 +1259,13 @@ class TokenUsage(BaseModel, TimestampMixin):
+         nullable=False,
+         index=True,
+     )
++    client_id = Column(Text, nullable=True, index=True)
++    external_metadata = Column(JSONB, nullable=True, default=dict)
++    run_id = Column(
++        UUID(as_uuid=True),
++        nullable=True,
++        index=True,
++    )
+ 
+     # Relationships
+     thread = relationship("NewChatThread", back_populates="token_usages")
+@@ -2099,6 +2119,13 @@ class ResearchThread(BaseModel, TimestampMixin):
+     """Container for a chain of related chat sessions that share memory."""
+ 
+     __tablename__ = "research_threads"
++    __table_args__ = (
++        Index(
++            "ix_research_threads_workspace_id_client_id",
++            "workspace_id",
++            "client_id",
++        ),
++    )
+ 
+     workspace_id = Column(
+         Integer,
+@@ -2163,6 +2190,7 @@ class VerticalClient(Base, TimestampMixin):
+         nullable=False,
+         default=lambda: datetime.now(UTC),
+         server_default=text("now()"),
++        onupdate=lambda: datetime.now(UTC),
+     )
+ 
+ 
+@@ -2172,12 +2200,19 @@ class AgentConfig(BaseModel, TimestampMixin):
+     __tablename__ = "agent_configs"
+     __table_args__ = (
+         UniqueConstraint("client_id", "slug", name="unique_agent_configs_client_slug"),
++        UniqueConstraint("client_id", "name", name="unique_agent_configs_client_name"),
+     )
+ 
+     # Override BaseModel's Integer id with UUID as required by AD-30.
+     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+-    client_id = Column(CITEXT, nullable=False, index=True)
++    client_id = Column(
++        CITEXT,
++        ForeignKey("vertical_clients.client_id", ondelete="CASCADE"),
++        nullable=False,
++        index=True,
++    )
+     name = Column(Text, nullable=False)
++    display_name = Column(Text, nullable=False)
+     slug = Column(Text, nullable=False)
+     system_instructions = Column(Text, nullable=True)
+     enabled_tools = Column(
+@@ -2188,7 +2223,7 @@ class AgentConfig(BaseModel, TimestampMixin):
+     )
+     model_name = Column(Text, nullable=True)
+     citations_enabled = Column(
+-        Boolean, nullable=False, default=False, server_default="false"
++        Boolean, nullable=False, default=True, server_default="true"
+     )
+     is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+     updated_at = Column(
+@@ -2196,6 +2231,7 @@ class AgentConfig(BaseModel, TimestampMixin):
+         nullable=False,
+         default=lambda: datetime.now(UTC),
+         server_default=text("now()"),
++        onupdate=lambda: datetime.now(UTC),
+     )
+ 
+ 
+@@ -2227,6 +2263,12 @@ class Memory(BaseModel, TimestampMixin):
+             "id",
+             postgresql_where=text("research_thread_id IS NOT NULL"),
+         ),
++        # AC-18.6: hard tenant filter for vertical-client memories.
++        Index(
++            "ix_memories_workspace_id_client_id",
++            "workspace_id",
++            "client_id",
++        ),
+     )
+ 
+     workspace_id = Column(
+@@ -2253,6 +2295,8 @@ class Memory(BaseModel, TimestampMixin):
+         # Migration 182 drops the single-column ix_memories_research_thread_id
+         # that index=True used to create here — keep this Column in sync with it.
+     )
++    client_id = Column(Text, nullable=True, index=True)
++    agent_id = Column(Text, nullable=True)
+     type = Column(
+         SQLAlchemyEnum(
+             MemoryType,
+@@ -2286,6 +2330,11 @@ class Memory(BaseModel, TimestampMixin):
+     # the cleanup. ``source_id`` stays an integer (chat message ids); the run's
+     # UUID lives here instead of being coerced into it.
+     source_run_id = Column(UUID(as_uuid=True), nullable=True, index=True)
++    # Authoritative source pointer for Epic 21 UUID-keyed entities (AD-44 / AD-47).
++    # ``source_run_id`` may be set alongside these for audit context, but
++    # ``source_uuid`` + ``source_entity_type`` are the canonical provenance.
++    source_uuid = Column(UUID(as_uuid=True), nullable=True, index=True)
++    source_entity_type = Column(String(100), nullable=True)
+     # Source recipe for re-validation (Story 9.6a, AD-11.1).
+     # A soft copy of Run.capability and Run.input, not a live reference, so the
+     # memory remains re-executable after the run log is cleaned up.
+@@ -3425,7 +3474,16 @@ class Run(Base, TimestampMixin):
+     __tablename__ = "runs"
+     __allow_unmapped__ = True
+ 
+-    __table_args__ = (Index("ix_runs_workspace_created", "workspace_id", "created_at"),)
++    __table_args__ = (
++        Index("ix_runs_workspace_created", "workspace_id", "created_at"),
++        # AC-18.7: vertical-client run attribution and daily rollups.
++        Index(
++            "ix_runs_workspace_client_created",
++            "workspace_id",
++            "client_id",
++            "created_at",
++        ),
++    )
+ 
+     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+     parent_run_id = Column(
+@@ -3457,6 +3515,8 @@ class Run(Base, TimestampMixin):
+     char_count = Column(Integer, nullable=False, default=0)
+     duration_ms = Column(Integer, nullable=True)
+     cost_micros = Column(BigInteger, nullable=True)
++    client_id = Column(Text, nullable=True, index=True)
++    external_metadata = Column(JSONB, nullable=True, default=dict)
+     # Coarse progress log (list of throttled events) captured during the run;
+     # the live fine-grained stream is ephemeral (bus/SSE only).
+     progress = Column(JSONB, nullable=True)
+diff --git a/nowing_backend/app/routes/memories_routes.py b/nowing_backend/app/routes/memories_routes.py
+index 80b69f45e..1051da811 100644
+--- a/nowing_backend/app/routes/memories_routes.py
++++ b/nowing_backend/app/routes/memories_routes.py
+@@ -68,6 +68,8 @@ async def create_memory(
+         tags=body.tags,
+         confidence=body.confidence,
+         research_thread_id=body.research_thread_id,
++        client_id=body.client_id,
++        agent_id=body.agent_id,
+         created_by_id=auth.user.id,
+         # Loop guard (Story 6.5, AC-5): a cross-process automation write (an
+         # external MCP server calling this endpoint) threads its origin via the
+@@ -115,6 +117,7 @@ async def search_memory(
+             type=body.type,
+             tags=body.tags,
+             research_thread_id=body.research_thread_id,
++            client_id=body.client_id,
+         )
+     except VectorValidationError as exc:
+         status = 500 if exc.reason == "provider_error" else 422
+@@ -144,6 +147,7 @@ async def list_memories(
+     limit: int = Query(default=20, ge=1, le=100),
+     type: MemoryType | None = Query(default=None),
+     tags: str | None = Query(default=None),
++    client_id: str | None = Query(default=None),
+ ):
+     await check_permission(
+         session,
+@@ -159,6 +163,7 @@ async def list_memories(
+         limit=limit,
+         type=type,
+         tags=tags.split(",") if tags else None,
++        client_id=client_id,
+     )
+     return [_to_memory_read(memory) for memory in memories]
+ 
+@@ -195,6 +200,8 @@ async def update_memory(
+         memory_id=memory_id,
+         corrected_content=body.corrected_content,
+         corrected_by_id=auth.user.id,
++        client_id=body.client_id,
++        agent_id=body.agent_id,
+         skip_version_if_unchanged=True,
+         # See create_memory: cross-process automation origin via header (AC-5).
+         automation_run_id=x_automation_run_id,
+diff --git a/nowing_backend/app/schemas/memory.py b/nowing_backend/app/schemas/memory.py
+index 05722c701..367eedea0 100644
+--- a/nowing_backend/app/schemas/memory.py
++++ b/nowing_backend/app/schemas/memory.py
+@@ -45,6 +45,8 @@ class MemoryRead(BaseModel):
+     workspace_id: int | None = None
+     created_by_id: Any | None = None
+     research_thread_id: int | None = None
++    client_id: str | None = None
++    agent_id: str | None = None
+     type: str
+     content: str
+     source_type: str
+@@ -96,6 +98,8 @@ class MemoryCreate(BaseModel):
+     tags: list[str] = Field(default_factory=list)
+     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+     research_thread_id: int | None = None
++    client_id: str | None = None
++    agent_id: str | None = None
+ 
+     @field_validator("type", "source_type", mode="before")
+     @classmethod
+@@ -112,6 +116,8 @@ class MemoryCreate(BaseModel):
+ 
+ class MemoryUpdate(BaseModel):
+     corrected_content: Annotated[str, Field(min_length=1)]
++    client_id: str | None = None
++    agent_id: str | None = None
+ 
+ 
+ class MemorySearchRequest(BaseModel):
+@@ -122,6 +128,7 @@ class MemorySearchRequest(BaseModel):
+     type: str | None = None
+     tags: list[str] = Field(default_factory=list)
+     research_thread_id: int | None = None
++    client_id: str | None = None
+ 
+     @field_validator("type", mode="before")
+     @classmethod
+@@ -147,6 +154,8 @@ class MemorySearchHit(BaseModel):
+     id: int
+     content: str
+     type: str
++    client_id: str | None = None
++    agent_id: str | None = None
+     tags: list[str] = Field(default_factory=list)
+     confidence: float = 1.0
+     source_type: str
+@@ -193,6 +202,8 @@ class MemorySearchHit(BaseModel):
+             id=memory.id,
+             content=memory.content,
+             type=memory.type.value,
++            client_id=memory.client_id,
++            agent_id=memory.agent_id,
+             tags=memory.tags or [],
+             confidence=memory.confidence,
+             source_type=memory.source_type.value,
+diff --git a/nowing_backend/app/services/memory/extraction.py b/nowing_backend/app/services/memory/extraction.py
+index 8877467d2..30ef49d8d 100644
+--- a/nowing_backend/app/services/memory/extraction.py
++++ b/nowing_backend/app/services/memory/extraction.py
+@@ -8,6 +8,7 @@ from typing import Any
+ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
++from app.canonical.tenant_context import set_request_tenant_context
+ from app.config import config
+ from app.db import (
+     Memory,
+@@ -122,6 +123,16 @@ class MemoryExtractionService:
+             )
+             return []
+ 
++        # AC-18.8: set the tenant GUCs for this thread before any Memory query
++        # so the FORCE RLS policy does not hide rows from the same workspace.
++        effective_client_id = self.client_id or thread.client_id
++        await set_request_tenant_context(
++            self.session,
++            workspace_id=workspace.id,
++            client_id=effective_client_id,
++            agent_id=thread.agent_id,
++        )
++
+         # Idempotency guard: extracted memories carry source_id == the assistant
+         # message id, so if any already exist this turn was processed before.
+         # Skip to avoid duplicate LLM calls, token rows, and version churn on
+@@ -226,7 +237,8 @@ class MemoryExtractionService:
+                         created_by_id=created_by_id,
+                         update_on_duplicate=True,
+                         commit=False,
+-                        client_id=self.client_id,
++                        client_id=effective_client_id,
++                        agent_id=thread.agent_id,
+                     )
+                 except Exception as exc:
+                     logger.warning(
+@@ -254,6 +266,7 @@ class MemoryExtractionService:
+             completion_tokens=acc.total_completion_tokens,
+             total_tokens=acc.grand_total,
+             cost_micros=acc.total_cost_micros,
++            client_id=thread.client_id,
+         )
+ 
+         # Commit the extracted memories (created with commit=False) and the
+diff --git a/nowing_backend/app/services/memory/repository.py b/nowing_backend/app/services/memory/repository.py
+index c57de3cc4..22df0908f 100644
+--- a/nowing_backend/app/services/memory/repository.py
++++ b/nowing_backend/app/services/memory/repository.py
+@@ -13,6 +13,7 @@ from sqlalchemy import Float, select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ from sqlalchemy.orm import selectinload
+ 
++from app.canonical.tenant_context import set_request_tenant_context
+ from app.config import config
+ from app.db import (
+     Memory,
+@@ -58,6 +59,7 @@ class MemoryRepository:
+         content: str,
+         workspace_id: int | None,
+         user_id: UUID | None,
++        client_id: str | None = None,
+     ) -> np.ndarray:
+         try:
+             embeddings = await asyncio.to_thread(embed_texts, [content])
+@@ -80,6 +82,7 @@ class MemoryRepository:
+                 completion_tokens=0,
+                 total_tokens=estimated_tokens,
+                 cost_micros=0,
++                client_id=client_id,
+             )
+         return embedding
+ 
+@@ -118,6 +121,14 @@ class MemoryRepository:
+         return None
+ 
+     async def _load_with_versions(self, memory: Memory) -> Memory:
++        # AC-18.8: ensure the version reload respects the memory's tenant scope;
++        # the id-token is a safety net for the row we just wrote.
++        await set_request_tenant_context(
++            self.session,
++            workspace_id=memory.workspace_id,
++            client_id=memory.client_id,
++            memory_id=memory.id,
++        )
+         result = await self.session.execute(
+             select(Memory)
+             .options(selectinload(Memory.versions))
+@@ -250,19 +261,36 @@ class MemoryRepository:
+         commit: bool = True,
+         automation_run_id: int | None = None,
+         client_id: str | None = None,
++        agent_id: str | None = None,
+     ) -> Memory:
+         if isinstance(type, str):
+             type = MemoryType(type)
+         if isinstance(source_type, str):
+             source_type = MemorySourceType(source_type)
+ 
++        # AC-18.8: an empty client_id string is treated the same as NULL so the
++        # RLS NULLIF wrapper and the stored value are consistent.
++        client_id = client_id or None
++
++        # AC-18.8: set tenant GUCs before any Memory query/insert so FORCE RLS
++        # allows the workspace/client rows we are about to touch.
++        await set_request_tenant_context(
++            self.session,
++            workspace_id=workspace_id,
++            client_id=client_id,
++            agent_id=agent_id,
++        )
++
+         if client_id:
+             tags = list(tags or [])
+             tags.append(f"client:{client_id}")
+ 
+         if embedding is None:
+             embedding = await self._embed(
+-                content, workspace_id=workspace_id, user_id=created_by_id
++                content,
++                workspace_id=workspace_id,
++                user_id=created_by_id,
++                client_id=client_id,
+             )
+         else:
+             embedding = _validate_vector(embedding)
+@@ -326,10 +354,14 @@ class MemoryRepository:
+                     existing.source_input = source_input
+                 existing.tags = tags or []
+                 existing.confidence = confidence
+-                # Only overwrite the thread association when a new one is given,
+-                # so re-creating a duplicate doesn't silently wipe it.
++                # Only overwrite the thread/tenant association when a new one is
++                # given, so re-creating a duplicate doesn't silently wipe it.
+                 if research_thread_id is not None:
+                     existing.research_thread_id = research_thread_id
++                if client_id is not None:
++                    existing.client_id = client_id
++                if agent_id is not None:
++                    existing.agent_id = agent_id
+                 existing.updated_at = datetime.now(UTC)
+                 self.session.add(existing)
+                 await self._persist(commit=commit)
+@@ -360,6 +392,8 @@ class MemoryRepository:
+             confidence=confidence,
+             research_thread_id=research_thread_id,
+             created_by_id=created_by_id,
++            client_id=client_id,
++            agent_id=agent_id,
+         )
+         self.session.add(memory)
+         await self._persist(commit=commit)
+@@ -392,7 +426,12 @@ class MemoryRepository:
+         skip_version_if_unchanged: bool = False,
+         commit: bool = True,
+         automation_run_id: int | None = None,
++        client_id: str | None = None,
++        agent_id: str | None = None,
+     ) -> Memory | None:
++        # AC-18.8: load by id-token, then switch to the row's tenant GUCs so
++        # the UPDATE/INSERT flush passes the ALL-policy WITH CHECK clause.
++        await set_request_tenant_context(self.session, memory_id=memory_id)
+         result = await self.session.execute(
+             select(Memory).where(Memory.id == memory_id)
+         )
+@@ -400,6 +439,21 @@ class MemoryRepository:
+         if memory is None:
+             return None
+ 
++        # AC-18.8: client_id and agent_id are immutable tenant attributes on
++        # update.  Using the row's own scope for the GUC prevents a caller from
++        # moving a memory across clients by passing a different client_id.
++        # Callers that need re-scope should create a new memory.
++        if client_id is not None and client_id != memory.client_id:
++            client_id = memory.client_id
++        if agent_id is not None and agent_id != memory.agent_id:
++            agent_id = memory.agent_id
++        await set_request_tenant_context(
++            self.session,
++            workspace_id=memory.workspace_id,
++            client_id=client_id or memory.client_id,
++            agent_id=agent_id or memory.agent_id,
++        )
++
+         content_changed = memory.content != corrected_content
+         if not (skip_version_if_unchanged and not content_changed):
+             version = MemoryVersion(
+@@ -438,6 +492,8 @@ class MemoryRepository:
+             memory.research_thread_id = research_thread_id
+         if created_by_id is not None:
+             memory.created_by_id = created_by_id
++        # AC-18.8: client_id and agent_id are immutable on update; the GUC
++        # above already uses the row's own tenant scope.
+ 
+         # Re-embed when content changes, unless an embedding is provided.
+         if embedding is not None:
+@@ -447,6 +503,7 @@ class MemoryRepository:
+                 corrected_content,
+                 workspace_id=memory.workspace_id,
+                 user_id=corrected_by_id,
++                client_id=memory.client_id,
+             )
+             memory.embedding = new_embedding
+ 
+@@ -468,6 +525,9 @@ class MemoryRepository:
+         return loaded
+ 
+     async def get_memory(self, memory_id: int) -> Memory | None:
++        # AC-18.8: id-token read allows an un-scoped caller (e.g. a route that
++        # only knows the id) to load the row before setting its tenant GUC.
++        await set_request_tenant_context(self.session, memory_id=memory_id)
+         result = await self.session.execute(
+             select(Memory)
+             .options(selectinload(Memory.versions))
+@@ -482,9 +542,25 @@ class MemoryRepository:
+         limit: int = 20,
+         type: str | MemoryType | None = None,
+         tags: list[str] | None = None,
++        client_id: str | None = None,
+     ) -> list[Memory]:
+         """List workspace memories, newest first, with optional type/tags filters."""
++        # AC-18.8: an empty client_id string is treated the same as NULL so the
++        # filter and the RLS NULLIF wrapper stay consistent.
++        client_id = client_id or None
++
++        # AC-18.8: set tenant GUCs before the list query so FORCE RLS returns
++        # only rows in the workspace/client scope.
++        await set_request_tenant_context(
++            self.session,
++            workspace_id=workspace_id,
++            client_id=client_id,
++        )
+         conditions = [Memory.workspace_id == workspace_id]
++        if client_id is not None:
++            conditions.append(Memory.client_id == client_id)
++        else:
++            conditions.append(Memory.client_id.is_(None))
+         if type is not None:
+             if isinstance(type, MemoryType):
+                 conditions.append(Memory.type == type.value)
+@@ -506,13 +582,22 @@ class MemoryRepository:
+         )
+         return list(result.scalars().all())
+ 
+-    async def delete_memory(self, memory_id: int) -> bool:
++    async def delete_memory(self, memory_id: int, client_id: str | None = None) -> bool:
++        # AC-18.8: load by id-token, then switch to the caller's tenant GUCs so
++        # a workspace user cannot delete another client's row.  Fall back to the
++        # row's own client for internal callers that omit a client scope.
++        await set_request_tenant_context(self.session, memory_id=memory_id)
+         result = await self.session.execute(
+             select(Memory).where(Memory.id == memory_id)
+         )
+         memory = result.scalar_one_or_none()
+         if memory is None:
+             return False
++        await set_request_tenant_context(
++            self.session,
++            workspace_id=memory.workspace_id,
++            client_id=client_id or memory.client_id,
++        )
+         await self.session.delete(memory)
+         await self.session.commit()
+         return True
+diff --git a/nowing_backend/app/services/memory/search.py b/nowing_backend/app/services/memory/search.py
+index 984f3f73c..06374ebac 100644
+--- a/nowing_backend/app/services/memory/search.py
++++ b/nowing_backend/app/services/memory/search.py
+@@ -11,6 +11,7 @@ import numpy as np
+ from sqlalchemy import Float, func, select, text
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
++from app.canonical.tenant_context import set_request_tenant_context
+ from app.config import config
+ from app.db import Memory, MemoryType
+ from app.services.memory.vector import VectorValidationError, validate_embedding_vector
+@@ -67,6 +68,7 @@ class MemoryHybridSearch:
+         workspace_id: int | None,
+         user_id: UUID | None,
+         research_thread_id: int | None,
++        client_id: str | None = None,
+     ) -> list[Any]:
+         """Canonical scope per D5: exactly one of workspace/user, never both.
+ 
+@@ -82,8 +84,21 @@ class MemoryHybridSearch:
+         if research_thread_id is not None and not has_workspace:
+             raise ValueError("research_thread_id requires workspace scope")
+         if has_workspace:
+-            return [Memory.workspace_id == workspace_id]
+-        return [Memory.workspace_id.is_(None), Memory.created_by_id == user_id]
++            conditions = [Memory.workspace_id == workspace_id]
++        else:
++            conditions = [
++                Memory.workspace_id.is_(None),
++                Memory.created_by_id == user_id,
++            ]
++
++        # AC-18.6: hard tenant filter.  A request with a vertical client only
++        # sees rows with matching client_id; an internal request only sees
++        # client_id IS NULL.
++        if client_id is not None:
++            conditions.append(Memory.client_id == client_id)
++        else:
++            conditions.append(Memory.client_id.is_(None))
++        return conditions
+ 
+     async def search(
+         self,
+@@ -96,11 +111,24 @@ class MemoryHybridSearch:
+         type: str | None = None,
+         tags: list[str] | None = None,
+         research_thread_id: int | None = None,
++        client_id: str | None = None,
+     ) -> list[ScoredMemory]:
++        # AC-18.8: an empty client_id string is treated the same as NULL so the
++        # filter and the RLS NULLIF wrapper stay consistent.
++        client_id = client_id or None
+         base_conditions = self._scope_conditions(
+             workspace_id=workspace_id,
+             user_id=user_id,
+             research_thread_id=research_thread_id,
++            client_id=client_id,
++        )
++        # AC-18.8: set tenant GUCs so RLS policies (workspace + client) do not
++        # hide the rows we are about to query.  User-scoped memory uses
++        # workspace_id=None, which the helper writes as an empty string.
++        await set_request_tenant_context(
++            self.session,
++            workspace_id=workspace_id,
++            client_id=client_id,
+         )
+         if type is not None:
+             base_conditions.append(Memory.type == MemoryType(type))
+@@ -245,7 +273,9 @@ class MemoryHybridSearch:
+                 )
+                 continue
+             valid.append(
+-                ScoredMemory(memory=memory, score=float(score), similarity=float(similarity))
++                ScoredMemory(
++                    memory=memory, score=float(score), similarity=float(similarity)
++                )
+             )
+ 
+         return valid
+diff --git a/nowing_backend/app/services/memory/service.py b/nowing_backend/app/services/memory/service.py
+index 83d8a7347..8320de005 100644
+--- a/nowing_backend/app/services/memory/service.py
++++ b/nowing_backend/app/services/memory/service.py
+@@ -16,6 +16,7 @@ from uuid import UUID
+ from sqlalchemy import delete, select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
++from app.canonical.tenant_context import set_request_tenant_context
+ from app.db import Memory, User
+ from app.services.memory.document import parse_memory_document, render_memory_document
+ from app.services.memory.parser import parse_memory_markdown_to_facts
+@@ -108,17 +109,27 @@ async def read_memory(
+     normalized = _normalize_scope(scope)
+     if normalized is MemoryScope.USER:
+         user_id = _normalize_user_id(target_id)
++        # User-scoped memories have workspace_id=NULL and client_id=NULL; the
++        # helper writes None as an empty string and the RLS NULLIF wrapper
++        # treats it as SQL NULL.
++        await set_request_tenant_context(session, workspace_id=None, client_id=None)
+         result = await session.execute(
+             select(Memory).where(
+                 Memory.workspace_id.is_(None),
+                 Memory.created_by_id == user_id,
++                Memory.client_id.is_(None),
+             )
+         )
+         memories = result.scalars().all()
+         return render_memory_markdown(list(memories), scope="user")
+ 
++    workspace_id = int(target_id)
++    await set_request_tenant_context(session, workspace_id=workspace_id, client_id=None)
+     result = await session.execute(
+-        select(Memory).where(Memory.workspace_id == int(target_id))
++        select(Memory).where(
++            Memory.workspace_id == workspace_id,
++            Memory.client_id.is_(None),
++        )
+     )
+     memories = result.scalars().all()
+     return render_memory_markdown(list(memories), scope="team")
+@@ -195,11 +206,16 @@ async def save_memory(
+ 
+     if normalized is MemoryScope.USER:
+         user_id = _normalize_user_id(target_id)
++        # AC-18.8: set the tenant GUC before the DELETE so FORCE RLS does not
++        # hide the rows we are about to remove.  User-scoped memory uses
++        # workspace_id=NULL and client_id=NULL.
++        await set_request_tenant_context(session, workspace_id=None, client_id=None)
+         # Delete existing user-scoped personal memory facts before rewriting.
+         await session.execute(
+             delete(Memory).where(
+                 Memory.workspace_id.is_(None),
+                 Memory.created_by_id == user_id,
++                Memory.client_id.is_(None),
+             )
+         )
+         for fact in facts:
+@@ -213,8 +229,18 @@ async def save_memory(
+             )
+     else:
+         workspace_id = int(target_id)
++        # AC-18.8: set the tenant GUC before the DELETE so FORCE RLS does not
++        # hide the rows we are about to remove.  Team memory is client-less.
++        await set_request_tenant_context(
++            session, workspace_id=workspace_id, client_id=None
++        )
+         # Delete existing workspace team memory facts before rewriting.
+-        await session.execute(delete(Memory).where(Memory.workspace_id == workspace_id))
++        await session.execute(
++            delete(Memory).where(
++                Memory.workspace_id == workspace_id,
++                Memory.client_id.is_(None),
++            )
++        )
+         for fact in facts:
+             await repo.create_memory(
+                 workspace_id=workspace_id,
+@@ -260,15 +286,25 @@ async def reset_memory(
+     normalized = _normalize_scope(scope)
+     if normalized is MemoryScope.USER:
+         user_id = _normalize_user_id(target_id)
++        await set_request_tenant_context(session, workspace_id=None, client_id=None)
+         await session.execute(
+             delete(Memory).where(
+                 Memory.workspace_id.is_(None),
+                 Memory.created_by_id == user_id,
++                Memory.client_id.is_(None),
+             )
+         )
+     else:
+         workspace_id = int(target_id)
+-        await session.execute(delete(Memory).where(Memory.workspace_id == workspace_id))
++        await set_request_tenant_context(
++            session, workspace_id=workspace_id, client_id=None
++        )
++        await session.execute(
++            delete(Memory).where(
++                Memory.workspace_id == workspace_id,
++                Memory.client_id.is_(None),
++            )
++        )
+     await session.commit()
+     return SaveResult(
+         status="saved",
+diff --git a/nowing_backend/tests/integration/rls/test_composite_client_rls.py b/nowing_backend/tests/integration/rls/test_composite_client_rls.py
+new file mode 100644
+index 000000000..508564394
+--- /dev/null
++++ b/nowing_backend/tests/integration/rls/test_composite_client_rls.py
+@@ -0,0 +1,341 @@
++"""Integration tests for composite workspace/client RLS on memories.
++
++Story 18.8: the ``memories`` table has FORCE row-level security enabled with a
++composite tenant predicate (workspace_id + client_id) plus a row-capability
++``app.memory_id`` token and an ``app.internal_service`` bypass.
++
++These tests run as a non-superuser role (``nowing_app``) so RLS is actually
++enforced; the superuser test fixture used by other suites would otherwise
++bypass policies.
++"""
++
++from __future__ import annotations
++
++import pytest
++from sqlalchemy import select, text
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from app.canonical.tenant_context import set_request_tenant_context
++from app.db import Memory, MemorySourceType, MemoryType, User, Workspace
++from app.services.memory.repository import MemoryRepository
++
++pytestmark = [pytest.mark.integration]
++
++
++@pytest.fixture(autouse=True)
++async def _rls_enabled(db_session: AsyncSession) -> None:
++    """Create policies and the test app role once per test transaction."""
++    statements = [
++        """
++        DO $$
++        BEGIN
++            CREATE ROLE nowing_app NOLOGIN NOBYPASSRLS;
++        EXCEPTION WHEN duplicate_object THEN
++            NULL;
++        END
++        $$;
++        """,
++        "GRANT USAGE ON SCHEMA public TO nowing_app;",
++        "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO nowing_app;",
++        "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO nowing_app;",
++        "DROP POLICY IF EXISTS memories_tenant_read_policy ON memories;",
++        "DROP POLICY IF EXISTS memories_tenant_write_policy ON memories;",
++        "DROP POLICY IF EXISTS memories_internal_service_policy ON memories;",
++        """
++        CREATE POLICY memories_tenant_read_policy ON memories
++            AS PERMISSIVE
++            FOR SELECT
++            TO PUBLIC
++            USING (
++                memories.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
++                AND memories.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
++                OR memories.id::text = current_setting('app.memory_id', true)
++                OR current_setting('app.internal_service', true) = 'true'
++            );
++        """,
++        """
++        CREATE POLICY memories_tenant_write_policy ON memories
++            AS PERMISSIVE
++            FOR ALL
++            TO PUBLIC
++            USING (
++                memories.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
++                AND memories.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
++            )
++            WITH CHECK (
++                memories.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
++                AND memories.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
++            );
++        """,
++        """
++        CREATE POLICY memories_internal_service_policy ON memories
++            AS PERMISSIVE
++            FOR ALL
++            TO PUBLIC
++            USING (current_setting('app.internal_service', true) = 'true')
++            WITH CHECK (current_setting('app.internal_service', true) = 'true');
++        """,
++        "ALTER TABLE memories ENABLE ROW LEVEL SECURITY;",
++        "ALTER TABLE memories FORCE ROW LEVEL SECURITY;",
++    ]
++    for stmt in statements:
++        await db_session.execute(text(stmt))
++
++
++async def _as_app_user(session: AsyncSession) -> None:
++    """Switch the current transaction to the unprivileged app role."""
++    await session.execute(text("SET LOCAL ROLE nowing_app"))
++
++
++def _unit_embedding() -> list[float]:
++    from app.config import config
++
++    dim = config.embedding_model_instance.dimension
++    return [1.0] + [0.0] * (dim - 1)
++
++
++def _make_memory(
++    *,
++    workspace_id: int | None,
++    client_id: str | None,
++    user: User,
++    content: str = "test memory",
++) -> Memory:
++    return Memory(
++        workspace_id=workspace_id,
++        client_id=client_id,
++        created_by_id=user.id,
++        content=content,
++        type=MemoryType.SEMANTIC,
++        source_type=MemorySourceType.MANUAL,
++        tags=[],
++        confidence=1.0,
++        embedding=_unit_embedding(),
++    )
++
++
++async def _count_memories(session: AsyncSession) -> int:
++    result = await session.execute(select(Memory))
++    return len(result.scalars().all())
++
++
++async def test_rls_no_guc_only_sees_unscoped_rows(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++) -> None:
++    """Without tenant GUCs only user-scoped (workspace=NULL, client=NULL) rows
++    are visible."""
++    internal = _make_memory(workspace_id=db_workspace.id, client_id=None, user=db_user)
++    client_a = _make_memory(
++        workspace_id=db_workspace.id, client_id="client-a", user=db_user
++    )
++    user_scoped = _make_memory(workspace_id=None, client_id=None, user=db_user)
++
++    db_session.add_all([internal, client_a, user_scoped])
++    await db_session.flush()
++
++    await _as_app_user(db_session)
++    count = await _count_memories(db_session)
++
++    assert count == 1
++    only = (await db_session.execute(select(Memory))).scalar_one()
++    assert only.workspace_id is None
++    assert only.client_id is None
++
++
++async def test_rls_correct_workspace_and_client(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++) -> None:
++    """Setting the right workspace/client GUC returns exactly that scope."""
++    internal = _make_memory(workspace_id=db_workspace.id, client_id=None, user=db_user)
++    client_a = _make_memory(
++        workspace_id=db_workspace.id, client_id="client-a", user=db_user
++    )
++    client_b = _make_memory(
++        workspace_id=db_workspace.id, client_id="client-b", user=db_user
++    )
++
++    db_session.add_all([internal, client_a, client_b])
++    await db_session.flush()
++
++    await _as_app_user(db_session)
++    await set_request_tenant_context(
++        db_session, workspace_id=db_workspace.id, client_id="client-a"
++    )
++
++    rows = (await db_session.execute(select(Memory))).scalars().all()
++    assert len(rows) == 1
++    assert rows[0].client_id == "client-a"
++
++
++async def test_rls_wrong_client_is_hidden(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++) -> None:
++    """A workspace/client token for one client must not see another client."""
++    client_a = _make_memory(
++        workspace_id=db_workspace.id, client_id="client-a", user=db_user
++    )
++    client_b = _make_memory(
++        workspace_id=db_workspace.id, client_id="client-b", user=db_user
++    )
++
++    db_session.add_all([client_a, client_b])
++    await db_session.flush()
++
++    await _as_app_user(db_session)
++    await set_request_tenant_context(
++        db_session, workspace_id=db_workspace.id, client_id="client-b"
++    )
++
++    rows = (await db_session.execute(select(Memory))).scalars().all()
++    assert len(rows) == 1
++    assert rows[0].client_id == "client-b"
++
++
++async def test_rls_null_client_sees_internal_workspace_rows(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++) -> None:
++    """A NULL client GUC only matches workspace rows with no client_id."""
++    internal = _make_memory(workspace_id=db_workspace.id, client_id=None, user=db_user)
++    client_a = _make_memory(
++        workspace_id=db_workspace.id, client_id="client-a", user=db_user
++    )
++
++    db_session.add_all([internal, client_a])
++    await db_session.flush()
++
++    await _as_app_user(db_session)
++    await set_request_tenant_context(
++        db_session, workspace_id=db_workspace.id, client_id=None
++    )
++
++    rows = (await db_session.execute(select(Memory))).scalars().all()
++    assert len(rows) == 1
++    assert rows[0].client_id is None
++    assert rows[0].workspace_id == db_workspace.id
++
++
++async def test_rls_internal_service_bypass(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++) -> None:
++    """``app.internal_service = 'true'`` bypasses tenant scoping."""
++    client_a = _make_memory(
++        workspace_id=db_workspace.id, client_id="client-a", user=db_user
++    )
++    client_b = _make_memory(
++        workspace_id=db_workspace.id, client_id="client-b", user=db_user
++    )
++    user_scoped = _make_memory(workspace_id=None, client_id=None, user=db_user)
++
++    db_session.add_all([client_a, client_b, user_scoped])
++    await db_session.flush()
++
++    await _as_app_user(db_session)
++    await set_request_tenant_context(
++        db_session, workspace_id=999_999, client_id="wrong-client"
++    )
++    await db_session.execute(
++        text("SELECT set_config('app.internal_service', 'true', true)")
++    )
++
++    rows = (await db_session.execute(select(Memory))).scalars().all()
++    assert len(rows) == 3
++
++
++async def test_rls_memory_id_token_reads_single_row(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++) -> None:
++    """``app.memory_id`` token lets a caller read a specific row regardless of
++    the tenant GUC."""
++    client_a = _make_memory(
++        workspace_id=db_workspace.id, client_id="client-a", user=db_user
++    )
++    client_b = _make_memory(
++        workspace_id=db_workspace.id, client_id="client-b", user=db_user
++    )
++
++    db_session.add_all([client_a, client_b])
++    await db_session.flush()
++
++    await _as_app_user(db_session)
++    # Use a deliberately wrong tenant so that only the memory_id token can
++    # match client_a; client_b should remain hidden by the workspace predicate.
++    await set_request_tenant_context(
++        db_session,
++        workspace_id=999_999,
++        client_id=None,
++        memory_id=client_a.id,
++    )
++
++    result = await db_session.execute(select(Memory))
++    rows = result.scalars().all()
++    assert len(rows) == 1
++    assert rows[0].id == client_a.id
++
++
++async def test_repository_respects_rls_on_create(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++) -> None:
++    """MemoryRepository.create_memory sets tenant GUCs and the new row is
++    visible with the same tenant."""
++    await _as_app_user(db_session)
++    repo = MemoryRepository(session=db_session)
++
++    memory = await repo.create_memory(
++        workspace_id=db_workspace.id,
++        content="created under client-a",
++        type=MemoryType.SEMANTIC,
++        source_type=MemorySourceType.MANUAL,
++        client_id="client-a",
++        created_by_id=db_user.id,
++        embedding=_unit_embedding(),
++        commit=False,
++    )
++
++    # With the same GUC still on the session, the new row should be visible.
++    rows = (await db_session.execute(select(Memory))).scalars().all()
++    assert len(rows) == 1
++    assert rows[0].id == memory.id
++    assert rows[0].client_id == "client-a"
++
++
++async def test_repository_create_with_wrong_client_is_isolated(
++    db_session: AsyncSession,
++    db_user: User,
++    db_workspace: Workspace,
++) -> None:
++    """Creating with one client and then querying with a different client
++    returns no rows."""
++    await _as_app_user(db_session)
++    repo = MemoryRepository(session=db_session)
++
++    await repo.create_memory(
++        workspace_id=db_workspace.id,
++        content="created under client-a",
++        type=MemoryType.SEMANTIC,
++        source_type=MemorySourceType.MANUAL,
++        client_id="client-a",
++        created_by_id=db_user.id,
++        embedding=_unit_embedding(),
++        commit=False,
++    )
++
++    await set_request_tenant_context(
++        db_session, workspace_id=db_workspace.id, client_id="client-b"
++    )
++
++    rows = (await db_session.execute(select(Memory))).scalars().all()
++    assert len(rows) == 0
