@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-11"  # bmad-architecture validate passed. AD-22/AD-23 promoted to ADOPTED. Epic 21 architecture FIT; remains backlog awaiting governance gates.
+last_updated: "2026-08-11"  # planning cleanup: 12.4 split to a-e; Story 6.8 Generic Alert Engine added; Epic 21 extracted to proposal; epics.md reordered (Epic 20 before 12/14-17).
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
@@ -117,6 +117,7 @@ development_status:
   6-5: done
   6-6: done
   6-7: done
+  6-8: ready-for-dev  # Generic Alert Engine (AD-33 implementation story)
   6-9: done
   # ponytail: 2026-08-08 readiness audit — epics.md Story 6.6/6.7/6.9 (Playbook Reuse, Schema-Driven Form, Workspace vertical)
   # are BUSINESS-GATED (gated sau pilot BĐS), not technically blocked. Track separately:
@@ -164,13 +165,15 @@ development_status:
   epic-9-retrospective: optional
 
   # === Epic 10: Connector & Scraper Expansion ===
-  epic-10: done
+  epic-10: in-progress
   10-1: done
   10-2: done
   10-3: done
   10-4: done
   10-5: done
-  # ponytail: 2026-08-09 validated — story expanded with async capture, RBAC, retention, grouping, AD-17/AD-19/AD-35 guardrails; marked done after implementation.
+  # New 2026-08-11 — expand Chợ Tốt from BĐS to all major verticals.
+  10-6: ready-for-dev  # gateway mapping + schema + parser
+  10-7: ready-for-dev  # chotot.scrape capability + per-category billing
   epic-10-retrospective: optional
 
   # === Epic 20: Nowing Ecosystem Integration (Nowing side of chainlens-research Epic 47) ===
@@ -219,9 +222,12 @@ development_status:
   12-2: done  # TopCV Scraper — bmad-code-review passed, patches applied
   # ponytail: 2026-08-11 sprint planning — moved to in-progress.
   12-3: in-progress
-  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
-  12-4: in-progress
-  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
+  # ponytail: 2026-08-11 sprint planning — 12.4 split into 12.4a-e (cleanup)
+  12-4a: in-progress  # normalization (carries prior 12-4 work)
+  12-4b: ready-for-dev  # deduplication, confidence, conflict
+  12-4c: ready-for-dev  # PII redaction
+  12-4d: ready-for-dev  # chunk ingest to chainlens
+  12-4e: ready-for-dev  # REST/MCP/chat exposure
   12-5: in-progress
   12-6: backlog
   # DROPPED 2026-08-08: property price alerts depend on Nowing canonical entities (Epic 13 dropped).
