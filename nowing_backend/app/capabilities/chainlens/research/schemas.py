@@ -101,6 +101,14 @@ class ResearchInput(BaseModel):
         default="research",
         description="Engine optimization tier: ask, reason, or research.",
     )
+    workspace_id: int | None = Field(
+        default=None,
+        description="Nowing workspace id for service-to-service attribution.",
+    )
+    correlation_id: str | None = Field(
+        default=None,
+        description="Optional trace id carried as X-Correlation-Id.",
+    )
 
     @field_validator("query", mode="before")
     @classmethod

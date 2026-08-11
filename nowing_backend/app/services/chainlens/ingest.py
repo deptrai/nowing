@@ -23,7 +23,7 @@ from app.connectors.exceptions import (
 from app.observability import metrics
 from app.utils.async_retry import build_retry
 
-from .auth_stub import get_chainlens_auth_header
+from .auth import ChainLensServiceAuth
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +145,13 @@ async def _post_batch_core(
     to a non-retryable error defensively.
     """
     url = _ingest_url(config_obj)
-    auth_header = get_chainlens_auth_header(config_obj)
+    auth = ChainLensServiceAuth(config_obj=config_obj)
+    if not auth.configured:
+        raise ConnectorAuthError(
+            "chainlens service token not configured",
+            service="chainlens_ingest",
+            status_code=401,
+        )
     timeout = _positive_float(
         _cfg(config_obj, "CHAINLENS_INGEST_TIMEOUT_SECONDS", 5.0), 5.0
     )
@@ -158,11 +164,26 @@ async def _post_batch_core(
     }
 
     async with httpx.AsyncClient(timeout=timeout) as client:
+        headers = auth.get_outbound_headers(
+            workspace_id, content_type="application/json"
+        )
         response = await client.post(
             url,
             json=body,
-            headers=auth_header,
+            headers=headers,
         )
+        # On 401, rotate token once and retry the same request in-flight.
+        if response.status_code == 401:
+            rotated = auth.rotate()
+            if rotated:
+                headers = auth.get_outbound_headers(
+                    workspace_id, content_type="application/json"
+                )
+                response = await client.post(
+                    url,
+                    json=body,
+                    headers=headers,
+                )
 
     parsed = _coerce_response_json(response)
 
@@ -261,10 +282,8 @@ class NowingIngestService:
         if len(scraper_id) > 100:
             raise ValueError("scraper_id exceeds 100 character limit")
 
-        api_key = _cfg(config, "CHAINLENS_SERVICE_TOKEN", "") or _cfg(
-            config, "CHAINLENS_API_KEY", ""
-        )
-        if not api_key:
+        auth = ChainLensServiceAuth(config_obj=config)
+        if not auth.configured:
             return IngestResult(
                 ingest_job_id=None,
                 status="service_auth_unavailable",
@@ -426,8 +445,8 @@ class NowingIngestService:
                 await session.commit()
             except Exception as exc:
                 await session.rollback()
-                result.error = (
-                    f"{result.error or ''}; persistence failed: {exc}".strip("; ")
+                result.error = f"{result.error or ''}; persistence failed: {exc}".strip(
+                    "; "
                 )
 
         return result

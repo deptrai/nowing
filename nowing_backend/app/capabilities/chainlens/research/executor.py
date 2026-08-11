@@ -14,7 +14,6 @@ import math
 import time
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable
 from datetime import datetime
-from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
 import httpx
@@ -30,6 +29,7 @@ from app.capabilities.core.types import CapabilityContext
 from app.config import config
 from app.exceptions import ExternalServiceError
 from app.observability import metrics
+from app.services.chainlens.auth import ChainLensServiceAuth
 from app.utils.crawl.classifier import BlockType
 
 logger = logging.getLogger(__name__)
@@ -514,9 +514,7 @@ class _SSEParser:
         self.estimated = estimated if isinstance(estimated, bool) else None
 
         self.model = (
-            (usage.get("model") if usage else None)
-            or event.get("model")
-            or self.model
+            (usage.get("model") if usage else None) or event.get("model") or self.model
         )
 
         tokens = (usage.get("tokens") if usage else None) or event.get("tokens")
@@ -546,10 +544,7 @@ class _SSEParser:
         """Convert stored ``cost_dollars`` to micro-USD with half-up rounding."""
         if self.cost_dollars is None:
             return None
-        micros = (
-            Decimal(str(self.cost_dollars)) * Decimal("1000000")
-        ).to_integral_value(ROUND_HALF_UP)
-        return int(micros)
+        return ChainLensServiceAuth.cost_dollars_to_micros(self.cost_dollars)
 
     def finalize(self) -> ResearchOutput:
         """Return the parsed research output after all lines have been fed."""
@@ -657,8 +652,9 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
     The SSE body is parsed incrementally from ``response.aiter_lines()`` so
     that long research streams do not have to be buffered into one string.
     """
-    if not config.CHAINLENS_API_KEY or not config.CHAINLENS_API_KEY.strip():
-        logger.warning("CHAINLENS_API_KEY is not configured; degrading research.")
+    auth = ChainLensServiceAuth(config_obj=config)
+    if not auth.configured:
+        logger.warning("ChainLens service token not configured; degrading research.")
         return _engine_unavailable("not_configured")
 
     body: dict[str, Any] = {
@@ -674,39 +670,51 @@ async def _call_chainlens(payload: ResearchInput) -> ResearchOutput:
     if payload.chat_id:
         body["chatId"] = payload.chat_id
 
+    workspace_id = payload.workspace_id or 0
+    url = f"{config.CHAINLENS_API_URL}/api/v1/search"
+    timeout = config.CHAINLENS_REQUEST_TIMEOUT_SECONDS
+
     logger.info("Calling ChainLens research")
     start_time = time.perf_counter()
 
-    async with (
-        httpx.AsyncClient(
-            timeout=config.CHAINLENS_REQUEST_TIMEOUT_SECONDS,
-            follow_redirects=True,
-        ) as client,
-        client.stream(
-            "POST",
-            f"{config.CHAINLENS_API_URL}/api/v1/search",
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "text/event-stream",
-                "Authorization": f"Bearer {config.CHAINLENS_API_KEY}",
-            },
-            json=body,
-        ) as response,
-    ):
-        if response.status_code == 401:
-            return _engine_unavailable("auth_failed")
-        if response.status_code == 403:
-            return _engine_unavailable("auth_failed")
-        if response.status_code == 429:
-            return _engine_unavailable("rate_limited")
-        if response.status_code >= 500:
-            return _engine_unavailable("upstream_error")
-        if response.status_code >= 400:
-            return _engine_unavailable("upstream_error")
-        if response.status_code != 200:
-            return _engine_unavailable("upstream_error")
+    async with httpx.AsyncClient(
+        timeout=timeout,
+        follow_redirects=True,
+    ) as client:
+        for attempt in range(2):
+            headers = auth.get_outbound_headers(
+                workspace_id, content_type="application/json"
+            )
+            headers["Accept"] = "text/event-stream"
+            async with client.stream(
+                "POST",
+                url,
+                headers=headers,
+                json=body,
+            ) as response:
+                if response.status_code == 401 and attempt == 0:
+                    rotated = auth.rotate()
+                    if rotated:
+                        continue
 
-        return await _parse_sse(response.aiter_lines(), start_time=start_time)
+                if response.status_code in (401, 403):
+                    metrics.record_chainlens_auth_failed(
+                        workspace_id=workspace_id,
+                        reason="invalid_token",
+                    )
+                    return _engine_unavailable("auth_failed")
+                if response.status_code == 429:
+                    return _engine_unavailable("rate_limited")
+                if response.status_code >= 500:
+                    return _engine_unavailable("upstream_error")
+                if response.status_code >= 400:
+                    return _engine_unavailable("upstream_error")
+                if response.status_code != 200:
+                    return _engine_unavailable("upstream_error")
+
+                return await _parse_sse(response.aiter_lines(), start_time=start_time)
+
+    return _engine_unavailable("upstream_error")
 
 
 def _embedding_token_count(query: str) -> int | None:
@@ -771,6 +779,9 @@ async def execute_with_context(
     degradation_reason: str | None = None
     engine_reason: str | None = None
     output: ResearchOutput | None = None
+
+    if ctx is not None and payload.workspace_id is None:
+        payload.workspace_id = ctx.workspace_id
 
     try:
         output = await search_fn(payload)

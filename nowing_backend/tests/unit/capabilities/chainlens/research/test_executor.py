@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import json
 import types
+import uuid
 from pathlib import Path
 
 import httpx
@@ -510,11 +511,12 @@ async def test_call_chainlens_request_contract_full_payload(monkeypatch):
     output = await _call_chainlens(payload)
 
     assert captured["url"] == "https://contract.chainlens.test/api/v1/search"
-    assert captured["headers"] == {
-        "Content-Type": "application/json",
-        "Accept": "text/event-stream",
-        "Authorization": "Bearer contract-key",
-    }
+    headers = captured["headers"]
+    assert headers["Authorization"] == "Bearer contract-key"
+    assert headers["Accept"] == "text/event-stream"
+    assert headers["Content-Type"] == "application/json"
+    assert headers["X-Workspace-Id"] == "0"
+    assert uuid.UUID(headers["X-Correlation-Id"])
     assert captured["json"] == {
         "query": "contract query",
         "optimizationMode": "balanced",

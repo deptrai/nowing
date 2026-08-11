@@ -1,19 +1,12 @@
-"""Temporary ChainLens service auth stub until Story 20.4 lands.
+"""Deprecated re-export for the temporary ChainLens auth stub.
 
-Story 20.4 will replace this with a rotating ``ChainLensServiceAuth`` provider
-that caches tokens and handles token exchange.
+Story 20.4 moved the implementation to ``app.services.chainlens.auth``.
+This module remains only for backwards compatibility and will be removed
+once all callers are migrated.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from .auth import get_chainlens_auth_header
 
-
-def get_chainlens_auth_header(config: Any | None = None) -> dict[str, str]:
-    """Return the Authorization header for chainlens-research requests."""
-    if config is None:
-        from app.config import config
-    token = getattr(config, "CHAINLENS_SERVICE_TOKEN", "") or getattr(
-        config, "CHAINLENS_API_KEY", ""
-    )
-    return {"Authorization": f"Bearer {token}"}
+__all__ = ["get_chainlens_auth_header"]

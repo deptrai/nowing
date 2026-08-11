@@ -1160,6 +1160,30 @@ def _chainlens_ingest_failed():
 
 
 @lru_cache(maxsize=1)
+def _chainlens_auth_failed():
+    return _get_meter().create_counter(
+        "nowing.chainlens.auth_failed",
+        description="Count of chainlens-research service-to-service auth failures.",
+    )
+
+
+def record_chainlens_auth_failed(
+    *,
+    workspace_id: int,
+    reason: str,
+) -> None:
+    """Count one chainlens-research service-to-service auth failure."""
+    _add(
+        _chainlens_auth_failed(),
+        1,
+        {
+            "workspace_id": str(workspace_id),
+            "reason": reason,
+        },
+    )
+
+
+@lru_cache(maxsize=1)
 def _kb_fallback_hit_count():
     return _get_meter().create_histogram(
         "nowing.chainlens.fallback_kb_hits",

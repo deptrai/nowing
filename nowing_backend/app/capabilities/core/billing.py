@@ -48,6 +48,7 @@ _PLATFORM_RATE_KEYS: dict[BillingUnit, str] = {
     BillingUnit.CHAINLENS_QUERY: "CHAINLENS_QUERY_MICROS_PER_CALL",
     BillingUnit.BATDONGSAN_ITEM: "BATDONGSAN_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.CHOTOT_BDS_ITEM: "CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM",
+    BillingUnit.CHOTOT_ITEM: "CHOTOT_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.MUABAN_BDS_ITEM: "MUABAN_BDS_SCRAPE_MICROS_PER_ITEM",
     BillingUnit.VN_BDS_AGGREGATE_QUERY: "VN_BDS_AGGREGATE_QUERY_MICROS_PER_QUERY",
     BillingUnit.VIETNAMWORKS_JOB: "VIETNAMWORKS_SCRAPE_MICROS_PER_ITEM",
@@ -84,6 +85,7 @@ _UNIT_NOUNS: dict[BillingUnit, str] = {
     BillingUnit.CHAINLENS_QUERY: "query",
     BillingUnit.BATDONGSAN_ITEM: "listing",
     BillingUnit.CHOTOT_BDS_ITEM: "listing",
+    BillingUnit.CHOTOT_ITEM: "listing",
     BillingUnit.MUABAN_BDS_ITEM: "listing",
     BillingUnit.VN_BDS_AGGREGATE_QUERY: "query",
     BillingUnit.VIETNAMWORKS_JOB: "job",
@@ -212,6 +214,7 @@ async def _gate_platform(
 
 _SOURCE_BILLING_UNIT_MAP: dict[str, BillingUnit] = {
     "batdongsan": BillingUnit.BATDONGSAN_ITEM,
+    "chotot": BillingUnit.CHOTOT_ITEM,
     "chotot_bds": BillingUnit.CHOTOT_BDS_ITEM,
     "muaban_bds": BillingUnit.MUABAN_BDS_ITEM,
     "vietnamworks": BillingUnit.VIETNAMWORKS_JOB,
@@ -516,6 +519,7 @@ async def _record_deep_research_token_usage(
             mode_requested=mode_requested,
             e2e_ms=e2e_ms,
             ttfb_ms=ttfb_ms,
+            run_id=ctx.run_id,
         )
     except Exception:
         logger.exception("Failed to record deep_research token usage; continuing")
