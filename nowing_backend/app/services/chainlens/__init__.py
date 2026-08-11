@@ -1,5 +1,6 @@
 """Nowing -> chainlens-research service adapters."""
 
+from .gap_fill import GapFillRequest, GapFillResponse, GapFillService
 from .ingest import IngestResult, NowingIngestService
 from .private_provider import PrivateProviderService
 from .schemas import (
@@ -10,6 +11,9 @@ from .schemas import (
 )
 
 __all__ = [
+    "GapFillRequest",
+    "GapFillResponse",
+    "GapFillService",
     "IngestResult",
     "NowingIngestService",
     "PrivateDataSearchRequest",

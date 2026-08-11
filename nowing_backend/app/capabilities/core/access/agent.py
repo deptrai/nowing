@@ -37,7 +37,7 @@ from app.capabilities.core.access.run_citation import attach_run_citation
 from app.capabilities.core.access.web_citation import register_web_citations
 from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.billing import charge_capability, gate_capability
-from app.capabilities.core.progress import progress_scope
+from app.capabilities.core.progress import emit_progress, progress_scope
 from app.capabilities.core.runs import (
     RUN_OUTPUT_CHAR_CAP,
     record_run,
@@ -48,6 +48,7 @@ from app.capabilities.core.types import Capability, CapabilityContext
 from app.config import config
 from app.db import async_session_maker
 from app.exceptions import ExternalServiceError, ForbiddenError, NowingError
+from app.services.chainlens.gap_fill import GapFillRequest, GapFillService
 from app.services.memory.run_enqueue import (
     enqueue_run_memory_extraction_after_commit,
 )
@@ -144,7 +145,11 @@ _anti_bot_blocks_lock = asyncio.Lock()
 async def _cleanup_anti_bot_blocks() -> None:
     """Evict expired entries and enforce a size ceiling on the anti-bot cache."""
     now = time.monotonic()
-    expired = [k for k, (ts, _) in _anti_bot_blocks.items() if now - ts >= _ANTI_BOT_BLOCK_TTL_SECONDS]
+    expired = [
+        k
+        for k, (ts, _) in _anti_bot_blocks.items()
+        if now - ts >= _ANTI_BOT_BLOCK_TTL_SECONDS
+    ]
     for k in expired:
         _anti_bot_blocks.pop(k, None)
     if len(_anti_bot_blocks) > _ANTI_BOT_BLOCK_MAX_SIZE:
@@ -243,6 +248,59 @@ def _is_sync_chat_mode_allowed(mode: str | None) -> bool:
     if not mode:
         mode = config.DEFAULT_RESEARCH_MODE
     return mode in _SYNC_CHAT_ALLOWED_MODES
+
+
+async def _maybe_trigger_gap_fill(
+    output: Any,
+    workspace_id: int,
+    query: str,
+) -> dict[str, Any] | None:
+    """If research signals a gap-fill, call chainlens-research and surface status.
+
+    Returns a small payload to merge into the tool result, or ``None`` when no
+    gap-fill was needed.  For sync calls that exceed 60s we fall back to the
+    async door and return the ``run_id`` immediately.
+    """
+    if not getattr(output, "gap_fill_needed", False):
+        return None
+
+    suggested_domains = getattr(output, "suggested_domains", None) or []
+    emit_progress(
+        "gap_fill_in_progress",
+        message="On-demand indexing requested; fetching missing data...",
+        current=0,
+        total=len(suggested_domains) if suggested_domains else 1,
+        unit="domain",
+        detail={"suggested_domains": suggested_domains},
+    )
+
+    service = GapFillService()
+    request = GapFillRequest(
+        query=query,
+        workspace_id=workspace_id,
+        domains=suggested_domains,
+        source="chainlens.research",
+    )
+    response = await service.request_sync_or_async(request)
+
+    if response.run_id:
+        emit_progress(
+            "gap_fill_async",
+            message="Gap-fill is running in the background",
+            detail={"run_id": response.run_id},
+        )
+        return {
+            "gap_fill_run_id": response.run_id,
+            "gap_fill_status": response.status,
+            "gap_fill_message": response.message,
+            "suggested_domains": suggested_domains,
+        }
+
+    return {
+        "gap_fill_status": response.status,
+        "gap_fill_message": response.message,
+        "suggested_domains": suggested_domains,
+    }
 
 
 async def _check_rate_limit(workspace_id: int) -> None:
@@ -426,6 +484,19 @@ def _capability_tool(
                 except Exception:
                     logger.exception("charge failed for agent run %s", name)
 
+            # Story 20.2: if the research engine requested on-demand gap-fill
+            # indexing, kick it off inline (or fall back to async if >60s).
+            gap_fill_payload: dict[str, Any] | None = None
+            if name == "chainlens.research":
+                try:
+                    gap_fill_payload = await _maybe_trigger_gap_fill(
+                        output,
+                        workspace_id=workspace_id,
+                        query=payload.query,
+                    )
+                except Exception:
+                    logger.exception("gap-fill trigger failed for agent run")
+
             serialized = serialize_output(output)
             async with async_session_maker() as rec_session:
                 run_id = await record_run(
@@ -455,6 +526,8 @@ def _capability_tool(
                 dump = output.model_dump(exclude_none=True)
                 if "next_action" in dump:
                     dump.setdefault("next_step", dump["next_action"])
+                if gap_fill_payload:
+                    dump["gap_fill"] = gap_fill_payload
                 if anti_bot_key is not None and _is_anti_bot_degraded_result(dump):
                     await _cache_blocked_result(anti_bot_key, dump)
                 return dump
@@ -466,6 +539,8 @@ def _capability_tool(
             if "next_action" in dump:
                 dump.setdefault("next_step", dump["next_action"])
             dump["run_id"] = run_external_id
+            if gap_fill_payload:
+                dump["gap_fill"] = gap_fill_payload
             if anti_bot_key is not None and _is_anti_bot_degraded_result(dump):
                 await _cache_blocked_result(anti_bot_key, dump)
         else:

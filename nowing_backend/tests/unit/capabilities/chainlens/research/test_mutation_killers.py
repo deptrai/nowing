@@ -268,7 +268,7 @@ def test_research_input_system_instructions_max_length():
             None,
             True,
             "insufficient_evidence",
-            "No relevant sources were found. Try rephrasing the query.",
+            "No relevant sources were found. Try rephrasing the query or wait for gap-fill indexing to complete.",
         ),
         (
             "timeout",
@@ -1326,7 +1326,7 @@ async def test_build_research_executor_uses_provided_search_fn():
             "insufficient_evidence",
             None,
             None,
-            "No relevant sources were found. Try rephrasing the query.",
+            "No relevant sources were found. Try rephrasing the query or wait for gap-fill indexing to complete.",
         ),
         (
             "timeout",

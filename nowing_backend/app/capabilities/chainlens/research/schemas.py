@@ -8,7 +8,7 @@ synthesized answer plus the web sources that ground it.
 from __future__ import annotations
 
 import re
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -262,6 +262,22 @@ class ResearchOutput(BaseModel):
         exclude=True,
         description="Internal: blocked URL counts by block type.",
     )
+    gap_fill_needed: bool = Field(
+        default=False,
+        description="True when chainlens-research signals that on-demand index gap-fill is needed.",
+    )
+    suggested_domains: list[str] = Field(
+        default_factory=list,
+        description="Domains suggested by chainlens-research for gap-fill indexing (e.g. batdongsan, vn_jobs).",
+    )
+    insufficient_evidence: bool | None = Field(
+        default=None,
+        description="Explicit flag set when the research stream ended with insufficient evidence.",
+    )
+    cost_breakdown: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional per-operation cost breakdown from the engine (search, gap_fill, scraper).",
+    )
 
     @model_validator(mode="after")
     def _recompute(self) -> ResearchOutput:
@@ -351,7 +367,7 @@ def _default_next_action(
         reason = engine_reason or degradation_reason
         return f"Partial result; {reason or 'some evidence was found'}."
     if status == "insufficient_evidence":
-        return "No relevant sources were found. Try rephrasing the query."
+        return "No relevant sources were found. Try rephrasing the query or wait for gap-fill indexing to complete."
     if status == "timeout":
         return (
             "The ChainLens stream ended before returning a complete result. Try again."

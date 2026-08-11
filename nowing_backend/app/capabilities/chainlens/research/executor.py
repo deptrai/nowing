@@ -154,6 +154,7 @@ class _SSEParser:
         "blocks",
         "chat_id",
         "cost_basis",
+        "cost_breakdown",
         "cost_dollars",
         "cost_source",
         "degradation_reason",
@@ -164,6 +165,8 @@ class _SSEParser:
         "first_factual_chunk_at",
         "first_progress_at",
         "first_token_time_ms",
+        "gap_fill_needed",
+        "insufficient_evidence_flag",
         "model",
         "request_accepted_at",
         "resolved_mode",
@@ -175,6 +178,7 @@ class _SSEParser:
         "sources",
         "start_time",
         "status",
+        "suggested_domains",
         "tokens_completion",
         "tokens_prompt",
         "tokens_total",
@@ -211,6 +215,10 @@ class _SSEParser:
         self.first_progress_at: int | None = None
         self.evidence_ready_at: int | None = None
         self.first_factual_chunk_at: int | None = None
+        self.gap_fill_needed = False
+        self.suggested_domains: list[str] = []
+        self.insufficient_evidence_flag: bool | None = None
+        self.cost_breakdown: dict[str, Any] | None = None
         self.start_time = start_time
 
     def _record_first_token(self) -> None:
@@ -295,6 +303,23 @@ class _SSEParser:
             )
             return
 
+        if event_type == "gap-fill-needed":
+            self.gap_fill_needed = True
+            self.insufficient_evidence_flag = bool(
+                self.insufficient_evidence_flag or event.get("insufficient_evidence")
+            )
+            domains = (
+                event.get("suggested_domains")
+                or event.get("suggestedDomains")
+                or event.get("domains")
+            )
+            if isinstance(domains, list):
+                self.suggested_domains = [
+                    str(d) for d in domains if isinstance(d, str) and d
+                ]
+            self._extract_gap_fill(event)
+            return
+
         if event_type in {"done", "usage"}:
             self.saw_done = True
             usage = event.get("usage")
@@ -303,6 +328,7 @@ class _SSEParser:
             self.chat_id = event.get("chatId") or event.get("chat_id") or self.chat_id
             self.web_url = event.get("webUrl") or self.web_url
             self._extract_cost(event)
+            self._extract_gap_fill(event)
             return
 
         if event_type == "block" and isinstance(event.get("block"), dict):
@@ -349,9 +375,12 @@ class _SSEParser:
             if state == "insufficient_evidence" and not answer and not self.sources:
                 self.status = "insufficient_evidence"
                 self.degradation_reason = "insufficient_evidence"
+                self.insufficient_evidence_flag = True
             else:
                 self.status = "partial"
                 self.degradation_reason = "partial"
+            self._extract_suggested_domains(event)
+            self._extract_gap_fill(event)
             blocked_metadata = event.get("blocked_metadata")
             if isinstance(blocked_metadata, list):
                 for entry in blocked_metadata:
@@ -385,6 +414,9 @@ class _SSEParser:
             else:
                 self.status = "insufficient_evidence"
                 self.degradation_reason = "insufficient_evidence"
+                self.insufficient_evidence_flag = True
+            self._extract_suggested_domains(event)
+            self._extract_gap_fill(event)
             blocked_metadata = event.get("blocked_metadata")
             if isinstance(blocked_metadata, list):
                 for entry in blocked_metadata:
@@ -540,6 +572,104 @@ class _SSEParser:
         else:
             self.cost_basis = "actual"
 
+    def _extract_suggested_domains(self, event: dict[str, Any]) -> None:
+        """Normalize ``suggested_domains`` from any SSE frame."""
+        domains = (
+            event.get("suggested_domains")
+            or event.get("suggestedDomains")
+            or event.get("domains")
+        )
+        if isinstance(domains, list) and domains:
+            self.suggested_domains = [
+                str(d) for d in domains if isinstance(d, str) and d
+            ]
+            self.gap_fill_needed = True
+
+    def _extract_gap_fill(self, event: dict[str, Any]) -> None:
+        """Extract gap-fill signals and per-operation cost breakdown.
+
+        A terminal ``done`` frame may carry ``status: insufficient_evidence``
+        and ``suggested_domains``; treat that as a gap-fill trigger per AC-1.
+        If the engine supplies a ``costBreakdown`` map, keep it for later
+        cost allocation (search / gap-fill / scraper).
+        """
+        event_status = event.get("status")
+        if event_status == "insufficient_evidence":
+            self.status = "insufficient_evidence"
+            self.insufficient_evidence_flag = True
+
+        domains = event.get("suggested_domains") or event.get("suggestedDomains")
+        if isinstance(domains, list) and domains:
+            self.suggested_domains = [
+                str(d) for d in domains if isinstance(d, str) and d
+            ]
+            self.gap_fill_needed = True
+            self.insufficient_evidence_flag = True
+
+        if event_status == "insufficient_evidence" or self.suggested_domains:
+            self.gap_fill_needed = True
+            if self.insufficient_evidence_flag is None:
+                self.insufficient_evidence_flag = (
+                    event_status == "insufficient_evidence"
+                )
+
+        breakdown = event.get("costBreakdown") or event.get("cost_breakdown")
+        self.cost_breakdown = self._normalize_cost_breakdown(breakdown or event)
+
+    def _normalize_cost_breakdown(self, data: dict[str, Any]) -> dict[str, Any] | None:
+        """Convert per-operation cost fields to a canonical micros map.
+
+        Accepts either a ``costBreakdown`` object or a raw event with top-level
+        ``searchCostDollars`` / ``searchCostMicros`` style keys.  Missing or
+        malformed values are stored as ``None`` so billing can fall back.
+        """
+        if not isinstance(data, dict):
+            return None
+
+        # If the caller already supplied a normalized micros map, prefer it.
+        if all(
+            k in data for k in ("search_micros", "gap_fill_micros", "scraper_micros")
+        ):
+            return {
+                "search_micros": _to_int(data.get("search_micros")),
+                "gap_fill_micros": _to_int(data.get("gap_fill_micros")),
+                "scraper_micros": _to_int(data.get("scraper_micros")),
+                "scraper_id": data.get("scraper_id") or data.get("scraperId"),
+            }
+
+        def _cost(key_dollars: str, key_micros: str) -> int | None:
+            micros_raw = data.get(key_micros)
+            if micros_raw is not None:
+                micros_int = _to_int(micros_raw)
+                if micros_int is not None:
+                    return micros_int
+            dollars_raw = data.get(key_dollars)
+            if dollars_raw is not None:
+                dollars_int = _to_int(dollars_raw)
+                if dollars_int is not None:
+                    return dollars_int
+                try:
+                    return ChainLensServiceAuth.cost_dollars_to_micros(
+                        float(dollars_raw)
+                    )
+                except Exception:
+                    return None
+            return None
+
+        search = _cost("searchCostDollars", "searchCostMicros")
+        gap_fill = _cost("gapFillCostDollars", "gapFillCostMicros")
+        scraper = _cost("scraperCostDollars", "scraperCostMicros")
+
+        if search is None and gap_fill is None and scraper is None:
+            return None
+
+        return {
+            "search_micros": search,
+            "gap_fill_micros": gap_fill,
+            "scraper_micros": scraper,
+            "scraper_id": data.get("scraper_id") or data.get("scraperId"),
+        }
+
     def _cost_micros(self) -> int | None:
         """Convert stored ``cost_dollars`` to micro-USD with half-up rounding."""
         if self.cost_dollars is None:
@@ -590,12 +720,16 @@ class _SSEParser:
             cost_dollars=self.cost_dollars,
             cost_micros=self._cost_micros(),
             cost_basis=self.cost_basis,
+            cost_breakdown=self.cost_breakdown,
             resolved_mode=self.resolved_mode,
             model=self.model,
             tokens_total=self.tokens_total,
             tokens_prompt=self.tokens_prompt,
             tokens_completion=self.tokens_completion,
             first_token_time_ms=self.first_token_time_ms,
+            gap_fill_needed=self.gap_fill_needed,
+            suggested_domains=self.suggested_domains,
+            insufficient_evidence=self.insufficient_evidence_flag,
         )
 
 
@@ -615,6 +749,8 @@ def _parse_sse(
       terminal frame.
     - ``type: error`` surfaces as a ``ChainLensError``.
     - ``type: progress`` is relayed to the run progress bus (T4).
+    - ``type: gap-fill-needed`` signals that the engine needs on-demand
+      indexing and carries ``suggested_domains``.
 
     9.1a additions: the engine can also emit ``partial`` and
     ``insufficientEvidence`` data frames (with an embedded ``reason`` and

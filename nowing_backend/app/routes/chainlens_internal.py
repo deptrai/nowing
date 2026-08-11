@@ -1,125 +1,206 @@
-"""Internal chainlens-research callback routes.
+"""Internal routes called by ``chainlens-research`` (Story 20.2).
 
-These endpoints are called by the chainlens-research engine, not by the
-Nowing web client. Authentication is service-to-service via a shared
-``Authorization: Bearer <CHAINLENS_SERVICE_TOKEN>`` header plus
-``X-Workspace-Id`` for workspace scoping.
+These endpoints are NOT part of the public workspace API; they are
+service-to-service callbacks authenticated with ``ChainLensServiceAuth``.
 """
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from app.auth.context import AuthContext
-from app.canonical.tenant_context import set_request_tenant_context
-from app.db import Workspace, get_async_session
-from app.observability import metrics as ot_metrics
-from app.rate_limiter import limiter
-from app.services.chainlens.auth import (
-    ChainLensAuthContext,
-    get_chainlens_auth,
-)
-from app.services.chainlens.private_provider import PrivateProviderService
-from app.services.chainlens.schemas import (
-    PrivateDataSearchRequest,
-    PrivateDataSearchResponse,
-)
-from app.utils.rbac import check_workspace_access
+from app.capabilities.core import execute_with_context
+from app.capabilities.core.store import get_capability
+from app.capabilities.core.types import CapabilityContext
+from app.db import ChainLensIngestJob, get_async_session
+from app.services.chainlens.auth import ChainLensServiceAuth
+from app.services.chainlens.ingest import NowingIngestService
+from app.services.scraper_chunks.schemas import Chunk
+from app.services.scraper_chunks.serializer import to_chunks
 
-router = APIRouter()
+router = APIRouter(tags=["chainlens-internal"])
+
+# Domain slug -> fully qualified capability name.
+_DOMAIN_CAPABILITY_MAP: dict[str, str] = {
+    "batdongsan": "batdongsan.scrape",
+    "vn_jobs": "vn_jobs.aggregate",
+}
 
 
-def chainlens_auth_dependency(request: Request) -> ChainLensAuthContext:
-    """FastAPI dependency that validates an inbound chainlens-research request."""
-    return get_chainlens_auth().validate_inbound_token(request)
+def _resolve_scraper_id(scraper_id: str) -> str:
+    """Allow callers to use either a domain slug or a full capability name."""
+    try:
+        get_capability(scraper_id)
+        return scraper_id
+    except KeyError:
+        pass
+    if scraper_id in _DOMAIN_CAPABILITY_MAP:
+        mapped = _DOMAIN_CAPABILITY_MAP[scraper_id]
+        try:
+            get_capability(mapped)
+            return mapped
+        except KeyError:
+            pass
+    # Also try the domain with a ``.scrape`` suffix as a fallback.
+    candidate = f"{scraper_id}.scrape"
+    try:
+        get_capability(candidate)
+        return candidate
+    except KeyError:
+        pass
+    return scraper_id
+
+
+class _ScraperRunRequest(BaseModel):
+    """Payload for ``POST /v1/scraper/{scraper_id}/run``."""
+
+    query: str | None = Field(default=None)
+    params: dict[str, Any] = Field(default_factory=dict)
+    workspace_id: int = Field(..., gt=0)
+
+
+class _ScraperRunResponse(BaseModel):
+    """Response returned to chainlens-research after a scraper callback."""
+
+    scraper_id: str
+    ingest_job_id: str | None = None
+    status: str
+    ingested_count: int = 0
+    noop_count: int = 0
+    error: str | None = None
 
 
 @router.post("/scraper/{scraper_id}/run")
-@limiter.limit("100/minute")
 async def run_scraper_for_chainlens(
-    request: Request,
     scraper_id: str,
-    context: ChainLensAuthContext = Depends(chainlens_auth_dependency),
-) -> dict[str, Any]:
-    """Trigger a Nowing scraper on behalf of chainlens-research."""
-    return {
-        "status": "accepted",
-        "scraper_id": scraper_id,
-        "workspace_id": context.workspace_id,
-    }
-
-
-@router.post("/private-data/search")
-@limiter.limit("100/minute")
-async def private_data_search_for_chainlens(
     request: Request,
-    context: ChainLensAuthContext = Depends(chainlens_auth_dependency),
-    body: PrivateDataSearchRequest = Body(...),
+    body: _ScraperRunRequest,
     session: AsyncSession = Depends(get_async_session),
-) -> PrivateDataSearchResponse:
-    """Search Nowing private data on behalf of chainlens-research.
-
-    Validates the service token, checks workspace access, and delegates to
-    ``PrivateProviderService``. The service sets the tenant context and persists
-    a zero-cost ``TokenUsage`` row; the route commits the transaction before
-    returning.
-    """
-    if body.workspaceId != context.workspace_id:
-        ot_metrics.record_chainlens_auth_failed(
-            workspace_id=context.workspace_id,
-            reason="workspace_id_mismatch",
+) -> _ScraperRunResponse:
+    """Run a Nowing scraper and push the results back to chainlens-research."""
+    auth = ChainLensServiceAuth()
+    auth_ctx = auth.validate_inbound_token(request)
+    if auth_ctx is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing ChainLens service token",
         )
-        raise HTTPException(status_code=403, detail="Forbidden")
 
-    # Establish tenant context before querying workspace/membership rows.
-    await set_request_tenant_context(
-        session,
-        workspace_id=context.workspace_id,
-        client_id=None,
-        user_id=None,
-    )
+    workspace_id = body.workspace_id
+    capability_name = _resolve_scraper_id(scraper_id)
+    try:
+        capability = get_capability(capability_name)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown scraper capability: {scraper_id}",
+        ) from None
 
-    result = await session.execute(
-        select(Workspace)
-        .options(selectinload(Workspace.user))
-        .where(Workspace.id == context.workspace_id)
-    )
-    workspace = result.scalar_one_or_none()
-    if workspace is None:
-        ot_metrics.record_chainlens_auth_failed(
-            workspace_id=context.workspace_id,
-            reason="workspace_not_found",
+    # Build scraper input from the provided params, defaulting the query to
+    # a keyword/city where the scraper schema expects one.
+    input_data = dict(body.params) if body.params else {}
+    if body.query and "query" not in input_data:
+        input_data["query"] = body.query
+    if (
+        body.query
+        and capability_name == "batdongsan.scrape"
+        and "city" not in input_data
+    ):
+        # ponytail: city-level gap-fill defaults to HN; the caller should
+        # supply a city in ``params`` for precise targeting.
+        input_data.setdefault("city", "HN")
+    if (
+        body.query
+        and capability_name == "vn_jobs.aggregate"
+        and "keyword" not in input_data
+    ):
+        input_data.setdefault("keyword", body.query)
+
+    try:
+        payload = capability.input_schema(**input_data)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid scraper parameters for {scraper_id}: {exc}",
+        ) from exc
+
+    ctx = CapabilityContext(session=session, workspace_id=workspace_id)
+    output = await execute_with_context(capability.executor, payload=payload, ctx=ctx)
+
+    items: list[Any] = []
+    if hasattr(output, "items") and isinstance(output.items, list):
+        items = output.items
+
+    if not items:
+        return _ScraperRunResponse(
+            scraper_id=scraper_id,
+            status="no_items",
+            ingested_count=0,
         )
-        raise HTTPException(status_code=403, detail="Forbidden")
 
-    if workspace.user is None:
-        ot_metrics.record_chainlens_auth_failed(
-            workspace_id=context.workspace_id,
-            reason="workspace_owner_missing",
+    # Normalize items to the canonical ``Chunk[]`` shape expected by
+    # chainlens-research ingest.
+    domain = scraper_id.split(".")[0]
+    fetched_at = datetime.now(UTC).isoformat()
+    chunks: list[Chunk] = []
+    for item in items:
+        try:
+            chunks.extend(
+                to_chunks(
+                    domain=domain,
+                    data=item,
+                    fetched_at=fetched_at,
+                    content_type="text/markdown",
+                    category=None,
+                )
+            )
+        except Exception:
+            # Skip records that cannot be normalized; the ingestion still
+            # proceeds with the rest.
+            continue
+
+    if not chunks:
+        return _ScraperRunResponse(
+            scraper_id=scraper_id,
+            status="no_chunks",
+            ingested_count=0,
+            error="Scraper produced items but none could be serialized to chunks",
         )
-        raise HTTPException(status_code=403, detail="Forbidden")
 
-    auth = AuthContext.system(user=workspace.user, source="chainlens")
-    await check_workspace_access(session, auth, context.workspace_id)
-
-    service = PrivateProviderService(session)
-    response = await service.search(
-        body,
-        workspace,
-        correlation_id=context.correlation_id,
+    ingest_service = NowingIngestService()
+    result = await ingest_service.ingest(
+        scraper_id=scraper_id,
+        chunks=chunks,
+        workspace_id=workspace_id,
+        session=session,
     )
 
-    ot_metrics.record_chainlens_private_search(
-        workspace_id=context.workspace_id,
-        result="ok" if response.chunks else "empty",
-        hit_count=len(response.chunks),
+    # Persist a mapping row so the gap-fill billing/audit trail can link
+    # scraper usage back to this callback.
+    if result.ingest_job_id or result.parent_ingest_job_id:
+        job = ChainLensIngestJob(
+            scraper_id=scraper_id,
+            parent_ingest_job_id=result.ingest_job_id or result.parent_ingest_job_id,
+            child_ingest_job_ids=result.child_ingest_job_ids or [],
+            ingested_source_ids=result.ingested_source_ids or [],
+            noop_source_ids=result.noop_source_ids or [],
+            workspace_id=workspace_id,
+            status=result.status,
+        )
+        session.add(job)
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+
+    return _ScraperRunResponse(
+        scraper_id=scraper_id,
+        ingest_job_id=result.ingest_job_id or result.parent_ingest_job_id,
+        status=result.status,
+        ingested_count=len(result.ingested_source_ids or []),
+        noop_count=len(result.noop_source_ids or []),
     )
-
-    await session.commit()
-
-    return response

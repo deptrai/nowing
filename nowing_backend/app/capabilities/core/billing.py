@@ -460,6 +460,9 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         "kb_fallback_search_cost_micros": kb_fallback_search_cost_micros,
         "total_cost_micros": total_cost_micros,
         "fallback_hit_count": fallback_hit_count,
+        "gap_fill_needed": getattr(output, "gap_fill_needed", False),
+        "suggested_domains": getattr(output, "suggested_domains", None) or [],
+        "insufficient_evidence": getattr(output, "insufficient_evidence", None),
     }
     if getattr(output, "degraded", False):
         call_details["degradation_reason"] = (
@@ -468,10 +471,12 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         call_details["final_status"] = getattr(output, "status", None) or "unknown"
 
     if not billing_enabled:
-        await _record_deep_research_token_usage(
+        await _record_chainlens_cost_allocation(
             ctx,
             owner_user_id,
-            total_cost_micros,
+            output,
+            cost_micros,
+            kb_fallback_cost_micros,
             call_details,
             resolved_mode=resolved_mode,
             mode_requested=mode_requested,
@@ -481,10 +486,12 @@ async def _charge_chainlens(output: BillableOutput, ctx: CapabilityContext) -> i
         return 0
 
     await wallet_credit.check_balance(ctx.session, owner_user_id, total_cost_micros)
-    await _record_deep_research_token_usage(
+    await _record_chainlens_cost_allocation(
         ctx,
         owner_user_id,
-        total_cost_micros,
+        output,
+        cost_micros,
+        kb_fallback_cost_micros,
         call_details,
         resolved_mode=resolved_mode,
         mode_requested=mode_requested,
@@ -523,6 +530,148 @@ async def _record_deep_research_token_usage(
         )
     except Exception:
         logger.exception("Failed to record deep_research token usage; continuing")
+
+
+def _split_chainlens_cost(
+    output: BillableOutput, total_cost_micros: int
+) -> dict[str, Any]:
+    """Allocate a single research total into search / gap-fill / scraper buckets.
+
+    If the engine supplied a ``cost_breakdown`` map with per-operation micros,
+    use it verbatim (with KB-fallback cost folded into search).  Otherwise, when
+    the result explicitly requested a gap-fill, split by the documented default
+    heuristic: 50% search, 30% gap-fill, 20% scraper.
+
+    The returned dict always contains ``search_micros``, ``gap_fill_micros``,
+    ``scraper_micros``, and ``scraper_id``.
+    """
+    breakdown = getattr(output, "cost_breakdown", None) or {}
+    scraper_id = breakdown.get("scraper_id") if isinstance(breakdown, dict) else None
+
+    if isinstance(breakdown, dict) and any(
+        k in breakdown for k in ("search_micros", "gap_fill_micros", "scraper_micros")
+    ):
+        search = _to_nonneg_int(breakdown.get("search_micros")) or 0
+        gap_fill = _to_nonneg_int(breakdown.get("gap_fill_micros")) or 0
+        scraper = _to_nonneg_int(breakdown.get("scraper_micros")) or 0
+    else:
+        if getattr(output, "gap_fill_needed", False) or (
+            getattr(output, "suggested_domains", None)
+        ):
+            search = int(total_cost_micros * 0.5)
+            gap_fill = int(total_cost_micros * 0.3)
+            scraper = int(total_cost_micros * 0.2)
+        else:
+            search = total_cost_micros
+            gap_fill = 0
+            scraper = 0
+
+    # Keep the total exact; absorb rounding drift in the search bucket.
+    allocated = search + gap_fill + scraper
+    if allocated != total_cost_micros:
+        search += total_cost_micros - allocated
+
+    return {
+        "search_micros": max(0, search),
+        "gap_fill_micros": max(0, gap_fill),
+        "scraper_micros": max(0, scraper),
+        "scraper_id": scraper_id,
+    }
+
+
+def _to_nonneg_int(value: Any) -> int | None:
+    """Return a non-negative int or ``None``."""
+    if value is None:
+        return None
+    try:
+        ivalue = int(value)
+    except (TypeError, ValueError):
+        return None
+    return ivalue if ivalue >= 0 else None
+
+
+async def _record_chainlens_cost_allocation(
+    ctx: CapabilityContext,
+    owner_user_id: UUID,
+    output: BillableOutput,
+    chainlens_cost_micros: int,
+    kb_fallback_cost_micros: int,
+    call_details: dict[str, Any],
+    *,
+    resolved_mode: str | None = None,
+    mode_requested: str | None = None,
+    e2e_ms: int | None = None,
+    ttfb_ms: int | None = None,
+) -> None:
+    """Record search, gap-fill and scraper TokenUsage rows; debit only once."""
+    total_cost_micros = chainlens_cost_micros + kb_fallback_cost_micros
+    allocation = _split_chainlens_cost(output, total_cost_micros)
+
+    # KB-fallback overhead is a search-side cost.
+    allocation["search_micros"] += kb_fallback_cost_micros
+
+    base_details = dict(call_details)
+    base_details["cost_allocation"] = allocation
+
+    rows = [
+        (
+            UsageType.DEEP_RESEARCH,
+            allocation["search_micros"],
+            {
+                **base_details,
+                "operation": "search",
+                "cost_micros": allocation["search_micros"],
+            },
+        ),
+        (
+            UsageType.CHAINLENS_GAP_FILL,
+            allocation["gap_fill_micros"],
+            {
+                **base_details,
+                "operation": "gap_fill",
+                "cost_micros": allocation["gap_fill_micros"],
+            },
+        ),
+        (
+            UsageType.CHAINLENS_INGEST,
+            allocation["scraper_micros"],
+            {
+                **base_details,
+                "operation": "scraper",
+                "cost_micros": allocation["scraper_micros"],
+                "scraper_id": allocation["scraper_id"],
+            },
+        ),
+    ]
+
+    for usage_type, cost_micros, details in rows:
+        if cost_micros <= 0 and usage_type != UsageType.DEEP_RESEARCH:
+            # Always record the deep_research row for analytics; omit zero rows
+            # for gap-fill / scraper when they were not used.
+            continue
+        if cost_micros <= 0 and usage_type == UsageType.DEEP_RESEARCH:
+            # Edge case: total cost is zero but we still want the audit row.
+            pass
+        try:
+            await record_token_usage(
+                ctx.session,
+                usage_type=usage_type,
+                workspace_id=ctx.workspace_id,
+                user_id=owner_user_id,
+                cost_micros=cost_micros,
+                call_details=details,
+                resolved_mode=resolved_mode,
+                mode_requested=mode_requested,
+                e2e_ms=e2e_ms,
+                ttfb_ms=ttfb_ms,
+                run_id=ctx.run_id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to record %s token usage for run %s; continuing",
+                usage_type,
+                ctx.run_id,
+            )
 
 
 async def _charge_platform(
