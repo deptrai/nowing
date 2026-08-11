@@ -58,6 +58,24 @@ so that the answer does not say "I don't know" when the data is available on the
   - [x] Integration test cost allocation `TokenUsage` rows for search/gap-fill/scraper
   - [x] Integration test async gap-fill returns `run_id` and completes via SSE
 
+### Review Findings
+
+- [ ] [Review][Patch] Async research path does not trigger gap-fill (`app/capabilities/core/async_runner.py:142`)
+- [ ] [Review][Patch] `TokenUsage.run_id` missing in sync research paths (`app/capabilities/core/access/agent.py:434`, `app/capabilities/core/access/rest.py:310-329`)
+- [ ] [Review][Patch] Scraper callback trusts `body.workspace_id` over auth context (`app/routes/chainlens_internal.py:85-93`)
+- [ ] [Review][Patch] Duplicate `ChainLensIngestJob` created on scraper callback (`app/routes/chainlens_internal.py:174-195`)
+- [ ] [Review][Patch] `insufficient_evidence_flag` set when only `suggested_domains` present (`app/capabilities/chainlens/research/executor.py:588-614`)
+- [ ] [Review][Patch] Sync gap-fill timeout starts a second upstream request (`app/services/chainlens/gap_fill.py:216-243`)
+- [ ] [Review][Patch] Gap-fill service cost not recorded/debited (`app/services/chainlens/gap_fill.py:88-104, 186-214`)
+- [ ] [Review][Patch] KB-fallback cost double-counted in cost allocation (`app/capabilities/core/billing.py:535-579, 611`)
+- [ ] [Review][Patch] REST sync path does not trigger gap-fill (`app/capabilities/core/access/rest.py:309-329`)
+- [ ] [Review][Patch] Background task list never cleaned (`app/services/chainlens/gap_fill.py:76, 207-209`)
+- [ ] [Review][Patch] `_normalize_cost_breakdown` drops non-integer micros (`app/capabilities/chainlens/research/executor.py:619-671`)
+- [ ] [Review][Patch] Inbound correlation id not forwarded to ingest (`app/routes/chainlens_internal.py:85-86, 174-180`)
+- [ ] [Review][Patch] Gap-fill does not rotate service token on 401 (`app/services/chainlens/gap_fill.py:160-163`)
+- [ ] [Review][Patch] Missing end-to-end async gap-fill integration test (`tests/integration/capabilities/chainlens/research/test_gap_fill_cost_allocation.py`)
+- [ ] [Review][Defer] Usage type for search bucket is `DEEP_RESEARCH` instead of `chainlens_search` per AC (`app/capabilities/core/billing.py:618-624`)
+
 ## Dev Notes
 
 - Relevant architecture patterns and constraints
