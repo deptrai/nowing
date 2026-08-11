@@ -238,6 +238,8 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
             ) from exc
 
         user_id = getattr(auth.user, "id", None)
+        pat = getattr(auth, "pat", None)
+        client_id = getattr(pat, "client_id", None) if pat is not None else None
         origin = _origin_for(auth)
 
         if mode == "async":
@@ -248,6 +250,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                 payload=payload,
                 origin=origin,
                 user_id=user_id,
+                client_id=client_id,
             )
             if run_id is None:
                 raise HTTPException(
@@ -273,6 +276,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                     origin=origin,
                     payload=payload,
                     user_id=user_id,
+                    client_id=client_id,
                     error=str(exc),
                     duration_ms=int((time.perf_counter() - started) * 1000),
                     progress=reporter.coarse,
@@ -288,6 +292,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                     origin=origin,
                     payload=payload,
                     user_id=user_id,
+                    client_id=client_id,
                     error=str(exc),
                     duration_ms=int((time.perf_counter() - started) * 1000),
                     progress=reporter.coarse,
@@ -314,6 +319,7 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                 payload=payload,
                 output=output,
                 user_id=user_id,
+                client_id=client_id,
                 duration_ms=duration_ms,
                 cost_micros=cost_micros,
                 progress=reporter.coarse,

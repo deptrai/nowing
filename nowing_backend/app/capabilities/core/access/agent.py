@@ -104,6 +104,17 @@ def _current_thread_id() -> str | None:
         return None
 
 
+def _client_id_for_auth(auth_context: AuthContext | None) -> str | None:
+    """Vertical-client scope for an agent-origin run (AC-18.6/Story 3.13).
+
+    Session/system principals have no PAT client scope, so their runs (and the
+    memories extracted from them) stay workspace-internal.
+    """
+    if auth_context is None or auth_context.pat is None:
+        return None
+    return auth_context.pat.client_id or None
+
+
 def _current_research_mode() -> str | None:
     """Best-effort ``configurable.research_mode`` from the active LangGraph config."""
     try:
@@ -291,6 +302,7 @@ def _capability_tool(
         payload = input_model(**kwargs)
         input_dump = payload.model_dump(exclude_none=True)
         thread_id = _current_thread_id()
+        client_id = _client_id_for_auth(auth_context)
 
         # Story 10.5: if the same capability+input just returned an anti-bot block
         # in this thread, return the same guidance instead of re-executing.
@@ -337,6 +349,7 @@ def _capability_tool(
                         origin="agent",
                         user_id=user_id,
                         thread_id=thread_id,
+                        client_id=client_id,
                     )
                     if run_id is None:
                         raise ExternalServiceError(
@@ -395,6 +408,7 @@ def _capability_tool(
                             thread_id=thread_id,
                             duration_ms=duration_ms,
                             progress=reporter.coarse,
+                            client_id=client_id,
                         )
                     raise
 
@@ -427,6 +441,7 @@ def _capability_tool(
                     duration_ms=duration_ms,
                     cost_micros=cost_micros,
                     progress=reporter.coarse,
+                    client_id=client_id,
                 )
 
             # T4/D1: the recorder owns its own session and has committed by the

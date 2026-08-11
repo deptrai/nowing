@@ -55,6 +55,7 @@ async def start_async_run(
     user_id: Any | None = None,
     thread_id: str | None = None,
     parent_run_id: Any | None = None,
+    client_id: str | None = None,
 ) -> str | None:
     """Insert a ``running`` row and spawn the background scrape.
 
@@ -71,6 +72,7 @@ async def start_async_run(
         user_id=user_id,
         thread_id=thread_id,
         parent_run_id=parent_run_id,
+        client_id=client_id,
     )
     if run_id is None:
         return None
@@ -196,19 +198,25 @@ async def _finalize_async(
         # escalation so the admin can inspect the result.
         if finalized and status == "success":
             raw = run_id[len("run_") :] if run_id.startswith("run_") else run_id
-            parsed_id = _uuid.UUID(raw)
-            # AC-18.8: re-set the run-id token; finalize_run committed and
-            # cleared the transaction-scoped GUCs.
-            await set_request_tenant_context(
-                session, workspace_id=0, run_id=str(parsed_id)
-            )
-            result = await session.execute(
-                select(Run).where(Run.id == parsed_id)
-            )
-            run = result.scalar_one_or_none()
-            if run is not None and run.parent_run_id is not None:
-                await open_escalation_after_retry(session, run.parent_run_id)
-                await session.commit()
+            try:
+                parsed_id = _uuid.UUID(raw)
+            except ValueError:
+                # Non-UUID run ids only appear in test harnesses; skip the
+                # parent-run escalation check rather than crash the finalize.
+                parsed_id = None
+            if parsed_id is not None:
+                # AC-18.8: re-set the run-id token; finalize_run committed and
+                # cleared the transaction-scoped GUCs.
+                await set_request_tenant_context(
+                    session, workspace_id=0, run_id=str(parsed_id)
+                )
+                result = await session.execute(
+                    select(Run).where(Run.id == parsed_id)
+                )
+                run = result.scalar_one_or_none()
+                if run is not None and run.parent_run_id is not None:
+                    await open_escalation_after_retry(session, run.parent_run_id)
+                    await session.commit()
 
     # Story 3.13 (T4/D1): the async door's single completion point, so all three
     # `_finalize_async` call sites are covered here rather than individually.
@@ -324,6 +332,7 @@ async def record_and_publish_sync_run(
     duration_ms: int | None = None,
     cost_micros: int | None = None,
     progress: list[dict] | None = None,
+    client_id: str | None = None,
 ) -> str | None:
     """Record a synchronous capability run and return its id (best-effort).
 
@@ -345,6 +354,7 @@ async def record_and_publish_sync_run(
         duration_ms=duration_ms,
         cost_micros=cost_micros,
         progress=progress,
+        client_id=client_id,
     )
     if run_id is not None:
         # Story 3.13 (T4/D1): the sync door also enqueues memory extraction at
@@ -368,6 +378,7 @@ async def record_and_publish_sync_run_error(
     error: str,
     duration_ms: int | None = None,
     progress: list[dict] | None = None,
+    client_id: str | None = None,
 ) -> str | None:
     """Record a failed synchronous run and return its id (best-effort)."""
     input_dump = payload.model_dump(exclude_none=True)
@@ -383,6 +394,7 @@ async def record_and_publish_sync_run_error(
         error=error,
         duration_ms=duration_ms,
         progress=progress,
+        client_id=client_id,
     )
     if run_id is not None:
         await _publish_finished(run_id, "error", error=error)
