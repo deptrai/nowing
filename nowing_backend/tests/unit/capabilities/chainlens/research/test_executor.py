@@ -831,3 +831,23 @@ def test_parse_sse_progress_milestones_record_ttfb_and_phases():
     assert "synthesizing" in phases
     assert "research_complete" in phases
     assert parser.saw_unknown is True
+
+
+@pytest.mark.test_id("20-4-001")
+def test_sse_parser_cost_micros_uses_chainlens_auth_half_up_converter():
+    """The SSE parser delegates costDollars -> micros to ChainLensServiceAuth."""
+    parser = _SSEParser()
+    parser.cost_dollars = 0.0001235
+    parser.cost_basis = "actual"
+
+    assert parser._cost_micros() == 124
+
+
+@pytest.mark.test_id("20-4-002")
+def test_sse_parser_invalid_cost_dollars_returns_none():
+    """Unusable costDollars (negative / non-finite) does not crash finalize."""
+    parser = _SSEParser()
+    parser.cost_dollars = float("nan")
+    parser.cost_basis = "actual"
+
+    assert parser._cost_micros() is None

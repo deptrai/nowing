@@ -20,6 +20,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -48,6 +49,24 @@ def _bare_model_name(model: str) -> str:
     if not model:
         return model
     return model.split("/")[-1]
+
+
+class UsageType(StrEnum):
+    """Canonical usage_type values for TokenUsage rows.
+
+    Using a StrEnum lets callers pass constants while the DB still stores plain
+    strings. Add new operation types here as they land; do NOT delete old
+    values without a migration/conversion plan.
+    """
+
+    DEEP_RESEARCH = "deep_research"
+    CHAINLENS_INGEST = "chainlens_ingest"
+    CHAINLENS_GAP_FILL = "chainlens_gap_fill"
+    CHAINLENS_PRIVATE_SEARCH = "chainlens_private_search"
+    MEMORY_CREATE = "memory_create"
+    MEMORY_EMBEDDING = "memory_embedding"
+    VISION_EXTRACTION = "vision_extraction"
+    IMAGE_GENERATION = "image_generation"
 
 
 @dataclass

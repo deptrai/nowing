@@ -17,7 +17,7 @@ from app.capabilities.core.types import (
 from app.config import config
 from app.services import wallet_credit
 from app.services.platform_scrape_credit_service import PlatformScrapeCreditService
-from app.services.token_tracking_service import record_token_usage
+from app.services.token_tracking_service import UsageType, record_token_usage
 from app.services.web_crawl_credit_service import WebCrawlCreditService
 from app.utils.captcha import captcha_enabled
 
@@ -510,7 +510,7 @@ async def _record_deep_research_token_usage(
     try:
         await record_token_usage(
             ctx.session,
-            usage_type="deep_research",
+            usage_type=UsageType.DEEP_RESEARCH,
             workspace_id=ctx.workspace_id,
             user_id=owner_user_id,
             cost_micros=cost_micros,
