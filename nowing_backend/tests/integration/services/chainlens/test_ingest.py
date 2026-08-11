@@ -9,7 +9,6 @@ import pytest
 pytestmark = pytest.mark.integration
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 @pytest.mark.asyncio
 async def test_batdongsan_scrape_to_chunks_to_ingest(
     db_session, db_workspace, monkeypatch
@@ -57,7 +56,7 @@ async def test_batdongsan_scrape_to_chunks_to_ingest(
 
     execute = build_scrape_executor(scrape_fn=fake_scrape)
     ctx = CapabilityContext(session=db_session, workspace_id=db_workspace.id)
-    scrape_output = await execute(ScrapeInput(city="ha-noi", max_items=1), ctx)
+    scrape_output = await execute(ScrapeInput(city="HN", max_items=1), ctx)
 
     fetched_at = "2026-08-11T00:00:00+00:00"
     chunks = [
@@ -93,7 +92,6 @@ async def test_batdongsan_scrape_to_chunks_to_ingest(
     assert result.ingest_job_id == "job-bds-123"
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 @pytest.mark.asyncio
 async def test_vn_jobs_aggregate_to_chunks_to_ingest(
     db_session, db_workspace, monkeypatch

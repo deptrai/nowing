@@ -1152,6 +1152,14 @@ def _chainlens_degradation():
 
 
 @lru_cache(maxsize=1)
+def _chainlens_ingest_failed():
+    return _get_meter().create_counter(
+        "nowing.chainlens.ingest.failed",
+        description="Count of failed chainlens-research scraper ingest batches.",
+    )
+
+
+@lru_cache(maxsize=1)
 def _kb_fallback_hit_count():
     return _get_meter().create_histogram(
         "nowing.chainlens.fallback_kb_hits",
@@ -1289,6 +1297,26 @@ def record_chainlens_latency(
     _record(_chainlens_latency(), duration_ms, labels)
 
 
+def record_chainlens_ingest_failed(
+    *,
+    scraper_id: str,
+    workspace_id: int,
+    status_code: int,
+    error: str,
+) -> None:
+    """Count one failed or exhausted chainlens-research scraper ingest batch."""
+    _add(
+        _chainlens_ingest_failed(),
+        1,
+        {
+            "scraper_id": scraper_id,
+            "workspace_id": str(workspace_id),
+            "status_code": str(status_code),
+            "error": error,
+        },
+    )
+
+
 @lru_cache(maxsize=1)
 def _run_event_bus_dropped():
     return _get_meter().create_counter(
@@ -1376,6 +1404,7 @@ __all__ = [
     "record_celery_heartbeat_refresh",
     "record_celery_queue_latency",
     "record_chainlens_degradation",
+    "record_chainlens_ingest_failed",
     "record_chainlens_latency",
     "record_chat_request_duration",
     "record_chat_request_outcome",

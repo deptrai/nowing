@@ -78,7 +78,6 @@ def _fake_config() -> types.SimpleNamespace:
     )
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 @pytest.mark.asyncio
 async def test_ingest_calls_post_ingest_scraper_with_auth_and_workspace(
     monkeypatch,
@@ -112,7 +111,6 @@ async def test_ingest_calls_post_ingest_scraper_with_auth_and_workspace(
     assert result.ingest_job_id == "job-123"
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 @pytest.mark.asyncio
 async def test_ingest_returns_ingest_job_id_and_persists_mapping(monkeypatch):
     """A successful 200 returns ingestJobId and the Postgres mapping is committed."""
@@ -138,7 +136,6 @@ async def test_ingest_returns_ingest_job_id_and_persists_mapping(monkeypatch):
     assert session.commit.await_count >= 1
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 @pytest.mark.asyncio
 async def test_ingest_paginates_batches_larger_than_1000(monkeypatch):
     """More than 1,000 chunks is split into multiple POST calls with a parent job id."""
@@ -168,7 +165,6 @@ async def test_ingest_paginates_batches_larger_than_1000(monkeypatch):
     assert result.child_ingest_job_ids == ["child-1", "child-2"]
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 @pytest.mark.asyncio
 async def test_ingest_maps_409_duplicate_source_id_to_noop(monkeypatch):
     """A 409 response maps duplicate sourceIds to noop and ingests the rest."""
@@ -200,7 +196,6 @@ async def test_ingest_maps_409_duplicate_source_id_to_noop(monkeypatch):
     assert "chunk:0002" in result.ingested_source_ids
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 @pytest.mark.asyncio
 async def test_ingest_retries_5xx_with_exponential_backoff(monkeypatch):
     """5xx responses trigger up to 3 attempts and eventually succeed."""
@@ -228,7 +223,6 @@ async def test_ingest_retries_5xx_with_exponential_backoff(monkeypatch):
     assert result.ingest_job_id == "job-recovered"
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 @pytest.mark.asyncio
 async def test_ingest_emits_failed_metric_after_max_retries(monkeypatch):
     """After max retries the job is failed, dead-lettered, and a metric is emitted."""
@@ -259,7 +253,6 @@ async def test_ingest_emits_failed_metric_after_max_retries(monkeypatch):
     assert len(metric_calls) == 1
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 @pytest.mark.asyncio
 async def test_ingest_retries_timeout(monkeypatch):
     """Network timeouts are retried up to the max attempt limit."""

@@ -944,6 +944,9 @@ class Config:
     CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM = int(
         os.getenv("CHOTOT_BDS_SCRAPE_MICROS_PER_ITEM", "3500")
     )
+    CHOTOT_SCRAPE_MICROS_PER_ITEM = int(
+        os.getenv("CHOTOT_SCRAPE_MICROS_PER_ITEM", "3500")
+    )
     CHOTOT_BDS_PAGE_DELAY_S = float(os.getenv("CHOTOT_BDS_PAGE_DELAY_S", "0.5"))
     CHOTOT_BDS_RETRY_BACKOFF_BASE_S = float(
         os.getenv("CHOTOT_BDS_RETRY_BACKOFF_BASE_S", "0.5")
@@ -1095,6 +1098,19 @@ class Config:
     # Override via env for a specific deployment/pricing model.
     CHAINLENS_QUERY_MICROS_PER_CALL = int(
         os.getenv("CHAINLENS_QUERY_MICROS_PER_CALL", "60000")
+    )
+    # Scraper feed ingest settings.
+    CHAINLENS_INGEST_MAX_BATCH_SIZE = int(
+        os.getenv("CHAINLENS_INGEST_MAX_BATCH_SIZE", "1000")
+    )
+    CHAINLENS_INGEST_TIMEOUT_SECONDS = float(
+        os.getenv("CHAINLENS_INGEST_TIMEOUT_SECONDS", "5")
+    )
+    CHAINLENS_INGEST_RETRY_MAX_ATTEMPTS = int(
+        os.getenv("CHAINLENS_INGEST_RETRY_MAX_ATTEMPTS", "3")
+    )
+    CHAINLENS_INGEST_RETRY_BACKOFF_SECONDS = float(
+        os.getenv("CHAINLENS_INGEST_RETRY_BACKOFF_SECONDS", "0.0")
     )
 
     # Capability run event bus backend. "memory" keeps events in-process (the

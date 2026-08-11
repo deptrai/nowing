@@ -43,7 +43,6 @@ def sample_job_entity() -> dict[str, object]:
     }
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_to_chunks_returns_chunks_with_metadata(sample_bds_listing):
     """to_chunks returns Chunk objects with the canonical scraper metadata."""
     from app.services.scraper_chunks.serializer import to_chunks
@@ -65,7 +64,6 @@ def test_to_chunks_returns_chunks_with_metadata(sample_bds_listing):
         assert chunk.content
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_to_chunks_includes_canonical_entity_id(sample_bds_listing):
     """If the raw data carries a canonical id, it is exposed as canonicalEntityId."""
     from app.services.scraper_chunks.serializer import to_chunks
@@ -83,7 +81,6 @@ def test_to_chunks_includes_canonical_entity_id(sample_bds_listing):
     )
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_to_chunks_source_id_is_stable_and_deterministic(sample_bds_listing):
     """sourceId is deterministic: identical input yields identical id."""
     from app.services.scraper_chunks.serializer import to_chunks
@@ -100,7 +97,6 @@ def test_to_chunks_source_id_is_stable_and_deterministic(sample_bds_listing):
     assert first[0].metadata.sourceId == second[0].metadata.sourceId
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_to_chunks_source_id_is_stable_across_volatile_fields(
     sample_bds_listing,
 ):
@@ -128,7 +124,6 @@ def test_to_chunks_source_id_is_stable_across_volatile_fields(
     assert base_chunks[0].metadata.sourceId == variant_chunks[0].metadata.sourceId
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_to_chunks_splits_oversized_content():
     """Content larger than 8,000 tokens is split with chunkIndex/chunkTotal and stable suffixes."""
     from app.services.scraper_chunks.serializer import to_chunks
@@ -160,7 +155,6 @@ def test_to_chunks_splits_oversized_content():
         assert chunk.metadata.sourceId.startswith(base_source_id)
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_to_chunks_raises_validation_error_for_missing_bds_fields():
     """BĐS listings missing required fields raise ChunkValidationError."""
     from app.services.scraper_chunks.schemas import ChunkValidationError
@@ -184,7 +178,6 @@ def test_to_chunks_raises_validation_error_for_missing_bds_fields():
     assert "title" in str(exc_info.value)
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_to_chunks_raises_validation_error_for_missing_job_fields():
     """Job entities missing required fields raise ChunkValidationError."""
     from app.services.scraper_chunks.schemas import ChunkValidationError
@@ -207,7 +200,6 @@ def test_to_chunks_raises_validation_error_for_missing_job_fields():
     assert "title" in str(exc_info.value)
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_to_chunks_redacts_pii_before_chunking(sample_job_entity):
     """Sensitive contact data is masked before it becomes Chunk content."""
     from app.services.scraper_chunks.serializer import to_chunks

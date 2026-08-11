@@ -17,7 +17,6 @@ def _valid_metadata_kwargs() -> dict[str, object]:
     }
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_chunk_metadata_enforces_required_fields():
     """ChunkMetadata rejects a record missing a required metadata field."""
     from pydantic import ValidationError
@@ -33,7 +32,6 @@ def test_chunk_metadata_enforces_required_fields():
         )
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_chunk_accepts_valid_source_and_optional_fields():
     """Chunk accepts the canonical ``nowing_scraper`` source and all optional metadata."""
     from app.services.scraper_chunks.schemas import Chunk, ChunkMetadata
@@ -56,7 +54,6 @@ def test_chunk_accepts_valid_source_and_optional_fields():
     assert chunk.metadata.canonicalEntityId == "canon-1"
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_chunk_rejects_invalid_source():
     """The ``source`` metadata field is limited to the chainlens-owned enum."""
     from pydantic import ValidationError
@@ -76,7 +73,6 @@ def test_chunk_rejects_invalid_source():
         )
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_chunk_enforces_content_present():
     """A Chunk requires non-empty content."""
     from pydantic import ValidationError
@@ -87,7 +83,6 @@ def test_chunk_enforces_content_present():
         Chunk(content="", metadata=ChunkMetadata(**_valid_metadata_kwargs()))
 
 
-@pytest.mark.skip(reason="ATDD red phase: implement Story 20.1")
 def test_chunk_validation_error_carries_field_details():
     """ChunkValidationError carries the domain and the missing field names."""
     from app.services.scraper_chunks.schemas import ChunkValidationError
