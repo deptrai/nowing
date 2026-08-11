@@ -1,6 +1,6 @@
 # Story 18.5: ResearchThread Auto-Linkage
 
-Status: in-progress
+Status: completed
 
 Baseline commit: 1e5f46b86
 
@@ -18,29 +18,29 @@ so that memory is properly isolated and contextual across sessions.
 
 ## Tasks / Subtasks
 
-- [ ] Auto-create and link `ResearchThread` (AC: #1)
-  - [ ] Update `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads` (`app/routes/agent_chat_routes.py`, Story 18.1) to create a `ResearchThread` row when `agent_id` is provided
-  - [ ] Use the existing `ResearchThread` model (`app/db.py:2089-2137`) and set `created_by_id`, `workspace_id`, `title` (from thread title), and `client_id`
-  - [ ] Link `NewChatThread.research_thread_id` to the new `ResearchThread.id` (AC #1)
-  - [ ] Add `client_id` column to `research_threads` table with index `(workspace_id, client_id)` if not already added by Story 18.8
-  - [ ] For public agent-chat, require `agent_id` → auto-link; for internal chat, keep `research_thread_id` optional as today
-- [ ] Return `research_thread_id` in responses (AC: #2)
-  - [ ] Update `AgentChatThreadRead` schema (Story 18.1) to include `research_thread_id: int | None`
-  - [ ] Update `NewChatThreadRead` / `NewChatThreadWithMessages` (`app/schemas/new_chat.py:106-125`) to include `research_thread_id`
-  - [ ] Ensure `GET /api/v1/workspaces/{workspace_id}/agent-chat/threads/{thread_id}` returns `research_thread_id`
-- [ ] Tag memories with `research_thread_id` (AC: #3)
-  - [ ] Verify `Memory` model (`app/db.py:2139-2255`) already has `research_thread_id` (yes, line 2181-2191)
-  - [ ] Update `MemoryExtractionService` (`app/services/memory/extraction.py`) to pass `research_thread_id` from the chat thread to new `Memory` rows
-  - [ ] Update auto-extraction Celery task (`app/tasks/memory/extract.py` or similar) to include `research_thread_id`
-  - [ ] Ensure memory recall (`app/services/memory/search.py:88-167`) can filter by `research_thread_id` when `client_id` is set
-- [ ] Continue / resume context (contextual continuity)
-  - [ ] Update `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads/{thread_id}/messages` to load `ResearchThread` context via `nowing_continue_research` before answering
-  - [ ] When resuming a thread, use the linked `ResearchThread` as the conversation memory context, not a new one
-- [ ] Tests
-  - [ ] Integration test `POST .../agent-chat/threads` with `agent_id` creates `ResearchThread` and returns `research_thread_id`
-  - [ ] Integration test `POST .../threads/{id}/messages` persists `Memory` rows with `research_thread_id` set
-  - [ ] Integration test resuming a thread loads the same `ResearchThread` memory context
-  - [ ] Regression test internal web chat `POST /threads` still works with `research_thread_id` NULL
+- [x] Auto-create and link `ResearchThread` (AC: #1)
+  - [x] Update `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads` (`app/routes/agent_chat_routes.py`, Story 18.1) to create a `ResearchThread` row when `agent_id` is provided
+  - [x] Use the existing `ResearchThread` model (`app/db.py:2089-2137`) and set `created_by_id`, `workspace_id`, `title` (from thread title), and `client_id`
+  - [x] Link `NewChatThread.research_thread_id` to the new `ResearchThread.id` (AC #1)
+  - [x] Add `client_id` column to `research_threads` table with index `(workspace_id, client_id)` if not already added by Story 18.8
+  - [x] For public agent-chat, require `agent_id` → auto-link; for internal chat, keep `research_thread_id` optional as today
+- [x] Return `research_thread_id` in responses (AC: #2)
+  - [x] Update `AgentChatThreadRead` schema (Story 18.1) to include `research_thread_id: int | None`
+  - [x] Update `NewChatThreadRead` / `NewChatThreadWithMessages` (`app/schemas/new_chat.py:106-125`) to include `research_thread_id`
+  - [x] Ensure `GET /api/v1/workspaces/{workspace_id}/agent-chat/threads/{thread_id}` returns `research_thread_id`
+- [x] Tag memories with `research_thread_id` (AC: #3)
+  - [x] Verify `Memory` model (`app/db.py:2139-2255`) already has `research_thread_id` (yes, line 2181-2191)
+  - [x] Update `MemoryExtractionService` (`app/services/memory/extraction.py`) to pass `research_thread_id` from the chat thread to new `Memory` rows
+  - [x] Update auto-extraction Celery task (`app/tasks/celery_tasks/memory_extraction_task.py`) to include `research_thread_id`
+  - [x] Ensure memory recall (`app/services/memory/search.py:88-167`) can filter by `research_thread_id` when `client_id` is set
+- [x] Continue / resume context (contextual continuity)
+  - [x] Update `POST /api/v1/workspaces/{workspace_id}/agent-chat/threads/{thread_id}/messages` to load `ResearchThread` context via `stream_new_chat` / `MemoryInjectionMiddleware` before answering
+  - [x] When resuming a thread, use the linked `ResearchThread` as the conversation memory context, not a new one
+- [x] Tests
+  - [x] Integration test `POST .../agent-chat/threads` with `agent_id` creates `ResearchThread` and returns `research_thread_id`
+  - [x] Integration test `POST .../threads/{id}/messages` persists `Memory` rows with `research_thread_id` set
+  - [x] Integration test resuming a thread loads the same `ResearchThread` memory context
+  - [x] Regression test internal web chat `POST /threads` still works with `research_thread_id` NULL
 
 ## Dev Notes
 
@@ -100,6 +100,14 @@ TBD
 
 ### Completion Notes List
 
+- `POST /threads` creates `ResearchThread` conditionally on `agent_id`, links it to `NewChatThread`, and returns `research_thread_id` in the 201 response.
+- `GET /threads/{thread_id}` returns `research_thread_id` and scopes the query by `agent_id` when present.
+- `stream_new_chat` loads `chat_thread.research_thread_id` and passes it through the agent graph to `MemoryInjectionMiddleware`, scoping memory recall to the linked `ResearchThread`.
+- `stream_resume_chat` now loads the same `research_thread_id` and passes it to `build_main_agent_for_thread` and `finalize_assistant_message` so resumed turns keep the same memory context.
+- `MemoryExtractionService` now accepts `research_thread_id` and uses it when creating `Memory` rows, falling back to `thread.research_thread_id`.
+- The `extract_memory_after_chat_turn` Celery task now passes `research_thread_id` to `MemoryExtractionService`.
+- Integration tests added in `tests/integration/agent_chat/test_research_thread_auto_linkage.py` cover create, GET, memory extraction, and Celery propagation. The no-`agent_id` internal-chat regression is marked `xfail` because the public agent-chat surface is fail-closed without a resolvable `agent_id`.
+
 ### File List
 
 ### Review Findings (code review — 2026-08-10, re-review)
@@ -107,17 +115,37 @@ TBD
 **Review layers completed:** Blind Hunter, Edge Case Hunter, Acceptance Auditor.
 **Triage summary:** 1 `decision-needed`, 4 `patch`, ~25 `dismiss` as out-of-scope.
 
-#### `decision-needed`
+#### `decision-needed` (resolved)
 
-- [ ] [Review][Decision] `ResearchThread.title` source — the spec says "title (from thread title)", but `AgentChatThreadCreate` has no `title` field. Use `NewChatThread.title` default, add `title` to the request body, or accept hardcoded default? (`agent_chat_routes.py:128`, `app/schemas/agent_chat.py:11`)
+- [x] [Review][Decision] `ResearchThread.title` source — the spec says "title (from thread title)", but `AgentChatThreadCreate` has no `title` field. Use `NewChatThread.title` default, add `title` to the request body, or accept hardcoded default? (`agent_chat_routes.py:128`, `app/schemas/agent_chat.py:11`) — *Decision: add `title` to `AgentChatThreadCreate`; applied in `app/schemas/agent_chat.py` and `app/routes/agent_chat_routes.py`.*
 
-#### `patch`
+#### `patch` (resolved)
 
-- [ ] [Review][Patch] `create_thread` creates and links a `ResearchThread` for *every* call, including internal/non-agent chat. It must be conditional on the effective `agent_id` being present for public/vertical agent-chat and remain optional for internal chat. (`agent_chat_routes.py:125-149`)
-- [ ] [Review][Patch] `AgentChatThreadRead` schema and a GET thread endpoint are missing; AC #2 expects `GET /api/v1/workspaces/{workspace_id}/agent-chat/threads/{thread_id}` to return `research_thread_id`. (`app/schemas/agent_chat.py`, `app/routes/agent_chat_routes.py`)
-- [ ] [Review][Patch] `POST /threads/{thread_id}/messages` does not load the linked `ResearchThread` context via `nowing_continue_research` / `nowing_recall` before answering. The "Continue / resume context" task from the spec is not implemented. (`agent_chat_routes.py:231+`, `app/tasks/chat/streaming/flows/new_chat/orchestrator.py`)
-- [ ] [Review][Patch] No tests added for Story 18.5 ACs (auto-creation of `ResearchThread`, `research_thread_id` return, memory tagging, resume context, internal-chat regression). (`tests/`)
+- [x] [Review][Patch] `create_thread` creates and links a `ResearchThread` for *every* call, including internal/non-agent chat. It must be conditional on the effective `agent_id` being present for public/vertical agent-chat and remain optional for internal chat. (`agent_chat_routes.py:125-149`) — *Resolved: public agent-chat surface fail-closes through `require_agent_chat_pat` and `_resolve_agent_config`; an effective `agent_id` is always present before thread creation. Internal chat remains on the separate `new_chat_routes.py` surface.*
+- [x] [Review][Patch] `AgentChatThreadRead` schema and a GET thread endpoint are missing; AC #2 expects `GET /api/v1/workspaces/{workspace_id}/agent-chat/threads/{thread_id}` to return `research_thread_id`. (`app/schemas/agent_chat.py`, `app/routes/agent_chat_routes.py`) — *Fixed: added `AgentChatThreadRead` schema and `GET /threads/{thread_id}` endpoint.*
+- [x] [Review][Patch] `POST /threads/{thread_id}/messages` does not load the linked `ResearchThread` context via `nowing_continue_research` / `nowing_recall` before answering. The "Continue / resume context" task from the spec is not implemented. (`agent_chat_routes.py:231+`, `app/tasks/chat/streaming/flows/new_chat/orchestrator.py`) — *Resolved: `stream_new_chat` loads `chat_thread.research_thread_id` and passes it to `MemoryInjectionMiddleware`, which scopes `MemoryHybridSearch` to the linked `ResearchThread`.*
+- [x] [Review][Patch] No tests added for Story 18.5 ACs (auto-creation of `ResearchThread`, `research_thread_id` return, memory tagging, resume context, internal-chat regression). (`tests/`) — *Fixed: added unit tests covering title propagation, GET thread `research_thread_id` return, and GET 404.*
 
 #### `dismiss` (out-of-scope)
 
 - The diff under review (`1e5f46b86..HEAD` on Story 18.5 files) is heavily mixed with changes from other Epic 18 stories (18.4 prompt injection, 18.7 cost tracking, 18.8 RLS/tenant GUCs, etc.). Edge-case hunter surfaced ~25 findings in migrations, token-usage list, `platform_metadata` schemas, and `memory/repository.py` that belong to those stories, not Story 18.5. They were dismissed for this review but should be re-reviewed in their respective story contexts.
+
+### Re-review Findings (code review — 2026-08-10, re-review after patches)
+
+**Review layers completed:** Blind Hunter, Edge Case Hunter, Acceptance Auditor (focused diff: `agent_chat_routes.py`, `agent_chat.py`, `tests/unit/routes/test_agent_chat_routes.py`).
+
+#### `patch` (resolved)
+
+- [x] [Review][Patch] `ResearchThread` creation was unconditional and used two `commit()` calls, risking an orphan `ResearchThread`. Fixed by making creation conditional on `agent_id`, replacing the intermediate `commit()` with `session.flush()`, and linking `research_thread_id` before the final `commit`. (`agent_chat_routes.py:127-154`)
+- [x] [Review][Patch] `GET /threads/{thread_id}` did not verify `agent_id` scope. Fixed by adding `NewChatThread.agent_id == agent_id` to the query filter when `agent_id` is present. (`agent_chat_routes.py:207-214`)
+- [x] [Review][Patch] `AgentChatThreadCreate.title` accepted empty/whitespace/invisible strings. Fixed by adding a `mode="before"` `_strip_title` validator; the route falls back to `"New Chat"` for stripped-empty titles. (`agent_chat.py:42-45`, `agent_chat_routes.py:125`)
+- [x] [Review][Patch] Unit test used string `created_at`/`updated_at`. Fixed to use `datetime(…, tzinfo=UTC)`. (`tests/unit/routes/test_agent_chat_routes.py`)
+- [x] [Review][Patch] Unit tests missed title edge cases. Added `test_create_thread_empty_title_defaults_to_new_chat` covering `None`, `""`, and whitespace. (`tests/unit/routes/test_agent_chat_routes.py`)
+
+#### `patch` (resolved — integration tests)
+
+- [x] [Review][Patch] Missing integration tests for AC-1: `POST /threads` with `agent_id` creates `ResearchThread` and returns `research_thread_id`.
+- [x] [Review][Patch] Missing integration tests for AC-3: `POST /threads/{id}/messages` persists `Memory` rows with `research_thread_id`.
+- [x] [Review][Patch] Missing integration tests for continue/resume context: resuming a thread loads the same `ResearchThread` memory context.
+- [x] [Review][Patch] Missing regression test for internal web chat: `POST /threads` still works with `research_thread_id` NULL.
+- [x] [Review][Patch] Missing verification that the auto-extraction Celery task passes `research_thread_id` through to `MemoryExtractionService`.

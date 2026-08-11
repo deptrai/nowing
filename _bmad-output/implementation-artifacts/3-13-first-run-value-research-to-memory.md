@@ -357,7 +357,35 @@ Scope: commits `d8dd83ebb`..`4abc80437` — 16 files, 2225 lines (memory provena
 
 **Note:** Acceptance Auditor only looked at the diff (unit tests) and missed the existing integration test suite (`tests/integration/memory/test_run_memory_*.py` — 34 tests across 6 files). The integration suite covers AC-1, AC-4, AC-5, AC-6 comprehensively.
 
+## Review Findings (re-review 2026-08-11)
+
+Scope: Story 3.13 implementation against `develop` HEAD, focus on tenant isolation, schema drift and budget correctness.
+
+**decision-needed:** 0
+
+**patch (critical):**
+- [x] [Review][Patch] `client_id` was lost between REST/agent doors and research-run memory. `Run.client_id` existed but was never populated by `record_run`/`create_pending_run` callers, and `RunMemoryExtractionService` used `run.client_id` verbatim. Vertical-client research runs would create memories with `client_id=NULL`, making them invisible to the same client's recall. Fixed by threading `client_id` from `AuthContext.pat` through `agent.py`, `rest.py`, `async_runner.py` and falling back to the resolved chat thread's `client_id` in `run_extraction.py`.
+
+**patch (high):**
+- [x] [Review][Patch] `RunMemoryExtractionService` called `record_extraction` before `await self.session.commit()` inside the fact loop. A memory/usage rollback would have already burned the rate-limit window. Moved `record_extraction` to after the durable commit, matching the chat path.
+
+**patch (medium):**
+- [x] [Review][Patch] `Memory` model declared `source_uuid` and `source_entity_type` (Epic 21) but no migration added them, so `alembic upgrade head` would leave production schema behind `Base.metadata`. Added migration `e5b50d5e687e_add_memory_source_uuid_entity_type.py`.
+- [x] [Review][Patch] `_resolve_research_thread_id` only checked `workspace_id` equality, so a run for one vertical client could be attached to a chat thread of another client in the same workspace. Added `thread.client_id != run.client_id` guard.
+
+**patch (low):**
+- [x] [Review][Patch] `_finalize_async` crashed with `ValueError` on non-UUID `run_id` strings used by test harnesses. Wrapped the UUID parse so the parent-run escalation check is skipped for synthetic run ids.
+
+**patch (resolved 2026-08-11 continuation):**
+- [x] [Review][Patch] `MemoryRelation` tenant isolation: added `client_id` column, composite index, RLS policies (migration `b8b3fae31175`), and hardened `MemoryRepository.add_relation` to derive scope from the source memory and reject cross-client targets.
+- [x] [Review][Patch] `MemoryRepository._find_near_duplicate` cross-client dedup: added `client_id` parameter and filter so `update_on_duplicate` only matches within the same client scope.
+
+**defer:**
+_None remaining from this re-review._
+
 ## Change Log
 
+- 2026-08-11 (pass 2): Resolved deferred tenant-isolation gaps: `MemoryRelation` now has `client_id`, composite index and RLS policies (migration `b8b3fae31175`); `MemoryRepository.add_relation` derives scope from the source memory and rejects cross-client targets; `MemoryRepository._find_near_duplicate` scopes by `client_id` to stop cross-client `update_on_duplicate` matches.
+- 2026-08-11: Re-review and patch: `client_id` now propagates from REST/agent doors into `Run` and research-run memory (`agent.py`, `rest.py`, `async_runner.py`, `run_extraction.py`); `record_extraction` moved after commit to avoid burning rate-limit budget on rollback; `_finalize_async` tolerates non-UUID run ids in test harnesses; added missing migration for `memories.source_uuid` / `source_entity_type` to close schema drift.
 - 2026-07-27: Validation hardening added explicit agent attribution, executable after-commit seam, durable concurrent idempotency state, atomic run-batch semantics, complete recall citation contract, combined source bounds, concrete telemetry/tests, dependency gates and per-file current-state notes.
 - 2026-07-27: Story created from FR-40/readiness P-4/C-2 with shared run-completion design, bounded extraction, soft UUID provenance, zero-fact idempotency and ChainLens parity pinned.

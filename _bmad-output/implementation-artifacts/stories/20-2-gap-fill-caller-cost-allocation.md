@@ -1,6 +1,6 @@
 # Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)
 
-Status: ready-for-dev
+Status: in-progress
 
 ## Story
 
@@ -10,7 +10,7 @@ so that the answer does not say "I don't know" when the data is available on the
 
 ## Acceptance Criteria
 
-1. **Given** a user query in chat, **When** `chainlens-research` `POST /api/v1/search` returns a `gap-fill-needed` signal (or empty result with `suggested_domains`), **Then** the chat orchestrator calls `POST /v1/gap-fill` with `{ query, domains?, source?, priority }` and `workspace_id`.
+1. **Given** a user query in chat, **When** `chainlens-research` `POST /api/v1/search` returns a `gap-fill-needed` signal (or an empty/`insufficient_evidence` result with `suggested_domains`), **Then** the chat orchestrator calls `POST /v1/gap-fill` with `{ query, domains?, source?, priority }` and `workspace_id`, and surfaces a "gap-fill in progress" indicator to the user.
 2. **Given** a gap-fill request, **When** `chainlens-research` decides the gap is in a domain owned by Nowing (e.g. `batdongsan`, `vn_jobs`), **Then** `chainlens-research` calls `POST /v1/scraper/{scraper_id}/run` on Nowing (internal), Nowing runs the scraper, and the result is pushed back to `chainlens-research` via Story 20.1.
 3. **Given** the final `SSE done` frame, **When** `costDollars` is reported, **Then** Nowing bills the user once for the total (search + gap-fill + scraper usage), and internal cost allocation is recorded separately for Nowing scraper infra vs `chainlens-research` indexing.
 4. **Given** gap-fill takes longer than 60s, **When** the chat orchestrator waits, **Then** it uses the async research door (`AD-17`, `?mode=async`) and returns a `run_id` to the user; the result arrives via SSE `run_event_bus`.
@@ -18,9 +18,10 @@ so that the answer does not say "I don't know" when the data is available on the
 ## Tasks / Subtasks
 
 - [ ] Detect gap-fill signals in the chat/research flow (AC: #1)
-  - [ ] Extend `app/capabilities/chainlens/research/executor.py` `_SSEParser` to detect `gap-fill-needed` and `suggested_domains` frames
-  - [ ] Add `gap_fill_needed`, `suggested_domains` fields to `ResearchOutput` in `app/capabilities/chainlens/research/schemas.py`
-  - [ ] Surface the signal in `app/tasks/chat/streaming/flows/new_chat/orchestrator.py` (or `new_streaming_service.py`)
+  - [ ] Extend `app/capabilities/chainlens/research/executor.py` `_SSEParser` to detect `gap-fill-needed` frames and `suggested_domains`
+  - [ ] Implement fallback detection: when the terminal SSE frame has `status: insufficient_evidence` and a non-empty `suggested_domains` list, treat it as a gap-fill trigger
+  - [ ] Add `gap_fill_needed`, `suggested_domains`, and `insufficient_evidence` fields to `ResearchOutput` in `app/capabilities/chainlens/research/schemas.py`
+  - [ ] Surface the signal in `app/tasks/chat/streaming/flows/new_chat/orchestrator.py` (or `new_streaming_service.py`) with a clear "gap-fill in progress" UX message
 - [ ] Implement `GapFillService` and `POST /v1/gap-fill` caller (AC: #1)
   - [ ] Create `nowing_backend/app/services/chainlens/gap_fill.py`
   - [ ] Implement `request(query, workspace_id, domains=None, source=None, priority=None)` with service auth and `X-Workspace-Id` headers
@@ -32,15 +33,17 @@ so that the answer does not say "I don't know" when the data is available on the
   - [ ] Push scraper output to `chainlens-research` via `NowingIngestService` (Story 20.1)
   - [ ] Return `ingestJobId` to `chainlens-research`
 - [ ] Cost allocation for search + gap-fill + scraper (AC: #3)
-  - [ ] Add `chainlens_gap_fill` usage type support in `app/services/token_tracking_service.py` and `app/db.py`
-  - [ ] Extend `app/capabilities/core/billing.py` to allocate total `cost_micros` across `chainlens_search`, `chainlens_gap_fill`, and scraper usage in `call_details`
-  - [ ] Ensure single `wallet_credit.apply_debit` for the total and one `TokenUsage` row per operation
-  - [ ] Store breakdown in `TokenUsage.call_details` (`search_cost_micros`, `gap_fill_cost_micros`, `scraper_cost_micros`, `scraper_id`)
+  - [ ] Reuse `UsageType.CHAINLENS_GAP_FILL` (already in `app/services/token_tracking_service.py`) and the existing `TokenUsage.run_id` nullable UUID column (already in `app/db.py`); set `run_id` on every ChainLens-related `TokenUsage` row
+  - [ ] Use `ChainLensServiceAuth.cost_dollars_to_micros` (Decimal half-up, from Story 20.4) for all `costDollars` conversions
+  - [ ] If `chainlens-research` returns a single `costDollars` total, estimate the split by operation using a documented heuristic (e.g., fixed per-operation weights or proportional to recorded duration), store the heuristic in `TokenUsage.call_details`, and apply the total as one `wallet_credit.apply_debit`
+  - [ ] If `chainlens-research` returns per-operation costs, record exact costs in `call_details` (`search_cost_micros`, `gap_fill_cost_micros`, `scraper_cost_micros`, `scraper_id`) and still debit the total once
+  - [ ] Record one `TokenUsage` row per operation (`chainlens_search`, `chainlens_gap_fill`, `chainlens_ingest`/`nowing_scraper`) with a shared `run_id` so the ledger reconciles to the single debit
 - [ ] Async research door for gap-fill > 60s (AC: #4)
   - [ ] Reuse `?mode=async` path in `app/capabilities/core/access/rest.py` and `app/capabilities/core/access/agent.py`
   - [ ] Use `app/capabilities/core/async_runner.py` `start_async_run` for gap-fill background execution
   - [ ] Stream progress/result via `app/capabilities/core/events.py` `run_event_bus` SSE
   - [ ] Return `run_id` to the chat orchestrator; continue the chat turn without blocking
+  - [ ] Surface async progress and estimated completion in the chat UI (UX §2B "Gap-fill in progress")
 - [ ] Tests
   - [ ] Unit test gap-fill signal parsing and `GapFillService` request serialization
   - [ ] Unit test internal `POST /v1/scraper/{scraper_id}/run` callback auth and dispatch
@@ -96,10 +99,10 @@ so that the answer does not say "I don't know" when the data is available on the
   - Async machinery is already centralized in `nowing_backend/app/capabilities/core/` (`access/rest.py`, `access/agent.py`, `async_runner.py`, `events.py`).
 
 - Detected conflicts or variances
-  - `chainlens.research` currently has no `gap-fill-needed` SSE frame type. The executor will need to tolerate unknown frame types and detect gap-fill either from an explicit `type: gap-fill-needed` frame or from `status: insufficient_evidence` + `suggested_domains`.
-  - `TokenUsage` does not have a `run_id` column; run attribution must be stored in `call_details` or a new nullable FK must be added.
-  - `app/capabilities/core/billing.py` currently only charges `chainlens_query` for `chainlens.research`. It needs to be extended to support `chainlens_gap_fill` and combined scraper costs.
-  - Cost allocation between search, gap-fill, and scraper may not be broken down by `chainlens-research`; Nowing may need to estimate the split when only a total `costDollars` is provided.
+  - `chainlens.research` may not yet emit a dedicated `type: gap-fill-needed` SSE frame. The executor must tolerate unknown frame types and detect gap-fill from an explicit `type: gap-fill-needed` frame OR from a terminal frame with `status: insufficient_evidence` + non-empty `suggested_domains`.
+  - `TokenUsage.run_id` already exists as a nullable UUID column (`app/db.py`), and `UsageType.CHAINLENS_GAP_FILL` already exists (`app/services/token_tracking_service.py`). Story 20.4 also threaded `run_id` through `CapabilityContext`; set it on every ChainLens `TokenUsage` row.
+  - `app/capabilities/core/billing.py` currently charges `chainlens_query` only for deep-research calls. Extend it (or the gap-fill orchestrator) to record `chainlens_gap_fill` and scraper usage `TokenUsage` rows, then debit the total once via `wallet_credit.apply_debit`.
+  - `chainlens-research` may return a single `costDollars` total rather than a per-operation breakdown. Define and document a fallback split heuristic (e.g., weighted by operation type or measured duration) and store the estimated `search_cost_micros`, `gap_fill_cost_micros`, `scraper_cost_micros`, and `scraper_id` inside `TokenUsage.call_details`.
 
 ### References
 
@@ -126,9 +129,13 @@ so that the answer does not say "I don't know" when the data is available on the
 
 ### Agent Model Used
 
-TBD
+Devin / SWE-1.7 Max
 
 ### Debug Log References
+
+- Validation 2026-08-11: `TokenUsage.run_id` already exists as nullable UUID (`app/db.py`); `UsageType.CHAINLENS_GAP_FILL` already exists (`app/services/token_tracking_service.py`); `ChainLensServiceAuth` and `cost_dollars_to_micros` from Story 20.4 are available.
+- `app/capabilities/core/billing.py` only charges `BillingUnit.CHAINLENS_QUERY` for deep-research; gap-fill and scraper cost rows must be added without double-debiting.
+- `chainlens.research` may not emit a dedicated `gap-fill-needed` SSE frame; fallback detection via `status: insufficient_evidence` + `suggested_domains` is required.
 
 ### Completion Notes List
 

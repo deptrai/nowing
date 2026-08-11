@@ -1,6 +1,6 @@
 # Story 18.6: Memory Tagging + RAG Filter
 
-Status: done
+Status: in-progress
 
 Baseline commit: 1e5f46b86
 
@@ -109,3 +109,34 @@ TBD
 ### Completion Notes List
 
 ### File List
+
+### Review Findings (code review — 2026-08-11)
+
+**Review layers completed:** Blind Hunter, Edge Case Hunter, Acceptance Auditor.  
+**Triage summary:** 1 `decision-needed` (resolved → patch applied), 3 `patch` applied, 3 `patch` remaining, 2 `defer`, ~10 `dismiss` as noise or handled.
+
+#### `decision-needed` → resolved
+
+- [x] [Review][Decision] Manual `POST /workspaces/{workspace_id}/memories` accepted arbitrary `client_id`/`agent_id` from the request body. **Decision:** derive tenant from the authenticated PAT scope and intersect with any values supplied in the request body; session/system principals have no client scope, so any non-None request values are rejected. Applied to `create_memory`, `search_memory`, `list_memories`, `update_memory`, `revalidate_memory`, and `delete_memory` in `memories_routes.py`, mirroring the fail-closed pattern in `agent_chat_routes.py`. <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/routes/memories_routes.py" lines="41-86" />
+
+#### `patch` — applied
+
+- [x] [Review][Patch] `MemoryUpdate` schema no longer accepts `client_id`/`agent_id`; tenant attributes are immutable on update. <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/schemas/memory.py" lines="117-118" />
+- [x] [Review][Patch] Column migration `10127c164b44` ruff style issues fixed with `ruff check --fix`. <ref_file file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/alembic/versions/10127c164b44_add_memories_client_agent_columns_and_.py" />
+
+#### `patch` — remaining
+
+- [ ] [Review][Patch] `Memory.client_id` is `Text`, but `VerticalClient.client_id` is `CITEXT` per AD-31. Case-sensitivity can cause mismatches between memory rows and the canonical client natural key. Change `client_id` in `app/db.py` to `CITEXT` and add a follow-up migration to alter the column type, or add a case-insensitive comparison wrapper. <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/db.py" lines="2298" />
+- [ ] [Review][Patch] Missing unit tests for `MemoryHybridSearch.search` `client_id` filtering. The spec calls for `tests/unit/services/memory/test_search_client_filter.py` (or equivalent) covering set/unset/mismatched client. Add cases to `tests/unit/services/test_memory_search.py`. <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/tests/unit/services/test_memory_search.py" lines="1-186" />
+- [ ] [Review][Patch] Missing L4 retrieval integration tests for the chat path. The spec references `tests/integration/agent/test_agent_chat_tool_isolation.py` and threat model T1-T5. Add an end-to-end test that chat as `client=bds` only recalls `Mem_bds` and that internal chat only sees `client_id=NULL` memories. <ref_file file="/Users/luisphan/Documents/GitHub/nowing/_bmad-output/planning-artifacts/architecture/architecture-Nowing-2026-07-22/epic-18-pat-scope-rls-threat-model.md" />
+- [ ] [Review][Patch] `MemoryChangedPayload` does not carry `client_id` or `agent_id`. Memory change events published to a workspace-wide bus cannot be filtered by client, which may cause client-scoped automations to react to the wrong tenant's facts. Add `client_id` and `agent_id` to the payload. <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/event_bus/events/memory_changed.py" lines="51-58" />
+
+#### `patch` — resolved 2026-08-11
+
+- [x] [Review][Patch] `MemoryRelation` has no `client_id` and `MemoryRepository.add_relation` does not set tenant GUCs. Added `client_id` column, composite `(workspace_id, client_id)` index, RLS policies in migration `b8b3fae31175`, and hardened `add_relation` to derive scope from the source memory, set tenant GUCs, and reject cross-workspace/cross-client targets. <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/services/memory/repository.py" lines="605-670" />
+- [x] [Review][Patch] `MemoryRepository._find_near_duplicate` did not include `client_id` in its scope, so `update_on_duplicate` could match a memory from another client. Added `client_id` parameter and filter. <ref_snippet file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/services/memory/repository.py" lines="89-125" />
+- [x] [Review][Patch] `Memory.source_uuid` and `Memory.source_entity_type` existed in `app/db.py` but no migration added them. Added migration `e5b50d5e687e`. <ref_file file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/alembic/versions/e5b50d5e687e_add_memory_source_uuid_entity_type.py" />
+
+#### `defer`
+
+_None remaining from this review._
