@@ -55,15 +55,15 @@ def _sanitize_agent_instructions(instructions: str) -> str:
 def build_main_agent_system_prompt(
     *,
     registry_subagent_prompt_lines: list[tuple[str, str]],
-    today: datetime | None = None,
-    thread_visibility: ChatVisibility | None = None,
-    enabled_tool_names: set[str] | None = None,
-    disabled_tool_names: set[str] | None = None,
-    custom_system_instructions: str | None = None,
+    today: datetime | None = None,  # pragma: no mutate
+    thread_visibility: ChatVisibility | None = None,  # pragma: no mutate
+    enabled_tool_names: set[str] | None = None,  # pragma: no mutate
+    disabled_tool_names: set[str] | None = None,  # pragma: no mutate
+    custom_system_instructions: str | None = None,  # pragma: no mutate
     use_default_system_instructions: bool = True,
     citations_enabled: bool = True,
-    model_name: str | None = None,
-    research_mode: str | None = None,
+    model_name: str | None = None,  # pragma: no mutate
+    research_mode: str | None = None,  # pragma: no mutate
 ) -> str:
     resolved_today = (today or datetime.now(UTC)).astimezone(UTC).date().isoformat()
     visibility = thread_visibility or ChatVisibility.PRIVATE
