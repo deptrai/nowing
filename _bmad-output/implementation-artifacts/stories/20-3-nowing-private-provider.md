@@ -422,6 +422,24 @@ SWE-1.7 Max
 - Added concrete subtasks with exact files/functions.
 - Added verification commands section.
 
+### Review Findings
+
+- [x] [Review][Decision] Xử lý `sources` không hợp lệ — giữ im lặng bỏ qua (permissive filtering); đã để lại log debug. (private_provider.py)
+- [x] [Review][Decision] Swallow tất cả exception trong `_search_memory` — giữ degrade im lặng; đây là tính năng phụ, không làm fail request. (private_provider.py)
+- [x] [Review][Decision] Timestamp fallback cho `fetchedAt` khi `Document.updated_at` là None — dùng `created_at` làm fallback; giữ `datetime.now(UTC)` nếu cả hai đều None. (private_provider.py)
+- [x] [Review][Patch] `userId` hợp lệ không được dùng cho `MemoryHybridSearch` — `_search_memory` giờ gọi thêm một lần với `user_id` khi requested user là thành viên workspace. (private_provider.py)
+- [x] [Review][Patch] `TokenUsage.user_id` luôn là chủ workspace — `record_token_usage` được chuyển vào service và dùng `effective_user_id`. (private_provider.py, chainlens_internal.py)
+- [x] [Review][Patch] Thiếu assertion `TokenUsage` row trong integration tests — đã thêm `test_private_data_search_callback_records_token_usage`. (test_chainlens_internal.py)
+- [x] [Review][Patch] Thiếu test cho `userId` logic — đã thêm `test_private_data_search_callback_uses_requested_user_id_for_token_usage` và unit test ghi TokenUsage với owner. (test_chainlens_internal.py, test_private_provider.py)
+- [x] [Review][Patch] Thiếu test `sources` filter trong integration suite — đã thêm `test_private_data_search_callback_filters_by_sources`. (test_chainlens_internal.py)
+- [x] [Review][Patch] Thiếu test cho invalid `userId` format / empty `sources` / validation detail — đã thêm `test_private_data_search_callback_rejects_malformed_user_id` và `test_private_data_search_callback_returns_validation_details`. (test_chainlens_internal.py)
+- [x] [Review][Patch] Thiếu test cross-workspace data leakage — đã thêm `test_private_data_search_callback_is_isolated_between_workspaces`. (test_chainlens_internal.py)
+- [x] [Review][Patch] `memory.content` có thể `None` — đã thêm guard `(memory.content or "").strip()`. (private_provider.py)
+- [x] [Review][Patch] `workspace.user` có thể `None` — đã thêm guard trước `AuthContext.system`. (chainlens_internal.py)
+- [x] [Review][Patch] Thiếu tenant context verification test — đã thêm `test_search_sets_tenant_context_for_owner_and_records_usage` và `test_build_chunks_skips_memory_with_none_content`. (test_private_provider.py)
+- [x] [Review][Defer] Typo `ChucksHybridSearchRetriever` — lỗi đặt tên có sẵn trong `app/retriever/chunks_hybrid_search.py`, không do diff này gây ra. (private_provider.py:331)
+- [x] [Review][Defer] Race condition workspace access check — mẫu lấy workspace rồi gọi `check_workspace_access` không atomic, tồn tại ở nhiều route khác. (chainlens_internal.py:229-243)
+
 ## Verification Commands
 
 ```bash

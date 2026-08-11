@@ -1,3 +1,13 @@
+## Deferred from: code review of 20-3-nowing-private-provider (2026-08-11)
+
+- **Finding:** Typo `ChucksHybridSearchRetriever` in `app/retriever/chunks_hybrid_search.py` propagated to `private_provider.py`.
+  - **Action:** Marked `[x] [Review][Defer]` in `20-3-nowing-private-provider.md`.
+  - **Reason / when to revisit:** Pre-existing class name; rename the retriever itself if a refactor pass touches it.
+
+- **Finding:** Workspace access check fetches workspace then calls `check_workspace_access` non-atomically.
+  - **Action:** Marked `[x] [Review][Defer]` in `20-3-nowing-private-provider.md`.
+  - **Reason / when to revisit:** Same pattern used across many routes; revisit with a broader `get_workspace_with_membership` helper or row-level advisory lock.
+
 ## Resolved from: code review of 18-3-agent-registry (2026-08-10)
 
 - **[x] Frontend admin agent-registry UI page**
@@ -234,6 +244,14 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-review-test-gaps.md`
   summary: Revalidation failure test doesn't assert mock executor was called — test passes even if code path doesn't reach executor
   evidence: Edge Case EC-15. AsyncMock with side_effect but no call_count assertion.
+
+## Deferred from: code review of 18-6-memory-tagging-rag-filter (2026-08-11)
+
+- ~~**Finding:** `MemoryRelation` has no `client_id` and `MemoryRepository.add_relation` does not set tenant GUCs, so a workspace member could create a relation that spans clients.~~
+  - **Resolution (2026-08-11):** Added `client_id` to `MemoryRelation`, composite index, RLS policies in migration `b8b3fae31175`, and hardened `MemoryRepository.add_relation` to derive scope from the source memory, set tenant GUCs, and reject cross-workspace/cross-client targets.
+
+- ~~**Finding:** `Memory.source_uuid` and `Memory.source_entity_type` exist in `app/db.py` but no migration adds them, and the Postgres `memory_source_type` enum has not been updated.~~
+  - **Resolution (2026-08-11):** Added migration `e5b50d5e687e` to create `source_uuid` and `source_entity_type` columns with the required index.
 
 ## Deferred from: code review of 9-3-latency-budget-state-a-b-gate (2026-08-08)
 

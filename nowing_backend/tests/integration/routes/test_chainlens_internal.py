@@ -8,6 +8,7 @@ import httpx
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.app import app, limiter
@@ -16,7 +17,10 @@ from app.db import (
     Document,
     DocumentType,
     SearchSourceConnector,
+    TokenUsage,
+    User,
     Workspace,
+    WorkspaceMembership,
     get_async_session,
 )
 from app.routes.chainlens_internal import chainlens_auth_dependency
@@ -263,6 +267,241 @@ async def test_private_data_search_callback_filters_by_connector(
     body = response.json()
     assert len(body["chunks"]) == 1
     assert body["chunks"][0]["metadata"]["connector_id"] == db_connector.id
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_records_token_usage(
+    chainlens_internal_client,
+    db_session: AsyncSession,
+    db_workspace: Workspace,
+):
+    """A successful private search writes a TokenUsage row with cost_micros=0."""
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={"query": "irrelevant", "workspaceId": db_workspace.id},
+    )
+    assert response.status_code == 200
+
+    result = await db_session.execute(
+        select(TokenUsage)
+        .where(
+            TokenUsage.workspace_id == db_workspace.id,
+            TokenUsage.usage_type == "chainlens_private_search",
+        )
+        .order_by(TokenUsage.id.desc())
+        .limit(1)
+    )
+    record = result.scalar_one_or_none()
+    assert record is not None
+    assert record.cost_micros == 0
+    assert record.user_id == db_workspace.user_id
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_uses_requested_user_id_for_token_usage(
+    chainlens_internal_client,
+    db_session: AsyncSession,
+    db_workspace: Workspace,
+):
+    """When userId is a workspace member, TokenUsage uses it instead of the owner."""
+    from uuid import uuid4
+
+    member = User(
+        id=uuid4(),
+        email="member@nowing.net",
+        hashed_password="hashed",
+        is_active=True,
+        is_superuser=False,
+        is_verified=True,
+    )
+    db_session.add(member)
+    await db_session.flush()
+
+    # Add the user as a workspace member; role can be None for this test.
+    membership = WorkspaceMembership(
+        user_id=member.id,
+        workspace_id=db_workspace.id,
+    )
+    db_session.add(membership)
+    await db_session.flush()
+
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={
+            "query": "irrelevant",
+            "workspaceId": db_workspace.id,
+            "userId": str(member.id),
+        },
+    )
+    assert response.status_code == 200
+
+    result = await db_session.execute(
+        select(TokenUsage)
+        .where(
+            TokenUsage.workspace_id == db_workspace.id,
+            TokenUsage.usage_type == "chainlens_private_search",
+        )
+        .order_by(TokenUsage.id.desc())
+        .limit(1)
+    )
+    record = result.scalar_one_or_none()
+    assert record is not None
+    assert record.user_id == member.id
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_is_isolated_between_workspaces(
+    chainlens_internal_client,
+    db_session: AsyncSession,
+    db_user,
+    db_workspace: Workspace,
+):
+    """Results never include documents from a different workspace."""
+    from uuid import uuid4
+
+    from app.routes.workspaces_routes import create_default_roles_and_membership
+
+    other_user = User(
+        id=uuid4(),
+        email="other@nowing.net",
+        hashed_password="hashed",
+        is_active=True,
+        is_superuser=False,
+        is_verified=True,
+    )
+    db_session.add(other_user)
+    await db_session.flush()
+
+    other_workspace = Workspace(name="Other Space", user_id=other_user.id)
+    db_session.add(other_workspace)
+    await db_session.flush()
+    await create_default_roles_and_membership(
+        db_session, other_workspace.id, other_user.id
+    )
+
+    own_doc = Document(
+        title="Own Doc",
+        document_type=DocumentType.FILE,
+        content="shared content",
+        content_hash="hash-own",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+    )
+    other_doc = Document(
+        title="Other Doc",
+        document_type=DocumentType.FILE,
+        content="shared content",
+        content_hash="hash-other",
+        workspace_id=other_workspace.id,
+        created_by_id=other_user.id,
+    )
+    db_session.add(own_doc)
+    db_session.add(other_doc)
+    await db_session.flush()
+
+    own_chunk = Chunk(
+        content="shared content chunk", position=0, document_id=own_doc.id
+    )
+    other_chunk = Chunk(
+        content="shared content chunk", position=0, document_id=other_doc.id
+    )
+    db_session.add(own_chunk)
+    db_session.add(other_chunk)
+    await db_session.flush()
+
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={
+            "query": "shared content",
+            "workspaceId": db_workspace.id,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["chunks"]) == 1
+    assert body["chunks"][0]["metadata"]["document_id"] == own_doc.id
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_rejects_malformed_user_id(
+    chainlens_internal_client,
+    db_workspace: Workspace,
+):
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={
+            "query": "irrelevant",
+            "workspaceId": db_workspace.id,
+            "userId": "not-a-uuid",
+        },
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_returns_validation_details(
+    chainlens_internal_client,
+    db_workspace: Workspace,
+):
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={
+            "query": "",
+            "workspaceId": db_workspace.id,
+        },
+    )
+    assert response.status_code == 422
+    body = response.json()
+    assert "error" in body
+    assert any(err.get("loc", []) == ["query"] for err in body["error"]["fields"])
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_filters_by_sources(
+    chainlens_internal_client,
+    db_session: AsyncSession,
+    db_user,
+    db_workspace: Workspace,
+):
+    """The ``sources`` list maps to DocumentType and filters results."""
+    file_doc = Document(
+        title="File Doc",
+        document_type=DocumentType.FILE,
+        content="file content",
+        content_hash="hash-file",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+    )
+    note_doc = Document(
+        title="Note Doc",
+        document_type=DocumentType.NOTE,
+        content="note content",
+        content_hash="hash-note",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+    )
+    db_session.add(file_doc)
+    db_session.add(note_doc)
+    await db_session.flush()
+
+    file_chunk = Chunk(content="file chunk", position=0, document_id=file_doc.id)
+    note_chunk = Chunk(content="note chunk", position=0, document_id=note_doc.id)
+    db_session.add(file_chunk)
+    db_session.add(note_chunk)
+    await db_session.flush()
+
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={
+            "query": "chunk",
+            "workspaceId": db_workspace.id,
+            "sources": ["FILE"],
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["chunks"]) == 1
+    assert body["chunks"][0]["metadata"]["document_id"] == file_doc.id
 
 
 @pytest.mark.asyncio

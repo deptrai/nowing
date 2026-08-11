@@ -299,6 +299,92 @@ async def test_resolve_document_type_from_sources(fake_session, fake_workspace):
     assert document_type == ["FILE", "NOTION_CONNECTOR"]
 
 
+def test_format_ts_uses_created_at_fallback():
+    """Missing updated_at falls back to created_at before current time."""
+    from datetime import UTC, datetime
+
+    created = datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC)
+    assert (
+        PrivateProviderService._format_ts(None, fallback=created) == created.isoformat()
+    )
+
+
+def test_build_chunks_skips_memory_with_none_content(fake_session, fake_workspace):
+    """A memory with ``None`` content does not crash the builder."""
+    service = PrivateProviderService(fake_session)
+
+    class _Mem:
+        id = 99
+        content = None
+        updated_at = None
+        created_at = None
+        type = None
+
+    class _Scored:
+        memory = _Mem()
+
+    chunks = service._build_chunks(
+        request=_make_request(topK=10),
+        chunk_results=[],
+        doc_results=[],
+        memory_results=[_Scored()],
+        workspace=fake_workspace,
+        connector_id=None,
+        doc_meta={},
+    )
+    assert chunks == []
+
+
+@pytest.mark.asyncio
+async def test_search_sets_tenant_context_for_owner_and_records_usage(
+    fake_session, fake_workspace, monkeypatch
+):
+    """Service sets tenant context and records TokenUsage for workspace owner."""
+    service = PrivateProviderService(fake_session)
+    tenant_spy = AsyncMock(return_value=None)
+    monkeypatch.setattr(
+        "app.services.chainlens.private_provider.set_request_tenant_context",
+        tenant_spy,
+    )
+
+    monkeypatch.setattr(service, "_is_workspace_member", AsyncMock(return_value=False))
+    monkeypatch.setattr(service, "_resolve_document_type", AsyncMock(return_value=None))
+    monkeypatch.setattr(
+        service,
+        "_run_retrievers",
+        AsyncMock(return_value=([], [])),
+    )
+    monkeypatch.setattr(service, "_search_memory", AsyncMock(return_value=[]))
+    monkeypatch.setattr(
+        service,
+        "_load_document_meta",
+        AsyncMock(return_value={}),
+    )
+
+    fake_embed = AsyncMock(return_value=[0.1] * 384)
+    monkeypatch.setattr(
+        "app.services.chainlens.private_provider.config.embedding_model_instance.embed",
+        fake_embed,
+    )
+
+    record_spy = AsyncMock(return_value=None)
+    monkeypatch.setattr(
+        "app.services.chainlens.private_provider.record_token_usage",
+        record_spy,
+    )
+
+    await service.search(_make_request(), fake_workspace)
+
+    assert tenant_spy.await_count == 2
+    # First and last set_request_tenant_context calls use workspace + owner.
+    first_call = tenant_spy.await_args_list[0].kwargs
+    assert first_call["workspace_id"] == fake_workspace.id
+    assert first_call["user_id"] == str(fake_workspace.user_id)
+    assert record_spy.await_count == 1
+    assert record_spy.await_args.kwargs["workspace_id"] == fake_workspace.id
+    assert record_spy.await_args.kwargs["user_id"] == fake_workspace.user_id
+
+
 @pytest.mark.asyncio
 async def test_resolve_document_type_from_connector(
     fake_session, fake_workspace, monkeypatch

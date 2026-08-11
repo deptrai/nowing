@@ -29,7 +29,6 @@ from app.services.chainlens.schemas import (
     PrivateDataSearchRequest,
     PrivateDataSearchResponse,
 )
-from app.services.token_tracking_service import UsageType, record_token_usage
 from app.utils.rbac import check_workspace_access
 
 router = APIRouter()
@@ -88,6 +87,13 @@ async def private_data_search_for_chainlens(
         )
         raise HTTPException(status_code=403, detail="Forbidden")
 
+    if workspace.user is None:
+        ot_metrics.record_chainlens_auth_failed(
+            workspace_id=context.workspace_id,
+            reason="workspace_owner_missing",
+        )
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     auth = AuthContext.system(user=workspace.user, source="chainlens")
     await check_workspace_access(session, auth, context.workspace_id)
 
@@ -99,30 +105,16 @@ async def private_data_search_for_chainlens(
     )
 
     service = PrivateProviderService(session)
-    response = await service.search(body, workspace)
+    response = await service.search(
+        body,
+        workspace,
+        correlation_id=context.correlation_id,
+    )
 
     ot_metrics.record_chainlens_private_search(
         workspace_id=context.workspace_id,
         result="ok" if response.chunks else "empty",
         hit_count=len(response.chunks),
-    )
-
-    await record_token_usage(
-        session,
-        usage_type=UsageType.CHAINLENS_PRIVATE_SEARCH,
-        workspace_id=context.workspace_id,
-        user_id=workspace.user_id,
-        prompt_tokens=0,
-        completion_tokens=0,
-        total_tokens=0,
-        cost_micros=0,
-        call_details={
-            "correlation_id": context.correlation_id,
-            "query": body.query,
-            "connector_id": body.connectorId,
-            "sources": body.sources,
-            "requested_user_id": str(body.userId) if body.userId else None,
-        },
     )
 
     return response

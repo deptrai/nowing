@@ -25,7 +25,8 @@ from app.services.chainlens.schemas import (
     PrivateProviderChunk,
     PrivateProviderChunkMetadata,
 )
-from app.services.memory.search import MemoryHybridSearch
+from app.services.memory.search import MemoryHybridSearch, ScoredMemory
+from app.services.token_tracking_service import UsageType, record_token_usage
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,8 @@ class PrivateProviderService:
         self,
         request: PrivateDataSearchRequest,
         workspace: Workspace,
+        *,
+        correlation_id: str | None = None,
     ) -> PrivateDataSearchResponse:
         """Run a private search and return a typed, cost-attributed response."""
         workspace_id = workspace.id
@@ -84,11 +87,21 @@ class PrivateProviderService:
             query_embedding=query_embedding,
         )
 
-        # Search workspace memory as a secondary source.
+        # Search workspace memory as a primary source; optionally add the
+        # requested user's personal memory if the user is a workspace member.
         memory_results = await self._search_memory(
             query=request.query,
             workspace_id=workspace_id,
             query_embedding=query_embedding,
+            user_id=effective_user_id if request.userId == effective_user_id else None,
+        )
+
+        # Ensure tenant context is restored for batched document metadata load.
+        await set_request_tenant_context(
+            self.session,
+            workspace_id=workspace_id,
+            client_id=None,
+            user_id=str(effective_user_id) if effective_user_id else None,
         )
 
         # Retrievers don't return connector_id or updated_at, so load them
@@ -109,6 +122,24 @@ class PrivateProviderService:
         # Respect caller's topK while guaranteeing a stable shape.
         if len(chunks) > request.topK:
             chunks = chunks[: request.topK]
+
+        await record_token_usage(
+            self.session,
+            usage_type=UsageType.CHAINLENS_PRIVATE_SEARCH,
+            workspace_id=workspace_id,
+            user_id=effective_user_id,
+            prompt_tokens=0,
+            completion_tokens=0,
+            total_tokens=0,
+            cost_micros=0,
+            call_details={
+                "correlation_id": correlation_id,
+                "query": request.query,
+                "connector_id": request.connectorId,
+                "sources": request.sources,
+                "requested_user_id": str(request.userId) if request.userId else None,
+            },
+        )
 
         return PrivateDataSearchResponse(chunks=chunks, costDollars=0.0)
 
@@ -202,11 +233,12 @@ class PrivateProviderService:
         query: str,
         workspace_id: int,
         query_embedding: list[float],
-    ) -> list:
-        """Search workspace-scoped memory."""
+        user_id: UUID | None,
+    ) -> list[ScoredMemory]:
+        """Search workspace memory and, for a valid member, their personal memory."""
         search = MemoryHybridSearch(self.session)
         try:
-            return await search.search(
+            results: list[ScoredMemory] = await search.search(
                 workspace_id=workspace_id,
                 user_id=None,
                 query=query,
@@ -217,14 +249,39 @@ class PrivateProviderService:
             logger.warning(
                 "Memory search failed for workspace %d", workspace_id, exc_info=True
             )
-            return []
+            results = []
+
+        if user_id is not None:
+            try:
+                user_results = await search.search(
+                    workspace_id=None,
+                    user_id=user_id,
+                    query=query,
+                    query_embedding=query_embedding,
+                    top_k=_MAX_MEMORY_RESULTS,
+                )
+            except Exception:
+                logger.warning(
+                    "User-scoped memory search failed for user %s in workspace %d",
+                    user_id,
+                    workspace_id,
+                    exc_info=True,
+                )
+                user_results = []
+
+            seen = {scored.memory.id for scored in results}
+            for scored in user_results:
+                if scored.memory.id not in seen:
+                    results.append(scored)
+
+        return results
 
     async def _load_document_meta(
         self,
         chunk_results: list[dict],
         doc_results: list[dict],
     ) -> dict[int, dict]:
-        """Load connector_id and updated_at for all candidate documents."""
+        """Load connector_id and timestamps for all candidate documents."""
         doc_ids: set[int] = set()
         for doc_group in chunk_results + doc_results:
             doc_info = doc_group.get("document") or {}
@@ -236,12 +293,19 @@ class PrivateProviderService:
             return {}
 
         rows = await self.session.execute(
-            select(Document.id, Document.connector_id, Document.updated_at).where(
-                Document.id.in_(doc_ids)
-            )
+            select(
+                Document.id,
+                Document.connector_id,
+                Document.updated_at,
+                Document.created_at,
+            ).where(Document.id.in_(doc_ids))
         )
         return {
-            row.id: {"connector_id": row.connector_id, "updated_at": row.updated_at}
+            row.id: {
+                "connector_id": row.connector_id,
+                "updated_at": row.updated_at,
+                "created_at": row.created_at,
+            }
             for row in rows
         }
 
@@ -251,7 +315,7 @@ class PrivateProviderService:
         request: PrivateDataSearchRequest,
         chunk_results: list[dict],
         doc_results: list[dict],
-        memory_results: list,
+        memory_results: list[ScoredMemory],
         workspace: Workspace,
         connector_id: int | None,
         doc_meta: dict[int, dict],
@@ -276,7 +340,9 @@ class PrivateProviderService:
             doc_title = doc_info.get("title") or "Untitled Document"
             doc_type = doc_info.get("document_type") or "private_provider"
             extra_meta = doc_meta.get(doc_id, {})
-            fetched_at = self._format_ts(extra_meta.get("updated_at"))
+            fetched_at = self._format_ts(
+                extra_meta.get("updated_at"), extra_meta.get("created_at")
+            )
 
             for chunk in (doc_group.get("chunks") or [])[:_MAX_CHUNK_RESULTS_PER_DOC]:
                 if len(chunks) >= request.topK:
@@ -318,7 +384,7 @@ class PrivateProviderService:
             if len(chunks) >= request.topK:
                 break
             memory = scored.memory
-            if not memory.content.strip():
+            if not (memory.content or "").strip():
                 continue
             memory_id = memory.id
             if memory_id in seen:
@@ -384,8 +450,14 @@ class PrivateProviderService:
         )
 
     @staticmethod
-    def _format_ts(value) -> str:
-        """Return an ISO 8601 string for a datetime value."""
+    def _format_ts(value, fallback=None) -> str:
+        """Return an ISO 8601 string for a datetime value.
+
+        If ``value`` is missing and a ``fallback`` is provided, use it;
+        otherwise use the current UTC time as a last-resort default.
+        """
+        if value is None:
+            value = fallback
         if value is None:
             return datetime.now(UTC).isoformat()
         if isinstance(value, datetime):
