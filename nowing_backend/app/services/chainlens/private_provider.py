@@ -15,7 +15,6 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.canonical.tenant_context import set_request_tenant_context
-from app.config import config
 from app.db import (
     NATIVE_TO_LEGACY_DOCTYPE,
     Document,
@@ -32,6 +31,7 @@ from app.services.chainlens.schemas import (
 )
 from app.services.memory.search import MemoryHybridSearch, ScoredMemory
 from app.services.token_tracking_service import UsageType, record_token_usage
+from app.utils.document_converters import embed_text
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +69,6 @@ _CONNECTOR_TYPE_TO_DOC_TYPE: dict[str, str | None] = {
     "COMPOSIO_GMAIL_CONNECTOR": "GOOGLE_GMAIL_CONNECTOR",
     "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR": "GOOGLE_CALENDAR_CONNECTOR",
 }
-
-
-# Small, fixed fallback top-k so private search stays cheap and bounded.
-_MAX_DOC_RESULTS = 5
 
 
 def _expand_document_type(doc_type: str) -> list[str]:
@@ -159,8 +155,13 @@ class PrivateProviderService:
             return PrivateDataSearchResponse(chunks=[], costDollars=0.0)
 
         # Compute a shared query embedding once for both retrievers.
-        query_embedding = await asyncio.to_thread(
-            config.embedding_model_instance.embed, request.query
+        # Use the helper that truncates to the model's context window and holds
+        # the embedding lock for non-thread-safe local models.
+        raw_embedding = await asyncio.to_thread(embed_text, request.query)
+        query_embedding = (
+            raw_embedding.tolist()
+            if hasattr(raw_embedding, "tolist")
+            else raw_embedding
         )
 
         # Search documents and chunks sequentially on the same session.
@@ -255,15 +256,18 @@ class PrivateProviderService:
     async def _is_workspace_member(
         self, user_id: UUID | None, workspace_id: int
     ) -> bool:
-        """Return ``True`` if ``user_id`` is an explicit member of the workspace."""
+        """Return ``True`` if ``user_id`` is an active, explicit member."""
         if user_id is None:
             return False
-        from app.db import WorkspaceMembership
+        from app.db import User, WorkspaceMembership
 
         result = await self.session.execute(
-            select(WorkspaceMembership.id).where(
+            select(WorkspaceMembership.id)
+            .join(User, WorkspaceMembership.user_id == User.id)
+            .where(
                 WorkspaceMembership.user_id == user_id,
                 WorkspaceMembership.workspace_id == workspace_id,
+                User.is_active.is_(True),
             )
         )
         return result.scalar() is not None
@@ -273,58 +277,99 @@ class PrivateProviderService:
         request: PrivateDataSearchRequest,
         workspace_id: int,
     ) -> list[str] | None:
-        """Map ``sources`` or ``connectorId`` to a ``DocumentType`` filter.
+        """Map ``sources`` and/or ``connectorId`` to a ``DocumentType`` filter.
 
         Returns ``None`` when no filter is requested; ``[]`` when the requested
         filter cannot be resolved (so the search safely returns empty); or a
         list of one or more ``DocumentType`` values to pass to the retrievers.
+        When both ``connectorId`` and ``sources`` are supplied, the result is
+        the intersection of the connector's type and the explicit sources, with
+        the connector_id filter in ``_build_chunks`` still applied.
         """
-        if request.connectorId is not None:
-            connector_type = await self.session.scalar(
-                select(SearchSourceConnector.connector_type).where(
-                    SearchSourceConnector.id == request.connectorId,
-                    SearchSourceConnector.workspace_id == workspace_id,
-                )
-            )
-            if connector_type is None:
-                # Connector requested but not found: empty result is the safe default.
-                logger.warning(
-                    "connector_id=%d not found in workspace %d; private search will return empty",
-                    request.connectorId,
-                    workspace_id,
-                )
-                return []
-            connector_value = (
-                connector_type.value
-                if hasattr(connector_type, "value")
-                else str(connector_type)
-            )
-            doc_types = _map_source_to_document_types(connector_value)
-            # Generic connectors have no matching document type, so do not
-            # pre-filter by type; the connector_id filter in _build_chunks
-            # still applies.
-            return doc_types
+        connector_doc_types = await self._resolve_connector_document_types(
+            request, workspace_id
+        )
+        source_doc_types = self._resolve_source_document_types(request)
 
-        if request.sources:
-            mapped: list[str] = []
-            seen: set[str] = set()
-            for source in request.sources:
-                source = source.strip().upper()
-                if not source:
-                    continue
-                doc_types = _map_source_to_document_types(source)
-                if doc_types:
-                    for dt in doc_types:
-                        if dt not in seen:
-                            seen.add(dt)
-                            mapped.append(dt)
-            if not mapped:
-                # Unknown sources: return empty rather than falling back to an
-                # unfiltered search.
-                return []
-            return mapped
+        if connector_doc_types == [] or source_doc_types == []:
+            return []
+        if connector_doc_types is None and source_doc_types is None:
+            return None
+        if connector_doc_types is None:
+            return source_doc_types
+        if source_doc_types is None:
+            return connector_doc_types
 
-        return None
+        # Both supplied: restrict the search to the overlap, if any.
+        intersection = [
+            dt for dt in connector_doc_types if dt in source_doc_types
+        ]
+        if not intersection:
+            return []
+        return intersection
+
+    async def _resolve_connector_document_types(
+        self,
+        request: PrivateDataSearchRequest,
+        workspace_id: int,
+    ) -> list[str] | None:
+        """Resolve the document types for a connector-scoped search.
+
+        ``None`` means no connector was requested (or the connector has no
+        matching document type and should not be pre-filtered by type).
+        ``[]`` means the connector was requested but does not exist.
+        """
+        if request.connectorId is None:
+            return None
+
+        connector_type = await self.session.scalar(
+            select(SearchSourceConnector.connector_type).where(
+                SearchSourceConnector.id == request.connectorId,
+                SearchSourceConnector.workspace_id == workspace_id,
+            )
+        )
+        if connector_type is None:
+            logger.warning(
+                "connector_id=%d not found in workspace %d; private search will return empty",
+                request.connectorId,
+                workspace_id,
+            )
+            return []
+
+        connector_value = (
+            connector_type.value
+            if hasattr(connector_type, "value")
+            else str(connector_type)
+        )
+        return _map_source_to_document_types(connector_value)
+
+    def _resolve_source_document_types(
+        self,
+        request: PrivateDataSearchRequest,
+    ) -> list[str] | None:
+        """Resolve the document types for an explicit ``sources`` list.
+
+        ``None`` means no sources were requested; ``[]`` means all supplied
+        sources were unknown.
+        """
+        if not request.sources:
+            return None
+
+        mapped: list[str] = []
+        seen: set[str] = set()
+        for source in request.sources:
+            source = source.strip().upper()
+            if not source:
+                continue
+            doc_types = _map_source_to_document_types(source)
+            if doc_types:
+                for dt in doc_types:
+                    if dt not in seen:
+                        seen.add(dt)
+                        mapped.append(dt)
+        if not mapped:
+            return []
+        return mapped
 
     async def _run_retrievers(
         self,
@@ -340,15 +385,13 @@ class PrivateProviderService:
         ``AsyncSession`` cannot execute statements concurrently on a single
         connection, so we await the retrievers one at a time.
         """
-        # ponytail: the chunk retriever does not expose a ``statuses`` filter
-        # (it already excludes deleting/archived), so we only pass ready-state
-        # filtering to the document retriever.
         chunk_results = await self._chunk_retriever.hybrid_search(
             query_text=query_text,
             top_k=top_k,
             workspace_id=workspace_id,
             document_type=document_type,
             query_embedding=query_embedding,
+            statuses=["ready"],
         )
         doc_results = await self._document_retriever.hybrid_search(
             query_text=query_text,
@@ -370,14 +413,16 @@ class PrivateProviderService:
         top_k: int,
     ) -> list[ScoredMemory]:
         """Search workspace memory and, for a valid member, their personal memory."""
+        # MemoryHybridSearch enforces top_k <= 5 internally.
         search = MemoryHybridSearch(self.session)
+        memory_top_k = min(top_k, 5)
         try:
             results: list[ScoredMemory] = await search.search(
                 workspace_id=workspace_id,
                 user_id=None,
                 query=query,
                 query_embedding=query_embedding,
-                top_k=top_k,
+                top_k=memory_top_k,
             )
         except Exception:
             logger.warning(
@@ -392,7 +437,7 @@ class PrivateProviderService:
                     user_id=user_id,
                     query=query,
                     query_embedding=query_embedding,
-                    top_k=top_k,
+                    top_k=memory_top_k,
                 )
             except Exception:
                 logger.warning(
@@ -409,8 +454,10 @@ class PrivateProviderService:
                 if scored.memory.id not in {m.memory.id for m in results}
             )
 
-            if len(results) > top_k:
-                results = results[:top_k]
+            # Sort by relevance so higher-scored memories are kept when slicing.
+            results = sorted(
+                results, key=lambda scored: scored.score or 0.0, reverse=True
+            )[:top_k]
 
         return results
 
@@ -511,14 +558,14 @@ class PrivateProviderService:
                     )
                 )
 
-        # Process chunk-level results first (more precise citations).
-        for doc_group in chunk_results:
-            if len(chunks) >= request.topK:
-                break
-            add_doc_chunks(doc_group)
-
-        # Then document-level results for any additional doc hits.
-        for doc_group in doc_results:
+        # Merge chunk- and document-level hits into one ranked list by the
+        # retriever's document score, then build chunks in that order.
+        all_doc_groups = sorted(
+            chunk_results + doc_results,
+            key=lambda group: float(group.get("score") or 0.0),
+            reverse=True,
+        )
+        for doc_group in all_doc_groups:
             if len(chunks) >= request.topK:
                 break
             add_doc_chunks(doc_group)

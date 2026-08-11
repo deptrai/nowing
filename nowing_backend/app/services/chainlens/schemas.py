@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PrivateDataSearchRequest(BaseModel):
@@ -19,7 +19,7 @@ class PrivateDataSearchRequest(BaseModel):
     workspaceId: int = Field(..., gt=0)
     userId: UUID | None = Field(default=None)
     connectorId: int | None = Field(default=None, gt=0)
-    sources: list[str] | None = Field(default=None)
+    sources: list[str] | None = Field(default=None, max_length=50)
     topK: int = Field(default=20, ge=1, le=100)
 
     @field_validator("query", mode="before")
@@ -28,15 +28,6 @@ class PrivateDataSearchRequest(BaseModel):
         if isinstance(value, str):
             return value.strip()
         return value
-
-    @model_validator(mode="after")
-    def _mutually_exclusive_filters(self) -> PrivateDataSearchRequest:
-        """``connectorId`` and ``sources`` are alternative filters, not combined."""
-        if self.connectorId is not None and self.sources:
-            raise ValueError(
-                "connectorId and sources are mutually exclusive; provide only one"
-            )
-        return self
 
 
 class PrivateProviderChunkMetadata(BaseModel):

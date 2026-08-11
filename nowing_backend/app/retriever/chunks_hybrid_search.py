@@ -209,6 +209,7 @@ class ChucksHybridSearchRetriever:
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         query_embedding: list | None = None,
+        statuses: list[str] | None = None,
     ) -> list:
         """
         Hybrid search that returns **documents** (not individual chunks).
@@ -224,6 +225,7 @@ class ChucksHybridSearchRetriever:
             start_date: Optional start date for filtering documents by updated_at
             end_date: Optional end date for filtering documents by updated_at
             query_embedding: Pre-computed embedding vector. If None, will be computed here.
+            statuses: Optional list of document status states to include.
 
         Returns:
             List of dictionaries containing document data and relevance scores. Each dict contains:
@@ -291,6 +293,12 @@ class ChucksHybridSearchRetriever:
             base_conditions.append(Document.updated_at >= start_date)
         if end_date is not None:
             base_conditions.append(Document.updated_at <= end_date)
+
+        # Optional status-state filter (e.g. ["ready"]) applied to both paths.
+        if statuses:
+            base_conditions.append(
+                func.coalesce(Document.status["state"].astext, "ready").in_(statuses)
+            )
 
         # CTE for semantic search filtered by workspace
         semantic_search_cte = (

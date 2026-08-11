@@ -116,10 +116,9 @@ async def test_search_returns_empty_when_connector_not_found(
     fake_session.execute = AsyncMock(return_value=None)
 
     # Patch embedding and memory search.
-    fake_embed = AsyncMock(return_value=[0.1] * 384)
     monkeypatch.setattr(
-        "app.services.chainlens.private_provider.config.embedding_model_instance.embed",
-        fake_embed,
+        "app.services.chainlens.private_provider.embed_text",
+        lambda _text: [0.1] * 384,
     )
     monkeypatch.setattr(
         service,
@@ -360,10 +359,9 @@ async def test_search_sets_tenant_context_for_owner_and_records_usage(
         AsyncMock(return_value={}),
     )
 
-    fake_embed = AsyncMock(return_value=[0.1] * 384)
     monkeypatch.setattr(
-        "app.services.chainlens.private_provider.config.embedding_model_instance.embed",
-        fake_embed,
+        "app.services.chainlens.private_provider.embed_text",
+        lambda _text: [0.1] * 384,
     )
 
     record_spy = AsyncMock(return_value=None)

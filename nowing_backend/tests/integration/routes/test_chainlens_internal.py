@@ -573,21 +573,66 @@ async def test_scraper_run_callback_accepts_lowercase_bearer(chainlens_auth_clie
 
 
 @pytest.mark.asyncio
-async def test_private_data_search_callback_rejects_connector_id_and_sources(
+async def test_private_data_search_callback_combines_connector_id_and_sources(
     chainlens_internal_client,
+    db_session: AsyncSession,
+    db_user,
     db_workspace: Workspace,
+    db_connector: SearchSourceConnector,
 ):
-    """``connectorId`` and ``sources`` are mutually exclusive."""
+    """``connectorId`` and ``sources`` can be combined; the result is the
+    intersection of the connector's document type and the requested sources.
+    """
+    from app.db import DocumentType
+
+    document = Document(
+        title="ClickUp Doc",
+        document_type=DocumentType(db_connector.connector_type.value),
+        content="clickup content",
+        content_hash="hash-cu",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+        connector_id=db_connector.id,
+    )
+    db_session.add(document)
+    await db_session.flush()
+
+    chunk = Chunk(
+        content="clickup matching chunk",
+        position=0,
+        document_id=document.id,
+    )
+    db_session.add(chunk)
+    await db_session.flush()
+
+    # Matching source type returns the document.
     response = await chainlens_internal_client.post(
         "/v1/private-data/search",
         json={
-            "query": "query",
+            "query": "matching chunk",
             "workspaceId": db_workspace.id,
-            "connectorId": 1,
+            "connectorId": db_connector.id,
+            "sources": [db_connector.connector_type.value],
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["chunks"]) == 1
+    assert body["chunks"][0]["metadata"]["connector_id"] == db_connector.id
+
+    # Incompatible source type produces an empty intersection.
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={
+            "query": "matching chunk",
+            "workspaceId": db_workspace.id,
+            "connectorId": db_connector.id,
             "sources": ["FILE"],
         },
     )
-    assert response.status_code == 422
+    assert response.status_code == 200
+    body = response.json()
+    assert body["chunks"] == []
 
 
 @pytest.mark.asyncio
@@ -641,3 +686,158 @@ async def test_private_data_search_callback_maps_connector_type_to_document_type
     assert len(body["chunks"]) == 1
     assert "connectors/" in body["chunks"][0]["metadata"]["sourceId"]
     assert body["chunks"][0]["metadata"]["connector_id"] == connector.id
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_rejects_missing_auth(
+    chainlens_auth_client,
+):
+    """A request without a valid service token is rejected from the search path."""
+    response = await chainlens_auth_client.post(
+        "/v1/private-data/search",
+        json={"query": "irrelevant", "workspaceId": 1},
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_rejects_invalid_service_token(
+    chainlens_auth_client,
+):
+    response = await chainlens_auth_client.post(
+        "/v1/private-data/search",
+        json={"query": "irrelevant", "workspaceId": 1},
+        headers={
+            "Authorization": "Bearer wrong-token",
+            "X-Workspace-Id": str(chainlens_auth_client._chainlens_workspace_id),
+        },
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_returns_memory_hits(
+    chainlens_internal_client,
+    db_session: AsyncSession,
+    db_user,
+    db_workspace: Workspace,
+):
+    """Workspace memories that match the query are returned as chunks."""
+    from app.config import config
+    from app.db import Memory, MemoryType
+
+    query = "workspace memory phrase"
+    embedding = config.embedding_model_instance.embed(query)
+    memory = Memory(
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+        content="This is the workspace memory phrase",
+        type=MemoryType.SEMANTIC,
+        embedding=embedding.tolist() if hasattr(embedding, "tolist") else embedding,
+    )
+    db_session.add(memory)
+    await db_session.flush()
+
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={"query": query, "workspaceId": db_workspace.id},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert any(
+        chunk["metadata"]["contentType"] == "semantic"
+        and chunk["metadata"]["document_id"] is None
+        for chunk in body["chunks"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_honors_topk(
+    chainlens_internal_client,
+    db_session: AsyncSession,
+    db_user,
+    db_workspace: Workspace,
+):
+    """The ``topK`` parameter caps the number of returned chunks."""
+    for i in range(3):
+        document = Document(
+            title=f"Doc {i}",
+            document_type=DocumentType.FILE,
+            content="shared topk content",
+            content_hash=f"hash-tk-{i}",
+            workspace_id=db_workspace.id,
+            created_by_id=db_user.id,
+        )
+        db_session.add(document)
+        await db_session.flush()
+        chunk = Chunk(
+            content="shared topk content",
+            position=0,
+            document_id=document.id,
+        )
+        db_session.add(chunk)
+        await db_session.flush()
+
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={
+            "query": "shared topk content",
+            "workspaceId": db_workspace.id,
+            "topK": 1,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["chunks"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_private_data_search_callback_redacts_connector_config(
+    chainlens_internal_client,
+    db_session: AsyncSession,
+    db_user,
+    db_workspace: Workspace,
+):
+    """Connector secrets stored in ``config`` never appear in response chunks."""
+    connector = SearchSourceConnector(
+        name="Secret Connector",
+        connector_type=SearchSourceConnectorType.SLACK_CONNECTOR,
+        config={"oauth_token": "super-secret-token", "api_key": "shh"},
+        workspace_id=db_workspace.id,
+        user_id=db_user.id,
+    )
+    db_session.add(connector)
+    await db_session.flush()
+
+    document = Document(
+        title="Secret Doc",
+        document_type=DocumentType.SLACK_CONNECTOR,
+        content="secret content",
+        content_hash="hash-secret",
+        workspace_id=db_workspace.id,
+        created_by_id=db_user.id,
+        connector_id=connector.id,
+    )
+    db_session.add(document)
+    await db_session.flush()
+
+    chunk = Chunk(
+        content="secret matching chunk",
+        position=0,
+        document_id=document.id,
+    )
+    db_session.add(chunk)
+    await db_session.flush()
+
+    response = await chainlens_internal_client.post(
+        "/v1/private-data/search",
+        json={
+            "query": "matching chunk",
+            "workspaceId": db_workspace.id,
+            "connectorId": connector.id,
+        },
+    )
+    assert response.status_code == 200
+    text = response.text
+    assert "super-secret-token" not in text
+    assert "shh" not in text
