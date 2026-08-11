@@ -4202,12 +4202,24 @@ class ChainLensIngestJob(BaseModel, TimestampMixin):
     )
     scraper_id = Column(String(100), nullable=False, index=True)
     parent_ingest_job_id = Column(String(255), nullable=True)
-    child_ingest_job_ids = Column(JSONB, nullable=False, default=list)
-    noop_source_ids = Column(JSONB, nullable=False, default=list)
-    ingested_source_ids = Column(JSONB, nullable=False, default=list)
-    status = Column(String(16), nullable=False, default="pending")
+    child_ingest_job_ids = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    noop_source_ids = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    ingested_source_ids = Column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    status = Column(
+        String(16), nullable=False, default="pending", server_default=text("'pending'")
+    )
     error = Column(Text, nullable=True)
+    dead_letter_payload = Column(JSONB, nullable=True)
     run_id = Column(String(255), nullable=True, index=True)
     updated_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )

@@ -1110,7 +1110,7 @@ class Config:
         os.getenv("CHAINLENS_INGEST_RETRY_MAX_ATTEMPTS", "3")
     )
     CHAINLENS_INGEST_RETRY_BACKOFF_SECONDS = float(
-        os.getenv("CHAINLENS_INGEST_RETRY_BACKOFF_SECONDS", "0.0")
+        os.getenv("CHAINLENS_INGEST_RETRY_BACKOFF_SECONDS", "1.0")
     )
 
     # Capability run event bus backend. "memory" keeps events in-process (the

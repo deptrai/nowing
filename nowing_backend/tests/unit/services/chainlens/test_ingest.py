@@ -75,6 +75,7 @@ def _fake_config() -> types.SimpleNamespace:
         CHAINLENS_INGEST_MAX_BATCH_SIZE=1000,
         CHAINLENS_INGEST_TIMEOUT_SECONDS=5,
         CHAINLENS_INGEST_RETRY_MAX_ATTEMPTS=3,
+        CHAINLENS_INGEST_RETRY_BACKOFF_SECONDS=0.0,
     )
 
 
@@ -278,3 +279,27 @@ async def test_ingest_retries_timeout(monkeypatch):
 
     assert len(calls) == 3
     assert result.ingest_job_id == "job-timeout-recovered"
+
+
+@pytest.mark.asyncio
+async def test_ingest_service_auth_unavailable(monkeypatch):
+    """Missing API key fails open without sending user data."""
+    import app.services.chainlens.ingest as ingest_mod
+    from app.services.chainlens.ingest import NowingIngestService
+
+    fake = _fake_config()
+    fake.CHAINLENS_API_KEY = ""
+    monkeypatch.setattr(ingest_mod, "config", fake)
+
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(httpx, "AsyncClient", _httpx_client_class(calls, []))
+
+    service = NowingIngestService()
+    result = await service.ingest(
+        scraper_id="batdongsan",
+        chunks=_make_chunks(1),
+        workspace_id=1,
+    )
+
+    assert len(calls) == 0
+    assert result.status == "service_auth_unavailable"

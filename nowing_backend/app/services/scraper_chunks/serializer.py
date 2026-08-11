@@ -4,14 +4,36 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from collections.abc import Mapping
 from typing import Any
 
 from pydantic import BaseModel
 
-from app.services.pii.redact import redact_pii
+from app.services.pii.redact import redact_job_pii, redact_pii
 
 from .schemas import Chunk, ChunkMetadata, ChunkValidationError
+
+logger = logging.getLogger(__name__)
+
+try:
+    import tiktoken
+except Exception:  # pragma: no cover - tiktoken may be unavailable in minimal envs
+    tiktoken = None  # type: ignore[assignment]
+
+# Domain registry. Unknown domains default to listing-style serialization.
+_JOB_DOMAINS = {"vn_jobs"}
+_LISTING_DOMAINS = {"bds", "batdongsan", "chotot", "muaban_bds"}
+
+
+def _is_job_domain(domain: str) -> bool:
+    """Return True if ``domain`` is a known job domain."""
+    return domain in _JOB_DOMAINS
+
+
+def _is_listing_domain(domain: str) -> bool:
+    """Return True if ``domain`` is a known listing domain."""
+    return domain in _LISTING_DOMAINS
 
 
 def _to_dict(data: Mapping[str, Any] | BaseModel | object) -> dict[str, Any]:
@@ -31,18 +53,41 @@ def _get(data: dict[str, Any], *keys: str) -> Any:
     return None
 
 
-def _redact_text(text: str | None) -> str:
-    """Mask PII before it becomes chunk content."""
+def _redact_text(text: str | None, *, domain: str, context: str) -> str:
+    """Mask PII before it becomes chunk content.
+
+    Raises ``ChunkValidationError`` if the redactor itself fails so that PII is
+    never silently emitted.
+    """
     if not text:
         return ""
-    return redact_pii(text).text
+    try:
+        if context == "job_data":
+            return redact_job_pii(text).text
+        return redact_pii(text, context=context).text
+    except Exception as exc:
+        logger.exception("PII redaction failed for domain %s context %s", domain, context)
+        raise ChunkValidationError(
+            domain=domain,
+            missing=[],
+            message=f"redaction failed: {exc}",
+        ) from exc
+
+
+def _required_fields(domain: str) -> list[str]:
+    if _is_job_domain(domain):
+        return ["title", "company", "location"]
+    return ["title", "city", "district", "price"]
 
 
 def _build_content(domain: str, data: dict[str, Any]) -> str:
     """Create a plain-text representation of a scraper record."""
     parts: list[str] = []
 
-    if domain == "vn_jobs" or domain.endswith("_jobs"):
+    def _add_part(label: str, value: str) -> None:
+        parts.append(f"{label}: {value}")
+
+    if _is_job_domain(domain):
         title = _get(data, "title") or ""
         company = _get(data, "company") or ""
         location = _get(data, "location") or ""
@@ -54,23 +99,27 @@ def _build_content(domain: str, data: dict[str, Any]) -> str:
         elif salary is not None:
             salary_text = str(salary)
         posted_at = _get(data, "posted_at") or ""
-        description = _redact_text(_get(data, "job_description", "description"))
-        requirement = _redact_text(_get(data, "job_requirement", "requirement"))
-
-        parts.extend(
-            [
-                f"Title: {title}",
-                f"Company: {company}",
-                f"Location: {location}",
-                f"Employment Type: {employment_type}",
-                f"Salary: {salary_text}",
-                f"Posted At: {posted_at}",
-            ]
+        description = _redact_text(
+            _get(data, "job_description", "description"),
+            domain=domain,
+            context="job_data",
         )
+        requirement = _redact_text(
+            _get(data, "job_requirement", "requirement"),
+            domain=domain,
+            context="job_data",
+        )
+
+        _add_part("Title", title)
+        _add_part("Company", company)
+        _add_part("Location", location)
+        _add_part("Employment Type", employment_type)
+        _add_part("Salary", salary_text)
+        _add_part("Posted At", posted_at)
         if description:
-            parts.append(f"Description: {description}")
+            _add_part("Description", description)
         if requirement:
-            parts.append(f"Requirements: {requirement}")
+            _add_part("Requirements", requirement)
     else:
         # Default real-estate / listing-style serialization.
         title = _get(data, "title") or ""
@@ -83,37 +132,40 @@ def _build_content(domain: str, data: dict[str, Any]) -> str:
         project = _get(data, "project") or ""
         legal = _get(data, "legal") or ""
         post_date = _get(data, "post_date") or ""
-        description = _redact_text(_get(data, "description"))
+        description = _redact_text(
+            _get(data, "description"), domain=domain, context="default"
+        )
         detail_urls = data.get("detail_urls", {})
 
-        parts.extend(
-            [
-                f"Title: {title}",
-                f"Price: {price}",
-                f"Area: {area}",
-                f"Location: {location}",
-                f"District: {district}",
-                f"Ward: {ward}",
-                f"City: {city}",
-                f"Project: {project}",
-                f"Legal: {legal}",
-                f"Post Date: {post_date}",
-            ]
-        )
+        _add_part("Title", title)
+        _add_part("Price", price)
+        _add_part("Area", area)
+        _add_part("Location", location)
+        _add_part("District", district)
+        _add_part("Ward", ward)
+        _add_part("City", city)
+        _add_part("Project", project)
+        _add_part("Legal", legal)
+        _add_part("Post Date", post_date)
         if description:
-            parts.append(f"Description: {description}")
+            _add_part("Description", description)
         if detail_urls:
             parts.append(
                 f"Detail URLs: {json.dumps(detail_urls, ensure_ascii=False, default=str)}"
             )
 
-    return _redact_text("\n".join(part for part in parts if part.split(": ", 1)[1]))
+    return _redact_text(
+        "\n".join(part for part in parts if _part_has_value(part)),
+        domain=domain,
+        context="default",
+    )
 
 
-def _required_fields(domain: str) -> list[str]:
-    if domain == "vn_jobs" or domain.endswith("_jobs"):
-        return ["title", "company", "location"]
-    return ["title", "city", "district", "price"]
+def _part_has_value(part: str) -> bool:
+    """Return True if a label:value part has a non-empty value."""
+    if ": " not in part:
+        return False
+    return bool(part.split(": ", 1)[1].strip())
 
 
 def _identity_fields(domain: str, data: dict[str, Any]) -> dict[str, Any]:
@@ -122,7 +174,7 @@ def _identity_fields(domain: str, data: dict[str, Any]) -> dict[str, Any]:
     if canonical_id:
         return {"canonical_id": str(canonical_id)}
 
-    if domain == "vn_jobs" or domain.endswith("_jobs"):
+    if _is_job_domain(domain):
         return {
             "title": _get(data, "title"),
             "company": _get(data, "company"),
@@ -155,12 +207,82 @@ def _stable_fingerprint(domain: str, data: dict[str, Any]) -> str:
     return f"{domain}:sha256:{digest}"
 
 
-def _split_words(text: str, max_words: int = 8000) -> list[str]:
-    """Split text into chunks of at most ``max_words`` words."""
+def _word_tokens_for_chunk(encoder: Any, word: str, is_first: bool) -> list[int]:
+    """Return tokens for ``word`` as it appears inside a joined chunk.
+
+    ``tiktoken`` encodes a leading space as part of the next word, so the first
+    word in a chunk does not get a leading-space token.
+    """
+    tokens = encoder.encode(" " + word)
+    if is_first and len(tokens) > 1:
+        return tokens[1:]
+    return tokens
+
+
+def _split_tokens(text: str, max_tokens: int = 8000) -> list[str]:
+    """Split ``text`` into chunks of at most ``max_tokens`` tokens.
+
+    Falls back to word splitting when ``tiktoken`` is not available.
+    """
+    if tiktoken is None:
+        words = text.split()
+        if not words:
+            return [text] if text else []
+        return [
+            " ".join(words[i : i + max_tokens])
+            for i in range(0, len(words), max_tokens)
+        ]
+
+    encoder = tiktoken.get_encoding("cl100k_base")
     words = text.split()
     if not words:
         return [text] if text else []
-    return [" ".join(words[i : i + max_words]) for i in range(0, len(words), max_words)]
+
+    chunks: list[str] = []
+    current_words: list[str] = []
+    current_token_count = 0
+
+    for word in words:
+        is_first = not current_words
+        word_tokens = _word_tokens_for_chunk(encoder, word, is_first)
+        word_token_count = len(word_tokens)
+
+        # A single word may exceed max_tokens; include it as its own chunk to
+        # avoid an infinite loop.
+        if word_token_count > max_tokens and not current_words:
+            chunks.append(word)
+            continue
+
+        if current_words and current_token_count + word_token_count > max_tokens:
+            chunks.append(" ".join(current_words))
+            current_words = [word]
+            current_token_count = len(_word_tokens_for_chunk(encoder, word, True))
+        else:
+            current_words.append(word)
+            current_token_count += word_token_count
+
+    if current_words:
+        chunks.append(" ".join(current_words))
+
+    return chunks
+
+
+def _safe_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _metadata_from_data(
@@ -184,10 +306,8 @@ def _metadata_from_data(
         domain=domain,
         fetchedAt=fetched_at,
         contentType=content_type,
-        confidence_score=float(confidence_score)
-        if confidence_score is not None
-        else None,
-        source_count=int(source_count) if source_count is not None else None,
+        confidence_score=_safe_float(confidence_score),
+        source_count=_safe_int(source_count),
         conflict_flags=conflict_flags if isinstance(conflict_flags, list) else None,
         chunkIndex=chunk_index,
         chunkTotal=chunk_total,
@@ -205,9 +325,15 @@ def to_chunks(
     """Normalize one scraper record or aggregated entity into ``Chunk[]``.
 
     The returned chunks have deterministic ``sourceId`` values and split
-    oversize content at word boundaries while preserving ``chunkIndex`` /
+    oversize content at token boundaries while preserving ``chunkIndex`` /
     ``chunkTotal`` metadata.
     """
+    if not _is_job_domain(domain) and not _is_listing_domain(domain):
+        logger.warning(
+            "Domain %s is not in the scraper_chunks registry; defaulting to listing layout",
+            domain,
+        )
+
     data = _to_dict(data)
     required = _required_fields(domain)
     missing = [field for field in required if _get(data, field) in (None, "")]
@@ -224,7 +350,7 @@ def to_chunks(
             message=f"{domain}: serialized content is empty",
         )
 
-    pieces = _split_words(full_content, max_words=8000)
+    pieces = _split_tokens(full_content, max_tokens=8000)
     total = len(pieces)
     chunks: list[Chunk] = []
     for index, piece in enumerate(pieces):

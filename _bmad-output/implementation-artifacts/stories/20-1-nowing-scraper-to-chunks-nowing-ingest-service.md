@@ -1,11 +1,11 @@
 ---
 baseline_commit: 5d7233975
-status: in-progress
+status: completed
 ---
 
 # Story 20.1: Nowing Scraper `to_chunks()` + `NowingIngestService`
 
-Status: in-progress
+Status: completed
 
 ## Story
 
@@ -273,10 +273,12 @@ SWE-1.7 Max
 ### Completion Notes List
 
 - Implemented `Chunk` / `ChunkMetadata` Pydantic schemas with `source: "nowing_scraper"` enum and `ChunkValidationError`.
-- Implemented `to_chunks()` serializer supporting BĐS and job domains, deterministic source IDs, 8,000-word splits, and PII redaction.
-- Implemented `NowingIngestService` with `POST /v1/ingest/scraper` batching (1,000), 409 noop mapping, 5xx/timeout retry (max 3), dead-letter logging, and `chainlens_ingest_failed` metric.
+- Implemented `to_chunks()` serializer supporting BĐS and job domains, deterministic source IDs, token-boundary splits (tiktoken cl100k_base with word fallback), and PII redaction.
+- Implemented `NowingIngestService` with `POST /v1/ingest/scraper` batching (1,000), 409 noop/partial mapping, 5xx/timeout retry via `app/utils/async_retry.py` (`build_retry`), JSONB dead-letter persistence, and `chainlens_ingest_failed` metric.
 - Added `ChainLensIngestJob` SQLAlchemy model, Alembic migration, and config settings (`CHAINLENS_INGEST_*`).
-- All 22 Story 20.1 unit/integration tests pass.
+- Addressed all 16 code-review patch findings and 3 decision points.
+- Added new unit test for `service_auth_unavailable`.
+- All Story 20.1 unit/integration tests pass; full unit suite still shows 5 pre-existing failures in `test_agent_degraded.py` and `test_run_truncation.py` unrelated to this story.
 - Executor/aggregator auto-ingest wiring intentionally deferred; the service is callable from callers and can be enabled behind an `CHAINLENS_AUTO_INGEST` flag in a follow-up.
 
 ### File List
@@ -295,3 +297,30 @@ SWE-1.7 Max
 - `nowing_backend/tests/unit/services/chainlens/test_ingest.py`
 - `nowing_backend/tests/integration/services/chainlens/test_ingest.py`
 - `nowing_backend/alembic/versions/43c1895ff09a_add_chainlens_ingest_jobs.py`
+
+### Review Findings
+
+#### Decision Needed
+
+- [x] [Review][Decision] Partial batch failure strategy — When one of multiple 1k batches fails after retries, earlier batches are already ingested. Should the service stop immediately, continue with remaining batches, or roll back? [chainlens/ingest.py:184-219]
+- [x] [Review][Decision] `overall_status` semantics for 409 duplicates — Should the result status be `"noop"` when all sourceIds conflict, `"partial"` when some conflict and some ingest, or remain `"ok"`? [chainlens/ingest.py:195-201]
+- [x] [Review][Decision] Dead-letter queue implementation — Choose between (a) a new `chainlens_ingest_dead_letters` table, (b) a JSONB `dead_letter_payload` column on `ChainLensIngestJob`, or (c) reusing the existing outbox worker. [chainlens/ingest.py:202-218]
+
+#### Patch
+
+- [x] [Review][Patch] Replace custom retry loop with `app/utils/async_retry.py` [chainlens/ingest.py:94-122]
+- [x] [Review][Patch] Split oversized content by token count, not word count [scraper_chunks/serializer.py:158]
+- [x] [Review][Patch] Use explicit PII redactor context (`redact_job_pii` for jobs, `redact_pii(..., context="default")` for listings) [scraper_chunks/serializer.py:38,57,86]
+- [x] [Review][Patch] Add ISO 8601 validator for `ChunkMetadata.fetchedAt` [scraper_chunks/schemas.py:28]
+- [x] [Review][Patch] Fix `detail_urls` JSON to use `ensure_ascii=False` [scraper_chunks/serializer.py:107]
+- [x] [Review][Patch] Guard `_redact_text` against `None` and redaction exceptions [scraper_chunks/serializer.py:34-38]
+- [x] [Review][Patch] Guard `_build_content` part filter against missing colon [scraper_chunks/serializer.py:110]
+- [x] [Review][Patch] Add DB transaction rollback on `session.commit()` failure [chainlens/ingest.py:245-248]
+- [x] [Review][Patch] Set `IngestResult.error` when DB persistence fails [chainlens/ingest.py:245-248]
+- [x] [Review][Patch] Validate numeric config values safely (`batch_size`, `timeout`, `max_attempts`, `backoff`) [chainlens/ingest.py:80-83,171]
+- [x] [Review][Patch] Handle missing/empty `CHAINLENS_API_KEY` and return `service_auth_unavailable` without sending data [chainlens/ingest.py:79-80,184-219]
+- [x] [Review][Patch] Defensively coerce `noop_source_ids` and `ingested_source_ids` to list before extend [chainlens/ingest.py:200-201]
+- [x] [Review][Patch] Add `server_default` for non-nullable JSONB columns in migration [alembic/versions/43c1895ff09a_add_chainlens_ingest_jobs.py:35-37]
+- [x] [Review][Patch] Log malformed JSON responses in `_coerce_response_json` [chainlens/ingest.py:63-65]
+- [x] [Review][Patch] Warn when `_source_ids_from_batch` drops a chunk without sourceId [chainlens/ingest.py:131-144]
+- [x] [Review][Patch] Replace fragile domain string matching with a registry/enum [scraper_chunks/serializer.py:45,113-114]

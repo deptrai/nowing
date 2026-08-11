@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import inspect
+import json
 import logging
 import uuid
 from collections.abc import Sequence
@@ -14,7 +14,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
+from app.connectors.exceptions import (
+    ConnectorAPIError,
+    ConnectorAuthError,
+    ConnectorRateLimitError,
+    ConnectorTimeoutError,
+)
 from app.observability import metrics
+from app.utils.async_retry import build_retry
 
 from .auth_stub import get_chainlens_auth_header
 
@@ -45,82 +52,50 @@ def _iter_batches(items: Sequence[Any], batch_size: int) -> list[list[Any]]:
     return [list(items[i : i + batch_size]) for i in range(0, len(items), batch_size)]
 
 
+def _positive_int(value: Any, default: int) -> int:
+    """Coerce ``value`` to a positive int, falling back to ``default``."""
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        v = default
+    return max(1, v)
+
+
+def _positive_float(value: Any, default: float) -> float:
+    """Coerce ``value`` to a non-negative float, falling back to ``default``."""
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        v = default
+    return max(0.0, v)
+
+
+def _cfg(config_obj: Any, name: str, default: Any) -> Any:
+    """Safely read a config attribute, falling back to ``default``."""
+    return getattr(config_obj, name, default)
+
+
 def _ingest_url(config_obj: Any) -> str:
     """Return the chainlens-research ingest endpoint."""
-    base = getattr(config_obj, "CHAINLENS_API_URL", "http://localhost:3001").rstrip("/")
+    base = _cfg(config_obj, "CHAINLENS_API_URL", "http://localhost:3001").rstrip("/")
     return f"{base}/v1/ingest/scraper"
 
 
 def _coerce_response_json(response: httpx.Response) -> dict[str, Any]:
     """Best-effort JSON decode; return empty dict for empty bodies."""
-    if response.status_code == 204 or not response.content:
-        # Some test doubles set content to b"" even when json_data is present.
-        # httpx.Response.json() prefers content, so explicitly fall back to
-        # _json if it was populated (e.g., test fixtures).
-        if isinstance(getattr(response, "_json", None), dict):
+    if response.status_code == 204:
+        return {}
+    if getattr(response, "_json", None) is not None and not response.content:
+        if isinstance(response._json, dict):  # type: ignore[union-attr]
             return response._json  # type: ignore[union-attr]
+        return {}
+    if not response.content:
         return {}
     try:
         return response.json()
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to decode chainlens ingest response as JSON: %s", exc)
         return {}
-
-
-async def _post_batch(
-    scraper_id: str,
-    workspace_id: int,
-    batch: list[Any],
-    config_obj: Any,
-) -> tuple[int, dict[str, Any]]:
-    """POST one batch to chainlens-research with retries on 5xx / timeout.
-
-    Returns ``(status_code, response_body)`` for 200, 409, or terminal failure.
-    """
-    url = _ingest_url(config_obj)
-    auth_header = get_chainlens_auth_header(config_obj)
-    timeout = float(getattr(config_obj, "CHAINLENS_INGEST_TIMEOUT_SECONDS", 5))
-    max_attempts = int(getattr(config_obj, "CHAINLENS_INGEST_RETRY_MAX_ATTEMPTS", 3))
-    backoff = float(getattr(config_obj, "CHAINLENS_INGEST_RETRY_BACKOFF_SECONDS", 0.0))
-
-    body: dict[str, Any] = {
-        "scraper_id": scraper_id,
-        "workspace_id": workspace_id,
-        "source": "nowing_scraper",
-        "chunks": [_chunk_to_dict(chunk) for chunk in batch],
-    }
-
-    last_status = 0
-    last_body: dict[str, Any] = {}
-
-    for attempt in range(max_attempts):
-        try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.post(
-                    url,
-                    json=body,
-                    headers=auth_header,
-                )
-                last_status = response.status_code
-                last_body = _coerce_response_json(response)
-
-                if response.status_code == 200:
-                    return 200, last_body
-                if response.status_code == 409:
-                    return 409, last_body
-                if response.status_code >= 500:
-                    if attempt < max_attempts - 1:
-                        await asyncio.sleep(backoff * (2**attempt))
-                        continue
-                    return last_status, last_body
-                # Non-retryable 4xx
-                return last_status, last_body
-        except (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError) as exc:
-            if attempt < max_attempts - 1:
-                await asyncio.sleep(backoff * (2**attempt))
-                continue
-            raise exc
-
-    return last_status, last_body
 
 
 def _extract_job_id(body: dict[str, Any]) -> str | None:
@@ -141,7 +116,109 @@ def _source_ids_from_batch(batch: list[Any]) -> list[str]:
             source_id = None
         if source_id:
             source_ids.append(str(source_id))
+        else:
+            logger.warning("Skipping chunk without sourceId in batch")
     return source_ids
+
+
+async def _post_batch_core(
+    scraper_id: str,
+    workspace_id: int,
+    batch: list[Any],
+    config_obj: Any,
+) -> dict[str, Any]:
+    """POST one batch and map the HTTP status to a retry-aware exception.
+
+    200 returns the parsed body. 409, 429, 401/403, 5xx and 504 are mapped to
+    ``ConnectorError`` subclasses so ``app/utils/async_retry`` can decide which
+    ones to retry.
+    """
+    url = _ingest_url(config_obj)
+    auth_header = get_chainlens_auth_header(config_obj)
+    timeout = _positive_float(
+        _cfg(config_obj, "CHAINLENS_INGEST_TIMEOUT_SECONDS", 5.0), 5.0
+    )
+
+    body: dict[str, Any] = {
+        "scraper_id": scraper_id,
+        "workspace_id": workspace_id,
+        "source": "nowing_scraper",
+        "chunks": [_chunk_to_dict(chunk) for chunk in batch],
+    }
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        response = await client.post(
+            url,
+            json=body,
+            headers=auth_header,
+        )
+
+    parsed = _coerce_response_json(response)
+
+    if response.status_code == 200:
+        return parsed
+    if response.status_code == 409:
+        raise ConnectorAPIError(
+            "chainlens ingest conflict (409)",
+            service="chainlens_ingest",
+            status_code=409,
+            response_body=parsed,
+        )
+    if response.status_code == 429:
+        raise ConnectorRateLimitError(
+            "chainlens ingest rate limited (429)",
+            service="chainlens_ingest",
+            response_body=parsed,
+        )
+    if response.status_code in (401, 403):
+        raise ConnectorAuthError(
+            f"chainlens ingest authentication failed ({response.status_code})",
+            service="chainlens_ingest",
+            status_code=response.status_code,
+            response_body=parsed,
+        )
+    if response.status_code == 504:
+        raise ConnectorTimeoutError(
+            "chainlens ingest gateway timeout (504)",
+            service="chainlens_ingest",
+            status_code=504,
+            response_body=parsed,
+        )
+    if response.status_code >= 500:
+        raise ConnectorAPIError(
+            f"chainlens ingest server error ({response.status_code})",
+            service="chainlens_ingest",
+            status_code=response.status_code,
+            response_body=parsed,
+        )
+    raise ConnectorAPIError(
+        f"chainlens ingest client error ({response.status_code})",
+        service="chainlens_ingest",
+        status_code=response.status_code,
+        response_body=parsed,
+    )
+
+
+async def _post_batch(
+    scraper_id: str,
+    workspace_id: int,
+    batch: list[Any],
+    config_obj: Any,
+) -> dict[str, Any]:
+    """POST one batch with retries on 5xx, 504, 429, network/timeout errors."""
+    max_attempts = _positive_int(
+        _cfg(config_obj, "CHAINLENS_INGEST_RETRY_MAX_ATTEMPTS", 3), 3
+    )
+    initial_delay = _positive_float(
+        _cfg(config_obj, "CHAINLENS_INGEST_RETRY_BACKOFF_SECONDS", 1.0), 1.0
+    )
+
+    return await build_retry(
+        max_attempts=max_attempts,
+        service="chainlens_ingest",
+        initial_delay=initial_delay,
+        max_delay=60.0,
+    )(_post_batch_core)(scraper_id, workspace_id, batch, config_obj)
 
 
 class NowingIngestService:
@@ -169,12 +246,26 @@ class NowingIngestService:
                 error="no chunks to ingest",
             )
 
-        batch_size = int(getattr(config, "CHAINLENS_INGEST_MAX_BATCH_SIZE", 1000))
+        if len(scraper_id) > 100:
+            raise ValueError("scraper_id exceeds 100 character limit")
+
+        api_key = _cfg(config, "CHAINLENS_API_KEY", "")
+        if not api_key:
+            return IngestResult(
+                ingest_job_id=None,
+                status="service_auth_unavailable",
+                error="CHAINLENS_API_KEY not configured",
+            )
+
+        batch_size = _positive_int(
+            _cfg(config, "CHAINLENS_INGEST_MAX_BATCH_SIZE", 1000), 1000
+        )
         batches = _iter_batches(chunks, batch_size)
 
         child_job_ids: list[str] = []
         noop_source_ids: list[str] = []
         ingested_source_ids: list[str] = []
+        failed_batches: list[dict[str, Any]] = []
         parent_job_id: str | None = None
         overall_status = "ok"
 
@@ -182,41 +273,96 @@ class NowingIngestService:
             parent_job_id = f"parent:{uuid.uuid4().hex}"
 
         for batch in batches:
-            status_code, body = await _post_batch(
-                scraper_id,
-                workspace_id,
-                batch,
-                config,
-            )
-
-            if status_code == 200:
-                job_id = _extract_job_id(body)
-                child_job_ids.append(job_id) if job_id else None
-                ingested_source_ids.extend(_source_ids_from_batch(batch))
-            elif status_code == 409:
+            try:
+                body = await _post_batch(
+                    scraper_id,
+                    workspace_id,
+                    batch,
+                    config,
+                )
                 job_id = _extract_job_id(body)
                 if job_id:
                     child_job_ids.append(job_id)
-                noop_source_ids.extend(body.get("noop_source_ids", []))
-                ingested_source_ids.extend(body.get("ingested_source_ids", []))
-            else:
+                ingested_source_ids.extend(_source_ids_from_batch(batch))
+            except ConnectorAuthError as exc:
+                overall_status = "service_auth_unavailable"
+                failed_batches.append(
+                    {
+                        "batch": [_chunk_to_dict(chunk) for chunk in batch],
+                        "status_code": exc.status_code,
+                        "error": str(exc),
+                    }
+                )
+                break
+            except ConnectorAPIError as exc:
+                if exc.status_code == 409:
+                    job_id = _extract_job_id(exc.response_body or {})
+                    if job_id:
+                        child_job_ids.append(job_id)
+                    noop_source_ids.extend(
+                        (exc.response_body or {}).get("noop_source_ids") or []
+                    )
+                    ingested_source_ids.extend(
+                        (exc.response_body or {}).get("ingested_source_ids") or []
+                    )
+                    continue
+
                 overall_status = "failed"
                 metrics.record_chainlens_ingest_failed(
                     scraper_id=scraper_id,
                     workspace_id=workspace_id,
-                    status_code=status_code,
-                    error=body.get("error") or "unknown",
+                    status_code=exc.status_code or 0,
+                    error=str(exc),
                 )
-                # Dead-letter: log the failed batch for an outbox worker to replay.
+                failed_batches.append(
+                    {
+                        "batch": [_chunk_to_dict(chunk) for chunk in batch],
+                        "status_code": exc.status_code,
+                        "error": str(exc),
+                    }
+                )
                 logger.error(
                     "chainlens ingest failed after retries",
                     extra={
                         "scraper_id": scraper_id,
                         "workspace_id": workspace_id,
-                        "status_code": status_code,
+                        "status_code": exc.status_code,
                         "batch_size": len(batch),
                     },
                 )
+            except (httpx.TimeoutException, httpx.ConnectError) as exc:
+                overall_status = "failed"
+                metrics.record_chainlens_ingest_failed(
+                    scraper_id=scraper_id,
+                    workspace_id=workspace_id,
+                    status_code=0,
+                    error=str(exc),
+                )
+                failed_batches.append(
+                    {
+                        "batch": [_chunk_to_dict(chunk) for chunk in batch],
+                        "status_code": 0,
+                        "error": str(exc),
+                    }
+                )
+                logger.error(
+                    "chainlens ingest timed out or disconnected after retries",
+                    extra={
+                        "scraper_id": scraper_id,
+                        "workspace_id": workspace_id,
+                        "batch_size": len(batch),
+                    },
+                )
+
+        has_success = bool(child_job_ids) or bool(ingested_source_ids)
+
+        if overall_status == "ok":
+            if noop_source_ids and not has_success:
+                overall_status = "noop"
+            elif noop_source_ids and has_success:
+                overall_status = "partial"
+        elif overall_status == "failed" and has_success:
+            overall_status = "partial"
 
         result = IngestResult(
             ingest_job_id=parent_job_id
@@ -227,6 +373,16 @@ class NowingIngestService:
             ingested_source_ids=ingested_source_ids,
             status=overall_status,
         )
+
+        if failed_batches:
+            result.error = json.dumps(
+                {
+                    "failed_batches": failed_batches,
+                    "summary": f"{len(failed_batches)} batch(es) failed",
+                },
+                ensure_ascii=False,
+                default=str,
+            )
 
         if session is not None:
             from app.db import ChainLensIngestJob
@@ -240,11 +396,18 @@ class NowingIngestService:
                 ingested_source_ids=result.ingested_source_ids,
                 status=result.status,
                 error=result.error,
+                dead_letter_payload=failed_batches if failed_batches else None,
                 run_id=run_id,
             )
-            add_result = session.add(job)
-            if inspect.isawaitable(add_result):
-                await add_result
-            await session.commit()
+            try:
+                add_result = session.add(job)
+                if inspect.isawaitable(add_result):
+                    await add_result
+                await session.commit()
+            except Exception as exc:
+                await session.rollback()
+                result.error = (
+                    f"{result.error or ''}; persistence failed: {exc}".strip("; ")
+                )
 
         return result

@@ -3,9 +3,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChunkValidationError(ValueError):
@@ -27,6 +28,13 @@ class ChunkMetadata(BaseModel):
     domain: str = Field(..., min_length=1)
     fetchedAt: str = Field(..., min_length=1)
     contentType: str = Field(..., min_length=1)
+
+    @field_validator("fetchedAt")
+    @classmethod
+    def _validate_fetched_at(cls, value: str) -> str:
+        if value:
+            datetime.fromisoformat(value)
+        return value
     confidence_score: float | None = Field(default=None, ge=0.0, le=1.0)
     source_count: int | None = Field(default=None, ge=0)
     conflict_flags: list[dict[str, Any]] | None = Field(default=None)
