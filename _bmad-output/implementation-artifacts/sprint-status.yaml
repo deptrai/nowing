@@ -189,7 +189,7 @@ development_status:
   20-3: in-progress
   # ponytail: 2026-08-08 architecture-review — NowingPrivateProvider.
   # ponytail: 2026-08-11 sprint planning — moved to in-progress.
-  20-4: in-progress
+  20-4: done  # code-review patches and deferred items applied; integration tests pass
   # ponytail: 2026-08-08 architecture-review — service auth + cost ledger sync.
   epic-20-retrospective: optional
 
