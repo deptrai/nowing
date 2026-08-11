@@ -189,7 +189,7 @@ Lazada/Shopee product data, price-drop alerts, competitor tracking. **Open:** 17
 Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost traceability, rate limiting + RLS. **Open:** 18.1–18.8.
 
 ### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — 🔄 IN PROGRESS
-Service-to-service auth, `NowingIngestService`, gap-fill caller, `NowingPrivateProvider`. **Open:** 20.1–20.4.
+`NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** 20.1–20.4.
 
 ### Epic 21: Lead Gen Intelligence — ⏸️ PROPOSED
 Intent signals, lead scoring, contact enrichment, outbound sequences, CRM sync, Zalo deferred, outcome pricing. **Gated:** legal/ToS, vendor POC, PII, CRM, outcome pricing. Full scope in `epic21-proposal-2026-08-11.md`.
@@ -1647,7 +1647,7 @@ So that I can take action without opening the dashboard.
 ---
 
 ## Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research
-### Story 20.1: Service-to-Service Auth + Cost Ledger Sync  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 20.4: Service-to-Service Auth + Cost Ledger Sync  `(mới 2026-08-08)`  `[ready-for-dev]`
 
 As a platform engineer,
 I want secure service-to-service auth and a shared cost envelope between Nowing and `chainlens-research`,
@@ -1681,7 +1681,7 @@ So that `chainlens-research` can meter usage and Nowing can bill the user.
 
 _Governed by `AD-3`, `AD-4`, `AD-5`, FR-61, `AD-8`._
 
-### Story 20.2: Nowing Scraper `to_chunks()` + `NowingIngestService`  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 20.1: Nowing Scraper `to_chunks()` + `NowingIngestService`  `(mới 2026-08-08)`  `[ready-for-dev]`
 
 As a Nowing user / chat user,
 I want my scraper data to be searchable through chainlens,
@@ -1721,12 +1721,12 @@ so that the agent can answer with fresh data.
 **When** the batch is sent to `chainlens-research`,
 **Then** each `Chunk` conforms to the canonical schema and `source` enum defined in `chainlens-research` Story 47-1 (FR-62, AD-35); if `chainlens-research` rejects a chunk for schema violation, `NowingIngestService` logs the first failing chunk and fails the batch.
 
-**Kỹ thuật (không phải AC):** Tách `to_chunks()` thành mixin hoặc helper trong `app/services/scraper_chunks/`; `NowingIngestService` nằm ở `app/services/chainlens/ingest.py`. Auth qua `ChainLensServiceAuth` (`Story 20.1`).
+**Kỹ thuật (không phải AC):** Tách `to_chunks()` thành mixin hoặc helper trong `app/services/scraper_chunks/`; `NowingIngestService` nằm ở `app/services/chainlens/ingest.py`. Auth qua `ChainLensServiceAuth` (`Story 20.4`).
 
 _Governed by `AD-34`, `AD-35`, FR-58, FR-62._
 
 
-### Story 20.3: Gap-Fill Caller + Cost Allocation (Nowing side)  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)  `(mới 2026-08-08)`  `[ready-for-dev]`
 
 As a chat user,
 I want the agent to ask `chainlens-research` to index missing data on demand,
@@ -1740,7 +1740,7 @@ So that the answer does not say "I don't know" when the data is available on the
 
 **Given** a gap-fill request,
 **When** `chainlens-research` decides the gap is in a domain owned by Nowing (e.g. `batdongsan`, `vn_jobs`),
-**Then** `chainlens-research` calls `POST /v1/scraper/{scraper_id}/run` on Nowing (internal), Nowing runs the scraper, and the result is pushed back to `chainlens-research` via `Story 20.2`.
+**Then** `chainlens-research` calls `POST /v1/scraper/{scraper_id}/run` on Nowing (internal), Nowing runs the scraper, and the result is pushed back to `chainlens-research` via `Story 20.1`.
 
 **Given** the final `SSE done` frame,
 **When** `costDollars` is reported,
@@ -1753,7 +1753,7 @@ So that the answer does not say "I don't know" when the data is available on the
 _Governed by `AD-4`, FR-59, `AD-8`._
 
 
-### Story 20.4: `NowingPrivateProvider` for `POST /v1/private-data/search`  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 20.3: `NowingPrivateProvider` for `POST /v1/private-data/search`  `(mới 2026-08-08)`  `[ready-for-dev]`
 
 As a Nowing user,
 I want my private data to stay in Nowing while still being used for answers,
@@ -2483,25 +2483,27 @@ The following stories rely on shared building blocks introduced in **Epic 20** a
 
 | Story | Prerequisite | Why |
 |---|---|---|
-| 12.4 Vietnam Job Aggregator | Story 20.2 (`NowingIngestService`) | sends normalized job listings to `chainlens-research` |
-| 14.1 RSS Feed Integration | Story 20.2 (`NowingIngestService`) | sends RSS articles to `chainlens-research` |
-| 15.1 CafeF Financial Data Integration | Story 20.2 (`NowingIngestService`) | sends CafeF financial chunks to `chainlens-research` |
-| 15.2 Vietstock Deep Financials | Story 20.2 (`NowingIngestService`) | sends Vietstock chunks to `chainlens-research` |
-| 16.1 masothue.com Company Data | Story 20.2 (`NowingIngestService`) | sends company chunks to `chainlens-research` |
-| 16.2 Official Business Registry | Story 20.2 (`NowingIngestService`) | sends registry chunks to `chainlens-research` |
-| 17.1 Lazada Product Data | Story 20.2 (`NowingIngestService`) | sends Lazada product chunks to `chainlens-research` |
-| 17.2 Shopee Product Data | Story 20.2 (`NowingIngestService`), Story 6.8 | sends Shopee product chunks + alert template |
+| 12.4 Vietnam Job Aggregator | Story 20.1 (`NowingIngestService`) | sends normalized job listings to `chainlens-research` |
+| 14.1 RSS Feed Integration | Story 20.1 (`NowingIngestService`) | sends RSS articles to `chainlens-research` |
+| 15.1 CafeF Financial Data Integration | Story 20.1 (`NowingIngestService`) | sends CafeF financial chunks to `chainlens-research` |
+| 15.2 Vietstock Deep Financials | Story 20.1 (`NowingIngestService`) | sends Vietstock chunks to `chainlens-research` |
+| 16.1 masothue.com Company Data | Story 20.1 (`NowingIngestService`) | sends company chunks to `chainlens-research` |
+| 16.2 Official Business Registry | Story 20.1 (`NowingIngestService`) | sends registry chunks to `chainlens-research` |
+| 17.1 Lazada Product Data | Story 20.1 (`NowingIngestService`) | sends Lazada product chunks to `chainlens-research` |
+| 17.2 Shopee Product Data | Story 20.1 (`NowingIngestService`), Story 6.8 | sends Shopee product chunks + alert template |
 | 12.6 Saved Searches | Story 6.8 (Generic Alert Engine) | saved-search `AlertRule` template |
 | 12.9 Job Market Alerts | Story 6.8 (Generic Alert Engine), Story 12.6 | job-market `AlertRule` template on top of saved searches |
-| 14.3 News Alerts & Topic Monitoring | Story 20.2 (`NowingIngestService`), Story 6.8 | news alert fetch/ingest + `AlertRule` |
+| 14.3 News Alerts & Topic Monitoring | Story 20.1 (`NowingIngestService`), Story 6.8 | news alert fetch/ingest + `AlertRule` |
 | 14.4 News Digest & Synthesis | Story 6.8 (Generic Alert Engine) | news digest `AlertRule` template |
-| 15.3 Stock Price Alerts | Story 20.2 (`NowingIngestService`), Story 6.8 | stock price `AlertRule` |
+| 15.3 Stock Price Alerts | Story 20.1 (`NowingIngestService`), Story 6.8 | stock price `AlertRule` |
 | 15.4 Financial Trend Detection | Story 6.8 (Generic Alert Engine) | financial trend `AlertRule` |
-| 16.3 Company Alerts | Story 20.2 (`NowingIngestService`), Story 6.8 | company `AlertRule` |
-| 17.3 Price Drop Alerts | Story 20.2 (`NowingIngestService`), Story 6.8 | price-drop `AlertRule` |
-| 17.4 Competitor Tracking | Story 20.2 (`NowingIngestService`), Story 6.8 | competitor `AlertRule` |
+| 16.3 Company Alerts | Story 20.1 (`NowingIngestService`), Story 6.8 | company `AlertRule` |
+| 17.3 Price Drop Alerts | Story 20.1 (`NowingIngestService`), Story 6.8 | price-drop `AlertRule` |
+| 17.4 Competitor Tracking | Story 20.1 (`NowingIngestService`), Story 6.8 | competitor `AlertRule` |
 
 > **Prerequisite definitions:**
-> - **Story 20.1** = `ChainLensServiceAuth` + cost ledger sync.
-> - **Story 20.2** = `NowingIngestService.to_chunks()` + `POST /v1/ingest/scraper` contract.
+> - **Story 20.1** = `NowingIngestService.to_chunks()` + `POST /v1/ingest/scraper` contract.
+> - **Story 20.2** = gap-fill caller + cost allocation (Nowing side).
+> - **Story 20.3** = `NowingPrivateProvider` for `POST /v1/private-data/search`.
+> - **Story 20.4** = `ChainLensServiceAuth` + cost ledger sync.
 > - **Story 6.8** = Generic Alert Engine in Epic 6 Automation infrastructure (scheduler + `RunService` + notification dispatch). If no dedicated implementation story exists, treat it as a prerequisite work package before any alert story is scheduled.
