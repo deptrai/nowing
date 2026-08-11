@@ -66,7 +66,8 @@ async def test_batdongsan_scrape_to_chunks_to_ingest(
             domain="bds",
             data=item,
             fetched_at=fetched_at,
-            content_type="listing",
+            content_type="text/markdown",
+            category="listing",
         )
     ]
 
@@ -165,7 +166,8 @@ async def test_vn_jobs_aggregate_to_chunks_to_ingest(
             domain="vn_jobs",
             data=item.model_dump(),
             fetched_at=fetched_at,
-            content_type="job_posting",
+            content_type="text/markdown",
+            category="job_posting",
         )
     ]
 

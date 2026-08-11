@@ -51,7 +51,8 @@ def test_to_chunks_returns_chunks_with_metadata(sample_bds_listing):
         domain="bds",
         data=sample_bds_listing,
         fetched_at="2026-08-11T00:00:00+00:00",
-        content_type="listing",
+        content_type="text/markdown",
+        category="listing",
     )
 
     assert len(chunks) > 0
@@ -59,7 +60,10 @@ def test_to_chunks_returns_chunks_with_metadata(sample_bds_listing):
         assert chunk.metadata.source == "nowing_scraper"
         assert chunk.metadata.domain == "bds"
         assert chunk.metadata.fetchedAt is not None
-        assert chunk.metadata.contentType == "listing"
+        assert chunk.metadata.contentType == "text/markdown"
+        assert chunk.metadata.category == "listing"
+        assert chunk.metadata.title == sample_bds_listing["title"]
+        assert chunk.metadata.url == sample_bds_listing["detail_urls"]["batdongsan"]
         assert chunk.metadata.sourceId
         assert chunk.content
 
@@ -72,7 +76,8 @@ def test_to_chunks_includes_canonical_entity_id(sample_bds_listing):
         domain="bds",
         data=sample_bds_listing,
         fetched_at="2026-08-11T00:00:00+00:00",
-        content_type="listing",
+        content_type="text/markdown",
+        category="listing",
     )
 
     assert all(
@@ -89,7 +94,8 @@ def test_to_chunks_source_id_is_stable_and_deterministic(sample_bds_listing):
         "domain": "bds",
         "data": sample_bds_listing,
         "fetched_at": "2026-08-11T00:00:00+00:00",
-        "content_type": "listing",
+        "content_type": "text/markdown",
+        "category": "listing",
     }
     first = to_chunks(**kwargs)
     second = to_chunks(**kwargs)
@@ -112,13 +118,15 @@ def test_to_chunks_source_id_is_stable_across_volatile_fields(
         domain="bds",
         data=base,
         fetched_at="2026-08-11T00:00:00+00:00",
-        content_type="listing",
+        content_type="text/markdown",
+        category="listing",
     )
     variant_chunks = to_chunks(
         domain="bds",
         data=variant,
         fetched_at="2026-08-11T00:00:00+00:00",
-        content_type="listing",
+        content_type="text/markdown",
+        category="listing",
     )
 
     assert base_chunks[0].metadata.sourceId == variant_chunks[0].metadata.sourceId
@@ -143,7 +151,8 @@ def test_to_chunks_splits_oversized_content():
         domain="bds",
         data=data,
         fetched_at="2026-08-11T00:00:00+00:00",
-        content_type="listing",
+        content_type="text/markdown",
+        category="listing",
     )
 
     assert len(chunks) > 1
@@ -172,7 +181,8 @@ def test_to_chunks_raises_validation_error_for_missing_bds_fields():
             domain="bds",
             data=bad,
             fetched_at="2026-08-11T00:00:00+00:00",
-            content_type="listing",
+            content_type="text/markdown",
+            category="listing",
         )
 
     assert "title" in str(exc_info.value)
@@ -194,7 +204,8 @@ def test_to_chunks_raises_validation_error_for_missing_job_fields():
             domain="vn_jobs",
             data=bad,
             fetched_at="2026-08-11T00:00:00+00:00",
-            content_type="job_posting",
+            content_type="text/markdown",
+            category="job_posting",
         )
 
     assert "title" in str(exc_info.value)
@@ -211,7 +222,8 @@ def test_to_chunks_redacts_pii_before_chunking(sample_job_entity):
         domain="vn_jobs",
         data=data,
         fetched_at="2026-08-11T00:00:00+00:00",
-        content_type="job_posting",
+        content_type="text/markdown",
+        category="job_posting",
     )
 
     full = " ".join(chunk.content for chunk in chunks)

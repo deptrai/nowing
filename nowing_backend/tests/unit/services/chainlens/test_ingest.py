@@ -20,7 +20,8 @@ def _make_chunks(count: int) -> list[Any]:
         "sourceId": "src",
         "domain": "bds",
         "fetchedAt": "2026-08-11T00:00:00+00:00",
-        "contentType": "listing",
+        "contentType": "text/markdown",
+        "category": "listing",
     }
     chunks: list[Any] = []
     for i in range(count):

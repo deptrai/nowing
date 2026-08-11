@@ -53,6 +53,24 @@ def _get(data: dict[str, Any], *keys: str) -> Any:
     return None
 
 
+def _url_from_data(data: dict[str, Any]) -> str | None:
+    """Return a single canonical URL from a scraper record if available.
+
+    ``detail_urls`` may be a dict of source -> URL; pick the first non-empty string.
+    """
+    for key in ("detail_url", "source_url", "url", "apply_url"):
+        value = data.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    detail_urls = data.get("detail_urls")
+    if isinstance(detail_urls, dict):
+        for v in detail_urls.values():
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+    return None
+
+
 def _redact_text(text: str | None, *, domain: str, context: str) -> str:
     """Mask PII before it becomes chunk content.
 
@@ -290,6 +308,7 @@ def _metadata_from_data(
     data: dict[str, Any],
     fetched_at: str,
     content_type: str,
+    category: str | None,
     source_id: str,
     chunk_index: int,
     chunk_total: int,
@@ -299,6 +318,8 @@ def _metadata_from_data(
     confidence_score = _get(data, "confidence_score")
     source_count = _get(data, "source_count")
     conflict_flags = data.get("conflict_flags")
+    title = _get(data, "title")
+    url = _url_from_data(data)
 
     return ChunkMetadata(
         source="nowing_scraper",
@@ -306,6 +327,9 @@ def _metadata_from_data(
         domain=domain,
         fetchedAt=fetched_at,
         contentType=content_type,
+        title=title.strip() if isinstance(title, str) and title.strip() else None,
+        url=url,
+        category=category,
         confidence_score=_safe_float(confidence_score),
         source_count=_safe_int(source_count),
         conflict_flags=conflict_flags if isinstance(conflict_flags, list) else None,
@@ -320,9 +344,14 @@ def to_chunks(
     domain: str,
     data: Mapping[str, Any] | BaseModel,
     fetched_at: str,
-    content_type: str,
+    content_type: str = "text/markdown",
+    category: str | None = None,
 ) -> list[Chunk]:
     """Normalize one scraper record or aggregated entity into ``Chunk[]``.
+
+    ``content_type`` must be an IANA MIME type (e.g. ``text/markdown``).
+    ``category`` is an optional domain label (e.g. ``listing``, ``job_posting``)
+    used by ChainLens for filtering/ranking.
 
     The returned chunks have deterministic ``sourceId`` values and split
     oversize content at token boundaries while preserving ``chunkIndex`` /
@@ -360,6 +389,7 @@ def to_chunks(
             data,
             fetched_at,
             content_type,
+            category,
             source_id,
             index,
             total,

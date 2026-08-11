@@ -28,6 +28,9 @@ class ChunkMetadata(BaseModel):
     domain: str = Field(..., min_length=1)
     fetchedAt: str = Field(..., min_length=1)
     contentType: str = Field(..., min_length=1)
+    title: str | None = Field(default=None, min_length=1)
+    url: str | None = Field(default=None, min_length=1)
+    category: str | None = Field(default=None, min_length=1)
 
     @field_validator("fetchedAt")
     @classmethod
