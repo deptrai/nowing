@@ -116,8 +116,6 @@ class MemoryCreate(BaseModel):
 
 class MemoryUpdate(BaseModel):
     corrected_content: Annotated[str, Field(min_length=1)]
-    client_id: str | None = None
-    agent_id: str | None = None
 
 
 class MemorySearchRequest(BaseModel):

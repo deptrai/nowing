@@ -9,11 +9,18 @@ serialized (dict) registry is accepted just like a live one.
 
 from __future__ import annotations
 
+import pytest
+
 from app.agents.chat.multi_agent_chat.shared.citations import (
     CitationRegistry,
     CitationSourceType,
 )
-from app.tasks.chat.streaming.flows.shared.assistant_finalize import _resolve_citations
+from app.tasks.chat.streaming.flows.shared.assistant_finalize import (
+    _as_registry,
+    _resolve_citations,
+)
+
+pytestmark = pytest.mark.unit
 
 
 def _registry_with_chunk(chunk_id: int = 42) -> CitationRegistry:
@@ -24,7 +31,9 @@ def _registry_with_chunk(chunk_id: int = 42) -> CitationRegistry:
     return registry
 
 
-def _registry_with_run(run_uuid: str = "550e8400-e29b-41d4-a716-446655440000") -> CitationRegistry:
+def _registry_with_run(
+    run_uuid: str = "550e8400-e29b-41d4-a716-446655440000",
+) -> CitationRegistry:
     registry = CitationRegistry()
     registry.register(
         CitationSourceType.RUN,
@@ -102,3 +111,13 @@ def test_run_ordinal_resolves_to_run_marker():
     )
 
     assert payload[0]["text"] == f"The price is 19.99 [citation:run_{run_uuid}]."
+
+
+def test_as_registry_returns_none_for_invalid_dict():
+    """Coercing a malformed serialized registry into a CitationRegistry must fail closed."""
+    assert _as_registry({"by_n": "invalid"}) is None
+
+
+def test_as_registry_passes_through_citation_registry_instance():
+    registry = _registry_with_chunk(99)
+    assert _as_registry(registry) is registry

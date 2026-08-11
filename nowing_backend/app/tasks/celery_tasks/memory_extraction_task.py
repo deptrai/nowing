@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 async def _extract_memory_after_chat_turn(
     message_id: int,
     client_id: str | None = None,
+    research_thread_id: int | None = None,
 ) -> None:
     """Load the assistant message and trigger memory extraction."""
     from sqlalchemy.orm import selectinload
@@ -45,6 +46,7 @@ async def _extract_memory_after_chat_turn(
         service = MemoryExtractionService(
             session=session,
             client_id=client_id,
+            research_thread_id=research_thread_id,
         )
         await service.extract_from_turn(
             thread_id=message.thread_id,
@@ -71,8 +73,13 @@ def extract_memory_after_chat_turn(
     self,
     message_id: int,
     client_id: str | None = None,
+    research_thread_id: int | None = None,
 ) -> None:
     """Best-effort memory extraction after an assistant turn is finalized."""
     return run_async_celery_task(
-        lambda: _extract_memory_after_chat_turn(message_id, client_id=client_id)
+        lambda: _extract_memory_after_chat_turn(
+            message_id,
+            client_id=client_id,
+            research_thread_id=research_thread_id,
+        )
     )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.context import AuthContext
@@ -38,6 +38,53 @@ def _to_memory_read(memory: Memory) -> MemoryRead:
     return MemoryRead.model_validate(memory)
 
 
+def _pat_client_id(auth: AuthContext) -> str | None:
+    """Return the client_id bound to the authenticated PAT, if any."""
+    return getattr(auth.pat, "client_id", None) if auth.pat else None
+
+
+def _pat_agent_id(auth: AuthContext) -> str | None:
+    """Return the agent_id bound to the authenticated PAT, if any."""
+    return getattr(auth.pat, "agent_id", None) if auth.pat else None
+
+
+def _resolved_tenant_ids(
+    auth: AuthContext,
+    requested_client_id: str | None = None,
+    requested_agent_id: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Intersect an optional request body/query client_id/agent_id with the auth scope.
+
+    Session and system principals have no client scope, so any non-None
+    request values are rejected. PAT principals default to their bound scope.
+    This mirrors the fail-closed pattern in agent_chat_routes.py.
+    """
+    client_id = _pat_client_id(auth)
+    agent_id = _pat_agent_id(auth)
+
+    if requested_client_id is not None and requested_client_id != client_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="client_id outside authorization scope",
+        )
+    if requested_agent_id is not None and requested_agent_id != agent_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="agent_id outside authorization scope",
+        )
+    return client_id, agent_id
+
+
+def _require_memory_tenant_match(auth: AuthContext, memory: Memory) -> None:
+    """Fail closed when a memory belongs to a different client/agent scope."""
+    client_id, agent_id = _pat_client_id(auth), _pat_agent_id(auth)
+    if memory.client_id != client_id or memory.agent_id != agent_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="memory outside authorization scope",
+        )
+
+
 @router.post(
     "/workspaces/{workspace_id}/memories",
     response_model=MemoryRead,
@@ -58,6 +105,12 @@ async def create_memory(
         error_message="You don't have permission to create memory in this workspace",
     )
 
+    # AC-18.6: client_id/agent_id must come from the auth scope. Intersect the
+    # request body with the PAT scope so callers cannot widen beyond their tenant.
+    client_id, agent_id = _resolved_tenant_ids(
+        auth, body.client_id, body.agent_id
+    )
+
     repo = MemoryRepository(session)
     memory = await repo.create_memory(
         workspace_id=workspace_id,
@@ -68,8 +121,8 @@ async def create_memory(
         tags=body.tags,
         confidence=body.confidence,
         research_thread_id=body.research_thread_id,
-        client_id=body.client_id,
-        agent_id=body.agent_id,
+        client_id=client_id,
+        agent_id=agent_id,
         created_by_id=auth.user.id,
         # Loop guard (Story 6.5, AC-5): a cross-process automation write (an
         # external MCP server calling this endpoint) threads its origin via the
@@ -99,6 +152,9 @@ async def search_memory(
         error_message="You don't have permission to search memory in this workspace",
     )
 
+    # AC-18.6: recall must stay within the caller's tenant scope.
+    client_id, _ = _resolved_tenant_ids(auth, body.client_id)
+
     query_embedding = None
     if body.query.strip():
         try:
@@ -117,7 +173,7 @@ async def search_memory(
             type=body.type,
             tags=body.tags,
             research_thread_id=body.research_thread_id,
-            client_id=body.client_id,
+            client_id=client_id,
         )
     except VectorValidationError as exc:
         status = 500 if exc.reason == "provider_error" else 422
@@ -156,6 +212,9 @@ async def list_memories(
         Permission.MEMORY_READ.value,
         error_message="You don't have permission to read memory in this workspace",
     )
+
+    # AC-18.6: list must stay within the caller's tenant scope.
+    client_id, _ = _resolved_tenant_ids(auth, client_id)
 
     repo = MemoryRepository(session)
     memories = await repo.list_memories(
@@ -196,12 +255,13 @@ async def update_memory(
             detail="You don't have permission to update this memory",
         )
 
+    # AC-18.6: tenant scope on the memory must match the caller's scope.
+    _require_memory_tenant_match(auth, memory)
+
     updated = await repo.update_memory(
         memory_id=memory_id,
         corrected_content=body.corrected_content,
         corrected_by_id=auth.user.id,
-        client_id=body.client_id,
-        agent_id=body.agent_id,
         skip_version_if_unchanged=True,
         # See create_memory: cross-process automation origin via header (AC-5).
         automation_run_id=x_automation_run_id,
@@ -246,6 +306,9 @@ async def revalidate_memory(
             detail="You don't have permission to revalidate this memory",
         )
 
+    # AC-18.6: tenant scope on the memory must match the caller's scope.
+    _require_memory_tenant_match(auth, memory)
+
     service = RevalidationService(session)
     try:
         result = await service.revalidate(
@@ -286,6 +349,9 @@ async def delete_memory(
             status_code=403,
             detail="You don't have permission to delete this memory",
         )
+
+    # AC-18.6: tenant scope on the memory must match the caller's scope.
+    _require_memory_tenant_match(auth, memory)
 
     await repo.delete_memory(memory_id)
     return None

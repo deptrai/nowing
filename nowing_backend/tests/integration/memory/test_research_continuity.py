@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import pytest
 
+from tests.integration.conftest import _EMBEDDING_DIM
+
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
 
 BASE = "/api/v1/workspaces"
@@ -70,7 +72,7 @@ async def _make_research_thread(
     memory = Memory(
         workspace_id=workspace.id,
         content="Competitor X raised prices by 10% in Q3.",
-        embedding=[0.1] * 384,
+        embedding=[0.1] * _EMBEDDING_DIM,
         type=MemoryType.SEMANTIC,
         source_type=MemorySourceType.CHAT_MESSAGE,
         source_id=assistant_msg.id,

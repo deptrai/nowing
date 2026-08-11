@@ -66,11 +66,13 @@ class MemoryExtractionService:
         workspace_id: int | None = None,
         user_id: Any | None = None,
         client_id: str | None = None,
+        research_thread_id: int | None = None,
     ) -> None:
         self.session = session
         self.workspace_id = workspace_id
         self.user_id = user_id
         self.client_id = client_id
+        self.research_thread_id = research_thread_id
 
     # Kept as a static method on the service: the name was public-by-use before
     # the shared pipeline existed. The body now lives in ``pipeline.py`` so the
@@ -233,7 +235,8 @@ class MemoryExtractionService:
                         source_id=assistant_message_id,
                         tags=fact.tags,
                         confidence=fact.confidence,
-                        research_thread_id=thread.research_thread_id,
+                        research_thread_id=self.research_thread_id
+                        or thread.research_thread_id,
                         created_by_id=created_by_id,
                         update_on_duplicate=True,
                         commit=False,

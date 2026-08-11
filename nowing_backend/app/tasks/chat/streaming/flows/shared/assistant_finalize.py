@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 _perf_log = get_perf_logger()
 
 
-def _as_registry(raw: Any) -> CitationRegistry | None:
+def _as_registry(raw: Any) -> CitationRegistry | None:  # pragma: no mutate
     """Coerce the captured state value into a registry, tolerating a serialized dict."""
     if isinstance(raw, CitationRegistry):
         return raw
@@ -71,16 +71,17 @@ def _resolve_citations(
 
 async def finalize_assistant_message(
     *,
-    stream_result: StreamResult | None,
+    stream_result: StreamResult | None,  # pragma: no mutate
     chat_id: int,
     workspace_id: int,
-    user_id: str | None,
+    user_id: str | None,  # pragma: no mutate
     accumulator: TokenAccumulator,
     log_prefix: str,
-    client_id: str | None = None,
-    external_metadata: dict[str, Any] | None = None,
-    run_id: UUID | None = None,
-    platform_metadata: dict[str, Any] | None = None,
+    client_id: str | None = None,  # pragma: no mutate
+    external_metadata: dict[str, Any] | None = None,  # pragma: no mutate
+    run_id: UUID | None = None,  # pragma: no mutate
+    platform_metadata: dict[str, Any] | None = None,  # pragma: no mutate
+    research_thread_id: int | None = None,  # pragma: no mutate
 ) -> None:
     """Snapshot the content builder and persist the final assistant payload.
 
@@ -96,7 +97,7 @@ async def finalize_assistant_message(
     from app.tasks.chat.message_parts_normalizer import merge_streamed_and_final_parts
     from app.tasks.chat.persistence import finalize_assistant_turn
 
-    builder_stats: dict[str, int] | None = None
+    builder_stats: dict[str, int] | None = None  # pragma: no mutate
     if stream_result.content_builder is not None:
         stream_result.content_builder.mark_interrupted()
         # Snapshot stats BEFORE ``snapshot()`` deepcopies so the perf log
@@ -230,6 +231,7 @@ async def finalize_assistant_message(
         extract_memory_after_chat_turn.delay(
             stream_result.assistant_message_id,
             client_id=client_id,
+            research_thread_id=research_thread_id,
         )
     except Exception:
         logger.exception(

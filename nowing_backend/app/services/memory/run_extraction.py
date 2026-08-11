@@ -370,6 +370,12 @@ class RunMemoryExtractionService:
         # look like ``2099::task:call_x``) and is never copied.
         source_thread = await self._resolve_research_thread_id(run)
         research_thread_id = source_thread.id if source_thread is not None else None
+        # AC-18.6: the run may not carry a client_id (e.g. an old caller), but
+        # the resolved chat thread does — use it as a fallback so the memory
+        # ends up in the right tenant scope.
+        effective_client_id = run.client_id or (
+            source_thread.client_id if source_thread is not None else None
+        )
 
         repo = MemoryRepository(session=self.session)
         created_memories: list[Memory] = []
@@ -383,11 +389,9 @@ class RunMemoryExtractionService:
                 await self._mark_terminal(run, STATUS_SKIPPED, "context_window")
                 return []
 
-            await record_extraction(workspace.id)
-
-            # AC-5: no per-fact ``try/except ... continue`` here. Any embedding
-            # or persistence error propagates so the caller's transaction —
-            # memories, usage row and terminal marker together — rolls back.
+            # AC-5: count the extraction against the rate-limit window only
+            # after the durable commit, so a rollback does not burn the budget.
+            # (Token usage is in the same transaction as the memory batch.)
             for fact in select_qualifying_facts(parse_llm_output(raw_output)):
                 memory = await repo.create_memory(
                     workspace_id=workspace.id,
@@ -404,7 +408,7 @@ class RunMemoryExtractionService:
                     created_by_id=created_by_id,
                     update_on_duplicate=True,
                     commit=False,
-                    client_id=run.client_id,
+                    client_id=effective_client_id,
                     agent_id=source_thread.agent_id
                     if source_thread is not None
                     else None,
@@ -431,6 +435,10 @@ class RunMemoryExtractionService:
         run.memory_extraction_completed_at = datetime.now(UTC)
 
         await self.session.commit()
+
+        # Story 8.7/8.8: rate-limit window is incremented only after the batch is
+        # durable, matching the chat path — a rollback must not burn the budget.
+        await record_extraction(workspace.id)
 
         # Counted only after the commit, so the metric reflects durable rows
         # rather than an attempt that may still roll back (T6/AC-9). Both
@@ -460,6 +468,10 @@ class RunMemoryExtractionService:
             return None
         thread = await self.session.get(NewChatThread, int(raw))
         if thread is None or thread.workspace_id != run.workspace_id:
+            return None
+        # AC-18.6: a run and its chat thread must be in the same client scope;
+        # do not attach a vertical-client run to an internal thread or vice versa.
+        if thread.client_id != run.client_id:
             return None
         return thread
 

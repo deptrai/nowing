@@ -35,6 +35,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 
+from tests.integration.conftest import _EMBEDDING_DIM
 from tests.utils.fake_redis import install_fake_redis
 
 pytestmark = [pytest.mark.integration, pytest.mark.memory]
@@ -277,7 +278,7 @@ def patched_embeddings(monkeypatch):
     """Deterministic embeddings so persistence works without a real model."""
 
     def _fake_embed_texts(texts):
-        return [[0.1] * 384 for _ in texts]
+        return [[0.1] * _EMBEDDING_DIM for _ in texts]
 
     monkeypatch.setattr("app.services.memory.repository.embed_texts", _fake_embed_texts)
     return _fake_embed_texts
@@ -780,7 +781,9 @@ async def test_finalize_enqueues_when_gate_allows(
     """8.7-INT-013 - P1/AC7: no caps -> the Celery task IS enqueued exactly once."""
     assistant = await _run_finalize(db_workspace, db_user, chat_turn)
 
-    celery_delay.assert_called_once_with(assistant.id, client_id=None)
+    celery_delay.assert_called_once_with(
+        assistant.id, client_id=None, research_thread_id=None
+    )
 
 
 async def test_finalize_enqueues_when_owner_wallet_is_empty(
@@ -797,7 +800,9 @@ async def test_finalize_enqueues_when_owner_wallet_is_empty(
     """
     assistant = await _run_finalize(db_workspace, db_user, chat_turn)
 
-    celery_delay.assert_called_once_with(assistant.id, client_id=None)
+    celery_delay.assert_called_once_with(
+        assistant.id, client_id=None, research_thread_id=None
+    )
 
 
 async def test_finalize_enqueues_when_the_precheck_itself_errors(
@@ -826,7 +831,9 @@ async def test_finalize_enqueues_when_the_precheck_itself_errors(
 
     assistant = await _run_finalize(db_workspace, db_user, chat_turn)
 
-    celery_delay.assert_called_once_with(assistant.id, client_id=None)
+    celery_delay.assert_called_once_with(
+        assistant.id, client_id=None, research_thread_id=None
+    )
 
 
 async def test_finalize_skips_enqueue_when_disabled(

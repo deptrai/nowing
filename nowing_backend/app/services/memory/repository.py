@@ -94,11 +94,20 @@ class MemoryRepository:
         *,
         created_by_id: UUID | None = None,
         content_match_required: bool = True,
+        client_id: str | None = None,
     ) -> Memory | None:
+        # AC-18.6: an empty client_id string is treated the same as NULL.
+        client_id = client_id or None
         conditions = [
             Memory.workspace_id == workspace_id,
             Memory.embedding.op("<=>", return_type=Float)(embedding) < 0.08,
         ]
+        # AC-18.6: scope deduplication by client_id so one vertical client's
+        # memory cannot overwrite another's in the same workspace.
+        if client_id is not None:
+            conditions.append(Memory.client_id == client_id)
+        else:
+            conditions.append(Memory.client_id.is_(None))
         # User-scoped memories have no workspace; scope deduplication to the
         # owner so one user's personal memory cannot overwrite another's.
         if workspace_id is None and created_by_id is not None:
@@ -301,6 +310,7 @@ class MemoryRepository:
             embedding,
             created_by_id=created_by_id,
             content_match_required=not update_on_duplicate,
+            client_id=client_id,
         )
         if existing is not None:
             if update_on_duplicate:
@@ -610,11 +620,56 @@ class MemoryRepository:
         to_memory_id: int | None,
         relation_type: str | MemoryRelationType = MemoryRelationType.RELATED,
         weight: float = 1.0,
+        client_id: str | None = None,
     ) -> MemoryRelation:
         if isinstance(relation_type, str):
             relation_type = MemoryRelationType(relation_type)
+
+        # AC-18.6: an empty client_id string is treated the same as NULL.
+        client_id = client_id or None
+
+        # Load the source memory by id-token to discover its real tenant scope.
+        await set_request_tenant_context(self.session, memory_id=from_memory_id)
+        result = await self.session.execute(
+            select(Memory).where(Memory.id == from_memory_id)
+        )
+        from_memory = result.scalar_one_or_none()
+        if from_memory is None:
+            raise ValueError(f"source memory {from_memory_id} not found")
+
+        effective_client_id = client_id or from_memory.client_id
+        if workspace_id != from_memory.workspace_id:
+            raise ValueError(
+                f"source memory {from_memory_id} does not belong to workspace {workspace_id}"
+            )
+
+        # AC-18.6: set tenant GUCs before any relation insert so FORCE RLS
+        # allows rows in this workspace/client scope.
+        await set_request_tenant_context(
+            self.session,
+            workspace_id=workspace_id,
+            client_id=effective_client_id,
+        )
+
+        # If the target is also a memory, it must be in the same tenant scope.
+        if to_memory_id is not None:
+            to_result = await self.session.execute(
+                select(Memory).where(Memory.id == to_memory_id)
+            )
+            to_memory = to_result.scalar_one_or_none()
+            if to_memory is not None:
+                if to_memory.workspace_id != workspace_id:
+                    raise ValueError(
+                        f"target memory {to_memory_id} is in a different workspace"
+                    )
+                if to_memory.client_id != effective_client_id:
+                    raise ValueError(
+                        f"target memory {to_memory_id} is in a different client scope"
+                    )
+
         relation = MemoryRelation(
             workspace_id=workspace_id,
+            client_id=effective_client_id,
             from_memory_id=from_memory_id,
             to_memory_id=to_memory_id,
             relation_type=relation_type,
