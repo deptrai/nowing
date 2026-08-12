@@ -287,3 +287,19 @@ AC-4 says "Jaro-Winkler ≥ 0.85". But:
 - 99.5% mutation scores (both modules)
 - All 6 ACs fully covered (131 ATDD tests + 86 helper tests)
 - Excellent boundary, edge case, and mutation-killing patterns
+
+### Traceability Matrix (4.11 — 2026-08-13)
+
+**Verdict:** PASS — all 6 ACs fully covered
+**Report:** `_bmad-output/test-artifacts/traceability/traceability-matrix-12-4a-4b-2026-08-13.md`
+
+| AC | Tests | Coverage |
+|----|-------|----------|
+| AC-1 (fan-out + caps) | 8 | Full |
+| AC-2 (normalize fields) | 42 | Full |
+| AC-3 (degradation tracking) | 17 | Full |
+| AC-4 (fuzzy dedupe) | 14 | Full |
+| AC-5 (salary consistency) | 8 | Full |
+| AC-6 (conflict flags) | 16 | Full |
+
+Total: 162 tests (105 AC-mapped + 57 helper). 0 gaps, 0 partial.
