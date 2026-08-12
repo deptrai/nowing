@@ -272,3 +272,18 @@ AC-4 says "Jaro-Winkler ≥ 0.85". But:
 - [x] [Review][Defer] Unknown degradation reasons default to SOURCE_FAILED [orchestrator.py:49-60] — deferred, raw reason available in source_breakdown — Monitoring can use `source_breakdown[source].degradation_reason` for the raw string; canonical enum is for structured filtering.
 - [x] [Review][Defer] No min<=max validation on salary values [dedupe.py:328-332] — deferred, scraper responsibility — Negative or inverted salary values pass through. Scrapers should validate; aggregator is defensive enough with zero-skip.
 - [x] [Review][Defer] O(n²) dedupe within large company groups [dedupe.py:275-278] — deferred, documented with upgrade path — Ponytail comment acknowledges ceiling and suggests sort-by-posted_at + windowing for 1000+ listings per company.
+
+### Test Quality Review (4.9 — 2026-08-13)
+
+**Score:** 78/100 — Grade B (Approve with comments)
+**Report:** `_bmad-output/test-artifacts/test-reviews/test-review-12-4a-4b-2026-08-13.md`
+
+**Critical issues (deferred to tech-debt):**
+- File length: all 3 test files exceed 500-line threshold (test_dedupe 2,136; test_normalize 812; test_orchestrator 668)
+- Time-dependent tests: 6 tests use `datetime.date.today()` — should use freezegun
+- Conditional assertions: 7 tests use `if len(merged) == 1:` guards
+
+**Strengths:**
+- 99.5% mutation scores (both modules)
+- All 6 ACs fully covered (131 ATDD tests + 86 helper tests)
+- Excellent boundary, edge case, and mutation-killing patterns
