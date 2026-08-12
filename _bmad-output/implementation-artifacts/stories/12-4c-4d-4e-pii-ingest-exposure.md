@@ -183,3 +183,18 @@ No simpler alternative found. Existing code structure is clean:
 - **Critical:** `record_vn_jobs_pii_detected` dead code → wire up, don't reinvent
 - **Non-critical:** Edge cases (Q3) + failure modes (Q4) → add to test skeleton
 - **Clean to proceed:** No HALT — all gaps are buildable with existing infrastructure
+
+### ATDD Description Skeleton (4.4 — 2026-08-13)
+
+**Output:** `_bmad-output/test-artifacts/atdd-checklist-12-4c-4d-4e.md`
+
+Summary per AC (6 anti-patterns):
+- **AC-1 (PII redaction):** 8 descriptions (Pattern 1-5, integration)
+- **AC-2 (Audit logging):** 6 descriptions (Pattern 1-4, observability)
+- **AC-3 (Chunk metadata):** 12 descriptions (Pattern 1-6)
+- **AC-4 (Ingest job):** 8 descriptions (Pattern 1-6)
+- **AC-5 (Retry/DLQ):** 8 descriptions (Pattern 1-6)
+- **AC-6 (Exposure):** 8 descriptions (Pattern 1-6)
+- **AC-7 (Schema violation):** 8 descriptions (Pattern 1-6)
+
+**Pattern 6 flagged for integration test with real Postgres.**
