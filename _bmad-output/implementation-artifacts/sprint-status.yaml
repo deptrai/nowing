@@ -1,5 +1,5 @@
 # generated: 2026-08-08
-# last_updated: 2026-08-13  # 12.4a+4b: code-review round 2 PASS, mutation gate 99.5%, patch applied, marked done
+# last_updated: 2026-08-13  # 12.4a+4b: human review gate — P0 detected (data integrity + RAG sync), pending-human-review
 # project: Nowing
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-13"  # 12.4a+4b: code-review round 2 PASS, mutation gate 99.5%, patch applied, marked done
+last_updated: "2026-08-13"  # 12.4a+4b: human review gate — P0 detected (data integrity + RAG sync), pending-human-review
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
@@ -84,8 +84,8 @@ development_status:
   3-16: done
   # ponytail: 2026-08-08 verified implementation (commit 80a6c5fa6, 2026-08-06) — 40 unit tests + 2 MCP tests pass, ruff clean. Integration tests require DB (deferred to CI).
   # ponytail: 2026-08-11 sprint planning — moved to in-progress.
-  3-17: in-progress
-  # ponytail: 2026-08-08 architecture-review — verify AD-18 bounded memory injection with perf gate.
+  3-17: review
+  # ponytail: 2026-08-13 implementation complete — AC1-4 PASS, benchmark 10k rows p95 DB 26-38ms, p95 total 40-53ms. Moved to review.
   epic-3-retrospective: done
 
   # === Epic 4: Chat & Agents ===
@@ -231,8 +231,8 @@ development_status:
   # ponytail: 2026-08-12 verification — scraper unit tests pass, to_chunks domain registered for itviec, MCP/REST/capability wired. Chunk ingest to chainlens remains in 12-4d.
   12-3: done
   # ponytail: 2026-08-11 sprint planning — 12.4 split into 12.4a-e (cleanup)
-  12-4a: done  # normalization — code-review round 2 PASS, mutation gate 99.5%, exception leak patch applied
-  12-4b: done  # deduplication, confidence, conflict — code-review round 2 PASS, mutation gate 99.5%, 52 new tests
+  12-4a: pending-human-review  # normalization — P0: data integrity (conflict_flags shape), RAG sync (chunk content_type)
+  12-4b: pending-human-review  # deduplication, confidence, conflict — P0: data integrity (conflict_flags shape), RAG sync (chunk content_type)
   12-4c: ready-for-dev  # PII redaction
   12-4d: ready-for-dev  # chunk ingest to chainlens
   12-4e: ready-for-dev  # REST/MCP/chat exposure

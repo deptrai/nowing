@@ -2,7 +2,7 @@
 title: Story 12.4a+4b — Vietnam Job Normalization, Dedupe & Conflict Detection
 epic: 12
 story: 4a-4b
-status: done
+status: pending-human-review
 priority: P0
 baseline_commit: e0ed91f21
 ---
@@ -318,3 +318,25 @@ Total: 162 tests (105 AC-mapped + 57 helper). 0 gaps, 0 partial.
 | Observability | PASS | Logger.exception, canonical enum, source_breakdown |
 
 **P1 gap:** Add performance benchmarks before high-volume scaling.
+
+### Human Review Gate (4.13 — 2026-08-13)
+
+**Status:** pending-human-review
+**P0 areas touched:**
+
+1. **Data integrity** — `orchestrator.py` changes `conflict_flags` data shape persisted to canonical storage:
+   - Old: `[{"type": "salary_conflict", "reason": "salary or location mismatch across sources"}]`
+   - New: `[{"type": "SALARY_MISMATCH"}, {"type": "LOCATION_MISMATCH"}]`
+   - **Review:** Verify the new conflict_flags format is compatible with canonical entity consumers (ChainLens ingest, search, display)
+
+2. **RAG / connector sync with side effects** — `serializer.py` changes job chunk serialization:
+   - Adds 3 new job domains (itviec, topcv, vietnamworks) to `_JOB_DOMAINS`
+   - Changes `content_type` from default to `"job"` for job domains
+   - Adds `_DOMAIN_CANONICAL` mapping (itviec → itviec.com, etc.)
+   - **Review:** Verify `content_type="job"` is the correct ChainLens filter value, and canonical domain names match ChainLens expectations
+
+**What to review manually:**
+- `orchestrator.py:225` — conflict_flags data shape change (canonical persist)
+- `serializer.py:25,29-33,395-396` — chunk content_type and domain mapping changes
+- Verify no downstream consumers break from the conflict_flags format change
+- Verify ChainLens can filter on `content_type="job"` and recognizes the canonical domain names
