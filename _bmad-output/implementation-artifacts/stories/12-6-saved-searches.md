@@ -1,12 +1,12 @@
 ---
-title: Story 12.9 — Saved Searches
+title: Story 12.6 — Saved Searches
 epic: 12
-story: 9
+story: 6
 status: ready-for-dev
 priority: P0
 ---
 
-# Story 12.9 — Saved Searches
+# Story 12.6 — Saved Searches
 
 **Epic:** 12 — HR/Recruitment Vertical — Vietnam Job Market Pilot
 **As a:** researcher

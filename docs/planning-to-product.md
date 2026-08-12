@@ -47,7 +47,7 @@ E21:  Lead Intelligence    ─────────────── backlog
 - **E3.17** — (memory recall bounded retrieval, continuation)
 - **E9.6c** — (provenance re-validation extension)
 - **E12.3, E12.4, E12.5** — (TopCV/ITviec aggregate, PII redaction)
-- **E12.9** — Saved Searches (ready-for-dev, P0)
+- **E12.6** — Saved Searches (ready-for-dev, P0)
 - **E20.1, E20.2, E20.3, E20.4** — ChainLens integration
 
 ## Architecture Decisions (AD) đang chi phối tiến độ
