@@ -735,7 +735,11 @@ class Config:
     # the current MEMORY_AUTO_EXTRACT_BUDGET_WINDOW. 0 = disabled (no gating).
     # Ships at 0 on purpose: AD-8's 2026-07-25 amendment forbids fixing a cost
     # figure before story 8-7 + FR-37 produce measured numbers.
-    MEMORY_AUTO_EXTRACT_BUDGET_MICROS = _env_int("MEMORY_AUTO_EXTRACT_BUDGET_MICROS", 0)
+    # Clamped to >= 0: negative values are treated as disabled, but we normalise
+    # them to 0 to match the documented "0 = disabled" convention.
+    MEMORY_AUTO_EXTRACT_BUDGET_MICROS = max(
+        0, _env_int("MEMORY_AUTO_EXTRACT_BUDGET_MICROS", 0)
+    )
     # Rolling budget window; "day" is a rolling 24h lookback (not a calendar-day
     # cliff) to avoid a midnight reset that lets a burst through right after
     # rollover. "month" is a flat 30-day lookback, not a calendar month.
@@ -743,8 +747,9 @@ class Config:
         "MEMORY_AUTO_EXTRACT_BUDGET_WINDOW", "day", ("day", "week", "month")
     )
     # Max extractions per workspace per MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS.
-    # 0 = disabled (no throttling).
-    MEMORY_AUTO_EXTRACT_RATE_MAX = _env_int("MEMORY_AUTO_EXTRACT_RATE_MAX", 0)
+    # 0 = disabled (no throttling). Clamped to >= 0 for the same reason as
+    # MEMORY_AUTO_EXTRACT_BUDGET_MICROS.
+    MEMORY_AUTO_EXTRACT_RATE_MAX = max(0, _env_int("MEMORY_AUTO_EXTRACT_RATE_MAX", 0))
     # Clamped to >= 1: Redis EXPIRE with a non-positive TTL deletes the key, so
     # 0 would make every increment self-destruct and silently void the limit.
     MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS = max(

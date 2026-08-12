@@ -164,6 +164,7 @@ async def finalize_assistant_message(
     # disabled workspaces never spawn Celery tasks. Also consult the Story 8.7
     # workspace-scoped caps (budget, rate) as a cheap fast-path.
     #
+    # AC-7: this is a defence-in-depth fast-path, not the authoritative gate.
     # Deliberately principal-free: this call site only knows the streaming
     # caller, who is not guaranteed to be the author of the turn's user message
     # (a workspace member may resume a thread someone else wrote into, and

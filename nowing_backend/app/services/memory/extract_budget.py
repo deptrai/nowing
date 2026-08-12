@@ -21,6 +21,19 @@ therefore unmetered by design; the bounds that actually apply are the
 ``MEMORY_AUTO_EXTRACT_ENABLED`` / per-workspace kill-switch (Story 8.8) and the
 opt-in budget cap below.
 
+Config keys consumed (see ``app.config``):
+    - ``MEMORY_AUTO_EXTRACT_MIN_RESERVE_MICROS`` (always-on wallet floor)
+    - ``MEMORY_AUTO_EXTRACT_BUDGET_MICROS`` (period spend ceiling; 0 = off)
+    - ``MEMORY_AUTO_EXTRACT_BUDGET_WINDOW`` (``day``/``week``/``month``)
+    - ``MEMORY_AUTO_EXTRACT_RATE_MAX`` (max extractions per window; 0 = off)
+    - ``MEMORY_AUTO_EXTRACT_RATE_WINDOW_SECONDS`` (rolling window for the cap)
+
+Stable skip reasons (AC-8 vocabulary, do not rename):
+    - ``anonymous_unbilled``, ``insufficient_wallet``, ``budget_exceeded``,
+      ``rate_limited`` (produced by this module)
+    - ``disabled`` (produced by call sites when the kill-switch is off)
+    - ``gate_error`` (produced on unexpected gate failures)
+
 The budget and rate checks are opt-in (default ``0`` = disabled, matching the
 repo's billing-flag convention: ``WEB_CRAWL_CREDIT_BILLING_ENABLED``,
 ``PLATFORM_SCRAPE_BILLING_ENABLED``).
