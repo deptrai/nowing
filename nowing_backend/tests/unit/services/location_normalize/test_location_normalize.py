@@ -106,10 +106,10 @@ def test_resolve_city_code_whitespace_only():
     assert resolve_city_code("   ") is None
 
 
-def test_city_aliases_covers_62_provinces():
-    """should have all 62 province codes in CITY_ALIASES."""
+def test_city_aliases_covers_63_provinces():
+    """should have 64 city codes covering all 63 Vietnamese provinces (63 provinces + Long Bien district)."""
     from app.services.location_normalize import CITY_CODES
 
-    assert len(CITY_CODES) >= 62
+    assert len(CITY_CODES) == 64
     assert "HN" in CITY_CODES
     assert "SG" in CITY_CODES
