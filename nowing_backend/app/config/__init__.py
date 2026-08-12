@@ -1103,7 +1103,7 @@ class Config:
     # Margin applied to the engine-reported cost for self-host calls to cover
     # full-pipeline overhead until ChainLens emits aggregated cost (Story 42-1b).
     # Default 1.5x; billed_micros = floor(cost_micros * multiplier).
-    _self_host_multiplier = float(os.getenv("SELF_HOST_RESEARCH_COST_MULTIPLIER", "1.5"))
+    _self_host_multiplier = _env_float("SELF_HOST_RESEARCH_COST_MULTIPLIER", 1.5)
     if _self_host_multiplier <= 0:
         _self_host_multiplier = 1.5
     SELF_HOST_RESEARCH_COST_MULTIPLIER = _self_host_multiplier

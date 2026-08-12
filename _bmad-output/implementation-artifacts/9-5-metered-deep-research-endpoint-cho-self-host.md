@@ -42,6 +42,40 @@
 - 2026-08-12: Add 10 unit tests in `tests/unit/routes/test_self_host_research.py`.
 - 2026-08-12: Mark story 9-5 as `review` in sprint-status and story file.
 
+## Senior Developer Review (AI)
+
+### Review Outcome
+
+`PASS_WITH_WARNINGS` — tất cả P0/P1 đã được patch, unit tests pass, ruff clean. Các P2 còn lại là ghi chú theo dõi, không chặn done.
+
+### Action Items
+
+- [x] **P0 — Overbilling khi engine trả về no-content/no-cost**: `_charge_self_host_research` áp dụng fallback cả khi `answer`/`sources` rỗng (vd `insufficient_evidence` không có kết quả). Đã sửa: chỉ dùng fallback khi có nội dung hoặc engine báo cost dương; no-content + no-cost → return 0. (`nowing_backend/app/routes/self_host_research.py:219-225`)
+- [x] **P0 — TokenUsage zero-cost không được commit**: `_charge_self_host_research` ghi record nhưng return trước `session.commit()` khi `billed_micros <= 0`, audit row bị rollback. Đã sửa: `await session.commit()` trước khi return 0. (`nowing_backend/app/routes/self_host_research.py:285-289`)
+- [x] **P0 — `SELF_HOST_RESEARCH_COST_MULTIPLIER` crash khi env sai**: dùng `float(os.getenv(...))` thay vì helper `_env_float`, gây `ValueError` khi env trống/invalid. Đã sửa: dùng `_env_float(...)` để graceful default. (`nowing_backend/app/config/__init__.py:1106`)
+- [x] **P1 — Auth header có extra whitespace gây 401**: `partition(" ")` giữ lại khoảng trắng đầu/cuối trong token, `resolve_pat` hash không khớp. Đã sửa: `.strip()` credential và token. (`nowing_backend/app/routes/self_host_research.py:136,306`)
+- [x] **P1 — `correlation_id` từ self-host request bị drop**: route tạo `ResearchInput` mới mà không truyền `correlation_id`. Đã sửa: truyền `correlation_id=body.correlation_id`. (`nowing_backend/app/routes/self_host_research.py:354`)
+
+### Severity Counts
+
+| Severity | Count | Status |
+|---|---|---|
+| P0 (MUST_FIX) | 3 | Fixed |
+| P1 (SHOULD_FIX) | 2 | Fixed |
+| P2 (WATCH) | 4 | Documented |
+
+### Notes / WATCH
+
+- **P2 — Pre-flight estimate bằng fallback flat rate** (`fallback_micros * multiplier`) có thể underestimates với mode `quality`/`deep`, dẫn đến engine đã gọi xong rồi mới phát hiện 402. Cần per-mode worst-case estimate hoặc reservation để xử lý triệt để; hiện tại là trade-off có ghi nhận.
+- **P2 — Race condition `check_balance` → `apply_debit` không atomic**; nhiều request self-host concurrent có thể overdraw ví. Vấn đề nằm ở `app/services/wallet_credit.py` (shared, pre-existing) và cần atomic `UPDATE ... WHERE balance - reserved >= cost` hoặc reservation pattern trên toàn bộ billers.
+- **P2 — `_resolve_workspace_id` fallback về workspace đầu tiên của user** khi PAT không có `workspace_id` có thể attribute sai. Tuy nhiên story thiết kế workspace là optional, nên giữ nguyên.
+- **P2 — `PATCreate.token_kind` không giới hạn giá trị**, cho phép tạo token kind tùy ý. Chỉ `self_host` và `agent_chat` được sử dụng; recommend thêm enum/constraints ở schema sau này.
+
+### Validation After Patch
+
+- `ruff check app/routes/self_host_research.py app/routes/personal_access_tokens_routes.py app/app.py app/config/__init__.py tests/unit/routes/test_self_host_research.py` — ✅ pass
+- `pytest tests/unit/routes/test_self_host_research.py -q` — ✅ 13 passed
+
 ## Status
 
-`review` — implementation complete, unit tests pass, lint clean, ready for code review.
+`done` — code review hoàn thành, patch đã áp dụng, tests pass.

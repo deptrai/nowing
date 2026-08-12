@@ -411,3 +411,106 @@ def test_self_host_research_engine_unavailable_no_content_no_debit(client, monke
     assert body["status"] == "engine_unavailable"
     assert body["degradation_reason"] == "upstream_error"
     assert len(sh_mod._debit_calls["debit"]) == 0
+
+
+def test_self_host_research_insufficient_evidence_no_content_no_debit(client, monkeypatch):
+    import app.routes.self_host_research as sh_mod
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    async def _fake_executor(payload: Any, ctx: Any = None) -> Any:
+        return ResearchOutput(
+            status="insufficient_evidence",
+            answer="",
+            sources=[],
+            cost_micros=None,
+            cost_dollars=None,
+            cost_basis=None,
+            resolved_mode=None,
+            mode_requested="balanced",
+            tokens_total=None,
+            tokens_prompt=None,
+            tokens_completion=None,
+            duration_ms=1000,
+            first_token_time_ms=100,
+            degraded=True,
+            degradation_reason="insufficient_evidence",
+        )
+
+    monkeypatch.setattr(sh_mod, "build_research_executor", lambda: _fake_executor)
+
+    response = _call(client)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "insufficient_evidence"
+    assert len(sh_mod._debit_calls["debit"]) == 0
+
+
+def test_self_host_research_bearer_header_with_extra_space_200(client, monkeypatch):
+    import app.routes.self_host_research as sh_mod
+
+    async def _fake_executor(payload: Any, ctx: Any = None) -> Any:
+        from app.capabilities.chainlens.research.schemas import ResearchOutput, Source
+
+        return ResearchOutput(
+            status="complete",
+            answer="answer",
+            sources=[Source(title="s", url="https://example.com")],
+            cost_micros=48200,
+            cost_dollars=0.0482,
+            cost_basis="actual",
+            resolved_mode="balanced",
+            mode_requested="balanced",
+            tokens_total=7950,
+            tokens_prompt=4273,
+            tokens_completion=3677,
+            duration_ms=1000,
+            first_token_time_ms=100,
+            degraded=False,
+            degradation_reason=None,
+        )
+
+    monkeypatch.setattr(sh_mod, "build_research_executor", lambda: _fake_executor)
+
+    response = client.post(
+        "/v1/self-host/research",
+        json={"query": "test"},
+        headers={"Authorization": "Bearer  valid-self-host-key"},
+    )
+    assert response.status_code == 200
+
+
+def test_self_host_research_correlation_id_passed_to_engine(client, monkeypatch):
+    import app.routes.self_host_research as sh_mod
+    from app.capabilities.chainlens.research.schemas import ResearchOutput, Source
+
+    captured: dict[str, Any] = {}
+
+    async def _fake_executor(payload: Any, ctx: Any = None) -> Any:
+        captured["correlation_id"] = payload.correlation_id
+        return ResearchOutput(
+            status="complete",
+            answer="answer",
+            sources=[Source(title="s", url="https://example.com")],
+            cost_micros=48200,
+            cost_dollars=0.0482,
+            cost_basis="actual",
+            resolved_mode="balanced",
+            mode_requested="balanced",
+            tokens_total=7950,
+            tokens_prompt=4273,
+            tokens_completion=3677,
+            duration_ms=1000,
+            first_token_time_ms=100,
+            degraded=False,
+            degradation_reason=None,
+        )
+
+    monkeypatch.setattr(sh_mod, "build_research_executor", lambda: _fake_executor)
+
+    response = client.post(
+        "/v1/self-host/research",
+        json={"query": "test", "correlation_id": "test-corr-123"},
+        headers={"Authorization": "Bearer valid-self-host-key"},
+    )
+    assert response.status_code == 200
+    assert captured.get("correlation_id") == "test-corr-123"

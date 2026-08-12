@@ -133,6 +133,7 @@ async def get_self_host_auth(
         )
 
     scheme, _, credential = auth_header.partition(" ")
+    credential = credential.strip()
     if scheme.lower() != "bearer" or not credential:
         raise _SelfHostAuthError(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -215,12 +216,14 @@ async def _charge_self_host_research(
 
     Returns the micros billed (0 for zero-cost or failed calls with no content).
     """
-    status_name = output.status
     has_content = bool(output.answer or output.sources)
-    if status_name == "engine_unavailable" and not has_content:
+    cost_micros: int | None = output.cost_micros
+
+    # Do not bill the fallback flat rate when the engine returned nothing and
+    # reported no cost (e.g. ``insufficient_evidence`` with no content).
+    if not has_content and (cost_micros is None or cost_micros <= 0):
         return 0
 
-    cost_micros: int | None = output.cost_micros
     cost_basis: str | None = output.cost_basis
     resolved_mode = output.resolved_mode
     mode_requested = output.mode_requested
@@ -280,6 +283,9 @@ async def _charge_self_host_research(
     )
 
     if billed_micros <= 0:
+        # Commit the zero-cost audit row so failed/degraded calls are still
+        # recorded even though no wallet debit happens.
+        await session.commit()
         return 0
 
     await check_balance(session, user.id, billed_micros)
@@ -302,7 +308,7 @@ async def self_host_research(
     """Run a metered deep-research call for a self-hosted Nowing instance."""
     user, pat = auth
 
-    token = request.headers.get("Authorization", "").partition(" ")[2]
+    token = request.headers.get("Authorization", "").partition(" ")[2].strip()
     await _enforce_self_host_rate_limit(token)
 
     workspace_id = await _resolve_workspace_id(session, user, pat)
@@ -345,6 +351,7 @@ async def self_host_research(
         chat_id=body.chat_id,
         tier=body.tier,
         workspace_id=workspace_id,
+        correlation_id=body.correlation_id,
     )
 
     ctx = CapabilityContext(session=session, workspace_id=workspace_id, run_id=run_id)
