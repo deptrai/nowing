@@ -1,7 +1,7 @@
-"""Red-phase ATDD tests for location_normalize shared module (AC-2, AC-4, Q1 resolved decision).
+"""ATDD tests for location_normalize shared module (AC-2, AC-4, Q1 resolved decision).
 
-Tests are SKIPPED until ``app/services/location_normalize/`` is extracted from
-``bds_aggregator/normalize.py`` per grill-me Q1 resolved decision.
+Covers diacritics stripping, slug generation, city-code resolution,
+and alias mapping for Vietnamese provinces.
 """
 
 from __future__ import annotations

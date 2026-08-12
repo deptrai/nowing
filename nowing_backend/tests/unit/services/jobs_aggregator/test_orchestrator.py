@@ -1,10 +1,7 @@
-"""Red-phase ATDD tests for jobs_aggregator orchestrator (AC-1, AC-3).
+"""ATDD tests for jobs_aggregator orchestrator (AC-1, AC-3).
 
-Tests are SKIPPED until:
-- degraded_source_ids field is added to VnJobAggregateOutput
-- degradation reasons are mapped to canonical enum
-
-Existing passing tests are kept (not skipped) — only NEW tests are skipped.
+Covers source fan-out, per-source caps, degradation tracking,
+and degraded_source_ids.
 """
 
 from __future__ import annotations
@@ -293,7 +290,7 @@ async def test_fan_out_max_items_zero(monkeypatch):
 
 
 async def test_fan_out_empty_sources_list(monkeypatch):
-    """should handle sources=[] → default to all 3 or return empty output."""
+    """should handle sources=[] without raising and return a valid output."""
     called: list[str] = []
 
     async def fake_call_source(
@@ -307,8 +304,8 @@ async def test_fan_out_empty_sources_list(monkeypatch):
     )
     ctx = CapabilityContext(session=SimpleNamespace(), workspace_id=1)
     result = await aggregate_jobs(VnJobAggregateInput(keyword="dev", sources=[]), ctx)
-    # Either defaults to all 3 or returns empty — spec doesn't say explicitly
     assert isinstance(result, VnJobAggregateOutput)
+    # Behavior when sources=[] is not specified; we just assert no crash.
 
 
 # ---------------------------------------------------------------------------

@@ -1,14 +1,9 @@
-"""Red-phase ATDD tests for jobs_aggregator dedupe (AC-4, AC-5, AC-6).
+"""ATDD tests for jobs_aggregator dedupe (AC-4, AC-5, AC-6).
 
-Tests are SKIPPED until:
-- Jaro-Winkler fuzzy title matching (rapidfuzz) is implemented
-- posted_at ±3 days tolerance is implemented
-- conflict_flags enum (SALARY_MISMATCH, LOCATION_MISMATCH) is implemented
-- source_count field is added to VnJobAggregatedListing
-- salary threshold aligned to 10%/20%
-- both source records preserved on conflict
-
-Existing passing test is kept (not skipped) — only NEW tests are skipped.
+Covers Jaro-Winkler fuzzy title matching, posted_at ±3 days tolerance,
+conflict flags (SALARY_MISMATCH, LOCATION_MISMATCH), source_count,
+salary spread thresholds (10% stable / 20% conflict), and preserving
+both source records on conflict.
 """
 
 from __future__ import annotations
@@ -597,7 +592,7 @@ def test_dedupe_confidence_boost_exact():
     ]
     merged = deduplicate(listings)
     # base=0.6, boost=0.1*(2-1)=0.1 → 0.7
-    assert merged[0].confidence_score == 0.7
+    assert merged[0].confidence_score == pytest.approx(0.7)
 
 
 # ===========================================================================
@@ -959,4 +954,4 @@ def test_dedupe_conflict_confidence_05_large_spread():
     ]
     merged = deduplicate(listings)
     if len(merged) == 1 and "SALARY_MISMATCH" in merged[0].conflict_flags:
-        assert merged[0].confidence_score == 0.5
+        assert merged[0].confidence_score == pytest.approx(0.5)

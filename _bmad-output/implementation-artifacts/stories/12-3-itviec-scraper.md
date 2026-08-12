@@ -2,7 +2,7 @@
 title: Story 12.3 — ITviec Scraper
 epic: 12
 story: 3
-status: ready-for-dev
+status: done
 priority: P0
 ---
 

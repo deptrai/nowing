@@ -231,3 +231,43 @@ def test_to_chunks_redacts_pii_before_chunking(sample_job_entity):
     assert "hr@example.com" not in full
     assert "<PHONE>" in full
     assert "<EMAIL>" in full
+
+
+def test_to_chunks_maps_job_domain_and_content_type():
+    """Story 12.3 AC-9: job chunks expose canonical domain and contentType='job'."""
+    from app.services.scraper_chunks.serializer import to_chunks
+
+    data = {
+        "id": "itviec:data-engineer-crossian",
+        "title": "Data Engineer",
+        "company": "Crossian",
+        "location": "Ha Noi",
+        "employment_type": "full_time",
+        "salary_min": 0,
+        "salary_max": 0,
+        "salary_currency": "VND",
+        "salary_period_id": "hidden",
+        "posted_at": "2026-08-11",
+        "job_description": "Build data pipelines.",
+        "job_requirement": "Python, SQL.",
+        "source_url": "https://itviec.com/it-jobs/data-engineer-crossian",
+    }
+
+    chunks = to_chunks(
+        domain="itviec",
+        data=data,
+        fetched_at="2026-08-11T00:00:00+00:00",
+        content_type="text/markdown",
+        category="job_posting",
+    )
+
+    assert len(chunks) > 0
+    for chunk in chunks:
+        assert chunk.metadata.source == "nowing_scraper"
+        assert chunk.metadata.domain == "itviec.com"
+        assert chunk.metadata.contentType == "job"
+        assert chunk.metadata.category == "job_posting"
+        assert chunk.metadata.title == data["title"]
+        assert chunk.metadata.url == data["source_url"]
+        assert chunk.metadata.canonicalEntityId == data["id"]
+        assert "itviec:sha256:" in chunk.metadata.sourceId

@@ -1,8 +1,7 @@
-"""Red-phase ATDD tests for jobs_aggregator normalize (AC-2).
+"""ATDD tests for jobs_aggregator normalize (AC-2).
 
-Tests are SKIPPED until ``_normalize_experience()`` and
-``location_normalize`` integration are implemented.
-Existing passing tests are kept (not skipped) — only NEW tests are skipped.
+Covers salary, location, employment_type, posted_at, experience_years,
+and source_url normalization.
 """
 
 from __future__ import annotations
@@ -227,21 +226,21 @@ def test_normalize_empty_title_confidence_03():
     """should compute confidence_score=0.3 when title is empty."""
     raw = {"id": "1", "title": "", "company": "Co"}
     listing = normalize_listing("itviec", raw)
-    assert listing.confidence_score == 0.3
+    assert listing.confidence_score == pytest.approx(0.3)
 
 
 def test_normalize_empty_company_confidence_03():
     """should compute confidence_score=0.3 when company is empty."""
     raw = {"id": "1", "title": "Dev", "company": ""}
     listing = normalize_listing("itviec", raw)
-    assert listing.confidence_score == 0.3
+    assert listing.confidence_score == pytest.approx(0.3)
 
 
 def test_normalize_both_present_confidence_06():
     """should compute confidence_score=0.6 when both title and company are non-empty."""
     raw = {"id": "1", "title": "Dev", "company": "Co"}
     listing = normalize_listing("itviec", raw)
-    assert listing.confidence_score == 0.6
+    assert listing.confidence_score == pytest.approx(0.6)
 
 
 # ---------------------------------------------------------------------------
@@ -256,19 +255,19 @@ def test_normalize_salary_confidence_exact_values():
         "vietnamworks",
         {"id": "1", "title": "D", "company": "C", "salary_raw": "Thương lượng"},
     )
-    assert listing_n.salary.confidence == 0.5
+    assert listing_n.salary.confidence == pytest.approx(0.5)
     # min only
     listing_m = normalize_listing(
         "vietnamworks",
         {"id": "2", "title": "D", "company": "C", "salary_min": 10, "salary_max": 0},
     )
-    assert listing_m.salary.confidence == 0.7
+    assert listing_m.salary.confidence == pytest.approx(0.7)
     # both
     listing_b = normalize_listing(
         "vietnamworks",
         {"id": "3", "title": "D", "company": "C", "salary_min": 10, "salary_max": 20},
     )
-    assert listing_b.salary.confidence == 0.8
+    assert listing_b.salary.confidence == pytest.approx(0.8)
 
 
 # ---------------------------------------------------------------------------
