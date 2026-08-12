@@ -34,6 +34,20 @@ def _canonical_key(listing: VnJobAggregatedListing) -> tuple[str]:
     return (listing.company.lower().strip(),)
 
 
+def _fingerprint_key(listing: VnJobAggregatedListing) -> tuple[str, str, str]:
+    """Canonical fingerprint key: title + company + resolved location.
+
+    Two listings with the same title/company but different resolved locations
+    represent distinct canonical entities and must not collide.
+    """
+    return (
+        (listing.title or "").lower().strip(),
+        listing.company.lower().strip(),
+        resolve_city_code(listing.location)
+        or (listing.location or "").lower().strip(),
+    )
+
+
 def _locations_compatible(a: str | None, b: str | None) -> bool:
     """True if locations match after normalization, or either is None (wildcard)."""
     if not a or not b:
@@ -292,7 +306,7 @@ def _raw_to_listing(raw: dict[str, Any]) -> VnJobAggregatedListing:
 def fingerprint(raw_data: dict[str, Any]) -> str:
     """Stable canonical fingerprint for a raw job listing."""
     listing = _raw_to_listing(raw_data)
-    key = _canonical_key(listing)
+    key = _fingerprint_key(listing)
     payload = json.dumps(
         {i: v for i, v in enumerate(key) if v is not None},
         sort_keys=True,
