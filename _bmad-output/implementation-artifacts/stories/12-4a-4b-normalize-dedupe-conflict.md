@@ -303,3 +303,18 @@ AC-4 says "Jaro-Winkler ≥ 0.85". But:
 | AC-6 (conflict flags) | 16 | Full |
 
 Total: 162 tests (105 AC-mapped + 57 helper). 0 gaps, 0 partial.
+
+### NFR Evidence Audit (4.12 — 2026-08-13)
+
+**Verdict:** APPROVED WITH CONCERNS (1 P1, 0 P0)
+**Report:** `_bmad-output/test-artifacts/nfr-assessment-12-4a-4b-2026-08-13.md`
+
+| NFR | Status | Notes |
+|-----|--------|-------|
+| Performance | CONCERNS | O(n²) documented, no benchmarks (P1) |
+| Security | PASS | PII redaction (AD-25), exception leak patched |
+| Reliability | PASS | Degradation tracking, outbox fallback |
+| Maintainability | PASS | 99.5% mutation, shared module, documented tech debt |
+| Observability | PASS | Logger.exception, canonical enum, source_breakdown |
+
+**P1 gap:** Add performance benchmarks before high-volume scaling.
