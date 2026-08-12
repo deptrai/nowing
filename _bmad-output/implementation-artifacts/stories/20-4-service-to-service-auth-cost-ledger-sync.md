@@ -7,7 +7,7 @@ status: done
 
 # Story 20.4: Service-to-Service Auth + Cost Ledger Sync
 
-Status: review
+Status: done
 
 ## Story
 

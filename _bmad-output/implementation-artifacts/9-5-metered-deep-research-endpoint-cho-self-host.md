@@ -78,4 +78,4 @@
 
 ## Status
 
-`done` — code review hoàn thành, patch đã áp dụng, tests pass.
+`pending-human-review` — code review hoàn thành, P0/P1 patches applied, tests pass, mutation score 99.41% P0=0, traceability/NFR generated. Chờ human review vì diff chạm P0 (auth / credit / token tracking / pricing).

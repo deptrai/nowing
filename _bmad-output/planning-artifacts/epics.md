@@ -188,8 +188,8 @@ Lazada/Shopee product data, price-drop alerts, competitor tracking. **Open:** 17
 ### Epic 18: Vertical Client Platform (Public Agent-Chat) — 🔄 IN PROGRESS
 Public agent-chat endpoints, AgentConfig registry, client_id tenancy, cost traceability, rate limiting + RLS. **Open:** 18.1–18.8.
 
-### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — 🔄 IN PROGRESS
-`NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** 20.1–20.4.
+### Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research — ✅ DONE
+`NowingIngestService` + `to_chunks()`, gap-fill caller, `NowingPrivateProvider`, service-to-service auth. **Open:** none.
 
 ### Epic 21: Lead Gen Intelligence — ⏸️ PROPOSED
 Intent signals, lead scoring, contact enrichment, outbound sequences, CRM sync, Zalo deferred, outcome pricing. **Gated:** legal/ToS, vendor POC, PII, CRM, outcome pricing. Full scope in `epic21-proposal-2026-08-11.md`.
@@ -1647,7 +1647,7 @@ So that I can take action without opening the dashboard.
 ---
 
 ## Epic 20: Nowing Ecosystem Integration — Feed & Recall from chainlens-research
-### Story 20.4: Service-to-Service Auth + Cost Ledger Sync  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 20.4: Service-to-Service Auth + Cost Ledger Sync  `(mới 2026-08-08)`  `[done]`
 
 As a platform engineer,
 I want secure service-to-service auth and a shared cost envelope between Nowing and `chainlens-research`,
@@ -1681,7 +1681,7 @@ So that `chainlens-research` can meter usage and Nowing can bill the user.
 
 _Governed by `AD-3`, `AD-4`, `AD-5`, FR-61, `AD-8`._
 
-### Story 20.1: Nowing Scraper `to_chunks()` + `NowingIngestService`  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 20.1: Nowing Scraper `to_chunks()` + `NowingIngestService`  `(mới 2026-08-08)`  `[done]`
 
 As a Nowing user / chat user,
 I want my scraper data to be searchable through chainlens,
@@ -1726,7 +1726,7 @@ so that the agent can answer with fresh data.
 _Governed by `AD-34`, `AD-35`, FR-58, FR-62._
 
 
-### Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 20.2: Gap-Fill Caller + Cost Allocation (Nowing side)  `(mới 2026-08-08)`  `[done]`
 
 As a chat user,
 I want the agent to ask `chainlens-research` to index missing data on demand,
@@ -1753,7 +1753,7 @@ So that the answer does not say "I don't know" when the data is available on the
 _Governed by `AD-4`, FR-59, `AD-8`._
 
 
-### Story 20.3: `NowingPrivateProvider` for `POST /v1/private-data/search`  `(mới 2026-08-08)`  `[ready-for-dev]`
+### Story 20.3: `NowingPrivateProvider` for `POST /v1/private-data/search`  `(mới 2026-08-08)`  `[done]`
 
 As a Nowing user,
 I want my private data to stay in Nowing while still being used for answers,

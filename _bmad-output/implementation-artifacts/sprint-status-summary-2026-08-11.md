@@ -9,8 +9,8 @@
 
 | Status | Count |
 |---|---|
-| done | 4 |
-| in-progress | 13 |
+| done | 5 |
+| in-progress | 12 |
 | backlog | 2 |
 | dropped | 1 |
 
@@ -19,6 +19,7 @@
 - epic-2 (Connectors)
 - epic-5 (Deliverables)
 - epic-10 (Web Crawler (Anti-bot + Proxy))
+- epic-20 (Nowing Scraper Feed Contract & Ingest)
 
 ### In-Progress
 - epic-3 (Knowledge Base + Long-Term Memory)
@@ -33,7 +34,6 @@
 - epic-15 (Stocks & Investment Signals)
 - epic-16 (Company Data)
 - epic-18 (Vertical Client Platform (Public Agent-Chat))
-- epic-20 (Nowing Scraper Feed Contract & Ingest)
 
 ### Backlog
 - epic-17 (E-commerce Intelligence (P2))

@@ -1010,3 +1010,123 @@ async def test_charge_self_host_research_zero_and_negative_cost_return_zero(
         fake_session, user, 42, output_neg, "run-1"
     )
     assert billed == 0
+
+
+async def test_charge_self_host_research_zero_cost_commits_session(client, fake_session):
+    """A zero-cost audit row is committed even when no debit occurs."""
+    import app.routes.self_host_research as sh_mod
+    from app.capabilities.chainlens.research.schemas import ResearchOutput, Source
+
+    user = _FakeUser()
+    output = ResearchOutput(
+        status="complete",
+        answer="answer",
+        sources=[Source(title="s", url="https://example.com")],
+        cost_micros=0,
+        cost_dollars=0.0,
+        cost_basis="actual",
+        resolved_mode="balanced",
+        mode_requested="balanced",
+        tokens_total=1,
+        tokens_prompt=1,
+        tokens_completion=0,
+        duration_ms=1000,
+        first_token_time_ms=100,
+        degraded=False,
+        degradation_reason=None,
+    )
+
+    billed = await sh_mod._charge_self_host_research(
+        fake_session, user, 42, output, "run-1"
+    )
+    assert billed == 0
+    assert fake_session.committed is True
+    assert len(sh_mod._recorded) == 1
+
+
+def test_self_host_research_no_workspace_403(client, monkeypatch, fake_session):
+    """A self-host key with no workspace and no owner workspace is rejected."""
+    import app.routes.self_host_research as sh_mod
+
+    async def _resolve_pat(_session: Any, _token: str) -> Any:
+        return SimpleNamespace(
+            id=1,
+            token_kind="self_host",
+            workspace_id=None,
+            user=_FakeUser(),
+            last_used_at=None,
+        )
+
+    monkeypatch.setattr(sh_mod, "resolve_pat", _resolve_pat)
+    fake_session.set_execute_result(None)
+
+    response = _call(client)
+    assert response.status_code == 403
+    assert "no workspace" in response.text.lower()
+
+
+def test_self_host_research_workspace_fallback_uses_owner_workspace(
+    client, monkeypatch, fake_session
+):
+    """A PAT without workspace falls back to a workspace owned by the user."""
+    import app.routes.self_host_research as sh_mod
+
+    async def _resolve_pat(_session: Any, _token: str) -> Any:
+        return SimpleNamespace(
+            id=1,
+            token_kind="self_host",
+            workspace_id=None,
+            user=_FakeUser(),
+            last_used_at=None,
+        )
+
+    monkeypatch.setattr(sh_mod, "resolve_pat", _resolve_pat)
+    fake_session.set_execute_result(99)
+
+    response = _call(client)
+    assert response.status_code == 200
+    assert sh_mod._recorded[0]["workspace_id"] == 99
+
+
+def test_self_host_research_post_call_insufficient_credits_402(client, monkeypatch):
+    """An InsufficientCreditsError raised during post-call billing maps to 402."""
+    import app.routes.self_host_research as sh_mod
+    from app.services.wallet_credit import InsufficientCreditsError
+
+    async def _apply_debit_raise(_session: Any, _user_id: Any, _cost_micros: int) -> int:
+        raise InsufficientCreditsError(
+            message="short",
+            balance_micros=100,
+            required_micros=72300,
+        )
+
+    monkeypatch.setattr(sh_mod, "apply_debit", _apply_debit_raise)
+
+    response = _call(client)
+    assert response.status_code == 402
+    body = response.json()
+    assert body["detail"]["error_code"] == "insufficient_credits"
+    assert body["detail"]["balance_micros"] == 100
+    assert body["detail"]["required_micros"] == 72300
+
+
+def test_self_host_research_inactive_user_401(client, monkeypatch):
+    """A PAT for an inactive user is rejected."""
+    import app.routes.self_host_research as sh_mod
+
+    user = _FakeUser()
+    user.is_active = False
+
+    async def _resolve_pat(_session: Any, _token: str) -> Any:
+        return SimpleNamespace(
+            id=1,
+            token_kind="self_host",
+            workspace_id=42,
+            user=user,
+            last_used_at=None,
+        )
+
+    monkeypatch.setattr(sh_mod, "resolve_pat", _resolve_pat)
+
+    response = _call(client)
+    assert response.status_code == 401

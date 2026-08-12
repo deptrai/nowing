@@ -37,6 +37,7 @@ project-context.md
 
 # Local mutation-run artifacts
 nowing_backend/mutation-*
+nowing_backend/_bmad-output/
 
 # Python cache
 **/__pycache__/
