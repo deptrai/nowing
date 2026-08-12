@@ -159,8 +159,8 @@ development_status:
   # ponytail: 2026-08-12 — moved to in-progress for implementation
   # ponytail: 2026-08-12 — implementation complete, tests pass, moved to review
   # ponytail: 2026-08-12 — bmad-code-review completed, P0/P1 patches applied, 13 unit tests pass, marked done
-  # ponytail: 2026-08-12 — bmad-nowing-mutation-gate 99.41% P0=0; bmad-testarch-trace + nfr pending; bmad-nowing-human-review-gate required for P0
-  9-5: pending-human-review
+  # ponytail: 2026-08-12 — bmad-nowing-mutation-gate 99.41% P0=0; bmad-testarch-trace APPROVED; bmad-testarch-nfr CONCERNS (2 P2); bmad-nowing-human-review-gate APPROVED
+  9-5: done
   9-6: done
   # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
   9-6-followup: deferred

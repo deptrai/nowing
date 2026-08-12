@@ -3,7 +3,7 @@
 - **Project:** Nowing (NOKEY)
 - **Tracking:** file-system
 - **Status file:** `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- **Last updated:** 2026-08-11
+- **Last updated:** 2026-08-12
 
 ## Epic Status
 
@@ -46,14 +46,14 @@
 
 | Status | Count |
 |---|---|
-| done | 68 |
+| done | 73 |
 | ready-for-dev | 1 |
-| in-progress | 10 |
+| in-progress | 6 |
 | deferred | 7 |
-| backlog | 28 |
+| backlog | 27 |
 | dropped | 10 |
 
-### done (68)
+### done (73)
 - 2-5
 - 2-6
 - 2-7
@@ -99,6 +99,7 @@
 - 9-2
 - 9-3
 - 9-4
+- 9-5
 - 9-6
 - 10-1
 - 10-2
@@ -122,20 +123,20 @@
 - 18-6
 - 18-7
 - 18-8
+- 20-1
+- 20-2
+- 20-3
+- 20-4
 
 ### ready-for-dev (1)
 - 12-9
 
-### in-progress (10)
+### in-progress (6)
 - 3-17
 - 9-6c
 - 12-3
 - 12-4
 - 12-5
-- 20-1
-- 20-2
-- 20-3
-- 20-4
 - tech-debt
 
 ### deferred (7)
@@ -147,8 +148,7 @@
 - 9-6-followup
 - 21-6
 
-### backlog (28)
-- 9-5
+### backlog (27)
 - 12-6
 - 14-2
 - 14-3
