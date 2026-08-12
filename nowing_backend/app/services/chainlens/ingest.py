@@ -369,6 +369,11 @@ class NowingIngestService:
                     first_chunk = batch[0]
                     first_chunk_dict = _chunk_to_dict(first_chunk)
                     metadata = first_chunk_dict.get("metadata") or {}
+                    response_error = (
+                        exc.response_body.get("error")
+                        if isinstance(exc.response_body, dict)
+                        else str(exc)
+                    )
                     logger.error(
                         "chainlens ingest schema violation — first failing chunk",
                         extra={
@@ -379,7 +384,7 @@ class NowingIngestService:
                             "domain": metadata.get("domain"),
                             "title": metadata.get("title"),
                             "chunk_index": metadata.get("chunkIndex"),
-                            "error": str(exc),
+                            "validation_error": response_error,
                         },
                     )
 

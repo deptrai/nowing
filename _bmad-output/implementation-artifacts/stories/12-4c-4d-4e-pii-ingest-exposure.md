@@ -2,7 +2,7 @@
 title: Story 12.4c+4d+4e — PII Redaction, Chunk Ingest & Aggregator Exposure
 epic: 12
 story: 4c-4d-4e
-status: in-review
+status: code-review-passed
 priority: P0
 ---
 
@@ -61,19 +61,19 @@ Covers epics.md stories **12.4c** (PII) + **12.4d** (ingest) + **12.4e** (exposu
 ## [GAP] — still to build
 
 ### PII gaps (AC-1, AC-2)
-1. **Audit stats logging.** AC-2 requires "audit stats log counts (not values)". `redact_job_pii` returns `.counts` but orchestrator doesn't log them. Add structured log with PII type counts (e.g., `{"phones": 2, "emails": 1}`).
+1. ~~**Audit stats logging.**~~ ✅ Done: `_redact_listing` calls `record_vn_jobs_pii_detected` and logs structured counts.
 2. **NER for person names.** `redact_job_pii` handles phone + email via regex. Person names in JD text need NER or heuristic. Check if `redact_pii` already has name detection — if not, gap from Story 12.5 AC-2.
 
 ### Ingest gaps (AC-3, AC-4, AC-5)
-3. **`sourceId` fingerprint alignment.** AC-3 says `sha256(company|title|location|posted_at)`. Current `_identity_fields()` in `serializer.py:207-214` uses `{title, company, location, salary, employment_type}` — missing `posted_at`, has extra fields. Fix: for job domains, use `{company, title, location, posted_at}` (remove `salary` + `employment_type`, add `posted_at`).
-4. **`salary` + `salary_consistency_score` not in ChunkMetadata.** AC-3 requires both. `ChunkMetadata` doesn't have these fields. Decision: add `salary: dict | None = None` and `salary_consistency_score: float | None = None` to `ChunkMetadata` for job domains, OR document that salary is in-content only (chunk content text includes salary range).
-5. **Dead-letter queue — ALREADY EXISTS.** `ChainLensIngestJob.dead_letter_payload` JSONB column (db.py:4219) stores failed batch payload. Populated in `ingest.py:455`. No new table needed. Gap: add reprocessing/admin endpoint if manual retry is needed.
-6. **`ingestJobId` → Postgres mapping — ALREADY EXISTS.** `ChainLensIngestJob` table (db.py:4183) persists mapping. Route returns `ingest_job_id` (chainlens_internal.py:203). No new code needed.
+3. ~~**`sourceId` fingerprint alignment.**~~ ✅ Done: job-domain uses `{company, title, location, posted_at}`; canonical_id path keeps `canonical_id + posted_at`.
+4. ~~**`salary` + `salary_consistency_score` not in ChunkMetadata.**~~ ✅ Done: both fields added.
+5. **Dead-letter queue — ALREADY EXISTS.** `ChainLensIngestJob.dead_letter_payload` JSONB column (db.py:4219) stores failed batch payload. Populated in `ingest.py:455`. No new table needed. Gap: add reprocessing/admin endpoint if manual retry is needed (optional).
+6. **`ingestJobId` → Postgres mapping — ALREADY EXISTS.** `ChainLensIngestJob` table (db.py:4183) persists mapping. ✅ Exposed in `VnJobAggregateOutput` via executor.
 7. **`chainlens_ingest_failed` counter — ALREADY EXISTS.** Counter in `metrics.py:1174-1178`, called in `ingest.py:367,391`. No new code needed.
 
 ### Exposure gaps (AC-6, AC-7)
-8. **`ingestJobId` not in `VnJobAggregateOutput`.** AC-6 requires it. Output schema has `persistence_status` but no `ingest_job_id`. Add `ingest_job_id: str | None = None`.
-9. **Schema violation handling — PARTIALLY EXISTS.** `NowingIngestService._post_batch_core()` (ingest.py:143) already handles 400/422 as non-retryable `ConnectorAPIError`. Gap: add specific logging of first failing chunk details before failing batch (AC-7 requirement).
+8. ~~**`ingestJobId` not in `VnJobAggregateOutput`.**~~ ✅ Done: `ingest_job_id`, `ingest_status`, `ingested_count`, `noop_count` added. Executor ingests before returning.
+9. ~~**Schema violation handling.**~~ ✅ Done: `NowingIngestService` logs first failing chunk details + `validation_error` from response body on 400/422.
 
 ---
 
@@ -83,26 +83,26 @@ Covers epics.md stories **12.4c** (PII) + **12.4d** (ingest) + **12.4e** (exposu
   - [x] `job_description` + `job_requirement` redacted in orchestrator + chunk serializer
   - [ ] Verify `skills`, `title`, `company` don't carry PII
   - [ ] Add/verify NER for person names
-- [ ] AC-2: Audit logging (AC: #2)
-  - [ ] Log PII redaction counts (structured, no values)
-- [ ] AC-3: Chunk metadata completeness (AC: #3)
+- [x] AC-2: Audit logging (AC: #2)
+  - [x] Log PII redaction counts (structured, no values)
+- [x] AC-3: Chunk metadata completeness (AC: #3)
   - [x] `source`, `domain`, `fetchedAt`, `contentType: 'job'`, `confidence_score`, `conflict_flags`
-  - [ ] Align `sourceId` to `sha256(company|title|location|posted_at)` for job domains
-  - [ ] Add `salary` + `salary_consistency_score` to ChunkMetadata (or document in-content only)
-- [ ] AC-4: Ingest + job mapping (AC: #4)
+  - [x] Align `sourceId` to `sha256(company|title|location|posted_at)` for job domains
+  - [x] Add `salary` + `salary_consistency_score` to ChunkMetadata
+- [x] AC-4: Ingest + job mapping (AC: #4)
   - [x] `NowingIngestService.ingest()` + pagination
   - [x] Persist `ingestJobId` → Postgres mapping (`ChainLensIngestJob` table, db.py:4183)
-- [ ] AC-5: Retry + DLQ + counter (AC: #5)
+- [x] AC-5: Retry + DLQ + counter (AC: #5)
   - [x] Exponential backoff retry
   - [x] DLQ: `ChainLensIngestJob.dead_letter_payload` column (db.py:4219)
   - [x] `chainlens_ingest_failed` counter (metrics.py:1174-1178, called in ingest.py:367,391)
   - [ ] Add admin reprocessing endpoint if manual retry needed (optional)
-- [ ] AC-6: Output includes `ingestJobId` (AC: #6)
-  - [x] REST + MCP + chat all wired
-  - [ ] Add `ingest_job_id: str | None = None` to `VnJobAggregateOutput`
-- [ ] AC-7: Schema violation handling (AC: #7)
+- [x] AC-6: Output includes `ingestJobId` (AC: #6)
+  - [x] REST + MCP + chat all wired via executor
+  - [x] Add `ingest_job_id`, `ingest_status`, `ingested_count`, `noop_count` to `VnJobAggregateOutput`
+- [x] AC-7: Schema violation handling (AC: #7)
   - [x] `NowingIngestService` handles 400/422 as non-retryable `ConnectorAPIError` (ingest.py:143)
-  - [ ] Log first failing chunk details before failing batch
+  - [x] Log first failing chunk details before failing batch
 
 ---
 

@@ -110,7 +110,7 @@ def test_stable_fingerprint_boundary_location_none():
 
 
 def test_identity_fields_uses_canonical_id_when_present():
-    """_identity_fields uses canonical_id when present (overrides other fields)."""
+    """_identity_fields uses canonical_id + posted_at for job domains."""
     data = {
         "canonical_id": "job:123",
         "title": "Data Engineer",
@@ -121,7 +121,7 @@ def test_identity_fields_uses_canonical_id_when_present():
 
     identity = _identity_fields("vn_jobs", data)
 
-    # Should only have canonical_id
-    assert identity == {"canonical_id": "job:123"}
+    # Job-domain identity keeps canonical_id and posted_at (AC-3).
+    assert identity == {"canonical_id": "job:123", "posted_at": "2026-08-11"}
     assert "title" not in identity
     assert "company" not in identity

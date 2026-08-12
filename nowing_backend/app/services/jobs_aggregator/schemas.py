@@ -89,6 +89,9 @@ class VnJobAggregateOutput(BaseModel):
     )
     persistence_message: str | None = None
     ingest_job_id: str | None = None
+    ingest_status: str | None = None
+    ingested_count: int = 0
+    noop_count: int = 0
 
     @computed_field
     @property

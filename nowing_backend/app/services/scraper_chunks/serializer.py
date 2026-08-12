@@ -202,6 +202,13 @@ def _identity_fields(domain: str, data: dict[str, Any]) -> dict[str, Any]:
     """Extract the stable fields that should feed the sourceId fingerprint."""
     canonical_id = _get(data, "canonical_id", "id")
     if canonical_id:
+        # ponytail: for job domains, still include posted_at in the identity
+        # so the fingerprint stays stable across temporal boundaries (AC-3).
+        if _is_job_domain(domain):
+            return {
+                "canonical_id": str(canonical_id),
+                "posted_at": _get(data, "posted_at"),
+            }
         return {"canonical_id": str(canonical_id)}
 
     if _is_job_domain(domain):

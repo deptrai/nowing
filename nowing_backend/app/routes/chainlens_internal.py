@@ -149,6 +149,17 @@ async def run_scraper_for_chainlens(
     ctx = CapabilityContext(session=session, workspace_id=workspace_id)
     output = await execute_with_context(capability.executor, payload=payload, ctx=ctx)
 
+    # AC-6: the vn_jobs.aggregate executor already chunks and ingests the
+    # listings. Avoid double-ingest by using its output directly.
+    if capability_name == "vn_jobs.aggregate" and hasattr(output, "ingest_status"):
+        return _ScraperRunResponse(
+            scraper_id=scraper_id,
+            ingest_job_id=getattr(output, "ingest_job_id", None),
+            status=getattr(output, "ingest_status", "no_items") or "no_items",
+            ingested_count=getattr(output, "ingested_count", 0),
+            noop_count=getattr(output, "noop_count", 0),
+        )
+
     items: list[Any] = []
     if hasattr(output, "items") and isinstance(output.items, list):
         items = output.items
