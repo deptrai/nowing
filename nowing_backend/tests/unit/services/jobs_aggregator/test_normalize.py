@@ -11,6 +11,8 @@ import datetime
 import pytest
 
 from app.services.jobs_aggregator.normalize import (
+    _derive_source_record_id,
+    _infer_salary_period_from_text,
     _normalize_experience,
     _normalize_location,
     _normalize_salary_period,
@@ -408,15 +410,6 @@ def test_parse_salary_zero_zero():
     assert salary.confidence == 0.5
 
 
-def test_parse_salary_hidden_no_data():
-    """No salary text and no numeric fields is hidden."""
-    salary = _parse_salary({})
-    assert salary.min == 0
-    assert salary.max == 0
-    assert salary.period == "hidden"
-    assert salary.confidence == 0.0
-
-
 def test_parse_salary_numeric_no_text():
     """Numeric fields without raw text gives period from mapping and 0.8 confidence."""
     salary = _parse_salary({"salary_min": 30_000_000, "salary_max": 50_000_000})
@@ -466,3 +459,354 @@ def test_normalize_text_strips_and_empty():
     assert _normalize_text("  hello  ") == "hello"
     assert _normalize_text("   ") is None
     assert _normalize_text(None) is None
+
+
+# ===========================================================================
+# Mutation-killing: salary period keywords, post_date formats, parse_salary
+# confidence, experience keywords, derive_source_record_id, normalize_listing
+# ===========================================================================
+
+
+def test_infer_salary_period_all_keywords():
+    """Every period keyword is tested to kill keyword-list mutations."""
+    # hour
+    assert _infer_salary_period_from_text("500k /giờ") == "hour"
+    assert _infer_salary_period_from_text("500k /gio") == "hour"
+    assert _infer_salary_period_from_text("500k /hour") == "hour"
+    assert _infer_salary_period_from_text("500k per hour") == "hour"
+    assert _infer_salary_period_from_text("500k per hr") == "hour"
+    # day
+    assert _infer_salary_period_from_text("200k /ngày") == "day"
+    assert _infer_salary_period_from_text("200k /ngay") == "day"
+    assert _infer_salary_period_from_text("200k /day") == "day"
+    assert _infer_salary_period_from_text("200k per day") == "day"
+    # week
+    assert _infer_salary_period_from_text("2tr /tuần") == "week"
+    assert _infer_salary_period_from_text("2tr /tuan") == "week"
+    assert _infer_salary_period_from_text("2tr /week") == "week"
+    assert _infer_salary_period_from_text("2tr per week") == "week"
+    # month
+    assert _infer_salary_period_from_text("30tr /tháng") == "month"
+    assert _infer_salary_period_from_text("30tr /thang") == "month"
+    assert _infer_salary_period_from_text("30tr /month") == "month"
+    assert _infer_salary_period_from_text("30tr per month") == "month"
+    assert _infer_salary_period_from_text("30tr monthly") == "month"
+    # year
+    assert _infer_salary_period_from_text("500tr /năm") == "year"
+    assert _infer_salary_period_from_text("500tr /nam") == "year"
+    assert _infer_salary_period_from_text("500tr /year") == "year"
+    assert _infer_salary_period_from_text("500tr per year") == "year"
+    assert _infer_salary_period_from_text("500tr annually") == "year"
+
+
+def test_infer_salary_period_none_when_no_keyword():
+    """No keyword → None."""
+    assert _infer_salary_period_from_text("thương lượng") is None
+    assert _infer_salary_period_from_text("competitive") is None
+    assert _infer_salary_period_from_text("") is None
+    assert _infer_salary_period_from_text(None) is None
+
+
+def test_normalize_salary_period_text_overrides_id():
+    """Text inference takes priority over period id."""
+    assert _normalize_salary_period(1, text="30tr /tháng") == "month"
+    assert _normalize_salary_period(3, text="500k /giờ") == "hour"
+    assert _normalize_salary_period(2, text="500tr /năm") == "year"
+
+
+def test_normalize_salary_period_no_text_uses_id():
+    """No text → falls back to id mapping."""
+    assert _normalize_salary_period(1, text=None) == "hour"
+    assert _normalize_salary_period(2, text="") == "month"
+    assert _normalize_salary_period(3) == "year"
+    assert _normalize_salary_period(4) == "year"
+
+
+def test_parse_post_date_datetime():
+    """datetime.datetime → date only."""
+    dt = datetime.datetime(2026, 8, 5, 10, 30, 0)
+    assert _parse_post_date(dt) == datetime.date(2026, 8, 5)
+
+
+def test_parse_post_date_date_passthrough():
+    """datetime.date → passthrough."""
+    d = datetime.date(2026, 8, 5)
+    assert _parse_post_date(d) == d
+
+
+def test_parse_post_date_none():
+    """None → None."""
+    assert _parse_post_date(None) is None
+
+
+def test_parse_post_date_int_parses_as_iso():
+    """Int is converted to string and parsed by fromisoformat (Python 3.12+)."""
+    # Python 3.12+ date.fromisoformat accepts YYYYMMDD format.
+    result = _parse_post_date(20260805)
+    assert result == datetime.date(2026, 8, 5)
+
+
+def test_parse_post_date_today_synonyms():
+    """Today/yesterday synonyms."""
+    today = datetime.date.today()
+    assert _parse_post_date("today") == today
+    assert _parse_post_date("TODAY") == today
+
+
+def test_parse_post_date_n_days_ago():
+    """'N ngày trước' parses correctly."""
+    today = datetime.date.today()
+    assert _parse_post_date("3 ngày trước") == today - datetime.timedelta(days=3)
+    assert _parse_post_date("10 ngày trước") == today - datetime.timedelta(days=10)
+
+
+def test_parse_post_date_dmy_format():
+    """DD/MM/YYYY and DD-MM-Y formats."""
+    assert _parse_post_date("05/08/2026") == datetime.date(2026, 8, 5)
+    assert _parse_post_date("05-08-2026") == datetime.date(2026, 8, 5)
+
+
+def test_parse_post_date_iso_format():
+    """ISO format YYYY-MM-DD."""
+    assert _parse_post_date("2026-08-05") == datetime.date(2026, 8, 5)
+
+
+def test_parse_post_date_iso_fromisoformat():
+    """date.fromisoformat fallback."""
+    assert _parse_post_date("20260805") == datetime.date(2026, 8, 5)
+
+
+def test_parse_salary_negotiable_text():
+    """Negotiable text → period negotiable, confidence 0.5."""
+    salary = _parse_salary({"salary_raw": "Thương lượng", "salary_min": 0, "salary_max": 0})
+    assert salary.period == "negotiable"
+    assert salary.confidence == 0.5
+
+
+def test_parse_salary_negotiable_english():
+    """English negotiable text."""
+    salary = _parse_salary({"salary_raw": "Negotiable", "salary_min": 0, "salary_max": 0})
+    assert salary.period == "negotiable"
+    assert salary.confidence == 0.5
+
+
+def test_parse_salary_hidden_no_data():
+    """No salary text and no numeric fields → hidden."""
+    salary = _parse_salary({})
+    assert salary.period == "hidden"
+    assert salary.confidence == 0.0
+    assert salary.min == 0
+    assert salary.max == 0
+
+
+def test_parse_salary_min_only_confidence_07():
+    """Min only (max=0) → confidence 0.7."""
+    salary = _parse_salary({"salary_raw": "Từ 30tr", "salary_min": 30000000, "salary_max": 0})
+    assert salary.min == 30000000
+    assert salary.max is None
+    assert salary.confidence == 0.7
+
+
+def test_parse_salary_both_present_confidence_08():
+    """Both min and max → confidence 0.8."""
+    salary = _parse_salary({"salary_raw": "30-50tr", "salary_min": 30000000, "salary_max": 50000000})
+    assert salary.min == 30000000
+    assert salary.max == 50000000
+    assert salary.confidence == 0.8
+
+
+def test_parse_salary_min_zero_max_positive():
+    """Min=0, max>0 → min becomes None, confidence 0.8."""
+    salary = _parse_salary({"salary_raw": "Lên đến 50tr", "salary_min": 0, "salary_max": 50000000})
+    assert salary.min is None
+    assert salary.max == 50000000
+    assert salary.confidence == 0.8
+
+
+def test_parse_salary_currency_default_vnd():
+    """Currency defaults to VND."""
+    salary = _parse_salary({})
+    assert salary.currency == "VND"
+
+
+def test_parse_salary_currency_from_raw():
+    """Currency from raw field."""
+    salary = _parse_salary({"salary_currency": "USD", "salary_min": 800, "salary_max": 1200})
+    assert salary.currency == "USD"
+
+
+def test_parse_salary_period_from_text_overrides_id():
+    """Period is inferred from text even when salary_period_id says something else."""
+    salary = _parse_salary({
+        "salary_raw": "30tr /tháng",
+        "salary_min": 30000000,
+        "salary_max": 50000000,
+        "salary_period_id": 1,  # says hour
+    })
+    assert salary.period == "month"
+
+
+def test_parse_salary_no_text_numeric_fields():
+    """No text but numeric fields → period from id, confidence 0.6."""
+    salary = _parse_salary({"salary_min": 30000000, "salary_max": 50000000, "salary_period_id": 2})
+    assert salary.period == "month"
+    # Both present → confidence 0.8 (overrides the 0.6 from the branch)
+    assert salary.confidence == 0.8
+
+
+def test_normalize_experience_no_experience_keywords():
+    """All 'no experience' keywords return 0."""
+    assert _normalize_experience("Không yêu cầu") == 0
+    assert _normalize_experience("no experience") == 0
+    assert _normalize_experience("khong yeu cau") == 0
+    assert _normalize_experience("entry") == 0
+    assert _normalize_experience("ENTRY LEVEL") == 0
+
+
+def test_normalize_experience_with_years_text():
+    """Various experience text formats."""
+    assert _normalize_experience("3 years") == 3
+    assert _normalize_experience("5+ years") == 5
+    assert _normalize_experience("3 năm") == 3
+    assert _normalize_experience("over 7 years") == 7
+
+
+def test_normalize_experience_bool_returns_none():
+    """Boolean input returns None (not int passthrough)."""
+    assert _normalize_experience(True) is None
+    assert _normalize_experience(False) is None
+
+
+def test_normalize_experience_negative_int():
+    """Negative int passes through (we don't guard against it)."""
+    assert _normalize_experience(-1) == -1
+
+
+def test_normalize_experience_float_truncates():
+    """Float truncates to int."""
+    assert _normalize_experience(3.9) == 3
+    assert _normalize_experience(0.5) == 0
+
+
+def test_normalize_experience_no_digits():
+    """Text without digits returns None."""
+    assert _normalize_experience("senior") is None
+    assert _normalize_experience("experienced") is None
+
+
+def test_derive_source_record_id_with_id():
+    """Raw with 'id' field returns str(id)."""
+    raw = {"id": 123, "title": "Dev"}
+    assert _derive_source_record_id("vietnamworks", raw) == "123"
+
+
+def test_derive_source_record_id_string_id():
+    """String id passes through."""
+    raw = {"id": "vw:456", "title": "Dev"}
+    assert _derive_source_record_id("vietnamworks", raw) == "vw:456"
+
+
+def test_derive_source_record_id_no_id_generates_hash():
+    """Missing id → deterministic hash prefixed with source."""
+    raw = {"title": "Dev", "company": "FPT"}
+    rid = _derive_source_record_id("vietnamworks", raw)
+    assert rid.startswith("vietnamworks:")
+    # Same input → same hash
+    assert rid == _derive_source_record_id("vietnamworks", raw)
+
+
+def test_derive_source_record_id_different_source_different_hash():
+    """Different source → different hash."""
+    raw = {"title": "Dev", "company": "FPT"}
+    assert _derive_source_record_id("vietnamworks", raw) != _derive_source_record_id("topcv", raw)
+
+
+def test_derive_source_record_id_different_raw_different_hash():
+    """Different raw → different hash."""
+    raw1 = {"title": "Dev", "company": "FPT"}
+    raw2 = {"title": "QA", "company": "FPT"}
+    assert _derive_source_record_id("vietnamworks", raw1) != _derive_source_record_id("vietnamworks", raw2)
+
+
+def test_normalize_listing_full():
+    """Full normalize_listing with all fields."""
+    raw = {
+        "id": "vw:1",
+        "title": "Senior Data Engineer",
+        "company": "FPT",
+        "location": "Hà Nội",
+        "employment_type": "full_time",
+        "experience_years": "3+ years",
+        "skills": ["Python", "SQL"],
+        "salary_raw": "30-50 triệu /tháng",
+        "salary_min": 30000000,
+        "salary_max": 50000000,
+        "salary_currency": "VND",
+        "salary_period_id": 2,
+        "posted_at": "2026-08-05",
+        "job_description": "Build data pipelines",
+        "job_requirement": "3 years exp",
+        "source_url": "https://vw.com/1",
+    }
+    listing = normalize_listing("vietnamworks", raw)
+    assert listing.id == "vw:1"
+    assert listing.title == "Senior Data Engineer"
+    assert listing.company == "FPT"
+    assert listing.location == "HN"
+    assert listing.employment_type == "full_time"
+    assert listing.experience_years == 3
+    assert "Python" in listing.skills
+    assert listing.salary.min == 30000000
+    assert listing.salary.max == 50000000
+    assert listing.salary.period == "month"
+    assert listing.posted_at == datetime.date(2026, 8, 5)
+    assert listing.job_description == "Build data pipelines"
+    assert listing.job_requirement == "3 years exp"
+    assert listing.source_urls == ["https://vw.com/1"]
+    assert listing.confidence_score == 0.6
+    assert listing._source_record_ids == {"vietnamworks": "vw:1"}
+    assert listing._source_url_map == {"vietnamworks": "https://vw.com/1"}
+
+
+def test_normalize_listing_empty_title_low_confidence():
+    """Empty title → confidence_score 0.3."""
+    raw = {"id": "1", "title": "", "company": "FPT"}
+    listing = normalize_listing("vietnamworks", raw)
+    assert listing.confidence_score == 0.3
+
+
+def test_normalize_listing_empty_company_low_confidence():
+    """Empty company → confidence_score 0.3."""
+    raw = {"id": "1", "title": "Dev", "company": ""}
+    listing = normalize_listing("vietnamworks", raw)
+    assert listing.confidence_score == 0.3
+
+
+def test_normalize_listing_no_source_url():
+    """Missing source_url → empty source_urls list, no _source_url_map."""
+    raw = {"id": "1", "title": "Dev", "company": "FPT"}
+    listing = normalize_listing("vietnamworks", raw)
+    assert listing.source_urls == []
+    assert listing._source_url_map == {}
+
+
+def test_normalize_listing_skills_default_empty():
+    """Missing skills → empty list."""
+    raw = {"id": "1", "title": "Dev", "company": "FPT"}
+    listing = normalize_listing("vietnamworks", raw)
+    assert listing.skills == []
+
+
+def test_normalize_listing_provenance_set():
+    """_source_record_ids is set to {source: listing_id}."""
+    raw = {"id": "vw:1", "title": "Dev", "company": "FPT"}
+    listing = normalize_listing("vietnamworks", raw)
+    assert listing._source_record_ids == {"vietnamworks": "vw:1"}
+
+
+def test_normalize_listing_missing_id_uses_hash():
+    """Missing id → hash-based listing_id."""
+    raw = {"title": "Dev", "company": "FPT"}
+    listing = normalize_listing("vietnamworks", raw)
+    assert listing.id.startswith("vietnamworks:")
+    assert listing._source_record_ids == {"vietnamworks": listing.id}

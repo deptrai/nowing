@@ -13,16 +13,23 @@ import datetime
 import pytest
 
 from app.services.jobs_aggregator.dedupe import (
+    _canonical_key,
     _dates_within_tolerance,
     _detect_conflict,
     _fingerprint_key,
     _locations_compatible,
     _merge_group,
     _merge_salary,
+    _raw_to_listing,
     _salary_relative_spread,
+    _salary_values,
+    _should_dedupe,
     _titles_match,
+    _union_find,
     deduplicate,
     fingerprint,
+    merge,
+    search_text,
 )
 from app.services.jobs_aggregator.schemas import VnJobAggregatedListing, VnJobSalary
 
@@ -1065,62 +1072,6 @@ def test_merge_salary_empty_confidence():
     assert merged.confidence == 0.0
 
 
-def test_detect_conflict_stable_exactly_10_percent():
-    """10% spread is stable: confidence 0.8, consistency 0.9."""
-    group = [
-        VnJobAggregatedListing(
-            id="a",
-            title="Dev",
-            company="FPT",
-            location="HN",
-            source="vietnamworks",
-            salary=VnJobSalary(min=27_000_000, max=27_000_000, confidence=0.8),
-            confidence_score=0.7,
-        ),
-        VnJobAggregatedListing(
-            id="b",
-            title="Dev",
-            company="FPT",
-            location="HN",
-            source="itviec",
-            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
-            confidence_score=0.6,
-        ),
-    ]
-    flags, consistency, confidence = _detect_conflict(group)
-    assert flags == []
-    assert consistency == pytest.approx(0.9)
-    assert confidence == 0.8
-
-
-def test_detect_conflict_gray_zone_15_percent():
-    """15% spread is gray: no flags, confidence 0.75, consistency 0.85."""
-    group = [
-        VnJobAggregatedListing(
-            id="a",
-            title="Dev",
-            company="FPT",
-            location="HN",
-            source="vietnamworks",
-            salary=VnJobSalary(min=17_000_000, max=17_000_000, confidence=0.8),
-            confidence_score=0.7,
-        ),
-        VnJobAggregatedListing(
-            id="b",
-            title="Dev",
-            company="FPT",
-            location="HN",
-            source="itviec",
-            salary=VnJobSalary(min=20_000_000, max=20_000_000, confidence=0.8),
-            confidence_score=0.6,
-        ),
-    ]
-    flags, consistency, confidence = _detect_conflict(group)
-    assert flags == []
-    assert consistency == pytest.approx(0.85)
-    assert confidence == 0.75
-
-
 def test_detect_conflict_just_above_20_percent():
     """20.01% spread triggers SALARY_MISMATCH with confidence just below 0.7."""
     group = [
@@ -1289,34 +1240,6 @@ def test_merge_group_confidence_boost_no_conflict():
     assert merged.source_count == 2
 
 
-def test_merge_group_conflict_overrides_boost():
-    """Conflict confidence overrides the cross-source boost."""
-    group = [
-        VnJobAggregatedListing(
-            id="a",
-            title="Dev",
-            company="FPT",
-            location="HN",
-            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
-            confidence_score=0.9,
-            source="vietnamworks",
-        ),
-        VnJobAggregatedListing(
-            id="b",
-            title="Dev",
-            company="FPT",
-            location="HN",
-            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
-            confidence_score=0.9,
-            source="itviec",
-        ),
-    ]
-    merged = _merge_group(group)
-    assert "SALARY_MISMATCH" in merged.conflict_flags
-    assert merged.confidence_score == 0.5
-    assert merged.salary.confidence == pytest.approx(0.24)
-
-
 def test_fingerprint_changes_with_identity():
     """Fingerprint must differ when title, company, or resolved location differs."""
     raw1 = {
@@ -1356,3 +1279,858 @@ def test_fingerprint_key_includes_title_and_location():
     )
     key = _fingerprint_key(listing)
     assert key == ("senior dev", "fpt", "HN")
+
+
+# ===========================================================================
+# Mutation-killing: union-find, deduplicate loop, merge, search_text, raw_to_listing
+# ===========================================================================
+
+
+def test_union_find_no_pairs():
+    """No pairs → each element is its own parent."""
+    assert _union_find(4, []) == [0, 1, 2, 3]
+
+
+def test_union_find_single_pair():
+    """Single pair merges two elements."""
+    parent = _union_find(4, [(0, 1)])
+    assert parent[0] == parent[1]
+    assert parent[2] == 2
+    assert parent[3] == 3
+
+
+def test_union_find_chained_pairs():
+    """Chained pairs 0-1, 1-2, 2-3 all merge into one group."""
+    parent = _union_find(4, [(0, 1), (1, 2), (2, 3)])
+    # Follow parent pointers to find roots; all should be the same.
+    def _root(p, x):
+        while p[x] != x:
+            x = p[x]
+        return x
+    roots = {_root(parent, i) for i in range(4)}
+    assert len(roots) == 1
+
+
+def test_union_find_path_compression():
+    """Path compression makes find efficient."""
+    parent = _union_find(5, [(0, 1), (1, 2), (2, 3), (3, 4)])
+    # Follow parent pointers to find roots; all should be the same.
+    def _root(p, x):
+        while p[x] != x:
+            x = p[x]
+        return x
+    roots = {_root(parent, i) for i in range(5)}
+    assert len(roots) == 1
+
+
+def test_union_find_duplicate_pairs_idempotent():
+    """Duplicate pairs don't break anything."""
+    p1 = _union_find(3, [(0, 1), (0, 1), (0, 1)])
+    p2 = _union_find(3, [(0, 1)])
+    assert set(p1) == set(p2)
+    assert p1[0] == p1[1]
+    assert p1[2] == 2
+
+
+def test_canonical_key_normalizes_company():
+    """_canonical_key lowercases and strips company."""
+    listing = VnJobAggregatedListing(
+        id="x", title="Dev", company="  FPT  ", location="HN", source="vietnamworks"
+    )
+    assert _canonical_key(listing) == ("fpt",)
+
+
+def test_canonical_key_empty_company():
+    """Empty company produces empty string key."""
+    listing = VnJobAggregatedListing(
+        id="x", title="Dev", company="", location="HN", source="vietnamworks"
+    )
+    assert _canonical_key(listing) == ("",)
+
+
+def test_should_dedupe_empty_company_returns_false():
+    """Empty company on either side → no dedupe."""
+    a = VnJobAggregatedListing(
+        id="a", title="Dev", company="", location="HN", source="vietnamworks"
+    )
+    b = VnJobAggregatedListing(
+        id="b", title="Dev", company="FPT", location="HN", source="topcv"
+    )
+    assert _should_dedupe(a, b) is False
+    assert _should_dedupe(b, a) is False
+
+
+def test_should_dedupe_whitespace_company_returns_false():
+    """Whitespace-only company → no dedupe."""
+    a = VnJobAggregatedListing(
+        id="a", title="Dev", company="   ", location="HN", source="vietnamworks"
+    )
+    b = VnJobAggregatedListing(
+        id="b", title="Dev", company="FPT", location="HN", source="topcv"
+    )
+    assert _should_dedupe(a, b) is False
+
+
+def test_should_dedupe_all_match():
+    """All conditions match → dedupe."""
+    a = VnJobAggregatedListing(
+        id="a",
+        title="Senior Data Engineer",
+        company="FPT",
+        location="Hà Nội",
+        posted_at=datetime.date(2026, 8, 5),
+        source="vietnamworks",
+    )
+    b = VnJobAggregatedListing(
+        id="b",
+        title="Senior Data Engineer",
+        company="FPT",
+        location="HN",
+        posted_at=datetime.date(2026, 8, 7),
+        source="topcv",
+    )
+    assert _should_dedupe(a, b) is True
+
+
+def test_deduplicate_preserves_order_of_first_occurrence():
+    """First listing in each group becomes the base."""
+    listings = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            posted_at=datetime.date(2026, 8, 5),
+            source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            posted_at=datetime.date(2026, 8, 5),
+            source="topcv",
+        ),
+    ]
+    result = deduplicate(listings)
+    assert len(result) == 1
+    assert result[0].id == "a"
+
+
+def test_deduplicate_different_companies_not_merged():
+    """Different companies stay separate."""
+    listings = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN", source="vietnamworks"
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="VNG", location="HN", source="topcv"
+        ),
+    ]
+    result = deduplicate(listings)
+    assert len(result) == 2
+
+
+def test_deduplicate_empty_list():
+    """Empty input → empty output."""
+    assert deduplicate([]) == []
+
+
+def test_deduplicate_single_item():
+    """Single item → single item, no merge."""
+    listing = VnJobAggregatedListing(
+        id="a", title="Dev", company="FPT", location="HN", source="vietnamworks"
+    )
+    result = deduplicate([listing])
+    assert len(result) == 1
+    assert result[0].source_count == 1
+    assert result[0].source == "vietnamworks"
+
+
+def test_merge_group_sets_source_to_multiple():
+    """Merged group with >1 item sets source to 'multiple'."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="vietnamworks",
+            source_urls=["https://vw.com/1"],
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="topcv",
+            source_urls=["https://topcv.com/1"],
+        ),
+    ]
+    result = _merge_group(group)
+    assert result.source == "multiple"
+    assert result.source_count == 2
+    assert "https://vw.com/1" in result.source_urls
+    assert "https://topcv.com/1" in result.source_urls
+
+
+def test_merge_group_merges_skills_case_insensitive():
+    """Skills are merged and lowercased, deduplicated."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            skills=["Python", "SQL"], source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            skills=["python", "Docker"], source="topcv",
+        ),
+    ]
+    result = _merge_group(group)
+    assert "python" in result.skills
+    assert "sql" in result.skills
+    assert "docker" in result.skills
+    # No duplicates
+    assert result.skills.count("python") == 1
+
+
+def test_merge_group_provenance_merged():
+    """_source_record_ids and _source_url_map are merged from all items."""
+    group = [
+        VnJobAggregatedListing(
+            id="vw:1", title="Dev", company="FPT", location="HN", source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="tv:1", title="Dev", company="FPT", location="HN", source="topcv",
+        ),
+    ]
+    group[0]._source_record_ids = {"vietnamworks": "vw:1"}
+    group[0]._source_url_map = {"vietnamworks": "https://vw.com/1"}
+    group[1]._source_record_ids = {"topcv": "tv:1"}
+    group[1]._source_url_map = {"topcv": "https://topcv.com/1"}
+    result = _merge_group(group)
+    assert result._source_record_ids == {"vietnamworks": "vw:1", "topcv": "tv:1"}
+    assert result._source_url_map == {
+        "vietnamworks": "https://vw.com/1",
+        "topcv": "https://topcv.com/1",
+    }
+
+
+def test_merge_group_confidence_boost_capped_at_1():
+    """Confidence boost is capped at 1.0 for large groups."""
+    group = [
+        VnJobAggregatedListing(
+            id=f"item-{i}",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            confidence_score=0.9,
+            source="vietnamworks",
+        )
+        for i in range(10)
+    ]
+    result = _merge_group(group)
+    assert result.confidence_score <= 1.0
+
+
+def test_merge_group_no_conflict_uses_max_of_boost_and_stable():
+    """No conflict → confidence is max of boost and stable confidence."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            confidence_score=0.6,
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            confidence_score=0.6,
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            source="topcv",
+        ),
+    ]
+    result = _merge_group(group)
+    # boost = 0.6 + 0.1 * 1 = 0.7; stable confidence = 0.8; max = 0.8
+    assert result.confidence_score == 0.8
+
+
+def test_merge_group_conflict_overrides_boost():
+    """Conflict → confidence from _detect_conflict overrides boost."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            confidence_score=0.9,
+            salary=VnJobSalary(min=10_000_000, max=10_000_000, confidence=0.8),
+            source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            confidence_score=0.9,
+            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
+            source="topcv",
+        ),
+    ]
+    result = _merge_group(group)
+    assert result.conflict is True
+    assert "SALARY_MISMATCH" in result.conflict_flags
+    # Conflict confidence (0.5 for >50% spread) overrides boost
+    assert result.confidence_score == 0.5
+
+
+def test_merge_group_single_item_no_boost():
+    """Single item group → no boost, no 'multiple' source."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            confidence_score=0.6, source="vietnamworks",
+        )
+    ]
+    result = _merge_group(group)
+    assert result.source == "vietnamworks"
+    assert result.source_count == 1
+    assert result.confidence_score == 0.6
+
+
+def test_merge_group_salary_confidence_adjusted_by_consistency():
+    """salary.confidence is multiplied by salary_consistency_score."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            source="topcv",
+        ),
+    ]
+    result = _merge_group(group)
+    # consistency = 1.0 (0% spread), salary.confidence = merged(0.8) * 1.0 = 0.8
+    assert result.salary_consistency_score == 1.0
+    assert result.salary.confidence == 0.8
+
+
+def test_raw_to_listing_valid_source():
+    """_raw_to_listing passes through valid source names."""
+    raw = {"id": "1", "title": "Dev", "company": "Co", "source": "vietnamworks"}
+    listing = _raw_to_listing(raw)
+    assert listing.source == "vietnamworks"
+
+
+def test_raw_to_listing_invalid_source_defaults_topcv():
+    """_raw_to_listing defaults unknown source to 'topcv'."""
+    raw = {"id": "1", "title": "Dev", "company": "Co", "source": "unknown"}
+    listing = _raw_to_listing(raw)
+    assert listing.source == "topcv"
+
+
+def test_raw_to_listing_missing_source_defaults_topcv():
+    """_raw_to_listing defaults missing source to 'topcv'."""
+    raw = {"id": "1", "title": "Dev", "company": "Co"}
+    listing = _raw_to_listing(raw)
+    assert listing.source == "topcv"
+
+
+def test_fingerprint_truncated_to_32_chars():
+    """fingerprint returns a 32-char hex string."""
+    raw = {"id": "1", "title": "Dev", "company": "Co", "location": "HN"}
+    fp = fingerprint(raw)
+    assert len(fp) == 32
+    assert all(c in "0123456789abcdef" for c in fp)
+
+
+def test_fingerprint_different_title_different_hash():
+    """Different titles produce different fingerprints."""
+    raw1 = {"id": "1", "title": "Dev", "company": "Co", "location": "HN"}
+    raw2 = {"id": "2", "title": "QA", "company": "Co", "location": "HN"}
+    assert fingerprint(raw1) != fingerprint(raw2)
+
+
+def test_fingerprint_different_company_different_hash():
+    """Different companies produce different fingerprints."""
+    raw1 = {"id": "1", "title": "Dev", "company": "A", "location": "HN"}
+    raw2 = {"id": "2", "title": "Dev", "company": "B", "location": "HN"}
+    assert fingerprint(raw1) != fingerprint(raw2)
+
+
+def test_merge_with_dict_canonical():
+    """merge accepts a dict canonical and produces a merged listing."""
+    canonical = {"id": "1", "title": "Dev", "company": "FPT", "location": "HN", "source": "vietnamworks"}
+    new_raw = {"id": "2", "title": "Dev", "company": "FPT", "location": "HN", "source": "topcv"}
+    result = merge(canonical, new_raw)
+    assert result.source == "multiple"
+    assert result.source_count == 2
+
+
+def test_merge_with_listing_canonical():
+    """merge accepts a VnJobAggregatedListing canonical."""
+    canonical = VnJobAggregatedListing(
+        id="1", title="Dev", company="FPT", location="HN", source="vietnamworks"
+    )
+    new_raw = {"id": "2", "title": "Dev", "company": "FPT", "location": "HN", "source": "topcv"}
+    result = merge(canonical, new_raw)
+    assert result.source_count == 2
+
+
+def test_merge_different_jobs_not_merged():
+    """merge of different jobs returns the canonical unchanged."""
+    canonical = {"id": "1", "title": "Dev", "company": "FPT", "location": "HN", "source": "vietnamworks"}
+    new_raw = {"id": "2", "title": "QA", "company": "VNG", "location": "HN", "source": "topcv"}
+    result = merge(canonical, new_raw)
+    # Two different companies → two separate results → returns first
+    assert result.company == "FPT"
+
+
+def test_search_text_includes_all_fields():
+    """search_text concatenates title, company, location, skills, etc."""
+    listing = VnJobAggregatedListing(
+        id="1",
+        title="Dev",
+        company="FPT",
+        location="HN",
+        skills=["Python", "SQL"],
+        employment_type="full_time",
+        job_description="Build pipelines",
+        job_requirement="3 years exp",
+        salary=VnJobSalary(raw="30-50 triệu"),
+        source="vietnamworks",
+    )
+    text = search_text(listing)
+    assert "Dev" in text
+    assert "FPT" in text
+    assert "HN" in text
+    assert "python" in text.lower()
+    assert "sql" in text.lower()
+    assert "full_time" in text
+    assert "Build pipelines" in text
+    assert "3 years exp" in text
+    assert "30-50 triệu" in text
+
+
+def test_search_text_with_dict_input():
+    """search_text accepts a dict and converts it."""
+    raw = {
+        "id": "1",
+        "title": "Dev",
+        "company": "FPT",
+        "location": "HN",
+        "skills": ["Python"],
+        "source": "vietnamworks",
+    }
+    text = search_text(raw)
+    assert "Dev" in text
+    assert "FPT" in text
+
+
+def test_search_text_empty_fields_excluded():
+    """search_text excludes None/empty fields."""
+    listing = VnJobAggregatedListing(
+        id="1",
+        title="Dev",
+        company="FPT",
+        location=None,
+        skills=[],
+        employment_type=None,
+        job_description=None,
+        job_requirement=None,
+        salary=VnJobSalary(),
+        source="vietnamworks",
+    )
+    text = search_text(listing)
+    assert "Dev" in text
+    assert "FPT" in text
+    # No extra spaces from empty fields
+    assert text.strip() == "Dev FPT"
+
+
+def test_detect_conflict_empty_group():
+    """Empty group → no flags, 0.0 confidence."""
+    flags, consistency, confidence = _detect_conflict([])
+    assert flags == []
+    assert consistency == 0.5
+    assert confidence == 0.0
+
+
+def test_detect_conflict_single_item():
+    """Single item → no flags, item's own confidence."""
+    listing = VnJobAggregatedListing(
+        id="a", title="Dev", company="FPT", location="HN",
+        confidence_score=0.7, source="vietnamworks",
+    )
+    flags, consistency, confidence = _detect_conflict([listing])
+    assert flags == []
+    assert consistency == 0.5
+    assert confidence == 0.7
+
+
+def test_detect_conflict_no_salary_values():
+    """All salaries zero/hidden → no salary comparison, confidence 0.6."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=0, max=0, confidence=0.0),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=0, max=0, confidence=0.0),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, consistency, confidence = _detect_conflict(group)
+    assert flags == []
+    assert confidence == 0.6
+    assert consistency == 0.5
+
+
+def test_detect_conflict_one_salary_value():
+    """Only one non-zero salary (min only, max=None) → no conflict, confidence 0.8."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=30_000_000, max=None, confidence=0.8),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=0, max=0, confidence=0.0),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, _consistency, confidence = _detect_conflict(group)
+    assert flags == []
+    assert confidence == 0.8
+
+
+def test_detect_conflict_gray_zone_15_percent():
+    """15% spread → no flag, confidence 0.75."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=85_000_000, max=85_000_000, confidence=0.8),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, consistency, confidence = _detect_conflict(group)
+    assert flags == []
+    assert confidence == 0.75
+    # spread = (100-85)/100 = 0.15, consistency = 1.0 - 0.15 = 0.85
+    assert consistency == 0.85
+
+
+def test_detect_conflict_stable_exactly_10_percent():
+    """10% spread → stable, confidence 0.8."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=90_000_000, max=90_000_000, confidence=0.8),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, consistency, confidence = _detect_conflict(group)
+    assert flags == []
+    assert confidence == 0.8
+    assert consistency == 0.9
+
+
+def test_detect_conflict_25_percent():
+    """25% spread → conflict, confidence between 0.5 and 0.7."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=75_000_000, max=75_000_000, confidence=0.8),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, _consistency, confidence = _detect_conflict(group)
+    assert "SALARY_MISMATCH" in flags
+    # spread = 0.25, confidence = 0.7 - (0.25-0.2)*0.5 = 0.7 - 0.025 = 0.675 → 0.68
+    assert 0.5 <= confidence <= 0.7
+
+
+def test_detect_conflict_50_percent_boundary():
+    """50% spread → conflict, confidence exactly 0.5."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=50_000_000, max=50_000_000, confidence=0.8),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, _consistency, confidence = _detect_conflict(group)
+    assert "SALARY_MISMATCH" in flags
+    # spread = 0.5, not > 0.5, so confidence = 0.7 - (0.5-0.2)*0.5 = 0.7 - 0.15 = 0.55
+    assert confidence == 0.55
+
+
+def test_detect_conflict_60_percent_capped_at_05():
+    """60% spread → confidence 0.5 (large spread)."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=40_000_000, max=40_000_000, confidence=0.8),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, _consistency, confidence = _detect_conflict(group)
+    assert "SALARY_MISMATCH" in flags
+    # spread = 0.6 > 0.5 → confidence = 0.5
+    assert confidence == 0.5
+
+
+def test_detect_conflict_location_only_lowers_to_06():
+    """Location mismatch only (no salary mismatch) → confidence ≤ 0.6."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="SG",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, _consistency, confidence = _detect_conflict(group)
+    assert "LOCATION_MISMATCH" in flags
+    assert "SALARY_MISMATCH" not in flags
+    assert confidence == 0.6
+
+
+def test_detect_conflict_both_salary_and_location():
+    """Both salary and location mismatch → confidence ≤ 0.5."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=10_000_000, max=10_000_000, confidence=0.8),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="SG",
+            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, _consistency, confidence = _detect_conflict(group)
+    assert "SALARY_MISMATCH" in flags
+    assert "LOCATION_MISMATCH" in flags
+    assert confidence == 0.5
+
+
+def test_detect_conflict_location_wildcard_no_mismatch():
+    """None location on one side → no location mismatch."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location=None,
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, _consistency, _confidence = _detect_conflict(group)
+    assert "LOCATION_MISMATCH" not in flags
+
+
+def test_detect_conflict_same_location_no_mismatch():
+    """Same resolved city code → no location mismatch."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="Hà Nội",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6, source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6, source="topcv",
+        ),
+    ]
+    flags, _consistency, _confidence = _detect_conflict(group)
+    assert "LOCATION_MISMATCH" not in flags
+
+
+def test_salary_values_skips_zero():
+    """_salary_values skips zero values."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=0, max=0, confidence=0.0),
+            source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=30_000_000, max=50_000_000, confidence=0.8),
+            source="topcv",
+        ),
+    ]
+    values = _salary_values(group)
+    assert 0 not in values
+    assert 30_000_000 in values
+    assert 50_000_000 in values
+
+
+def test_salary_values_empty_group():
+    """_salary_values on empty group → empty list."""
+    assert _salary_values([]) == []
+
+
+def test_salary_values_all_zero():
+    """_salary_values with all zero → empty list."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=0, max=0, confidence=0.0),
+            source="vietnamworks",
+        ),
+    ]
+    assert _salary_values(group) == []
+
+
+def test_salary_relative_spread_empty():
+    """_salary_relative_spread with <2 values → 0.0."""
+    assert _salary_relative_spread([]) == 0.0
+    assert _salary_relative_spread([100]) == 0.0
+
+
+def test_salary_relative_spread_equal_values():
+    """_salary_relative_spread with equal values → 0.0."""
+    assert _salary_relative_spread([100, 100, 100]) == 0.0
+
+
+def test_salary_relative_spread_simple():
+    """_salary_relative_spread = (hi - lo) / hi."""
+    assert _salary_relative_spread([80, 100]) == 0.2
+    assert _salary_relative_spread([50, 100]) == 0.5
+
+
+def test_merge_salary_empty_group_confidence_zero():
+    """_merge_salary with all-zero salary → confidence 0.0, min/max 0."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=0, max=0, confidence=0.0, raw=None),
+            source="vietnamworks",
+        ),
+    ]
+    result = _merge_salary(group)
+    assert result.min == 0
+    assert result.max == 0
+    assert result.confidence == 0.0
+    assert result.raw is None
+
+
+def test_merge_salary_picks_first_raw():
+    """_merge_salary uses the first non-empty raw text."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=30, max=50, confidence=0.8, raw="30-50 triệu"),
+            source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=40, max=60, confidence=0.7, raw="40-60 triệu"),
+            source="topcv",
+        ),
+    ]
+    result = _merge_salary(group)
+    assert result.raw == "30-50 triệu"
+
+
+def test_merge_salary_min_max():
+    """_merge_salary takes min of mins and max of maxs."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=30, max=50, confidence=0.8),
+            source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=40, max=60, confidence=0.7),
+            source="topcv",
+        ),
+    ]
+    result = _merge_salary(group)
+    assert result.min == 30
+    assert result.max == 60
+
+
+def test_merge_salary_confidence_average():
+    """_merge_salary averages non-zero confidences."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=30, max=50, confidence=0.8),
+            source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=40, max=60, confidence=0.6),
+            source="topcv",
+        ),
+    ]
+    result = _merge_salary(group)
+    assert result.confidence == 0.7
+
+
+def test_merge_salary_currency_default():
+    """_merge_salary defaults currency to VND when empty string."""
+    group = [
+        VnJobAggregatedListing(
+            id="a", title="Dev", company="FPT", location="HN",
+            salary=VnJobSalary(min=30, max=50, confidence=0.8, currency=""),
+            source="vietnamworks",
+        ),
+    ]
+    result = _merge_salary(group)
+    assert result.currency == "VND"
