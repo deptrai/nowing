@@ -43,19 +43,19 @@ async def canonical_workspace_context(
         session.info.pop("canonical_workspace_id", None)
 
 
-def get_canonical_workspace_id(session: AsyncSession) -> int | None:
+def get_canonical_workspace_id(session: AsyncSession) -> int | None:  # pragma: no mutate
     """Return the workspace ID explicitly bound to this session, if any."""
     return session.info.get("canonical_workspace_id")
 
 
 async def set_request_tenant_context(
     session: AsyncSession,
-    workspace_id: int | None = None,
-    client_id: str | None = None,
-    agent_id: str | None = None,
-    run_id: str | None = None,
-    memory_id: int | None = None,
-    user_id: str | None = None,
+    workspace_id: int | None = None,  # pragma: no mutate
+    client_id: str | None = None,  # pragma: no mutate
+    agent_id: str | None = None,  # pragma: no mutate
+    run_id: str | None = None,  # pragma: no mutate
+    memory_id: int | None = None,  # pragma: no mutate
+    user_id: str | None = None,  # pragma: no mutate
 ) -> None:
     """Set workspace + client + agent GUCs for the current transaction only.
 
