@@ -193,6 +193,7 @@ def client(monkeypatch, fake_session):
 
     # Disable Redis for rate-limit by forcing in-memory path.
     monkeypatch.setattr(sh_mod, "_redis_client", Mock(side_effect=Exception("no redis")))
+    sh_mod._memory = sh_mod.defaultdict(list)
 
     test_client = TestClient(app)
     test_client._sh_mod = sh_mod  # type: ignore[attr-defined]
@@ -226,6 +227,11 @@ def test_self_host_research_happy_path_cost_parse(client):
     assert recorded[0]["call_details"]["cost_micros"] == 48200
     assert recorded[0]["call_details"]["billed_micros"] == 72300
     assert recorded[0]["call_details"]["multiplier"] == 1.5
+    assert recorded[0]["call_details"]["cost_dollars"] == 0.0482
+    assert recorded[0]["prompt_tokens"] == 4273
+    assert recorded[0]["completion_tokens"] == 3677
+    assert recorded[0]["total_tokens"] == 7950
+    assert "degraded" not in recorded[0]["call_details"]
 
 
 def test_self_host_research_missing_key_401(client):
@@ -277,6 +283,8 @@ def test_self_host_research_out_of_credit_402(client, monkeypatch):
     assert response.status_code == 402
     body = response.json()
     assert body["detail"]["error_code"] == "insufficient_credits"
+    assert body["detail"]["balance_micros"] == 0
+    assert body["detail"]["required_micros"] == 90000
 
 
 def test_self_host_research_rate_limit_429(client, monkeypatch):
@@ -286,7 +294,8 @@ def test_self_host_research_rate_limit_429(client, monkeypatch):
     monkeypatch.setattr(sh_mod, "_SELF_HOST_RATE_LIMIT_PER_MINUTE", 1)
     monkeypatch.setattr(sh_mod, "_SELF_HOST_WINDOW_SECONDS", 1)
 
-    _call(client)  # first call OK
+    first = _call(client)  # first call OK
+    assert first.status_code == 200
     response = _call(client)
     assert response.status_code == 429
     assert "Retry-After" in response.headers
@@ -347,6 +356,11 @@ def test_self_host_research_missing_cost_fallback(client, monkeypatch):
     assert sh_mod._recorded[0]["call_details"]["cost_basis"] == "fallback"
     assert sh_mod._recorded[0]["call_details"]["cost_micros"] == 60000
     assert sh_mod._recorded[0]["call_details"]["billed_micros"] == 90000
+    assert sh_mod._recorded[0]["call_details"]["cost_dollars"] == 0.0
+    assert sh_mod._recorded[0]["prompt_tokens"] == 0
+    assert sh_mod._recorded[0]["completion_tokens"] == 0
+    assert sh_mod._recorded[0]["total_tokens"] == 0
+    assert "degraded" not in sh_mod._recorded[0]["call_details"]
 
 
 def test_self_host_research_zero_cost_no_debit(client, monkeypatch):
@@ -411,6 +425,7 @@ def test_self_host_research_engine_unavailable_no_content_no_debit(client, monke
     assert body["status"] == "engine_unavailable"
     assert body["degradation_reason"] == "upstream_error"
     assert len(sh_mod._debit_calls["debit"]) == 0
+    assert len(sh_mod._recorded) == 0
 
 
 def test_self_host_research_insufficient_evidence_no_content_no_debit(client, monkeypatch):
@@ -443,6 +458,7 @@ def test_self_host_research_insufficient_evidence_no_content_no_debit(client, mo
     body = response.json()
     assert body["status"] == "insufficient_evidence"
     assert len(sh_mod._debit_calls["debit"]) == 0
+    assert len(sh_mod._recorded) == 0
 
 
 def test_self_host_research_bearer_header_with_extra_space_200(client, monkeypatch):
@@ -514,3 +530,483 @@ def test_self_host_research_correlation_id_passed_to_engine(client, monkeypatch)
     )
     assert response.status_code == 200
     assert captured.get("correlation_id") == "test-corr-123"
+
+
+def test_self_host_research_token_kind_after_self_host_401(client, monkeypatch):
+    """A token kind lexicographically after 'self_host' must still be rejected."""
+    import app.routes.self_host_research as sh_mod
+
+    async def _resolve_pat(_session: Any, token: str) -> Any:
+        return SimpleNamespace(
+            id=3,
+            token_kind="zzz",
+            workspace_id=42,
+            user=_FakeUser(),
+            label="bad",
+            token_prefix="nw_pat_t",
+            expires_at=None,
+            last_used_at=None,
+        )
+
+    monkeypatch.setattr(sh_mod, "resolve_pat", _resolve_pat)
+
+    response = _call(client, token="any-key")
+    assert response.status_code == 401
+    assert "self-host" in response.text.lower()
+
+
+async def test_resolve_workspace_id_filters_by_user(client):
+    """_resolve_workspace_id queries workspaces by the user's id, not >."""
+    import app.routes.self_host_research as sh_mod
+
+    user = _FakeUser()
+    pat = _FakePAT()
+    pat.workspace_id = None
+    captured: dict[str, Any] = {}
+
+    class _StmtCapture:
+        async def execute(self, stmt: Any) -> Any:
+            captured["stmt"] = stmt
+            return SimpleNamespace(scalar_one_or_none=lambda: 7)
+
+    result = await sh_mod._resolve_workspace_id(_StmtCapture(), user, pat)
+    assert result == 7
+    compiled = str(captured["stmt"].compile())
+    assert "user_id =" in compiled
+    assert "LIMIT" in compiled
+
+
+def test_self_host_research_billed_micros_boundaries(client):
+    """_billed_micros treats None, negative and zero as free and floors positives."""
+    import app.routes.self_host_research as sh_mod
+
+    assert sh_mod._billed_micros(None) == 0
+    assert sh_mod._billed_micros(-1) == 0
+    assert sh_mod._billed_micros(0) == 0
+    assert sh_mod._billed_micros(1) == 1
+    assert sh_mod._billed_micros(48200) == 72300
+
+
+def test_self_host_research_cost_defaults(monkeypatch):
+    """Default cost multiplier and fallback micros are exercised when config omits them."""
+    import app.routes.self_host_research as sh_mod
+
+    class _EmptyConfig:
+        pass
+
+    monkeypatch.setattr(sh_mod, "config", _EmptyConfig())
+
+    assert sh_mod._self_host_multiplier() == 1.5
+    assert sh_mod._fallback_micros() == 60000
+
+
+def test_self_host_research_rate_limit_constants(client):
+    """Rate limit defaults are stable."""
+    import app.routes.self_host_research as sh_mod
+
+    assert sh_mod._SELF_HOST_RATE_LIMIT_PER_MINUTE == 120
+    assert sh_mod._SELF_HOST_WINDOW_SECONDS == 60
+
+
+def test_self_host_research_incr_memory_window(client, monkeypatch):
+    """_incr_memory only keeps timestamps strictly inside the window."""
+    from threading import Lock
+
+    import app.routes.self_host_research as sh_mod
+
+    monkeypatch.setattr(sh_mod, "_memory", sh_mod.defaultdict(list))
+    monkeypatch.setattr(sh_mod, "_memory_lock", Lock())
+    monkeypatch.setattr(sh_mod.time, "monotonic", lambda: 100.0)
+
+    sh_mod._memory["key"] = [89.0, 90.0]
+    count = sh_mod._incr_memory("key", 10)
+    assert count == 1
+    assert sh_mod._memory["key"] == [100.0]
+
+
+def test_self_host_research_redis_client_uses_decode_responses(monkeypatch):
+    """_redis_client creates the client with decode_responses=True."""
+    import redis
+
+    import app.routes.self_host_research as sh_mod
+
+    called: list[dict[str, Any]] = []
+
+    def _fake_from_url(_url: str, **kwargs: Any) -> Any:
+        called.append(kwargs)
+        return SimpleNamespace()
+
+    monkeypatch.setattr(redis, "from_url", _fake_from_url)
+    sh_mod._redis = None
+    sh_mod._redis_client()
+    assert called[0].get("decode_responses") is True
+
+
+async def test_self_host_research_redis_expire_on_first_call(client, monkeypatch):
+    """_incr sets Redis key expiry on the very first call only."""
+    import app.routes.self_host_research as sh_mod
+
+    expire_calls: list[tuple[str, int]] = []
+
+    class _FakeRedis:
+        def incr(self, _key: str) -> int:
+            return 1
+
+        def expire(self, key: str, seconds: int) -> None:
+            expire_calls.append((key, seconds))
+
+    monkeypatch.setattr(sh_mod, "_redis_client", lambda: _FakeRedis())
+    sh_mod._redis = None
+
+    count = await sh_mod._aincr("rate-limit-key", sh_mod._SELF_HOST_WINDOW_SECONDS)
+    assert count == 1
+    assert expire_calls == [("rate-limit-key", 60)]
+
+
+async def test_charge_self_host_research_small_positive_cost_debits(client, fake_session):
+    """A small positive cost with content triggers a real debit."""
+    import app.routes.self_host_research as sh_mod
+    from app.capabilities.chainlens.research.schemas import ResearchOutput, Source
+
+    user = _FakeUser()
+    user.credit_micros_balance = 10
+    output = ResearchOutput(
+        status="complete",
+        answer="a",
+        sources=[Source(title="s", url="https://example.com")],
+        cost_micros=1,
+        cost_dollars=0.000001,
+        cost_basis="actual",
+        resolved_mode="balanced",
+        mode_requested="balanced",
+        tokens_total=1,
+        tokens_prompt=1,
+        tokens_completion=0,
+        duration_ms=1000,
+        first_token_time_ms=100,
+        degraded=False,
+        degradation_reason=None,
+    )
+
+    billed = await sh_mod._charge_self_host_research(
+        fake_session, user, 42, output, "run-1"
+    )
+    assert billed == 1
+    assert sh_mod._debit_calls["debit"][-1]["cost_micros"] == 1
+
+
+async def test_charge_self_host_research_no_content_positive_cost_debits(
+    client, fake_session
+):
+    """A positive engine cost even without content should still be debited."""
+    import app.routes.self_host_research as sh_mod
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    user = _FakeUser()
+    user.credit_micros_balance = 10
+    output = ResearchOutput(
+        status="insufficient_evidence",
+        answer="",
+        sources=[],
+        cost_micros=1,
+        cost_dollars=0.000001,
+        cost_basis="actual",
+        resolved_mode=None,
+        mode_requested="balanced",
+        tokens_total=None,
+        tokens_prompt=None,
+        tokens_completion=None,
+        duration_ms=1000,
+        first_token_time_ms=100,
+        degraded=True,
+        degradation_reason="insufficient_evidence",
+    )
+
+    billed = await sh_mod._charge_self_host_research(
+        fake_session, user, 42, output, "run-1"
+    )
+    assert billed == 1
+    assert sh_mod._debit_calls["debit"][-1]["cost_micros"] == 1
+
+
+async def test_charge_self_host_research_zero_cost_returns_zero(client, fake_session):
+    """A zero-cost complete call returns billed_micros 0 and records no debit."""
+    import app.routes.self_host_research as sh_mod
+    from app.capabilities.chainlens.research.schemas import ResearchOutput, Source
+
+    user = _FakeUser()
+    user.credit_micros_balance = 10
+    output = ResearchOutput(
+        status="complete",
+        answer="answer",
+        sources=[Source(title="s", url="https://example.com")],
+        cost_micros=0,
+        cost_dollars=0.0,
+        cost_basis="actual",
+        resolved_mode="balanced",
+        mode_requested="balanced",
+        tokens_total=1,
+        tokens_prompt=1,
+        tokens_completion=0,
+        duration_ms=1000,
+        first_token_time_ms=100,
+        degraded=False,
+        degradation_reason=None,
+    )
+
+    billed = await sh_mod._charge_self_host_research(
+        fake_session, user, 42, output, "run-1"
+    )
+    assert billed == 0
+    assert len(sh_mod._debit_calls["debit"]) == 0
+
+
+def test_self_host_research_invalid_scheme_401(client, monkeypatch):
+    """A non-Bearer Authorization scheme is rejected before the PAT lookup."""
+    import app.routes.self_host_research as sh_mod
+
+    async def _resolve_pat(_session: Any, _token: str) -> Any:
+        return SimpleNamespace(
+            id=1,
+            token_kind="self_host",
+            workspace_id=42,
+            user=_FakeUser(),
+            last_used_at=None,
+        )
+
+    monkeypatch.setattr(sh_mod, "resolve_pat", _resolve_pat)
+
+    response = client.post(
+        "/v1/self-host/research",
+        json={"query": "test"},
+        headers={"Authorization": "zzz valid-self-host-key"},
+    )
+    assert response.status_code == 401
+
+    # A scheme lexicographically before "bearer" also has to be rejected.
+    response = client.post(
+        "/v1/self-host/research",
+        json={"query": "test"},
+        headers={"Authorization": "aaa valid-self-host-key"},
+    )
+    assert response.status_code == 401
+
+
+def test_self_host_research_pat_without_user_401(client, monkeypatch):
+    """A PAT that resolves without a user must still fail closed."""
+    import app.routes.self_host_research as sh_mod
+
+    async def _resolve_pat(_session: Any, _token: str) -> Any:
+        return SimpleNamespace(
+            id=1,
+            token_kind="self_host",
+            workspace_id=42,
+            user=None,
+            last_used_at=None,
+        )
+
+    monkeypatch.setattr(sh_mod, "resolve_pat", _resolve_pat)
+
+    response = _call(client)
+    assert response.status_code == 401
+
+
+def test_self_host_research_degraded_with_content_records_flag(client, monkeypatch):
+    """A degraded result with content still records the degraded flag."""
+    import app.routes.self_host_research as sh_mod
+    from app.capabilities.chainlens.research.schemas import ResearchOutput, Source
+
+    async def _fake_executor(payload: Any, ctx: Any = None) -> Any:
+        return ResearchOutput(
+            status="partial",
+            answer="answer",
+            sources=[Source(title="s", url="https://example.com")],
+            cost_micros=48200,
+            cost_dollars=0.0482,
+            cost_basis="actual",
+            resolved_mode="balanced",
+            mode_requested="balanced",
+            tokens_total=7950,
+            tokens_prompt=4273,
+            tokens_completion=3677,
+            duration_ms=1000,
+            first_token_time_ms=100,
+            degradation_reason="insufficient_evidence",
+        )
+
+    monkeypatch.setattr(sh_mod, "build_research_executor", lambda: _fake_executor)
+
+    response = _call(client)
+    assert response.status_code == 200
+    assert sh_mod._recorded[0]["call_details"]["degraded"] is True
+
+
+def test_self_host_research_answer_only_missing_cost_uses_fallback(
+    client, monkeypatch
+):
+    """An answer-only result with no engine cost still bills the fallback."""
+    import app.routes.self_host_research as sh_mod
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    async def _fake_executor(payload: Any, ctx: Any = None) -> Any:
+        return ResearchOutput(
+            status="insufficient_evidence",
+            answer="answer",
+            sources=[],
+            cost_micros=None,
+            cost_dollars=None,
+            cost_basis=None,
+            resolved_mode=None,
+            mode_requested="balanced",
+            tokens_total=None,
+            tokens_prompt=None,
+            tokens_completion=None,
+            duration_ms=1000,
+            first_token_time_ms=100,
+            degraded=True,
+            degradation_reason="insufficient_evidence",
+        )
+
+    monkeypatch.setattr(sh_mod, "build_research_executor", lambda: _fake_executor)
+
+    response = _call(client)
+    assert response.status_code == 200
+    assert sh_mod._debit_calls["debit"][0]["cost_micros"] == 90000
+
+
+def test_self_host_research_incr_memory_varied_timestamps(client, monkeypatch):
+    """_incr_memory rejects timestamps via actual subtraction, not modulo/multiply."""
+    from threading import Lock
+
+    import app.routes.self_host_research as sh_mod
+
+    monkeypatch.setattr(sh_mod, "_memory", sh_mod.defaultdict(list))
+    monkeypatch.setattr(sh_mod, "_memory_lock", Lock())
+    monkeypatch.setattr(sh_mod.time, "monotonic", lambda: 100.0)
+
+    sh_mod._memory["key"] = [50.0, 89.0, 90.0, 0.05, 0.3]
+    count = sh_mod._incr_memory("key", 10)
+    assert count == 1
+    assert sh_mod._memory["key"] == [100.0]
+
+
+async def test_self_host_research_redis_expire_only_on_first_exact_count(
+    client, monkeypatch
+):
+    """_incr only expires on the single Redis count equal to one."""
+    import app.routes.self_host_research as sh_mod
+
+    expire_calls: list[tuple[str, int]] = []
+    counts = iter([0, 2, 1])
+
+    class _FakeRedis:
+        def incr(self, _key: str) -> int:
+            return next(counts)
+
+        def expire(self, key: str, seconds: int) -> None:
+            expire_calls.append((key, seconds))
+
+    monkeypatch.setattr(sh_mod, "_redis_client", lambda: _FakeRedis())
+    sh_mod._redis = None
+
+    assert await sh_mod._aincr("rate-limit-key", sh_mod._SELF_HOST_WINDOW_SECONDS) == 0
+    assert await sh_mod._aincr("rate-limit-key", sh_mod._SELF_HOST_WINDOW_SECONDS) == 2
+    assert await sh_mod._aincr("rate-limit-key", sh_mod._SELF_HOST_WINDOW_SECONDS) == 1
+    assert expire_calls == [("rate-limit-key", 60)]
+
+
+async def test_resolve_workspace_id_limits_to_one(client):
+    """_resolve_workspace_id uses LIMIT 1."""
+    import app.routes.self_host_research as sh_mod
+
+    user = _FakeUser()
+    pat = _FakePAT()
+    pat.workspace_id = None
+    captured: dict[str, Any] = {}
+
+    class _StmtCapture:
+        async def execute(self, stmt: Any) -> Any:
+            captured["stmt"] = stmt
+            return SimpleNamespace(scalar_one_or_none=lambda: 7)
+
+    await sh_mod._resolve_workspace_id(_StmtCapture(), user, pat)
+    compiled_params = captured["stmt"].compile(compile_kwargs={"literal_binds": True})
+    compiled = str(compiled_params)
+    assert "LIMIT 1" in compiled
+
+
+def test_self_host_research_rate_limit_key_is_credential(client, monkeypatch):
+    """Rate-limit counter uses the real credential, not the header separator."""
+    import app.routes.self_host_research as sh_mod
+
+    async def _resolve_any(_session: Any, _token: str) -> Any:
+        return _FakePAT()
+
+    monkeypatch.setattr(sh_mod, "resolve_pat", _resolve_any)
+    monkeypatch.setattr(sh_mod, "_SELF_HOST_RATE_LIMIT_PER_MINUTE", 1)
+    monkeypatch.setattr(sh_mod, "_SELF_HOST_WINDOW_SECONDS", 1)
+
+    first_one = _call(client, token="token-one")
+    first_two = _call(client, token="token-two")
+    assert first_one.status_code == 200
+    assert first_two.status_code == 200
+
+    second_one = _call(client, token="token-one")
+    assert second_one.status_code == 429
+
+
+async def test_charge_self_host_research_zero_and_negative_cost_return_zero(
+    client, fake_session
+):
+    """Zero or negative engine cost results return billed_micros 0."""
+    import app.routes.self_host_research as sh_mod
+    from app.capabilities.chainlens.research.schemas import ResearchOutput
+
+    user = _FakeUser()
+    user.credit_micros_balance = 10
+
+    # No content + zero cost hits the early return.
+    output_zero = ResearchOutput(
+        status="insufficient_evidence",
+        answer="",
+        sources=[],
+        cost_micros=0,
+        cost_dollars=0.0,
+        cost_basis=None,
+        resolved_mode=None,
+        mode_requested="balanced",
+        tokens_total=None,
+        tokens_prompt=None,
+        tokens_completion=None,
+        duration_ms=1000,
+        first_token_time_ms=100,
+        degraded=True,
+        degradation_reason="insufficient_evidence",
+    )
+    billed = await sh_mod._charge_self_host_research(
+        fake_session, user, 42, output_zero, "run-1"
+    )
+    assert billed == 0
+
+    # Negative cost with content hits the second guard.
+    output_neg = ResearchOutput(
+        status="complete",
+        answer="answer",
+        sources=[],
+        cost_micros=-1,
+        cost_dollars=-0.000001,
+        cost_basis="actual",
+        resolved_mode="balanced",
+        mode_requested="balanced",
+        tokens_total=1,
+        tokens_prompt=1,
+        tokens_completion=0,
+        duration_ms=1000,
+        first_token_time_ms=100,
+        degraded=False,
+        degradation_reason=None,
+    )
+    billed = await sh_mod._charge_self_host_research(
+        fake_session, user, 42, output_neg, "run-1"
+    )
+    assert billed == 0

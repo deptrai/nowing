@@ -1,0 +1,31 @@
+{
+  "service": "routes/self_host_research",
+  "runAt": "2026-08-12T07:04:24+00:00",
+  "modulePath": "app/routes/self_host_research.py",
+  "testFile": "tests/unit/routes/test_self_host_research.py",
+  "total": 201,
+  "killed": 169,
+  "survived": 1,
+  "skipped": 31,
+  "mutationScore": 99.41,
+  "verdict": "PASS",
+  "triage": {
+    "P0": [],
+    "P1": [
+      {
+        "file": "app/routes/self_host_research.py",
+        "line": 366,
+        "col": 11,
+        "operator": "core/ExceptionReplacer",
+        "pattern": "5-error-not-asserted",
+        "diff": "--- mutation diff ---\n--- aapp/routes/self_host_research.py\n+++ bapp/routes/self_host_research.py\n@@ -363,7 +363,7 @@\n         await _charge_self_host_research(\n             session, user, workspace_id, output, run_id=run_id\n         )\n-    except InsufficientCreditsError as exc:\n+    except CosmicRayTestingException as exc:\n         raise HTTPException(\n             status_code=status.HTTP_402_PAYMENT_REQUIRED,\n             detail={"
+      }
+    ],
+    "P2": []
+  },
+  "p0": 0,
+  "p1": 1,
+  "p2": 0,
+  "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/_bmad-output/test-artifacts/mutation-nowing-routes-self_host_research-20260812T070424Z.sqlite",
+  "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-self_host_research.toml"
+}

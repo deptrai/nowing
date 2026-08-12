@@ -1,76 +1,50 @@
 {
   "dimension": "mutation",
-  "runAt": "2026-08-11T05:19:22.970063+00:00",
+  "runAt": "2026-08-12T07:04:24+00:00",
   "services": [
     {
-      "service": "tasks/chat/streaming/flows/shared/assistant_finalize",
-      "total": 50,
-      "killed": 44,
-      "survived": 6,
+      "service": "canonical/tenant_context",
+      "total": 10,
+      "killed": 10,
+      "survived": 0,
       "timeout": 0,
       "noTests": 0,
-      "mutationScore": 88.0,
+      "mutationScore": 100.0,
+      "verdict": "PASS",
+      "triage": {
+        "P0": [],
+        "P1": [],
+        "P2": []
+      },
+      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-canonical-tenant_context-20260812T065114Z.json",
+      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-canonical-tenant_context-20260812T065042Z.sqlite",
+      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-nowing-canonical-tenant_context-20260812T065042Z.toml"
+    },
+    {
+      "service": "routes/self_host_research",
+      "total": 201,
+      "killed": 169,
+      "survived": 1,
+      "timeout": 0,
+      "noTests": 0,
+      "mutationScore": 99.41,
       "verdict": "PASS",
       "triage": {
         "P0": [],
         "P1": [
           {
-            "file": "app/tasks/chat/streaming/flows/shared/assistant_finalize.py",
-            "line": 67,
-            "col": 28,
-            "operator": "core/ReplaceComparisonOperator_Eq_LtE",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n+++ bapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n@@ -64,7 +64,7 @@\n     if registry is None or not registry.by_n:\n         return content_payload\n     for part in content_payload:\n-        if part.get(\"type\") == \"text\" and isinstance(part.get(\"text\"), str):\n+        if part.get(\"type\") <= \"text\" and isinstance(part.get(\"text\"), str):\n             part[\"text\"] = normalize_citations(part[\"text\"], registry)\n     return content_payload\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_LtE at app/tasks/chat/streaming/flows/shared/assistant_finalize.py:67 (3-happy-path-only)."
-          },
-          {
-            "file": "app/tasks/chat/streaming/flows/shared/assistant_finalize.py",
-            "line": 67,
-            "col": 28,
-            "operator": "core/ReplaceComparisonOperator_Eq_GtE",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n+++ bapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n@@ -64,7 +64,7 @@\n     if registry is None or not registry.by_n:\n         return content_payload\n     for part in content_payload:\n-        if part.get(\"type\") == \"text\" and isinstance(part.get(\"text\"), str):\n+        if part.get(\"type\") >= \"text\" and isinstance(part.get(\"text\"), str):\n             part[\"text\"] = normalize_citations(part[\"text\"], registry)\n     return content_payload\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_GtE at app/tasks/chat/streaming/flows/shared/assistant_finalize.py:67 (3-happy-path-only)."
-          },
-          {
-            "file": "app/tasks/chat/streaming/flows/shared/assistant_finalize.py",
-            "line": 67,
-            "col": 28,
-            "operator": "core/ReplaceComparisonOperator_Eq_Is",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n+++ bapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n@@ -64,7 +64,7 @@\n     if registry is None or not registry.by_n:\n         return content_payload\n     for part in content_payload:\n-        if part.get(\"type\") == \"text\" and isinstance(part.get(\"text\"), str):\n+        if part.get(\"type\") is \"text\" and isinstance(part.get(\"text\"), str):\n             part[\"text\"] = normalize_citations(part[\"text\"], registry)\n     return content_payload\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceComparisonOperator_Eq_Is at app/tasks/chat/streaming/flows/shared/assistant_finalize.py:67 (3-happy-path-only)."
-          },
-          {
-            "file": "app/tasks/chat/streaming/flows/shared/assistant_finalize.py",
-            "line": 210,
-            "col": 31,
-            "operator": "core/ReplaceTrueWithFalse",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n+++ bapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n@@ -207,7 +207,7 @@\n                 )\n                 skip_enqueue = True\n             elif not (await check_workspace_gates(ws, workspace=workspace)).allowed:\n-                skip_enqueue = True\n+                skip_enqueue = False\n     except Exception:\n         # Fall through and enqueue on purpose. This pre-check is an\n         # optimisation; the authoritative gate in `extract_from_turn` is the one",
-            "recommendedTest": "Add a test that kills core/ReplaceTrueWithFalse at app/tasks/chat/streaming/flows/shared/assistant_finalize.py:210 (3-happy-path-only)."
-          },
-          {
-            "file": "app/tasks/chat/streaming/flows/shared/assistant_finalize.py",
-            "line": 67,
-            "col": 38,
-            "operator": "core/ReplaceAndWithOr",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n+++ bapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n@@ -64,7 +64,7 @@\n     if registry is None or not registry.by_n:\n         return content_payload\n     for part in content_payload:\n-        if part.get(\"type\") == \"text\" and isinstance(part.get(\"text\"), str):\n+        if part.get(\"type\") == \"text\" or isinstance(part.get(\"text\"), str):\n             part[\"text\"] = normalize_citations(part[\"text\"], registry)\n     return content_payload\n ",
-            "recommendedTest": "Add a test that kills core/ReplaceAndWithOr at app/tasks/chat/streaming/flows/shared/assistant_finalize.py:67 (3-happy-path-only)."
-          },
-          {
-            "file": "app/tasks/chat/streaming/flows/shared/assistant_finalize.py",
-            "line": 116,
-            "col": 55,
-            "operator": "core/ReplaceOrWithAnd",
-            "pattern": "3-happy-path-only",
-            "diff": "--- mutation diff ---\n--- aapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n+++ bapp/tasks/chat/streaming/flows/shared/assistant_finalize.py\n@@ -113,7 +113,7 @@\n         content_payload = [\n             {\n                 \"type\": \"text\",\n-                \"text\": stream_result.accumulated_text or \"\",\n+                \"text\": stream_result.accumulated_text and \"\",\n             }\n         ]\n     content_payload = merge_streamed_and_final_parts(",
-            "recommendedTest": "Add a test that kills core/ReplaceOrWithAnd at app/tasks/chat/streaming/flows/shared/assistant_finalize.py:116 (3-happy-path-only)."
+            "file": "app/routes/self_host_research.py",
+            "line": 366,
+            "col": 11,
+            "operator": "core/ExceptionReplacer",
+            "pattern": "5-error-not-asserted"
           }
         ],
         "P2": []
-      }
+      },
+      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-routes-self_host_research-20260812T070424Z.json",
+      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/_bmad-output/test-artifacts/mutation-nowing-routes-self_host_research-20260812T070424Z.sqlite",
+      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-self_host_research.toml"
     }
   ]
 }
