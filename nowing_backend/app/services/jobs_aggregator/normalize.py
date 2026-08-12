@@ -61,8 +61,39 @@ def _parse_post_date(value: Any) -> datetime.date | None:
     return None
 
 
-def _normalize_salary_period(raw: Any) -> str:
-    """Map source salary period identifiers to the common schema."""
+_SALARY_PERIOD_BY_TEXT: list[tuple[tuple[str, ...], str]] = [
+    (("/giờ", "/gio", "/h", " per hour", " per hr", "/hour"), "hour"),
+    (("/ngày", "/ngay", " per day", "/day"), "day"),
+    (("/tuần", "/tuan", " per week", "/week"), "week"),
+    (("/tháng", "/thang", " per month", "/month", " monthly"), "month"),
+    (("/năm", "/nam", " per year", "/year", " annually"), "year"),
+]
+
+
+def _infer_salary_period_from_text(text: str | None) -> str | None:
+    """Infer salary period from raw Vietnamese/English salary text.
+
+    Returns None when no period keyword is present.
+    """
+    if not text:
+        return None
+    lowered = text.lower()
+    for keywords, period in _SALARY_PERIOD_BY_TEXT:
+        if any(k in lowered for k in keywords):
+            return period
+    return None
+
+
+def _normalize_salary_period(raw: Any, text: str | None = None) -> str:
+    """Map source salary period identifiers to the common schema.
+
+    When the source ``salary_period_id`` is inconsistent with the raw text
+    (e.g. VietnamWorks text says "/tháng" but id maps to hour), infer from
+    the text because that is what the user actually reads.
+    """
+    inferred = _infer_salary_period_from_text(text)
+    if inferred:
+        return inferred
     if raw is None:
         return "month"
     return _SALARY_PERIOD_MAP.get(raw, "month")
@@ -90,7 +121,7 @@ def _parse_salary(raw: dict[str, Any]) -> VnJobSalary:
         salary.period = _normalize_salary_period(raw.get("salary_period_id"))
         salary.confidence = 0.6
     else:
-        salary.period = _normalize_salary_period(raw.get("salary_period_id"))
+        salary.period = _normalize_salary_period(raw.get("salary_period_id"), text=text)
         salary.confidence = 0.6
 
     min_v = int(min_val) if min_val is not None else 0

@@ -339,6 +339,15 @@ def test_parse_post_date_unparseable_returns_none():
     assert _parse_post_date("unknown posted date") is None
 
 
+def test_normalize_salary_period_inference_from_text():
+    """Text overrides inconsistent salary_period_id."""
+    assert _normalize_salary_period(1, text="Từ $ 800 /tháng") == "month"
+    assert _normalize_salary_period(2, text="10tr-60tr ₫/tháng") == "month"
+    assert _normalize_salary_period(2, text="20 triệu /năm") == "year"
+    assert _normalize_salary_period(2, text="2000 USD /giờ") == "hour"
+    assert _normalize_salary_period(2, text="thương lượng") == "month"
+
+
 def test_normalize_salary_period_mapping():
     """Period identifiers map to canonical schema values."""
     assert _normalize_salary_period(1) == "hour"
