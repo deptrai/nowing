@@ -1,90 +1,44 @@
 ---
-baseline_commit: 500dccbdeb1be6e5085982a8c47e91d79bf19d3b
+baseline_commit: 2ae20a9028e81c1b77f804a9388fc3e786be3871
 baseline_branch: develop
 story_key: 9-5
-status: backlog
+status: ready-for-dev
 ---
 
 # Story 9.5: Metered Deep-Research Endpoint cho Self-Host
 
-**Status:** `backlog` / **deferred** *(chưa phê duyệt, Post-MVP / P1 business; Epic 9 đã DONE)*  
-**Epic:** 9 — Deep Research đáng tin cậy: không vỡ, không treo, tính phí đúng  
-**Priority:** P1 (business) / Post-MVP  
-**Requirements:** D5 · AD-15 · AD-8 · AD-16 · FR-37/FR-38  
-**Baseline:** `500dccbdeb` on `develop`  
+**Status:** `ready-for-dev` *(đã chốt design, chờ dev implement; Post-MVP / P1 business; Epic 9 đã DONE)*
+**Epic:** 9 — Deep Research đáng tin cậy: không vỡ, không treo, tính phí đúng
+**Priority:** P1 (business) / Post-MVP
+**Requirements:** D5 · AD-15 · AD-8 · AD-16 · FR-37/FR-38
+**Baseline:** `2ae20a902` on `develop`
 **Dependencies:** Story `9.1a` (self-host independence), `9.2` (cost metering real), `8.7` (auto-extract spend cap) đã done.
 
 ## Story
 
-Với tư cách self-hoster,  
-tôi muốn trả tiền theo call để dùng deep research trên bản self-host,  
+Với tư cách self-hoster,
+tôi muốn trả tiền theo call để dùng deep research trên bản self-host,
 để tôi không phải chuyển sang cloud chỉ vì một năng lực.
 
 ## Context & Current Reality
 
-Tại baseline `500dccbdeb`:
+Tại baseline `2ae20a902`:
 
 | Mảnh | Trạng thái | Bằng chứng code |
 |---|---|---|
-| Deep research executor degrade khi `CHAINLENS_API_KEY` rỗng | ✅ BUILT | `app/capabilities/chainlens/research/executor.py:587-589` trả `_engine_unavailable("not_configured")` |
-| Wallet / credit micros balance | ✅ BUILT | `app/services/wallet_credit.py:33-48` spendable, `50-70` check, `73-83` debit |
-| Token usage ghi `cost_micros` + `usage_type` | ✅ BUILT | `app/services/token_tracking_service.py:35-119` accumulator; `record_token_usage` helper |
-| Cost metering deep research theo cost thật (`costDollars` SSE) | ✅ BUILT (Story 9.2) | `app/capabilities/chainlens/research/executor.py` parse `costDollars`; `app/capabilities/core/billing.py:282-337` `_charge_chainlens` dùng cost thật |
-| Flat `CHAINLENS_QUERY_MICROS_PER_CALL` fallback | ✅ BUILT | `app/config/__init__.py:915-917` default 5000; `billing.py:285-287` dùng fallback + warning |
+| Deep research executor degrade khi service token chưa cấu hình | ✅ BUILT | `app/capabilities/chainlens/research/executor.py:799-802` (`ChainLensServiceAuth.configured` false → `_engine_unavailable("not_configured")` tại 788-790) |
+| Wallet / credit micros balance | ✅ BUILT | `app/services/wallet_credit.py:33-47` `spendable_micros`, `50-71` `check_balance`, `73-103` `apply_debit` |
+| Token usage ghi `cost_micros` + `usage_type` | ✅ BUILT | `app/services/token_tracking_service.py:54-70` `UsageType` (`DEEP_RESEARCH` = 62); `565-647` `record_token_usage`; `app/db.py:1182-1274` `TokenUsage` (`cost_micros` 1228, `usage_type` 1236) |
+| Cost metering deep research theo cost thật (`costDollars` SSE) | ✅ BUILT (Story 9.2) | `app/capabilities/chainlens/research/executor.py:501-574` `_extract_cost` parse `costDollars`; `app/capabilities/core/billing.py:378-502` `_charge_chainlens` dùng cost thật |
+| Flat `CHAINLENS_QUERY_MICROS_PER_CALL` fallback | ✅ BUILT | `app/config/__init__.py:1096-1102` default **60.000 micros (~$0.06)**; `billing.py:409-418` dùng fallback + warning |
 | Self-host đi engine trực tiếp | ❌ KHÔNG ĐƯỢC PHÉP | ADR `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` §4/§5: engine KHÔNG phải public multi-tenant SaaS |
-| Endpoint self-host → Nowing Cloud → engine | ❌ GAP | chưa có design / code; chỉ có requirement trong `epics.md` và `prd.md:649-657` |
-| Self-host API key / account mapping | ❌ GAP | chưa có model hoặc route để self-host instance đăng ký key theo account |
-| Quota / chống abuse cho self-host calls | ❌ GAP | hiện metering nằm ở workspace-level Nowing Cloud; cần mở rộng cho self-host tenant |
+| Endpoint self-host → Nowing Cloud → engine | 🆕 GAP cần build | xem Design Decisions D8 và AC-1/AC-4 |
+| Self-host API key / account mapping | 🆕 GAP cần build | xem Design Decisions D4/D5; cần route + resolver cho self-host key |
+| Quota / chống abuse cho self-host calls | 🆕 GAP cần build | xem Design Decisions D7; tái dụng token quota / Redis rate-limit theo `api_key` |
 
-## Deferred Sign-off Gates
+## Design Decisions
 
-Story này **KHÔNG THỂ chuyển `ready-for-dev`** cho đến khi cả hai điều sau đã xảy ra (theo `epics.md:633`):
-
-1. Có số self-host thật (adoption) để biết có đáng build.
-2. Story `9.2` đã cho số cost thật để định giá.
-
-Ngoài ra cần một SCP phê duyệt:
-
-- Cách self-host instance xác thực với Nowing Cloud (token? account? license key?).
-- Mô hình pricing per call (margin, minimum, volume).
-- Policy chống abuse / rate limit / quota per instance.
-- Cách tiếp thị / vận hành (có thể dùng trial credit, top-up Stripe, hay invoice).
-
-## Acceptance Criteria (draft — cần SCP phê duyệt trước khi dev)
-
-### AC-1 — Self-host request phải đi qua Nowing Cloud, không đi engine trực tiếp
-**Given** Phase 2 được phê duyệt  
-**When** self-host gọi deep research  
-**Then** request đi theo đường `self-host Nowing → Nowing Cloud API (metered, key theo account) → engine (vẫn 1 service key)`  
-**And** **CẤM** `self-host → engine trực tiếp` — cách đó biến engine thành public multi-tenant SaaS có end-user auth, phá `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` §4/§5 và SCP v4 de-scope  
-**And** metering/quota/chống abuse nằm ở Nowing Cloud (tái dụng account + credit wallet, `AD-8`), không nằm ở engine.
-
-### AC-2 — Không có key Cloud thì vẫn degrade, không hard-fail
-**Given** self-host không có key Nowing Cloud  
-**When** gọi deep research  
-**Then** hành vi giữ nguyên như Phase 1 — trả `engine_unavailable` kèm hướng dẫn cấu hình, không hard-fail (FR-38).
-
-### AC-3 — Metering dùng cost thật hoặc fallback rõ ràng
-**Given** self-host đã cấu hình key Nowing Cloud  
-**When** gọi deep research  
-**Then** cost thật (`costDollars` từ terminal `done.usage` SSE) được parse và trừ từ credit wallet của account Nowing Cloud  
-**And** nếu engine bỏ qua `costDollars` (failed / cancelled / cost chưa tính được), dùng flat fallback `CHAINLENS_QUERY_MICROS_PER_CALL` và ghi warning  
-**And** `costDollars = 0` chỉ xảy ra trong test key benchmark sponsored runway; production và benchmark mới 2026-08-02 emit cost thực tế. Nếu `costDollars = 0` từ engine thì không trừ credit.  
-**And** mỗi call được ghi `TokenUsage` với `usage_type = "deep_research"`, `workspace_id`/`user_id` tương ứng.
-
-### AC-4 — Quota / chống abuse cho self-host
-**Given** một self-host instance  
-**When** nó gọi nhiều lần trong khoảng thời gian ngắn  
-**Then** Nowing Cloud áp rate limit / quota theo account  
-**And** khi hết credit hoặc vượt quota, trả `InsufficientCreditsError` hoặc `rate_limit_exceeded` rõ ràng.
-
-### AC-5 — Docs & README cập nhật
-**Given** feature được bật  
-**When** người dùng đọc `README.md` / `docs/self-host.md`  
-**Then** thấy hướng dẫn kích hoạt deep research trên self-host, cách lấy key Nowing Cloud, và bảng so sánh self-host vs cloud  
-**And** không gọi ChainLens là open-source, không gọi engine là sản phẩm riêng (AD-16).
-
-## Resolved Decisions
+Các quyết định sau đã được chốt để story đủ rõ cho dev; không còn phụ thuộc SCP mới trước khi implement.
 
 ### D1 — Self-host KHÔNG gọi engine trực tiếp
 - `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` §4: engine scale theo tải của Nowing (một consumer đáng tin cậy), KHÔNG phải public multi-tenant SaaS.
@@ -92,14 +46,89 @@ Ngoài ra cần một SCP phê duyệt:
 - ⇒ Self-host instance muốn dùng engine phải đi qua Nowing Cloud API, nơi Nowing giữ key duy nhất và xử lý account/quota.
 
 ### D2 — Reuse credit wallet + cost-thật của AD-8 / FR-37
-- `User.credit_micros_balance` là ví duy nhất (`app/services/wallet_credit.py`).
-- `TokenUsage` đã ghi `cost_micros` (`app/db.py:1125`).
-- `_charge_chainlens` đã parse `costDollars` từ SSE và debit (`app/capabilities/core/billing.py:282-337`).
+- `User.credit_micros_balance` là ví duy nhất (`app/services/wallet_credit.py:33-103`).
+- `TokenUsage` đã ghi `cost_micros` / `usage_type` (`app/db.py:1182-1274`, `cost_micros` tại 1228, `usage_type` tại 1236).
+- `_charge_chainlens` đã parse `costDollars` từ SSE và debit (`app/capabilities/core/billing.py:378-502`); `UsageType.DEEP_RESEARCH` tại `app/services/token_tracking_service.py:62`.
 - Story 9.5 chỉ cần mở rộng **caller context**: từ workspace-user trên cloud sang account của một self-host instance.
 
 ### D3 — License / OSS messaging
 - Deep-research engine là closed-source, hosted; core Nowing là Apache-2.0; crawler là BSL 1.1 (`AD-16`).
 - Tài liệu self-host phải ghi: deep research là năng lực cloud; self-host cần key Nowing Cloud để dùng.
+
+### D4 — Self-host entity: reuse `User` + API key table
+- Mỗi instance self-host đăng ký bằng một API key gắn với một `User` (owner).
+- Repo hiện **không có bảng `api_keys`**. Bảng khóa lập trình hiện có là `personal_access_tokens` (`app/db.py:3397-3455`).
+- **Quyết định Phase 2 MVP:** tái dụng `personal_access_tokens`, thêm giá trị `token_kind='self_host'` (hoặc thêm cột `key_type` nếu muốn tách semantic) và gán `workspace_id` = workspace chủ sở hữu (hoặc một workspace đặc biệt cho self-host instance).
+- Nếu cần theo dõi nhiều instance/key với metadata (hostname, version, v.v.), tạo migration mới `self_host_instance` và `self_host_api_key` (`self_host_api_key` 1-to-1 hoặc many-to-one với `User`). Tạo Alembic migration tương ứng.
+
+### D5 — Auth model
+- Self-host gọi Nowing Cloud bằng `Authorization: Bearer <self_host_api_key>`.
+- Nowing Cloud validate key qua `resolve_pat` (`app/utils/pat.py:36-52`) hoặc một resolver tương tự; yêu cầu `token_kind='self_host'` (nếu dùng PAT) hoặc prefix `nw_sh_` (nếu tách bảng).
+- Từ key xác định `User` (owner) và `Workspace` (lấy từ `workspace_id` của key hoặc workspace mặc định của owner). Debit `User.credit_micros_balance` (`app/services/wallet_credit.py:73-103`).
+- Nếu key thiếu / không hợp lệ: trả `401` kèm hướng dẫn tạo key.
+- Nếu `ChainLensServiceAuth` chưa configured (`app/services/chainlens/auth.py:96-98` hoặc `app/capabilities/chainlens/research/executor.py:799-802`): trả `ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")` với hướng dẫn cấu hình `CHAINLENS_SERVICE_TOKEN` / `CHAINLENS_API_KEY`.
+
+### D6 — Pricing per call
+- Dùng `costDollars` thật từ SSE (`app/capabilities/chainlens/research/executor.py:501-574`), chuyển sang micros qua `ChainLensServiceAuth.cost_dollars_to_micros` (`app/services/chainlens/auth.py:269-289`).
+- Nếu missing/invalid cost: fallback `CHAINLENS_QUERY_MICROS_PER_CALL = 60000` micros (`app/config/__init__.py:1096-1102`); `_charge_chainlens` tại `billing.py:409-418` log warning và dùng fallback.
+- `costDollars = 0` (sponsored runway/benchmark test key) thì không trừ credit (`wallet_credit.apply_debit` no-op với `cost_micros <= 0` và `_charge_chainlens` bỏ qua `cost_micros < 0`).
+- Margin ban đầu **1.5×** để dự phòng full-pipeline cost. Có thể cấu hình qua `SELF_HOST_RESEARCH_COST_MULTIPLIER` (default `1.5`) hoặc cặp numerator/denominator để tránh float. Billed micros = `floor(cost_micros * 1.5)` khi `cost_micros > 0`; ghi cả `cost_micros` gốc và `billed_micros` vào `call_details`.
+
+### D7 — Quota / chống abuse
+- Tái dụng token quota service (`app/services/token_quota_service.py`) hoặc Redis rate-limit theo `api_key` / `user_id`.
+- Default: **120 req / 60s / key** (như ChainLens B2B); vượt → `429` + `Retry-After`.
+- Daily quota: giới hạn bởi `User.credit_micros_balance` (pre-check qua `wallet_credit.check_balance`) hoặc cấu hình `SELF_HOST_RESEARCH_DAILY_QUOTA`.
+- Có thể tái dụng pattern `enforce_capability_rate_limit` (`app/capabilities/core/access/rate_limit.py:68-76`) với key là `self_host:<key_hash>` thay vì `workspace_id`.
+
+### D8 — Route
+- `POST /v1/self-host/research` (hoặc `/v1/chainlens/research`) trên Nowing Cloud.
+- Body: tương tự `ResearchInput` (`app/capabilities/chainlens/research/schemas.py:69-124`).
+- Auth: `Authorization: Bearer <self_host_api_key>`; dependency mới `get_self_host_auth` (hoặc mở rộng `get_auth_context` tại `app/users.py:330-377`).
+- Thực thi: gọi `build_research_executor()` (`app/capabilities/chainlens/research/definition.py:9-22` / `executor.py:793-866`) với `CapabilityContext(workspace_id=<owner_workspace>, run_id=<correlation_id>)`.
+- Response: SSE `ResearchOutput` frames (`schemas.py:127-342`), hoặc `engine_unavailable` JSON nếu degraded.
+- Pattern tham khảo: `app/capabilities/core/access/rest.py:197-362` (`_register_verb`: authn → workspace authz → gate → execute → charge → typed output) và `app/routes/chainlens_internal.py:77-191` (route `/v1/...` + service auth).
+
+### D9 — Degradation
+- Không có key / key lỗi: trả `401` hoặc `engine_unavailable` kèm hướng dẫn.
+- `ChainLensServiceAuth` chưa configured: trả `engine_unavailable` `not_configured`.
+- Engine trả 429/5xx/timeout: trả `engine_unavailable` với `degradation_reason` tương ứng (`rate_limited`, `upstream_error`).
+- Giữ nguyên yêu cầu FR-38: không hard-fail, luôn có `next_action` rõ ràng.
+
+## Acceptance Criteria
+
+### AC-1 — Self-host request phải đi qua Nowing Cloud, không đi engine trực tiếp
+**Given** self-host đã cấu hình key Nowing Cloud
+**When** self-host gọi deep research
+**Then** request đi theo đường `self-host Nowing → Nowing Cloud API (metered, key theo account) → engine (vẫn 1 service key)`
+**And** **CẤM** `self-host → engine trực tiếp` — cách đó biến engine thành public multi-tenant SaaS có end-user auth, phá `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` §4/§5 và SCP v4 de-scope
+**And** metering/quota/chống abuse nằm ở Nowing Cloud (tái dụng account + credit wallet, `AD-8`), không nằm ở engine.
+
+### AC-2 — Không có key Cloud thì vẫn degrade, không hard-fail
+**Given** self-host không có key Nowing Cloud
+**When** gọi deep research
+**Then** hành vi giữ nguyên như Phase 1 — trả `ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")` kèm hướng dẫn cấu hình, không hard-fail (FR-38).
+
+### AC-3 — Metering dùng cost thật hoặc fallback rõ ràng
+**Given** self-host đã cấu hình key Nowing Cloud
+**When** gọi deep research
+**Then** cost thật (`costDollars` từ terminal `done.usage` SSE, parse tại `executor.py:501-574`) được chuyển sang `cost_micros` (`ChainLensServiceAuth.cost_dollars_to_micros` tại `auth.py:269-289`) và trừ từ `User.credit_micros_balance`
+**And** nếu engine bỏ qua `costDollars` (failed / cancelled / cost chưa tính được), dùng flat fallback `CHAINLENS_QUERY_MICROS_PER_CALL = 60000` micros tại `config/__init__.py:1096-1102` và ghi warning
+**And** `costDollars = 0` chỉ xảy ra trong test key benchmark sponsored runway; production và benchmark mới 2026-08-02 emit cost thực tế. Nếu `costDollars = 0` từ engine thì không trừ credit.
+**And** mỗi call được ghi `TokenUsage` với `usage_type = UsageType.DEEP_RESEARCH` (`token_tracking_service.py:62`), `cost_micros`, `workspace_id`/`user_id` tương ứng.
+
+### AC-4 — Quota / chống abuse cho self-host
+**Given** một self-host instance đã đăng ký API key (`token_kind='self_host'` trong `personal_access_tokens` hoặc bảng `self_host_api_keys`)
+**When** nó gọi `/v1/self-host/research` nhiều lần
+**Then** Nowing Cloud áp rate limit **120 req / 60s / key** (tái dụng `enforce_capability_rate_limit` pattern tại `rate_limit.py:68-76` hoặc `TokenQuotaService`)
+**And** giới hạn daily/quota phụ thuộc `User.credit_micros_balance` hoặc cấu hình `SELF_HOST_RESEARCH_DAILY_QUOTA`
+**And** khi hết credit, trả `402 Payment Required` / `InsufficientCreditsError` rõ ràng
+**And** khi vượt rate limit, trả `429 Too Many Requests` với `Retry-After`.
+
+### AC-5 — Docs & README cập nhật
+**Given** feature được bật
+**When** người dùng đọc `README.md` / `docs/self-host.md`
+**Then** thấy hướng dẫn kích hoạt deep research trên self-host, cách lấy key Nowing Cloud, và bảng so sánh self-host vs cloud
+**And** không gọi ChainLens là open-source, không gọi engine là sản phẩm riêng (AD-16).
 
 ## ChainLens Technical Response — Final (2026-08-01)
 
@@ -202,7 +231,7 @@ ChainLens đã chạy `node --experimental-strip-types benchmark/run.ts --chainl
 - **Đã lưu và chạy thử:**
   - Path: `nowing_backend/scripts/nowing-sse-contract-snippet.py` (track trong git) + bản sao `_bmad-output/test-artifacts/nowing-sse-contract-snippet.py`.
   - `python3 nowing_backend/scripts/nowing-sse-contract-snippet.py` chạy mẫu, trả `costDollars: 0.00123` từ `done.usage`.
-  - Có thể chạy live: `export CHAINLENS_API_URL + CHAINLENS_API_KEY`, `python3 ... --live "query"`.
+  - Có thể chạy live: `export CHAINLENS_API_URL + CHAINLENS_SERVICE_TOKEN` (hoặc `CHAINLENS_API_KEY` legacy), `python3 ... --live "query"`.
 
 #### Full-pipeline cost aggregation
 - `costDollars` vẫn là **writer usage only**. Full-pipeline aggregation (classifier/planner/researcher/writer/reflection) là task 6 "LATER" trong `stories/42-1-costdollars-in-sse.md`.
@@ -213,7 +242,7 @@ ChainLens đã chạy `node --experimental-strip-types benchmark/run.ts --chainl
 #### Benchmark sạch hơn
 - Plan: ổn định SearXNG (tắt mojeek/yep, fallback Brave/Jina), proxy/residential rotation hoặc Brave-first routing.
 - Dự kiến rerun trong **24–48h** trên staging.
-- ChainLens đồng ý: **State A mặc định**, **9.5 backlog** cho đến khi SCP phê duyệt.
+- ChainLens đồng ý: **State A mặc định**; story 9.5 đã chốt design và chuyển `ready-for-dev`.
 - **2026-08-02:** ChainLens đã chạy focused rerun **6 query × 3 mode = 18 runs** sau khi ổn định SearXNG/Brave:
 
   | Mode | p95 | NFR-9 target | Kết luận |
@@ -226,51 +255,63 @@ ChainLens đã chạy `node --experimental-strip-types benchmark/run.ts --chainl
   - `costDollars` **không còn $0**; benchmark `report-per-mode.md` (2026-08-02, 31 queries) ghi cost thực tế (Nowing `tier=research`): speed **$0.0353** / balanced **$0.0482** / quality **$0.0671**, trung bình **$0.0519 / call**. `CHAINLENS_QUERY_MICROS_PER_CALL` fallback đã nâng → **60,000 micros (~$0.06)**.
   - Full benchmark **69 query** đang lên lịch để củng cố p95.
 
-## Open Questions / Risks
+## Remaining Risks
 
-- **Account model cho self-host:** mỗi instance là một `User` + `Workspace`, hay một license entity mới? Ảnh hưởng đến schema.
-- **Authentication:** self-host instance gửi gì đến Nowing Cloud? JWT, static API key, mTLS? *(Có thể tái dụng Nowing PAT/API key model, hoặc tạo key trong bảng `api_keys` của Nowing rồi map đến ChainLens service key.)*
-- **Cost-thật writer-only:** `costDollars` mới chỉ tính writer usage. Benchmark 2026-08-02 (`report-per-mode.md`) đã ghi cost thực tế: research speed **$0.0353** / balanced **$0.0482** / quality **$0.0671**, trung bình **$0.0519**. Full-pipeline aggregation là task 6 "LATER"; ChainLens dự kiến land sau **2–4 sprint** (~2–4 tuần), có thể cao hơn 1.5–2.5×, cần để lại margin.
-- **Sponsored runway cost = $0:** chỉ còn trong các benchmark test key cũ. Benchmark `report-per-mode.md` 2026-08-02 đã có cost thực tế.
-- **Latency baseline p95:** rerun 2026-08-02 (focused 6×3 runs) cho p95 27.5s/44.3s/43.7s speed/balanced/deep — speed/deep đạt target, balanced vẫn vượt 30 s. State A vẫn là mặc định; full 69-query benchmark đang lên lịch để củng cố p95.
-- **Cancel không stop engine:** self-host user cancel trên client vẫn có thể bị charge toàn bộ call. AbortSignal từ disconnect xuống pipeline là follow-up, chưa block 42-1.
-- **Snippet đã nhận và lưu:** `nowing_backend/scripts/nowing-sse-contract-snippet.py` chạy mẫu OK.
+- **Cost-thật writer-only:** `costDollars` mới chỉ tính writer usage. Full-pipeline aggregation là follow-up 42-1b/42-3, dự kiến land sau **2–4 sprint** (~2–4 tuần), có thể cao hơn 1.5–2.5×. Đã chốt margin 1.5× trong D6 để dự phòng; cần theo dõi và điều chỉnh multiplier khi full-pipeline cost land.
+- **Cancel không stop engine:** self-host user cancel trên client vẫn có thể bị charge toàn bộ call. AbortSignal từ disconnect xuống pipeline là follow-up ChainLens, chưa block 42-1.
 - **No quota-remaining API:** Nowing Cloud phải tự track hoặc catch 429 từ ChainLens và map sang error tường minh.
-- **State sync:** self-host có cần đồng bộ credit balance real-time không, hay định kỳ?
-- **Offline mode:** nếu self-host mất kết nối Nowing Cloud, deep research degrade về `engine_unavailable`.
-- **Conflict với AD-1:** Nowing là monolith; Nowing Cloud API này nằm trong cùng backend hay cần tách edge? Kiến trúc hiện tại gợi ý mở rộng route trong cùng backend.
+- **Latency p95:** balanced (44.3 s) vẫn vượt NFR-9 30 s; State A mặc định, sync chat-mode vẫn bị khóa.
 
-## Tasks / Subtasks (draft)
+## Tasks / Subtasks
 
-- [x] Cập nhật SSE parser để nhận `costDollars` từ terminal `done.usage` (done — `executor.py` + `test_cost_metering.py`).
-- [x] Nhận và lưu snippet `nowing-sse-contract-snippet.py` (done, `nowing_backend/scripts/`).
-- [ ] Theo dõi ChainLens full-pipeline cost aggregation (task 6 LATER, dự kiến 2–4 sprint, 1.5–2.5× writer cost).
+### Pre-built (do not re-implement)
+- [x] Cập nhật SSE parser để nhận `costDollars` từ terminal `done.usage` (Story 9.2 — `executor.py:501-574` + `test_cost_metering.py`).
+- [x] Nhận và lưu snippet `nowing-sse-contract-snippet.py` (Story 9.2 / 42-2 — `nowing_backend/scripts/`).
+- [x] Thiết lập `ChainLensServiceAuth` với `CHAINLENS_SERVICE_TOKEN` + `CHAINLENS_API_KEY` fallback (Story 20.4 — `app/services/chainlens/auth.py:56-311`).
+
+### Build for Story 9.5
+- [ ] Migration schema (nếu cần): thêm `token_kind='self_host'` vào `personal_access_tokens` hoặc tạo bảng `self_host_instance` + `self_host_api_key`.
+- [ ] Tạo dependency `get_self_host_auth` (hoặc mở rộng `get_auth_context` tại `app/users.py:330-377`) để validate `Authorization: Bearer <self_host_api_key>`, map đến `User` + `Workspace`.
+- [ ] Thêm route `POST /v1/self-host/research` (hoặc `/v1/chainlens/research`) trong router mới `app/routes/self_host_research.py`, mount tại `app/app.py` với prefix `/v1`.
+- [ ] Tái dụng `build_research_executor()` (`definition.py:9-22`) / `_call_chainlens` (`executor.py:793-866`) trong context self-host (`CapabilityContext` với `workspace_id` từ key).
+- [ ] Áp margin 1.5× (config `SELF_HOST_RESEARCH_COST_MULTIPLIER`) trên `cost_micros` thực tế / fallback; ghi `cost_micros` gốc + `billed_micros` vào `call_details`.
+- [ ] Gọi `wallet_credit.check_balance` / `apply_debit` (`wallet_credit.py:50-103`) và `record_token_usage` (`token_tracking_service.py:565-647`) với `usage_type=UsageType.DEEP_RESEARCH` cho self-host account.
+- [ ] Thêm rate limit / quota theo self-host API key: tái dụng `enforce_capability_rate_limit` pattern (`rate_limit.py:68-76`) hoặc `TokenQuotaService`; default 120 req/60s/key; daily quota theo `User.credit_micros_balance` hoặc `SELF_HOST_RESEARCH_DAILY_QUOTA`.
+- [ ] Degradation path: thiếu key → `401` / hướng dẫn; `ChainLensServiceAuth` chưa configured → `ResearchOutput(status="engine_unavailable", degradation_reason="not_configured")`; engine 429/5xx/timeout → `engine_unavailable` với reason tương ứng.
+- [ ] Cập nhật `README.md`, `.env.example`, `docs/self-host.md` với hướng dẫn lấy key, cấu hình, và bảng so sánh self-host vs cloud.
+- [ ] Tests: unit + integration cho happy path, out-of-credit, rate limit, no key, invalid key, engine unavailable, cost=0.
+
+### Follow-up (LATER, không block 9.5)
+- [ ] Theo dõi ChainLens full-pipeline cost aggregation (42-1b/42-3, dự kiến 2–4 sprint); điều chỉnh `SELF_HOST_RESEARCH_COST_MULTIPLIER` khi full-pipeline cost land.
 - [ ] Chạy benchmark e2e từ phía Nowing sau khi ChainLens rerun 24–48h.
-- [ ] SCP phê duyệt account/key model, pricing, quota.
-- [ ] Thiết kế API `/self-host/research` hoặc `/v1/chainlens/research` cho self-host calls.
-- [ ] Schema self-host registration / key (nếu cần migration).
-- [ ] Middleware xác thực self-host key và map đến `User` / `Workspace`.
-- [ ] Tái sử dụng `_charge_chainlens` trong context self-host (metering, wallet debit, token usage).
-- [ ] Rate limit / quota per self-host account.
-- [ ] Degradation path khi key thiếu hoặc engine unavailable.
-- [ ] Cập nhật `README.md`, `.env.example`, `docs/self-host.md`.
-- [ ] Tests integration cho happy path, out-of-credit, rate limit, no key.
 
 ## Consistency & Conventions
 
 - Theo `AD-8`: dùng `User.credit_micros_balance` + `TokenUsage.cost_micros`.
-- Theo `AD-15`: engine gọi qua HTTP với 1 service key; không end-user auth.
+- Theo `AD-15`: Nowing Cloud outbound dùng `ChainLensServiceAuth` (`CHAINLENS_SERVICE_TOKEN` preferred, `CHAINLENS_API_KEY` legacy fallback); engine vẫn 1 service key, không end-user auth.
 - Theo `AD-16`: docs phân biệt rõ license ba tầng, không gọi engine là OSS.
-- Theo `FR-38`: self-host không có engine/key phải degrade, không hard-fail.
-- Theo `FR-37`: cost thật từ `costDollars` SSE; fallback flat chỉ khi thiếu.
+- Theo `FR-38`: self-host không có key / `ChainLensServiceAuth` chưa configured phải degrade về `engine_unavailable`, không hard-fail.
+- Theo `FR-37`: cost thật từ `costDollars` SSE; fallback flat `CHAINLENS_QUERY_MICROS_PER_CALL = 60000` micros chỉ khi thiếu.
 
 ## References
 
-- `epics.md:628-647` — Story 9.5 gốc và AC nháp.
-- `prd.md:642-657` — hai phase deep research (Phase 1/Phase 2) và ràng buộc kiến trúc.
+- `epics.md:1253-1274` — Story 9.5 gốc và AC nháp.
+- `prd.md:1083-1120` — FR-38 + Phase 1/Phase 2 deep research cho self-host và ràng buộc kiến trúc.
 - `architecture-Nowing-2026-07-22/ARCHITECTURE-SPINE.md` — AD-8, AD-15, AD-16.
 - `ADR-CHAINLENS-AS-NOWING-MICROSERVICE` (companion) — engine boundary.
-- `nowing_backend/app/capabilities/chainlens/research/executor.py` — degradation + SSE cost parse.
-- `nowing_backend/app/capabilities/core/billing.py` — `_charge_chainlens` wallet logic.
-- `nowing_backend/app/services/wallet_credit.py` — wallet primitives.
-- `nowing_backend/app/services/token_tracking_service.py` — token usage recording.
+- `nowing_backend/app/capabilities/chainlens/research/executor.py:501-574` — `_extract_cost` parse `costDollars`.
+- `nowing_backend/app/capabilities/chainlens/research/executor.py:788-790` — `_engine_unavailable`.
+- `nowing_backend/app/capabilities/chainlens/research/executor.py:793-866` — `_call_chainlens`.
+- `nowing_backend/app/capabilities/chainlens/research/executor.py:799-802` — `ChainLensServiceAuth.configured` check.
+- `nowing_backend/app/capabilities/chainlens/research/schemas.py:69-342` — `ResearchInput`, `ResearchOutput` (`cost_dollars`, `cost_micros`, `resolved_mode`, `tier`, `workspace_id`, `correlation_id`, ...).
+- `nowing_backend/app/capabilities/core/billing.py:378-502` — `_charge_chainlens`, `BillingUnit.CHAINLENS_QUERY`.
+- `nowing_backend/app/capabilities/core/types.py:15-49` — `BillingUnit` enum.
+- `nowing_backend/app/capabilities/core/access/rest.py:197-362` — pattern route/capability (`_register_verb`).
+- `nowing_backend/app/services/wallet_credit.py:33-103` — `spendable_micros`, `check_balance`, `apply_debit`.
+- `nowing_backend/app/services/token_tracking_service.py:54-70,565-647` — `UsageType.DEEP_RESEARCH`, `record_token_usage`.
+- `nowing_backend/app/config/__init__.py:1086-1102` — `CHAINLENS_SERVICE_TOKEN`, `CHAINLENS_API_KEY`, `CHAINLENS_QUERY_MICROS_PER_CALL` (default 60000).
+- `nowing_backend/app/db.py:1182-1274,3397-3455` — `TokenUsage` (`cost_micros` 1228, `usage_type` 1236), `PersonalAccessToken` (API-key table để tái dụng).
+- `nowing_backend/app/services/chainlens/auth.py:56-311` — `ChainLensServiceAuth`, `cost_dollars_to_micros`, `configured`.
+- `nowing_backend/app/users.py:330-377` + `app/utils/pat.py:36-52` — `get_auth_context` / `resolve_pat` pattern.
+- `nowing_backend/app/capabilities/core/access/rate_limit.py:68-76` — `enforce_capability_rate_limit` pattern.
+- `nowing_backend/app/routes/chainlens_internal.py:77-191` — route `/v1/...` + service-to-service auth pattern.

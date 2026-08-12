@@ -155,8 +155,8 @@ development_status:
   9-3: done
   # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended async citation delivery ACs
   9-4: done
-  # ponytail: 2026-08-12 create-story validation — Story 9.5 is business-gated (SCP/adoption/cost aggregation not ready)
-  9-5: business-gated
+  # ponytail: 2026-08-12 design decisions resolved — Story 9.5 ready-for-dev (self-host entity, auth, pricing, quota, route)
+  9-5: ready-for-dev
   9-6: done
   # ponytail: 2026-08-08 followup deferred items tracked in parent story file.
   9-6-followup: deferred
