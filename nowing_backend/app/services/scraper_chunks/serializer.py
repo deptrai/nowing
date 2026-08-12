@@ -205,12 +205,13 @@ def _identity_fields(domain: str, data: dict[str, Any]) -> dict[str, Any]:
         return {"canonical_id": str(canonical_id)}
 
     if _is_job_domain(domain):
+        # ponytail: stable identity excludes volatile salary/employment_type
+        # and includes posted_at for temporal dedupe (AC-3, Story 12.4d).
         return {
-            "title": _get(data, "title"),
             "company": _get(data, "company"),
+            "title": _get(data, "title"),
             "location": _get(data, "location"),
-            "salary": _get(data, "salary"),
-            "employment_type": _get(data, "employment_type"),
+            "posted_at": _get(data, "posted_at"),
         }
 
     return {
@@ -330,8 +331,16 @@ def _metadata_from_data(
     confidence_score = _get(data, "confidence_score")
     source_count = _get(data, "source_count")
     conflict_flags = data.get("conflict_flags")
+    salary = data.get("salary")
+    salary_consistency_score = _get(data, "salary_consistency_score")
     title = _get(data, "title")
     url = _url_from_data(data)
+
+    # ponytail: salary is volatile and may be None or negotiable (0 values).
+    # Only emit salary metadata when it contains a real range (AC-3).
+    clean_salary: dict[str, Any] | None = None
+    if salary and isinstance(salary, dict) and (salary.get("min") or salary.get("max")):
+        clean_salary = salary
 
     return ChunkMetadata(
         source="nowing_scraper",
@@ -345,6 +354,8 @@ def _metadata_from_data(
         confidence_score=_safe_float(confidence_score),
         source_count=_safe_int(source_count),
         conflict_flags=conflict_flags if isinstance(conflict_flags, list) else None,
+        salary=clean_salary,
+        salary_consistency_score=_safe_float(salary_consistency_score),
         chunkIndex=chunk_index,
         chunkTotal=chunk_total,
         canonicalEntityId=str(canonical_id) if canonical_id else None,

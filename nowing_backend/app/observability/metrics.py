@@ -1006,6 +1006,7 @@ def record_run_memory_retried() -> None:
 
 
 _memory_injection_failure_logger = logging.getLogger("memory_injection.failure")
+_memory_injection_truncated_logger = logging.getLogger("memory_injection.truncated")
 
 
 @lru_cache(maxsize=1)
@@ -1030,6 +1031,29 @@ def record_memory_injection_failure(*, scope: str, stage: str, reason: str) -> N
         )
     with contextlib.suppress(Exception):
         _add(_memory_injection_failures(), 1, attrs)
+
+
+@lru_cache(maxsize=1)
+def _memory_injection_truncated():
+    return _get_meter().create_counter(
+        "nowing.memory.injection.truncated",
+        description="Count of memory injection truncations by scope.",
+    )
+
+
+def record_memory_injection_truncated(*, scope: str) -> None:
+    """Log + count one memory injection that was truncated to fit the char budget.
+
+    Story 3.17 AC3: emitted when ``render_bounded_memory_injection`` truncates
+    the memory body to stay within ``max_chars`` (Rule 9).
+    """
+    attrs = {"scope": scope}
+    with contextlib.suppress(Exception):
+        _memory_injection_truncated_logger.warning(
+            "memory_injection.truncated", extra=attrs
+        )
+    with contextlib.suppress(Exception):
+        _add(_memory_injection_truncated(), 1, attrs)
 
 
 def _runtime_snapshot_value(key: str, transform: Any = None) -> list[Any]:
@@ -1499,6 +1523,7 @@ __all__ = [
     "record_kb_fallback_hit_count",
     "record_kb_search_duration",
     "record_memory_injection_failure",
+    "record_memory_injection_truncated",
     "record_model_call_duration",
     "record_model_token_usage",
     "record_perf_elapsed",

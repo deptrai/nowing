@@ -88,6 +88,7 @@ class VnJobAggregateOutput(BaseModel):
         "not_attempted"
     )
     persistence_message: str | None = None
+    ingest_job_id: str | None = None
 
     @computed_field
     @property

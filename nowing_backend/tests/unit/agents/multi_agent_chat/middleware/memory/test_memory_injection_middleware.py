@@ -193,7 +193,9 @@ def test_build_transcript_query_returns_none_when_nothing_usable() -> None:
         ("line1\u2029line2", "line1\nline2"),
     ],
 )
-def test_build_transcript_query_normalizes_line_terminators(raw: str, expected: str) -> None:
+def test_build_transcript_query_normalizes_line_terminators(
+    raw: str, expected: str
+) -> None:
     query = mw_module._build_transcript_query([HumanMessage(content=raw)])
     assert query == f"human: {expected}"
 
@@ -518,3 +520,83 @@ async def test_transcript_query_render_error_records_query_failure(monkeypatch) 
     result = await mw.abefore_agent({"messages": [HumanMessage(content="hi")]}, None)
     assert result is None
     assert failures == [{"scope": "user", "stage": "query", "reason": "render_error"}]
+
+
+# --- Story 3.17 AC3: truncation counter --------------------------------------
+
+
+def _install_truncation_recorder(monkeypatch) -> list[dict[str, str]]:
+    calls: list[dict[str, str]] = []
+
+    def _fake_record(*, scope: str) -> None:
+        calls.append({"scope": scope})
+
+    monkeypatch.setattr(mw_module, "record_memory_injection_truncated", _fake_record)
+    return calls
+
+
+@pytest.mark.asyncio
+async def test_truncation_counter_emitted_when_memory_overflows(monkeypatch) -> None:
+    """AC3: memory_injection_truncated counter fires when the renderer truncates."""
+    _install_embedding(monkeypatch)
+    session = _FakeSession(display_name="Ada")
+    _install_session(monkeypatch, session)
+    _install_search(monkeypatch, hits=[_hit("W" * 20_000)])
+    _install_failure_recorder(monkeypatch)
+    truncations = _install_truncation_recorder(monkeypatch)
+    mw = _mw()
+    result = await mw.abefore_agent({"messages": [HumanMessage(content="hi")]}, None)
+    assert result is not None
+    assert truncations == [{"scope": "user"}]
+
+
+@pytest.mark.asyncio
+async def test_truncation_counter_not_emitted_when_no_truncation(monkeypatch) -> None:
+    """AC3: counter stays at zero when the rendered output fits without truncation."""
+    _install_embedding(monkeypatch)
+    session = _FakeSession(display_name="Ada")
+    _install_session(monkeypatch, session)
+    _install_search(monkeypatch, hits=[_hit("Short fact.")])
+    _install_failure_recorder(monkeypatch)
+    truncations = _install_truncation_recorder(monkeypatch)
+    mw = _mw()
+    result = await mw.abefore_agent({"messages": [HumanMessage(content="hi")]}, None)
+    assert result is not None
+    assert truncations == []
+
+
+@pytest.mark.asyncio
+async def test_truncation_counter_emitted_for_team_scope(monkeypatch) -> None:
+    """AC3: truncation counter also fires for shared/team memory injection."""
+    _install_embedding(monkeypatch)
+    session = _FakeSession(display_name=None)
+    _install_session(monkeypatch, session)
+    _install_search(
+        monkeypatch,
+        hits=[_hit("W" * 20_000)],
+    )
+    _install_failure_recorder(monkeypatch)
+    truncations = _install_truncation_recorder(monkeypatch)
+    mw = _mw(visibility=ChatVisibility.SEARCH_SPACE)
+    result = await mw.abefore_agent({"messages": [HumanMessage(content="hi")]}, None)
+    assert result is not None
+    assert truncations == [{"scope": "team"}]
+
+
+@pytest.mark.asyncio
+async def test_truncation_counter_boundary_exactly_max_chars(monkeypatch) -> None:
+    """AC3: counter fires when content is just over the 8,000-char budget."""
+    _install_embedding(monkeypatch)
+    session = _FakeSession(display_name="Ada")
+    _install_session(monkeypatch, session)
+    # Build content that forces the renderer into Rule 9 but by the smallest
+    # margin possible, exercising the `len(result) > max_chars` guard.
+    _install_search(monkeypatch, hits=[_hit("W" * 8_001)])
+    _install_failure_recorder(monkeypatch)
+    truncations = _install_truncation_recorder(monkeypatch)
+    mw = _mw()
+    result = await mw.abefore_agent({"messages": [HumanMessage(content="hi")]}, None)
+    assert result is not None
+    assert result["messages"][1].content is not None
+    assert len(result["messages"][1].content) <= 8_000
+    assert truncations == [{"scope": "user"}]

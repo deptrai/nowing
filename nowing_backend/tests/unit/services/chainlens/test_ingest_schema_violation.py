@@ -33,7 +33,7 @@ def mock_chunk():
     return chunk
 
 
-@pytest.mark.skip(reason="red phase — pending AC-7 first-failing-chunk logging")
+
 @pytest.mark.asyncio
 async def test_ingest_logs_first_failing_chunk_details_on_400(mock_session, mock_chunk, caplog):
     """NowingIngestService.ingest() logs first failing chunk details on 400."""
@@ -66,7 +66,7 @@ async def test_ingest_logs_first_failing_chunk_details_on_400(mock_session, mock
     assert "test:123" in log_message or "vn_jobs" in log_message or "first failing chunk" in log_message.lower()
 
 
-@pytest.mark.skip(reason="red phase — pending AC-7 first-failing-chunk logging")
+
 @pytest.mark.asyncio
 async def test_ingest_logs_first_failing_chunk_details_on_422(mock_session, mock_chunk, caplog):
     """NowingIngestService.ingest() logs first failing chunk details on 422."""
@@ -97,7 +97,7 @@ async def test_ingest_logs_first_failing_chunk_details_on_422(mock_session, mock
     assert len(error_logs) > 0
 
 
-@pytest.mark.skip(reason="red phase — pending AC-7 first-failing-chunk logging")
+
 @pytest.mark.asyncio
 async def test_ingest_batch_marked_failed_not_retried_for_400(mock_session, mock_chunk):
     """Batch is marked failed and not retried for 400."""

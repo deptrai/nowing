@@ -363,6 +363,26 @@ class NowingIngestService:
                     )
                     continue
 
+                # AC-7: log the first failing chunk on non-retryable client
+                # errors (400/422) so operators can diagnose schema violations.
+                if exc.status_code in (400, 422) and batch:
+                    first_chunk = batch[0]
+                    first_chunk_dict = _chunk_to_dict(first_chunk)
+                    metadata = first_chunk_dict.get("metadata") or {}
+                    logger.error(
+                        "chainlens ingest schema violation — first failing chunk",
+                        extra={
+                            "scraper_id": scraper_id,
+                            "workspace_id": workspace_id,
+                            "status_code": exc.status_code,
+                            "source_id": metadata.get("sourceId"),
+                            "domain": metadata.get("domain"),
+                            "title": metadata.get("title"),
+                            "chunk_index": metadata.get("chunkIndex"),
+                            "error": str(exc),
+                        },
+                    )
+
                 overall_status = "failed"
                 metrics.record_chainlens_ingest_failed(
                     scraper_id=scraper_id,

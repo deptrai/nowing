@@ -198,6 +198,11 @@ async def run_scraper_for_chainlens(
         correlation_id=correlation_id,
     )
 
+    # Propagate the ingest job id back to the capability output so REST/MCP/chat
+    # consumers of VnJobAggregateOutput see it (AC-6, Story 12.4e).
+    if hasattr(output, "ingest_job_id"):
+        output.ingest_job_id = result.ingest_job_id or result.parent_ingest_job_id
+
     return _ScraperRunResponse(
         scraper_id=scraper_id,
         ingest_job_id=result.ingest_job_id or result.parent_ingest_job_id,

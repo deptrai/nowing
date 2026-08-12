@@ -9,7 +9,7 @@ from app.services.scraper_chunks.serializer import _identity_fields, _stable_fin
 pytestmark = pytest.mark.unit
 
 
-@pytest.mark.skip(reason="red phase — pending AC-3 sourceId alignment")
+
 def test_identity_fields_for_job_domains_uses_company_title_location_posted_at():
     """_identity_fields for job domains uses {company, title, location, posted_at} (not salary/employment_type)."""
     data = {
@@ -34,7 +34,7 @@ def test_identity_fields_for_job_domains_uses_company_title_location_posted_at()
     assert "employment_type" not in identity
 
 
-@pytest.mark.skip(reason="red phase — pending AC-3 sourceId alignment")
+
 def test_identity_fields_for_job_domains_excludes_salary_and_employment_type():
     """_identity_fields explicitly excludes salary and employment_type for job domains."""
     data = {
@@ -52,7 +52,7 @@ def test_identity_fields_for_job_domains_excludes_salary_and_employment_type():
     assert "employment_type" not in identity
 
 
-@pytest.mark.skip(reason="red phase — pending AC-3 sourceId alignment")
+
 def test_stable_fingerprint_for_job_domains_equals_sha256_of_sorted_identity_dict():
     """_stable_fingerprint for job domains equals sha256 of sorted identity dict."""
     data = {
@@ -75,7 +75,7 @@ def test_stable_fingerprint_for_job_domains_equals_sha256_of_sorted_identity_dic
     assert fingerprint == fingerprint2
 
 
-@pytest.mark.skip(reason="red phase — pending AC-3 sourceId alignment")
+
 def test_stable_fingerprint_boundary_posted_at_none():
     """_stable_fingerprint handles posted_at=None boundary case."""
     data = {
@@ -92,7 +92,7 @@ def test_stable_fingerprint_boundary_posted_at_none():
     assert len(hash_part) == 32
 
 
-@pytest.mark.skip(reason="red phase — pending AC-3 sourceId alignment")
+
 def test_stable_fingerprint_boundary_location_none():
     """_stable_fingerprint handles location=None boundary case."""
     data = {

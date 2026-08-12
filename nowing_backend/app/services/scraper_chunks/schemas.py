@@ -41,6 +41,8 @@ class ChunkMetadata(BaseModel):
     confidence_score: float | None = Field(default=None, ge=0.0, le=1.0)
     source_count: int | None = Field(default=None, ge=0)
     conflict_flags: list[dict[str, Any]] | None = Field(default=None)
+    salary: dict[str, Any] | None = Field(default=None)
+    salary_consistency_score: float | None = Field(default=None, ge=0.0, le=1.0)
     chunkIndex: int | None = Field(default=None, ge=0)
     chunkTotal: int | None = Field(default=None, ge=1)
     canonicalEntityId: str | None = Field(default=None)

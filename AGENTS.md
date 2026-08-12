@@ -239,3 +239,55 @@ PLAYWRIGHT_NO_WEB_SERVER=1 NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8001
 # and the chat/agent path:
 PLAYWRIGHT_NO_WEB_SERVER=1 NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8001 NOWING_BACKEND_INTERNAL_URL=http://localhost:8001 pnpm test:e2e tests/research/research-degradation-chat.spec.ts
 ```
+
+## Local dev server startup (smoke)
+
+Start the full local stack (backend on host, deps in Docker). Default ports `5432` and `6379` are often taken by a host Postgres/Redis or other projects, so use `5434` and `6380`.
+
+```bash
+# 1. Docker deps (Postgres + Redis, zero-cache needs them)
+cd /Users/luisphan/Documents/GitHub/nowing
+POSTGRES_PORT=5434 REDIS_PORT=6380 docker compose -f docker/docker-compose.deps-only.yml up -d db redis
+
+# 2. Migrations (from nowing_backend/)
+cd nowing_backend
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5434/nowing uv run alembic upgrade head
+
+# If alembic ran create_all on a fresh DB, zero_publication may be missing. Create it:
+uv run python -c "
+from sqlalchemy import create_engine
+from app.zero_publication import ensure_publication
+engine = create_engine('postgresql+psycopg2://postgres:postgres@localhost:5434/nowing')
+with engine.connect() as conn:
+    ensure_publication(conn)
+    conn.commit()
+"
+
+# 3. Start zero-cache
+POSTGRES_PORT=5434 REDIS_PORT=6380 docker compose -f docker/docker-compose.deps-only.yml up -d zero-cache
+# Wait for healthy:
+# docker ps --filter 'name=zero-cache' --format '{{.Status}}'
+
+# 4. Start backend (from nowing_backend/)
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5434/nowing uv run python main.py
+
+# 5. Start frontend (from nowing_web/)
+NEXT_PUBLIC_FASTAPI_BACKEND_URL=http://localhost:8000 \
+NOWING_BACKEND_INTERNAL_URL=http://localhost:8000 \
+NEXT_PUBLIC_ZERO_CACHE_URL=http://localhost:4848 \
+pnpm dev
+```
+
+### Important env/cookie gotchas
+
+- `nowing_web/.env.local` should use `http://localhost:8000` for backend URLs, NOT `http://127.0.0.1:8001`. The previous `8001` port is no longer used.
+- `NEXT_PUBLIC_ZERO_CACHE_URL` must be `http://localhost:4848` (not `127.0.0.1:4848`). The `nowing_session` cookie is `HttpOnly; SameSite=Lax` and is only sent when the browser connects to the same `localhost` host as the page. Using `127.0.0.1` makes zero-cache forward an empty cookie to `/api/zero/query`, causing `401 TransformFailed`.
+- `nowing_backend/.env` should point `DATABASE_URL` to the Docker Postgres port (e.g. `postgresql+asyncpg://postgres:postgres@localhost:5434/nowing`). `5432` may be a separate host Postgres that zero-cache cannot reach.
+- If `lsof -i :5432` or `lsof -i :6379` show a host service, keep using `5434`/`6380`. Both the `POSTGRES_PORT`/`REDIS_PORT` env vars and the backend `DATABASE_URL`/`REDIS_URL` must agree.
+
+### Smoke test
+
+1. Open `http://localhost:3000/login`
+2. Register or log in with `e2e-test@nowing.net` / `E2eTestPassword123!`
+3. Navigate to `/dashboard/1/new-chat` — console should be clean (0 errors)
+4. Navigate to `/dashboard/1/usage` — console should be clean

@@ -2,7 +2,7 @@
 title: Story 12.4c+4d+4e — PII Redaction, Chunk Ingest & Aggregator Exposure
 epic: 12
 story: 4c-4d-4e
-status: ready-for-dev
+status: in-review
 priority: P0
 ---
 

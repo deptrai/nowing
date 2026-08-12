@@ -1,50 +1,12 @@
 {
   "dimension": "mutation",
-  "runAt": "2026-08-12T07:04:24+00:00",
+  "runAt": "2026-08-12T19:29:16.625280+00:00",
   "services": [
     {
-      "service": "canonical/tenant_context",
-      "total": 10,
-      "killed": 10,
-      "survived": 0,
-      "timeout": 0,
-      "noTests": 0,
-      "mutationScore": 100.0,
-      "verdict": "PASS",
-      "triage": {
-        "P0": [],
-        "P1": [],
-        "P2": []
-      },
-      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-canonical-tenant_context-20260812T065114Z.json",
-      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-canonical-tenant_context-20260812T065042Z.sqlite",
-      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-nowing-canonical-tenant_context-20260812T065042Z.toml"
-    },
-    {
-      "service": "routes/self_host_research",
-      "total": 201,
-      "killed": 169,
-      "survived": 1,
-      "timeout": 0,
-      "noTests": 0,
-      "mutationScore": 99.41,
-      "verdict": "PASS",
-      "triage": {
-        "P0": [],
-        "P1": [
-          {
-            "file": "app/routes/self_host_research.py",
-            "line": 366,
-            "col": 11,
-            "operator": "core/ExceptionReplacer",
-            "pattern": "5-error-not-asserted"
-          }
-        ],
-        "P2": []
-      },
-      "reportPath": "/Users/luisphan/Documents/GitHub/nowing/_bmad-output/test-artifacts/mutation-nowing-routes-self_host_research-20260812T070424Z.json",
-      "sessionPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/_bmad-output/test-artifacts/mutation-nowing-routes-self_host_research-20260812T070424Z.sqlite",
-      "configPath": "/Users/luisphan/Documents/GitHub/nowing/nowing_backend/mutation-self_host_research.toml"
+      "service": "multi_agent_chat",
+      "verdict": "FAIL",
+      "error": "cosmic-ray init failed for mutation-nowing-multi_agent_chat-20260812T192847Z.toml",
+      "traceback": "Traceback (most recent call last):\n  File \"/Users/luisphan/Documents/GitHub/nowing/nowing_backend/../scripts/mutation-gate.py\", line 469, in main\n    run_cosmic_ray(backend, config, session)\n  File \"/Users/luisphan/Documents/GitHub/nowing/nowing_backend/../scripts/mutation-gate.py\", line 259, in run_cosmic_ray\n    raise RuntimeError(f\"cosmic-ray {step} failed for {config.name}\")\nRuntimeError: cosmic-ray init failed for mutation-nowing-multi_agent_chat-20260812T192847Z.toml\n"
     }
   ]
 }

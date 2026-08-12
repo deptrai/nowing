@@ -10,7 +10,7 @@ from app.services.scraper_chunks.serializer import to_chunks
 pytestmark = pytest.mark.unit
 
 
-@pytest.mark.skip(reason="red phase — pending AC-3 salary fields in ChunkMetadata")
+
 def test_chunk_metadata_has_salary_field():
     """ChunkMetadata has salary field."""
     metadata = ChunkMetadata(
@@ -28,7 +28,7 @@ def test_chunk_metadata_has_salary_field():
     assert metadata.salary["max"] == 50000000
 
 
-@pytest.mark.skip(reason="red phase — pending AC-3 salary fields in ChunkMetadata")
+
 def test_chunk_metadata_has_salary_consistency_score_field():
     """ChunkMetadata has salary_consistency_score field."""
     metadata = ChunkMetadata(
@@ -44,7 +44,7 @@ def test_chunk_metadata_has_salary_consistency_score_field():
     assert metadata.salary_consistency_score == 0.85
 
 
-@pytest.mark.skip(reason="red phase — pending AC-3 salary fields in ChunkMetadata")
+
 def test_to_chunks_populates_salary_from_vn_job_aggregated_listing():
     """to_chunks populates salary field from VnJobAggregatedListing."""
     data = {
@@ -72,7 +72,7 @@ def test_to_chunks_populates_salary_from_vn_job_aggregated_listing():
     assert chunks[0].metadata.salary["max"] == 50000000
 
 
-@pytest.mark.skip(reason="red phase — pending AC-3 salary fields in ChunkMetadata")
+
 def test_to_chunks_populates_salary_consistency_score_from_vn_job_aggregated_listing():
     """to_chunks populates salary_consistency_score from VnJobAggregatedListing."""
     data = {
@@ -99,7 +99,7 @@ def test_to_chunks_populates_salary_consistency_score_from_vn_job_aggregated_lis
     assert chunks[0].metadata.salary_consistency_score == 0.9
 
 
-@pytest.mark.skip(reason="red phase — pending AC-3 salary fields in ChunkMetadata")
+
 def test_to_chunks_salary_none_negotiable_results_in_metadata_salary_none():
     """salary None (negotiable/hidden) results in salary=None metadata."""
     data = {

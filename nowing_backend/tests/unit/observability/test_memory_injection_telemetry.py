@@ -1,4 +1,4 @@
-"""D8: exactly one log + exactly one counter attempt per ordinary failure."""
+"""D8 / Story 3.17 AC3: exactly one log + exactly one counter attempt per ordinary failure or truncation."""
 
 from __future__ import annotations
 
@@ -27,6 +27,14 @@ def fake_counter(monkeypatch: pytest.MonkeyPatch) -> _FakeCounter:
     return counter
 
 
+@pytest.fixture
+def fake_truncated_counter(monkeypatch: pytest.MonkeyPatch) -> _FakeCounter:
+    counter = _FakeCounter()
+    monkeypatch.setattr(ot_metrics, "_is_enabled", lambda: True)
+    monkeypatch.setattr(ot_metrics, "_memory_injection_truncated", lambda: counter)
+    return counter
+
+
 def test_record_memory_injection_failure_logs_and_counts_once(
     fake_counter: _FakeCounter, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -46,6 +54,23 @@ def test_record_memory_injection_failure_logs_and_counts_once(
     assert records[0].scope == "user"
     assert records[0].stage == "search"
     assert records[0].reason == "query_error"
+
+
+def test_record_memory_injection_truncated_logs_and_counts_once(
+    fake_truncated_counter: _FakeCounter, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="memory_injection.truncated"):
+        ot_metrics.record_memory_injection_truncated(scope="team")
+
+    assert len(fake_truncated_counter.calls) == 1
+    value, attrs = fake_truncated_counter.calls[0]
+    assert value == 1
+    assert attrs == {"scope": "team"}
+
+    records = [r for r in caplog.records if r.name == "memory_injection.truncated"]
+    assert len(records) == 1
+    assert records[0].message == "memory_injection.truncated"
+    assert records[0].scope == "team"
 
 
 def test_record_memory_injection_failure_attrs_are_exactly_scope_stage_reason(
@@ -103,5 +128,17 @@ def test_record_memory_injection_failure_is_noop_when_otel_disabled(
     ot_metrics.record_memory_injection_failure(
         scope="user", stage="display_name", reason="lookup_error"
     )
+
+    assert counter.calls == []
+
+
+def test_record_memory_injection_truncated_is_noop_when_otel_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    counter = _FakeCounter()
+    monkeypatch.setattr(ot_metrics, "_is_enabled", lambda: False)
+    monkeypatch.setattr(ot_metrics, "_memory_injection_truncated", lambda: counter)
+
+    ot_metrics.record_memory_injection_truncated(scope="user")
 
     assert counter.calls == []

@@ -29,12 +29,13 @@ def sample_listing() -> VnJobAggregatedListing:
     )
 
 
-@pytest.mark.skip(reason="red phase — pending AC-2 implementation")
 def test_redact_listing_calls_record_vn_jobs_pii_detected_for_each_pii_type(
     sample_listing,
 ):
     """_redact_listing calls record_vn_jobs_pii_detected for each PII type."""
-    with patch("app.observability.metrics.record_vn_jobs_pii_detected") as mock_record:
+    with patch(
+        "app.services.jobs_aggregator.orchestrator.record_vn_jobs_pii_detected"
+    ) as mock_record:
         _redact_listing(sample_listing)
 
     # Should be called for phone, email, and name
@@ -48,12 +49,11 @@ def test_redact_listing_calls_record_vn_jobs_pii_detected_for_each_pii_type(
     assert "name" in pii_types
 
 
-@pytest.mark.skip(reason="red phase — pending AC-2 implementation")
 def test_redact_listing_logs_pii_counts_as_structured_log_not_values(
     sample_listing, caplog
 ):
     """PII counts are logged as structured log (not values)."""
-    with patch("app.observability.metrics.record_vn_jobs_pii_detected"), caplog.at_level(logging.INFO):
+    with patch("app.services.jobs_aggregator.orchestrator.record_vn_jobs_pii_detected"), caplog.at_level(logging.INFO):
         _redact_listing(sample_listing)
 
     # Check that logs contain count information but not actual PII values
@@ -115,7 +115,7 @@ def test_redact_listing_does_not_set_pii_redacted_flag_when_no_pii():
         confidence_score=0.7,
     )
 
-    with patch("app.observability.metrics.record_vn_jobs_pii_detected"):
+    with patch("app.services.jobs_aggregator.orchestrator.record_vn_jobs_pii_detected"):
         result = _redact_listing(listing)
 
     assert result.pii_redacted is False

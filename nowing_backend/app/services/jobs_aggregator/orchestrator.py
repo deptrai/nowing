@@ -18,6 +18,7 @@ from app.canonical.tenant_context import set_canonical_workspace_id
 from app.observability.metrics import (
     categorize_exception,
     record_canonical_persist_failure,
+    record_vn_jobs_pii_detected,
 )
 from app.services.location_normalize import resolve_city_code
 from app.services.pii.redact import redact_job_pii
@@ -62,6 +63,7 @@ def _map_degradation_reason(raw_reason: str | None) -> str:
 
 def _redact_listing(listing: VnJobAggregatedListing) -> VnJobAggregatedListing:
     """Mask PII in job description and requirement text before returning."""
+    total_counts = {"phone": 0, "email": 0, "name": 0}
     for field in ("job_description", "job_requirement"):
         value = getattr(listing, field)
         if value:
@@ -69,6 +71,27 @@ def _redact_listing(listing: VnJobAggregatedListing) -> VnJobAggregatedListing:
             setattr(listing, field, redacted.text)
             if redacted.has_pii:
                 listing.pii_redacted = True
+            # ponytail: per-field counts; total may exceed if the same PII
+            # appears in both fields, but audit only needs counts, not values.
+            total_counts["phone"] += redacted.phones_detected
+            total_counts["email"] += redacted.emails_detected
+            total_counts["name"] += redacted.names_detected
+
+    if any(total_counts.values()):
+        for pii_type, count in total_counts.items():
+            record_vn_jobs_pii_detected(
+                source=listing.source, pii_type=pii_type, count=count
+            )
+        logger.info(
+            "PII redacted for listing",
+            extra={
+                "source": listing.source,
+                "listing_id": listing.id,
+                "phones": total_counts["phone"],
+                "emails": total_counts["email"],
+                "names": total_counts["name"],
+            },
+        )
     return listing
 
 

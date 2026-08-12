@@ -33,8 +33,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.chat.shared.middleware.compaction import PROTECTED_SYSTEM_PREFIXES
 from app.config import config
 from app.db import ChatVisibility, shielded_async_session
-from app.observability.metrics import record_memory_injection_failure
+from app.observability.metrics import (
+    record_memory_injection_failure,
+    record_memory_injection_truncated,
+)
 from app.services.memory.renderer import (
+    _MEMORY_WARNING,
     MemoryRenderError,
     render_bounded_memory_injection,
 )
@@ -145,7 +149,7 @@ def _build_transcript_query(messages: list[Any]) -> str | None:
         if remaining >= len(_QUERY_TRUNCATION_MARKER) + 1:
             tail_budget = remaining - len(_QUERY_TRUNCATION_MARKER)
             tail = text[-tail_budget:] if tail_budget > 0 else ""
-            selected.append(prefix + _QUERY_TRUNCATION_MARKER + tail)
+            selected.append(prefix + _QUERY_TRUNCATION_MARKER | tail)
         break
 
     if not selected:
@@ -293,6 +297,16 @@ class MemoryInjectionMiddleware(AgentMiddleware):  # type: ignore[type-arg]
                     scope=scope, stage=pending[0], reason=pending[1]
                 )
             return None
+
+        # Story 3.17 AC3: emit a truncation counter when the renderer had to
+        # truncate the *memory body* to fit within max_chars (renderer Rule 9).
+        # `_MEMORY_WARNING` is only embedded in the Rule-9 output path; Rule 8
+        # (display-name shrink/omit) and name-only paths do not increment this
+        # counter because the AC specifies "raw memory content" exceeding the
+        # budget, not the display name. User-controlled content cannot match the
+        # marker because html.escape(..., quote=True) escapes `<` and `>`.
+        if _MEMORY_WARNING in rendered:
+            record_memory_injection_truncated(scope=scope)
 
         if pending is not None:
             record_memory_injection_failure(
