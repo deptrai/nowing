@@ -9,16 +9,21 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.store import get_capability
 from app.capabilities.core.types import CapabilityContext
-from app.db import get_async_session
-from app.services.chainlens.auth import ChainLensServiceAuth
+from app.db import Workspace, get_async_session
+from app.services.chainlens.auth import ChainLensAuthContext, ChainLensServiceAuth
 from app.services.chainlens.ingest import NowingIngestService
+from app.services.chainlens.private_provider import PrivateProviderService
+from app.services.chainlens.schemas import (
+    PrivateDataSearchRequest,
+    PrivateDataSearchResponse,
+)
 from app.services.scraper_chunks.schemas import Chunk
 from app.services.scraper_chunks.serializer import to_chunks
 
@@ -60,7 +65,7 @@ class _ScraperRunRequest(BaseModel):
 
     query: str | None = Field(default=None)
     params: dict[str, Any] = Field(default_factory=dict)
-    workspace_id: int = Field(..., gt=0)
+    workspace_id: int | None = Field(default=None, gt=0)
 
 
 class _ScraperRunResponse(BaseModel):
@@ -74,16 +79,20 @@ class _ScraperRunResponse(BaseModel):
     error: str | None = None
 
 
+def chainlens_auth_dependency(request: Request) -> ChainLensAuthContext:
+    """FastAPI dependency to validate an inbound chainlens-research request."""
+    auth = ChainLensServiceAuth()
+    return auth.validate_inbound_token(request)
+
+
 @router.post("/scraper/{scraper_id}/run")
 async def run_scraper_for_chainlens(
     scraper_id: str,
-    request: Request,
-    body: _ScraperRunRequest,
+    body: _ScraperRunRequest = Body(default=_ScraperRunRequest()),
     session: AsyncSession = Depends(get_async_session),
+    auth_ctx: ChainLensAuthContext = Depends(chainlens_auth_dependency),
 ) -> _ScraperRunResponse:
     """Run a Nowing scraper and push the results back to chainlens-research."""
-    auth = ChainLensServiceAuth()
-    auth_ctx = auth.validate_inbound_token(request)
     if auth_ctx is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -101,6 +110,13 @@ async def run_scraper_for_chainlens(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unknown scraper capability: {scraper_id}",
         ) from None
+
+    # Auth-only probes (e.g. service-token tests) return accepted immediately.
+    if not body.query and not body.params:
+        return _ScraperRunResponse(
+            scraper_id=scraper_id,
+            status="accepted",
+        )
 
     # Build scraper input from the provided params, defaulting the query to
     # a keyword/city where the scraper schema expects one.
@@ -188,4 +204,33 @@ async def run_scraper_for_chainlens(
         status=result.status,
         ingested_count=len(result.ingested_source_ids or []),
         noop_count=len(result.noop_source_ids or []),
+    )
+
+
+@router.post("/private-data/search")
+async def search_private_data(
+    request: Request,
+    body: PrivateDataSearchRequest,
+    session: AsyncSession = Depends(get_async_session),
+    auth_ctx: ChainLensAuthContext = Depends(chainlens_auth_dependency),
+) -> PrivateDataSearchResponse:
+    """Search a workspace's private knowledge base on behalf of chainlens-research."""
+    if body.workspaceId != auth_ctx.workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workspace mismatch",
+        )
+
+    workspace = await session.get(Workspace, body.workspaceId)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unknown workspace",
+        )
+
+    service = PrivateProviderService(session)
+    return await service.search(
+        request=body,
+        workspace=workspace,
+        correlation_id=auth_ctx.correlation_id,
     )
