@@ -149,7 +149,7 @@ async def test_agent_tool_rejects_unauthorized_workspace(isolate_agent, monkeypa
     cap = _research_capability(output)
 
     auth = SimpleNamespace(
-        user=SimpleNamespace(id="u-1"), is_gated=False, method="session"
+        user=SimpleNamespace(id="u-1"), pat=None, is_gated=False, method="session"
     )
 
     async def _deny(*args, **kwargs):

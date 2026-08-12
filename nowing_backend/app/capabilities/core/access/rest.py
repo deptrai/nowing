@@ -320,7 +320,9 @@ def _register_verb(router: APIRouter, capability: Capability) -> None:
                 logger.exception("charge failed for sync run")
 
             # Story 20.2: trigger on-demand gap-fill indexing for research results.
-            if name == "chainlens.research" and getattr(output, "gap_fill_needed", False):
+            if name == "chainlens.research" and getattr(
+                output, "gap_fill_needed", False
+            ):
                 try:
                     await GapFillService().request_sync_or_async(
                         GapFillRequest(

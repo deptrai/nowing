@@ -434,7 +434,9 @@ def _capability_tool(
         # ``scraper_progress`` custom events that surface on the chat thinking step.
         with progress_scope() as reporter:
             async with async_session_maker() as session:
-                sync_run_id = str(uuid.uuid4()) if name == "chainlens.research" else None
+                sync_run_id = (
+                    str(uuid.uuid4()) if name == "chainlens.research" else None
+                )
                 ctx = CapabilityContext(
                     session=session,
                     workspace_id=workspace_id,
