@@ -375,7 +375,15 @@ class NowingIngestService:
                         else str(exc)
                     )
                     logger.error(
-                        "chainlens ingest schema violation — first failing chunk",
+                        "chainlens ingest schema violation — first failing chunk "
+                        "source_id=%s domain=%s title=%s chunk_index=%s status=%s "
+                        "validation_error=%s",
+                        metadata.get("sourceId"),
+                        metadata.get("domain"),
+                        metadata.get("title"),
+                        metadata.get("chunkIndex"),
+                        exc.status_code,
+                        response_error,
                         extra={
                             "scraper_id": scraper_id,
                             "workspace_id": workspace_id,

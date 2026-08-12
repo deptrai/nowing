@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.db import ChainLensIngestJob
 
-pytestmark = [pytest.mark.integration, pytest.mark.skip(reason="red phase — pending AC-4/AC-5 integration")]
+pytestmark = [pytest.mark.integration]
 
 
 @pytest_asyncio.fixture

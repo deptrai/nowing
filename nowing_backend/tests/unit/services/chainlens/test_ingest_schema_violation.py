@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -20,9 +20,8 @@ def mock_session():
 
 @pytest.fixture
 def mock_chunk():
-    """Mock chunk object."""
-    chunk = MagicMock()
-    chunk.model_dump.return_value = {
+    """Return a chunk dict matching the canonical Chunk shape."""
+    return {
         "content": "test content",
         "metadata": {
             "sourceId": "test:123",
@@ -30,12 +29,20 @@ def mock_chunk():
             "title": "Data Engineer",
         },
     }
-    return chunk
 
+
+def _find_schema_violation_log(caplog):
+    """Return the first ERROR log about schema violations."""
+    for record in caplog.records:
+        if record.levelname == "ERROR" and "schema violation" in record.message.lower():
+            return record
+    return None
 
 
 @pytest.mark.asyncio
-async def test_ingest_logs_first_failing_chunk_details_on_400(mock_session, mock_chunk, caplog):
+async def test_ingest_logs_first_failing_chunk_details_on_400(
+    mock_session, mock_chunk, caplog
+):
     """NowingIngestService.ingest() logs first failing chunk details on 400."""
     service = NowingIngestService()
 
@@ -60,15 +67,17 @@ async def test_ingest_logs_first_failing_chunk_details_on_400(mock_session, mock
             session=mock_session,
         )
 
-    error_logs = [record for record in caplog.records if record.levelname == "ERROR"]
-    assert len(error_logs) > 0
-    log_message = error_logs[0].message
-    assert "test:123" in log_message or "vn_jobs" in log_message or "first failing chunk" in log_message.lower()
-
+    log = _find_schema_violation_log(caplog)
+    assert log is not None
+    assert "test:123" in log.getMessage()
+    assert "vn_jobs" in log.getMessage()
+    assert "Data Engineer" in log.getMessage()
 
 
 @pytest.mark.asyncio
-async def test_ingest_logs_first_failing_chunk_details_on_422(mock_session, mock_chunk, caplog):
+async def test_ingest_logs_first_failing_chunk_details_on_422(
+    mock_session, mock_chunk, caplog
+):
     """NowingIngestService.ingest() logs first failing chunk details on 422."""
     service = NowingIngestService()
 
@@ -93,9 +102,10 @@ async def test_ingest_logs_first_failing_chunk_details_on_422(mock_session, mock
             session=mock_session,
         )
 
-    error_logs = [record for record in caplog.records if record.levelname == "ERROR"]
-    assert len(error_logs) > 0
-
+    log = _find_schema_violation_log(caplog)
+    assert log is not None
+    assert "test:123" in log.getMessage()
+    assert "Validation failed" in log.getMessage()
 
 
 @pytest.mark.asyncio
@@ -130,3 +140,36 @@ async def test_ingest_batch_marked_failed_not_retried_for_400(mock_session, mock
     assert call_count == 1
     assert result.status == "failed"
     assert result.error is not None
+
+
+@pytest.mark.asyncio
+async def test_ingest_409_conflict_treated_as_noop(mock_session, mock_chunk):
+    """409 conflict is treated as idempotent noop, not failed."""
+    service = NowingIngestService()
+
+    async def fake_post_batch(*args, **kwargs):
+        raise ConnectorAPIError(
+            "Conflict",
+            service="chainlens_ingest",
+            status_code=409,
+            response_body={
+                "ingestJobId": "job-409",
+                "noopSourceIds": ["test:123"],
+            },
+        )
+
+    with (
+        patch("app.services.chainlens.ingest._post_batch", fake_post_batch),
+        patch("app.services.chainlens.ingest.ChainLensServiceAuth") as mock_auth,
+    ):
+        mock_auth.return_value.configured = True
+        result = await service.ingest(
+            scraper_id="vn_jobs.aggregate",
+            chunks=[mock_chunk],
+            workspace_id=1,
+            session=mock_session,
+        )
+
+    assert result.status == "noop"
+    assert result.ingest_job_id == "job-409"
+    assert result.noop_source_ids == ["test:123"]
