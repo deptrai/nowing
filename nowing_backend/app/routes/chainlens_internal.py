@@ -6,6 +6,7 @@ service-to-service callbacks authenticated with ``ChainLensServiceAuth``.
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -28,6 +29,8 @@ from app.services.scraper_chunks.schemas import Chunk
 from app.services.scraper_chunks.serializer import to_chunks
 
 router = APIRouter(tags=["chainlens-internal"])
+
+logger = logging.getLogger(__name__)
 
 # Domain slug -> fully qualified capability name.
 _DOMAIN_CAPABILITY_MAP: dict[str, str] = {
@@ -103,6 +106,15 @@ async def run_scraper_for_chainlens(
     workspace_id = auth_ctx.workspace_id
     correlation_id = auth_ctx.correlation_id
     capability_name = _resolve_scraper_id(scraper_id)
+    logger.info(
+        "chainlens scraper run requested",
+        extra={
+            "scraper_id": scraper_id,
+            "capability_name": capability_name,
+            "workspace_id": workspace_id,
+            "correlation_id": correlation_id,
+        },
+    )
     try:
         capability = get_capability(capability_name)
     except KeyError:
@@ -152,13 +164,26 @@ async def run_scraper_for_chainlens(
     # AC-6: the vn_jobs.aggregate executor already chunks and ingests the
     # listings. Avoid double-ingest by using its output directly.
     if capability_name == "vn_jobs.aggregate" and hasattr(output, "ingest_status"):
-        return _ScraperRunResponse(
+        response = _ScraperRunResponse(
             scraper_id=scraper_id,
             ingest_job_id=getattr(output, "ingest_job_id", None),
             status=getattr(output, "ingest_status", "no_items") or "no_items",
             ingested_count=getattr(output, "ingested_count", 0),
             noop_count=getattr(output, "noop_count", 0),
         )
+        logger.info(
+            "chainlens scraper run completed (vn_jobs.aggregate executor ingest)",
+            extra={
+                "scraper_id": scraper_id,
+                "workspace_id": workspace_id,
+                "correlation_id": correlation_id,
+                "status": response.status,
+                "ingest_job_id": response.ingest_job_id,
+                "ingested_count": response.ingested_count,
+                "noop_count": response.noop_count,
+            },
+        )
+        return response
 
     items: list[Any] = []
     if hasattr(output, "items") and isinstance(output.items, list):
@@ -214,13 +239,27 @@ async def run_scraper_for_chainlens(
     if hasattr(output, "ingest_job_id"):
         output.ingest_job_id = result.ingest_job_id or result.parent_ingest_job_id
 
-    return _ScraperRunResponse(
+    response = _ScraperRunResponse(
         scraper_id=scraper_id,
         ingest_job_id=result.ingest_job_id or result.parent_ingest_job_id,
         status=result.status,
         ingested_count=len(result.ingested_source_ids or []),
         noop_count=len(result.noop_source_ids or []),
     )
+
+    logger.info(
+        "chainlens scraper run completed",
+        extra={
+            "scraper_id": scraper_id,
+            "workspace_id": workspace_id,
+            "correlation_id": correlation_id,
+            "status": response.status,
+            "ingest_job_id": response.ingest_job_id,
+            "ingested_count": response.ingested_count,
+            "noop_count": response.noop_count,
+        },
+    )
+    return response
 
 
 @router.post("/private-data/search")
