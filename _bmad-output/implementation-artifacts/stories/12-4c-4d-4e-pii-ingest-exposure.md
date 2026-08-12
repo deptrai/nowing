@@ -41,7 +41,7 @@ Covers epics.md stories **12.4c** (PII) + **12.4d** (ingest) + **12.4e** (exposu
 
 ### PII (12.4c)
 - **`redact_job_pii`** — `app/services/pii/redact.py:91`: masks phone/email/names. Returns `RedactedText` with `.text`, `.has_pii`, `.counts`.
-- **Wired into orchestrator** — `orchestrator.py:33-42` (`_redact_listing`): runs before dedupe. Sets `pii_redacted = True`.
+- **Wired into orchestrator** — `orchestrator.py:63-72` (`_redact_listing`): runs before dedupe. Sets `pii_redacted = True`.
 - **Canonical PII** — `app/canonical/services/canonical_pii.py:122` (`redact_canonical_data`): second-pass for canonical storage.
 - **Chunk serializer redaction** — `scraper_chunks/serializer.py`: `_redact_text()` during chunk building. Test `test_to_chunks_redacts_pii_before_chunking` verifies masking.
 
@@ -65,15 +65,15 @@ Covers epics.md stories **12.4c** (PII) + **12.4d** (ingest) + **12.4e** (exposu
 2. **NER for person names.** `redact_job_pii` handles phone + email via regex. Person names in JD text need NER or heuristic. Check if `redact_pii` already has name detection — if not, gap from Story 12.5 AC-2.
 
 ### Ingest gaps (AC-3, AC-4, AC-5)
-3. **`sourceId` fingerprint alignment.** AC-3 says `sha256(company|title|location|posted_at)`. Current `_stable_fingerprint` uses a different identity set. Align for job domains.
-4. **`salary` + `salary_consistency_score` not in ChunkMetadata.** AC-3 requires both. `ChunkMetadata` doesn't have these fields. Either add them or document why they're in-content only.
-5. **Dead-letter queue.** AC-5 says "stores the failed batch in a dead-letter queue". Retry exists but no DLQ table. Need `chainlens_ingest_dlq` table or similar.
-6. **`ingestJobId` → Postgres mapping.** AC-4 says "stores the job mapping". Route returns `ingest_job_id` but doesn't persist a mapping row.
-7. **`chainlens_ingest_failed` counter.** AC-5 requires it. Check `app/observability/metrics.py` for existing counter; add if missing.
+3. **`sourceId` fingerprint alignment.** AC-3 says `sha256(company|title|location|posted_at)`. Current `_identity_fields()` in `serializer.py:207-214` uses `{title, company, location, salary, employment_type}` — missing `posted_at`, has extra fields. Fix: for job domains, use `{company, title, location, posted_at}` (remove `salary` + `employment_type`, add `posted_at`).
+4. **`salary` + `salary_consistency_score` not in ChunkMetadata.** AC-3 requires both. `ChunkMetadata` doesn't have these fields. Decision: add `salary: dict | None = None` and `salary_consistency_score: float | None = None` to `ChunkMetadata` for job domains, OR document that salary is in-content only (chunk content text includes salary range).
+5. **Dead-letter queue — ALREADY EXISTS.** `ChainLensIngestJob.dead_letter_payload` JSONB column (db.py:4219) stores failed batch payload. Populated in `ingest.py:455`. No new table needed. Gap: add reprocessing/admin endpoint if manual retry is needed.
+6. **`ingestJobId` → Postgres mapping — ALREADY EXISTS.** `ChainLensIngestJob` table (db.py:4183) persists mapping. Route returns `ingest_job_id` (chainlens_internal.py:203). No new code needed.
+7. **`chainlens_ingest_failed` counter — ALREADY EXISTS.** Counter in `metrics.py:1174-1178`, called in `ingest.py:367,391`. No new code needed.
 
 ### Exposure gaps (AC-6, AC-7)
 8. **`ingestJobId` not in `VnJobAggregateOutput`.** AC-6 requires it. Output schema has `persistence_status` but no `ingest_job_id`. Add `ingest_job_id: str | None = None`.
-9. **Schema violation handling.** AC-7 says "logs the first failing chunk and fails the batch" on schema rejection (`400`/`422`). Verify `NowingIngestService` handles this; add if missing.
+9. **Schema violation handling — PARTIALLY EXISTS.** `NowingIngestService._post_batch_core()` (ingest.py:143) already handles 400/422 as non-retryable `ConnectorAPIError`. Gap: add specific logging of first failing chunk details before failing batch (AC-7 requirement).
 
 ---
 
@@ -91,17 +91,18 @@ Covers epics.md stories **12.4c** (PII) + **12.4d** (ingest) + **12.4e** (exposu
   - [ ] Add `salary` + `salary_consistency_score` to ChunkMetadata (or document in-content only)
 - [ ] AC-4: Ingest + job mapping (AC: #4)
   - [x] `NowingIngestService.ingest()` + pagination
-  - [ ] Persist `ingestJobId` → Postgres mapping table
+  - [x] Persist `ingestJobId` → Postgres mapping (`ChainLensIngestJob` table, db.py:4183)
 - [ ] AC-5: Retry + DLQ + counter (AC: #5)
   - [x] Exponential backoff retry
-  - [ ] Add DLQ table for failed batches
-  - [ ] Verify/emit `chainlens_ingest_failed` counter
+  - [x] DLQ: `ChainLensIngestJob.dead_letter_payload` column (db.py:4219)
+  - [x] `chainlens_ingest_failed` counter (metrics.py:1174-1178, called in ingest.py:367,391)
+  - [ ] Add admin reprocessing endpoint if manual retry needed (optional)
 - [ ] AC-6: Output includes `ingestJobId` (AC: #6)
   - [x] REST + MCP + chat all wired
   - [ ] Add `ingest_job_id: str | None = None` to `VnJobAggregateOutput`
 - [ ] AC-7: Schema violation handling (AC: #7)
-  - [ ] Verify `NowingIngestService` handles `400`/`422` from chainlens-research
-  - [ ] Log first failing chunk + fail batch
+  - [x] `NowingIngestService` handles 400/422 as non-retryable `ConnectorAPIError` (ingest.py:143)
+  - [ ] Log first failing chunk details before failing batch
 
 ---
 
@@ -110,8 +111,11 @@ Covers epics.md stories **12.4c** (PII) + **12.4d** (ingest) + **12.4e** (exposu
 ### `to_chunks()` is in the route, NOT the orchestrator
 Aggregator (`aggregate_jobs`) produces `VnJobAggregateOutput`. Route (`chainlens_internal.py:165-207`) iterates items, calls `to_chunks()`, then `NowingIngestService.ingest()`. This separation is by design (AD-34). Don't merge ingest into orchestrator.
 
-### `NowingIngestService` already has pagination + retry
-`ingest.py:300-303` paginates via `CHAINLENS_INGEST_MAX_BATCH_SIZE`. Retry in batch loop. Don't re-implement — just add DLQ + counter.
+### PII redaction is defense-in-depth
+Orchestrator redacts before dedupe (`orchestrator.py:63-72`). Chunk serializer redacts during content building (`serializer.py:86-104`). Both use same `redact_job_pii` function — this is intentional defense-in-depth. Canonical storage has a second pass via `redact_canonical_data` (`canonical_pii.py:122`).
+
+### `NowingIngestService` already has pagination + retry + DLQ + counter
+`ingest.py:300-303` paginates via `CHAINLENS_INGEST_MAX_BATCH_SIZE`. Retry in batch loop. DLQ via `ChainLensIngestJob.dead_letter_payload` column. Counter via `chainlens_ingest_failed` in metrics.py. Don't re-implement — only add: (1) `ingest_job_id` to output schema, (2) first-failing-chunk logging on 400/422, (3) `sourceId` alignment, (4) salary fields in ChunkMetadata.
 
 ### Architecture compliance
 - **AD-25**: PII redaction before chunk + ingest (already wired, verify completeness).
