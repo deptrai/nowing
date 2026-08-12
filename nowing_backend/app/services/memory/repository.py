@@ -34,6 +34,13 @@ from app.utils.document_converters import embed_texts
 logger = logging.getLogger(__name__)
 
 
+def _coerce_str(value: Any) -> str | None:
+    """Return the value as a string, or None if it is not string-like."""
+    if value is None or isinstance(value, str):
+        return value
+    return None
+
+
 def _validate_vector(embedding: Any) -> np.ndarray:
     """Validate a caller-supplied embedding before dedup SQL/assignment/flush (D6)."""
     return validate_embedding_vector(
@@ -218,8 +225,8 @@ class MemoryRepository:
             change=change,
             source_type=getattr(memory.source_type, "value", memory.source_type),
             research_thread_id=memory.research_thread_id,
-            client_id=memory.client_id,
-            agent_id=memory.agent_id,
+            client_id=_coerce_str(memory.client_id),
+            agent_id=_coerce_str(memory.agent_id),
             # Repo-emitted events are non-origin by construction (origin writes
             # are skipped above); the field carries the selector's contract.
             automation_run_id=None,
