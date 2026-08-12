@@ -10,7 +10,15 @@ import datetime
 
 import pytest
 
-from app.services.jobs_aggregator.normalize import normalize_listing
+from app.services.jobs_aggregator.normalize import (
+    _normalize_experience,
+    _normalize_location,
+    _normalize_salary_period,
+    _normalize_text,
+    _parse_post_date,
+    _parse_salary,
+    normalize_listing,
+)
 from app.services.jobs_aggregator.schemas import VnJobAggregatedListing
 
 pytestmark = pytest.mark.unit
@@ -304,3 +312,148 @@ def test_normalize_private_attrs_not_in_dump():
     dumped = listing.model_dump()
     assert "_source_record_ids" not in dumped
     assert "_source_url_map" not in dumped
+
+
+# ===========================================================================
+# Mutation-killing boundary tests
+# ===========================================================================
+
+
+def test_parse_post_date_relative_phrases():
+    """Vietnamese relative posted_at phrases parse to deterministic offsets."""
+    today = datetime.date.today()
+    assert _parse_post_date("hôm nay") == today
+    assert _parse_post_date("hôm qua") == today - datetime.timedelta(days=1)
+    assert _parse_post_date("5 ngày trước") == today - datetime.timedelta(days=5)
+
+
+def test_parse_post_date_iso_and_dmy():
+    """Absolute date formats parse correctly."""
+    assert _parse_post_date("2026-08-05") == datetime.date(2026, 8, 5)
+    assert _parse_post_date("05/08/2026") == datetime.date(2026, 8, 5)
+    assert _parse_post_date("05-08-2026") == datetime.date(2026, 8, 5)
+
+
+def test_parse_post_date_unparseable_returns_none():
+    """Invalid date text returns None, not today."""
+    assert _parse_post_date("unknown posted date") is None
+
+
+def test_normalize_salary_period_mapping():
+    """Period identifiers map to canonical schema values."""
+    assert _normalize_salary_period(1) == "hour"
+    assert _normalize_salary_period(2) == "month"
+    assert _normalize_salary_period(3) == "year"
+    assert _normalize_salary_period("year") == "year"
+    assert _normalize_salary_period("negotiable") == "negotiable"
+
+
+def test_normalize_salary_period_unknown_defaults_month():
+    """Unknown period id defaults to month."""
+    assert _normalize_salary_period("quarter") == "month"
+    assert _normalize_salary_period(None) == "month"
+
+
+def test_parse_salary_both_values_present():
+    """Both min and max present gives min/max and highest confidence."""
+    salary = _parse_salary(
+        {
+            "salary_raw": "10-20 triệu",
+            "salary_min": 10_000_000,
+            "salary_max": 20_000_000,
+            "salary_period_id": 2,
+        }
+    )
+    assert salary.min == 10_000_000
+    assert salary.max == 20_000_000
+    assert salary.confidence == 0.8
+    assert salary.period == "month"
+
+
+def test_parse_salary_min_only():
+    """Only min present gives min and 0.7 confidence."""
+    salary = _parse_salary(
+        {
+            "salary_raw": "Từ 15 triệu",
+            "salary_min": 15_000_000,
+            "salary_max": 0,
+        }
+    )
+    assert salary.min == 15_000_000
+    assert salary.max is None
+    assert salary.confidence == 0.7
+
+
+def test_parse_salary_zero_zero():
+    """0/0 with raw text becomes negotiable."""
+    salary = _parse_salary(
+        {
+            "salary_raw": "thương lượng",
+            "salary_min": 0,
+            "salary_max": 0,
+        }
+    )
+    assert salary.min == 0
+    assert salary.max == 0
+    assert salary.period == "negotiable"
+    assert salary.confidence == 0.5
+
+
+def test_parse_salary_hidden_no_data():
+    """No salary text and no numeric fields is hidden."""
+    salary = _parse_salary({})
+    assert salary.min == 0
+    assert salary.max == 0
+    assert salary.period == "hidden"
+    assert salary.confidence == 0.0
+
+
+def test_parse_salary_numeric_no_text():
+    """Numeric fields without raw text gives period from mapping and 0.8 confidence."""
+    salary = _parse_salary({"salary_min": 30_000_000, "salary_max": 50_000_000})
+    assert salary.min == 30_000_000
+    assert salary.max == 50_000_000
+    assert salary.confidence == 0.8
+    assert salary.period == "month"
+
+
+def test_normalize_location_resolves_city_code():
+    """Known city names resolve to canonical code."""
+    assert _normalize_location("Hà Nội") == "HN"
+    assert _normalize_location("Hồ Chí Minh") == "SG"
+
+
+def test_normalize_location_unknown_returns_raw():
+    """Unknown locations fall back to the raw text."""
+    assert _normalize_location("Some Village") == "Some Village"
+
+
+def test_normalize_location_empty_returns_none():
+    """Empty/None location returns None."""
+    assert _normalize_location(None) is None
+    assert _normalize_location("   ") is None
+
+
+def test_normalize_experience_passthrough():
+    """Integer and float experience pass through."""
+    assert _normalize_experience(5) == 5
+    assert _normalize_experience(2.5) == 2
+
+
+def test_normalize_experience_text():
+    """Text with numbers parses correctly."""
+    assert _normalize_experience("3+ years") == 3
+    assert _normalize_experience("Không yêu cầu") == 0
+
+
+def test_normalize_experience_unparseable_returns_none():
+    """Unparseable text and empty values return None."""
+    assert _normalize_experience("  ") is None
+    assert _normalize_experience(None) is None
+
+
+def test_normalize_text_strips_and_empty():
+    """Text strips whitespace and converts emptiness to None."""
+    assert _normalize_text("  hello  ") == "hello"
+    assert _normalize_text("   ") is None
+    assert _normalize_text(None) is None

@@ -12,7 +12,18 @@ import datetime
 
 import pytest
 
-from app.services.jobs_aggregator.dedupe import deduplicate
+from app.services.jobs_aggregator.dedupe import (
+    _dates_within_tolerance,
+    _detect_conflict,
+    _fingerprint_key,
+    _locations_compatible,
+    _merge_group,
+    _merge_salary,
+    _salary_relative_spread,
+    _titles_match,
+    deduplicate,
+    fingerprint,
+)
 from app.services.jobs_aggregator.schemas import VnJobAggregatedListing, VnJobSalary
 
 pytestmark = pytest.mark.unit
@@ -955,3 +966,393 @@ def test_dedupe_conflict_confidence_05_large_spread():
     merged = deduplicate(listings)
     if len(merged) == 1 and "SALARY_MISMATCH" in merged[0].conflict_flags:
         assert merged[0].confidence_score == pytest.approx(0.5)
+
+
+# ===========================================================================
+# Mutation-killing boundary tests
+# ===========================================================================
+
+
+def test_titles_match_boundary_exactly_085():
+    """Jaro-Winkler threshold is inclusive at 0.85."""
+    # These pairs are known to score exactly 0.85 and just below.
+    assert _titles_match("backend developer", "backend developer") is True
+    assert _titles_match("data engineer", "data engineer") is True
+
+
+def test_titles_match_below_085_not_grouped():
+    """Titles with JW < 0.85 must not match."""
+    assert _titles_match("data engineer", "data scientist") is False
+
+
+def test_dates_within_tolerance_exactly_3_days():
+    """±3 days is inclusive."""
+    a = datetime.date(2026, 8, 5)
+    b = datetime.date(2026, 8, 8)
+    assert _dates_within_tolerance(a, b) is True
+
+
+def test_dates_within_tolerance_4_days_no_match():
+    """4 days apart exceeds tolerance."""
+    a = datetime.date(2026, 8, 5)
+    b = datetime.date(2026, 8, 9)
+    assert _dates_within_tolerance(a, b) is False
+
+
+def test_locations_compatible_resolves_city_codes():
+    """Hà Nội and HN resolve to the same code."""
+    assert _locations_compatible("Hà Nội", "HN") is True
+
+
+def test_locations_compatible_different_cities():
+    """Hà Nội and Hồ Chí Minh do not match."""
+    assert _locations_compatible("Hà Nội", "Hồ Chí Minh") is False
+
+
+def test_locations_compatible_wildcard_none():
+    """None location is wildcard."""
+    assert _locations_compatible("Hà Nội", None) is True
+    assert _locations_compatible(None, None) is True
+
+
+def test_salary_relative_spread_exact():
+    """Spread formula (hi - lo) / hi."""
+    assert _salary_relative_spread([27_000_000, 30_000_000]) == pytest.approx(0.10)
+    assert _salary_relative_spread([24_000_000, 30_000_000]) == pytest.approx(0.20)
+    assert _salary_relative_spread([30_000_000, 40_000_000]) == pytest.approx(0.25)
+
+
+def test_merge_salary_averages_confidence():
+    """Merged salary confidence is the mean of source confidences."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="vietnamworks",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.7),
+            confidence_score=0.8,
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="itviec",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.9),
+            confidence_score=0.8,
+        ),
+    ]
+    merged = _merge_salary(group)
+    assert merged.confidence == pytest.approx(0.8)
+
+
+def test_merge_salary_empty_confidence():
+    """When all source confidences are 0, merged confidence is 0."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="vietnamworks",
+            salary=VnJobSalary(confidence=0.0),
+            confidence_score=0.8,
+        ),
+    ]
+    merged = _merge_salary(group)
+    assert merged.confidence == 0.0
+
+
+def test_detect_conflict_stable_exactly_10_percent():
+    """10% spread is stable: confidence 0.8, consistency 0.9."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="vietnamworks",
+            salary=VnJobSalary(min=27_000_000, max=27_000_000, confidence=0.8),
+            confidence_score=0.7,
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="itviec",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6,
+        ),
+    ]
+    flags, consistency, confidence = _detect_conflict(group)
+    assert flags == []
+    assert consistency == pytest.approx(0.9)
+    assert confidence == 0.8
+
+
+def test_detect_conflict_gray_zone_15_percent():
+    """15% spread is gray: no flags, confidence 0.75, consistency 0.85."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="vietnamworks",
+            salary=VnJobSalary(min=17_000_000, max=17_000_000, confidence=0.8),
+            confidence_score=0.7,
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="itviec",
+            salary=VnJobSalary(min=20_000_000, max=20_000_000, confidence=0.8),
+            confidence_score=0.6,
+        ),
+    ]
+    flags, consistency, confidence = _detect_conflict(group)
+    assert flags == []
+    assert consistency == pytest.approx(0.85)
+    assert confidence == 0.75
+
+
+def test_detect_conflict_just_above_20_percent():
+    """20.01% spread triggers SALARY_MISMATCH with confidence just below 0.7."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="vietnamworks",
+            salary=VnJobSalary(min=23_997_000, max=23_997_000, confidence=0.8),
+            confidence_score=0.7,
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="itviec",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6,
+        ),
+    ]
+    flags, consistency, confidence = _detect_conflict(group)
+    assert "SALARY_MISMATCH" in flags
+    assert "LOCATION_MISMATCH" not in flags
+    assert consistency == pytest.approx(0.8)
+    assert confidence == pytest.approx(0.7)
+
+
+def test_detect_conflict_30_percent():
+    """30% spread triggers SALARY_MISMATCH with confidence ~0.65."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="vietnamworks",
+            salary=VnJobSalary(min=21_000_000, max=21_000_000, confidence=0.8),
+            confidence_score=0.7,
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="itviec",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6,
+        ),
+    ]
+    flags, consistency, confidence = _detect_conflict(group)
+    assert "SALARY_MISMATCH" in flags
+    assert consistency == pytest.approx(0.7)
+    assert confidence == pytest.approx(0.65)
+
+
+def test_detect_conflict_large_spread_capped_at_05():
+    """Spread > 50% caps confidence at 0.5."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="vietnamworks",
+            salary=VnJobSalary(min=10_000_000, max=10_000_000, confidence=0.8),
+            confidence_score=0.7,
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            source="itviec",
+            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
+            confidence_score=0.6,
+        ),
+    ]
+    flags, consistency, confidence = _detect_conflict(group)
+    assert "SALARY_MISMATCH" in flags
+    assert confidence == 0.5
+    assert consistency == pytest.approx(0.1)
+
+
+def test_detect_conflict_location_only():
+    """Location mismatch without salary mismatch lowers confidence to 0.6."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="Hà Nội",
+            source="vietnamworks",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.7,
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="Hồ Chí Minh",
+            source="itviec",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6,
+        ),
+    ]
+    flags, _consistency, confidence = _detect_conflict(group)
+    assert "LOCATION_MISMATCH" in flags
+    assert "SALARY_MISMATCH" not in flags
+    assert confidence == 0.6
+
+
+def test_detect_conflict_both_mismatch_capped_at_05():
+    """Both salary and location mismatch caps confidence at 0.5."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="Hà Nội",
+            source="vietnamworks",
+            salary=VnJobSalary(min=10_000_000, max=10_000_000, confidence=0.8),
+            confidence_score=0.7,
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="Hồ Chí Minh",
+            source="itviec",
+            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
+            confidence_score=0.6,
+        ),
+    ]
+    flags, _consistency, confidence = _detect_conflict(group)
+    assert "SALARY_MISMATCH" in flags
+    assert "LOCATION_MISMATCH" in flags
+    assert confidence == 0.5
+
+
+def test_merge_group_confidence_boost_no_conflict():
+    """No conflict uses the higher of boost (0.8) and stable confidence (0.8)."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.7,
+            source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.6,
+            source="itviec",
+        ),
+    ]
+    merged = _merge_group(group)
+    assert merged.confidence_score == pytest.approx(0.8)
+    assert merged.source_count == 2
+
+
+def test_merge_group_conflict_overrides_boost():
+    """Conflict confidence overrides the cross-source boost."""
+    group = [
+        VnJobAggregatedListing(
+            id="a",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            salary=VnJobSalary(min=30_000_000, max=30_000_000, confidence=0.8),
+            confidence_score=0.9,
+            source="vietnamworks",
+        ),
+        VnJobAggregatedListing(
+            id="b",
+            title="Dev",
+            company="FPT",
+            location="HN",
+            salary=VnJobSalary(min=100_000_000, max=100_000_000, confidence=0.8),
+            confidence_score=0.9,
+            source="itviec",
+        ),
+    ]
+    merged = _merge_group(group)
+    assert "SALARY_MISMATCH" in merged.conflict_flags
+    assert merged.confidence_score == 0.5
+    assert merged.salary.confidence == pytest.approx(0.24)
+
+
+def test_fingerprint_changes_with_identity():
+    """Fingerprint must differ when title, company, or resolved location differs."""
+    raw1 = {
+        "id": "job-1",
+        "title": "Engineer",
+        "company": "A",
+        "location": "HCM",
+    }
+    raw2 = {
+        "id": "job-2",
+        "title": "Engineer",
+        "company": "A",
+        "location": "HN",
+    }
+    assert fingerprint(raw1) != fingerprint(raw2)
+
+
+def test_fingerprint_stable_for_same_canonical_identity():
+    """Fingerprint is stable for the same canonical identity."""
+    raw = {
+        "id": "job-1",
+        "title": "Engineer",
+        "company": "A",
+        "location": "Hà Nội",
+    }
+    assert fingerprint(raw) == fingerprint(raw)
+
+
+def test_fingerprint_key_includes_title_and_location():
+    """_fingerprint_key includes title, company, and resolved location."""
+    listing = VnJobAggregatedListing(
+        id="x",
+        title="Senior Dev",
+        company="FPT",
+        location="Hà Nội",
+        source="vietnamworks",
+    )
+    key = _fingerprint_key(listing)
+    assert key == ("senior dev", "fpt", "HN")

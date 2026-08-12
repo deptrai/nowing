@@ -2,7 +2,7 @@
 title: Story 12.4a+4b — Vietnam Job Normalization, Dedupe & Conflict Detection
 epic: 12
 story: 4a-4b
-status: done
+status: pending-human-review
 priority: P0
 baseline_commit: e0ed91f21
 ---
