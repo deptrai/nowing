@@ -2,7 +2,7 @@
 title: Story 12.4a+4b — Vietnam Job Normalization, Dedupe & Conflict Detection
 epic: 12
 story: 4a-4b
-status: review
+status: done
 priority: P0
 baseline_commit: e0ed91f21
 ---
@@ -250,3 +250,9 @@ AC-4 says "Jaro-Winkler ≥ 0.85". But:
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-08-12 | Green-phase implementation: all 6 ACs implemented, 93 tests passing | dev-story agent |
+
+### Review Findings
+
+- [x] [Review][Patch] Location filter bypass in orchestrator [orchestrator.py:352-358] — Filter uses naive string comparison `(item.location or "").lower().strip() == loc` instead of `resolve_city_code()`. After normalization, `item.location` is a city code (e.g., "HN"), but `input.location` could be "Hà Nội" or "hanoi". The filter will never match. Fix: resolve both sides to city codes before comparing.
+- [x] [Review][Patch] Comment says "62-province" but table has 64 entries [location_normalize/__init__.py:6-7] — Comment says "62-province table" and "63 Vietnamese provinces" but `len(CITY_CODES) == 64`. Fix: update to "64-entry table covering all 63 Vietnamese provinces/municipalities".
+- [x] [Review][Defer] Union-find path compression not reused in grouping [dedupe.py:271-273] — deferred, pre-existing pattern — Manual root-finding traversal at lines 271-273 doesn't reuse the `find()` function with path compression. Negligible impact since n ≤ 20 per group and traversal happens once per element.

@@ -3,8 +3,8 @@
 Extracted from ``bds_aggregator/normalize.py`` so both BĐS and jobs aggregators
 reuse the same diacritics stripping, slug generation, and city-code resolution.
 
-Ponytail: 62-province table is a V1 snapshot — covers all 63 Vietnamese
-provinces/municipalities as of 2026.  If Vietnam adds a new province, append
+Ponytail: 64-entry table covering all 63 Vietnamese provinces/municipalities
+as of 2026.  If Vietnam adds a new province, append
 the code+slug here and both aggregators pick it up.
 """
 

@@ -19,6 +19,7 @@ from app.observability.metrics import (
     categorize_exception,
     record_canonical_persist_failure,
 )
+from app.services.location_normalize import resolve_city_code
 from app.services.pii.redact import redact_job_pii
 
 from .dedupe import deduplicate, fingerprint, search_text
@@ -349,12 +350,17 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
     )
 
     # Apply aggregator-level location filter if provided.
+    # ponytail: resolve both sides to city codes so "Hà Nội" / "hanoi" / "HN" all match.
     if input.location:
-        loc = input.location.lower().strip()
+        loc_code = resolve_city_code(input.location) or input.location.lower().strip()
         output.items = [
             item
             for item in output.items
-            if (item.location or "").lower().strip() == loc
+            if (
+                resolve_city_code(item.location)
+                or (item.location or "").lower().strip()
+            )
+            == loc_code
         ]
 
     session = getattr(ctx, "session", None)

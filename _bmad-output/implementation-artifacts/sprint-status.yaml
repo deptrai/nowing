@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: "2026-08-08"
-last_updated: "2026-08-12"  # Story 9.5 reclassified business-gated after create-story validation
+last_updated: "2026-08-12"  # Story 12.4a+4b code review passed, 2 patches applied, marked done
 # ponytail: 2026-08-08 SCP sprint-change-proposal-2026-08-08 — appended citation ACs to 3.15 (WEB_RESULT), 9.3 (async delivery), 2.10 (Exa MCP). 3 stories → review.
 # ponytail: 2026-08-08 sprint-planning — added Epic 1, 5 (DONE brownfield); added 9.1a, 9.1b, 4.8a-4.8h, 13.2a-13.2e; upgraded 12.1-12.5 to ready-for-dev (story files exist); 12.0 DONE (legal approved).
 project: Nowing
@@ -228,11 +228,11 @@ development_status:
   12-0: done
   12-1: done
   12-2: done  # TopCV Scraper — bmad-code-review passed, patches applied
-  # ponytail: 2026-08-11 sprint planning — moved to in-progress.
-  12-3: in-progress
+  # ponytail: 2026-08-12 verification — scraper unit tests pass, to_chunks domain registered for itviec, MCP/REST/capability wired. Chunk ingest to chainlens remains in 12-4d.
+  12-3: done
   # ponytail: 2026-08-11 sprint planning — 12.4 split into 12.4a-e (cleanup)
-  12-4a: in-progress  # normalization (carries prior 12-4 work)
-  12-4b: ready-for-dev  # deduplication, confidence, conflict
+  12-4a: done  # normalization — code review passed, 2 patches applied
+  12-4b: done  # deduplication, confidence, conflict — code review passed, 2 patches applied
   12-4c: ready-for-dev  # PII redaction
   12-4d: ready-for-dev  # chunk ingest to chainlens
   12-4e: ready-for-dev  # REST/MCP/chat exposure

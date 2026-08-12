@@ -1,3 +1,9 @@
+## Deferred from: code review of story-12-4a-4b-normalize-dedupe-conflict (2026-08-12)
+
+- **Finding:** Union-find path compression in `_union_find()` is not reused by the manual root-finding traversal at `dedupe.py:271-273`.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Reason / when to revisit:** Negligible impact since n ≤ 20 per coarse group and traversal happens once per element. Revisit if dedupe scales to 1000+ listings per company.
+
 ## Deferred from: code review of 20-3-nowing-private-provider (2026-08-11)
 
 - **Finding:** Typo `ChucksHybridSearchRetriever` in `app/retriever/chunks_hybrid_search.py` propagated to `private_provider.py`.
