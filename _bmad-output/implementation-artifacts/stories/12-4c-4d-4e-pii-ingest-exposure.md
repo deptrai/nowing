@@ -198,3 +198,29 @@ Summary per AC (6 anti-patterns):
 - **AC-7 (Schema violation):** 8 descriptions (Pattern 1-6)
 
 **Pattern 6 flagged for integration test with real Postgres.**
+
+### Red-Phase Unit Tests (4.5 — 2026-08-13)
+
+**Files created:**
+- `tests/unit/services/jobs_aggregator/test_pii_redaction.py` (2 red, 3 active)
+- `tests/unit/services/scraper_chunks/test_serializer_identity.py` (5 red, 1 active)
+- `tests/unit/services/scraper_chunks/test_chunk_metadata.py` (5 red)
+- `tests/unit/services/jobs_aggregator/test_output_ingest_job_id.py` (3 red)
+- `tests/unit/services/chainlens/test_ingest_schema_violation.py` (3 red)
+
+**Result:** `uv run pytest tests/unit/services/jobs_aggregator tests/unit/services/scraper_chunks tests/unit/services/chainlens -m unit -q`
+- 301 passed
+- 18 skipped (red phase)
+- 0 failures in existing tests
+
+### Integration Tests (4.6 — 2026-08-13)
+
+**File created:**
+- `tests/integration/services/chainlens/test_ingest_job_mapping.py`
+
+**Pattern 6 SQL tests:**
+- ChainLensIngestJob row created with workspace_id, ingest_job_id, status
+- Failed batch stores dead_letter_payload
+- All marked `@pytest.mark.integration` + `@pytest.mark.skip` (requires Postgres)
+
+**Note:** Integration tests need `docker compose -f docker/docker-compose.deps-only.yml up -d db redis` and `uv run alembic upgrade head` before running.
