@@ -149,7 +149,7 @@ def _build_transcript_query(messages: list[Any]) -> str | None:
         if remaining >= len(_QUERY_TRUNCATION_MARKER) + 1:
             tail_budget = remaining - len(_QUERY_TRUNCATION_MARKER)
             tail = text[-tail_budget:] if tail_budget > 0 else ""
-            selected.append(prefix + _QUERY_TRUNCATION_MARKER | tail)
+            selected.append(prefix + _QUERY_TRUNCATION_MARKER + tail)
         break
 
     if not selected:
