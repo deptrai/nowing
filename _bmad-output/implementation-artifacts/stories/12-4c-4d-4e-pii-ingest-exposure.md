@@ -137,3 +137,49 @@ cd nowing_backend && ruff check app/services/scraper_chunks app/services/chainle
 - <ref_file file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/services/chainlens/ingest.py" />
 - <ref_file file="/Users/luisphan/Documents/GitHub/nowing/nowing_backend/app/routes/chainlens_internal.py" />
 - <ref_file file="/Users/luisphan/Documents/GitHub/nowing/nowing_mcp/mcp_server/features/scrapers/platforms/vn_jobs.py" />
+
+---
+
+## Challenge Log (grill-me)
+
+### Q1 — Already implemented?
+
+**CRITICAL FINDING — `record_vn_jobs_pii_detected()` metric function exists but is NEVER CALLED.**
+
+`app/observability/metrics.py:1463-1467` defines `record_vn_jobs_pii_detected(*, source, pii_type, count)` — a structured metric for PII detection counts. It is exported in `__all__` (line 1533) but **no caller in the codebase invokes it**. This is dead code that should be wired up, NOT reinvented.
+
+**Action:** Call `record_vn_jobs_pii_detected(source=source, pii_type="phones", count=redacted.phones_detected)` etc. in `orchestrator.py:_redact_listing()` after `redact_job_pii()` returns.
+
+**Other findings:**
+- `sourceId` fingerprint (posted_at): DOES NOT EXIST — `_identity_fields()` job branch (serializer.py:207-214) has no `posted_at`
+- `salary` in ChunkMetadata: DOES NOT EXIST — `ChunkMetadata` (schemas.py:21-46) has no salary field
+- `ingest_job_id` in VnJobAggregateOutput: DOES NOT EXIST — output schema (schemas.py:74-99) has no field
+- First-failing-chunk logging: DOES NOT EXIST — `ConnectorAPIError` handling (ingest.py:231-236) logs generic error only
+
+### Q2 — Simpler alternative?
+
+No simpler alternative found. Existing code structure is clean:
+- `_identity_fields()` already has job-domain branch → just add `posted_at`, remove `salary`/`employment_type`
+- `record_vn_jobs_pii_detected()` already exists → just call it
+- `ChunkMetadata` has `model_config = ConfigDict(extra="allow")` → salary field can be added without breaking existing chunks
+
+### Q3 — Edge cases spec misses (Pattern 3)
+
+- [ ] **Boundary:** `posted_at` is None in sourceId fingerprint → fingerprint includes "None" string. Is this stable across re-scrapes? (Yes, if scraper consistently omits posted_at, but document it.)
+- [ ] **Null/empty:** Salary is None (negotiable/hidden) in ChunkMetadata → should `salary: dict | None = None` be set or omitted?
+- [ ] **Null/empty:** `ingest_job_id` when ingest fails → should be `None` (not the failed job ID, since no job was created)
+- [ ] **Concurrent:** Two concurrent `aggregate_jobs` calls for same query → both call `NowingIngestService.ingest()` → duplicate chunks in ChainLens? (ChainLens should dedupe via sourceId, but verify.)
+- [ ] **Boundary:** PII redaction counts are 0 → `record_vn_jobs_pii_detected` already guards `if count <= 0: return` (metrics.py:1465) — no action needed
+
+### Q4 — Failure modes unspecified (Pattern 2, 4)
+
+- [ ] **ChainLens returns 400 with no body:** How to log "first failing chunk"? Fallback: log batch metadata (sourceId range, domain, count) since chunk-level detail unavailable
+- [ ] **ChainLens returns 422 with array of validation errors:** Which error is "first"? Use response body `errors[0]` if available, else log batch metadata
+- [ ] **PII redaction fails (regex error):** `redact_job_pii` should not raise — it's a regex-based function. If it does, orchestrator's try/except around source calls will catch it. Verify redact.py has no unhandled exceptions.
+- [ ] **ingest_job_id mapping fails (DB error):** `ChainLensIngestJob` insert fails → ingest already succeeded in ChainLens but mapping lost. Outbox pattern should handle this. Verify `create_persist_outbox` is called for ingest mapping.
+
+### Triage
+
+- **Critical:** `record_vn_jobs_pii_detected` dead code → wire up, don't reinvent
+- **Non-critical:** Edge cases (Q3) + failure modes (Q4) → add to test skeleton
+- **Clean to proceed:** No HALT — all gaps are buildable with existing infrastructure
