@@ -65,6 +65,7 @@ from app.routes.auth_routes import (
     session_router,
 )
 from app.routes.chainlens_internal import router as chainlens_internal_router
+from app.routes.self_host_research import router as self_host_research_router
 from app.routes.users_routes import router as users_router
 from app.routes.zero_context_routes import router as zero_context_router
 from app.schemas import UserCreate, UserRead
@@ -1165,6 +1166,9 @@ app.include_router(anonymous_chat_router)
 # Internal chainlens-research callbacks are mounted at /v1 per the
 # cross-project contract (Epic 47 / Story 20.4).
 app.include_router(chainlens_internal_router, prefix="/v1")
+
+# Self-hosted instances route deep-research calls through Nowing Cloud.
+app.include_router(self_host_research_router, prefix="/v1")
 
 app.include_router(crud_router, prefix="/api/v1", tags=["crud"])
 

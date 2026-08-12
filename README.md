@@ -131,6 +131,32 @@ irm https://raw.githubusercontent.com/nowing/Nowing/main/docker/scripts/install.
 
 The install script sets up [Watchtower](https://github.com/nicholas-fedor/watchtower) automatically for daily auto-updates. To skip it, add the `--no-watchtower` flag. For Docker Compose, manual installation, and other deployment options, see the [docs](https://www.nowing.com/docs/).
 
+### Use deep research on self-host
+
+The hosted deep-research engine is a metered cloud service. Self-hosted instances call it through the Nowing Cloud API instead of hitting the engine directly, so Nowing keeps a single service key and meters per call.
+
+1. On your Nowing Cloud account, create a self-host API key:
+   ```bash
+   curl -X POST "$NOWING_API_URL/api/v1/pats" \
+     -H "Authorization: Bearer $NOWING_SESSION_OR_PAT" \
+     -H "Content-Type: application/json" \
+     -d '{"label":"self-host","token_kind":"self_host","workspace_id":1}'
+   ```
+2. On the self-hosted instance, set `NOWING_CLOUD_API_URL` and the key:
+   ```bash
+   NOWING_CLOUD_API_URL=https://api.nowing.net
+   NOWING_SELF_HOST_API_KEY=nw_pat_...
+   ```
+3. Call research from the self-host instance:
+   ```bash
+   curl -X POST "$NOWING_CLOUD_API_URL/v1/self-host/research" \
+     -H "Authorization: Bearer $NOWING_SELF_HOST_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"query":"latest Vietnam real estate trends","mode":"balanced"}'
+   ```
+
+Each call is billed to the key owner's credit wallet using the real `costDollars` from the engine with a `SELF_HOST_RESEARCH_COST_MULTIPLIER` margin (default `1.5×`). If the engine does not emit a cost, a fallback flat rate of `CHAINLENS_QUERY_MICROS_PER_CALL` micros is used. Set `CHAINLENS_SERVICE_TOKEN` or `CHAINLENS_API_KEY` on the Cloud instance only; the self-host instance never needs the engine key.
+
 ## Everything else in the box
 
 The long-term research memory workspace that made Nowing a unique home for agent research is still here, and everything your agents gather lands in it.
@@ -225,7 +251,7 @@ Nowing is not a better note-taking app; it is an open-core research workspace th
 | **8 platforms / 14 scraping verbs** (Reddit/YouTube/TikTok/Instagram/Google Search+Maps/Amazon/web crawl) | ✅ (BSL 1.1 crawler engine) | ✅ |
 | **Chat, deliverables, automations** | ✅ | ✅ |
 | **5 client surfaces** (web/desktop/extension/Obsidian/MCP) | ✅ | ✅ |
-| **Deep multi-step open-web research** | Phase 1: ❌ · Phase 2: 💳 metered | ✅ |
+| **Deep multi-step open-web research** | ✅ — metered via Nowing Cloud API key | ✅ |
 
 **License at a glance:**
 - Core (everything outside `nowing_backend/app/proprietary/`): **Apache-2.0** — free to use and modify.

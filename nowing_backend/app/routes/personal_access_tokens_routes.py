@@ -112,6 +112,18 @@ async def create_personal_access_token(
                 detail="agent_chat PAT requires at least one scope",
             )
 
+    if token_kind == "self_host":
+        # Self-host keys optionally bind to a workspace for attribution.
+        if workspace_id is not None and not await is_workspace_owner(
+            session, auth.user.id, workspace_id
+        ):
+            raise HTTPException(
+                status_code=403, detail="PAT mint requires workspace owner"
+            )
+        client_id = None
+        agent_id = None
+        scopes = []
+
     token = generate_pat()
     pat = PersonalAccessToken(
         user_id=auth.user.id,
