@@ -29,6 +29,35 @@ logger = logging.getLogger(__name__)
 
 _JOBS_ENTITY_TYPE = "vn_job"
 
+# Map raw degradation reasons to canonical enum (AC-3).
+_DEGRADATION_ENUM_MAP: dict[str, str] = {
+    "tos_pending": "SOURCE_FAILED",
+    "capability_not_found": "SOURCE_FAILED",
+    "invalid_input": "SOURCE_FAILED",
+    "429": "RATE_LIMIT",
+    "rate_limit": "RATE_LIMIT",
+    "rate limited": "RATE_LIMIT",
+    "403": "ANTI_BOT",
+    "captcha": "ANTI_BOT",
+    "anti_bot": "ANTI_BOT",
+    "anti-bot": "ANTI_BOT",
+    "partial": "PARTIAL_DATA",
+}
+
+
+def _map_degradation_reason(raw_reason: str | None) -> str:
+    """Map a raw source degradation reason to a canonical enum value."""
+    if not raw_reason:
+        return "SOURCE_FAILED"
+    lower = raw_reason.lower().strip()
+    # Strip the "{source}: " prefix if present.
+    if ":" in lower:
+        lower = lower.split(":", 1)[1].strip()
+    for key, enum_val in _DEGRADATION_ENUM_MAP.items():
+        if key in lower:
+            return enum_val
+    return "SOURCE_FAILED"
+
 
 def _redact_listing(listing: VnJobAggregatedListing) -> VnJobAggregatedListing:
     """Mask PII in job description and requirement text before returning."""
@@ -87,7 +116,7 @@ async def _call_source(
         return {
             "items": [],
             "degraded": True,
-            "degradation_reason": f"{source}: capability_not_found",
+            "degradation_reason": "capability_not_found",
         }
 
     try:
@@ -96,13 +125,13 @@ async def _call_source(
         return {
             "items": [],
             "degraded": True,
-            "degradation_reason": f"{source}: invalid_input ({exc})",
+            "degradation_reason": f"invalid_input ({exc})",
         }
 
     try:
         result = await execute_with_context(cap.executor, payload=input_obj, ctx=ctx)
     except Exception as exc:
-        return {"items": [], "degraded": True, "degradation_reason": f"{source}: {exc}"}
+        return {"items": [], "degraded": True, "degradation_reason": str(exc)}
 
     if hasattr(result, "model_dump"):
         return result.model_dump()
@@ -138,14 +167,7 @@ def _build_conflict_flags(
     listing: VnJobAggregatedListing,
 ) -> list[dict[str, Any]]:
     """Surface salary/location conflict metadata for canonical storage."""
-    if not listing.conflict:
-        return []
-    return [
-        {
-            "type": "salary_conflict",
-            "reason": "salary or location mismatch across sources",
-        }
-    ]
+    return [{"type": flag} for flag in listing.conflict_flags]
 
 
 async def _stage_jobs_persist_outbox(
@@ -279,7 +301,18 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
 
     for source in input.sources:
         payload = _source_payload(input, source)
-        raw = await _call_source(source, payload, ctx)
+        try:
+            raw = await _call_source(source, payload, ctx)
+        except Exception as exc:
+            raw = {
+                "items": [],
+                "degraded": True,
+                "degradation_reason": str(exc),
+            }
+
+        # Handle None return from _call_source (treat as empty, not degraded).
+        if raw is None:
+            raw = {"items": [], "degraded": False}
 
         source_items = raw.get("items", [])
         source_degraded = raw.get("degraded", False)
@@ -295,8 +328,9 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
 
         if source_degraded:
             output.degraded = True
-            if source_reason:
-                output.degradation_reasons.append(f"{source}: {source_reason}")
+            output.degraded_source_ids.append(source)
+            canonical_reason = _map_degradation_reason(source_reason)
+            output.degradation_reasons.append(canonical_reason)
             continue
 
         for item in source_items:

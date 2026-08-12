@@ -2,8 +2,9 @@
 title: Story 12.4a+4b — Vietnam Job Normalization, Dedupe & Conflict Detection
 epic: 12
 story: 4a-4b
-status: in-progress
+status: review
 priority: P0
+baseline_commit: e0ed91f21
 ---
 
 # Story 12.4a+4b — Vietnam Job Normalization, Dedupe & Conflict Detection
@@ -67,29 +68,29 @@ Covers epics.md stories **12.4a** (normalization) + **12.4b** (dedupe/confidence
 
 ## Tasks / Subtasks
 
-- [ ] AC-1: Verify fan-out + caps (AC: #1)
+- [x] AC-1: Verify fan-out + caps (AC: #1)
   - [x] Fan-out loop + `sources` param default
-  - [ ] Verify `maxItemsPerSource` enforced per source
-- [ ] AC-2: Normalize all fields (AC: #2)
+  - [x] Verify `maxItemsPerSource` enforced per source
+- [x] AC-2: Normalize all fields (AC: #2)
   - [x] `salary`, `location`, `employment_type`, `posted_at`, `source`
-  - [ ] Add `_normalize_experience()` (text → int)
-  - [ ] Add Vietnamese location alias mapping
-- [ ] AC-3: Degradation tracking (AC: #3)
-  - [ ] Add `degraded_source_ids: list[str]` to `VnJobAggregateOutput`
-  - [ ] Map raw reasons to `{SOURCE_FAILED, ANTI_BOT, RATE_LIMIT, PARTIAL_DATA}`
-- [ ] AC-4: Fuzzy dedupe (AC: #4)
-  - [ ] Check `pyproject.toml` for `jellyfish`/`rapidfuzz`; add `rapidfuzz` if missing
-  - [ ] Replace exact title match with Jaro-Winkler ≥ 0.85
-  - [ ] Add ±3 days tolerance on `posted_at`
-  - [ ] Build or import location normalization
-- [ ] AC-5: Salary consistency + `source_count` (AC: #5)
-  - [ ] Add `source_count: int = 1` to `VnJobAggregatedListing`, set `len(group)` on merge
-  - [ ] Align salary threshold: ≤10% → `confidence_score ≥ 0.8`
-- [ ] AC-6: Conflict flags + preserve both records (AC: #6)
-  - [ ] Add `conflict_flags: list[str]` to listing (values: `SALARY_MISMATCH`, `LOCATION_MISMATCH`)
-  - [ ] Update `_detect_conflict` to return flag list
-  - [ ] Lower `confidence_score` to 0.5–0.7 on conflict
-  - [ ] Preserve both source records on conflict
+  - [x] Add `_normalize_experience()` (text → int)
+  - [x] Add Vietnamese location alias mapping
+- [x] AC-3: Degradation tracking (AC: #3)
+  - [x] Add `degraded_source_ids: list[str]` to `VnJobAggregateOutput`
+  - [x] Map raw reasons to `{SOURCE_FAILED, ANTI_BOT, RATE_LIMIT, PARTIAL_DATA}`
+- [x] AC-4: Fuzzy dedupe (AC: #4)
+  - [x] Check `pyproject.toml` for `jellyfish`/`rapidfuzz`; add `rapidfuzz` if missing
+  - [x] Replace exact title match with Jaro-Winkler ≥ 0.85
+  - [x] Add ±3 days tolerance on `posted_at`
+  - [x] Build or import location normalization
+- [x] AC-5: Salary consistency + `source_count` (AC: #5)
+  - [x] Add `source_count: int = 1` to `VnJobAggregatedListing`, set `len(group)` on merge
+  - [x] Align salary threshold: ≤10% → `confidence_score ≥ 0.8`
+- [x] AC-6: Conflict flags + preserve both records (AC: #6)
+  - [x] Add `conflict_flags: list[str]` to listing (values: `SALARY_MISMATCH`, `LOCATION_MISMATCH`)
+  - [x] Update `_detect_conflict` to return flag list
+  - [x] Lower `confidence_score` to 0.5–0.7 on conflict
+  - [x] Preserve both source records on conflict (via `_source_record_ids` PrivateAttr)
 
 ---
 
@@ -210,3 +211,42 @@ AC-4 says "Jaro-Winkler ≥ 0.85". But:
 - No fallback — we control backend deps. `rapidfuzz` is C++ backed, MIT, ~2MB, industry standard.
 - Threshold: `JaroWinkler.similarity(title_a, title_b) >= 0.85` (exact AC-4).
 - Ponytail exception: AC explicitly names the algorithm, so the dep is justified.
+
+---
+
+## Dev Agent Record
+
+### Debug Log
+
+- Initial run: 2 existing tests failed after location normalization refactor (location now returns city code "HN" instead of "Hà Nội"). Fixed by updating test expectations.
+- `_parse_salary` needed to distinguish "no salary fields at all" (hidden) from "salary_min=0, salary_max=0" (negotiable). Added `has_salary_fields` check.
+- `_call_source` exceptions (KeyError, RuntimeError) were not caught in `aggregate_jobs` loop. Added try/except around `_call_source` call + None return handling.
+- Union-find `find`/`union` functions defined inside loop triggered B023 (loop variable binding). Extracted to module-level `_union_find()` function.
+- City codes table had 58 entries (missing 6 provinces). Added Dong Nai, Ha Nam, Hoa Binh, Quang Nam, Tay Ninh, Vinh Phuc → 64 entries.
+
+### Completion Notes
+
+- All 93 unit tests pass (33 dedupe + 24 normalize + 25 orchestrator + 11 location_normalize).
+- All 32 BĐS aggregator + vn_jobs capability tests still pass (refactor is backwards-compatible).
+- ruff check + format clean.
+- `rapidfuzz` added to pyproject.toml dependencies.
+
+### File List
+
+- `app/services/location_normalize/__init__.py` — NEW: shared Vietnamese location normalization (64 provinces, diacritics, slug, city code resolution)
+- `app/services/bds_aggregator/normalize.py` — MODIFIED: imports from shared location_normalize module (removed ~120 lines of duplicated code)
+- `app/services/jobs_aggregator/schemas.py` — MODIFIED: added `conflict_flags`, `source_count`, `degraded_source_ids`
+- `app/services/jobs_aggregator/normalize.py` — MODIFIED: added `_normalize_experience()`, use `resolve_city_code` for location, fix salary 0/0 vs hidden distinction, handle None skills/source_url
+- `app/services/jobs_aggregator/dedupe.py` — REWRITTEN: Jaro-Winkler fuzzy title match, ±3 days date tolerance, conflict flags (SALARY_MISMATCH/LOCATION_MISMATCH), salary thresholds (10%/20%), source_count, union-find transitive dedupe, None location wildcard
+- `app/services/jobs_aggregator/orchestrator.py` — MODIFIED: `degraded_source_ids` population, canonical enum mapping (`_DEGRADATION_ENUM_MAP`), exception handling around `_call_source`, None return handling
+- `tests/unit/services/jobs_aggregator/test_normalize.py` — MODIFIED: unskipped 24 tests, fixed location expectation, fixed source name
+- `tests/unit/services/jobs_aggregator/test_dedupe.py` — MODIFIED: unskipped 33 tests, fixed salary spread test values, added `_source_record_ids` to preserve-both test
+- `tests/unit/services/jobs_aggregator/test_orchestrator.py` — MODIFIED: unskipped 25 tests, updated degradation_reasons assertion to canonical enum
+- `tests/unit/services/location_normalize/test_location_normalize.py` — MODIFIED: unskipped 11 tests
+- `pyproject.toml` — MODIFIED: added `rapidfuzz` dependency
+
+### Change Log
+
+| Date | Change | Author |
+|------|--------|--------|
+| 2026-08-12 | Green-phase implementation: all 6 ACs implemented, 93 tests passing | dev-story agent |

@@ -16,7 +16,6 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_remove_diacritics_strips_vietnamese_diacritics():
     """should resolve 'Hà Nội' → 'ha noi' (diacritics stripped, đ→d)."""
     from app.services.location_normalize import remove_diacritics
@@ -25,7 +24,6 @@ def test_remove_diacritics_strips_vietnamese_diacritics():
     assert remove_diacritics("Đà Nẵng") == "da nang"
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_remove_diacritics_handles_none_and_empty():
     """should resolve None → '' and '' → ''."""
     from app.services.location_normalize import remove_diacritics
@@ -34,7 +32,6 @@ def test_remove_diacritics_handles_none_and_empty():
     assert remove_diacritics("") == ""
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_to_slug_produces_hyphenated_slug():
     """should resolve 'Hà Nội' → 'ha-noi' (slugified)."""
     from app.services.location_normalize import to_slug
@@ -43,7 +40,6 @@ def test_to_slug_produces_hyphenated_slug():
     assert to_slug("Tp. Hồ Chí Minh") == "tp-ho-chi-minh"
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_resolve_city_code_hanoi_alias():
     """should resolve 'Hà Nội' → 'HN' (diacritics-stripped alias match)."""
     from app.services.location_normalize import resolve_city_code
@@ -53,7 +49,6 @@ def test_resolve_city_code_hanoi_alias():
     assert resolve_city_code("HN") == "HN"
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_resolve_city_code_hcm_alias():
     """should resolve 'Tp.HCM' → 'SG' (alias)."""
     from app.services.location_normalize import resolve_city_code
@@ -69,7 +64,6 @@ def test_resolve_city_code_hcm_alias():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_resolve_city_code_unknown_returns_none():
     """should handle unknown city 'Mars Colony' → None (no crash)."""
     from app.services.location_normalize import resolve_city_code
@@ -77,7 +71,6 @@ def test_resolve_city_code_unknown_returns_none():
     assert resolve_city_code("Mars Colony") is None
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_resolve_city_code_none_input_returns_none():
     """should handle None input → None."""
     from app.services.location_normalize import resolve_city_code
@@ -85,7 +78,6 @@ def test_resolve_city_code_none_input_returns_none():
     assert resolve_city_code(None) is None
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_remove_diacritics_on_english_text():
     """should handle non-Vietnamese text safely (unicodedata works on all Unicode)."""
     from app.services.location_normalize import remove_diacritics
@@ -99,7 +91,6 @@ def test_remove_diacritics_on_english_text():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_resolve_city_code_prefix_stripped():
     """should resolve 'thanh-pho-ha-noi' → 'HN' (prefix-stripped)."""
     from app.services.location_normalize import resolve_city_code
@@ -108,7 +99,6 @@ def test_resolve_city_code_prefix_stripped():
     assert resolve_city_code("Tỉnh Bình Dương") == "BD"
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_resolve_city_code_whitespace_only():
     """should handle whitespace-only input → None."""
     from app.services.location_normalize import resolve_city_code
@@ -116,7 +106,6 @@ def test_resolve_city_code_whitespace_only():
     assert resolve_city_code("   ") is None
 
 
-@pytest.mark.skip(reason="red-phase: location_normalize module not yet extracted")
 def test_city_aliases_covers_62_provinces():
     """should have all 62 province codes in CITY_ALIASES."""
     from app.services.location_normalize import CITY_CODES
