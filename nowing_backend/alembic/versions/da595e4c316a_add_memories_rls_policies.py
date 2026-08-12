@@ -93,5 +93,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Remove RLS policies."""
+    """Remove RLS policies and revoke app-role grants on memories."""
     _drop_policies("memories")
+    op.execute("REVOKE ALL PRIVILEGES ON memories FROM nowing_app;")
