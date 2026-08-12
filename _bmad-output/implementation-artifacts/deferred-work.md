@@ -1,3 +1,29 @@
+## Deferred from: code review of story-12-4a-4b-normalize-dedupe-conflict round 2 (2026-08-13)
+
+- **Finding:** Location filter fallback for unknown cities — when `resolve_city_code` returns None for both input and item, comparison falls back to raw lowercased strings.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Reason / when to revisit:** Only affects cities not in the 64-province table. Revisit if users query by district/ward level.
+
+- **Finding:** New city codes (DNA/HAN/HOB/QNA/TNI/VP) in shared `location_normalize` module visible to BĐS aggregator.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Reason / when to revisit:** These are valid Vietnamese provinces; BĐS queries benefit. No regression — only new matches.
+
+- **Finding:** Salary period inference missing English abbreviations ("hrly", "daily", "wkly", "mo", "yr", "annum").
+  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Reason / when to revisit:** All 3 VN job sources use full forms or Vietnamese. Revisit if a new source uses abbreviations.
+
+- **Finding:** Unknown degradation reasons default to SOURCE_FAILED.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Reason / when to revisit:** Raw reason available in `source_breakdown[source].degradation_reason`. Revisit if monitoring needs finer granularity.
+
+- **Finding:** No min<=max validation on salary values in `_salary_values`.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Reason / when to revisit:** Scraper responsibility. Revisit if scrapers send untrusted data.
+
+- **Finding:** O(n²) dedupe within large company groups.
+  - **Action:** Marked `[x] [Review][Defer]` in `12-4a-4b-normalize-dedupe-conflict.md`.
+  - **Reason / when to revisit:** Ponytail comment documents ceiling + upgrade path (sort by posted_at + windowing). Revisit if a single company exceeds 100+ listings per query.
+
 ## Deferred from: code review of story-12-4a-4b-normalize-dedupe-conflict (2026-08-12)
 
 - **Finding:** Union-find path compression in `_union_find()` is not reused by the manual root-finding traversal at `dedupe.py:271-273`.

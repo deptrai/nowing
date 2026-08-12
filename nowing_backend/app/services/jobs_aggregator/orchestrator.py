@@ -122,17 +122,19 @@ async def _call_source(
 
     try:
         input_obj = cap.input_schema(**payload)
-    except Exception as exc:
+    except Exception:
+        logger.exception("Source %s input validation failed", source)
         return {
             "items": [],
             "degraded": True,
-            "degradation_reason": f"invalid_input ({exc})",
+            "degradation_reason": "invalid_input",
         }
 
     try:
         result = await execute_with_context(cap.executor, payload=input_obj, ctx=ctx)
-    except Exception as exc:
-        return {"items": [], "degraded": True, "degradation_reason": str(exc)}
+    except Exception:
+        logger.exception("Source %s scrape execution failed", source)
+        return {"items": [], "degraded": True, "degradation_reason": "source_failed"}
 
     if hasattr(result, "model_dump"):
         return result.model_dump()
@@ -304,11 +306,12 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
         payload = _source_payload(input, source)
         try:
             raw = await _call_source(source, payload, ctx)
-        except Exception as exc:
+        except Exception:
+            logger.exception("Source %s capability call failed", source)
             raw = {
                 "items": [],
                 "degraded": True,
-                "degradation_reason": str(exc),
+                "degradation_reason": "source_failed",
             }
 
         # Handle None return from _call_source (treat as empty, not degraded).

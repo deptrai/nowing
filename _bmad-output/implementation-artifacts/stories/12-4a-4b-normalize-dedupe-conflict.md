@@ -2,7 +2,7 @@
 title: Story 12.4a+4b — Vietnam Job Normalization, Dedupe & Conflict Detection
 epic: 12
 story: 4a-4b
-status: ready-for-review
+status: done
 priority: P0
 baseline_commit: e0ed91f21
 ---
@@ -262,3 +262,13 @@ AC-4 says "Jaro-Winkler ≥ 0.85". But:
 - [x] [Review][Patch] Location filter bypass in orchestrator [orchestrator.py:352-358] — Filter uses naive string comparison `(item.location or "").lower().strip() == loc` instead of `resolve_city_code()`. After normalization, `item.location` is a city code (e.g., "HN"), but `input.location` could be "Hà Nội" or "hanoi". The filter will never match. Fix: resolve both sides to city codes before comparing.
 - [x] [Review][Patch] Comment says "62-province" but table has 64 entries [location_normalize/__init__.py:6-7] — Comment says "62-province table" and "63 Vietnamese provinces" but `len(CITY_CODES) == 64`. Fix: update to "64-entry table covering all 63 Vietnamese provinces/municipalities".
 - [x] [Review][Defer] Union-find path compression not reused in grouping [dedupe.py:271-273] — deferred, pre-existing pattern — Manual root-finding traversal at lines 271-273 doesn't reuse the `find()` function with path compression. Negligible impact since n ≤ 20 per group and traversal happens once per element.
+
+### Review Findings — Round 2 (2026-08-13, post mutation-gate amplification)
+
+- [x] [Review][Patch] Exception details leaked to degradation_reason [orchestrator.py:135,311] — `str(exc)` is stored directly in `degradation_reason` field, which may leak internal details to downstream systems. Fix: store canonical enum via `_map_degradation_reason` in the degraded dict, keep raw exception for logs only.
+- [x] [Review][Defer] Location filter fallback for unknown cities [orchestrator.py:355-364] — deferred, edge case — When `resolve_city_code` returns None for both input and item, comparison falls back to raw lowercased strings. "hanoi" vs "Hà Nội" won't match. Only affects unknown cities not in the 64-province table.
+- [x] [Review][Defer] New city codes visible to BĐS aggregator [location_normalize/__init__.py] — deferred, improvement not regression — Shared module adds DNA/HAN/HOB/QNA/TNI/VP codes not in original BĐS mapping. These are valid Vietnamese provinces; BĐS queries benefit from expanded coverage.
+- [x] [Review][Defer] Salary period inference missing some English abbreviations [normalize.py:64-70] — deferred, current patterns cover all real VN job sources — Missing "hrly", "daily", "wkly", "mo", "yr", "annum". All 3 sources (VietnamWorks/TopCV/ITviec) use full forms or Vietnamese.
+- [x] [Review][Defer] Unknown degradation reasons default to SOURCE_FAILED [orchestrator.py:49-60] — deferred, raw reason available in source_breakdown — Monitoring can use `source_breakdown[source].degradation_reason` for the raw string; canonical enum is for structured filtering.
+- [x] [Review][Defer] No min<=max validation on salary values [dedupe.py:328-332] — deferred, scraper responsibility — Negative or inverted salary values pass through. Scrapers should validate; aggregator is defensive enough with zero-skip.
+- [x] [Review][Defer] O(n²) dedupe within large company groups [dedupe.py:275-278] — deferred, documented with upgrade path — Ponytail comment acknowledges ceiling and suggests sort-by-posted_at + windowing for 1000+ listings per company.
