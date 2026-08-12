@@ -83,6 +83,8 @@ async def test_create_memory_publishes_memory_changed(
     assert payload["tags"] == ["competitor"]
     assert payload["change"] == "created"
     assert payload["source_type"] == "manual"
+    assert payload["client_id"] is None
+    assert payload["agent_id"] is None
 
 
 async def test_update_memory_publishes_memory_changed_as_updated(

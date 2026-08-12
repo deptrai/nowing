@@ -55,6 +55,8 @@ class MemoryChangedPayload(BaseModel):
     change: str
     source_type: str
     research_thread_id: int | None = None
+    client_id: str | None = None
+    agent_id: str | None = None
     automation_run_id: int | None = None
 
 

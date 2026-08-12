@@ -11,6 +11,8 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 
 from app.services.memory.search import MemoryHybridSearch, _ranked_metadata_reason
 
@@ -184,3 +186,99 @@ def test_ranked_metadata_reason() -> None:
     assert _ranked_metadata_reason(float("nan"), 0.9) == "non_finite"
     assert _ranked_metadata_reason(float("inf"), 0.9) == "non_finite"
     assert _ranked_metadata_reason(0.5, 0.9) is None
+
+
+def _compile_conditions(conditions: list[object]) -> str:
+    """Render scope conditions to SQL for assertion without a real DB."""
+    return str(
+        select(1)
+        .where(*conditions)
+        .compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+
+
+def test_scope_conditions_client_set() -> None:
+    """AC-18.6: a scoped request hard-filters to the supplied client_id."""
+    conditions = MemoryHybridSearch._scope_conditions(
+        workspace_id=1,
+        user_id=None,
+        research_thread_id=None,
+        client_id="bds",
+    )
+    sql = _compile_conditions(conditions)
+    assert "memories.client_id = 'bds'" in sql
+    assert "memories.client_id IS NULL" not in sql
+
+
+def test_scope_conditions_client_unset() -> None:
+    """AC-18.6: an unscoped request only sees client_id IS NULL rows."""
+    conditions = MemoryHybridSearch._scope_conditions(
+        workspace_id=1,
+        user_id=None,
+        research_thread_id=None,
+        client_id=None,
+    )
+    sql = _compile_conditions(conditions)
+    assert "memories.client_id IS NULL" in sql
+    assert "memories.client_id = " not in sql
+
+
+def test_scope_conditions_client_mismatched() -> None:
+    """AC-18.6: a different client value still produces a strict literal filter."""
+    conditions = MemoryHybridSearch._scope_conditions(
+        workspace_id=1,
+        user_id=None,
+        research_thread_id=None,
+        client_id="other",
+    )
+    sql = _compile_conditions(conditions)
+    assert "memories.client_id = 'other'" in sql
+    assert "memories.client_id = 'bds'" not in sql
+
+
+@pytest.mark.asyncio
+async def test_search_passes_client_id_to_tenant_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``search`` threads the supplied client_id through to GUCs and scope."""
+    import app.services.memory.search as search_module
+
+    monkeypatch.setattr(search_module, "set_request_tenant_context", AsyncMock())
+    search = _make_search([], monkeypatch=monkeypatch)
+
+    await search.search(
+        workspace_id=1,
+        query="test",
+        query_embedding=[0.1, 0.2, 0.3],
+        top_k=5,
+        client_id="bds",
+    )
+
+    call_kwargs = search_module.set_request_tenant_context.call_args.kwargs
+    assert call_kwargs["workspace_id"] == 1
+    assert call_kwargs["client_id"] == "bds"
+
+
+@pytest.mark.asyncio
+async def test_search_normalizes_empty_client_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-18.8: an empty client_id string is treated as unscoped."""
+    import app.services.memory.search as search_module
+
+    monkeypatch.setattr(search_module, "set_request_tenant_context", AsyncMock())
+    search = _make_search([], monkeypatch=monkeypatch)
+
+    await search.search(
+        workspace_id=1,
+        query="test",
+        query_embedding=[0.1, 0.2, 0.3],
+        top_k=5,
+        client_id="",
+    )
+
+    call_kwargs = search_module.set_request_tenant_context.call_args.kwargs
+    assert call_kwargs["client_id"] is None

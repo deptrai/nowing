@@ -96,6 +96,7 @@ def _fast_forward_fresh_db(connection: Connection) -> bool:
     )
     connection.execute(sa.text("CREATE EXTENSION IF NOT EXISTS vector"))
     connection.execute(sa.text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+    connection.execute(sa.text("CREATE EXTENSION IF NOT EXISTS citext"))
     Base.metadata.create_all(bind=connection)
     # Same core indexes migration 0 created (runtime setup_indexes() adds the
     # rest concurrently on app boot).

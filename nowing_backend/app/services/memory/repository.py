@@ -218,6 +218,8 @@ class MemoryRepository:
             change=change,
             source_type=getattr(memory.source_type, "value", memory.source_type),
             research_thread_id=memory.research_thread_id,
+            client_id=memory.client_id,
+            agent_id=memory.agent_id,
             # Repo-emitted events are non-origin by construction (origin writes
             # are skipped above); the field carries the selector's contract.
             automation_run_id=None,
@@ -662,7 +664,9 @@ class MemoryRepository:
                     raise ValueError(
                         f"target memory {to_memory_id} is in a different workspace"
                     )
-                if to_memory.client_id != effective_client_id:
+                if (to_memory.client_id or "").lower() != (
+                    effective_client_id or ""
+                ).lower():
                     raise ValueError(
                         f"target memory {to_memory_id} is in a different client scope"
                     )

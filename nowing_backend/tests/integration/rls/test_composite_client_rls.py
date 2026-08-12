@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.canonical.tenant_context import set_request_tenant_context
 from app.db import Memory, MemorySourceType, MemoryType, User, Workspace
 from app.services.memory.repository import MemoryRepository
+from app.services.memory.search import MemoryHybridSearch
 
 pytestmark = [pytest.mark.integration]
 
@@ -48,7 +49,7 @@ async def _rls_enabled(db_session: AsyncSession) -> None:
             TO PUBLIC
             USING (
                 memories.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
-                AND memories.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
+                AND memories.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')::citext
                 OR memories.id::text = current_setting('app.memory_id', true)
                 OR current_setting('app.internal_service', true) = 'true'
             );
@@ -60,11 +61,11 @@ async def _rls_enabled(db_session: AsyncSession) -> None:
             TO PUBLIC
             USING (
                 memories.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
-                AND memories.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
+                AND memories.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')::citext
             )
             WITH CHECK (
                 memories.workspace_id IS NOT DISTINCT FROM NULLIF(current_setting('app.workspace_id', true), '')::int
-                AND memories.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')
+                AND memories.client_id IS NOT DISTINCT FROM NULLIF(current_setting('app.current_client_id', true), '')::citext
             );
         """,
         """
@@ -339,3 +340,105 @@ async def test_repository_create_with_wrong_client_is_isolated(
 
     rows = (await db_session.execute(select(Memory))).scalars().all()
     assert len(rows) == 0
+
+
+async def test_hybrid_search_client_filter_isolates_client_bds(
+    db_session: AsyncSession,
+    db_user: User,
+    db_workspace: Workspace,
+) -> None:
+    """L4: chat as client=bds only recalls memories with client_id=bds."""
+    internal = _make_memory(
+        workspace_id=db_workspace.id,
+        client_id=None,
+        content="internal note about widgets",
+        user=db_user,
+    )
+    bds = _make_memory(
+        workspace_id=db_workspace.id,
+        client_id="bds",
+        content="bds client note about widgets",
+        user=db_user,
+    )
+    other = _make_memory(
+        workspace_id=db_workspace.id,
+        client_id="other",
+        content="other client note about widgets",
+        user=db_user,
+    )
+
+    db_session.add_all([internal, bds, other])
+    await db_session.flush()
+
+    await _as_app_user(db_session)
+    hits = await MemoryHybridSearch(db_session).search(
+        workspace_id=db_workspace.id,
+        query="bds client widgets",
+        query_embedding=_unit_embedding(),
+        top_k=5,
+        client_id="bds",
+    )
+
+    assert [hit.memory.id for hit in hits] == [bds.id]
+
+
+async def test_hybrid_search_internal_chat_only_sees_unscoped_memories(
+    db_session: AsyncSession,
+    db_user: User,
+    db_workspace: Workspace,
+) -> None:
+    """L4: an internal (no client_id) chat only recalls client_id=NULL memories."""
+    internal = _make_memory(
+        workspace_id=db_workspace.id,
+        client_id=None,
+        content="internal note about widgets",
+        user=db_user,
+    )
+    bds = _make_memory(
+        workspace_id=db_workspace.id,
+        client_id="bds",
+        content="bds client note about widgets",
+        user=db_user,
+    )
+
+    db_session.add_all([internal, bds])
+    await db_session.flush()
+
+    await _as_app_user(db_session)
+    hits = await MemoryHybridSearch(db_session).search(
+        workspace_id=db_workspace.id,
+        query="internal widgets",
+        query_embedding=_unit_embedding(),
+        top_k=5,
+        client_id=None,
+    )
+
+    assert [hit.memory.id for hit in hits] == [internal.id]
+
+
+async def test_hybrid_search_client_id_is_case_insensitive(
+    db_session: AsyncSession,
+    db_user: User,
+    db_workspace: Workspace,
+) -> None:
+    """CITEXT client_id matches regardless of case in the request."""
+    bds = _make_memory(
+        workspace_id=db_workspace.id,
+        client_id="bds",
+        content="bds client note about widgets",
+        user=db_user,
+    )
+
+    db_session.add(bds)
+    await db_session.flush()
+
+    await _as_app_user(db_session)
+    hits = await MemoryHybridSearch(db_session).search(
+        workspace_id=db_workspace.id,
+        query="bds client widgets",
+        query_embedding=_unit_embedding(),
+        top_k=5,
+        client_id="BDS",
+    )
+
+    assert [hit.memory.id for hit in hits] == [bds.id]

@@ -24,6 +24,8 @@ def _payload(**overrides: object) -> MemoryChangedPayload:
         "type": "semantic",
         "change": "created",
         "source_type": "manual",
+        "client_id": None,
+        "agent_id": None,
     }
     base.update(overrides)
     return MemoryChangedPayload(**base)
@@ -70,3 +72,20 @@ def test_event_type_is_registered_in_the_catalog() -> None:
 
     assert registered is not None
     assert registered.payload_model is MemoryChangedPayload
+
+
+def test_payload_carries_client_and_agent_scope() -> None:
+    """AC-18.6: memory change events carry client_id/agent_id so automations can
+    filter by vertical tenant."""
+    payload = _payload(client_id="bds", agent_id="bds-agent-1")
+
+    assert payload.client_id == "bds"
+    assert payload.agent_id == "bds-agent-1"
+
+
+def test_client_and_agent_default_to_none() -> None:
+    """Unscoped memories still emit the event with null client/agent fields."""
+    payload = _payload()
+
+    assert payload.client_id is None
+    assert payload.agent_id is None

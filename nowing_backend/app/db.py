@@ -2295,7 +2295,7 @@ class Memory(BaseModel, TimestampMixin):
         # Migration 182 drops the single-column ix_memories_research_thread_id
         # that index=True used to create here — keep this Column in sync with it.
     )
-    client_id = Column(Text, nullable=True, index=True)
+    client_id = Column(CITEXT, nullable=True, index=True)
     agent_id = Column(Text, nullable=True)
     type = Column(
         SQLAlchemyEnum(
@@ -2408,7 +2408,7 @@ class MemoryRelation(BaseModel, TimestampMixin):
         nullable=False,
         index=True,
     )
-    client_id = Column(Text, nullable=True, index=True)
+    client_id = Column(CITEXT, nullable=True, index=True)
     from_memory_id = Column(
         Integer,
         ForeignKey("memories.id", ondelete="CASCADE"),
@@ -3824,6 +3824,7 @@ async def create_db_and_tables():
         await conn.execute(text(f"SET LOCAL lock_timeout = {lock_timeout_ms}"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
         await conn.run_sync(Base.metadata.create_all)
         # create_all never creates zero_publication (a migration-only
         # artifact), and without it zero-cache crash-loops. Idempotent.
