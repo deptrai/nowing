@@ -22,8 +22,20 @@ except Exception:  # pragma: no cover - tiktoken may be unavailable in minimal e
     tiktoken = None  # type: ignore[assignment]
 
 # Domain registry. Unknown domains default to listing-style serialization.
-_JOB_DOMAINS = {"vn_jobs"}
+_JOB_DOMAINS = {"vn_jobs", "itviec", "topcv", "vietnamworks"}
 _LISTING_DOMAINS = {"bds", "batdongsan", "chotot", "muaban_bds"}
+
+# Canonical wire-domain names exposed in ChunkMetadata.domain (Story 12.3 AC-9).
+_DOMAIN_CANONICAL = {
+    "itviec": "itviec.com",
+    "topcv": "topcv.com",
+    "vietnamworks": "vietnamworks.com",
+}
+
+
+def _canonical_domain(domain: str) -> str:
+    """Return the canonical domain name for chunk metadata."""
+    return _DOMAIN_CANONICAL.get(domain, domain)
 
 
 def _is_job_domain(domain: str) -> bool:
@@ -349,7 +361,8 @@ def to_chunks(
 ) -> list[Chunk]:
     """Normalize one scraper record or aggregated entity into ``Chunk[]``.
 
-    ``content_type`` must be an IANA MIME type (e.g. ``text/markdown``).
+    ``content_type`` is the default metadata type; job domains override it to
+    ``"job"`` so ChainLens can filter on ``contentType`` (Story 12.3 AC-9).
     ``category`` is an optional domain label (e.g. ``listing``, ``job_posting``)
     used by ChainLens for filtering/ranking.
 
@@ -379,16 +392,18 @@ def to_chunks(
             message=f"{domain}: serialized content is empty",
         )
 
+    metadata_domain = _canonical_domain(domain)
+    metadata_content_type = "job" if _is_job_domain(domain) else content_type
     pieces = _split_tokens(full_content, max_tokens=8000)
     total = len(pieces)
     chunks: list[Chunk] = []
     for index, piece in enumerate(pieces):
         source_id = f"{base_source_id}:chunk-{index}" if total > 1 else base_source_id
         metadata = _metadata_from_data(
-            domain,
+            metadata_domain,
             data,
             fetched_at,
-            content_type,
+            metadata_content_type,
             category,
             source_id,
             index,

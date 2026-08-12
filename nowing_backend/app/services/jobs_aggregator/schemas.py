@@ -38,6 +38,8 @@ class VnJobAggregatedListing(BaseModel):
     confidence_score: float = 0.0
     salary_consistency_score: float = 0.0
     conflict: bool = False
+    conflict_flags: list[str] = Field(default_factory=list)
+    source_count: int = 1
     pii_redacted: bool = False
 
     _source_record_ids: dict[str, str] = PrivateAttr(default_factory=dict)
@@ -78,6 +80,7 @@ class VnJobAggregateOutput(BaseModel):
     cost_micros: int = 0
     degraded: bool = False
     degradation_reasons: list[str] = Field(default_factory=list)
+    degraded_source_ids: list[str] = Field(default_factory=list)
     source_breakdown: dict[str, Any] = Field(default_factory=dict)
     confidence_score: float = 0.0
     salary_consistency_score: float = 0.0

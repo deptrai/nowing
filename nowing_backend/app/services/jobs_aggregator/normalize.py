@@ -8,6 +8,8 @@ import json
 import re
 from typing import Any
 
+from app.services.location_normalize import resolve_city_code
+
 from .schemas import VnJobAggregatedListing, VnJobSalary
 
 _SALARY_PERIOD_MAP: dict[int | str, str] = {
@@ -71,19 +73,26 @@ def _parse_salary(raw: dict[str, Any]) -> VnJobSalary:
     text = raw.get("salary_raw")
     salary = VnJobSalary(raw=text, confidence=0.0)
 
-    if not text:
+    min_val = raw.get("salary_min")
+    max_val = raw.get("salary_max")
+
+    # Distinguish "no salary data at all" (hidden) from "0/0 = negotiable".
+    has_salary_fields = min_val is not None or max_val is not None
+
+    if not text and not has_salary_fields:
         salary.period = "hidden"
-    elif "thương lượng" in text.lower() or "negotiable" in text.lower():
+        salary.confidence = 0.0
+    elif text and ("thương lượng" in text.lower() or "negotiable" in text.lower()):
         salary.period = "negotiable"
         salary.confidence = 0.5
+    elif not text and has_salary_fields:
+        # No raw text but numeric fields present — derive from numbers.
+        salary.period = _normalize_salary_period(raw.get("salary_period_id"))
+        salary.confidence = 0.6
     else:
         salary.period = _normalize_salary_period(raw.get("salary_period_id"))
         salary.confidence = 0.6
 
-    min_val = raw.get("salary_min")
-    max_val = raw.get("salary_max")
-
-    # VietnamWorks uses 0/0 for negotiable; keep both 0 in that case.
     min_v = int(min_val) if min_val is not None else 0
     max_v = int(max_val) if max_val is not None else 0
 
@@ -107,10 +116,44 @@ def _parse_salary(raw: dict[str, Any]) -> VnJobSalary:
 
 
 def _normalize_location(raw: Any) -> str | None:
-    """Normalize a location value to a common string."""
+    """Normalize a location value to a canonical city code when possible.
+
+    Falls back to the raw string for unknown cities so the aggregator-level
+    filter still works on a best-effort basis.
+    """
     if not raw:
         return None
-    return str(raw).strip() or None
+    text = str(raw).strip()
+    if not text:
+        return None
+    code = resolve_city_code(text)
+    return code or text
+
+
+def _normalize_experience(raw: Any) -> int | None:
+    """Parse experience-years text into an int.
+
+    Handles:
+    - int passthrough (5 → 5)
+    - "3+ years" / "3 years" / "3 năm" → 3
+    - "Không yêu cầu" / "no experience" → 0
+    - None / unparseable → None
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, int) and not isinstance(raw, bool):
+        return raw
+    if isinstance(raw, float):
+        return int(raw)
+    text = str(raw).strip().lower()
+    if not text:
+        return None
+    if any(
+        w in text for w in ("không yêu cầu", "no experience", "khong yeu cau", "entry")
+    ):
+        return 0
+    m = re.search(r"(\d+)", text)
+    return int(m.group(1)) if m else None
 
 
 def _normalize_text(value: Any) -> str | None:
@@ -163,14 +206,14 @@ def normalize_listing(source: str, raw: dict[str, Any]) -> VnJobAggregatedListin
         company=company,
         location=_normalize_location(raw.get("location")),
         employment_type=raw.get("employment_type"),
-        experience_years=raw.get("experience_years"),
-        skills=raw.get("skills", []),
+        experience_years=_normalize_experience(raw.get("experience_years")),
+        skills=raw.get("skills") or [],
         salary=_parse_salary(raw),
         posted_at=_parse_post_date(raw.get("posted_at")),
         job_description=_normalize_text(raw.get("job_description")),
         job_requirement=_normalize_text(raw.get("job_requirement")),
         source=source,  # type: ignore[arg-type]
-        source_urls=[raw.get("source_url", "")],
+        source_urls=[u for u in [raw.get("source_url")] if u],
         confidence_score=0.6 if title and company else 0.3,
     )
     # ponytail: PrivateAttrs carry provenance without leaking into API output.

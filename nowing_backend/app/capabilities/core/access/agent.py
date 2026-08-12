@@ -25,7 +25,6 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool, StructuredTool
 from langgraph.types import Command
 
-from app.agents.chat.multi_agent_chat.shared.citations import load_registry
 from app.auth.context import AuthContext
 from app.capabilities.core import execute_with_context
 from app.capabilities.core.access.rate_limit import (
@@ -34,8 +33,6 @@ from app.capabilities.core.access.rate_limit import (
     CAPABILITY_RATE_LIMIT_PER_MINUTE,
     _aincr,
 )
-from app.capabilities.core.access.run_citation import attach_run_citation
-from app.capabilities.core.access.web_citation import register_web_citations
 from app.capabilities.core.async_runner import start_async_run
 from app.capabilities.core.billing import charge_capability, gate_capability
 from app.capabilities.core.progress import emit_progress, progress_scope
@@ -207,6 +204,9 @@ def _build_cached_anti_bot_command(
     citation and content can be replayed safely because anti-bot outputs carry
     no web citations.
     """
+    from app.agents.chat.multi_agent_chat.shared.citations import load_registry
+    from app.capabilities.core.access.run_citation import attach_run_citation
+
     content = json.dumps(cached_dump, ensure_ascii=False)
     run_external_id = cached_dump.get("run_id")
     registry = load_registry(getattr(runtime, "state", None))
@@ -566,6 +566,10 @@ def _capability_tool(
             if dump is not None:
                 return dump
             return _build_preview(serialized, run_id)
+
+        from app.agents.chat.multi_agent_chat.shared.citations import load_registry
+        from app.capabilities.core.access.run_citation import attach_run_citation
+        from app.capabilities.core.access.web_citation import register_web_citations
 
         content = (
             json.dumps(dump, ensure_ascii=False)

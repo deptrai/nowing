@@ -46,9 +46,9 @@
 
 | Status | Count |
 |---|---|
-| done | 73 |
+| done | 74 |
 | ready-for-dev | 1 |
-| in-progress | 6 |
+| in-progress | 5 |
 | deferred | 7 |
 | backlog | 27 |
 | dropped | 10 |
@@ -112,6 +112,7 @@
 - 12-0
 - 12-1
 - 12-2
+- 12-3
 - 14-1
 - 15-1
 - 16-1
@@ -131,10 +132,9 @@
 ### ready-for-dev (1)
 - 12-6
 
-### in-progress (6)
+### in-progress (5)
 - 3-17
 - 9-6c
-- 12-3
 - 12-4
 - 12-5
 - tech-debt
@@ -194,4 +194,4 @@
 - **Epic 21 (Lead Gen Intelligence)** is now in `backlog` with architecture validated (`bmad-architecture` PASS).
 - **AD-22/AD-23** promoted to `ADOPTED` after 300 unit tests passed.
 - Epic 21 governance gates still pending: email outreach legal/ToS, enrichment vendor POC, PII pipeline, CRM sync scope, outcome-pricing display.
-- Epic 12 stories 12-1 and 12-2 are `done`; 12-3/12-4/12-5 are `in-progress`.
+- Epic 12 stories 12-1, 12-2, and 12-3 are `done`; 12-4/12-5 are `in-progress`.

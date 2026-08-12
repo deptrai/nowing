@@ -141,6 +141,10 @@ async def test_aggregate_persists_multi_source_jobs(
     assert entity.fingerprint == fp
     assert entity.source_count == 2
     assert entity.search_text
+    # Location is normalized to city code.
+    assert entity.canonical_data.get("location") == "HN"
+    # Salary 30M vs 30-40M triggers SALARY_MISMATCH and lowered confidence.
+    assert "SALARY_MISMATCH" in [f["type"] for f in entity.conflict_flags]
 
     sources_result = await db_session.execute(
         select(CanonicalEntitySource).where(
@@ -234,6 +238,7 @@ async def test_aggregate_persists_successful_source_when_other_degraded(
 
     assert output.persistence_status == "ok"
     assert output.degraded is True
+    assert output.degraded_source_ids == ["topcv"]
     assert output.source_breakdown["topcv"]["degraded"] is True
     assert output.total_items == 1
 
@@ -335,6 +340,85 @@ async def test_aggregate_partial_persistence_failure_stages_outbox_and_metric(
 
     assert recorded_failures
     assert any(domain == "vn_job" for domain, _ in recorded_failures)
+
+
+async def test_aggregate_conflict_flags_and_source_count_persisted(
+    db_session: AsyncSession,
+    db_workspace: Workspace,
+    monkeypatch: Any,
+) -> None:
+    """Conflict flags (SALARY_MISMATCH, LOCATION_MISMATCH) and source_count are written to canonical data."""
+    monkeypatch.setattr(
+        "app.canonical.services.canonical_persist_service.backfill_canonical_embedding.apply_async",
+        _no_op_apply_async,
+    )
+
+    async def _fake_call_source(
+        source: str, payload: dict[str, Any], ctx: Any
+    ) -> dict[str, Any]:
+        items = {
+            "vietnamworks": {
+                "id": "vw:789",
+                "title": "Python Backend",
+                "company": "FPT",
+                "location": "Hà Nội",
+                "salary_min": 30_000_000,
+                "salary_max": 30_000_000,
+                "posted_at": "2026-08-05",
+                "employment_type": "full_time",
+            },
+            "topcv": {
+                "id": "tc:789",
+                "title": "Python Backend",
+                "company": "FPT",
+                "location": "Hà Nội",
+                "salary_min": 60_000_000,
+                "salary_max": 60_000_000,
+                "posted_at": "2026-08-05",
+                "employment_type": "full_time",
+            },
+        }
+        return {
+            "items": [items[source]],
+            "cost_micros": 1000,
+            "degraded": False,
+        }
+
+    monkeypatch.setattr(
+        "app.services.jobs_aggregator.orchestrator._call_source",
+        _fake_call_source,
+    )
+
+    ctx = CapabilityContext(session=db_session, workspace_id=db_workspace.id)
+    input = VnJobAggregateInput(
+        keyword="python",
+        sources=["vietnamworks", "topcv"],
+        max_items_per_source=1,
+    )
+    output = await aggregate_jobs(input, ctx)
+
+    assert output.persistence_status == "ok"
+    assert output.total_items == 1
+
+    listing = output.items[0]
+    assert listing.source_count == 2
+    assert "SALARY_MISMATCH" in listing.conflict_flags
+    assert "LOCATION_MISMATCH" not in listing.conflict_flags
+
+    fp = fingerprint(listing.model_dump())
+    entity = await db_session.scalar(
+        select(CanonicalEntity).where(
+            CanonicalEntity.workspace_id == db_workspace.id,
+            CanonicalEntity.entity_type == "vn_job",
+            CanonicalEntity.fingerprint == fp,
+        )
+    )
+    assert entity is not None
+    assert entity.source_count == 2
+    flag_types = {f["type"] for f in entity.conflict_flags}
+    assert "SALARY_MISMATCH" in flag_types
+    assert "LOCATION_MISMATCH" not in flag_types
+    assert 0.5 <= listing.confidence_score <= 0.7
 
 
 def _flatten_values(value: Any) -> list[Any]:
