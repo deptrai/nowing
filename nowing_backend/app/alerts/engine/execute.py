@@ -193,5 +193,29 @@ async def execute_alert_rule(
 
     # ponytail: next_fire_at is advanced inside _claim_due_rules so the scheduler
     # does not lose a rule if the worker crashes between claim and execute.
+    if _should_skip_notification(snapshot):
+        if snapshot.run_status == "degraded":
+            logger.info(
+                "degraded_source alert_rule_id=%s workspace_id=%s degradation_reasons=%s",
+                alert_rule.id,
+                alert_rule.workspace_id,
+                snapshot.degradation_reasons or [],
+            )
+        return snapshot
+
     await notify_alert_run(session=session, alert_rule=alert_rule, snapshot=snapshot)
     return snapshot
+
+
+def _should_skip_notification(snapshot: AlertSnapshot) -> bool:
+    """Return True when the alert must not notify.
+
+    AC-2: no notification when the run surfaced nothing new or changed.
+    AC-5: a degraded source with zero new items is skipped (and logged as
+    ``degraded_source``); degraded runs that DO surface new postings still
+    notify so nothing real is missed. Failed runs always notify so the user
+    knows their saved search broke.
+    """
+    if snapshot.run_status == "failed":
+        return False
+    return snapshot.new_items_count == 0 and snapshot.changed_items_count == 0

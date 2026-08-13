@@ -243,8 +243,8 @@ development_status:
   12-7: dropped
   # DROPPED 2026-08-08: cross-source entity timeline depends on Nowing canonical entities (Epic 13 dropped).
   12-8: dropped
-  # 12.9 depends on 12.6 (Saved Searches). AD-33: must be Automation template, NOT standalone scheduler.
-  12-9: backlog  # Job Market Alerts (P1) — unblocked only when 12-6 and 6-8 are done
+  # 12.9 depends on 12.6 (Saved Searches) and 6-8 (Generic Alert Engine). AD-33: must be Automation template, NOT standalone scheduler.
+  12-9: review  # Job Market Alerts (P1) — dev done, awaiting code review
   epic-12-retrospective: optional
 
   # === Epic 13: Canonical Entity Storage & Multi-Domain Indexing ===

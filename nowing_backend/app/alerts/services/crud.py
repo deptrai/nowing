@@ -23,6 +23,31 @@ class AlertRuleError(Exception):
     """Domain error for alert rule operations."""
 
 
+JOB_ALERT_CAPABILITY_ID = "vn_jobs.aggregate"
+
+
+def default_job_alert_query(
+    *,
+    keyword: str,
+    location: str | None = None,
+    salary_min: int | None = None,
+    salary_max: int | None = None,
+) -> dict:
+    """Build the default query schema for a job market alert (AC-1).
+
+    Maps onto ``VnJobAggregateInput`` so the same query feeds the shared
+    aggregator capability.
+    """
+    query: dict = {"keyword": keyword}
+    if location:
+        query["location"] = location
+    if salary_min is not None:
+        query["salary_min"] = salary_min
+    if salary_max is not None:
+        query["salary_max"] = salary_max
+    return query
+
+
 async def list_alert_rules(
     *,
     session: AsyncSession,

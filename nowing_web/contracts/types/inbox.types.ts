@@ -12,6 +12,7 @@ export const inboxItemTypeEnum = z.enum([
 	"new_mention",
 	"comment_reply",
 	"insufficient_credits",
+	"alert_run_complete",
 ]);
 
 /**
@@ -133,6 +134,22 @@ export const insufficientCreditsMetadata = baseInboxItemMetadata.extend({
 });
 
 /**
+ * Alert run complete metadata schema.
+ *
+ * Emitted by the Generic Alert Engine when a saved search (alert rule) run
+ * surfaces new matches. ``alert_rule_id`` points at the saved search and
+ * ``snapshot_id`` at the run snapshot the notification links to.
+ */
+export const alertRunCompleteMetadata = baseInboxItemMetadata.extend({
+	alert_rule_id: z.string(),
+	snapshot_id: z.string(),
+	new_items_count: z.number(),
+	rule_name: z.string(),
+	run_status: z.string().optional(),
+	degradation_reasons: z.array(z.string()).optional(),
+});
+
+/**
  * Union of all inbox item metadata types
  * Use this when the inbox item type is unknown
  */
@@ -143,6 +160,7 @@ export const inboxItemMetadata = z.union([
 	newMentionMetadata,
 	commentReplyMetadata,
 	insufficientCreditsMetadata,
+	alertRunCompleteMetadata,
 	baseInboxItemMetadata,
 ]);
 
@@ -193,6 +211,11 @@ export const commentReplyInboxItem = inboxItem.extend({
 export const insufficientCreditsInboxItem = inboxItem.extend({
 	type: z.literal("insufficient_credits"),
 	metadata: insufficientCreditsMetadata,
+});
+
+export const alertRunCompleteInboxItem = inboxItem.extend({
+	type: z.literal("alert_run_complete"),
+	metadata: alertRunCompleteMetadata,
 });
 
 // =============================================================================
@@ -352,6 +375,15 @@ export function isInsufficientCreditsMetadata(
 }
 
 /**
+ * Type guard for AlertRunCompleteMetadata
+ */
+export function isAlertRunCompleteMetadata(
+	metadata: unknown
+): metadata is AlertRunCompleteMetadata {
+	return alertRunCompleteMetadata.safeParse(metadata).success;
+}
+
+/**
  * Safe metadata parser - returns typed metadata or null
  */
 export function parseInboxItemMetadata(
@@ -364,6 +396,7 @@ export function parseInboxItemMetadata(
 	| NewMentionMetadata
 	| CommentReplyMetadata
 	| InsufficientCreditsMetadata
+	| AlertRunCompleteMetadata
 	| null {
 	switch (type) {
 		case "connector_indexing": {
@@ -390,6 +423,10 @@ export function parseInboxItemMetadata(
 			const result = insufficientCreditsMetadata.safeParse(metadata);
 			return result.success ? result.data : null;
 		}
+		case "alert_run_complete": {
+			const result = alertRunCompleteMetadata.safeParse(metadata);
+			return result.success ? result.data : null;
+		}
 		default:
 			return null;
 	}
@@ -409,6 +446,7 @@ export type DocumentProcessingMetadata = z.infer<typeof documentProcessingMetada
 export type NewMentionMetadata = z.infer<typeof newMentionMetadata>;
 export type CommentReplyMetadata = z.infer<typeof commentReplyMetadata>;
 export type InsufficientCreditsMetadata = z.infer<typeof insufficientCreditsMetadata>;
+export type AlertRunCompleteMetadata = z.infer<typeof alertRunCompleteMetadata>;
 export type InboxItemMetadata = z.infer<typeof inboxItemMetadata>;
 export type InboxItem = z.infer<typeof inboxItem>;
 export type ConnectorIndexingInboxItem = z.infer<typeof connectorIndexingInboxItem>;
@@ -417,6 +455,7 @@ export type DocumentProcessingInboxItem = z.infer<typeof documentProcessingInbox
 export type NewMentionInboxItem = z.infer<typeof newMentionInboxItem>;
 export type CommentReplyInboxItem = z.infer<typeof commentReplyInboxItem>;
 export type InsufficientCreditsInboxItem = z.infer<typeof insufficientCreditsInboxItem>;
+export type AlertRunCompleteInboxItem = z.infer<typeof alertRunCompleteInboxItem>;
 
 // API Request/Response types
 export type GetNotificationsRequest = z.infer<typeof getNotificationsRequest>;

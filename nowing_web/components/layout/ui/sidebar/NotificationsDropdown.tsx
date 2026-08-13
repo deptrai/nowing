@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
+	isAlertRunCompleteMetadata,
 	isCommentReplyMetadata,
 	isInsufficientCreditsMetadata,
 	isNewMentionMetadata,
@@ -224,6 +225,18 @@ export function NotificationsDropdown({
 					setOpen(false);
 					onCloseMobileSidebar?.();
 					router.push(item.metadata.action_url);
+				}
+			}
+
+			if (item.type === "alert_run_complete" && isAlertRunCompleteMetadata(item.metadata)) {
+				const alertRuleId = item.metadata.alert_rule_id;
+				const snapshotId = item.metadata.snapshot_id;
+				if (item.workspace_id && alertRuleId) {
+					setOpen(false);
+					onCloseMobileSidebar?.();
+					router.push(
+						`/dashboard/${item.workspace_id}/research/saved-searches/${alertRuleId}?snapshot=${snapshotId}`
+					);
 				}
 			}
 		},
