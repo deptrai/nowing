@@ -43,11 +43,39 @@ async def _tick() -> None:
             return
 
         for rule in claims:
-            try:
-                await execute_alert_rule(session=session, alert_rule=rule, fired_at=now)
-            except Exception:
-                logger.exception("alert rule %s execution failed", rule.id)
-                await session.rollback()
+            await _execute_claimed_rule(session, rule, now=now)
+
+
+async def _execute_claimed_rule(
+    session: AsyncSession, rule: AlertRule, *, now: datetime
+) -> None:
+    """Execute one claimed rule, re-checking it still exists first.
+
+    The rule may have been deleted after ``_claim_due_rules`` locked it (a race
+    with the delete route). In that case log ``search_missing`` and skip, so the
+    scheduler never reports an exception for a rule the user already removed.
+    """
+    fresh = await session.get(AlertRule, rule.id)
+    if fresh is None:
+        logger.info(
+            "search_missing alert_rule_id=%s workspace_id=%s",
+            rule.id,
+            rule.workspace_id,
+        )
+        return
+    if not fresh.enabled:
+        logger.info(
+            "rule_disabled alert_rule_id=%s workspace_id=%s",
+            rule.id,
+            rule.workspace_id,
+        )
+        return
+
+    try:
+        await execute_alert_rule(session=session, alert_rule=fresh, fired_at=now)
+    except Exception:
+        logger.exception("alert rule %s execution failed", rule.id)
+        await session.rollback()
 
 
 async def _self_heal_null_next_fire(session: AsyncSession, *, now: datetime) -> None:

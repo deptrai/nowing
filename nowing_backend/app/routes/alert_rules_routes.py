@@ -80,13 +80,13 @@ async def create_alert_rule_route(
         session,
         auth,
         workspace_id,
-        Permission.AUTOMATIONS_WRITE.value,
+        Permission.AUTOMATIONS_CREATE.value,
         "You don't have permission to create alert rules in this workspace",
     )
     return await create_alert_rule(
         session=session,
         workspace_id=workspace_id,
-        client_id=auth.client_id,
+        client_id=None,
         user_id=auth.user.id,
         data=data,
     )
@@ -121,7 +121,7 @@ async def update_alert_rule_route(
         session,
         auth,
         workspace_id,
-        Permission.AUTOMATIONS_WRITE.value,
+        Permission.AUTOMATIONS_UPDATE.value,
         "You don't have permission to update alert rules in this workspace",
     )
     rule = await _load_rule(session, workspace_id, alert_rule_id)
@@ -139,7 +139,7 @@ async def delete_alert_rule_route(
         session,
         auth,
         workspace_id,
-        Permission.AUTOMATIONS_WRITE.value,
+        Permission.AUTOMATIONS_DELETE.value,
         "You don't have permission to delete alert rules in this workspace",
     )
     rule = await _load_rule(session, workspace_id, alert_rule_id)
@@ -182,7 +182,7 @@ async def create_subscription_route(
         session,
         auth,
         workspace_id,
-        Permission.AUTOMATIONS_WRITE.value,
+        Permission.AUTOMATIONS_UPDATE.value,
         "You don't have permission to update alert rules in this workspace",
     )
     rule = await _load_rule(session, workspace_id, alert_rule_id)
@@ -226,6 +226,7 @@ async def list_snapshots_route(
     await _load_rule(session, workspace_id, alert_rule_id)
     return await list_snapshots(
         session=session,
+        workspace_id=workspace_id,
         alert_rule_id=alert_rule_id,
         limit=limit,
     )

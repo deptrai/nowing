@@ -23,6 +23,7 @@ const CATEGORY_TYPES: Record<NotificationCategory, string[]> = {
 		"connector_deletion",
 		"document_processing",
 		"insufficient_credits",
+		"alert_run_complete",
 	],
 };
 

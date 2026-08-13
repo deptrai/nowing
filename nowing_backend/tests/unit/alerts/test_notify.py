@@ -57,13 +57,14 @@ class _FakeSession:
 def test_notification_title_and_message():
     rule = _FakeRule(name="Python jobs", workspace_id=1, id=uuid4())
     snapshot = _FakeSnapshot(
+        id=uuid4(),
         run_status="succeeded",
         new_items_count=2,
         degradation_reasons=None,
     )
 
-    assert _notification_title(rule, snapshot) == "Alert 'Python jobs' 2 new items"
-    assert "2 new item(s)" in _notification_message(rule, snapshot)
+    assert _notification_title(rule, snapshot) == "Alert 'Python jobs' 2 matched items"
+    assert "matched 2 item(s)" in _notification_message(rule, snapshot)
     assert "saved-searches" in _notification_message(rule, snapshot)
 
 

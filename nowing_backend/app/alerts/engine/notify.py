@@ -27,9 +27,10 @@ def _status_label(snapshot: AlertSnapshot) -> str:
         return "failed"
     if snapshot.run_status == "degraded":
         return "degraded"
-    if snapshot.new_items_count:
-        return f"{snapshot.new_items_count} new items"
-    return "no new items"
+    triggered = snapshot.new_items_count or snapshot.changed_items_count
+    if triggered:
+        return f"{triggered} matched items"
+    return "no matches"
 
 
 def _notification_title(alert_rule: AlertRule, snapshot: AlertSnapshot) -> str:
@@ -43,13 +44,14 @@ def _notification_message(alert_rule: AlertRule, snapshot: AlertSnapshot) -> str
     if snapshot.run_status == "degraded":
         reasons = snapshot.degradation_reasons or []
         return f"Saved search '{alert_rule.name}' is degraded: {', '.join(reasons)}."
-    if snapshot.new_items_count:
+    triggered = snapshot.new_items_count or snapshot.changed_items_count
+    if triggered:
         return (
-            f"Saved search '{alert_rule.name}' found "
-            f"{snapshot.new_items_count} new item(s)."
-            f"\nOpen: /dashboard/{alert_rule.workspace_id}/research/saved-searches/{alert_rule.id}"
+            f"Saved search '{alert_rule.name}' matched "
+            f"{triggered} item(s)."
+            f"\nOpen: /dashboard/{alert_rule.workspace_id}/research/saved-searches/{alert_rule.id}?snapshot={snapshot.id}"
         )
-    return f"Saved search '{alert_rule.name}' ran — no new items."
+    return f"Saved search '{alert_rule.name}' ran — no matches."
 
 
 async def _in_app(
@@ -66,6 +68,7 @@ async def _in_app(
             "alert_rule_id": str(alert_rule.id),
             "snapshot_id": str(snapshot.id),
             "new_items_count": snapshot.new_items_count,
+            "rule_name": alert_rule.name,
             "run_status": snapshot.run_status,
             "degradation_reasons": snapshot.degradation_reasons or [],
         },
@@ -139,10 +142,19 @@ async def notify_alert_run(
         for channel in user_channels:
             if channel not in rule_channels:
                 continue
-            if channel == "in_app":
-                await _in_app(session, alert_rule, snapshot, sub.user_id)
-            elif channel == "telegram":
-                await _telegram(session, alert_rule, snapshot, sub.user_id)
-            else:
-                # email and other channels deferred.
-                pass
+            try:
+                if channel == "in_app":
+                    await _in_app(session, alert_rule, snapshot, sub.user_id)
+                elif channel == "telegram":
+                    await _telegram(session, alert_rule, snapshot, sub.user_id)
+                else:
+                    # email and other channels deferred.
+                    pass
+            except Exception:
+                # One failing subscriber/channel must not abort the others.
+                logger.exception(
+                    "alert %s notification channel %s failed for user %s",
+                    alert_rule.id,
+                    channel,
+                    sub.user_id,
+                )

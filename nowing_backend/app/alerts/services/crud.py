@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.alerts.engine.cron import derive_cron
+from app.alerts.engine.cron import cron_for_schedule, derive_cron, validate_cron
 from app.alerts.persistence.models.alert_rule import AlertRule
 from app.alerts.persistence.models.alert_snapshot import AlertSnapshot
 from app.alerts.persistence.models.alert_subscription import AlertSubscription
@@ -21,6 +21,35 @@ from app.capabilities.core.store import CapabilityRegistry
 
 class AlertRuleError(Exception):
     """Domain error for alert rule operations."""
+
+
+JOB_ALERT_CAPABILITY_ID = "vn_jobs.aggregate"
+
+
+def default_job_alert_query(
+    *,
+    keyword: str,
+    location: str | None = None,
+    salary_min: int | None = None,
+    salary_max: int | None = None,
+) -> dict:
+    """Build the default query schema for a job market alert (AC-1).
+
+    Maps onto ``VnJobAggregateInput`` so the same query feeds the shared
+    aggregator capability. Raises ``ValueError`` if the salary range is
+    inverted (a programmer error that's cheaper to catch here than deep in
+    the capability executor).
+    """
+    if salary_min is not None and salary_max is not None and salary_min > salary_max:
+        raise ValueError(f"salary_min ({salary_min}) must not exceed salary_max ({salary_max})")
+    query: dict = {"keyword": keyword}
+    if location:
+        query["location"] = location
+    if salary_min is not None:
+        query["salary_min"] = salary_min
+    if salary_max is not None:
+        query["salary_max"] = salary_max
+    return query
 
 
 async def list_alert_rules(
@@ -62,6 +91,13 @@ async def create_alert_rule(
         raise AlertRuleError(
             f"capability {data.capability_id!r} is not registered"
         ) from exc
+
+    # Validate timezone even when schedule is "none" so an invalid IANA string
+    # is rejected at creation time, not later when the user enables scheduling.
+    if data.timezone:
+        cron_for_validation = cron_for_schedule("daily")
+        if cron_for_validation:
+            validate_cron(cron_for_validation, data.timezone)
 
     cron = (
         derive_cron(data.schedule, data.timezone) if data.schedule != "none" else None
@@ -190,12 +226,17 @@ async def create_alert_subscription(
 async def list_snapshots(
     *,
     session: AsyncSession,
+    workspace_id: int,
     alert_rule_id: UUID,
     limit: int = 20,
 ) -> list[AlertSnapshot]:
     stmt = (
         select(AlertSnapshot)
-        .where(AlertSnapshot.alert_rule_id == alert_rule_id)
+        .join(AlertRule)
+        .where(
+            AlertSnapshot.alert_rule_id == alert_rule_id,
+            AlertRule.workspace_id == workspace_id,
+        )
         .order_by(AlertSnapshot.created_at.desc())
         .limit(limit)
     )

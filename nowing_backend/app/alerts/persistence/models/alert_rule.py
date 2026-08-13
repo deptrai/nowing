@@ -13,6 +13,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    text,
 )
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 from sqlalchemy.orm import relationship
@@ -57,6 +58,13 @@ class AlertRule(Base, TimestampMixin):
     # Precomputed scheduler fields (same pattern as AutomationTrigger).
     next_fire_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     last_fired_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        server_default=text("now()"),
+        index=True,
+    )
 
     # Diff strategy: "new_items" | "price_change" | "threshold_cross" | "trend_detect".
     diff_strategy = Column(String(40), nullable=False, default="new_items")
