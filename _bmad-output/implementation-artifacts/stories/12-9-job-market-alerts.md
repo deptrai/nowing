@@ -27,7 +27,7 @@ baseline_commit: d9a21a5f5cc49c5138c949b1c76acfb1d744fdf5
 ### AC-3 — Click to results
 **Given** an in-app alert notification, **when** the user clicks it, **then** they are taken to the saved search results showing the new matching postings.
 
-### AC-4 — Grouped alert view
+### AC-4 — Grouped alert view ✅
 **Given** multiple job alerts, **when** viewed in the notifications/alerts panel, **then** they are grouped by search query with a match count.
 
 ### AC-5 — Degraded source / missing rule handling
@@ -75,7 +75,7 @@ baseline_commit: d9a21a5f5cc49c5138c949b1c76acfb1d744fdf5
   - [x] Frontend route `/dashboard/{workspace_id}/research/saved-searches/{alert_rule_id}?snapshot={snapshot_id}`
 - [x] Build grouped alert view (AC-4)
   - [x] Backend: group notifications by `alert_rule_id` with counts
-  - [ ] Web: alerts panel renders grouped by saved-search name
+  - [x] Web: alerts panel renders grouped by saved-search name
 - [x] Degraded / missing handling (AC-5)
   - [x] Skip alert when `AlertRule` deleted (cascade already deletes subscriptions)
   - [x] Detect `degraded=true` + zero new items in `execute.py`; log `degraded_source`
@@ -103,7 +103,7 @@ baseline_commit: d9a21a5f5cc49c5138c949b1c76acfb1d744fdf5
 | AC-1 | `AlertRule` + `vn_jobs.aggregate` capability + `default_job_alert_query` helper in `crud.py` + `JOB_ALERT_CAPABILITY_ID` | ✅ |
 | AC-2 | `execute.py` `_should_skip_notification`; `notify.py` creates `alert_run_complete` notification with `rule_name` | ✅ |
 | AC-3 | Notification message carries deep-link `/dashboard/{ws}/research/saved-searches/{rule_id}?snapshot={snap.id}`; web route + detail page renders snapshot; click handler in `NotificationsDropdown.tsx` | ✅ |
-| AC-4 | `group_alert_notifications` in `app/alerts/services/grouping.py`; web alerts panel groups by `alert_rule_id` with match count | 🟡 web grouping rendered in story 12.7 panel |
+| AC-4 | `group_alert_notifications` in `app/alerts/services/grouping.py`; `NotificationsDropdown.tsx` groups `alert_run_complete` items by `alert_rule_id` with match count | ✅ |
 | AC-5 | `execute.py` skips notify when `degraded` + zero items, logs `degraded_source`; `tick.py` `_execute_claimed_rule` re-checks rule, logs `search_missing`; scheduler advances `next_fire_at` | ✅ |
 | AC-6 | 11 unit tests + 4 integration tests all green | ✅ |
 
@@ -248,6 +248,23 @@ SWE-1.7 Max
 - **Q3 concurrent rule-delete race** — non-critical; current rollback + exception log is acceptable, but add `search_missing` log as specified in AC-5.
 - No critical findings. **Proceed to test-first ATDD / dev-story.**
 
+## Review Findings
+
+### decision-needed
+
+- [x] [Review][Decision] AC-4 frontend grouping incomplete — implemented `NotificationsDropdown.tsx` grouping by `alert_rule_id` with match count; `use-inbox.ts` includes `alert_run_complete` in `status` category.
+
+### patch
+
+- [x] [Review][Patch] `group_alert_notifications` can crash on malformed `new_items_count` [`nowing_backend/app/alerts/services/grouping.py:63`] — wrapped `int()` in `try/except (TypeError, ValueError)`. Added corresponding frontend `groupInboxNotifications` helper that parses numeric strings and falls back to 0.
+
+### defer
+
+- [x] [Review][Defer] `NotificationsDropdown` silently ignores navigation if `workspace_id` or `alert_rule_id` is missing — defensive UX gap, schema enforces both as required.
+- [x] [Review][Defer] `SavedSearchDetailContent` only validates `alertRuleId` by length — invalid IDs fall through to API 404, acceptable fallback.
+- [x] [Review][Defer] `SavedSearchDetailContent` falls back to "No runs yet" when linked snapshot is missing — graceful degradation, UX polish only.
+- [x] [Review][Defer] `default_job_alert_query` does not validate `salary_min <= salary_max` — helper not wired to a route yet; validate when consumed.
+
 ## Status
 
-review
+done

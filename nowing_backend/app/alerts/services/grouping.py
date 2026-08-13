@@ -60,9 +60,11 @@ def group_alert_notifications(
             group["rule_name"] = _metadata(notification).get("rule_name") or group[
                 "rule_name"
             ]
-        group["match_count"] += int(
-            _metadata(notification).get("new_items_count") or 0
-        )
+        raw_count = _metadata(notification).get("new_items_count") or 0
+        try:
+            group["match_count"] += int(raw_count)
+        except (TypeError, ValueError):
+            pass
         group["notifications"].append(notification)
 
     return [groups[rule_id] for rule_id in order]

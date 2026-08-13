@@ -25,6 +25,10 @@ import {
 } from "@/contracts/types/inbox.types";
 import type { InboxItem } from "@/hooks/use-inbox";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+	groupInboxNotifications,
+	type InboxNotificationGroup,
+} from "@/lib/alerts/group-inbox-notifications";
 import { cn } from "@/lib/utils";
 
 export interface NotificationsDataSource {
@@ -117,15 +121,33 @@ export function NotificationsDropdown({
 		activeFilter === "mentions"
 			? !!notifications.comments.hasMore
 			: !!notifications.comments.hasMore || !!notifications.status.hasMore;
-	const items = useMemo(() => {
+	const { groupedItems } = useMemo(() => {
 		const sourceItems =
 			activeFilter === "mentions"
 				? notifications.comments.items
 				: [...notifications.comments.items, ...notifications.status.items];
 
-		return sourceItems
-			.filter((item) => activeFilter !== "unread" || !item.read)
-			.toSorted((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+		const filtered = sourceItems.filter((item) => activeFilter !== "unread" || !item.read);
+		const sorted = filtered.toSorted(
+			(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+		);
+
+		const { groups, others } = groupInboxNotifications(sorted);
+		const groupedItems: (InboxItem | InboxNotificationGroup)[] = [...groups, ...others].toSorted(
+			(a, b) => {
+				const aTime =
+					"alert_rule_id" in a
+						? new Date(a.latest_created_at).getTime()
+						: new Date(a.created_at).getTime();
+				const bTime =
+					"alert_rule_id" in b
+						? new Date(b.latest_created_at).getTime()
+						: new Date(b.created_at).getTime();
+				return bTime - aTime;
+			}
+		);
+
+		return { groupedItems };
 	}, [activeFilter, notifications.comments.items, notifications.status.items]);
 
 	const loadMoreForActiveFilter = useCallback(() => {
@@ -185,7 +207,21 @@ export function NotificationsDropdown({
 	);
 
 	const handleItemClick = useCallback(
-		async (item: InboxItem) => {
+		async (item: InboxItem | InboxNotificationGroup) => {
+			if ("alert_rule_id" in item) {
+				const latest = item.items[0];
+				const snapshotId = latest?.metadata?.snapshot_id;
+				if (latest?.workspace_id) {
+					setOpen(false);
+					onCloseMobileSidebar?.();
+					const query = snapshotId ? `?snapshot=${snapshotId}` : "";
+					router.push(
+						`/dashboard/${latest.workspace_id}/research/saved-searches/${item.alert_rule_id}${query}`
+					);
+				}
+				return;
+			}
+
 			await markItemAsRead(item);
 
 			if (item.type === "new_mention" && isNewMentionMetadata(item.metadata)) {
@@ -357,13 +393,21 @@ export function NotificationsDropdown({
 							</div>
 						))}
 					</div>
-				) : items.length > 0 ? (
+				) : groupedItems.length > 0 ? (
 					<div className="space-y-1">
-						{items.map((item) => {
-							const isMarkingAsRead = markingAsReadId === item.id;
+						{groupedItems.map((item) => {
+							const isGroup = "alert_rule_id" in item;
+							const isMarkingAsRead = isGroup ? false : markingAsReadId === item.id;
+							const key = isGroup ? `group-${item.alert_rule_id}` : item.id;
+							const title = isGroup ? item.rule_name : item.title;
+							const message = isGroup
+								? `+${item.match_count} new match${item.match_count === 1 ? "" : "es"}`
+								: item.message;
+							const createdAt = isGroup ? item.latest_created_at : item.created_at;
+							const unread = isGroup ? item.unread : !item.read;
 							return (
 								<Button
-									key={item.id}
+									key={key}
 									type="button"
 									variant="ghost"
 									disabled={isMarkingAsRead}
@@ -371,7 +415,7 @@ export function NotificationsDropdown({
 									className={cn(
 										"group h-auto w-full justify-start rounded-lg px-2 py-2 text-left",
 										"hover:bg-accent hover:text-accent-foreground",
-										!item.read && "bg-accent/40"
+										unread && "bg-accent/40"
 									)}
 									style={{ contentVisibility: "auto", containIntrinsicSize: "0 72px" }}
 								>
@@ -380,20 +424,20 @@ export function NotificationsDropdown({
 											<p
 												className={cn(
 													"line-clamp-1 flex-1 text-sm font-medium",
-													!item.read && "font-semibold"
+													unread && "font-semibold"
 												)}
 											>
-												{item.title}
+												{title}
 											</p>
-											{!item.read ? (
+											{unread ? (
 												<span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
 											) : null}
 										</div>
 										<p className="mt-0.5 line-clamp-2 text-xs font-normal text-muted-foreground group-hover:text-accent-foreground/80">
-											{item.message}
+											{message}
 										</p>
 										<p className="mt-1 text-[11px] font-normal text-muted-foreground/70">
-											{formatTime(item.created_at)}
+											{formatTime(createdAt)}
 										</p>
 									</div>
 									{isMarkingAsRead ? <Spinner size="xs" className="shrink-0" /> : null}
