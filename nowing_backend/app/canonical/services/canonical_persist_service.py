@@ -518,7 +518,7 @@ async def revert_canonical_entity(
         )
         .with_for_update()
     )
-    if current is not None:
+    if current is None:
         raise RevertNotPossibleError(f"Entity {entity_id} not found")
 
     history = await session.scalar(
