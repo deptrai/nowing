@@ -1,13 +1,14 @@
+from __future__ import annotations
+
+import logging
+from typing import Any, TypedDict
+
 """Grouping helper for alert notifications (AC-4).
 
 Pure functions: no DB or framework objects, so they are unit-testable in
 isolation. Input notifications follow the API response shape (``metadata``
 dict with ``alert_rule_id``, ``rule_name``, ``new_items_count``).
 """
-
-from __future__ import annotations
-
-from typing import Any, TypedDict
 
 
 class AlertNotificationGroup(TypedDict):
@@ -64,7 +65,11 @@ def group_alert_notifications(
         try:
             group["match_count"] += int(raw_count)
         except (TypeError, ValueError):
-            pass
+            logging.getLogger(__name__).warning(
+                "Ignoring non-numeric new_items_count %r for alert rule %s",
+                raw_count,
+                rule_id,
+            )
         group["notifications"].append(notification)
 
     return [groups[rule_id] for rule_id in order]

@@ -1,17 +1,19 @@
 # Code Review — Story 12.9 Job Market Alerts
 
-**Commit:** `086dbcca2cedc7a7b6790c14de27156b84c73928`  
+**Initial Commit:** `086dbcca2cedc7a7b6790c14de27156b84c73928`  
+**Re-review Commit:** `8c731e70e`  
 **Baseline:** `d9a21a5f5cc49c5138c949b1c76acfb1d744fdf5`  
 **Reviewer:** SWE-1.7 Max  
 **Date:** 2026-08-13  
-**Review layers:** Blind Hunter (failed/empty), Edge Case Hunter ✅, Acceptance Auditor ✅  
+**Review layers (initial):** Blind Hunter (failed/empty), Edge Case Hunter ✅, Acceptance Auditor ✅  
+**Review layers (re-review):** Blind Hunter ✅, Edge Case Hunter ✅, Acceptance Auditor ✅  
 **Spec file:** `_bmad-output/implementation-artifacts/stories/12-9-job-market-alerts.md`
 
 ---
 
 ## Verdict
 
-**PASS with `decision-needed` + `patch` findings** — AC-1/AC-2/AC-3/AC-5/AC-6 are satisfied and tests are green. AC-4 is partially satisfied: backend grouping exists but the frontend panel does not render grouped alerts. One `patch` finding should be applied for robustness. Several edge cases are theoretical and dismissed.
+**PASS** after re-review — all ACs are satisfied, including AC-4 (frontend grouping wired in `NotificationsDropdown.tsx`). The one `patch` finding from the initial review (defensive `int()` in `group_alert_notifications`) was applied and now logs malformed counts instead of silently swallowing. Remaining Blind Hunter / Edge Case Hunter items are either theoretical, by design, or UX polish and were dismissed.
 
 ---
 
@@ -19,45 +21,26 @@
 
 | Bucket | Count | Notes |
 |--------|-------|-------|
-| `decision-needed` | 1 | AC-4 frontend grouping: implement now or formally defer? |
-| `patch` | 1 | `group_alert_notifications` should guard against non-numeric `new_items_count` |
+| `decision-needed` | 0 | AC-4 frontend grouping implemented |
+| `patch` | 0 | Defensive `int()` patch applied and logging added |
 | `defer` | 4 | UX/navigation edge cases, salary validation, pre-existing or out-of-scope |
-| `dismiss` | 7 | Theoretical edge cases or already handled by code contract |
+| `dismiss` | 7 + 17 | Theoretical edge cases or already handled by code contract |
 
 ---
 
 ## `decision-needed` Findings
 
-### D1 — AC-4 frontend grouping is not wired
-
-**Source:** acceptance-auditor  
-**AC:** AC-4 — "Given multiple job alerts, when viewed in the notifications/alerts panel, then they are grouped by search query with a match count."  
-**Evidence:**
-- Backend `app/alerts/services/grouping.py` implements `group_alert_notifications`.
-- The diff does not include any frontend code that calls the grouping helper or renders grouped alerts in the notifications/alerts panel.
-- Story spec lists the frontend task as unchecked (`- [ ] Web: alerts panel renders grouped by saved-search name`) and marks AC-4 as 🟡 with the note "web grouping rendered in story 12.7 panel".
-
-**Question:** Should the frontend grouping be implemented in this story, or is it intentionally deferred to a later UI story (e.g., 12.7 / alerts panel)?
+None — all decision-needed findings were resolved in the re-review.
 
 ---
 
 ## `patch` Findings
 
-### P1 — `group_alert_notifications` can crash on malformed `new_items_count`
+### P1 — `group_alert_notifications` guards against malformed `new_items_count` (RESOLVED)
 
 **Source:** edge-case-hunter  
 **Location:** `nowing_backend/app/alerts/services/grouping.py:63-65`  
-**Issue:** `group["match_count"] += int(_metadata(notification).get("new_items_count") or 0)` will raise `ValueError` if a caller passes a non-numeric string (e.g., `"5 items"`). The `or 0` fallback only handles `None`/falsy values, not invalid strings.  
-**Severity:** medium — a malformed notification object crashes the entire grouping call, affecting any caller that groups notifications.  
-**Suggested fix:**
-
-```python
-nc = _metadata(notification).get("new_items_count") or 0
-try:
-    group["match_count"] += int(nc)
-except (TypeError, ValueError):
-    pass
-```
+**Resolution:** Applied in commit `8c731e70e`. The function now wraps `int()` in `try/except (TypeError, ValueError)` and logs a warning with the rule id and raw value, preventing silent data loss and crashes.
 
 ---
 
@@ -137,11 +120,37 @@ except (TypeError, ValueError):
 
 ---
 
+## Re-review Findings (commit `8c731e70e`)
+
+### Re-review patch
+
+- **Blind Hunter #3 / Re-review** — `group_alert_notifications` silently swallowed `TypeError`/`ValueError` when `new_items_count` was non-numeric. **Resolved** by adding a `logging` warning.
+
+### Re-review dismissals
+
+- **Blind Hunter #1** — `_should_skip_notification` name is confusing. **Dismissed** — the function returns `True` to skip; the docstring explains the contract clearly.
+- **Blind Hunter #2 / #3** — degraded runs with new items do not log `degraded_source`. **Dismissed** — by design; the log is intentionally scoped to the skip path.
+- **Blind Hunter #4** — redundant `rule_name` logic in `grouping.py`. **Dismissed** — the second check is defensive; it updates `rule_name` only when the group is first created.
+- **Blind Hunter #5** — `alertRunCompleteMetadata` schema uses `z.number()` while backend could theoretically serialize as string. **Dismissed** — backend sends int; frontend helper also defensively parses strings.
+- **Blind Hunter #6, #7, #10** — weak validation in `saved-search-detail-content.tsx`. **Dismissed/deferred** — API returns 404/403 and the UI renders a not-found panel; client-side UUID/number validation is UX polish.
+- **Blind Hunter #8** — click handler doesn't validate `alert_rule_id`. **Dismissed** — group is only created for notifications with a valid `alert_rule_id`; `item.alert_rule_id` is always a non-empty string.
+- **Blind Hunter #9** — union type confusion in `groupedItems`. **Dismissed** — type guard `"alert_rule_id" in item` is a standard and safe pattern.
+- **Blind Hunter #11** — `alert-rules-api.service.ts` has no error handling. **Dismissed** — `baseApiService` throws, caught by React Query; explicit error boundaries are out of scope.
+- **Blind Hunter #12** — `default_job_alert_query` does not validate salary range. **Deferred** — helper is not wired to a route; validate when consumed.
+- **Blind Hunter #13** — `notify.py` catches all `Exception` without distinction. **Dismissed** — per-subscriber isolation requires broad catch; specific exceptions can be added later if monitoring needs it.
+- **Blind Hunter #14** — unit test for query schema is weak. **Dismissed** — test asserts the helper builds the expected dict shape; full `VnJobAggregateInput` validation is in the capability layer.
+- **Blind Hunter #15** — `_should_skip_notification` ignores `removed_items_count`. **Dismissed** — AC-2 is about new postings; removed items are not part of the trigger.
+- **Blind Hunter #16** — grouped and ungrouped items interleaved in notifications panel. **Dismissed/deferred** — grouping by time is intentional; a separate "Alerts" tab can be added later if product wants it.
+- **Edge Case Hunter #1** — grouped notification with empty `items` array. **Dismissed** — `groupInboxNotifications` only creates groups with at least one item.
+- **Acceptance Auditor (re-review)** — claimed AC-4 frontend grouping still incomplete. **Dismissed** — based on outdated review file; frontend grouping is implemented in `NotificationsDropdown.tsx`.
+
+---
+
 ## Test & Lint Results
 
 - `pytest tests/unit/alerts tests/integration/alerts` — **47 passed**
-- `ruff check app/alerts app/notifications/types.py tests/unit/alerts tests/integration/alerts` — **clean**
-- `pnpm tsc --noEmit` + `pnpm exec biome check` — reported clean by author (not re-verified in this review)
+- `ruff check app/alerts/services/grouping.py` — **clean**
+- `pnpm tsc --noEmit` + `pnpm exec biome check` — **clean** (re-verified)
 - Mutation gate — **not run** (tooling issue with module path for `app/alerts/engine/execute`)
 
 ---
@@ -154,8 +163,6 @@ No P0 surfaces (token/credit, auth, provider/model routing, pricing, RAG/connect
 
 ## Recommended Next Steps
 
-1. Resolve **D1** (AC-4 frontend grouping): implement now or confirm deferral.
-2. Apply **P1** (defensive `int()` in grouping).
-3. Re-run **Blind Hunter** in a fresh session with a smaller diff chunk if the empty result was due to context length.
-4. Re-run **mutation gate** with correct flags once the tooling issue is resolved.
-5. If all `decision-needed` and `patch` findings are resolved, update story status to `done`.
+1. ✅ All `decision-needed` and `patch` findings resolved.
+2. Re-run **mutation gate** with correct flags once the tooling issue is resolved (optional for P1).
+3. Story is ready for `done`.
