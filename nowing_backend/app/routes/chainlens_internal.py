@@ -142,6 +142,7 @@ async def run_scraper_for_chainlens(
     ):
         # ponytail: city-level gap-fill defaults to HN; the caller should
         # supply a city in ``params`` for precise targeting.
+        # Upgrade path: infer city from query string or require explicit city
         input_data.setdefault("city", "HN")
     if (
         body.query
@@ -215,6 +216,10 @@ async def run_scraper_for_chainlens(
         except Exception:
             # Skip records that cannot be normalized; the ingestion still
             # proceeds with the rest.
+            logger.exception("Skipping unserializable listing", extra={
+                "scraper_id": scraper_id,
+                "workspace_id": workspace_id,
+            })
             continue
 
     if not chunks:

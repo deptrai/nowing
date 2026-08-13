@@ -77,7 +77,7 @@ def test_stable_fingerprint_for_job_domains_equals_sha256_of_sorted_identity_dic
 
 
 def test_stable_fingerprint_boundary_posted_at_none():
-    """_stable_fingerprint handles posted_at=None boundary case."""
+    """_stable_fingerprint handles posted_at=None and remains deterministic."""
     data = {
         "title": "Data Engineer",
         "company": "FPT",
@@ -86,10 +86,12 @@ def test_stable_fingerprint_boundary_posted_at_none():
     }
 
     fingerprint = _stable_fingerprint("vn_jobs", data)
+    fingerprint2 = _stable_fingerprint("vn_jobs", data)
 
     assert ":" in fingerprint
     hash_part = fingerprint.split(":")[-1]
     assert len(hash_part) == 32
+    assert fingerprint == fingerprint2
 
 
 

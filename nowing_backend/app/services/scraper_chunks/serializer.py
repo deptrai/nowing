@@ -204,6 +204,8 @@ def _identity_fields(domain: str, data: dict[str, Any]) -> dict[str, Any]:
     if canonical_id:
         # ponytail: for job domains, still include posted_at in the identity
         # so the fingerprint stays stable across temporal boundaries (AC-3).
+        # Upgrade path: revisit if canonical_id alone proves stable enough
+        # (see _bmad-output/implementation-artifacts/stories/12-4c-4d-4e-pii-ingest-exposure.md).
         if _is_job_domain(domain):
             return {
                 "canonical_id": str(canonical_id),
@@ -214,6 +216,8 @@ def _identity_fields(domain: str, data: dict[str, Any]) -> dict[str, Any]:
     if _is_job_domain(domain):
         # ponytail: stable identity excludes volatile salary/employment_type
         # and includes posted_at for temporal dedupe (AC-3, Story 12.4d).
+        # Upgrade path: include salary/employment_type only after normalization
+        # makes them stable (see story 12-4c-4d-4e-pii-ingest-exposure.md).
         return {
             "company": _get(data, "company"),
             "title": _get(data, "title"),
@@ -345,6 +349,8 @@ def _metadata_from_data(
 
     # ponytail: salary is volatile and may be None or negotiable (0 values).
     # Only emit salary metadata when it contains a real range (AC-3).
+    # Upgrade path: central salary normalization before metadata construction
+    # (see story 12-4c-4d-4e-pii-ingest-exposure.md).
     clean_salary: dict[str, Any] | None = None
     if salary and isinstance(salary, dict) and (salary.get("min") or salary.get("max")):
         clean_salary = salary

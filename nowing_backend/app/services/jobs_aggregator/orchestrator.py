@@ -73,6 +73,8 @@ def _redact_listing(listing: VnJobAggregatedListing) -> VnJobAggregatedListing:
                 listing.pii_redacted = True
             # ponytail: per-field counts; total may exceed if the same PII
             # appears in both fields, but audit only needs counts, not values.
+            # Upgrade path: deduplicate PII across fields if audit requires
+            # exact totals (see story 12-4c-4d-4e-pii-ingest-exposure.md).
             total_counts["phone"] += redacted.phones_detected
             total_counts["email"] += redacted.emails_detected
             total_counts["name"] += redacted.names_detected
@@ -186,6 +188,8 @@ def _build_job_source_snapshot(canonical_data: dict[str, Any]) -> dict[str, Any]
     """Return a source snapshot with any remaining PII removed from text fields."""
     # ponytail: central redactor masks JD text and removes contact/email
     # heuristics; we keep the source snapshot consistent with canonical rules.
+    # Upgrade path: replace with a domain-specific NER redactor if name/address
+    # detection needs to improve (see story 12-4c-4d-4e-pii-ingest-exposure.md).
     return redact_canonical_data("vn_job", dict(canonical_data))
 
 
@@ -257,6 +261,7 @@ async def _persist_jobs_aggregates(
         # ponytail: each source record is linked against the same canonical
         # fingerprint; the unique (workspace, entity_type, source, record_id)
         # key keeps retries idempotent.
+        # Upgrade path: batch upserts if per-source loop becomes a bottleneck
         for source_name, source_record_id in listing._source_record_ids.items():
             source_url = listing._source_url_map.get(source_name)
             try:
@@ -377,6 +382,8 @@ async def aggregate_jobs(input: VnJobAggregateInput, ctx: Any) -> VnJobAggregate
 
     # Apply aggregator-level location filter if provided.
     # ponytail: resolve both sides to city codes so "Hà Nội" / "hanoi" / "HN" all match.
+    # Upgrade path: use a canonical location taxonomy (e.g. Geonames) for
+    # fuzzy matching and avoid ad-hoc normalisation.
     if input.location:
         loc_code = resolve_city_code(input.location) or input.location.lower().strip()
         output.items = [

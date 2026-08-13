@@ -176,6 +176,10 @@ async def _post_batch_core(
             headers=headers,
         )
         # On 401, rotate token once and retry the same request in-flight.
+        # ponytail: rotation is inside the call-local ``ChainLensServiceAuth``
+        # instance; concurrent 401s across separate ``ingest`` calls may race.
+        # Upgrade path: share one process-wide auth with an async lock around
+        # rotate+retry (see story 12-4c-4d-4e-pii-ingest-exposure.md).
         if response.status_code == 401:
             rotated = auth.rotate(workspace_id=workspace_id, reason="401_response")
             if rotated:
