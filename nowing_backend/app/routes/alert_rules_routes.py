@@ -226,6 +226,7 @@ async def list_snapshots_route(
     await _load_rule(session, workspace_id, alert_rule_id)
     return await list_snapshots(
         session=session,
+        workspace_id=workspace_id,
         alert_rule_id=alert_rule_id,
         limit=limit,
     )

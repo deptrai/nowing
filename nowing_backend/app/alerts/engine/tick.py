@@ -63,6 +63,13 @@ async def _execute_claimed_rule(
             rule.workspace_id,
         )
         return
+    if not fresh.enabled:
+        logger.info(
+            "rule_disabled alert_rule_id=%s workspace_id=%s",
+            rule.id,
+            rule.workspace_id,
+        )
+        return
 
     try:
         await execute_alert_rule(session=session, alert_rule=fresh, fired_at=now)

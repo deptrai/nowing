@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.alerts.engine.cron import derive_cron
+from app.alerts.engine.cron import cron_for_schedule, derive_cron, validate_cron
 from app.alerts.persistence.models.alert_rule import AlertRule
 from app.alerts.persistence.models.alert_snapshot import AlertSnapshot
 from app.alerts.persistence.models.alert_subscription import AlertSubscription
@@ -91,6 +91,13 @@ async def create_alert_rule(
         raise AlertRuleError(
             f"capability {data.capability_id!r} is not registered"
         ) from exc
+
+    # Validate timezone even when schedule is "none" so an invalid IANA string
+    # is rejected at creation time, not later when the user enables scheduling.
+    if data.timezone:
+        cron_for_validation = cron_for_schedule("daily")
+        if cron_for_validation:
+            validate_cron(cron_for_validation, data.timezone)
 
     cron = (
         derive_cron(data.schedule, data.timezone) if data.schedule != "none" else None
@@ -219,12 +226,17 @@ async def create_alert_subscription(
 async def list_snapshots(
     *,
     session: AsyncSession,
+    workspace_id: int,
     alert_rule_id: UUID,
     limit: int = 20,
 ) -> list[AlertSnapshot]:
     stmt = (
         select(AlertSnapshot)
-        .where(AlertSnapshot.alert_rule_id == alert_rule_id)
+        .join(AlertRule)
+        .where(
+            AlertSnapshot.alert_rule_id == alert_rule_id,
+            AlertRule.workspace_id == workspace_id,
+        )
         .order_by(AlertSnapshot.created_at.desc())
         .limit(limit)
     )

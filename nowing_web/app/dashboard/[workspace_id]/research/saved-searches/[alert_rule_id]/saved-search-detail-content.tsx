@@ -18,8 +18,8 @@ function isValidWorkspaceId(value: number): boolean {
 	return Number.isFinite(value) && value > 0 && Number.isInteger(value);
 }
 
-function isValidAlertRuleId(value: string): boolean {
-	return UUID_RE.test(value);
+function isValidUuid(value: string | null): value is string {
+	return value !== null && UUID_RE.test(value);
 }
 
 /**
@@ -32,10 +32,11 @@ export function SavedSearchDetailContent({
 	alertRuleId,
 }: SavedSearchDetailContentProps) {
 	const searchParams = useSearchParams();
-	const snapshotId = searchParams.get("snapshot");
+	const rawSnapshotId = searchParams.get("snapshot");
+	const snapshotId = isValidUuid(rawSnapshotId) ? rawSnapshotId : null;
 	const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(snapshotId);
 
-	const validId = isValidWorkspaceId(workspaceId) && isValidAlertRuleId(alertRuleId);
+	const validId = isValidWorkspaceId(workspaceId) && isValidUuid(alertRuleId);
 	const {
 		data: rule,
 		isLoading,
