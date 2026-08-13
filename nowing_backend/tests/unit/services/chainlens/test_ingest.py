@@ -164,6 +164,7 @@ async def test_ingest_paginates_batches_larger_than_1000(monkeypatch):
 
     assert len(calls) == 2
     assert result.parent_ingest_job_id is not None
+    assert result.parent_ingest_job_id == result.ingest_job_id
     assert result.child_ingest_job_ids == ["child-1", "child-2"]
 
 
@@ -197,6 +198,8 @@ async def test_ingest_maps_duplicate_source_ids_to_noop(monkeypatch):
 
     assert "chunk:0001" in result.noop_source_ids
     assert "chunk:0002" in result.ingested_source_ids
+    assert result.status == "partial"
+    assert result.ingest_job_id == "job-noop"
 
 
 @pytest.mark.asyncio
@@ -219,6 +222,8 @@ async def test_ingest_accepts_202_accepted(monkeypatch):
     )
 
     assert result.ingest_job_id == "job-202"
+    assert result.status == "ok"
+    assert result.error is None
 
 
 @pytest.mark.asyncio
