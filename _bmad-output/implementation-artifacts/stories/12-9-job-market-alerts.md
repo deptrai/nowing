@@ -2,7 +2,7 @@
 title: Story 12.9 — Job Market Alerts
 epic: 12
 story: 9
-status: review
+status: done
 priority: P1
 baseline_commit: d9a21a5f5cc49c5138c949b1c76acfb1d744fdf5
 ---
@@ -83,6 +83,7 @@ baseline_commit: d9a21a5f5cc49c5138c949b1c76acfb1d744fdf5
 - [x] Tests (AC-6)
   - [x] Unit test `tests/unit/alerts/test_job_alert.py`
   - [x] Integration test `tests/integration/alerts/test_job_alert_notification.py`
+  - [x] E2E `nowing_web/tests/alerts/job-market-alerts.spec.ts`
 
 ---
 
@@ -105,7 +106,7 @@ baseline_commit: d9a21a5f5cc49c5138c949b1c76acfb1d744fdf5
 | AC-3 | Notification message carries deep-link `/dashboard/{ws}/research/saved-searches/{rule_id}?snapshot={snap.id}`; web route + detail page renders snapshot; click handler in `NotificationsDropdown.tsx` | ✅ |
 | AC-4 | `group_alert_notifications` in `app/alerts/services/grouping.py`; `NotificationsDropdown.tsx` groups `alert_run_complete` items by `alert_rule_id` with match count | ✅ |
 | AC-5 | `execute.py` skips notify when `degraded` + zero items, logs `degraded_source`; `tick.py` `_execute_claimed_rule` re-checks rule, logs `search_missing`; scheduler advances `next_fire_at` | ✅ |
-| AC-6 | 11 unit tests + 4 integration tests all green | ✅ |
+| AC-6 | 11 unit tests + 4 integration tests all green; Playwright E2E `tests/alerts/job-market-alerts.spec.ts` green against real API | ✅ |
 
 ## Implementation Notes
 
