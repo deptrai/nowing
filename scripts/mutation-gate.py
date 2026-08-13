@@ -101,18 +101,45 @@ def priority_for(pattern: str, service: str) -> str:
 
 
 def discover_tests(backend: Path, service: str) -> list[str]:
-    """Find unit test files that likely cover the service."""
+    """Find unit test files that likely cover the service.
+
+    Prefer an exact ``tests/unit/<service>`` package directory when it exists,
+    so deep modules like ``capabilities/vn_jobs/aggregate/executor`` do not
+    match every ``test_*executor*.py`` file in the tree.
+    """
     tests_dir = backend / "tests" / "unit"
     if not tests_dir.exists():
         return ["tests/unit"]
 
-    # A service may be scoped to a submodule (e.g. "memory/repository"); use the
-    # package name for test discovery since submodule tests usually live under
-    # the package's test files.
     segments = service.split("/")
+    target_tail = Path(service)
+
+    # For a module like "capabilities/vn_jobs/aggregate/executor" the tests
+    # live in the parent package directory (``tests/unit/capabilities/vn_jobs/aggregate``).
+    # For a package module the tests may live directly under the same subpath.
     search_key = segments[0]
     last_segment = segments[-1]
-    candidates = []
+    candidate_dirs = [
+        tests_dir / target_tail,  # exact subpath
+        tests_dir / target_tail.parent,  # parent package of the last segment
+    ]
+    if len(segments) > 2:
+        # Also try dropping the last two segments, e.g. ``services/scraper_chunks``.
+        candidate_dirs.append(tests_dir / Path("/".join(segments[:-1])))
+    for exact_dir in candidate_dirs:
+        if exact_dir.is_dir():
+            candidates = sorted(
+                set(
+                    str(p.relative_to(backend))
+                    for p in exact_dir.rglob("test_*.py")
+                    if p.stem == f"test_{last_segment}" or p.stem.startswith(f"test_{last_segment}_")
+                )
+            )
+            if candidates:
+                return candidates[:20]
+
+    # Fallback to the previous broad discovery heuristic.
+    candidates: list[str] = []
     import_patterns = [f"app.services.{search_key}", f"app.capabilities.{search_key}"]
 
     for p in tests_dir.rglob("*.py"):
@@ -135,8 +162,6 @@ def discover_tests(backend: Path, service: str) -> list[str]:
         if any(pattern in text for pattern in import_patterns):
             candidates.append(str(p.relative_to(backend)))
 
-    # Also search directories that match any segment or the full subpath.
-    target_tail = Path(service)
     for p in tests_dir.rglob("*"):
         if not p.is_dir():
             continue
