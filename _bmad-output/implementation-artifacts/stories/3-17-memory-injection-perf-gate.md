@@ -106,6 +106,16 @@ Focused `cosmic-ray` runs executed against the changed code with targeted test f
 - One P2 concern: no dedicated throughput/concurrent-turn benchmark; p95 latency evidence is strong.
 - Next: Human review gate (4.13)
 
+## Human Review Gate (2026-08-13)
+
+- P0 areas touched: **None**
+- Files changed:
+  - `app/observability/metrics.py` — adds `_memory_injection_truncated` counter + `record_memory_injection_truncated()` helper (observability only, no P0 surface)
+  - `app/agents/chat/multi_agent_chat/main_agent/middleware/memory/middleware.py` — emits counter on Rule-9 truncation; fixes `_QUERY_TRUNCATION_MARKER | tail` → `+` (prompt-injection middleware, not subagent orchestration/dispatch)
+- Code review: all `decision-needed` and `patch` findings resolved
+- Status: **done**
+- Next: Web E2E gate (4.14) — not applicable (no UI/response shape change)
+
 ## EXPLAIN Verification (AC1)
 
 From the Docker benchmark evidence (`3-17-memory-performance.json`):
