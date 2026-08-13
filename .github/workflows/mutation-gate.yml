@@ -98,13 +98,17 @@ jobs:
 
       - name: Run mutation gate
         run: |
+          SKIP_NOISE=""
+          if [ "${{ github.event.inputs.skip-noise-operators || 'false' }}" = "true" ]; then
+            SKIP_NOISE="--skip-noise-operators"
+          fi
           python scripts/mutation-gate.py \
             --services ${{ matrix.service }} \
             --timeout ${{ github.event.inputs.timeout || '120' }} \
             --project-root . \
             --test-files "${{ github.event.inputs.test-files || '' }}" \
             --functions "${{ github.event.inputs.functions || '' }}" \
-            --skip-noise-operators ${{ github.event.inputs.skip-noise-operators || 'false' }}
+            $SKIP_NOISE
 
       - name: Upload mutation artifacts
         if: always()
