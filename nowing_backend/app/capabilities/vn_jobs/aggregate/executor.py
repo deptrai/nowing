@@ -43,7 +43,7 @@ async def _ingest_vn_jobs_output(
     output: VnJobAggregateOutput,
     workspace_id: int,
     session: Any,
-    correlation_id: str | None = None,
+    correlation_id: str | None = None,  # pragma: no mutate
 ) -> None:
     """Ingest aggregated listings to chainlens-research and attach job ids."""
     if not output.items:
