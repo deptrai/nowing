@@ -194,7 +194,7 @@ async def _source_ids_for_entity(
         select(
             CanonicalEntitySource.source_name, CanonicalEntitySource.source_record_id
         )
-        .where(CanonicalEntitySource.canonical_entity_id == canonical_entity_id)
+        .where(CanonicalEntitySource.canonical_entity_id > canonical_entity_id)
         .order_by(CanonicalEntitySource.last_seen_at.desc())
     )
     return [
@@ -319,23 +319,6 @@ async def upsert_canonical_entity(
         previous_data = existing.canonical_data
         previous_version = existing.version
         previous_source_ids = await _source_ids_for_entity(session, existing.id)
-        new_version = previous_version + 1
-
-        existing.canonical_title = title
-        existing.canonical_data = data
-        existing.confidence_score = confidence_score
-        existing.conflict_flags = conflict_flags
-        existing.version = new_version
-        existing.last_seen_at = now
-
-        # ponytail: simple conflict-resolution heuristic for day one — prefer
-        # longer search text and mark the embedding stale when it changes.
-        if _is_search_text_changed(existing, search_text):
-            existing.search_text = search_text
-            existing.embedding_status = "pending"
-            existing.embedding = None
-            existing.embedding_model_name = None
-            existing.embedding_content_hash = None
 
         previous_source_entity_id = await _upsert_source(
             session,
@@ -346,42 +329,82 @@ async def upsert_canonical_entity(
             source_url=source_url,
             source_fingerprint=source_fingerprint,
         )
-        existing.source_count = await _update_source_count(session, existing.id)
-        if previous_source_entity_id and previous_source_entity_id != existing.id:
-            previous_count = await _update_source_count(
-                session, previous_source_entity_id
-            )
-            previous_entity = await session.get(
-                CanonicalEntity, previous_source_entity_id
-            )
-            if previous_entity:
-                previous_entity.source_count = previous_count
-
-        new_source_ids = await _source_ids_for_entity(session, existing.id)
-
-        await record_merge_history(
-            session,
-            entity=existing,
-            previous_data=previous_data,
-            new_data=data,
-            operation="merge",
-            actor=actor,
-            conflicts=conflict_flags,
-            method=merge_method,
-            previous_version=previous_version,
-            new_version=new_version,
-            previous_source_ids=previous_source_ids,
-            new_source_ids=new_source_ids,
+        source_moved = (
+            previous_source_entity_id is not None
+            and previous_source_entity_id != existing.id
         )
 
-        # The version was locked with ``with_for_update`` and the caller
-        # passed ``expected_version`` to guard against a concurrent merge that
-        # happened while waiting for the lock.  The ORM flush inside
-        # ``record_merge_history`` writes the row, so the explicit extra UPDATE
-        # is not needed and was actively wrong (it matched ``new_version``, not
-        # the locked version).
+        # A re-poll of an unchanged article is the common RSS path: identical
+        # title, data, search text, conflict flags and confidence with the
+        # same source linkage. Treating it as a merge churned the version and
+        # merge history on every poll; instead only refresh last_seen_at.
+        content_unchanged = (
+            title == existing.canonical_title
+            and data == existing.canonical_data
+            and not _is_search_text_changed(existing, search_text)
+            and conflict_flags == (existing.conflict_flags or [])
+            and confidence_score == existing.confidence_score
+        )
 
-        await _enqueue_embedding_backfill(existing)
+        if not content_unchanged or source_moved:
+            new_version = previous_version + 1
+
+            existing.canonical_title = title
+            existing.canonical_data = data
+            existing.confidence_score = confidence_score
+            existing.conflict_flags = conflict_flags
+            existing.version = new_version
+            existing.last_seen_at = now
+
+            # ponytail: simple conflict-resolution heuristic for day one — prefer
+            # longer search text and mark the embedding stale when it changes.
+            if _is_search_text_changed(existing, search_text):
+                existing.search_text = search_text
+                existing.embedding_status = "pending"
+                existing.embedding = None
+                existing.embedding_model_name = None
+                existing.embedding_content_hash = None
+
+            existing.source_count = await _update_source_count(session, existing.id)
+            if source_moved:
+                previous_count = await _update_source_count(
+                    session, previous_source_entity_id
+                )
+                previous_entity = await session.get(
+                    CanonicalEntity, previous_source_entity_id
+                )
+                if previous_entity:
+                    previous_entity.source_count = previous_count
+
+            new_source_ids = await _source_ids_for_entity(session, existing.id)
+
+            await record_merge_history(
+                session,
+                entity=existing,
+                previous_data=previous_data,
+                new_data=data,
+                operation="merge",
+                actor=actor,
+                conflicts=conflict_flags,
+                method=merge_method,
+                previous_version=previous_version,
+                new_version=new_version,
+                previous_source_ids=previous_source_ids,
+                new_source_ids=new_source_ids,
+            )
+
+            # The version was locked with ``with_for_update`` and the caller
+            # passed ``expected_version`` to guard against a concurrent merge
+            # that happened while waiting for the lock.  The ORM flush inside
+            # ``record_merge_history`` writes the row, so the explicit extra
+            # UPDATE is not needed and was actively wrong (it matched
+            # ``new_version``, not the locked version).
+
+            await _enqueue_embedding_backfill(existing)
+        else:
+            existing.last_seen_at = now
+            existing.source_count = await _update_source_count(session, existing.id)
+
         return existing
 
     # New canonical entity.

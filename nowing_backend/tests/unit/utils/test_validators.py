@@ -11,6 +11,7 @@ from app.utils.validators import (
     validate_email,
     validate_messages,
     validate_research_mode,
+    validate_rss_feed_url,
     validate_search_mode,
     validate_top_k,
     validate_url,
@@ -332,6 +333,56 @@ def test_validate_connector_config_invalid():
     # Invalid URL format in SEARXNG_API
     with pytest.raises(ValueError):
         validate_connector_config("SEARXNG_API", {"SEARXNG_HOST": "not-a-url"})
+
+
+def test_validate_rss_feed_url():
+    assert validate_rss_feed_url("https://vnexpress.net/rss/tin-moi-nhat.rss").endswith(
+        ".rss"
+    )
+    assert validate_rss_feed_url("http://example.com/feed") == "http://example.com/feed"
+
+    for bad_url in (
+        "",
+        "file:///etc/passwd",
+        "ftp://example.com/feed",
+        "localhost",
+        "http://localhost:8000/feed",
+        "http://127.0.0.1/feed",
+        "http://10.0.0.1/feed",
+        "http://192.168.1.1/feed",
+        "http://169.254.169.254/latest/meta-data",
+    ):
+        with pytest.raises(ValueError):
+            validate_rss_feed_url(bad_url)
+
+
+def test_validate_connector_config_rss_feed_valid():
+    config = {"feed_urls": ["https://vnexpress.net/rss/tin-moi-nhat.rss"]}
+    assert validate_connector_config("RSS_FEED", config) == config
+
+    # feed_urls is optional for RSS_FEED
+    assert validate_connector_config("RSS_FEED", {}) == {}
+
+
+def test_validate_connector_config_rss_feed_invalid():
+    # Empty list rejected
+    with pytest.raises(ValueError, match="feed_urls"):
+        validate_connector_config("RSS_FEED", {"feed_urls": []})
+
+    # Non-string entry rejected
+    with pytest.raises(ValueError, match="feed_urls\\[0\\]"):
+        validate_connector_config("RSS_FEED", {"feed_urls": [123]})
+
+    # Private / non-public URLs rejected (SSRF guard)
+    for bad_url in (
+        "file:///etc/passwd",
+        "http://localhost:8000/feed",
+        "http://127.0.0.1/feed",
+        "http://10.0.0.1/feed",
+        "http://192.168.1.1/feed",
+    ):
+        with pytest.raises(ValueError, match="feed_urls\\[0\\]"):
+            validate_connector_config("RSS_FEED", {"feed_urls": [bad_url]})
 
 
 @pytest.mark.parametrize(
